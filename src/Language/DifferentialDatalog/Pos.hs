@@ -24,9 +24,10 @@ SOFTWARE.
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 
 module Language.DifferentialDatalog.Pos(
-        Pos, 
+        Pos,
         WithPos(..),
         spos,
+        sposFragment,
         nopos,
         posInside,
         withPos,
@@ -34,6 +35,7 @@ module Language.DifferentialDatalog.Pos(
 
 import Text.Parsec
 import Text.Parsec.Pos
+import qualified Data.Map as M
 
 type Pos = (SourcePos,SourcePos)
 
@@ -50,7 +52,32 @@ spos x = let (s,e) = pos x
          in sourceName s ++ ":" ++ (show $ sourceLine s) ++ ":" ++ (show $ sourceColumn s) ++ "-"
                                 ++ (show $ sourceLine e) ++ ":" ++ (show $ sourceColumn e)
 
-nopos::Pos 
+-- Returns a string describing a program position and a fragment of the
+-- source program around the position (if the position is valid)
+-- Here is an example result:
+-- error: ./test/datalog_tests/function.fail.dl:4:5-4:6:Expression is not a struct
+--    x.bar
+--    ^
+sposFragment :: (WithPos a) => a -> M.Map String String -> String -> String
+sposFragment element sources message =
+   let (s,e)      = pos element
+       sourceFile = sourceName s
+       lineStart  = sourceLine s
+       colStart   = sourceColumn s
+       lineEnd    = sourceLine e
+       colEnd     = sourceColumn e
+       sameLine   = lineStart == lineEnd
+       width      = if sameLine then colEnd - colStart else 1
+       valid      = (pos element /= nopos) &&  -- valid position
+                    (M.member sourceFile sources) && -- source file exists
+                    (length (sources M.! sourceFile) > (lineStart - 1)) -- source file has this line
+       line       = (lines $ (sources M.! sourceFile)) !! (lineStart - 1)
+       shortDesc  = spos element ++ ": " ++ message ++ "\n"
+    in shortDesc ++ (if valid
+                        then line ++ "\n" ++ take (colStart - 1) (repeat ' ') ++ take width (repeat '^')
+                        else "")
+
+nopos::Pos
 nopos = (initialPos "",initialPos "")
 
 posInside :: SourcePos -> Pos -> Bool

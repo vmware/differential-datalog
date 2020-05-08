@@ -10,7 +10,7 @@ use std::io::Write;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread::sleep;
-use std::time::Duration;
+use time::Instant;
 
 use api::{updcmd2upd, HDDlog};
 use cmd_parser::*;
@@ -21,7 +21,6 @@ use differential_datalog::record::*;
 use differential_datalog::DDlog;
 use num_traits::cast::ToPrimitive;
 use rustop::opts;
-use time::precise_time_ns;
 use types::log_set_default_callback;
 
 #[cfg(feature = "profile")]
@@ -29,6 +28,7 @@ use cpuprofiler::PROFILER;
 
 #[allow(clippy::let_and_return)]
 fn handle_cmd(
+    start_time: &Instant,
     hddlog: &HDDlog,
     print_deltas: bool,
     interactive: bool,
@@ -95,7 +95,7 @@ fn handle_cmd(
         Command::Comment => Ok(()),
         Command::Rollback => hddlog.transaction_rollback(),
         Command::Timestamp => {
-            println!("Timestamp: {}", precise_time_ns());
+            println!("Timestamp: {}", start_time.elapsed().whole_nanoseconds());
             Ok(())
         }
         Command::Profile(None) => {
@@ -153,7 +153,7 @@ fn handle_cmd(
             Ok(())
         }
         Command::Sleep(ms) => {
-            sleep(Duration::from_millis(ms.to_u64().unwrap()));
+            sleep(std::time::Duration::from_millis(ms.to_u64().unwrap()));
             Ok(())
         }
         Command::Update(upd, last) => {
@@ -221,8 +221,10 @@ fn is_upd_cmd(c: &Command) -> bool {
 
 fn run(mut hddlog: HDDlog, print_deltas: bool) -> Result<(), String> {
     let upds = Arc::new(Mutex::new(Vec::new()));
+    let start_time = Instant::now();
     interact(|cmd, interactive| {
         handle_cmd(
+            &start_time,
             &hddlog,
             print_deltas,
             interactive,
@@ -239,10 +241,11 @@ fn main() -> Result<(), String> {
     let parser = opts! {
         synopsis "DDlog CLI interface.";
         auto_shorts false;
-        opt store:bool=true, desc:"Do not store relation state (for benchmarking only)."; // --no-store
-        opt delta:bool=true, desc:"Do not record changes.";                               // --no-delta
-        opt print:bool=true, desc:"Do not print deltas.";                                 // --no-print
-        opt workers:usize=4, short:'w', desc:"The number of worker threads.";             // --workers or -w
+        opt store:bool=true, desc:"Do not store output relation state.";                            // --no-store
+        opt delta:bool=true, desc:"Do not record changes.";                                         // --no-delta
+        opt print:bool=true, desc:"Backwards compatibility. The value of this flag is ignored.";    // --no-print
+        opt trace:bool=false, desc:"Trace updates to output relations to stderr.";                  // --trace
+        opt workers:usize=4, short:'w', desc:"The number of worker threads.";                       // --workers or -w
     };
     let (args, rest) = parser.parse_or_exit();
 
@@ -260,7 +263,7 @@ fn main() -> Result<(), String> {
         );
     }
     fn no_op(_table: usize, _rec: &Record, _w: isize) {}
-    let cb = if args.print { record_upd } else { no_op };
+    let cb = if args.trace { record_upd } else { no_op };
 
     match HDDlog::run(args.workers, args.store, cb) {
         Ok(hddlog) => run(hddlog, args.delta),

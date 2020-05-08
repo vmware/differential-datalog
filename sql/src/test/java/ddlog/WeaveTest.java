@@ -6,7 +6,7 @@ import com.vmware.ddlog.translator.Translator;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class WeaveTest {
+public class WeaveTest extends BaseQueriesTest {
     @Test
     public void testWeave() {
         Translator t = new Translator(null);
@@ -433,7 +433,7 @@ public class WeaveTest {
         DDlogProgram program = t.getDDlogProgram();
         String p = program.toString();
         Assert.assertNotNull(p);
-        String expected = "import sql\nimport sqlop\n" + "\n" +
+        String expected = "import fp\nimport time\nimport sql\nimport sqlop\n" + "\n" +
                 "typedef Tnode_info = Tnode_info{name:string, unschedulable:bool, out_of_disk:bool, memory_pressure:bool, disk_pressure:bool, pid_pressure:bool, ready:bool, network_unavailable:bool, cpu_capacity:bigint, " +
                 "memory_capacity:bigint, ephemeral_storage_capacity:bigint, pods_capacity:bigint, cpu_allocatable:bigint, memory_allocatable:bigint, ephemeral_storage_allocatable:bigint, pods_allocatable:bigint}\n" +
 
@@ -492,7 +492,7 @@ public class WeaveTest {
 
                 "typedef TRtmp4 = TRtmp4{pod_name:string, node_name:string}\n" +
 
-                "typedef Tagg = Tagg{col:bool}\n" +
+                "typedef Tagg = Tagg{col:Option<bool>}\n" +
 
                 "typedef Ttmp5 = Ttmp5{pod_name:string, status:string, controllable__node_name:Option<string>, namespace:string, cpu_request:bigint, memory_request:bigint, ephemeral_storage_request:bigint, " +
                 "pods_request:bigint, owner_name:string, creation_timestamp:string, has_node_selector_labels:bool, has_pod_affinity_requirements:bool, pod_name0:string, label_selector:signed<64>, " +
@@ -523,9 +523,9 @@ public class WeaveTest {
 
                 "typedef TRtmp13 = TRtmp13{node_name:string}\n" +
 
-                "function agg(g: Group<(string, string, signed<64>, string, signed<64>), (TRtmp, Tpod_node_selector_labels, Tnode_labels)>):Tagg =\n" +
+                "function agg(g: Group<(string, string, signed<64>, string, signed<64>), (TRtmp, Tpod_node_selector_labels, Tnode_labels)>):Tagg {\n" +
                 "(var gb, var gb4, var gb5, var gb6, var gb7) = group_key(g);\n" +
-                "(var any = false: bool);\n" +
+                "(var any = Some{false}: Option<bool>);\n" +
                 "(var any9 = false: bool);\n" +
                 "(var count_distinct = set_empty(): Set<signed<64>>);\n" +
                 "(for (i in g) {\n" +
@@ -539,13 +539,13 @@ public class WeaveTest {
                 "(var incr10 = v0.match_expression);\n" +
                 "(set_insert(count_distinct, incr10))}\n" +
                 ");\n" +
-                "(Tagg{.col = if (gb6 == \"NotIn\") {\n" +
-                "(not any)} else {\n" +
-                "if (gb6 == \"DoesNotExist\") {\n" +
-                "(not any9)} else {\n" +
-                "(set_size(count_distinct) as signed<64> == gb7)}}})\n" +
+                "(Tagg{.col = if ((gb6 == \"NotIn\")) {\n" +
+                "b_not_N(any)} else {\n" +
+                "if ((gb6 == \"DoesNotExist\")) {\n" +
+                "Some{.x = (not any9)}} else {\n" +
+                "Some{.x = (set_size(count_distinct) as signed<64> == gb7)}}}})\n}\n\n" +
 
-                "function agg9(g: Group<(string, string, signed<64>, string, string, signed<64>, Option<string>), (TRtmp, Tpod_affinity_match_expressions, Tpod_labels, Tpod_info)>):Tagg9 =\n" +
+                "function agg9(g: Group<(string, string, signed<64>, string, string, signed<64>, Option<string>), (TRtmp, Tpod_affinity_match_expressions, Tpod_labels, Tpod_info)>):Tagg9 {\n" +
                 "(var gb, var gb6, var gb7, var gb8, var gb9, var gb10, var gb11) = group_key(g);\n" +
                 "(var any = false: bool);\n" +
                 "(var any13 = false: bool);\n" +
@@ -562,13 +562,13 @@ public class WeaveTest {
                 "(var incr14 = v0.match_expression);\n" +
                 "(set_insert(count_distinct, incr14))}\n" +
                 ");\n" +
-                "(Tagg9{.col = if (gb9 == \"NotIn\") {\n" +
+                "(Tagg9{.col = if ((gb9 == \"NotIn\")) {\n" +
                 "(not any)} else {\n" +
-                "if (gb9 == \"DoesNotExist\") {\n" +
+                "if ((gb9 == \"DoesNotExist\")) {\n" +
                 "(not any13)} else {\n" +
-                "(set_size(count_distinct) as signed<64> == gb10)}}})\n" +
+                "(set_size(count_distinct) as signed<64> == gb10)}}})\n}\n\n" +
 
-                "function agg12(g: Group<(string, bigint, bigint, bigint), (Tnode_info, Tpod_info)>):Tagg12 =\n" +
+                "function agg12(g: Group<(string, bigint, bigint, bigint), (Tnode_info, Tpod_info)>):Tagg12 {\n" +
                 "(var gb, var gb2, var gb3, var gb4) = group_key(g);\n" +
                 "(var sum = 0: bigint);\n" +
                 "(var sum6 = 0: bigint);\n" +
@@ -584,7 +584,7 @@ public class WeaveTest {
                 "(sum8 = agg_sum_int_R(sum8, incr7))}\n" +
                 ");\n" +
                 "(Tagg12{.cpu_remaining = (gb2 - sum) as signed<64>,.memory_remaining = (gb3 - sum6) as signed<64>,.pods_remaining = (gb4 - sum8) as signed<64>})" +
-                "\n" +
+                "\n}\n\n" +
 
                 "input relation Rnode_info[Tnode_info]\n" +
                 "input relation Rpod_info[Tpod_info]\n" +
@@ -646,7 +646,7 @@ public class WeaveTest {
                 ".has_node_selector_labels = v1.has_node_selector_labels,.has_pod_affinity_requirements = v1.has_pod_affinity_requirements,.pod_name0 = v1.pod_name0,.term = v1.term,.match_expression = v1.match_expression," +
                 ".num_match_expressions = v1.num_match_expressions,.label_key = v1.label_key,.label_operator = v1.label_operator,.label_value = v1.label_value,.node_name = v2.node_name,.label_key0 = v2.label_key," +
                 ".label_value0 = v2.label_value},var gb = v.pod_name,var gb4 = v2.node_name,var gb5 = v0.term,var gb6 = v0.label_operator,var gb7 = v0.num_match_expressions," +
-                "var aggResult = Aggregate((gb, gb4, gb5, gb6, gb7), agg((v, v0, v2))),var v11 = TRtmp4{.pod_name = gb,.node_name = gb4},aggResult.col,var v12 = v11.\n" +
+                "var aggResult = Aggregate((gb, gb4, gb5, gb6, gb7), agg((v, v0, v2))),var v11 = TRtmp4{.pod_name = gb,.node_name = gb4},unwrapBool(aggResult.col),var v12 = v11.\n" +
 
                 "Rinter_pod_affinity_matches_inner[v16] :- Rpods_to_assign[v],Rpod_affinity_match_expressions[v0],(v.pod_name == v0.pod_name),true," +
                 "var v1 = Ttmp5{.pod_name = v.pod_name,.status = v.status,.controllable__node_name = v.controllable__node_name,.namespace = v.namespace,.cpu_request = v.cpu_request,.memory_request = v.memory_request," +
@@ -689,5 +689,21 @@ public class WeaveTest {
                 ".pods_remaining = aggResult.pods_remaining},var v10 = v9.\n" +
                 "Rnodes_that_have_tolerations[v1] :- Rnode_taints[v],var v0 = TRtmp13{.node_name = v.node_name},var v1 = v0.";
         Assert.assertEquals(expected, p);
+        this.compiledDDlog(p);
+    }
+
+    @Test
+    public void testFullSchemaCompilation() {
+        testFileCompilation("/weave.sql");
+    }
+
+    @Test
+    public void testTableOnlySchemaCompilation() {
+        testFileCompilation("/weave_tables.sql");
+    }
+
+    @Test
+    public void testSingleTableCompilation() {
+        testFileCompilation("/weave_minimal.sql");
     }
 }

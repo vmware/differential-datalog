@@ -38,7 +38,7 @@ public class DDlogFunction implements DDlogIRNode {
             String.join(", ", Linq.map(this.args, DDlogFuncArg::toString, String.class)) + "):" +
             this.type.toString();
         if (this.def != null)
-            result += " =\n" + this.def.toString();
+            result += " {\n" + this.def.toString() + "\n}\n";
         return result;
     }
 }

@@ -4,8 +4,12 @@ use std::io;
 use std::iter;
 use std::mem;
 use std::os::raw;
-use std::os::unix;
-use std::os::unix::io::FromRawFd;
+
+#[cfg(unix)]
+use std::os::unix::io::{FromRawFd, IntoRawFd, RawFd};
+#[cfg(windows)]
+use std::os::windows::io::{FromRawHandle, IntoRawHandle, RawHandle};
+
 use std::ptr;
 use std::slice;
 use std::sync::{Arc, Mutex};
@@ -579,10 +583,8 @@ pub extern "C" fn ddlog_run(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_record_commands(
-    prog: *const HDDlog,
-    fd: unix::io::RawFd,
-) -> raw::c_int {
+#[cfg(unix)]
+pub unsafe extern "C" fn ddlog_record_commands(prog: *const HDDlog, fd: RawFd) -> raw::c_int {
     if prog.is_null() {
         return -1;
     };
@@ -611,10 +613,40 @@ pub unsafe extern "C" fn ddlog_record_commands(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_dump_input_snapshot(
-    prog: *const HDDlog,
-    fd: unix::io::RawFd,
-) -> raw::c_int {
+#[cfg(windows)]
+pub unsafe extern "C" fn ddlog_record_commands(prog: *const HDDlog, fd: raw::c_int) -> raw::c_int {
+    if prog.is_null() {
+        return -1;
+    };
+    let mut prog = Arc::from_raw(prog);
+
+    let file = if fd == -1 {
+        None
+    } else {
+        // Convert file descriptor to file handle on Windows.
+        let handle = libc::get_osfhandle(fd);
+        Some(fs::File::from_raw_handle(handle as RawHandle))
+    };
+
+    let res = match Arc::get_mut(&mut prog) {
+        Some(prog) => {
+            let mut old_file = file.map(Mutex::new);
+            prog.record_commands(&mut old_file);
+            /* Convert the old file into FD to prevent it from closing.
+             * It is the caller's responsibility to close the file when
+             * they are done with it. */
+            old_file.map(|m| m.into_inner().unwrap().into_raw_handle());
+            0
+        }
+        None => -1,
+    };
+    Arc::into_raw(prog);
+    res
+}
+
+#[no_mangle]
+#[cfg(unix)]
+pub unsafe extern "C" fn ddlog_dump_input_snapshot(prog: *const HDDlog, fd: RawFd) -> raw::c_int {
     if prog.is_null() || fd < 0 {
         return -1;
     };
@@ -628,6 +660,31 @@ pub unsafe extern "C" fn ddlog_dump_input_snapshot(
             -1
         });
     file.into_raw_fd();
+    Arc::into_raw(prog);
+    res
+}
+
+#[no_mangle]
+#[cfg(windows)]
+pub unsafe extern "C" fn ddlog_dump_input_snapshot(
+    prog: *const HDDlog,
+    fd: raw::c_int,
+) -> raw::c_int {
+    if prog.is_null() || fd < 0 {
+        return -1;
+    };
+    let prog = Arc::from_raw(prog);
+    // Convert file descriptor to file handle on Windows.
+    let handle = libc::get_osfhandle(fd);
+    let mut file = fs::File::from_raw_handle(handle as RawHandle);
+    let res = prog
+        .dump_input_snapshot(&mut file)
+        .map(|_| 0)
+        .unwrap_or_else(|e| {
+            prog.eprintln(&format!("ddlog_dump_input_snapshot: error: {}", e));
+            -1
+        });
+    file.into_raw_handle();
     Arc::into_raw(prog);
     res
 }
@@ -731,6 +788,78 @@ pub unsafe extern "C" fn ddlog_transaction_commit_dump_changes(
 
     Arc::into_raw(prog);
     res
+}
+
+#[repr(C)]
+pub struct ddlog_record_update {
+    table: libc::size_t,
+    rec: *mut record::Record,
+    polarity: bool,
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_transaction_commit_dump_changes_as_array(
+    prog: *const HDDlog,
+    changes: *mut *const ddlog_record_update,
+    num_changes: *mut libc::size_t,
+) -> raw::c_int {
+    if prog.is_null() {
+        return -1;
+    };
+    let prog = Arc::from_raw(prog);
+    let res = do_transaction_commit_dump_changes_as_array(&*prog, changes, num_changes)
+        .map(|_| 0)
+        .unwrap_or_else(|e| {
+            prog.eprintln(&format!(
+                "ddlog_transaction_commit_dump_changes_as_array: error: {}",
+                e
+            ));
+            -1
+        });
+
+    Arc::into_raw(prog);
+    res
+}
+
+unsafe fn do_transaction_commit_dump_changes_as_array(
+    prog: &HDDlog,
+    changes: *mut *const ddlog_record_update,
+    num_changes: *mut libc::size_t,
+) -> Result<(), String> {
+    let updates = prog.transaction_commit_dump_changes()?;
+    let mut size = 0;
+    for (_, delta) in updates.as_ref().iter() {
+        size += delta.len();
+    }
+
+    *num_changes = size;
+    // Make sure that vector's capacity will be equal to its length.
+    let mut change_vec = Vec::with_capacity(size);
+    for (rel, delta) in updates.into_iter() {
+        for (val, w) in delta.into_iter() {
+            change_vec.push(ddlog_record_update {
+                table: rel,
+                rec: Box::into_raw(Box::new(val.into_record())),
+                polarity: w > 0,
+            });
+        }
+    }
+    *changes = change_vec.as_ptr();
+    std::mem::forget(change_vec);
+    Ok(())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_free_record_updates(
+    changes: *mut ddlog_record_update,
+    num_changes: libc::size_t,
+) {
+    // Assume that vector's capacity is equal to its length.
+    let changes_vec: Vec<ddlog_record_update> =
+        Vec::from_raw_parts(changes, num_changes as usize, num_changes as usize);
+    for upd in changes_vec.into_iter() {
+        let upd: Box<record::Record> = Box::from_raw(upd.rec);
+    }
 }
 
 #[cfg(feature = "flatbuf")]

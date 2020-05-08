@@ -49,9 +49,14 @@ public abstract class DDlogType implements DDlogIRNode {
             return DDlogTTuple.emptyTupleType;
         DDlogType result = types.get(0);
         for (int i = 1; i < types.size(); i++) {
-            DDlogType.checkCompatible(result, types.get(i));
-            if (types.get(i).mayBeNull)
-                result = types.get(i);
+            DDlogType.checkCompatible(result, types.get(i), false);
+            DDlogType ti = types.get(i);
+            if (result.is(DDlogTUnknown.class))
+                result = ti.setMayBeNull(true);
+            else if (ti.is(DDlogTUnknown.class))
+                result = result.setMayBeNull(true);
+            else if (ti.mayBeNull)
+                result = ti;
         }
         return result;
     }
@@ -60,10 +65,13 @@ public abstract class DDlogType implements DDlogIRNode {
         return reduceType(Linq.list(left, right));
     }
 
-    static void checkCompatible(DDlogType type0, DDlogType type1) {
-        // TODO: refine this.
-        if (type0.getClass() != type1.getClass())
+    static void checkCompatible(DDlogType type0, DDlogType type1, boolean checkNullability) {
+        if (!type0.is(DDlogTUnknown.class) &&
+            !type1.is(DDlogTUnknown.class) &&
+            type0.getClass() != type1.getClass())
             throw new RuntimeException("Incompatible types " + type0 + " and " + type1);
+        if (checkNullability && type0.mayBeNull != type1.mayBeNull)
+            throw new RuntimeException("Types have different nullabilities: " + type0 + " and " + type1);
     }
 
     public static String typeName(String name) {
@@ -82,6 +90,6 @@ public abstract class DDlogType implements DDlogIRNode {
      * Get the None{} value of the option type corresponding to this type.
      */
     public DDlogExpression getNone() {
-        return new DDlogEStruct("None", this.setMayBeNull(true));
+        return new DDlogENull(this.setMayBeNull(true));
     }
 }

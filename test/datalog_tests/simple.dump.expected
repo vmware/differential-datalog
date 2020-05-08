@@ -993,25 +993,11 @@ ConcatString{.s = "Foo bar"}: +1
 ConcatString{.s = "Foo world"}: +1
 ConcatString{.s = "Hello, bar"}: +1
 ConcatString{.s = "Hello, world"}: +1
-StringOrd:
-StringOrd{.s = "Foo ", .ord = 3}: +1
-StringOrd{.s = "Foo bar", .ord = 6}: +1
-StringOrd{.s = "Foo world", .ord = 7}: +1
-StringOrd{.s = "Hello, ", .ord = 2}: +1
-StringOrd{.s = "Hello, bar", .ord = 4}: +1
-StringOrd{.s = "Hello, world", .ord = 5}: +1
 ConcatString
 ConcatString{.s = "Foo bar"}
 ConcatString{.s = "Foo world"}
 ConcatString{.s = "Hello, bar"}
 ConcatString{.s = "Hello, world"}
-StringOrd
-StringOrd{.s = "Foo ", .ord = 3}
-StringOrd{.s = "Foo bar", .ord = 6}
-StringOrd{.s = "Foo world", .ord = 7}
-StringOrd{.s = "Hello, ", .ord = 2}
-StringOrd{.s = "Hello, bar", .ord = 4}
-StringOrd{.s = "Hello, world", .ord = 5}
 CMethod:
 CMethod{.c1 = "bar", .c2 = "foo"}: +1
 CMethod{.c1 = "buzz", .c2 = "foo"}: +1

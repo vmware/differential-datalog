@@ -19,8 +19,15 @@ public class DDlogEBool extends DDlogExpression {
         this.bval = bval;
     }
 
+    public DDlogEBool(boolean bval, boolean mayBeNull) {
+        super(DDlogTBool.instance.setMayBeNull(mayBeNull));
+        this.bval = bval;
+    }
+
     @Override
     public String toString() {
+        if (this.getType().mayBeNull)
+            return "Some{" + this.bval + "}";
         return Boolean.toString(this.bval);
     }
 }

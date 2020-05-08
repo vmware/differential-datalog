@@ -45,6 +45,8 @@ import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Pos
+import Language.DifferentialDatalog.Error
+
 import {-# SOURCE #-} Language.DifferentialDatalog.Rule
 --import {-# SOURCE #-} Relation
 import {-# SOURCE #-} Language.DifferentialDatalog.Expr
@@ -56,7 +58,7 @@ lookupType DatalogProgram{..} n = M.lookup n progTypedefs
 
 checkType :: (MonadError String me) => Pos -> DatalogProgram -> String -> me TypeDef
 checkType p d n = case lookupType d n of
-                       Nothing -> err p $ "Unknown type: " ++ n
+                       Nothing -> err d p $ "Unknown type: " ++ n
                        Just t  -> return t
 
 getType :: DatalogProgram -> String -> TypeDef
@@ -68,7 +70,7 @@ lookupFunc DatalogProgram{..} n = M.lookup n progFunctions
 
 checkFunc :: (MonadError String me) => Pos -> DatalogProgram -> String -> me Function
 checkFunc p d n = case lookupFunc d n of
-                       Nothing -> err p $ "Unknown function: " ++ n
+                       Nothing -> err d p $ "Unknown function: '" ++ n ++ "'"
                        Just f  -> return f
 
 getFunc :: DatalogProgram -> String -> Function
@@ -79,7 +81,7 @@ lookupTransformer DatalogProgram{..} n = M.lookup n progTransformers
 
 checkTransformer :: (MonadError String me) => Pos -> DatalogProgram -> String -> me Transformer
 checkTransformer p d n = case lookupTransformer d n of
-                              Nothing -> err p $ "Unknown transformer: " ++ n
+                              Nothing -> err d p $ "Unknown transformer: " ++ n
                               Just t  -> return t
 
 getTransformer :: DatalogProgram -> String -> Transformer
@@ -90,7 +92,7 @@ lookupVar d ctx n = find ((==n) . name) $ ctxAllVars d ctx
 
 checkVar :: (MonadError String me) => Pos -> DatalogProgram -> ECtx -> String -> me Field
 checkVar p d c n = case lookupVar d c n of
-                        Nothing -> err p $ "Unknown variable: " ++ n -- ++ ". All known variables: " ++ (show $ (\(ls,vs) -> (map name ls, map name vs)) $ ctxVars d c)
+                        Nothing -> err d p $ "Unknown variable: " ++ n -- ++ ". All known variables: " ++ (show $ (\(ls,vs) -> (map name ls, map name vs)) $ ctxVars d c)
                         Just v  -> return v
 
 getVar :: DatalogProgram -> ECtx -> String -> Field
@@ -102,7 +104,7 @@ lookupConstructor d c =
 
 checkConstructor :: (MonadError String me) => Pos -> DatalogProgram -> String -> me Constructor
 checkConstructor p d c = case lookupConstructor d c of
-                              Nothing   -> err p $ "Unknown constructor: " ++ c
+                              Nothing   -> err d p $ "Unknown constructor: " ++ c
                               Just cons -> return cons
 
 getConstructor :: DatalogProgram -> String -> Constructor
@@ -113,7 +115,7 @@ lookupRelation d n = M.lookup n $ progRelations d
 
 checkRelation :: (MonadError String me) => Pos -> DatalogProgram -> String -> me Relation
 checkRelation p d n = case lookupRelation d n of
-                           Nothing  -> err p $ "Unknown relation: " ++ n
+                           Nothing  -> err d p $ "Unknown relation: " ++ n
                            Just rel -> return rel
 
 getRelation :: DatalogProgram -> String -> Relation
@@ -167,7 +169,7 @@ ctxMVars d ctx =
          CtxITEThen _ _           -> (plvars, prvars)
          CtxITEElse _ _           -> (plvars, prvars)
          CtxForIter _ _           -> (plvars, prvars)
-         CtxForBody e@EFor{..} pctx -> let loopvar = (exprLoopVar, typeIterType d =<< exprTypeMaybe d (CtxForIter e pctx) exprIter)
+         CtxForBody e@EFor{..} pctx -> let loopvar = (exprLoopVar, fst <$> (typeIterType d =<< exprTypeMaybe d (CtxForIter e pctx) exprIter))
                                            -- variables that occur in the iterator expression cannot
                                            -- be modified inside the loop
                                            plvars_not_iter = filter (\(v,_) -> notElem v $ exprVars exprIter) plvars

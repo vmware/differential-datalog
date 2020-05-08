@@ -1416,12 +1416,11 @@ impl Program {
                                             }
                                         }
                                     };
-                                    epoch += 1;
-                                    //print!("epoch: {}\n", epoch);
-                                    Self::advance(&mut sessions, &mut traces, epoch);
                                 },
                                 Ok(Msg::Flush) => {
                                     //println!("flushing");
+                                    epoch += 1;
+                                    Self::advance(&mut sessions, &mut traces, epoch);
                                     Self::flush(&mut sessions, &probe, worker, &peers, &frontier_ts, &progress_barrier);
                                     //println!("flushed");
                                     reply_send.send(Reply::FlushAck).map_err(|e| format!("failed to send ACK: {}", e))?;

@@ -2,7 +2,8 @@
 [![Build Status](https://travis-ci.com/vmware/differential-datalog.svg?branch=master)](https://travis-ci.com/vmware/differential-datalog)
 [![pipeline status](https://gitlab.com/ddlog/differential-datalog/badges/master/pipeline.svg)](https://gitlab.com/ddlog/differential-datalog/commits/master)
 [![rustc](https://img.shields.io/badge/rustc-1.41+-blue.svg)](https://blog.rust-lang.org/2020/03/12/Rust-1.42.html)
-
+[![Gitter chat](https://badges.gitter.im/vmware/differential-datalog.png)](https://gitter.im/vmware/differential-datalog)
+ 
 # Differential Datalog (DDlog)
 
 DDlog is a programming language for *incremental computation*. It is well suited for
@@ -42,7 +43,7 @@ ground facts and the derived facts computed by DDlog being written back to the d
 
     At the moment, DDlog can only operate on databases that completely fit the memory of a single
     machine. Se are working on a distributed version of DDlog that will be able to
-    parition its state and computation across multiple machines.
+    partition its state and computation across multiple machines.
 
 6. **Typed**: In its classical textbook form Datalog is more of a mathematical formalism than a
 practical tool for programmers.  In particular, pure Datalog does not have concepts like types,
@@ -51,7 +52,7 @@ extends pure Datalog with:
 
     1. A powerful type system, including Booleans, unlimited precision integers, bitvectors, floating point numbers, strings,
     tuples, tagged unions, vectors, sets, and maps. All of these types can be
-    stored in DDlog relations and manipuated by DDlog rules.  Thus, with DDlog
+    stored in DDlog relations and manipulated by DDlog rules.  Thus, with DDlog
     one can perform relational operations, such as joins, directly over structured data,
     without having to flatten it first (as is often done in SQL databases).
 
@@ -73,7 +74,7 @@ but somewhat limits the flexibility, as changes to the relational schema or rule
 
 - Follow the [tutorial](doc/tutorial/tutorial.md) for a step-by-step introduction to DDlog.
 - DDlog [language reference](doc/language_reference/language_reference.md).
-- [Instructions](doc/testing/testing.md) for writing and testing your own Datalog programs.
+- DDlog [command reference](doc/command_reference/command_reference.md) for writing and testing your own Datalog programs.
 - [How to](doc/java_api.md) use DDlog from Java.
 - [How to](go/README.md) use DDlog from Go and [Go API documentation](https://pkg.go.dev/github.com/vmware/differential-datalog/go/pkg/ddlog).
 - [DDlog overview paper](doc/datalog2.0-workshop/paper.pdf), Datalog 2.0 workshop, 2019.
@@ -82,7 +83,7 @@ but somewhat limits the flexibility, as changes to the relational schema or rule
 
 ### Installing DDlog from a binary release
 
-To install a precompiled version of DDlog, download the [latest binary release](https://github.com/vmware/differential-datalog/releases), extract it from archive and add `ddlog/bin` to your `$PATH`. You will also need to install the Rust toolchain (see instructions below).
+To install a precompiled version of DDlog, download the [latest binary release](https://github.com/vmware/differential-datalog/releases), extract it from archive, add `ddlog/bin` to your `$PATH`, and set `$DDLOG_HOME` to point to the `ddlog` directory. You will also need to install the Rust toolchain (see instructions below).
 
 You are now ready to [start coding in DDlog](doc/tutorial/tutorial.md).
 
@@ -125,9 +126,9 @@ You are now ready to [start coding in DDlog](doc/tutorial/tutorial.md).
   apt install libc6-dev libgmp-dev
   ```
 
-#### Installing dependencis using Nix
+#### Installing dependencies using Nix
 
-Alternativaly, [Nix](https://nixos.org/nix/) package manager provides an automated way to
+Alternatively, [Nix](https://nixos.org/nix/) package manager provides an automated way to
 install and manage the above dependencies.  It works on many flavors of
 Linux and MacOS.
 
@@ -138,13 +139,15 @@ Linux and MacOS.
 
 #### Building
 
-To rebuild the software once you've installed the dependencies using one of the
-above methods:
+To build the software once you've installed the dependencies using one of the
+above methods, clone this repository and set `$DDLOG_HOME` variable to point
+to the root of the repository.  Run
 
 ```
 stack build
 ```
 
+anywhere inside the repository to build the DDlog compiler.
 To install DDlog binaries in Haskell stack's default binary directory:
 
 ```
@@ -157,7 +160,7 @@ To install to a different location:
 stack install --local-bin-path <custom_path>
 ```
 
-To test basic DDlog functionality (complete test suite takes a long time):
+To test basic DDlog functionality:
 
 ```
 stack test --ta '-p path'

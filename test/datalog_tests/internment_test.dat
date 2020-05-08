@@ -1,0 +1,6 @@
+start;
+
+insert internment_test.IInternedString("foo"),
+insert internment_test.IInternedString("bar"),
+
+commit dump_changes;

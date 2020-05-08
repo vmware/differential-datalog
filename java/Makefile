@@ -8,16 +8,18 @@ CLASS = ddlogapi/DDlogAPI.class \
 		ddlogapi/DDlogRecCommand.class \
 		ddlogapi/DDlogException.class
 
-all: ${JAR}
+HEADERS = ddlogapi_DDlogAPI.h ddlogapi_DDlogAPI_DDlogCommandVector.h
+
+all: ${JAR} ${HEADERS}
 
 ${JAR}: ${CLASS}
 	jar cvf ${JAR} ddlogapi/*.class
 
-%.class: %.java ddlogapi_DDlogAPI.h
+%.class: %.java
 	javac $<
 
-ddlogapi_DDlogAPI.h: ddlogapi/DDlogAPI.java
+${HEADERS}: ddlogapi/DDlogAPI.java
 	javac -h . $<
 
 clean:
-	rm -f *.class ddlogapi/*.class
+	rm -f *.class ddlogapi/*.class ${HEADERS}

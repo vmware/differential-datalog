@@ -38,6 +38,11 @@ public class DDlogTDouble extends DDlogType implements IsNumericType {
     }
 
     @Override
+    public DDlogExpression one() {
+        return new DDlogEDouble(1);
+    }
+
+    @Override
     public String simpleName() {
         return "double";
     }

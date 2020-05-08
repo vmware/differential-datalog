@@ -204,9 +204,9 @@ test-redist_opt:
     tags:
         - ddlog-ci-2
     script:
-        - (cd test/datalog_tests &&
-          git clone https://github.com/ddlog-dev/redist_opt-test-data.git &&
-          ./test-redist_opt.sh)
+        - cd test/datalog_tests
+        - git clone -b v2 https://github.com/ddlog-dev/redist_opt-test-data.git
+        - ./test-redist_opt.sh
 
 # Test ovn-northd-ddlog
 test-ovn-northd:
@@ -218,7 +218,7 @@ test-ovn-northd:
         - ddlog-ci-2
     script:
         - cd test
-        - git clone https://github.com/openvswitch/ovs.git
+        - git clone https://github.com/ryzhyk/ovs.git
         - git clone https://github.com/ryzhyk/ovn.git
         - git clone https://github.com/ddlog-dev/ovn-test-data.git
         - ./test-ovn.sh
@@ -238,7 +238,7 @@ test-sql:
     extends: .install-ddlog
     script:
         - (cd java && make)
-        - (cd sql && ./install-ddlog-jar.sh && mvn test)
+        - (export DDLOG_HOME=`pwd` && cd sql && ./install-ddlog-jar.sh && mvn test)
 
 # Test Go bindings
 test-golang:

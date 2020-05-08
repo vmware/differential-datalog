@@ -56,6 +56,7 @@ import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.DatalogProgram
+import Language.DifferentialDatalog.Error
 --import Language.DifferentialDatalog.Validate
 
 data DatalogModule = DatalogModule {
@@ -64,13 +65,16 @@ data DatalogModule = DatalogModule {
     moduleDefs :: DatalogProgram
 }
 
--- standard library module name
-stdname :: ModuleName
-stdname = ModuleName ["std"]
+-- Standard library module name.
+stdLibs :: [ModuleName]
+stdLibs = [ModuleName ["std"], ModuleName ["internment"]]
 
--- import standard library
-stdimp :: Import
-stdimp = Import nopos stdname (ModuleName [])
+stdImport :: ModuleName -> Import
+stdImport lib = Import nopos lib (ModuleName [])
+
+-- Import library imports.
+stdImports :: [Import]
+stdImports = map stdImport stdLibs
 
 -- | Parse a datalog program along with all its imports; returns a "flat"
 -- program without imports and the list of Rust files associated with each
@@ -78,14 +82,14 @@ stdimp = Import nopos stdname (ModuleName [])
 --
 -- 'roots' is the list of directories to search for imports
 --
--- if 'import_std' is true, imports the standard library ('std')
+-- if 'import_std' is true, imports the standard libraries
 -- to each module.
 parseDatalogProgram :: [FilePath] -> Bool -> String -> FilePath -> IO (DatalogProgram, Doc, Doc)
 parseDatalogProgram roots import_std fdata fname = do
     roots' <- nub <$> mapM canonicalizePath roots
     prog <- parseDatalogString fdata fname
     let prog' = if import_std
-                   then prog { progImports = stdimp : progImports prog }
+                   then prog { progImports = stdImports ++ progImports prog }
                    else prog
     let main_mod = DatalogModule (ModuleName []) fname prog'
     imports <- evalStateT (parseImports roots' main_mod) []
@@ -137,17 +141,19 @@ mergeModules mods = do
         progRelations    = M.unions $ map progRelations mods,
         progIndexes      = M.unions $ map progIndexes mods,
         progRules        = concatMap progRules mods,
-        progApplys       = concatMap progApplys mods
+        progApplys       = concatMap progApplys mods,
+        progSources      = M.unions $ map progSources mods
     }
-    uniq (name2rust . name) (\m -> ("The following function name " ++ (funcName m) ++ " will cause name collisions"))
+        jp = Just prog
+    uniq jp (name2rust . name) (\m -> ("The following function name " ++ (funcName m) ++ " will cause name collisions"))
          $ M.elems $ progFunctions prog
-    uniq (name2rust . name) (\m -> "The following transformer name " ++ (transName m) ++ " will cause name collisions")
+    uniq jp (name2rust . name) (\m -> "The following transformer name " ++ (transName m) ++ " will cause name collisions")
          $ M.elems $ progTransformers prog
-    uniq (name2rust . name) (\m -> "The following relation name " ++ (relName m) ++ " will cause name collisions")
+    uniq jp (name2rust . name) (\m -> "The following relation name " ++ (relName m) ++ " will cause name collisions")
          $ M.elems $ progRelations prog
-    uniq (name2rust . name) (\m -> "The following index name " ++ (idxName m) ++ " will cause name collisions")
+    uniq jp (name2rust . name) (\m -> "The following index name " ++ (idxName m) ++ " will cause name collisions")
          $ M.elems $ progIndexes prog
-    uniq (name2rust . name) (\m -> "The following type name " ++ (tdefName m) ++ " will cause name collisions")
+    uniq jp (name2rust . name) (\m -> "The following type name " ++ (tdefName m) ++ " will cause name collisions")
          $ M.elems $ progTypedefs prog
     return prog
 
@@ -161,15 +167,18 @@ parseImports roots mod = concat <$>
          (progImports $ moduleDefs mod)
 
 parseImport :: [FilePath] -> DatalogModule -> Import -> StateT [ModuleName] IO [DatalogModule]
-parseImport roots mod Import{..} = do
-    when (importModule == moduleName mod)
-         $ errorWithoutStackTrace $ "Module " ++ show (moduleName mod) ++ " is trying to import self"
-    modify (importModule:)
-    fname <- lift $ findModule roots mod importModule
+parseImport roots mod imp = do
+    when (importModule imp == moduleName mod)
+         $ errorWithoutStackTrace $ "Module '" ++ show (moduleName mod) ++ "' is trying to import self"
+    modify (importModule imp:)
+    fname <- lift $ findModule roots mod $ importModule imp
     prog <- lift $ do fdata <- readFile fname
                       parseDatalogString fdata fname
-    let std = if importModule == stdname then [] else [stdimp]
-    let mod' = DatalogModule importModule fname $ prog { progImports = std ++ progImports prog }
+    mapM_ (\imp' -> when (elem (importModule imp') stdLibs)
+                    $ errorWithoutStackTrace $ "Module '" ++ show (importModule imp') ++ "' is part of the DDlog standard library and is imported automatically by all modules")
+          $ progImports prog
+    let prog_imports = filter (stdImport (importModule imp) /=) $ stdImports ++ progImports prog
+    let mod' = DatalogModule (importModule imp) fname $ prog { progImports = prog_imports }
     imports <- parseImports roots mod'
     return $ mod' : imports
 
@@ -225,7 +234,16 @@ flattenNamespace1 mmap mod@DatalogModule{..} = do
                                      f' <- flattenFuncName mmap mod (pos rhsAggExpr) rhsAggFunc
                                      return $ rhs{rhsAggFunc = f'}
                                  rhs -> return rhs)
-    return prog5
+    prog6 <- progAttributeMapM prog5 (attrFlatten mod mmap)
+    return prog6
+
+attrFlatten :: (MonadError String me) => DatalogModule -> MMap -> Attribute -> me Attribute
+attrFlatten mod mmap a@Attribute{attrName="deserialize_from_array", attrVal=(E EApply{..})} = do
+    -- The value of deserialize_from_array attribute is the name of the key
+    -- function.
+    f' <- flattenFuncName mmap mod (pos a) exprFunc
+    return $ a{attrVal = eApply f' exprArgs}
+attrFlatten _   _    a = return a
 
 applyFlattenNames :: (MonadError String me) => DatalogModule -> MMap -> Apply -> me Apply
 applyFlattenNames mod mmap a@Apply{..} = do
@@ -255,7 +273,7 @@ candidates DatalogModule{..} p n = do
     let mods = (map importModule $ filter ((==mod) . importAlias) $ progImports moduleDefs) ++
                (if mod == ModuleName [] then [moduleName] else [])
     when (null mods) $
-        err p $ "Unknown module " ++ show mod ++ ".  Did you forget to import it?"
+        errBrief p $ "Unknown module " ++ show mod ++ ".  Did you forget to import it?"
     return mods
 
 flattenName :: (MonadError String me) => (DatalogProgram -> String -> Maybe a) -> String -> MMap -> DatalogModule -> Pos -> String -> me String
@@ -265,8 +283,8 @@ flattenName lookup_fun entity mmap mod p c = do
     let cands = filter ((\m -> isJust $ lookup_fun (moduleDefs m) lname)) $ map (mmap M.!) cand_mods
     case cands of
          [m] -> return $ scoped (moduleName m) lname
-         []  -> err p $ "Unknown " ++ entity ++ " " ++ c
-         _   -> err p $ "Conflicting definitions of " ++ entity ++ " " ++ c ++
+         []  -> errBrief p $ "Unknown " ++ entity ++ " '" ++ c ++ "'"
+         _   -> errBrief p $ "Conflicting definitions of " ++ entity ++ " " ++ c ++
                         " found in the following modules: " ++
                         (intercalate ", " $ map moduleFile cands)
 

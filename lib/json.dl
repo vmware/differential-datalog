@@ -20,7 +20,7 @@ extern function to_json_string(x: 'T): Result<string, string>
 
 /* Represents any valid JSON value.
  */
-#[rust="serde(from = \"serde_json::value::Value\", into = \"serde_json::value::Value\")"]
+#[rust="serde(from = \"__json::ValueWrapper\", into = \"__json::ValueWrapper\")"]
 typedef JsonValue = // Represents a JSON null value.
                     JsonNull
                   | // Represents a JSON boolean.
@@ -28,11 +28,11 @@ typedef JsonValue = // Represents a JSON null value.
                   | // Represents a JSON number, whether integer or floating point.
                     JsonNumber{n: JsonNum}
                   | // Represents a JSON string.
-                    JsonString{s: string}
+                    JsonString{s: istring}
                   | // Represents a JSON array.
                     JsonArray{a: Vec<JsonValue>}
                   | // Represents a JSON object.
-                    JsonObject{o: Map<string, JsonValue>}
+                    JsonObject{o: Map<istring, JsonValue>}
 
 /* Get JsonValue value as `bool`.  Returns `None` if value is not `JsonBool`.
  */
@@ -76,7 +76,7 @@ function jval_as_number_or(v: JsonValue, def: JsonNum): JsonNum =
 
 /* Get JsonValue value as string.  Returns `None` if value is not `JsonString`.
  */
-function jval_as_string(v: JsonValue): Option<string> =
+function jval_as_string(v: JsonValue): Option<istring> =
 {
     match (v) {
         JsonString{s} -> Some{s},
@@ -86,7 +86,7 @@ function jval_as_string(v: JsonValue): Option<string> =
 
 /* Get JsonValue value as string.  Returns `def` if value is not `JsonString`.
  */
-function jval_as_string_or(v: JsonValue, def: string): string =
+function jval_as_string_or(v: JsonValue, def: istring): istring =
 {
     match (v) {
         JsonString{s} -> s,
@@ -116,7 +116,7 @@ function jval_as_array_or(v: JsonValue, def: Vec<JsonValue>): Vec<JsonValue> =
 
 /* Get JsonValue value as object.  Returns `None` if value is not `JsonObject`.
  */
-function jval_as_object(v: JsonValue): Option<Map<string, JsonValue>> =
+function jval_as_object(v: JsonValue): Option<Map<istring, JsonValue>> =
 {
     match (v) {
         JsonObject{o} -> Some{o},
@@ -126,7 +126,7 @@ function jval_as_object(v: JsonValue): Option<Map<string, JsonValue>> =
 
 /* Get JsonValue value as object.  Returns `def` if value is not `JsonObject`.
  */
-function jval_as_object_or(v: JsonValue, def: Map<string, JsonValue>): Map<string, JsonValue> =
+function jval_as_object_or(v: JsonValue, def: Map<istring, JsonValue>): Map<istring, JsonValue> =
 {
     match (v) {
         JsonObject{o} -> o,
@@ -137,7 +137,7 @@ function jval_as_object_or(v: JsonValue, def: Map<string, JsonValue>): Map<strin
 /* Get attribute by name.  Returns `None` if value is not `JsonObject` or
  * does not have the specified attribute.
  */
-function jval_get(v: JsonValue, attr: string): Option<JsonValue> =
+function jval_get(v: JsonValue, attr: istring): Option<JsonValue> =
 {
     match (v) {
         JsonObject{o} -> map_get(o, attr),
@@ -148,7 +148,7 @@ function jval_get(v: JsonValue, attr: string): Option<JsonValue> =
 /* Get attribute by name.  Returns `def` if value is not `JsonObject` or
  * does not have the specified attribute.
  */
-function jval_get_or(v: JsonValue, attr: string, def: JsonValue): JsonValue =
+function jval_get_or(v: JsonValue, attr: istring, def: JsonValue): JsonValue =
 {
     match (v) {
         JsonObject{o} -> option_unwrap_or(map_get(o, attr), def),
@@ -164,3 +164,27 @@ typedef JsonNum = // Integer number.  The value must be in the range between the
                 | // NaN and infinity are not valid JSON values.
                   // When serializing to JSON, such values will be replaced with 0.
                   JsonFloat{d: double}
+
+/* Wrapper type that serializes its inner object into binary formats via JSON string.
+ *
+ * This is a workaround for a `serde` limitation that prevents certain data types from
+ * being serialized or deserialized from non-self-describing data formats like bincode.
+ * In particular, this is the case for data types annotated with JSON-related serde
+ * attributes like `tag` and `flatten`.  In practice this means that types annotated for
+ * serialization to JSON cannot be serialized to other formats.
+ *
+ * The workaround is to use different serialization logic when serializing to binary and
+ * non-binary formats.  In the binary case, we want to serialize such types into a string
+ * and then serialize the string as a field in binary data.  In the non-binary case, we
+ * stick to normal serde behavior.  `JsonWrapper` implements this choice by checking the
+ * `is_human_readable` property of the serializer.
+ *
+ * The current implementation has an important flaw: serde currently does not provide a
+ * reliable way to determine if a serializer supports self-describing data.  We use
+ * `is_human_readable` attribute as an approximation, which is not always correct: binary
+ * formats can be self-describing (BSON, Pickle), conversely not all human-readable formats
+ * are self-describing.  Nevertheless, the current design enables useful scenarios, like
+ * transcoding JSON to bincode.
+ */
+#[custom_serde]
+typedef JsonWrapper<'T> = JsonWrapper{x: 'T}

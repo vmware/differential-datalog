@@ -1,0 +1,42 @@
+/* Object interning library based on the `internment` crate.
+ *
+ * This library is automatically imported by all DDlog programs.
+ */
+
+/* Interned object of type `'A`.
+ * While this type is defined for any `'A`, interning is only supported for strings.
+ * There is simply no way to obtain an interned object of a different type.
+ */
+#[size=8]
+extern type Intern<'A>
+
+/* Interned string
+ */
+typedef istring = Intern<string>
+
+/* Intern a value.
+ */
+extern function intern(s: 'A): Intern<'A>
+
+/* Extract an interned value.
+ */
+#[return_by_ref]
+extern function ival(s: Intern<'A>): 'A
+
+/* Returns unique integer identifier of an interned object.
+ */
+//extern function iord(s: Intern<'A>): u64
+
+extern function istring_contains(s1: istring, s2: string): bool
+extern function istring_join(strings: Vec<istring>, sep: string): string
+extern function istring_len(s: istring): usize
+extern function istring_replace(s: istring, from: string, to: string): string
+extern function istring_split(s: istring, sep: string): Vec<string>
+extern function istring_starts_with(s: istring, prefix: string): bool
+extern function istring_ends_with(s: istring, suffix: string): bool
+extern function istring_substr(s: istring, start: usize, end: usize): string
+extern function istring_to_bytes(s: istring): Vec<u8>
+extern function istring_trim(s: istring): string
+extern function istring_to_lowercase(s: istring): string
+extern function istring_to_uppercase(s: istring): string
+extern function istring_reverse(s: istring): string

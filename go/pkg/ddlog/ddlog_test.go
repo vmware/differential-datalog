@@ -1,7 +1,6 @@
 package ddlog
 
 import (
-	"math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -66,7 +65,7 @@ func TestInsert(t *testing.T) {
 	m.AssertExpectations(t)
 }
 
-func BenchmarkTransaction(b *testing.B) {
+func benchmarkTransaction(b *testing.B, commitFn func(p *Program) error) {
 	outRecordHandler, err := NewOutRecordSink()
 	assert.Nil(b, err)
 	ddlogProgram, err := NewProgram(numDDlogWorkers, outRecordHandler)
@@ -78,23 +77,32 @@ func BenchmarkTransaction(b *testing.B) {
 
 	b.StartTimer()
 
+	numCommandsPerTransaction := 100
 	for i := 0; i < b.N; i++ {
 		err = ddlogProgram.StartTransaction()
-		assert.Nil(b, err)
-		for j := 0; j < 100; j++ {
+		assert.Nil(b, err, "Error when starting transaction")
+		for j := 0; j < numCommandsPerTransaction; j++ {
 			rStruct := NewRecordStructStatic(
 				constructor,
-				NewRecordU32(rand.Uint32()),
+				NewRecordU32(uint32(i*numCommandsPerTransaction+j)),
 			)
 			cmd := NewInsertCommand(tableID, rStruct)
 			ddlogProgram.ApplyUpdate(cmd)
 		}
-		err = ddlogProgram.CommitTransaction()
-		assert.Nil(b, err)
+		err = commitFn(ddlogProgram)
+		assert.Nil(b, err, "Error when committing transaction")
 	}
 
 	b.StopTimer()
 
 	err = ddlogProgram.Stop()
 	assert.Nil(b, err, "Error when stopping DDlog program")
+}
+
+func BenchmarkTransaction(b *testing.B) {
+	benchmarkTransaction(b, func(p *Program) error { return p.CommitTransaction() })
+}
+
+func BenchmarkTransactionChangesAsArray(b *testing.B) {
+	benchmarkTransaction(b, func(p *Program) error { return p.CommitTransactionChangesAsArray() })
 }

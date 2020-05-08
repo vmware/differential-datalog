@@ -1,0 +1,20 @@
+std_test.SortedVector:
+std_test.SortedVector{.v = []}: +1
+std_test.SortedVector{.v = [-100, 0, 100]}: +1
+std_test.SortedVector{.v = [1, 2, 3, 4, 5]}: +1
+std_test.SortedVector{.v = [5]}: +1
+std_test.SortedVectorInPlace:
+std_test.SortedVectorInPlace{.v = []}: +1
+std_test.SortedVectorInPlace{.v = [-100, 0, 100]}: +1
+std_test.SortedVectorInPlace{.v = [1, 2, 3, 4, 5]}: +1
+std_test.SortedVectorInPlace{.v = [5]}: +1
+std_test.SetDifference:
+std_test.SetDifference{.s1 = [], .s2 = [], .diff = []}: +1
+std_test.SetDifference{.s1 = [1], .s2 = [1000], .diff = [1]}: +1
+std_test.SetDifference{.s1 = [1, 2, 3], .s2 = [1, 2, 3, 4, 5], .diff = []}: +1
+std_test.SetDifference{.s1 = [1, 2, 3], .s2 = [2, 3, 4], .diff = [1]}: +1
+std_test.SetDifference{.s1 = [1, 2, 3, 4, 5], .s2 = [1, 2, 3], .diff = [4, 5]}: +1
+std_test.SetDifference{.s1 = [2, 3, 4], .s2 = [1, 2, 3], .diff = [4]}: +1
+std_test.SetDifference{.s1 = [1000], .s2 = [1], .diff = [1000]}: +1
+std_test.MapSizes:
+std_test.MapSizes{.m = [(1, "e"), (2, "d"), (3, "c"), (4, "b"), (5, "a")], .size = 5}: +1

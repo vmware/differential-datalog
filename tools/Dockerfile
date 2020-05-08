@@ -22,6 +22,9 @@ RUN apt-get update &&   \
     libgoogle-perftools-dev \
     maven
 
+###############################################################################
+## If you modify this file don't forget to also update install-dependencies.sh
+
 # Install haskell stack
 RUN wget -qO- https://get.haskellstack.org/ | sh
 

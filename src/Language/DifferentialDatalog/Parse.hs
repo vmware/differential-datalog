@@ -50,13 +50,14 @@ import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Ops
+import Language.DifferentialDatalog.Error
 
 -- parse a string containing a datalog program and produce the intermediate representation
 parseDatalogString :: String -> String -> IO DatalogProgram
 parseDatalogString program file = do
   case parse datalogGrammar file program of
        Left  e    -> errorWithoutStackTrace $ "Failed to parse input file: " ++ show e
-       Right prog -> return prog
+       Right prog -> return prog { progSources = M.singleton file program }
 
 -- The following Rust keywords are declared as Datalog keywords to
 -- prevent users from declaring variables with the same names.
@@ -130,7 +131,7 @@ semiSep      = T.semiSep lexer
 colon        = T.colon lexer
 commaSep     = T.commaSep lexer
 commaSep1    = T.commaSep1 lexer
-symbol       = T.symbol lexer
+symbol       = try . T.symbol lexer
 --semi         = T.semi lexer
 comma        = T.comma lexer
 braces       = T.braces lexer
@@ -236,27 +237,29 @@ spec = do
     let applys = mapMaybe (\case
                            SpApply a -> Just a
                            _         -> Nothing) items
-    let res = do uniqNames ("Multiple definitions of type " ++) $ map snd types
-                 uniqNames ("Multiple definitions of function " ++) $ map snd funcs
-                 uniqNames ("Multiple definitions of relation " ++) $ map snd relations
-                 uniqNames ("Multiple definitions of index " ++) $ map snd indexes
-                 uniqNames ("Multiple definitions of transformer " ++) $ map snd transformers
+    let program = DatalogProgram { progImports      = imports
+                                 , progTypedefs     = M.fromList types
+                                 , progFunctions    = M.fromList funcs
+                                 , progTransformers = M.fromList transformers
+                                 , progRelations    = M.fromList relations
+                                 , progIndexes      = M.fromList indexes
+                                 , progRules        = rules
+                                 , progApplys       = applys
+                                 , progSources      = M.empty }
+    let res = do uniqNames (Just program) ("Multiple definitions of type " ++) $ map snd types
+                 uniqNames (Just program) ("Multiple definitions of function " ++) $ map snd funcs
+                 uniqNames (Just program) ("Multiple definitions of relation " ++) $ map snd relations
+                 uniqNames (Just program) ("Multiple definitions of index " ++) $ map snd indexes
+                 uniqNames (Just program) ("Multiple definitions of transformer " ++) $ map snd transformers
                  --uniq importAlias (\imp -> "Alias " ++ show (importAlias imp) ++ " used multiple times ") imports
-                 uniq importModule (\imp -> "Module " ++ show (importModule imp) ++ " is imported multiple times ") imports
-                 return $ DatalogProgram { progImports      = imports
-                                         , progTypedefs     = M.fromList types
-                                         , progFunctions    = M.fromList funcs
-                                         , progTransformers = M.fromList transformers
-                                         , progRelations    = M.fromList relations
-                                         , progIndexes      = M.fromList indexes
-                                         , progRules        = rules
-                                         , progApplys       = applys}
+                 uniq (Just program) importModule (\imp -> "Module " ++ show (importModule imp) ++ " is imported multiple times ") imports
+                 return program
     case res of
          Left e     -> errorWithoutStackTrace e
          Right prog -> return prog
 
 attributes = reservedOp "#" *> (brackets $ many attribute)
-attribute = withPos $ Attribute nopos <$> attrIdent <*> (reservedOp "=" *>  expr)
+attribute = withPos $ Attribute nopos <$> attrIdent <*> (option eTrue $ reservedOp "=" *>  expr)
 
 decl =  do attrs <- optionMaybe attributes
            items <- (withPosMany $
@@ -271,8 +274,9 @@ decl =  do attrs <- optionMaybe attributes
                    <|> (map SpRule . convertStatement) <$> parseForStatement
            case items of
                 [SpType t] -> return [SpType t{tdefAttrs = maybe [] id attrs}]
+                [SpFunc f] -> return [SpFunc f{funcAttrs = maybe [] id attrs}]
                 _          -> do
-                    when (isJust attrs) $ fail "#-attributes are currently only supported for type declarations"
+                    when (isJust attrs) $ fail "#-attributes are currently only supported for type and function declarations"
                     return items
 
 imprt = Import nopos <$ reserved "import" <*> modname <*> (option (ModuleName []) $ reserved "as" *> modname)
@@ -287,17 +291,17 @@ typeDef = (TypeDef nopos []) <$ reserved "typedef" <*> typeIdent <*>
                                 (option [] (symbol "<" *> (commaSep $ symbol "'" *> typevarIdent) <* symbol ">")) <*>
                                 (return Nothing)
 
-func = (Function nopos <$  (try $ reserved "extern" *> reserved "function")
-                       <*> funcIdent
-                       <*> (parens $ commaSep farg)
-                       <*> (colon *> typeSpecSimple)
-                       <*> (return Nothing))
+func = (Function nopos [] <$  (try $ reserved "extern" *> reserved "function")
+                         <*> funcIdent
+                         <*> (parens $ commaSep farg)
+                         <*> (colon *> typeSpecSimple)
+                         <*> (return Nothing))
        <|>
-       (Function nopos <$  reserved "function"
-                       <*> funcIdent
-                       <*> (parens $ commaSep farg)
-                       <*> (colon *> typeSpecSimple)
-                       <*> (Just <$ reservedOp "=" <*> expr))
+       (Function nopos [] <$  reserved "function"
+                         <*> funcIdent
+                         <*> (parens $ commaSep farg)
+                         <*> (colon *> typeSpecSimple)
+                         <*> (Just <$> ((reservedOp "=" *> expr) <|> (braces expr))))
 
 farg = withPos $ (FuncArg nopos) <$> varIdent <*> (colon *> option False (True <$ reserved "mut")) <*> typeSpecSimple
 
@@ -390,7 +394,7 @@ rule = Rule nopos <$>
        (commaSep1 $ atom True) <*>
        (option [] (reservedOp ":-" *> commaSep rulerhs)) <* dot
 
-rulerhs =  do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ try $ varIdent <* reservedOp "in") *> (optional $ reservedOp "&") *> relIdent *> (symbol "(" <|> symbol "[")
+rulerhs =  do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ try $ varIdent <* reserved "in") *> (optional $ reservedOp "&") *> relIdent *> (symbol "(" <|> symbol "[")
               RHSLiteral <$> (option True (False <$ reserved "not")) <*> atom False
        <|> do _ <- try $ lookAhead $ reserved "var" *> varIdent *> reservedOp "=" *> reserved "Aggregate"
               RHSAggregate <$> (reserved "var" *> varIdent) <*>
@@ -404,7 +408,7 @@ rulerhs =  do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ 
 
 atom is_head = withPos $ do
        p1 <- getPosition
-       binding <- optionMaybe $ try $ varIdent <* reservedOp "in"
+       binding <- optionMaybe $ try $ varIdent <* reserved "in"
        p2 <- getPosition
        isref <- option False $ (\_ -> True) <$> reservedOp "&"
        rname <- relIdent
@@ -483,6 +487,7 @@ term' = withPos $
      <|> enumber
      <|> ebool
      <|> estring
+     <|> einterned_string
      <|> evar
      <|> ematch
      <|> eite
@@ -547,6 +552,10 @@ enumber  = lexeme enumber'
 estring =   equoted_string
         <|> eraw_string
         <|> einterpolated_raw_string
+
+einterned_string = do
+    e <- try $ string "i" *> estring
+    return $ E $ EApply (pos e) "intern" [e]
 
 eraw_string = eString <$> ((try $ string "[|") *> manyTill anyChar (try $ string "|]" *> whiteSpace))
 

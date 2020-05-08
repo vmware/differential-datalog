@@ -55,9 +55,9 @@ public class ExpressionsTest {
                 "      ELSE 'Other'\n" +
                 "END");
         s = node.toString();
-        Assert.assertEquals("if (64'sd0 == 64'sd1) {\n" +
+        Assert.assertEquals("if ((64'sd0 == 64'sd1)) {\n" +
                 "\"One\"} else {\n" +
-                "if (64'sd0 == 64'sd2) {\n" +
+                "if ((64'sd0 == 64'sd2)) {\n" +
                 "\"Two\"} else {\n" +
                 "\"Other\"}}", s);
     }

@@ -144,9 +144,9 @@ union_type       ::= (constructor "|")* constructor
 type_alias       ::= type_name           (* type name declared using typedef*)
                      ["<" type_spec [("," type_spec)*] ">"] (* type arguments *)
 
-constructor      ::= cons_name (* constructor without fields *)
-                   | cons_name "{" [field ("," field)*] "}"
-field            ::= field_name ":" simple_type_spec
+constructor      ::= [attributes] cons_name (* constructor without fields *)
+                   | [attributes] cons_name "{" [field ("," field)*] "}"
+field            ::= [attributes] field_name ":" simple_type_spec
 ```
 
 ### Constraints on types
@@ -170,7 +170,7 @@ identical names, their types must be identical, e.g., the following is invalid:
 arguments matching its declaration:
     ```
     typedef type1<'A,'B>
-    function f(): bool = {
+    function f(): bool {
         var x: type1<bigint> // error: not enough type arguments
     }
     ```
@@ -192,14 +192,14 @@ arguments matching its declaration:
    by referring to them in function arguments.  They are used in the
    return type of the function and in its body:
    ```
-   function f(arg1: 'A, arg2: type2<'A,'B>): 'A = {
+   function f(arg1: 'A, arg2: type2<'A,'B>): 'A {
        var x: 'A = arg1;
        x
    }
    ```
    Examples of invalid use of type variables in functions:
    ```
-   function f(arg: 'A): 'B = /*error: type variable 'B is not defined here*/
+   function f(arg: 'A): 'B /*error: type variable 'B is not defined here*/
    {
        var x: 'C; /* error: type variable 'C is not defined here */
    }
@@ -217,7 +217,7 @@ body.
 ```EBNF
 function ::= "function" func_name "(" [arg(,arg)*]")"
               ":" simple_type_spec (* return type *)
-              ["=" expr]
+              "{" expr "}          (* body of the function *)
            | "extern function" func_name "(" [arg(,arg)*]")"
               ":" simple_type_spec
 ```
@@ -421,7 +421,7 @@ return_term  ::= "return" [expr]
 vardecl_term ::= "var" var_name
 
 match_term   ::= "match" "(" expr ")" "{" match_clause (,match_clause)*"}"
-match_clause ::= pattern "-" expr
+match_clause ::= pattern "->" expr
 ```
 
 ```EBNF
@@ -459,7 +459,7 @@ Compilation fails if a function with this name and signature is not found.
 For example, the last statement in
 ```
 typedef udf_t = Cons1 | Cons2{f: bigint}
-function udf_t2string(x: udf_t): string = ...
+function udf_t2string(x: udf_t): string { ... }
 x: udf_t;
 
 y = "x:{x}";
@@ -539,7 +539,7 @@ y = "x:{udf_t2string(x)}";
        C1{v} -> v       // variable v bound inside match pattern
    };
 
-   function shadow(a: string): () = {
+   function shadow(a: string): () {
        var v: string;
        var v = "foo"; // error: variable re-definition
        var a = "bar"  // error: variable shadows argument name
@@ -590,8 +590,8 @@ rhs_clause ::= atom                                      (* 1.atom *)
              | "not" atom                                (* 2.negated atom *)
              | expr                                      (* 3.condition *)
              | expr "=" expr                             (* 4.assignment *)
-             | "FlatMap" "(" var_name "=" expr ")"       (* 5.flat map *)
-             | "var " var_name = "Aggregate" "("         (* 6.aggregation *)
+             | "var" var_name "=" "FlatMap" "(" expr ")" (* 5.flat map *)
+             | "var" var_name = "Aggregate" "("          (* 6.aggregation *)
                 "(" [var_name ("," var_name)*] ")" ","
                     func_name "(" expr ")" ")"
 ```
@@ -653,7 +653,7 @@ variable, e.g.:
 Logical_Switch_Port_ips(lsp, mac, ip) :-
     Logical_Switch_Port_addresses(lsp, addrs),
     (mac, ips) = extract_mac(addrs),
-    FlatMap(ip = extract_ips(ips))
+    var ip = FlatMap(extract_ips(ips))
 ```
 
 Here, `extract_ips` must return a *set* of IP addresses:
@@ -780,16 +780,4 @@ insertStatement ::= rel_name "(" expression ( "," expression )* ")"
 blockStatement ::= "{" statement ( ";" statement )* "}"
 
 emptyStatement ::= "skip"
-```
-
-# Supported meta-attributes
-
-Only one attribute is supported at the moment, namely the `size` attribute,
-applicable to `extern type` declarations.  It specifies the size of the
-corresponding Rust data type in bytes and serves as a hint to compiler
-to optimize data structures layout.
-
-```
-#[size=4]
-extern type IObj<'A>
 ```

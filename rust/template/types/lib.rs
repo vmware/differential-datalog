@@ -29,6 +29,8 @@ use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use serde::Serialize;
 
+use lazy_static::lazy_static;
+
 use differential_datalog::ddval::*;
 use differential_datalog::decl_enum_into_record;
 use differential_datalog::decl_record_mutator_enum;
@@ -71,6 +73,38 @@ pub fn string_append_str(mut s1: String, s2: &str) -> String {
 pub fn string_append(mut s1: String, s2: &String) -> String {
     s1.push_str(s2.as_str());
     s1
+}
+
+#[macro_export]
+macro_rules! deserialize_map_from_array {
+    ( $modname:ident, $ktype:ty, $vtype:ty, $kfunc:ident ) => {
+        mod $modname {
+            use super::*;
+            use serde::de::{Deserialize, Deserializer};
+            use serde::ser::Serializer;
+            use std::collections::BTreeMap;
+
+            pub fn serialize<S>(
+                map: &__std::std_Map<$ktype, $vtype>,
+                serializer: S,
+            ) -> Result<S::Ok, S::Error>
+            where
+                S: Serializer,
+            {
+                serializer.collect_seq(map.x.values())
+            }
+
+            pub fn deserialize<'de, D>(
+                deserializer: D,
+            ) -> Result<__std::std_Map<$ktype, $vtype>, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                let v = Vec::<$vtype>::deserialize(deserializer)?;
+                Ok(v.into_iter().map(|item| ($kfunc(&item), item)).collect())
+            }
+        }
+    };
 }
 
 /*- !!!!!!!!!!!!!!!!!!!! -*/

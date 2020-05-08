@@ -135,3 +135,64 @@ JsonTest(optional3(),
          to_json_string_or_default(from_json_string(optional3()): Result<Optional, string>)).
 JsonTest(optional4(),
          to_json_string_or_default(from_json_string(optional4()): Result<Optional, string>)).
+
+typedef StructWithKey = StructWithKey {
+    key: u64,
+    payload: string
+}
+
+function key_structWithKey(x: StructWithKey): u64 =
+{
+    x.key
+}
+
+typedef StructWithMap = StructWithMap {
+    #[deserialize_from_array=key_structWithKey()]
+    f: Map<u64, StructWithKey>
+}
+
+function struct_with_map1(): string = [|{"f": [{"key": 100, "payload": "foo"}]}|]
+
+JsonTest(struct_with_map1(),
+         to_json_string_or_default(from_json_string(struct_with_map1()): Result<StructWithMap, string>)).
+
+
+typedef U64FromString = U64FromString {
+    x: string,
+    #[rust="serde(with=\"serde_string\")"]
+    y: u64
+}
+
+function u64FromString1(): string = [|{"x": "x", "y": "100000"}|]
+function u64FromString2(): string = [|{"x": "x", "y": "-100000"}|]
+
+JsonTest(u64FromString1(),
+         to_json_string_or_default(from_json_string(u64FromString1()): Result<U64FromString, string>)).
+JsonTest(u64FromString2(),
+         to_json_string_or_default(from_json_string(u64FromString2()): Result<U64FromString, string>)).
+
+typedef S32FromString = S32FromString {
+    #[rust="serde(with=\"serde_string\")"]
+    x: s32
+}
+
+function s32FromString1(): string = [|{"x": "-100000"}|]
+function s32FromString2(): string = [|{"x": "100000000000"}|]
+
+JsonTest(s32FromString1(),
+         to_json_string_or_default(from_json_string(s32FromString1()): Result<S32FromString, string>)).
+JsonTest(s32FromString2(),
+         to_json_string_or_default(from_json_string(s32FromString2()): Result<S32FromString, string>)).
+
+typedef WrappedEnum = JsonWrapper<TaggedEnum>
+
+function wenum1(): string = [|{"@type": "t.V1", "b": true}|]
+function wenum2(): string = [|{"@type": "t.V2", "u": 100}|]
+function wenum3(): string = [|{"@type": "t.V2", "b": false}|]
+
+JsonTest("wrapped " ++ wenum1(),
+         to_json_string_or_default(from_json_string(wenum1()): Result<WrappedEnum, string>)).
+JsonTest("wrapped " ++ wenum2(),
+         to_json_string_or_default(from_json_string(wenum2()): Result<WrappedEnum, string>)).
+JsonTest("wrapped " ++ wenum3(),
+         to_json_string_or_default(from_json_string(wenum3()): Result<WrappedEnum, string>)).

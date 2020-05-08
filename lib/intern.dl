@@ -1,5 +1,12 @@
 /* Object interning library.
  * Generates a unique ID for an object, which can be converted back to the original value.
+ *
+ * This library is more lightweight than the standard `internment.dl` library in
+ * that interned object handles are only 32-bit wide (vs 64 bit with
+ * `internment.dl`).  In addition, this library does not implement reference
+ * counting, so interned object manipulation is more efficient.  On the flip side,
+ * it never deallocates interned objects, so unless you expect the set of
+ * interned objects to remain constant, you should use `internment.dl` instead.
  */
 
 /* Interned object of type `'A`.
@@ -24,4 +31,4 @@ extern function istring_str(s: IString): string
 /* Returns unique integer identifier of an interned string.
  * Identifiers are assigned in the order strings are fed to the interner.
  */
-extern function istring_ord(s: IString): bit<32>
+extern function istring_ord(s: IString): u32

@@ -52,6 +52,8 @@ module Language.DifferentialDatalog.Expr (
     exprIsVarOrFieldLVal,
     exprIsVarOrField,
     exprIsInjective,
+    exprIsPolymorphic,
+    exprIsPure,
     exprTypeMapM
     ) where
 
@@ -59,6 +61,7 @@ import Data.List
 import Data.Maybe
 import Data.Tuple.Select
 import Control.Monad.Identity
+import Control.Monad.State
 import qualified Data.Set as S
 --import Debug.Trace
 
@@ -68,6 +71,7 @@ import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Type
+import Language.DifferentialDatalog.Function
 
 -- depth-first fold of an expression
 exprFoldCtxM :: (Monad m) => (ECtx -> ExprNode b -> m b) -> ECtx -> Expr -> m b
@@ -423,6 +427,25 @@ exprIsInjective' _ ETuple{..}    = and exprTupleFields
 exprIsInjective' _ EUnOp{..}     = (elem exprUOp [Not, BNeg, UMinus]) && exprOp
 exprIsInjective' _ ETyped{..}    = exprExpr
 exprIsInjective' _ _             = False
+
+-- | Expression or one of its subexpressions has a polymorphic type.
+-- Such an expression may be impossible to evaluate outside of its context, e.g.,
+-- as a static constant.
+exprIsPolymorphic :: DatalogProgram -> ECtx -> Expr -> Bool
+exprIsPolymorphic d ctx e =
+    execState
+        (exprTraverseCtxM (\ctx' e' -> do
+            let t = exprType d ctx' $ E e'
+            modify (typeIsPolymorphic t ||)
+            return ()) ctx e)
+        False
+
+-- | True if expression does not contain calls to functions with side effects.
+exprIsPure :: DatalogProgram -> Expr -> Bool
+exprIsPure d e =
+    exprCollect (\case
+                  EApply{..} -> funcIsPure d $ getFunc d exprFunc
+                  _ -> True) (&&) e
 
 -- | Transform types referenced in the expression
 exprTypeMapM :: (Monad m) => (Type -> m Type) -> Expr -> m Expr

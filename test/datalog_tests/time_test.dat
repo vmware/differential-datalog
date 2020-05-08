@@ -1,0 +1,10 @@
+start;
+insert TITest[TITest{.t = "10:11:12.000000000"}],
+insert DITest[DITest{.d = "2010-10-15"}],
+insert DTITest[DTITest{.d = time.DateTime{.date = "2010-10-15", .time = "10:11:12.000000000" }}],
+commit;
+dump TTest;
+dump Extract;
+dump DTest;
+dump DTTest;
+exit

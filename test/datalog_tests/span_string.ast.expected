@@ -105,6 +105,16 @@ function std.min (x: 'A, y: 'A): 'A =
       }
 extern function std.ntohl (x: bit<32>): bit<32>
 extern function std.ntohs (x: bit<16>): bit<16>
+function std.option2set (o: std.Option<'X>): std.Set<'X> =
+    match (o) {
+        std.Some{.x=var x} -> std.set_singleton(x),
+        std.None{} -> std.set_empty()
+    }
+function std.option2vec (o: std.Option<'X>): std.Vec<'X> =
+    match (o) {
+        std.Some{.x=var x} -> std.vec_singleton(x),
+        std.None{} -> std.vec_empty()
+    }
 function std.option_unwrap_or (x: std.Option<'A>, def: 'A): 'A =
     match (x) {
         std.Some{.x=var v} -> v,
@@ -127,6 +137,7 @@ extern function std.set_contains (s: std.Set<'X>, v: 'X): bool
 extern function std.set_empty (): std.Set<'X>
 extern function std.set_insert (s: mut std.Set<'X>, v: 'X): ()
 extern function std.set_insert_imm (s: std.Set<'X>, v: 'X): std.Set<'X>
+extern function std.set_intersection (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
 extern function std.set_is_empty (s: std.Set<'X>): bool
 extern function std.set_nth (s: std.Set<'X>, n: bit<64>): std.Option<'X>
 extern function std.set_singleton (x: 'X): std.Set<'X>
@@ -139,11 +150,13 @@ extern function std.string_ends_with (s: string, suffix: string): bool
 extern function std.string_join (strings: std.Vec<string>, sep: string): string
 extern function std.string_len (s: string): bit<64>
 extern function std.string_replace (s: string, from: string, to: string): string
+extern function std.string_reverse (s: string): string
 extern function std.string_split (s: string, sep: string): std.Vec<string>
 extern function std.string_starts_with (s: string, prefix: string): bool
 extern function std.string_substr (s: string, start: bit<64>, end: bit<64>): string
 extern function std.string_to_bytes (s: string): std.Vec<std.u8>
 extern function std.string_to_lowercase (s: string): string
+extern function std.string_to_uppercase (s: string): string
 extern function std.string_trim (s: string): string
 extern function std.vec2set (s: std.Vec<'A>): std.Set<'A>
 extern function std.vec_append (v: mut std.Vec<'X>, other: std.Vec<'X>): ()

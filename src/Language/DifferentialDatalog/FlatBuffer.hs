@@ -94,6 +94,7 @@ import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Relation
 import Language.DifferentialDatalog.Index
+import Language.DifferentialDatalog.Error
 import {-# SOURCE #-} qualified Language.DifferentialDatalog.Compile as R -- "R" for "Rust"
 
 compileFlatBufferBindings :: (?cfg::R.CompilerConfig) => DatalogProgram -> String -> FilePath -> IO ()
@@ -141,7 +142,7 @@ flatBufferValidate d = do
     let ?d = d
     mapM_ (\case
             t@TOpaque{..} ->
-                check (elem typeName $ [rEF_TYPE, mAP_TYPE, iNTERNED_TYPE] ++ sET_TYPES) (pos t) $
+                check d (elem typeName $ [rEF_TYPE, mAP_TYPE] ++ sET_TYPES ++ iNTERNED_TYPES) (pos t) $
                     "Cannot generate FlatBuffer schema for extern type " ++ show t
             _ -> return ())
           progTypesToSerialize
@@ -629,7 +630,7 @@ typeNormalizeForFlatBuf x = typeMap _typeNormalizeForFlatBuf $ typ x
 _typeNormalizeForFlatBuf :: (?d::DatalogProgram) => Type -> Type
 _typeNormalizeForFlatBuf t =
     case t' of
-         TOpaque{typeArgs = [innerType],..} | elem typeName [rEF_TYPE,  iNTERNED_TYPE]
+         TOpaque{typeArgs = [innerType],..} | elem typeName (rEF_TYPE : iNTERNED_TYPES)
                                             -> innerType
          _                  -> t'
     where t' = typ'' ?d t
@@ -790,6 +791,8 @@ jConvObjType in_array_context rw x =
                             -> "Integer"
          TSigned{..} | typeWidth <= 64
                             -> "Long"
+         TFloat{}           -> "Float"
+         TDouble{}          -> "Double"
          _                  -> jConvType rw x
 
 
@@ -871,7 +874,7 @@ jConvObj2FBType fbctx e t =
          TBit{..} | typeWidth <= 32
                             -> e <> ".intValue()"
          TBit{..} | typeWidth <= 64
-                            -> e <> ".longValue"
+                            -> e <> ".longValue()"
          TSigned{..} | typeWidth <= 8
                             -> e <> ".byteValue()"
          TSigned{..} | typeWidth <= 16
@@ -1545,14 +1548,14 @@ rustTypeFromFlatbuf t@TUser{..} | typeHasUniqueConstructor t =
     rtype = R.mkType t
     tname = typeTableName t
     tstruct = typ' ?d t
-    arg_names = map (\a -> let n = pp $ name a in
+    arg_names = map (\a -> let n = rustFieldName a in
                            if typeHasUniqueConstructor a
                               then n
                               else n <> "_type," <+> n)
                     $ consArgs $ head $ typeCons tstruct
     from_args = map (\a -> pp (name a) <> ": <" <> R.mkType a <> ">::from_flatbuf(" <> extract_field rtype a <> ")?")
                     $ consArgs $ head $ typeCons tstruct
-    to_args = map (\a -> serialize_field "self." a (pp $ name a))
+    to_args = map (\a -> serialize_field "self." a (rustFieldName a))
                   $ consArgs $ head $ typeCons tstruct
 
 -- Deserialize struct with multiple constructors.  Such structs are stored in
@@ -1618,8 +1621,8 @@ rustTypeFromFlatbuf t@TUser{..} =
                $ typeCons tstruct
     to_cons = map (\c -> let fbcname = fbConstructorName typeArgs c
                              cname = R.rname typeName <> "::" <> R.rname (name c)
-                             args = map (\a -> serialize_field "" a (pp $ name a)) $ consArgs c
-                             arg_names = map (\a -> let n = pp $ name a in
+                             args = map (\a -> serialize_field "" a (rustFieldName a)) $ consArgs c
+                             arg_names = map (\a -> let n = pp (name a) in
                                                if typeHasUniqueConstructor a
                                                   then n
                                                   else n <> "_type," <+> n)
@@ -1679,7 +1682,7 @@ rustTypeFromFlatbuf t@TTuple{..} =
 -- and 'ToFlatBuffer<>' for containers in their corresponding libraries.  Here we
 -- additionally generate 'FromFlatBuffer<fb::>' for wrapper tables,
 -- 'ToFlatBufferVectorElement<>', and 'ToFlatBufferTable<>'.
-rustTypeFromFlatbuf t@TOpaque{..} | elem typeName [rEF_TYPE, iNTERNED_TYPE] = empty
+rustTypeFromFlatbuf t@TOpaque{..} | elem typeName (rEF_TYPE : iNTERNED_TYPES) = empty
                                   | otherwise =
     "impl <'a> FromFlatBuffer<fb::" <> tname <> "<'a>> for" <+> rtype <+> "{"                               $$
     "    fn from_flatbuf(v: fb::" <> tname <> "<'a>) -> Response<Self> {"                                   $$
@@ -1729,15 +1732,96 @@ rustTypeFromFlatbuf t | typeIsScalar t =
 
 rustTypeFromFlatbuf _ = empty
 
+-- flatc renames these keywords, adding underscore to them.
+rUST_KEYWORDS :: [String]
+rUST_KEYWORDS = [
+      "as",
+      "break",
+      "const",
+      "continue",
+      "crate",
+      "else",
+      "enum",
+      "extern",
+      "false",
+      "fn",
+      "for",
+      "if",
+      "impl",
+      "in",
+      "let",
+      "loop",
+      "match",
+      "mod",
+      "move",
+      "mut",
+      "pub",
+      "ref",
+      "return",
+      "Self",
+      "self",
+      "static",
+      "struct",
+      "super",
+      "trait",
+      "true",
+      "type",
+      "unsafe",
+      "use",
+      "where",
+      "while",
+      "abstract",
+      "alignof",
+      "become",
+      "box",
+      "do",
+      "final",
+      "macro",
+      "offsetof",
+      "override",
+      "priv",
+      "proc",
+      "pure",
+      "sizeof",
+      "typeof",
+      "unsized",
+      "virtual",
+      "yield",
+      "std",
+      "usize",
+      "isize",
+      "u8",
+      "i8",
+      "u16",
+      "i16",
+      "u32",
+      "i32",
+      "u64",
+      "i64",
+      "u128",
+      "i128",
+      "f32",
+      "f64",
+      "follow",
+      "push",
+      "size",
+      "alignment",
+      "to_little_endian",
+      "from_little_endian"]
+
+rustFieldName :: Field -> Doc
+rustFieldName f | elem (name f) rUST_KEYWORDS = pp (name f) <> "_"
+                | otherwise = pp (name f)
+
 extract_field :: (?d::DatalogProgram) => Doc -> Field -> Doc
-extract_field container f | typeIsScalar f = "v." <> pp (name f) <> "()"
+extract_field container f | typeIsScalar f = "v." <> rustFieldName f <> "()"
                           | typeHasUniqueConstructor f =
-    "v." <> pp (name f) <>
-    "().ok_or_else(||format!(\"" <> container <> "::from_flatbuf: invalid buffer: failed to extract " <> pp (name f) <> "\"))?"
+    "v." <> rustFieldName f <>
+    "().ok_or_else(||format!(\"" <> container <> "::from_flatbuf: invalid buffer: failed to extract " <> rustFieldName f <> "\"))?"
                           | otherwise =
-    "(v." <> pp (name f) <> "_type()," <+>
-    "v." <> pp (name f) <>
-    "().ok_or_else(||format!(\"" <> container <> "::from_flatbuf: invalid buffer: failed to extract " <> pp (name f) <> "\"))?)"
+    "(v." <> rustFieldName f <> "_type()," <+>
+    "v." <> rustFieldName f <>
+    "().ok_or_else(||format!(\"" <> container <> "::from_flatbuf: invalid buffer: failed to extract " <> rustFieldName f <> "\"))?)"
 
 serialize_field :: (?d::DatalogProgram) => Doc -> Field -> Doc -> Doc
 serialize_field prefix f to_name | typeIsScalar f =

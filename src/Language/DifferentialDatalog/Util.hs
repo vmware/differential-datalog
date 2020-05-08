@@ -39,41 +39,15 @@ import System.Directory
 import System.FilePath
 import System.IO hiding (readFile, writeFile)
 
-import Language.DifferentialDatalog.Pos
-import Language.DifferentialDatalog.Name
-
 if' :: Bool -> a -> a -> a
 if' True  x _ = x
 if' False _ y = y
-
-err :: (MonadError String me) => Pos -> String -> me a
-err p e = throwError $ spos p ++ ": " ++ e
-
-check :: (MonadError String me) => Bool -> Pos -> String -> me ()
-check b p m =
-    if b
-       then return ()
-       else err p m
 
 -- Tuples
 mapFst :: (a -> b) -> (a, c) -> (b, c)
 mapFst f (x,y) = (f x,y)
 mapSnd :: (a -> b) -> (c, a) -> (c, b)
 mapSnd f (x,y) = (x,f y)
-
--- Check for duplicate declarations
-uniq :: (MonadError String me, WithPos a, Ord b) => (a -> b) -> (a -> String) -> [a] -> me ()
-uniq = uniq' pos
-
-uniq' :: (MonadError String me, Ord b) => (a -> Pos) -> (a -> b) -> (a -> String) -> [a] -> me ()
-uniq' fpos ford msgfunc xs = do
-    case filter ((>1) . length) $ groupBy (\x1 x2 -> compare (ford x1) (ford x2) == EQ)
-                                $ sortBy (\x1 x2 -> compare (ford x1) (ford x2)) xs of
-         g@(x:_):_ -> err (fpos x) $ msgfunc x ++ " at the following locations:\n  " ++ (intercalate "\n  " $ map (spos . fpos) g)
-         _         -> return ()
-
-uniqNames :: (MonadError String me, WithPos a, WithName a) => (String -> String) -> [a] -> me ()
-uniqNames msgfunc = uniq name (\x -> msgfunc (name x))
 
 -- Find a cycle in a graph
 grCycle :: Graph gr => gr a b -> Maybe [LNode a]
@@ -96,7 +70,7 @@ grGroup g groups = insEdges ((concatMap (concatMap gsuc)) groups)
 log2 :: Integer -> Int
 log2 0 = 0
 log2 1 = 0
-log2 n 
+log2 n
     | n>1 = 1 + log2 (n `div` 2)
     | otherwise = error "log2: negative argument"
 

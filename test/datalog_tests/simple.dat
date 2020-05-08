@@ -483,9 +483,6 @@ commit dump_changes;
 echo ConcatString;
 dump ConcatString;
 
-echo StringOrd;
-dump StringOrd;
-
 start;
 
 insert BMethod("d", "???"),

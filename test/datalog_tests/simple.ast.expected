@@ -104,7 +104,6 @@ typedef Signed64 = Signed64{x: signed<64>}
 typedef Signed8 = Signed8{x: signed<8>}
 typedef Span = Span{entity: entid_t, tns: std.Set<tnid_t>}
 typedef String2 = String2{s: string}
-typedef StringOrd = StringOrd{s: string, ord: bit<32>}
 typedef Strings = Strings{s: string}
 typedef Sum = Sum{x: string, sum: bit<32>}
 typedef Suspect = Suspect{name: string}
@@ -536,7 +535,9 @@ function patterns (): () =
                              C0{.x=(var v: bit<32>)} -> v,
                              C1{.x=var v} -> v
                          }))
-extern function regex.regex_match (regex: string, str: string): bool
+extern function regex.regex_all_matches (regex: string, text: string): std.Vec<string>
+extern function regex.regex_first_match (regex: string, text: string): std.Option<string>
+extern function regex.regex_match (regex: string, text: string): bool
 function s0 (): string =
     "Some string"
 function s1 (): string =
@@ -691,6 +692,16 @@ function std.min (x: 'A, y: 'A): 'A =
       }
 extern function std.ntohl (x: bit<32>): bit<32>
 extern function std.ntohs (x: bit<16>): bit<16>
+function std.option2set (o: std.Option<'X>): std.Set<'X> =
+    match (o) {
+        std.Some{.x=var x} -> std.set_singleton(x),
+        std.None{} -> std.set_empty()
+    }
+function std.option2vec (o: std.Option<'X>): std.Vec<'X> =
+    match (o) {
+        std.Some{.x=var x} -> std.vec_singleton(x),
+        std.None{} -> std.vec_empty()
+    }
 function std.option_unwrap_or (x: std.Option<'A>, def: 'A): 'A =
     match (x) {
         std.Some{.x=var v} -> v,
@@ -713,6 +724,7 @@ extern function std.set_contains (s: std.Set<'X>, v: 'X): bool
 extern function std.set_empty (): std.Set<'X>
 extern function std.set_insert (s: mut std.Set<'X>, v: 'X): ()
 extern function std.set_insert_imm (s: std.Set<'X>, v: 'X): std.Set<'X>
+extern function std.set_intersection (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
 extern function std.set_is_empty (s: std.Set<'X>): bool
 extern function std.set_nth (s: std.Set<'X>, n: bit<64>): std.Option<'X>
 extern function std.set_singleton (x: 'X): std.Set<'X>
@@ -725,11 +737,13 @@ extern function std.string_ends_with (s: string, suffix: string): bool
 extern function std.string_join (strings: std.Vec<string>, sep: string): string
 extern function std.string_len (s: string): bit<64>
 extern function std.string_replace (s: string, from: string, to: string): string
+extern function std.string_reverse (s: string): string
 extern function std.string_split (s: string, sep: string): std.Vec<string>
 extern function std.string_starts_with (s: string, prefix: string): bool
 extern function std.string_substr (s: string, start: bit<64>, end: bit<64>): string
 extern function std.string_to_bytes (s: string): std.Vec<std.u8>
 extern function std.string_to_lowercase (s: string): string
+extern function std.string_to_uppercase (s: string): string
 extern function std.string_trim (s: string): string
 extern function std.vec2set (s: std.Vec<'A>): std.Set<'A>
 extern function std.vec_append (v: mut std.Vec<'X>, other: std.Vec<'X>): ()
@@ -911,7 +925,6 @@ input relation Signed64 [Signed64]
 input relation Signed8 [Signed8]
 output relation Span [Span]
 input relation String2 [String2]
-output relation StringOrd [StringOrd]
 input relation Strings [Strings]
 output relation Sum [Sum]
 input relation Suspect [Suspect]
@@ -1113,8 +1126,6 @@ Adjusted(.id=id, .alloc=alloc) :- Alloc(.id=id, .allocated=allocated, .toallocat
 YX(.y=y, .x=x) :- XY(.x=x, .y=y), YZX(.y=y, .z=z, .x=x).
 IConcatString(.s=intern.string_intern((intern.istring_str(s1) ++ s2))) :- IString1(.s=s1), String2(.s=s2).
 ConcatString(.s=intern.istring_str(s)) :- IConcatString(.s=s).
-StringOrd(.s=intern.istring_str(s), .ord=intern.istring_ord(s)) :- IString1(.s=s).
-StringOrd(.s=intern.istring_str(s), .ord=intern.istring_ord(s)) :- IConcatString(.s=s).
 Ris_true(._s=intern.string_intern("true")).
 Re(._x=(32'd10 % 32'd3), ._t=intern.string_intern("10%3"), ._y=32'd1) :- Ris_true(._s=_).
 CMethod(.c1=a, .c2=b) :- BMethod(.b1=intern.string_intern("c"), .b2=b), AMethod(.a1=b, .a2=a).

@@ -1,6 +1,6 @@
 # A Differential Datalog (DDlog) tutorial
 
-**Note:**: All examples from this tutorial can be found in
+**Note:** All examples from this tutorial can be found in
 [`test/datalog_tests/tutorial.dl`](../../test/datalog_tests/tutorial.dl).
 The examples can be executed using test inputs from
 [`test/datalog_tests/tutorial.dat`](../../test/datalog_tests/tutorial.dat)
@@ -37,6 +37,8 @@ program -> | compiler |-> code -> | compiler |--> executable
 ## Installing DDlog
 
 Installation instructions are found in the [README](../../README.md#Installation).
+Don't forget to set the `$DDLOG_HOME` environment variable to point to the root of the repository
+or the DDlog installation directory (when using a binary release of DDlog).
 
 ## "Hello, World!" in DDlog
 
@@ -61,7 +63,9 @@ output relation Phrases(phrase: string)
 Phrases(w1 ++ " " ++ w2) :- Word1(w1, cat), Word2(w2, cat).
 ```
 
-DDlog comments are like C++ and Java comments (`//` and `/* */`).
+DDlog comments are like C++ and Java comments (`//` and `/* */`),
+except that `/* ... */` comments nest to make it easy to comment out
+blocks of code that themselves contain comments.
 
 This program contains several declarations:
 - a data type declaration, `Category`
@@ -123,6 +127,8 @@ the `Word1` and `Word2` relations on the `cat` field.
 
 1. Type names have no restrictions.
 
+1. Type constructors have to be uppercase.
+
 ### Declaration order
 
 The order of declarations in a DDlog program is unimportant; you
@@ -133,10 +139,12 @@ should use the order that makes programs easiest to read.
 Compiling a DDlog program consists of two steps.
 First, run the DDlog compiler to generate the Rust program:
 ```
-ddlog -i playpen.dl -L <ddlog/lib>
+ddlog -i playpen.dl
 ```
-where `<ddlog/lib>` is the path to the `lib` directory inside the
-DDlog installation directory (when using a binary release) or
+DDlog will search for its standard libraries inside the directory specified
+in the `$DDLOG_HOME` variable.  If this variable is not set, add the `-L <ddlog/lib>`
+switch, where `<ddlog/lib>` is the path to the `lib`
+directory inside the DDlog installation directory (when using a binary release) or
 inside the DDlog repository (when building DDlog from source).
 
 Second, run the Rust compiler to generate a binary executable:
@@ -222,7 +230,7 @@ dump Phrases;
 `Phrases` should be empty again.  DDlog only computes the change of `Phrases`
 incrementally, without recomputing all records.
 
-See [this document](../testing/testing.md#command-reference) for a complete list of commands
+See [this document](../command_reference/command_reference.md) for a complete list of commands
 supported by the CLI tool.
 
 ### Running DDlog programs in batch mode
@@ -253,12 +261,11 @@ dump Phrases;
 Feed the file to the compiled DDlog program:
 
 ```
-./playpen_ddlog/target/release/playpen_cli --no-print < playpen.dat
+./playpen_ddlog/target/release/playpen_cli < playpen.dat
 ```
 
-The `--no-print` flag tells DDlog to stop logging changes to program relations to `stderr`.
 In this mode, it will only produce output in response to commands such as `dump` or
-`commit dump_changes` (see [command reference](../testing/testing.md#command-reference)).
+`commit dump_changes` (see [command reference](../command_reference/command_reference.md)).
 
 In this example, it will produce the following output:
 
@@ -283,9 +290,9 @@ Phrases{"I am your father"}
 > ```
 > #!/bin/bash
 >
-> ddlog -i playpen.dl -L <ddlog/lib>
+> ddlog -i playpen.dl
 > (cd playpen_ddlog && cargo build --release)
-> ./playpen_ddlog/target/release/playpen_cli --no-print < playpen.dat
+> ./playpen_ddlog/target/release/playpen_cli < playpen.dat
 > ```
 >
 > If you are using [Nix shell](../../README.md#installing-dependencis-using-nix), the
@@ -420,6 +427,22 @@ user-defined type (such as `Category` above) the user can implement a
 function named `category2string` that returns a `string` given a category
 (functions are described [below](#functions)).
 
+### String library functions
+
+Other string operations are implemented as library
+[functions](#functions) in DDlog.  Many of these functions are part of the
+[standard library](#the-standard-library), e.g.,
+
+```
+extern function string_len(s: string): usize
+extern function string_contains(s1: string, s2: string): bool
+extern function string_join(strings: Vec<string>, sep: string): string
+...
+```
+
+In addition, the [regex](../../lib/regex.dl) library contains functions for
+matching strings against regular expressions.
+
 ### Creating new types
 
 Let's say we want to display IP and Ethernet
@@ -441,7 +464,7 @@ Think of this declaration as a C struct with
 a single field of type `bit<32>`.  We can write a user-defined formatting method:
 
 ```
-function ip_addr_t2string(ip: ip_addr_t): string = {
+function ip_addr_t2string(ip: ip_addr_t): string {
     "${ip.addr[31:24]}.${ip.addr[23:16]}.${ip.addr[15:8]}.${ip.addr[7:0]}"
 }
 ```
@@ -460,7 +483,7 @@ representation:
 ```
 typedef mac_addr_t = MACAddr{addr: bit<48>}
 
-function mac_addr_t2string(mac: mac_addr_t): string = {
+function mac_addr_t2string(mac: mac_addr_t): string {
     "${hex(mac.addr[47:40])}:${hex(mac.addr[39:32])}:${hex(mac.addr[31:24])}:\
      \${hex(mac.addr[23:16])}:${hex(mac.addr[15:8])}:${hex(mac.addr[7:0])}"
 }
@@ -475,7 +498,7 @@ typedef nethost_t = NHost {
     mac: mac_addr_t
 }
 
-function nethost_t2string(h: nethost_t): string = {
+function nethost_t2string(h: nethost_t): string {
     "Host: IP=${h.ip}, MAC=${h.mac}"
 }
 ```
@@ -520,7 +543,7 @@ The type `bigint` describes arbitrary-precision (unbounded) integers.
 initial value 125.
 
 Signed integers are written as `signed<N>`, where `N` is the width of
-the integer in bits.  Currently DDlog only supports integer with
+the integer in bits.  Currently DDlog only supports signed integers with
 widths that are supported by the native machine type (e.g., 8, 16, 32,
 or 64 bits).  DDlog supports all standard arithmetic operators over
 integers.
@@ -535,13 +558,13 @@ concatenation).
 ```
 // Form IP address from bytes using bit vector concatenation
 function ip_from_bytes(b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>)
-    : ip_addr_t =
+    : ip_addr_t
 {
     IPAddr{.addr = b3 ++ b2 ++ b1 ++ b0}
 }
 
 // Check for multicast IP address using bit slicing
-function is_multicast_addr(ip: ip_addr_t): bool = ip.addr[31:28] == 14
+function is_multicast_addr(ip: ip_addr_t): bool { ip.addr[31:28] == 14 }
 
 input relation Bytes(b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>)
 
@@ -553,6 +576,11 @@ Address(ip_from_bytes(b3,b2,b1,b0)) :- Bytes(b3,b2,b1,b0).
 output relation MCastAddress(addr: ip_addr_t)
 MCastAddress(a) :- Address(a), is_multicast_addr(a).
 ```
+
+The DDlog [standard library](#the-standard-library) declares shortcuts for
+common signed and unsigned integer types: `u8`, `u16`, `u32`, `u64`, `u128`,
+`s8`, `s16`, `s32`, `s64`, and `s128`.  It also declares the `usize` that
+represents lengths and sizes and is currently an alias to `bit<64>`.
 
 Bit vector constants can be written as decimal numbers.  If the width is not specified
 DDlog computes the width using *type inference*.
@@ -632,7 +660,7 @@ Evaluation order can be controlled using several constructs:
 The following example illustrates the first four of these constructs.  Loops are explained [below](#container-types-flatmap-and-for-loops).
 
 ```
-function addr_port(ip: ip_addr_t, proto: string, preferred_port: bit<16>): string =
+function addr_port(ip: ip_addr_t, proto: string, preferred_port: bit<16>): string
 {
     var port: bit<16> = match (proto) {  // match protocol string
         "FTP"   -> 20,  // default FTP port
@@ -694,6 +722,23 @@ may not modify its arguments.  The body of a function is an expression
 whose type must match the function's return type.  A function call can
 be inserted anywhere an expression of the function's return type can
 be used.  DDlog currently does not allow recursive functions.
+
+> #### Legacy function syntax
+>
+> DDlog supports an alternative syntax for functions with equality sign between
+> function declaration and its body, which does not require curly braces:
+>
+> ```
+> function myfunc(x: string): string = x
+> ```
+>
+> However, this syntax can cause parsing ambiguities in some circumstances;
+> therefore the newer syntax is preferred:
+>
+> ```
+> function myfunc(x: string): string { x }
+> ```
+
 
 ### Extern functions
 
@@ -768,7 +813,7 @@ The following binds the `ep` variable to a row of the `Endpoint` relation.
 
 ```
 SanitizedEndpoint(endpoint) :-
-    ep in Endpoint,
+    ep in Endpoint(),
     var endpoint = addr_port(ep.ip, ep.proto, ep.preferred_port),
     not Blacklisted(endpoint).
 ```
@@ -781,6 +826,30 @@ SanitizedHTTPEndpoint(endpoint) :-
     ep in Endpoint(.proto = "HTTP"),
     var endpoint = addr_port(ep.ip, ep.proto, ep.preferred_port),
     not Blacklisted(endpoint).
+```
+
+#### `@`-bindings
+
+When performing pattern matching inside rules, it is often helpful to
+simultaneously refer to a struct and its individual fields by name.  This can be
+achieved using `@`-bindings:
+
+```
+typedef Book = Book {
+    author: string,
+    title: string
+}
+
+input relation Library(book: Book)
+input relation Author(name: string, born: u32)
+
+output relation BookByAuthor(book: Book, author: Author)
+
+BookByAuthor(b, author) :-
+    // Variable `b` will be bound to the entire `Book` struct;
+    // `author_name` will be bound to `b.author`.
+    Library(.book = b@Book{.author = author_name}),
+    author in Author(.name = author_name).
 ```
 
 #### Container types, FlatMap, and for-loops
@@ -808,8 +877,9 @@ pub fn split_ip_list(s: &String, sep: &String) -> Vec<String> {
 We define a DDlog function which splits IP addresses at spaces:
 
 ```
-function split_ip_list(x: string): Vec<string> =
+function split_ip_list(x: string): Vec<string> {
    split(x, " ")
+}
 ```
 
 Consider an input relation `HostAddress` associating each host with a
@@ -827,7 +897,7 @@ result that is the union of all the resulting sets:
 
 ```
 HostIP(host, addr) :- HostAddress(host, addrs),
-                      FlatMap(addr=split_ip_list(addrs)).
+                      var addr = FlatMap(split_ip_list(addrs)).
 ```
 
 You can read this rule as follows:
@@ -844,7 +914,7 @@ For-loops allow manipulating container types in a more procedural fashion, witho
 The following function concatenates a vector of strings, each starting at a new line.
 
 ```
-function vsep(strs: Vec<string>): string = {
+function vsep(strs: Vec<string>): string {
     var res = "";
     for (s in strs) {
         res = res ++ s ++ "\n"
@@ -862,7 +932,7 @@ current loop iteration:
 
 ```
 // Returns only even elements of the vector.
-function evens(vec: Vec<bigint>): Vec<bigint> = {
+function evens(vec: Vec<bigint>): Vec<bigint> {
     var res: Vec<bigint> = vec_empty();
     for (x in vec) {
         if (x % 2 != 0) { continue };
@@ -876,7 +946,7 @@ A `break` statement used anywhere inside the body of a loop terminates the loop:
 
 ```
 // Returns prefix of `vec` before the first occurrence of value `v`.
-function prefixBefore(vec: Vec<'A>, v: 'A): Vec<'A> = {
+function prefixBefore(vec: Vec<'A>, v: 'A): Vec<'A> {
     var res: Vec<'A> = vec_empty();
     for (x in vec) {
         if (x == v) { break };
@@ -980,7 +1050,7 @@ aggregation functions:
 
 ```
 /* User-defined aggregate that picks a tuple with the smallest price */
-function best_vendor(g: Group<'K, (string, bit<64>)>): (string, bit<64>) =
+function best_vendor(g: Group<'K, (string, bit<64>)>): (string, bit<64>)
 {
     var min_vendor = "";
     var min_price: bit<64> = 'hffffffffffffffff;
@@ -1009,7 +1079,7 @@ vendor for each item and returns a string containing item name, vendor,
 and price:
 
 ```
-function best_vendor_string(g: Group<string, (string, bit<64>)>): string =
+function best_vendor_string(g: Group<string, (string, bit<64>)>): string
 {
     var min_vendor = "";
     var min_price: bit<64> = 'hffffffffffffffff;
@@ -1092,7 +1162,7 @@ The following function creates a packet with Ethernet, IPv6 and TCP headers:
 ```
 function tcp6_packet(ethsrc: bit<48>, ethdst: bit<48>,
                      ipsrc: ip6_addr_t, ipdst: ip6_addr_t,
-                     srcport: bit<16>, dstport: bit<16>): eth_pkt_t =
+                     srcport: bit<16>, dstport: bit<16>): eth_pkt_t
 {
     EthPacket {
         // Explicitly name constructor arguments for clarity
@@ -1131,7 +1201,7 @@ if the packet is not of type IPv4 (we will see a nicer way to deal with non-exis
 [below](#generic-types)):
 
 ```
-function pkt_ip4(pkt: eth_pkt_t): ip4_pkt_t = {
+function pkt_ip4(pkt: eth_pkt_t): ip4_pkt_t {
     match (pkt) {
         EthPacket{.payload = EthIP4{ip4}} -> ip4,
         _                                 -> IP4Pkt{0,0,0,IPOther}
@@ -1147,7 +1217,7 @@ matches both level-3 and level-4 protocol headers to extract destination UDP por
 packet.
 
 ```
-function pkt_udp_port(pkt: eth_pkt_t): bit<16> = {
+function pkt_udp_port(pkt: eth_pkt_t): bit<16> {
     match (pkt) {
         EthPacket{.payload = EthIP4{IP4Pkt{.payload = IPUDP{UDPPkt{.dst = port}}}}} -> port,
         EthPacket{.payload = EthIP6{IP6Pkt{.payload = IPUDP{UDPPkt{.dst = port}}}}} -> port,
@@ -1192,7 +1262,7 @@ group of related values of possibly different types.  A tuple type lists the typ
 For example, our IP address splitting function could return a tuple with four 8-bit fields:
 
 ```
-function addr_to_tuple(addr: bit<32>): (bit<8>, bit<8>, bit<8>, bit<8>) =
+function addr_to_tuple(addr: bit<32>): (bit<8>, bit<8>, bit<8>, bit<8>)
 {
     // construct an instance of a tuple
     (addr[31:24], addr[23:16], addr[15:8], addr[7:0])
@@ -1238,7 +1308,7 @@ packet.  If the packet does not have an IPv4 header, it returns a default value 
 to 0:
 
 ```
-function pkt_ip4(pkt: eth_pkt_t): ip4_pkt_t = {
+function pkt_ip4(pkt: eth_pkt_t): ip4_pkt_t {
     match (pkt) {
         EthPacket{.payload = EthIP4{ip4}} -> ip4,
         _                                 -> IP4Pkt{0,0,0,IPOther}
@@ -1269,7 +1339,7 @@ Here `'A` is a *type argument* that must be replaced with a concrete type to cre
 instantiation of `Option`.  We can now rewrite the `pkt_ip4()` function using `Option`:
 
 ```
-function pkt_ip4(pkt: eth_pkt_t): Option<ip4_pkt_t> = {
+function pkt_ip4(pkt: eth_pkt_t): Option<ip4_pkt_t> {
     match (pkt) {
         EthPacket{.payload = EthIP4{ip4}} -> Some{ip4},
         _                                 -> None
@@ -1295,7 +1365,7 @@ arguments; however a better software engineering practice is to pass the entire 
 the function:
 
 ```
-function is_target_audience(person: Person): bool = {
+function is_target_audience(person: Person): bool {
     (person.nationality == "USA") and
     (person.occupation == "student")
 }
@@ -1413,6 +1483,116 @@ TopScore(school, top_score) :-
     StudentInfo(student, &School{.name = school}),
     var top_score = Aggregate((school), group_max(student.sat_score)).
 ```
+
+## Interned values (`Intern<>`, `istring`)
+
+Interned values offer another way to save memory when working with large data
+objects by storing exactly one copy of each distinct object.  Consider the
+following program that takes a table of online orders as input and outputs
+a re-arranged representation of the table where every record lists all orders
+that contain one specific item.
+
+```
+input relation OnlineOrder(order_id: u64, item: string)
+output relation ItemInOrders(item: string, orders: Vec<u64>)
+
+ItemInOrders(item, orders) :-
+    OnlineOrder(order, item),
+    var orders = Aggregate((item), group2vec(order)).
+```
+
+Popular items like milk will occur in many orders, causing the string `"milk"`
+to be allocated and stored many times.  Interning avoids wasting memory by
+making sure that all identical strings point to the same memory location.
+Internally, interned objects are kept in a hash table.  When a new interned object is
+created, DDlog looks it up in the hash table.  If an identical object exists, it
+simply returns a new reference to it; otherwise a new object with reference
+count of 1 is created.  An interned object is deallocated when the last reference
+to it is dropped.  All this happens behind the scenes; the programmer simply has
+to replace `string` with `istring` in relation declarations to take advantage
+of interning:
+
+```
+input relation OnlineOrder(order_id: u64, item: istring)
+output relation ItemInOrders(item: istring, orders: Vec<u64>)
+```
+
+Interned strings are input and output by DDlog just like normal strings.  Inputs:
+
+```
+start;
+insert OnlineOrder(1, "milk"),
+insert OnlineOrder(1, "eggs"),
+insert OnlineOrder(1, "jackfruit"),
+insert OnlineOrder(2, "sursild"),
+insert OnlineOrder(2, "milk"),
+insert OnlineOrder(2, "eggs"),
+commit dump_changes;
+```
+
+Outputs:
+```
+ItemInOrders{.item = "eggs", .orders = [1, 2]}: +1
+ItemInOrders{.item = "jackfruit", .orders = [1]}: +1
+ItemInOrders{.item = "milk", .orders = [1, 2]}: +1
+ItemInOrders{.item = "sursild", .orders = [2]}: +1
+```
+
+DDlog implements two functions to manipulate interned objects. `ival()`
+takes an interned object (e.g., an `istring`) and returns the
+value it points to (e.g., `string`).  `intern()` is the inverse of
+`ival()` -- it interns its argument and returns a reference to the interned
+object.  Both functions are declated in [`internment.dl`](../../lib/internment.dl),
+a standard library automatically imported by all DDlog programs.
+
+In the following example, we pretty-print `OnlineOrder` records by first using `ival()`
+to extract the value of an item and then using `intern()` to intern the
+formatted string:
+
+```
+output relation OrderFormatted(order: istring)
+
+OrderFormatted(formatted) :-
+    OnlineOrder(order, item),
+    var formatted: istring = intern("order: ${order}, item: ${ival(item)}").
+```
+
+Just like with normal strings, it is often necessary to compare interned
+strings, e.g., we may want to filter out all orders containing milk:
+
+```
+output relation MilkOrders(order: u64)
+MilkOrders(order) :- OnlineOrder(order, i"milk").
+```
+
+Here we construct an interned string by prepending `i` to string literal `"milk"`.
+This works for any form of [string literals](#string-constants-literals).  The
+compiler expands `i"milk"` to `intern("milk")`, which gets evaluated statically.
+
+Interned strings are just one important special case of interned objects.  The
+general interned object type is declared in [`internment.dl`](../../lib/internment.dl)
+as `extern type Intern<'A>`.  In the following example, we intern the user-defined
+type `StoreItem`:
+
+```
+typedef StoreItem = StoreItem {
+    name: string,
+    description: istring
+}
+typedef IStoreItem = Intern<StoreItem>
+
+input relation StoreInventory(item: IStoreItem)
+output relation InventoryItemName(name: istring)
+
+/* `ival()` and `intern()` functions work for all interned
+ * objects, not just strings. */
+InventoryItemName(name) :-
+    StoreInventory(item),
+    var name = intern(ival(item).name).
+```
+
+The `internment.dl` library contains other useful declarations, which you may
+want to check out if you are working with interned values.
 
 ## A more imperative syntax
 
@@ -1536,7 +1716,7 @@ Note that we refer to relations and constructors via their fully qualified names
 Compile and run the test:
 
 ```
-ddlog -i test.dl -L../../lib
+ddlog -i test.dl
 cd test
 cargo build --release
 target/release/test_cli < ../test.dat
@@ -1546,7 +1726,7 @@ Modules do not have to be in the same directory with the main program.  Assuming
 hierarchy is located, e.g., in `../modules`,  the first command above must be changed as follows:
 
 ```
-ddlog -i test.dl -L../modules -L../../lib
+ddlog -i test.dl -L../modules
 ```
 
 Multiple `-L` options are allowed to access modules scattered across multiple directories.
@@ -1556,8 +1736,7 @@ Multiple `-L` options are allowed to access modules scattered across multiple di
 The module system enables the creation of reusable DDlog libraries.  Some of these libraries
 are distributed with DDlog in the `lib` directory.  A particularly important one is the standard
 library [`std.dl`](../../lib/std.dl), which defines types like `Vec`, `Set`, `Map`, `Option`, `Ref`, and others.
-This library is imported automatically into every DDlog program; therefore the path to the
-`lib` directory must always be specified using the `-L` switch.
+This library is imported automatically into every DDlog program.
 
 ## Indexes
 
@@ -1588,7 +1767,7 @@ node_t`), and a pattern, which defines the set of values associated with each
 key (`Edge(from, _)`).
 
 Once an index has been created, it can be queried at runtime, e.g., using the
-`query_index` [CLI](../testing/testing.md#command-reference) command or an
+`query_index` [CLI](../command_reference/command_reference.md) command or an
 equivalent method in your favorite language API:
 
 ```
@@ -1642,6 +1821,127 @@ purpose.  They do not affect the performance of the DDlog program and cannot be
 used as an optimization technique (DDlog does use indexes for performance, but
 these indexes are constructed automatically and are not visible to the user).
 
+## Meta-attributes
+
+Meta-attributes are annotations that can be attached to various DDlog program
+declarations (types, constructors, fields, etc.).  They affect compilation
+process and program's external behavior in ways that are outside of the language
+semantics.  We describe currently supported meta-attributes in the following
+sections.
+
+### Size attribute: `#[size=N]`
+
+This attribute is applicable to `extern type` declarations.  It specifies the
+size of the corresponding Rust data type in bytes and serves as a hint to compiler
+to optimize data structures layout:
+
+```
+#[size=4]
+extern type IObj<'A>
+```
+
+### `#[custom_serde]`
+
+Tells DDlog not to generate `Serialize` and `Deserialize` implementations for a type.
+The user must write their own implementations in Rust.
+
+```
+#[custom_serde]
+typedef JsonWrapper<'T> = JsonWrapper{x: 'T}
+```
+
+### `#[has_side_effects]`
+
+Labels functions that have side effects, e.g., perform I/O.  The compiler will
+not perform certain optimizations such as static evaluation for such functions.
+This annotation is only required for extern functions with side effects. The
+compiler automatically derives this annotation for functions that invoke
+functions labeled with `#[has_side_effects]`.
+
+```
+#[has_side_effects]
+extern function log(module: module_t, level: log_level_t, msg: string): bool
+```
+
+### `#[return_by_ref]`
+
+Labels functions that return values by reference.  DDlog functions are compiled
+into Rust functions that take arguments by reference and return results by value.
+DDlog assumes the same calling convention for extern functions.  However it
+also supports extern functions that return references, which is often more efficient.
+The `#[return_by_ref]` annotation tells the compiler that the annotated extern
+function returns a reference in Rust:
+
+```
+#[return_by_ref]
+extern function deref(x: Ref<'A>): 'A
+```
+
+### `#[deserialize_from_array=func()]`
+
+This attribute is used in conjunction with `json.dl` library (and potentially
+other serialization libraries).  When working with JSON, it is common to have
+to deserialize an array of entities that encodes a map, with each entity containing
+a unique key.  Deserializing directly to a map rather than a vector (which would
+be the default representation) can be beneficial for performance if
+frequent map lookups are required.
+
+The `deserialize_from_array` attribute can be associated with a field of a struct
+of type `Map<'K,'V>`. The annotation takes a function name as its value.  The function,
+whose signature must be: `function f(V): K` is used to project each
+value `V` to key `K`:
+
+```
+// We will be deserializing a JSON array of these structures.
+typedef StructWithKey = StructWithKey {
+    key: u64,
+    payload: string
+}
+
+// Key function.
+function key_structWithKey(x: StructWithKey): u64 {
+    x.key
+}
+
+// This struct's serialized representaion is an array of
+// `StructWithKey`; however it is deserialized into a map rather than
+// vector.
+typedef StructWithMap = StructWithMap {
+    #[deserialize_from_array=key_structWithKey()]
+    f: Map<u64, StructWithKey>
+}
+
+Example JSON representation of `StructWithMap`
+{"f": [{"key": 100, "payload": "foo"}]}
+```
+
+### `#[rust="..."]`
+
+This attribute is applicable to type definitions, constructors, and individual
+fields of a constructor.  Its value is copied directly to the generated Rust
+type definition.  It is particularly useful in controling
+serialization/deserialization behavior of the type.  DDlog generates
+`serde::Serialize` and `serde::Deserialize` implementations for all types in
+the program.  Meta-attributes defined in the `serde` Rust crate can be used to
+control the behavior of these traits.  For example, the following declaration:
+
+```
+#[rust="serde(tag = \"@type\")"]
+typedef TaggedEnum = #[rust="serde(rename = \"t.V1\")"]
+                     TVariant1 { b: bool }
+                   | #[rust="serde(rename = \"t.V2\")"]
+                     TVariant2 { u: u32 }
+```
+
+creates a type whose JSON representation is:
+
+```
+{"@type": "t.V1", "b": true}
+```
+
+Other useful serde attributes are `default` and `flatten`.  See [serde
+documentation](https://serde.rs/attributes.html) for details.
+
 ## Input/output to DDlog
 
 DDlog offers several ways to feed data to a program:
@@ -1655,6 +1955,8 @@ DDlog offers several ways to feed data to a program:
 1. From a C or C++ program.
 
 1. From a Java program.
+
+1. From a Go program.
 
 In the following sections, we expand on each method.
 
@@ -1707,11 +2009,16 @@ If you plan to use the library from a Java program, make sure to use
     See [Java API documentation](../java_api.md) for a detailed description of
     the Java API.
 
+1. **Go**
+
+See [Go API documentation](../../go/README.md) for a detailed description of the
+Go API.
+
 1. The text-based interface is implemented by an
 auto-generated executable `./playpen_ddlog/target/release/playpen_cli`.  This interface is
 primarily meant for testing and debugging purposes, as it does not offer the same performance and
 flexibility as the API-based interfaces.
-    See [CLI documentation](../testing/testing.md#command-reference) for a complete list of commands
+    See [CLI documentation](../command_reference/command_reference.md) for a complete list of commands
 supported by the CLI tool.
 
 ## Profiling
@@ -1778,10 +2085,9 @@ in isolation from the host program.  For example, here we use the UNIX `time`
 program (note: this is not the same as the `time` command in `bash`)
 to measure time and memory footpint of a DDlog computation:
 ```
-/usr/bin/time playpen_ddlog/target/release/playpen_cli -w 2 --no-print --no-store < replay.dat
+/usr/bin/time playpen_ddlog/target/release/playpen_cli -w 2 --no-store < replay.dat
 ```
 where `-w 2` runs DDlog with two worker threads,
-`--no-print` stops DDlog from printing every update to output tables on `stdout`,
 `--no-store` tells DDlog not to cache the content of output relations (which takes
 time and memory), and
 `replay.dat` is the name of the file that contains recorded DDlog commands.

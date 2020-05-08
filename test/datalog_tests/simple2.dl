@@ -60,3 +60,49 @@ relation RFtoIDummy(x: signed<32>)
 RFtoIDummy(0).
 output relation RFloatToInt(_x:signed<32>)
 RFloatToInt(_x) :- RFtoIDummy(0), var _x = ftoi_((- (64'f333.36: double))).
+
+/* See #596 */
+input relation Ints(x: bigint)
+output relation SomeInts(x: Option<bigint>)
+
+SomeInts(y) :-
+    Ints(x),
+    var y = Some{x},
+    SomeInts(y).
+
+/* See #592 */
+function agg_avg_double_N(aggregate: Option<(double, double)>, item: Option<double>):
+    Option<(double, double)> =
+    match ((aggregate, item)) {
+        (None, None)       -> None,
+        (None, Some{x})    -> Some{(x, 1)},
+        (Some{x}, None)    -> Some{x},
+        (Some{(sum,ct)}, Some{y}) -> Some{(sum + y, ct + 1)}
+    }
+
+
+/* See #603. New function syntax avoids ambiguity. */
+output relation &FuncTest(x: string)
+function myfunc(x: string): string { x }
+&FuncTest("foo").
+
+output relation SumsOfDoubles(x: double, y: double, sum: double)
+input relation Doubles(xs: Vec<double>)
+
+SumsOfDoubles(x, y, z) :-
+    Doubles(xs),
+    var x = FlatMap(xs),
+    Doubles(ys),
+    var y = FlatMap(ys),
+    var z = x + y.
+
+/* Attempt to confuse statics */
+
+function weird_zero(x: 'A): usize {
+    var empty_vec: Vec<'A> = vec_empty();
+    vec_len(empty_vec)
+}
+
+function zero_test(): usize {
+    weird_zero(32'd0)
+}

@@ -1,0 +1,21 @@
+start;
+
+insert tinyset_test.SetElement("a", 0),
+insert tinyset_test.SetElement("a", 1),
+insert tinyset_test.SetElement("a", 2),
+insert tinyset_test.SetElement("a", 3),
+insert tinyset_test.SetElement("a", 4),
+insert tinyset_test.SetElement("a", 5),
+
+insert tinyset_test.SetElement("b", 100),
+insert tinyset_test.SetElement("b", 200),
+insert tinyset_test.SetElement("b", 300),
+insert tinyset_test.SetElement("b", 400),
+insert tinyset_test.SetElement("b", 500),
+
+insert tinyset_test.SetElement("c", 4),
+insert tinyset_test.SetElement("c", 5),
+insert tinyset_test.SetElement("c", 100),
+insert tinyset_test.SetElement("c", 200),
+
+commit dump_changes;

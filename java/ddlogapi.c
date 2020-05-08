@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include "ddlogapi_DDlogAPI.h"
+#include "ddlogapi_DDlogAPI_DDlogCommandVector.h"
 #include "ddlog.h"
 #include "ddlog_log.h"
 
@@ -333,6 +334,52 @@ JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1commit_1dump_1
         throwDDlogException(env, NULL);
     };
     free(cbinfo);
+}
+
+JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_00024DDlogCommandVector_ddlog_1transaction_1batch_1commit(
+    JNIEnv * env, jobject obj, jlong handle) {
+    ddlog_record_update* updates;
+    size_t count;
+    if (ddlog_transaction_commit_dump_changes_as_array((ddlog_prog)handle, &updates, &count) < 0) {
+        throwDDlogException(env, NULL);
+        return;
+    }
+
+    if (updates == NULL) {
+        return;
+    }
+
+    // Save the results in the Java object
+    jclass cls = (*env)->GetObjectClass(env, obj);
+    jfieldID field = (*env)->GetFieldID(env, cls, "size", "I");
+    if (field == NULL) {
+        throwDDlogException(env, "Expected a field name `size`");
+        return;
+    }
+    (*env)->SetIntField(env, obj, field, (jint)count);
+    field = (*env)->GetFieldID(env, cls, "pointer", "J");
+    if (field == NULL) {
+        throwDDlogException(env, "Expected a field name `pointer`");
+        return;
+    }
+    (*env)->SetLongField(env, obj, field, (jlong)updates);
+
+    jmethodID append = (*env)->GetMethodID(env, cls, "append", "(IJZ)V");
+    if (append == NULL) return;
+    JavaVM* jvm;
+    (*env)->GetJavaVM(env, &jvm);
+    (*jvm)->AttachCurrentThreadAsDaemon(jvm, (void**)&env, NULL);
+
+    for (size_t i = 0; i < count; i++) {
+        ddlog_record_update *upi = &updates[i];
+        (*env)->CallVoidMethod(
+             env, obj, append, (jint)upi->table, (jlong)upi->rec, (jboolean)upi->polarity);
+    }
+}
+
+JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_00024DDlogCommandVector_ddlog_1batch_1free(
+    JNIEnv * env, jclass cls, jlong handle, jint size) {
+    ddlog_free_record_updates((ddlog_record*)handle, size);
 }
 
 JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1commit_1dump_1changes_1to_1flatbuf(

@@ -1,0 +1,22 @@
+input relation IInternedString(ix: istring)
+relation StaticInternedString(ix: istring)
+
+StaticInternedString(intern("static foo")).
+StaticInternedString(i"ifoo").
+StaticInternedString(i[|ibar|]).
+StaticInternedString(i"ifoo${25}").
+StaticInternedString(i"ifoo${25}" "!").
+StaticInternedString(i$[|ibar${2+2}|]).
+
+relation AllInternedString(ix: istring)
+AllInternedString(ix) :- IInternedString(ix).
+AllInternedString(ix) :- StaticInternedString(ix).
+
+output relation OInternedString(x: string, ix: istring)
+
+OInternedString(ival(s), s) :-
+    AllInternedString(s).
+
+OInternedString(ival(s1) ++ " " ++ ival(s2), intern(ival(s1) ++ " " ++ ival(s2))) :-
+    AllInternedString(s1),
+    AllInternedString(s2).

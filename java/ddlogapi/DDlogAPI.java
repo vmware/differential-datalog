@@ -1,9 +1,10 @@
 package ddlogapi;
 
 import java.util.*;
-import java.lang.*;
 import java.util.function.*;
 import java.nio.ByteBuffer;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.io.*;
 
 /**
@@ -62,7 +63,6 @@ public class DDlogAPI {
     static native boolean ddlog_get_bool(long handle);
     static native boolean ddlog_is_int(long handle);
     static native long ddlog_get_int(long handle, byte[] buf);
-    static native long ddlog_get_i64(long handle);
     static native boolean ddlog_is_float(long handle);
     static native float ddlog_get_float(long handle);
     static native boolean ddlog_is_double(long handle);
@@ -93,6 +93,7 @@ public class DDlogAPI {
     // This is a handle to the program; it wraps a void*.
     private long hprog;
     // This stores a C pointer which is deallocated when the program stops.
+    // This field is written directly from the native code using reflection.
     public long callbackHandle;
 
     // File descriptor used to record DDlog command log
@@ -116,7 +117,7 @@ public class DDlogAPI {
     // Stores pointer to `struct CallbackInfo` for each registered logging
     // callback.  This is needed so that we can deallocate the `CallbackInfo*`
     // when removing on changing the callback.
-    private static Map<Integer, Long> logCBInfo = new HashMap<>();
+    private static final Map<Integer, Long> logCBInfo = new HashMap<>();
     private static Long defaultLogCBInfo;
 
     private void checkHandle() throws DDlogException {
@@ -165,7 +166,10 @@ public class DDlogAPI {
     }
 
     /**
-     * Get DDlog relation ID by name.
+     * Get DDlog relation ID from its name.
+     * @param table  relation name whose id is sought.
+     * @return -1 when the relation is not found, or the relation id,
+     *          a positive number otherwise.
      *
      * See <code>ddlog.h: ddlog_get_table_id()</code>
      */
@@ -196,7 +200,7 @@ public class DDlogAPI {
      * @param append Set to <code>true</code> to open the file in append mode.
      */
     public void recordCommands(String filename, boolean append) throws DDlogException, IOException {
-        checkHandle();
+        this.checkHandle();
         if (this.record_fd != -1) {
             DDlogAPI.ddlog_stop_recording(this.hprog, this.record_fd);
             this.record_fd = -1;
@@ -205,12 +209,11 @@ public class DDlogAPI {
             return;
         }
 
-        int fd = DDlogAPI.ddlog_record_commands(this.hprog, filename, append);
-        this.record_fd = fd;
+        this.record_fd = DDlogAPI.ddlog_record_commands(this.hprog, filename, append);
     }
 
     public void dumpInputSnapshot(String filename, boolean append) throws DDlogException, IOException {
-        checkHandle();
+        this.checkHandle();
         DDlogAPI.ddlog_dump_input_snapshot(this.hprog, filename, append);
     }
 
@@ -220,13 +223,13 @@ public class DDlogAPI {
      * See <code>ddlog.h: ddlog_stop()</code>
      */
     public void stop() throws DDlogException {
-        checkHandle();
+        this.checkHandle();
         /* Close the file handle. */
         if (this.record_fd != -1) {
             DDlogAPI.ddlog_stop_recording(this.hprog, this.record_fd);
             this.record_fd = -1;
         }
-        this.ddlog_stop(this.hprog, this.callbackHandle);
+        ddlog_stop(this.hprog, this.callbackHandle);
         this.hprog = 0;
     }
 
@@ -236,7 +239,7 @@ public class DDlogAPI {
      * See <code>ddlog.h: ddlog_start()</code>
      */
     public void transactionStart() throws DDlogException {
-        checkHandle();
+        this.checkHandle();
         DDlogAPI.ddlog_transaction_start(this.hprog);
     }
 
@@ -246,7 +249,7 @@ public class DDlogAPI {
      * See <code>ddlog.h: ddlog_transaction_commit()</code>
      */
     public void transactionCommit() throws DDlogException {
-        checkHandle();
+        this.checkHandle();
         DDlogAPI.ddlog_transaction_commit(this.hprog);
     }
 
@@ -257,10 +260,92 @@ public class DDlogAPI {
      */
     public void transactionCommitDumpChanges(Consumer<DDlogCommand<DDlogRecord>> callback)
             throws DDlogException {
-        checkHandle();
+        this.checkHandle();
         String onDelta = callback == null ? null : "onDelta";
         this.deltaCallback = callback;
         this.ddlog_transaction_commit_dump_changes(this.hprog, onDelta);
+    }
+
+    /**
+     * This class represents a vector of DDlogCommands.
+     * The data must be deallocated by calling dispose; at that point
+     * all records are no longer valid.
+     */
+    public static class DDlogCommandVector {
+        native void ddlog_transaction_batch_commit(long hprog) throws DDlogException;
+        native static void ddlog_batch_free(long pointer, int size);
+
+        private final long hprog;
+
+        protected DDlogCommandVector(long hprog) {
+            this.data = null;
+            this.hprog = hprog;
+            this.data = new ArrayList<DDlogRecCommand>();
+        }
+
+        private List<DDlogRecCommand> data;
+
+        void fill() throws DDlogException {
+            this.ddlog_transaction_batch_commit(this.hprog);
+        }
+
+        /**
+         * This method is called from the native side to add a command.
+         */
+        private void append(int table, long handle, boolean polarity) {
+            if (this.data == null)
+                return;
+            DDlogRecCommand command = new DDlogRecCommand(
+                    polarity ? DDlogCommand.Kind.Insert : DDlogCommand.Kind.DeleteVal,
+                    table, DDlogRecord.fromSharedHandle(handle));
+            this.data.add(command);
+        }
+
+        /**
+         * Number of values in vector.
+         */
+        public int size() {
+            if (this.data == null)
+                return 0;
+            return this.data.size();
+        }
+
+        /**
+         * Get the command with the i-th index.
+         * @param index  Index of the command in the vector.
+         * @return       The i-th command; throws if there are no commands or index is out of bounds.
+         */
+        public DDlogRecCommand get(int index) throws DDlogException {
+            if (this.data == null)
+                throw new DDlogException("No data");
+            return this.data.get(index);
+        }
+
+        /**
+         * The native world will save here pointers to the native data structures.
+         * These are used by the dispose call.
+         */
+        private int size;
+        private long pointer;
+
+        public void dispose() {
+            ddlog_batch_free(this.pointer, this.size);
+            this.size = -1;
+            this.pointer = 0;
+        }
+    }
+
+    /**
+     * Commit a transaction, return all changes in batch.
+     * @return   all changes.
+     * See <code>ddlog.h: ddlog_transaction_commit_dump_changes_as_array()</code>
+     */
+    public DDlogCommandVector transactionBatchCommit()
+            throws DDlogException {
+        this.checkHandle();
+        DDlogCommandVector vector = new DDlogCommandVector(this.hprog);
+        vector.fill();
+        return vector;
     }
 
     /**
@@ -269,7 +354,7 @@ public class DDlogAPI {
      * See <code>ddlog.h: ddlog_clear_relation()</code>
      */
     public int clearRelation(int relid) throws DDlogException {
-        checkHandle();
+        this.checkHandle();
         return ddlog_clear_relation(this.hprog, relid);
     }
 
@@ -311,8 +396,8 @@ public class DDlogAPI {
      * be invoked by user code.
      */
     public void transactionCommitDumpChangesToFlatbuf(FlatBufDescr fb) throws DDlogException {
-        checkHandle();
-        this.ddlog_transaction_commit_dump_changes_to_flatbuf(this.hprog, fb);
+        this.checkHandle();
+        DDlogAPI.ddlog_transaction_commit_dump_changes_to_flatbuf(this.hprog, fb);
     }
 
     /**
@@ -324,7 +409,7 @@ public class DDlogAPI {
      * be invoked by user code.
      */
     public void flatbufFree(FlatBufDescr fb) {
-        this.ddlog_flatbuf_free(fb.buf, fb.size, fb.offset);
+        DDlogAPI.ddlog_flatbuf_free(fb.buf, fb.size, fb.offset);
     }
 
     /**
@@ -333,7 +418,7 @@ public class DDlogAPI {
      * See <code>ddlog.h: ddlog_transaction_rollback()</code>
      */
     public void transactionRollback() throws DDlogException {
-        checkHandle();
+        this.checkHandle();
         DDlogAPI.ddlog_transaction_rollback(this.hprog);
     }
 
@@ -343,7 +428,7 @@ public class DDlogAPI {
      * See <code>ddlog.h: ddlog_apply_updates()</code>
      */
     public void applyUpdates(DDlogRecCommand[] commands) throws DDlogException {
-        checkHandle();
+        this.checkHandle();
         long[] handles = new long[commands.length];
         for (int i=0; i < commands.length; i++)
             handles[i] = commands[i].allocate();
@@ -359,7 +444,7 @@ public class DDlogAPI {
      * be invoked by user code.
      */
     public void applyUpdatesFromFlatBuf(ByteBuffer buf) throws DDlogException {
-        checkHandle();
+        this.checkHandle();
         ddlog_apply_updates_from_flatbuf(this.hprog, buf.array(), buf.position());
     }
 
@@ -373,7 +458,7 @@ public class DDlogAPI {
      * be invoked by user code.
      */
     public void queryIndexFromFlatBuf(ByteBuffer buf, FlatBufDescr resfb) throws DDlogException {
-        checkHandle();
+        this.checkHandle();
         ddlog_query_index_from_flatbuf(this.hprog, buf.array(), buf.position(), resfb);
     }
 
@@ -386,7 +471,7 @@ public class DDlogAPI {
      * be invoked by user code.
      */
     public void dumpIndexToFlatBuf(long idxid, FlatBufDescr resfb) throws DDlogException {
-        checkHandle();
+        this.checkHandle();
         ddlog_dump_index_to_flatbuf(this.hprog, idxid, resfb);
     }
 
@@ -406,7 +491,7 @@ public class DDlogAPI {
      * storeData parameter set to true.
      */
     public void dumpTable(String table, Consumer<DDlogRecord> callback) throws DDlogException {
-        checkHandle();
+        this.checkHandle();
         int id = this.getTableId(table);
         if (id == -1)
             throw new RuntimeException("Unknown table " + table);
@@ -421,7 +506,7 @@ public class DDlogAPI {
      * See <code>ddlog.h: ddlog_profile()</code>
      */
     public String profile() throws DDlogException {
-        checkHandle();
+        this.checkHandle();
         return DDlogAPI.ddlog_profile(this.hprog);
     }
 
@@ -431,7 +516,7 @@ public class DDlogAPI {
      * See <code>ddlog.h: ddlog_enable_cpu_profiling()</code>
      */
     public void enableCpuProfiling(boolean enable) throws DDlogException {
-        checkHandle();
+        this.checkHandle();
         DDlogAPI.ddlog_enable_cpu_profiling(this.hprog, enable);
     }
 
@@ -465,7 +550,170 @@ public class DDlogAPI {
         long new_cbinfo = ddlog_log_replace_default_callback(old_cbinfo == null ? 0 : old_cbinfo, cb, max_level);
         /* Store pointer to CallbackInfo in internal map */
         if (new_cbinfo != 0) {
-            defaultLogCBInfo = new Long(new_cbinfo);
+            defaultLogCBInfo = new_cbinfo;
         }
+    }
+
+    /*--------------------------------------------*/
+
+    /**
+     * Get the path where DDlog is installed. This queries the DDLOG_HOME
+     * environment variable. This throws if the variable is not set.
+     */
+    public static String ddlogInstallationPath() throws DDlogException {
+        String ddlogHome = System.getenv("DDLOG_HOME");
+        if (ddlogHome == null)
+            throw new DDlogException("No DDLOG_HOME");
+        return ddlogHome;
+    }
+
+    /**
+     * Run an external process by executing the specified command.
+     * @param commands        Command and arguments.
+     * @param workdirectory   If not null the working directory.
+     * @param verbose         If true echo output and stderr of subprocess.
+     * @return                The exit code of the process.
+     */
+    public static int runProcess(List<String> commands, String workdirectory, boolean verbose) {
+        try {
+            System.out.println("Running " + String.join(" ", commands) +
+                (workdirectory != null ? " in " + workdirectory : ""));
+            ProcessBuilder pb = new ProcessBuilder(commands);
+            if (verbose)
+                pb.inheritIO();
+            if (workdirectory != null) {
+                pb.directory(new File(workdirectory));
+            }
+            Process process = pb.start();
+            int exitCode = process.waitFor();
+            if (exitCode != 0)
+                System.err.println("Error running " + String.join(" ", commands));
+            return exitCode;
+        } catch (Exception ex) {
+            System.err.println("Error running " + String.join(" ", commands));
+            System.err.println(ex.getMessage());
+            return 1;
+        }
+    }
+
+    public static final String ddlogLibrary = "ddlogapi";
+
+    public static String libName(String lib) {
+        String os = System.getProperty("os.name").toLowerCase();
+        if (os.equals("darwin") || os.equals("mac os x"))
+            return "lib" + lib + ".dylib";
+        else if (os.equals("windows"))
+            return lib + ".dll";
+        else
+            return "lib" + lib + ".so";
+    }
+
+    /**
+     * Compile a ddlog program stored in a file and generate Rust sources in a directory
+     * named <program>_ddlog
+     * @param ddlogFile  Pathname to the ddlog program.
+     * @param verbose    If true show stdout and stderr of processes invoked.
+     * @param ddlogLibraryPath  Additional list of paths for needed ddlog libraries.
+     * @return  true on success.
+     */
+    public static boolean compileDDlogProgramToRust(
+            String ddlogFile,
+            boolean verbose,
+            String... ddlogLibraryPath) {
+        Path path = Paths.get(ddlogFile);
+        Path dir = path.getParent();
+        Path file = path.getFileName();
+
+        List<String> command = new ArrayList<String>();
+        // Run DDlog compiler
+        command.add("ddlog");
+        command.add("-i");
+        String currentDir = System.getProperty("user.dir");
+        command.add(file.toString());
+        for (String s: ddlogLibraryPath) {
+            command.add("-L");
+            if (!s.startsWith("/"))
+                s = currentDir + "/" + s;
+            command.add(s);
+        }
+        int exitCode = runProcess(command, dir != null ? dir.toString() : null, verbose);
+        return exitCode == 0;
+    }
+
+    /**
+     * Compile a ddlog program stored in a file and generate
+     * a shared library named *ddlogapi.*.
+     * @param ddlogFile  Pathname to the ddlog program.
+     * @param verbose    If true show stdout and stderr of processes invoked.
+     * @param ddlogLibraryPath  Additional list of paths for needed ddlog libraries.
+     * @return  true on success.
+     */
+    public static boolean compileDDlogProgram(
+        String ddlogFile,
+        boolean verbose,
+        String... ddlogLibraryPath) throws DDlogException {
+        boolean success = compileDDlogProgramToRust(ddlogFile, verbose, ddlogLibraryPath);
+        if (!success)
+            return false;
+
+        String os = System.getProperty("os.name").toLowerCase();
+        String ddlogInstallationPath = ddlogInstallationPath();
+
+        List<String> command = new ArrayList<String>();
+        command.add("cargo");
+        command.add("build");
+        command.add("--release");
+        int dot = ddlogFile.lastIndexOf('.');
+        String rustDir = ddlogFile;
+        if (dot >= 0)
+            rustDir = ddlogFile.substring(0, dot);
+        rustDir += "_ddlog";
+        int exitCode = runProcess(command, rustDir, verbose);
+        if (exitCode != 0)
+            return false;
+
+        // Run C compiler
+        command.clear();
+        command.add("cc");
+        command.add("-shared");
+        command.add("-fPIC");
+        String javaHome = System.getenv("JAVA_HOME");
+
+        String ospath = os;
+        if (os.equals("mac os x"))
+            ospath = "darwin";
+        command.add("-I" + javaHome + "/include");
+        command.add("-I" + javaHome + "/include/" + ospath);
+        command.add("-I" + rustDir);
+        command.add("-I" + ddlogInstallationPath + "/lib");
+        command.add(ddlogInstallationPath + "/java/ddlogapi.c");
+        command.add("-L" + rustDir + "/target/release/");
+        String libRoot = Paths.get(rustDir).getFileName().toString();
+        command.add("-l" + libRoot);
+        /*
+          Flags for the linker.
+          command.add("-z");
+          command.add("noexecstack");
+        */
+        command.add("-o");
+        command.add(libName(ddlogLibrary));
+        exitCode = runProcess(command, null, verbose);
+        return exitCode == 0;
+    }
+
+    static boolean loaded = false;
+
+    /**
+     * Load the the ddlogLibrary in the current process.
+     * @return The API that can be used to interact with this library.
+     */
+    public static DDlogAPI loadDDlog() throws DDlogException {
+        if (loaded)
+            throw new RuntimeException("Attempt to load a secon dddlog library. "
+                    + " Only one library can be loaded safely.");
+        loaded = true;
+        final Path libraryPath = Paths.get(libName(ddlogLibrary)).toAbsolutePath();
+        System.load(libraryPath.toString());
+        return new ddlogapi.DDlogAPI(1, null, false);
     }
 }

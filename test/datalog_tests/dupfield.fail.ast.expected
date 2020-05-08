@@ -1,7 +1,9 @@
 error: ./test/datalog_tests/dupfield.fail.dl:2:22-2:31: Multiple definitions of argument f at the following locations:
   ./test/datalog_tests/dupfield.fail.dl:2:22-2:31
   ./test/datalog_tests/dupfield.fail.dl:2:33-2:43
+typedef t = Constr { f: bigint, f: bigint }
+                     ^^^^^^^^^
 
 Failed to parse input file: "./test/datalog_tests/dupfield.fail.dl" (line 6, column 1):
 unexpected end of input
-expecting "="
+expecting "=" or "{"

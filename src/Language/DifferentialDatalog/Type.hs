@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018 VMware, Inc.
+Copyright (c) 2018-2020 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -37,7 +37,7 @@ module Language.DifferentialDatalog.Type(
     relKeyType,
     typ', typ'',
     typDeref',
-    isBool, isBit, isSigned, isBigInt, isInteger, isFP, isString, isStruct, isTuple, isGroup, isMap, isRef, isDouble, isFloat,
+    isBool, isBit, isSigned, isBigInt, isInteger, isFP, isString, isStruct, isTuple, isGroup, isMap, isTinySet, isRef, isDouble, isFloat,
     checkTypesMatch,
     typesMatch,
     typeNormalize,
@@ -52,8 +52,9 @@ module Language.DifferentialDatalog.Type(
     funcTypeArgSubsts,
     funcGroupArgTypes,
     sET_TYPES,
+    tINYSET_TYPE,
     mAP_TYPE,
-    iNTERNED_TYPE,
+    iNTERNED_TYPES,
     gROUP_TYPE,
     rEF_TYPE,
     checkIterable,
@@ -67,18 +68,22 @@ import Control.Monad.Identity
 import qualified Data.Map as M
 --import Debug.Trace
 
-import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Ops
 import {-# SOURCE #-} Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Name
+import Language.DifferentialDatalog.Function
 import Language.DifferentialDatalog.ECtx
+import Language.DifferentialDatalog.Error
 --import {-# SOURCE #-} Relation
 
 sET_TYPES :: [String]
-sET_TYPES = ["std.Set", "std.Vec", "tinyset.Set64"]
+sET_TYPES = ["std.Set", "std.Vec", tINYSET_TYPE]
+
+tINYSET_TYPE :: String
+tINYSET_TYPE = "tinyset.Set64"
 
 -- Dynamically allocated types.
 dYNAMIC_TYPES :: [String]
@@ -93,8 +98,8 @@ rEF_TYPE = "std.Ref"
 mAP_TYPE :: String
 mAP_TYPE = "std.Map"
 
-iNTERNED_TYPE :: String
-iNTERNED_TYPE = "intern.IObj"
+iNTERNED_TYPES :: [String]
+iNTERNED_TYPES = ["intern.IObj", "internment.Intern"]
 
 -- | An object with type
 class WithType a where
@@ -132,7 +137,6 @@ typeIsPolymorphic TUser{..}   = any typeIsPolymorphic typeArgs
 typeIsPolymorphic TVar{}      = True
 typeIsPolymorphic TOpaque{..} = any typeIsPolymorphic typeArgs
 
-
 -- | Matches function parameter types against concrete argument types, e.g.,
 -- given
 -- > [(t<'A>, t<q<'B>>)]
@@ -155,7 +159,7 @@ unifyTypes d p ctx ts = do
 checkConflicts :: (MonadError String me) => DatalogProgram -> Pos -> String -> String -> [Type] -> me Type
 checkConflicts d p ctx v (t:ts) = do
     mapM_ (\t' -> when (not $ typesMatch d t t')
-                       $ err p $ "Conflicting bindings " ++ show t ++ " and " ++ show t' ++ " for type variable '" ++ v ++ " " ++ ctx) ts
+                       $ err d p $ "Conflicting bindings " ++ show t ++ " and " ++ show t' ++ " for type variable '" ++ v ++ " " ++ ctx) ts
     return t
 checkConflicts _ _ _ _ [] = error $ "Type.checkConflicts: invalid input"
 
@@ -178,7 +182,7 @@ unifyTypes' d p ctx (a, c) =
         (TOpaque _ n1 as1, TOpaque _ n2 as2) | n1 == n2
                                              -> unifyTypes d p ctx $ zip as1 as2
         (TVar _ n1       , t)                -> return $ M.singleton n1 t
-        _                                    -> err p $ "Cannot match expected type " ++ show a ++ " and actual type " ++ show c ++ " " ++ ctx
+        _                                    -> err d p $ "Cannot match expected type " ++ show a ++ " and actual type " ++ show c ++ " " ++ ctx
     where a' = typ'' d a
           c' = typ'' d c
 
@@ -216,17 +220,6 @@ relKeyType d rel =
 exprNodeType :: (MonadError String me) => DatalogProgram -> ECtx -> ExprNode Type -> me Type
 exprNodeType d ctx e = fmap ((flip atPos) (pos e)) $ exprNodeType' d ctx (exprMap Just e)
 
-funcTypeArgSubsts :: (MonadError String me) => DatalogProgram -> Pos -> Function -> [Type] -> me (M.Map String Type)
-funcTypeArgSubsts d p f@Function{..} argtypes =
-    unifyTypes d p ("in call to " ++ funcShowProto f) (zip (map typ funcArgs ++ [funcType]) argtypes)
-
--- | Functions that take an argument of type `Group<>` are treated in a special
--- way in Compile.hs. This function returns the list of `Group` types passed as
--- arguments to the function.
-funcGroupArgTypes :: DatalogProgram -> Function -> [Type]
-funcGroupArgTypes d Function{..} =
-    nub $ filter (isGroup d) $ map typ funcArgs
-
 structTypeArgs :: (MonadError String me) => DatalogProgram -> Pos -> ECtx -> String -> [(String, Type)] -> me [Type]
 structTypeArgs d p ctx cname argtypes = do
     let TypeDef{..} = consType d cname
@@ -239,61 +232,61 @@ structTypeArgs d p ctx cname argtypes = do
     subst <- unifyTypes d p ("in type constructor " ++ cname)
                         $ expect ++ mapMaybe (\a -> (typ a,) <$> lookup (name a) argtypes) consArgs
     mapM (\a -> case M.lookup a subst of
-                     Nothing -> err p $ "Unable to bind type argument '" ++ a ++ " of type " ++ tdefName ++
+                     Nothing -> err d p $ "Unable to bind type argument '" ++ a ++ " of type " ++ tdefName ++
                                         " to a concrete type in a call to type constructor " ++ cname
                      Just t  -> return t)
          tdefArgs
 
-eunknown :: (MonadError String me) => Pos -> ECtx -> me Type
-eunknown p ctx = err p $ "Expression has unknown type in " ++ show ctx
+eunknown :: (MonadError String me) => DatalogProgram -> Pos -> ECtx -> me Type
+eunknown d p ctx = err d p $ "Expression has unknown type in " ++ show ctx
 
-mtype2me :: (MonadError String me) => Pos -> ECtx -> Maybe Type -> me Type
-mtype2me p ctx Nothing  = err p $ "Expression has unknown type in " ++ show ctx
-mtype2me _ _   (Just t) = return t
+mtype2me :: (MonadError String me) => DatalogProgram -> Pos -> ECtx -> Maybe Type -> me Type
+mtype2me d p ctx Nothing  = err d p $ "Expression has unknown type in " ++ show ctx
+mtype2me _ _ _   (Just t) = return t
 
 exprNodeType' :: (MonadError String me) => DatalogProgram -> ECtx -> ExprNode (Maybe Type) -> me Type
 exprNodeType' d ctx (EVar p v)            =
     let (lvs, rvs) = ctxMVars d ctx in
     case lookup v $ lvs ++ rvs of
-         Just mt -> mtype2me p ctx mt
+         Just mt -> mtype2me d p ctx mt
          Nothing | ctxInRuleRHSPositivePattern ctx -- handle implicit vardecls in rules
-                 -> mtype2me p ctx $ ctxExpectType d ctx
-         _       -> eunknown p ctx
+                 -> mtype2me d p ctx $ ctxExpectType d ctx
+         _       -> eunknown d p ctx
 
 exprNodeType' d ctx (EApply p f mas)      = do
     let func = getFunc d f
     let t = funcType func
-    as <- mapM (mtype2me p ctx) mas
+    as <- mapM (mtype2me d p ctx) mas
     -- Infer types of type variables in 'f'.  Use information about types of concrete arguments.
     -- In addition, if expected return type is know from context, use that as well.
     subst <- funcTypeArgSubsts d p func $ as ++ maybeToList (ctxExpectType d ctx)
     -- 'funcTypeArgSubsts' may succeed without inferring all type variables if the return type
     -- uses type variables that do not occur among function arguments (e.g., `map_empty(): Map<'K,'V>`).
     -- We therefore check that type inference has succeeded.
-    check (M.size subst == length (funcTypeVars func)) p
+    check d (M.size subst == length (funcTypeVars func)) p
           $ "Could not infer types of the following type variables (see the signature of function " ++ f ++ "): " ++
             (intercalate ", " $ map ("'" ++) $ funcTypeVars func \\ M.keys subst)
     return $ typeSubstTypeArgs subst t
 
-exprNodeType' _ ctx (EField p Nothing _)  = eunknown p ctx
+exprNodeType' d ctx (EField p Nothing _)  = eunknown d p ctx
 exprNodeType' d _   (EField p (Just e) f) = do
     case typDeref' d e of
          t@TStruct{} ->
              case find ((==f) . name) $ structFields t of
-                  Nothing  -> err p  $ "Unknown field \"" ++ f ++ "\" in struct of type " ++ show t
-                  Just fld -> do check (not $ structFieldGuarded t f) p
+                  Nothing  -> err d p $ "Unknown field \"" ++ f ++ "\" in struct of type " ++ show t
+                  Just fld -> do check d (not $ structFieldGuarded t f) p
                                        $ "Access to guarded field \"" ++ f ++ "\""
                                  return $ fieldType fld
-         _           -> err (pos e) $ "Expression is not a struct"
+         _           -> err d (pos e) $ "Expression is not a struct"
 
 
-exprNodeType' _ ctx (ETupField p Nothing _)  = eunknown p ctx
+exprNodeType' d ctx (ETupField p Nothing _)  = eunknown d p ctx
 exprNodeType' d _   (ETupField p (Just e) i) = do
     case typDeref' d e of
-         t@TTuple{} -> do check (((length $ typeTupArgs t) > i) && (0 <= i)) p
+         t@TTuple{} -> do check d (((length $ typeTupArgs t) > i) && (0 <= i)) p
                             $ "Tuple \"" ++ show t ++ "\" does not have " ++ show i ++ " fields"
                           return $ (typeTupArgs t) !! i
-         _           -> err (pos e) $ "Expression is not a tuple"
+         _           -> err d (pos e) $ "Expression is not a tuple"
 
 exprNodeType' _ _   (EBool _ _)           = return tBool
 
@@ -305,7 +298,7 @@ exprNodeType' d ctx (EInt p _)            = do
          Just t@(TDouble _)   -> return t
          Just t@(TFloat _)    -> return t
          Nothing              -> return tInt
-         _                    -> eunknown p ctx
+         _                    -> eunknown d p ctx
 
 exprNodeType' _ _   (EString _ _)         = return tString
 exprNodeType' _ _   (EBit _ w _)          = return $ tBit w
@@ -315,16 +308,16 @@ exprNodeType' _ _   (EDouble _ _)         = return $ tDouble
 
 exprNodeType' d ctx (EStruct p c mas)     = do
     let tdef = consType d c
-    as <- mapM (\(f, mt) -> (f,) <$> mtype2me p ctx mt) mas
+    as <- mapM (\(f, mt) -> (f,) <$> mtype2me d p ctx mt) mas
     targs <- structTypeArgs d p ctx c as
     return $ tUser (name tdef) targs
 
-exprNodeType' _ ctx (ETuple p fs)         = fmap tTuple $ mapM (mtype2me p ctx) fs
+exprNodeType' d ctx (ETuple p fs)         = fmap tTuple $ mapM (mtype2me d p ctx) fs
 exprNodeType' _ _   (ESlice _ _ h l)      = return $ tBit $ h - l + 1
-exprNodeType' _ ctx (EMatch p _ cs)       = mtype2me p ctx $ (fromJust . snd) <$> find (isJust . snd) cs
-exprNodeType' d ctx (EVarDecl p _)        = mtype2me p ctx $ ctxExpectType d ctx
-exprNodeType' _ ctx (ESeq p _ e2)         = mtype2me p ctx e2
-exprNodeType' _ ctx (EITE p _ Nothing e)  = mtype2me p ctx e
+exprNodeType' d ctx (EMatch p _ cs)       = mtype2me d p ctx $ (fromJust . snd) <$> find (isJust . snd) cs
+exprNodeType' d ctx (EVarDecl p _)        = mtype2me d p ctx $ ctxExpectType d ctx
+exprNodeType' d ctx (ESeq p _ e2)         = mtype2me d p ctx e2
+exprNodeType' d ctx (EITE p _ Nothing e)  = mtype2me d p ctx e
 exprNodeType' _ _   (EITE _ _ (Just t) _) = return t
 exprNodeType' _ _   (EFor _ _ _ _)        = return $ tTuple []
 exprNodeType' _ _   (ESet _ _ _)          = return $ tTuple []
@@ -359,19 +352,19 @@ exprNodeType' d _   (EBinOp _ op (Just e1) (Just e2)) =
     where t1 = typ' d e1
           t2 = typ' d e2
 
-exprNodeType' _ ctx (EBinOp p ShiftR e1 _) = mtype2me p ctx e1
-exprNodeType' _ ctx (EBinOp p ShiftL e1 _) = mtype2me p ctx e1
-exprNodeType' _ ctx (EBinOp p _ _ _)       = eunknown p ctx
+exprNodeType' d ctx (EBinOp p ShiftR e1 _) = mtype2me d p ctx e1
+exprNodeType' d ctx (EBinOp p ShiftL e1 _) = mtype2me d p ctx e1
+exprNodeType' d ctx (EBinOp p _ _ _)       = eunknown d p ctx
 exprNodeType' _ _   (EUnOp _ Not _)        = return tBool
 exprNodeType' d _   (EUnOp _ BNeg (Just e))= return $ typ' d e
 exprNodeType' d _   (EUnOp _ UMinus (Just e)) = return $ typ' d e
-exprNodeType' _ ctx (EUnOp p _ _)          = eunknown p ctx
-exprNodeType' d ctx (EPHolder p)           = mtype2me p ctx $ ctxExpectType d ctx
-exprNodeType' _ ctx (EBinding p _ e)       = mtype2me p ctx e
+exprNodeType' d ctx (EUnOp p _ _)          = eunknown d p ctx
+exprNodeType' d ctx (EPHolder p)           = mtype2me d p ctx $ ctxExpectType d ctx
+exprNodeType' d ctx (EBinding p _ e)       = mtype2me d p ctx e
 exprNodeType' _ _   (ETyped _ _ t)         = return t
 exprNodeType' _ _   (EAs _ _ t)            = return t
 exprNodeType' _ _   (ERef _ (Just t))      = return $ tOpaque rEF_TYPE [t]
-exprNodeType' _ ctx (ERef p _)             = eunknown p ctx
+exprNodeType' d ctx (ERef p _)             = eunknown d p ctx
 
 --exprTypes :: Refine -> ECtx -> Expr -> [Type]
 --exprTypes r ctx e = nub $ execState (exprTraverseTypeM r (\ctx' e' -> modify ((fromJust $ exprNodeType r ctx' e'):)) ctx e) []
@@ -495,6 +488,11 @@ isMap d a = case typ' d a of
                  TOpaque _ t _ | t == mAP_TYPE -> True
                  _                             -> False
 
+isTinySet :: (WithType a) => DatalogProgram -> a -> Bool
+isTinySet d a = case typ' d a of
+                 TOpaque _ t _ | t == tINYSET_TYPE -> True
+                 _                                 -> False
+
 isRef :: (WithType a) => DatalogProgram -> a -> Bool
 isRef d a = case typ' d a of
                  TOpaque _ t _ | t == rEF_TYPE -> True
@@ -504,7 +502,7 @@ isRef d a = case typ' d a of
 -- throw exception if they don't.
 checkTypesMatch :: (MonadError String me, WithType a, WithType b) => Pos -> DatalogProgram -> a -> b -> me ()
 checkTypesMatch p d x y =
-    check (typesMatch d x y) p
+    check d (typesMatch d x y) p
           $ "Incompatible types " ++ show (typ x) ++ " and " ++ show (typ y)
 
 
@@ -831,13 +829,18 @@ typeMapM fun t@TOpaque{..} = do
 typeMap :: (Type -> Type) -> Type -> Type
 typeMap f t = runIdentity $ typeMapM (return . f) t
 
-typeIterType :: DatalogProgram -> Type -> Maybe Type
+-- Returns iterator type when iterating over a collection (element type for
+-- sets, vectors, and groups, key-value pair for maps).  The Boolean flag in 
+-- the returned tuple indicates whether the collection iterates by reference
+-- (True) or by value (False) in Rust.
+typeIterType :: DatalogProgram -> Type -> Maybe (Type, Bool)
 typeIterType d t =
     case typ' d t of
-         TOpaque _ tname [t']  | elem tname sET_TYPES -> Just t'
-         TOpaque _ tname [k,v] | tname == mAP_TYPE    -> Just $ tTuple [k,v]
-         TOpaque _ tname [_,v] | tname == gROUP_TYPE  -> Just v
-         _                                            -> Nothing
+         TOpaque _ tname [t']  | tname == tINYSET_TYPE -> Just (t', False)            -- Tinysets iterate by value.
+         TOpaque _ tname [t']  | elem tname sET_TYPES  -> Just (t', True)             -- Other sets iterate by reference.
+         TOpaque _ tname [k,v] | tname == mAP_TYPE     -> Just (tTuple [k,v], False)  -- Maps iterate by value.
+         TOpaque _ tname [_,v] | tname == gROUP_TYPE   -> Just (v, False)             -- Groups iterate by value.
+         _                                             -> Nothing
 
 typeIsIterable :: (WithType a) =>  DatalogProgram -> a -> Bool
 typeIsIterable d x =
@@ -849,5 +852,5 @@ typeIsIterable d x =
 
 checkIterable :: (MonadError String me, WithType a) => String -> Pos -> DatalogProgram -> a -> me ()
 checkIterable prefix p d x =
-    check (typeIsIterable d x) p $
+    check d (typeIsIterable d x) p $
           prefix ++ " must have one of these types: " ++ intercalate ", " sET_TYPES ++ ", or " ++ mAP_TYPE ++ " but its type is " ++ show (typ x)

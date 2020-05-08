@@ -1,0 +1,23 @@
+start;
+
+insert std_test.Vector([5,4,3,2,1]),
+insert std_test.Vector([]),
+insert std_test.Vector([5]),
+insert std_test.Vector([0,100,-100]),
+
+commit dump_changes;
+
+start;
+
+insert std_test.SetPairs([5,4,3,2,1], [3,2,1]),
+insert std_test.SetPairs([], []),
+insert std_test.SetPairs([1000], [1]),
+insert std_test.SetPairs([3,2,1], [4,3,2]),
+
+commit dump_changes;
+
+start;
+
+insert std_test.Maps([(5, "a"), (4, "b"), (3, "c"), (2, "d"), (1, "e")]),
+
+commit dump_changes;

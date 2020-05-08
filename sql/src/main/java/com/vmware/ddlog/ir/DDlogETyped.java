@@ -21,6 +21,10 @@ public class DDlogETyped extends DDlogExpression {
 
     @Override
     public String toString() {
+        // Special handling for nulls
+        if (this.expr.is(DDlogENull.class))
+            // avoid writing the type twice
+            return "None{}: " + this.getType().toString();
         return this.expr.toString() + ": " + this.getType().toString();
     }
 }

@@ -69,11 +69,11 @@ Pow2("The square of ${x} is ${x*x}") :- Number(x).
 typedef ip_addr_t = IPAddr{addr: bit<32>}
 typedef mac_addr_t = MACAddr{addr: bit<48>}
 
-function ip_addr_t2string(ip: ip_addr_t): string = {
+function ip_addr_t2string(ip: ip_addr_t): string {
     "${ip.addr[31:24]}.${ip.addr[23:16]}.${ip.addr[15:8]}.${ip.addr[7:0]}"
 }
 
-function mac_addr_t2string(mac: mac_addr_t): string = {
+function mac_addr_t2string(mac: mac_addr_t): string {
     "${hex(mac.addr[47:40])}:${hex(mac.addr[39:32])}:${hex(mac.addr[31:24])}:\
     \${hex(mac.addr[23:16])}:${hex(mac.addr[15:8])}:${hex(mac.addr[7:0])}"
 }
@@ -83,7 +83,7 @@ typedef nethost_t = NHost {
     mac: mac_addr_t
 }
 
-function nethost_t2string(h: nethost_t): string = {
+function nethost_t2string(h: nethost_t): string {
     "Host: IP=${h.ip}, MAC=${h.mac}"
 }
 
@@ -98,13 +98,13 @@ NetHostString(id, "${h}") :- NetHost(id, h).
 
 // Form IP address from bytes using bit vector concatenation
 function ip_from_bytes(b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>)
-    : ip_addr_t =
+    : ip_addr_t
 {
     IPAddr{.addr = b3 ++ b2 ++ b1 ++ b0}
 }
 
 // Check for multicast IP address using bit slicing
-function is_multicast_addr(ip: ip_addr_t): bool = ip.addr[31:28] == 14
+function is_multicast_addr(ip: ip_addr_t): bool { ip.addr[31:28] == 14 }
 
 input relation Bytes(b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>)
 output relation Address(addr: ip_addr_t)
@@ -119,7 +119,7 @@ MCastAddress(a) :- Address(a), is_multicast_addr(a).
 
 function addr_port(ip: ip_addr_t,
                    proto: string,
-                   preferred_port: bit<16>): string = {
+                   preferred_port: bit<16>): string {
     var port: bit<16> =
         match (proto) {
             "FTP"   -> 20,
@@ -165,6 +165,25 @@ SanitizedEndpoint(endpoint) :-
     not Blacklisted(endpoint).
 
 /*
+ * Example: @-bindings.
+ */
+typedef Book = Book {
+    author: string,
+    title: string
+}
+
+input relation Library(book: Book)
+input relation Author(name: string, born: u32)
+
+output relation BookByAuthor(book: Book, author: Author)
+
+BookByAuthor(b, author) :-
+    // Variable `b` will be bound to the entire `Book` struct;
+    // `author_name` will be bound to `b.author`.
+    Library(.book = b@Book{.author = author_name}),
+    author in Author(.name = author_name).
+
+/*
  * Example: recursion
  * (see path.dl)
  */
@@ -174,8 +193,9 @@ SanitizedEndpoint(endpoint) :-
  */
 
 extern function split(s: string, sep: string): Vec<string>
-function split_ip_list(x: string): Vec<string> =
+function split_ip_list(x: string): Vec<string> {
    split(x, " ")
+}
 
 input relation HostAddress(host: bit<64>, addrs: string)
 output relation HostIP(host: bit<64>, addr: string)
@@ -183,7 +203,7 @@ output relation HostIP(host: bit<64>, addr: string)
 HostIP(host, addr) :- HostAddress(host, addrs),
                       var addr = FlatMap(split_ip_list(addrs)).
 
-function vsep(strs: Vec<string>): string = {
+function vsep(strs: Vec<string>): string {
     var res = "";
     for (s in strs) {
         res = res ++ s ++ "\n"
@@ -201,7 +221,7 @@ HostIPVSep(host, vaddrs) :- HostAddress(host, addrs),
  */
 
 // Returns only even elements of the vector.
-function evens(vec: Vec<bigint>): Vec<bigint> = {
+function evens(vec: Vec<bigint>): Vec<bigint> {
     var res: Vec<bigint> = vec_empty();
     for (x in vec) {
         if (x % 2 != 0) { continue };
@@ -216,7 +236,7 @@ output relation Evens(evens_and_odds: Vec<bigint>, evens: Vec<bigint>)
 Evens(vec, evens(vec)) :- EvensAndOdds(vec).
 
 // Returns prefix of `vec` before the first occurrence of value `v`.
-function prefixBefore(vec: Vec<'A>, v: 'A): Vec<'A> = {
+function prefixBefore(vec: Vec<'A>, v: 'A): Vec<'A> {
     var res: Vec<'A> = vec_empty();
     for (x in vec) {
         if (x == v) { break };
@@ -260,7 +280,7 @@ WorstPrice(item, best_price) :-
 
 output relation BestVendor(item: string, vendor: string, price: bit<64>)
 
-function best_vendor(g: Group<'K, (string, bit<64>)>): (string, bit<64>) =
+function best_vendor(g: Group<'K, (string, bit<64>)>): (string, bit<64>)
 {
     var min_vendor = "";
     var min_price: bit<64> = 'hffffffffffffffff;
@@ -278,7 +298,7 @@ BestVendor(item, best_vendor, best_price) :-
     var best_vendor_price = Aggregate((item), best_vendor((vendor, price))),
     (var best_vendor, var best_price) = best_vendor_price.
 
-function best_vendor_string(g: Group<string, (string, bit<64>)>): string =
+function best_vendor_string(g: Group<string, (string, bit<64>)>): string
 {
     var min_vendor = "";
     var min_price: bit<64> = 'hffffffffffffffff;
@@ -336,7 +356,7 @@ typedef udp_pkt_t = UDPPkt { src     : bit<16>
 
 function tcp6_packet(ethsrc: bit<48>, ethdst: bit<48>,
                      ipsrc: ip6_addr_t, ipdst: ip6_addr_t,
-                     srcport: bit<16>, dstport: bit<16>): eth_pkt_t =
+                     srcport: bit<16>, dstport: bit<16>): eth_pkt_t
 {
     EthPacket {
         // Explicitly name constructor arguments for clarity
@@ -360,14 +380,14 @@ function tcp6_packet(ethsrc: bit<48>, ethdst: bit<48>,
     }
 }
 
-function pkt_ip4(pkt: eth_pkt_t): ip4_pkt_t = {
+function pkt_ip4(pkt: eth_pkt_t): ip4_pkt_t {
     match (pkt) {
         EthPacket{.payload = EthIP4{ip4}} -> ip4,
         _                                 -> IP4Pkt{0,0,0,IPOther}
     }
 }
 
-function pkt_ip4_(pkt: eth_pkt_t): Option<ip4_pkt_t> = {
+function pkt_ip4_(pkt: eth_pkt_t): Option<ip4_pkt_t> {
     match (pkt) {
         EthPacket{.payload = EthIP4{ip4}} -> Some{ip4},
         _                                 -> None
@@ -382,7 +402,7 @@ output relation TCPDstPort(port: bit<16>)
 TCPDstPort(port) :- Packet(EthPacket{.payload = EthIP4{IP4Pkt{.payload = IPTCP{TCPPkt{.dst = port}}}}}).
 TCPDstPort(port) :- Packet(EthPacket{.payload = EthIP6{IP6Pkt{.payload = IPTCP{TCPPkt{.dst = port}}}}}).
 
-function pkt_udp_port(pkt: eth_pkt_t): bit<16> = {
+function pkt_udp_port(pkt: eth_pkt_t): bit<16> {
     match (pkt) {
         EthPacket{.payload = EthIP4{IP4Pkt{.payload = IPUDP{UDPPkt{.dst = port}}}}} -> port,
         EthPacket{.payload = EthIP6{IP6Pkt{.payload = IPUDP{UDPPkt{.dst = port}}}}} -> port,
@@ -394,7 +414,7 @@ output relation UDPDstPort(port: bit<16>)
 
 UDPDstPort(port) :- Packet(pkt), var port = pkt_udp_port(pkt), port != 0.
 
-function pkt_udp_port2(pkt: eth_pkt_t): Option<bit<16>> = {
+function pkt_udp_port2(pkt: eth_pkt_t): Option<bit<16>> {
     match (pkt) {
         EthPacket{.payload = EthIP4{IP4Pkt{.payload = IPUDP{UDPPkt{.dst = port}}}}} -> Some{port},
         EthPacket{.payload = EthIP6{IP6Pkt{.payload = IPUDP{UDPPkt{.dst = port}}}}} -> Some{port},
@@ -412,7 +432,7 @@ UDPDstPort2(port) :- Packet(pkt), Some{var port} = pkt_udp_port2(pkt).
 
 input relation KnownHost(addr: ip4_addr_t)
 
-function addr_to_tuple(addr: ip4_addr_t): (bit<8>, bit<8>, bit<8>, bit<8>) = {
+function addr_to_tuple(addr: ip4_addr_t): (bit<8>, bit<8>, bit<8>, bit<8>) {
     (addr[31:24], addr[23:16], addr[15:8], addr[7:0])
 }
 
@@ -436,7 +456,7 @@ IntranetHost3(addr) :- KnownHost(addr),
 
 input relation Person (name: string, nationality: string, occupation: string)
 
-function is_target_audience(person: Person): bool = {
+function is_target_audience(person: Person): bool {
     (person.nationality == "USA") and
     (person.occupation == "student")
 }
@@ -469,6 +489,41 @@ TopScore(school, top_score) :-
 TopScore(school, top_score) :-
     StudentInfo(student, &School{.name = school}),
     var top_score = Aggregate((school), group_max(student.sat_score)).
+
+/*
+ * Example: interned values
+ */
+
+input relation OnlineOrder(order_id: u64, item: istring)
+output relation ItemInOrders(item: istring, orders: Vec<u64>)
+
+ItemInOrders(item, orders) :-
+    OnlineOrder(order, item),
+    var orders = Aggregate((item), group2vec(order)).
+
+output relation OrderFormatted(order: istring)
+
+OrderFormatted(formatted) :-
+    OnlineOrder(order, item),
+    var formatted: istring = intern("order: ${order}, item: ${ival(item)}").
+
+output relation MilkOrders(order: u64)
+MilkOrders(order) :- OnlineOrder(order, i"milk").
+
+typedef StoreItem = StoreItem {
+    name: string,
+    description: istring
+}
+
+typedef IStoreItem = Intern<StoreItem>
+
+input relation StoreInventory(item: IStoreItem)
+
+output relation InventoryItemName(name: istring)
+
+InventoryItemName(name) :-
+    StoreInventory(item),
+    var name = intern(ival(item).name).
 
 /*
  * Example: Advanced features

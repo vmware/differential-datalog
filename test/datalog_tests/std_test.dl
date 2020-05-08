@@ -1,0 +1,26 @@
+input relation Vector(v: Vec<bigint>)
+output relation SortedVector(v: Vec<bigint>)
+output relation SortedVectorInPlace(v: Vec<bigint>)
+
+SortedVector(sorted) :-
+    Vector(v),
+    var sorted = vec_sort_imm(v).
+
+SortedVectorInPlace(sorted) :-
+    Vector(v),
+    var sorted = {
+        var v2 = v;
+        vec_sort(v2);
+        v2
+    }.
+
+input relation SetPairs(s1: Set<u64>, s2: Set<u64>)
+output relation SetDifference(s1: Set<u64>, s2: Set<u64>, diff: Set<u64>)
+
+SetDifference(s1, s2, set_difference(s1, s2)) :- SetPairs(s1, s2).
+SetDifference(s2, s1, set_difference(s2, s1)) :- SetPairs(s1, s2).
+
+input relation Maps(m: Map<u64, string>)
+output relation MapSizes(m: Map<u64, string>, size: usize)
+
+MapSizes(m, map_size(m)) :- Maps(m).
