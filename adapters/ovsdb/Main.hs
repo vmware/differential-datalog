@@ -40,13 +40,14 @@ import qualified Data.ByteString.Lazy.Char8 as LZ
 import Language.DifferentialDatalog.OVSDB.Compile
 import Language.DifferentialDatalog.Version
 
-data TOption = OVSFile     String
-             | OutputTable String
-             | ROColumn    String
-             | RWColumn    String
-             | ConfigJsonI String
-             | ConfigJsonO String
-             | OutputFile  String
+data TOption = OVSFile         String
+             | OutputTable     String
+             | OutputOnlyTable String
+             | ROColumn        String
+             | RWColumn        String
+             | ConfigJsonI     String
+             | ConfigJsonO     String
+             | OutputFile      String
              | Version
 
 data Action = ActionCompile
@@ -54,14 +55,15 @@ data Action = ActionCompile
             deriving Eq
 
 options :: [OptDescr TOption]
-options = [ Option ['v'] ["version"]       (NoArg Version)                     "Display DDlog version."
-          , Option ['f'] ["schema-file"]   (ReqArg OVSFile     "FILE")         "OVSDB schema file."
-          , Option ['c'] ["input-config"]  (ReqArg ConfigJsonI "FILE.json")    "Read options from Json configuration file (preceding options are ignored)."
-          , Option ['O'] ["output-config"] (ReqArg ConfigJsonO "FILE.json")    "Write preceding options to Json configuration file."
-          , Option ['o'] ["output-table"]  (ReqArg OutputTable "TABLE")        "Mark TABLE as output."
-          , Option []    ["ro"]            (ReqArg ROColumn    "TABLE.COLUMN") "Mark COLUMN as read-only.  If this option is specified for at least one column of TABLE, all TABLE columns that are not labeled read-only are presumed writable."
-          , Option []    ["rw"]            (ReqArg RWColumn    "TABLE.COLUMN") "Mark COLUMN as read-write.  If this option is specified for at least one column of TABLE, all TABLE columns that are not labeled read-write are presumed read-only.  This option is mutually exclusive with '--ro': at most one of the two options can be used for each TABLE."
-          , Option []    ["output-file"]   (ReqArg OutputFile  "FILE.dl")      "Write output to FILE.dl. If this option is not specified, output will be written to stdout."
+options = [ Option ['v'] ["version"]            (NoArg Version)                     "Display DDlog version."
+          , Option ['f'] ["schema-file"]        (ReqArg OVSFile     "FILE")         "OVSDB schema file."
+          , Option ['c'] ["input-config"]       (ReqArg ConfigJsonI "FILE.json")    "Read options from Json configuration file (preceding options are ignored)."
+          , Option ['O'] ["output-config"]      (ReqArg ConfigJsonO "FILE.json")    "Write preceding options to Json configuration file."
+          , Option ['o'] ["output-table"]       (ReqArg OutputTable "TABLE")        "Mark TABLE as output."
+          , Option []    ["output-only-table"]  (ReqArg OutputTable "TABLE")        "Mark TABLE as output."
+          , Option []    ["ro"]                 (ReqArg ROColumn    "TABLE.COLUMN") "Mark COLUMN as read-only.  If this option is specified for at least one column of TABLE, all TABLE columns that are not labeled read-only are presumed writable."
+          , Option []    ["rw"]                 (ReqArg RWColumn    "TABLE.COLUMN") "Mark COLUMN as read-write.  If this option is specified for at least one column of TABLE, all TABLE columns that are not labeled read-write are presumed read-only.  This option is mutually exclusive with '--ro': at most one of the two options can be used for each TABLE."
+          , Option []    ["output-file"]        (ReqArg OutputFile  "FILE.dl")      "Write output to FILE.dl. If this option is not specified, output will be written to stdout."
           ]
 
 data Config = Config { ovsSchemaFile:: FilePath
