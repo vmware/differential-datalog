@@ -351,7 +351,7 @@ extern int ddlog_apply_ovsdb_updates(ddlog_prog hprog, const char *prefix,
 /*
  * Dump Delta-Plus, Delta-Minus, and Delta-Update tables for OVSDB table
  * `table` declared in DDlog module `module`, as a sequence of OVSDB insert,
- * delete, and update commands in * JSON format.
+ * delete, and update commands in JSON format.
  *
  * `module` must be a fully qualified name of a module.
  *
