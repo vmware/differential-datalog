@@ -40,7 +40,7 @@ lazy_static! {
  * Logging API exposed to the DDlog program.
  * (see detailed documentation in `log.dl`)
  */
-pub fn log_log(module: &i32, level: &i32, msg: &String) -> bool {
+pub fn log_log(module: &i32, level: &i32, msg: &String) {
     let cfg = LOG_CONFIG.read().unwrap();
     if let Some((cb, current_level)) = cfg.mod_callbacks.get(&module) {
         if *level <= *current_level {
@@ -49,7 +49,6 @@ pub fn log_log(module: &i32, level: &i32, msg: &String) -> bool {
     } else if *level <= cfg.default_level && cfg.default_callback.is_some() {
         (cfg.default_callback.as_ref().unwrap())(*level, msg.as_str());
     }
-    true
 }
 
 /*

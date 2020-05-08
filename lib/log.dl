@@ -2,10 +2,10 @@
  * Logging API.
  *
  * This API has two facets.  First, it provides the `log()` function that can
- * be invoked from a DDlog rule to provide more visibility into the rule's
- * evaluation.  In addition to the usual log level and log message arguments,
- * this function takes a `module` argument, which identifies the module or
- * subsystem that this log message is associated with.
+ * be invoked from a DDlog rule's Inspect operator to provide more visibility
+ * into the rule's evaluation.  In addition to the usual log level and log
+ * message arguments, this function takes a `module` argument, which identifies
+ * the module or subsystem that this log message is associated with.
  *
  * Second, it provides a Rust configuration API that can only be invoked by the
  * "host" program to set log level for individual modules and to supply a
@@ -52,7 +52,7 @@
  *
  * // Use log() function in a rule
  * Span(entity, tn) :- Binding(entity, tn),
- *                     log(mod_SPAN_UUID(), 5, "Span(entity,tn) :- Binding(.entity=${deref(entity)},.tn=${deref(tn)}))").
+ *                     Inspect log(mod_SPAN_UUID(), 5, "Span(entity,tn) :- Binding(.entity=${deref(entity)},.tn=${deref(tn)}))").
  * ```
  *
  * In Java:
@@ -84,8 +84,8 @@ typedef log_level_t = signed<32>
  * `level`  - log level
  * `msg`    - error message (UTF-8)
  *
- * This function returns a `bool` so that it can be used as a filter inside
- * DDlog rules.  It always returns `true`.
+ * This function returns a `()` so that it can be used as part of an expression
+ * of an Inspect operator.
  */
 #[has_side_effects]
-extern function log(module: module_t, level: log_level_t, msg: string): bool
+extern function log(module: module_t, level: log_level_t, msg: string): ()
