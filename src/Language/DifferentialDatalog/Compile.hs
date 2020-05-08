@@ -2094,10 +2094,10 @@ mkArrangement d rel ArrangementSet{..} = do
     -- the pattern expression does not contain placeholders).
     let distinct_by_construction = relIsDistinct d rel && (not $ exprContainsPHolders arngPattern)
     return $
-        "Arrangement::Set{"                                                                                                         $$
-        "    name: r###\"" <> pp arngPattern <> " /*" <> (if arngDistinct then "antijon" else "semijoin") <> "*/\"###.to_string()," $$
-        (nest' $ "fmfun: &{fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<DDValue>" $$ fmfun $$ "__f},")                            $$
-        "    distinct:" <+> (if arngDistinct && not distinct_by_construction then "true" else "false")                              $$
+        "Arrangement::Set{"                                                                                                          $$
+        "    name: r###\"" <> pp arngPattern <> " /*" <> (if arngDistinct then "antijoin" else "semijoin") <> "*/\"###.to_string()," $$
+        (nest' $ "fmfun: &{fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<DDValue>" $$ fmfun $$ "__f},")                             $$
+        "    distinct:" <+> (if arngDistinct && not distinct_by_construction then "true" else "false")                               $$
         "}"
 
 -- Generate part of the arrangement computation that filters inputs and computes the key part of the
