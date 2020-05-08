@@ -153,12 +153,11 @@ mkTable isinput t@Table{..} = do
                let delta_update_rules = mkDeltaUpdateRules      t
                return $ (empty,
                          output,
-                         delta_plus          $+$
-                         delta_plus_rules    $+$
-                         delta_minus         $+$
-                         delta_minus_rules   $+$
-                         delta_update        $+$
-                         delta_update_rules  $+$
+                         (delta_plus   $+$ delta_plus_rules)                                   $+$
+                         -- Values from non-root tables will be deleted automatically by OVSDB,
+                         -- so we don't have to pay the cost of computing delta-minus tables.
+                         (if tableIsRoot t then delta_minus $+$ delta_minus_rules else empty)  $+$
+                         delta_update  $+$ delta_update_rules                                  $+$
                          input)
 
 mkTable' :: (?schema::OVSDBSchema, ?outputs::[OutputRelConfig], MonadError String me) => TableKind -> Table -> me Doc
@@ -325,3 +324,9 @@ tableGetNonROCols t =
                                             elem (name col) rw || (name col == "_uuid")) ovscols
     where
     ovscols = tableGetCols t
+
+tableIsRoot :: Table -> Bool
+tableIsRoot Table{..} =
+    any (\case
+          RootProperty True -> True
+          _                 -> False) tableProperties

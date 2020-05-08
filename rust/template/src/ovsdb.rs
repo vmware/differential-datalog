@@ -149,15 +149,17 @@ fn dump_delta(
 
     /* DeltaMinus */
     let minus_cmds: Result<Vec<String>, String> = {
-        let minus_table_id = Relations::try_from(minus_table_name.as_str())
-            .map_err(|()| format!("unknown table {}", minus_table_name))?;
-        db.get_rel(minus_table_id as RelId)
-            .iter()
-            .map(|(v, w)| {
-                assert!(*w == 1);
-                record_into_delete_str(v.clone().into_record(), table_str)
-            })
-            .collect()
+        match Relations::try_from(minus_table_name.as_str()) {
+            Ok(minus_table_id) => db
+                .get_rel(minus_table_id as RelId)
+                .iter()
+                .map(|(v, w)| {
+                    assert!(*w == 1);
+                    record_into_delete_str(v.clone().into_record(), table_str)
+                })
+                .collect(),
+            Err(()) => Ok(vec![]),
+        }
     };
     let mut minus_cmds = minus_cmds?;
 
