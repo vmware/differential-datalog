@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018 VMware, Inc.
+Copyright (c) 2018-2020 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -55,6 +55,7 @@ data Action = ActionCompile
             deriving Eq
 
 options :: [OptDescr TOption]
+<<<<<<< HEAD
 options = [ Option ['v'] ["version"]            (NoArg Version)                     "Display DDlog version."
           , Option ['f'] ["schema-file"]        (ReqArg OVSFile     "FILE")         "OVSDB schema file."
           , Option ['c'] ["input-config"]       (ReqArg ConfigJsonI "FILE.json")    "Read options from Json configuration file (preceding options are ignored)."
@@ -64,11 +65,22 @@ options = [ Option ['v'] ["version"]            (NoArg Version)                 
           , Option []    ["ro"]                 (ReqArg ROColumn    "TABLE.COLUMN") "Mark COLUMN as read-only.  If this option is specified for at least one column of TABLE, all TABLE columns that are not labeled read-only are presumed writable."
           , Option []    ["rw"]                 (ReqArg RWColumn    "TABLE.COLUMN") "Mark COLUMN as read-write.  If this option is specified for at least one column of TABLE, all TABLE columns that are not labeled read-write are presumed read-only.  This option is mutually exclusive with '--ro': at most one of the two options can be used for each TABLE."
           , Option []    ["output-file"]        (ReqArg OutputFile  "FILE.dl")      "Write output to FILE.dl. If this option is not specified, output will be written to stdout."
+=======
+options = [ Option ['v'] ["version"]            (NoArg Version)                         "Display DDlog version."
+          , Option ['f'] ["schema-file"]        (ReqArg OVSFile         "FILE")         "OVSDB schema file."
+          , Option ['c'] ["input-config"]       (ReqArg ConfigJsonI     "FILE.json")    "Read options from Json configuration file (preceding options are ignored)."
+          , Option ['O'] ["output-config"]      (ReqArg ConfigJsonO     "FILE.json")    "Write preceding options to Json configuration file."
+          , Option ['o'] ["output-table"]       (ReqArg OutputTable     "TABLE")        "Mark TABLE as output."
+          , Option []    ["output-only-table"]  (ReqArg OutputOnlyTable "TABLE")        "Mark TABLE as output-only.  DDlog will send updates to this table directly to OVSDB without comparing it with current OVSDB state."
+          , Option []    ["ro"]                 (ReqArg ROColumn        "TABLE.COLUMN") "Mark COLUMN as read-only."
+          , Option []    ["output-file"]        (ReqArg OutputFile      "FILE.dl")      "Write output to FILE.dl. If this option is not specified, output will be written to stdout."
+>>>>>>> 1c31a48... fixup
           ]
 
 data Config = Config { ovsSchemaFile:: FilePath
                      , outputFile   :: Maybe FilePath
                      , outputTables :: [OutputRelConfig]
+                     , outputOnlyTables :: [String]
                      }
               deriving (Eq, Show, Generic)
 
@@ -89,7 +101,14 @@ addOption (a, config) (OVSFile f) = do
 addOption (a, config) (OutputFile f) = do
     when (isJust $ outputFile config) $ errorWithoutStackTrace "Multiple output files specified"
     return (a, config {outputFile = Just f})
-addOption (a, config) (OutputTable t) = return (a, config{ outputTables = nub ((t, Left []) : outputTables config)})
+addOption (a, config) (OutputOnlyTable t) = do
+    when (isJust $ lookup t $ outputOnlyTables config)
+         $ errorWithoutStackTrace $ "Conflicting options --output-table and --output-only-table specified for table '" ++ t ++ "'"
+    return (a, config{ outputTables = nub ((t, Left []) : outputTables config)})
+addOption (a, config) (OutputOnlyTable t) = do
+    when (isJust $ lookup t $ outputTables config)
+         $ errorWithoutStackTrace $ "Conflicting options --output-table and --output-only-table specified for table '" ++ t ++ "'"
+    return (a, config{ outputOnlyTables = nub (t : outputOnlyTables config)})
 addOption (a, config) (ROColumn c) = do
     case splitOn "." c of
          [table, col] -> do
