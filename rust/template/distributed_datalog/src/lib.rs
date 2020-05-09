@@ -44,7 +44,7 @@
 
 //! Distributed computing for differential-datalog.
 
-mod accumulator;
+mod accumulate;
 #[cfg(any(test, feature = "test"))]
 mod assign;
 mod instantiate;
