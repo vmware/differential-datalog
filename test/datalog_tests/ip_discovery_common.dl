@@ -1,0 +1,4 @@
+typedef lsid_t = bit<64>
+typedef lspid_t = bit<64>
+typedef time_t = bit<64>
+typedef ipaddr_t = string

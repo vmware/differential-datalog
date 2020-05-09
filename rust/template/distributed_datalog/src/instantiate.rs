@@ -18,8 +18,8 @@ use differential_datalog::program::Update;
 use differential_datalog::record::Record;
 use differential_datalog::DDlog;
 
-use crate::accumulator::Accumulator;
-use crate::accumulator::DistributingAccumulator;
+use crate::accumulate::Accumulator;
+use crate::accumulate::DistributingAccumulator;
 use crate::observe::Observable;
 use crate::schema::Addr;
 use crate::schema::Node;

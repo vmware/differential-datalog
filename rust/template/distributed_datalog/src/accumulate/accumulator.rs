@@ -29,9 +29,9 @@ use crate::Observable;
 use crate::Observer;
 use crate::ObserverBox;
 
-use crate::accumulator::AccumulatingObserver;
-use crate::accumulator::TxnDistributor;
-use crate::accumulator::txndistributor::InitializedObservable;
+use crate::accumulate::AccumulatingObserver;
+use crate::accumulate::TxnDistributor;
+use crate::accumulate::txndistributor::InitializedObservable;
 
 /// A trait object that acts as a proxy between an observable and observer.
 /// It accumulates the updates to maintain the current state of the data.
@@ -167,7 +167,7 @@ pub mod tests {
     use std::vec::IntoIter;
 
     use crate::MockObserver;
-    use crate::accumulator::UpdatesMockObserver;
+    use crate::accumulate::UpdatesMockObserver;
 
     fn get_usize_updates_1() -> Box<IntoIter<Update<usize>>> {
         Box::new(vec!(
