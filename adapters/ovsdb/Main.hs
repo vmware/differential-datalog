@@ -33,8 +33,7 @@ import Data.List
 import Data.Maybe
 import Data.List.Split
 import Control.Monad
-import Data.Aeson (FromJSON, ToJSON, eitherDecode, encode)
-import GHC.Generics (Generic)
+import Data.Aeson (eitherDecode, encode)
 import qualified Data.ByteString.Lazy.Char8 as LZ
 
 import Language.DifferentialDatalog.OVSDB.Compile
@@ -60,27 +59,11 @@ options = [ Option ['v'] ["version"]            (NoArg Version)                 
           , Option ['c'] ["input-config"]       (ReqArg ConfigJsonI "FILE.json")    "Read options from Json configuration file (preceding options are ignored)."
           , Option ['O'] ["output-config"]      (ReqArg ConfigJsonO "FILE.json")    "Write preceding options to Json configuration file."
           , Option ['o'] ["output-table"]       (ReqArg OutputTable "TABLE")        "Mark TABLE as output."
-          , Option []    ["output-only-table"]  (ReqArg OutputTable "TABLE")        "Mark TABLE as output."
+          , Option []    ["output-only-table"]  (ReqArg OutputOnlyTable "TABLE")    "Mark TABLE as output-only.  DDlog will send updates to this table directly to OVSDB without comparing it with current OVSDB state."
           , Option []    ["ro"]                 (ReqArg ROColumn    "TABLE.COLUMN") "Mark COLUMN as read-only.  If this option is specified for at least one column of TABLE, all TABLE columns that are not labeled read-only are presumed writable."
           , Option []    ["rw"]                 (ReqArg RWColumn    "TABLE.COLUMN") "Mark COLUMN as read-write.  If this option is specified for at least one column of TABLE, all TABLE columns that are not labeled read-write are presumed read-only.  This option is mutually exclusive with '--ro': at most one of the two options can be used for each TABLE."
           , Option []    ["output-file"]        (ReqArg OutputFile  "FILE.dl")      "Write output to FILE.dl. If this option is not specified, output will be written to stdout."
           ]
-
-data Config = Config { ovsSchemaFile:: FilePath
-                     , outputFile   :: Maybe FilePath
-                     , outputTables :: [OutputRelConfig]
-                     , outputOnlyTables :: [String]
-                     }
-              deriving (Eq, Show, Generic)
-
-instance FromJSON Config
-instance ToJSON   Config
-
-defaultConfig :: Config
-defaultConfig = Config { ovsSchemaFile= ""
-                       , outputFile   = Nothing
-                       , outputTables = []
-                       }
 
 addOption :: (Action, Config) -> TOption -> IO (Action, Config)
 addOption (_, config) Version = do return (ActionVersion, config)
@@ -90,8 +73,8 @@ addOption (a, config) (OVSFile f) = do
 addOption (a, config) (OutputFile f) = do
     when (isJust $ outputFile config) $ errorWithoutStackTrace "Multiple output files specified"
     return (a, config {outputFile = Just f})
-addOption (a, config) (OutputOnlyTable t) = do
-    when (isJust $ lookup t $ outputOnlyTables config)
+addOption (a, config) (OutputTable t) = do
+    when (elem t $ outputOnlyTables config)
          $ errorWithoutStackTrace $ "Conflicting options --output-table and --output-only-table specified for table '" ++ t ++ "'"
     return (a, config{ outputTables = nub ((t, Left []) : outputTables config)})
 addOption (a, config) (OutputOnlyTable t) = do
@@ -147,7 +130,7 @@ main :: IO ()
 main = do
     args <- getArgs
     prog <- getProgName
-    (action, Config{..}) <- case getOpt Permute options args of
+    (action, config@Config{..}) <- case getOpt Permute options args of
                        (flags, [], []) -> do actionAndConf <- foldM addOption (ActionCompile, defaultConfig) flags
                                              validateConfig actionAndConf
                                              return actionAndConf
@@ -159,7 +142,7 @@ main = do
        then do putStrLn $ "OVSDB-to-DDlog compiler " ++ dDLOG_VERSION ++ " (" ++ gitHash ++ ")"
                putStrLn $ "Copyright (c) 2019 VMware, Inc. (MIT License)"
        else do
-           dlschema <- render <$> compileSchemaFile ovsSchemaFile outputTables
+           dlschema <- render <$> compileSchemaFile ovsSchemaFile config
            case outputFile of
                 Nothing -> putStrLn dlschema
                 Just ofile -> writeFile ofile dlschema
