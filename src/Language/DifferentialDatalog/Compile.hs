@@ -2083,7 +2083,7 @@ rhsVarsAfter :: DatalogProgram -> Rule -> Int -> [Field]
 rhsVarsAfter d rl i =
     case ruleRHS rl !! i of
          -- Inspect operators cannot change the collection it inspects. No variables are dropped.
-         RHSInspect _ -> ruleRHSVars d rl i
+         RHSInspect _ -> rhsVarsAfter d rl (i-1)
          _             -> filter (\f -> -- If an aggregation occurs in the remaining part of the rule,
                                        -- keep all variables to preserve multiset semantics
                                        if any rhsIsAggregate $ drop (i+1) (ruleRHS rl)
