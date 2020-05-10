@@ -74,25 +74,37 @@ allTests progress = do
         let datFile = replaceExtension dlFile "dat"
         -- If there's a gzipped reference file, use that
         let gzFile = replaceExtension dlFile "dump.expected.gz"
+        -- If there's a .log.expected file, also verify log output
+        let logFile = replaceExtension dlFile "log.expected"
+        let generatedLogFile = replaceExtension dlFile "log"
         datFileExists <- doesFileExist datFile
         gzFileExists <- doesFileExist gzFile
+        logFileExists <- doesFileExist logFile
+        generatedLogFileExists <- doesFileExist generatedLogFile
+        if generatedLogFileExists
+            then removeFile generatedLogFile
+            else return ()
         if datFileExists
            then if gzFileExists
-                   then return (dlFile, Just gzFile)
-                   else return (dlFile, Just $ replaceExtension dlFile "dump.expected")
-           else return (dlFile, Nothing)) dlFiles
+                   then if logFileExists
+                           then return (dlFile, Just gzFile, Just logFile)
+                           else return (dlFile, Just gzFile, Nothing)
+                   else if logFileExists
+                           then return (dlFile, Just $ replaceExtension dlFile "dump.expected", Just logFile)
+                           else return (dlFile, Just $ replaceExtension dlFile "dump.expected", Nothing)
+           else return (dlFile, Nothing, Nothing)) dlFiles
     let parser_tests = testGroup "parser tests" $
           [ testCase file $ parserTest file
-            | (file,_) <- inFiles]
+            | (file, _, _) <- inFiles]
     let generated_tests = testGroup "generated tests" $ concat $
           [ if shouldFail dlFile
                then []
-               else generatedTests progress dlFile refFile
-            | (dlFile, refFile) <- inFiles]
+               else generatedTests progress dlFile refFile logFile
+            | (dlFile, refFile, logFile) <- inFiles]
     return $ testGroup "ddlog tests" [parser_tests, generated_tests]
 
-generatedTests :: Bool -> FilePath -> Maybe FilePath -> [TestTree]
-generatedTests progress dlFile refFile = do
+generatedTests :: Bool -> FilePath -> Maybe FilePath -> Maybe FilePath -> [TestTree]
+generatedTests progress dlFile refFile refLogFile = do
     let base = dropExtension (takeBaseName dlFile)
     -- the name of the "test" generating the DDLog Rust project,
     -- which is a dependency used by other tests
@@ -100,15 +112,18 @@ generatedTests progress dlFile refFile = do
     let generate_pattern = "$(NF) == \"" ++ generate_name ++ "\""
 
     [testCase generate_name $ generateDDLogRust True dlFile ["staticlib"]
-          , after AllSucceed generate_pattern $ compilerTests progress dlFile refFile
+          , after AllSucceed generate_pattern $ compilerTests progress dlFile refFile refLogFile
           , after AllSucceed generate_pattern $ unitTests (dropExtension dlFile)]
 
-compilerTests :: Bool -> FilePath -> Maybe FilePath -> TestTree
-compilerTests progress dlFile refFile = do
-    let expect = maybeToList refFile
-    let output = maybe [] (\_ -> [replaceExtension dlFile ".dump"]) refFile
+compilerTests :: Bool -> FilePath -> Maybe FilePath -> Maybe FilePath -> TestTree
+compilerTests progress dlFile refFile refLogFile = do
+    let expect = maybeToList refFile ++ maybeToList refLogFile
+    let output = maybe [] (\_ -> [replaceExtension dlFile ".dump"]) refFile ++ 
+                 maybe [] (\_ -> [replaceExtension dlFile ".log"]) refLogFile
+    -- enable sort on log file verification because order of log output is not guaranteed due to parallelism.
+    let should_sort = maybe [] (\_ -> [False]) refFile ++ maybe [] (\_ -> [True]) refLogFile
     testGroup "compiler tests" $
-          [ goldenVsFiles (takeBaseName dlFile) expect output (compilerTest progress dlFile []) ]
+          [ goldenVsFiles (takeBaseName dlFile) expect output should_sort (compilerTest progress dlFile []) ]
 
 unitTests :: FilePath -> TestTree
 unitTests dir = do
@@ -290,8 +305,8 @@ unitTest dir = do
 -- A version of golden test that supports multiple output files.
 -- Uses strict evaluation to avoid errors lazily reading and then writing the
 -- same file.
-goldenVsFiles :: TestName -> [FilePath] -> [FilePath] -> IO () -> TestTree
-goldenVsFiles name ref new act =
+goldenVsFiles :: TestName -> [FilePath] -> [FilePath] -> [Bool] -> IO () -> TestTree
+goldenVsFiles name ref new should_sort act =
   goldenTest name
              (do {refs <- mapM readDecompress ref; evaluate $ rnf refs; return refs})
              (act >> do {news <- mapM BS.readFile new; evaluate $ rnf news; return news})
@@ -310,11 +325,15 @@ goldenVsFiles name ref new act =
        else BS.writeFile f dat
   cmp [] [] = return Nothing
   cmp xs ys = return $ (\errs -> if null errs then Nothing else Just (intercalate "\n" errs)) $
-              mapMaybe (\((x,r),(y,n)) ->
-                    if x == y
-                       then Nothing
-                       else Just $ printf "Files '%s' and '%s' differ" r n)
-                  $ zip (zip xs ref) (zip ys new)
+              mapMaybe (\((x,r,is_sort),(y,n,_)) ->
+                    if is_sort
+                       then if BS.sort x == BS.sort y
+                               then Nothing
+                               else Just $ printf "Files '%s' and '%s' differ" r n
+                       else if x == y
+                               then Nothing
+                               else Just $ printf "Files '%s' and '%s' differ" r n)
+                  $ zip (zip3 xs ref should_sort) (zip3 ys new should_sort)
   upd bufs = mapM_ (\(r,b) -> do exists <- doesFileExist r
                                  when (not exists) $ writeCompress r b)
              $ zip ref bufs

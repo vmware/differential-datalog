@@ -1,4 +1,5 @@
 /* LOGGING */
+import inspect_log as inspect_log
 import log as log
 import log4j
 
@@ -42,7 +43,14 @@ Span(entity, tn) :- Binding(entity, tn),
 Span(parent, tn) :- Dependency(parent, child),
                     Inspect trace(mod_SPAN_UUID1(), "Span recursive step: Dependency(.parent=${deref(parent)},.child=${deref(child)}))"),
                     Span(child, tn),
-                    Inspect trace(mod_SPAN_UUID1(), "Span(parent, tn) :- Dependency(.parent=${deref(parent)},.child=${deref(child)})), Span(.child, .tn=${deref(tn)})").
+                    Inspect {
+                        trace(mod_SPAN_UUID1(), "Span(parent, tn) :- Dependency(.parent=${deref(parent)},.child=${deref(child)})), Span(.child, .tn=${deref(tn)})");
+                        // Intentionally made the log message more compact in order to reduce the size of the span_uuid.log.expected.
+                        var p = deref(parent)[63:0];
+                        var c = deref(child)[63:0];
+                        var t = deref(tn)[63:0];
+                        inspect_log.log("../span_uuid.log", "${ddlog_timestamp.0},${ddlog_timestamp.1}${if (ddlog_weight > 0) {\"+\"} else {\"-\"}}p${p},c${c},t${t}")
+                    }.
 
 /* RuleSpan: restriction of the Span relation to Rule nodes.
  */

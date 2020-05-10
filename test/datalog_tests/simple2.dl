@@ -1,5 +1,5 @@
 import fp
-import log
+import inspect_log as log
 
 /* Test `arrangeInput` logic in Compile.hs */
 
@@ -94,7 +94,8 @@ SumsOfDoubles(x, y, z) :-
     var x = FlatMap(xs),
     Doubles(ys),
     var y = FlatMap(ys),
-    var z = x + y.
+    var z = x + y,
+    Inspect log.log("../simple2.log", "${ddlog_timestamp}: ${if (ddlog_weight > 0) {\"insert\"} else {\"delete\"}}: (${x}, ${y}, ${z})").
 
 /* Attempt to confuse statics */
 
@@ -118,5 +119,24 @@ InspectSimpleSum(x, total) :-
     Inspect {
         var z = 1 + 2;
         var w = ddlog_weight;
-        var t = ddlog_timestamp
+        var t = ddlog_timestamp;
+        log.log("../simple2.log", "${t}: ${if (w > 0) {\"insert\"} else {\"delete\"}}: x=${x}, total=${total}")
     }.
+
+/* Test Inspect with atom as filter */
+input relation TestRelation(x: bit<32>, y: bit<32>)
+output relation FilteredRelation(y: bit<32>)
+
+FilteredRelation(y) :-
+    TestRelation(6, y),
+    Inspect log.log("../simple2.log", "${ddlog_timestamp}: ${if (ddlog_weight > 0) {\"insert\"} else {\"delete\"}}: y=${y}").
+
+/* Test Inspect with not. */
+input relation InputInspectNot1(x: bit<32>, y: bit<32>)
+input relation InputInspectNot2(x: bit<32>)
+output relation OutputInspectNot(x: bit<32>, y: bit<32>)
+
+OutputInspectNot(x, y) :-
+    InputInspectNot1(x, y),
+    not InputInspectNot2(x),
+    Inspect log.log("../simple2.log", "${ddlog_timestamp}: ${if (ddlog_weight > 0) {\"insert\"} else {\"delete\"}}: x=${y} y=${y}").
