@@ -18,3 +18,13 @@ SumsOfDoubles{.x = 3.5, .y = 2, .sum = 5.5}: +1
 SumsOfDoubles{.x = 3.5, .y = 3.5, .sum = 7}: +1
 InspectSimpleSum:
 InspectSimpleSum{.x = 1, .total = 3}: +1
+FilteredRelation:
+FilteredRelation{.y = 2}: +1
+FilteredRelation{.y = 3}: +1
+FilteredRelation{.y = 5}: +1
+FilteredRelation:
+FilteredRelation{.y = 2}: -1
+OutputInspectNot:
+OutputInspectNot{.x = 4, .y = 4}: +1
+OutputInspectNot:
+OutputInspectNot{.x = 2, .y = 2}: +1

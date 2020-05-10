@@ -1,0 +1,2 @@
+ #[has_side_effects]
+extern function log(filename: string, msg: string): ()
