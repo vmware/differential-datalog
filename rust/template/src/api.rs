@@ -23,7 +23,8 @@ use differential_datalog::Callback;
 use differential_datalog::DDlog;
 use differential_datalog::DeltaMap;
 use differential_datalog::RecordReplay;
-use std::collections::btree_set::BTreeSet;
+use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 
 use super::update_handler::*;
 use super::*;
@@ -742,48 +743,21 @@ pub unsafe extern "C" fn ddlog_transaction_start(prog: *const HDDlog) -> raw::c_
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_transaction_commit_dump_changes(
     prog: *const HDDlog,
-    cb: Option<
-        extern "C" fn(
-            arg: libc::uintptr_t,
-            table: libc::size_t,
-            rec: *const record::Record,
-            polarity: bool,
-        ),
-    >,
-    cb_arg: libc::uintptr_t,
-) -> raw::c_int {
+) -> *mut DeltaMap<DDValue> {
     if prog.is_null() {
-        return -1;
+        return ptr::null_mut();
     };
     let prog = Arc::from_raw(prog);
 
-    let f = cb.map(|f| {
-        move |tab, rec: &record::Record, pol| f(cb_arg, tab, rec as *const record::Record, pol)
-    });
-
     let res = prog
         .transaction_commit_dump_changes()
-        .map(|changes| {
-            if let Some(f) = f {
-                for (table_id, table_data) in changes.as_ref().iter() {
-                    for (val, weight) in table_data.iter() {
-                        assert!(*weight == 1 || *weight == -1);
-                        f(
-                            *table_id as libc::size_t,
-                            &val.clone().into_record(),
-                            *weight == 1,
-                        );
-                    }
-                }
-            };
-            0
-        })
+        .map(|delta| Box::into_raw(Box::new(delta)))
         .unwrap_or_else(|e| {
             prog.eprintln(&format!(
                 "ddlog_transaction_commit_dump_changes: error: {}",
                 e
             ));
-            -1
+            ptr::null_mut()
         });
 
     Arc::into_raw(prog);
@@ -1225,4 +1199,93 @@ pub unsafe extern "C" fn ddlog_string_free(s: *mut raw::c_char) {
         return;
     };
     ffi::CString::from_raw(s);
+}
+
+#[no_mangle]
+pub extern "C" fn ddlog_new_delta() -> *mut DeltaMap<DDValue> {
+    Box::into_raw(Box::new(DeltaMap::new()))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_delta_get_table(
+    delta: *const DeltaMap<DDValue>,
+    table: libc::size_t,
+) -> *mut DeltaMap<DDValue> {
+    let res = DeltaMap::singleton(
+        table,
+        (&*delta)
+            .try_get_rel(table as RelId)
+            .cloned()
+            .unwrap_or_else(BTreeMap::new),
+    );
+    Box::into_raw(Box::new(res))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_delta_enumerate(
+    delta: *const DeltaMap<DDValue>,
+    cb: Option<
+        extern "C" fn(
+            arg: libc::uintptr_t,
+            table: libc::size_t,
+            rec: *const record::Record,
+            polarity: bool,
+        ),
+    >,
+    cb_arg: libc::uintptr_t,
+) {
+    if let Some(f) = cb {
+        for (table_id, table_data) in (&*delta).as_ref().iter() {
+            for (val, weight) in table_data.iter() {
+                assert!(*weight == 1 || *weight == -1);
+                f(
+                    cb_arg,
+                    *table_id as libc::size_t,
+                    &val.clone().into_record(),
+                    *weight == 1,
+                );
+            }
+        }
+    };
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_delta_clear_table(
+    delta: *mut DeltaMap<DDValue>,
+    table: libc::size_t,
+) {
+    (&mut *delta).clear_rel(table as RelId);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_delta_remove_table(
+    delta: *mut DeltaMap<DDValue>,
+    table: libc::size_t,
+) -> *mut DeltaMap<DDValue> {
+    Box::into_raw(Box::new(DeltaMap::singleton(
+        table,
+        (&mut *delta).clear_rel(table as RelId),
+    )))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_delta_clear(delta: *mut DeltaMap<DDValue>) {
+    (&mut *delta).as_mut().clear();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_delta_union(
+    delta: *mut DeltaMap<DDValue>,
+    new_delta: *const DeltaMap<DDValue>,
+) {
+    for (table_id, table_data) in (&*new_delta).as_ref().iter() {
+        for (val, weight) in table_data.iter() {
+            (&mut *delta).update(*table_id, val, *weight);
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_free_delta(delta: *mut DeltaMap<DDValue>) {
+    Box::from_raw(delta);
 }

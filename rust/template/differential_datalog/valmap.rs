@@ -47,6 +47,12 @@ impl<V: Display + Ord + Clone> DeltaMap<V> {
         }
     }
 
+    pub fn singleton(relid: RelId, delta: BTreeMap<V, isize>) -> Self {
+        let mut map = BTreeMap::new();
+        map.insert(relid, delta);
+        Self { map }
+    }
+
     pub fn format<R>(&self, w: &mut dyn io::Write) -> io::Result<()>
     where
         R: DDlogConvert,
@@ -95,6 +101,14 @@ impl<V: Display + Ord + Clone> DeltaMap<V> {
 
     pub fn get_rel(&mut self, relid: RelId) -> &BTreeMap<V, isize> {
         self.map.entry(relid).or_insert_with(BTreeMap::default)
+    }
+
+    pub fn try_get_rel(&self, relid: RelId) -> Option<&BTreeMap<V, isize>> {
+        self.map.get(&relid)
+    }
+
+    pub fn clear_rel(&mut self, relid: RelId) -> BTreeMap<V, isize> {
+        self.map.remove(&relid).unwrap_or_else(BTreeMap::default)
     }
 
     pub fn update(&mut self, relid: RelId, x: &V, diff: isize) {
