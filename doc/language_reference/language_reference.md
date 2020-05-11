@@ -682,6 +682,30 @@ built-in type.  It can only currently be manipulated from Rust, meaning that
 aggregate functions can only be defined in Rust and imported to a DDlog
 program as `extern function`.
 
+The seventh form is an inspect operation. It behaves as a pass-through filter
+and contains an arbitrary expression that can produce a side effect, such as
+generating a log message.
+
+```
+R(x, z) :-
+   R1(x, y),
+   R2(y, z),
+   Inspect debug("Evaluating R: ts=${ddlog_timestamp}, weight=${ddlog_weight}, x=${x}, y=${y}, z=${z}").
+```
+
+`Inspect` is DDlog keyword that maps into Differential Dataflow's `inspect`
+operator. The expression's type must be () and can access all program variables
+visible at the given point in the rule, plus two special variables:
+`ddlog_weight: std.DDWeight` and `ddlog_timestamp: std.DDTimestamp`, where
+
+```
+typedef DDWeight = s64
+typedef DDEpoch = u64
+typedef DDIteration = u64
+typedef DDTimestamp = DDTSGlobal{epoch: DDEpoch}
+                    | DDTSNested{epoch: DDEpoch, iteration: DDIteration}
+```
+
 ### Variables and patterns
 
 A clause in the body of a rule can introduce variables that are
