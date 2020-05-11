@@ -303,7 +303,7 @@ JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1commit(
     }
 }
 
-void commit_dump_callback(void* callbackInfo, table_id tableid, const ddlog_record* rec, bool polarity) {
+void commit_dump_callback(uintptr_t callbackInfo, table_id tableid, const ddlog_record* rec, bool polarity) {
     struct CallbackInfo* cbi = (struct CallbackInfo*)callbackInfo;
     if (cbi == NULL || cbi->jvm == NULL)
         return;
@@ -317,7 +317,7 @@ JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1commit_1dump_1
     JNIEnv * env, jobject obj, jlong handle, jstring callback) {
 
     if (callback == NULL) {
-        if (ddlog_transaction_commit_dump_changes((ddlog_prog)handle, NULL, 0) < 0) {
+        if (ddlog_transaction_commit((ddlog_prog)handle) < 0) {
             throwDDlogException(env, NULL);
             return;
         }
@@ -327,12 +327,12 @@ JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1commit_1dump_1
     if (cbinfo == NULL)
         return;
 
-    if (ddlog_transaction_commit_dump_changes(
-                (ddlog_prog)handle,
-                commit_dump_callback,
-                (uintptr_t)cbinfo) < 0) {
+    ddlog_delta *delta = ddlog_transaction_commit_dump_changes((ddlog_prog)handle);
+    if (delta == NULL) {
         throwDDlogException(env, NULL);
     };
+    ddlog_delta_enumerate(delta, commit_dump_callback, (uintptr_t)cbinfo);
+    ddlog_free_delta(delta);
     free(cbinfo);
 }
 

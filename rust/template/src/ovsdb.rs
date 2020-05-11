@@ -1,5 +1,6 @@
 //! OVSDB JSON interface to RunningProgram
 
+use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
@@ -82,44 +83,41 @@ fn record_updatecmds(prog: &sync::Arc<HDDlog>, upds: &[UpdCmd]) {
     }
 }
 
-/// Dump OVSDB Delta-Plus table as a sequence of OVSDB Insert commands in JSON format.
+/// Dump OVSDB Delta-Plus, Delta-Minus, and Delta-Update tables as a sequence of OVSDB
+/// commands in JSON format.
 ///
 /// On success, returns `0` and stores a pointer to JSON string in `json`.  This pointer must be
 /// later deallocated by calling `ddlog_free_json()`
 ///
 /// On error, returns a negative number and writes error message to stderr.
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_dump_ovsdb_delta(
+pub unsafe extern "C" fn ddlog_dump_ovsdb_delta_tables(
     prog: *const HDDlog,
+    delta: *const DeltaMap<DDValue>,
     module: *const c_char,
     table: *const c_char,
     json: *mut *mut c_char,
 ) -> c_int {
-    if json.is_null() || prog.is_null() || module.is_null() || table.is_null() {
+    if json.is_null() || prog.is_null() || delta.is_null() || module.is_null() || table.is_null() {
         return -1;
     };
     let prog = sync::Arc::from_raw(prog);
-    let res = if let Some(ref db) = prog.db {
-        match dump_delta(&mut db.lock().unwrap(), module, table) {
-            Ok(json_string) => {
-                *json = json_string.into_raw();
-                0
-            }
-            Err(e) => {
-                prog.eprintln(&format!("ddlog_dump_ovsdb_delta(): error: {}", e));
-                -1
-            }
+    let res = match dump_delta(&*delta, module, table) {
+        Ok(json_string) => {
+            *json = json_string.into_raw();
+            0
         }
-    } else {
-        prog.eprintln("ddlog_dump_ovsdb_delta(): cannot dump table: ddlog_run() was invoked with do_store flag set to false");
-        -1
+        Err(e) => {
+            prog.eprintln(&format!("ddlog_dump_ovsdb_delta_tables(): error: {}", e));
+            -1
+        }
     };
     sync::Arc::into_raw(prog);
     res
 }
 
 fn dump_delta(
-    db: &mut DeltaMap<DDValue>,
+    delta: &DeltaMap<DDValue>,
     module: *const c_char,
     table: *const c_char,
 ) -> Result<CString, String> {
@@ -137,27 +135,35 @@ fn dump_delta(
     let plus_cmds: Result<Vec<String>, String> = {
         let plus_table_id = Relations::try_from(plus_table_name.as_str())
             .map_err(|()| format!("unknown table {}", plus_table_name))?;
-        db.get_rel(plus_table_id as RelId)
-            .iter()
-            .map(|(v, w)| {
-                assert!(*w == 1);
-                record_into_insert_str(v.clone().into_record(), table_str)
-            })
-            .collect()
+
+        delta.try_get_rel(plus_table_id as RelId).map_or_else(
+            || Ok(vec![]),
+            |rel| {
+                rel.iter()
+                    .map(|(v, w)| {
+                        assert!(*w == 1);
+                        record_into_insert_str(v.clone().into_record(), table_str)
+                    })
+                    .collect()
+            },
+        )
     };
     let plus_cmds = plus_cmds?;
 
     /* DeltaMinus */
     let minus_cmds: Result<Vec<String>, String> = {
         match Relations::try_from(minus_table_name.as_str()) {
-            Ok(minus_table_id) => db
-                .get_rel(minus_table_id as RelId)
-                .iter()
-                .map(|(v, w)| {
-                    assert!(*w == 1);
-                    record_into_delete_str(v.clone().into_record(), table_str)
-                })
-                .collect(),
+            Ok(minus_table_id) => delta.try_get_rel(minus_table_id as RelId).map_or_else(
+                || Ok(vec![]),
+                |rel| {
+                    rel.iter()
+                        .map(|(v, w)| {
+                            assert!(*w == 1);
+                            record_into_delete_str(v.clone().into_record(), table_str)
+                        })
+                        .collect()
+                },
+            ),
             Err(()) => Ok(vec![]),
         }
     };
@@ -166,14 +172,17 @@ fn dump_delta(
     /* Update */
     let upd_cmds: Result<Vec<String>, String> = {
         match Relations::try_from(upd_table_name.as_str()) {
-            Ok(upd_table_id) => db
-                .get_rel(upd_table_id as RelId)
-                .iter()
-                .map(|(v, w)| {
-                    assert!(*w == 1);
-                    record_into_update_str(v.clone().into_record(), table_str)
-                })
-                .collect(),
+            Ok(upd_table_id) => delta.try_get_rel(upd_table_id as RelId).map_or_else(
+                || Ok(vec![]),
+                |rel| {
+                    rel.iter()
+                        .map(|(v, w)| {
+                            assert!(*w == 1);
+                            record_into_update_str(v.clone().into_record(), table_str)
+                        })
+                        .collect()
+                },
+            ),
             Err(()) => Ok(vec![]),
         }
     };
@@ -182,6 +191,71 @@ fn dump_delta(
     let mut cmds = plus_cmds;
     cmds.append(&mut minus_cmds);
     cmds.append(&mut upd_cmds);
+    Ok(unsafe { CString::from_vec_unchecked(cmds.join(",").into_bytes()) })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_dump_ovsdb_output_table(
+    prog: *const HDDlog,
+    delta: *const DeltaMap<DDValue>,
+    module: *const c_char,
+    table: *const c_char,
+    json: *mut *mut c_char,
+) -> c_int {
+    if json.is_null() || prog.is_null() || delta.is_null() || module.is_null() || table.is_null() {
+        return -1;
+    };
+    let prog = sync::Arc::from_raw(prog);
+    let res = match dump_output(&*delta, module, table) {
+        Ok(json_string) => {
+            *json = json_string.into_raw();
+            0
+        }
+        Err(e) => {
+            prog.eprintln(&format!("ddlog_dump_ovsdb_output_table(): error: {}", e));
+            -1
+        }
+    };
+    sync::Arc::into_raw(prog);
+    res
+}
+
+fn dump_output(
+    delta: &DeltaMap<DDValue>,
+    module: *const c_char,
+    table: *const c_char,
+) -> Result<CString, String> {
+    let table_str: &str = unsafe { CStr::from_ptr(table) }
+        .to_str()
+        .map_err(|e| format!("{}", e))?;
+    let module_str: &str = unsafe { CStr::from_ptr(module) }
+        .to_str()
+        .map_err(|e| format!("{}", e))?;
+    let table_name = format!("{}.Out_{}", module_str, table_str);
+
+    /* DeltaPlus */
+    let cmds: Result<Vec<String>, String> = {
+        let table_id = Relations::try_from(table_name.as_str())
+            .map_err(|()| format!("unknown table {}", table_name))?;
+
+        delta.try_get_rel(table_id as RelId).map_or_else(
+            || Ok(vec![]),
+            |rel| {
+                rel.iter()
+                    .map(|(v, w)| {
+                        assert!(*w == 1 || *w == -1);
+                        if (*w == 1) {
+                            record_into_insert_str(v.clone().into_record(), table_str)
+                        } else {
+                            record_into_delete_str(v.clone().into_record(), table_str)
+                        }
+                    })
+                    .collect()
+            },
+        )
+    };
+    let cmds = cmds?;
+
     Ok(unsafe { CString::from_vec_unchecked(cmds.join(",").into_bytes()) })
 }
 
