@@ -95,7 +95,9 @@ xfail = [
     "tak",              # 197
     "tic-tac-toe",      # 197
     "weighted_distances", # 197
-    "floydwarshall" # ?
+    "floydwarshall", # ?
+    "numeric_conversions",
+    "float_operations"
 ]
 
 def exit(code):
