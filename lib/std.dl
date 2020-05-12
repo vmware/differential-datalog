@@ -19,9 +19,38 @@ typedef s128 = signed<128>
 
 typedef usize = u64
 
+/* 
+ * Weight of a record in a DDlog collection.  This type is internal to the 
+ * DDlog engine and is only visible to the programmer inside the `Inspect`
+ * operator.  Positive weight indicates that the record is being added
+ * to a collection; negative weight corresponds to a deletion.
+ */
 typedef DDWeight = s64
+
+/*
+ * DDEpoch, DDIteration, and DDNestedTS types model DDlog timestamps.
+ */
+
+/* DDlog epoch.  An epoch, associated with each event inside DDlog, is the
+ * serial number of the transaction that triggered this event.  This type is
+ * internal to the DDlog engine and is only visible to the programmer inside
+ * the `Inspect` operator. */
 typedef DDEpoch = u64
+
+/* Internal iteration number.  Events that occur inside recursive rules
+ * are timestamped with an epoch and iteration number of the fixed point
+ * computation within the epoch. */
 typedef DDIteration = u64
+
+/* Full nested timestamp consisting of an epoch and iteration number. */
+typedef DDNestedTS = DDNestedTS {
+    epoch: DDEpoch,
+    iter: DDIteration
+}
+
+function dDNestedTS2string(ts: DDNestedTS): string {
+    "(${ts.epoch},${ts.iter})"
+}
 
 /*
  * Ref

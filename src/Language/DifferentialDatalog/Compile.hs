@@ -1619,7 +1619,7 @@ mkInspect d prefix rl idx e input_val = do
     -- Inspected
     let weight = "let ddlog_weight = &(" <> wEIGHT_VAR <> " as std_DDWeight);"
     let timestamp = if ruleIsRecursive d rl
-        then "let ddlog_timestamp = &(" <> tIMESTAMP_VAR <> ".0 as std_DDEpoch, " <> tIMESTAMP_VAR <> ".1.x as std_DDIteration);"
+        then "let ddlog_timestamp = &std_DDNestedTS{epoch:" <+> tIMESTAMP_VAR <> ".0 as std_DDEpoch, iter:" <+> tIMESTAMP_VAR <> ".1.x as std_DDIteration};"
         else "let ddlog_timestamp = &(" <> tIMESTAMP_VAR <> ".0 as std_DDEpoch);"
     let inspected = mkExpr d (CtxRuleRInspect rl idx) e EVal <> ";"
     let ifun = braces'
