@@ -59,6 +59,7 @@ module Language.DifferentialDatalog.Type(
     rEF_TYPE,
     ePOCH_TYPE,
     iTERATION_TYPE,
+    nESTED_TS_TYPE,
     wEIGHT_TYPE,
     checkIterable,
     typeIterType
@@ -110,6 +111,9 @@ ePOCH_TYPE = "std.DDEpoch"
 
 iTERATION_TYPE :: String
 iTERATION_TYPE = "std.DDIteration"
+
+nESTED_TS_TYPE :: String
+nESTED_TS_TYPE = "std.DDNestedTS"
 
 wEIGHT_TYPE :: String
 wEIGHT_TYPE = "std.DDWeight"

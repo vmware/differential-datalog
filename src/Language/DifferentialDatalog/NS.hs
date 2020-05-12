@@ -149,7 +149,7 @@ ctxMVars d ctx =
          CtxRuleRFlatMap rl i     -> ([], map f2mf $ ruleRHSVars d rl i)
          CtxRuleRInspect rl i     -> let vars = (map f2mf $ ruleRHSVars d rl i) ++ [("ddlog_weight", Just $ tUser wEIGHT_TYPE [])] in
                                      if ruleIsRecursive d rl
-                                        then ([], vars ++ [("ddlog_timestamp", Just $ tTuple[(tUser ePOCH_TYPE []), (tUser iTERATION_TYPE [])])])
+                                        then ([], vars ++ [("ddlog_timestamp", Just $ tUser nESTED_TS_TYPE [])])
                                         else ([], vars ++ [("ddlog_timestamp", Just $ tUser ePOCH_TYPE [])])
          CtxRuleRAggregate rl i   -> ([], map f2mf $ ruleRHSVars d rl i)
          CtxKey Relation{..}      -> ([], [(keyVar $ fromJust relPrimaryKey, Just relType)])
