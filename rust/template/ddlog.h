@@ -7,9 +7,9 @@
 
 /*
  * *Note:* all functions in this library, with the exception of
- * `ddlog_record_commands()` and `ddlog_stop()` are thread-safe. E.g.,
- * it is legal to call `ddlog_transaction_start()` from thread 1,
- * `ddlog_apply_ovsdb_updates()` from thread 2, and
+ * `ddlog_record_commands()` and `ddlog_stop()`, and `ddlog_delta_XXX`
+ * are thread-safe. E.g., it is legal to call `ddlog_transaction_start()`
+ * from thread 1, `ddlog_apply_ovsdb_updates()` from thread 2, and
  * `ddlog_transaction_commit()` from thread 3.  Multiple concurrent
  * updates from different threads are also valid.
  *
@@ -497,6 +497,11 @@ extern int ddlog_dump_table(ddlog_prog prog, table_id table,
  **********************************************************************/
 
 /*
+ * NOTE: This API is _not_ thread-safe. It is the callers responsibility to ensure
+ * that at most one thread can access `ddlog_delta` at the same time.
+ */
+
+/*
  * Creates an empty delta.
  */
 extern ddlog_delta* ddlog_new_delta(void);
@@ -524,13 +529,13 @@ extern void ddlog_delta_enumerate(
     uintptr_t cb_arg);
 
 /*
- * Remove changes to the specified table from `delta` and return them as a separate
- * delta.  The caller is responsible for deallocating the new delta.
+ * Remove changes to the specified table from `delta`.
  */
 extern void ddlog_delta_clear_table(ddlog_delta *delta, table_id table);
 
 /*
- * Remove changes to the specified table from `delta`.
+ * Remove changes to the specified table from `delta` and return them as a separate
+ * delta.  The caller is responsible for deallocating the new delta.
  */
 extern ddlog_delta* ddlog_delta_remove_table(ddlog_delta *delta, table_id table);
 
