@@ -7,11 +7,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * This visitor computes the AggregateDecomposition of an expression.
+ * This visitor computes the Decomposition of an expression.
  * It returns 'true' if the expression is the result of an aggregation.
  */
 public class AggregateVisitor
-        extends AstVisitor<Ternary, TranslationContext> {
+        extends AggregationVisitorBase {
     /**
      * This class represents the decomposition of an expression that contains
      * aggregates into multiple expressions.  Consider this example:
@@ -41,19 +41,30 @@ public class AggregateVisitor
 
     Decomposition decomposition;
     private final List<TranslationVisitor.GroupByInfo> aggregates;
+    boolean ignoreWindows;
 
     /**
      * Create a visitor that analyzes an expression to see whether it requires aggregation.
      * @param aggregates   Columns that are already being aggregated.
      */
     public AggregateVisitor(List<TranslationVisitor.GroupByInfo> aggregates) {
+        this(aggregates, false);
+    }
+
+    /**
+     * Create a visitor that analyzes an expression to see whether it requires aggregation.
+     * @param aggregates   Columns that are already being aggregated.
+     * @param ignoreWindows   If set we ignore window functions in aggregates.
+     */
+    public AggregateVisitor(List<TranslationVisitor.GroupByInfo> aggregates, boolean ignoreWindows) {
+        this.ignoreWindows = ignoreWindows;
         this.decomposition = new Decomposition();
         this.aggregates = aggregates;
     }
 
     @Override
     protected Ternary visitFunctionCall(FunctionCall fc, TranslationContext context) {
-        if (fc.getWindow().isPresent())
+        if (!ignoreWindows && fc.getWindow().isPresent())
             throw new TranslationException("Window functions not allowed in aggregates", fc);
         if (this.isGroupedBy(fc)) {
             this.decomposition.addNode(fc);
@@ -76,29 +87,12 @@ public class AggregateVisitor
         return result;
     }
 
-    public Ternary combine(Node node, Ternary left, Ternary right) {
-        if (left == Ternary.Maybe)
-            return right;
-        if (right == Ternary.Maybe)
-            return left;
-        if (left != right)
-            this.error(node);
-        return left;
-    }
-
     public boolean isGroupedBy(Expression e) {
         for (TranslationVisitor.GroupByInfo a: this.aggregates) {
             if (e.equals(a.groupBy))
                 return true;
         }
         return false;
-    }
-
-    @Override
-    protected Ternary visitCast(Cast node, TranslationContext context) {
-        if (this.isGroupedBy(node))
-            return Ternary.Yes;
-        return this.process(node.getExpression(), context);
     }
 
     @Override
@@ -109,29 +103,31 @@ public class AggregateVisitor
     }
 
     @Override
+    protected Ternary visitCast(Cast node, TranslationContext context) {
+        if (this.isGroupedBy(node))
+            return Ternary.Yes;
+        return super.visitCast(node, context);
+    }
+
+    @Override
     protected Ternary visitArithmeticBinary(ArithmeticBinaryExpression node, TranslationContext context) {
         if (this.isGroupedBy(node))
             return Ternary.Yes;
-        Ternary lb = this.process(node.getLeft(), context);
-        Ternary rb = this.process(node.getRight(), context);
-        return this.combine(node, lb, rb);
+        return super.visitArithmeticBinary(node, context);
     }
 
     @Override
     protected Ternary visitNotExpression(NotExpression node, TranslationContext context) {
         if (this.isGroupedBy(node))
             return Ternary.Yes;
-        return this.process(node.getValue(), context);
+        return super.visitNotExpression(node, context);
     }
 
     @Override
     protected Ternary visitBetweenPredicate(BetweenPredicate node, TranslationContext context) {
         if (this.isGroupedBy(node))
             return Ternary.Yes;
-        Ternary value = this.process(node.getValue(), context);
-        Ternary min = this.process(node.getMin(), context);
-        Ternary max = this.process(node.getMax(), context);
-        return this.combine(node, this.combine(node, value, min), max);
+        return super.visitBetweenPredicate(node, context);
     }
 
     @Override
@@ -148,37 +144,25 @@ public class AggregateVisitor
         return Ternary.Maybe;
     }
 
-    private void error(Node node) {
-        throw new TranslationException("Operation between aggregated and non-aggregated values", node);
-    }
-
     @Override
     protected Ternary visitIfExpression(IfExpression node, TranslationContext context) {
         if (this.isGroupedBy(node))
             return Ternary.Yes;
-        Ternary c = this.process(node.getCondition(), context);
-        Ternary th = this.process(node.getTrueValue(), context);
-        Ternary e = node.getFalseValue().isPresent() ? Ternary.Maybe :
-                this.process(node.getFalseValue().get(), context);
-        return this.combine(node, this.combine(node, c, th), e);
+        return super.visitIfExpression(node, context);
     }
 
     @Override
     protected Ternary visitComparisonExpression(ComparisonExpression node, TranslationContext context) {
         if (this.isGroupedBy(node))
             return Ternary.Yes;
-        Ternary lb = this.process(node.getLeft(), context);
-        Ternary rb = this.process(node.getRight(), context);
-        return this.combine(node, lb, rb);
+        return super.visitComparisonExpression(node, context);
     }
 
     @Override
     protected Ternary visitLogicalBinaryExpression(LogicalBinaryExpression node, TranslationContext context) {
         if (this.isGroupedBy(node))
             return Ternary.Yes;
-        Ternary lb = this.process(node.getLeft(), context);
-        Ternary rb = this.process(node.getRight(), context);
-        return this.combine(node, lb, rb);
+        return super.visitLogicalBinaryExpression(node, context);
     }
 
     @Override
@@ -192,39 +176,13 @@ public class AggregateVisitor
     protected Ternary visitSimpleCaseExpression(SimpleCaseExpression node, TranslationContext context) {
         if (this.isGroupedBy(node))
             return Ternary.Yes;
-        Ternary c = this.process(node.getOperand(), context);
-        if (c == null)
-            throw new TranslationException("Not supported: ", node.getOperand());
-        for (WhenClause e: node.getWhenClauses()) {
-            Ternary o = this.process(e.getOperand(), context);
-            if (o == null)
-                throw new TranslationException("Not supported: ", node.getOperand());
-            Ternary v = this.process(e.getResult(), context);
-            if (v == null)
-                throw new TranslationException("Not supported: ", node.getOperand());
-            Ternary s = this.combine(e, o, v);
-            c = this.combine(node, c, s);
-        }
-        if (node.getDefaultValue().isPresent()) {
-            Ternary v = this.process(node.getDefaultValue().get(), context);
-            if (v == null)
-                throw new TranslationException("Not supported: ", node.getOperand());
-            c = this.combine(node, v, c);
-        }
-        return c;
+        return super.visitSimpleCaseExpression(node, context);
     }
 
     @Override
     protected Ternary visitSearchedCaseExpression(SearchedCaseExpression node, TranslationContext context) {
         if (this.isGroupedBy(node))
             return Ternary.Yes;
-        Ternary c = Ternary.Maybe;
-        for (WhenClause e: node.getWhenClauses()) {
-            Ternary o = this.process(e.getOperand(), context);
-            Ternary v = this.process(e.getResult(), context);
-            Ternary s = this.combine(e, o, v);
-            c = this.combine(node, c, s);
-        }
-        return c;
+        return super.visitSearchedCaseExpression(node, context);
     }
 }

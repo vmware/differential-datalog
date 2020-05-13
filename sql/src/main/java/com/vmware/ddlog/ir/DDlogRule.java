@@ -23,8 +23,8 @@ import java.util.List;
  * but when translating SQL we never need more than 1.
  */
 public class DDlogRule extends DDlogNode {
-    private final DDlogAtom lhs;
-    private final List<DDlogRuleRHS> rhs;
+    public final DDlogAtom lhs;
+    public final List<DDlogRuleRHS> rhs;
     @Nullable
     public DDlogType type;
 
@@ -41,7 +41,13 @@ public class DDlogRule extends DDlogNode {
 
     @Override
     public String toString() {
-        String result = this.lhs.toString();
+        String result = "";
+        /*
+        result += this.comments();
+        if (!result.isEmpty())
+            result += "\n";
+         */
+        result += this.lhs.toString();
         if (!this.rhs.isEmpty()) {
             result += " :- " + String.join(",",
                 Linq.map(this.rhs, DDlogRuleRHS::toString));

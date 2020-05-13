@@ -15,34 +15,34 @@ import com.facebook.presto.sql.tree.Node;
 
 import javax.annotation.Nullable;
 
-public class DDlogRelation extends DDlogNode {
-    public enum RelationRole {
-        RelInput,
-        RelOutput,
-        RelInternal;
+public class DDlogRelationDeclaration extends DDlogNode {
+    public enum Role {
+        Input,
+        Output,
+        Internal;
 
         @Override
         public String toString() {
             switch (this) {
-                case RelInput:
+                case Input:
                     return "input";
-                case RelOutput:
+                case Output:
                     return "output";
-                case RelInternal:
+                case Internal:
                     return "";
             }
             throw new RuntimeException("Unexpected value");
         }
     }
 
-    private final RelationRole role;
+    private final Role role;
     private final String name;
     private final DDlogType type;
     @Nullable
     private final DDlogExpression primaryKey;
 
-    public DDlogRelation(@Nullable Node node, RelationRole role, String name,
-                         DDlogType type, @Nullable DDlogExpression primaryKey) {
+    public DDlogRelationDeclaration(@Nullable Node node, Role role, String name,
+                                    DDlogType type, @Nullable DDlogExpression primaryKey) {
         super(node);
         this.role = role;
         this.name = this.checkNull(name);
@@ -50,8 +50,8 @@ public class DDlogRelation extends DDlogNode {
         this.primaryKey = primaryKey;
     }
 
-    public DDlogRelation(@Nullable Node node, RelationRole role, String name,
-                         DDlogType type) {
+    public DDlogRelationDeclaration(@Nullable Node node, Role role, String name,
+                                    DDlogType type) {
         this(node, role, name, type, null);
     }
 

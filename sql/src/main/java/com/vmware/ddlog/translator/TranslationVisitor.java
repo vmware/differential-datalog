@@ -11,6 +11,7 @@
 
 package com.vmware.ddlog.translator;
 
+import com.facebook.presto.sql.SqlFormatter;
 import com.facebook.presto.sql.tree.*;
 import com.vmware.ddlog.ir.*;
 import com.vmware.ddlog.util.Linq;
@@ -22,7 +23,7 @@ import java.util.*;
 import static com.vmware.ddlog.translator.ExpressionTranslationVisitor.unwrapBool;
 
 class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
-    static final boolean debug = true;
+    static final boolean debug = false;
 
     static class GroupByInfo {
         /**
@@ -50,6 +51,15 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         public DDlogExpression getVariable() {
             return new DDlogEVar(this.groupBy, this.varName, this.translation.getType());
         }
+
+        @Override
+        public String toString() {
+            return "GroupBy: " + this.groupBy + " as " + this.varName;
+        }
+    }
+
+    static String toString(Node node) {
+        return SqlFormatter.formatSql(node, Optional.empty());
     }
 
     static String convertQualifiedName(QualifiedName name) {
@@ -69,37 +79,58 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         String typeName = context.freshGlobalName(DDlogType.typeName(name));
         DDlogTStruct type = new DDlogTStruct(node, typeName, fields);
         DDlogTUser tuser = context.createTypedef(node, type);
-        String relName = DDlogRelation.relationName(name);
+        String relName = DDlogRelationDeclaration.relationName(name);
         context.globalSymbols.addName(relName);
-        DDlogRelation rel = new DDlogRelation(
-                node, DDlogRelation.RelationRole.RelInput, relName, tuser);
+        DDlogRelationDeclaration rel = new DDlogRelationDeclaration(
+                node, DDlogRelationDeclaration.Role.Input, relName, tuser);
         context.add(rel);
         return rel;
     }
 
+    /**
+     * Creates a rule and a declaration for the associated relation; adds them to the program.
+     * @param node    SQL node that is being translated.
+     * @param relName Name of the relation created.
+     * @param rhs     Right-hand side that defines the tuples of the current relation.
+     * @param role    Kind of relation created.
+     * @param context Translation context; the rule and relation are added there.
+     */
+    protected DDlogRule createRule(Node node, String relName, RelationRHS rhs,
+                                   DDlogRelationDeclaration.Role role,
+                                   TranslationContext context) {
+        String outVarName = context.freshLocalName("v");
+        DDlogExpression outRowVarDecl = new DDlogEVarDecl(node, outVarName, rhs.getType());
+        DDlogRelationDeclaration relDecl = new DDlogRelationDeclaration(node, role, relName, rhs.getType());
+        DDlogAtom lhs = new DDlogAtom(node, relName, new DDlogEVar(node, outVarName, relDecl.getType()));
+        List<DDlogRuleRHS> definitions = rhs.getDefinitions();
+        DDlogExpression inRowVar = rhs.getRowVariable();
+        DDlogESet set = new DDlogESet(node, outRowVarDecl, inRowVar);
+        definitions.add(new DDlogRHSCondition(node, set));
+        DDlogRule rule = new DDlogRule(node, lhs, definitions);
+        rule.addComment(new DDlogComment(node));
+        context.add(relDecl);
+        context.add(rule);
+        return rule;
+    }
+
+    /**
+     * Translate a query that produces a table.
+     * @param query   Query to translate
+     * @param context Translation context.
+     * @return        A RelationRHS whose row variable represents all rows in the table query.
+     */
     @Override
     protected DDlogIRNode visitTableSubquery(TableSubquery query, TranslationContext context) {
         DDlogIRNode subquery = this.process(query.getQuery(), context);
-        RelationRHS relation = subquery.to(RelationRHS.class);
-
-        String relName = context.freshGlobalName(DDlogRelation.relationName("tmp"));
-        DDlogRelation rel = new DDlogRelation(
-                query, DDlogRelation.RelationRole.RelInternal, relName, relation.getType());
-        context.add(rel);
-        String lhsVar = context.freshLocalName("v");
-        DDlogExpression varExpr = new DDlogEVar(null, lhsVar, relation.getType());
-        List<DDlogRuleRHS> rhs = relation.getDefinitions();
-        DDlogESet set = new DDlogESet(query,
-                new DDlogEVarDecl(null, lhsVar, relation.getType()),
-                relation.getRowVariable(false));
-        rhs.add(new DDlogRHSCondition(query, set));
-        DDlogAtom lhs = new DDlogAtom(query, relName, varExpr);
-        DDlogRule rule = new DDlogRule(query, lhs, rhs);
-        context.add(rule);
-        RelationRHS result = new RelationRHS(query, lhsVar, relation.getType());
-        result.addDefinition(new DDlogRHSLiteral(query, true, new DDlogAtom(query, rel.getName(), varExpr)));
-        Scope scope = new Scope(query, relName, lhsVar, rel.getType());
+        RelationRHS rhs = subquery.to(RelationRHS.class);
+        String relName = context.freshGlobalName(DDlogRelationDeclaration.relationName("tmp"));
+        DDlogRule rule = this.createRule(query, relName, rhs, DDlogRelationDeclaration.Role.Internal, context);
+        String lhsVar = rule.lhs.val.to(DDlogEVar.class).var;
+        RelationRHS result = new RelationRHS(query, lhsVar, rhs.getType());
+        result.addDefinition(new DDlogRHSLiteral(query, true, new DDlogAtom(query, relName, rule.lhs.val)));
+        Scope scope = new Scope(query, relName, lhsVar, rule.lhs.val.getType());
         context.enterScope(scope);
+        context.clearSubstitutions();
         return result;
     }
 
@@ -128,7 +159,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
     @Override
     protected DDlogIRNode visitTable(Table table, TranslationContext context) {
         String name = convertQualifiedName(table.getName());
-        DDlogRelation relation = context.getRelation(DDlogRelation.relationName(name));
+        DDlogRelationDeclaration relation = context.getRelation(DDlogRelationDeclaration.relationName(name));
         if (relation == null)
             throw new TranslationException("Could not find relation", table);
         String var = context.freshLocalName("v");
@@ -137,20 +168,20 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         context.enterScope(scope);
         RelationRHS result = new RelationRHS(table, var, type);
         result.addDefinition(new DDlogRHSLiteral(table,
-                true, new DDlogAtom(table, relation.getName(), result.getRowVariable(false))));
+                true, new DDlogAtom(table, relation.getName(), result.getRowVariable())));
         return result;
     }
 
     /**
      * Convert a select without aggregation.
      */
-    private RelationRHS processSimpleSelect(
-            Node select, RelationRHS inputRelation, List<SelectItem> items,
+    private <T extends SelectItem> RelationRHS processSimpleSelect(
+            Node select, RelationRHS inputRelation, List<T> selectArguments,
             TranslationContext context) {
-        String outRelName = context.freshGlobalName(DDlogRelation.relationName("tmp"));
-        if (items.size() == 1) {
+        String outRelName = context.freshGlobalName(DDlogRelationDeclaration.relationName("tmp"));
+        if (selectArguments.size() == 1) {
             // Special case for SELECT *
-            SelectItem single = items.get(0);
+            SelectItem single = selectArguments.get(0);
             if (single instanceof AllColumns) {
                 AllColumns all = (AllColumns)single;
                 if (!all.getPrefix().isPresent())
@@ -160,7 +191,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
 
         List<DDlogField> typeList = new ArrayList<DDlogField>();
         List<DDlogEStruct.FieldValue> exprList = new ArrayList<DDlogEStruct.FieldValue>();
-        for (SelectItem s : items) {
+        for (SelectItem s : selectArguments) {
             if (s instanceof SingleColumn) {
                 SingleColumn sc = (SingleColumn) s;
                 String name;
@@ -186,7 +217,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                 for (DDlogField f: struct.getFields()) {
                     typeList.add(f);
                     exprList.add(new DDlogEStruct.FieldValue(f.getName(),
-                            new DDlogEField(inputRelation.getNode(), inputRelation.getRowVariable(false),
+                            new DDlogEField(inputRelation.getNode(), inputRelation.getRowVariable(),
                                     f.getName(), f.getType())));
                 }
             } else {
@@ -207,83 +238,92 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                 result.getRowVariable(true),
                 project);
         result = result.addDefinition(assignProject);
-        DDlogRelation outRel = new DDlogRelation(select, DDlogRelation.RelationRole.RelInternal, outRelName, tuser);
+        DDlogRelationDeclaration outRel = new DDlogRelationDeclaration(select, DDlogRelationDeclaration.Role.Internal, outRelName, tuser);
         context.add(outRel);
         return result;
     }
 
-    private DDlogIRNode processWindows(
-            Select select, RelationRHS input, List<SelectItem> windows, TranslationContext context) {
+    /*
+    private RelationRHS processWindowsJunk(
+            Select select, RelationRHS input,
+            List<WindowVisitor.WindowAggregation> windows,
+            List<SelectItem> finalTransform,
+            TranslationContext context) {
         if (windows.isEmpty())
             return input;
-        // For each window we perform a separate group-by aggregation...
-        for (SelectItem it: windows) {
-            WindowVisitor visitor = new WindowVisitor();
-            SingleColumn sc = (SingleColumn)it;
-            if (sc == null)
-                throw new TranslationException("Unexpected expression in window", it);
-            visitor.process(sc);  // This extracts the groups
-            List<GroupByInfo> groups = visitor.groupOn;
-            this.processSelectAggregate(select, input, Collections.singletonList(it),
-                    null, groups, null, context);
-        }
-        throw new TranslationException("Window functions not yet implemented", select);
-    }
 
-    private DDlogIRNode processSelect(RelationRHS inputRelation, Select select,
-                                      List<GroupByInfo> groupBy,
-                                      @Nullable GroupBy gby,
-                                      @Nullable Expression having,
-                                      TranslationContext context) {
-        List<SelectItem> items = select.getSelectItems();
-        List<SelectItem> windowItems = new ArrayList<SelectItem>();
-        List<SelectItem> otherItems = new ArrayList<SelectItem>();
+        // Save input to an intermediate rule
+        String inputName = context.freshGlobalName("OverInput");
+        // We reuse the same row variable for this rule, because the row variable name
+        // is already hardwired in the translation of the group-by expressions.
+        DDlogRule saveInput = this.createRule(select, inputName, input,
+                DDlogRelationDeclaration.Role.Internal, context);
+        RelationRHS overInput = new RelationRHS(select, input.getVarName(), input.getType());
+        overInput.addDefinition(new DDlogRHSLiteral(select, true,
+                new DDlogAtom(select, saveInput.lhs.relation, overInput.getRowVariable())));
 
-        if (debug) System.out.println(select);
-        boolean foundAggregate = false;
-        boolean foundNonAggregate = false;
-        AggregateVisitor visitor = new AggregateVisitor(groupBy);
-        for (SelectItem s : items) {
-            if (s instanceof AllColumns) {
-                otherItems.add(s);
-                foundNonAggregate = true;
-            } else {
-                SingleColumn sc = (SingleColumn)s;
-                Expression e = sc.getExpression();
-                WindowVisitor windowVisitor = new WindowVisitor();
-                if (windowVisitor.process(e, context) == Ternary.Yes) {
-                    if (debug) System.out.println("Window: " + e);
-                    windowItems.addAll(windowVisitor.aggregatedItems);
-                    otherItems.addAll(windowVisitor.inputItems);
-                } else {
-                    otherItems.add(s);
-                    if (visitor.process(e, context) == Ternary.Yes) {
-                        if (debug) System.out.println("Aggregate: " + e);
-                        foundAggregate = true;
-                    } else {
-                        if (debug) System.out.println("Nonaggregate: " + e);
-                        foundNonAggregate = true;
-                    }
-                }
+        context.exitAllScopes();
+        // Add to the context the variables that are defined by the input
+        Scope scope = new Scope(select, "over", overInput.getVarName(), overInput.getType());
+        context.enterScope(scope);
+
+        List<DDlogRuleRHS> resultComponents = new ArrayList<DDlogRuleRHS>();
+        // For each window we perform a separate group-by aggregation
+        DDlogTStruct overInputStructType = context.resolveType(overInput.getType()).to(DDlogTStruct.class);
+        for (WindowVisitor.WindowAggregation w: windows) {
+            // Each window aggregate must also preserve the group keys, since these
+            // will be used to join.
+            List<SelectItem> windowResults = new ArrayList<SelectItem>(w.windowResult);
+            windowResults.addAll(w.groupOn);
+            List<GroupByInfo> groupOn = new ArrayList<GroupByInfo>();
+            for (SingleColumn si : w.groupOn) {
+                assert si.getAlias().isPresent();
+                String alias = si.getAlias().get().getValue();
+                DDlogType fieldType = overInputStructType.getFieldType(alias);
+                DDlogExpression expr = new DDlogEField(si.getExpression(), overInput.getRowVariable(), alias, fieldType);
+                GroupByInfo gbi = new GroupByInfo(si.getExpression(), expr, alias);
+                groupOn.add(gbi);
+            }
+            RelationRHS windowResult = this.processSelectAggregate(select, overInput, windowResults,
+                    null, groupOn, null, true, context);
+            // Create a new rule which produces a relation with the result of the window
+            // aggregation.
+            String overRelName = context.freshGlobalName("Over");
+            DDlogRule rule = this.createRule(select, overRelName, windowResult,
+                    DDlogRelationDeclaration.Role.Internal, context);
+
+            // New rule, we exit all existing scopes
+            context.exitAllScopes();
+            // Add rule to join
+            resultComponents.add(new DDlogRHSLiteral(select, true, rule.lhs));
+            DDlogExpression cond = null;
+            // Create join condition
+            for (GroupByInfo g: groupOn) {
+                DDlogExpression left = new DDlogEField(select, overInput.getRowVariable(), g.varName, g.translation.getType());
+                DDlogExpression right = new DDlogEField(select, rule.lhs.val, g.varName, g.translation.getType());
+                DDlogExpression e = ExpressionTranslationVisitor.operationCall(select, DDlogEBinOp.BOp.Eq, left, right);
+                if (cond == null)
+                    cond = e;
+                else
+                    cond = ExpressionTranslationVisitor.operationCall(select, DDlogEBinOp.BOp.And, cond, e);
+            }
+            assert cond != null;
+            resultComponents.add(new DDlogRHSCondition(cond.getNode(), cond));
+            // add the window results to the substitutions
+            for (SingleColumn wr: w.windowResult) {
+                assert wr.getAlias().isPresent();
+                DDlogType fieldType = context.translateExpression(wr.getExpression()).getType();
+                DDlogExpression field = new DDlogEField(
+                        select, overInput.getRowVariable(), wr.getAlias().get().getValue(), fieldType);
+                context.addSubstitution(wr.getExpression(), field);
             }
         }
-
-        if (debug) System.out.println("-----");
-        if (foundAggregate && foundNonAggregate)
-            throw new TranslationException("SELECT with a mix of aggregates and non-aggregates.", select);
-        if (!select.isDistinct() && !foundAggregate)
-            throw new TranslationException("Only SELECT DISTINCT currently supported", select);
-        RelationRHS selectTranslation;
-        if (foundAggregate) {
-            selectTranslation = this.processSelectAggregate(
-                    select, inputRelation, otherItems, gby, groupBy, having, context);
-        } else {
-            if (groupBy.size() > 0)
-                throw new TranslationException("Select without aggregation with GROUP BY", select);
-            selectTranslation = this.processSimpleSelect(select, inputRelation, otherItems, context);
-        }
-        return this.processWindows(select, selectTranslation, windowItems, context);
+        RelationRHS result = this.processSimpleSelect(select, overInput, finalTransform, context);
+        for (DDlogRuleRHS r: resultComponents)
+            result.addDefinition(r);
+        return result;
     }
+     */
 
     /**
      * The type of an intermediate expression produced by an aggregate.
@@ -518,7 +558,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         if (found)
             return;
 
-        AggregateVisitor aggv = new AggregateVisitor(state.groupBy);
+        AggregateVisitor aggv = new AggregateVisitor(state.groupBy, true);
         aggv.process(expression, context);
         AggregateVisitor.Decomposition decomposition = aggv.decomposition;
 
@@ -569,10 +609,10 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         state.resultFieldOrigin.put(name, expression);
     }
 
-    private RelationRHS processSelectAggregate(
+    private <T extends SelectItem> RelationRHS processSelectAggregate(
             Select select,
             RelationRHS inputRelation,
-            List<SelectItem> items,
+            List<T> selectArguments,
             @Nullable GroupBy gby,
             List<GroupByInfo> groupBy,
             @Nullable Expression having,
@@ -594,7 +634,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
              result = <complete aggregate>(gb1, gb2, v)
          */
         SelectTranslationState state = new SelectTranslationState(select, groupBy);
-        String outRelName = context.freshGlobalName(DDlogRelation.relationName("tmp"));
+        String outRelName = context.freshGlobalName(DDlogRelationDeclaration.relationName("tmp"));
         String paramName = context.freshLocalName("g");
 
         // We will generate a custom function to perform the aggregation.
@@ -641,7 +681,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         DDlogFuncArg param = new DDlogFuncArg(gby, paramName, false, paramType);
         DDlogETuple callArg = new DDlogETuple(select, tupleVars.toArray(new DDlogExpression[0]));
 
-        for (SelectItem s : items) {
+        for (SelectItem s : selectArguments) {
             if (s instanceof SingleColumn) {
                 SingleColumn sc = (SingleColumn) s;
                 String name;
@@ -709,7 +749,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         DDlogFunction func = new DDlogFunction(select, agg, tUserFunction, state.functionBody, param);
         context.getProgram().functions.add(func);
 
-        DDlogRelation outRel = new DDlogRelation(select, DDlogRelation.RelationRole.RelInternal, outRelName, tUserResult);
+        DDlogRelationDeclaration outRel = new DDlogRelationDeclaration(select, DDlogRelationDeclaration.Role.Internal, outRelName, tUserResult);
         context.add(outRel);
 
         DDlogExpression copy;
@@ -771,17 +811,13 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             throw new TranslationException("ORDER BY clauses not supported", spec);
         if (!spec.getFrom().isPresent())
             throw new TranslationException("FROM clause is required", spec);
+
+        // We start by processing the from clause; the scope of the rest of the
+        // query is influenced by the from clause.
         DDlogIRNode source = this.process(spec.getFrom().get(), context);
         if (source == null)
             throw new TranslationException("Not yet handled", spec);
-        RelationRHS relation = source.to(RelationRHS.class);
-        if (spec.getWhere().isPresent()) {
-            Expression expr = spec.getWhere().get();
-            DDlogExpression ddexpr = context.translateExpression(expr);
-            ddexpr = unwrapBool(ddexpr);
-            relation = relation.addDefinition(ddexpr);
-        }
-        @Nullable
+
         GroupBy gb = null;
         List<GroupByInfo> groupBy = new ArrayList<GroupByInfo>();
         if (spec.getGroupBy().isPresent()) {
@@ -789,35 +825,159 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             this.processGroupBy(gb, context, groupBy);
         }
 
-        @Nullable Expression having = null;
-        if (spec.getHaving().isPresent())
-            having = spec.getHaving().get();
-
+        // Analyze the structure of the select items to discover window computations
+        // and aggregate calls.
         Select select = spec.getSelect();
-        return this.processSelect(relation, select, groupBy, gb, having, context);
+        List<SelectItem> items = select.getSelectItems();
+
+        if (debug) System.out.println(toString(select));
+        boolean foundAggregate = false;
+        boolean foundNonAggregate = false;
+        AggregateVisitor aggregateVisitor = new AggregateVisitor(groupBy);
+        WindowVisitor windowVisitor = new WindowVisitor();
+        for (SelectItem s : items) {
+            if (s instanceof AllColumns) {
+                foundNonAggregate = true;
+            } else {
+                SingleColumn sc = (SingleColumn)s;
+                Expression e = sc.getExpression();
+                if (windowVisitor.process(e, context) == Ternary.Yes) {
+                    if (debug) System.out.println("Window: " + e);
+                    // TODO: there could be other aggregates here as well.
+                } else {
+                    if (aggregateVisitor.process(e, context) == Ternary.Yes) {
+                        if (debug) System.out.println("Aggregate: " + e);
+                        foundAggregate = true;
+                    } else {
+                        if (debug) System.out.println("Nonaggregate: " + e);
+                        foundNonAggregate = true;
+                    }
+                }
+            }
+        }
+
+        if (debug) System.out.println("-----");
+        if (foundAggregate && foundNonAggregate)
+            throw new TranslationException("SELECT with a mix of aggregates and non-aggregates.", select);
+        if (!select.isDistinct() && !foundAggregate)
+            throw new TranslationException("Only SELECT DISTINCT currently supported", select);
+
+        if (windowVisitor.windows.isEmpty()) {
+            // No window computations: synthesize the query directly.
+            RelationRHS relation = source.to(RelationRHS.class);
+            if (spec.getWhere().isPresent()) {
+                Expression expr = spec.getWhere().get();
+                DDlogExpression ddexpr = context.translateExpression(expr);
+                ddexpr = unwrapBool(ddexpr);
+                relation = relation.addDefinition(ddexpr);
+            }
+
+            Expression having = null;
+            if (spec.getHaving().isPresent())
+                having = spec.getHaving().get();
+
+            // If we have no window functions we can do everything in one step.
+            RelationRHS selectTranslation;
+            if (foundAggregate) {
+                selectTranslation = this.processSelectAggregate(
+                        select, relation, items, gb, groupBy, having, context);
+            } else {
+                if (groupBy.size() > 0)
+                    throw new TranslationException("Select without aggregation with GROUP BY", select);
+                selectTranslation = this.processSimpleSelect(select, relation, items, context);
+            }
+            return selectTranslation;
+        }
+
+        return this.processWindows(spec, windowVisitor, context);
+    }
+
+    private DDlogIRNode processWindows(QuerySpecification query,
+                                       WindowVisitor visitor,
+                                       TranslationContext context) {
+        List<SelectItem> inputItems = new ArrayList<SelectItem>();
+        inputItems.addAll(visitor.firstSelect);
+        inputItems.addAll(Linq.flatMap(visitor.windows, w -> w.groupOn));
+        Select select = new Select(query.getSelect().isDistinct(), inputItems);
+        QuerySpecification prepare = new QuerySpecification(
+                select,
+                query.getFrom(),
+                query.getWhere(),
+                query.getGroupBy(),
+                query.getHaving(),
+                query.getOrderBy(),
+                query.getLimit());
+        String overInputName = context.freshGlobalName("OverInput");
+        QualifiedName overInput = QualifiedName.of(overInputName);
+        Query q = new Query(Optional.empty(), prepare, Optional.empty(), Optional.empty());
+        CreateView overInputView = new CreateView(overInput, q, false);
+        if (debug) System.out.println(toString(overInputView));
+        context.viewIsOutput = false;
+        this.process(overInputView, context);
+        Table overInputTable = new Table(overInput);
+
+        Relation join = overInputTable;
+        for (WindowVisitor.WindowAggregation w: visitor.windows) {
+            List<SelectItem> items = new ArrayList<SelectItem>();
+            items.addAll(Linq.map(w.groupOn, s -> new SingleColumn(s.getAlias().get())));
+            items.addAll(w.windowResult);
+            Select selectI = new Select(false, items);
+            String overName = context.freshLocalName("Over");
+            QualifiedName overQName = QualifiedName.of(overName);
+            GroupBy groupBy = w.getGroupBy();
+            Table overView = new Table(overQName);
+            QuerySpecification window = new QuerySpecification(
+                    selectI,
+                    Optional.of(overInputTable),
+                    Optional.empty(),
+                    Optional.of(groupBy),
+                    Optional.empty(),
+                    Optional.empty(),
+                    Optional.empty());
+            Query qi = new Query(Optional.empty(), window, Optional.empty(), Optional.empty());
+            CreateView over = new CreateView(overQName, qi, false);
+            if (debug) System.out.println(toString(over));
+            context.viewIsOutput = false;
+            this.process(over, context);
+            JoinCriteria criteria = new NaturalJoin();
+            join = new Join(Join.Type.INNER, join, overView, Optional.of(criteria));
+        }
+
+        List<SelectItem> finalItems = new ArrayList<SelectItem>();  // TODO
+        SubstitutionRewriter rewriter = new SubstitutionRewriter(visitor.substitutions);
+        ExpressionTreeRewriter<Void> subst = new ExpressionTreeRewriter<Void>(rewriter);
+        for (SelectItem item: query.getSelect().getSelectItems()) {
+            if (item instanceof AllColumns) {
+                finalItems.add(item);
+            } else {
+                assert item instanceof SingleColumn;
+                SingleColumn sc = (SingleColumn)item;
+                Expression repl = subst.rewrite(sc.getExpression(), null);
+                finalItems.add(new SingleColumn(repl, sc.getAlias()));
+            }
+        }
+        Select selectFinal = new Select(true, finalItems);
+        QuerySpecification joins = new QuerySpecification(
+                selectFinal,
+                Optional.of(join),
+                Optional.empty(),
+                Optional.empty(),
+                Optional.empty(),
+                Optional.empty(),
+                Optional.empty());
+        if (debug) System.out.println(toString(joins));
+        return this.process(joins, context);
     }
 
     @Override
     protected DDlogIRNode visitCreateView(CreateView view, TranslationContext context) {
         String name = convertQualifiedName(view.getName());
+        DDlogRelationDeclaration.Role role =
+                context.viewIsOutput ? DDlogRelationDeclaration.Role.Output : DDlogRelationDeclaration.Role.Internal;
         DDlogIRNode query = this.process(view.getQuery(), context);
         RelationRHS rel = query.to(RelationRHS.class);
-        String relName = DDlogRelation.relationName(name);
-        context.globalSymbols.addName(relName);
-        DDlogRelation out = new DDlogRelation(
-                view, DDlogRelation.RelationRole.RelOutput, relName, rel.getType());
-
-        String outVarName = context.freshLocalName("v");
-        DDlogExpression outRowVarDecl = new DDlogEVarDecl(view, outVarName, rel.getType());
-        DDlogExpression inRowVar = rel.getRowVariable(false);
-        List<DDlogRuleRHS> rhs = rel.getDefinitions();
-        DDlogESet set = new DDlogESet(view, outRowVarDecl, inRowVar);
-        rhs.add(new DDlogRHSCondition(view, set));
-        DDlogAtom lhs = new DDlogAtom(view, relName, new DDlogEVar(view, outVarName, out.getType()));
-        DDlogRule rule = new DDlogRule(view, lhs, rhs);
-        context.add(out);
-        context.add(rule);
-        return rule;
+        String relName = DDlogRelationDeclaration.relationName(name);
+        return this.createRule(view, relName, rel, role, context);
     }
 
     /**
@@ -892,8 +1052,8 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         DDlogExpression condition = new DDlogEBool(join, true);
         for (String col: joinColumns) {
             DDlogExpression e = context.operationCall(join, DDlogEBinOp.BOp.Eq,
-                    new DDlogEField(join, lrel.getRowVariable(false), col, lst.getFieldType(col)),
-                    new DDlogEField(join, rrel.getRowVariable(false), col, rst.getFieldType(col)));
+                    new DDlogEField(join, lrel.getRowVariable(), col, lst.getFieldType(col)),
+                    new DDlogEField(join, rrel.getRowVariable(), col, rst.getFieldType(col)));
             condition = context.operationCall(join, DDlogEBinOp.BOp.And, condition, e);
         }
         rules.add(new DDlogRHSCondition(join, unwrapBool(condition)));
@@ -909,7 +1069,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             tfields.add(f);
             names.add(f.getName());
             fields.add(new DDlogEStruct.FieldValue(f.getName(),
-                    new DDlogEField(join, lrel.getRowVariable(false), f.getName(), f.getType())));
+                    new DDlogEField(join, lrel.getRowVariable(), f.getName(), f.getType())));
         }
         for (DDlogField f: rst.getFields()) {
             if (joinColumns.contains(f.getName()))
@@ -919,7 +1079,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             DDlogField field = new DDlogField(f.getNode(), name, f.getType());
             tfields.add(field);
             fields.add(new DDlogEStruct.FieldValue(field.getName(),
-                    new DDlogEField(f.getNode(), rrel.getRowVariable(false), f.getName(), f.getType())));
+                    new DDlogEField(f.getNode(), rrel.getRowVariable(), f.getName(), f.getType())));
         }
         DDlogTStruct type = new DDlogTStruct(join, tmp, tfields);
         DDlogTUser tuser = context.createTypedef(join, type);

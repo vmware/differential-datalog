@@ -17,8 +17,8 @@ import com.facebook.presto.sql.tree.Node;
 import javax.annotation.Nullable;
 
 public class DDlogAtom extends DDlogNode {
-    private final String relation;
-    private final DDlogExpression val;
+    public final String relation;
+    public final DDlogExpression val;
 
     public DDlogAtom(@Nullable Node node, String relation, DDlogExpression val) {
         super(node);

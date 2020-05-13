@@ -16,7 +16,7 @@ import com.facebook.presto.sql.tree.Node;
 import javax.annotation.Nullable;
 
 public class DDlogEVar extends DDlogExpression {
-    private final String var;
+    public final String var;
 
     public DDlogEVar(@Nullable Node node, String var, DDlogType type) {
         super(node, type);

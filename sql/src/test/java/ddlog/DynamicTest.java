@@ -41,8 +41,8 @@ public class DynamicTest extends BaseQueriesTest {
         conn.execute(viewStatement);
     }
 
-    @Test
-    public void testDynamicLoading() throws IOException, DDlogException, IllegalAccessException, NoSuchFieldException {
+    //@Test
+    public void testDynamicLoading() throws IOException, DDlogException {
         String ddlogProgram = "import sql\n" + // not needed, but we test the libraries too
                 "import sqlop\n" +
                 "input relation R(v: bit<16>)\n" +
