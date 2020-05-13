@@ -77,6 +77,17 @@ public class Linq {
         return result;
     }
 
+    public static <T, S> List<S> flatMap(List<T> data, Function<T, List<S>> function) {
+        List<S> result = new ArrayList<S>(data.size());
+        for (T aData : data)
+            result.addAll(function.apply(aData));
+        return result;
+    }
+
+    public static <T, S> List<S> as(List<T> data, Class<S> sc) {
+        return Linq.map(data, sc::cast);
+    }
+
     public static <T, S> S[] map(T[] data, Function<T, S> function, Class<S> sc) {
         @SuppressWarnings("unchecked")
         S[] result = (S[])Array.newInstance(sc, data.length);

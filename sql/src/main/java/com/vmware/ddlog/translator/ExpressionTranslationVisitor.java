@@ -398,12 +398,15 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
 
     @Override
     protected DDlogExpression visitFunctionCall(FunctionCall node, TranslationContext context) {
+        /*
+        We ignore these; they are handled by our callers properly.
         if (node.getWindow().isPresent())
             throw new TranslationException("Not yet supported", node);
         if (node.getOrderBy().isPresent())
             throw new TranslationException("Not yet supported", node);
         if (node.getFilter().isPresent())
             throw new TranslationException("Not yet supported", node);
+        */
         String name = functionName(node);
         List<DDlogExpression> args = Linq.map(node.getArguments(), a -> this.process(a, context));
         DDlogType type = functionResultType(node, name, args);

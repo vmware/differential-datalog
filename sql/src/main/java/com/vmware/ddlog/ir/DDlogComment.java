@@ -23,6 +23,10 @@ public class DDlogComment extends DDlogNode {
         this.comment = comment;
     }
 
+    public DDlogComment(@Nullable Node node) {
+        this(node, node != null ? node.toString() : "");
+    }
+
     @Override
     public String toString() {
         return "/* " + this.comment + " */";

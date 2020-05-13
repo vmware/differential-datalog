@@ -24,7 +24,7 @@ import java.util.*;
  */
 class TranslationContext {
     private final DDlogProgram program;
-    private final HashMap<String, DDlogRelation> relations;
+    private final HashMap<String, DDlogRelationDeclaration> relations;
     private final ExpressionTranslationVisitor etv;
     /**
      * If true we resolve identifiers to scopes, not to values within a scope.
@@ -47,14 +47,18 @@ class TranslationContext {
     @Nullable
     private SymbolTable localSymbols;
 
+    // True if the view that is being compiled should produce an output relation.
+    public boolean viewIsOutput;
+
     TranslationContext() {
+        this.viewIsOutput = true;
         this.substitutions = new HashMap<Node, DDlogExpression>();
         this.program = new DDlogProgram();
         this.program.imports.add(new DDlogImport("fp", ""));
         this.program.imports.add(new DDlogImport("time", ""));
         this.program.imports.add(new DDlogImport("sql", ""));
         this.program.imports.add(new DDlogImport("sqlop", ""));
-        this.relations = new HashMap<String, DDlogRelation>();
+        this.relations = new HashMap<String, DDlogRelationDeclaration>();
         this.etv = new ExpressionTranslationVisitor();
         this.translationScope = new ArrayList<Scope>();
         this.searchScopeName = false;
@@ -74,6 +78,9 @@ class TranslationContext {
     }
 
     public void addSubstitution(Node node, DDlogExpression expression) {
+        DDlogExpression e = this.substitutions.get(node);
+        if (e != null)
+            System.out.println("Changing substitution of " + node + " from " + e + " to " + expression);
         this.substitutions.put(node, expression);
     }
 
@@ -160,7 +167,7 @@ class TranslationContext {
         return this.etv.process(expr, this);
     }
 
-    void add(DDlogRelation relation) {
+    void add(DDlogRelationDeclaration relation) {
         this.program.relations.add(relation);
         this.relations.put(relation.getName(), relation);
     }
@@ -192,7 +199,7 @@ class TranslationContext {
     }
 
     @Nullable
-    DDlogRelation getRelation(String name) {
+    DDlogRelationDeclaration getRelation(String name) {
         return this.relations.get(name);
     }
 

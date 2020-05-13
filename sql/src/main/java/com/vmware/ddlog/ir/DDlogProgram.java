@@ -11,10 +11,8 @@
 
 package com.vmware.ddlog.ir;
 
-import com.facebook.presto.sql.tree.Node;
 import com.vmware.ddlog.util.Linq;
 
-import javax.annotation.Nullable;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -24,11 +22,11 @@ public class DDlogProgram extends DDlogNode {
     // We are missing some of the fields that can never be generated from SQL
     public final List<DDlogTypeDef> typedefs;
     public final List<DDlogFunction> functions;
-    public final List<DDlogRelation> relations;
+    public final List<DDlogRelationDeclaration> relations;
     public final List<DDlogRule> rules;
     public final List<DDlogImport> imports;
 
-    DDlogProgram(List<DDlogTypeDef> typedefs, List<DDlogFunction> functions, List<DDlogRelation> relations, List<DDlogRule> rules, List<DDlogImport> imports) {
+    DDlogProgram(List<DDlogTypeDef> typedefs, List<DDlogFunction> functions, List<DDlogRelationDeclaration> relations, List<DDlogRule> rules, List<DDlogImport> imports) {
         super(null);
         this.typedefs = typedefs;
         this.functions = functions;
@@ -39,7 +37,7 @@ public class DDlogProgram extends DDlogNode {
 
     public DDlogProgram() {
         this(new ArrayList<DDlogTypeDef>(), new ArrayList<DDlogFunction>(),
-                new ArrayList<DDlogRelation>(), new ArrayList<DDlogRule>(),
+                new ArrayList<DDlogRelationDeclaration>(), new ArrayList<DDlogRule>(),
                 new ArrayList<DDlogImport>());
     }
 
@@ -49,7 +47,7 @@ public class DDlogProgram extends DDlogNode {
         parts[0] = String.join("\n", Linq.map(this.imports, DDlogImport::toString)) + "\n";
         parts[1] = String.join("\n", Linq.map(this.typedefs, DDlogTypeDef::toString));
         parts[2] = String.join("\n", Linq.map(this.functions, DDlogFunction::toString));
-        parts[3] = String.join("\n", Linq.map(this.relations, DDlogRelation::toString));
+        parts[3] = String.join("\n", Linq.map(this.relations, DDlogRelationDeclaration::toString));
         parts[4] = String.join("\n", Linq.map(this.rules, DDlogRule::toString));
         return String.join("\n", parts);
     }

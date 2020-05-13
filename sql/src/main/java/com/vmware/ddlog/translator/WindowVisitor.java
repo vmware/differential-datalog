@@ -1,12 +1,10 @@
 package com.vmware.ddlog.translator;
 
 import com.facebook.presto.sql.tree.*;
-import com.vmware.ddlog.ir.DDlogExpression;
+import com.vmware.ddlog.util.Linq;
 import com.vmware.ddlog.util.Ternary;
 
-import javax.annotation.Nullable;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 /**
  * This visitor computes the AggregateDecomposition of an expression that
@@ -16,31 +14,98 @@ import java.util.List;
  * It returns 'true' if the expression does contain window function aggregations.
  */
 public class WindowVisitor
-        extends AstVisitor<Ternary, TranslationContext> {
+        extends AggregationVisitorBase {
+    /*
+        Consider this query:
 
-    public WindowVisitor() {
-        this.groupOn = new ArrayList<TranslationVisitor.GroupByInfo>();
-        aggregatedItems = new ArrayList<SelectItem>();
-        inputItems = new ArrayList<SelectItem>();
+        SELECT c1, 3 + count(c3 + 1) OVER (PARTITION BY c2) FROM T
+
+        This can be executed as multiple queries:
+        - Prepare the input for the windowed computation.
+          (This query could even involve WHERE/GROUP BY/AGGREGAT/HAVING if the original
+           query contained them).
+
+          CREATE VIEW OverInput AS
+          SELECT c3 + 1 as tmp, c2 AS gb FROM T
+
+        - Compute the aggregation (one for each window):
+
+          CREATE VIEW Over AS
+          SELECT count(tmp) as tmp2, gb FROM OverInput
+          GROUP BY gb
+
+        - join the original table with the aggregations and
+          apply the computations to combine the results:
+
+          SELECT T.c1, 3 + Over.tmp2 FROM T JOIN Over ON T.c2 = Over.c2
+     */
+
+    /**
+     * Information required to compute a Window query
+     */
+    static class WindowAggregation {
+        /**
+         * Expressions defining the window, e.g., c3tmp in the
+         * previous example.
+         */
+        public final List<SingleColumn> groupOn;
+        /**
+         * Values computed by each window.
+         * E.g., count(c3tmp) in the previous example.
+         * These will depend on temporary variables that
+         * show up in the inputSelectItems below.
+         */
+        public final List<SingleColumn> windowResult;
+
+        public GroupBy getGroupBy() {
+            return new GroupBy(false,
+                    Collections.singletonList(
+                        new SimpleGroupBy(Linq.map(this.groupOn, s -> s.getAlias().get()))));
+        }
+
+        WindowAggregation() {
+            this.groupOn = new ArrayList<SingleColumn>();
+            this.windowResult = new ArrayList<SingleColumn>();
+        }
+
+        @Override
+        public String toString() {
+            return "GroupOn: " + this.groupOn.toString() + "\n" +
+                    "Aggregated: " + this.windowResult.toString() + "\n";
+        }
     }
 
     /**
-     * Let us consider the following query:
-     * select 3 + count(column1) over (partition by column2) from t1
-     *
-     * This is decomposed as follows:
-     * - groupByInfo: column2
-     * - aggregatedItems: 3 + count(tmp) <<< cut at aggregation functions in over
-     * - inputItems: column1 as tmp <<< argument to any aggregation function in over
+     * Expressions computed by the first select.  Each has an alias
+     * writing to a temporary variable, e.g., "c3tmp" in the previous example.
      */
-    public final List<TranslationVisitor.GroupByInfo> groupOn;
-    public final List<SelectItem> aggregatedItems;
-    public final List<SelectItem> inputItems;
+    final List<SingleColumn> firstSelect;
+    /**
+     * Aggregation windows found in the current expression visited.
+     * An expression can involve multiple windows: e.g.
+     *
+     * SELECT COUNT(col2) OVER (PARTITION BY col1) + COUNT(col1) OVER (PARTITION BY col2).
+     * This would produce two WindowAggregation structures.
+     */
+    final List<WindowAggregation> windows;
+    /**
+     * In the final select these expressions should be substituted.
+     */
+    final SubstitutionRewriter.SubstitutionMap substitutions;
+
+    public WindowVisitor() {
+        this.windows = new ArrayList<WindowAggregation>();
+        this.firstSelect = new ArrayList<SingleColumn>();
+        this.substitutions = new SubstitutionRewriter.SubstitutionMap();
+    }
 
     @Override
     protected Ternary visitFunctionCall(FunctionCall fc, TranslationContext context) {
         if (!fc.getWindow().isPresent())
             return Ternary.No;
+
+        WindowAggregation wag = new WindowAggregation();
+        this.windows.add(wag);
         Window win = fc.getWindow().get();
         if (win.getOrderBy().isPresent())
             throw new TranslationException("group-by not supported", fc);
@@ -48,143 +113,32 @@ public class WindowVisitor
             throw new TranslationException("frames not yet supported", fc);
         List<Expression> partitions = win.getPartitionBy();
         for (Expression e: partitions) {
-            DDlogExpression g = context.translateExpression(e);
             String gb = context.freshLocalName("gb");
-            TranslationVisitor.GroupByInfo gr = new TranslationVisitor.GroupByInfo(e, g, gb);
-            this.groupOn.add(gr);
+            wag.groupOn.add(new SingleColumn(e, new Identifier(gb)));
         }
         String name = TranslationVisitor.convertQualifiedName(fc.getName());
         Ternary result = Ternary.Maybe;
         boolean isAggregate = SqlSemantics.semantics.isAggregateFunction(name);
         if (isAggregate) {
-            // All arguments become inputItems
-            List<Expression> args = new ArrayList<Expression>();
             for (Expression e: fc.getArguments()) {
+                // temporary name for input argument to aggregation function;
+                // e.g., c3tmp in our example
                 String var = context.freshLocalName("tmp");
                 Identifier arg = new Identifier(var);
-                args.add(arg);
-                SelectItem si = new SingleColumn(e, arg);
-                inputItems.add(si);
+                SingleColumn si = new SingleColumn(e, arg);
+                this.firstSelect.add(si);
             }
-            FunctionCall replacement = new FunctionCall(fc.getName(), args);
-            aggregatedItems.add(new SingleColumn(replacement));
+            // temporary name for the result of the window function;
+            // e.g., tmp2 in our example.
+            String var = context.freshLocalName(fc.getName().toString());
+            Identifier agg = new Identifier(var);
+            // This function call is exactly like fc but has no window information
+            FunctionCall noWindow = new FunctionCall(fc.getName(), Optional.empty(), fc.getFilter(),
+                    fc.getOrderBy(), fc.isDistinct(), fc.getArguments());
+            wag.windowResult.add(new SingleColumn(noWindow, agg));
+            this.substitutions.add(fc, agg);
             return Ternary.Yes;
         }
         return result;
-    }
-
-    public Ternary combine(Node node, @Nullable Ternary left, @Nullable Ternary right) {
-        if (left == null || right == null)
-            throw new TranslationException("Not yet implemented", node);
-        if (left == Ternary.Maybe)
-            return right;
-        if (right == Ternary.Maybe)
-            return left;
-        if (left != right)
-            this.error(node);
-        return left;
-    }
-
-    @Override
-    protected Ternary visitCast(Cast node, TranslationContext context) {
-        return this.process(node.getExpression(), context);
-    }
-
-    @Override
-    protected Ternary visitArithmeticBinary(ArithmeticBinaryExpression node, TranslationContext context) {
-        Ternary lb = this.process(node.getLeft(), context);
-        Ternary rb = this.process(node.getRight(), context);
-        return this.combine(node, lb, rb);
-    }
-
-    @Override
-    protected Ternary visitDereferenceExpression(DereferenceExpression node, TranslationContext context) {
-        return Ternary.Maybe;
-    }
-
-    @Override
-    protected Ternary visitNotExpression(NotExpression node, TranslationContext context) {
-        return this.process(node.getValue(), context);
-    }
-
-    @Override
-    protected Ternary visitBetweenPredicate(BetweenPredicate node, TranslationContext context) {
-        Ternary value = this.process(node.getValue(), context);
-        Ternary min = this.process(node.getMin(), context);
-        Ternary max = this.process(node.getMax(), context);
-        return this.combine(node, this.combine(node, value, min), max);
-    }
-
-    @Override
-    protected Ternary visitIdentifier(Identifier node, TranslationContext context) {
-        return Ternary.No;
-    }
-
-    @Override
-    protected Ternary visitLiteral(Literal node, TranslationContext context) {
-        return Ternary.Maybe;
-    }
-
-    private void error(Node node) {
-        throw new TranslationException("Operation between aggregated and non-aggregated values", node);
-    }
-
-    @Override
-    protected Ternary visitIfExpression(IfExpression node, TranslationContext context) {
-        Ternary c = this.process(node.getCondition(), context);
-        Ternary th = this.process(node.getTrueValue(), context);
-        Ternary e = node.getFalseValue().isPresent() ? Ternary.Maybe :
-                this.process(node.getFalseValue().get(), context);
-        return this.combine(node, this.combine(node, c, th), e);
-    }
-
-    @Override
-    protected Ternary visitComparisonExpression(ComparisonExpression node, TranslationContext context) {
-        Ternary lb = this.process(node.getLeft(), context);
-        Ternary rb = this.process(node.getRight(), context);
-        return this.combine(node, lb, rb);
-    }
-
-    @Override
-    protected Ternary visitLogicalBinaryExpression(LogicalBinaryExpression node, TranslationContext context) {
-        Ternary lb = this.process(node.getLeft(), context);
-        Ternary rb = this.process(node.getRight(), context);
-        return this.combine(node, lb, rb);
-    }
-
-    @Override
-    protected Ternary visitSimpleCaseExpression(SimpleCaseExpression node, TranslationContext context) {
-        Ternary c = this.process(node.getOperand(), context);
-        if (c == null)
-            throw new TranslationException("Not supported: ", node.getOperand());
-        for (WhenClause e: node.getWhenClauses()) {
-            Ternary o = this.process(e.getOperand(), context);
-            if (o == null)
-                throw new TranslationException("Not supported: ", node.getOperand());
-            Ternary v = this.process(e.getResult(), context);
-            if (v == null)
-                throw new TranslationException("Not supported: ", node.getOperand());
-            Ternary s = this.combine(e, o, v);
-            c = this.combine(node, c, s);
-        }
-        if (node.getDefaultValue().isPresent()) {
-            Ternary v = this.process(node.getDefaultValue().get(), context);
-            if (v == null)
-                throw new TranslationException("Not supported: ", node.getOperand());
-            c = this.combine(node, v, c);
-        }
-        return c;
-    }
-
-    @Override
-    protected Ternary visitSearchedCaseExpression(SearchedCaseExpression node, TranslationContext context) {
-        Ternary c = Ternary.Maybe;
-        for (WhenClause e: node.getWhenClauses()) {
-            Ternary o = this.process(e.getOperand(), context);
-            Ternary v = this.process(e.getResult(), context);
-            Ternary s = this.combine(e, o, v);
-            c = this.combine(node, c, s);
-        }
-        return c;
     }
 }

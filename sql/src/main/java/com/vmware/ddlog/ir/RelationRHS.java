@@ -53,6 +53,7 @@ public class RelationRHS extends DDlogNode {
     }
 
     public DDlogType getType() { return this.type; }
+
     public List<DDlogRuleRHS> getDefinitions() {
         return this.definitions; }
 
@@ -65,6 +66,10 @@ public class RelationRHS extends DDlogNode {
         if (declare)
             return new DDlogEVarDecl(this.node, this.rowVariable, this.type);
         return new DDlogEVar(this.node, this.rowVariable, this.type);
+    }
+
+    public DDlogExpression getRowVariable() {
+        return this.getRowVariable(false);
     }
 
     public String getVarName() {

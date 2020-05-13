@@ -337,16 +337,16 @@ public class WeaveTest extends BaseQueriesTest {
         Assert.assertNotNull(create);
 
         /*
-        // indexes are ignored
+        indexes are not supported by Presto
         String indexes =
                 "create index pod_info_idx on pod_info (status, node_name);\n" +
                 "create index pod_node_selector_labels_fk_idx on pod_node_selector_labels (pod_name);\n" +
                 "create index node_labels_idx on node_labels (label_key, label_value);\n" +
                 "create index pod_affinity_match_expressions_idx on pod_affinity_match_expressions (pod_name);\n" +
                 "create index pod_labels_idx on pod_labels (label_key, label_value);\n";
-        create = t.translateSqlStatement(pod_node_selectors);
+        create = t.translateSqlStatement(indexes);
         Assert.assertNotNull(create);
-        */
+         */
 
         String inter_pod_affinity =
                 "-- Inter pod affinity\n" +
@@ -659,7 +659,6 @@ public class WeaveTest extends BaseQueriesTest {
                 ".ephemeral_storage_request = v1.ephemeral_storage_request,.pods_request = v1.pods_request,.owner_name = v1.owner_name,.creation_timestamp = v1.creation_timestamp,.has_node_selector_labels = v1.has_node_selector_labels," +
                 ".has_pod_affinity_requirements = v1.has_pod_affinity_requirements,.pod_name0 = v1.pod_name0,.label_selector = v1.label_selector,.match_expression = v1.match_expression,.num_match_expressions = v1.num_match_expressions," +
                 ".label_key = v1.label_key,.label_operator = v1.label_operator,.label_value = v1.label_value,.topology_key = v1.topology_key,.pod_name1 = v2.pod_name,.label_key0 = v2.label_key,.label_value0 = v2.label_value}," +
-
                 "Rpod_info[v4],(v2.pod_name == v4.pod_name),true,var v5 = Ttmp7{.pod_name = v3.pod_name,.status = v3.status,.controllable__node_name = v3.controllable__node_name,.namespace = v3.namespace,.cpu_request = v3.cpu_request," +
                 ".memory_request = v3.memory_request,.ephemeral_storage_request = v3.ephemeral_storage_request,.pods_request = v3.pods_request,.owner_name = v3.owner_name,.creation_timestamp = v3.creation_timestamp," +
                 ".has_node_selector_labels = v3.has_node_selector_labels,.has_pod_affinity_requirements = v3.has_pod_affinity_requirements,.pod_name0 = v3.pod_name0,.label_selector = v3.label_selector," +
