@@ -7,18 +7,16 @@
 2: insert: (3.5, 1, 4.5)
 2: insert: (3.5, 2, 5.5)
 2: insert: (3.5, 3.5, 7)
-3: insert: x=1, total=1
-4: delete: x=1, total=1
-4: insert: x=1, total=3
-7: insert: y=2
-8: insert: y=3
-10: insert: y=5
-12: delete: y=2
-16: insert: x=1 y=1
-16: delete: x=1 y=1
-17: insert: x=2 y=2
-17: delete: x=2 y=2
-18: insert: x=3 y=3
-18: delete: x=3 y=3
-19: insert: x=4 y=4
-20: insert: x=2 y=2
+3: insert: x=1, total=3
+4: insert: y=2
+4: insert: y=3
+4: insert: y=5
+5: delete: y=2
+7: insert: x=4 y=4
+7: insert: x=1 y=1
+7: delete: x=1 y=1
+7: insert: x=3 y=3
+7: delete: x=3 y=3
+7: insert: x=2 y=2
+7: delete: x=2 y=2
+8: insert: x=2 y=2
