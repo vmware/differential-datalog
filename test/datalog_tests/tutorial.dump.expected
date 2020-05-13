@@ -134,17 +134,17 @@ Product{.x = 150, .y = 20, .prod = 3000}
 Product{.x = 150, .y = 100, .prod = 15000}
 Product{.x = 150, .y = 150, .prod = 22500}
 BestPrice:
-BestPrice{.item = "A", .price = 100}
-BestPrice{.item = "B", .price = 111}
+BestPrice{.item = "A", .price = 110}
+BestPrice{.item = "B", .price = 123}
 WorstPrice:
 WorstPrice{.item = "A", .price = 120}
 WorstPrice{.item = "B", .price = 150}
 BestVendor:
-BestVendor{.item = "A", .vendor = "Discount Corp", .price = 100}
-BestVendor{.item = "B", .vendor = "Discount Corp", .price = 111}
+BestVendor{.item = "A", .vendor = "Scrooge Ltd", .price = 110}
+BestVendor{.item = "B", .vendor = "Overpriced Inc", .price = 123}
 BestDeal:
-BestDeal{.best = "Best deal for A: Discount Corp, $100"}
-BestDeal{.best = "Best deal for B: Discount Corp, $111"}
+BestDeal{.best = "Best deal for A: Scrooge Ltd, $110"}
+BestDeal{.best = "Best deal for B: Overpriced Inc, $123"}
 TCPDstPort:
 TCPDstPort{.port = 80}
 TCPDstPort{.port = 8080}

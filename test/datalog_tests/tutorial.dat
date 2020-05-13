@@ -215,6 +215,13 @@ insert Price("B", "Discount Corp", 111);
 
 commit;
 
+start;
+
+delete Price("A", "Discount Corp", 100),
+delete Price("B", "Discount Corp", 111),
+
+commit;
+
 echo BestPrice:;
 dump BestPrice;
 
