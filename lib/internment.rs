@@ -24,6 +24,14 @@ where
     intern: arc_interner::ArcIntern<A>,
 }
 
+impl <A: Eq + Send + Sync + Hash + 'static> Deref for internment_Intern<A> {
+    type Target = A;
+
+    fn deref(&self) -> &Self::Target {
+        self.intern.deref()
+    }
+}
+
 impl<A: Eq + Hash + Send + Sync + 'static> internment_Intern<A> {
     pub fn new(x: A) -> internment_Intern<A> {
         internment_Intern {

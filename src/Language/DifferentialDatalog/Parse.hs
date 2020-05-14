@@ -259,10 +259,10 @@ spec = do
          Left e     -> errorWithoutStackTrace e
          Right prog -> return prog
 
-attributes = reservedOp "#" *> (brackets $ many attribute)
+attributes = many $ reservedOp "#" *> (brackets attribute)
 attribute = withPos $ Attribute nopos <$> attrIdent <*> (option eTrue $ reservedOp "=" *>  expr)
 
-decl =  do attrs <- optionMaybe attributes
+decl =  do attrs <- attributes
            items <- (withPosMany $
                          (return . SpImport)         <$> imprt
                      <|> (return . SpType)           <$> typeDef
@@ -274,10 +274,10 @@ decl =  do attrs <- optionMaybe attributes
                      <|> (return . SpApply)          <$> apply)
                    <|> (map SpRule . convertStatement) <$> parseForStatement
            case items of
-                [SpType t] -> return [SpType t{tdefAttrs = maybe [] id attrs}]
-                [SpFunc f] -> return [SpFunc f{funcAttrs = maybe [] id attrs}]
+                [SpType t] -> return [SpType t{tdefAttrs = attrs}]
+                [SpFunc f] -> return [SpFunc f{funcAttrs = attrs}]
                 _          -> do
-                    when (isJust attrs) $ fail "#-attributes are currently only supported for type and function declarations"
+                    when (not $ null attrs) $ fail "#-attributes are currently only supported for type and function declarations"
                     return items
 
 imprt = Import nopos <$ reserved "import" <*> modname <*> (option (ModuleName []) $ reserved "as" *> modname)
@@ -350,7 +350,7 @@ relation = do
 
 key_expr = withPos $ KeyExpr nopos <$> (parens varIdent) <*> expr
 
-arg = withPos $ (Field nopos) <$> option [] attributes <*> varIdent <*> (colon *> typeSpecSimple)
+arg = withPos $ (Field nopos) <$> attributes <*> varIdent <*> (colon *> typeSpecSimple)
 
 parseForStatement = withPos $
                     ForStatement nopos <$ reserved "for"
@@ -463,13 +463,13 @@ boolType   = TBool   nopos <$ reserved "bool"
 userType   = TUser   nopos <$> typeIdent <*> (option [] $ symbol "<" *> commaSep typeSpec <* symbol ">")
 typeVar    = TVar    nopos <$ symbol "'" <*> typevarIdent
 structType = TStruct nopos <$ isstruct <*> sepBy1 constructor (reservedOp "|")
-    where isstruct = try $ lookAhead $ (option [] attributes) *> consIdent *> (symbol "{" <|> symbol "|")
+    where isstruct = try $ lookAhead $ attributes *> consIdent *> (symbol "{" <|> symbol "|")
 tupleType  = (\fs -> case fs of
                           [f] -> f
                           _   -> TTuple nopos fs)
              <$> (parens $ commaSep typeSpecSimple)
 
-constructor = withPos $ Constructor nopos <$> (option [] attributes)
+constructor = withPos $ Constructor nopos <$> attributes
                                           <*> consIdent
                                           <*> (option [] $ braces $ commaSep arg)
 

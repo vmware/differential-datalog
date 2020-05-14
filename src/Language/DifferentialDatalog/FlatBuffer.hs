@@ -142,7 +142,7 @@ flatBufferValidate d = do
     let ?d = d
     mapM_ (\case
             t@TOpaque{..} ->
-                check d (elem typeName $ [rEF_TYPE, mAP_TYPE] ++ sET_TYPES ++ iNTERNED_TYPES) (pos t) $
+                check d ((elem typeName $ [mAP_TYPE] ++ sET_TYPES) || isSharedRef d t) (pos t) $
                     "Cannot generate FlatBuffer schema for extern type " ++ show t
             _ -> return ())
           progTypesToSerialize
@@ -311,7 +311,7 @@ typeIsTable x =
 
 typeHasUniqueConstructor :: (WithType a, ?d::DatalogProgram) => a -> Bool
 typeHasUniqueConstructor x =
-    case typ' ?d x of
+    case typDeref' ?d x of
          TStruct{..} -> length typeCons == 1
          _           -> True
 
@@ -630,9 +630,9 @@ typeNormalizeForFlatBuf x = typeMap _typeNormalizeForFlatBuf $ typ x
 _typeNormalizeForFlatBuf :: (?d::DatalogProgram) => Type -> Type
 _typeNormalizeForFlatBuf t =
     case t' of
-         TOpaque{typeArgs = [innerType],..} | elem typeName (rEF_TYPE : iNTERNED_TYPES)
-                                            -> innerType
-         _                  -> t'
+         rt@TOpaque{typeArgs = [innerType],..} | isSharedRef ?d rt
+                                               -> innerType
+         _                                     -> t'
     where t' = typ'' ?d t
 
 {- Functions to work with the FlatBuffers-generated Java API. -}
@@ -1682,7 +1682,7 @@ rustTypeFromFlatbuf t@TTuple{..} =
 -- and 'ToFlatBuffer<>' for containers in their corresponding libraries.  Here we
 -- additionally generate 'FromFlatBuffer<fb::>' for wrapper tables,
 -- 'ToFlatBufferVectorElement<>', and 'ToFlatBufferTable<>'.
-rustTypeFromFlatbuf t@TOpaque{..} | elem typeName (rEF_TYPE : iNTERNED_TYPES) = empty
+rustTypeFromFlatbuf t@TOpaque{..} | isSharedRef ?d t = empty
                                   | otherwise =
     "impl <'a> FromFlatBuffer<fb::" <> tname <> "<'a>> for" <+> rtype <+> "{"                               $$
     "    fn from_flatbuf(v: fb::" <> tname <> "<'a>) -> Response<Self> {"                                   $$
