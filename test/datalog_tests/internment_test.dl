@@ -20,3 +20,29 @@ OInternedString(ival(s), s) :-
 OInternedString(ival(s1) ++ " " ++ ival(s2), intern(ival(s1) ++ " " ++ ival(s2))) :-
     AllInternedString(s1),
     AllInternedString(s2).
+
+typedef IUnion = Tag1{f1: bool}
+               | Tag2{f2: u32, f3: string}
+
+typedef IStruct = IStruct {
+    u: Intern<IUnion>,
+    t: Intern<(s32, double)>,
+    x: bigint
+}
+
+input relation IStruct[Intern<IStruct>]
+
+output relation Projections(inp: Intern<IStruct>, p: string)
+
+Projections(i, "x=${i.x}") :-
+    IStruct[i].
+Projections(i, "t.0=${i.t.0}") :-
+    i in &IStruct().
+Projections(i, "t.1=${i.t.1}") :-
+    i in &IStruct(.t=&(_, d)).
+Projections(i, "f1=${f1}") :-
+    i in &IStruct(.u=&Tag1{f1}).
+Projections(i, "f2=${f2}") :-
+    i in &IStruct(.u=&t@Tag2{.f2=f2}).
+Projections(i, "f3=${f3}") :-
+    i in &IStruct(.u=t@ &Tag2{.f3=f3}).

@@ -29,3 +29,13 @@ internment_test.OInternedString{.x = "ifoo25! bar", .ix = "ifoo25! bar"}: +1
 internment_test.OInternedString{.x = "ifoo25! foo", .ix = "ifoo25! foo"}: +1
 internment_test.OInternedString{.x = "static foo bar", .ix = "static foo bar"}: +1
 internment_test.OInternedString{.x = "static foo foo", .ix = "static foo foo"}: +1
+internment_test.Projections:
+internment_test.Projections{.inp = internment_test.IStruct{.u = internment_test.Tag1{.f1 = true}, .t = (-5, 5.5), .x = 10000000000000000000000000}, .p = "f1=true"}: +1
+internment_test.Projections{.inp = internment_test.IStruct{.u = internment_test.Tag1{.f1 = true}, .t = (-5, 5.5), .x = 10000000000000000000000000}, .p = "t.0=-5"}: +1
+internment_test.Projections{.inp = internment_test.IStruct{.u = internment_test.Tag1{.f1 = true}, .t = (-5, 5.5), .x = 10000000000000000000000000}, .p = "t.1=5.5"}: +1
+internment_test.Projections{.inp = internment_test.IStruct{.u = internment_test.Tag1{.f1 = true}, .t = (-5, 5.5), .x = 10000000000000000000000000}, .p = "x=10000000000000000000000000"}: +1
+internment_test.Projections{.inp = internment_test.IStruct{.u = internment_test.Tag2{.f2 = 10, .f3 = "foo"}, .t = (5000, -1.2345), .x = -10000000000000000000000000}, .p = "f2=10"}: +1
+internment_test.Projections{.inp = internment_test.IStruct{.u = internment_test.Tag2{.f2 = 10, .f3 = "foo"}, .t = (5000, -1.2345), .x = -10000000000000000000000000}, .p = "f3=foo"}: +1
+internment_test.Projections{.inp = internment_test.IStruct{.u = internment_test.Tag2{.f2 = 10, .f3 = "foo"}, .t = (5000, -1.2345), .x = -10000000000000000000000000}, .p = "t.0=5000"}: +1
+internment_test.Projections{.inp = internment_test.IStruct{.u = internment_test.Tag2{.f2 = 10, .f3 = "foo"}, .t = (5000, -1.2345), .x = -10000000000000000000000000}, .p = "t.1=-1.2345"}: +1
+internment_test.Projections{.inp = internment_test.IStruct{.u = internment_test.Tag2{.f2 = 10, .f3 = "foo"}, .t = (5000, -1.2345), .x = -10000000000000000000000000}, .p = "x=-10000000000000000000000000"}: +1

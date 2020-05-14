@@ -14,6 +14,7 @@
  * There is simply no way to obtain an interned object of a different type.
  */
 #[size=4]
+#[shared_ref]
 extern type IObj<'A>
 
 /* Interned string

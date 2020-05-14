@@ -8,6 +8,7 @@
  * There is simply no way to obtain an interned object of a different type.
  */
 #[size=8]
+#[shared_ref]
 extern type Intern<'A>
 
 /* Interned string

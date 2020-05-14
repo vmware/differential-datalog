@@ -171,8 +171,7 @@ instance Show Attribute where
     show = render . pp
 
 ppAttributes :: [Attribute] -> Doc
-ppAttributes [] = empty
-ppAttributes attrs = "#[" <> (commaSep $ map pp attrs) <> "]"
+ppAttributes attrs = vcat $ map (\attr -> "#[" <> pp attr <> "]") attrs
 
 data Field = Field { fieldPos  :: Pos
                    , fieldAttrs:: [Attribute]

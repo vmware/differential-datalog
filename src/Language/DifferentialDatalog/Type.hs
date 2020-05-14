@@ -37,7 +37,7 @@ module Language.DifferentialDatalog.Type(
     relKeyType,
     typ', typ'',
     typDeref',
-    isBool, isBit, isSigned, isBigInt, isInteger, isFP, isString, isStruct, isTuple, isGroup, isMap, isTinySet, isRef, isDouble, isFloat,
+    isBool, isBit, isSigned, isBigInt, isInteger, isFP, isString, isStruct, isTuple, isGroup, isMap, isTinySet, isSharedRef, isDouble, isFloat,
     checkTypesMatch,
     typesMatch,
     typeNormalize,
@@ -54,9 +54,7 @@ module Language.DifferentialDatalog.Type(
     sET_TYPES,
     tINYSET_TYPE,
     mAP_TYPE,
-    iNTERNED_TYPES,
     gROUP_TYPE,
-    rEF_TYPE,
     ePOCH_TYPE,
     iTERATION_TYPE,
     nESTED_TS_TYPE,
@@ -72,6 +70,7 @@ import Control.Monad.Identity
 import qualified Data.Map as M
 --import Debug.Trace
 
+import Language.DifferentialDatalog.Attribute
 import Language.DifferentialDatalog.Ops
 import {-# SOURCE #-} Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.Syntax
@@ -91,19 +90,16 @@ tINYSET_TYPE = "tinyset.Set64"
 
 -- Dynamically allocated types.
 dYNAMIC_TYPES :: [String]
-dYNAMIC_TYPES = rEF_TYPE : mAP_TYPE : sET_TYPES
+dYNAMIC_TYPES = mAP_TYPE : sET_TYPES
 
 gROUP_TYPE :: String
 gROUP_TYPE = "std.Group"
 
-rEF_TYPE :: String
-rEF_TYPE = "std.Ref"
+-- rEF_TYPE :: String
+-- rEF_TYPE = "std.Ref"
 
 mAP_TYPE :: String
 mAP_TYPE = "std.Map"
-
-iNTERNED_TYPES :: [String]
-iNTERNED_TYPES = ["intern.IObj", "internment.Intern"]
 
 -- Special types used by Inspect operator.
 ePOCH_TYPE :: String
@@ -380,8 +376,8 @@ exprNodeType' d ctx (EPHolder p)           = mtype2me d p ctx $ ctxExpectType d 
 exprNodeType' d ctx (EBinding p _ e)       = mtype2me d p ctx e
 exprNodeType' _ _   (ETyped _ _ t)         = return t
 exprNodeType' _ _   (EAs _ _ t)            = return t
-exprNodeType' _ _   (ERef _ (Just t))      = return $ tOpaque rEF_TYPE [t]
-exprNodeType' d ctx (ERef p _)             = eunknown d p ctx
+exprNodeType' d ctx (ERef p _)             = mtype2me d p ctx $ ctxExpectType d ctx
+--exprNodeType' d ctx (ERef p _)             = eunknown d p ctx
 
 --exprTypes :: Refine -> ECtx -> Expr -> [Type]
 --exprTypes r ctx e = nub $ execState (exprTraverseTypeM r (\ctx' e' -> modify ((fromJust $ exprNodeType r ctx' e'):)) ctx e) []
@@ -399,11 +395,11 @@ _typ' d (TUser _ n as) =
     where tdef = getType d n
 _typ' _ t = t
 
--- | A variant of typ' to be used in contexts where 'Ref<>' should be
--- transparent.
+-- | A variant of typ' to be used in contexts where shared references like
+-- 'Ref<>' should be transparent.
 --
 -- Expand typedef's down to actual type definition, substituting
--- type arguments along the way. Additionally unwraps Ref types,
+-- type arguments along the way. Additionally unwraps shared ref types,
 -- replacing 'Ref<t>' with 't'.
 typDeref' :: (WithType a) => DatalogProgram -> a -> Type
 typDeref' d x = _typDeref' d (typ x)
@@ -414,7 +410,7 @@ _typDeref' d (TUser _ n as) =
          Nothing -> _typDeref' d $ tOpaque n as
          Just t  -> _typDeref' d $ typeSubstTypeArgs (M.fromList $ zip (tdefArgs tdef) as) t
     where tdef = getType d n
-_typDeref' d (TOpaque _ tname [t]) | tname == rEF_TYPE = _typDeref' d t
+_typDeref' d rt@(TOpaque _ _ [t]) | isSharedRef d rt = _typDeref' d t
 _typDeref' _ t = t
 
 -- | Similar to typ', but does not expand the last typedef if it is a struct
@@ -510,10 +506,11 @@ isTinySet d a = case typ' d a of
                  TOpaque _ t _ | t == tINYSET_TYPE -> True
                  _                                 -> False
 
-isRef :: (WithType a) => DatalogProgram -> a -> Bool
-isRef d a = case typ' d a of
-                 TOpaque _ t _ | t == rEF_TYPE -> True
-                 _                             -> False
+isSharedRef :: (WithType a) => DatalogProgram -> a -> Bool
+isSharedRef d a =
+    case typ' d a of
+         TOpaque _ t _ -> tdefGetSharedRefAttr d $ getType d t
+         _             -> False
 
 -- | Check if 'a' and 'b' have identical types up to type aliasing;
 -- throw exception if they don't.
@@ -566,18 +563,18 @@ typeUserTypes' _           = []
 -- allocated members.  The graph induced by this relation cannot be recursive, as
 -- 'T' cannot contain an instance of itself, unless it is wrapped in a dynamic
 -- allocation (via `Ref`, `Set`, or any other container type).
-typeStaticMemberTypes :: Type -> [String]
-typeStaticMemberTypes t = nub $ typeStaticMemberTypes' t
+typeStaticMemberTypes :: DatalogProgram -> Type -> [String]
+typeStaticMemberTypes d t = nub $ typeStaticMemberTypes' d t
 
-typeStaticMemberTypes' :: Type -> [String]
-typeStaticMemberTypes' TStruct{..} = concatMap (typeStaticMemberTypes . typ)
-                                         $ concatMap consArgs typeCons
-typeStaticMemberTypes' TTuple{..}  = concatMap (typeStaticMemberTypes . typ) typeTupArgs
-typeStaticMemberTypes' TUser{..}   | elem typeName dYNAMIC_TYPES = []
-                                   | otherwise = typeName : concatMap typeStaticMemberTypes typeArgs
-typeStaticMemberTypes' TOpaque{..} | elem typeName dYNAMIC_TYPES = []
-                                   | otherwise = concatMap typeStaticMemberTypes typeArgs
-typeStaticMemberTypes' _           = []
+typeStaticMemberTypes' :: DatalogProgram -> Type -> [String]
+typeStaticMemberTypes' d TStruct{..}   = concatMap (typeStaticMemberTypes d . typ)
+                                                   $ concatMap consArgs typeCons
+typeStaticMemberTypes' d TTuple{..}    = concatMap (typeStaticMemberTypes d . typ) typeTupArgs
+typeStaticMemberTypes' d TUser{..}     | elem typeName dYNAMIC_TYPES = []
+                                       | otherwise = typeName : concatMap (typeStaticMemberTypes d) typeArgs
+typeStaticMemberTypes' d t@TOpaque{..} | elem typeName dYNAMIC_TYPES || isSharedRef d t = []
+                                       | otherwise = concatMap (typeStaticMemberTypes d) typeArgs
+typeStaticMemberTypes' _ _             = []
 
 
 -- | Rudimentary type inference engine. Infers expected type from context.
@@ -709,8 +706,8 @@ ctxExpectType _ (CtxTyped (ETyped _ _ t) _)          = Just t
 ctxExpectType _ CtxAs{}                              = Nothing
 ctxExpectType d (CtxRef ERef{} ctx)                  =
     case ctxExpectType' d ctx of
-         Just (TOpaque _ rt [t]) | rt == rEF_TYPE -> Just t
-         _ -> Nothing
+         Just rt@(TOpaque _ _ [t]) | isSharedRef d rt -> Just t
+         _                                            -> Nothing
 ctxExpectType _ ctx                                  = error $ "Type.ctxExpectType: invalid context " ++ show ctx
 
 ctxExpectType'' :: DatalogProgram -> ECtx -> Maybe Type
@@ -746,7 +743,7 @@ consTreeNodeExpand d t =
                                                   $ consArgs c) cs
          TTuple _ fs                -> [ETuple nopos $ map (\f -> CT (typ f) [EPHolder nopos]) fs]
          TBool{}                    -> [EBool nopos False, EBool nopos True]
-         TOpaque _ rt [t'] | rt == rEF_TYPE
+         rt@(TOpaque _ _ [t']) | isSharedRef d rt
                                     -> [ERef nopos $ CT t' [EPHolder nopos]]
          _                          -> [EPHolder nopos]
 

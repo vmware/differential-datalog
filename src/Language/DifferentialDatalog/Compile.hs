@@ -2045,7 +2045,7 @@ arrangeInput d fstatom arrange_input_by = do
     substVar' e                  _           = error $ "Unexpected expression " ++ show e ++ " in Compile.arrangeInput.substVar'"
 
     -- Number of nested `Ref<>` in type `t`
-    nref (TOpaque _ tname [t]) | tname == rEF_TYPE = 1 + nref (typ' d t)
+    nref rt@(TOpaque _ _ [t]) | isSharedRef d rt = 1 + nref (typ' d t)
     nref TStruct{} = 0
     nref TTuple{} = 0
     nref t = error $ "Unexpected type " ++ show t ++ " in Compile.arrangeInput.substVar'.nref"
