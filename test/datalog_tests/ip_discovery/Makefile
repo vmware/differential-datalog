@@ -6,7 +6,7 @@ SHELL := /bin/bash
 transactions.ddlog.dat: SEED ?= 1
 transactions.ddlog.dat: TXNS ?= 32768
 transactions.ddlog.dat:
-	@python ./generate.py $(SEED) $(TXNS) > $(@)
+	@python3 ./generate.py $(SEED) $(TXNS) > $(@)
 
 lsp.d3log.dat: transactions.ddlog.dat
 	@grep -C 1 LogicalSwitchPort $(<) | grep -v '^--$$' | \
