@@ -199,6 +199,15 @@ where
 {
     fn drop(&mut self) {
         let _ = self.unsubscribe(&());
+        if let Some(state) = self.state.take() {
+            if let Err(e) = state.fd.close() {
+                error!("failed to close adapted file: {}", e);
+                // We continue as there is not much we can do about
+                // the error. There shouldn't be any chance that we
+                // actually fail the close while the thread is still
+                // blocking on a read, but who knows.
+            }
+        }
     }
 }
 
@@ -230,13 +239,6 @@ where
         trace!("File({})::unsubscribe", self.id);
 
         if let Some(state) = self.state.take() {
-            if let Err(e) = state.fd.close() {
-                error!("failed to close adapted file: {}", e);
-                // We continue as there is not much we can do about
-                // the error. There shouldn't be any chance that we
-                // actually fail the close while the thread is still
-                // blocking on a read, but who knows.
-            }
             match state.thread.join() {
                 Ok(observer) => Some(observer),
                 Err(e) => {
