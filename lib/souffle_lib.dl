@@ -29,7 +29,7 @@ function contains(s: IString, i: IString): bool {
 }
 // Souffle match must match the whole string
 function re_match(pattern: IString, s: IString): bool {
-    regex_match("^" ++ istring_str(pattern) ++ "$", istring_str(s))
+    regex_match(regex("^" ++ istring_str(pattern) ++ "$"), istring_str(s))
 }
 function to_number(s: IString): Tnumber {
     match (parse_dec_i64(istring_str(s))) {
