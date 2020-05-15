@@ -43,6 +43,12 @@ public class DDlogField extends DDlogNode {
         return type;
     }
 
+    public boolean compare(DDlogField other, IComparePolicy policy) {
+        if (!this.name.equals(other.name))
+            return false;
+        return this.type.compare(other.type, policy);
+    }
+
     @Override
     public int hashCode() {
         return Objects.hash(name, type);

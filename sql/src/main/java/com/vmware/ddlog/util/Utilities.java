@@ -1,5 +1,6 @@
 package com.vmware.ddlog.util;
 
+import javax.annotation.Nullable;
 import java.util.*;
 
 public class Utilities {
@@ -12,5 +13,15 @@ public class Utilities {
         for (List<T> l: lists)
             result.addAll(l);
         return result;
+     }
+
+     public static <T> Ternary canBeSame(@Nullable T left, @Nullable T right) {
+        if (left == null && right != null)
+            return Ternary.No;
+         if (left != null && right == null)
+             return Ternary.No;
+         if (left == null && right == null)
+             return Ternary.Yes;
+         return Ternary.Maybe;
      }
 }

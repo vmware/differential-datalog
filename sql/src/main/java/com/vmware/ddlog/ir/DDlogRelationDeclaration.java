@@ -38,21 +38,13 @@ public class DDlogRelationDeclaration extends DDlogNode {
     private final Role role;
     private final String name;
     private final DDlogType type;
-    @Nullable
-    private final DDlogExpression primaryKey;
 
     public DDlogRelationDeclaration(@Nullable Node node, Role role, String name,
-                                    DDlogType type, @Nullable DDlogExpression primaryKey) {
+                                    DDlogType type) {
         super(node);
         this.role = role;
         this.name = this.checkNull(name);
         this.type = this.checkNull(type);
-        this.primaryKey = primaryKey;
-    }
-
-    public DDlogRelationDeclaration(@Nullable Node node, Role role, String name,
-                                    DDlogType type) {
-        this(node, role, name, type, null);
     }
 
     public String getName() {
@@ -67,6 +59,14 @@ public class DDlogRelationDeclaration extends DDlogNode {
         return "R" + name;
     }
 
+    public boolean compare(DDlogRelationDeclaration other, IComparePolicy policy) {
+        if (this.role != other.role)
+            return false;
+        if (!policy.compareRelation(this.name, other.name))
+            return false;
+        return type.compare(other.type, policy);
+    }
+
     @Override
     public String toString() {
         // We prefix the relation name with R
@@ -75,8 +75,6 @@ public class DDlogRelationDeclaration extends DDlogNode {
             result += " ";
         result += "relation " + this.name
                 + "[" + this.type.toString() + "]";
-        if (this.primaryKey != null)
-            result += "primary key " + this.primaryKey;
         return result;
     }
 }

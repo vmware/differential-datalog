@@ -37,6 +37,13 @@ public class DDlogTDouble extends DDlogType implements IsNumericType {
     public static DDlogTDouble instance = new DDlogTDouble(null,false);
 
     @Override
+    public boolean compare(DDlogType type, IComparePolicy policy) {
+        if (!super.compare(type, policy))
+            return false;
+        return type.is(DDlogTDouble.class);
+    }
+
+    @Override
     public DDlogExpression zero() {
         return new DDlogEDouble(this.getNode(),0);
     }

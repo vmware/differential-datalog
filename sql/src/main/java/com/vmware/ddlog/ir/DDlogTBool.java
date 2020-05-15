@@ -34,5 +34,12 @@ public class DDlogTBool extends DDlogType {
         return o != null && getClass() == o.getClass();
     }
 
+    @Override
+    public boolean compare(DDlogType type, IComparePolicy policy) {
+        if (!super.compare(type, policy))
+            return false;
+        return type.is(DDlogTBool.class);
+    }
+
     public static DDlogTBool instance = new DDlogTBool(null, false);
 }

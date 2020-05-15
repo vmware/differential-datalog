@@ -68,6 +68,21 @@ public class DDlogTTuple extends DDlogType {
         return Arrays.hashCode(tupArgs);
     }
 
+    @Override
+    public boolean compare(DDlogType type, IComparePolicy policy) {
+        if (!super.compare(type, policy))
+            return false;
+        if (!type.is(DDlogTTuple.class))
+            return false;
+        DDlogTTuple other = type.to(DDlogTTuple.class);
+        if (this.tupArgs.length != other.tupArgs.length)
+            return false;
+        for (int i = 0; i < this.tupArgs.length; i++)
+            if (!this.tupArgs[i].compare(other.tupArgs[i], policy))
+                return false;
+        return true;
+    }
+
     public DDlogType component(int index) {
         return this.tupArgs[index];
     }

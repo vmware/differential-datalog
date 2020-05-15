@@ -161,4 +161,18 @@ public class DDlogEBinOp extends DDlogExpression {
         return "(" + this.left.toString() + " " + this.bop.toString() +
                 " " + this.right.toString() + ")";
     }
+
+    @Override
+    public boolean compare(DDlogExpression val, IComparePolicy policy) {
+        if (!super.compare(val, policy))
+            return false;
+        if (!val.is(DDlogEBinOp.class))
+            return false;
+        DDlogEBinOp other = val.to(DDlogEBinOp.class);
+        if (this.bop != other.bop)
+            return false;
+        if (!this.left.compare(other.left, policy))
+            return false;
+        return this.right.compare(other.right, policy);
+    }
 }

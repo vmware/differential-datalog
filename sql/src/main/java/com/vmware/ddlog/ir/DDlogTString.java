@@ -29,6 +29,12 @@ public class DDlogTString extends DDlogType {
             return this;
         return new DDlogTString(this.getNode(), mayBeNull);
     }
+    @Override
+    public boolean compare(DDlogType type, IComparePolicy policy) {
+        if (!super.compare(type, policy))
+            return false;
+        return type.is(DDlogTString.class);
+    }
 
     @Override
     public boolean equals(Object o) {

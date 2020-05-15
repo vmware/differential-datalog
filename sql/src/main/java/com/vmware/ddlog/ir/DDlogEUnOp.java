@@ -55,6 +55,18 @@ public class DDlogEUnOp extends DDlogExpression {
     private final DDlogExpression expr;
 
     @Override
+    public boolean compare(DDlogExpression val, IComparePolicy policy) {
+        if (!super.compare(val, policy))
+            return false;
+        if (!val.is(DDlogEUnOp.class))
+            return false;
+        DDlogEUnOp other = val.to(DDlogEUnOp.class);
+        if (this.uop != other.uop)
+            return false;
+        return this.expr.compare(other.expr, policy);
+    }
+
+    @Override
     public String toString() {
         return "(" + this.uop.toString() +
                 " " + this.expr.toString() + ")";

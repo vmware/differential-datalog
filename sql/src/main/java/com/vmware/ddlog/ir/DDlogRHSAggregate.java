@@ -35,4 +35,23 @@ public class DDlogRHSAggregate extends DDlogRuleRHS {
                 String.join(", ", this.groupBy) + "), " + this.aggFunc +
                 "(" + this.aggExpr.toString() + "))";
     }
+
+    @Override
+    public boolean compare(DDlogRuleRHS val, IComparePolicy policy) {
+        if (!val.is(DDlogRHSAggregate.class))
+            return false;
+        DDlogRHSAggregate other = val.to(DDlogRHSAggregate.class);
+        if (!policy.compareLocal(this.var, other.var))
+            return false;
+        if (!this.aggFunc.equals(other.aggFunc))
+            return false;
+        if (!this.aggExpr.compare(other.aggExpr, policy))
+            return false;
+        if (this.groupBy.length != other.groupBy.length)
+            return false;
+        for (int i = 0; i < this.groupBy.length; i++)
+            if (!policy.compareIdentifier(this.groupBy[i], other.groupBy[i]))
+                return false;
+        return true;
+    }
 }

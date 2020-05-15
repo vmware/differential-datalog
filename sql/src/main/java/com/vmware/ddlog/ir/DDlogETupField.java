@@ -33,6 +33,18 @@ public class DDlogETupField extends DDlogExpression {
     }
 
     @Override
+    public boolean compare(DDlogExpression val, IComparePolicy policy) {
+        if (!super.compare(val, policy))
+            return false;
+        if (!val.is(DDlogETupField.class))
+            return false;
+        DDlogETupField other = val.to(DDlogETupField.class);
+        if (this.field != other.field)
+            return false;
+        return this.struct.compare(other.struct, policy);
+    }
+
+    @Override
     public String toString() {
         return this.struct.toString() + "." + this.field;
     }

@@ -24,4 +24,11 @@ public class DDlogEPHolder extends DDlogExpression {
     public String toString() {
         return "_";
     }
+
+    @Override
+    public boolean compare(DDlogExpression val, IComparePolicy policy) {
+        if (!super.compare(val, policy))
+            return false;
+        return val.is(DDlogEPHolder.class);
+    }
 }

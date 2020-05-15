@@ -104,4 +104,8 @@ public abstract class DDlogType extends DDlogNode {
     public DDlogExpression getNone(Node node) {
         return new DDlogENull(node, this.setMayBeNull(true));
     }
+
+    public boolean compare(DDlogType type, IComparePolicy policy) {
+        return this.mayBeNull == type.mayBeNull;
+    }
 }

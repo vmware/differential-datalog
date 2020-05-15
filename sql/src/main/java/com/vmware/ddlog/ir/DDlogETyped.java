@@ -31,4 +31,15 @@ public class DDlogETyped extends DDlogExpression {
             return "None{}: " + this.getType().toString();
         return this.expr.toString() + ": " + this.getType().toString();
     }
+
+
+    @Override
+    public boolean compare(DDlogExpression val, IComparePolicy policy) {
+        if (!super.compare(val, policy))
+            return false;
+        if (!val.is(DDlogETyped.class))
+            return false;
+        DDlogETyped other = val.to(DDlogETyped.class);
+        return this.expr.compare(other.expr, policy);
+    }
 }

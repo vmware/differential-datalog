@@ -21,5 +21,10 @@ public class DDlogTUnknown extends DDlogType {
         return new DDlogTUnknown(mayBeNull);
     }
 
+    @Override
+    public boolean compare(DDlogType type, IComparePolicy policy) {
+        return true;
+    }
+
     public static DDlogTUnknown instance = new DDlogTUnknown(true);
 }

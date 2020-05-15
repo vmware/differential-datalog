@@ -37,6 +37,13 @@ public class DDlogTInt extends DDlogType implements IsNumericType {
     }
 
     @Override
+    public boolean compare(DDlogType type, IComparePolicy policy) {
+        if (!super.compare(type, policy))
+            return false;
+        return type.is(DDlogTInt.class);
+    }
+
+    @Override
     public DDlogExpression zero() {
         return new DDlogEInt(this.getNode(), 0);
     }

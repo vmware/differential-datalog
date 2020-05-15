@@ -13,6 +13,7 @@ package com.vmware.ddlog.ir;
 
 import com.facebook.presto.sql.tree.Node;
 import com.vmware.ddlog.util.Linq;
+import com.vmware.ddlog.util.Utilities;
 
 import javax.annotation.Nullable;
 
@@ -42,5 +43,32 @@ public class DDlogFunction extends DDlogNode {
         if (this.def != null)
             result += " {\n" + this.def.toString() + "\n}\n";
         return result;
+    }
+
+    public boolean compare(DDlogFunction other, IComparePolicy policy) {
+        if (!policy.compareIdentifier(this.name, other.name))
+            return false;
+        if (this.args.length != other.args.length)
+            return false;
+        for (int i = 0; i < this.args.length; i++)
+            if (!this.args[i].compare(other.args[i], policy))
+                return false;
+        if (!this.type.compare(other.type, policy))
+            return false;
+        switch (Utilities.canBeSame(this.def, other.def)) {
+            case Yes:
+                break;
+            case No:
+                return false;
+            case Maybe:
+                assert this.def != null;
+                assert other.def != null;
+                if (!this.def.compare(other.def, policy))
+                    return false;
+        }
+
+        for (int i = 0; i < this.args.length; i++)
+            policy.exitScope(this.args[i].name, other.args[i].name);
+        return true;
     }
 }

@@ -34,4 +34,22 @@ public class DDlogEApply extends DDlogExpression {
                 String.join(", ",
                         Linq.map(this.args, DDlogExpression::toString)) + ")";
     }
+
+    @Override
+    public boolean compare(DDlogExpression val, IComparePolicy policy) {
+        if (!super.compare(val, policy))
+            return false;
+        if (!val.is(DDlogEApply.class))
+            return false;
+        DDlogEApply other = val.to(DDlogEApply.class);
+        if (!this.func.equals(other.func))
+            return false;
+        if (this.args.size() != other.args.size())
+            return false;
+        for (int i = 0; i < this.args.size(); i++) {
+            if (this.args.get(i).compare(other.args.get(i), policy))
+                return false;
+        }
+        return true;
+    }
 }

@@ -38,6 +38,12 @@ public class DDlogEMatch extends DDlogExpression {
         public String toString() {
             return this.first + " -> " + this.second;
         }
+
+        public boolean compare(Case other, IComparePolicy policy) {
+            if (!this.first.compare(other.first, policy))
+                return false;
+            return this.second.compare(other.second, policy);
+        }
     }
 
     private final DDlogExpression matchExpr;
@@ -48,5 +54,21 @@ public class DDlogEMatch extends DDlogExpression {
         return "match(" + this.matchExpr + ") {" +
             String.join(",\n", Linq.map(this.cases, Case::toString)) +
                 "\n}";
+    }
+
+    @Override
+    public boolean compare(DDlogExpression val, IComparePolicy policy) {
+        if (!super.compare(val, policy))
+            return false;
+        if (!val.is(DDlogEMatch.class)) return false;
+        DDlogEMatch other = val.to(DDlogEMatch.class);
+        if (!this.matchExpr.compare(other.matchExpr, policy))
+            return false;
+        if (this.cases.size() != other.cases.size())
+            return false;
+        for (int i = 0; i < this.cases.size(); i++)
+            if (!this.cases.get(i).compare(other.cases.get(i), policy))
+                return false;
+        return true;
     }
 }
