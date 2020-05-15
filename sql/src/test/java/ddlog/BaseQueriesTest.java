@@ -24,7 +24,7 @@ public class BaseQueriesTest {
     public static void createLibrary() throws FileNotFoundException {
         Translator t = new Translator(null);
         DDlogProgram lib = t.generateSqlLibrary();
-        System.out.println("Current directory " + System.getProperty("user.dir"));
+        // System.out.println("Current directory " + System.getProperty("user.dir"));
         lib.toFile("lib/sqlop.dl");
     }
     
