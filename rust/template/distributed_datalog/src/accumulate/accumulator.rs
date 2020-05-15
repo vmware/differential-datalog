@@ -25,13 +25,12 @@ use uid::Id;
 use differential_datalog::program::Update;
 use differential_datalog::program::RelId;
 
-use crate::Observable;
+use crate::{Observable, UpdatesObservable};
 use crate::Observer;
 use crate::ObserverBox;
 
 use crate::accumulate::AccumulatingObserver;
 use crate::accumulate::TxnDistributor;
-use crate::accumulate::txndistributor::InitializedObservable;
 
 /// A trait object that acts as a proxy between an observable and observer.
 /// It accumulates the updates to maintain the current state of the data.
@@ -44,7 +43,7 @@ pub trait Accumulator<V, E>: Observer<Update<V>, E> + Observable<Update<V>, E>
     fn new() -> Self;
 
     /// Returns a new Observable that can be used to listen to the outputs of the Accumulator.
-    fn create_observable(&mut self) -> InitializedObservable<Update<V>, E>;
+    fn create_observable(&mut self) -> UpdatesObservable<Update<V>, E>;
 
     /// Return the current state of the data.
     fn get_current_state(&self) -> HashMap<RelId, HashSet<V>>;
@@ -88,16 +87,11 @@ impl<V, E> Accumulator<V, E> for DistributingAccumulator<Update<V>, V, E>
         }
     }
 
-    fn create_observable(&mut self) -> InitializedObservable<Update<V>, E> {
+    /// Creates a new `Observable` for this accumulator without the currently accumulated state.
+    /// I.e. if subscribed to, the subscriber only receives transactions occurring after the subscription.
+    fn create_observable(&mut self) -> UpdatesObservable<Update<V>, E> {
         trace!("DistributingAccumulator({})::create_observable()", self.id);
-        let init_updates =
-            self.get_current_state().into_iter()
-                .flat_map(|(relid, vs)|
-                    vs.into_iter().map(|v| Update::Insert { relid, v }).collect::<Vec<_>>())
-                .collect::<Vec<_>>();
-
-        let mut guard = self.distributor.lock().unwrap();
-        guard.create_observable(init_updates)
+        self.distributor.lock().unwrap().create_observable()
     }
 
 
@@ -108,23 +102,39 @@ impl<V, E> Accumulator<V, E> for DistributingAccumulator<Update<V>, V, E>
 }
 
 /// The methods for the Observable trait are delegated to the TxnDistributor
-impl<T, V, E> Observable<T, E> for DistributingAccumulator<T, V, E>
+impl<V, E> Observable<Update<V>, E> for DistributingAccumulator<Update<V>, V, E>
     where
-        T: Debug + Send + 'static,
-        V: Debug + Send + Eq + Hash,
+        V: Debug + Send + Clone + Eq + Hash + 'static,
         E: Debug + Send + 'static,
 {
     type Subscription = usize;
 
     fn subscribe(
         &mut self,
-        observer: ObserverBox<T, E>,
-    ) -> Result<Self::Subscription, ObserverBox<T, E>> {
+        mut observer: ObserverBox<Update<V>, E>,
+    ) -> Result<Self::Subscription, ObserverBox<Update<V>, E>> {
         trace!("DistributingAccumulator({})::subscribe()", self.id);
-        self.distributor.subscribe(observer)
+        // get lock for distributor, it must not receive updates while initializing the observable
+        let mut distributor = self.distributor.lock().unwrap();
+
+        // update new observer with currently accumulated state
+        let mut init_updates = self.get_current_state().into_iter()
+            .flat_map(|(relid, vs)|
+                vs.into_iter().map(|v| Update::Insert { relid, v }).collect::<Vec<_>>())
+            .collect::<Vec<_>>();
+
+        if !init_updates.is_empty() {
+            let updates = init_updates.drain(..).into_iter();
+            trace!("DistributingAccumulator({:?}) sending init_updates to observer: {:?}", self.id, updates);
+            let _ = observer.on_start();
+            let _ = observer.on_updates(Box::new(updates));
+            let _ = observer.on_commit();
+        }
+
+        distributor.subscribe(observer)
     }
 
-    fn unsubscribe(&mut self, subscription: &Self::Subscription) -> Option<ObserverBox<T, E>> {
+    fn unsubscribe(&mut self, subscription: &Self::Subscription) -> Option<ObserverBox<Update<V>, E>> {
         trace!("DistributingAccumulator({})::unsubscribe({})", self.id, subscription);
         self.distributor.unsubscribe(subscription)
     }
@@ -201,8 +211,6 @@ pub mod tests {
             Update::DeleteValue { relid: 3, v: 3 },
         ).into_iter())
     }
-
-    //TODO: test accumulation of data across multiple commits
 
     /// Test subscribing and unsubscribing for a `DistributingAccumulator`.
     /// A subscription can occur directly via `subscribe` or via `create_observable`.
@@ -338,7 +346,7 @@ pub mod tests {
         assert!(received_updates.contains(&Update::Insert { relid: 2, v: 2 }));
         assert!(received_updates.contains(&Update::Insert { relid: 3, v: 3 }));
 
-        // start an observable that receives the first bunch of updates
+        // create an un-accumulated observable
         let mut observable = accumulator.create_observable();
 
         // provide second batch of updates to the accumulator
@@ -346,22 +354,28 @@ pub mod tests {
         assert_eq!(accumulator.on_updates(get_usize_updates_2()), Ok(()));
         assert_eq!(accumulator.on_commit(), Ok(()));
 
-        // the observable does not see the second update
+        // the observable does not see any updates until subscribed too
         assert!(observable.subscribe(Box::new(mock2.clone())).is_ok());
         let received_updates = mock2.lock().unwrap().received_updates.clone();
-        assert_eq!(received_updates.len(), 3);
-        assert!(received_updates.contains(&Update::Insert { relid: 1, v: 1 }));
-        assert!(received_updates.contains(&Update::Insert { relid: 2, v: 2 }));
-        assert!(received_updates.contains(&Update::Insert { relid: 3, v: 3 }));
+        assert_eq!(received_updates.len(), 0);
 
+        // the following updates should be received via the create_observable
         assert_eq!(accumulator.on_start(), Ok(()));
         assert_eq!(accumulator.on_updates(get_usize_updates_3()), Ok(()));
+        assert_eq!(accumulator.on_commit(), Ok(()));
+        let received_updates = mock2.lock().unwrap().received_updates.clone();
+        assert_eq!(received_updates.len(), 4);
+        assert!(received_updates.contains(&Update::Insert { relid: 4, v: 1 }));
+        assert!(received_updates.contains(&Update::Insert { relid: 4, v: 2 }));
+        assert!(received_updates.contains(&Update::Insert { relid: 4, v: 3 }));
+        assert!(received_updates.contains(&Update::Insert { relid: 4, v: 4 }));
+
+        // a new observer via subscribe() should receive all updates
+        assert_eq!(accumulator.on_start(), Ok(()));
         assert_eq!(accumulator.on_updates(get_usize_delete_updates_1()), Ok(()));
         assert_eq!(accumulator.on_commit(), Ok(()));
 
-        // a new observer via create_observable should receive all updates
-        let mut observable = accumulator.create_observable();
-        assert!(observable.subscribe(Box::new(mock3.clone())).is_ok());
+        assert!(accumulator.subscribe(Box::new(mock3.clone())).is_ok());
         let received_updates = mock3.lock().unwrap().received_updates.clone();
         assert_eq!(received_updates.len(), 7);
         assert!(received_updates.contains(&Update::Insert { relid: 1, v: 2 }));

@@ -145,6 +145,14 @@ where
             Err(_) => Err(observable),
         }
     }
+
+    /// Creates and adds an `Observer` to which the multiplexer is subscribed.
+    pub fn create_observer(
+        &mut self
+    ) -> ObserverBox<T, E> {
+        trace!("TxnMux({})::create_observer", self.id);
+        Box::new(CachingObserver::new(self.observer.clone()))
+    }
 }
 
 impl<T, E> Drop for TxnMux<T, E>
