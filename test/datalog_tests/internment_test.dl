@@ -32,17 +32,17 @@ typedef IStruct = IStruct {
 
 input relation IStruct[Intern<IStruct>]
 
-output relation Projections(inp: Intern<IStruct>, p: string)
+output relation Projections(inp: IStruct, p: string)
 
 Projections(i, "x=${i.x}") :-
-    IStruct[i].
-Projections(i, "t.0=${i.t.0}") :-
+    IStruct[&i].
+Projections(ival(i), "t.0=${i.t.0}") :-
     i in &IStruct().
-Projections(i, "t.1=${i.t.1}") :-
+Projections(ival(i), "t.1=${i.t.1}") :-
     i in &IStruct(.t=&(_, d)).
-Projections(i, "f1=${f1}") :-
+Projections(ival(i), "f1=${f1}") :-
     i in &IStruct(.u=&Tag1{f1}).
-Projections(i, "f2=${f2}") :-
+Projections(ival(i), "f2=${f2}") :-
     i in &IStruct(.u=&t@Tag2{.f2=f2}).
-Projections(i, "f3=${f3}") :-
+Projections(ival(i), "f3=${f3}") :-
     i in &IStruct(.u=t@ &Tag2{.f3=f3}).
