@@ -45,13 +45,13 @@ public class WindowVisitor
      */
     static class WindowAggregation {
         /**
-         * Expressions defining the window, e.g., c3tmp in the
+         * Expressions defining the window, e.g., tmp in the
          * previous example.
          */
         public final List<SingleColumn> groupOn;
         /**
          * Values computed by each window.
-         * E.g., count(c3tmp) in the previous example.
+         * E.g., count(tmp) in the previous example.
          * These will depend on temporary variables that
          * show up in the inputSelectItems below.
          */
@@ -78,7 +78,7 @@ public class WindowVisitor
 
     /**
      * Expressions computed by the first select.  Each has an alias
-     * writing to a temporary variable, e.g., "c3tmp" in the previous example.
+     * writing to a temporary variable, e.g., "tmp" in the previous example.
      */
     final List<SingleColumn> firstSelect;
     /**
