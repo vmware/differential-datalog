@@ -6,63 +6,12 @@ use std::sync::Mutex;
 use log::trace;
 use uid::Id;
 
-use crate::Observable;
+use crate::{Observable, UpdatesObservable};
 use crate::Observer;
 use crate::ObserverBox;
 use crate::OptionalObserver;
 use crate::SharedObserver;
 
-/// An observable that can be initialized with optional data which it sends to a new subscriber
-/// before emitting any other data.
-#[derive(Debug, Default)]
-pub struct InitializedObservable<T, E>
-{
-    /// A reference to the `Observer` subscribed to us, if any.
-    observer: SharedObserver<OptionalObserver<ObserverBox<T, E>>>,
-    /// The data newly subscribed observers are initialized with.
-    init_updates: Vec<T>,
-    /// The subscription the Observable has
-    subscription: Option<usize>,
-}
-
-impl<T, E> Observable<T, E> for InitializedObservable<T, E>
-    where
-        T: Clone + Debug + Send + 'static,
-        E: Debug + Send + 'static,
-{
-    type Subscription = usize;
-
-    fn subscribe(
-        &mut self,
-        observer: ObserverBox<T, E>,
-    ) -> Result<Self::Subscription, ObserverBox<T, E>> {
-        trace!("InitializedObservable({:?})::subscribe({:?})", self.subscription, observer);
-        let mut guard = self.observer.lock().unwrap();
-        if guard.is_some() {
-            Err(observer)
-        } else {
-            // TODO: improve handling of subscriptions and errors
-            let _ = guard.replace(observer);
-
-            // send the initial_updates to the observer by draining the vector
-            if !self.init_updates.is_empty() {
-                let updates = self.init_updates.drain(..);
-                let observer = guard.as_mut().unwrap();
-                let _ = observer.on_start();
-                trace!("InitializedObservable({:?}) sending init_updates to observer: {:?}", self.subscription, updates);
-                let _ = observer.on_updates(Box::new(updates));
-                let _ = observer.on_commit();
-            }
-
-            Ok(1)
-        }
-    }
-
-    fn unsubscribe(&mut self, subscription: &Self::Subscription) -> Option<ObserverBox<T, E>> {
-        trace!("InitializedObservable({:?})::unsubscribe({:?})", self.subscription, subscription);
-        self.observer.lock().unwrap().take()
-    }
-}
 
 #[derive(Debug)]
 pub struct TxnDistributor<T, E> {
@@ -90,17 +39,14 @@ impl<T, E> TxnDistributor<T, E>
 
     pub fn create_observable(
         &mut self,
-        init_updates: Vec<T>,
-    ) -> InitializedObservable<T, E> {
-        let observer = SharedObserver::default();
+    ) -> UpdatesObservable<T, E> {
         let subscription = Id::<()>::new().get();
         trace!("TxnDistributor({:?})::create_observable({:?})", self.id, subscription);
 
+        let observer = SharedObserver::default();
         let _ = self.observers.insert(subscription, observer.clone());
-        InitializedObservable {
-            init_updates,
-            observer,
-            subscription: Some(subscription),
+        UpdatesObservable {
+            observer
         }
     }
 }
@@ -200,30 +146,6 @@ mod tests {
 
     use crate::MockObserver;
 
-    /// Test subscribing and unsubscribing for an `InitializedObservable`.
-    #[test]
-    fn subscribe_unsubscribe_observable() {
-        let mut observable = InitializedObservable::<(), ()>::default();
-        let observer = Box::new(MockObserver::new());
-
-        let subscription = observable.subscribe(observer);
-        assert!(subscription.is_ok());
-        assert!(observable.unsubscribe(&subscription.unwrap()).is_some());
-        assert!(observable.observer.lock().unwrap().is_none());
-    }
-
-    /// Test multiple subscriptions to an `InitializedObservable`.
-    #[test]
-    fn multiple_subscribe_observable() {
-        let mut observable = InitializedObservable::<(), ()>::default();
-        let observer1 = Box::new(MockObserver::new());
-        let observer2 = Box::new(MockObserver::new());
-
-        assert!(observable.subscribe(observer1).is_ok());
-        assert!(observable.subscribe(observer2).is_err());
-    }
-
-
     /// Test subscribing and unsubscribing for a `TxnDistributor`.
     /// A subscription can occur directly via `subscribe` or via `create_observable`.
     #[test]
@@ -236,7 +158,7 @@ mod tests {
         assert!(distributor.unsubscribe(&subscription.unwrap()).is_some());
         assert!(distributor.observers.values().collect::<Vec<_>>().is_empty());
 
-        let mut observable = distributor.create_observable(vec!());
+        let mut observable = distributor.create_observable();
         let observer = Box::new(MockObserver::new());
 
         let subscription = observable.subscribe(observer);
@@ -278,8 +200,8 @@ mod tests {
         let mut distributor = TxnDistributor::<_, ()>::new();
         let mock1 = Arc::new(Mutex::new(MockObserver::new()));
         let mock2 = Arc::new(Mutex::new(MockObserver::new()));
-        let mut observable1 = distributor.create_observable(vec!());
-        let mut observable2 = distributor.create_observable(vec!());
+        let mut observable1 = distributor.create_observable();
+        let mut observable2 = distributor.create_observable();
 
         assert!(observable1.subscribe(Box::new(mock1.clone())).is_ok());
         assert!(observable2.subscribe(Box::new(mock2.clone())).is_ok());

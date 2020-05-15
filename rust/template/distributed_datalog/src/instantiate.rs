@@ -197,8 +197,8 @@ where
             let mut accumulator = DistributingAccumulator::new();
             let _subscription = accumulator.subscribe(Box::new(sink))
                 .map_err(|_| { format!(
-                     "failed to subscribe file sink {} to accumulator",
-                     path.display()
+                    "failed to subscribe file sink {} to accumulator",
+                    path.display()
                  )
              })?;
             server.add_stream(rel_ids.clone())
@@ -223,13 +223,11 @@ where
             let mut source = FileSource::<P::Convert>::new(path);
 
             let mut accumulator = DistributingAccumulator::new();
-            let observable = accumulator.create_observable();
-            source.subscribe(Box::new(accumulator))
-                .map_err(|_| format!("failed to add file source {} to accumulator", path.display()))?;
+            let _subscription = accumulator.subscribe(txnmux.create_observer())
+                .map_err(|_| format!("failed to subscribe TxnMux to accumulator"))?;
 
-            txnmux
-                .add_observable(Box::new(observable))
-                .map_err(|_| "failed to add accumulator to TxnMux".to_string())
+            source.subscribe(Box::new(accumulator))
+                .map_err(|_| format!("failed to add file source {} to accumulator", path.display()))
         })
 }
 
