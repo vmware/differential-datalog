@@ -5,23 +5,41 @@
  */
 
 /*
+ * Compiled regular expression.
+ */
+extern type Regex
+
+/*
+ * Compile pattern into a regex.  If the pattern is invalid, returns a regex
+ * that does not match any input strings.
+ */
+extern function regex(pattern: string): Regex
+
+/*
+ * Compile pattern into a regex.  Returns an error if the pattern is invalid.
+ */
+extern function regex_checked(pattern: string): Result<Regex, string>
+
+/*
  * Check if string matches regular expression.
  *
  * Returns true if the regex matches the string given.
  * Returns false if `regex` is not a valid regular expression or if no match was
  * found.
+ *
+ * Example: `regex_match(regex([|\d+|]), "a111b222c")` 
  */
-extern function regex_match(regex: string, text: string): bool
+extern function regex_match(regex: Regex, text: string): bool
 
 /*
  * Returns the leftmost-first match in `text`. If `regex` is not a valid regular
  * expression or no match exists, then `None` is returned.
  */
-extern function regex_first_match(regex: string, text: string): Option<string>
+extern function regex_first_match(regex: Regex, text: string): Option<string>
 
 /*
  * Returns all successive non-overlapping matches in `text`.
  * If `regex` is not a valid regular expression or no match exists,
  * an empty vector is returned.
  */
-extern function regex_all_matches(regex: string, text: string): Vec<string>
+extern function regex_all_matches(regex: Regex, text: string): Vec<string>

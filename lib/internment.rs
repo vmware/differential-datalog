@@ -16,12 +16,36 @@ use flatbuf::fb;
 #[cfg(feature = "flatbuf")]
 use flatbuffers as fbrt;
 
-#[derive(Default, Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]
+#[derive(Default, Eq, PartialEq, Clone, Hash)]
 pub struct internment_Intern<A>
 where
     A: Eq + Send + Sync + Hash + 'static,
 {
     intern: arc_interner::ArcIntern<A>,
+}
+
+impl<A: Eq + Send + Sync + Hash + 'static> PartialOrd for internment_Intern<A> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        let sptr = self.as_ref() as *const A as usize;
+        let optr = other.as_ref() as *const A as usize;
+        sptr.partial_cmp(&optr)
+    }
+}
+
+impl<A: Eq + Send + Sync + Hash + 'static> Ord for internment_Intern<A> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        let sptr = self.as_ref() as *const A as usize;
+        let optr = other.as_ref() as *const A as usize;
+        sptr.cmp(&optr)
+    }
+}
+
+impl<A: Eq + Send + Sync + Hash + 'static> Deref for internment_Intern<A> {
+    type Target = A;
+
+    fn deref(&self) -> &Self::Target {
+        self.intern.deref()
+    }
 }
 
 impl<A: Eq + Hash + Send + Sync + 'static> internment_Intern<A> {

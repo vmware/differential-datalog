@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018 VMware, Inc.
+Copyright (c) 2018-2020 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -147,6 +147,10 @@ ctxMVars d ctx =
          CtxRuleRAtom rl i        -> ([], map f2mf $ ruleRHSVars d rl i)
          CtxRuleRCond rl i        -> ([], map f2mf $ ruleRHSVars d rl i)
          CtxRuleRFlatMap rl i     -> ([], map f2mf $ ruleRHSVars d rl i)
+         CtxRuleRInspect rl i     -> let vars = (map f2mf $ ruleRHSVars d rl i) ++ [("ddlog_weight", Just $ tUser wEIGHT_TYPE [])] in
+                                     if ruleIsRecursive d rl
+                                        then ([], vars ++ [("ddlog_timestamp", Just $ tUser nESTED_TS_TYPE [])])
+                                        else ([], vars ++ [("ddlog_timestamp", Just $ tUser ePOCH_TYPE [])])
          CtxRuleRAggregate rl i   -> ([], map f2mf $ ruleRHSVars d rl i)
          CtxKey Relation{..}      -> ([], [(keyVar $ fromJust relPrimaryKey, Just relType)])
          CtxIndex Index{..}       -> ([], map f2mf idxVars)

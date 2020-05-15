@@ -1,0 +1,14 @@
+ts:17, w:1: Price(item="A", vendor="Overpriced Inc", price=120)
+ts:17, w:1: Price(item="A", vendor="Scrooge Ltd", price=110)
+ts:17, w:1: Price(item="A", vendor="Discount Corp", price=100)
+ts:17, w:1: Price(item="B", vendor="Overpriced Inc", price=123)
+ts:17, w:1: Price(item="B", vendor="Scrooge Ltd", price=150)
+ts:17, w:1: Price(item="B", vendor="Discount Corp", price=111)
+ts:17, w:1: best("B")="Best deal for B: Discount Corp, $111"
+ts:17, w:1: best("A")="Best deal for A: Discount Corp, $100"
+ts:18, w:-1: Price(item="A", vendor="Discount Corp", price=100)
+ts:18, w:-1: Price(item="B", vendor="Discount Corp", price=111)
+ts:18, w:-1: best("B")="Best deal for B: Discount Corp, $111"
+ts:18, w:1: best("B")="Best deal for B: Overpriced Inc, $123"
+ts:18, w:-1: best("A")="Best deal for A: Discount Corp, $100"
+ts:18, w:1: best("A")="Best deal for A: Scrooge Ltd, $110"

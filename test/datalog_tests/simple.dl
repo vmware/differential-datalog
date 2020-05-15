@@ -953,12 +953,12 @@ output relation Power3(y: bigint)
 Power3(pow32(x, 3)) :- Numbers(x).
 
 /* Regular expressions */
-import regex
+import regex as re
 
 input relation Regex(regex: string, text: string)
 output relation RegexMatch(regex: string, text: string, m: bool)
 
-RegexMatch(regex, text, regex_match(regex, text)) :- Regex(regex, text).
+RegexMatch(regex, text, re.regex_match(re.regex(regex), text)) :- Regex(regex, text).
 
 output relation Arithm(n:bit<32>)
 Arithm(0).

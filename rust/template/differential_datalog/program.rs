@@ -176,6 +176,28 @@ type TSAtomic = AtomicU32;
  */
 pub type TSNested = TS16;
 
+/* `Inspect` operator expects the timestampt to be a tuple.
+ */
+pub type TupleTS = (TS, TSNested);
+
+trait ToTupleTS {
+    fn to_tuple_ts(&self) -> TupleTS;
+}
+
+/* 0-extend top-level timestamp to a tuple.
+ */
+impl ToTupleTS for TS {
+    fn to_tuple_ts(&self) -> TupleTS {
+        (*self, TS16 { x: 0 })
+    }
+}
+
+impl ToTupleTS for Product<TS, TSNested> {
+    fn to_tuple_ts(&self) -> TupleTS {
+        (self.outer, self.inner)
+    }
+}
+
 // Diff associated with records in differential dataflow
 pub type Weight = i32;
 
@@ -303,6 +325,10 @@ pub type FilterFunc = fn(&DDValue) -> bool;
 /// Function type used to simultaneously filter and map a relation
 /// (see `XFormCollection::FilterMap`).
 pub type FilterMapFunc = fn(DDValue) -> Option<DDValue>;
+
+/// Function type used to inspect a relation
+/// (see `XFormCollection::InspectFunc`)
+pub type InspectFunc = fn(&DDValue, TupleTS, Weight) -> ();
 
 /// Function type used to arrange a relation into key-value pairs
 /// (see `XFormArrangement::Join`, `XFormArrangement::Antijoin`).
@@ -505,6 +531,12 @@ pub enum XFormCollection {
         fmfun: &'static FilterMapFunc,
         next: Box<Option<XFormCollection>>,
     },
+    /// Inspector
+    Inspect {
+        description: String,
+        ifun: &'static InspectFunc,
+        next: Box<Option<XFormCollection>>,
+    },
 }
 
 impl XFormCollection {
@@ -515,6 +547,7 @@ impl XFormCollection {
             XFormCollection::FlatMap { description, .. } => &description,
             XFormCollection::Filter { description, .. } => &description,
             XFormCollection::FilterMap { description, .. } => &description,
+            XFormCollection::Inspect { description, .. } => &description,
         }
     }
 
@@ -534,6 +567,10 @@ impl XFormCollection {
                 Some(ref n) => n.dependencies(),
             },
             XFormCollection::FilterMap { next, .. } => match **next {
+                None => FnvHashSet::default(),
+                Some(ref n) => n.dependencies(),
+            },
+            XFormCollection::Inspect { next, .. } => match **next {
                 None => FnvHashSet::default(),
                 Some(ref n) => n.dependencies(),
             },
@@ -1793,6 +1830,7 @@ impl Program {
         P: ScopeParent,
         P::Timestamp: Lattice,
         T: Refines<P::Timestamp> + Lattice + Timestamp + Ord,
+        T: ToTupleTS,
     {
         match xform {
             None => col,
@@ -1809,6 +1847,7 @@ impl Program {
         P: ScopeParent,
         P::Timestamp: Lattice,
         T: Refines<P::Timestamp> + Lattice + Timestamp + Ord,
+        T: ToTupleTS,
     {
         match xform {
             XFormCollection::Arrange {
@@ -1856,6 +1895,16 @@ impl Program {
                 let flattened = with_prof_context(&description, || col.flat_map(fmfun));
                 Self::xform_collection(flattened, &*next, arrangements)
             }
+            XFormCollection::Inspect {
+                description,
+                ifun: &ifun,
+                ref next,
+            } => {
+                let inspect = with_prof_context(&description, || {
+                    col.inspect(move |(v, ts, w)| ifun(v, ts.to_tuple_ts(), *w))
+                });
+                Self::xform_collection(inspect, &*next, arrangements)
+            }
         }
     }
 
@@ -1868,6 +1917,7 @@ impl Program {
         P: ScopeParent,
         P::Timestamp: Lattice,
         T: Refines<P::Timestamp> + Lattice + Timestamp + Ord,
+        T: ToTupleTS,
         TR: TraceReader<Key = DDValue, Val = DDValue, Time = T, R = Weight> + Clone + 'static,
         TR::Batch: BatchReader<DDValue, DDValue, T, Weight>,
         TR::Cursor: Cursor<DDValue, DDValue, T, Weight>,
@@ -2020,6 +2070,7 @@ impl Program {
         P: ScopeParent + 'a,
         P::Timestamp: Lattice,
         T: Refines<P::Timestamp> + Lattice + Timestamp + Ord,
+        T: ToTupleTS,
         F: Fn(RelId) -> Option<&'b Collection<Child<'a, P, T>, DDValue, Weight>>,
         'a: 'b,
     {

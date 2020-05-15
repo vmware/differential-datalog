@@ -1,0 +1,22 @@
+2: insert: (1, 1, 2)
+2: insert: (1, 2, 3)
+2: insert: (1, 3.5, 4.5)
+2: insert: (2, 1, 3)
+2: insert: (2, 2, 4)
+2: insert: (2, 3.5, 5.5)
+2: insert: (3.5, 1, 4.5)
+2: insert: (3.5, 2, 5.5)
+2: insert: (3.5, 3.5, 7)
+3: insert: x=1, total=3
+4: insert: y=2
+4: insert: y=3
+4: insert: y=5
+5: delete: y=2
+7: insert: x=4 y=4
+7: insert: x=1 y=1
+7: delete: x=1 y=1
+7: insert: x=3 y=3
+7: delete: x=3 y=3
+7: insert: x=2 y=2
+7: delete: x=2 y=2
+8: insert: x=2 y=2

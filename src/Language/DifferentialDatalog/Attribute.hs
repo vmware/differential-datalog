@@ -51,6 +51,7 @@ typedefValidateAttrs d tdef@TypeDef{..} = do
     mapM_ (typedefValidateAttr d tdef) tdefAttrs
     _ <- tdefCheckSizeAttr d tdef
     _ <- tdefCheckCustomSerdeAttr d tdef
+    _ <- tdefCheckSharedRefAttr d tdef
     _ <- checkRustAttrs d tdefAttrs
     maybe (return ()) (typeValidateAttrs d) tdefType
     return ()
@@ -70,6 +71,11 @@ typedefValidateAttr d TypeDef{..} attr = do
             let t = fromJust tdefType
             check d (isStruct d t) (pos attr)
                 $ "'custom_serde' attribute cannot be applied to type aliases."
+         "shared_ref" -> do
+            check d (isNothing tdefType) (pos attr)
+                $ "'sharef_ref' attribute is only applicable to extern types."
+            check d (length tdefArgs == 1) (pos attr)
+                $ "Types annotated with 'shared_ref' must have exactly one type argument, e.g., \"Ref<'T>\"."
          n -> err d (pos attr) $ "Unknown attribute " ++ n
 
 typeValidateAttrs :: (MonadError String me) => DatalogProgram -> Type -> me ()
@@ -148,6 +154,22 @@ tdefCheckCustomSerdeAttr d TypeDef{..} =
 tdefGetCustomSerdeAttr :: DatalogProgram -> TypeDef -> Bool
 tdefGetCustomSerdeAttr d tdef = 
     case tdefCheckCustomSerdeAttr d tdef of
+         Left e  -> error e
+         Right b -> b
+
+{- 'shared_ref' attribute: Tells DDlog that the type is a shared reference in
+ - the style of `Ref` and `Intern`. -}
+tdefCheckSharedRefAttr :: (MonadError String me) => DatalogProgram -> TypeDef -> me Bool
+tdefCheckSharedRefAttr d TypeDef{..} =
+    case find ((== "shared_ref") . name) tdefAttrs of
+         Nothing   -> return False
+         Just attr -> do check d (attrVal attr == eTrue) (pos attr)
+                               "The value of 'sharef_ref' attribute must be 'true' or empty"
+                         return True
+
+tdefGetSharedRefAttr :: DatalogProgram -> TypeDef -> Bool
+tdefGetSharedRefAttr d tdef =
+    case tdefCheckSharedRefAttr d tdef of
          Left e  -> error e
          Right b -> b
 

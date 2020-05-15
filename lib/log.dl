@@ -2,46 +2,28 @@
  * Logging API.
  *
  * This API has two facets.  First, it provides the `log()` function that can
- * be invoked from a DDlog rule to provide more visibility into the rule's
- * evaluation.  In addition to the usual log level and log message arguments,
- * this function takes a `module` argument, which identifies the module or
- * subsystem that this log message is associated with.
+ * be invoked from a DDlog rule's Inspect operator to provide more visibility
+ * into the rule's evaluation.  In addition to the usual log level and log
+ * message arguments, this function takes a `module` argument, which identifies
+ * the module or subsystem that this log message is associated with.
  *
  * Second, it provides a Rust configuration API that can only be invoked by the
  * "host" program to set log level for individual modules and to supply a
- * logging callback for each module (see `log.rs`).  This way, different
- * modules can produce separate log streams or even use different logging
- * mechanisms.
- *
- * NOTE: DDlog guarantees that the log callback function will be invoked at least
- * once for each evaluated rule prefix.  But this is the only guarantee it
- * provides.  It might invoke the callback multiple times per each evaluated rule,
- * and it can invoke callbacks in arbitrary order.  It may further invoke the
- * callback both during insertion and deletion operations (i.e., rule inputs can
- * have positive or negative polarity), and there is currently no way
- * to tell which one it is.
+ * logging callback for each module (see `rust/template/types/log.rs`).  This
+ * way, different modules can produce separate log streams or even use different
+ * logging mechanisms.
  *
  * NOTE: Internally, this library maintains a global module-to-log_callback
  * map shared by all DDlog instances running in the same address space.  The host
  * program is responsible for maintaining this mapping via the Rust API in
  * `log.rs`.
  *
- * NOTE (Logging overhead): Even when logging is disabled for a particular
- * module, log statements still have a small cost.  It is therefore recommended
- * to comment out unused log statements when possible.  Specifically, depending
- * on the context, the log statement may end up being compiled into a separate
- * dataflow operator.  It is a light-weight operator that does not cost much
- * to evaluate, but it nevertheless increases the size of the control flow
- * graph.  In addition, the log function evaluates its argument eagerly even
- * when not invoking the callback.  In particular, string operations can
- * be expensive.
- *
  * Other related files:
- * `log4j.dl`    - specializes the logging API for using log4j loggers
- * `log.rs`      - Rust logging API
+ * `log4j.dl` - specializes the logging API for using log4j loggers
+ * `rust/template/types/log.rs` - Rust logging API
  * `ddlog_log.h` - matching C bindings
  * `DDlogAPI.java (DDlogAPI.log_set_callback method)` - Java API to control
- * logging
+ *  logging.
  *
  * === Example ===
  *
@@ -52,7 +34,7 @@
  *
  * // Use log() function in a rule
  * Span(entity, tn) :- Binding(entity, tn),
- *                     log(mod_SPAN_UUID(), 5, "Span(entity,tn) :- Binding(.entity=${deref(entity)},.tn=${deref(tn)}))").
+ *                     Inspect log(mod_SPAN_UUID(), 5, "Span(entity,tn) :- Binding(.entity=${deref(entity)},.tn=${deref(tn)}))").
  * ```
  *
  * In Java:
@@ -84,8 +66,8 @@ typedef log_level_t = signed<32>
  * `level`  - log level
  * `msg`    - error message (UTF-8)
  *
- * This function returns a `bool` so that it can be used as a filter inside
- * DDlog rules.  It always returns `true`.
+ * This function returns a `()` so that it can be used as part of an expression
+ * of an Inspect operator.
  */
 #[has_side_effects]
-extern function log(module: module_t, level: log_level_t, msg: string): bool
+extern function log(module: module_t, level: log_level_t, msg: string): ()

@@ -20,6 +20,10 @@ exprType :: DatalogProgram -> ECtx -> Expr -> Type
 exprType' :: DatalogProgram -> ECtx -> Expr -> Type
 sET_TYPES :: [String]
 gROUP_TYPE :: String
+ePOCH_TYPE :: String
+iTERATION_TYPE :: String
+nESTED_TS_TYPE :: String
+wEIGHT_TYPE :: String
 checkIterable :: (MonadError String me, WithType a) => String -> Pos -> DatalogProgram -> a -> me ()
 typeIterType :: DatalogProgram -> Type -> Maybe (Type, Bool)
 exprTypeMaybe :: DatalogProgram -> ECtx -> Expr -> Maybe Type

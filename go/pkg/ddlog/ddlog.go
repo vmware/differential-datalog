@@ -24,12 +24,18 @@ static void freeCmdArray(ddlog_cmd **ca) {
 
 extern void handleOutRecord(uintptr_t progIdx, table_id table, ddlog_record *rec, bool polarity);
 
-static void dumpChangesCb(void *arg, table_id table, const ddlog_record *rec, bool polarity) {
-    handleOutRecord((uintptr_t)arg, table, (ddlog_record *)rec, polarity);
+static void dumpChangesCb(uintptr_t arg, table_id table, const ddlog_record *rec, bool polarity) {
+    handleOutRecord(arg, table, (ddlog_record *)rec, polarity);
 }
 
 static int ddlogTransactionCommitDumpChanges(ddlog_prog hprog, uintptr_t arg) {
-    return ddlog_transaction_commit_dump_changes(hprog, dumpChangesCb, arg);
+    ddlog_delta *delta = ddlog_transaction_commit_dump_changes(hprog);
+    if (delta==NULL) {
+        return -1;
+    };
+    ddlog_delta_enumerate(delta, dumpChangesCb, arg);
+    ddlog_free_delta(delta);
+    return 0;
 }
 
 extern void handleOutRecordArray(uintptr_t progIdx, ddlog_record_update *changes, size_t num_changes);

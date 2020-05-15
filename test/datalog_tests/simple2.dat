@@ -17,3 +17,57 @@ start;
 insert Doubles([1.0, 2.0, 3.5]),
 
 commit dump_changes;
+
+dump InspectSimpleSum;
+
+start;
+
+insert InputTuples(1, 1);
+insert InputTuples(1, 2);
+
+commit dump_changes;
+
+dump FilteredRelation;
+
+start;
+
+insert TestRelation(1, 1);
+insert TestRelation(1, 2);
+insert TestRelation(6, 2);
+insert TestRelation(6, 3);
+insert TestRelation(3, 4);
+insert TestRelation(6, 5);
+
+commit dump_changes;
+
+start;
+
+delete TestRelation(3, 4);
+delete TestRelation(6, 2);
+
+commit dump_changes;
+
+dump OutputInspectNot;
+
+start;
+
+insert InputInspectNot2(1);
+insert InputInspectNot2(2);
+insert InputInspectNot2(3);
+
+commit dump_changes;
+
+start;
+
+insert InputInspectNot1(1, 1);
+insert InputInspectNot1(2, 2);
+insert InputInspectNot1(3, 3);
+insert InputInspectNot1(4, 4);
+
+commit dump_changes;
+
+start;
+
+delete InputInspectNot2(2);
+
+commit dump_changes;

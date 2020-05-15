@@ -206,13 +206,13 @@ fieldValidate :: (MonadError String me) => DatalogProgram -> [String] -> Field -
 fieldValidate d targs field@Field{..} = typeValidate d targs $ typ field
 
 checkAcyclicTypes :: (MonadError String me) => DatalogProgram -> me ()
-checkAcyclicTypes DatalogProgram{..} = do
+checkAcyclicTypes d@DatalogProgram{..} = do
     let g0 :: G.Gr String ()
         g0 = G.insNodes (mapIdx (\(t,_) i -> (i, t)) $ M.toList progTypedefs) G.empty
         typIdx t = M.findIndex t progTypedefs
         gfull = M.foldlWithKey (\g tn tdef ->
                                  foldl' (\g' t' -> G.insEdge (typIdx tn, typIdx t', ()) g') g
-                                        $ maybe [] typeStaticMemberTypes $ tdefType tdef)
+                                        $ maybe [] (typeStaticMemberTypes d) $ tdefType tdef)
                                g0 progTypedefs
     maybe (return ())
           (\cyc -> throwError $ "Mutually recursive types: " ++
@@ -239,33 +239,6 @@ relValidate d rel@Relation{..} = do
     check d (isNothing relPrimaryKey || relRole == RelInput) (pos rel)
         $ "Only input relations can be declared with a primary key"
     maybe (return ()) (exprValidate d [] (CtxKey rel) . keyExpr) relPrimaryKey
-
---relValidate2 :: (MonadError String me) => Refine -> Relation -> me ()
---relValidate2 r rel@Relation{..} = do
---    assertR r ((length $ filter isPrimaryKey relConstraints) <= 1) relPos $ "Multiple primary keys are not allowed"
---    mapM_ (constraintValidate r rel) relConstraints
---    maybe (return ()) (mapM_ (ruleValidate r rel)) relDef
---    maybe (return ()) (\rules -> assertR r (any (not . ruleIsRecursive rel) rules) relPos
---                                         "View must have at least one non-recursive rule") relDef
-
---relTypeValidate :: (MonadError String me) => Refine -> Relation -> Pos -> Type -> me ()
---relTypeValidate r rel p   TArray{}  = errR r p $ "Arrays are not allowed in relations (in relation " ++ name rel ++ ")"
---relTypeValidate r rel p   TTuple{}  = errR r p $ "Tuples are not allowed in relations (in relation " ++ name rel ++ ")"
---relTypeValidate r rel p   TOpaque{} = errR r p $ "Opaque columns are not allowed in relations (in relation " ++ name rel ++ ")"
---relTypeValidate r rel p   TInt{}    = errR r p $ "Arbitrary-precision integers are not allowed in relations (in relation " ++ name rel ++ ")"
---relTypeValidate _ _   _   TStruct{} = return ()
---relTypeValidate _ _   _   TUser{}   = return ()
---relTypeValidate _ _   _   _         = return ()
---
---relValidate3 :: (MonadError String me) => Refine -> Relation -> me ()
---relValidate3 r rel = do
---    let types = relTypes r rel
---    mapM_ (\t -> relTypeValidate r rel (pos t) t) types
---    maybe (return ())
---          (\cyc -> errR r (pos rel)
---                     $ "Dependency cycle among types used in relation " ++ name rel ++ ":\n" ++
---                      (intercalate "\n" $ map (show . snd) cyc))
---          $ grCycle $ typeGraph r types
 
 indexValidate :: (MonadError String me) => DatalogProgram -> Index -> me ()
 indexValidate d idx@Index{..} = do
@@ -312,6 +285,13 @@ ruleRHSValidate d rl@Rule{..} (RHSFlatMap _ e) idx = do
     let ctx = CtxRuleRFlatMap rl idx
     exprValidate d [] ctx e
     checkIterable "FlatMap expression" (pos e) d $ exprType d ctx e
+
+ruleRHSValidate d rl@Rule{..} (RHSInspect e) idx = do
+    let ctx = CtxRuleRInspect rl idx
+    exprValidate d [] ctx e
+    let returnType = exprType' d ctx e
+    check d (returnType == tTuple[]) (pos e)
+        $ "Inspect expression must return an empty tuple type, but its type is " ++ (show returnType)
 
 ruleRHSValidate d rl RHSAggregate{} idx = do
     _ <- ruleCheckAggregate d rl idx

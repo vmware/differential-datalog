@@ -382,8 +382,8 @@ exprIsVarOrFieldLVal' :: DatalogProgram -> ECtx -> ExprNode (Expr, Bool) -> (Exp
 exprIsVarOrFieldLVal' d ctx expr =
     case expr of
         (EVar _ v)            -> (E e', isLVar d ctx v)
-        (EField _ (e, b) _)   -> (E e', b && (isRef d $ exprType d (CtxField e' ctx) e))
-        (ETupField _ (e,b) _) -> (E e', b && (isRef d $ exprType d (CtxTupField e' ctx) e))
+        (EField _ (e, b) _)   -> (E e', b && (isSharedRef d $ exprType d (CtxField e' ctx) e))
+        (ETupField _ (e,b) _) -> (E e', b && (isSharedRef d $ exprType d (CtxTupField e' ctx) e))
         (ETyped _ (_,b) _)    -> (E e', b)
         _                     -> (E e', False)
     where e' = exprMap sel1 expr

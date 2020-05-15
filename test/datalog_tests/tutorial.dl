@@ -311,10 +311,14 @@ function best_vendor_string(g: Group<string, (string, bit<64>)>): string
     "Best deal for ${group_key(g)}: ${min_vendor}, $${min_price}"
 }
 
+import inspect_log as log
+
 output relation BestDeal(best: string)
 BestDeal(best) :-
     Price(item, vendor, price),
-    var best = Aggregate((item), best_vendor_string((vendor, price))).
+    Inspect log.log("../tutorial.log", "ts:${ddlog_timestamp}, w:${ddlog_weight}: Price(item=\"${item}\", vendor=\"${vendor}\", price=${price})"),
+    var best = Aggregate((item), best_vendor_string((vendor, price))),
+    Inspect log.log("../tutorial.log", "ts:${ddlog_timestamp}, w:${ddlog_weight}: best(\"${item}\")=\"${best}\"").
 
 /*
  * Example: tagged unions
@@ -495,17 +499,17 @@ TopScore(school, top_score) :-
  */
 
 input relation OnlineOrder(order_id: u64, item: istring)
-output relation ItemInOrders(item: istring, orders: Vec<u64>)
+output relation ItemInOrders(item: string, orders: Vec<u64>)
 
-ItemInOrders(item, orders) :-
+ItemInOrders(ival(item), orders) :-
     OnlineOrder(order, item),
     var orders = Aggregate((item), group2vec(order)).
 
-output relation OrderFormatted(order: istring)
+output relation OrderFormatted(order: string)
 
 OrderFormatted(formatted) :-
     OnlineOrder(order, item),
-    var formatted: istring = intern("order: ${order}, item: ${ival(item)}").
+    var formatted: string = "order: ${order}, item: ${ival(item)}".
 
 output relation MilkOrders(order: u64)
 MilkOrders(order) :- OnlineOrder(order, i"milk").
@@ -519,11 +523,11 @@ typedef IStoreItem = Intern<StoreItem>
 
 input relation StoreInventory(item: IStoreItem)
 
-output relation InventoryItemName(name: istring)
+output relation InventoryItemName(name: string)
 
 InventoryItemName(name) :-
     StoreInventory(item),
-    var name = intern(ival(item).name).
+    var name = ival(item).name.
 
 /*
  * Example: Advanced features

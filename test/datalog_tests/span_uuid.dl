@@ -1,4 +1,5 @@
 /* LOGGING */
+import inspect_log as inspect_log
 import log as log
 import log4j
 
@@ -37,12 +38,19 @@ relation Span(entity: uuid_t, tn: tnid_t)
 
 // base case
 Span(entity, tn) :- Binding(entity, tn),
-                    trace(mod_SPAN_UUID1(), "Span(entity,tn) :- Binding(.entity=${deref(entity)},.tn=${deref(tn)}))").
+                    Inspect trace(mod_SPAN_UUID1(), "Span(entity,tn) :- Binding(.entity=${deref(entity)},.tn=${deref(tn)}))").
 // recursive step: propagate bindings along the dependency graph
 Span(parent, tn) :- Dependency(parent, child),
-                    trace(mod_SPAN_UUID1(), "Span recursive step: Dependency(.parent=${deref(parent)},.child=${deref(child)}))"),
+                    Inspect trace(mod_SPAN_UUID1(), "Span recursive step: Dependency(.parent=${deref(parent)},.child=${deref(child)}))"),
                     Span(child, tn),
-                    trace(mod_SPAN_UUID1(), "Span(parent, tn) :- Dependency(.parent=${deref(parent)},.child=${deref(child)})), Span(.child, .tn=${deref(tn)})").
+                    Inspect {
+                        trace(mod_SPAN_UUID1(), "Span(parent, tn) :- Dependency(.parent=${deref(parent)},.child=${deref(child)})), Span(.child, .tn=${deref(tn)})");
+                        // Intentionally made the log message more compact in order to reduce the size of the span_uuid.log.expected.
+                        var p = deref(parent)[63:0];
+                        var c = deref(child)[63:0];
+                        var t = deref(tn)[63:0];
+                        inspect_log.log("../span_uuid.log", "${ddlog_timestamp}${if (ddlog_weight > 0) {\"+\"} else {\"-\"}}p${p},c${c},t${t}")
+                    }.
 
 /* RuleSpan: restriction of the Span relation to Rule nodes.
  */
@@ -66,7 +74,7 @@ output relation ContainerSpan(entity: uuid_t, tn: tnid_t /*, explanation: string
 ContainerSpan(entity, tn /*, explanation*/) :-
     SourceSpan(entity, tn /*, explanation*/),
     Container(entity),
-    debug(mod_SPAN_UUID2(), "ContainerSpan(.entity=${deref(entity)},.tn=${deref(tn)}))").
+    Inspect debug(mod_SPAN_UUID2(), "ContainerSpan(.entity=${deref(entity)},.tn=${deref(tn)}))").
 
 /* For container nodes, add span computed over the source graph to
    container's normal span.

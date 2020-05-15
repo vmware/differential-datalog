@@ -106,7 +106,7 @@ relIsDistinct d rel = relIsDistinctByConstruction d rel || (relRole rel == RelOu
 relIsBounded :: DatalogProgram -> String -> Bool
 relIsBounded d rel =
     all (\rule@Rule{..} -> all (\(_,i) -> ruleIsDistinctByConstruction d rule i)
-                           $ filter (\(_,i) -> ruleIsRecursive d rule i)
+                           $ filter (\(_,i) -> ruleHeadIsRecursive d rule i)
                            $ filter (\(lhs,_) -> atomRelation lhs == rel)
                            $ mapIdx (,) ruleLHS)
         $ relRules d rel
