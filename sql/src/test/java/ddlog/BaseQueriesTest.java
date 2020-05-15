@@ -17,6 +17,8 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 
 public class BaseQueriesTest {
+    protected static boolean runSlowTests = true;
+
     // TODO: this should only be done once, but it is not clear how this can be achieved.
     @BeforeClass
     public static void createLibrary() throws FileNotFoundException {
@@ -173,7 +175,7 @@ public class BaseQueriesTest {
      * Compile the specified file from the resources folder.
      */
     public void testFileCompilation(String file) {
-        if (true) return;
+        if (!runSlowTests) return;
         final InputStream resourceAsStream = DynamicTest.class.getResourceAsStream(file);
         try (final BufferedReader tables = new BufferedReader(new InputStreamReader(resourceAsStream,
                 StandardCharsets.UTF_8))) {
