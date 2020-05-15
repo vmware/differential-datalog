@@ -16,6 +16,7 @@ import com.facebook.presto.sql.tree.Node;
 import com.facebook.presto.sql.tree.NodeLocation;
 import com.facebook.presto.sql.tree.SingleColumn;
 import com.vmware.ddlog.ir.*;
+import com.vmware.ddlog.util.Utilities;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -24,9 +25,6 @@ import java.util.*;
  * This class is used to maintain information during the translation from SQL to DDlog.
  */
 class TranslationContext {
-    private final DDlogProgram program;
-    private final HashMap<String, DDlogRelationDeclaration> relations;
-    private final ExpressionTranslationVisitor etv;
     /**
      * If true we resolve identifiers to scopes, not to values within a scope.
      */
@@ -38,33 +36,48 @@ class TranslationContext {
      * instead of performing the translation proper.
      */
     private final HashMap<Node, DDlogExpression> substitutions;
-    /**
-     * Global to the whole program.
-     */
-    public SymbolTable globalSymbols;
-    /**
-     * Local to a query.
-     */
-    @Nullable
-    private SymbolTable localSymbols;
-
+    private final TranslationState translationState;
     // True if the view that is being compiled should produce an output relation.
     public boolean viewIsOutput;
 
-    TranslationContext() {
+    private TranslationContext(@Nullable TranslationState state) {
         this.viewIsOutput = true;
         this.substitutions = new HashMap<Node, DDlogExpression>();
-        this.program = new DDlogProgram();
-        this.program.imports.add(new DDlogImport("fp", ""));
-        this.program.imports.add(new DDlogImport("time", ""));
-        this.program.imports.add(new DDlogImport("sql", ""));
-        this.program.imports.add(new DDlogImport("sqlop", ""));
-        this.relations = new HashMap<String, DDlogRelationDeclaration>();
-        this.etv = new ExpressionTranslationVisitor();
         this.translationScope = new ArrayList<Scope>();
         this.searchScopeName = false;
-        this.localSymbols = null;
-        this.globalSymbols = new SymbolTable();
+        if (state != null)
+            this.translationState = state;
+        else
+            this.translationState = new TranslationState();
+    }
+
+    public boolean contains(Scope scope) {
+        for (Scope s: this.translationScope)
+            if (s.id == scope.id)
+                return true;
+        return false;
+    }
+
+    public TranslationContext() {
+        this((TranslationState) null);
+    }
+
+    public TranslationContext clone() {
+        TranslationContext result = new TranslationContext(this.translationState);
+        Utilities.copyMap(result.substitutions, this.substitutions);
+        result.viewIsOutput = this.viewIsOutput;
+        result.translationScope.addAll(this.translationScope);
+        return result;
+    }
+
+    public void mergeWith(TranslationContext other) {
+        if (this.translationState != other.translationState)
+            throw new RuntimeException("Merging contexts with different state");
+        for (Scope s: other.translationScope)
+            if (!this.contains(s))
+                this.translationScope.add(s);
+        for (Map.Entry<Node, DDlogExpression> e: other.substitutions.entrySet())
+            this.addSubstitution(e.getKey(), e.getValue());
     }
 
     public DDlogExpression operationCall(Node node, DDlogEBinOp.BOp op, DDlogExpression left, DDlogExpression right) {
@@ -102,15 +115,6 @@ class TranslationContext {
         System.err.println(message + ": " + node.toString() + " " + location(node));
     }
 
-    @Nullable
-    DDlogType resolveTypeDef(DDlogTUser type) {
-        for (DDlogTypeDef t: this.program.typedefs) {
-            if (t.getName().equals(type.getName()))
-                return t.getType();
-        }
-        return null;
-    }
-
     public String columnName(SingleColumn sc) {
         String name;
         if (sc.getAlias().isPresent()) {
@@ -127,7 +131,7 @@ class TranslationContext {
     DDlogType resolveType(DDlogType type) {
         if (type instanceof DDlogTUser) {
             DDlogTUser tu = (DDlogTUser)type;
-            DDlogType result = this.resolveTypeDef(tu);
+            DDlogType result = this.translationState.resolveTypeDef(tu);
             if (result == null)
                 tu.error("Cannot resolve type " + tu.getName());
             assert result != null;
@@ -178,26 +182,24 @@ class TranslationContext {
     public Iterable<Scope> allScopes() { return this.translationScope; }
 
     DDlogExpression translateExpression(Expression expr) {
-        return this.etv.process(expr, this);
+        return this.translationState.etv.process(expr, this);
     }
 
     void add(DDlogRelationDeclaration relation) {
-        this.program.relations.add(relation);
-        this.relations.put(relation.getName(), relation);
+        this.translationState.add(relation);
     }
 
-    @SuppressWarnings("SameParameterValue")
     String freshGlobalName(String prefix) {
-        return this.globalSymbols.freshName(prefix);
+        return this.translationState.freshGlobalName(prefix);
     }
 
     String freshLocalName(String prefix) {
-        assert this.localSymbols != null;
-        return this.localSymbols.freshName(prefix);
+        return this.translationState.freshLocalName(prefix);
     }
 
     void beginTranslation() {
-        this.localSymbols = new SymbolTable();
+        this.translationState.beginTranslation();
+        this.viewIsOutput = true;
     }
 
     void endTranslation() {
@@ -205,19 +207,23 @@ class TranslationContext {
     }
 
     void add(DDlogRule rule) {
-        this.program.rules.add(rule);
+        this.translationState.add(rule);
     }
 
     void add(DDlogTypeDef tdef) {
-        this.program.typedefs.add(tdef);
+        this.translationState.add(tdef);
     }
 
     @Nullable
     DDlogRelationDeclaration getRelation(String name) {
-        return this.relations.get(name);
+        return this.translationState.getRelation(name);
     }
 
     DDlogProgram getProgram() {
-        return this.program;
+        return this.translationState.getProgram();
+    }
+
+    void reserveGlobalName(String name) {
+        this.translationState.globalSymbols.addName(name);
     }
 }

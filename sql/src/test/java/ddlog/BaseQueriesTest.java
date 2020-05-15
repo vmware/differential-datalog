@@ -104,7 +104,7 @@ public class BaseQueriesTest {
             basename = tmp.getName();
             //Compiling all the way takes too long
             //boolean success = DDlogAPI.compileDDlogProgram(tmp.getName(), true,"../lib", "./lib");
-            boolean success = DDlogAPI.compileDDlogProgramToRust(tmp.getName(), true,"../lib", "./lib");
+            boolean success = DDlogAPI.compileDDlogProgramToRust(tmp.getName(), false,"../lib", "./lib");
             if (!success) {
                 String[] lines = programBody.split("\n");
                 for (int i = 0; i < lines.length; i++) {

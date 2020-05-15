@@ -576,8 +576,9 @@ public class DDlogAPI {
      */
     public static int runProcess(List<String> commands, String workdirectory, boolean verbose) {
         try {
-            System.out.println("Running " + String.join(" ", commands) +
-                (workdirectory != null ? " in " + workdirectory : ""));
+            if (verbose)
+                System.out.println("Running " + String.join(" ", commands) +
+                    (workdirectory != null ? " in " + workdirectory : ""));
             ProcessBuilder pb = new ProcessBuilder(commands);
             if (verbose)
                 pb.inheritIO();

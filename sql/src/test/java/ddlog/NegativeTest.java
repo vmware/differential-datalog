@@ -41,4 +41,11 @@ public class NegativeTest extends BaseQueriesTest {
                 "SELECT column2, SUM(column1), SUM(SUM(column1)) OVER (PARTITION by column3) FROM t1 GROUP BY column2";
         this.testTranslation(query, "");
     }
+
+    @Test(expected = TranslationException.class)
+    public void noColumnTest() {
+        // no column2 in t2
+        String query = "create view v0 as SELECT DISTINCT t1.column1, X.c FROM t1 CROSS JOIN (SELECT DISTINCT column2 AS c FROM t2 AS X)";
+        this.testTranslation(query, "");
+    }
 }

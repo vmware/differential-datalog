@@ -24,7 +24,7 @@ import java.util.*;
 import static com.vmware.ddlog.translator.ExpressionTranslationVisitor.unwrapBool;
 
 class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
-    static final boolean debug = true;
+    static final boolean debug = false;
 
     static class GroupByInfo {
         /**
@@ -81,7 +81,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         DDlogTStruct type = new DDlogTStruct(node, typeName, fields);
         DDlogTUser tuser = context.createTypedef(node, type);
         String relName = DDlogRelationDeclaration.relationName(name);
-        context.globalSymbols.addName(relName);
+        context.reserveGlobalName(relName);
         DDlogRelationDeclaration rel = new DDlogRelationDeclaration(
                 node, DDlogRelationDeclaration.Role.Input, relName, tuser);
         context.add(rel);
@@ -152,6 +152,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         DDlogIRNode rel = this.process(relation.getRelation(), context);
         String name = relation.getAlias().getValue();
         RelationRHS rrhs = rel.to(RelationRHS.class);
+        context.exitScope();  // drop previous scope
         Scope scope = new Scope(relation, name, rrhs.getVarName(), rrhs.getType());
         context.enterScope(scope);
         return rrhs;
@@ -560,11 +561,20 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             state.addFunctionStatement(getKeys);
         }
 
+        String agg = context.freshGlobalName("agg");
         List<DDlogType> tupleFields = new ArrayList<DDlogType>();
         List<DDlogEVar> tupleVars = new ArrayList<DDlogEVar>();
-        for (Scope s: context.allScopes()) {
-            tupleFields.add(s.type);
-            tupleVars.add(new DDlogEVar(s.node, s.rowVariable, s.type));
+        // This is a bit conservative: we pass to the aggregation function
+        // all variables that are currently "live".  The aggregation may
+        // not use all of them.
+        for (DDlogRuleRHS rhs: inputRelation.getDefinitions()) {
+            if (!rhs.is(DDlogRHSLiteral.class))
+                continue;
+            DDlogRHSLiteral lit = rhs.to(DDlogRHSLiteral.class);
+            if (lit.atom.val.is(DDlogEVar.class)) {
+                tupleFields.add(lit.atom.val.getType());
+                tupleVars.add(lit.atom.val.to(DDlogEVar.class));
+            }
         }
         for (GroupByInfo g: groupBy)
             context.addSubstitution(g.groupBy, g.getVariable());
@@ -574,8 +584,8 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         DDlogEVar iterVar = new DDlogEVar(select, iter, tuple);
         // The loop iteration variable will have the type tuple
         int index = 0;
-        for (Scope s: context.allScopes()) {
-            DDlogEVarDecl decl = new DDlogEVarDecl(gby, s.rowVariable, s.type);
+        for (DDlogEVar s: tupleVars) {
+            DDlogEVarDecl decl = new DDlogEVarDecl(gby, s.var, s.getType());
             DDlogExpression project;
             if (tuple.size() > 1) {
                 project = new DDlogETupField(gby, iterVar, index++);
@@ -586,7 +596,6 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             state.addLoopStatement(set);
         }
 
-        String agg = context.freshGlobalName("agg");
         DDlogTUser paramType = new DDlogTUser(gby, "Group", false, keyType, tuple);
         DDlogFuncArg param = new DDlogFuncArg(gby, paramName, false, paramType);
         DDlogETuple callArg = new DDlogETuple(select, tupleVars.toArray(new DDlogExpression[0]));
@@ -856,7 +865,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             items.addAll(Linq.map(w.groupOn, s -> new SingleColumn(s.getAlias().get())));
             items.addAll(w.windowResult);
             Select selectI = new Select(false, items);
-            String overName = context.freshLocalName("Over");
+            String overName = context.freshGlobalName("Over");
             QualifiedName overQName = QualifiedName.of(overName);
             GroupBy groupBy = w.getGroupBy();
             Table overView = new Table(overQName);
@@ -934,8 +943,11 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
 
     @Override
     public DDlogIRNode visitJoin(Join join, TranslationContext context) {
+        TranslationContext rightContext = context.clone();
         DDlogIRNode left = this.process(join.getLeft(), context);
-        DDlogIRNode right = this.process(join.getRight(), context);
+        // Process the right relation in its own context.
+        DDlogIRNode right = this.process(join.getRight(), rightContext);
+        context.mergeWith(rightContext);
         RelationRHS lrel = left.to(RelationRHS.class);
         RelationRHS rrel = right.to(RelationRHS.class);
         String var = context.freshLocalName("v");

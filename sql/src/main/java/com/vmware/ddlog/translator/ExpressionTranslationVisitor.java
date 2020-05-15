@@ -60,13 +60,14 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
     public static DDlogExpression operationCall(Node node, DDlogEBinOp.BOp op, DDlogExpression left, DDlogExpression right) {
         String function = SqlSemantics.semantics.getFunction(node, op, left.getType(), right.getType());
         DDlogType type = DDlogType.reduceType(left.getType(), right.getType());
+        DDlogType outputType = type;
         if (op.isComparison() || op.isBoolean()) {
-            type = DDlogTBool.instance.setMayBeNull(type.mayBeNull);
+            outputType = DDlogTBool.instance.setMayBeNull(type.mayBeNull);
         }
         if (function.endsWith("RR"))
             // optimize for the case of no nulls
             return new DDlogEBinOp(node, op, left, right);
-        return new DDlogEApply(node, function, type, fixNull(left, type), fixNull(right, type));
+        return new DDlogEApply(node, function, outputType, fixNull(left, type), fixNull(right, type));
     }
 
     @Override

@@ -65,6 +65,23 @@ public class JoinTest extends BaseQueriesTest {
     }
 
     @Test
+    public void testSelfJoin() {
+        String query = "create view v0 as SELECT DISTINCT t1.column2, x.column3 FROM t1 JOIN (t1 AS x) ON t1.column1 = x.column1";
+        String program = this.header(false) +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, " +
+                "column10:signed<64>, column20:string, column30:bool, column40:double}\n" +
+                "typedef TRtmp = TRtmp{column2:string, column3:bool}\n" +
+                this.relations(false) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v3] :- Rt1[v],Rt1[v0],(v.column1 == v0.column1),true,var v1 = Ttmp{.column1 = v.column1," +
+                ".column2 = v.column2,.column3 = v.column3,.column4 = v.column4,.column10 = v0.column1," +
+                ".column20 = v0.column2,.column30 = v0.column3,.column40 = v0.column4}," +
+                "var v2 = TRtmp{.column2 = v.column2,.column3 = v0.column3},var v3 = v2.";
+        this.testTranslation(query, program, false);
+    }
+
+    @Test
     public void testNaturalJoin() {
         String query = "create view v0 as SELECT DISTINCT * FROM t1 NATURAL JOIN t2";
         String program = this.header(false) +
@@ -127,6 +144,26 @@ public class JoinTest extends BaseQueriesTest {
                 "Rv0[v2] :- Rt1[v],Rt2[v0],true,var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4,.column10 = v0.column1}," +
                 "var v2 = v1.";
         this.testTranslation(query, program, true);
+    }
+
+    @Test
+    public void testJoinSubquery() {
+        String query = "create view v0 as SELECT DISTINCT t1.column1, X.c FROM t1 CROSS JOIN (SELECT DISTINCT column1 AS c FROM t2 AS X)";
+        String program = this.header(false) +
+                "typedef TRtmp = TRtmp{c:signed<64>}\n" +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, c:signed<64>}\n" +
+                "typedef TRtmp1 = TRtmp1{column1:signed<64>, c:signed<64>}\n" +
+                this.relations(true) +
+                "relation Rtmp[TRtmp]\n" +
+                "relation Rtmp0[TRtmp]\n" +
+                "relation Rtmp1[TRtmp1]\n" +
+                "output relation Rv0[TRtmp1]\n" +
+                "Rtmp0[v2] :- Rt2[v0],var v1 = TRtmp{.c = v0.column1},var v2 = v1.\n" +
+                "Rv0[v5] :- Rt1[v],Rtmp0[v2],true,var v3 = Ttmp{.column1 = v.column1,.column2 = v.column2," +
+                ".column3 = v.column3,.column4 = v.column4,.c = v2.c}," +
+                "var v4 = TRtmp1{.column1 = v.column1,.c = v2.c}," +
+                "var v5 = v4.";
+        this.testTranslation(query, program, false);
     }
 
     @Test

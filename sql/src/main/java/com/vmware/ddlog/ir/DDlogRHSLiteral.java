@@ -16,8 +16,8 @@ import com.facebook.presto.sql.tree.Node;
 import javax.annotation.Nullable;
 
 public class DDlogRHSLiteral extends DDlogRuleRHS {
-    final boolean polarity;
-    final DDlogAtom atom;
+    public final boolean polarity;
+    public final DDlogAtom atom;
 
     public DDlogRHSLiteral(@Nullable Node node, boolean polarity, DDlogAtom atom) {
         super(node);

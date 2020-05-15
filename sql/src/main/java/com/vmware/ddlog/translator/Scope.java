@@ -17,12 +17,15 @@ import com.vmware.ddlog.ir.*;
 import javax.annotation.Nullable;
 
 public class Scope {
+    static int idGen = 0;
+    public final int id;
     public final Node node;
     final String scopeName;
     public final String rowVariable;
     public final DDlogType type;
 
     Scope(Node node, String scopeName, String rowVariable, DDlogType type) {
+        this.id = idGen++;
         this.node = node;
         this.scopeName = scopeName;
         this.rowVariable = rowVariable;
@@ -39,10 +42,7 @@ public class Scope {
      */
     @Nullable
     DDlogExpression lookupColumn(Node node, String identifier, TranslationContext context) {
-        DDlogType type = this.type;
-        while (type instanceof DDlogTUser) {
-            type = context.resolveTypeDef((DDlogTUser)type);
-        }
+        DDlogType type = context.resolveType(this.type);
         if (!(type instanceof DDlogTStruct))
             return null;
         DDlogTStruct ts = (DDlogTStruct)type;
