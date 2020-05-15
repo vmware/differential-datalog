@@ -69,6 +69,16 @@ public class DDlogTSigned extends DDlogType implements IsNumericType, IBoundedNu
     }
 
     @Override
+    public boolean compare(DDlogType type, IComparePolicy policy) {
+        if (!super.compare(type, policy))
+            return false;
+        if (!type.is(DDlogTSigned.class))
+            return false;
+        DDlogTSigned other = type.to(DDlogTSigned.class);
+        return this.width == other.width;
+    }
+
+    @Override
     public IBoundedNumericType getWithWidth(int width) {
         return new DDlogTSigned(this.getNode(), width, this.mayBeNull);
     }

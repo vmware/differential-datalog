@@ -12,6 +12,7 @@
 package com.vmware.ddlog.ir;
 
 import com.facebook.presto.sql.tree.Node;
+import com.vmware.ddlog.util.Utilities;
 
 import javax.annotation.Nullable;
 
@@ -27,5 +28,15 @@ public class DDlogEAs extends DDlogExpression {
     public String toString() {
         return this.expr.toString() + " as " +
                 "" + this.getType().toString();
+    }
+
+    @Override
+    public boolean compare(DDlogExpression val, IComparePolicy policy) {
+        if (!super.compare(val, policy))
+            return false;
+        if (!val.is(DDlogEAs.class))
+            return false;
+        DDlogEAs other = val.to(DDlogEAs.class);
+        return this.expr.compare(other.expr, policy);
     }
 }

@@ -17,7 +17,7 @@ import com.facebook.presto.sql.tree.Node;
 import javax.annotation.Nullable;
 
 public interface DDlogIRNode {
-    String toString();
+    @Override String toString();
 
     default CodeFormatter format(CodeFormatter formatter) {
         formatter.append(this.toString());

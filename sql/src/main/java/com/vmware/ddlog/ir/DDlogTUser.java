@@ -62,6 +62,23 @@ public class DDlogTUser extends DDlogType {
     }
 
     @Override
+    public boolean compare(DDlogType type, IComparePolicy policy) {
+        if (!super.compare(type, policy))
+            return false;
+        if (!type.is(DDlogTUser.class))
+            return false;
+        DDlogTUser other = type.to(DDlogTUser.class);
+        if (!policy.compareIdentifier(this.name, other.name))
+            return false;
+        if (this.typeArgs.length != other.typeArgs.length)
+            return false;
+        for (int i = 0; i < this.typeArgs.length; i++)
+            if (!this.typeArgs[i].compare(other.typeArgs[i], policy))
+                return false;
+        return true;
+    }
+
+    @Override
     public int hashCode() {
         int result = Objects.hash(name);
         result = 31 * result + Arrays.hashCode(typeArgs);

@@ -29,6 +29,12 @@ public class DDlogEStruct extends DDlogExpression {
 
         public String getName() { return this.name; }
         public DDlogExpression getValue() { return this.value; }
+
+        public boolean compare(FieldValue field, IComparePolicy policy) {
+            if (!this.name.equals(field.name))
+                return false;
+            return this.value.compare(field.value, policy);
+        }
     }
 
     public final String constructor;
@@ -43,6 +49,23 @@ public class DDlogEStruct extends DDlogExpression {
 
     public DDlogEStruct(@Nullable Node node, String constructor, DDlogType type, List<FieldValue> fields) {
         this(node, constructor, type, fields.toArray(new FieldValue[0]));
+    }
+
+    @Override
+    public boolean compare(DDlogExpression val, IComparePolicy policy) {
+        if (!super.compare(val, policy))
+            return false;
+        if (!val.is(DDlogEStruct.class))
+            return false;
+        DDlogEStruct other = val.to(DDlogEStruct.class);
+        if (!this.constructor.equals(other.constructor))
+            return false;
+        if (this.fields.length != other.fields.length)
+            return false;
+        for (int i = 0; i < this.fields.length; i++)
+            if (!this.fields[i].compare(other.fields[i], policy))
+                return false;
+        return true;
     }
 
     @Override

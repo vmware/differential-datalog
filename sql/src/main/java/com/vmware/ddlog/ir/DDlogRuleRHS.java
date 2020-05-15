@@ -19,4 +19,6 @@ public abstract class DDlogRuleRHS extends DDlogNode {
     protected DDlogRuleRHS(@Nullable Node node) {
         super(node);
     }
+
+    public abstract boolean compare(DDlogRuleRHS dDlogRuleRHS, IComparePolicy policy);
 }

@@ -30,6 +30,21 @@ public class DDlogETuple extends DDlogExpression {
     }
 
     @Override
+    public boolean compare(DDlogExpression val, IComparePolicy policy) {
+        if (!super.compare(val, policy))
+            return false;
+        if (!val.is(DDlogETuple.class))
+            return false;
+        DDlogETuple other = val.to(DDlogETuple.class);
+        if (this.tupFields.length != other.tupFields.length)
+            return false;
+        for (int i = 0; i < this.tupFields.length; i++)
+            if (!this.tupFields[i].compare(other.tupFields[i], policy))
+                return false;
+        return true;
+    }
+
+    @Override
     public String toString() {
         return "(" + String.join(", ",
                 Linq.map(this.tupFields, DDlogExpression::toString, String.class)) + ")";

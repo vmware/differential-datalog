@@ -65,6 +65,23 @@ public class DDlogTStruct extends DDlogType {
     public List<DDlogField> getFields() { return this.args; }
 
     @Override
+    public boolean compare(DDlogType type, IComparePolicy policy) {
+        if (!super.compare(type, policy))
+            return false;
+        if (!type.is(DDlogTStruct.class))
+            return false;
+        DDlogTStruct other = type.to(DDlogTStruct.class);
+        if (!policy.compareIdentifier(this.name, other.name))
+            return false;
+        if (this.args.size() != other.args.size())
+            return false;
+        for (int i = 0; i < this.args.size(); i++)
+            if (!this.args.get(i).compare(other.args.get(i), policy))
+                return false;
+        return true;
+    }
+
+    @Override
     public int hashCode() {
         return Objects.hash(name, args);
     }

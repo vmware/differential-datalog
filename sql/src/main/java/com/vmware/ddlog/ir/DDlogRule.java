@@ -55,4 +55,16 @@ public class DDlogRule extends DDlogNode {
         result += ".";
         return result;
     }
+
+    public boolean compare(DDlogRule other, IComparePolicy policy) {
+        if (!this.lhs.compare(other.lhs, policy))
+            return false;
+        if (this.rhs.size() != other.rhs.size())
+            return false;
+        for (int i = 0; i < this.rhs.size(); i++)
+            if (!this.rhs.get(i).compare(other.rhs.get(i), policy))
+                return false;
+        // we don't need to look at the type
+        return true;
+    }
 }

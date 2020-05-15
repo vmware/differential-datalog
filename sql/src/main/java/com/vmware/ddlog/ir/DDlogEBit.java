@@ -37,4 +37,15 @@ public class DDlogEBit extends DDlogExpression {
         result += this.ival.toString();
         return result;
     }
+
+    @Override
+    public boolean compare(DDlogExpression val, IComparePolicy policy) {
+        if (!super.compare(val, policy))
+            return false;
+        if (!val.is(DDlogEBit.class))
+            return false;
+        DDlogEBit other = val.to(DDlogEBit.class);
+        return this.width == other.width &&
+                this.ival.equals(other.ival);
+    }
 }

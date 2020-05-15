@@ -33,4 +33,11 @@ public class DDlogTAny extends DDlogType {
             return this;
         return new DDlogTAny(mayBeNull);
     }
+
+    @Override
+    public boolean compare(DDlogType type, IComparePolicy policy) {
+        if (!super.compare(type, policy))
+            return false;
+        return type.is(DDlogTAny.class);
+    }
 }

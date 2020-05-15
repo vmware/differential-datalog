@@ -24,6 +24,16 @@ public class DDlogEDouble extends DDlogExpression {
     }
 
     @Override
+    public boolean compare(DDlogExpression val, IComparePolicy policy) {
+        if (!super.compare(val, policy))
+            return false;
+        if (!val.is(DDlogEDouble.class))
+            return false;
+        DDlogEDouble other = val.to(DDlogEDouble.class);
+        return this.val == other.val;
+    }
+
+    @Override
     public String toString() {
         return "64'f" + this.val;
     }

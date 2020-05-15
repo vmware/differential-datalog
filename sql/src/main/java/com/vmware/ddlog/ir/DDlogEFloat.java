@@ -24,6 +24,16 @@ public class DDlogEFloat extends DDlogExpression {
     }
 
     @Override
+    public boolean compare(DDlogExpression val, IComparePolicy policy) {
+        if (!super.compare(val, policy))
+            return false;
+        if (!val.is(DDlogEFloat.class))
+            return false;
+        DDlogEFloat other = val.to(DDlogEFloat.class);
+        return this.val == other.val;
+    }
+
+    @Override
     public String toString() {
         return "32'f" + this.val;
     }

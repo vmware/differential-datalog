@@ -69,6 +69,16 @@ public class DDlogTBit extends DDlogType implements IsNumericType, IBoundedNumer
     }
 
     @Override
+    public boolean compare(DDlogType type, IComparePolicy policy) {
+        if (!super.compare(type, policy))
+            return false;
+        if (!type.is(DDlogTBit.class))
+            return false;
+        DDlogTBit other = type.to(DDlogTBit.class);
+        return this.width == other.width;
+    }
+
+    @Override
     public IBoundedNumericType getWithWidth(int width) {
         return new DDlogTBit(this.getNode(), width, this.mayBeNull);
     }

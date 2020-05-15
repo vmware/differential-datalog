@@ -40,6 +40,18 @@ public class DDlogESeq extends DDlogExpression {
     }
 
     @Override
+    public boolean compare(DDlogExpression val, IComparePolicy policy) {
+        if (!super.compare(val, policy))
+            return false;
+        if (!val.is(DDlogESeq.class))
+            return false;
+        DDlogESeq other = val.to(DDlogESeq.class);
+        if (!this.left.compare(other.left, policy))
+            return false;
+        return this.right.compare(other.right, policy);
+    }
+
+    @Override
     public String toString() {
         return this.left.toString() + ";\n" + "(" + this.right.toString() + ")";
     }

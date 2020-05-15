@@ -36,4 +36,13 @@ public class DDlogEInt extends DDlogExpression {
     public String toString() {
         return this.ival.toString();
     }
+
+    @Override
+    public boolean compare(DDlogExpression val, IComparePolicy policy) {
+        if (!super.compare(val, policy))
+            return false;
+        if (!val.is(DDlogEInt.class)) return false;
+        DDlogEInt other = val.to(DDlogEInt.class);
+        return this.ival.equals(other.ival);
+    }
 }

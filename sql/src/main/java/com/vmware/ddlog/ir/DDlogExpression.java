@@ -12,6 +12,7 @@
 package com.vmware.ddlog.ir;
 
 import com.facebook.presto.sql.tree.Node;
+import com.vmware.ddlog.util.Utilities;
 
 import javax.annotation.Nullable;
 
@@ -36,5 +37,17 @@ public abstract class DDlogExpression extends DDlogNode {
 
     public DDlogType getType() {
         return this.checkNull(this.type);
+    }
+
+    public boolean compare(DDlogExpression val, IComparePolicy policy) {
+        switch (Utilities.canBeSame(this.type, val.type)) {
+            case Yes:
+                return true;
+            case No:
+                return false;
+        }
+        assert val.type != null;
+        assert this.type != null;
+        return this.type.compare(val.type, policy);
     }
 }
