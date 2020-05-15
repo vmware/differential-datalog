@@ -1,13 +1,16 @@
 package com.vmware.ddlog.util;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 public class Utilities {
     public static Set<String> makeSet(String... data) {
-        HashSet<String> result = new HashSet<String>();
-        for (String s: data)
-            result.add(s);
+        return new HashSet<String>(Arrays.asList(data));
+     }
+
+     public static <T> List<T> concatenate(List<T>... lists) {
+        ArrayList<T> result = new ArrayList<T>();
+        for (List<T> l: lists)
+            result.addAll(l);
         return result;
      }
 }

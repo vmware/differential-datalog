@@ -58,6 +58,7 @@ public class WindowVisitor
         public final List<SingleColumn> windowResult;
 
         public GroupBy getGroupBy() {
+            //noinspection OptionalGetWithoutIsPresent
             return new GroupBy(false,
                     Collections.singletonList(
                         new SimpleGroupBy(Linq.map(this.groupOn, s -> s.getAlias().get()))));
@@ -120,21 +121,22 @@ public class WindowVisitor
         Ternary result = Ternary.Maybe;
         boolean isAggregate = SqlSemantics.semantics.isAggregateFunction(name);
         if (isAggregate) {
+            List<Expression> newArguments = new ArrayList<Expression>();
             for (Expression e: fc.getArguments()) {
-                // temporary name for input argument to aggregation function;
-                // e.g., c3tmp in our example
+                // temporary name for input arguments to aggregation function;
+                // e.g., tmp in our example
                 String var = context.freshLocalName("tmp");
                 Identifier arg = new Identifier(var);
                 SingleColumn si = new SingleColumn(e, arg);
                 this.firstSelect.add(si);
+                newArguments.add(arg);
             }
             // temporary name for the result of the window function;
             // e.g., tmp2 in our example.
             String var = context.freshLocalName(fc.getName().toString());
             Identifier agg = new Identifier(var);
-            // This function call is exactly like fc but has no window information
             FunctionCall noWindow = new FunctionCall(fc.getName(), Optional.empty(), fc.getFilter(),
-                    fc.getOrderBy(), fc.isDistinct(), fc.getArguments());
+                    fc.getOrderBy(), fc.isDistinct(), newArguments);
             wag.windowResult.add(new SingleColumn(noWindow, agg));
             this.substitutions.add(fc, agg);
             return Ternary.Yes;

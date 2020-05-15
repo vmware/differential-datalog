@@ -134,8 +134,8 @@ public class BaseQueriesTest {
         DDlogProgram ddprogram = t.getDDlogProgram();
         Assert.assertNotNull(ddprogram);
         s = ddprogram.toString();
-        if (!program.equals(s))
-            System.out.println(s);
+        //if (!program.equals(s))
+        //    System.out.println(s);
         Assert.assertEquals(program, s);
         this.compiledDDlog(s);
     }

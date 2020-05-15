@@ -14,6 +14,7 @@ package com.vmware.ddlog.translator;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.Node;
 import com.facebook.presto.sql.tree.NodeLocation;
+import com.facebook.presto.sql.tree.SingleColumn;
 import com.vmware.ddlog.ir.*;
 
 import javax.annotation.Nullable;
@@ -110,6 +111,19 @@ class TranslationContext {
         return null;
     }
 
+    public String columnName(SingleColumn sc) {
+        String name;
+        if (sc.getAlias().isPresent()) {
+            name = sc.getAlias().get().getValue().toLowerCase();
+        } else {
+            ExpressionColumnName ecn = new ExpressionColumnName();
+            name = ecn.process(sc.getExpression());
+            if (name == null)
+                name = this.freshLocalName("col");
+        }
+        return name;
+    }
+
     DDlogType resolveType(DDlogType type) {
         if (type instanceof DDlogTUser) {
             DDlogTUser tu = (DDlogTUser)type;
@@ -153,7 +167,7 @@ class TranslationContext {
         this.searchScopeName = yes;
     }
 
-    private void exitAllScopes() {
+    public void exitAllScopes() {
         this.translationScope.clear();
     }
 
