@@ -5,10 +5,10 @@ import org.junit.Test;
 public class JoinTest extends BaseQueriesTest {
     @Test
     public void testCountJoin() {
-        String query = "create view v0 as SELECT COUNT(t1.column2) FROM t1 JOIN t2 ON t1.column1 = t2.column1";
+        String query = "create view v0 as SELECT COUNT(t1.column2) as ct FROM t1 JOIN t2 ON t1.column1 = t2.column1";
         String program = this.header(false) +
                 "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, column10:signed<64>}\n" +
-                "typedef TRtmp = TRtmp{col:signed<64>}\n" +
+                "typedef TRtmp = TRtmp{ct:signed<64>}\n" +
                 "function agg(g: Group<(), (Tt1, Tt2)>):TRtmp {\n" +
                 "var count = 64'sd0: signed<64>;\n" +
                 "(for (i in g) {\n" +
@@ -17,7 +17,7 @@ public class JoinTest extends BaseQueriesTest {
                 "(var incr = v.column2);\n" +
                 "(count = agg_count_R(count, incr))}\n" +
                 ");\n" +
-                "(TRtmp{.col = count})\n}\n" +
+                "(TRtmp{.ct = count})\n}\n" +
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +

@@ -381,13 +381,12 @@ public class WeaveTest extends BaseQueriesTest {
         create = t.translateSqlStatement(inter_pod_affinity);
         Assert.assertNotNull(create);
 
-        /*
         String inter_pod_affinity_matches =
                 "create view inter_pod_affinity_matches as\n" +
-                "select *, count(*) over (partition by pod_name) as num_matches from inter_pod_affinity_matches_inner";
+                "select distinct *, count(*) over (partition by pod_name) as num_matches from inter_pod_affinity_matches_inner";
         create = t.translateSqlStatement(inter_pod_affinity_matches);
         Assert.assertNotNull(create);
-        */
+
         String spare_capacity =
                 "-- Spare capacity\n" +
                 "create view spare_capacity_per_node as\n" +
@@ -403,16 +402,15 @@ public class WeaveTest extends BaseQueriesTest {
         create = t.translateSqlStatement(spare_capacity);
         Assert.assertNotNull(create);
 
-        /*
         String view_pods_that_tolerate_node_taints =
                 "-- Taints and tolerations\n" +
                 "create view pods_that_tolerate_node_taints as\n" +
-                "select pods_to_assign.pod_name as pod_name,\n" +
+                "select distinct pods_to_assign.pod_name as pod_name,\n" +
                 "       A.node_name as node_name\n" +
                 "from pods_to_assign\n" +
                 "join pod_tolerations\n" +
                 "     on pods_to_assign.pod_name = pod_tolerations.pod_name\n" +
-                "join (select *, count(*) over (partition by node_name) as num_taints from node_taints) as A\n" +
+                "join (select distinct *, count(*) over (partition by node_name) as num_taints from node_taints) as A\n" +
                 "     on pod_tolerations.tolerations_key = A.taint_key\n" +
                 "     and (pod_tolerations.tolerations_effect = null\n" +
                 "          or pod_tolerations.tolerations_effect = A.taint_effect)\n" +
@@ -422,7 +420,6 @@ public class WeaveTest extends BaseQueriesTest {
                 "having count(*) = A.num_taints";
         create = t.translateSqlStatement(view_pods_that_tolerate_node_taints);
         Assert.assertNotNull(create);
-        */
 
         String nodes_that_have_tollerations =
                 "create view nodes_that_have_tolerations as\n" +

@@ -34,4 +34,11 @@ public class NegativeTest extends BaseQueriesTest {
         String query = "create view v0 as select *, min(column1) from t1 group by column2";
         this.testTranslation(query, "");
     }
+
+    @Test(expected = TranslationException.class)
+    public void windowGroupByTest() {
+        String query = "create view v1 as\n" +
+                "SELECT column2, SUM(column1), SUM(SUM(column1)) OVER (PARTITION by column3) FROM t1 GROUP BY column2";
+        this.testTranslation(query, "");
+    }
 }
