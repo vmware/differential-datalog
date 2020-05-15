@@ -129,11 +129,12 @@ public class WindowTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{tmp:bool, tmp1:string, gb:string, gb0:bool}\n" +
                 "typedef TRtmp0 = TRtmp0{gb:string, count:signed<64>}\n" +
                 "typedef Tagg = Tagg{count:signed<64>}\n" +
-                "typedef TRtmp1 = TRtmp1{gb0:bool, count2:signed<64>}\n" +
-                "typedef Tagg2 = Tagg2{count2:signed<64>}\n" +
+                "typedef TRtmp2 = TRtmp2{gb0:bool, count2:signed<64>}\n" +
+                "typedef Tagg3 = Tagg3{count2:signed<64>}\n" +
                 "typedef Ttmp = Ttmp{tmp:bool, tmp1:string, gb:string, gb0:bool, count:signed<64>}\n" +
-                "typedef Ttmp3 = Ttmp3{tmp:bool, tmp1:string, gb:string, gb0:bool, count:signed<64>, count2:signed<64>}\n" +
-                "typedef TRtmp4 = TRtmp4{x:signed<64>}\n" +
+                "typedef Ttmp4 = Ttmp4{tmp:bool, tmp1:string, gb:string, gb0:bool, count:signed<64>, " +
+                "count2:signed<64>}\n" +
+                "typedef TRtmp5 = TRtmp5{x:signed<64>}\n" +
                 "function agg(g: Group<string, TRtmp>):Tagg {\n" +
                 "(var gb7) = group_key(g);\n" +
                 "(var count8 = 64'sd0: signed<64>);\n" +
@@ -145,36 +146,36 @@ public class WindowTest extends BaseQueriesTest {
                 "(Tagg{.count = count8})\n" +
                 "}\n" +
                 "\n" +
-                "function agg2(g14: Group<bool, TRtmp>):Tagg2 {\n" +
-                "(var gb13) = group_key(g14);\n" +
-                "(var count17 = 64'sd0: signed<64>);\n" +
-                "(for (i15 in g14) {\n" +
-                "var v12 = i15;\n" +
-                "(var incr16 = v12.tmp1);\n" +
-                "(count17 = agg_count_R(count17, incr16))}\n" +
+                "function agg3(g13: Group<bool, TRtmp>):Tagg3 {\n" +
+                "(var gb12) = group_key(g13);\n" +
+                "(var count16 = 64'sd0: signed<64>);\n" +
+                "(for (i14 in g13) {\n" +
+                "var v11 = i14;\n" +
+                "(var incr15 = v11.tmp1);\n" +
+                "(count16 = agg_count_R(count16, incr15))}\n" +
                 ");\n" +
-                "(Tagg2{.count2 = count17})\n" +
+                "(Tagg3{.count2 = count16})\n" +
                 "}\n" +
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "relation Roverinput[TRtmp]\n" +
                 "relation Rtmp0[TRtmp0]\n" +
                 "relation Rover[TRtmp0]\n" +
-                "relation Rtmp1[TRtmp1]\n" +
-                "relation Rover11[TRtmp1]\n" +
-                "relation Rtmp4[TRtmp4]\n" +
-                "output relation Rv1[TRtmp4]\n" +
-                "Roverinput[v5] :- Rt1[v3],var v4 = TRtmp{.tmp = v3.column3,.tmp1 = v3.column2,.gb = v3.column2,.gb0 = v3.column3}," +
-                "var v5 = v4.\n" +
+                "relation Rtmp2[TRtmp2]\n" +
+                "relation Rover1[TRtmp2]\n" +
+                "relation Rtmp5[TRtmp5]\n" +
+                "output relation Rv1[TRtmp5]\n" +
+                "Roverinput[v5] :- Rt1[v3],var v4 = TRtmp{.tmp = v3.column3,.tmp1 = v3.column2,.gb = v3.column2," +
+                ".gb0 = v3.column3},var v5 = v4.\n" +
                 "Rover[v10] :- Roverinput[v6],var gb7 = v6.gb,var aggResult = Aggregate((gb7), agg((v6)))," +
                 "var v9 = TRtmp0{.gb = gb7,.count = aggResult.count},var v10 = v9.\n" +
-                "Rover11[v20] :- Roverinput[v12],var gb13 = v12.gb0,var aggResult19 = Aggregate((gb13), agg2((v12)))," +
-                "var v18 = TRtmp1{.gb0 = gb13,.count2 = aggResult19.count2},var v20 = v18.\n" +
-                "Rv1[v27] :- Roverinput[v21],Rover[v22],(true and (v21.gb == v22.gb))," +
-                "var v23 = Ttmp{.tmp = v21.tmp,.tmp1 = v21.tmp1,.gb = v21.gb,.gb0 = v21.gb0,.count = v22.count}," +
-                "Rover11[v24],(true and (v23.gb0 == v24.gb0))," +
-                "var v25 = Ttmp3{.tmp = v23.tmp,.tmp1 = v23.tmp1,.gb = v23.gb,.gb0 = v23.gb0,.count = v23.count,.count2 = v24.count2}," +
-                "var v26 = TRtmp4{.x = (v22.count + v24.count2)},var v27 = v26.";
+                "Rover1[v19] :- Roverinput[v11],var gb12 = v11.gb0,var aggResult18 = Aggregate((gb12), agg3((v11)))," +
+                "var v17 = TRtmp2{.gb0 = gb12,.count2 = aggResult18.count2},var v19 = v17.\n" +
+                "Rv1[v26] :- Roverinput[v20],Rover[v21],(true and (v20.gb == v21.gb)),var v22 = Ttmp{.tmp = v20.tmp," +
+                ".tmp1 = v20.tmp1,.gb = v20.gb,.gb0 = v20.gb0,.count = v21.count},Rover1[v23]," +
+                "(true and (v22.gb0 == v23.gb0)),var v24 = Ttmp4{.tmp = v22.tmp,.tmp1 = v22.tmp1,.gb = v22.gb," +
+                ".gb0 = v22.gb0,.count = v22.count,.count2 = v23.count2},var v25 = TRtmp5{.x = (v21.count + v23.count2)}" +
+                ",var v26 = v25.";
         this.testTranslation(query, translation);
     }
 

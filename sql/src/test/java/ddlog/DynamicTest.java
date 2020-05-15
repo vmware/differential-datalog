@@ -19,6 +19,8 @@ public class DynamicTest extends BaseQueriesTest {
      * Sets up an H2 in-memory database that we use for all tests.
      */
     private DSLContext setup() {
+        // Disable logo
+        System.getProperties().setProperty("org.jooq.no-logo", "true");
         final Properties properties = new Properties();
         properties.setProperty("foreign_keys", "true");
         try {
