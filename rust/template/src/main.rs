@@ -19,6 +19,7 @@ use differential_datalog::ddval::*;
 use differential_datalog::program::*;
 use differential_datalog::record::*;
 use differential_datalog::DDlog;
+use differential_datalog::DeltaMap;
 use num_traits::cast::ToPrimitive;
 use rustop::opts;
 use types::log_set_default_callback;
@@ -64,18 +65,7 @@ fn handle_cmd(
             let res = if record_delta {
                 hddlog.transaction_commit_dump_changes().map(|changes| {
                     if print_deltas {
-                        for (table_id, table_data) in changes.as_ref().iter() {
-                            let _ = writeln!(stdout(), "{}:", relid2name(*table_id).unwrap());
-                            for (val, weight) in table_data.iter() {
-                                debug_assert!(*weight == 1 || *weight == -1);
-                                let _ = writeln!(
-                                    stdout(),
-                                    "{}: {:+}",
-                                    val.clone().into_record(),
-                                    *weight
-                                );
-                            }
-                        }
+                        dump_delta(&changes)
                     }
                 })
             } else {
@@ -204,6 +194,16 @@ fn handle_cmd(
     }
 }
 
+fn dump_delta(delta: &DeltaMap<DDValue>) {
+    for (table_id, table_data) in delta.iter() {
+        let _ = writeln!(stdout(), "{}:", relid2name(*table_id).unwrap());
+        for (val, weight) in table_data.iter() {
+            debug_assert!(*weight == 1 || *weight == -1);
+            let _ = writeln!(stdout(), "{}: {:+}", val.clone().into_record(), *weight);
+        }
+    }
+}
+
 fn apply_updates(hddlog: &HDDlog, upds: &mut Vec<Update<DDValue>>) -> Response<()> {
     if !upds.is_empty() {
         hddlog.apply_valupdates(upds.drain(..))
@@ -241,11 +241,12 @@ fn main() -> Result<(), String> {
     let parser = opts! {
         synopsis "DDlog CLI interface.";
         auto_shorts false;
-        opt store:bool=true, desc:"Do not store output relation state.";                            // --no-store
-        opt delta:bool=true, desc:"Do not record changes.";                                         // --no-delta
-        opt print:bool=true, desc:"Backwards compatibility. The value of this flag is ignored.";    // --no-print
-        opt trace:bool=false, desc:"Trace updates to output relations to stderr.";                  // --trace
-        opt workers:usize=4, short:'w', desc:"The number of worker threads.";                       // --workers or -w
+        opt store:bool=true, desc:"Do not store output relation state. 'dump' and 'dump <table>' commands will produce no output."; // --no-store
+        opt delta:bool=true, desc:"Do not record changes. 'commit dump_changes' will produce no output.";                           // --no-delta
+        opt init_snapshot:bool=true, desc:"Do not dump initial output snapshot.";                                                   // --no-init-snapshot
+        opt print:bool=true, desc:"Backwards compatibility. The value of this flag is ignored.";                                    // --no-print
+        opt trace:bool=false, desc:"Trace updates to output relations to stderr.";                                                  // --trace
+        opt workers:usize=1, short:'w', desc:"The number of worker threads. Default is 1.";                                         // --workers or -w
     };
     let (args, rest) = parser.parse_or_exit();
 
@@ -266,7 +267,12 @@ fn main() -> Result<(), String> {
     let cb = if args.trace { record_upd } else { no_op };
 
     match HDDlog::run(args.workers, args.store, cb) {
-        Ok(hddlog) => run(hddlog, args.delta),
+        Ok((hddlog, init_output)) => {
+            if args.init_snapshot {
+                dump_delta(&init_output);
+            }
+            run(hddlog, args.delta)
+        }
         Err(err) => Err(format!("Failed to run differential datalog: {}", err)),
     }
 }

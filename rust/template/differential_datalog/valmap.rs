@@ -31,6 +31,14 @@ impl<V> AsRef<BTreeMap<RelId, BTreeMap<V, isize>>> for DeltaMap<V> {
     }
 }
 
+impl<V> std::ops::Deref for DeltaMap<V> {
+    type Target = BTreeMap<RelId, BTreeMap<V, isize>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.map
+    }
+}
+
 impl<V> IntoIterator for DeltaMap<V> {
     type Item = (RelId, BTreeMap<V, isize>);
     type IntoIter = std::collections::btree_map::IntoIter<RelId, BTreeMap<V, isize>>;

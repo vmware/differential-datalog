@@ -29,7 +29,7 @@ pub trait DDlog: Debug {
     type Convert: DDlogConvert;
 
     /// Run the program.
-    fn run<F>(workers: usize, do_store: bool, cb: F) -> Result<Self, String>
+    fn run<F>(workers: usize, do_store: bool, cb: F) -> Result<(Self, DeltaMap<DDValue>), String>
     where
         Self: Sized,
         F: Callback;

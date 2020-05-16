@@ -1,3 +1,7 @@
+First5:
+First5{.str = "Hello"}: +1
+Phrases:
+Phrases{.phrase = "Hello, World!"}: +1
 Phrases:
 Phrases{.phrase = "Goodbye, Ruby Tuesday"}
 Phrases{.phrase = "Goodbye, World"}

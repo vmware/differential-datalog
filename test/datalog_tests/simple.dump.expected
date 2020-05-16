@@ -1,3 +1,195 @@
+Arithm:
+Arithm{.n = 0}: +1
+Arithm{.n = 1}: +1
+Arithm{.n = 2}: +1
+Arithm{.n = 3}: +1
+Arithm{.n = 4}: +1
+Arithm{.n = 5}: +1
+Arithm{.n = 6}: +1
+Arithm{.n = 7}: +1
+Arithm{.n = 8}: +1
+Arithm{.n = 9}: +1
+Arithm{.n = 10}: +1
+Arithm{.n = 11}: +1
+Arithm{.n = 12}: +1
+Arithm{.n = 13}: +1
+Arithm{.n = 14}: +1
+BigintVectors:
+BigintVectors{.expr = "double_evens(1,2,-1,4)", .vec = [4]}: +1
+BigintVectors{.expr = "double_evens(1,2,0,4)", .vec = [4]}: +1
+BigintVectors{.expr = "filter_C0(C0{1}, C1{2}, C1{0}, C1{3})", .vec = [2]}: +1
+BigintVectors{.expr = "filter_gt((10, 20, 30), 15)", .vec = [20, 30]}: +1
+Cast_bigint:
+Cast_bigint{.description = "(32'sd0 - 32'sd10) as bigint", .expected = -10, .actual = -10}: +1
+Cast_bigint{.description = "128'd100 as bigint", .expected = 100, .actual = 100}: +1
+Cast_bigint{.description = "16'd100  as bigint", .expected = 100, .actual = 100}: +1
+Cast_bigint{.description = "24'd100  as bigint", .expected = 100, .actual = 100}: +1
+Cast_bigint{.description = "256'd100 as bigint", .expected = 100, .actual = 100}: +1
+Cast_bigint{.description = "264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bigint", .expected = 29642774844752946028434172162224104410437116074403984394101141506025761187823610, .actual = 29642774844752946028434172162224104410437116074403984394101141506025761187823610}: +1
+Cast_bigint{.description = "32'd100  as bigint", .expected = 100, .actual = 100}: +1
+Cast_bigint{.description = "512'd100 as bigint", .expected = 100, .actual = 100}: +1
+Cast_bigint{.description = "8'd100   as bigint", .expected = 100, .actual = 100}: +1
+Cast_bigint{.description = "int_from_d(64'f3.5)", .expected = 3, .actual = 3}: +1
+Cast_bigint{.description = "int_from_f(32'f3.5)", .expected = 3, .actual = 3}: +1
+Cast_double:
+Cast_double{.description = "128'd100 as double", .expected = 100, .actual = 100}: +1
+Cast_double{.description = "16'd100  as double", .expected = 100, .actual = 100}: +1
+Cast_double{.description = "24'd100  as double", .expected = 100, .actual = 100}: +1
+Cast_double{.description = "256'd100 as double", .expected = 100, .actual = 100}: +1
+Cast_double{.description = "264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as double", .expected = 29642774844752946000000000000000000000000000000000000000000000000000000000000000, .actual = 29642774844752946000000000000000000000000000000000000000000000000000000000000000}: +1
+Cast_double{.description = "32'd100  as double", .expected = 100, .actual = 100}: +1
+Cast_double{.description = "32'f3.5  as double", .expected = 3.5, .actual = 3.5}: +1
+Cast_double{.description = "512'd100 as double", .expected = 100, .actual = 100}: +1
+Cast_double{.description = "64'f3.5  as double", .expected = 3.5, .actual = 3.5}: +1
+Cast_double{.description = "8'd100   as double", .expected = 100, .actual = 100}: +1
+Cast_float:
+Cast_float{.description = "-16'sd100  as float", .expected = -100, .actual = -100}: +1
+Cast_float{.description = "-32'sd100  as float", .expected = -100, .actual = -100}: +1
+Cast_float{.description = "128'd100 as float", .expected = 100, .actual = 100}: +1
+Cast_float{.description = "16'd100  as float", .expected = 100, .actual = 100}: +1
+Cast_float{.description = "16'sd100  as float", .expected = 100, .actual = 100}: +1
+Cast_float{.description = "24'd100  as float", .expected = 100, .actual = 100}: +1
+Cast_float{.description = "256'd100 as float", .expected = 100, .actual = 100}: +1
+Cast_float{.description = "264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as float", .expected = NaN, .actual = NaN}: +1
+Cast_float{.description = "32'd100  as float", .expected = 100, .actual = 100}: +1
+Cast_float{.description = "32'f3.5  as float", .expected = 3.5, .actual = 3.5}: +1
+Cast_float{.description = "32'sd100  as float", .expected = 100, .actual = 100}: +1
+Cast_float{.description = "512'd100 as float", .expected = 100, .actual = 100}: +1
+Cast_float{.description = "64'f3.5  as float", .expected = 3.5, .actual = 3.5}: +1
+Cast_float{.description = "8'd100   as float", .expected = 100, .actual = 100}: +1
+Cast_s128:
+Cast_s128{.description = "('hff000000000000000000000000000000ff: bigint as signed<8>)", .expected = 255, .actual = 255}: +1
+Cast_s128{.description = "('hffffffffffffffffffffffffffffffffff: bigint as signed<128>)", .expected = -1, .actual = -1}: +1
+Cast_s128{.description = "(-1: bigint as signed<128>)", .expected = -1, .actual = -1}: +1
+Cast_s32:
+Cast_s32{.description = "('hff000000ff: bigint as signed<32>)", .expected = 255, .actual = 255}: +1
+Cast_s32{.description = "('hffffffffff: bigint as signed<32>)", .expected = -1, .actual = -1}: +1
+Cast_s32{.description = "(-1: bigint as signed<32>)", .expected = -1, .actual = -1}: +1
+Cast_s32{.description = "(100: bit<32>) as signed<32>", .expected = 100, .actual = 100}: +1
+Cast_s32{.description = "128'sd100 as signed<32>", .expected = 100, .actual = 100}: +1
+Cast_s32{.description = "128'shffffffffffffffffffff as signed<32>", .expected = -1, .actual = -1}: +1
+Cast_s32{.description = "16'sd100  as signed<32>", .expected = 100, .actual = 100}: +1
+Cast_s32{.description = "32'sd100  as signed<32>", .expected = 100, .actual = 100}: +1
+Cast_s32{.description = "64'shffffffffffff as signed<32>", .expected = -1, .actual = -1}: +1
+Cast_s32{.description = "8'sd100   as signed<32>", .expected = 100, .actual = 100}: +1
+Cast_s8:
+Cast_s8{.description = "('hff0000000f: bigint as signed<8>)", .expected = 15, .actual = 15}: +1
+Cast_s8{.description = "('hffffffffff: bigint as signed<8>)", .expected = -1, .actual = -1}: +1
+Cast_s8{.description = "(-1: bigint as signed<8>)", .expected = -1, .actual = -1}: +1
+Cast_u24:
+Cast_u24{.description = "(100: signed<32>) as bit<32> as bit<24>", .expected = 100, .actual = 100}: +1
+Cast_u24{.description = "(32'sd0 - 32'sd10) as bit<32> as bit<24>", .expected = 16777206, .actual = 16777206}: +1
+Cast_u24{.description = "128'd100 as bit<24>", .expected = 100, .actual = 100}: +1
+Cast_u24{.description = "128'hffffffffffffffffffff as bit<24>", .expected = 16777215, .actual = 16777215}: +1
+Cast_u24{.description = "16'd100  as bit<24>", .expected = 100, .actual = 100}: +1
+Cast_u24{.description = "24'd100  as bit<24>", .expected = 100, .actual = 100}: +1
+Cast_u24{.description = "256'd100 as bit<24>", .expected = 100, .actual = 100}: +1
+Cast_u24{.description = "256'hffffffffffffffffffffffffffffffffffff as bit<24>", .expected = 16777215, .actual = 16777215}: +1
+Cast_u24{.description = "32'd100  as bit<24>", .expected = 100, .actual = 100}: +1
+Cast_u24{.description = "64'hffffffffffff as bit<24>", .expected = 16777215, .actual = 16777215}: +1
+Cast_u24{.description = "8'd100   as bit<24>", .expected = 100, .actual = 100}: +1
+Cast_u256:
+Cast_u256{.description = "(100: signed<32>) as bit<32> as bit<256>", .expected = 100, .actual = 100}: +1
+Cast_u256{.description = "(32'sd0 - 32'sd10) as bit<32> as bit<256>", .expected = 4294967286, .actual = 4294967286}: +1
+Cast_u256{.description = "128'd100 as bit<256>", .expected = 100, .actual = 100}: +1
+Cast_u256{.description = "128'hffffffffffffffffffff as bit<256>", .expected = 1208925819614629174706175, .actual = 1208925819614629174706175}: +1
+Cast_u256{.description = "16'd100  as bit<256>", .expected = 100, .actual = 100}: +1
+Cast_u256{.description = "24'd100  as bit<256>", .expected = 100, .actual = 100}: +1
+Cast_u256{.description = "256'd100 as bit<256>", .expected = 100, .actual = 100}: +1
+Cast_u256{.description = "264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bit<256>", .expected = 115792089237316195423570985008687907853269984665640564039457584007913129639930, .actual = 115792089237316195423570985008687907853269984665640564039457584007913129639930}: +1
+Cast_u256{.description = "32'd100  as bit<256>", .expected = 100, .actual = 100}: +1
+Cast_u256{.description = "512'd100 as bit<256>", .expected = 100, .actual = 100}: +1
+Cast_u256{.description = "8'd100   as bit<256>", .expected = 100, .actual = 100}: +1
+Cast_u32:
+Cast_u32{.description = "(100: signed<32>) as bit<32>", .actual = 100, .expected = 100}: +1
+Cast_u32{.description = "(32'sd0 - 32'sd10) as bit<32>", .actual = 4294967286, .expected = 4294967286}: +1
+Cast_u32{.description = "128'd100 as bit<32>", .actual = 100, .expected = 100}: +1
+Cast_u32{.description = "128'hffffffffffffffffffff as bit<32>", .actual = 4294967295, .expected = 4294967295}: +1
+Cast_u32{.description = "16'd100  as bit<32>", .actual = 100, .expected = 100}: +1
+Cast_u32{.description = "256'd100 as bit<32>", .actual = 100, .expected = 100}: +1
+Cast_u32{.description = "256'hffffffffffffffffffffffffffffffffffff as bit<32>", .actual = 4294967295, .expected = 4294967295}: +1
+Cast_u32{.description = "32'd100  as bit<32>", .actual = 100, .expected = 100}: +1
+Cast_u32{.description = "64'hffffffffffff as bit<32>", .actual = 4294967295, .expected = 4294967295}: +1
+Cast_u32{.description = "8'd100   as bit<32>", .actual = 100, .expected = 100}: +1
+Compare:
+Compare{.label = "\"\" >= \"a\"", .value = false}: +1
+Compare{.label = "(1, 2) < (1, 4)", .value = true}: +1
+Compare{.label = "(1, 2) < (3, 4)", .value = true}: +1
+Compare{.label = "(1, 2) >= (3, 4)", .value = false}: +1
+Compare{.label = "5 <= 3", .value = false}: +1
+Compare{.label = "C0{32'd3} < C0{32'd4}", .value = true}: +1
+Compare{.label = "C0{32'd3} < C1{32'd4}", .value = true}: +1
+Compare{.label = "C0{32'd3} > C1{32'd4}", .value = false}: +1
+Compare{.label = "C{\"a\", \"b\"} < C{\"a\", \"e\"}", .value = true}: +1
+Compare{.label = "C{\"a\", \"b\"} > C{\"b\", \"e\"}", .value = false}: +1
+Compare{.label = "None < Some{1}", .value = true}: +1
+Compare{.label = "Some{0} < Some{1}", .value = true}: +1
+Compare{.label = "true >= false", .value = true}: +1
+ControlFlow:
+ControlFlow{.expr = "all(true, true, false)", .value = "false"}: +1
+ControlFlow{.expr = "all(true, true, true)", .value = "true"}: +1
+ControlFlow{.expr = "any(false, false, false)", .value = "false"}: +1
+ControlFlow{.expr = "any(false, true, false)", .value = "true"}: +1
+ControlFlow{.expr = "weird_any(false, false, false)", .value = "false"}: +1
+ControlFlow{.expr = "weird_any(false, true, false)", .value = "true"}: +1
+Doubles:
+Doubles{.s = "-5", .d = -5}: +1
+Doubles{.s = "0: double", .d = 0}: +1
+Doubles{.s = "10", .d = 8}: +1
+Doubles{.s = "5 + 3", .d = 8}: +1
+Doubles{.s = "5*3", .d = 15}: +1
+Doubles{.s = "5/3", .d = 1.6666666666666667}: +1
+Doubles{.s = "64'f5.0", .d = 5}: +1
+Doubles{.s = "64'f5e2", .d = 500}: +1
+Doubles{.s = "floor_d(64'f0.1)", .d = 0}: +1
+Floats:
+Floats{.s = "0: float", .f = 0}: +1
+Floats{.s = "32'f5.0", .f = 5}: +1
+Floats{.s = "32'f5e2", .f = 500}: +1
+Floats{.s = "5 + 3", .f = 8}: +1
+Floats{.s = "5*3", .f = 15}: +1
+Floats{.s = "5/3", .f = 1.6666666}: +1
+Floats{.s = "floor_f(32'f0.1)", .f = 0}: +1
+J:
+J{.b = true}: +1
+R7:
+R7{.f1 = 1, .f2 = 2}: +1
+R7{.f1 = 1, .f2 = 3}: +1
+R7Other{}: +1
+Sib:
+Sib{.s1 = "Alice", .s2 = "Ben"}: +1
+Sib{.s1 = "Alice", .s2 = "Bob"}: +1
+Sib{.s1 = "Ben", .s2 = "Alice"}: +1
+Sib{.s1 = "Ben", .s2 = "Bob"}: +1
+Sib{.s1 = "Bob", .s2 = "Alice"}: +1
+Sib{.s1 = "Bob", .s2 = "Ben"}: +1
+Signed:
+Signed{.n = -2147483648}: +1
+Signed{.n = 0}: +1
+Signed{.n = 1}: +1
+Signed{.n = 2}: +1
+Signed{.n = 3}: +1
+Signed{.n = 4}: +1
+Signed{.n = 5}: +1
+Signed{.n = 6}: +1
+Signed{.n = 7}: +1
+Signed{.n = 8}: +1
+Signed{.n = 9}: +1
+Signed{.n = 10}: +1
+Trees:
+Trees{.tree = NonLeafNode{.branches = [LeafNode{.v = 300}, NonLeafNode{.branches = [LeafNode{.v = 100}, LeafNode{.v = 200}]}]}}: +1
+UMinus_bigint:
+UMinus_bigint{.description = "- -100", .n = 100}: +1
+UMinus_bigint{.description = "-100", .n = -100}: +1
+UMinus_bigint{.description = "-32768", .n = -32768}: +1
+UMinus_s32:
+UMinus_s32{.description = "-(-32'sd100)", .n = 100}: +1
+UMinus_s32{.description = "-32'sd100", .n = -100}: +1
+UMinus_s32{.description = "-32768", .n = -32768}: +1
+VecTest:
+VecTest{.x = []}: +1
+VecTest{.x = ["Hello,"]}: +1
+VecTest{.x = ["Hello, ", "world!"]}: +1
 Metro test
 Answer:
 Answer{.x = "Chatelet"}: +1

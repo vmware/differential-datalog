@@ -90,7 +90,7 @@ where
 {
     let redirects = deduce_redirects(node_cfg);
     // TODO: Should the number of workers be made configurable?
-    let program = P::run(2, false, |_, _: &Record, _| {})?;
+    let (program, _) = P::run(2, false, |_, _: &Record, _| {})?;
 
     Ok(DDlogServer::new(program, redirects))
 }

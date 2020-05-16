@@ -203,7 +203,7 @@ func NewProgram(workers uint, outRecordHandler OutRecordHandler) (*Program, erro
 	// This way of passing a pointer to printErrMsg should be legitimate given that the Go
 	// function was exported to C. Running tests with GODEBUG=cgocheck=2 does not reveal any
 	// error.
-	prog := C.ddlog_run(C.uint(workers), false, nil, 0, (C.print_err_msg_fn)(unsafe.Pointer(C.printErrMsg)))
+	prog := C.ddlog_run(C.uint(workers), false, nil, 0, (C.print_err_msg_fn)(unsafe.Pointer(C.printErrMsg)), nil)
 	p := &Program{
 		ptr:              prog,
 		commandsFile:     nil,

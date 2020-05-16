@@ -165,7 +165,7 @@ impl HDDlog {
 impl DDlog for HDDlog {
     type Convert = DDlogConverter;
 
-    fn run<F>(workers: usize, do_store: bool, cb: F) -> Result<Self, String>
+    fn run<F>(workers: usize, do_store: bool, cb: F) -> Result<(Self, DeltaMap<DDValue>), String>
     where
         Self: Sized,
         F: Callback,
@@ -306,7 +306,7 @@ impl HDDlog {
         do_store: bool,
         cb: UH,
         print_err: Option<extern "C" fn(msg: *const raw::c_char)>,
-    ) -> Result<Self, String>
+    ) -> Result<(Self, DeltaMap<DDValue>), String>
     where
         UH: UpdateHandler + Send + 'static,
     {
@@ -315,13 +315,13 @@ impl HDDlog {
         let db: Arc<Mutex<DeltaMap<DDValue>>> = Arc::new(Mutex::new(DeltaMap::new()));
         let db2 = db.clone();
 
-        let deltadb: Arc<Mutex<Option<DeltaMap<_>>>> = Arc::new(Mutex::new(None));
+        let deltadb: Arc<Mutex<Option<DeltaMap<_>>>> = Arc::new(Mutex::new(Some(DeltaMap::new())));
         let deltadb2 = deltadb.clone();
 
         let handler: Box<dyn IMTUpdateHandler> = {
             let handler_generator = move || {
                 /* Always use delta handler, which costs nothing unless it is
-                 * actually used*/
+                 * actually used. */
                 let delta_handler = DeltaUpdateHandler::new(deltadb2);
 
                 let store_handler = if do_store {
@@ -349,14 +349,20 @@ impl HDDlog {
         let prog = program.run(workers as usize)?;
         handler.after_commit(true);
 
-        Ok(HDDlog {
-            prog: Mutex::new(prog),
-            update_handler: handler,
-            db: Some(db),
-            deltadb,
-            print_err,
-            replay_file: None,
-        })
+        /* Extract state after initial transaction. */
+        let init_state = deltadb.lock().unwrap().take().unwrap();
+
+        Ok((
+            HDDlog {
+                prog: Mutex::new(prog),
+                update_handler: handler,
+                db: Some(db),
+                deltadb,
+                print_err,
+                replay_file: None,
+            },
+            init_state,
+        ))
     }
 
     fn db_dump_table<F>(db: &mut DeltaMap<DDValue>, table: libc::size_t, cb: Option<F>)
@@ -544,7 +550,7 @@ pub unsafe extern "C" fn ddlog_get_table_name(tid: libc::size_t) -> *const raw::
 }
 
 #[no_mangle]
-pub extern "C" fn ddlog_run(
+pub unsafe extern "C" fn ddlog_run(
     workers: raw::c_uint,
     do_store: bool,
     cb: Option<
@@ -557,6 +563,7 @@ pub extern "C" fn ddlog_run(
     >,
     cb_arg: libc::uintptr_t,
     print_err: Option<extern "C" fn(msg: *const raw::c_char)>,
+    init_state: *mut *mut DeltaMap<DDValue>,
 ) -> *const HDDlog {
     let result = if let Some(f) = cb {
         HDDlog::do_run(
@@ -575,7 +582,12 @@ pub extern "C" fn ddlog_run(
     };
 
     match result {
-        Ok(hddlog) => Arc::into_raw(Arc::new(hddlog)),
+        Ok((hddlog, init)) => {
+            if !init_state.is_null() {
+                *init_state = Box::into_raw(Box::new(init));
+            };
+            Arc::into_raw(Arc::new(hddlog))
+        }
         Err(err) => {
             HDDlog::print_err(print_err, &format!("ddlog_run() failed: {}", err));
             ptr::null()

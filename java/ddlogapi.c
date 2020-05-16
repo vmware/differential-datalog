@@ -196,7 +196,7 @@ JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1run(
         workers = 1;
 
     if (callback == NULL) {
-        handle = (jlong)ddlog_run((unsigned)workers, storeData, NULL, 0, eprintln);
+        handle = (jlong)ddlog_run((unsigned)workers, storeData, NULL, 0, eprintln, NULL);
         if (handle == 0) {
             throwDDlogException(env, NULL);
         }
@@ -214,7 +214,7 @@ JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1run(
         return 0;
     (*env)->SetLongField(env, obj, callbackHandle, (jlong)cbinfo);
 
-    handle = (jlong)ddlog_run((unsigned)workers, storeData, commit_callback, (uintptr_t)cbinfo, eprintln);
+    handle = (jlong)ddlog_run((unsigned)workers, storeData, commit_callback, (uintptr_t)cbinfo, eprintln, NULL);
     if (handle == 0) {
         throwDDlogException(env, NULL);
     }
