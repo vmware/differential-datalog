@@ -46,7 +46,6 @@ xfail = [
     "cellular_automata", # issue 198 - order of clauses
     "comp-override2", # nested component declaration
     "components1",    # improper component nesting
-    "grammar",        # funny unicode char in a comment
     "independent_body2", # issue #231 - not in DNF form, #197
     "lucas",          # inputs and outputs are in the wrong directories
     "magic_2sat",     # 197
