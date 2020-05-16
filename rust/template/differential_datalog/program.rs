@@ -1016,7 +1016,6 @@ where
     }
 }
 
-
 impl<V> Update<V> {
     pub fn relid(&self) -> RelId {
         match self {
