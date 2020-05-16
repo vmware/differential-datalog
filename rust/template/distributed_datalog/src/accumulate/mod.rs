@@ -10,4 +10,6 @@ pub use observer::AccumulatingObserver;
 pub use txndistributor::TxnDistributor;
 
 #[cfg(any(test, feature = "test"))]
+pub use test::eq_updates;
+#[cfg(any(test, feature = "test"))]
 pub use test::UpdatesMockObserver;

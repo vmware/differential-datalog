@@ -4,6 +4,29 @@ use std::fmt::Debug;
 
 use crate::Observer;
 
+use differential_datalog::program::Update;
+
+
+/// checks if two `Update` objects are equal. Only `Insert` and `DeleteValue` types are expected.
+pub fn eq_updates<V>(u1: &Update<V>, u2: &Update<V>) -> bool
+    where
+        V: Eq
+{
+    match u1 {
+        Update::Insert { relid: relid_u1, v: v_u1 } => {
+            if let Update::Insert { relid: relid_u2, v: v_u2 } = u2 {
+                relid_u1 == relid_u2 && v_u1 == v_u2
+            } else { false }
+        }
+        Update::DeleteValue { relid: relid_u1, v: v_u1 } => {
+            if let Update::DeleteValue { relid: relid_u2, v: v_u2 } = u2 {
+                relid_u1 == relid_u2 && v_u1 == v_u2
+            } else { false }
+        }
+        _ => unimplemented!()
+    }
+}
+
 /// A variant of the `MockObserver` that also keeps track of the updates it received.
 #[derive(Debug, Default)]
 pub struct UpdatesMockObserver<T>
