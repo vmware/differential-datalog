@@ -6,3 +6,4 @@ typedef Tunsigned = bit<32>
 typedef Tnumber = signed<32>
 typedef Tsymbol = IString
 typedef TEmtpy = ()
+typedef Tfloat = double

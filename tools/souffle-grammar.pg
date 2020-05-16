@@ -188,6 +188,7 @@ Arg: String
    | Identifier
    | FLOAT
    | NUMBER
+   | UNUMBER
    | "(" Arg ")"
    | Arg "lor" Arg  {0, left}
    | Arg "land" Arg {1, left}
@@ -253,6 +254,7 @@ Relop: "<" | ">" | "=" | "!=" | ">=" | "<=" ;
 Aggregate : "min" Arg ":" AggregateBody
           | "max" Arg ":" AggregateBody
           | "sum" Arg ":" AggregateBody
+          | "mean" Arg ":" AggregateBody
           | "count" ":" AggregateBody
           ;
 
@@ -275,6 +277,9 @@ FunctionCall: "min" "(" FunctionArgumentList ")"
             | "match" "(" FunctionArgumentList ")"
             | "contains" "(" FunctionArgumentList ")"
             | "to_string" "(" FunctionArgumentList ")"
+            | "to_number" "(" FunctionArgumentList ")"
+            | "to_float" "(" FunctionArgumentList ")"
+            | "to_unsigned" "(" FunctionArgumentList ")"
             | "ftoi" "(" FunctionArgumentList ")"
             | "itof" "(" FunctionArgumentList ")"
             | "itou" "(" FunctionArgumentList ")"
@@ -377,6 +382,7 @@ TRUE: "true" ;
 FALSE: "false" ;
 FLOAT: /([0-9]+)[.]([0-9]+)/ ;
 NUMBER: /([1-9][0-9]*)|(0x[a-fA-F0-9]+)|(0b[0-1][0-1]*)|(0)/ ;
+UNUMBER: /([1-9][0-9]*u)|(0x[a-fA-F0-9]+u)|(0b[0-1][0-1]*)u|(0u)/ ;
 Identifier: /[_a-zA-Z\?][_\d\w\?]*/;
 NotComment: /((\*[^\/])|[^\s*\/]|\/[^\*])+/ ;
 PLAN: ".plan" ;

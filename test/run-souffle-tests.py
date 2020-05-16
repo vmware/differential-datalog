@@ -27,9 +27,8 @@ xfail = [
     "souffle_tests_ddlog", # auto-generated
     "souffle7",  # issue 202 - recursive type
     "aggregates2", # aggregation used in head
-    "aggregates4",
-    "aggregates5",
-    "aggregates6",
+    "aggregates4", # Implicit cast from signed to unsigned
+    "aggregates5", # Cannot convert constant to float implicitly
     "aggregates_complex", # cannot be evaluated bottom-up; issue 293
     "aggregates",  # issue 227 - count of empty group
     "magic_aggregates",  # 227
@@ -59,15 +58,15 @@ xfail = [
     "neg1",             # 198
     "neg2",             # 198
     "neg3",             # 198
-    "numeric_binary_constraint_op",
+    "numeric_binary_constraint_op", # Rule must start with a positive literal
     "range",            # 198
     "rec_lists",        # 202
     "rec_lists2",       # 202
-    "rewrite",          # not yet diagnosed
+    "rewrite",          # 202
     "subsumption",      # 202
     "subtype",          # 197
     "turing1",          # 198
-    "unsigned_operations",
+    "unsigned_operations", # Rule must start with a positive literal
     "unused_constraints", # 198
     "access-policy",    # 198
     "amicable",         # 198
@@ -95,9 +94,7 @@ xfail = [
     "tak",              # 197
     "tic-tac-toe",      # 197
     "weighted_distances", # 197
-    "floydwarshall", # ?
-    "numeric_conversions",
-    "float_operations"
+    "float_operations" # uses the overloaded function to_number
 ]
 
 def exit(code):
