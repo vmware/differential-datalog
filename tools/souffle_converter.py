@@ -205,6 +205,9 @@ class Type(object):
         if self.name == "IString":
             self.isnumber = False
             return False
+        if self.name == "float":
+            self.isnumber = False # Is this right?
+            return False
         typ = Type.get(self.equivalentTo)
         result = typ.isNumber()
         self.isnumber = result
@@ -382,6 +385,8 @@ class Files(object):
         self.output("import souffle_lib")
         self.output("import souffle_types")
         Type.create("IString", "IString")
+        Type.create("float", "double")
+        Type.create("double", "double")
         Type.create("signed<32>", "signed<32>")
         Type.create("bit<32>", "bit<32>")
         # The following are in souffle_types
@@ -805,7 +810,6 @@ class SouffleConverter(object):
             # Unary operator
             rec = self.convert_arg(args[0])
             op = self.convert_op(arg.children[0])
-            self.currentType = "Tnumber"
             if op == "-":
                 return "(- " + rec + ")"
             elif op == "lnot":
@@ -828,12 +832,23 @@ class SouffleConverter(object):
 
         num = getOptField(arg, "NUMBER")
         if num is not None:
+            self.currentType = "Tnumber"
             val = num.value
             if val.startswith("0x"):
                 val = "32'sh" + val[2:]
             elif val.startswith("0b"):
                 val = "32'sb" + val[2:]
             return "(" + val + ":Tnumber)"
+
+        num = getOptField(arg, "UNUMBER")
+        if num is not None:
+            self.currentType = "Tunsigned"
+            val = num.value[0:-1]
+            if val.startswith("0x"):
+                val = "32'h" + val[2:]
+            elif val.startswith("0b"):
+                val = "32'b" + val[2:]
+            return "(" + val + ":Tunsigned)"
 
         if len(args) == 2:
             # Binary operator
@@ -961,6 +976,29 @@ class SouffleConverter(object):
                 for e in argStrings:
                     result = func + "(" + result + ", " + e + ")"
                 return result
+        if func == "to_unsigned":
+            if self.currentType == "double":
+                func = "ftou"
+            else:
+                # Guessing that the input is a number... we could be wrong
+                func = "itou"
+            self.currentType = "Tunsigned"
+        elif func == "to_float":
+            if self.currentType == "Tunsigned":
+                func = "utof"
+            else:
+                # Assume it's a number...
+                func = "itof"
+            self.currentType = "double"
+        elif func == "to_number":
+            if self.currentType == "Tstring":
+                func = "to_number"
+            elif self.currentType == "double":
+                func = "ftoi"
+            elif self.currentType == "Tunsigned":
+                func = "utoi"
+            self.currentType = "Tnumber"
+
         return func + "(" + ", ".join(argStrings) + ")"
 
     def convert_literal(self, lit):
