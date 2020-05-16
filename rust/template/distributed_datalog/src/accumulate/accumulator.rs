@@ -177,7 +177,7 @@ pub mod tests {
     use std::vec::IntoIter;
 
     use crate::MockObserver;
-    use crate::accumulate::UpdatesMockObserver;
+    use crate::accumulate::{UpdatesMockObserver, eq_updates};
 
     fn get_usize_updates_1() -> Box<IntoIter<Update<usize>>> {
         Box::new(vec!(
@@ -342,9 +342,9 @@ pub mod tests {
         assert_eq!(accumulator.on_commit(), Ok(()));
         let received_updates = mock1.lock().unwrap().received_updates.clone();
         assert_eq!(received_updates.len(), 3);
-        assert!(received_updates.contains(&Update::Insert { relid: 1, v: 1 }));
-        assert!(received_updates.contains(&Update::Insert { relid: 2, v: 2 }));
-        assert!(received_updates.contains(&Update::Insert { relid: 3, v: 3 }));
+        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 1, v: 1 })));
+        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 2, v: 2 })));
+        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 3, v: 3 })));
 
         // create an un-accumulated observable
         let mut observable = accumulator.create_observable();
@@ -365,10 +365,10 @@ pub mod tests {
         assert_eq!(accumulator.on_commit(), Ok(()));
         let received_updates = mock2.lock().unwrap().received_updates.clone();
         assert_eq!(received_updates.len(), 4);
-        assert!(received_updates.contains(&Update::Insert { relid: 4, v: 1 }));
-        assert!(received_updates.contains(&Update::Insert { relid: 4, v: 2 }));
-        assert!(received_updates.contains(&Update::Insert { relid: 4, v: 3 }));
-        assert!(received_updates.contains(&Update::Insert { relid: 4, v: 4 }));
+        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 1 })));
+        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 2 })));
+        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 3 })));
+        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 4 })));
 
         // a new observer via subscribe() should receive all updates
         assert_eq!(accumulator.on_start(), Ok(()));
@@ -378,13 +378,13 @@ pub mod tests {
         assert!(accumulator.subscribe(Box::new(mock3.clone())).is_ok());
         let received_updates = mock3.lock().unwrap().received_updates.clone();
         assert_eq!(received_updates.len(), 7);
-        assert!(received_updates.contains(&Update::Insert { relid: 1, v: 2 }));
-        assert!(received_updates.contains(&Update::Insert { relid: 1, v: 3 }));
-        assert!(received_updates.contains(&Update::Insert { relid: 2, v: 3 }));
-        assert!(received_updates.contains(&Update::Insert { relid: 4, v: 1 }));
-        assert!(received_updates.contains(&Update::Insert { relid: 4, v: 2 }));
-        assert!(received_updates.contains(&Update::Insert { relid: 4, v: 3 }));
-        assert!(received_updates.contains(&Update::Insert { relid: 4, v: 4 }));
+        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 1, v: 2 })));
+        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 1, v: 3 })));
+        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 2, v: 3 })));
+        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 1 })));
+        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 2 })));
+        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 3 })));
+        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 4 })));
     }
 }
 
