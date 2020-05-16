@@ -1,3 +1,7 @@
+FuncTest:
+FuncTest{.x = "foo"}: +1
+RFloatToInt:
+RFloatToInt{._x = -333}: +1
 RFloatToInt{._x = -333}
 Arrng1Arrng2:
 Arrng1Arrng2{.x = 5}: +1

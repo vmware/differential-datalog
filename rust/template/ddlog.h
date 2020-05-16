@@ -164,6 +164,9 @@ extern const char* ddlog_get_table_name(table_id id);
  *                 all its weights.  The result of +1 means that the record was
  *                 inserted; -1 - record was deleted; 0 - record's membership
  *                 did not change.
+ * `init_state` - when not NULL, DDlog will store a pointer to `ddlog_delta`
+ * containing initial snapshot of output relations at this address.  The caller
+ * is responsible for freeing this delta, e.g., using `ddlog_free_delta()`.
  *
  * IMPORTANT: Thread safety: DDlog invokes the callback from its worker threads
  * without any serialization to avoid contention. Hence, if the `workers` argument
@@ -195,7 +198,8 @@ extern ddlog_prog ddlog_run(
                    const ddlog_record *rec,
                    ssize_t weight),
         uintptr_t cb_arg,
-        void (*print_err_msg)(const char *msg));
+        void (*print_err_msg)(const char *msg),
+        ddlog_delta **init_state);
 
 /*
  * Record commands issued to DDlog via this API in a file.
