@@ -1,6 +1,6 @@
 extern crate tinyset;
 
-use self::tinyset::u64set;
+use self::tinyset::set64;
 use __std::option2std;
 use differential_datalog::record::*;
 use serde;
@@ -21,8 +21,8 @@ use flatbuf::{FBIter, FromFlatBuffer, ToFlatBuffer, ToFlatBufferVectorElement};
 use flatbuffers as fbrt;
 
 #[derive(Eq, Clone, Hash, PartialEq)]
-pub struct tinyset_Set64<T: u64set::Fits64> {
-    pub x: u64set::Set64<T>,
+pub struct tinyset_Set64<T: set64::Fits64> {
+    pub x: set64::Set64<T>,
 }
 
 /* This is needed so we can support for-loops over `Set64`'s.
@@ -31,11 +31,11 @@ pub struct tinyset_Set64<T: u64set::Fits64> {
  * This can be costly, but is necessary to make sure that all `Set64`
  * operations are deterministic.
  */
-pub struct Set64Iter<X: u64set::Fits64 + Ord> {
+pub struct Set64Iter<X: set64::Fits64 + Ord> {
     iter: vec::IntoIter<X>,
 }
 
-impl<X: u64set::Fits64 + Ord> Set64Iter<X> {
+impl<X: set64::Fits64 + Ord> Set64Iter<X> {
     pub fn new(set: &tinyset_Set64<X>) -> Set64Iter<X> {
         let mut v: Vec<_> = set.x.iter().collect();
         v.sort();
@@ -45,7 +45,7 @@ impl<X: u64set::Fits64 + Ord> Set64Iter<X> {
     }
 }
 
-impl<X: u64set::Fits64 + Ord> Iterator for Set64Iter<X> {
+impl<X: set64::Fits64 + Ord> Iterator for Set64Iter<X> {
     type Item = X;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -67,12 +67,12 @@ impl<T: tinyset::Fits64> tinyset_Set64<T> {
     /* In cases when order really, definitely, 100% does not matter,
      * a more efficient iterator can be used.
      */
-    pub fn unsorted_iter(&self) -> u64set::Iter64<T> {
+    pub fn unsorted_iter<'a>(&'a self) -> impl Iterator<Item = T> + 'a {
         self.x.iter()
     }
 }
 
-impl<T: u64set::Fits64 + Ord> Ord for tinyset_Set64<T> {
+impl<T: set64::Fits64 + Ord> Ord for tinyset_Set64<T> {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         let size_cmp = self.x.len().cmp(&other.x.len());
         if size_cmp != cmp::Ordering::Equal {
@@ -83,21 +83,21 @@ impl<T: u64set::Fits64 + Ord> Ord for tinyset_Set64<T> {
     }
 }
 
-impl<T: u64set::Fits64 + Ord> PartialOrd for tinyset_Set64<T> {
+impl<T: set64::Fits64 + Ord> PartialOrd for tinyset_Set64<T> {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<T: u64set::Fits64 + Ord> Default for tinyset_Set64<T> {
+impl<T: set64::Fits64 + Ord> Default for tinyset_Set64<T> {
     fn default() -> Self {
         tinyset_Set64 {
-            x: u64set::Set64::default(),
+            x: set64::Set64::default(),
         }
     }
 }
 
-impl<T: u64set::Fits64 + serde::Serialize + Ord> serde::Serialize for tinyset_Set64<T> {
+impl<T: set64::Fits64 + serde::Serialize + Ord> serde::Serialize for tinyset_Set64<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -106,7 +106,7 @@ impl<T: u64set::Fits64 + serde::Serialize + Ord> serde::Serialize for tinyset_Se
     }
 }
 
-impl<'de, T: u64set::Fits64 + serde::Deserialize<'de> + Ord> serde::Deserialize<'de>
+impl<'de, T: set64::Fits64 + serde::Deserialize<'de> + Ord> serde::Deserialize<'de>
     for tinyset_Set64<T>
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -117,10 +117,10 @@ impl<'de, T: u64set::Fits64 + serde::Deserialize<'de> + Ord> serde::Deserialize<
     }
 }
 
-impl<T: u64set::Fits64> tinyset_Set64<T> {
+impl<T: set64::Fits64> tinyset_Set64<T> {
     pub fn new() -> Self {
         tinyset_Set64 {
-            x: u64set::Set64::new(),
+            x: set64::Set64::new(),
         }
     }
     pub fn insert(&mut self, v: T) {
@@ -131,15 +131,15 @@ impl<T: u64set::Fits64> tinyset_Set64<T> {
     }
 }
 
-impl<T: FromRecord + u64set::Fits64> FromRecord for tinyset_Set64<T> {
+impl<T: FromRecord + set64::Fits64> FromRecord for tinyset_Set64<T> {
     fn from_record(val: &Record) -> Result<Self, String> {
         vec::Vec::from_record(val).map(|v| tinyset_Set64 {
-            x: u64set::Set64::from_iter(v),
+            x: set64::Set64::from_iter(v),
         })
     }
 }
 
-impl<T: IntoRecord + u64set::Fits64 + Ord> IntoRecord for tinyset_Set64<T> {
+impl<T: IntoRecord + set64::Fits64 + Ord> IntoRecord for tinyset_Set64<T> {
     fn into_record(self) -> Record {
         Record::Array(
             CollectionKind::Set,
@@ -148,7 +148,7 @@ impl<T: IntoRecord + u64set::Fits64 + Ord> IntoRecord for tinyset_Set64<T> {
     }
 }
 
-impl<T: FromRecord + u64set::Fits64 + Ord> Mutator<tinyset_Set64<T>> for Record {
+impl<T: FromRecord + set64::Fits64 + Ord> Mutator<tinyset_Set64<T>> for Record {
     fn mutate(&self, set: &mut tinyset_Set64<T>) -> Result<(), String> {
         let upd = <tinyset_Set64<T>>::from_record(self)?;
         for v in upd.into_iter() {
@@ -160,7 +160,7 @@ impl<T: FromRecord + u64set::Fits64 + Ord> Mutator<tinyset_Set64<T>> for Record 
     }
 }
 
-impl<T: u64set::Fits64 + Ord> iter::IntoIterator for &tinyset_Set64<T> {
+impl<T: set64::Fits64 + Ord> iter::IntoIterator for &tinyset_Set64<T> {
     type Item = T;
     type IntoIter = Set64Iter<T>;
     fn into_iter(self) -> Self::IntoIter {
@@ -168,18 +168,18 @@ impl<T: u64set::Fits64 + Ord> iter::IntoIterator for &tinyset_Set64<T> {
     }
 }
 
-impl<T: u64set::Fits64> FromIterator<T> for tinyset_Set64<T> {
+impl<T: set64::Fits64> FromIterator<T> for tinyset_Set64<T> {
     fn from_iter<I>(iter: I) -> Self
     where
         I: iter::IntoIterator<Item = T>,
     {
         tinyset_Set64 {
-            x: u64set::Set64::from_iter(iter),
+            x: set64::Set64::from_iter(iter),
         }
     }
 }
 
-impl<T: fmt::Display + u64set::Fits64 + Ord> fmt::Display for tinyset_Set64<T> {
+impl<T: fmt::Display + set64::Fits64 + Ord> fmt::Display for tinyset_Set64<T> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let len = self.x.len();
         formatter.write_str("[")?;
@@ -194,7 +194,7 @@ impl<T: fmt::Display + u64set::Fits64 + Ord> fmt::Display for tinyset_Set64<T> {
     }
 }
 
-impl<T: fmt::Debug + u64set::Fits64 + Ord> fmt::Debug for tinyset_Set64<T> {
+impl<T: fmt::Debug + set64::Fits64 + Ord> fmt::Debug for tinyset_Set64<T> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         let len = self.x.len();
         formatter.write_str("[")?;
@@ -212,7 +212,7 @@ impl<T: fmt::Debug + u64set::Fits64 + Ord> fmt::Debug for tinyset_Set64<T> {
 #[cfg(feature = "flatbuf")]
 impl<'a, T, F> FromFlatBuffer<fbrt::Vector<'a, F>> for tinyset_Set64<T>
 where
-    T: Ord + FromFlatBuffer<F::Inner> + u64set::Fits64,
+    T: Ord + FromFlatBuffer<F::Inner> + set64::Fits64,
     F: fbrt::Follow<'a> + 'a,
 {
     fn from_flatbuf(fb: fbrt::Vector<'a, F>) -> Response<Self> {
@@ -228,7 +228,7 @@ where
 #[cfg(feature = "flatbuf")]
 impl<'a, T> FromFlatBuffer<&'a [T]> for tinyset_Set64<T>
 where
-    T: Ord + u64set::Fits64,
+    T: Ord + set64::Fits64,
 {
     fn from_flatbuf(fb: &'a [T]) -> Response<Self> {
         let mut set = tinyset_Set64::new();
@@ -242,7 +242,7 @@ where
 #[cfg(feature = "flatbuf")]
 impl<'b, T> ToFlatBuffer<'b> for tinyset_Set64<T>
 where
-    T: Ord + u64set::Fits64 + ToFlatBufferVectorElement<'b>,
+    T: Ord + set64::Fits64 + ToFlatBufferVectorElement<'b>,
 {
     type Target = fbrt::WIPOffset<fbrt::Vector<'b, <T::Target as fbrt::Push>::Output>>;
 
@@ -255,25 +255,25 @@ where
     }
 }
 
-pub fn tinyset_size<X: u64set::Fits64>(s: &tinyset_Set64<X>) -> u64 {
+pub fn tinyset_size<X: set64::Fits64>(s: &tinyset_Set64<X>) -> u64 {
     s.x.len() as u64
 }
 
-pub fn tinyset_empty<X: u64set::Fits64>() -> tinyset_Set64<X> {
+pub fn tinyset_empty<X: set64::Fits64>() -> tinyset_Set64<X> {
     tinyset_Set64::new()
 }
 
-pub fn tinyset_singleton<X: u64set::Fits64 + Clone>(v: &X) -> tinyset_Set64<X> {
+pub fn tinyset_singleton<X: set64::Fits64 + Clone>(v: &X) -> tinyset_Set64<X> {
     let mut s = tinyset_Set64::new();
     s.insert(v.clone());
     s
 }
 
-pub fn tinyset_insert<X: u64set::Fits64 + Clone>(s: &mut tinyset_Set64<X>, v: &X) {
+pub fn tinyset_insert<X: set64::Fits64 + Clone>(s: &mut tinyset_Set64<X>, v: &X) {
     s.x.insert((*v).clone());
 }
 
-pub fn tinyset_insert_imm<X: u64set::Fits64 + Clone>(
+pub fn tinyset_insert_imm<X: set64::Fits64 + Clone>(
     s: &tinyset_Set64<X>,
     v: &X,
 ) -> tinyset_Set64<X> {
@@ -282,28 +282,25 @@ pub fn tinyset_insert_imm<X: u64set::Fits64 + Clone>(
     s2
 }
 
-pub fn tinyset_contains<X: u64set::Fits64>(s: &tinyset_Set64<X>, v: &X) -> bool {
+pub fn tinyset_contains<X: set64::Fits64>(s: &tinyset_Set64<X>, v: &X) -> bool {
     s.x.contains(*v)
 }
 
-pub fn tinyset_is_empty<X: u64set::Fits64>(s: &tinyset_Set64<X>) -> bool {
+pub fn tinyset_is_empty<X: set64::Fits64>(s: &tinyset_Set64<X>) -> bool {
     s.x.len() == 0
 }
 
-pub fn tinyset_nth<X: u64set::Fits64 + Ord + Clone>(
-    s: &tinyset_Set64<X>,
-    n: &u64,
-) -> std_Option<X> {
+pub fn tinyset_nth<X: set64::Fits64 + Ord + Clone>(s: &tinyset_Set64<X>, n: &u64) -> std_Option<X> {
     option2std(s.iter().nth(*n as usize))
 }
 
-pub fn tinyset_set2vec<X: u64set::Fits64 + Ord + Clone>(s: &tinyset_Set64<X>) -> std_Vec<X> {
+pub fn tinyset_set2vec<X: set64::Fits64 + Ord + Clone>(s: &tinyset_Set64<X>) -> std_Vec<X> {
     let mut v: Vec<_> = s.x.iter().collect();
     v.sort();
     std_Vec { x: v }
 }
 
-pub fn tinyset_union<X: u64set::Fits64 + Clone>(
+pub fn tinyset_union<X: set64::Fits64 + Clone>(
     s1: &tinyset_Set64<X>,
     s2: &tinyset_Set64<X>,
 ) -> tinyset_Set64<X> {
@@ -311,10 +308,10 @@ pub fn tinyset_union<X: u64set::Fits64 + Clone>(
     tinyset_Set64 { x: s.bitor(&s2.x) }
 }
 
-pub fn tinyset_unions<X: u64set::Fits64 + Clone>(
+pub fn tinyset_unions<X: set64::Fits64 + Clone>(
     sets: &std_Vec<tinyset_Set64<X>>,
 ) -> tinyset_Set64<X> {
-    let mut s = u64set::Set64::new();
+    let mut s = set64::Set64::new();
     for si in sets.x.iter() {
         for v in si.unsorted_iter() {
             s.insert(v);
@@ -323,11 +320,11 @@ pub fn tinyset_unions<X: u64set::Fits64 + Clone>(
     tinyset_Set64 { x: s }
 }
 
-pub fn tinyset_intersection<X: u64set::Fits64 + Clone>(
+pub fn tinyset_intersection<X: set64::Fits64 + Clone>(
     s1: &tinyset_Set64<X>,
     s2: &tinyset_Set64<X>,
 ) -> tinyset_Set64<X> {
-    let mut s = u64set::Set64::new();
+    let mut s = set64::Set64::new();
     for v in s1.unsorted_iter() {
         if s2.x.contains(v) {
             s.insert(v);
@@ -336,7 +333,7 @@ pub fn tinyset_intersection<X: u64set::Fits64 + Clone>(
     tinyset_Set64 { x: s }
 }
 
-pub fn tinyset_difference<X: u64set::Fits64 + Clone>(
+pub fn tinyset_difference<X: set64::Fits64 + Clone>(
     s1: &tinyset_Set64<X>,
     s2: &tinyset_Set64<X>,
 ) -> tinyset_Set64<X> {
@@ -345,7 +342,7 @@ pub fn tinyset_difference<X: u64set::Fits64 + Clone>(
     }
 }
 
-pub fn tinyset_group2set<K, V: u64set::Fits64>(g: &std_Group<K, V>) -> tinyset_Set64<V> {
+pub fn tinyset_group2set<K, V: set64::Fits64>(g: &std_Group<K, V>) -> tinyset_Set64<V> {
     let mut res = tinyset_Set64::new();
     for ref v in g.iter() {
         tinyset_insert(&mut res, v);
@@ -353,10 +350,10 @@ pub fn tinyset_group2set<K, V: u64set::Fits64>(g: &std_Group<K, V>) -> tinyset_S
     res
 }
 
-pub fn tinyset_group_set_unions<K, V: u64set::Fits64 + Clone>(
+pub fn tinyset_group_set_unions<K, V: set64::Fits64 + Clone>(
     g: &std_Group<K, tinyset_Set64<V>>,
 ) -> tinyset_Set64<V> {
-    let mut res = u64set::Set64::new();
+    let mut res = set64::Set64::new();
     for gr in g.iter() {
         for v in gr.unsorted_iter() {
             res.insert(v.clone());
@@ -367,14 +364,14 @@ pub fn tinyset_group_set_unions<K, V: u64set::Fits64 + Clone>(
     tinyset_Set64 { x: res }
 }
 
-pub fn tinyset_group_setref_unions<K, V: u64set::Fits64 + Ord + Clone>(
+pub fn tinyset_group_setref_unions<K, V: set64::Fits64 + Ord + Clone>(
     g: &std_Group<K, std_Ref<tinyset_Set64<V>>>,
 ) -> std_Ref<tinyset_Set64<V>> {
     if std_group_count(g) == 1 {
         std_group_first(g)
     } else {
         let mut res = std_ref_new(&tinyset_Set64 {
-            x: u64set::Set64::new(),
+            x: set64::Set64::new(),
         });
         {
             let rres = std_Ref::get_mut(&mut res).unwrap();
