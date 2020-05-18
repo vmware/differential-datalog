@@ -29,7 +29,7 @@ use cpuprofiler::PROFILER;
 
 #[allow(clippy::let_and_return)]
 fn handle_cmd(
-    start_time: &Instant,
+    start_time: Instant,
     hddlog: &HDDlog,
     print_deltas: bool,
     interactive: bool,
@@ -224,7 +224,7 @@ fn run(mut hddlog: HDDlog, print_deltas: bool) -> Result<(), String> {
     let start_time = Instant::now();
     interact(|cmd, interactive| {
         handle_cmd(
-            &start_time,
+            start_time,
             &hddlog,
             print_deltas,
             interactive,
