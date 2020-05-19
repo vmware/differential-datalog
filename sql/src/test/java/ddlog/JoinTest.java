@@ -85,11 +85,10 @@ public class JoinTest extends BaseQueriesTest {
     public void testNaturalJoin() {
         String query = "create view v0 as SELECT DISTINCT * FROM t1 NATURAL JOIN t2";
         String program = this.header(false) +
-                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double}\n" +
                 this.relations(false) +
-                "output relation Rv0[Ttmp]\n" +
+                "output relation Rv0[Tt1]\n" +
                 "Rv0[v2] :- Rt1[v],Rt2[v0],(true and (v.column1 == v0.column1))," +
-                "var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4},var v2 = v1.";
+                "var v1 = Tt1{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4},var v2 = v1.";
         this.testTranslation(query, program);
     }
 
@@ -97,11 +96,10 @@ public class JoinTest extends BaseQueriesTest {
     public void testNaturalJoinWhere() {
         String query = "create view v0 as SELECT DISTINCT * FROM t1 NATURAL JOIN t2 WHERE column3";
         String program = this.header(false) +
-                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double}\n" +
                 this.relations(false) +
-                "output relation Rv0[Ttmp]\n" +
+                "output relation Rv0[Tt1]\n" +
                 "Rv0[v2] :- Rt1[v],Rt2[v0],(true and (v.column1 == v0.column1))," +
-                "var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4},v.column3,var v2 = v1.";
+                "var v1 = Tt1{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4},v.column3,var v2 = v1.";
         this.testTranslation(query, program);
     }
 

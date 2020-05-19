@@ -48,4 +48,11 @@ public class NegativeTest extends BaseQueriesTest {
         String query = "create view v0 as SELECT DISTINCT t1.column1, X.c FROM t1 CROSS JOIN (SELECT DISTINCT column2 AS c FROM t2 AS X)";
         this.testTranslation(query, "");
     }
+
+    @Test(expected = TranslationException.class)
+    public void unionTest() {
+        // no column2 in t2
+        String query = "create view v0 as SELECT DISTINCT t1.column1 FROM t1 UNION ALL SELECT DISTINCT t2.column1 FROM t1";
+        this.testTranslation(query, "");
+    }
 }
