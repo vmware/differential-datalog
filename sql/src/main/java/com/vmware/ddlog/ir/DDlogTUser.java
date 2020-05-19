@@ -19,7 +19,7 @@ import java.util.Arrays;
 import java.util.Objects;
 
 public class DDlogTUser extends DDlogType {
-    private final String name;
+    public final String name;
     private final DDlogType[] typeArgs;
 
     public DDlogTUser(@Nullable Node node, String name, boolean mayBeNull, DDlogType... typeArgs) {

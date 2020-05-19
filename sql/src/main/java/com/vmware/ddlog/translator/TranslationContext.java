@@ -59,7 +59,7 @@ class TranslationContext {
     }
 
     public TranslationContext() {
-        this((TranslationState) null);
+        this(null);
     }
 
     public TranslationContext clone() {
@@ -126,6 +126,44 @@ class TranslationContext {
                 name = this.freshLocalName("col");
         }
         return name;
+    }
+
+    /**
+     * Creates:
+     * - a struct type with the specified fields.
+     * - a typedef to refer to the struct
+     * - a TUser that names the typedef; this is returned.
+     * @param node    SQL node.
+     * @param fields  Fields of the created struct.
+     * @param suggestedName  If type does not exist it is created with this name.
+     */
+    public DDlogTUser createStruct(Node node, List<DDlogField> fields, String suggestedName) {
+        for (DDlogTypeDef td: this.getProgram().typedefs) {
+            DDlogType type = td.getType();
+            if (type == null)
+                // extern type.
+                continue;
+            if (type.is(DDlogTStruct.class)) {
+                DDlogTStruct strct = type.to(DDlogTStruct.class);
+                if (strct.getFields().size() != fields.size())
+                    continue;
+                boolean different = false;
+                for (int i = 0; i < strct.getFields().size(); i++) {
+                    DDlogField f = strct.getFields().get(i);
+                    DDlogField e = fields.get(i);
+                    if (!f.equals(e)) {
+                        different = true;
+                        break;
+                    }
+                }
+                if (!different)
+                    return new DDlogTUser(node, td.getName(), type.mayBeNull);
+            }
+        }
+
+        String typeName = this.freshGlobalName(DDlogType.typeName(suggestedName));
+        DDlogTStruct type = new DDlogTStruct(node, typeName, fields);
+        return this.createTypedef(node, type);
     }
 
     DDlogType resolveType(DDlogType type) {

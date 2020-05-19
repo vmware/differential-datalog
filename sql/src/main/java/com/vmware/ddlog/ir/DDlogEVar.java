@@ -33,6 +33,10 @@ public class DDlogEVar extends DDlogExpression {
         return policy.compareIdentifier(var, other.var);
     }
 
+    public DDlogEVarDecl createDeclaration() {
+        return new DDlogEVarDecl(this.node, this.var, this.type);
+    }
+
     @Override
     public String toString() {
         return this.var;

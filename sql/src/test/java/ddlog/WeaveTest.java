@@ -548,9 +548,7 @@ public class WeaveTest extends BaseQueriesTest {
                 "schedulerName:Option<string>, has_node_selector_labels0:bool, has_pod_affinity_requirements0:bool}\n" +
 
                 "typedef TRtmp8 = TRtmp8{pod_name:string, matches:string, node_name:Option<string>}\n" +
-
                 "typedef Tagg9 = Tagg9{col:bool}\n" +
-
                 "typedef TRtmp10 = TRtmp10{gb:string, pod_name:string, matches:string, node_name:Option<string>}\n" +
                 "typedef TRtmp11 = TRtmp11{gb:string, count:signed<64>}\n" +
                 "typedef Tagg12 = Tagg12{count:signed<64>}\n" +
@@ -582,10 +580,6 @@ public class WeaveTest extends BaseQueriesTest {
                 "typedef TRtmp21 = TRtmp21{gb:string, node_name:string, taint_key:string, taint_value:Option<string>, " +
                 "taint_effect:string}\n" +
 
-                "typedef TRtmp23 = TRtmp23{gb:string, count:signed<64>}\n" +
-
-                "typedef Tagg24 = Tagg24{count:signed<64>}\n" +
-
                 "typedef Ttmp25 = Ttmp25{gb:string, node_name:string, taint_key:string, taint_value:Option<string>, " +
                 "taint_effect:string, count:signed<64>}\n" +
 
@@ -599,10 +593,6 @@ public class WeaveTest extends BaseQueriesTest {
                 "tolerations_value:Option<string>, tolerations_effect:Option<string>, " +
                 "tolerations_operator:Option<string>, node_name:string, taint_key:string, taint_value:Option<string>, " +
                 "taint_effect:string, num_taints:signed<64>}\n" +
-
-                "typedef TRtmp29 = TRtmp29{pod_name:string, node_name:string}\n" +
-
-                "typedef Tagg30 = Tagg30{col:bool}\n" +
 
                 "function agg(g: Group<(string, string, signed<64>, string, signed<64>), " +
                 "(TRtmp, Tpod_node_selector_labels, Tnode_labels)>):Tagg {\n" +
@@ -680,18 +670,18 @@ public class WeaveTest extends BaseQueriesTest {
                 ".pods_remaining = (gb4 - sum8) as signed<64>})" +
                 "\n}\n\n" +
 
-                "function agg24(g: Group<string, TRtmp21>):Tagg24 {\n" +
+                "function agg24(g: Group<string, TRtmp21>):Tagg12 {\n" +
                 "(var gb7) = group_key(g);\n" +
                 "(var count8 = 64'sd0: signed<64>);\n" +
                 "(for (i in g) {\n" +
                 "var v6 = i;\n" +
                 "(count8 = agg_count_R(count8, 64'sd1))}\n" +
                 ");\n" +
-                "(Tagg24{.count = count8})\n" +
+                "(Tagg12{.count = count8})\n" +
                 "}\n\n" +
 
                 "function agg30(g20: Group<(string, string, signed<64>), " +
-                "(TRtmp, Tpod_tolerations, TRtmp26)>):Tagg30 {\n" +
+                "(TRtmp, Tpod_tolerations, TRtmp26)>):Tagg9 {\n" +
                 "(var gb17, var gb18, var gb19) = group_key(g20);\n" +
                 "(var count22 = 64'sd0: signed<64>);\n" +
                 "(for (i21 in g20) {\n" +
@@ -700,7 +690,7 @@ public class WeaveTest extends BaseQueriesTest {
                 "(var v15 = i21.2);\n" +
                 "(count22 = agg_count_R(count22, 64'sd1))}\n" +
                 ");\n" +
-                "(Tagg30{.col = (count22 == gb19)})\n" +
+                "(Tagg9{.col = (count22 == gb19)})\n" +
                 "}\n\n" +
 
                 "input relation Rnode_info[Tnode_info]\n" +
@@ -743,12 +733,12 @@ public class WeaveTest extends BaseQueriesTest {
                 "output relation Rnodes_that_have_tolerations[TRtmp18]\n" +
                 "relation Rtmp21[TRtmp21]\n" +
                 "relation Roverinput20[TRtmp21]\n" +
-                "relation Rtmp23[TRtmp23]\n" +
-                "relation Rover22[TRtmp23]\n" +
+                "relation Rtmp23[TRtmp11]\n" +
+                "relation Rover22[TRtmp11]\n" +
                 "relation Rtmp26[TRtmp26]\n" +
                 "relation Rtmp27[TRtmp26]\n" +
-                "relation Rtmp29[TRtmp29]\n" +
-                "output relation Rpods_that_tolerate_node_taints[TRtmp29]\n" +
+                "relation Rtmp29[TRtmp4]\n" +
+                "output relation Rpods_that_tolerate_node_taints[TRtmp4]\n" +
 
                 "Rpods_to_assign_no_limit[v1] :- Rpod_info[v],unwrapBool(b_and_RN(((v.status == \"Pending\") and is_null(v.node_name))," +
                 " s_eq_NR(v.schedulerName, \"dcm-scheduler\")))," +
@@ -884,7 +874,7 @@ public class WeaveTest extends BaseQueriesTest {
                 ".node_name = v3.node_name,.taint_key = v3.taint_key,.taint_value = v3.taint_value," +
                 ".taint_effect = v3.taint_effect},var v5 = v4.\n" +
                 "Rover22[v10] :- Roverinput20[v6],var gb7 = v6.gb,var aggResult = Aggregate((gb7), agg24((v6)))," +
-                "var v9 = TRtmp23{.gb = gb7,.count = aggResult.count},var v10 = v9.\n" +
+                "var v9 = TRtmp11{.gb = gb7,.count = aggResult.count},var v10 = v9.\n" +
                 "Rtmp27[v15] :- Roverinput20[v11],Rover22[v12],(true and (v11.gb == v12.gb))," +
                 "var v13 = Ttmp25{.gb = v11.gb,.node_name = v11.node_name,.taint_key = v11.taint_key," +
                 ".taint_value = v11.taint_value,.taint_effect = v11.taint_effect,.count = v12.count}," +
@@ -916,7 +906,7 @@ public class WeaveTest extends BaseQueriesTest {
                 ".node_name = v15.node_name,.taint_key = v15.taint_key,.taint_value = v15.taint_value," +
                 ".taint_effect = v15.taint_effect,.num_taints = v15.num_taints},var gb17 = v0.pod_name," +
                 "var gb18 = v15.node_name,var gb19 = v15.num_taints,var aggResult24 = Aggregate((gb17, gb18, gb19), " +
-                "agg30((v, v0, v15))),var v23 = TRtmp29{.pod_name = gb17,.node_name = gb18}," +
+                "agg30((v, v0, v15))),var v23 = TRtmp4{.pod_name = gb17,.node_name = gb18}," +
                 "aggResult24.col,var v25 = v23.";
         Assert.assertEquals(expected, p);
         this.compiledDDlog(p);

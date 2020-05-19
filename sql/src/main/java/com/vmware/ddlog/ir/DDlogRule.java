@@ -25,8 +25,6 @@ import java.util.List;
 public class DDlogRule extends DDlogNode {
     public final DDlogAtom lhs;
     public final List<DDlogRuleRHS> rhs;
-    @Nullable
-    public DDlogType type;
 
     public DDlogRule(@Nullable Node node, DDlogAtom lhs, List<DDlogRuleRHS> rhs) {
         super(node);
