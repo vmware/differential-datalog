@@ -28,12 +28,6 @@ public class DDlogTFloat extends DDlogType implements IsNumericType {
         return new DDlogTFloat(this.getNode(), mayBeNull);
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        return o != null && getClass() == o.getClass();
-    }
-
     public static DDlogTFloat instance = new DDlogTFloat(null,false);
 
     @Override

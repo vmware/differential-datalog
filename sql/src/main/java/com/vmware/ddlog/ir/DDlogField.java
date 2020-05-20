@@ -26,21 +26,16 @@ public class DDlogField extends DDlogNode {
         this.type = type;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        DDlogField that = (DDlogField) o;
-        return name.equals(that.name) &&
-                type.equals(that.type);
-    }
-
     public String getName() {
         return this.name;
     }
 
     public DDlogType getType() {
         return type;
+    }
+
+    public boolean same(DDlogField other) {
+        return this.compare(other, new Identical());
     }
 
     public boolean compare(DDlogField other, IComparePolicy policy) {

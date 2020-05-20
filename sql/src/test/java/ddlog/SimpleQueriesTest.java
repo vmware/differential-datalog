@@ -57,11 +57,10 @@ public class SimpleQueriesTest extends BaseQueriesTest {
     public void testSelectWNull() {
         String query = "create view v0 as select distinct column1, column2 from t1";
         String program = this.header(true) +
-            "typedef TRtmp = TRtmp{column1:Option<signed<64>>, column2:Option<string>}\n" +
             this.relations(true) +
-            "relation Rtmp[TRtmp]\n" +
-            "output relation Rv0[TRtmp]\n" +
-            "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.column1 = v.column1,.column2 = v.column2},var v1 = v0.";
+            "relation Rtmp[Tt4]\n" +
+            "output relation Rv0[Tt4]\n" +
+            "Rv0[v1] :- Rt1[v],var v0 = Tt4{.column1 = v.column1,.column2 = v.column2},var v1 = v0.";
         this.testTranslation(query, program, true);
     }
 
@@ -256,11 +255,10 @@ public class SimpleQueriesTest extends BaseQueriesTest {
     public void testBetweenWNulls() {
         String query = "create view v0 as SELECT DISTINCT column1, column2 FROM t1 WHERE column1 BETWEEN -1 and 10";
         String program = this.header(true) +
-            "typedef TRtmp = TRtmp{column1:Option<signed<64>>, column2:Option<string>}\n" +
             this.relations(true) +
-            "relation Rtmp[TRtmp]\n" +
-            "output relation Rv0[TRtmp]\n" +
-            "Rv0[v1] :- Rt1[v],unwrapBool(b_and_NN(a_lte_RN((- 64'sd1), v.column1), a_lte_NR(v.column1, 64'sd10))),var v0 = TRtmp{.column1 = v.column1,.column2 = v.column2},var v1 = v0.";
+            "relation Rtmp[Tt4]\n" +
+            "output relation Rv0[Tt4]\n" +
+            "Rv0[v1] :- Rt1[v],unwrapBool(b_and_NN(a_lte_RN((- 64'sd1), v.column1), a_lte_NR(v.column1, 64'sd10))),var v0 = Tt4{.column1 = v.column1,.column2 = v.column2},var v1 = v0.";
         this.testTranslation(query, program, true);
     }
 
@@ -293,11 +291,10 @@ public class SimpleQueriesTest extends BaseQueriesTest {
         String query = "create view v0 as select distinct column1, column2 from t1";
         String program =
                 this.header(true) +
-                "typedef TRtmp = TRtmp{column1:Option<signed<64>>, column2:Option<string>}\n" +
                 this.relations(true) +
-                "relation Rtmp[TRtmp]\n" +
-                "output relation Rv0[TRtmp]\n" +
-                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.column1 = v.column1,.column2 = v.column2},var v1 = v0.";
+                "relation Rtmp[Tt4]\n" +
+                "output relation Rv0[Tt4]\n" +
+                "Rv0[v1] :- Rt1[v],var v0 = Tt4{.column1 = v.column1,.column2 = v.column2},var v1 = v0.";
         this.testTranslation(query, program, true);
     }
     

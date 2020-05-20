@@ -16,6 +16,7 @@ import com.vmware.ddlog.util.Linq;
 
 import javax.annotation.Nullable;
 import java.util.List;
+import java.util.Objects;
 
 public abstract class DDlogType extends DDlogNode {
     /**
@@ -80,6 +81,10 @@ public abstract class DDlogType extends DDlogNode {
             type0.error("Incompatible types " + type0 + " and " + type1);
         if (checkNullability && type0.mayBeNull != type1.mayBeNull)
             type0.error("Types have different nullabilities: " + type0 + " and " + type1);
+    }
+
+    public boolean same(DDlogType other) {
+        return this.compare(other, new Identical());
     }
 
     public static String typeName(String name) {

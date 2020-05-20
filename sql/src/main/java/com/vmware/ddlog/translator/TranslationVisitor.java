@@ -126,7 +126,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
     protected DDlogIRNode visitTableSubquery(TableSubquery query, TranslationContext context) {
         DDlogIRNode subquery = this.process(query.getQuery(), context);
         RelationRHS rhs = subquery.to(RelationRHS.class);
-        String relName = context.freshGlobalName(DDlogRelationDeclaration.relationName("tmp"));
+        String relName = context.freshRelationName("tmp");
         DDlogRule rule = this.createRule(query, relName, rhs, DDlogRelationDeclaration.Role.Internal, context);
         String lhsVar = getRuleVar(rule).var;
         RelationRHS result = new RelationRHS(query, lhsVar, rhs.getType());
@@ -160,10 +160,10 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             DDlogIRNode member = this.process(rel, context);
             RelationRHS rhs = member.to(RelationRHS.class);
             if (rule == null) {
-                String ruleName = context.freshGlobalName(DDlogRelationDeclaration.relationName("union"));
-                rule = this.createRule(union, ruleName, rhs, DDlogRelationDeclaration.Role.Output, context);
+                String ruleName = context.freshRelationName("union");
+                rule = this.createRule(union, ruleName, rhs, DDlogRelationDeclaration.Role.Internal, context);
             } else {
-                if (!rule.lhs.val.getType().equals(rhs.getType()))
+                if (!rule.lhs.val.getType().same(rhs.getType()))
                     throw new TranslationException("Union between sets with different types: ", union);
                 DDlogAtom lhs = new DDlogAtom(union, rule.lhs.relation, rule.lhs.val);
                 List<DDlogRuleRHS> definitions = rhs.getDefinitions();
@@ -176,6 +176,36 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         assert rule != null;
         RelationRHS result = new RelationRHS(union, getRuleVar(rule).var, rule.lhs.val.getType());
         result.addDefinition(new DDlogRHSLiteral(union, true, rule.lhs));
+        return result;
+    }
+
+    @Override
+    protected DDlogIRNode visitExcept(Except except, TranslationContext context) {
+        RelationRHS left = this.process(except.getLeft(), context).to(RelationRHS.class);
+        RelationRHS right = this.process(except.getRight(), context).to(RelationRHS.class);
+        String relName = context.freshRelationName("except");
+        DDlogRule rule = this.createRule(
+                except.getRight(), relName, right, DDlogRelationDeclaration.Role.Internal, context);
+        left.addDefinition(new DDlogRHSCondition(
+                except, new DDlogESet(except, getRuleVar(rule).createDeclaration(), left.getRowVariable(false))));
+        left.addDefinition(new DDlogRHSLiteral(except, false, rule.lhs));
+        return left;
+    }
+
+    @Override
+    protected DDlogIRNode visitIntersect(Intersect intersect, TranslationContext context) {
+        RelationRHS result = null;
+        for (Relation rel: intersect.getRelations()) {
+            DDlogIRNode member = this.process(rel, context);
+            RelationRHS rhs = member.to(RelationRHS.class);
+            String ruleName = context.freshRelationName("intersect");
+            DDlogRule rule = this.createRule(intersect, ruleName, rhs, DDlogRelationDeclaration.Role.Internal, context);
+            if (result == null)
+                result = new RelationRHS(intersect, context.freshLocalName("v"), rule.lhs.val.getType());
+            result.addDefinition(new DDlogRHSLiteral(
+                    intersect, true, new DDlogAtom(rel, rule.lhs.relation, result.getRowVariable())));
+        }
+        assert result != null;
         return result;
     }
 
@@ -213,7 +243,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
     private <T extends SelectItem> RelationRHS processSimpleSelect(
             Node select, RelationRHS inputRelation, List<T> selectArguments,
             TranslationContext context) {
-        String outRelName = context.freshGlobalName(DDlogRelationDeclaration.relationName("tmp"));
+        String outRelName = context.freshRelationName("tmp");
         if (selectArguments.size() == 1) {
             // Special case for SELECT *
             SelectItem single = selectArguments.get(0);
@@ -576,7 +606,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
              result = <complete aggregate>(gb1, gb2, v)
          */
         SelectTranslationState state = new SelectTranslationState(select, groupBy);
-        String outRelName = context.freshGlobalName(DDlogRelationDeclaration.relationName("tmp"));
+        String outRelName = context.freshRelationName("tmp");
         String paramName = context.freshLocalName("g");
 
         // We will generate a custom function to perform the aggregation.

@@ -29,14 +29,6 @@ public class DDlogTBool extends DDlogType {
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass())
-            return false;
-        return this.mayBeNull == ((DDlogTBool)o).mayBeNull;
-    }
-
-    @Override
     public boolean compare(DDlogType type, IComparePolicy policy) {
         if (!super.compare(type, policy))
             return false;

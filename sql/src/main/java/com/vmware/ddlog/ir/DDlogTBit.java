@@ -36,19 +36,6 @@ public class DDlogTBit extends DDlogType implements IsNumericType, IBoundedNumer
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        DDlogTBit dDlogTBit = (DDlogTBit) o;
-        return width == dDlogTBit.width;
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(width);
-    }
-
-    @Override
     public DDlogExpression zero() {
         return new DDlogEBit(this.getNode(), this.width, BigInteger.valueOf(0));
     }

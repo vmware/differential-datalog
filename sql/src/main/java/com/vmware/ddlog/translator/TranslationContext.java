@@ -151,7 +151,7 @@ class TranslationContext {
                 for (int i = 0; i < strct.getFields().size(); i++) {
                     DDlogField f = strct.getFields().get(i);
                     DDlogField e = fields.get(i);
-                    if (!f.equals(e)) {
+                    if (!f.same(e)) {
                         different = true;
                         break;
                     }
@@ -225,6 +225,10 @@ class TranslationContext {
 
     void add(DDlogRelationDeclaration relation) {
         this.translationState.add(relation);
+    }
+
+    String freshRelationName(String prefix) {
+        return this.freshGlobalName(DDlogRelationDeclaration.relationName(prefix));
     }
 
     String freshGlobalName(String prefix) {
