@@ -17,7 +17,7 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 
 public class BaseQueriesTest {
-    protected static boolean runSlowTests = true;
+    protected static boolean runSlowTests = false;
 
     // TODO: this should only be done once, but it is not clear how this can be achieved.
     @BeforeClass
@@ -36,11 +36,13 @@ public class BaseQueriesTest {
     protected final String tables =
             "typedef Tt1 = Tt1{column1:signed<64>, column2:string, column3:bool, column4:double}\n" +
             "typedef Tt2 = Tt2{column1:signed<64>}\n" +
-            "typedef Tt3 = Tt3{d:Date, t:Time, dt:DateTime}\n";
+            "typedef Tt3 = Tt3{d:Date, t:Time, dt:DateTime}\n" +
+            "typedef Tt4 = Tt4{column1:Option<signed<64>>, column2:Option<string>}\n";
     protected final String tablesWNull =
             "typedef Tt1 = Tt1{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>, column4:Option<double>}\n" +
             "typedef Tt2 = Tt2{column1:Option<signed<64>>}\n" +
-            "typedef Tt3 = Tt3{d:Option<Date>, t:Option<Time>, dt:Option<DateTime>}\n";
+            "typedef Tt3 = Tt3{d:Option<Date>, t:Option<Time>, dt:Option<DateTime>}\n" +
+            "typedef Tt4 = Tt4{column1:Option<signed<64>>, column2:Option<string>}\n";
 
     /**
      * The expected string the generated program starts with.
@@ -60,7 +62,8 @@ public class BaseQueriesTest {
         return "\n" +
             "input relation Rt1[Tt1]\n" +
             "input relation Rt2[Tt2]\n" +
-            "input relation Rt3[Tt3]\n";
+            "input relation Rt3[Tt3]\n" +
+            "input relation Rt4[Tt4]\n";
     }
 
     protected Translator createInputTables(boolean withNulls) {
@@ -92,6 +95,14 @@ public class BaseQueriesTest {
         Assert.assertNotNull(s);
         Assert.assertEquals("input relation Rt3[Tt3]", s);
 
+        // Table t4 always has nullable columns
+        createStatement = "create table t4(column1 integer, column2 varchar(36))";
+        create = t.translateSqlStatement(createStatement);
+        Assert.assertNotNull(create);
+        s = create.toString();
+        Assert.assertNotNull(s);
+        Assert.assertEquals("input relation Rt4[Tt4]", s);
+
         return t;
     }
 
@@ -106,7 +117,7 @@ public class BaseQueriesTest {
             basename = tmp.getName();
             //Compiling all the way takes too long
             //boolean success = DDlogAPI.compileDDlogProgram(tmp.getName(), true,"../lib", "./lib");
-            boolean success = DDlogAPI.compileDDlogProgramToRust(tmp.getName(), false,"../lib", "./lib");
+            boolean success = DDlogAPI.compileDDlogProgramToRust(tmp.getName(), true,"../lib", "./lib");
             if (!success) {
                 String[] lines = programBody.split("\n");
                 for (int i = 0; i < lines.length; i++) {

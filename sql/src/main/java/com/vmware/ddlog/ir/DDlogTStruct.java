@@ -51,14 +51,6 @@ public class DDlogTStruct extends DDlogType {
         return this;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        DDlogTStruct that = (DDlogTStruct) o;
-        return name.equals(that.name) &&
-                args.equals(that.args);
-    }
 
     public String getName() { return this.name; }
 
@@ -79,11 +71,6 @@ public class DDlogTStruct extends DDlogType {
             if (!this.args.get(i).compare(other.args.get(i), policy))
                 return false;
         return true;
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(name, args);
     }
 
     public DDlogType getFieldType(String col) {

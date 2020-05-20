@@ -35,10 +35,4 @@ public class DDlogTString extends DDlogType {
             return false;
         return type.is(DDlogTString.class);
     }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        return o != null && getClass() == o.getClass();
-    }
 }

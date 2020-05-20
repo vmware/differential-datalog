@@ -28,11 +28,6 @@ public class DDlogTDouble extends DDlogType implements IsNumericType {
         return new DDlogTDouble(this.getNode(), mayBeNull);
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        return o != null && getClass() == o.getClass();
-    }
 
     public static DDlogTDouble instance = new DDlogTDouble(null,false);
 

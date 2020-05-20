@@ -22,7 +22,8 @@ public class JoinTest extends BaseQueriesTest {
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v3] :- Rt1[v],Rt2[v0],(v.column1 == v0.column1),true," +
-                "var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4,.column10 = v0.column1}," +
+                "var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3," +
+                ".column4 = v.column4,.column10 = v0.column1}," +
                 "var aggResult = Aggregate((), agg((v, v0))),var v2 = aggResult,var v3 = v2.";
         this.testTranslation(query, program);
     }
@@ -35,7 +36,8 @@ public class JoinTest extends BaseQueriesTest {
                 this.relations(false) +
                 "output relation Rv0[Ttmp]\n" +
                 "Rv0[v2] :- Rt1[v],Rt2[v0],true," +
-                "var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4,.column10 = v0.column1}," +
+                "var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3," +
+                ".column4 = v.column4,.column10 = v0.column1}," +
                 "var v2 = v1.";
         this.testTranslation(query, program);
     }
@@ -48,7 +50,23 @@ public class JoinTest extends BaseQueriesTest {
                 this.relations(false) +
                 "output relation Rv0[Ttmp]\n" +
                 "Rv0[v2] :- Rt1[v],Rt2[v0],(v.column1 == v0.column1),true," +
-                "var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4,.column10 = v0.column1},var v2 = v1.";
+                "var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3," +
+                ".column4 = v.column4,.column10 = v0.column1},var v2 = v1.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
+    public void testJoinMix() {
+        // mixing nulls and non-nulls
+        String query = "create view v0 as SELECT DISTINCT * FROM t1 JOIN t4 ON t1.column1 = t4.column1";
+        String program = this.header(false) +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, " +
+                "column10:Option<signed<64>>, column20:Option<string>}\n" +
+                this.relations(false) +
+                "output relation Rv0[Ttmp]\n" +
+                "Rv0[v2] :- Rt1[v],Rt4[v0],unwrapBool(a_eq_RN(v.column1, v0.column1)),true," +
+                "var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4," +
+                ".column10 = v0.column1,.column20 = v0.column2},var v2 = v1.";
         this.testTranslation(query, program);
     }
 
@@ -56,11 +74,13 @@ public class JoinTest extends BaseQueriesTest {
     public void testJoinStarWNull() {
         String query = "create view v0 as SELECT DISTINCT * FROM t1 JOIN t2 ON t1.column1 = t2.column1";
         String program = this.header(true) +
-                "typedef Ttmp = Ttmp{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>, column4:Option<double>, column10:Option<signed<64>>}\n" +
+                "typedef Ttmp = Ttmp{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>, " +
+                "column4:Option<double>, column10:Option<signed<64>>}\n" +
                 this.relations(true) +
                 "output relation Rv0[Ttmp]\n" +
                 "Rv0[v2] :- Rt1[v],Rt2[v0],unwrapBool(a_eq_NN(v.column1, v0.column1)),true," +
-                "var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4,.column10 = v0.column1},var v2 = v1.";
+                "var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4," +
+                ".column10 = v0.column1},var v2 = v1.";
         this.testTranslation(query, program, true);
     }
 
