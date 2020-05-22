@@ -18,7 +18,7 @@ set -e
  git checkout ddlog_ci3 &&
  ./boot.sh &&
  ./configure --with-ddlog=../../lib --with-ovs-source=../ovs --enable-shared &&
- (make northd/ddlog.stamp && make check -j1 NORTHD_CLI=1 TESTSUITEFLAGS="31 33 35 37 39 41 43 45 47 49 51 53 55 57 59 61 63 65 67 69 71 73 75 77 79 81 83 85 87 89 91 93 95 97 99 101 103 105 107 109 111 113 115 117 119 121 123 125 127 129 131 133 135 137 139 141 143 145 147 149 151 153 155 157 159 161 163 165 167 169 171 175 177 179 183 185 187 189 191 193 195 197 199 205 207 209 211 213 215 217 219 221 223 225 227 231 232 234 236 238 240 242 244 246 248 250 252 254 256 258 260 262 264 266 268 270" ||
+ (make northd/ddlog.stamp && make check -j1 NORTHD_CLI=1 ||
  (find tests/testsuite.dir/ \( -name testsuite.log -o -name ovn-northd.log \) -exec echo '{}' \; -exec cat '{}' \; && false))
 )
 
