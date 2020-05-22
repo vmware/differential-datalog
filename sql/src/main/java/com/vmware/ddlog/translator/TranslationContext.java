@@ -16,6 +16,7 @@ import com.facebook.presto.sql.tree.Node;
 import com.facebook.presto.sql.tree.NodeLocation;
 import com.facebook.presto.sql.tree.SingleColumn;
 import com.vmware.ddlog.ir.*;
+import com.vmware.ddlog.util.Linq;
 import com.vmware.ddlog.util.Utilities;
 
 import javax.annotation.Nullable;
@@ -62,6 +63,7 @@ class TranslationContext {
         this(null);
     }
 
+    @SuppressWarnings("MethodDoesntCallSuperMethod")
     public TranslationContext clone() {
         TranslationContext result = new TranslationContext(this.translationState);
         Utilities.copyMap(result.substitutions, this.substitutions);
@@ -98,6 +100,7 @@ class TranslationContext {
         this.substitutions.put(node, expression);
     }
 
+    @SuppressWarnings("unused")
     public void removeSubstitution(Node node) {
         this.substitutions.remove(node);
     }
@@ -129,6 +132,48 @@ class TranslationContext {
     }
 
     /**
+     * Given a set of struct types with the same number of fields,
+     * find their "meet": a type where
+     * all fields are defined by reduceType on the corresponding fields.
+     */
+    public DDlogType meet(List<DDlogType> types) {
+        if (types.size() == 0)
+            throw new RuntimeException("No types to meet");
+        if (types.size() == 1)
+            return types.get(0);
+        types = Linq.map(types, this::resolveType);
+        DDlogType type0 = types.get(0);
+        DDlogTStruct str = type0.to(DDlogTStruct.class);
+        List<DDlogField> fields = new ArrayList<DDlogField>(str.getFields());
+        boolean changed = false;
+        for (int i = 1; i < types.size(); i++) {
+            DDlogTStruct stri = types.get(i).to(DDlogTStruct.class);
+            List<DDlogField> striFields = stri.getFields();
+            if (striFields.size() != fields.size())
+                type0.error("Incompatible types: " + type0 + " and " + stri);
+            for (int j = 0; j < fields.size(); j++) {
+                DDlogField fj = fields.get(j);
+                if (!fj.getName().equals(striFields.get(j).getName()))
+                    type0.error("Incompatible types: " + type0 + " and " + stri);
+                DDlogType t0j = fields.get(j).getType();
+                DDlogType tij = striFields.get(j).getType();
+                DDlogType red = DDlogType.reduceType(t0j, tij);
+                if (!t0j.same(red)) {
+                    changed = true;
+                    fields.set(j, new DDlogField(fj.getNode(), fj.getName(), red));
+                }
+            }
+        }
+        if (changed)
+            return this.createStruct(type0.getNode(), fields, str.getName());
+        return type0;
+    }
+
+    public DDlogType meet(DDlogType... types) {
+        return meet(Linq.list(types));
+    }
+
+    /**
      * Creates:
      * - a struct type with the specified fields.
      * - a typedef to refer to the struct
@@ -137,7 +182,8 @@ class TranslationContext {
      * @param fields  Fields of the created struct.
      * @param suggestedName  If type does not exist it is created with this name.
      */
-    public DDlogTUser createStruct(Node node, List<DDlogField> fields, String suggestedName) {
+    public DDlogTUser createStruct(
+            @Nullable Node node, List<DDlogField> fields, String suggestedName) {
         for (DDlogTypeDef td: this.getProgram().typedefs) {
             DDlogType type = td.getType();
             if (type == null)
@@ -216,8 +262,6 @@ class TranslationContext {
     void exitScope() {
         this.translationScope.remove(this.translationScope.size() - 1);
     }
-
-    public Iterable<Scope> allScopes() { return this.translationScope; }
 
     DDlogExpression translateExpression(Expression expr) {
         return this.translationState.etv.process(expr, this);

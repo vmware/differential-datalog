@@ -16,7 +16,6 @@ import com.vmware.ddlog.util.Linq;
 
 import javax.annotation.Nullable;
 import java.util.List;
-import java.util.Objects;
 
 public abstract class DDlogType extends DDlogNode {
     /**
@@ -51,15 +50,20 @@ public abstract class DDlogType extends DDlogNode {
     /**
      * Given a set of similar types (which differ only in mayBeNull)
      * return a type with mayBeNull if any of them has mayBeNull.
+     * Works only for base types.
      * @param types  List of types to reduce.
      */
     public static DDlogType reduceType(List<DDlogType> types) {
         if (types.isEmpty())
             return DDlogTTuple.emptyTupleType;
         DDlogType result = types.get(0);
+        if (!result.isBaseType())
+            throw new RuntimeException("Not a base type: " + result);
         for (int i = 1; i < types.size(); i++) {
-            DDlogType.checkCompatible(result, types.get(i), false);
             DDlogType ti = types.get(i);
+            if (!ti.isBaseType())
+                throw new RuntimeException("Not a base type: " + ti);
+            DDlogType.checkCompatible(result, ti, false);
             if (result.is(DDlogTUnknown.class))
                 result = ti.setMayBeNull(true);
             else if (ti.is(DDlogTUnknown.class))
@@ -70,11 +74,11 @@ public abstract class DDlogType extends DDlogNode {
         return result;
     }
 
-    public static DDlogType reduceType(DDlogType left, DDlogType right) {
-        return reduceType(Linq.list(left, right));
+    public static DDlogType reduceType(DDlogType... types) {
+        return reduceType(Linq.list(types));
     }
 
-    static void checkCompatible(DDlogType type0, DDlogType type1, boolean checkNullability) {
+    public static void checkCompatible(DDlogType type0, DDlogType type1, boolean checkNullability) {
         if (!type0.is(DDlogTUnknown.class) &&
             !type1.is(DDlogTUnknown.class) &&
             type0.getClass() != type1.getClass())
@@ -112,5 +116,9 @@ public abstract class DDlogType extends DDlogNode {
 
     public boolean compare(DDlogType type, IComparePolicy policy) {
         return this.mayBeNull == type.mayBeNull;
+    }
+
+    public boolean isBaseType() {
+        return this.is(IDDlogBaseType.class);
     }
 }

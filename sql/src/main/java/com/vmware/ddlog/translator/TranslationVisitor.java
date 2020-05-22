@@ -92,7 +92,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
      * @param role    Kind of relation created.
      * @param context Translation context; the rule and relation are added there.
      */
-    protected DDlogRule createRule(Node node, String relName, RelationRHS rhs,
+    protected DDlogRule createRule(@Nullable Node node, String relName, RelationRHS rhs,
                                    DDlogRelationDeclaration.Role role,
                                    TranslationContext context) {
         String outVarName = context.freshLocalName("v");
@@ -155,10 +155,13 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
     protected DDlogIRNode visitUnion(Union union, TranslationContext context) {
         if (!union.isDistinct())
             throw new TranslationException("UNION ALL not supported", union);
+
+        List<RelationRHS> convert = Linq.map(union.getRelations(), r -> this.process(r, context).to(RelationRHS.class));
+        List<DDlogType> types = Linq.map(convert, RelationRHS::getType);
+        DDlogType resultType = context.meet(types);
         DDlogRule rule = null;
-        for (Relation rel: union.getRelations()) {
-            DDlogIRNode member = this.process(rel, context);
-            RelationRHS rhs = member.to(RelationRHS.class);
+        for (RelationRHS rhs: convert) {
+            rhs = this.convertType(rhs, resultType, context);
             if (rule == null) {
                 String ruleName = context.freshRelationName("union");
                 rule = this.createRule(union, ruleName, rhs, DDlogRelationDeclaration.Role.Internal, context);
@@ -179,10 +182,55 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         return result;
     }
 
+    /**
+     * If rhs has the type given do nothing.
+     * Otherwise the type may have some fields that are nullable, where the rhs has a non-nullable fields.
+     * In this case return a new RelationRHS that has the same values as RHS
+     * but where the suitable fields are wrapped in Some{}.
+     * @param rhs   Right hand side describing a set of values.
+     * @param type  The type desired for the RHS.
+     * @return      A new right-hand side with the same values converted if necessary.
+     *
+     * For example, the type of relation may be T{.a: string, .b: bool} and
+     * type may be T1{.a: Optional[string], .b: bool}.  In this case we generate
+     * a new relation with type T1 and where we transform every value of type T
+     * to a value of type T1.
+     */
+    RelationRHS convertType(RelationRHS rhs, DDlogType type, TranslationContext context) {
+        DDlogType rhsType = context.resolveType(rhs.getType());
+        if (rhsType.same(context.resolveType(type)))
+            return rhs;
+
+        String relName = context.freshRelationName("source");
+        DDlogTStruct rhsStr = rhsType.to(DDlogTStruct.class);
+        DDlogRule rule = this.createRule(rhs.getNode(), relName, rhs, DDlogRelationDeclaration.Role.Internal, context);
+        RelationRHS result = new RelationRHS(rhs.getNode(), rhs.getVarName(), type);
+        result.addDefinition(new DDlogRHSLiteral(rhs.getNode(), true, rule.lhs));
+        DDlogTStruct str = context.resolveType(type).to(DDlogTStruct.class);
+        List<DDlogEStruct.FieldValue> fields = new ArrayList<DDlogEStruct.FieldValue>();
+        for (DDlogField f: str.getFields()) {
+            DDlogExpression extract = new DDlogEField(rhs.getNode(), getRuleVar(rule), f.getName(), f.getType());
+            DDlogType origType = rhsStr.getFieldType(f.getName());
+            DDlogType destType = f.getType();
+            DDlogType.checkCompatible(destType, origType, false);
+            if (destType.mayBeNull && !destType.same(origType))
+                extract = ExpressionTranslationVisitor.wrapSome(extract, destType);
+            DDlogEStruct.FieldValue field = new DDlogEStruct.FieldValue(f.getName(), extract);
+            fields.add(field);
+        }
+        DDlogExpression expr = new DDlogEStruct(rhs.getNode(), str.getName(), str, fields);
+        result.addDefinition(new DDlogESet(rhs.getNode(), result.getRowVariable(true), expr));
+        return result;
+    }
+
     @Override
     protected DDlogIRNode visitExcept(Except except, TranslationContext context) {
         RelationRHS left = this.process(except.getLeft(), context).to(RelationRHS.class);
         RelationRHS right = this.process(except.getRight(), context).to(RelationRHS.class);
+        DDlogType type = context.meet(left.getType(), right.getType());
+        left = this.convertType(left, type, context);
+        right = this.convertType(right, type, context);
+
         String relName = context.freshRelationName("except");
         DDlogRule rule = this.createRule(
                 except.getRight(), relName, right, DDlogRelationDeclaration.Role.Internal, context);
@@ -194,16 +242,19 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
 
     @Override
     protected DDlogIRNode visitIntersect(Intersect intersect, TranslationContext context) {
+        List<RelationRHS> convert = Linq.map(intersect.getRelations(), r -> this.process(r, context).to(RelationRHS.class));
+        List<DDlogType> types = Linq.map(convert, RelationRHS::getType);
+        DDlogType resultType = context.meet(types);
+
         RelationRHS result = null;
-        for (Relation rel: intersect.getRelations()) {
-            DDlogIRNode member = this.process(rel, context);
-            RelationRHS rhs = member.to(RelationRHS.class);
+        for (RelationRHS rhs: convert) {
+            rhs = this.convertType(rhs, resultType, context);
             String ruleName = context.freshRelationName("intersect");
             DDlogRule rule = this.createRule(intersect, ruleName, rhs, DDlogRelationDeclaration.Role.Internal, context);
             if (result == null)
                 result = new RelationRHS(intersect, context.freshLocalName("v"), rule.lhs.val.getType());
             result.addDefinition(new DDlogRHSLiteral(
-                    intersect, true, new DDlogAtom(rel, rule.lhs.relation, result.getRowVariable())));
+                    intersect, true, new DDlogAtom(rhs.getNode(), rule.lhs.relation, result.getRowVariable())));
         }
         assert result != null;
         return result;
