@@ -15,7 +15,7 @@ import com.facebook.presto.sql.tree.Node;
 
 import javax.annotation.Nullable;
 
-public class DDlogTDouble extends DDlogType implements IsNumericType {
+public class DDlogTDouble extends DDlogType implements IsNumericType, IDDlogBaseType {
     private DDlogTDouble(@Nullable Node node, boolean mayBeNull) { super(node, mayBeNull); }
 
     @Override

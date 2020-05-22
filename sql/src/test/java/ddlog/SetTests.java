@@ -3,8 +3,6 @@ package ddlog;
 import com.vmware.ddlog.translator.TranslationException;
 import org.junit.Test;
 
-import java.util.Arrays;
-
 public class SetTests extends BaseQueriesTest {
     @Test
     public void unionTest() {
@@ -12,12 +10,30 @@ public class SetTests extends BaseQueriesTest {
         String program = this.header(false) +
                 this.relations(false) +
                 "relation Rtmp[Tt2]\n" +
-                "relation Runion[Tt2]\n" +
                 "relation Rtmp0[Tt2]\n" +
+                "relation Runion[Tt2]\n" +
                 "output relation Rv0[Tt2]\n" +
-                "Runion[v1] :- Rt1[v],var v0 = Tt2{.column1 = v.column1},var v1 = v0.\n" +
-                "Runion[v1] :- Rt2[v2],var v3 = Tt2{.column1 = v2.column1},var v1 = v3.\n" +
-                "Rv0[v4] :- Runion[v1],var v4 = v1.";
+                "Runion[v3] :- Rt1[v],var v0 = Tt2{.column1 = v.column1},var v3 = v0.\n" +
+                "Runion[v3] :- Rt2[v1],var v2 = Tt2{.column1 = v1.column1},var v3 = v2.\n" +
+                "Rv0[v4] :- Runion[v3],var v4 = v3.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
+    public void unionMixTest() {
+        String query = "create view v0 as SELECT DISTINCT column1 FROM t1 UNION SELECT DISTINCT column1 FROM t4";
+        String program = this.header(false) +
+                "typedef TRtmp0 = TRtmp0{column1:Option<signed<64>>}\n" +
+                this.relations(false) +
+                "relation Rtmp[Tt2]\n" +
+                "relation Rtmp0[TRtmp0]\n" +
+                "relation Rsource[Tt2]\n" +
+                "relation Runion[TRtmp0]\n" +
+                "output relation Rv0[TRtmp0]\n" +
+                "Rsource[v3] :- Rt1[v],var v0 = Tt2{.column1 = v.column1},var v3 = v0.\n" +
+                "Runion[v4] :- Rsource[v3],var v0 = TRtmp0{.column1 = Some{.x = v3.column1}},var v4 = v0.\n" +
+                "Runion[v4] :- Rt4[v1],var v2 = TRtmp0{.column1 = v1.column1},var v4 = v2.\n" +
+                "Rv0[v5] :- Runion[v4],var v5 = v4.";
         this.testTranslation(query, program);
     }
 
@@ -27,13 +43,32 @@ public class SetTests extends BaseQueriesTest {
         String program = this.header(false) +
                 this.relations(false) +
                 "relation Rtmp[Tt2]\n" +
-                "relation Rintersect[Tt2]\n" +
                 "relation Rtmp0[Tt2]\n" +
+                "relation Rintersect[Tt2]\n" +
                 "relation Rintersect1[Tt2]\n" +
                 "output relation Rv0[Tt2]\n" +
-                "Rintersect[v1] :- Rt1[v],var v0 = Tt2{.column1 = v.column1},var v1 = v0.\n" +
-                "Rintersect1[v5] :- Rt2[v3],var v4 = Tt2{.column1 = v3.column1},var v5 = v4.\n" +
-                "Rv0[v6] :- Rintersect[v2],Rintersect1[v2],var v6 = v2.";
+                "Rintersect[v3] :- Rt1[v],var v0 = Tt2{.column1 = v.column1},var v3 = v0.\n" +
+                "Rintersect1[v5] :- Rt2[v1],var v2 = Tt2{.column1 = v1.column1},var v5 = v2.\n" +
+                "Rv0[v6] :- Rintersect[v4],Rintersect1[v4],var v6 = v4.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
+    public void intersectMixTest() {
+        String query = "create view v0 as SELECT DISTINCT column1 FROM t1 INTERSECT SELECT DISTINCT column1 FROM t4";
+        String program = this.header(false) +
+                "typedef TRtmp0 = TRtmp0{column1:Option<signed<64>>}\n" +
+                this.relations(false) +
+                "relation Rtmp[Tt2]\n" +
+                "relation Rtmp0[TRtmp0]\n" +
+                "relation Rsource[Tt2]\n" +
+                "relation Rintersect[TRtmp0]\n" +
+                "relation Rintersect1[TRtmp0]\n" +
+                "output relation Rv0[TRtmp0]\n" +
+                "Rsource[v3] :- Rt1[v],var v0 = Tt2{.column1 = v.column1},var v3 = v0.\n" +
+                "Rintersect[v4] :- Rsource[v3],var v0 = TRtmp0{.column1 = Some{.x = v3.column1}},var v4 = v0.\n" +
+                "Rintersect1[v6] :- Rt4[v1],var v2 = TRtmp0{.column1 = v1.column1},var v6 = v2.\n" +
+                "Rv0[v7] :- Rintersect[v5],Rintersect1[v5],var v7 = v5.";
         this.testTranslation(query, program);
     }
 
@@ -63,29 +98,47 @@ public class SetTests extends BaseQueriesTest {
         String program = this.header(true) +
                 this.relations(true) +
                 "relation Rtmp[Tt2]\n" +
-                "relation Runion[Tt2]\n" +
                 "relation Rtmp0[Tt2]\n" +
+                "relation Runion[Tt2]\n" +
                 "output relation Rv0[Tt2]\n" +
-                "Runion[v1] :- Rt1[v],var v0 = Tt2{.column1 = v.column1},var v1 = v0.\n" +
-                "Runion[v1] :- Rt2[v2],var v3 = Tt2{.column1 = v2.column1},var v1 = v3.\n" +
-                "Rv0[v4] :- Runion[v1],var v4 = v1.";
+                "Runion[v3] :- Rt1[v],var v0 = Tt2{.column1 = v.column1},var v3 = v0.\n" +
+                "Runion[v3] :- Rt2[v1],var v2 = Tt2{.column1 = v1.column1},var v3 = v2.\n" +
+                "Rv0[v4] :- Runion[v3],var v4 = v3.";
         this.testTranslation(query, program, true);
     }
 
-    //@Test
-    public void unionMixTest() {
-        // TODO: this is currently broken.
-        String query0 = "create table t4(column1 integer)";
-        String query1 = "create view v0 as SELECT DISTINCT column1 FROM t1 UNION SELECT DISTINCT column1 FROM t4";
+    @Test
+    public void exceptMixTest() {
+        String query = "create view v0 as SELECT DISTINCT column1 FROM t1 EXCEPT SELECT DISTINCT column1 FROM t4";
         String program = this.header(false) +
+                "typedef TRtmp0 = TRtmp0{column1:Option<signed<64>>}\n" +
                 this.relations(false) +
                 "relation Rtmp[Tt2]\n" +
-                "output relation Runion[Tt2]\n" +
-                "relation Rtmp0[Tt2]\n" +
-                "output relation Rv0[Tt2]\n" +
-                "Runion[v1] :- Rt1[v],var v0 = Tt2{.column1 = v.column1},var v1 = v0.\n" +
-                "Runion[v1] :- Rt2[v2],var v3 = Tt2{.column1 = v2.column1},var v1 = v3.\n" +
-                "Rv0[v4] :- Runion[v1],var v4 = v1.";
-        this.testTranslation(Arrays.asList(query0, query1), program, false);
+                "relation Rtmp0[TRtmp0]\n" +
+                "relation Rsource[Tt2]\n" +
+                "relation Rexcept[TRtmp0]\n" +
+                "output relation Rv0[TRtmp0]\n" +
+                "Rsource[v3] :- Rt1[v],var v0 = Tt2{.column1 = v.column1},var v3 = v0.\n" +
+                "Rexcept[v4] :- Rt4[v1],var v2 = TRtmp0{.column1 = v1.column1},var v4 = v2.\n" +
+                "Rv0[v5] :- Rsource[v3],var v0 = TRtmp0{.column1 = Some{.x = v3.column1}},var v4 = v0,not Rexcept[v4],var v5 = v0.";
+        this.testTranslation(query, program, false);
+    }
+
+    @Test
+    public void exceptMixTest2() {
+        String query = "create view v0 as SELECT DISTINCT column1, column2 FROM t1 EXCEPT SELECT DISTINCT column1, column2 FROM t4";
+        String program = this.header(false) +
+                "typedef TRtmp = TRtmp{column1:signed<64>, column2:string}\n" +
+                this.relations(false) +
+                "relation Rtmp[TRtmp]\n" +
+                "relation Rtmp0[Tt4]\n" +
+                "relation Rsource[TRtmp]\n" +
+                "relation Rexcept[Tt4]\n" +
+                "output relation Rv0[Tt4]\n" +
+                "Rsource[v3] :- Rt1[v],var v0 = TRtmp{.column1 = v.column1,.column2 = v.column2},var v3 = v0.\n" +
+                "Rexcept[v4] :- Rt4[v1],var v2 = Tt4{.column1 = v1.column1,.column2 = v1.column2},var v4 = v2.\n" +
+                "Rv0[v5] :- Rsource[v3],var v0 = Tt4{.column1 = Some{.x = v3.column1},.column2 = Some{.x = v3.column2}}," +
+                "var v4 = v0,not Rexcept[v4],var v5 = v0.";
+        this.testTranslation(query, program, false);
     }
 }

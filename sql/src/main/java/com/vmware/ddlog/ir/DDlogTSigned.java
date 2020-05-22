@@ -17,7 +17,8 @@ import javax.annotation.Nullable;
 import java.math.BigInteger;
 import java.util.Objects;
 
-public class DDlogTSigned extends DDlogType implements IsNumericType, IBoundedNumericType {
+public class DDlogTSigned extends DDlogType
+        implements IsNumericType, IBoundedNumericType, IDDlogBaseType {
     private final int width;
     public static final DDlogTSigned signed32 = new DDlogTSigned(null, 32, false);
     public static final DDlogTSigned signed64 = new DDlogTSigned(null, 64, false);

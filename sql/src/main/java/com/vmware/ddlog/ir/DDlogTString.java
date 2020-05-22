@@ -15,7 +15,7 @@ import com.facebook.presto.sql.tree.Node;
 
 import javax.annotation.Nullable;
 
-public class DDlogTString extends DDlogType {
+public class DDlogTString extends DDlogType implements IDDlogBaseType {
     public static DDlogTString instance = new DDlogTString(null,false);
 
     private DDlogTString(@Nullable Node node, boolean mayBeNull) { super(node, mayBeNull); }
