@@ -155,10 +155,12 @@ impl<V, E> Observer<Update<V>, E> for AccumulatingObserver<Update<V>, V, E>
     }
 
 
+    /// signals that the source has been removed, clears the accumulated state.
     fn on_completed(&mut self) -> Result<(), E> {
         trace!("AccumulatingObserver({})::on_completed", self.id);
-        let mut guard = self.observer.lock().unwrap();
-        guard.on_completed()
+        let _ = self.buffer.take();
+        let _ = self.data.drain();
+        Ok(())
     }
 }
 
