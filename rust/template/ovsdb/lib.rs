@@ -390,33 +390,15 @@ fn record_into_field(rec: Record) -> Result<Value, String> {
                     .map(|x| Value::Number(Number::from(x)))
             }
         }
-        Record::NamedStruct(n, mut v) => {
-            if n.as_ref() == "std.Left" {
-                match v.remove(0) {
-                    (_, Record::Int(i)) => {
-                        let uuid = uuid_from_int(&i)?;
-                        Ok(Value::Array(vec![
-                            Value::String("uuid".to_owned()),
-                            Value::String(uuid),
-                        ]))
-                    }
-                    _ => Err(format!("Unexpected uuid value: {:?}", v)),
-                }
-            } else if n.as_ref() == "std.Right" {
-                match v.remove(0) {
-                    (_, Record::String(s)) => Ok(Value::Array(vec![
-                        Value::String("named-uuid".to_owned()),
-                        Value::String(s),
-                    ])),
-                    _ => Err(format!("Unexpected named-uuid value: {:?}", v)),
-                }
-            } else {
-                Err(format!(
-                    "Cannot convert complex field {} = {:?} to JSON value",
-                    n, v
-                ))
-            }
-        }
+        // Option<> is deserialized into a set of size 0 or 1.
+        Record::NamedStruct(name, _) if name == "std.None" => Ok(Value::Array(vec![
+            Value::String("set".to_owned()),
+            Value::Array(vec![]),
+        ])),
+        Record::NamedStruct(name, mut fields) if name == "std.Some" => Ok(Value::Array(vec![
+            Value::String("set".to_owned()),
+            Value::Array(vec![record_into_field(fields.remove(0).1)?]),
+        ])),
         Record::Array(CollectionKind::Set, v) => {
             let elems: Result<Vec<Value>, String> = v.into_iter().map(record_into_field).collect();
             Ok(Value::Array(vec![

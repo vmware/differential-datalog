@@ -320,7 +320,7 @@ mkComplexType tkind t@ComplexType{..} = do
     key <- mkBaseType tkind keyComplexType
     case (min_bound, max_bound) of
          (1,1) -> return key
-         --(0,1) -> return $ "option_t<" <> key <> ">"
+         (0,1) -> return $ "Option<" <> key <> ">"
          _     -> do
              case valueComplexType of
                   Nothing -> return $ "Set<" <> key <> ">"
