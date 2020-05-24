@@ -140,11 +140,12 @@ impl<V, E> Observable<Update<V>, E> for DistributingAccumulator<Update<V>, V, E>
     }
 }
 
-/// The methods for the Observer trait are delegated to the AccumulatingObserver
+/// All calls except `on_completed` of the Observer trait are delegated to the AccumulatingObserver.
+/// `on_completed` triggers the deletion of the accumulated state for all observers.
 impl<V, E> Observer<Update<V>, E> for DistributingAccumulator<Update<V>, V, E>
     where
-        V: Debug + Send + Eq + Hash + Clone,
-        E: Debug + Send
+        V: Debug + Send + Eq + Hash + Clone + 'static,
+        E: Debug + Send + 'static
 {
     fn on_start(&mut self) -> Result<(), E> {
         trace!("DistributingAccumulator({})::on_start", self.id);
@@ -161,8 +162,24 @@ impl<V, E> Observer<Update<V>, E> for DistributingAccumulator<Update<V>, V, E>
         self.observer.on_updates(updates)
     }
 
+    /// sends a deletion update to all observers, thus clearing the accumulated state.
     fn on_completed(&mut self) -> Result<(), E> {
         trace!("DistributingAccumulator({})::on_completed", self.id);
+        let mut distributor = self.distributor.lock().unwrap();
+
+        let mut delete_updates = self.get_current_state().into_iter()
+            .flat_map(|(relid, vs)|
+                vs.into_iter().map(|v| Update::DeleteValue { relid, v }).collect::<Vec<_>>())
+            .collect::<Vec<_>>();
+
+        if !delete_updates.is_empty() {
+            let updates = delete_updates.drain(..).into_iter();
+            trace!("DistributingAccumulator({:?}) clearing state of observers: {:?}", self.id, updates);
+            let _ = distributor.on_start();
+            let _ = distributor.on_updates(Box::new(updates));
+            let _ = distributor.on_commit();
+        }
+
         self.observer.on_completed()
     }
 }
@@ -254,8 +271,14 @@ pub mod tests {
         assert_eq!(mock2.lock().unwrap().called_on_commit, 1);
 
         assert_eq!(accumulator.on_completed(), Ok(()));
-        assert_eq!(mock1.lock().unwrap().called_on_completed, 1);
-        assert_eq!(mock2.lock().unwrap().called_on_completed, 1);
+        assert_eq!(mock1.lock().unwrap().called_on_start, 2);
+        assert_eq!(mock2.lock().unwrap().called_on_start, 2);
+        assert_eq!(mock1.lock().unwrap().called_on_updates, 6);
+        assert_eq!(mock2.lock().unwrap().called_on_updates, 6);
+        assert_eq!(mock1.lock().unwrap().called_on_commit, 2);
+        assert_eq!(mock2.lock().unwrap().called_on_commit, 2);
+        assert_eq!(mock1.lock().unwrap().called_on_completed, 0);
+        assert_eq!(mock2.lock().unwrap().called_on_completed, 0);
     }
 
     /// Test multiple indirect subscriptions via `create_observable` to a `DistributingAccumulator`.
@@ -323,8 +346,14 @@ pub mod tests {
         assert_eq!(mock2.lock().unwrap().called_on_commit, 2);
 
         assert_eq!(accumulator.on_completed(), Ok(()));
-        assert_eq!(mock1.lock().unwrap().called_on_completed, 1);
-        assert_eq!(mock2.lock().unwrap().called_on_completed, 1);
+        assert_eq!(mock1.lock().unwrap().called_on_start, 3);
+        assert_eq!(mock2.lock().unwrap().called_on_start, 3);
+        assert_eq!(mock1.lock().unwrap().called_on_updates, 20);
+        assert_eq!(mock2.lock().unwrap().called_on_updates, 20);
+        assert_eq!(mock1.lock().unwrap().called_on_commit, 3);
+        assert_eq!(mock2.lock().unwrap().called_on_commit, 3);
+        assert_eq!(mock1.lock().unwrap().called_on_completed, 0);
+        assert_eq!(mock2.lock().unwrap().called_on_completed, 0);
     }
 
     /// when a new downstream consumer subscribes, it should be updated with the current values
@@ -386,5 +415,47 @@ pub mod tests {
         assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 3 })));
         assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 4 })));
     }
-}
 
+    /// when an upstream source calls `on_completed`,
+    /// the accumulated state should be removed from observers
+    #[test]
+    fn test_delete_updates() {
+        let mut accumulator = DistributingAccumulator::<Update<usize>, usize, ()>::new();
+        let mock1 = Arc::new(Mutex::new(UpdatesMockObserver::new()));
+        let mock2 = Arc::new(Mutex::new(UpdatesMockObserver::new()));
+
+        assert!(accumulator.subscribe(Box::new(mock1.clone())).is_ok());
+        assert_eq!(accumulator.on_start(), Ok(()));
+        assert_eq!(accumulator.on_updates(get_usize_updates_1()), Ok(()));
+        assert_eq!(accumulator.on_updates(get_usize_updates_3()), Ok(()));
+        assert_eq!(accumulator.on_commit(), Ok(()));
+
+        assert_eq!(accumulator.on_start(), Ok(()));
+        assert_eq!(accumulator.on_updates(get_usize_delete_updates_1()), Ok(()));
+        assert_eq!(accumulator.on_commit(), Ok(()));
+
+        assert!(accumulator.subscribe(Box::new(mock2.clone())).is_ok());
+        let received_updates = mock2.lock().unwrap().received_updates.clone();
+        assert_eq!(received_updates.len(), 4);
+        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 1 })));
+        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 2 })));
+        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 3 })));
+        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 4 })));
+
+        assert_eq!(accumulator.on_completed(), Ok(()));
+
+        let received_updates = mock1.lock().unwrap().received_updates.clone();
+        assert_eq!(received_updates.len(), 14); // 3 + 4 inserts, 3 manual deletions, 4 automatic deletions
+        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 1 })));
+        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 2 })));
+        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 3 })));
+        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 4 })));
+
+        let received_updates = mock2.lock().unwrap().received_updates.clone();
+        assert_eq!(received_updates.len(), 8); // 4 inserts, 4 automatic deletions
+        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 1 })));
+        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 2 })));
+        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 3 })));
+        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 4 })));
+    }
+}
