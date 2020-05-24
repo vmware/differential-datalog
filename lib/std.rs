@@ -145,6 +145,62 @@ impl<T> From<std_Option<T>> for Option<T> {
     }
 }
 
+impl<A: record::FromRecord + serde::de::DeserializeOwned + Default> record::FromRecord
+    for std_Option<A>
+{
+    fn from_record(val: &record::Record) -> result::Result<Self, String> {
+        match val {
+            record::Record::PosStruct(constr, args) => match constr.as_ref() {
+                "std.None" if args.len() == 0 => Ok(std_Option::std_None {}),
+                "std.Some" if args.len() == 1 => Ok(std_Option::std_Some {
+                    x: <A>::from_record(&args[0])?,
+                }),
+                c => result::Result::Err(format!(
+                    "unknown constructor {} of type std_Option in {:?}",
+                    c, *val
+                )),
+            },
+            record::Record::NamedStruct(constr, args) => match constr.as_ref() {
+                "std.None" => Ok(std_Option::std_None {}),
+                "std.Some" => Ok(std_Option::std_Some {
+                    x: record::arg_extract::<A>(args, "x")?,
+                }),
+                c => result::Result::Err(format!(
+                    "unknown constructor {} of type std_Option in {:?}",
+                    c, *val
+                )),
+            },
+            /* `Option` encoded as an array of size 0 or 1.  This is, for instance, useful when
+             * interfacing with OVSDB. */
+            record::Record::Array(kind, records) => match (records.len()) {
+                0 => Ok(std_Option::std_None {}),
+                1 => Ok(std_Option::std_Some {
+                    x: A::from_record(&records[0])?,
+                }),
+                n => Err(format!(
+                    "cannot deserialize std::Option from container of size {:?}",
+                    n
+                )),
+            },
+            record::Record::Serialized(format, s) => {
+                if format == "json" {
+                    serde_json::from_str(&*s).map_err(|e| format!("{}", e))
+                } else {
+                    result::Result::Err(format!("unsupported serialization format '{}'", format))
+                }
+            }
+            v => {
+                /* Finally, assume that the record contains the inner value of a `Some`.
+                 * XXX: this introduces ambiguity, as an array could represent either the inner
+                 * value or an array encoding of `Option`. */
+                Ok(std_Option::std_Some {
+                    x: A::from_record(&v)?,
+                })
+            }
+        }
+    }
+}
+
 pub fn std_option_unwrap_or_default<T: Default + Clone>(opt: &std_Option<T>) -> T {
     match opt {
         std_Option::std_Some { x } => x.clone(),

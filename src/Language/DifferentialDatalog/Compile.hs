@@ -623,7 +623,7 @@ mkTypedef d tdef@TypeDef{..} =
                              (nest' $ vcat $ punctuate comma fields)                                   $$
                              "}"                                                                       $$
                              impl_abomonate                                                            $$
-                             mkFromRecord tdef                                                         $$
+                             mkFromRecord d tdef                                                       $$
                              mkStructIntoRecord tdef                                                   $$
                              mkStructMutator tdef                                                      $$
                              display                                                                   $$
@@ -635,7 +635,7 @@ mkTypedef d tdef@TypeDef{..} =
                              (nest' $ vcat $ punctuate comma constructors)                             $$
                              "}"                                                                       $$
                              impl_abomonate                                                            $$
-                             mkFromRecord tdef                                                         $$
+                             mkFromRecord d tdef                                                       $$
                              mkEnumIntoRecord tdef                                                     $$
                              mkEnumMutator tdef                                                        $$
                              display                                                                   $$
@@ -765,8 +765,9 @@ impl <T: FromRecord> FromRecord for DummyEnum<T> {
     }
 }
 -}
-mkFromRecord :: TypeDef -> Doc
-mkFromRecord t@TypeDef{..} =
+mkFromRecord :: DatalogProgram -> TypeDef -> Doc
+mkFromRecord d t@TypeDef{..} | tdefGetCustomFromRecord d t = empty
+                             | otherwise =
     "impl" <+> targs_bounds <+> "record::FromRecord for" <+> rname (name t) <> targs <+> "{"                                    $$
     "    fn from_record(val: &record::Record) -> result::Result<Self, String> {"                                                $$
     "        match val {"                                                                                                       $$

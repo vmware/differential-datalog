@@ -51,6 +51,7 @@ typedefValidateAttrs d tdef@TypeDef{..} = do
     mapM_ (typedefValidateAttr d tdef) tdefAttrs
     _ <- tdefCheckSizeAttr d tdef
     _ <- tdefCheckCustomSerdeAttr d tdef
+    _ <- tdefCheckCustomFromRecord d tdef
     _ <- tdefCheckSharedRefAttr d tdef
     _ <- checkRustAttrs d tdefAttrs
     maybe (return ()) (typeValidateAttrs d) tdefType
@@ -71,6 +72,12 @@ typedefValidateAttr d TypeDef{..} attr = do
             let t = fromJust tdefType
             check d (isStruct d t) (pos attr)
                 $ "'custom_serde' attribute cannot be applied to type aliases."
+         "custom_from_record" -> do
+            check d (isJust tdefType) (pos attr)
+                $ "Extern types cannot have a 'custom_from_record' attribute."
+            let t = fromJust tdefType
+            check d (isStruct d t) (pos attr)
+                $ "'custom_from_record' attribute cannot be applied to type aliases."
          "shared_ref" -> do
             check d (isNothing tdefType) (pos attr)
                 $ "'sharef_ref' attribute is only applicable to extern types."
@@ -154,6 +161,23 @@ tdefCheckCustomSerdeAttr d TypeDef{..} =
 tdefGetCustomSerdeAttr :: DatalogProgram -> TypeDef -> Bool
 tdefGetCustomSerdeAttr d tdef = 
     case tdefCheckCustomSerdeAttr d tdef of
+         Left e  -> error e
+         Right b -> b
+
+{- 'custom_from_record' attribute: Tells DDlog not to generate `FromRecord`
+ - implementation for a type.  The user must write their own implementations in
+ - Rust. -}
+tdefCheckCustomFromRecord :: (MonadError String me) => DatalogProgram -> TypeDef -> me Bool
+tdefCheckCustomFromRecord d TypeDef{..} =
+    case find ((== "custom_from_record") . name) tdefAttrs of
+         Nothing   -> return False
+         Just attr -> do check d (attrVal attr == eTrue) (pos attr)
+                               "The value of 'custom_from_record' attribute must be 'true' or empty"
+                         return True
+
+tdefGetCustomFromRecord :: DatalogProgram -> TypeDef -> Bool
+tdefGetCustomFromRecord d tdef = 
+    case tdefCheckCustomFromRecord d tdef of
          Left e  -> error e
          Right b -> b
 

@@ -19,7 +19,7 @@ typedef s128 = signed<128>
 
 typedef usize = u64
 
-/* 
+/*
  * Weight of a record in a DDlog collection.  This type is internal to the 
  * DDlog engine and is only visible to the programmer inside the `Inspect`
  * operator.  Positive weight indicates that the record is being added
@@ -80,6 +80,8 @@ extern function pow32(base:'A, exp: bit<32>): 'A
  */
 
 #[rust="serde(from=\"Option<A>\", into=\"Option<A>\", bound(serialize=\"A: Clone+Serialize\"))"]
+// This type has a custrom FromRecord implementation in std.rs.
+#[custom_from_record]
 typedef Option<'A> = None
                    | Some{x: 'A}
 
