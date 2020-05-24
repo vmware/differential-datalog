@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap};
 use std::fmt::Debug;
 use std::sync::Arc;
 
@@ -19,7 +19,7 @@ use crate::observe::UpdatesObservable;
 /// An outlet streams a subset of DDlog tables to an observer.
 #[derive(Debug)]
 pub struct Outlet {
-    tables: HashSet<RelId>,
+    tables: BTreeSet<RelId>,
     observer: SharedObserver<OptionalObserver<ObserverBox<Update<DDValue>, String>>>,
 }
 
@@ -56,7 +56,7 @@ where
     /// Add a new outlet that streams a subset of the tables.
     pub fn add_stream(
         &mut self,
-        tables: HashSet<RelId>,
+        tables: BTreeSet<RelId>,
     ) -> UpdatesObservable<Update<DDValue>, String> {
         trace!("DDlogServer({})::add_stream", self.id);
 

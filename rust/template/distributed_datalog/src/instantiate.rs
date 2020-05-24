@@ -5,22 +5,23 @@
 //! `DDlogServer` instance, a `TcpReceiver`, a `TxnMux`, and file sinks
 //! and sources if desired.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::fs::File;
 use std::net::SocketAddr;
 use std::path::Path;
+use std::sync::{Arc, Mutex};
 
 use differential_datalog::ddval::DDValue;
 use differential_datalog::program::RelId;
 use differential_datalog::program::Update;
 use differential_datalog::record::Record;
-use differential_datalog::DDlog;
+use differential_datalog::{DDlog, DDlogConvert};
 
 use crate::accumulate::Accumulator;
 use crate::accumulate::DistributingAccumulator;
 use crate::observe::Observable;
+use crate::observe::SharedObserver;
 use crate::schema::Addr;
 use crate::schema::Node;
 use crate::schema::NodeCfg;
@@ -37,7 +38,7 @@ use crate::DDlogServer;
 
 /// A mapping from member address to relation IDs used for describing
 /// output relationships.
-pub type Outputs = BTreeMap<Addr, HashSet<RelId>>;
+pub type Outputs = BTreeMap<Addr, BTreeSet<RelId>>;
 /// A mapping from abstract nodes to actual members in the system.
 pub type Assignment = BTreeMap<Node, Addr>;
 
@@ -87,8 +88,8 @@ fn deduce_redirects(config: &NodeCfg) -> HashMap<RelId, RelId> {
 
 /// Create a `DDlogServer` as per the given node configuration.
 fn create_server<P>(node_cfg: &NodeCfg) -> Result<DDlogServer<P>, String>
-where
-    P: Send + DDlog,
+    where
+        P: Send + DDlog,
 {
     let redirects = deduce_redirects(node_cfg);
     // TODO: Should the number of workers be made configurable?
@@ -99,8 +100,8 @@ where
 
 /// Create a transaction multiplexer wrapping the given server.
 fn create_txn_mux<P>(server: DDlogServer<P>) -> Result<TxnMux<Update<DDValue>, String>, String>
-where
-    P: Send + DDlog + 'static,
+    where
+        P: Send + DDlog + 'static,
 {
     let mut txnmux = TxnMux::new();
     txnmux
@@ -115,10 +116,12 @@ where
 fn add_tcp_senders<P>(
     server: &mut DDlogServer<P>,
     node_cfg: &NodeCfg,
+    accumulators: &mut HashMap<BTreeSet<RelId>, SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>>,
+    sinks: &mut HashMap<BTreeSet<RelId>, Vec<(SinkRealization<P::Convert>, usize)>>,
     assignment: &Assignment,
 ) -> Result<(), String>
-where
-    P: DDlog,
+    where
+        P: DDlog,
 {
     deduce_outputs(node_cfg, assignment)?
         .into_iter()
@@ -127,14 +130,23 @@ where
                 Addr::Ip(addr) => {
                     let sender = TcpSender::new(addr)
                         .map_err(|e| format!("failed to create TcpSender socket: {}", e))?;
+                    let sender = Arc::new(Mutex::new(sender));
 
                     // TODO: What should we really do if we can't subscribe?
-                    let mut accumulator = DistributingAccumulator::new();
-                    let _subscription = accumulator.subscribe(Box::new(sender))
+                    let accumulator = accumulators.entry(rel_ids.clone())
+                        .or_insert(Arc::new(Mutex::new(DistributingAccumulator::new())));
+
+                    let subscription = accumulator.lock().unwrap()
+                        .subscribe(Box::new(sender.clone()))
                         .map_err(|_| "failed to subscribe TCP sender".to_string())?;
+
+                    sinks.entry(rel_ids.clone())
+                        .or_insert(vec!())
+                        .insert(0, (SinkRealization::Node(sender.clone()), subscription));
+
                     server
                         .add_stream(rel_ids)
-                        .subscribe(Box::new(accumulator))
+                        .subscribe(Box::new(accumulator.clone()))
                         .map_err(|_| "failed to subscribe accumulator".to_string())
                 }
             }
@@ -143,12 +155,21 @@ where
 
 /// Add a `TcpReceiver` feeding the given server if one is needed given
 /// the provided node configuration.
-fn add_tcp_receiver(
+fn add_tcp_receiver<P>(
     txnmux: &mut TxnMux<Update<DDValue>, String>,
     addr: &SocketAddr,
-) -> Result<(), String> {
+    sources: &mut HashMap<BTreeSet<RelId>, Vec<(SourceRealization<P::Convert>, ())>>,
+) -> Result<(), String>
+    where
+        P: Send + DDlog + 'static,
+        P::Convert: Send,
+{
     let receiver =
         TcpReceiver::new(addr).map_err(|e| format!("failed to create TcpReceiver: {}", e))?;
+    let receiver = Arc::new(Mutex::new(receiver));
+    // an empty set indicates the TcpReceiver
+    sources.insert(BTreeSet::new(), vec!((SourceRealization::Node(receiver.clone()), ())));
+
     txnmux
         .add_observable(Box::new(receiver))
         .map_err(|_| "failed to register TcpReceiver with TxnMux".to_string())?;
@@ -157,7 +178,7 @@ fn add_tcp_receiver(
 
 /// Deduce a mapping from file sink to a list of relation IDs for the
 /// given node configuration.
-fn deduce_sinks_or_sources(node_cfg: &NodeCfg, sinks: bool) -> BTreeMap<&Path, HashSet<RelId>> {
+fn deduce_sinks_or_sources(node_cfg: &NodeCfg, sinks: bool) -> BTreeMap<&Path, BTreeSet<RelId>> {
     node_cfg
         .iter()
         .fold(BTreeMap::new(), |map, (relid, rel_cfgs)| {
@@ -182,27 +203,41 @@ fn deduce_sinks_or_sources(node_cfg: &NodeCfg, sinks: bool) -> BTreeMap<&Path, H
 
 /// Add file sinks to the given server object, as per the node
 /// configuration.
-fn add_file_sinks<P>(server: &mut DDlogServer<P>, node_cfg: &NodeCfg) -> Result<(), String>
-where
-    P: Send + DDlog + 'static,
-    P::Convert: Send,
+fn add_file_sinks<P>(
+    server: &mut DDlogServer<P>,
+    node_cfg: &NodeCfg,
+    accumulators: &mut HashMap<BTreeSet<RelId>, SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>>,
+    sinks: &mut HashMap<BTreeSet<RelId>, Vec<(SinkRealization<P::Convert>, usize)>>,
+) -> Result<(), String>
+    where
+        P: Send + DDlog + 'static,
+        P::Convert: Send,
 {
     deduce_sinks_or_sources(node_cfg, true)
         .iter()
         .try_for_each(|(path, rel_ids)| {
             let file = File::create(path)
                 .map_err(|e| format!("failed to create file {}: {}", path.display(), e))?;
-            let sink = FileSink::<P::Convert>::new(file);
+            let sink = Arc::new(Mutex::new(FileSink::<P::Convert>::new(file)));
 
-            let mut accumulator = DistributingAccumulator::new();
-            let _subscription = accumulator.subscribe(Box::new(sink))
-                .map_err(|_| { format!(
-                    "failed to subscribe file sink {} to accumulator",
-                    path.display()
-                 )
-             })?;
+            let accumulator = accumulators.entry(rel_ids.clone())
+                .or_insert(Arc::new(Mutex::new(DistributingAccumulator::new())));
+
+            let subscription = accumulator.lock().unwrap()
+                .subscribe(Box::new(sink.clone()))
+                .map_err(|_| {
+                    format!(
+                        "failed to subscribe file sink {} to accumulator",
+                        path.display()
+                    )
+                })?;
+
+            let _ = sinks.entry(rel_ids.clone())
+                .or_insert(vec!())
+                .insert(0, (SinkRealization::File(sink), subscription));
+
             server.add_stream(rel_ids.clone())
-                .subscribe(Box::new(accumulator))
+                .subscribe(Box::new(accumulator.clone()))
                 .map_err(|_| "failed to subscribe accumulator to DDlogServer".to_string())
         })
 }
@@ -212,22 +247,29 @@ where
 fn add_file_sources<P>(
     txnmux: &mut TxnMux<Update<DDValue>, String>,
     node_cfg: &NodeCfg,
+    sources: &mut HashMap<BTreeSet<RelId>, Vec<(SourceRealization<P::Convert>, ())>>,
 ) -> Result<(), String>
-where
-    P: DDlog + 'static,
-    P::Convert: Send,
+    where
+        P: DDlog + 'static,
+        P::Convert: Send,
 {
     deduce_sinks_or_sources(node_cfg, false)
         .iter()
-        .try_for_each(|(path, _rel_ids)| {
-            let mut source = FileSource::<P::Convert>::new(path);
+        .try_for_each(|(path, rel_ids)| {
+            let mut source = Arc::new(Mutex::new(FileSource::<P::Convert>::new(path)));
 
-            let mut accumulator = DistributingAccumulator::new();
-            let _subscription = accumulator.subscribe(txnmux.create_observer())
-                .map_err(|_| format!("failed to subscribe TxnMux to accumulator"))?;
+            let accumulator = Arc::new(Mutex::new(DistributingAccumulator::new()));
+            txnmux
+                .add_observable(Box::new(accumulator.clone()))
+                .map_err(|_| "failed to register Accumulator with TxnMux".to_string())?;
 
-            source.subscribe(Box::new(accumulator))
-                .map_err(|_| format!("failed to add file source {} to accumulator", path.display()))
+            let subscription = source.subscribe(Box::new(accumulator))
+                .map_err(|_| format!("failed to add file source {} to accumulator", path.display()))?;
+
+            sources.entry(rel_ids.clone())
+                .or_insert(vec!())
+                .insert(0, (SourceRealization::File(source), subscription));
+            Ok(())
         })
 }
 
@@ -240,32 +282,62 @@ fn realize<P>(
     addr: &Addr,
     node_cfg: &NodeCfg,
     assignment: &Assignment,
-) -> Result<Realization, String>
-where
-    P: Send + DDlog + 'static,
-    P::Convert: Send,
+) -> Result<Realization<P::Convert>, String>
+    where
+        P: Send + DDlog + 'static,
+        P::Convert: Send,
 {
     let mut server = create_server::<P>(&node_cfg)?;
-    add_tcp_senders(&mut server, node_cfg, assignment)?;
-    add_file_sinks(&mut server, node_cfg)?;
+    let mut sources = HashMap::new();
+    let mut accumulators = HashMap::new();
+    let mut sinks = HashMap::new();
+
+    add_tcp_senders(&mut server, node_cfg, &mut accumulators, &mut sinks, assignment)?;
+    add_file_sinks(&mut server, node_cfg, &mut accumulators, &mut sinks)?;
 
     let mut txnmux = create_txn_mux(server)?;
     match addr {
-        Addr::Ip(addr) => add_tcp_receiver(&mut txnmux, addr)?,
+        Addr::Ip(addr) => add_tcp_receiver::<P>(&mut txnmux, addr, &mut sources)?,
     }
-    add_file_sources::<P>(&mut txnmux, node_cfg)?;
+    add_file_sources::<P>(&mut txnmux, node_cfg, &mut sources)?;
 
-    Ok(Realization { txnmux })
+    Ok(Realization { sources, txnmux, accumulators, sinks })
+}
+
+/// All possible sources of a Realization
+enum SourceRealization<C>
+    where
+        C: DDlogConvert
+{
+    File(Arc<Mutex<FileSource<C>>>),
+    Node(Arc<Mutex<TcpReceiver<Update<DDValue>>>>),
+}
+
+/// All possible sinks of a Realization
+enum SinkRealization<C>
+    where
+        C: DDlogConvert
+{
+    File(SharedObserver<FileSink<C>>),
+    Node(SharedObserver<TcpSender<Update<DDValue>>>),
 }
 
 /// An object representing a realized configuration.
 ///
 /// Right now all that clients can do with an object of this type is
 /// dropping it to tear everything down.
-#[derive(Debug)]
-pub struct Realization {
-    /// The transaction multiplexer everything is registered to.
+pub struct Realization<C>
+    where
+        C: DDlogConvert,
+{
+    /// All sources of this realization and the subscription the node has to them
+    sources: HashMap<BTreeSet<RelId>, Vec<(SourceRealization<C>, ())>>,
+    /// The transaction multiplexer as input to the DDLogServer
     txnmux: TxnMux<Update<DDValue>, String>,
+    /// All sink accumulators of this realization to connect new nodes to
+    accumulators: HashMap<BTreeSet<RelId>, SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>>,
+    /// All sinks of this realization with their subscription
+    sinks: HashMap<BTreeSet<RelId>, Vec<(SinkRealization<C>, usize)>>,
 }
 
 /// Instantiate a configuration on a particular node under the given
@@ -274,10 +346,10 @@ pub fn instantiate<P>(
     sys_cfg: SysCfg,
     addr: &Addr,
     assignment: &Assignment,
-) -> Result<Vec<Realization>, String>
-where
-    P: Send + DDlog + 'static,
-    P::Convert: Send,
+) -> Result<Vec<Realization<P::Convert>>, String>
+    where
+        P: Send + DDlog + 'static,
+        P::Convert: Send,
 {
     assignment
         .iter()
@@ -304,7 +376,6 @@ mod tests {
 
     use maplit::btreemap;
     use maplit::btreeset;
-    use maplit::hashset;
 
     use uuid::Uuid;
 
@@ -388,7 +459,7 @@ mod tests {
 
         let outputs = deduce_outputs(&node0_cfg, &assignment).unwrap();
         let expected = btreemap! {
-            node1.clone() => hashset! { 0 },
+            node1.clone() => btreeset! { 0 },
         };
         assert_eq!(outputs, expected);
 
@@ -441,13 +512,13 @@ mod tests {
 
         let outputs = deduce_outputs(&node0_cfg, &assignment).unwrap();
         let expected = btreemap! {
-            node2.clone() => hashset! { 1 },
+            node2.clone() => btreeset! { 1 },
         };
         assert_eq!(outputs, expected);
 
         let outputs = deduce_outputs(&node1_cfg, &assignment).unwrap();
         let expected = btreemap! {
-            node2.clone() => hashset! { 3 },
+            node2.clone() => btreeset! { 3 },
         };
         assert_eq!(outputs, expected);
 
