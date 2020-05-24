@@ -81,8 +81,8 @@ fn process<C>(
     fd: Arc<Fd>,
     mut observer: ObserverBox<Update<DDValue>, String>,
 ) -> ObserverBox<Update<DDValue>, String>
-where
-    C: DDlogConvert,
+    where
+        C: DDlogConvert,
 {
     // TODO: The logic here somewhat resembles that in
     //       `cmd_parser/lib.rs`. We may want to deduplicate at some
@@ -139,8 +139,8 @@ struct State {
 /// An object adapting a file to the `Observable` interface.
 #[derive(Debug)]
 pub struct File<C>
-where
-    C: DDlogConvert,
+    where
+        C: DDlogConvert,
 {
     /// The file source's unique ID.
     id: usize,
@@ -153,14 +153,14 @@ where
 }
 
 impl<C> File<C>
-where
-    C: DDlogConvert,
+    where
+        C: DDlogConvert,
 {
     /// Create a new adapter streaming data from the file at the given
     /// `path`.
     pub fn new<P>(path: P) -> Self
-    where
-        P: Into<PathBuf>,
+        where
+            P: Into<PathBuf>,
     {
         Self {
             id: Id::<()>::new().get(),
@@ -193,9 +193,28 @@ where
     }
 }
 
+impl<C> Drop for File<C>
+    where
+        C: DDlogConvert,
+{
+    fn drop(&mut self) {
+        let _ = self.unsubscribe(&());
+        if let Some(state) = self.state.take() {
+            if let Err(e) = state.fd.close() {
+                error!("failed to close adapted file: {}", e);
+                // We continue as there is not much we can do about
+                // the error. There shouldn't be any chance that we
+                // actually fail the close while the thread is still
+                // blocking on a read, but who knows.
+            }
+        }
+    }
+}
+
+
 impl<C> Observable<Update<DDValue>, String> for File<C>
-where
-    C: DDlogConvert,
+    where
+        C: DDlogConvert,
 {
     type Subscription = ();
 

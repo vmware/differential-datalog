@@ -260,7 +260,7 @@ mod tests {
         assert_eq!(mock.lock().unwrap().as_ref().unwrap().called_on_commit, 2);
 
         assert_eq!(observer.on_completed(), Ok(()));
-        assert_eq!(mock.lock().unwrap().as_ref().unwrap().called_on_completed, 1);
+        assert_eq!(mock.lock().unwrap().as_ref().unwrap().called_on_completed, 0);
     }
 
     /// test accumulation of data across multiple commits
