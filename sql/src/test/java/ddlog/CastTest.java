@@ -145,4 +145,167 @@ public class CastTest extends BaseQueriesTest {
         String program = "";
         this.testTranslation(query, program);
     }
+    
+    @Test
+    public void testCastIntToFloatWithNull() {
+        String query = "create view v0 as SELECT DISTINCT CAST(t1.column1 AS FLOAT) AS f FROM t1";
+        String program = this.header(true) +
+                "typedef TRtmp = TRtmp{f:Option<float>}\n" +
+                this.relations(true) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.f = match(v.column1) {None{}: Option<signed<64>> -> None{}: Option<float>,\n" +
+                "Some{.x = var x} -> Some{.x = x as float}\n" +
+                "}},var v1 = v0.";
+        this.testTranslation(query, program, true);
+    }
+
+    @Test
+    public void testCastIntToStringWithNull() {
+        String query = "create view v0 as SELECT DISTINCT CAST(t1.column1 AS VARCHAR) AS s FROM t1";
+        String program = this.header(true) +
+                "typedef TRtmp = TRtmp{s:Option<string>}\n" +
+                this.relations(true) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.s = match(v.column1) {None{}: Option<signed<64>> -> None{}: Option<string>,\n" +
+                "Some{.x = var x} -> Some{.x = [|${x}|]}\n" +
+                "}},var v1 = v0.";
+        this.testTranslation(query, program, true);
+    }
+
+    @Test
+    public void testCastStringToIntWithNull() {
+        String query = "create view v0 as SELECT DISTINCT CAST(t1.column2 AS INT) AS i FROM t1";
+        String program = this.header(true) +
+                "typedef TRtmp = TRtmp{i:Option<signed<64>>}\n" +
+                this.relations(true) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.i = match(v.column2) {None{}: Option<string> -> None{}: Option<signed<64>>,\n" +
+                "Some{.x = var x} -> Some{.x = option_unwrap_or_default(parse_dec_i64(x))}\n" +
+                "}},var v1 = v0.";
+        this.testTranslation(query, program, true);
+    }
+
+    @Test
+    public void testCastStringToFloatWithNull() {
+        String query = "create view v0 as SELECT DISTINCT CAST(t1.column2 AS REAL) AS d FROM t1";
+        String program = this.header(true) +
+                "typedef TRtmp = TRtmp{d:Option<double>}\n" +
+                this.relations(true) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.d = match(v.column2) {None{}: Option<string> -> None{}: Option<double>,\n" +
+                "Some{.x = var x} -> Some{.x = result_unwrap_or_default(parse_d(x))}\n" +
+                "}},var v1 = v0.";
+        this.testTranslation(query, program, true);
+    }
+
+    @Test
+    public void testCastStringToDateWithNull() {
+        String query = "create view v0 as SELECT DISTINCT CAST(t1.column2 AS DATE) AS d FROM t1";
+        String program = this.header(true) +
+                "typedef TRtmp = TRtmp{d:Option<Date>}\n" +
+                this.relations(true) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.d = match(v.column2) {None{}: Option<string> -> None{}: Option<Date>,\n" +
+                "Some{.x = var x} -> Some{.x = result_unwrap_or_default(string2date(x))}\n" +
+                "}},var v1 = v0.";
+        this.testTranslation(query, program, true);
+    }
+
+    @Test
+    public void testCastIntToDateWithNull() {
+        String query = "create view v0 as SELECT DISTINCT CAST(t1.column1 AS DATE) AS d FROM t1";
+        String program = this.header(true) +
+                "typedef TRtmp = TRtmp{d:Option<Date>}\n" +
+                this.relations(true) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.d = match(v.column1) {None{}: Option<signed<64>> -> None{}: Option<Date>,\n" +
+                "Some{.x = var x} -> Some{.x = result_unwrap_or_default(string2date([|${v.column1}|]))}\n" +
+                "}},var v1 = v0.";
+        this.testTranslation(query, program, true);
+    }
+
+    @Test
+    public void testCastStringToDateTimeWithNull() {
+        String query = "create view v0 as SELECT DISTINCT CAST(t1.column2 AS TIMESTAMP) AS t FROM t1";
+        String program = this.header(true) +
+                "typedef TRtmp = TRtmp{t:Option<DateTime>}\n" +
+                this.relations(true) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.t = match(v.column2) {None{}: Option<string> -> None{}: Option<DateTime>,\n" +
+                "Some{.x = var x} -> Some{.x = result_unwrap_or_default(string2datetime(x))}\n" +
+                "}},var v1 = v0.";
+        this.testTranslation(query, program, true);
+    }
+
+    @Test
+    public void testCastFloatToIntWithNull() {
+        String query = "create view v0 as SELECT DISTINCT CAST(t1.column4 AS INTEGER) AS i FROM t1";
+        String program = this.header(true) +
+                "typedef TRtmp = TRtmp{i:Option<signed<64>>}\n" +
+                this.relations(true) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.i = match(v.column4) {None{}: Option<double> -> None{}: Option<signed<64>>,\n" +
+                "Some{.x = var x} -> Some{.x = option_unwrap_or_default(int_from_d(x)) as signed<64>}\n" +
+                "}},var v1 = v0.";
+        this.testTranslation(query, program, true);
+    }
+
+    @Test
+    public void testCastDateToStringWithNull() {
+        String query = "create view v0 as SELECT DISTINCT CAST(t3.d AS VARCHAR) AS s FROM t3";
+        String program = this.header(true) +
+                "typedef TRtmp = TRtmp{s:Option<string>}\n" +
+                this.relations(true) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v1] :- Rt3[v],var v0 = TRtmp{.s = match(v.d) {None{}: Option<Date> -> None{}: Option<string>,\n" +
+                "Some{.x = var x} -> Some{.x = [|${x}|]}\n" +
+                "}},var v1 = v0.";
+        this.testTranslation(query, program, true);
+    }
+
+    @Test
+    public void testCastBoolToIntWithNull() {
+        String query = "create view v0 as SELECT DISTINCT CAST(t1.column3 AS INTEGER) AS i FROM t1";
+        String program = this.header(true) +
+                "typedef TRtmp = TRtmp{i:Option<signed<64>>}\n" +
+                this.relations(true) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.i = match(v.column3) {None{}: Option<bool> -> None{}: Option<signed<64>>,\n" +
+                "Some{.x = var x} -> Some{.x = if (x) {\n" +
+                "64'sd1} else {\n" +
+                "64'sd0}}\n" +
+                "}},var v1 = v0.";
+        this.testTranslation(query, program, true);
+    }
+
+    @Test
+    public void testCastIntToBoolWithNull() {
+        String query = "create view v0 as SELECT DISTINCT CAST(t1.column1 AS BOOLEAN) AS b FROM t1";
+        String program = this.header(true) +
+                "typedef TRtmp = TRtmp{b:Option<bool>}\n" +
+                this.relations(true) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.b = match(v.column1) {None{}: Option<signed<64>> -> None{}: Option<bool>,\n" +
+                "Some{.x = var x} -> Some{.x = (x != 64'sd0)}\n" +
+                "}},var v1 = v0.";
+        this.testTranslation(query, program, true);
+    }
+
+    @Test(expected = TranslationException.class)
+    public void testCastDateToBoolWithNull() {
+        String query = "create view v0 as SELECT DISTINCT CAST(t3.d AS BOOLEAN) AS b FROM t3";
+        String program = "";
+        this.testTranslation(query, program, true);
+    }
 }

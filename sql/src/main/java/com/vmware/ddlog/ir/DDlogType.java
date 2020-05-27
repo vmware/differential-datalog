@@ -12,6 +12,7 @@
 package com.vmware.ddlog.ir;
 
 import com.facebook.presto.sql.tree.Node;
+import com.vmware.ddlog.translator.TranslationException;
 import com.vmware.ddlog.util.Linq;
 
 import javax.annotation.Nullable;
@@ -74,6 +75,22 @@ public abstract class DDlogType extends DDlogNode {
         return result;
     }
 
+    /**
+     * Given a set of types check that they are all the same.
+     * Return one of them.
+     */
+    public static DDlogType sameType(List<DDlogType> types) {
+        if (types.isEmpty())
+            throw new RuntimeException("Empty set of types");
+        DDlogType result = types.get(0);
+        for (int i = 1; i < types.size(); i++) {
+            DDlogType ti = types.get(i);
+            if (!result.same(ti))
+                throw new TranslationException("Incompatible types: " + result + " and " + ti, result.getNode());
+        }
+        return result;
+    }
+
     public static DDlogType reduceType(DDlogType... types) {
         return reduceType(Linq.list(types));
     }
@@ -110,7 +127,7 @@ public abstract class DDlogType extends DDlogNode {
     /**
      * Get the None{} value of the option type corresponding to this type.
      */
-    public DDlogExpression getNone(Node node) {
+    public DDlogExpression getNone(@Nullable Node node) {
         return new DDlogENull(node, this.setMayBeNull(true));
     }
 
