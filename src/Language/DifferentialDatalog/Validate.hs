@@ -189,9 +189,16 @@ typeValidate d tvars (TUser p n args) = do
            "Expected " ++ show expect ++ " type arguments to " ++ n ++ ", found " ++ show actual
     mapM_ (typeValidate d tvars) args
     return ()
+typeValidate d tvars (TOpaque p n args) = do
+    t <- checkType p d n
+    let expect = length (tdefArgs t)
+    let actual = length args
+    check d (expect == actual) p $
+           "Expected " ++ show expect ++ " type arguments to " ++ n ++ ", found " ++ show actual
+    mapM_ (typeValidate d tvars) args
+    return ()
 typeValidate d tvars (TVar p v)       =
     check d (elem v tvars) p $ "Unknown type variable " ++ v
-typeValidate _ _     t                = error $ "typeValidate " ++ show t
 
 consValidate :: (MonadError String me) => DatalogProgram -> [String] -> Constructor -> me ()
 consValidate d tvars Constructor{..} = do
