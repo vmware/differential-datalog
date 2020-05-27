@@ -311,6 +311,34 @@ public class SimpleQueriesTest extends BaseQueriesTest {
     }
 
     @Test
+    public void testConcat() {
+        String query = "create view v3 as select distinct concat(t1.column1, t1.column2, t1.column3) as c from t1";
+        String program = this.header(false) +
+                "typedef TRtmp = TRtmp{c:string}\n" +
+                this.relations(false) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv3[TRtmp]\n" +
+                "Rv3[v1] :- Rt1[v],var v0 = TRtmp{.c = concat(concat([|${v.column1}|], v.column2), [|${v.column3}|])},var v1 = v0.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
+    public void testConcatWNull() {
+        String query = "create view v3 as select distinct concat(t1.column1, t1.column2, t1.column3) as c from t1";
+        String program = this.header(true) +
+                "typedef TRtmp = TRtmp{c:Option<string>}\n" +
+                this.relations(true) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv3[TRtmp]\n" +
+                "Rv3[v1] :- Rt1[v],var v0 = TRtmp{.c = concat_N(concat_N(match(v.column1) {None{}: Option<signed<64>> -> None{}: Option<string>,\n" +
+                "Some{.x = var x} -> Some{.x = [|${x}|]}\n" +
+                "}, v.column2), match(v.column3) {None{}: Option<bool> -> None{}: Option<string>,\n" +
+                "Some{.x = var x} -> Some{.x = [|${x}|]}\n" +
+                "})},var v1 = v0.";
+        this.testTranslation(query, program, true);
+    }
+
+    @Test
     public void testNestedWNull() {
         String query = "create view v3 as select distinct * from (select distinct * from t1 where column1 = 10) where column2 = 'something'";
         String program = this.header(true) +

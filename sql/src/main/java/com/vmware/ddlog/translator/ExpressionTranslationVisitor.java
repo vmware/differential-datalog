@@ -21,6 +21,7 @@ import com.vmware.ddlog.util.Utilities;
 import javax.annotation.Nullable;
 import java.math.BigInteger;
 import java.util.*;
+import java.util.function.Function;
 
 public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, TranslationContext> {
     public static DDlogExpression checkHandled(@Nullable DDlogExpression expression, Node node) {
@@ -44,6 +45,11 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
         if (type.is(DDlogTUnknown.class))
             expr.error("Cannot infer type for null");
         return new DDlogENull(expr.getNode(), type);
+    }
+
+    @Override
+    protected DDlogExpression visitCurrentTime(CurrentTime node, TranslationContext context) {
+        throw new TranslationException("DDlog programs are deterministic, and cannot use CurrentTime", node);
     }
 
     /**
@@ -71,6 +77,36 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
     }
 
     @Override
+    protected DDlogExpression visitDoubleLiteral(DoubleLiteral literal, TranslationContext context) {
+        return new DDlogEDouble(literal, literal.getValue());
+    }
+
+    /**
+     * Given an expression, if it is nullable unpack it and apply the wrapper then pack it again.
+     * Otherwise just apply the wrapper.
+     * @param original  Input expression.
+     * @param destType  Type of output expression.
+     * @param wrapper   A function that we need to apply to expression.
+     * @return          A expression that has the function applied.
+     */
+    protected static DDlogExpression wrapInMatch(
+            DDlogExpression original,
+            DDlogType destType,
+            Function<DDlogExpression, DDlogExpression> wrapper) {
+        DDlogType oType = original.getType();
+        if (!oType.mayBeNull)
+            return wrapper.apply(original);
+        List<DDlogEMatch.Case> cases = new ArrayList<DDlogEMatch.Case>();
+        Node node = original.getNode();
+        cases.add(new DDlogEMatch.Case(node, oType.getNone(node), destType.getNone(node)));
+        DDlogExpression wrap = wrapper.apply(new DDlogEVar(node, "x", oType.setMayBeNull(false)));
+        cases.add(new DDlogEMatch.Case(node,
+                wrapSome(new DDlogEVarDecl(node, "x", oType), oType),
+                wrapSome(wrap, destType)));
+        return new DDlogEMatch(node, original, cases);
+    }
+
+    @Override
     protected DDlogExpression visitCast(Cast node, TranslationContext context) {
         DDlogExpression e = this.process(node.getExpression(), context);
         DDlogType eType = e.getType();
@@ -84,7 +120,9 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
                     eType.is(DDlogTFloat.class) ||
                     eType.is(DDlogTDouble.class) ||
                     eType.is(DDlogTUser.class)) {
-                return new DDlogEString(node, "${" + e.toString() + "}");
+                Function<DDlogExpression, DDlogExpression> wrapper =
+                        ex -> new DDlogEString(node, "${" + ex.toString() + "}");
+                return wrapInMatch(e, destType, wrapper);
             } else {
                 throw new TranslationException("Unsupported cast to string", node);
             }
@@ -94,72 +132,94 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
                 String suffix = eType.is(DDlogTFloat.class) ? "f" : "d";
                 // I am lying here, the result is actually Result<>,
                 // but the unwrap below will remove it.
-                DDlogExpression parse = new DDlogEApply(node,
-                        "parse_" + suffix, destType.setMayBeNull(true), e);
-                return new DDlogEApply(node,
-                        "result_unwrap_or_default", destType, parse);
+                Function<DDlogExpression, DDlogExpression> wrapper = ex -> {
+                    DDlogExpression parse = new DDlogEApply(node,
+                            "parse_" + suffix, destType.setMayBeNull(true), ex);
+                    return new DDlogEApply(node,
+                            "result_unwrap_or_default", destType, parse);
+                };
+                return wrapInMatch(e, destType, wrapper);
             } else if (eType.is(DDlogTBool.class)) {
-                return new DDlogEITE(node, e, num.one(), num.zero());
+                Function<DDlogExpression, DDlogExpression> wrapper = ex -> new DDlogEITE(node, ex, num.one(), num.zero());
+                return wrapInMatch(e, destType, wrapper);
             } else {
-                return new DDlogEAs(node, e, destType);
+                Function<DDlogExpression, DDlogExpression> wrapper = ex -> new DDlogEAs(node, ex, destType.setMayBeNull(false));
+                return wrapInMatch(e, destType, wrapper);
             }
         } else if (destType.is(DDlogTSigned.class) || destType.is(DDlogTBit.class) || destType.is(DDlogTInt.class)) {
             IsNumericType num = destType.toNumeric();
             if (eType.is(DDlogTFloat.class) || eType.is(DDlogTDouble.class)) {
                 String suffix = eType.is(DDlogTFloat.class) ? "f" : "d";
-                DDlogExpression convertToInt = new DDlogEApply(node,
-                        "int_from_" + suffix, DDlogTInt.instance.setMayBeNull(true), e);
-                DDlogExpression unwrap = new DDlogEApply(node,
-                        "option_unwrap_or_default", DDlogTInt.instance, convertToInt);
-                return new DDlogEAs(node, unwrap, destType);
+                Function<DDlogExpression, DDlogExpression> wrapper = ex -> {
+                    DDlogExpression convertToInt = new DDlogEApply(node,
+                            "int_from_" + suffix, DDlogTInt.instance.setMayBeNull(true), ex);
+                    DDlogExpression unwrap = new DDlogEApply(node,
+                            "option_unwrap_or_default", DDlogTInt.instance, convertToInt);
+                    return new DDlogEAs(node, unwrap, destType.setMayBeNull(false));
+                };
+                return wrapInMatch(e, destType, wrapper);
             } else if (eType.is(DDlogTString.class)) {
-                DDlogExpression parse = new DDlogEApply(node,
-                        "parse_dec_i64", DDlogTSigned.signed64.setMayBeNull(true), e);
-                return new DDlogEApply(node,
-                        "option_unwrap_or_default", destType, parse);
+                Function<DDlogExpression, DDlogExpression> wrapper = ex -> {
+                    DDlogExpression parse = new DDlogEApply(node,
+                            "parse_dec_i64", DDlogTSigned.signed64.setMayBeNull(true), ex);
+                    return new DDlogEApply(node,
+                            "option_unwrap_or_default", destType, parse);
+                };
+                return wrapInMatch(e, destType, wrapper);
             } else if (eType.is(DDlogTBool.class)) {
-                return new DDlogEITE(node, e, num.one(), num.zero());
+                Function<DDlogExpression, DDlogExpression> wrapper = ex -> new DDlogEITE(node, ex, num.one(), num.zero());
+                return wrapInMatch(e, destType, wrapper);
             } else if (eType.is(IsNumericType.class)) {
                 IBoundedNumericType eb = eType.as(IBoundedNumericType.class);
                 IBoundedNumericType db = destType.as(IBoundedNumericType.class);
                 if (eb != null && db != null) {
                     // Need to do two different casts
                     IBoundedNumericType intermediate = db.getWithWidth(eb.getWidth());
-                    return new DDlogEAs(node, new DDlogEAs(node,
-                            e, intermediate.as(DDlogType.class, "Must be type")), destType);
+                    Function<DDlogExpression, DDlogExpression> wrapper = ex ->
+                        new DDlogEAs(node, new DDlogEAs(node,
+                            ex, intermediate.as(DDlogType.class, "Must be type")), destType.setMayBeNull(false));
+                    return wrapInMatch(e, destType, wrapper);
                 }
-                return new DDlogEAs(node, e, destType);
+                Function<DDlogExpression, DDlogExpression> wrapper = ex -> new DDlogEAs(node, ex, destType);
+                return wrapInMatch(e, destType, wrapper);
             }
         } else if (destType.is(DDlogTUser.class)) {
             DDlogTUser tu = destType.as(DDlogTUser.class, "Expected TUser");
-            // At least in MySQL integers are converted to dates as if they were strings...
-            if (eType.is(DDlogTInt.class) || eType.is(DDlogTSigned.class) || eType.is(DDlogTBit.class)) {
-                e = new DDlogEString(node, "${" + e.toString() + "}");
-                eType = e.getType();
-            }
-            if (eType.is(DDlogTString.class)) {
-                String parseFunc;
-                switch (tu.getName()) {
-                    case "Date":
-                        parseFunc = "string2date";
-                        break;
-                    case "Time":
-                        parseFunc = "string2time";
-                        break;
-                    case "DateTime":
-                        parseFunc = "string2datetime";
-                        break;
-                    default:
-                        throw new TranslationException("Unexpected destination type", node);
+            Function<DDlogExpression, DDlogExpression> wrapper = ex -> {
+                DDlogType exType = ex.getType();
+                // At least in MySQL integers are converted to dates as if they were strings...
+                if (exType.is(DDlogTInt.class) || exType.is(DDlogTSigned.class) || exType.is(DDlogTBit.class)) {
+                    ex = new DDlogEString(node, "${" + e.toString() + "}");
+                    exType = ex.getType();
                 }
-                DDlogExpression parse = new DDlogEApply(node, parseFunc, destType.setMayBeNull(true), e);
-                return new DDlogEApply(node,
-                        "result_unwrap_or_default", destType, parse);
-            }
+                if (eType.is(DDlogTString.class)) {
+                    String parseFunc;
+                    switch (tu.getName()) {
+                        case "Date":
+                            parseFunc = "string2date";
+                            break;
+                        case "Time":
+                            parseFunc = "string2time";
+                            break;
+                        case "DateTime":
+                            parseFunc = "string2datetime";
+                            break;
+                        default:
+                            throw new TranslationException("Unexpected destination type", node);
+                    }
+                    DDlogExpression parse = new DDlogEApply(node, parseFunc, destType.setMayBeNull(true), ex);
+                    return new DDlogEApply(node,
+                            "result_unwrap_or_default", destType, parse);
+                }
+                throw new TranslationException("Illegal cast", node);
+            };
+            return wrapInMatch(e, destType, wrapper);
         } else if (destType.is(DDlogTBool.class)) {
             if (eType.is(IsNumericType.class)) {
-                return operationCall(node, DDlogEBinOp.BOp.Neq, e,
-                        eType.toNumeric().zero());
+                DDlogExpression zero = eType.toNumeric().zero();
+                Function<DDlogExpression, DDlogExpression> wrapper =
+                        ex -> operationCall(node, DDlogEBinOp.BOp.Neq, ex, zero);
+                return wrapInMatch(e, destType, wrapper);
             }
         }
         throw new TranslationException("Illegal cast", node);
@@ -380,6 +440,9 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
                 if (args.size() == 0)
                     return DDlogTSigned.signed64;
                 return DDlogTSigned.signed64.setMayBeNull(args.get(0).getType().mayBeNull);
+            case "concat":
+                boolean mayBeNull = Linq.any(args, a -> a.getType().mayBeNull);
+                return DDlogTString.instance.setMayBeNull(mayBeNull);
             default:
                 throw new UnsupportedOperationException(function);
         }
@@ -397,6 +460,11 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
         return name;
     }
 
+    /**
+     * The following functions can have any number of arguments in SQL.
+     */
+    private static final Set<String> varargs = Utilities.makeSet("concat");
+
     @Override
     protected DDlogExpression visitFunctionCall(FunctionCall node, TranslationContext context) {
         /*
@@ -409,12 +477,26 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
             throw new TranslationException("Not yet supported", node);
         */
         String name = functionName(node);
-        List<DDlogExpression> args = Linq.map(node.getArguments(), a -> this.process(a, context));
+        List<Expression> arguments = node.getArguments();
+        if (name.toLowerCase().equals("concat")) {
+            // Cast each argument to a string
+            arguments = Linq.map(arguments, a -> new Cast(a, "varchar"));
+        }
+        List<DDlogExpression> args = Linq.map(arguments, a -> this.process(a, context));
         DDlogType type = functionResultType(node, name, args);
         boolean someNull = Linq.any(args, a -> a.getType().mayBeNull);
+        String useName = name;
         if (someNull)
-            name += "_N";
-        return new DDlogEApply(node, name, type, args.toArray(new DDlogExpression[0]));
+            useName += "_N";
+        if (varargs.contains(name)) {
+            if (arguments.size() == 0)
+                throw new TranslationException("Function does not have arguments", node);
+            DDlogExpression result = args.get(0);
+            for (int i = 1; i < args.size(); i++)
+                result = new DDlogEApply(node, useName, type, result, args.get(i));
+            return result;
+        }
+        return new DDlogEApply(node, useName, type, args.toArray(new DDlogExpression[0]));
     }
 
     @Override

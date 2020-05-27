@@ -315,3 +315,14 @@ function avg_float_R(sum_count: (float, float)): float {
 function avg_double_R(sum_count: (double, double)): double {
     if (sum_count.1 == 64'f0.0) 64'f0.0 else (sum_count.0 / sum_count.1)
 }
+function concat(s0: string, s1: string): string {
+     s0 ++ s1
+}
+function concat_N(s0: Option<string>, s1: Option<string>): Option<string> {
+    match ((s0,s1)) {
+        (None, None)       -> None,
+        (None, Some{x})    -> None,
+        (Some{x}, None)    -> None,
+        (Some{x}, Some{y}) -> Some{x ++ y}
+    }
+}

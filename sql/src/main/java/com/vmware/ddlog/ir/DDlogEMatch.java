@@ -19,7 +19,7 @@ import java.util.List;
 
 public class DDlogEMatch extends DDlogExpression {
     public DDlogEMatch(@Nullable Node node, DDlogExpression matchExpr, List<Case> cases) {
-        super(node, DDlogType.reduceType(Linq.map(cases, c -> c.second.getType())));
+        super(node, DDlogType.sameType(Linq.map(cases, c -> c.second.getType())));
         this.matchExpr = matchExpr;
         this.cases = cases;
     }

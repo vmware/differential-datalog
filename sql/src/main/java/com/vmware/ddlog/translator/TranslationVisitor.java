@@ -21,6 +21,8 @@ import com.vmware.ddlog.util.Utilities;
 import javax.annotation.Nullable;
 import java.util.*;
 
+import static com.facebook.presto.sql.tree.Join.Type.LEFT;
+
 class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
     static final boolean debug = false;
 
@@ -988,7 +990,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         SubstitutionRewriter rewriter = new SubstitutionRewriter(windowVisitor.substitutions);
         ExpressionTreeRewriter<Void> subst = new ExpressionTreeRewriter<Void>(rewriter);
 
-        for (SingleColumn sc: Utilities.<SingleColumn>concatenate(aggregateItems, nonAggregateItems, windowItems)) {
+        for (SingleColumn sc: Utilities.concatenate(aggregateItems, nonAggregateItems, windowItems)) {
             Expression repl = subst.rewrite(sc.getExpression(), null);
             finalItems.add(new SingleColumn(repl, sc.getAlias()));
         }
@@ -1058,9 +1060,22 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         rules.addAll(lrel.getDefinitions());
         rules.addAll(rrel.getDefinitions());
 
+        boolean leftJoin = false;
+        boolean rightJoin = false;
+
         Set<String> joinColumns = new HashSet<String>();
         switch (join.getType()) {
+            case FULL:
+                leftJoin = true;
+                // fall through
+            case RIGHT:
+                rightJoin = true;
+                // fall through
+            case LEFT:
+                // fall through
             case INNER:
+                if (join.getType() == LEFT)
+                    leftJoin = true;
                 if (join.getCriteria().isPresent()) {
                     JoinCriteria c = join.getCriteria().get();
                     if (c instanceof JoinOn) {
@@ -1083,11 +1098,6 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             case IMPLICIT:
                 // Nothing more to do
                 break;
-            case LEFT:
-            case RIGHT:
-            case FULL:
-                // TODO
-                throw new TranslationException("Not yet implemented", join);
             default:
                 throw new TranslationException("Unexpected join type", join);
         }
