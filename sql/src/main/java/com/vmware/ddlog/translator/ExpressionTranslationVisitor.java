@@ -192,7 +192,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
                     ex = new DDlogEString(node, "${" + e.toString() + "}");
                     exType = ex.getType();
                 }
-                if (eType.is(DDlogTString.class)) {
+                if (exType.is(DDlogTString.class)) {
                     String parseFunc;
                     switch (tu.getName()) {
                         case "Date":
