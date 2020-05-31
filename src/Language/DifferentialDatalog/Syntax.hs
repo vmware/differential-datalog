@@ -49,6 +49,7 @@ module Language.DifferentialDatalog.Syntax (
         tVar,
         tOpaque,
         structFields,
+        structLookupField,
         structGetField,
         structFieldGuarded,
         Field(..),
@@ -227,11 +228,14 @@ tVar       = TVar      nopos
 tOpaque    = TOpaque   nopos
 
 structGetField :: Type -> String -> Field
-structGetField t f = fromJust $ find ((==f) . name) $ structFields t
+structGetField t f = fromJust $ structLookupField t f
+
+structLookupField :: Type -> String -> Maybe Field
+structLookupField t f = find ((==f) . name) $ structFields t
 
 structFields :: Type -> [Field]
 structFields (TStruct _ cs) = nub $ concatMap consArgs cs
-structFields t              = error $ "structFields " ++ show t
+structFields _              = []
 
 -- True iff the field is not defined in some constructors
 structFieldGuarded :: Type -> String -> Bool
