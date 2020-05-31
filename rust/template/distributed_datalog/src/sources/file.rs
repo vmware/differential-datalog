@@ -69,6 +69,11 @@ fn handle<C>(
             }
             Err(e) => error!("failed to convert UpdCmd to Update: {}", e),
         },
+        Command::Exit => {
+            let _ = observer
+                .on_completed()
+                .map_err(|e| error!("observer failed on_completed: {:?}", e));
+        }
         // TODO: Eventually we will need to add support for the 'Clear'
         //       command.
         _ => info!("ignoring unsupported command: {:?}", command),

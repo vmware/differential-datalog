@@ -166,6 +166,7 @@ impl<V, E> Observer<Update<V>, E> for DistributingAccumulator<Update<V>, V, E>
     fn on_completed(&mut self) -> Result<(), E> {
         trace!("DistributingAccumulator({})::on_completed", self.id);
         let mut distributor = self.distributor.lock().unwrap();
+        let _ = distributor.on_completed();
 
         let mut delete_updates = self.get_current_state().into_iter()
             .flat_map(|(relid, vs)|
@@ -277,8 +278,8 @@ pub mod tests {
         assert_eq!(mock2.lock().unwrap().called_on_updates, 6);
         assert_eq!(mock1.lock().unwrap().called_on_commit, 2);
         assert_eq!(mock2.lock().unwrap().called_on_commit, 2);
-        assert_eq!(mock1.lock().unwrap().called_on_completed, 0);
-        assert_eq!(mock2.lock().unwrap().called_on_completed, 0);
+        assert_eq!(mock1.lock().unwrap().called_on_completed, 1);
+        assert_eq!(mock2.lock().unwrap().called_on_completed, 1);
     }
 
     /// Test multiple indirect subscriptions via `create_observable` to a `DistributingAccumulator`.
@@ -352,8 +353,8 @@ pub mod tests {
         assert_eq!(mock2.lock().unwrap().called_on_updates, 20);
         assert_eq!(mock1.lock().unwrap().called_on_commit, 3);
         assert_eq!(mock2.lock().unwrap().called_on_commit, 3);
-        assert_eq!(mock1.lock().unwrap().called_on_completed, 0);
-        assert_eq!(mock2.lock().unwrap().called_on_completed, 0);
+        assert_eq!(mock1.lock().unwrap().called_on_completed, 1);
+        assert_eq!(mock2.lock().unwrap().called_on_completed, 1);
     }
 
     /// when a new downstream consumer subscribes, it should be updated with the current values

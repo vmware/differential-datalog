@@ -11,6 +11,7 @@ use std::fs::File;
 use std::net::SocketAddr;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 use differential_datalog::ddval::DDValue;
 use differential_datalog::program::RelId;
@@ -168,7 +169,7 @@ fn add_tcp_receiver<P>(
         TcpReceiver::new(addr).map_err(|e| format!("failed to create TcpReceiver: {}", e))?;
     let receiver = Arc::new(Mutex::new(receiver));
     // an empty set indicates the TcpReceiver
-    sources.insert(BTreeSet::new(), vec!((SourceRealization::Node(receiver.clone()), ())));
+    let _ = sources.insert(BTreeSet::new(), vec!((SourceRealization::Node(receiver.clone()), ())));
 
     txnmux
         .add_observable(Box::new(receiver))
@@ -287,6 +288,8 @@ fn realize<P>(
         P: Send + DDlog + 'static,
         P::Convert: Send,
 {
+    let now = Instant::now();
+
     let mut server = create_server::<P>(&node_cfg)?;
     let mut sources = HashMap::new();
     let mut accumulators = HashMap::new();
@@ -301,6 +304,7 @@ fn realize<P>(
     }
     add_file_sources::<P>(&mut txnmux, node_cfg, &mut sources)?;
 
+    println!("realized node configuration locally in {} ms", now.elapsed().as_millis());
     Ok(Realization { sources, txnmux, accumulators, sinks })
 }
 
