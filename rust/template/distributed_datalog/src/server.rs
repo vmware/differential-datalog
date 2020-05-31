@@ -1,6 +1,7 @@
 use std::collections::{BTreeSet, HashMap};
 use std::fmt::Debug;
 use std::sync::Arc;
+use std::time::Instant;
 
 use log::trace;
 use uid::Id;
@@ -27,26 +28,29 @@ pub struct Outlet {
 /// outlets. The redirect map redirects input deltas to local tables.
 #[derive(Debug)]
 pub struct DDlogServer<P>
-where
-    P: DDlog,
+    where
+        P: DDlog,
 {
     id: usize,
+    created: Instant,
     prog: Option<P>,
     outlets: Vec<Outlet>,
     redirect: HashMap<RelId, RelId>,
 }
 
 impl<P> DDlogServer<P>
-where
-    P: DDlog,
+    where
+        P: DDlog,
 {
     /// Create a new server with no outlets.
     pub fn new(prog: P, redirect: HashMap<RelId, RelId>) -> Self {
+        let created = Instant::now();
         let id = Id::<()>::new().get();
         trace!("DDlogServer({})::new", id);
 
         Self {
             id,
+            created,
             prog: Some(prog),
             outlets: Vec::new(),
             redirect,
@@ -94,8 +98,8 @@ where
 }
 
 impl<P> Observer<Update<DDValue>, String> for DDlogServer<P>
-where
-    P: Debug + Send + DDlog,
+    where
+        P: Debug + Send + DDlog,
 {
     /// Start a transaction when deltas start coming in.
     fn on_start(&mut self) -> Result<(), String> {
@@ -159,7 +163,7 @@ where
     /// Apply a series of updates.
     fn on_updates<'a>(
         &mut self,
-        updates: Box<dyn Iterator<Item = Update<DDValue>> + 'a>,
+        updates: Box<dyn Iterator<Item=Update<DDValue>> + 'a>,
     ) -> Result<(), String> {
         trace!("DDlogServer({})::on_updates", self.id);
 
@@ -176,19 +180,21 @@ where
                 update => panic!("Operation {:?} not allowed", update),
             }))
         } else {
+            trace!("No DDlog program associated with this DDlogServer");
             Ok(())
         }
     }
 
     fn on_completed(&mut self) -> Result<(), String> {
         trace!("DDlogServer({})::on_completed", self.id);
+        println!("DDlogServer received on_completed after {} ms", self.created.elapsed().as_millis());
         Ok(())
     }
 }
 
 impl<P> Drop for DDlogServer<P>
-where
-    P: DDlog,
+    where
+        P: DDlog,
 {
     /// Shutdown the DDlog program and notify listeners of completion.
     fn drop(&mut self) {
