@@ -138,6 +138,7 @@ ctxVars d ctx = let (lvs, rvs) = ctxMVars d ctx in
                 (map (\(n, mt) -> (Field nopos [] n $ maybe (error $ "variable " ++ n ++ " has unknown type") id mt)) lvs,
                  map (\(n, mt) -> (Field nopos [] n $ maybe (error $ "variable " ++ n ++ " has unknown type") id mt)) rvs)
 
+-- TODO: return variable names only; type interence should take care of typing.
 ctxMVars :: DatalogProgram -> ECtx -> ([MField], [MField])
 ctxMVars d ctx =
     case ctx of
