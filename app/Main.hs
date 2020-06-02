@@ -54,6 +54,7 @@ data TOption = Help
              | NoDynLib
              | StaticLib
              | NoStaticLib
+             | DebugHooks
 
 data DLAction = ActionCompile
               | ActionValidate
@@ -75,6 +76,7 @@ options = [ Option ['h'] ["help"]             (NoArg Help)                      
           , Option []    ["no-dynlib"]        (NoArg NoDynLib)                  "Do not generate dynamic library (default)."
           , Option []    ["staticlib"]        (NoArg StaticLib)                 "Generate static library (default)."
           , Option []    ["no-staticlib"]     (NoArg NoStaticLib)               "Do not generate static library."
+          , Option ['g'] []                   (NoArg DebugHooks)                "Enable debugging hooks."
           ]
 
 data Config = Config { confDatalogFile   :: FilePath
@@ -86,6 +88,7 @@ data Config = Config { confDatalogFile   :: FilePath
                      , confDynamicLib    :: Bool
                      , confJava          :: Bool
                      , confOutputInternal:: Bool
+                     , confDebugHooks    :: Bool
                      }
 
 defaultConfig :: Config
@@ -98,6 +101,7 @@ defaultConfig = Config { confDatalogFile   = ""
                        , confOutputInternal= False
                        , confOutputInput   = ""
                        , confJava          = False
+                       , confDebugHooks    = False
                        }
 
 
@@ -119,6 +123,7 @@ addOption config StaticLib        = return config { confStaticLib = True }
 addOption config NoStaticLib      = return config { confStaticLib = False }
 addOption config Help             = return config { confAction = ActionHelp}
 addOption config Version          = return config { confAction = ActionVersion}
+addOption config DebugHooks       = return config { confDebugHooks = True }
 
 validateConfig :: Config -> IO ()
 validateConfig Config{..} = do
