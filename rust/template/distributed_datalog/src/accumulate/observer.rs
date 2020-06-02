@@ -9,8 +9,8 @@ use std::iter::FromIterator;
 use log::trace;
 use uid::Id;
 
-use differential_datalog::program::Update;
 use differential_datalog::program::RelId;
+use differential_datalog::program::Update;
 
 use crate::Observable;
 use crate::ObservableBox;
@@ -23,8 +23,8 @@ use crate::SharedObserver;
 /// Apart from that it simply forwards all messages to the observer.
 #[derive(Debug)]
 pub struct AccumulatingObserver<T, V, E>
-    where
-        V: Debug + Eq + Hash
+where
+    V: Debug + Eq + Hash,
 {
     id: usize,
     /// The observable we track and our subscription to it. TODO: use a better data structure
@@ -37,10 +37,9 @@ pub struct AccumulatingObserver<T, V, E>
     buffer: Option<LinkedList<Vec<T>>>,
 }
 
-
 impl<T, V, E> AccumulatingObserver<T, V, E>
-    where
-        V: Clone + Debug + Eq + Hash + Send + 'static,
+where
+    V: Clone + Debug + Eq + Hash + Send + 'static,
 {
     pub fn new() -> Self {
         let id = Id::<()>::new().get();
@@ -62,10 +61,10 @@ impl<T, V, E> AccumulatingObserver<T, V, E>
 }
 
 impl<T, V, E> Observable<T, E> for AccumulatingObserver<T, V, E>
-    where
-        T: Debug + Send + 'static,
-        V: Debug + Eq + Hash,
-        E: Debug + Send + 'static,
+where
+    T: Debug + Send + 'static,
+    V: Debug + Eq + Hash,
+    E: Debug + Send + 'static,
 {
     type Subscription = ();
 
@@ -89,12 +88,11 @@ impl<T, V, E> Observable<T, E> for AccumulatingObserver<T, V, E>
     }
 }
 
-
 /// Forwards the incoming data to the observer while keeping track of the current state
 impl<V, E> Observer<Update<V>, E> for AccumulatingObserver<Update<V>, V, E>
-    where
-        V: Debug + Send + Eq + Hash + Clone,
-        E: Debug + Send
+where
+    V: Debug + Send + Eq + Hash + Clone,
+    E: Debug + Send,
 {
     fn on_start(&mut self) -> Result<(), E> {
         trace!("AccumulatingObserver({})::on_start", self.id);
@@ -118,18 +116,26 @@ impl<V, E> Observer<Update<V>, E> for AccumulatingObserver<Update<V>, V, E>
                 guard.on_commit()?;
             }
             // apply the buffered updates to the accumulated state if successful
-            buffer.into_iter().flatten().for_each(|upd: Update<V>| match upd {
-                Update::Insert { relid, v } => {
-                    let _ = self.data.entry(relid)
-                        .and_modify(|set| { let _ = set.insert(v.clone()); })
-                        .or_insert(HashSet::from_iter(vec![v.clone()].into_iter()));
-                }
-                Update::DeleteValue { relid, v } => {
-                    let _ = self.data.entry(relid)
-                        .and_modify(|set| { let _ = set.remove(&v); });
-                }
-                update => panic!("Operation {:?} not allowed", update)
-            });
+            buffer
+                .into_iter()
+                .flatten()
+                .for_each(|upd: Update<V>| match upd {
+                    Update::Insert { relid, v } => {
+                        let _ = self
+                            .data
+                            .entry(relid)
+                            .and_modify(|set| {
+                                let _ = set.insert(v.clone());
+                            })
+                            .or_insert(HashSet::from_iter(vec![v.clone()].into_iter()));
+                    }
+                    Update::DeleteValue { relid, v } => {
+                        let _ = self.data.entry(relid).and_modify(|set| {
+                            let _ = set.remove(&v);
+                        });
+                    }
+                    update => panic!("Operation {:?} not allowed", update),
+                });
 
             Ok(())
         } else {
@@ -137,11 +143,13 @@ impl<V, E> Observer<Update<V>, E> for AccumulatingObserver<Update<V>, V, E>
         }
     }
 
-    fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item=Update<V>> + 'a>) -> Result<(), E> {
+    fn on_updates<'a>(
+        &mut self,
+        updates: Box<dyn Iterator<Item = Update<V>> + 'a>,
+    ) -> Result<(), E> {
         trace!("AccumulatingObserver({})::on_updates", self.id);
 
         if let Some(ref mut buffer) = self.buffer {
-
             // push incoming updates into buffer
             let upds = updates.collect::<Vec<_>>();
             buffer.push_back(upds.clone());
@@ -154,7 +162,6 @@ impl<V, E> Observer<Update<V>, E> for AccumulatingObserver<Update<V>, V, E>
         }
     }
 
-
     /// signals that the source has been removed, clears the accumulated state.
     fn on_completed(&mut self) -> Result<(), E> {
         trace!("AccumulatingObserver({})::on_completed", self.id);
@@ -163,7 +170,6 @@ impl<V, E> Observer<Update<V>, E> for AccumulatingObserver<Update<V>, V, E>
         Ok(())
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -176,36 +182,48 @@ mod tests {
     use crate::MockObserver;
 
     fn get_usize_insert_updates_1() -> Box<IntoIter<Update<usize>>> {
-        Box::new(vec!(
-            Update::Insert { relid: 1, v: 1 },
-            Update::Insert { relid: 2, v: 2 },
-            Update::Insert { relid: 3, v: 3 },
-        ).into_iter())
+        Box::new(
+            vec![
+                Update::Insert { relid: 1, v: 1 },
+                Update::Insert { relid: 2, v: 2 },
+                Update::Insert { relid: 3, v: 3 },
+            ]
+            .into_iter(),
+        )
     }
 
     fn get_usize_insert_updates_2() -> Box<IntoIter<Update<usize>>> {
-        Box::new(vec!(
-            Update::Insert { relid: 1, v: 2 },
-            Update::Insert { relid: 1, v: 3 },
-            Update::Insert { relid: 2, v: 3 },
-        ).into_iter())
+        Box::new(
+            vec![
+                Update::Insert { relid: 1, v: 2 },
+                Update::Insert { relid: 1, v: 3 },
+                Update::Insert { relid: 2, v: 3 },
+            ]
+            .into_iter(),
+        )
     }
 
     fn get_usize_insert_updates_3() -> Box<IntoIter<Update<usize>>> {
-        Box::new(vec!(
-            Update::Insert { relid: 4, v: 1 },
-            Update::Insert { relid: 4, v: 2 },
-            Update::Insert { relid: 4, v: 3 },
-            Update::Insert { relid: 4, v: 4 },
-        ).into_iter())
+        Box::new(
+            vec![
+                Update::Insert { relid: 4, v: 1 },
+                Update::Insert { relid: 4, v: 2 },
+                Update::Insert { relid: 4, v: 3 },
+                Update::Insert { relid: 4, v: 4 },
+            ]
+            .into_iter(),
+        )
     }
 
     fn get_usize_delete_updates_1() -> Box<IntoIter<Update<usize>>> {
-        Box::new(vec!(
-            Update::DeleteValue { relid: 1, v: 1 },
-            Update::DeleteValue { relid: 2, v: 2 },
-            Update::DeleteValue { relid: 3, v: 3 },
-        ).into_iter())
+        Box::new(
+            vec![
+                Update::DeleteValue { relid: 1, v: 1 },
+                Update::DeleteValue { relid: 2, v: 2 },
+                Update::DeleteValue { relid: 3, v: 3 },
+            ]
+            .into_iter(),
+        )
     }
 
     /// Test subscribing and unsubscribing for an `AccumulatingObserver`.
@@ -260,7 +278,10 @@ mod tests {
         assert_eq!(mock.lock().unwrap().as_ref().unwrap().called_on_commit, 2);
 
         assert_eq!(observer.on_completed(), Ok(()));
-        assert_eq!(mock.lock().unwrap().as_ref().unwrap().called_on_completed, 0);
+        assert_eq!(
+            mock.lock().unwrap().as_ref().unwrap().called_on_completed,
+            0
+        );
     }
 
     /// test accumulation of data across multiple commits
@@ -277,8 +298,10 @@ mod tests {
         assert!(observer.data.is_empty());
         assert_eq!(observer.on_commit(), Ok(()));
 
-        observer.data.iter().for_each(|(relid, values)| {
-            match relid {
+        observer
+            .data
+            .iter()
+            .for_each(|(relid, values)| match relid {
                 &1 => {
                     assert_eq!(values, &vec!(1, 2, 3).into_iter().collect::<HashSet<_>>());
                 }
@@ -288,17 +311,18 @@ mod tests {
                 &3 => {
                     assert_eq!(values, &vec!(3).into_iter().collect::<HashSet<_>>());
                 }
-                _ => { panic!("Unexpected relid!") }
-            }
-        });
+                _ => panic!("Unexpected relid!"),
+            });
 
         assert_eq!(observer.on_start(), Ok(()));
         assert_eq!(observer.on_updates(get_usize_delete_updates_1()), Ok(()));
         assert_eq!(observer.on_updates(get_usize_insert_updates_3()), Ok(()));
 
         // data must not be updated before commit
-        observer.data.iter().for_each(|(relid, values)| {
-            match relid {
+        observer
+            .data
+            .iter()
+            .for_each(|(relid, values)| match relid {
                 &1 => {
                     assert_eq!(values, &vec!(1, 2, 3).into_iter().collect::<HashSet<_>>());
                 }
@@ -308,14 +332,15 @@ mod tests {
                 &3 => {
                     assert_eq!(values, &vec!(3).into_iter().collect::<HashSet<_>>());
                 }
-                _ => { panic!("Unexpected relid!") }
-            }
-        });
+                _ => panic!("Unexpected relid!"),
+            });
 
         assert_eq!(observer.on_commit(), Ok(()));
 
-        observer.data.iter().for_each(|(relid, values)| {
-            match relid {
+        observer
+            .data
+            .iter()
+            .for_each(|(relid, values)| match relid {
                 &1 => {
                     assert_eq!(values, &vec!(2, 3).into_iter().collect::<HashSet<_>>());
                 }
@@ -326,10 +351,12 @@ mod tests {
                     assert!(values.is_empty());
                 }
                 &4 => {
-                    assert_eq!(values, &vec!(1, 2, 3, 4).into_iter().collect::<HashSet<_>>());
+                    assert_eq!(
+                        values,
+                        &vec!(1, 2, 3, 4).into_iter().collect::<HashSet<_>>()
+                    );
                 }
-                _ => { panic!("Unexpected relid!") }
-            }
-        });
+                _ => panic!("Unexpected relid!"),
+            });
     }
 }

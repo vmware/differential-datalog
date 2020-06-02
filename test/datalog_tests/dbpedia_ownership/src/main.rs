@@ -36,27 +36,24 @@ enum Opts {
         members: Vec<Addr>,
         /// The path to the input file containing `Subsidiaries` transactions.
         #[structopt(
-        long = "subsidiaries",
-        default_value = "data/subsidiaries.ddlog.dat",
-        parse(from_os_str)
+            long = "subsidiaries",
+            default_value = "data/subsidiaries.ddlog.dat",
+            parse(from_os_str)
         )]
         #[structopt(long = "subsidiaries", parse(from_os_str))]
         subsidiaries_data: PathBuf,
         /// The path to the output file containing `Ownership` transactions.
         #[structopt(
-        long = "ownership",
-        default_value = "ownership.dump",
-        parse(from_os_str)
+            long = "ownership",
+            default_value = "ownership.dump",
+            parse(from_os_str)
         )]
         ownership_data: PathBuf,
-    }
+    },
 }
 
 /// Retrieve the system configuration.
-fn config(
-    subsidiaries_data: &Path,
-    ownership_data: &Path,
-) -> SysCfg {
+fn config(subsidiaries_data: &Path, ownership_data: &Path) -> SysCfg {
     // We require UUIDs in ascending order to be able to create a stable
     // assignment.
     let node_id = Uuid::parse_str("7aba4dd8-80fc-43f0-bbf6-0dc56abaa001").unwrap();
@@ -94,10 +91,7 @@ fn realize(
     }
 
     let members = members.into_iter().map(Member::new).collect::<Members>();
-    let sys_cfg = config(
-        subsidiaries_data,
-        ownership_data,
-    );
+    let sys_cfg = config(subsidiaries_data, ownership_data);
     let assignment = simple_assign(sys_cfg.keys(), members.iter())
         .ok_or_else(|| format!("failed to find an node:member assignment"))?;
     let _realization = instantiate::<HDDlog>(sys_cfg.clone(), &member, &assignment)?;
