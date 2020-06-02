@@ -127,7 +127,7 @@ where
                             .and_modify(|set| {
                                 let _ = set.insert(v.clone());
                             })
-                            .or_insert(HashSet::from_iter(vec![v.clone()].into_iter()));
+                            .or_insert_with(|| HashSet::from_iter(vec![v.clone()].into_iter()));
                     }
                     Update::DeleteValue { relid, v } => {
                         let _ = self.data.entry(relid).and_modify(|set| {
