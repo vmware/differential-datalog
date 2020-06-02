@@ -44,7 +44,8 @@ module Language.DifferentialDatalog.DatalogProgram (
     progDependencyGraph,
     depGraphToDot,
     progMirrorInputRelations,
-    progOutputInternalRelations
+    progOutputInternalRelations,
+    injectDebuggingHooks,
 )
 where
 
@@ -307,3 +308,7 @@ progMirrorInputRelations d prefix =
     rules = map (\(n,r) -> makeRule n r) inputRels
   in d { progRelations = M.union (progRelations d) $ M.fromList relCopies,
          progRules     = (progRules d) ++ rules }
+
+-- | Injects debugging hooks into an input DatalogProgram.
+injectDebuggingHooks :: DatalogProgram -> DatalogProgram
+injectDebuggingHooks original_program = original_program
