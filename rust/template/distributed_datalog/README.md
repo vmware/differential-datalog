@@ -42,6 +42,10 @@ As it stands that means we have the following components:
 - [sources][sources] and [sinks][sinks] that produce and consume
   updates, respectively, and can be fit into the system using the
   `Observable` and `Observer` interfaces
+- an [accumulator][accumulator] component that acts as a transparent proxy
+  on a communication channel between an `Observable` and an `Observer` 
+  while accumulating the transferred updates for efficient re-configuration
+  in case a new `Observer` subscribes or the `Observable` fails
 
 ### Examples & Tests
 **D3log** has unit as well as integration style tests using an actual
@@ -50,6 +54,7 @@ APIs. Unit tests reside along with the individual components/module and
 integration tests are located in the [`server_api`][server_api] program.
 
 
+[accumulator]: src/accumulate/accumulator.rs
 [observe]: src/observe
 [reactivex.io]: http://reactivex.io/documentation/observable.html
 [rust-template]: ..
