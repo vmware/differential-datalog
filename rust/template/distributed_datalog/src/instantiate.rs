@@ -249,7 +249,7 @@ where
                     )
                 })?;
 
-            let _ = sinks
+            sinks
                 .entry(rel_ids.clone())
                 .or_insert_with(|| vec![])
                 .insert(0, (SinkRealization::File(sink), subscription));
@@ -282,7 +282,7 @@ where
                 .add_observable(Box::new(accumulator.clone()))
                 .map_err(|_| "failed to register Accumulator with TxnMux".to_string())?;
 
-            let subscription = source.subscribe(Box::new(accumulator)).map_err(|_| {
+            source.subscribe(Box::new(accumulator)).map_err(|_| {
                 format!(
                     "failed to add file source {} to accumulator",
                     path.display()
@@ -292,7 +292,7 @@ where
             sources
                 .entry(rel_ids.clone())
                 .or_insert_with(|| vec![])
-                .insert(0, (SourceRealization::File(source), subscription));
+                .insert(0, (SourceRealization::File(source), ()));
             Ok(())
         })
 }
@@ -346,6 +346,7 @@ where
 }
 
 /// All possible sources of a Realization
+#[derive(Debug)]
 enum SourceRealization<C>
 where
     C: DDlogConvert,
@@ -355,6 +356,7 @@ where
 }
 
 /// All possible sinks of a Realization
+#[derive(Debug)]
 enum SinkRealization<C>
 where
     C: DDlogConvert,
@@ -367,6 +369,7 @@ where
 ///
 /// Right now all that clients can do with an object of this type is
 /// dropping it to tear everything down.
+#[derive(Debug)]
 pub struct Realization<C>
 where
     C: DDlogConvert,
