@@ -45,7 +45,7 @@ As it stands that means we have the following components:
 - an [accumulator][accumulator] component that acts as a transparent proxy
   on a communication channel between an `Observable` and an `Observer` 
   while accumulating the transferred updates for efficient re-configuration
-  in case a new `Observer` subscribes or the `Observable` fails
+  in case a new `Observer` subscribes, or the `Observable` fails
 
 ### Examples & Tests
 **D3log** has unit as well as integration style tests using an actual

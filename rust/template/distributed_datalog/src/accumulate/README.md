@@ -44,7 +44,7 @@ collects the accumulated updates from `AccumulatingObserver` and sends it to the
 component to `TxnDistributor`, releasing the lock afterwards.
 
 ### Future Development
-- Currently, `TcpReceiver` encapsulates multiple input connections from other nodes and there is only a single 
+- Currently, `TcpReceiver` encapsulates multiple input connections from other nodes, and there is only a single 
   accumulator in place for all incoming TCP connections.
   Accumulators for each single node source cannot be created in `instantiate.rs` and managed by the `Realization`
   struct but would need to be managed by `TcpReceiver`. A more intuitive approach would be to let `Realization` manage 
