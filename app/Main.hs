@@ -164,9 +164,12 @@ parseValidate Config{..} = do
     d''' <- case confOutputInput of
          "" -> return d''
          x  ->  return $ progMirrorInputRelations d'' x
-    d' <- case validate d''' of
+    d'''' <- case validate d''' of
                Left e   -> errorWithoutStackTrace $ "error: " ++ e
-               Right d' -> return d'
+               Right d'''' -> return d''''
+    d' <- case confDebugHooks of
+         False -> return d''''
+         True  -> return $ injectDebuggingHooks d''''
     when confJava $
         case flatBufferValidate d of
              Left e  -> errorWithoutStackTrace $ "error: " ++ e
