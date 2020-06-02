@@ -139,7 +139,7 @@ where
                     // TODO: What should we really do if we can't subscribe?
                     let accumulator = accumulators
                         .entry(rel_ids.clone())
-                        .or_insert(Arc::new(Mutex::new(DistributingAccumulator::new())));
+                        .or_insert_with(|| Arc::new(Mutex::new(DistributingAccumulator::new())));
 
                     let subscription = accumulator
                         .lock()
@@ -149,8 +149,8 @@ where
 
                     sinks
                         .entry(rel_ids.clone())
-                        .or_insert(vec![])
-                        .insert(0, (SinkRealization::Node(sender.clone()), subscription));
+                        .or_insert_with(|| vec![])
+                        .insert(0, (SinkRealization::Node(sender), subscription));
 
                     server
                         .add_stream(rel_ids)
@@ -236,7 +236,7 @@ where
 
             let accumulator = accumulators
                 .entry(rel_ids.clone())
-                .or_insert(Arc::new(Mutex::new(DistributingAccumulator::new())));
+                .or_insert_with(|| Arc::new(Mutex::new(DistributingAccumulator::new())));
 
             let subscription = accumulator
                 .lock()
@@ -251,7 +251,7 @@ where
 
             let _ = sinks
                 .entry(rel_ids.clone())
-                .or_insert(vec![])
+                .or_insert_with(|| vec![])
                 .insert(0, (SinkRealization::File(sink), subscription));
 
             server
@@ -291,7 +291,7 @@ where
 
             sources
                 .entry(rel_ids.clone())
-                .or_insert(vec![])
+                .or_insert_with(|| vec![])
                 .insert(0, (SourceRealization::File(source), subscription));
             Ok(())
         })
@@ -338,10 +338,10 @@ where
         now.elapsed().as_millis()
     );
     Ok(Realization {
-        sources,
-        txnmux,
-        accumulators,
-        sinks,
+        _sources: sources,
+        _txnmux: txnmux,
+        _accumulators: accumulators,
+        _sinks: sinks,
     })
 }
 
@@ -372,16 +372,16 @@ where
     C: DDlogConvert,
 {
     /// All sources of this realization and the subscription the node has to them
-    sources: HashMap<BTreeSet<RelId>, Vec<(SourceRealization<C>, ())>>,
+    _sources: HashMap<BTreeSet<RelId>, Vec<(SourceRealization<C>, ())>>,
     /// The transaction multiplexer as input to the DDLogServer
-    txnmux: TxnMux<Update<DDValue>, String>,
+    _txnmux: TxnMux<Update<DDValue>, String>,
     /// All sink accumulators of this realization to connect new nodes to
-    accumulators: HashMap<
+    _accumulators: HashMap<
         BTreeSet<RelId>,
         SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>,
     >,
     /// All sinks of this realization with their subscription
-    sinks: HashMap<BTreeSet<RelId>, Vec<(SinkRealization<C>, usize)>>,
+    _sinks: HashMap<BTreeSet<RelId>, Vec<(SinkRealization<C>, usize)>>,
 }
 
 /// Instantiate a configuration on a particular node under the given

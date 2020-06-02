@@ -128,7 +128,7 @@ where
             .collect::<Vec<_>>();
 
         if !init_updates.is_empty() {
-            let updates = init_updates.drain(..).into_iter();
+            let updates = init_updates.drain(..);
             trace!(
                 "DistributingAccumulator({:?}) sending init_updates to observer: {:?}",
                 self.id,
@@ -197,7 +197,7 @@ where
             .collect::<Vec<_>>();
 
         if !delete_updates.is_empty() {
-            let updates = delete_updates.drain(..).into_iter();
+            let updates = delete_updates.drain(..);
             trace!(
                 "DistributingAccumulator({:?}) clearing state of observers: {:?}",
                 self.id,
