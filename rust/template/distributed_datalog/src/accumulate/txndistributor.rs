@@ -6,12 +6,11 @@ use std::sync::Mutex;
 use log::trace;
 use uid::Id;
 
-use crate::{Observable, UpdatesObservable};
 use crate::Observer;
 use crate::ObserverBox;
 use crate::OptionalObserver;
 use crate::SharedObserver;
-
+use crate::{Observable, UpdatesObservable};
 
 #[derive(Debug)]
 pub struct TxnDistributor<T, E> {
@@ -21,11 +20,10 @@ pub struct TxnDistributor<T, E> {
     observers: HashMap<usize, SharedObserver<OptionalObserver<ObserverBox<T, E>>>>,
 }
 
-
 impl<T, E> TxnDistributor<T, E>
-    where
-        T: Debug + Send + 'static,
-        E: Debug + Send + 'static,
+where
+    T: Debug + Send + 'static,
+    E: Debug + Send + 'static,
 {
     pub fn new() -> Self {
         let id = Id::<()>::new().get();
@@ -37,25 +35,24 @@ impl<T, E> TxnDistributor<T, E>
         }
     }
 
-    pub fn create_observable(
-        &mut self,
-    ) -> UpdatesObservable<T, E> {
+    pub fn create_observable(&mut self) -> UpdatesObservable<T, E> {
         let subscription = Id::<()>::new().get();
-        trace!("TxnDistributor({:?})::create_observable({:?})", self.id, subscription);
+        trace!(
+            "TxnDistributor({:?})::create_observable({:?})",
+            self.id,
+            subscription
+        );
 
         let observer = SharedObserver::default();
         let _ = self.observers.insert(subscription, observer.clone());
-        UpdatesObservable {
-            observer
-        }
+        UpdatesObservable { observer }
     }
 }
 
-
 impl<T, E> Observable<T, E> for TxnDistributor<T, E>
-    where
-        T: Debug + Send + 'static,
-        E: Debug + Send + 'static,
+where
+    T: Debug + Send + 'static,
+    E: Debug + Send + 'static,
 {
     type Subscription = usize;
 
@@ -67,7 +64,9 @@ impl<T, E> Observable<T, E> for TxnDistributor<T, E>
         trace!("TxnDistributor({})::subscribe({})", self.id, id);
 
         // TODO: can the same observer subscribe multiple times?
-        let _ = self.observers.insert(id, Arc::new(Mutex::new(Some(observer))));
+        let _ = self
+            .observers
+            .insert(id, Arc::new(Mutex::new(Some(observer))));
         Ok(id)
     }
 
@@ -75,17 +74,16 @@ impl<T, E> Observable<T, E> for TxnDistributor<T, E>
         trace!("TxnDistributor({})::unsubscribe({})", self.id, subscription);
         match self.observers.remove(subscription) {
             Some(observer) => Some(Box::new(observer)),
-            None => None
+            None => None,
         }
     }
 }
 
-
 /// Receives the values, clones them and sends them to each observer
 impl<T, E> Observer<T, E> for TxnDistributor<T, E>
-    where
-        T: Send + Debug + Clone,
-        E: Send + Debug
+where
+    T: Send + Debug + Clone,
+    E: Send + Debug,
 {
     fn on_start(&mut self) -> Result<(), E> {
         trace!("TxnDistributor({})::on_start", self.id);
@@ -111,7 +109,7 @@ impl<T, E> Observer<T, E> for TxnDistributor<T, E>
         }
     }
 
-    fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item=T> + 'a>) -> Result<(), E> {
+    fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = T> + 'a>) -> Result<(), E> {
         trace!("TxnDistributor({})::on_updates", self.id);
 
         // clone updates for each observer
@@ -126,7 +124,6 @@ impl<T, E> Observer<T, E> for TxnDistributor<T, E>
             Err(error) => Err(error)
         }
     }
-
 
     fn on_completed(&mut self) -> Result<(), E> {
         trace!("TxnDistributor({})::on_completed", self.id);
@@ -156,7 +153,11 @@ mod tests {
         let subscription = distributor.subscribe(observer);
         assert!(subscription.is_ok());
         assert!(distributor.unsubscribe(&subscription.unwrap()).is_some());
-        assert!(distributor.observers.values().collect::<Vec<_>>().is_empty());
+        assert!(distributor
+            .observers
+            .values()
+            .collect::<Vec<_>>()
+            .is_empty());
 
         let mut observable = distributor.create_observable();
         let observer = Box::new(MockObserver::new());
@@ -219,7 +220,3 @@ mod tests {
         assert_eq!(mock2.lock().unwrap().called_on_commit, 1);
     }
 }
-
-
-
-

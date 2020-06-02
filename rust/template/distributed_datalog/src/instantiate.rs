@@ -5,8 +5,8 @@
 //! `DDlogServer` instance, a `TcpReceiver`, a `TxnMux`, and file sinks
 //! and sources if desired.
 
-use std::collections::{BTreeMap, BTreeSet};
 use std::collections::HashMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs::File;
 use std::net::SocketAddr;
 use std::path::Path;
@@ -89,8 +89,8 @@ fn deduce_redirects(config: &NodeCfg) -> HashMap<RelId, RelId> {
 
 /// Create a `DDlogServer` as per the given node configuration.
 fn create_server<P>(node_cfg: &NodeCfg) -> Result<DDlogServer<P>, String>
-    where
-        P: Send + DDlog,
+where
+    P: Send + DDlog,
 {
     let redirects = deduce_redirects(node_cfg);
     // TODO: Should the number of workers be made configurable?
@@ -101,8 +101,8 @@ fn create_server<P>(node_cfg: &NodeCfg) -> Result<DDlogServer<P>, String>
 
 /// Create a transaction multiplexer wrapping the given server.
 fn create_txn_mux<P>(server: DDlogServer<P>) -> Result<TxnMux<Update<DDValue>, String>, String>
-    where
-        P: Send + DDlog + 'static,
+where
+    P: Send + DDlog + 'static,
 {
     let mut txnmux = TxnMux::new();
     txnmux
@@ -117,12 +117,15 @@ fn create_txn_mux<P>(server: DDlogServer<P>) -> Result<TxnMux<Update<DDValue>, S
 fn add_tcp_senders<P>(
     server: &mut DDlogServer<P>,
     node_cfg: &NodeCfg,
-    accumulators: &mut HashMap<BTreeSet<RelId>, SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>>,
+    accumulators: &mut HashMap<
+        BTreeSet<RelId>,
+        SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>,
+    >,
     sinks: &mut HashMap<BTreeSet<RelId>, Vec<(SinkRealization<P::Convert>, usize)>>,
     assignment: &Assignment,
 ) -> Result<(), String>
-    where
-        P: DDlog,
+where
+    P: DDlog,
 {
     deduce_outputs(node_cfg, assignment)?
         .into_iter()
@@ -134,15 +137,19 @@ fn add_tcp_senders<P>(
                     let sender = Arc::new(Mutex::new(sender));
 
                     // TODO: What should we really do if we can't subscribe?
-                    let accumulator = accumulators.entry(rel_ids.clone())
+                    let accumulator = accumulators
+                        .entry(rel_ids.clone())
                         .or_insert(Arc::new(Mutex::new(DistributingAccumulator::new())));
 
-                    let subscription = accumulator.lock().unwrap()
+                    let subscription = accumulator
+                        .lock()
+                        .unwrap()
                         .subscribe(Box::new(sender.clone()))
                         .map_err(|_| "failed to subscribe TCP sender".to_string())?;
 
-                    sinks.entry(rel_ids.clone())
-                        .or_insert(vec!())
+                    sinks
+                        .entry(rel_ids.clone())
+                        .or_insert(vec![])
                         .insert(0, (SinkRealization::Node(sender.clone()), subscription));
 
                     server
@@ -161,15 +168,18 @@ fn add_tcp_receiver<P>(
     addr: &SocketAddr,
     sources: &mut HashMap<BTreeSet<RelId>, Vec<(SourceRealization<P::Convert>, ())>>,
 ) -> Result<(), String>
-    where
-        P: Send + DDlog + 'static,
-        P::Convert: Send,
+where
+    P: Send + DDlog + 'static,
+    P::Convert: Send,
 {
     let receiver =
         TcpReceiver::new(addr).map_err(|e| format!("failed to create TcpReceiver: {}", e))?;
     let receiver = Arc::new(Mutex::new(receiver));
     // an empty set indicates the TcpReceiver
-    let _ = sources.insert(BTreeSet::new(), vec!((SourceRealization::Node(receiver.clone()), ())));
+    let _ = sources.insert(
+        BTreeSet::new(),
+        vec![(SourceRealization::Node(receiver.clone()), ())],
+    );
 
     txnmux
         .add_observable(Box::new(receiver))
@@ -207,12 +217,15 @@ fn deduce_sinks_or_sources(node_cfg: &NodeCfg, sinks: bool) -> BTreeMap<&Path, B
 fn add_file_sinks<P>(
     server: &mut DDlogServer<P>,
     node_cfg: &NodeCfg,
-    accumulators: &mut HashMap<BTreeSet<RelId>, SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>>,
+    accumulators: &mut HashMap<
+        BTreeSet<RelId>,
+        SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>,
+    >,
     sinks: &mut HashMap<BTreeSet<RelId>, Vec<(SinkRealization<P::Convert>, usize)>>,
 ) -> Result<(), String>
-    where
-        P: Send + DDlog + 'static,
-        P::Convert: Send,
+where
+    P: Send + DDlog + 'static,
+    P::Convert: Send,
 {
     deduce_sinks_or_sources(node_cfg, true)
         .iter()
@@ -221,10 +234,13 @@ fn add_file_sinks<P>(
                 .map_err(|e| format!("failed to create file {}: {}", path.display(), e))?;
             let sink = Arc::new(Mutex::new(FileSink::<P::Convert>::new(file)));
 
-            let accumulator = accumulators.entry(rel_ids.clone())
+            let accumulator = accumulators
+                .entry(rel_ids.clone())
                 .or_insert(Arc::new(Mutex::new(DistributingAccumulator::new())));
 
-            let subscription = accumulator.lock().unwrap()
+            let subscription = accumulator
+                .lock()
+                .unwrap()
                 .subscribe(Box::new(sink.clone()))
                 .map_err(|_| {
                     format!(
@@ -233,11 +249,13 @@ fn add_file_sinks<P>(
                     )
                 })?;
 
-            let _ = sinks.entry(rel_ids.clone())
-                .or_insert(vec!())
+            let _ = sinks
+                .entry(rel_ids.clone())
+                .or_insert(vec![])
                 .insert(0, (SinkRealization::File(sink), subscription));
 
-            server.add_stream(rel_ids.clone())
+            server
+                .add_stream(rel_ids.clone())
                 .subscribe(Box::new(accumulator.clone()))
                 .map_err(|_| "failed to subscribe accumulator to DDlogServer".to_string())
         })
@@ -250,9 +268,9 @@ fn add_file_sources<P>(
     node_cfg: &NodeCfg,
     sources: &mut HashMap<BTreeSet<RelId>, Vec<(SourceRealization<P::Convert>, ())>>,
 ) -> Result<(), String>
-    where
-        P: DDlog + 'static,
-        P::Convert: Send,
+where
+    P: DDlog + 'static,
+    P::Convert: Send,
 {
     deduce_sinks_or_sources(node_cfg, false)
         .iter()
@@ -264,11 +282,16 @@ fn add_file_sources<P>(
                 .add_observable(Box::new(accumulator.clone()))
                 .map_err(|_| "failed to register Accumulator with TxnMux".to_string())?;
 
-            let subscription = source.subscribe(Box::new(accumulator))
-                .map_err(|_| format!("failed to add file source {} to accumulator", path.display()))?;
+            let subscription = source.subscribe(Box::new(accumulator)).map_err(|_| {
+                format!(
+                    "failed to add file source {} to accumulator",
+                    path.display()
+                )
+            })?;
 
-            sources.entry(rel_ids.clone())
-                .or_insert(vec!())
+            sources
+                .entry(rel_ids.clone())
+                .or_insert(vec![])
                 .insert(0, (SourceRealization::File(source), subscription));
             Ok(())
         })
@@ -284,9 +307,9 @@ fn realize<P>(
     node_cfg: &NodeCfg,
     assignment: &Assignment,
 ) -> Result<Realization<P::Convert>, String>
-    where
-        P: Send + DDlog + 'static,
-        P::Convert: Send,
+where
+    P: Send + DDlog + 'static,
+    P::Convert: Send,
 {
     let now = Instant::now();
 
@@ -295,7 +318,13 @@ fn realize<P>(
     let mut accumulators = HashMap::new();
     let mut sinks = HashMap::new();
 
-    add_tcp_senders(&mut server, node_cfg, &mut accumulators, &mut sinks, assignment)?;
+    add_tcp_senders(
+        &mut server,
+        node_cfg,
+        &mut accumulators,
+        &mut sinks,
+        assignment,
+    )?;
     add_file_sinks(&mut server, node_cfg, &mut accumulators, &mut sinks)?;
 
     let mut txnmux = create_txn_mux(server)?;
@@ -304,14 +333,22 @@ fn realize<P>(
     }
     add_file_sources::<P>(&mut txnmux, node_cfg, &mut sources)?;
 
-    println!("realized node configuration locally in {} ms", now.elapsed().as_millis());
-    Ok(Realization { sources, txnmux, accumulators, sinks })
+    println!(
+        "realized node configuration locally in {} ms",
+        now.elapsed().as_millis()
+    );
+    Ok(Realization {
+        sources,
+        txnmux,
+        accumulators,
+        sinks,
+    })
 }
 
 /// All possible sources of a Realization
 enum SourceRealization<C>
-    where
-        C: DDlogConvert
+where
+    C: DDlogConvert,
 {
     File(Arc<Mutex<FileSource<C>>>),
     Node(Arc<Mutex<TcpReceiver<Update<DDValue>>>>),
@@ -319,8 +356,8 @@ enum SourceRealization<C>
 
 /// All possible sinks of a Realization
 enum SinkRealization<C>
-    where
-        C: DDlogConvert
+where
+    C: DDlogConvert,
 {
     File(SharedObserver<FileSink<C>>),
     Node(SharedObserver<TcpSender<Update<DDValue>>>),
@@ -331,15 +368,18 @@ enum SinkRealization<C>
 /// Right now all that clients can do with an object of this type is
 /// dropping it to tear everything down.
 pub struct Realization<C>
-    where
-        C: DDlogConvert,
+where
+    C: DDlogConvert,
 {
     /// All sources of this realization and the subscription the node has to them
     sources: HashMap<BTreeSet<RelId>, Vec<(SourceRealization<C>, ())>>,
     /// The transaction multiplexer as input to the DDLogServer
     txnmux: TxnMux<Update<DDValue>, String>,
     /// All sink accumulators of this realization to connect new nodes to
-    accumulators: HashMap<BTreeSet<RelId>, SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>>,
+    accumulators: HashMap<
+        BTreeSet<RelId>,
+        SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>,
+    >,
     /// All sinks of this realization with their subscription
     sinks: HashMap<BTreeSet<RelId>, Vec<(SinkRealization<C>, usize)>>,
 }
@@ -351,9 +391,9 @@ pub fn instantiate<P>(
     addr: &Addr,
     assignment: &Assignment,
 ) -> Result<Vec<Realization<P::Convert>>, String>
-    where
-        P: Send + DDlog + 'static,
-        P::Convert: Send,
+where
+    P: Send + DDlog + 'static,
+    P::Convert: Send,
 {
     assignment
         .iter()

@@ -22,12 +22,12 @@ use std::sync::Mutex;
 use log::trace;
 use uid::Id;
 
-use differential_datalog::program::Update;
 use differential_datalog::program::RelId;
+use differential_datalog::program::Update;
 
-use crate::{Observable, UpdatesObservable};
 use crate::Observer;
 use crate::ObserverBox;
+use crate::{Observable, UpdatesObservable};
 
 use crate::accumulate::AccumulatingObserver;
 use crate::accumulate::TxnDistributor;
@@ -35,9 +35,9 @@ use crate::accumulate::TxnDistributor;
 /// A trait object that acts as a proxy between an observable and observer.
 /// It accumulates the updates to maintain the current state of the data.
 pub trait Accumulator<V, E>: Observer<Update<V>, E> + Observable<Update<V>, E>
-    where
-        V: Send + Debug + Eq + Hash,
-        E: Send,
+where
+    V: Send + Debug + Eq + Hash,
+    E: Send,
 {
     /// Creates a new Accumulator without any subscriptions or subscribers.
     fn new() -> Self;
@@ -53,10 +53,10 @@ pub trait Accumulator<V, E>: Observer<Update<V>, E> + Observable<Update<V>, E>
 /// than once). Spawns an `AccumulatingObserver` to which a `TxnDistributor` is subscribed to.
 #[derive(Debug)]
 pub struct DistributingAccumulator<T, V, E>
-    where
-        T: Debug + Send,
-        V: Debug + Eq + Hash + Send,
-        E: Debug + Send,
+where
+    T: Debug + Send,
+    V: Debug + Eq + Hash + Send,
+    E: Debug + Send,
 {
     /// The accumulator's unique ID.
     id: usize,
@@ -67,9 +67,9 @@ pub struct DistributingAccumulator<T, V, E>
 }
 
 impl<V, E> Accumulator<V, E> for DistributingAccumulator<Update<V>, V, E>
-    where
-        V: Debug + Send + Clone + Eq + Hash + 'static,
-        E: Debug + Send + 'static,
+where
+    V: Debug + Send + Clone + Eq + Hash + 'static,
+    E: Debug + Send + 'static,
 {
     fn new() -> Self {
         let id = Id::<()>::new().get();
@@ -94,7 +94,6 @@ impl<V, E> Accumulator<V, E> for DistributingAccumulator<Update<V>, V, E>
         self.distributor.lock().unwrap().create_observable()
     }
 
-
     fn get_current_state(&self) -> HashMap<RelId, HashSet<V>> {
         trace!("DistributingAccumulator({})::get_current_state()", self.id);
         self.observer.get_current_state()
@@ -103,9 +102,9 @@ impl<V, E> Accumulator<V, E> for DistributingAccumulator<Update<V>, V, E>
 
 /// The methods for the Observable trait are delegated to the TxnDistributor
 impl<V, E> Observable<Update<V>, E> for DistributingAccumulator<Update<V>, V, E>
-    where
-        V: Debug + Send + Clone + Eq + Hash + 'static,
-        E: Debug + Send + 'static,
+where
+    V: Debug + Send + Clone + Eq + Hash + 'static,
+    E: Debug + Send + 'static,
 {
     type Subscription = usize;
 
@@ -118,14 +117,23 @@ impl<V, E> Observable<Update<V>, E> for DistributingAccumulator<Update<V>, V, E>
         let mut distributor = self.distributor.lock().unwrap();
 
         // update new observer with currently accumulated state
-        let mut init_updates = self.get_current_state().into_iter()
-            .flat_map(|(relid, vs)|
-                vs.into_iter().map(|v| Update::Insert { relid, v }).collect::<Vec<_>>())
+        let mut init_updates = self
+            .get_current_state()
+            .into_iter()
+            .flat_map(|(relid, vs)| {
+                vs.into_iter()
+                    .map(|v| Update::Insert { relid, v })
+                    .collect::<Vec<_>>()
+            })
             .collect::<Vec<_>>();
 
         if !init_updates.is_empty() {
             let updates = init_updates.drain(..).into_iter();
-            trace!("DistributingAccumulator({:?}) sending init_updates to observer: {:?}", self.id, updates);
+            trace!(
+                "DistributingAccumulator({:?}) sending init_updates to observer: {:?}",
+                self.id,
+                updates
+            );
             let _ = observer.on_start();
             let _ = observer.on_updates(Box::new(updates));
             let _ = observer.on_commit();
@@ -134,8 +142,15 @@ impl<V, E> Observable<Update<V>, E> for DistributingAccumulator<Update<V>, V, E>
         distributor.subscribe(observer)
     }
 
-    fn unsubscribe(&mut self, subscription: &Self::Subscription) -> Option<ObserverBox<Update<V>, E>> {
-        trace!("DistributingAccumulator({})::unsubscribe({})", self.id, subscription);
+    fn unsubscribe(
+        &mut self,
+        subscription: &Self::Subscription,
+    ) -> Option<ObserverBox<Update<V>, E>> {
+        trace!(
+            "DistributingAccumulator({})::unsubscribe({})",
+            self.id,
+            subscription
+        );
         self.distributor.unsubscribe(subscription)
     }
 }
@@ -143,9 +158,9 @@ impl<V, E> Observable<Update<V>, E> for DistributingAccumulator<Update<V>, V, E>
 /// All calls except `on_completed` of the Observer trait are delegated to the AccumulatingObserver.
 /// `on_completed` triggers the deletion of the accumulated state for all observers.
 impl<V, E> Observer<Update<V>, E> for DistributingAccumulator<Update<V>, V, E>
-    where
-        V: Debug + Send + Eq + Hash + Clone + 'static,
-        E: Debug + Send + 'static
+where
+    V: Debug + Send + Eq + Hash + Clone + 'static,
+    E: Debug + Send + 'static,
 {
     fn on_start(&mut self) -> Result<(), E> {
         trace!("DistributingAccumulator({})::on_start", self.id);
@@ -157,7 +172,10 @@ impl<V, E> Observer<Update<V>, E> for DistributingAccumulator<Update<V>, V, E>
         self.observer.on_commit()
     }
 
-    fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item=Update<V>> + 'a>) -> Result<(), E> {
+    fn on_updates<'a>(
+        &mut self,
+        updates: Box<dyn Iterator<Item = Update<V>> + 'a>,
+    ) -> Result<(), E> {
         trace!("DistributingAccumulator({})::on_updates", self.id);
         self.observer.on_updates(updates)
     }
@@ -168,14 +186,23 @@ impl<V, E> Observer<Update<V>, E> for DistributingAccumulator<Update<V>, V, E>
         let mut distributor = self.distributor.lock().unwrap();
         let _ = distributor.on_completed();
 
-        let mut delete_updates = self.get_current_state().into_iter()
-            .flat_map(|(relid, vs)|
-                vs.into_iter().map(|v| Update::DeleteValue { relid, v }).collect::<Vec<_>>())
+        let mut delete_updates = self
+            .get_current_state()
+            .into_iter()
+            .flat_map(|(relid, vs)| {
+                vs.into_iter()
+                    .map(|v| Update::DeleteValue { relid, v })
+                    .collect::<Vec<_>>()
+            })
             .collect::<Vec<_>>();
 
         if !delete_updates.is_empty() {
             let updates = delete_updates.drain(..).into_iter();
-            trace!("DistributingAccumulator({:?}) clearing state of observers: {:?}", self.id, updates);
+            trace!(
+                "DistributingAccumulator({:?}) clearing state of observers: {:?}",
+                self.id,
+                updates
+            );
             let _ = distributor.on_start();
             let _ = distributor.on_updates(Box::new(updates));
             let _ = distributor.on_commit();
@@ -185,7 +212,6 @@ impl<V, E> Observer<Update<V>, E> for DistributingAccumulator<Update<V>, V, E>
     }
 }
 
-
 #[cfg(test)]
 pub mod tests {
     use super::*;
@@ -194,40 +220,52 @@ pub mod tests {
     use std::sync::Mutex;
     use std::vec::IntoIter;
 
+    use crate::accumulate::{eq_updates, UpdatesMockObserver};
     use crate::MockObserver;
-    use crate::accumulate::{UpdatesMockObserver, eq_updates};
 
     fn get_usize_updates_1() -> Box<IntoIter<Update<usize>>> {
-        Box::new(vec!(
-            Update::Insert { relid: 1, v: 1 },
-            Update::Insert { relid: 2, v: 2 },
-            Update::Insert { relid: 3, v: 3 },
-        ).into_iter())
+        Box::new(
+            vec![
+                Update::Insert { relid: 1, v: 1 },
+                Update::Insert { relid: 2, v: 2 },
+                Update::Insert { relid: 3, v: 3 },
+            ]
+            .into_iter(),
+        )
     }
 
     fn get_usize_updates_2() -> Box<IntoIter<Update<usize>>> {
-        Box::new(vec!(
-            Update::Insert { relid: 1, v: 2 },
-            Update::Insert { relid: 1, v: 3 },
-            Update::Insert { relid: 2, v: 3 },
-        ).into_iter())
+        Box::new(
+            vec![
+                Update::Insert { relid: 1, v: 2 },
+                Update::Insert { relid: 1, v: 3 },
+                Update::Insert { relid: 2, v: 3 },
+            ]
+            .into_iter(),
+        )
     }
 
     fn get_usize_updates_3() -> Box<IntoIter<Update<usize>>> {
-        Box::new(vec!(
-            Update::Insert { relid: 4, v: 1 },
-            Update::Insert { relid: 4, v: 2 },
-            Update::Insert { relid: 4, v: 3 },
-            Update::Insert { relid: 4, v: 4 },
-        ).into_iter())
+        Box::new(
+            vec![
+                Update::Insert { relid: 4, v: 1 },
+                Update::Insert { relid: 4, v: 2 },
+                Update::Insert { relid: 4, v: 3 },
+                Update::Insert { relid: 4, v: 4 },
+            ]
+            .into_iter(),
+        )
     }
 
     fn get_usize_delete_updates_1() -> Box<IntoIter<Update<usize>>> {
-        Box::new(vec!(
-            Update::DeleteValue { relid: 1, v: 1 },
-            Update::DeleteValue { relid: 2, v: 2 },
-            Update::DeleteValue { relid: 3, v: 3 },
-        ).into_iter())
+        Box::new(
+            vec![
+                Update::DeleteValue { relid: 1, v: 1 },
+                Update::DeleteValue { relid: 2, v: 2 },
+                Update::DeleteValue { relid: 3, v: 3 },
+            ]
+            .into_iter(),
+        )
     }
 
     /// Test subscribing and unsubscribing for a `DistributingAccumulator`.
@@ -372,9 +410,15 @@ pub mod tests {
         assert_eq!(accumulator.on_commit(), Ok(()));
         let received_updates = mock1.lock().unwrap().received_updates.clone();
         assert_eq!(received_updates.len(), 3);
-        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 1, v: 1 })));
-        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 2, v: 2 })));
-        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 3, v: 3 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::Insert { relid: 1, v: 1 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::Insert { relid: 2, v: 2 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::Insert { relid: 3, v: 3 })));
 
         // create an un-accumulated observable
         let mut observable = accumulator.create_observable();
@@ -395,10 +439,18 @@ pub mod tests {
         assert_eq!(accumulator.on_commit(), Ok(()));
         let received_updates = mock2.lock().unwrap().received_updates.clone();
         assert_eq!(received_updates.len(), 4);
-        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 1 })));
-        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 2 })));
-        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 3 })));
-        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 4 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 1 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 2 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 3 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 4 })));
 
         // a new observer via subscribe() should receive all updates
         assert_eq!(accumulator.on_start(), Ok(()));
@@ -408,13 +460,27 @@ pub mod tests {
         assert!(accumulator.subscribe(Box::new(mock3.clone())).is_ok());
         let received_updates = mock3.lock().unwrap().received_updates.clone();
         assert_eq!(received_updates.len(), 7);
-        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 1, v: 2 })));
-        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 1, v: 3 })));
-        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 2, v: 3 })));
-        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 1 })));
-        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 2 })));
-        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 3 })));
-        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 4 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::Insert { relid: 1, v: 2 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::Insert { relid: 1, v: 3 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::Insert { relid: 2, v: 3 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 1 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 2 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 3 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 4 })));
     }
 
     /// when an upstream source calls `on_completed`,
@@ -438,25 +504,49 @@ pub mod tests {
         assert!(accumulator.subscribe(Box::new(mock2.clone())).is_ok());
         let received_updates = mock2.lock().unwrap().received_updates.clone();
         assert_eq!(received_updates.len(), 4);
-        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 1 })));
-        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 2 })));
-        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 3 })));
-        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 4 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 1 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 2 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 3 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 4 })));
 
         assert_eq!(accumulator.on_completed(), Ok(()));
 
         let received_updates = mock1.lock().unwrap().received_updates.clone();
         assert_eq!(received_updates.len(), 14); // 3 + 4 inserts, 3 manual deletions, 4 automatic deletions
-        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 1 })));
-        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 2 })));
-        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 3 })));
-        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 4 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 1 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 2 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 3 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 4 })));
 
         let received_updates = mock2.lock().unwrap().received_updates.clone();
         assert_eq!(received_updates.len(), 8); // 4 inserts, 4 automatic deletions
-        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 1 })));
-        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 2 })));
-        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 3 })));
-        assert!(received_updates.iter().any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 4 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 1 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 2 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 3 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 4 })));
     }
 }

@@ -1,8 +1,8 @@
 mod accumulator;
 mod observer;
-mod txndistributor;
 #[cfg(any(test, feature = "test"))]
 mod test;
+mod txndistributor;
 
 pub use accumulator::Accumulator;
 pub use accumulator::DistributingAccumulator;
