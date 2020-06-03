@@ -157,6 +157,9 @@ data Attribute = Attribute { attrPos  :: Pos
 instance Eq Attribute where
     (==) (Attribute _ n1 v1) (Attribute _ n2 v2) = n1 == n2 && v1 == v2
 
+instance Ord Attribute where
+    compare (Attribute _ n1 v1) (Attribute _ n2 v2) = compare (n1, v1) (n2, v2)
+
 instance WithPos Attribute where
     pos = attrPos
     atPos a p = a{attrPos = p}
@@ -424,6 +427,9 @@ data KeyExpr = KeyExpr { keyPos  :: Pos
 instance Eq KeyExpr where
     (==) (KeyExpr _ v1 e1) (KeyExpr _ v2 e2) = v1 == v2 && e1 == e2
 
+instance Ord KeyExpr where
+    compare (KeyExpr _ v1 e1) (KeyExpr _ v2 e2) = compare (v1, e1) (v2, e2)
+
 instance WithPos KeyExpr where
     pos = keyPos
     atPos k p = k{keyPos = p}
@@ -458,6 +464,10 @@ data Relation = Relation { relPos         :: Pos
 instance Eq Relation where
     (==) (Relation _ r1 n1 t1 k1) (Relation _ r2 n2 t2 k2) = r1 == r2 && n1 == n2 && t1 == t2 && k1 == k2
 
+instance Ord Relation where
+    compare (Relation _ r1 n1 t1 k1) (Relation _ r2 n2 t2 k2) =
+        compare (r1, n1, t1, k1) (r2, n2, t2, k2)
+
 instance WithPos Relation where
     pos = relPos
     atPos r p = r{relPos = p}
@@ -482,6 +492,9 @@ data Index = Index { idxPos      :: Pos
 
 instance Eq Index where
     (==) (Index _ n1 v1 a1) (Index _ n2 v2 a2) = (n1, v1, a1) == (n2, v2, a2)
+
+instance Ord Index where
+    compare (Index _ n1 v1 a1) (Index _ n2 v2 a2) = compare (n1, v1, a1) (n2, v2, a2)
 
 instance WithPos Index where
     pos = idxPos
@@ -510,6 +523,9 @@ instance WithName Atom where
 instance Eq Atom where
     (==) (Atom _ r1 v1) (Atom _ r2 v2) = r1 == r2 && v1 == v2
 
+instance Ord Atom where
+    compare (Atom _ r1 v1) (Atom _ r2 v2) = compare (r1, v1) (r2, v2)
+
 instance WithPos Atom where
     pos = atomPos
     atPos a p = a{atomPos = p}
@@ -526,12 +542,12 @@ instance Show Atom where
 -- The RHS of a rule consists of relational atoms with
 -- positive/negative polarity, Boolean conditions, aggregation,
 -- disaggregation (flatmap), inspect operations.
-data RuleRHS = RHSLiteral   {rhsPolarity:: Bool, rhsAtom :: Atom}
+data RuleRHS = RHSLiteral   {rhsPolarity :: Bool, rhsAtom :: Atom}
              | RHSCondition {rhsExpr :: Expr}
              | RHSAggregate {rhsVar :: String, rhsGroupBy :: [String], rhsAggFunc :: String, rhsAggExpr :: Expr}
              | RHSFlatMap   {rhsVar :: String, rhsMapExpr :: Expr}
              | RHSInspect   {rhsInspectExpr :: Expr}
-             deriving (Eq)
+             deriving (Eq, Ord)
 
 instance PP RuleRHS where
     pp (RHSLiteral True a)    = pp a
@@ -582,6 +598,10 @@ data Rule = Rule { rulePos :: Pos
 instance Eq Rule where
     (==) (Rule _ lhs1 rhs1) (Rule _ lhs2 rhs2) =
         lhs1 == lhs2 && rhs1 == rhs2
+
+instance Ord Rule where
+    compare (Rule _ lhs1 rhs1) (Rule _ lhs2 rhs2) =
+        compare (lhs1, rhs1) (lhs2, rhs2)
 
 instance WithPos Rule where
     pos = rulePos
@@ -843,6 +863,9 @@ data FuncArg = FuncArg { argPos  :: Pos
 instance Eq FuncArg where
     (==) (FuncArg _ n1 m1 t1) (FuncArg _ n2 m2 t2) = (m1, n1, t1) == (m2, n2, t2)
 
+instance Ord FuncArg where
+    compare (FuncArg _ n1 m1 t1) (FuncArg _ n2 m2 t2) = compare (m1, n1, t1) (m2, n2, t2)
+
 instance WithPos FuncArg where
     pos = argPos
     atPos a p = a{argPos = p}
@@ -871,6 +894,10 @@ funcImmutArgs f = filter (not . argMut) $ funcArgs f
 instance Eq Function where
     (==) (Function _ at1 n1 as1 t1 d1) (Function _ at2 n2 as2 t2 d2) =
         at1 == at2 && n1 == n2 && as1 == as2 && t1 == t2 && d1 == d2
+
+instance Ord Function where
+    compare (Function _ at1 n1 as1 t1 d1) (Function _ at2 n2 as2 t2 d2) =
+        compare (at1, n1, as1, t1, d1) (at2, n2, as2, t2, d2)
 
 instance WithPos Function where
     pos = funcPos
@@ -1199,6 +1226,7 @@ data ECtx = -- | Top-level context. Serves as the root of the context hierarchy.
           | CtxAs             {ctxParExpr::ENode, ctxPar::ECtx}
             -- | Argument of a &-pattern '&e'
           | CtxRef            {ctxParExpr::ENode, ctxPar::ECtx}
+          deriving (Eq, Ord)
 
 instance PP ECtx where
     pp CtxTop        = "CtxTop"

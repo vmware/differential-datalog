@@ -33,8 +33,6 @@ module Language.DifferentialDatalog.Rule (
     ruleTypeMapM,
     ruleHasJoins,
     ruleAggregateTypeParams,
-    atomVarOccurrences,
-    atomVars,
     ruleIsDistinctByConstruction,
     ruleHeadIsRecursive,
     ruleIsRecursive
@@ -46,15 +44,13 @@ import Data.List
 --import Debug.Trace
 import Text.PrettyPrint
 
-import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.PP
-import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Syntax
-import {-# SOURCE #-} Language.DifferentialDatalog.Type
 import {-# SOURCE #-} Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Validate
+import Language.DifferentialDatalog.Var
 import Language.DifferentialDatalog.Relation
 
 -- | Pretty-print the first 'len' literals of a rule. 
@@ -63,48 +59,40 @@ rulePPPrefix rl len = commaSep $ map pp $ take len $ ruleRHS rl
 
 -- | New variables declared in the 'i'th conjunct in the right-hand
 -- side of a rule.
-ruleRHSNewVars :: DatalogProgram -> Rule -> Int -> [Field]
+ruleRHSNewVars :: DatalogProgram -> Rule -> Int -> [Var]
 ruleRHSNewVars d rule idx =
     S.toList $ ruleRHSVarSet' d rule idx S.\\ ruleRHSVarSet' d rule (idx-1)
 
-ruleRHSVars :: DatalogProgram -> Rule -> Int -> [Field]
+ruleRHSVars :: DatalogProgram -> Rule -> Int -> [Var]
 ruleRHSVars d rl i = S.toList $ ruleRHSVarSet d rl i
 
 -- | Variables visible in the 'i'th conjunct in the right-hand side of
 -- a rule.  All conjuncts before 'i' must be validated before calling this
 -- function.
-ruleRHSVarSet :: DatalogProgram -> Rule -> Int -> S.Set Field
+ruleRHSVarSet :: DatalogProgram -> Rule -> Int -> S.Set Var
 ruleRHSVarSet d rl i = ruleRHSVarSet' d rl (i-1)
 
 -- Variables visible _after_ 'i'th conjunct.
-ruleRHSVarSet' :: DatalogProgram -> Rule -> Int -> S.Set Field
+ruleRHSVarSet' :: DatalogProgram -> Rule -> Int -> S.Set Var
 ruleRHSVarSet' _ _  i | i < 0 = S.empty
 ruleRHSVarSet' d rl i =
     case ruleRHS rl !! i of
-         RHSLiteral True  _            -> vs `S.union` (atomVarDecls d rl i)
+         RHSLiteral True  a            -> vs `S.union` (S.fromList $ exprVarDecls d (CtxRuleRAtom rl i) (atomVal a))
          RHSLiteral False _            -> vs
          -- assignment introduces new variables
-         RHSCondition (E e@(ESet _ l _)) -> vs `S.union` exprDecls d (CtxSetL e (CtxRuleRCond rl i)) l
+         RHSCondition (E e@(ESet _ l _)) -> vs `S.union` (S.fromList $ exprVarDecls d (CtxSetL e (CtxRuleRCond rl i)) l)
          -- condition does not introduce new variables
          RHSCondition _                -> vs
          -- FlatMap introduces a variable
-         RHSFlatMap v e                -> let t = case exprType' d (CtxRuleRFlatMap rl i) e of
-                                                       TOpaque _ _         [t']    -> t'
-                                                       TOpaque _ tname     [kt,vt] | tname == mAP_TYPE
-                                                                                   -> tTuple [kt,vt]
-                                                       t' -> error $ "Rule.ruleRHSVarSet': unexpected FlatMap type " ++ show t'
-                                          in S.insert (Field nopos [] v t) vs
+         RHSFlatMap _ _                -> S.insert (FlatMapVar rl i) vs
          -- Inspect does not introduce new variables
          RHSInspect _                  -> vs
          -- Aggregation hides all variables except groupBy vars
          -- and the aggregate variable
-         RHSAggregate avar gvars fname _ -> let ctx = CtxRuleRAggregate rl i
-                                                gvars' = map (getVar d ctx) gvars
-                                                f = getFunc d fname
-                                                tmap = ruleAggregateTypeParams d rl i
-                                                atype = typeSubstTypeArgs tmap $ funcType f
-                                                avar' = Field nopos [] avar atype
-                                            in S.fromList $ avar':gvars'
+         RHSAggregate _ gvars _ _      -> let ctx = CtxRuleRAggregate rl i
+                                              gvars' = map (getVar d ctx) gvars
+                                              avar' = AggregateVar rl i
+                                          in S.fromList $ avar':gvars'
     where
     vs = ruleRHSVarSet d rl i
 
@@ -114,59 +102,29 @@ ruleAggregateTypeParams d rl idx =
          Left e -> error $ "ruleAggregateTypeParams: " ++ e
          Right tmap -> tmap
 
-exprDecls :: DatalogProgram -> ECtx -> Expr -> S.Set Field
-exprDecls d ctx e =
-    S.fromList
-        $ map (\(v, ctx') -> Field nopos [] v $ exprType d ctx' (eVarDecl v))
-        $ exprVarDecls ctx e
-
-atomVarTypes :: DatalogProgram -> ECtx -> Expr -> [Field]
-atomVarTypes d ctx e =
-    map (\(v, ctx') -> Field nopos [] v $ exprType d ctx' (eVar v))
-        $ atomVarOccurrences ctx e
-
-atomVarOccurrences :: ECtx -> Expr -> [(String, ECtx)]
-atomVarOccurrences ctx e =
-    exprCollectCtx (\ctx' e' ->
-                    case e' of
-                         EVar _ v       -> [(v, ctx')]
-                         EBinding _ v _ -> [(v, ctx')]
-                         _              -> [])
-                   (++) ctx e
-
-atomVars :: Expr -> [String]
-atomVars e =
-    exprCollect (\case
-                  EVar _ v       -> [v]
-                  EBinding _ v _ -> [v]
-                  _              -> [])
-                (++) e
-
-atomVarDecls :: DatalogProgram -> Rule -> Int -> S.Set Field
-atomVarDecls d rl i = S.fromList $ atomVarTypes d (CtxRuleRAtom rl i) (atomVal $ rhsAtom $ ruleRHS rl !! i)
-
--- | Variables used in a RHS term of a rule
-ruleRHSTermVars :: Rule -> Int -> [String]
-ruleRHSTermVars rl i =
+-- | Variables used in a RHS term of a rule.
+ruleRHSTermVars :: DatalogProgram -> Rule -> Int -> [Var]
+ruleRHSTermVars d rl i =
     case ruleRHS rl !! i of
-         RHSLiteral{..}   -> exprVars $ atomVal rhsAtom
-         RHSCondition{..} -> exprVars rhsExpr
-         RHSFlatMap{..}   -> exprVars rhsMapExpr
-         RHSInspect{..}   -> exprVars rhsInspectExpr
-         RHSAggregate{..} -> nub $ rhsGroupBy ++ exprVars rhsAggExpr
+         RHSLiteral{..}   -> exprFreeVars d (CtxRuleRAtom rl i) $ atomVal rhsAtom
+         RHSCondition{..} -> exprFreeVars d (CtxRuleRCond rl i) rhsExpr
+         RHSFlatMap{..}   -> exprFreeVars d (CtxRuleRFlatMap rl i) rhsMapExpr
+         RHSInspect{..}   -> exprFreeVars d (CtxRuleRInspect rl i) rhsInspectExpr
+         RHSAggregate{..} -> nub $ map (getVar d (CtxRuleRAggregate rl i)) rhsGroupBy ++
+                                   exprFreeVars d (CtxRuleRAggregate rl i) rhsAggExpr
 
 -- | All variables visible after the last RHS clause of the rule
-ruleVars :: DatalogProgram -> Rule -> [Field]
+ruleVars :: DatalogProgram -> Rule -> [Var]
 ruleVars d rl@Rule{..} = ruleRHSVars d rl (length ruleRHS)
 
 -- | Variables used in the head of the rule
-ruleLHSVars :: DatalogProgram -> Rule -> [Field]
+ruleLHSVars :: DatalogProgram -> Rule -> [Var]
 ruleLHSVars d rl = S.toList $ ruleLHSVarSet d rl
 
-ruleLHSVarSet :: DatalogProgram -> Rule -> S.Set Field
+ruleLHSVarSet :: DatalogProgram -> Rule -> S.Set Var
 ruleLHSVarSet d rl = S.fromList
     $ concat
-    $ mapIdx (\a i -> atomVarTypes d (CtxRuleL rl i) $ atomVal a)
+    $ mapIdx (\a i -> exprFreeVars d (CtxRuleL rl i) $ atomVal a)
     $ ruleLHS rl
 
 -- | Map function over all types in a rule
@@ -215,7 +173,7 @@ ruleIsDistinctByConstruction d rl@Rule{..} head_idx = f True 0
     f False i | i == length ruleRHS         = False
     f True  i | i == length ruleRHS         =
         -- The head of the rule is an injective function of all the variables in its body
-        exprIsInjective d (S.fromList $ map name $ ruleVars d rl) (atomVal head_atom)
+        exprIsInjective d (CtxRuleL rl head_idx) (S.fromList $ ruleVars d rl) (atomVal head_atom)
     f True i | rhsIsCondition (ruleRHS !! i)
                                             = f True (i + 1)
     -- Aggregate operator returns a distinct collection over group-by and aggregate

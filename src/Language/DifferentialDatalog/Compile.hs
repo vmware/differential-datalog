@@ -79,6 +79,7 @@ import Language.DifferentialDatalog.Type
 import Language.DifferentialDatalog.Rule
 import Language.DifferentialDatalog.FlatBuffer
 import Language.DifferentialDatalog.Attribute
+import Language.DifferentialDatalog.Var
 
 -- Input argument name for Rust functions that take a datalog record.
 vALUE_VAR :: Doc
@@ -1567,7 +1568,7 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
 -- The first component of the return tuple is the list of expressions that must be used
 -- to index the input collection.  The second component lists variables that
 -- will form the value of the arrangement.
-rhsInputArrangement :: DatalogProgram -> Rule -> Int -> RuleRHS -> Maybe ([(Expr, ECtx)], [Field])
+rhsInputArrangement :: DatalogProgram -> Rule -> Int -> RuleRHS -> Maybe ([(Expr, ECtx)], [Var])
 rhsInputArrangement d rl rhs_idx (RHSLiteral _ atom) =
     let ctx = CtxRuleRAtom rl rhs_idx
         (_, vmap) = normalizeArrangement d ctx $ atomVal atom
@@ -1678,9 +1679,11 @@ mkAggregate d filters input_val rl@Rule{..} idx = do
 
 -- Generate Rust code to filter records and bring variables into scope.
 -- The Rust code returns None if the record does not pass the filter.
+-- Only extracts new variables declared in this atom, e.g., in the example
+-- below `v1` and `v2` are new variables:
 --
 -- let (v1,v2) /*v1,v2 are references*/ = match &v {
---     Value::Rel1(v1,v2) => (v1,v2),
+--     Value::Rel1(v1,v2,v3) => (v1,v2),
 --     _ => return None
 -- };
 openAtom :: (?cfg::CompilerConfig, ?statics::Statics) => DatalogProgram -> Doc -> Rule -> Int -> Atom -> Doc -> CompilerMonad Doc
@@ -1688,7 +1691,7 @@ openAtom d var rl idx Atom{..} on_error = do
     let rel = getRelation d atomRelation
     let t = relType rel
     constructor <- mkValConstructorName' d t
-    let varnames = map pp $ atomVars atomVal
+    let varnames = map (pp . name) $ exprVarDecls d (CtxRuleRAtom rl idx) atomVal
         vars = tuple varnames
         mtch = mkMatch (mkPatExpr d (CtxRuleRAtom rl idx) atomVal EReference) vars on_error
     return $
@@ -1697,9 +1700,9 @@ openAtom d var rl idx Atom{..} on_error = do
         "};"
 
 -- Generate Rust code to open up tuples and bring variables into scope.
-openTuple :: (?cfg::CompilerConfig) => DatalogProgram -> Doc -> [Field] -> CompilerMonad Doc
+openTuple :: (?cfg::CompilerConfig) => DatalogProgram -> Doc -> [Var] -> CompilerMonad Doc
 openTuple d var vs = do
-    let t = tTuple $ map typ vs
+    let t = tTuple $ map (varType d) vs
     cons <- mkValConstructorName' d t
     let pattern = tupleStruct $ map (("ref" <+>) . pp . name) vs
     return $ "let" <+> pattern <+> "= unsafe {" <+> cons <> "::from_ddvalue_ref(" <+> var <+> ") }.0;"
@@ -1750,11 +1753,17 @@ mkTupleValue d es = do
     constructor <- mkValConstructorName' d t
     return $ constructor <> (parens $ tupleStruct $ map (\(e, ctx) -> mkExpr d ctx e EVal) es) <> ".into_ddvalue()"
 
-mkVarsTupleValue :: (?cfg::CompilerConfig) => DatalogProgram -> [Field] -> CompilerMonad Doc
+mkVarsTupleValue :: (?cfg::CompilerConfig) => DatalogProgram -> [Var] -> CompilerMonad Doc
 mkVarsTupleValue d vs = do
-    let t = tTuple $ map typ vs
+    let t = tTuple $ map (varType d) vs
     constructor <- mkValConstructorName' d t
     return $ constructor <> (parens $ tupleStruct $ map ((<> ".clone()") . pp . name) vs) <> ".into_ddvalue()"
+
+mkFieldTupleValue :: (?cfg::CompilerConfig) => DatalogProgram -> [Field] -> CompilerMonad Doc
+mkFieldTupleValue d fs = do
+    let t = tTuple $ map typ fs
+    constructor <- mkValConstructorName' d t
+    return $ constructor <> (parens $ tupleStruct $ map ((<> ".clone()") . pp . name) fs) <> ".into_ddvalue()"
 
 -- Compile all contiguous RHSCondition terms following 'last_idx'
 mkFilters :: (?statics::Statics) => DatalogProgram -> Rule -> Int -> [Doc]
@@ -1779,7 +1788,7 @@ mkAssignFilter d ctx e@(ESet _ l r) =
     where
     r' = mkExpr d (CtxSetR e ctx) r EVal
     mtch = mkMatch (mkPatExpr d (CtxSetL e ctx) l EVal) vars "return None"
-    varnames = map (pp . fst) $ exprVarDecls (CtxSetL e ctx) l
+    varnames = map (pp . name) $ exprVarDecls d (CtxSetL e ctx) l
     vars = tuple varnames
     vardecls = tuple $ map ("ref" <+>) varnames
 mkAssignFilter _ _ e = error $ "Compile.mkAssignFilter: unexpected expression " ++ show e
@@ -1828,6 +1837,7 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
                           else openTuple d v post_join_vars
     -- Filter inputs using 'input_filters'
     ffun <- mkFFun d rl input_filters
+
     -- simplify pattern to only extract new variables from it
     let simplify (E e@EStruct{..})  = E e{exprStructFields = map (\(n,v) -> (n, simplify v)) exprStructFields}
         simplify (E e@ETuple{..})   = E e{exprTupleFields = map simplify exprTupleFields}
@@ -2080,17 +2090,17 @@ mkHead d prefix rl = do
 
 -- Variables in the RHS of the rule declared before or in i'th term
 -- and used after the term.
-rhsVarsAfter :: DatalogProgram -> Rule -> Int -> [Field]
+rhsVarsAfter :: DatalogProgram -> Rule -> Int -> [Var]
 rhsVarsAfter d rl i =
     case ruleRHS rl !! i of
          -- Inspect operators cannot change the collection it inspects. No variables are dropped.
          RHSInspect _ -> rhsVarsAfter d rl (i-1)
-         _             -> filter (\f -> -- If an aggregation occurs in the remaining part of the rule,
+         _            -> filter (\f -> -- If an aggregation occurs in the remaining part of the rule,
                                        -- keep all variables to preserve multiset semantics
                                        if any rhsIsAggregate $ drop (i+1) (ruleRHS rl)
                                           then True
-                                          else elem (name f) $ (map name $ ruleLHSVars d rl) `union`
-                                                               (concatMap (ruleRHSTermVars rl) [i+1..length (ruleRHS rl) - 1]))
+                                          else elem f $ (ruleLHSVars d rl) `union`
+                                                        (concatMap (ruleRHSTermVars d rl) [i+1..length (ruleRHS rl) - 1]))
                                 $ ruleRHSVars d rl (i+1)
 
 mkProg :: [ProgNode] -> CompilerMonad Doc
@@ -2173,7 +2183,7 @@ mkArrangementKey d rel pattern = do
         getvars _ _               = []
     let t = relType rel
     -- Order variables by their integer value: '_0', '_1', ...
-    patvars <- mkVarsTupleValue d
+    patvars <- mkFieldTupleValue d
                $ sortBy (\f1 f2 -> compare ((read $ tail $ name f1)::Int) (read $ tail $ name f2))
                $ getvars t pattern
     constructor <- mkValConstructorName' d t
@@ -2185,7 +2195,6 @@ mkArrangementKey d rel pattern = do
     return $ "match" <+> "unsafe {" <+> constructor <> "::from_ddvalue(" <> vALUE_VAR <> ") }.0 {"  $$
              nest' mtch                                                                     $$
              "}"
-
 
 -- Encodes Rust match pattern.
 --

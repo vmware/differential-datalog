@@ -49,8 +49,6 @@ module Language.DifferentialDatalog.Type(
     consTreeAbduct,
     typeMapM,
     typeMap,
-    funcTypeArgSubsts,
-    funcGroupArgTypes,
     sET_TYPES,
     tINYSET_TYPE,
     mAP_TYPE,
@@ -60,7 +58,9 @@ module Language.DifferentialDatalog.Type(
     nESTED_TS_TYPE,
     wEIGHT_TYPE,
     checkIterable,
-    typeIterType
+    typeIterType,
+    varTypeMaybe,
+    varType
 ) where
 
 import Data.Maybe
@@ -80,7 +80,8 @@ import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Function
 import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Error
---import {-# SOURCE #-} Relation
+import Language.DifferentialDatalog.Var
+import Language.DifferentialDatalog.Rule
 
 sET_TYPES :: [String]
 sET_TYPES = ["std.Set", "std.Vec", tINYSET_TYPE]
@@ -259,11 +260,11 @@ mtype2me _ _ _   (Just t) = return t
 
 exprNodeType' :: (MonadError String me) => DatalogProgram -> ECtx -> ExprNode (Maybe Type) -> me Type
 exprNodeType' d ctx (EVar p v)            =
-    let (lvs, rvs) = ctxMVars d ctx in
-    case lookup v $ lvs ++ rvs of
-         Just mt -> mtype2me d p ctx mt
+    let (lvs, rvs) = ctxVars d ctx in
+    case find ((==v) . name) $ lvs ++ rvs of
+         Just var -> varCheckType d var
          Nothing | ctxInRuleRHSPositivePattern ctx -- handle implicit vardecls in rules
-                 -> mtype2me d p ctx $ ctxExpectType d ctx
+                 -> varCheckType d $ ExprVar ctx $ EVar p v
          _       -> eunknown d p ctx
 
 exprNodeType' d ctx (EApply p f mas)      = do
@@ -869,3 +870,40 @@ checkIterable :: (MonadError String me, WithType a) => String -> Pos -> DatalogP
 checkIterable prefix p d x =
     check d (typeIsIterable d x) p $
           prefix ++ " must have one of these types: " ++ intercalate ", " sET_TYPES ++ ", or " ++ mAP_TYPE ++ " but its type is " ++ show (typ x)
+
+varTypeMaybe :: DatalogProgram -> Var -> Maybe Type
+varTypeMaybe d (ExprVar ctx EVarDecl{})         = ctxExpectType d ctx
+varTypeMaybe d (ExprVar ctx EVar{})             = ctxExpectType d ctx
+varTypeMaybe _ v@ExprVar{}                      = error $ "varTypeMaybe " ++ show v
+varTypeMaybe d (ForVar ctx e@EFor{..})          = fst <$> (typeIterType d =<< exprTypeMaybe d (CtxForIter e ctx) exprIter)
+varTypeMaybe _ v@ForVar{}                       = error $ "varTypeMaybe " ++ show v
+varTypeMaybe d (BindingVar ctx e@EBinding{..})  = exprTypeMaybe d (CtxBinding e ctx) exprPattern
+varTypeMaybe _ v@BindingVar{}                   = error $ "varTypeMaybe " ++ show v
+varTypeMaybe _ ArgVar{..}                       = Just $ typ $ fromJust $ find ((== varName) . name) $ funcArgs varFunc
+varTypeMaybe _ KeyVar{..}                       = Just $ typ varRel
+varTypeMaybe _ IdxVar{..}                       = Just $ typ $ fromJust $ find ((== varName) . name) $ idxVars varIndex
+varTypeMaybe d (FlatMapVar rl i)                = case typ' d <$> exprTypeMaybe d (CtxRuleRFlatMap rl i) (rhsMapExpr $ ruleRHS rl !! i) of
+                                                       Just (TOpaque _ _ [t'])     -> Just t'
+                                                       Just (TOpaque _ tname [kt,vt]) | tname == mAP_TYPE
+                                                                                   -> Just $ tTuple [kt,vt]
+                                                       _                           -> Nothing
+
+varTypeMaybe d (AggregateVar rl i)              = let f = getFunc d (rhsAggFunc $ ruleRHS rl !! i)
+                                                      tmap = ruleAggregateTypeParams d rl i
+                                                  in Just $ typeSubstTypeArgs tmap $ funcType f
+varTypeMaybe _ WeightVar                        = Just $ tUser wEIGHT_TYPE []
+varTypeMaybe d (TSVar rl)                       = if ruleIsRecursive d rl
+                                                  then Just $ tUser nESTED_TS_TYPE []
+                                                  else Just $ tUser ePOCH_TYPE []
+
+varCheckType :: (MonadError String me) => DatalogProgram -> Var -> me Type
+varCheckType d v =
+    case varTypeMaybe d v of
+         Nothing -> err d (pos v) $ "Type of variable '" ++ name v ++ "' is unknown"
+         Just t  -> return t
+
+varType :: DatalogProgram -> Var -> Type
+varType d v =
+    case varTypeMaybe d v of
+         Nothing -> error $ "Type of variable '" ++ name v ++ "' is unknown"
+         Just t  -> t

@@ -63,7 +63,7 @@ import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Expr
 import {-# SOURCE #-} Language.DifferentialDatalog.Rule
-import Language.DifferentialDatalog.Type
+import {-# SOURCE #-} Language.DifferentialDatalog.Type
 
 -- | Map function 'fun' over all expressions in a program
 progExprMapCtxM :: (Monad m) => DatalogProgram -> (ECtx -> ENode -> m Expr) -> m DatalogProgram
