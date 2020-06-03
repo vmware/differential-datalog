@@ -30,10 +30,8 @@ module Language.DifferentialDatalog.NS(
     lookupVar, checkVar, getVar,
     lookupConstructor, checkConstructor, getConstructor,
     lookupRelation, checkRelation, getRelation,
-    ctxMVars, ctxVars,
-    ctxAllVars,
-    -- isLVar,
-     ) where
+    ctxVars, ctxAllVars
+    ) where
 
 import qualified Data.Map as M
 import Data.List
@@ -41,17 +39,13 @@ import Control.Monad.Except
 import Data.Maybe
 --import Debug.Trace
 
-import Language.DifferentialDatalog.Syntax
-import Language.DifferentialDatalog.Name
-import Language.DifferentialDatalog.Util
-import Language.DifferentialDatalog.Pos
-import Language.DifferentialDatalog.Error
-
-import {-# SOURCE #-} Language.DifferentialDatalog.Rule
---import {-# SOURCE #-} Relation
 import {-# SOURCE #-} Language.DifferentialDatalog.Expr
-import {-# SOURCE #-} Language.DifferentialDatalog.Type
---import {-# SOURCE #-} Builtins
+import Language.DifferentialDatalog.Error
+import Language.DifferentialDatalog.Name
+import Language.DifferentialDatalog.Pos
+import {-# SOURCE #-} Language.DifferentialDatalog.Rule
+import Language.DifferentialDatalog.Syntax
+import Language.DifferentialDatalog.Var
 
 lookupType :: DatalogProgram -> String -> Maybe TypeDef
 lookupType DatalogProgram{..} n = M.lookup n progTypedefs
@@ -87,16 +81,17 @@ checkTransformer p d n = case lookupTransformer d n of
 getTransformer :: DatalogProgram -> String -> Transformer
 getTransformer d n = fromJust $ lookupTransformer d n
 
-lookupVar :: DatalogProgram -> ECtx -> String -> Maybe Field
+lookupVar :: DatalogProgram -> ECtx -> String -> Maybe Var
 lookupVar d ctx n = find ((==n) . name) $ ctxAllVars d ctx
 
-checkVar :: (MonadError String me) => Pos -> DatalogProgram -> ECtx -> String -> me Field
+checkVar :: (MonadError String me) => Pos -> DatalogProgram -> ECtx -> String -> me Var
 checkVar p d c n = case lookupVar d c n of
                         Nothing -> err d p $ "Unknown variable: " ++ n -- ++ ". All known variables: " ++ (show $ (\(ls,vs) -> (map name ls, map name vs)) $ ctxVars d c)
                         Just v  -> return v
 
-getVar :: DatalogProgram -> ECtx -> String -> Field
-getVar d c n = fromJust $ lookupVar d c n
+getVar :: DatalogProgram -> ECtx -> String -> Var
+getVar d c n = 
+    maybe (error $ "getVar: unknown variable " ++ n ++ " in\n" ++ show c ++ "\nVariables in scope:" ++ show (ctxAllVars d c)) id $ lookupVar d c n
 
 lookupConstructor :: DatalogProgram -> String -> Maybe Constructor
 lookupConstructor d c =
@@ -121,40 +116,28 @@ checkRelation p d n = case lookupRelation d n of
 getRelation :: DatalogProgram -> String -> Relation
 getRelation d n = fromJust $ lookupRelation d n
 
--- All variables available in the scope: (l-vars, read-only vars)
-type MField = (String, Maybe Type)
+arg2v :: Function -> FuncArg -> Var
+arg2v f a = ArgVar f (name a)
 
-f2mf :: Field -> MField
-f2mf f = (name f, Just $ fieldType f)
-
-arg2mf :: FuncArg -> MField
-arg2mf a = (name a, Just $ argType a)
-
-ctxAllVars :: DatalogProgram -> ECtx -> [Field]
+ctxAllVars :: DatalogProgram -> ECtx -> [Var]
 ctxAllVars d ctx = let (lvs, rvs) = ctxVars d ctx in lvs ++ rvs
 
-ctxVars :: DatalogProgram -> ECtx -> ([Field], [Field])
-ctxVars d ctx = let (lvs, rvs) = ctxMVars d ctx in
-                (map (\(n, mt) -> (Field nopos [] n $ maybe (error $ "variable " ++ n ++ " has unknown type") id mt)) lvs,
-                 map (\(n, mt) -> (Field nopos [] n $ maybe (error $ "variable " ++ n ++ " has unknown type") id mt)) rvs)
-
+-- All variables available in the scope: (l-vars, read-only vars).
 -- TODO: return variable names only; type interence should take care of typing.
-ctxMVars :: DatalogProgram -> ECtx -> ([MField], [MField])
-ctxMVars d ctx =
+ctxVars :: DatalogProgram -> ECtx -> ([Var], [Var])
+ctxVars d ctx =
     case ctx of
          CtxTop                   -> ([], [])
-         CtxFunc f                -> (map arg2mf $ funcMutArgs f, map arg2mf $ funcImmutArgs f)
-         CtxRuleL rl _            -> ([], map f2mf $ ruleVars d rl)
-         CtxRuleRAtom rl i        -> ([], map f2mf $ ruleRHSVars d rl i)
-         CtxRuleRCond rl i        -> ([], map f2mf $ ruleRHSVars d rl i)
-         CtxRuleRFlatMap rl i     -> ([], map f2mf $ ruleRHSVars d rl i)
-         CtxRuleRInspect rl i     -> let vars = (map f2mf $ ruleRHSVars d rl i) ++ [("ddlog_weight", Just $ tUser wEIGHT_TYPE [])] in
-                                     if ruleIsRecursive d rl
-                                        then ([], vars ++ [("ddlog_timestamp", Just $ tUser nESTED_TS_TYPE [])])
-                                        else ([], vars ++ [("ddlog_timestamp", Just $ tUser ePOCH_TYPE [])])
-         CtxRuleRAggregate rl i   -> ([], map f2mf $ ruleRHSVars d rl i)
-         CtxKey Relation{..}      -> ([], [(keyVar $ fromJust relPrimaryKey, Just relType)])
-         CtxIndex Index{..}       -> ([], map f2mf idxVars)
+         CtxFunc f                -> (map (arg2v f) $ funcMutArgs f, map (arg2v f) $ funcImmutArgs f)
+         CtxRuleL rl _            -> ([], ruleVars d rl)
+         CtxRuleRAtom rl i        -> ([], ruleRHSVars d rl i)
+         CtxRuleRCond rl i        -> ([], ruleRHSVars d rl i)
+         CtxRuleRFlatMap rl i     -> ([], ruleRHSVars d rl i)
+         CtxRuleRInspect rl i     -> let vars = (ruleRHSVars d rl i) ++ [WeightVar] in
+                                     ([], TSVar rl : vars)
+         CtxRuleRAggregate rl i   -> ([], ruleRHSVars d rl i)
+         CtxKey rel@Relation{..}  -> ([], [KeyVar rel])
+         CtxIndex idx@Index{..}   -> ([], map (\v -> (IdxVar idx $ name v)) idxVars)
          CtxApply _ _ _           -> ([], plvars ++ prvars)
          CtxField _ _             -> (plvars, prvars)
          CtxTupField _ _          -> (plvars, prvars)
@@ -163,22 +146,23 @@ ctxMVars d ctx =
          CtxSlice  _ _            -> ([], plvars ++ prvars)
          CtxMatchExpr _ _         -> ([], plvars ++ prvars)
          CtxMatchPat _ _ _        -> ([], plvars ++ prvars)
-         CtxMatchVal e pctx i     -> let patternVars = map (mapSnd $ ctxExpectType d) $ exprVarDecls (CtxMatchPat e pctx i) $ fst $ (exprCases e) !! i in
+         CtxMatchVal e pctx i     -> let patternVars = exprVarDecls d (CtxMatchPat e pctx i)
+                                                       $ fst $ (exprCases e) !! i in
                                      if exprIsVarOrFieldLVal d pctx $ exprMatchExpr e
                                         then (plvars ++ patternVars, prvars)
                                         else (plvars, patternVars ++ prvars)
          CtxSeq1 _ _              -> (plvars, prvars)
-         CtxSeq2 e pctx           -> let seq1vars = map (mapSnd $ ctxExpectType d) $ exprVarDecls (CtxSeq1 e pctx) $ exprLeft e
+         CtxSeq2 e pctx           -> let seq1vars = exprVarDecls d (CtxSeq1 e pctx) $ exprLeft e
                                      in (plvars ++ seq1vars, prvars)
          CtxITEIf _ _             -> ([], plvars ++ prvars)
          CtxITEThen _ _           -> (plvars, prvars)
          CtxITEElse _ _           -> (plvars, prvars)
          CtxForIter _ _           -> (plvars, prvars)
-         CtxForBody e@EFor{..} pctx -> let loopvar = (exprLoopVar, fst <$> (typeIterType d =<< exprTypeMaybe d (CtxForIter e pctx) exprIter))
+         CtxForBody e@EFor{..} pctx -> let loopvar = ForVar pctx e
                                            -- variables that occur in the iterator expression cannot
                                            -- be modified inside the loop
-                                           plvars_not_iter = filter (\(v,_) -> notElem v $ exprVars exprIter) plvars
-                                           plvars_iter = filter (\(v,_) -> elem v $ exprVars exprIter) plvars
+                                           plvars_not_iter = filter (\v -> notElem v $ exprVars d (CtxForIter e pctx) exprIter) plvars
+                                           plvars_iter = filter (\v -> elem v $ exprVars d (CtxForIter e pctx) exprIter) plvars
                                        in (plvars_not_iter, prvars ++ plvars_iter ++ [loopvar])
          CtxForBody _ _           -> error $ "NS.ctxMVars: invalid context " ++ show ctx
          CtxSetL _ _              -> (plvars, prvars)
@@ -191,4 +175,4 @@ ctxMVars d ctx =
          CtxTyped _ _             -> (plvars, prvars)
          CtxAs _ _                -> (plvars, prvars)
          CtxRef _ _               -> (plvars, prvars)
-    where (plvars, prvars) = ctxMVars d $ ctxParent ctx
+    where (plvars, prvars) = ctxVars d $ ctxParent ctx

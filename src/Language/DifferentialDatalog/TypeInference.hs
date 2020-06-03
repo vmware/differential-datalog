@@ -43,32 +43,11 @@ import Language.DifferentialDatalog.Rule
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Type
 import Language.DifferentialDatalog.Util
+import Language.DifferentialDatalog.Var
 
-data TypeInferenceResult = TypeInferenceOk (M.Map DDVar Type) (M.Map ECtx Type)
+data TypeInferenceResult = TypeInferenceOk (M.Map Var Type) (M.Map ECtx Type)
                          | TypeInferenceConflict
                          | TypeInferenceAmbiguity
-
--- Uniquely identifies a variable declaration in a DDlog program.
-data DDVar = -- Variable declared in an expression ('var v').
-             ExprVar ECtx
-             -- For-loop variable.
-           | ForVar DDExpr
-             -- Variable declard in a @-binding.
-           | BindingVar DDExpr
-             -- Function argument.
-           | ArgVar Function String
-             -- Primary key variable.
-           | KeyVar Relation
-             -- Index variable.
-           | IdxVar Index String
-             -- Variable returned by FlatMap.
-           | FlatMapVar Rule Int
-             -- Variable returned by Aggregate.
-           | AggregateVar Rule Int
-             -- ddlog_weight
-           | WeightVar
-             -- ddlog_timestamp
-           | TSVar
 
 -- Uniquely identifies an expression in a DDlog program.
 data DDExpr = DDExpr {ddexprCtx::ECtx, ddexprExpr::Expr}
@@ -117,7 +96,7 @@ data TExpr = TEBool
              -- Type of a DDlog expression.
            | TETypeOfExpr DDExpr
              -- Type of a DDlog variable.
-           | TETypeOfVar DDVar
+           | TETypeOfVar Var
              -- We sometimes need to introduce extra type variables to model
              -- unknown type arguments of function calls.  We could use
              -- arbitrary auto-generated names for them, but to avoid a state
@@ -274,10 +253,6 @@ typeToTExpr__ (Just c)  TVar{..}     = TETVar c tvarName
 typeToTExpr__ mctx      TOpaque{..}  = TEExtern typeName $ map (typeToTExpr_ mctx) typeArgs
 typeToTExpr__ _         t@TStruct{}  = error $ "typeToTExpr__: unexpected '" ++ show t ++ "'"
 
--- Lookup variable referenced in context and convert it to DDVar.
-varToDDVar :: ECtx -> String -> DDVar
-varToDDVar = error "varToDDVar not implemented"
-
 -- Main type inference function.  Takes one or more expressions an tries to
 -- infer types for all variables and subexpressions.
 --
@@ -347,7 +322,7 @@ contextConstraints de@(DDExpr (CtxRuleRCond rl i) _) | rhsIsFilterCondition $ ru
 -- |e| = V,
 -- |v| = T
 contextConstraints de@(DDExpr ctx@(CtxRuleRAggregate rl i) _) =
-    [ teTuple (map (\v -> TETypeOfVar (varToDDVar ctx v)) rhsGroupBy) === typeToTExpr' ctx ktype
+    [ teTuple (map (\v -> TETypeOfVar (getVar ?d ctx v)) rhsGroupBy) === typeToTExpr' ctx ktype
     , TETypeOfExpr de === typeToTExpr' ctx vtype
     , TETypeOfVar (AggregateVar rl i) === typeToTExpr' ctx ret_type]
     where
@@ -367,8 +342,8 @@ contextConstraints de@(DDExpr (CtxRuleRInspect rl _) _) =
     [ TETypeOfExpr de === TETuple (Just 0) M.empty
     , TETypeOfVar WeightVar === typeToTExpr (tUser wEIGHT_TYPE [])
     , if ruleIsRecursive ?d rl
-         then TETypeOfVar TSVar === typeToTExpr (tUser nESTED_TS_TYPE [])
-         else TETypeOfVar TSVar === typeToTExpr (tUser ePOCH_TYPE []) ]
+         then TETypeOfVar (TSVar rl) === typeToTExpr (tUser nESTED_TS_TYPE [])
+         else TETypeOfVar (TSVar rl) === typeToTExpr (tUser ePOCH_TYPE []) ]
 
 contextConstraints (DDExpr ctx _) =
     error $ "contextConstraints called in unexpected context " ++ show ctx
@@ -388,7 +363,7 @@ exprConstraints' ctx e = do
 -- Variable reference expression has the same type as the variable.
 exprConstraints_ :: (?d::DatalogProgram) => DDExpr -> [Constraint]
 exprConstraints_ de@(DDExpr ctx (E (EVar _ v))) =
-    [TETypeOfExpr de === TETypeOfVar (varToDDVar ctx v)]
+    [TETypeOfExpr de === TETypeOfVar (getVar ?d ctx v)]
 
 -- Boolean literal.
 exprConstraints_ de@(DDExpr _ (E EBool{})) =
@@ -503,8 +478,8 @@ exprConstraints_ de@(DDExpr ctx (E e@EMatch{..})) =
 -- Variable declaration: 'var v'
 --
 -- '|e|=|var v|'
-exprConstraints_ de@(DDExpr ctx (E EVarDecl{})) =
-    [TETypeOfExpr de === TETypeOfVar (ExprVar ctx)]
+exprConstraints_ de@(DDExpr ctx (E e@EVarDecl{})) =
+    [TETypeOfExpr de === TETypeOfVar (ExprVar ctx e)]
 
 -- Sequence 'e1;e2'
 --
@@ -521,9 +496,10 @@ exprConstraints_ de@(DDExpr ctx (E e@EITE{..})) =
 
 -- 'for (v in e1) {e2}'
 --
--- 'is_iterable |e1| and |var v|=iterator_type |e1|'
+-- 'is_iterable |e1| and |var v|=iterator_type |e1| and |e| = ()'
 exprConstraints_ de@(DDExpr ctx (E e@EFor{..})) =
-    [deIsIterable (DDExpr (CtxForIter e ctx) exprIter) (TETypeOfVar $ ForVar de) ]
+    [ deIsIterable (DDExpr (CtxForIter e ctx) exprIter) (TETypeOfVar $ ForVar ctx e)
+    , TETypeOfExpr de === TETuple (Just 0) M.empty ]
 
 -- Assignment: 'e1=e2'.
 --
@@ -629,7 +605,7 @@ exprConstraints_ de@(DDExpr ctx (E e@EUnOp{..}))  | exprUOp == Not =
 --
 -- '|e|=|e1|=|var v|'
 exprConstraints_ de@(DDExpr ctx (E e@EBinding{..})) =
-    [ TETypeOfVar (BindingVar de) === TETypeOfExpr de
+    [ TETypeOfVar (BindingVar ctx e) === TETypeOfExpr de
     , TETypeOfExpr de === TETypeOfExpr (DDExpr (CtxBinding e ctx) exprPattern) ]
 
 -- Explicit type annotation 'e1: t'

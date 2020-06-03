@@ -70,7 +70,9 @@ import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Name
-import Language.DifferentialDatalog.Type
+import {-# SOURCE #-} Language.DifferentialDatalog.Type
+import Language.DifferentialDatalog.ECtx
+import Language.DifferentialDatalog.Var
 import Language.DifferentialDatalog.Function
 
 -- depth-first fold of an expression
@@ -238,39 +240,54 @@ exprVarOccurrences ctx e = exprCollectCtx (\ctx' e' ->
                                           (++) ctx e
 
 -- enumerate all variables that occur in the expression
-exprVars :: Expr -> [String]
-exprVars e = nub $ exprCollect (\case
-                                EVar _ v -> [v]
-                                _        -> [])
-                               (++) e
+exprVars :: DatalogProgram -> ECtx -> Expr -> [Var]
+exprVars d ctx e = nub $ exprCollectCtx (\ctx' e' ->
+                                          case e' of
+                                               EVar p v -> [case lookupVar d ctx' v of
+                                                                 -- Variable declared inside a rule.
+                                                                 Nothing -> ExprVar ctx' $ EVar p v
+                                                                 Just var -> var]
+                                               _        -> [])
+                                        (++) ctx e
 
 -- | Free variables, i.e., variables that are used in the expression, but declared
 -- outside of it
-exprFreeVars :: DatalogProgram -> ECtx -> Expr -> [String]
+exprFreeVars :: DatalogProgram -> ECtx -> Expr -> [Var]
 exprFreeVars d ctx e = visible_vars `intersect` used_vars
     where
-    visible_vars = map name $ ctxAllVars d ctx
-    used_vars = exprVars e
+    visible_vars = ctxAllVars d ctx
+    used_vars = exprVars d ctx e
 
 -- True if expression evaluates to a constant
 -- Note: this does not guarantee that the expression can be evaluated at compile
 -- time.  It may contain a call to an external function, which cannot be
 -- evaluated in Haskell.
 exprIsConst :: Expr -> Bool
-exprIsConst = null . exprVars
+exprIsConst e = null $ exprVars (error "exprIsConst: ctx is undefined") (error "exprIsConst: ctx is undedined") e
 
--- Variables declared inside expression, visible in the code that follows the expression
-exprVarDecls :: ECtx -> Expr -> [(String, ECtx)]
-exprVarDecls ctx e =
+-- Variables declared inside expression, visible in the code that follows the expression.
+exprVarDecls :: DatalogProgram -> ECtx -> Expr -> [Var]
+exprVarDecls d ctx e =
+    snd $
     exprFoldCtx (\ctx' e' ->
-                  case e' of
-                       EStruct _ _ fs   -> concatMap snd fs
-                       ETuple _ fs      -> concat fs
-                       EVarDecl _ v     -> [(v, ctx')]
-                       ESet _ l _       -> l
-                       EBinding _ v e'' -> (v, ctx') : e''
-                       ETyped _ e'' _   -> e''
-                       _                -> []) ctx e
+                  let e_ = exprMap fst e' in
+                  (E e_,
+                   case e' of
+                        EStruct _ _ fs   -> concatMap (snd . snd) fs
+                        ETuple _ fs      -> concatMap snd fs
+                        EVarDecl _ _     -> [ExprVar ctx' e_]
+                        -- Inside positive literals, variables are declared
+                        -- implicitly.
+                        EVar _ v | ctxInRuleRHSPositivePattern ctx'
+                                         -> let var = ExprVar ctx' e_ in
+                                            if isNothing (lookupVar d ctx' v)   
+                                            then [var]
+                                            else []   
+                        ESet _ l _       -> snd l
+                        EBinding _ _ e'' -> BindingVar ctx' e_ : snd e''
+                        ETyped _ e'' _   -> snd e''
+                        ERef _ e''       -> snd e''
+                        _                -> [])) ctx e
 
 -- Non-recursively enumerate all functions invoked by the expression
 exprFuncs :: Expr -> [String]
@@ -401,9 +418,9 @@ exprIsVarOrField' _                = False
 
 -- | Expression maps distinct assignments to input variables 'vs'
 -- to distinct outputs.
-exprIsInjective :: DatalogProgram -> S.Set String -> Expr -> Bool
-exprIsInjective d vs e =
-    S.fromList (exprVars e) == vs &&
+exprIsInjective :: DatalogProgram -> ECtx -> S.Set Var -> Expr -> Bool
+exprIsInjective d ctx vs e =
+    S.fromList (exprVars d ctx e) == vs &&
     exprFold (exprIsInjective' d) e
 
 -- No clever analysis here; just the obvious cases.
@@ -413,8 +430,8 @@ exprIsInjective' d EApply{..}    =
     -- FIXME: once we add support for recursive functions, be careful to avoid
     -- infinite recursion.  The simple thing to do is just to return False for
     -- recursive functions, as reasoning about them seems tricky otherwise.
-    and exprArgs && (maybe False (exprIsInjective d (S.fromList $ map name funcArgs)) $ funcDef)
-    where Function{..} = getFunc d exprFunc
+    and exprArgs && (maybe False (exprIsInjective d (CtxFunc f) (S.fromList $ map (\a -> ArgVar f $ name a) funcArgs)) $ funcDef)
+    where f@Function{..} = getFunc d exprFunc
 exprIsInjective' _ EBool{}       = True
 exprIsInjective' _ EInt{}        = True
 exprIsInjective' _ EFloat{}      = True

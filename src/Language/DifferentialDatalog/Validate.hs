@@ -40,16 +40,16 @@ import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Name
-import Language.DifferentialDatalog.Type
+import {-# SOURCE #-} Language.DifferentialDatalog.Type
 import Language.DifferentialDatalog.Ops
 import Language.DifferentialDatalog.ECtx
-import Language.DifferentialDatalog.Expr
+import {-# SOURCE #-} Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.DatalogProgram
-import {-# SOURCE #-} Language.DifferentialDatalog.Rule
 import Language.DifferentialDatalog.Relation
 import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.Attribute
 import Language.DifferentialDatalog.Error
+import Language.DifferentialDatalog.Function
 
 bUILTIN_2STRING_FUNC :: String
 bUILTIN_2STRING_FUNC = "std.__builtin_2string"
@@ -257,7 +257,7 @@ indexValidate d idx@Index{..} = do
     -- (variables in 'atom_vars \\ idx_vars' should be caught by 'atomValidate'
     -- above, so we only need to check for 'idx_vars \\ atom_vars' here).
     let idx_vars = map name idxVars
-    let atom_vars = exprFreeVars d (CtxIndex idx) (atomVal idxAtom)
+    let atom_vars = map name $ exprFreeVars d (CtxIndex idx) (atomVal idxAtom)
     check d (null $ idx_vars \\ atom_vars) (pos idx)
           $ "The following index variables are not constrained by the index pattern: " ++
             (show $ idx_vars \\ atom_vars)
@@ -275,11 +275,9 @@ atomValidate :: (MonadError String me) => DatalogProgram -> ECtx -> Atom -> me (
 atomValidate d ctx atom = do
     _ <- checkRelation (pos atom) d $ atomRelation atom
     exprValidate d [] ctx $ atomVal atom
-    let vars = ctxAllVars d ctx
     -- variable cannot be declared and used in the same atom
-    uniq' (Just d) (\_ -> pos atom) fst (\(v,_) -> "Variable " ++ v ++ " is both declared and used inside relational atom " ++ show atom)
-        $ filter (\(var, _) -> isNothing $ find ((==var) . name) vars)
-        $ atomVarOccurrences ctx $ atomVal atom
+    uniq' (Just d) (\_ -> pos atom) id (\v -> "Variable " ++ show v ++ " is both declared and used inside relational atom " ++ show atom)
+        $ exprVarDecls d ctx $ atomVal atom
 
 ruleRHSValidate :: (MonadError String me) => DatalogProgram -> Rule -> RuleRHS -> Int -> me ()
 ruleRHSValidate d rl@Rule{..} (RHSLiteral _ atom) idx =
@@ -326,7 +324,7 @@ ruleCheckAggregate d rl idx = do
     exprValidate d [] ctx e
     -- Group-by variables are visible in this scope.
     mapM_ (checkVar (pos e) d ctx) vs
-    let group_by_types = map (typ . getVar d ctx) vs
+    let group_by_types = map (varType d . getVar d ctx) vs
     check d (notElem v vs) (pos e) $ "Aggregate variable " ++ v ++ " already declared in this scope"
     -- Aggregation function exists and takes a group as its sole argument.
     f <- checkFunc (pos e) d fname

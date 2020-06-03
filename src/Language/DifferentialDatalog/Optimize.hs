@@ -77,7 +77,7 @@ expandMultiheadRule d rl ruleidx = (Just rel, rule1 : rules)
     rel = Relation { relPos        = nopos
                    , relRole       = RelInternal
                    , relName       = relname
-                   , relType       = tTuple $ map typ lhsvars
+                   , relType       = tTuple $ map (varType d) lhsvars
                    , relPrimaryKey = Nothing
                    }
     -- rule to compute the new relation
@@ -162,7 +162,7 @@ replacePrefix d pref = {-trace ("replacePrefix " ++ show pref) $-} do
     let rel = Relation { relPos        = nopos
                        , relRole       = RelInternal
                        , relName       = relname
-                       , relType       = tTuple $ map typ vars
+                       , relType       = tTuple $ map (varType d) vars
                        , relPrimaryKey = Nothing
                        }
     -- rule
