@@ -309,6 +309,33 @@ progMirrorInputRelations d prefix =
   in d { progRelations = M.union (progRelations d) $ M.fromList relCopies,
          progRules     = (progRules d) ++ rules }
 
--- | Injects debugging hooks into an input DatalogProgram.
+-- Pretransform each RHS rule needed for injection of
+-- debugging hooks
+preTransformRuleRHS :: (RuleRHS, Integer) -> RuleRHS
+-- For RHSLiteral, a binding to the expression is inserted if it's not bound to a variable.
+-- For example, R(a, b, z, _) gets transformed into __r0 in R(a, b, z, _),
+preTransformRuleRHS (r@RHSLiteral{}, index) =
+  let
+    bindingName = "__" ++ (map toLower $ atomRelation $ rhsAtom r) ++ (show index)
+    expr = atomVal $ rhsAtom r
+    exprNode = enode expr
+    updatedAtomVal = case exprNode of
+                     EBinding{} -> expr
+                     _          -> eBinding bindingName expr
+    updatedAtom = (rhsAtom r) { atomVal = updatedAtomVal }
+  in r { rhsAtom = updatedAtom }
+preTransformRuleRHS (rule, _) = rule
+
+updateRHSRules :: [RuleRHS] -> [RuleRHS]
+updateRHSRules rules =
+   map (\r -> case r of
+              (RHSLiteral True _, _) -> preTransformRuleRHS r
+              _                      -> fst r) $ zip rules [0..]
+
+-- Perform datalog program transform by injecting debugging hooks
 injectDebuggingHooks :: DatalogProgram -> DatalogProgram
-injectDebuggingHooks original_program = original_program
+injectDebuggingHooks d =
+  let
+    rules = progRules d
+    updatedRules = [r {ruleRHS = updateRHSRules $ ruleRHS r}  | r <- rules]
+  in d { progRules = updatedRules }
