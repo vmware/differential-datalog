@@ -65,6 +65,7 @@ import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Expr
 import {-# SOURCE #-} Language.DifferentialDatalog.Rule
 import {-# SOURCE #-} Language.DifferentialDatalog.Type
+import Language.DifferentialDatalog.Pos
 
 -- | Map function 'fun' over all expressions in a program
 progExprMapCtxM :: (Monad m) => DatalogProgram -> (ECtx -> ENode -> m Expr) -> m DatalogProgram
@@ -311,7 +312,7 @@ progMirrorInputRelations d prefix =
 
 -- Pretransform each RHS rule needed for injection of
 -- debugging hooks
-preTransformRuleRHS :: (RuleRHS, Integer) -> RuleRHS
+preTransformRuleRHS :: (RuleRHS, Int) -> RuleRHS
 -- For RHSLiteral, a binding to the expression is inserted if it's not bound to a variable.
 -- For example, R(a, b, z, _) gets transformed into __r0 in R(a, b, z, _),
 preTransformRuleRHS (r@RHSLiteral{}, index) =
@@ -326,16 +327,51 @@ preTransformRuleRHS (r@RHSLiteral{}, index) =
   in r { rhsAtom = updatedAtom }
 preTransformRuleRHS (rule, _) = rule
 
-updateRHSRules :: [RuleRHS] -> [RuleRHS]
-updateRHSRules rules =
-   map (\r -> case r of
-              (RHSLiteral True _, _) -> preTransformRuleRHS r
-              _                      -> fst r) $ zip rules [0..]
+generateDummyInspect :: [RuleRHS]
+generateDummyInspect =
+  [RHSInspect {rhsInspectExpr = E $ ESet {exprPos = nopos,
+                                         exprLVal = E $ EVarDecl {exprPos = nopos, exprVName = "__dummy" },
+                                         exprRVal = E $ EInt {exprPos = nopos, exprIVal = 1}}}]
+
+mkInspect :: DatalogProgram -> Rule -> Int -> Maybe [RuleRHS]
+mkInspect _ rule index =
+  let rhsRule = ruleRHS rule
+  in if index == 0 && index < length rhsRule - 1
+        then Nothing
+        else if rhsIsCondition (rhsRule !! index) && index /= length rhsRule - 1 && rhsIsCondition (rhsRule !! (index + 1))
+                then Nothing
+                else case rhsRule !! index of
+                     RHSLiteral{rhsPolarity=True} -> Just generateDummyInspect -- join
+                     RHSLiteral{rhsPolarity=False} -> Just generateDummyInspect -- antijoin
+                     RHSAggregate{} -> Just generateDummyInspect -- aggregate
+                     RHSFlatMap{} -> Just generateDummyInspect -- flatmap
+                     RHSCondition{} -> Just generateDummyInspect -- filter/assignment
+                     RHSInspect{} -> Just generateDummyInspect -- inspect
+
+-- Insert inspect debug hook after each RHS term, except for the following:
+-- 1. If a group of conditions appear consecutively, inspect debug hook is only
+-- inserted after the last condition in the group.
+-- 2. Inspect debug hook is not inserted after the first term, unless the rule
+-- only contains one literal.
+-- 3. If a rule has multiple heads, then multiple inspect is inserted after the last
+-- term corresponding to each head.
+insertRHSInspectDebugHooks :: DatalogProgram -> Rule -> [RuleRHS]
+insertRHSInspectDebugHooks d rule =
+  concatMap (\i -> let inspect = concat $ maybeToList $ mkInspect d rule i in
+                   (ruleRHS rule !! i) : inspect) [0..length (ruleRHS rule) - 1]
+
+updateRHSRules :: DatalogProgram ->  Rule -> [RuleRHS]
+updateRHSRules d rule =
+  let
+    preTransformedRHS =  map (\r -> case r of
+                                    (RHSLiteral True _ , _) -> preTransformRuleRHS r
+                                    _                       -> fst r) $ zip (ruleRHS rule) [0..]
+  in insertRHSInspectDebugHooks d rule {ruleRHS = preTransformedRHS}
 
 -- Perform datalog program transform by injecting debugging hooks
 injectDebuggingHooks :: DatalogProgram -> DatalogProgram
 injectDebuggingHooks d =
   let
     rules = progRules d
-    updatedRules = [r {ruleRHS = updateRHSRules $ ruleRHS r}  | r <- rules]
+    updatedRules = [r {ruleRHS = updateRHSRules d r}  | r <- rules]
   in d { progRules = updatedRules }
