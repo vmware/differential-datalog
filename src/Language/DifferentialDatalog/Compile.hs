@@ -2037,6 +2037,7 @@ arrangeInput d fstatom arrange_input_by = do
     subst' e            _  _ = error $ "Unexpected expression " ++ show e ++ " in Compile.arrangeInput.subst'"
 
     fieldExprVar (E EVar{..})   = exprVar
+    fieldExprVar (E ETyped{..}) = fieldExprVar exprExpr
     fieldExprVar (E EField{..}) = fieldExprVar exprStruct
     fieldExprVar (E ETupField{..}) = fieldExprVar exprTuple
     fieldExprVar e              = error $ "Compile.arrangeInput.fieldExprVar " ++ show e
@@ -2046,13 +2047,15 @@ arrangeInput d fstatom arrange_input_by = do
 
     substVar' :: (Expr, ECtx) -> Expr -> Expr
     substVar' (E EVar{}, _) e' = e'
+    substVar' (E par@(ETyped _ e _), ctx) e' = substVar' (e, ctx') e'
+        where ctx' = CtxTyped par ctx
     substVar' (E par@(EField _ e f), ctx) e' = substVar' (e, ctx') e''
         where ctx' = CtxField par ctx
               etype = exprType' d ctx' e
-              TStruct _ [cons] = typDeref' d etype
+              (TStruct _ [cons]) = typDeref' d etype
               estruct = eStruct (name cons)
-                        $ map (\a -> (name a, if name a == f then e' else ePHolder))
-                        $ consArgs cons
+                                (map (\a -> (name a, if name a == f then e' else ePHolder)) $ consArgs cons)
+                                (typDeref' d etype)
               e'' = foldl' (\_e _ -> eRef _e) estruct [(1::Int)..nref etype]
     substVar' (E par@(ETupField _ e idx), ctx) e' = substVar' (e, ctx') e''
         where ctx' = CtxTupField par ctx
@@ -2426,7 +2429,7 @@ mkExpr' d ctx e@EFor{..} = (doc, EVal)
     where
     e' = exprMap (E . sel3) e
     -- If collection iterates by value, convert value into reference.
-    opt_ref = if (snd . fromJust . typeIterType d) $ exprType d (CtxForIter e' ctx) (E $ sel3 exprIter)
+    opt_ref = if (snd . typeIterType d) $ exprType d (CtxForIter e' ctx) (E $ sel3 exprIter)
                  then empty
                  else "ref"
     doc = ("for" <+> opt_ref <+> pp exprLoopVar <+> "in" <+> sel1 exprIter <> ".iter() {") $$
@@ -2436,11 +2439,15 @@ mkExpr' d ctx e@EFor{..} = (doc, EVal)
 -- Desonctruction expressions in LHS are compiled into let statements, other assignments
 -- are compiled into normal assignments.  Note: assignments in rule
 -- atoms are handled by a different code path.
-mkExpr' d ctx ESet{..} | islet     = ("let" <+> assign <> optsemi, EVal)
-                       | otherwise = (assign, EVal)
+mkExpr' d ctx e@ESet{..} | islet     = ("let" <+> assign <> optsemi, EVal)
+                         | otherwise = (assign, EVal)
     where
+    e' = exprMap (E . sel3) e
     islet = exprIsDeconstruct d $ E $ sel3 exprLVal
-    assign = lval exprLVal <+> "=" <+> val exprRVal
+    t = if islet
+        then ":" <+> (mkType $ exprType d (CtxSetL e' ctx) $ E $ sel3 exprLVal)
+        else empty
+    assign = lval exprLVal <> t <+> "=" <+> val exprRVal
     optsemi = if not (ctxIsSeq1 ctx) then ";" else empty
 
 mkExpr' _ _ EBreak{} = ("break", ENoReturn)
@@ -2489,21 +2496,19 @@ mkExpr' d ctx e@EUnOp{..} = (v, EVal)
              UMinus -> mkTruncate (parens $ "-" <> arg) t
 mkExpr' _ _ EPHolder{} = ("_", ELVal)
 
--- * Use type ascriptions in LHS of assignment
+-- * LHS of assignment will get type ascription elsewhere (see 'ESet').
+-- * 'continue', 'break', 'return' do not need type ascriptions.
 -- * Do type coercion for integer constants
 -- * Otherwise, introduce an intermediate variable with explicit type
-mkExpr' d ctx ETyped{..} | ctxIsSetL ctx = (e' <+> ":" <+> mkType exprTSpec, categ)
+mkExpr' d ctx ETyped{..} | ctxInSetL ctx = (e', categ)
                          | isint && toDouble
                                          = (parens $ e' <> ".to_double()", categ)
                          | isint && toFloat
                                          = (parens $ e' <+> ".to_float()", categ)
                          | isint         = (parens $ e' <+> "as" <+> mkType exprTSpec, categ)
-                         | otherwise     = (braces $ "let __typed:" <+> opt_ref <> mkType exprTSpec <+> "=" <+> e' <> "; __typed", categ)
+                         | otherwise     = (e', categ)
     where
     (e', categ, e) = exprExpr
-    opt_ref = case categ of
-                   EReference -> "&"
-                   _ -> empty
     isint = case e of
                  EInt{} -> True
                  _      -> False

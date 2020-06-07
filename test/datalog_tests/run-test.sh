@@ -34,7 +34,9 @@ else
 fi
 
 # Always dump intermediate transformations.
-DDLOGFLAGS="${DDLOGFLAGS} --pp-flat --pp-validated --pp-opt"
+# Always re-validate the program after optimization to catch potential compiler
+# bugs.
+DDLOGFLAGS="${DDLOGFLAGS} --pp-flat --pp-validated --pp-opt --re-validate"
 
 if [[ " ${DDLOGFLAGS[@]} " =~ " -g " ]]; then
     echo "Adding debugging hooks"

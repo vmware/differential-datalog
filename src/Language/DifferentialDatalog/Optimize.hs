@@ -82,7 +82,7 @@ expandMultiheadRule d rl ruleidx = (Just rel, rule1 : rules)
                    }
     -- rule to compute the new relation
     rule1 = Rule { rulePos = nopos
-                 , ruleLHS = [Atom nopos relname $ eTuple $ map (eVar . name) lhsvars]
+                 , ruleLHS = [Atom nopos relname $ eTuple $ map (\v -> eTypedVar (name v) (varType d v)) lhsvars]
                  , ruleRHS = ruleRHS rl
                  }
     -- rule per head of the original rule
@@ -90,7 +90,7 @@ expandMultiheadRule d rl ruleidx = (Just rel, rule1 : rules)
                                , ruleLHS = [atom]
                                , ruleRHS = [RHSLiteral True 
                                            $ Atom nopos relname 
-                                           $ eTuple $ map (eVar . name) lhsvars]})
+                                           $ eTuple $ map (\v -> eTypedVar (name v) (varType d v)) lhsvars]})
                 $ ruleLHS rl
 
 -- | Common prefix elimination.
@@ -168,7 +168,7 @@ replacePrefix d pref = {-trace ("replacePrefix " ++ show pref) $-} do
     -- rule
     let atom = Atom { atomPos      = nopos
                     , atomRelation = relname
-                    , atomVal      = eTuple $ map (eVar . name) vars
+                    , atomVal      = eTuple $ map (\v -> eTypedVar (name v) (varType d v)) vars
                     }
     let rule = Rule { rulePos       = nopos
                     , ruleLHS      = [atom]

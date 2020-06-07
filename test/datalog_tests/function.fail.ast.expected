@@ -10,12 +10,11 @@ error: ./test/datalog_tests/function.fail.dl:11:17-11:18: Variable v already def
         C0{.x = v} -> v,
                 ^
 
-error: ./test/datalog_tests/function.fail.dl:11:17-11:24: Couldn't match expected type bit<32> with actual type bool (context: CtxTop
-CtxFunc            shadow
-CtxSeq2            ((var a: Alt) = C0{.x=1};  (var i: bit<32>) = match (a) {                         C0{.x=(var w: b...
-CtxSetR            (var i: bit<32>) = match (a) {                        C0{.x=(var w: bool)} -> w,                 ...
-CtxMatchPat        match (a) {     C0{.x=(var w: bool)} -> w,     C1{.x=var w} -> w } 0
-CtxStruct          C0{.x=(var w: bool)} x)
+error: ./test/datalog_tests/function.fail.dl:11:17-11:24: Type mismatch:
+expected type: bit<32>
+actual type: bool
+in
+expression '(var w: bool)'
         C0{.x = w: bool} -> w,
                 ^^^^^^^
 
@@ -43,7 +42,7 @@ Failed to parse input file: "./test/datalog_tests/function.fail.dl" (line 5, col
 unexpected "f"
 expecting "=" or "{"
 
-error: ./test/datalog_tests/function.fail.dl:4:5-4:6: Expression is not a struct
+error: ./test/datalog_tests/function.fail.dl:4:5-6:1: expression 'x' must have a field named 'bar', but its type 'bigint' doesn't
     x.bar // x is not a struct
     ^
 
@@ -79,13 +78,15 @@ error: ./test/datalog_tests/function.fail.dl:6:5-7:1: "continue" outside of a lo
     continue
     ^
 
-error: ./test/datalog_tests/function.fail.dl:8:9-8:18: Expression continue is not an l-value
+error: ./test/datalog_tests/function.fail.dl:8:9-8:18: Expression is not an l-value
         continue = true
         ^^^^^^^^^
 
-error: ./test/datalog_tests/function.fail.dl:6:12-7:1: Couldn't match expected type () with actual type bool (context: CtxTop
-CtxFunc            control_flow
-CtxReturn          return false)
+error: ./test/datalog_tests/function.fail.dl:6:12-7:1: Type mismatch:
+expected type: ()
+actual type: bool
+in
+expression 'false'
     return false
            ^
 

@@ -1,5 +1,7 @@
 module Language.DifferentialDatalog.Rule where
 
+import qualified Data.Map as M
+
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Var
 
@@ -12,3 +14,4 @@ ruleHasJoins :: Rule -> Bool
 ruleIsDistinctByConstruction :: DatalogProgram -> Rule -> Int -> Bool
 ruleHeadIsRecursive :: DatalogProgram -> Rule -> Int -> Bool
 ruleIsRecursive :: DatalogProgram -> Rule -> Bool
+ruleAggregateTypeParams :: DatalogProgram -> Rule -> Int -> M.Map String Type

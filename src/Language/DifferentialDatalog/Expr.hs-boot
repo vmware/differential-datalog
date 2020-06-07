@@ -1,5 +1,7 @@
 module Language.DifferentialDatalog.Expr where
 
+import qualified Data.Set as S
+
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Var
 
@@ -25,5 +27,8 @@ exprFuncsRec :: DatalogProgram -> Expr -> [String]
 exprIsPattern :: Expr -> Bool
 exprIsDeconstruct :: DatalogProgram -> Expr -> Bool
 exprIsVarOrFieldLVal :: DatalogProgram -> ECtx -> Expr -> Bool
+exprIsInjective :: DatalogProgram -> ECtx -> S.Set Var -> Expr -> Bool
+exprContainsPHolders :: Expr -> Bool
 exprTypeMapM :: (Monad m) => (Type -> m Type) -> Expr -> m Expr
 exprIsPure :: DatalogProgram -> Expr -> Bool
+exprFreeVars :: DatalogProgram -> ECtx -> Expr -> [Var]

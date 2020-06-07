@@ -11,14 +11,25 @@ error: ./test/datalog_tests/rules.fail.dl:10:1-11:1: Relation R3 is mutually rec
 R2(x) :- R1(x), not R3(x, "foo").
 ^
 
-error: ./test/datalog_tests/rules.fail.dl:9:40-9:41: Cannot match expected type string and actual type (string, string) in call to function concat_ys (ys: std.Group<string,string>): string
+error: ./test/datalog_tests/rules.fail.dl:9:23-9:28: Type mismatch:
+expected type: string
+actual type: (string,string)
+in
+expression '(x, z)'
     var s = Aggregate((x,z), concat_ys(y)).
-                                       ^
+                      ^^^^^
 
-error: ./test/datalog_tests/rules.fail.dl:9:40-9:41: Cannot match expected type bigint and actual type string in call to function concat_ys (ys: std.Group<(string, bigint),string>): string
+error: ./test/datalog_tests/rules.fail.dl:9:23-9:28: Type mismatch:
+expected type: bigint
+actual type: string
+in
+expected type: (string,bigint)
+actual type: (string,string)
+in
+expression '(x, z)'
     var s = Aggregate((x,z), concat_ys(y)).
-                                       ^
+                      ^^^^^
 
-error: ./test/datalog_tests/rules.fail.dl:9:13-9:18: Inspect expression must return an empty tuple type, but its type is bigint
+error: ./test/datalog_tests/rules.fail.dl:9:13-9:18: expression '(1 + 2)' of a numeric type appears in a context where type '()' is expected
     Inspect 1 + 2.
             ^^^^^

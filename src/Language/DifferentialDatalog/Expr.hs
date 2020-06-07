@@ -21,7 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 -}
 
-{-# LANGUAGE ImplicitParams, RecordWildCards, LambdaCase, TupleSections #-}
+{-# LANGUAGE ImplicitParams, RecordWildCards, LambdaCase, TupleSections, FlexibleContexts #-}
 
 module Language.DifferentialDatalog.Expr (
     exprMapM,
@@ -54,19 +54,25 @@ module Language.DifferentialDatalog.Expr (
     exprIsInjective,
     exprIsPolymorphic,
     exprIsPure,
-    exprTypeMapM
+    exprTypeMapM,
+    exprInjectStringConversion
     ) where
 
+import Data.Char
 import Data.List
 import Data.Maybe
 import Data.Tuple.Select
+import Control.Monad.Except
 import Control.Monad.Identity
 import Control.Monad.State
 import qualified Data.Set as S
 --import Debug.Trace
 
+import Language.DifferentialDatalog.Error
+import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Ops
 import Language.DifferentialDatalog.Syntax
+import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Name
@@ -74,6 +80,13 @@ import {-# SOURCE #-} Language.DifferentialDatalog.Type
 import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Var
 import Language.DifferentialDatalog.Function
+
+bUILTIN_2STRING_FUNC :: String
+bUILTIN_2STRING_FUNC = "std.__builtin_2string"
+
+tOSTRING_FUNC_SUFFIX :: String
+tOSTRING_FUNC_SUFFIX = "2string"
+
 
 -- depth-first fold of an expression
 exprFoldCtxM :: (Monad m) => (ECtx -> ExprNode b -> m b) -> ECtx -> Expr -> m b
@@ -263,7 +276,7 @@ exprFreeVars d ctx e = visible_vars `intersect` used_vars
 -- time.  It may contain a call to an external function, which cannot be
 -- evaluated in Haskell.
 exprIsConst :: Expr -> Bool
-exprIsConst e = null $ exprVars (error "exprIsConst: ctx is undefined") (error "exprIsConst: ctx is undedined") e
+exprIsConst e = null $ exprVars (error "exprIsConst: ctx is undefined") (error "exprIsConst: ctx is undefined") e
 
 -- Variables declared inside expression, visible in the code that follows the expression.
 exprVarDecls :: DatalogProgram -> ECtx -> Expr -> [Var]
@@ -391,7 +404,7 @@ exprIsDeconstruct' _ (ETyped _ e _)   = e
 exprIsDeconstruct' _ _                = False
 
 -- | True if 'e' is a variable or field expression, and
--- can be assigned to (i.e., the variable is writable)
+-- can be assigned to (i.e., the variable is writable).
 exprIsVarOrFieldLVal :: DatalogProgram -> ECtx -> Expr -> Bool
 exprIsVarOrFieldLVal d ctx e = snd $ exprFoldCtx (exprIsVarOrFieldLVal' d) ctx e
 
@@ -399,8 +412,8 @@ exprIsVarOrFieldLVal' :: DatalogProgram -> ECtx -> ExprNode (Expr, Bool) -> (Exp
 exprIsVarOrFieldLVal' d ctx expr =
     case expr of
         (EVar _ v)            -> (E e', isLVar d ctx v)
-        (EField _ (e, b) _)   -> (E e', b && (isSharedRef d $ exprType d (CtxField e' ctx) e))
-        (ETupField _ (e,b) _) -> (E e', b && (isSharedRef d $ exprType d (CtxTupField e' ctx) e))
+        (EField _ (e, b) _)   -> (E e', b && (not $ isSharedRef d $ exprType d (CtxField e' ctx) e))
+        (ETupField _ (e,b) _) -> (E e', b && (not $ isSharedRef d $ exprType d (CtxTupField e' ctx) e))
         (ETyped _ (_,b) _)    -> (E e', b)
         _                     -> (E e', False)
     where e' = exprMap sel1 expr
@@ -471,3 +484,42 @@ exprTypeMapM fun e = exprFoldM fun' e
     fun' (ETyped p e' t) = (E . ETyped p e') <$> typeMapM fun t
     fun' (EAs p e' t)    = (E . EAs p e') <$> typeMapM fun t
     fun' e'              = return $ E e'
+
+-- Automatically insert string conversion functions in the Concat
+-- operator:  '"x:" ++ x', where 'x' is of type int becomes
+-- '"x:" ++ int_2string(x)'.
+exprInjectStringConversion :: (MonadError String me) => DatalogProgram -> ENode -> Type -> me Expr
+exprInjectStringConversion d e t = do
+    -- find string conversion function
+    fname <- case t of
+                  TBool{}     -> return $ bUILTIN_2STRING_FUNC
+                  TInt{}      -> return $ bUILTIN_2STRING_FUNC
+                  TString{}   -> return $ bUILTIN_2STRING_FUNC
+                  TBit{}      -> return $ bUILTIN_2STRING_FUNC
+                  TSigned{}   -> return $ bUILTIN_2STRING_FUNC
+                  TDouble{}   -> return $ bUILTIN_2STRING_FUNC
+                  TFloat{}    -> return $ bUILTIN_2STRING_FUNC
+                  TUser{..}   -> return $ mk2string_func typeName
+                  TOpaque{..} -> return $ mk2string_func typeName
+                  TTuple{}    -> err d (pos e) "Automatic string conversion for tuples is not supported"
+                  TVar{..}    -> err d (pos e) $
+                                     "Cannot automatically convert " ++ show e ++
+                                     " of variable type " ++ tvarName ++ " to string"
+                  TStruct{}   -> error "unexpected TStruct in exprInjectStringConversions"
+    f <- case lookupFunc d fname of
+              Nothing  -> err d (pos e) $ "Cannot find declaration of function " ++ fname ++
+                                        " needed to convert expression " ++ show e ++ " to string"
+              Just fun -> return fun
+    let arg0 = funcArgs f !! 0
+    -- validate its signature
+    check d (isString d $ funcType f) (pos f)
+           "string conversion function must return \"string\""
+    check d ((length $ funcArgs f) == 1) (pos f)
+           "string conversion function must take exactly one argument"
+    _ <- unifyTypes d (pos e)
+           ("in the call to string conversion function \"" ++ name f ++ "\"")
+           [(typ arg0, t)]
+    return $ E $ EApply (pos e) fname [E e]
+    where mk2string_func cs = scoped scope $ ((toLower $ head local) : tail local) ++ tOSTRING_FUNC_SUFFIX
+              where scope = nameScope cs
+                    local = nameLocal cs

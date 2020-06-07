@@ -18,6 +18,7 @@ typedef SumsOfDoubles = SumsOfDoubles{x: double, y: double, sum: double}
 typedef TArrng1 = TArrng1{f1: bool, f2: bigint}
 typedef TArrng1Arrng2 = TArrng1Arrng2{x: bigint}
 typedef TArrng2 = TArrng2{f1: bool, f2: std.Ref<std.Ref<TArrng1>>}
+typedef TI_R = TI_R{a: std.Set<string>}
 typedef TestRelation = TestRelation{x: bit<32>, y: bit<32>}
 typedef debug.DDlogOpId = (std.u32, std.u32, std.u32)
 #[size = 8]
@@ -58,16 +59,16 @@ typedef std.u8 = bit<8>
 typedef std.usize = std.u64
 function __debug_8_1_std.group_sum (g: std.Group<bit<32>,('I, bit<32>)>): (std.Vec<'I>, bit<32>)
 {
-    ((var inputs, var original_group) = debug.debug_split_group(g);
+    (((var inputs: std.Vec<'I>), (var original_group: std.Group<bit<32>,bit<32>>)) = debug.debug_split_group(g);
      (inputs, std.group_sum(original_group)))
 }
 function agg_avg_double_N (aggregate: std.Option<(double, double)>, item: std.Option<double>): std.Option<(double, double)>
 {
     match ((aggregate, item)) {
-        (std.None{}, std.None{}) -> std.None{},
-        (std.None{}, std.Some{.x=var x}) -> std.Some{.x=(x, 64'f1.0)},
-        (std.Some{.x=var x}, std.None{}) -> std.Some{.x=x},
-        (std.Some{.x=(var sum, var ct)}, std.Some{.x=var y}) -> std.Some{.x=((sum + y), (ct + 64'f1.0))}
+        ((std.None{}: std.Option<(double, double)>), (std.None{}: std.Option<double>)) -> (std.None{}: std.Option<(double, double)>),
+        ((std.None{}: std.Option<(double, double)>), (std.Some{.x=(var x: double)}: std.Option<double>)) -> (std.Some{.x=(x, 64'f1.0)}: std.Option<(double, double)>),
+        ((std.Some{.x=(var x: (double, double))}: std.Option<(double, double)>), (std.None{}: std.Option<double>)) -> (std.Some{.x=x}: std.Option<(double, double)>),
+        ((std.Some{.x=((var sum: double), (var ct: double))}: std.Option<(double, double)>), (std.Some{.x=(var y: double)}: std.Option<double>)) -> (std.Some{.x=((sum + y), (ct + 64'f1.0))}: std.Option<(double, double)>)
     }
 }
 extern function debug.debug_event (operator_id: debug.DDlogOpId, w: std.DDWeight, ts: 'T1, operator_type: string, input1: 'A1, out: 'A2): ()
@@ -156,8 +157,8 @@ extern function fp.trunc_f (f: float): float
 function ftoi_ (l: double): signed<32>
 {
     match (fp.int_from_d(l)) {
-        std.None{} -> 32'sd0,
-        std.Some{.x=var x} -> (x as signed<32>)
+        (std.None{}: std.Option<bigint>) -> 32'sd0,
+        (std.Some{.x=(var x: bigint)}: std.Option<bigint>) -> (x as signed<32>)
     }
 }
 #[has_side_effects = true]
@@ -187,7 +188,7 @@ function myfunc (x: string): string
 extern function std.__builtin_2string (x: 'X): string
 function std.dDNestedTS2string (ts: std.DDNestedTS): string
 {
-    (((("(" ++ std.__builtin_2string(ts.epoch)) ++ ",") ++ std.__builtin_2string(ts.iter)) ++ ")")
+    (((("(" ++ (std.__builtin_2string(ts.epoch): string)) ++ ",") ++ (std.__builtin_2string(ts.iter): string)) ++ ")")
 }
 #[return_by_ref = true]
 extern function std.deref (x: std.Ref<'A>): 'A
@@ -206,10 +207,10 @@ extern function std.group_setref_unions (g: std.Group<'K,std.Ref<std.Set<'A>>>):
 extern function std.group_sum (g: std.Group<'K,'V>): 'V
 function std.group_unzip (g: std.Group<'K,('X, 'Y)>): (std.Vec<'X>, std.Vec<'Y>)
 {
-    ((var xs: std.Vec<'X>) = std.vec_empty();
-     ((var ys: std.Vec<'Y>) = std.vec_empty();
+    ((var xs: std.Vec<'X>) = (std.vec_empty(): std.Vec<'X>);
+     ((var ys: std.Vec<'Y>) = (std.vec_empty(): std.Vec<'Y>);
       (for (v in g) {
-           ((var x, var y) = v;
+           (((var x: 'X), (var y: 'Y)) = v;
             (std.vec_push(xs, x);
              std.vec_push(ys, y)))
        };
@@ -223,29 +224,29 @@ extern function std.htons (x: bit<16>): bit<16>
 function std.is_err (res: std.Result<'V,'E>): bool
 {
     match (res) {
-        std.Ok{.res=_} -> false,
-        std.Err{.err=_} -> true
+        (std.Ok{.res=(_: 'V)}: std.Result<'V,'E>) -> false,
+        (std.Err{.err=(_: 'E)}: std.Result<'V,'E>) -> true
     }
 }
 function std.is_none (x: std.Option<'A>): bool
 {
     match (x) {
-        std.None{} -> true,
-        _ -> false
+        (std.None{}: std.Option<'A>) -> true,
+        (_: std.Option<'A>) -> false
     }
 }
 function std.is_ok (res: std.Result<'V,'E>): bool
 {
     match (res) {
-        std.Ok{.res=_} -> true,
-        std.Err{.err=_} -> false
+        (std.Ok{.res=(_: 'V)}: std.Result<'V,'E>) -> true,
+        (std.Err{.err=(_: 'E)}: std.Result<'V,'E>) -> false
     }
 }
 function std.is_some (x: std.Option<'A>): bool
 {
     match (x) {
-        std.Some{.x=_} -> true,
-        _ -> false
+        (std.Some{.x=(_: 'A)}: std.Option<'A>) -> true,
+        (_: std.Option<'A>) -> false
     }
 }
 extern function std.map_contains_key (m: std.Map<'K,'V>, k: 'K): bool
@@ -279,22 +280,22 @@ extern function std.ntohs (x: bit<16>): bit<16>
 function std.option2set (o: std.Option<'X>): std.Set<'X>
 {
     match (o) {
-        std.Some{.x=var x} -> std.set_singleton(x),
-        std.None{} -> std.set_empty()
+        (std.Some{.x=(var x: 'X)}: std.Option<'X>) -> (std.set_singleton(x): std.Set<'X>),
+        (std.None{}: std.Option<'X>) -> (std.set_empty(): std.Set<'X>)
     }
 }
 function std.option2vec (o: std.Option<'X>): std.Vec<'X>
 {
     match (o) {
-        std.Some{.x=var x} -> std.vec_singleton(x),
-        std.None{} -> std.vec_empty()
+        (std.Some{.x=(var x: 'X)}: std.Option<'X>) -> (std.vec_singleton(x): std.Vec<'X>),
+        (std.None{}: std.Option<'X>) -> (std.vec_empty(): std.Vec<'X>)
     }
 }
 function std.option_unwrap_or (x: std.Option<'A>, def: 'A): 'A
 {
     match (x) {
-        std.Some{.x=var v} -> v,
-        std.None{} -> def
+        (std.Some{.x=(var v: 'A)}: std.Option<'A>) -> v,
+        (std.None{}: std.Option<'A>) -> def
     }
 }
 extern function std.option_unwrap_or_default (opt: std.Option<'A>): 'A
@@ -306,8 +307,8 @@ extern function std.ref_new (x: 'A): std.Ref<'A>
 function std.result_unwrap_or (res: std.Result<'V,'E>, def: 'V): 'V
 {
     match (res) {
-        std.Ok{.res=var v} -> v,
-        std.Err{.err=_} -> def
+        (std.Ok{.res=(var v: 'V)}: std.Result<'V,'E>) -> v,
+        (std.Err{.err=(_: 'E)}: std.Result<'V,'E>) -> def
     }
 }
 extern function std.result_unwrap_or_default (res: std.Result<'V,'E>): 'V
@@ -352,9 +353,20 @@ extern function std.vec_sort (v: std.Vec<'X>): ()
 extern function std.vec_sort_imm (v: std.Vec<'X>): std.Vec<'X>
 extern function std.vec_with_capacity (len: std.usize): std.Vec<'A>
 extern function std.vec_with_length (len: std.usize, x: 'A): std.Vec<'A>
+function ti_f (value: std.Option<string>): std.Option<(string, string)>
+{
+    ((var strs: std.Vec<string>) = match (value) {
+                                       (std.Some{.x=(var s: string)}: std.Option<string>) -> std.string_split(s, ":"),
+                                       (std.None{}: std.Option<string>) -> ((return (std.None{}: std.Option<(string, string)>)): std.Vec<string>)
+                                   };
+     match (((std.vec_nth(strs, 64'd0): std.Option<string>), (std.vec_nth(strs, 64'd1): std.Option<string>))) {
+         ((std.Some{.x=(var port_name: string)}: std.Option<string>), (std.Some{.x=(var src_ip: string)}: std.Option<string>)) -> (std.Some{.x=(port_name, src_ip)}: std.Option<(string, string)>),
+         (_: (std.Option<string>, std.Option<string>)) -> (std.None{}: std.Option<(string, string)>)
+     })
+}
 function weird_zero (x: 'A): std.usize
 {
-    ((var empty_vec: std.Vec<'A>) = std.vec_empty();
+    ((var empty_vec: std.Vec<'A>) = (std.vec_empty(): std.Vec<'A>);
      std.vec_len(empty_vec))
 }
 function zero_test (): std.usize
@@ -381,35 +393,37 @@ output relation SumsOfDoubles [SumsOfDoubles]
 input relation TArrng1 [(std.Ref<std.Ref<std.Ref<TArrng2>>>, bigint)]
 output relation TArrng1Arrng2 [TArrng1Arrng2]
 input relation TArrng2 [(std.Ref<TArrng2>, bigint)]
+relation TI_R [TI_R]
 input relation TestRelation [TestRelation]
-Arrng1Arrng2(.x=x.f2.f2) :- Arrng1[(__arrng10@ Arrng1{.f1=f1, .f2=f2})], Arrng2[(__arrng21@ Arrng2{.f1=x, .f2=f1.f2.f2, .f3=_})], Inspect debug.debug_event_join((32'd0, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __arrng10, __arrng21, Arrng1Arrng2{.x=x.f2.f2}).
-Arrng1Arrng2_2(.x=x.f2.f2) :- Arrng1[(__arrng10@ Arrng1{.f1=f1, .f2=f2})], Arrng2[(__arrng21@ Arrng2{.f1=x, .f2=f1.f2.f2, .f3=f1.f2.f1})], Inspect debug.debug_event_join((32'd1, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __arrng10, __arrng21, Arrng1Arrng2_2{.x=x.f2.f2}).
-TArrng1Arrng2(.x=x.f2.f2) :- TArrng1[(__tarrng10@ t)], TArrng2[(__tarrng21@ (x, t.0.f2.f2))], Inspect debug.debug_event_join((32'd2, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __tarrng10, __tarrng21, TArrng1Arrng2{.x=x.f2.f2}).
-RFtoIDummy(.x=32'sd0).
-RFloatToInt(._x=_x) :- RFtoIDummy[(__rftoidummy0@ RFtoIDummy{.x=32'sd0})], var _x = ftoi_((- (64'f333.36: double))), Inspect debug.debug_event((32'd4, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __rftoidummy0, RFloatToInt{._x=_x}).
-SomeInts(.x=y) :- Ints[(__ints0@ Ints{.x=x})], var y = std.Some{.x=x}, Inspect debug.debug_event((32'd5, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __ints0, y), SomeInts[(__someints2@ SomeInts{.x=y})], Inspect debug.debug_event_join((32'd5, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, y, __someints2, SomeInts{.x=y}).
-FuncTest[std.ref_new(FuncTest{.x="foo"})].
-SumsOfDoubles(.x=x, .y=y, .sum=z) :- Doubles[(__doubles0@ Doubles{.xs=xs})], var x = FlatMap(xs), Inspect debug.debug_event((32'd7, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Flatmap", __doubles0, x), Doubles[(__doubles2@ Doubles{.xs=ys})], Inspect debug.debug_event_join((32'd7, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, x, __doubles2, (x, ys)), var y = FlatMap(ys), Inspect debug.debug_event((32'd7, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Flatmap", (x, ys), (y, x)), var z = (x + y), Inspect debug.debug_event((32'd7, 32'd4, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (y, x), (y, x, z)), Inspect inspect_log.log("../simple2.log", (((((((((("" ++ std.__builtin_2string(ddlog_timestamp)) ++ ": ") ++ if (ddlog_weight > 64'sd0) {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         "insert"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     } else {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           "delete"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       }) ++ ": (") ++ std.__builtin_2string(x)) ++ ", ") ++ std.__builtin_2string(y)) ++ ", ") ++ std.__builtin_2string(z)) ++ ")")), Inspect debug.debug_event((32'd7, 32'd5, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", (y, x, z), SumsOfDoubles{.x=x, .y=y, .sum=z}).
-InspectSimpleSum(.x=x, .total=total) :- InputTuples[(__inputtuples0@ InputTuples{.x=x, .y=y})], var __inputs_total = Aggregate((x), __debug_8_1_std.group_sum((__inputtuples0, y))), Inspect debug.debug_event((32'd8, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_total.0, (__inputs_total, x)), var total = __inputs_total.1, Inspect debug.debug_event((32'd8, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_total, x), (x, total)), Inspect (var z = (1 + 2);
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                (var w = ddlog_weight;
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 (var t = ddlog_timestamp;
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  inspect_log.log("../simple2.log", ((((((("" ++ std.__builtin_2string(t)) ++ ": ") ++ if (w > 64'sd0) {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           "insert"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       } else {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             "delete"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         }) ++ ": x=") ++ std.__builtin_2string(x)) ++ ", total=") ++ std.__builtin_2string(total)))))), Inspect debug.debug_event((32'd8, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", (x, total), InspectSimpleSum{.x=x, .total=total}).
-FilteredRelation(.y=y) :- TestRelation[(__testrelation0@ TestRelation{.x=32'd6, .y=y})], Inspect inspect_log.log("../simple2.log", ((((("" ++ std.__builtin_2string(ddlog_timestamp)) ++ ": ") ++ if (ddlog_weight > 64'sd0) {
-                                                                                                                                                                                                      "insert"
-                                                                                                                                                                                                  } else {
-                                                                                                                                                                                                        "delete"
-                                                                                                                                                                                                    }) ++ ": y=") ++ std.__builtin_2string(y))), Inspect debug.debug_event((32'd9, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", __testrelation0, FilteredRelation{.y=y}).
-OutputInspectNot(.x=x, .y=y) :- InputInspectNot1[(__inputinspectnot10@ InputInspectNot1{.x=x, .y=y})], not InputInspectNot2(.x=x), Inspect debug.debug_event((32'd10, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Antijoin", __inputinspectnot10, (x, y)), Inspect inspect_log.log("../simple2.log", ((((((("" ++ std.__builtin_2string(ddlog_timestamp)) ++ ": ") ++ if (ddlog_weight > 64'sd0) {
-                                                                                                                                                                                                                                                                                                                                                                             "insert"
-                                                                                                                                                                                                                                                                                                                                                                         } else {
-                                                                                                                                                                                                                                                                                                                                                                               "delete"
-                                                                                                                                                                                                                                                                                                                                                                           }) ++ ": x=") ++ std.__builtin_2string(y)) ++ " y=") ++ std.__builtin_2string(y))), Inspect debug.debug_event((32'd10, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", (x, y), OutputInspectNot{.x=x, .y=y}).
+Arrng1Arrng2[(Arrng1Arrng2{.x=x.f2.f2}: Arrng1Arrng2)] :- Arrng1[(__arrng10@ (Arrng1{.f1=(f1: std.Ref<std.Ref<std.Ref<TArrng2>>>), .f2=(f2: bigint)}: Arrng1))], Arrng2[(__arrng21@ (Arrng2{.f1=(x: std.Ref<TArrng2>), .f2=f1.f2.f2, .f3=(_: bool)}: Arrng2))], Inspect debug.debug_event_join((32'd0, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __arrng10, __arrng21, (Arrng1Arrng2{.x=x.f2.f2}: Arrng1Arrng2)).
+Arrng1Arrng2_2[(Arrng1Arrng2_2{.x=x.f2.f2}: Arrng1Arrng2_2)] :- Arrng1[(__arrng10@ (Arrng1{.f1=(f1: std.Ref<std.Ref<std.Ref<TArrng2>>>), .f2=(f2: bigint)}: Arrng1))], Arrng2[(__arrng21@ (Arrng2{.f1=(x: std.Ref<TArrng2>), .f2=f1.f2.f2, .f3=f1.f2.f1}: Arrng2))], Inspect debug.debug_event_join((32'd1, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __arrng10, __arrng21, (Arrng1Arrng2_2{.x=x.f2.f2}: Arrng1Arrng2_2)).
+TArrng1Arrng2[(TArrng1Arrng2{.x=x.f2.f2}: TArrng1Arrng2)] :- TArrng1[(__tarrng10@ (t: (std.Ref<std.Ref<std.Ref<TArrng2>>>, bigint)))], TArrng2[(__tarrng21@ ((x: std.Ref<TArrng2>), t.0.f2.f2))], Inspect debug.debug_event_join((32'd2, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __tarrng10, __tarrng21, (TArrng1Arrng2{.x=x.f2.f2}: TArrng1Arrng2)).
+RFtoIDummy[(RFtoIDummy{.x=32'sd0}: RFtoIDummy)].
+RFloatToInt[(RFloatToInt{._x=_x}: RFloatToInt)] :- RFtoIDummy[(__rftoidummy0@ (RFtoIDummy{.x=32'sd0}: RFtoIDummy))], (var _x: signed<32>) = ftoi_((- (64'f333.36: double))), Inspect debug.debug_event((32'd4, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __rftoidummy0, (RFloatToInt{._x=_x}: RFloatToInt)).
+SomeInts[(SomeInts{.x=y}: SomeInts)] :- Ints[(__ints0@ (Ints{.x=(x: bigint)}: Ints))], (var y: std.Option<bigint>) = (std.Some{.x=x}: std.Option<bigint>), Inspect debug.debug_event((32'd5, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __ints0, y), SomeInts[(__someints2@ (SomeInts{.x=(y: std.Option<bigint>)}: SomeInts))], Inspect debug.debug_event_join((32'd5, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, y, __someints2, (SomeInts{.x=y}: SomeInts)).
+FuncTest[(std.ref_new((FuncTest{.x="foo"}: FuncTest)): std.Ref<FuncTest>)].
+SumsOfDoubles[(SumsOfDoubles{.x=x, .y=y, .sum=z}: SumsOfDoubles)] :- Doubles[(__doubles0@ (Doubles{.xs=(xs: std.Vec<double>)}: Doubles))], var x = FlatMap(xs), Inspect debug.debug_event((32'd7, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Flatmap", __doubles0, x), Doubles[(__doubles2@ (Doubles{.xs=(ys: std.Vec<double>)}: Doubles))], Inspect debug.debug_event_join((32'd7, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, x, __doubles2, (x, ys)), var y = FlatMap(ys), Inspect debug.debug_event((32'd7, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Flatmap", (x, ys), (y, x)), (var z: double) = (x + y), Inspect debug.debug_event((32'd7, 32'd4, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (y, x), (y, x, z)), Inspect inspect_log.log("../simple2.log", (((((((((("" ++ (std.__builtin_2string(ddlog_timestamp): string)) ++ ": ") ++ if (ddlog_weight > 64'sd0) {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         "insert"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     } else {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           "delete"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       }) ++ ": (") ++ (std.__builtin_2string(x): string)) ++ ", ") ++ (std.__builtin_2string(y): string)) ++ ", ") ++ (std.__builtin_2string(z): string)) ++ ")")), Inspect debug.debug_event((32'd7, 32'd5, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", (y, x, z), (SumsOfDoubles{.x=x, .y=y, .sum=z}: SumsOfDoubles)).
+InspectSimpleSum[(InspectSimpleSum{.x=x, .total=total}: InspectSimpleSum)] :- InputTuples[(__inputtuples0@ (InputTuples{.x=(x: bit<32>), .y=(y: bit<32>)}: InputTuples))], var __inputs_total = Aggregate(x, __debug_8_1_std.group_sum((__inputtuples0, y))), Inspect debug.debug_event((32'd8, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_total.0, (__inputs_total, x)), (var total: bit<32>) = __inputs_total.1, Inspect debug.debug_event((32'd8, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_total, x), (x, total)), Inspect ((var z: bit<64>) = (64'd1 + 64'd2);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ((var w: signed<64>) = ddlog_weight;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ((var t: bit<64>) = ddlog_timestamp;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      inspect_log.log("../simple2.log", ((((((("" ++ (std.__builtin_2string(t): string)) ++ ": ") ++ if (w > 64'sd0) {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         "insert"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     } else {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           "delete"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       }) ++ ": x=") ++ (std.__builtin_2string(x): string)) ++ ", total=") ++ (std.__builtin_2string(total): string)))))), Inspect debug.debug_event((32'd8, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", (x, total), (InspectSimpleSum{.x=x, .total=total}: InspectSimpleSum)).
+FilteredRelation[(FilteredRelation{.y=y}: FilteredRelation)] :- TestRelation[(__testrelation0@ (TestRelation{.x=32'd6, .y=(y: bit<32>)}: TestRelation))], Inspect inspect_log.log("../simple2.log", ((((("" ++ (std.__builtin_2string(ddlog_timestamp): string)) ++ ": ") ++ if (ddlog_weight > 64'sd0) {
+                                                                                                                                                                                                                                                                                 "insert"
+                                                                                                                                                                                                                                                                             } else {
+                                                                                                                                                                                                                                                                                   "delete"
+                                                                                                                                                                                                                                                                               }) ++ ": y=") ++ (std.__builtin_2string(y): string))), Inspect debug.debug_event((32'd9, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", __testrelation0, (FilteredRelation{.y=y}: FilteredRelation)).
+OutputInspectNot[(OutputInspectNot{.x=x, .y=y}: OutputInspectNot)] :- InputInspectNot1[(__inputinspectnot10@ (InputInspectNot1{.x=(x: bit<32>), .y=(y: bit<32>)}: InputInspectNot1))], not InputInspectNot2[(InputInspectNot2{.x=(x: bit<32>)}: InputInspectNot2)], Inspect debug.debug_event((32'd10, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Antijoin", __inputinspectnot10, (x, y)), Inspect inspect_log.log("../simple2.log", ((((((("" ++ (std.__builtin_2string(ddlog_timestamp): string)) ++ ": ") ++ if (ddlog_weight > 64'sd0) {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        "insert"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    } else {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          "delete"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      }) ++ ": x=") ++ (std.__builtin_2string(y): string)) ++ " y=") ++ (std.__builtin_2string(y): string))), Inspect debug.debug_event((32'd10, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", (x, y), (OutputInspectNot{.x=x, .y=y}: OutputInspectNot)).
+TI_R[(TI_R{.a=a}: TI_R)] :- TI_R[(__ti_r0@ (TI_R{.a=(a: std.Set<string>)}: TI_R))], (std.set_size(a) > 64'd1), Inspect debug.debug_event((32'd11, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __ti_r0, (TI_R{.a=a}: TI_R)).
 

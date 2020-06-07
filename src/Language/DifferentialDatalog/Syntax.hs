@@ -76,6 +76,7 @@ module Language.DifferentialDatalog.Syntax (
         ENode,
         enode,
         eVar,
+        eTypedVar,
         eApply,
         eField,
         eTupField,
@@ -787,7 +788,7 @@ instance PP e => PP (ExprNode e) where
     pp (ESet _ l r)          = pp l <+> "=" <+> pp r
     pp (EBreak _)            = "break"
     pp (EContinue _)         = "continue"
-    pp (EReturn _ e)         = "return" <+> pp e
+    pp (EReturn _ e)         = parens $ "return" <+> pp e
     pp (EBinOp _ op e1 e2)   = parens $ pp e1 <+> pp op <+> pp e2
     pp (EUnOp _ op e)        = parens $ pp op <+> pp e
     pp (EPHolder _)          = "_"
@@ -819,6 +820,7 @@ instance WithPos Expr where
     atPos (E n) p = E $ atPos n p
 
 eVar v              = E $ EVar      nopos v
+eTypedVar v t       = eTyped (eVar v) t
 eApply f as         = E $ EApply    nopos f as
 eField e f          = E $ EField    nopos e f
 eTupField e f       = E $ ETupField nopos e f
@@ -831,12 +833,12 @@ eDouble i           = E $ EDouble   nopos i
 eString s           = E $ EString   nopos s
 eBit w v            = E $ EBit      nopos w v
 eSigned w v         = E $ ESigned   nopos w v
-eStruct c as        = E $ EStruct   nopos c as
+eStruct c as t      = eTyped (E $ EStruct nopos c as) t
 eTuple [a]          = a
 eTuple as           = E $ ETuple    nopos as
 eSlice e h l        = E $ ESlice    nopos e h l
 eMatch e cs         = E $ EMatch    nopos e cs
-eVarDecl v          = E $ EVarDecl  nopos v
+eVarDecl v t        = eTyped (E $ EVarDecl  nopos v) t
 eSeq l r            = E $ ESeq      nopos l r
 eITE i t e          = E $ EITE      nopos i t e
 eFor v e b          = E $ EFor      nopos v e b
