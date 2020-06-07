@@ -160,17 +160,17 @@ output relation Compare(label: string, value: bool)
 
 Compare("true >= false", true >= false).
 Compare([|"" >= "a"|], "" >= "a").
-Compare("5 <= 3", 5 <= 3).
-Compare("(1, 2) >= (3, 4)", (1, 2) >= (3, 4)).
-Compare("(1, 2) < (3, 4)", (1, 2) < (3, 4)).
-Compare("(1, 2) < (1, 4)", (1, 2) < (1, 4)).
+Compare("5 <= 3", (5: u64) <= 3).
+Compare("(1, 2) >= (3, 4)", (1: u32, 2: u32) >= (3, 4)).
+Compare("(1, 2) < (3, 4)", (1, 2): (float, double) < (3, 4)).
+Compare("(1, 2) < (1, 4)", (1, 2): (u32, s32) < (1, 4)).
 Compare([|C{"a", "b"} > C{"b", "e"}|], C{"a", "b"} > C{"b", "e"}).
 Compare([|C{"a", "b"} < C{"a", "e"}|], C{"a", "b"} < C{"a", "e"}).
 Compare("C0{32'd3} > C1{32'd4}", C0{32'd3} > C1{32'd4}).
 Compare("C0{32'd3} < C0{32'd4}", C0{32'd3} < C0{32'd4}).
 Compare("C0{32'd3} < C1{32'd4}", C0{32'd3} < C1{32'd4}).
-Compare("None < Some{1}", None < Some{1}).
-Compare("Some{0} < Some{1}", Some{0} < Some{1}).
+Compare("None < Some{1}", None < Some{32'sd1}).
+Compare("Some{0} < Some{1}", Some{0: u32} < Some{32'd1}).
 
 function patterns(): () = {
     var a: Alt = C0{1};

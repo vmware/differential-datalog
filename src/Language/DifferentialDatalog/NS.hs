@@ -91,7 +91,7 @@ checkVar p d c n = case lookupVar d c n of
 
 getVar :: DatalogProgram -> ECtx -> String -> Var
 getVar d c n = 
-    maybe (error $ "getVar: unknown variable " ++ n ++ " in\n" ++ show c ++ "\nVariables in scope:" ++ show (ctxAllVars d c)) id $ lookupVar d c n
+    maybe (error $ "getVar: unknown variable '" ++ n ++ "' in\n" ++ show c ++ "\nVariables in scope:" ++ show (ctxAllVars d c)) id $ lookupVar d c n
 
 lookupConstructor :: DatalogProgram -> String -> Maybe Constructor
 lookupConstructor d c =
@@ -123,7 +123,6 @@ ctxAllVars :: DatalogProgram -> ECtx -> [Var]
 ctxAllVars d ctx = let (lvs, rvs) = ctxVars d ctx in lvs ++ rvs
 
 -- All variables available in the scope: (l-vars, read-only vars).
--- TODO: return variable names only; type interence should take care of typing.
 ctxVars :: DatalogProgram -> ECtx -> ([Var], [Var])
 ctxVars d ctx =
     case ctx of
@@ -149,9 +148,10 @@ ctxVars d ctx =
          CtxMatchPat _ _ _        -> ([], plvars ++ prvars)
          CtxMatchVal e pctx i     -> let patternVars = exprVarDecls d (CtxMatchPat e pctx i)
                                                        $ fst $ (exprCases e) !! i in
-                                     if exprIsVarOrFieldLVal d pctx $ exprMatchExpr e
+                                     {-if exprIsVarOrFieldLVal d pctx $ exprMatchExpr e
                                         then (plvars ++ patternVars, prvars)
-                                        else (plvars, patternVars ++ prvars)
+                                        else -}
+                                     (plvars, patternVars ++ prvars)
          CtxSeq1 _ _              -> (plvars, prvars)
          CtxSeq2 e pctx           -> let seq1vars = exprVarDecls d (CtxSeq1 e pctx) $ exprLeft e
                                      in (plvars ++ seq1vars, prvars)

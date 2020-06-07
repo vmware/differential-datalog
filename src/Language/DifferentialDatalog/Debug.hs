@@ -78,15 +78,16 @@ updateRHSAggregate :: DatalogProgram -> Rule -> Int -> Int -> [RuleRHS]
 updateRHSAggregate d rule rlidx rhsidx =
   let
      r = (ruleRHS rule) !! rhsidx
+     aggVar = AggregateVar rule rhsidx
      funcName = debugAggregateFunctionName rlidx rhsidx (rhsAggFunc r)
      varRet = "__inputs_" ++ (rhsVar r)
      input = eTuple [ (Compile.recordAfterPrefix d rule (rhsidx - 1)) !! 0
                     , rhsAggExpr r ]
-     rAgg = RHSAggregate { rhsVar = varRet,
+     rAgg = RHSAggregate { rhsVar     = varRet,
                            rhsGroupBy = rhsGroupBy r,
                            rhsAggFunc = funcName,
                            rhsAggExpr = input }
-     rCond = RHSCondition { rhsExpr = eSet (eVarDecl $ rhsVar r) (eTupField (eVar varRet) 1) }
+     rCond = RHSCondition { rhsExpr = eSet (eVarDecl (rhsVar r) (varType d aggVar)) (eTupField (eVar varRet) 1) }
   in case r of
      RHSAggregate{} -> [rAgg, rCond]
      _ -> [r]
@@ -208,9 +209,10 @@ debugAggregateFunction d rlidx rhsidx =
     gctx = CtxRuleRGroupBy rule rhsidx
     tkey = exprType'' d gctx rhsGroupBy
     tval = exprType'' d ctx rhsAggExpr
+    tinputs = tOpaque "std.Vec" [tVar "I"]
     tret = varType d (AggregateVar rule rhsidx)
     fname = debugAggregateFunctionName rlidx rhsidx rhsAggFunc
-    funcBody = eSeq (eSet (eTuple [eVarDecl "inputs", eVarDecl "original_group"])
+    funcBody = eSeq (eSet (eTuple [eVarDecl "inputs" tinputs, eVarDecl "original_group" $ tOpaque gROUP_TYPE [tkey, tval]])
                           (eApply "debug.debug_split_group" [eVar "g"]))
                     (eTuple [eVar "inputs", eApply rhsAggFunc [eVar "original_group"]])
   in Function {funcPos = nopos,
@@ -219,8 +221,8 @@ debugAggregateFunction d rlidx rhsidx =
                funcArgs = [FuncArg {argPos = nopos,
                                     argName = "g",
                                     argMut = False,
-                                    argType = tOpaque "std.Group" [tkey, tTuple [tVar "I", tval]]}],
-               funcType = tTuple [tOpaque "std.Vec" [tVar "I"], tret],
+                                    argType = tOpaque gROUP_TYPE [tkey, tTuple [tVar "I", tval]]}],
+               funcType = tTuple [tinputs, tret],
                funcDef = Just funcBody}
 
 -- Generate a wrapper aggregate function for each aggregate function invocation in each rule.

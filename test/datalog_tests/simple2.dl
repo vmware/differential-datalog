@@ -140,3 +140,19 @@ OutputInspectNot(x, y) :-
     InputInspectNot1(x, y),
     not InputInspectNot2(x),
     Inspect log.log("../simple2.log", "${ddlog_timestamp}: ${if (ddlog_weight > 0) {\"insert\"} else {\"delete\"}}: x=${y} y=${y}").
+
+// Type inference test.
+function ti_f(value: Option<string>): Option<(string, string)> {
+    var strs = match (value) {
+        Some{s} -> string_split(s, ":"),
+        None -> return None
+    };
+    match ((vec_nth(strs, 0), vec_nth(strs, 1))) {
+        (Some{port_name}, Some{src_ip}) -> Some{(port_name, src_ip)},
+        _ -> None
+    }
+}
+
+// Type inference test.
+relation TI_R(a: Set<string>)
+TI_R(a) :- TI_R(a), set_size(a) > 1.

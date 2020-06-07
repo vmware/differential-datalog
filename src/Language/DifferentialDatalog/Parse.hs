@@ -422,7 +422,7 @@ atom is_head = withPos $ do
        rname <- relIdent
        val <- brackets expr
               <|>
-              (withPos $ eStruct rname <$> (option [] $ parens $ commaSep (namedarg <|> anonarg)))
+              (withPos $ (E . EStruct nopos rname) <$> (option [] $ parens $ commaSep (namedarg <|> anonarg)))
        p3 <- getPosition
        let val' = if isref && is_head
                      then E (EApply (p2,p3) "ref_new" [val])
@@ -505,9 +505,9 @@ term' = withPos $
      <|> ebreak
      <|> ereturn
 
-econtinue = eContinue <$ reserved "continue"
-ebreak    = eBreak <$ reserved "break"
-ereturn   = eReturn <$ reserved "return" <*> option (eTuple []) expr
+econtinue = (E $ EContinue nopos) <$ reserved "continue"
+ebreak    = (E $ EBreak nopos) <$ reserved "break"
+ereturn   = (E . EReturn nopos) <$ reserved "return" <*> option (eTuple []) expr
 
 eapply = eApply <$ isapply <*> funcIdent <*> (parens $ commaSep expr)
     where isapply = try $ lookAhead $ do
@@ -531,9 +531,9 @@ petable = [[postf postType]]
 
 pterm = (withPos $
            eTuple   <$> (parens $ commaSep pattern)
-       <|> eStruct  <$> consIdent <*> (option [] $ braces $ commaSep (namedpat <|> anonpat))
-       <|> eVarDecl <$> varIdent
-       <|> eVarDecl <$ reserved "var" <*> varIdent
+       <|> E <$> ((EStruct nopos) <$> consIdent <*> (option [] $ braces $ commaSep (namedpat <|> anonpat)))
+       <|> (E . EVarDecl nopos) <$> varIdent
+       <|> (E . EVarDecl nopos) <$ reserved "var" <*> varIdent
        <|> epholder
        <|> ebool
        <|> epattern_string
@@ -545,7 +545,7 @@ namedpat = (,) <$> (dot *> varIdent) <*> (reservedOp "=" *> pattern)
 
 lhs = (withPos $
            eTuple <$> (parens $ commaSep lhs)
-       <|> eStruct <$> consIdent <*> (option [] $ braces $ commaSep $ namedlhs <|> anonlhs)
+       <|> E <$> ((EStruct nopos) <$> consIdent <*> (option [] $ braces $ commaSep $ namedlhs <|> anonlhs))
        <|> fexpr
        <|> evardcl
        <|> epholder)
@@ -616,7 +616,7 @@ interpolate' mprefix = do
         p <- getPosition
         interpolate' $ (Just $ E $ EBinOp (fst $ pos prefix', p) Concat prefix' e))
 
-estruct = eStruct <$> consIdent <*> (option [] $ braces $ commaSep (namedarg <|> anonarg))
+estruct = E <$> ((EStruct nopos) <$> consIdent <*> (option [] $ braces $ commaSep (namedarg <|> anonarg)))
 
 enumber' = (lookAhead $ char '\'' <|> digit) *> (do w <- width
                                                     v <- sradval
@@ -637,7 +637,7 @@ eite = do reserved "if"
           return $ eITE cond th el
 
 efor    = eFor     <$ (reserved "for" *> symbol "(") <*> (varIdent <* reserved "in") <*> (expr <* symbol ")") <*> term
-evardcl = eVarDecl <$ reserved "var" <*> varIdent
+evardcl = (E . EVarDecl nopos) <$ reserved "var" <*> varIdent
 epholder = ePHolder <$ reserved "_"
 
 data NumberLiteral = UnsignedNumber Integer

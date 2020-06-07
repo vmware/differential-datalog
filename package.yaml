@@ -45,6 +45,7 @@ library:
   - -optl-pthread
   - -Wall
   - -Werror
+  - -fprof-auto
 executables:
   ddlog:
     main:                Main.hs

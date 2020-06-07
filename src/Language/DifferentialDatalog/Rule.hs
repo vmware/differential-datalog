@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018 VMware, Inc.
+Copyright (c) 2018-2020 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -44,14 +44,16 @@ import Data.List
 --import Debug.Trace
 import Text.PrettyPrint
 
+import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.PP
 import Language.DifferentialDatalog.Syntax
 import {-# SOURCE #-} Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.NS
-import Language.DifferentialDatalog.Validate
 import Language.DifferentialDatalog.Var
 import Language.DifferentialDatalog.Relation
+import Language.DifferentialDatalog.Function
+import Language.DifferentialDatalog.Type
 
 -- | Pretty-print the first 'len' literals of a rule. 
 rulePPPrefix :: Rule -> Int -> Doc
@@ -93,11 +95,25 @@ ruleRHSVars' d rl i =
     where
     vs = ruleRHSVars d rl i
 
+-- Compute type argument map for the aggregate function.
+-- e.g., given an aggregate function:
+-- extern function group2map(g: Group<('K,'V)>): Map<'K,'V>
+--
+-- and its invocation:
+-- Aggregate4(x, map) :- AggregateMe1(x,y), Aggregate((x), map = group2map((x,y)))
+--
+-- compute concrete types for 'K and 'V
 ruleAggregateTypeParams :: DatalogProgram -> Rule -> Int -> M.Map String Type
 ruleAggregateTypeParams d rl idx =
-    case ruleCheckAggregate d rl idx of
-         Left e -> error $ "ruleAggregateTypeParams: " ++ e
+    case funcTypeArgSubsts d (pos e) f [tOpaque gROUP_TYPE [group_by_type, exprType d ctx e]] of
+         Left er -> error $ "ruleAggregateTypeParams: " ++ er
          Right tmap -> tmap
+    where
+    RHSAggregate _ group_by fname e = ruleRHS rl !! idx
+    ctx = CtxRuleRAggregate rl idx
+    gctx = CtxRuleRGroupBy rl idx
+    group_by_type = exprType d gctx group_by
+    f = getFunc d fname
 
 -- | Variables used in a RHS term of a rule.
 ruleRHSTermVars :: DatalogProgram -> Rule -> Int -> [Var]

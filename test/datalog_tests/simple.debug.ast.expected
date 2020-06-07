@@ -235,87 +235,87 @@ typedef t22 = float
 typedef tnid_t = bit<16>
 function __debug_100_1_std.group2vec (g: std.Group<string,('I, string)>): (std.Vec<'I>, std.Vec<string>)
 {
-    ((var inputs, var original_group) = debug.debug_split_group(g);
+    (((var inputs: std.Vec<'I>), (var original_group: std.Group<string,string>)) = debug.debug_split_group(g);
      (inputs, std.group2vec(original_group)))
 }
 function __debug_101_1_std.group2map (g: std.Group<string,('I, (string, string))>): (std.Vec<'I>, std.Map<string,string>)
 {
-    ((var inputs, var original_group) = debug.debug_split_group(g);
+    (((var inputs: std.Vec<'I>), (var original_group: std.Group<string,(string, string)>)) = debug.debug_split_group(g);
      (inputs, std.group2map(original_group)))
 }
 function __debug_102_1_std.group2set (g: std.Group<string,('I, string)>): (std.Vec<'I>, std.Set<string>)
 {
-    ((var inputs, var original_group) = debug.debug_split_group(g);
+    (((var inputs: std.Vec<'I>), (var original_group: std.Group<string,string>)) = debug.debug_split_group(g);
      (inputs, std.group2set(original_group)))
 }
 function __debug_103_1_std.group_sum (g: std.Group<string,('I, bit<32>)>): (std.Vec<'I>, bit<32>)
 {
-    ((var inputs, var original_group) = debug.debug_split_group(g);
+    (((var inputs: std.Vec<'I>), (var original_group: std.Group<string,bit<32>>)) = debug.debug_split_group(g);
      (inputs, std.group_sum(original_group)))
 }
 function __debug_104_2_std.group_count (g: std.Group<string,('I, ())>): (std.Vec<'I>, std.usize)
 {
-    ((var inputs, var original_group) = debug.debug_split_group(g);
+    (((var inputs: std.Vec<'I>), (var original_group: std.Group<string,()>)) = debug.debug_split_group(g);
      (inputs, std.group_count(original_group)))
 }
 function __debug_105_1_concat_ys (g: std.Group<(string, string),('I, string)>): (std.Vec<'I>, string)
 {
-    ((var inputs, var original_group) = debug.debug_split_group(g);
+    (((var inputs: std.Vec<'I>), (var original_group: std.Group<(string, string),string>)) = debug.debug_split_group(g);
      (inputs, concat_ys(original_group)))
 }
 function __debug_112_2_std.group2vec (g: std.Group<string,('I, string)>): (std.Vec<'I>, std.Vec<string>)
 {
-    ((var inputs, var original_group) = debug.debug_split_group(g);
+    (((var inputs: std.Vec<'I>), (var original_group: std.Group<string,string>)) = debug.debug_split_group(g);
      (inputs, std.group2vec(original_group)))
 }
 function __debug_113_1_std.group2set (g: std.Group<string,('I, bit<32>)>): (std.Vec<'I>, std.Set<bit<32>>)
 {
-    ((var inputs, var original_group) = debug.debug_split_group(g);
+    (((var inputs: std.Vec<'I>), (var original_group: std.Group<string,bit<32>>)) = debug.debug_split_group(g);
      (inputs, std.group2set(original_group)))
 }
-function __debug_248_2_std.group2set (g: std.Group<entid_t,('I, bit<16>)>): (std.Vec<'I>, std.Set<bit<16>>)
+function __debug_248_2_std.group2set (g: std.Group<bit<32>,('I, bit<16>)>): (std.Vec<'I>, std.Set<bit<16>>)
 {
-    ((var inputs, var original_group) = debug.debug_split_group(g);
+    (((var inputs: std.Vec<'I>), (var original_group: std.Group<bit<32>,bit<16>>)) = debug.debug_split_group(g);
      (inputs, std.group2set(original_group)))
 }
-function __debug_249_3_std.group_set_unions (g: std.Group<entid_t,('I, std.Set<tnid_t>)>): (std.Vec<'I>, std.Set<bit<16>>)
+function __debug_249_3_std.group_set_unions (g: std.Group<bit<32>,('I, std.Set<bit<16>>)>): (std.Vec<'I>, std.Set<bit<16>>)
 {
-    ((var inputs, var original_group) = debug.debug_split_group(g);
+    (((var inputs: std.Vec<'I>), (var original_group: std.Group<bit<32>,std.Set<bit<16>>>)) = debug.debug_split_group(g);
      (inputs, std.group_set_unions(original_group)))
 }
 function __debug_93_1_count_xs (g: std.Group<string,('I, string)>): (std.Vec<'I>, std.u64)
 {
-    ((var inputs, var original_group) = debug.debug_split_group(g);
+    (((var inputs: std.Vec<'I>), (var original_group: std.Group<string,string>)) = debug.debug_split_group(g);
      (inputs, count_xs(original_group)))
 }
 function __debug_94_1_find_x_in_group (g: std.Group<string,('I, string)>): (std.Vec<'I>, bool)
 {
-    ((var inputs, var original_group) = debug.debug_split_group(g);
+    (((var inputs: std.Vec<'I>), (var original_group: std.Group<string,string>)) = debug.debug_split_group(g);
      (inputs, find_x_in_group(original_group)))
 }
 function __debug_95_1_std.group_count (g: std.Group<string,('I, string)>): (std.Vec<'I>, std.usize)
 {
-    ((var inputs, var original_group) = debug.debug_split_group(g);
+    (((var inputs: std.Vec<'I>), (var original_group: std.Group<string,string>)) = debug.debug_split_group(g);
      (inputs, std.group_count(original_group)))
 }
 function __debug_96_1_std.group_count (g: std.Group<(),('I, ())>): (std.Vec<'I>, std.usize)
 {
-    ((var inputs, var original_group) = debug.debug_split_group(g);
+    (((var inputs: std.Vec<'I>), (var original_group: std.Group<(),()>)) = debug.debug_split_group(g);
      (inputs, std.group_count(original_group)))
 }
 function __debug_97_1_std.group_sum (g: std.Group<(),('I, bit<64>)>): (std.Vec<'I>, bit<64>)
 {
-    ((var inputs, var original_group) = debug.debug_split_group(g);
+    (((var inputs: std.Vec<'I>), (var original_group: std.Group<(),bit<64>>)) = debug.debug_split_group(g);
      (inputs, std.group_sum(original_group)))
 }
 function __debug_98_2_std.group_sum (g: std.Group<(),('I, bit<64>)>): (std.Vec<'I>, bit<64>)
 {
-    ((var inputs, var original_group) = debug.debug_split_group(g);
+    (((var inputs: std.Vec<'I>), (var original_group: std.Group<(),bit<64>>)) = debug.debug_split_group(g);
      (inputs, std.group_sum(original_group)))
 }
 function __debug_99_1_std.group2set (g: std.Group<string,('I, string)>): (std.Vec<'I>, std.Set<string>)
 {
-    ((var inputs, var original_group) = debug.debug_split_group(g);
+    (((var inputs: std.Vec<'I>), (var original_group: std.Group<string,string>)) = debug.debug_split_group(g);
      (inputs, std.group2set(original_group)))
 }
 function a0 (): bigint
@@ -380,10 +380,10 @@ function a9 (): bit<32>
 }
 function agg1 (g1: std.Group<'K,Tt1>): Ttmp0
 {
-    (var first3 = true;
-     (var max5 = 64'sd0;
+    ((var first3: bool) = true;
+     ((var max5: signed<64>) = 64'sd0;
       (for (i2 in g1) {
-           (var v0 = i2;
+           ((var v0: Tt1) = i2;
             max5 = if first3 {
                        v0.column1
                    } else {
@@ -391,18 +391,18 @@ function agg1 (g1: std.Group<'K,Tt1>): Ttmp0
                           64'sd0)
                      })
        };
-       Ttmp0{.col4=max5})))
+       (Ttmp0{.col4=max5}: Ttmp0))))
 }
 function all (xs: std.Vec<bool>): bool
 {
     (for (x in xs) {
          if (not x) {
-             return false
+             ((return false): ())
          } else {
                ()
            }
      };
-     return true)
+     ((return true): bool))
 }
 extern function allocate.adjust_allocation (allocated: std.Map<'A,'N>, toallocate: std.Vec<'A>, min_val: 'N, max_val: 'N): std.Vec<('A, 'N)>
 extern function allocate.allocate (allocated: std.Set<'N>, toallocate: std.Vec<'B>, min_val: 'N, max_val: 'N): std.Vec<('B, 'N)>
@@ -410,16 +410,16 @@ extern function allocate.allocate_opt (allocated: std.Set<'N>, toallocate: std.V
 extern function allocate.allocate_with_hint (allocated: std.Set<'N>, toallocate: std.Vec<('B, std.Option<'N>)>, min_val: 'N, max_val: 'N): std.Vec<('B, 'N)>
 function any (xs: std.Vec<bool>): bool
 {
-    (var res = false;
+    ((var res: bool) = false;
      (for (x in xs) {
           if x {
               (res = true;
-               break)
+               (break: ()))
           } else {
                 ()
             }
       };
-      return res))
+      ((return res): bool)))
 }
 function b0 (): bool
 {
@@ -436,8 +436,8 @@ function c0 (a: bit<32>, b: bit<16>): bit<16>
 }
 function concat_ys (ys: std.Group<(string, string),string>): string
 {
-    ((var x, var z) = std.group_key(ys);
-     (var res = (((x ++ "-") ++ z) ++ ":");
+    (((var x: string), (var z: string)) = (std.group_key(ys): (string, string));
+     ((var res: string) = (((x ++ "-") ++ z) ++ ":");
       (for (y in ys) {
            res = (res ++ y)
        };
@@ -447,7 +447,7 @@ function count_xs (ys: std.Group<string,string>): std.u64
 {
     ((var res: std.u64) = 64'd0;
      (for (y in ys) {
-          if (y == std.group_key(ys)) {
+          if (y == (std.group_key(ys): string)) {
               res = (res + 64'd1)
           } else {
                 ()
@@ -464,16 +464,16 @@ extern function debug.debug_event_join (operator_id: debug.DDlogOpId, w: std.DDW
 extern function debug.debug_split_group (g: std.Group<'K,('I, 'V)>): (std.Vec<'I>, std.Group<'K,'V>)
 function double_evens (xs: std.Vec<bigint>): std.Vec<bigint>
 {
-    ((var res: std.Vec<bigint>) = std.vec_empty();
+    ((var res: std.Vec<bigint>) = (std.vec_empty(): std.Vec<bigint>);
      (for (x in xs) {
           std.vec_push(res, mult2(if (x == 0) {
-                                      break
+                                      (break: bigint)
                                   } else {
                                         if (x < 0) {
-                                            return res
+                                            ((return res): bigint)
                                         } else {
                                               if ((x % 2) != 0) {
-                                                  continue
+                                                  (continue: bigint)
                                               } else {
                                                     x
                                                 }
@@ -498,76 +498,76 @@ extern function f (): bigint
 function f1 (x: T1, y: T2, q: T3): bool
 {
     (match (x) {
-         C11{.f1=_, .f2=_} -> true,
-         _ -> false
+         (C11{.f1=(_: bigint), .f2=(_: (bigint, string))}: T1) -> true,
+         (_: T1) -> false
      };
      (match (x) {
-          C11{.f1=_, .f2=_} -> true,
-          C12{.f3=_, .f4=_} -> false
+          (C11{.f1=(_: bigint), .f2=(_: (bigint, string))}: T1) -> true,
+          (C12{.f3=(_: bit<32>), .f4=(_: (bool, bool, bool))}: T1) -> false
       };
       (match (y) {
-           (C21{.f1=(_: T1), .f2=_}: T2) -> true,
-           C22{.f3=(_, C11{.f1=_, .f2=_})} -> true,
-           _ -> false
+           (C21{.f1=(_: T1), .f2=(_: bigint)}: T2) -> true,
+           (C22{.f3=((_: bool), (C11{.f1=(_: bigint), .f2=(_: (bigint, string))}: T1))}: T2) -> true,
+           (_: T2) -> false
        };
        (match (y) {
-            C21{.f1=_, .f2=_} -> true,
-            C22{.f3=(true, C11{.f1=_, .f2=_})} -> true,
-            C22{.f3=(true, C12{.f3=_, .f4=_})} -> true,
-            C22{.f3=(false, C11{.f1=_, .f2=_})} -> true,
-            C22{.f3=(false, C12{.f3=_, .f4=_})} -> true
+            (C21{.f1=(_: T1), .f2=(_: bigint)}: T2) -> true,
+            (C22{.f3=(true, (C11{.f1=(_: bigint), .f2=(_: (bigint, string))}: T1))}: T2) -> true,
+            (C22{.f3=(true, (C12{.f3=(_: bit<32>), .f4=(_: (bool, bool, bool))}: T1))}: T2) -> true,
+            (C22{.f3=(false, (C11{.f1=(_: bigint), .f2=(_: (bigint, string))}: T1))}: T2) -> true,
+            (C22{.f3=(false, (C12{.f3=(_: bit<32>), .f4=(_: (bool, bool, bool))}: T1))}: T2) -> true
         };
         ((var z: (bool, (bool, (bool, bool)))) = (true, (false, (true, false)));
          (match (z) {
-              (true, _) -> true,
-              (false, (_, (true, true))) -> true,
-              (false, (_, (true, false))) -> true,
-              (false, (_, (false, true))) -> true,
-              (false, (_, (false, false))) -> true
+              (true, (_: (bool, (bool, bool)))) -> true,
+              (false, ((_: bool), (true, true))) -> true,
+              (false, ((_: bool), (true, false))) -> true,
+              (false, ((_: bool), (false, true))) -> true,
+              (false, ((_: bool), (false, false))) -> true
           };
           (match (z) {
-               (_, (_, (true, true))) -> true,
-               (_, (_, (true, false))) -> true,
-               (_, (_, (false, true))) -> true,
-               (false, (_, (false, false))) -> true,
-               (true, (_, (false, false))) -> true
+               ((_: bool), ((_: bool), (true, true))) -> true,
+               ((_: bool), ((_: bool), (true, false))) -> true,
+               ((_: bool), ((_: bool), (false, true))) -> true,
+               (false, ((_: bool), (false, false))) -> true,
+               (true, ((_: bool), (false, false))) -> true
            };
            (match (q) {
-                C31{.f1=_, .f2=_, .s=_, .b=_} -> true,
-                C32{.f3=((true, (_, _, false)), _)} -> true,
-                C32{.f3=((false, (_, _, false)), _)} -> true,
-                C32{.f3=((false, (_, _, true)), _)} -> true,
-                C32{.f3=((_, (_, _, true)), C11{.f1=_, .f2=_})} -> true,
-                C32{.f3=((_, (_, _, true)), C12{.f3=_, .f4=(true, true, true)})} -> false,
-                C32{.f3=((_, (_, _, true)), C12{.f3=_, .f4=(_, _, false)})} -> false,
-                C32{.f3=((_, (_, _, true)), C12{.f3=_, .f4=(_, _, true)})} -> false
+                (C31{.f1=(_: T1), .f2=(_: bigint), .s=(_: string), .b=(_: bit<32>)}: T3) -> true,
+                (C32{.f3=((true, ((_: bool), (_: bool), false)), (_: T1))}: T3) -> true,
+                (C32{.f3=((false, ((_: bool), (_: bool), false)), (_: T1))}: T3) -> true,
+                (C32{.f3=((false, ((_: bool), (_: bool), true)), (_: T1))}: T3) -> true,
+                (C32{.f3=(((_: bool), ((_: bool), (_: bool), true)), (C11{.f1=(_: bigint), .f2=(_: (bigint, string))}: T1))}: T3) -> true,
+                (C32{.f3=(((_: bool), ((_: bool), (_: bool), true)), (C12{.f3=(_: bit<32>), .f4=(true, true, true)}: T1))}: T3) -> false,
+                (C32{.f3=(((_: bool), ((_: bool), (_: bool), true)), (C12{.f3=(_: bit<32>), .f4=((_: bool), (_: bool), false)}: T1))}: T3) -> false,
+                (C32{.f3=(((_: bool), ((_: bool), (_: bool), true)), (C12{.f3=(_: bit<32>), .f4=((_: bool), (_: bool), true)}: T1))}: T3) -> false
             };
             (match (q) {
-                 C31{.f1=_, .f2=0, .s="foo", .b=32'd15} -> true,
-                 C31{.f1=_, .f2=_, .s=_, .b=32'd15} -> true,
-                 C31{.f1=_, .f2=0, .s=_, .b=_} -> true,
-                 C31{.f1=_, .f2=_, .s="foo", .b=_} -> true,
-                 C32{.f3=_} -> true,
-                 C31{.f1=_, .f2=_, .s=_, .b=_} -> true
+                 (C31{.f1=(_: T1), .f2=0, .s="foo", .b=32'd15}: T3) -> true,
+                 (C31{.f1=(_: T1), .f2=(_: bigint), .s=(_: string), .b=32'd15}: T3) -> true,
+                 (C31{.f1=(_: T1), .f2=0, .s=(_: string), .b=(_: bit<32>)}: T3) -> true,
+                 (C31{.f1=(_: T1), .f2=(_: bigint), .s="foo", .b=(_: bit<32>)}: T3) -> true,
+                 (C32{.f3=(_: ((bool, (bool, bool, bool)), T1))}: T3) -> true,
+                 (C31{.f1=(_: T1), .f2=(_: bigint), .s=(_: string), .b=(_: bit<32>)}: T3) -> true
              };
              ((var s: string) = "bar";
               match (s) {
                   "foo" -> true,
                   "bar" -> true,
-                  _ -> false
+                  (_: string) -> false
               }))))))))))
 }
 function filter_C0 (xs: std.Vec<Alt>): std.Vec<bigint>
 {
-    ((var res: std.Vec<bigint>) = std.vec_empty();
+    ((var res: std.Vec<bigint>) = (std.vec_empty(): std.Vec<bigint>);
      (for (x in xs) {
           ((var val: bigint) = match (x) {
-                                   C0{.x=var v} -> continue,
-                                   C1{.x=var v} -> if (v > 32'd0) {
-                                                       (v as bigint)
-                                                   } else {
-                                                         break
-                                                     }
+                                   (C0{.x=(var v: bit<32>)}: Alt) -> (continue: bigint),
+                                   (C1{.x=(var v: bit<32>)}: Alt) -> if (v > 32'd0) {
+                                                                         (v as bigint)
+                                                                     } else {
+                                                                           (break: bigint)
+                                                                       }
                                };
            std.vec_push(res, val))
       };
@@ -575,22 +575,22 @@ function filter_C0 (xs: std.Vec<Alt>): std.Vec<bigint>
 }
 function filter_gt (xs: std.Vec<bigint>, threshold: bigint): std.Vec<bigint>
 {
-    ((var res: std.Vec<bigint>) = std.vec_empty();
+    ((var res: std.Vec<bigint>) = (std.vec_empty(): std.Vec<bigint>);
      (for (x in xs) {
           (if (x <= threshold) {
-               continue
+               (continue: ())
            } else {
                  ()
              };
            std.vec_push(res, x))
       };
-      return res))
+      ((return res): std.Vec<bigint>)))
 }
 function find_x_in_group (ys: std.Group<'A,'A>): bool
 {
     (for (y in ys) {
-         if (y == std.group_key(ys)) {
-             return true
+         if (y == (std.group_key(ys): 'A)) {
+             ((return true): ())
          } else {
                ()
            }
@@ -603,7 +603,7 @@ function flt (): float
 }
 function fnested (x: nested_t): string
 {
-    (N{.field=C{.f1=var res, .f2=_}} = x;
+    ((N{.field=(C{.f1=(var res: string), .f2=(_: string)}: C)}: nested_t) = x;
      res)
 }
 function foo (): bool
@@ -613,16 +613,16 @@ function foo (): bool
       ((var v3: bit<129>) = 129'd0;
        ((var v4: bool) = true;
         ((var v5: (bigint, string)) = (0, "test_string");
-         (var v6 = IP4{.ip4=32'd2864434397};
-          (var v7 = Option1{.f1=0, .f2=IP4{.ip4=32'd0}, .f3=(true, "bar")};
+         ((var v6: IPAddr) = (IP4{.ip4=32'd2864434397}: IPAddr);
+          ((var v7: FooStruct) = (Option1{.f1=0, .f2=(IP4{.ip4=32'd0}: IPAddr), .f3=(true, "bar")}: FooStruct);
            (v3 = (v3 + 129'd703710);
             (match (v6) {
-                 IP4{.ip4=_} -> true,
-                 _ -> false
+                 (IP4{.ip4=(_: bit<32>)}: IPAddr) -> true,
+                 (_: IPAddr) -> false
              };
              match (v7) {
-                 Option1{.f1=_, .f2=IP6{.ip6=_}, .f3=(_, "bar")} -> true,
-                 _ -> false
+                 (Option1{.f1=(_: bigint), .f2=(IP6{.ip6=(_: bit<128>)}: IPAddr), .f3=((_: bool), "bar")}: FooStruct) -> true,
+                 (_: FooStruct) -> false
              })))))))))
 }
 extern function fp.abs_d (f: double): double
@@ -739,14 +739,14 @@ function parameterized2 (x: 'A, y: 'A): bool
 }
 function patterns (): ()
 {
-    ((var a: Alt) = C0{.x=32'd1};
-     (var b = match (a) {
-                  C0{.x=_} -> true,
-                  C1{.x=_} -> false
-              };
+    ((var a: Alt) = (C0{.x=32'd1}: Alt);
+     ((var b: bool) = match (a) {
+                          (C0{.x=(_: bit<32>)}: Alt) -> true,
+                          (C1{.x=(_: bit<32>)}: Alt) -> false
+                      };
       (var i: bit<32>) = match (a) {
-                             C0{.x=(var v: bit<32>)} -> v,
-                             C1{.x=var v} -> v
+                             (C0{.x=(var v: bit<32>)}: Alt) -> v,
+                             (C1{.x=(var v: bit<32>)}: Alt) -> v
                          }))
 }
 extern function regex.regex (pattern: string): regex.Regex
@@ -765,20 +765,20 @@ function s1 (): string
 function serializable_t2string (x: serializable_t): string
 {
     match (x) {
-        ConsInt{.x=var v} -> (("ConsInt(" ++ std.__builtin_2string(v)) ++ ")"),
-        ConsBit{.y=var v} -> (("ConsBool(" ++ std.__builtin_2string(v)) ++ ")"),
-        ConsBool{.z=true} -> "ConsBool(true)",
-        ConsBool{.z=false} -> "ConsBool(false)",
-        Cons0{} -> "Cons0"
+        (ConsInt{.x=(var v: bigint)}: serializable_t) -> (("ConsInt(" ++ (std.__builtin_2string(v): string)) ++ ")"),
+        (ConsBit{.y=(var v: bit<32>)}: serializable_t) -> (("ConsBool(" ++ (std.__builtin_2string(v): string)) ++ ")"),
+        (ConsBool{.z=true}: serializable_t) -> "ConsBool(true)",
+        (ConsBool{.z=false}: serializable_t) -> "ConsBool(false)",
+        (Cons0{}: serializable_t) -> "Cons0"
     }
 }
 function shadow (): string
 {
-    ((var b: std.Option<string>) = std.None{};
-     (var a = std.Some{.x="foo"};
+    ((var b: std.Option<string>) = (std.None{}: std.Option<string>);
+     ((var a: std.Option<string>) = (std.Some{.x="foo"}: std.Option<string>);
       match (a) {
-          std.Some{.x=(var v: string)} -> v,
-          std.None{} -> ""
+          (std.Some{.x=(var v: string)}: std.Option<string>) -> v,
+          (std.None{}: std.Option<string>) -> ""
       }))
 }
 function souffle_lib.acos (l: signed<32>): signed<32>
@@ -836,15 +836,15 @@ function souffle_lib.exp (l: signed<32>): signed<32>
 function souffle_lib.ftoi (l: double): signed<32>
 {
     match (fp.int_from_d(l)) {
-        std.None{} -> 32'sd0,
-        std.Some{.x=var x} -> (x as signed<32>)
+        (std.None{}: std.Option<bigint>) -> 32'sd0,
+        (std.Some{.x=(var x: bigint)}: std.Option<bigint>) -> (x as signed<32>)
     }
 }
 function souffle_lib.ftou (l: double): bit<32>
 {
     match (fp.int_from_d(l)) {
-        std.None{} -> 32'd0,
-        std.Some{.x=var x} -> ((x as signed<32>) as bit<32>)
+        (std.None{}: std.Option<bigint>) -> 32'd0,
+        (std.Some{.x=(var x: bigint)}: std.Option<bigint>) -> ((x as signed<32>) as bit<32>)
     }
 }
 function souffle_lib.group_count32 (g: std.Group<'K,'V>): souffle_types.Tnumber
@@ -853,8 +853,8 @@ function souffle_lib.group_count32 (g: std.Group<'K,'V>): souffle_types.Tnumber
 }
 function souffle_lib.group_mean (g: std.Group<'K,signed<32>>): signed<32>
 {
-    (var sum = std.group_sum(g);
-     (var count = std.group_count(g);
+    ((var sum: signed<32>) = (std.group_sum(g): signed<32>);
+     ((var count: bit<64>) = std.group_count(g);
       (sum / ((count as signed<64>) as signed<32>))))
 }
 function souffle_lib.itof (l: signed<32>): double
@@ -932,8 +932,8 @@ function souffle_lib.tanh (l: signed<32>): signed<32>
 function souffle_lib.to_number (s: intern.IString): souffle_types.Tnumber
 {
     match (std.parse_dec_i64(intern.istring_str(s))) {
-        std.None{} -> 32'sd0,
-        std.Some{.x=var x} -> (x as souffle_types.Tnumber)
+        (std.None{}: std.Option<signed<64>>) -> 32'sd0,
+        (std.Some{.x=(var x: signed<64>)}: std.Option<signed<64>>) -> (x as souffle_types.Tnumber)
     }
 }
 function souffle_lib.to_string (n: souffle_types.Tnumber): intern.IString
@@ -951,7 +951,7 @@ function souffle_lib.utoi (l: bit<32>): signed<32>
 extern function std.__builtin_2string (x: 'X): string
 function std.dDNestedTS2string (ts: std.DDNestedTS): string
 {
-    (((("(" ++ std.__builtin_2string(ts.epoch)) ++ ",") ++ std.__builtin_2string(ts.iter)) ++ ")")
+    (((("(" ++ (std.__builtin_2string(ts.epoch): string)) ++ ",") ++ (std.__builtin_2string(ts.iter): string)) ++ ")")
 }
 #[return_by_ref = true]
 extern function std.deref (x: std.Ref<'A>): 'A
@@ -970,10 +970,10 @@ extern function std.group_setref_unions (g: std.Group<'K,std.Ref<std.Set<'A>>>):
 extern function std.group_sum (g: std.Group<'K,'V>): 'V
 function std.group_unzip (g: std.Group<'K,('X, 'Y)>): (std.Vec<'X>, std.Vec<'Y>)
 {
-    ((var xs: std.Vec<'X>) = std.vec_empty();
-     ((var ys: std.Vec<'Y>) = std.vec_empty();
+    ((var xs: std.Vec<'X>) = (std.vec_empty(): std.Vec<'X>);
+     ((var ys: std.Vec<'Y>) = (std.vec_empty(): std.Vec<'Y>);
       (for (v in g) {
-           ((var x, var y) = v;
+           (((var x: 'X), (var y: 'Y)) = v;
             (std.vec_push(xs, x);
              std.vec_push(ys, y)))
        };
@@ -987,29 +987,29 @@ extern function std.htons (x: bit<16>): bit<16>
 function std.is_err (res: std.Result<'V,'E>): bool
 {
     match (res) {
-        std.Ok{.res=_} -> false,
-        std.Err{.err=_} -> true
+        (std.Ok{.res=(_: 'V)}: std.Result<'V,'E>) -> false,
+        (std.Err{.err=(_: 'E)}: std.Result<'V,'E>) -> true
     }
 }
 function std.is_none (x: std.Option<'A>): bool
 {
     match (x) {
-        std.None{} -> true,
-        _ -> false
+        (std.None{}: std.Option<'A>) -> true,
+        (_: std.Option<'A>) -> false
     }
 }
 function std.is_ok (res: std.Result<'V,'E>): bool
 {
     match (res) {
-        std.Ok{.res=_} -> true,
-        std.Err{.err=_} -> false
+        (std.Ok{.res=(_: 'V)}: std.Result<'V,'E>) -> true,
+        (std.Err{.err=(_: 'E)}: std.Result<'V,'E>) -> false
     }
 }
 function std.is_some (x: std.Option<'A>): bool
 {
     match (x) {
-        std.Some{.x=_} -> true,
-        _ -> false
+        (std.Some{.x=(_: 'A)}: std.Option<'A>) -> true,
+        (_: std.Option<'A>) -> false
     }
 }
 extern function std.map_contains_key (m: std.Map<'K,'V>, k: 'K): bool
@@ -1043,22 +1043,22 @@ extern function std.ntohs (x: bit<16>): bit<16>
 function std.option2set (o: std.Option<'X>): std.Set<'X>
 {
     match (o) {
-        std.Some{.x=var x} -> std.set_singleton(x),
-        std.None{} -> std.set_empty()
+        (std.Some{.x=(var x: 'X)}: std.Option<'X>) -> (std.set_singleton(x): std.Set<'X>),
+        (std.None{}: std.Option<'X>) -> (std.set_empty(): std.Set<'X>)
     }
 }
 function std.option2vec (o: std.Option<'X>): std.Vec<'X>
 {
     match (o) {
-        std.Some{.x=var x} -> std.vec_singleton(x),
-        std.None{} -> std.vec_empty()
+        (std.Some{.x=(var x: 'X)}: std.Option<'X>) -> (std.vec_singleton(x): std.Vec<'X>),
+        (std.None{}: std.Option<'X>) -> (std.vec_empty(): std.Vec<'X>)
     }
 }
 function std.option_unwrap_or (x: std.Option<'A>, def: 'A): 'A
 {
     match (x) {
-        std.Some{.x=var v} -> v,
-        std.None{} -> def
+        (std.Some{.x=(var v: 'A)}: std.Option<'A>) -> v,
+        (std.None{}: std.Option<'A>) -> def
     }
 }
 extern function std.option_unwrap_or_default (opt: std.Option<'A>): 'A
@@ -1070,8 +1070,8 @@ extern function std.ref_new (x: 'A): std.Ref<'A>
 function std.result_unwrap_or (res: std.Result<'V,'E>, def: 'V): 'V
 {
     match (res) {
-        std.Ok{.res=var v} -> v,
-        std.Err{.err=_} -> def
+        (std.Ok{.res=(var v: 'V)}: std.Result<'V,'E>) -> v,
+        (std.Err{.err=(_: 'E)}: std.Result<'V,'E>) -> def
     }
 }
 extern function std.result_unwrap_or_default (res: std.Result<'V,'E>): 'V
@@ -1118,22 +1118,22 @@ extern function std.vec_with_capacity (len: std.usize): std.Vec<'A>
 extern function std.vec_with_length (len: std.usize, x: 'A): std.Vec<'A>
 function strings (): ()
 {
-    (var str1 = ("foo" ++ "bar");
-     (var str2 = ((("foobar" ++ "buzz") ++ "\nraw string ") ++ "quoted string");
-      (var str3 = ("str1: " ++ str1);
-       (var str4 = (((((("str1: " ++ str1) ++ ", str2: ") ++ str2) ++ ", str3: ") ++ str3) ++ ".");
-        (var str5 = [|str1: ${str1},
+    ((var str1: string) = ("foo" ++ "bar");
+     ((var str2: string) = ((("foobar" ++ "buzz") ++ "\nraw string ") ++ "quoted string");
+      ((var str3: string) = ("str1: " ++ str1);
+       ((var str4: string) = (((((("str1: " ++ str1) ++ ", str2: ") ++ str2) ++ ", str3: ") ++ str3) ++ ".");
+        ((var str5: string) = [|str1: ${str1},
 str2: ${str2},
 str3: ${str3}.|];
-         (var str6 = ("" ++ (str1 ++ str2));
-          (var str7 = ("" ++ (var x = (str1 ++ str2);
-                              x));
-           (var str8 = ("" ++ (var x = (str1 ++ str2);
-                               dummy(x)));
-            (var b = (str1 < str2);
-             (var b1 = ("" < str1);
-              (var b2 = ([|${}|] < "");
-               (var b3 = ((str1 != str2) and (str1 >= str2));
+         ((var str6: string) = ("" ++ (str1 ++ str2));
+          ((var str7: string) = ("" ++ ((var x: string) = (str1 ++ str2);
+                                        x));
+           ((var str8: string) = ("" ++ ((var x: string) = (str1 ++ str2);
+                                         dummy(x)));
+            ((var b: bool) = (str1 < str2);
+             ((var b1: bool) = ("" < str1);
+              ((var b2: bool) = ([|${}|] < "");
+               ((var b3: bool) = ((str1 != str2) and (str1 >= str2));
                 ()))))))))))))
 }
 function tostring1 (): ()
@@ -1142,7 +1142,7 @@ function tostring1 (): ()
      ((var b: bit<32>) = 32'd5;
       ((var c: bool) = true;
        ((var d: string) = "foo";
-        (var err = ((((((("a=" ++ std.__builtin_2string(a)) ++ ", b=") ++ std.__builtin_2string(b)) ++ ", c=") ++ std.__builtin_2string(c)) ++ ", d=") ++ d);
+        ((var err: string) = ((((((("a=" ++ (std.__builtin_2string(a): string)) ++ ", b=") ++ (std.__builtin_2string(b): string)) ++ ", c=") ++ (std.__builtin_2string(c): string)) ++ ", d=") ++ d);
          ())))))
 }
 function tostring2 (): ()
@@ -1151,18 +1151,18 @@ function tostring2 (): ()
      ((var b: bit<32>) = 32'd5;
       ((var c: bool) = true;
        ((var d: string) = "foo";
-        ((var e: serializable_t) = ConsInt{.x=0};
-         (var err = ((((((((("a=" ++ std.__builtin_2string(a)) ++ ", b=") ++ std.__builtin_2string(b)) ++ ", c=") ++ std.__builtin_2string(c)) ++ ", d=") ++ d) ++ ", e:") ++ serializable_t2string(e));
+        ((var e: serializable_t) = (ConsInt{.x=0}: serializable_t);
+         ((var err: string) = ((((((((("a=" ++ (std.__builtin_2string(a): string)) ++ ", b=") ++ (std.__builtin_2string(b): string)) ++ ", c=") ++ (std.__builtin_2string(c): string)) ++ ", d=") ++ d) ++ ", e:") ++ (serializable_t2string(e): string));
           ()))))))
 }
 function use_parameterized (x: string, y: string_syn): string
 {
-    parameterized(x, y)
+    (parameterized(x, y): string)
 }
 function v (): string
 {
     ((var v1: string) = "hello";
-     (var v2 = "there";
+     ((var v2: string) = "there";
       v2))
 }
 function v2 (): bool
@@ -1173,27 +1173,27 @@ function vars (): ()
 {
     ((var x: bigint) = 0;
      (x = 10;
-      (var y = C{.f1="foo", .f2="bar"};
-       ((var z: C) = C{.f1="bar", .f2="foo"};
-        ((var a, var b) = ((x + 5), (x - 5));
-         (C{.f1=var e, .f2=_} = y;
-          C{.f1=var c, .f2=var d} = y))))))
+      ((var y: C) = (C{.f1="foo", .f2="bar"}: C);
+       ((var z: C) = (C{.f1="bar", .f2="foo"}: C);
+        (((var a: bigint), (var b: bigint)) = ((x + 5), (x - 5));
+         ((C{.f1=(var e: string), .f2=(_: string)}: C) = y;
+          (C{.f1=(var c: string), .f2=(var d: string)}: C) = y))))))
 }
 function weird_any (xs: std.Vec<bool>): bool
 {
-    (var res = false;
+    ((var res: bool) = false;
      (for (x in xs) {
-          return if (x == true) {
-                     true
-                 } else {
-                       continue
-                   }
+          ((return if (x == true) {
+                       true
+                   } else {
+                         (continue: bool)
+                     }): ())
       };
       false))
 }
 function x (): Alt
 {
-    C0{.x=32'd5}
+    (C0{.x=32'd5}: Alt)
 }
 extern transformer graph.ConnectedComponents(Edges: relation['E], from: function(e: 'E): 'N, to: function(e: 'E): 'N) -> (CCLabels: relation[('N, 'N)])
 extern transformer graph.ConnectedComponents64(Edges: relation['E], from: function(e: 'E): 'N, to: function(e: 'E): 'N) -> (CCLabels: relation[('N, 'N)])
@@ -1327,347 +1327,346 @@ output relation YX [YX]
 input relation YZX [YZX]
 output relation Z [Z]
 output relation ZZ [ZZ]
-Sib(.s1=x, .s2=y) :- Parent[(__parent0@ Parent{.child=x, .parent=z})], Parent[(__parent1@ Parent{.child=y, .parent=z})], Inspect debug.debug_event_join((32'd0, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __parent0, __parent1, (x, y)), (x != y), Inspect debug.debug_event((32'd0, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (x, y), Sib{.s1=x, .s2=y}).
-Parent(.child="Alice", .parent="Bob").
-Parent(.child="Ben", .parent="Bob").
-Parent(.child="Bob", .parent="Bob").
-Compare(.label="true >= false", .value=(true >= false)).
-Compare(.label="\"\" >= \"a\"", .value=("" >= "a")).
-Compare(.label="5 <= 3", .value=(5 <= 3)).
-Compare(.label="(1, 2) >= (3, 4)", .value=((1, 2) >= (3, 4))).
-Compare(.label="(1, 2) < (3, 4)", .value=((1, 2) < (3, 4))).
-Compare(.label="(1, 2) < (1, 4)", .value=((1, 2) < (1, 4))).
-Compare(.label="C{\"a\", \"b\"} > C{\"b\", \"e\"}", .value=(C{.f1="a", .f2="b"} > C{.f1="b", .f2="e"})).
-Compare(.label="C{\"a\", \"b\"} < C{\"a\", \"e\"}", .value=(C{.f1="a", .f2="b"} < C{.f1="a", .f2="e"})).
-Compare(.label="C0{32'd3} > C1{32'd4}", .value=(C0{.x=32'd3} > C1{.x=32'd4})).
-Compare(.label="C0{32'd3} < C0{32'd4}", .value=(C0{.x=32'd3} < C0{.x=32'd4})).
-Compare(.label="C0{32'd3} < C1{32'd4}", .value=(C0{.x=32'd3} < C1{.x=32'd4})).
-Compare(.label="None < Some{1}", .value=(std.None{} < std.Some{.x=1})).
-Compare(.label="Some{0} < Some{1}", .value=(std.Some{.x=0} < std.Some{.x=1})).
-VecTest(.x=std.vec_empty()).
-VecTest(.x=((var v: std.Vec<string>) = std.vec_empty();
-            (std.vec_push(v, "Hello,");
-             v))).
-VecTest(.x=std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<string>), "Hello, "), "world!")).
-Reach(.s1=x, .s2=y) :- Links[(__links0@ Links{.l=l, .s1=x, .s2=y})], Inspect debug.debug_event((32'd20, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __links0, Reach{.s1=x, .s2=y}).
-Reach(.s1=x, .s2=y) :- Links[(__links0@ Links{.l=l, .s1=y, .s2=x})], Inspect debug.debug_event((32'd21, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __links0, Reach{.s1=x, .s2=y}).
-Reach(.s1=x, .s2=y) :- Links[(__links0@ Links{.l=l, .s1=x, .s2=z})], Reach[(__reach1@ Reach{.s1=z, .s2=y})], Inspect debug.debug_event_join((32'd22, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __links0, __reach1, Reach{.s1=x, .s2=y}).
-Answer(.x=x) :- Reach[(__reach0@ Reach{.s1="Odeon", .s2=x})], Inspect debug.debug_event((32'd23, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __reach0, Answer{.x=x}).
-Z(.field=a.field) :- X[(a@ X{.field=_})], Inspect debug.debug_event((32'd24, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", a, Z{.field=a.field}).
-Z(.field=a.field) :- X[(__x0@ a)], Inspect debug.debug_event((32'd25, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __x0, Z{.field=a.field}).
-Z(.field=a.field) :- X[(a@ X{.field=_})], match (a.field) {
-                                              1 -> true,
-                                              2 -> false,
-                                              _ -> false
-                                          }, Inspect debug.debug_event((32'd26, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", a, Z{.field=a.field}).
-Z(.field=(a.field + 1)) :- X[(a@ X{.field=_})], match (a.field) {
-                                                    1 -> false,
-                                                    2 -> true,
-                                                    _ -> false
-                                                }, Inspect debug.debug_event((32'd27, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", a, Z{.field=(a.field + 1)}).
-Z(.field=(a.field - 1)) :- X[(a@ X{.field=_})], match (a.field) {
-                                                    1 -> false,
-                                                    2 -> false,
-                                                    _ -> true
-                                                }, Inspect debug.debug_event((32'd28, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", a, Z{.field=(a.field - 1)}).
-Z(.field=a) :- X[(__x0@ X{.field=a})], match (a) {
-                                           1 -> true,
-                                           2 -> false,
-                                           _ -> false
-                                       }, Inspect debug.debug_event((32'd29, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __x0, Z{.field=a}).
-Z(.field=(a + 1)) :- X[(__x0@ X{.field=a})], match (a) {
-                                                 1 -> false,
-                                                 2 -> true,
-                                                 _ -> false
-                                             }, Inspect debug.debug_event((32'd30, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __x0, Z{.field=(a + 1)}).
-Z(.field=(a - 1)) :- X[(__x0@ X{.field=a})], match (a) {
-                                                 1 -> false,
-                                                 2 -> false,
-                                                 _ -> true
-                                             }, Inspect debug.debug_event((32'd31, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __x0, Z{.field=(a - 1)}).
-Z(.field=a) :- X[(__x0@ X{.field=a})], match (a) {
-                                           1 -> true,
-                                           _ -> false
-                                       }, Inspect debug.debug_event((32'd32, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __x0, Z{.field=a}).
-Z(.field=(a + 1)) :- X[(__x0@ X{.field=a})], match (a) {
-                                                 1 -> false,
-                                                 2 -> true,
-                                                 _ -> false
-                                             }, Inspect debug.debug_event((32'd33, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __x0, Z{.field=(a + 1)}).
-Z(.field=(a - 1)) :- X[(__x0@ X{.field=a})], match (a) {
-                                                 1 -> false,
-                                                 2 -> false,
-                                                 _ -> true
-                                             }, Inspect debug.debug_event((32'd34, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __x0, Z{.field=(a - 1)}).
-Z(.field=a.field) :- X[(a@ X{.field=_})], ((a.field % 2) == 0), Inspect debug.debug_event((32'd35, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", a, Z{.field=a.field}).
-Z(.field=a.field) :- X[(a@ X{.field=_})], ((a.field % 2) == 0), Inspect debug.debug_event((32'd36, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", a, Z{.field=a.field}).
-Z(.field=a) :- X[(__x0@ X{.field=a})], ((a % 2) == 0), Inspect debug.debug_event((32'd37, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __x0, Z{.field=a}).
-Z(.field=(a.field + 1)) :- X[(a@ X{.field=_})], (a.field == 2), Inspect debug.debug_event((32'd38, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", a, Z{.field=(a.field + 1)}).
-Z(.field=a.field) :- X[(a@ X{.field=_})], (not (a.field == 2)), Inspect debug.debug_event((32'd39, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", a, Z{.field=a.field}).
-Z(.field=(a + 1)) :- X[(__x0@ X{.field=a})], (a == 2), Inspect debug.debug_event((32'd40, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __x0, Z{.field=(a + 1)}).
-Z(.field=a) :- X[(__x0@ X{.field=a})], (a != 1), Inspect debug.debug_event((32'd41, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __x0, Z{.field=a}).
-Z(.field=a.field) :- X[(a@ X{.field=_})], (a.field >= 2), (a.field > 2), Inspect debug.debug_event((32'd42, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", a, Z{.field=a.field}).
-Z(.field=(a.field + 2)) :- X[(a@ X{.field=_})], (a.field >= 2), (a.field > 2), Inspect debug.debug_event((32'd43, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", a, Z{.field=(a.field + 2)}).
-Z(.field=a) :- X[(__x0@ X{.field=a})], (a >= 2), (a > 2), Inspect debug.debug_event((32'd44, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", a, Z{.field=a}).
-Z(.field=(a + 2)) :- X[(__x0@ X{.field=a})], (a >= 2), (a > 2), Inspect debug.debug_event((32'd45, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", a, Z{.field=(a + 2)}).
-Z(.field=(a.field + b.field)) :- X[(a@ X{.field=_})], X[(b@ X{.field=_})], Inspect debug.debug_event_join((32'd46, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, a, b, Z{.field=(a.field + b.field)}).
-Z(.field=(a.field + c.field)) :- X[(a@ X{.field=_})], X[(c@ X{.field=_})], Inspect debug.debug_event_join((32'd47, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, a, c, Z{.field=(a.field + c.field)}).
-Z(.field=(a + b)) :- X[(__x0@ X{.field=a})], X[(__x1@ X{.field=b})], Inspect debug.debug_event_join((32'd48, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __x0, __x1, Z{.field=(a + b)}).
-Z(.field=(a + c)) :- X[(__x0@ X{.field=a})], X[(__x1@ X{.field=c})], Inspect debug.debug_event_join((32'd49, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __x0, __x1, Z{.field=(a + c)}).
-Z(.field=(a + b)),
-Z(.field=(a + c)) :- X[(__x0@ X{.field=a})], X[(__x1@ X{.field=b})], Inspect debug.debug_event_join((32'd50, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __x0, __x1, (a, b)), X[(__x2@ X{.field=c})], Inspect debug.debug_event_join((32'd50, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (a, b), __x2, Z{.field=(a + b)}), Inspect debug.debug_event_join((32'd50, 32'd2, 32'd1), ddlog_weight, ddlog_timestamp, (a, b), __x2, Z{.field=(a + c)}).
-Z(.field=(a.field + b)) :- X[(a@ X{.field=_})], (var b: bigint) = (a.field + 2), Inspect debug.debug_event((32'd51, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", a, Z{.field=(a.field + b)}).
-Z(.field=(a + b)) :- X[(__x0@ X{.field=a})], var b = (a + 2), Inspect debug.debug_event((32'd52, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __x0, Z{.field=(a + b)}).
-W(.f1=a.field, .f2=b, .f3=c) :- X[(a@ X{.field=_})], var b = (a.field + 2), var c = (b + a.field), Inspect debug.debug_event((32'd53, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (a, b), W{.f1=a.field, .f2=b, .f3=c}).
-W(.f1=a, .f2=b, .f3=c) :- X[(__x0@ X{.field=a})], var b = (a + 2), var c = (b + a), Inspect debug.debug_event((32'd54, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (a, b), W{.f1=a, .f2=b, .f3=c}).
+Sib[(Sib{.s1=x, .s2=y}: Sib)] :- Parent[(__parent0@ (Parent{.child=(x: string), .parent=(z: string)}: Parent))], Parent[(__parent1@ (Parent{.child=(y: string), .parent=(z: string)}: Parent))], Inspect debug.debug_event_join((32'd0, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __parent0, __parent1, (x, y)), (x != y), Inspect debug.debug_event((32'd0, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (x, y), (Sib{.s1=x, .s2=y}: Sib)).
+Parent[(Parent{.child="Alice", .parent="Bob"}: Parent)].
+Parent[(Parent{.child="Ben", .parent="Bob"}: Parent)].
+Parent[(Parent{.child="Bob", .parent="Bob"}: Parent)].
+Compare[(Compare{.label="true >= false", .value=(true >= false)}: Compare)].
+Compare[(Compare{.label="\"\" >= \"a\"", .value=("" >= "a")}: Compare)].
+Compare[(Compare{.label="5 <= 3", .value=((64'd5: std.u64) <= 64'd3)}: Compare)].
+Compare[(Compare{.label="(1, 2) >= (3, 4)", .value=(((32'd1: std.u32), (32'd2: std.u32)) >= (32'd3, 32'd4))}: Compare)].
+Compare[(Compare{.label="(1, 2) < (3, 4)", .value=(((32'f1.0, 64'f2.0): (float, double)) < (32'f3.0, 64'f4.0))}: Compare)].
+Compare[(Compare{.label="(1, 2) < (1, 4)", .value=(((32'd1, 32'sd2): (std.u32, std.s32)) < (32'd1, 32'sd4))}: Compare)].
+Compare[(Compare{.label="C{\"a\", \"b\"} > C{\"b\", \"e\"}", .value=((C{.f1="a", .f2="b"}: C) > (C{.f1="b", .f2="e"}: C))}: Compare)].
+Compare[(Compare{.label="C{\"a\", \"b\"} < C{\"a\", \"e\"}", .value=((C{.f1="a", .f2="b"}: C) < (C{.f1="a", .f2="e"}: C))}: Compare)].
+Compare[(Compare{.label="C0{32'd3} > C1{32'd4}", .value=((C0{.x=32'd3}: Alt) > (C1{.x=32'd4}: Alt))}: Compare)].
+Compare[(Compare{.label="C0{32'd3} < C0{32'd4}", .value=((C0{.x=32'd3}: Alt) < (C0{.x=32'd4}: Alt))}: Compare)].
+Compare[(Compare{.label="C0{32'd3} < C1{32'd4}", .value=((C0{.x=32'd3}: Alt) < (C1{.x=32'd4}: Alt))}: Compare)].
+Compare[(Compare{.label="None < Some{1}", .value=((std.None{}: std.Option<signed<32>>) < (std.Some{.x=32'sd1}: std.Option<signed<32>>))}: Compare)].
+Compare[(Compare{.label="Some{0} < Some{1}", .value=((std.Some{.x=(32'd0: std.u32)}: std.Option<bit<32>>) < (std.Some{.x=32'd1}: std.Option<bit<32>>))}: Compare)].
+VecTest[(VecTest{.x=(std.vec_empty(): std.Vec<string>)}: VecTest)].
+VecTest[(VecTest{.x=((var v: std.Vec<string>) = (std.vec_empty(): std.Vec<string>);
+                     (std.vec_push(v, "Hello,");
+                      v))}: VecTest)].
+VecTest[(VecTest{.x=(std.vec_push_imm((std.vec_push_imm((std.vec_empty(): std.Vec<string>), "Hello, "): std.Vec<string>), "world!"): std.Vec<string>)}: VecTest)].
+Reach[(Reach{.s1=x, .s2=y}: Reach)] :- Links[(__links0@ (Links{.l=(l: bigint), .s1=(x: string), .s2=(y: string)}: Links))], Inspect debug.debug_event((32'd20, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __links0, (Reach{.s1=x, .s2=y}: Reach)).
+Reach[(Reach{.s1=x, .s2=y}: Reach)] :- Links[(__links0@ (Links{.l=(l: bigint), .s1=(y: string), .s2=(x: string)}: Links))], Inspect debug.debug_event((32'd21, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __links0, (Reach{.s1=x, .s2=y}: Reach)).
+Reach[(Reach{.s1=x, .s2=y}: Reach)] :- Links[(__links0@ (Links{.l=(l: bigint), .s1=(x: string), .s2=(z: string)}: Links))], Reach[(__reach1@ (Reach{.s1=(z: string), .s2=(y: string)}: Reach))], Inspect debug.debug_event_join((32'd22, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __links0, __reach1, (Reach{.s1=x, .s2=y}: Reach)).
+Answer[(Answer{.x=x}: Answer)] :- Reach[(__reach0@ (Reach{.s1="Odeon", .s2=(x: string)}: Reach))], Inspect debug.debug_event((32'd23, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __reach0, (Answer{.x=x}: Answer)).
+Z[(Z{.field=a.field}: Z)] :- X[(a@ (X{.field=(_: bigint)}: X))], Inspect debug.debug_event((32'd24, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", a, (Z{.field=a.field}: Z)).
+Z[(Z{.field=a.field}: Z)] :- X[(__x0@ (a: X))], Inspect debug.debug_event((32'd25, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __x0, (Z{.field=a.field}: Z)).
+Z[(Z{.field=a.field}: Z)] :- X[(a@ (X{.field=(_: bigint)}: X))], match (a.field) {
+                                                                     1 -> true,
+                                                                     2 -> false,
+                                                                     (_: bigint) -> false
+                                                                 }, Inspect debug.debug_event((32'd26, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", a, (Z{.field=a.field}: Z)).
+Z[(Z{.field=(a.field + 1)}: Z)] :- X[(a@ (X{.field=(_: bigint)}: X))], match (a.field) {
+                                                                           1 -> false,
+                                                                           2 -> true,
+                                                                           (_: bigint) -> false
+                                                                       }, Inspect debug.debug_event((32'd27, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", a, (Z{.field=(a.field + 1)}: Z)).
+Z[(Z{.field=(a.field - 1)}: Z)] :- X[(a@ (X{.field=(_: bigint)}: X))], match (a.field) {
+                                                                           1 -> false,
+                                                                           2 -> false,
+                                                                           (_: bigint) -> true
+                                                                       }, Inspect debug.debug_event((32'd28, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", a, (Z{.field=(a.field - 1)}: Z)).
+Z[(Z{.field=a}: Z)] :- X[(__x0@ (X{.field=(a: bigint)}: X))], match (a) {
+                                                                  1 -> true,
+                                                                  2 -> false,
+                                                                  (_: bigint) -> false
+                                                              }, Inspect debug.debug_event((32'd29, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __x0, (Z{.field=a}: Z)).
+Z[(Z{.field=(a + 1)}: Z)] :- X[(__x0@ (X{.field=(a: bigint)}: X))], match (a) {
+                                                                        1 -> false,
+                                                                        2 -> true,
+                                                                        (_: bigint) -> false
+                                                                    }, Inspect debug.debug_event((32'd30, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __x0, (Z{.field=(a + 1)}: Z)).
+Z[(Z{.field=(a - 1)}: Z)] :- X[(__x0@ (X{.field=(a: bigint)}: X))], match (a) {
+                                                                        1 -> false,
+                                                                        2 -> false,
+                                                                        (_: bigint) -> true
+                                                                    }, Inspect debug.debug_event((32'd31, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __x0, (Z{.field=(a - 1)}: Z)).
+Z[(Z{.field=a}: Z)] :- X[(__x0@ (X{.field=(a: bigint)}: X))], match (a) {
+                                                                  1 -> true,
+                                                                  (_: bigint) -> false
+                                                              }, Inspect debug.debug_event((32'd32, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __x0, (Z{.field=a}: Z)).
+Z[(Z{.field=(a + 1)}: Z)] :- X[(__x0@ (X{.field=(a: bigint)}: X))], match (a) {
+                                                                        1 -> false,
+                                                                        2 -> true,
+                                                                        (_: bigint) -> false
+                                                                    }, Inspect debug.debug_event((32'd33, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __x0, (Z{.field=(a + 1)}: Z)).
+Z[(Z{.field=(a - 1)}: Z)] :- X[(__x0@ (X{.field=(a: bigint)}: X))], match (a) {
+                                                                        1 -> false,
+                                                                        2 -> false,
+                                                                        (_: bigint) -> true
+                                                                    }, Inspect debug.debug_event((32'd34, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __x0, (Z{.field=(a - 1)}: Z)).
+Z[(Z{.field=a.field}: Z)] :- X[(a@ (X{.field=(_: bigint)}: X))], ((a.field % 2) == 0), Inspect debug.debug_event((32'd35, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", a, (Z{.field=a.field}: Z)).
+Z[(Z{.field=a.field}: Z)] :- X[(a@ (X{.field=(_: bigint)}: X))], ((a.field % 2) == 0), Inspect debug.debug_event((32'd36, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", a, (Z{.field=a.field}: Z)).
+Z[(Z{.field=a}: Z)] :- X[(__x0@ (X{.field=(a: bigint)}: X))], ((a % 2) == 0), Inspect debug.debug_event((32'd37, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __x0, (Z{.field=a}: Z)).
+Z[(Z{.field=(a.field + 1)}: Z)] :- X[(a@ (X{.field=(_: bigint)}: X))], (a.field == 2), Inspect debug.debug_event((32'd38, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", a, (Z{.field=(a.field + 1)}: Z)).
+Z[(Z{.field=a.field}: Z)] :- X[(a@ (X{.field=(_: bigint)}: X))], (not (a.field == 2)), Inspect debug.debug_event((32'd39, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", a, (Z{.field=a.field}: Z)).
+Z[(Z{.field=(a + 1)}: Z)] :- X[(__x0@ (X{.field=(a: bigint)}: X))], (a == 2), Inspect debug.debug_event((32'd40, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __x0, (Z{.field=(a + 1)}: Z)).
+Z[(Z{.field=a}: Z)] :- X[(__x0@ (X{.field=(a: bigint)}: X))], (a != 1), Inspect debug.debug_event((32'd41, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __x0, (Z{.field=a}: Z)).
+Z[(Z{.field=a.field}: Z)] :- X[(a@ (X{.field=(_: bigint)}: X))], (a.field >= 2), (a.field > 2), Inspect debug.debug_event((32'd42, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", a, (Z{.field=a.field}: Z)).
+Z[(Z{.field=(a.field + 2)}: Z)] :- X[(a@ (X{.field=(_: bigint)}: X))], (a.field >= 2), (a.field > 2), Inspect debug.debug_event((32'd43, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", a, (Z{.field=(a.field + 2)}: Z)).
+Z[(Z{.field=a}: Z)] :- X[(__x0@ (X{.field=(a: bigint)}: X))], (a >= 2), (a > 2), Inspect debug.debug_event((32'd44, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", a, (Z{.field=a}: Z)).
+Z[(Z{.field=(a + 2)}: Z)] :- X[(__x0@ (X{.field=(a: bigint)}: X))], (a >= 2), (a > 2), Inspect debug.debug_event((32'd45, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", a, (Z{.field=(a + 2)}: Z)).
+Z[(Z{.field=(a.field + b.field)}: Z)] :- X[(a@ (X{.field=(_: bigint)}: X))], X[(b@ (X{.field=(_: bigint)}: X))], Inspect debug.debug_event_join((32'd46, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, a, b, (Z{.field=(a.field + b.field)}: Z)).
+Z[(Z{.field=(a.field + c.field)}: Z)] :- X[(a@ (X{.field=(_: bigint)}: X))], X[(c@ (X{.field=(_: bigint)}: X))], Inspect debug.debug_event_join((32'd47, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, a, c, (Z{.field=(a.field + c.field)}: Z)).
+Z[(Z{.field=(a + b)}: Z)] :- X[(__x0@ (X{.field=(a: bigint)}: X))], X[(__x1@ (X{.field=(b: bigint)}: X))], Inspect debug.debug_event_join((32'd48, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __x0, __x1, (Z{.field=(a + b)}: Z)).
+Z[(Z{.field=(a + c)}: Z)] :- X[(__x0@ (X{.field=(a: bigint)}: X))], X[(__x1@ (X{.field=(c: bigint)}: X))], Inspect debug.debug_event_join((32'd49, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __x0, __x1, (Z{.field=(a + c)}: Z)).
+Z[(Z{.field=(a + b)}: Z)],
+Z[(Z{.field=(a + c)}: Z)] :- X[(__x0@ (X{.field=(a: bigint)}: X))], X[(__x1@ (X{.field=(b: bigint)}: X))], Inspect debug.debug_event_join((32'd50, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __x0, __x1, (a, b)), X[(__x2@ (X{.field=(c: bigint)}: X))], Inspect debug.debug_event_join((32'd50, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (a, b), __x2, (Z{.field=(a + b)}: Z)), Inspect debug.debug_event_join((32'd50, 32'd2, 32'd1), ddlog_weight, ddlog_timestamp, (a, b), __x2, (Z{.field=(a + c)}: Z)).
+Z[(Z{.field=(a.field + b)}: Z)] :- X[(a@ (X{.field=(_: bigint)}: X))], (var b: bigint) = (a.field + 2), Inspect debug.debug_event((32'd51, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", a, (Z{.field=(a.field + b)}: Z)).
+Z[(Z{.field=(a + b)}: Z)] :- X[(__x0@ (X{.field=(a: bigint)}: X))], (var b: bigint) = (a + 2), Inspect debug.debug_event((32'd52, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __x0, (Z{.field=(a + b)}: Z)).
+W[(W{.f1=a.field, .f2=b, .f3=c}: W)] :- X[(a@ (X{.field=(_: bigint)}: X))], (var b: bigint) = (a.field + 2), (var c: bigint) = (b + a.field), Inspect debug.debug_event((32'd53, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (a, b), (W{.f1=a.field, .f2=b, .f3=c}: W)).
+W[(W{.f1=a, .f2=b, .f3=c}: W)] :- X[(__x0@ (X{.field=(a: bigint)}: X))], (var b: bigint) = (a + 2), (var c: bigint) = (b + a), Inspect debug.debug_event((32'd54, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (a, b), (W{.f1=a, .f2=b, .f3=c}: W)).
 R1[1].
 R2[(1, 2)].
-R4[x] :- R3[(__r30@ x)], Inspect debug.debug_event((32'd57, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __r30, x).
-R5[x.f1] :- R3[(__r30@ x)], Inspect debug.debug_event((32'd58, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __r30, x.f1).
-R6(.f=x.f1) :- R3[(__r30@ x)], Inspect debug.debug_event((32'd59, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __r30, R6{.f=x.f1}).
-ZZ(.x=a.b, .y=a.c) :- XX[(__xx0@ a)], Inspect debug.debug_event((32'd60, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __xx0, ZZ{.x=a.b, .y=a.c}).
-T(.x=a.b, .y=e) :- XX[(__xx0@ a)], Y[(__y1@ Y{.b=a.d, .e=e})], Inspect debug.debug_event_join((32'd61, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __xx0, __y1, T{.x=a.b, .y=e}).
-R7(.f1=1, .f2=16'd2).
-R7(.f1=1, .f2=16'd3).
-R7[R7Other{}].
-Table12(.id=std.hash128((id, name, f2, f3)), .name=name, .f3=f3) :- Table1[(__table10@ Table1{.id=id, .name=name})], Table2[(__table21@ Table2{.name=name, .f2=f2, .f3=f3})], Inspect debug.debug_event_join((32'd65, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __table10, __table21, Table12{.id=std.hash128((id, name, f2, f3)), .name=name, .f3=f3}).
-R2_nl(.a2=x) :- R1_nl[(__r1_nl0@ R1_nl{.a1=x})], Inspect debug.debug_event((32'd66, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __r1_nl0, R2_nl{.a2=x}).
-R2_nl(.a2=x) :- R3_nl[(__r3_nl0@ R3_nl{.a3=x, .b3=y})], R4_nl[(__r4_nl1@ R4_nl{.a4=y, .b4=z})], Inspect debug.debug_event_join((32'd67, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __r3_nl0, __r4_nl1, R2_nl{.a2=x}).
-R3_nl(.a3=x, .b3=y),
-R4_nl(.a4=x, .b4=y) :- R2_nl[(__r2_nl0@ R2_nl{.a2=x})], R2_nl[(__r2_nl1@ R2_nl{.a2=y})], Inspect debug.debug_event_join((32'd68, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __r2_nl0, __r2_nl1, R3_nl{.a3=x, .b3=y}), Inspect debug.debug_event_join((32'd68, 32'd1, 32'd1), ddlog_weight, ddlog_timestamp, __r2_nl0, __r2_nl1, R4_nl{.a4=x, .b4=y}).
-Strings(.s="").
-Strings(.s="foo").
-Strings(.s="bar\n").
-Strings(.s="\t\tbar").
-Strings(.s="\"buzz").
-Strings(.s="\r\n\abuzz").
-Strings(.s="\\buzz").
-Strings(.s="\\buzz").
-Strings(.s="bar\916").
-Strings(.s="").
-Strings(.s="foo").
-Strings(.s="foo\nbuzz\nbar").
-Strings(.s="\n    foo\n    buzz\n    bar").
-Strings(.s="bar\916\n\928").
-Strings(.s=("bar\916\n\928" ++ " quoted string")).
-Strings(.s="\n    foo\\r\\n\n    buzz\n    bar").
-Strings(.s="foo-bar").
-Strings(.s="foo\nbar").
-Strings(.s="foo\\bar").
-Strings(.s=("foo\\" ++ "bar")).
-Strings(.s="word1 word2").
-Strings(.s="line1\nline2").
-Rel3(.x=x, .y=y, .z=z) :- Rel1[(__rel10@ Rel1{.x=x, .y=y})], Rel2[(__rel21@ Rel2{.x=x, .z=z})], Inspect debug.debug_event_join((32'd91, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __rel10, __rel21, Rel3{.x=x, .y=y, .z=z}).
-Rel4(.x=x, .y=y, .b=b) :- Rel1[(__rel10@ Rel1{.x=x, .y=y})], Rel2[(__rel21@ Rel2{.x=x, .z=Option1{.f1=_, .f2=IP4{.ip4=_}, .f3=(b, "buzz")}})], Inspect debug.debug_event_join((32'd92, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __rel10, __rel21, Rel4{.x=x, .y=y, .b=b}).
-Counts1(.x=x, .occurrences=count) :- AggregateMe1[(__aggregateme10@ AggregateMe1{.x=x, .y=y})], var __inputs_count = Aggregate((x), __debug_93_1_count_xs((__aggregateme10, y))), Inspect debug.debug_event((32'd93, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_count.0, (__inputs_count, x)), var count = __inputs_count.1, Inspect debug.debug_event((32'd93, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_count, x), Counts1{.x=x, .occurrences=count}).
-Symmetric1(.x=x, .sym=sym) :- AggregateMe1[(__aggregateme10@ AggregateMe1{.x=x, .y=y})], var __inputs_sym = Aggregate((x), __debug_94_1_find_x_in_group((__aggregateme10, y))), Inspect debug.debug_event((32'd94, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_sym.0, (__inputs_sym, x)), var sym = __inputs_sym.1, Inspect debug.debug_event((32'd94, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_sym, x), Symmetric1{.x=x, .sym=sym}).
-Aggregate1(.x=x, .cnt=cnt) :- AggregateMe1[(__aggregateme10@ AggregateMe1{.x=x, .y=y})], var __inputs_cnt = Aggregate((x), __debug_95_1_std.group_count((__aggregateme10, y))), Inspect debug.debug_event((32'd95, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_cnt.0, (__inputs_cnt, x)), var cnt = __inputs_cnt.1, Inspect debug.debug_event((32'd95, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_cnt, x), Aggregate1{.x=x, .cnt=cnt}).
-AggregateCnt(.cnt=cnt) :- AggregateMe1[(__aggregateme10@ AggregateMe1{.x=x, .y=y})], var __inputs_cnt = Aggregate((), __debug_96_1_std.group_count((__aggregateme10, ()))), Inspect debug.debug_event((32'd96, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_cnt.0, __inputs_cnt), var cnt = __inputs_cnt.1, Inspect debug.debug_event((32'd96, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __inputs_cnt, AggregateCnt{.cnt=cnt}).
-AggregateCnt2(.cnt=cnt) :- AggregateMe1[(__aggregateme10@ AggregateMe1{.x=x, .y=y})], var __inputs_cnt = Aggregate((), __debug_97_1_std.group_sum((__aggregateme10, (64'd1: bit<64>)))), Inspect debug.debug_event((32'd97, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_cnt.0, __inputs_cnt), var cnt = __inputs_cnt.1, Inspect debug.debug_event((32'd97, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __inputs_cnt, AggregateCnt2{.cnt=cnt}).
-AggregateCnt3(.cnt=cnt) :- AggregateMe1[(__aggregateme10@ AggregateMe1{.x=x, .y=y})], (y != "1"), Inspect debug.debug_event((32'd98, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __aggregateme10, (__aggregateme10, x, y)), var __inputs_cnt = Aggregate((), __debug_98_2_std.group_sum(((__aggregateme10, x, y), (64'd1: bit<64>)))), Inspect debug.debug_event((32'd98, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_cnt.0, __inputs_cnt), var cnt = __inputs_cnt.1, Inspect debug.debug_event((32'd98, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __inputs_cnt, AggregateCnt3{.cnt=cnt}).
-Aggregate2(.x=x, .set=set) :- AggregateMe1[(__aggregateme10@ AggregateMe1{.x=x, .y=y})], var __inputs_set = Aggregate((x), __debug_99_1_std.group2set((__aggregateme10, y))), Inspect debug.debug_event((32'd99, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_set.0, (__inputs_set, x)), var set = __inputs_set.1, Inspect debug.debug_event((32'd99, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_set, x), Aggregate2{.x=x, .set=set}).
-Aggregate3(.x=x, .vec=vec) :- AggregateMe1[(__aggregateme10@ AggregateMe1{.x=x, .y=y})], var __inputs_vec = Aggregate((x), __debug_100_1_std.group2vec((__aggregateme10, y))), Inspect debug.debug_event((32'd100, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_vec.0, (__inputs_vec, x)), var vec = __inputs_vec.1, Inspect debug.debug_event((32'd100, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_vec, x), Aggregate3{.x=x, .vec=vec}).
-Aggregate4(.x=x, .map=map) :- AggregateMe1[(__aggregateme10@ AggregateMe1{.x=x, .y=y})], var __inputs_map = Aggregate((x), __debug_101_1_std.group2map((__aggregateme10, (x, y)))), Inspect debug.debug_event((32'd101, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_map.0, (__inputs_map, x)), var map = __inputs_map.1, Inspect debug.debug_event((32'd101, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_map, x), Aggregate4{.x=x, .map=map}).
-Disaggregate(.x=x, .y=y) :- AggregateMe1[(__aggregateme10@ AggregateMe1{.x=x, .y=y})], var __inputs_set = Aggregate((x), __debug_102_1_std.group2set((__aggregateme10, y))), Inspect debug.debug_event((32'd102, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_set.0, (__inputs_set, x)), var set = __inputs_set.1, Inspect debug.debug_event((32'd102, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_set, x), (x, set)), var y = FlatMap(set), Inspect debug.debug_event((32'd102, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Flatmap", (x, set), Disaggregate{.x=x, .y=y}).
-Sum(.x=x, .sum=sum) :- AggregateMeInts[(__aggregatemeints0@ AggregateMeInts{.x=x, .y=y})], var __inputs_sum = Aggregate((x), __debug_103_1_std.group_sum((__aggregatemeints0, y))), Inspect debug.debug_event((32'd103, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_sum.0, (__inputs_sum, x)), var sum = __inputs_sum.1, Inspect debug.debug_event((32'd103, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_sum, x), Sum{.x=x, .sum=sum}).
-AggregateByX(.x=x, .cnt=cnt) :- AggregateMe3[(__aggregateme30@ AggregateMe3{.x=x, .y=y, .z=z})], AggregateMe1[(__aggregateme11@ AggregateMe1{.x=x, .y=y})], Inspect debug.debug_event_join((32'd104, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __aggregateme30, __aggregateme11, (__aggregateme30, x, y, z, __aggregateme11)), var __inputs_cnt = Aggregate((x), __debug_104_2_std.group_count(((__aggregateme30, x, y, z, __aggregateme11), ()))), Inspect debug.debug_event((32'd104, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_cnt.0, (__inputs_cnt, x)), var cnt = __inputs_cnt.1, Inspect debug.debug_event((32'd104, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_cnt, x), AggregateByX{.x=x, .cnt=cnt}).
-Concat(.s=s) :- AggregateMe3[(__aggregateme30@ AggregateMe3{.x=x, .y=y, .z=z})], var __inputs_s = Aggregate((x,
-                                                                                                             z), __debug_105_1_concat_ys((__aggregateme30, y))), Inspect debug.debug_event((32'd105, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_s.0, __inputs_s), var s = __inputs_s.1, Inspect debug.debug_event((32'd105, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __inputs_s, Concat{.s=s}).
-WithKeyDbg(.key=k, .val=v) :- WithKey[(__withkey0@ WithKey{.key=k, .val=v})], Inspect debug.debug_event((32'd106, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __withkey0, WithKeyDbg{.key=k, .val=v}).
-Innocent(.name=name) :- Suspect[(__suspect0@ Suspect{.name=name})], not Gangster(.nickname=_, .name=name), Inspect debug.debug_event((32'd107, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Antijoin", __suspect0, Innocent{.name=name}).
-ValidDestination(.addr=addr) :- Address[(__address0@ Address{.addr=addr})], IPAddr{.b3=var b3, .b2=var b2, .b1=_, .b0=_} = addr, Inspect debug.debug_event((32'd108, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __address0, (addr, b3, b2)), not Blacklist(.addr=IPAddr{.b3=b3, .b2=b2, .b1=_, .b0=_}), Inspect debug.debug_event((32'd108, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Antijoin", (addr, b3, b2), ValidDestination{.addr=addr}).
-HostAddress(.host=host, .addr=addr) :- HostAddresses[(__hostaddresses0@ HostAddresses{.host=host, .addrs=addrs})], var addr = FlatMap(addrs), Inspect debug.debug_event((32'd109, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Flatmap", __hostaddresses0, HostAddress{.host=host, .addr=addr}).
-ExternalId(.host=host, .id=id) :- ExternalIds[(__externalids0@ ExternalIds{.host=host, .ids=ids})], var id = FlatMap(ids), Inspect debug.debug_event((32'd110, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Flatmap", __externalids0, ExternalId{.host=host, .id=id}).
-Allocation(.name=name, .id=id, .x=x) :- Request[(__request0@ Request{.name=name, .id=id})], Realized[(__realized1@ Realized{.name=name, .id=id, .x=x})], Inspect debug.debug_event_join((32'd111, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __request0, __realized1, Allocation{.name=name, .id=id, .x=x}).
-ToAllocate(.name=name, .ids=ids) :- Request[(__request0@ Request{.name=name, .id=id})], not Realized(.name=name, .id=id, .x=_), Inspect debug.debug_event((32'd112, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Antijoin", __request0, (__request0, name, id)), var __inputs_ids = Aggregate((name), __debug_112_2_std.group2vec(((__request0, name, id), id))), Inspect debug.debug_event((32'd112, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_ids.0, (__inputs_ids, name)), var ids = __inputs_ids.1, Inspect debug.debug_event((32'd112, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_ids, name), ToAllocate{.name=name, .ids=ids}).
-Allocated(.name=name, .xs=xs) :- Realized[(__realized0@ Realized{.name=name, .id=_, .x=x})], var __inputs_xs = Aggregate((name), __debug_113_1_std.group2set((__realized0, x))), Inspect debug.debug_event((32'd113, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_xs.0, (__inputs_xs, name)), var xs = __inputs_xs.1, Inspect debug.debug_event((32'd113, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_xs, name), Allocated{.name=name, .xs=xs}).
-Allocation(.name=name, .id=id, .x=x) :- ToAllocate[(__toallocate0@ ToAllocate{.name=name, .ids=ids})], Allocated[(__allocated1@ Allocated{.name=name, .xs=xs})], Inspect debug.debug_event_join((32'd114, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __toallocate0, __allocated1, (name, ids, xs)), var allocation = FlatMap(allocate.allocate(xs, ids, 32'd1, ((32'd1 << 32'd24) - 32'd1))), Inspect debug.debug_event((32'd114, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Flatmap", (name, ids, xs), (allocation, name)), (var id, var x) = allocation, Inspect debug.debug_event((32'd114, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (allocation, name), Allocation{.name=name, .id=id, .x=x}).
-Referee(.r=std.ref_new(r)) :- Referenced[(r@ Referenced{.x=_, .y=std.Some{.x=_}})], Inspect debug.debug_event((32'd115, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", r, Referee{.r=std.ref_new(r)}).
-Filtered(.r=r.r) :- Referee[(r@ Referee{.r=(&Referenced{.x=true, .y=_})})], Inspect debug.debug_event((32'd116, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", r, Filtered{.r=r.r}).
-Referee2[std.ref_new(Referee2{.r=r})] :- Referenced[(__referenced0@ r)], Inspect debug.debug_event((32'd117, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __referenced0, std.ref_new(Referee2{.r=r})).
-Filtered2(.r=r) :- Referee2[(r@ (&Referee2{.r=Referenced{.x=true, .y=_}}))], Inspect debug.debug_event((32'd118, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", r, Filtered2{.r=r}).
-Filtered3(.r=r.r) :- Referee[(r@ Referee{.r=_})], (r.r.x == true), Inspect debug.debug_event((32'd119, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", r, Filtered3{.r=r.r}).
-NewAllocation(.id=id, .alloc=alloc) :- Alloc[(__alloc0@ Alloc{.id=id, .allocated=allocated, .toallocate=toallocate, .min_val=min_val, .max_val=max_val})], var allocated_nums = ((var allocated_nums: std.Set<bit<32>>) = std.set_empty();
-                                                                                                                                                                                 (for (a in allocated) {
-                                                                                                                                                                                      ((_, var num) = a;
-                                                                                                                                                                                       std.set_insert(allocated_nums, num))
-                                                                                                                                                                                  };
-                                                                                                                                                                                  allocated_nums)), var alloc = allocate.allocate(allocated_nums, toallocate, min_val, max_val), Inspect debug.debug_event((32'd120, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (id, toallocate, min_val, max_val, allocated_nums), NewAllocation{.id=id, .alloc=alloc}).
-NewAllocationOpt(.id=id, .alloc=alloc) :- Alloc[(__alloc0@ Alloc{.id=id, .allocated=allocated, .toallocate=toallocate, .min_val=min_val, .max_val=max_val})], var allocated_nums = ((var allocated_nums: std.Set<bit<32>>) = std.set_empty();
-                                                                                                                                                                                    (for (a in allocated) {
-                                                                                                                                                                                         ((_, var num) = a;
-                                                                                                                                                                                          std.set_insert(allocated_nums, num))
-                                                                                                                                                                                     };
-                                                                                                                                                                                     allocated_nums)), var alloc = allocate.allocate_opt(allocated_nums, toallocate, min_val, max_val), Inspect debug.debug_event((32'd121, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (id, toallocate, min_val, max_val, allocated_nums), NewAllocationOpt{.id=id, .alloc=alloc}).
-Adjusted(.id=id, .alloc=alloc) :- Alloc[(__alloc0@ Alloc{.id=id, .allocated=allocated, .toallocate=toallocate, .min_val=min_val, .max_val=max_val})], var alloc = allocate.adjust_allocation(allocated, toallocate, min_val, max_val), Inspect debug.debug_event((32'd122, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __alloc0, Adjusted{.id=id, .alloc=alloc}).
-YX(.y=y, .x=x) :- XY[(__xy0@ XY{.x=x, .y=y})], YZX[(__yzx1@ YZX{.y=y, .z=z, .x=x})], Inspect debug.debug_event_join((32'd123, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __xy0, __yzx1, YX{.y=y, .x=x}).
-IConcatString(.s=intern.string_intern((intern.istring_str(s1) ++ s2))) :- IString1[(__istring10@ IString1{.s=s1})], String2[(__string21@ String2{.s=s2})], Inspect debug.debug_event_join((32'd124, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __istring10, __string21, IConcatString{.s=intern.string_intern((intern.istring_str(s1) ++ s2))}).
-ConcatString(.s=intern.istring_str(s)) :- IConcatString[(__iconcatstring0@ IConcatString{.s=s})], Inspect debug.debug_event((32'd125, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __iconcatstring0, ConcatString{.s=intern.istring_str(s)}).
-Ris_true(._s=intern.string_intern("true")).
-Re(._x=(32'd10 % 32'd3), ._t=intern.string_intern("10%3"), ._y=32'd1) :- Ris_true[(__ris_true0@ Ris_true{._s=_})], Inspect debug.debug_event((32'd127, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __ris_true0, Re{._x=(32'd10 % 32'd3), ._t=intern.string_intern("10%3"), ._y=32'd1}).
-CMethod(.c1=a, .c2=b) :- BMethod[(__bmethod0@ BMethod{.b1=intern.string_intern("c"), .b2=b})], AMethod[(__amethod1@ AMethod{.a1=b, .a2=a})], Inspect debug.debug_event_join((32'd128, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __bmethod0, __amethod1, CMethod{.c1=a, .c2=b}).
-DMethod(.c1=a, .c2=b) :- AMethod[(__amethod0@ AMethod{.a1=b, .a2=a})], BMethod[(__bmethod1@ BMethod{.b1=intern.string_intern("c"), .b2=b})], Inspect debug.debug_event_join((32'd129, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __amethod0, __bmethod1, DMethod{.c1=a, .c2=b}).
-Power3(.y=std.pow32(x, 32'd3)) :- Numbers[(__numbers0@ Numbers{.x=x})], Inspect debug.debug_event((32'd130, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __numbers0, Power3{.y=std.pow32(x, 32'd3)}).
-RegexMatch(.regex=regex, .text=text, .m=regex.regex_match(regex.regex(regex), text)) :- Regex[(__regex0@ Regex{.regex=regex, .text=text})], Inspect debug.debug_event((32'd131, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __regex0, RegexMatch{.regex=regex, .text=text, .m=regex.regex_match(regex.regex(regex), text)}).
-Arithm(.n=32'd0).
-Arithm(.n=(32'd1 + 32'd0)).
-Arithm(.n=(32'd0 + 32'd2)).
-Arithm(.n=(32'd2 + 32'd1)).
-Arithm(.n=(32'd2 + 32'd2)).
-Arithm(.n=(32'd1 + 32'd4)).
-Arithm(.n=(32'd2 * 32'd3)).
-Arithm(.n=(32'd28 / 32'd4)).
-Arithm(.n=(32'd24 % 32'd16)).
-Arithm(.n=(32'd18 >> 32'd1)).
-Arithm(.n=(32'd5 << 32'd1)).
-Arithm(.n=(32'd10 | 32'd9)).
-Arithm(.n=(32'd15 & 32'd12)).
-Arithm(.n=(~ 32'd4294967282)).
-Arithm(.n=(32'sd14 as bit<32>)).
-Signed(.n=32'sd0).
-Signed(.n=(32'sd1 + 32'sd0)).
-Signed(.n=(32'sd0 + 32'sd2)).
-Signed(.n=(32'sd2 + 32'sd1)).
-Signed(.n=(32'sd2 + 32'sd2)).
-Signed(.n=(32'sd1 + 32'sd4)).
-Signed(.n=(32'sd2 * 32'sd3)).
-Signed(.n=(32'sd28 / 32'sd4)).
-Signed(.n=(32'sd24 % 32'sd16)).
-Signed(.n=(32'sd18 >> 32'd1)).
-Signed(.n=(32'sd5 << 32'd1)).
-Signed(.n=(- 32'sd2147483648)).
-Cast_u32(.description="32'd100  as bit<32>", .actual=(32'd100 as bit<32>), .expected=32'd100).
-Cast_u32(.description="16'd100  as bit<32>", .actual=(16'd100 as bit<32>), .expected=32'd100).
-Cast_u32(.description="8'd100   as bit<32>", .actual=(8'd100 as bit<32>), .expected=32'd100).
-Cast_u32(.description="128'd100 as bit<32>", .actual=(128'd100 as bit<32>), .expected=32'd100).
-Cast_u32(.description="256'd100 as bit<32>", .actual=(256'd100 as bit<32>), .expected=32'd100).
-Cast_u32(.description="64'hffffffffffff as bit<32>", .actual=(64'd281474976710655 as bit<32>), .expected=32'd4294967295).
-Cast_u32(.description="128'hffffffffffffffffffff as bit<32>", .actual=(128'd1208925819614629174706175 as bit<32>), .expected=32'd4294967295).
-Cast_u32(.description="256'hffffffffffffffffffffffffffffffffffff as bit<32>", .actual=(256'd22300745198530623141535718272648361505980415 as bit<32>), .expected=32'd4294967295).
-Cast_u32(.description="(100: signed<32>) as bit<32>", .actual=((32'sd100: signed<32>) as bit<32>), .expected=32'd100).
-Cast_u32(.description="(32'sd0 - 32'sd10) as bit<32>", .actual=((32'sd0 - 32'sd10) as bit<32>), .expected=32'd4294967286).
-Cast_s32(.description="32'sd100  as signed<32>", .expected=(32'sd100 as signed<32>), .actual=32'sd100).
-Cast_s32(.description="16'sd100  as signed<32>", .expected=(16'sd100 as signed<32>), .actual=32'sd100).
-Cast_s32(.description="8'sd100   as signed<32>", .expected=(8'sd100 as signed<32>), .actual=32'sd100).
-Cast_s32(.description="128'sd100 as signed<32>", .expected=(128'sd100 as signed<32>), .actual=32'sd100).
-Cast_s32(.description="(-1: bigint as signed<32>)", .expected=((- (1: bigint)) as signed<32>), .actual=(- 32'sd1)).
-Cast_s32(.description="('hffffffffff: bigint as signed<32>)", .expected=((1099511627775: bigint) as signed<32>), .actual=(- 32'sd1)).
-Cast_s32(.description="('hff000000ff: bigint as signed<32>)", .expected=((1095216660735: bigint) as signed<32>), .actual=32'sd255).
-Cast_s32(.description="64'shffffffffffff as signed<32>", .expected=(64'sd281474976710655 as signed<32>), .actual=32'sd4294967295).
-Cast_s32(.description="128'shffffffffffffffffffff as signed<32>", .expected=(128'sd1208925819614629174706175 as signed<32>), .actual=32'sd4294967295).
-Cast_s32(.description="(100: bit<32>) as signed<32>", .expected=((32'd100: bit<32>) as signed<32>), .actual=32'sd100).
-Cast_s8(.description="(-1: bigint as signed<8>)", .expected=((- (1: bigint)) as signed<8>), .actual=(- 8'sd1)).
-Cast_s8(.description="('hffffffffff: bigint as signed<8>)", .expected=((1099511627775: bigint) as signed<8>), .actual=(- 8'sd1)).
-Cast_s8(.description="('hff0000000f: bigint as signed<8>)", .expected=((1095216660495: bigint) as signed<8>), .actual=8'sd15).
-Cast_s128(.description="(-1: bigint as signed<128>)", .expected=((- (1: bigint)) as signed<128>), .actual=(- 128'sd1)).
-Cast_s128(.description="('hffffffffffffffffffffffffffffffffff: bigint as signed<128>)", .expected=((87112285931760246646623899502532662132735: bigint) as signed<128>), .actual=(- 128'sd1)).
-Cast_s128(.description="('hff000000000000000000000000000000ff: bigint as signed<8>)", .expected=((86772003564839308183160524895100893921535: bigint) as signed<128>), .actual=128'sd255).
-Cast_u24(.description="24'd100  as bit<24>", .expected=(24'd100 as bit<24>), .actual=24'd100).
-Cast_u24(.description="32'd100  as bit<24>", .expected=(32'd100 as bit<24>), .actual=24'd100).
-Cast_u24(.description="16'd100  as bit<24>", .expected=(16'd100 as bit<24>), .actual=24'd100).
-Cast_u24(.description="8'd100   as bit<24>", .expected=(8'd100 as bit<24>), .actual=24'd100).
-Cast_u24(.description="128'd100 as bit<24>", .expected=(128'd100 as bit<24>), .actual=24'd100).
-Cast_u24(.description="256'd100 as bit<24>", .expected=(256'd100 as bit<24>), .actual=24'd100).
-Cast_u24(.description="64'hffffffffffff as bit<24>", .expected=(64'd281474976710655 as bit<24>), .actual=24'd16777215).
-Cast_u24(.description="128'hffffffffffffffffffff as bit<24>", .expected=(128'd1208925819614629174706175 as bit<24>), .actual=24'd16777215).
-Cast_u24(.description="256'hffffffffffffffffffffffffffffffffffff as bit<24>", .expected=(256'd22300745198530623141535718272648361505980415 as bit<24>), .actual=24'd16777215).
-Cast_u24(.description="(100: signed<32>) as bit<32> as bit<24>", .expected=(((32'sd100: signed<32>) as bit<32>) as bit<24>), .actual=24'd100).
-Cast_u24(.description="(32'sd0 - 32'sd10) as bit<32> as bit<24>", .expected=(((32'sd0 - 32'sd10) as bit<32>) as bit<24>), .actual=24'd16777206).
-Cast_u256(.description="24'd100  as bit<256>", .expected=(24'd100 as bit<256>), .actual=256'd100).
-Cast_u256(.description="32'd100  as bit<256>", .expected=(32'd100 as bit<256>), .actual=256'd100).
-Cast_u256(.description="16'd100  as bit<256>", .expected=(16'd100 as bit<256>), .actual=256'd100).
-Cast_u256(.description="8'd100   as bit<256>", .expected=(8'd100 as bit<256>), .actual=256'd100).
-Cast_u256(.description="128'd100 as bit<256>", .expected=(128'd100 as bit<256>), .actual=256'd100).
-Cast_u256(.description="256'd100 as bit<256>", .expected=(256'd100 as bit<256>), .actual=256'd100).
-Cast_u256(.description="512'd100 as bit<256>", .expected=(512'd100 as bit<256>), .actual=256'd100).
-Cast_u256(.description="264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bit<256>", .expected=(264'd29642774844752946028434172162224104410437116074403984394101141506025761187823610 as bit<256>), .actual=256'd115792089237316195423570985008687907853269984665640564039457584007913129639930).
-Cast_u256(.description="128'hffffffffffffffffffff as bit<256>", .expected=(128'd1208925819614629174706175 as bit<256>), .actual=256'd1208925819614629174706175).
-Cast_u256(.description="(100: signed<32>) as bit<32> as bit<256>", .expected=(((32'sd100: signed<32>) as bit<32>) as bit<256>), .actual=256'd100).
-Cast_u256(.description="(32'sd0 - 32'sd10) as bit<32> as bit<256>", .expected=(((32'sd0 - 32'sd10) as bit<32>) as bit<256>), .actual=256'd4294967286).
-Cast_bigint(.description="24'd100  as bigint", .expected=(24'd100 as bigint), .actual=100).
-Cast_bigint(.description="32'd100  as bigint", .expected=(32'd100 as bigint), .actual=100).
-Cast_bigint(.description="16'd100  as bigint", .expected=(16'd100 as bigint), .actual=100).
-Cast_bigint(.description="8'd100   as bigint", .expected=(8'd100 as bigint), .actual=100).
-Cast_bigint(.description="128'd100 as bigint", .expected=(128'd100 as bigint), .actual=100).
-Cast_bigint(.description="256'd100 as bigint", .expected=(256'd100 as bigint), .actual=100).
-Cast_bigint(.description="512'd100 as bigint", .expected=(512'd100 as bigint), .actual=100).
-Cast_bigint(.description="int_from_f(32'f3.5)", .expected=match (fp.int_from_f(32'f3.5)) {
-                                                              std.None{} -> 0,
-                                                              std.Some{.x=var x} -> x
-                                                          }, .actual=3).
-Cast_bigint(.description="int_from_d(64'f3.5)", .expected=match (fp.int_from_d(64'f3.5)) {
-                                                              std.None{} -> 0,
-                                                              std.Some{.x=var x} -> x
-                                                          }, .actual=3).
-Cast_bigint(.description="264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bigint", .expected=(264'd29642774844752946028434172162224104410437116074403984394101141506025761187823610 as bigint), .actual=29642774844752946028434172162224104410437116074403984394101141506025761187823610).
-Cast_bigint(.description="(32'sd0 - 32'sd10) as bigint", .expected=((32'sd0 - 32'sd10) as bigint), .actual=(0 - 10)).
-Cast_float(.description="24'd100  as float", .expected=(24'd100 as float), .actual=32'f100.0).
-Cast_float(.description="32'd100  as float", .expected=(32'd100 as float), .actual=32'f100.0).
-Cast_float(.description="16'sd100  as float", .expected=(16'sd100 as float), .actual=32'f100.0).
-Cast_float(.description="-32'sd100  as float", .expected=(- (32'sd100 as float)), .actual=(- 32'f100.0)).
-Cast_float(.description="-16'sd100  as float", .expected=(- (16'sd100 as float)), .actual=(- 32'f100.0)).
-Cast_float(.description="32'sd100  as float", .expected=(32'sd100 as float), .actual=32'f100.0).
-Cast_float(.description="16'd100  as float", .expected=(16'd100 as float), .actual=32'f100.0).
-Cast_float(.description="8'd100   as float", .expected=(8'd100 as float), .actual=32'f100.0).
-Cast_float(.description="128'd100 as float", .expected=(128'd100 as float), .actual=32'f100.0).
-Cast_float(.description="256'd100 as float", .expected=(256'd100 as float), .actual=32'f100.0).
-Cast_float(.description="512'd100 as float", .expected=(512'd100 as float), .actual=32'f100.0).
-Cast_float(.description="32'f3.5  as float", .expected=(32'f3.5 as float), .actual=32'f3.5).
-Cast_float(.description="64'f3.5  as float", .expected=(64'f3.5 as float), .actual=32'f3.5).
-Cast_float(.description="264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as float", .expected=(264'd29642774844752946028434172162224104410437116074403984394101141506025761187823610 as float), .actual=fp.nan_f()).
-Cast_double(.description="24'd100  as double", .expected=(24'd100 as double), .actual=64'f100.0).
-Cast_double(.description="32'd100  as double", .expected=(32'd100 as double), .actual=64'f100.0).
-Cast_double(.description="16'd100  as double", .expected=(16'd100 as double), .actual=64'f100.0).
-Cast_double(.description="8'd100   as double", .expected=(8'd100 as double), .actual=64'f100.0).
-Cast_double(.description="128'd100 as double", .expected=(128'd100 as double), .actual=64'f100.0).
-Cast_double(.description="256'd100 as double", .expected=(256'd100 as double), .actual=64'f100.0).
-Cast_double(.description="512'd100 as double", .expected=(512'd100 as double), .actual=64'f100.0).
-Cast_double(.description="32'f3.5  as double", .expected=(32'f3.5 as double), .actual=64'f3.5).
-Cast_double(.description="64'f3.5  as double", .expected=(64'f3.5 as double), .actual=64'f3.5).
-Cast_double(.description="264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as double", .expected=(264'd29642774844752946028434172162224104410437116074403984394101141506025761187823610 as double), .actual=64'f2.9642774844752946e79).
-UMinus_s32(.description="-32'sd100", .n=(- 32'sd100)).
-UMinus_s32(.description="-(-32'sd100)", .n=(- (- 32'sd100))).
-UMinus_s32(.description="-32768", .n=(- 32'sd32768)).
-UMinus_bigint(.description="-100", .n=(- 100)).
-UMinus_bigint(.description="- -100", .n=(- (- 100))).
-UMinus_bigint(.description="-32768", .n=(- 32768)).
-Span(.entity=(entity: entid_t), .tns=bindings) :- DdlogNode[(__ddlognode0@ DdlogNode{.id=entity})], DdlogBinding[(__ddlogbinding1@ DdlogBinding{.tn=tn, .entity=entity})], Inspect debug.debug_event_join((32'd248, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __ddlognode0, __ddlogbinding1, (__ddlognode0, entity, __ddlogbinding1, tn)), var __inputs_bindings = Aggregate((entity), __debug_248_2_std.group2set(((__ddlognode0, entity, __ddlogbinding1, tn), tn))), Inspect debug.debug_event((32'd248, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_bindings.0, (__inputs_bindings, entity)), var bindings = __inputs_bindings.1, Inspect debug.debug_event((32'd248, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_bindings, entity), Span{.entity=(entity: entid_t), .tns=bindings}).
-Span(.entity=parent, .tns=tns) :- DdlogNode[(__ddlognode0@ DdlogNode{.id=parent})], DdlogDependency[(__ddlogdependency1@ DdlogDependency{.parent=child, .child=parent})], Inspect debug.debug_event_join((32'd249, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __ddlognode0, __ddlogdependency1, (__ddlognode0, parent, __ddlogdependency1, child)), Span[(__span2@ Span{.entity=child, .tns=child_tns})], Inspect debug.debug_event_join((32'd249, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (__ddlognode0, parent, __ddlogdependency1, child), __span2, (__ddlognode0, parent, __ddlogdependency1, child, __span2, child_tns)), var __inputs_tns = Aggregate((parent), __debug_249_3_std.group_set_unions(((__ddlognode0, parent, __ddlogdependency1, child, __span2, child_tns), child_tns))), Inspect debug.debug_event((32'd249, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_tns.0, (__inputs_tns, parent)), var tns = __inputs_tns.1, Inspect debug.debug_event((32'd249, 32'd4, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_tns, parent), Span{.entity=parent, .tns=tns}).
-R13(.t=(1, true, "", 32'd1)).
-R14(.t=(1, (true, ("", 32'd1)))).
-R14(.t=(0, (true, ("", 32'd1)))).
-J(.b=b) :- R13[(__r130@ R13{.t=a})], R14[(__r141@ R14{.t=c})], Inspect debug.debug_event_join((32'd253, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __r130, __r141, (a, c)), (a.3 == c.1.1.1), var b = a.1, Inspect debug.debug_event((32'd253, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", a, J{.b=b}).
-LongJoin(.x0=x0, .x1=x1, .x2=x2, .x3=x3, .x4=x4, .x5=x5, .x6=x6, .x7=x7, .x8=x8, .x9=x9, .x10=x10, .x11=x11, .x12=x12, .x13=x13, .x14=x14, .x15=x15, .x16=x16, .x17=x17, .x18=x18, .x19=x19) :- Long[(__long0@ Long{.x0=x0, .x1=x1, .x2=x2, .x3=x3, .x4=x4, .x5=x5, .x6=x6, .x7=x7, .x8=x8, .x9=x9, .x10=x10, .x11=x11, .x12=x12, .x13=x13, .x14=x14, .x15=x15, .x16=x16, .x17=x17, .x18=x18, .x19=x19})], Long[(__long1@ Long{.x0=x0, .x1=x1, .x2=x2, .x3=x3, .x4=x4, .x5=x5, .x6=x6, .x7=x7, .x8=x8, .x9=x9, .x10=x10, .x11=x11, .x12=x12, .x13=x13, .x14=x14, .x15=x15, .x16=x16, .x17=x17, .x18=x18, .x19=x19})], Inspect debug.debug_event_join((32'd254, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __long0, __long1, (x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19)), Long[(__long2@ Long{.x0=x0, .x1=x1, .x2=x2, .x3=x3, .x4=x4, .x5=x5, .x6=x6, .x7=x7, .x8=x8, .x9=x9, .x10=x10, .x11=x11, .x12=x12, .x13=x13, .x14=x14, .x15=x15, .x16=x16, .x17=x17, .x18=x18, .x19=x19})], Inspect debug.debug_event_join((32'd254, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19), __long2, LongJoin{.x0=x0, .x1=x1, .x2=x2, .x3=x3, .x4=x4, .x5=x5, .x6=x6, .x7=x7, .x8=x8, .x9=x9, .x10=x10, .x11=x11, .x12=x12, .x13=x13, .x14=x14, .x15=x15, .x16=x16, .x17=x17, .x18=x18, .x19=x19}).
-ControlFlow(.expr="all(true, true, false)", .value=("" ++ std.__builtin_2string(all(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<bool>), true), true), false))))).
-ControlFlow(.expr="all(true, true, true)", .value=("" ++ std.__builtin_2string(all(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<bool>), true), true), true))))).
-ControlFlow(.expr="any(false, true, false)", .value=("" ++ std.__builtin_2string(any(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<bool>), false), true), false))))).
-ControlFlow(.expr="any(false, false, false)", .value=("" ++ std.__builtin_2string(any(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<bool>), false), false), false))))).
-ControlFlow(.expr="weird_any(false, true, false)", .value=("" ++ std.__builtin_2string(weird_any(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<bool>), false), true), false))))).
-ControlFlow(.expr="weird_any(false, false, false)", .value=("" ++ std.__builtin_2string(weird_any(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<bool>), false), false), false))))).
-BigintVectors(.expr="filter_gt((10, 20, 30), 15)", .vec=filter_gt(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<bigint>), 10), 20), 30), 15)).
-BigintVectors(.expr="filter_C0(C0{1}, C1{2}, C1{0}, C1{3})", .vec=filter_C0(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<Alt>), C0{.x=32'd1}), C1{.x=32'd2}), C1{.x=32'd0}), C1{.x=32'd3}))).
-BigintVectors(.expr="double_evens(1,2,-1,4)", .vec=double_evens(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<bigint>), 1), 2), (- 1)), 4))).
-BigintVectors(.expr="double_evens(1,2,0,4)", .vec=double_evens(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<bigint>), 1), 2), 0), 4))).
-Trees(.tree=(var leaf1 = LeafNode{.v=64'd100};
-             (var leaf2 = LeafNode{.v=64'd200};
-              (var leaf3 = LeafNode{.v=64'd300};
-               (var nonleaf = NonLeafNode{.branches=std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<Tree<std.u64>>), leaf1), leaf2)};
-                NonLeafNode{.branches=std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<Tree<std.u64>>), leaf3), nonleaf)}))))).
-Doubles(.s="64'f5.0", .d=64'f5.0).
-Doubles(.s="64'f5e2", .d=64'f500.0).
-Doubles(.s="-5", .d=(- 64'f5.0)).
-Doubles(.s="5 + 3", .d=(64'f5.0 + 64'f3.0)).
-Doubles(.s="5/3", .d=(64'f5.0 / 64'f3.0)).
-Doubles(.s="5*3", .d=(64'f5.0 * 64'f3.0)).
-Doubles(.s="0: double", .d=(64'f0.0: double)).
-Doubles(.s="floor_d(64'f0.1)", .d=fp.floor_d(64'f0.1)).
-Doubles(.s=("" ++ std.__builtin_2string((64'f5.0 + 64'f5.0))), .d=(64'f5.0 + 64'f3.0)).
-Floats(.s="32'f5.0", .f=32'f5.0).
-Floats(.s="32'f5e2", .f=32'f500.0).
-Floats(.s="5 + 3", .f=(32'f5.0 + 32'f3.0)).
-Floats(.s="5/3", .f=(32'f5.0 / 32'f3.0)).
-Floats(.s="5*3", .f=(32'f5.0 * 32'f3.0)).
-Floats(.s="0: float", .f=(32'f0.0: float)).
-Floats(.s="floor_f(32'f0.1)", .f=fp.floor_f(32'f0.1)).
+R4[x] :- R3[(__r30@ (x: R3))], Inspect debug.debug_event((32'd57, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __r30, x).
+R5[x.f1] :- R3[(__r30@ (x: R3))], Inspect debug.debug_event((32'd58, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __r30, x.f1).
+R6[(R6{.f=x.f1}: R6)] :- R3[(__r30@ (x: R3))], Inspect debug.debug_event((32'd59, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __r30, (R6{.f=x.f1}: R6)).
+ZZ[(ZZ{.x=a.b, .y=a.c}: ZZ)] :- XX[(__xx0@ (a: XX))], Inspect debug.debug_event((32'd60, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __xx0, (ZZ{.x=a.b, .y=a.c}: ZZ)).
+T[(T{.x=a.b, .y=e}: T)] :- XX[(__xx0@ (a: XX))], Y[(__y1@ (Y{.b=a.d, .e=(e: string)}: Y))], Inspect debug.debug_event_join((32'd61, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __xx0, __y1, (T{.x=a.b, .y=e}: T)).
+R7[(R7{.f1=1, .f2=16'd2}: R7)].
+R7[(R7{.f1=1, .f2=16'd3}: R7)].
+R7[(R7Other{}: R7)].
+Table12[(Table12{.id=std.hash128((id, name, f2, f3)), .name=name, .f3=f3}: Table12)] :- Table1[(__table10@ (Table1{.id=(id: bit<64>), .name=(name: string)}: Table1))], Table2[(__table21@ (Table2{.name=(name: string), .f2=(f2: bigint), .f3=(f3: S)}: Table2))], Inspect debug.debug_event_join((32'd65, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __table10, __table21, (Table12{.id=std.hash128((id, name, f2, f3)), .name=name, .f3=f3}: Table12)).
+R2_nl[(R2_nl{.a2=x}: R2_nl)] :- R1_nl[(__r1_nl0@ (R1_nl{.a1=(x: string)}: R1_nl))], Inspect debug.debug_event((32'd66, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __r1_nl0, (R2_nl{.a2=x}: R2_nl)).
+R2_nl[(R2_nl{.a2=x}: R2_nl)] :- R3_nl[(__r3_nl0@ (R3_nl{.a3=(x: string), .b3=(y: string)}: R3_nl))], R4_nl[(__r4_nl1@ (R4_nl{.a4=(y: string), .b4=(z: string)}: R4_nl))], Inspect debug.debug_event_join((32'd67, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __r3_nl0, __r4_nl1, (R2_nl{.a2=x}: R2_nl)).
+R3_nl[(R3_nl{.a3=x, .b3=y}: R3_nl)],
+R4_nl[(R4_nl{.a4=x, .b4=y}: R4_nl)] :- R2_nl[(__r2_nl0@ (R2_nl{.a2=(x: string)}: R2_nl))], R2_nl[(__r2_nl1@ (R2_nl{.a2=(y: string)}: R2_nl))], Inspect debug.debug_event_join((32'd68, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __r2_nl0, __r2_nl1, (R3_nl{.a3=x, .b3=y}: R3_nl)), Inspect debug.debug_event_join((32'd68, 32'd1, 32'd1), ddlog_weight, ddlog_timestamp, __r2_nl0, __r2_nl1, (R4_nl{.a4=x, .b4=y}: R4_nl)).
+Strings[(Strings{.s=""}: Strings)].
+Strings[(Strings{.s="foo"}: Strings)].
+Strings[(Strings{.s="bar\n"}: Strings)].
+Strings[(Strings{.s="\t\tbar"}: Strings)].
+Strings[(Strings{.s="\"buzz"}: Strings)].
+Strings[(Strings{.s="\r\n\abuzz"}: Strings)].
+Strings[(Strings{.s="\\buzz"}: Strings)].
+Strings[(Strings{.s="\\buzz"}: Strings)].
+Strings[(Strings{.s="bar\916"}: Strings)].
+Strings[(Strings{.s=""}: Strings)].
+Strings[(Strings{.s="foo"}: Strings)].
+Strings[(Strings{.s="foo\nbuzz\nbar"}: Strings)].
+Strings[(Strings{.s="\n    foo\n    buzz\n    bar"}: Strings)].
+Strings[(Strings{.s="bar\916\n\928"}: Strings)].
+Strings[(Strings{.s=("bar\916\n\928" ++ " quoted string")}: Strings)].
+Strings[(Strings{.s="\n    foo\\r\\n\n    buzz\n    bar"}: Strings)].
+Strings[(Strings{.s="foo-bar"}: Strings)].
+Strings[(Strings{.s="foo\nbar"}: Strings)].
+Strings[(Strings{.s="foo\\bar"}: Strings)].
+Strings[(Strings{.s=("foo\\" ++ "bar")}: Strings)].
+Strings[(Strings{.s="word1 word2"}: Strings)].
+Strings[(Strings{.s="line1\nline2"}: Strings)].
+Rel3[(Rel3{.x=x, .y=y, .z=z}: Rel3)] :- Rel1[(__rel10@ (Rel1{.x=(x: bigint), .y=(y: IPAddr)}: Rel1))], Rel2[(__rel21@ (Rel2{.x=(x: bigint), .z=(z: FooStruct)}: Rel2))], Inspect debug.debug_event_join((32'd91, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __rel10, __rel21, (Rel3{.x=x, .y=y, .z=z}: Rel3)).
+Rel4[(Rel4{.x=x, .y=y, .b=b}: Rel4)] :- Rel1[(__rel10@ (Rel1{.x=(x: bigint), .y=(y: IPAddr)}: Rel1))], Rel2[(__rel21@ (Rel2{.x=(x: bigint), .z=(Option1{.f1=(_: bigint), .f2=(IP4{.ip4=(_: bit<32>)}: IPAddr), .f3=((b: bool), "buzz")}: FooStruct)}: Rel2))], Inspect debug.debug_event_join((32'd92, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __rel10, __rel21, (Rel4{.x=x, .y=y, .b=b}: Rel4)).
+Counts1[(Counts1{.x=x, .occurrences=count}: Counts1)] :- AggregateMe1[(__aggregateme10@ (AggregateMe1{.x=(x: string), .y=(y: string)}: AggregateMe1))], var __inputs_count = Aggregate(x, __debug_93_1_count_xs((__aggregateme10, y))), Inspect debug.debug_event((32'd93, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_count.0, (__inputs_count, x)), (var count: std.u64) = __inputs_count.1, Inspect debug.debug_event((32'd93, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_count, x), (Counts1{.x=x, .occurrences=count}: Counts1)).
+Symmetric1[(Symmetric1{.x=x, .sym=sym}: Symmetric1)] :- AggregateMe1[(__aggregateme10@ (AggregateMe1{.x=(x: string), .y=(y: string)}: AggregateMe1))], var __inputs_sym = Aggregate(x, __debug_94_1_find_x_in_group((__aggregateme10, y))), Inspect debug.debug_event((32'd94, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_sym.0, (__inputs_sym, x)), (var sym: bool) = __inputs_sym.1, Inspect debug.debug_event((32'd94, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_sym, x), (Symmetric1{.x=x, .sym=sym}: Symmetric1)).
+Aggregate1[(Aggregate1{.x=x, .cnt=cnt}: Aggregate1)] :- AggregateMe1[(__aggregateme10@ (AggregateMe1{.x=(x: string), .y=(y: string)}: AggregateMe1))], var __inputs_cnt = Aggregate(x, __debug_95_1_std.group_count((__aggregateme10, y))), Inspect debug.debug_event((32'd95, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_cnt.0, (__inputs_cnt, x)), (var cnt: std.usize) = __inputs_cnt.1, Inspect debug.debug_event((32'd95, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_cnt, x), (Aggregate1{.x=x, .cnt=cnt}: Aggregate1)).
+AggregateCnt[(AggregateCnt{.cnt=cnt}: AggregateCnt)] :- AggregateMe1[(__aggregateme10@ (AggregateMe1{.x=(x: string), .y=(y: string)}: AggregateMe1))], var __inputs_cnt = Aggregate((), __debug_96_1_std.group_count((__aggregateme10, ()))), Inspect debug.debug_event((32'd96, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_cnt.0, __inputs_cnt), (var cnt: std.usize) = __inputs_cnt.1, Inspect debug.debug_event((32'd96, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __inputs_cnt, (AggregateCnt{.cnt=cnt}: AggregateCnt)).
+AggregateCnt2[(AggregateCnt2{.cnt=cnt}: AggregateCnt2)] :- AggregateMe1[(__aggregateme10@ (AggregateMe1{.x=(x: string), .y=(y: string)}: AggregateMe1))], var __inputs_cnt = Aggregate((), __debug_97_1_std.group_sum((__aggregateme10, (64'd1: bit<64>)))), Inspect debug.debug_event((32'd97, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_cnt.0, __inputs_cnt), (var cnt: bit<64>) = __inputs_cnt.1, Inspect debug.debug_event((32'd97, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __inputs_cnt, (AggregateCnt2{.cnt=cnt}: AggregateCnt2)).
+AggregateCnt3[(AggregateCnt3{.cnt=cnt}: AggregateCnt3)] :- AggregateMe1[(__aggregateme10@ (AggregateMe1{.x=(x: string), .y=(y: string)}: AggregateMe1))], (y != "1"), Inspect debug.debug_event((32'd98, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __aggregateme10, (__aggregateme10, x, y)), var __inputs_cnt = Aggregate((), __debug_98_2_std.group_sum(((__aggregateme10, x, y), (64'd1: bit<64>)))), Inspect debug.debug_event((32'd98, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_cnt.0, __inputs_cnt), (var cnt: bit<64>) = __inputs_cnt.1, Inspect debug.debug_event((32'd98, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __inputs_cnt, (AggregateCnt3{.cnt=cnt}: AggregateCnt3)).
+Aggregate2[(Aggregate2{.x=x, .set=set}: Aggregate2)] :- AggregateMe1[(__aggregateme10@ (AggregateMe1{.x=(x: string), .y=(y: string)}: AggregateMe1))], var __inputs_set = Aggregate(x, __debug_99_1_std.group2set((__aggregateme10, y))), Inspect debug.debug_event((32'd99, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_set.0, (__inputs_set, x)), (var set: std.Set<string>) = __inputs_set.1, Inspect debug.debug_event((32'd99, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_set, x), (Aggregate2{.x=x, .set=set}: Aggregate2)).
+Aggregate3[(Aggregate3{.x=x, .vec=vec}: Aggregate3)] :- AggregateMe1[(__aggregateme10@ (AggregateMe1{.x=(x: string), .y=(y: string)}: AggregateMe1))], var __inputs_vec = Aggregate(x, __debug_100_1_std.group2vec((__aggregateme10, y))), Inspect debug.debug_event((32'd100, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_vec.0, (__inputs_vec, x)), (var vec: std.Vec<string>) = __inputs_vec.1, Inspect debug.debug_event((32'd100, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_vec, x), (Aggregate3{.x=x, .vec=vec}: Aggregate3)).
+Aggregate4[(Aggregate4{.x=x, .map=map}: Aggregate4)] :- AggregateMe1[(__aggregateme10@ (AggregateMe1{.x=(x: string), .y=(y: string)}: AggregateMe1))], var __inputs_map = Aggregate(x, __debug_101_1_std.group2map((__aggregateme10, (x, y)))), Inspect debug.debug_event((32'd101, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_map.0, (__inputs_map, x)), (var map: std.Map<string,string>) = __inputs_map.1, Inspect debug.debug_event((32'd101, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_map, x), (Aggregate4{.x=x, .map=map}: Aggregate4)).
+Disaggregate[(Disaggregate{.x=x, .y=y}: Disaggregate)] :- AggregateMe1[(__aggregateme10@ (AggregateMe1{.x=(x: string), .y=(y: string)}: AggregateMe1))], var __inputs_set = Aggregate(x, __debug_102_1_std.group2set((__aggregateme10, y))), Inspect debug.debug_event((32'd102, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_set.0, (__inputs_set, x)), (var set: std.Set<string>) = __inputs_set.1, Inspect debug.debug_event((32'd102, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_set, x), (x, set)), var y = FlatMap(set), Inspect debug.debug_event((32'd102, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Flatmap", (x, set), (Disaggregate{.x=x, .y=y}: Disaggregate)).
+Sum[(Sum{.x=x, .sum=sum}: Sum)] :- AggregateMeInts[(__aggregatemeints0@ (AggregateMeInts{.x=(x: string), .y=(y: bit<32>)}: AggregateMeInts))], var __inputs_sum = Aggregate(x, __debug_103_1_std.group_sum((__aggregatemeints0, y))), Inspect debug.debug_event((32'd103, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_sum.0, (__inputs_sum, x)), (var sum: bit<32>) = __inputs_sum.1, Inspect debug.debug_event((32'd103, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_sum, x), (Sum{.x=x, .sum=sum}: Sum)).
+AggregateByX[(AggregateByX{.x=x, .cnt=cnt}: AggregateByX)] :- AggregateMe3[(__aggregateme30@ (AggregateMe3{.x=(x: string), .y=(y: string), .z=(z: string)}: AggregateMe3))], AggregateMe1[(__aggregateme11@ (AggregateMe1{.x=(x: string), .y=(y: string)}: AggregateMe1))], Inspect debug.debug_event_join((32'd104, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __aggregateme30, __aggregateme11, (__aggregateme30, x, y, z, __aggregateme11)), var __inputs_cnt = Aggregate(x, __debug_104_2_std.group_count(((__aggregateme30, x, y, z, __aggregateme11), ()))), Inspect debug.debug_event((32'd104, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_cnt.0, (__inputs_cnt, x)), (var cnt: std.usize) = __inputs_cnt.1, Inspect debug.debug_event((32'd104, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_cnt, x), (AggregateByX{.x=x, .cnt=cnt}: AggregateByX)).
+Concat[(Concat{.s=s}: Concat)] :- AggregateMe3[(__aggregateme30@ (AggregateMe3{.x=(x: string), .y=(y: string), .z=(z: string)}: AggregateMe3))], var __inputs_s = Aggregate((x, z), __debug_105_1_concat_ys((__aggregateme30, y))), Inspect debug.debug_event((32'd105, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_s.0, __inputs_s), (var s: string) = __inputs_s.1, Inspect debug.debug_event((32'd105, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __inputs_s, (Concat{.s=s}: Concat)).
+WithKeyDbg[(WithKeyDbg{.key=k, .val=v}: WithKeyDbg)] :- WithKey[(__withkey0@ (WithKey{.key=(k: bit<128>), .val=(v: string)}: WithKey))], Inspect debug.debug_event((32'd106, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __withkey0, (WithKeyDbg{.key=k, .val=v}: WithKeyDbg)).
+Innocent[(Innocent{.name=name}: Innocent)] :- Suspect[(__suspect0@ (Suspect{.name=(name: string)}: Suspect))], not Gangster[(Gangster{.nickname=(_: string), .name=(name: string)}: Gangster)], Inspect debug.debug_event((32'd107, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Antijoin", __suspect0, (Innocent{.name=name}: Innocent)).
+ValidDestination[(ValidDestination{.addr=addr}: ValidDestination)] :- Address[(__address0@ (Address{.addr=(addr: ip_addr_t)}: Address))], (IPAddr{.b3=(var b3: bit<8>), .b2=(var b2: bit<8>), .b1=(_: bit<8>), .b0=(_: bit<8>)}: ip_addr_t) = addr, Inspect debug.debug_event((32'd108, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __address0, (addr, b3, b2)), not Blacklist[(Blacklist{.addr=(IPAddr{.b3=(b3: bit<8>), .b2=(b2: bit<8>), .b1=(_: bit<8>), .b0=(_: bit<8>)}: ip_addr_t)}: Blacklist)], Inspect debug.debug_event((32'd108, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Antijoin", (addr, b3, b2), (ValidDestination{.addr=addr}: ValidDestination)).
+HostAddress[(HostAddress{.host=host, .addr=addr}: HostAddress)] :- HostAddresses[(__hostaddresses0@ (HostAddresses{.host=(host: bit<64>), .addrs=(addrs: std.Set<string>)}: HostAddresses))], var addr = FlatMap(addrs), Inspect debug.debug_event((32'd109, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Flatmap", __hostaddresses0, (HostAddress{.host=host, .addr=addr}: HostAddress)).
+ExternalId[(ExternalId{.host=host, .id=id}: ExternalId)] :- ExternalIds[(__externalids0@ (ExternalIds{.host=(host: bit<64>), .ids=(ids: std.Map<string,string>)}: ExternalIds))], var id = FlatMap(ids), Inspect debug.debug_event((32'd110, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Flatmap", __externalids0, (ExternalId{.host=host, .id=id}: ExternalId)).
+Allocation[(Allocation{.name=name, .id=id, .x=x}: Allocation)] :- Request[(__request0@ (Request{.name=(name: string), .id=(id: string)}: Request))], Realized[(__realized1@ (Realized{.name=(name: string), .id=(id: string), .x=(x: bit<32>)}: Realized))], Inspect debug.debug_event_join((32'd111, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __request0, __realized1, (Allocation{.name=name, .id=id, .x=x}: Allocation)).
+ToAllocate[(ToAllocate{.name=name, .ids=ids}: ToAllocate)] :- Request[(__request0@ (Request{.name=(name: string), .id=(id: string)}: Request))], not Realized[(Realized{.name=(name: string), .id=(id: string), .x=(_: bit<32>)}: Realized)], Inspect debug.debug_event((32'd112, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Antijoin", __request0, (__request0, name, id)), var __inputs_ids = Aggregate(name, __debug_112_2_std.group2vec(((__request0, name, id), id))), Inspect debug.debug_event((32'd112, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_ids.0, (__inputs_ids, name)), (var ids: std.Vec<string>) = __inputs_ids.1, Inspect debug.debug_event((32'd112, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_ids, name), (ToAllocate{.name=name, .ids=ids}: ToAllocate)).
+Allocated[(Allocated{.name=name, .xs=xs}: Allocated)] :- Realized[(__realized0@ (Realized{.name=(name: string), .id=(_: string), .x=(x: bit<32>)}: Realized))], var __inputs_xs = Aggregate(name, __debug_113_1_std.group2set((__realized0, x))), Inspect debug.debug_event((32'd113, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_xs.0, (__inputs_xs, name)), (var xs: std.Set<bit<32>>) = __inputs_xs.1, Inspect debug.debug_event((32'd113, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_xs, name), (Allocated{.name=name, .xs=xs}: Allocated)).
+Allocation[(Allocation{.name=name, .id=id, .x=x}: Allocation)] :- ToAllocate[(__toallocate0@ (ToAllocate{.name=(name: string), .ids=(ids: std.Vec<string>)}: ToAllocate))], Allocated[(__allocated1@ (Allocated{.name=(name: string), .xs=(xs: std.Set<bit<32>>)}: Allocated))], Inspect debug.debug_event_join((32'd114, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __toallocate0, __allocated1, (name, ids, xs)), var allocation = FlatMap((allocate.allocate(xs, ids, 32'd1, ((32'd1 << 32'd24) - 32'd1)): std.Vec<(string, bit<32>)>)), Inspect debug.debug_event((32'd114, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Flatmap", (name, ids, xs), (allocation, name)), ((var id: string), (var x: bit<32>)) = allocation, Inspect debug.debug_event((32'd114, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (allocation, name), (Allocation{.name=name, .id=id, .x=x}: Allocation)).
+Referee[(Referee{.r=(std.ref_new(r): std.Ref<Referenced>)}: Referee)] :- Referenced[(r@ (Referenced{.x=(_: bool), .y=(std.Some{.x=(_: string)}: std.Option<string>)}: Referenced))], Inspect debug.debug_event((32'd115, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", r, (Referee{.r=(std.ref_new(r): std.Ref<Referenced>)}: Referee)).
+Filtered[(Filtered{.r=r.r}: Filtered)] :- Referee[(r@ (Referee{.r=((&(Referenced{.x=true, .y=(_: std.Option<string>)}: Referenced)): std.Ref<Referenced>)}: Referee))], Inspect debug.debug_event((32'd116, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", r, (Filtered{.r=r.r}: Filtered)).
+Referee2[(std.ref_new((Referee2{.r=r}: Referee2)): std.Ref<Referee2>)] :- Referenced[(__referenced0@ (r: Referenced))], Inspect debug.debug_event((32'd117, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __referenced0, (std.ref_new((Referee2{.r=r}: Referee2)): std.Ref<Referee2>)).
+Filtered2[(Filtered2{.r=r}: Filtered2)] :- Referee2[(r@ ((&(Referee2{.r=(Referenced{.x=true, .y=(_: std.Option<string>)}: Referenced)}: Referee2)): std.Ref<Referee2>))], Inspect debug.debug_event((32'd118, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", r, (Filtered2{.r=r}: Filtered2)).
+Filtered3[(Filtered3{.r=r.r}: Filtered3)] :- Referee[(r@ (Referee{.r=(_: std.Ref<Referenced>)}: Referee))], (r.r.x == true), Inspect debug.debug_event((32'd119, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", r, (Filtered3{.r=r.r}: Filtered3)).
+NewAllocation[(NewAllocation{.id=id, .alloc=alloc}: NewAllocation)] :- Alloc[(__alloc0@ (Alloc{.id=(id: bigint), .allocated=(allocated: std.Map<string,bit<32>>), .toallocate=(toallocate: std.Vec<string>), .min_val=(min_val: bit<32>), .max_val=(max_val: bit<32>)}: Alloc))], (var allocated_nums: std.Set<bit<32>>) = ((var allocated_nums: std.Set<bit<32>>) = (std.set_empty(): std.Set<bit<32>>);
+                                                                                                                                                                                                                                                                                                                            (for (a in allocated) {
+                                                                                                                                                                                                                                                                                                                                 (((_: string), (var num: bit<32>)) = a;
+                                                                                                                                                                                                                                                                                                                                  std.set_insert(allocated_nums, num))
+                                                                                                                                                                                                                                                                                                                             };
+                                                                                                                                                                                                                                                                                                                             allocated_nums)), (var alloc: std.Vec<(string, bit<32>)>) = (allocate.allocate(allocated_nums, toallocate, min_val, max_val): std.Vec<(string, bit<32>)>), Inspect debug.debug_event((32'd120, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (id, toallocate, min_val, max_val, allocated_nums), (NewAllocation{.id=id, .alloc=alloc}: NewAllocation)).
+NewAllocationOpt[(NewAllocationOpt{.id=id, .alloc=alloc}: NewAllocationOpt)] :- Alloc[(__alloc0@ (Alloc{.id=(id: bigint), .allocated=(allocated: std.Map<string,bit<32>>), .toallocate=(toallocate: std.Vec<string>), .min_val=(min_val: bit<32>), .max_val=(max_val: bit<32>)}: Alloc))], (var allocated_nums: std.Set<bit<32>>) = ((var allocated_nums: std.Set<bit<32>>) = (std.set_empty(): std.Set<bit<32>>);
+                                                                                                                                                                                                                                                                                                                                     (for (a in allocated) {
+                                                                                                                                                                                                                                                                                                                                          (((_: string), (var num: bit<32>)) = a;
+                                                                                                                                                                                                                                                                                                                                           std.set_insert(allocated_nums, num))
+                                                                                                                                                                                                                                                                                                                                      };
+                                                                                                                                                                                                                                                                                                                                      allocated_nums)), (var alloc: std.Vec<(string, std.Option<bit<32>>)>) = (allocate.allocate_opt(allocated_nums, toallocate, min_val, max_val): std.Vec<(string, std.Option<bit<32>>)>), Inspect debug.debug_event((32'd121, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (id, toallocate, min_val, max_val, allocated_nums), (NewAllocationOpt{.id=id, .alloc=alloc}: NewAllocationOpt)).
+Adjusted[(Adjusted{.id=id, .alloc=alloc}: Adjusted)] :- Alloc[(__alloc0@ (Alloc{.id=(id: bigint), .allocated=(allocated: std.Map<string,bit<32>>), .toallocate=(toallocate: std.Vec<string>), .min_val=(min_val: bit<32>), .max_val=(max_val: bit<32>)}: Alloc))], (var alloc: std.Vec<(string, bit<32>)>) = (allocate.adjust_allocation(allocated, toallocate, min_val, max_val): std.Vec<(string, bit<32>)>), Inspect debug.debug_event((32'd122, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __alloc0, (Adjusted{.id=id, .alloc=alloc}: Adjusted)).
+YX[(YX{.y=y, .x=x}: YX)] :- XY[(__xy0@ (XY{.x=(x: bigint), .y=(y: bigint)}: XY))], YZX[(__yzx1@ (YZX{.y=(y: bigint), .z=(z: bigint), .x=(x: bigint)}: YZX))], Inspect debug.debug_event_join((32'd123, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __xy0, __yzx1, (YX{.y=y, .x=x}: YX)).
+IConcatString[(IConcatString{.s=intern.string_intern((intern.istring_str(s1) ++ s2))}: IConcatString)] :- IString1[(__istring10@ (IString1{.s=(s1: intern.IObj<string>)}: IString1))], String2[(__string21@ (String2{.s=(s2: string)}: String2))], Inspect debug.debug_event_join((32'd124, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __istring10, __string21, (IConcatString{.s=intern.string_intern((intern.istring_str(s1) ++ s2))}: IConcatString)).
+ConcatString[(ConcatString{.s=intern.istring_str(s)}: ConcatString)] :- IConcatString[(__iconcatstring0@ (IConcatString{.s=(s: intern.IObj<string>)}: IConcatString))], Inspect debug.debug_event((32'd125, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __iconcatstring0, (ConcatString{.s=intern.istring_str(s)}: ConcatString)).
+Ris_true[(Ris_true{._s=intern.string_intern("true")}: Ris_true)].
+Re[(Re{._x=(32'd10 % 32'd3), ._t=intern.string_intern("10%3"), ._y=32'd1}: Re)] :- Ris_true[(__ris_true0@ (Ris_true{._s=(_: intern.IObj<string>)}: Ris_true))], Inspect debug.debug_event((32'd127, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __ris_true0, (Re{._x=(32'd10 % 32'd3), ._t=intern.string_intern("10%3"), ._y=32'd1}: Re)).
+CMethod[(CMethod{.c1=a, .c2=b}: CMethod)] :- BMethod[(__bmethod0@ (BMethod{.b1=intern.string_intern("c"), .b2=(b: intern.IObj<string>)}: BMethod))], AMethod[(__amethod1@ (AMethod{.a1=(b: intern.IObj<string>), .a2=(a: intern.IObj<string>)}: AMethod))], Inspect debug.debug_event_join((32'd128, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __bmethod0, __amethod1, (CMethod{.c1=a, .c2=b}: CMethod)).
+DMethod[(DMethod{.c1=a, .c2=b}: DMethod)] :- AMethod[(__amethod0@ (AMethod{.a1=(b: intern.IObj<string>), .a2=(a: intern.IObj<string>)}: AMethod))], BMethod[(__bmethod1@ (BMethod{.b1=intern.string_intern("c"), .b2=(b: intern.IObj<string>)}: BMethod))], Inspect debug.debug_event_join((32'd129, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __amethod0, __bmethod1, (DMethod{.c1=a, .c2=b}: DMethod)).
+Power3[(Power3{.y=(std.pow32(x, 32'd3): bigint)}: Power3)] :- Numbers[(__numbers0@ (Numbers{.x=(x: bigint)}: Numbers))], Inspect debug.debug_event((32'd130, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __numbers0, (Power3{.y=(std.pow32(x, 32'd3): bigint)}: Power3)).
+RegexMatch[(RegexMatch{.regex=regex, .text=text, .m=regex.regex_match(regex.regex(regex), text)}: RegexMatch)] :- Regex[(__regex0@ (Regex{.regex=(regex: string), .text=(text: string)}: Regex))], Inspect debug.debug_event((32'd131, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __regex0, (RegexMatch{.regex=regex, .text=text, .m=regex.regex_match(regex.regex(regex), text)}: RegexMatch)).
+Arithm[(Arithm{.n=32'd0}: Arithm)].
+Arithm[(Arithm{.n=(32'd1 + 32'd0)}: Arithm)].
+Arithm[(Arithm{.n=(32'd0 + 32'd2)}: Arithm)].
+Arithm[(Arithm{.n=(32'd2 + 32'd1)}: Arithm)].
+Arithm[(Arithm{.n=(32'd2 + 32'd2)}: Arithm)].
+Arithm[(Arithm{.n=(32'd1 + 32'd4)}: Arithm)].
+Arithm[(Arithm{.n=(32'd2 * 32'd3)}: Arithm)].
+Arithm[(Arithm{.n=(32'd28 / 32'd4)}: Arithm)].
+Arithm[(Arithm{.n=(32'd24 % 32'd16)}: Arithm)].
+Arithm[(Arithm{.n=(32'd18 >> 32'd1)}: Arithm)].
+Arithm[(Arithm{.n=(32'd5 << 32'd1)}: Arithm)].
+Arithm[(Arithm{.n=(32'd10 | 32'd9)}: Arithm)].
+Arithm[(Arithm{.n=(32'd15 & 32'd12)}: Arithm)].
+Arithm[(Arithm{.n=(~ 32'd4294967282)}: Arithm)].
+Arithm[(Arithm{.n=(32'sd14 as bit<32>)}: Arithm)].
+Signed[(Signed{.n=32'sd0}: Signed)].
+Signed[(Signed{.n=(32'sd1 + 32'sd0)}: Signed)].
+Signed[(Signed{.n=(32'sd0 + 32'sd2)}: Signed)].
+Signed[(Signed{.n=(32'sd2 + 32'sd1)}: Signed)].
+Signed[(Signed{.n=(32'sd2 + 32'sd2)}: Signed)].
+Signed[(Signed{.n=(32'sd1 + 32'sd4)}: Signed)].
+Signed[(Signed{.n=(32'sd2 * 32'sd3)}: Signed)].
+Signed[(Signed{.n=(32'sd28 / 32'sd4)}: Signed)].
+Signed[(Signed{.n=(32'sd24 % 32'sd16)}: Signed)].
+Signed[(Signed{.n=(32'sd18 >> 32'd1)}: Signed)].
+Signed[(Signed{.n=(32'sd5 << 32'd1)}: Signed)].
+Signed[(Signed{.n=(- 32'sd2147483648)}: Signed)].
+Cast_u32[(Cast_u32{.description="32'd100  as bit<32>", .actual=(32'd100 as bit<32>), .expected=32'd100}: Cast_u32)].
+Cast_u32[(Cast_u32{.description="16'd100  as bit<32>", .actual=(16'd100 as bit<32>), .expected=32'd100}: Cast_u32)].
+Cast_u32[(Cast_u32{.description="8'd100   as bit<32>", .actual=(8'd100 as bit<32>), .expected=32'd100}: Cast_u32)].
+Cast_u32[(Cast_u32{.description="128'd100 as bit<32>", .actual=(128'd100 as bit<32>), .expected=32'd100}: Cast_u32)].
+Cast_u32[(Cast_u32{.description="256'd100 as bit<32>", .actual=(256'd100 as bit<32>), .expected=32'd100}: Cast_u32)].
+Cast_u32[(Cast_u32{.description="64'hffffffffffff as bit<32>", .actual=(64'd281474976710655 as bit<32>), .expected=32'd4294967295}: Cast_u32)].
+Cast_u32[(Cast_u32{.description="128'hffffffffffffffffffff as bit<32>", .actual=(128'd1208925819614629174706175 as bit<32>), .expected=32'd4294967295}: Cast_u32)].
+Cast_u32[(Cast_u32{.description="256'hffffffffffffffffffffffffffffffffffff as bit<32>", .actual=(256'd22300745198530623141535718272648361505980415 as bit<32>), .expected=32'd4294967295}: Cast_u32)].
+Cast_u32[(Cast_u32{.description="(100: signed<32>) as bit<32>", .actual=((32'sd100: signed<32>) as bit<32>), .expected=32'd100}: Cast_u32)].
+Cast_u32[(Cast_u32{.description="(32'sd0 - 32'sd10) as bit<32>", .actual=((32'sd0 - 32'sd10) as bit<32>), .expected=32'd4294967286}: Cast_u32)].
+Cast_s32[(Cast_s32{.description="32'sd100  as signed<32>", .expected=(32'sd100 as signed<32>), .actual=32'sd100}: Cast_s32)].
+Cast_s32[(Cast_s32{.description="16'sd100  as signed<32>", .expected=(16'sd100 as signed<32>), .actual=32'sd100}: Cast_s32)].
+Cast_s32[(Cast_s32{.description="8'sd100   as signed<32>", .expected=(8'sd100 as signed<32>), .actual=32'sd100}: Cast_s32)].
+Cast_s32[(Cast_s32{.description="128'sd100 as signed<32>", .expected=(128'sd100 as signed<32>), .actual=32'sd100}: Cast_s32)].
+Cast_s32[(Cast_s32{.description="(-1: bigint as signed<32>)", .expected=((- (1: bigint)) as signed<32>), .actual=(- 32'sd1)}: Cast_s32)].
+Cast_s32[(Cast_s32{.description="('hffffffffff: bigint as signed<32>)", .expected=((1099511627775: bigint) as signed<32>), .actual=(- 32'sd1)}: Cast_s32)].
+Cast_s32[(Cast_s32{.description="('hff000000ff: bigint as signed<32>)", .expected=((1095216660735: bigint) as signed<32>), .actual=32'sd255}: Cast_s32)].
+Cast_s32[(Cast_s32{.description="64'shffffffffffff as signed<32>", .expected=(64'sd281474976710655 as signed<32>), .actual=32'sd4294967295}: Cast_s32)].
+Cast_s32[(Cast_s32{.description="128'shffffffffffffffffffff as signed<32>", .expected=(128'sd1208925819614629174706175 as signed<32>), .actual=32'sd4294967295}: Cast_s32)].
+Cast_s32[(Cast_s32{.description="(100: bit<32>) as signed<32>", .expected=((32'd100: bit<32>) as signed<32>), .actual=32'sd100}: Cast_s32)].
+Cast_s8[(Cast_s8{.description="(-1: bigint as signed<8>)", .expected=((- (1: bigint)) as signed<8>), .actual=(- 8'sd1)}: Cast_s8)].
+Cast_s8[(Cast_s8{.description="('hffffffffff: bigint as signed<8>)", .expected=((1099511627775: bigint) as signed<8>), .actual=(- 8'sd1)}: Cast_s8)].
+Cast_s8[(Cast_s8{.description="('hff0000000f: bigint as signed<8>)", .expected=((1095216660495: bigint) as signed<8>), .actual=8'sd15}: Cast_s8)].
+Cast_s128[(Cast_s128{.description="(-1: bigint as signed<128>)", .expected=((- (1: bigint)) as signed<128>), .actual=(- 128'sd1)}: Cast_s128)].
+Cast_s128[(Cast_s128{.description="('hffffffffffffffffffffffffffffffffff: bigint as signed<128>)", .expected=((87112285931760246646623899502532662132735: bigint) as signed<128>), .actual=(- 128'sd1)}: Cast_s128)].
+Cast_s128[(Cast_s128{.description="('hff000000000000000000000000000000ff: bigint as signed<8>)", .expected=((86772003564839308183160524895100893921535: bigint) as signed<128>), .actual=128'sd255}: Cast_s128)].
+Cast_u24[(Cast_u24{.description="24'd100  as bit<24>", .expected=(24'd100 as bit<24>), .actual=24'd100}: Cast_u24)].
+Cast_u24[(Cast_u24{.description="32'd100  as bit<24>", .expected=(32'd100 as bit<24>), .actual=24'd100}: Cast_u24)].
+Cast_u24[(Cast_u24{.description="16'd100  as bit<24>", .expected=(16'd100 as bit<24>), .actual=24'd100}: Cast_u24)].
+Cast_u24[(Cast_u24{.description="8'd100   as bit<24>", .expected=(8'd100 as bit<24>), .actual=24'd100}: Cast_u24)].
+Cast_u24[(Cast_u24{.description="128'd100 as bit<24>", .expected=(128'd100 as bit<24>), .actual=24'd100}: Cast_u24)].
+Cast_u24[(Cast_u24{.description="256'd100 as bit<24>", .expected=(256'd100 as bit<24>), .actual=24'd100}: Cast_u24)].
+Cast_u24[(Cast_u24{.description="64'hffffffffffff as bit<24>", .expected=(64'd281474976710655 as bit<24>), .actual=24'd16777215}: Cast_u24)].
+Cast_u24[(Cast_u24{.description="128'hffffffffffffffffffff as bit<24>", .expected=(128'd1208925819614629174706175 as bit<24>), .actual=24'd16777215}: Cast_u24)].
+Cast_u24[(Cast_u24{.description="256'hffffffffffffffffffffffffffffffffffff as bit<24>", .expected=(256'd22300745198530623141535718272648361505980415 as bit<24>), .actual=24'd16777215}: Cast_u24)].
+Cast_u24[(Cast_u24{.description="(100: signed<32>) as bit<32> as bit<24>", .expected=(((32'sd100: signed<32>) as bit<32>) as bit<24>), .actual=24'd100}: Cast_u24)].
+Cast_u24[(Cast_u24{.description="(32'sd0 - 32'sd10) as bit<32> as bit<24>", .expected=(((32'sd0 - 32'sd10) as bit<32>) as bit<24>), .actual=24'd16777206}: Cast_u24)].
+Cast_u256[(Cast_u256{.description="24'd100  as bit<256>", .expected=(24'd100 as bit<256>), .actual=256'd100}: Cast_u256)].
+Cast_u256[(Cast_u256{.description="32'd100  as bit<256>", .expected=(32'd100 as bit<256>), .actual=256'd100}: Cast_u256)].
+Cast_u256[(Cast_u256{.description="16'd100  as bit<256>", .expected=(16'd100 as bit<256>), .actual=256'd100}: Cast_u256)].
+Cast_u256[(Cast_u256{.description="8'd100   as bit<256>", .expected=(8'd100 as bit<256>), .actual=256'd100}: Cast_u256)].
+Cast_u256[(Cast_u256{.description="128'd100 as bit<256>", .expected=(128'd100 as bit<256>), .actual=256'd100}: Cast_u256)].
+Cast_u256[(Cast_u256{.description="256'd100 as bit<256>", .expected=(256'd100 as bit<256>), .actual=256'd100}: Cast_u256)].
+Cast_u256[(Cast_u256{.description="512'd100 as bit<256>", .expected=(512'd100 as bit<256>), .actual=256'd100}: Cast_u256)].
+Cast_u256[(Cast_u256{.description="264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bit<256>", .expected=(264'd29642774844752946028434172162224104410437116074403984394101141506025761187823610 as bit<256>), .actual=256'd115792089237316195423570985008687907853269984665640564039457584007913129639930}: Cast_u256)].
+Cast_u256[(Cast_u256{.description="128'hffffffffffffffffffff as bit<256>", .expected=(128'd1208925819614629174706175 as bit<256>), .actual=256'd1208925819614629174706175}: Cast_u256)].
+Cast_u256[(Cast_u256{.description="(100: signed<32>) as bit<32> as bit<256>", .expected=(((32'sd100: signed<32>) as bit<32>) as bit<256>), .actual=256'd100}: Cast_u256)].
+Cast_u256[(Cast_u256{.description="(32'sd0 - 32'sd10) as bit<32> as bit<256>", .expected=(((32'sd0 - 32'sd10) as bit<32>) as bit<256>), .actual=256'd4294967286}: Cast_u256)].
+Cast_bigint[(Cast_bigint{.description="24'd100  as bigint", .expected=(24'd100 as bigint), .actual=100}: Cast_bigint)].
+Cast_bigint[(Cast_bigint{.description="32'd100  as bigint", .expected=(32'd100 as bigint), .actual=100}: Cast_bigint)].
+Cast_bigint[(Cast_bigint{.description="16'd100  as bigint", .expected=(16'd100 as bigint), .actual=100}: Cast_bigint)].
+Cast_bigint[(Cast_bigint{.description="8'd100   as bigint", .expected=(8'd100 as bigint), .actual=100}: Cast_bigint)].
+Cast_bigint[(Cast_bigint{.description="128'd100 as bigint", .expected=(128'd100 as bigint), .actual=100}: Cast_bigint)].
+Cast_bigint[(Cast_bigint{.description="256'd100 as bigint", .expected=(256'd100 as bigint), .actual=100}: Cast_bigint)].
+Cast_bigint[(Cast_bigint{.description="512'd100 as bigint", .expected=(512'd100 as bigint), .actual=100}: Cast_bigint)].
+Cast_bigint[(Cast_bigint{.description="int_from_f(32'f3.5)", .expected=match (fp.int_from_f(32'f3.5)) {
+                                                                           (std.None{}: std.Option<bigint>) -> 0,
+                                                                           (std.Some{.x=(var x: bigint)}: std.Option<bigint>) -> x
+                                                                       }, .actual=3}: Cast_bigint)].
+Cast_bigint[(Cast_bigint{.description="int_from_d(64'f3.5)", .expected=match (fp.int_from_d(64'f3.5)) {
+                                                                           (std.None{}: std.Option<bigint>) -> 0,
+                                                                           (std.Some{.x=(var x: bigint)}: std.Option<bigint>) -> x
+                                                                       }, .actual=3}: Cast_bigint)].
+Cast_bigint[(Cast_bigint{.description="264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as bigint", .expected=(264'd29642774844752946028434172162224104410437116074403984394101141506025761187823610 as bigint), .actual=29642774844752946028434172162224104410437116074403984394101141506025761187823610}: Cast_bigint)].
+Cast_bigint[(Cast_bigint{.description="(32'sd0 - 32'sd10) as bigint", .expected=((32'sd0 - 32'sd10) as bigint), .actual=(0 - 10)}: Cast_bigint)].
+Cast_float[(Cast_float{.description="24'd100  as float", .expected=(24'd100 as float), .actual=32'f100.0}: Cast_float)].
+Cast_float[(Cast_float{.description="32'd100  as float", .expected=(32'd100 as float), .actual=32'f100.0}: Cast_float)].
+Cast_float[(Cast_float{.description="16'sd100  as float", .expected=(16'sd100 as float), .actual=32'f100.0}: Cast_float)].
+Cast_float[(Cast_float{.description="-32'sd100  as float", .expected=(- (32'sd100 as float)), .actual=(- 32'f100.0)}: Cast_float)].
+Cast_float[(Cast_float{.description="-16'sd100  as float", .expected=(- (16'sd100 as float)), .actual=(- 32'f100.0)}: Cast_float)].
+Cast_float[(Cast_float{.description="32'sd100  as float", .expected=(32'sd100 as float), .actual=32'f100.0}: Cast_float)].
+Cast_float[(Cast_float{.description="16'd100  as float", .expected=(16'd100 as float), .actual=32'f100.0}: Cast_float)].
+Cast_float[(Cast_float{.description="8'd100   as float", .expected=(8'd100 as float), .actual=32'f100.0}: Cast_float)].
+Cast_float[(Cast_float{.description="128'd100 as float", .expected=(128'd100 as float), .actual=32'f100.0}: Cast_float)].
+Cast_float[(Cast_float{.description="256'd100 as float", .expected=(256'd100 as float), .actual=32'f100.0}: Cast_float)].
+Cast_float[(Cast_float{.description="512'd100 as float", .expected=(512'd100 as float), .actual=32'f100.0}: Cast_float)].
+Cast_float[(Cast_float{.description="32'f3.5  as float", .expected=(32'f3.5 as float), .actual=32'f3.5}: Cast_float)].
+Cast_float[(Cast_float{.description="64'f3.5  as float", .expected=(64'f3.5 as float), .actual=32'f3.5}: Cast_float)].
+Cast_float[(Cast_float{.description="264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as float", .expected=(264'd29642774844752946028434172162224104410437116074403984394101141506025761187823610 as float), .actual=fp.nan_f()}: Cast_float)].
+Cast_double[(Cast_double{.description="24'd100  as double", .expected=(24'd100 as double), .actual=64'f100.0}: Cast_double)].
+Cast_double[(Cast_double{.description="32'd100  as double", .expected=(32'd100 as double), .actual=64'f100.0}: Cast_double)].
+Cast_double[(Cast_double{.description="16'd100  as double", .expected=(16'd100 as double), .actual=64'f100.0}: Cast_double)].
+Cast_double[(Cast_double{.description="8'd100   as double", .expected=(8'd100 as double), .actual=64'f100.0}: Cast_double)].
+Cast_double[(Cast_double{.description="128'd100 as double", .expected=(128'd100 as double), .actual=64'f100.0}: Cast_double)].
+Cast_double[(Cast_double{.description="256'd100 as double", .expected=(256'd100 as double), .actual=64'f100.0}: Cast_double)].
+Cast_double[(Cast_double{.description="512'd100 as double", .expected=(512'd100 as double), .actual=64'f100.0}: Cast_double)].
+Cast_double[(Cast_double{.description="32'f3.5  as double", .expected=(32'f3.5 as double), .actual=64'f3.5}: Cast_double)].
+Cast_double[(Cast_double{.description="64'f3.5  as double", .expected=(64'f3.5 as double), .actual=64'f3.5}: Cast_double)].
+Cast_double[(Cast_double{.description="264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as double", .expected=(264'd29642774844752946028434172162224104410437116074403984394101141506025761187823610 as double), .actual=64'f2.9642774844752946e79}: Cast_double)].
+UMinus_s32[(UMinus_s32{.description="-32'sd100", .n=(- 32'sd100)}: UMinus_s32)].
+UMinus_s32[(UMinus_s32{.description="-(-32'sd100)", .n=(- (- 32'sd100))}: UMinus_s32)].
+UMinus_s32[(UMinus_s32{.description="-32768", .n=(- 32'sd32768)}: UMinus_s32)].
+UMinus_bigint[(UMinus_bigint{.description="-100", .n=(- 100)}: UMinus_bigint)].
+UMinus_bigint[(UMinus_bigint{.description="- -100", .n=(- (- 100))}: UMinus_bigint)].
+UMinus_bigint[(UMinus_bigint{.description="-32768", .n=(- 32768)}: UMinus_bigint)].
+Span[(Span{.entity=(entity: entid_t), .tns=bindings}: Span)] :- DdlogNode[(__ddlognode0@ (DdlogNode{.id=(entity: bit<32>)}: DdlogNode))], DdlogBinding[(__ddlogbinding1@ (DdlogBinding{.tn=(tn: bit<16>), .entity=(entity: bit<32>)}: DdlogBinding))], Inspect debug.debug_event_join((32'd248, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __ddlognode0, __ddlogbinding1, (__ddlognode0, entity, __ddlogbinding1, tn)), var __inputs_bindings = Aggregate(entity, __debug_248_2_std.group2set(((__ddlognode0, entity, __ddlogbinding1, tn), tn))), Inspect debug.debug_event((32'd248, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_bindings.0, (__inputs_bindings, entity)), (var bindings: std.Set<bit<16>>) = __inputs_bindings.1, Inspect debug.debug_event((32'd248, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_bindings, entity), (Span{.entity=(entity: entid_t), .tns=bindings}: Span)).
+Span[(Span{.entity=parent, .tns=tns}: Span)] :- DdlogNode[(__ddlognode0@ (DdlogNode{.id=(parent: bit<32>)}: DdlogNode))], DdlogDependency[(__ddlogdependency1@ (DdlogDependency{.parent=(child: bit<32>), .child=(parent: bit<32>)}: DdlogDependency))], Inspect debug.debug_event_join((32'd249, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __ddlognode0, __ddlogdependency1, (__ddlognode0, parent, __ddlogdependency1, child)), Span[(__span2@ (Span{.entity=(child: bit<32>), .tns=(child_tns: std.Set<bit<16>>)}: Span))], Inspect debug.debug_event_join((32'd249, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (__ddlognode0, parent, __ddlogdependency1, child), __span2, (__ddlognode0, parent, __ddlogdependency1, child, __span2, child_tns)), var __inputs_tns = Aggregate(parent, __debug_249_3_std.group_set_unions(((__ddlognode0, parent, __ddlogdependency1, child, __span2, child_tns), child_tns))), Inspect debug.debug_event((32'd249, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_tns.0, (__inputs_tns, parent)), (var tns: std.Set<bit<16>>) = __inputs_tns.1, Inspect debug.debug_event((32'd249, 32'd4, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_tns, parent), (Span{.entity=parent, .tns=tns}: Span)).
+R13[(R13{.t=(1, true, "", 32'd1)}: R13)].
+R14[(R14{.t=(1, (true, ("", 32'd1)))}: R14)].
+R14[(R14{.t=(0, (true, ("", 32'd1)))}: R14)].
+J[(J{.b=b}: J)] :- R13[(__r130@ (R13{.t=(a: (bigint, bool, string, bit<32>))}: R13))], R14[(__r141@ (R14{.t=(c: (bigint, (bool, (string, bit<32>))))}: R14))], Inspect debug.debug_event_join((32'd253, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __r130, __r141, (a, c)), (a.3 == c.1.1.1), (var b: bool) = a.1, Inspect debug.debug_event((32'd253, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", a, (J{.b=b}: J)).
+LongJoin[(LongJoin{.x0=x0, .x1=x1, .x2=x2, .x3=x3, .x4=x4, .x5=x5, .x6=x6, .x7=x7, .x8=x8, .x9=x9, .x10=x10, .x11=x11, .x12=x12, .x13=x13, .x14=x14, .x15=x15, .x16=x16, .x17=x17, .x18=x18, .x19=x19}: LongJoin)] :- Long[(__long0@ (Long{.x0=(x0: bit<16>), .x1=(x1: bit<16>), .x2=(x2: bit<16>), .x3=(x3: bit<16>), .x4=(x4: bit<16>), .x5=(x5: bit<16>), .x6=(x6: bit<16>), .x7=(x7: bit<16>), .x8=(x8: bit<16>), .x9=(x9: bit<16>), .x10=(x10: bit<16>), .x11=(x11: bit<16>), .x12=(x12: bit<16>), .x13=(x13: bit<16>), .x14=(x14: bit<16>), .x15=(x15: bit<16>), .x16=(x16: bit<16>), .x17=(x17: bit<16>), .x18=(x18: bit<16>), .x19=(x19: bit<16>)}: Long))], Long[(__long1@ (Long{.x0=(x0: bit<16>), .x1=(x1: bit<16>), .x2=(x2: bit<16>), .x3=(x3: bit<16>), .x4=(x4: bit<16>), .x5=(x5: bit<16>), .x6=(x6: bit<16>), .x7=(x7: bit<16>), .x8=(x8: bit<16>), .x9=(x9: bit<16>), .x10=(x10: bit<16>), .x11=(x11: bit<16>), .x12=(x12: bit<16>), .x13=(x13: bit<16>), .x14=(x14: bit<16>), .x15=(x15: bit<16>), .x16=(x16: bit<16>), .x17=(x17: bit<16>), .x18=(x18: bit<16>), .x19=(x19: bit<16>)}: Long))], Inspect debug.debug_event_join((32'd254, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __long0, __long1, (x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19)), Long[(__long2@ (Long{.x0=(x0: bit<16>), .x1=(x1: bit<16>), .x2=(x2: bit<16>), .x3=(x3: bit<16>), .x4=(x4: bit<16>), .x5=(x5: bit<16>), .x6=(x6: bit<16>), .x7=(x7: bit<16>), .x8=(x8: bit<16>), .x9=(x9: bit<16>), .x10=(x10: bit<16>), .x11=(x11: bit<16>), .x12=(x12: bit<16>), .x13=(x13: bit<16>), .x14=(x14: bit<16>), .x15=(x15: bit<16>), .x16=(x16: bit<16>), .x17=(x17: bit<16>), .x18=(x18: bit<16>), .x19=(x19: bit<16>)}: Long))], Inspect debug.debug_event_join((32'd254, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19), __long2, (LongJoin{.x0=x0, .x1=x1, .x2=x2, .x3=x3, .x4=x4, .x5=x5, .x6=x6, .x7=x7, .x8=x8, .x9=x9, .x10=x10, .x11=x11, .x12=x12, .x13=x13, .x14=x14, .x15=x15, .x16=x16, .x17=x17, .x18=x18, .x19=x19}: LongJoin)).
+ControlFlow[(ControlFlow{.expr="all(true, true, false)", .value=("" ++ (std.__builtin_2string(all((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_empty(): std.Vec<bool>), true): std.Vec<bool>), true): std.Vec<bool>), false): std.Vec<bool>))): string))}: ControlFlow)].
+ControlFlow[(ControlFlow{.expr="all(true, true, true)", .value=("" ++ (std.__builtin_2string(all((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_empty(): std.Vec<bool>), true): std.Vec<bool>), true): std.Vec<bool>), true): std.Vec<bool>))): string))}: ControlFlow)].
+ControlFlow[(ControlFlow{.expr="any(false, true, false)", .value=("" ++ (std.__builtin_2string(any((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_empty(): std.Vec<bool>), false): std.Vec<bool>), true): std.Vec<bool>), false): std.Vec<bool>))): string))}: ControlFlow)].
+ControlFlow[(ControlFlow{.expr="any(false, false, false)", .value=("" ++ (std.__builtin_2string(any((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_empty(): std.Vec<bool>), false): std.Vec<bool>), false): std.Vec<bool>), false): std.Vec<bool>))): string))}: ControlFlow)].
+ControlFlow[(ControlFlow{.expr="weird_any(false, true, false)", .value=("" ++ (std.__builtin_2string(weird_any((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_empty(): std.Vec<bool>), false): std.Vec<bool>), true): std.Vec<bool>), false): std.Vec<bool>))): string))}: ControlFlow)].
+ControlFlow[(ControlFlow{.expr="weird_any(false, false, false)", .value=("" ++ (std.__builtin_2string(weird_any((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_empty(): std.Vec<bool>), false): std.Vec<bool>), false): std.Vec<bool>), false): std.Vec<bool>))): string))}: ControlFlow)].
+BigintVectors[(BigintVectors{.expr="filter_gt((10, 20, 30), 15)", .vec=filter_gt((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_empty(): std.Vec<bigint>), 10): std.Vec<bigint>), 20): std.Vec<bigint>), 30): std.Vec<bigint>), 15)}: BigintVectors)].
+BigintVectors[(BigintVectors{.expr="filter_C0(C0{1}, C1{2}, C1{0}, C1{3})", .vec=filter_C0((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_empty(): std.Vec<Alt>), (C0{.x=32'd1}: Alt)): std.Vec<Alt>), (C1{.x=32'd2}: Alt)): std.Vec<Alt>), (C1{.x=32'd0}: Alt)): std.Vec<Alt>), (C1{.x=32'd3}: Alt)): std.Vec<Alt>))}: BigintVectors)].
+BigintVectors[(BigintVectors{.expr="double_evens(1,2,-1,4)", .vec=double_evens((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_empty(): std.Vec<bigint>), 1): std.Vec<bigint>), 2): std.Vec<bigint>), (- 1)): std.Vec<bigint>), 4): std.Vec<bigint>))}: BigintVectors)].
+BigintVectors[(BigintVectors{.expr="double_evens(1,2,0,4)", .vec=double_evens((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_empty(): std.Vec<bigint>), 1): std.Vec<bigint>), 2): std.Vec<bigint>), 0): std.Vec<bigint>), 4): std.Vec<bigint>))}: BigintVectors)].
+Trees[(Trees{.tree=((var leaf1: Tree<bit<64>>) = (LeafNode{.v=64'd100}: Tree<bit<64>>);
+                    ((var leaf2: Tree<bit<64>>) = (LeafNode{.v=64'd200}: Tree<bit<64>>);
+                     ((var leaf3: Tree<bit<64>>) = (LeafNode{.v=64'd300}: Tree<bit<64>>);
+                      ((var nonleaf: Tree<bit<64>>) = (NonLeafNode{.branches=(std.vec_push_imm((std.vec_push_imm((std.vec_empty(): std.Vec<Tree<std.u64>>), leaf1): std.Vec<Tree<bit<64>>>), leaf2): std.Vec<Tree<bit<64>>>)}: Tree<bit<64>>);
+                       (NonLeafNode{.branches=(std.vec_push_imm((std.vec_push_imm((std.vec_empty(): std.Vec<Tree<std.u64>>), leaf3): std.Vec<Tree<bit<64>>>), nonleaf): std.Vec<Tree<bit<64>>>)}: Tree<bit<64>>)))))}: Trees)].
+Doubles[(Doubles{.s="64'f5.0", .d=64'f5.0}: Doubles)].
+Doubles[(Doubles{.s="64'f5e2", .d=64'f500.0}: Doubles)].
+Doubles[(Doubles{.s="-5", .d=(- 64'f5.0)}: Doubles)].
+Doubles[(Doubles{.s="5 + 3", .d=(64'f5.0 + 64'f3.0)}: Doubles)].
+Doubles[(Doubles{.s="5/3", .d=(64'f5.0 / 64'f3.0)}: Doubles)].
+Doubles[(Doubles{.s="5*3", .d=(64'f5.0 * 64'f3.0)}: Doubles)].
+Doubles[(Doubles{.s="0: double", .d=(64'f0.0: double)}: Doubles)].
+Doubles[(Doubles{.s="floor_d(64'f0.1)", .d=fp.floor_d(64'f0.1)}: Doubles)].
+Doubles[(Doubles{.s=("" ++ (std.__builtin_2string((64'f5.0 + 64'f5.0)): string)), .d=(64'f5.0 + 64'f3.0)}: Doubles)].
+Floats[(Floats{.s="32'f5.0", .f=32'f5.0}: Floats)].
+Floats[(Floats{.s="32'f5e2", .f=32'f500.0}: Floats)].
+Floats[(Floats{.s="5 + 3", .f=(32'f5.0 + 32'f3.0)}: Floats)].
+Floats[(Floats{.s="5/3", .f=(32'f5.0 / 32'f3.0)}: Floats)].
+Floats[(Floats{.s="5*3", .f=(32'f5.0 * 32'f3.0)}: Floats)].
+Floats[(Floats{.s="0: float", .f=(32'f0.0: float)}: Floats)].
+Floats[(Floats{.s="floor_f(32'f0.1)", .f=fp.floor_f(32'f0.1)}: Floats)].
 apply graph.SCC(Edge, edge_from, edge_to) -> (SCCLabel)
 

@@ -63,7 +63,7 @@ import Language.DifferentialDatalog.Debug
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Syntax
-import Language.DifferentialDatalog.Expr
+import {-# SOURCE #-} Language.DifferentialDatalog.Expr
 import {-# SOURCE #-} Language.DifferentialDatalog.Rule
 import {-# SOURCE #-} Language.DifferentialDatalog.Type
 
