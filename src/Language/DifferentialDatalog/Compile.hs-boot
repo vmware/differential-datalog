@@ -5,7 +5,7 @@ module Language.DifferentialDatalog.Compile where
 import Text.PrettyPrint
 
 import Language.DifferentialDatalog.Syntax
-import Language.DifferentialDatalog.Type
+import {-# SOURCE #-} Language.DifferentialDatalog.Type
 
 data CompilerConfig = CompilerConfig {
     cconfJava         :: Bool
@@ -20,3 +20,5 @@ rname :: String -> Doc
 
 mkValue :: (?cfg::CompilerConfig) => DatalogProgram -> Doc -> Type -> Doc
 tupleStruct :: [Doc] -> Doc
+
+recordAfterPrefix :: DatalogProgram -> Rule -> Int -> [Expr]
