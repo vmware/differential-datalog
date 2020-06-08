@@ -3,8 +3,8 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread::spawn;
 
-use differential_datalog::program::Update;
 use differential_datalog::ddval::DDValue;
+use differential_datalog::program::Update;
 use differential_datalog::record::{Record, RelIdentifier, UpdCmd};
 use differential_datalog::DDlog;
 use distributed_datalog::await_expected;
@@ -27,6 +27,7 @@ use server_api_ddlog::Relations::server_api_3_P1Out;
 use server_api_ddlog::Relations::server_api_3_P2Out;
 use server_api_ddlog::Relations::server_api_3_P3Out;
 
+use maplit::btreeset;
 use maplit::hashmap;
 use maplit::hashset;
 
@@ -55,7 +56,7 @@ where
         },
     );
 
-    let mut stream = server1.add_stream(hashset! {server_api_1_P1Out as usize});
+    let mut stream = server1.add_stream(btreeset! {server_api_1_P1Out as usize});
     let _data = setup(&mut stream, SharedObserver::new(Mutex::new(server2)))?;
 
     let updates = &[UpdCmd::Insert(
@@ -147,8 +148,8 @@ where
     };
     let server3 = DDlogServer::new(program3, redirect);
 
-    let stream1 = server1.add_stream(hashset! {server_api_1_P1Out as usize});
-    let stream2 = server2.add_stream(hashset! {server_api_2_P2Out as usize});
+    let stream1 = server1.add_stream(btreeset! {server_api_1_P1Out as usize});
+    let stream2 = server2.add_stream(btreeset! {server_api_2_P2Out as usize});
     let _data = setup(stream1, stream2, server3)?;
 
     // Insert updates concurrently to test serialization of

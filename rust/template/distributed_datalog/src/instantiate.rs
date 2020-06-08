@@ -306,10 +306,10 @@ fn realize<P>(
     addr: &Addr,
     node_cfg: &NodeCfg,
     assignment: &Assignment,
-) -> Result<Realization<P::Convert>, String>
+) -> Result<Realization<P>, String>
 where
     P: Send + DDlog + 'static,
-    P::Convert: Send,
+    P::Convert: Send + DDlogConvert,
 {
     let now = Instant::now();
 
@@ -370,12 +370,13 @@ where
 /// Right now all that clients can do with an object of this type is
 /// dropping it to tear everything down.
 #[derive(Debug)]
-pub struct Realization<C>
+pub struct Realization<P>
 where
-    C: DDlogConvert,
+    P: Send + DDlog + 'static,
+    P::Convert: Send + DDlogConvert,
 {
     /// All sources of this realization and the subscription the node has to them
-    _sources: HashMap<BTreeSet<RelId>, Vec<(SourceRealization<C>, ())>>,
+    _sources: HashMap<BTreeSet<RelId>, Vec<(SourceRealization<P::Convert>, ())>>,
     /// The transaction multiplexer as input to the DDLogServer
     _txnmux: TxnMux<Update<DDValue>, String>,
     /// All sink accumulators of this realization to connect new nodes to
@@ -384,7 +385,7 @@ where
         SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>,
     >,
     /// All sinks of this realization with their subscription
-    _sinks: HashMap<BTreeSet<RelId>, Vec<(SinkRealization<C>, usize)>>,
+    _sinks: HashMap<BTreeSet<RelId>, Vec<(SinkRealization<P::Convert>, usize)>>,
 }
 
 /// Instantiate a configuration on a particular node under the given
@@ -393,10 +394,10 @@ pub fn instantiate<P>(
     sys_cfg: SysCfg,
     addr: &Addr,
     assignment: &Assignment,
-) -> Result<Vec<Realization<P::Convert>>, String>
+) -> Result<Vec<Realization<P>>, String>
 where
     P: Send + DDlog + 'static,
-    P::Convert: Send,
+    P::Convert: Send + DDlogConvert,
 {
     assignment
         .iter()
