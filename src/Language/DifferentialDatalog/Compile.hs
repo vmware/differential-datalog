@@ -38,7 +38,8 @@ module Language.DifferentialDatalog.Compile (
     mkType,
     mkValue,
     tupleStruct,
-    rname
+    rname,
+    recordAfterPrefix
 ) where
 
 import Prelude hiding((<>))
@@ -2741,3 +2742,16 @@ mkInt v | v <= (toInteger (maxBound::Word128)) && v >= (toInteger (minBound::Wor
         = "Int::from_i128(" <> pp v <> ")"
         | otherwise
         = "Int::parse_bytes(b\"" <> pp v <> "\", 10)"
+
+-- Compute the atom or tuple of variables after the prefix of length n.
+-- If this is the last term, then it is an expression of the LHS variables for each head
+-- of the rule.
+-- If this is the first term, then it's the atom of the RHSLiteral.
+-- Otherwise, this is the variables from rhsVarsAfter converted into an ETuple expression.
+recordAfterPrefix :: DatalogProgram -> Rule -> Int -> [Expr]
+recordAfterPrefix d rl i =
+  if i == length (ruleRHS rl) - 1
+     then  map atomVal $ ruleLHS rl
+     else if i == 0
+             then [eVar $ exprVar $ enode $ atomVal $ rhsAtom $ head $ ruleRHS rl]
+             else [eTuple $ map (\v -> eVar $ name v) (rhsVarsAfter d rl i)]
