@@ -1,8 +1,8 @@
 use std::any::Any;
 use std::sync::Mutex;
 
-use differential_datalog::program::Update;
 use differential_datalog::ddval::DDValue;
+use differential_datalog::program::Update;
 use differential_datalog::record::Record;
 use differential_datalog::record::RelIdentifier;
 use differential_datalog::record::UpdCmd;
@@ -21,6 +21,7 @@ use server_api_ddlog::api::updcmd2upd;
 use server_api_ddlog::api::HDDlog;
 use server_api_ddlog::Relations::*;
 
+use maplit::btreeset;
 use maplit::hashmap;
 use maplit::hashset;
 
@@ -279,7 +280,7 @@ fn setup() -> (DDlogServer, UpdatesObservable, MockObserver) {
     let mut server = DDlogServer::new(program, hashmap! {});
 
     let observer = SharedObserver::new(Mutex::new(Mock::new()));
-    let mut stream = server.add_stream(hashset! {server_api_1_P1Out as usize});
+    let mut stream = server.add_stream(btreeset! {server_api_1_P1Out as usize});
     let _ = stream.subscribe(Box::new(observer.clone())).unwrap();
 
     (server, stream, observer)
@@ -290,7 +291,7 @@ fn setup_tcp() -> (DDlogServer, UpdatesObservable, MockObserver, Box<dyn Any>) {
     let mut server = DDlogServer::new(program, hashmap! {});
 
     let observer = SharedObserver::new(Mutex::new(Mock::new()));
-    let mut stream = server.add_stream(hashset! {server_api_1_P1Out as usize});
+    let mut stream = server.add_stream(btreeset! {server_api_1_P1Out as usize});
 
     let mut recv = TcpReceiver::<Update<DDValue>>::new("127.0.0.1:0").unwrap();
     let send = TcpSender::new(*recv.addr()).unwrap();

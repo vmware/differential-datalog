@@ -113,7 +113,7 @@ fn manual(
     Ok(())
 }
 
-fn reconfigure(member: &Addr, zookeeper: &ZooKeeper) -> Result<Vec<Realization>, String> {
+fn reconfigure(member: &Addr, zookeeper: &ZooKeeper) -> Result<Vec<Realization<HDDlog>>, String> {
     let members = zookeeper.members()?;
     let sys_cfg = zookeeper.config()?;
 
@@ -151,7 +151,7 @@ fn reconfig_state(member: &Addr, state: &Mutex<State>) -> Result<(), String> {
 #[derive(Default)]
 struct State {
     zookeeper: Option<ZooKeeper>,
-    realization: Option<Vec<Realization>>,
+    realization: Option<Vec<Realization<HDDlog>>>,
 }
 
 impl State {
