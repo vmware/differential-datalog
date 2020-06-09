@@ -55,6 +55,7 @@ data TOption = Help
              | StaticLib
              | NoStaticLib
              | DebugHooks
+             | DumpSource
 
 data DLAction = ActionCompile
               | ActionValidate
@@ -77,6 +78,7 @@ options = [ Option ['h'] ["help"]             (NoArg Help)                      
           , Option []    ["staticlib"]        (NoArg StaticLib)                 "Generate static library (default)."
           , Option []    ["no-staticlib"]     (NoArg NoStaticLib)               "Do not generate static library."
           , Option ['g'] []                   (NoArg DebugHooks)                "Enable debugging hooks."
+          , Option []    ["pretty-print"]     (NoArg DumpSource)                "Dump the source after performing all transformations into an ast file (FILE.ast)."
           ]
 
 data Config = Config { confDatalogFile   :: FilePath
@@ -89,6 +91,7 @@ data Config = Config { confDatalogFile   :: FilePath
                      , confJava          :: Bool
                      , confOutputInternal:: Bool
                      , confDebugHooks    :: Bool
+                     , confDumpSource    :: Bool
                      }
 
 defaultConfig :: Config
@@ -102,6 +105,7 @@ defaultConfig = Config { confDatalogFile   = ""
                        , confOutputInput   = ""
                        , confJava          = False
                        , confDebugHooks    = False
+                       , confDumpSource     = False
                        }
 
 
@@ -124,6 +128,7 @@ addOption config NoStaticLib      = return config { confStaticLib = False }
 addOption config Help             = return config { confAction = ActionHelp}
 addOption config Version          = return config { confAction = ActionVersion}
 addOption config DebugHooks       = return config { confDebugHooks = True }
+addOption config DumpSource       = return config { confDumpSource = True }
 
 validateConfig :: Config -> IO ()
 validateConfig Config{..} = do
@@ -176,6 +181,10 @@ parseValidate Config{..} = do
              Right{} -> return ()
     return (d', rs_code, toml_code)
 
+dumpSource :: DatalogProgram -> FilePath -> IO ()
+dumpSource prog fname = do
+  writeFile fname (show prog ++ "\n")
+
 compileProg :: Config -> IO ()
 compileProg conf@Config{..} = do
     let specname = takeBaseName confDatalogFile
@@ -185,4 +194,7 @@ compileProg conf@Config{..} = do
     let crate_types = (if confStaticLib then ["staticlib"] else []) ++
                       (if confDynamicLib then ["cdylib"] else [])
     let ?cfg = CompilerConfig{ cconfJava = confJava }
+    case confDumpSource of
+        False -> return ()
+        True -> dumpSource prog $ replaceExtension confDatalogFile "ast"
     compile prog specname rs_code toml_code dir crate_types
