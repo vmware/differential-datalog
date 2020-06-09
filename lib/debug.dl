@@ -1,0 +1,6 @@
+/* Description: DDlog debugging library contains functions that emit events to
+ * an external debugger tool.
+ */
+
+extern function debug_event(operator_id: (u32, u32, u32), w: DDWeight, ts: 'T1, input1: 'A1, out: 'A2): ()
+extern function debug_event_join(operator_id: (u32, u32, u32), w: DDWeight, ts: 'T1, input1: 'A1, input2: 'A2, out: 'A3): ()
