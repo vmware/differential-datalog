@@ -65,6 +65,7 @@ import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Expr
 import {-# SOURCE #-} Language.DifferentialDatalog.Rule
 import {-# SOURCE #-} Language.DifferentialDatalog.Type
+import {-# SOURCE #-} qualified Language.DifferentialDatalog.Compile as Compile
 import Language.DifferentialDatalog.Pos
 
 -- | Map function 'fun' over all expressions in a program
@@ -333,20 +334,59 @@ generateDummyInspect =
                                          exprLVal = E $ EVarDecl {exprPos = nopos, exprVName = "__dummy" },
                                          exprRVal = E $ EInt {exprPos = nopos, exprIVal = 1}}}]
 
+-- Currently operator id of 0 is used on all injected inspect expression.
+-- TODO: Figure out what operator id to use for each rule.
+noOperatorIdExpr :: Expr
+noOperatorIdExpr =
+  E ETuple { exprPos = nopos,
+             exprTupleFields = [ E EBit { exprPos = nopos,
+                                          exprWidth = 32,
+                                          exprIVal = 0 },
+                                 E EBit { exprPos = nopos,
+                                          exprWidth = 32,
+                                          exprIVal = 0 },
+                                 E EBit { exprPos = nopos,
+                                          exprWidth = 32,
+                                          exprIVal = 0 } ] }
+
+ddlogWeightExpr :: Expr
+ddlogWeightExpr = eVar "ddlog_weight"
+
+ddlogTimestampExpr :: Expr
+ddlogTimestampExpr = eVar "ddlog_timestamp"
+
+generateInspectDebugJoin :: DatalogProgram -> Rule -> Int -> [RuleRHS]
+generateInspectDebugJoin d rule index =
+  let
+    input1 = head $ Compile.recordAfterPrefix d rule (index - 1)
+    input2 = eVar $ exprVar $ enode $ atomVal $ rhsAtom (ruleRHS rule !! index)
+    outputs = Compile.recordAfterPrefix d rule index
+  in map (\output -> RHSInspect {rhsInspectExpr = eApply "debug.debug_event_join"
+                                                  [noOperatorIdExpr, ddlogWeightExpr, ddlogTimestampExpr, input1, input2, output]}) outputs
+
+generateInspectDebug :: DatalogProgram -> Rule -> Int -> [RuleRHS]
+generateInspectDebug d rule index =
+  let
+    input1 = if index == 0
+                then eVar $ exprVar $ enode $ atomVal $ rhsAtom $ head $ ruleRHS rule
+                else head $ Compile.recordAfterPrefix d rule (index - 1)
+    outputs = Compile.recordAfterPrefix d rule index
+  in map (\output -> RHSInspect {rhsInspectExpr = eApply "debug.debug_event"
+                                                  [noOperatorIdExpr, ddlogWeightExpr, ddlogTimestampExpr, input1, output]}) outputs
+
 mkInspect :: DatalogProgram -> Rule -> Int -> Maybe [RuleRHS]
-mkInspect _ rule index =
+mkInspect d rule index =
   let rhsRule = ruleRHS rule
   in if index == 0 && index < length rhsRule - 1
         then Nothing
         else if rhsIsCondition (rhsRule !! index) && index /= length rhsRule - 1 && rhsIsCondition (rhsRule !! (index + 1))
                 then Nothing
-                else case rhsRule !! index of
-                     RHSLiteral{rhsPolarity=True} -> Just generateDummyInspect -- join
-                     RHSLiteral{rhsPolarity=False} -> Just generateDummyInspect -- antijoin
-                     RHSAggregate{} -> Just generateDummyInspect -- aggregate
-                     RHSFlatMap{} -> Just generateDummyInspect -- flatmap
-                     RHSCondition{} -> Just generateDummyInspect -- filter/assignment
-                     RHSInspect{} -> Just generateDummyInspect -- inspect
+                else if index == 0
+                     then Just $ generateInspectDebug d rule index -- single term rule
+                     else case rhsRule !! index of
+                          RHSLiteral{rhsPolarity=True} -> Just $ generateInspectDebugJoin d rule index -- join
+                          RHSAggregate{} -> Just generateDummyInspect -- aggregate
+                          _ -> Just $ generateInspectDebug d rule index -- antijoin, flatmap, filter/assignment, inspect
 
 -- Insert inspect debug hook after each RHS term, except for the following:
 -- 1. If a group of conditions appear consecutively, inspect debug hook is only
