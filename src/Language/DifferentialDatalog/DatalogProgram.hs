@@ -51,6 +51,7 @@ where
 
 import qualified Data.Graph.Inductive              as G
 import qualified Data.Map                          as M
+import Data.List
 import Data.Maybe
 import Data.Char
 import Control.Monad.Identity
@@ -311,12 +312,10 @@ progMirrorInputRelations d prefix =
   in d { progRelations = M.union (progRelations d) $ M.fromList relCopies,
          progRules     = (progRules d) ++ rules }
 
--- Pretransform each RHS rule needed for injection of
--- debugging hooks
-preTransformRuleRHS :: (RuleRHS, Int) -> RuleRHS
 -- For RHSLiteral, a binding to the expression is inserted if it's not bound to a variable.
 -- For example, R(a, b, z, _) gets transformed into __r0 in R(a, b, z, _),
-preTransformRuleRHS (r@RHSLiteral{}, index) =
+addBindingToRHSLiteral :: (RuleRHS, Int) -> RuleRHS
+addBindingToRHSLiteral (r@RHSLiteral{}, index) =
   let
     bindingName = "__" ++ (map toLower $ atomRelation $ rhsAtom r) ++ (show index)
     expr = atomVal $ rhsAtom r
@@ -326,13 +325,30 @@ preTransformRuleRHS (r@RHSLiteral{}, index) =
                      _          -> eBinding bindingName expr
     updatedAtom = (rhsAtom r) { atomVal = updatedAtomVal }
   in r { rhsAtom = updatedAtom }
-preTransformRuleRHS (rule, _) = rule
+addBindingToRHSLiteral (rule, _) = rule
 
-generateDummyInspect :: [RuleRHS]
-generateDummyInspect =
-  [RHSInspect {rhsInspectExpr = E $ ESet {exprPos = nopos,
-                                         exprLVal = E $ EVarDecl {exprPos = nopos, exprVName = "__dummy" },
-                                         exprRVal = E $ EInt {exprPos = nopos, exprIVal = 1}}}]
+-- For RHSAggregate, the aggregate function is prepended with __debug_
+-- The input to the aggregate function is transformed into a tuple of
+-- input to the aggregate operator and the original value.
+-- The return variable is also prepended with __inputs_, which will now be
+-- a tuple.
+-- The corrddesponding compiler-generated function also outputs the set of
+-- inputs, so that it is visible to the inspect operator.
+-- an RHSCondition is also appended that declares and sets the original
+-- return variable of the pre-updated aggregate operator.
+updateRHSAggregate :: DatalogProgram -> Rule -> Int -> [RuleRHS]
+updateRHSAggregate d rule index =
+  let
+     r = (ruleRHS rule) !! index
+     funcName = "__debug_" ++ (rhsAggFunc r)
+     varRet = "__inputs_" ++ (rhsVar r)
+     input = eTuple [head $ Compile.recordAfterPrefix d rule (index - 1), (rhsAggExpr r)]
+     rAgg = RHSAggregate { rhsVar = varRet,
+                           rhsGroupBy = rhsGroupBy r,
+                           rhsAggFunc = funcName,
+                           rhsAggExpr = input }
+     rCond = RHSCondition { rhsExpr = eSet (eVarDecl $ rhsVar r) (eTupField (eVar varRet) 1) }
+  in [ rAgg, rCond ]
 
 -- Currently operator id of 0 is used on all injected inspect expression.
 -- TODO: Figure out what operator id to use for each rule.
@@ -374,6 +390,14 @@ generateInspectDebug d rule index =
   in map (\output -> RHSInspect {rhsInspectExpr = eApply "debug.debug_event"
                                                   [noOperatorIdExpr, ddlogWeightExpr, ddlogTimestampExpr, input1, output]}) outputs
 
+generateInspectDebugAggregate :: DatalogProgram -> Rule -> Int -> [RuleRHS]
+generateInspectDebugAggregate d rule index =
+  let
+    input1 = eTupField (eVar $ rhsVar $ (ruleRHS rule !! index)) 0
+    outputs = Compile.recordAfterPrefix d rule index
+  in map (\output -> RHSInspect {rhsInspectExpr = eApply "debug.debug_event"
+                                                  [noOperatorIdExpr, ddlogWeightExpr, ddlogTimestampExpr, input1, output]}) outputs
+
 mkInspect :: DatalogProgram -> Rule -> Int -> Maybe [RuleRHS]
 mkInspect d rule index =
   let rhsRule = ruleRHS rule
@@ -385,7 +409,7 @@ mkInspect d rule index =
                      then Just $ generateInspectDebug d rule index -- single term rule
                      else case rhsRule !! index of
                           RHSLiteral{rhsPolarity=True} -> Just $ generateInspectDebugJoin d rule index -- join
-                          RHSAggregate{} -> Just generateDummyInspect -- aggregate
+                          RHSAggregate{} -> Just $ generateInspectDebugAggregate d rule index -- aggregate
                           _ -> Just $ generateInspectDebug d rule index -- antijoin, flatmap, filter/assignment, inspect
 
 -- Insert inspect debug hook after each RHS term, except for the following:
@@ -403,10 +427,51 @@ insertRHSInspectDebugHooks d rule =
 updateRHSRules :: DatalogProgram ->  Rule -> [RuleRHS]
 updateRHSRules d rule =
   let
-    preTransformedRHS =  map (\r -> case r of
-                                    (RHSLiteral True _ , _) -> preTransformRuleRHS r
-                                    _                       -> fst r) $ zip (ruleRHS rule) [0..]
-  in insertRHSInspectDebugHooks d rule {ruleRHS = preTransformedRHS}
+    -- First pass updates RHSLiteral without any binding with a binding.
+    rhs =  map (\r -> case r of
+                      (RHSLiteral True _ , _) -> addBindingToRHSLiteral r
+                      _                       -> fst r) $ zip (ruleRHS rule) [0..]
+    -- Second pass updates RHSAggregate to use the debug function (so that inputs are not dropped).
+    rhs' = concatMap (\i -> case rhs !! i of
+                            RHSAggregate{} -> updateRHSAggregate d rule {ruleRHS = rhs} i
+                            _              -> [rhs !! i]) $ [0..length rhs - 1]
+  in insertRHSInspectDebugHooks d rule {ruleRHS = rhs'}
+
+-- Insert an aggregate function that wraps the original function used in the aggregate term.
+-- For example, if an aggregate operator uses std.group_max(), i.e., var c = Aggregate((a), group_max(b)).
+-- The following aggregate function is generated:
+-- function __debug_std.group_max (g: std.Group<'K,('I, 'V)>): (std.Set<'I>, 'V)
+-- {
+--    ((var inputs, var original_group) = debug.debug_split_group(g);
+--     (inputs, std.group_max(original_group)))
+-- }
+-- In the above example, fname is the original function name prefixed with __debug_.
+-- debug_split_group takes in a Group of tuple ('I, 'V) and splits it into a
+-- Set of 'I and Group of 'V.
+insertDebugAggregateFunction :: M.Map String Function -> String -> String -> M.Map String Function
+insertDebugAggregateFunction functions fname origFname=
+  let
+    funcBody = eSeq (eSet (eTuple [eVarDecl "inputs", eVarDecl "original_group"])
+                          (eApply "debug.debug_split_group" [eVar "g"]))
+                    (eTuple [eVar "inputs", eApply origFname [eVar "original_group"]])
+    function = Function {funcPos = nopos,
+                         funcAttrs = [],
+                         funcName = fname,
+                         funcArgs = [FuncArg {argPos = nopos,
+                                              argName = "g",
+                                              argMut = False,
+                                              argType = tOpaque "std.Group" [tVar "K", tTuple [tVar "I", tVar "V"]]}],
+                         funcType = tTuple [tOpaque "std.Set" [tVar "I"], tVar "V"],
+                         funcDef = Just funcBody}
+  in M.insert fname function functions
+
+-- Generate and insert into the map of functions a wrapper aggregate function for
+-- each aggregate function used in the rule.
+updateFunctions :: [Rule] -> M.Map String Function -> M.Map String Function
+updateFunctions rules functions =
+  let
+    aggregates = filter rhsIsAggregate $ concatMap ruleRHS rules
+  in foldl' (\acc aggregate -> insertDebugAggregateFunction acc ("__debug_" ++ (rhsAggFunc aggregate)) (rhsAggFunc aggregate)) functions aggregates
 
 -- Perform datalog program transform by injecting debugging hooks
 injectDebuggingHooks :: DatalogProgram -> DatalogProgram
@@ -414,4 +479,5 @@ injectDebuggingHooks d =
   let
     rules = progRules d
     updatedRules = [r {ruleRHS = updateRHSRules d r}  | r <- rules]
-  in d { progRules = updatedRules }
+    updatedFunctions = updateFunctions rules (progFunctions d)
+  in d { progRules = updatedRules, progFunctions = updatedFunctions }
