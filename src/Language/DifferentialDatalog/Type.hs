@@ -37,7 +37,7 @@ module Language.DifferentialDatalog.Type(
     relKeyType,
     typ', typ'',
     typDeref',
-    isBool, isBit, isSigned, isBigInt, isInteger, isFP, isString, isStruct, isTuple, isGroup, isMap, isTinySet, isSharedRef, isDouble, isFloat,
+    isBool, isBit, isSigned, isBigInt, isInteger, isFP, isString, isStruct, isTuple, isGroup, isMap, isTinySet, isSharedRef, isDouble, isFloat, isOption,
     checkTypesMatch,
     typesMatch,
     typeNormalize,
@@ -68,7 +68,7 @@ import Data.List
 import Control.Monad.Except
 import Control.Monad.Identity
 import qualified Data.Map as M
---import Debug.Trace
+-- import Debug.Trace
 
 import Language.DifferentialDatalog.Attribute
 import Language.DifferentialDatalog.Ops
@@ -101,6 +101,9 @@ gROUP_TYPE = "std.Group"
 
 mAP_TYPE :: String
 mAP_TYPE = "std.Map"
+
+oPTION_TYPE :: String
+oPTION_TYPE = "std.Option"
 
 -- Special types used by Inspect operator.
 ePOCH_TYPE :: String
@@ -502,6 +505,11 @@ isMap d a = case typ' d a of
                  TOpaque _ t _ | t == mAP_TYPE -> True
                  _                             -> False
 
+isOption :: (WithType a) => DatalogProgram -> a -> Bool
+isOption d a = case typ'' d a of
+                 TUser _ t _ | t == oPTION_TYPE -> True
+                 _                              -> False
+
 isTinySet :: (WithType a) => DatalogProgram -> a -> Bool
 isTinySet d a = case typ' d a of
                  TOpaque _ t _ | t == tINYSET_TYPE -> True
@@ -846,7 +854,7 @@ typeMap :: (Type -> Type) -> Type -> Type
 typeMap f t = runIdentity $ typeMapM (return . f) t
 
 -- Returns iterator type when iterating over a collection (element type for
--- sets, vectors, and groups, key-value pair for maps).  The Boolean flag in 
+-- sets, vectors, and groups, key-value pair for maps).  The Boolean flag in
 -- the returned tuple indicates whether the collection iterates by reference
 -- (True) or by value (False) in Rust.
 typeIterType :: DatalogProgram -> Type -> Maybe (Type, Bool)

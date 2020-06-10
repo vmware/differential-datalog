@@ -47,6 +47,7 @@ isString :: (WithType a) => DatalogProgram -> a -> Bool
 isBigInt :: (WithType a) => DatalogProgram -> a -> Bool
 isInteger :: (WithType a) => DatalogProgram -> a -> Bool
 isMap :: (WithType a) => DatalogProgram -> a -> Bool
+isOption :: (WithType a) => DatalogProgram -> a -> Bool
 isGroup :: (WithType a) => DatalogProgram -> a -> Bool
 isStruct :: (WithType a) => DatalogProgram -> a -> Bool
 isSharedRef :: (WithType a) => DatalogProgram -> a -> Bool

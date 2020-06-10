@@ -156,6 +156,18 @@ function struct_with_map1(): string = [|{"f": [{"key": 100, "payload": "foo"}]}|
 JsonTest(struct_with_map1(),
          to_json_string_or_default(from_json_string(struct_with_map1()): Result<StructWithMap, string>)).
 
+typedef StructWithOptionalMap = StructWithOptionalMap {
+    #[deserialize_from_array=key_structWithKey()]
+    f: Option<Map<u64, StructWithKey>>
+}
+
+function struct_with_optional_map1(): string = [|{"f": [{"key": 102, "payload": "foo2"}]}|]
+function struct_with_optional_map2(): string = ""
+
+JsonTest(struct_with_optional_map1(),
+         to_json_string_or_default(from_json_string(struct_with_optional_map1()): Result<StructWithOptionalMap, string>)).
+JsonTest(struct_with_optional_map2(),
+         to_json_string_or_default(from_json_string(struct_with_optional_map2()): Result<StructWithOptionalMap, string>)).
 
 typedef U64FromString = U64FromString {
     x: string,

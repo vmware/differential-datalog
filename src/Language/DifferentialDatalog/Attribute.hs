@@ -30,6 +30,7 @@ module Language.DifferentialDatalog.Attribute where
 import Data.Maybe
 import Data.List
 import Control.Monad.Except
+-- import Debug.Trace
 
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.NS
@@ -159,7 +160,7 @@ tdefCheckCustomSerdeAttr d TypeDef{..} =
                          return True
 
 tdefGetCustomSerdeAttr :: DatalogProgram -> TypeDef -> Bool
-tdefGetCustomSerdeAttr d tdef = 
+tdefGetCustomSerdeAttr d tdef =
     case tdefCheckCustomSerdeAttr d tdef of
          Left e  -> error e
          Right b -> b
@@ -176,7 +177,7 @@ tdefCheckCustomFromRecord d TypeDef{..} =
                          return True
 
 tdefGetCustomFromRecord :: DatalogProgram -> TypeDef -> Bool
-tdefGetCustomFromRecord d tdef = 
+tdefGetCustomFromRecord d tdef =
     case tdefCheckCustomFromRecord d tdef of
          Left e  -> error e
          Right b -> b
@@ -221,8 +222,12 @@ fieldCheckDeserializeArrayAttr d field@Field{..} =
     case filter ((== "deserialize_from_array") . name) fieldAttrs of
          []                   -> return Nothing
          [attr@Attribute{attrVal = E (EApply _ fname _)}] -> do
-             check d (isMap d field) (pos attr) $ "'deserialize_from_array' attribute is only applicable to fields of type 'Map<>'."
-             let TOpaque _ _ [ktype, vtype] = typ' d field
+             -- if the field has type Option<T> extract T and continue to check
+             let tField' = typ field
+             let tField = if (isOption d tField') then let TUser _ _ [optArg] = tField' in typ' d optArg
+                          else typ' d tField'
+             check d (isMap d tField) (pos attr) $ "'deserialize_from_array' attribute is only applicable to fields of type 'Map<>' or Option<Map<>>."
+             let TOpaque _ _ [ktype, vtype] = tField
              kfunc@Function{..} <- checkFunc (pos attr) d fname
              let nargs = length funcArgs
              check d (nargs == 1) (pos attr)

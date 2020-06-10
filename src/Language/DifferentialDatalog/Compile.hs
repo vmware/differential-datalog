@@ -671,10 +671,16 @@ mkTypedef d tdef@TypeDef{..} =
                            (if pub then "pub" else empty) <+> pp (name f) <> ":" <+> mkType f
                         , from_array_module)
         where rattrs = getRustAttrs d $ fieldAttrs f
-              TOpaque _ _ [ktype, vtype] = typ' d f
+              -- from TOption<T> extract T
+              tField' = typ f
+              option = isOption d f
+              tField = if option then let TUser _ _ [optArg] = tField' in typ' d optArg
+                       else typ' d tField'
+              TOpaque _ _ [ktype, vtype] = typ' d tField
               from_arr_attr = maybe empty (\_ -> "#[serde(with=\"" <> from_array_module_name <> "\")]")
                               $ fieldGetDeserializeArrayAttr d f
-              from_array_module = maybe empty (\kfunc -> "deserialize_map_from_array!(" <>
+              macro = if option then "deserialize_optional_map_from_array" else "deserialize_map_from_array"
+              from_array_module = maybe empty (\kfunc -> macro <> "!(" <>
                                                          from_array_module_name <> "," <>
                                                          mkType ktype <> "," <> mkType vtype <> "," <>
                                                          rname kfunc <> ");")

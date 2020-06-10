@@ -33,6 +33,7 @@ echo "Running ${count} tests: ${tests}"
 for i in ${tests}; do
     echo "Running test ${index}/${count}: ${i}"
     base=$(basename ${i} .dl)
+    CARGOFLAGS=""
     if [ "x${RUSTFLAGS}" == "x" ]; then
         RUSTFLAGS="-C opt-level=z"
     fi

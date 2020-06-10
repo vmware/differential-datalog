@@ -39,9 +39,9 @@ if [ "x${FLATBUF}" == "x1" ]; then
 fi
 
 if [ "x${build}" == "xrelease" ]; then
-    CARGOFLAGS="--release ${CARGOFLAGS}"
+    CARGOFLAGS+=" --release"
 elif [ "x${build}" == "xdebug" ]; then
-    CARGOFLAGS="${CARGOFLAGS}"
+    :
 else
     usage
 fi

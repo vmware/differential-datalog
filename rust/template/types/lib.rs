@@ -107,6 +107,41 @@ macro_rules! deserialize_map_from_array {
     };
 }
 
+#[macro_export]
+macro_rules! deserialize_optional_map_from_array {
+    ( $modname:ident, $ktype:ty, $vtype:ty, $kfunc:ident ) => {
+        mod $modname {
+            use super::*;
+            use serde::de::{Deserialize, Deserializer};
+            use serde::ser::Serializer;
+            use std::collections::BTreeMap;
+
+            pub fn serialize<S>(
+                map: &std_Option<std_Map<$ktype, $vtype>>,
+                serializer: S,
+            ) -> Result<S::Ok, S::Error>
+            where
+                S: Serializer,
+            {
+                match map {
+                    std_Option::std_Some{x} => serializer.collect_seq(x.x.values()),
+                    std_Option::std_None    => serializer.serialize_none()
+                }
+            }
+
+            pub fn deserialize<'de, D>(
+                deserializer: D,
+            ) -> Result<std_Option<std_Map<$ktype, $vtype>>, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                let v = Vec::<$vtype>::deserialize(deserializer)?;
+                Ok(option2std(Some(v.into_iter().map(|item| ($kfunc(&item), item)).collect())))
+            }
+        }
+    };
+}
+
 /*- !!!!!!!!!!!!!!!!!!!! -*/
 // Don't edit this line
 // Code below this point is needed to test-compile template
