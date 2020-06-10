@@ -124,7 +124,7 @@ macro_rules! deserialize_optional_map_from_array {
                 S: Serializer,
             {
                 match map {
-                    std_Option::std_Some{x} => serializer.collect_seq(x.x.values()),
+                    std_Option::std_Some { x } => serializer.collect_seq(x.x.values()),
                     std_Option::std_None => serializer.serialize_none(),
                 }
             }
@@ -137,7 +137,7 @@ macro_rules! deserialize_optional_map_from_array {
             {
                 let v = Vec::<$vtype>::deserialize(deserializer)?;
                 Ok(option2std(Some(
-                    v.into_iter().map(|item| ($kfunc(&item), item)).collect()
+                    v.into_iter().map(|item| ($kfunc(&item), item)).collect(),
                 )))
             }
         }
