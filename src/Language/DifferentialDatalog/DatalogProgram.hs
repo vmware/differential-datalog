@@ -350,20 +350,10 @@ updateRHSAggregate d rule index =
      rCond = RHSCondition { rhsExpr = eSet (eVarDecl $ rhsVar r) (eTupField (eVar varRet) 1) }
   in [ rAgg, rCond ]
 
--- Currently operator id of 0 is used on all injected inspect expression.
--- TODO: Figure out what operator id to use for each rule.
-noOperatorIdExpr :: Expr
-noOperatorIdExpr =
-  E ETuple { exprPos = nopos,
-             exprTupleFields = [ E EBit { exprPos = nopos,
-                                          exprWidth = 32,
-                                          exprIVal = 0 },
-                                 E EBit { exprPos = nopos,
-                                          exprWidth = 32,
-                                          exprIVal = 0 },
-                                 E EBit { exprPos = nopos,
-                                          exprWidth = 32,
-                                          exprIVal = 0 } ] }
+-- OperatorID is a tuple composed of rule index, rhs index and head index.
+generateOperatorIdExpr :: Int -> Int -> Int -> Expr
+generateOperatorIdExpr rlIdx rhsIdx headIdx =
+  eTuple [eBit 32 $ toInteger rlIdx, eBit 32 $ toInteger rhsIdx, eBit 32 $ toInteger headIdx]
 
 ddlogWeightExpr :: Expr
 ddlogWeightExpr = eVar "ddlog_weight"
@@ -371,46 +361,59 @@ ddlogWeightExpr = eVar "ddlog_weight"
 ddlogTimestampExpr :: Expr
 ddlogTimestampExpr = eVar "ddlog_timestamp"
 
-generateInspectDebugJoin :: DatalogProgram -> Rule -> Int -> [RuleRHS]
-generateInspectDebugJoin d rule index =
+generateInspectDebugJoin :: DatalogProgram -> Int -> Rule -> Int -> [RuleRHS]
+generateInspectDebugJoin d ruleIdx rule index =
   let
     input1 = head $ Compile.recordAfterPrefix d rule (index - 1)
     input2 = eVar $ exprVar $ enode $ atomVal $ rhsAtom (ruleRHS rule !! index)
     outputs = Compile.recordAfterPrefix d rule index
-  in map (\output -> RHSInspect {rhsInspectExpr = eApply "debug.debug_event_join"
-                                                  [noOperatorIdExpr, ddlogWeightExpr, ddlogTimestampExpr, input1, input2, output]}) outputs
+  in map (\i -> RHSInspect {rhsInspectExpr = eApply "debug.debug_event_join"
+                                             [generateOperatorIdExpr ruleIdx index i,
+                                              ddlogWeightExpr,
+                                              ddlogTimestampExpr,
+                                              input1,
+                                              input2,
+                                              outputs !! i]}) [0..length outputs -1]
 
-generateInspectDebug :: DatalogProgram -> Rule -> Int -> [RuleRHS]
-generateInspectDebug d rule index =
+generateInspectDebug :: DatalogProgram -> Int -> Rule -> Int -> [RuleRHS]
+generateInspectDebug d ruleIdx rule index =
   let
     input1 = if index == 0
                 then eVar $ exprVar $ enode $ atomVal $ rhsAtom $ head $ ruleRHS rule
                 else head $ Compile.recordAfterPrefix d rule (index - 1)
     outputs = Compile.recordAfterPrefix d rule index
-  in map (\output -> RHSInspect {rhsInspectExpr = eApply "debug.debug_event"
-                                                  [noOperatorIdExpr, ddlogWeightExpr, ddlogTimestampExpr, input1, output]}) outputs
+  in map (\i -> RHSInspect {rhsInspectExpr = eApply "debug.debug_event"
+                                             [generateOperatorIdExpr ruleIdx index i,
+                                              ddlogWeightExpr,
+                                              ddlogTimestampExpr,
+                                              input1,
+                                              outputs !! i]}) [0..length outputs - 1]
 
-generateInspectDebugAggregate :: DatalogProgram -> Rule -> Int -> [RuleRHS]
-generateInspectDebugAggregate d rule index =
+generateInspectDebugAggregate :: DatalogProgram -> Int -> Rule -> Int -> [RuleRHS]
+generateInspectDebugAggregate d ruleIdx rule index =
   let
     input1 = eTupField (eVar $ rhsVar $ (ruleRHS rule !! index)) 0
     outputs = Compile.recordAfterPrefix d rule index
-  in map (\output -> RHSInspect {rhsInspectExpr = eApply "debug.debug_event"
-                                                  [noOperatorIdExpr, ddlogWeightExpr, ddlogTimestampExpr, input1, output]}) outputs
+  in map (\i -> RHSInspect {rhsInspectExpr = eApply "debug.debug_event"
+                                             [generateOperatorIdExpr ruleIdx index i,
+                                              ddlogWeightExpr,
+                                              ddlogTimestampExpr,
+                                              input1,
+                                              outputs !! i]}) [0..length outputs -1]
 
-mkInspect :: DatalogProgram -> Rule -> Int -> Maybe [RuleRHS]
-mkInspect d rule index =
+mkInspect :: DatalogProgram -> Int -> Rule -> Int -> Maybe [RuleRHS]
+mkInspect d ruleIdx rule index =
   let rhsRule = ruleRHS rule
   in if index == 0 && index < length rhsRule - 1
         then Nothing
         else if rhsIsCondition (rhsRule !! index) && index /= length rhsRule - 1 && rhsIsCondition (rhsRule !! (index + 1))
                 then Nothing
                 else if index == 0
-                     then Just $ generateInspectDebug d rule index -- single term rule
+                     then Just $ generateInspectDebug d ruleIdx rule index -- single term rule
                      else case rhsRule !! index of
-                          RHSLiteral{rhsPolarity=True} -> Just $ generateInspectDebugJoin d rule index -- join
-                          RHSAggregate{} -> Just $ generateInspectDebugAggregate d rule index -- aggregate
-                          _ -> Just $ generateInspectDebug d rule index -- antijoin, flatmap, filter/assignment, inspect
+                          RHSLiteral{rhsPolarity=True} -> Just $ generateInspectDebugJoin d ruleIdx rule index -- join
+                          RHSAggregate{} -> Just $ generateInspectDebugAggregate d ruleIdx rule index -- aggregate
+                          _ -> Just $ generateInspectDebug d ruleIdx rule index -- antijoin, flatmap, filter/assignment, inspect
 
 -- Insert inspect debug hook after each RHS term, except for the following:
 -- 1. If a group of conditions appear consecutively, inspect debug hook is only
@@ -419,13 +422,13 @@ mkInspect d rule index =
 -- only contains one literal.
 -- 3. If a rule has multiple heads, then multiple inspect is inserted after the last
 -- term corresponding to each head.
-insertRHSInspectDebugHooks :: DatalogProgram -> Rule -> [RuleRHS]
-insertRHSInspectDebugHooks d rule =
-  concatMap (\i -> let inspect = concat $ maybeToList $ mkInspect d rule i in
+insertRHSInspectDebugHooks :: DatalogProgram -> Int -> Rule -> [RuleRHS]
+insertRHSInspectDebugHooks d rlIdx rule =
+  concatMap (\i -> let inspect = concat $ maybeToList $ mkInspect d rlIdx rule i in
                    (ruleRHS rule !! i) : inspect) [0..length (ruleRHS rule) - 1]
 
-updateRHSRules :: DatalogProgram ->  Rule -> [RuleRHS]
-updateRHSRules d rule =
+updateRHSRules :: DatalogProgram -> Int -> Rule -> [RuleRHS]
+updateRHSRules d rlIdx rule =
   let
     -- First pass updates RHSLiteral without any binding with a binding.
     rhs =  map (\r -> case r of
@@ -435,7 +438,7 @@ updateRHSRules d rule =
     rhs' = concatMap (\i -> case rhs !! i of
                             RHSAggregate{} -> updateRHSAggregate d rule {ruleRHS = rhs} i
                             _              -> [rhs !! i]) $ [0..length rhs - 1]
-  in insertRHSInspectDebugHooks d rule {ruleRHS = rhs'}
+  in insertRHSInspectDebugHooks d rlIdx rule {ruleRHS = rhs'}
 
 -- Insert an aggregate function that wraps the original function used in the aggregate term.
 -- For example, if an aggregate operator uses std.group_max(), i.e., var c = Aggregate((a), group_max(b)).
@@ -478,6 +481,6 @@ injectDebuggingHooks :: DatalogProgram -> DatalogProgram
 injectDebuggingHooks d =
   let
     rules = progRules d
-    updatedRules = [r {ruleRHS = updateRHSRules d r}  | r <- rules]
+    updatedRules = [(rules !! i) {ruleRHS = updateRHSRules d i (rules !! i)}  | i <- [0..length rules - 1]]
     updatedFunctions = updateFunctions rules (progFunctions d)
   in d { progRules = updatedRules, progFunctions = updatedFunctions }
