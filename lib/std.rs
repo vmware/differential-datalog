@@ -1047,7 +1047,7 @@ pub fn std_hash128<T: Hash>(x: &T) -> u128 {
     ((w1 as u128) << 64) | (w2 as u128)
 }
 
-pub type ProjectFunc<X> = fn(&DDValue) -> X;
+pub type ProjectFunc<'a, X> = &'a dyn Fn(&DDValue) -> X;
 
 /*
  * Group type (used in aggregation operators)
@@ -1056,14 +1056,14 @@ pub struct std_Group<'a, K, V> {
     /* TODO: remove "pub" */
     pub key: &'a K,
     pub group: &'a [(&'a DDValue, Weight)],
-    pub project: &'a ProjectFunc<V>,
+    pub project: ProjectFunc<'a, V>,
 }
 
 /* This is needed so we can support for-loops over `Group`'s
  */
 pub struct GroupIter<'a, V> {
     iter: slice::Iter<'a, (&'a DDValue, Weight)>,
-    project: &'a ProjectFunc<V>,
+    project: ProjectFunc<'a, V>,
 }
 
 impl<'a, V> GroupIter<'a, V> {
@@ -1100,7 +1100,7 @@ impl<'a, K, V> std_Group<'a, K, V> {
     pub fn new(
         key: &'a K,
         group: &'a [(&'a DDValue, Weight)],
-        project: &'static ProjectFunc<V>,
+        project: ProjectFunc<'a, V>,
     ) -> std_Group<'a, K, V> {
         std_Group {
             key,
