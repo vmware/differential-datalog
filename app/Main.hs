@@ -174,7 +174,7 @@ parseValidate Config{..} = do
                Right d'''' -> return d''''
     d' <- case confDebugHooks of
          False -> return d''''
-         True  -> return $ injectDebuggingHooks d''''
+         True  -> return $ progInjectDebuggingHooks d''''
     when confJava $
         case flatBufferValidate d of
              Left e  -> errorWithoutStackTrace $ "error: " ++ e
