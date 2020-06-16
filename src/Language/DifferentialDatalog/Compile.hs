@@ -279,9 +279,10 @@ mutref (x, _, _)           = parens $ "&mut" <> x
 
 -- convert any expression to EVal by cloning it if necessary
 val :: (Doc, EKind, ENode) -> Doc
-val (x, EVal, _)      = x
-val (x, ENoReturn, _) = x
-val (x, _, _)         = x <> ".clone()"
+val (x, EVal, _)        = x
+val (x, ENoReturn, _)   = x
+val (x, EReference, _)  = cloneRef x
+val (x, _, _)           = x <> ".clone()"
 
 -- convert expression to l-value
 lval :: (Doc, EKind, ENode) -> Doc
@@ -290,6 +291,12 @@ lval (x, ELVal, _)      = x
 lval (x, EReference, _) = parens $ "*" <> x
 lval (x, EVal, _)       = error $ "Compile.lval: cannot convert value to l-value: " ++ show x
 lval (x, ENoReturn, _)  = error $ "Compile.lval: cannot convert expression to l-value: " ++ show x
+
+-- When calling `clone()` on a reference, Rust occasionally decides to clone
+-- the reference instead of the referenced object.  This function makes sure to
+-- dereference it first.
+cloneRef :: Doc -> Doc
+cloneRef r = "(*" <> r <> ").clone()"
 
 -- | 'CompilerConfig'
 -- 'cconfJava' - generate Java bindings to the DDlog program
@@ -1535,7 +1542,7 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                             -- Evaluate arrange_input_by in the context of 'rhs'
                             let key_str = parens $ commaSep $ map (pp . fst) key_vars
                             akey <- mkTupleValue d key_vars
-                            aval <- mkVarsTupleValue d val_vars
+                            aval <- mkVarsTupleValue d $ map (, EReference) val_vars
                             let afun = braces'
                                        $ prefix $$
                                          "Some((" <> akey <> "," <+> aval <> "))"
@@ -1585,11 +1592,11 @@ rhsInputArrangement _ _  _       _ = Nothing
 
 mkFlatMap :: (?cfg::CompilerConfig, ?statics::Statics) => DatalogProgram -> Doc -> Rule -> Int -> String -> Expr -> CompilerMonad Doc
 mkFlatMap d prefix rl idx v e = do
-    vars <- mkVarsTupleValue d $ rhsVarsAfter d rl idx
+    vars <- mkVarsTupleValue d $ map (, EVal) $ rhsVarsAfter d rl idx
     -- Flatten
     let flatten = "let __flattened =" <+> mkExpr d (CtxRuleRFlatMap rl idx) e EVal <> ";"
     -- Clone variables before passing them to the closure.
-    let clones = vcat $ map ((\vname -> "let" <+> vname <+> "=" <+> vname <> ".clone();") . pp . name)
+    let clones = vcat $ map ((\vname -> "let" <+> vname <+> "=" <+> cloneRef vname <> ";") . pp . name)
                       $ filter ((/= v) . name) $ rhsVarsAfter d rl idx
     let fmfun = braces'
                 $ prefix  $$
@@ -1606,7 +1613,7 @@ mkFlatMap d prefix rl idx v e = do
 
 mkFilterMap :: (?cfg::CompilerConfig, ?statics::Statics) => DatalogProgram -> Doc -> Rule -> Int -> CompilerMonad Doc
 mkFilterMap d prefix rl idx = do
-    v <- mkVarsTupleValue d $ rhsVarsAfter d rl idx
+    v <- mkVarsTupleValue d $ map (, EReference) $ rhsVarsAfter d rl idx
     let fmfun = braces' $ prefix $$
                           "Some" <> parens v
     next <- compileRule d rl (idx - 1) False  -- Use the previous index to evaluate the rule again and call mkInspect
@@ -1649,20 +1656,20 @@ mkAggregate d filters input_val rl@Rule{..} idx = do
     open <- if input_val
                then openAtom d vALUE_VAR rl 0 (rhsAtom $ head ruleRHS) "unreachable!()"
                else openTuple d vALUE_VAR group_vars
-    let project = "&{fn __f(" <> vALUE_VAR <> ": &DDValue) -> " <+> mkType (exprType d ctx rhsAggExpr) $$
+    let project = "{fn __f(" <> vALUE_VAR <> ": &DDValue) -> " <+> mkType (exprType d ctx rhsAggExpr) $$
                   (braces' $ open $$ mkExpr d ctx rhsAggExpr EVal)                                   $$
-                  "__f}"
+                  "std::rc::Rc::new(__f)}"
     -- Aggregate function:
     -- - compute aggregate
     -- - return variables still in scope after this term
     let tmap = ruleAggregateTypeParams d rl idx
     let agg_func = getFunc d rhsAggFunc
     -- Pass group-by variables to the aggregate function.
-    let grp = "&std_Group::new(&" <> (tupleStruct $ map (\v -> pp v <> ".clone()") rhsGroupBy) <> "," <+> gROUP_VAR <> "," <+> project <> ")"
+    let grp = "&std_Group::new(&" <> (tupleStruct $ map (cloneRef . pp) rhsGroupBy) <> "," <+> gROUP_VAR <> "," <+> project <> ")"
     let tparams = commaSep $ map (\tvar -> mkType (tmap M.! tvar)) $ funcTypeVars agg_func
     let aggregate = "let" <+> pp rhsVar <+> "=" <+> rname rhsAggFunc <>
                     "::<" <> tparams <> ">(" <> grp <> ");"
-    result <- mkVarsTupleValue d $ rhsVarsAfter d rl idx
+    result <- mkVarsTupleValue d $ map (\v -> (v, if name v == rhsVar then EVal else EReference)) $ rhsVarsAfter d rl idx
     let key_vars = map (getVar d ctx) rhsGroupBy
     open_key <- openTuple d kEY_VAR key_vars
     let agfun = braces'
@@ -1754,17 +1761,19 @@ mkTupleValue d es = do
     constructor <- mkValConstructorName' d t
     return $ constructor <> (parens $ tupleStruct $ map (\(e, ctx) -> mkExpr d ctx e EVal) es) <> ".into_ddvalue()"
 
-mkVarsTupleValue :: (?cfg::CompilerConfig) => DatalogProgram -> [Var] -> CompilerMonad Doc
+mkVarsTupleValue :: (?cfg::CompilerConfig) => DatalogProgram -> [(Var, EKind)] -> CompilerMonad Doc
 mkVarsTupleValue d vs = do
-    let t = tTuple $ map (varType d) vs
+    let t = tTuple $ map (varType d . fst) vs
     constructor <- mkValConstructorName' d t
-    return $ constructor <> (parens $ tupleStruct $ map ((<> ".clone()") . pp . name) vs) <> ".into_ddvalue()"
+    let clone (v, EReference) = cloneRef $ pp $ name v
+        clone (v, _) = (pp $ name v) <> ".clone()"
+    return $ constructor <> (parens $ tupleStruct $ map clone vs) <> ".into_ddvalue()"
 
 mkFieldTupleValue :: (?cfg::CompilerConfig) => DatalogProgram -> [Field] -> CompilerMonad Doc
 mkFieldTupleValue d fs = do
     let t = tTuple $ map typ fs
     constructor <- mkValConstructorName' d t
-    return $ constructor <> (parens $ tupleStruct $ map ((<> ".clone()") . pp . name) fs) <> ".into_ddvalue()"
+    return $ constructor <> (parens $ tupleStruct $ map (cloneRef . pp . name) fs) <> ".into_ddvalue()"
 
 -- Compile all contiguous RHSCondition terms following 'last_idx'
 mkFilters :: (?statics::Statics) => DatalogProgram -> Rule -> Int -> [Doc]
@@ -1859,7 +1868,7 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
     -- return all live variables in a tuple
     (ret, next) <- if last_idx == length ruleRHS - 1
         then (, "None") <$> mkValue' d (CtxRuleL rl 0) (atomVal $ head $ ruleLHS)
-        else do ret <- mkVarsTupleValue d $ rhsVarsAfter d rl last_idx
+        else do ret <- mkVarsTupleValue d $ map (, EReference) $ rhsVarsAfter d rl last_idx
                 next <- compileRule d rl last_idx False
                 return (ret, next)
     let jfun = braces' $ open                     $$
@@ -2748,5 +2757,5 @@ recordAfterPrefix d rl i =
   if i == length (ruleRHS rl) - 1
      then  map atomVal $ ruleLHS rl
      else if i == 0
-             then [eVar $ exprVar $ enode $ atomVal $ rhsAtom $ head $ ruleRHS rl]
-             else [eTuple $ map (\v -> eVar $ name v) (rhsVarsAfter d rl i)]
+             then [eVar $ exprVar $ enode $ atomVal $ rhsAtom $ head $ ruleRHS rl ]
+             else [eTuple $ map (eVar . name) (rhsVarsAfter d rl i) ]
