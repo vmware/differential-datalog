@@ -316,5 +316,5 @@ progInjectDebuggingHooks d =
   let
     rules = progRules d
     updatedRules = [(rules !! i) {ruleRHS = debugUpdateRHSRules d i (rules !! i)}  | i <- [0..length rules - 1]]
-    updatedFunctions = debugUpdateFunctions rules (progFunctions d)
-  in d { progRules = updatedRules, progFunctions = updatedFunctions }
+    debugFuncs = M.fromList $ map (\f -> (name f , f)) $ debugAggregateFunctions d
+  in d { progRules = updatedRules, progFunctions = M.union (progFunctions d) debugFuncs }
