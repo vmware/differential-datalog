@@ -10,12 +10,12 @@ pub fn debug_debug_event<T1: ToString, A1: fmt::Debug, A2: fmt::Debug>(
     input1: &A1,
     out: &A2,
 ) {
-    let mut file = OpenOptions::new()
+    let file = OpenOptions::new()
         .append(true)
         .create(true)
         .open("debug.log".to_string())
         .unwrap();
-    write!(
+    let _ = write!(
         &file,
         "{:?}, {}, {}, {:?}, {:?}\n",
         &operator_id,
@@ -35,12 +35,12 @@ pub fn debug_debug_event_join<T1: ToString, A1: fmt::Debug, A2: fmt::Debug, A3: 
     input2: &A2,
     out: &A3,
 ) {
-    let mut file = OpenOptions::new()
+    let file = OpenOptions::new()
         .append(true)
         .create(true)
         .open("debug.log".to_string())
         .unwrap();
-    write!(
+    let _ = write!(
         &file,
         "{:?}, {}, {}, {:?}, {:?}, {:?}\n",
         &operator_id,
