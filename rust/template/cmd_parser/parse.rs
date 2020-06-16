@@ -103,7 +103,7 @@ named!(pub parse_command<&[u8], Command>,
                   do_parse!(apply!(sym,"query_index")                         >>
                             idx: identifier                                   >>
                             args: delimited!(
-                                apply!(sym,"("), 
+                                apply!(sym,"("),
                                 separated_list!(apply!(sym,","), record),
                                 apply!(sym,")"))                              >>
                             apply!(sym,";")                                   >>
