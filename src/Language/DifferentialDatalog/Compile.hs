@@ -1705,8 +1705,9 @@ openAtom d var rl idx Atom{..} on_error = do
     let t = relType rel
     constructor <- mkValConstructorName' d t
     let varnames = map (pp . name) $ exprVarDecls d (CtxRuleRAtom rl idx) atomVal
-        vars = tuple varnames
-        mtch = mkMatch (mkPatExpr d (CtxRuleRAtom rl idx) atomVal EReference) vars on_error
+        var_clones = tuple $ map cloneRef varnames
+        vars = tuple $ map ("ref" <+>) varnames
+        mtch = mkMatch (mkPatExpr d (CtxRuleRAtom rl idx) atomVal EReference) var_clones on_error
     return $
         "let" <+> vars <+> "= match unsafe { " <+> constructor <> "::from_ddvalue_ref(" <> var <> ") }.0 {" $$
         (nest' mtch)                                                                                        $$
