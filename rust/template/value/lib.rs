@@ -22,8 +22,6 @@ use std::result;
 use serde::Deserialize;
 use serde::Serialize;
 
-use abomonation;
-
 use differential_datalog::ddval::*;
 use differential_datalog::decl_ddval_convert;
 use differential_datalog::int::*;
@@ -140,15 +138,15 @@ pub fn relid2cname(_rid: RelId) -> Option<&'static ffi::CStr> {
 }
 
 lazy_static! {
-    pub static ref RELIDMAP: FnvHashMap<Relations, &'static str> = { FnvHashMap::default() };
+    pub static ref RELIDMAP: FnvHashMap<Relations, &'static str> = FnvHashMap::default();
 }
 
 lazy_static! {
-    pub static ref INPUT_RELIDMAP: FnvHashMap<Relations, &'static str> = { FnvHashMap::default() };
+    pub static ref INPUT_RELIDMAP: FnvHashMap<Relations, &'static str> = FnvHashMap::default();
 }
 
 lazy_static! {
-    pub static ref OUTPUT_RELIDMAP: FnvHashMap<Relations, &'static str> = { FnvHashMap::default() };
+    pub static ref OUTPUT_RELIDMAP: FnvHashMap<Relations, &'static str> = FnvHashMap::default();
 }
 
 pub fn indexid2name(_iid: IdxId) -> Option<&'static str> {
@@ -164,5 +162,5 @@ pub fn indexes2arrid(idx: Indexes) -> ArrId {
 }
 
 lazy_static! {
-    pub static ref IDXIDMAP: FnvHashMap<Indexes, &'static str> = { FnvHashMap::default() };
+    pub static ref IDXIDMAP: FnvHashMap<Indexes, &'static str> = FnvHashMap::default();
 }

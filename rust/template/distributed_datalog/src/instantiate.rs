@@ -57,7 +57,7 @@ fn deduce_outputs(node_cfg: &NodeCfg, assignment: &Assignment) -> Result<Outputs
                                 node.to_hyphenated_ref()
                             )
                         })?;
-                        let rels = outputs.entry(addr.clone()).or_default();
+                        let rels = outputs.entry(*addr).or_default();
                         let _ = rels.insert(*rel_id);
                     }
                     RelCfg::Input(..) | RelCfg::Source(..) | RelCfg::Sink(..) => (),
