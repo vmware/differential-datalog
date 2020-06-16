@@ -52,3 +52,13 @@ pub fn debug_debug_event_join<T1: ToString, A1: fmt::Debug, A2: fmt::Debug, A3: 
     );
     ()
 }
+
+
+pub fn debug_debug_split_group<'a, K, I: 'static + Clone, V: 'static>(g: &'a std_Group<'a, K, (I,V)>) -> (std_Vec<I>, std_Group<'a, K, V>) {
+    let mut inputs = std_Vec::with_capacity(std_group_count(g) as usize);
+    for (i, _) in g.iter() {
+        inputs.push(i.clone())
+    };
+    let orig_project = g.project.clone();
+    (inputs, std_Group::new(g.key, g.group, std::rc::Rc::new(move |v| (orig_project)(v).1)))
+}
