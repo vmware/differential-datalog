@@ -1311,6 +1311,46 @@ decl_tuple!(
     tuple20, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19,
     T20
 );
+decl_tuple!(
+    tuple21, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19,
+    T20, T21
+);
+decl_tuple!(
+    tuple22, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19,
+    T20, T21, T22
+);
+decl_tuple!(
+    tuple23, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19,
+    T20, T21, T22, T23
+);
+decl_tuple!(
+    tuple24, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19,
+    T20, T21, T22, T23, T24
+);
+decl_tuple!(
+    tuple25, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19,
+    T20, T21, T22, T23, T24, T25
+);
+decl_tuple!(
+    tuple26, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19,
+    T20, T21, T22, T23, T24, T25, T26
+);
+decl_tuple!(
+    tuple27, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19,
+    T20, T21, T22, T23, T24, T25, T26, T27
+);
+decl_tuple!(
+    tuple28, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19,
+    T20, T21, T22, T23, T24, T25, T26, T27, T28
+);
+decl_tuple!(
+    tuple29, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19,
+    T20, T21, T22, T23, T24, T25, T26, T27, T28, T29
+);
+decl_tuple!(
+    tuple30, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19,
+    T20, T21, T22, T23, T24, T25, T26, T27, T28, T29, T30
+);
 
 // Endianness
 pub fn std_ntohl(x: &u32) -> u32 {
