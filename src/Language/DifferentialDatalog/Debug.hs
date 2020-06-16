@@ -28,19 +28,21 @@ Module     : Debug
 Description: Helper functions for adding debug hooks to a 'DatalogProgram'.
 -}
 module Language.DifferentialDatalog.Debug (
-    debugUpdateFunctions,
+    debugAggregateFunctions,
     debugUpdateRHSRules,
 )
 where
 
-import qualified Data.Map                          as M
-import Data.List
 import Data.Maybe
 import Data.Char
 
 import {-# SOURCE #-} qualified Language.DifferentialDatalog.Compile as Compile
+import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Syntax
+import Language.DifferentialDatalog.Var
+import {-# SOURCE #-} Language.DifferentialDatalog.Type
+import Language.DifferentialDatalog.Util
 
 -- For RHSLiteral, a binding to the expression is inserted if it's not bound to a variable.
 -- For example, R(a, b, z, _) gets transformed into __r0 in R(a, b, z, _),
@@ -57,7 +59,13 @@ addBindingToRHSLiteral (r@(RHSLiteral True _), index) =
   in r { rhsAtom = updatedAtom }
 addBindingToRHSLiteral (rule, _) = rule
 
--- For RHSAggregate, the aggregate function is prepended with __debug_
+-- Generate debug function name.
+debugAggregateFunctionName :: Int -> Int -> String -> String
+debugAggregateFunctionName rlidx rhsidx fname =
+    "__debug_" ++ show rlidx ++ "_" ++ show rhsidx ++ "_" ++ fname
+
+-- For RHSAggregate, the aggregate function is prepended with
+-- __debug_<rule_idx>_<rhs_idx>.
 -- The input to the aggregate function is transformed into a tuple of
 -- input to the aggregate operator and the original value.
 -- The return variable is also prepended with __inputs_, which will now be
@@ -66,13 +74,14 @@ addBindingToRHSLiteral (rule, _) = rule
 -- inputs, so that it is visible to the inspect operator.
 -- an RHSCondition is also appended that declares and sets the original
 -- return variable of the pre-updated aggregate operator.
-updateRHSAggregate :: DatalogProgram -> Rule -> Int -> [RuleRHS]
-updateRHSAggregate d rule index =
+updateRHSAggregate :: DatalogProgram -> Rule -> Int -> Int -> [RuleRHS]
+updateRHSAggregate d rule rlidx rhsidx =
   let
-     r = (ruleRHS rule) !! index
-     funcName = "__debug_" ++ (rhsAggFunc r)
+     r = (ruleRHS rule) !! rhsidx
+     funcName = debugAggregateFunctionName rlidx rhsidx (rhsAggFunc r)
      varRet = "__inputs_" ++ (rhsVar r)
-     input = eTuple [head $ Compile.recordAfterPrefix d rule (index - 1), (rhsAggExpr r)]
+     input = eTuple [ (Compile.recordAfterPrefix d rule (rhsidx - 1)) !! 0
+                    , rhsAggExpr r ]
      rAgg = RHSAggregate { rhsVar = varRet,
                            rhsGroupBy = rhsGroupBy r,
                            rhsAggFunc = funcName,
@@ -121,6 +130,7 @@ generateInspectDebug d ruleIdx rule index =
                                               input1,
                                               outputs !! i]}) [0..length outputs - 1]
 
+
 generateInspectDebugAggregate :: DatalogProgram -> Int -> Rule -> Int -> [RuleRHS]
 generateInspectDebugAggregate d ruleIdx rule index =
   let
@@ -165,41 +175,51 @@ debugUpdateRHSRules d rlIdx rule =
     -- First pass updates RHSLiteral without any binding with a binding.
     rhs =  map addBindingToRHSLiteral $ zip (ruleRHS rule) [0..]
     -- Second pass updates RHSAggregate to use the debug function (so that inputs are not dropped).
-    rhs' = concatMap (updateRHSAggregate d rule {ruleRHS = rhs}) [0..length rhs - 1]
+    rhs' = concatMap (updateRHSAggregate d rule{ruleRHS = rhs} rlIdx) [0..length rhs - 1]
   in insertRHSInspectDebugHooks d rlIdx rule {ruleRHS = rhs'}
 
 -- Insert an aggregate function that wraps the original function used in the aggregate term.
 -- For example, if an aggregate operator uses std.group_max(), i.e., var c = Aggregate((a), group_max(b)).
 -- The following aggregate function is generated:
--- function __debug_std.group_max (g: std.Group<'K,('I, 'V)>): (std.Set<'I>, 'V)
+-- function __debug_1_2_std.group_max (g: std.Group<u32,('I, u64>): (std.Vec<'I>, u64)
 -- {
 --    ((var inputs, var original_group) = debug.debug_split_group(g);
 --     (inputs, std.group_max(original_group)))
 -- }
--- In the above example, fname is the original function name prefixed with __debug_.
+-- In the above example, group_max is the original function name prefixed with __debug_<rule_idx>_<rhs_idx>.
 -- debug_split_group takes in a Group of tuple ('I, 'V) and splits it into a
--- Set of 'I and Group of 'V.
-insertDebugAggregateFunction :: M.Map String Function -> String -> String -> M.Map String Function
-insertDebugAggregateFunction functions fname origFname=
+-- Vec of 'I and Group of 'V.
+debugAggregateFunction :: DatalogProgram -> Int -> Int -> Function
+debugAggregateFunction d rlidx rhsidx =
   let
+    rule = progRules d !! rlidx
+    RHSAggregate{..} = ruleRHS rule !! rhsidx
+    ctx = CtxRuleRAggregate rule rhsidx
+    tkey = tTuple $ map (varType d . getVar d ctx) rhsGroupBy
+    tval = exprType'' d ctx rhsAggExpr
+    tret = varType d (AggregateVar rule rhsidx)
+    fname = debugAggregateFunctionName rlidx rhsidx rhsAggFunc
     funcBody = eSeq (eSet (eTuple [eVarDecl "inputs", eVarDecl "original_group"])
                           (eApply "debug.debug_split_group" [eVar "g"]))
-                    (eTuple [eVar "inputs", eApply origFname [eVar "original_group"]])
-    function = Function {funcPos = nopos,
-                         funcAttrs = [],
-                         funcName = fname,
-                         funcArgs = [FuncArg {argPos = nopos,
-                                              argName = "g",
-                                              argMut = False,
-                                              argType = tOpaque "std.Group" [tVar "K", tTuple [tVar "I", tVar "V"]]}],
-                         funcType = tTuple [tOpaque "std.Set" [tVar "I"], tVar "V"],
-                         funcDef = Just funcBody}
-  in M.insert fname function functions
+                    (eTuple [eVar "inputs", eApply rhsAggFunc [eVar "original_group"]])
+  in Function {funcPos = nopos,
+               funcAttrs = [],
+               funcName = fname,
+               funcArgs = [FuncArg {argPos = nopos,
+                                    argName = "g",
+                                    argMut = False,
+                                    argType = tOpaque "std.Group" [tkey, tTuple [tVar "I", tval]]}],
+               funcType = tTuple [tOpaque "std.Vec" [tVar "I"], tret],
+               funcDef = Just funcBody}
 
--- Generate and insert into the map of functions a wrapper aggregate function for
--- each aggregate function used in the rule.
-debugUpdateFunctions :: [Rule] -> M.Map String Function -> M.Map String Function
-debugUpdateFunctions rules functions =
-  let
-    aggregates = filter rhsIsAggregate $ concatMap ruleRHS rules
-  in foldl' (\acc aggregate -> insertDebugAggregateFunction acc ("__debug_" ++ (rhsAggFunc aggregate)) (rhsAggFunc aggregate)) functions aggregates
+-- Generate a wrapper aggregate function for each aggregate function invocation in each rule.
+debugAggregateFunctions :: DatalogProgram -> [Function]
+debugAggregateFunctions d =
+    concat
+    $ mapIdx (\rule rlidx ->
+              concat
+              $ mapIdx (\rhs i -> case rhs of
+                                       RHSAggregate{..} -> [debugAggregateFunction d rlidx i]
+                                       _ -> [])
+              $ ruleRHS rule)
+    $ progRules d
