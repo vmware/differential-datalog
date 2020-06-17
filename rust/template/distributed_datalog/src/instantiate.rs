@@ -149,7 +149,7 @@ where
 
                     sinks
                         .entry(rel_ids.clone())
-                        .or_insert_with(|| vec![])
+                        .or_insert_with(Vec::new)
                         .insert(0, (SinkRealization::Node(sender), subscription));
 
                     server
@@ -251,7 +251,7 @@ where
 
             sinks
                 .entry(rel_ids.clone())
-                .or_insert_with(|| vec![])
+                .or_insert_with(Vec::new)
                 .insert(0, (SinkRealization::File(sink), subscription));
 
             server
@@ -291,7 +291,7 @@ where
 
             sources
                 .entry(rel_ids.clone())
-                .or_insert_with(|| vec![])
+                .or_insert_with(Vec::new)
                 .insert(0, (SourceRealization::File(source), ()));
             Ok(())
         })
