@@ -276,7 +276,7 @@ atomValidate d ctx atom = do
     _ <- checkRelation (pos atom) d $ atomRelation atom
     exprValidate d [] ctx $ atomVal atom
     -- variable cannot be declared and used in the same atom
-    uniq' (Just d) (\_ -> pos atom) id (\v -> "Variable " ++ show v ++ " is both declared and used inside relational atom " ++ show atom)
+    uniqNames (Just d) (\v -> "Variable " ++ show v ++ " is both declared and used inside relational atom " ++ show atom)
         $ exprVarDecls d ctx $ atomVal atom
 
 ruleRHSValidate :: (MonadError String me) => DatalogProgram -> Rule -> RuleRHS -> Int -> me ()

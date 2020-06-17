@@ -61,30 +61,27 @@ rulePPPrefix rl len = commaSep $ map pp $ take len $ ruleRHS rl
 -- side of a rule.
 ruleRHSNewVars :: DatalogProgram -> Rule -> Int -> [Var]
 ruleRHSNewVars d rule idx =
-    S.toList $ ruleRHSVarSet' d rule idx S.\\ ruleRHSVarSet' d rule (idx-1)
-
-ruleRHSVars :: DatalogProgram -> Rule -> Int -> [Var]
-ruleRHSVars d rl i = S.toList $ ruleRHSVarSet d rl i
+    ruleRHSVars' d rule idx \\ ruleRHSVars' d rule (idx-1)
 
 -- | Variables visible in the 'i'th conjunct in the right-hand side of
 -- a rule.  All conjuncts before 'i' must be validated before calling this
 -- function.
-ruleRHSVarSet :: DatalogProgram -> Rule -> Int -> S.Set Var
-ruleRHSVarSet d rl i = ruleRHSVarSet' d rl (i-1)
+ruleRHSVars :: DatalogProgram -> Rule -> Int -> [Var]
+ruleRHSVars d rl i = ruleRHSVars' d rl (i-1)
 
 -- Variables visible _after_ 'i'th conjunct.
-ruleRHSVarSet' :: DatalogProgram -> Rule -> Int -> S.Set Var
-ruleRHSVarSet' _ _  i | i < 0 = S.empty
-ruleRHSVarSet' d rl i =
+ruleRHSVars' :: DatalogProgram -> Rule -> Int -> [Var]
+ruleRHSVars' _ _  i | i < 0 = []
+ruleRHSVars' d rl i =
     case ruleRHS rl !! i of
-         RHSLiteral True  a            -> vs `S.union` (S.fromList $ exprVarDecls d (CtxRuleRAtom rl i) (atomVal a))
+         RHSLiteral True  a            -> nub $ vs ++ (exprVarDecls d (CtxRuleRAtom rl i) (atomVal a))
          RHSLiteral False _            -> vs
          -- assignment introduces new variables
-         RHSCondition (E e@(ESet _ l _)) -> vs `S.union` (S.fromList $ exprVarDecls d (CtxSetL e (CtxRuleRCond rl i)) l)
+         RHSCondition (E e@(ESet _ l _)) -> nub $ vs ++ (exprVarDecls d (CtxSetL e (CtxRuleRCond rl i)) l)
          -- condition does not introduce new variables
          RHSCondition _                -> vs
          -- FlatMap introduces a variable
-         RHSFlatMap _ _                -> S.insert (FlatMapVar rl i) vs
+         RHSFlatMap _ _                -> FlatMapVar rl i : vs
          -- Inspect does not introduce new variables
          RHSInspect _                  -> vs
          -- Aggregation hides all variables except groupBy vars
@@ -92,9 +89,9 @@ ruleRHSVarSet' d rl i =
          RHSAggregate _ gvars _ _      -> let ctx = CtxRuleRAggregate rl i
                                               gvars' = map (getVar d ctx) gvars
                                               avar' = AggregateVar rl i
-                                          in S.fromList $ avar':gvars'
+                                          in nub $ avar':gvars'
     where
-    vs = ruleRHSVarSet d rl i
+    vs = ruleRHSVars d rl i
 
 ruleAggregateTypeParams :: DatalogProgram -> Rule -> Int -> M.Map String Type
 ruleAggregateTypeParams d rl idx =
@@ -119,10 +116,8 @@ ruleVars d rl@Rule{..} = ruleRHSVars d rl (length ruleRHS)
 
 -- | Variables used in the head of the rule
 ruleLHSVars :: DatalogProgram -> Rule -> [Var]
-ruleLHSVars d rl = S.toList $ ruleLHSVarSet d rl
-
-ruleLHSVarSet :: DatalogProgram -> Rule -> S.Set Var
-ruleLHSVarSet d rl = S.fromList
+ruleLHSVars d rl =
+    nub
     $ concat
     $ mapIdx (\a i -> exprFreeVars d (CtxRuleL rl i) $ atomVal a)
     $ ruleLHS rl
