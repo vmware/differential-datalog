@@ -8,6 +8,7 @@ use crate::ddval::DDValue;
 use crate::program::IdxId;
 use crate::program::RelId;
 use crate::program::Update;
+use crate::record::Record;
 use crate::record::UpdCmd;
 use crate::valmap::DeltaMap;
 
@@ -67,6 +68,9 @@ pub trait DDlog: Debug {
 
     /// Query index.  Returns all values associated with the given key in the index.
     fn query_index(&self, index: IdxId, key: DDValue) -> Result<BTreeSet<DDValue>, String>;
+
+    /// Query index passing key as a record.  Returns all values associated with the given key in the index.
+    fn query_index_rec(&self, index: IdxId, key: &Record) -> Result<BTreeSet<DDValue>, String>;
 
     /// Similar to `query_index`, but extracts query from a flatbuffer.
     #[cfg(feature = "flatbuf")]
