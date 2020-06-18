@@ -967,6 +967,33 @@ pub unsafe extern "C" fn ddlog_query_index_from_flatbuf(
     -1
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_dump_index(
+    prog: *const HDDlog,
+    idxid: libc::size_t,
+    cb: Option<extern "C" fn(arg: libc::uintptr_t, rec: *const record::Record)>,
+    cb_arg: libc::uintptr_t,
+) -> raw::c_int {
+    if prog.is_null() {
+        return -1;
+    };
+    let prog = &*prog;
+
+    prog.dump_index(idxid as IdxId)
+        .map(|set| {
+            if let Some(f) = cb {
+                for val in set.iter() {
+                    f(cb_arg, &val.clone().into_record());
+                }
+            };
+            0
+        })
+        .unwrap_or_else(|e| {
+            prog.eprintln(&format!("ddlog_dump_index: error: {}", e));
+            -1
+        })
+}
+
 #[cfg(feature = "flatbuf")]
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_dump_index_to_flatbuf(
@@ -1299,5 +1326,9 @@ pub unsafe extern "C" fn ddlog_delta_union(
 
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_free_delta(delta: *mut DeltaMap<DDValue>) {
+    if delta.is_null() {
+        return;
+    };
+
     Box::from_raw(delta);
 }
