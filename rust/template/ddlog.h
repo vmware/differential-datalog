@@ -427,7 +427,6 @@ extern int ddlog_apply_updates_from_flatbuf(ddlog_prog prog,
  *
  * On success, returns `0`. On error, returns a negative value and
  * writes error message (see `print_err_msg` parameter to `ddlog_run()`).
- *
  */
 extern int ddlog_query_index_from_flatbuf(ddlog_prog prog,
                                           const unsigned char *buf,
@@ -436,6 +435,23 @@ extern int ddlog_query_index_from_flatbuf(ddlog_prog prog,
                                           size_t* resbuf_size,
                                           size_t* resbuf_capacity,
                                           size_t* resbuf_offset);
+
+/*
+ * Enumerates the entire contents of an index.
+ *
+ * `idxid` - id of the index to dump.
+ * `cb` - callback invoked for each record in the index.
+ * `cb_arg` - opaque handle passed to each `cb invocation`.
+ *
+ * On success, returns `0`. On error, returns a negative value and
+ * writes error message (see `print_err_msg` parameter to `ddlog_run()`).
+ */
+extern int
+ddlog_dump_index(ddlog_prog prog,
+                 size_t idxid,
+                 void (*cb)(uintptr_t arg, const ddlog_record *rec),
+                 uintptr_t cb_arg);
+
 
 /*
  * Dump all values in an index to a flatbuf.
@@ -495,6 +511,7 @@ extern int ddlog_clear_relation(ddlog_prog prog, table_id table);
 extern int ddlog_dump_table(ddlog_prog prog, table_id table,
                             bool (*cb)(uintptr_t arg, const ddlog_record *rec),
                             uintptr_t cb_arg);
+
 
 /**********************************************************************
  * Delta API.
@@ -699,11 +716,11 @@ extern char* ddlog_profile(ddlog_prog prog);
  * - In addition to owned records, the client can also obtain pointers to
  *   *borrowed* records in one of two ways:
  *
- *    1. By invoking the `ddlog_dump_table()` function to enumerate the
- *       content of an output table.  This function takes a user callback
- *       and invokes it once for each record in the table.  The record,
- *       passed as argument to the callback is owned by DDlog and is only
- *       valid for the duration of the callback.
+ *    1. By invoking `ddlog_dump_table()` or `ddlog_dump_index()` to
+ *       enumerate the content of an output table or index.  These functions
+ *       take a user callback and invoke it once for each record in the table
+ *       or index.  The record, passed as argument to the callback is owned
+ *       by DDlog and is only valid for the duration of the callback.
  *       (TODO: the only reason for this is convenience, so the client
  *       does not need to worry about deallocating the record later.
  *       The API could be changed to return owned records.)
