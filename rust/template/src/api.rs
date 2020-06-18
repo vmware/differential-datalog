@@ -686,7 +686,7 @@ pub unsafe extern "C" fn ddlog_dump_input_snapshot(
     if prog.is_null() || fd < 0 {
         return -1;
     };
-    let prog = Arc::from_raw(prog);
+    let prog = &*prog;
     // Convert file descriptor to file handle on Windows.
     let handle = libc::get_osfhandle(fd);
     let mut file = fs::File::from_raw_handle(handle as RawHandle);
@@ -698,7 +698,6 @@ pub unsafe extern "C" fn ddlog_dump_input_snapshot(
             -1
         });
     file.into_raw_handle();
-    Arc::into_raw(prog);
     res
 }
 
@@ -741,15 +740,12 @@ pub unsafe extern "C" fn ddlog_transaction_start(prog: *const HDDlog) -> raw::c_
     if prog.is_null() {
         return -1;
     };
-    let prog = Arc::from_raw(prog);
+    let prog = &*prog;
 
-    let res = prog.transaction_start().map(|_| 0).unwrap_or_else(|e| {
+    prog.transaction_start().map(|_| 0).unwrap_or_else(|e| {
         prog.eprintln(&format!("ddlog_transaction_start(): error: {}", e));
         -1
-    });
-
-    Arc::into_raw(prog);
-    res
+    })
 }
 
 #[no_mangle]
@@ -759,10 +755,9 @@ pub unsafe extern "C" fn ddlog_transaction_commit_dump_changes(
     if prog.is_null() {
         return ptr::null_mut();
     };
-    let prog = Arc::from_raw(prog);
+    let prog = &*prog;
 
-    let res = prog
-        .transaction_commit_dump_changes()
+    prog.transaction_commit_dump_changes()
         .map(|delta| Box::into_raw(Box::new(delta)))
         .unwrap_or_else(|e| {
             prog.eprintln(&format!(
@@ -770,10 +765,7 @@ pub unsafe extern "C" fn ddlog_transaction_commit_dump_changes(
                 e
             ));
             ptr::null_mut()
-        });
-
-    Arc::into_raw(prog);
-    res
+        })
 }
 
 #[repr(C)]
@@ -792,8 +784,8 @@ pub unsafe extern "C" fn ddlog_transaction_commit_dump_changes_as_array(
     if prog.is_null() {
         return -1;
     };
-    let prog = Arc::from_raw(prog);
-    let res = do_transaction_commit_dump_changes_as_array(&*prog, changes, num_changes)
+    let prog = &*prog;
+    do_transaction_commit_dump_changes_as_array(prog, changes, num_changes)
         .map(|_| 0)
         .unwrap_or_else(|e| {
             prog.eprintln(&format!(
@@ -801,10 +793,7 @@ pub unsafe extern "C" fn ddlog_transaction_commit_dump_changes_as_array(
                 e
             ));
             -1
-        });
-
-    Arc::into_raw(prog);
-    res
+        })
 }
 
 unsafe fn do_transaction_commit_dump_changes_as_array(
@@ -860,10 +849,9 @@ pub unsafe extern "C" fn ddlog_transaction_commit_dump_changes_to_flatbuf(
     if prog.is_null() || buf_size.is_null() || buf_capacity.is_null() || buf_offset.is_null() {
         return -1;
     };
-    let prog = Arc::from_raw(prog);
+    let prog = &*prog;
 
-    let res = prog
-        .transaction_commit_dump_changes()
+    prog.transaction_commit_dump_changes()
         .map(|changes| {
             let (fbvec, fboffset) = flatbuf::updates_to_flatbuf(&changes);
             *buf = fbvec.as_ptr();
@@ -879,10 +867,7 @@ pub unsafe extern "C" fn ddlog_transaction_commit_dump_changes_to_flatbuf(
                 e
             ));
             -1
-        });
-
-    Arc::into_raw(prog);
-    res
+        })
 }
 
 #[cfg(not(feature = "flatbuf"))]
@@ -897,9 +882,8 @@ pub unsafe extern "C" fn ddlog_transaction_commit_dump_changes_to_flatbuf(
     if prog.is_null() {
         return -1;
     };
-    let prog = Arc::from_raw(prog);
+    let prog = &*prog;
     prog.eprintln("ddlog_transaction_commit_dump_changes_to_flatbuf(): error: DDlog was compiled without FlatBuffers support");
-    Arc::into_raw(prog);
     -1
 }
 
@@ -923,9 +907,9 @@ pub unsafe extern "C" fn ddlog_query_index_from_flatbuf(
     {
         return -1;
     };
-    let prog = Arc::from_raw(prog);
+    let prog = &*prog;
 
-    let ret = flatbuf::query_from_flatbuf(slice::from_raw_parts(buf, n))
+    flatbuf::query_from_flatbuf(slice::from_raw_parts(buf, n))
         .and_then(|(idxid, key)| {
             prog.query_index(idxid, key).map(|res| {
                 let (fbvec, fboffset) = flatbuf::idx_values_to_flatbuf(idxid, res.iter());
@@ -940,9 +924,7 @@ pub unsafe extern "C" fn ddlog_query_index_from_flatbuf(
         .unwrap_or_else(|e| {
             prog.eprintln(&format!("ddlog_query_index_from_flatbuf(): error: {}", e));
             -1
-        });
-    Arc::into_raw(prog);
-    ret
+        })
 }
 
 #[cfg(not(feature = "flatbuf"))]
@@ -959,11 +941,10 @@ pub unsafe extern "C" fn ddlog_query_index_from_flatbuf(
     if prog.is_null() {
         return -1;
     };
-    let prog = Arc::from_raw(prog);
+    let prog = &*prog;
     prog.eprintln(
         "ddlog_query_index_from_flatbuf(): error: DDlog was compiled without FlatBuffers support",
     );
-    Arc::into_raw(prog);
     -1
 }
 
@@ -1012,10 +993,9 @@ pub unsafe extern "C" fn ddlog_dump_index_to_flatbuf(
     {
         return -1;
     };
-    let prog = Arc::from_raw(prog);
+    let prog = &*prog;
 
-    let ret = prog
-        .dump_index(idxid as IdxId)
+    prog.dump_index(idxid as IdxId)
         .map(|res| {
             let (fbvec, fboffset) = flatbuf::idx_values_to_flatbuf(idxid, res.iter());
             *resbuf = fbvec.as_ptr();
@@ -1028,9 +1008,7 @@ pub unsafe extern "C" fn ddlog_dump_index_to_flatbuf(
         .unwrap_or_else(|e| {
             prog.eprintln(&format!("ddlog_dump_index_to_flatbuf(): error: {}", e));
             -1
-        });
-    Arc::into_raw(prog);
-    ret
+        })
 }
 
 #[cfg(not(feature = "flatbuf"))]
@@ -1046,11 +1024,10 @@ pub unsafe extern "C" fn ddlog_dump_index_to_flatbuf(
     if prog.is_null() {
         return -1;
     };
-    let prog = Arc::from_raw(prog);
+    let prog = &*prog;
     prog.eprintln(
         "ddlog_dump_index_to_flatbuf(): error: DDlog was compiled without FlatBuffers support",
     );
-    Arc::into_raw(prog);
     -1
 }
 
@@ -1068,15 +1045,12 @@ pub unsafe extern "C" fn ddlog_transaction_commit(prog: *const HDDlog) -> raw::c
     if prog.is_null() {
         return -1;
     };
-    let prog = Arc::from_raw(prog);
+    let prog = &*prog;
 
-    let res = prog.transaction_commit().map(|_| 0).unwrap_or_else(|e| {
+    prog.transaction_commit().map(|_| 0).unwrap_or_else(|e| {
         prog.eprintln(&format!("ddlog_transaction_commit(): error: {}", e));
         -1
-    });
-
-    Arc::into_raw(prog);
-    res
+    })
 }
 
 #[no_mangle]
@@ -1084,14 +1058,12 @@ pub unsafe extern "C" fn ddlog_transaction_rollback(prog: *const HDDlog) -> raw:
     if prog.is_null() {
         return -1;
     };
-    let prog = Arc::from_raw(prog);
+    let prog = &*prog;
 
-    let res = prog.transaction_rollback().map(|_| 0).unwrap_or_else(|e| {
+    prog.transaction_rollback().map(|_| 0).unwrap_or_else(|e| {
         prog.eprintln(&format!("ddlog_transaction_rollback(): error: {}", e));
         -1
-    });
-    Arc::into_raw(prog);
-    res
+    })
 }
 
 #[no_mangle]
@@ -1126,17 +1098,14 @@ pub unsafe extern "C" fn ddlog_apply_updates_from_flatbuf(
     if prog.is_null() || buf.is_null() {
         return -1;
     };
-    let prog = Arc::from_raw(prog);
+    let prog = &*prog;
 
-    let res = prog
-        .apply_updates_from_flatbuf(slice::from_raw_parts(buf, n))
+    prog.apply_updates_from_flatbuf(slice::from_raw_parts(buf, n))
         .map(|_| 0)
         .unwrap_or_else(|e| {
             prog.eprintln(&format!("ddlog_apply_updates_from_flatbuf(): error: {}", e));
             -1
-        });
-    Arc::into_raw(prog);
-    res
+        })
 }
 
 #[cfg(not(feature = "flatbuf"))]
@@ -1149,9 +1118,8 @@ pub unsafe extern "C" fn ddlog_apply_updates_from_flatbuf(
     if prog.is_null() {
         return -1;
     };
-    let prog = Arc::from_raw(prog);
+    let prog = &*prog;
     prog.eprintln(&"ddlog_apply_updates_from_flatbuf(): error: DDlog was compiled without FlatBuffers support");
-    Arc::into_raw(prog);
     -1
 }
 
@@ -1163,14 +1131,12 @@ pub unsafe extern "C" fn ddlog_clear_relation(
     if prog.is_null() {
         return -1;
     };
-    let prog = Arc::from_raw(prog);
+    let prog = &*prog;
 
-    let res = prog.clear_relation(table).map(|_| 0).unwrap_or_else(|e| {
+    prog.clear_relation(table).map(|_| 0).unwrap_or_else(|e| {
         prog.eprintln(&format!("ddlog_clear_relation(): error: {}", e));
         -1
-    });
-    Arc::into_raw(prog);
-    res
+    })
 }
 
 #[no_mangle]
@@ -1183,17 +1149,14 @@ pub unsafe extern "C" fn ddlog_dump_table(
     if prog.is_null() {
         return -1;
     };
-    let prog = Arc::from_raw(prog);
+    let prog = &*prog;
 
     let f = cb.map(|f| move |rec: &record::Record| f(cb_arg, rec));
 
-    let res = prog.dump_table(table, f).map(|_| 0).unwrap_or_else(|e| {
+    prog.dump_table(table, f).map(|_| 0).unwrap_or_else(|e| {
         prog.eprintln(&format!("ddlog_dump_table(): error: {}", e));
         -1
-    });
-
-    Arc::into_raw(prog);
-    res
+    })
 }
 
 #[no_mangle]
@@ -1204,11 +1167,9 @@ pub unsafe extern "C" fn ddlog_enable_cpu_profiling(
     if prog.is_null() {
         return -1;
     };
-    let prog = Arc::from_raw(prog);
+    let prog = &*prog;
 
     prog.enable_cpu_profiling(enable);
-
-    Arc::into_raw(prog);
     0
 }
 
@@ -1217,19 +1178,15 @@ pub unsafe extern "C" fn ddlog_profile(prog: *const HDDlog) -> *const raw::c_cha
     if prog.is_null() {
         return ptr::null();
     };
-    let prog = Arc::from_raw(prog);
+    let prog = &*prog;
 
-    let res = {
-        let profile = prog.profile();
-        ffi::CString::new(profile)
-            .map(ffi::CString::into_raw)
-            .unwrap_or_else(|e| {
-                prog.eprintln(&format!("Failed to convert profile string to C: {}", e));
-                ptr::null_mut()
-            })
-    };
-    Arc::into_raw(prog);
-    res
+    let profile = prog.profile();
+    ffi::CString::new(profile)
+        .map(ffi::CString::into_raw)
+        .unwrap_or_else(|e| {
+            prog.eprintln(&format!("Failed to convert profile string to C: {}", e));
+            ptr::null_mut()
+        })
 }
 
 #[no_mangle]
