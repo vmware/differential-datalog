@@ -288,6 +288,18 @@ impl DDlog for HDDlog {
         self.prog.lock().unwrap().query_arrangement(arrid, key)
     }
 
+    fn query_index_rec(
+        &self,
+        index: IdxId,
+        key: &record::Record,
+    ) -> Result<BTreeSet<DDValue>, String> {
+        let idx = Indexes::try_from(index).map_err(|()| format!("unknown index {}", index))?;
+        let k = idxkey_from_record(idx, key)?;
+        self.record_query_index(index, &k);
+        let arrid = indexes2arrid(idx);
+        self.prog.lock().unwrap().query_arrangement(arrid, k)
+    }
+
     #[cfg(feature = "flatbuf")]
     fn query_index_from_flatbuf(&self, buf: &[u8]) -> Result<BTreeSet<DDValue>, String> {
         let (idxid, key) = flatbuf::query_from_flatbuf(buf)?;
@@ -961,6 +973,34 @@ pub unsafe extern "C" fn ddlog_dump_index(
     let prog = &*prog;
 
     prog.dump_index(idxid as IdxId)
+        .map(|set| {
+            if let Some(f) = cb {
+                for val in set.iter() {
+                    f(cb_arg, &val.clone().into_record());
+                }
+            };
+            0
+        })
+        .unwrap_or_else(|e| {
+            prog.eprintln(&format!("ddlog_dump_index: error: {}", e));
+            -1
+        })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_query_index(
+    prog: *const HDDlog,
+    idxid: libc::size_t,
+    key: *const record::Record,
+    cb: Option<extern "C" fn(arg: libc::uintptr_t, rec: *const record::Record)>,
+    cb_arg: libc::uintptr_t,
+) -> raw::c_int {
+    if prog.is_null() {
+        return -1;
+    };
+    let prog = &*prog;
+
+    prog.query_index_rec(idxid as IdxId, &*key)
         .map(|set| {
             if let Some(f) = cb {
                 for val in set.iter() {

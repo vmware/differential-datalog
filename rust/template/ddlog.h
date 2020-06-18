@@ -410,6 +410,26 @@ extern int ddlog_apply_updates_from_flatbuf(ddlog_prog prog,
                                             size_t n);
 
 /*
+ * Query index by key.
+ *
+ * `idxid` - id of the index to dump.
+ * `key` - query key.
+ *     NOTE: the caller keeps ownership of `key` after the call and
+ *     must deallocate it usin `ddlog_free()`.
+ * `cb` - callback invoked for each returned record.
+ * `cb_arg` - opaque handle passed to each `cb invocation`.
+ *
+ * On success, returns `0`. On error, returns a negative value and
+ * writes error message (see `print_err_msg` parameter to `ddlog_run()`).
+ */
+extern int
+ddlog_query_index(ddlog_prog prog,
+                  size_t idxid,
+                  ddlog_record *key,
+                  void (*cb)(uintptr_t arg, const ddlog_record *rec),
+                  uintptr_t cb_arg);
+
+/*
  * Perform a query serialized in a flatbuf; return result in another flatbuf.
  *
  * The FlatBuffer schema is auto-generated from DDlog code and is stored in
