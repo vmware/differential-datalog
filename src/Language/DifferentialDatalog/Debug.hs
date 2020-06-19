@@ -35,6 +35,7 @@ where
 
 import Data.Maybe
 import Data.Char
+import Text.PrettyPrint
 
 import {-# SOURCE #-} qualified Language.DifferentialDatalog.Compile as Compile
 import Language.DifferentialDatalog.NS
@@ -49,7 +50,7 @@ import Language.DifferentialDatalog.Util
 addBindingToRHSLiteral :: (RuleRHS, Int) -> RuleRHS
 addBindingToRHSLiteral (r@(RHSLiteral True _), index) =
   let
-    bindingName = "__" ++ (map toLower $ atomRelation $ rhsAtom r) ++ (show index)
+    bindingName = "__" ++ (render $ Compile.rname $ map toLower $ atomRelation $ rhsAtom r) ++ (show index)
     expr = atomVal $ rhsAtom r
     exprNode = enode expr
     updatedAtomVal = case exprNode of
