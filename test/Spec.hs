@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018-2019 VMware, Inc.
+Copyright (c) 2018-2020 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -47,6 +47,7 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Set as S
 import qualified Codec.Compression.GZip as GZ
 
+import Language.DifferentialDatalog.Config
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Parse
 import Language.DifferentialDatalog.Module
@@ -254,7 +255,7 @@ generateDDLogRust java file crate_types = do
     (prog, rs_code, toml_code) <- parseValidate fname java body
     -- generate Rust project
     let dir = takeDirectory fname
-    let ?cfg = defaultCompilerConfig { cconfJava = java }
+    let ?cfg = defaultConfig { confDatalogFile = fname, confJava = java }
     compile prog specname rs_code toml_code dir crate_types
 
 -- Feed test data via pipe if a .dat file exists

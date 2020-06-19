@@ -32,6 +32,7 @@ import Control.Monad
 import Data.List
 import Text.PrettyPrint
 
+import Language.DifferentialDatalog.Config
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Version
 import Language.DifferentialDatalog.Syntax
@@ -55,13 +56,10 @@ data TOption = Help
              | StaticLib
              | NoStaticLib
              | DebugHooks
-             | DumpSource
-
-data DLAction = ActionCompile
-              | ActionValidate
-              | ActionHelp
-              | ActionVersion
-              deriving Eq
+             | DumpFlat
+             | DumpValid
+             | DumpDebug
+             | DumpOpt
 
 options :: [OptDescr TOption]
 options = [ Option ['h'] ["help"]             (NoArg Help)                      "Display help message."
@@ -78,36 +76,11 @@ options = [ Option ['h'] ["help"]             (NoArg Help)                      
           , Option []    ["staticlib"]        (NoArg StaticLib)                 "Generate static library (default)."
           , Option []    ["no-staticlib"]     (NoArg NoStaticLib)               "Do not generate static library."
           , Option ['g'] []                   (NoArg DebugHooks)                "Enable debugging hooks."
-          , Option []    ["pretty-print"]     (NoArg DumpSource)                "Dump the source after performing all transformations into an ast file (FILE.ast)."
+          , Option []    ["pp-flattened"]     (NoArg DumpFlat)                  "Dump the source after compilation pass 1 (flattening module hierarchy) to PROG.flat.ast."
+          , Option []    ["pp-validated"]     (NoArg DumpValid)                 "Dump the source after compilation pass 2 (validation, including several source transformations) to PROG.valid.ast."
+          , Option []    ["pp-debug"]         (NoArg DumpDebug)                 "Dump the source after compilation pass 3 (injecting debugging hooks) to FILE.debug.ast.  If the '-g' option is not specified, then pass 3 is a no-op and will produce identical output to pass 2."
+          , Option []    ["pp-optimized"]     (NoArg DumpOpt)                   "Dump the source after compilation pass 4 (optimization) to FILE.opt.ast."
           ]
-
-data Config = Config { confDatalogFile   :: FilePath
-                     , confAction        :: DLAction
-                     , confLibDirs       :: [FilePath]
-                     , confOutputDir     :: FilePath
-                     , confOutputInput   :: String
-                     , confStaticLib     :: Bool
-                     , confDynamicLib    :: Bool
-                     , confJava          :: Bool
-                     , confOutputInternal:: Bool
-                     , confDebugHooks    :: Bool
-                     , confDumpSource    :: Bool
-                     }
-
-defaultConfig :: Config
-defaultConfig = Config { confDatalogFile   = ""
-                       , confAction        = ActionCompile
-                       , confLibDirs       = []
-                       , confOutputDir     = ""
-                       , confStaticLib     = True
-                       , confDynamicLib    = False
-                       , confOutputInternal= False
-                       , confOutputInput   = ""
-                       , confJava          = False
-                       , confDebugHooks    = False
-                       , confDumpSource     = False
-                       }
-
 
 addOption :: Config -> TOption -> IO Config
 addOption config (Datalog f)      = return config{ confDatalogFile  = f}
@@ -128,7 +101,10 @@ addOption config NoStaticLib      = return config { confStaticLib = False }
 addOption config Help             = return config { confAction = ActionHelp}
 addOption config Version          = return config { confAction = ActionVersion}
 addOption config DebugHooks       = return config { confDebugHooks = True }
-addOption config DumpSource       = return config { confDumpSource = True }
+addOption config DumpFlat         = return config { confDumpFlat = True }
+addOption config DumpValid        = return config { confDumpValid = True }
+addOption config DumpDebug        = return config { confDumpDebug = True }
+addOption config DumpOpt          = return config { confDumpOpt = True }
 
 validateConfig :: Config -> IO ()
 validateConfig Config{..} = do
@@ -169,21 +145,23 @@ parseValidate Config{..} = do
     d''' <- case confOutputInput of
          "" -> return d''
          x  ->  return $ progMirrorInputRelations d'' x
+    when confDumpFlat $
+        writeFile (replaceExtension confDatalogFile ".flat.ast") (show d''')
     d'''' <- case validate d''' of
                Left e   -> errorWithoutStackTrace $ "error: " ++ e
                Right d'''' -> return d''''
+    when confDumpValid $
+        writeFile (replaceExtension confDatalogFile ".valid.ast") (show d'''')
     d' <- case confDebugHooks of
          False -> return d''''
          True  -> return $ progInjectDebuggingHooks d''''
+    when confDumpDebug $
+        writeFile (replaceExtension confDatalogFile ".debug.ast") (show d')
     when confJava $
         case flatBufferValidate d of
              Left e  -> errorWithoutStackTrace $ "error: " ++ e
              Right{} -> return ()
     return (d', rs_code, toml_code)
-
-dumpSource :: DatalogProgram -> FilePath -> IO ()
-dumpSource prog fname = do
-  writeFile fname (show prog ++ "\n")
 
 compileProg :: Config -> IO ()
 compileProg conf@Config{..} = do
@@ -193,8 +171,5 @@ compileProg conf@Config{..} = do
     let dir = (if confOutputDir == "" then takeDirectory confDatalogFile else confOutputDir)
     let crate_types = (if confStaticLib then ["staticlib"] else []) ++
                       (if confDynamicLib then ["cdylib"] else [])
-    let ?cfg = CompilerConfig{ cconfJava = confJava }
-    case confDumpSource of
-        False -> return ()
-        True -> dumpSource prog $ replaceExtension confDatalogFile "ast"
+    let ?cfg = conf
     compile prog specname rs_code toml_code dir crate_types
