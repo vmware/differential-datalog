@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::File;
 use std::net::SocketAddr;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
@@ -166,7 +166,14 @@ where
 fn add_tcp_receiver<P>(
     txnmux: &mut TxnMux<Update<DDValue>, String>,
     addr: &SocketAddr,
-    sources: &mut HashMap<BTreeSet<RelId>, Vec<(SourceRealization<P::Convert>, ())>>,
+    sources: &mut HashMap<
+        Source,
+        (
+            Option<SourceRealization<P::Convert>>,
+            SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>,
+            (),
+        ),
+    >,
 ) -> Result<(), String>
 where
     P: Send + DDlog + 'static,
@@ -176,9 +183,16 @@ where
         TcpReceiver::new(addr).map_err(|e| format!("failed to create TcpReceiver: {}", e))?;
     let receiver = Arc::new(Mutex::new(receiver));
     // an empty set indicates the TcpReceiver
+
+    // "Empty" accumulator because
+    let accumulator = Arc::new(Mutex::new(DistributingAccumulator::new()));
     let _ = sources.insert(
-        BTreeSet::new(),
-        vec![(SourceRealization::Node(receiver.clone()), ())],
+        Source::TcpReceiver,
+        (
+            Some(SourceRealization::Node(receiver.clone())),
+            accumulator,
+            (),
+        ),
     );
 
     txnmux
@@ -204,6 +218,7 @@ fn deduce_sinks_or_sources(node_cfg: &NodeCfg, sinks: bool) -> BTreeMap<&Path, B
                         Source::File(path) => {
                             let _ = map.entry(path).or_default().insert(*relid);
                         }
+                        _ => (),
                     },
                     _ => (),
                 };
@@ -266,7 +281,14 @@ where
 fn add_file_sources<P>(
     txnmux: &mut TxnMux<Update<DDValue>, String>,
     node_cfg: &NodeCfg,
-    sources: &mut HashMap<BTreeSet<RelId>, Vec<(SourceRealization<P::Convert>, ())>>,
+    sources: &mut HashMap<
+        Source,
+        (
+            Option<SourceRealization<P::Convert>>,
+            SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>,
+            (),
+        ),
+    >,
 ) -> Result<(), String>
 where
     P: DDlog + 'static,
@@ -274,7 +296,7 @@ where
 {
     deduce_sinks_or_sources(node_cfg, false)
         .iter()
-        .try_for_each(|(path, rel_ids)| {
+        .try_for_each(|(path, _rel_ids)| {
             let mut source = Arc::new(Mutex::new(FileSource::<P::Convert>::new(path)));
 
             let accumulator = Arc::new(Mutex::new(DistributingAccumulator::new()));
@@ -282,17 +304,20 @@ where
                 .add_observable(Box::new(accumulator.clone()))
                 .map_err(|_| "failed to register Accumulator with TxnMux".to_string())?;
 
-            source.subscribe(Box::new(accumulator)).map_err(|_| {
-                format!(
-                    "failed to add file source {} to accumulator",
-                    path.display()
-                )
-            })?;
+            source
+                .subscribe(Box::new(accumulator.clone()))
+                .map_err(|_| {
+                    format!(
+                        "failed to add file source {} to accumulator",
+                        path.display()
+                    )
+                })?;
 
-            sources
-                .entry(rel_ids.clone())
-                .or_insert_with(Vec::new)
-                .insert(0, (SourceRealization::File(source), ()));
+            let pathbuf = PathBuf::from(path);
+            let _ = sources.insert(
+                Source::File(pathbuf),
+                (Some(SourceRealization::File(source)), accumulator, ()),
+            );
             Ok(())
         })
 }
@@ -376,7 +401,14 @@ where
     P::Convert: Send + DDlogConvert,
 {
     /// All sources of this realization and the subscription the node has to them
-    _sources: HashMap<BTreeSet<RelId>, Vec<(SourceRealization<P::Convert>, ())>>,
+    _sources: HashMap<
+        Source,
+        (
+            Option<SourceRealization<P::Convert>>,
+            SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>,
+            (),
+        ),
+    >,
     /// The transaction multiplexer as input to the DDLogServer
     _txnmux: TxnMux<Update<DDValue>, String>,
     /// All sink accumulators of this realization to connect new nodes to
