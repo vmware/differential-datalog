@@ -1098,7 +1098,9 @@ instance PP DatalogProgram where
                              ++
                              (map pp progRules)
                              ++
-                             (map pp progApplys))
+                             (map pp progApplys)
+                             ++
+                             ["\n"])
 
 instance Show DatalogProgram where
     show = render . pp

@@ -85,6 +85,7 @@ import GHC.IO.Exception
 --import Debug.Trace
 import qualified Data.ByteString.Char8 as BS
 
+import Language.DifferentialDatalog.Config
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Type
 import Language.DifferentialDatalog.PP
@@ -97,7 +98,7 @@ import Language.DifferentialDatalog.Index
 import Language.DifferentialDatalog.Error
 import {-# SOURCE #-} qualified Language.DifferentialDatalog.Compile as R -- "R" for "Rust"
 
-compileFlatBufferBindings :: (?cfg::R.CompilerConfig) => DatalogProgram -> String -> FilePath -> IO ()
+compileFlatBufferBindings :: (?cfg::Config) => DatalogProgram -> String -> FilePath -> IO ()
 compileFlatBufferBindings prog specname dir = do
     let flatbuf_dir = dir </> "flatbuf"
     let java_dir = dir </> "flatbuf" </> "java"
@@ -202,7 +203,7 @@ compileFlatBufferSchema d prog_name =
 --                        and their implementation for all standard, library,
 --                        user-defined types.
 -- * `value/flatbuf.rs` - serialize commands to/from flatbuffers.
-compileFlatBufferRustBindings :: (?cfg::R.CompilerConfig) => DatalogProgram -> String -> FilePath ->  IO ()
+compileFlatBufferRustBindings :: (?cfg::Config) => DatalogProgram -> String -> FilePath ->  IO ()
 compileFlatBufferRustBindings d prog_name dir = do
     let ?d = d
     let ?prog_name = prog_name
@@ -1455,7 +1456,7 @@ jReadField nesting fbctx e t =
 
 {- Rust bindings -}
 
-rustValueFromFlatbuf :: (?d::DatalogProgram, ?cfg::R.CompilerConfig) => Doc
+rustValueFromFlatbuf :: (?d::DatalogProgram, ?cfg::Config) => Doc
 rustValueFromFlatbuf =
     "fn relval_from_flatbuf(relid: RelId, v: fbrt::Table) -> Response<DDValue> {"               $$
     "    match relid {"                                                                         $$
