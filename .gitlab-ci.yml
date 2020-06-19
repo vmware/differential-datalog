@@ -44,8 +44,8 @@ test-rust:
 # Run individual stack-based tests, when possible combining them with Java tests
 # that depend on the same DDlog program.
 test-tutorial:
-    script: stack --no-terminal test --ta "-p tutorial"
-
+    script:
+        - (cd test/datalog_tests && DDLOGFLAGS="-g" ./run-test.sh tutorial release)
 # Test individual libraries
 
 test-libs:
@@ -71,12 +71,12 @@ test-simple:
     tags:
         - ddlog-ci-1
     script:
-    - stack --no-terminal test --ta '-p "$(NF) == \"generate simple\" || ($(NF-1) == \"compiler tests\" && $(NF) == \"simple\")"'
+    - (cd test/datalog_tests && DDLOGFLAGS="-g" ./run-test.sh simple release)
     - cd test/datalog_tests/simple_ddlog/ && LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/ cargo build --features='profile'
 
 test-simple2:
     script:
-    - (cd test/datalog_tests && ./run-test.sh simple2 release)
+    - (cd test/datalog_tests && DDLOGFLAGS="-g" ./run-test.sh simple2 release)
 
 test-modules:
     script: stack --no-terminal test --ta "-p modules"

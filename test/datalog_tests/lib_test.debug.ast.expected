@@ -1,0 +1,1053 @@
+typedef fp_test.BB = fp_test.BB{s: string, b: bool}
+typedef fp_test.D = fp_test.D{s: string, d: double}
+typedef fp_test.DoublesFromRecord = fp_test.DoublesFromRecord{s: string, d: double}
+typedef fp_test.F = fp_test.F{s: string, d: float}
+typedef fp_test.FloatsFromRecord = fp_test.FloatsFromRecord{s: string, f: float}
+#[size = 8]
+#[shared_ref = true]
+extern type internment.Intern<'A>
+typedef internment.istring = internment.Intern<string>
+typedef internment_test.AllInternedString = internment_test.AllInternedString{ix: internment.istring}
+typedef internment_test.IInternedString = internment_test.IInternedString{ix: internment.istring}
+typedef internment_test.IStruct = internment_test.IStruct{u: internment.Intern<internment_test.IUnion>, t: internment.Intern<(std.s32, double)>, x: bigint}
+typedef internment_test.IUnion = internment_test.Tag1{f1: bool} | internment_test.Tag2{f2: std.u32, f3: string}
+typedef internment_test.OInternedString = internment_test.OInternedString{x: string, ix: internment.istring}
+typedef internment_test.Projections = internment_test.Projections{inp: internment_test.IStruct, p: string}
+typedef internment_test.StaticInternedString = internment_test.StaticInternedString{ix: internment.istring}
+typedef json.JsonNum = json.JsonInt{i: std.s128} | json.JsonFloat{d: double}
+#[rust = "serde(from = \"__json::ValueWrapper\", into = \"__json::ValueWrapper\")"]
+typedef json.JsonValue = json.JsonNull{} | json.JsonBool{b: bool} | json.JsonNumber{n: json.JsonNum} | json.JsonString{s: internment.istring} | json.JsonArray{a: std.Vec<json.JsonValue>} | json.JsonObject{o: std.Map<internment.istring,json.JsonValue>}
+#[custom_serde = true]
+typedef json.JsonWrapper<'T> = json.JsonWrapper{x: 'T}
+typedef json_test.Array = std.Vec<json_test.BoolStruct>
+typedef json_test.BoolMap = std.Map<string,json_test.BoolStruct>
+typedef json_test.BoolStruct = json_test.BoolStruct{b: bool}
+typedef json_test.Enum = #[rust = "serde(rename = \"Variant1\")"]
+                         json_test.Variant1{b: bool} | #[rust = "serde(rename = \"Variant2\")"]
+                                                       json_test.Variant2{u: std.u32}
+typedef json_test.JsonTest = json_test.JsonTest{description: string, value: string}
+typedef json_test.Nested = json_test.Nested{x: string, z: std.u64}
+typedef json_test.Optional = json_test.Optional{s: std.Option<string>, i: std.Option<std.u64>, v: std.Option<json.JsonValue>}
+typedef json_test.S32FromString = json_test.S32FromString{#[rust = "serde(with=\"serde_string\")"] x: std.s32}
+typedef json_test.StructWithKey = json_test.StructWithKey{key: std.u64, payload: string}
+typedef json_test.StructWithMap = json_test.StructWithMap{#[deserialize_from_array = json_test.key_structWithKey()] f: std.Map<std.u64,json_test.StructWithKey>}
+#[rust = "serde(tag = \"@type\")"]
+typedef json_test.TaggedEnum = #[rust = "serde(rename = \"t.V1\")"]
+                               json_test.TVariant1{b: bool} | #[rust = "serde(rename = \"t.V2\")"]
+                                                              json_test.TVariant2{u: std.u32}
+typedef json_test.Top = json_test.Top{t: string, id: string, nested: json_test.Nested}
+typedef json_test.TopFlat = json_test.TopFlat{t: string, #[rust = "serde(rename=\"@id\")"] id: string, #[rust = "serde(flatten)"] nested: json_test.Nested}
+typedef json_test.U64FromString = json_test.U64FromString{x: string, #[rust = "serde(with=\"serde_string\")"] y: std.u64}
+typedef json_test.WrappedEnum = json.JsonWrapper<json_test.TaggedEnum>
+typedef log.log_level_t = signed<32>
+typedef log.module_t = signed<32>
+typedef net.ipaddr.IpAddr = net.ipaddr.IpAddrV4{addr4: net.ipv4.Ipv4Addr} | net.ipaddr.IpAddrV6{addr6: net.ipv6.Ipv6Addr}
+extern type net.ipv4.Ipv4Addr
+extern type net.ipv6.Ipv6Addr
+typedef net_test.NetChecks = net_test.NetChecks{description: string, value: string}
+extern type regex.Regex
+typedef regex_test.RegexTestInput = regex_test.RegexTestInput{regex: string, text: string}
+typedef regex_test.RegexTestOutput = regex_test.RegexTestOutput{regex: string, text: string, match_found: bool, match_found_checked: bool, first_match: std.Option<string>, all_matches: std.Vec<string>}
+typedef std.DDEpoch = std.u64
+typedef std.DDIteration = std.u64
+typedef std.DDNestedTS = std.DDNestedTS{epoch: std.DDEpoch, iter: std.DDIteration}
+typedef std.DDWeight = std.s64
+typedef std.Either<'A,'B> = std.Left{l: 'A} | std.Right{r: 'B}
+extern type std.Group<'K,'V>
+extern type std.Map<'K,'V>
+#[rust = "serde(from=\"Option<A>\", into=\"Option<A>\", bound(serialize=\"A: Clone+Serialize\"))"]
+#[custom_from_record = true]
+typedef std.Option<'A> = std.None{} | std.Some{x: 'A}
+#[size = 8]
+#[shared_ref = true]
+extern type std.Ref<'A>
+typedef std.Result<'V,'E> = std.Ok{res: 'V} | std.Err{err: 'E}
+extern type std.Set<'A>
+extern type std.Vec<'A>
+typedef std.s128 = signed<128>
+typedef std.s16 = signed<16>
+typedef std.s32 = signed<32>
+typedef std.s64 = signed<64>
+typedef std.s8 = signed<8>
+typedef std.u128 = bit<128>
+typedef std.u16 = bit<16>
+typedef std.u32 = bit<32>
+typedef std.u64 = bit<64>
+typedef std.u8 = bit<8>
+typedef std.usize = std.u64
+typedef std_test.MapSizes = std_test.MapSizes{m: std.Map<std.u64,string>, size: std.usize}
+typedef std_test.Maps = std_test.Maps{m: std.Map<std.u64,string>}
+typedef std_test.SetDifference = std_test.SetDifference{s1: std.Set<std.u64>, s2: std.Set<std.u64>, diff: std.Set<std.u64>}
+typedef std_test.SetPairs = std_test.SetPairs{s1: std.Set<std.u64>, s2: std.Set<std.u64>}
+typedef std_test.SortedVector = std_test.SortedVector{v: std.Vec<bigint>}
+typedef std_test.SortedVectorInPlace = std_test.SortedVectorInPlace{v: std.Vec<bigint>}
+typedef std_test.Vector = std_test.Vector{v: std.Vec<bigint>}
+extern type tinyset.Set64<'X>
+typedef tinyset_test.Diffs = tinyset_test.Diffs{setid1: string, setid2: string, set: tinyset.Set64<std.u32>}
+typedef tinyset_test.Intersects = tinyset_test.Intersects{setid1: string, setid2: string, set: tinyset.Set64<std.u32>}
+typedef tinyset_test.Intersects2 = tinyset_test.Intersects2{setid1: string, setid2: string, set: tinyset.Set64<std.u32>}
+typedef tinyset_test.SetElement = tinyset_test.SetElement{setid: string, element: std.u32}
+typedef tinyset_test.Sets = tinyset_test.Sets{setid: string, set: tinyset.Set64<std.u32>}
+typedef uuid.Error = string
+extern type uuid.Uuid
+typedef uuid_test.UUID = uuid_test.UUID{description: string, result: string}
+function __debug_287_1_tinyset.group2set (g: std.Group<string,('I, bit<32>)>): (std.Vec<'I>, tinyset.Set64<bit<32>>)
+{
+    ((var inputs, var original_group) = debug.debug_split_group(g);
+     (inputs, tinyset.group2set(original_group)))
+}
+extern function debug.debug_event (operator_id: (std.u32, std.u32, std.u32), w: std.DDWeight, ts: 'T1, input1: 'A1, out: 'A2): ()
+extern function debug.debug_event_join (operator_id: (std.u32, std.u32, std.u32), w: std.DDWeight, ts: 'T1, input1: 'A1, input2: 'A2, out: 'A3): ()
+extern function debug.debug_split_group (g: std.Group<'K,('I, 'V)>): (std.Vec<'I>, std.Group<'K,'V>)
+extern function fp.abs_d (f: double): double
+extern function fp.abs_f (f: float): float
+extern function fp.acos_d (f: double): double
+extern function fp.acos_f (f: float): float
+extern function fp.acosh_d (f: double): double
+extern function fp.acosh_f (f: float): float
+extern function fp.asin_d (f: double): double
+extern function fp.asin_f (f: float): float
+extern function fp.asinh_d (f: double): double
+extern function fp.asinh_f (f: float): float
+extern function fp.atan2_d (f: double, other: double): double
+extern function fp.atan2_f (f: float, other: float): float
+extern function fp.atan_d (f: double): double
+extern function fp.atan_f (f: float): float
+extern function fp.atanh_d (f: double): double
+extern function fp.atanh_f (f: float): float
+extern function fp.cbrt_d (f: double): double
+extern function fp.cbrt_f (f: float): float
+extern function fp.ceil_d (f: double): double
+extern function fp.ceil_f (f: float): float
+extern function fp.cos_d (f: double): double
+extern function fp.cos_f (f: float): float
+extern function fp.cosh_d (f: double): double
+extern function fp.cosh_f (f: float): float
+extern function fp.exp2_d (f: double): double
+extern function fp.exp2_f (f: float): float
+extern function fp.exp_d (f: double): double
+extern function fp.exp_f (f: float): float
+extern function fp.floor_d (f: double): double
+extern function fp.floor_f (f: float): float
+extern function fp.fract_d (f: double): double
+extern function fp.fract_f (f: float): float
+extern function fp.int_from_d (d: double): std.Option<bigint>
+extern function fp.int_from_f (f: float): std.Option<bigint>
+extern function fp.is_finite_d (f: double): bool
+extern function fp.is_finite_f (f: float): bool
+extern function fp.is_infinite_d (f: double): bool
+extern function fp.is_infinite_f (f: float): bool
+extern function fp.is_nan_d (f: double): bool
+extern function fp.is_nan_f (f: float): bool
+extern function fp.ln_d (f: double): double
+extern function fp.ln_f (f: float): float
+extern function fp.log10_d (f: double): double
+extern function fp.log10_f (f: float): float
+extern function fp.log2_d (f: double): double
+extern function fp.log2_f (f: float): float
+extern function fp.log_d (f: double, base: double): double
+extern function fp.log_f (f: float, base: float): float
+extern function fp.mul_add_d (a: double, b: double, c: double): double
+extern function fp.mul_add_f (a: float, b: float, c: float): float
+extern function fp.nan_d (): double
+extern function fp.nan_f (): float
+extern function fp.parse_d (s: string): std.Result<double,string>
+extern function fp.parse_f (s: string): std.Result<float,string>
+extern function fp.powf_d (f: double, exp: double): double
+extern function fp.powf_f (f: float, exp: float): float
+extern function fp.powi_d (f: double, exp: signed<32>): double
+extern function fp.powi_f (f: float, exp: signed<32>): float
+extern function fp.recip_d (f: double): double
+extern function fp.recip_f (f: float): float
+extern function fp.round_d (f: double): double
+extern function fp.round_f (f: float): float
+extern function fp.signum_d (f: double): double
+extern function fp.signum_f (f: float): float
+extern function fp.sin_d (f: double): double
+extern function fp.sin_f (f: float): float
+extern function fp.sinh_d (f: double): double
+extern function fp.sinh_f (f: float): float
+extern function fp.sqrt_d (f: double): double
+extern function fp.sqrt_f (f: float): float
+extern function fp.tan_d (f: double): double
+extern function fp.tan_f (f: float): float
+extern function fp.tanh_d (f: double): double
+extern function fp.tanh_f (f: float): float
+extern function fp.to_degrees_d (f: double): double
+extern function fp.to_degrees_f (f: float): float
+extern function fp.to_radians_d (f: double): double
+extern function fp.to_radians_f (f: float): float
+extern function fp.trunc_d (f: double): double
+extern function fp.trunc_f (f: float): float
+extern function internment.intern (s: 'A): internment.Intern<'A>
+extern function internment.istring_contains (s1: internment.istring, s2: string): bool
+extern function internment.istring_ends_with (s: internment.istring, suffix: string): bool
+extern function internment.istring_join (strings: std.Vec<internment.istring>, sep: string): string
+extern function internment.istring_len (s: internment.istring): std.usize
+extern function internment.istring_replace (s: internment.istring, from: string, to: string): string
+extern function internment.istring_reverse (s: internment.istring): string
+extern function internment.istring_split (s: internment.istring, sep: string): std.Vec<string>
+extern function internment.istring_starts_with (s: internment.istring, prefix: string): bool
+extern function internment.istring_substr (s: internment.istring, start: std.usize, end: std.usize): string
+extern function internment.istring_to_bytes (s: internment.istring): std.Vec<std.u8>
+extern function internment.istring_to_lowercase (s: internment.istring): string
+extern function internment.istring_to_uppercase (s: internment.istring): string
+extern function internment.istring_trim (s: internment.istring): string
+#[return_by_ref = true]
+extern function internment.ival (s: internment.Intern<'A>): 'A
+extern function json.from_json_string (json: string): std.Result<'T,string>
+function json.jval_as_array (v: json.JsonValue): std.Option<std.Vec<json.JsonValue>>
+{
+    match (v) {
+        json.JsonArray{.a=var a} -> std.Some{.x=a},
+        _ -> std.None{}
+    }
+}
+function json.jval_as_array_or (v: json.JsonValue, def: std.Vec<json.JsonValue>): std.Vec<json.JsonValue>
+{
+    match (v) {
+        json.JsonArray{.a=var a} -> a,
+        _ -> def
+    }
+}
+function json.jval_as_bool (v: json.JsonValue): std.Option<bool>
+{
+    match (v) {
+        json.JsonBool{.b=var b} -> std.Some{.x=b},
+        _ -> std.None{}
+    }
+}
+function json.jval_as_bool_or (v: json.JsonValue, def: bool): bool
+{
+    match (v) {
+        json.JsonBool{.b=var b} -> b,
+        _ -> def
+    }
+}
+function json.jval_as_number (v: json.JsonValue): std.Option<json.JsonNum>
+{
+    match (v) {
+        json.JsonNumber{.n=var n} -> std.Some{.x=n},
+        _ -> std.None{}
+    }
+}
+function json.jval_as_number_or (v: json.JsonValue, def: json.JsonNum): json.JsonNum
+{
+    match (v) {
+        json.JsonNumber{.n=var n} -> n,
+        _ -> def
+    }
+}
+function json.jval_as_object (v: json.JsonValue): std.Option<std.Map<internment.istring,json.JsonValue>>
+{
+    match (v) {
+        json.JsonObject{.o=var o} -> std.Some{.x=o},
+        _ -> std.None{}
+    }
+}
+function json.jval_as_object_or (v: json.JsonValue, def: std.Map<internment.istring,json.JsonValue>): std.Map<internment.istring,json.JsonValue>
+{
+    match (v) {
+        json.JsonObject{.o=var o} -> o,
+        _ -> def
+    }
+}
+function json.jval_as_string (v: json.JsonValue): std.Option<internment.istring>
+{
+    match (v) {
+        json.JsonString{.s=var s} -> std.Some{.x=s},
+        _ -> std.None{}
+    }
+}
+function json.jval_as_string_or (v: json.JsonValue, def: internment.istring): internment.istring
+{
+    match (v) {
+        json.JsonString{.s=var s} -> s,
+        _ -> def
+    }
+}
+function json.jval_get (v: json.JsonValue, attr: internment.istring): std.Option<json.JsonValue>
+{
+    match (v) {
+        json.JsonObject{.o=var o} -> std.map_get(o, attr),
+        _ -> std.None{}
+    }
+}
+function json.jval_get_or (v: json.JsonValue, attr: internment.istring, def: json.JsonValue): json.JsonValue
+{
+    match (v) {
+        json.JsonObject{.o=var o} -> std.option_unwrap_or(std.map_get(o, attr), def),
+        _ -> def
+    }
+}
+extern function json.to_json_string (x: 'T): std.Result<string,string>
+function json_test.array1 (): string
+{
+    "[{\"b\":true}, {\"b\":false}, {\"b\":true}, {\"b\":false}]"
+}
+function json_test.boolStruct1 (): string
+{
+    "{\"b\":true}"
+}
+function json_test.boolStruct2 (): string
+{
+    "{\"b\":true, \"foo\":\"bar\"}"
+}
+function json_test.boolStruct3 (): string
+{
+    "{\"foo\":\"bar\"}"
+}
+function json_test.enum1 (): string
+{
+    "{\"Variant1\": {\"b\": true}}"
+}
+function json_test.enum2 (): string
+{
+    "{\"Variant2\": {\"u\": 100}}"
+}
+function json_test.flattenedStruct1 (): string
+{
+    "{\"t\":\"foo\", \"@id\":\"1001001001\", \"x\": \"x\", \"z\": 100000}"
+}
+function json_test.key_structWithKey (x: json_test.StructWithKey): std.u64
+{
+    x.key
+}
+function json_test.map1 (): string
+{
+    "{\"1\":{\"b\":true}, \"2\":{\"b\":false}, \"3\":{\"b\":true}, \"4\":{\"b\":false}}"
+}
+function json_test.nestedStruct1 (): string
+{
+    "{\"t\":\"foo\", \"id\":\"1001001001\", \"nested\": {\"x\": \"x\", \"z\": 100000}}"
+}
+function json_test.optional1 (): string
+{
+    "{}"
+}
+function json_test.optional2 (): string
+{
+    "{\"s\": \"foo\"}"
+}
+function json_test.optional3 (): string
+{
+    "{\"s\": \"foo\", \"i\": 100000}"
+}
+function json_test.optional4 (): string
+{
+    "{\"s\": \"foo\", \"i\": 100000, \"v\": 2.5}"
+}
+function json_test.s32FromString1 (): string
+{
+    "{\"x\": \"-100000\"}"
+}
+function json_test.s32FromString2 (): string
+{
+    "{\"x\": \"100000000000\"}"
+}
+function json_test.scalar1 (): string
+{
+    "true"
+}
+function json_test.scalar2 (): string
+{
+    "100"
+}
+function json_test.scalar3 (): string
+{
+    "-100"
+}
+function json_test.scalar4 (): string
+{
+    "\"foo bar\""
+}
+function json_test.scalar5 (): string
+{
+    "2.99792458e8"
+}
+function json_test.struct_with_map1 (): string
+{
+    "{\"f\": [{\"key\": 100, \"payload\": \"foo\"}]}"
+}
+function json_test.tenum1 (): string
+{
+    "{\"@type\": \"t.V1\", \"b\": true}"
+}
+function json_test.tenum2 (): string
+{
+    "{\"@type\": \"t.V2\", \"u\": 100}"
+}
+function json_test.tenum3 (): string
+{
+    "{\"@type\": \"t.V2\", \"b\": false}"
+}
+function json_test.to_json_string_or_default (x: 'T): string
+{
+    std.result_unwrap_or_default(json.to_json_string(x))
+}
+function json_test.u64FromString1 (): string
+{
+    "{\"x\": \"x\", \"y\": \"100000\"}"
+}
+function json_test.u64FromString2 (): string
+{
+    "{\"x\": \"x\", \"y\": \"-100000\"}"
+}
+function json_test.wenum1 (): string
+{
+    "{\"@type\": \"t.V1\", \"b\": true}"
+}
+function json_test.wenum2 (): string
+{
+    "{\"@type\": \"t.V2\", \"u\": 100}"
+}
+function json_test.wenum3 (): string
+{
+    "{\"@type\": \"t.V2\", \"b\": false}"
+}
+#[has_side_effects = true]
+extern function log.log (module: log.module_t, level: log.log_level_t, msg: string): ()
+function net.ipaddr.ipAddr2string (addr: net.ipaddr.IpAddr): string
+{
+    match (addr) {
+        net.ipaddr.IpAddrV4{.addr4=var a} -> net.ipv4.ipv4Addr2string(a),
+        net.ipaddr.IpAddrV6{.addr6=var a} -> net.ipv6.ipv6Addr2string(a)
+    }
+}
+function net.ipaddr.ipaddr_from_ipv4addr (ipv4: net.ipv4.Ipv4Addr): net.ipaddr.IpAddr
+{
+    net.ipaddr.IpAddrV4{.addr4=ipv4}
+}
+function net.ipaddr.ipaddr_from_ipv6addr (ipv6: net.ipv6.Ipv6Addr): net.ipaddr.IpAddr
+{
+    net.ipaddr.IpAddrV6{.addr6=ipv6}
+}
+function net.ipaddr.ipaddr_is_ipv4 (addr: net.ipaddr.IpAddr): bool
+{
+    match (addr) {
+        net.ipaddr.IpAddrV4{.addr4=_} -> true,
+        net.ipaddr.IpAddrV6{.addr6=_} -> false
+    }
+}
+function net.ipaddr.ipaddr_is_ipv6 (addr: net.ipaddr.IpAddr): bool
+{
+    match (addr) {
+        net.ipaddr.IpAddrV4{.addr4=_} -> false,
+        net.ipaddr.IpAddrV6{.addr6=_} -> true
+    }
+}
+function net.ipaddr.ipaddr_is_loopback (addr: net.ipaddr.IpAddr): bool
+{
+    match (addr) {
+        net.ipaddr.IpAddrV4{.addr4=var a} -> net.ipv4.ipv4_is_loopback(a),
+        net.ipaddr.IpAddrV6{.addr6=var a} -> net.ipv6.ipv6_is_loopback(a)
+    }
+}
+function net.ipaddr.ipaddr_is_multicast (addr: net.ipaddr.IpAddr): bool
+{
+    match (addr) {
+        net.ipaddr.IpAddrV4{.addr4=var a} -> net.ipv4.ipv4_is_multicast(a),
+        net.ipaddr.IpAddrV6{.addr6=var a} -> net.ipv6.ipv6_is_multicast(a)
+    }
+}
+function net.ipaddr.ipaddr_is_unspecified (addr: net.ipaddr.IpAddr): bool
+{
+    match (addr) {
+        net.ipaddr.IpAddrV4{.addr4=var a} -> net.ipv4.ipv4_is_unspecified(a),
+        net.ipaddr.IpAddrV6{.addr6=var a} -> net.ipv6.ipv6_is_unspecified(a)
+    }
+}
+extern function net.ipv4.iPV4_BROADCAST (): net.ipv4.Ipv4Addr
+extern function net.ipv4.iPV4_LOCALHOST (): net.ipv4.Ipv4Addr
+extern function net.ipv4.iPV4_UNSPECIFIED (): net.ipv4.Ipv4Addr
+extern function net.ipv4.ipv4Addr2string (addr: net.ipv4.Ipv4Addr): string
+extern function net.ipv4.ipv4_from_octet_vec (octets: std.Vec<std.u8>): std.Option<net.ipv4.Ipv4Addr>
+extern function net.ipv4.ipv4_from_str (s: string): std.Result<net.ipv4.Ipv4Addr,string>
+extern function net.ipv4.ipv4_from_u32 (ip: std.u32): net.ipv4.Ipv4Addr
+extern function net.ipv4.ipv4_is_broadcast (addr: net.ipv4.Ipv4Addr): bool
+extern function net.ipv4.ipv4_is_documentation (addr: net.ipv4.Ipv4Addr): bool
+extern function net.ipv4.ipv4_is_link_local (addr: net.ipv4.Ipv4Addr): bool
+extern function net.ipv4.ipv4_is_loopback (addr: net.ipv4.Ipv4Addr): bool
+extern function net.ipv4.ipv4_is_multicast (addr: net.ipv4.Ipv4Addr): bool
+extern function net.ipv4.ipv4_is_private (addr: net.ipv4.Ipv4Addr): bool
+extern function net.ipv4.ipv4_is_unspecified (addr: net.ipv4.Ipv4Addr): bool
+extern function net.ipv4.ipv4_new (a: std.u8, b: std.u8, c: std.u8, d: std.u8): net.ipv4.Ipv4Addr
+extern function net.ipv4.ipv4_octet_vec (addr: net.ipv4.Ipv4Addr): std.Vec<std.u8>
+extern function net.ipv4.ipv4_octets (addr: net.ipv4.Ipv4Addr): (std.u8, std.u8, std.u8, std.u8)
+extern function net.ipv4.ipv4_to_ipv6_compatible (addr: net.ipv4.Ipv4Addr): net.ipv6.Ipv6Addr
+extern function net.ipv4.ipv4_to_ipv6_mapped (addr: net.ipv4.Ipv4Addr): net.ipv6.Ipv6Addr
+extern function net.ipv4.ipv4_to_u32 (addr: net.ipv4.Ipv4Addr): std.u32
+extern function net.ipv6.iPV6_LOCALHOST (): net.ipv6.Ipv6Addr
+extern function net.ipv6.iPV6_UNSPECIFIED (): net.ipv6.Ipv6Addr
+extern function net.ipv6.ipv6Addr2string (addr: net.ipv6.Ipv6Addr): string
+extern function net.ipv6.ipv6_from_octet_vec (octets: std.Vec<std.u8>): std.Option<net.ipv6.Ipv6Addr>
+extern function net.ipv6.ipv6_from_octets (b0: std.u8, b1: std.u8, b2: std.u8, b3: std.u8, b4: std.u8, b5: std.u8, b6: std.u8, b7: std.u8, b8: std.u8, b9: std.u8, b10: std.u8, b11: std.u8, b12: std.u8, b13: std.u8, b14: std.u8, b15: std.u8): net.ipv6.Ipv6Addr
+extern function net.ipv6.ipv6_from_segment_vec (segments: std.Vec<std.u16>): std.Option<net.ipv6.Ipv6Addr>
+extern function net.ipv6.ipv6_from_str (s: string): std.Result<net.ipv6.Ipv6Addr,string>
+extern function net.ipv6.ipv6_from_u128 (ip: std.u128): net.ipv6.Ipv6Addr
+extern function net.ipv6.ipv6_is_loopback (addr: net.ipv6.Ipv6Addr): bool
+extern function net.ipv6.ipv6_is_multicast (addr: net.ipv6.Ipv6Addr): bool
+extern function net.ipv6.ipv6_is_unspecified (addr: net.ipv6.Ipv6Addr): bool
+extern function net.ipv6.ipv6_new (a: std.u16, b: std.u16, c: std.u16, d: std.u16, e: std.u16, f: std.u16, g: std.u16, h: std.u16): net.ipv6.Ipv6Addr
+extern function net.ipv6.ipv6_octet_vec (addr: net.ipv6.Ipv6Addr): std.Vec<std.u8>
+extern function net.ipv6.ipv6_octets (addr: net.ipv6.Ipv6Addr): (std.u8, std.u8, std.u8, std.u8, std.u8, std.u8, std.u8, std.u8, std.u8, std.u8, std.u8, std.u8, std.u8, std.u8, std.u8, std.u8)
+extern function net.ipv6.ipv6_segment_vec (addr: net.ipv6.Ipv6Addr): std.Vec<std.u16>
+extern function net.ipv6.ipv6_segments (addr: net.ipv6.Ipv6Addr): (std.u16, std.u16, std.u16, std.u16, std.u16, std.u16, std.u16, std.u16)
+extern function net.ipv6.ipv6_to_ipv4 (addr: net.ipv6.Ipv6Addr): std.Option<net.ipv4.Ipv4Addr>
+extern function net.ipv6.ipv6_to_u128 (addr: net.ipv6.Ipv6Addr): std.u128
+extern function regex.regex (pattern: string): regex.Regex
+extern function regex.regex_all_matches (regex: regex.Regex, text: string): std.Vec<string>
+extern function regex.regex_checked (pattern: string): std.Result<regex.Regex,string>
+extern function regex.regex_first_match (regex: regex.Regex, text: string): std.Option<string>
+extern function regex.regex_match (regex: regex.Regex, text: string): bool
+extern function std.__builtin_2string (x: 'X): string
+function std.dDNestedTS2string (ts: std.DDNestedTS): string
+{
+    (((("(" ++ std.__builtin_2string(ts.epoch)) ++ ",") ++ std.__builtin_2string(ts.iter)) ++ ")")
+}
+#[return_by_ref = true]
+extern function std.deref (x: std.Ref<'A>): 'A
+extern function std.group2map (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,'V>
+extern function std.group2set (g: std.Group<'K,'V>): std.Set<'V>
+extern function std.group2setmap (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,std.Set<'V>>
+extern function std.group2vec (g: std.Group<'K,'V>): std.Vec<'V>
+extern function std.group_count (g: std.Group<'K,'V>): std.usize
+extern function std.group_first (g: std.Group<'K,'V>): 'V
+extern function std.group_key (g: std.Group<'K,'V>): 'K
+extern function std.group_max (g: std.Group<'K,'V>): 'V
+extern function std.group_min (g: std.Group<'K,'V>): 'V
+extern function std.group_nth (g: std.Group<'K,'V>, n: std.usize): std.Option<'V>
+extern function std.group_set_unions (g: std.Group<'K,std.Set<'A>>): std.Set<'A>
+extern function std.group_setref_unions (g: std.Group<'K,std.Ref<std.Set<'A>>>): std.Ref<std.Set<'A>>
+extern function std.group_sum (g: std.Group<'K,'V>): 'V
+function std.group_unzip (g: std.Group<'K,('X, 'Y)>): (std.Vec<'X>, std.Vec<'Y>)
+{
+    ((var xs: std.Vec<'X>) = std.vec_empty();
+     ((var ys: std.Vec<'Y>) = std.vec_empty();
+      (for (v in g) {
+           ((var x, var y) = v;
+            (std.vec_push(xs, x);
+             std.vec_push(ys, y)))
+       };
+       (xs, ys))))
+}
+extern function std.hash128 (x: 'X): bit<128>
+extern function std.hash64 (x: 'X): bit<64>
+extern function std.hex (x: 'X): string
+extern function std.htonl (x: bit<32>): bit<32>
+extern function std.htons (x: bit<16>): bit<16>
+function std.is_err (res: std.Result<'V,'E>): bool
+{
+    match (res) {
+        std.Ok{.res=_} -> false,
+        std.Err{.err=_} -> true
+    }
+}
+function std.is_none (x: std.Option<'A>): bool
+{
+    match (x) {
+        std.None{} -> true,
+        _ -> false
+    }
+}
+function std.is_ok (res: std.Result<'V,'E>): bool
+{
+    match (res) {
+        std.Ok{.res=_} -> true,
+        std.Err{.err=_} -> false
+    }
+}
+function std.is_some (x: std.Option<'A>): bool
+{
+    match (x) {
+        std.Some{.x=_} -> true,
+        _ -> false
+    }
+}
+extern function std.map_contains_key (m: std.Map<'K,'V>, k: 'K): bool
+extern function std.map_empty (): std.Map<'K,'V>
+extern function std.map_get (m: std.Map<'K,'V>, k: 'K): std.Option<'V>
+extern function std.map_insert (m: mut std.Map<'K,'V>, k: 'K, v: 'V): ()
+extern function std.map_insert_imm (m: std.Map<'K,'V>, k: 'K, v: 'V): std.Map<'K,'V>
+extern function std.map_is_empty (m: std.Map<'K,'V>): bool
+extern function std.map_remove (m: mut std.Map<'K,'V>, k: 'K): ()
+extern function std.map_singleton (k: 'K, v: 'V): std.Map<'K,'V>
+extern function std.map_size (m: std.Map<'K,'V>): std.usize
+extern function std.map_union (m1: std.Map<'K,'V>, m2: std.Map<'K,'V>): std.Map<'K,'V>
+function std.max (x: 'A, y: 'A): 'A
+{
+    if (x > y) {
+        x
+    } else {
+          y
+      }
+}
+function std.min (x: 'A, y: 'A): 'A
+{
+    if (x < y) {
+        x
+    } else {
+          y
+      }
+}
+extern function std.ntohl (x: bit<32>): bit<32>
+extern function std.ntohs (x: bit<16>): bit<16>
+function std.option2set (o: std.Option<'X>): std.Set<'X>
+{
+    match (o) {
+        std.Some{.x=var x} -> std.set_singleton(x),
+        std.None{} -> std.set_empty()
+    }
+}
+function std.option2vec (o: std.Option<'X>): std.Vec<'X>
+{
+    match (o) {
+        std.Some{.x=var x} -> std.vec_singleton(x),
+        std.None{} -> std.vec_empty()
+    }
+}
+function std.option_unwrap_or (x: std.Option<'A>, def: 'A): 'A
+{
+    match (x) {
+        std.Some{.x=var v} -> v,
+        std.None{} -> def
+    }
+}
+extern function std.option_unwrap_or_default (opt: std.Option<'A>): 'A
+extern function std.parse_dec_i64 (s: string): std.Option<signed<64>>
+extern function std.parse_dec_u64 (s: string): std.Option<bit<64>>
+extern function std.pow32 (base: 'A, exp: bit<32>): 'A
+extern function std.range (from: 'A, to: 'A, step: 'A): std.Vec<'A>
+extern function std.ref_new (x: 'A): std.Ref<'A>
+function std.result_unwrap_or (res: std.Result<'V,'E>, def: 'V): 'V
+{
+    match (res) {
+        std.Ok{.res=var v} -> v,
+        std.Err{.err=_} -> def
+    }
+}
+extern function std.result_unwrap_or_default (res: std.Result<'V,'E>): 'V
+extern function std.set2vec (s: std.Set<'A>): std.Vec<'A>
+extern function std.set_contains (s: std.Set<'X>, v: 'X): bool
+extern function std.set_difference (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
+extern function std.set_empty (): std.Set<'X>
+extern function std.set_insert (s: mut std.Set<'X>, v: 'X): ()
+extern function std.set_insert_imm (s: std.Set<'X>, v: 'X): std.Set<'X>
+extern function std.set_intersection (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
+extern function std.set_is_empty (s: std.Set<'X>): bool
+extern function std.set_nth (s: std.Set<'X>, n: std.usize): std.Option<'X>
+extern function std.set_singleton (x: 'X): std.Set<'X>
+extern function std.set_size (s: std.Set<'X>): std.usize
+extern function std.set_union (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
+extern function std.set_unions (sets: std.Vec<std.Set<'X>>): std.Set<'X>
+extern function std.str_to_lower (s: string): string
+extern function std.string_contains (s1: string, s2: string): bool
+extern function std.string_ends_with (s: string, suffix: string): bool
+extern function std.string_join (strings: std.Vec<string>, sep: string): string
+extern function std.string_len (s: string): std.usize
+extern function std.string_replace (s: string, from: string, to: string): string
+extern function std.string_reverse (s: string): string
+extern function std.string_split (s: string, sep: string): std.Vec<string>
+extern function std.string_starts_with (s: string, prefix: string): bool
+extern function std.string_substr (s: string, start: std.usize, end: std.usize): string
+extern function std.string_to_bytes (s: string): std.Vec<std.u8>
+extern function std.string_to_lowercase (s: string): string
+extern function std.string_to_uppercase (s: string): string
+extern function std.string_trim (s: string): string
+extern function std.vec2set (s: std.Vec<'A>): std.Set<'A>
+extern function std.vec_append (v: mut std.Vec<'X>, other: std.Vec<'X>): ()
+extern function std.vec_contains (v: std.Vec<'X>, x: 'X): bool
+extern function std.vec_empty (): std.Vec<'A>
+extern function std.vec_is_empty (v: std.Vec<'X>): bool
+extern function std.vec_len (v: std.Vec<'X>): std.usize
+extern function std.vec_nth (v: std.Vec<'X>, n: std.usize): std.Option<'X>
+extern function std.vec_push (v: mut std.Vec<'X>, x: 'X): ()
+extern function std.vec_push_imm (v: std.Vec<'X>, x: 'X): std.Vec<'X>
+extern function std.vec_singleton (x: 'X): std.Vec<'X>
+extern function std.vec_sort (v: std.Vec<'X>): ()
+extern function std.vec_sort_imm (v: std.Vec<'X>): std.Vec<'X>
+extern function std.vec_with_capacity (len: std.usize): std.Vec<'A>
+extern function std.vec_with_length (len: std.usize, x: 'A): std.Vec<'A>
+extern function tinyset.contains (s: tinyset.Set64<'X>, v: 'X): bool
+extern function tinyset.difference (s1: tinyset.Set64<'X>, s2: tinyset.Set64<'X>): tinyset.Set64<'X>
+extern function tinyset.empty (): tinyset.Set64<'X>
+extern function tinyset.group2set (g: std.Group<'K,'V>): tinyset.Set64<'V>
+extern function tinyset.group_set_unions (g: std.Group<'K,tinyset.Set64<'V>>): tinyset.Set64<'V>
+extern function tinyset.group_setref_unions (g: std.Group<'K,std.Ref<tinyset.Set64<'V>>>): std.Ref<tinyset.Set64<'V>>
+extern function tinyset.insert (s: mut tinyset.Set64<'X>, v: 'X): ()
+extern function tinyset.insert_imm (s: tinyset.Set64<'X>, v: 'X): tinyset.Set64<'X>
+extern function tinyset.intersection (s1: tinyset.Set64<'X>, s2: tinyset.Set64<'X>): tinyset.Set64<'X>
+extern function tinyset.is_empty (s: tinyset.Set64<'X>): bool
+extern function tinyset.nth (s: tinyset.Set64<'X>, n: bit<64>): std.Option<bit<64>>
+extern function tinyset.singleton (x: 'X): tinyset.Set64<'X>
+extern function tinyset.size (s: tinyset.Set64<'X>): bit<64>
+extern function tinyset.union (s1: tinyset.Set64<'X>, s2: tinyset.Set64<'X>): tinyset.Set64<'X>
+extern function tinyset.unions (sets: std.Vec<tinyset.Set64<'X>>): tinyset.Set64<'X>
+extern function uuid.as_u128 (uuid: uuid.Uuid): std.u128
+extern function uuid.from_bytes (b: std.Vec<std.u8>): std.Result<uuid.Uuid,uuid.Error>
+extern function uuid.from_u128 (v: std.u128): uuid.Uuid
+extern function uuid.from_u128_le (v: std.u128): uuid.Uuid
+extern function uuid.is_nil (uuid: uuid.Uuid): bool
+extern function uuid.nAMESPACE_DNS (): uuid.Uuid
+extern function uuid.nAMESPACE_OID (): uuid.Uuid
+extern function uuid.nAMESPACE_URL (): uuid.Uuid
+extern function uuid.nAMESPACE_X500 (): uuid.Uuid
+extern function uuid.new_v5 (namespace: uuid.Uuid, name: std.Vec<std.u8>): uuid.Uuid
+extern function uuid.nil (): uuid.Uuid
+extern function uuid.parse_str (str: string): std.Result<uuid.Uuid,uuid.Error>
+extern function uuid.to_hyphenated_lower (uuid: uuid.Uuid): string
+extern function uuid.to_hyphenated_upper (uuid: uuid.Uuid): string
+extern function uuid.to_simple_lower (uuid: uuid.Uuid): string
+extern function uuid.to_simple_upper (uuid: uuid.Uuid): string
+extern function uuid.to_u128_le (uuid: uuid.Uuid): std.u128
+extern function uuid.to_urn_lower (uuid: uuid.Uuid): string
+extern function uuid.to_urn_upper (uuid: uuid.Uuid): string
+function uuid_test.test_uuid_from_bytes (): uuid.Uuid
+{
+    ((var bytes: std.Vec<bit<8>>) = std.vec_empty();
+     (for (i in std.range((8'd0: bit<8>), (8'd15: bit<8>), (8'd1: bit<8>))) {
+          std.vec_push(bytes, (i as bit<8>))
+      };
+      std.result_unwrap_or(uuid.from_bytes(bytes), uuid.nil())))
+}
+function uuid_test.uuid_parse_or_nil (str: string): uuid.Uuid
+{
+    std.result_unwrap_or(uuid.parse_str(str), uuid.nil())
+}
+output relation fp_test.BB [fp_test.BB]
+output relation fp_test.D [fp_test.D]
+input relation fp_test.DoublesFromRecord [fp_test.DoublesFromRecord]
+output relation fp_test.F [fp_test.F]
+input relation fp_test.FloatsFromRecord [fp_test.FloatsFromRecord]
+output relation fp_test.OutDoublesFromRecord [fp_test.DoublesFromRecord]
+output relation fp_test.OutFloatsFromRecord [fp_test.FloatsFromRecord]
+relation internment_test.AllInternedString [internment_test.AllInternedString]
+input relation internment_test.IInternedString [internment_test.IInternedString]
+input relation internment_test.IStruct [internment.Intern<internment_test.IStruct>]
+output relation internment_test.OInternedString [internment_test.OInternedString]
+output relation internment_test.Projections [internment_test.Projections]
+relation internment_test.StaticInternedString [internment_test.StaticInternedString]
+input relation json_test.Deserialized [json_test.TaggedEnum]
+output relation json_test.JsonTest [json_test.JsonTest]
+output relation json_test.ODeserialized [json_test.TaggedEnum]
+output relation net_test.NetChecks [net_test.NetChecks]
+relation regex_test.RegexTestInput [regex_test.RegexTestInput]
+output relation regex_test.RegexTestOutput [regex_test.RegexTestOutput]
+output relation std_test.MapSizes [std_test.MapSizes]
+input relation std_test.Maps [std_test.Maps]
+output relation std_test.SetDifference [std_test.SetDifference]
+input relation std_test.SetPairs [std_test.SetPairs]
+output relation std_test.SortedVector [std_test.SortedVector]
+output relation std_test.SortedVectorInPlace [std_test.SortedVectorInPlace]
+input relation std_test.Vector [std_test.Vector]
+output relation tinyset_test.Diffs [tinyset_test.Diffs]
+output relation tinyset_test.Intersects [tinyset_test.Intersects]
+output relation tinyset_test.Intersects2 [tinyset_test.Intersects2]
+input relation tinyset_test.SetElement [tinyset_test.SetElement]
+output relation tinyset_test.Sets [tinyset_test.Sets]
+output relation uuid_test.UUID [uuid_test.UUID]
+std_test.SortedVector(.v=sorted) :- std_test.Vector[(__std_test.vector0@ std_test.Vector{.v=v})], var sorted = std.vec_sort_imm(v), Inspect debug.debug_event((32'd0, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __std_test.vector0, std_test.SortedVector{.v=sorted}).
+std_test.SortedVectorInPlace(.v=sorted) :- std_test.Vector[(__std_test.vector0@ std_test.Vector{.v=v})], var sorted = (var v2 = v;
+                                                                                                                       (std.vec_sort(v2);
+                                                                                                                        v2)), Inspect debug.debug_event((32'd1, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __std_test.vector0, std_test.SortedVectorInPlace{.v=sorted}).
+std_test.SetDifference(.s1=s1, .s2=s2, .diff=std.set_difference(s1, s2)) :- std_test.SetPairs[(__std_test.setpairs0@ std_test.SetPairs{.s1=s1, .s2=s2})], Inspect debug.debug_event((32'd2, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, __std_test.setpairs0, std_test.SetDifference{.s1=s1, .s2=s2, .diff=std.set_difference(s1, s2)}).
+std_test.SetDifference(.s1=s2, .s2=s1, .diff=std.set_difference(s2, s1)) :- std_test.SetPairs[(__std_test.setpairs0@ std_test.SetPairs{.s1=s1, .s2=s2})], Inspect debug.debug_event((32'd3, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, __std_test.setpairs0, std_test.SetDifference{.s1=s2, .s2=s1, .diff=std.set_difference(s2, s1)}).
+std_test.MapSizes(.m=m, .size=std.map_size(m)) :- std_test.Maps[(__std_test.maps0@ std_test.Maps{.m=m})], Inspect debug.debug_event((32'd4, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, __std_test.maps0, std_test.MapSizes{.m=m, .size=std.map_size(m)}).
+uuid_test.UUID(.description="uuid.to_hyphenated_lower(uuid.nil())", .result=uuid.to_hyphenated_lower(uuid.nil())).
+uuid_test.UUID(.description="uuid.to_hyphenated_upper(uuid.nil())", .result=uuid.to_hyphenated_upper(uuid.nil())).
+uuid_test.UUID(.description="uuid.to_simple_lower(uuid.nil())", .result=uuid.to_simple_lower(uuid.nil())).
+uuid_test.UUID(.description="uuid.to_simple_upper(uuid.nil())", .result=uuid.to_simple_upper(uuid.nil())).
+uuid_test.UUID(.description="uuid.to_urn_lower(uuid.nil())", .result=uuid.to_urn_lower(uuid.nil())).
+uuid_test.UUID(.description="uuid.to_urn_upper(uuid.nil())", .result=uuid.to_urn_upper(uuid.nil())).
+uuid_test.UUID(.description="uuid.to_hyphenated_lower(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", .result=uuid.to_hyphenated_lower(uuid.from_u128(128'd5598655898992676486791281108989324119))).
+uuid_test.UUID(.description="uuid.to_hyphenated_upper(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", .result=uuid.to_hyphenated_upper(uuid.from_u128(128'd5598655898992676486791281108989324119))).
+uuid_test.UUID(.description="uuid.to_simple_lower(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", .result=uuid.to_simple_lower(uuid.from_u128(128'd5598655898992676486791281108989324119))).
+uuid_test.UUID(.description="uuid.to_simple_upper(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", .result=uuid.to_simple_upper(uuid.from_u128(128'd5598655898992676486791281108989324119))).
+uuid_test.UUID(.description="uuid.to_urn_lower(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", .result=uuid.to_urn_lower(uuid.from_u128(128'd5598655898992676486791281108989324119))).
+uuid_test.UUID(.description="uuid.to_urn_upper(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", .result=uuid.to_urn_upper(uuid.from_u128(128'd5598655898992676486791281108989324119))).
+uuid_test.UUID(.description="uuid.to_hyphenated_lower(uuid.from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", .result=uuid.to_hyphenated_lower(uuid.from_u128_le(128'd5598655898992676486791281108989324119))).
+uuid_test.UUID(.description="uuid.to_hyphenated_upper(uuid.from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", .result=uuid.to_hyphenated_upper(uuid.from_u128_le(128'd5598655898992676486791281108989324119))).
+uuid_test.UUID(.description="uuid.to_simple_lower(uuid.from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", .result=uuid.to_simple_lower(uuid.from_u128_le(128'd5598655898992676486791281108989324119))).
+uuid_test.UUID(.description="uuid.to_simple_upper(uuid.from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", .result=uuid.to_simple_upper(uuid.from_u128_le(128'd5598655898992676486791281108989324119))).
+uuid_test.UUID(.description="uuid.to_urn_lower(uuid.from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", .result=uuid.to_urn_lower(uuid.from_u128_le(128'd5598655898992676486791281108989324119))).
+uuid_test.UUID(.description="uuid.to_urn_upper(uuid.from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", .result=uuid.to_urn_upper(uuid.from_u128_le(128'd5598655898992676486791281108989324119))).
+uuid_test.UUID(.description="uuid.to_hyphenated_lower(test_uuid_from_bytes())", .result=uuid.to_hyphenated_lower(uuid_test.test_uuid_from_bytes())).
+uuid_test.UUID(.description="uuid.to_hyphenated_upper(test_uuid_from_bytes())", .result=uuid.to_hyphenated_upper(uuid_test.test_uuid_from_bytes())).
+uuid_test.UUID(.description="uuid.to_simple_lower(test_uuid_from_bytes())", .result=uuid.to_simple_lower(uuid_test.test_uuid_from_bytes())).
+uuid_test.UUID(.description="uuid.to_simple_upper(test_uuid_from_bytes())", .result=uuid.to_simple_upper(uuid_test.test_uuid_from_bytes())).
+uuid_test.UUID(.description="uuid.to_urn_lower(test_uuid_from_bytes())", .result=uuid.to_urn_lower(uuid_test.test_uuid_from_bytes())).
+uuid_test.UUID(.description="uuid.to_urn_upper(test_uuid_from_bytes())", .result=uuid.to_urn_upper(uuid_test.test_uuid_from_bytes())).
+uuid_test.UUID(.description="uuid.to_hyphenated_lower(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", .result=uuid.to_hyphenated_lower(uuid_test.uuid_parse_or_nil("936DA01F-9ABD-4D9D-80C7-02AF85C822A8"))).
+uuid_test.UUID(.description="uuid.to_hyphenated_upper(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", .result=uuid.to_hyphenated_upper(uuid_test.uuid_parse_or_nil("936DA01F-9ABD-4D9D-80C7-02AF85C822A8"))).
+uuid_test.UUID(.description="uuid.to_simple_lower(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", .result=uuid.to_simple_lower(uuid_test.uuid_parse_or_nil("936DA01F-9ABD-4D9D-80C7-02AF85C822A8"))).
+uuid_test.UUID(.description="uuid.to_simple_upper(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", .result=uuid.to_simple_upper(uuid_test.uuid_parse_or_nil("936DA01F-9ABD-4D9D-80C7-02AF85C822A8"))).
+uuid_test.UUID(.description="uuid.to_urn_lower(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", .result=uuid.to_urn_lower(uuid_test.uuid_parse_or_nil("936DA01F-9ABD-4D9D-80C7-02AF85C822A8"))).
+uuid_test.UUID(.description="uuid.to_urn_upper(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", .result=uuid.to_urn_upper(uuid_test.uuid_parse_or_nil("936DA01F-9ABD-4D9D-80C7-02AF85C822A8"))).
+uuid_test.UUID(.description="uuid.as_u128(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", .result=std.hex(uuid.as_u128(uuid.from_u128(128'd5598655898992676486791281108989324119)))).
+uuid_test.UUID(.description="uuid.to_u128_le(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", .result=std.hex(uuid.to_u128_le(uuid.from_u128(128'd5598655898992676486791281108989324119)))).
+uuid_test.UUID(.description="uuid.is_nil(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", .result=("" ++ std.__builtin_2string(uuid.is_nil(uuid.from_u128(128'd5598655898992676486791281108989324119))))).
+uuid_test.UUID(.description="uuid.is_nil(uuid.from_u128(0))", .result=("" ++ std.__builtin_2string(uuid.is_nil(uuid.from_u128(128'd0))))).
+uuid_test.UUID(.description="uuid.is_nil(uuid.nil())", .result=("" ++ std.__builtin_2string(uuid.is_nil(uuid.nil())))).
+uuid_test.UUID(.description="uuid.new_v5(\"5a5e7dd9-e3fb-49bb-b263-9bab25c95841\", \"namespace=nsA And podSelector=\")", .result=uuid.to_hyphenated_lower(uuid.new_v5(uuid_test.uuid_parse_or_nil("5a5e7dd9-e3fb-49bb-b263-9bab25c95841"), std.string_to_bytes("namespace=nsA And podSelector=")))).
+uuid_test.UUID(.description="uuid.new_v5(\"5a5e7dd9-e3fb-49bb-b263-9bab25c95841\", \"namespaceSelector=foo3 In [bar3] And podSelector=foo2 In [bar2]\")", .result=uuid.to_hyphenated_lower(uuid.new_v5(uuid_test.uuid_parse_or_nil("5a5e7dd9-e3fb-49bb-b263-9bab25c95841"), std.string_to_bytes("namespaceSelector=foo3 In [bar3] And podSelector=foo2 In [bar2]")))).
+uuid_test.UUID(.description="uuid.new_v5(\"5a5e7dd9-e3fb-49bb-b263-9bab25c95841\", \"namespace=nsA And podSelector=group In [appliedTo] And role In [db app]\")", .result=uuid.to_hyphenated_lower(uuid.new_v5(uuid_test.uuid_parse_or_nil("5a5e7dd9-e3fb-49bb-b263-9bab25c95841"), std.string_to_bytes("namespace=nsA And podSelector=group In [appliedTo] And role In [db app]")))).
+net_test.NetChecks(.description="ipv4_new(192, 168, 0, 1)", .value=("" ++ net.ipv4.ipv4Addr2string(net.ipv4.ipv4_new(8'd192, 8'd168, 8'd0, 8'd1)))).
+net_test.NetChecks(.description="ipv4_from_u32('h0a0b0c0d)", .value=("" ++ net.ipv4.ipv4Addr2string(net.ipv4.ipv4_from_u32(32'd168496141)))).
+net_test.NetChecks(.description="ipv4_from_str(10.10.10.101)", .value=("" ++ net.ipv4.ipv4Addr2string(std.result_unwrap_or(net.ipv4.ipv4_from_str("10.10.10.101"), net.ipv4.iPV4_UNSPECIFIED())))).
+net_test.NetChecks(.description="ipv4_from_str(10.10.10.10.1)", .value=("" ++ net.ipv4.ipv4Addr2string(std.result_unwrap_or(net.ipv4.ipv4_from_str("10.10.10.10.1"), net.ipv4.iPV4_UNSPECIFIED())))).
+net_test.NetChecks(.description="ipv4_from_octet_vec(ipv4_octet_vec(ipv4_new(192, 168, 0, 1)))", .value=("" ++ net.ipv4.ipv4Addr2string(std.option_unwrap_or(net.ipv4.ipv4_from_octet_vec(net.ipv4.ipv4_octet_vec(net.ipv4.ipv4_new(8'd192, 8'd168, 8'd0, 8'd1))), net.ipv4.iPV4_UNSPECIFIED())))).
+net_test.NetChecks(.description="iPV4_LOCALHOST()", .value=("" ++ net.ipv4.ipv4Addr2string(net.ipv4.iPV4_LOCALHOST()))).
+net_test.NetChecks(.description="iPV4_UNSPECIFIED()", .value=("" ++ net.ipv4.ipv4Addr2string(net.ipv4.iPV4_UNSPECIFIED()))).
+net_test.NetChecks(.description="iPV4_BROADCAST()", .value=("" ++ net.ipv4.ipv4Addr2string(net.ipv4.iPV4_BROADCAST()))).
+net_test.NetChecks(.description="ipv4_octets(ipv4_new(192,168,0,1))", .value=((var a, var b, var c, var d) = net.ipv4.ipv4_octets(net.ipv4.ipv4_new(8'd192, 8'd168, 8'd0, 8'd1));
+                                                                              (((((((("(" ++ std.__builtin_2string(a)) ++ ",") ++ std.__builtin_2string(b)) ++ ",") ++ std.__builtin_2string(c)) ++ ",") ++ std.__builtin_2string(d)) ++ ")"))).
+net_test.NetChecks(.description="ipv4_is_unspecified(iPV4_UNSPECIFIED())", .value=("" ++ std.__builtin_2string(net.ipv4.ipv4_is_unspecified(net.ipv4.iPV4_UNSPECIFIED())))).
+net_test.NetChecks(.description="ipv4_is_unspecified(ipv4_new(10,0,0,0))", .value=("" ++ std.__builtin_2string(net.ipv4.ipv4_is_unspecified(net.ipv4.ipv4_new(8'd10, 8'd0, 8'd0, 8'd0))))).
+net_test.NetChecks(.description="ipv4_is_loopback(ipv4_new(127,0,0,5))", .value=("" ++ std.__builtin_2string(net.ipv4.ipv4_is_loopback(net.ipv4.ipv4_new(8'd127, 8'd0, 8'd0, 8'd5))))).
+net_test.NetChecks(.description="ipv4_is_loopback(ipv4_new(128,0,0,5))", .value=("" ++ std.__builtin_2string(net.ipv4.ipv4_is_loopback(net.ipv4.ipv4_new(8'd128, 8'd0, 8'd0, 8'd5))))).
+net_test.NetChecks(.description="ipv4_is_private(ipv4_new(127,0,0,5))", .value=("" ++ std.__builtin_2string(net.ipv4.ipv4_is_private(net.ipv4.ipv4_new(8'd127, 8'd0, 8'd0, 8'd5))))).
+net_test.NetChecks(.description="ipv4_is_private(ipv4_new(193,5,5,5))", .value=("" ++ std.__builtin_2string(net.ipv4.ipv4_is_private(net.ipv4.ipv4_new(8'd193, 8'd5, 8'd5, 8'd5))))).
+net_test.NetChecks(.description="ipv4_is_private(ipv4_new(10,10,10,101))", .value=("" ++ std.__builtin_2string(net.ipv4.ipv4_is_private(net.ipv4.ipv4_new(8'd10, 8'd10, 8'd10, 8'd101))))).
+net_test.NetChecks(.description="ipv4_is_private(ipv4_new(172,16,1,2))", .value=("" ++ std.__builtin_2string(net.ipv4.ipv4_is_private(net.ipv4.ipv4_new(8'd172, 8'd16, 8'd1, 8'd2))))).
+net_test.NetChecks(.description="ipv4_is_private(ipv4_new(192,168,10,12))", .value=("" ++ std.__builtin_2string(net.ipv4.ipv4_is_private(net.ipv4.ipv4_new(8'd192, 8'd168, 8'd10, 8'd12))))).
+net_test.NetChecks(.description="ipv4_is_link_local(ipv4_new(192,168,10,12))", .value=("" ++ std.__builtin_2string(net.ipv4.ipv4_is_link_local(net.ipv4.ipv4_new(8'd192, 8'd168, 8'd10, 8'd12))))).
+net_test.NetChecks(.description="ipv4_is_link_local(ipv4_new(169,254,1,1))", .value=("" ++ std.__builtin_2string(net.ipv4.ipv4_is_link_local(net.ipv4.ipv4_new(8'd169, 8'd254, 8'd1, 8'd1))))).
+net_test.NetChecks(.description="ipv4_is_multicast(ipv4_new(173,10,10,12))", .value=("" ++ std.__builtin_2string(net.ipv4.ipv4_is_multicast(net.ipv4.ipv4_new(8'd173, 8'd10, 8'd10, 8'd12))))).
+net_test.NetChecks(.description="ipv4_is_multicast(ipv4_new(230,254,1,1))", .value=("" ++ std.__builtin_2string(net.ipv4.ipv4_is_multicast(net.ipv4.ipv4_new(8'd230, 8'd254, 8'd1, 8'd1))))).
+net_test.NetChecks(.description="ipv4_is_broadcast(iPV4_BROADCAST())", .value=("" ++ std.__builtin_2string(net.ipv4.ipv4_is_broadcast(net.ipv4.iPV4_BROADCAST())))).
+net_test.NetChecks(.description="ipv4_is_broadcast(ipv4_new(230,254,1,1))", .value=("" ++ std.__builtin_2string(net.ipv4.ipv4_is_broadcast(net.ipv4.ipv4_new(8'd230, 8'd254, 8'd1, 8'd1))))).
+net_test.NetChecks(.description="ipv4_is_broadcast(ipv4_new(255,255,255,255))", .value=("" ++ std.__builtin_2string(net.ipv4.ipv4_is_broadcast(net.ipv4.ipv4_new(8'd255, 8'd255, 8'd255, 8'd255))))).
+net_test.NetChecks(.description="ipv4_is_documentation(ipv4_new(192,0,2,10))", .value=("" ++ std.__builtin_2string(net.ipv4.ipv4_is_documentation(net.ipv4.ipv4_new(8'd192, 8'd0, 8'd2, 8'd10))))).
+net_test.NetChecks(.description="ipv4_is_documentation(ipv4_new(198,51,100,5))", .value=("" ++ std.__builtin_2string(net.ipv4.ipv4_is_documentation(net.ipv4.ipv4_new(8'd198, 8'd51, 8'd100, 8'd5))))).
+net_test.NetChecks(.description="ipv4_is_documentation(ipv4_new(203,0,113,101))", .value=("" ++ std.__builtin_2string(net.ipv4.ipv4_is_documentation(net.ipv4.ipv4_new(8'd203, 8'd0, 8'd113, 8'd101))))).
+net_test.NetChecks(.description="ipv4_is_documentation(ipv4_new(175,16,1,2))", .value=("" ++ std.__builtin_2string(net.ipv4.ipv4_is_documentation(net.ipv4.ipv4_new(8'd175, 8'd16, 8'd1, 8'd2))))).
+net_test.NetChecks(.description="ipv4_is_documentation(ipv4_new(192,168,10,12))", .value=("" ++ std.__builtin_2string(net.ipv4.ipv4_is_documentation(net.ipv4.ipv4_new(8'd192, 8'd168, 8'd10, 8'd12))))).
+net_test.NetChecks(.description="ipv4_to_ipv6_compatible(ipv4_new(192,0,2,10))", .value=("" ++ net.ipv6.ipv6Addr2string(net.ipv4.ipv4_to_ipv6_compatible(net.ipv4.ipv4_new(8'd192, 8'd0, 8'd2, 8'd10))))).
+net_test.NetChecks(.description="ipv4_to_ipv6_compatible(ipv4_new(198,51,100,5))", .value=("" ++ net.ipv6.ipv6Addr2string(net.ipv4.ipv4_to_ipv6_compatible(net.ipv4.ipv4_new(8'd198, 8'd51, 8'd100, 8'd5))))).
+net_test.NetChecks(.description="ipv4_to_ipv6_compatible(ipv4_new(203,0,113,101))", .value=("" ++ net.ipv6.ipv6Addr2string(net.ipv4.ipv4_to_ipv6_compatible(net.ipv4.ipv4_new(8'd203, 8'd0, 8'd113, 8'd101))))).
+net_test.NetChecks(.description="ipv4_to_ipv6_compatible(ipv4_new(175,16,1,2))", .value=("" ++ net.ipv6.ipv6Addr2string(net.ipv4.ipv4_to_ipv6_compatible(net.ipv4.ipv4_new(8'd175, 8'd16, 8'd1, 8'd2))))).
+net_test.NetChecks(.description="ipv4_to_ipv6_compatible(ipv4_new(192,168,10,12))", .value=("" ++ net.ipv6.ipv6Addr2string(net.ipv4.ipv4_to_ipv6_compatible(net.ipv4.ipv4_new(8'd192, 8'd168, 8'd10, 8'd12))))).
+net_test.NetChecks(.description="ipv4_to_ipv6_mapped(ipv4_new(192,0,2,10))", .value=("" ++ net.ipv6.ipv6Addr2string(net.ipv4.ipv4_to_ipv6_mapped(net.ipv4.ipv4_new(8'd192, 8'd0, 8'd2, 8'd10))))).
+net_test.NetChecks(.description="ipv4_to_ipv6_mapped(ipv4_new(198,51,100,5))", .value=("" ++ net.ipv6.ipv6Addr2string(net.ipv4.ipv4_to_ipv6_mapped(net.ipv4.ipv4_new(8'd198, 8'd51, 8'd100, 8'd5))))).
+net_test.NetChecks(.description="ipv4_to_ipv6_mapped(ipv4_new(203,0,113,101))", .value=("" ++ net.ipv6.ipv6Addr2string(net.ipv4.ipv4_to_ipv6_mapped(net.ipv4.ipv4_new(8'd203, 8'd0, 8'd113, 8'd101))))).
+net_test.NetChecks(.description="ipv4_to_ipv6_mapped(ipv4_new(175,16,1,2))", .value=("" ++ net.ipv6.ipv6Addr2string(net.ipv4.ipv4_to_ipv6_mapped(net.ipv4.ipv4_new(8'd175, 8'd16, 8'd1, 8'd2))))).
+net_test.NetChecks(.description="ipv4_to_ipv6_mapped(ipv4_new(192,168,10,12))", .value=("" ++ net.ipv6.ipv6Addr2string(net.ipv4.ipv4_to_ipv6_mapped(net.ipv4.ipv4_new(8'd192, 8'd168, 8'd10, 8'd12))))).
+net_test.NetChecks(.description="ipv4_to_u32(ipv4_new(192,0,2,10))", .value=("" ++ std.hex(net.ipv4.ipv4_to_u32(net.ipv4.ipv4_new(8'd192, 8'd0, 8'd2, 8'd10))))).
+net_test.NetChecks(.description="ipv4_to_u32(ipv4_new(198,51,100,5))", .value=("" ++ std.hex(net.ipv4.ipv4_to_u32(net.ipv4.ipv4_new(8'd198, 8'd51, 8'd100, 8'd5))))).
+net_test.NetChecks(.description="ipv4_to_u32(ipv4_new(203,0,113,101))", .value=("" ++ std.hex(net.ipv4.ipv4_to_u32(net.ipv4.ipv4_new(8'd203, 8'd0, 8'd113, 8'd101))))).
+net_test.NetChecks(.description="ipv4_to_u32(ipv4_new(175,16,1,2))", .value=("" ++ std.hex(net.ipv4.ipv4_to_u32(net.ipv4.ipv4_new(8'd175, 8'd16, 8'd1, 8'd2))))).
+net_test.NetChecks(.description="ipv4_to_u32(ipv4_new(192,168,10,12))", .value=("" ++ std.hex(net.ipv4.ipv4_to_u32(net.ipv4.ipv4_new(8'd192, 8'd168, 8'd10, 8'd12))))).
+net_test.NetChecks(.description="ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)", .value=("" ++ net.ipv6.ipv6Addr2string(net.ipv6.ipv6_new(16'd0, 16'd0, 16'd0, 16'd0, 16'd0, 16'd65535, 16'd49162, 16'd767)))).
+net_test.NetChecks(.description="iPV6_LOCALHOST()", .value=("" ++ net.ipv6.ipv6Addr2string(net.ipv6.iPV6_LOCALHOST()))).
+net_test.NetChecks(.description="iPV6_UNSPECIFIED()", .value=("" ++ net.ipv6.ipv6Addr2string(net.ipv6.iPV6_UNSPECIFIED()))).
+net_test.NetChecks(.description="ipv6_from_segment_vec(ipv6_segment_vec(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))", .value=("" ++ net.ipv6.ipv6Addr2string(std.option_unwrap_or(net.ipv6.ipv6_from_segment_vec(net.ipv6.ipv6_segment_vec(net.ipv6.ipv6_new(16'd0, 16'd0, 16'd0, 16'd0, 16'd0, 16'd65535, 16'd49162, 16'd767))), net.ipv6.iPV6_UNSPECIFIED())))).
+net_test.NetChecks(.description="ipv6_from_segment_vec(ipv6_segment_vec(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff, 'h10)))", .value=("" ++ net.ipv6.ipv6Addr2string(std.option_unwrap_or(net.ipv6.ipv6_from_segment_vec(std.vec_push_imm(net.ipv6.ipv6_segment_vec(net.ipv6.ipv6_new(16'd0, 16'd0, 16'd0, 16'd0, 16'd0, 16'd65535, 16'd49162, 16'd767)), 16'd16)), net.ipv6.iPV6_UNSPECIFIED())))).
+net_test.NetChecks(.description="ipv6_from_octets(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'hff, 'hff, 'hc0, 'h0a, 'h2, 'hff)", .value=("" ++ net.ipv6.ipv6Addr2string(net.ipv6.ipv6_from_octets(8'd0, 8'd0, 8'd0, 8'd0, 8'd0, 8'd0, 8'd0, 8'd0, 8'd0, 8'd0, 8'd255, 8'd255, 8'd192, 8'd10, 8'd2, 8'd255)))).
+net_test.NetChecks(.description="ipv6_from_octet_vec(ipv6_octet_vec(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))", .value=("" ++ net.ipv6.ipv6Addr2string(std.option_unwrap_or(net.ipv6.ipv6_from_octet_vec(net.ipv6.ipv6_octet_vec(net.ipv6.ipv6_new(16'd0, 16'd0, 16'd0, 16'd0, 16'd0, 16'd65535, 16'd49162, 16'd767))), net.ipv6.iPV6_UNSPECIFIED())))).
+net_test.NetChecks(.description="ipv6_from_u128(128'h102030405060708090A0B0C0D0E0F00)", .value=("" ++ net.ipv6.ipv6Addr2string(net.ipv6.ipv6_from_u128(128'd1339673755198158349044581307228491520)))).
+net_test.NetChecks(.description="ipv6_from_str(102:304:506:708:90a:b0c:d0e:f00)", .value=("" ++ net.ipv6.ipv6Addr2string(std.result_unwrap_or(net.ipv6.ipv6_from_str("102:304:506:708:90a:b0c:d0e:f00"), net.ipv6.iPV6_UNSPECIFIED())))).
+net_test.NetChecks(.description="ipv6_from_str(::ffff:192.10.2.255)", .value=("" ++ net.ipv6.ipv6Addr2string(std.result_unwrap_or(net.ipv6.ipv6_from_str("::ffff:192.10.2.255"), net.ipv6.iPV6_UNSPECIFIED())))).
+net_test.NetChecks(.description="ipv6_from_str(::175.16.1.2)", .value=("" ++ net.ipv6.ipv6Addr2string(std.result_unwrap_or(net.ipv6.ipv6_from_str("::175.16.1.2"), net.ipv6.iPV6_UNSPECIFIED())))).
+net_test.NetChecks(.description="ipv6_from_str(ffff:192.10.2.255)", .value=("" ++ net.ipv6.ipv6Addr2string(std.result_unwrap_or(net.ipv6.ipv6_from_str("ffff:192.10.2.255"), net.ipv6.iPV6_UNSPECIFIED())))).
+net_test.NetChecks(.description="ipv6_from_str(::)", .value=("" ++ net.ipv6.ipv6Addr2string(std.result_unwrap_or(net.ipv6.ipv6_from_str("::"), net.ipv6.iPV6_LOCALHOST())))).
+net_test.NetChecks(.description="ipv6_to_u128(ipv6_from_str(::ffff:192.10.2.255))", .value=("" ++ std.hex(net.ipv6.ipv6_to_u128(std.result_unwrap_or(net.ipv6.ipv6_from_str("::ffff:192.10.2.255"), net.ipv6.iPV6_UNSPECIFIED()))))).
+net_test.NetChecks(.description="ipv6_segments(ipv6_from_str(::ffff:192.10.2.255))", .value=((var a, var b, var c, var d, var e, var f, var g, var h) = net.ipv6.ipv6_segments(std.result_unwrap_or(net.ipv6.ipv6_from_str("::ffff:192.10.2.255"), net.ipv6.iPV6_UNSPECIFIED()));
+                                                                                             (((((((((((((((("(" ++ std.__builtin_2string(a)) ++ ",") ++ std.__builtin_2string(b)) ++ ",") ++ std.__builtin_2string(c)) ++ ",") ++ std.__builtin_2string(d)) ++ ",") ++ std.__builtin_2string(e)) ++ ",") ++ std.__builtin_2string(f)) ++ ",") ++ std.__builtin_2string(g)) ++ ",") ++ std.__builtin_2string(h)) ++ ")"))).
+net_test.NetChecks(.description="ipv6_octets(ipv6_from_str(::ffff:192.10.2.255))", .value=((var a, var b, var c, var d, var e, var f, var g, var h, var i, var j, var k, var l, var m, var n, var o, var p) = net.ipv6.ipv6_octets(std.result_unwrap_or(net.ipv6.ipv6_from_str("::ffff:192.10.2.255"), net.ipv6.iPV6_UNSPECIFIED()));
+                                                                                           (((((((((((((((((((((((((((((((("(" ++ std.__builtin_2string(a)) ++ ",") ++ std.__builtin_2string(b)) ++ ",") ++ std.__builtin_2string(c)) ++ ",") ++ std.__builtin_2string(d)) ++ ",") ++ std.__builtin_2string(e)) ++ ",") ++ std.__builtin_2string(f)) ++ ",") ++ std.__builtin_2string(g)) ++ ",") ++ std.__builtin_2string(h)) ++ ",") ++ std.__builtin_2string(i)) ++ ",") ++ std.__builtin_2string(j)) ++ ",") ++ std.__builtin_2string(k)) ++ ",") ++ std.__builtin_2string(l)) ++ ",") ++ std.__builtin_2string(m)) ++ ",") ++ std.__builtin_2string(n)) ++ ",") ++ std.__builtin_2string(o)) ++ ",") ++ std.__builtin_2string(p)) ++ ")"))).
+net_test.NetChecks(.description="ipv6_from_segment_vec(ipv6_segment_vec(ipv6_from_str(::ffff:192.10.2.255)))", .value=("" ++ net.ipv6.ipv6Addr2string(std.option_unwrap_or(net.ipv6.ipv6_from_segment_vec(net.ipv6.ipv6_segment_vec(std.result_unwrap_or(net.ipv6.ipv6_from_str("::ffff:192.10.2.255"), net.ipv6.iPV6_UNSPECIFIED()))), net.ipv6.iPV6_UNSPECIFIED())))).
+net_test.NetChecks(.description="ipv6_from_octet_vec(ipv6_octet_vec(ipv6_from_str(::ffff:192.10.2.255)))", .value=("" ++ net.ipv6.ipv6Addr2string(std.option_unwrap_or(net.ipv6.ipv6_from_octet_vec(net.ipv6.ipv6_octet_vec(std.result_unwrap_or(net.ipv6.ipv6_from_str("::ffff:192.10.2.255"), net.ipv6.iPV6_UNSPECIFIED()))), net.ipv6.iPV6_UNSPECIFIED())))).
+net_test.NetChecks(.description="ipv6_is_unspecified(iPV6_UNSPECIFIED())", .value=("" ++ std.__builtin_2string(net.ipv6.ipv6_is_unspecified(net.ipv6.iPV6_UNSPECIFIED())))).
+net_test.NetChecks(.description="ipv6_is_unspecified(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff))", .value=("" ++ std.__builtin_2string(net.ipv6.ipv6_is_unspecified(net.ipv6.ipv6_new(16'd0, 16'd0, 16'd0, 16'd0, 16'd0, 16'd65535, 16'd49162, 16'd767))))).
+net_test.NetChecks(.description="ipv6_is_loopback(iPV6_LOCALHOST())", .value=("" ++ std.__builtin_2string(net.ipv6.ipv6_is_loopback(net.ipv6.iPV6_LOCALHOST())))).
+net_test.NetChecks(.description="ipv6_is_loopback(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff))", .value=("" ++ std.__builtin_2string(net.ipv6.ipv6_is_loopback(net.ipv6.ipv6_new(16'd0, 16'd0, 16'd0, 16'd0, 16'd0, 16'd65535, 16'd49162, 16'd767))))).
+net_test.NetChecks(.description="ipv6_is_multicast(ipv6_new('hff01, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff))", .value=("" ++ std.__builtin_2string(net.ipv6.ipv6_is_multicast(net.ipv6.ipv6_new(16'd65281, 16'd0, 16'd0, 16'd0, 16'd0, 16'd65535, 16'd49162, 16'd767))))).
+net_test.NetChecks(.description="ipv6_is_multicast(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff))", .value=("" ++ std.__builtin_2string(net.ipv6.ipv6_is_multicast(net.ipv6.ipv6_new(16'd0, 16'd0, 16'd0, 16'd0, 16'd0, 16'd65535, 16'd49162, 16'd767))))).
+net_test.NetChecks(.description="ipv6_to_ipv4(ipv4_to_ipv6_compatible(ipv4_new(192,0,2,10)))", .value=("" ++ net.ipv4.ipv4Addr2string(std.option_unwrap_or(net.ipv6.ipv6_to_ipv4(net.ipv4.ipv4_to_ipv6_compatible(net.ipv4.ipv4_new(8'd192, 8'd0, 8'd2, 8'd10))), net.ipv4.iPV4_UNSPECIFIED())))).
+net_test.NetChecks(.description="ipv6_to_ipv4(ipv4_to_ipv6_compatible(ipv4_new(198,51,100,5)))", .value=("" ++ net.ipv4.ipv4Addr2string(std.option_unwrap_or(net.ipv6.ipv6_to_ipv4(net.ipv4.ipv4_to_ipv6_compatible(net.ipv4.ipv4_new(8'd198, 8'd51, 8'd100, 8'd5))), net.ipv4.iPV4_UNSPECIFIED())))).
+net_test.NetChecks(.description="ipv6_to_ipv4(ipv4_to_ipv6_compatible(ipv4_new(203,0,113,101)))", .value=("" ++ net.ipv4.ipv4Addr2string(std.option_unwrap_or(net.ipv6.ipv6_to_ipv4(net.ipv4.ipv4_to_ipv6_compatible(net.ipv4.ipv4_new(8'd203, 8'd0, 8'd113, 8'd101))), net.ipv4.iPV4_UNSPECIFIED())))).
+net_test.NetChecks(.description="ipv6_to_ipv4(ipv4_to_ipv6_compatible(ipv4_new(175,16,1,2)))", .value=("" ++ net.ipv4.ipv4Addr2string(std.option_unwrap_or(net.ipv6.ipv6_to_ipv4(net.ipv4.ipv4_to_ipv6_compatible(net.ipv4.ipv4_new(8'd175, 8'd16, 8'd1, 8'd2))), net.ipv4.iPV4_UNSPECIFIED())))).
+net_test.NetChecks(.description="ipv6_to_ipv4(ipv4_to_ipv6_compatible(ipv4_new(192,168,10,12)))", .value=("" ++ net.ipv4.ipv4Addr2string(std.option_unwrap_or(net.ipv6.ipv6_to_ipv4(net.ipv4.ipv4_to_ipv6_compatible(net.ipv4.ipv4_new(8'd192, 8'd168, 8'd10, 8'd12))), net.ipv4.iPV4_UNSPECIFIED())))).
+net_test.NetChecks(.description="ipv6_to_ipv4(ipv4_to_ipv6_mapped(ipv4_new(192,0,2,10)))", .value=("" ++ net.ipv4.ipv4Addr2string(std.option_unwrap_or(net.ipv6.ipv6_to_ipv4(net.ipv4.ipv4_to_ipv6_mapped(net.ipv4.ipv4_new(8'd192, 8'd0, 8'd2, 8'd10))), net.ipv4.iPV4_UNSPECIFIED())))).
+net_test.NetChecks(.description="ipv6_to_ipv4(ipv4_to_ipv6_mapped(ipv4_new(198,51,100,5)))", .value=("" ++ net.ipv4.ipv4Addr2string(std.option_unwrap_or(net.ipv6.ipv6_to_ipv4(net.ipv4.ipv4_to_ipv6_mapped(net.ipv4.ipv4_new(8'd198, 8'd51, 8'd100, 8'd5))), net.ipv4.iPV4_UNSPECIFIED())))).
+net_test.NetChecks(.description="ipv6_to_ipv4(ipv4_to_ipv6_mapped(ipv4_new(203,0,113,101)))", .value=("" ++ net.ipv4.ipv4Addr2string(std.option_unwrap_or(net.ipv6.ipv6_to_ipv4(net.ipv4.ipv4_to_ipv6_mapped(net.ipv4.ipv4_new(8'd203, 8'd0, 8'd113, 8'd101))), net.ipv4.iPV4_UNSPECIFIED())))).
+net_test.NetChecks(.description="ipv6_to_ipv4(ipv4_to_ipv6_mapped(ipv4_new(175,16,1,2)))", .value=("" ++ net.ipv4.ipv4Addr2string(std.option_unwrap_or(net.ipv6.ipv6_to_ipv4(net.ipv4.ipv4_to_ipv6_mapped(net.ipv4.ipv4_new(8'd175, 8'd16, 8'd1, 8'd2))), net.ipv4.iPV4_UNSPECIFIED())))).
+net_test.NetChecks(.description="ipv6_to_ipv4(ipv4_to_ipv6_mapped(ipv4_new(192,168,10,12)))", .value=("" ++ net.ipv4.ipv4Addr2string(std.option_unwrap_or(net.ipv6.ipv6_to_ipv4(net.ipv4.ipv4_to_ipv6_mapped(net.ipv4.ipv4_new(8'd192, 8'd168, 8'd10, 8'd12))), net.ipv4.iPV4_UNSPECIFIED())))).
+net_test.NetChecks(.description="ipv6_to_ipv4(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))", .value=("" ++ net.ipv4.ipv4Addr2string(std.option_unwrap_or(net.ipv6.ipv6_to_ipv4(net.ipv6.ipv6_new(16'd0, 16'd0, 16'd0, 16'd0, 16'd0, 16'd65535, 16'd49162, 16'd767)), net.ipv4.iPV4_UNSPECIFIED())))).
+net_test.NetChecks(.description="ipv6_to_ipv4(ipv6_new('h0a0b, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))", .value=("" ++ net.ipv4.ipv4Addr2string(std.option_unwrap_or(net.ipv6.ipv6_to_ipv4(net.ipv6.ipv6_new(16'd2571, 16'd0, 16'd0, 16'd0, 16'd0, 16'd65535, 16'd49162, 16'd767)), net.ipv4.iPV4_UNSPECIFIED())))).
+net_test.NetChecks(.description="ipaddr_from_ipv4addr(ipv4_new(192, 168, 0, 1))", .value=("" ++ net.ipaddr.ipAddr2string(net.ipaddr.ipaddr_from_ipv4addr(net.ipv4.ipv4_new(8'd192, 8'd168, 8'd0, 8'd1))))).
+net_test.NetChecks(.description="ipaddr_from_ipv6addr(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff))", .value=("" ++ net.ipaddr.ipAddr2string(net.ipaddr.ipaddr_from_ipv6addr(net.ipv6.ipv6_new(16'd0, 16'd0, 16'd0, 16'd0, 16'd0, 16'd65535, 16'd49162, 16'd767))))).
+net_test.NetChecks(.description="ipaddr_is_ipv4(ipaddr_from_ipv4addr(ipv4_new(192, 168, 0, 1)))", .value=("" ++ std.__builtin_2string(net.ipaddr.ipaddr_is_ipv4(net.ipaddr.ipaddr_from_ipv4addr(net.ipv4.ipv4_new(8'd192, 8'd168, 8'd0, 8'd1)))))).
+net_test.NetChecks(.description="ipaddr_is_ipv4(ipaddr_from_ipv6addr(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))", .value=("" ++ std.__builtin_2string(net.ipaddr.ipaddr_is_ipv4(net.ipaddr.ipaddr_from_ipv6addr(net.ipv6.ipv6_new(16'd0, 16'd0, 16'd0, 16'd0, 16'd0, 16'd65535, 16'd49162, 16'd767)))))).
+net_test.NetChecks(.description="ipaddr_is_ipv6(ipaddr_from_ipv4addr(ipv4_new(192, 168, 0, 1)))", .value=("" ++ std.__builtin_2string(net.ipaddr.ipaddr_is_ipv6(net.ipaddr.ipaddr_from_ipv4addr(net.ipv4.ipv4_new(8'd192, 8'd168, 8'd0, 8'd1)))))).
+net_test.NetChecks(.description="ipaddr_is_ipv6(ipaddr_from_ipv6addr(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))", .value=("" ++ std.__builtin_2string(net.ipaddr.ipaddr_is_ipv6(net.ipaddr.ipaddr_from_ipv6addr(net.ipv6.ipv6_new(16'd0, 16'd0, 16'd0, 16'd0, 16'd0, 16'd65535, 16'd49162, 16'd767)))))).
+net_test.NetChecks(.description="ipaddr_is_unspecified(ipaddr_from_ipv4addr(ipv4_new(192, 168, 0, 1)))", .value=("" ++ std.__builtin_2string(net.ipaddr.ipaddr_is_unspecified(net.ipaddr.ipaddr_from_ipv4addr(net.ipv4.ipv4_new(8'd192, 8'd168, 8'd0, 8'd1)))))).
+net_test.NetChecks(.description="ipaddr_is_unspecified(ipaddr_from_ipv4addr(iPV4_UNSPECIFIED()))", .value=("" ++ std.__builtin_2string(net.ipaddr.ipaddr_is_unspecified(net.ipaddr.ipaddr_from_ipv4addr(net.ipv4.iPV4_UNSPECIFIED()))))).
+net_test.NetChecks(.description="ipaddr_is_unspecified(ipaddr_from_ipv6addr(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))", .value=("" ++ std.__builtin_2string(net.ipaddr.ipaddr_is_unspecified(net.ipaddr.ipaddr_from_ipv6addr(net.ipv6.ipv6_new(16'd0, 16'd0, 16'd0, 16'd0, 16'd0, 16'd65535, 16'd49162, 16'd767)))))).
+net_test.NetChecks(.description="ipaddr_is_unspecified(ipaddr_from_ipv6addr(iPV6_UNSPECIFIED()))", .value=("" ++ std.__builtin_2string(net.ipaddr.ipaddr_is_unspecified(net.ipaddr.ipaddr_from_ipv6addr(net.ipv6.iPV6_UNSPECIFIED()))))).
+net_test.NetChecks(.description="ipaddr_is_loopback(ipaddr_from_ipv4addr(ipv4_new(192, 168, 0, 1)))", .value=("" ++ std.__builtin_2string(net.ipaddr.ipaddr_is_loopback(net.ipaddr.ipaddr_from_ipv4addr(net.ipv4.ipv4_new(8'd192, 8'd168, 8'd0, 8'd1)))))).
+net_test.NetChecks(.description="ipaddr_is_loopback(ipaddr_from_ipv4addr(iPV4_LOCALHOST()))", .value=("" ++ std.__builtin_2string(net.ipaddr.ipaddr_is_loopback(net.ipaddr.ipaddr_from_ipv4addr(net.ipv4.iPV4_LOCALHOST()))))).
+net_test.NetChecks(.description="ipaddr_is_loopback(ipaddr_from_ipv6addr(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))", .value=("" ++ std.__builtin_2string(net.ipaddr.ipaddr_is_loopback(net.ipaddr.ipaddr_from_ipv6addr(net.ipv6.ipv6_new(16'd0, 16'd0, 16'd0, 16'd0, 16'd0, 16'd65535, 16'd49162, 16'd767)))))).
+net_test.NetChecks(.description="ipaddr_is_loopback(ipaddr_from_ipv6addr(iPV6_LOCALHOST()))", .value=("" ++ std.__builtin_2string(net.ipaddr.ipaddr_is_loopback(net.ipaddr.ipaddr_from_ipv6addr(net.ipv6.iPV6_LOCALHOST()))))).
+net_test.NetChecks(.description="ipaddr_is_multicast(ipaddr_from_ipv4addr(ipv4_new(192, 168, 0, 1)))", .value=("" ++ std.__builtin_2string(net.ipaddr.ipaddr_is_multicast(net.ipaddr.ipaddr_from_ipv4addr(net.ipv4.ipv4_new(8'd192, 8'd168, 8'd0, 8'd1)))))).
+net_test.NetChecks(.description="ipaddr_is_multicast(ipaddr_from_ipv4addr(ipv4_new(230, 254, 1, 1)))", .value=("" ++ std.__builtin_2string(net.ipaddr.ipaddr_is_multicast(net.ipaddr.ipaddr_from_ipv4addr(net.ipv4.ipv4_new(8'd230, 8'd254, 8'd1, 8'd1)))))).
+net_test.NetChecks(.description="ipaddr_is_multicast(ipaddr_from_ipv6addr(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))", .value=("" ++ std.__builtin_2string(net.ipaddr.ipaddr_is_multicast(net.ipaddr.ipaddr_from_ipv6addr(net.ipv6.ipv6_new(16'd0, 16'd0, 16'd0, 16'd0, 16'd0, 16'd65535, 16'd49162, 16'd767)))))).
+net_test.NetChecks(.description="ipaddr_is_multicast(ipaddr_from_ipv6addr(ipv6_new('hff01, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))", .value=("" ++ std.__builtin_2string(net.ipaddr.ipaddr_is_multicast(net.ipaddr.ipaddr_from_ipv6addr(net.ipv6.ipv6_new(16'd65281, 16'd0, 16'd0, 16'd0, 16'd0, 16'd65535, 16'd49162, 16'd767)))))).
+net_test.NetChecks(.description="ipaddr_is_ipv4(ipaddr_from_ipv4addr(ipv4_new(192, 168, 0, 1)))", .value=("" ++ std.__builtin_2string(net.ipaddr.ipaddr_is_ipv4(net.ipaddr.ipaddr_from_ipv4addr(net.ipv4.ipv4_new(8'd192, 8'd168, 8'd0, 8'd1)))))).
+net_test.NetChecks(.description="ipaddr_is_ipv4(ipaddr_from_ipv6addr(ipv6_new(0, 0, 0, 0, 0, 'hffff, 'hc00a, 'h2ff)))", .value=("" ++ std.__builtin_2string(net.ipaddr.ipaddr_is_ipv4(net.ipaddr.ipaddr_from_ipv6addr(net.ipv6.ipv6_new(16'd0, 16'd0, 16'd0, 16'd0, 16'd0, 16'd65535, 16'd49162, 16'd767)))))).
+json_test.JsonTest(.description=json_test.boolStruct1(), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.boolStruct1()): std.Result<json_test.BoolStruct,string>))).
+json_test.JsonTest(.description=json_test.boolStruct2(), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.boolStruct2()): std.Result<json_test.BoolStruct,string>))).
+json_test.JsonTest(.description=json_test.boolStruct3(), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.boolStruct3()): std.Result<json_test.BoolStruct,string>))).
+json_test.JsonTest(.description=json_test.nestedStruct1(), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.nestedStruct1()): std.Result<json_test.Top,string>))).
+json_test.JsonTest(.description=json_test.flattenedStruct1(), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.flattenedStruct1()): std.Result<json_test.TopFlat,string>))).
+json_test.JsonTest(.description=json_test.array1(), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.array1()): std.Result<json_test.Array,string>))).
+json_test.JsonTest(.description=json_test.map1(), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.map1()): std.Result<json_test.BoolMap,string>))).
+json_test.JsonTest(.description=json_test.enum1(), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.enum1()): std.Result<json_test.Enum,string>))).
+json_test.JsonTest(.description=json_test.enum2(), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.enum2()): std.Result<json_test.Enum,string>))).
+json_test.JsonTest(.description=json_test.tenum1(), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.tenum1()): std.Result<json_test.TaggedEnum,string>))).
+json_test.JsonTest(.description=json_test.tenum2(), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.tenum2()): std.Result<json_test.TaggedEnum,string>))).
+json_test.JsonTest(.description=json_test.tenum3(), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.tenum3()): std.Result<json_test.TaggedEnum,string>))).
+json_test.JsonTest(.description=json_test.scalar1(), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.scalar1()): std.Result<json.JsonValue,string>))).
+json_test.JsonTest(.description=json_test.scalar2(), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.scalar2()): std.Result<json.JsonValue,string>))).
+json_test.JsonTest(.description=json_test.scalar3(), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.scalar3()): std.Result<json.JsonValue,string>))).
+json_test.JsonTest(.description=json_test.scalar4(), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.scalar4()): std.Result<json.JsonValue,string>))).
+json_test.JsonTest(.description=json_test.scalar5(), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.scalar5()): std.Result<json.JsonValue,string>))).
+json_test.ODeserialized[x] :- json_test.Deserialized[(__json_test.deserialized0@ x)], Inspect debug.debug_event((32'd161, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, __json_test.deserialized0, x).
+json_test.JsonTest(.description=json_test.optional1(), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.optional1()): std.Result<json_test.Optional,string>))).
+json_test.JsonTest(.description=json_test.optional2(), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.optional2()): std.Result<json_test.Optional,string>))).
+json_test.JsonTest(.description=json_test.optional3(), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.optional3()): std.Result<json_test.Optional,string>))).
+json_test.JsonTest(.description=json_test.optional4(), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.optional4()): std.Result<json_test.Optional,string>))).
+json_test.JsonTest(.description=json_test.struct_with_map1(), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.struct_with_map1()): std.Result<json_test.StructWithMap,string>))).
+json_test.JsonTest(.description=json_test.u64FromString1(), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.u64FromString1()): std.Result<json_test.U64FromString,string>))).
+json_test.JsonTest(.description=json_test.u64FromString2(), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.u64FromString2()): std.Result<json_test.U64FromString,string>))).
+json_test.JsonTest(.description=json_test.s32FromString1(), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.s32FromString1()): std.Result<json_test.S32FromString,string>))).
+json_test.JsonTest(.description=json_test.s32FromString2(), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.s32FromString2()): std.Result<json_test.S32FromString,string>))).
+json_test.JsonTest(.description=("wrapped " ++ json_test.wenum1()), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.wenum1()): std.Result<json_test.WrappedEnum,string>))).
+json_test.JsonTest(.description=("wrapped " ++ json_test.wenum2()), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.wenum2()): std.Result<json_test.WrappedEnum,string>))).
+json_test.JsonTest(.description=("wrapped " ++ json_test.wenum3()), .value=json_test.to_json_string_or_default((json.from_json_string(json_test.wenum3()): std.Result<json_test.WrappedEnum,string>))).
+fp_test.F(.s="nan_f()", .d=fp.nan_f()).
+fp_test.F(.s="floor_f(32'f0.5)", .d=fp.floor_f(32'f0.5)).
+fp_test.F(.s="ceil_f(32'f0.5)", .d=fp.ceil_f(32'f0.5)).
+fp_test.F(.s="round_f(32'f0.5)", .d=fp.round_f(32'f0.5)).
+fp_test.F(.s="trunc_f(32'f0.5)", .d=fp.trunc_f(32'f0.5)).
+fp_test.F(.s="fract_f(32'f0.5)", .d=fp.fract_f(32'f0.5)).
+fp_test.F(.s="abs_f(32'f0.5)", .d=fp.abs_f(32'f0.5)).
+fp_test.F(.s="signum_f(32'f0.5)", .d=fp.signum_f(32'f0.5)).
+fp_test.F(.s="sqrt_f(32'f0.5)", .d=fp.sqrt_f(32'f0.5)).
+fp_test.F(.s="exp_f(32'f0.5)", .d=fp.exp_f(32'f0.5)).
+fp_test.F(.s="exp2_f(32'f0.5)", .d=fp.exp2_f(32'f0.5)).
+fp_test.F(.s="ln_f(32'f0.5)", .d=fp.ln_f(32'f0.5)).
+fp_test.F(.s="log2_f(32'f0.5)", .d=fp.log2_f(32'f0.5)).
+fp_test.F(.s="log10_f(32'f0.5)", .d=fp.log10_f(32'f0.5)).
+fp_test.F(.s="cbrt_f(32'f0.5)", .d=fp.cbrt_f(32'f0.5)).
+fp_test.F(.s="sin_f(32'f0.5)", .d=fp.sin_f(32'f0.5)).
+fp_test.F(.s="cos_f(32'f0.5)", .d=fp.cos_f(32'f0.5)).
+fp_test.F(.s="tan_f(32'f0.5)", .d=fp.tan_f(32'f0.5)).
+fp_test.F(.s="asin_f(32'f0.5)", .d=fp.asin_f(32'f0.5)).
+fp_test.F(.s="acos_f(32'f0.5)", .d=fp.acos_f(32'f0.5)).
+fp_test.F(.s="atan_f(32'f0.5)", .d=fp.atan_f(32'f0.5)).
+fp_test.F(.s="sinh_f(32'f0.5)", .d=fp.sinh_f(32'f0.5)).
+fp_test.F(.s="cosh_f(32'f0.5)", .d=fp.cosh_f(32'f0.5)).
+fp_test.F(.s="tanh_f(32'f0.5)", .d=fp.tanh_f(32'f0.5)).
+fp_test.F(.s="asinh_f(32'f0.5)", .d=fp.asinh_f(32'f0.5)).
+fp_test.F(.s="acosh_f(32'f0.5)", .d=fp.acosh_f(32'f0.5)).
+fp_test.F(.s="atanh_f(32'f0.5)", .d=fp.atanh_f(32'f0.5)).
+fp_test.F(.s="recip_f(32'f0.5)", .d=fp.recip_f(32'f0.5)).
+fp_test.F(.s="to_degrees_f(32'f0.5)", .d=fp.to_degrees_f(32'f0.5)).
+fp_test.F(.s="to_radians_f(32'f0.5)", .d=fp.to_radians_f(32'f0.5)).
+fp_test.F(.s="atan2_f(32'f0.5, 32'f2.0)", .d=fp.atan2_f(32'f0.5, 32'f2.0)).
+fp_test.BB(.s="is_nan_f(32'f0.5)", .b=fp.is_nan_f(32'f0.5)).
+fp_test.BB(.s="is_infinite_f(32'f0.5)", .b=fp.is_infinite_f(32'f0.5)).
+fp_test.BB(.s="is_finite_f(32'f0.5)", .b=fp.is_finite_f(32'f0.5)).
+fp_test.BB(.s="is_nan_f(nan_f())", .b=fp.is_nan_f(fp.nan_f())).
+fp_test.BB(.s="is_infinite_f(nan_f())", .b=fp.is_infinite_f(fp.nan_f())).
+fp_test.BB(.s="is_finite_f(nan_f())", .b=fp.is_finite_f(fp.nan_f())).
+fp_test.F(.s="mul_add_f(32'f0.5, 32'f2.2, 32'f2.3)", .d=fp.mul_add_f(32'f0.5, 32'f2.2, 32'f2.3)).
+fp_test.F(.s="powi_f(32'f0.5, 32'sd5)", .d=fp.powi_f(32'f0.5, 32'sd5)).
+fp_test.F(.s="powf_f(32'f0.5, 32f'5.0)", .d=fp.powf_f(32'f0.5, 32'f5.0)).
+fp_test.F(.s="log_f(32'f0.5, 32f'2.0)", .d=fp.log_f(32'f0.5, 32'f2.0)).
+fp_test.F(.s="log_f(5E-1, 2.0)", .d=fp.log_f(32'f0.5, 32'f2.0)).
+fp_test.F(.s="result_unwrap_or_default(parse_f(\"0.02\"))", .d=std.result_unwrap_or_default(fp.parse_f("0.02"))).
+fp_test.F(.s="result_unwrap_or_default(parse_f(\"blah\"))", .d=std.result_unwrap_or_default(fp.parse_f("blah"))).
+fp_test.D(.s="nan_d()", .d=fp.nan_d()).
+fp_test.D(.s="floor_d(64'f0.5)", .d=fp.floor_d(64'f0.5)).
+fp_test.D(.s="floor_d(0.6)", .d=fp.floor_d(64'f0.6)).
+fp_test.D(.s="ceil_d(64'f0.5)", .d=fp.ceil_d(64'f0.5)).
+fp_test.D(.s="round_d(64'f0.5)", .d=fp.round_d(64'f0.5)).
+fp_test.D(.s="trunc_d(64'f0.5)", .d=fp.trunc_d(64'f0.5)).
+fp_test.D(.s="fract_d(64'f0.5)", .d=fp.fract_d(64'f0.5)).
+fp_test.D(.s="abs_d(64'f0.5)", .d=fp.abs_d(64'f0.5)).
+fp_test.D(.s="signum_d(64'f0.5)", .d=fp.signum_d(64'f0.5)).
+fp_test.D(.s="sqrt_d(64'f0.5)", .d=fp.sqrt_d(64'f0.5)).
+fp_test.D(.s="exp_d(64'f0.5)", .d=fp.exp_d(64'f0.5)).
+fp_test.D(.s="exp2_d(64'f0.5)", .d=fp.exp2_d(64'f0.5)).
+fp_test.D(.s="ln_d(64'f0.5)", .d=fp.ln_d(64'f0.5)).
+fp_test.D(.s="log2_d(64'f0.5)", .d=fp.log2_d(64'f0.5)).
+fp_test.D(.s="log10_d(64'f0.5)", .d=fp.log10_d(64'f0.5)).
+fp_test.D(.s="cbrt_d(64'f0.5)", .d=fp.cbrt_d(64'f0.5)).
+fp_test.D(.s="sin_d(64'f0.5)", .d=fp.sin_d(64'f0.5)).
+fp_test.D(.s="cos_d(64'f0.5)", .d=fp.cos_d(64'f0.5)).
+fp_test.D(.s="tan_d(64'f0.5)", .d=fp.tan_d(64'f0.5)).
+fp_test.D(.s="asin_d(64'f0.5)", .d=fp.asin_d(64'f0.5)).
+fp_test.D(.s="acos_d(64'f0.5)", .d=fp.acos_d(64'f0.5)).
+fp_test.D(.s="atan_d(64'f0.5)", .d=fp.atan_d(64'f0.5)).
+fp_test.D(.s="sinh_d(64'f0.5)", .d=fp.sinh_d(64'f0.5)).
+fp_test.D(.s="cosh_d(64'f0.5)", .d=fp.cosh_d(64'f0.5)).
+fp_test.D(.s="cosh_d(5e-1)", .d=fp.cosh_d(64'f0.5)).
+fp_test.D(.s="tanh_d(64'f0.5)", .d=fp.tanh_d(64'f0.5)).
+fp_test.D(.s="asinh_d(64'f0.5)", .d=fp.asinh_d(64'f0.5)).
+fp_test.D(.s="acosh_d(64'f0.5)", .d=fp.acosh_d(64'f0.5)).
+fp_test.D(.s="atanh_d(64'f0.5)", .d=fp.atanh_d(64'f0.5)).
+fp_test.D(.s="recip_d(64'f0.5)", .d=fp.recip_d(64'f0.5)).
+fp_test.D(.s="to_degrees_d(64'f0.5)", .d=fp.to_degrees_d(64'f0.5)).
+fp_test.D(.s="to_radians_d(64'f0.5)", .d=fp.to_radians_d(64'f0.5)).
+fp_test.D(.s="atan2_d(64'f0.5, 64'f2.0)", .d=fp.atan2_d(64'f0.5, 64'f2.0)).
+fp_test.BB(.s="is_nan_d(64'f0.5)", .b=fp.is_nan_d(64'f0.5)).
+fp_test.BB(.s="is_infinite_d(64'f0.5)", .b=fp.is_infinite_d(64'f0.5)).
+fp_test.BB(.s="is_finite_d(64'f0.5)", .b=fp.is_finite_d(64'f0.5)).
+fp_test.BB(.s="is_nan_d(nan_d())", .b=fp.is_nan_d(fp.nan_d())).
+fp_test.BB(.s="is_infinite_d(nan_d())", .b=fp.is_infinite_d(fp.nan_d())).
+fp_test.BB(.s="is_finite_d(nan_d())", .b=fp.is_finite_d(fp.nan_d())).
+fp_test.D(.s="mul_add_d(64'f0.5, 64'f2.2, 64'f2.3)", .d=fp.mul_add_d(64'f0.5, 64'f2.2, 64'f2.3)).
+fp_test.D(.s="powi_d(64'f0.5, 32'sd5)", .d=fp.powi_d(64'f0.5, 32'sd5)).
+fp_test.D(.s="powf_d(64'f0.5, 32f'5.0)", .d=fp.powf_d(64'f0.5, 64'f5.0)).
+fp_test.D(.s="log_d(64'f0.5, 32f'2.0)", .d=fp.log_d(64'f0.5, 64'f2.0)).
+fp_test.D(.s="log_d(0.5, 2.0)", .d=fp.log_d(64'f0.5, 64'f2.0)).
+fp_test.D(.s="result_unwrap_or_default(parse_d(\"0.02\"))", .d=std.result_unwrap_or_default(fp.parse_d("0.02"))).
+fp_test.D(.s="result_unwrap_or_default(parse_d(\"blah\"))", .d=std.result_unwrap_or_default(fp.parse_d("blah"))).
+fp_test.OutFloatsFromRecord[x] :- fp_test.FloatsFromRecord[(__fp_test.floatsfromrecord0@ x)], Inspect debug.debug_event((32'd264, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, __fp_test.floatsfromrecord0, x).
+fp_test.OutDoublesFromRecord[x] :- fp_test.DoublesFromRecord[(__fp_test.doublesfromrecord0@ x)], Inspect debug.debug_event((32'd265, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, __fp_test.doublesfromrecord0, x).
+regex_test.RegexTestInput(.regex="\\d+", .text="a111b222c").
+regex_test.RegexTestInput(.regex="\\b\\w{13}\\b", .text="I categorically deny having triskaidekaphobia.").
+regex_test.RegexTestInput(.regex="'([^']+)'\\s+\\((\\d{4})\\)", .text="Not my favorite movie: 'Citizen Kane' (1941).").
+regex_test.RegexTestInput(.regex="[", .text="foo").
+regex_test.RegexTestOutput(.regex=regex, .text=text, .match_found=regex.regex_match(regex.regex(regex), text), .match_found_checked=regex.regex_match(std.result_unwrap_or(regex.regex_checked(regex), regex.regex("")), text), .first_match=regex.regex_first_match(regex.regex(regex), text), .all_matches=regex.regex_all_matches(regex.regex(regex), text)) :- regex_test.RegexTestInput[(__regex_test.regextestinput0@ regex_test.RegexTestInput{.regex=regex, .text=text})], Inspect debug.debug_event((32'd270, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, __regex_test.regextestinput0, regex_test.RegexTestOutput{.regex=regex, .text=text, .match_found=regex.regex_match(regex.regex(regex), text), .match_found_checked=regex.regex_match(std.result_unwrap_or(regex.regex_checked(regex), regex.regex("")), text), .first_match=regex.regex_first_match(regex.regex(regex), text), .all_matches=regex.regex_all_matches(regex.regex(regex), text)}).
+internment_test.StaticInternedString(.ix=internment.intern("static foo")).
+internment_test.StaticInternedString(.ix=internment.intern("ifoo")).
+internment_test.StaticInternedString(.ix=internment.intern("ibar")).
+internment_test.StaticInternedString(.ix=internment.intern(("ifoo" ++ std.__builtin_2string(25)))).
+internment_test.StaticInternedString(.ix=internment.intern((("ifoo" ++ std.__builtin_2string(25)) ++ "!"))).
+internment_test.StaticInternedString(.ix=internment.intern(("ibar" ++ std.__builtin_2string((2 + 2))))).
+internment_test.AllInternedString(.ix=ix) :- internment_test.IInternedString[(__internment_test.iinternedstring0@ internment_test.IInternedString{.ix=ix})], Inspect debug.debug_event((32'd277, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, __internment_test.iinternedstring0, internment_test.AllInternedString{.ix=ix}).
+internment_test.AllInternedString(.ix=ix) :- internment_test.StaticInternedString[(__internment_test.staticinternedstring0@ internment_test.StaticInternedString{.ix=ix})], Inspect debug.debug_event((32'd278, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, __internment_test.staticinternedstring0, internment_test.AllInternedString{.ix=ix}).
+internment_test.OInternedString(.x=internment.ival(s), .ix=s) :- internment_test.AllInternedString[(__internment_test.allinternedstring0@ internment_test.AllInternedString{.ix=s})], Inspect debug.debug_event((32'd279, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, __internment_test.allinternedstring0, internment_test.OInternedString{.x=internment.ival(s), .ix=s}).
+internment_test.OInternedString(.x=((internment.ival(s1) ++ " ") ++ internment.ival(s2)), .ix=internment.intern(((internment.ival(s1) ++ " ") ++ internment.ival(s2)))) :- internment_test.AllInternedString[(__internment_test.allinternedstring0@ internment_test.AllInternedString{.ix=s1})], internment_test.AllInternedString[(__internment_test.allinternedstring1@ internment_test.AllInternedString{.ix=s2})], Inspect debug.debug_event_join((32'd280, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __internment_test.allinternedstring0, __internment_test.allinternedstring1, internment_test.OInternedString{.x=((internment.ival(s1) ++ " ") ++ internment.ival(s2)), .ix=internment.intern(((internment.ival(s1) ++ " ") ++ internment.ival(s2)))}).
+internment_test.Projections(.inp=i, .p=("x=" ++ std.__builtin_2string(i.x))) :- internment_test.IStruct[(__internment_test.istruct0@ (&i))], Inspect debug.debug_event((32'd281, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, __internment_test.istruct0, internment_test.Projections{.inp=i, .p=("x=" ++ std.__builtin_2string(i.x))}).
+internment_test.Projections(.inp=internment.ival(i), .p=("t.0=" ++ std.__builtin_2string(i.t.0))) :- internment_test.IStruct[(i@ (&internment_test.IStruct{.u=_, .t=_, .x=_}))], Inspect debug.debug_event((32'd282, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, i, internment_test.Projections{.inp=internment.ival(i), .p=("t.0=" ++ std.__builtin_2string(i.t.0))}).
+internment_test.Projections(.inp=internment.ival(i), .p=("t.1=" ++ std.__builtin_2string(i.t.1))) :- internment_test.IStruct[(i@ (&internment_test.IStruct{.u=_, .t=(&(_, d)), .x=_}))], Inspect debug.debug_event((32'd283, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, i, internment_test.Projections{.inp=internment.ival(i), .p=("t.1=" ++ std.__builtin_2string(i.t.1))}).
+internment_test.Projections(.inp=internment.ival(i), .p=("f1=" ++ std.__builtin_2string(f1))) :- internment_test.IStruct[(i@ (&internment_test.IStruct{.u=(&internment_test.Tag1{.f1=f1}), .t=_, .x=_}))], Inspect debug.debug_event((32'd284, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, i, internment_test.Projections{.inp=internment.ival(i), .p=("f1=" ++ std.__builtin_2string(f1))}).
+internment_test.Projections(.inp=internment.ival(i), .p=("f2=" ++ std.__builtin_2string(f2))) :- internment_test.IStruct[(i@ (&internment_test.IStruct{.u=(&(t@ internment_test.Tag2{.f2=f2, .f3=_})), .t=_, .x=_}))], Inspect debug.debug_event((32'd285, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, i, internment_test.Projections{.inp=internment.ival(i), .p=("f2=" ++ std.__builtin_2string(f2))}).
+internment_test.Projections(.inp=internment.ival(i), .p=("f3=" ++ f3)) :- internment_test.IStruct[(i@ (&internment_test.IStruct{.u=(t@ (&internment_test.Tag2{.f2=_, .f3=f3})), .t=_, .x=_}))], Inspect debug.debug_event((32'd286, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, i, internment_test.Projections{.inp=internment.ival(i), .p=("f3=" ++ f3)}).
+tinyset_test.Sets(.setid=setid, .set=set) :- tinyset_test.SetElement[(__tinyset_test.setelement0@ tinyset_test.SetElement{.setid=setid, .element=v})], var __inputs_set = Aggregate((setid), __debug_287_1_tinyset.group2set((__tinyset_test.setelement0, v))), Inspect debug.debug_event((32'd287, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __inputs_set.0, (__inputs_set, setid)), var set = __inputs_set.1, Inspect debug.debug_event((32'd287, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (__inputs_set, setid), tinyset_test.Sets{.setid=setid, .set=set}).
+tinyset_test.Intersects(.setid1=setid1, .setid2=setid2, .set=set) :- tinyset_test.Sets[(__tinyset_test.sets0@ tinyset_test.Sets{.setid=setid1, .set=set1})], tinyset_test.Sets[(__tinyset_test.sets1@ tinyset_test.Sets{.setid=setid2, .set=set2})], Inspect debug.debug_event_join((32'd288, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __tinyset_test.sets0, __tinyset_test.sets1, (setid1, set1, setid2, set2)), var set = ((var set: tinyset.Set64<std.u32>) = tinyset.empty();
+                                                                                                                                                                                                                                                                                                                                                                                                                                  (for (x in set1) {
+                                                                                                                                                                                                                                                                                                                                                                                                                                       if tinyset.contains(set2, x) {
+                                                                                                                                                                                                                                                                                                                                                                                                                                           tinyset.insert(set, x)
+                                                                                                                                                                                                                                                                                                                                                                                                                                       } else {
+                                                                                                                                                                                                                                                                                                                                                                                                                                             ()
+                                                                                                                                                                                                                                                                                                                                                                                                                                         }
+                                                                                                                                                                                                                                                                                                                                                                                                                                   };
+                                                                                                                                                                                                                                                                                                                                                                                                                                   set)), Inspect debug.debug_event((32'd288, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (setid1, set1, setid2, set2), tinyset_test.Intersects{.setid1=setid1, .setid2=setid2, .set=set}).
+tinyset_test.Intersects2(.setid1=setid1, .setid2=setid2, .set=tinyset.intersection(set1, set2)) :- tinyset_test.Sets[(__tinyset_test.sets0@ tinyset_test.Sets{.setid=setid1, .set=set1})], tinyset_test.Sets[(__tinyset_test.sets1@ tinyset_test.Sets{.setid=setid2, .set=set2})], Inspect debug.debug_event_join((32'd289, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __tinyset_test.sets0, __tinyset_test.sets1, tinyset_test.Intersects2{.setid1=setid1, .setid2=setid2, .set=tinyset.intersection(set1, set2)}).
+tinyset_test.Diffs(.setid1=setid1, .setid2=setid2, .set=tinyset.difference(set1, set2)) :- tinyset_test.Sets[(__tinyset_test.sets0@ tinyset_test.Sets{.setid=setid1, .set=set1})], tinyset_test.Sets[(__tinyset_test.sets1@ tinyset_test.Sets{.setid=setid2, .set=set2})], Inspect debug.debug_event_join((32'd290, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __tinyset_test.sets0, __tinyset_test.sets1, tinyset_test.Diffs{.setid1=setid1, .setid2=setid2, .set=tinyset.difference(set1, set2)}).
+

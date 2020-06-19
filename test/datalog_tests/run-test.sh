@@ -33,6 +33,14 @@ else
     usage
 fi
 
+# Always dump intermediate transformations.
+DDLOGFLAGS="${DDLOGFLAGS} --pp-flat --pp-validated --pp-opt"
+
+if [[ " ${DDLOGFLAGS[@]} " =~ " -g " ]]; then
+    echo "Adding debugging hooks"
+    DDLOGFLAGS="${DDLOGFLAGS} --pp-debug"
+fi
+
 if [ "x${FLATBUF}" == "x1" ]; then
     CARGOFLAGS+=" --features=flatbuf"
     DDLOGFLAGS="${DDLOGFLAGS} -j"
@@ -56,6 +64,27 @@ fi
 CLASSPATH=$(pwd)/${base}_ddlog/flatbuf/java:$(pwd)/../../java/ddlogapi.jar:$CLASSPATH
 # Run DDlog compiler
 ddlog -i ${base}.dl -L../../lib ${DDLOGFLAGS}
+
+# Validate intermediate representations.
+if [ -f ${base}.flat.ast.expected ]; then
+    diff -q ${base}.flat.ast ${base}.flat.ast.expected
+fi
+
+if [ -f ${base}.valid.ast.expected ]; then
+    diff -q ${base}.valid.ast ${base}.valid.ast.expected
+fi
+
+if [[ " ${DDLOGFLAGS[@]} " =~ " -g " ]]; then
+    if [ -f ${base}.debug.ast.expected ]; then
+        diff -q ${base}.debug.ast ${base}.debug.ast.expected
+    fi
+fi
+
+if [ -f ${base}.opt.ast.expected ]; then
+    diff -q ${base}.opt.ast ${base}.opt.ast.expected
+fi
+
+
 # Compile produced Rust files
 cd ${base}_ddlog
 cargo build ${CARGOFLAGS}
