@@ -7,7 +7,8 @@ typedef Blacklisted = Blacklisted{ep: string}
 typedef Book = Book{author: string, title: string}
 typedef BookByAuthor = BookByAuthor{book: Book, author: Author}
 typedef Bytes = Bytes{b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>}
-typedef Category = CategoryStarWars{} | CategoryOther{}
+typedef Category = CategoryStarWars{} |
+                   CategoryOther{}
 typedef Endpoint = Endpoint{ip: ip_addr_t, proto: string, preferred_port: bit<16>}
 typedef EndpointString = EndpointString{s: string}
 typedef Evens = Evens{evens_and_odds: std.Vec<bigint>, evens: std.Vec<bigint>}
@@ -64,7 +65,9 @@ typedef Word1 = Word1{word: string, cat: Category}
 typedef Word2 = Word2{word: string, cat: Category}
 typedef WorstPrice = WorstPrice{item: string, price: bit<64>}
 typedef X = X{x: bit<16>}
-typedef eth_payload_t = EthIP4{ip4: ip4_pkt_t} | EthIP6{ip6: ip6_pkt_t} | EthOther{}
+typedef eth_payload_t = EthIP4{ip4: ip4_pkt_t} |
+                        EthIP6{ip6: ip6_pkt_t} |
+                        EthOther{}
 typedef eth_pkt_t = EthPacket{src: bit<48>, dst: bit<48>, payload: eth_payload_t}
 #[size = 8]
 #[shared_ref = true]
@@ -75,26 +78,32 @@ typedef ip4_pkt_t = IP4Pkt{ttl: bit<8>, src: ip4_addr_t, dst: ip4_addr_t, payloa
 typedef ip6_addr_t = bit<128>
 typedef ip6_pkt_t = IP6Pkt{ttl: bit<8>, src: ip6_addr_t, dst: ip6_addr_t, payload: ip_payload_t}
 typedef ip_addr_t = IPAddr{addr: bit<32>}
-typedef ip_payload_t = IPTCP{tcp: tcp_pkt_t} | IPUDP{udp: udp_pkt_t} | IPOther{}
+typedef ip_payload_t = IPTCP{tcp: tcp_pkt_t} |
+                       IPUDP{udp: udp_pkt_t} |
+                       IPOther{}
 typedef log.log_level_t = signed<32>
 typedef log.module_t = signed<32>
 typedef mac_addr_t = MACAddr{addr: bit<48>}
 typedef nethost_t = NHost{ip: ip_addr_t, mac: mac_addr_t}
-typedef stage = LS_IN_PRE_LB{} | LS_OUT_PRE_LB{}
+typedef stage = LS_IN_PRE_LB{} |
+                LS_OUT_PRE_LB{}
 typedef std.DDEpoch = std.u64
 typedef std.DDIteration = std.u64
 typedef std.DDNestedTS = std.DDNestedTS{epoch: std.DDEpoch, iter: std.DDIteration}
 typedef std.DDWeight = std.s64
-typedef std.Either<'A,'B> = std.Left{l: 'A} | std.Right{r: 'B}
+typedef std.Either<'A,'B> = std.Left{l: 'A} |
+                            std.Right{r: 'B}
 extern type std.Group<'K,'V>
 extern type std.Map<'K,'V>
 #[rust = "serde(from=\"Option<A>\", into=\"Option<A>\", bound(serialize=\"A: Clone+Serialize\"))"]
 #[custom_from_record = true]
-typedef std.Option<'A> = std.None{} | std.Some{x: 'A}
+typedef std.Option<'A> = std.None{} |
+                         std.Some{x: 'A}
 #[size = 8]
 #[shared_ref = true]
 extern type std.Ref<'A>
-typedef std.Result<'V,'E> = std.Ok{res: 'V} | std.Err{err: 'E}
+typedef std.Result<'V,'E> = std.Ok{res: 'V} |
+                            std.Err{err: 'E}
 extern type std.Set<'A>
 extern type std.Vec<'A>
 typedef std.s128 = signed<128>
