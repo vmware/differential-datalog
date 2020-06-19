@@ -125,10 +125,14 @@ impl Member {
 pub type Members = BTreeSet<Member>;
 
 /// All the input sources we support.
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Deserialize, Serialize, Hash)]
 pub enum Source {
     /// Input is coming from a file.
     File(PathBuf),
+    /// Input is coming from a TcpReceiver.
+    /// Right now there is at most one TcpReceiver at a given time, so it does
+    /// not require an identifier.
+    TcpReceiver,
 }
 
 /// All the output sinks we support.
