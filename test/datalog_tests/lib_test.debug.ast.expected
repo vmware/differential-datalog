@@ -10,21 +10,29 @@ typedef internment.istring = internment.Intern<string>
 typedef internment_test.AllInternedString = internment_test.AllInternedString{ix: internment.istring}
 typedef internment_test.IInternedString = internment_test.IInternedString{ix: internment.istring}
 typedef internment_test.IStruct = internment_test.IStruct{u: internment.Intern<internment_test.IUnion>, t: internment.Intern<(std.s32, double)>, x: bigint}
-typedef internment_test.IUnion = internment_test.Tag1{f1: bool} | internment_test.Tag2{f2: std.u32, f3: string}
+typedef internment_test.IUnion = internment_test.Tag1{f1: bool} |
+                                 internment_test.Tag2{f2: std.u32, f3: string}
 typedef internment_test.OInternedString = internment_test.OInternedString{x: string, ix: internment.istring}
 typedef internment_test.Projections = internment_test.Projections{inp: internment_test.IStruct, p: string}
 typedef internment_test.StaticInternedString = internment_test.StaticInternedString{ix: internment.istring}
-typedef json.JsonNum = json.JsonInt{i: std.s128} | json.JsonFloat{d: double}
+typedef json.JsonNum = json.JsonInt{i: std.s128} |
+                       json.JsonFloat{d: double}
 #[rust = "serde(from = \"__json::ValueWrapper\", into = \"__json::ValueWrapper\")"]
-typedef json.JsonValue = json.JsonNull{} | json.JsonBool{b: bool} | json.JsonNumber{n: json.JsonNum} | json.JsonString{s: internment.istring} | json.JsonArray{a: std.Vec<json.JsonValue>} | json.JsonObject{o: std.Map<internment.istring,json.JsonValue>}
+typedef json.JsonValue = json.JsonNull{} |
+                         json.JsonBool{b: bool} |
+                         json.JsonNumber{n: json.JsonNum} |
+                         json.JsonString{s: internment.istring} |
+                         json.JsonArray{a: std.Vec<json.JsonValue>} |
+                         json.JsonObject{o: std.Map<internment.istring,json.JsonValue>}
 #[custom_serde = true]
 typedef json.JsonWrapper<'T> = json.JsonWrapper{x: 'T}
 typedef json_test.Array = std.Vec<json_test.BoolStruct>
 typedef json_test.BoolMap = std.Map<string,json_test.BoolStruct>
 typedef json_test.BoolStruct = json_test.BoolStruct{b: bool}
 typedef json_test.Enum = #[rust = "serde(rename = \"Variant1\")"]
-                         json_test.Variant1{b: bool} | #[rust = "serde(rename = \"Variant2\")"]
-                                                       json_test.Variant2{u: std.u32}
+                         json_test.Variant1{b: bool} |
+                         #[rust = "serde(rename = \"Variant2\")"]
+                         json_test.Variant2{u: std.u32}
 typedef json_test.JsonTest = json_test.JsonTest{description: string, value: string}
 typedef json_test.Nested = json_test.Nested{x: string, z: std.u64}
 typedef json_test.Optional = json_test.Optional{s: std.Option<string>, i: std.Option<std.u64>, v: std.Option<json.JsonValue>}
@@ -33,15 +41,17 @@ typedef json_test.StructWithKey = json_test.StructWithKey{key: std.u64, payload:
 typedef json_test.StructWithMap = json_test.StructWithMap{#[deserialize_from_array = json_test.key_structWithKey()] f: std.Map<std.u64,json_test.StructWithKey>}
 #[rust = "serde(tag = \"@type\")"]
 typedef json_test.TaggedEnum = #[rust = "serde(rename = \"t.V1\")"]
-                               json_test.TVariant1{b: bool} | #[rust = "serde(rename = \"t.V2\")"]
-                                                              json_test.TVariant2{u: std.u32}
+                               json_test.TVariant1{b: bool} |
+                               #[rust = "serde(rename = \"t.V2\")"]
+                               json_test.TVariant2{u: std.u32}
 typedef json_test.Top = json_test.Top{t: string, id: string, nested: json_test.Nested}
 typedef json_test.TopFlat = json_test.TopFlat{t: string, #[rust = "serde(rename=\"@id\")"] id: string, #[rust = "serde(flatten)"] nested: json_test.Nested}
 typedef json_test.U64FromString = json_test.U64FromString{x: string, #[rust = "serde(with=\"serde_string\")"] y: std.u64}
 typedef json_test.WrappedEnum = json.JsonWrapper<json_test.TaggedEnum>
 typedef log.log_level_t = signed<32>
 typedef log.module_t = signed<32>
-typedef net.ipaddr.IpAddr = net.ipaddr.IpAddrV4{addr4: net.ipv4.Ipv4Addr} | net.ipaddr.IpAddrV6{addr6: net.ipv6.Ipv6Addr}
+typedef net.ipaddr.IpAddr = net.ipaddr.IpAddrV4{addr4: net.ipv4.Ipv4Addr} |
+                            net.ipaddr.IpAddrV6{addr6: net.ipv6.Ipv6Addr}
 extern type net.ipv4.Ipv4Addr
 extern type net.ipv6.Ipv6Addr
 typedef net_test.NetChecks = net_test.NetChecks{description: string, value: string}
@@ -52,16 +62,19 @@ typedef std.DDEpoch = std.u64
 typedef std.DDIteration = std.u64
 typedef std.DDNestedTS = std.DDNestedTS{epoch: std.DDEpoch, iter: std.DDIteration}
 typedef std.DDWeight = std.s64
-typedef std.Either<'A,'B> = std.Left{l: 'A} | std.Right{r: 'B}
+typedef std.Either<'A,'B> = std.Left{l: 'A} |
+                            std.Right{r: 'B}
 extern type std.Group<'K,'V>
 extern type std.Map<'K,'V>
 #[rust = "serde(from=\"Option<A>\", into=\"Option<A>\", bound(serialize=\"A: Clone+Serialize\"))"]
 #[custom_from_record = true]
-typedef std.Option<'A> = std.None{} | std.Some{x: 'A}
+typedef std.Option<'A> = std.None{} |
+                         std.Some{x: 'A}
 #[size = 8]
 #[shared_ref = true]
 extern type std.Ref<'A>
-typedef std.Result<'V,'E> = std.Ok{res: 'V} | std.Err{err: 'E}
+typedef std.Result<'V,'E> = std.Ok{res: 'V} |
+                            std.Err{err: 'E}
 extern type std.Set<'A>
 extern type std.Vec<'A>
 typedef std.s128 = signed<128>

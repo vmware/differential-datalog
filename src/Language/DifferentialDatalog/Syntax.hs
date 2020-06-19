@@ -313,7 +313,7 @@ instance PP Type where
     pp (TSigned _ w)    = "signed<" <> pp w <> ">"
     pp (TDouble _)      = "double"
     pp (TFloat _)       = "float"
-    pp (TStruct _ cons) = hcat $ punctuate (" | ") $ map pp cons
+    pp (TStruct _ cons) = vcat $ punctuate (" |") $ map pp cons
     pp (TTuple _ as)    = parens $ commaSep $ map pp as
     pp (TUser _ n as)   = pp n <>
                           if null as

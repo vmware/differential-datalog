@@ -15,7 +15,8 @@ typedef AggregateMeInts = AggregateMeInts{x: string, y: bit<32>}
 typedef Alloc = Alloc{id: bigint, allocated: std.Map<string,bit<32>>, toallocate: std.Vec<string>, min_val: bit<32>, max_val: bit<32>}
 typedef Allocated = Allocated{name: string, xs: std.Set<bit<32>>}
 typedef Allocation = Allocation{name: string, id: string, x: bit<32>}
-typedef Alt = C0{x: bit<32>} | C1{x: bit<32>}
+typedef Alt = C0{x: bit<32>} |
+              C1{x: bit<32>}
 typedef Answer = Answer{x: station}
 typedef Arithm = Arithm{n: bit<32>}
 typedef BMethod = BMethod{b1: Symbol, b2: Symbol}
@@ -50,7 +51,8 @@ typedef Filtered = Filtered{r: std.Ref<Referenced>}
 typedef Filtered2 = Filtered2{r: std.Ref<Referee2>}
 typedef Filtered3 = Filtered3{r: std.Ref<Referenced>}
 typedef Floats = Floats{s: string, f: float}
-typedef FooStruct = Option1{f1: bigint, f2: IPAddr, f3: (bool, string)} | Option2{f4: bit<32>, f5: IPAddr}
+typedef FooStruct = Option1{f1: bigint, f2: IPAddr, f3: (bool, string)} |
+                    Option2{f4: bit<32>, f5: IPAddr}
 typedef Gangster = Gangster{nickname: string, name: string}
 typedef HostAddress = HostAddress{host: bit<64>, addr: string}
 typedef HostAddresses = HostAddresses{host: bit<64>, addrs: std.Set<string>}
@@ -59,7 +61,8 @@ typedef IConcatString = IConcatString{s: intern.IString}
 typedef IP4Addr = bit<32>
 typedef IP4Subnet = IP4Subnet{addr: IP4Addr, mask: bit<32>}
 typedef IP6Addr = bit<128>
-typedef IPAddr = IP4{ip4: IP4Addr} | IP6{ip6: IP6Addr}
+typedef IPAddr = IP4{ip4: IP4Addr} |
+                 IP6{ip6: IP6Addr}
 typedef IString1 = IString1{s: intern.IString}
 typedef Innocent = Innocent{name: string}
 typedef J = J{b: bool}
@@ -80,7 +83,8 @@ typedef R3 = R3{f1: bigint, f2: bool}
 typedef R3_nl = R3_nl{a3: string, b3: string}
 typedef R4_nl = R4_nl{a4: string, b4: string}
 typedef R6 = R6{f: bigint}
-typedef R7 = R7{f1: bigint, f2: bit<16>} | R7Other{}
+typedef R7 = R7{f1: bigint, f2: bit<16>} |
+             R7Other{}
 typedef Re = Re{_x: Tnumber, _t: Ttxt, _y: Tnumber}
 typedef Reach = Reach{s1: station, s2: station}
 typedef Realized = Realized{name: string, id: string, x: bit<32>}
@@ -110,18 +114,22 @@ typedef Suspect = Suspect{name: string}
 typedef Symbol = intern.IString
 typedef Symmetric1 = Symmetric1{x: string, sym: bool}
 typedef T = T{x: bigint, y: string}
-typedef T1 = C11{f1: bigint, f2: (bigint, string)} | C12{f3: bit<32>, f4: (bool, bool, bool)}
+typedef T1 = C11{f1: bigint, f2: (bigint, string)} |
+             C12{f3: bit<32>, f4: (bool, bool, bool)}
 typedef T16 = t15
 typedef T17 = bigint
-typedef T2 = C21{f1: T1, f2: bigint} | C22{f3: (bool, T1)}
-typedef T3 = C31{f1: T1, f2: bigint, s: string, b: bit<32>} | C32{f3: ((bool, (bool, bool, bool)), T1)}
+typedef T2 = C21{f1: T1, f2: bigint} |
+             C22{f3: (bool, T1)}
+typedef T3 = C31{f1: T1, f2: bigint, s: string, b: bit<32>} |
+             C32{f3: ((bool, (bool, bool, bool)), T1)}
 typedef TB = intern.IString
 typedef Table1 = Table1{id: bit<64>, name: string}
 typedef Table12 = Table12{id: bit<128>, name: string, f3: S}
 typedef Table2 = Table2{name: string, f2: bigint, f3: S}
 typedef Tnumber = bit<32>
 typedef ToAllocate = ToAllocate{name: string, ids: std.Vec<string>}
-typedef Tree<'L> = LeafNode{v: 'L} | NonLeafNode{branches: std.Vec<Tree<'L>>}
+typedef Tree<'L> = LeafNode{v: 'L} |
+                   NonLeafNode{branches: std.Vec<Tree<'L>>}
 typedef Trees = Trees{tree: Tree<std.u64>}
 typedef Tsymbol = intern.IString
 typedef Tt1 = Tt1{column1: signed<64>, column2: string, column3: bool}
@@ -159,7 +167,10 @@ typedef log.module_t = signed<32>
 typedef nested_t = N{field: C}
 typedef person = string
 extern type regex.Regex
-typedef serializable_t = ConsInt{x: bigint} | ConsBit{y: bit<32>} | ConsBool{z: bool} | Cons0{}
+typedef serializable_t = ConsInt{x: bigint} |
+                         ConsBit{y: bit<32>} |
+                         ConsBool{z: bool} |
+                         Cons0{}
 typedef souffle_types.TEmtpy = ()
 typedef souffle_types.Tfloat = double
 typedef souffle_types.Tnumber = signed<32>
@@ -170,16 +181,19 @@ typedef std.DDEpoch = std.u64
 typedef std.DDIteration = std.u64
 typedef std.DDNestedTS = std.DDNestedTS{epoch: std.DDEpoch, iter: std.DDIteration}
 typedef std.DDWeight = std.s64
-typedef std.Either<'A,'B> = std.Left{l: 'A} | std.Right{r: 'B}
+typedef std.Either<'A,'B> = std.Left{l: 'A} |
+                            std.Right{r: 'B}
 extern type std.Group<'K,'V>
 extern type std.Map<'K,'V>
 #[rust = "serde(from=\"Option<A>\", into=\"Option<A>\", bound(serialize=\"A: Clone+Serialize\"))"]
 #[custom_from_record = true]
-typedef std.Option<'A> = std.None{} | std.Some{x: 'A}
+typedef std.Option<'A> = std.None{} |
+                         std.Some{x: 'A}
 #[size = 8]
 #[shared_ref = true]
 extern type std.Ref<'A>
-typedef std.Result<'V,'E> = std.Ok{res: 'V} | std.Err{err: 'E}
+typedef std.Result<'V,'E> = std.Ok{res: 'V} |
+                            std.Err{err: 'E}
 extern type std.Set<'A>
 extern type std.Vec<'A>
 typedef std.s128 = signed<128>
@@ -211,7 +225,9 @@ typedef t13 = (t00, t01, t02, t03)
 typedef t14 = (t04, t04)
 typedef t15 = Const15{f: bigint}
 typedef t18 = Const18{f0: bigint, f1: string, f2: t00}
-typedef t19 = C000{f0: bigint} | C111{f0: bigint} | C222{f0: bigint}
+typedef t19 = C000{f0: bigint} |
+              C111{f0: bigint} |
+              C222{f0: bigint}
 typedef t20 = signed<32>
 typedef t21 = double
 typedef t22 = float

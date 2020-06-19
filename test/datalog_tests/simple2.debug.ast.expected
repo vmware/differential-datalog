@@ -29,16 +29,19 @@ typedef std.DDEpoch = std.u64
 typedef std.DDIteration = std.u64
 typedef std.DDNestedTS = std.DDNestedTS{epoch: std.DDEpoch, iter: std.DDIteration}
 typedef std.DDWeight = std.s64
-typedef std.Either<'A,'B> = std.Left{l: 'A} | std.Right{r: 'B}
+typedef std.Either<'A,'B> = std.Left{l: 'A} |
+                            std.Right{r: 'B}
 extern type std.Group<'K,'V>
 extern type std.Map<'K,'V>
 #[rust = "serde(from=\"Option<A>\", into=\"Option<A>\", bound(serialize=\"A: Clone+Serialize\"))"]
 #[custom_from_record = true]
-typedef std.Option<'A> = std.None{} | std.Some{x: 'A}
+typedef std.Option<'A> = std.None{} |
+                         std.Some{x: 'A}
 #[size = 8]
 #[shared_ref = true]
 extern type std.Ref<'A>
-typedef std.Result<'V,'E> = std.Ok{res: 'V} | std.Err{err: 'E}
+typedef std.Result<'V,'E> = std.Ok{res: 'V} |
+                            std.Err{err: 'E}
 extern type std.Set<'A>
 extern type std.Vec<'A>
 typedef std.s128 = signed<128>
