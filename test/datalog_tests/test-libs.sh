@@ -4,7 +4,7 @@
 
 set -e
 
-./run-test.sh lib_test.dl release
+DDLOGFLAGS="-g" ./run-test.sh lib_test.dl release
 
 # $1 - test name
 test_lib() {
