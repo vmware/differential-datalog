@@ -1,0 +1,411 @@
+typedef Arrng1 = Arrng1{f1: std.Ref<std.Ref<std.Ref<TArrng2>>>, f2: bigint}
+typedef Arrng1Arrng2 = Arrng1Arrng2{x: bigint}
+typedef Arrng1Arrng2_2 = Arrng1Arrng2_2{x: bigint}
+typedef Arrng2 = Arrng2{f1: std.Ref<TArrng2>, f2: bigint, f3: bool}
+typedef Doubles = Doubles{xs: std.Vec<double>}
+typedef FilteredRelation = FilteredRelation{y: bit<32>}
+typedef FuncTest = FuncTest{x: string}
+typedef InputInspectNot1 = InputInspectNot1{x: bit<32>, y: bit<32>}
+typedef InputInspectNot2 = InputInspectNot2{x: bit<32>}
+typedef InputTuples = InputTuples{x: bit<32>, y: bit<32>}
+typedef InspectSimpleSum = InspectSimpleSum{x: bit<32>, total: bit<32>}
+typedef Ints = Ints{x: bigint}
+typedef OutputInspectNot = OutputInspectNot{x: bit<32>, y: bit<32>}
+typedef RFloatToInt = RFloatToInt{_x: signed<32>}
+typedef RFtoIDummy = RFtoIDummy{x: signed<32>}
+typedef SomeInts = SomeInts{x: std.Option<bigint>}
+typedef SumsOfDoubles = SumsOfDoubles{x: double, y: double, sum: double}
+typedef TArrng1 = TArrng1{f1: bool, f2: bigint}
+typedef TArrng1Arrng2 = TArrng1Arrng2{x: bigint}
+typedef TArrng2 = TArrng2{f1: bool, f2: std.Ref<std.Ref<TArrng1>>}
+typedef TestRelation = TestRelation{x: bit<32>, y: bit<32>}
+#[size = 8]
+#[shared_ref = true]
+extern type internment.Intern<'A>
+typedef internment.istring = internment.Intern<string>
+typedef log.log_level_t = signed<32>
+typedef log.module_t = signed<32>
+typedef std.DDEpoch = std.u64
+typedef std.DDIteration = std.u64
+typedef std.DDNestedTS = std.DDNestedTS{epoch: std.DDEpoch, iter: std.DDIteration}
+typedef std.DDWeight = std.s64
+typedef std.Either<'A,'B> = std.Left{l: 'A} | std.Right{r: 'B}
+extern type std.Group<'K,'V>
+extern type std.Map<'K,'V>
+#[rust = "serde(from=\"Option<A>\", into=\"Option<A>\", bound(serialize=\"A: Clone+Serialize\"))"]
+#[custom_from_record = true]
+typedef std.Option<'A> = std.None{} | std.Some{x: 'A}
+#[size = 8]
+#[shared_ref = true]
+extern type std.Ref<'A>
+typedef std.Result<'V,'E> = std.Ok{res: 'V} | std.Err{err: 'E}
+extern type std.Set<'A>
+extern type std.Vec<'A>
+typedef std.s128 = signed<128>
+typedef std.s16 = signed<16>
+typedef std.s32 = signed<32>
+typedef std.s64 = signed<64>
+typedef std.s8 = signed<8>
+typedef std.u128 = bit<128>
+typedef std.u16 = bit<16>
+typedef std.u32 = bit<32>
+typedef std.u64 = bit<64>
+typedef std.u8 = bit<8>
+typedef std.usize = std.u64
+function __debug_8_1_std.group_sum (g: std.Group<bit<32>,('I, bit<32>)>): (std.Vec<'I>, bit<32>)
+{
+    ((var inputs, var original_group) = debug.debug_split_group(g);
+     (inputs, std.group_sum(original_group)))
+}
+function agg_avg_double_N (aggregate: std.Option<(double, double)>, item: std.Option<double>): std.Option<(double, double)>
+{
+    match ((aggregate, item)) {
+        (std.None{}, std.None{}) -> std.None{},
+        (std.None{}, std.Some{.x=var x}) -> std.Some{.x=(x, 64'f1.0)},
+        (std.Some{.x=var x}, std.None{}) -> std.Some{.x=x},
+        (std.Some{.x=(var sum, var ct)}, std.Some{.x=var y}) -> std.Some{.x=((sum + y), (ct + 64'f1.0))}
+    }
+}
+extern function debug.debug_event (operator_id: (std.u32, std.u32, std.u32), w: std.DDWeight, ts: 'T1, input1: 'A1, out: 'A2): ()
+extern function debug.debug_event_join (operator_id: (std.u32, std.u32, std.u32), w: std.DDWeight, ts: 'T1, input1: 'A1, input2: 'A2, out: 'A3): ()
+extern function debug.debug_split_group (g: std.Group<'K,('I, 'V)>): (std.Vec<'I>, std.Group<'K,'V>)
+extern function fp.abs_d (f: double): double
+extern function fp.abs_f (f: float): float
+extern function fp.acos_d (f: double): double
+extern function fp.acos_f (f: float): float
+extern function fp.acosh_d (f: double): double
+extern function fp.acosh_f (f: float): float
+extern function fp.asin_d (f: double): double
+extern function fp.asin_f (f: float): float
+extern function fp.asinh_d (f: double): double
+extern function fp.asinh_f (f: float): float
+extern function fp.atan2_d (f: double, other: double): double
+extern function fp.atan2_f (f: float, other: float): float
+extern function fp.atan_d (f: double): double
+extern function fp.atan_f (f: float): float
+extern function fp.atanh_d (f: double): double
+extern function fp.atanh_f (f: float): float
+extern function fp.cbrt_d (f: double): double
+extern function fp.cbrt_f (f: float): float
+extern function fp.ceil_d (f: double): double
+extern function fp.ceil_f (f: float): float
+extern function fp.cos_d (f: double): double
+extern function fp.cos_f (f: float): float
+extern function fp.cosh_d (f: double): double
+extern function fp.cosh_f (f: float): float
+extern function fp.exp2_d (f: double): double
+extern function fp.exp2_f (f: float): float
+extern function fp.exp_d (f: double): double
+extern function fp.exp_f (f: float): float
+extern function fp.floor_d (f: double): double
+extern function fp.floor_f (f: float): float
+extern function fp.fract_d (f: double): double
+extern function fp.fract_f (f: float): float
+extern function fp.int_from_d (d: double): std.Option<bigint>
+extern function fp.int_from_f (f: float): std.Option<bigint>
+extern function fp.is_finite_d (f: double): bool
+extern function fp.is_finite_f (f: float): bool
+extern function fp.is_infinite_d (f: double): bool
+extern function fp.is_infinite_f (f: float): bool
+extern function fp.is_nan_d (f: double): bool
+extern function fp.is_nan_f (f: float): bool
+extern function fp.ln_d (f: double): double
+extern function fp.ln_f (f: float): float
+extern function fp.log10_d (f: double): double
+extern function fp.log10_f (f: float): float
+extern function fp.log2_d (f: double): double
+extern function fp.log2_f (f: float): float
+extern function fp.log_d (f: double, base: double): double
+extern function fp.log_f (f: float, base: float): float
+extern function fp.mul_add_d (a: double, b: double, c: double): double
+extern function fp.mul_add_f (a: float, b: float, c: float): float
+extern function fp.nan_d (): double
+extern function fp.nan_f (): float
+extern function fp.parse_d (s: string): std.Result<double,string>
+extern function fp.parse_f (s: string): std.Result<float,string>
+extern function fp.powf_d (f: double, exp: double): double
+extern function fp.powf_f (f: float, exp: float): float
+extern function fp.powi_d (f: double, exp: signed<32>): double
+extern function fp.powi_f (f: float, exp: signed<32>): float
+extern function fp.recip_d (f: double): double
+extern function fp.recip_f (f: float): float
+extern function fp.round_d (f: double): double
+extern function fp.round_f (f: float): float
+extern function fp.signum_d (f: double): double
+extern function fp.signum_f (f: float): float
+extern function fp.sin_d (f: double): double
+extern function fp.sin_f (f: float): float
+extern function fp.sinh_d (f: double): double
+extern function fp.sinh_f (f: float): float
+extern function fp.sqrt_d (f: double): double
+extern function fp.sqrt_f (f: float): float
+extern function fp.tan_d (f: double): double
+extern function fp.tan_f (f: float): float
+extern function fp.tanh_d (f: double): double
+extern function fp.tanh_f (f: float): float
+extern function fp.to_degrees_d (f: double): double
+extern function fp.to_degrees_f (f: float): float
+extern function fp.to_radians_d (f: double): double
+extern function fp.to_radians_f (f: float): float
+extern function fp.trunc_d (f: double): double
+extern function fp.trunc_f (f: float): float
+function ftoi_ (l: double): signed<32>
+{
+    match (fp.int_from_d(l)) {
+        std.None{} -> 32'sd0,
+        std.Some{.x=var x} -> (x as signed<32>)
+    }
+}
+#[has_side_effects = true]
+extern function inspect_log.log (filename: string, msg: string): ()
+extern function internment.intern (s: 'A): internment.Intern<'A>
+extern function internment.istring_contains (s1: internment.istring, s2: string): bool
+extern function internment.istring_ends_with (s: internment.istring, suffix: string): bool
+extern function internment.istring_join (strings: std.Vec<internment.istring>, sep: string): string
+extern function internment.istring_len (s: internment.istring): std.usize
+extern function internment.istring_replace (s: internment.istring, from: string, to: string): string
+extern function internment.istring_reverse (s: internment.istring): string
+extern function internment.istring_split (s: internment.istring, sep: string): std.Vec<string>
+extern function internment.istring_starts_with (s: internment.istring, prefix: string): bool
+extern function internment.istring_substr (s: internment.istring, start: std.usize, end: std.usize): string
+extern function internment.istring_to_bytes (s: internment.istring): std.Vec<std.u8>
+extern function internment.istring_to_lowercase (s: internment.istring): string
+extern function internment.istring_to_uppercase (s: internment.istring): string
+extern function internment.istring_trim (s: internment.istring): string
+#[return_by_ref = true]
+extern function internment.ival (s: internment.Intern<'A>): 'A
+#[has_side_effects = true]
+extern function log.log (module: log.module_t, level: log.log_level_t, msg: string): ()
+function myfunc (x: string): string
+{
+    x
+}
+extern function std.__builtin_2string (x: 'X): string
+function std.dDNestedTS2string (ts: std.DDNestedTS): string
+{
+    (((("(" ++ std.__builtin_2string(ts.epoch)) ++ ",") ++ std.__builtin_2string(ts.iter)) ++ ")")
+}
+#[return_by_ref = true]
+extern function std.deref (x: std.Ref<'A>): 'A
+extern function std.group2map (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,'V>
+extern function std.group2set (g: std.Group<'K,'V>): std.Set<'V>
+extern function std.group2setmap (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,std.Set<'V>>
+extern function std.group2vec (g: std.Group<'K,'V>): std.Vec<'V>
+extern function std.group_count (g: std.Group<'K,'V>): std.usize
+extern function std.group_first (g: std.Group<'K,'V>): 'V
+extern function std.group_key (g: std.Group<'K,'V>): 'K
+extern function std.group_max (g: std.Group<'K,'V>): 'V
+extern function std.group_min (g: std.Group<'K,'V>): 'V
+extern function std.group_nth (g: std.Group<'K,'V>, n: std.usize): std.Option<'V>
+extern function std.group_set_unions (g: std.Group<'K,std.Set<'A>>): std.Set<'A>
+extern function std.group_setref_unions (g: std.Group<'K,std.Ref<std.Set<'A>>>): std.Ref<std.Set<'A>>
+extern function std.group_sum (g: std.Group<'K,'V>): 'V
+function std.group_unzip (g: std.Group<'K,('X, 'Y)>): (std.Vec<'X>, std.Vec<'Y>)
+{
+    ((var xs: std.Vec<'X>) = std.vec_empty();
+     ((var ys: std.Vec<'Y>) = std.vec_empty();
+      (for (v in g) {
+           ((var x, var y) = v;
+            (std.vec_push(xs, x);
+             std.vec_push(ys, y)))
+       };
+       (xs, ys))))
+}
+extern function std.hash128 (x: 'X): bit<128>
+extern function std.hash64 (x: 'X): bit<64>
+extern function std.hex (x: 'X): string
+extern function std.htonl (x: bit<32>): bit<32>
+extern function std.htons (x: bit<16>): bit<16>
+function std.is_err (res: std.Result<'V,'E>): bool
+{
+    match (res) {
+        std.Ok{.res=_} -> false,
+        std.Err{.err=_} -> true
+    }
+}
+function std.is_none (x: std.Option<'A>): bool
+{
+    match (x) {
+        std.None{} -> true,
+        _ -> false
+    }
+}
+function std.is_ok (res: std.Result<'V,'E>): bool
+{
+    match (res) {
+        std.Ok{.res=_} -> true,
+        std.Err{.err=_} -> false
+    }
+}
+function std.is_some (x: std.Option<'A>): bool
+{
+    match (x) {
+        std.Some{.x=_} -> true,
+        _ -> false
+    }
+}
+extern function std.map_contains_key (m: std.Map<'K,'V>, k: 'K): bool
+extern function std.map_empty (): std.Map<'K,'V>
+extern function std.map_get (m: std.Map<'K,'V>, k: 'K): std.Option<'V>
+extern function std.map_insert (m: mut std.Map<'K,'V>, k: 'K, v: 'V): ()
+extern function std.map_insert_imm (m: std.Map<'K,'V>, k: 'K, v: 'V): std.Map<'K,'V>
+extern function std.map_is_empty (m: std.Map<'K,'V>): bool
+extern function std.map_remove (m: mut std.Map<'K,'V>, k: 'K): ()
+extern function std.map_singleton (k: 'K, v: 'V): std.Map<'K,'V>
+extern function std.map_size (m: std.Map<'K,'V>): std.usize
+extern function std.map_union (m1: std.Map<'K,'V>, m2: std.Map<'K,'V>): std.Map<'K,'V>
+function std.max (x: 'A, y: 'A): 'A
+{
+    if (x > y) {
+        x
+    } else {
+          y
+      }
+}
+function std.min (x: 'A, y: 'A): 'A
+{
+    if (x < y) {
+        x
+    } else {
+          y
+      }
+}
+extern function std.ntohl (x: bit<32>): bit<32>
+extern function std.ntohs (x: bit<16>): bit<16>
+function std.option2set (o: std.Option<'X>): std.Set<'X>
+{
+    match (o) {
+        std.Some{.x=var x} -> std.set_singleton(x),
+        std.None{} -> std.set_empty()
+    }
+}
+function std.option2vec (o: std.Option<'X>): std.Vec<'X>
+{
+    match (o) {
+        std.Some{.x=var x} -> std.vec_singleton(x),
+        std.None{} -> std.vec_empty()
+    }
+}
+function std.option_unwrap_or (x: std.Option<'A>, def: 'A): 'A
+{
+    match (x) {
+        std.Some{.x=var v} -> v,
+        std.None{} -> def
+    }
+}
+extern function std.option_unwrap_or_default (opt: std.Option<'A>): 'A
+extern function std.parse_dec_i64 (s: string): std.Option<signed<64>>
+extern function std.parse_dec_u64 (s: string): std.Option<bit<64>>
+extern function std.pow32 (base: 'A, exp: bit<32>): 'A
+extern function std.range (from: 'A, to: 'A, step: 'A): std.Vec<'A>
+extern function std.ref_new (x: 'A): std.Ref<'A>
+function std.result_unwrap_or (res: std.Result<'V,'E>, def: 'V): 'V
+{
+    match (res) {
+        std.Ok{.res=var v} -> v,
+        std.Err{.err=_} -> def
+    }
+}
+extern function std.result_unwrap_or_default (res: std.Result<'V,'E>): 'V
+extern function std.set2vec (s: std.Set<'A>): std.Vec<'A>
+extern function std.set_contains (s: std.Set<'X>, v: 'X): bool
+extern function std.set_difference (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
+extern function std.set_empty (): std.Set<'X>
+extern function std.set_insert (s: mut std.Set<'X>, v: 'X): ()
+extern function std.set_insert_imm (s: std.Set<'X>, v: 'X): std.Set<'X>
+extern function std.set_intersection (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
+extern function std.set_is_empty (s: std.Set<'X>): bool
+extern function std.set_nth (s: std.Set<'X>, n: std.usize): std.Option<'X>
+extern function std.set_singleton (x: 'X): std.Set<'X>
+extern function std.set_size (s: std.Set<'X>): std.usize
+extern function std.set_union (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
+extern function std.set_unions (sets: std.Vec<std.Set<'X>>): std.Set<'X>
+extern function std.str_to_lower (s: string): string
+extern function std.string_contains (s1: string, s2: string): bool
+extern function std.string_ends_with (s: string, suffix: string): bool
+extern function std.string_join (strings: std.Vec<string>, sep: string): string
+extern function std.string_len (s: string): std.usize
+extern function std.string_replace (s: string, from: string, to: string): string
+extern function std.string_reverse (s: string): string
+extern function std.string_split (s: string, sep: string): std.Vec<string>
+extern function std.string_starts_with (s: string, prefix: string): bool
+extern function std.string_substr (s: string, start: std.usize, end: std.usize): string
+extern function std.string_to_bytes (s: string): std.Vec<std.u8>
+extern function std.string_to_lowercase (s: string): string
+extern function std.string_to_uppercase (s: string): string
+extern function std.string_trim (s: string): string
+extern function std.vec2set (s: std.Vec<'A>): std.Set<'A>
+extern function std.vec_append (v: mut std.Vec<'X>, other: std.Vec<'X>): ()
+extern function std.vec_contains (v: std.Vec<'X>, x: 'X): bool
+extern function std.vec_empty (): std.Vec<'A>
+extern function std.vec_is_empty (v: std.Vec<'X>): bool
+extern function std.vec_len (v: std.Vec<'X>): std.usize
+extern function std.vec_nth (v: std.Vec<'X>, n: std.usize): std.Option<'X>
+extern function std.vec_push (v: mut std.Vec<'X>, x: 'X): ()
+extern function std.vec_push_imm (v: std.Vec<'X>, x: 'X): std.Vec<'X>
+extern function std.vec_singleton (x: 'X): std.Vec<'X>
+extern function std.vec_sort (v: std.Vec<'X>): ()
+extern function std.vec_sort_imm (v: std.Vec<'X>): std.Vec<'X>
+extern function std.vec_with_capacity (len: std.usize): std.Vec<'A>
+extern function std.vec_with_length (len: std.usize, x: 'A): std.Vec<'A>
+function weird_zero (x: 'A): std.usize
+{
+    ((var empty_vec: std.Vec<'A>) = std.vec_empty();
+     std.vec_len(empty_vec))
+}
+function zero_test (): std.usize
+{
+    weird_zero(32'd0)
+}
+input relation Arrng1 [Arrng1]
+output relation Arrng1Arrng2 [Arrng1Arrng2]
+output relation Arrng1Arrng2_2 [Arrng1Arrng2_2]
+input relation Arrng2 [Arrng2]
+input relation Doubles [Doubles]
+output relation FilteredRelation [FilteredRelation]
+output relation FuncTest [std.Ref<FuncTest>]
+input relation InputInspectNot1 [InputInspectNot1]
+input relation InputInspectNot2 [InputInspectNot2]
+input relation InputTuples [InputTuples]
+output relation InspectSimpleSum [InspectSimpleSum]
+input relation Ints [Ints]
+output relation OutputInspectNot [OutputInspectNot]
+output relation RFloatToInt [RFloatToInt]
+relation RFtoIDummy [RFtoIDummy]
+output relation SomeInts [SomeInts]
+output relation SumsOfDoubles [SumsOfDoubles]
+input relation TArrng1 [(std.Ref<std.Ref<std.Ref<TArrng2>>>, bigint)]
+output relation TArrng1Arrng2 [TArrng1Arrng2]
+input relation TArrng2 [(std.Ref<TArrng2>, bigint)]
+input relation TestRelation [TestRelation]
+Arrng1Arrng2(.x=x.f2.f2) :- Arrng1[(__arrng10@ Arrng1{.f1=f1, .f2=f2})], Arrng2[(__arrng21@ Arrng2{.f1=x, .f2=f1.f2.f2, .f3=_})], Inspect debug.debug_event_join((32'd0, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __arrng10, __arrng21, Arrng1Arrng2{.x=x.f2.f2}).
+Arrng1Arrng2_2(.x=x.f2.f2) :- Arrng1[(__arrng10@ Arrng1{.f1=f1, .f2=f2})], Arrng2[(__arrng21@ Arrng2{.f1=x, .f2=f1.f2.f2, .f3=f1.f2.f1})], Inspect debug.debug_event_join((32'd1, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __arrng10, __arrng21, Arrng1Arrng2_2{.x=x.f2.f2}).
+TArrng1Arrng2(.x=x.f2.f2) :- TArrng1[(__tarrng10@ t)], TArrng2[(__tarrng21@ (x, t.0.f2.f2))], Inspect debug.debug_event_join((32'd2, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __tarrng10, __tarrng21, TArrng1Arrng2{.x=x.f2.f2}).
+RFtoIDummy(.x=32'sd0).
+RFloatToInt(._x=_x) :- RFtoIDummy[(__rftoidummy0@ RFtoIDummy{.x=32'sd0})], var _x = ftoi_((- (64'f333.36: double))), Inspect debug.debug_event((32'd4, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __rftoidummy0, RFloatToInt{._x=_x}).
+SomeInts(.x=y) :- Ints[(__ints0@ Ints{.x=x})], var y = std.Some{.x=x}, Inspect debug.debug_event((32'd5, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __ints0, y), SomeInts[(__someints2@ SomeInts{.x=y})], Inspect debug.debug_event_join((32'd5, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, y, __someints2, SomeInts{.x=y}).
+FuncTest[std.ref_new(FuncTest{.x="foo"})].
+SumsOfDoubles(.x=x, .y=y, .sum=z) :- Doubles[(__doubles0@ Doubles{.xs=xs})], var x = FlatMap(xs), Inspect debug.debug_event((32'd7, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __doubles0, x), Doubles[(__doubles2@ Doubles{.xs=ys})], Inspect debug.debug_event_join((32'd7, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, x, __doubles2, (x, ys)), var y = FlatMap(ys), Inspect debug.debug_event((32'd7, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, (x, ys), (y, x)), var z = (x + y), Inspect debug.debug_event((32'd7, 32'd4, 32'd0), ddlog_weight, ddlog_timestamp, (y, x), (y, x, z)), Inspect inspect_log.log("../simple2.log", (((((((((("" ++ std.__builtin_2string(ddlog_timestamp)) ++ ": ") ++ if (ddlog_weight > 64'sd0) {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      "insert"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  } else {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        "delete"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    }) ++ ": (") ++ std.__builtin_2string(x)) ++ ", ") ++ std.__builtin_2string(y)) ++ ", ") ++ std.__builtin_2string(z)) ++ ")")), Inspect debug.debug_event((32'd7, 32'd5, 32'd0), ddlog_weight, ddlog_timestamp, (y, x, z), SumsOfDoubles{.x=x, .y=y, .sum=z}).
+InspectSimpleSum(.x=x, .total=total) :- InputTuples[(__inputtuples0@ InputTuples{.x=x, .y=y})], var __inputs_total = Aggregate((x), __debug_8_1_std.group_sum((__inputtuples0, y))), Inspect debug.debug_event((32'd8, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __inputs_total.0, (__inputs_total, x)), var total = __inputs_total.1, Inspect debug.debug_event((32'd8, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (__inputs_total, x), (x, total)), Inspect (var z = (1 + 2);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                      (var w = ddlog_weight;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                       (var t = ddlog_timestamp;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                        inspect_log.log("../simple2.log", ((((((("" ++ std.__builtin_2string(t)) ++ ": ") ++ if (w > 64'sd0) {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 "insert"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             } else {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   "delete"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               }) ++ ": x=") ++ std.__builtin_2string(x)) ++ ", total=") ++ std.__builtin_2string(total)))))), Inspect debug.debug_event((32'd8, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, (x, total), InspectSimpleSum{.x=x, .total=total}).
+FilteredRelation(.y=y) :- TestRelation[(__testrelation0@ TestRelation{.x=32'd6, .y=y})], Inspect inspect_log.log("../simple2.log", ((((("" ++ std.__builtin_2string(ddlog_timestamp)) ++ ": ") ++ if (ddlog_weight > 64'sd0) {
+                                                                                                                                                                                                      "insert"
+                                                                                                                                                                                                  } else {
+                                                                                                                                                                                                        "delete"
+                                                                                                                                                                                                    }) ++ ": y=") ++ std.__builtin_2string(y))), Inspect debug.debug_event((32'd9, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __testrelation0, FilteredRelation{.y=y}).
+OutputInspectNot(.x=x, .y=y) :- InputInspectNot1[(__inputinspectnot10@ InputInspectNot1{.x=x, .y=y})], not InputInspectNot2(.x=x), Inspect debug.debug_event((32'd10, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __inputinspectnot10, (x, y)), Inspect inspect_log.log("../simple2.log", ((((((("" ++ std.__builtin_2string(ddlog_timestamp)) ++ ": ") ++ if (ddlog_weight > 64'sd0) {
+                                                                                                                                                                                                                                                                                                                                                                 "insert"
+                                                                                                                                                                                                                                                                                                                                                             } else {
+                                                                                                                                                                                                                                                                                                                                                                   "delete"
+                                                                                                                                                                                                                                                                                                                                                               }) ++ ": x=") ++ std.__builtin_2string(y)) ++ " y=") ++ std.__builtin_2string(y))), Inspect debug.debug_event((32'd10, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (x, y), OutputInspectNot{.x=x, .y=y}).
+

@@ -145,26 +145,39 @@ typedef Z = Z{field: bigint}
 typedef ZZ = ZZ{x: bigint, y: R3}
 typedef entid_t = bit<32>
 #[size = 4]
+#[shared_ref = true]
 extern type intern.IObj<'A>
 typedef intern.IString = intern.IObj<string>
+#[size = 8]
+#[shared_ref = true]
+extern type internment.Intern<'A>
+typedef internment.istring = internment.Intern<string>
 typedef ip_addr_t = IPAddr{b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>}
 typedef line = bigint
 typedef log.log_level_t = signed<32>
 typedef log.module_t = signed<32>
 typedef nested_t = N{field: C}
 typedef person = string
+extern type regex.Regex
 typedef serializable_t = ConsInt{x: bigint} | ConsBit{y: bit<32>} | ConsBool{z: bool} | Cons0{}
 typedef souffle_types.TEmtpy = ()
+typedef souffle_types.Tfloat = double
 typedef souffle_types.Tnumber = signed<32>
 typedef souffle_types.Tsymbol = intern.IString
 typedef souffle_types.Tunsigned = bit<32>
 typedef station = string
+typedef std.DDEpoch = std.u64
+typedef std.DDIteration = std.u64
+typedef std.DDNestedTS = std.DDNestedTS{epoch: std.DDEpoch, iter: std.DDIteration}
+typedef std.DDWeight = std.s64
 typedef std.Either<'A,'B> = std.Left{l: 'A} | std.Right{r: 'B}
 extern type std.Group<'K,'V>
 extern type std.Map<'K,'V>
 #[rust = "serde(from=\"Option<A>\", into=\"Option<A>\", bound(serialize=\"A: Clone+Serialize\"))"]
+#[custom_from_record = true]
 typedef std.Option<'A> = std.None{} | std.Some{x: 'A}
 #[size = 8]
+#[shared_ref = true]
 extern type std.Ref<'A>
 typedef std.Result<'V,'E> = std.Ok{res: 'V} | std.Err{err: 'E}
 extern type std.Set<'A>
@@ -179,6 +192,7 @@ typedef std.u16 = bit<16>
 typedef std.u32 = bit<32>
 typedef std.u64 = bit<64>
 typedef std.u8 = bit<8>
+typedef std.usize = std.u64
 typedef string_syn = string
 typedef t00 = bigint
 typedef t01 = bool
@@ -202,37 +216,153 @@ typedef t20 = signed<32>
 typedef t21 = double
 typedef t22 = float
 typedef tnid_t = bit<16>
-function a0 (): bigint =
+function __debug_100_1_std.group2vec (g: std.Group<string,('I, string)>): (std.Vec<'I>, std.Vec<string>)
+{
+    ((var inputs, var original_group) = debug.debug_split_group(g);
+     (inputs, std.group2vec(original_group)))
+}
+function __debug_101_1_std.group2map (g: std.Group<string,('I, (string, string))>): (std.Vec<'I>, std.Map<string,string>)
+{
+    ((var inputs, var original_group) = debug.debug_split_group(g);
+     (inputs, std.group2map(original_group)))
+}
+function __debug_102_1_std.group2set (g: std.Group<string,('I, string)>): (std.Vec<'I>, std.Set<string>)
+{
+    ((var inputs, var original_group) = debug.debug_split_group(g);
+     (inputs, std.group2set(original_group)))
+}
+function __debug_103_1_std.group_sum (g: std.Group<string,('I, bit<32>)>): (std.Vec<'I>, bit<32>)
+{
+    ((var inputs, var original_group) = debug.debug_split_group(g);
+     (inputs, std.group_sum(original_group)))
+}
+function __debug_104_2_std.group_count (g: std.Group<string,('I, ())>): (std.Vec<'I>, std.usize)
+{
+    ((var inputs, var original_group) = debug.debug_split_group(g);
+     (inputs, std.group_count(original_group)))
+}
+function __debug_105_1_concat_ys (g: std.Group<(string, string),('I, string)>): (std.Vec<'I>, string)
+{
+    ((var inputs, var original_group) = debug.debug_split_group(g);
+     (inputs, concat_ys(original_group)))
+}
+function __debug_112_2_std.group2vec (g: std.Group<string,('I, string)>): (std.Vec<'I>, std.Vec<string>)
+{
+    ((var inputs, var original_group) = debug.debug_split_group(g);
+     (inputs, std.group2vec(original_group)))
+}
+function __debug_113_1_std.group2set (g: std.Group<string,('I, bit<32>)>): (std.Vec<'I>, std.Set<bit<32>>)
+{
+    ((var inputs, var original_group) = debug.debug_split_group(g);
+     (inputs, std.group2set(original_group)))
+}
+function __debug_248_2_std.group2set (g: std.Group<entid_t,('I, bit<16>)>): (std.Vec<'I>, std.Set<bit<16>>)
+{
+    ((var inputs, var original_group) = debug.debug_split_group(g);
+     (inputs, std.group2set(original_group)))
+}
+function __debug_249_3_std.group_set_unions (g: std.Group<entid_t,('I, std.Set<tnid_t>)>): (std.Vec<'I>, std.Set<bit<16>>)
+{
+    ((var inputs, var original_group) = debug.debug_split_group(g);
+     (inputs, std.group_set_unions(original_group)))
+}
+function __debug_93_1_count_xs (g: std.Group<string,('I, string)>): (std.Vec<'I>, std.u64)
+{
+    ((var inputs, var original_group) = debug.debug_split_group(g);
+     (inputs, count_xs(original_group)))
+}
+function __debug_94_1_find_x_in_group (g: std.Group<string,('I, string)>): (std.Vec<'I>, bool)
+{
+    ((var inputs, var original_group) = debug.debug_split_group(g);
+     (inputs, find_x_in_group(original_group)))
+}
+function __debug_95_1_std.group_count (g: std.Group<string,('I, string)>): (std.Vec<'I>, std.usize)
+{
+    ((var inputs, var original_group) = debug.debug_split_group(g);
+     (inputs, std.group_count(original_group)))
+}
+function __debug_96_1_std.group_count (g: std.Group<(),('I, ())>): (std.Vec<'I>, std.usize)
+{
+    ((var inputs, var original_group) = debug.debug_split_group(g);
+     (inputs, std.group_count(original_group)))
+}
+function __debug_97_1_std.group_sum (g: std.Group<(),('I, bit<64>)>): (std.Vec<'I>, bit<64>)
+{
+    ((var inputs, var original_group) = debug.debug_split_group(g);
+     (inputs, std.group_sum(original_group)))
+}
+function __debug_98_2_std.group_sum (g: std.Group<(),('I, bit<64>)>): (std.Vec<'I>, bit<64>)
+{
+    ((var inputs, var original_group) = debug.debug_split_group(g);
+     (inputs, std.group_sum(original_group)))
+}
+function __debug_99_1_std.group2set (g: std.Group<string,('I, string)>): (std.Vec<'I>, std.Set<string>)
+{
+    ((var inputs, var original_group) = debug.debug_split_group(g);
+     (inputs, std.group2set(original_group)))
+}
+function a0 (): bigint
+{
     1
-function a1 (): bigint =
+}
+function a1 (): bigint
+{
     (1 + 2)
-function a10 (): signed<32> =
+}
+function a10 (): signed<32>
+{
     (32'sd0 + 32'sd1)
-function a11 (): signed<32> =
+}
+function a11 (): signed<32>
+{
     (32'sd0: signed<32>)
-function a12 (a: signed<16>, b: signed<16>): signed<16> =
+}
+function a12 (a: signed<16>, b: signed<16>): signed<16>
+{
     (((((a + b) + (a - b)) + (a / b)) + (a * b)) + (a % b))
-function a13 (a: signed<16>, b: signed<16>): bool =
+}
+function a13 (a: signed<16>, b: signed<16>): bool
+{
     (((((((a < b) or (a > b)) or (a <= b)) or (a >= b)) or (a == b)) or (a != b)) or (a < b))
-function a2 (): bit<32> =
+}
+function a2 (): bit<32>
+{
     (32'd0 + 32'd1)
-function a3 (): bit<32> =
+}
+function a3 (): bit<32>
+{
     (32'd0: bit<32>)
-function a4 (): bit<32> =
+}
+function a4 (): bit<32>
+{
     (64'd0: bit<64>)[40:9]
-function a5 (a: bit<32>, b: bit<32>): bit<32> =
+}
+function a5 (a: bit<32>, b: bit<32>): bit<32>
+{
     (((((((a ^ b) | (a & b)) | (a | b)) | (~ a)) | (a << 32'd5)) | (a >> 32'd5)) | (a[15:0] ++ a[31:16]))
-function a51 (a: signed<32>, b: signed<32>): signed<32> =
+}
+function a51 (a: signed<32>, b: signed<32>): signed<32>
+{
     ((((((a ^ b) | (a & b)) | (a | b)) | (~ a)) | (a << 32'd5)) | (a >> 32'd5))
-function a6 (a: bit<16>, b: bit<16>): bit<16> =
+}
+function a6 (a: bit<16>, b: bit<16>): bit<16>
+{
     (((((a + b) + (a - b)) + (a / b)) + (a * b)) + (a % b))
-function a7 (a: bit<16>, b: bit<16>): bool =
+}
+function a7 (a: bit<16>, b: bit<16>): bool
+{
     (((((((a < b) or (a > b)) or (a <= b)) or (a >= b)) or (a == b)) or (a != b)) or (a < b))
-function a8 (): bit<32> =
+}
+function a8 (): bit<32>
+{
     (((32'd125 | 32'd255) | 32'd511) | 32'd683)
-function a9 (): bit<32> =
+}
+function a9 (): bit<32>
+{
     (((32'd125 | 32'd255) | 32'd511) | 32'd683)
-function agg1 (g1: std.Group<'K,Tt1>): Ttmp0 =
+}
+function agg1 (g1: std.Group<'K,Tt1>): Ttmp0
+{
     (var first3 = true;
      (var max5 = 64'sd0;
       (for (i2 in g1) {
@@ -245,7 +375,9 @@ function agg1 (g1: std.Group<'K,Tt1>): Ttmp0 =
                      })
        };
        Ttmp0{.col4=max5})))
-function all (xs: std.Vec<bool>): bool =
+}
+function all (xs: std.Vec<bool>): bool
+{
     (for (x in xs) {
          if (not x) {
              return false
@@ -254,11 +386,13 @@ function all (xs: std.Vec<bool>): bool =
            }
      };
      return true)
+}
 extern function allocate.adjust_allocation (allocated: std.Map<'A,'N>, toallocate: std.Vec<'A>, min_val: 'N, max_val: 'N): std.Vec<('A, 'N)>
 extern function allocate.allocate (allocated: std.Set<'N>, toallocate: std.Vec<'B>, min_val: 'N, max_val: 'N): std.Vec<('B, 'N)>
 extern function allocate.allocate_opt (allocated: std.Set<'N>, toallocate: std.Vec<'B>, min_val: 'N, max_val: 'N): std.Vec<('B, std.Option<'N>)>
 extern function allocate.allocate_with_hint (allocated: std.Set<'N>, toallocate: std.Vec<('B, std.Option<'N>)>, min_val: 'N, max_val: 'N): std.Vec<('B, 'N)>
-function any (xs: std.Vec<bool>): bool =
+function any (xs: std.Vec<bool>): bool
+{
     (var res = false;
      (for (x in xs) {
           if x {
@@ -269,21 +403,31 @@ function any (xs: std.Vec<bool>): bool =
             }
       };
       return res))
-function b0 (): bool =
+}
+function b0 (): bool
+{
     (true and false)
-function b1 (a: bool): bool =
+}
+function b1 (a: bool): bool
+{
     ((((a and true) or (a or false)) or (a => false)) or (not a))
-function c0 (a: bit<32>, b: bit<16>): bit<16> =
+}
+function c0 (a: bit<32>, b: bit<16>): bit<16>
+{
     (a;
      b)
-function concat_ys (ys: std.Group<(string, string),string>): string =
+}
+function concat_ys (ys: std.Group<(string, string),string>): string
+{
     ((var x, var z) = std.group_key(ys);
      (var res = (((x ++ "-") ++ z) ++ ":");
       (for (y in ys) {
            res = (res ++ y)
        };
        res)))
-function count_xs (ys: std.Group<string,string>): std.u64 =
+}
+function count_xs (ys: std.Group<string,string>): std.u64
+{
     ((var res: std.u64) = 64'd0;
      (for (y in ys) {
           if (y == std.group_key(ys)) {
@@ -293,9 +437,16 @@ function count_xs (ys: std.Group<string,string>): std.u64 =
             }
       };
       res))
-function dbl (): double =
-    (0: double)
-function double_evens (xs: std.Vec<bigint>): std.Vec<bigint> =
+}
+function dbl (): double
+{
+    (64'f0.0: double)
+}
+extern function debug.debug_event (operator_id: (std.u32, std.u32, std.u32), w: std.DDWeight, ts: 'T1, input1: 'A1, out: 'A2): ()
+extern function debug.debug_event_join (operator_id: (std.u32, std.u32, std.u32), w: std.DDWeight, ts: 'T1, input1: 'A1, input2: 'A2, out: 'A3): ()
+extern function debug.debug_split_group (g: std.Group<'K,('I, 'V)>): (std.Vec<'I>, std.Group<'K,'V>)
+function double_evens (xs: std.Vec<bigint>): std.Vec<bigint>
+{
     ((var res: std.Vec<bigint>) = std.vec_empty();
      (for (x in xs) {
           std.vec_push(res, mult2(if (x == 0) {
@@ -313,14 +464,22 @@ function double_evens (xs: std.Vec<bigint>): std.Vec<bigint> =
                                     }))
       };
       res))
-function dummy (x: string): string =
+}
+function dummy (x: string): string
+{
     (x ++ " dummy")
-function edge_from (e: Edge): bigint =
+}
+function edge_from (e: Edge): bigint
+{
     e.from
-function edge_to (e: Edge): bigint =
+}
+function edge_to (e: Edge): bigint
+{
     e.to
+}
 extern function f (): bigint
-function f1 (x: T1, y: T2, q: T3): bool =
+function f1 (x: T1, y: T2, q: T3): bool
+{
     (match (x) {
          C11{.f1=_, .f2=_} -> true,
          _ -> false
@@ -380,7 +539,9 @@ function f1 (x: T1, y: T2, q: T3): bool =
                   "bar" -> true,
                   _ -> false
               }))))))))))
-function filter_C0 (xs: std.Vec<Alt>): std.Vec<bigint> =
+}
+function filter_C0 (xs: std.Vec<Alt>): std.Vec<bigint>
+{
     ((var res: std.Vec<bigint>) = std.vec_empty();
      (for (x in xs) {
           ((var val: bigint) = match (x) {
@@ -394,7 +555,9 @@ function filter_C0 (xs: std.Vec<Alt>): std.Vec<bigint> =
            std.vec_push(res, val))
       };
       res))
-function filter_gt (xs: std.Vec<bigint>, threshold: bigint): std.Vec<bigint> =
+}
+function filter_gt (xs: std.Vec<bigint>, threshold: bigint): std.Vec<bigint>
+{
     ((var res: std.Vec<bigint>) = std.vec_empty();
      (for (x in xs) {
           (if (x <= threshold) {
@@ -405,7 +568,9 @@ function filter_gt (xs: std.Vec<bigint>, threshold: bigint): std.Vec<bigint> =
            std.vec_push(res, x))
       };
       return res))
-function find_x_in_group (ys: std.Group<'A,'A>): bool =
+}
+function find_x_in_group (ys: std.Group<'A,'A>): bool
+{
     (for (y in ys) {
          if (y == std.group_key(ys)) {
              return true
@@ -414,12 +579,18 @@ function find_x_in_group (ys: std.Group<'A,'A>): bool =
            }
      };
      false)
-function flt (): float =
-    (0: float)
-function fnested (x: nested_t): string =
+}
+function flt (): float
+{
+    (32'f0.0: float)
+}
+function fnested (x: nested_t): string
+{
     (N{.field=C{.f1=var res, .f2=_}} = x;
      res)
-function foo (): bool =
+}
+function foo (): bool
+{
     ((var v1: bigint) = 0;
      ((var v2: bit<32>) = 32'd1;
       ((var v3: bit<129>) = 129'd0;
@@ -436,6 +607,7 @@ function foo (): bool =
                  Option1{.f1=_, .f2=IP6{.ip6=_}, .f3=(_, "bar")} -> true,
                  _ -> false
              })))))))))
+}
 extern function fp.abs_d (f: double): double
 extern function fp.abs_f (f: float): float
 extern function fp.acos_d (f: double): double
@@ -488,6 +660,8 @@ extern function fp.mul_add_d (a: double, b: double, c: double): double
 extern function fp.mul_add_f (a: float, b: float, c: float): float
 extern function fp.nan_d (): double
 extern function fp.nan_f (): float
+extern function fp.parse_d (s: string): std.Result<double,string>
+extern function fp.parse_f (s: string): std.Result<float,string>
 extern function fp.powf_d (f: double, exp: double): double
 extern function fp.powf_f (f: float, exp: float): float
 extern function fp.powi_d (f: double, exp: signed<32>): double
@@ -516,16 +690,38 @@ extern function fp.trunc_d (f: double): double
 extern function fp.trunc_f (f: float): float
 extern function g (a: bigint): bigint
 extern function h (a: (bigint, bigint)): (bigint, bigint)
-extern function intern.istring_ord (s: intern.IString): bit<32>
+extern function intern.istring_ord (s: intern.IString): std.u32
 extern function intern.istring_str (s: intern.IString): string
 extern function intern.string_intern (s: string): intern.IString
-extern function log.log (module: log.module_t, level: log.log_level_t, msg: string): bool
-function mult2 (x: bigint): bigint =
+extern function internment.intern (s: 'A): internment.Intern<'A>
+extern function internment.istring_contains (s1: internment.istring, s2: string): bool
+extern function internment.istring_ends_with (s: internment.istring, suffix: string): bool
+extern function internment.istring_join (strings: std.Vec<internment.istring>, sep: string): string
+extern function internment.istring_len (s: internment.istring): std.usize
+extern function internment.istring_replace (s: internment.istring, from: string, to: string): string
+extern function internment.istring_reverse (s: internment.istring): string
+extern function internment.istring_split (s: internment.istring, sep: string): std.Vec<string>
+extern function internment.istring_starts_with (s: internment.istring, prefix: string): bool
+extern function internment.istring_substr (s: internment.istring, start: std.usize, end: std.usize): string
+extern function internment.istring_to_bytes (s: internment.istring): std.Vec<std.u8>
+extern function internment.istring_to_lowercase (s: internment.istring): string
+extern function internment.istring_to_uppercase (s: internment.istring): string
+extern function internment.istring_trim (s: internment.istring): string
+#[return_by_ref = true]
+extern function internment.ival (s: internment.Intern<'A>): 'A
+#[has_side_effects = true]
+extern function log.log (module: log.module_t, level: log.log_level_t, msg: string): ()
+function mult2 (x: bigint): bigint
+{
     (x << 32'd1)
+}
 extern function parameterized (x: 'A, y: 'A): 'A
-function parameterized2 (x: 'A, y: 'A): bool =
+function parameterized2 (x: 'A, y: 'A): bool
+{
     (x == y)
-function patterns (): () =
+}
+function patterns (): ()
+{
     ((var a: Alt) = C0{.x=32'd1};
      (var b = match (a) {
                   C0{.x=_} -> true,
@@ -535,14 +731,22 @@ function patterns (): () =
                              C0{.x=(var v: bit<32>)} -> v,
                              C1{.x=var v} -> v
                          }))
-extern function regex.regex_all_matches (regex: string, text: string): std.Vec<string>
-extern function regex.regex_first_match (regex: string, text: string): std.Option<string>
-extern function regex.regex_match (regex: string, text: string): bool
-function s0 (): string =
+}
+extern function regex.regex (pattern: string): regex.Regex
+extern function regex.regex_all_matches (regex: regex.Regex, text: string): std.Vec<string>
+extern function regex.regex_checked (pattern: string): std.Result<regex.Regex,string>
+extern function regex.regex_first_match (regex: regex.Regex, text: string): std.Option<string>
+extern function regex.regex_match (regex: regex.Regex, text: string): bool
+function s0 (): string
+{
     "Some string"
-function s1 (): string =
+}
+function s1 (): string
+{
     "\t\r\n\"\\\a"
-function serializable_t2string (x: serializable_t): string =
+}
+function serializable_t2string (x: serializable_t): string
+{
     match (x) {
         ConsInt{.x=var v} -> (("ConsInt(" ++ std.__builtin_2string(v)) ++ ")"),
         ConsBit{.y=var v} -> (("ConsBool(" ++ std.__builtin_2string(v)) ++ ")"),
@@ -550,92 +754,205 @@ function serializable_t2string (x: serializable_t): string =
         ConsBool{.z=false} -> "ConsBool(false)",
         Cons0{} -> "Cons0"
     }
-function shadow (): string =
+}
+function shadow (): string
+{
     ((var b: std.Option<string>) = std.None{};
      (var a = std.Some{.x="foo"};
       match (a) {
           std.Some{.x=(var v: string)} -> v,
           std.None{} -> ""
       }))
-function souffle_lib.castTo32 (i: bit<64>): souffle_types.Tnumber =
+}
+function souffle_lib.acos (l: signed<32>): signed<32>
+{
+    souffle_lib.ftoi(fp.acos_d((l as double)))
+}
+function souffle_lib.acosh (l: signed<32>): signed<32>
+{
+    souffle_lib.ftoi(fp.acosh_d((l as double)))
+}
+function souffle_lib.asin (l: signed<32>): signed<32>
+{
+    souffle_lib.ftoi(fp.asin_d((l as double)))
+}
+function souffle_lib.asinh (l: signed<32>): signed<32>
+{
+    souffle_lib.ftoi(fp.asinh_d((l as double)))
+}
+function souffle_lib.atan (l: signed<32>): signed<32>
+{
+    souffle_lib.ftoi(fp.atan_d((l as double)))
+}
+function souffle_lib.atanh (l: signed<32>): signed<32>
+{
+    souffle_lib.ftoi(fp.atanh_d((l as double)))
+}
+function souffle_lib.castTo32 (i: bit<64>): souffle_types.Tnumber
+{
     (i[31:0] as souffle_types.Tnumber)
-function souffle_lib.castTo64 (i: souffle_types.Tnumber): bit<64> =
+}
+function souffle_lib.castTo64 (i: souffle_types.Tnumber): bit<64>
+{
     (32'd0 ++ (i as bit<32>))
-function souffle_lib.cat (s: intern.IString, t: intern.IString): intern.IString =
+}
+function souffle_lib.cat (s: intern.IString, t: intern.IString): intern.IString
+{
     intern.string_intern((intern.istring_str(s) ++ intern.istring_str(t)))
-function souffle_lib.contains (s: intern.IString, i: intern.IString): bool =
+}
+function souffle_lib.contains (s: intern.IString, i: intern.IString): bool
+{
     std.string_contains(intern.istring_str(i), intern.istring_str(s))
-function souffle_lib.ftoi (l: double): signed<32> =
+}
+function souffle_lib.cos (l: signed<32>): signed<32>
+{
+    souffle_lib.ftoi(fp.cos_d((l as double)))
+}
+function souffle_lib.cosh (l: signed<32>): signed<32>
+{
+    souffle_lib.ftoi(fp.cosh_d((l as double)))
+}
+function souffle_lib.exp (l: signed<32>): signed<32>
+{
+    souffle_lib.ftoi(fp.exp_d((l as double)))
+}
+function souffle_lib.ftoi (l: double): signed<32>
+{
     match (fp.int_from_d(l)) {
         std.None{} -> 32'sd0,
         std.Some{.x=var x} -> (x as signed<32>)
     }
-function souffle_lib.ftou (l: double): bit<32> =
+}
+function souffle_lib.ftou (l: double): bit<32>
+{
     match (fp.int_from_d(l)) {
         std.None{} -> 32'd0,
         std.Some{.x=var x} -> ((x as signed<32>) as bit<32>)
     }
-function souffle_lib.group_count32 (g: std.Group<'K,'V>): souffle_types.Tnumber =
+}
+function souffle_lib.group_count32 (g: std.Group<'K,'V>): souffle_types.Tnumber
+{
     souffle_lib.castTo32(std.group_count(g))
-function souffle_lib.itof (l: signed<32>): double =
+}
+function souffle_lib.group_mean (g: std.Group<'K,signed<32>>): signed<32>
+{
+    (var sum = std.group_sum(g);
+     (var count = std.group_count(g);
+      (sum / ((count as signed<64>) as signed<32>))))
+}
+function souffle_lib.itof (l: signed<32>): double
+{
     (l as double)
-function souffle_lib.itou (l: signed<32>): bit<32> =
+}
+function souffle_lib.itou (l: signed<32>): bit<32>
+{
     (l as bit<32>)
-function souffle_lib.land (l: souffle_types.Tnumber, r: souffle_types.Tnumber): souffle_types.Tnumber =
+}
+function souffle_lib.land (l: souffle_types.Tnumber, r: souffle_types.Tnumber): souffle_types.Tnumber
+{
     if ((l != 32'sd0) and (r != 32'sd0)) {
         32'sd1
     } else {
           32'sd0
       }
-function souffle_lib.lnot (l: souffle_types.Tnumber): souffle_types.Tnumber =
+}
+function souffle_lib.lnot (l: souffle_types.Tnumber): souffle_types.Tnumber
+{
     if (l != 32'sd0) {
         32'sd0
     } else {
           32'sd1
       }
-function souffle_lib.lor (l: souffle_types.Tnumber, r: souffle_types.Tnumber): souffle_types.Tnumber =
+}
+function souffle_lib.log (l: signed<32>): signed<32>
+{
+    souffle_lib.ftoi(fp.ln_d((l as double)))
+}
+function souffle_lib.lor (l: souffle_types.Tnumber, r: souffle_types.Tnumber): souffle_types.Tnumber
+{
     if ((l == 32'sd0) and (r == 32'sd0)) {
         32'sd0
     } else {
           32'sd1
       }
-function souffle_lib.ord (s: intern.IString): souffle_types.Tnumber =
+}
+function souffle_lib.ord (s: intern.IString): souffle_types.Tnumber
+{
     (intern.istring_ord(s) as souffle_types.Tnumber)
-function souffle_lib.random (): souffle_types.Tnumber =
+}
+function souffle_lib.random (): souffle_types.Tnumber
+{
     32'sd0
-function souffle_lib.re_match (pattern: intern.IString, s: intern.IString): bool =
-    regex.regex_match((("^" ++ intern.istring_str(pattern)) ++ "$"), intern.istring_str(s))
-function souffle_lib.strlen (s: intern.IString): souffle_types.Tnumber =
+}
+function souffle_lib.re_match (pattern: intern.IString, s: intern.IString): bool
+{
+    regex.regex_match(regex.regex((("^" ++ intern.istring_str(pattern)) ++ "$")), intern.istring_str(s))
+}
+function souffle_lib.sin (l: signed<32>): signed<32>
+{
+    souffle_lib.ftoi(fp.sin_d((l as double)))
+}
+function souffle_lib.sinh (l: signed<32>): signed<32>
+{
+    souffle_lib.ftoi(fp.sinh_d((l as double)))
+}
+function souffle_lib.strlen (s: intern.IString): souffle_types.Tnumber
+{
     souffle_lib.castTo32(std.string_len(intern.istring_str(s)))
-function souffle_lib.substr (s: intern.IString, i: souffle_types.Tnumber, l: souffle_types.Tnumber): intern.IString =
+}
+function souffle_lib.substr (s: intern.IString, i: souffle_types.Tnumber, l: souffle_types.Tnumber): intern.IString
+{
     intern.string_intern(std.string_substr(intern.istring_str(s), souffle_lib.castTo64(i), souffle_lib.castTo64((i + l))))
-function souffle_lib.to_number (s: intern.IString): souffle_types.Tnumber =
+}
+function souffle_lib.tan (l: signed<32>): signed<32>
+{
+    souffle_lib.ftoi(fp.tan_d((l as double)))
+}
+function souffle_lib.tanh (l: signed<32>): signed<32>
+{
+    souffle_lib.ftoi(fp.tanh_d((l as double)))
+}
+function souffle_lib.to_number (s: intern.IString): souffle_types.Tnumber
+{
     match (std.parse_dec_i64(intern.istring_str(s))) {
         std.None{} -> 32'sd0,
         std.Some{.x=var x} -> (x as souffle_types.Tnumber)
     }
-function souffle_lib.to_string (n: souffle_types.Tnumber): intern.IString =
+}
+function souffle_lib.to_string (n: souffle_types.Tnumber): intern.IString
+{
     intern.string_intern(std.__builtin_2string(n))
-function souffle_lib.utof (l: bit<32>): double =
+}
+function souffle_lib.utof (l: bit<32>): double
+{
     (l as double)
-function souffle_lib.utoi (l: bit<32>): signed<32> =
+}
+function souffle_lib.utoi (l: bit<32>): signed<32>
+{
     (l as signed<32>)
+}
 extern function std.__builtin_2string (x: 'X): string
+function std.dDNestedTS2string (ts: std.DDNestedTS): string
+{
+    (((("(" ++ std.__builtin_2string(ts.epoch)) ++ ",") ++ std.__builtin_2string(ts.iter)) ++ ")")
+}
+#[return_by_ref = true]
 extern function std.deref (x: std.Ref<'A>): 'A
 extern function std.group2map (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,'V>
 extern function std.group2set (g: std.Group<'K,'V>): std.Set<'V>
 extern function std.group2setmap (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,std.Set<'V>>
 extern function std.group2vec (g: std.Group<'K,'V>): std.Vec<'V>
-extern function std.group_count (g: std.Group<'K,'V>): bit<64>
+extern function std.group_count (g: std.Group<'K,'V>): std.usize
 extern function std.group_first (g: std.Group<'K,'V>): 'V
 extern function std.group_key (g: std.Group<'K,'V>): 'K
 extern function std.group_max (g: std.Group<'K,'V>): 'V
 extern function std.group_min (g: std.Group<'K,'V>): 'V
-extern function std.group_nth (g: std.Group<'K,'V>, n: bit<64>): std.Option<'V>
+extern function std.group_nth (g: std.Group<'K,'V>, n: std.usize): std.Option<'V>
 extern function std.group_set_unions (g: std.Group<'K,std.Set<'A>>): std.Set<'A>
 extern function std.group_setref_unions (g: std.Group<'K,std.Ref<std.Set<'A>>>): std.Ref<std.Set<'A>>
 extern function std.group_sum (g: std.Group<'K,'V>): 'V
-function std.group_unzip (g: std.Group<'K,('X, 'Y)>): (std.Vec<'X>, std.Vec<'Y>) =
+function std.group_unzip (g: std.Group<'K,('X, 'Y)>): (std.Vec<'X>, std.Vec<'Y>)
+{
     ((var xs: std.Vec<'X>) = std.vec_empty();
      ((var ys: std.Vec<'Y>) = std.vec_empty();
       (for (v in g) {
@@ -644,31 +961,40 @@ function std.group_unzip (g: std.Group<'K,('X, 'Y)>): (std.Vec<'X>, std.Vec<'Y>)
              std.vec_push(ys, y)))
        };
        (xs, ys))))
+}
 extern function std.hash128 (x: 'X): bit<128>
 extern function std.hash64 (x: 'X): bit<64>
 extern function std.hex (x: 'X): string
 extern function std.htonl (x: bit<32>): bit<32>
 extern function std.htons (x: bit<16>): bit<16>
-function std.is_err (res: std.Result<'V,'E>): bool =
+function std.is_err (res: std.Result<'V,'E>): bool
+{
     match (res) {
         std.Ok{.res=_} -> false,
         std.Err{.err=_} -> true
     }
-function std.is_none (x: std.Option<'A>): bool =
+}
+function std.is_none (x: std.Option<'A>): bool
+{
     match (x) {
         std.None{} -> true,
         _ -> false
     }
-function std.is_ok (res: std.Result<'V,'E>): bool =
+}
+function std.is_ok (res: std.Result<'V,'E>): bool
+{
     match (res) {
         std.Ok{.res=_} -> true,
         std.Err{.err=_} -> false
     }
-function std.is_some (x: std.Option<'A>): bool =
+}
+function std.is_some (x: std.Option<'A>): bool
+{
     match (x) {
         std.Some{.x=_} -> true,
         _ -> false
     }
+}
 extern function std.map_contains_key (m: std.Map<'K,'V>, k: 'K): bool
 extern function std.map_empty (): std.Map<'K,'V>
 extern function std.map_get (m: std.Map<'K,'V>, k: 'K): std.Option<'V>
@@ -677,70 +1003,84 @@ extern function std.map_insert_imm (m: std.Map<'K,'V>, k: 'K, v: 'V): std.Map<'K
 extern function std.map_is_empty (m: std.Map<'K,'V>): bool
 extern function std.map_remove (m: mut std.Map<'K,'V>, k: 'K): ()
 extern function std.map_singleton (k: 'K, v: 'V): std.Map<'K,'V>
+extern function std.map_size (m: std.Map<'K,'V>): std.usize
 extern function std.map_union (m1: std.Map<'K,'V>, m2: std.Map<'K,'V>): std.Map<'K,'V>
-function std.max (x: 'A, y: 'A): 'A =
+function std.max (x: 'A, y: 'A): 'A
+{
     if (x > y) {
         x
     } else {
           y
       }
-function std.min (x: 'A, y: 'A): 'A =
+}
+function std.min (x: 'A, y: 'A): 'A
+{
     if (x < y) {
         x
     } else {
           y
       }
+}
 extern function std.ntohl (x: bit<32>): bit<32>
 extern function std.ntohs (x: bit<16>): bit<16>
-function std.option2set (o: std.Option<'X>): std.Set<'X> =
+function std.option2set (o: std.Option<'X>): std.Set<'X>
+{
     match (o) {
         std.Some{.x=var x} -> std.set_singleton(x),
         std.None{} -> std.set_empty()
     }
-function std.option2vec (o: std.Option<'X>): std.Vec<'X> =
+}
+function std.option2vec (o: std.Option<'X>): std.Vec<'X>
+{
     match (o) {
         std.Some{.x=var x} -> std.vec_singleton(x),
         std.None{} -> std.vec_empty()
     }
-function std.option_unwrap_or (x: std.Option<'A>, def: 'A): 'A =
+}
+function std.option_unwrap_or (x: std.Option<'A>, def: 'A): 'A
+{
     match (x) {
         std.Some{.x=var v} -> v,
         std.None{} -> def
     }
+}
 extern function std.option_unwrap_or_default (opt: std.Option<'A>): 'A
 extern function std.parse_dec_i64 (s: string): std.Option<signed<64>>
 extern function std.parse_dec_u64 (s: string): std.Option<bit<64>>
 extern function std.pow32 (base: 'A, exp: bit<32>): 'A
 extern function std.range (from: 'A, to: 'A, step: 'A): std.Vec<'A>
 extern function std.ref_new (x: 'A): std.Ref<'A>
-function std.result_unwrap_or (res: std.Result<'V,'E>, def: 'V): 'V =
+function std.result_unwrap_or (res: std.Result<'V,'E>, def: 'V): 'V
+{
     match (res) {
         std.Ok{.res=var v} -> v,
         std.Err{.err=_} -> def
     }
+}
 extern function std.result_unwrap_or_default (res: std.Result<'V,'E>): 'V
 extern function std.set2vec (s: std.Set<'A>): std.Vec<'A>
 extern function std.set_contains (s: std.Set<'X>, v: 'X): bool
+extern function std.set_difference (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
 extern function std.set_empty (): std.Set<'X>
 extern function std.set_insert (s: mut std.Set<'X>, v: 'X): ()
 extern function std.set_insert_imm (s: std.Set<'X>, v: 'X): std.Set<'X>
 extern function std.set_intersection (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
 extern function std.set_is_empty (s: std.Set<'X>): bool
-extern function std.set_nth (s: std.Set<'X>, n: bit<64>): std.Option<'X>
+extern function std.set_nth (s: std.Set<'X>, n: std.usize): std.Option<'X>
 extern function std.set_singleton (x: 'X): std.Set<'X>
-extern function std.set_size (s: std.Set<'X>): bit<64>
+extern function std.set_size (s: std.Set<'X>): std.usize
 extern function std.set_union (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
 extern function std.set_unions (sets: std.Vec<std.Set<'X>>): std.Set<'X>
 extern function std.str_to_lower (s: string): string
 extern function std.string_contains (s1: string, s2: string): bool
 extern function std.string_ends_with (s: string, suffix: string): bool
 extern function std.string_join (strings: std.Vec<string>, sep: string): string
-extern function std.string_len (s: string): bit<64>
+extern function std.string_len (s: string): std.usize
 extern function std.string_replace (s: string, from: string, to: string): string
 extern function std.string_reverse (s: string): string
 extern function std.string_split (s: string, sep: string): std.Vec<string>
 extern function std.string_starts_with (s: string, prefix: string): bool
-extern function std.string_substr (s: string, start: bit<64>, end: bit<64>): string
+extern function std.string_substr (s: string, start: std.usize, end: std.usize): string
 extern function std.string_to_bytes (s: string): std.Vec<std.u8>
 extern function std.string_to_lowercase (s: string): string
 extern function std.string_to_uppercase (s: string): string
@@ -750,14 +1090,17 @@ extern function std.vec_append (v: mut std.Vec<'X>, other: std.Vec<'X>): ()
 extern function std.vec_contains (v: std.Vec<'X>, x: 'X): bool
 extern function std.vec_empty (): std.Vec<'A>
 extern function std.vec_is_empty (v: std.Vec<'X>): bool
-extern function std.vec_len (v: std.Vec<'X>): bit<64>
-extern function std.vec_nth (v: std.Vec<'X>, n: bit<64>): std.Option<'X>
+extern function std.vec_len (v: std.Vec<'X>): std.usize
+extern function std.vec_nth (v: std.Vec<'X>, n: std.usize): std.Option<'X>
 extern function std.vec_push (v: mut std.Vec<'X>, x: 'X): ()
 extern function std.vec_push_imm (v: std.Vec<'X>, x: 'X): std.Vec<'X>
 extern function std.vec_singleton (x: 'X): std.Vec<'X>
-extern function std.vec_with_capacity (len: bit<64>): std.Vec<'A>
-extern function std.vec_with_length (len: bit<64>, x: 'A): std.Vec<'A>
-function strings (): () =
+extern function std.vec_sort (v: std.Vec<'X>): ()
+extern function std.vec_sort_imm (v: std.Vec<'X>): std.Vec<'X>
+extern function std.vec_with_capacity (len: std.usize): std.Vec<'A>
+extern function std.vec_with_length (len: std.usize, x: 'A): std.Vec<'A>
+function strings (): ()
+{
     (var str1 = ("foo" ++ "bar");
      (var str2 = ((("foobar" ++ "buzz") ++ "\nraw string ") ++ "quoted string");
       (var str3 = ("str1: " ++ str1);
@@ -775,14 +1118,18 @@ str3: ${str3}.|];
               (var b2 = ([|${}|] < "");
                (var b3 = ((str1 != str2) and (str1 >= str2));
                 ()))))))))))))
-function tostring1 (): () =
+}
+function tostring1 (): ()
+{
     ((var a: bigint) = 5;
      ((var b: bit<32>) = 32'd5;
       ((var c: bool) = true;
        ((var d: string) = "foo";
         (var err = ((((((("a=" ++ std.__builtin_2string(a)) ++ ", b=") ++ std.__builtin_2string(b)) ++ ", c=") ++ std.__builtin_2string(c)) ++ ", d=") ++ d);
          ())))))
-function tostring2 (): () =
+}
+function tostring2 (): ()
+{
     ((var a: bigint) = 5;
      ((var b: bit<32>) = 32'd5;
       ((var c: bool) = true;
@@ -790,15 +1137,23 @@ function tostring2 (): () =
         ((var e: serializable_t) = ConsInt{.x=0};
          (var err = ((((((((("a=" ++ std.__builtin_2string(a)) ++ ", b=") ++ std.__builtin_2string(b)) ++ ", c=") ++ std.__builtin_2string(c)) ++ ", d=") ++ d) ++ ", e:") ++ serializable_t2string(e));
           ()))))))
-function use_parameterized (x: string, y: string_syn): string =
+}
+function use_parameterized (x: string, y: string_syn): string
+{
     parameterized(x, y)
-function v (): string =
+}
+function v (): string
+{
     ((var v1: string) = "hello";
      (var v2 = "there";
       v2))
-function v2 (): bool =
+}
+function v2 (): bool
+{
     b1(true)
-function vars (): () =
+}
+function vars (): ()
+{
     ((var x: bigint) = 0;
      (x = 10;
       (var y = C{.f1="foo", .f2="bar"};
@@ -806,7 +1161,9 @@ function vars (): () =
         ((var a, var b) = ((x + 5), (x - 5));
          (C{.f1=var e, .f2=_} = y;
           C{.f1=var c, .f2=var d} = y))))))
-function weird_any (xs: std.Vec<bool>): bool =
+}
+function weird_any (xs: std.Vec<bool>): bool
+{
     (var res = false;
      (for (x in xs) {
           return if (x == true) {
@@ -816,8 +1173,11 @@ function weird_any (xs: std.Vec<bool>): bool =
                    }
       };
       false))
-function x (): Alt =
+}
+function x (): Alt
+{
     C0{.x=32'd5}
+}
 extern transformer graph.ConnectedComponents(Edges: relation['E], from: function(e: 'E): 'N, to: function(e: 'E): 'N) -> (CCLabels: relation[('N, 'N)])
 extern transformer graph.ConnectedComponents64(Edges: relation['E], from: function(e: 'E): 'N, to: function(e: 'E): 'N) -> (CCLabels: relation[('N, 'N)])
 extern transformer graph.SCC(Edges: relation['E], from: function(e: 'E): 'N, to: function(e: 'E): 'N) -> (SCCLabels: relation[('N, 'N)])
@@ -950,7 +1310,7 @@ output relation YX [YX]
 input relation YZX [YZX]
 output relation Z [Z]
 output relation ZZ [ZZ]
-Sib(.s1=x, .s2=y) :- Parent(.child=x, .parent=z), Parent(.child=y, .parent=z), (x != y).
+Sib(.s1=x, .s2=y) :- Parent[(__parent0@ Parent{.child=x, .parent=z})], Parent[(__parent1@ Parent{.child=y, .parent=z})], Inspect debug.debug_event_join((32'd0, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __parent0, __parent1, (x, y)), (x != y), Inspect debug.debug_event((32'd0, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (x, y), Sib{.s1=x, .s2=y}).
 Parent(.child="Alice", .parent="Bob").
 Parent(.child="Ben", .parent="Bob").
 Parent(.child="Bob", .parent="Bob").
@@ -972,92 +1332,92 @@ VecTest(.x=((var v: std.Vec<string>) = std.vec_empty();
             (std.vec_push(v, "Hello,");
              v))).
 VecTest(.x=std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<string>), "Hello, "), "world!")).
-Reach(.s1=x, .s2=y) :- Links(.l=l, .s1=x, .s2=y).
-Reach(.s1=x, .s2=y) :- Links(.l=l, .s1=y, .s2=x).
-Reach(.s1=x, .s2=y) :- Links(.l=l, .s1=x, .s2=z), Reach(.s1=z, .s2=y).
-Answer(.x=x) :- Reach(.s1="Odeon", .s2=x).
-Z(.field=a.field) :- X[(a@ X{.field=_})].
-Z(.field=a.field) :- X[a].
+Reach(.s1=x, .s2=y) :- Links[(__links0@ Links{.l=l, .s1=x, .s2=y})], Inspect debug.debug_event((32'd20, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, __links0, Reach{.s1=x, .s2=y}).
+Reach(.s1=x, .s2=y) :- Links[(__links0@ Links{.l=l, .s1=y, .s2=x})], Inspect debug.debug_event((32'd21, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, __links0, Reach{.s1=x, .s2=y}).
+Reach(.s1=x, .s2=y) :- Links[(__links0@ Links{.l=l, .s1=x, .s2=z})], Reach[(__reach1@ Reach{.s1=z, .s2=y})], Inspect debug.debug_event_join((32'd22, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __links0, __reach1, Reach{.s1=x, .s2=y}).
+Answer(.x=x) :- Reach[(__reach0@ Reach{.s1="Odeon", .s2=x})], Inspect debug.debug_event((32'd23, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, __reach0, Answer{.x=x}).
+Z(.field=a.field) :- X[(a@ X{.field=_})], Inspect debug.debug_event((32'd24, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, a, Z{.field=a.field}).
+Z(.field=a.field) :- X[(__x0@ a)], Inspect debug.debug_event((32'd25, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, __x0, Z{.field=a.field}).
 Z(.field=a.field) :- X[(a@ X{.field=_})], match (a.field) {
                                               1 -> true,
                                               2 -> false,
                                               _ -> false
-                                          }.
+                                          }, Inspect debug.debug_event((32'd26, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, a, Z{.field=a.field}).
 Z(.field=(a.field + 1)) :- X[(a@ X{.field=_})], match (a.field) {
                                                     1 -> false,
                                                     2 -> true,
                                                     _ -> false
-                                                }.
+                                                }, Inspect debug.debug_event((32'd27, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, a, Z{.field=(a.field + 1)}).
 Z(.field=(a.field - 1)) :- X[(a@ X{.field=_})], match (a.field) {
                                                     1 -> false,
                                                     2 -> false,
                                                     _ -> true
-                                                }.
-Z(.field=a) :- X(.field=a), match (a) {
-                                1 -> true,
-                                2 -> false,
-                                _ -> false
-                            }.
-Z(.field=(a + 1)) :- X(.field=a), match (a) {
-                                      1 -> false,
-                                      2 -> true,
-                                      _ -> false
-                                  }.
-Z(.field=(a - 1)) :- X(.field=a), match (a) {
-                                      1 -> false,
-                                      2 -> false,
-                                      _ -> true
-                                  }.
-Z(.field=a) :- X(.field=a), match (a) {
-                                1 -> true,
-                                _ -> false
-                            }.
-Z(.field=(a + 1)) :- X(.field=a), match (a) {
-                                      1 -> false,
-                                      2 -> true,
-                                      _ -> false
-                                  }.
-Z(.field=(a - 1)) :- X(.field=a), match (a) {
-                                      1 -> false,
-                                      2 -> false,
-                                      _ -> true
-                                  }.
-Z(.field=a.field) :- X[(a@ X{.field=_})], ((a.field % 2) == 0).
-Z(.field=a.field) :- X[(a@ X{.field=_})], ((a.field % 2) == 0).
-Z(.field=a) :- X(.field=a), ((a % 2) == 0).
-Z(.field=(a.field + 1)) :- X[(a@ X{.field=_})], (a.field == 2).
-Z(.field=a.field) :- X[(a@ X{.field=_})], (not (a.field == 2)).
-Z(.field=(a + 1)) :- X(.field=a), (a == 2).
-Z(.field=a) :- X(.field=a), (a != 1).
-Z(.field=a.field) :- X[(a@ X{.field=_})], (a.field >= 2), (a.field > 2).
-Z(.field=(a.field + 2)) :- X[(a@ X{.field=_})], (a.field >= 2), (a.field > 2).
-Z(.field=a) :- X(.field=a), (a >= 2), (a > 2).
-Z(.field=(a + 2)) :- X(.field=a), (a >= 2), (a > 2).
-Z(.field=(a.field + b.field)) :- X[(a@ X{.field=_})], X[(b@ X{.field=_})].
-Z(.field=(a.field + c.field)) :- X[(a@ X{.field=_})], X[(c@ X{.field=_})].
-Z(.field=(a + b)) :- X(.field=a), X(.field=b).
-Z(.field=(a + c)) :- X(.field=a), X(.field=c).
+                                                }, Inspect debug.debug_event((32'd28, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, a, Z{.field=(a.field - 1)}).
+Z(.field=a) :- X[(__x0@ X{.field=a})], match (a) {
+                                           1 -> true,
+                                           2 -> false,
+                                           _ -> false
+                                       }, Inspect debug.debug_event((32'd29, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __x0, Z{.field=a}).
+Z(.field=(a + 1)) :- X[(__x0@ X{.field=a})], match (a) {
+                                                 1 -> false,
+                                                 2 -> true,
+                                                 _ -> false
+                                             }, Inspect debug.debug_event((32'd30, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __x0, Z{.field=(a + 1)}).
+Z(.field=(a - 1)) :- X[(__x0@ X{.field=a})], match (a) {
+                                                 1 -> false,
+                                                 2 -> false,
+                                                 _ -> true
+                                             }, Inspect debug.debug_event((32'd31, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __x0, Z{.field=(a - 1)}).
+Z(.field=a) :- X[(__x0@ X{.field=a})], match (a) {
+                                           1 -> true,
+                                           _ -> false
+                                       }, Inspect debug.debug_event((32'd32, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __x0, Z{.field=a}).
+Z(.field=(a + 1)) :- X[(__x0@ X{.field=a})], match (a) {
+                                                 1 -> false,
+                                                 2 -> true,
+                                                 _ -> false
+                                             }, Inspect debug.debug_event((32'd33, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __x0, Z{.field=(a + 1)}).
+Z(.field=(a - 1)) :- X[(__x0@ X{.field=a})], match (a) {
+                                                 1 -> false,
+                                                 2 -> false,
+                                                 _ -> true
+                                             }, Inspect debug.debug_event((32'd34, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __x0, Z{.field=(a - 1)}).
+Z(.field=a.field) :- X[(a@ X{.field=_})], ((a.field % 2) == 0), Inspect debug.debug_event((32'd35, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, a, Z{.field=a.field}).
+Z(.field=a.field) :- X[(a@ X{.field=_})], ((a.field % 2) == 0), Inspect debug.debug_event((32'd36, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, a, Z{.field=a.field}).
+Z(.field=a) :- X[(__x0@ X{.field=a})], ((a % 2) == 0), Inspect debug.debug_event((32'd37, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __x0, Z{.field=a}).
+Z(.field=(a.field + 1)) :- X[(a@ X{.field=_})], (a.field == 2), Inspect debug.debug_event((32'd38, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, a, Z{.field=(a.field + 1)}).
+Z(.field=a.field) :- X[(a@ X{.field=_})], (not (a.field == 2)), Inspect debug.debug_event((32'd39, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, a, Z{.field=a.field}).
+Z(.field=(a + 1)) :- X[(__x0@ X{.field=a})], (a == 2), Inspect debug.debug_event((32'd40, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __x0, Z{.field=(a + 1)}).
+Z(.field=a) :- X[(__x0@ X{.field=a})], (a != 1), Inspect debug.debug_event((32'd41, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __x0, Z{.field=a}).
+Z(.field=a.field) :- X[(a@ X{.field=_})], (a.field >= 2), (a.field > 2), Inspect debug.debug_event((32'd42, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, a, Z{.field=a.field}).
+Z(.field=(a.field + 2)) :- X[(a@ X{.field=_})], (a.field >= 2), (a.field > 2), Inspect debug.debug_event((32'd43, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, a, Z{.field=(a.field + 2)}).
+Z(.field=a) :- X[(__x0@ X{.field=a})], (a >= 2), (a > 2), Inspect debug.debug_event((32'd44, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, a, Z{.field=a}).
+Z(.field=(a + 2)) :- X[(__x0@ X{.field=a})], (a >= 2), (a > 2), Inspect debug.debug_event((32'd45, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, a, Z{.field=(a + 2)}).
+Z(.field=(a.field + b.field)) :- X[(a@ X{.field=_})], X[(b@ X{.field=_})], Inspect debug.debug_event_join((32'd46, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, a, b, Z{.field=(a.field + b.field)}).
+Z(.field=(a.field + c.field)) :- X[(a@ X{.field=_})], X[(c@ X{.field=_})], Inspect debug.debug_event_join((32'd47, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, a, c, Z{.field=(a.field + c.field)}).
+Z(.field=(a + b)) :- X[(__x0@ X{.field=a})], X[(__x1@ X{.field=b})], Inspect debug.debug_event_join((32'd48, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __x0, __x1, Z{.field=(a + b)}).
+Z(.field=(a + c)) :- X[(__x0@ X{.field=a})], X[(__x1@ X{.field=c})], Inspect debug.debug_event_join((32'd49, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __x0, __x1, Z{.field=(a + c)}).
 Z(.field=(a + b)),
-Z(.field=(a + c)) :- X(.field=a), X(.field=b), X(.field=c).
-Z(.field=(a.field + b)) :- X[(a@ X{.field=_})], (var b: bigint) = (a.field + 2).
-Z(.field=(a + b)) :- X(.field=a), var b = (a + 2).
-W(.f1=a.field, .f2=b, .f3=c) :- X[(a@ X{.field=_})], var b = (a.field + 2), var c = (b + a.field).
-W(.f1=a, .f2=b, .f3=c) :- X(.field=a), var b = (a + 2), var c = (b + a).
+Z(.field=(a + c)) :- X[(__x0@ X{.field=a})], X[(__x1@ X{.field=b})], Inspect debug.debug_event_join((32'd50, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __x0, __x1, (a, b)), X[(__x2@ X{.field=c})], Inspect debug.debug_event_join((32'd50, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (a, b), __x2, Z{.field=(a + b)}), Inspect debug.debug_event_join((32'd50, 32'd2, 32'd1), ddlog_weight, ddlog_timestamp, (a, b), __x2, Z{.field=(a + c)}).
+Z(.field=(a.field + b)) :- X[(a@ X{.field=_})], (var b: bigint) = (a.field + 2), Inspect debug.debug_event((32'd51, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, a, Z{.field=(a.field + b)}).
+Z(.field=(a + b)) :- X[(__x0@ X{.field=a})], var b = (a + 2), Inspect debug.debug_event((32'd52, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __x0, Z{.field=(a + b)}).
+W(.f1=a.field, .f2=b, .f3=c) :- X[(a@ X{.field=_})], var b = (a.field + 2), var c = (b + a.field), Inspect debug.debug_event((32'd53, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (a, b), W{.f1=a.field, .f2=b, .f3=c}).
+W(.f1=a, .f2=b, .f3=c) :- X[(__x0@ X{.field=a})], var b = (a + 2), var c = (b + a), Inspect debug.debug_event((32'd54, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (a, b), W{.f1=a, .f2=b, .f3=c}).
 R1[1].
 R2[(1, 2)].
-R4[x] :- R3[x].
-R5[x.f1] :- R3[x].
-R6(.f=x.f1) :- R3[x].
-ZZ(.x=a.b, .y=a.c) :- XX[a].
-T(.x=a.b, .y=e) :- XX[a], Y(.b=a.d, .e=e).
+R4[x] :- R3[(__r30@ x)], Inspect debug.debug_event((32'd57, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, __r30, x).
+R5[x.f1] :- R3[(__r30@ x)], Inspect debug.debug_event((32'd58, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, __r30, x.f1).
+R6(.f=x.f1) :- R3[(__r30@ x)], Inspect debug.debug_event((32'd59, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, __r30, R6{.f=x.f1}).
+ZZ(.x=a.b, .y=a.c) :- XX[(__xx0@ a)], Inspect debug.debug_event((32'd60, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, __xx0, ZZ{.x=a.b, .y=a.c}).
+T(.x=a.b, .y=e) :- XX[(__xx0@ a)], Y[(__y1@ Y{.b=a.d, .e=e})], Inspect debug.debug_event_join((32'd61, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __xx0, __y1, T{.x=a.b, .y=e}).
 R7(.f1=1, .f2=16'd2).
 R7(.f1=1, .f2=16'd3).
 R7[R7Other{}].
-Table12(.id=std.hash128((id, name, f2, f3)), .name=name, .f3=f3) :- Table1(.id=id, .name=name), Table2(.name=name, .f2=f2, .f3=f3).
-R2_nl(.a2=x) :- R1_nl(.a1=x).
-R2_nl(.a2=x) :- R3_nl(.a3=x, .b3=y), R4_nl(.a4=y, .b4=z).
+Table12(.id=std.hash128((id, name, f2, f3)), .name=name, .f3=f3) :- Table1[(__table10@ Table1{.id=id, .name=name})], Table2[(__table21@ Table2{.name=name, .f2=f2, .f3=f3})], Inspect debug.debug_event_join((32'd65, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __table10, __table21, Table12{.id=std.hash128((id, name, f2, f3)), .name=name, .f3=f3}).
+R2_nl(.a2=x) :- R1_nl[(__r1_nl0@ R1_nl{.a1=x})], Inspect debug.debug_event((32'd66, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, __r1_nl0, R2_nl{.a2=x}).
+R2_nl(.a2=x) :- R3_nl[(__r3_nl0@ R3_nl{.a3=x, .b3=y})], R4_nl[(__r4_nl1@ R4_nl{.a4=y, .b4=z})], Inspect debug.debug_event_join((32'd67, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __r3_nl0, __r4_nl1, R2_nl{.a2=x}).
 R3_nl(.a3=x, .b3=y),
-R4_nl(.a4=x, .b4=y) :- R2_nl(.a2=x), R2_nl(.a2=y).
+R4_nl(.a4=x, .b4=y) :- R2_nl[(__r2_nl0@ R2_nl{.a2=x})], R2_nl[(__r2_nl1@ R2_nl{.a2=y})], Inspect debug.debug_event_join((32'd68, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __r2_nl0, __r2_nl1, R3_nl{.a3=x, .b3=y}), Inspect debug.debug_event_join((32'd68, 32'd1, 32'd1), ddlog_weight, ddlog_timestamp, __r2_nl0, __r2_nl1, R4_nl{.a4=x, .b4=y}).
 Strings(.s="").
 Strings(.s="foo").
 Strings(.s="bar\n").
@@ -1080,58 +1440,58 @@ Strings(.s="foo\\bar").
 Strings(.s=("foo\\" ++ "bar")).
 Strings(.s="word1 word2").
 Strings(.s="line1\nline2").
-Rel3(.x=x, .y=y, .z=z) :- Rel1(.x=x, .y=y), Rel2(.x=x, .z=z).
-Rel4(.x=x, .y=y, .b=b) :- Rel1(.x=x, .y=y), Rel2(.x=x, .z=Option1{.f1=_, .f2=IP4{.ip4=_}, .f3=(b, "buzz")}).
-Counts1(.x=x, .occurrences=count) :- AggregateMe1(.x=x, .y=y), var count = Aggregate((x), count_xs(y)).
-Symmetric1(.x=x, .sym=sym) :- AggregateMe1(.x=x, .y=y), var sym = Aggregate((x), find_x_in_group(y)).
-Aggregate1(.x=x, .cnt=cnt) :- AggregateMe1(.x=x, .y=y), var cnt = Aggregate((x), std.group_count(y)).
-AggregateCnt(.cnt=cnt) :- AggregateMe1(.x=x, .y=y), var cnt = Aggregate((), std.group_count(())).
-AggregateCnt2(.cnt=cnt) :- AggregateMe1(.x=x, .y=y), var cnt = Aggregate((), std.group_sum((64'd1: bit<64>))).
-AggregateCnt3(.cnt=cnt) :- AggregateMe1(.x=x, .y=y), (y != "1"), var cnt = Aggregate((), std.group_sum((64'd1: bit<64>))).
-Aggregate2(.x=x, .set=set) :- AggregateMe1(.x=x, .y=y), var set = Aggregate((x), std.group2set(y)).
-Aggregate3(.x=x, .vec=vec) :- AggregateMe1(.x=x, .y=y), var vec = Aggregate((x), std.group2vec(y)).
-Aggregate4(.x=x, .map=map) :- AggregateMe1(.x=x, .y=y), var map = Aggregate((x), std.group2map((x, y))).
-Disaggregate(.x=x, .y=y) :- AggregateMe1(.x=x, .y=y), var set = Aggregate((x), std.group2set(y)), var y = FlatMap(set).
-Sum(.x=x, .sum=sum) :- AggregateMeInts(.x=x, .y=y), var sum = Aggregate((x), std.group_sum(y)).
-AggregateByX(.x=x, .cnt=cnt) :- AggregateMe3(.x=x, .y=y, .z=z), AggregateMe1(.x=x, .y=y), var cnt = Aggregate((x), std.group_count(())).
-Concat(.s=s) :- AggregateMe3(.x=x, .y=y, .z=z), var s = Aggregate((x,
-                                                                   z), concat_ys(y)).
-WithKeyDbg(.key=k, .val=v) :- WithKey(.key=k, .val=v).
-Innocent(.name=name) :- Suspect(.name=name), not Gangster(.nickname=_, .name=name).
-ValidDestination(.addr=addr) :- Address(.addr=addr), IPAddr{.b3=var b3, .b2=var b2, .b1=_, .b0=_} = addr, not Blacklist(.addr=IPAddr{.b3=b3, .b2=b2, .b1=_, .b0=_}).
-HostAddress(.host=host, .addr=addr) :- HostAddresses(.host=host, .addrs=addrs), var addr = FlatMap(addrs).
-ExternalId(.host=host, .id=id) :- ExternalIds(.host=host, .ids=ids), var id = FlatMap(ids).
-Allocation(.name=name, .id=id, .x=x) :- Request(.name=name, .id=id), Realized(.name=name, .id=id, .x=x).
-ToAllocate(.name=name, .ids=ids) :- Request(.name=name, .id=id), not Realized(.name=name, .id=id, .x=_), var ids = Aggregate((name), std.group2vec(id)).
-Allocated(.name=name, .xs=xs) :- Realized(.name=name, .id=_, .x=x), var xs = Aggregate((name), std.group2set(x)).
-Allocation(.name=name, .id=id, .x=x) :- ToAllocate(.name=name, .ids=ids), Allocated(.name=name, .xs=xs), var allocation = FlatMap(allocate.allocate(xs, ids, 32'd1, ((32'd1 << 32'd24) - 32'd1))), (var id, var x) = allocation.
-Referee(.r=std.ref_new(r)) :- Referenced[(r@ Referenced{.x=_, .y=std.Some{.x=_}})].
-Filtered(.r=r.r) :- Referee[(r@ Referee{.r=(&Referenced{.x=true, .y=_})})].
-Referee2[std.ref_new(Referee2{.r=r})] :- Referenced[r].
-Filtered2(.r=r) :- Referee2[(r@ (&Referee2{.r=Referenced{.x=true, .y=_}}))].
-Filtered3(.r=r.r) :- Referee[(r@ Referee{.r=_})], (r.r.x == true).
-NewAllocation(.id=id, .alloc=alloc) :- Alloc(.id=id, .allocated=allocated, .toallocate=toallocate, .min_val=min_val, .max_val=max_val), var allocated_nums = ((var allocated_nums: std.Set<bit<32>>) = std.set_empty();
-                                                                                                                                                              (for (a in allocated) {
-                                                                                                                                                                   ((_, var num) = a;
-                                                                                                                                                                    std.set_insert(allocated_nums, num))
-                                                                                                                                                               };
-                                                                                                                                                               allocated_nums)), var alloc = allocate.allocate(allocated_nums, toallocate, min_val, max_val).
-NewAllocationOpt(.id=id, .alloc=alloc) :- Alloc(.id=id, .allocated=allocated, .toallocate=toallocate, .min_val=min_val, .max_val=max_val), var allocated_nums = ((var allocated_nums: std.Set<bit<32>>) = std.set_empty();
-                                                                                                                                                                 (for (a in allocated) {
-                                                                                                                                                                      ((_, var num) = a;
-                                                                                                                                                                       std.set_insert(allocated_nums, num))
-                                                                                                                                                                  };
-                                                                                                                                                                  allocated_nums)), var alloc = allocate.allocate_opt(allocated_nums, toallocate, min_val, max_val).
-Adjusted(.id=id, .alloc=alloc) :- Alloc(.id=id, .allocated=allocated, .toallocate=toallocate, .min_val=min_val, .max_val=max_val), var alloc = allocate.adjust_allocation(allocated, toallocate, min_val, max_val).
-YX(.y=y, .x=x) :- XY(.x=x, .y=y), YZX(.y=y, .z=z, .x=x).
-IConcatString(.s=intern.string_intern((intern.istring_str(s1) ++ s2))) :- IString1(.s=s1), String2(.s=s2).
-ConcatString(.s=intern.istring_str(s)) :- IConcatString(.s=s).
+Rel3(.x=x, .y=y, .z=z) :- Rel1[(__rel10@ Rel1{.x=x, .y=y})], Rel2[(__rel21@ Rel2{.x=x, .z=z})], Inspect debug.debug_event_join((32'd91, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __rel10, __rel21, Rel3{.x=x, .y=y, .z=z}).
+Rel4(.x=x, .y=y, .b=b) :- Rel1[(__rel10@ Rel1{.x=x, .y=y})], Rel2[(__rel21@ Rel2{.x=x, .z=Option1{.f1=_, .f2=IP4{.ip4=_}, .f3=(b, "buzz")}})], Inspect debug.debug_event_join((32'd92, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __rel10, __rel21, Rel4{.x=x, .y=y, .b=b}).
+Counts1(.x=x, .occurrences=count) :- AggregateMe1[(__aggregateme10@ AggregateMe1{.x=x, .y=y})], var __inputs_count = Aggregate((x), __debug_93_1_count_xs((__aggregateme10, y))), Inspect debug.debug_event((32'd93, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __inputs_count.0, (__inputs_count, x)), var count = __inputs_count.1, Inspect debug.debug_event((32'd93, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (__inputs_count, x), Counts1{.x=x, .occurrences=count}).
+Symmetric1(.x=x, .sym=sym) :- AggregateMe1[(__aggregateme10@ AggregateMe1{.x=x, .y=y})], var __inputs_sym = Aggregate((x), __debug_94_1_find_x_in_group((__aggregateme10, y))), Inspect debug.debug_event((32'd94, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __inputs_sym.0, (__inputs_sym, x)), var sym = __inputs_sym.1, Inspect debug.debug_event((32'd94, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (__inputs_sym, x), Symmetric1{.x=x, .sym=sym}).
+Aggregate1(.x=x, .cnt=cnt) :- AggregateMe1[(__aggregateme10@ AggregateMe1{.x=x, .y=y})], var __inputs_cnt = Aggregate((x), __debug_95_1_std.group_count((__aggregateme10, y))), Inspect debug.debug_event((32'd95, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __inputs_cnt.0, (__inputs_cnt, x)), var cnt = __inputs_cnt.1, Inspect debug.debug_event((32'd95, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (__inputs_cnt, x), Aggregate1{.x=x, .cnt=cnt}).
+AggregateCnt(.cnt=cnt) :- AggregateMe1[(__aggregateme10@ AggregateMe1{.x=x, .y=y})], var __inputs_cnt = Aggregate((), __debug_96_1_std.group_count((__aggregateme10, ()))), Inspect debug.debug_event((32'd96, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __inputs_cnt.0, __inputs_cnt), var cnt = __inputs_cnt.1, Inspect debug.debug_event((32'd96, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, __inputs_cnt, AggregateCnt{.cnt=cnt}).
+AggregateCnt2(.cnt=cnt) :- AggregateMe1[(__aggregateme10@ AggregateMe1{.x=x, .y=y})], var __inputs_cnt = Aggregate((), __debug_97_1_std.group_sum((__aggregateme10, (64'd1: bit<64>)))), Inspect debug.debug_event((32'd97, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __inputs_cnt.0, __inputs_cnt), var cnt = __inputs_cnt.1, Inspect debug.debug_event((32'd97, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, __inputs_cnt, AggregateCnt2{.cnt=cnt}).
+AggregateCnt3(.cnt=cnt) :- AggregateMe1[(__aggregateme10@ AggregateMe1{.x=x, .y=y})], (y != "1"), Inspect debug.debug_event((32'd98, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __aggregateme10, (__aggregateme10, x, y)), var __inputs_cnt = Aggregate((), __debug_98_2_std.group_sum(((__aggregateme10, x, y), (64'd1: bit<64>)))), Inspect debug.debug_event((32'd98, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, __inputs_cnt.0, __inputs_cnt), var cnt = __inputs_cnt.1, Inspect debug.debug_event((32'd98, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, __inputs_cnt, AggregateCnt3{.cnt=cnt}).
+Aggregate2(.x=x, .set=set) :- AggregateMe1[(__aggregateme10@ AggregateMe1{.x=x, .y=y})], var __inputs_set = Aggregate((x), __debug_99_1_std.group2set((__aggregateme10, y))), Inspect debug.debug_event((32'd99, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __inputs_set.0, (__inputs_set, x)), var set = __inputs_set.1, Inspect debug.debug_event((32'd99, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (__inputs_set, x), Aggregate2{.x=x, .set=set}).
+Aggregate3(.x=x, .vec=vec) :- AggregateMe1[(__aggregateme10@ AggregateMe1{.x=x, .y=y})], var __inputs_vec = Aggregate((x), __debug_100_1_std.group2vec((__aggregateme10, y))), Inspect debug.debug_event((32'd100, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __inputs_vec.0, (__inputs_vec, x)), var vec = __inputs_vec.1, Inspect debug.debug_event((32'd100, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (__inputs_vec, x), Aggregate3{.x=x, .vec=vec}).
+Aggregate4(.x=x, .map=map) :- AggregateMe1[(__aggregateme10@ AggregateMe1{.x=x, .y=y})], var __inputs_map = Aggregate((x), __debug_101_1_std.group2map((__aggregateme10, (x, y)))), Inspect debug.debug_event((32'd101, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __inputs_map.0, (__inputs_map, x)), var map = __inputs_map.1, Inspect debug.debug_event((32'd101, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (__inputs_map, x), Aggregate4{.x=x, .map=map}).
+Disaggregate(.x=x, .y=y) :- AggregateMe1[(__aggregateme10@ AggregateMe1{.x=x, .y=y})], var __inputs_set = Aggregate((x), __debug_102_1_std.group2set((__aggregateme10, y))), Inspect debug.debug_event((32'd102, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __inputs_set.0, (__inputs_set, x)), var set = __inputs_set.1, Inspect debug.debug_event((32'd102, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (__inputs_set, x), (x, set)), var y = FlatMap(set), Inspect debug.debug_event((32'd102, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, (x, set), Disaggregate{.x=x, .y=y}).
+Sum(.x=x, .sum=sum) :- AggregateMeInts[(__aggregatemeints0@ AggregateMeInts{.x=x, .y=y})], var __inputs_sum = Aggregate((x), __debug_103_1_std.group_sum((__aggregatemeints0, y))), Inspect debug.debug_event((32'd103, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __inputs_sum.0, (__inputs_sum, x)), var sum = __inputs_sum.1, Inspect debug.debug_event((32'd103, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (__inputs_sum, x), Sum{.x=x, .sum=sum}).
+AggregateByX(.x=x, .cnt=cnt) :- AggregateMe3[(__aggregateme30@ AggregateMe3{.x=x, .y=y, .z=z})], AggregateMe1[(__aggregateme11@ AggregateMe1{.x=x, .y=y})], Inspect debug.debug_event_join((32'd104, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __aggregateme30, __aggregateme11, (__aggregateme30, x, y, z, __aggregateme11)), var __inputs_cnt = Aggregate((x), __debug_104_2_std.group_count(((__aggregateme30, x, y, z, __aggregateme11), ()))), Inspect debug.debug_event((32'd104, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, __inputs_cnt.0, (__inputs_cnt, x)), var cnt = __inputs_cnt.1, Inspect debug.debug_event((32'd104, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, (__inputs_cnt, x), AggregateByX{.x=x, .cnt=cnt}).
+Concat(.s=s) :- AggregateMe3[(__aggregateme30@ AggregateMe3{.x=x, .y=y, .z=z})], var __inputs_s = Aggregate((x,
+                                                                                                             z), __debug_105_1_concat_ys((__aggregateme30, y))), Inspect debug.debug_event((32'd105, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __inputs_s.0, __inputs_s), var s = __inputs_s.1, Inspect debug.debug_event((32'd105, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, __inputs_s, Concat{.s=s}).
+WithKeyDbg(.key=k, .val=v) :- WithKey[(__withkey0@ WithKey{.key=k, .val=v})], Inspect debug.debug_event((32'd106, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, __withkey0, WithKeyDbg{.key=k, .val=v}).
+Innocent(.name=name) :- Suspect[(__suspect0@ Suspect{.name=name})], not Gangster(.nickname=_, .name=name), Inspect debug.debug_event((32'd107, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __suspect0, Innocent{.name=name}).
+ValidDestination(.addr=addr) :- Address[(__address0@ Address{.addr=addr})], IPAddr{.b3=var b3, .b2=var b2, .b1=_, .b0=_} = addr, Inspect debug.debug_event((32'd108, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __address0, (addr, b3, b2)), not Blacklist(.addr=IPAddr{.b3=b3, .b2=b2, .b1=_, .b0=_}), Inspect debug.debug_event((32'd108, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (addr, b3, b2), ValidDestination{.addr=addr}).
+HostAddress(.host=host, .addr=addr) :- HostAddresses[(__hostaddresses0@ HostAddresses{.host=host, .addrs=addrs})], var addr = FlatMap(addrs), Inspect debug.debug_event((32'd109, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __hostaddresses0, HostAddress{.host=host, .addr=addr}).
+ExternalId(.host=host, .id=id) :- ExternalIds[(__externalids0@ ExternalIds{.host=host, .ids=ids})], var id = FlatMap(ids), Inspect debug.debug_event((32'd110, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __externalids0, ExternalId{.host=host, .id=id}).
+Allocation(.name=name, .id=id, .x=x) :- Request[(__request0@ Request{.name=name, .id=id})], Realized[(__realized1@ Realized{.name=name, .id=id, .x=x})], Inspect debug.debug_event_join((32'd111, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __request0, __realized1, Allocation{.name=name, .id=id, .x=x}).
+ToAllocate(.name=name, .ids=ids) :- Request[(__request0@ Request{.name=name, .id=id})], not Realized(.name=name, .id=id, .x=_), Inspect debug.debug_event((32'd112, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __request0, (__request0, name, id)), var __inputs_ids = Aggregate((name), __debug_112_2_std.group2vec(((__request0, name, id), id))), Inspect debug.debug_event((32'd112, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, __inputs_ids.0, (__inputs_ids, name)), var ids = __inputs_ids.1, Inspect debug.debug_event((32'd112, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, (__inputs_ids, name), ToAllocate{.name=name, .ids=ids}).
+Allocated(.name=name, .xs=xs) :- Realized[(__realized0@ Realized{.name=name, .id=_, .x=x})], var __inputs_xs = Aggregate((name), __debug_113_1_std.group2set((__realized0, x))), Inspect debug.debug_event((32'd113, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __inputs_xs.0, (__inputs_xs, name)), var xs = __inputs_xs.1, Inspect debug.debug_event((32'd113, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (__inputs_xs, name), Allocated{.name=name, .xs=xs}).
+Allocation(.name=name, .id=id, .x=x) :- ToAllocate[(__toallocate0@ ToAllocate{.name=name, .ids=ids})], Allocated[(__allocated1@ Allocated{.name=name, .xs=xs})], Inspect debug.debug_event_join((32'd114, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __toallocate0, __allocated1, (name, ids, xs)), var allocation = FlatMap(allocate.allocate(xs, ids, 32'd1, ((32'd1 << 32'd24) - 32'd1))), Inspect debug.debug_event((32'd114, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (name, ids, xs), (allocation, name)), (var id, var x) = allocation, Inspect debug.debug_event((32'd114, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, (allocation, name), Allocation{.name=name, .id=id, .x=x}).
+Referee(.r=std.ref_new(r)) :- Referenced[(r@ Referenced{.x=_, .y=std.Some{.x=_}})], Inspect debug.debug_event((32'd115, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, r, Referee{.r=std.ref_new(r)}).
+Filtered(.r=r.r) :- Referee[(r@ Referee{.r=(&Referenced{.x=true, .y=_})})], Inspect debug.debug_event((32'd116, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, r, Filtered{.r=r.r}).
+Referee2[std.ref_new(Referee2{.r=r})] :- Referenced[(__referenced0@ r)], Inspect debug.debug_event((32'd117, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, __referenced0, std.ref_new(Referee2{.r=r})).
+Filtered2(.r=r) :- Referee2[(r@ (&Referee2{.r=Referenced{.x=true, .y=_}}))], Inspect debug.debug_event((32'd118, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, r, Filtered2{.r=r}).
+Filtered3(.r=r.r) :- Referee[(r@ Referee{.r=_})], (r.r.x == true), Inspect debug.debug_event((32'd119, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, r, Filtered3{.r=r.r}).
+NewAllocation(.id=id, .alloc=alloc) :- Alloc[(__alloc0@ Alloc{.id=id, .allocated=allocated, .toallocate=toallocate, .min_val=min_val, .max_val=max_val})], var allocated_nums = ((var allocated_nums: std.Set<bit<32>>) = std.set_empty();
+                                                                                                                                                                                 (for (a in allocated) {
+                                                                                                                                                                                      ((_, var num) = a;
+                                                                                                                                                                                       std.set_insert(allocated_nums, num))
+                                                                                                                                                                                  };
+                                                                                                                                                                                  allocated_nums)), var alloc = allocate.allocate(allocated_nums, toallocate, min_val, max_val), Inspect debug.debug_event((32'd120, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (id, toallocate, min_val, max_val, allocated_nums), NewAllocation{.id=id, .alloc=alloc}).
+NewAllocationOpt(.id=id, .alloc=alloc) :- Alloc[(__alloc0@ Alloc{.id=id, .allocated=allocated, .toallocate=toallocate, .min_val=min_val, .max_val=max_val})], var allocated_nums = ((var allocated_nums: std.Set<bit<32>>) = std.set_empty();
+                                                                                                                                                                                    (for (a in allocated) {
+                                                                                                                                                                                         ((_, var num) = a;
+                                                                                                                                                                                          std.set_insert(allocated_nums, num))
+                                                                                                                                                                                     };
+                                                                                                                                                                                     allocated_nums)), var alloc = allocate.allocate_opt(allocated_nums, toallocate, min_val, max_val), Inspect debug.debug_event((32'd121, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (id, toallocate, min_val, max_val, allocated_nums), NewAllocationOpt{.id=id, .alloc=alloc}).
+Adjusted(.id=id, .alloc=alloc) :- Alloc[(__alloc0@ Alloc{.id=id, .allocated=allocated, .toallocate=toallocate, .min_val=min_val, .max_val=max_val})], var alloc = allocate.adjust_allocation(allocated, toallocate, min_val, max_val), Inspect debug.debug_event((32'd122, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __alloc0, Adjusted{.id=id, .alloc=alloc}).
+YX(.y=y, .x=x) :- XY[(__xy0@ XY{.x=x, .y=y})], YZX[(__yzx1@ YZX{.y=y, .z=z, .x=x})], Inspect debug.debug_event_join((32'd123, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __xy0, __yzx1, YX{.y=y, .x=x}).
+IConcatString(.s=intern.string_intern((intern.istring_str(s1) ++ s2))) :- IString1[(__istring10@ IString1{.s=s1})], String2[(__string21@ String2{.s=s2})], Inspect debug.debug_event_join((32'd124, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __istring10, __string21, IConcatString{.s=intern.string_intern((intern.istring_str(s1) ++ s2))}).
+ConcatString(.s=intern.istring_str(s)) :- IConcatString[(__iconcatstring0@ IConcatString{.s=s})], Inspect debug.debug_event((32'd125, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, __iconcatstring0, ConcatString{.s=intern.istring_str(s)}).
 Ris_true(._s=intern.string_intern("true")).
-Re(._x=(32'd10 % 32'd3), ._t=intern.string_intern("10%3"), ._y=32'd1) :- Ris_true(._s=_).
-CMethod(.c1=a, .c2=b) :- BMethod(.b1=intern.string_intern("c"), .b2=b), AMethod(.a1=b, .a2=a).
-DMethod(.c1=a, .c2=b) :- AMethod(.a1=b, .a2=a), BMethod(.b1=intern.string_intern("c"), .b2=b).
-Power3(.y=std.pow32(x, 32'd3)) :- Numbers(.x=x).
-RegexMatch(.regex=regex, .text=text, .m=regex.regex_match(regex, text)) :- Regex(.regex=regex, .text=text).
+Re(._x=(32'd10 % 32'd3), ._t=intern.string_intern("10%3"), ._y=32'd1) :- Ris_true[(__ris_true0@ Ris_true{._s=_})], Inspect debug.debug_event((32'd127, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, __ris_true0, Re{._x=(32'd10 % 32'd3), ._t=intern.string_intern("10%3"), ._y=32'd1}).
+CMethod(.c1=a, .c2=b) :- BMethod[(__bmethod0@ BMethod{.b1=intern.string_intern("c"), .b2=b})], AMethod[(__amethod1@ AMethod{.a1=b, .a2=a})], Inspect debug.debug_event_join((32'd128, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __bmethod0, __amethod1, CMethod{.c1=a, .c2=b}).
+DMethod(.c1=a, .c2=b) :- AMethod[(__amethod0@ AMethod{.a1=b, .a2=a})], BMethod[(__bmethod1@ BMethod{.b1=intern.string_intern("c"), .b2=b})], Inspect debug.debug_event_join((32'd129, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __amethod0, __bmethod1, DMethod{.c1=a, .c2=b}).
+Power3(.y=std.pow32(x, 32'd3)) :- Numbers[(__numbers0@ Numbers{.x=x})], Inspect debug.debug_event((32'd130, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, __numbers0, Power3{.y=std.pow32(x, 32'd3)}).
+RegexMatch(.regex=regex, .text=text, .m=regex.regex_match(regex.regex(regex), text)) :- Regex[(__regex0@ Regex{.regex=regex, .text=text})], Inspect debug.debug_event((32'd131, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, __regex0, RegexMatch{.regex=regex, .text=text, .m=regex.regex_match(regex.regex(regex), text)}).
 Arithm(.n=32'd0).
 Arithm(.n=(32'd1 + 32'd0)).
 Arithm(.n=(32'd0 + 32'd2)).
@@ -1254,13 +1614,13 @@ UMinus_s32(.description="-32768", .n=(- 32'sd32768)).
 UMinus_bigint(.description="-100", .n=(- 100)).
 UMinus_bigint(.description="- -100", .n=(- (- 100))).
 UMinus_bigint(.description="-32768", .n=(- 32768)).
-Span(.entity=(entity: entid_t), .tns=bindings) :- DdlogNode(.id=entity), DdlogBinding(.tn=tn, .entity=entity), var bindings = Aggregate((entity), std.group2set(tn)).
-Span(.entity=parent, .tns=tns) :- DdlogNode(.id=parent), DdlogDependency(.parent=child, .child=parent), Span(.entity=child, .tns=child_tns), var tns = Aggregate((parent), std.group_set_unions(child_tns)).
+Span(.entity=(entity: entid_t), .tns=bindings) :- DdlogNode[(__ddlognode0@ DdlogNode{.id=entity})], DdlogBinding[(__ddlogbinding1@ DdlogBinding{.tn=tn, .entity=entity})], Inspect debug.debug_event_join((32'd248, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __ddlognode0, __ddlogbinding1, (__ddlognode0, entity, __ddlogbinding1, tn)), var __inputs_bindings = Aggregate((entity), __debug_248_2_std.group2set(((__ddlognode0, entity, __ddlogbinding1, tn), tn))), Inspect debug.debug_event((32'd248, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, __inputs_bindings.0, (__inputs_bindings, entity)), var bindings = __inputs_bindings.1, Inspect debug.debug_event((32'd248, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, (__inputs_bindings, entity), Span{.entity=(entity: entid_t), .tns=bindings}).
+Span(.entity=parent, .tns=tns) :- DdlogNode[(__ddlognode0@ DdlogNode{.id=parent})], DdlogDependency[(__ddlogdependency1@ DdlogDependency{.parent=child, .child=parent})], Inspect debug.debug_event_join((32'd249, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __ddlognode0, __ddlogdependency1, (__ddlognode0, parent, __ddlogdependency1, child)), Span[(__span2@ Span{.entity=child, .tns=child_tns})], Inspect debug.debug_event_join((32'd249, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (__ddlognode0, parent, __ddlogdependency1, child), __span2, (__ddlognode0, parent, __ddlogdependency1, child, __span2, child_tns)), var __inputs_tns = Aggregate((parent), __debug_249_3_std.group_set_unions(((__ddlognode0, parent, __ddlogdependency1, child, __span2, child_tns), child_tns))), Inspect debug.debug_event((32'd249, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, __inputs_tns.0, (__inputs_tns, parent)), var tns = __inputs_tns.1, Inspect debug.debug_event((32'd249, 32'd4, 32'd0), ddlog_weight, ddlog_timestamp, (__inputs_tns, parent), Span{.entity=parent, .tns=tns}).
 R13(.t=(1, true, "", 32'd1)).
 R14(.t=(1, (true, ("", 32'd1)))).
 R14(.t=(0, (true, ("", 32'd1)))).
-J(.b=b) :- R13(.t=a), R14(.t=c), (a.3 == c.1.1.1), var b = a.1.
-LongJoin(.x0=x0, .x1=x1, .x2=x2, .x3=x3, .x4=x4, .x5=x5, .x6=x6, .x7=x7, .x8=x8, .x9=x9, .x10=x10, .x11=x11, .x12=x12, .x13=x13, .x14=x14, .x15=x15, .x16=x16, .x17=x17, .x18=x18, .x19=x19) :- Long(.x0=x0, .x1=x1, .x2=x2, .x3=x3, .x4=x4, .x5=x5, .x6=x6, .x7=x7, .x8=x8, .x9=x9, .x10=x10, .x11=x11, .x12=x12, .x13=x13, .x14=x14, .x15=x15, .x16=x16, .x17=x17, .x18=x18, .x19=x19), Long(.x0=x0, .x1=x1, .x2=x2, .x3=x3, .x4=x4, .x5=x5, .x6=x6, .x7=x7, .x8=x8, .x9=x9, .x10=x10, .x11=x11, .x12=x12, .x13=x13, .x14=x14, .x15=x15, .x16=x16, .x17=x17, .x18=x18, .x19=x19), Long(.x0=x0, .x1=x1, .x2=x2, .x3=x3, .x4=x4, .x5=x5, .x6=x6, .x7=x7, .x8=x8, .x9=x9, .x10=x10, .x11=x11, .x12=x12, .x13=x13, .x14=x14, .x15=x15, .x16=x16, .x17=x17, .x18=x18, .x19=x19).
+J(.b=b) :- R13[(__r130@ R13{.t=a})], R14[(__r141@ R14{.t=c})], Inspect debug.debug_event_join((32'd253, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __r130, __r141, (a, c)), (a.3 == c.1.1.1), var b = a.1, Inspect debug.debug_event((32'd253, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, a, J{.b=b}).
+LongJoin(.x0=x0, .x1=x1, .x2=x2, .x3=x3, .x4=x4, .x5=x5, .x6=x6, .x7=x7, .x8=x8, .x9=x9, .x10=x10, .x11=x11, .x12=x12, .x13=x13, .x14=x14, .x15=x15, .x16=x16, .x17=x17, .x18=x18, .x19=x19) :- Long[(__long0@ Long{.x0=x0, .x1=x1, .x2=x2, .x3=x3, .x4=x4, .x5=x5, .x6=x6, .x7=x7, .x8=x8, .x9=x9, .x10=x10, .x11=x11, .x12=x12, .x13=x13, .x14=x14, .x15=x15, .x16=x16, .x17=x17, .x18=x18, .x19=x19})], Long[(__long1@ Long{.x0=x0, .x1=x1, .x2=x2, .x3=x3, .x4=x4, .x5=x5, .x6=x6, .x7=x7, .x8=x8, .x9=x9, .x10=x10, .x11=x11, .x12=x12, .x13=x13, .x14=x14, .x15=x15, .x16=x16, .x17=x17, .x18=x18, .x19=x19})], Inspect debug.debug_event_join((32'd254, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __long0, __long1, (x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19)), Long[(__long2@ Long{.x0=x0, .x1=x1, .x2=x2, .x3=x3, .x4=x4, .x5=x5, .x6=x6, .x7=x7, .x8=x8, .x9=x9, .x10=x10, .x11=x11, .x12=x12, .x13=x13, .x14=x14, .x15=x15, .x16=x16, .x17=x17, .x18=x18, .x19=x19})], Inspect debug.debug_event_join((32'd254, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19), __long2, LongJoin{.x0=x0, .x1=x1, .x2=x2, .x3=x3, .x4=x4, .x5=x5, .x6=x6, .x7=x7, .x8=x8, .x9=x9, .x10=x10, .x11=x11, .x12=x12, .x13=x13, .x14=x14, .x15=x15, .x16=x16, .x17=x17, .x18=x18, .x19=x19}).
 ControlFlow(.expr="all(true, true, false)", .value=("" ++ std.__builtin_2string(all(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<bool>), true), true), false))))).
 ControlFlow(.expr="all(true, true, true)", .value=("" ++ std.__builtin_2string(all(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<bool>), true), true), true))))).
 ControlFlow(.expr="any(false, true, false)", .value=("" ++ std.__builtin_2string(any(std.vec_push_imm(std.vec_push_imm(std.vec_push_imm((std.vec_empty(): std.Vec<bool>), false), true), false))))).
@@ -1282,7 +1642,7 @@ Doubles(.s="-5", .d=(- 64'f5.0)).
 Doubles(.s="5 + 3", .d=(64'f5.0 + 64'f3.0)).
 Doubles(.s="5/3", .d=(64'f5.0 / 64'f3.0)).
 Doubles(.s="5*3", .d=(64'f5.0 * 64'f3.0)).
-Doubles(.s="0: double", .d=(0: double)).
+Doubles(.s="0: double", .d=(64'f0.0: double)).
 Doubles(.s="floor_d(64'f0.1)", .d=fp.floor_d(64'f0.1)).
 Doubles(.s=("" ++ std.__builtin_2string((64'f5.0 + 64'f5.0))), .d=(64'f5.0 + 64'f3.0)).
 Floats(.s="32'f5.0", .f=32'f5.0).
@@ -1290,6 +1650,7 @@ Floats(.s="32'f5e2", .f=32'f500.0).
 Floats(.s="5 + 3", .f=(32'f5.0 + 32'f3.0)).
 Floats(.s="5/3", .f=(32'f5.0 / 32'f3.0)).
 Floats(.s="5*3", .f=(32'f5.0 * 32'f3.0)).
-Floats(.s="0: float", .f=(0: float)).
+Floats(.s="0: float", .f=(32'f0.0: float)).
 Floats(.s="floor_f(32'f0.1)", .f=fp.floor_f(32'f0.1)).
 apply graph.SCC(Edge, edge_from, edge_to) -> (SCCLabel)
+
