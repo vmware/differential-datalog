@@ -30,19 +30,29 @@ typedef IStruct = IStruct {
     x: bigint
 }
 
+typedef Struct = Struct {
+    u: IUnion,
+    t: (s32, double),
+    x: bigint
+}
+
+function istruct2struct(i: IStruct): Struct {
+    Struct{ival(i.u), ival(i.t), i.x}
+}
+
 input relation IStruct[Intern<IStruct>]
 
-output relation Projections(inp: IStruct, p: string)
+output relation Projections(inp: Struct, p: string)
 
-Projections(i, "x=${i.x}") :-
+Projections(istruct2struct(i), "x=${i.x}") :-
     IStruct[&i].
-Projections(ival(i), "t.0=${i.t.0}") :-
+Projections(istruct2struct(ival(i)), "t.0=${i.t.0}") :-
     i in &IStruct().
-Projections(ival(i), "t.1=${i.t.1}") :-
+Projections(istruct2struct(ival(i)), "t.1=${i.t.1}") :-
     i in &IStruct(.t=&(_, d)).
-Projections(ival(i), "f1=${f1}") :-
+Projections(istruct2struct(ival(i)), "f1=${f1}") :-
     i in &IStruct(.u=&Tag1{f1}).
-Projections(ival(i), "f2=${f2}") :-
+Projections(istruct2struct(ival(i)), "f2=${f2}") :-
     i in &IStruct(.u=&t@Tag2{.f2=f2}).
-Projections(ival(i), "f3=${f3}") :-
+Projections(istruct2struct(ival(i)), "f3=${f3}") :-
     i in &IStruct(.u=t@ &Tag2{.f3=f3}).
