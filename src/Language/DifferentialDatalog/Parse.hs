@@ -399,7 +399,7 @@ rulerhs =  do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ 
               RHSLiteral <$> (option True (False <$ reserved "not")) <*> atom False
        <|> do _ <- try $ lookAhead $ reserved "var" *> varIdent *> reservedOp "=" *> reserved "Aggregate"
               RHSAggregate <$> (reserved "var" *> varIdent) <*>
-                               (reservedOp "=" *> reserved "Aggregate" *> symbol "(" *> (parens $ commaSep varIdent)) <*>
+                               (reservedOp "=" *> reserved "Aggregate" *> symbol "(" *> group_by_expr) <*>
                                (comma *> funcIdent) <*>
                                (parens expr <* symbol ")")
        <|> do _ <- try $ lookAhead $ reserved "var" *> varIdent *> reservedOp "=" *> reserved "FlatMap"
@@ -407,6 +407,12 @@ rulerhs =  do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ 
                              (reservedOp "=" *> reserved "FlatMap" *> parens expr)
        <|> (RHSInspect <$ reserved "Inspect" <*> expr)
        <|> (RHSCondition <$> expr)
+
+{- group-by expression: variable or a tuple of variables -}
+group_by_expr = withPos
+   (     evar
+     <|> (eTuple <$> (parens $ commaSep $ withPos evar))
+     <?> "variable or tuple")
 
 atom is_head = withPos $ do
        p1 <- getPosition

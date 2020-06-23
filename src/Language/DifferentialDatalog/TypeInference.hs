@@ -321,14 +321,21 @@ contextConstraints de@(DDExpr (CtxRuleRCond rl i) _) | rhsIsFilterCondition $ ru
 -- (|v1|,...,|vn|)=K,
 -- |e| = V,
 -- |v| = T
-contextConstraints de@(DDExpr ctx@(CtxRuleRAggregate rl i) _) =
-    [ teTuple (map (\v -> TETypeOfVar (getVar ?d ctx v)) rhsGroupBy) === typeToTExpr' ctx ktype
-    , TETypeOfExpr de === typeToTExpr' ctx vtype
-    , TETypeOfVar (AggregateVar rl i) === typeToTExpr' ctx ret_type]
+contextConstraints de@(DDExpr (CtxRuleRAggregate rl i) _) =
+    [ TVarTypeOfExpr de ==== typeToTExpr' de vtype
+    , TVarTypeOfVar (AggregateVar rl i) ==== typeToTExpr' de ret_type]
     where
     RHSAggregate{..} = ruleRHS rl !! i
     Function{funcArgs = [grp_type], funcType = ret_type} = getFunc ?d rhsAggFunc
-    TOpaque{typeArgs = [ktype, vtype]} = typ' ?d grp_type
+    TOpaque{typeArgs = [_, vtype]} = typ' ?d grp_type
+
+contextConstraints de@(DDExpr ctx@(CtxRuleRGroupBy rl i) _) =
+    [ TVarTypeOfExpr (DDExpr ctx rhsGroupBy) ==== typeToTExpr' de ktype]
+    where
+    RHSAggregate{..} = ruleRHS rl !! i
+    Function{funcArgs = [grp_type]} = getFunc ?d rhsAggFunc
+    TOpaque{typeArgs = [ktype, _]} = typ' ?d grp_type
+
 
 -- When evaluating 'var v = FlatMap(e)'
 -- the following type constraints are added:

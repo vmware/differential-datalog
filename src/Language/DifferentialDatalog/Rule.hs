@@ -86,8 +86,8 @@ ruleRHSVars' d rl i =
          RHSInspect _                  -> vs
          -- Aggregation hides all variables except groupBy vars
          -- and the aggregate variable
-         RHSAggregate _ gvars _ _      -> let ctx = CtxRuleRAggregate rl i
-                                              gvars' = map (getVar d ctx) gvars
+         RHSAggregate _ grpby _ _      -> let ctx = CtxRuleRGroupBy rl i
+                                              gvars' = exprVars d ctx grpby
                                               avar' = AggregateVar rl i
                                           in nub $ avar':gvars'
     where
@@ -107,7 +107,7 @@ ruleRHSTermVars d rl i =
          RHSCondition{..} -> exprFreeVars d (CtxRuleRCond rl i) rhsExpr
          RHSFlatMap{..}   -> exprFreeVars d (CtxRuleRFlatMap rl i) rhsMapExpr
          RHSInspect{..}   -> exprFreeVars d (CtxRuleRInspect rl i) rhsInspectExpr
-         RHSAggregate{..} -> nub $ map (getVar d (CtxRuleRAggregate rl i)) rhsGroupBy ++
+         RHSAggregate{..} -> nub $ exprVars d (CtxRuleRGroupBy rl i) rhsGroupBy ++
                                    exprFreeVars d (CtxRuleRAggregate rl i) rhsAggExpr
 
 -- | All variables visible after the last RHS clause of the rule

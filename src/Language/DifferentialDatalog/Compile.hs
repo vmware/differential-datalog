@@ -1578,9 +1578,9 @@ rhsInputArrangement d rl rhs_idx (RHSLiteral _ atom) =
     in Just $ (map (\(_,e,c) -> (e,c)) vmap,
                -- variables visible before join that are still in use after it
                (rhsVarsAfter d rl (rhs_idx - 1)) `intersect` (rhsVarsAfter d rl rhs_idx))
-rhsInputArrangement d rl rhs_idx (RHSAggregate _ vs _ _) =
-    let ctx = CtxRuleRAggregate rl rhs_idx
-    in Just $ (map (\v -> (eVar v, ctx)) vs,
+rhsInputArrangement d rl rhs_idx (RHSAggregate _ grpby _ _) =
+    let ctx = CtxRuleRGroupBy rl rhs_idx
+    in Just $ (map (\(v, ctx') -> (eVar v, ctx')) $ exprVarOccurrences ctx grpby,
                -- all visible variables to preserve multiset semantics
                rhsVarsAfter d rl (rhs_idx - 1))
 rhsInputArrangement _ _  _       _ = Nothing
@@ -1644,6 +1644,7 @@ mkAggregate :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> [Int] -> B
 mkAggregate d filters input_val rl@Rule{..} idx = do
     let rhs@RHSAggregate{..} = ruleRHS !! idx
     let ctx = CtxRuleRAggregate rl idx
+    let gctx = CtxRuleRGroupBy rl idx
     let Just (_, group_vars) = rhsInputArrangement d rl idx rhs
     -- Filter inputs before grouping
     ffun <- mkFFun d rl filters
@@ -1660,12 +1661,12 @@ mkAggregate d filters input_val rl@Rule{..} idx = do
     let tmap = ruleAggregateTypeParams d rl idx
     let agg_func = getFunc d rhsAggFunc
     -- Pass group-by variables to the aggregate function.
-    let grp = "&std_Group::new(&" <> (tupleStruct $ map (cloneRef . pp) rhsGroupBy) <> "," <+> gROUP_VAR <> "," <+> project <> ")"
+    let grp = "&std_Group::new(&" <> (mkExpr d gctx rhsGroupBy EVal) <> "," <+> gROUP_VAR <> "," <+> project <> ")"
     let tparams = commaSep $ map (\tvar -> mkType (tmap M.! tvar)) $ funcTypeVars agg_func
     let aggregate = "let" <+> pp rhsVar <+> "=" <+> rname rhsAggFunc <>
                     "::<" <> tparams <> ">(" <> grp <> ");"
     result <- mkVarsTupleValue d $ map (\v -> (v, if name v == rhsVar then EVal else EReference)) $ rhsVarsAfter d rl idx
-    let key_vars = map (getVar d ctx) rhsGroupBy
+    let key_vars = exprVars d gctx rhsGroupBy
     open_key <- openTuple d kEY_VAR key_vars
     let agfun = braces'
                 $ open_key  $$

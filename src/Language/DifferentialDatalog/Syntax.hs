@@ -132,8 +132,7 @@ module Language.DifferentialDatalog.Syntax (
         progAddRules,
         progAddTypedef,
         ECtx(..),
-        ctxParent,
-        ctxRuleR)
+        ctxParent)
 where
 
 import Prelude hiding((<>))
@@ -544,7 +543,7 @@ instance Show Atom where
 -- disaggregation (flatmap), inspect operations.
 data RuleRHS = RHSLiteral   {rhsPolarity :: Bool, rhsAtom :: Atom}
              | RHSCondition {rhsExpr :: Expr}
-             | RHSAggregate {rhsVar :: String, rhsGroupBy :: [String], rhsAggFunc :: String, rhsAggExpr :: Expr}
+             | RHSAggregate {rhsVar :: String, rhsGroupBy :: Expr, rhsAggFunc :: String, rhsAggExpr :: Expr}
              | RHSFlatMap   {rhsVar :: String, rhsMapExpr :: Expr}
              | RHSInspect   {rhsInspectExpr :: Expr}
              deriving (Eq, Ord)
@@ -554,7 +553,7 @@ instance PP RuleRHS where
     pp (RHSLiteral False a)   = "not" <+> pp a
     pp (RHSCondition c)       = pp c
     pp (RHSAggregate v g f e) = "var" <+> pp v <+> "=" <+> "Aggregate" <> "(" <>
-                                (parens $ vcommaSep $ map pp g) <> comma <+>
+                                pp g <> comma <+>
                                 pp f <> (parens $ pp e) <> ")"
     pp (RHSFlatMap v e)       = "var" <+> pp v <+> "=" <+> "FlatMap" <> (parens $ pp e)
     pp (RHSInspect e)         = "Inspect" <+> pp e
@@ -1170,8 +1169,10 @@ data ECtx = -- | Top-level context. Serves as the root of the context hierarchy.
           | CtxRuleRFlatMap   {ctxRule::Rule, ctxIdx::Int}
             -- | Inspect clause in the RHS of a rule
           | CtxRuleRInspect   {ctxRule::Rule, ctxIdx::Int}
-            -- | Aggregate clause in the RHS of a rule
+            -- | Aggregation function argument in an Aggregate clause in the RHS of a rule
           | CtxRuleRAggregate {ctxRule::Rule, ctxIdx::Int}
+            -- | Group-by expression of an Aggregate clause in the RHS of a rule
+          | CtxRuleRGroupBy   {ctxRule::Rule, ctxIdx::Int}
             -- | Key expression
           | CtxKey            {ctxRelation::Relation}
             -- | Index expression
@@ -1247,6 +1248,7 @@ instance PP ECtx where
                     CtxRuleRFlatMap{..}   -> "CtxRuleRFlatMap   " <+> rule <+> pp ctxIdx
                     CtxRuleRInspect{..}   -> "CtxRuleRInspect   " <+> rule <+> pp ctxIdx
                     CtxRuleRAggregate{..} -> "CtxRuleRAggregate " <+> rule <+> pp ctxIdx
+                    CtxRuleRGroupBy{..}   -> "CtxRuleRGroupBy   " <+> rule <+> pp ctxIdx
                     CtxKey{..}            -> "CtxKey            " <+> rel
                     CtxIndex{..}          -> "CtxIndex          " <+> pp (name ctxIndex)
                     CtxFunc{..}           -> "CtxFunc           " <+> (pp $ name ctxFunc)
@@ -1288,17 +1290,8 @@ ctxParent CtxRuleRCond{}      = CtxTop
 ctxParent CtxRuleRFlatMap{}   = CtxTop
 ctxParent CtxRuleRInspect{}   = CtxTop
 ctxParent CtxRuleRAggregate{} = CtxTop
+ctxParent CtxRuleRGroupBy{}   = CtxTop
 ctxParent CtxKey{}            = CtxTop
 ctxParent CtxIndex{}          = CtxTop
 ctxParent CtxFunc{}           = CtxTop
 ctxParent ctx                 = ctxPar ctx
-
--- Returns context for rht 'i'th clause of a rule
-ctxRuleR :: Rule -> Int -> ECtx
-ctxRuleR rl i =
-    case ruleRHS rl !! i of
-         RHSLiteral{}   -> CtxRuleRAtom rl i
-         RHSCondition{} -> CtxRuleRCond rl i
-         RHSAggregate{} -> CtxRuleRAggregate rl i
-         RHSFlatMap{}   -> CtxRuleRFlatMap rl i
-         RHSInspect{}   -> CtxRuleRInspect rl i

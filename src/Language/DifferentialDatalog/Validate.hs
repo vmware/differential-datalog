@@ -238,7 +238,8 @@ funcValidateDefinition :: (MonadError String me) => DatalogProgram -> Function -
 funcValidateDefinition d f@Function{..} = do
     case funcDef of
          Nothing  -> return ()
-         Just def -> exprValidate d (funcTypeVars f) (CtxFunc f) def
+         Just def -> do -- _ <- inferTypes d [DDExpr (CtxFunc f) def]
+                        exprValidate d (funcTypeVars f) (CtxFunc f) def
 
 relValidate :: (MonadError String me) => DatalogProgram -> Relation -> me ()
 relValidate d rel@Relation{..} = do
@@ -319,18 +320,19 @@ ruleLHSValidate d rl a@Atom{..} idx = do
 -- compute concrete types for 'K and 'V
 ruleCheckAggregate :: (MonadError String me) => DatalogProgram -> Rule -> Int -> me (M.Map String Type)
 ruleCheckAggregate d rl idx = do
-    let RHSAggregate v vs fname e = ruleRHS rl !! idx
+    let RHSAggregate v group_by fname e = ruleRHS rl !! idx
     let ctx = CtxRuleRAggregate rl idx
+    let gctx = CtxRuleRGroupBy rl idx
     exprValidate d [] ctx e
     -- Group-by variables are visible in this scope.
-    mapM_ (checkVar (pos e) d ctx) vs
-    let group_by_types = map (varType d . getVar d ctx) vs
-    check d (notElem v vs) (pos e) $ "Aggregate variable " ++ v ++ " already declared in this scope"
+    exprValidate d [] gctx group_by
+    let group_by_type = exprType d gctx group_by
+    check d (notElem v $ map name $ exprVars d gctx group_by) (pos e) $ "Aggregate variable " ++ v ++ " already declared in this scope"
     -- Aggregation function exists and takes a group as its sole argument.
     f <- checkFunc (pos e) d fname
     check d (length (funcArgs f) == 1) (pos e) $ "Aggregation function must take one argument, but " ++
                                                fname ++ " takes " ++ (show $ length $ funcArgs f) ++ " arguments"
-    funcTypeArgSubsts d (pos e) f [tOpaque gROUP_TYPE [tTuple group_by_types, exprType d ctx e]]
+    funcTypeArgSubsts d (pos e) f [tOpaque gROUP_TYPE [group_by_type, exprType d ctx e]]
 
 -- | Validate relation transformer
 -- * input and output argument names must be unique
