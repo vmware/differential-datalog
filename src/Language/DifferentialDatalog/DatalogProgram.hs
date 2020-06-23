@@ -110,7 +110,8 @@ rhsExprMapCtxM fun r rhsidx c@RHSCondition{} = do
     return c{rhsExpr = e}
 rhsExprMapCtxM fun r rhsidx a@RHSAggregate{} = do
     e <- exprFoldCtxM fun (CtxRuleRAggregate r rhsidx) (rhsAggExpr a)
-    return a{rhsAggExpr = e}
+    g <- exprFoldCtxM fun (CtxRuleRGroupBy r rhsidx) (rhsGroupBy a)
+    return a{rhsGroupBy = g, rhsAggExpr = e}
 rhsExprMapCtxM fun r rhsidx m@RHSFlatMap{}   = do
     e <- exprFoldCtxM fun (CtxRuleRFlatMap r rhsidx) (rhsMapExpr m)
     return m{rhsMapExpr = e}

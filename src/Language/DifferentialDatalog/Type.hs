@@ -595,6 +595,7 @@ ctxExpectType _ (CtxRuleRCond Rule{..} i)            =
 ctxExpectType _ CtxRuleRFlatMap{}                    = Nothing
 ctxExpectType _ CtxRuleRInspect{}                    = Nothing
 ctxExpectType _ CtxRuleRAggregate{}                  = Nothing
+ctxExpectType _ CtxRuleRGroupBy{}                    = Nothing
 ctxExpectType _ CtxKey{}                             = Nothing
 ctxExpectType d (CtxApply (EApply _ f _) _ i)        =
     let args = funcArgs $ getFunc d f

@@ -136,6 +136,7 @@ ctxVars d ctx =
          CtxRuleRInspect rl i     -> let vars = (ruleRHSVars d rl i) ++ [WeightVar] in
                                      ([], TSVar rl : vars)
          CtxRuleRAggregate rl i   -> ([], ruleRHSVars d rl i)
+         CtxRuleRGroupBy rl i     -> ([], ruleRHSVars d rl i)
          CtxKey rel@Relation{..}  -> ([], [KeyVar rel])
          CtxIndex idx@Index{..}   -> ([], map (\v -> (IdxVar idx $ name v)) idxVars)
          CtxApply _ _ _           -> ([], plvars ++ prvars)

@@ -38,7 +38,6 @@ import Data.Char
 import Text.PrettyPrint
 
 import {-# SOURCE #-} qualified Language.DifferentialDatalog.Compile as Compile
-import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Var
@@ -206,7 +205,8 @@ debugAggregateFunction d rlidx rhsidx =
     rule = progRules d !! rlidx
     RHSAggregate{..} = ruleRHS rule !! rhsidx
     ctx = CtxRuleRAggregate rule rhsidx
-    tkey = tTuple $ map (varType d . getVar d ctx) rhsGroupBy
+    gctx = CtxRuleRGroupBy rule rhsidx
+    tkey = exprType'' d gctx rhsGroupBy
     tval = exprType'' d ctx rhsAggExpr
     tret = varType d (AggregateVar rule rhsidx)
     fname = debugAggregateFunctionName rlidx rhsidx rhsAggFunc
