@@ -47,6 +47,10 @@ where
 
     /// Return the current state of the data.
     fn get_current_state(&self) -> HashMap<RelId, HashSet<V>>;
+
+    /// Sends a deletion update to all observers, thus clearing the accumulated state.
+    /// Effectively clears the accumulator.
+    fn clear(&mut self);
 }
 
 /// An Accumulator implementation that can have multiple observers (can be subscribed to more
@@ -97,6 +101,33 @@ where
     fn get_current_state(&self) -> HashMap<RelId, HashSet<V>> {
         trace!("DistributingAccumulator({})::get_current_state()", self.id);
         self.observer.get_current_state()
+    }
+
+    fn clear(&mut self) {
+        trace!("DistributingAccumulator({})::clear", self.id);
+        let mut distributor = self.distributor.lock().unwrap();
+
+        let mut delete_updates = self
+            .get_current_state()
+            .into_iter()
+            .flat_map(|(relid, vs)| {
+                vs.into_iter()
+                    .map(|v| Update::DeleteValue { relid, v })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+
+        if !delete_updates.is_empty() {
+            let updates = delete_updates.drain(..);
+            trace!(
+                "DistributingAccumulator({:?}) clearing state of observers: {:?}",
+                self.id,
+                updates
+            );
+            let _ = distributor.on_start();
+            let _ = distributor.on_updates(Box::new(updates));
+            let _ = distributor.on_commit();
+        }
     }
 }
 
@@ -156,7 +187,6 @@ where
 }
 
 /// All calls except `on_completed` of the Observer trait are delegated to the AccumulatingObserver.
-/// `on_completed` triggers the deletion of the accumulated state for all observers.
 impl<V, E> Observer<Update<V>, E> for DistributingAccumulator<Update<V>, V, E>
 where
     V: Debug + Send + Eq + Hash + Clone + 'static,
@@ -180,33 +210,12 @@ where
         self.observer.on_updates(updates)
     }
 
-    /// sends a deletion update to all observers, thus clearing the accumulated state.
+    /// Triggers the on_completed() actions for Accumulator's distributor and
+    /// observer.
     fn on_completed(&mut self) -> Result<(), E> {
         trace!("DistributingAccumulator({})::on_completed", self.id);
         let mut distributor = self.distributor.lock().unwrap();
         let _ = distributor.on_completed();
-
-        let mut delete_updates = self
-            .get_current_state()
-            .into_iter()
-            .flat_map(|(relid, vs)| {
-                vs.into_iter()
-                    .map(|v| Update::DeleteValue { relid, v })
-                    .collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>();
-
-        if !delete_updates.is_empty() {
-            let updates = delete_updates.drain(..);
-            trace!(
-                "DistributingAccumulator({:?}) clearing state of observers: {:?}",
-                self.id,
-                updates
-            );
-            let _ = distributor.on_start();
-            let _ = distributor.on_updates(Box::new(updates));
-            let _ = distributor.on_commit();
-        }
 
         self.observer.on_completed()
     }
