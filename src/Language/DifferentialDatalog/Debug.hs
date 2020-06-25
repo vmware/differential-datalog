@@ -123,11 +123,20 @@ generateInspectDebug d ruleIdx rule index =
     input1 = if index == 0
                 then eVar $ exprVar $ enode $ atomVal $ rhsAtom $ head $ ruleRHS rule
                 else head $ Compile.recordAfterPrefix d rule (index - 1)
+    opType = if index == 0
+                then "Map"
+                else case (ruleRHS rule) !! index of
+                     RHSLiteral{rhsPolarity=False} -> "Antijoin"
+                     RHSInspect{} -> "Inspect"
+                     RHSFlatMap{} -> "Flatmap"
+                     RHSCondition{} -> "Condition"
+                     _ -> "Undefined" -- Should not reach this case
     outputs = Compile.recordAfterPrefix d rule index
   in map (\i -> RHSInspect {rhsInspectExpr = eApply "debug.debug_event"
                                              [generateOperatorIdExpr ruleIdx index i,
                                               ddlogWeightExpr,
                                               ddlogTimestampExpr,
+                                              eString opType,
                                               input1,
                                               outputs !! i]}) [0..length outputs - 1]
 
@@ -141,6 +150,7 @@ generateInspectDebugAggregate d ruleIdx rule index =
                                              [generateOperatorIdExpr ruleIdx index i,
                                               ddlogWeightExpr,
                                               ddlogTimestampExpr,
+                                              eString "Aggregate",
                                               input1,
                                               outputs !! i]}) [0..length outputs -1]
 
