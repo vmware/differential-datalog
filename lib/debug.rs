@@ -3,7 +3,7 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::string::ToString;
 
-pub fn debug_debug_event<T1: ToString, A1: fmt::Debug, A2: fmt::Debug>(
+pub fn debug_debug_event<T1: ToString, A1: Clone + IntoRecord, A2: Clone + IntoRecord>(
     operator_id: &(u32, u32, u32),
     w: &std_DDWeight,
     ts: &T1,
@@ -21,13 +21,18 @@ pub fn debug_debug_event<T1: ToString, A1: fmt::Debug, A2: fmt::Debug>(
         &operator_id,
         &w.to_string(),
         &ts.to_string(),
-        &input1,
-        &out
+        &input1.clone().into_record(),
+        &out.clone().into_record()
     );
     ()
 }
 
-pub fn debug_debug_event_join<T1: ToString, A1: fmt::Debug, A2: fmt::Debug, A3: fmt::Debug>(
+pub fn debug_debug_event_join<
+    T1: ToString,
+    A1: Clone + IntoRecord,
+    A2: Clone + IntoRecord,
+    A3: Clone + IntoRecord,
+>(
     operator_id: &(u32, u32, u32),
     w: &std_DDWeight,
     ts: &T1,
@@ -46,9 +51,9 @@ pub fn debug_debug_event_join<T1: ToString, A1: fmt::Debug, A2: fmt::Debug, A3: 
         &operator_id,
         &w.to_string(),
         &ts.to_string(),
-        &input1,
-        &input2,
-        &out
+        &input1.clone().into_record(),
+        &input2.clone().into_record(),
+        &out.clone().into_record()
     );
     ()
 }
