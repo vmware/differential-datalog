@@ -7,6 +7,7 @@ pub fn debug_debug_event<T1: ToString, A1: Clone + IntoRecord, A2: Clone + IntoR
     operator_id: &(u32, u32, u32),
     w: &std_DDWeight,
     ts: &T1,
+    operator_type: &String,
     input1: &A1,
     out: &A2,
 ) {
@@ -17,10 +18,11 @@ pub fn debug_debug_event<T1: ToString, A1: Clone + IntoRecord, A2: Clone + IntoR
         .unwrap();
     let _ = write!(
         &file,
-        "{:?}, {}, {}, {:?}, {:?}\n",
+        "{:?}, {}, {}, {}, {:?}, {:?}\n",
         &operator_id,
         &w.to_string(),
         &ts.to_string(),
+        &operator_type,
         &input1.clone().into_record(),
         &out.clone().into_record()
     );
@@ -47,7 +49,7 @@ pub fn debug_debug_event_join<
         .unwrap();
     let _ = write!(
         &file,
-        "{:?}, {}, {}, {:?}, {:?}, {:?}\n",
+        "{:?}, {}, {}, Join, {:?}, {:?}, {:?}\n",
         &operator_id,
         &w.to_string(),
         &ts.to_string(),
