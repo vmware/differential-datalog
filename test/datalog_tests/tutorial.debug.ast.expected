@@ -65,6 +65,7 @@ typedef Word1 = Word1{word: string, cat: Category}
 typedef Word2 = Word2{word: string, cat: Category}
 typedef WorstPrice = WorstPrice{item: string, price: bit<64>}
 typedef X = X{x: bit<16>}
+typedef debug.DDlogOpId = (std.u32, std.u32, std.u32)
 typedef eth_payload_t = EthIP4{ip4: ip4_pkt_t} |
                         EthIP6{ip6: ip6_pkt_t} |
                         EthOther{}
@@ -200,8 +201,8 @@ function best_vendor_string (g: std.Group<string,(string, bit<64>)>): string
        };
        ((((("Best deal for " ++ std.group_key(g)) ++ ": ") ++ min_vendor) ++ ", $") ++ std.__builtin_2string(min_price)))))
 }
-extern function debug.debug_event (operator_id: (std.u32, std.u32, std.u32), w: std.DDWeight, ts: 'T1, operator_type: string, input1: 'A1, out: 'A2): ()
-extern function debug.debug_event_join (operator_id: (std.u32, std.u32, std.u32), w: std.DDWeight, ts: 'T1, input1: 'A1, input2: 'A2, out: 'A3): ()
+extern function debug.debug_event (operator_id: debug.DDlogOpId, w: std.DDWeight, ts: 'T1, operator_type: string, input1: 'A1, out: 'A2): ()
+extern function debug.debug_event_join (operator_id: debug.DDlogOpId, w: std.DDWeight, ts: 'T1, input1: 'A1, input2: 'A2, out: 'A3): ()
 extern function debug.debug_split_group (g: std.Group<'K,('I, 'V)>): (std.Vec<'I>, std.Group<'K,'V>)
 function evens (vec: std.Vec<bigint>): std.Vec<bigint>
 {
