@@ -130,7 +130,7 @@ generateInspectDebug d ruleIdx rule index =
                      RHSInspect{} -> "Inspect"
                      RHSFlatMap{} -> "Flatmap"
                      RHSCondition{} -> "Condition"
-                     _ -> "Undefined" -- Should not reach this case
+                     rhs -> error $ "generateInspectDebug " ++ show rhs
     outputs = Compile.recordAfterPrefix d rule index
   in map (\i -> RHSInspect {rhsInspectExpr = eApply "debug.debug_event"
                                              [generateOperatorIdExpr ruleIdx index i,
