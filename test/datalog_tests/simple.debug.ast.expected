@@ -151,6 +151,7 @@ typedef YX = YX{y: bigint, x: bigint}
 typedef YZX = YZX{y: bigint, z: bigint, x: bigint}
 typedef Z = Z{field: bigint}
 typedef ZZ = ZZ{x: bigint, y: R3}
+typedef debug.DDlogOpId = (std.u32, std.u32, std.u32)
 typedef entid_t = bit<32>
 #[size = 4]
 #[shared_ref = true]
@@ -458,8 +459,8 @@ function dbl (): double
 {
     (64'f0.0: double)
 }
-extern function debug.debug_event (operator_id: (std.u32, std.u32, std.u32), w: std.DDWeight, ts: 'T1, operator_type: string, input1: 'A1, out: 'A2): ()
-extern function debug.debug_event_join (operator_id: (std.u32, std.u32, std.u32), w: std.DDWeight, ts: 'T1, input1: 'A1, input2: 'A2, out: 'A3): ()
+extern function debug.debug_event (operator_id: debug.DDlogOpId, w: std.DDWeight, ts: 'T1, operator_type: string, input1: 'A1, out: 'A2): ()
+extern function debug.debug_event_join (operator_id: debug.DDlogOpId, w: std.DDWeight, ts: 'T1, input1: 'A1, input2: 'A2, out: 'A3): ()
 extern function debug.debug_split_group (g: std.Group<'K,('I, 'V)>): (std.Vec<'I>, std.Group<'K,'V>)
 function double_evens (xs: std.Vec<bigint>): std.Vec<bigint>
 {
