@@ -86,6 +86,11 @@ typedef void ddlog_cmd;
 typedef size_t table_id;
 
 /*
+ * Unique DDlog index identifier
+ */
+typedef size_t index_id;
+
+/*
  * The record type represents DDlog values that can be written to and
  * read from the DDlog database.
  *
@@ -126,6 +131,24 @@ extern table_id ddlog_get_table_id(const char* tname);
  * Returns a null-terminated UTF8 string on success or NULL on error.
  */
 extern const char* ddlog_get_table_name(table_id id);
+
+/*
+ * Get DDlog index id by name.  The index name is a null-terminated UTF8
+ * string.
+ *
+ * NOTE: for indexes declared outside of the main DDlog module, fully qualified
+ * module names must be used.
+ *
+ * On error, returns -1.
+ */
+extern table_id ddlog_get_index_id(const char* iname);
+
+/*
+ * Get DDlog index name from id.
+ *
+ * Returns a null-terminated UTF8 string on success or NULL on error.
+ */
+extern const char* ddlog_get_index_name(index_id id);
 
 /*
  * Create an instance of DDlog program.

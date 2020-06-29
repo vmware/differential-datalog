@@ -562,6 +562,26 @@ pub unsafe extern "C" fn ddlog_get_table_name(tid: libc::size_t) -> *const raw::
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn ddlog_get_index_id(iname: *const raw::c_char) -> libc::size_t {
+    if iname.is_null() {
+        return libc::size_t::max_value();
+    };
+    let index_str = ffi::CStr::from_ptr(iname).to_str().unwrap();
+    match HDDlog::get_index_id(index_str) {
+        Ok(idxid) => idxid as libc::size_t,
+        Err(_) => libc::size_t::max_value(),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_get_index_name(iid: libc::size_t) -> *const raw::c_char {
+    match HDDlog::get_index_cname(iid) {
+        Ok(name) => name.as_ptr(),
+        Err(_) => ptr::null(),
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn ddlog_run(
     workers: raw::c_uint,
     do_store: bool,
