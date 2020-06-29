@@ -417,6 +417,27 @@ where
     _sinks: HashMap<BTreeSet<RelId>, Vec<(SinkRealization<P::Convert>, usize)>>,
 }
 
+impl<P> Realization<P>
+where
+    P: Send + DDlog + 'static,
+    P::Convert: Send + DDlogConvert,
+{
+    /// Remove a source from the realization.
+    /// Also clear the accumulator and disconnect
+    /// from the TxnMux.
+    pub fn remove_source(&mut self, src: &Source) {
+        // Remove entry.
+        let (_, accumulator, id) = self._sources.remove(src).unwrap();
+        let mut accum_observ = accumulator.lock().unwrap();
+
+        // Clear accumulator.
+        accum_observ.clear();
+
+        // Disconnect from TxnMux.
+        self._txnmux.remove_observable(id);
+    }
+}
+
 /// Instantiate a configuration on a particular node under the given
 /// assignment.
 pub fn instantiate<P>(

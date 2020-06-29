@@ -159,13 +159,9 @@ where
     }
 
     /// Removes an `Observable` from the multiplexer.
-    pub fn remove_observable(&mut self, id: usize) -> Result<(), usize> {
+    pub fn remove_observable(&mut self, id: usize) {
         trace!("TxnMux({})::remove_observable", id);
-
-        match self.subscriptions.remove(&id) {
-            Some(_) => Ok(()),
-            None => Err(id),
-        }
+        let _ = self.subscriptions.remove(&id);
     }
 
     /// Creates and adds an `Observer` to which the multiplexer is subscribed.
