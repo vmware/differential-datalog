@@ -1,5 +1,5 @@
 use std::any::Any;
-use std::collections::LinkedList;
+use std::collections::{BTreeMap, LinkedList};
 use std::fmt::Debug;
 use std::mem::replace;
 
@@ -103,8 +103,11 @@ where
 {
     /// The transaction multiplexer's unique ID.
     id: usize,
+    /// A counter representing the next id to be assigned to an observable when
+    /// it is added.
+    counter: usize,
     /// The observables we track and our subscriptions to them.
-    subscriptions: Vec<(ObservableBox<T, E>, Box<dyn Any + Send>)>,
+    subscriptions: BTreeMap<usize, (ObservableBox<T, E>, Box<dyn Any + Send>)>,
     /// A reference to the `Observer` subscribed to us, if any.
     observer: SharedObserver<OptionalObserver<ObserverBox<T, E>>>,
 }
@@ -121,16 +124,24 @@ where
 
         Self {
             id,
-            subscriptions: Vec::new(),
+            counter: 0,
+            subscriptions: BTreeMap::new(),
             observer: SharedObserver::default(),
         }
+    }
+
+    /// Increment the counter so it represents a new unique id.
+    /// Then return the new value.
+    pub fn get_counter(&mut self) -> usize {
+        self.counter += 1;
+        self.counter
     }
 
     /// Add an `Observable` to track to the multiplexer.
     pub fn add_observable(
         &mut self,
         mut observable: ObservableBox<T, E>,
-    ) -> Result<(), ObservableBox<T, E>> {
+    ) -> Result<usize, ObservableBox<T, E>> {
         trace!("TxnMux({})::add_observable", self.id);
 
         // Each observable gets its own `CachingObserver`, which will
@@ -139,10 +150,21 @@ where
         let cacher = CachingObserver::new(self.observer.clone());
         match observable.subscribe_any(Box::new(cacher)) {
             Ok(subscription) => {
-                self.subscriptions.push((observable, subscription));
-                Ok(())
+                let id = self.get_counter();
+                let _ = self.subscriptions.insert(id, (observable, subscription));
+                Ok(id)
             }
             Err(_) => Err(observable),
+        }
+    }
+
+    /// Removes an `Observable` from the multiplexer.
+    pub fn remove_observable(&mut self, id: usize) -> Result<(), usize> {
+        trace!("TxnMux({})::remove_observable", id);
+
+        match self.subscriptions.remove(&id) {
+            Some(_) => Ok(()),
+            None => Err(id),
         }
     }
 
@@ -159,10 +181,11 @@ where
     E: Debug + Send,
 {
     fn drop(&mut self) {
-        for (mut observable, subscription) in self.subscriptions.drain(..).rev() {
+        for (_, (observable, subscription)) in self.subscriptions.iter_mut().rev() {
             let _result = observable.unsubscribe_any(subscription.as_ref());
             debug_assert!(_result.is_some(), "{:?}", subscription);
         }
+        self.subscriptions.clear();
     }
 }
 
