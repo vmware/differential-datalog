@@ -171,7 +171,7 @@ fn add_tcp_receiver<P>(
         (
             Option<SourceRealization<P::Convert>>,
             SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>,
-            (),
+            usize,
         ),
     >,
 ) -> Result<(), String>
@@ -182,23 +182,18 @@ where
     let receiver =
         TcpReceiver::new(addr).map_err(|e| format!("failed to create TcpReceiver: {}", e))?;
     let receiver = Arc::new(Mutex::new(receiver));
-    // an empty set indicates the TcpReceiver
-
-    // "Empty" accumulator because
     let accumulator = Arc::new(Mutex::new(DistributingAccumulator::new()));
-    let _ = sources.insert(
-        Source::TcpReceiver,
-        (
-            Some(SourceRealization::Node(receiver.clone())),
-            accumulator,
-            (),
-        ),
-    );
 
-    txnmux
-        .add_observable(Box::new(receiver))
-        .map_err(|_| "failed to register TcpReceiver with TxnMux".to_string())?;
-    Ok(())
+    match txnmux.add_observable(Box::new(receiver.clone())) {
+        Ok(id) => {
+            let _ = sources.insert(
+                Source::TcpReceiver,
+                (Some(SourceRealization::Node(receiver)), accumulator, id),
+            );
+            Ok(())
+        }
+        Err(_) => Err("failed to register TcpReceiver with TxnMux".to_string()),
+    }
 }
 
 /// Deduce a mapping from file sink to a list of relation IDs for the
@@ -286,7 +281,7 @@ fn add_file_sources<P>(
         (
             Option<SourceRealization<P::Convert>>,
             SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>,
-            (),
+            usize,
         ),
     >,
 ) -> Result<(), String>
@@ -300,25 +295,27 @@ where
             let mut source = Arc::new(Mutex::new(FileSource::<P::Convert>::new(path)));
 
             let accumulator = Arc::new(Mutex::new(DistributingAccumulator::new()));
-            txnmux
-                .add_observable(Box::new(accumulator.clone()))
-                .map_err(|_| "failed to register Accumulator with TxnMux".to_string())?;
 
-            source
-                .subscribe(Box::new(accumulator.clone()))
-                .map_err(|_| {
-                    format!(
-                        "failed to add file source {} to accumulator",
-                        path.display()
-                    )
-                })?;
+            match txnmux.add_observable(Box::new(accumulator.clone())) {
+                Ok(id) => {
+                    source
+                        .subscribe(Box::new(accumulator.clone()))
+                        .map_err(|_| {
+                            format!(
+                                "failed to add file source {} to accumulator",
+                                path.display()
+                            )
+                        })?;
 
-            let pathbuf = PathBuf::from(path);
-            let _ = sources.insert(
-                Source::File(pathbuf),
-                (Some(SourceRealization::File(source)), accumulator, ()),
-            );
-            Ok(())
+                    let pathbuf = PathBuf::from(path);
+                    let _ = sources.insert(
+                        Source::File(pathbuf),
+                        (Some(SourceRealization::File(source)), accumulator, id),
+                    );
+                    Ok(())
+                }
+                Err(_) => Err("failed to register Accumulator with TxnMux".to_string()),
+            }
         })
 }
 
@@ -406,7 +403,7 @@ where
         (
             Option<SourceRealization<P::Convert>>,
             SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>,
-            (),
+            usize,
         ),
     >,
     /// The transaction multiplexer as input to the DDLogServer
