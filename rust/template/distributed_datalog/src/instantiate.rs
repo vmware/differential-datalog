@@ -271,54 +271,6 @@ where
         })
 }
 
-/// Add file sources as per the node configuration to the given `TxnMux`
-/// object.
-fn add_file_sources<P>(
-    txnmux: &mut TxnMux<Update<DDValue>, String>,
-    node_cfg: &NodeCfg,
-    sources: &mut HashMap<
-        Source,
-        (
-            Option<SourceRealization<P::Convert>>,
-            SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>,
-            usize,
-        ),
-    >,
-) -> Result<(), String>
-where
-    P: DDlog + 'static,
-    P::Convert: Send,
-{
-    deduce_sinks_or_sources(node_cfg, false)
-        .iter()
-        .try_for_each(|(path, _rel_ids)| {
-            let mut source = Arc::new(Mutex::new(FileSource::<P::Convert>::new(path)));
-
-            let accumulator = Arc::new(Mutex::new(DistributingAccumulator::new()));
-
-            match txnmux.add_observable(Box::new(accumulator.clone())) {
-                Ok(id) => {
-                    source
-                        .subscribe(Box::new(accumulator.clone()))
-                        .map_err(|_| {
-                            format!(
-                                "failed to add file source {} to accumulator",
-                                path.display()
-                            )
-                        })?;
-
-                    let pathbuf = PathBuf::from(path);
-                    let _ = sources.insert(
-                        Source::File(pathbuf),
-                        (Some(SourceRealization::File(source)), accumulator, id),
-                    );
-                    Ok(())
-                }
-                Err(_) => Err("failed to register Accumulator with TxnMux".to_string()),
-            }
-        })
-}
-
 /// Realize the given configuration locally.
 // TODO: Right now this function assumes a pristine state (i.e., nothing
 //       had been created previously), however we really would want to
@@ -353,18 +305,22 @@ where
     match addr {
         Addr::Ip(addr) => add_tcp_receiver::<P>(&mut txnmux, addr, &mut sources)?,
     }
-    add_file_sources::<P>(&mut txnmux, node_cfg, &mut sources)?;
+    
+    let mut realization = Realization {
+        _sources: sources,
+        _txnmux: txnmux,
+        _accumulators: accumulators,
+        _sinks: sinks,
+    };
+
+    realization.add_file_sources(node_cfg)?;
 
     println!(
         "realized node configuration locally in {} ms",
         now.elapsed().as_millis()
     );
-    Ok(Realization {
-        _sources: sources,
-        _txnmux: txnmux,
-        _accumulators: accumulators,
-        _sinks: sinks,
-    })
+
+    Ok(realization)
 }
 
 /// All possible sources of a Realization
@@ -422,7 +378,7 @@ where
     P: Send + DDlog + 'static,
     P::Convert: Send + DDlogConvert,
 {
-    /// Remove a source from the realization.
+    /// Remove a source from the existing realization.
     /// Also clear the accumulator and disconnect
     /// from the TxnMux.
     pub fn remove_source(&mut self, src: &Source) {
@@ -435,6 +391,48 @@ where
 
         // Disconnect from TxnMux.
         self._txnmux.remove_observable(id);
+    }
+
+    /// Add a source to an existing realization.
+    pub fn add_source(&mut self, path: &Path) -> Result<(), String> {
+        let mut source = Arc::new(Mutex::new(FileSource::<P::Convert>::new(path)));
+
+        let accumulator = Arc::new(Mutex::new(DistributingAccumulator::new()));
+
+        match self._txnmux.add_observable(Box::new(accumulator.clone())) {
+            Ok(id) => {
+                source
+                    .subscribe(Box::new(accumulator.clone()))
+                    .map_err(|_| {
+                        format!(
+                            "failed to add file source {} to accumulator",
+                            path.display()
+                        )
+                    })?;
+
+                let pathbuf = PathBuf::from(path);
+                let _ = self._sources.insert(
+                    Source::File(pathbuf),
+                    (Some(SourceRealization::File(source)), accumulator, id),
+                );
+                Ok(())
+            }
+            Err(_) => Err("failed to register Accumulator with TxnMux".to_string()),
+        }
+    }
+
+    /// Add file sources as per the node configuration to the TxnMux for this
+    /// Realization.
+    fn add_file_sources(
+        &mut self,
+        node_cfg: &NodeCfg,
+    ) -> Result<(), String>
+    {
+        deduce_sinks_or_sources(node_cfg, false)
+            .iter()
+            .try_for_each(|(path, _rel_ids)| {
+                self.add_source(path)
+            })
     }
 }
 
