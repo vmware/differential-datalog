@@ -141,7 +141,7 @@ extern const char* ddlog_get_table_name(table_id id);
  *
  * On error, returns -1.
  */
-extern table_id ddlog_get_index_id(const char* iname);
+extern index_id ddlog_get_index_id(const char* iname);
 
 /*
  * Get DDlog index name from id.
@@ -447,7 +447,7 @@ extern int ddlog_apply_updates_from_flatbuf(ddlog_prog prog,
  */
 extern int
 ddlog_query_index(ddlog_prog prog,
-                  size_t idxid,
+                  index_id idxid,
                   ddlog_record *key,
                   void (*cb)(uintptr_t arg, const ddlog_record *rec),
                   uintptr_t cb_arg);
@@ -491,7 +491,7 @@ extern int ddlog_query_index_from_flatbuf(ddlog_prog prog,
  */
 extern int
 ddlog_dump_index(ddlog_prog prog,
-                 size_t idxid,
+                 index_id idxid,
                  void (*cb)(uintptr_t arg, const ddlog_record *rec),
                  uintptr_t cb_arg);
 
@@ -517,7 +517,7 @@ ddlog_dump_index(ddlog_prog prog,
  *
  */
 extern int ddlog_dump_index_to_flatbuf(ddlog_prog prog,
-                                       size_t idxid,
+                                       index_id idxid,
                                        unsigned char ** resbuf,
                                        size_t* resbuf_size,
                                        size_t* resbuf_capacity,
