@@ -1336,6 +1336,22 @@ extern const char * ddlog_get_constructor_with_length(const ddlog_record *rec,
 extern const ddlog_record* ddlog_get_struct_field(const ddlog_record* rec,
                                                   size_t i);
 
+/*
+ * Retrieves field 'name' of struct 'rec'.
+ *
+ * Returns NULL if `rec` is not a struct with named fields or if the struct
+ * does not have a field with the given name.
+ *
+ * The pointer returned by this function is owned by DDlog. The caller
+ * may inspect the returned record, but must not modify it, attach to
+ * other records (e.g., using `ddlog_vector_push()`) or write to the
+ * database.  The lifetime of the pointer coincides with the lifetime of
+ * the record it was obtained from, e.g., the pointer is invalidated
+ * when the value is written to the database.
+ */
+extern const ddlog_record* ddlog_get_named_struct_field(const ddlog_record* rec,
+                                                        const char* name);
+
 /***********************************************************************
  * Command API
  ***********************************************************************/
