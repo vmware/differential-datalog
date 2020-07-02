@@ -4,12 +4,13 @@ use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
+use std::ptr;
 use std::sync;
 
 use ddlog_ovsdb_adapter::*;
 use differential_datalog::ddval::*;
 use differential_datalog::program::*;
-use differential_datalog::record::{IntoRecord, UpdCmd};
+use differential_datalog::record::{IntoRecord, Record, UpdCmd};
 use differential_datalog::record_upd_cmds;
 use differential_datalog::DeltaMap;
 
@@ -192,6 +193,117 @@ fn dump_delta(
     cmds.append(&mut minus_cmds);
     cmds.append(&mut upd_cmds);
     Ok(unsafe { CString::from_vec_unchecked(cmds.join(",").into_bytes()) })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_into_ovsdb_insert_str(
+    prog: *const HDDlog,
+    table: *const c_char,
+    rec: *const Record,
+    json: *mut *mut c_char,
+) -> c_int {
+    if prog.is_null() || table.is_null() {
+        return -1;
+    };
+    let rec = match rec.as_ref() {
+        Some(record) => record,
+        _ => return -1,
+    };
+    let prog = sync::Arc::from_raw(prog);
+    let res = match into_insert_str(table, rec) {
+        Ok(json_string) => {
+            *json = json_string.into_raw();
+            0
+        }
+        Err(e) => {
+            prog.eprintln(&format!("ddlog_into_insert_str(): error: {}", e));
+            -1
+        }
+    };
+    sync::Arc::into_raw(prog);
+    res
+}
+
+fn into_insert_str(table: *const c_char, rec: &Record) -> Result<CString, String> {
+    let table_str: &str = unsafe { CStr::from_ptr(table) }
+        .to_str()
+        .map_err(|e| format!("{}", e))?;
+    record_into_insert_str(rec.clone(), table_str)
+        .map(|s| unsafe { CString::from_vec_unchecked(s.into_bytes()) })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_into_osvdb_delete_str(
+    prog: *const HDDlog,
+    table: *const c_char,
+    rec: *const Record,
+    json: *mut *mut c_char,
+) -> c_int {
+    if prog.is_null() || table.is_null() {
+        return -1;
+    };
+    let rec = match rec.as_ref() {
+        Some(record) => record,
+        _ => return -1,
+    };
+    let prog = sync::Arc::from_raw(prog);
+    let res = match into_delete_str(table, rec) {
+        Ok(json_string) => {
+            *json = json_string.into_raw();
+            0
+        }
+        Err(e) => {
+            prog.eprintln(&format!("ddlog_into_delete_str(): error: {}", e));
+            -1
+        }
+    };
+    sync::Arc::into_raw(prog);
+    res
+}
+
+fn into_delete_str(table: *const c_char, rec: &Record) -> Result<CString, String> {
+    let table_str: &str = unsafe { CStr::from_ptr(table) }
+        .to_str()
+        .map_err(|e| format!("{}", e))?;
+    record_into_delete_str(rec.clone(), table_str)
+        .map(|s| unsafe { CString::from_vec_unchecked(s.into_bytes()) })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_into_ovsdb_update_str(
+    prog: *const HDDlog,
+    table: *const c_char,
+    rec: *const Record,
+    json: *mut *mut c_char,
+) -> c_int {
+    if prog.is_null() || table.is_null() {
+        return -1;
+    };
+    let rec = match rec.as_ref() {
+        Some(record) => record,
+        _ => return -1,
+    };
+    let prog = sync::Arc::from_raw(prog);
+    let res = match into_update_str(table, rec) {
+        Ok(json_string) => {
+            *json = json_string.into_raw();
+            0
+        }
+        Err(e) => {
+            prog.eprintln(&format!("ddlog_into_update_str(): error: {}", e));
+            -1
+        }
+    };
+    sync::Arc::into_raw(prog);
+    res
+}
+
+fn into_update_str(table: *const c_char, rec: &Record) -> Result<CString, String> {
+    let table_str: &str = unsafe { CStr::from_ptr(table) }
+        .to_str()
+        .map_err(|e| format!("{}", e))?;
+    record_into_update_str(rec.clone(), table_str)
+        .map(|s| unsafe { CString::from_vec_unchecked(s.into_bytes()) })
 }
 
 #[no_mangle]
