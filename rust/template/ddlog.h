@@ -700,6 +700,33 @@ extern int ddlog_dump_ovsdb_output_table(
     char **json);
 
 /*
+ * Serializes table record 'rec' into a JSON object for an OVSDB insert,
+ * update, or delete operation, respectively, to apply to OVSDB table 'table'.
+ *
+ * On success, returns `0` and stores a pointer to JSON string in
+ * `json`.  This pointer must be later deallocated by calling
+ * `ddlog_free_json()`
+ *
+ * On error, returns a negative number and writes error message
+ * (see `print_err_msg` parameter to `ddlog_run()`).
+ */
+extern int ddlog_into_ovsdb_insert_str(
+    ddlog_prog prog,
+    const char *table,
+    const ddlog_record *rec,
+    char **json);
+extern int ddlog_into_ovsdb_update_str(
+    ddlog_prog prog,
+    const char *table,
+    const ddlog_record *rec,
+    char **json);
+extern int ddlog_into_ovsdb_delete_str(
+    ddlog_prog prog,
+    const char *table,
+    const ddlog_record *rec,
+    char **json);
+
+/*
  * Deallocates strings returned by other functions in this API.
  */
 extern void ddlog_free_json(char *json);
