@@ -740,6 +740,27 @@ pub unsafe extern "C" fn ddlog_get_struct_field(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn ddlog_get_named_struct_field(
+    rec: *const Record,
+    name: *const raw::c_char,
+) -> *const Record {
+    let name = match CStr::from_ptr(name).to_str() {
+        Ok(s) => s,
+        Err(_) => {
+            return null_mut();
+        }
+    };
+    match rec.as_ref() {
+        Some(Record::NamedStruct(_, fields)) => fields
+            .iter()
+            .find(|(f, _)| f == name)
+            .map(|(_, r)| r as *const Record)
+            .unwrap_or(null_mut()),
+        _ => null_mut(),
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn ddlog_get_constructor_with_length(
     rec: *const Record,
     len: *mut libc::size_t,
