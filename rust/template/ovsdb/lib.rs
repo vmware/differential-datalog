@@ -315,7 +315,7 @@ pub fn record_into_update_str(rec: Record, table: &str) -> Result<String, String
             .clone(),
         _ => {
             return Err(format!(
-                "Cannot convert record to insert command: {:?}",
+                "Cannot convert record to update command: {:?}",
                 rec
             ))
         }
