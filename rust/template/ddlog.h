@@ -1066,9 +1066,10 @@ extern ddlog_record* ddlog_serialized(const char *t, const char *s);
  *       pointer and returns a record containing an empty string.
  * `s_len` - length of string in bytes.
  *
- * This function copies `s` and `t` to internal buffers, so the caller is
- * responsible for deallocating `s` and `t`  if they were dynamically
- * allocated.
+ * This function copies `s` to an internal buffer, so the caller is
+ * responsible for deallocating `s` if it was dynamically
+ * allocated. It assumes that `t` is a statically allocated string and
+ * stores the pointer internally instead of copying it to another buffer.
  *
  * Returns `NULL` if `t` or `s` are not a valid UTF8 strings.
  */
