@@ -1163,6 +1163,51 @@ ts:19, w:1: best("B")="Best deal for B: Overpriced Inc, $123"
 The inspect operator is typically used in conjunction with a logging library, such
 as the one in `lib/log.dl`.
 
+#### Relation transformers
+
+Transformers are a way to invoke incremental computations implemented in Rust
+directly on top of differential dataflow. This is useful for those computations
+that cannot be expressed in DDlog, but can be implemented in differential. A 
+transformer takes one or more relations and returns one or more relations.  A
+transformer can be additionally parameterized by one or more **projection**
+functions that extract values from input relations.  The following stronly
+connected component transformer takes `from` and `to` functions that extract
+source and destination node id's from the input relation that stores graph
+edges:
+
+```
+/* Compute strongly connected components of a directed graph:
+ *
+ * Type variables:
+ * - `'E` - type that represents graph edge
+ * - `'N` - type that represents graph node
+ *
+ * Arguments:
+ * - `Edges` - relation that stores graph edges
+ * - `from`  - extracts the source node of an edge
+ * - `to`    - extracts the destination node of an edge
+ *
+ * Output:
+ * - `Labels` - partitions a subset of graph nodes into strongly
+ *    connected components represented by labeling these nodes
+ *    with SCC ids.  An SCC id is id of the smallest node in the SCC.
+ *    A node not covered by the partitioning belongs to an SCC
+ *    with a single element (itself).
+ */
+extern transformer SCC(Edges:   relation['E],
+                       from:    function(e: 'E): 'N,
+                       to:      function(e: 'E): 'N)
+    -> (SCCLabels: relation [('N, 'N)])
+```
+
+Only extern transformers are supported at the moment. Non-extern transformers, i.e.,
+transformers implemented in DDlog, may be introduced in the future as a form of
+code reuse (a transformer can be used to create a computation that can be instantiated
+multiple times for different input/output relations).
+
+Several useful graph transformers are declared in `lib/graph.dl` and implemented in
+`lib/graph.rs`
+
 ## Advanced types
 
 ### Variant types
