@@ -1042,6 +1042,45 @@ extern size_t ddlog_get_strlen(const ddlog_record *rec);
 extern const char * ddlog_get_str_with_length(const ddlog_record *rec, size_t *len);
 
 /*
+ * Create a serialized record from a NULL-terminated string `t` containing
+ * the serialization scheme and a NULL-terminated string `s` containing
+ * the serialized data.
+ * This function copies `s` to an internal buffer, so the caller is
+ * responsible for deallocating `s` if it was dynamically allocated.
+ *
+ * Returns `NULL` if `t` or `s` are not a valid null-terminated UTF8 strings.
+ */
+extern ddlog_record* ddlog_serialized(const char *t, const char *s);
+
+/*
+ * Create a serialized record.
+ *
+ * `t` - points to the start of a UTF8 string containing the
+ *       serialization scheme. The string does not have to be
+ *       NULL-terminated. The pointer must not be `NULL`
+ * `t_len` - length of string in bytes.
+ * `s` - points to the start of a UTF8 string containing the
+ *       serialization scheme.  The string does not have to be
+ *       NULL-terminated. The pointer must not be `NULL`, unless
+ *       `s_len==0`, in which case the function ignores the value of the
+ *       pointer and returns a record containing an empty string.
+ * `s_len` - length of string in bytes.
+ *
+ * This function copies `s` and `t` to internal buffers, so the caller is
+ * responsible for deallocating `s` and `t`  if they were dynamically
+ * allocated.
+ *
+ * Returns `NULL` if `t` or `s` are not a valid UTF8 strings.
+ */
+extern ddlog_record* ddlog_serialized_with_length(const char *t, size_t t_len,
+                                                  const char *s, size_t s_len);
+
+/*
+ * Returns `true` if `rec` is a serialized record and `false` otherwise
+ */
+extern bool ddlog_is_serialized(const ddlog_record *rec);
+
+/*
  * Create a tuple with specified fields.
  *
  * `len` is the length of the `fields` array.

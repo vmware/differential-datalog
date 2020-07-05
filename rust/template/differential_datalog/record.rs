@@ -419,6 +419,61 @@ pub unsafe extern "C" fn ddlog_get_str_with_length(
     }
 }
 
+/// Returns NULL if s is not a valid UTF8 string.
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_serialized(
+    t: *const raw::c_char,
+    s: *const raw::c_char,
+) -> *mut Record {
+    let t = match CStr::from_ptr(t).to_str() {
+        Ok(t) => t,
+        Err(_) => {
+            return null_mut();
+        }
+    };
+    let s = match CStr::from_ptr(s).to_str() {
+        Ok(s) => s,
+        Err(_) => {
+            return null_mut();
+        }
+    };
+    Box::into_raw(Box::new(Record::Serialized(Cow::from(t), s.to_owned())))
+}
+
+/// Returns NULL if s is not a valid UTF8 string.
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_serialized_with_length(
+    t: *const raw::c_char,
+    t_len: libc::size_t,
+    s: *const raw::c_char,
+    s_len: libc::size_t,
+) -> *mut Record {
+    let t = match std::str::from_utf8(std::slice::from_raw_parts(t as *const u8, t_len as usize)) {
+        Ok(str) => str,
+        Err(_) => return null_mut(),
+    };
+    // If `s_len` is zero, return empty string even if `s` is `NULL`.
+    if s_len == 0 {
+        return Box::into_raw(Box::new(Record::Serialized(Cow::from(t), "".to_owned())));
+    };
+    if s.is_null() {
+        return null_mut();
+    };
+    let s = match std::str::from_utf8(std::slice::from_raw_parts(s as *const u8, s_len as usize)) {
+        Ok(str) => str,
+        Err(_) => return null_mut(),
+    };
+    Box::into_raw(Box::new(Record::Serialized(Cow::from(t), s.to_owned())))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_is_serialized(rec: *const Record) -> bool {
+    match rec.as_ref() {
+        Some(Record::Serialized(_, _)) => true,
+        _ => false,
+    }
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_tuple(fields: *const *mut Record, len: libc::size_t) -> *mut Record {
     let fields = mk_record_vec(fields, len);
