@@ -60,6 +60,7 @@ data TOption = Help
              | DumpValid
              | DumpDebug
              | DumpOpt
+             | ReValidate
 
 options :: [OptDescr TOption]
 options = [ Option ['h'] ["help"]             (NoArg Help)                      "Display help message."
@@ -80,6 +81,7 @@ options = [ Option ['h'] ["help"]             (NoArg Help)                      
           , Option []    ["pp-validated"]     (NoArg DumpValid)                 "Dump the source after compilation pass 2 (validation, including several source transformations) to PROG.valid.ast."
           , Option []    ["pp-debug"]         (NoArg DumpDebug)                 "Dump the source after compilation pass 3 (injecting debugging hooks) to FILE.debug.ast.  If the '-g' option is not specified, then pass 3 is a no-op and will produce identical output to pass 2."
           , Option []    ["pp-optimized"]     (NoArg DumpOpt)                   "Dump the source after compilation pass 4 (optimization) to FILE.opt.ast."
+          , Option []    ["re-validate"]      (NoArg ReValidate)                "[developers only] Re-validate the program after type inference and optimization passes."
           ]
 
 addOption :: Config -> TOption -> IO Config
@@ -105,6 +107,7 @@ addOption config DumpFlat         = return config { confDumpFlat = True }
 addOption config DumpValid        = return config { confDumpValid = True }
 addOption config DumpDebug        = return config { confDumpDebug = True }
 addOption config DumpOpt          = return config { confDumpOpt = True }
+addOption config ReValidate       = return config { confReValidate = True }
 
 validateConfig :: Config -> IO ()
 validateConfig Config{..} = do

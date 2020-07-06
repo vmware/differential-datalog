@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018 VMware, Inc.
+Copyright (c) 2018-2020 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,7 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 -}
 
-{-# LANGUAGE TupleSections, LambdaCase, RecordWildCards #-}
+{-# LANGUAGE TupleSections, LambdaCase, RecordWildCards, ImplicitParams #-}
 
 {- | 
 Module     : Optimize
@@ -37,6 +37,7 @@ import Control.Monad.State
 import qualified Data.Map as M
 --import Debug.Trace
 
+import Language.DifferentialDatalog.Config
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Type
@@ -44,12 +45,14 @@ import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Rule
 import Language.DifferentialDatalog.Validate
 
-optimize :: DatalogProgram -> DatalogProgram
+optimize :: (?cfg::Config) => DatalogProgram -> DatalogProgram
 optimize d = 
     let d' = optEliminateCommonPrefixes $ optExpandMultiheadRules d
-    in case validate d' of
-            Left err -> error $ "could not validate optimized spec: " ++ err
-            Right _  -> d'
+    in if confReValidate ?cfg
+       then case validate d' of
+                 Left err -> error $ "could not validate optimized spec: " ++ err
+                 Right _  -> d'
+       else d'
 
 -- | Replace multihead rules with several rules by introducing an
 -- intermediate relation for the body of the rule.
