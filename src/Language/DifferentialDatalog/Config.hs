@@ -50,6 +50,7 @@ data Config = Config { confDatalogFile   :: FilePath
                      , confDumpValid     :: Bool
                      , confDumpDebug     :: Bool
                      , confDumpOpt       :: Bool
+                     , confReValidate    :: Bool
                      }
 
 defaultConfig :: Config
@@ -67,4 +68,5 @@ defaultConfig = Config { confDatalogFile   = ""
                        , confDumpValid     = False
                        , confDumpDebug     = False
                        , confDumpOpt       = False
+                       , confReValidate    = False
                        }
