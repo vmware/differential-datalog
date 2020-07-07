@@ -572,10 +572,10 @@ exprConstraints_ de@(DDExpr ctx (E e@EField{..})) = do
                          te@(TEUser n _) | elem n (map name candidates) -> do
                             let t'' = fromJust $ tdefType $ getType ?d n
                             let guarded = structFieldGuarded t'' exprField
-                            check ?d (not guarded) (pos e) $ "Access to guarded field \"" ++ exprField ++ "\""
+                            check ?d (not guarded) (pos e) $ "Access to guarded field \'" ++ exprField ++ "\' (not all constructors of type '" ++ n ++ "' have this field)."
                             let fld_type = typeToTExpr $ typ $ fromJust $ find ((==exprField) . name) $ structFields $ typ' ?d $ teToType te
                             return [dv ==== fld_type]
-                         _ -> err ?d (pos de) 
+                         _ -> err ?d (pos estruct)
                                   $ "expression '" ++ show estruct ++ "' must have a field named '" ++ exprField ++ "', but its type '" ++ show t' ++ "' doesn't"
     ce <- teTypeOfExpr estruct
     addConstraint $ CLazy ce expand Nothing estruct
@@ -634,8 +634,8 @@ exprConstraints_ de@(DDExpr ctx (E e@ETuple{..})) =
 --
 -- 'is_Bit(|e1|) and |e|=Bit (h-l+1)'
 --
--- TODO: additional constraint 'bitWidth |e1| >= h-l+1 and'
--- should be enforced outside of the type inference engine.
+-- Additional constraints 'bitWidth |e1| >= h-l+1', 'h>=l' are enforced
+-- in Validate.hs.
 exprConstraints_ de@(DDExpr ctx (E e@ESlice{..})) = do
     addConstraint =<< tvarTypeOfExpr de <==== TEBit (IConst w)
     addConstraint =<< deIsBit ebits

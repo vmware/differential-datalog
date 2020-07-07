@@ -323,7 +323,7 @@ atomValidate d ctx atom = do
         $ exprVarDecls d ctx $ atomVal atom
 
 -- Validate an RHS term of a rule.  Once all RHS and LHS terms have been
--- validate, it is safe to call 'ruleValidateExpressions'.
+-- validated, it is safe to call 'ruleValidateExpressions'.
 ruleRHSValidate :: (MonadError String me) => DatalogProgram -> Rule -> RuleRHS -> Int -> me ()
 ruleRHSValidate d rl@Rule{..} (RHSLiteral _ atom) idx =
     atomValidate d (CtxRuleRAtom rl idx) atom
@@ -502,7 +502,7 @@ exprValidate d tvars ctx e = do
 -- (all identifiers point to existng functions and variables) and perform type
 -- inference.
 -- Phase 2: 'exprsPostCheck': additional checks that can only be safely
--- performed after type inference.  Before calling this function, the called
+-- performed after type inference.  Before calling this function, the caller
 -- must substitute modified expressions returned by 'exprsTypeCheck' in 'd'.
 
 exprsTypeCheck :: (MonadError String me) => DatalogProgram -> [String] -> [(ECtx, Expr)] -> me [Expr]
@@ -611,7 +611,7 @@ exprValidate2 :: (MonadError String me) => DatalogProgram -> ECtx -> ExprNode Ty
 exprValidate2 d _   (ESlice p e h _)    =
     case typ' d e of
         TBit _ w -> do check d (h < w) p
-                           $ "Upper bound of the slice cannot exceed argument width"
+                           $ "Upper bound of the slice exceeds argument width"
         _        -> err d (pos e) $ "Expression is not a bit vector"
 exprValidate2 d _   (EAs p e t)          = do
     check d (not (isBigInt d e && isBit d t)) p

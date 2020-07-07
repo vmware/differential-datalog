@@ -22,7 +22,7 @@ error: ./test/datalog_tests/function.fail.dl:7:5-7:11: Variable v already define
     var v = "foo"
     ^^^^^^
 
-error: ./test/datalog_tests/function.fail.dl:6:13-7:1: Access to guarded field "x"
+error: ./test/datalog_tests/function.fail.dl:6:13-7:1: Access to guarded field 'x' (not all constructors of type 'std.Option' have this field).
     var b = a.x
             ^
 
@@ -42,7 +42,7 @@ Failed to parse input file: "./test/datalog_tests/function.fail.dl" (line 5, col
 unexpected "f"
 expecting "=" or "{"
 
-error: ./test/datalog_tests/function.fail.dl:4:5-6:1: expression 'x' must have a field named 'bar', but its type 'bigint' doesn't
+error: ./test/datalog_tests/function.fail.dl:4:5-4:6: expression 'x' must have a field named 'bar', but its type 'bigint' doesn't
     x.bar // x is not a struct
     ^
 
@@ -90,6 +90,18 @@ expression 'false'
     return false
            ^
 
-Failed to parse input file: "./test/datalog_tests/function.fail.dl" (line 8, column 1):
+Failed to parse input file: "./test/datalog_tests/function.fail.dl" (line 9, column 1):
 unexpected end of input
 expecting "," or "."
+
+error: ./test/datalog_tests/function.fail.dl:7:5-8:1: Upper bound of the slice exceeds argument width
+    x[31:0]
+    ^
+
+error: ./test/datalog_tests/function.fail.dl:6:5-6:9: Expression is not an l-value
+    x.0 = "bar";
+    ^^^^
+
+error: ./test/datalog_tests/function.fail.dl:7:5-7:9: Expression is not an l-value
+    x.0 = "foo";
+    ^^^^

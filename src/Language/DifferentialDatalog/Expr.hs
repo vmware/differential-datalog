@@ -510,12 +510,12 @@ exprInjectStringConversion d e t = do
               Nothing  -> err d (pos e) $ "Cannot find declaration of function " ++ fname ++
                                         " needed to convert expression " ++ show e ++ " to string"
               Just fun -> return fun
-    let arg0 = funcArgs f !! 0
     -- validate its signature
     check d (isString d $ funcType f) (pos f)
            "string conversion function must return \"string\""
     check d ((length $ funcArgs f) == 1) (pos f)
            "string conversion function must take exactly one argument"
+    let arg0 = funcArgs f !! 0
     _ <- unifyTypes d (pos e)
            ("in the call to string conversion function \"" ++ name f ++ "\"")
            [(typ arg0, t)]

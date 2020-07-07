@@ -156,3 +156,22 @@ function ti_f(value: Option<string>): Option<(string, string)> {
 // Type inference test.
 relation TI_R(a: Set<string>)
 TI_R(a) :- TI_R(a), set_size(a) > 1.
+
+typedef ModifyMe = ModifyMe {
+    x: string,
+    y: s128
+}
+
+function write_to_struct_field(): ModifyMe {
+    var m = ModifyMe{"foo", 123456789};
+    m.x = "bar";
+    m.y = -m.y;
+    m
+}
+
+function write_to_tuple_field(): (string, u64) {
+    var m = ("foo", 123456789);
+    m.0 = "bar";
+    m.1 = -m.1;
+    m
+}

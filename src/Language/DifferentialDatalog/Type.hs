@@ -255,31 +255,16 @@ exprNodeType' d ctx (EVar p v)            =
          Just var -> varType d var
          Nothing | ctxInRuleRHSPositivePattern ctx -- handle implicit vardecls in rules
                  -> varType d $ ExprVar ctx $ EVar p v
-         _       -> error $ "exprNodeType': unknown vairable " ++ v ++ " at " ++ show p
+         _       -> error $ "exprNodeType': unknown variable " ++ v ++ " at " ++ show p
 
 exprNodeType' d ctx (EApply _ f _) | -- Type inference engine annotates calls to functions whose return type is polymorphic.
                                      typeIsPolymorphic t  = ctxExpectType ctx
                                    | otherwise            = t
     where t = funcType $ getFunc d f
-{-
-    as <- mapM (mtype2me d p ctx) mas
-    -- Infer types of type variables in 'f'.  Use information about types of concrete arguments.
-    -- In addition, if expected return type is known from context, use that as well.
-    subst <- funcTypeArgSubsts d p func $ as ++ maybeToList (ctxExpectType d ctx)
-    -- 'funcTypeArgSubsts' may succeed without inferring all type variables if the return type
-    -- uses type variables that do not occur among function arguments (e.g., `map_empty(): Map<'K,'V>`).
-    -- We therefore check that type inference has succeeded.
-    check d (M.size subst == length (funcTypeVars func)) p
-          $ "Could not infer types of the following type variables (see the signature of function " ++ f ++ "): " ++
-            (intercalate ", " $ map ("'" ++) $ funcTypeVars func \\ M.keys subst)
-    return $ typeSubstTypeArgs subst t
--}
 
 exprNodeType' d _   (EField _ e f) =
     let t@TStruct{} = typDeref' d e 
         fld = fromJust $ find ((==f) . name) $ structFields t
-     --Just fld -> do check d (not $ structFieldGuarded t f) p
-     -- $ "Access to guarded field \"" ++ f ++ "\""
     in fieldType fld
 
 exprNodeType' d _   (ETupField _ e i) =
