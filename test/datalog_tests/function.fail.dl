@@ -199,3 +199,15 @@ function write_to_ref(): () {
     x.0 = "foo";
     ()
 }
+
+
+//---
+
+// #593.
+function bool_identity(b: Option<bool>): Option<bool> = b
+
+typedef Tagg = Tagg{col:bool}
+
+function agg():Tagg =
+  (var any = Some{false}: Option<bool>);
+  (Tagg{.col = bool_identity(any)})

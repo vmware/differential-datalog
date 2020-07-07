@@ -105,3 +105,11 @@ error: ./test/datalog_tests/function.fail.dl:6:5-6:9: Expression is not an l-val
 error: ./test/datalog_tests/function.fail.dl:7:5-7:9: Expression is not an l-value
     x.0 = "foo";
     ^^^^
+
+error: ./test/datalog_tests/function.fail.dl:10:16-10:34: Type mismatch:
+expected type: bool
+actual type: std.Option<bool>
+in
+expression 'bool_identity(any)'
+  (Tagg{.col = bool_identity(any)})
+               ^^^^^^^^^^^^^^^^^^
