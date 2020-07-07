@@ -198,7 +198,7 @@ fn dump_delta(delta: &DeltaMap<DDValue>) {
     for (table_id, table_data) in delta.iter() {
         let _ = writeln!(stdout(), "{}:", relid2name(*table_id).unwrap());
         for (val, weight) in table_data.iter() {
-            debug_assert!(*weight == 1 || *weight == -1);
+            //debug_assert!(*weight == 1 || *weight == -1);
             let _ = writeln!(stdout(), "{}: {:+}", val.clone().into_record(), *weight);
         }
     }

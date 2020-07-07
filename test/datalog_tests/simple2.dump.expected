@@ -32,3 +32,12 @@ OutputInspectNot:
 OutputInspectNot{.x = 4, .y = 4}: +1
 OutputInspectNot:
 OutputInspectNot{.x = 2, .y = 2}: +1
+ChunkParseError:
+ChunkParseError{.err = "missing field `field` at line 1 column 11"}: +1
+CompressedChunk:
+CompressedChunk{.json = "{\"field\":1}"}: +1
+ChunkParseError:
+ChunkParseError{.err = "missing field `field` at line 1 column 11"}: +1
+CompressedChunk:
+CompressedChunk{.json = "{\"field\":1}"}: +2
+CompressedChunk{.json = "{\"field\":2}"}: +1

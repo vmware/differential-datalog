@@ -403,11 +403,11 @@ public class SpanTest {
                     } else {
                         System.out.println("ContainerSpan:");
                         this.api.dumpTable("ContainerSpan",
-                                r -> System.out.println(new ContainerSpan(r)));
+                                (r, w) -> System.out.println(new ContainerSpan(r)));
                         System.out.println();
                         System.out.println("RuleSpan:");
                         this.api.dumpTable("RuleSpan",
-                                r -> System.out.println(new RuleSpan(r)));
+                                (r, w) -> System.out.println(new RuleSpan(r)));
                         System.out.println();
                         this.checkSemicolon();
                     }

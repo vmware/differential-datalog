@@ -110,9 +110,26 @@ impl HDDlog {
                             writeln!(w, ",")?;
                         }
                     }
-                    _ => {
-                        panic!("Unknown input relation {:?} in dump_input_snapshot", rel);
-                    }
+                    _ => match prog.get_input_multiset_data(*rel as RelId) {
+                        Ok(ivalmset) => {
+                            for (v, weight) in ivalmset.iter() {
+                                if *weight >= 0 {
+                                    for _ in 0..*weight {
+                                        w.record_insert(relname, v)?;
+                                        writeln!(w, ",")?;
+                                    }
+                                } else {
+                                    for _ in 0..(-*weight) {
+                                        w.record_delete(relname, v)?;
+                                        writeln!(w, ",")?;
+                                    }
+                                }
+                            }
+                        }
+                        _ => {
+                            panic!("Unknown input relation {:?} in dump_input_snapshot", rel);
+                        }
+                    },
                 },
             }
         }
@@ -126,7 +143,7 @@ impl HDDlog {
 
     pub fn dump_table<F>(&self, table: usize, cb: Option<F>) -> Result<(), &'static str>
     where
-        F: Fn(&record::Record) -> bool,
+        F: Fn(&record::Record, isize) -> bool,
     {
         self.record_dump_table(table);
         if let Some(ref db) = self.db {
@@ -379,12 +396,12 @@ impl HDDlog {
 
     fn db_dump_table<F>(db: &mut DeltaMap<DDValue>, table: libc::size_t, cb: Option<F>)
     where
-        F: Fn(&record::Record) -> bool,
+        F: Fn(&record::Record, isize) -> bool,
     {
         if let Some(f) = cb {
             for (val, w) in db.get_rel(table) {
-                assert!(*w == 1);
-                if !f(&val.clone().into_record()) {
+                //assert!(*w == 1);
+                if !f(&val.clone().into_record(), *w) {
                     break;
                 }
             }
@@ -804,7 +821,7 @@ pub unsafe extern "C" fn ddlog_transaction_commit_dump_changes(
 pub struct ddlog_record_update {
     table: libc::size_t,
     rec: *mut record::Record,
-    polarity: bool,
+    w: libc::ssize_t,
 }
 
 #[no_mangle]
@@ -847,7 +864,7 @@ unsafe fn do_transaction_commit_dump_changes_as_array(
             change_vec.push(ddlog_record_update {
                 table: rel,
                 rec: Box::into_raw(Box::new(val.into_record())),
-                polarity: w > 0,
+                w,
             });
         }
     }
@@ -1203,7 +1220,9 @@ pub unsafe extern "C" fn ddlog_clear_relation(
 pub unsafe extern "C" fn ddlog_dump_table(
     prog: *const HDDlog,
     table: libc::size_t,
-    cb: Option<extern "C" fn(arg: libc::uintptr_t, rec: *const record::Record) -> bool>,
+    cb: Option<
+        extern "C" fn(arg: libc::uintptr_t, rec: *const record::Record, w: libc::ssize_t) -> bool,
+    >,
     cb_arg: libc::uintptr_t,
 ) -> raw::c_int {
     if prog.is_null() {
@@ -1211,7 +1230,7 @@ pub unsafe extern "C" fn ddlog_dump_table(
     };
     let prog = &*prog;
 
-    let f = cb.map(|f| move |rec: &record::Record| f(cb_arg, rec));
+    let f = cb.map(|f| move |rec: &record::Record, w: isize| f(cb_arg, rec, w as libc::ssize_t));
 
     prog.dump_table(table, f).map(|_| 0).unwrap_or_else(|e| {
         prog.eprintln(&format!("ddlog_dump_table(): error: {}", e));
@@ -1285,7 +1304,7 @@ pub unsafe extern "C" fn ddlog_delta_enumerate(
             arg: libc::uintptr_t,
             table: libc::size_t,
             rec: *const record::Record,
-            polarity: bool,
+            w: libc::ssize_t,
         ),
     >,
     cb_arg: libc::uintptr_t,
@@ -1298,7 +1317,7 @@ pub unsafe extern "C" fn ddlog_delta_enumerate(
                     cb_arg,
                     *table_id as libc::size_t,
                     &val.clone().into_record(),
-                    *weight == 1,
+                    *weight as libc::ssize_t,
                 );
             }
         }

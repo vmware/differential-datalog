@@ -110,7 +110,7 @@ typedef void ddlog_record;
 typedef struct {
     table_id table;
     ddlog_record *rec;
-    bool polarity;
+    ssize_t weight;
 } ddlog_record_update;
 
 /*
@@ -330,8 +330,7 @@ ddlog_transaction_commit_dump_changes(
  * Commit a transaction; propagate all buffered changes through all
  * rules in the program and update all output relations.  Once all
  * updates are finished, returns an array of changes to output relations.
- * Each record occurs in the array at most once with either positive or negative
- * polarity.
+ * Each record occurs in the array at most once.
  *
  * NOTE: The array returned by this function is owned by DDlog and must be
  * deallocated (along with all it contents) using the
@@ -552,7 +551,7 @@ extern int ddlog_clear_relation(ddlog_prog prog, table_id table);
  * database state after the last committed transaction.
  */
 extern int ddlog_dump_table(ddlog_prog prog, table_id table,
-                            bool (*cb)(uintptr_t arg, const ddlog_record *rec),
+                            bool (*cb)(uintptr_t arg, const ddlog_record *rec, ssize_t weight),
                             uintptr_t cb_arg);
 
 
@@ -589,7 +588,7 @@ extern void ddlog_delta_enumerate(
     void (*cb)(uintptr_t arg,
                table_id table,
                const ddlog_record *rec,
-               bool polarity),
+               ssize_t weight),
     uintptr_t cb_arg);
 
 /*
@@ -612,21 +611,19 @@ extern void ddlog_delta_clear(ddlog_delta *delta);
  * Adds the contents of `new_delta` to `delta`.
  *
  * Example 1: `delta` does not contain record `r`; `new_delta` contains record
- * `r` with polarity `p`.  `r` gets added to `delta` with polarity `p`.
+ * `r` with weight `w`.  `r` gets added to `delta` with weight `w`.
  *
- * Example 2: `delta` contains record `r` with polarity `p`; `new_delta` does
+ * Example 2: `delta` contains record `r` with weight `w`; `new_delta` does
  * not contain `r`.  The state of `r` in `delta` does not change.
  *
- * Example 3: `delta` contains record `r` with polarity `p`; `new_delta`
- * contains the same record with the opposite polarity. The two changes
+ * Example 3: `delta` contains record `r` with weight `w`; `new_delta`
+ * contains the same record with weight `-w`. The two changes
  * cancel out, and the record gets removed from `delta`.
  *
- * Example 4: `delta` and `new_delta` contain `r` with the same polarities.
+ * Example 4: `delta` and `new_delta` contain `r` with weights `w1` and `w2`.
  * While this operation is well-defined and will update the weight of `r` to
- * the sum of the two weights, it should not occur during normal use of DDlog
- * and likely signals a bug.  In particular, deltas produced by
- * `ddlog_transaction_commit_dump_changes()`, will not contain two inserts
- * or two deletes in a row.
+ * the sum of the two weights, it should only occur when working with multisets
+ * or streams.
  */
 extern void ddlog_delta_union(ddlog_delta *delta, const ddlog_delta *new_delta);
 

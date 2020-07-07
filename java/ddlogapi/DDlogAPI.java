@@ -112,7 +112,7 @@ public class DDlogAPI {
 
     // Callback to invoke for each record on `DDlogAPI.dumpTable()`.
     // The callback is invoked sequentially by the same DDlog worker thread.
-    private Consumer<DDlogRecord> dumpCallback;
+    private BiConsumer<DDlogRecord, Long> dumpCallback;
 
     // Stores pointer to `struct CallbackInfo` for each registered logging
     // callback.  This is needed so that we can deallocate the `CallbackInfo*`
@@ -157,11 +157,9 @@ public class DDlogAPI {
     void onCommit(int tableid, long handle, long w) {
         if (this.commitCallback != null) {
             DDlogCommand.Kind kind = w > 0 ? DDlogCommand.Kind.Insert : DDlogCommand.Kind.DeleteVal;
-            for (long i = 0; i < java.lang.Math.abs(w); i++) {
-                DDlogRecord record = DDlogRecord.fromSharedHandle(handle);
-                DDlogRecCommand command = new DDlogRecCommand(kind, tableid, record);
-                this.commitCallback.accept(command);
-            }
+            DDlogRecord record = DDlogRecord.fromSharedHandle(handle);
+            DDlogRecCommand command = new DDlogRecCommand(kind, java.lang.Math.abs(w), tableid, record);
+            this.commitCallback.accept(command);
         }
     }
 
@@ -292,12 +290,13 @@ public class DDlogAPI {
         /**
          * This method is called from the native side to add a command.
          */
-        private void append(int table, long handle, boolean polarity) {
+        private void append(int table, long handle, long w) {
             if (this.data == null)
                 return;
-            DDlogRecCommand command = new DDlogRecCommand(
-                    polarity ? DDlogCommand.Kind.Insert : DDlogCommand.Kind.DeleteVal,
-                    table, DDlogRecord.fromSharedHandle(handle));
+
+            DDlogCommand.Kind kind = w > 0 ? DDlogCommand.Kind.Insert : DDlogCommand.Kind.DeleteVal;
+            DDlogRecord record = DDlogRecord.fromSharedHandle(handle);
+            DDlogRecCommand command = new DDlogRecCommand(kind, java.lang.Math.abs(w), table, record);
             this.data.add(command);
         }
 
@@ -359,11 +358,11 @@ public class DDlogAPI {
     }
 
     // Callback invoked from commit_dump_changes.
-    void onDelta(int tableid, long handle, boolean polarity) {
+    void onDelta(int tableid, long handle, long weight) {
         if (this.deltaCallback != null) {
-            DDlogCommand.Kind kind = polarity ? DDlogCommand.Kind.Insert : DDlogCommand.Kind.DeleteVal;
+            DDlogCommand.Kind kind = weight > 0 ? DDlogCommand.Kind.Insert : DDlogCommand.Kind.DeleteVal;
             DDlogRecord record = DDlogRecord.fromSharedHandle(handle);
-            DDlogRecCommand command = new DDlogRecCommand(kind, tableid, record);
+            DDlogRecCommand command = new DDlogRecCommand(kind, java.lang.Math.abs(weight), tableid, record);
             this.deltaCallback.accept(command);
         }
     }
@@ -476,10 +475,10 @@ public class DDlogAPI {
     }
 
     /// Callback invoked from dump.
-    boolean dumpCallback(long handle) {
+    boolean dumpCallback(long handle, long weight) {
         if (this.dumpCallback != null) {
             DDlogRecord record = DDlogRecord.fromSharedHandle(handle);
-            this.dumpCallback.accept(record);
+            this.dumpCallback.accept(record, new Long(weight));
         }
         return true;
     }
@@ -490,7 +489,7 @@ public class DDlogAPI {
      * For this to work the DDlogAPI must have been created with a
      * storeData parameter set to true.
      */
-    public void dumpTable(String table, Consumer<DDlogRecord> callback) throws DDlogException {
+    public void dumpTable(String table, BiConsumer<DDlogRecord, Long> callback) throws DDlogException {
         this.checkHandle();
         int id = this.getTableId(table);
         if (id == -1)

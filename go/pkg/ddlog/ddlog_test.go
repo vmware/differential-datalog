@@ -25,8 +25,8 @@ type mockHandler struct {
 	test *testing.T
 }
 
-func (m *mockHandler) Handle(tableID TableID, r Record, outPolarity OutPolarity) {
-	m.Called(tableID, r, outPolarity)
+func (m *mockHandler) Handle(tableID TableID, r Record, weight int64) {
+	m.Called(tableID, r, weight)
 }
 
 func TestInsert(t *testing.T) {
@@ -53,7 +53,7 @@ func TestInsert(t *testing.T) {
 		"Handle",
 		outTableID,
 		mock.MatchedBy(func(r Record) bool { return r.IsStruct() }),
-		OutPolarityInsert,
+		int64(1),
 	).Return()
 
 	err = ddlogProgram.ApplyUpdatesAsTransaction(cmd)

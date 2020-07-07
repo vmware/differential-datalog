@@ -59,6 +59,7 @@ module Language.DifferentialDatalog.Syntax (
         consIsUnique,
         KeyExpr(..),
         RelationRole(..),
+        RelationSemantics(..),
         Relation(..),
         Index(..),
         RuleRHS(..),
@@ -445,7 +446,6 @@ data RelationRole = RelInput
                   | RelInternal
                   deriving(Eq, Ord)
 
-
 instance PP RelationRole where
     pp RelInput    = "input"
     pp RelOutput   = "output"
@@ -454,19 +454,33 @@ instance PP RelationRole where
 instance Show RelationRole where
     show = render . pp
 
-data Relation = Relation { relPos         :: Pos
-                         , relRole        :: RelationRole
-                         , relName        :: String
-                         , relType        :: Type
-                         , relPrimaryKey  :: Maybe KeyExpr
+data RelationSemantics = RelSet
+                       | RelStream
+                       | RelMultiset
+                       deriving(Eq, Ord)
+
+instance PP RelationSemantics where
+    pp RelSet       = "relation"
+    pp RelMultiset  = "multiset"
+    pp RelStream    = "stream"
+
+instance Show RelationSemantics where
+    show = render . pp
+
+data Relation = Relation { relPos        :: Pos
+                         , relRole       :: RelationRole
+                         , relSemantics  :: RelationSemantics
+                         , relName       :: String
+                         , relType       :: Type
+                         , relPrimaryKey :: Maybe KeyExpr
                          }
 
 instance Eq Relation where
-    (==) (Relation _ r1 n1 t1 k1) (Relation _ r2 n2 t2 k2) = r1 == r2 && n1 == n2 && t1 == t2 && k1 == k2
+    (==) (Relation _ r1 m1 n1 t1 k1) (Relation _ r2 m2 n2 t2 k2) = (r1, m1, n1, t1, k1) == (r2, m2, n2, t2, k2)
 
 instance Ord Relation where
-    compare (Relation _ r1 n1 t1 k1) (Relation _ r2 n2 t2 k2) =
-        compare (r1, n1, t1, k1) (r2, n2, t2, k2)
+    compare (Relation _ r1 m1 n1 t1 k1) (Relation _ r2 m2 n2 t2 k2) =
+        compare (r1, m1, n1, t1, k1) (r2, m2, n2, t2, k2)
 
 instance WithPos Relation where
     pos = relPos
@@ -478,7 +492,7 @@ instance WithName Relation where
 
 instance PP Relation where
     pp Relation{..} = pp relRole <+>
-                      "relation" <+> pp relName <+> "[" <> pp relType <> "]" <+> pkey
+                      pp relSemantics <+> pp relName <+> "[" <> pp relType <> "]" <+> pkey
         where pkey = maybe empty (("primary key" <+>) . pp) relPrimaryKey
 
 instance Show Relation where

@@ -71,3 +71,19 @@ start;
 delete InputInspectNot2(2);
 
 commit dump_changes;
+
+# Test multisets
+start;
+insert Chunk("{\"field\": 1}"),
+insert Chunk("{\"fild\": 1}"),
+commit dump_changes;
+
+start;
+
+# multiset semantics means that we should see a duplicate output record.
+insert Chunk("{\"field\": 1}"),
+insert Chunk("{\"field\": 1}"),
+insert Chunk("{\"fild\": 1}"),
+insert Chunk("{\"field\": 2}"),
+
+commit dump_changes;

@@ -22,10 +22,10 @@ static void freeCmdArray(ddlog_cmd **ca) {
     free(ca);
 }
 
-extern void handleOutRecord(uintptr_t progIdx, table_id table, ddlog_record *rec, bool polarity);
+extern void handleOutRecord(uintptr_t progIdx, table_id table, ddlog_record *rec, ssize_t weight);
 
-static void dumpChangesCb(uintptr_t arg, table_id table, const ddlog_record *rec, bool polarity) {
-    handleOutRecord(arg, table, (ddlog_record *)rec, polarity);
+static void dumpChangesCb(uintptr_t arg, table_id table, const ddlog_record *rec, ssize_t weight) {
+    handleOutRecord(arg, table, (ddlog_record *)rec, weight);
 }
 
 static int ddlogTransactionCommitDumpChanges(ddlog_prog hprog, uintptr_t arg) {
@@ -109,23 +109,13 @@ func SetErrMsgPrinter(errMsgPrinter ErrMsgPrinter) {
 	_errMsgPrinter = errMsgPrinter
 }
 
-// OutPolarity indicates whether an output record is being inserted or deleted.
-type OutPolarity string
-
-const (
-	// OutPolarityInsert is used to indicate that an output record is being inserted.
-	OutPolarityInsert OutPolarity = "+1"
-	// OutPolarityDelete is used to indicate that an output record is being deleted.
-	OutPolarityDelete OutPolarity = "-1"
-)
-
 // OutRecordHandler defines an interface which lets the client register a "callback" (when creating
 // a Program) for DDlog changes.
 type OutRecordHandler interface {
 	// Handle is called for every change reported by DDlog. There will a call to Handle for each
 	// new or deleted record (there is no notion of "modified" output record in DDlog). Handle
 	// will be called exactly once for each new / deleted record.
-	Handle(TableID, Record, OutPolarity)
+	Handle(TableID, Record, int64)
 }
 
 // OutRecordSink implements the OutRecordHandler interface: use it to discard all the changes
@@ -138,7 +128,7 @@ func NewOutRecordSink() (*OutRecordSink, error) {
 }
 
 // Handle will discard all the changes received from DDlog.
-func (s *OutRecordSink) Handle(tableID TableID, r Record, outPolarity OutPolarity) {}
+func (s *OutRecordSink) Handle(tableID TableID, r Record, weight int64) {}
 
 // OutRecordDumper implements the OutRecordHandler interface: use it to log all the changes received
 // from DDlog to a file.
@@ -161,10 +151,10 @@ func NewOutRecordDumper(changesFileName string) (*OutRecordDumper, error) {
 
 // Handle logs all the changes received from DDlog to a file. This should roughly match the output
 // format from the DDlog CLI. Errors occurring when writing to disk are ignored.
-func (d *OutRecordDumper) Handle(tableID TableID, r Record, outPolarity OutPolarity) {
+func (d *OutRecordDumper) Handle(tableID TableID, r Record, weight int64) {
 	d.changesMutex.Lock()
 	defer d.changesMutex.Unlock()
-	fmt.Fprintf(d.changesFile, "%s:\n%s: %s\n", GetTableName(tableID), r.Dump(), outPolarity)
+	fmt.Fprintf(d.changesFile, "%s:\n%s: %+d\n", GetTableName(tableID), r.Dump(), weight)
 }
 
 // NewOutRecordStdoutDumper creates an OutRecordDumper instance which writes all the changes
@@ -323,7 +313,7 @@ func (p *Program) CommitTransaction() error {
 // CommitTransactionChangesAsArray commits a transaction. It uses a different implementation from
 // CommitTransaction, which may yield better performance when many output records are
 // generated. Unlike with CommitTransaction, DDlog will not generate one callback for each output
-// record, but will return an array of output records (with polarity). Note that we still generate
+// record, but will return an array of output records (with weight). Note that we still generate
 // one OutRecordHandler callback for each output record.
 func (p *Program) CommitTransactionChangesAsArray() error {
 	rc := C.ddlogTransactionCommitDumpChangesAsArray(p.ptr, C.uint64_t(p.progIdx))
@@ -382,20 +372,14 @@ func (p *Program) ApplyUpdatesAsTransaction(commands ...Command) error {
 
 // handleOutRecord is called from C for each new or deleted output record.
 //export handleOutRecord
-func handleOutRecord(progIdx C.uintptr_t, tableID C.size_t, recordPtr *C.ddlog_record, polarity C.bool) {
+func handleOutRecord(progIdx C.uintptr_t, tableID C.size_t, recordPtr *C.ddlog_record, weight C.ssize_t) {
 	pIntf, ok := _progStore.Load(uintptr(progIdx))
 	if !ok {
 		panic("Cannot find program in store")
 	}
 	p := pIntf.(*Program)
-	var outPolarity OutPolarity
-	if polarity {
-		outPolarity = OutPolarityInsert
-	} else {
-		outPolarity = OutPolarityDelete
-	}
 	if p.outRecordHandler != nil {
-		p.outRecordHandler.Handle(TableID(tableID), &record{unsafe.Pointer(recordPtr)}, outPolarity)
+		p.outRecordHandler.Handle(TableID(tableID), &record{unsafe.Pointer(recordPtr)}, int64(weight))
 	}
 }
 
@@ -409,13 +393,7 @@ func handleOutRecordArray(progIdx C.uintptr_t, changesArray *C.ddlog_record_upda
 	// https://github.com/golang/go/wiki/cgo#turning-c-arrays-into-go-slices
 	changes := (*[1 << 30]C.ddlog_record_update)(unsafe.Pointer(changesArray))[:numChanges:numChanges]
 	for _, change := range changes {
-		var outPolarity OutPolarity
-		if change.polarity {
-			outPolarity = OutPolarityInsert
-		} else {
-			outPolarity = OutPolarityDelete
-		}
-		p.outRecordHandler.Handle(TableID(change.table), &record{unsafe.Pointer(change.rec)}, outPolarity)
+		p.outRecordHandler.Handle(TableID(change.table), &record{unsafe.Pointer(change.rec)}, int64(change.weight))
 	}
 }
 

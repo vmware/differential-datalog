@@ -246,3 +246,10 @@ test-golang:
     script:
         - (cd go && ./test.sh)
         - (cd go && ./run-example.sh)
+
+# Test stream relations.
+test-stream:
+    extends: .install-ddlog
+    script:
+        - cd test/datalog_tests
+        - ./test-stream.sh

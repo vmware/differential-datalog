@@ -17,15 +17,16 @@ impl<'a> FromFlatBuffer<fb::__Command<'a>> for DDValueUpdate {
             format!("Update::from_flatbuf: invalid buffer: failed to extract value")
         })?;
         let val = relval_from_flatbuf(relid, val_table)?;
-        match cmd.kind() {
-            fb::__CommandKind::Insert => Ok(DDValueUpdate(Update::Insert { relid, v: val })),
-            fb::__CommandKind::Delete => Ok(DDValueUpdate(Update::DeleteValue { relid, v: val })),
+        match cmd.weight() {
+            1 => Ok(DDValueUpdate(Update::Insert { relid, v: val })),
+            (-1) => Ok(DDValueUpdate(Update::DeleteValue { relid, v: val })),
+            w => Err(format!("Update::from_flatbuf: non-unit weight {}", w)),
         }
     }
 }
 
 // Wrapper type, so we can implement traits for it.
-struct FBDDValue<'a>(RelId, &'a DDValue, bool);
+struct FBDDValue<'a>(RelId, &'a DDValue, isize);
 
 impl<'b> ToFlatBuffer<'b> for FBDDValue<'_> {
     type Target = fbrt::WIPOffset<fb::__Command<'b>>;
@@ -35,11 +36,7 @@ impl<'b> ToFlatBuffer<'b> for FBDDValue<'_> {
         fb::__Command::create(
             fbb,
             &fb::__CommandArgs {
-                kind: if self.2 {
-                    fb::__CommandKind::Insert
-                } else {
-                    fb::__CommandKind::Delete
-                },
+                weight: self.2 as i64,
                 relid: self.0 as u64,
                 val_type,
                 val: Some(v),
@@ -72,8 +69,8 @@ pub fn updates_to_flatbuf(delta: &DeltaMap<DDValue>) -> (Vec<u8>, usize) {
 
     for (relid, rel) in delta.as_ref().iter() {
         for (v, w) in rel.iter() {
-            assert!(*w == 1 || *w == -1);
-            cmds.push(FBDDValue(*relid, v, *w == 1).to_flatbuf(&mut fbb));
+            //assert!(*w == 1 || *w == -1);
+            cmds.push(FBDDValue(*relid, v, *w).to_flatbuf(&mut fbb));
         }
     }
 

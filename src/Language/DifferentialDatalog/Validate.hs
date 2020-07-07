@@ -238,6 +238,8 @@ relValidate d rel@Relation{..} = do
     typeValidate d [] relType
     check d (isNothing relPrimaryKey || relRole == RelInput) (pos rel)
         $ "Only input relations can be declared with a primary key"
+    check d (isNothing relPrimaryKey || relSemantics == RelSet) (pos rel)
+        $ "Streams and multisets cannot be declared with a primary key"
     case relPrimaryKey of
          Nothing -> return rel
          Just pkey -> do pkey' <- exprValidate d [] (CtxKey rel) $ keyExpr pkey

@@ -1,0 +1,30 @@
+/* Test "stream" relations.  They should take no memory.  */
+
+import json
+
+typedef Object = Object {
+    field: u128
+}
+
+/* Raw JSON chunks. */
+input stream Chunk(json: string)
+
+/* Output an error message for each chunk that failed to parse. */
+output stream ChunkParseError(err: string)
+ChunkParseError(err) :- ParsedChunk(Err{err}).
+
+/* Contains the result of parsing a chunk. */
+stream ParsedChunk(data: Result<Object, string>)
+
+ParsedChunk(from_json_string(json)) :- Chunk(json).
+
+/* Successfully parsed chunks are stored in the Objects
+ * relation. */
+stream Objects(chunk: Object)
+Objects(objs) :- ParsedChunk(Ok{objs}).
+
+/* Convert chunks back to JSON. */
+output stream CompressedChunk(json: string)
+CompressedChunk(json) :-
+    Objects(objs),
+    Ok{var json} = to_json_string(objs).
