@@ -18,7 +18,7 @@ pub fn debug_debug_event<T1: ToString, A1: Clone + IntoRecord, A2: Clone + IntoR
         .unwrap();
     let _ = write!(
         &file,
-        "{:?}, {}, {}, {}, {:?}, {:?}\n",
+        "{:?}, {}, {}, {}, {}, {}\n",
         &operator_id,
         &w.to_string(),
         &ts.to_string(),
@@ -49,7 +49,7 @@ pub fn debug_debug_event_join<
         .unwrap();
     let _ = write!(
         &file,
-        "{:?}, {}, {}, Join, {:?}, {:?}, {:?}\n",
+        "{:?}, {}, {}, Join, {}, {}, {}\n",
         &operator_id,
         &w.to_string(),
         &ts.to_string(),
