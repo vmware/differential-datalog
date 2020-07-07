@@ -165,8 +165,37 @@ function control_flow(): () = {
 
 //---
 
-// return outside ofa function
+// return outside of a function
 
 relation NotFunction(x: bool)
 
 NotFunction(true) :- NotFunction(return false)
+
+//---
+
+// Slice wider than the variable being sliced.
+
+function slice(): u32 {
+    var x: u16 = 0;
+    x[31:0]
+}
+
+//---
+
+// Write to a read-only field.
+
+function illegal_write_to_tuple_field(x: (string, u64)): () {
+    x.0 = "bar";
+    x.1 = -x.1;
+    ()
+}
+
+//---
+
+// Write to a reference.
+
+function write_to_ref(): () {
+    var x = ref_new(("bar", 25));
+    x.0 = "foo";
+    ()
+}

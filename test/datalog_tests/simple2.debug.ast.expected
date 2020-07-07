@@ -10,6 +10,7 @@ typedef InputInspectNot2 = InputInspectNot2{x: bit<32>}
 typedef InputTuples = InputTuples{x: bit<32>, y: bit<32>}
 typedef InspectSimpleSum = InspectSimpleSum{x: bit<32>, total: bit<32>}
 typedef Ints = Ints{x: bigint}
+typedef ModifyMe = ModifyMe{x: string, y: std.s128}
 typedef OutputInspectNot = OutputInspectNot{x: bit<32>, y: bit<32>}
 typedef RFloatToInt = RFloatToInt{_x: signed<32>}
 typedef RFtoIDummy = RFtoIDummy{x: signed<32>}
@@ -368,6 +369,20 @@ function weird_zero (x: 'A): std.usize
 {
     ((var empty_vec: std.Vec<'A>) = (std.vec_empty(): std.Vec<'A>);
      std.vec_len(empty_vec))
+}
+function write_to_struct_field (): ModifyMe
+{
+    ((var m: ModifyMe) = (ModifyMe{.x="foo", .y=128'sd123456789}: ModifyMe);
+     (m.x = "bar";
+      (m.y = (- m.y);
+       m)))
+}
+function write_to_tuple_field (): (string, std.u64)
+{
+    ((var m: (string, bit<64>)) = ("foo", 64'd123456789);
+     (m.0 = "bar";
+      (m.1 = (- m.1);
+       m)))
 }
 function zero_test (): std.usize
 {
