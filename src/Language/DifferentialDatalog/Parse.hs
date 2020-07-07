@@ -72,6 +72,7 @@ reservedNames = ["as",
                  "FlatMap",
                  "Inspect",
                  "and",
+                 "bigint",
                  "bit",
                  "bool",
                  "break",
@@ -90,7 +91,7 @@ reservedNames = ["as",
                  "mut",
                  "input",
                  "output",
-                 "bigint",
+                 "multiset",
                  "not",
                  "or",
                  "relation",
@@ -98,6 +99,7 @@ reservedNames = ["as",
                  "signed",
                  "skip",
                  "string",
+                 "stream",
                  "transformer",
                  "true",
                  "typedef",
@@ -322,10 +324,14 @@ hotypeSpec = withPos $ (HOTypeRelation nopos <$ reserved "relation" <*> (bracket
 index = withPos $ Index nopos <$ symbol "index" <*> indexIdent <*> parens (commaSep arg) <*>
                   (symbol "on" *> atom False)
 
+rel_semantics =  RelSet      <$ reserved "relation"
+             <|> RelStream   <$ reserved "stream"
+             <|> RelMultiset <$ reserved "multiset"
+
 relation = do
-    role <-  RelInput    <$ reserved "input" <* reserved "relation"
-         <|> RelOutput   <$ reserved "output" <* reserved "relation"
-         <|> RelInternal <$ reserved "relation"
+    (role, mult) <-  (RelInput,)    <$ reserved "input" <*> rel_semantics
+                 <|> (RelOutput,)   <$ reserved "output" <*> rel_semantics
+                 <|> (RelInternal,) <$> rel_semantics
     p1 <- getPosition
     isref <- option False $ (\_ -> True) <$> reservedOp "&"
     relName <- relIdent
@@ -339,11 +345,11 @@ relation = do
          let t = if isref
                     then TUser p "Ref" [TUser p relName []]
                     else TUser p relName []
-         let rel = Relation nopos role relName t pkey
+         let rel = Relation nopos role mult relName t pkey
          return [SpType tdef, SpRelation rel])
       <|>
        (do rel <- (\tspec p2 -> let t = if isref then TUser (p1,p2) "Ref" [tspec] else tspec
-                                in Relation nopos role relName t)
+                                in Relation nopos role mult relName t)
                   <$> (brackets typeSpecSimple) <*> getPosition <*>
                       (optionMaybe $ symbol "primary" *> symbol "key" *> key_expr)
            return [SpRelation rel]))

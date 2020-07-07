@@ -34,6 +34,11 @@ public interface DDlogCommand<R> {
     }
 
     Kind kind();
+    
+    /**
+     * The number of inserted or deleted records.
+     */
+    long weight();
 
     /**
      * Relation being modified.

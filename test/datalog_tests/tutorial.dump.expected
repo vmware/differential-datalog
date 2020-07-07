@@ -149,6 +149,15 @@ BestVendor{.item = "B", .vendor = "Overpriced Inc", .price = 123}
 BestDeal:
 BestDeal{.best = "Best deal for A: Scrooge Ltd, $110"}
 BestDeal{.best = "Best deal for B: Overpriced Inc, $123"}
+MSetOut:
+MSetOut{.x = 0}: +1
+MSetOut{.x = 1}: +2
+MSetOut:
+MSetOut{.x = 1}: +1
+MSetOut:
+MSetOut{.x = 1}: -1
+MSetOut{.x = 0}
+MSetOut{.x = 1} +2
 TCPDstPort:
 TCPDstPort{.port = 80}
 TCPDstPort{.port = 8080}

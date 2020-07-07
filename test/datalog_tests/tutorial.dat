@@ -236,6 +236,40 @@ dump BestDeal;
 
 start;
 
+insert MSetIn(0),
+# Insert the same value twice; due to the multiset semantics, it will appear twice in MSetOut.
+insert MSetIn(1),
+insert MSetIn(1),
+commit dump_changes;
+# expected output:
+# MSetOut:
+# MSetOut{.x = 0}: +1
+# MSetOut{.x = 1}: +2
+
+start;
+# Add one more instance of the same record.
+insert MSetIn(1),
+commit dump_changes;
+
+# expected output:
+# MSetOut:
+# MSetOut{.x = 1}: +1
+
+start;
+# Delete one instance of the record; we're down to 2.
+delete MSetIn(1),
+commit dump_changes;
+# expected output:
+# MSetOut:
+# MSetOut{.x = 1}: -1
+
+dump MSetOut;
+# expected output:
+# MSetOut{.x = 0} +1
+# MSetOut{.x = 1} +2
+
+start;
+
 insert Packet(EthPacket{
     0xaabbccddeeff,
     0x112233445566,

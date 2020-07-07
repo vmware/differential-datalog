@@ -479,7 +479,7 @@ public class RedistTest {
                         }
                         System.out.println();
                     } else {
-                        this.api.dumpTable("Span", r -> System.out.println(new Span(r)));
+                        this.api.dumpTable("Span", (r, w) -> System.out.println(new Span(r)));
                     }
                     break;
                 case "exit":

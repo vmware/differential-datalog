@@ -15,29 +15,45 @@ public class DDlogRecCommand implements DDlogCommand<DDlogRecord> {
         return this._relid;
     }
 
+    public final long weight() {
+        return this._weight;
+    }
+
     public final DDlogRecord value() {
         return this._value;
     }
 
     private Kind _kind;
     private int _relid;
+    private long _weight;
     private DDlogRecord _value;
 
-    public DDlogRecCommand(final Kind kind, final int relid, final DDlogRecord value) {
+    public DDlogRecCommand(final Kind kind, final long weight, final int relid, final DDlogRecord value) {
         if (value == null)
             throw new NullPointerException("DDlogRecord is null");
         this._kind = kind;
+        this._weight = weight;
         this._relid = relid;
         this._value = value;
     }
 
-    public DDlogRecCommand(final Kind kind, final int relid, final Object value)
+    public DDlogRecCommand(final Kind kind, final long weight, final int relid, final Object value)
             throws IllegalAccessException, DDlogException {
         if (value == null)
             throw new NullPointerException("DDlogRecord is null");
         this._kind = kind;
+        this._weight = weight;
         this._relid = relid;
         this._value = DDlogRecord.convertObject(value);
+    }
+
+    public DDlogRecCommand(final Kind kind, final int relid, final DDlogRecord value) {
+        this(kind, 1, relid, value);
+    }
+
+    public DDlogRecCommand(final Kind kind, final int relid, final Object value)
+            throws IllegalAccessException, DDlogException {
+            this(kind, 1, relid, value);
     }
 
     /**

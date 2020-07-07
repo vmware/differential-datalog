@@ -2,6 +2,9 @@ typedef Arrng1 = Arrng1{f1: std.Ref<std.Ref<std.Ref<TArrng2>>>, f2: bigint}
 typedef Arrng1Arrng2 = Arrng1Arrng2{x: bigint}
 typedef Arrng1Arrng2_2 = Arrng1Arrng2_2{x: bigint}
 typedef Arrng2 = Arrng2{f1: std.Ref<TArrng2>, f2: bigint, f3: bool}
+typedef Chunk = Chunk{json: string}
+typedef ChunkParseError = ChunkParseError{err: string}
+typedef CompressedChunk = CompressedChunk{json: string}
 typedef Doubles = Doubles{xs: std.Vec<double>}
 typedef FilteredRelation = FilteredRelation{y: bit<32>}
 typedef FuncTest = FuncTest{x: string}
@@ -11,7 +14,10 @@ typedef InputTuples = InputTuples{x: bit<32>, y: bit<32>}
 typedef InspectSimpleSum = InspectSimpleSum{x: bit<32>, total: bit<32>}
 typedef Ints = Ints{x: bigint}
 typedef ModifyMe = ModifyMe{x: string, y: std.s128}
+typedef Object = Object{field: std.u128}
+typedef Objects = Objects{chunk: Object}
 typedef OutputInspectNot = OutputInspectNot{x: bit<32>, y: bit<32>}
+typedef ParsedChunk = ParsedChunk{data: std.Result<Object,string>}
 typedef RFloatToInt = RFloatToInt{_x: signed<32>}
 typedef RFtoIDummy = RFtoIDummy{x: signed<32>}
 typedef SomeInts = SomeInts{x: std.Option<bigint>}
@@ -26,6 +32,17 @@ typedef debug.DDlogOpId = (std.u32, std.u32, std.u32)
 #[shared_ref = true]
 extern type internment.Intern<'A>
 typedef internment.istring = internment.Intern<string>
+typedef json.JsonNum = json.JsonInt{i: std.s128} |
+                       json.JsonFloat{d: double}
+#[rust = "serde(from = \"__json::ValueWrapper\", into = \"__json::ValueWrapper\")"]
+typedef json.JsonValue = json.JsonNull{} |
+                         json.JsonBool{b: bool} |
+                         json.JsonNumber{n: json.JsonNum} |
+                         json.JsonString{s: internment.istring} |
+                         json.JsonArray{a: std.Vec<json.JsonValue>} |
+                         json.JsonObject{o: std.Map<internment.istring,json.JsonValue>}
+#[custom_serde = true]
+typedef json.JsonWrapper<'T> = json.JsonWrapper{x: 'T}
 typedef log.log_level_t = signed<32>
 typedef log.module_t = signed<32>
 typedef std.DDEpoch = std.u64
@@ -180,6 +197,92 @@ extern function internment.istring_to_uppercase (s: internment.istring): string
 extern function internment.istring_trim (s: internment.istring): string
 #[return_by_ref = true]
 extern function internment.ival (s: internment.Intern<'A>): 'A
+extern function json.from_json_string (json: string): std.Result<'T,string>
+function json.jval_as_array (v: json.JsonValue): std.Option<std.Vec<json.JsonValue>>
+{
+    match (v) {
+        (json.JsonArray{.a=(var a: std.Vec<json.JsonValue>)}: json.JsonValue) -> (std.Some{.x=a}: std.Option<std.Vec<json.JsonValue>>),
+        (_: json.JsonValue) -> (std.None{}: std.Option<std.Vec<json.JsonValue>>)
+    }
+}
+function json.jval_as_array_or (v: json.JsonValue, def: std.Vec<json.JsonValue>): std.Vec<json.JsonValue>
+{
+    match (v) {
+        (json.JsonArray{.a=(var a: std.Vec<json.JsonValue>)}: json.JsonValue) -> a,
+        (_: json.JsonValue) -> def
+    }
+}
+function json.jval_as_bool (v: json.JsonValue): std.Option<bool>
+{
+    match (v) {
+        (json.JsonBool{.b=(var b: bool)}: json.JsonValue) -> (std.Some{.x=b}: std.Option<bool>),
+        (_: json.JsonValue) -> (std.None{}: std.Option<bool>)
+    }
+}
+function json.jval_as_bool_or (v: json.JsonValue, def: bool): bool
+{
+    match (v) {
+        (json.JsonBool{.b=(var b: bool)}: json.JsonValue) -> b,
+        (_: json.JsonValue) -> def
+    }
+}
+function json.jval_as_number (v: json.JsonValue): std.Option<json.JsonNum>
+{
+    match (v) {
+        (json.JsonNumber{.n=(var n: json.JsonNum)}: json.JsonValue) -> (std.Some{.x=n}: std.Option<json.JsonNum>),
+        (_: json.JsonValue) -> (std.None{}: std.Option<json.JsonNum>)
+    }
+}
+function json.jval_as_number_or (v: json.JsonValue, def: json.JsonNum): json.JsonNum
+{
+    match (v) {
+        (json.JsonNumber{.n=(var n: json.JsonNum)}: json.JsonValue) -> n,
+        (_: json.JsonValue) -> def
+    }
+}
+function json.jval_as_object (v: json.JsonValue): std.Option<std.Map<internment.istring,json.JsonValue>>
+{
+    match (v) {
+        (json.JsonObject{.o=(var o: std.Map<internment.Intern<string>,json.JsonValue>)}: json.JsonValue) -> (std.Some{.x=o}: std.Option<std.Map<internment.Intern<string>,json.JsonValue>>),
+        (_: json.JsonValue) -> (std.None{}: std.Option<std.Map<internment.Intern<string>,json.JsonValue>>)
+    }
+}
+function json.jval_as_object_or (v: json.JsonValue, def: std.Map<internment.istring,json.JsonValue>): std.Map<internment.istring,json.JsonValue>
+{
+    match (v) {
+        (json.JsonObject{.o=(var o: std.Map<internment.Intern<string>,json.JsonValue>)}: json.JsonValue) -> o,
+        (_: json.JsonValue) -> def
+    }
+}
+function json.jval_as_string (v: json.JsonValue): std.Option<internment.istring>
+{
+    match (v) {
+        (json.JsonString{.s=(var s: internment.Intern<string>)}: json.JsonValue) -> (std.Some{.x=s}: std.Option<internment.Intern<string>>),
+        (_: json.JsonValue) -> (std.None{}: std.Option<internment.Intern<string>>)
+    }
+}
+function json.jval_as_string_or (v: json.JsonValue, def: internment.istring): internment.istring
+{
+    match (v) {
+        (json.JsonString{.s=(var s: internment.Intern<string>)}: json.JsonValue) -> s,
+        (_: json.JsonValue) -> def
+    }
+}
+function json.jval_get (v: json.JsonValue, attr: internment.istring): std.Option<json.JsonValue>
+{
+    match (v) {
+        (json.JsonObject{.o=(var o: std.Map<internment.Intern<string>,json.JsonValue>)}: json.JsonValue) -> (std.map_get(o, attr): std.Option<json.JsonValue>),
+        (_: json.JsonValue) -> (std.None{}: std.Option<json.JsonValue>)
+    }
+}
+function json.jval_get_or (v: json.JsonValue, attr: internment.istring, def: json.JsonValue): json.JsonValue
+{
+    match (v) {
+        (json.JsonObject{.o=(var o: std.Map<internment.Intern<string>,json.JsonValue>)}: json.JsonValue) -> (std.option_unwrap_or((std.map_get(o, attr): std.Option<json.JsonValue>), def): json.JsonValue),
+        (_: json.JsonValue) -> def
+    }
+}
+extern function json.to_json_string (x: 'T): std.Result<string,string>
 #[has_side_effects = true]
 extern function log.log (module: log.module_t, level: log.log_level_t, msg: string): ()
 function myfunc (x: string): string
@@ -392,6 +495,9 @@ input relation Arrng1 [Arrng1]
 output relation Arrng1Arrng2 [Arrng1Arrng2]
 output relation Arrng1Arrng2_2 [Arrng1Arrng2_2]
 input relation Arrng2 [Arrng2]
+input multiset Chunk [Chunk]
+output multiset ChunkParseError [ChunkParseError]
+output multiset CompressedChunk [CompressedChunk]
 input relation Doubles [Doubles]
 output relation FilteredRelation [FilteredRelation]
 output relation FuncTest [std.Ref<FuncTest>]
@@ -400,7 +506,9 @@ input relation InputInspectNot2 [InputInspectNot2]
 input relation InputTuples [InputTuples]
 output relation InspectSimpleSum [InspectSimpleSum]
 input relation Ints [Ints]
+relation Objects [Objects]
 output relation OutputInspectNot [OutputInspectNot]
+relation ParsedChunk [ParsedChunk]
 output relation RFloatToInt [RFloatToInt]
 relation RFtoIDummy [RFtoIDummy]
 output relation SomeInts [SomeInts]
@@ -441,4 +549,8 @@ OutputInspectNot[(OutputInspectNot{.x=x, .y=y}: OutputInspectNot)] :- InputInspe
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           "delete"
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       }) ++ ": x=") ++ (std.__builtin_2string(y): string)) ++ " y=") ++ (std.__builtin_2string(y): string))), Inspect debug.debug_event((32'd10, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", (x, y), (OutputInspectNot{.x=x, .y=y}: OutputInspectNot)).
 TI_R[(TI_R{.a=a}: TI_R)] :- TI_R[(__ti_r0@ (TI_R{.a=(a: std.Set<string>)}: TI_R))], (std.set_size(a) > 64'd1), Inspect debug.debug_event((32'd11, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __ti_r0, (TI_R{.a=a}: TI_R)).
+ChunkParseError[(ChunkParseError{.err=err}: ChunkParseError)] :- ParsedChunk[(__parsedchunk0@ (ParsedChunk{.data=(std.Err{.err=(err: string)}: std.Result<Object,string>)}: ParsedChunk))], Inspect debug.debug_event((32'd12, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __parsedchunk0, (ChunkParseError{.err=err}: ChunkParseError)).
+ParsedChunk[(ParsedChunk{.data=(json.from_json_string(json): std.Result<Object,string>)}: ParsedChunk)] :- Chunk[(__chunk0@ (Chunk{.json=(json: string)}: Chunk))], Inspect debug.debug_event((32'd13, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __chunk0, (ParsedChunk{.data=(json.from_json_string(json): std.Result<Object,string>)}: ParsedChunk)).
+Objects[(Objects{.chunk=objs}: Objects)] :- ParsedChunk[(__parsedchunk0@ (ParsedChunk{.data=(std.Ok{.res=(objs: Object)}: std.Result<Object,string>)}: ParsedChunk))], Inspect debug.debug_event((32'd14, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __parsedchunk0, (Objects{.chunk=objs}: Objects)).
+CompressedChunk[(CompressedChunk{.json=json}: CompressedChunk)] :- Objects[(__objects0@ (Objects{.chunk=(objs: Object)}: Objects))], (std.Ok{.res=(var json: string)}: std.Result<string,string>) = json.to_json_string(objs), Inspect debug.debug_event((32'd15, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __objects0, (CompressedChunk{.json=json}: CompressedChunk)).
 

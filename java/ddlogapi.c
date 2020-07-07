@@ -303,14 +303,14 @@ JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1commit(
     }
 }
 
-void commit_dump_callback(uintptr_t callbackInfo, table_id tableid, const ddlog_record* rec, bool polarity) {
+void commit_dump_callback(uintptr_t callbackInfo, table_id tableid, const ddlog_record* rec, ssize_t weight) {
     struct CallbackInfo* cbi = (struct CallbackInfo*)callbackInfo;
     if (cbi == NULL || cbi->jvm == NULL)
         return;
     JNIEnv* env;
     (*cbi->jvm)->AttachCurrentThreadAsDaemon(cbi->jvm, (void**)&env, NULL);
     (*env)->CallVoidMethod(
-        env, cbi->obj, cbi->method, (jint)tableid, (jlong)rec, (jboolean)polarity);
+        env, cbi->obj, cbi->method, (jint)tableid, (jlong)rec, (jlong)weight);
 }
 
 JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1commit_1dump_1changes(
@@ -323,7 +323,7 @@ JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1commit_1dump_1
         }
     }
 
-    struct CallbackInfo* cbinfo = createCallback(env, obj, callback, "(IJZ)V");
+    struct CallbackInfo* cbinfo = createCallback(env, obj, callback, "(IJJ)V");
     if (cbinfo == NULL)
         return;
 
@@ -364,7 +364,7 @@ JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_00024DDlogCommandVector_ddlog_1tra
     }
     (*env)->SetLongField(env, obj, field, (jlong)updates);
 
-    jmethodID append = (*env)->GetMethodID(env, cls, "append", "(IJZ)V");
+    jmethodID append = (*env)->GetMethodID(env, cls, "append", "(IJJ)V");
     if (append == NULL) return;
     JavaVM* jvm;
     (*env)->GetJavaVM(env, &jvm);
@@ -373,7 +373,7 @@ JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_00024DDlogCommandVector_ddlog_1tra
     for (size_t i = 0; i < count; i++) {
         ddlog_record_update *upi = &updates[i];
         (*env)->CallVoidMethod(
-             env, obj, append, (jint)upi->table, (jlong)upi->rec, (jboolean)upi->polarity);
+             env, obj, append, (jint)upi->table, (jlong)upi->rec, (jlong)upi->weight);
     }
 }
 
@@ -559,17 +559,17 @@ JNIEXPORT jstring JNICALL Java_ddlogapi_DDlogAPI_ddlog_1get_1table_1name(
     return result;
 }
 
-bool dump_callback(uintptr_t callbackInfo, const ddlog_record* rec) {
+bool dump_callback(uintptr_t callbackInfo, const ddlog_record* rec, ssize_t weight) {
     struct CallbackInfo* cbi = (struct CallbackInfo*)callbackInfo;
     JNIEnv* env = cbi->env;
     assert(env);
-    jboolean result = (*env)->CallBooleanMethod(env, cbi->obj, cbi->method, (jlong)rec);
+    jboolean result = (*env)->CallBooleanMethod(env, cbi->obj, cbi->method, (jlong)rec, (jlong)weight);
     return (bool)result;
 }
 
 JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_dump_1table(
     JNIEnv *env, jobject obj, jlong progHandle, jint table, jstring callback) {
-    struct CallbackInfo* cbinfo = createCallback(env, obj, callback, "(J)Z");
+    struct CallbackInfo* cbinfo = createCallback(env, obj, callback, "(JJ)Z");
     if (cbinfo == NULL)
         return;
     cbinfo->env = env;  // the dump_callback will be called on the same thread

@@ -175,3 +175,34 @@ function write_to_tuple_field(): (string, u64) {
     m.1 = -m.1;
     m
 }
+
+/* Test "multiset" relations. */
+
+import json
+
+typedef Object = Object {
+    field: u128
+}
+
+/* Raw JSON chunks. */
+input multiset Chunk(json: string)
+
+/* Output an error message for each chunk that failed to parse. */
+output multiset ChunkParseError(err: string)
+ChunkParseError(err) :- ParsedChunk(Err{err}).
+
+/* Contains the result of parsing a chunk. */
+relation ParsedChunk(data: Result<Object, string>)
+
+ParsedChunk(from_json_string(json)) :- Chunk(json).
+
+/* Successfully parsed chunks are stored in the Objects
+ * relation. */
+relation Objects(chunk: Object)
+Objects(objs) :- ParsedChunk(Ok{objs}).
+
+/* Convert chunks back to JSON. */
+output multiset CompressedChunk(json: string)
+CompressedChunk(json) :-
+    Objects(objs),
+    Ok{var json} = to_json_string(objs).

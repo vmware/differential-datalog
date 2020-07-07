@@ -320,6 +320,17 @@ BestDeal(best) :-
     var best = Aggregate((item), best_vendor_string((vendor, price))),
     Inspect log.log("../tutorial.log", "ts:${ddlog_timestamp}, w:${ddlog_weight}: best(\"${item}\")=\"${best}\"").
 
+
+/*
+ * Example: streams and multiset.
+ */
+
+input multiset MSetIn(x: u32)
+output multiset MSetOut(x: u32)
+
+MSetOut(x) :- MSetIn(x).
+
+
 /*
  * Example: tagged unions
  */

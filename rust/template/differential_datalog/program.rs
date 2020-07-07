@@ -280,6 +280,20 @@ impl Clone for Box<dyn CBFn> {
     }
 }
 
+/// Caching mode for input relations only:
+/// `NoCache` - don't cache the contents of the relation.
+/// `CacheSet` - cache relation as a set.  Duplicate inserts are
+///     ignored (for relations without a key) or fail (for relations
+///     with key).
+/// `CacheMultiset` - cache relation as a generalized multiset with
+///     integer weights.
+#[derive(Clone)]
+pub enum CachingMode {
+    Stream,
+    Set,
+    Multiset,
+}
+
 /// Datalog relation.
 ///
 /// defines a set of rules and a set of arrangements with which this relation is used in
@@ -292,9 +306,11 @@ pub struct Relation {
     /// `true` if this is an input relation. Input relations are populated by the client
     /// of the library via `RunningProgram::insert()`, `RunningProgram::delete()` and `RunningProgram::apply_updates()` methods.
     pub input: bool,
-    /// apply distinct_total() to this relation after concatenating all its rules
+    /// Apply distinct_total() to this relation after concatenating all its rules
     pub distinct: bool,
-    /// if this `key_func` is present, this indicates that the relation is indexed with a unique
+    /// Caching mode (for input relations only).
+    pub caching_mode: CachingMode,
+    /// If `key_func` is present, this indicates that the relation is indexed with a unique
     /// key computed by key_func
     pub key_func: Option<fn(&DDValue) -> DDValue>,
     /// Unique relation id
@@ -817,14 +833,17 @@ where
     }
 }
 
-/* Relation content. */
+/* Set relation content. */
 pub type ValSet = FnvHashSet<DDValue>;
+
+/* Multiset relation content. */
+pub type ValMSet = DeltaSet;
 
 /* Indexed relation content. */
 pub type IndexedValSet = FnvHashMap<DDValue, DDValue>;
 
 /* Relation delta */
-pub type DeltaSet = FnvHashMap<DDValue, bool>;
+pub type DeltaSet = FnvHashMap<DDValue, isize>;
 
 /// Runtime representation of a datalog program.
 ///
@@ -880,6 +899,16 @@ impl Debug for RunningProgram {
 
 /* Runtime representation of relation */
 enum RelationInstance {
+    Stream {
+        /* Changes since start of transaction. */
+        delta: DeltaSet,
+    },
+    Multiset {
+        /* Multiset of all elements in the relation. */
+        elements: ValMSet,
+        /* Changes since start of transaction. */
+        delta: DeltaSet,
+    },
     Flat {
         /* Set of all elements in the relation. Used to enforce set semantics for input relations
          * (repeated inserts and deletes are ignored). */
@@ -901,12 +930,16 @@ enum RelationInstance {
 impl RelationInstance {
     pub fn delta(&self) -> &DeltaSet {
         match self {
+            RelationInstance::Stream { delta } => delta,
+            RelationInstance::Multiset { delta, .. } => delta,
             RelationInstance::Flat { delta, .. } => delta,
             RelationInstance::Indexed { delta, .. } => delta,
         }
     }
     pub fn delta_mut(&mut self) -> &mut DeltaSet {
         match self {
+            RelationInstance::Stream { delta } => delta,
+            RelationInstance::Multiset { delta, .. } => delta,
             RelationInstance::Flat { delta, .. } => delta,
             RelationInstance::Indexed { delta, .. } => delta,
         }
@@ -1337,7 +1370,7 @@ impl Program {
                             if let Some(cb) = &prog.get_relation(relid).change_cb {
                                 let mut cb = cb.lock().unwrap().clone();
                                 collection.consolidate().inspect(move |x| {
-                                    assert!(x.2 == 1 || x.2 == -1, "x: {:?}", x);
+                                    //assert!(x.2 == 1 || x.2 == -1, "x: {:?}", x);
                                     cb(relid, &x.0, x.2)
                                 }).probe_with(&mut probe1);
                             }
@@ -1510,28 +1543,49 @@ impl Program {
         for relid in self.input_relations() {
             let rel = self.get_relation(relid);
             if rel.input {
-                match rel.key_func {
-                    None => {
+                match rel.caching_mode {
+                    CachingMode::Stream => {
                         rels.insert(
                             relid,
-                            RelationInstance::Flat {
-                                elements: FnvHashSet::default(),
+                            RelationInstance::Stream {
                                 delta: FnvHashMap::default(),
                             },
                         );
                     }
-                    Some(f) => {
+                    CachingMode::Multiset => {
                         rels.insert(
                             relid,
-                            RelationInstance::Indexed {
-                                key_func: f,
+                            RelationInstance::Multiset {
                                 elements: FnvHashMap::default(),
                                 delta: FnvHashMap::default(),
                             },
                         );
                     }
+                    CachingMode::Set => {
+                        match rel.key_func {
+                            None => {
+                                rels.insert(
+                                    relid,
+                                    RelationInstance::Flat {
+                                        elements: FnvHashSet::default(),
+                                        delta: FnvHashMap::default(),
+                                    },
+                                );
+                            }
+                            Some(f) => {
+                                rels.insert(
+                                    relid,
+                                    RelationInstance::Indexed {
+                                        key_func: f,
+                                        elements: FnvHashMap::default(),
+                                        delta: FnvHashMap::default(),
+                                    },
+                                );
+                            }
+                        };
+                    }
                 };
-            }
+            };
         }
         /* Wait for the initial transaction to complete */
         reply_recv[0]
@@ -1662,8 +1716,12 @@ impl Program {
                     while cursor.val_valid(&storage) && *cursor.key(&storage) == k {
                         let mut weight = 0;
                         cursor.map_times(&storage, |_, diff| weight += diff);
-                        assert!(weight >= 0);
-                        if weight > 0 {
+                        //assert!(weight >= 0);
+                        // FIXME: this will add the value to the set even if `weight < 0`,
+                        // i.e., positive and negative weights are treated the same way.
+                        // A negative wait should only be possible if there are values with
+                        // negative weights in one of the input multisets.
+                        if weight != 0 {
                             vals.insert(cursor.val(&storage).clone());
                         };
                         cursor.step_val(&storage);
@@ -1677,8 +1735,8 @@ impl Program {
                     while cursor.val_valid(&storage) {
                         let mut weight = 0;
                         cursor.map_times(&storage, |_, diff| weight += diff);
-                        assert!(weight >= 0);
-                        if weight > 0 {
+                        //assert!(weight >= 0);
+                        if weight != 0 {
                             vals.insert(cursor.val(&storage).clone());
                         };
                         cursor.step_val(&storage);
@@ -2220,6 +2278,12 @@ impl RunningProgram {
                 .get_mut(&upd.relid())
                 .ok_or_else(|| format!("apply_updates: unknown input relation {}", upd.relid()))?;
             match rel {
+                RelationInstance::Stream { delta } => {
+                    Self::stream_update(delta, upd, &mut filtered_updates)?
+                }
+                RelationInstance::Multiset { elements, delta } => {
+                    Self::mset_update(elements, delta, upd, &mut filtered_updates)?
+                }
                 RelationInstance::Flat { elements, delta } => {
                     Self::set_update(elements, delta, upd, &mut filtered_updates)?
                 }
@@ -2255,6 +2319,14 @@ impl RunningProgram {
                 .get_mut(&relid)
                 .ok_or_else(|| format!("clear_relation: unknown input relation {}", relid))?;
             match rel {
+                RelationInstance::Stream { .. } => {
+                    return Err("clear_relation: operation not supported for streams".to_string())
+                }
+                RelationInstance::Multiset { elements, .. } => {
+                    let mut upds: Vec<Update<DDValue>> = Vec::with_capacity(elements.len());
+                    Self::delta_undo_updates(relid, elements, &mut upds);
+                    upds
+                }
                 RelationInstance::Flat { elements, .. } => {
                     let mut upds: Vec<Update<DDValue>> = Vec::with_capacity(elements.len());
                     for v in elements.iter() {
@@ -2345,12 +2417,17 @@ impl RunningProgram {
     fn delta_inc(ds: &mut DeltaSet, x: &DDValue) {
         let e = ds.entry(x.clone());
         match e {
-            hash_map::Entry::Occupied(oe) => {
-                debug_assert!(!*oe.get());
-                oe.remove_entry();
+            hash_map::Entry::Occupied(mut oe) => {
+                //debug_assert!(!*oe.get());
+                let v = oe.get_mut();
+                if *v == -1 {
+                    oe.remove_entry();
+                } else {
+                    *v += 1;
+                }
             }
             hash_map::Entry::Vacant(ve) => {
-                ve.insert(true);
+                ve.insert(1);
             }
         }
     }
@@ -2359,14 +2436,102 @@ impl RunningProgram {
     fn delta_dec(ds: &mut DeltaSet, key: &DDValue) {
         let e = ds.entry(key.clone());
         match e {
-            hash_map::Entry::Occupied(oe) => {
-                debug_assert!(*oe.get());
-                oe.remove_entry();
+            hash_map::Entry::Occupied(mut oe) => {
+                //debug_assert!(*oe.get());
+                let v = oe.get_mut();
+                if *v == 1 {
+                    oe.remove_entry();
+                } else {
+                    *v -= 1;
+                }
             }
             hash_map::Entry::Vacant(ve) => {
-                ve.insert(false);
+                ve.insert(-1);
             }
         }
+    }
+
+    /* Update delta set of an input stream relation before performing an update.
+     * `ds` is delta since start of transaction.
+     * `x` is the value being inserted or deleted.
+     * `insert` indicates type of update (`true` for insert, `false` for delete) */
+    fn stream_update(
+        ds: &mut DeltaSet,
+        upd: Update<DDValue>,
+        updates: &mut Vec<Update<DDValue>>,
+    ) -> Response<()> {
+        match &upd {
+            Update::Insert { v, .. } => {
+                Self::delta_inc(ds, v);
+            }
+            Update::DeleteValue { v, .. } => {
+                Self::delta_dec(ds, v);
+            }
+            Update::InsertOrUpdate { relid, .. } => {
+                return Err(format!(
+                    "Cannot perform insert_or_update operation on relation {} that does not have a primary key",
+                    relid
+                ));
+            }
+            Update::DeleteKey { relid, .. } => {
+                return Err(format!(
+                    "Cannot delete by key from relation {} that does not have a primary key",
+                    relid
+                ));
+            }
+            Update::Modify { relid, .. } => {
+                return Err(format!(
+                    "Cannot modify record in relation {} that does not have a primary key",
+                    relid
+                ));
+            }
+        };
+        updates.push(upd);
+        Ok(())
+    }
+
+    /* Update value and delta multisets of an input multiset relation before performing an update.
+     * `s` is the current content of the relation.
+     * `ds` is delta since start of transaction.
+     * `x` is the value being inserted or deleted.
+     * `insert` indicates type of update (`true` for insert, `false` for delete).
+     * Returns `true` if the update modifies the relation, i.e., it's not a no-op. */
+    fn mset_update(
+        s: &mut ValMSet,
+        ds: &mut DeltaSet,
+        upd: Update<DDValue>,
+        updates: &mut Vec<Update<DDValue>>,
+    ) -> Response<()> {
+        match &upd {
+            Update::Insert { v, .. } => {
+                Self::delta_inc(s, v);
+                Self::delta_inc(ds, v);
+            }
+            Update::DeleteValue { v, .. } => {
+                Self::delta_dec(s, v);
+                Self::delta_dec(ds, v);
+            }
+            Update::InsertOrUpdate { relid, .. } => {
+                return Err(format!(
+                    "Cannot perform insert_or_update operation on relation {} that does not have a primary key",
+                    relid
+                ));
+            }
+            Update::DeleteKey { relid, .. } => {
+                return Err(format!(
+                    "Cannot delete by key from relation {} that does not have a primary key",
+                    relid
+                ));
+            }
+            Update::Modify { relid, .. } => {
+                return Err(format!(
+                    "Cannot modify record in relation {} that does not have a primary key",
+                    relid
+                ));
+            }
+        };
+        updates.push(upd);
+        Ok(())
     }
 
     /* Update value set and delta set of an input relation before performing an update.
@@ -2531,10 +2696,8 @@ impl RunningProgram {
     pub fn get_input_relation_index(&self, relid: RelId) -> Response<&IndexedValSet> {
         match self.relations.get(&relid) {
             None => Err(format!("unknown relation {}", relid)),
-            Some(RelationInstance::Flat { .. }) => {
-                Err(format!("not an indexed relation {}", relid))
-            }
             Some(RelationInstance::Indexed { elements, .. }) => Ok(elements),
+            Some(_) => Err(format!("not an indexed relation {}", relid)),
         }
     }
 
@@ -2545,8 +2708,20 @@ impl RunningProgram {
     pub fn get_input_relation_data(&self, relid: RelId) -> Response<&ValSet> {
         match self.relations.get(&relid) {
             None => Err(format!("unknown relation {}", relid)),
-            Some(RelationInstance::Indexed { .. }) => Err(format!("not a flat relation {}", relid)),
             Some(RelationInstance::Flat { elements, .. }) => Ok(elements),
+            Some(_) => Err(format!("not a flat relation {}", relid)),
+        }
+    }
+
+    /* Returns a reference to an input multiset content.
+     * If called in the middle of a transaction, returns state snapshot including changes
+     * made by the current transaction.
+     */
+    pub fn get_input_multiset_data(&self, relid: RelId) -> Response<&ValMSet> {
+        match self.relations.get(&relid) {
+            None => Err(format!("unknown relation {}", relid)),
+            Some(RelationInstance::Multiset { elements, .. }) => Ok(elements),
+            Some(_) => Err(format!("not a flat relation {}", relid)),
         }
     }
 
@@ -2594,28 +2769,36 @@ impl RunningProgram {
         Ok(())
     }
 
-    /* Reverse all changes recorded in delta sets to rollback the transaction. */
-    fn delta_undo(&mut self) -> Response<()> {
-        let mut updates = vec![];
-        for (relid, rel) in &self.relations {
-            // first delete, then insert to avoid duplicate key
-            // errors in `apply_updates()`
-            for (k, w) in rel.delta() {
-                if *w {
+    fn delta_undo_updates(relid: RelId, ds: &DeltaSet, updates: &mut Vec<Update<DDValue>>) {
+        // first delete, then insert to avoid duplicate key
+        // errors in `apply_updates()`
+        for (k, w) in ds {
+            if *w >= 0 {
+                for _ in 0..*w {
                     updates.push(Update::DeleteValue {
-                        relid: *relid,
+                        relid,
                         v: k.clone(),
                     })
-                };
-            }
-            for (k, w) in rel.delta() {
-                if !*w {
+                }
+            };
+        }
+        for (k, w) in ds {
+            if *w < 0 {
+                for _ in 0..(-*w) {
                     updates.push(Update::Insert {
-                        relid: *relid,
+                        relid,
                         v: k.clone(),
                     })
                 }
             }
+        }
+    }
+
+    /* Reverse all changes recorded in delta sets to rollback the transaction. */
+    fn delta_undo(&mut self) -> Response<()> {
+        let mut updates = vec![];
+        for (relid, rel) in &self.relations {
+            Self::delta_undo_updates(*relid, rel.delta(), &mut updates);
         }
         //println!("updates: {:?}", updates);
         self.apply_updates(updates.into_iter())

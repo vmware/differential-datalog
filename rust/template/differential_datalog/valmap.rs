@@ -90,8 +90,12 @@ impl<V: Display + Ord + Clone> DeltaMap<V> {
         for (relid, map) in &self.map {
             w.write_fmt(format_args!("{}:\n", R::relid2name(*relid).unwrap()))?;
             for (val, weight) in map {
-                w.write_fmt(format_args!("{}\n", *val))?;
-                assert_eq!(*weight, 1, "val={}, weight={}", *val, *weight);
+                if *weight == 1 {
+                    w.write_fmt(format_args!("{}\n", *val))?;
+                } else {
+                    w.write_fmt(format_args!("{} {:+}\n", *val, *weight))?;
+                }
+                //assert_eq!(*weight, 1, "val={}, weight={}", *val, *weight);
             }
             w.write_fmt(format_args!("\n"))?;
         }
@@ -101,8 +105,12 @@ impl<V: Display + Ord + Clone> DeltaMap<V> {
     pub fn format_rel_as_set(&mut self, relid: RelId, w: &mut dyn io::Write) -> io::Result<()> {
         let map = self.get_rel(relid);
         for (val, weight) in map {
-            w.write_fmt(format_args!("{}\n", *val))?;
-            assert_eq!(*weight, 1, "val={}, weight={}", *val, *weight);
+            if *weight == 1 {
+                w.write_fmt(format_args!("{}\n", *val))?;
+            } else {
+                w.write_fmt(format_args!("{} {:+}\n", *val, *weight))?;
+            }
+            //assert_eq!(*weight, 1, "val={}, weight={}", *val, *weight);
         }
         Ok(())
     }

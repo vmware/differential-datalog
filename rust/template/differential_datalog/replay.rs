@@ -139,6 +139,13 @@ pub trait RecordReplay: Write {
         write!(self, "insert {}[{}]", name, value)
     }
 
+    fn record_delete<V>(&mut self, name: &str, value: V) -> Result<()>
+    where
+        V: Display,
+    {
+        write!(self, "delete {}[{}]", name, value)
+    }
+
     fn record_insert_or_update<V>(&mut self, name: &str, value: V) -> Result<()>
     where
         V: Display,
@@ -158,12 +165,9 @@ pub trait RecordReplay: Write {
             UpdCmd::InsertOrUpdate(rel, record) => {
                 self.record_insert_or_update(relident2name::<C>(rel).unwrap_or(&"???"), record)
             }
-            UpdCmd::Delete(rel, record) => write!(
-                self,
-                "delete {}[{}]",
-                relident2name::<C>(rel).unwrap_or(&"???"),
-                record,
-            ),
+            UpdCmd::Delete(rel, record) => {
+                self.record_delete(relident2name::<C>(rel).unwrap_or(&"???"), record)
+            }
             UpdCmd::DeleteKey(rel, record) => write!(
                 self,
                 "delete_key {} {}",
@@ -192,12 +196,9 @@ pub trait RecordReplay: Write {
             Update::InsertOrUpdate { relid, v } => {
                 self.record_insert_or_update(C::relid2name(*relid).unwrap_or(&"???"), v)
             }
-            Update::DeleteValue { relid, v } => write!(
-                self,
-                "delete {}[{}]",
-                C::relid2name(*relid).unwrap_or(&"???"),
-                v,
-            ),
+            Update::DeleteValue { relid, v } => {
+                self.record_delete(C::relid2name(*relid).unwrap_or(&"???"), v)
+            }
             Update::DeleteKey { relid, k } => write!(
                 self,
                 "delete_key {} {}",

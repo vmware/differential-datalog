@@ -610,7 +610,7 @@ addDummyRel d =
     d {progRelations = rels, progIndexes = idxs}
     where
     rels = if (M.null $ progRelations d) || (M.null $ progIndexes d)
-              then M.insert "__Null" (Relation nopos RelInternal "__Null" (tTuple []) Nothing) (progRelations d)
+              then M.insert "__Null" (Relation nopos RelInternal RelSet "__Null" (tTuple []) Nothing) (progRelations d)
               else progRelations d
     idxs = if M.null $ progIndexes d
               then M.singleton "__Null_by_none" $ Index nopos "__Null_by_none" [] $ Atom nopos "__Null" $ eTuple []
@@ -1399,9 +1399,13 @@ compileRelation d rn = do
             "Relation {"                                                                                        $$
             "    name:         \"" <> pp rn <> "\".to_string(),"                                                $$
             "    input:        " <> (if relRole == RelInput then "true" else "false") <> ","                    $$
-            "    distinct:     " <> (if relRole == RelOutput && not (relIsDistinctByConstruction d rel)
+            "    distinct:     " <> (if relRole == RelOutput && relSemantics == RelSet && not (relIsDistinctByConstruction d rel)
                                         then "true"
                                         else "false") <> ","  $$
+            "    caching_mode: " <> (case relSemantics of
+                                          RelMultiset -> "CachingMode::Multiset"
+                                          RelSet -> "CachingMode::Set"
+                                          RelStream -> "CachingMode::Stream") <> ","         $$
             "    key_func:     " <> key_func <> ","                                                             $$
             "    id:           " <> relId rn <> ","                                                             $$
             "    rules:        vec!["                                                                           $$

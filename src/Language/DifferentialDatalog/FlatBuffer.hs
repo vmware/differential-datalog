@@ -187,9 +187,8 @@ compileFlatBufferSchema d prog_name =
     "}"                                                                         $$
     ""                                                                          $$
     "// DDlog commands"                                                         $$
-    "enum __CommandKind: uint8 { Insert, Delete }"                              $$
     "table __Command {"                                                         $$
-    "   kind: __CommandKind;"                                                   $$
+    "   weight: int64;"                                                         $$
     "   relid: uint64 =" <+> default_relid <> ";"                               $$
     "   val:  __Value;"                                                         $$
     "}"                                                                         $$
@@ -1084,7 +1083,7 @@ mkJavaUpdateBuilder = ("ddlog" </> ?prog_name </> updateBuilderClass <.> "java",
                                 _           -> [jConvTypeW relType <+> "v"] in
                 "public void" <+> lcmd <> "_" <> mkRelId rel <> "(" <> commaSep args <> ")" $$
                 (braces' $ "int cmd =" <+> jFBCallConstructor "__Command"
-                                           [ jFBPackage <> ".__CommandKind." <> pp cmd
+                                           [ if cmd == "Insert" then "1" else "-1"
                                            , (pp $ relIdentifier ?d rel)
                                            , jFBPackage <> ".__Value." <> typeTableName relType
                                            , jConvCreateTable relType Nothing] <> ";"  $$
@@ -1095,7 +1094,7 @@ mkJavaUpdateBuilder = ("ddlog" </> ?prog_name </> updateBuilderClass <.> "java",
                      "public void" <+> lcmd <> "_" <> mkRelId rel <> "_" <> (pp $ legalize $ name c) <>
                          "(" <> (commaSep $ map (\a -> jConvTypeW a <+> pp (name a)) consArgs) <> ")" $$
                      (braces' $ "int cmd =" <+> jFBCallConstructor "__Command"
-                                                [ jFBPackage <> ".__CommandKind." <> pp cmd
+                                                [ if cmd == "Insert" then "1" else "-1"
                                                 , (pp $ relIdentifier ?d rel)
                                                 , jFBPackage <> ".__Value." <> typeTableName relType
                                                 , jConvCreateTable relType (Just c)] <> ";"  $$
@@ -1233,14 +1232,13 @@ mkCommandReader = ("ddlog" </> ?prog_name </> "CommandReader" <.> "java",
     (braces' $ "protected CommandReader (" <> jFBPackage <> ".__Command inner) { this.inner = inner; }"         $$
                "private" <+> jFBPackage <> ".__Command inner;"                                                  $$
                "public final Kind kind(){"                                                                      $$
-               "    if (inner.kind() ==" <+> jFBPackage <> ".__CommandKind.Insert) {"                           $$
+               "    if (this.inner.weight() > 0) {"                                                             $$
                "        return DDlogCommand.Kind.Insert;"                                                       $$
-               "    } if (inner.kind() ==" <+> jFBPackage <> ".__CommandKind.Delete) {"                         $$
-               "        return DDlogCommand.Kind.DeleteVal;"                                                    $$
                "    } else {"                                                                                   $$
-               "        throw new IllegalArgumentException(\"Unsupported command kind\" + inner.kind());"       $$
+               "        return DDlogCommand.Kind.DeleteVal;"                                                    $$
                "    }"                                                                                          $$
                "}"                                                                                              $$
+               "public final long weight() { return java.lang.Math.abs((long)this.inner.weight()); }"           $$
                "public final int relid() { return (int)this.inner.relid(); }"                                   $$
                "public final Object value() {"                                                                  $$
                "    switch (this.relid()) {"                                                                    $$
