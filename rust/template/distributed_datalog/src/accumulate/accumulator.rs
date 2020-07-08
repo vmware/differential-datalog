@@ -319,12 +319,12 @@ pub mod tests {
         assert_eq!(mock2.lock().unwrap().called_on_commit, 1);
 
         assert_eq!(accumulator.on_completed(), Ok(()));
-        assert_eq!(mock1.lock().unwrap().called_on_start, 2);
-        assert_eq!(mock2.lock().unwrap().called_on_start, 2);
-        assert_eq!(mock1.lock().unwrap().called_on_updates, 6);
-        assert_eq!(mock2.lock().unwrap().called_on_updates, 6);
-        assert_eq!(mock1.lock().unwrap().called_on_commit, 2);
-        assert_eq!(mock2.lock().unwrap().called_on_commit, 2);
+        assert_eq!(mock1.lock().unwrap().called_on_start, 1);
+        assert_eq!(mock2.lock().unwrap().called_on_start, 1);
+        assert_eq!(mock1.lock().unwrap().called_on_updates, 3);
+        assert_eq!(mock2.lock().unwrap().called_on_updates, 3);
+        assert_eq!(mock1.lock().unwrap().called_on_commit, 1);
+        assert_eq!(mock2.lock().unwrap().called_on_commit, 1);
         assert_eq!(mock1.lock().unwrap().called_on_completed, 1);
         assert_eq!(mock2.lock().unwrap().called_on_completed, 1);
     }
@@ -394,12 +394,12 @@ pub mod tests {
         assert_eq!(mock2.lock().unwrap().called_on_commit, 2);
 
         assert_eq!(accumulator.on_completed(), Ok(()));
-        assert_eq!(mock1.lock().unwrap().called_on_start, 3);
-        assert_eq!(mock2.lock().unwrap().called_on_start, 3);
-        assert_eq!(mock1.lock().unwrap().called_on_updates, 20);
-        assert_eq!(mock2.lock().unwrap().called_on_updates, 20);
-        assert_eq!(mock1.lock().unwrap().called_on_commit, 3);
-        assert_eq!(mock2.lock().unwrap().called_on_commit, 3);
+        assert_eq!(mock1.lock().unwrap().called_on_start, 2);
+        assert_eq!(mock2.lock().unwrap().called_on_start, 2);
+        assert_eq!(mock1.lock().unwrap().called_on_updates, 10);
+        assert_eq!(mock2.lock().unwrap().called_on_updates, 10);
+        assert_eq!(mock1.lock().unwrap().called_on_commit, 2);
+        assert_eq!(mock2.lock().unwrap().called_on_commit, 2);
         assert_eq!(mock1.lock().unwrap().called_on_completed, 1);
         assert_eq!(mock2.lock().unwrap().called_on_completed, 1);
     }
@@ -526,36 +526,12 @@ pub mod tests {
             .iter()
             .any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 4 })));
 
-        assert_eq!(accumulator.on_completed(), Ok(()));
+        assert_eq!(accumulator.on_completed(), Ok(())); // no longer does the 4 automatic deletions
 
         let received_updates = mock1.lock().unwrap().received_updates.clone();
-        assert_eq!(received_updates.len(), 14); // 3 + 4 inserts, 3 manual deletions, 4 automatic deletions
-        assert!(received_updates
-            .iter()
-            .any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 1 })));
-        assert!(received_updates
-            .iter()
-            .any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 2 })));
-        assert!(received_updates
-            .iter()
-            .any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 3 })));
-        assert!(received_updates
-            .iter()
-            .any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 4 })));
+        assert_eq!(received_updates.len(), 10); // (3 + 4) inserts + 3 manual deletions = 10
 
         let received_updates = mock2.lock().unwrap().received_updates.clone();
-        assert_eq!(received_updates.len(), 8); // 4 inserts, 4 automatic deletions
-        assert!(received_updates
-            .iter()
-            .any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 1 })));
-        assert!(received_updates
-            .iter()
-            .any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 2 })));
-        assert!(received_updates
-            .iter()
-            .any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 3 })));
-        assert!(received_updates
-            .iter()
-            .any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 4 })));
+        assert_eq!(received_updates.len(), 4); // 4 inserts, 0 automatic deletions
     }
 }
