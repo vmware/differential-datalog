@@ -209,12 +209,11 @@ fn deduce_sinks_or_sources(node_cfg: &NodeCfg, sinks: bool) -> BTreeMap<&Path, B
                             let _ = map.entry(path).or_default().insert(*relid);
                         }
                     },
-                    RelCfg::Source(source) if !sinks => match source {
-                        Source::File(path) => {
+                    RelCfg::Source(source) if !sinks => {
+                        if let Source::File(path) = source {
                             let _ = map.entry(path).or_default().insert(*relid);
                         }
-                        _ => (),
-                    },
+                    }
                     _ => (),
                 };
                 map
@@ -305,7 +304,7 @@ where
     match addr {
         Addr::Ip(addr) => add_tcp_receiver::<P>(&mut txnmux, addr, &mut sources)?,
     }
-    
+
     let mut realization = Realization {
         _sources: sources,
         _txnmux: txnmux,
@@ -423,16 +422,10 @@ where
 
     /// Add file sources as per the node configuration to the TxnMux for this
     /// Realization.
-    fn add_file_sources(
-        &mut self,
-        node_cfg: &NodeCfg,
-    ) -> Result<(), String>
-    {
+    fn add_file_sources(&mut self, node_cfg: &NodeCfg) -> Result<(), String> {
         deduce_sinks_or_sources(node_cfg, false)
             .iter()
-            .try_for_each(|(path, _rel_ids)| {
-                self.add_source(path)
-            })
+            .try_for_each(|(path, _rel_ids)| self.add_source(path))
     }
 }
 
