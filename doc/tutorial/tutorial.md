@@ -211,9 +211,11 @@ Phrases{"Hello, world!"}
 
 ### Relations are sets
 
-All DDlog relations are sets, i.e., a relation cannot contain multiple
-identical records.  Try adding an existing record to `Word1` and
-check that it only appears once.
+DDlog relations declared using `relation` keyword are sets, i.e., a
+relation cannot contain multiple identical records.  Try adding an
+existing record to `Word1` and check that it only appears once.
+[Later](#multisets-and-streams), we will introduce relations that have multiset
+semantics.
 
 ### Incremental evaluation
 
@@ -1246,6 +1248,99 @@ multiple times for different input/output relations).
 
 Several useful graph transformers are declared in `lib/graph.dl` and implemented in
 `lib/graph.rs`
+
+## Multisets and streams
+
+All DDlog relations considered so far implement set semantics.  A set can contain
+at most one instance of each value.  If the same value is inserted in the relation
+multiple times, all but the last insertion are ignored (or fail if the relation
+has a primary key).  Likewise, repeated deletions are ignored or fail.  Similarly,
+DDlog ensures that output relations behave as sets, e.g., the same value cannot
+be inserted multiple times, unless it is deleted in between.
+
+While this behavior matches the requirements of most applications, there are
+cases when relations with non-unit multiplicities are useful.  Consider, for
+example, an input relation that receives inputs from two sources, that can both
+produce the same value (at which point its multiplicity is 2).  The value should only be
+removed from the relation once it has been removed from both sources, i.e., its
+multiplicity drops to 0.  In other words, we would like the relation to have
+*multiset*, rather than set semantics.  Such a relation can be declared by using
+the `multiset` keyword instead of `relation`:
+
+```
+input multiset MSetIn(x: u32)
+```
+
+Values in a multiset relation can have both positive and negative
+multiplicities: deleting a non-existent value introduces the value with
+multiplicity `-1`.  Therefore, such relations can be more precisely described
+as *generalized*, rather than ordinary *multisets*.
+
+An output relation can also be declared as `multiset`, in which case DDlog
+can derive the same output value multiple times, so that `dump` and
+`commit dump_changes` commands will output records with non-unit multiplicities:
+
+```
+output multiset MSetOut(x: u32)
+MSetOut(x) :- MSetIn(x).
+```
+
+The following scenario illustrates the semantics of multisets:
+
+```
+start;
+
+insert MSetIn(0),
+# Insert the same value twice; due to the multiset semantics, it will appear twice in MSetOut.
+insert MSetIn(1),
+insert MSetIn(1),
+commit dump_changes;
+# expected output:
+# MSetOut:
+# MSetOut{.x = 0}: +1
+# MSetOut{.x = 1}: +2
+
+start;
+# Add one more instance of the same record.
+insert MSetIn(1),
+commit dump_changes;
+
+# expected output:
+# MSetOut:
+# MSetOut{.x = 1}: +1
+
+start;
+# Delete one instance of the record; we're down to 2.
+delete MSetIn(1),
+commit dump_changes;
+# expected output:
+# MSetOut:
+# MSetOut{.x = 1}: -1
+
+dump MSetOut;
+# expected output:
+# MSetOut{.x = 0} +1
+# MSetOut{.x = 1} +2
+```
+
+Output `multiset`s are more memory-efficient than `relation`s.  DDlog enforces
+set semantics by using the Differential Dataflow `distinct` operator, which
+internally maintains an indexed representation of the output relation.
+Multisets avoid this overhead.
+
+Streams are yet another kind of relation in DDlog that are similar to multisets
+with one additional optimization.  Normally, DDlog stores a copy of the entire
+contents of an `input relation` or `input multiset`.  This copy is used to
+implement the `clear` command, which removes everything from the relation.  In
+addition, it is necessary to enforce the set semantics on `relation`s.  A stream
+is a multiset, whose contents is not cached by DDlog, thus reducing the memory
+footprint of the program.  As a result, it is illegal to use the `clear` command
+on a stream.  
+
+```
+// Declare an input stream.
+input stream StreamIn(x: u32)
+```
 
 ## Advanced types
 
