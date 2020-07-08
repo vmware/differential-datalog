@@ -542,6 +542,12 @@ The type `bigint` describes arbitrary-precision (unbounded) integers.
 `var x: bigint = 125` declares a variable `x` with type integer and
 initial value 125.
 
+> ### :heavy_exclamation_mark: Pro tip: Use `bigint` sparingly
+>
+> The `bigint` type is backed by a dynamically allocated array.  It is
+> therefore quite expensive and should only be used when more efficient
+> fixed-width integer types are not sufficient.
+
 Signed integers are written as `signed<N>`, where `N` is the width of
 the integer in bits.  Currently DDlog only supports signed integers with
 widths that are supported by the native machine type (e.g., 8, 16, 32,
@@ -633,6 +639,39 @@ All datatypes support comparison for equality (`==` and difference
 `!=`) and ordering comparisons (`>`, `>=`, `<=`, `<`).  Only values
 with the same type can be compared.  Comparison of complex types
 (strings, tuples, types with constructors) is done lexicographically.
+
+### Type inference and type annotations
+
+DDlog is equipped with a type inference engine that is able to
+deduce types of variables and expressions at compile time.  For instance, in the
+following example the compiler knows that the type of `s` is `string` and the
+type of `strs` is `Vec<string>`:
+
+```
+function ti_f(value: Option<string>): Option<Vec<string>> {
+    var strs = match (value) {
+        Some{s} -> string_split(s, ":"),
+        None -> return None
+    };
+    Some{strs}
+}
+```
+
+The user almost never needs to explicitly specify variable types.
+However, they may do so to improve code readability or when the
+inference engine is unable to deduce the type automatically.  In fact, type
+annotations can be attached to any expression in DDlog:
+
+```
+function ti_f(value: Option<string>): Option<Vec<string>> {
+    var strs: Vec<string> = match (value) {
+        Some{s: string} -> string_split(s: string, ":": string): Vec<string>,
+        None: Option<string> -> return (None: Option<Vec<string>>)
+    }: Vec<string>;
+    Some{strs}
+}
+```
+
 
 ### Control flow
 
