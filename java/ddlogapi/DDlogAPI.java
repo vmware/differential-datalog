@@ -478,7 +478,7 @@ public class DDlogAPI {
     boolean dumpCallback(long handle, long weight) {
         if (this.dumpCallback != null) {
             DDlogRecord record = DDlogRecord.fromSharedHandle(handle);
-            this.dumpCallback.accept(record, new Long(weight));
+            this.dumpCallback.accept(record, weight);
         }
         return true;
     }

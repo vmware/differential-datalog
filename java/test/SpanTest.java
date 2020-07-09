@@ -403,11 +403,17 @@ public class SpanTest {
                     } else {
                         System.out.println("ContainerSpan:");
                         this.api.dumpTable("ContainerSpan",
-                                (r, w) -> System.out.println(new ContainerSpan(r)));
+                               (r, w) -> {
+                                   assert (w == 1): "non-unit weight in ContainerSpan";
+                                   System.out.println(new ContainerSpan(r)); 
+                               });
                         System.out.println();
                         System.out.println("RuleSpan:");
                         this.api.dumpTable("RuleSpan",
-                                (r, w) -> System.out.println(new RuleSpan(r)));
+                                (r, w) -> {
+                                    assert (w == 1): "non-unit weight in RuleSpan";
+                                    System.out.println(new RuleSpan(r));
+                                });
                         System.out.println();
                         this.checkSemicolon();
                     }
