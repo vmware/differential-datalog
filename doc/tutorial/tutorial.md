@@ -1258,6 +1258,18 @@ has a primary key).  Likewise, repeated deletions are ignored or fail.  Similarl
 DDlog ensures that output relations behave as sets, e.g., the same value cannot
 be inserted multiple times, unless it is deleted in between.
 
+The following table illustrates the set semantics by showing a sequence of
+commands that insert and delete the same value in a relation (without a primary
+key)
+
+| # | command | multiplicity | comment                                                               |
+|---|---------|:------------:|-----------------------------------------------------------------------|
+| 1 | insert  |       1      | record added to input table                                           |
+| 2 | insert  |       1      | second insert is ignored (or fails if the relation has a primary key) |
+| 3 | delete  |       0      | delete the record from the table                                      |
+| 4 | insert  |       1      | insert it again                                                       |
+
+
 While this behavior matches the requirements of most applications, there are
 cases when relations with non-unit multiplicities are useful.  Consider, for
 example, an input relation that receives inputs from two sources, that can both
@@ -1273,8 +1285,17 @@ input multiset MSetIn(x: u32)
 
 Values in a multiset relation can have both positive and negative
 multiplicities: deleting a non-existent value introduces the value with
-multiplicity `-1`.  Therefore, such relations can be more precisely described
-as *generalized*, rather than ordinary *multisets*.
+multiplicity `-1`.  Thus *multisets* can be seen as maps from elements to
+integer counts.
+
+| # | command | multiplicity | comment                                                               |
+|---|---------|:------------:|-----------------------------------------------------------------------|
+| 1 | insert  |       1      | record added to input table                                           |
+| 2 | insert  |       2      | second insert increases the multiplicity to 2                         |
+| 3 | delete  |       1      | delete decrement the multiplicity by one                              |
+| 4 | insert  |       2      |                                                                       |
+| 5 | delete  |       1      |                                                                       |
+| 6 | delete  |       0      | multiplicity drops to 0, the record gets deleted from the relation    |
 
 An output relation can also be declared as `multiset`, in which case DDlog
 can derive the same output value multiple times, so that `dump` and
@@ -1323,10 +1344,9 @@ dump MSetOut;
 # MSetOut{.x = 1} +2
 ```
 
-Output `multiset`s are more memory-efficient than `relation`s.  DDlog enforces
-set semantics by using the Differential Dataflow `distinct` operator, which
-internally maintains an indexed representation of the output relation.
-Multisets avoid this overhead.
+Output `multiset`s are more memory-efficient than `relation`s: internally the
+implementation uses only multisets, and converts them to sets when needed using
+an expensive Differential Dataflow `distinct` operator.
 
 Streams are yet another kind of relation in DDlog that are similar to multisets
 with one additional optimization.  Normally, DDlog stores a copy of the entire
@@ -1335,12 +1355,16 @@ implement the `clear` command, which removes everything from the relation.  In
 addition, it is necessary to enforce the set semantics on `relation`s.  A stream
 is a multiset, whose contents is not cached by DDlog, thus reducing the memory
 footprint of the program.  As a result, it is illegal to use the `clear` command
-on a stream.  
+on a stream.
 
 ```
 // Declare an input stream.
 input stream StreamIn(x: u32)
 ```
+
+Note that any DDlog relation, not just input or output, can be declared as a
+stream of multiset; however these specifiers do not no affect the behavior of
+internal relations, which are always implemented as multisets.
 
 ## Advanced types
 
