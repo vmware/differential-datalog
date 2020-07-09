@@ -43,7 +43,7 @@ cache:
 
 env:
    - TOOL=stack TEST_SUITE='-p tutorial' BUILD_BINARY=1
-   - TOOL=run_souffle_tests
+   # - TOOL=run_souffle_tests
    # - TOOL=stack TEST_SUITE='-p redist' JAVA=1
    # - TOOL=stack TEST_SUITE='-p span_uuid'
    # - TOOL=stack TEST_SUITE='-p souffle0'
