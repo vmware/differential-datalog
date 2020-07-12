@@ -26,7 +26,6 @@ SOFTWARE.
 module Language.DifferentialDatalog.Function(
     funcTypeArgSubsts,
     funcGroupArgTypes,
-    funcIsPure
 ) where
 
 import Control.Monad.Except
@@ -35,13 +34,12 @@ import qualified Data.Map as M
 
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Syntax
-import Language.DifferentialDatalog.Attribute
-import {-# SOURCE #-} Language.DifferentialDatalog.Expr
 import {-# SOURCE #-} Language.DifferentialDatalog.Type
+import {-# SOURCE #-} Language.DifferentialDatalog.TypeInference
 
 funcTypeArgSubsts :: (MonadError String me) => DatalogProgram -> Pos -> Function -> [Type] -> me (M.Map String Type)
 funcTypeArgSubsts d p f@Function{..} argtypes =
-    unifyTypes d p ("in call to " ++ funcShowProto f) (zip (map typ funcArgs ++ [funcType]) argtypes)
+    inferTypeArgs d p ("in call to " ++ funcShowProto f) (zip (map typ funcArgs ++ [funcType]) argtypes)
 
 -- | Functions that take an argument of type `Group<>` are treated in a special
 -- way in Compile.hs. This function returns the list of `Group` types passed as
@@ -49,8 +47,3 @@ funcTypeArgSubsts d p f@Function{..} argtypes =
 funcGroupArgTypes :: DatalogProgram -> Function -> [Type]
 funcGroupArgTypes d Function{..} =
     nub $ filter (isGroup d) $ map typ funcArgs
-
-funcIsPure :: DatalogProgram -> Function -> Bool
-funcIsPure d f =
-    (funcGetSideEffectAttr d f == False) &&
-    (maybe True (exprIsPure d) $ funcDef f)

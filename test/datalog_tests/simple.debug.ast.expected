@@ -233,20 +233,20 @@ typedef t20 = signed<32>
 typedef t21 = double
 typedef t22 = float
 typedef tnid_t = bit<16>
-function __debug_100_1_std.group2vec (g: std.Group<string,('I, string)>): (std.Vec<'I>, std.Vec<string>)
+function __debug_100_1_std.group_to_vec (g: std.Group<string,('I, string)>): (std.Vec<'I>, std.Vec<string>)
 {
     (((var inputs: std.Vec<'I>), (var original_group: std.Group<string,string>)) = debug.debug_split_group(g);
-     (inputs, std.group2vec(original_group)))
+     (inputs, std.group_to_vec(original_group)))
 }
-function __debug_101_1_std.group2map (g: std.Group<string,('I, (string, string))>): (std.Vec<'I>, std.Map<string,string>)
+function __debug_101_1_std.group_to_map (g: std.Group<string,('I, (string, string))>): (std.Vec<'I>, std.Map<string,string>)
 {
     (((var inputs: std.Vec<'I>), (var original_group: std.Group<string,(string, string)>)) = debug.debug_split_group(g);
-     (inputs, std.group2map(original_group)))
+     (inputs, std.group_to_map(original_group)))
 }
-function __debug_102_1_std.group2set (g: std.Group<string,('I, string)>): (std.Vec<'I>, std.Set<string>)
+function __debug_102_1_std.group_to_set (g: std.Group<string,('I, string)>): (std.Vec<'I>, std.Set<string>)
 {
     (((var inputs: std.Vec<'I>), (var original_group: std.Group<string,string>)) = debug.debug_split_group(g);
-     (inputs, std.group2set(original_group)))
+     (inputs, std.group_to_set(original_group)))
 }
 function __debug_103_1_std.group_sum (g: std.Group<string,('I, bit<32>)>): (std.Vec<'I>, bit<32>)
 {
@@ -263,20 +263,20 @@ function __debug_105_1_concat_ys (g: std.Group<(string, string),('I, string)>): 
     (((var inputs: std.Vec<'I>), (var original_group: std.Group<(string, string),string>)) = debug.debug_split_group(g);
      (inputs, concat_ys(original_group)))
 }
-function __debug_112_2_std.group2vec (g: std.Group<string,('I, string)>): (std.Vec<'I>, std.Vec<string>)
+function __debug_112_2_std.group_to_vec (g: std.Group<string,('I, string)>): (std.Vec<'I>, std.Vec<string>)
 {
     (((var inputs: std.Vec<'I>), (var original_group: std.Group<string,string>)) = debug.debug_split_group(g);
-     (inputs, std.group2vec(original_group)))
+     (inputs, std.group_to_vec(original_group)))
 }
-function __debug_113_1_std.group2set (g: std.Group<string,('I, bit<32>)>): (std.Vec<'I>, std.Set<bit<32>>)
+function __debug_113_1_std.group_to_set (g: std.Group<string,('I, bit<32>)>): (std.Vec<'I>, std.Set<bit<32>>)
 {
     (((var inputs: std.Vec<'I>), (var original_group: std.Group<string,bit<32>>)) = debug.debug_split_group(g);
-     (inputs, std.group2set(original_group)))
+     (inputs, std.group_to_set(original_group)))
 }
-function __debug_248_2_std.group2set (g: std.Group<bit<32>,('I, bit<16>)>): (std.Vec<'I>, std.Set<bit<16>>)
+function __debug_248_2_std.group_to_set (g: std.Group<bit<32>,('I, bit<16>)>): (std.Vec<'I>, std.Set<bit<16>>)
 {
     (((var inputs: std.Vec<'I>), (var original_group: std.Group<bit<32>,bit<16>>)) = debug.debug_split_group(g);
-     (inputs, std.group2set(original_group)))
+     (inputs, std.group_to_set(original_group)))
 }
 function __debug_249_3_std.group_set_unions (g: std.Group<bit<32>,('I, std.Set<bit<16>>)>): (std.Vec<'I>, std.Set<bit<16>>)
 {
@@ -313,10 +313,10 @@ function __debug_98_2_std.group_sum (g: std.Group<(),('I, bit<64>)>): (std.Vec<'
     (((var inputs: std.Vec<'I>), (var original_group: std.Group<(),bit<64>>)) = debug.debug_split_group(g);
      (inputs, std.group_sum(original_group)))
 }
-function __debug_99_1_std.group2set (g: std.Group<string,('I, string)>): (std.Vec<'I>, std.Set<string>)
+function __debug_99_1_std.group_to_set (g: std.Group<string,('I, string)>): (std.Vec<'I>, std.Set<string>)
 {
     (((var inputs: std.Vec<'I>), (var original_group: std.Group<string,string>)) = debug.debug_split_group(g);
-     (inputs, std.group2set(original_group)))
+     (inputs, std.group_to_set(original_group)))
 }
 function a0 (): bigint
 {
@@ -710,6 +710,14 @@ extern function h (a: (bigint, bigint)): (bigint, bigint)
 extern function intern.istring_ord (s: intern.IString): std.u32
 extern function intern.istring_str (s: intern.IString): string
 extern function intern.string_intern (s: string): intern.IString
+function internment.contains (s1: internment.istring, s2: string): bool
+{
+    internment.istring_contains(s1, s2)
+}
+function internment.ends_with (s: internment.istring, suffix: string): bool
+{
+    internment.istring_ends_with(s, suffix)
+}
 extern function internment.intern (s: 'A): internment.Intern<'A>
 extern function internment.istring_contains (s1: internment.istring, s2: string): bool
 extern function internment.istring_ends_with (s: internment.istring, suffix: string): bool
@@ -726,6 +734,50 @@ extern function internment.istring_to_uppercase (s: internment.istring): string
 extern function internment.istring_trim (s: internment.istring): string
 #[return_by_ref = true]
 extern function internment.ival (s: internment.Intern<'A>): 'A
+function internment.join (strings: std.Vec<internment.istring>, sep: string): string
+{
+    internment.istring_join(strings, sep)
+}
+function internment.len (s: internment.istring): std.usize
+{
+    internment.istring_len(s)
+}
+function internment.replace (s: internment.istring, from: string, to: string): string
+{
+    internment.istring_replace(s, from, to)
+}
+function internment.reverse (s: internment.istring): string
+{
+    internment.istring_reverse(s)
+}
+function internment.split (s: internment.istring, sep: string): std.Vec<string>
+{
+    internment.istring_split(s, sep)
+}
+function internment.starts_with (s: internment.istring, prefix: string): bool
+{
+    internment.istring_starts_with(s, prefix)
+}
+function internment.substr (s: internment.istring, start: std.usize, end: std.usize): string
+{
+    internment.istring_substr(s, start, end)
+}
+function internment.to_bytes (s: internment.istring): std.Vec<std.u8>
+{
+    internment.istring_to_bytes(s)
+}
+function internment.to_lowercase (s: internment.istring): string
+{
+    internment.istring_to_lowercase(s)
+}
+function internment.to_uppercase (s: internment.istring): string
+{
+    internment.istring_to_uppercase(s)
+}
+function internment.trim (s: internment.istring): string
+{
+    internment.istring_trim(s)
+}
 #[has_side_effects = true]
 extern function log.log (module: log.module_t, level: log.log_level_t, msg: string): ()
 function mult2 (x: bigint): bigint
@@ -949,16 +1001,52 @@ function souffle_lib.utoi (l: bit<32>): signed<32>
     (l as signed<32>)
 }
 extern function std.__builtin_2string (x: 'X): string
+function std.append (v: mut std.Vec<'X>, other: std.Vec<'X>): ()
+{
+    std.vec_append(v, other)
+}
+function std.contains (s1: string, s2: string): bool
+{
+    std.string_contains(s1, s2)
+}
+function std.contains (v: std.Vec<'X>, x: 'X): bool
+{
+    std.vec_contains(v, x)
+}
+function std.contains (s: std.Set<'X>, v: 'X): bool
+{
+    std.set_contains(s, v)
+}
+function std.contains_key (m: std.Map<'K,'V>, k: 'K): bool
+{
+    std.map_contains_key(m, k)
+}
+function std.count (g: std.Group<'K,'V>): std.usize
+{
+    std.group_count(g)
+}
 function std.dDNestedTS2string (ts: std.DDNestedTS): string
 {
     (((("(" ++ (std.__builtin_2string(ts.epoch): string)) ++ ",") ++ (std.__builtin_2string(ts.iter): string)) ++ ")")
 }
 #[return_by_ref = true]
 extern function std.deref (x: std.Ref<'A>): 'A
-extern function std.group2map (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,'V>
-extern function std.group2set (g: std.Group<'K,'V>): std.Set<'V>
-extern function std.group2setmap (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,std.Set<'V>>
-extern function std.group2vec (g: std.Group<'K,'V>): std.Vec<'V>
+function std.difference (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
+{
+    (std.set_difference(s1, s2): std.Set<'X>)
+}
+function std.ends_with (s: string, suffix: string): bool
+{
+    std.string_ends_with(s, suffix)
+}
+function std.first (g: std.Group<'K,'V>): 'V
+{
+    (std.group_first(g): 'V)
+}
+function std.get (m: std.Map<'K,'V>, k: 'K): std.Option<'V>
+{
+    (std.map_get(m, k): std.Option<'V>)
+}
 extern function std.group_count (g: std.Group<'K,'V>): std.usize
 extern function std.group_first (g: std.Group<'K,'V>): 'V
 extern function std.group_key (g: std.Group<'K,'V>): 'K
@@ -968,6 +1056,10 @@ extern function std.group_nth (g: std.Group<'K,'V>, n: std.usize): std.Option<'V
 extern function std.group_set_unions (g: std.Group<'K,std.Set<'A>>): std.Set<'A>
 extern function std.group_setref_unions (g: std.Group<'K,std.Ref<std.Set<'A>>>): std.Ref<std.Set<'A>>
 extern function std.group_sum (g: std.Group<'K,'V>): 'V
+extern function std.group_to_map (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,'V>
+extern function std.group_to_set (g: std.Group<'K,'V>): std.Set<'V>
+extern function std.group_to_setmap (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,std.Set<'V>>
+extern function std.group_to_vec (g: std.Group<'K,'V>): std.Vec<'V>
 function std.group_unzip (g: std.Group<'K,('X, 'Y)>): (std.Vec<'X>, std.Vec<'Y>)
 {
     ((var xs: std.Vec<'X>) = (std.vec_empty(): std.Vec<'X>);
@@ -984,6 +1076,38 @@ extern function std.hash64 (x: 'X): bit<64>
 extern function std.hex (x: 'X): string
 extern function std.htonl (x: bit<32>): bit<32>
 extern function std.htons (x: bit<16>): bit<16>
+function std.insert (m: mut std.Map<'K,'V>, k: 'K, v: 'V): ()
+{
+    std.map_insert(m, k, v)
+}
+function std.insert (s: mut std.Set<'X>, v: 'X): ()
+{
+    std.set_insert(s, v)
+}
+function std.insert_imm (m: std.Map<'K,'V>, k: 'K, v: 'V): std.Map<'K,'V>
+{
+    (std.map_insert_imm(m, k, v): std.Map<'K,'V>)
+}
+function std.insert_imm (s: std.Set<'X>, v: 'X): std.Set<'X>
+{
+    (std.set_insert_imm(s, v): std.Set<'X>)
+}
+function std.intersection (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
+{
+    (std.set_intersection(s1, s2): std.Set<'X>)
+}
+function std.is_empty (v: std.Vec<'X>): bool
+{
+    std.vec_is_empty(v)
+}
+function std.is_empty (m: std.Map<'K,'V>): bool
+{
+    std.map_is_empty(m)
+}
+function std.is_empty (s: std.Set<'X>): bool
+{
+    std.set_is_empty(s)
+}
 function std.is_err (res: std.Result<'V,'E>): bool
 {
     match (res) {
@@ -1012,6 +1136,22 @@ function std.is_some (x: std.Option<'A>): bool
         (_: std.Option<'A>) -> false
     }
 }
+function std.join (strings: std.Vec<string>, sep: string): string
+{
+    std.string_join(strings, sep)
+}
+function std.key (g: std.Group<'K,'V>): 'K
+{
+    (std.group_key(g): 'K)
+}
+function std.len (s: string): std.usize
+{
+    std.string_len(s)
+}
+function std.len (v: std.Vec<'X>): std.usize
+{
+    std.vec_len(v)
+}
 extern function std.map_contains_key (m: std.Map<'K,'V>, k: 'K): bool
 extern function std.map_empty (): std.Map<'K,'V>
 extern function std.map_get (m: std.Map<'K,'V>, k: 'K): std.Option<'V>
@@ -1030,6 +1170,10 @@ function std.max (x: 'A, y: 'A): 'A
           y
       }
 }
+function std.max (g: std.Group<'K,'V>): 'V
+{
+    (std.group_max(g): 'V)
+}
 function std.min (x: 'A, y: 'A): 'A
 {
     if (x < y) {
@@ -1038,44 +1182,51 @@ function std.min (x: 'A, y: 'A): 'A
           y
       }
 }
+function std.min (g: std.Group<'K,'V>): 'V
+{
+    (std.group_min(g): 'V)
+}
+function std.nth (g: std.Group<'K,'V>, n: std.usize): std.Option<'V>
+{
+    (std.group_nth(g, n): std.Option<'V>)
+}
+function std.nth (v: std.Vec<'X>, n: std.usize): std.Option<'X>
+{
+    (std.vec_nth(v, n): std.Option<'X>)
+}
+function std.nth (s: std.Set<'X>, n: std.usize): std.Option<'X>
+{
+    (std.set_nth(s, n): std.Option<'X>)
+}
 extern function std.ntohl (x: bit<32>): bit<32>
 extern function std.ntohs (x: bit<16>): bit<16>
-function std.option2set (o: std.Option<'X>): std.Set<'X>
-{
-    match (o) {
-        (std.Some{.x=(var x: 'X)}: std.Option<'X>) -> (std.set_singleton(x): std.Set<'X>),
-        (std.None{}: std.Option<'X>) -> (std.set_empty(): std.Set<'X>)
-    }
-}
-function std.option2vec (o: std.Option<'X>): std.Vec<'X>
-{
-    match (o) {
-        (std.Some{.x=(var x: 'X)}: std.Option<'X>) -> (std.vec_singleton(x): std.Vec<'X>),
-        (std.None{}: std.Option<'X>) -> (std.vec_empty(): std.Vec<'X>)
-    }
-}
-function std.option_unwrap_or (x: std.Option<'A>, def: 'A): 'A
-{
-    match (x) {
-        (std.Some{.x=(var v: 'A)}: std.Option<'A>) -> v,
-        (std.None{}: std.Option<'A>) -> def
-    }
-}
 extern function std.option_unwrap_or_default (opt: std.Option<'A>): 'A
 extern function std.parse_dec_i64 (s: string): std.Option<signed<64>>
 extern function std.parse_dec_u64 (s: string): std.Option<bit<64>>
 extern function std.pow32 (base: 'A, exp: bit<32>): 'A
+function std.push (v: mut std.Vec<'X>, x: 'X): ()
+{
+    std.vec_push(v, x)
+}
+function std.push_imm (v: std.Vec<'X>, x: 'X): std.Vec<'X>
+{
+    (std.vec_push_imm(v, x): std.Vec<'X>)
+}
 extern function std.range (from: 'A, to: 'A, step: 'A): std.Vec<'A>
 extern function std.ref_new (x: 'A): std.Ref<'A>
-function std.result_unwrap_or (res: std.Result<'V,'E>, def: 'V): 'V
+function std.remove (m: mut std.Map<'K,'V>, k: 'K): ()
 {
-    match (res) {
-        (std.Ok{.res=(var v: 'V)}: std.Result<'V,'E>) -> v,
-        (std.Err{.err=(_: 'E)}: std.Result<'V,'E>) -> def
-    }
+    std.map_remove(m, k)
+}
+function std.replace (s: string, from: string, to: string): string
+{
+    std.string_replace(s, from, to)
 }
 extern function std.result_unwrap_or_default (res: std.Result<'V,'E>): 'V
-extern function std.set2vec (s: std.Set<'A>): std.Vec<'A>
+function std.reverse (s: string): string
+{
+    std.string_reverse(s)
+}
 extern function std.set_contains (s: std.Set<'X>, v: 'X): bool
 extern function std.set_difference (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
 extern function std.set_empty (): std.Set<'X>
@@ -1086,8 +1237,37 @@ extern function std.set_is_empty (s: std.Set<'X>): bool
 extern function std.set_nth (s: std.Set<'X>, n: std.usize): std.Option<'X>
 extern function std.set_singleton (x: 'X): std.Set<'X>
 extern function std.set_size (s: std.Set<'X>): std.usize
+extern function std.set_to_vec (s: std.Set<'A>): std.Vec<'A>
 extern function std.set_union (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
 extern function std.set_unions (sets: std.Vec<std.Set<'X>>): std.Set<'X>
+function std.setref_unions (g: std.Group<'K,std.Ref<std.Set<'A>>>): std.Ref<std.Set<'A>>
+{
+    (std.group_setref_unions(g): std.Ref<std.Set<'A>>)
+}
+function std.size (m: std.Map<'K,'V>): std.usize
+{
+    std.map_size(m)
+}
+function std.size (s: std.Set<'X>): std.usize
+{
+    std.set_size(s)
+}
+function std.sort (v: mut std.Vec<'X>): ()
+{
+    std.vec_sort(v)
+}
+function std.sort_imm (v: std.Vec<'X>): std.Vec<'X>
+{
+    (std.vec_sort_imm(v): std.Vec<'X>)
+}
+function std.split (s: string, sep: string): std.Vec<string>
+{
+    std.string_split(s, sep)
+}
+function std.starts_with (s: string, prefix: string): bool
+{
+    std.string_starts_with(s, prefix)
+}
 extern function std.str_to_lower (s: string): string
 extern function std.string_contains (s1: string, s2: string): bool
 extern function std.string_ends_with (s: string, suffix: string): bool
@@ -1102,7 +1282,98 @@ extern function std.string_to_bytes (s: string): std.Vec<std.u8>
 extern function std.string_to_lowercase (s: string): string
 extern function std.string_to_uppercase (s: string): string
 extern function std.string_trim (s: string): string
-extern function std.vec2set (s: std.Vec<'A>): std.Set<'A>
+function std.substr (s: string, start: std.usize, end: std.usize): string
+{
+    std.string_substr(s, start, end)
+}
+function std.to_bytes (s: string): std.Vec<std.u8>
+{
+    std.string_to_bytes(s)
+}
+function std.to_lowercase (s: string): string
+{
+    std.string_to_lowercase(s)
+}
+function std.to_map (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,'V>
+{
+    (std.group_to_map(g): std.Map<'K2,'V>)
+}
+function std.to_set (o: std.Option<'X>): std.Set<'X>
+{
+    match (o) {
+        (std.Some{.x=(var x: 'X)}: std.Option<'X>) -> (std.set_singleton(x): std.Set<'X>),
+        (std.None{}: std.Option<'X>) -> (std.set_empty(): std.Set<'X>)
+    }
+}
+function std.to_set (g: std.Group<'K,'V>): std.Set<'V>
+{
+    (std.group_to_set(g): std.Set<'V>)
+}
+function std.to_set (s: std.Vec<'A>): std.Set<'A>
+{
+    (std.vec_to_set(s): std.Set<'A>)
+}
+function std.to_setmap (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,std.Set<'V>>
+{
+    (std.group_to_setmap(g): std.Map<'K2,std.Set<'V>>)
+}
+function std.to_uppercase (s: string): string
+{
+    std.string_to_uppercase(s)
+}
+function std.to_vec (o: std.Option<'X>): std.Vec<'X>
+{
+    match (o) {
+        (std.Some{.x=(var x: 'X)}: std.Option<'X>) -> (std.vec_singleton(x): std.Vec<'X>),
+        (std.None{}: std.Option<'X>) -> (std.vec_empty(): std.Vec<'X>)
+    }
+}
+function std.to_vec (g: std.Group<'K,'V>): std.Vec<'V>
+{
+    (std.group_to_vec(g): std.Vec<'V>)
+}
+function std.to_vec (s: std.Set<'A>): std.Vec<'A>
+{
+    (std.set_to_vec(s): std.Vec<'A>)
+}
+function std.trim (s: string): string
+{
+    std.string_trim(s)
+}
+function std.union (m1: std.Map<'K,'V>, m2: std.Map<'K,'V>): std.Map<'K,'V>
+{
+    (std.map_union(m1, m2): std.Map<'K,'V>)
+}
+function std.union (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
+{
+    (std.set_union(s1, s2): std.Set<'X>)
+}
+function std.unions (sets: std.Vec<std.Set<'X>>): std.Set<'X>
+{
+    (std.set_unions(sets): std.Set<'X>)
+}
+function std.unwrap_or (x: std.Option<'A>, def: 'A): 'A
+{
+    match (x) {
+        (std.Some{.x=(var v: 'A)}: std.Option<'A>) -> v,
+        (std.None{}: std.Option<'A>) -> def
+    }
+}
+function std.unwrap_or (res: std.Result<'V,'E>, def: 'V): 'V
+{
+    match (res) {
+        (std.Ok{.res=(var v: 'V)}: std.Result<'V,'E>) -> v,
+        (std.Err{.err=(_: 'E)}: std.Result<'V,'E>) -> def
+    }
+}
+function std.unwrap_or_default (opt: std.Option<'A>): 'A
+{
+    (std.option_unwrap_or_default(opt): 'A)
+}
+function std.unwrap_or_default (res: std.Result<'V,'E>): 'V
+{
+    (std.result_unwrap_or_default(res): 'V)
+}
 extern function std.vec_append (v: mut std.Vec<'X>, other: std.Vec<'X>): ()
 extern function std.vec_contains (v: std.Vec<'X>, x: 'X): bool
 extern function std.vec_empty (): std.Vec<'A>
@@ -1112,8 +1383,9 @@ extern function std.vec_nth (v: std.Vec<'X>, n: std.usize): std.Option<'X>
 extern function std.vec_push (v: mut std.Vec<'X>, x: 'X): ()
 extern function std.vec_push_imm (v: std.Vec<'X>, x: 'X): std.Vec<'X>
 extern function std.vec_singleton (x: 'X): std.Vec<'X>
-extern function std.vec_sort (v: std.Vec<'X>): ()
+extern function std.vec_sort (v: mut std.Vec<'X>): ()
 extern function std.vec_sort_imm (v: std.Vec<'X>): std.Vec<'X>
+extern function std.vec_to_set (s: std.Vec<'A>): std.Set<'A>
 extern function std.vec_with_capacity (len: std.usize): std.Vec<'A>
 extern function std.vec_with_length (len: std.usize, x: 'A): std.Vec<'A>
 function strings (): ()
@@ -1465,10 +1737,10 @@ Aggregate1[(Aggregate1{.x=x, .cnt=cnt}: Aggregate1)] :- AggregateMe1[(__aggregat
 AggregateCnt[(AggregateCnt{.cnt=cnt}: AggregateCnt)] :- AggregateMe1[(__aggregateme10@ (AggregateMe1{.x=(x: string), .y=(y: string)}: AggregateMe1))], var __inputs_cnt = Aggregate((), __debug_96_1_std.group_count((__aggregateme10, ()))), Inspect debug.debug_event((32'd96, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_cnt.0, __inputs_cnt), (var cnt: std.usize) = __inputs_cnt.1, Inspect debug.debug_event((32'd96, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __inputs_cnt, (AggregateCnt{.cnt=cnt}: AggregateCnt)).
 AggregateCnt2[(AggregateCnt2{.cnt=cnt}: AggregateCnt2)] :- AggregateMe1[(__aggregateme10@ (AggregateMe1{.x=(x: string), .y=(y: string)}: AggregateMe1))], var __inputs_cnt = Aggregate((), __debug_97_1_std.group_sum((__aggregateme10, (64'd1: bit<64>)))), Inspect debug.debug_event((32'd97, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_cnt.0, __inputs_cnt), (var cnt: bit<64>) = __inputs_cnt.1, Inspect debug.debug_event((32'd97, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __inputs_cnt, (AggregateCnt2{.cnt=cnt}: AggregateCnt2)).
 AggregateCnt3[(AggregateCnt3{.cnt=cnt}: AggregateCnt3)] :- AggregateMe1[(__aggregateme10@ (AggregateMe1{.x=(x: string), .y=(y: string)}: AggregateMe1))], (y != "1"), Inspect debug.debug_event((32'd98, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __aggregateme10, (__aggregateme10, x, y)), var __inputs_cnt = Aggregate((), __debug_98_2_std.group_sum(((__aggregateme10, x, y), (64'd1: bit<64>)))), Inspect debug.debug_event((32'd98, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_cnt.0, __inputs_cnt), (var cnt: bit<64>) = __inputs_cnt.1, Inspect debug.debug_event((32'd98, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __inputs_cnt, (AggregateCnt3{.cnt=cnt}: AggregateCnt3)).
-Aggregate2[(Aggregate2{.x=x, .set=set}: Aggregate2)] :- AggregateMe1[(__aggregateme10@ (AggregateMe1{.x=(x: string), .y=(y: string)}: AggregateMe1))], var __inputs_set = Aggregate(x, __debug_99_1_std.group2set((__aggregateme10, y))), Inspect debug.debug_event((32'd99, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_set.0, (__inputs_set, x)), (var set: std.Set<string>) = __inputs_set.1, Inspect debug.debug_event((32'd99, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_set, x), (Aggregate2{.x=x, .set=set}: Aggregate2)).
-Aggregate3[(Aggregate3{.x=x, .vec=vec}: Aggregate3)] :- AggregateMe1[(__aggregateme10@ (AggregateMe1{.x=(x: string), .y=(y: string)}: AggregateMe1))], var __inputs_vec = Aggregate(x, __debug_100_1_std.group2vec((__aggregateme10, y))), Inspect debug.debug_event((32'd100, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_vec.0, (__inputs_vec, x)), (var vec: std.Vec<string>) = __inputs_vec.1, Inspect debug.debug_event((32'd100, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_vec, x), (Aggregate3{.x=x, .vec=vec}: Aggregate3)).
-Aggregate4[(Aggregate4{.x=x, .map=map}: Aggregate4)] :- AggregateMe1[(__aggregateme10@ (AggregateMe1{.x=(x: string), .y=(y: string)}: AggregateMe1))], var __inputs_map = Aggregate(x, __debug_101_1_std.group2map((__aggregateme10, (x, y)))), Inspect debug.debug_event((32'd101, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_map.0, (__inputs_map, x)), (var map: std.Map<string,string>) = __inputs_map.1, Inspect debug.debug_event((32'd101, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_map, x), (Aggregate4{.x=x, .map=map}: Aggregate4)).
-Disaggregate[(Disaggregate{.x=x, .y=y}: Disaggregate)] :- AggregateMe1[(__aggregateme10@ (AggregateMe1{.x=(x: string), .y=(y: string)}: AggregateMe1))], var __inputs_set = Aggregate(x, __debug_102_1_std.group2set((__aggregateme10, y))), Inspect debug.debug_event((32'd102, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_set.0, (__inputs_set, x)), (var set: std.Set<string>) = __inputs_set.1, Inspect debug.debug_event((32'd102, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_set, x), (x, set)), var y = FlatMap(set), Inspect debug.debug_event((32'd102, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Flatmap", (x, set), (Disaggregate{.x=x, .y=y}: Disaggregate)).
+Aggregate2[(Aggregate2{.x=x, .set=set}: Aggregate2)] :- AggregateMe1[(__aggregateme10@ (AggregateMe1{.x=(x: string), .y=(y: string)}: AggregateMe1))], var __inputs_set = Aggregate(x, __debug_99_1_std.group_to_set((__aggregateme10, y))), Inspect debug.debug_event((32'd99, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_set.0, (__inputs_set, x)), (var set: std.Set<string>) = __inputs_set.1, Inspect debug.debug_event((32'd99, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_set, x), (Aggregate2{.x=x, .set=set}: Aggregate2)).
+Aggregate3[(Aggregate3{.x=x, .vec=vec}: Aggregate3)] :- AggregateMe1[(__aggregateme10@ (AggregateMe1{.x=(x: string), .y=(y: string)}: AggregateMe1))], var __inputs_vec = Aggregate(x, __debug_100_1_std.group_to_vec((__aggregateme10, y))), Inspect debug.debug_event((32'd100, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_vec.0, (__inputs_vec, x)), (var vec: std.Vec<string>) = __inputs_vec.1, Inspect debug.debug_event((32'd100, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_vec, x), (Aggregate3{.x=x, .vec=vec}: Aggregate3)).
+Aggregate4[(Aggregate4{.x=x, .map=map}: Aggregate4)] :- AggregateMe1[(__aggregateme10@ (AggregateMe1{.x=(x: string), .y=(y: string)}: AggregateMe1))], var __inputs_map = Aggregate(x, __debug_101_1_std.group_to_map((__aggregateme10, (x, y)))), Inspect debug.debug_event((32'd101, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_map.0, (__inputs_map, x)), (var map: std.Map<string,string>) = __inputs_map.1, Inspect debug.debug_event((32'd101, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_map, x), (Aggregate4{.x=x, .map=map}: Aggregate4)).
+Disaggregate[(Disaggregate{.x=x, .y=y}: Disaggregate)] :- AggregateMe1[(__aggregateme10@ (AggregateMe1{.x=(x: string), .y=(y: string)}: AggregateMe1))], var __inputs_set = Aggregate(x, __debug_102_1_std.group_to_set((__aggregateme10, y))), Inspect debug.debug_event((32'd102, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_set.0, (__inputs_set, x)), (var set: std.Set<string>) = __inputs_set.1, Inspect debug.debug_event((32'd102, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_set, x), (x, set)), var y = FlatMap(set), Inspect debug.debug_event((32'd102, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Flatmap", (x, set), (Disaggregate{.x=x, .y=y}: Disaggregate)).
 Sum[(Sum{.x=x, .sum=sum}: Sum)] :- AggregateMeInts[(__aggregatemeints0@ (AggregateMeInts{.x=(x: string), .y=(y: bit<32>)}: AggregateMeInts))], var __inputs_sum = Aggregate(x, __debug_103_1_std.group_sum((__aggregatemeints0, y))), Inspect debug.debug_event((32'd103, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_sum.0, (__inputs_sum, x)), (var sum: bit<32>) = __inputs_sum.1, Inspect debug.debug_event((32'd103, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_sum, x), (Sum{.x=x, .sum=sum}: Sum)).
 AggregateByX[(AggregateByX{.x=x, .cnt=cnt}: AggregateByX)] :- AggregateMe3[(__aggregateme30@ (AggregateMe3{.x=(x: string), .y=(y: string), .z=(z: string)}: AggregateMe3))], AggregateMe1[(__aggregateme11@ (AggregateMe1{.x=(x: string), .y=(y: string)}: AggregateMe1))], Inspect debug.debug_event_join((32'd104, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __aggregateme30, __aggregateme11, (__aggregateme30, x, y, z, __aggregateme11)), var __inputs_cnt = Aggregate(x, __debug_104_2_std.group_count(((__aggregateme30, x, y, z, __aggregateme11), ()))), Inspect debug.debug_event((32'd104, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_cnt.0, (__inputs_cnt, x)), (var cnt: std.usize) = __inputs_cnt.1, Inspect debug.debug_event((32'd104, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_cnt, x), (AggregateByX{.x=x, .cnt=cnt}: AggregateByX)).
 Concat[(Concat{.s=s}: Concat)] :- AggregateMe3[(__aggregateme30@ (AggregateMe3{.x=(x: string), .y=(y: string), .z=(z: string)}: AggregateMe3))], var __inputs_s = Aggregate((x, z), __debug_105_1_concat_ys((__aggregateme30, y))), Inspect debug.debug_event((32'd105, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_s.0, __inputs_s), (var s: string) = __inputs_s.1, Inspect debug.debug_event((32'd105, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __inputs_s, (Concat{.s=s}: Concat)).
@@ -1478,8 +1750,8 @@ ValidDestination[(ValidDestination{.addr=addr}: ValidDestination)] :- Address[(_
 HostAddress[(HostAddress{.host=host, .addr=addr}: HostAddress)] :- HostAddresses[(__hostaddresses0@ (HostAddresses{.host=(host: bit<64>), .addrs=(addrs: std.Set<string>)}: HostAddresses))], var addr = FlatMap(addrs), Inspect debug.debug_event((32'd109, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Flatmap", __hostaddresses0, (HostAddress{.host=host, .addr=addr}: HostAddress)).
 ExternalId[(ExternalId{.host=host, .id=id}: ExternalId)] :- ExternalIds[(__externalids0@ (ExternalIds{.host=(host: bit<64>), .ids=(ids: std.Map<string,string>)}: ExternalIds))], var id = FlatMap(ids), Inspect debug.debug_event((32'd110, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Flatmap", __externalids0, (ExternalId{.host=host, .id=id}: ExternalId)).
 Allocation[(Allocation{.name=name, .id=id, .x=x}: Allocation)] :- Request[(__request0@ (Request{.name=(name: string), .id=(id: string)}: Request))], Realized[(__realized1@ (Realized{.name=(name: string), .id=(id: string), .x=(x: bit<32>)}: Realized))], Inspect debug.debug_event_join((32'd111, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __request0, __realized1, (Allocation{.name=name, .id=id, .x=x}: Allocation)).
-ToAllocate[(ToAllocate{.name=name, .ids=ids}: ToAllocate)] :- Request[(__request0@ (Request{.name=(name: string), .id=(id: string)}: Request))], not Realized[(Realized{.name=(name: string), .id=(id: string), .x=(_: bit<32>)}: Realized)], Inspect debug.debug_event((32'd112, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Antijoin", __request0, (__request0, name, id)), var __inputs_ids = Aggregate(name, __debug_112_2_std.group2vec(((__request0, name, id), id))), Inspect debug.debug_event((32'd112, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_ids.0, (__inputs_ids, name)), (var ids: std.Vec<string>) = __inputs_ids.1, Inspect debug.debug_event((32'd112, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_ids, name), (ToAllocate{.name=name, .ids=ids}: ToAllocate)).
-Allocated[(Allocated{.name=name, .xs=xs}: Allocated)] :- Realized[(__realized0@ (Realized{.name=(name: string), .id=(_: string), .x=(x: bit<32>)}: Realized))], var __inputs_xs = Aggregate(name, __debug_113_1_std.group2set((__realized0, x))), Inspect debug.debug_event((32'd113, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_xs.0, (__inputs_xs, name)), (var xs: std.Set<bit<32>>) = __inputs_xs.1, Inspect debug.debug_event((32'd113, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_xs, name), (Allocated{.name=name, .xs=xs}: Allocated)).
+ToAllocate[(ToAllocate{.name=name, .ids=ids}: ToAllocate)] :- Request[(__request0@ (Request{.name=(name: string), .id=(id: string)}: Request))], not Realized[(Realized{.name=(name: string), .id=(id: string), .x=(_: bit<32>)}: Realized)], Inspect debug.debug_event((32'd112, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Antijoin", __request0, (__request0, name, id)), var __inputs_ids = Aggregate(name, __debug_112_2_std.group_to_vec(((__request0, name, id), id))), Inspect debug.debug_event((32'd112, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_ids.0, (__inputs_ids, name)), (var ids: std.Vec<string>) = __inputs_ids.1, Inspect debug.debug_event((32'd112, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_ids, name), (ToAllocate{.name=name, .ids=ids}: ToAllocate)).
+Allocated[(Allocated{.name=name, .xs=xs}: Allocated)] :- Realized[(__realized0@ (Realized{.name=(name: string), .id=(_: string), .x=(x: bit<32>)}: Realized))], var __inputs_xs = Aggregate(name, __debug_113_1_std.group_to_set((__realized0, x))), Inspect debug.debug_event((32'd113, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_xs.0, (__inputs_xs, name)), (var xs: std.Set<bit<32>>) = __inputs_xs.1, Inspect debug.debug_event((32'd113, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_xs, name), (Allocated{.name=name, .xs=xs}: Allocated)).
 Allocation[(Allocation{.name=name, .id=id, .x=x}: Allocation)] :- ToAllocate[(__toallocate0@ (ToAllocate{.name=(name: string), .ids=(ids: std.Vec<string>)}: ToAllocate))], Allocated[(__allocated1@ (Allocated{.name=(name: string), .xs=(xs: std.Set<bit<32>>)}: Allocated))], Inspect debug.debug_event_join((32'd114, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __toallocate0, __allocated1, (name, ids, xs)), var allocation = FlatMap((allocate.allocate(xs, ids, 32'd1, ((32'd1 << 32'd24) - 32'd1)): std.Vec<(string, bit<32>)>)), Inspect debug.debug_event((32'd114, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Flatmap", (name, ids, xs), (allocation, name)), ((var id: string), (var x: bit<32>)) = allocation, Inspect debug.debug_event((32'd114, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (allocation, name), (Allocation{.name=name, .id=id, .x=x}: Allocation)).
 Referee[(Referee{.r=(std.ref_new(r): std.Ref<Referenced>)}: Referee)] :- Referenced[(r@ (Referenced{.x=(_: bool), .y=(std.Some{.x=(_: string)}: std.Option<string>)}: Referenced))], Inspect debug.debug_event((32'd115, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", r, (Referee{.r=(std.ref_new(r): std.Ref<Referenced>)}: Referee)).
 Filtered[(Filtered{.r=r.r}: Filtered)] :- Referee[(r@ (Referee{.r=((&(Referenced{.x=true, .y=(_: std.Option<string>)}: Referenced)): std.Ref<Referenced>)}: Referee))], Inspect debug.debug_event((32'd116, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", r, (Filtered{.r=r.r}: Filtered)).
@@ -1630,7 +1902,7 @@ UMinus_s32[(UMinus_s32{.description="-32768", .n=(- 32'sd32768)}: UMinus_s32)].
 UMinus_bigint[(UMinus_bigint{.description="-100", .n=(- 100)}: UMinus_bigint)].
 UMinus_bigint[(UMinus_bigint{.description="- -100", .n=(- (- 100))}: UMinus_bigint)].
 UMinus_bigint[(UMinus_bigint{.description="-32768", .n=(- 32768)}: UMinus_bigint)].
-Span[(Span{.entity=(entity: entid_t), .tns=bindings}: Span)] :- DdlogNode[(__ddlognode0@ (DdlogNode{.id=(entity: bit<32>)}: DdlogNode))], DdlogBinding[(__ddlogbinding1@ (DdlogBinding{.tn=(tn: bit<16>), .entity=(entity: bit<32>)}: DdlogBinding))], Inspect debug.debug_event_join((32'd248, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __ddlognode0, __ddlogbinding1, (__ddlognode0, entity, __ddlogbinding1, tn)), var __inputs_bindings = Aggregate(entity, __debug_248_2_std.group2set(((__ddlognode0, entity, __ddlogbinding1, tn), tn))), Inspect debug.debug_event((32'd248, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_bindings.0, (__inputs_bindings, entity)), (var bindings: std.Set<bit<16>>) = __inputs_bindings.1, Inspect debug.debug_event((32'd248, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_bindings, entity), (Span{.entity=(entity: entid_t), .tns=bindings}: Span)).
+Span[(Span{.entity=(entity: entid_t), .tns=bindings}: Span)] :- DdlogNode[(__ddlognode0@ (DdlogNode{.id=(entity: bit<32>)}: DdlogNode))], DdlogBinding[(__ddlogbinding1@ (DdlogBinding{.tn=(tn: bit<16>), .entity=(entity: bit<32>)}: DdlogBinding))], Inspect debug.debug_event_join((32'd248, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __ddlognode0, __ddlogbinding1, (__ddlognode0, entity, __ddlogbinding1, tn)), var __inputs_bindings = Aggregate(entity, __debug_248_2_std.group_to_set(((__ddlognode0, entity, __ddlogbinding1, tn), tn))), Inspect debug.debug_event((32'd248, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_bindings.0, (__inputs_bindings, entity)), (var bindings: std.Set<bit<16>>) = __inputs_bindings.1, Inspect debug.debug_event((32'd248, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_bindings, entity), (Span{.entity=(entity: entid_t), .tns=bindings}: Span)).
 Span[(Span{.entity=parent, .tns=tns}: Span)] :- DdlogNode[(__ddlognode0@ (DdlogNode{.id=(parent: bit<32>)}: DdlogNode))], DdlogDependency[(__ddlogdependency1@ (DdlogDependency{.parent=(child: bit<32>), .child=(parent: bit<32>)}: DdlogDependency))], Inspect debug.debug_event_join((32'd249, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __ddlognode0, __ddlogdependency1, (__ddlognode0, parent, __ddlogdependency1, child)), Span[(__span2@ (Span{.entity=(child: bit<32>), .tns=(child_tns: std.Set<bit<16>>)}: Span))], Inspect debug.debug_event_join((32'd249, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (__ddlognode0, parent, __ddlogdependency1, child), __span2, (__ddlognode0, parent, __ddlogdependency1, child, __span2, child_tns)), var __inputs_tns = Aggregate(parent, __debug_249_3_std.group_set_unions(((__ddlognode0, parent, __ddlogdependency1, child, __span2, child_tns), child_tns))), Inspect debug.debug_event((32'd249, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_tns.0, (__inputs_tns, parent)), (var tns: std.Set<bit<16>>) = __inputs_tns.1, Inspect debug.debug_event((32'd249, 32'd4, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_tns, parent), (Span{.entity=parent, .tns=tns}: Span)).
 R13[(R13{.t=(1, true, "", 32'd1)}: R13)].
 R14[(R14{.t=(1, (true, ("", 32'd1)))}: R14)].

@@ -48,7 +48,7 @@ relation SCCBinding(scc: entid_t, bindings: Ref<TS.Set64<tnid_t>>)
 SCCBinding(scc, ref_new(bindings)) :-
     DdlogBinding(tn, entity),
     LabeledNode(entity, scc),
-    var bindings = Aggregate((scc), TS.group2set(tn)).
+    var bindings = Aggregate((scc), TS.group_to_set(tn)).
 
 /* Compute SCC span.
  */

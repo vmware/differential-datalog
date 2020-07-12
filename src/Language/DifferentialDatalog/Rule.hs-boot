@@ -15,3 +15,5 @@ ruleIsDistinctByConstruction :: DatalogProgram -> Rule -> Int -> Bool
 ruleHeadIsRecursive :: DatalogProgram -> Rule -> Int -> Bool
 ruleIsRecursive :: DatalogProgram -> Rule -> Bool
 ruleAggregateTypeParams :: DatalogProgram -> Rule -> Int -> M.Map String Type
+ruleAggregateKeyType :: DatalogProgram -> Rule -> Int -> Type
+ruleAggregateValType :: DatalogProgram -> Rule -> Int -> Type

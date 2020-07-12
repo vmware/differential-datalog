@@ -55,12 +55,21 @@ mod flatbuf_generated;
 pub mod flatbuf;
 
 pub trait Val:
-    Eq + Ord + Clone + Hash + PartialEq + PartialOrd + Serialize + DeserializeOwned + 'static
+    Default + Eq + Ord + Clone + Hash + PartialEq + PartialOrd + Serialize + DeserializeOwned + 'static
 {
 }
 
 impl<T> Val for T where
-    T: Eq + Ord + Clone + Hash + PartialEq + PartialOrd + Serialize + DeserializeOwned + 'static
+    T: Default
+        + Eq
+        + Ord
+        + Clone
+        + Hash
+        + PartialEq
+        + PartialOrd
+        + Serialize
+        + DeserializeOwned
+        + 'static
 {
 }
 

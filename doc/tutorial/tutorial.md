@@ -436,9 +436,9 @@ Other string operations are implemented as library
 [standard library](#the-standard-library), e.g.,
 
 ```
-extern function string_len(s: string): usize
-extern function string_contains(s1: string, s2: string): bool
-extern function string_join(strings: Vec<string>, sep: string): string
+extern function len(s: string): usize
+extern function contains(s1: string, s2: string): bool
+extern function join(strings: Vec<string>, sep: string): string
 ...
 ```
 
@@ -758,11 +758,39 @@ EndpointString(addr_port(ip, proto, preferred_port)) :-
 
 ### Functions
 
-DDlog functions are pure (side-effect-free) computations.  A function
-may not modify its arguments.  The body of a function is an expression
-whose type must match the function's return type.  A function call can
-be inserted anywhere an expression of the function's return type can
-be used.  DDlog currently does not allow recursive functions.
+We have already encountered several functions in this tutorial.  This section
+gives some additional details on writing DDlog functions.
+
+#### Polymorphic functions
+
+DDlog supports two forms of polymorphism: parametric and ad hoc polymorphism.
+The following declarations from `std.dl` illustrate both:
+
+```
+function size(s: Set<'X>): usize {...}
+function size(m: Map<'K, 'V>): usize {...}
+```
+
+Parametric polymorphism allows declaring functions generic over their argument
+types.  The `size` functions above work for sets and maps that store values of
+arbitrary types.  This is indicated by using type arguments (`'X`, `'K`, `'V`)
+instead of concrete argument types.
+
+Ad hoc polymorphism allows multiple functions with the same name but different
+arguments.  The two `size()` functions above do not introduce any ambiguity,
+since the compiler is able to infer the correct function to call in each case
+from the type of the argument.  Specifically, the compiler uses the number of
+arguments and the type of the **first** argument to disambiguate the callee.
+
+#### Modifying function arguments
+
+By default, function arguments cannot be modified inside the function.  Writable
+arguments can be declared using the `mut` qualifier:
+
+```
+// This function modifies its first argument.
+function insert(m: mut Map<'K,'V>, k: 'K, v: 'V): () { ... }
+```
 
 > #### Legacy function syntax
 >
@@ -781,14 +809,13 @@ be used.  DDlog currently does not allow recursive functions.
 > ```
 
 
-### Extern functions
+#### Extern functions
 
 Functions that cannot be easily expressed in DDlog can be implemented as
 *extern* functions.  Currently these must be written in Rust; the Rust
 implementation may in turn invoke implementations in C or any other language.
 
-For instance, DDlog does not provide a substring function.  We can
-declare such a function as `extern`:
+Example:
 
 ```
 extern function string_slice(x: string, from: bit<64>, to: bit<64>): string
@@ -814,6 +841,24 @@ pub fn string_slice(x: &String, from: &u64, to: &u64) -> String {
 
 DDlog will automatically pickup this file and inline its contents in the
 generated `lib.rs`.
+
+#### Functions with side effects
+
+Functions implemented completely in DDlog without calls to any extern functions
+are pure (side-effect-free) computations.  It is however possible to declare
+extern functions with side effects.  The DDlog compiler needs to know about these
+side effects, as they may interfere with its optimizations.  The programmer is
+responsible for labeling such functions with the `#[has_side_effects]` attribute,
+e.g., the following function is defined in the `log.dl` library:
+
+```
+#[has_side_effects]
+extern function log(module: module_t, level: log_level_t, msg: string): ()
+```
+
+The compiler automatically infers these annotations for non-extern functions
+that invoke extern functions with side effects, so only extern functions must
+be annotated.
 
 ### Advanced rules
 
@@ -900,19 +945,11 @@ are *generic* types that can be parameterized by any other
 DDlog types, e.g., `Vec<string>` is a vector of strings, `Map<string,bool>` is
 a map from strings to Booleans.
 
-Let us assume that we have an extern function that splits a string
+We will use a DDlog standard library function that splits a string
 into a list of substrings according to a separator:
 
 ```
-extern function split(s: string, sep: string): Vec<string>
-```
-
-The Rust implementation can be as follows:
-
-```
-pub fn split_ip_list(s: &String, sep: &String) -> Vec<String> {
-    s.as_str().split(sep).map(|x| x.to_string()).collect()
-}
+function split(s: string, sep: string): Vec<string>
 ```
 
 We define a DDlog function which splits IP addresses at spaces:

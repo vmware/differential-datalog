@@ -37,7 +37,6 @@ module Language.DifferentialDatalog.Type(
     typeUserTypes,
     typeStaticMemberTypes,
     typeIsPolymorphic,
-    unifyTypes,
     exprType,
     exprType',
     exprType'',
@@ -157,55 +156,6 @@ typeIsPolymorphic TUser{..}   = any typeIsPolymorphic typeArgs
 typeIsPolymorphic TVar{}      = True
 typeIsPolymorphic TOpaque{..} = any typeIsPolymorphic typeArgs
 
--- | Matches function parameter types against concrete argument types, e.g.,
--- given
--- > [(t<'A>, t<q<'B>>)]
--- derives
--- > 'A = q<'B>
---
--- Returns mapping from type variables to concrete types or an error
--- if no such mapping was found due to a conflict, e.g.:
--- > [(t<'A>, t<q<'B>>), ('A, int)] // conflict
---
--- Note that concrete argument types can contain type variables.
--- Concrete and abstract type variables belong to different
--- namespaces (i.e., the same name represents different variables in
--- concrete and abstract types).
-unifyTypes :: (MonadError String me) => DatalogProgram -> Pos -> String -> [(Type, Type)] -> me (M.Map String Type)
-unifyTypes d p ctx ts = do
-    m0 <- M.unionsWith (++) <$> mapM ((M.map return <$>) . unifyTypes' d p ctx) ts
-    M.traverseWithKey (\v ts' -> checkConflicts d p ctx v ts') m0
-
-checkConflicts :: (MonadError String me) => DatalogProgram -> Pos -> String -> String -> [Type] -> me Type
-checkConflicts d p ctx v (t:ts) = do
-    mapM_ (\t' -> when (not $ typesMatch d t t')
-                       $ err d p $ "Conflicting bindings " ++ show t ++ " and " ++ show t' ++ " for type variable '" ++ v ++ " " ++ ctx) ts
-    return t
-checkConflicts _ _ _ _ [] = error $ "Type.checkConflicts: invalid input"
-
-unifyTypes' :: (MonadError String me) => DatalogProgram -> Pos -> String -> (Type, Type) -> me (M.Map String Type)
-unifyTypes' d p ctx (a, c) =
-    case (a',c') of
-        (TBool{}         , TBool{})          -> return M.empty
-        (TInt{}          , TInt{})           -> return M.empty
-        (TString{}       , TString{})        -> return M.empty
-        (TDouble{}       , TDouble{})        -> return M.empty
-        (TFloat{}        , TFloat{})         -> return M.empty
-        (TBit _ w1       , TBit _ w2)        | w1 == w2
-                                             -> return M.empty
-        (TSigned _ w1    , TSigned _ w2)     | w1 == w2
-                                             -> return M.empty
-        (TTuple _ as1    , TTuple _ as2)     | length as1 == length as2
-                                             -> unifyTypes d p ctx $ zip as1 as2
-        (TUser _ n1 as1  , TUser _ n2 as2)   | n1 == n2
-                                             -> unifyTypes d p ctx $ zip as1 as2
-        (TOpaque _ n1 as1, TOpaque _ n2 as2) | n1 == n2
-                                             -> unifyTypes d p ctx $ zip as1 as2
-        (TVar _ n1       , t)                -> return $ M.singleton n1 t
-        _                                    -> err d p $ "Cannot match expected type " ++ show a ++ " and actual type " ++ show c ++ " " ++ ctx
-    where a' = typ'' d a
-          c' = typ'' d c
-
 -- | Compute type of an expression.  The expression must be previously
 -- validated.
 exprType :: DatalogProgram -> ECtx -> Expr -> Type
@@ -257,10 +207,12 @@ exprNodeType' d ctx (EVar p v)            =
                  -> varType d $ ExprVar ctx $ EVar p v
          _       -> error $ "exprNodeType': unknown variable " ++ v ++ " at " ++ show p
 
-exprNodeType' d ctx (EApply _ f _) | -- Type inference engine annotates calls to functions whose return type is polymorphic.
-                                     typeIsPolymorphic t  = ctxExpectType ctx
-                                   | otherwise            = t
-    where t = funcType $ getFunc d f
+exprNodeType' d ctx (EApply _ [f] ts) | -- Type inference engine annotates calls to functions whose return type is polymorphic.
+                                      typeIsPolymorphic t  = ctxExpectType ctx
+                                      | otherwise            = t
+    where t = funcType $ getFunc d f ts
+
+exprNodeType' _ _   e@EApply{} = error $ "exprNodeType' called with unresolved function name: " ++ show e
 
 exprNodeType' d _   (EField _ e f) =
     let t@TStruct{} = typDeref' d e 
@@ -506,7 +458,7 @@ typeNormalize' d t =
          TTuple{..}         -> t'{typeTupArgs = map (typeNormalize d) typeTupArgs}
          TUser{..}          -> t'{typeArgs = map (typeNormalize d) typeArgs}
          TOpaque{..}        -> t'{typeArgs = map (typeNormalize d) typeArgs}
-         TVar{}             -> t'
+         TVar{..}           -> t'
          _                  -> error $ "Type.typeNormalize': unexpected type " ++ show t'
     where t' = typ'' d t
 
@@ -715,7 +667,9 @@ varType d (FlatMapVar rl i)                = case typ' d $ exprType d (CtxRuleRF
                                                   TOpaque _ tname [kt,vt] | tname == mAP_TYPE
                                                                        -> tTuple [kt,vt]
                                                   _                    -> error $ "varType FlatMapVar " ++ show rl ++ " " ++ show i 
-varType d (AggregateVar rl i)              = let f = getFunc d (rhsAggFunc $ ruleRHS rl !! i)
+varType d (AggregateVar rl i)              = let ktype = ruleAggregateKeyType d rl i
+                                                 vtype = ruleAggregateValType d rl i
+                                                 f = getFunc d (rhsAggFunc $ ruleRHS rl !! i) [tOpaque gROUP_TYPE [ktype, vtype]]
                                                  tmap = ruleAggregateTypeParams d rl i
                                              in typeSubstTypeArgs tmap $ funcType f
 varType _ WeightVar                        = tUser wEIGHT_TYPE []

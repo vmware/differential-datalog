@@ -22,13 +22,11 @@ exprVarOccurrences :: ECtx -> Expr -> [(String, ECtx)]
 exprVars :: DatalogProgram -> ECtx -> Expr -> [Var]
 exprVarDecls :: DatalogProgram -> ECtx -> Expr -> [Var]
 isLVar :: DatalogProgram -> ECtx -> String -> Bool
-exprFuncs :: Expr -> [String]
-exprFuncsRec :: DatalogProgram -> Expr -> [String]
 exprIsPattern :: Expr -> Bool
 exprIsDeconstruct :: DatalogProgram -> Expr -> Bool
 exprIsVarOrFieldLVal :: DatalogProgram -> ECtx -> Expr -> Bool
 exprIsInjective :: DatalogProgram -> ECtx -> S.Set Var -> Expr -> Bool
 exprContainsPHolders :: Expr -> Bool
 exprTypeMapM :: (Monad m) => (Type -> m Type) -> Expr -> m Expr
-exprIsPure :: DatalogProgram -> Expr -> Bool
+exprIsPure :: DatalogProgram -> ECtx -> Expr -> Bool
 exprFreeVars :: DatalogProgram -> ECtx -> Expr -> [Var]

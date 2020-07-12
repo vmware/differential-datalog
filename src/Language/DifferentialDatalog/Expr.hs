@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018 VMware, Inc.
+Copyright (c) 2018-2020 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -42,9 +42,9 @@ module Language.DifferentialDatalog.Expr (
     exprFreeVars,
     exprIsConst,
     exprVarDecls,
-    exprFuncs,
-    exprFuncsRec,
     isLVar,
+    applyExprGetFunc,
+    exprFuncsRec,
     exprIsPattern,
     exprIsPatternImpl,
     exprContainsPHolders,
@@ -68,6 +68,7 @@ import Control.Monad.State
 import qualified Data.Set as S
 --import Debug.Trace
 
+import Language.DifferentialDatalog.Attribute
 import Language.DifferentialDatalog.Error
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Ops
@@ -79,7 +80,6 @@ import Language.DifferentialDatalog.Name
 import {-# SOURCE #-} Language.DifferentialDatalog.Type
 import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Var
-import Language.DifferentialDatalog.Function
 
 bUILTIN_2STRING_FUNC :: String
 bUILTIN_2STRING_FUNC = "std.__builtin_2string"
@@ -303,23 +303,41 @@ exprVarDecls d ctx e =
                         _                -> [])) ctx e
 
 -- Non-recursively enumerate all functions invoked by the expression
-exprFuncs :: Expr -> [String]
-exprFuncs e = exprFuncs' [] e
+{-exprFuncs :: DatalogProgram -> ECtx -> Expr -> [String]
+exprFuncs d ctx e = exprFuncs' [] e
 
 exprFuncs' :: [String] -> Expr -> [String]
 exprFuncs' acc e = nub $ exprCollect (\case
                                        EApply _ f _ -> if' (elem f acc) [] [f]
                                        _            -> [])
                                      (++) e
+-}
+
+-- Given a function application expression, returns the function.
+-- Assumes the expression has been validated.
+applyExprGetFunc :: DatalogProgram -> ECtx -> ENode -> Function
+applyExprGetFunc d ctx e@EApply{exprFunc=[fname], ..} =
+    getFunc d fname $ mapIdx (\a i -> exprType d (CtxApply e ctx i) a) exprArgs
+applyExprGetFunc _ _   e = error $ "applyExprGetFunc " ++ show e
 
 -- Recursively enumerate all functions invoked by the expression
-exprFuncsRec :: DatalogProgram -> Expr -> [String]
-exprFuncsRec d e = exprFuncsRec' d [] e
+exprFuncsRec :: DatalogProgram -> ECtx -> Expr -> S.Set Function
+exprFuncsRec d ctx e = execState (exprFuncsRec_ d ctx e) S.empty
 
-exprFuncsRec' :: DatalogProgram -> [String] -> Expr -> [String]
-exprFuncsRec' d acc e =
-    let new = exprFuncs' acc e in
-    new ++ foldl' (\acc' f -> maybe acc' ((acc'++) . exprFuncsRec' d (acc++new++acc')) $ funcDef $ getFunc d f) [] new
+exprFuncsRec_ :: DatalogProgram -> ECtx -> Expr -> State (S.Set Function) ()
+exprFuncsRec_ d ctx e = do
+    _ <- exprFoldCtxM (\ctx' e' -> do
+                          case e' of
+                               EApply{} -> do let f@Function{..} = applyExprGetFunc d ctx' e'
+                                              new <- gets $ S.notMember f
+                                              when new $ do modify $ S.insert f
+                                                            case funcDef of
+                                                                 Nothing -> return ()
+                                                                 Just e'' -> exprFuncsRec_ d (CtxFunc f) e''
+                               _ -> return ()
+                          return $ E e')
+                     ctx e
+    return ()
 
 isLVar :: DatalogProgram -> ECtx -> String -> Bool
 isLVar d ctx v = isJust $ find ((==v) . name) $ fst $ ctxVars d ctx
@@ -433,18 +451,22 @@ exprIsVarOrField' _                = False
 -- to distinct outputs.
 exprIsInjective :: DatalogProgram -> ECtx -> S.Set Var -> Expr -> Bool
 exprIsInjective d ctx vs e =
+    exprIsInjective_ d ctx vs e &&
+    all (\f -> case funcDef f of
+                    Nothing -> False
+                    Just e' -> exprIsInjective_ d (CtxFunc f) (S.fromList $ map (ArgVar f . name) $ funcArgs f) e')
+        (exprFuncsRec d ctx e)
+
+-- Non-recursive part of exprIsInjective
+exprIsInjective_ :: DatalogProgram -> ECtx -> S.Set Var -> Expr -> Bool
+exprIsInjective_ d ctx vs e =
     S.fromList (exprVars d ctx e) == vs &&
     exprFold (exprIsInjective' d) e
 
 -- No clever analysis here; just the obvious cases.
 exprIsInjective' :: DatalogProgram -> ExprNode Bool -> Bool
 exprIsInjective' _ EVar{}        = True
-exprIsInjective' d EApply{..}    =
-    -- FIXME: once we add support for recursive functions, be careful to avoid
-    -- infinite recursion.  The simple thing to do is just to return False for
-    -- recursive functions, as reasoning about them seems tricky otherwise.
-    and exprArgs && (maybe False (exprIsInjective d (CtxFunc f) (S.fromList $ map (\a -> ArgVar f $ name a) funcArgs)) $ funcDef)
-    where f@Function{..} = getFunc d exprFunc
+exprIsInjective' _ EApply{..}    = and exprArgs
 exprIsInjective' _ EBool{}       = True
 exprIsInjective' _ EInt{}        = True
 exprIsInjective' _ EFloat{}      = True
@@ -471,11 +493,8 @@ exprIsPolymorphic d ctx e =
         False
 
 -- | True if expression does not contain calls to functions with side effects.
-exprIsPure :: DatalogProgram -> Expr -> Bool
-exprIsPure d e =
-    exprCollect (\case
-                  EApply{..} -> funcIsPure d $ getFunc d exprFunc
-                  _ -> True) (&&) e
+exprIsPure :: DatalogProgram -> ECtx -> Expr -> Bool
+exprIsPure d ctx e = all (\f -> not $ funcGetSideEffectAttr d f) (exprFuncsRec d ctx e)
 
 -- | Transform types referenced in the expression
 exprTypeMapM :: (Monad m) => (Type -> m Type) -> Expr -> m Expr
@@ -503,23 +522,17 @@ exprInjectStringConversion d e t = do
                   TOpaque{..} -> return $ mk2string_func typeName
                   TTuple{}    -> err d (pos e) "Automatic string conversion for tuples is not supported"
                   TVar{..}    -> err d (pos e) $
-                                     "Cannot automatically convert " ++ show e ++
-                                     " of variable type " ++ tvarName ++ " to string"
+                                     "Cannot automatically convert '" ++ show e ++
+                                     "' of variable type '" ++ tvarName ++ "' to string"
                   TStruct{}   -> error "unexpected TStruct in exprInjectStringConversions"
-    f <- case lookupFunc d fname of
-              Nothing  -> err d (pos e) $ "Cannot find declaration of function " ++ fname ++
-                                        " needed to convert expression " ++ show e ++ " to string"
+    f <- case lookupFunc d fname [t] of
+              Nothing  -> err d (pos e) $ "Cannot find declaration of function '" ++ fname ++
+                                          "' needed to convert expression '" ++ show e ++ "' to string"
               Just fun -> return fun
     -- validate its signature
     check d (isString d $ funcType f) (pos f)
            "string conversion function must return \"string\""
-    check d ((length $ funcArgs f) == 1) (pos f)
-           "string conversion function must take exactly one argument"
-    let arg0 = funcArgs f !! 0
-    _ <- unifyTypes d (pos e)
-           ("in the call to string conversion function \"" ++ name f ++ "\"")
-           [(typ arg0, t)]
-    return $ E $ EApply (pos e) fname [E e]
+    return $ E $ EApply (pos e) [fname] [E e]
     where mk2string_func cs = scoped scope $ ((toLower $ head local) : tail local) ++ tOSTRING_FUNC_SUFFIX
               where scope = nameScope cs
                     local = nameLocal cs

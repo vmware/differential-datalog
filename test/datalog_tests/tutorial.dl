@@ -192,7 +192,6 @@ BookByAuthor(b, author) :-
  * Example: FlatMap, extern functions
  */
 
-extern function split(s: string, sep: string): Vec<string>
 function split_ip_list(x: string): Vec<string> {
    split(x, " ")
 }
@@ -514,7 +513,7 @@ output relation ItemInOrders(item: string, orders: Vec<u64>)
 
 ItemInOrders(ival(item), orders) :-
     OnlineOrder(order, item),
-    var orders = Aggregate((item), group2vec(order)).
+    var orders = Aggregate((item), group_to_vec(order)).
 
 output relation OrderFormatted(order: string)
 

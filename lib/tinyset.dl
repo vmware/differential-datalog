@@ -20,7 +20,7 @@ extern function intersection(s1: Set64<'X>, s2: Set64<'X>): Set64<'X>
 extern function difference(s1: Set64<'X>, s2: Set64<'X>): Set64<'X>
 
 /* Aggregates */
-extern function group2set(g: Group<'K, 'V>): Set64<'V>
+extern function group_to_set(g: Group<'K, 'V>): Set64<'V>
 extern function group_set_unions(g: Group<'K, Set64<'V>>): Set64<'V>
 
 /* Optimized version of group_set_unions that, when the group consits of

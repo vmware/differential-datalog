@@ -554,7 +554,7 @@ compileLib d specname rs_code = (typesLib, valueLib, mainLib)
     -- Type declarations
     typedefs = vcat $ map (mkTypedef d) $ M.elems $ progTypedefs d
     -- Functions
-    (fdef, fextern) = partition (isJust . funcDef) $ M.elems $ progFunctions d
+    (fdef, fextern) = partition (isJust . funcDef) $ concat $ M.elems $ progFunctions d
     funcs = let ?statics = statics in vcat $ (map (mkFunc d) fextern ++ map (mkFunc d) fdef)
 
 -- This type stores the set of statically evaluated constant sub-expressions.
@@ -584,7 +584,7 @@ collectStatics d = execState (progExprMapCtxM d (checkStaticExpr)) M.empty
     checkStaticExpr :: ECtx -> ENode -> State (Statics) Expr
     checkStaticExpr ctx e@EApply{} | null (exprFreeVars d ctx (E e))
                                      && (not $ exprIsPolymorphic d ctx (E e))
-                                     && exprIsPure d (E e) = do
+                                     && exprIsPure d ctx (E e) = do
         modify (addStatic d (E e) ctx)
         return $ E e
     checkStaticExpr _   e = return $ E e
@@ -677,10 +677,11 @@ mkTypedef d tdef@TypeDef{..} =
               TOpaque _ _ [ktype, vtype] = typ' d f
               from_arr_attr = maybe empty (\_ -> "#[serde(with=\"" <> from_array_module_name <> "\")]")
                               $ fieldGetDeserializeArrayAttr d f
-              from_array_module = maybe empty (\kfunc -> "deserialize_map_from_array!(" <>
+              from_array_module = maybe empty (\fname -> let kfunc = getFunc d fname [vtype] in
+                                                         "deserialize_map_from_array!(" <>
                                                          from_array_module_name <> "," <>
                                                          mkType ktype <> "," <> mkType vtype <> "," <>
-                                                         rname kfunc <> ");")
+                                                         mkFuncName d kfunc <> ");")
                                   $ fieldGetDeserializeArrayAttr d f
               from_array_module_name = "__serde_" <> rname cons <> "_" <> pp (name f)
 
@@ -1168,7 +1169,7 @@ mkIdxIdMapC d =
 
 mkFunc :: (?statics::Statics) => DatalogProgram -> Function -> Doc
 mkFunc d f@Function{..} | isJust funcDef =
-    "pub fn" <+> rname (name f) <> tvars <> (parens $ hsep $ punctuate comma $ map mkArg funcArgs) <+> "->" <+> mkType funcType      $$
+    "pub fn" <+> mkFuncName d f <> tvars <> (parens $ hsep $ punctuate comma $ map mkArg funcArgs) <+> "->" <+> mkType funcType      $$
     "{"                                                                                                                              $$
     (nest' $ mkExpr d (CtxFunc f) (fromJust funcDef) EVal)                                                                           $$
     "}"
@@ -1662,8 +1663,10 @@ mkAggregate d filters input_val rl@Rule{..} idx = do
     -- Aggregate function:
     -- - compute aggregate
     -- - return variables still in scope after this term
+    let ktype = ruleAggregateKeyType d rl idx
+    let vtype = ruleAggregateValType d rl idx
     let tmap = ruleAggregateTypeParams d rl idx
-    let agg_func = getFunc d rhsAggFunc
+    let agg_func = getFunc d rhsAggFunc [tOpaque gROUP_TYPE [ktype, vtype]]
     -- Pass group-by variables to the aggregate function.
     let grp = "&std_Group::new(&" <> (mkExpr d gctx rhsGroupBy EVal) <> "," <+> gROUP_VAR <> "," <+> project <> ")"
     let tparams = commaSep $ map (\tvar -> mkType (tmap M.! tvar)) $ funcTypeVars agg_func
@@ -1739,6 +1742,7 @@ mkValConstructorName d t' =
          TFloat{}    -> "__Floatval"
          TUser{}     -> consuser
          TOpaque{}   -> consuser
+         TVar{..}    -> pp tvarName
          _           -> error $ "unexpected type " ++ show t ++ " in Compile.mkValConstructorName'"
     where
     t = typeNormalize d t'
@@ -2346,14 +2350,14 @@ mkExpr' d ctx e | isJust static_idx = (parens $ "&*__STATIC_" <> pp (fromJust st
 -- All variables are references
 mkExpr' _ _ EVar{..}    = (pp exprVar, EReference)
 
--- Function arguments are passed as read-only references
--- Functions return real values.
-mkExpr' d _ EApply{..}  =
-    (rname exprFunc <> (parens $ commaSep
+-- Function arguments are passed as read-only or mutable references
+-- Functions return real values unless they are labeled return-by-reference.
+mkExpr' d ctx e@(EApply{..})  =
+    (mkFuncName d f <> (parens $ commaSep
                         $ map (\(a, mut) -> if mut then mutref a else ref a)
                         $ zip exprArgs (map argMut $ funcArgs f)), kind)
     where
-    f = getFunc d exprFunc
+    f = applyExprGetFunc d ctx $ exprMap (E . sel3) e
     kind = if funcGetReturnByRefAttr d f then EReference else EVal
 
 -- Field access automatically dereferences subexpression
@@ -2591,6 +2595,15 @@ mkExpr' d ctx EAs{..} | bothIntegers && narrow_from && narrow_to && width_cmp /=
                            else if isBigInt d to_type then LT else GT
 
 mkExpr' _ _ e = error $ "Compile.mkExpr': unexpected expression at " ++ show (pos e)
+
+mkFuncName :: DatalogProgram -> Function -> Doc
+mkFuncName d f | length namesakes == 1 = rname $ name f
+               | otherwise =
+    (rname $ name f) <> "_" <> targ0 <> "_" <> pp (length $ funcArgs f)
+    where
+    arg0 = funcArgs f !! 0
+    targ0 = mkValConstructorName d $ typ arg0
+    namesakes = progFunctions d M.! (name f)
 
 mkType :: (WithType a) => a -> Doc
 mkType x = mkType' empty $ typ x

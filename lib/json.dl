@@ -151,7 +151,7 @@ function jval_get(v: JsonValue, attr: istring): Option<JsonValue> =
 function jval_get_or(v: JsonValue, attr: istring, def: JsonValue): JsonValue =
 {
     match (v) {
-        JsonObject{o} -> option_unwrap_or(map_get(o, attr), def),
+        JsonObject{o} -> unwrap_or(map_get(o, attr), def),
         _ -> def
     }
 }

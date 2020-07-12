@@ -29,7 +29,7 @@ function test_uuid_from_bytes(): uuid.Uuid =
     for (i in range(0: bit<8>, 15: bit<8>, 1: bit<8>)) {
         vec_push(bytes, i as bit<8>)
     };
-    result_unwrap_or(uuid.from_bytes(bytes), uuid.nil())
+    unwrap_or(uuid.from_bytes(bytes), uuid.nil())
 }
 
 UUID("uuid.to_hyphenated_lower(test_uuid_from_bytes())", uuid.to_hyphenated_lower(test_uuid_from_bytes())).
@@ -40,7 +40,7 @@ UUID("uuid.to_urn_lower(test_uuid_from_bytes())", uuid.to_urn_lower(test_uuid_fr
 UUID("uuid.to_urn_upper(test_uuid_from_bytes())", uuid.to_urn_upper(test_uuid_from_bytes())).
 
 function uuid_parse_or_nil(str: string): uuid.Uuid = {
-    result_unwrap_or(uuid.parse_str(str), uuid.nil())
+    unwrap_or(uuid.parse_str(str), uuid.nil())
 }
 
 UUID("uuid.to_hyphenated_lower(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", uuid.to_hyphenated_lower(uuid_parse_or_nil("936DA01F-9ABD-4D9D-80C7-02AF85C822A8"))).

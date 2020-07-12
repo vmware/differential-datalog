@@ -25,6 +25,7 @@ SOFTWARE.
 
 module Language.DifferentialDatalog.NS(
     lookupType, checkType, getType,
+    lookupFuncs, checkFuncs, getFuncs,
     lookupFunc, checkFunc, getFunc,
     lookupTransformer, checkTransformer, getTransformer,
     lookupVar, checkVar, getVar,
@@ -34,9 +35,10 @@ module Language.DifferentialDatalog.NS(
     ) where
 
 import qualified Data.Map as M
+import Data.Either
 import Data.List
-import Control.Monad.Except
 import Data.Maybe
+import Control.Monad.Except
 --import Debug.Trace
 
 import {-# SOURCE #-} Language.DifferentialDatalog.Expr
@@ -46,6 +48,7 @@ import Language.DifferentialDatalog.Pos
 import {-# SOURCE #-} Language.DifferentialDatalog.Rule
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Var
+import {-# SOURCE #-} Language.DifferentialDatalog.TypeInference
 
 lookupType :: DatalogProgram -> String -> Maybe TypeDef
 lookupType DatalogProgram{..} n = M.lookup n progTypedefs
@@ -58,17 +61,37 @@ checkType p d n = case lookupType d n of
 getType :: DatalogProgram -> String -> TypeDef
 getType d n = fromJust $ lookupType d n
 
+-- Given only function name and the number of arguments, lookup can return
+-- multiple functions.
 
-lookupFunc :: DatalogProgram -> String -> Maybe Function
-lookupFunc DatalogProgram{..} n = M.lookup n progFunctions
+lookupFuncs :: DatalogProgram -> String -> Int -> Maybe [Function]
+lookupFuncs DatalogProgram{..} n nargs =
+    filter ((== nargs) . length . funcArgs) <$> M.lookup n progFunctions
 
-checkFunc :: (MonadError String me) => Pos -> DatalogProgram -> String -> me Function
-checkFunc p d n = case lookupFunc d n of
-                       Nothing -> err d p $ "Unknown function: '" ++ n ++ "'"
-                       Just f  -> return f
+checkFuncs :: (MonadError String me) => Pos -> DatalogProgram -> String -> Int -> me [Function]
+checkFuncs p d n nargs = case lookupFuncs d n nargs of
+                              Nothing -> err d p $ "Unknown function: '" ++ n ++ "'"
+                              Just fs -> return fs
 
-getFunc :: DatalogProgram -> String -> Function
-getFunc d n = fromJust $ lookupFunc d n
+getFuncs :: DatalogProgram -> String -> Int -> [Function]
+getFuncs d n nargs = fromJust $ lookupFuncs d n nargs
+
+-- Find a function by its name and argument types.  This function should only be
+-- called after type inference, at which point there should be exactly one such
+-- function.
+lookupFunc :: DatalogProgram -> String -> [Type] -> Maybe Function
+lookupFunc d@DatalogProgram{..} n arg_types =
+    find (\Function{..} -> isRight $ inferTypeArgs d nopos "" $ zip (map argType funcArgs) arg_types) candidates
+    where
+    candidates = maybe [] id $ lookupFuncs d n (length arg_types)
+
+checkFunc :: (MonadError String me) => Pos -> DatalogProgram -> String -> [Type] -> me Function
+checkFunc p d n arg_types = case lookupFunc d n arg_types of
+                                 Nothing -> err d p $ "Unknown function: '" ++ n ++ "(" ++ (intercalate "," $ map show arg_types) ++ ")'"
+                                 Just f  -> return f
+
+getFunc :: DatalogProgram -> String -> [Type] -> Function
+getFunc d n arg_types = fromJust $ lookupFunc d n arg_types
 
 lookupTransformer :: DatalogProgram -> String -> Maybe Transformer
 lookupTransformer DatalogProgram{..} n = M.lookup n progTransformers

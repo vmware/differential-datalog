@@ -24,6 +24,7 @@ dependencies:
 - containers
 - binary
 - bytestring
+- extra
 - fgl
 - split
 - MissingH

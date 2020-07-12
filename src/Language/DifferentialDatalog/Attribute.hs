@@ -43,7 +43,7 @@ progValidateAttributes :: (MonadError String me) => DatalogProgram -> me ()
 progValidateAttributes d = do
     mapM_ (typedefValidateAttrs d) $ progTypedefs d
     mapM_ (indexValidateAttrs d) $ progIndexes d
-    mapM_ (funcValidateAttrs d) $ progFunctions d
+    mapM_ (mapM_ (funcValidateAttrs d)) $ progFunctions d
 
 typedefValidateAttrs :: (MonadError String me) => DatalogProgram -> TypeDef -> me ()
 typedefValidateAttrs d tdef@TypeDef{..} = do
@@ -220,13 +220,10 @@ fieldCheckDeserializeArrayAttr :: (MonadError String me) => DatalogProgram -> Fi
 fieldCheckDeserializeArrayAttr d field@Field{..} =
     case filter ((== "deserialize_from_array") . name) fieldAttrs of
          []                   -> return Nothing
-         [attr@Attribute{attrVal = E (EApply _ fname _)}] -> do
+         [attr@Attribute{attrVal = E (EApply _ [fname] _)}] -> do
              check d (isMap d field) (pos attr) $ "'deserialize_from_array' attribute is only applicable to fields of type 'Map<>'."
              let TOpaque _ _ [ktype, vtype] = typ' d field
-             kfunc@Function{..} <- checkFunc (pos attr) d fname
-             let nargs = length funcArgs
-             check d (nargs == 1) (pos attr)
-                 $ "Key function '" ++ fname ++ "' must take one argument of type '" ++ show (fieldType) ++ "', but it takes " ++ show nargs ++ "arguments."
+             kfunc@Function{..} <- checkFunc (pos attr) d fname [vtype]
              _ <- funcTypeArgSubsts d (pos attr) kfunc [vtype, ktype]
              return $ Just fname
          [Attribute{..}] -> err d attrPos

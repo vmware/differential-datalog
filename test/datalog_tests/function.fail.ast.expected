@@ -26,10 +26,6 @@ error: ./test/datalog_tests/function.fail.dl:6:13-7:1: Access to guarded field '
     var b = a.x
             ^
 
-error: ./test/datalog_tests/function.fail.dl:5:1-9:1: Recursive function definition: f1->f2->f1
-function f1(arg: bigint): bigint = {
-^
-
 error: ./test/datalog_tests/function.fail.dl:6:5-6:17: Type constructor in the left-hand side of an assignment is only allowed for types with one constructor,  but "std.Option" has multiple constructors
     Some{var s} = x
     ^^^^^^^^^^^^
@@ -113,3 +109,9 @@ in
 expression 'bool_identity(any)'
   (Tagg{.col = bool_identity(any)})
                ^^^^^^^^^^^^^^^^^^
+
+error: ./test/datalog_tests/function.fail.dl:5:1-6:1: Extern function 'foo' clashes with function declaration(s) at
+  ./test/datalog_tests/function.fail.dl:6:1-7:1
+Only non-extern functions can be overloaded.
+extern function foo(x: u32): ()
+^

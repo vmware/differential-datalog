@@ -54,7 +54,7 @@ function selectorToString(selector: Ref<k8s.LabelSelector>): string =
             }
         }
     };
-    string_join(set2vec(selSlice), " And ")
+    string_join(set_to_vec(selSlice), " And ")
 }
 
 // A namespace selector is either a namespace name (or "")
@@ -102,7 +102,7 @@ function generateNormalizedName(nsSelector: NSSelector, podSelector: Option<Ref<
         Some{ls} -> set_insert(normalizedName, "podSelector=${selectorToString(ls)}"),
         _ -> ()
     };
-    string_join(set2vec(normalizedName), " And ")
+    string_join(set_to_vec(normalizedName), " And ")
 }
 
 // toGroupSelector converts the podSelector and namespaceSelector
@@ -241,12 +241,12 @@ function cidrStrToIPNet(cidr: string): Result<IPNet,string> =
         Err{"invalid format for IPBlock CIDR: ${cidr}"}
     } else {
         // Convert prefix length to int32
-        match (parse_dec_i64(option_unwrap_or(vec_nth(s,1),""))) {
-            None -> Err{"invalid prefix length: ${option_unwrap_or(vec_nth(s,1),\"\")}"},
+        match (parse_dec_i64(unwrap_or(vec_nth(s,1),""))) {
+            None -> Err{"invalid prefix length: ${unwrap_or(vec_nth(s,1),\"\")}"},
             Some{prefixLen64} -> {
                 Ok {
                     IPNet {
-                        .ip             = ipStrToIPAddress(option_unwrap_or(vec_nth(s,0),"")),
+                        .ip             = ipStrToIPAddress(unwrap_or(vec_nth(s,0),"")),
                         .prefixLength   = prefixLen64 as signed<32>
                     }
                 }
