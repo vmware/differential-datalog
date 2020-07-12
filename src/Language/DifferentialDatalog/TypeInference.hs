@@ -238,8 +238,9 @@ deIsFP :: (?d::DatalogProgram) => DDExpr -> GeneratorMonad Constraint
 deIsFP de = do
     isdouble <- tvarTypeOfExpr de <==== TEDouble
     ce <- teTypeOfExpr de
-    let expand TEFloat = return []
-        expand TEDouble = return []
+    let expand TETVar{} = return Nothing
+        expand TEFloat = return $ Just []
+        expand TEDouble = return $ Just []
         expand te = err ?d (pos de)
                     $ "floating point expression '" ++ show de ++ "' is used in a context where type '" ++ show te ++ "' is expected"
     return $ CLazy ce expand (Just [isdouble]) de
@@ -249,8 +250,9 @@ deIsFP de = do
 deIsBits :: (?d::DatalogProgram) => DDExpr -> GeneratorMonad Constraint
 deIsBits de = do
     ce <- teTypeOfExpr de
-    let expand TEBit{}    = return []
-        expand TESigned{} = return []
+    let expand TETVar{}   = return Nothing
+        expand TEBit{}    = return $ Just []
+        expand TESigned{} = return $ Just []
         expand te = err ?d (pos de)
                     $ "expression '" ++ show de ++ "' must be of a fixed-width integer type ('bit<>' or 'signed<>'), but its type is " ++ show te
     return $ CLazy ce expand Nothing de
@@ -259,9 +261,10 @@ deIsBits de = do
 -- 'is_int t = is_bits t || is_BigInt t'.
 deIsInt :: (?d::DatalogProgram) => DDExpr -> GeneratorMonad Constraint
 deIsInt de = do
-    let expand TEBit{}    = return []
-        expand TESigned{} = return []
-        expand TEBigInt{} = return []
+    let expand TETVar{}   = return Nothing
+        expand TEBit{}    = return $ Just []
+        expand TESigned{} = return $ Just []
+        expand TEBigInt{} = return $ Just []
         expand te = err ?d (pos de)
                     $ "expression '" ++ show de ++ "' must be of an integer type ('bit<>', 'signed<>', or 'bigint'), but its type is " ++ show te
     ce <- teTypeOfExpr de
@@ -269,13 +272,14 @@ deIsInt de = do
            $ "expression '" ++ show de ++ "' must be of an integer type ('bit<>', 'signed<>', or 'bigint')"
 
 -- 'is_num t = is_int t || is_fp t'.
-deIsNum :: (?d::DatalogProgram) => DDExpr -> Maybe [Constraint] -> (forall me . (MonadError String me) => TExpr -> me [Constraint]) -> GeneratorMonad Constraint
+deIsNum :: (?d::DatalogProgram) => DDExpr -> Maybe [Constraint] -> (forall me . (MonadError String me) => TExpr -> me (Maybe [Constraint])) -> GeneratorMonad Constraint
 deIsNum de def ferr = do
-    let expand TEBit{}    = return []
-        expand TESigned{} = return []
-        expand TEBigInt{} = return []
-        expand TEFloat    = return []
-        expand TEDouble   = return []
+    let expand TETVar{}   = return Nothing
+        expand TEBit{}    = return $ Just []
+        expand TESigned{} = return $ Just []
+        expand TEBigInt{} = return $ Just []
+        expand TEFloat    = return $ Just []
+        expand TEDouble   = return $ Just []
         expand te = ferr te
     ce <- teTypeOfExpr de
     return $ CLazy ce expand def de
@@ -285,7 +289,8 @@ deIsNum de def ferr = do
 deIsSharedRef :: (?d::DatalogProgram) => DDExpr -> TypeVar -> GeneratorMonad Constraint
 deIsSharedRef de tv = do
     ce <- teTypeOfExpr de
-    let expand (TEExtern n [t']) | elem n sref_types = return [tv ~~~~ t']
+    let expand TETVar{} = return Nothing
+        expand (TEExtern n [t']) | elem n sref_types = return $ Just [tv ~~~~ t']
         expand te = err ?d (pos de)
                         $ "expression '" ++ show de ++ "' must be of a shared reference type, e.g., 'Intern<>' or 'Ref<>', but its type is " ++ show te
     return $ CLazy ce expand Nothing de
@@ -300,9 +305,10 @@ deIsSharedRef de tv = do
 -- for-loop).
 deIsIterable :: (?d::DatalogProgram) => DDExpr -> TypeVar -> GeneratorMonad Constraint
 deIsIterable de tv = do
-    let expand (TEExtern n [t'])    | elem n sET_TYPES = return $ [tv ~~~~ t']
-        expand (TEExtern n [_, t']) | n == gROUP_TYPE  = return $ [tv ~~~~ t']
-        expand (TEExtern n [k,v])   | n == mAP_TYPE    = return $ [tv ~~~~ teTuple [k,v]]
+    let expand TETVar{} = return Nothing
+        expand (TEExtern n [t'])    | elem n sET_TYPES = return $ Just [tv ~~~~ t']
+        expand (TEExtern n [_, t']) | n == gROUP_TYPE  = return $ Just [tv ~~~~ t']
+        expand (TEExtern n [k,v])   | n == mAP_TYPE    = return $ Just [tv ~~~~ teTuple [k,v]]
         expand te = err ?d (pos de)
                     $ "expression '" ++ show de ++ "' must be of an iterable type, e.g., 'Set<>', 'Map<>', 'Vec<>', or 'Group<>', but its type is " ++ show te
     ce <- teTypeOfExpr de
@@ -569,12 +575,14 @@ exprConstraints_ de@(DDExpr ctx (E e@EApply{..})) = do
 exprConstraints_ de@(DDExpr ctx (E e@EField{..})) = do
     dv <- tvarTypeOfExpr de
     let expand t' = case teDeref t' of
+                         -- Type has not been sufficiently expanded yet.
+                         TETVar{} -> return Nothing
                          te@(TEUser n _) | elem n (map name candidates) -> do
                             let t'' = fromJust $ tdefType $ getType ?d n
                             let guarded = structFieldGuarded t'' exprField
                             check ?d (not guarded) (pos e) $ "Access to guarded field \'" ++ exprField ++ "\' (not all constructors of type '" ++ n ++ "' have this field)."
                             let fld_type = typeToTExpr $ typ $ fromJust $ find ((==exprField) . name) $ structFields $ typ' ?d $ teToType te
-                            return [dv ==== fld_type]
+                            return $ Just [dv ==== fld_type]
                          _ -> err ?d (pos estruct)
                                   $ "expression '" ++ show estruct ++ "' must have a field named '" ++ exprField ++ "', but its type '" ++ show t' ++ "' doesn't"
     ce <- teTypeOfExpr estruct
@@ -599,10 +607,12 @@ exprConstraints_ de@(DDExpr ctx (E e@EField{..})) = do
 exprConstraints_ de@(DDExpr ctx (E e@ETupField{..})) = do
     dvar <- tvarTypeOfExpr de
     let expand te = case teDeref te of
+                         -- Type has not been sufficiently expanded yet.
+                         TETVar{} -> return Nothing
                          TETuple as -> do
                             check ?d (length as >= (exprTupField + 1)) (pos e)
                                   $ "Expected tuple with at least " ++ show (exprTupField+1) ++ " fields, but expression '" ++ show e ++ "' of type '" ++ show te ++ "' only has " ++ show (length as)
-                            return [dvar ==== (as !! exprTupField)]
+                            return $ Just [dvar ==== (as !! exprTupField)]
                          _ -> err ?d (pos de) 
                                   $ "expression '" ++ show etuple ++ "' must be a tuple, but its type is '" ++ show te ++ "'"
     ce <- teTypeOfExpr etuple
@@ -759,8 +769,9 @@ exprConstraints_ de@(DDExpr ctx (E e@EBinOp{..})) | elem exprBOp [Eq, Neq, Lt, L
     isstring <- tvarTypeOfExpr de <==== TEString
     dte <- tvarTypeOfExpr de
     ce <- teTypeOfExpr l
-    let expand TEString = return [isstring]
-        expand (TEBit w) = return [isbit_r, dte ==== TEBit (IPlus w (IVar $ WidthOfExpr r))] 
+    let expand TETVar{} = return Nothing
+        expand TEString = return $ Just [isstring]
+        expand (TEBit w) = return $ Just [isbit_r, dte ==== TEBit (IPlus w (IVar $ WidthOfExpr r))] 
         expand te = err ?d (pos l) 
                         $ "expression '" ++ show l ++ "' must be of type that supports concatenation operator (++), i.e., 'bit<>' or 'string', but its type '" ++ show te ++ "' doesn't"
     addConstraint $ CLazy ce expand Nothing l

@@ -82,8 +82,8 @@ data Constraint = CPredicate {cPred::Predicate}
                   -- 'expr1' and 'expr2'.
                 | CWidthEq {cLHS::IExpr, cRHS::IExpr, cWidthExplanation::WidthExplanation}
                   -- A lazy constraint gets activated once the type of a
-                  -- specified "trigger" expression ('cExpr') is fully resolved.  It is
-                  -- used to represent disjunctive constraints, where the set
+                  -- specified "trigger" expression ('cExpr') is fully or partially resolved.
+                  -- It is used to represent disjunctive constraints, where the set
                   -- of predicates depends on the type of the trigger.  E.g.,
                   -- the type of 'x.f' depends on the type of 'x', e.g., '(x:
                   -- Struct1 && x.f is bool || x:Struct2 && x.f: string ||
@@ -95,28 +95,22 @@ data Constraint = CPredicate {cPred::Predicate}
                   -- 'cType' - type expression that represents our current
                   -- knowledge of the type of 'cExpr'.  Gets refined as the
                   -- solver performs substitutions.
-                  -- 'cExpand' - once 'cType' is resolved into a constant type
-                  -- expression, this function is invoked to generate a set of
-                  -- constraints that this lazy constraint resolves into.
+                  -- 'cExpand' - once 'cType' is concretized, this function is invoked
+                  -- to generate a set of constraints that this lazy constraint resolves
+                  -- into.  The function may return
+                  --   * 'Nothing', meaning that the trigger type has not yet been
+                  --     sufficiently concretized to resolve the constraint,
+                  --   * An error indicating type conflict, or
+                  --   * A list of constraints, the the lazy constraint resolves
+                  --     into.
                   -- 'cDefault' - optional default set of constraints to be used
                   -- if the program does not contain enough information to resolve
                   -- the type of the trigger expression, e.g., an integer literal
                   -- can be interpreted as 'u64' by default.
                   -- 'cExplanation' - description of the constraint for
                   -- debugging purposes.
-                  --
-                  -- TODO: currently, a lazy constraint is only triggered once
-                  -- the type has been completely resolved, at which point it is
-                  -- required to produce a set of constraints of fail.  Some use
-                  -- cases may benefit from a more subtle design where a partial
-                  -- expansion of the trigger expression is sufficient to
-                  -- trigger the constraint.  To support this we will need to
-                  -- change the 'cExpand' signature to return
-                  -- 'Option<[Constraint]>', with 'Nothing' meaning that 'cType'
-                  -- is not yet sufficiently concretized to expand the
-                  -- constraint.
                 | CLazy { cType::TExpr
-                        , cExpand::(forall me . (MonadError String me) => TExpr -> me [Constraint])
+                        , cExpand::(forall me . (MonadError String me) => TExpr -> me (Maybe [Constraint]))
                         , cDefault::Maybe [Constraint]
                         , cExpr::DDExpr
                         , cExplanation::String
@@ -732,11 +726,13 @@ constraintSubstitute _  v with (CPredicate p) = return $ map CPredicate $ predSu
 constraintSubstitute _  _ _    c@CWidthEq{} = return [c]
 constraintSubstitute st v with c@(CLazy obj expand _ _ _) = do
     let obj' = teSubstitute v with obj
-    -- The object of the lazy constraint has been fully evaluated -- expand the
-    -- constraint.
-    if teIsConstant obj'
-       then (concatMap (constraintSubstituteAll st)) <$> expand obj'
-       else return [c{cType = obj'}]
+    -- If 'cType' got at least partially concretized, try to expand the
+    -- lazy constraint.
+    if obj' /= obj
+       then maybe [c{cType = obj'}]
+                  (concatMap (constraintSubstituteAll st))
+            <$> expand obj'
+       else return [c]
 
 constraintSubstituteAll :: (?d::DatalogProgram) => SolverState -> Constraint -> [Constraint]
 constraintSubstituteAll st (CPredicate p) = map CPredicate $ predSubstituteAll st p
@@ -809,8 +805,10 @@ constraintSubstituteIVar _ v with (CWidthEq ie1 ie2 e)              = do
     return $ cWidthEq ie1' ie2' e
 constraintSubstituteIVar st v with c@CLazy{..} = do
     let obj' = teSubstituteIVar v with cType
-    -- The object of the lazy constraint has been fully evaluated -- expand the
-    -- constraint.
-    if teIsConstant obj'
-       then (concatMap (constraintSubstituteAll st)) <$> cExpand obj'
-       else return [c{cType = obj'}]
+    -- If 'cType' got at least partially concretized, try to expand the
+    -- lazy constraint.
+    if obj' /= cType
+       then maybe [c{cType = obj'}]
+                  (concatMap (constraintSubstituteAll st))
+            <$> cExpand obj'
+       else return [c]
