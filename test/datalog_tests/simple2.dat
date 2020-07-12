@@ -87,3 +87,6 @@ insert Chunk("{\"fild\": 1}"),
 insert Chunk("{\"field\": 2}"),
 
 commit dump_changes;
+
+dump Fib;
+dump Ack;

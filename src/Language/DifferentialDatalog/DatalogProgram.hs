@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018 VMware, Inc.
+Copyright (c) 2018-2020 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -70,16 +70,14 @@ import {-# SOURCE #-} Language.DifferentialDatalog.Type
 -- | Map function 'fun' over all expressions in a program
 progExprMapCtxM :: (Monad m) => DatalogProgram -> (ECtx -> ENode -> m Expr) -> m DatalogProgram
 progExprMapCtxM d fun = do
-    rels' <- M.fromList <$>
-             (mapM (\(rname, rel) -> (rname,) <$> relExprMapCtxM fun rel) $ M.toList $ progRelations d)
-    idxs' <- M.fromList <$>
-             (mapM (\(rname, idx) -> do atom' <- atomExprMapCtxM fun (CtxIndex idx) (idxAtom idx)
-                                        return (rname, idx{idxAtom = atom'})) $ M.toList $ progIndexes d)
-    funcs' <- mapM (\f -> do e <- case funcDef f of
-                                       Nothing -> return Nothing
-                                       Just e  -> Just <$> exprFoldCtxM fun (CtxFunc f) e
-                             return f{funcDef = e})
-                   $ progFunctions d
+    rels' <- traverse (relExprMapCtxM fun) $ progRelations d
+    idxs' <- traverse (\idx -> do atom' <- atomExprMapCtxM fun (CtxIndex idx) (idxAtom idx)
+                                  return idx{idxAtom = atom'}) $ progIndexes d
+    funcs' <- traverse (mapM (\f -> do e <- case funcDef f of
+                                                 Nothing -> return Nothing
+                                                 Just e  -> Just <$> exprFoldCtxM fun (CtxFunc f) e
+                                       return f{funcDef = e}))
+                       $ progFunctions d
     rules' <- mapM (\r -> do lhs <- mapIdxM (\a i -> atomExprMapCtxM fun (CtxRuleL r i) a) $ ruleLHS r
                              rhs <- mapIdxM (\x i -> rhsExprMapCtxM fun r i x) $ ruleRHS r
                              return r{ruleLHS = lhs, ruleRHS = rhs})
@@ -126,21 +124,22 @@ progExprMapCtx d fun = runIdentity $ progExprMapCtxM d  (\ctx e -> return $ fun 
 -- | Apply function to all types referenced in the program
 progTypeMapM :: (Monad m) => DatalogProgram -> (Type -> m Type) -> m DatalogProgram
 progTypeMapM d@DatalogProgram{..} fun = do
-    ts <- M.traverseWithKey (\_ (TypeDef p atrs n a t) -> TypeDef p atrs n a <$> mapM (typeMapM fun) t) progTypedefs
-    fs <- M.traverseWithKey (\_ f -> do ret <- typeMapM fun $ funcType f
-                                        as  <- mapM (\a -> setType a <$> (typeMapM fun $ typ a)) $ funcArgs f
-                                        def <- mapM (exprTypeMapM fun) $ funcDef f
-                                        return f{ funcType = ret, funcArgs = as, funcDef = def }) progFunctions
-    trans <- M.traverseWithKey (\_ t -> do inputs  <- mapM (\i -> do t' <- hotypeTypeMapM (hofType i) fun
-                                                                     return i{hofType = t'}) $ transInputs t
-                                           outputs <- mapM (\o -> do t' <- hotypeTypeMapM (hofType o) fun
-                                                                     return o{hofType = t'}) $ transOutputs t
-                                           return t{ transInputs = inputs, transOutputs = outputs }) progTransformers
-    rels <- M.traverseWithKey (\_ rel -> setType rel <$> (typeMapM fun $ typ rel)) progRelations
-    idxs <- M.traverseWithKey (\_ idx -> do vars <- mapM (\v -> setType v <$> (typeMapM fun $ typ v)) $ idxVars idx
-                                            atomval <- exprTypeMapM fun $ atomVal $ idxAtom idx
-                                            let atom = (idxAtom idx) { atomVal = atomval }
-                                            return idx { idxVars = vars, idxAtom = atom }) progIndexes
+    ts <- traverse(\(TypeDef p atrs n a t) -> TypeDef p atrs n a <$> mapM (typeMapM fun) t) progTypedefs
+    fs <- traverse (mapM (\f -> do ret <- typeMapM fun $ funcType f
+                                   as  <- mapM (\a -> setType a <$> (typeMapM fun $ typ a)) $ funcArgs f
+                                   def <- mapM (exprTypeMapM fun) $ funcDef f
+                                   return f{ funcType = ret, funcArgs = as, funcDef = def }))
+                   progFunctions
+    trans <- traverse (\t -> do inputs  <- mapM (\i -> do t' <- hotypeTypeMapM (hofType i) fun
+                                                          return i{hofType = t'}) $ transInputs t
+                                outputs <- mapM (\o -> do t' <- hotypeTypeMapM (hofType o) fun
+                                                          return o{hofType = t'}) $ transOutputs t
+                                return t{ transInputs = inputs, transOutputs = outputs }) progTransformers
+    rels <- traverse (\rel -> setType rel <$> (typeMapM fun $ typ rel)) progRelations
+    idxs <- traverse (\idx -> do vars <- mapM (\v -> setType v <$> (typeMapM fun $ typ v)) $ idxVars idx
+                                 atomval <- exprTypeMapM fun $ atomVal $ idxAtom idx
+                                 let atom = (idxAtom idx) { atomVal = atomval }
+                                 return idx { idxVars = vars, idxAtom = atom }) progIndexes
     rules <- mapM (ruleTypeMapM fun) progRules
     return d { progTypedefs     = ts
              , progFunctions    = fs
@@ -317,5 +316,5 @@ progInjectDebuggingHooks d =
   let
     rules = progRules d
     updatedRules = [(rules !! i) {ruleRHS = debugUpdateRHSRules d i (rules !! i)}  | i <- [0..length rules - 1]]
-    debugFuncs = M.fromList $ map (\f -> (name f , f)) $ debugAggregateFunctions d
-  in d { progRules = updatedRules, progFunctions = M.union (progFunctions d) debugFuncs }
+    debugFuncs = M.fromList $ map (\f -> (name f, [f])) $ debugAggregateFunctions d
+  in d { progRules = updatedRules, progFunctions = M.unionWith (++) (progFunctions d) debugFuncs }

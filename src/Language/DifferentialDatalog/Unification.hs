@@ -22,7 +22,8 @@ SOFTWARE.
 -}
 
 {-|
-Unification-based type inference algorithm.
+Module: Unification
+Description: Unification-based type inference solver.
 -}
 
 {-# LANGUAGE FlexibleContexts, RecordWildCards, TupleSections, ImplicitParams, RankNTypes #-}
@@ -41,9 +42,9 @@ module Language.DifferentialDatalog.Unification(
     TExpr(..),
     teToType,
     teDeref,
+    teIsConstant,
     Predicate(..),
-    solve
-)
+    solve)
 where
 
 import Control.Monad.Except
@@ -101,7 +102,7 @@ data Constraint = CPredicate {cPred::Predicate}
                   --   * 'Nothing', meaning that the trigger type has not yet been
                   --     sufficiently concretized to resolve the constraint,
                   --   * An error indicating type conflict, or
-                  --   * A list of constraints, the the lazy constraint resolves
+                  --   * A list of constraints that the lazy constraint resolves
                   --     into.
                   -- 'cDefault' - optional default set of constraints to be used
                   -- if the program does not contain enough information to resolve
@@ -467,6 +468,7 @@ instance Show Predicate where
 -- <expression or variable that 't1' refers to>.
 -- ~~~~~~~~~
 data PredicateExplanation =
+    ExplanationString Pos String |
     ExplanationParent Predicate |
     ExplanationTVar   TypeVar ExplanationKind
 
@@ -480,6 +482,7 @@ data PredicateExplanation =
 data ExplanationKind = Expected | Actual deriving (Eq)
 
 instance WithPos PredicateExplanation where
+    pos (ExplanationString p _)       = p
     pos (ExplanationParent p)         = pos (predExplanation p)
     pos (ExplanationTVar tv _)        = pos tv
     atPos _ _ = error "PredicateExplanation.atPos not implemented"
@@ -491,9 +494,11 @@ explanationSubstituteAll :: SolverState -> PredicateExplanation -> PredicateExpl
 -- Do not apply substitution to the original explanation, which points to the
 -- variable or expression the predicate constrains.
 explanationSubstituteAll _   e@ExplanationTVar{}  = e
+explanationSubstituteAll _   e@ExplanationString{}  = e
 explanationSubstituteAll st (ExplanationParent p) = ExplanationParent $ head $ predSubstituteAll st p
 
 explanationShow :: PredicateExplanation -> TVarShortcuts String
+explanationShow (ExplanationString _ s)             = return s
 explanationShow (ExplanationTVar tv _)              = return $ tvObject tv
 explanationShow (ExplanationParent (PEq te1 te2 e)) = do
     ts1 <- teShow te1
@@ -504,6 +509,7 @@ explanationShow (ExplanationParent (PEq te1 te2 e)) = do
              else "expected type: " ++ ts1 ++ "\nactual type: " ++ ts2 ++ "\nin\n" ++ es
 
 explanationKind :: PredicateExplanation -> ExplanationKind
+explanationKind ExplanationString{}   = Expected
 explanationKind (ExplanationTVar _ k) = k
 explanationKind (ExplanationParent p) = explanationKind (predExplanation p)
 
@@ -609,22 +615,28 @@ data SolverState = SolverState {
     solverConstraints :: [Constraint]
 }
 
-solve :: (MonadError String me) => DatalogProgram -> [Constraint] -> me Typing
-solve d cs = let ?d = d in solve' init_state
-    where
-    init_state = SolverState {
-        solverPartialTyping = M.empty,
-        solverPartialWidth = M.empty,
-        solverConstraints = cs
-    }
+emptySolverState :: SolverState
+emptySolverState = SolverState {
+    solverPartialTyping = M.empty,
+    solverPartialWidth = M.empty,
+    solverConstraints = []
+}
 
-solve' :: (?d::DatalogProgram, MonadError String me) => SolverState -> me Typing
-solve' st | null (solverConstraints st) = do
-    -- Check that a complete typing has been found: all assignments in 'TA' and
-    -- 'IA' are constant expressions (no variables). Otherwise, FAIL: underspecified types.
-    mapM_ (\(tv, te) -> teCheckConstant tv te) $ M.toList $ solverPartialTyping st
+-- Solve a set of type constraint by finding a satisfying assignment to
+-- type variables and width variables.
+--
+-- When 'full' is True, the function only succeeds if, after resolvin all constraints,
+-- a complete typing is obtained: i.e., all variable assignments are constant expressions
+-- that don't depend on other variables.
+solve :: (MonadError String me) => DatalogProgram -> [Constraint] -> Bool -> me Typing
+solve d cs full = let ?d = d in solve' (emptySolverState {solverConstraints = cs}) full
+
+solve' :: (?d::DatalogProgram, MonadError String me) => SolverState -> Bool -> me Typing
+solve' st full | null (solverConstraints st) = do
+    when full
+        $ mapM_ (\(tv, te) -> teCheckConstant tv te) $ M.toList $ solverPartialTyping st
     return $ M.map teToType $ solverPartialTyping st
-          | otherwise =
+              | otherwise =
     -- 1. Pick 'c in C' s.t. 'c = (tv == te)', 'tv in TV', 'te in TE'.
     --   - If such 'c' does not exist, pick any predicate constraint in
     --     'C' and apply Unification to it.
@@ -638,7 +650,7 @@ solve' st | null (solverConstraints st) = do
                                          Just i -> do let st' = removeConstraint i st
                                                       let CLazy _ _ (Just def) _ _ = solverConstraints st !! i
                                                       let st'' = addConstraints (concatMap (constraintSubstituteAll st') def) st'
-                                                      solve' st''
+                                                      solve' st'' full
                                          Nothing -> case solverConstraints st !! 0 of
                                                          CLazy{..} -> err ?d (pos cExpr) $ "Failed to infer type of expression '" ++ show cExpr ++ "'"
                                                          c@CWidthEq{} -> cwidthReportConflict c
@@ -649,7 +661,7 @@ solve' st | null (solverConstraints st) = do
                          Just i -> do let st' = removeConstraint i st
                                       new_constraints <- unify st $ cPred $ solverConstraints st !! i
                                       let st'' = addConstraints new_constraints st'
-                                      solve' st''
+                                      solve' st'' full
          -- 2. Variable substitution:
          --  - remove 'c' from 'C'
          --  - apply Substitution to replace 'tv' with 'te' in all remaining
@@ -659,11 +671,11 @@ solve' st | null (solverConstraints st) = do
                         CPredicate (PEq (TETVar v) te _) -> do
                             let st' = removeConstraint i st
                             st'' <- substitute v te st'
-                            solve' st''
+                            solve' st'' full
                         CWidthEq (IVar v) ie2 _ -> do
                             let st' = removeConstraint i st
                             st'' <- substituteIVar v ie2 st'
-                            solve' st''
+                            solve' st'' full
                         c -> error $ "Unification.solve: unexpected constraint " ++ show c
 
 -- Do _not_ normalize the constraint before unification, as swapping RHS and LHS

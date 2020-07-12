@@ -206,3 +206,43 @@ output multiset CompressedChunk(json: string)
 CompressedChunk(json) :-
     Objects(objs),
     Ok{var json} = to_json_string(objs).
+
+/*
+ * Recursive functions
+ */
+
+// Fibonacci sequence
+function fib(x: u64): u64 {
+    if (x == 0) {
+        0
+    } else if (x == 1) {
+        1
+    } else {
+        fib(x-1) + fib(x-2)
+    }
+}
+
+output relation Fib(x: u64, f: u64)
+
+Fib(0, fib(0)).
+Fib(1, fib(1)).
+Fib(2, fib(2)).
+Fib(3, fib(3)).
+Fib(4, fib(4)).
+Fib(10, fib(10)).
+Fib(20, fib(20)).
+
+// Ackerman-Peter function
+function ack(m: u64, n: u64): u64 {
+    if (m == 0) {
+        n + 1
+    } else if (n == 0) {
+        ack(m-1, 1)
+    } else {
+        ack(m-1, ack(m, n-1))
+    }
+}
+
+output relation Ack(m: u64, n: u64, a: u64)
+
+Ack(2, 1, ack(2,1)).

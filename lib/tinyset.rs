@@ -345,7 +345,7 @@ pub fn tinyset_difference<X: u64set::Fits64 + Clone>(
     }
 }
 
-pub fn tinyset_group2set<K, V: u64set::Fits64>(g: &std_Group<K, V>) -> tinyset_Set64<V> {
+pub fn tinyset_group_to_set<K, V: u64set::Fits64>(g: &std_Group<K, V>) -> tinyset_Set64<V> {
     let mut res = tinyset_Set64::new();
     for ref v in g.iter() {
         tinyset_insert(&mut res, v);

@@ -21,6 +21,12 @@ impl Deref for regex_Regex {
     }
 }
 
+impl Default for regex_Regex {
+    fn default() -> Self {
+        Self::new("").unwrap()
+    }
+}
+
 impl PartialOrd for regex_Regex {
     fn partial_cmp(&self, other: &regex_Regex) -> Option<std::cmp::Ordering> {
         self.as_str().partial_cmp(other.as_str())

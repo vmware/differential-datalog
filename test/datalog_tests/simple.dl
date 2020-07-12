@@ -709,16 +709,16 @@ output relation AggregateCnt3(cnt: bit<64>)
 AggregateCnt3(cnt) :- AggregateMe1(x,y), y != "1", var cnt = Aggregate((), group_sum(1: bit<64>)).
 
 output relation Aggregate2(x: string, set: Set<string>)
-Aggregate2(x, set) :- AggregateMe1(x,y), var set = Aggregate((x), group2set(y)).
+Aggregate2(x, set) :- AggregateMe1(x,y), var set = Aggregate((x), group_to_set(y)).
 
 output relation Aggregate3(x: string, vec: Vec<string>)
-Aggregate3(x, vec) :- AggregateMe1(x,y), var vec = Aggregate((x), group2vec(y)).
+Aggregate3(x, vec) :- AggregateMe1(x,y), var vec = Aggregate((x), group_to_vec(y)).
 
 output relation Aggregate4(x: string, map: Map<string,string>)
-Aggregate4(x, map) :- AggregateMe1(x,y), var map = Aggregate((x), group2map((x,y))).
+Aggregate4(x, map) :- AggregateMe1(x,y), var map = Aggregate((x), group_to_map((x,y))).
 
 output relation Disaggregate(x: string, y: string)
-Disaggregate(x,y) :- AggregateMe1(x,y), var set = Aggregate((x), group2set(y)), var y = FlatMap(set).
+Disaggregate(x,y) :- AggregateMe1(x,y), var set = Aggregate((x), group_to_set(y)), var y = FlatMap(set).
 
 input relation AggregateMeInts(x: string, y: bit<32>)
 
@@ -800,11 +800,11 @@ Allocation(name, id, x) :-
 
 relation ToAllocate(name: string, ids: Vec<string>)
 ToAllocate(name, ids) :-
-    Request(name, id), not Realized(name, id, _), var ids = Aggregate((name), group2vec(id)).
+    Request(name, id), not Realized(name, id, _), var ids = Aggregate((name), group_to_vec(id)).
 
 relation Allocated(name: string, xs: Set<bit<32>>)
 Allocated(name, xs) :-
-    Realized(name, _, x), var xs = Aggregate((name), group2set(x)).
+    Realized(name, _, x), var xs = Aggregate((name), group_to_set(x)).
 
 Allocation(name, id, x) :-
     ToAllocate(name, ids),
@@ -1152,7 +1152,7 @@ output relation Span(entity: entid_t, tns: Set<tnid_t>)
 Span(entity: entid_t, bindings) :-
     DdlogNode(entity),
     DdlogBinding(tn, entity),
-    var bindings = Aggregate((entity), group2set(tn)).
+    var bindings = Aggregate((entity), group_to_set(tn)).
 
 /* Recursive step: propagate span along graph edges */
 Span(parent, tns) :-

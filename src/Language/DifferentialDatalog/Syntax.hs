@@ -631,7 +631,10 @@ instance Show Rule where
     show = render . pp
 
 data ExprNode e = EVar          {exprPos :: Pos, exprVar :: String}
-                | EApply        {exprPos :: Pos, exprFunc :: String, exprArgs :: [e]}
+                  -- After flattening the module hierarchy, a function name can
+                  -- refer to functions in one or more modules.  Type inference
+                  -- resolves the ambiguity, leaving exactly one.
+                | EApply        {exprPos :: Pos, exprFunc :: [String], exprArgs :: [e]}
                 | EField        {exprPos :: Pos, exprStruct :: e, exprField :: String}
                 | ETupField     {exprPos :: Pos, exprTuple :: e, exprTupField :: Int}
                 | EBool         {exprPos :: Pos, exprBVal :: Bool}
@@ -766,7 +769,8 @@ instance WithPos (ExprNode e) where
 
 instance PP e => PP (ExprNode e) where
     pp (EVar _ v)            = pp v
-    pp (EApply _ f as)       = pp f <> (parens $ commaSep $ map pp as)
+    pp (EApply _ [f] as)     = pp f <> (parens $ commaSep $ map pp as)
+    pp (EApply _ fs as)      = "/*" <> commaSep (map pp fs) <> "*/" <> (parens $ commaSep $ map pp as)
     pp (EField _ s f)        = pp s <> char '.' <> pp f
     pp (ETupField _ s f)     = pp s <> char '.' <> pp f
     pp (EBool _ True)        = "true"
@@ -835,7 +839,7 @@ instance WithPos Expr where
 
 eVar v              = E $ EVar      nopos v
 eTypedVar v t       = eTyped (eVar v) t
-eApply f as         = E $ EApply    nopos f as
+eApply f as         = E $ EApply    nopos [f] as
 eField e f          = E $ EField    nopos e f
 eTupField e f       = E $ ETupField nopos e f
 eBool b             = E $ EBool     nopos b
@@ -1087,7 +1091,10 @@ instance Eq Import where
 
 data DatalogProgram = DatalogProgram { progImports      :: [Import]
                                      , progTypedefs     :: M.Map String TypeDef
-                                     , progFunctions    :: M.Map String Function
+                                       -- There can be multiple functions with
+                                       -- the same name.  The key in the map is
+                                       -- function name and number of arguments.
+                                     , progFunctions    :: M.Map String [Function]
                                      , progTransformers :: M.Map String Transformer
                                      , progRelations    :: M.Map String Relation
                                      , progIndexes      :: M.Map String Index
@@ -1103,7 +1110,7 @@ instance PP DatalogProgram where
                              ++
                              (map pp $ M.elems progTypedefs)
                              ++
-                             (map pp $ M.elems progFunctions)
+                             (map pp $ concat $ M.elems progFunctions)
                              ++
                              (map pp $ M.elems progTransformers)
                              ++

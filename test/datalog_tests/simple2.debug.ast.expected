@@ -1,3 +1,4 @@
+typedef Ack = Ack{m: std.u64, n: std.u64, a: std.u64}
 typedef Arrng1 = Arrng1{f1: std.Ref<std.Ref<std.Ref<TArrng2>>>, f2: bigint}
 typedef Arrng1Arrng2 = Arrng1Arrng2{x: bigint}
 typedef Arrng1Arrng2_2 = Arrng1Arrng2_2{x: bigint}
@@ -6,6 +7,7 @@ typedef Chunk = Chunk{json: string}
 typedef ChunkParseError = ChunkParseError{err: string}
 typedef CompressedChunk = CompressedChunk{json: string}
 typedef Doubles = Doubles{xs: std.Vec<double>}
+typedef Fib = Fib{x: std.u64, f: std.u64}
 typedef FilteredRelation = FilteredRelation{y: bit<32>}
 typedef FuncTest = FuncTest{x: string}
 typedef InputInspectNot1 = InputInspectNot1{x: bit<32>, y: bit<32>}
@@ -80,6 +82,18 @@ function __debug_8_1_std.group_sum (g: std.Group<bit<32>,('I, bit<32>)>): (std.V
     (((var inputs: std.Vec<'I>), (var original_group: std.Group<bit<32>,bit<32>>)) = debug.debug_split_group(g);
      (inputs, std.group_sum(original_group)))
 }
+function ack (m: std.u64, n: std.u64): std.u64
+{
+    if (m == 64'd0) {
+        (n + 64'd1)
+    } else {
+          if (n == 64'd0) {
+              ack((m - 64'd1), 64'd1)
+          } else {
+                ack((m - 64'd1), ack(m, (n - 64'd1)))
+            }
+      }
+}
 function agg_avg_double_N (aggregate: std.Option<(double, double)>, item: std.Option<double>): std.Option<(double, double)>
 {
     match ((aggregate, item)) {
@@ -92,6 +106,18 @@ function agg_avg_double_N (aggregate: std.Option<(double, double)>, item: std.Op
 extern function debug.debug_event (operator_id: debug.DDlogOpId, w: std.DDWeight, ts: 'T1, operator_type: string, input1: 'A1, out: 'A2): ()
 extern function debug.debug_event_join (operator_id: debug.DDlogOpId, w: std.DDWeight, ts: 'T1, input1: 'A1, input2: 'A2, out: 'A3): ()
 extern function debug.debug_split_group (g: std.Group<'K,('I, 'V)>): (std.Vec<'I>, std.Group<'K,'V>)
+function fib (x: std.u64): std.u64
+{
+    if (x == 64'd0) {
+        64'd0
+    } else {
+          if (x == 64'd1) {
+              64'd1
+          } else {
+                (fib((x - 64'd1)) + fib((x - 64'd2)))
+            }
+      }
+}
 extern function fp.abs_d (f: double): double
 extern function fp.abs_f (f: float): float
 extern function fp.acos_d (f: double): double
@@ -181,6 +207,14 @@ function ftoi_ (l: double): signed<32>
 }
 #[has_side_effects = true]
 extern function inspect_log.log (filename: string, msg: string): ()
+function internment.contains (s1: internment.istring, s2: string): bool
+{
+    internment.istring_contains(s1, s2)
+}
+function internment.ends_with (s: internment.istring, suffix: string): bool
+{
+    internment.istring_ends_with(s, suffix)
+}
 extern function internment.intern (s: 'A): internment.Intern<'A>
 extern function internment.istring_contains (s1: internment.istring, s2: string): bool
 extern function internment.istring_ends_with (s: internment.istring, suffix: string): bool
@@ -197,6 +231,50 @@ extern function internment.istring_to_uppercase (s: internment.istring): string
 extern function internment.istring_trim (s: internment.istring): string
 #[return_by_ref = true]
 extern function internment.ival (s: internment.Intern<'A>): 'A
+function internment.join (strings: std.Vec<internment.istring>, sep: string): string
+{
+    internment.istring_join(strings, sep)
+}
+function internment.len (s: internment.istring): std.usize
+{
+    internment.istring_len(s)
+}
+function internment.replace (s: internment.istring, from: string, to: string): string
+{
+    internment.istring_replace(s, from, to)
+}
+function internment.reverse (s: internment.istring): string
+{
+    internment.istring_reverse(s)
+}
+function internment.split (s: internment.istring, sep: string): std.Vec<string>
+{
+    internment.istring_split(s, sep)
+}
+function internment.starts_with (s: internment.istring, prefix: string): bool
+{
+    internment.istring_starts_with(s, prefix)
+}
+function internment.substr (s: internment.istring, start: std.usize, end: std.usize): string
+{
+    internment.istring_substr(s, start, end)
+}
+function internment.to_bytes (s: internment.istring): std.Vec<std.u8>
+{
+    internment.istring_to_bytes(s)
+}
+function internment.to_lowercase (s: internment.istring): string
+{
+    internment.istring_to_lowercase(s)
+}
+function internment.to_uppercase (s: internment.istring): string
+{
+    internment.istring_to_uppercase(s)
+}
+function internment.trim (s: internment.istring): string
+{
+    internment.istring_trim(s)
+}
 extern function json.from_json_string (json: string): std.Result<'T,string>
 function json.jval_as_array (v: json.JsonValue): std.Option<std.Vec<json.JsonValue>>
 {
@@ -278,7 +356,7 @@ function json.jval_get (v: json.JsonValue, attr: internment.istring): std.Option
 function json.jval_get_or (v: json.JsonValue, attr: internment.istring, def: json.JsonValue): json.JsonValue
 {
     match (v) {
-        (json.JsonObject{.o=(var o: std.Map<internment.Intern<string>,json.JsonValue>)}: json.JsonValue) -> (std.option_unwrap_or((std.map_get(o, attr): std.Option<json.JsonValue>), def): json.JsonValue),
+        (json.JsonObject{.o=(var o: std.Map<internment.Intern<string>,json.JsonValue>)}: json.JsonValue) -> (std.unwrap_or((std.map_get(o, attr): std.Option<json.JsonValue>), def): json.JsonValue),
         (_: json.JsonValue) -> def
     }
 }
@@ -290,16 +368,52 @@ function myfunc (x: string): string
     x
 }
 extern function std.__builtin_2string (x: 'X): string
+function std.append (v: mut std.Vec<'X>, other: std.Vec<'X>): ()
+{
+    std.vec_append(v, other)
+}
+function std.contains (s1: string, s2: string): bool
+{
+    std.string_contains(s1, s2)
+}
+function std.contains (v: std.Vec<'X>, x: 'X): bool
+{
+    std.vec_contains(v, x)
+}
+function std.contains (s: std.Set<'X>, v: 'X): bool
+{
+    std.set_contains(s, v)
+}
+function std.contains_key (m: std.Map<'K,'V>, k: 'K): bool
+{
+    std.map_contains_key(m, k)
+}
+function std.count (g: std.Group<'K,'V>): std.usize
+{
+    std.group_count(g)
+}
 function std.dDNestedTS2string (ts: std.DDNestedTS): string
 {
     (((("(" ++ (std.__builtin_2string(ts.epoch): string)) ++ ",") ++ (std.__builtin_2string(ts.iter): string)) ++ ")")
 }
 #[return_by_ref = true]
 extern function std.deref (x: std.Ref<'A>): 'A
-extern function std.group2map (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,'V>
-extern function std.group2set (g: std.Group<'K,'V>): std.Set<'V>
-extern function std.group2setmap (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,std.Set<'V>>
-extern function std.group2vec (g: std.Group<'K,'V>): std.Vec<'V>
+function std.difference (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
+{
+    (std.set_difference(s1, s2): std.Set<'X>)
+}
+function std.ends_with (s: string, suffix: string): bool
+{
+    std.string_ends_with(s, suffix)
+}
+function std.first (g: std.Group<'K,'V>): 'V
+{
+    (std.group_first(g): 'V)
+}
+function std.get (m: std.Map<'K,'V>, k: 'K): std.Option<'V>
+{
+    (std.map_get(m, k): std.Option<'V>)
+}
 extern function std.group_count (g: std.Group<'K,'V>): std.usize
 extern function std.group_first (g: std.Group<'K,'V>): 'V
 extern function std.group_key (g: std.Group<'K,'V>): 'K
@@ -309,6 +423,10 @@ extern function std.group_nth (g: std.Group<'K,'V>, n: std.usize): std.Option<'V
 extern function std.group_set_unions (g: std.Group<'K,std.Set<'A>>): std.Set<'A>
 extern function std.group_setref_unions (g: std.Group<'K,std.Ref<std.Set<'A>>>): std.Ref<std.Set<'A>>
 extern function std.group_sum (g: std.Group<'K,'V>): 'V
+extern function std.group_to_map (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,'V>
+extern function std.group_to_set (g: std.Group<'K,'V>): std.Set<'V>
+extern function std.group_to_setmap (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,std.Set<'V>>
+extern function std.group_to_vec (g: std.Group<'K,'V>): std.Vec<'V>
 function std.group_unzip (g: std.Group<'K,('X, 'Y)>): (std.Vec<'X>, std.Vec<'Y>)
 {
     ((var xs: std.Vec<'X>) = (std.vec_empty(): std.Vec<'X>);
@@ -325,6 +443,38 @@ extern function std.hash64 (x: 'X): bit<64>
 extern function std.hex (x: 'X): string
 extern function std.htonl (x: bit<32>): bit<32>
 extern function std.htons (x: bit<16>): bit<16>
+function std.insert (m: mut std.Map<'K,'V>, k: 'K, v: 'V): ()
+{
+    std.map_insert(m, k, v)
+}
+function std.insert (s: mut std.Set<'X>, v: 'X): ()
+{
+    std.set_insert(s, v)
+}
+function std.insert_imm (m: std.Map<'K,'V>, k: 'K, v: 'V): std.Map<'K,'V>
+{
+    (std.map_insert_imm(m, k, v): std.Map<'K,'V>)
+}
+function std.insert_imm (s: std.Set<'X>, v: 'X): std.Set<'X>
+{
+    (std.set_insert_imm(s, v): std.Set<'X>)
+}
+function std.intersection (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
+{
+    (std.set_intersection(s1, s2): std.Set<'X>)
+}
+function std.is_empty (v: std.Vec<'X>): bool
+{
+    std.vec_is_empty(v)
+}
+function std.is_empty (m: std.Map<'K,'V>): bool
+{
+    std.map_is_empty(m)
+}
+function std.is_empty (s: std.Set<'X>): bool
+{
+    std.set_is_empty(s)
+}
 function std.is_err (res: std.Result<'V,'E>): bool
 {
     match (res) {
@@ -353,6 +503,22 @@ function std.is_some (x: std.Option<'A>): bool
         (_: std.Option<'A>) -> false
     }
 }
+function std.join (strings: std.Vec<string>, sep: string): string
+{
+    std.string_join(strings, sep)
+}
+function std.key (g: std.Group<'K,'V>): 'K
+{
+    (std.group_key(g): 'K)
+}
+function std.len (s: string): std.usize
+{
+    std.string_len(s)
+}
+function std.len (v: std.Vec<'X>): std.usize
+{
+    std.vec_len(v)
+}
 extern function std.map_contains_key (m: std.Map<'K,'V>, k: 'K): bool
 extern function std.map_empty (): std.Map<'K,'V>
 extern function std.map_get (m: std.Map<'K,'V>, k: 'K): std.Option<'V>
@@ -371,6 +537,10 @@ function std.max (x: 'A, y: 'A): 'A
           y
       }
 }
+function std.max (g: std.Group<'K,'V>): 'V
+{
+    (std.group_max(g): 'V)
+}
 function std.min (x: 'A, y: 'A): 'A
 {
     if (x < y) {
@@ -379,44 +549,51 @@ function std.min (x: 'A, y: 'A): 'A
           y
       }
 }
+function std.min (g: std.Group<'K,'V>): 'V
+{
+    (std.group_min(g): 'V)
+}
+function std.nth (g: std.Group<'K,'V>, n: std.usize): std.Option<'V>
+{
+    (std.group_nth(g, n): std.Option<'V>)
+}
+function std.nth (v: std.Vec<'X>, n: std.usize): std.Option<'X>
+{
+    (std.vec_nth(v, n): std.Option<'X>)
+}
+function std.nth (s: std.Set<'X>, n: std.usize): std.Option<'X>
+{
+    (std.set_nth(s, n): std.Option<'X>)
+}
 extern function std.ntohl (x: bit<32>): bit<32>
 extern function std.ntohs (x: bit<16>): bit<16>
-function std.option2set (o: std.Option<'X>): std.Set<'X>
-{
-    match (o) {
-        (std.Some{.x=(var x: 'X)}: std.Option<'X>) -> (std.set_singleton(x): std.Set<'X>),
-        (std.None{}: std.Option<'X>) -> (std.set_empty(): std.Set<'X>)
-    }
-}
-function std.option2vec (o: std.Option<'X>): std.Vec<'X>
-{
-    match (o) {
-        (std.Some{.x=(var x: 'X)}: std.Option<'X>) -> (std.vec_singleton(x): std.Vec<'X>),
-        (std.None{}: std.Option<'X>) -> (std.vec_empty(): std.Vec<'X>)
-    }
-}
-function std.option_unwrap_or (x: std.Option<'A>, def: 'A): 'A
-{
-    match (x) {
-        (std.Some{.x=(var v: 'A)}: std.Option<'A>) -> v,
-        (std.None{}: std.Option<'A>) -> def
-    }
-}
 extern function std.option_unwrap_or_default (opt: std.Option<'A>): 'A
 extern function std.parse_dec_i64 (s: string): std.Option<signed<64>>
 extern function std.parse_dec_u64 (s: string): std.Option<bit<64>>
 extern function std.pow32 (base: 'A, exp: bit<32>): 'A
+function std.push (v: mut std.Vec<'X>, x: 'X): ()
+{
+    std.vec_push(v, x)
+}
+function std.push_imm (v: std.Vec<'X>, x: 'X): std.Vec<'X>
+{
+    (std.vec_push_imm(v, x): std.Vec<'X>)
+}
 extern function std.range (from: 'A, to: 'A, step: 'A): std.Vec<'A>
 extern function std.ref_new (x: 'A): std.Ref<'A>
-function std.result_unwrap_or (res: std.Result<'V,'E>, def: 'V): 'V
+function std.remove (m: mut std.Map<'K,'V>, k: 'K): ()
 {
-    match (res) {
-        (std.Ok{.res=(var v: 'V)}: std.Result<'V,'E>) -> v,
-        (std.Err{.err=(_: 'E)}: std.Result<'V,'E>) -> def
-    }
+    std.map_remove(m, k)
+}
+function std.replace (s: string, from: string, to: string): string
+{
+    std.string_replace(s, from, to)
 }
 extern function std.result_unwrap_or_default (res: std.Result<'V,'E>): 'V
-extern function std.set2vec (s: std.Set<'A>): std.Vec<'A>
+function std.reverse (s: string): string
+{
+    std.string_reverse(s)
+}
 extern function std.set_contains (s: std.Set<'X>, v: 'X): bool
 extern function std.set_difference (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
 extern function std.set_empty (): std.Set<'X>
@@ -427,8 +604,37 @@ extern function std.set_is_empty (s: std.Set<'X>): bool
 extern function std.set_nth (s: std.Set<'X>, n: std.usize): std.Option<'X>
 extern function std.set_singleton (x: 'X): std.Set<'X>
 extern function std.set_size (s: std.Set<'X>): std.usize
+extern function std.set_to_vec (s: std.Set<'A>): std.Vec<'A>
 extern function std.set_union (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
 extern function std.set_unions (sets: std.Vec<std.Set<'X>>): std.Set<'X>
+function std.setref_unions (g: std.Group<'K,std.Ref<std.Set<'A>>>): std.Ref<std.Set<'A>>
+{
+    (std.group_setref_unions(g): std.Ref<std.Set<'A>>)
+}
+function std.size (m: std.Map<'K,'V>): std.usize
+{
+    std.map_size(m)
+}
+function std.size (s: std.Set<'X>): std.usize
+{
+    std.set_size(s)
+}
+function std.sort (v: mut std.Vec<'X>): ()
+{
+    std.vec_sort(v)
+}
+function std.sort_imm (v: std.Vec<'X>): std.Vec<'X>
+{
+    (std.vec_sort_imm(v): std.Vec<'X>)
+}
+function std.split (s: string, sep: string): std.Vec<string>
+{
+    std.string_split(s, sep)
+}
+function std.starts_with (s: string, prefix: string): bool
+{
+    std.string_starts_with(s, prefix)
+}
 extern function std.str_to_lower (s: string): string
 extern function std.string_contains (s1: string, s2: string): bool
 extern function std.string_ends_with (s: string, suffix: string): bool
@@ -443,7 +649,98 @@ extern function std.string_to_bytes (s: string): std.Vec<std.u8>
 extern function std.string_to_lowercase (s: string): string
 extern function std.string_to_uppercase (s: string): string
 extern function std.string_trim (s: string): string
-extern function std.vec2set (s: std.Vec<'A>): std.Set<'A>
+function std.substr (s: string, start: std.usize, end: std.usize): string
+{
+    std.string_substr(s, start, end)
+}
+function std.to_bytes (s: string): std.Vec<std.u8>
+{
+    std.string_to_bytes(s)
+}
+function std.to_lowercase (s: string): string
+{
+    std.string_to_lowercase(s)
+}
+function std.to_map (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,'V>
+{
+    (std.group_to_map(g): std.Map<'K2,'V>)
+}
+function std.to_set (o: std.Option<'X>): std.Set<'X>
+{
+    match (o) {
+        (std.Some{.x=(var x: 'X)}: std.Option<'X>) -> (std.set_singleton(x): std.Set<'X>),
+        (std.None{}: std.Option<'X>) -> (std.set_empty(): std.Set<'X>)
+    }
+}
+function std.to_set (g: std.Group<'K,'V>): std.Set<'V>
+{
+    (std.group_to_set(g): std.Set<'V>)
+}
+function std.to_set (s: std.Vec<'A>): std.Set<'A>
+{
+    (std.vec_to_set(s): std.Set<'A>)
+}
+function std.to_setmap (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,std.Set<'V>>
+{
+    (std.group_to_setmap(g): std.Map<'K2,std.Set<'V>>)
+}
+function std.to_uppercase (s: string): string
+{
+    std.string_to_uppercase(s)
+}
+function std.to_vec (o: std.Option<'X>): std.Vec<'X>
+{
+    match (o) {
+        (std.Some{.x=(var x: 'X)}: std.Option<'X>) -> (std.vec_singleton(x): std.Vec<'X>),
+        (std.None{}: std.Option<'X>) -> (std.vec_empty(): std.Vec<'X>)
+    }
+}
+function std.to_vec (g: std.Group<'K,'V>): std.Vec<'V>
+{
+    (std.group_to_vec(g): std.Vec<'V>)
+}
+function std.to_vec (s: std.Set<'A>): std.Vec<'A>
+{
+    (std.set_to_vec(s): std.Vec<'A>)
+}
+function std.trim (s: string): string
+{
+    std.string_trim(s)
+}
+function std.union (m1: std.Map<'K,'V>, m2: std.Map<'K,'V>): std.Map<'K,'V>
+{
+    (std.map_union(m1, m2): std.Map<'K,'V>)
+}
+function std.union (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
+{
+    (std.set_union(s1, s2): std.Set<'X>)
+}
+function std.unions (sets: std.Vec<std.Set<'X>>): std.Set<'X>
+{
+    (std.set_unions(sets): std.Set<'X>)
+}
+function std.unwrap_or (x: std.Option<'A>, def: 'A): 'A
+{
+    match (x) {
+        (std.Some{.x=(var v: 'A)}: std.Option<'A>) -> v,
+        (std.None{}: std.Option<'A>) -> def
+    }
+}
+function std.unwrap_or (res: std.Result<'V,'E>, def: 'V): 'V
+{
+    match (res) {
+        (std.Ok{.res=(var v: 'V)}: std.Result<'V,'E>) -> v,
+        (std.Err{.err=(_: 'E)}: std.Result<'V,'E>) -> def
+    }
+}
+function std.unwrap_or_default (opt: std.Option<'A>): 'A
+{
+    (std.option_unwrap_or_default(opt): 'A)
+}
+function std.unwrap_or_default (res: std.Result<'V,'E>): 'V
+{
+    (std.result_unwrap_or_default(res): 'V)
+}
 extern function std.vec_append (v: mut std.Vec<'X>, other: std.Vec<'X>): ()
 extern function std.vec_contains (v: std.Vec<'X>, x: 'X): bool
 extern function std.vec_empty (): std.Vec<'A>
@@ -453,8 +750,9 @@ extern function std.vec_nth (v: std.Vec<'X>, n: std.usize): std.Option<'X>
 extern function std.vec_push (v: mut std.Vec<'X>, x: 'X): ()
 extern function std.vec_push_imm (v: std.Vec<'X>, x: 'X): std.Vec<'X>
 extern function std.vec_singleton (x: 'X): std.Vec<'X>
-extern function std.vec_sort (v: std.Vec<'X>): ()
+extern function std.vec_sort (v: mut std.Vec<'X>): ()
 extern function std.vec_sort_imm (v: std.Vec<'X>): std.Vec<'X>
+extern function std.vec_to_set (s: std.Vec<'A>): std.Set<'A>
 extern function std.vec_with_capacity (len: std.usize): std.Vec<'A>
 extern function std.vec_with_length (len: std.usize, x: 'A): std.Vec<'A>
 function ti_f (value: std.Option<string>): std.Option<(string, string)>
@@ -491,6 +789,7 @@ function zero_test (): std.usize
 {
     weird_zero(32'd0)
 }
+output relation Ack [Ack]
 input relation Arrng1 [Arrng1]
 output relation Arrng1Arrng2 [Arrng1Arrng2]
 output relation Arrng1Arrng2_2 [Arrng1Arrng2_2]
@@ -499,6 +798,7 @@ input multiset Chunk [Chunk]
 output multiset ChunkParseError [ChunkParseError]
 output multiset CompressedChunk [CompressedChunk]
 input relation Doubles [Doubles]
+output relation Fib [Fib]
 output relation FilteredRelation [FilteredRelation]
 output relation FuncTest [std.Ref<FuncTest>]
 input relation InputInspectNot1 [InputInspectNot1]
@@ -553,4 +853,12 @@ ChunkParseError[(ChunkParseError{.err=err}: ChunkParseError)] :- ParsedChunk[(__
 ParsedChunk[(ParsedChunk{.data=(json.from_json_string(json): std.Result<Object,string>)}: ParsedChunk)] :- Chunk[(__chunk0@ (Chunk{.json=(json: string)}: Chunk))], Inspect debug.debug_event((32'd13, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __chunk0, (ParsedChunk{.data=(json.from_json_string(json): std.Result<Object,string>)}: ParsedChunk)).
 Objects[(Objects{.chunk=objs}: Objects)] :- ParsedChunk[(__parsedchunk0@ (ParsedChunk{.data=(std.Ok{.res=(objs: Object)}: std.Result<Object,string>)}: ParsedChunk))], Inspect debug.debug_event((32'd14, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __parsedchunk0, (Objects{.chunk=objs}: Objects)).
 CompressedChunk[(CompressedChunk{.json=json}: CompressedChunk)] :- Objects[(__objects0@ (Objects{.chunk=(objs: Object)}: Objects))], (std.Ok{.res=(var json: string)}: std.Result<string,string>) = json.to_json_string(objs), Inspect debug.debug_event((32'd15, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __objects0, (CompressedChunk{.json=json}: CompressedChunk)).
+Fib[(Fib{.x=64'd0, .f=fib(64'd0)}: Fib)].
+Fib[(Fib{.x=64'd1, .f=fib(64'd1)}: Fib)].
+Fib[(Fib{.x=64'd2, .f=fib(64'd2)}: Fib)].
+Fib[(Fib{.x=64'd3, .f=fib(64'd3)}: Fib)].
+Fib[(Fib{.x=64'd4, .f=fib(64'd4)}: Fib)].
+Fib[(Fib{.x=64'd10, .f=fib(64'd10)}: Fib)].
+Fib[(Fib{.x=64'd20, .f=fib(64'd20)}: Fib)].
+Ack[(Ack{.m=64'd2, .n=64'd1, .a=ack(64'd2, 64'd1)}: Ack)].
 

@@ -85,7 +85,7 @@ relation SCCBinding(scc: entid_t, bindings: Ref<TS.Set64<tnid_t>>)
 SCCBinding(scc, ref_new(bindings)) :-
     DdlogBinding(tn, entity),
     LabeledNode(entity, scc),
-    var bindings = Aggregate((scc), TS.group2set(tn)).
+    var bindings = Aggregate((scc), TS.group_to_set(tn)).
 
 /* Compute SCC span.
  */
@@ -124,7 +124,7 @@ input relation EdgeTN(tn: tnid_t)
 relation EdgeTNs(tns: Ref<TS.Set64<tnid_t>>)
 EdgeTNs(ref_new(tns)) :-
     EdgeTN(tn),
-    var tns = Aggregate((), TS.group2set(tn)).
+    var tns = Aggregate((), TS.group_to_set(tn)).
 
 /* Objects that are part of a LRP{mcast=true} -> LSP -> LS chain. */
 relation McastObject(mcast: entid_t)
@@ -151,12 +151,12 @@ Tos(from, to) :- FromNode(from), ExtDdlogDependency(from, to).
 output relation FromsList(froms: Set<entid_t>, to: entid_t)
 FromsList(froms, to) :-
     Froms(from, to),
-    var froms = Aggregate((to), group2set(from)).
+    var froms = Aggregate((to), group_to_set(from)).
 
 output relation TosList(from: entid_t, tos: Set<entid_t>)
 TosList(from, tos) :-
     Tos(from, to),
-    var tos = Aggregate((from), group2set(to)).
+    var tos = Aggregate((from), group_to_set(to)).
 
 /* getSpan() */
 input relation QuerySpanNode(entity: entid_t)

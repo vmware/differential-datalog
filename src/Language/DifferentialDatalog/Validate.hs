@@ -38,6 +38,7 @@ import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Pos
+import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.Name
 import {-# SOURCE #-} Language.DifferentialDatalog.Type
 import Language.DifferentialDatalog.TypeInference
@@ -62,7 +63,7 @@ validate d = do
     -- Validate function prototypes
     mapM_ (funcValidateProto d') $ M.elems $ progFunctions d'
     -- Validate function implementations
-    fs' <- sequence $ M.map (funcValidateDefinition d') $ progFunctions d'
+    fs' <- mapM (mapM (funcValidateDefinition d')) $ progFunctions d'
     -- Validate relation declarations
     rels' <- sequence $ M.map (relValidate d') $ progRelations d'
     -- Validate indexes
@@ -80,31 +81,10 @@ validate d = do
                  }
     -- Validate dependency graph
     depGraphValidate d''
-    -- This check must be done after 'depGraphValidate', which may
-    -- introduce recursion
-    checkNoRecursion d''
     -- Attributes do not affect the semantics of the program and can therefore
     -- be validated last.
     progValidateAttributes d''
     return d''
-
--- Reject program with recursion
-checkNoRecursion :: (MonadError String me) => DatalogProgram -> me ()
-checkNoRecursion d = do
-    case grCycle (funcGraph d) of
-         Nothing -> return ()
-         Just t  -> err d (pos $ getFunc d $ snd $ head t)
-                        $ "Recursive function definition: " ++ (intercalate "->" $ map (name . snd) t)
-
-funcGraph :: DatalogProgram -> G.Gr String ()
-funcGraph DatalogProgram{..} =
-    let g0 = foldl' (\g (i,f) -> G.insNode (i,f) g)
-                    G.empty $ zip [0..] (M.keys progFunctions) in
-    foldl' (\g (i,f) -> case funcDef f of
-                             Nothing -> g
-                             Just e  -> foldl' (\g' f' -> G.insEdge (i, M.findIndex f' progFunctions, ()) g')
-                                               g (exprFuncs e))
-           g0 $ zip [0..] $ M.elems progFunctions
 
 -- Remove syntactic sugar
 progDesugar :: (MonadError String me) => DatalogProgram -> me DatalogProgram
@@ -218,13 +198,31 @@ checkAcyclicTypes d@DatalogProgram{..} = do
                                 (intercalate " -> " $ map snd cyc))
           $ grCycle gfull
 
-funcValidateProto :: (MonadError String me) => DatalogProgram -> Function -> me ()
-funcValidateProto d f@Function{..} = do
-    uniqNames (Just d) ("Multiple definitions of argument " ++) funcArgs
-    let tvars = funcTypeVars f
-    mapM_ (typeValidate d tvars . argType) funcArgs
-    typeValidate d tvars funcType
-
+funcValidateProto :: (MonadError String me) => DatalogProgram -> [Function] -> me ()
+funcValidateProto d fs = do
+    let fname = name $ head fs
+    let extern_idx = findIndex (isNothing . funcDef) fs
+    let extern_fun = fs !! fromJust extern_idx
+    check d (length fs == 1 || extern_idx == Nothing) (pos extern_fun)
+        $ "Extern function '" ++ name extern_fun ++ "' clashes with function declaration(s) at\n  " ++
+          (intercalate "\n  " $ map spos $ take (fromJust extern_idx)  fs ++ drop (fromJust extern_idx + 1) fs) ++
+          "\nOnly non-extern functions can be overloaded."
+    mapIdxM_ (\f i -> mapM_ (\j -> -- If functions have the same number of arguments, then their first arguments
+                                   -- must have different types.
+                                   when ((length $ funcArgs f) == (length $ funcArgs $ fs !! j)) $ do
+                                       check d ((length $ funcArgs f) /= 0) (pos f)
+                                         $ "Multiple declarations of function '" ++ fname ++ "()' at\n  " ++ (spos f) ++ "\n  " ++ (spos $ fs !! j)
+                                       check d (not $ unifyTypes d (typ $ head $ funcArgs f) (typ $ head $ funcArgs $ fs !! j)) (pos $ head $ funcArgs f)
+                                         $ "Conflicting declarations of function '" ++ name f ++ "' at\n  " ++  (spos f) ++ "\n  " ++ (spos $ fs !! j) ++
+                                           "\nFunctions that share the same name and number of arguments must differ in the type of their first argument.")
+                            [0..i-1]) fs
+    -- Validate individual prototypes.
+    mapM_ (\f@Function{..} -> do
+            uniqNames (Just d) ("Multiple definitions of argument " ++) funcArgs
+            let tvars = funcTypeVars f
+            mapM_ (typeValidate d tvars . argType) funcArgs
+            typeValidate d tvars funcType)
+          fs
 
 funcValidateDefinition :: (MonadError String me) => DatalogProgram -> Function -> me Function
 funcValidateDefinition d f@Function{..} = do
@@ -338,10 +336,11 @@ ruleRHSValidate d rl RHSAggregate{} idx = do
     let RHSAggregate v group_by fname e = ruleRHS rl !! idx
     let gctx = CtxRuleRGroupBy rl idx
     check d (notElem v $ map name $ exprVars d gctx group_by) (pos e) $ "Aggregate variable " ++ v ++ " already declared in this scope"
-    -- Aggregation function exists and takes a group as its sole argument.
-    f <- checkFunc (pos e) d fname
-    check d (length (funcArgs f) == 1) (pos e) $ "Aggregation function must take one argument, but " ++
-                                               fname ++ " takes " ++ (show $ length $ funcArgs f) ++ " arguments"
+    case lookupFuncs d fname 1 of
+         Nothing  -> err d (pos e) $ "Aggregation function not found. '" ++ fname ++ "' must refer to a function that takes one argument of type Group<>"
+         Just [_] -> return ()
+         Just fs  -> err d (pos e) $ "Ambiguous aggregation function name '" ++ fname ++ "' may refer to:\n  " ++
+                                     (intercalate "\n  " $ map name fs)
     return ()
 
 ruleLHSValidate :: (MonadError String me) => DatalogProgram -> Rule -> Atom -> me ()
@@ -377,35 +376,33 @@ applyValidate :: (MonadError String me) => DatalogProgram -> Apply -> me ()
 applyValidate d a@Apply{..} = do
     trans@Transformer{..} <- checkTransformer (pos a) d applyTransformer
     check d (length applyInputs == length transInputs) (pos a)
-          $ "Transformer " ++ name trans ++ " expects " ++ show (length transInputs) ++ " input arguments, but" ++
+          $ "Transformer " ++ name trans ++ " expects " ++ show (length transInputs) ++ " input arguments, but " ++
             show (length applyInputs) ++ " arguments are specified"
     check d (length applyOutputs == length transOutputs) (pos a)
-          $ "Transformer " ++ name trans ++ " returns " ++ show (length transOutputs) ++ " outputs, but" ++
+          $ "Transformer " ++ name trans ++ " returns " ++ show (length transOutputs) ++ " outputs, but " ++
             show (length applyOutputs) ++ " outputs are provided"
     types <- mapM (\(decl, conc) ->
             case hofType decl of
                  HOTypeFunction{..} -> do
-                     f@Function{..} <- checkFunc (pos a) d conc
-                     -- FIXME: we don't have a proper unification checker; therefore insist on transformer arguments
-                     -- using no type variables.
-                     -- A proper unification checker should handle constraints of the form
-                     -- '(exists T1 . forall T2 . E(T1,T2))', where 'T1' and 'T2' are lists of type arguments, and 'E' is
-                     -- a conjunction of type congruence expressions.
+                     fs' <- checkFuncs (pos a) d conc (length hotArgs)
+                     let (f@Function{..}):fs = fs'
+                     check d (null fs) (pos a)
+                           $ "Multiple definitions of function '" ++ conc ++ "' found"
+                     -- FIXME: Use the unification solver to match formal and
+                     -- actual type transformer arguments.
+                     -- For now, insist on transformer arguments using no type variables.
                      check d (null $ funcTypeVars f) (pos a)
-                           $ "Generic function " ++ conc ++ " cannot be passed as an argument to relation transformer"
-                     check d (length hotArgs == length funcArgs) (pos a)
-                           $ "Transformer " ++ name trans ++ " expects a function that takes " ++ show (length hotArgs) ++ " arguments " ++
-                             " but function " ++ name f ++ " takes " ++ show (length funcArgs) ++ " arguments"
+                           $ "Generic function '" ++ conc ++ "' cannot be passed as an argument to relation transformer"
                      mapM_ (\(farg, carg) -> check d (argMut farg == argMut carg) (pos a) $
-                                             "Argument " ++ name farg ++ " of formal argument " ++ name decl ++ " of transformer " ++ name trans ++
-                                             " differs in mutability from argument " ++ name carg ++ " of function " ++ name f)
+                                             "Argument '" ++ name farg ++ "' of formal argument '" ++ name decl ++ "' of transformer '" ++ name trans ++
+                                             "' differs in mutability from argument '" ++ name carg ++ "' of function '" ++ name f ++ "'")
                            $ zip hotArgs funcArgs
                      return $ (zip (map typ hotArgs) (map typ funcArgs)) ++ [(hotType, funcType)]
                  HOTypeRelation{..} -> do
                      rel <- checkRelation (pos a) d conc
                      return [(hotType, relType rel)]
                   ) $ zip (transInputs ++ transOutputs) (applyInputs ++ applyOutputs)
-    bindings <- unifyTypes d (pos a) ("in transformer application " ++ show a) $ concat types
+    bindings <- inferTypeArgs d (pos a) ("in transformer application " ++ show a) $ concat types
     mapM_ (\ta -> case M.lookup ta bindings of
                        Nothing -> err d (pos a) $ "Unable to bind type argument '" ++ ta ++
                                                 " to a concrete type in transformer application " ++ show a
@@ -434,7 +431,7 @@ hotypeValidate :: (MonadError String me) => DatalogProgram -> HOType -> me ()
 hotypeValidate d HOTypeFunction{..} = do
     -- FIXME: hacky way to validate function type by converting it into a function.
     let f = Function hotPos [] "" hotArgs hotType Nothing
-    funcValidateProto d f
+    funcValidateProto d [f]
 
 hotypeValidate d HOTypeRelation{..} = typeValidate d (typeTypeVars hotType) hotType
 
@@ -513,7 +510,7 @@ exprsTypeCheck d tvars es = {-trace ("exprValidate " ++ show e ++ " in \n" ++ sh
     -- type inference.
     mapM_ (\(ctx, e) -> exprTraverseCtxM (exprValidate1 d tvars) ctx e) es
     -- Second pass: type inference.
-    inferTypes d $ map (\(ctx, e) -> DDExpr ctx e) es
+    inferTypes d es
 
 exprsPostCheck :: (MonadError String me) => DatalogProgram -> [(ECtx, Expr)] -> me ()
 exprsPostCheck d es = do
@@ -529,10 +526,10 @@ exprValidate1 _ _ ctx EVar{..} | ctxInRuleRHSPositivePattern ctx
                                           = return ()
 exprValidate1 d _ ctx (EVar p v)          = do _ <- checkVar p d ctx v
                                                return ()
-exprValidate1 d _ _ (EApply p f as)       = do
-    fun <- checkFunc p d f
-    check d (length as == length (funcArgs fun)) p
-          "Number of arguments does not match function declaration"
+exprValidate1 d _ _   (EApply p fnames as) = do
+    fs <- concat <$> mapM (\fname -> checkFuncs p d fname (length as)) fnames
+    check d (length fs == 1 || (not $ null as)) p $ "Ambiguous function name '" ++ (nameLocal $ head fnames) ++ "' may refer to:\n  " ++
+                                                    (intercalate "\n  " $ map (\f -> name f ++ " at " ++ spos f) fs)
 exprValidate1 _ _ _   EField{}            = return ()
 exprValidate1 _ _ _   ETupField{}         = return ()
 exprValidate1 _ _ _   EBool{}             = return ()
@@ -558,11 +555,7 @@ exprValidate1 _ _ _   EMatch{}            = return ()
 exprValidate1 d _ ctx (EVarDecl p v)      = do
     check d (ctxInSetL ctx || ctxInMatchPat ctx) p "Variable declaration is not allowed in this context"
     checkNoVar p d ctx v
-{-                                     | otherwise
-                                          = do checkNoVar p d ctx v
-                                               check (ctxIsTyped ctx) p "Variable declared without a type"
-                                               check (ctxIsSeq1 $ ctxParent ctx) p
-                                                      "Variable declaration is not allowed in this context"-}
+
 exprValidate1 _ _ _   ESeq{}              = return ()
 exprValidate1 _ _ _   EITE{}              = return ()
 exprValidate1 d _ ctx EFor{..}            = checkNoVar exprPos d ctx exprLoopVar
@@ -653,8 +646,8 @@ exprValidate3 d ctx e@(EMatch _ x cs) = do
                 ct0 (map fst cs)
     check d (consTreeEmpty ct) (pos x) "Non-exhaustive match patterns"
 exprValidate3 d ctx (ESet _ l _)         = checkLExpr d ctx l
-exprValidate3 d ctx (EApply _ f as)      = do
-    let fun = getFunc d f
+exprValidate3 d ctx e@(EApply _ _ as)      = do
+    let fun = applyExprGetFunc d ctx e
     mapM_ (\(a, mut) -> when mut $ checkLExpr d ctx a)
           $ zip as (map argMut $ funcArgs fun)
 

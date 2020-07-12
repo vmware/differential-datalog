@@ -100,24 +100,27 @@ function is_some(x: Option<'A>): bool = {
     }
 }
 
-function option_unwrap_or(x: Option<'A>, def: 'A): 'A = {
+function unwrap_or(x: Option<'A>, def: 'A): 'A = {
     match (x) {
         Some{v} -> v,
         None -> def
     }
 }
 
-// Returns the default value for the given type if `opt` is
-// `None`.
-extern function option_unwrap_or_default(opt: Option<'A>): 'A
+/* Returns the default value for the given type if `opt` is
+ * `None`.
+ */
+function unwrap_or_default(opt: Option<'A>): 'A {
+    option_unwrap_or_default(opt)
+}
 
-function option2set(o: Option<'X>): Set<'X> = {
+function to_set(o: Option<'X>): Set<'X> = {
     match (o) {
         Some{x} -> set_singleton(x),
         None -> set_empty()
     }
 }
-function option2vec(o: Option<'X>): Vec<'X> = {
+function to_vec(o: Option<'X>): Vec<'X> = {
     match (o) {
         Some{x} -> vec_singleton(x),
         None -> vec_empty()
@@ -150,16 +153,19 @@ function is_err(res: Result<'V,'E>): bool = {
     }
 }
 
-function result_unwrap_or(res: Result<'V,'E>, def: 'V): 'V = {
+function unwrap_or(res: Result<'V,'E>, def: 'V): 'V = {
     match (res) {
         Ok{v} -> v,
         Err{} -> def
     }
 }
 
-// Returns the default value for the given type if `res` is
-// an error.
-extern function result_unwrap_or_default(res: Result<'V,'E>): 'V
+/* Returns the default value for the given type if `res` is
+ * an error.
+ */
+function unwrap_or_default(res: Result<'V,'E>): 'V {
+    result_unwrap_or_default(res)
+}
 
 /*
  * Range
@@ -175,9 +181,17 @@ extern function hex(x: 'X): string
 extern function parse_dec_u64(s: string): Option<bit<64>>
 extern function parse_dec_i64(s: string): Option<signed<64>>
 
-extern function string_contains(s1: string, s2: string): bool
-extern function string_join(strings: Vec<string>, sep: string): string
-extern function string_len(s: string): usize
+function contains(s1: string, s2: string): bool {
+    string_contains(s1, s2)
+}
+
+function join(strings: Vec<string>, sep: string): string {
+    string_join(strings, sep)
+}
+
+function len(s: string): usize {
+    string_len(s)
+}
 
 /* Replaces all matches of `from` with `to`.
  *
@@ -185,39 +199,60 @@ extern function string_len(s: string): usize
  * doing so, it attempts to find matches of a pattern. If it finds any, it
  * replaces them with `to`.
  */
-extern function string_replace(s: string, from: string, to: string): string
 
-extern function string_split(s: string, sep: string): Vec<string>
+function replace(s: string, from: string, to: string): string {
+    string_replace(s, from, to)
+}
 
-extern function string_starts_with(s: string, prefix: string): bool
-extern function string_ends_with(s: string, suffix: string): bool
+function split(s: string, sep: string): Vec<string> {
+    string_split(s, sep)
+}
+
+function starts_with(s: string, prefix: string): bool {
+    string_starts_with(s, prefix)
+}
+
+function ends_with(s: string, suffix: string): bool {
+    string_ends_with(s, suffix)
+}
 
 /* Substring of `s` that begins at `start` and continues up to, but not
  * including, `end`.*/
-extern function string_substr(s: string, start: usize, end: usize): string
+function substr(s: string, start: usize, end: usize): string {
+    string_substr(s, start, end)
+}
 
-extern function string_to_bytes(s: string): Vec<u8>
+function to_bytes(s: string): Vec<u8> {
+    string_to_bytes(s)
+}
 
 /* Returns a string slice with leading and trailing whitespace removed.
  *
  * 'Whitespace' is defined according to the terms of the Unicode Derived
  * Core Property White_Space
  */
-extern function string_trim(s: string): string
+function trim(s: string): string {
+    string_trim(s)
+}
 
 /* Returns the lowercase equivalent of `s` as a new string.
  *
  * 'Lowercase' is defined according to the terms of the Unicode Derived
  * Core Property Lowercase.
  */
-extern function string_to_lowercase(s: string): string
-extern function str_to_lower(s: string): string
+function to_lowercase(s: string): string {
+    string_to_lowercase(s)
+}
 
 /* Returns the uppercase equivalent of `s` as a new string.
  */
-extern function string_to_uppercase(s: string): string
+function to_uppercase(s: string): string {
+    string_to_uppercase(s)
+}
 
-extern function string_reverse(s: string): string
+function reverse(s: string): string {
+    string_reverse(s)
+}
 
 /*
  * hashing
@@ -252,11 +287,53 @@ extern function group_first(g: Group<'K, 'V>): 'V
  */
 extern function group_nth(g: Group<'K,'V>, n: usize): Option<'V>
 
-extern function group2set(g: Group<'K, 'V>): Set<'V>
-extern function group2vec(g: Group<'K, 'V>): Vec<'V>
-extern function group2map(g: Group<'K1, ('K2,'V)>): Map<'K2,'V>
-extern function group2setmap(g: Group<'K1, ('K2,'V)>): Map<'K2,Set<'V>>
+extern function group_to_set(g: Group<'K, 'V>): Set<'V>
+extern function group_to_vec(g: Group<'K, 'V>): Vec<'V>
+extern function group_to_map(g: Group<'K1, ('K2,'V)>): Map<'K2,'V>
+extern function group_to_setmap(g: Group<'K1, ('K2,'V)>): Map<'K2,Set<'V>>
 extern function group_sum(g: Group<'K, 'V>): 'V
+
+extern function group_set_unions(g: Group<'K, Set<'A>>): Set<'A>
+
+/* Optimized version of group_set_unions that, when the group consits of
+ * a single set, simply returns the reference to this set. */
+extern function group_setref_unions(g: Group<'K, Ref<Set<'A>>>): Ref<Set<'A>>
+
+/* Smallest and largest group elements. */
+extern function group_min(g: Group<'K, 'V>): 'V
+extern function group_max(g: Group<'K, 'V>): 'V
+
+function key(g: Group<'K, 'V>): 'K {
+    group_key(g)
+}
+
+function count(g: Group<'K, 'V>): usize {
+    group_count(g)
+}
+
+function first(g: Group<'K, 'V>): 'V {
+    group_first(g)
+}
+
+function nth(g: Group<'K,'V>, n: usize): Option<'V> {
+    group_nth(g, n)
+}
+
+function to_set(g: Group<'K, 'V>): Set<'V> {
+    group_to_set(g)
+}
+
+function to_vec(g: Group<'K, 'V>): Vec<'V> {
+    group_to_vec(g)
+}
+
+function to_map(g: Group<'K1, ('K2,'V)>): Map<'K2,'V> {
+    group_to_map(g)
+}
+
+function to_setmap(g: Group<'K1, ('K2,'V)>): Map<'K2,Set<'V>> {
+    group_to_setmap(g)
+}
 
 function group_unzip(g: Group<'K, ('X,'Y)>): (Vec<'X>, Vec<'Y>) = {
     var xs: Vec<'X> = vec_empty();
@@ -269,15 +346,17 @@ function group_unzip(g: Group<'K, ('X,'Y)>): (Vec<'X>, Vec<'Y>) = {
     (xs,ys)
 }
 
-extern function group_set_unions(g: Group<'K, Set<'A>>): Set<'A>
+function setref_unions(g: Group<'K, Ref<Set<'A>>>): Ref<Set<'A>> {
+    group_setref_unions(g)
+}
 
-/* Optimized version of group_set_unions that, when the group consits of
- * a single set, simply returns the reference to this set. */
-extern function group_setref_unions(g: Group<'K, Ref<Set<'A>>>): Ref<Set<'A>>
+function min(g: Group<'K, 'V>): 'V {
+    group_min(g)
+}
 
-/* Smallest and largest group elements. */
-extern function group_min(g: Group<'K, 'V>): 'V
-extern function group_max(g: Group<'K, 'V>): 'V
+function max(g: Group<'K, 'V>): 'V {
+    group_max(g)
+}
 
 /*
  * Vec
@@ -287,17 +366,48 @@ extern type Vec<'A>
 extern function vec_empty(): Vec<'A>
 extern function vec_with_length(len: usize, x: 'A): Vec<'A>
 extern function vec_with_capacity(len: usize): Vec<'A>
-extern function vec_len(v: Vec<'X>): usize
 extern function vec_singleton(x: 'X): Vec<'X>
-extern function vec_push(v: mut Vec<'X>, x: 'X): ()
-extern function vec_append(v: mut Vec<'X>, other: Vec<'X>): ()
-extern function vec_push_imm(v: Vec<'X>, x: 'X): Vec<'X>
-extern function vec_contains(v: Vec<'X>, x: 'X): bool
-extern function vec_is_empty(v: Vec<'X>): bool
-extern function vec_nth(v: Vec<'X>, n: usize): Option<'X>
-extern function vec2set(s: Vec<'A>): Set<'A>
-extern function vec_sort(v: Vec<'X>): ()
-extern function vec_sort_imm(v: Vec<'X>): Vec<'X>
+
+function len(v: Vec<'X>): usize {
+    vec_len(v)
+}
+
+function push(v: mut Vec<'X>, x: 'X): () {
+    vec_push(v, x)
+}
+
+function append(v: mut Vec<'X>, other: Vec<'X>): () {
+    vec_append(v, other)
+}
+
+function push_imm(v: Vec<'X>, x: 'X): Vec<'X> {
+    vec_push_imm(v, x)
+}
+
+function contains(v: Vec<'X>, x: 'X): bool {
+    vec_contains(v, x)
+}
+
+function is_empty(v: Vec<'X>): bool {
+    vec_is_empty(v)
+}
+
+function nth(v: Vec<'X>, n: usize): Option<'X> {
+    vec_nth(v, n)
+}
+
+function to_set(s: Vec<'A>): Set<'A> {
+    vec_to_set(s)
+}
+
+function sort(v: mut Vec<'X>): () {
+    vec_sort(v)
+}
+
+function sort_imm(v: Vec<'X>): Vec<'X> {
+    vec_sort_imm(v)
+}
+
 
 /*
  * Map
@@ -305,16 +415,40 @@ extern function vec_sort_imm(v: Vec<'X>): Vec<'X>
 
 extern type Map<'K,'V>
 
-extern function map_size(m: Map<'K, 'V>): usize
 extern function map_empty(): Map<'K, 'V>
 extern function map_singleton(k: 'K, v: 'V): Map<'K, 'V>
-extern function map_insert(m: mut Map<'K,'V>, k: 'K, v: 'V): ()
-extern function map_remove(m: mut Map<'K,'V>, k: 'K): ()
-extern function map_insert_imm(m: Map<'K,'V>, k: 'K, v: 'V): Map<'K,'V>
-extern function map_get(m: Map<'K,'V>, k:'K): Option<'V>
-extern function map_contains_key(m: Map<'K,'V>, k: 'K): bool
-extern function map_is_empty(m: Map<'K,'V>): bool
-extern function map_union(m1: Map<'K, 'V>, m2: Map<'K,'V>): Map<'K, 'V>
+
+function size(m: Map<'K, 'V>): usize {
+    map_size(m)
+}
+
+function insert(m: mut Map<'K,'V>, k: 'K, v: 'V): () {
+    map_insert(m, k, v)
+}
+
+function remove(m: mut Map<'K,'V>, k: 'K): () {
+    map_remove(m, k)
+}
+
+function insert_imm(m: Map<'K,'V>, k: 'K, v: 'V): Map<'K,'V> {
+    map_insert_imm(m, k, v)
+}
+
+function get(m: Map<'K,'V>, k:'K): Option<'V> {
+    map_get(m, k)
+}
+
+function contains_key(m: Map<'K,'V>, k: 'K): bool {
+    map_contains_key(m, k)
+}
+
+function is_empty(m: Map<'K,'V>): bool {
+    map_is_empty(m)
+}
+
+function union(m1: Map<'K, 'V>, m2: Map<'K,'V>): Map<'K, 'V> {
+    map_union(m1, m2)
+}
 
 /*
  * Set
@@ -322,19 +456,52 @@ extern function map_union(m1: Map<'K, 'V>, m2: Map<'K,'V>): Map<'K, 'V>
 
 extern type Set<'A>
 
-extern function set_size(s: Set<'X>): usize
 extern function set_singleton(x: 'X): Set<'X>
 extern function set_empty(): Set<'X>
-extern function set_insert(s: mut Set<'X>, v: 'X): ()
-extern function set_insert_imm(s: Set<'X>, v: 'X): Set<'X>
-extern function set_contains(s: Set<'X>, v: 'X): bool
-extern function set_is_empty(s: Set<'X>): bool
-extern function set_nth(s: Set<'X>, n: usize): Option<'X>
-extern function set2vec(s: Set<'A>): Vec<'A>
-extern function set_union(s1: Set<'X>, s2: Set<'X>): Set<'X>
-extern function set_unions(sets: Vec<Set<'X>>): Set<'X>
-extern function set_intersection(s1: Set<'X>, s2: Set<'X>): Set<'X>
-extern function set_difference(s1: Set<'X>, s2: Set<'X>): Set<'X>
+
+function size(s: Set<'X>): usize {
+    set_size(s)
+}
+
+function insert(s: mut Set<'X>, v: 'X): () {
+    set_insert(s, v)
+}
+
+function insert_imm(s: Set<'X>, v: 'X): Set<'X> {
+    set_insert_imm(s, v)
+}
+
+function contains(s: Set<'X>, v: 'X): bool {
+    set_contains(s, v)
+}
+
+function is_empty(s: Set<'X>): bool {
+    set_is_empty(s)
+}
+
+function nth(s: Set<'X>, n: usize): Option<'X> {
+    set_nth(s, n)
+}
+
+function to_vec(s: Set<'A>): Vec<'A> {
+    set_to_vec(s)
+}
+
+function union(s1: Set<'X>, s2: Set<'X>): Set<'X> {
+    set_union(s1, s2)
+}
+
+function unions(sets: Vec<Set<'X>>): Set<'X> {
+    set_unions(sets)
+}
+
+function intersection(s1: Set<'X>, s2: Set<'X>): Set<'X> {
+    set_intersection(s1, s2)
+}
+
+function difference(s1: Set<'X>, s2: Set<'X>): Set<'X> {
+    set_difference(s1, s2)
+}
 
 /*
  * Endianness
@@ -344,3 +511,60 @@ extern function ntohs(x: bit<16>): bit<16>
 
 extern function htonl(x: bit<32>): bit<32>
 extern function htons(x: bit<16>): bit<16>
+
+/*
+ * Internals
+ *
+ * We currently don't have a way to selectively export functions, but the use of
+ * these functions outside of this module is discouraged.
+ */
+
+extern function option_unwrap_or_default(opt: Option<'A>): 'A
+extern function result_unwrap_or_default(res: Result<'V,'E>): 'V
+
+extern function string_contains(s1: string, s2: string): bool
+extern function string_join(strings: Vec<string>, sep: string): string
+extern function string_len(s: string): usize
+extern function string_to_lowercase(s: string): string
+extern function str_to_lower(s: string): string
+extern function string_replace(s: string, from: string, to: string): string
+extern function string_split(s: string, sep: string): Vec<string>
+extern function string_starts_with(s: string, prefix: string): bool
+extern function string_ends_with(s: string, suffix: string): bool
+extern function string_substr(s: string, start: usize, end: usize): string
+extern function string_to_bytes(s: string): Vec<u8>
+extern function string_trim(s: string): string
+extern function string_to_uppercase(s: string): string
+extern function string_reverse(s: string): string
+
+extern function vec_len(v: Vec<'X>): usize
+extern function vec_push(v: mut Vec<'X>, x: 'X): ()
+extern function vec_append(v: mut Vec<'X>, other: Vec<'X>): ()
+extern function vec_push_imm(v: Vec<'X>, x: 'X): Vec<'X>
+extern function vec_contains(v: Vec<'X>, x: 'X): bool
+extern function vec_is_empty(v: Vec<'X>): bool
+extern function vec_nth(v: Vec<'X>, n: usize): Option<'X>
+extern function vec_to_set(s: Vec<'A>): Set<'A>
+extern function vec_sort(v: mut Vec<'X>): ()
+extern function vec_sort_imm(v: Vec<'X>): Vec<'X>
+
+extern function map_size(m: Map<'K, 'V>): usize
+extern function map_insert(m: mut Map<'K,'V>, k: 'K, v: 'V): ()
+extern function map_remove(m: mut Map<'K,'V>, k: 'K): ()
+extern function map_insert_imm(m: Map<'K,'V>, k: 'K, v: 'V): Map<'K,'V>
+extern function map_get(m: Map<'K,'V>, k:'K): Option<'V>
+extern function map_contains_key(m: Map<'K,'V>, k: 'K): bool
+extern function map_is_empty(m: Map<'K,'V>): bool
+extern function map_union(m1: Map<'K, 'V>, m2: Map<'K,'V>): Map<'K, 'V>
+
+extern function set_size(s: Set<'X>): usize
+extern function set_insert(s: mut Set<'X>, v: 'X): ()
+extern function set_insert_imm(s: Set<'X>, v: 'X): Set<'X>
+extern function set_contains(s: Set<'X>, v: 'X): bool
+extern function set_is_empty(s: Set<'X>): bool
+extern function set_nth(s: Set<'X>, n: usize): Option<'X>
+extern function set_to_vec(s: Set<'A>): Vec<'A>
+extern function set_union(s1: Set<'X>, s2: Set<'X>): Set<'X>
+extern function set_unions(sets: Vec<Set<'X>>): Set<'X>
+extern function set_intersection(s1: Set<'X>, s2: Set<'X>): Set<'X>
+extern function set_difference(s1: Set<'X>, s2: Set<'X>): Set<'X>

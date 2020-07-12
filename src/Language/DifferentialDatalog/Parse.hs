@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018 VMware, Inc.
+Copyright (c) 2018-2020 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -39,6 +39,7 @@ import qualified Text.Parsec.Token as T
 import qualified Data.Map as M
 import Data.Maybe
 import Data.List
+import Data.List.Extra (groupSort)
 import Data.Char
 import Numeric
 import GHC.Float
@@ -242,7 +243,7 @@ spec = do
                            _         -> Nothing) items
     let program = DatalogProgram { progImports      = imports
                                  , progTypedefs     = M.fromList types
-                                 , progFunctions    = M.fromList funcs
+                                 , progFunctions    = M.fromList $ groupSort funcs
                                  , progTransformers = M.fromList transformers
                                  , progRelations    = M.fromList relations
                                  , progIndexes      = M.fromList indexes
@@ -250,7 +251,7 @@ spec = do
                                  , progApplys       = applys
                                  , progSources      = M.empty }
     let res = do uniqNames (Just program) ("Multiple definitions of type " ++) $ map snd types
-                 uniqNames (Just program) ("Multiple definitions of function " ++) $ map snd funcs
+                 --uniqNames (Just program) ("Multiple definitions of function " ++) $ map snd funcs
                  uniqNames (Just program) ("Multiple definitions of relation " ++) $ map snd relations
                  uniqNames (Just program) ("Multiple definitions of index " ++) $ map snd indexes
                  uniqNames (Just program) ("Multiple definitions of transformer " ++) $ map snd transformers
@@ -431,7 +432,7 @@ atom is_head = withPos $ do
               (withPos $ (E . EStruct nopos rname) <$> (option [] $ parens $ commaSep (namedarg <|> anonarg)))
        p3 <- getPosition
        let val' = if isref && is_head
-                     then E (EApply (p2,p3) "ref_new" [val])
+                     then E (EApply (p2,p3) ["ref_new"] [val])
                      else if isref
                           then E (ERef (p2,p3) val)
                           else val
@@ -569,7 +570,7 @@ estring =   equoted_string
 
 einterned_string = do
     e <- try $ string "i" *> estring
-    return $ E $ EApply (pos e) "intern" [e]
+    return $ E $ EApply (pos e) ["intern"] [e]
 
 eraw_string = eString <$> ((try $ string "[|") *> manyTill anyChar (try $ string "|]" *> whiteSpace))
 
@@ -721,7 +722,7 @@ pref  p = Prefix  . chainl1 p $ return       (.)
 postf p = Postfix . chainl1 p $ return (flip (.))
 postField = (\f end e -> E $ EField (fst $ pos e, end) e f) <$> field <*> getPosition
 postTupField = (\f end e -> E $ ETupField (fst $ pos e, end) e (fromIntegral f)) <$> tupField <*> getPosition
-postApply = (\(f, args) end e -> E $ EApply (fst $ pos e, end) f (e:args)) <$> dotcall <*> getPosition
+postApply = (\(f, args) end e -> E $ EApply (fst $ pos e, end) [f] (e:args)) <$> dotcall <*> getPosition
 postType = (\t end e -> E $ ETyped (fst $ pos e, end) e t) <$> etype <*> getPosition
 postAs = (\t end e -> E $ EAs (fst $ pos e, end) e t) <$> eAsType <*> getPosition
 postSlice  = try $ (\(h,l) end e -> E $ ESlice (fst $ pos e, end) e h l) <$> slice <*> getPosition

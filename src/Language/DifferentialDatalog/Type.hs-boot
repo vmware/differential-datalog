@@ -6,7 +6,6 @@ import Control.Monad.Except
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Var
-import qualified Data.Map as M
 
 data ConsTree
 
@@ -37,7 +36,6 @@ wEIGHT_TYPE :: String
 checkIterable :: (MonadError String me, WithType a) => String -> Pos -> DatalogProgram -> a -> me ()
 typeIterType :: DatalogProgram -> Type -> (Type, Bool)
 exprNodeType :: DatalogProgram -> ECtx -> ExprNode Type -> Type
-unifyTypes :: (MonadError String me) => DatalogProgram -> Pos -> String -> [(Type, Type)] -> me (M.Map String Type)
 isBool :: (WithType a) => DatalogProgram -> a -> Bool
 isBit :: (WithType a) => DatalogProgram -> a -> Bool
 isSigned :: (WithType a) => DatalogProgram -> a -> Bool

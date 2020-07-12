@@ -41,3 +41,44 @@ extern function istring_trim(s: istring): string
 extern function istring_to_lowercase(s: istring): string
 extern function istring_to_uppercase(s: istring): string
 extern function istring_reverse(s: istring): string
+
+function contains(s1: istring, s2: string): bool {
+    istring_contains(s1, s2)
+}
+
+function join(strings: Vec<istring>, sep: string): string {
+    istring_join(strings, sep)
+}
+function len(s: istring): usize {
+    istring_len(s)
+}
+function replace(s: istring, from: string, to: string): string {
+    istring_replace(s, from, to)
+}
+function split(s: istring, sep: string): Vec<string> {
+    istring_split(s, sep)
+}
+function starts_with(s: istring, prefix: string): bool {
+    istring_starts_with(s, prefix)
+}
+function ends_with(s: istring, suffix: string): bool {
+    istring_ends_with(s, suffix)
+}
+function substr(s: istring, start: usize, end: usize): string {
+    istring_substr(s, start, end)
+}
+function to_bytes(s: istring): Vec<u8> {
+    istring_to_bytes(s)
+}
+function trim(s: istring): string {
+    istring_trim(s)
+}
+function to_lowercase(s: istring): string {
+    istring_to_lowercase(s)
+}
+function to_uppercase(s: istring): string {
+    istring_to_uppercase(s)
+}
+function reverse(s: istring): string {
+    istring_reverse(s)
+}

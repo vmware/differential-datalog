@@ -5,7 +5,7 @@ input relation SetElement(setid: string, element: u32)
 output relation Sets(setid: string, set: TS.Set64<u32>)
 Sets(setid, set) :-
     SetElement(setid, v),
-    var set = Aggregate((setid), TS.group2set(v)).
+    var set = Aggregate((setid), TS.group_to_set(v)).
 
 output relation Intersects(setid1: string, setid2: string, set: TS.Set64<u32>)
 

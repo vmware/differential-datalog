@@ -33,6 +33,8 @@ module Language.DifferentialDatalog.Rule (
     ruleTypeMapM,
     ruleHasJoins,
     ruleAggregateTypeParams,
+    ruleAggregateKeyType,
+    ruleAggregateValType,
     ruleIsDistinctByConstruction,
     ruleHeadIsRecursive,
     ruleIsRecursive
@@ -105,15 +107,27 @@ ruleRHSVars' d rl i =
 -- compute concrete types for 'K and 'V
 ruleAggregateTypeParams :: DatalogProgram -> Rule -> Int -> M.Map String Type
 ruleAggregateTypeParams d rl idx =
-    case funcTypeArgSubsts d (pos e) f [tOpaque gROUP_TYPE [group_by_type, exprType d ctx e]] of
+    case funcTypeArgSubsts d (pos e) f [group_type] of
          Left er -> error $ "ruleAggregateTypeParams: " ++ er
          Right tmap -> tmap
     where
-    RHSAggregate _ group_by fname e = ruleRHS rl !! idx
-    ctx = CtxRuleRAggregate rl idx
+    RHSAggregate _ _ fname e = ruleRHS rl !! idx
+    group_by_type = ruleAggregateKeyType d rl idx
+    val_type = ruleAggregateValType d rl idx
+    group_type = tOpaque gROUP_TYPE [group_by_type, val_type]
+    f = getFunc d fname [group_type]
+
+ruleAggregateKeyType :: DatalogProgram -> Rule -> Int -> Type
+ruleAggregateKeyType d rl idx =
+    exprType d gctx $ rhsGroupBy $ ruleRHS rl !! idx
+    where
     gctx = CtxRuleRGroupBy rl idx
-    group_by_type = exprType d gctx group_by
-    f = getFunc d fname
+
+ruleAggregateValType :: DatalogProgram -> Rule -> Int -> Type
+ruleAggregateValType d rl idx =
+    exprType d ctx $ rhsAggExpr $ ruleRHS rl !! idx
+    where
+    ctx = CtxRuleRAggregate rl idx
 
 -- | Variables used in a RHS term of a rule.
 ruleRHSTermVars :: DatalogProgram -> Rule -> Int -> [Var]

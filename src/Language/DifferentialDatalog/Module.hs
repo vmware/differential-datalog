@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018 VMware, Inc.
+Copyright (c) 2018-2020 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -44,7 +44,6 @@ import System.FilePath.Posix
 import Data.List
 import Data.String.Utils
 import Data.Maybe
-import Data.Char
 --import Debug.Trace
 import Text.PrettyPrint
 
@@ -145,15 +144,15 @@ mergeModules mods = do
         progSources      = M.unions $ map progSources mods
     }
         jp = Just prog
-    uniq jp (name2rust . name) (\m -> ("The following function name " ++ (funcName m) ++ " will cause name collisions"))
-         $ M.elems $ progFunctions prog
-    uniq jp (name2rust . name) (\m -> "The following transformer name " ++ (transName m) ++ " will cause name collisions")
+    uniq jp (name2rust . name) (\m -> ("Function name '" ++ funcName m ++ "' will cause name collisions"))
+         $ map head $ M.elems $ progFunctions prog
+    uniq jp (name2rust . name) (\m -> "Transformer name '" ++ transName m ++ "' will cause name collisions")
          $ M.elems $ progTransformers prog
-    uniq jp (name2rust . name) (\m -> "The following relation name " ++ (relName m) ++ " will cause name collisions")
+    uniq jp (name2rust . name) (\m -> "Relation name '" ++ relName m ++ "' will cause name collisions")
          $ M.elems $ progRelations prog
-    uniq jp (name2rust . name) (\m -> "The following index name " ++ (idxName m) ++ " will cause name collisions")
+    uniq jp (name2rust . name) (\m -> "Index name '" ++ idxName m ++ "' will cause name collisions")
          $ M.elems $ progIndexes prog
-    uniq jp (name2rust . name) (\m -> "The following type name " ++ (tdefName m) ++ " will cause name collisions")
+    uniq jp (name2rust . name) (\m -> "Type name '" ++ tdefName m ++ "' will cause name collisions")
          $ M.elems $ progTypedefs prog
     return prog
 
@@ -212,7 +211,8 @@ flattenNamespace1 :: (MonadError String me) => MMap -> DatalogModule -> me Datal
 flattenNamespace1 mmap mod@DatalogModule{..} = do
     -- rename typedefs, functions, and relations declared in this module
     let types' = namedListToMap $ map (namedFlatten mod) (M.elems $ progTypedefs moduleDefs)
-        funcs' = namedListToMap $ map (namedFlatten mod) (M.elems $ progFunctions moduleDefs)
+        funcs' = M.fromList $ (map (\fs -> (name $ head fs, fs)))
+                            $ map (map (namedFlatten mod)) (M.elems $ progFunctions moduleDefs)
         trans' = namedListToMap $ map (namedFlatten mod) (M.elems $ progTransformers moduleDefs)
         rels'  = namedListToMap $ map (namedFlatten mod) (M.elems $ progRelations moduleDefs)
         idxs'  = namedListToMap $ map (namedFlatten mod) (M.elems $ progIndexes moduleDefs)
@@ -231,7 +231,7 @@ flattenNamespace1 mmap mod@DatalogModule{..} = do
     prog4 <- progExprMapCtxM prog3 (\_ e -> exprFlatten mmap mod e)
     prog5 <- progRHSMapM prog4 (\case
                                  rhs@RHSAggregate{..} -> do
-                                     f' <- flattenFuncName mmap mod (pos rhsAggExpr) rhsAggFunc
+                                     f' <- flattenFuncName' mmap mod (pos rhsAggExpr) rhsAggFunc 1
                                      return $ rhs{rhsAggFunc = f'}
                                  rhs -> return rhs)
     prog6 <- progAttributeMapM prog5 (attrFlatten mod mmap)
@@ -241,20 +241,26 @@ attrFlatten :: (MonadError String me) => DatalogModule -> MMap -> Attribute -> m
 attrFlatten mod mmap a@Attribute{attrName="deserialize_from_array", attrVal=(E EApply{..})} = do
     -- The value of deserialize_from_array attribute is the name of the key
     -- function.
-    f' <- flattenFuncName mmap mod (pos a) exprFunc
-    return $ a{attrVal = eApply f' exprArgs}
+    f' <- flattenFuncName' mmap mod (pos a) (head exprFunc) 1
+    return $ a{attrVal = E $ EApply exprPos [f'] exprArgs}
 attrFlatten _   _    a = return a
 
 applyFlattenNames :: (MonadError String me) => DatalogModule -> MMap -> Apply -> me Apply
 applyFlattenNames mod mmap a@Apply{..} = do
-    trans <- flattenTransName mmap mod (pos a) applyTransformer
-    inputs <- mapM (\i -> if isLower $ head i
-                             then flattenFuncName mmap mod (pos a) i
-                             else flattenRelName mmap mod (pos a) i) applyInputs
-    outputs <- mapM (\o -> if isLower $ head o
-                              then flattenFuncName mmap mod (pos a) o
-                              else flattenRelName mmap mod (pos a) o) applyOutputs
-    return a { applyTransformer = trans
+    (trans_name, Transformer{..}) <- flattenTransName mmap mod (pos a) applyTransformer
+    check (moduleDefs mod) (length applyInputs == length transInputs) (pos a)
+          $ "Transformer '" ++ transName ++ "' expects " ++ show (length transInputs) ++ " inputs"
+    inputs <- mapM (\(hot, i) -> case hot of 
+                                      HOTypeFunction{..} -> flattenFuncName' mmap mod (pos a) i (length hotArgs)
+                                      HOTypeRelation{}   -> flattenRelName mmap mod (pos a) i)
+                   $ zip (map hofType transInputs) applyInputs
+    check (moduleDefs mod) (length applyOutputs == length transOutputs) (pos a)
+          $ "Transformer '" ++ transName ++ "' expects " ++ show (length transOutputs) ++ " outputs"
+    outputs <- mapM (\(hot, o) -> case hot of
+                                       HOTypeFunction{..} -> flattenFuncName' mmap mod (pos a) o (length hotArgs)
+                                       HOTypeRelation{}   -> flattenRelName mmap mod (pos a) o)
+                    $ zip (map hofType transOutputs) applyOutputs
+    return a { applyTransformer = trans_name
              , applyInputs      = inputs
              , applyOutputs     = outputs }
 
@@ -276,31 +282,49 @@ candidates DatalogModule{..} p n = do
         errBrief p $ "Unknown module " ++ show mod ++ ".  Did you forget to import it?"
     return mods
 
-flattenName :: (MonadError String me) => (DatalogProgram -> String -> Maybe a) -> String -> MMap -> DatalogModule -> Pos -> String -> me String
+flattenName :: (MonadError String me) => (DatalogProgram -> String -> Maybe a) -> String -> MMap -> DatalogModule -> Pos -> String -> me (String, a)
 flattenName lookup_fun entity mmap mod p c = do
     cand_mods <- candidates mod p c
     let lname = nameLocal c
-    let cands = filter ((\m -> isJust $ lookup_fun (moduleDefs m) lname)) $ map (mmap M.!) cand_mods
+    let cands = concatMap (\m -> maybeToList $ (m,) <$> lookup_fun (moduleDefs m) lname) $ map (mmap M.!) cand_mods
     case cands of
-         [m] -> return $ scoped (moduleName m) lname
+         [(m,x)] -> return $ (scoped (moduleName m) lname, x)
          []  -> errBrief p $ "Unknown " ++ entity ++ " '" ++ c ++ "'"
          _   -> errBrief p $ "Conflicting definitions of " ++ entity ++ " " ++ c ++
                         " found in the following modules: " ++
-                        (intercalate ", " $ map moduleFile cands)
+                        (intercalate ", " $ map (moduleFile . fst) cands)
 
 flattenConsName :: (MonadError String me) => MMap -> DatalogModule -> Pos -> String -> me String
-flattenConsName = flattenName lookupConstructor "constructor"
+flattenConsName mmap mod p c = fst <$> flattenName lookupConstructor "constructor" mmap mod p c
 
 flattenTypeName :: (MonadError String me) => MMap -> DatalogModule -> Pos -> String -> me String
-flattenTypeName = flattenName lookupType "type"
+flattenTypeName mmap mod p c = fst <$> flattenName lookupType "type" mmap mod p c
 
-flattenFuncName :: (MonadError String me) => MMap -> DatalogModule -> Pos -> String -> me String
-flattenFuncName = flattenName lookupFunc "function"
+-- Function 'fname' can be declared in multiple modules.  Return all matching function
+-- names; postpone disambiguation till type inference.
+flattenFuncName :: (MonadError String me) => MMap -> DatalogModule -> Pos -> String -> Int -> me [String]
+flattenFuncName mmap mod p fname nargs = do
+    cand_mods <- candidates mod p fname
+    let lname = nameLocal fname
+    let cands = filter (\m -> isJust $ lookupFuncs (moduleDefs m) lname nargs) $ map (mmap M.!) cand_mods
+    case cands of
+         [] -> err (moduleDefs mod) p $ "Unknown function '" ++ fname ++ "'"
+         ms -> return $ map (\m -> scoped (moduleName m) lname) ms
+
+-- Like 'flattenFuncName', but additionally insists that there is a unique
+-- matching function.
+flattenFuncName' :: (MonadError String me) => MMap -> DatalogModule -> Pos -> String -> Int -> me String
+flattenFuncName' mmap mod p fname nargs = do
+    fname' <- flattenFuncName mmap mod p fname nargs
+    check (moduleDefs mod) (length fname' == 1) p
+          $ "Ambiguous function name '" ++ fname ++ "' may refer to\n  " ++
+            (intercalate "\n  " fname')
+    return $ head fname'
 
 flattenRelName :: (MonadError String me) => MMap -> DatalogModule -> Pos -> String -> me String
-flattenRelName = flattenName lookupRelation "relation"
+flattenRelName mmap mod p c = fst <$> flattenName lookupRelation "relation" mmap mod p c
 
-flattenTransName :: (MonadError String me) => MMap -> DatalogModule -> Pos -> String -> me String
+flattenTransName :: (MonadError String me) => MMap -> DatalogModule -> Pos -> String -> me (String, Transformer)
 flattenTransName = flattenName lookupTransformer "transformer"
 
 namedFlatten :: (WithName a) => DatalogModule -> a -> a
@@ -319,8 +343,8 @@ typeFlatten mmap mod t = do
 
 exprFlatten :: (MonadError String me) => MMap -> DatalogModule -> ENode -> me Expr
 exprFlatten mmap mod e@EApply{..} = do
-    f <- flattenFuncName mmap mod (pos e) exprFunc
-    return $ E $ e { exprFunc = f }
+    fs <- flattenFuncName mmap mod (pos e) (head exprFunc) (length exprArgs)
+    return $ E $ e { exprFunc = fs }
 exprFlatten mmap mod e@EStruct{..} = do
     c <- flattenConsName mmap mod (pos e) exprConstructor
     return $ E $ e { exprConstructor = c }

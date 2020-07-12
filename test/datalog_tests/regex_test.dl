@@ -21,7 +21,7 @@ output relation RegexTestOutput(
 RegexTestOutput(regex,
                 text,
                 regex_match(regex(regex), text),
-                regex_match(result_unwrap_or(regex_checked(regex), regex("")), text),
+                regex_match(unwrap_or(regex_checked(regex), regex("")), text),
                 regex_first_match(regex(regex), text),
                 regex_all_matches(regex(regex), text)) :-
     RegexTestInput(regex, text).

@@ -67,19 +67,6 @@ function shadow(): () = {
 
 //---
 
-// recursive functions
-
-function f1(arg: bigint): bigint = {
-    f2(arg)
-}
-
-function f2(arg: bigint): bigint = {
-    f1(arg)
-}
-
-
-//---
-
 // non-unique constructor in the LHS of assignment
 
 function f(x: Option<'A>): () = {
@@ -211,3 +198,10 @@ typedef Tagg = Tagg{col:bool}
 function agg():Tagg =
   (var any = Some{false}: Option<bool>);
   (Tagg{.col = bool_identity(any)})
+
+//---
+
+// Extern function name clash
+
+extern function foo(x: u32): ()
+extern function foo(x: Vec<u32>): ()

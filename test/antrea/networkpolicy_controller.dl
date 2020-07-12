@@ -558,7 +558,7 @@ AppliedToGroupPod(appliedToGroup, k8s.PodReference{pod.name, pod.namespace}, pod
 
 AppliedToGroupPodsByNode(appliedToGroup, nodeName, pods) :-
     AppliedToGroupPod(appliedToGroup, pod, nodeName),
-    var pods = Aggregate((appliedToGroup, nodeName), group2set(pod)).
+    var pods = Aggregate((appliedToGroup, nodeName), group_to_set(pod)).
     //var podsByNode = Aggregate((appliedToGroup), group2map((nodeName, podsOnNode))).
 
 AppliedToGroupSpan(appliedToGroup, nodeName) :-

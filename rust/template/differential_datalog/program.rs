@@ -2224,23 +2224,23 @@ impl RunningProgram {
     /// Insert one record into input relation. Relations have set semantics, i.e.,
     /// adding an existing record is a no-op.
     pub fn insert(&mut self, relid: RelId, v: DDValue) -> Response<()> {
-        self.apply_updates(vec![Update::Insert { relid: relid, v: v }].into_iter())
+        self.apply_updates(vec![Update::Insert { relid, v }].into_iter())
     }
 
     /// Insert one record into input relation or replace existing record with the same
     /// key.
     pub fn insert_or_update(&mut self, relid: RelId, v: DDValue) -> Response<()> {
-        self.apply_updates(vec![Update::InsertOrUpdate { relid: relid, v: v }].into_iter())
+        self.apply_updates(vec![Update::InsertOrUpdate { relid, v }].into_iter())
     }
 
     /// Remove a record if it exists in the relation.
     pub fn delete_value(&mut self, relid: RelId, v: DDValue) -> Response<()> {
-        self.apply_updates(vec![Update::DeleteValue { relid: relid, v: v }].into_iter())
+        self.apply_updates(vec![Update::DeleteValue { relid, v }].into_iter())
     }
 
     /// Remove a key if it exists in the relation.
     pub fn delete_key(&mut self, relid: RelId, k: DDValue) -> Response<()> {
-        self.apply_updates(vec![Update::DeleteKey { relid: relid, k: k }].into_iter())
+        self.apply_updates(vec![Update::DeleteKey { relid, k }].into_iter())
     }
 
     /// Modify a key if it exists in the relation.
@@ -2250,14 +2250,7 @@ impl RunningProgram {
         k: DDValue,
         m: Arc<dyn Mutator<DDValue> + Send + Sync>,
     ) -> Response<()> {
-        self.apply_updates(
-            vec![Update::Modify {
-                relid: relid,
-                k: k,
-                m: m,
-            }]
-            .into_iter(),
-        )
+        self.apply_updates(vec![Update::Modify { relid, k, m }].into_iter())
     }
 
     /// Apply multiple insert and delete operations in one batch.

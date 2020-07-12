@@ -272,7 +272,7 @@ relation PodAllLabels(pod_name: IString, node_name: IString, labels: Map<IString
 PodAllLabels(pod_name, node_name, labels) :-
     POD(.pod_name = pod_name, .node_name = node_name),
     PODLABELS(.pod_name = pod_name, .label_key = label_key, .label_value = label_value),
-    var labels = Aggregate((pod_name, node_name), group2map((label_key, label_value))).
+    var labels = Aggregate((pod_name, node_name), group_to_map((label_key, label_value))).
 
 INTERPODAFFINITYMATCHESINNER(pod_name, matching_pod, node_name):-
     PodLabelSelector(pod_name, expressions),

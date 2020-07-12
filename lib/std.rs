@@ -469,7 +469,7 @@ pub fn std_vec_nth<X: Ord + Clone>(v: &std_Vec<X>, n: &std_usize) -> std_Option<
     option2std(v.x.get(*n as usize).cloned())
 }
 
-pub fn std_vec2set<X: Ord + Clone>(s: &std_Vec<X>) -> std_Set<X> {
+pub fn std_vec_to_set<X: Ord + Clone>(s: &std_Vec<X>) -> std_Set<X> {
     std_Set {
         x: s.x.iter().cloned().collect(),
     }
@@ -698,7 +698,7 @@ pub fn std_set_nth<X: Ord + Clone>(s: &std_Set<X>, n: &std_usize) -> std_Option<
     option2std(s.x.iter().nth(*n as usize).cloned())
 }
 
-pub fn std_set2vec<X: Ord + Clone>(s: &std_Set<X>) -> std_Vec<X> {
+pub fn std_set_to_vec<X: Ord + Clone>(s: &std_Set<X>) -> std_Vec<X> {
     std_Vec {
         x: s.x.iter().cloned().collect(),
     }
@@ -1157,7 +1157,7 @@ pub fn std_group_nth<K, V>(g: &std_Group<K, V>, n: &std_usize) -> std_Option<V> 
     g.nth(*n)
 }
 
-pub fn std_group2set<K, V: Ord + Clone>(g: &std_Group<K, V>) -> std_Set<V> {
+pub fn std_group_to_set<K, V: Ord + Clone>(g: &std_Group<K, V>) -> std_Set<V> {
     let mut res = std_Set::new();
     for v in g.iter() {
         std_set_insert(&mut res, &v);
@@ -1194,7 +1194,7 @@ pub fn std_group_setref_unions<K, V: Ord + Clone>(
     }
 }
 
-pub fn std_group2vec<K, V: Ord + Clone>(g: &std_Group<K, V>) -> std_Vec<V> {
+pub fn std_group_to_vec<K, V: Ord + Clone>(g: &std_Group<K, V>) -> std_Vec<V> {
     let mut res = std_Vec::with_capacity(g.size() as usize);
     for v in g.iter() {
         std_vec_push(&mut res, &v);
@@ -1202,7 +1202,9 @@ pub fn std_group2vec<K, V: Ord + Clone>(g: &std_Group<K, V>) -> std_Vec<V> {
     res
 }
 
-pub fn std_group2map<K1, K2: Ord + Clone, V: Clone>(g: &std_Group<K1, (K2, V)>) -> std_Map<K2, V> {
+pub fn std_group_to_map<K1, K2: Ord + Clone, V: Clone>(
+    g: &std_Group<K1, (K2, V)>,
+) -> std_Map<K2, V> {
     let mut res = std_Map::new();
     for (k, v) in g.iter() {
         std_map_insert(&mut res, &k, &v);
@@ -1210,7 +1212,7 @@ pub fn std_group2map<K1, K2: Ord + Clone, V: Clone>(g: &std_Group<K1, (K2, V)>) 
     res
 }
 
-pub fn std_group2setmap<K1, K2: Ord + Clone, V: Clone + Ord>(
+pub fn std_group_to_setmap<K1, K2: Ord + Clone, V: Clone + Ord>(
     g: &std_Group<K1, (K2, V)>,
 ) -> std_Map<K2, std_Set<V>> {
     let mut res = std_Map::new();

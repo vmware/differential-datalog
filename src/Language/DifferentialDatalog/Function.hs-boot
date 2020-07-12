@@ -9,4 +9,3 @@ import Language.DifferentialDatalog.Syntax
 
 funcTypeArgSubsts :: (MonadError String me) => DatalogProgram -> Pos -> Function -> [Type] -> me (M.Map String Type)
 funcGroupArgTypes :: DatalogProgram -> Function -> [Type]
-funcIsPure :: DatalogProgram -> Function -> Bool

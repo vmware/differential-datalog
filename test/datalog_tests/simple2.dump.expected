@@ -1,3 +1,13 @@
+Ack:
+Ack{.m = 2, .n = 1, .a = 5}: +1
+Fib:
+Fib{.x = 0, .f = 0}: +1
+Fib{.x = 1, .f = 1}: +1
+Fib{.x = 2, .f = 1}: +1
+Fib{.x = 3, .f = 2}: +1
+Fib{.x = 4, .f = 3}: +1
+Fib{.x = 10, .f = 55}: +1
+Fib{.x = 20, .f = 6765}: +1
 FuncTest:
 FuncTest{.x = "foo"}: +1
 RFloatToInt:
@@ -41,3 +51,11 @@ ChunkParseError{.err = "missing field `field` at line 1 column 11"}: +1
 CompressedChunk:
 CompressedChunk{.json = "{\"field\":1}"}: +2
 CompressedChunk{.json = "{\"field\":2}"}: +1
+Fib{.x = 0, .f = 0}
+Fib{.x = 1, .f = 1}
+Fib{.x = 2, .f = 1}
+Fib{.x = 3, .f = 2}
+Fib{.x = 4, .f = 3}
+Fib{.x = 10, .f = 55}
+Fib{.x = 20, .f = 6765}
+Ack{.m = 2, .n = 1, .a = 5}

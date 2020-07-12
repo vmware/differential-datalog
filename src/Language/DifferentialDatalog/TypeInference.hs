@@ -23,18 +23,25 @@ SOFTWARE.
 
 {-# LANGUAGE FlexibleContexts, RecordWildCards, TupleSections, ImplicitParams, RankNTypes #-}
 
+{-|
+Module: TypeInference
+Description: Type inference engine: generates type constraints and solves them using
+  the algorithm in Unification.hs.
+-}
+
 module Language.DifferentialDatalog.TypeInference(
-    DDExpr(..),
-    tvObject,
-    inferTypes
+    inferTypes,
+    inferTypeArgs,
+    unifyTypes
 )
 where
 
 import qualified Data.Map as M
-import Data.List
 --import Data.List.Utils
 import Control.Monad.Except
 import Control.Monad.State.Lazy
+import Data.Either
+import Data.List
 import Data.Maybe
 import GHC.Float
 --import Debug.Trace
@@ -43,6 +50,7 @@ import Language.DifferentialDatalog.Attribute
 import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Error
 import Language.DifferentialDatalog.Expr
+import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Ops
@@ -218,6 +226,49 @@ typeToTExpr__ (Just de) TVar{..}     = teTVarAux de tvarName
 typeToTExpr__ mde       TOpaque{..}  = TEExtern typeName <$> mapM (typeToTExpr_ mde) typeArgs
 typeToTExpr__ _         t@TStruct{}  = error $ "typeToTExpr__: unexpected '" ++ show t ++ "'"
 
+
+-- | Matches function parameter types against concrete argument types, e.g.,
+-- given
+-- > [(t<'A>, t<q<'B>>)]
+-- derives
+-- > 'A = q<'B>
+--
+-- Returns mapping from type variables to concrete types or an error
+-- if no such mapping was found due to a conflict, e.g.:
+-- > [(t<'A>, t<q<'B>>), ('A, int)] // conflict
+--
+-- Note that concrete argument types can contain type variables.
+-- Concrete and abstract type variables belong to different
+-- namespaces (i.e., the same name represents different variables in
+-- concrete and abstract types).
+inferTypeArgs :: (MonadError String me) => DatalogProgram -> Pos -> String -> [(Type, Type)] -> me (M.Map String Type)
+inferTypeArgs d p ctx ts = do
+    let ?d = d
+    let constraints = -- Manufacture a bogus expression for typeToTExpr'.
+                     evalState (mapM (\(t1,t2) -> do te1 <- typeToTExpr' (DDExpr CtxTop eTrue) t1
+                                                     let te2 = typeToTExpr t2
+                                                     return $ CPredicate $ PEq te1 te2 $ ExplanationString p ctx)
+                                     ts)
+                               emptyGenerator
+    typing <- solve d constraints True
+    return $ M.fromList $ map (\(TVarAux{..}, t) -> (tvarName, t)) $ M.toList typing
+
+-- Check if two types are compatible (i.e., both can be concretized to the same type).
+unifyTypes :: DatalogProgram -> Type -> Type -> Bool
+unifyTypes d t1 t2 =
+    let ?d = d in
+    let constraints = -- Manufacture bogus expressions for typeToTExpr'.
+                     evalState (do te1 <- typeToTExpr' (DDExpr CtxTop eTrue) t1
+                                   te2 <- typeToTExpr' (DDExpr CtxTop eFalse) t2
+                                   return [CPredicate $ PEq te1 te2 $ ExplanationString nopos ""])
+                               emptyGenerator
+    in isRight $ solve d constraints False
+
+-- Check if to type expressions are compatible (i.e., both can be concretized to the same type).
+unifyTExprs :: (?d::DatalogProgram) => TExpr -> TExpr -> Bool
+unifyTExprs te1 te2 =
+    isRight $ solve ?d [CPredicate $ PEq te1 te2 $ ExplanationString nopos ""] False
+
 -- Type expression is a struct of the specified user-defined type: 'is_MyStruct |e|'.
 deIsStruct :: (?d::DatalogProgram) => DDExpr -> String -> GeneratorMonad Constraint
 deIsStruct de n = CPredicate <$> deIsStruct_ de n
@@ -340,35 +391,37 @@ deIsIterable de tv = do
 --short :: String -> String
 --short = (\x -> if length x < 100 then x else take (100 - 3) x ++ "...") . replace "\n" " "
 
-inferTypes :: (MonadError String me) => DatalogProgram -> [DDExpr] -> me [Expr]
+inferTypes :: (MonadError String me) => DatalogProgram -> [(ECtx, Expr)] -> me [Expr]
 inferTypes d es = do
     let ?d = d
-    let GeneratorState{..} = execState (do mapM_ contextConstraints es
-                                           mapM_ exprConstraints es)
+    let es' = map (\(ctx, e) -> DDExpr ctx e) es
+    let GeneratorState{..} = execState (do mapM_ contextConstraints es'
+                                           mapM_ exprConstraints es')
                                        emptyGenerator
     typing <- --trace ("inferTypes " ++ show es ++ "\nConstraints:\n" ++ constraintsShow genConstraints) $
-              solve d genConstraints
+              solve d genConstraints True
     -- Extract ECtx -> Type mapping from 'typing'.
     let ctxtypes = foldl' (\m (tv, t) ->
                             case tv of
                                  TVarTypeOfExpr _ (DDExpr ctx _) -> M.insert ctx t m
                                  _                               -> m) M.empty
                           $ M.toList typing
-    let add_types :: (MonadError String me) => ECtx -> ENode -> me Expr
+    let add_types :: (MonadError String me) => ECtx -> ExprNode (Expr, Type) -> me (Expr, Type)
         add_types ctx e =
             -- String conversion.
             case ctx of
                 CtxBinOpR _ ctx' | ctxtypes M.! ctx' == tString && t /= tString
                                  -> do e'' <- exprInjectStringConversion d (enode e') t
-                                       return $ E $ ETyped (pos e') e'' tString
-                _ -> return e'
+                                       return (E $ ETyped (pos e') e'' tString, t)
+                _ -> return (e', t)
             where
             t = case M.lookup ctx ctxtypes of
                      Just t' -> t'
                      Nothing -> error $ "inferTypes: context has not been assigned a type:\n" ++ show ctx
+            expr = exprMap fst e
             annotated = if ctxIsTyped ctx
-                           then E e
-                           else E $ ETyped (pos e) (E e) t
+                           then E expr
+                           else E $ ETyped (pos e) (E expr) t
             e' = case e of
                  -- Convert integer literals to bit vectors if necessary.
                  EInt{..}     -> case t of
@@ -376,12 +429,12 @@ inferTypes d es = do
                                       TSigned{..} -> E $ ESigned (pos e) typeWidth exprIVal
                                       TFloat{}    -> E $ EFloat  (pos e) $ fromInteger exprIVal
                                       TDouble{}   -> E $ EDouble (pos e) $ fromInteger exprIVal
-                                      TInt{}      -> E e
+                                      TInt{}      -> E expr
                                       _           -> error $ "inferTypes: unexpected integer type '" ++ show t ++ "'"
                  -- Convert doubles to floats if necessary.
                  EDouble{..} -> case t of
                                      TFloat{..}  -> E $ EFloat  (pos e) $ double2Float exprDVal
-                                     TDouble{}   -> E e
+                                     TDouble{}   -> E expr
                                      _           -> error $ "inferTypes: unexpected floating point type '" ++ show t ++ "'"
                  -- Annotate all expressions whose type cannot be derived in a bottom-up manner:
                  -- var decls, placeholders, function calls, structs, etc.
@@ -391,15 +444,24 @@ inferTypes d es = do
                  EVar{} | ctxInRuleRHSPattern ctx 
                              -> annotated
                  EPHolder{}  -> annotated
-                 EApply{..} | typeIsPolymorphic (funcType $ getFunc ?d exprFunc)
-                             -> annotated
+                 EApply{..}  -> do
+                    let fs = mapMaybe (\fname -> lookupFunc d fname $ map snd exprArgs) exprFunc
+                    let f = case fs of
+                                 [f'] -> f'
+                                 _ -> error $ "TypeInference.add_types: e=" ++ show expr ++ "\nfs = " ++ show (map name fs)
+                    if typeIsPolymorphic (funcType f)
+                    then if ctxIsTyped ctx
+                         then E $ expr{exprFunc = [name f]}
+                         else E $ ETyped (pos e) (E $ expr{exprFunc = [name f]}) t
+                    else E $ expr{exprFunc = [name f]}
                  EStruct{}   -> annotated
                  EContinue{} -> annotated
                  EBreak{}    -> annotated
                  EReturn{}   -> annotated
                  ERef{}      -> annotated
-                 _           -> E e
-    mapM (\(DDExpr ctx e) -> exprFoldCtxM add_types ctx e) es
+                 _           -> E expr
+    --trace ("\nctxtypes:\n" ++ (intercalate "\n" $ map (\(ctx, t) -> show ctx ++ ": " ++ show t) $ M.toList ctxtypes)) $
+    mapM (\(DDExpr ctx e) -> fst <$> exprFoldCtxM add_types ctx e) es'
     {-trace ("inferTypes " ++ (intercalate "\n\n" $ map show es) ++ "\nconstraints:\n" ++ (constraintsShow genConstraints))$-}
 
 {- Context-specific constraints. -}
@@ -456,14 +518,15 @@ contextConstraints de@(DDExpr (CtxRuleRAggregate rl i) _) = do
     addConstraint =<< tvarTypeOfVar (AggregateVar rl i) <====> typeToTExpr' de ret_type
     where
     RHSAggregate{..} = ruleRHS rl !! i
-    Function{funcArgs = [grp_type], funcType = ret_type} = getFunc ?d rhsAggFunc
+    -- 'ruleRHSValidate' makes sure that there's only one.
+    [Function{funcArgs = [grp_type], funcType = ret_type}] = getFuncs ?d rhsAggFunc 1
     TOpaque{typeArgs = [_, vtype]} = typ' ?d grp_type
 
 contextConstraints de@(DDExpr ctx@(CtxRuleRGroupBy rl i) _) =
     addConstraint =<< tvarTypeOfExpr (DDExpr ctx rhsGroupBy) <~~~~> typeToTExpr' de ktype
     where
     RHSAggregate{..} = ruleRHS rl !! i
-    Function{funcArgs = [grp_type]} = getFunc ?d rhsAggFunc
+    [Function{funcArgs = [grp_type]}] = getFuncs ?d rhsAggFunc 1
     TOpaque{typeArgs = [ktype, _]} = typ' ?d grp_type
 
 
@@ -555,11 +618,40 @@ exprConstraints_ de@(DDExpr _ (E EDouble{})) =
 -- |de|=f_ret |a1|...|aj| and
 -- |e1|=f_arg_1 |a1|...|aj| and ... and |en|=f_arg_n |a1|...|aj|, where |a1|...|aj| are fresh type variables
 exprConstraints_ de@(DDExpr ctx (E e@EApply{..})) = do
-    addConstraint =<< tvarTypeOfExpr de <====> typeToTExpr' de funcType
-    addConstraints =<< (mapIdxM (\(farg, earg) i -> tvarTypeOfExpr (DDExpr (CtxApply e ctx i) earg) <~~~~> typeToTExpr' de (typ farg))
-                                $ zip funcArgs exprArgs)
+    -- Generate argument and return-type constraints for all candidate
+    -- functions.
+    constraints <- mapM (\Function{..} -> do
+                          ret_c <- tvarTypeOfExpr de <====> typeToTExpr' de funcType
+                          arg_cs <- mapIdxM (\(farg, earg) i -> tvarTypeOfExpr (DDExpr (CtxApply e ctx i) earg) <~~~~> typeToTExpr' de (typ farg))
+                                            $ zip funcArgs exprArgs
+                          return $ ret_c : arg_cs)
+                        candidates
+    case constraints of
+         [cs] -> addConstraints cs
+         _    -> do
+           -- Type expression for the first argument of each candidate function.
+           te_arg0 <- mapM (typeToTExpr' de . typ . head . funcArgs) candidates
+           let -- Match the first argument against the first formal argument of each candidate
+               -- function.  If a unique match is found, we've found our candidate and can expand the lazy
+               -- constraint.  If multiple potential matches remain, return Nothing and try again later, when
+               -- the argument type has been further concretized, but if the argument is already fully
+               -- concretized, complain.  If there are no matches, signal type conflict.
+               expand te = case findIndices (\(Function{..}, arg0) -> unifyTExprs te arg0) $ zip candidates te_arg0 of
+                                []  -> err ?d (pos e) $ "Unknown function '" ++ fname ++ "(" ++ show te ++ (concat $ replicate (length exprArgs - 1) ",_") ++ ")'"
+                                [i] -> return $ Just $ constraints !! i
+                                is | teIsConstant te -> err ?d (pos e) 
+                                                        $ "Ambiguous call to function '" ++ fname ++
+                                                          "(" ++ show te ++ (concat $ replicate (length exprArgs - 1) ",_") ++ ")' may refer to:\n  " ++
+                                                           (intercalate "\n  " $ map (\i -> (name $ candidates !! i) ++ " at " ++ (spos $ candidates !! i)) is)
+                                   | otherwise -> return Nothing
+           ce <- teTypeOfExpr efirst_arg
+           addConstraint $ CLazy ce expand Nothing efirst_arg 
+                         $ "Function '" ++ fname ++ "(" ++ show efirst_arg ++ ", ...)'"
     where
-    Function{..} = getFunc ?d exprFunc
+    -- All functions that 'exprFunc' may be referring to.
+    candidates = concatMap (\f -> getFuncs ?d f (length exprArgs)) exprFunc
+    efirst_arg = DDExpr (CtxApply e ctx 0) (head exprArgs)
+    fname = nameLocal $ head exprFunc
 
 -- Struct field access: 'e1.f', where field 'f' is present in user-defined
 -- structs in 'S1',...,'Sn'.
