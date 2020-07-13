@@ -182,7 +182,7 @@ fn add_file_sinks<P>(
         BTreeSet<RelId>,
         SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>,
     >,
-    sinks: &mut HashMap<BTreeSet<RelId>, Vec<(SinkRealization<P::Convert>, usize)>>,
+    sinks: &mut HashMap<BTreeSet<RelId>, (SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>, HashMap<Sink, (SinkRealization<P::Convert>, usize)>)>, 
 ) -> Result<(), String>
 where
     P: Send + DDlog + 'static,
@@ -256,7 +256,6 @@ where
     let mut realization = Realization {
         _sources: sources,
         _txnmux: txnmux,
-        _accumulators: accumulators,
         _sinks: sinks,
     };
 
@@ -316,13 +315,8 @@ where
     >,
     /// The transaction multiplexer as input to the DDLogServer
     _txnmux: TxnMux<Update<DDValue>, String>,
-    /// All sink accumulators of this realization to connect new nodes to
-    _accumulators: HashMap<
-        BTreeSet<RelId>,
-        SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>,
-    >,
     /// All sinks of this realization with their subscription
-    _sinks: HashMap<BTreeSet<RelId>, Vec<(SinkRealization<P::Convert>, usize)>>,
+    _sinks: HashMap<BTreeSet<RelId>, (SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>, HashMap<Sink, (SinkRealization<P::Convert>, usize)>)>,
 }
 
 impl<P> Realization<P>
@@ -404,6 +398,53 @@ where
             Err(_) => Err("failed to register Accumulator with TxnMux".to_string()),
         }
     }
+
+    pub fn remove_sink(&mut self, sink: &Sink) {
+        self._sinks
+            .iter_mut()
+            .for_each(|(_rel_ids, (mut acc, mut sink_map))| {
+                // Look up the sink in Realization._sinks
+                if sink_map.contains_key(sink) {
+                    // Remove entry from sink map
+                    let (_, subscription) = sink_map.remove(sink).unwrap();
+                    // Unsubscribe the accumulator from this sink subscription
+                    acc.unsubscribe(&subscription);
+                }
+            });
+    }
+
+    pub fn add_sink(&mut self, sink: &Sink, rel_ids: BTreeSet<RelId>) {
+
+            let sink = Arc::new(Mutex::new(FileSink::<P::Convert>::new(file)));
+        let entry = self._sinks
+                    .entry(rel_ids)
+                    .and_modify(|(mut accum, mut sink_map)| {
+                        let subscription = accum.subscribe(Box::new(sink)).unwrap();
+                        // TODO handle files and tcp sink stuff
+                        sink_map.insert(sink, (SinkRealization::File(sink), subscription)).unwrap();
+                    })
+                    .or_insert_with(|| {
+                        let accum = Arc::new(Mutex::new(DistributingAccumulator::new()));
+                        (accum, HashMap::new())
+                    });
+
+
+    } 
+
+    //pub fn remove_sink_accumulator(&mut self, acc: usize) {
+       //// Disconnect accumulator from the server.
+       //// unsubscribe
+       //// Server.remove_stream
+       //// remove accumulator from Realization._sinks
+       //self._sinks
+           //.iter_mut()
+           //.for_each(|(rel_id, (accum, _))| {
+                //if accum == acc {
+                    //let (_, (accum, sink_map)) = self._sinks.remove(rel_id).unwrap();
+                        
+                //}
+            //}
+    //}
 
     /// Add file sources as per the node configuration to the TxnMux for this
     /// Realization.
