@@ -136,7 +136,7 @@ pub enum Source {
 }
 
 /// All the output sinks we support.
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Deserialize, Serialize, Hash)]
 pub enum Sink {
     /// Output is emitted into a file.
     File(PathBuf),
