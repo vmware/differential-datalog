@@ -195,10 +195,17 @@ where
                 .map_err(|e| format!("failed to create file {}: {}", path.display(), e))?;
             let sink = Arc::new(Mutex::new(FileSink::<P::Convert>::new(file)));
 
-            let accumulator = accumulators
-                .entry(rel_ids.clone())
-                .or_insert_with(|| Arc::new(Mutex::new(DistributingAccumulator::new())));
+            // TODO: From here down, the functionality is moving to either
+            // add_sink() or add_sink_accumulator().
 
+            // TODO: Instead of this, we want to create an accumulator if one does
+            // not exist for this relids and return it.
+            let accumulator = self.add_sink_accumulator();
+            //let accumulator = accumulators
+                //.entry(rel_ids.clone())
+                //.or_insert_with(|| Arc::new(Mutex::new(DistributingAccumulator::new())));
+
+            // TODO: This will happen in add_sink().
             let subscription = accumulator
                 .lock()
                 .unwrap()
@@ -210,11 +217,13 @@ where
                     )
                 })?;
 
+            // TODO: This will happen in add_sink().
             sinks
                 .entry(rel_ids.clone())
                 .or_insert_with(Vec::new)
                 .insert(0, (SinkRealization::File(sink), subscription));
 
+            // TODO: Gonna happen in add_sink_accumulator() 
             server
                 .add_stream(rel_ids.clone())
                 .subscribe(Box::new(accumulator.clone()))
@@ -413,20 +422,40 @@ where
             });
     }
 
+    // TODO: Need this to work for file sinks AND tcp sinks.
     pub fn add_sink(&mut self, sink: &Sink, rel_ids: BTreeSet<RelId>) {
+        // Add the accumulator to the realization if needed.
+        // Either way, gain reference to it.
+        let accumulator = self.add_sink_accumulator();
 
-            let sink = Arc::new(Mutex::new(FileSink::<P::Convert>::new(file)));
-        let entry = self._sinks
-                    .entry(rel_ids)
-                    .and_modify(|(mut accum, mut sink_map)| {
-                        let subscription = accum.subscribe(Box::new(sink)).unwrap();
-                        // TODO handle files and tcp sink stuff
-                        sink_map.insert(sink, (SinkRealization::File(sink), subscription)).unwrap();
-                    })
-                    .or_insert_with(|| {
-                        let accum = Arc::new(Mutex::new(DistributingAccumulator::new()));
-                        (accum, HashMap::new())
-                    });
+        // Subscribe the accumulator to this sink.
+        let subscription = accumulator
+            .lock()
+            .unwrap()
+            .subscribe(Box::new(sink.clone()))
+            .map_err(|_| {
+                format!(
+                    "failed to subscribe file sink {} to accumulator",
+                    path.display()
+                )
+            })?;
+
+        let (_, ref mut sink_map) = sinks.get_mut(rel_ids.clone()).unwrap();
+        *sink_map.insert(sink, (SinkRealization::File(sink), subscription));
+
+        // OLD STUFF:
+            //let sink = Arc::new(Mutex::new(FileSink::<P::Convert>::new(file)));
+        //let entry = self._sinks
+                    //.entry(rel_ids)
+                    //.and_modify(|(mut accum, mut sink_map)| {
+                        //let subscription = accum.subscribe(Box::new(sink)).unwrap();
+                        //// TODO handle files and tcp sink stuff
+                        //sink_map.insert(sink, (SinkRealization::File(sink), subscription)).unwrap();
+                    //})
+                    //.or_insert_with(|| {
+                        //let accum = Arc::new(Mutex::new(DistributingAccumulator::new()));
+                        //(accum, HashMap::new())
+                    //});
 
 
     } 
@@ -445,6 +474,10 @@ where
                 //}
             //}
     //}
+
+    pub fn add_sink_accumulator(&mut self) {
+
+    }
 
     /// Add file sources as per the node configuration to the TxnMux for this
     /// Realization.
