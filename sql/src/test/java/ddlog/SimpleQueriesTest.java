@@ -224,7 +224,7 @@ public class SimpleQueriesTest extends BaseQueriesTest {
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.i = abs(v.column1)},var v1 = v0.";
+                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.i = sql_abs(v.column1)},var v1 = v0.";
         this.testTranslation(query, program);
     }
 
@@ -236,7 +236,7 @@ public class SimpleQueriesTest extends BaseQueriesTest {
                 this.relations(true) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.i = abs_N(v.column1)},var v1 = v0.";
+                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.i = sql_abs_N(v.column1)},var v1 = v0.";
         this.testTranslation(query, program, true);
     }
     @Test
@@ -270,7 +270,7 @@ public class SimpleQueriesTest extends BaseQueriesTest {
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.s = substr(v.column2, 64'sd3, 64'sd5)},var v1 = v0.";
+                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.s = sql_substr(v.column2, 64'sd3, 64'sd5)},var v1 = v0.";
         this.testTranslation(query, program);
     }
 
@@ -282,7 +282,7 @@ public class SimpleQueriesTest extends BaseQueriesTest {
             this.relations(true) +
             "relation Rtmp[TRtmp]\n" +
             "output relation Rv0[TRtmp]\n" +
-            "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.s = substr_N(v.column2, 64'sd3, 64'sd5)},var v1 = v0.";
+            "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.s = sql_substr_N(v.column2, 64'sd3, 64'sd5)},var v1 = v0.";
         this.testTranslation(query, program, true);
     }
 
@@ -318,7 +318,7 @@ public class SimpleQueriesTest extends BaseQueriesTest {
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv3[TRtmp]\n" +
-                "Rv3[v1] :- Rt1[v],var v0 = TRtmp{.c = concat(concat([|${v.column1}|], v.column2), [|${v.column3}|])},var v1 = v0.";
+                "Rv3[v1] :- Rt1[v],var v0 = TRtmp{.c = sql_concat(sql_concat([|${v.column1}|], v.column2), [|${v.column3}|])},var v1 = v0.";
         this.testTranslation(query, program);
     }
 
@@ -330,7 +330,7 @@ public class SimpleQueriesTest extends BaseQueriesTest {
                 this.relations(true) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv3[TRtmp]\n" +
-                "Rv3[v1] :- Rt1[v],var v0 = TRtmp{.c = concat_N(concat_N(match(v.column1) {None{}: Option<signed<64>> -> None{}: Option<string>,\n" +
+                "Rv3[v1] :- Rt1[v],var v0 = TRtmp{.c = sql_concat_N(sql_concat_N(match(v.column1) {None{}: Option<signed<64>> -> None{}: Option<string>,\n" +
                 "Some{.x = var x} -> Some{.x = [|${x}|]}\n" +
                 "}, v.column2), match(v.column3) {None{}: Option<bool> -> None{}: Option<string>,\n" +
                 "Some{.x = var x} -> Some{.x = [|${x}|]}\n" +

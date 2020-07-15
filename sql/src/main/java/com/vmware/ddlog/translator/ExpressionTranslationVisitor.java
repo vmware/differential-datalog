@@ -485,7 +485,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
         List<DDlogExpression> args = Linq.map(arguments, a -> this.process(a, context));
         DDlogType type = functionResultType(node, name, args);
         boolean someNull = Linq.any(args, a -> a.getType().mayBeNull);
-        String useName = name;
+        String useName = "sql_" + name;
         if (someNull)
             useName += "_N";
         if (varargs.contains(name)) {
