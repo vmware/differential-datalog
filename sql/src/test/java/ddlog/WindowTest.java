@@ -108,7 +108,7 @@ public class WindowTest extends BaseQueriesTest {
                 "relation Rover[TRtmp0]\n" +
                 "relation Rtmp1[TRtmp1]\n" +
                 "output relation Rv1[TRtmp1]\n" +
-                "Roverinput[v2] :- Rt1[v0],var v1 = TRtmp{.tmp = substr(v0.column2, 64'sd3, 64'sd3),.gb = v0.column3," +
+                "Roverinput[v2] :- Rt1[v0],var v1 = TRtmp{.tmp = sql_substr(v0.column2, 64'sd3, 64'sd3),.gb = v0.column3," +
                 ".column1 = v0.column1,.column2 = v0.column2,.column3 = v0.column3,.column4 = v0.column4},var v2 = v1.\n" +
                 "Rover[v7] :- Roverinput[v3],var gb4 = v3.gb,var aggResult = Aggregate((gb4), agg((v3)))," +
                 "var v6 = TRtmp0{.gb = gb4,.count = aggResult.count},var v7 = v6.\n" +

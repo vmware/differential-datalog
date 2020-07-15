@@ -314,7 +314,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v1] :- Rt1[v],var gb = substr(v.column2, 64'sd0, 64'sd1)," +
+                "Rv0[v1] :- Rt1[v],var gb = sql_substr(v.column2, 64'sd0, 64'sd1)," +
                 "var aggResult = Aggregate((gb), agg((v))),var v0 = TRtmp{.s = gb,.c = aggResult.c},var v1 = v0.";
         this.testTranslation(query, program);
     }
@@ -331,7 +331,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 "var v = i;\n" +
                 "(count = agg_count_R(count, 64'sd1))}\n" +
                 ");\n" +
-                "(TRtmp{.s = substr(gb, 64'sd0, 64'sd1),.c = count})\n}\n" +
+                "(TRtmp{.s = sql_substr(gb, 64'sd0, 64'sd1),.c = count})\n}\n" +
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
