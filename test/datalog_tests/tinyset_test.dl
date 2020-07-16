@@ -13,10 +13,10 @@ Intersects(setid1, setid2, set) :-
     Sets(setid1, set1),
     Sets(setid2, set2),
     var set = {
-        var set: TS::Set64<u32> = TS::empty();
+        var set = TS::empty();
         for (x in set1) {
-            if (TS::contains(set2, x)) {
-                TS::insert(set, x)
+            if (set2.TS::contains(x)) {
+                set.TS::insert(x)
             }
         };
         set
@@ -24,12 +24,12 @@ Intersects(setid1, setid2, set) :-
 
 output relation Intersects2(setid1: string, setid2: string, set: TS::Set64<u32>)
 
-Intersects2(setid1, setid2, TS::intersection(set1, set2)) :-
+Intersects2(setid1, setid2, set1.TS::intersection(set2)) :-
     Sets(setid1, set1),
     Sets(setid2, set2).
 
 output relation Diffs(setid1: string, setid2: string, set: TS::Set64<u32>)
 
-Diffs(setid1, setid2, TS::difference(set1, set2)) :-
+Diffs(setid1, setid2, set1.TS::difference(set2)) :-
     Sets(setid1, set1),
     Sets(setid2, set2).

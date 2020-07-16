@@ -4,13 +4,13 @@ output relation SortedVectorInPlace(v: Vec<bigint>)
 
 SortedVector(sorted) :-
     Vector(v),
-    var sorted = vec_sort_imm(v).
+    var sorted = v.sort_imm().
 
 SortedVectorInPlace(sorted) :-
     Vector(v),
     var sorted = {
         var v2 = v;
-        vec_sort(v2);
+        v2.sort();
         v2
     }.
 
@@ -23,4 +23,4 @@ SetDifference(s2, s1, set_difference(s2, s1)) :- SetPairs(s1, s2).
 input relation Maps(m: Map<u64, string>)
 output relation MapSizes(m: Map<u64, string>, size: usize)
 
-MapSizes(m, map_size(m)) :- Maps(m).
+MapSizes(m, m.size()) :- Maps(m).

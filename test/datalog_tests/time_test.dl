@@ -3,7 +3,7 @@ import time
 input relation TITest(t: Time)
 output relation TTest(s: string, t: Result<Time, string>)
 
-TTest(time2string(t), Ok{t}) :- TITest(t).
+TTest(t.to_string(), Ok{t}) :- TITest(t).
 TTest("try_from_hms(8'd10, 8'd10, 8'd10)", try_from_hms(8'd10, 8'd10, 8'd10)).
 TTest("try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10)", try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10)).
 TTest("try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10)", try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10)).
@@ -16,7 +16,7 @@ TTest("time_parse(\"10:10\", \"%T\")", time_parse("10:10", "%T")).
 TTest("time_parse(\"10:10:10\", \"%T\")", time_parse("10:10:10", "%T")).
 TTest("time_parse(\"10:10:10.102030405\", \"%T.%N\")", time_parse("10:10:10.102030405", "%T.%N")).
 TTest("string2time(time2string(result_unwrap_or_default(try_from_hms(8'd10, 8'd10, 8'd10))))",
-       string2time(time2string(result_unwrap_or_default(try_from_hms(8'd10, 8'd10, 8'd10))))).
+       try_from_hms(8'd10, 8'd10, 8'd10).unwrap_or_default().to_string().to_time()).
 TTest("string2time(time2string(result_unwrap_or_default(try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10))))",
        string2time(time2string(result_unwrap_or_default(try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10))))).
 TTest("string2time(time2string(result_unwrap_or_default(try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10))))",

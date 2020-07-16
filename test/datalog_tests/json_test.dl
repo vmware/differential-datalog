@@ -3,7 +3,7 @@ import json
 output relation JsonTest(description: string, value: string)
 
 function to_json_string_or_default(x: 'T): string =
-    result_unwrap_or_default(to_json_string(x))
+    x.to_json_string().unwrap_or_default()
 
 
 typedef BoolStruct = BoolStruct {
@@ -191,7 +191,7 @@ function wenum2(): string = [|{"@type": "t.V2", "u": 100}|]
 function wenum3(): string = [|{"@type": "t.V2", "b": false}|]
 
 JsonTest("wrapped " ++ wenum1(),
-         to_json_string_or_default(from_json_string(wenum1()): Result<WrappedEnum, string>)).
+         (from_json_string(wenum1()): Result<WrappedEnum, string>).to_json_string_or_default()).
 JsonTest("wrapped " ++ wenum2(),
          to_json_string_or_default(from_json_string(wenum2()): Result<WrappedEnum, string>)).
 JsonTest("wrapped " ++ wenum3(),

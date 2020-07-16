@@ -17,7 +17,7 @@ output relation OInternedString(x: string, ix: istring)
 OInternedString(ival(s), s) :-
     AllInternedString(s).
 
-OInternedString(ival(s1) ++ " " ++ ival(s2), intern(ival(s1) ++ " " ++ ival(s2))) :-
+OInternedString(s1.ival() ++ " " ++ s2.ival(), intern(s1.ival() ++ " " ++ s2.ival())) :-
     AllInternedString(s1),
     AllInternedString(s2).
 
