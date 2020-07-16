@@ -166,10 +166,10 @@ function addr_port (ip: ip_addr_t, proto: string, preferred_port: bit<16>): stri
                                (_: string) -> if (preferred_port != 16'd0) {
                                                   preferred_port
                                               } else {
-                                                    ((return (("" ++ (ip_addr_t2string(ip): string)) ++ ":80")): bit<16>)
+                                                    ((return (("" ++ (to_string(ip): string)) ++ ":80")): bit<16>)
                                                 }
                            };
-     ((("" ++ (ip_addr_t2string(ip): string)) ++ ":") ++ (std.__builtin_2string(port): string)))
+     ((("" ++ (to_string(ip): string)) ++ ":") ++ (std.to_string(port): string)))
 }
 function addr_to_tuple (addr: ip4_addr_t): (bit<8>, bit<8>, bit<8>, bit<8>)
 {
@@ -201,7 +201,7 @@ function best_vendor_string (g: std.Group<string,(string, bit<64>)>): string
                  ()
              }
        };
-       ((((("Best deal for " ++ (std.group_key(g): string)) ++ ": ") ++ min_vendor) ++ ", $") ++ (std.__builtin_2string(min_price): string)))))
+       ((((("Best deal for " ++ (std.group_key(g): string)) ++ ": ") ++ min_vendor) ++ ", $") ++ (std.to_string(min_price): string)))))
 }
 extern function debug.debug_event (operator_id: debug.DDlogOpId, w: std.DDWeight, ts: 'T1, operator_type: string, input1: 'A1, out: 'A2): ()
 extern function debug.debug_event_join (operator_id: debug.DDlogOpId, w: std.DDWeight, ts: 'T1, input1: 'A1, input2: 'A2, out: 'A3): ()
@@ -289,10 +289,6 @@ function internment.trim (s: internment.istring): string
 {
     internment.istring_trim(s)
 }
-function ip_addr_t2string (ip: ip_addr_t): string
-{
-    ((((((("" ++ (std.__builtin_2string(ip.addr[31:24]): string)) ++ ".") ++ (std.__builtin_2string(ip.addr[23:16]): string)) ++ ".") ++ (std.__builtin_2string(ip.addr[15:8]): string)) ++ ".") ++ (std.__builtin_2string(ip.addr[7:0]): string))
-}
 function ip_from_bytes (b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>): ip_addr_t
 {
     (IPAddr{.addr=(((b3 ++ b2) ++ b1) ++ b0)}: ip_addr_t)
@@ -307,14 +303,6 @@ function is_target_audience (person: Person): bool
 }
 #[has_side_effects = true]
 extern function log.log (module: log.module_t, level: log.log_level_t, msg: string): ()
-function mac_addr_t2string (mac: mac_addr_t): string
-{
-    ((((((((((("" ++ std.hex(mac.addr[47:40])) ++ ":") ++ std.hex(mac.addr[39:32])) ++ ":") ++ std.hex(mac.addr[31:24])) ++ ":") ++ std.hex(mac.addr[23:16])) ++ ":") ++ std.hex(mac.addr[15:8])) ++ ":") ++ std.hex(mac.addr[7:0]))
-}
-function nethost_t2string (h: nethost_t): string
-{
-    ((("Host: IP=" ++ (ip_addr_t2string(h.ip): string)) ++ ", MAC=") ++ (mac_addr_t2string(h.mac): string))
-}
 function pkt_ip4 (pkt: eth_pkt_t): ip4_pkt_t
 {
     match (pkt) {
@@ -386,10 +374,6 @@ function std.contains_key (m: std.Map<'K,'V>, k: 'K): bool
 function std.count (g: std.Group<'K,'V>): std.usize
 {
     std.group_count(g)
-}
-function std.dDNestedTS2string (ts: std.DDNestedTS): string
-{
-    (((("(" ++ (std.__builtin_2string(ts.epoch): string)) ++ ",") ++ (std.__builtin_2string(ts.iter): string)) ++ ")")
 }
 #[return_by_ref = true]
 extern function std.deref (x: std.Ref<'A>): 'A
@@ -679,6 +663,70 @@ function std.to_setmap (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,std.Set<'V>>
 {
     (std.group_to_setmap(g): std.Map<'K2,std.Set<'V>>)
 }
+function std.to_string (ts: std.DDNestedTS): string
+{
+    (((("(" ++ (std.to_string(ts.epoch): string)) ++ ",") ++ (std.to_string(ts.iter): string)) ++ ")")
+}
+function std.to_string (x: bool): string
+{
+    std.__builtin_2string(x)
+}
+function std.to_string (x: bigint): string
+{
+    std.__builtin_2string(x)
+}
+function std.to_string (x: float): string
+{
+    std.__builtin_2string(x)
+}
+function std.to_string (x: double): string
+{
+    std.__builtin_2string(x)
+}
+function std.to_string (x: std.s8): string
+{
+    std.__builtin_2string(x)
+}
+function std.to_string (x: std.s16): string
+{
+    std.__builtin_2string(x)
+}
+function std.to_string (x: std.s32): string
+{
+    std.__builtin_2string(x)
+}
+function std.to_string (x: std.s64): string
+{
+    std.__builtin_2string(x)
+}
+function std.to_string (x: std.s128): string
+{
+    std.__builtin_2string(x)
+}
+function std.to_string (x: std.u8): string
+{
+    std.__builtin_2string(x)
+}
+function std.to_string (x: std.u16): string
+{
+    std.__builtin_2string(x)
+}
+function std.to_string (x: std.u32): string
+{
+    std.__builtin_2string(x)
+}
+function std.to_string (x: std.u64): string
+{
+    std.__builtin_2string(x)
+}
+function std.to_string (x: std.u128): string
+{
+    std.__builtin_2string(x)
+}
+function std.to_string (x: string): string
+{
+    std.__builtin_2string(x)
+}
 function std.to_uppercase (s: string): string
 {
     std.string_to_uppercase(s)
@@ -755,6 +803,18 @@ function tcp6_packet (ethsrc: bit<48>, ethdst: bit<48>, ipsrc: ip6_addr_t, ipdst
 {
     (EthPacket{.src=ethsrc, .dst=ethdst, .payload=(EthIP6{.ip6=(IP6Pkt{.ttl=8'd10, .src=ipsrc, .dst=ipdst, .payload=(IPTCP{.tcp=(TCPPkt{.src=srcport, .dst=dstport, .flags=9'd0}: tcp_pkt_t)}: ip_payload_t)}: ip6_pkt_t)}: eth_payload_t)}: eth_pkt_t)
 }
+function to_string (ip: ip_addr_t): string
+{
+    ((((((("" ++ (std.to_string(ip.addr[31:24]): string)) ++ ".") ++ (std.to_string(ip.addr[23:16]): string)) ++ ".") ++ (std.to_string(ip.addr[15:8]): string)) ++ ".") ++ (std.to_string(ip.addr[7:0]): string))
+}
+function to_string (mac: mac_addr_t): string
+{
+    ((((((((((("" ++ std.hex(mac.addr[47:40])) ++ ":") ++ std.hex(mac.addr[39:32])) ++ ":") ++ std.hex(mac.addr[31:24])) ++ ":") ++ std.hex(mac.addr[23:16])) ++ ":") ++ std.hex(mac.addr[15:8])) ++ ":") ++ std.hex(mac.addr[7:0]))
+}
+function to_string (h: nethost_t): string
+{
+    ((("Host: IP=" ++ (to_string(h.ip): string)) ++ ", MAC=") ++ (to_string(h.mac): string))
+}
 function vsep (strs: std.Vec<string>): string
 {
     ((var res: string) = "";
@@ -829,8 +889,8 @@ Phrases[(Phrases{.phrase=((w1 ++ " ") ++ w2)}: Phrases)] :- Word1[(__word10@ (Wo
 Word1[(Word1{.word="Hello,", .cat=(CategoryOther{}: Category)}: Word1)].
 Word2[(Word2{.word="World!", .cat=(CategoryOther{}: Category)}: Word2)].
 HostInSubnet[(HostInSubnet{.host=host_id, .subnet=subnet_id}: HostInSubnet)] :- Host[(__host0@ (Host{.id=(host_id: bit<128>), .name=(_: string), .ip=(host_ip: bit<32>)}: Host))], Subnet[(__subnet1@ (Subnet{.id=(subnet_id: bit<128>), .prefix=(subnet_prefix: bit<32>), .mask=(subnet_mask: bit<32>)}: Subnet))], Inspect debug.debug_event_join((32'd3, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __host0, __subnet1, (host_id, host_ip, subnet_id, subnet_prefix, subnet_mask)), ((host_ip & subnet_mask) == subnet_prefix), Inspect debug.debug_event((32'd3, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (host_id, host_ip, subnet_id, subnet_prefix, subnet_mask), (HostInSubnet{.host=host_id, .subnet=subnet_id}: HostInSubnet)).
-Pow2[(Pow2{.p=((("The square of " ++ (std.__builtin_2string(x): string)) ++ " is ") ++ (std.__builtin_2string((x * x)): string))}: Pow2)] :- Number[(__number0@ (Number{.n=(x: bigint)}: Number))], Inspect debug.debug_event((32'd4, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __number0, (Pow2{.p=((("The square of " ++ (std.__builtin_2string(x): string)) ++ " is ") ++ (std.__builtin_2string((x * x)): string))}: Pow2)).
-NetHostString[(NetHostString{.id=id, .s=("" ++ (nethost_t2string(h): string))}: NetHostString)] :- NetHost[(__nethost0@ (NetHost{.id=(id: bigint), .h=(h: nethost_t)}: NetHost))], Inspect debug.debug_event((32'd5, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __nethost0, (NetHostString{.id=id, .s=("" ++ (nethost_t2string(h): string))}: NetHostString)).
+Pow2[(Pow2{.p=((("The square of " ++ (std.to_string(x): string)) ++ " is ") ++ (std.to_string((x * x)): string))}: Pow2)] :- Number[(__number0@ (Number{.n=(x: bigint)}: Number))], Inspect debug.debug_event((32'd4, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __number0, (Pow2{.p=((("The square of " ++ (std.to_string(x): string)) ++ " is ") ++ (std.to_string((x * x)): string))}: Pow2)).
+NetHostString[(NetHostString{.id=id, .s=("" ++ (to_string(h): string))}: NetHostString)] :- NetHost[(__nethost0@ (NetHost{.id=(id: bigint), .h=(h: nethost_t)}: NetHost))], Inspect debug.debug_event((32'd5, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __nethost0, (NetHostString{.id=id, .s=("" ++ (to_string(h): string))}: NetHostString)).
 Address[(Address{.addr=ip_from_bytes(b3, b2, b1, b0)}: Address)] :- Bytes[(__bytes0@ (Bytes{.b3=(b3: bit<8>), .b2=(b2: bit<8>), .b1=(b1: bit<8>), .b0=(b0: bit<8>)}: Bytes))], Inspect debug.debug_event((32'd6, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __bytes0, (Address{.addr=ip_from_bytes(b3, b2, b1, b0)}: Address)).
 MCastAddress[(MCastAddress{.addr=a}: MCastAddress)] :- Address[(__address0@ (Address{.addr=(a: ip_addr_t)}: Address))], is_multicast_addr(a), Inspect debug.debug_event((32'd7, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __address0, (MCastAddress{.addr=a}: MCastAddress)).
 EndpointString[(EndpointString{.s=addr_port(ip, proto, preferred_port)}: EndpointString)] :- Endpoint[(__endpoint0@ (Endpoint{.ip=(ip: ip_addr_t), .proto=(proto: string), .preferred_port=(preferred_port: bit<16>)}: Endpoint))], Inspect debug.debug_event((32'd8, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __endpoint0, (EndpointString{.s=addr_port(ip, proto, preferred_port)}: EndpointString)).
@@ -846,7 +906,7 @@ Product[(Product{.x=x, .y=y, .prod=(x * y)}: Product)] :- X[(__x0@ (X{.x=(x: bit
 BestPrice[(BestPrice{.item=item, .price=best_price}: BestPrice)] :- Price[(__price0@ (Price{.item=(item: string), .vendor=(_: string), .price=(price: bit<64>)}: Price))], var __inputs_best_price = Aggregate(item, __debug_17_1_std.group_min((__price0, price))), Inspect debug.debug_event((32'd17, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_best_price.0, (__inputs_best_price, item)), (var best_price: bit<64>) = __inputs_best_price.1, Inspect debug.debug_event((32'd17, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_best_price, item), (BestPrice{.item=item, .price=best_price}: BestPrice)).
 WorstPrice[(WorstPrice{.item=item, .price=best_price}: WorstPrice)] :- Price[(__price0@ (Price{.item=(item: string), .vendor=(_: string), .price=(price: bit<64>)}: Price))], var __inputs_best_price = Aggregate(item, __debug_18_1_std.group_max((__price0, price))), Inspect debug.debug_event((32'd18, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_best_price.0, (__inputs_best_price, item)), (var best_price: bit<64>) = __inputs_best_price.1, Inspect debug.debug_event((32'd18, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_best_price, item), (WorstPrice{.item=item, .price=best_price}: WorstPrice)).
 BestVendor[(BestVendor{.item=item, .vendor=best_vendor, .price=best_price}: BestVendor)] :- Price[(__price0@ (Price{.item=(item: string), .vendor=(vendor: string), .price=(price: bit<64>)}: Price))], var __inputs_best_vendor_price = Aggregate(item, __debug_19_1_best_vendor((__price0, (vendor, price)))), Inspect debug.debug_event((32'd19, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_best_vendor_price.0, (__inputs_best_vendor_price, item)), (var best_vendor_price: (string, bit<64>)) = __inputs_best_vendor_price.1, ((var best_vendor: string), (var best_price: bit<64>)) = best_vendor_price, Inspect debug.debug_event((32'd19, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (item, best_vendor_price), (BestVendor{.item=item, .vendor=best_vendor, .price=best_price}: BestVendor)).
-BestDeal[(BestDeal{.best=best}: BestDeal)] :- Price[(__price0@ (Price{.item=(item: string), .vendor=(vendor: string), .price=(price: bit<64>)}: Price))], Inspect inspect_log.log("../tutorial.log", (((((((((("ts:" ++ (std.__builtin_2string(ddlog_timestamp): string)) ++ ", w:") ++ (std.__builtin_2string(ddlog_weight): string)) ++ ": Price(item=\"") ++ item) ++ "\", vendor=\"") ++ vendor) ++ "\", price=") ++ (std.__builtin_2string(price): string)) ++ ")")), Inspect debug.debug_event((32'd20, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", __price0, (__price0, item, vendor, price)), var __inputs_best = Aggregate(item, __debug_20_2_best_vendor_string(((__price0, item, vendor, price), (vendor, price)))), Inspect debug.debug_event((32'd20, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_best.0, (__inputs_best, item)), (var best: string) = __inputs_best.1, Inspect debug.debug_event((32'd20, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_best, item), (item, best)), Inspect inspect_log.log("../tutorial.log", (((((((("ts:" ++ (std.__builtin_2string(ddlog_timestamp): string)) ++ ", w:") ++ (std.__builtin_2string(ddlog_weight): string)) ++ ": best(\"") ++ item) ++ "\")=\"") ++ best) ++ "\"")), Inspect debug.debug_event((32'd20, 32'd4, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", (item, best), (BestDeal{.best=best}: BestDeal)).
+BestDeal[(BestDeal{.best=best}: BestDeal)] :- Price[(__price0@ (Price{.item=(item: string), .vendor=(vendor: string), .price=(price: bit<64>)}: Price))], Inspect inspect_log.log("../tutorial.log", (((((((((("ts:" ++ (std.to_string(ddlog_timestamp): string)) ++ ", w:") ++ (std.to_string(ddlog_weight): string)) ++ ": Price(item=\"") ++ item) ++ "\", vendor=\"") ++ vendor) ++ "\", price=") ++ (std.to_string(price): string)) ++ ")")), Inspect debug.debug_event((32'd20, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", __price0, (__price0, item, vendor, price)), var __inputs_best = Aggregate(item, __debug_20_2_best_vendor_string(((__price0, item, vendor, price), (vendor, price)))), Inspect debug.debug_event((32'd20, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_best.0, (__inputs_best, item)), (var best: string) = __inputs_best.1, Inspect debug.debug_event((32'd20, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_best, item), (item, best)), Inspect inspect_log.log("../tutorial.log", (((((((("ts:" ++ (std.to_string(ddlog_timestamp): string)) ++ ", w:") ++ (std.to_string(ddlog_weight): string)) ++ ": best(\"") ++ item) ++ "\")=\"") ++ best) ++ "\"")), Inspect debug.debug_event((32'd20, 32'd4, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", (item, best), (BestDeal{.best=best}: BestDeal)).
 MSetOut[(MSetOut{.x=x}: MSetOut)] :- MSetIn[(__msetin0@ (MSetIn{.x=(x: bit<32>)}: MSetIn))], Inspect debug.debug_event((32'd21, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __msetin0, (MSetOut{.x=x}: MSetOut)).
 TCPDstPort[(TCPDstPort{.port=port}: TCPDstPort)] :- Packet[(__packet0@ (Packet{.pkt=(EthPacket{.src=(_: bit<48>), .dst=(_: bit<48>), .payload=(EthIP4{.ip4=(IP4Pkt{.ttl=(_: bit<8>), .src=(_: bit<32>), .dst=(_: bit<32>), .payload=(IPTCP{.tcp=(TCPPkt{.src=(_: bit<16>), .dst=(port: bit<16>), .flags=(_: bit<9>)}: tcp_pkt_t)}: ip_payload_t)}: ip4_pkt_t)}: eth_payload_t)}: eth_pkt_t)}: Packet))], Inspect debug.debug_event((32'd22, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __packet0, (TCPDstPort{.port=port}: TCPDstPort)).
 TCPDstPort[(TCPDstPort{.port=port}: TCPDstPort)] :- Packet[(__packet0@ (Packet{.pkt=(EthPacket{.src=(_: bit<48>), .dst=(_: bit<48>), .payload=(EthIP6{.ip6=(IP6Pkt{.ttl=(_: bit<8>), .src=(_: bit<128>), .dst=(_: bit<128>), .payload=(IPTCP{.tcp=(TCPPkt{.src=(_: bit<16>), .dst=(port: bit<16>), .flags=(_: bit<9>)}: tcp_pkt_t)}: ip_payload_t)}: ip6_pkt_t)}: eth_payload_t)}: eth_pkt_t)}: Packet))], Inspect debug.debug_event((32'd23, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __packet0, (TCPDstPort{.port=port}: TCPDstPort)).
@@ -860,7 +920,7 @@ StudentInfo[(StudentInfo{.student=student, .school=school}: StudentInfo)] :- Stu
 TopScore[(TopScore{.school=school, .top_score=top_score}: TopScore)] :- StudentInfo[(__studentinfo0@ (StudentInfo{.student=((&(Student{.id=(_: bit<64>), .name=(_: string), .school=(_: string), .sat_score=(sat: bit<16>)}: Student)): std.Ref<Student>), .school=((&(School{.name=(school: string), .address=(_: string)}: School)): std.Ref<School>)}: StudentInfo))], var __inputs_top_score = Aggregate(school, __debug_31_1_std.group_max((__studentinfo0, sat))), Inspect debug.debug_event((32'd31, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_top_score.0, (__inputs_top_score, school)), (var top_score: bit<16>) = __inputs_top_score.1, Inspect debug.debug_event((32'd31, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_top_score, school), (TopScore{.school=school, .top_score=top_score}: TopScore)).
 TopScore[(TopScore{.school=school, .top_score=top_score}: TopScore)] :- StudentInfo[(__studentinfo0@ (StudentInfo{.student=(student: std.Ref<Student>), .school=((&(School{.name=(school: string), .address=(_: string)}: School)): std.Ref<School>)}: StudentInfo))], var __inputs_top_score = Aggregate(school, __debug_32_1_std.group_max((__studentinfo0, student.sat_score))), Inspect debug.debug_event((32'd32, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_top_score.0, (__inputs_top_score, school)), (var top_score: bit<16>) = __inputs_top_score.1, Inspect debug.debug_event((32'd32, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_top_score, school), (TopScore{.school=school, .top_score=top_score}: TopScore)).
 ItemInOrders[(ItemInOrders{.item=(internment.ival(item): string), .orders=orders}: ItemInOrders)] :- OnlineOrder[(__onlineorder0@ (OnlineOrder{.order_id=(order: bit<64>), .item=(item: internment.Intern<string>)}: OnlineOrder))], var __inputs_orders = Aggregate(item, __debug_33_1_std.group_to_vec((__onlineorder0, order))), Inspect debug.debug_event((32'd33, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_orders.0, (__inputs_orders, item)), (var orders: std.Vec<bit<64>>) = __inputs_orders.1, Inspect debug.debug_event((32'd33, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_orders, item), (ItemInOrders{.item=(internment.ival(item): string), .orders=orders}: ItemInOrders)).
-OrderFormatted[(OrderFormatted{.order=formatted}: OrderFormatted)] :- OnlineOrder[(__onlineorder0@ (OnlineOrder{.order_id=(order: bit<64>), .item=(item: internment.Intern<string>)}: OnlineOrder))], (var formatted: string) = ((("order: " ++ (std.__builtin_2string(order): string)) ++ ", item: ") ++ (internment.ival(item): string)), Inspect debug.debug_event((32'd34, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __onlineorder0, (OrderFormatted{.order=formatted}: OrderFormatted)).
+OrderFormatted[(OrderFormatted{.order=formatted}: OrderFormatted)] :- OnlineOrder[(__onlineorder0@ (OnlineOrder{.order_id=(order: bit<64>), .item=(item: internment.Intern<string>)}: OnlineOrder))], (var formatted: string) = ((("order: " ++ (std.to_string(order): string)) ++ ", item: ") ++ (internment.ival(item): string)), Inspect debug.debug_event((32'd34, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __onlineorder0, (OrderFormatted{.order=formatted}: OrderFormatted)).
 MilkOrders[(MilkOrders{.order=order}: MilkOrders)] :- OnlineOrder[(__onlineorder0@ (OnlineOrder{.order_id=(order: bit<64>), .item=(internment.intern("milk"): internment.Intern<string>)}: OnlineOrder))], Inspect debug.debug_event((32'd35, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __onlineorder0, (MilkOrders{.order=order}: MilkOrders)).
 InventoryItemName[(InventoryItemName{.name=name}: InventoryItemName)] :- StoreInventory[(__storeinventory0@ (StoreInventory{.item=(item: internment.Intern<StoreItem>)}: StoreInventory))], (var name: string) = (internment.ival(item): StoreItem).name, Inspect debug.debug_event((32'd36, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __storeinventory0, (InventoryItemName{.name=name}: InventoryItemName)).
 Flow[(Flow{.lr=ls, .stage=(LS_IN_PRE_LB{}: stage), .prio=100, .matchStr=("ip4.dst == " ++ addresses), .actionStr="{ reg0[0] = 1; next; }"}: Flow)] :- Load_Balancer[(__load_balancer0@ (Load_Balancer{.lb=(_: bigint), .ls=(ls: bigint), .ip_addresses=(addresses: string), .protocol=(std.Some{.x=(_: string)}: std.Option<string>), .name=(_: string)}: Load_Balancer))], Inspect debug.debug_event((32'd37, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __load_balancer0, (Flow{.lr=ls, .stage=(LS_IN_PRE_LB{}: stage), .prio=100, .matchStr=("ip4.dst == " ++ addresses), .actionStr="{ reg0[0] = 1; next; }"}: Flow)).

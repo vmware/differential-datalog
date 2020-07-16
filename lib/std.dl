@@ -49,7 +49,7 @@ typedef DDNestedTS = DDNestedTS {
     iter: DDIteration
 }
 
-function dDNestedTS2string(ts: DDNestedTS): string {
+function to_string(ts: DDNestedTS): string {
     "(${ts.epoch},${ts.iter})"
 }
 
@@ -175,7 +175,52 @@ extern function range(from: 'A, to: 'A, step: 'A): Vec<'A>
 /*
  * String conversion
  */
-extern function __builtin_2string(x: 'X): string
+function to_string(x: bool): string {
+    __builtin_2string(x)
+}
+function to_string(x: bigint): string {
+    __builtin_2string(x)
+}
+function to_string(x: float): string {
+    __builtin_2string(x)
+}
+function to_string(x: double): string {
+    __builtin_2string(x)
+}
+function to_string(x: s8): string {
+    __builtin_2string(x)
+}
+function to_string(x: s16): string {
+    __builtin_2string(x)
+}
+function to_string(x: s32): string {
+    __builtin_2string(x)
+}
+function to_string(x: s64): string {
+    __builtin_2string(x)
+}
+function to_string(x: s128): string {
+    __builtin_2string(x)
+}
+function to_string(x: u8): string {
+    __builtin_2string(x)
+}
+function to_string(x: u16): string {
+    __builtin_2string(x)
+}
+function to_string(x: u32): string {
+    __builtin_2string(x)
+}
+function to_string(x: u64): string {
+    __builtin_2string(x)
+}
+function to_string(x: u128): string {
+    __builtin_2string(x)
+}
+function to_string(x: string): string {
+    __builtin_2string(x)
+}
+
 extern function hex(x: 'X): string
 
 extern function parse_dec_u64(s: string): Option<bit<64>>
@@ -568,3 +613,5 @@ extern function set_union(s1: Set<'X>, s2: Set<'X>): Set<'X>
 extern function set_unions(sets: Vec<Set<'X>>): Set<'X>
 extern function set_intersection(s1: Set<'X>, s2: Set<'X>): Set<'X>
 extern function set_difference(s1: Set<'X>, s2: Set<'X>): Set<'X>
+
+extern function __builtin_2string(x: 'X): string

@@ -590,7 +590,7 @@ typedef serializable_t = ConsInt {x: bigint}
                        | ConsBool{z: bool}
                        | Cons0{}
 
-function serializable_t2string(x: serializable_t): string = {
+function to_string(x: serializable_t): string = {
     match (x) {
         ConsInt{v}      -> "ConsInt(" ++ v ++ ")",
         ConsBit{v}      -> "ConsBool(${v})",

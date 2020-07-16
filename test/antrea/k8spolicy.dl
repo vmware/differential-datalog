@@ -138,7 +138,7 @@ typedef LabelSelectorOperator = LabelSelectorOpIn
 
 // DDlog looks for a function with this name when converting
 // LabelSelectorOperator to string.
-function labelSelectorOperator2string(op: LabelSelectorOperator): string =
+function to_string(op: LabelSelectorOperator): string =
 {
     match (op) {
         LabelSelectorOpIn           -> "In",
@@ -310,7 +310,7 @@ typedef IPBlock = IPBlock {
     except: Vec<string>
 }
 
-function iPBlock2string(x: IPBlock): string =
+function to_string(x: IPBlock): string =
 {
     "IPBlock{${x.cidr},${string_join(x.except,\",\")}}"
 }

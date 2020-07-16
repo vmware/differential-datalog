@@ -37,6 +37,9 @@ extern function ipv4_from_str(s: string): Result<Ipv4Addr, string>
 /* Format IPv4 address using dot-decimal notation.
  */
 extern function ipv4Addr2string(addr: Ipv4Addr): string
+function to_string(addr: Ipv4Addr): string {
+    ipv4Addr2string(addr)
+}
 
 /* An IPv4 address with the address pointing to localhost: 127.0.0.1.
  */

@@ -426,8 +426,8 @@ Pow2("The square of ${x} is ${x*x}") :- Number(x).
 
 Built-in types have built-in conversions to strings.  To convert a
 user-defined type (such as `Category` above) the user can implement a
-function named `category2string` that returns a `string` given a category
-(functions are described [below](#functions)).
+function named `to_string(x: Category): string` that returns a `string`
+given a category (functions are described [below](#functions)).
 
 ### String library functions
 
@@ -466,7 +466,7 @@ Think of this declaration as a C struct with
 a single field of type `bit<32>`.  We can write a user-defined formatting method:
 
 ```
-function ip_addr_t2string(ip: ip_addr_t): string {
+function to_string(ip: ip_addr_t): string {
     "${ip.addr[31:24]}.${ip.addr[23:16]}.${ip.addr[15:8]}.${ip.addr[7:0]}"
 }
 ```
@@ -485,7 +485,7 @@ representation:
 ```
 typedef mac_addr_t = MACAddr{addr: bit<48>}
 
-function mac_addr_t2string(mac: mac_addr_t): string {
+function to_string(mac: mac_addr_t): string {
     "${hex(mac.addr[47:40])}:${hex(mac.addr[39:32])}:${hex(mac.addr[31:24])}:\
      \${hex(mac.addr[23:16])}:${hex(mac.addr[15:8])}:${hex(mac.addr[7:0])}"
 }
@@ -500,7 +500,7 @@ typedef nethost_t = NHost {
     mac: mac_addr_t
 }
 
-function nethost_t2string(h: nethost_t): string {
+function to_string(h: nethost_t): string {
     "Host: IP=${h.ip}, MAC=${h.mac}"
 }
 ```

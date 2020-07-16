@@ -814,16 +814,6 @@ function s1 (): string
 {
     "\t\r\n\"\\\a"
 }
-function serializable_t2string (x: serializable_t): string
-{
-    match (x) {
-        (ConsInt{.x=(var v: bigint)}: serializable_t) -> (("ConsInt(" ++ (std.__builtin_2string(v): string)) ++ ")"),
-        (ConsBit{.y=(var v: bit<32>)}: serializable_t) -> (("ConsBool(" ++ (std.__builtin_2string(v): string)) ++ ")"),
-        (ConsBool{.z=true}: serializable_t) -> "ConsBool(true)",
-        (ConsBool{.z=false}: serializable_t) -> "ConsBool(false)",
-        (Cons0{}: serializable_t) -> "Cons0"
-    }
-}
 function shadow (): string
 {
     ((var b: std.Option<string>) = (std.None{}: std.Option<string>);
@@ -1024,10 +1014,6 @@ function std.contains_key (m: std.Map<'K,'V>, k: 'K): bool
 function std.count (g: std.Group<'K,'V>): std.usize
 {
     std.group_count(g)
-}
-function std.dDNestedTS2string (ts: std.DDNestedTS): string
-{
-    (((("(" ++ (std.__builtin_2string(ts.epoch): string)) ++ ",") ++ (std.__builtin_2string(ts.iter): string)) ++ ")")
 }
 #[return_by_ref = true]
 extern function std.deref (x: std.Ref<'A>): 'A
@@ -1317,6 +1303,70 @@ function std.to_setmap (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,std.Set<'V>>
 {
     (std.group_to_setmap(g): std.Map<'K2,std.Set<'V>>)
 }
+function std.to_string (ts: std.DDNestedTS): string
+{
+    (((("(" ++ (std.to_string(ts.epoch): string)) ++ ",") ++ (std.to_string(ts.iter): string)) ++ ")")
+}
+function std.to_string (x: bool): string
+{
+    std.__builtin_2string(x)
+}
+function std.to_string (x: bigint): string
+{
+    std.__builtin_2string(x)
+}
+function std.to_string (x: float): string
+{
+    std.__builtin_2string(x)
+}
+function std.to_string (x: double): string
+{
+    std.__builtin_2string(x)
+}
+function std.to_string (x: std.s8): string
+{
+    std.__builtin_2string(x)
+}
+function std.to_string (x: std.s16): string
+{
+    std.__builtin_2string(x)
+}
+function std.to_string (x: std.s32): string
+{
+    std.__builtin_2string(x)
+}
+function std.to_string (x: std.s64): string
+{
+    std.__builtin_2string(x)
+}
+function std.to_string (x: std.s128): string
+{
+    std.__builtin_2string(x)
+}
+function std.to_string (x: std.u8): string
+{
+    std.__builtin_2string(x)
+}
+function std.to_string (x: std.u16): string
+{
+    std.__builtin_2string(x)
+}
+function std.to_string (x: std.u32): string
+{
+    std.__builtin_2string(x)
+}
+function std.to_string (x: std.u64): string
+{
+    std.__builtin_2string(x)
+}
+function std.to_string (x: std.u128): string
+{
+    std.__builtin_2string(x)
+}
+function std.to_string (x: string): string
+{
+    std.__builtin_2string(x)
+}
 function std.to_uppercase (s: string): string
 {
     std.string_to_uppercase(s)
@@ -1408,13 +1458,23 @@ str3: ${str3}.|];
                ((var b3: bool) = ((str1 != str2) and (str1 >= str2));
                 ()))))))))))))
 }
+function to_string (x: serializable_t): string
+{
+    match (x) {
+        (ConsInt{.x=(var v: bigint)}: serializable_t) -> (("ConsInt(" ++ (std.to_string(v): string)) ++ ")"),
+        (ConsBit{.y=(var v: bit<32>)}: serializable_t) -> (("ConsBool(" ++ (std.to_string(v): string)) ++ ")"),
+        (ConsBool{.z=true}: serializable_t) -> "ConsBool(true)",
+        (ConsBool{.z=false}: serializable_t) -> "ConsBool(false)",
+        (Cons0{}: serializable_t) -> "Cons0"
+    }
+}
 function tostring1 (): ()
 {
     ((var a: bigint) = 5;
      ((var b: bit<32>) = 32'd5;
       ((var c: bool) = true;
        ((var d: string) = "foo";
-        ((var err: string) = ((((((("a=" ++ (std.__builtin_2string(a): string)) ++ ", b=") ++ (std.__builtin_2string(b): string)) ++ ", c=") ++ (std.__builtin_2string(c): string)) ++ ", d=") ++ d);
+        ((var err: string) = ((((((("a=" ++ (std.to_string(a): string)) ++ ", b=") ++ (std.to_string(b): string)) ++ ", c=") ++ (std.to_string(c): string)) ++ ", d=") ++ d);
          ())))))
 }
 function tostring2 (): ()
@@ -1424,7 +1484,7 @@ function tostring2 (): ()
       ((var c: bool) = true;
        ((var d: string) = "foo";
         ((var e: serializable_t) = (ConsInt{.x=0}: serializable_t);
-         ((var err: string) = ((((((((("a=" ++ (std.__builtin_2string(a): string)) ++ ", b=") ++ (std.__builtin_2string(b): string)) ++ ", c=") ++ (std.__builtin_2string(c): string)) ++ ", d=") ++ d) ++ ", e:") ++ (serializable_t2string(e): string));
+         ((var err: string) = ((((((((("a=" ++ (std.to_string(a): string)) ++ ", b=") ++ (std.to_string(b): string)) ++ ", c=") ++ (std.to_string(c): string)) ++ ", d=") ++ d) ++ ", e:") ++ (to_string(e): string));
           ()))))))
 }
 function use_parameterized (x: string, y: string_syn): string
@@ -1909,12 +1969,12 @@ R14[(R14{.t=(1, (true, ("", 32'd1)))}: R14)].
 R14[(R14{.t=(0, (true, ("", 32'd1)))}: R14)].
 J[(J{.b=b}: J)] :- R13[(__r130@ (R13{.t=(a: (bigint, bool, string, bit<32>))}: R13))], R14[(__r141@ (R14{.t=(c: (bigint, (bool, (string, bit<32>))))}: R14))], Inspect debug.debug_event_join((32'd253, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __r130, __r141, (a, c)), (a.3 == c.1.1.1), (var b: bool) = a.1, Inspect debug.debug_event((32'd253, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", a, (J{.b=b}: J)).
 LongJoin[(LongJoin{.x0=x0, .x1=x1, .x2=x2, .x3=x3, .x4=x4, .x5=x5, .x6=x6, .x7=x7, .x8=x8, .x9=x9, .x10=x10, .x11=x11, .x12=x12, .x13=x13, .x14=x14, .x15=x15, .x16=x16, .x17=x17, .x18=x18, .x19=x19}: LongJoin)] :- Long[(__long0@ (Long{.x0=(x0: bit<16>), .x1=(x1: bit<16>), .x2=(x2: bit<16>), .x3=(x3: bit<16>), .x4=(x4: bit<16>), .x5=(x5: bit<16>), .x6=(x6: bit<16>), .x7=(x7: bit<16>), .x8=(x8: bit<16>), .x9=(x9: bit<16>), .x10=(x10: bit<16>), .x11=(x11: bit<16>), .x12=(x12: bit<16>), .x13=(x13: bit<16>), .x14=(x14: bit<16>), .x15=(x15: bit<16>), .x16=(x16: bit<16>), .x17=(x17: bit<16>), .x18=(x18: bit<16>), .x19=(x19: bit<16>)}: Long))], Long[(__long1@ (Long{.x0=(x0: bit<16>), .x1=(x1: bit<16>), .x2=(x2: bit<16>), .x3=(x3: bit<16>), .x4=(x4: bit<16>), .x5=(x5: bit<16>), .x6=(x6: bit<16>), .x7=(x7: bit<16>), .x8=(x8: bit<16>), .x9=(x9: bit<16>), .x10=(x10: bit<16>), .x11=(x11: bit<16>), .x12=(x12: bit<16>), .x13=(x13: bit<16>), .x14=(x14: bit<16>), .x15=(x15: bit<16>), .x16=(x16: bit<16>), .x17=(x17: bit<16>), .x18=(x18: bit<16>), .x19=(x19: bit<16>)}: Long))], Inspect debug.debug_event_join((32'd254, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __long0, __long1, (x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19)), Long[(__long2@ (Long{.x0=(x0: bit<16>), .x1=(x1: bit<16>), .x2=(x2: bit<16>), .x3=(x3: bit<16>), .x4=(x4: bit<16>), .x5=(x5: bit<16>), .x6=(x6: bit<16>), .x7=(x7: bit<16>), .x8=(x8: bit<16>), .x9=(x9: bit<16>), .x10=(x10: bit<16>), .x11=(x11: bit<16>), .x12=(x12: bit<16>), .x13=(x13: bit<16>), .x14=(x14: bit<16>), .x15=(x15: bit<16>), .x16=(x16: bit<16>), .x17=(x17: bit<16>), .x18=(x18: bit<16>), .x19=(x19: bit<16>)}: Long))], Inspect debug.debug_event_join((32'd254, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19), __long2, (LongJoin{.x0=x0, .x1=x1, .x2=x2, .x3=x3, .x4=x4, .x5=x5, .x6=x6, .x7=x7, .x8=x8, .x9=x9, .x10=x10, .x11=x11, .x12=x12, .x13=x13, .x14=x14, .x15=x15, .x16=x16, .x17=x17, .x18=x18, .x19=x19}: LongJoin)).
-ControlFlow[(ControlFlow{.expr="all(true, true, false)", .value=("" ++ (std.__builtin_2string(all((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_empty(): std.Vec<bool>), true): std.Vec<bool>), true): std.Vec<bool>), false): std.Vec<bool>))): string))}: ControlFlow)].
-ControlFlow[(ControlFlow{.expr="all(true, true, true)", .value=("" ++ (std.__builtin_2string(all((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_empty(): std.Vec<bool>), true): std.Vec<bool>), true): std.Vec<bool>), true): std.Vec<bool>))): string))}: ControlFlow)].
-ControlFlow[(ControlFlow{.expr="any(false, true, false)", .value=("" ++ (std.__builtin_2string(any((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_empty(): std.Vec<bool>), false): std.Vec<bool>), true): std.Vec<bool>), false): std.Vec<bool>))): string))}: ControlFlow)].
-ControlFlow[(ControlFlow{.expr="any(false, false, false)", .value=("" ++ (std.__builtin_2string(any((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_empty(): std.Vec<bool>), false): std.Vec<bool>), false): std.Vec<bool>), false): std.Vec<bool>))): string))}: ControlFlow)].
-ControlFlow[(ControlFlow{.expr="weird_any(false, true, false)", .value=("" ++ (std.__builtin_2string(weird_any((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_empty(): std.Vec<bool>), false): std.Vec<bool>), true): std.Vec<bool>), false): std.Vec<bool>))): string))}: ControlFlow)].
-ControlFlow[(ControlFlow{.expr="weird_any(false, false, false)", .value=("" ++ (std.__builtin_2string(weird_any((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_empty(): std.Vec<bool>), false): std.Vec<bool>), false): std.Vec<bool>), false): std.Vec<bool>))): string))}: ControlFlow)].
+ControlFlow[(ControlFlow{.expr="all(true, true, false)", .value=("" ++ (std.to_string(all((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_empty(): std.Vec<bool>), true): std.Vec<bool>), true): std.Vec<bool>), false): std.Vec<bool>))): string))}: ControlFlow)].
+ControlFlow[(ControlFlow{.expr="all(true, true, true)", .value=("" ++ (std.to_string(all((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_empty(): std.Vec<bool>), true): std.Vec<bool>), true): std.Vec<bool>), true): std.Vec<bool>))): string))}: ControlFlow)].
+ControlFlow[(ControlFlow{.expr="any(false, true, false)", .value=("" ++ (std.to_string(any((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_empty(): std.Vec<bool>), false): std.Vec<bool>), true): std.Vec<bool>), false): std.Vec<bool>))): string))}: ControlFlow)].
+ControlFlow[(ControlFlow{.expr="any(false, false, false)", .value=("" ++ (std.to_string(any((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_empty(): std.Vec<bool>), false): std.Vec<bool>), false): std.Vec<bool>), false): std.Vec<bool>))): string))}: ControlFlow)].
+ControlFlow[(ControlFlow{.expr="weird_any(false, true, false)", .value=("" ++ (std.to_string(weird_any((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_empty(): std.Vec<bool>), false): std.Vec<bool>), true): std.Vec<bool>), false): std.Vec<bool>))): string))}: ControlFlow)].
+ControlFlow[(ControlFlow{.expr="weird_any(false, false, false)", .value=("" ++ (std.to_string(weird_any((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_empty(): std.Vec<bool>), false): std.Vec<bool>), false): std.Vec<bool>), false): std.Vec<bool>))): string))}: ControlFlow)].
 BigintVectors[(BigintVectors{.expr="filter_gt((10, 20, 30), 15)", .vec=filter_gt((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_empty(): std.Vec<bigint>), 10): std.Vec<bigint>), 20): std.Vec<bigint>), 30): std.Vec<bigint>), 15)}: BigintVectors)].
 BigintVectors[(BigintVectors{.expr="filter_C0(C0{1}, C1{2}, C1{0}, C1{3})", .vec=filter_C0((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_empty(): std.Vec<Alt>), (C0{.x=32'd1}: Alt)): std.Vec<Alt>), (C1{.x=32'd2}: Alt)): std.Vec<Alt>), (C1{.x=32'd0}: Alt)): std.Vec<Alt>), (C1{.x=32'd3}: Alt)): std.Vec<Alt>))}: BigintVectors)].
 BigintVectors[(BigintVectors{.expr="double_evens(1,2,-1,4)", .vec=double_evens((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_push_imm((std.vec_empty(): std.Vec<bigint>), 1): std.Vec<bigint>), 2): std.Vec<bigint>), (- 1)): std.Vec<bigint>), 4): std.Vec<bigint>))}: BigintVectors)].
@@ -1932,7 +1992,7 @@ Doubles[(Doubles{.s="5/3", .d=(64'f5.0 / 64'f3.0)}: Doubles)].
 Doubles[(Doubles{.s="5*3", .d=(64'f5.0 * 64'f3.0)}: Doubles)].
 Doubles[(Doubles{.s="0: double", .d=(64'f0.0: double)}: Doubles)].
 Doubles[(Doubles{.s="floor_d(64'f0.1)", .d=fp.floor_d(64'f0.1)}: Doubles)].
-Doubles[(Doubles{.s=("" ++ (std.__builtin_2string((64'f5.0 + 64'f5.0)): string)), .d=(64'f5.0 + 64'f3.0)}: Doubles)].
+Doubles[(Doubles{.s=("" ++ (std.to_string((64'f5.0 + 64'f5.0)): string)), .d=(64'f5.0 + 64'f3.0)}: Doubles)].
 Floats[(Floats{.s="32'f5.0", .f=32'f5.0}: Floats)].
 Floats[(Floats{.s="32'f5e2", .f=32'f500.0}: Floats)].
 Floats[(Floats{.s="5 + 3", .f=(32'f5.0 + 32'f3.0)}: Floats)].

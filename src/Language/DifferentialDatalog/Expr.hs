@@ -58,7 +58,6 @@ module Language.DifferentialDatalog.Expr (
     exprInjectStringConversion
     ) where
 
-import Data.Char
 import Data.List
 import Data.Maybe
 import Data.Tuple.Select
@@ -82,11 +81,7 @@ import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Var
 
 bUILTIN_2STRING_FUNC :: String
-bUILTIN_2STRING_FUNC = "std.__builtin_2string"
-
-tOSTRING_FUNC_SUFFIX :: String
-tOSTRING_FUNC_SUFFIX = "2string"
-
+bUILTIN_2STRING_FUNC = "std.to_string"
 
 -- depth-first fold of an expression
 exprFoldCtxM :: (Monad m) => (ECtx -> ExprNode b -> m b) -> ECtx -> Expr -> m b
@@ -506,11 +501,12 @@ exprTypeMapM fun e = exprFoldM fun' e
 
 -- Automatically insert string conversion functions in the Concat
 -- operator:  '"x:" ++ x', where 'x' is of type int becomes
--- '"x:" ++ int_2string(x)'.
+-- '"x:" ++ to_string(x)'.
 exprInjectStringConversion :: (MonadError String me) => DatalogProgram -> ENode -> Type -> me Expr
 exprInjectStringConversion d e t = do
+    let t' = typ'' d t
     -- find string conversion function
-    fname <- case t of
+    fname <- case t' of
                   TBool{}     -> return $ bUILTIN_2STRING_FUNC
                   TInt{}      -> return $ bUILTIN_2STRING_FUNC
                   TString{}   -> return $ bUILTIN_2STRING_FUNC
@@ -525,14 +521,13 @@ exprInjectStringConversion d e t = do
                                      "Cannot automatically convert '" ++ show e ++
                                      "' of variable type '" ++ tvarName ++ "' to string"
                   TStruct{}   -> error "unexpected TStruct in exprInjectStringConversions"
-    f <- case lookupFunc d fname [t] of
+    f <- case lookupFunc d fname [t'] of
               Nothing  -> err d (pos e) $ "Cannot find declaration of function '" ++ fname ++
                                           "' needed to convert expression '" ++ show e ++ "' to string"
               Just fun -> return fun
     -- validate its signature
     check d (isString d $ funcType f) (pos f)
-           "string conversion function must return \"string\""
+           "string conversion function must return 'string'"
     return $ E $ EApply (pos e) [fname] [E e]
-    where mk2string_func cs = scoped scope $ ((toLower $ head local) : tail local) ++ tOSTRING_FUNC_SUFFIX
+    where mk2string_func cs = scoped scope $ "to_string"
               where scope = nameScope cs
-                    local = nameLocal cs
