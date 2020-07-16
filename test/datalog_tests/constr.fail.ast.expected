@@ -14,7 +14,7 @@ expecting end of "function" or function name
 
 Failed to parse input file: "./test/datalog_tests/constr.fail.dl" (line 4, column 34):
 unexpected "{"
-expecting ".", "<", "," or "}"
+expecting "::", "<", "," or "}"
 
 Failed to parse input file: "./test/datalog_tests/constr.fail.dl" (line 4, column 10):
 unexpected F

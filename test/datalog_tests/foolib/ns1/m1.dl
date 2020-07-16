@@ -1,4 +1,4 @@
-import foolib.ns1.m2
+import foolib::ns1::m2
 
 input relation R1(f1: T2)
 

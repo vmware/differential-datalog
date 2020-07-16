@@ -1,1 +1,1 @@
-dump regex_test.RegexTestOutput;
+dump regex_test::RegexTestOutput;

@@ -424,10 +424,24 @@ output relation Pow2(p: string)
 Pow2("The square of ${x} is ${x*x}") :- Number(x).
 ```
 
-Built-in types have built-in conversions to strings.  To convert a
-user-defined type (such as `Category` above) the user can implement a
-function named `to_string(x: Category): string` that returns a `string`
-given a category (functions are described [below](#functions)).
+Built-in types (`bool`, `bit<>`, `signed<>`, `bigint`, `string`, `float`, `double`)
+have built-in conversions to strings.  To enable the compiler to automatically convert
+a user-defined type to a string, the user must implement a
+function named `to_string` that takes an instance of the type and returns a `string`
+(functions are described [below](#functions)):
+
+```
+funtion to_string(x: Category): string {
+    match (x) {
+        CategoryStarWars -> "Star Wars",
+        CategoryOther -> "other"
+    }
+}
+```
+
+A `to_string()` implementation can be provided for structs and
+[`extern` types](#extern-types), but not tuples.  The latter must be converted
+to strings manually.
 
 ### String library functions
 
@@ -781,6 +795,23 @@ arguments.  The two `size()` functions above do not introduce any ambiguity,
 since the compiler is able to infer the correct function to call in each case
 from the type of the argument.  Specifically, the compiler uses the number of
 arguments and the type of the **first** argument to disambiguate the callee.
+
+#### Object-oriented function call syntax
+
+In addition to the C-style function invocation syntax, e.g., `f(x,y)`,
+DDlog supports an alternative notation, where the function name is prefixed by
+its first argument, similar to object-oriented languages like Java: `x.f(y)`.
+This often leads to more readable code.  Compare for example:
+
+```
+contains(to_string(unwrap_or_default(x)),"ddlog")
+```
+
+and
+
+```
+x.unwrap_or_default().to_string().contains("ddlog")
+```
 
 #### Modifying function arguments
 
@@ -1193,9 +1224,9 @@ import inspect_log as log
 output relation BestDeal(best: string)
 BestDeal(best) :-
     Price(item, vendor, price),
-    Inspect log.log("../tutorial.log", "ts:${ddlog_timestamp}, w:${ddlog_weight}: Price(item=\"${item}\", vendor=\"${vendor}\", price=${price})"),
+    Inspect log::log("../tutorial.log", "ts:${ddlog_timestamp}, w:${ddlog_weight}: Price(item=\"${item}\", vendor=\"${vendor}\", price=${price})"),
     var best = Aggregate((item), best_vendor_string((vendor, price))),
-    Inspect log.log("../tutorial.log", "ts:${ddlog_timestamp}, w:${ddlog_weight}: best(\"${item}\")=\"${best}\"").
+    Inspect log::log("../tutorial.log", "ts:${ddlog_timestamp}, w:${ddlog_weight}: best(\"${item}\")=\"${best}\"").
 ```
 
 The `Inspect` expression can access all variables defined at the current point
@@ -1654,7 +1685,19 @@ function pkt_ip4(pkt: eth_pkt_t): Option<ip4_pkt_t> {
 
 ### Extern types
 
-**TODO**
+Similar to extern functions, extern types are types implemented outside of
+DDlog, in Rust, that are accessible to DDlog programs.  We already encountered
+examples of extern types like `Ref<>` and `Intern<>`.  Their implementation
+can be found in `std.dl/std.rs` and `internment.dl/internment.rs` respectively.
+
+All extern types are required to implement a number of generic and DDlog-specific
+traits: `Default`, `Eq`, `PartialEq`, `Clone`, `Hash`, `PartialOrd`, `Ord`,
+`Display`, `Debug`, `Serialize`, `Deserialize`, `FromRecord`, `IntoRecord`,
+`Mutator`, `ToFlatBuffer`, `ToFlatBufferTable`, `ToFlatBufferVectorElement`.
+
+Outside of DDlog libraries, extern types should only be defined when
+absolutely necessary, as they are not easy to implement correctly, and their
+API is not yet fully standardized.
 
 ## Explicit relation types
 
@@ -1993,25 +2036,25 @@ Finally, create the main test file `test.dl` in the same directory as `mod1.dl`:
 // declarations from mod1 are added to the local name space
 import mod1
 // declarations from mod2 are available via the "m2." prefix
-import lib.mod2 as m2
+import lib::mod2 as m2
 
 output relation Main(f1: bool, f2: string)
 
-Main(f1, f2) :- R1(f1), m2.R2(f2).
+Main(f1, f2) :- R1(f1), m2::R2(f2).
 ```
 
 Note the two forms of the `import` directive.  The first form (`import <module_path>`) makes all
 type, function, relation, and constructor declarations from the module available in the local
 namespace of the module importing it.  The second form (`import <module_path> as <alias>`) makes all
-declarations available to the importing module using the `<alias>.<name>` notation.
+declarations available to the importing module using the `<alias>::<name>` notation.
 
 We create some data to feed to the test program in a `test.dat` file.
 
 ```
 start;
 
-insert mod1.R1(true),
-insert lib.mod2.R2("hello");
+insert mod1::R1(true),
+insert lib::mod2::R2("hello");
 
 commit;
 dump;

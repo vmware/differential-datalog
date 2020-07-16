@@ -265,7 +265,7 @@ dump Allocation;
 
 start;
 
-insert Referenced(true, std.Some{"hello"});
+insert Referenced(true, std::Some{"hello"});
 
 commit dump_changes;
 

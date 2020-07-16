@@ -1,1 +1,1 @@
-dump net_test.NetChecks;
+dump net_test::NetChecks;

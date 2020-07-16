@@ -35,7 +35,7 @@ const XX_SEED2: u64 = 0x20b09801dce5ff84;
 
 // Result
 
-/* Convert Rust result type to DDlog's std.Result. */
+/* Convert Rust result type to DDlog's std::Result. */
 pub fn res2std<T, E: Display>(res: Result<T, E>) -> std_Result<T, String> {
     match res {
         Ok(res) => std_Result::std_Ok { res },
@@ -151,8 +151,8 @@ impl<A: record::FromRecord + serde::de::DeserializeOwned + Default> record::From
     fn from_record(val: &record::Record) -> result::Result<Self, String> {
         match val {
             record::Record::PosStruct(constr, args) => match constr.as_ref() {
-                "std.None" if args.len() == 0 => Ok(std_Option::std_None {}),
-                "std.Some" if args.len() == 1 => Ok(std_Option::std_Some {
+                "std::None" if args.len() == 0 => Ok(std_Option::std_None {}),
+                "std::Some" if args.len() == 1 => Ok(std_Option::std_Some {
                     x: <A>::from_record(&args[0])?,
                 }),
                 c => result::Result::Err(format!(
@@ -161,8 +161,8 @@ impl<A: record::FromRecord + serde::de::DeserializeOwned + Default> record::From
                 )),
             },
             record::Record::NamedStruct(constr, args) => match constr.as_ref() {
-                "std.None" => Ok(std_Option::std_None {}),
-                "std.Some" => Ok(std_Option::std_Some {
+                "std::None" => Ok(std_Option::std_None {}),
+                "std::Some" => Ok(std_Option::std_Some {
                     x: record::arg_extract::<A>(args, "x")?,
                 }),
                 c => result::Result::Err(format!(

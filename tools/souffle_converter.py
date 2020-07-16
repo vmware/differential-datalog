@@ -268,7 +268,7 @@ class Relation(object):
         tryName = name
         if tryName in cls.relations:
             return cls.relations.get(tryName)
-        raise Exception("Relation " + name + " not found")
+        raise Exception("Relation " + name + " not found. Relations: " + str(cls.relations))
 
     @classmethod
     def create(cls, name, component):
@@ -513,7 +513,7 @@ class SouffleConverter(object):
         return self.components[name]
 
     def getCurrentComponentLegalName(self):
-        return self.current_component.replace(".", "_")
+        return self.current_component.replace("::", "_")
 
     def process_file(self, rel, inFileName, inDelimiter, sort, is_output):
         """Process an INPUT or OUTPUT with name inFileName.
@@ -616,7 +616,7 @@ class SouffleConverter(object):
         """Return the original name of the relation"""
         lst = getList(decl, "Identifier", "RelId")
         values = [e.value for e in lst]
-        return ".".join(values)
+        return "::".join(values)
 
     def generateFilenames(self, rel):
         """
@@ -626,8 +626,8 @@ class SouffleConverter(object):
         """
         if self.current_component == "":
             return [rel]
-        return [self.current_component + "." + rel,
-                self.current_component.replace(".", "-") + "-" + rel]
+        return [self.current_component.replace("::", ".") + "." + rel,
+                self.current_component.replace("::", "-") + "-" + rel]
 
     def process_input(self, inputdecl):
         directives = getField(inputdecl, "IodirectiveList")
@@ -1311,7 +1311,7 @@ class SouffleConverter(object):
     def convert_typeid(typeid):
         lst = getList(typeid, "Identifier", "TypeId")
         strgs = [s.value for s in lst]
-        return ".".join(strgs)
+        return "::".join(strgs)
 
     def process_type(self, typedecl):
         ident = getIdentifier(typedecl)
@@ -1407,7 +1407,7 @@ class SouffleConverter(object):
             typeArgs = self.get_type_parameters(ctype)
             saveCurrent = self.current_component
             self.current_component = SouffleConverter.relative_name(
-                self.current_component, ident, ".")
+                    self.current_component, ident, "::")
             typeArgs = [self.resolve_type(t) for t in typeArgs]
             # apparently instantiation clears the overrides
             save = self.overridden.copy()
@@ -1462,7 +1462,7 @@ def convert(inputName, outputPrefix, options, debug=False):
     Type.clear()
     Relation.clear()
     if options.relationPrefix != "":
-        assert options.relationPrefix.endswith("."), "prefix is expected to end with a dot"
+        assert options.relationPrefix.endswith("::"), "prefix is expected to end with a dot"
     files = Files(options, inputName, outputPrefix)
     parser = getParser(debug)
     tree = parser.parse_file(files.inputName)

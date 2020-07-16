@@ -9,7 +9,7 @@
  * system.
  */
 
-import net.ipv4
+import net::ipv4
 
 extern type Ipv6Addr
 

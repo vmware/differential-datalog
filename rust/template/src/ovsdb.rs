@@ -128,9 +128,9 @@ fn dump_delta(
     let module_str: &str = unsafe { CStr::from_ptr(module) }
         .to_str()
         .map_err(|e| format!("{}", e))?;
-    let plus_table_name = format!("{}.DeltaPlus_{}", module_str, table_str);
-    let minus_table_name = format!("{}.DeltaMinus_{}", module_str, table_str);
-    let upd_table_name = format!("{}.Update_{}", module_str, table_str);
+    let plus_table_name = format!("{}::DeltaPlus_{}", module_str, table_str);
+    let minus_table_name = format!("{}::DeltaMinus_{}", module_str, table_str);
+    let upd_table_name = format!("{}::Update_{}", module_str, table_str);
 
     /* DeltaPlus */
     let plus_cmds: Result<Vec<String>, String> = {
@@ -343,7 +343,7 @@ fn dump_output(
     let module_str: &str = unsafe { CStr::from_ptr(module) }
         .to_str()
         .map_err(|e| format!("{}", e))?;
-    let table_name = format!("{}.Out_{}", module_str, table_str);
+    let table_name = format!("{}::Out_{}", module_str, table_str);
 
     /* DeltaPlus */
     let cmds: Result<Vec<String>, String> = {

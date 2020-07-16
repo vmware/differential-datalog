@@ -1,38 +1,38 @@
-uuid_test.UUID{.description = "uuid.as_u128(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", .result = "436430c2b02624c2032570501212b57"}
-uuid_test.UUID{.description = "uuid.is_nil(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", .result = "false"}
-uuid_test.UUID{.description = "uuid.is_nil(uuid.from_u128(0))", .result = "true"}
-uuid_test.UUID{.description = "uuid.is_nil(uuid.nil())", .result = "true"}
-uuid_test.UUID{.description = "uuid.new_v5(\"5a5e7dd9-e3fb-49bb-b263-9bab25c95841\", \"namespace=nsA And podSelector=\")", .result = "add8dd4c-920c-5c39-9386-a0c2ca6903fa"}
-uuid_test.UUID{.description = "uuid.new_v5(\"5a5e7dd9-e3fb-49bb-b263-9bab25c95841\", \"namespace=nsA And podSelector=group In [appliedTo] And role In [db app]\")", .result = "a3fc1648-c067-51b3-9bb6-57a1ce78e48f"}
-uuid_test.UUID{.description = "uuid.new_v5(\"5a5e7dd9-e3fb-49bb-b263-9bab25c95841\", \"namespaceSelector=foo3 In [bar3] And podSelector=foo2 In [bar2]\")", .result = "8567cb53-0bce-5bb0-9a7d-a1abbaf1cb0f"}
-uuid_test.UUID{.description = "uuid.to_hyphenated_lower(test_uuid_from_bytes())", .result = "00010203-0405-0607-0809-0a0b0c0d0e0f"}
-uuid_test.UUID{.description = "uuid.to_hyphenated_lower(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", .result = "0436430c-2b02-624c-2032-570501212b57"}
-uuid_test.UUID{.description = "uuid.to_hyphenated_lower(uuid.from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", .result = "572b2101-0557-3220-4c62-022b0c433604"}
-uuid_test.UUID{.description = "uuid.to_hyphenated_lower(uuid.nil())", .result = "00000000-0000-0000-0000-000000000000"}
-uuid_test.UUID{.description = "uuid.to_hyphenated_lower(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", .result = "936da01f-9abd-4d9d-80c7-02af85c822a8"}
-uuid_test.UUID{.description = "uuid.to_hyphenated_upper(test_uuid_from_bytes())", .result = "00010203-0405-0607-0809-0A0B0C0D0E0F"}
-uuid_test.UUID{.description = "uuid.to_hyphenated_upper(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", .result = "0436430C-2B02-624C-2032-570501212B57"}
-uuid_test.UUID{.description = "uuid.to_hyphenated_upper(uuid.from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", .result = "572B2101-0557-3220-4C62-022B0C433604"}
-uuid_test.UUID{.description = "uuid.to_hyphenated_upper(uuid.nil())", .result = "00000000-0000-0000-0000-000000000000"}
-uuid_test.UUID{.description = "uuid.to_hyphenated_upper(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", .result = "936DA01F-9ABD-4D9D-80C7-02AF85C822A8"}
-uuid_test.UUID{.description = "uuid.to_simple_lower(test_uuid_from_bytes())", .result = "000102030405060708090a0b0c0d0e0f"}
-uuid_test.UUID{.description = "uuid.to_simple_lower(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", .result = "0436430c2b02624c2032570501212b57"}
-uuid_test.UUID{.description = "uuid.to_simple_lower(uuid.from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", .result = "572b2101055732204c62022b0c433604"}
-uuid_test.UUID{.description = "uuid.to_simple_lower(uuid.nil())", .result = "00000000000000000000000000000000"}
-uuid_test.UUID{.description = "uuid.to_simple_lower(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", .result = "936da01f9abd4d9d80c702af85c822a8"}
-uuid_test.UUID{.description = "uuid.to_simple_upper(test_uuid_from_bytes())", .result = "000102030405060708090A0B0C0D0E0F"}
-uuid_test.UUID{.description = "uuid.to_simple_upper(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", .result = "0436430C2B02624C2032570501212B57"}
-uuid_test.UUID{.description = "uuid.to_simple_upper(uuid.from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", .result = "572B2101055732204C62022B0C433604"}
-uuid_test.UUID{.description = "uuid.to_simple_upper(uuid.nil())", .result = "00000000000000000000000000000000"}
-uuid_test.UUID{.description = "uuid.to_simple_upper(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", .result = "936DA01F9ABD4D9D80C702AF85C822A8"}
-uuid_test.UUID{.description = "uuid.to_u128_le(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", .result = "572b2101055732204c62022b0c433604"}
-uuid_test.UUID{.description = "uuid.to_urn_lower(test_uuid_from_bytes())", .result = "urn:uuid:00010203-0405-0607-0809-0a0b0c0d0e0f"}
-uuid_test.UUID{.description = "uuid.to_urn_lower(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", .result = "urn:uuid:0436430c-2b02-624c-2032-570501212b57"}
-uuid_test.UUID{.description = "uuid.to_urn_lower(uuid.from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", .result = "urn:uuid:572b2101-0557-3220-4c62-022b0c433604"}
-uuid_test.UUID{.description = "uuid.to_urn_lower(uuid.nil())", .result = "urn:uuid:00000000-0000-0000-0000-000000000000"}
-uuid_test.UUID{.description = "uuid.to_urn_lower(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", .result = "urn:uuid:936da01f-9abd-4d9d-80c7-02af85c822a8"}
-uuid_test.UUID{.description = "uuid.to_urn_upper(test_uuid_from_bytes())", .result = "urn:uuid:00010203-0405-0607-0809-0A0B0C0D0E0F"}
-uuid_test.UUID{.description = "uuid.to_urn_upper(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", .result = "urn:uuid:0436430C-2B02-624C-2032-570501212B57"}
-uuid_test.UUID{.description = "uuid.to_urn_upper(uuid.from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", .result = "urn:uuid:572B2101-0557-3220-4C62-022B0C433604"}
-uuid_test.UUID{.description = "uuid.to_urn_upper(uuid.nil())", .result = "urn:uuid:00000000-0000-0000-0000-000000000000"}
-uuid_test.UUID{.description = "uuid.to_urn_upper(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", .result = "urn:uuid:936DA01F-9ABD-4D9D-80C7-02AF85C822A8"}
+uuid_test::UUID{.description = "uuid::as_u128(uuid::from_u128('h0436430c_2b02_624c_2032_570501212b57))", .result = "436430c2b02624c2032570501212b57"}
+uuid_test::UUID{.description = "uuid::is_nil(uuid::from_u128('h0436430c_2b02_624c_2032_570501212b57))", .result = "false"}
+uuid_test::UUID{.description = "uuid::is_nil(uuid::from_u128(0))", .result = "true"}
+uuid_test::UUID{.description = "uuid::is_nil(uuid::nil())", .result = "true"}
+uuid_test::UUID{.description = "uuid::new_v5(\"5a5e7dd9-e3fb-49bb-b263-9bab25c95841\", \"namespace=nsA And podSelector=\")", .result = "add8dd4c-920c-5c39-9386-a0c2ca6903fa"}
+uuid_test::UUID{.description = "uuid::new_v5(\"5a5e7dd9-e3fb-49bb-b263-9bab25c95841\", \"namespace=nsA And podSelector=group In [appliedTo] And role In [db app]\")", .result = "a3fc1648-c067-51b3-9bb6-57a1ce78e48f"}
+uuid_test::UUID{.description = "uuid::new_v5(\"5a5e7dd9-e3fb-49bb-b263-9bab25c95841\", \"namespaceSelector=foo3 In [bar3] And podSelector=foo2 In [bar2]\")", .result = "8567cb53-0bce-5bb0-9a7d-a1abbaf1cb0f"}
+uuid_test::UUID{.description = "uuid::to_hyphenated_lower(test_uuid_from_bytes())", .result = "00010203-0405-0607-0809-0a0b0c0d0e0f"}
+uuid_test::UUID{.description = "uuid::to_hyphenated_lower(uuid::from_u128('h0436430c_2b02_624c_2032_570501212b57))", .result = "0436430c-2b02-624c-2032-570501212b57"}
+uuid_test::UUID{.description = "uuid::to_hyphenated_lower(uuid::from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", .result = "572b2101-0557-3220-4c62-022b0c433604"}
+uuid_test::UUID{.description = "uuid::to_hyphenated_lower(uuid::nil())", .result = "00000000-0000-0000-0000-000000000000"}
+uuid_test::UUID{.description = "uuid::to_hyphenated_lower(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", .result = "936da01f-9abd-4d9d-80c7-02af85c822a8"}
+uuid_test::UUID{.description = "uuid::to_hyphenated_upper(test_uuid_from_bytes())", .result = "00010203-0405-0607-0809-0A0B0C0D0E0F"}
+uuid_test::UUID{.description = "uuid::to_hyphenated_upper(uuid::from_u128('h0436430c_2b02_624c_2032_570501212b57))", .result = "0436430C-2B02-624C-2032-570501212B57"}
+uuid_test::UUID{.description = "uuid::to_hyphenated_upper(uuid::from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", .result = "572B2101-0557-3220-4C62-022B0C433604"}
+uuid_test::UUID{.description = "uuid::to_hyphenated_upper(uuid::nil())", .result = "00000000-0000-0000-0000-000000000000"}
+uuid_test::UUID{.description = "uuid::to_hyphenated_upper(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", .result = "936DA01F-9ABD-4D9D-80C7-02AF85C822A8"}
+uuid_test::UUID{.description = "uuid::to_simple_lower(test_uuid_from_bytes())", .result = "000102030405060708090a0b0c0d0e0f"}
+uuid_test::UUID{.description = "uuid::to_simple_lower(uuid::from_u128('h0436430c_2b02_624c_2032_570501212b57))", .result = "0436430c2b02624c2032570501212b57"}
+uuid_test::UUID{.description = "uuid::to_simple_lower(uuid::from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", .result = "572b2101055732204c62022b0c433604"}
+uuid_test::UUID{.description = "uuid::to_simple_lower(uuid::nil())", .result = "00000000000000000000000000000000"}
+uuid_test::UUID{.description = "uuid::to_simple_lower(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", .result = "936da01f9abd4d9d80c702af85c822a8"}
+uuid_test::UUID{.description = "uuid::to_simple_upper(test_uuid_from_bytes())", .result = "000102030405060708090A0B0C0D0E0F"}
+uuid_test::UUID{.description = "uuid::to_simple_upper(uuid::from_u128('h0436430c_2b02_624c_2032_570501212b57))", .result = "0436430C2B02624C2032570501212B57"}
+uuid_test::UUID{.description = "uuid::to_simple_upper(uuid::from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", .result = "572B2101055732204C62022B0C433604"}
+uuid_test::UUID{.description = "uuid::to_simple_upper(uuid::nil())", .result = "00000000000000000000000000000000"}
+uuid_test::UUID{.description = "uuid::to_simple_upper(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", .result = "936DA01F9ABD4D9D80C702AF85C822A8"}
+uuid_test::UUID{.description = "uuid::to_u128_le(uuid::from_u128('h0436430c_2b02_624c_2032_570501212b57))", .result = "572b2101055732204c62022b0c433604"}
+uuid_test::UUID{.description = "uuid::to_urn_lower(test_uuid_from_bytes())", .result = "urn:uuid:00010203-0405-0607-0809-0a0b0c0d0e0f"}
+uuid_test::UUID{.description = "uuid::to_urn_lower(uuid::from_u128('h0436430c_2b02_624c_2032_570501212b57))", .result = "urn:uuid:0436430c-2b02-624c-2032-570501212b57"}
+uuid_test::UUID{.description = "uuid::to_urn_lower(uuid::from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", .result = "urn:uuid:572b2101-0557-3220-4c62-022b0c433604"}
+uuid_test::UUID{.description = "uuid::to_urn_lower(uuid::nil())", .result = "urn:uuid:00000000-0000-0000-0000-000000000000"}
+uuid_test::UUID{.description = "uuid::to_urn_lower(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", .result = "urn:uuid:936da01f-9abd-4d9d-80c7-02af85c822a8"}
+uuid_test::UUID{.description = "uuid::to_urn_upper(test_uuid_from_bytes())", .result = "urn:uuid:00010203-0405-0607-0809-0A0B0C0D0E0F"}
+uuid_test::UUID{.description = "uuid::to_urn_upper(uuid::from_u128('h0436430c_2b02_624c_2032_570501212b57))", .result = "urn:uuid:0436430C-2B02-624C-2032-570501212B57"}
+uuid_test::UUID{.description = "uuid::to_urn_upper(uuid::from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", .result = "urn:uuid:572B2101-0557-3220-4C62-022B0C433604"}
+uuid_test::UUID{.description = "uuid::to_urn_upper(uuid::nil())", .result = "urn:uuid:00000000-0000-0000-0000-000000000000"}
+uuid_test::UUID{.description = "uuid::to_urn_upper(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", .result = "urn:uuid:936DA01F-9ABD-4D9D-80C7-02AF85C822A8"}

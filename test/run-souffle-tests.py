@@ -127,7 +127,7 @@ def compile_example(directory, f):
     with open(f + ".tmp", "w") as tmp:
         tmp.write(output)
     options = ConversionOptions()
-    options.relationPrefix = directory.replace("/", ".") + ".souffle."
+    options.relationPrefix = directory.replace("/", "::") + "::souffle::"
     options.toDNF = True
     convert(f + ".tmp", "souffle", options)
 
@@ -298,8 +298,8 @@ def main():
     print "Converted successfully", tests_compiled_successfully, "out of", \
         tests_compiled, "skipped xfail", tests_xfail, \
         "running", tests_to_run, "after skipping", save_skip
-    imports = ["import " + m + ".souffle as " + m for m in modules]
-    imports = [s.replace("/", ".") for s in imports]
+    imports = ["import " + m + "::souffle as " + m for m in modules]
+    imports = [s.replace("/", "::") for s in imports]
 
     if len(modules) == 0:
         exit(2)
@@ -311,7 +311,7 @@ def main():
     # Create input script by concatenating the other input scripts
     with open(output_file + ".dat", "w") as testinputfile:
         for m in modules:
-            cli_file_name = m.replace(".", "/") + "/souffle.dat"
+            cli_file_name = m.replace("::", "/") + "/souffle.dat"
             with open(cli_file_name, "r") as cli_file:
                 for line in cli_file:
                     if line.startswith("exit"):
@@ -322,7 +322,7 @@ def main():
     # Create expected output by concatenating the other expected outputs
     with open(output_file + ".dump.expected", "w") as testoutputfile:
         for m in modules:
-            dump_file_name = m.replace(".", "/") + "/souffle.dump.expected"
+            dump_file_name = m.replace("::", "/") + "/souffle.dump.expected"
             with open(dump_file_name, "r") as dump_file:
                 for line in dump_file:
                     testoutputfile.write(line)

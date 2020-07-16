@@ -47,7 +47,7 @@ named_args!(sym<'a>(s: &str)<()>,
 
 named!(identifier<&[u8], String>,
     do_parse!(first: alt!(alpha | tag!("_")) >>
-              bytes: fold_many0!(alt!(alphanumeric1 | tag!("_") | tag!(".")),
+              bytes: fold_many0!(alt!(alphanumeric1 | tag!("_") | tag!("::")),
                                  "".to_string(),
                                  |acc, bs: &[u8]| acc + (&*String::from_utf8(bs.to_vec()).unwrap())) >>
               spaces >>
@@ -267,14 +267,14 @@ fn test_command() {
         ))
     );
     assert_eq!(
-        parse_command(br#"   delete NB.Logical_Router("foo", 0xabcdef1, true) , "#),
+        parse_command(br#"   delete NB::Logical_Router("foo", 0xabcdef1, true) , "#),
         Ok((
             &br""[..],
             Command::Update(
                 UpdCmd::Delete(
-                    RelIdentifier::RelName(Cow::from("NB.Logical_Router")),
+                    RelIdentifier::RelName(Cow::from("NB::Logical_Router")),
                     Record::PosStruct(
-                        Cow::from("NB.Logical_Router"),
+                        Cow::from("NB::Logical_Router"),
                         vec![
                             Record::String("foo".to_string()),
                             Record::Int(0xabcdef1.to_bigint().unwrap()),

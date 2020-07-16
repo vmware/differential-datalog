@@ -22,15 +22,15 @@ error: ./test/datalog_tests/function.fail.dl:7:5-7:11: Variable v already define
     var v = "foo"
     ^^^^^^
 
-error: ./test/datalog_tests/function.fail.dl:6:13-7:1: Access to guarded field 'x' (not all constructors of type 'std.Option' have this field).
+error: ./test/datalog_tests/function.fail.dl:6:13-7:1: Access to guarded field 'x' (not all constructors of type 'std::Option' have this field).
     var b = a.x
             ^
 
-error: ./test/datalog_tests/function.fail.dl:6:5-6:17: Type constructor in the left-hand side of an assignment is only allowed for types with one constructor,  but "std.Option" has multiple constructors
+error: ./test/datalog_tests/function.fail.dl:6:5-6:17: Type constructor in the left-hand side of an assignment is only allowed for types with one constructor,  but "std::Option" has multiple constructors
     Some{var s} = x
     ^^^^^^^^^^^^
 
-error: ./test/datalog_tests/function.fail.dl:8:16-8:27: Type constructor in the left-hand side of an assignment is only allowed for types with one constructor,  but "std.Option" has multiple constructors
+error: ./test/datalog_tests/function.fail.dl:8:16-8:27: Type constructor in the left-hand side of an assignment is only allowed for types with one constructor,  but "std::Option" has multiple constructors
     T{.field = Some{var s}} = x
                ^^^^^^^^^^^
 
@@ -104,7 +104,7 @@ error: ./test/datalog_tests/function.fail.dl:7:5-7:9: Expression is not an l-val
 
 error: ./test/datalog_tests/function.fail.dl:10:16-10:34: Type mismatch:
 expected type: bool
-actual type: std.Option<bool>
+actual type: std::Option<bool>
 in
 expression 'bool_identity(any)'
   (Tagg{.col = bool_identity(any)})

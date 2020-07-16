@@ -12,6 +12,8 @@ FuncTest:
 FuncTest{.x = "foo"}: +1
 RFloatToInt:
 RFloatToInt{._x = -333}: +1
+Strings:
+Strings{.descr = "x={10:bit<12>}, y={10:float}, z={-4:signed<125>}", .str = "x=10, y=10, z=-4"}: +1
 RFloatToInt{._x = -333}
 Arrng1Arrng2:
 Arrng1Arrng2{.x = 5}: +1

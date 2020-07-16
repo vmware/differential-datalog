@@ -44,7 +44,7 @@ ExtDdlogDependency(ls, lsp) :-
 function dep_parent(e: ExtDdlogDependency): entid_t = e.parent
 function dep_child(e: ExtDdlogDependency): entid_t = e.child
 relation BiEdge[(entid_t, entid_t)]
-apply graph.UnsafeBidirectionalEdges(ExtDdlogDependency, dep_parent, dep_child) -> (BiEdge)
+apply graph::UnsafeBidirectionalEdges(ExtDdlogDependency, dep_parent, dep_child) -> (BiEdge)
 
 /* Compute connected components by propagating node id's along biditectional edges.
  */
@@ -57,7 +57,7 @@ function edge_parent(e: (entid_t, entid_t)): entid_t =
          (_, child) -> child
      }
 relation SCCLabel[(entid_t, entid_t)]
-apply graph.ConnectedComponents64(BiEdge, edge_child, edge_parent) -> (SCCLabel)
+apply graph::ConnectedComponents64(BiEdge, edge_child, edge_parent) -> (SCCLabel)
 
 
 /* Label all nodes that don't belong to an SCC with their own ids
@@ -81,33 +81,33 @@ SCCEdge(parentscc,childscc) :-
 /* Lift the DdlogBinding relation to SCCs:
  * An SCC is bound to a TN iff at least one of its nodes is bound to this TN.
  */
-relation SCCBinding(scc: entid_t, bindings: Ref<TS.Set64<tnid_t>>)
+relation SCCBinding(scc: entid_t, bindings: Ref<TS::Set64<tnid_t>>)
 SCCBinding(scc, ref_new(bindings)) :-
     DdlogBinding(tn, entity),
     LabeledNode(entity, scc),
-    var bindings = Aggregate((scc), TS.group_to_set(tn)).
+    var bindings = Aggregate((scc), TS::group_to_set(tn)).
 
 /* Compute SCC span.
  */
-relation SCCSpan(scc: entid_t, span: Ref<TS.Set64<tnid_t>>)
+relation SCCSpan(scc: entid_t, span: Ref<TS::Set64<tnid_t>>)
 /* Base case */
 SCCSpan(scc, bindings) :- SCCBinding(scc, bindings).
 /* Recursive step: propagate span along graph edges */
 SCCSpan(parent, tns) :-
     SCCEdge(child, parent),
     SCCSpan(child, child_tns),
-    var tns = Aggregate((parent), TS.group_setref_unions(child_tns)).
+    var tns = Aggregate((parent), TS::group_setref_unions(child_tns)).
 
 /* Flatten the span relation: for each node in an SCC, the node's span is the
  * same as the SCC span.
  */
-relation SpanUnfiltered(entity: entid_t, tns: Ref<TS.Set64<tnid_t>>)
+relation SpanUnfiltered(entity: entid_t, tns: Ref<TS::Set64<tnid_t>>)
 SpanUnfiltered(node, span) :- SCCSpan(scc, span), LabeledNode(node, scc).
 
-output relation Span(entity: entid_t, tns: Ref<TS.Set64<tnid_t>>)
+output relation Span(entity: entid_t, tns: Ref<TS::Set64<tnid_t>>)
 index Span_by_entity(entity: entid_t) on Span(.entity = entity, .tns = _)
 
-Span(node, ref_new(TS.intersection(deref(edge_tns), deref(tns_unfiltered)))) :-
+Span(node, ref_new(TS::intersection(deref(edge_tns), deref(tns_unfiltered)))) :-
     SpanUnfiltered(node, tns_unfiltered),
     McastObject(node),
     EdgeTNs(edge_tns).
@@ -121,10 +121,10 @@ input relation EdgeTN(tn: tnid_t)
 
 /* Aggregate all edge TN ids.  This assumes that TNs are a smal fraction of all
  * TNs, so aggregating them is not too expensive. */
-relation EdgeTNs(tns: Ref<TS.Set64<tnid_t>>)
+relation EdgeTNs(tns: Ref<TS::Set64<tnid_t>>)
 EdgeTNs(ref_new(tns)) :-
     EdgeTN(tn),
-    var tns = Aggregate((), TS.group_to_set(tn)).
+    var tns = Aggregate((), TS::group_to_set(tn)).
 
 /* Objects that are part of a LRP{mcast=true} -> LSP -> LS chain. */
 relation McastObject(mcast: entid_t)
@@ -160,13 +160,13 @@ TosList(from, tos) :-
 
 /* getSpan() */
 input relation QuerySpanNode(entity: entid_t)
-output relation QuerySpan(entity: entid_t, tns: Ref<TS.Set64<tnid_t>>)
+output relation QuerySpan(entity: entid_t, tns: Ref<TS::Set64<tnid_t>>)
 QuerySpan(node, span):- QuerySpanNode(node), Span(node, span).
 
 
 /* dump span table */
 input relation IsDumpSpan()
-output relation DumpSpan(entity: entid_t, tns: Ref<TS.Set64<tnid_t>>)
+output relation DumpSpan(entity: entid_t, tns: Ref<TS::Set64<tnid_t>>)
 DumpSpan(node, span):- IsDumpSpan(), Span(node, span).
 
 /* dump ExtDdlogDependency */

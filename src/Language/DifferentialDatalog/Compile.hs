@@ -341,9 +341,9 @@ emptyCompilerState = CompilerState {
     cArrangements = M.empty
 }
 
--- Convert name to a valid Rust identifier by replacing "." with "_"
+-- Convert name to a valid Rust identifier by replacing "::" with "_"
 rname :: String -> Doc
-rname = pp . replace "." "_"
+rname = pp . replace "::" "_"
 
 mkRelEnum :: DatalogProgram -> Doc
 mkRelEnum d =

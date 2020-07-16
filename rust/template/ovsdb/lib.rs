@@ -391,11 +391,11 @@ fn record_into_field(rec: Record) -> Result<Value, String> {
             }
         }
         // Option<> is deserialized into a set of size 0 or 1.
-        Record::NamedStruct(name, _) if name == "std.None" => Ok(Value::Array(vec![
+        Record::NamedStruct(name, _) if name == "std::None" => Ok(Value::Array(vec![
             Value::String("set".to_owned()),
             Value::Array(vec![]),
         ])),
-        Record::NamedStruct(name, mut fields) if name == "std.Some" => Ok(Value::Array(vec![
+        Record::NamedStruct(name, mut fields) if name == "std::Some" => Ok(Value::Array(vec![
             Value::String("set".to_owned()),
             Value::Array(vec![record_into_field(fields.remove(0).1)?]),
         ])),

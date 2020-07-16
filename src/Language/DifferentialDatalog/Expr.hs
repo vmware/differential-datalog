@@ -81,7 +81,7 @@ import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Var
 
 bUILTIN_2STRING_FUNC :: String
-bUILTIN_2STRING_FUNC = "std.to_string"
+bUILTIN_2STRING_FUNC = "std::__builtin_2string"
 
 -- depth-first fold of an expression
 exprFoldCtxM :: (Monad m) => (ECtx -> ExprNode b -> m b) -> ECtx -> Expr -> m b
@@ -529,5 +529,5 @@ exprInjectStringConversion d e t = do
     check d (isString d $ funcType f) (pos f)
            "string conversion function must return 'string'"
     return $ E $ EApply (pos e) [fname] [E e]
-    where mk2string_func cs = scoped scope $ "to_string"
+    where mk2string_func cs = scoped scope "to_string"
               where scope = nameScope cs
