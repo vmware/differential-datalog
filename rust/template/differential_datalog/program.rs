@@ -2201,12 +2201,9 @@ impl RunningProgram {
             return Err("transaction_commit: no transaction in progress".to_string());
         };
 
-        self.flush()
-            .and_then(|_| self.delta_cleanup())
-            .and_then(|_| {
-                self.transaction_in_progress = false;
-                Result::Ok(())
-            })
+        self.flush().and_then(|_| self.delta_cleanup()).map(|_| {
+            self.transaction_in_progress = false;
+        })
     }
 
     /// Rollback the transaction, undoing all changes.
@@ -2215,9 +2212,8 @@ impl RunningProgram {
             return Err("transaction_rollback: no transaction in progress".to_string());
         }
 
-        self.flush().and_then(|_| self.delta_undo()).and_then(|_| {
+        self.flush().and_then(|_| self.delta_undo()).map(|_| {
             self.transaction_in_progress = false;
-            Result::Ok(())
         })
     }
 
@@ -2294,9 +2290,8 @@ impl RunningProgram {
             };
         }
 
-        self.send(0, Msg::Update(filtered_updates)).and_then(|_| {
+        self.send(0, Msg::Update(filtered_updates)).map(|_| {
             self.need_to_flush = true;
-            Ok(())
         })
     }
 
@@ -2796,13 +2791,12 @@ impl RunningProgram {
         //println!("updates: {:?}", updates);
         self.apply_updates(updates.into_iter())
             .and_then(|_| self.flush())
-            .and_then(|_| {
+            .map(|_| {
                 /* validation: all deltas must be empty */
                 for rel in self.relations.values() {
                     //println!("delta: {:?}", *d);
                     debug_assert!(rel.delta().is_empty());
                 }
-                Ok(())
             })
     }
 
