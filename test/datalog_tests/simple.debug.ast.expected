@@ -971,16 +971,16 @@ function souffle_lib::tanh (l: signed<32>): signed<32>
 {
     souffle_lib::ftoi(fp::tanh_d((l as double)))
 }
+function souffle_lib::to_istring (n: souffle_types::Tnumber): intern::IString
+{
+    intern::string_intern(std::__builtin_2string(n))
+}
 function souffle_lib::to_number (s: intern::IString): souffle_types::Tnumber
 {
     match (std::parse_dec_i64(intern::istring_str(s))) {
         (std::None{}: std::Option<signed<64>>) -> 32'sd0,
         (std::Some{.x=(var x: signed<64>)}: std::Option<signed<64>>) -> (x as souffle_types::Tnumber)
     }
-}
-function souffle_lib::to_string (n: souffle_types::Tnumber): intern::IString
-{
-    intern::string_intern(std::__builtin_2string(n))
 }
 function souffle_lib::utof (l: bit<32>): double
 {
