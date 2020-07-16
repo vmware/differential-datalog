@@ -37,7 +37,7 @@ function to_number(s: IString): Tnumber {
         Some{x} -> x as Tnumber
     }
 }
-function to_string(n: Tnumber): IString {
+function to_istring(n: Tnumber): IString {
     string_intern(__builtin_2string(n))
 }
 function random(): Tnumber {
