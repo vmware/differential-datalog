@@ -70,9 +70,9 @@ function ipaddr_is_ipv6(addr: IpAddr): bool = {
 
 /* Format IP address.
  */
-function ipAddr2string(addr: IpAddr): string = {
+function to_string(addr: IpAddr): string = {
     match (addr) {
-        IpAddrV4{a} -> ipv4Addr2string(a),
-        IpAddrV6{a} -> ipv6Addr2string(a)
+        IpAddrV4{a} -> to_string(a),
+        IpAddrV6{a} -> to_string(a)
     }
 }

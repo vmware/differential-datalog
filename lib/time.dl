@@ -89,6 +89,10 @@ extern function nanosecond(t: Time): bit<32>
 /// Convert the time to a string using a default format.
 extern function time2string(t: Time): string
 
+function to_string(t: Time): string {
+    time2string(t)
+}
+
 /// Convert the string to a time using a default format.  Inverse of time2string.
 extern function string2time(s: string): Result<Time, string>
 
@@ -158,6 +162,9 @@ extern function date_format(date: Date, format: string): string
 
 /// Convert the date to a string using a default format.
 extern function date2string(t: Date): string
+function to_string(t: Date): string {
+    date2string(t)
+}
 
 /// Convert the string to a date using the default format.
 extern function string2date(s: string): Result<Date, string>
@@ -177,6 +184,9 @@ extern function datetime_parse(s: string, format: string): Result<DateTime, stri
 
 /// Serialize a DateTime to a string representation using the default format
 extern function dateTime2string(d: DateTime): string
+function to_string(d: DateTime): string {
+    dateTime2string(d)
+}
 
 /// Inverse of datetime2string.
 extern function string2datetime(s: string): Result<DateTime, string>

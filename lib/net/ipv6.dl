@@ -78,6 +78,9 @@ extern function ipv6_from_str(s: string): Result<Ipv6Addr, string>
 /* Format IPv6 address.
  */
 extern function ipv6Addr2string(addr: Ipv6Addr): string
+function to_string(addr: Ipv6Addr): string {
+    ipv6Addr2string(addr)
+}
 
 /* Convert an `Ipv6Addr` into a host byte order u128.
  */
