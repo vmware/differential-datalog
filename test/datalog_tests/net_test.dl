@@ -1,6 +1,6 @@
-import net.ipaddr
-import net.ipv4
-import net.ipv6
+import net::ipaddr
+import net::ipv4
+import net::ipv6
 
 output relation NetChecks(description: string, value: string)
 

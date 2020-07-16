@@ -5,21 +5,21 @@
 import intern
 import uuid as uuid
 import k8spolicy as k8s
-import net.ipv4
+import net::ipv4
 
 typedef UUID = u128
 
-function uuidNamespace(): uuid.Uuid = uuid.from_u128('h5a5e7dd9_e3fb_49bb_b263_9bab25c95841)
+function uuidNamespace(): uuid::Uuid = uuid::from_u128('h5a5e7dd9_e3fb_49bb_b263_9bab25c95841)
 
 // getNormalizedUID generates a unique UUID based on a given string.
 // For example, it can be used to generate keys using normalized selectors
 // unique within the Namespace by adding the constant UID.
 function getNormalizedUID(name: string): u128 = {
-    uuid.as_u128(uuid.new_v5(uuidNamespace(), string_to_bytes(name)))
+    uuid::as_u128(uuid::new_v5(uuidNamespace(), string_to_bytes(name)))
 }
 
 // normalizeExpr converts an expression to the form "key1 OP [value1...]".
-function normalizeExpr(ekey: string, operator: k8s.LabelSelectorOperator, values: Vec<string>): string =
+function normalizeExpr(ekey: string, operator: k8s::LabelSelectorOperator, values: Vec<string>): string =
 {
     if vec_is_empty(values) {
         "${ekey} ${operator}"
@@ -30,27 +30,27 @@ function normalizeExpr(ekey: string, operator: k8s.LabelSelectorOperator, values
 
 // selectorToString creates a string corresponding to a labelSelector in the form of
 // "key1 IN [value1,...] And key2 NotIn [value2,...] And ...".
-function selectorToString(selector: Ref<k8s.LabelSelector>): string =
+function selectorToString(selector: Ref<k8s::LabelSelector>): string =
 {
     var sel = deref(selector);
     var selSlice: Set<string> = set_empty();
     // Append labels in matchLabels as "key In [value]".
     for (kv in sel.matchLabels) {
-        set_insert(selSlice, normalizeExpr(kv.0, k8s.LabelSelectorOpIn, vec_singleton(kv.1)))
+        set_insert(selSlice, normalizeExpr(kv.0, k8s::LabelSelectorOpIn, vec_singleton(kv.1)))
     };
     for (expr in sel.matchExpressions) {
         match (expr.operator) {
-            k8s.LabelSelectorOpIn -> {
-                set_insert(selSlice, normalizeExpr(expr.reqkey, k8s.LabelSelectorOpIn, expr.values))
+            k8s::LabelSelectorOpIn -> {
+                set_insert(selSlice, normalizeExpr(expr.reqkey, k8s::LabelSelectorOpIn, expr.values))
             },
-            k8s.LabelSelectorOpNotIn -> {
-                set_insert(selSlice, normalizeExpr(expr.reqkey, k8s.LabelSelectorOpNotIn, expr.values))
+            k8s::LabelSelectorOpNotIn -> {
+                set_insert(selSlice, normalizeExpr(expr.reqkey, k8s::LabelSelectorOpNotIn, expr.values))
             },
-            k8s.LabelSelectorOpExists -> {
-                set_insert(selSlice, normalizeExpr(expr.reqkey, k8s.LabelSelectorOpExists, vec_empty()))
+            k8s::LabelSelectorOpExists -> {
+                set_insert(selSlice, normalizeExpr(expr.reqkey, k8s::LabelSelectorOpExists, vec_empty()))
             },
-            k8s.LabelSelectorOpDoesNotExist -> {
-                set_insert(selSlice, normalizeExpr(expr.reqkey, k8s.LabelSelectorOpDoesNotExist, vec_empty()))
+            k8s::LabelSelectorOpDoesNotExist -> {
+                set_insert(selSlice, normalizeExpr(expr.reqkey, k8s::LabelSelectorOpDoesNotExist, vec_empty()))
             }
         }
     };
@@ -59,14 +59,14 @@ function selectorToString(selector: Ref<k8s.LabelSelector>): string =
 
 // A namespace selector is either a namespace name (or "")
 // or a namespace label selector.
-typedef NSSelector = NSSelectorNS{ns: k8s.NSName}
-                   | NSSelectorLS{selector: Ref<k8s.LabelSelector>}
+typedef NSSelector = NSSelectorNS{ns: k8s::NSName}
+                   | NSSelectorLS{selector: Ref<k8s::LabelSelector>}
 
 
 // Label selector requirements represented by two lists of requirements: positive
 // requirements of type `In` and `Exists` and negative requirements of type
 // `NotIn` and `DoesNotExist`.
-typedef Requirements = (Vec<Ref<k8s.LabelSelectorRequirement>>, Vec<Ref<k8s.LabelSelectorRequirement>>)
+typedef Requirements = (Vec<Ref<k8s::LabelSelectorRequirement>>, Vec<Ref<k8s::LabelSelectorRequirement>>)
 
 // GroupSelector describes how to select pods.
 typedef GroupSelector = GroupSelector {
@@ -78,14 +78,14 @@ typedef GroupSelector = GroupSelector {
     nsSelector: NSSelector,
     // This is a label selector which selects pods. If Namespace is also set, it selects the pods in the namespace.
     // If NamespaceSelector is also set, it selects the pods in the namespaces selected by NamespaceSelector.
-    podSelector: Option<Ref<k8s.LabelSelector>>
+    podSelector: Option<Ref<k8s::LabelSelector>>
 }
 
 // generateNormalizedName generates a string, based on the selectors, in
 // the following format: "namespace=NamespaceName And podSelector=normalizedPodSelector".
 // Note: Namespace and nsSelector may or may not be set depending on the
 // selector. However, they cannot be set simultaneously.
-function generateNormalizedName(nsSelector: NSSelector, podSelector: Option<Ref<k8s.LabelSelector>>): string =
+function generateNormalizedName(nsSelector: NSSelector, podSelector: Option<Ref<k8s::LabelSelector>>): string =
 {
     var normalizedName: Set<string> = set_empty();
     match (nsSelector) {
@@ -107,9 +107,9 @@ function generateNormalizedName(nsSelector: NSSelector, podSelector: Option<Ref<
 
 // toGroupSelector converts the podSelector and namespaceSelector
 // and NetworkPolicy Namespace to a networkpolicy.GroupSelector object.
-function toGroupSelector(namespace: k8s.NSName,
-                         podSelector: Option<Ref<k8s.LabelSelector>>,
-                         nsLabelSelector: Option<Ref<k8s.LabelSelector>>): GroupSelector =
+function toGroupSelector(namespace: k8s::NSName,
+                         podSelector: Option<Ref<k8s::LabelSelector>>,
+                         nsLabelSelector: Option<Ref<k8s::LabelSelector>>): GroupSelector =
 {
     var nsSelector = match (nsLabelSelector) {
         // No namespaceSelector indicates that the pods must be selected within
@@ -124,22 +124,22 @@ function toGroupSelector(namespace: k8s.NSName,
     }
 }
 
-function labelSelectorToRequirements(sel: Ref<k8s.LabelSelector>): Requirements =
+function labelSelectorToRequirements(sel: Ref<k8s::LabelSelector>): Requirements =
 {
-    var positive_requirements: Vec<Ref<k8s.LabelSelectorRequirement>> = vec_empty();
-    var negative_requirements: Vec<Ref<k8s.LabelSelectorRequirement>> = vec_empty();
+    var positive_requirements: Vec<Ref<k8s::LabelSelectorRequirement>> = vec_empty();
+    var negative_requirements: Vec<Ref<k8s::LabelSelectorRequirement>> = vec_empty();
     for (e in sel.matchExpressions) {
         match (e.operator) {
-            k8s.LabelSelectorOpIn           -> { vec_push(positive_requirements, e) },
-            k8s.LabelSelectorOpExists       -> { vec_push(positive_requirements, e) },
-            k8s.LabelSelectorOpNotIn        -> { vec_push(negative_requirements, e) },
-            k8s.LabelSelectorOpDoesNotExist -> { vec_push(negative_requirements, e) }
+            k8s::LabelSelectorOpIn           -> { vec_push(positive_requirements, e) },
+            k8s::LabelSelectorOpExists       -> { vec_push(positive_requirements, e) },
+            k8s::LabelSelectorOpNotIn        -> { vec_push(negative_requirements, e) },
+            k8s::LabelSelectorOpDoesNotExist -> { vec_push(negative_requirements, e) }
         }
     };
     for (m in sel.matchLabels) {
-        vec_push(positive_requirements, ref_new(k8s.LabelSelectorRequirement{
+        vec_push(positive_requirements, ref_new(k8s::LabelSelectorRequirement{
             .reqkey = m.0,
-            .operator = k8s.LabelSelectorOpIn,
+            .operator = k8s::LabelSelectorOpIn,
             .values = vec_singleton(m.1)
         }))
     };
@@ -157,7 +157,7 @@ function labelSelectorToRequirements(sel: Ref<k8s.LabelSelector>): Requirements 
 //     Requirement's key.
 
 // PodSet is a set of Pod references.
-typedef PodSet = Set<k8s.PodReference>
+typedef PodSet = Set<k8s::PodReference>
 
 typedef Direction = DirectionIn
                   | DirectionOut

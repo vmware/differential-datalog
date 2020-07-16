@@ -68,18 +68,18 @@ public class Test {
     private String printTI(TIReader v) {
         std_Option__bit_32_Reader m = (std_Option__bit_32_Reader)(v).m();
         if (m instanceof std_Option__bit_32_Reader.std_Some) {
-            return "TI{std.Some{" + ((std_Option__bit_32_Reader.std_Some)m).x() + "}}";
+            return "TI{std::Some{" + ((std_Option__bit_32_Reader.std_Some)m).x() + "}}";
         } else {
-            return "TI{std.None{}}";
+            return "TI{std::None{}}";
         }
     }
 
     private String printWI(WIReader v) {
         std_Option__ManyReader m = (std_Option__ManyReader)(v).m();
         if (m instanceof std_Option__ManyReader.std_Some) {
-            return "WI{std.Some{" + printMany(((std_Option__ManyReader.std_Some)m).x()) + "}}";
+            return "WI{std::Some{" + printMany(((std_Option__ManyReader.std_Some)m).x()) + "}}";
         } else {
-            return "WI{std.None{}}";
+            return "WI{std::None{}}";
         }
     }
 
@@ -95,9 +95,9 @@ public class Test {
         ArrayList<String> strings = new ArrayList<String>(val.size());
         val.forEach((x) -> {
             if (x instanceof std_Option___bool__bit_8___string_Reader.std_Some) {
-                strings.add("std.Some{" + printTuple(((std_Option___bool__bit_8___string_Reader.std_Some)x).x()) + "}");
+                strings.add("std::Some{" + printTuple(((std_Option___bool__bit_8___string_Reader.std_Some)x).x()) + "}");
             } else {
-                strings.add("std.None{}");
+                strings.add("std::None{}");
             }
         });
         return "YI{[" + String.join(", ", strings) + "]}";
@@ -111,9 +111,9 @@ public class Test {
 
     private String printOptString(Object v) {
         if (v instanceof std_Option__stringReader.std_Some) {
-            return "std.Some{\"" + ((std_Option__stringReader.std_Some)v).x() + "\"}";
+            return "std::Some{\"" + ((std_Option__stringReader.std_Some)v).x() + "\"}";
         } else {
-            return "std.None{}";
+            return "std::None{}";
         }
     }
 
@@ -494,7 +494,7 @@ public class Test {
             }
             case typesTestRelation.Omodule_ZI16: {
                 module_ZI16Reader r = (module_ZI16Reader)command.value();
-                fb_file.println("From " + relid + " " + command.kind() + " module.ZI16{\"" + r.x() + "\"}");
+                fb_file.println("From " + relid + " " + command.kind() + " module::ZI16{\"" + r.x() + "\"}");
                 break;
             }
             case typesTestRelation.Omodule_ZI17: {
@@ -504,7 +504,7 @@ public class Test {
             }
             case typesTestRelation.Omodule_ZI18: {
                 module_ZI18Reader b = (module_ZI18Reader)command.value();
-                fb_file.println("From " + relid + " " + command.kind() + " module.ZI18{" + printMTuple(b.t()) + "}");
+                fb_file.println("From " + relid + " " + command.kind() + " module::ZI18{" + printMTuple(b.t()) + "}");
                 break;
             }
             case typesTestRelation.Omodule_ZI19: {

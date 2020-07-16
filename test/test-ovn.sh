@@ -2,7 +2,7 @@
 
 set -e
 
-(cd ovn-test-data && git checkout v4)
+(cd ovn-test-data && git checkout v5)
 
 # TODO: use OVS master once these changes are there.
 (cd ovs &&

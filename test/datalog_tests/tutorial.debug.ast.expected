@@ -1,5 +1,5 @@
 typedef Address = Address{addr: ip_addr_t}
-typedef Author = Author{name: string, born: std.u32}
+typedef Author = Author{name: string, born: std::u32}
 typedef BestDeal = BestDeal{best: string}
 typedef BestPrice = BestPrice{item: string, price: bit<64>}
 typedef BestVendor = BestVendor{item: string, vendor: string, price: bit<64>}
@@ -11,8 +11,8 @@ typedef Category = CategoryStarWars{} |
                    CategoryOther{}
 typedef Endpoint = Endpoint{ip: ip_addr_t, proto: string, preferred_port: bit<16>}
 typedef EndpointString = EndpointString{s: string}
-typedef Evens = Evens{evens_and_odds: std.Vec<bigint>, evens: std.Vec<bigint>}
-typedef EvensAndOdds = EvensAndOdds{vec: std.Vec<bigint>}
+typedef Evens = Evens{evens_and_odds: std::Vec<bigint>, evens: std::Vec<bigint>}
+typedef EvensAndOdds = EvensAndOdds{vec: std::Vec<bigint>}
 typedef First5 = First5{str: string}
 typedef Flow = Flow{lr: bigint, stage: stage, prio: bigint, matchStr: string, actionStr: string}
 typedef Flow1 = Flow1{lr: bigint, stage: stage, prio: bigint, matchStr: string, actionStr: string}
@@ -22,39 +22,39 @@ typedef HostIP = HostIP{host: bit<64>, addr: string}
 typedef HostIPVSep = HostIPVSep{host: bit<64>, addrs: string}
 typedef HostInSubnet = HostInSubnet{host: UUID, subnet: UUID}
 typedef IP4 = bit<32>
-typedef IStoreItem = internment.Intern<StoreItem>
+typedef IStoreItem = internment::Intern<StoreItem>
 typedef IntranetHost = IntranetHost{addr: ip4_addr_t}
 typedef IntranetHost2 = IntranetHost2{addr: ip4_addr_t}
 typedef IntranetHost3 = IntranetHost3{addr: ip4_addr_t}
 typedef InventoryItemName = InventoryItemName{name: string}
-typedef ItemInOrders = ItemInOrders{item: string, orders: std.Vec<std.u64>}
+typedef ItemInOrders = ItemInOrders{item: string, orders: std::Vec<std::u64>}
 typedef KnownHost = KnownHost{addr: ip4_addr_t}
 typedef Library = Library{book: Book}
-typedef Load_Balancer = Load_Balancer{lb: bigint, ls: bigint, ip_addresses: string, protocol: std.Option<string>, name: string}
+typedef Load_Balancer = Load_Balancer{lb: bigint, ls: bigint, ip_addresses: string, protocol: std::Option<string>, name: string}
 typedef Logical_Switch = Logical_Switch{ls: bigint}
 typedef MCastAddress = MCastAddress{addr: ip_addr_t}
-typedef MSetIn = MSetIn{x: std.u32}
-typedef MSetOut = MSetOut{x: std.u32}
-typedef MilkOrders = MilkOrders{order: std.u64}
+typedef MSetIn = MSetIn{x: std::u32}
+typedef MSetOut = MSetOut{x: std::u32}
+typedef MilkOrders = MilkOrders{order: std::u64}
 typedef NetHost = NetHost{id: bigint, h: nethost_t}
 typedef NetHostString = NetHostString{id: bigint, s: string}
 typedef NetMask = bit<32>
 typedef Number = Number{n: bigint}
-typedef OnlineOrder = OnlineOrder{order_id: std.u64, item: internment.istring}
+typedef OnlineOrder = OnlineOrder{order_id: std::u64, item: internment::istring}
 typedef OrderFormatted = OrderFormatted{order: string}
 typedef Packet = Packet{pkt: eth_pkt_t}
 typedef Person = Person{name: string, nationality: string, occupation: string}
 typedef Phrases = Phrases{phrase: string}
 typedef Pow2 = Pow2{p: string}
-typedef Prefix = Prefix{vec: std.Vec<string>}
+typedef Prefix = Prefix{vec: std::Vec<string>}
 typedef Price = Price{item: string, vendor: string, price: bit<64>}
 typedef Product = Product{x: bit<16>, y: bit<16>, prod: bit<16>}
 typedef SanitizedEndpoint = SanitizedEndpoint{ep: string}
 typedef School = School{name: string, address: string}
 typedef StoreInventory = StoreInventory{item: IStoreItem}
-typedef StoreItem = StoreItem{name: string, description: internment.istring}
+typedef StoreItem = StoreItem{name: string, description: internment::istring}
 typedef Student = Student{id: student_id, name: string, school: string, sat_score: bit<16>}
-typedef StudentInfo = StudentInfo{student: std.Ref<Student>, school: std.Ref<School>}
+typedef StudentInfo = StudentInfo{student: std::Ref<Student>, school: std::Ref<School>}
 typedef Subnet = Subnet{id: UUID, prefix: IP4, mask: NetMask}
 typedef Sum = Sum{x: bit<16>, y: bit<16>, sum: bit<16>}
 typedef TCPDstPort = TCPDstPort{port: bit<16>}
@@ -62,20 +62,20 @@ typedef TopScore = TopScore{school: string, top_score: bit<16>}
 typedef UDPDstPort = UDPDstPort{port: bit<16>}
 typedef UDPDstPort2 = UDPDstPort2{port: bit<16>}
 typedef UUID = bit<128>
-typedef Vector = Vector{vec: std.Vec<string>, sep: string}
+typedef Vector = Vector{vec: std::Vec<string>, sep: string}
 typedef Word1 = Word1{word: string, cat: Category}
 typedef Word2 = Word2{word: string, cat: Category}
 typedef WorstPrice = WorstPrice{item: string, price: bit<64>}
 typedef X = X{x: bit<16>}
-typedef debug.DDlogOpId = (std.u32, std.u32, std.u32)
+typedef debug::DDlogOpId = (std::u32, std::u32, std::u32)
 typedef eth_payload_t = EthIP4{ip4: ip4_pkt_t} |
                         EthIP6{ip6: ip6_pkt_t} |
                         EthOther{}
 typedef eth_pkt_t = EthPacket{src: bit<48>, dst: bit<48>, payload: eth_payload_t}
 #[size = 8]
 #[shared_ref = true]
-extern type internment.Intern<'A>
-typedef internment.istring = internment.Intern<string>
+extern type internment::Intern<'A>
+typedef internment::istring = internment::Intern<string>
 typedef ip4_addr_t = bit<32>
 typedef ip4_pkt_t = IP4Pkt{ttl: bit<8>, src: ip4_addr_t, dst: ip4_addr_t, payload: ip_payload_t}
 typedef ip6_addr_t = bit<128>
@@ -84,79 +84,79 @@ typedef ip_addr_t = IPAddr{addr: bit<32>}
 typedef ip_payload_t = IPTCP{tcp: tcp_pkt_t} |
                        IPUDP{udp: udp_pkt_t} |
                        IPOther{}
-typedef log.log_level_t = signed<32>
-typedef log.module_t = signed<32>
+typedef log::log_level_t = signed<32>
+typedef log::module_t = signed<32>
 typedef mac_addr_t = MACAddr{addr: bit<48>}
 typedef nethost_t = NHost{ip: ip_addr_t, mac: mac_addr_t}
 typedef stage = LS_IN_PRE_LB{} |
                 LS_OUT_PRE_LB{}
-typedef std.DDEpoch = std.u64
-typedef std.DDIteration = std.u64
-typedef std.DDNestedTS = std.DDNestedTS{epoch: std.DDEpoch, iter: std.DDIteration}
-typedef std.DDWeight = std.s64
-typedef std.Either<'A,'B> = std.Left{l: 'A} |
-                            std.Right{r: 'B}
-extern type std.Group<'K,'V>
-extern type std.Map<'K,'V>
+typedef std::DDEpoch = std::u64
+typedef std::DDIteration = std::u64
+typedef std::DDNestedTS = std::DDNestedTS{epoch: std::DDEpoch, iter: std::DDIteration}
+typedef std::DDWeight = std::s64
+typedef std::Either<'A,'B> = std::Left{l: 'A} |
+                             std::Right{r: 'B}
+extern type std::Group<'K,'V>
+extern type std::Map<'K,'V>
 #[rust = "serde(from=\"Option<A>\", into=\"Option<A>\", bound(serialize=\"A: Clone+Serialize\"))"]
 #[custom_from_record = true]
-typedef std.Option<'A> = std.None{} |
-                         std.Some{x: 'A}
+typedef std::Option<'A> = std::None{} |
+                          std::Some{x: 'A}
 #[size = 8]
 #[shared_ref = true]
-extern type std.Ref<'A>
-typedef std.Result<'V,'E> = std.Ok{res: 'V} |
-                            std.Err{err: 'E}
-extern type std.Set<'A>
-extern type std.Vec<'A>
-typedef std.s128 = signed<128>
-typedef std.s16 = signed<16>
-typedef std.s32 = signed<32>
-typedef std.s64 = signed<64>
-typedef std.s8 = signed<8>
-typedef std.u128 = bit<128>
-typedef std.u16 = bit<16>
-typedef std.u32 = bit<32>
-typedef std.u64 = bit<64>
-typedef std.u8 = bit<8>
-typedef std.usize = std.u64
+extern type std::Ref<'A>
+typedef std::Result<'V,'E> = std::Ok{res: 'V} |
+                             std::Err{err: 'E}
+extern type std::Set<'A>
+extern type std::Vec<'A>
+typedef std::s128 = signed<128>
+typedef std::s16 = signed<16>
+typedef std::s32 = signed<32>
+typedef std::s64 = signed<64>
+typedef std::s8 = signed<8>
+typedef std::u128 = bit<128>
+typedef std::u16 = bit<16>
+typedef std::u32 = bit<32>
+typedef std::u64 = bit<64>
+typedef std::u8 = bit<8>
+typedef std::usize = std::u64
 typedef student_id = bit<64>
 typedef tcp_pkt_t = TCPPkt{src: bit<16>, dst: bit<16>, flags: bit<9>}
 typedef udp_pkt_t = UDPPkt{src: bit<16>, dst: bit<16>, len: bit<16>}
-function __debug_17_1_std.group_min (g: std.Group<string,('I, bit<64>)>): (std.Vec<'I>, bit<64>)
+function __debug_17_1_std::group_min (g: std::Group<string,('I, bit<64>)>): (std::Vec<'I>, bit<64>)
 {
-    (((var inputs: std.Vec<'I>), (var original_group: std.Group<string,bit<64>>)) = debug.debug_split_group(g);
-     (inputs, std.group_min(original_group)))
+    (((var inputs: std::Vec<'I>), (var original_group: std::Group<string,bit<64>>)) = debug::debug_split_group(g);
+     (inputs, std::group_min(original_group)))
 }
-function __debug_18_1_std.group_max (g: std.Group<string,('I, bit<64>)>): (std.Vec<'I>, bit<64>)
+function __debug_18_1_std::group_max (g: std::Group<string,('I, bit<64>)>): (std::Vec<'I>, bit<64>)
 {
-    (((var inputs: std.Vec<'I>), (var original_group: std.Group<string,bit<64>>)) = debug.debug_split_group(g);
-     (inputs, std.group_max(original_group)))
+    (((var inputs: std::Vec<'I>), (var original_group: std::Group<string,bit<64>>)) = debug::debug_split_group(g);
+     (inputs, std::group_max(original_group)))
 }
-function __debug_19_1_best_vendor (g: std.Group<string,('I, (string, bit<64>))>): (std.Vec<'I>, (string, bit<64>))
+function __debug_19_1_best_vendor (g: std::Group<string,('I, (string, bit<64>))>): (std::Vec<'I>, (string, bit<64>))
 {
-    (((var inputs: std.Vec<'I>), (var original_group: std.Group<string,(string, bit<64>)>)) = debug.debug_split_group(g);
+    (((var inputs: std::Vec<'I>), (var original_group: std::Group<string,(string, bit<64>)>)) = debug::debug_split_group(g);
      (inputs, best_vendor(original_group)))
 }
-function __debug_20_2_best_vendor_string (g: std.Group<string,('I, (string, bit<64>))>): (std.Vec<'I>, string)
+function __debug_20_2_best_vendor_string (g: std::Group<string,('I, (string, bit<64>))>): (std::Vec<'I>, string)
 {
-    (((var inputs: std.Vec<'I>), (var original_group: std.Group<string,(string, bit<64>)>)) = debug.debug_split_group(g);
+    (((var inputs: std::Vec<'I>), (var original_group: std::Group<string,(string, bit<64>)>)) = debug::debug_split_group(g);
      (inputs, best_vendor_string(original_group)))
 }
-function __debug_31_1_std.group_max (g: std.Group<string,('I, bit<16>)>): (std.Vec<'I>, bit<16>)
+function __debug_31_1_std::group_max (g: std::Group<string,('I, bit<16>)>): (std::Vec<'I>, bit<16>)
 {
-    (((var inputs: std.Vec<'I>), (var original_group: std.Group<string,bit<16>>)) = debug.debug_split_group(g);
-     (inputs, std.group_max(original_group)))
+    (((var inputs: std::Vec<'I>), (var original_group: std::Group<string,bit<16>>)) = debug::debug_split_group(g);
+     (inputs, std::group_max(original_group)))
 }
-function __debug_32_1_std.group_max (g: std.Group<string,('I, bit<16>)>): (std.Vec<'I>, bit<16>)
+function __debug_32_1_std::group_max (g: std::Group<string,('I, bit<16>)>): (std::Vec<'I>, bit<16>)
 {
-    (((var inputs: std.Vec<'I>), (var original_group: std.Group<string,bit<16>>)) = debug.debug_split_group(g);
-     (inputs, std.group_max(original_group)))
+    (((var inputs: std::Vec<'I>), (var original_group: std::Group<string,bit<16>>)) = debug::debug_split_group(g);
+     (inputs, std::group_max(original_group)))
 }
-function __debug_33_1_std.group_to_vec (g: std.Group<internment.Intern<string>,('I, bit<64>)>): (std.Vec<'I>, std.Vec<bit<64>>)
+function __debug_33_1_std::group_to_vec (g: std::Group<internment::Intern<string>,('I, bit<64>)>): (std::Vec<'I>, std::Vec<bit<64>>)
 {
-    (((var inputs: std.Vec<'I>), (var original_group: std.Group<internment.Intern<string>,bit<64>>)) = debug.debug_split_group(g);
-     (inputs, std.group_to_vec(original_group)))
+    (((var inputs: std::Vec<'I>), (var original_group: std::Group<internment::Intern<string>,bit<64>>)) = debug::debug_split_group(g);
+     (inputs, std::group_to_vec(original_group)))
 }
 function addr_port (ip: ip_addr_t, proto: string, preferred_port: bit<16>): string
 {
@@ -169,13 +169,13 @@ function addr_port (ip: ip_addr_t, proto: string, preferred_port: bit<16>): stri
                                                     ((return (("" ++ (to_string(ip): string)) ++ ":80")): bit<16>)
                                                 }
                            };
-     ((("" ++ (to_string(ip): string)) ++ ":") ++ (std.to_string(port): string)))
+     ((("" ++ (to_string(ip): string)) ++ ":") ++ (std::__builtin_2string(port): string)))
 }
 function addr_to_tuple (addr: ip4_addr_t): (bit<8>, bit<8>, bit<8>, bit<8>)
 {
     (addr[31:24], addr[23:16], addr[15:8], addr[7:0])
 }
-function best_vendor (g: std.Group<'K,(string, bit<64>)>): (string, bit<64>)
+function best_vendor (g: std::Group<'K,(string, bit<64>)>): (string, bit<64>)
 {
     ((var min_vendor: string) = "";
      ((var min_price: bit<64>) = 64'd18446744073709551615;
@@ -189,7 +189,7 @@ function best_vendor (g: std.Group<'K,(string, bit<64>)>): (string, bit<64>)
        };
        (min_vendor, min_price))))
 }
-function best_vendor_string (g: std.Group<string,(string, bit<64>)>): string
+function best_vendor_string (g: std::Group<string,(string, bit<64>)>): string
 {
     ((var min_vendor: string) = "";
      ((var min_price: bit<64>) = 64'd18446744073709551615;
@@ -201,93 +201,93 @@ function best_vendor_string (g: std.Group<string,(string, bit<64>)>): string
                  ()
              }
        };
-       ((((("Best deal for " ++ (std.group_key(g): string)) ++ ": ") ++ min_vendor) ++ ", $") ++ (std.to_string(min_price): string)))))
+       ((((("Best deal for " ++ (std::group_key(g): string)) ++ ": ") ++ min_vendor) ++ ", $") ++ (std::__builtin_2string(min_price): string)))))
 }
-extern function debug.debug_event (operator_id: debug.DDlogOpId, w: std.DDWeight, ts: 'T1, operator_type: string, input1: 'A1, out: 'A2): ()
-extern function debug.debug_event_join (operator_id: debug.DDlogOpId, w: std.DDWeight, ts: 'T1, input1: 'A1, input2: 'A2, out: 'A3): ()
-extern function debug.debug_split_group (g: std.Group<'K,('I, 'V)>): (std.Vec<'I>, std.Group<'K,'V>)
-function evens (vec: std.Vec<bigint>): std.Vec<bigint>
+extern function debug::debug_event (operator_id: debug::DDlogOpId, w: std::DDWeight, ts: 'T1, operator_type: string, input1: 'A1, out: 'A2): ()
+extern function debug::debug_event_join (operator_id: debug::DDlogOpId, w: std::DDWeight, ts: 'T1, input1: 'A1, input2: 'A2, out: 'A3): ()
+extern function debug::debug_split_group (g: std::Group<'K,('I, 'V)>): (std::Vec<'I>, std::Group<'K,'V>)
+function evens (vec: std::Vec<bigint>): std::Vec<bigint>
 {
-    ((var res: std.Vec<bigint>) = (std.vec_empty(): std.Vec<bigint>);
+    ((var res: std::Vec<bigint>) = (std::vec_empty(): std::Vec<bigint>);
      (for (x in vec) {
           (if ((x % 2) != 0) {
                (continue: ())
            } else {
                  ()
              };
-           std.vec_push(res, x))
+           std::vec_push(res, x))
       };
       res))
 }
 #[has_side_effects = true]
-extern function inspect_log.log (filename: string, msg: string): ()
-function internment.contains (s1: internment.istring, s2: string): bool
+extern function inspect_log::log (filename: string, msg: string): ()
+function internment::contains (s1: internment::istring, s2: string): bool
 {
-    internment.istring_contains(s1, s2)
+    internment::istring_contains(s1, s2)
 }
-function internment.ends_with (s: internment.istring, suffix: string): bool
+function internment::ends_with (s: internment::istring, suffix: string): bool
 {
-    internment.istring_ends_with(s, suffix)
+    internment::istring_ends_with(s, suffix)
 }
-extern function internment.intern (s: 'A): internment.Intern<'A>
-extern function internment.istring_contains (s1: internment.istring, s2: string): bool
-extern function internment.istring_ends_with (s: internment.istring, suffix: string): bool
-extern function internment.istring_join (strings: std.Vec<internment.istring>, sep: string): string
-extern function internment.istring_len (s: internment.istring): std.usize
-extern function internment.istring_replace (s: internment.istring, from: string, to: string): string
-extern function internment.istring_reverse (s: internment.istring): string
-extern function internment.istring_split (s: internment.istring, sep: string): std.Vec<string>
-extern function internment.istring_starts_with (s: internment.istring, prefix: string): bool
-extern function internment.istring_substr (s: internment.istring, start: std.usize, end: std.usize): string
-extern function internment.istring_to_bytes (s: internment.istring): std.Vec<std.u8>
-extern function internment.istring_to_lowercase (s: internment.istring): string
-extern function internment.istring_to_uppercase (s: internment.istring): string
-extern function internment.istring_trim (s: internment.istring): string
+extern function internment::intern (s: 'A): internment::Intern<'A>
+extern function internment::istring_contains (s1: internment::istring, s2: string): bool
+extern function internment::istring_ends_with (s: internment::istring, suffix: string): bool
+extern function internment::istring_join (strings: std::Vec<internment::istring>, sep: string): string
+extern function internment::istring_len (s: internment::istring): std::usize
+extern function internment::istring_replace (s: internment::istring, from: string, to: string): string
+extern function internment::istring_reverse (s: internment::istring): string
+extern function internment::istring_split (s: internment::istring, sep: string): std::Vec<string>
+extern function internment::istring_starts_with (s: internment::istring, prefix: string): bool
+extern function internment::istring_substr (s: internment::istring, start: std::usize, end: std::usize): string
+extern function internment::istring_to_bytes (s: internment::istring): std::Vec<std::u8>
+extern function internment::istring_to_lowercase (s: internment::istring): string
+extern function internment::istring_to_uppercase (s: internment::istring): string
+extern function internment::istring_trim (s: internment::istring): string
 #[return_by_ref = true]
-extern function internment.ival (s: internment.Intern<'A>): 'A
-function internment.join (strings: std.Vec<internment.istring>, sep: string): string
+extern function internment::ival (s: internment::Intern<'A>): 'A
+function internment::join (strings: std::Vec<internment::istring>, sep: string): string
 {
-    internment.istring_join(strings, sep)
+    internment::istring_join(strings, sep)
 }
-function internment.len (s: internment.istring): std.usize
+function internment::len (s: internment::istring): std::usize
 {
-    internment.istring_len(s)
+    internment::istring_len(s)
 }
-function internment.replace (s: internment.istring, from: string, to: string): string
+function internment::replace (s: internment::istring, from: string, to: string): string
 {
-    internment.istring_replace(s, from, to)
+    internment::istring_replace(s, from, to)
 }
-function internment.reverse (s: internment.istring): string
+function internment::reverse (s: internment::istring): string
 {
-    internment.istring_reverse(s)
+    internment::istring_reverse(s)
 }
-function internment.split (s: internment.istring, sep: string): std.Vec<string>
+function internment::split (s: internment::istring, sep: string): std::Vec<string>
 {
-    internment.istring_split(s, sep)
+    internment::istring_split(s, sep)
 }
-function internment.starts_with (s: internment.istring, prefix: string): bool
+function internment::starts_with (s: internment::istring, prefix: string): bool
 {
-    internment.istring_starts_with(s, prefix)
+    internment::istring_starts_with(s, prefix)
 }
-function internment.substr (s: internment.istring, start: std.usize, end: std.usize): string
+function internment::substr (s: internment::istring, start: std::usize, end: std::usize): string
 {
-    internment.istring_substr(s, start, end)
+    internment::istring_substr(s, start, end)
 }
-function internment.to_bytes (s: internment.istring): std.Vec<std.u8>
+function internment::to_bytes (s: internment::istring): std::Vec<std::u8>
 {
-    internment.istring_to_bytes(s)
+    internment::istring_to_bytes(s)
 }
-function internment.to_lowercase (s: internment.istring): string
+function internment::to_lowercase (s: internment::istring): string
 {
-    internment.istring_to_lowercase(s)
+    internment::istring_to_lowercase(s)
 }
-function internment.to_uppercase (s: internment.istring): string
+function internment::to_uppercase (s: internment::istring): string
 {
-    internment.istring_to_uppercase(s)
+    internment::istring_to_uppercase(s)
 }
-function internment.trim (s: internment.istring): string
+function internment::trim (s: internment::istring): string
 {
-    internment.istring_trim(s)
+    internment::istring_trim(s)
 }
 function ip_from_bytes (b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>): ip_addr_t
 {
@@ -302,7 +302,7 @@ function is_target_audience (person: Person): bool
     ((person.nationality == "USA") and (person.occupation == "student"))
 }
 #[has_side_effects = true]
-extern function log.log (module: log.module_t, level: log.log_level_t, msg: string): ()
+extern function log::log (module: log::module_t, level: log::log_level_t, msg: string): ()
 function pkt_ip4 (pkt: eth_pkt_t): ip4_pkt_t
 {
     match (pkt) {
@@ -310,11 +310,11 @@ function pkt_ip4 (pkt: eth_pkt_t): ip4_pkt_t
         (_: eth_pkt_t) -> (IP4Pkt{.ttl=8'd0, .src=32'd0, .dst=32'd0, .payload=(IPOther{}: ip_payload_t)}: ip4_pkt_t)
     }
 }
-function pkt_ip4_ (pkt: eth_pkt_t): std.Option<ip4_pkt_t>
+function pkt_ip4_ (pkt: eth_pkt_t): std::Option<ip4_pkt_t>
 {
     match (pkt) {
-        (EthPacket{.src=(_: bit<48>), .dst=(_: bit<48>), .payload=(EthIP4{.ip4=(var ip4: ip4_pkt_t)}: eth_payload_t)}: eth_pkt_t) -> (std.Some{.x=ip4}: std.Option<ip4_pkt_t>),
-        (_: eth_pkt_t) -> (std.None{}: std.Option<ip4_pkt_t>)
+        (EthPacket{.src=(_: bit<48>), .dst=(_: bit<48>), .payload=(EthIP4{.ip4=(var ip4: ip4_pkt_t)}: eth_payload_t)}: eth_pkt_t) -> (std::Some{.x=ip4}: std::Option<ip4_pkt_t>),
+        (_: eth_pkt_t) -> (std::None{}: std::Option<ip4_pkt_t>)
     }
 }
 function pkt_udp_port (pkt: eth_pkt_t): bit<16>
@@ -325,190 +325,190 @@ function pkt_udp_port (pkt: eth_pkt_t): bit<16>
         (_: eth_pkt_t) -> 16'd0
     }
 }
-function pkt_udp_port2 (pkt: eth_pkt_t): std.Option<bit<16>>
+function pkt_udp_port2 (pkt: eth_pkt_t): std::Option<bit<16>>
 {
     match (pkt) {
-        (EthPacket{.src=(_: bit<48>), .dst=(_: bit<48>), .payload=(EthIP4{.ip4=(IP4Pkt{.ttl=(_: bit<8>), .src=(_: bit<32>), .dst=(_: bit<32>), .payload=(IPUDP{.udp=(UDPPkt{.src=(_: bit<16>), .dst=(var port: bit<16>), .len=(_: bit<16>)}: udp_pkt_t)}: ip_payload_t)}: ip4_pkt_t)}: eth_payload_t)}: eth_pkt_t) -> (std.Some{.x=port}: std.Option<bit<16>>),
-        (EthPacket{.src=(_: bit<48>), .dst=(_: bit<48>), .payload=(EthIP6{.ip6=(IP6Pkt{.ttl=(_: bit<8>), .src=(_: bit<128>), .dst=(_: bit<128>), .payload=(IPUDP{.udp=(UDPPkt{.src=(_: bit<16>), .dst=(var port: bit<16>), .len=(_: bit<16>)}: udp_pkt_t)}: ip_payload_t)}: ip6_pkt_t)}: eth_payload_t)}: eth_pkt_t) -> (std.Some{.x=port}: std.Option<bit<16>>),
-        (_: eth_pkt_t) -> (std.None{}: std.Option<bit<16>>)
+        (EthPacket{.src=(_: bit<48>), .dst=(_: bit<48>), .payload=(EthIP4{.ip4=(IP4Pkt{.ttl=(_: bit<8>), .src=(_: bit<32>), .dst=(_: bit<32>), .payload=(IPUDP{.udp=(UDPPkt{.src=(_: bit<16>), .dst=(var port: bit<16>), .len=(_: bit<16>)}: udp_pkt_t)}: ip_payload_t)}: ip4_pkt_t)}: eth_payload_t)}: eth_pkt_t) -> (std::Some{.x=port}: std::Option<bit<16>>),
+        (EthPacket{.src=(_: bit<48>), .dst=(_: bit<48>), .payload=(EthIP6{.ip6=(IP6Pkt{.ttl=(_: bit<8>), .src=(_: bit<128>), .dst=(_: bit<128>), .payload=(IPUDP{.udp=(UDPPkt{.src=(_: bit<16>), .dst=(var port: bit<16>), .len=(_: bit<16>)}: udp_pkt_t)}: ip_payload_t)}: ip6_pkt_t)}: eth_payload_t)}: eth_pkt_t) -> (std::Some{.x=port}: std::Option<bit<16>>),
+        (_: eth_pkt_t) -> (std::None{}: std::Option<bit<16>>)
     }
 }
-function prefixBefore (vec: std.Vec<'A>, v: 'A): std.Vec<'A>
+function prefixBefore (vec: std::Vec<'A>, v: 'A): std::Vec<'A>
 {
-    ((var res: std.Vec<'A>) = (std.vec_empty(): std.Vec<'A>);
+    ((var res: std::Vec<'A>) = (std::vec_empty(): std::Vec<'A>);
      (for (x in vec) {
           (if (x == v) {
                (break: ())
            } else {
                  ()
              };
-           std.vec_push(res, x))
+           std::vec_push(res, x))
       };
       res))
 }
-function split_ip_list (x: string): std.Vec<string>
+function split_ip_list (x: string): std::Vec<string>
 {
-    std.split(x, " ")
+    std::split(x, " ")
 }
-extern function std.__builtin_2string (x: 'X): string
-function std.append (v: mut std.Vec<'X>, other: std.Vec<'X>): ()
+extern function std::__builtin_2string (x: 'X): string
+function std::append (v: mut std::Vec<'X>, other: std::Vec<'X>): ()
 {
-    std.vec_append(v, other)
+    std::vec_append(v, other)
 }
-function std.contains (s1: string, s2: string): bool
+function std::contains (s1: string, s2: string): bool
 {
-    std.string_contains(s1, s2)
+    std::string_contains(s1, s2)
 }
-function std.contains (v: std.Vec<'X>, x: 'X): bool
+function std::contains (v: std::Vec<'X>, x: 'X): bool
 {
-    std.vec_contains(v, x)
+    std::vec_contains(v, x)
 }
-function std.contains (s: std.Set<'X>, v: 'X): bool
+function std::contains (s: std::Set<'X>, v: 'X): bool
 {
-    std.set_contains(s, v)
+    std::set_contains(s, v)
 }
-function std.contains_key (m: std.Map<'K,'V>, k: 'K): bool
+function std::contains_key (m: std::Map<'K,'V>, k: 'K): bool
 {
-    std.map_contains_key(m, k)
+    std::map_contains_key(m, k)
 }
-function std.count (g: std.Group<'K,'V>): std.usize
+function std::count (g: std::Group<'K,'V>): std::usize
 {
-    std.group_count(g)
+    std::group_count(g)
 }
 #[return_by_ref = true]
-extern function std.deref (x: std.Ref<'A>): 'A
-function std.difference (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
+extern function std::deref (x: std::Ref<'A>): 'A
+function std::difference (s1: std::Set<'X>, s2: std::Set<'X>): std::Set<'X>
 {
-    (std.set_difference(s1, s2): std.Set<'X>)
+    (std::set_difference(s1, s2): std::Set<'X>)
 }
-function std.ends_with (s: string, suffix: string): bool
+function std::ends_with (s: string, suffix: string): bool
 {
-    std.string_ends_with(s, suffix)
+    std::string_ends_with(s, suffix)
 }
-function std.first (g: std.Group<'K,'V>): 'V
+function std::first (g: std::Group<'K,'V>): 'V
 {
-    (std.group_first(g): 'V)
+    (std::group_first(g): 'V)
 }
-function std.get (m: std.Map<'K,'V>, k: 'K): std.Option<'V>
+function std::get (m: std::Map<'K,'V>, k: 'K): std::Option<'V>
 {
-    (std.map_get(m, k): std.Option<'V>)
+    (std::map_get(m, k): std::Option<'V>)
 }
-extern function std.group_count (g: std.Group<'K,'V>): std.usize
-extern function std.group_first (g: std.Group<'K,'V>): 'V
-extern function std.group_key (g: std.Group<'K,'V>): 'K
-extern function std.group_max (g: std.Group<'K,'V>): 'V
-extern function std.group_min (g: std.Group<'K,'V>): 'V
-extern function std.group_nth (g: std.Group<'K,'V>, n: std.usize): std.Option<'V>
-extern function std.group_set_unions (g: std.Group<'K,std.Set<'A>>): std.Set<'A>
-extern function std.group_setref_unions (g: std.Group<'K,std.Ref<std.Set<'A>>>): std.Ref<std.Set<'A>>
-extern function std.group_sum (g: std.Group<'K,'V>): 'V
-extern function std.group_to_map (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,'V>
-extern function std.group_to_set (g: std.Group<'K,'V>): std.Set<'V>
-extern function std.group_to_setmap (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,std.Set<'V>>
-extern function std.group_to_vec (g: std.Group<'K,'V>): std.Vec<'V>
-function std.group_unzip (g: std.Group<'K,('X, 'Y)>): (std.Vec<'X>, std.Vec<'Y>)
+extern function std::group_count (g: std::Group<'K,'V>): std::usize
+extern function std::group_first (g: std::Group<'K,'V>): 'V
+extern function std::group_key (g: std::Group<'K,'V>): 'K
+extern function std::group_max (g: std::Group<'K,'V>): 'V
+extern function std::group_min (g: std::Group<'K,'V>): 'V
+extern function std::group_nth (g: std::Group<'K,'V>, n: std::usize): std::Option<'V>
+extern function std::group_set_unions (g: std::Group<'K,std::Set<'A>>): std::Set<'A>
+extern function std::group_setref_unions (g: std::Group<'K,std::Ref<std::Set<'A>>>): std::Ref<std::Set<'A>>
+extern function std::group_sum (g: std::Group<'K,'V>): 'V
+extern function std::group_to_map (g: std::Group<'K1,('K2, 'V)>): std::Map<'K2,'V>
+extern function std::group_to_set (g: std::Group<'K,'V>): std::Set<'V>
+extern function std::group_to_setmap (g: std::Group<'K1,('K2, 'V)>): std::Map<'K2,std::Set<'V>>
+extern function std::group_to_vec (g: std::Group<'K,'V>): std::Vec<'V>
+function std::group_unzip (g: std::Group<'K,('X, 'Y)>): (std::Vec<'X>, std::Vec<'Y>)
 {
-    ((var xs: std.Vec<'X>) = (std.vec_empty(): std.Vec<'X>);
-     ((var ys: std.Vec<'Y>) = (std.vec_empty(): std.Vec<'Y>);
+    ((var xs: std::Vec<'X>) = (std::vec_empty(): std::Vec<'X>);
+     ((var ys: std::Vec<'Y>) = (std::vec_empty(): std::Vec<'Y>);
       (for (v in g) {
            (((var x: 'X), (var y: 'Y)) = v;
-            (std.vec_push(xs, x);
-             std.vec_push(ys, y)))
+            (std::vec_push(xs, x);
+             std::vec_push(ys, y)))
        };
        (xs, ys))))
 }
-extern function std.hash128 (x: 'X): bit<128>
-extern function std.hash64 (x: 'X): bit<64>
-extern function std.hex (x: 'X): string
-extern function std.htonl (x: bit<32>): bit<32>
-extern function std.htons (x: bit<16>): bit<16>
-function std.insert (m: mut std.Map<'K,'V>, k: 'K, v: 'V): ()
+extern function std::hash128 (x: 'X): bit<128>
+extern function std::hash64 (x: 'X): bit<64>
+extern function std::hex (x: 'X): string
+extern function std::htonl (x: bit<32>): bit<32>
+extern function std::htons (x: bit<16>): bit<16>
+function std::insert (m: mut std::Map<'K,'V>, k: 'K, v: 'V): ()
 {
-    std.map_insert(m, k, v)
+    std::map_insert(m, k, v)
 }
-function std.insert (s: mut std.Set<'X>, v: 'X): ()
+function std::insert (s: mut std::Set<'X>, v: 'X): ()
 {
-    std.set_insert(s, v)
+    std::set_insert(s, v)
 }
-function std.insert_imm (m: std.Map<'K,'V>, k: 'K, v: 'V): std.Map<'K,'V>
+function std::insert_imm (m: std::Map<'K,'V>, k: 'K, v: 'V): std::Map<'K,'V>
 {
-    (std.map_insert_imm(m, k, v): std.Map<'K,'V>)
+    (std::map_insert_imm(m, k, v): std::Map<'K,'V>)
 }
-function std.insert_imm (s: std.Set<'X>, v: 'X): std.Set<'X>
+function std::insert_imm (s: std::Set<'X>, v: 'X): std::Set<'X>
 {
-    (std.set_insert_imm(s, v): std.Set<'X>)
+    (std::set_insert_imm(s, v): std::Set<'X>)
 }
-function std.intersection (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
+function std::intersection (s1: std::Set<'X>, s2: std::Set<'X>): std::Set<'X>
 {
-    (std.set_intersection(s1, s2): std.Set<'X>)
+    (std::set_intersection(s1, s2): std::Set<'X>)
 }
-function std.is_empty (v: std.Vec<'X>): bool
+function std::is_empty (v: std::Vec<'X>): bool
 {
-    std.vec_is_empty(v)
+    std::vec_is_empty(v)
 }
-function std.is_empty (m: std.Map<'K,'V>): bool
+function std::is_empty (m: std::Map<'K,'V>): bool
 {
-    std.map_is_empty(m)
+    std::map_is_empty(m)
 }
-function std.is_empty (s: std.Set<'X>): bool
+function std::is_empty (s: std::Set<'X>): bool
 {
-    std.set_is_empty(s)
+    std::set_is_empty(s)
 }
-function std.is_err (res: std.Result<'V,'E>): bool
-{
-    match (res) {
-        (std.Ok{.res=(_: 'V)}: std.Result<'V,'E>) -> false,
-        (std.Err{.err=(_: 'E)}: std.Result<'V,'E>) -> true
-    }
-}
-function std.is_none (x: std.Option<'A>): bool
-{
-    match (x) {
-        (std.None{}: std.Option<'A>) -> true,
-        (_: std.Option<'A>) -> false
-    }
-}
-function std.is_ok (res: std.Result<'V,'E>): bool
+function std::is_err (res: std::Result<'V,'E>): bool
 {
     match (res) {
-        (std.Ok{.res=(_: 'V)}: std.Result<'V,'E>) -> true,
-        (std.Err{.err=(_: 'E)}: std.Result<'V,'E>) -> false
+        (std::Ok{.res=(_: 'V)}: std::Result<'V,'E>) -> false,
+        (std::Err{.err=(_: 'E)}: std::Result<'V,'E>) -> true
     }
 }
-function std.is_some (x: std.Option<'A>): bool
+function std::is_none (x: std::Option<'A>): bool
 {
     match (x) {
-        (std.Some{.x=(_: 'A)}: std.Option<'A>) -> true,
-        (_: std.Option<'A>) -> false
+        (std::None{}: std::Option<'A>) -> true,
+        (_: std::Option<'A>) -> false
     }
 }
-function std.join (strings: std.Vec<string>, sep: string): string
+function std::is_ok (res: std::Result<'V,'E>): bool
 {
-    std.string_join(strings, sep)
+    match (res) {
+        (std::Ok{.res=(_: 'V)}: std::Result<'V,'E>) -> true,
+        (std::Err{.err=(_: 'E)}: std::Result<'V,'E>) -> false
+    }
 }
-function std.key (g: std.Group<'K,'V>): 'K
+function std::is_some (x: std::Option<'A>): bool
 {
-    (std.group_key(g): 'K)
+    match (x) {
+        (std::Some{.x=(_: 'A)}: std::Option<'A>) -> true,
+        (_: std::Option<'A>) -> false
+    }
 }
-function std.len (s: string): std.usize
+function std::join (strings: std::Vec<string>, sep: string): string
 {
-    std.string_len(s)
+    std::string_join(strings, sep)
 }
-function std.len (v: std.Vec<'X>): std.usize
+function std::key (g: std::Group<'K,'V>): 'K
 {
-    std.vec_len(v)
+    (std::group_key(g): 'K)
 }
-extern function std.map_contains_key (m: std.Map<'K,'V>, k: 'K): bool
-extern function std.map_empty (): std.Map<'K,'V>
-extern function std.map_get (m: std.Map<'K,'V>, k: 'K): std.Option<'V>
-extern function std.map_insert (m: mut std.Map<'K,'V>, k: 'K, v: 'V): ()
-extern function std.map_insert_imm (m: std.Map<'K,'V>, k: 'K, v: 'V): std.Map<'K,'V>
-extern function std.map_is_empty (m: std.Map<'K,'V>): bool
-extern function std.map_remove (m: mut std.Map<'K,'V>, k: 'K): ()
-extern function std.map_singleton (k: 'K, v: 'V): std.Map<'K,'V>
-extern function std.map_size (m: std.Map<'K,'V>): std.usize
-extern function std.map_union (m1: std.Map<'K,'V>, m2: std.Map<'K,'V>): std.Map<'K,'V>
-function std.max (x: 'A, y: 'A): 'A
+function std::len (s: string): std::usize
+{
+    std::string_len(s)
+}
+function std::len (v: std::Vec<'X>): std::usize
+{
+    std::vec_len(v)
+}
+extern function std::map_contains_key (m: std::Map<'K,'V>, k: 'K): bool
+extern function std::map_empty (): std::Map<'K,'V>
+extern function std::map_get (m: std::Map<'K,'V>, k: 'K): std::Option<'V>
+extern function std::map_insert (m: mut std::Map<'K,'V>, k: 'K, v: 'V): ()
+extern function std::map_insert_imm (m: std::Map<'K,'V>, k: 'K, v: 'V): std::Map<'K,'V>
+extern function std::map_is_empty (m: std::Map<'K,'V>): bool
+extern function std::map_remove (m: mut std::Map<'K,'V>, k: 'K): ()
+extern function std::map_singleton (k: 'K, v: 'V): std::Map<'K,'V>
+extern function std::map_size (m: std::Map<'K,'V>): std::usize
+extern function std::map_union (m1: std::Map<'K,'V>, m2: std::Map<'K,'V>): std::Map<'K,'V>
+function std::max (x: 'A, y: 'A): 'A
 {
     if (x > y) {
         x
@@ -516,11 +516,11 @@ function std.max (x: 'A, y: 'A): 'A
           y
       }
 }
-function std.max (g: std.Group<'K,'V>): 'V
+function std::max (g: std::Group<'K,'V>): 'V
 {
-    (std.group_max(g): 'V)
+    (std::group_max(g): 'V)
 }
-function std.min (x: 'A, y: 'A): 'A
+function std::min (x: 'A, y: 'A): 'A
 {
     if (x < y) {
         x
@@ -528,276 +528,276 @@ function std.min (x: 'A, y: 'A): 'A
           y
       }
 }
-function std.min (g: std.Group<'K,'V>): 'V
+function std::min (g: std::Group<'K,'V>): 'V
 {
-    (std.group_min(g): 'V)
+    (std::group_min(g): 'V)
 }
-function std.nth (g: std.Group<'K,'V>, n: std.usize): std.Option<'V>
+function std::nth (g: std::Group<'K,'V>, n: std::usize): std::Option<'V>
 {
-    (std.group_nth(g, n): std.Option<'V>)
+    (std::group_nth(g, n): std::Option<'V>)
 }
-function std.nth (v: std.Vec<'X>, n: std.usize): std.Option<'X>
+function std::nth (v: std::Vec<'X>, n: std::usize): std::Option<'X>
 {
-    (std.vec_nth(v, n): std.Option<'X>)
+    (std::vec_nth(v, n): std::Option<'X>)
 }
-function std.nth (s: std.Set<'X>, n: std.usize): std.Option<'X>
+function std::nth (s: std::Set<'X>, n: std::usize): std::Option<'X>
 {
-    (std.set_nth(s, n): std.Option<'X>)
+    (std::set_nth(s, n): std::Option<'X>)
 }
-extern function std.ntohl (x: bit<32>): bit<32>
-extern function std.ntohs (x: bit<16>): bit<16>
-extern function std.option_unwrap_or_default (opt: std.Option<'A>): 'A
-extern function std.parse_dec_i64 (s: string): std.Option<signed<64>>
-extern function std.parse_dec_u64 (s: string): std.Option<bit<64>>
-extern function std.pow32 (base: 'A, exp: bit<32>): 'A
-function std.push (v: mut std.Vec<'X>, x: 'X): ()
+extern function std::ntohl (x: bit<32>): bit<32>
+extern function std::ntohs (x: bit<16>): bit<16>
+extern function std::option_unwrap_or_default (opt: std::Option<'A>): 'A
+extern function std::parse_dec_i64 (s: string): std::Option<signed<64>>
+extern function std::parse_dec_u64 (s: string): std::Option<bit<64>>
+extern function std::pow32 (base: 'A, exp: bit<32>): 'A
+function std::push (v: mut std::Vec<'X>, x: 'X): ()
 {
-    std.vec_push(v, x)
+    std::vec_push(v, x)
 }
-function std.push_imm (v: std.Vec<'X>, x: 'X): std.Vec<'X>
+function std::push_imm (v: std::Vec<'X>, x: 'X): std::Vec<'X>
 {
-    (std.vec_push_imm(v, x): std.Vec<'X>)
+    (std::vec_push_imm(v, x): std::Vec<'X>)
 }
-extern function std.range (from: 'A, to: 'A, step: 'A): std.Vec<'A>
-extern function std.ref_new (x: 'A): std.Ref<'A>
-function std.remove (m: mut std.Map<'K,'V>, k: 'K): ()
+extern function std::range (from: 'A, to: 'A, step: 'A): std::Vec<'A>
+extern function std::ref_new (x: 'A): std::Ref<'A>
+function std::remove (m: mut std::Map<'K,'V>, k: 'K): ()
 {
-    std.map_remove(m, k)
+    std::map_remove(m, k)
 }
-function std.replace (s: string, from: string, to: string): string
+function std::replace (s: string, from: string, to: string): string
 {
-    std.string_replace(s, from, to)
+    std::string_replace(s, from, to)
 }
-extern function std.result_unwrap_or_default (res: std.Result<'V,'E>): 'V
-function std.reverse (s: string): string
+extern function std::result_unwrap_or_default (res: std::Result<'V,'E>): 'V
+function std::reverse (s: string): string
 {
-    std.string_reverse(s)
+    std::string_reverse(s)
 }
-extern function std.set_contains (s: std.Set<'X>, v: 'X): bool
-extern function std.set_difference (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
-extern function std.set_empty (): std.Set<'X>
-extern function std.set_insert (s: mut std.Set<'X>, v: 'X): ()
-extern function std.set_insert_imm (s: std.Set<'X>, v: 'X): std.Set<'X>
-extern function std.set_intersection (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
-extern function std.set_is_empty (s: std.Set<'X>): bool
-extern function std.set_nth (s: std.Set<'X>, n: std.usize): std.Option<'X>
-extern function std.set_singleton (x: 'X): std.Set<'X>
-extern function std.set_size (s: std.Set<'X>): std.usize
-extern function std.set_to_vec (s: std.Set<'A>): std.Vec<'A>
-extern function std.set_union (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
-extern function std.set_unions (sets: std.Vec<std.Set<'X>>): std.Set<'X>
-function std.setref_unions (g: std.Group<'K,std.Ref<std.Set<'A>>>): std.Ref<std.Set<'A>>
+extern function std::set_contains (s: std::Set<'X>, v: 'X): bool
+extern function std::set_difference (s1: std::Set<'X>, s2: std::Set<'X>): std::Set<'X>
+extern function std::set_empty (): std::Set<'X>
+extern function std::set_insert (s: mut std::Set<'X>, v: 'X): ()
+extern function std::set_insert_imm (s: std::Set<'X>, v: 'X): std::Set<'X>
+extern function std::set_intersection (s1: std::Set<'X>, s2: std::Set<'X>): std::Set<'X>
+extern function std::set_is_empty (s: std::Set<'X>): bool
+extern function std::set_nth (s: std::Set<'X>, n: std::usize): std::Option<'X>
+extern function std::set_singleton (x: 'X): std::Set<'X>
+extern function std::set_size (s: std::Set<'X>): std::usize
+extern function std::set_to_vec (s: std::Set<'A>): std::Vec<'A>
+extern function std::set_union (s1: std::Set<'X>, s2: std::Set<'X>): std::Set<'X>
+extern function std::set_unions (sets: std::Vec<std::Set<'X>>): std::Set<'X>
+function std::setref_unions (g: std::Group<'K,std::Ref<std::Set<'A>>>): std::Ref<std::Set<'A>>
 {
-    (std.group_setref_unions(g): std.Ref<std.Set<'A>>)
+    (std::group_setref_unions(g): std::Ref<std::Set<'A>>)
 }
-function std.size (m: std.Map<'K,'V>): std.usize
+function std::size (m: std::Map<'K,'V>): std::usize
 {
-    std.map_size(m)
+    std::map_size(m)
 }
-function std.size (s: std.Set<'X>): std.usize
+function std::size (s: std::Set<'X>): std::usize
 {
-    std.set_size(s)
+    std::set_size(s)
 }
-function std.sort (v: mut std.Vec<'X>): ()
+function std::sort (v: mut std::Vec<'X>): ()
 {
-    std.vec_sort(v)
+    std::vec_sort(v)
 }
-function std.sort_imm (v: std.Vec<'X>): std.Vec<'X>
+function std::sort_imm (v: std::Vec<'X>): std::Vec<'X>
 {
-    (std.vec_sort_imm(v): std.Vec<'X>)
+    (std::vec_sort_imm(v): std::Vec<'X>)
 }
-function std.split (s: string, sep: string): std.Vec<string>
+function std::split (s: string, sep: string): std::Vec<string>
 {
-    std.string_split(s, sep)
+    std::string_split(s, sep)
 }
-function std.starts_with (s: string, prefix: string): bool
+function std::starts_with (s: string, prefix: string): bool
 {
-    std.string_starts_with(s, prefix)
+    std::string_starts_with(s, prefix)
 }
-extern function std.str_to_lower (s: string): string
-extern function std.string_contains (s1: string, s2: string): bool
-extern function std.string_ends_with (s: string, suffix: string): bool
-extern function std.string_join (strings: std.Vec<string>, sep: string): string
-extern function std.string_len (s: string): std.usize
-extern function std.string_replace (s: string, from: string, to: string): string
-extern function std.string_reverse (s: string): string
-extern function std.string_split (s: string, sep: string): std.Vec<string>
-extern function std.string_starts_with (s: string, prefix: string): bool
-extern function std.string_substr (s: string, start: std.usize, end: std.usize): string
-extern function std.string_to_bytes (s: string): std.Vec<std.u8>
-extern function std.string_to_lowercase (s: string): string
-extern function std.string_to_uppercase (s: string): string
-extern function std.string_trim (s: string): string
-function std.substr (s: string, start: std.usize, end: std.usize): string
+extern function std::str_to_lower (s: string): string
+extern function std::string_contains (s1: string, s2: string): bool
+extern function std::string_ends_with (s: string, suffix: string): bool
+extern function std::string_join (strings: std::Vec<string>, sep: string): string
+extern function std::string_len (s: string): std::usize
+extern function std::string_replace (s: string, from: string, to: string): string
+extern function std::string_reverse (s: string): string
+extern function std::string_split (s: string, sep: string): std::Vec<string>
+extern function std::string_starts_with (s: string, prefix: string): bool
+extern function std::string_substr (s: string, start: std::usize, end: std::usize): string
+extern function std::string_to_bytes (s: string): std::Vec<std::u8>
+extern function std::string_to_lowercase (s: string): string
+extern function std::string_to_uppercase (s: string): string
+extern function std::string_trim (s: string): string
+function std::substr (s: string, start: std::usize, end: std::usize): string
 {
-    std.string_substr(s, start, end)
+    std::string_substr(s, start, end)
 }
-function std.to_bytes (s: string): std.Vec<std.u8>
+function std::to_bytes (s: string): std::Vec<std::u8>
 {
-    std.string_to_bytes(s)
+    std::string_to_bytes(s)
 }
-function std.to_lowercase (s: string): string
+function std::to_lowercase (s: string): string
 {
-    std.string_to_lowercase(s)
+    std::string_to_lowercase(s)
 }
-function std.to_map (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,'V>
+function std::to_map (g: std::Group<'K1,('K2, 'V)>): std::Map<'K2,'V>
 {
-    (std.group_to_map(g): std.Map<'K2,'V>)
+    (std::group_to_map(g): std::Map<'K2,'V>)
 }
-function std.to_set (o: std.Option<'X>): std.Set<'X>
-{
-    match (o) {
-        (std.Some{.x=(var x: 'X)}: std.Option<'X>) -> (std.set_singleton(x): std.Set<'X>),
-        (std.None{}: std.Option<'X>) -> (std.set_empty(): std.Set<'X>)
-    }
-}
-function std.to_set (g: std.Group<'K,'V>): std.Set<'V>
-{
-    (std.group_to_set(g): std.Set<'V>)
-}
-function std.to_set (s: std.Vec<'A>): std.Set<'A>
-{
-    (std.vec_to_set(s): std.Set<'A>)
-}
-function std.to_setmap (g: std.Group<'K1,('K2, 'V)>): std.Map<'K2,std.Set<'V>>
-{
-    (std.group_to_setmap(g): std.Map<'K2,std.Set<'V>>)
-}
-function std.to_string (ts: std.DDNestedTS): string
-{
-    (((("(" ++ (std.to_string(ts.epoch): string)) ++ ",") ++ (std.to_string(ts.iter): string)) ++ ")")
-}
-function std.to_string (x: bool): string
-{
-    std.__builtin_2string(x)
-}
-function std.to_string (x: bigint): string
-{
-    std.__builtin_2string(x)
-}
-function std.to_string (x: float): string
-{
-    std.__builtin_2string(x)
-}
-function std.to_string (x: double): string
-{
-    std.__builtin_2string(x)
-}
-function std.to_string (x: std.s8): string
-{
-    std.__builtin_2string(x)
-}
-function std.to_string (x: std.s16): string
-{
-    std.__builtin_2string(x)
-}
-function std.to_string (x: std.s32): string
-{
-    std.__builtin_2string(x)
-}
-function std.to_string (x: std.s64): string
-{
-    std.__builtin_2string(x)
-}
-function std.to_string (x: std.s128): string
-{
-    std.__builtin_2string(x)
-}
-function std.to_string (x: std.u8): string
-{
-    std.__builtin_2string(x)
-}
-function std.to_string (x: std.u16): string
-{
-    std.__builtin_2string(x)
-}
-function std.to_string (x: std.u32): string
-{
-    std.__builtin_2string(x)
-}
-function std.to_string (x: std.u64): string
-{
-    std.__builtin_2string(x)
-}
-function std.to_string (x: std.u128): string
-{
-    std.__builtin_2string(x)
-}
-function std.to_string (x: string): string
-{
-    std.__builtin_2string(x)
-}
-function std.to_uppercase (s: string): string
-{
-    std.string_to_uppercase(s)
-}
-function std.to_vec (o: std.Option<'X>): std.Vec<'X>
+function std::to_set (o: std::Option<'X>): std::Set<'X>
 {
     match (o) {
-        (std.Some{.x=(var x: 'X)}: std.Option<'X>) -> (std.vec_singleton(x): std.Vec<'X>),
-        (std.None{}: std.Option<'X>) -> (std.vec_empty(): std.Vec<'X>)
+        (std::Some{.x=(var x: 'X)}: std::Option<'X>) -> (std::set_singleton(x): std::Set<'X>),
+        (std::None{}: std::Option<'X>) -> (std::set_empty(): std::Set<'X>)
     }
 }
-function std.to_vec (g: std.Group<'K,'V>): std.Vec<'V>
+function std::to_set (g: std::Group<'K,'V>): std::Set<'V>
 {
-    (std.group_to_vec(g): std.Vec<'V>)
+    (std::group_to_set(g): std::Set<'V>)
 }
-function std.to_vec (s: std.Set<'A>): std.Vec<'A>
+function std::to_set (s: std::Vec<'A>): std::Set<'A>
 {
-    (std.set_to_vec(s): std.Vec<'A>)
+    (std::vec_to_set(s): std::Set<'A>)
 }
-function std.trim (s: string): string
+function std::to_setmap (g: std::Group<'K1,('K2, 'V)>): std::Map<'K2,std::Set<'V>>
 {
-    std.string_trim(s)
+    (std::group_to_setmap(g): std::Map<'K2,std::Set<'V>>)
 }
-function std.union (m1: std.Map<'K,'V>, m2: std.Map<'K,'V>): std.Map<'K,'V>
+function std::to_string (ts: std::DDNestedTS): string
 {
-    (std.map_union(m1, m2): std.Map<'K,'V>)
+    (((("(" ++ (std::__builtin_2string(ts.epoch): string)) ++ ",") ++ (std::__builtin_2string(ts.iter): string)) ++ ")")
 }
-function std.union (s1: std.Set<'X>, s2: std.Set<'X>): std.Set<'X>
+function std::to_string (x: bool): string
 {
-    (std.set_union(s1, s2): std.Set<'X>)
+    std::__builtin_2string(x)
 }
-function std.unions (sets: std.Vec<std.Set<'X>>): std.Set<'X>
+function std::to_string (x: bigint): string
 {
-    (std.set_unions(sets): std.Set<'X>)
+    std::__builtin_2string(x)
 }
-function std.unwrap_or (x: std.Option<'A>, def: 'A): 'A
+function std::to_string (x: float): string
+{
+    std::__builtin_2string(x)
+}
+function std::to_string (x: double): string
+{
+    std::__builtin_2string(x)
+}
+function std::to_string (x: std::s8): string
+{
+    std::__builtin_2string(x)
+}
+function std::to_string (x: std::s16): string
+{
+    std::__builtin_2string(x)
+}
+function std::to_string (x: std::s32): string
+{
+    std::__builtin_2string(x)
+}
+function std::to_string (x: std::s64): string
+{
+    std::__builtin_2string(x)
+}
+function std::to_string (x: std::s128): string
+{
+    std::__builtin_2string(x)
+}
+function std::to_string (x: std::u8): string
+{
+    std::__builtin_2string(x)
+}
+function std::to_string (x: std::u16): string
+{
+    std::__builtin_2string(x)
+}
+function std::to_string (x: std::u32): string
+{
+    std::__builtin_2string(x)
+}
+function std::to_string (x: std::u64): string
+{
+    std::__builtin_2string(x)
+}
+function std::to_string (x: std::u128): string
+{
+    std::__builtin_2string(x)
+}
+function std::to_string (x: string): string
+{
+    std::__builtin_2string(x)
+}
+function std::to_uppercase (s: string): string
+{
+    std::string_to_uppercase(s)
+}
+function std::to_vec (o: std::Option<'X>): std::Vec<'X>
+{
+    match (o) {
+        (std::Some{.x=(var x: 'X)}: std::Option<'X>) -> (std::vec_singleton(x): std::Vec<'X>),
+        (std::None{}: std::Option<'X>) -> (std::vec_empty(): std::Vec<'X>)
+    }
+}
+function std::to_vec (g: std::Group<'K,'V>): std::Vec<'V>
+{
+    (std::group_to_vec(g): std::Vec<'V>)
+}
+function std::to_vec (s: std::Set<'A>): std::Vec<'A>
+{
+    (std::set_to_vec(s): std::Vec<'A>)
+}
+function std::trim (s: string): string
+{
+    std::string_trim(s)
+}
+function std::union (m1: std::Map<'K,'V>, m2: std::Map<'K,'V>): std::Map<'K,'V>
+{
+    (std::map_union(m1, m2): std::Map<'K,'V>)
+}
+function std::union (s1: std::Set<'X>, s2: std::Set<'X>): std::Set<'X>
+{
+    (std::set_union(s1, s2): std::Set<'X>)
+}
+function std::unions (sets: std::Vec<std::Set<'X>>): std::Set<'X>
+{
+    (std::set_unions(sets): std::Set<'X>)
+}
+function std::unwrap_or (x: std::Option<'A>, def: 'A): 'A
 {
     match (x) {
-        (std.Some{.x=(var v: 'A)}: std.Option<'A>) -> v,
-        (std.None{}: std.Option<'A>) -> def
+        (std::Some{.x=(var v: 'A)}: std::Option<'A>) -> v,
+        (std::None{}: std::Option<'A>) -> def
     }
 }
-function std.unwrap_or (res: std.Result<'V,'E>, def: 'V): 'V
+function std::unwrap_or (res: std::Result<'V,'E>, def: 'V): 'V
 {
     match (res) {
-        (std.Ok{.res=(var v: 'V)}: std.Result<'V,'E>) -> v,
-        (std.Err{.err=(_: 'E)}: std.Result<'V,'E>) -> def
+        (std::Ok{.res=(var v: 'V)}: std::Result<'V,'E>) -> v,
+        (std::Err{.err=(_: 'E)}: std::Result<'V,'E>) -> def
     }
 }
-function std.unwrap_or_default (opt: std.Option<'A>): 'A
+function std::unwrap_or_default (opt: std::Option<'A>): 'A
 {
-    (std.option_unwrap_or_default(opt): 'A)
+    (std::option_unwrap_or_default(opt): 'A)
 }
-function std.unwrap_or_default (res: std.Result<'V,'E>): 'V
+function std::unwrap_or_default (res: std::Result<'V,'E>): 'V
 {
-    (std.result_unwrap_or_default(res): 'V)
+    (std::result_unwrap_or_default(res): 'V)
 }
-extern function std.vec_append (v: mut std.Vec<'X>, other: std.Vec<'X>): ()
-extern function std.vec_contains (v: std.Vec<'X>, x: 'X): bool
-extern function std.vec_empty (): std.Vec<'A>
-extern function std.vec_is_empty (v: std.Vec<'X>): bool
-extern function std.vec_len (v: std.Vec<'X>): std.usize
-extern function std.vec_nth (v: std.Vec<'X>, n: std.usize): std.Option<'X>
-extern function std.vec_push (v: mut std.Vec<'X>, x: 'X): ()
-extern function std.vec_push_imm (v: std.Vec<'X>, x: 'X): std.Vec<'X>
-extern function std.vec_singleton (x: 'X): std.Vec<'X>
-extern function std.vec_sort (v: mut std.Vec<'X>): ()
-extern function std.vec_sort_imm (v: std.Vec<'X>): std.Vec<'X>
-extern function std.vec_to_set (s: std.Vec<'A>): std.Set<'A>
-extern function std.vec_with_capacity (len: std.usize): std.Vec<'A>
-extern function std.vec_with_length (len: std.usize, x: 'A): std.Vec<'A>
+extern function std::vec_append (v: mut std::Vec<'X>, other: std::Vec<'X>): ()
+extern function std::vec_contains (v: std::Vec<'X>, x: 'X): bool
+extern function std::vec_empty (): std::Vec<'A>
+extern function std::vec_is_empty (v: std::Vec<'X>): bool
+extern function std::vec_len (v: std::Vec<'X>): std::usize
+extern function std::vec_nth (v: std::Vec<'X>, n: std::usize): std::Option<'X>
+extern function std::vec_push (v: mut std::Vec<'X>, x: 'X): ()
+extern function std::vec_push_imm (v: std::Vec<'X>, x: 'X): std::Vec<'X>
+extern function std::vec_singleton (x: 'X): std::Vec<'X>
+extern function std::vec_sort (v: mut std::Vec<'X>): ()
+extern function std::vec_sort_imm (v: std::Vec<'X>): std::Vec<'X>
+extern function std::vec_to_set (s: std::Vec<'A>): std::Set<'A>
+extern function std::vec_with_capacity (len: std::usize): std::Vec<'A>
+extern function std::vec_with_length (len: std::usize, x: 'A): std::Vec<'A>
 extern function string_slice_unsafe (x: string, from: bit<64>, to: bit<64>): string
 function tcp6_packet (ethsrc: bit<48>, ethdst: bit<48>, ipsrc: ip6_addr_t, ipdst: ip6_addr_t, srcport: bit<16>, dstport: bit<16>): eth_pkt_t
 {
@@ -805,17 +805,17 @@ function tcp6_packet (ethsrc: bit<48>, ethdst: bit<48>, ipsrc: ip6_addr_t, ipdst
 }
 function to_string (ip: ip_addr_t): string
 {
-    ((((((("" ++ (std.to_string(ip.addr[31:24]): string)) ++ ".") ++ (std.to_string(ip.addr[23:16]): string)) ++ ".") ++ (std.to_string(ip.addr[15:8]): string)) ++ ".") ++ (std.to_string(ip.addr[7:0]): string))
+    ((((((("" ++ (std::__builtin_2string(ip.addr[31:24]): string)) ++ ".") ++ (std::__builtin_2string(ip.addr[23:16]): string)) ++ ".") ++ (std::__builtin_2string(ip.addr[15:8]): string)) ++ ".") ++ (std::__builtin_2string(ip.addr[7:0]): string))
 }
 function to_string (mac: mac_addr_t): string
 {
-    ((((((((((("" ++ std.hex(mac.addr[47:40])) ++ ":") ++ std.hex(mac.addr[39:32])) ++ ":") ++ std.hex(mac.addr[31:24])) ++ ":") ++ std.hex(mac.addr[23:16])) ++ ":") ++ std.hex(mac.addr[15:8])) ++ ":") ++ std.hex(mac.addr[7:0]))
+    ((((((((((("" ++ std::hex(mac.addr[47:40])) ++ ":") ++ std::hex(mac.addr[39:32])) ++ ":") ++ std::hex(mac.addr[31:24])) ++ ":") ++ std::hex(mac.addr[23:16])) ++ ":") ++ std::hex(mac.addr[15:8])) ++ ":") ++ std::hex(mac.addr[7:0]))
 }
 function to_string (h: nethost_t): string
 {
     ((("Host: IP=" ++ (to_string(h.ip): string)) ++ ", MAC=") ++ (to_string(h.mac): string))
 }
-function vsep (strs: std.Vec<string>): string
+function vsep (strs: std::Vec<string>): string
 {
     ((var res: string) = "";
      (for (s in strs) {
@@ -869,9 +869,9 @@ output relation Prefix [Prefix]
 input relation Price [Price]
 output relation Product [Product]
 output relation SanitizedEndpoint [SanitizedEndpoint]
-input relation School [std.Ref<School>]
+input relation School [std::Ref<School>]
 input relation StoreInventory [StoreInventory]
-input relation Student [std.Ref<Student>]
+input relation Student [std::Ref<Student>]
 relation StudentInfo [StudentInfo]
 input relation Subnet [Subnet]
 output relation Sum [Sum]
@@ -885,49 +885,49 @@ input relation Word1 [Word1]
 input relation Word2 [Word2]
 output relation WorstPrice [WorstPrice]
 input relation X [X]
-Phrases[(Phrases{.phrase=((w1 ++ " ") ++ w2)}: Phrases)] :- Word1[(__word10@ (Word1{.word=(w1: string), .cat=(cat: Category)}: Word1))], Word2[(__word21@ (Word2{.word=(w2: string), .cat=(cat: Category)}: Word2))], Inspect debug.debug_event_join((32'd0, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __word10, __word21, (Phrases{.phrase=((w1 ++ " ") ++ w2)}: Phrases)).
+Phrases[(Phrases{.phrase=((w1 ++ " ") ++ w2)}: Phrases)] :- Word1[(__word10@ (Word1{.word=(w1: string), .cat=(cat: Category)}: Word1))], Word2[(__word21@ (Word2{.word=(w2: string), .cat=(cat: Category)}: Word2))], Inspect debug::debug_event_join((32'd0, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __word10, __word21, (Phrases{.phrase=((w1 ++ " ") ++ w2)}: Phrases)).
 Word1[(Word1{.word="Hello,", .cat=(CategoryOther{}: Category)}: Word1)].
 Word2[(Word2{.word="World!", .cat=(CategoryOther{}: Category)}: Word2)].
-HostInSubnet[(HostInSubnet{.host=host_id, .subnet=subnet_id}: HostInSubnet)] :- Host[(__host0@ (Host{.id=(host_id: bit<128>), .name=(_: string), .ip=(host_ip: bit<32>)}: Host))], Subnet[(__subnet1@ (Subnet{.id=(subnet_id: bit<128>), .prefix=(subnet_prefix: bit<32>), .mask=(subnet_mask: bit<32>)}: Subnet))], Inspect debug.debug_event_join((32'd3, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __host0, __subnet1, (host_id, host_ip, subnet_id, subnet_prefix, subnet_mask)), ((host_ip & subnet_mask) == subnet_prefix), Inspect debug.debug_event((32'd3, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (host_id, host_ip, subnet_id, subnet_prefix, subnet_mask), (HostInSubnet{.host=host_id, .subnet=subnet_id}: HostInSubnet)).
-Pow2[(Pow2{.p=((("The square of " ++ (std.to_string(x): string)) ++ " is ") ++ (std.to_string((x * x)): string))}: Pow2)] :- Number[(__number0@ (Number{.n=(x: bigint)}: Number))], Inspect debug.debug_event((32'd4, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __number0, (Pow2{.p=((("The square of " ++ (std.to_string(x): string)) ++ " is ") ++ (std.to_string((x * x)): string))}: Pow2)).
-NetHostString[(NetHostString{.id=id, .s=("" ++ (to_string(h): string))}: NetHostString)] :- NetHost[(__nethost0@ (NetHost{.id=(id: bigint), .h=(h: nethost_t)}: NetHost))], Inspect debug.debug_event((32'd5, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __nethost0, (NetHostString{.id=id, .s=("" ++ (to_string(h): string))}: NetHostString)).
-Address[(Address{.addr=ip_from_bytes(b3, b2, b1, b0)}: Address)] :- Bytes[(__bytes0@ (Bytes{.b3=(b3: bit<8>), .b2=(b2: bit<8>), .b1=(b1: bit<8>), .b0=(b0: bit<8>)}: Bytes))], Inspect debug.debug_event((32'd6, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __bytes0, (Address{.addr=ip_from_bytes(b3, b2, b1, b0)}: Address)).
-MCastAddress[(MCastAddress{.addr=a}: MCastAddress)] :- Address[(__address0@ (Address{.addr=(a: ip_addr_t)}: Address))], is_multicast_addr(a), Inspect debug.debug_event((32'd7, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __address0, (MCastAddress{.addr=a}: MCastAddress)).
-EndpointString[(EndpointString{.s=addr_port(ip, proto, preferred_port)}: EndpointString)] :- Endpoint[(__endpoint0@ (Endpoint{.ip=(ip: ip_addr_t), .proto=(proto: string), .preferred_port=(preferred_port: bit<16>)}: Endpoint))], Inspect debug.debug_event((32'd8, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __endpoint0, (EndpointString{.s=addr_port(ip, proto, preferred_port)}: EndpointString)).
-First5[(First5{.str=string_slice_unsafe(p, 64'd0, 64'd5)}: First5)] :- Phrases[(__phrases0@ (Phrases{.phrase=(p: string)}: Phrases))], Inspect debug.debug_event((32'd9, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __phrases0, (First5{.str=string_slice_unsafe(p, 64'd0, 64'd5)}: First5)).
-SanitizedEndpoint[(SanitizedEndpoint{.ep=endpoint}: SanitizedEndpoint)] :- Endpoint[(__endpoint0@ (Endpoint{.ip=(ip: ip_addr_t), .proto=(proto: string), .preferred_port=(preferred_port: bit<16>)}: Endpoint))], (var endpoint: string) = addr_port(ip, proto, preferred_port), Inspect debug.debug_event((32'd10, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __endpoint0, endpoint), not Blacklisted[(Blacklisted{.ep=(endpoint: string)}: Blacklisted)], Inspect debug.debug_event((32'd10, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Antijoin", endpoint, (SanitizedEndpoint{.ep=endpoint}: SanitizedEndpoint)).
-BookByAuthor[(BookByAuthor{.book=b, .author=author}: BookByAuthor)] :- Library[(__library0@ (Library{.book=(b@ (Book{.author=(author_name: string), .title=(_: string)}: Book))}: Library))], Author[(author@ (Author{.name=(author_name: string), .born=(_: bit<32>)}: Author))], Inspect debug.debug_event_join((32'd11, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __library0, author, (BookByAuthor{.book=b, .author=author}: BookByAuthor)).
-HostIP[(HostIP{.host=host, .addr=addr}: HostIP)] :- HostAddress[(__hostaddress0@ (HostAddress{.host=(host: bit<64>), .addrs=(addrs: string)}: HostAddress))], var addr = FlatMap(split_ip_list(addrs)), Inspect debug.debug_event((32'd12, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Flatmap", __hostaddress0, (HostIP{.host=host, .addr=addr}: HostIP)).
-HostIPVSep[(HostIPVSep{.host=host, .addrs=vaddrs}: HostIPVSep)] :- HostAddress[(__hostaddress0@ (HostAddress{.host=(host: bit<64>), .addrs=(addrs: string)}: HostAddress))], (var vaddrs: string) = vsep(split_ip_list(addrs)), Inspect debug.debug_event((32'd13, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __hostaddress0, (HostIPVSep{.host=host, .addrs=vaddrs}: HostIPVSep)).
-Evens[(Evens{.evens_and_odds=vec, .evens=evens(vec)}: Evens)] :- EvensAndOdds[(__evensandodds0@ (EvensAndOdds{.vec=(vec: std.Vec<bigint>)}: EvensAndOdds))], Inspect debug.debug_event((32'd14, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __evensandodds0, (Evens{.evens_and_odds=vec, .evens=evens(vec)}: Evens)).
-Prefix[(Prefix{.vec=(prefixBefore(vec, sep): std.Vec<string>)}: Prefix)] :- Vector[(__vector0@ (Vector{.vec=(vec: std.Vec<string>), .sep=(sep: string)}: Vector))], Inspect debug.debug_event((32'd15, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __vector0, (Prefix{.vec=(prefixBefore(vec, sep): std.Vec<string>)}: Prefix)).
+HostInSubnet[(HostInSubnet{.host=host_id, .subnet=subnet_id}: HostInSubnet)] :- Host[(__host0@ (Host{.id=(host_id: bit<128>), .name=(_: string), .ip=(host_ip: bit<32>)}: Host))], Subnet[(__subnet1@ (Subnet{.id=(subnet_id: bit<128>), .prefix=(subnet_prefix: bit<32>), .mask=(subnet_mask: bit<32>)}: Subnet))], Inspect debug::debug_event_join((32'd3, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __host0, __subnet1, (host_id, host_ip, subnet_id, subnet_prefix, subnet_mask)), ((host_ip & subnet_mask) == subnet_prefix), Inspect debug::debug_event((32'd3, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (host_id, host_ip, subnet_id, subnet_prefix, subnet_mask), (HostInSubnet{.host=host_id, .subnet=subnet_id}: HostInSubnet)).
+Pow2[(Pow2{.p=((("The square of " ++ (std::__builtin_2string(x): string)) ++ " is ") ++ (std::__builtin_2string((x * x)): string))}: Pow2)] :- Number[(__number0@ (Number{.n=(x: bigint)}: Number))], Inspect debug::debug_event((32'd4, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __number0, (Pow2{.p=((("The square of " ++ (std::__builtin_2string(x): string)) ++ " is ") ++ (std::__builtin_2string((x * x)): string))}: Pow2)).
+NetHostString[(NetHostString{.id=id, .s=("" ++ (to_string(h): string))}: NetHostString)] :- NetHost[(__nethost0@ (NetHost{.id=(id: bigint), .h=(h: nethost_t)}: NetHost))], Inspect debug::debug_event((32'd5, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __nethost0, (NetHostString{.id=id, .s=("" ++ (to_string(h): string))}: NetHostString)).
+Address[(Address{.addr=ip_from_bytes(b3, b2, b1, b0)}: Address)] :- Bytes[(__bytes0@ (Bytes{.b3=(b3: bit<8>), .b2=(b2: bit<8>), .b1=(b1: bit<8>), .b0=(b0: bit<8>)}: Bytes))], Inspect debug::debug_event((32'd6, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __bytes0, (Address{.addr=ip_from_bytes(b3, b2, b1, b0)}: Address)).
+MCastAddress[(MCastAddress{.addr=a}: MCastAddress)] :- Address[(__address0@ (Address{.addr=(a: ip_addr_t)}: Address))], is_multicast_addr(a), Inspect debug::debug_event((32'd7, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __address0, (MCastAddress{.addr=a}: MCastAddress)).
+EndpointString[(EndpointString{.s=addr_port(ip, proto, preferred_port)}: EndpointString)] :- Endpoint[(__endpoint0@ (Endpoint{.ip=(ip: ip_addr_t), .proto=(proto: string), .preferred_port=(preferred_port: bit<16>)}: Endpoint))], Inspect debug::debug_event((32'd8, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __endpoint0, (EndpointString{.s=addr_port(ip, proto, preferred_port)}: EndpointString)).
+First5[(First5{.str=string_slice_unsafe(p, 64'd0, 64'd5)}: First5)] :- Phrases[(__phrases0@ (Phrases{.phrase=(p: string)}: Phrases))], Inspect debug::debug_event((32'd9, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __phrases0, (First5{.str=string_slice_unsafe(p, 64'd0, 64'd5)}: First5)).
+SanitizedEndpoint[(SanitizedEndpoint{.ep=endpoint}: SanitizedEndpoint)] :- Endpoint[(__endpoint0@ (Endpoint{.ip=(ip: ip_addr_t), .proto=(proto: string), .preferred_port=(preferred_port: bit<16>)}: Endpoint))], (var endpoint: string) = addr_port(ip, proto, preferred_port), Inspect debug::debug_event((32'd10, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __endpoint0, endpoint), not Blacklisted[(Blacklisted{.ep=(endpoint: string)}: Blacklisted)], Inspect debug::debug_event((32'd10, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Antijoin", endpoint, (SanitizedEndpoint{.ep=endpoint}: SanitizedEndpoint)).
+BookByAuthor[(BookByAuthor{.book=b, .author=author}: BookByAuthor)] :- Library[(__library0@ (Library{.book=(b@ (Book{.author=(author_name: string), .title=(_: string)}: Book))}: Library))], Author[(author@ (Author{.name=(author_name: string), .born=(_: bit<32>)}: Author))], Inspect debug::debug_event_join((32'd11, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __library0, author, (BookByAuthor{.book=b, .author=author}: BookByAuthor)).
+HostIP[(HostIP{.host=host, .addr=addr}: HostIP)] :- HostAddress[(__hostaddress0@ (HostAddress{.host=(host: bit<64>), .addrs=(addrs: string)}: HostAddress))], var addr = FlatMap(split_ip_list(addrs)), Inspect debug::debug_event((32'd12, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Flatmap", __hostaddress0, (HostIP{.host=host, .addr=addr}: HostIP)).
+HostIPVSep[(HostIPVSep{.host=host, .addrs=vaddrs}: HostIPVSep)] :- HostAddress[(__hostaddress0@ (HostAddress{.host=(host: bit<64>), .addrs=(addrs: string)}: HostAddress))], (var vaddrs: string) = vsep(split_ip_list(addrs)), Inspect debug::debug_event((32'd13, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __hostaddress0, (HostIPVSep{.host=host, .addrs=vaddrs}: HostIPVSep)).
+Evens[(Evens{.evens_and_odds=vec, .evens=evens(vec)}: Evens)] :- EvensAndOdds[(__evensandodds0@ (EvensAndOdds{.vec=(vec: std::Vec<bigint>)}: EvensAndOdds))], Inspect debug::debug_event((32'd14, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __evensandodds0, (Evens{.evens_and_odds=vec, .evens=evens(vec)}: Evens)).
+Prefix[(Prefix{.vec=(prefixBefore(vec, sep): std::Vec<string>)}: Prefix)] :- Vector[(__vector0@ (Vector{.vec=(vec: std::Vec<string>), .sep=(sep: string)}: Vector))], Inspect debug::debug_event((32'd15, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __vector0, (Prefix{.vec=(prefixBefore(vec, sep): std::Vec<string>)}: Prefix)).
 Sum[(Sum{.x=x, .y=y, .sum=(x + y)}: Sum)],
-Product[(Product{.x=x, .y=y, .prod=(x * y)}: Product)] :- X[(__x0@ (X{.x=(x: bit<16>)}: X))], X[(__x1@ (X{.x=(y: bit<16>)}: X))], Inspect debug.debug_event_join((32'd16, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __x0, __x1, (Sum{.x=x, .y=y, .sum=(x + y)}: Sum)), Inspect debug.debug_event_join((32'd16, 32'd1, 32'd1), ddlog_weight, ddlog_timestamp, __x0, __x1, (Product{.x=x, .y=y, .prod=(x * y)}: Product)).
-BestPrice[(BestPrice{.item=item, .price=best_price}: BestPrice)] :- Price[(__price0@ (Price{.item=(item: string), .vendor=(_: string), .price=(price: bit<64>)}: Price))], var __inputs_best_price = Aggregate(item, __debug_17_1_std.group_min((__price0, price))), Inspect debug.debug_event((32'd17, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_best_price.0, (__inputs_best_price, item)), (var best_price: bit<64>) = __inputs_best_price.1, Inspect debug.debug_event((32'd17, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_best_price, item), (BestPrice{.item=item, .price=best_price}: BestPrice)).
-WorstPrice[(WorstPrice{.item=item, .price=best_price}: WorstPrice)] :- Price[(__price0@ (Price{.item=(item: string), .vendor=(_: string), .price=(price: bit<64>)}: Price))], var __inputs_best_price = Aggregate(item, __debug_18_1_std.group_max((__price0, price))), Inspect debug.debug_event((32'd18, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_best_price.0, (__inputs_best_price, item)), (var best_price: bit<64>) = __inputs_best_price.1, Inspect debug.debug_event((32'd18, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_best_price, item), (WorstPrice{.item=item, .price=best_price}: WorstPrice)).
-BestVendor[(BestVendor{.item=item, .vendor=best_vendor, .price=best_price}: BestVendor)] :- Price[(__price0@ (Price{.item=(item: string), .vendor=(vendor: string), .price=(price: bit<64>)}: Price))], var __inputs_best_vendor_price = Aggregate(item, __debug_19_1_best_vendor((__price0, (vendor, price)))), Inspect debug.debug_event((32'd19, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_best_vendor_price.0, (__inputs_best_vendor_price, item)), (var best_vendor_price: (string, bit<64>)) = __inputs_best_vendor_price.1, ((var best_vendor: string), (var best_price: bit<64>)) = best_vendor_price, Inspect debug.debug_event((32'd19, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (item, best_vendor_price), (BestVendor{.item=item, .vendor=best_vendor, .price=best_price}: BestVendor)).
-BestDeal[(BestDeal{.best=best}: BestDeal)] :- Price[(__price0@ (Price{.item=(item: string), .vendor=(vendor: string), .price=(price: bit<64>)}: Price))], Inspect inspect_log.log("../tutorial.log", (((((((((("ts:" ++ (std.to_string(ddlog_timestamp): string)) ++ ", w:") ++ (std.to_string(ddlog_weight): string)) ++ ": Price(item=\"") ++ item) ++ "\", vendor=\"") ++ vendor) ++ "\", price=") ++ (std.to_string(price): string)) ++ ")")), Inspect debug.debug_event((32'd20, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", __price0, (__price0, item, vendor, price)), var __inputs_best = Aggregate(item, __debug_20_2_best_vendor_string(((__price0, item, vendor, price), (vendor, price)))), Inspect debug.debug_event((32'd20, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_best.0, (__inputs_best, item)), (var best: string) = __inputs_best.1, Inspect debug.debug_event((32'd20, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_best, item), (item, best)), Inspect inspect_log.log("../tutorial.log", (((((((("ts:" ++ (std.to_string(ddlog_timestamp): string)) ++ ", w:") ++ (std.to_string(ddlog_weight): string)) ++ ": best(\"") ++ item) ++ "\")=\"") ++ best) ++ "\"")), Inspect debug.debug_event((32'd20, 32'd4, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", (item, best), (BestDeal{.best=best}: BestDeal)).
-MSetOut[(MSetOut{.x=x}: MSetOut)] :- MSetIn[(__msetin0@ (MSetIn{.x=(x: bit<32>)}: MSetIn))], Inspect debug.debug_event((32'd21, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __msetin0, (MSetOut{.x=x}: MSetOut)).
-TCPDstPort[(TCPDstPort{.port=port}: TCPDstPort)] :- Packet[(__packet0@ (Packet{.pkt=(EthPacket{.src=(_: bit<48>), .dst=(_: bit<48>), .payload=(EthIP4{.ip4=(IP4Pkt{.ttl=(_: bit<8>), .src=(_: bit<32>), .dst=(_: bit<32>), .payload=(IPTCP{.tcp=(TCPPkt{.src=(_: bit<16>), .dst=(port: bit<16>), .flags=(_: bit<9>)}: tcp_pkt_t)}: ip_payload_t)}: ip4_pkt_t)}: eth_payload_t)}: eth_pkt_t)}: Packet))], Inspect debug.debug_event((32'd22, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __packet0, (TCPDstPort{.port=port}: TCPDstPort)).
-TCPDstPort[(TCPDstPort{.port=port}: TCPDstPort)] :- Packet[(__packet0@ (Packet{.pkt=(EthPacket{.src=(_: bit<48>), .dst=(_: bit<48>), .payload=(EthIP6{.ip6=(IP6Pkt{.ttl=(_: bit<8>), .src=(_: bit<128>), .dst=(_: bit<128>), .payload=(IPTCP{.tcp=(TCPPkt{.src=(_: bit<16>), .dst=(port: bit<16>), .flags=(_: bit<9>)}: tcp_pkt_t)}: ip_payload_t)}: ip6_pkt_t)}: eth_payload_t)}: eth_pkt_t)}: Packet))], Inspect debug.debug_event((32'd23, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __packet0, (TCPDstPort{.port=port}: TCPDstPort)).
-UDPDstPort[(UDPDstPort{.port=port}: UDPDstPort)] :- Packet[(__packet0@ (Packet{.pkt=(pkt: eth_pkt_t)}: Packet))], (var port: bit<16>) = pkt_udp_port(pkt), (port != 16'd0), Inspect debug.debug_event((32'd24, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", port, (UDPDstPort{.port=port}: UDPDstPort)).
-UDPDstPort2[(UDPDstPort2{.port=port}: UDPDstPort2)] :- Packet[(__packet0@ (Packet{.pkt=(pkt: eth_pkt_t)}: Packet))], (std.Some{.x=(var port: bit<16>)}: std.Option<bit<16>>) = pkt_udp_port2(pkt), Inspect debug.debug_event((32'd25, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __packet0, (UDPDstPort2{.port=port}: UDPDstPort2)).
-IntranetHost[(IntranetHost{.addr=addr}: IntranetHost)] :- KnownHost[(__knownhost0@ (KnownHost{.addr=(addr: bit<32>)}: KnownHost))], ((var b3: bit<8>), (var b2: bit<8>), (_: bit<8>), (_: bit<8>)) = addr_to_tuple(addr), (b3 == 8'd192), (b2 == 8'd168), Inspect debug.debug_event((32'd26, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (addr, b2), (IntranetHost{.addr=addr}: IntranetHost)).
-IntranetHost2[(IntranetHost2{.addr=addr}: IntranetHost2)] :- KnownHost[(__knownhost0@ (KnownHost{.addr=(addr: bit<32>)}: KnownHost))], (8'd192, 8'd168, (_: bit<8>), (_: bit<8>)) = addr_to_tuple(addr), Inspect debug.debug_event((32'd27, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __knownhost0, (IntranetHost2{.addr=addr}: IntranetHost2)).
-IntranetHost3[(IntranetHost3{.addr=addr}: IntranetHost3)] :- KnownHost[(__knownhost0@ (KnownHost{.addr=(addr: bit<32>)}: KnownHost))], (var t: (bit<8>, bit<8>, bit<8>, bit<8>)) = addr_to_tuple(addr), (t.0 == 8'd192), (t.1 == 8'd168), Inspect debug.debug_event((32'd28, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (addr, t), (IntranetHost3{.addr=addr}: IntranetHost3)).
-TargetAudience[person] :- Person[(__person0@ (person: Person))], is_target_audience(person), Inspect debug.debug_event((32'd29, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __person0, person).
-StudentInfo[(StudentInfo{.student=student, .school=school}: StudentInfo)] :- Student[(student@ ((&(Student{.id=(_: bit<64>), .name=(_: string), .school=(school_name: string), .sat_score=(_: bit<16>)}: Student)): std.Ref<Student>))], School[(school@ ((&(School{.name=(school_name: string), .address=(_: string)}: School)): std.Ref<School>))], Inspect debug.debug_event_join((32'd30, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, student, school, (StudentInfo{.student=student, .school=school}: StudentInfo)).
-TopScore[(TopScore{.school=school, .top_score=top_score}: TopScore)] :- StudentInfo[(__studentinfo0@ (StudentInfo{.student=((&(Student{.id=(_: bit<64>), .name=(_: string), .school=(_: string), .sat_score=(sat: bit<16>)}: Student)): std.Ref<Student>), .school=((&(School{.name=(school: string), .address=(_: string)}: School)): std.Ref<School>)}: StudentInfo))], var __inputs_top_score = Aggregate(school, __debug_31_1_std.group_max((__studentinfo0, sat))), Inspect debug.debug_event((32'd31, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_top_score.0, (__inputs_top_score, school)), (var top_score: bit<16>) = __inputs_top_score.1, Inspect debug.debug_event((32'd31, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_top_score, school), (TopScore{.school=school, .top_score=top_score}: TopScore)).
-TopScore[(TopScore{.school=school, .top_score=top_score}: TopScore)] :- StudentInfo[(__studentinfo0@ (StudentInfo{.student=(student: std.Ref<Student>), .school=((&(School{.name=(school: string), .address=(_: string)}: School)): std.Ref<School>)}: StudentInfo))], var __inputs_top_score = Aggregate(school, __debug_32_1_std.group_max((__studentinfo0, student.sat_score))), Inspect debug.debug_event((32'd32, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_top_score.0, (__inputs_top_score, school)), (var top_score: bit<16>) = __inputs_top_score.1, Inspect debug.debug_event((32'd32, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_top_score, school), (TopScore{.school=school, .top_score=top_score}: TopScore)).
-ItemInOrders[(ItemInOrders{.item=(internment.ival(item): string), .orders=orders}: ItemInOrders)] :- OnlineOrder[(__onlineorder0@ (OnlineOrder{.order_id=(order: bit<64>), .item=(item: internment.Intern<string>)}: OnlineOrder))], var __inputs_orders = Aggregate(item, __debug_33_1_std.group_to_vec((__onlineorder0, order))), Inspect debug.debug_event((32'd33, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_orders.0, (__inputs_orders, item)), (var orders: std.Vec<bit<64>>) = __inputs_orders.1, Inspect debug.debug_event((32'd33, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_orders, item), (ItemInOrders{.item=(internment.ival(item): string), .orders=orders}: ItemInOrders)).
-OrderFormatted[(OrderFormatted{.order=formatted}: OrderFormatted)] :- OnlineOrder[(__onlineorder0@ (OnlineOrder{.order_id=(order: bit<64>), .item=(item: internment.Intern<string>)}: OnlineOrder))], (var formatted: string) = ((("order: " ++ (std.to_string(order): string)) ++ ", item: ") ++ (internment.ival(item): string)), Inspect debug.debug_event((32'd34, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __onlineorder0, (OrderFormatted{.order=formatted}: OrderFormatted)).
-MilkOrders[(MilkOrders{.order=order}: MilkOrders)] :- OnlineOrder[(__onlineorder0@ (OnlineOrder{.order_id=(order: bit<64>), .item=(internment.intern("milk"): internment.Intern<string>)}: OnlineOrder))], Inspect debug.debug_event((32'd35, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __onlineorder0, (MilkOrders{.order=order}: MilkOrders)).
-InventoryItemName[(InventoryItemName{.name=name}: InventoryItemName)] :- StoreInventory[(__storeinventory0@ (StoreInventory{.item=(item: internment.Intern<StoreItem>)}: StoreInventory))], (var name: string) = (internment.ival(item): StoreItem).name, Inspect debug.debug_event((32'd36, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __storeinventory0, (InventoryItemName{.name=name}: InventoryItemName)).
-Flow[(Flow{.lr=ls, .stage=(LS_IN_PRE_LB{}: stage), .prio=100, .matchStr=("ip4.dst == " ++ addresses), .actionStr="{ reg0[0] = 1; next; }"}: Flow)] :- Load_Balancer[(__load_balancer0@ (Load_Balancer{.lb=(_: bigint), .ls=(ls: bigint), .ip_addresses=(addresses: string), .protocol=(std.Some{.x=(_: string)}: std.Option<string>), .name=(_: string)}: Load_Balancer))], Inspect debug.debug_event((32'd37, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __load_balancer0, (Flow{.lr=ls, .stage=(LS_IN_PRE_LB{}: stage), .prio=100, .matchStr=("ip4.dst == " ++ addresses), .actionStr="{ reg0[0] = 1; next; }"}: Flow)).
-Flow[(Flow{.lr=ls, .stage=(LS_OUT_PRE_LB{}: stage), .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }"}: Flow)] :- Logical_Switch[(__logical_switch0@ (Logical_Switch{.ls=(ls: bigint)}: Logical_Switch))], Load_Balancer[(__load_balancer1@ (Load_Balancer{.lb=(_: bigint), .ls=(ls: bigint), .ip_addresses=(_: string), .protocol=(_: std.Option<string>), .name=(_: string)}: Load_Balancer))], Inspect debug.debug_event_join((32'd38, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __logical_switch0, __load_balancer1, (Flow{.lr=ls, .stage=(LS_OUT_PRE_LB{}: stage), .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }"}: Flow)).
-Flow1[(Flow1{.lr=lb.ls, .stage=(LS_IN_PRE_LB{}: stage), .prio=100, .matchStr=("ip4.dst == " ++ a), .actionStr="{ reg0[0] = 1; next; }"}: Flow1)] :- Load_Balancer[(lb@ (Load_Balancer{.lb=(_: bigint), .ls=(_: bigint), .ip_addresses=(_: string), .protocol=(_: std.Option<string>), .name=(_: string)}: Load_Balancer))], (var a: string) = lb.ip_addresses, match (lb.protocol) {
-                                                                                                                                                                                                                                                                                                                                                                   (std.Some{.x=(_: string)}: std.Option<string>) -> true,
-                                                                                                                                                                                                                                                                                                                                                                   (std.None{}: std.Option<string>) -> false
-                                                                                                                                                                                                                                                                                                                                                               }, Inspect debug.debug_event((32'd39, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (lb, a), (Flow1{.lr=lb.ls, .stage=(LS_IN_PRE_LB{}: stage), .prio=100, .matchStr=("ip4.dst == " ++ a), .actionStr="{ reg0[0] = 1; next; }"}: Flow1)).
-Flow1[(Flow1{.lr=ls.ls, .stage=(LS_OUT_PRE_LB{}: stage), .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }"}: Flow1)] :- Logical_Switch[(ls@ (Logical_Switch{.ls=(_: bigint)}: Logical_Switch))], Load_Balancer[(lb@ (Load_Balancer{.lb=(_: bigint), .ls=(_: bigint), .ip_addresses=(_: string), .protocol=(_: std.Option<string>), .name=(_: string)}: Load_Balancer))], Inspect debug.debug_event_join((32'd40, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, ls, lb, (ls, lb)), (lb.ls == ls.ls), Inspect debug.debug_event((32'd40, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (ls, lb), (Flow1{.lr=ls.ls, .stage=(LS_OUT_PRE_LB{}: stage), .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }"}: Flow1)).
+Product[(Product{.x=x, .y=y, .prod=(x * y)}: Product)] :- X[(__x0@ (X{.x=(x: bit<16>)}: X))], X[(__x1@ (X{.x=(y: bit<16>)}: X))], Inspect debug::debug_event_join((32'd16, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __x0, __x1, (Sum{.x=x, .y=y, .sum=(x + y)}: Sum)), Inspect debug::debug_event_join((32'd16, 32'd1, 32'd1), ddlog_weight, ddlog_timestamp, __x0, __x1, (Product{.x=x, .y=y, .prod=(x * y)}: Product)).
+BestPrice[(BestPrice{.item=item, .price=best_price}: BestPrice)] :- Price[(__price0@ (Price{.item=(item: string), .vendor=(_: string), .price=(price: bit<64>)}: Price))], var __inputs_best_price = Aggregate(item, __debug_17_1_std::group_min((__price0, price))), Inspect debug::debug_event((32'd17, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_best_price.0, (__inputs_best_price, item)), (var best_price: bit<64>) = __inputs_best_price.1, Inspect debug::debug_event((32'd17, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_best_price, item), (BestPrice{.item=item, .price=best_price}: BestPrice)).
+WorstPrice[(WorstPrice{.item=item, .price=best_price}: WorstPrice)] :- Price[(__price0@ (Price{.item=(item: string), .vendor=(_: string), .price=(price: bit<64>)}: Price))], var __inputs_best_price = Aggregate(item, __debug_18_1_std::group_max((__price0, price))), Inspect debug::debug_event((32'd18, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_best_price.0, (__inputs_best_price, item)), (var best_price: bit<64>) = __inputs_best_price.1, Inspect debug::debug_event((32'd18, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_best_price, item), (WorstPrice{.item=item, .price=best_price}: WorstPrice)).
+BestVendor[(BestVendor{.item=item, .vendor=best_vendor, .price=best_price}: BestVendor)] :- Price[(__price0@ (Price{.item=(item: string), .vendor=(vendor: string), .price=(price: bit<64>)}: Price))], var __inputs_best_vendor_price = Aggregate(item, __debug_19_1_best_vendor((__price0, (vendor, price)))), Inspect debug::debug_event((32'd19, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_best_vendor_price.0, (__inputs_best_vendor_price, item)), (var best_vendor_price: (string, bit<64>)) = __inputs_best_vendor_price.1, ((var best_vendor: string), (var best_price: bit<64>)) = best_vendor_price, Inspect debug::debug_event((32'd19, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (item, best_vendor_price), (BestVendor{.item=item, .vendor=best_vendor, .price=best_price}: BestVendor)).
+BestDeal[(BestDeal{.best=best}: BestDeal)] :- Price[(__price0@ (Price{.item=(item: string), .vendor=(vendor: string), .price=(price: bit<64>)}: Price))], Inspect inspect_log::log("../tutorial.log", (((((((((("ts:" ++ (std::__builtin_2string(ddlog_timestamp): string)) ++ ", w:") ++ (std::__builtin_2string(ddlog_weight): string)) ++ ": Price(item=\"") ++ item) ++ "\", vendor=\"") ++ vendor) ++ "\", price=") ++ (std::__builtin_2string(price): string)) ++ ")")), Inspect debug::debug_event((32'd20, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", __price0, (__price0, item, vendor, price)), var __inputs_best = Aggregate(item, __debug_20_2_best_vendor_string(((__price0, item, vendor, price), (vendor, price)))), Inspect debug::debug_event((32'd20, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_best.0, (__inputs_best, item)), (var best: string) = __inputs_best.1, Inspect debug::debug_event((32'd20, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_best, item), (item, best)), Inspect inspect_log::log("../tutorial.log", (((((((("ts:" ++ (std::__builtin_2string(ddlog_timestamp): string)) ++ ", w:") ++ (std::__builtin_2string(ddlog_weight): string)) ++ ": best(\"") ++ item) ++ "\")=\"") ++ best) ++ "\"")), Inspect debug::debug_event((32'd20, 32'd4, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", (item, best), (BestDeal{.best=best}: BestDeal)).
+MSetOut[(MSetOut{.x=x}: MSetOut)] :- MSetIn[(__msetin0@ (MSetIn{.x=(x: bit<32>)}: MSetIn))], Inspect debug::debug_event((32'd21, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __msetin0, (MSetOut{.x=x}: MSetOut)).
+TCPDstPort[(TCPDstPort{.port=port}: TCPDstPort)] :- Packet[(__packet0@ (Packet{.pkt=(EthPacket{.src=(_: bit<48>), .dst=(_: bit<48>), .payload=(EthIP4{.ip4=(IP4Pkt{.ttl=(_: bit<8>), .src=(_: bit<32>), .dst=(_: bit<32>), .payload=(IPTCP{.tcp=(TCPPkt{.src=(_: bit<16>), .dst=(port: bit<16>), .flags=(_: bit<9>)}: tcp_pkt_t)}: ip_payload_t)}: ip4_pkt_t)}: eth_payload_t)}: eth_pkt_t)}: Packet))], Inspect debug::debug_event((32'd22, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __packet0, (TCPDstPort{.port=port}: TCPDstPort)).
+TCPDstPort[(TCPDstPort{.port=port}: TCPDstPort)] :- Packet[(__packet0@ (Packet{.pkt=(EthPacket{.src=(_: bit<48>), .dst=(_: bit<48>), .payload=(EthIP6{.ip6=(IP6Pkt{.ttl=(_: bit<8>), .src=(_: bit<128>), .dst=(_: bit<128>), .payload=(IPTCP{.tcp=(TCPPkt{.src=(_: bit<16>), .dst=(port: bit<16>), .flags=(_: bit<9>)}: tcp_pkt_t)}: ip_payload_t)}: ip6_pkt_t)}: eth_payload_t)}: eth_pkt_t)}: Packet))], Inspect debug::debug_event((32'd23, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __packet0, (TCPDstPort{.port=port}: TCPDstPort)).
+UDPDstPort[(UDPDstPort{.port=port}: UDPDstPort)] :- Packet[(__packet0@ (Packet{.pkt=(pkt: eth_pkt_t)}: Packet))], (var port: bit<16>) = pkt_udp_port(pkt), (port != 16'd0), Inspect debug::debug_event((32'd24, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", port, (UDPDstPort{.port=port}: UDPDstPort)).
+UDPDstPort2[(UDPDstPort2{.port=port}: UDPDstPort2)] :- Packet[(__packet0@ (Packet{.pkt=(pkt: eth_pkt_t)}: Packet))], (std::Some{.x=(var port: bit<16>)}: std::Option<bit<16>>) = pkt_udp_port2(pkt), Inspect debug::debug_event((32'd25, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __packet0, (UDPDstPort2{.port=port}: UDPDstPort2)).
+IntranetHost[(IntranetHost{.addr=addr}: IntranetHost)] :- KnownHost[(__knownhost0@ (KnownHost{.addr=(addr: bit<32>)}: KnownHost))], ((var b3: bit<8>), (var b2: bit<8>), (_: bit<8>), (_: bit<8>)) = addr_to_tuple(addr), (b3 == 8'd192), (b2 == 8'd168), Inspect debug::debug_event((32'd26, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (addr, b2), (IntranetHost{.addr=addr}: IntranetHost)).
+IntranetHost2[(IntranetHost2{.addr=addr}: IntranetHost2)] :- KnownHost[(__knownhost0@ (KnownHost{.addr=(addr: bit<32>)}: KnownHost))], (8'd192, 8'd168, (_: bit<8>), (_: bit<8>)) = addr_to_tuple(addr), Inspect debug::debug_event((32'd27, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __knownhost0, (IntranetHost2{.addr=addr}: IntranetHost2)).
+IntranetHost3[(IntranetHost3{.addr=addr}: IntranetHost3)] :- KnownHost[(__knownhost0@ (KnownHost{.addr=(addr: bit<32>)}: KnownHost))], (var t: (bit<8>, bit<8>, bit<8>, bit<8>)) = addr_to_tuple(addr), (t.0 == 8'd192), (t.1 == 8'd168), Inspect debug::debug_event((32'd28, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (addr, t), (IntranetHost3{.addr=addr}: IntranetHost3)).
+TargetAudience[person] :- Person[(__person0@ (person: Person))], is_target_audience(person), Inspect debug::debug_event((32'd29, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __person0, person).
+StudentInfo[(StudentInfo{.student=student, .school=school}: StudentInfo)] :- Student[(student@ ((&(Student{.id=(_: bit<64>), .name=(_: string), .school=(school_name: string), .sat_score=(_: bit<16>)}: Student)): std::Ref<Student>))], School[(school@ ((&(School{.name=(school_name: string), .address=(_: string)}: School)): std::Ref<School>))], Inspect debug::debug_event_join((32'd30, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, student, school, (StudentInfo{.student=student, .school=school}: StudentInfo)).
+TopScore[(TopScore{.school=school, .top_score=top_score}: TopScore)] :- StudentInfo[(__studentinfo0@ (StudentInfo{.student=((&(Student{.id=(_: bit<64>), .name=(_: string), .school=(_: string), .sat_score=(sat: bit<16>)}: Student)): std::Ref<Student>), .school=((&(School{.name=(school: string), .address=(_: string)}: School)): std::Ref<School>)}: StudentInfo))], var __inputs_top_score = Aggregate(school, __debug_31_1_std::group_max((__studentinfo0, sat))), Inspect debug::debug_event((32'd31, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_top_score.0, (__inputs_top_score, school)), (var top_score: bit<16>) = __inputs_top_score.1, Inspect debug::debug_event((32'd31, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_top_score, school), (TopScore{.school=school, .top_score=top_score}: TopScore)).
+TopScore[(TopScore{.school=school, .top_score=top_score}: TopScore)] :- StudentInfo[(__studentinfo0@ (StudentInfo{.student=(student: std::Ref<Student>), .school=((&(School{.name=(school: string), .address=(_: string)}: School)): std::Ref<School>)}: StudentInfo))], var __inputs_top_score = Aggregate(school, __debug_32_1_std::group_max((__studentinfo0, student.sat_score))), Inspect debug::debug_event((32'd32, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_top_score.0, (__inputs_top_score, school)), (var top_score: bit<16>) = __inputs_top_score.1, Inspect debug::debug_event((32'd32, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_top_score, school), (TopScore{.school=school, .top_score=top_score}: TopScore)).
+ItemInOrders[(ItemInOrders{.item=(internment::ival(item): string), .orders=orders}: ItemInOrders)] :- OnlineOrder[(__onlineorder0@ (OnlineOrder{.order_id=(order: bit<64>), .item=(item: internment::Intern<string>)}: OnlineOrder))], var __inputs_orders = Aggregate(item, __debug_33_1_std::group_to_vec((__onlineorder0, order))), Inspect debug::debug_event((32'd33, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_orders.0, (__inputs_orders, item)), (var orders: std::Vec<bit<64>>) = __inputs_orders.1, Inspect debug::debug_event((32'd33, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_orders, item), (ItemInOrders{.item=(internment::ival(item): string), .orders=orders}: ItemInOrders)).
+OrderFormatted[(OrderFormatted{.order=formatted}: OrderFormatted)] :- OnlineOrder[(__onlineorder0@ (OnlineOrder{.order_id=(order: bit<64>), .item=(item: internment::Intern<string>)}: OnlineOrder))], (var formatted: string) = ((("order: " ++ (std::__builtin_2string(order): string)) ++ ", item: ") ++ (internment::ival(item): string)), Inspect debug::debug_event((32'd34, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __onlineorder0, (OrderFormatted{.order=formatted}: OrderFormatted)).
+MilkOrders[(MilkOrders{.order=order}: MilkOrders)] :- OnlineOrder[(__onlineorder0@ (OnlineOrder{.order_id=(order: bit<64>), .item=(internment::intern("milk"): internment::Intern<string>)}: OnlineOrder))], Inspect debug::debug_event((32'd35, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __onlineorder0, (MilkOrders{.order=order}: MilkOrders)).
+InventoryItemName[(InventoryItemName{.name=name}: InventoryItemName)] :- StoreInventory[(__storeinventory0@ (StoreInventory{.item=(item: internment::Intern<StoreItem>)}: StoreInventory))], (var name: string) = (internment::ival(item): StoreItem).name, Inspect debug::debug_event((32'd36, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __storeinventory0, (InventoryItemName{.name=name}: InventoryItemName)).
+Flow[(Flow{.lr=ls, .stage=(LS_IN_PRE_LB{}: stage), .prio=100, .matchStr=("ip4.dst == " ++ addresses), .actionStr="{ reg0[0] = 1; next; }"}: Flow)] :- Load_Balancer[(__load_balancer0@ (Load_Balancer{.lb=(_: bigint), .ls=(ls: bigint), .ip_addresses=(addresses: string), .protocol=(std::Some{.x=(_: string)}: std::Option<string>), .name=(_: string)}: Load_Balancer))], Inspect debug::debug_event((32'd37, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __load_balancer0, (Flow{.lr=ls, .stage=(LS_IN_PRE_LB{}: stage), .prio=100, .matchStr=("ip4.dst == " ++ addresses), .actionStr="{ reg0[0] = 1; next; }"}: Flow)).
+Flow[(Flow{.lr=ls, .stage=(LS_OUT_PRE_LB{}: stage), .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }"}: Flow)] :- Logical_Switch[(__logical_switch0@ (Logical_Switch{.ls=(ls: bigint)}: Logical_Switch))], Load_Balancer[(__load_balancer1@ (Load_Balancer{.lb=(_: bigint), .ls=(ls: bigint), .ip_addresses=(_: string), .protocol=(_: std::Option<string>), .name=(_: string)}: Load_Balancer))], Inspect debug::debug_event_join((32'd38, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __logical_switch0, __load_balancer1, (Flow{.lr=ls, .stage=(LS_OUT_PRE_LB{}: stage), .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }"}: Flow)).
+Flow1[(Flow1{.lr=lb.ls, .stage=(LS_IN_PRE_LB{}: stage), .prio=100, .matchStr=("ip4.dst == " ++ a), .actionStr="{ reg0[0] = 1; next; }"}: Flow1)] :- Load_Balancer[(lb@ (Load_Balancer{.lb=(_: bigint), .ls=(_: bigint), .ip_addresses=(_: string), .protocol=(_: std::Option<string>), .name=(_: string)}: Load_Balancer))], (var a: string) = lb.ip_addresses, match (lb.protocol) {
+                                                                                                                                                                                                                                                                                                                                                                    (std::Some{.x=(_: string)}: std::Option<string>) -> true,
+                                                                                                                                                                                                                                                                                                                                                                    (std::None{}: std::Option<string>) -> false
+                                                                                                                                                                                                                                                                                                                                                                }, Inspect debug::debug_event((32'd39, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (lb, a), (Flow1{.lr=lb.ls, .stage=(LS_IN_PRE_LB{}: stage), .prio=100, .matchStr=("ip4.dst == " ++ a), .actionStr="{ reg0[0] = 1; next; }"}: Flow1)).
+Flow1[(Flow1{.lr=ls.ls, .stage=(LS_OUT_PRE_LB{}: stage), .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }"}: Flow1)] :- Logical_Switch[(ls@ (Logical_Switch{.ls=(_: bigint)}: Logical_Switch))], Load_Balancer[(lb@ (Load_Balancer{.lb=(_: bigint), .ls=(_: bigint), .ip_addresses=(_: string), .protocol=(_: std::Option<string>), .name=(_: string)}: Load_Balancer))], Inspect debug::debug_event_join((32'd40, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, ls, lb, (ls, lb)), (lb.ls == ls.ls), Inspect debug::debug_event((32'd40, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (ls, lb), (Flow1{.lr=ls.ls, .stage=(LS_OUT_PRE_LB{}: stage), .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }"}: Flow1)).
 

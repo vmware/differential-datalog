@@ -39,4 +39,4 @@ typedef Parameterized<'A,'B,'C,'D> = Option1{x: 'A}
 typedef VIP  = string
 typedef UUID = string
 
-input relation VM_Host[(VIP, UUID)] primary key (vm) vm.VIP
+input relation VM_Host[(VIP, UUID)] primary key (vm) vm::VIP

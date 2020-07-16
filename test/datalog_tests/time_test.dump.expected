@@ -1,23 +1,23 @@
 DTTest:
-DTTest{.s = "datetime_from_unix_timestamp(10000000)", .t = std.Ok{.res = time.DateTime{.date = "1970-04-26", .time = "17:46:40.000000000"}}}: +1
-DTTest{.s = "datetime_parse(\"2020-10-10T10:20:30\", \"%Y-%m-%dT%H:%M:%S\")", .t = std.Ok{.res = time.DateTime{.date = "2020-10-10", .time = "10:20:30.000000000"}}}: +1
-DTTest{.s = "datetime_parse(\"2020/10/10T10:20:30\", \"%Y-%m-%dT%H:%M:%S\")", .t = std.Err{.err = "expected character `-`, found `/`"}}: +1
-DTTest{.s = "datetime_parse(datetime_format(2020-04-14T10:11:12, %Y-%m-%dT%H::%M), %Y-%m-%dT%H::%M)", .t = std.Ok{.res = time.DateTime{.date = "2020-04-14", .time = "10:11:00.000000000"}}}: +1
-DTTest{.s = "string2datetime(\"2020-10-10T10:20:30\")", .t = std.Ok{.res = time.DateTime{.date = "2020-10-10", .time = "10:20:30.000000000"}}}: +1
-DTTest{.s = "string2datetime(dateTime2string(2020-04-14T10:11:12))", .t = std.Ok{.res = time.DateTime{.date = "2020-04-14", .time = "10:11:12.000000000"}}}: +1
+DTTest{.s = "datetime_from_unix_timestamp(10000000)", .t = std::Ok{.res = time::DateTime{.date = "1970-04-26", .time = "17:46:40.000000000"}}}: +1
+DTTest{.s = "datetime_parse(\"2020-10-10T10:20:30\", \"%Y-%m-%dT%H:%M:%S\")", .t = std::Ok{.res = time::DateTime{.date = "2020-10-10", .time = "10:20:30.000000000"}}}: +1
+DTTest{.s = "datetime_parse(\"2020/10/10T10:20:30\", \"%Y-%m-%dT%H:%M:%S\")", .t = std::Err{.err = "expected character `-`, found `/`"}}: +1
+DTTest{.s = "datetime_parse(datetime_format(2020-04-14T10:11:12, %Y-%m-%dT%H::%M), %Y-%m-%dT%H::%M)", .t = std::Ok{.res = time::DateTime{.date = "2020-04-14", .time = "10:11:00.000000000"}}}: +1
+DTTest{.s = "string2datetime(\"2020-10-10T10:20:30\")", .t = std::Ok{.res = time::DateTime{.date = "2020-10-10", .time = "10:20:30.000000000"}}}: +1
+DTTest{.s = "string2datetime(dateTime2string(2020-04-14T10:11:12))", .t = std::Ok{.res = time::DateTime{.date = "2020-04-14", .time = "10:11:12.000000000"}}}: +1
 DTest:
-DTest{.s = "Ok{from_julian_day(2000000)}", .t = std.Ok{.res = "0763-09-18"}}: +1
-DTest{.s = "Ok{next_day(2020-04-14)}", .t = std.Ok{.res = "2020-04-15"}}: +1
-DTest{.s = "Ok{previous_day(2020-04-14)}", .t = std.Ok{.res = "2020-04-13"}}: +1
-DTest{.s = "date_parse(\"2020/04/14\", \"%Y/%m/%d\")", .t = std.Ok{.res = "2020-04-14"}}: +1
-DTest{.s = "date_parse(date_format(2020-04-14, %Y-%m-%dT), %Y-%m-%dT)", .t = std.Ok{.res = "2020-04-14"}}: +1
-DTest{.s = "string2date(date2string(someDate()))", .t = std.Ok{.res = "2020-04-14"}}: +1
-DTest{.s = "try_from_iso_ywd(32'sd2020, 8'd4, Monday)", .t = std.Ok{.res = "2020-01-20"}}: +1
-DTest{.s = "try_from_ymd(32'sd2020, 8'd0, 8'd14)", .t = std.Err{.err = "month must be in the range 1..=12 (was 0)"}}: +1
-DTest{.s = "try_from_ymd(32'sd2020, 8'd04, 8'd14)", .t = std.Ok{.res = "2020-04-14"}}: +1
-DTest{.s = "try_from_ymd(32'sd2020, 8'd13, 8'd14)", .t = std.Err{.err = "month must be in the range 1..=12 (was 13)"}}: +1
-DTest{.s = "try_from_yo(32'sd2020, 16'd100)", .t = std.Ok{.res = "2020-04-09"}}: +1
-DTest{.s = "try_from_yo(32'sd2020, 16'd367)", .t = std.Err{.err = "ordinal must be in the range 1..=366 given year=2020 (was 367)"}}: +1
+DTest{.s = "Ok{from_julian_day(2000000)}", .t = std::Ok{.res = "0763-09-18"}}: +1
+DTest{.s = "Ok{next_day(2020-04-14)}", .t = std::Ok{.res = "2020-04-15"}}: +1
+DTest{.s = "Ok{previous_day(2020-04-14)}", .t = std::Ok{.res = "2020-04-13"}}: +1
+DTest{.s = "date_parse(\"2020/04/14\", \"%Y/%m/%d\")", .t = std::Ok{.res = "2020-04-14"}}: +1
+DTest{.s = "date_parse(date_format(2020-04-14, %Y-%m-%dT), %Y-%m-%dT)", .t = std::Ok{.res = "2020-04-14"}}: +1
+DTest{.s = "string2date(date2string(someDate()))", .t = std::Ok{.res = "2020-04-14"}}: +1
+DTest{.s = "try_from_iso_ywd(32'sd2020, 8'd4, Monday)", .t = std::Ok{.res = "2020-01-20"}}: +1
+DTest{.s = "try_from_ymd(32'sd2020, 8'd0, 8'd14)", .t = std::Err{.err = "month must be in the range 1..=12 (was 0)"}}: +1
+DTest{.s = "try_from_ymd(32'sd2020, 8'd04, 8'd14)", .t = std::Ok{.res = "2020-04-14"}}: +1
+DTest{.s = "try_from_ymd(32'sd2020, 8'd13, 8'd14)", .t = std::Err{.err = "month must be in the range 1..=12 (was 13)"}}: +1
+DTest{.s = "try_from_yo(32'sd2020, 16'd100)", .t = std::Ok{.res = "2020-04-09"}}: +1
+DTest{.s = "try_from_yo(32'sd2020, 16'd367)", .t = std::Err{.err = "ordinal must be in the range 1..=366 given year=2020 (was 367)"}}: +1
 Extract:
 Extract{.s = "day(2020-04-14)", .v = 14}: +1
 Extract{.s = "hour(10:11:12.103104105)", .v = 10}: +1
@@ -33,39 +33,39 @@ Extract{.s = "sunday_based_week(2020-04-14)", .v = 15}: +1
 Extract{.s = "week(2020-04-14)", .v = 16}: +1
 Extract{.s = "year(2020-04-14)", .v = 2020}: +1
 TTest:
-TTest{.s = "Ok(midnight())", .t = std.Ok{.res = "0:00:00.000000000"}}: +1
-TTest{.s = "string2time(time2string(result_unwrap_or_default(try_from_hms(8'd10, 8'd10, 8'd10))))", .t = std.Ok{.res = "10:10:10.000000000"}}: +1
-TTest{.s = "string2time(time2string(result_unwrap_or_default(try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10))))", .t = std.Ok{.res = "10:10:10.000010000"}}: +1
-TTest{.s = "string2time(time2string(result_unwrap_or_default(try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10))))", .t = std.Ok{.res = "10:10:10.010000000"}}: +1
-TTest{.s = "string2time(time2string(result_unwrap_or_default(try_from_hms_nano(8'd10, 8'd10, 8'd10, 32'd10))))", .t = std.Ok{.res = "10:10:10.000000010"}}: +1
-TTest{.s = "time_parse(\"10:10\", \"%T\")", .t = std.Err{.err = "unexpected end of string"}}: +1
-TTest{.s = "time_parse(\"10:10:10\", \"%T\")", .t = std.Ok{.res = "10:10:10.000000000"}}: +1
-TTest{.s = "time_parse(\"10:10:10.102030405\", \"%T.%N\")", .t = std.Ok{.res = "10:10:10.102030405"}}: +1
-TTest{.s = "time_parse(time_format(10:11:12.103104105, %H::%M::%S), %H::%M::%S)", .t = std.Ok{.res = "10:11:12.000000000"}}: +1
-TTest{.s = "try_from_hms(8'd0, 8'd60, 8'd0)", .t = std.Err{.err = "minute must be in the range 0..=59 (was 60)"}}: +1
-TTest{.s = "try_from_hms(8'd10, 8'd10, 8'd10)", .t = std.Ok{.res = "10:10:10.000000000"}}: +1
-TTest{.s = "try_from_hms(8'd23, 8'd0, 8'd0)", .t = std.Ok{.res = "23:00:00.000000000"}}: +1
-TTest{.s = "try_from_hms(8'd24, 8'd0, 8'd0)", .t = std.Err{.err = "hour must be in the range 0..=23 (was 24)"}}: +1
-TTest{.s = "try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10)", .t = std.Ok{.res = "10:10:10.000010000"}}: +1
-TTest{.s = "try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10)", .t = std.Ok{.res = "10:10:10.010000000"}}: +1
-TTest{.s = "try_from_hms_nano(8'd10, 8'd10, 8'd10, 32'd10)", .t = std.Ok{.res = "10:10:10.000000010"}}: +1
-TTest{.s = "10:11:12.000000000", .t = std.Ok{.res = "10:11:12.000000000"}}
-TTest{.s = "Ok(midnight())", .t = std.Ok{.res = "0:00:00.000000000"}}
-TTest{.s = "string2time(time2string(result_unwrap_or_default(try_from_hms(8'd10, 8'd10, 8'd10))))", .t = std.Ok{.res = "10:10:10.000000000"}}
-TTest{.s = "string2time(time2string(result_unwrap_or_default(try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10))))", .t = std.Ok{.res = "10:10:10.000010000"}}
-TTest{.s = "string2time(time2string(result_unwrap_or_default(try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10))))", .t = std.Ok{.res = "10:10:10.010000000"}}
-TTest{.s = "string2time(time2string(result_unwrap_or_default(try_from_hms_nano(8'd10, 8'd10, 8'd10, 32'd10))))", .t = std.Ok{.res = "10:10:10.000000010"}}
-TTest{.s = "time_parse(\"10:10\", \"%T\")", .t = std.Err{.err = "unexpected end of string"}}
-TTest{.s = "time_parse(\"10:10:10\", \"%T\")", .t = std.Ok{.res = "10:10:10.000000000"}}
-TTest{.s = "time_parse(\"10:10:10.102030405\", \"%T.%N\")", .t = std.Ok{.res = "10:10:10.102030405"}}
-TTest{.s = "time_parse(time_format(10:11:12.103104105, %H::%M::%S), %H::%M::%S)", .t = std.Ok{.res = "10:11:12.000000000"}}
-TTest{.s = "try_from_hms(8'd0, 8'd60, 8'd0)", .t = std.Err{.err = "minute must be in the range 0..=59 (was 60)"}}
-TTest{.s = "try_from_hms(8'd10, 8'd10, 8'd10)", .t = std.Ok{.res = "10:10:10.000000000"}}
-TTest{.s = "try_from_hms(8'd23, 8'd0, 8'd0)", .t = std.Ok{.res = "23:00:00.000000000"}}
-TTest{.s = "try_from_hms(8'd24, 8'd0, 8'd0)", .t = std.Err{.err = "hour must be in the range 0..=23 (was 24)"}}
-TTest{.s = "try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10)", .t = std.Ok{.res = "10:10:10.000010000"}}
-TTest{.s = "try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10)", .t = std.Ok{.res = "10:10:10.010000000"}}
-TTest{.s = "try_from_hms_nano(8'd10, 8'd10, 8'd10, 32'd10)", .t = std.Ok{.res = "10:10:10.000000010"}}
+TTest{.s = "Ok(midnight())", .t = std::Ok{.res = "0:00:00.000000000"}}: +1
+TTest{.s = "string2time(time2string(result_unwrap_or_default(try_from_hms(8'd10, 8'd10, 8'd10))))", .t = std::Ok{.res = "10:10:10.000000000"}}: +1
+TTest{.s = "string2time(time2string(result_unwrap_or_default(try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10))))", .t = std::Ok{.res = "10:10:10.000010000"}}: +1
+TTest{.s = "string2time(time2string(result_unwrap_or_default(try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10))))", .t = std::Ok{.res = "10:10:10.010000000"}}: +1
+TTest{.s = "string2time(time2string(result_unwrap_or_default(try_from_hms_nano(8'd10, 8'd10, 8'd10, 32'd10))))", .t = std::Ok{.res = "10:10:10.000000010"}}: +1
+TTest{.s = "time_parse(\"10:10\", \"%T\")", .t = std::Err{.err = "unexpected end of string"}}: +1
+TTest{.s = "time_parse(\"10:10:10\", \"%T\")", .t = std::Ok{.res = "10:10:10.000000000"}}: +1
+TTest{.s = "time_parse(\"10:10:10.102030405\", \"%T.%N\")", .t = std::Ok{.res = "10:10:10.102030405"}}: +1
+TTest{.s = "time_parse(time_format(10:11:12.103104105, %H::%M::%S), %H::%M::%S)", .t = std::Ok{.res = "10:11:12.000000000"}}: +1
+TTest{.s = "try_from_hms(8'd0, 8'd60, 8'd0)", .t = std::Err{.err = "minute must be in the range 0..=59 (was 60)"}}: +1
+TTest{.s = "try_from_hms(8'd10, 8'd10, 8'd10)", .t = std::Ok{.res = "10:10:10.000000000"}}: +1
+TTest{.s = "try_from_hms(8'd23, 8'd0, 8'd0)", .t = std::Ok{.res = "23:00:00.000000000"}}: +1
+TTest{.s = "try_from_hms(8'd24, 8'd0, 8'd0)", .t = std::Err{.err = "hour must be in the range 0..=23 (was 24)"}}: +1
+TTest{.s = "try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10)", .t = std::Ok{.res = "10:10:10.000010000"}}: +1
+TTest{.s = "try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10)", .t = std::Ok{.res = "10:10:10.010000000"}}: +1
+TTest{.s = "try_from_hms_nano(8'd10, 8'd10, 8'd10, 32'd10)", .t = std::Ok{.res = "10:10:10.000000010"}}: +1
+TTest{.s = "10:11:12.000000000", .t = std::Ok{.res = "10:11:12.000000000"}}
+TTest{.s = "Ok(midnight())", .t = std::Ok{.res = "0:00:00.000000000"}}
+TTest{.s = "string2time(time2string(result_unwrap_or_default(try_from_hms(8'd10, 8'd10, 8'd10))))", .t = std::Ok{.res = "10:10:10.000000000"}}
+TTest{.s = "string2time(time2string(result_unwrap_or_default(try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10))))", .t = std::Ok{.res = "10:10:10.000010000"}}
+TTest{.s = "string2time(time2string(result_unwrap_or_default(try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10))))", .t = std::Ok{.res = "10:10:10.010000000"}}
+TTest{.s = "string2time(time2string(result_unwrap_or_default(try_from_hms_nano(8'd10, 8'd10, 8'd10, 32'd10))))", .t = std::Ok{.res = "10:10:10.000000010"}}
+TTest{.s = "time_parse(\"10:10\", \"%T\")", .t = std::Err{.err = "unexpected end of string"}}
+TTest{.s = "time_parse(\"10:10:10\", \"%T\")", .t = std::Ok{.res = "10:10:10.000000000"}}
+TTest{.s = "time_parse(\"10:10:10.102030405\", \"%T.%N\")", .t = std::Ok{.res = "10:10:10.102030405"}}
+TTest{.s = "time_parse(time_format(10:11:12.103104105, %H::%M::%S), %H::%M::%S)", .t = std::Ok{.res = "10:11:12.000000000"}}
+TTest{.s = "try_from_hms(8'd0, 8'd60, 8'd0)", .t = std::Err{.err = "minute must be in the range 0..=59 (was 60)"}}
+TTest{.s = "try_from_hms(8'd10, 8'd10, 8'd10)", .t = std::Ok{.res = "10:10:10.000000000"}}
+TTest{.s = "try_from_hms(8'd23, 8'd0, 8'd0)", .t = std::Ok{.res = "23:00:00.000000000"}}
+TTest{.s = "try_from_hms(8'd24, 8'd0, 8'd0)", .t = std::Err{.err = "hour must be in the range 0..=23 (was 24)"}}
+TTest{.s = "try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10)", .t = std::Ok{.res = "10:10:10.000010000"}}
+TTest{.s = "try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10)", .t = std::Ok{.res = "10:10:10.010000000"}}
+TTest{.s = "try_from_hms_nano(8'd10, 8'd10, 8'd10, 32'd10)", .t = std::Ok{.res = "10:10:10.000000010"}}
 Extract{.s = "day(2020-04-14)", .v = 14}
 Extract{.s = "hour(10:11:12.103104105)", .v = 10}
 Extract{.s = "microsecond(10:11:12.103104105)", .v = 103104}
@@ -79,23 +79,23 @@ Extract{.s = "second(10:11:12.103104105)", .v = 12}
 Extract{.s = "sunday_based_week(2020-04-14)", .v = 15}
 Extract{.s = "week(2020-04-14)", .v = 16}
 Extract{.s = "year(2020-04-14)", .v = 2020}
-DTest{.s = "2010-10-15", .t = std.Ok{.res = "2010-10-15"}}
-DTest{.s = "Ok{from_julian_day(2000000)}", .t = std.Ok{.res = "0763-09-18"}}
-DTest{.s = "Ok{next_day(2020-04-14)}", .t = std.Ok{.res = "2020-04-15"}}
-DTest{.s = "Ok{previous_day(2020-04-14)}", .t = std.Ok{.res = "2020-04-13"}}
-DTest{.s = "date_parse(\"2020/04/14\", \"%Y/%m/%d\")", .t = std.Ok{.res = "2020-04-14"}}
-DTest{.s = "date_parse(date_format(2020-04-14, %Y-%m-%dT), %Y-%m-%dT)", .t = std.Ok{.res = "2020-04-14"}}
-DTest{.s = "string2date(date2string(someDate()))", .t = std.Ok{.res = "2020-04-14"}}
-DTest{.s = "try_from_iso_ywd(32'sd2020, 8'd4, Monday)", .t = std.Ok{.res = "2020-01-20"}}
-DTest{.s = "try_from_ymd(32'sd2020, 8'd0, 8'd14)", .t = std.Err{.err = "month must be in the range 1..=12 (was 0)"}}
-DTest{.s = "try_from_ymd(32'sd2020, 8'd04, 8'd14)", .t = std.Ok{.res = "2020-04-14"}}
-DTest{.s = "try_from_ymd(32'sd2020, 8'd13, 8'd14)", .t = std.Err{.err = "month must be in the range 1..=12 (was 13)"}}
-DTest{.s = "try_from_yo(32'sd2020, 16'd100)", .t = std.Ok{.res = "2020-04-09"}}
-DTest{.s = "try_from_yo(32'sd2020, 16'd367)", .t = std.Err{.err = "ordinal must be in the range 1..=366 given year=2020 (was 367)"}}
-DTTest{.s = "2010-10-15T10:11:12", .t = std.Ok{.res = time.DateTime{.date = "2010-10-15", .time = "10:11:12.000000000"}}}
-DTTest{.s = "datetime_from_unix_timestamp(10000000)", .t = std.Ok{.res = time.DateTime{.date = "1970-04-26", .time = "17:46:40.000000000"}}}
-DTTest{.s = "datetime_parse(\"2020-10-10T10:20:30\", \"%Y-%m-%dT%H:%M:%S\")", .t = std.Ok{.res = time.DateTime{.date = "2020-10-10", .time = "10:20:30.000000000"}}}
-DTTest{.s = "datetime_parse(\"2020/10/10T10:20:30\", \"%Y-%m-%dT%H:%M:%S\")", .t = std.Err{.err = "expected character `-`, found `/`"}}
-DTTest{.s = "datetime_parse(datetime_format(2020-04-14T10:11:12, %Y-%m-%dT%H::%M), %Y-%m-%dT%H::%M)", .t = std.Ok{.res = time.DateTime{.date = "2020-04-14", .time = "10:11:00.000000000"}}}
-DTTest{.s = "string2datetime(\"2020-10-10T10:20:30\")", .t = std.Ok{.res = time.DateTime{.date = "2020-10-10", .time = "10:20:30.000000000"}}}
-DTTest{.s = "string2datetime(dateTime2string(2020-04-14T10:11:12))", .t = std.Ok{.res = time.DateTime{.date = "2020-04-14", .time = "10:11:12.000000000"}}}
+DTest{.s = "2010-10-15", .t = std::Ok{.res = "2010-10-15"}}
+DTest{.s = "Ok{from_julian_day(2000000)}", .t = std::Ok{.res = "0763-09-18"}}
+DTest{.s = "Ok{next_day(2020-04-14)}", .t = std::Ok{.res = "2020-04-15"}}
+DTest{.s = "Ok{previous_day(2020-04-14)}", .t = std::Ok{.res = "2020-04-13"}}
+DTest{.s = "date_parse(\"2020/04/14\", \"%Y/%m/%d\")", .t = std::Ok{.res = "2020-04-14"}}
+DTest{.s = "date_parse(date_format(2020-04-14, %Y-%m-%dT), %Y-%m-%dT)", .t = std::Ok{.res = "2020-04-14"}}
+DTest{.s = "string2date(date2string(someDate()))", .t = std::Ok{.res = "2020-04-14"}}
+DTest{.s = "try_from_iso_ywd(32'sd2020, 8'd4, Monday)", .t = std::Ok{.res = "2020-01-20"}}
+DTest{.s = "try_from_ymd(32'sd2020, 8'd0, 8'd14)", .t = std::Err{.err = "month must be in the range 1..=12 (was 0)"}}
+DTest{.s = "try_from_ymd(32'sd2020, 8'd04, 8'd14)", .t = std::Ok{.res = "2020-04-14"}}
+DTest{.s = "try_from_ymd(32'sd2020, 8'd13, 8'd14)", .t = std::Err{.err = "month must be in the range 1..=12 (was 13)"}}
+DTest{.s = "try_from_yo(32'sd2020, 16'd100)", .t = std::Ok{.res = "2020-04-09"}}
+DTest{.s = "try_from_yo(32'sd2020, 16'd367)", .t = std::Err{.err = "ordinal must be in the range 1..=366 given year=2020 (was 367)"}}
+DTTest{.s = "2010-10-15T10:11:12", .t = std::Ok{.res = time::DateTime{.date = "2010-10-15", .time = "10:11:12.000000000"}}}
+DTTest{.s = "datetime_from_unix_timestamp(10000000)", .t = std::Ok{.res = time::DateTime{.date = "1970-04-26", .time = "17:46:40.000000000"}}}
+DTTest{.s = "datetime_parse(\"2020-10-10T10:20:30\", \"%Y-%m-%dT%H:%M:%S\")", .t = std::Ok{.res = time::DateTime{.date = "2020-10-10", .time = "10:20:30.000000000"}}}
+DTTest{.s = "datetime_parse(\"2020/10/10T10:20:30\", \"%Y-%m-%dT%H:%M:%S\")", .t = std::Err{.err = "expected character `-`, found `/`"}}
+DTTest{.s = "datetime_parse(datetime_format(2020-04-14T10:11:12, %Y-%m-%dT%H::%M), %Y-%m-%dT%H::%M)", .t = std::Ok{.res = time::DateTime{.date = "2020-04-14", .time = "10:11:00.000000000"}}}
+DTTest{.s = "string2datetime(\"2020-10-10T10:20:30\")", .t = std::Ok{.res = time::DateTime{.date = "2020-10-10", .time = "10:20:30.000000000"}}}
+DTTest{.s = "string2datetime(dateTime2string(2020-04-14T10:11:12))", .t = std::Ok{.res = time::DateTime{.date = "2020-04-14", .time = "10:11:12.000000000"}}}

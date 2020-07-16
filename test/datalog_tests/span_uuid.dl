@@ -7,8 +7,8 @@ import log4j
  * Module id's for logging purposes.
  * Pretend that we have two modules.
  */
-function mod_SPAN_UUID1(): log.module_t = 100
-function mod_SPAN_UUID2(): log.module_t = 200
+function mod_SPAN_UUID1(): log::module_t = 100
+function mod_SPAN_UUID2(): log::module_t = 200
 
 typedef uuid_t = Ref<bit<128>>
 
@@ -49,7 +49,7 @@ Span(parent, tn) :- Dependency(parent, child),
                         var p = deref(parent)[63:0];
                         var c = deref(child)[63:0];
                         var t = deref(tn)[63:0];
-                        inspect_log.log("../span_uuid.log", "${ddlog_timestamp}${if (ddlog_weight > 0) {\"+\"} else {\"-\"}}p${p},c${c},t${t}")
+                        inspect_log::log("../span_uuid.log", "${ddlog_timestamp}${if (ddlog_weight > 0) {\"+\"} else {\"-\"}}p${p},c${c},t${t}")
                     }.
 
 /* RuleSpan: restriction of the Span relation to Rule nodes.

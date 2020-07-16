@@ -375,7 +375,7 @@ typeTableName x =
          TOpaque{typeArgs = [elemType], ..} | elem typeName sET_TYPES
                        -> "__Table_Vec_" <> mkTypeIdentifier elemType
          TOpaque{typeArgs = [keyType, valType], ..} | typeName == mAP_TYPE
-                       -> typeTableName $ tOpaque "std.Vec" [tTuple [keyType, valType]]
+                       -> typeTableName $ tOpaque "std::Vec" [tTuple [keyType, valType]]
          t             -> error $ "typeTableName: Unexpected type " ++ show t
 
 -- True if type is serialized into a vector inside FlatBuffer.
@@ -616,6 +616,7 @@ capitalize str = (toUpper (head str) : tail str)
 legalize :: String -> String
 legalize n =
     map legalizeChar
+    $ replace "::" "_"
     $ replace "]" ""
     $ replace "[" "_Array_" n
 

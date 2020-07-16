@@ -64,7 +64,7 @@ parseDatalogString program file = do
 -- prevent users from declaring variables with the same names.
 rustKeywords = ["type", "match", "self", "ref"]
 
-reservedOpNames = [":", "|", "&", "==", "=", ":-", "%", "*", "/", "+", "-", ".", "->", "=>", "<=",
+reservedOpNames = [":", "::", "|", "&", "==", "=", ":-", "%", "*", "/", "+", "-", ".", "->", "=>", "<=",
                    "<=>", ">=", "<", ">", "!=", ">>", "<<", "~", "@", "#"]
 reservedNames = ["as",
                  "apply",
@@ -166,16 +166,16 @@ transIdent   = ucScopedIdentifier <?> "transformer name"
 typeIdent    = scopedIdentifier   <?> "type name"
 
 scopedIdentifier = do
-    (intercalate ".") <$> identifier `sepBy1` char '.'
+    (intercalate "::") <$> identifier `sepBy1` reservedOp "::"
 
 ucScopedIdentifier = do
-    path <- try $ lookAhead $ identifier `sepBy1` char '.'
+    path <- try $ lookAhead $ identifier `sepBy1` reservedOp "::"
     if isUpper $ head $ last path
        then scopedIdentifier
        else unexpected (last path)
 
 lcScopedIdentifier = do
-    path <- try $ lookAhead $ identifier `sepBy1` char '.'
+    path <- try $ lookAhead $ identifier `sepBy1` reservedOp "::"
     if isLower (head $ last path) || head (last path) == '_'
        then scopedIdentifier
        else unexpected (last path)
@@ -285,7 +285,7 @@ decl =  do attrs <- attributes
 
 imprt = Import nopos <$ reserved "import" <*> modname <*> (option (ModuleName []) $ reserved "as" *> modname)
 
-modname = ModuleName <$> modIdent `sepBy1` reservedOp "."
+modname = ModuleName <$> modIdent `sepBy1` reservedOp "::"
 
 typeDef = (TypeDef nopos []) <$ reserved "typedef" <*> typeIdent <*>
                                 (option [] (symbol "<" *> (commaSep $ symbol "'" *> typevarIdent) <* symbol ">")) <*>

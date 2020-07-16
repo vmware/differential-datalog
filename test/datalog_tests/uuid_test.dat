@@ -1,1 +1,1 @@
-dump uuid_test.UUID;
+dump uuid_test::UUID;

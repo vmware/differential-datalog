@@ -953,7 +953,7 @@ data ModuleName = ModuleName {modulePath :: [String]}
                   deriving (Eq, Ord)
 
 instance PP ModuleName where
-    pp (ModuleName p) = hcat $ punctuate "." $ map pp p
+    pp (ModuleName p) = hcat $ punctuate "::" $ map pp p
 
 instance Show ModuleName where
     show = render . pp

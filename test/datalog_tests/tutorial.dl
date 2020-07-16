@@ -315,9 +315,9 @@ import inspect_log as log
 output relation BestDeal(best: string)
 BestDeal(best) :-
     Price(item, vendor, price),
-    Inspect log.log("../tutorial.log", "ts:${ddlog_timestamp}, w:${ddlog_weight}: Price(item=\"${item}\", vendor=\"${vendor}\", price=${price})"),
+    Inspect log::log("../tutorial.log", "ts:${ddlog_timestamp}, w:${ddlog_weight}: Price(item=\"${item}\", vendor=\"${vendor}\", price=${price})"),
     var best = Aggregate((item), best_vendor_string((vendor, price))),
-    Inspect log.log("../tutorial.log", "ts:${ddlog_timestamp}, w:${ddlog_weight}: best(\"${item}\")=\"${best}\"").
+    Inspect log::log("../tutorial.log", "ts:${ddlog_timestamp}, w:${ddlog_weight}: best(\"${item}\")=\"${best}\"").
 
 
 /*

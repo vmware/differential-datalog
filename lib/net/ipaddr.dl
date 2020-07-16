@@ -7,8 +7,8 @@
  * system.
  */
 
-import net.ipv4
-import net.ipv6
+import net::ipv4
+import net::ipv6
 
 typedef IpAddr = IpAddrV4{addr4: Ipv4Addr}
                | IpAddrV6{addr6: Ipv6Addr}

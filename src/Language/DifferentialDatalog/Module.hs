@@ -265,13 +265,13 @@ applyFlattenNames mod mmap a@Apply{..} = do
              , applyOutputs     = outputs }
 
 nameScope :: String -> ModuleName
-nameScope n = ModuleName $ init $ split "." n
+nameScope n = ModuleName $ init $ split "::" n
 
 nameLocal :: String -> String
-nameLocal n = last $ split "." n
+nameLocal n = last $ split "::" n
 
 scoped :: ModuleName -> String -> String
-scoped mod n = intercalate "." (modulePath mod ++ [n])
+scoped mod n = intercalate "::" (modulePath mod ++ [n])
 
 candidates :: (MonadError String me) => DatalogModule -> Pos -> String -> me [ModuleName]
 candidates DatalogModule{..} p n = do
@@ -351,4 +351,4 @@ exprFlatten mmap mod e@EStruct{..} = do
 exprFlatten _    _   e = return $ E e
 
 name2rust :: String -> String
-name2rust = replace "." "_"
+name2rust = replace "::" "_"

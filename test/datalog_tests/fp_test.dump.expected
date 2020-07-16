@@ -1,101 +1,101 @@
-fp_test.F{.s = "abs_f(32'f0.5)", .d = 0.5}
-fp_test.F{.s = "acos_f(32'f0.5)", .d = 1.0471976}
-fp_test.F{.s = "acosh_f(32'f0.5)", .d = NaN}
-fp_test.F{.s = "asin_f(32'f0.5)", .d = 0.5235988}
-fp_test.F{.s = "asinh_f(32'f0.5)", .d = 0.48121184}
-fp_test.F{.s = "atan2_f(32'f0.5, 32'f2.0)", .d = 0.24497867}
-fp_test.F{.s = "atan_f(32'f0.5)", .d = 0.4636476}
-fp_test.F{.s = "atanh_f(32'f0.5)", .d = 0.54930615}
-fp_test.F{.s = "cbrt_f(32'f0.5)", .d = 0.7937005}
-fp_test.F{.s = "ceil_f(32'f0.5)", .d = 1}
-fp_test.F{.s = "cos_f(32'f0.5)", .d = 0.87758255}
-fp_test.F{.s = "cosh_f(32'f0.5)", .d = 1.127626}
-fp_test.F{.s = "exp2_f(32'f0.5)", .d = 1.4142135}
-fp_test.F{.s = "exp_f(32'f0.5)", .d = 1.6487212}
-fp_test.F{.s = "floor_f(32'f0.5)", .d = 0}
-fp_test.F{.s = "fract_f(32'f0.5)", .d = 0.5}
-fp_test.F{.s = "ln_f(32'f0.5)", .d = -0.6931472}
-fp_test.F{.s = "log10_f(32'f0.5)", .d = -0.30103}
-fp_test.F{.s = "log2_f(32'f0.5)", .d = -1}
-fp_test.F{.s = "log_f(32'f0.5, 32f'2.0)", .d = -1}
-fp_test.F{.s = "log_f(5E-1, 2.0)", .d = -1}
-fp_test.F{.s = "mul_add_f(32'f0.5, 32'f2.2, 32'f2.3)", .d = 3.4}
-fp_test.F{.s = "nan_f()", .d = NaN}
-fp_test.F{.s = "powf_f(32'f0.5, 32f'5.0)", .d = 0.03125}
-fp_test.F{.s = "powi_f(32'f0.5, 32'sd5)", .d = 0.03125}
-fp_test.F{.s = "recip_f(32'f0.5)", .d = 2}
-fp_test.F{.s = "result_unwrap_or_default(parse_f(\"0.02\"))", .d = 0.02}
-fp_test.F{.s = "result_unwrap_or_default(parse_f(\"blah\"))", .d = 0}
-fp_test.F{.s = "round_f(32'f0.5)", .d = 1}
-fp_test.F{.s = "signum_f(32'f0.5)", .d = 1}
-fp_test.F{.s = "sin_f(32'f0.5)", .d = 0.47942555}
-fp_test.F{.s = "sinh_f(32'f0.5)", .d = 0.5210953}
-fp_test.F{.s = "sqrt_f(32'f0.5)", .d = 0.70710677}
-fp_test.F{.s = "tan_f(32'f0.5)", .d = 0.5463025}
-fp_test.F{.s = "tanh_f(32'f0.5)", .d = 0.46211717}
-fp_test.F{.s = "to_degrees_f(32'f0.5)", .d = 28.64789}
-fp_test.F{.s = "to_radians_f(32'f0.5)", .d = 0.008726646}
-fp_test.F{.s = "trunc_f(32'f0.5)", .d = 0}
-fp_test.D{.s = "abs_d(64'f0.5)", .d = 0.5}
-fp_test.D{.s = "acos_d(64'f0.5)", .d = 1.0471975511965979}
-fp_test.D{.s = "acosh_d(64'f0.5)", .d = NaN}
-fp_test.D{.s = "asin_d(64'f0.5)", .d = 0.5235987755982989}
-fp_test.D{.s = "asinh_d(64'f0.5)", .d = 0.48121182505960347}
-fp_test.D{.s = "atan2_d(64'f0.5, 64'f2.0)", .d = 0.24497866312686414}
-fp_test.D{.s = "atan_d(64'f0.5)", .d = 0.4636476090008061}
-fp_test.D{.s = "atanh_d(64'f0.5)", .d = 0.5493061443340548}
-fp_test.D{.s = "cbrt_d(64'f0.5)", .d = 0.7937005259840998}
-fp_test.D{.s = "ceil_d(64'f0.5)", .d = 1}
-fp_test.D{.s = "cos_d(64'f0.5)", .d = 0.8775825618903728}
-fp_test.D{.s = "cosh_d(5e-1)", .d = 1.1276259652063807}
-fp_test.D{.s = "cosh_d(64'f0.5)", .d = 1.1276259652063807}
-fp_test.D{.s = "exp2_d(64'f0.5)", .d = 1.4142135623730951}
-fp_test.D{.s = "exp_d(64'f0.5)", .d = 1.6487212707001282}
-fp_test.D{.s = "floor_d(0.6)", .d = 0}
-fp_test.D{.s = "floor_d(64'f0.5)", .d = 0}
-fp_test.D{.s = "fract_d(64'f0.5)", .d = 0.5}
-fp_test.D{.s = "ln_d(64'f0.5)", .d = -0.6931471805599453}
-fp_test.D{.s = "log10_d(64'f0.5)", .d = -0.3010299956639812}
-fp_test.D{.s = "log2_d(64'f0.5)", .d = -1}
-fp_test.D{.s = "log_d(0.5, 2.0)", .d = -1}
-fp_test.D{.s = "log_d(64'f0.5, 32f'2.0)", .d = -1}
-fp_test.D{.s = "mul_add_d(64'f0.5, 64'f2.2, 64'f2.3)", .d = 3.4}
-fp_test.D{.s = "nan_d()", .d = NaN}
-fp_test.D{.s = "powf_d(64'f0.5, 32f'5.0)", .d = 0.03125}
-fp_test.D{.s = "powi_d(64'f0.5, 32'sd5)", .d = 0.03125}
-fp_test.D{.s = "recip_d(64'f0.5)", .d = 2}
-fp_test.D{.s = "result_unwrap_or_default(parse_d(\"0.02\"))", .d = 0.02}
-fp_test.D{.s = "result_unwrap_or_default(parse_d(\"blah\"))", .d = 0}
-fp_test.D{.s = "round_d(64'f0.5)", .d = 1}
-fp_test.D{.s = "signum_d(64'f0.5)", .d = 1}
-fp_test.D{.s = "sin_d(64'f0.5)", .d = 0.479425538604203}
-fp_test.D{.s = "sinh_d(64'f0.5)", .d = 0.5210953054937474}
-fp_test.D{.s = "sqrt_d(64'f0.5)", .d = 0.7071067811865476}
-fp_test.D{.s = "tan_d(64'f0.5)", .d = 0.5463024898437905}
-fp_test.D{.s = "tanh_d(64'f0.5)", .d = 0.46211715726000974}
-fp_test.D{.s = "to_degrees_d(64'f0.5)", .d = 28.64788975654116}
-fp_test.D{.s = "to_radians_d(64'f0.5)", .d = 0.008726646259971648}
-fp_test.D{.s = "trunc_d(64'f0.5)", .d = 0}
-fp_test.BB{.s = "is_finite_d(64'f0.5)", .b = true}
-fp_test.BB{.s = "is_finite_d(nan_d())", .b = false}
-fp_test.BB{.s = "is_finite_f(32'f0.5)", .b = true}
-fp_test.BB{.s = "is_finite_f(nan_f())", .b = false}
-fp_test.BB{.s = "is_infinite_d(64'f0.5)", .b = false}
-fp_test.BB{.s = "is_infinite_d(nan_d())", .b = false}
-fp_test.BB{.s = "is_infinite_f(32'f0.5)", .b = false}
-fp_test.BB{.s = "is_infinite_f(nan_f())", .b = false}
-fp_test.BB{.s = "is_nan_d(64'f0.5)", .b = false}
-fp_test.BB{.s = "is_nan_d(nan_d())", .b = true}
-fp_test.BB{.s = "is_nan_f(32'f0.5)", .b = false}
-fp_test.BB{.s = "is_nan_f(nan_f())", .b = true}
-fp_test.FloatsFromRecord{.s = "-0.5", .f = -0.5}
-fp_test.FloatsFromRecord{.s = "-32.0e-2", .f = -0.32}
-fp_test.FloatsFromRecord{.s = "-32e2", .f = -3200}
-fp_test.FloatsFromRecord{.s = "0.32", .f = 0.32}
-fp_test.FloatsFromRecord{.s = "0.5", .f = 0.5}
-fp_test.FloatsFromRecord{.s = "1.6487212181091308", .f = 1.6487212}
-fp_test.DoublesFromRecord{.s = "-0.5", .d = -0.5}
-fp_test.DoublesFromRecord{.s = "-32.0e-2", .d = -0.32}
-fp_test.DoublesFromRecord{.s = "-32e2", .d = -3200}
-fp_test.DoublesFromRecord{.s = "0.5", .d = 0.5}
-fp_test.DoublesFromRecord{.s = "1.6487212181091308", .d = 1.6487212181091309}
+fp_test::F{.s = "abs_f(32'f0.5)", .d = 0.5}
+fp_test::F{.s = "acos_f(32'f0.5)", .d = 1.0471976}
+fp_test::F{.s = "acosh_f(32'f0.5)", .d = NaN}
+fp_test::F{.s = "asin_f(32'f0.5)", .d = 0.5235988}
+fp_test::F{.s = "asinh_f(32'f0.5)", .d = 0.48121184}
+fp_test::F{.s = "atan2_f(32'f0.5, 32'f2.0)", .d = 0.24497867}
+fp_test::F{.s = "atan_f(32'f0.5)", .d = 0.4636476}
+fp_test::F{.s = "atanh_f(32'f0.5)", .d = 0.54930615}
+fp_test::F{.s = "cbrt_f(32'f0.5)", .d = 0.7937005}
+fp_test::F{.s = "ceil_f(32'f0.5)", .d = 1}
+fp_test::F{.s = "cos_f(32'f0.5)", .d = 0.87758255}
+fp_test::F{.s = "cosh_f(32'f0.5)", .d = 1.127626}
+fp_test::F{.s = "exp2_f(32'f0.5)", .d = 1.4142135}
+fp_test::F{.s = "exp_f(32'f0.5)", .d = 1.6487212}
+fp_test::F{.s = "floor_f(32'f0.5)", .d = 0}
+fp_test::F{.s = "fract_f(32'f0.5)", .d = 0.5}
+fp_test::F{.s = "ln_f(32'f0.5)", .d = -0.6931472}
+fp_test::F{.s = "log10_f(32'f0.5)", .d = -0.30103}
+fp_test::F{.s = "log2_f(32'f0.5)", .d = -1}
+fp_test::F{.s = "log_f(32'f0.5, 32f'2.0)", .d = -1}
+fp_test::F{.s = "log_f(5E-1, 2.0)", .d = -1}
+fp_test::F{.s = "mul_add_f(32'f0.5, 32'f2.2, 32'f2.3)", .d = 3.4}
+fp_test::F{.s = "nan_f()", .d = NaN}
+fp_test::F{.s = "powf_f(32'f0.5, 32f'5.0)", .d = 0.03125}
+fp_test::F{.s = "powi_f(32'f0.5, 32'sd5)", .d = 0.03125}
+fp_test::F{.s = "recip_f(32'f0.5)", .d = 2}
+fp_test::F{.s = "result_unwrap_or_default(parse_f(\"0.02\"))", .d = 0.02}
+fp_test::F{.s = "result_unwrap_or_default(parse_f(\"blah\"))", .d = 0}
+fp_test::F{.s = "round_f(32'f0.5)", .d = 1}
+fp_test::F{.s = "signum_f(32'f0.5)", .d = 1}
+fp_test::F{.s = "sin_f(32'f0.5)", .d = 0.47942555}
+fp_test::F{.s = "sinh_f(32'f0.5)", .d = 0.5210953}
+fp_test::F{.s = "sqrt_f(32'f0.5)", .d = 0.70710677}
+fp_test::F{.s = "tan_f(32'f0.5)", .d = 0.5463025}
+fp_test::F{.s = "tanh_f(32'f0.5)", .d = 0.46211717}
+fp_test::F{.s = "to_degrees_f(32'f0.5)", .d = 28.64789}
+fp_test::F{.s = "to_radians_f(32'f0.5)", .d = 0.008726646}
+fp_test::F{.s = "trunc_f(32'f0.5)", .d = 0}
+fp_test::D{.s = "abs_d(64'f0.5)", .d = 0.5}
+fp_test::D{.s = "acos_d(64'f0.5)", .d = 1.0471975511965979}
+fp_test::D{.s = "acosh_d(64'f0.5)", .d = NaN}
+fp_test::D{.s = "asin_d(64'f0.5)", .d = 0.5235987755982989}
+fp_test::D{.s = "asinh_d(64'f0.5)", .d = 0.48121182505960347}
+fp_test::D{.s = "atan2_d(64'f0.5, 64'f2.0)", .d = 0.24497866312686414}
+fp_test::D{.s = "atan_d(64'f0.5)", .d = 0.4636476090008061}
+fp_test::D{.s = "atanh_d(64'f0.5)", .d = 0.5493061443340548}
+fp_test::D{.s = "cbrt_d(64'f0.5)", .d = 0.7937005259840998}
+fp_test::D{.s = "ceil_d(64'f0.5)", .d = 1}
+fp_test::D{.s = "cos_d(64'f0.5)", .d = 0.8775825618903728}
+fp_test::D{.s = "cosh_d(5e-1)", .d = 1.1276259652063807}
+fp_test::D{.s = "cosh_d(64'f0.5)", .d = 1.1276259652063807}
+fp_test::D{.s = "exp2_d(64'f0.5)", .d = 1.4142135623730951}
+fp_test::D{.s = "exp_d(64'f0.5)", .d = 1.6487212707001282}
+fp_test::D{.s = "floor_d(0.6)", .d = 0}
+fp_test::D{.s = "floor_d(64'f0.5)", .d = 0}
+fp_test::D{.s = "fract_d(64'f0.5)", .d = 0.5}
+fp_test::D{.s = "ln_d(64'f0.5)", .d = -0.6931471805599453}
+fp_test::D{.s = "log10_d(64'f0.5)", .d = -0.3010299956639812}
+fp_test::D{.s = "log2_d(64'f0.5)", .d = -1}
+fp_test::D{.s = "log_d(0.5, 2.0)", .d = -1}
+fp_test::D{.s = "log_d(64'f0.5, 32f'2.0)", .d = -1}
+fp_test::D{.s = "mul_add_d(64'f0.5, 64'f2.2, 64'f2.3)", .d = 3.4}
+fp_test::D{.s = "nan_d()", .d = NaN}
+fp_test::D{.s = "powf_d(64'f0.5, 32f'5.0)", .d = 0.03125}
+fp_test::D{.s = "powi_d(64'f0.5, 32'sd5)", .d = 0.03125}
+fp_test::D{.s = "recip_d(64'f0.5)", .d = 2}
+fp_test::D{.s = "result_unwrap_or_default(parse_d(\"0.02\"))", .d = 0.02}
+fp_test::D{.s = "result_unwrap_or_default(parse_d(\"blah\"))", .d = 0}
+fp_test::D{.s = "round_d(64'f0.5)", .d = 1}
+fp_test::D{.s = "signum_d(64'f0.5)", .d = 1}
+fp_test::D{.s = "sin_d(64'f0.5)", .d = 0.479425538604203}
+fp_test::D{.s = "sinh_d(64'f0.5)", .d = 0.5210953054937474}
+fp_test::D{.s = "sqrt_d(64'f0.5)", .d = 0.7071067811865476}
+fp_test::D{.s = "tan_d(64'f0.5)", .d = 0.5463024898437905}
+fp_test::D{.s = "tanh_d(64'f0.5)", .d = 0.46211715726000974}
+fp_test::D{.s = "to_degrees_d(64'f0.5)", .d = 28.64788975654116}
+fp_test::D{.s = "to_radians_d(64'f0.5)", .d = 0.008726646259971648}
+fp_test::D{.s = "trunc_d(64'f0.5)", .d = 0}
+fp_test::BB{.s = "is_finite_d(64'f0.5)", .b = true}
+fp_test::BB{.s = "is_finite_d(nan_d())", .b = false}
+fp_test::BB{.s = "is_finite_f(32'f0.5)", .b = true}
+fp_test::BB{.s = "is_finite_f(nan_f())", .b = false}
+fp_test::BB{.s = "is_infinite_d(64'f0.5)", .b = false}
+fp_test::BB{.s = "is_infinite_d(nan_d())", .b = false}
+fp_test::BB{.s = "is_infinite_f(32'f0.5)", .b = false}
+fp_test::BB{.s = "is_infinite_f(nan_f())", .b = false}
+fp_test::BB{.s = "is_nan_d(64'f0.5)", .b = false}
+fp_test::BB{.s = "is_nan_d(nan_d())", .b = true}
+fp_test::BB{.s = "is_nan_f(32'f0.5)", .b = false}
+fp_test::BB{.s = "is_nan_f(nan_f())", .b = true}
+fp_test::FloatsFromRecord{.s = "-0.5", .f = -0.5}
+fp_test::FloatsFromRecord{.s = "-32.0e-2", .f = -0.32}
+fp_test::FloatsFromRecord{.s = "-32e2", .f = -3200}
+fp_test::FloatsFromRecord{.s = "0.32", .f = 0.32}
+fp_test::FloatsFromRecord{.s = "0.5", .f = 0.5}
+fp_test::FloatsFromRecord{.s = "1.6487212181091308", .f = 1.6487212}
+fp_test::DoublesFromRecord{.s = "-0.5", .d = -0.5}
+fp_test::DoublesFromRecord{.s = "-32.0e-2", .d = -0.32}
+fp_test::DoublesFromRecord{.s = "-32e2", .d = -3200}
+fp_test::DoublesFromRecord{.s = "0.5", .d = 0.5}
+fp_test::DoublesFromRecord{.s = "1.6487212181091308", .d = 1.6487212181091309}

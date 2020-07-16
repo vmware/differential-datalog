@@ -1,5 +1,5 @@
-import foolib.ns1.m2 as m2
+import foolib::ns1::m2 as m2
 
-input relation Rlib(f1: m2.T2)
+input relation Rlib(f1: m2::T2)
 
 typedef Tlib = Tlib {f1: bigint} 

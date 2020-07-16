@@ -1,4 +1,4 @@
-regex_test.RegexTestOutput{.regex = "'([^']+)'\\s+\\((\\d{4})\\)", .text = "Not my favorite movie: 'Citizen Kane' (1941).", .match_found = true, .match_found_checked = true, .first_match = std.Some{.x = "'Citizen Kane' (1941)"}, .all_matches = ["'Citizen Kane' (1941)"]}
-regex_test.RegexTestOutput{.regex = "[", .text = "foo", .match_found = false, .match_found_checked = true, .first_match = std.None{}, .all_matches = []}
-regex_test.RegexTestOutput{.regex = "\\b\\w{13}\\b", .text = "I categorically deny having triskaidekaphobia.", .match_found = true, .match_found_checked = true, .first_match = std.Some{.x = "categorically"}, .all_matches = ["categorically"]}
-regex_test.RegexTestOutput{.regex = "\\d+", .text = "a111b222c", .match_found = true, .match_found_checked = true, .first_match = std.Some{.x = "111"}, .all_matches = ["111", "222"]}
+regex_test::RegexTestOutput{.regex = "'([^']+)'\\s+\\((\\d{4})\\)", .text = "Not my favorite movie: 'Citizen Kane' (1941).", .match_found = true, .match_found_checked = true, .first_match = std::Some{.x = "'Citizen Kane' (1941)"}, .all_matches = ["'Citizen Kane' (1941)"]}
+regex_test::RegexTestOutput{.regex = "[", .text = "foo", .match_found = false, .match_found_checked = true, .first_match = std::None{}, .all_matches = []}
+regex_test::RegexTestOutput{.regex = "\\b\\w{13}\\b", .text = "I categorically deny having triskaidekaphobia.", .match_found = true, .match_found_checked = true, .first_match = std::Some{.x = "categorically"}, .all_matches = ["categorically"]}
+regex_test::RegexTestOutput{.regex = "\\d+", .text = "a111b222c", .match_found = true, .match_found_checked = true, .first_match = std::Some{.x = "111"}, .all_matches = ["111", "222"]}

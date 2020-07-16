@@ -230,7 +230,7 @@ test-antrea:
         - ddlog-ci-1
     script:
         - cd test/antrea
-        - git clone https://github.com/ddlog-dev/antrea-test-data.git
+        - git clone -b v2 https://github.com/ddlog-dev/antrea-test-data.git
         - ./test-antrea.sh
 
 # Test the SQL-to-DDlog compiler.

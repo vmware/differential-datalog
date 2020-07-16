@@ -2,67 +2,67 @@ import uuid as uuid
 
 output relation UUID(description: string, result: string)
 
-UUID("uuid.to_hyphenated_lower(uuid.nil())", uuid.to_hyphenated_lower(uuid.nil())).
-UUID("uuid.to_hyphenated_upper(uuid.nil())", uuid.to_hyphenated_upper(uuid.nil())).
-UUID("uuid.to_simple_lower(uuid.nil())", uuid.to_simple_lower(uuid.nil())).
-UUID("uuid.to_simple_upper(uuid.nil())", uuid.to_simple_upper(uuid.nil())).
-UUID("uuid.to_urn_lower(uuid.nil())", uuid.to_urn_lower(uuid.nil())).
-UUID("uuid.to_urn_upper(uuid.nil())", uuid.to_urn_upper(uuid.nil())).
+UUID("uuid::to_hyphenated_lower(uuid::nil())", uuid::to_hyphenated_lower(uuid::nil())).
+UUID("uuid::to_hyphenated_upper(uuid::nil())", uuid::to_hyphenated_upper(uuid::nil())).
+UUID("uuid::to_simple_lower(uuid::nil())", uuid::to_simple_lower(uuid::nil())).
+UUID("uuid::to_simple_upper(uuid::nil())", uuid::to_simple_upper(uuid::nil())).
+UUID("uuid::to_urn_lower(uuid::nil())", uuid::to_urn_lower(uuid::nil())).
+UUID("uuid::to_urn_upper(uuid::nil())", uuid::to_urn_upper(uuid::nil())).
 
-UUID("uuid.to_hyphenated_lower(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", uuid.to_hyphenated_lower(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))).
-UUID("uuid.to_hyphenated_upper(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", uuid.to_hyphenated_upper(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))).
-UUID("uuid.to_simple_lower(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", uuid.to_simple_lower(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))).
-UUID("uuid.to_simple_upper(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", uuid.to_simple_upper(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))).
-UUID("uuid.to_urn_lower(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", uuid.to_urn_lower(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))).
-UUID("uuid.to_urn_upper(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", uuid.to_urn_upper(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))).
+UUID("uuid::to_hyphenated_lower(uuid::from_u128('h0436430c_2b02_624c_2032_570501212b57))", uuid::to_hyphenated_lower(uuid::from_u128('h0436430c_2b02_624c_2032_570501212b57))).
+UUID("uuid::to_hyphenated_upper(uuid::from_u128('h0436430c_2b02_624c_2032_570501212b57))", uuid::to_hyphenated_upper(uuid::from_u128('h0436430c_2b02_624c_2032_570501212b57))).
+UUID("uuid::to_simple_lower(uuid::from_u128('h0436430c_2b02_624c_2032_570501212b57))", uuid::to_simple_lower(uuid::from_u128('h0436430c_2b02_624c_2032_570501212b57))).
+UUID("uuid::to_simple_upper(uuid::from_u128('h0436430c_2b02_624c_2032_570501212b57))", uuid::to_simple_upper(uuid::from_u128('h0436430c_2b02_624c_2032_570501212b57))).
+UUID("uuid::to_urn_lower(uuid::from_u128('h0436430c_2b02_624c_2032_570501212b57))", uuid::to_urn_lower(uuid::from_u128('h0436430c_2b02_624c_2032_570501212b57))).
+UUID("uuid::to_urn_upper(uuid::from_u128('h0436430c_2b02_624c_2032_570501212b57))", uuid::to_urn_upper(uuid::from_u128('h0436430c_2b02_624c_2032_570501212b57))).
 
-UUID("uuid.to_hyphenated_lower(uuid.from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", uuid.to_hyphenated_lower(uuid.from_u128_le('h0436430c_2b02_624c_2032_570501212b57))).
-UUID("uuid.to_hyphenated_upper(uuid.from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", uuid.to_hyphenated_upper(uuid.from_u128_le('h0436430c_2b02_624c_2032_570501212b57))).
-UUID("uuid.to_simple_lower(uuid.from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", uuid.to_simple_lower(uuid.from_u128_le('h0436430c_2b02_624c_2032_570501212b57))).
-UUID("uuid.to_simple_upper(uuid.from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", uuid.to_simple_upper(uuid.from_u128_le('h0436430c_2b02_624c_2032_570501212b57))).
-UUID("uuid.to_urn_lower(uuid.from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", uuid.to_urn_lower(uuid.from_u128_le('h0436430c_2b02_624c_2032_570501212b57))).
-UUID("uuid.to_urn_upper(uuid.from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", uuid.to_urn_upper(uuid.from_u128_le('h0436430c_2b02_624c_2032_570501212b57))).
+UUID("uuid::to_hyphenated_lower(uuid::from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", uuid::to_hyphenated_lower(uuid::from_u128_le('h0436430c_2b02_624c_2032_570501212b57))).
+UUID("uuid::to_hyphenated_upper(uuid::from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", uuid::to_hyphenated_upper(uuid::from_u128_le('h0436430c_2b02_624c_2032_570501212b57))).
+UUID("uuid::to_simple_lower(uuid::from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", uuid::to_simple_lower(uuid::from_u128_le('h0436430c_2b02_624c_2032_570501212b57))).
+UUID("uuid::to_simple_upper(uuid::from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", uuid::to_simple_upper(uuid::from_u128_le('h0436430c_2b02_624c_2032_570501212b57))).
+UUID("uuid::to_urn_lower(uuid::from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", uuid::to_urn_lower(uuid::from_u128_le('h0436430c_2b02_624c_2032_570501212b57))).
+UUID("uuid::to_urn_upper(uuid::from_u128_le('h0436430c_2b02_624c_2032_570501212b57))", uuid::to_urn_upper(uuid::from_u128_le('h0436430c_2b02_624c_2032_570501212b57))).
 
-function test_uuid_from_bytes(): uuid.Uuid =
+function test_uuid_from_bytes(): uuid::Uuid =
 {
     var bytes: Vec<bit<8>> = vec_empty();
     for (i in range(0: bit<8>, 15: bit<8>, 1: bit<8>)) {
         vec_push(bytes, i as bit<8>)
     };
-    unwrap_or(uuid.from_bytes(bytes), uuid.nil())
+    unwrap_or(uuid::from_bytes(bytes), uuid::nil())
 }
 
-UUID("uuid.to_hyphenated_lower(test_uuid_from_bytes())", uuid.to_hyphenated_lower(test_uuid_from_bytes())).
-UUID("uuid.to_hyphenated_upper(test_uuid_from_bytes())", uuid.to_hyphenated_upper(test_uuid_from_bytes())).
-UUID("uuid.to_simple_lower(test_uuid_from_bytes())", uuid.to_simple_lower(test_uuid_from_bytes())).
-UUID("uuid.to_simple_upper(test_uuid_from_bytes())", uuid.to_simple_upper(test_uuid_from_bytes())).
-UUID("uuid.to_urn_lower(test_uuid_from_bytes())", uuid.to_urn_lower(test_uuid_from_bytes())).
-UUID("uuid.to_urn_upper(test_uuid_from_bytes())", uuid.to_urn_upper(test_uuid_from_bytes())).
+UUID("uuid::to_hyphenated_lower(test_uuid_from_bytes())", uuid::to_hyphenated_lower(test_uuid_from_bytes())).
+UUID("uuid::to_hyphenated_upper(test_uuid_from_bytes())", uuid::to_hyphenated_upper(test_uuid_from_bytes())).
+UUID("uuid::to_simple_lower(test_uuid_from_bytes())", uuid::to_simple_lower(test_uuid_from_bytes())).
+UUID("uuid::to_simple_upper(test_uuid_from_bytes())", uuid::to_simple_upper(test_uuid_from_bytes())).
+UUID("uuid::to_urn_lower(test_uuid_from_bytes())", uuid::to_urn_lower(test_uuid_from_bytes())).
+UUID("uuid::to_urn_upper(test_uuid_from_bytes())", uuid::to_urn_upper(test_uuid_from_bytes())).
 
-function uuid_parse_or_nil(str: string): uuid.Uuid = {
-    unwrap_or(uuid.parse_str(str), uuid.nil())
+function uuid_parse_or_nil(str: string): uuid::Uuid = {
+    unwrap_or(uuid::parse_str(str), uuid::nil())
 }
 
-UUID("uuid.to_hyphenated_lower(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", uuid.to_hyphenated_lower(uuid_parse_or_nil("936DA01F-9ABD-4D9D-80C7-02AF85C822A8"))).
-UUID("uuid.to_hyphenated_upper(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", uuid.to_hyphenated_upper(uuid_parse_or_nil("936DA01F-9ABD-4D9D-80C7-02AF85C822A8"))).
-UUID("uuid.to_simple_lower(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", uuid.to_simple_lower(uuid_parse_or_nil("936DA01F-9ABD-4D9D-80C7-02AF85C822A8"))).
-UUID("uuid.to_simple_upper(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", uuid.to_simple_upper(uuid_parse_or_nil("936DA01F-9ABD-4D9D-80C7-02AF85C822A8"))).
-UUID("uuid.to_urn_lower(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", uuid.to_urn_lower(uuid_parse_or_nil("936DA01F-9ABD-4D9D-80C7-02AF85C822A8"))).
-UUID("uuid.to_urn_upper(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", uuid.to_urn_upper(uuid_parse_or_nil("936DA01F-9ABD-4D9D-80C7-02AF85C822A8"))).
+UUID("uuid::to_hyphenated_lower(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", uuid::to_hyphenated_lower(uuid_parse_or_nil("936DA01F-9ABD-4D9D-80C7-02AF85C822A8"))).
+UUID("uuid::to_hyphenated_upper(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", uuid::to_hyphenated_upper(uuid_parse_or_nil("936DA01F-9ABD-4D9D-80C7-02AF85C822A8"))).
+UUID("uuid::to_simple_lower(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", uuid::to_simple_lower(uuid_parse_or_nil("936DA01F-9ABD-4D9D-80C7-02AF85C822A8"))).
+UUID("uuid::to_simple_upper(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", uuid::to_simple_upper(uuid_parse_or_nil("936DA01F-9ABD-4D9D-80C7-02AF85C822A8"))).
+UUID("uuid::to_urn_lower(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", uuid::to_urn_lower(uuid_parse_or_nil("936DA01F-9ABD-4D9D-80C7-02AF85C822A8"))).
+UUID("uuid::to_urn_upper(uuid_parse_or_nil(\"936DA01F-9ABD-4D9D-80C7-02AF85C822A8\"))", uuid::to_urn_upper(uuid_parse_or_nil("936DA01F-9ABD-4D9D-80C7-02AF85C822A8"))).
 
-UUID("uuid.as_u128(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", hex(uuid.as_u128(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57)))).
-UUID("uuid.to_u128_le(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", hex(uuid.to_u128_le(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57)))).
+UUID("uuid::as_u128(uuid::from_u128('h0436430c_2b02_624c_2032_570501212b57))", hex(uuid::as_u128(uuid::from_u128('h0436430c_2b02_624c_2032_570501212b57)))).
+UUID("uuid::to_u128_le(uuid::from_u128('h0436430c_2b02_624c_2032_570501212b57))", hex(uuid::to_u128_le(uuid::from_u128('h0436430c_2b02_624c_2032_570501212b57)))).
 
-UUID("uuid.is_nil(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))", "${uuid.is_nil(uuid.from_u128('h0436430c_2b02_624c_2032_570501212b57))}").
-UUID("uuid.is_nil(uuid.from_u128(0))", "${uuid.is_nil(uuid.from_u128(0))}").
-UUID("uuid.is_nil(uuid.nil())", "${uuid.is_nil(uuid.nil())}").
+UUID("uuid::is_nil(uuid::from_u128('h0436430c_2b02_624c_2032_570501212b57))", "${uuid::is_nil(uuid::from_u128('h0436430c_2b02_624c_2032_570501212b57))}").
+UUID("uuid::is_nil(uuid::from_u128(0))", "${uuid::is_nil(uuid::from_u128(0))}").
+UUID("uuid::is_nil(uuid::nil())", "${uuid::is_nil(uuid::nil())}").
 
-UUID("uuid.new_v5(\"5a5e7dd9-e3fb-49bb-b263-9bab25c95841\", \"namespace=nsA And podSelector=\")",
-     uuid.to_hyphenated_lower(uuid.new_v5(uuid_parse_or_nil("5a5e7dd9-e3fb-49bb-b263-9bab25c95841"),
+UUID("uuid::new_v5(\"5a5e7dd9-e3fb-49bb-b263-9bab25c95841\", \"namespace=nsA And podSelector=\")",
+     uuid::to_hyphenated_lower(uuid::new_v5(uuid_parse_or_nil("5a5e7dd9-e3fb-49bb-b263-9bab25c95841"),
                               string_to_bytes("namespace=nsA And podSelector=")))).
-UUID("uuid.new_v5(\"5a5e7dd9-e3fb-49bb-b263-9bab25c95841\", \"namespaceSelector=foo3 In [bar3] And podSelector=foo2 In [bar2]\")",
-     uuid.to_hyphenated_lower(uuid.new_v5(uuid_parse_or_nil("5a5e7dd9-e3fb-49bb-b263-9bab25c95841"),
+UUID("uuid::new_v5(\"5a5e7dd9-e3fb-49bb-b263-9bab25c95841\", \"namespaceSelector=foo3 In [bar3] And podSelector=foo2 In [bar2]\")",
+     uuid::to_hyphenated_lower(uuid::new_v5(uuid_parse_or_nil("5a5e7dd9-e3fb-49bb-b263-9bab25c95841"),
                               string_to_bytes("namespaceSelector=foo3 In [bar3] And podSelector=foo2 In [bar2]")))).
-UUID("uuid.new_v5(\"5a5e7dd9-e3fb-49bb-b263-9bab25c95841\", \"namespace=nsA And podSelector=group In [appliedTo] And role In [db app]\")",
-     uuid.to_hyphenated_lower(uuid.new_v5(uuid_parse_or_nil("5a5e7dd9-e3fb-49bb-b263-9bab25c95841"),
+UUID("uuid::new_v5(\"5a5e7dd9-e3fb-49bb-b263-9bab25c95841\", \"namespace=nsA And podSelector=group In [appliedTo] And role In [db app]\")",
+     uuid::to_hyphenated_lower(uuid::new_v5(uuid_parse_or_nil("5a5e7dd9-e3fb-49bb-b263-9bab25c95841"),
                               string_to_bytes("namespace=nsA And podSelector=group In [appliedTo] And role In [db app]")))).

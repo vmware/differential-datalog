@@ -89,36 +89,33 @@ import Language.DifferentialDatalog.Var
 import {-# SOURCE #-} Language.DifferentialDatalog.Rule
 
 sET_TYPES :: [String]
-sET_TYPES = ["std.Set", "std.Vec", tINYSET_TYPE]
+sET_TYPES = ["std::Set", "std::Vec", tINYSET_TYPE]
 
 tINYSET_TYPE :: String
-tINYSET_TYPE = "tinyset.Set64"
+tINYSET_TYPE = "tinyset::Set64"
 
 -- Dynamically allocated types.
 dYNAMIC_TYPES :: [String]
 dYNAMIC_TYPES = mAP_TYPE : sET_TYPES
 
 gROUP_TYPE :: String
-gROUP_TYPE = "std.Group"
-
--- rEF_TYPE :: String
--- rEF_TYPE = "std.Ref"
+gROUP_TYPE = "std::Group"
 
 mAP_TYPE :: String
-mAP_TYPE = "std.Map"
+mAP_TYPE = "std::Map"
 
 -- Special types used by Inspect operator.
 ePOCH_TYPE :: String
-ePOCH_TYPE = "std.DDEpoch"
+ePOCH_TYPE = "std::DDEpoch"
 
 iTERATION_TYPE :: String
-iTERATION_TYPE = "std.DDIteration"
+iTERATION_TYPE = "std::DDIteration"
 
 nESTED_TS_TYPE :: String
-nESTED_TS_TYPE = "std.DDNestedTS"
+nESTED_TS_TYPE = "std::DDNestedTS"
 
 wEIGHT_TYPE :: String
-wEIGHT_TYPE = "std.DDWeight"
+wEIGHT_TYPE = "std::DDWeight"
 
 -- | An object with type
 class WithType a where

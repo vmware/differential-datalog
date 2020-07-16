@@ -24,7 +24,7 @@ is defined in the local scope).
     field_name   ::= lc_identifier
     arg_name     ::= lc_identifier
 
-    scope ::= [identifier "."]*
+    scope ::= [identifier "::"]*
     uc_scoped_identifier ::= scope uc_identifier
     lc_scoped_identifier ::= scope lc_identifier
     scoped_identifier ::= uc_scoped_identifier | lc_scoped_identifier
@@ -70,7 +70,7 @@ The `import` statement makes type, function, relation, and constructor declarati
 imported module available in the importing module.
 
 ```EBNF
-module_path ::= identifier ["." identifier]*
+module_path ::= identifier ["::" identifier]*
 import ::= "import" module_path ["as" module_alias]
 module_alias ::- identifier
 ```

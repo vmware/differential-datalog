@@ -109,7 +109,7 @@ generateInspectDebugJoin d ruleIdx rule index =
     input1 = head $ Compile.recordAfterPrefix d rule (index - 1)
     input2 = eVar $ exprVar $ enode $ atomVal $ rhsAtom (ruleRHS rule !! index)
     outputs = Compile.recordAfterPrefix d rule index
-  in map (\i -> RHSInspect {rhsInspectExpr = eApply "debug.debug_event_join"
+  in map (\i -> RHSInspect {rhsInspectExpr = eApply "debug::debug_event_join"
                                              [generateOperatorIdExpr ruleIdx index i,
                                               ddlogWeightExpr,
                                               ddlogTimestampExpr,
@@ -132,7 +132,7 @@ generateInspectDebug d ruleIdx rule index =
                      RHSCondition{} -> "Condition"
                      rhs -> error $ "generateInspectDebug " ++ show rhs
     outputs = Compile.recordAfterPrefix d rule index
-  in map (\i -> RHSInspect {rhsInspectExpr = eApply "debug.debug_event"
+  in map (\i -> RHSInspect {rhsInspectExpr = eApply "debug::debug_event"
                                              [generateOperatorIdExpr ruleIdx index i,
                                               ddlogWeightExpr,
                                               ddlogTimestampExpr,
@@ -146,7 +146,7 @@ generateInspectDebugAggregate d ruleIdx rule index =
   let
     input1 = eTupField (eVar $ rhsVar $ (ruleRHS rule !! index)) 0
     outputs = Compile.recordAfterPrefix d rule index
-  in map (\i -> RHSInspect {rhsInspectExpr = eApply "debug.debug_event"
+  in map (\i -> RHSInspect {rhsInspectExpr = eApply "debug::debug_event"
                                              [generateOperatorIdExpr ruleIdx index i,
                                               ddlogWeightExpr,
                                               ddlogTimestampExpr,
@@ -190,12 +190,12 @@ debugUpdateRHSRules d rlIdx rule =
   in insertRHSInspectDebugHooks d rlIdx rule {ruleRHS = rhs'}
 
 -- Insert an aggregate function that wraps the original function used in the aggregate term.
--- For example, if an aggregate operator uses std.group_max(), i.e., var c = Aggregate((a), group_max(b)).
+-- For example, if an aggregate operator uses std::group_max(), i.e., var c = Aggregate((a), group_max(b)).
 -- The following aggregate function is generated:
--- function __debug_1_2_std.group_max (g: std.Group<u32,('I, u64>): (std.Vec<'I>, u64)
+-- function __debug_1_2_std::group_max (g: std::Group<u32,('I, u64>): (std::Vec<'I>, u64)
 -- {
---    ((var inputs, var original_group) = debug.debug_split_group(g);
---     (inputs, std.group_max(original_group)))
+--    ((var inputs, var original_group) = debug::debug_split_group(g);
+--     (inputs, std::group_max(original_group)))
 -- }
 -- In the above example, group_max is the original function name prefixed with __debug_<rule_idx>_<rhs_idx>.
 -- debug_split_group takes in a Group of tuple ('I, 'V) and splits it into a
@@ -209,11 +209,11 @@ debugAggregateFunction d rlidx rhsidx =
     gctx = CtxRuleRGroupBy rule rhsidx
     tkey = exprType'' d gctx rhsGroupBy
     tval = exprType'' d ctx rhsAggExpr
-    tinputs = tOpaque "std.Vec" [tVar "I"]
+    tinputs = tOpaque "std::Vec" [tVar "I"]
     tret = varType d (AggregateVar rule rhsidx)
     fname = debugAggregateFunctionName rlidx rhsidx rhsAggFunc
     funcBody = eSeq (eSet (eTuple [eVarDecl "inputs" tinputs, eVarDecl "original_group" $ tOpaque gROUP_TYPE [tkey, tval]])
-                          (eApply "debug.debug_split_group" [eVar "g"]))
+                          (eApply "debug::debug_split_group" [eVar "g"]))
                     (eTuple [eVar "inputs", eApply rhsAggFunc [eVar "original_group"]])
   in Function {funcPos = nopos,
                funcAttrs = [],
