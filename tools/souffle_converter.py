@@ -998,6 +998,9 @@ class SouffleConverter(object):
             elif self.currentType == "Tunsigned":
                 func = "utoi"
             self.currentType = "Tnumber"
+        elif func == "to_string":
+            func = "to_istring"
+            self.currentType = "Tstring"
 
         return func + "(" + ", ".join(argStrings) + ")"
 
