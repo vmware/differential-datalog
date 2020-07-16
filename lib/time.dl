@@ -95,6 +95,9 @@ function to_string(t: Time): string {
 
 /// Convert the string to a time using a default format.  Inverse of time2string.
 extern function string2time(s: string): Result<Time, string>
+function to_time(s: string): Result<Time, string> {
+    string2time(s)
+}
 
 /// Format the Time using the provided string.
 extern function time_format(t: Time, format: string): string
@@ -168,6 +171,9 @@ function to_string(t: Date): string {
 
 /// Convert the string to a date using the default format.
 extern function string2date(s: string): Result<Date, string>
+function to_date(s: string): Result<Date, string> {
+    string2date(s)
+}
 
 typedef Weekday = Monday
                 | Tuesday
@@ -190,6 +196,9 @@ function to_string(d: DateTime): string {
 
 /// Inverse of datetime2string.
 extern function string2datetime(s: string): Result<DateTime, string>
+function to_datetime(s: string): Result<DateTime, string> {
+    string2datetime(s)
+}
 
 /// format the DateTime using the specified format string
 extern function datetime_format(d: DateTime, format: string): string
