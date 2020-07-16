@@ -99,19 +99,6 @@ where
     Ok(DDlogServer::new(program, redirects))
 }
 
-/// Create a transaction multiplexer wrapping the given server.
-fn create_txn_mux<P>(server: DDlogServer<P>) -> Result<TxnMux<Update<DDValue>, String>, String>
-where
-    P: Send + DDlog + 'static,
-{
-    let mut txnmux = TxnMux::new();
-    txnmux
-        .subscribe(Box::new(server))
-        .map_err(|_| "failed to subscribe DDlogServer to TxnMux")?;
-
-    Ok(txnmux)
-}
-
 /// Add as many `TcpSender` objects as required given the provided node
 /// configuration.
 fn add_tcp_senders<P>(
@@ -159,41 +146,6 @@ where
                 }
             }
         })
-}
-
-/// Add a `TcpReceiver` feeding the given server if one is needed given
-/// the provided node configuration.
-fn add_tcp_receiver<P>(
-    txnmux: &mut TxnMux<Update<DDValue>, String>,
-    addr: &SocketAddr,
-    sources: &mut HashMap<
-        Source,
-        (
-            Option<SourceRealization<P::Convert>>,
-            SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>,
-            usize,
-        ),
-    >,
-) -> Result<(), String>
-where
-    P: Send + DDlog + 'static,
-    P::Convert: Send,
-{
-    let receiver =
-        TcpReceiver::new(addr).map_err(|e| format!("failed to create TcpReceiver: {}", e))?;
-    let receiver = Arc::new(Mutex::new(receiver));
-    let accumulator = Arc::new(Mutex::new(DistributingAccumulator::new()));
-
-    match txnmux.add_observable(Box::new(receiver.clone())) {
-        Ok(id) => {
-            let _ = sources.insert(
-                Source::TcpReceiver,
-                (Some(SourceRealization::Node(receiver)), accumulator, id),
-            );
-            Ok(())
-        }
-        Err(_) => Err("failed to register TcpReceiver with TxnMux".to_string()),
-    }
 }
 
 /// Deduce a mapping from file sink to a list of relation IDs for the
@@ -287,9 +239,10 @@ where
     let now = Instant::now();
 
     let mut server = create_server::<P>(&node_cfg)?;
-    let mut sources = HashMap::new();
+    let sources = HashMap::new();
     let mut accumulators = HashMap::new();
     let mut sinks = HashMap::new();
+    let txnmux = TxnMux::new();
 
     add_tcp_senders(
         &mut server,
@@ -300,11 +253,6 @@ where
     )?;
     add_file_sinks(&mut server, node_cfg, &mut accumulators, &mut sinks)?;
 
-    let mut txnmux = create_txn_mux(server)?;
-    match addr {
-        Addr::Ip(addr) => add_tcp_receiver::<P>(&mut txnmux, addr, &mut sources)?,
-    }
-
     let mut realization = Realization {
         _sources: sources,
         _txnmux: txnmux,
@@ -312,8 +260,13 @@ where
         _sinks: sinks,
     };
 
+    realization.subscribe_txnmux(server)?;
+    match addr {
+        //FIXME
+        Addr::Ip(addr) => realization.add_tcp_receiver(addr)?,
+    }
     realization.add_file_sources(node_cfg)?;
-
+    
     println!(
         "realized node configuration locally in {} ms",
         now.elapsed().as_millis()
@@ -377,6 +330,14 @@ where
     P: Send + DDlog + 'static,
     P::Convert: Send + DDlogConvert,
 {
+    /// Subscribe the `TxnMux` of the existing realization to the given server. 
+    pub fn subscribe_txnmux(&mut self, server: DDlogServer<P>) -> Result<(), &str> {
+        self
+            ._txnmux
+            .subscribe(Box::new(server))
+            .map_err(|_| "failed to subscribe DDlogServer to TxnMux")
+    }
+
     /// Remove a source from the existing realization.
     /// Also clear the accumulator and disconnect
     /// from the TxnMux.
@@ -392,8 +353,30 @@ where
         self._txnmux.remove_observable(id);
     }
 
+    /// Add a `TcpReceiver` to the existing realization feeding the given server 
+    /// if one is needed given the provided node configuration.
+    pub fn add_tcp_receiver(&mut self, addr: &SocketAddr) -> Result<(), String> {
+        let receiver =
+            TcpReceiver::new(addr).map_err(|e| format!("failed to create TcpReceiver: {}", e))?;
+        let receiver = Arc::new(Mutex::new(receiver));
+        // FIXME: Eventually need to find a way to connect the accumulator to
+        // the receiver.
+        let accumulator = Arc::new(Mutex::new(DistributingAccumulator::new()));
+
+        match self._txnmux.add_observable(Box::new(receiver.clone())) {
+            Ok(id) => {
+                let _ = self._sources.insert(
+                    Source::TcpReceiver,
+                    (Some(SourceRealization::Node(receiver)), accumulator, id),
+                );
+                Ok(())
+            }
+            Err(_) => Err("failed to register TcpReceiver with TxnMux".to_string()),
+        }
+    }
+
     /// Add a source to an existing realization.
-    pub fn add_source(&mut self, path: &Path) -> Result<(), String> {
+    pub fn add_file_source(&mut self, path: &Path) -> Result<(), String> {
         let mut source = Arc::new(Mutex::new(FileSource::<P::Convert>::new(path)));
 
         let accumulator = Arc::new(Mutex::new(DistributingAccumulator::new()));
@@ -425,7 +408,7 @@ where
     fn add_file_sources(&mut self, node_cfg: &NodeCfg) -> Result<(), String> {
         deduce_sinks_or_sources(node_cfg, false)
             .iter()
-            .try_for_each(|(path, _rel_ids)| self.add_source(path))
+            .try_for_each(|(path, _rel_ids)| self.add_file_source(path))
     }
 }
 
