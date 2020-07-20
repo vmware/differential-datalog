@@ -22,6 +22,9 @@ typedef OutputInspectNot = OutputInspectNot{x: bit<32>, y: bit<32>}
 typedef ParsedChunk = ParsedChunk{data: std::Result<Object,string>}
 typedef RFloatToInt = RFloatToInt{_x: signed<32>}
 typedef RFtoIDummy = RFtoIDummy{x: signed<32>}
+typedef Rletter = Rletter{_l: string}
+typedef Rseq = Rseq{_s: TSeq}
+typedef Rseqs = Rseqs{_s: TSeq}
 typedef SomeInts = SomeInts{x: std::Option<bigint>}
 typedef Strings = Strings{descr: string, str: string}
 typedef SumsOfDoubles = SumsOfDoubles{x: double, y: double, sum: double}
@@ -29,6 +32,8 @@ typedef TArrng1 = TArrng1{f1: bool, f2: bigint}
 typedef TArrng1Arrng2 = TArrng1Arrng2{x: bigint}
 typedef TArrng2 = TArrng2{f1: bool, f2: std::Ref<std::Ref<TArrng1>>}
 typedef TI_R = TI_R{a: std::Set<string>}
+typedef TSeq = TSeq1{x: (string, std::Ref<TSeq>)} |
+               TSeqNone{}
 typedef TestRelation = TestRelation{x: bit<32>, y: bit<32>}
 typedef debug::DDlogOpId = (std::u32, std::u32, std::u32)
 #[size = 8]
@@ -322,14 +327,14 @@ function json::jval_as_number_or (v: json::JsonValue, def: json::JsonNum): json:
 function json::jval_as_object (v: json::JsonValue): std::Option<std::Map<internment::istring,json::JsonValue>>
 {
     match (v) {
-        (json::JsonObject{.o=(var o: std::Map<internment::Intern<string>,json::JsonValue>)}: json::JsonValue) -> (std::Some{.x=o}: std::Option<std::Map<internment::Intern<string>,json::JsonValue>>),
-        (_: json::JsonValue) -> (std::None{}: std::Option<std::Map<internment::Intern<string>,json::JsonValue>>)
+        (json::JsonObject{.o=(var o: std::Map<internment::istring,json::JsonValue>)}: json::JsonValue) -> (std::Some{.x=o}: std::Option<std::Map<internment::istring,json::JsonValue>>),
+        (_: json::JsonValue) -> (std::None{}: std::Option<std::Map<internment::istring,json::JsonValue>>)
     }
 }
 function json::jval_as_object_or (v: json::JsonValue, def: std::Map<internment::istring,json::JsonValue>): std::Map<internment::istring,json::JsonValue>
 {
     match (v) {
-        (json::JsonObject{.o=(var o: std::Map<internment::Intern<string>,json::JsonValue>)}: json::JsonValue) -> o,
+        (json::JsonObject{.o=(var o: std::Map<internment::istring,json::JsonValue>)}: json::JsonValue) -> o,
         (_: json::JsonValue) -> def
     }
 }
@@ -350,14 +355,14 @@ function json::jval_as_string_or (v: json::JsonValue, def: internment::istring):
 function json::jval_get (v: json::JsonValue, attr: internment::istring): std::Option<json::JsonValue>
 {
     match (v) {
-        (json::JsonObject{.o=(var o: std::Map<internment::Intern<string>,json::JsonValue>)}: json::JsonValue) -> (std::map_get(o, attr): std::Option<json::JsonValue>),
+        (json::JsonObject{.o=(var o: std::Map<internment::istring,json::JsonValue>)}: json::JsonValue) -> (std::map_get(o, attr): std::Option<json::JsonValue>),
         (_: json::JsonValue) -> (std::None{}: std::Option<json::JsonValue>)
     }
 }
 function json::jval_get_or (v: json::JsonValue, attr: internment::istring, def: json::JsonValue): json::JsonValue
 {
     match (v) {
-        (json::JsonObject{.o=(var o: std::Map<internment::Intern<string>,json::JsonValue>)}: json::JsonValue) -> (std::unwrap_or((std::map_get(o, attr): std::Option<json::JsonValue>), def): json::JsonValue),
+        (json::JsonObject{.o=(var o: std::Map<internment::istring,json::JsonValue>)}: json::JsonValue) -> (std::unwrap_or((std::map_get(o, attr): std::Option<json::JsonValue>), def): json::JsonValue),
         (_: json::JsonValue) -> def
     }
 }
@@ -872,6 +877,9 @@ output relation OutputInspectNot [OutputInspectNot]
 relation ParsedChunk [ParsedChunk]
 output relation RFloatToInt [RFloatToInt]
 relation RFtoIDummy [RFtoIDummy]
+input relation Rletter [Rletter]
+output relation Rseq [Rseq]
+input relation Rseqs [Rseqs]
 output relation SomeInts [SomeInts]
 output relation Strings [Strings]
 output relation SumsOfDoubles [SumsOfDoubles]
@@ -924,4 +932,5 @@ Fib[(Fib{.x=64'd10, .f=fib(64'd10)}: Fib)].
 Fib[(Fib{.x=64'd20, .f=fib(64'd20)}: Fib)].
 Ack[(Ack{.m=64'd2, .n=64'd1, .a=ack(64'd2, 64'd1)}: Ack)].
 Strings[(Strings{.descr="x={10:bit<12>}, y={10:float}, z={-4:signed<125>}", .str=((((("x=" ++ (std::__builtin_2string((12'd10: bit<12>)): string)) ++ ", y=") ++ (std::__builtin_2string((32'f10.0: float)): string)) ++ ", z=") ++ (std::__builtin_2string((- (128'sd4: signed<128>))): string))}: Strings)].
+Rseq[(Rseq{._s=(TSeq1{.x=(_l, (std::ref_new(_s): std::Ref<TSeq>))}: TSeq)}: Rseq)] :- Rletter[(__rletter0@ (Rletter{._l=(_l: string)}: Rletter))], Rseqs[(__rseqs1@ (Rseqs{._s=(_s: TSeq)}: Rseqs))], Inspect debug::debug_event_join((32'd25, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __rletter0, __rseqs1, (Rseq{._s=(TSeq1{.x=(_l, (std::ref_new(_s): std::Ref<TSeq>))}: TSeq)}: Rseq)).
 

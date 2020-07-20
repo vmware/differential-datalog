@@ -43,6 +43,7 @@ module Language.DifferentialDatalog.Unification(
     teToType,
     teDeref,
     teIsConstant,
+    typeToTExpr,
     Predicate(..),
     solve)
 where
@@ -57,9 +58,28 @@ import Data.Maybe
 import Language.DifferentialDatalog.Attribute
 import Language.DifferentialDatalog.Error
 import Language.DifferentialDatalog.Name
+import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Syntax
+import Language.DifferentialDatalog.Type
 import Language.DifferentialDatalog.Var
+
+-- The unification algorithm may not converge on resursive datatypes.  This
+-- constant bounds maximum recursion depth.
+--
+-- Example: typedef S<x> = Either<T<x>, x>
+--          typedef T<x> = Either<S<x>, x>
+--
+-- 'unify S<'a> T<'a>' -->
+-- 'unify Either<T<'a>, 'a> Either<S<'a>, 'a>' -->
+-- 'unify T<'a> S<'a>' etc. (infinite recursion)
+--
+-- The reason is that the unification solver fails to recognize that 'S' and 'T'
+-- are really the same type.  A proper way to get around this is to extend the
+-- type checking algorithm to identify such congruences (probably using
+-- automata equivalence checking).
+mAX_UNIFICATION_DEPTH :: Int
+mAX_UNIFICATION_DEPTH = 10
 
 type Typing = M.Map TypeVar Type
 
@@ -379,14 +399,53 @@ teToType (TEExtern n as)        = tOpaque n $ map teToType as
 teToType (TETArg n)             = tVar n
 teToType te                     = error $ "Unification.teToType: non-constant type expression " ++ show te
 
+-- | Expand type aliases (similar to Type.typ'').
+teExpandAliases :: (?d::DatalogProgram) => TExpr -> TExpr
+teExpandAliases t'@(TEUser n as) =
+    case tdefType tdef of
+         (Just TStruct{}) -> t'
+         Nothing -> TEExtern n as
+         Just t  -> teExpandAliases $ teSubstTypeArgs (M.fromList $ zip (tdefArgs tdef) as) $ typeToTExpr t
+    where tdef = getType ?d n
+teExpandAliases t = t
+
+teSubstTypeArgs :: M.Map String TExpr -> TExpr -> TExpr
+teSubstTypeArgs subst (TEUser n as)    = TEUser n (map (teSubstTypeArgs subst) as)
+teSubstTypeArgs subst (TEExtern n as)  = TEExtern n (map (teSubstTypeArgs subst) as)
+teSubstTypeArgs subst (TETuple ts)     = TETuple $ map (teSubstTypeArgs subst)  ts
+teSubstTypeArgs subst (TETArg n)       = subst M.! n
+teSubstTypeArgs _     t                = t
+
+-- Convert type to a type expression, replacing type arguments ('A, 'B, ...)
+-- with type constants 'TETArg "A", TETArg "B", ...'.  For example, when
+-- generating type inference in the body of a function, we treat its type
+-- arguments as constants.  Inferred types for variables and expressions inside
+-- the body of the function may depend on these constants.
+typeToTExpr :: (?d::DatalogProgram) => Type -> TExpr
+typeToTExpr TBool{}      = TEBool
+typeToTExpr TInt{}       = TEBigInt
+typeToTExpr TString{}    = TEString
+typeToTExpr TBit{..}     = TEBit $ IConst typeWidth
+typeToTExpr TSigned{..}  = TESigned $ IConst typeWidth
+typeToTExpr TFloat{}     = TEFloat
+typeToTExpr TDouble{}    = TEDouble
+typeToTExpr TTuple{..}   = TETuple $ map (typeToTExpr . typ) typeTupArgs
+typeToTExpr TUser{..}    = TEUser typeName $ map typeToTExpr typeArgs
+typeToTExpr TVar{..}     = TETArg tvarName
+typeToTExpr TOpaque{..}  = TEExtern typeName $ map typeToTExpr typeArgs
+typeToTExpr t@TStruct{}  = error $ "typeToTExpr: unexpected '" ++ show t ++ "'"
+
 -- Unwrap all layers of shared references.
 teDeref :: (?d::DatalogProgram) => TExpr -> TExpr
-teDeref (TEExtern n [t]) | elem n sref_types = teDeref t
+teDeref te = teDeref' $ teExpandAliases te
+
+teDeref' :: (?d::DatalogProgram) => TExpr -> TExpr
+teDeref' (TEExtern n [t]) | elem n sref_types = teDeref t
     where
     sref_types = map name
                  $ filter (tdefGetSharedRefAttr ?d)
                  $ M.elems $ progTypedefs ?d
-teDeref t = t
+teDeref' t = t
 
 -- Check if type expression is a constant and if not, return an explanation.
 -- 'obj' is the object whose type 'te' describes.
@@ -512,6 +571,11 @@ explanationKind :: PredicateExplanation -> ExplanationKind
 explanationKind ExplanationString{}   = Expected
 explanationKind (ExplanationTVar _ k) = k
 explanationKind (ExplanationParent p) = explanationKind (predExplanation p)
+
+explanationDepth :: PredicateExplanation -> Int
+explanationDepth ExplanationString{} = 0
+explanationDepth ExplanationTVar{} = 0
+explanationDepth (ExplanationParent p) = explanationDepth (predExplanation p) + 1
 
 -- Report type resolution conflict in an unsatisfiable predicate (where
 -- left and right side cannot be unified).
@@ -678,39 +742,52 @@ solve' st full | null (solverConstraints st) = do
                             solve' st'' full
                         c -> error $ "Unification.solve: unexpected constraint " ++ show c
 
+
 -- Do _not_ normalize the constraint before unification, as swapping RHS and LHS
 -- sides can confuse the explanation
 unify :: (?d::DatalogProgram, MonadError String me) => SolverState -> Predicate -> me [Constraint]
+unify st (PEq te1 te2 e) = unify' st (PEq (teExpandAliases te1) (teExpandAliases te2) e)
+
+unify' :: (?d::DatalogProgram, MonadError String me) => SolverState -> Predicate -> me [Constraint]
+{- Consider non-recursive cases first. -}
+
 -- Cannot learn anything from a tautology.
-unify _  (PEq te1 te2 _) | te1 == te2 = return []
+unify' _  (PEq te1 te2 _) | te1 == te2 = return []
 -- We found a type variable assignment, add it to constraint set,
 -- unless it's a contradition.
-unify st p@(PEq (TETVar v) te _) | elem v $ teTypeVars te = predReportConflict st p
-                                 | otherwise = return [CPredicate p]
-unify st p@(PEq te (TETVar v) _) | elem v $ teTypeVars te = predReportConflict st p
-                                 | otherwise = return [CPredicate p]
+unify' st p@(PEq (TETVar v) te _) | elem v $ teTypeVars te = predReportConflict st p
+                                  | otherwise = return [CPredicate p]
+unify' st p@(PEq te (TETVar v) _) | elem v $ teTypeVars te = predReportConflict st p
+                                  | otherwise = return [CPredicate p]
 -- We found an integer variable assignment, add it to constraint set.
-unify st p@(PEq (TETuple args1) (TETuple args2) _) = do
+unify' st p@(PEq (TETuple args1) (TETuple args2) _) = do
     when (length args1 /= length args2) $ predReportConflict st p
     concat <$> (mapM (\(te1, te2) -> unify st $ PEq te1 te2 (ExplanationParent p))
                 $ zip args1 args2)
 
-unify st p@(PEq (TEUser n1 args1) (TEUser n2 args2) _) | n1 /= n2 = predReportConflict st p
-                                                       | otherwise = do
+{- Check recursion depth before making recursive calls to unify. -}
+
+unify' st p | explanationDepth (predExplanation p) >= mAX_UNIFICATION_DEPTH = predReportConflict st p
+unify' st p@(PEq (TEUser n1 args1) (TEUser n2 args2) _) | n1 == n2 =
     concat <$> (mapM (\(a1, a2) -> unify st $ PEq a1 a2 (ExplanationParent p)) $ zip args1 args2)
-unify st p@(PEq (TEExtern n1 args1) (TEExtern n2 args2) _) | n1 /= n2 = predReportConflict st p
-                                                           | otherwise =
+unify' st p@(PEq (TEExtern n1 args1) (TEExtern n2 args2) _) | n1 /= n2 = predReportConflict st p
+                                                            | otherwise =
     concat <$> (mapM (\(a1, a2) -> unify st $ PEq a1 a2 (ExplanationParent p)) $ zip args1 args2)
-unify _  p@(PEq (TEBit ie1) (TEBit ie2) _) = return $ cWidthEq ie1 ie2 (ExplanationParent p)
-unify _  p@(PEq (TESigned ie1) (TESigned ie2) _) = return $ cWidthEq ie1 ie2 (ExplanationParent p)
-unify st p = predReportConflict st p
+unify' _  p@(PEq (TEBit ie1) (TEBit ie2) _) = return $ cWidthEq ie1 ie2 (ExplanationParent p)
+unify' _  p@(PEq (TESigned ie1) (TESigned ie2) _) = return $ cWidthEq ie1 ie2 (ExplanationParent p)
+unify' st p@(PEq te1 te2 _) | (te1', te2') /= (te1, te2) = unify st $ PEq te1 te2 (ExplanationParent p)
+                           | otherwise = predReportConflict st p
+    where
+    te1' = teExpandAliases te1
+    te2' = teExpandAliases te2
 
 substitute :: (?d::DatalogProgram, MonadError String me) => TypeVar -> TExpr -> SolverState -> me SolverState
 substitute v te st = do
-    let typing' = M.map (teSubstitute v te) $ solverPartialTyping st
-    let typing'' = M.insert v te typing'
+    let te' = teExpandAliases te
+    let typing' = M.map (teSubstitute v te') $ solverPartialTyping st
+    let typing'' = M.insert v te' typing'
     let st' = st {solverPartialTyping = typing''}
-    constraints' <- concat <$> (mapM (constraintSubstitute st' v te) $ solverConstraints st')
+    constraints' <- concat <$> (mapM (constraintSubstitute st' v te') $ solverConstraints st')
     return $ st' {solverConstraints = constraints'}
 
 teSubstitute :: TypeVar -> TExpr -> TExpr -> TExpr
@@ -743,7 +820,7 @@ constraintSubstitute st v with c@(CLazy obj expand _ _ _) = do
     if obj' /= obj
        then maybe [c{cType = obj'}]
                   (concatMap (constraintSubstituteAll st))
-            <$> expand obj'
+            <$> (expand $ teExpandAliases obj')
        else return [c]
 
 constraintSubstituteAll :: (?d::DatalogProgram) => SolverState -> Constraint -> [Constraint]
@@ -822,5 +899,5 @@ constraintSubstituteIVar st v with c@CLazy{..} = do
     if obj' /= cType
        then maybe [c{cType = obj'}]
                   (concatMap (constraintSubstituteAll st))
-            <$> cExpand obj'
+            <$> (cExpand $ teExpandAliases obj')
        else return [c]

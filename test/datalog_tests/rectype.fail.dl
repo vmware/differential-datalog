@@ -19,3 +19,9 @@ typedef f = undef
 
 // Type with no fields
 typedef t = { }
+
+//---
+
+// Recursive type alias.
+
+typedef TSeq2 = Option<(string, Ref<TSeq2>)>

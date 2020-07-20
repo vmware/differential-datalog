@@ -36,6 +36,7 @@ module Language.DifferentialDatalog.Type(
     WithType(..),
     typeUserTypes,
     typeStaticMemberTypes,
+    typeMemberTypes,
     typeIsPolymorphic,
     exprType,
     exprType',
@@ -483,11 +484,24 @@ typeStaticMemberTypes' :: DatalogProgram -> Type -> [String]
 typeStaticMemberTypes' d TStruct{..}   = concatMap (typeStaticMemberTypes d . typ)
                                                    $ concatMap consArgs typeCons
 typeStaticMemberTypes' d TTuple{..}    = concatMap (typeStaticMemberTypes d . typ) typeTupArgs
-typeStaticMemberTypes' d TUser{..}     | elem typeName dYNAMIC_TYPES = []
+typeStaticMemberTypes' d t@TUser{..}   | elem typeName dYNAMIC_TYPES || isSharedRef d t = []
                                        | otherwise = typeName : concatMap (typeStaticMemberTypes d) typeArgs
 typeStaticMemberTypes' d t@TOpaque{..} | elem typeName dYNAMIC_TYPES || isSharedRef d t = []
                                        | otherwise = concatMap (typeStaticMemberTypes d) typeArgs
 typeStaticMemberTypes' _ _             = []
+
+-- This function is used in validating recursive data types.
+-- It computes the set of user-defined types that type 'T' contains as statically
+-- or dynamically allocated members.
+typeMemberTypes :: DatalogProgram -> Type -> [String]
+typeMemberTypes d t = nub $ typeMemberTypes' d t
+
+typeMemberTypes' :: DatalogProgram -> Type -> [String]
+typeMemberTypes' d TStruct{..} = concatMap (typeMemberTypes d . typ) $ concatMap consArgs typeCons
+typeMemberTypes' d TTuple{..}  = concatMap (typeMemberTypes d . typ) typeTupArgs
+typeMemberTypes' d TUser{..}   = typeName : concatMap (typeMemberTypes d) typeArgs
+typeMemberTypes' d TOpaque{..} = concatMap (typeMemberTypes d) typeArgs
+typeMemberTypes' _ _           = []
 
 -- Expressions whose type cannot be inferred in a bottom up manner must have
 -- explicit type annotations.

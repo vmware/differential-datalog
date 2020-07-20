@@ -90,3 +90,11 @@ commit dump_changes;
 
 dump Fib;
 dump Ack;
+
+start;
+
+insert Rletter("foo"),
+insert Rletter("bar"),
+insert Rseqs(TSeq1{("buzz", TSeqNone)}),
+
+commit dump_changes;

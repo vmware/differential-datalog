@@ -32,7 +32,7 @@ import Data.Maybe
 import Data.List
 import Data.Char
 import qualified Data.Graph.Inductive as G
---import Debug.Trace
+-- import Debug.Trace
 
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.NS
@@ -56,7 +56,13 @@ validate d = do
               $ progConstructors d
     -- Validate typedef's
     mapM_ (typedefValidate d) $ M.elems $ progTypedefs d
-    -- No cyclic dependencies between user-defined types
+    -- No cyclic dependencies between user-defined types.
+
+    -- 1. This check must go first, as it eliminates declarations like
+    --    'typedef t = t' that cause infinite recursion in typ' invoked by
+    --    'checkAcyclicTypes'.
+    checkAcyclicTypeAliases d
+    -- 2. Cycles only via dynamically allocated fields.
     checkAcyclicTypes d
     -- Desugar.  Must be called after typeValidate.
     d' <- progDesugar d
@@ -194,9 +200,34 @@ checkAcyclicTypes d@DatalogProgram{..} = do
                                         $ maybe [] (typeStaticMemberTypes d) $ tdefType tdef)
                                g0 progTypedefs
     maybe (return ())
-          (\cyc -> throwError $ "Mutually recursive types: " ++
-                                (intercalate " -> " $ map snd cyc))
+          (\cyc -> err d (pos $ getType d $ snd $ head cyc) $ "Mutually recursive types: " ++
+                                                              (intercalate " -> " $ map snd cyc))
           $ grCycle gfull
+
+-- Rust is ok with this:
+-- typedef TSeq = TSeq1{x: (string, Ref<TSeq>)}
+--              | TSeqNone
+--
+-- but not this:
+-- typedef TSeq = Option<(string, Ref<TSeq>)>
+-- (the difference is tha the latter is a type alias)
+checkAcyclicTypeAliases :: (MonadError String me) => DatalogProgram -> me ()
+checkAcyclicTypeAliases d@DatalogProgram{..} = do
+    let g0 :: G.Gr String ()
+        g0 = G.insNodes (mapIdx (\(t,_) i -> (i, t)) $ M.toList progTypedefs) G.empty
+        typIdx t = M.findIndex t progTypedefs
+        gfull = M.foldlWithKey (\g tn tdef ->
+                                 foldl' (\g' t' -> G.insEdge (typIdx tn, typIdx t', ()) g') g
+                                        $ maybe [] (typeMemberTypes d) $ tdefType tdef)
+                               g0 progTypedefs
+    mapM_ (\(n, tname) -> maybe (return ())
+                            (\cyc -> err d (pos $ getType d tname) $ "Recursive alias types: " ++
+                                     (intercalate " -> " $ map snd cyc))
+                            $ grCycleThroughNode gfull n)
+          $ filter ((\case
+                      Just TStruct{} -> False
+                      _ -> True) . tdefType . getType d . snd)
+          $ G.labNodes gfull
 
 funcValidateProto :: (MonadError String me) => DatalogProgram -> [Function] -> me ()
 funcValidateProto d fs = do
