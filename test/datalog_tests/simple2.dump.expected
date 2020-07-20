@@ -61,3 +61,6 @@ Fib{.x = 4, .f = 3}
 Fib{.x = 10, .f = 55}
 Fib{.x = 20, .f = 6765}
 Ack{.m = 2, .n = 1, .a = 5}
+Rseq:
+Rseq{._s = TSeq1{.x = ("bar", TSeq1{.x = ("buzz", TSeqNone{})})}}: +1
+Rseq{._s = TSeq1{.x = ("foo", TSeq1{.x = ("buzz", TSeqNone{})})}}: +1

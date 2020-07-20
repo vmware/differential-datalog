@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts, ImplicitParams #-}
 
 module Language.DifferentialDatalog.TypeInference where
 

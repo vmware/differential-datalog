@@ -251,3 +251,15 @@ Ack(2, 1, ack(2,1)).
 output relation Strings(descr: string, str: string)
 
 Strings("x={10:bit<12>}, y={10:float}, z={-4:signed<125>}", "x=${10:bit<12>}, y=${10:float}, z=${-4:signed<128>}").
+
+/*
+ * Issue 649.
+ */
+
+typedef TSeq = TSeq1{x: (string, Ref<TSeq>)}
+             | TSeqNone
+
+input relation Rletter(_l:string)
+input relation Rseqs(_s:TSeq)
+output relation Rseq(_s:TSeq)
+Rseq(TSeq1{(_l, ref_new(_s))}) :- Rletter(_l), Rseqs(_s).

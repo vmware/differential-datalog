@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018 VMware, Inc.
+Copyright (c) 2018-2020 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -51,12 +51,15 @@ mapSnd f (x,y) = (x,f y)
 
 -- Find a cycle in a graph
 grCycle :: Graph gr => gr a b -> Maybe [LNode a]
-grCycle g = case mapMaybe nodeCycle (nodes g) of
+grCycle g = case mapMaybe (grCycleThroughNode g) (nodes g) of
                  []  -> Nothing
                  c:_ -> Just c
-  where
-    nodeCycle n = listToMaybe $ map (\s -> map (\i -> (i, fromJust $ lab g i)) (n:(esp s n g))) $
-                                filter (\s -> elem n (reachable s g)) $ suc g n
+
+-- Find a cycle through a specified node.
+grCycleThroughNode :: Graph gr => gr a b -> Node -> Maybe [LNode a]
+grCycleThroughNode g n =
+    listToMaybe $ map (\s -> map (\i -> (i, fromJust $ lab g i)) (n:(esp s n g))) $
+                  filter (\s -> elem n (reachable s g)) $ suc g n
 
 -- Group graph nodes; aggregate edges
 grGroup :: (DynGraph gr) => gr a b -> [[Node]] -> gr [Node] b

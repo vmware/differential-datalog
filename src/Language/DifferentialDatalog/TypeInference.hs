@@ -32,7 +32,8 @@ Description: Type inference engine: generates type constraints and solves them u
 module Language.DifferentialDatalog.TypeInference(
     inferTypes,
     inferTypeArgs,
-    unifyTypes
+    unifyTypes,
+    typeToTExpr
 )
 where
 
@@ -192,40 +193,24 @@ teTuple :: [TExpr] -> TExpr
 teTuple [t] = t
 teTuple ts  = TETuple ts
 
--- Convert type to a type expression, replacing type arguments ('A, 'B, ...)
--- with type constants 'TETArg "A", TETArg "B", ...'.  For example, when
--- generating type inference in the body of a function, we treat its type
--- arguments as constants.  Inferred types for variables and expressions inside
--- the body of the function may depend on these constants.
-typeToTExpr :: (?d::DatalogProgram) => Type -> TExpr
-typeToTExpr t = evalState (typeToTExpr_ Nothing t) emptyGenerator
-
 -- Convert type to a type expression, replacing type arguments with fresh
 -- variables.  The 'de' argument is used to generate unique type variable
 -- identifiers.  For example, when doing type inference for a function call
 -- expression, we introduce fresh type variables for type arguments of the
 -- function.
 typeToTExpr' :: (?d::DatalogProgram) => DDExpr -> Type -> GeneratorMonad TExpr
-typeToTExpr' de t = typeToTExpr_ (Just de) t
-
-typeToTExpr_ :: (?d::DatalogProgram) => Maybe DDExpr -> Type -> GeneratorMonad TExpr
-typeToTExpr_ mde t = typeToTExpr__ mde (typ'' ?d t)
-
-typeToTExpr__ :: (?d::DatalogProgram) => Maybe DDExpr -> Type -> GeneratorMonad TExpr
-typeToTExpr__ _         TBool{}      = return TEBool
-typeToTExpr__ _         TInt{}       = return TEBigInt
-typeToTExpr__ _         TString{}    = return TEString
-typeToTExpr__ _         TBit{..}     = return $ TEBit $ IConst typeWidth
-typeToTExpr__ _         TSigned{..}  = return $ TESigned $ IConst typeWidth
-typeToTExpr__ _         TFloat{}     = return TEFloat
-typeToTExpr__ _         TDouble{}    = return TEDouble
-typeToTExpr__ mde       TTuple{..}   = teTuple <$> mapM (typeToTExpr_ mde . typ) typeTupArgs
-typeToTExpr__ mde       TUser{..}    = TEUser typeName <$> mapM (typeToTExpr_ mde) typeArgs
-typeToTExpr__ Nothing   TVar{..}     = return $ TETArg tvarName
-typeToTExpr__ (Just de) TVar{..}     = teTVarAux de tvarName
-typeToTExpr__ mde       TOpaque{..}  = TEExtern typeName <$> mapM (typeToTExpr_ mde) typeArgs
-typeToTExpr__ _         t@TStruct{}  = error $ "typeToTExpr__: unexpected '" ++ show t ++ "'"
-
+typeToTExpr' _  TBool{}      = return TEBool
+typeToTExpr' _  TInt{}       = return TEBigInt
+typeToTExpr' _  TString{}    = return TEString
+typeToTExpr' _  TBit{..}     = return $ TEBit $ IConst typeWidth
+typeToTExpr' _  TSigned{..}  = return $ TESigned $ IConst typeWidth
+typeToTExpr' _  TFloat{}     = return TEFloat
+typeToTExpr' _  TDouble{}    = return TEDouble
+typeToTExpr' de TTuple{..}   = teTuple <$> mapM (typeToTExpr' de . typ) typeTupArgs
+typeToTExpr' de TUser{..}    = TEUser typeName <$> mapM (typeToTExpr' de) typeArgs
+typeToTExpr' de TVar{..}     = teTVarAux de tvarName
+typeToTExpr' de TOpaque{..}  = TEExtern typeName <$> mapM (typeToTExpr' de) typeArgs
+typeToTExpr' _  t@TStruct{}  = error $ "typeToTExpr': unexpected '" ++ show t ++ "'"
 
 -- | Matches function parameter types against concrete argument types, e.g.,
 -- given
