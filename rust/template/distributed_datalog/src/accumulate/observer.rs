@@ -58,6 +58,15 @@ where
         trace!("AccumulatingObserver({})::get_current_state()", self.id);
         self.data.clone()
     }
+
+    pub fn clear_and_return_state(&mut self) -> HashMap<RelId, HashSet<V>> {
+        trace!(
+            "AccumulatingObserver({})::clear_and_return_state()",
+            self.id
+        );
+        let _ = self.buffer.take();
+        self.data.drain().collect()
+    }
 }
 
 impl<T, V, E> Observable<T, E> for AccumulatingObserver<T, V, E>
