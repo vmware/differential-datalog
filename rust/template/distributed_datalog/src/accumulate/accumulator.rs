@@ -45,11 +45,13 @@ where
     /// Returns a new Observable that can be used to listen to the outputs of the Accumulator.
     fn create_observable(&mut self) -> UpdatesObservable<Update<V>, E>;
 
-    /// Return the current state of the data.
+    /// Returns the current state of the data.
     fn get_current_state(&self) -> HashMap<RelId, HashSet<V>>;
 
+    /// Clear and return the current state of the data.
+    fn clear_and_return_state(&mut self) -> HashMap<RelId, HashSet<V>>;
+
     /// Sends a deletion update to all observers, thus clearing the accumulated state.
-    /// Effectively clears the accumulator.
     fn clear(&mut self);
 }
 
@@ -102,13 +104,19 @@ where
         trace!("DistributingAccumulator({})::get_current_state()", self.id);
         self.observer.get_current_state()
     }
+    fn clear_and_return_state(&mut self) -> HashMap<RelId, HashSet<V>> {
+        trace!(
+            "DistributingAccumulator({})::clear_and_return_state()",
+            self.id
+        );
+        self.observer.clear_and_return_state()
+    }
 
     fn clear(&mut self) {
         trace!("DistributingAccumulator({})::clear", self.id);
-        let mut distributor = self.distributor.lock().unwrap();
 
         let mut delete_updates = self
-            .get_current_state()
+            .clear_and_return_state()
             .into_iter()
             .flat_map(|(relid, vs)| {
                 vs.into_iter()
@@ -116,6 +124,8 @@ where
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();
+
+        let mut distributor = self.distributor.lock().unwrap();
 
         if !delete_updates.is_empty() {
             let updates = delete_updates.drain(..);
