@@ -263,3 +263,62 @@ input relation Rletter(_l:string)
 input relation Rseqs(_s:TSeq)
 output relation Rseq(_s:TSeq)
 Rseq(TSeq1{(_l, ref_new(_s))}) :- Rletter(_l), Rseqs(_s).
+
+/*
+ * ?-operator
+ */
+
+function try1(name: string): Option<(string, string)> {
+    var components = name.split(" ");
+    var first_name = components.nth(0)?;
+    var last_name = components.nth(1)?;
+    Some{(first_name, last_name)}
+}
+
+// makes sure it works with type aliases.
+typedef Opt<'X> = Option<'X>
+typedef SResult<'V> = Result<'V, string>
+
+output relation Try1(description: string, result: Opt<(string, string)>)
+
+Try1("Isaac Newton", try1("Isaac Newton")).
+Try1("", try1("")).
+Try1("Albert_Einstein", try1("Albert_Einstein")).
+
+function try2(name: string): Result<(string, string), string> {
+    var components = name.split(" ");
+    var first_name = match (components.nth(0)) {
+        None -> Err{"No first name"},
+        Some{n} -> Ok{n}
+    }?;
+    var last_name = match (components.nth(1)) {
+        None -> Err{"No last name"},
+        Some{n} -> Ok{n}
+    }?;
+    Ok{(first_name, last_name)}
+}
+
+output relation Try2(description: string, result: SResult<(string, string)>)
+
+Try2("Isaac Newton", try2("Isaac Newton")).
+Try2("", try2("")).
+Try2("Albert_Einstein", try2("Albert_Einstein")).
+
+function try3(name: string): Opt<(string, string)> {
+    var components = name.split(" ");
+    var first_name = match (components.nth(0)) {
+        None -> Err{"No first name"},
+        Some{n} -> Ok{n}
+    }?;
+    var last_name = match (components.nth(1)) {
+        None -> Err{"No last name"},
+        Some{n} -> Ok{n}
+    }?;
+    Some{(first_name, last_name)}
+}
+
+output relation Try3(description: string, result: Opt<(string, string)>)
+
+Try3("Isaac Newton", try3("Isaac Newton")).
+Try3("", try3("")).
+Try3("Albert_Einstein", try3("Albert_Einstein")).

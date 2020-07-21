@@ -1683,6 +1683,109 @@ function pkt_ip4(pkt: eth_pkt_t): Option<ip4_pkt_t> {
 }
 ```
 
+### `Result<>` type and error handling
+
+In addition to the `Option` type introduced above, the standard library defines
+another type that describes the result of a computation that can either succeed
+and produce a value of type `'V` or fail and return an error of type `'E`:
+
+```
+typedef Result<'V,'E> = Ok{res: 'V}
+                      | Err{err: 'E}
+```
+
+We recommend that all functions that can fail return either `Result` or
+`Option`.  The DDlog type system protects the programmer from accidentally
+ignoring an error: before accessing a value returned by a function, the program
+must pattern match it against `Some` and `None` (or `Ok` and `Err`), and handle
+the error case explicitly, e.g.:
+
+```
+/* Lookup item in the inventory and return its price in cents. */
+function get_price_in_cents(inventory: Map<string, string>, item: string): Option<u64> {
+    match (inventory.get(item)) {
+        None -> None,
+        Some{price} -> match (parse_dec_u64(price)) {
+                           None    -> None,
+                           Some{p} -> Some{100 * p}
+                       }
+    }
+}
+```
+
+As a result, bugs like NULL pointer dereferences and unhandled exceptions are
+impossible in DDlog.  On the flip side, explicitly checking the result of every
+function call can be burdensome.  DDlog offers two mechanisms for handling
+errors in a concise and safe manner:
+
+1. `unwrap_` functions
+
+1. The `?` operator
+
+
+`unwrap_` functions, defined in the standard library, unwrap the `Option` or
+`Result` type, returning their inner value on success or a default value on
+error:
+
+```
+/* Returns the contained `Some` value or a provided default. */
+function unwrap_or(x: Option<'A>, def: 'A): 'A
+
+/* Returns the default value for the given type if `opt` is `None`. */
+function unwrap_or_default(opt: Option<'A>): 'A
+
+/* Returns the contained Ok value or a provided default. */
+function unwrap_or(res: Result<'V,'E>, def: 'V): 'V 
+
+/* Returns the default value for the given type if `res` is an error. */
+function unwrap_or_default(res: Result<'V,'E>): 'V
+```
+
+`unwrap_or_default()` returns the default value of its return type on error:
+`0` for numeric types, `false` for Booleans, `""` for strings, etc.  Default
+values of structs and tuples are constructed recursively out of default values
+of their fields.
+
+Here is a version of `get_price_in_cents()` that uses the `upwrap_` functions
+to handle errors by replacing missing or invalid values with `0`:
+
+```
+/* As above, but returns 0 if the item is missing from the inventory or the price
+ * string is invalid. */
+function get_price_in_cents_unwrap(inventory: Map<string, string>, item: string): u64 {
+    inventory.get(item).unwrap_or("0").parse_dec_u64().unwrap_or(0) * 100
+}
+```
+
+Often, however, we want to send the error up the call stack instead of
+suppressing it.  This can be achieved using the `?` operator, placed after an
+expression that returns `Option<>` or `Result<>` inside a function scope.
+Similar to `unwrap_`, it extracts the inner value on success.  On error, it
+returns the error value (or `None`) from the function.  The `?` operator can
+be used to implement `get_price_in_cents` as a one-liner:
+
+```
+/* get_price_in_cents written more concisely with the help of the `?` operator. */
+function get_price_in_cents_(inventory: Map<string, string>, item: string): Option<u64> {
+    Some{ inventory.get(item)?.parse_dec_u64()? * 100 }
+}
+```
+
+The `?` operator can only be used inside a function whose return type is
+`Option` or `Result`.  The following table summarizes the behvaior of `?`
+for various combinations of expression type and function return type.
+
+| Function return type |     Expression type    | Expression value |  ? behaves as  |
+|:--------------------:|:----------------------:|------------------|:--------------:|
+| Option<T1>           | Option<T2>             | None             |   return None  |
+| Option<T1>           | Option<T2>             | Some{x}          |        x       |
+| Option<T1>           | Result<V,E>            | Err{e}           |   return None  |
+| Option<T1>           | Result<V,E>            | Ok{v}            |        v       |
+| Result<X,E>          | Result<Y,E>            | Err{e}           | return Err{e}  |
+| Result<X,E>          | Result<Y,E>            | Ok{v}            |        v       |
+| Result<V,E>          | Option<T>              |                  |     invalid    |
+| Result<X,E1>         | Result<Y,E2>, E2 != E1 |                  |     invalid    |
+
 ### Extern types
 
 Similar to extern functions, extern types are types implemented outside of

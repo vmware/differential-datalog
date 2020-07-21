@@ -72,3 +72,14 @@ output relation InspectFail(x: string)
 InspectFail(x) :-
     InspectInput(x),
     Inspect 1 + 2.
+
+//---
+
+// Use ?-operator in a rule
+
+input relation Input(x: string)
+output relation Try(x: string)
+
+Try(z) :- Input(x),
+          var y = x.split(" "),
+          var z = y.nth(5)?.

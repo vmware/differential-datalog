@@ -18,6 +18,7 @@ typedef Ints = Ints{x: bigint}
 typedef ModifyMe = ModifyMe{x: string, y: std::s128}
 typedef Object = Object{field: std::u128}
 typedef Objects = Objects{chunk: Object}
+typedef Opt<'X> = std::Option<'X>
 typedef OutputInspectNot = OutputInspectNot{x: bit<32>, y: bit<32>}
 typedef ParsedChunk = ParsedChunk{data: std::Result<Object,string>}
 typedef RFloatToInt = RFloatToInt{_x: signed<32>}
@@ -25,6 +26,7 @@ typedef RFtoIDummy = RFtoIDummy{x: signed<32>}
 typedef Rletter = Rletter{_l: string}
 typedef Rseq = Rseq{_s: TSeq}
 typedef Rseqs = Rseqs{_s: TSeq}
+typedef SResult<'V> = std::Result<'V,string>
 typedef SomeInts = SomeInts{x: std::Option<bigint>}
 typedef Strings = Strings{descr: string, str: string}
 typedef SumsOfDoubles = SumsOfDoubles{x: double, y: double, sum: double}
@@ -35,6 +37,9 @@ typedef TI_R = TI_R{a: std::Set<string>}
 typedef TSeq = TSeq1{x: (string, std::Ref<TSeq>)} |
                TSeqNone{}
 typedef TestRelation = TestRelation{x: bit<32>, y: bit<32>}
+typedef Try1 = Try1{description: string, result: Opt<(string, string)>}
+typedef Try2 = Try2{description: string, result: SResult<(string, string)>}
+typedef Try3 = Try3{description: string, result: Opt<(string, string)>}
 typedef debug::DDlogOpId = (std::u32, std::u32, std::u32)
 #[size = 8]
 #[shared_ref = true]
@@ -832,6 +837,57 @@ function ti_f (value: std::Option<string>): std::Option<(string, string)>
          (_: (std::Option<string>, std::Option<string>)) -> (std::None{}: std::Option<(string, string)>)
      })
 }
+function try1 (name: string): std::Option<(string, string)>
+{
+    ((var components: std::Vec<string>) = std::split(name, " ");
+     ((var first_name: string) = match ((std::nth(components, 64'd0): std::Option<string>)) {
+                                     (std::None{}: std::Option<string>) -> ((return (std::None{}: std::Option<(string, string)>)): string),
+                                     (std::Some{.x=(var __x: string)}: std::Option<string>) -> __x
+                                 };
+      ((var last_name: string) = match ((std::nth(components, 64'd1): std::Option<string>)) {
+                                     (std::None{}: std::Option<string>) -> ((return (std::None{}: std::Option<(string, string)>)): string),
+                                     (std::Some{.x=(var __x: string)}: std::Option<string>) -> __x
+                                 };
+       (std::Some{.x=(first_name, last_name)}: std::Option<(string, string)>))))
+}
+function try2 (name: string): std::Result<(string, string),string>
+{
+    ((var components: std::Vec<string>) = std::split(name, " ");
+     ((var first_name: string) = match (match ((std::nth(components, 64'd0): std::Option<string>)) {
+                                            (std::None{}: std::Option<string>) -> (std::Err{.err="No first name"}: std::Result<string,string>),
+                                            (std::Some{.x=(var n: string)}: std::Option<string>) -> (std::Ok{.res=n}: std::Result<string,string>)
+                                        }) {
+                                     (std::Err{.err=(var __e: string)}: std::Result<string,string>) -> ((return (std::Err{.err=__e}: std::Result<(string, string),string>)): string),
+                                     (std::Ok{.res=(var __x: string)}: std::Result<string,string>) -> __x
+                                 };
+      ((var last_name: string) = match (match ((std::nth(components, 64'd1): std::Option<string>)) {
+                                            (std::None{}: std::Option<string>) -> (std::Err{.err="No last name"}: std::Result<string,string>),
+                                            (std::Some{.x=(var n: string)}: std::Option<string>) -> (std::Ok{.res=n}: std::Result<string,string>)
+                                        }) {
+                                     (std::Err{.err=(var __e: string)}: std::Result<string,string>) -> ((return (std::Err{.err=__e}: std::Result<(string, string),string>)): string),
+                                     (std::Ok{.res=(var __x: string)}: std::Result<string,string>) -> __x
+                                 };
+       (std::Ok{.res=(first_name, last_name)}: std::Result<(string, string),string>))))
+}
+function try3 (name: string): Opt<(string, string)>
+{
+    ((var components: std::Vec<string>) = std::split(name, " ");
+     ((var first_name: string) = match (match ((std::nth(components, 64'd0): std::Option<string>)) {
+                                            (std::None{}: std::Option<string>) -> (std::Err{.err="No first name"}: std::Result<string,string>),
+                                            (std::Some{.x=(var n: string)}: std::Option<string>) -> (std::Ok{.res=n}: std::Result<string,string>)
+                                        }) {
+                                     (std::Err{.err=(_: string)}: std::Result<string,string>) -> ((return (std::None{}: Opt<(string, string)>)): string),
+                                     (std::Ok{.res=(var __x: string)}: std::Result<string,string>) -> __x
+                                 };
+      ((var last_name: string) = match (match ((std::nth(components, 64'd1): std::Option<string>)) {
+                                            (std::None{}: std::Option<string>) -> (std::Err{.err="No last name"}: std::Result<string,string>),
+                                            (std::Some{.x=(var n: string)}: std::Option<string>) -> (std::Ok{.res=n}: std::Result<string,string>)
+                                        }) {
+                                     (std::Err{.err=(_: string)}: std::Result<string,string>) -> ((return (std::None{}: Opt<(string, string)>)): string),
+                                     (std::Ok{.res=(var __x: string)}: std::Result<string,string>) -> __x
+                                 };
+       (std::Some{.x=(first_name, last_name)}: std::Option<(string, string)>))))
+}
 function weird_zero (x: 'A): std::usize
 {
     ((var empty_vec: std::Vec<'A>) = (std::vec_empty(): std::Vec<'A>);
@@ -888,6 +944,9 @@ output relation TArrng1Arrng2 [TArrng1Arrng2]
 input relation TArrng2 [(std::Ref<TArrng2>, bigint)]
 relation TI_R [TI_R]
 input relation TestRelation [TestRelation]
+output relation Try1 [Try1]
+output relation Try2 [Try2]
+output relation Try3 [Try3]
 Arrng1Arrng2[(Arrng1Arrng2{.x=x.f2.f2}: Arrng1Arrng2)] :- Arrng1[(__arrng10@ (Arrng1{.f1=(f1: std::Ref<std::Ref<std::Ref<TArrng2>>>), .f2=(f2: bigint)}: Arrng1))], Arrng2[(__arrng21@ (Arrng2{.f1=(x: std::Ref<TArrng2>), .f2=f1.f2.f2, .f3=(_: bool)}: Arrng2))], Inspect debug::debug_event_join((32'd0, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __arrng10, __arrng21, (Arrng1Arrng2{.x=x.f2.f2}: Arrng1Arrng2)).
 Arrng1Arrng2_2[(Arrng1Arrng2_2{.x=x.f2.f2}: Arrng1Arrng2_2)] :- Arrng1[(__arrng10@ (Arrng1{.f1=(f1: std::Ref<std::Ref<std::Ref<TArrng2>>>), .f2=(f2: bigint)}: Arrng1))], Arrng2[(__arrng21@ (Arrng2{.f1=(x: std::Ref<TArrng2>), .f2=f1.f2.f2, .f3=f1.f2.f1}: Arrng2))], Inspect debug::debug_event_join((32'd1, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __arrng10, __arrng21, (Arrng1Arrng2_2{.x=x.f2.f2}: Arrng1Arrng2_2)).
 TArrng1Arrng2[(TArrng1Arrng2{.x=x.f2.f2}: TArrng1Arrng2)] :- TArrng1[(__tarrng10@ (t: (std::Ref<std::Ref<std::Ref<TArrng2>>>, bigint)))], TArrng2[(__tarrng21@ ((x: std::Ref<TArrng2>), t.0.f2.f2))], Inspect debug::debug_event_join((32'd2, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __tarrng10, __tarrng21, (TArrng1Arrng2{.x=x.f2.f2}: TArrng1Arrng2)).
@@ -933,4 +992,13 @@ Fib[(Fib{.x=64'd20, .f=fib(64'd20)}: Fib)].
 Ack[(Ack{.m=64'd2, .n=64'd1, .a=ack(64'd2, 64'd1)}: Ack)].
 Strings[(Strings{.descr="x={10:bit<12>}, y={10:float}, z={-4:signed<125>}", .str=((((("x=" ++ (std::__builtin_2string((12'd10: bit<12>)): string)) ++ ", y=") ++ (std::__builtin_2string((32'f10.0: float)): string)) ++ ", z=") ++ (std::__builtin_2string((- (128'sd4: signed<128>))): string))}: Strings)].
 Rseq[(Rseq{._s=(TSeq1{.x=(_l, (std::ref_new(_s): std::Ref<TSeq>))}: TSeq)}: Rseq)] :- Rletter[(__rletter0@ (Rletter{._l=(_l: string)}: Rletter))], Rseqs[(__rseqs1@ (Rseqs{._s=(_s: TSeq)}: Rseqs))], Inspect debug::debug_event_join((32'd25, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __rletter0, __rseqs1, (Rseq{._s=(TSeq1{.x=(_l, (std::ref_new(_s): std::Ref<TSeq>))}: TSeq)}: Rseq)).
+Try1[(Try1{.description="Isaac Newton", .result=try1("Isaac Newton")}: Try1)].
+Try1[(Try1{.description="", .result=try1("")}: Try1)].
+Try1[(Try1{.description="Albert_Einstein", .result=try1("Albert_Einstein")}: Try1)].
+Try2[(Try2{.description="Isaac Newton", .result=try2("Isaac Newton")}: Try2)].
+Try2[(Try2{.description="", .result=try2("")}: Try2)].
+Try2[(Try2{.description="Albert_Einstein", .result=try2("Albert_Einstein")}: Try2)].
+Try3[(Try3{.description="Isaac Newton", .result=try3("Isaac Newton")}: Try3)].
+Try3[(Try3{.description="", .result=try3("")}: Try3)].
+Try3[(Try3{.description="Albert_Einstein", .result=try3("Albert_Einstein")}: Try3)].
 

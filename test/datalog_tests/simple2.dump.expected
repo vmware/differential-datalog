@@ -14,6 +14,18 @@ RFloatToInt:
 RFloatToInt{._x = -333}: +1
 Strings:
 Strings{.descr = "x={10:bit<12>}, y={10:float}, z={-4:signed<125>}", .str = "x=10, y=10, z=-4"}: +1
+Try1:
+Try1{.description = "", .result = std::None{}}: +1
+Try1{.description = "Albert_Einstein", .result = std::None{}}: +1
+Try1{.description = "Isaac Newton", .result = std::Some{.x = ("Isaac", "Newton")}}: +1
+Try2:
+Try2{.description = "", .result = std::Err{.err = "No last name"}}: +1
+Try2{.description = "Albert_Einstein", .result = std::Err{.err = "No last name"}}: +1
+Try2{.description = "Isaac Newton", .result = std::Ok{.res = ("Isaac", "Newton")}}: +1
+Try3:
+Try3{.description = "", .result = std::None{}}: +1
+Try3{.description = "Albert_Einstein", .result = std::None{}}: +1
+Try3{.description = "Isaac Newton", .result = std::Some{.x = ("Isaac", "Newton")}}: +1
 RFloatToInt{._x = -333}
 Arrng1Arrng2:
 Arrng1Arrng2{.x = 5}: +1

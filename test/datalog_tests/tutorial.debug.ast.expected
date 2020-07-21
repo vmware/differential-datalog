@@ -48,6 +48,7 @@ typedef Phrases = Phrases{phrase: string}
 typedef Pow2 = Pow2{p: string}
 typedef Prefix = Prefix{vec: std::Vec<string>}
 typedef Price = Price{item: string, vendor: string, price: bit<64>}
+typedef PriceInCents = PriceInCents{item: string, price1: std::Option<std::u64>, price2: std::u64, price3: std::Option<std::u64>}
 typedef Product = Product{x: bit<16>, y: bit<16>, prod: bit<16>}
 typedef SanitizedEndpoint = SanitizedEndpoint{ep: string}
 typedef School = School{name: string, address: string}
@@ -143,17 +144,17 @@ function __debug_20_2_best_vendor_string (g: std::Group<string,('I, (string, bit
     (((var inputs: std::Vec<'I>), (var original_group: std::Group<string,(string, bit<64>)>)) = debug::debug_split_group(g);
      (inputs, best_vendor_string(original_group)))
 }
-function __debug_31_1_std::group_max (g: std::Group<string,('I, bit<16>)>): (std::Vec<'I>, bit<16>)
+function __debug_33_1_std::group_max (g: std::Group<string,('I, bit<16>)>): (std::Vec<'I>, bit<16>)
 {
     (((var inputs: std::Vec<'I>), (var original_group: std::Group<string,bit<16>>)) = debug::debug_split_group(g);
      (inputs, std::group_max(original_group)))
 }
-function __debug_32_1_std::group_max (g: std::Group<string,('I, bit<16>)>): (std::Vec<'I>, bit<16>)
+function __debug_34_1_std::group_max (g: std::Group<string,('I, bit<16>)>): (std::Vec<'I>, bit<16>)
 {
     (((var inputs: std::Vec<'I>), (var original_group: std::Group<string,bit<16>>)) = debug::debug_split_group(g);
      (inputs, std::group_max(original_group)))
 }
-function __debug_33_1_std::group_to_vec (g: std::Group<internment::Intern<string>,('I, bit<64>)>): (std::Vec<'I>, std::Vec<bit<64>>)
+function __debug_35_1_std::group_to_vec (g: std::Group<internment::Intern<string>,('I, bit<64>)>): (std::Vec<'I>, std::Vec<bit<64>>)
 {
     (((var inputs: std::Vec<'I>), (var original_group: std::Group<internment::Intern<string>,bit<64>>)) = debug::debug_split_group(g);
      (inputs, std::group_to_vec(original_group)))
@@ -218,6 +219,30 @@ function evens (vec: std::Vec<bigint>): std::Vec<bigint>
            std::vec_push(res, x))
       };
       res))
+}
+function get_price_in_cents (inventory: std::Map<string,string>, item: string): std::Option<std::u64>
+{
+    match ((std::get(inventory, item): std::Option<string>)) {
+        (std::None{}: std::Option<string>) -> (std::None{}: std::Option<bit<64>>),
+        (std::Some{.x=(var price: string)}: std::Option<string>) -> match (std::parse_dec_u64(price)) {
+                                                                        (std::None{}: std::Option<bit<64>>) -> (std::None{}: std::Option<bit<64>>),
+                                                                        (std::Some{.x=(var p: bit<64>)}: std::Option<bit<64>>) -> (std::Some{.x=(64'd100 * p)}: std::Option<bit<64>>)
+                                                                    }
+    }
+}
+function get_price_in_cents_ (inventory: std::Map<string,string>, item: string): std::Option<std::u64>
+{
+    (std::Some{.x=(match (std::parse_dec_u64(match ((std::get(inventory, item): std::Option<string>)) {
+                                                 (std::None{}: std::Option<string>) -> ((return (std::None{}: std::Option<std::u64>)): string),
+                                                 (std::Some{.x=(var __x: string)}: std::Option<string>) -> __x
+                                             })) {
+                       (std::None{}: std::Option<bit<64>>) -> ((return (std::None{}: std::Option<std::u64>)): bit<64>),
+                       (std::Some{.x=(var __x: bit<64>)}: std::Option<bit<64>>) -> __x
+                   } * 64'd100)}: std::Option<bit<64>>)
+}
+function get_price_in_cents_unwrap (inventory: std::Map<string,string>, item: string): std::u64
+{
+    ((std::unwrap_or(std::parse_dec_u64((std::unwrap_or_default((std::get(inventory, item): std::Option<string>)): string)), 64'd0): bit<64>) * 64'd100)
 }
 #[has_side_effects = true]
 extern function inspect_log::log (filename: string, msg: string): ()
@@ -288,6 +313,10 @@ function internment::to_uppercase (s: internment::istring): string
 function internment::trim (s: internment::istring): string
 {
     internment::istring_trim(s)
+}
+function inventory (): std::Map<string,string>
+{
+    (std::insert_imm((std::map_singleton("Falcon 9", "62000000"): std::Map<string,string>), "Soyuz", "180000000"): std::Map<string,string>)
 }
 function ip_from_bytes (b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>): ip_addr_t
 {
@@ -867,6 +896,7 @@ output relation Phrases [Phrases]
 output relation Pow2 [Pow2]
 output relation Prefix [Prefix]
 input relation Price [Price]
+output relation PriceInCents [PriceInCents]
 output relation Product [Product]
 output relation SanitizedEndpoint [SanitizedEndpoint]
 input relation School [std::Ref<School>]
@@ -915,19 +945,21 @@ UDPDstPort2[(UDPDstPort2{.port=port}: UDPDstPort2)] :- Packet[(__packet0@ (Packe
 IntranetHost[(IntranetHost{.addr=addr}: IntranetHost)] :- KnownHost[(__knownhost0@ (KnownHost{.addr=(addr: bit<32>)}: KnownHost))], ((var b3: bit<8>), (var b2: bit<8>), (_: bit<8>), (_: bit<8>)) = addr_to_tuple(addr), (b3 == 8'd192), (b2 == 8'd168), Inspect debug::debug_event((32'd26, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (addr, b2), (IntranetHost{.addr=addr}: IntranetHost)).
 IntranetHost2[(IntranetHost2{.addr=addr}: IntranetHost2)] :- KnownHost[(__knownhost0@ (KnownHost{.addr=(addr: bit<32>)}: KnownHost))], (8'd192, 8'd168, (_: bit<8>), (_: bit<8>)) = addr_to_tuple(addr), Inspect debug::debug_event((32'd27, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __knownhost0, (IntranetHost2{.addr=addr}: IntranetHost2)).
 IntranetHost3[(IntranetHost3{.addr=addr}: IntranetHost3)] :- KnownHost[(__knownhost0@ (KnownHost{.addr=(addr: bit<32>)}: KnownHost))], (var t: (bit<8>, bit<8>, bit<8>, bit<8>)) = addr_to_tuple(addr), (t.0 == 8'd192), (t.1 == 8'd168), Inspect debug::debug_event((32'd28, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (addr, t), (IntranetHost3{.addr=addr}: IntranetHost3)).
-TargetAudience[person] :- Person[(__person0@ (person: Person))], is_target_audience(person), Inspect debug::debug_event((32'd29, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __person0, person).
-StudentInfo[(StudentInfo{.student=student, .school=school}: StudentInfo)] :- Student[(student@ ((&(Student{.id=(_: bit<64>), .name=(_: string), .school=(school_name: string), .sat_score=(_: bit<16>)}: Student)): std::Ref<Student>))], School[(school@ ((&(School{.name=(school_name: string), .address=(_: string)}: School)): std::Ref<School>))], Inspect debug::debug_event_join((32'd30, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, student, school, (StudentInfo{.student=student, .school=school}: StudentInfo)).
-TopScore[(TopScore{.school=school, .top_score=top_score}: TopScore)] :- StudentInfo[(__studentinfo0@ (StudentInfo{.student=((&(Student{.id=(_: bit<64>), .name=(_: string), .school=(_: string), .sat_score=(sat: bit<16>)}: Student)): std::Ref<Student>), .school=((&(School{.name=(school: string), .address=(_: string)}: School)): std::Ref<School>)}: StudentInfo))], var __inputs_top_score = Aggregate(school, __debug_31_1_std::group_max((__studentinfo0, sat))), Inspect debug::debug_event((32'd31, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_top_score.0, (__inputs_top_score, school)), (var top_score: bit<16>) = __inputs_top_score.1, Inspect debug::debug_event((32'd31, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_top_score, school), (TopScore{.school=school, .top_score=top_score}: TopScore)).
-TopScore[(TopScore{.school=school, .top_score=top_score}: TopScore)] :- StudentInfo[(__studentinfo0@ (StudentInfo{.student=(student: std::Ref<Student>), .school=((&(School{.name=(school: string), .address=(_: string)}: School)): std::Ref<School>)}: StudentInfo))], var __inputs_top_score = Aggregate(school, __debug_32_1_std::group_max((__studentinfo0, student.sat_score))), Inspect debug::debug_event((32'd32, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_top_score.0, (__inputs_top_score, school)), (var top_score: bit<16>) = __inputs_top_score.1, Inspect debug::debug_event((32'd32, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_top_score, school), (TopScore{.school=school, .top_score=top_score}: TopScore)).
-ItemInOrders[(ItemInOrders{.item=(internment::ival(item): string), .orders=orders}: ItemInOrders)] :- OnlineOrder[(__onlineorder0@ (OnlineOrder{.order_id=(order: bit<64>), .item=(item: internment::Intern<string>)}: OnlineOrder))], var __inputs_orders = Aggregate(item, __debug_33_1_std::group_to_vec((__onlineorder0, order))), Inspect debug::debug_event((32'd33, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_orders.0, (__inputs_orders, item)), (var orders: std::Vec<bit<64>>) = __inputs_orders.1, Inspect debug::debug_event((32'd33, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_orders, item), (ItemInOrders{.item=(internment::ival(item): string), .orders=orders}: ItemInOrders)).
-OrderFormatted[(OrderFormatted{.order=formatted}: OrderFormatted)] :- OnlineOrder[(__onlineorder0@ (OnlineOrder{.order_id=(order: bit<64>), .item=(item: internment::Intern<string>)}: OnlineOrder))], (var formatted: string) = ((("order: " ++ (std::__builtin_2string(order): string)) ++ ", item: ") ++ (internment::ival(item): string)), Inspect debug::debug_event((32'd34, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __onlineorder0, (OrderFormatted{.order=formatted}: OrderFormatted)).
-MilkOrders[(MilkOrders{.order=order}: MilkOrders)] :- OnlineOrder[(__onlineorder0@ (OnlineOrder{.order_id=(order: bit<64>), .item=(internment::intern("milk"): internment::Intern<string>)}: OnlineOrder))], Inspect debug::debug_event((32'd35, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __onlineorder0, (MilkOrders{.order=order}: MilkOrders)).
-InventoryItemName[(InventoryItemName{.name=name}: InventoryItemName)] :- StoreInventory[(__storeinventory0@ (StoreInventory{.item=(item: internment::Intern<StoreItem>)}: StoreInventory))], (var name: string) = (internment::ival(item): StoreItem).name, Inspect debug::debug_event((32'd36, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __storeinventory0, (InventoryItemName{.name=name}: InventoryItemName)).
-Flow[(Flow{.lr=ls, .stage=(LS_IN_PRE_LB{}: stage), .prio=100, .matchStr=("ip4.dst == " ++ addresses), .actionStr="{ reg0[0] = 1; next; }"}: Flow)] :- Load_Balancer[(__load_balancer0@ (Load_Balancer{.lb=(_: bigint), .ls=(ls: bigint), .ip_addresses=(addresses: string), .protocol=(std::Some{.x=(_: string)}: std::Option<string>), .name=(_: string)}: Load_Balancer))], Inspect debug::debug_event((32'd37, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __load_balancer0, (Flow{.lr=ls, .stage=(LS_IN_PRE_LB{}: stage), .prio=100, .matchStr=("ip4.dst == " ++ addresses), .actionStr="{ reg0[0] = 1; next; }"}: Flow)).
-Flow[(Flow{.lr=ls, .stage=(LS_OUT_PRE_LB{}: stage), .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }"}: Flow)] :- Logical_Switch[(__logical_switch0@ (Logical_Switch{.ls=(ls: bigint)}: Logical_Switch))], Load_Balancer[(__load_balancer1@ (Load_Balancer{.lb=(_: bigint), .ls=(ls: bigint), .ip_addresses=(_: string), .protocol=(_: std::Option<string>), .name=(_: string)}: Load_Balancer))], Inspect debug::debug_event_join((32'd38, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __logical_switch0, __load_balancer1, (Flow{.lr=ls, .stage=(LS_OUT_PRE_LB{}: stage), .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }"}: Flow)).
+PriceInCents[(PriceInCents{.item="Falcon 9", .price1=get_price_in_cents(inventory(), "Falcon 9"), .price2=get_price_in_cents_unwrap(inventory(), "Falcon 9"), .price3=get_price_in_cents_(inventory(), "Falcon 9")}: PriceInCents)].
+PriceInCents[(PriceInCents{.item="Atlantis", .price1=get_price_in_cents(inventory(), "Atlantis"), .price2=get_price_in_cents_unwrap(inventory(), "Atlantis"), .price3=get_price_in_cents_(inventory(), "Atlantis")}: PriceInCents)].
+TargetAudience[person] :- Person[(__person0@ (person: Person))], is_target_audience(person), Inspect debug::debug_event((32'd31, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __person0, person).
+StudentInfo[(StudentInfo{.student=student, .school=school}: StudentInfo)] :- Student[(student@ ((&(Student{.id=(_: bit<64>), .name=(_: string), .school=(school_name: string), .sat_score=(_: bit<16>)}: Student)): std::Ref<Student>))], School[(school@ ((&(School{.name=(school_name: string), .address=(_: string)}: School)): std::Ref<School>))], Inspect debug::debug_event_join((32'd32, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, student, school, (StudentInfo{.student=student, .school=school}: StudentInfo)).
+TopScore[(TopScore{.school=school, .top_score=top_score}: TopScore)] :- StudentInfo[(__studentinfo0@ (StudentInfo{.student=((&(Student{.id=(_: bit<64>), .name=(_: string), .school=(_: string), .sat_score=(sat: bit<16>)}: Student)): std::Ref<Student>), .school=((&(School{.name=(school: string), .address=(_: string)}: School)): std::Ref<School>)}: StudentInfo))], var __inputs_top_score = Aggregate(school, __debug_33_1_std::group_max((__studentinfo0, sat))), Inspect debug::debug_event((32'd33, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_top_score.0, (__inputs_top_score, school)), (var top_score: bit<16>) = __inputs_top_score.1, Inspect debug::debug_event((32'd33, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_top_score, school), (TopScore{.school=school, .top_score=top_score}: TopScore)).
+TopScore[(TopScore{.school=school, .top_score=top_score}: TopScore)] :- StudentInfo[(__studentinfo0@ (StudentInfo{.student=(student: std::Ref<Student>), .school=((&(School{.name=(school: string), .address=(_: string)}: School)): std::Ref<School>)}: StudentInfo))], var __inputs_top_score = Aggregate(school, __debug_34_1_std::group_max((__studentinfo0, student.sat_score))), Inspect debug::debug_event((32'd34, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_top_score.0, (__inputs_top_score, school)), (var top_score: bit<16>) = __inputs_top_score.1, Inspect debug::debug_event((32'd34, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_top_score, school), (TopScore{.school=school, .top_score=top_score}: TopScore)).
+ItemInOrders[(ItemInOrders{.item=(internment::ival(item): string), .orders=orders}: ItemInOrders)] :- OnlineOrder[(__onlineorder0@ (OnlineOrder{.order_id=(order: bit<64>), .item=(item: internment::Intern<string>)}: OnlineOrder))], var __inputs_orders = Aggregate(item, __debug_35_1_std::group_to_vec((__onlineorder0, order))), Inspect debug::debug_event((32'd35, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_orders.0, (__inputs_orders, item)), (var orders: std::Vec<bit<64>>) = __inputs_orders.1, Inspect debug::debug_event((32'd35, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_orders, item), (ItemInOrders{.item=(internment::ival(item): string), .orders=orders}: ItemInOrders)).
+OrderFormatted[(OrderFormatted{.order=formatted}: OrderFormatted)] :- OnlineOrder[(__onlineorder0@ (OnlineOrder{.order_id=(order: bit<64>), .item=(item: internment::Intern<string>)}: OnlineOrder))], (var formatted: string) = ((("order: " ++ (std::__builtin_2string(order): string)) ++ ", item: ") ++ (internment::ival(item): string)), Inspect debug::debug_event((32'd36, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __onlineorder0, (OrderFormatted{.order=formatted}: OrderFormatted)).
+MilkOrders[(MilkOrders{.order=order}: MilkOrders)] :- OnlineOrder[(__onlineorder0@ (OnlineOrder{.order_id=(order: bit<64>), .item=(internment::intern("milk"): internment::Intern<string>)}: OnlineOrder))], Inspect debug::debug_event((32'd37, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __onlineorder0, (MilkOrders{.order=order}: MilkOrders)).
+InventoryItemName[(InventoryItemName{.name=name}: InventoryItemName)] :- StoreInventory[(__storeinventory0@ (StoreInventory{.item=(item: internment::Intern<StoreItem>)}: StoreInventory))], (var name: string) = (internment::ival(item): StoreItem).name, Inspect debug::debug_event((32'd38, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __storeinventory0, (InventoryItemName{.name=name}: InventoryItemName)).
+Flow[(Flow{.lr=ls, .stage=(LS_IN_PRE_LB{}: stage), .prio=100, .matchStr=("ip4.dst == " ++ addresses), .actionStr="{ reg0[0] = 1; next; }"}: Flow)] :- Load_Balancer[(__load_balancer0@ (Load_Balancer{.lb=(_: bigint), .ls=(ls: bigint), .ip_addresses=(addresses: string), .protocol=(std::Some{.x=(_: string)}: std::Option<string>), .name=(_: string)}: Load_Balancer))], Inspect debug::debug_event((32'd39, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __load_balancer0, (Flow{.lr=ls, .stage=(LS_IN_PRE_LB{}: stage), .prio=100, .matchStr=("ip4.dst == " ++ addresses), .actionStr="{ reg0[0] = 1; next; }"}: Flow)).
+Flow[(Flow{.lr=ls, .stage=(LS_OUT_PRE_LB{}: stage), .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }"}: Flow)] :- Logical_Switch[(__logical_switch0@ (Logical_Switch{.ls=(ls: bigint)}: Logical_Switch))], Load_Balancer[(__load_balancer1@ (Load_Balancer{.lb=(_: bigint), .ls=(ls: bigint), .ip_addresses=(_: string), .protocol=(_: std::Option<string>), .name=(_: string)}: Load_Balancer))], Inspect debug::debug_event_join((32'd40, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __logical_switch0, __load_balancer1, (Flow{.lr=ls, .stage=(LS_OUT_PRE_LB{}: stage), .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }"}: Flow)).
 Flow1[(Flow1{.lr=lb.ls, .stage=(LS_IN_PRE_LB{}: stage), .prio=100, .matchStr=("ip4.dst == " ++ a), .actionStr="{ reg0[0] = 1; next; }"}: Flow1)] :- Load_Balancer[(lb@ (Load_Balancer{.lb=(_: bigint), .ls=(_: bigint), .ip_addresses=(_: string), .protocol=(_: std::Option<string>), .name=(_: string)}: Load_Balancer))], (var a: string) = lb.ip_addresses, match (lb.protocol) {
                                                                                                                                                                                                                                                                                                                                                                     (std::Some{.x=(_: string)}: std::Option<string>) -> true,
                                                                                                                                                                                                                                                                                                                                                                     (std::None{}: std::Option<string>) -> false
-                                                                                                                                                                                                                                                                                                                                                                }, Inspect debug::debug_event((32'd39, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (lb, a), (Flow1{.lr=lb.ls, .stage=(LS_IN_PRE_LB{}: stage), .prio=100, .matchStr=("ip4.dst == " ++ a), .actionStr="{ reg0[0] = 1; next; }"}: Flow1)).
-Flow1[(Flow1{.lr=ls.ls, .stage=(LS_OUT_PRE_LB{}: stage), .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }"}: Flow1)] :- Logical_Switch[(ls@ (Logical_Switch{.ls=(_: bigint)}: Logical_Switch))], Load_Balancer[(lb@ (Load_Balancer{.lb=(_: bigint), .ls=(_: bigint), .ip_addresses=(_: string), .protocol=(_: std::Option<string>), .name=(_: string)}: Load_Balancer))], Inspect debug::debug_event_join((32'd40, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, ls, lb, (ls, lb)), (lb.ls == ls.ls), Inspect debug::debug_event((32'd40, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (ls, lb), (Flow1{.lr=ls.ls, .stage=(LS_OUT_PRE_LB{}: stage), .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }"}: Flow1)).
+                                                                                                                                                                                                                                                                                                                                                                }, Inspect debug::debug_event((32'd41, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (lb, a), (Flow1{.lr=lb.ls, .stage=(LS_IN_PRE_LB{}: stage), .prio=100, .matchStr=("ip4.dst == " ++ a), .actionStr="{ reg0[0] = 1; next; }"}: Flow1)).
+Flow1[(Flow1{.lr=ls.ls, .stage=(LS_OUT_PRE_LB{}: stage), .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }"}: Flow1)] :- Logical_Switch[(ls@ (Logical_Switch{.ls=(_: bigint)}: Logical_Switch))], Load_Balancer[(lb@ (Load_Balancer{.lb=(_: bigint), .ls=(_: bigint), .ip_addresses=(_: string), .protocol=(_: std::Option<string>), .name=(_: string)}: Load_Balancer))], Inspect debug::debug_event_join((32'd42, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, ls, lb, (ls, lb)), (lb.ls == ls.ls), Inspect debug::debug_event((32'd42, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (ls, lb), (Flow1{.lr=ls.ls, .stage=(LS_OUT_PRE_LB{}: stage), .prio=100, .matchStr="ip4", .actionStr="{ reg0[0] = 1; next; }"}: Flow1)).
 

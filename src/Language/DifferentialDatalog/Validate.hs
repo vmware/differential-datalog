@@ -610,6 +610,12 @@ exprValidate1 d tvs _ (EAs _ _ t)         = typeValidate d tvs t
 exprValidate1 d _ ctx (ERef p _)          =
     -- Rust does not allow pattern matching inside 'Arc'
     check d (ctxInRuleRHSPattern ctx || ctxInIndex ctx) p "Dereference pattern not allowed in this context"
+exprValidate1 d _ ctx (ETry p _)          = do
+    check d (isJust $ ctxInFunc ctx) p "?-expressions are only allowed in the body of a function"
+    let Function{..} = fromJust $ ctxInFunc ctx
+    check d (isOption d funcType || isResult d funcType) p
+          $ "?-expressions are only allowed in functions that return 'Option<>' or 'Result<>', " ++
+            "but function '" ++ funcName ++ "' returns '" ++ show funcType ++ "'"
 
 -- True if a placeholder ("_") can appear in this context
 ctxPHolderAllowed :: ECtx -> Bool

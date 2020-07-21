@@ -444,6 +444,24 @@ inferTypes d es = do
                  EBreak{}    -> annotated
                  EReturn{}   -> annotated
                  ERef{}      -> annotated
+                 ETry{..} | isOption ?d inner_type && isOption ?d funcType
+                             -> E $ EMatch (pos e) inner_expr
+                                    [(eStruct nONE_CONSTRUCTOR [] inner_type, eReturn (eStruct nONE_CONSTRUCTOR [] funcType) t),
+                                     (eStruct sOME_CONSTRUCTOR [("x", eVarDecl "__x" t)] inner_type, eVar "__x")]
+                          | isResult ?d inner_type && isOption ?d funcType
+                             -> E $ EMatch (pos e) inner_expr
+                                    [(eStruct eRR_CONSTRUCTOR [("err", eTyped ePHolder inner_etype)] inner_type, eReturn (eStruct nONE_CONSTRUCTOR [] funcType) t),
+                                     (eStruct oK_CONSTRUCTOR [("res", eVarDecl "__x" t)] inner_type, eVar "__x")]
+                          | isResult ?d inner_type && isResult ?d funcType
+                             -> E $ EMatch (pos e) inner_expr
+                                    [(eStruct eRR_CONSTRUCTOR [("err", eVarDecl "__e" etype)] inner_type, eReturn (eStruct eRR_CONSTRUCTOR [("err", eVar "__e")] funcType) t),
+                                     (eStruct oK_CONSTRUCTOR [("res", eVarDecl "__x" t)] inner_type, eVar "__x")]
+                          | otherwise -> error $ "TypeInference.add_types: e=" ++ show expr ++ " type=" ++ show inner_type ++ " function: " ++ funcName
+                    where
+                    Function{..} = fromJust $ ctxInFunc ctx
+                    TUser _ _ [_, etype] = typ'' ?d funcType
+                    (inner_expr, inner_type) = exprExpr
+                    TUser _ _ [_, inner_etype] = typ'' ?d inner_type
                  _           -> E expr
     --trace ("\nctxtypes:\n" ++ (intercalate "\n" $ map (\(ctx, t) -> show ctx ++ ": " ++ show t) $ M.toList ctxtypes)) $
     mapM (\(DDExpr ctx e) -> fst <$> exprFoldCtxM add_types ctx e) es'
@@ -914,6 +932,43 @@ exprConstraints_ de@(DDExpr ctx (E e@ERef{..})) =
 -- outside of the type inference engine.
 exprConstraints_ de@(DDExpr _ (E EAs{..})) =
     addConstraint =<< tvarTypeOfExpr de <==== typeToTExpr exprTSpec
+
+-- ?-expression: 'e1?'
+--
+-- * In a function whose return type is 'Option<_>'.
+--   |e1| = Option<T> ==> |e| = T
+--   |e1| = Result<T,E> ==> |e| = T
+-- * In a function whose return type is 'Result<_,E>'
+--   |e1| = Result<T,E1> ==> |e| = T, E1 == E
+exprConstraints_ de@(DDExpr ctx (E e@ETry{..})) | isOption ?d funcType = do
+    ce1 <- teTypeOfExpr e1
+    dte <- tvarTypeOfExpr de
+    let expand TETVar{} = return Nothing
+        expand (TEUser rt [te])     | rt == oPTION_TYPE
+                                    = return $ Just [dte ==== te]
+        expand (TEUser rt [tres,_]) | rt == rESULT_TYPE
+                                    = return $ Just [dte ==== tres]
+        expand te = err ?d (pos e1)
+                        $ "expression '" ++ show e1 ++ "' must be of type 'Option<>' or 'Result<>', but its type is '" ++ show te ++ "'"
+    addConstraint $ CLazy ce1 expand Nothing e1
+                  $ "expression '" ++ show e1 ++ "' must be of type 'Option<>' or 'Result<>'"
+                                                | isResult ?d funcType = do
+    ce1 <- teTypeOfExpr e1
+    dte1 <- tvarTypeOfExpr e1
+    dte <- tvarTypeOfExpr de
+    let expand TETVar{} = return Nothing
+        expand (TEUser rt [tres,_]) | rt == rESULT_TYPE
+                                    = return $ Just [dte ==== tres, 
+                                                     dte1 ~~~~ (TEUser rESULT_TYPE [tres, typeToTExpr terr])]
+        expand te = err ?d (pos e1)
+                        $ "expression '" ++ show e1 ++ "' must be of type 'Result<>', but its type is '" ++ show te ++ "'"
+    addConstraint $ CLazy ce1 expand Nothing e1
+                  $ "expression '" ++ show e1 ++ "' must be of type 'Option<>'"
+                                                | otherwise = error $ "TypeInference.exprConstraints_ '" ++ show e ++ "': invalid function return type"
+    where 
+    e1 = DDExpr (CtxTry e ctx) exprExpr
+    Function{..} = fromJust $ ctxInFunc ctx
+    TUser _ _ [_, terr] = typ'' ?d funcType
 
 -- 'break', 'continue', '_' expressions are happy to take any type required by
 -- their context and so generate no type constraints.

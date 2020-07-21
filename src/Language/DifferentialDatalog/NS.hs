@@ -199,4 +199,5 @@ ctxVars d ctx =
          CtxTyped _ _             -> (plvars, prvars)
          CtxAs _ _                -> (plvars, prvars)
          CtxRef _ _               -> (plvars, prvars)
+         CtxTry _ _               -> (plvars, prvars)
     where (plvars, prvars) = ctxVars d $ ctxParent ctx

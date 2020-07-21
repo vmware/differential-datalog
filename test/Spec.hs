@@ -178,7 +178,10 @@ parserTest fname = do
         when (not exists) $ writeFile expectedFile ast
         expected <- if exists then readFile expectedFile
                               else return ast
-        assertEqual "Expected output differs from compiler output" expected ast
+        when (expected /= ast)
+            $ errorWithoutStackTrace $ "Expected output differs from compiler output\n" ++
+                                       "expected:\n" ++ expected ++
+                                       "\nbut got:\n" ++ ast
       else do
         -- parse Datalog file and output its AST
         (prog, _, _) <- parseValidate fname False body

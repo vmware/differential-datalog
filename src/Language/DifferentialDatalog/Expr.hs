@@ -139,6 +139,8 @@ exprFoldCtxM' f ctx e@(EAs p x t)             = do x' <- exprFoldCtxM f (CtxAs e
                                                    f ctx $ EAs p x' t
 exprFoldCtxM' f ctx e@(ERef p x)              = do x' <- exprFoldCtxM f (CtxRef e ctx) x
                                                    f ctx $ ERef p x'
+exprFoldCtxM' f ctx e@(ETry p x)              = do x' <- exprFoldCtxM f (CtxTry e ctx) x
+                                                   f ctx $ ETry p x'
 
 exprMapM :: (Monad m) => (a -> m b) -> ExprNode a -> m (ExprNode b)
 exprMapM g e = case e of
@@ -172,6 +174,7 @@ exprMapM g e = case e of
                    ETyped p x t        -> (\x' -> ETyped p x' t) <$> g x
                    EAs p x t           -> (\x' -> EAs p x' t) <$> g x
                    ERef p x            -> ERef p <$> g x
+                   ETry p x            -> ETry p <$> g x
 
 
 exprMap :: (a -> b) -> ExprNode a -> ExprNode b
@@ -229,6 +232,7 @@ exprCollectCtxM f op ctx e = exprFoldCtxM g ctx e
                                      ETyped _ v _          -> x' `op` v
                                      EAs _ v _             -> x' `op` v
                                      ERef _ v              -> x' `op` v
+                                     ETry _ v              -> x' `op` v
 
 exprCollectM :: (Monad m) => (ExprNode b -> m b) -> (b -> b -> b) -> Expr -> m b
 exprCollectM f op e = exprCollectCtxM (\_ e' -> f e') op undefined e

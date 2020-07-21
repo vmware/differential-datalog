@@ -100,6 +100,8 @@ function is_some(x: Option<'A>): bool = {
     }
 }
 
+/* Returns the contained `Some` value or a provided default.
+ */
 function unwrap_or(x: Option<'A>, def: 'A): 'A = {
     match (x) {
         Some{v} -> v,
@@ -153,6 +155,8 @@ function is_err(res: Result<'V,'E>): bool = {
     }
 }
 
+/* Returns the contained Ok value or a provided default.
+ */
 function unwrap_or(res: Result<'V,'E>, def: 'V): 'V = {
     match (res) {
         Ok{v} -> v,
