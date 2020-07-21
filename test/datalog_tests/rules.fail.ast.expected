@@ -33,3 +33,7 @@ expression '(x, z)'
 error: ./test/datalog_tests/rules.fail.dl:9:13-9:18: expression '(1 + 2)' of a numeric type appears in a context where type '()' is expected
     Inspect 1 + 2.
             ^^^^^
+
+error: ./test/datalog_tests/rules.fail.dl:10:19-10:28: ?-expressions are only allowed in the body of a function
+          var z = y.nth(5)?.
+                  ^^^^^^^^^

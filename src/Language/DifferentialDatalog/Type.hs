@@ -46,7 +46,9 @@ module Language.DifferentialDatalog.Type(
     typ', typ'',
     typDeref',
     typDeref'',
-    isBool, isBit, isSigned, isBigInt, isInteger, isFP, isString, isStruct, isTuple, isGroup, isMap, isTinySet, isSharedRef, isDouble, isFloat,
+    isBool, isBit, isSigned, isBigInt, isInteger, isFP, isString, isStruct, isTuple, isGroup, isDouble, isFloat,
+    isMap, isTinySet, isSharedRef,
+    isOption, isResult,
     checkTypesMatch,
     typesMatch,
     typeNormalize,
@@ -65,6 +67,12 @@ module Language.DifferentialDatalog.Type(
     iTERATION_TYPE,
     nESTED_TS_TYPE,
     wEIGHT_TYPE,
+    oPTION_TYPE,
+    sOME_CONSTRUCTOR,
+    nONE_CONSTRUCTOR,
+    rESULT_TYPE,
+    eRR_CONSTRUCTOR,
+    oK_CONSTRUCTOR,
     checkIterable,
     typeIterType,
     varType
@@ -117,6 +125,24 @@ nESTED_TS_TYPE = "std::DDNestedTS"
 
 wEIGHT_TYPE :: String
 wEIGHT_TYPE = "std::DDWeight"
+
+oPTION_TYPE :: String
+oPTION_TYPE = "std::Option"
+
+sOME_CONSTRUCTOR :: String
+sOME_CONSTRUCTOR = "std::Some"
+
+nONE_CONSTRUCTOR :: String
+nONE_CONSTRUCTOR = "std::None"
+
+rESULT_TYPE :: String
+rESULT_TYPE = "std::Result"
+
+eRR_CONSTRUCTOR :: String
+eRR_CONSTRUCTOR = "std::Err"
+
+oK_CONSTRUCTOR :: String
+oK_CONSTRUCTOR = "std::Ok"
 
 -- | An object with type
 class WithType a where
@@ -276,6 +302,7 @@ exprNodeType' _ _   (EBinding _ _ e)       = e
 exprNodeType' _ _   (ETyped _ _ t)         = t
 exprNodeType' _ _   (EAs _ _ t)            = t
 exprNodeType' _ ctx (ERef _ _)             = ctxExpectType ctx
+exprNodeType' _ _   (ETry _ _)             = error "exprNodeType: ?-expressions should be eliminated during type inference."
 --exprNodeType' d ctx (ERef p _)             = eunknown d p ctx
 
 --exprTypes :: Refine -> ECtx -> Expr -> [Type]
@@ -425,6 +452,16 @@ isSharedRef d a =
     case typ' d a of
          TOpaque _ t _ -> tdefGetSharedRefAttr d $ getType d t
          _             -> False
+
+isOption :: (WithType a) => DatalogProgram -> a -> Bool
+isOption d a = case typ'' d a of
+                    TUser _ t _ | t == oPTION_TYPE -> True
+                    _                              -> False
+
+isResult :: (WithType a) => DatalogProgram -> a -> Bool
+isResult d a = case typ'' d a of
+                    TUser _ t _ | t == rESULT_TYPE -> True
+                    _                              -> False
 
 -- | Check if 'a' and 'b' have identical types up to type aliasing;
 -- throw exception if they don't.

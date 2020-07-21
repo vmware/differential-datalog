@@ -276,44 +276,46 @@ primary key (r) r.f1
 
 ```EBNF
 expr ::= term
-       | expr "["decimal "," decimal"]"  (*bit slice (e[h:l])*)
-       | expr ":" simple_type_spec       (*explicit type signature*)
-       | expr "." identifier             (*struct field*)
-       | expr "." decimal                (*tuple field access*)
-       | "-" expr                        (*unary arithmetic negation*)
-       | "~" expr                        (*bitwise negation*)
-       | "not" expr                      (*boolean negation*)
-       | "(" expr ")"                    (*grouping*)
-       | "{" expr "}"                    (*grouping (alternative syntax)*)
-       | expr "*" expr                   (*multiplication*)
-       | expr "/" expr                   (*division*)
-       | expr "%" expr                   (*remainder*)
+       | expr "["decimal "," decimal"]"                 (*bit slice (e[h:l])*)
+       | expr ":" simple_type_spec                      (*explicit type signature*)
+       | expr "." identifier                            (*struct field*)
+       | expr "." func_name "(" [expr (,expr)*] ")"     (*dot function call notation*)
+       | expr "." decimal                               (*tuple field access*)
+       | "-" expr                                       (*unary arithmetic negation*)
+       | "~" expr                                       (*bitwise negation*)
+       | "not" expr                                     (*boolean negation*)
+       | "(" expr ")"                                   (*grouping*)
+       | "{" expr "}"                                   (*grouping (alternative syntax)*)
+       | expr "*" expr                                  (*multiplication*)
+       | expr "/" expr                                  (*division*)
+       | expr "%" expr                                  (*remainder*)
        | expr "+" expr
        | expr "-" expr
-       | expr ">>" expr                  (*right shift*)
-       | expr "<<" expr                  (*left shift*)
-       | expr "++" expr                  (*concatenation (applies to bitvectors or strings)*)
+       | expr ">>" expr                                 (*right shift*)
+       | expr "<<" expr                                 (*left shift*)
+       | expr "++" expr                                 (*concatenation (applies to bitvectors or strings)*)
        | expr "==" expr
        | expr "!=" expr
        | expr ">" expr
        | expr ">=" expr
        | expr "<" expr
        | expr "<=" expr
-       | expr "&" expr                   (*bitwise and*)
-       | expr "|" expr                   (*bitwise or*)
-       | expr "and" expr                 (*logical and*)
-       | expr "or" expr                  (*logical or*)
-       | expr "=>" expr                  (*implication*)
-       | expr "=" expr                   (*assignment*)
-       | expr ";" expr                   (*sequential composition*)
-       | expr "as" simple_type_spec      (*cast*)
+       | expr "&" expr                                  (*bitwise and*)
+       | expr "|" expr                                  (*bitwise or*)
+       | expr "and" expr                                (*logical and*)
+       | expr "or" expr                                 (*logical or*)
+       | expr "=>" expr                                 (*implication*)
+       | expr "=" expr                                  (*assignment*)
+       | expr ";" expr                                  (*sequential composition*)
+       | expr "as" simple_type_spec                     (*cast*)
+       | expr "?"                                       (*try*)
 ```
 
 The following table lists operators order by decreasing priority.
 
-|**priority** | **operators**       |
-| ------ |:-----------------------:|
-| Highest| e[h:l], x:t, x.f        |
+|**priority** | **operators**                     |
+| ------ |:--------------------------------------:|
+| Highest| e[h:l], x:t, x.f, x?, x as t, x.f()    |
 |        | ~                       |
 |        | not                     |
 |        | %  / *                  |

@@ -115,7 +115,7 @@ ccnDef = emptyDef { T.commentStart      = "/*"
                   , T.identLetter       = alphaNum <|> char '_'
                   , T.reservedOpNames   = reservedOpNames
                   , T.reservedNames     = reservedNames
-                  , T.opLetter          = oneOf "!?:%*-+./=|<>"
+                  , T.opLetter          = oneOf "!:%*-+./=|<>"
                   , T.caseSensitive     = True}
 
 ccnLCDef = ccnDef{T.identStart = lower <|> char '_'}
@@ -689,7 +689,7 @@ mkNumberLit (Just w) (FloatNumber v) | w == 32 = return $ eFloat $ double2Float 
                                      | w == 64 = return $ eDouble v
                                      | otherwise = fail "Only 32- and 64-bit floating point values are supported"
 
-etable = [[postf $ choice [postSlice, postApply, postField, postType, postAs, postTupField]]
+etable = [[postf $ choice [postTry, postSlice, postApply, postField, postType, postAs, postTupField]]
          ,[pref  $ choice [preRef]]
          ,[pref  $ choice [prefixOp "-" UMinus]]
          ,[pref  $ choice [prefixOp "~" BNeg]]
@@ -726,6 +726,7 @@ postApply = (\(f, args) end e -> E $ EApply (fst $ pos e, end) [f] (e:args)) <$>
 postType = (\t end e -> E $ ETyped (fst $ pos e, end) e t) <$> etype <*> getPosition
 postAs = (\t end e -> E $ EAs (fst $ pos e, end) e t) <$> eAsType <*> getPosition
 postSlice  = try $ (\(h,l) end e -> E $ ESlice (fst $ pos e, end) e h l) <$> slice <*> getPosition
+postTry = (\end e -> E $ ETry (fst $ pos e, end) e) <$ symbol "?" <*> getPosition
 slice = brackets $ (\h l -> (fromInteger h, fromInteger l)) <$> natural <*> (colon *> natural)
 
 field = isfield *> dot *> varIdent

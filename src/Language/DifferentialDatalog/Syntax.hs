@@ -110,6 +110,7 @@ module Language.DifferentialDatalog.Syntax (
         eTyped,
         eAs,
         eRef,
+        eTry,
         FuncArg(..),
         Function(..),
         funcMutArgs,
@@ -663,6 +664,7 @@ data ExprNode e = EVar          {exprPos :: Pos, exprVar :: String}
                 | ETyped        {exprPos :: Pos, exprExpr :: e, exprTSpec :: Type}
                 | EAs           {exprPos :: Pos, exprExpr :: e, exprTSpec :: Type}
                 | ERef          {exprPos :: Pos, exprPattern :: e}
+                | ETry          {exprPos :: Pos, exprExpr :: e}
 
 instance Eq e => Eq (ExprNode e) where
     (==) (EVar _ v1)              (EVar _ v2)                = v1 == v2
@@ -695,6 +697,7 @@ instance Eq e => Eq (ExprNode e) where
     (==) (ETyped _ e1 t1)         (ETyped _ e2 t2)           = e1 == e2 && t1 == t2
     (==) (EAs _ e1 t1)            (EAs _ e2 t2)              = e1 == e2 && t1 == t2
     (==) (ERef _ p1)              (ERef _ p2)                = p1 == p2
+    (==) (ETry _ e1)              (ETry _ e2)                = e1 == e2
     (==) _                        _                          = False
 
 -- Assign rank to constructors; used in the implementation of Ord.
@@ -729,6 +732,7 @@ erank EBinding  {} = 26
 erank ETyped    {} = 27
 erank EAs       {} = 28
 erank ERef      {} = 29
+erank ETry      {} = 30
 
 instance Ord e => Ord (ExprNode e) where
     compare (EVar _ v1)              (EVar _ v2)                = compare v1 v2
@@ -761,6 +765,7 @@ instance Ord e => Ord (ExprNode e) where
     compare (ETyped _ e1 t1)         (ETyped _ e2 t2)           = compare (e1, t1) (e2, t2)
     compare (EAs _ e1 t1)            (EAs _ e2 t2)              = compare (e1, t1) (e2, t2)
     compare (ERef _ p1)              (ERef _ p2)                = compare p1 p2
+    compare (ETry _ e1)              (ETry _ e2)                = compare e1 e2
     compare e1                       e2                         = compare (erank e1) (erank e2)
 
 instance WithPos (ExprNode e) where
@@ -814,6 +819,7 @@ instance PP e => PP (ExprNode e) where
     pp (ETyped _ e t)        = parens $ pp e <> ":" <+> pp t
     pp (EAs _ e t)           = parens $ pp e <+> "as" <+> pp t
     pp (ERef _ e)            = parens $ "&" <> pp e
+    pp (ETry _ e)            = parens $ pp e <> "?"
 
 instance PP e => Show (ExprNode e) where
     show = render . pp
@@ -863,7 +869,7 @@ eFor v e b          = E $ EFor      nopos v e b
 eSet l r            = E $ ESet      nopos l r
 eBreak              = E $ EBreak    nopos
 eContinue           = E $ EContinue nopos
-eReturn e           = E $ EReturn   nopos e
+eReturn e t         = eTyped (E $ EReturn   nopos e) t
 eBinOp op l r       = E $ EBinOp    nopos op l r
 eUnOp op e          = E $ EUnOp     nopos op e
 eNot e              = eUnOp Not e
@@ -872,6 +878,7 @@ eBinding v e        = E $ EBinding  nopos v e
 eTyped e t          = E $ ETyped    nopos e t
 eAs e t             = E $ EAs       nopos e t
 eRef e              = E $ ERef      nopos e
+eTry e              = E $ ETry      nopos e
 
 data FuncArg = FuncArg { argPos  :: Pos
                        , argName :: String
@@ -1252,6 +1259,8 @@ data ECtx = -- | Top-level context. Serves as the root of the context hierarchy.
           | CtxAs             {ctxParExpr::ENode, ctxPar::ECtx}
             -- | Argument of a &-pattern '&e'
           | CtxRef            {ctxParExpr::ENode, ctxPar::ECtx}
+            -- | Argument of a ?-expression 'e?'
+          | CtxTry            {ctxParExpr::ENode, ctxPar::ECtx}
           deriving (Eq, Ord)
 
 instance PP ECtx where
@@ -1301,6 +1310,7 @@ instance PP ECtx where
                     CtxTyped{..}          -> "CtxTyped          " <+> epar
                     CtxAs{..}             -> "CtxAs             " <+> epar
                     CtxRef{..}            -> "CtxRef            " <+> epar
+                    CtxTry{..}            -> "CtxTry            " <+> epar
                     CtxTop                -> error "pp CtxTop"
 
 instance Show ECtx where

@@ -465,6 +465,48 @@ IntranetHost3(addr) :- KnownHost(addr),
                        t.0 == 192, t.1 == 168.
 
 /*
+ * Example: error handling.
+ */
+
+/* Lookup item in the inventory and return its price in cents. */
+function get_price_in_cents(inventory: Map<string, string>, item: string): Option<u64> {
+    match (inventory.get(item)) {
+        None -> None,
+        Some{price} -> match (parse_dec_u64(price)) {
+                           None    -> None,
+                           Some{p} -> Some{100 * p}
+                       }
+    }
+}
+
+/* As above, but returns 0 if the item is missing from the inventory or the price
+ * string is invalid. */
+function get_price_in_cents_unwrap(inventory: Map<string, string>, item: string): u64 {
+    inventory.get(item).unwrap_or_default().parse_dec_u64().unwrap_or(0) * 100
+}
+
+/* get_price_in_cents written more concisely with the help of the `?` operator. */
+function get_price_in_cents_(inventory: Map<string, string>, item: string): Option<u64> {
+    Some{ inventory.get(item)?.parse_dec_u64()? * 100 }
+}
+
+function inventory(): Map<string, string> {
+    map_singleton("Falcon 9", "62000000")
+    .insert_imm("Soyuz", "180000000")
+}
+
+output relation PriceInCents(item: string, price1: Option<u64>, price2: u64, price3: Option<u64>)
+
+PriceInCents("Falcon 9",
+             inventory().get_price_in_cents("Falcon 9"),
+             inventory().get_price_in_cents_unwrap("Falcon 9"),
+             inventory().get_price_in_cents_("Falcon 9")).
+PriceInCents("Atlantis",
+             inventory().get_price_in_cents("Atlantis"),
+             inventory().get_price_in_cents_unwrap("Atlantis"),
+             inventory().get_price_in_cents_("Atlantis")).
+
+/*
  * Example: explicit relation type
  */
 

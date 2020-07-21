@@ -205,3 +205,14 @@ function agg():Tagg =
 
 extern function foo(x: u32): ()
 extern function foo(x: Vec<u32>): ()
+
+//---
+
+// Invalid use of ?-operator
+
+function try1(name: string): Result<(string, string), string> {
+    var components = name.split(" ");
+    var first_name = components.nth(0)?;
+    var last_name = components.nth(1)?;
+    Some{(first_name, last_name)}
+}
