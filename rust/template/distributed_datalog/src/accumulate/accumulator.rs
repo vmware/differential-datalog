@@ -52,7 +52,7 @@ where
     fn clear_and_return_state(&mut self) -> HashMap<RelId, HashSet<V>>;
 
     /// Sends a deletion update to all observers, thus clearing the accumulated state.
-    /// If a transaction is in progress (i.e., the observer has a non-empty buffer), 
+    /// If a transaction is in progress (i.e., the observer has a non-empty buffer),
     /// returns an error.
     fn clear(&mut self) -> Result<(), &str>;
 }
@@ -116,7 +116,7 @@ where
 
     fn clear(&mut self) -> Result<(), &str> {
         trace!("DistributingAccumulator({})::clear", self.id);
-        
+
         if self.observer.buffer_is_empty() {
             let mut delete_updates = self
                 .clear_and_return_state()
@@ -143,8 +143,8 @@ where
             }
             Ok(())
         } else {
-           Err("Failed to clear accumulator because transaction is in progress") 
-        } 
+            Err("Failed to clear accumulator because transaction is in progress")
+        }
     }
 }
 
@@ -335,13 +335,14 @@ pub mod tests {
         assert_eq!(mock1.lock().unwrap().called_on_commit, 1);
         assert_eq!(mock2.lock().unwrap().called_on_commit, 1);
 
+        assert_eq!(accumulator.clear(), Ok(()));
         assert_eq!(accumulator.on_completed(), Ok(()));
-        assert_eq!(mock1.lock().unwrap().called_on_start, 1);
-        assert_eq!(mock2.lock().unwrap().called_on_start, 1);
-        assert_eq!(mock1.lock().unwrap().called_on_updates, 3);
-        assert_eq!(mock2.lock().unwrap().called_on_updates, 3);
-        assert_eq!(mock1.lock().unwrap().called_on_commit, 1);
-        assert_eq!(mock2.lock().unwrap().called_on_commit, 1);
+        assert_eq!(mock1.lock().unwrap().called_on_start, 2);
+        assert_eq!(mock2.lock().unwrap().called_on_start, 2);
+        assert_eq!(mock1.lock().unwrap().called_on_updates, 6);
+        assert_eq!(mock2.lock().unwrap().called_on_updates, 6);
+        assert_eq!(mock1.lock().unwrap().called_on_commit, 2);
+        assert_eq!(mock2.lock().unwrap().called_on_commit, 2);
         assert_eq!(mock1.lock().unwrap().called_on_completed, 1);
         assert_eq!(mock2.lock().unwrap().called_on_completed, 1);
     }
@@ -410,13 +411,14 @@ pub mod tests {
         assert_eq!(mock1.lock().unwrap().called_on_commit, 2);
         assert_eq!(mock2.lock().unwrap().called_on_commit, 2);
 
+        assert_eq!(accumulator.clear(), Ok(()));
         assert_eq!(accumulator.on_completed(), Ok(()));
-        assert_eq!(mock1.lock().unwrap().called_on_start, 2);
-        assert_eq!(mock2.lock().unwrap().called_on_start, 2);
-        assert_eq!(mock1.lock().unwrap().called_on_updates, 10);
-        assert_eq!(mock2.lock().unwrap().called_on_updates, 10);
-        assert_eq!(mock1.lock().unwrap().called_on_commit, 2);
-        assert_eq!(mock2.lock().unwrap().called_on_commit, 2);
+        assert_eq!(mock1.lock().unwrap().called_on_start, 3);
+        assert_eq!(mock2.lock().unwrap().called_on_start, 3);
+        assert_eq!(mock1.lock().unwrap().called_on_updates, 20);
+        assert_eq!(mock2.lock().unwrap().called_on_updates, 20);
+        assert_eq!(mock1.lock().unwrap().called_on_commit, 3);
+        assert_eq!(mock2.lock().unwrap().called_on_commit, 3);
         assert_eq!(mock1.lock().unwrap().called_on_completed, 1);
         assert_eq!(mock2.lock().unwrap().called_on_completed, 1);
     }
@@ -543,12 +545,39 @@ pub mod tests {
             .iter()
             .any(|u| eq_updates(u, &Update::Insert { relid: 4, v: 4 })));
 
-        assert_eq!(accumulator.on_completed(), Ok(())); // no longer does the 4 automatic deletions
+        assert_eq!(accumulator.clear(), Ok(()));
+        assert_eq!(accumulator.on_completed(), Ok(()));
 
         let received_updates = mock1.lock().unwrap().received_updates.clone();
-        assert_eq!(received_updates.len(), 10); // (3 + 4) inserts + 3 manual deletions = 10
+        assert_eq!(received_updates.len(), 14); // (3 + 4) inserts, 3 manual deletions, 4 automatic deletions
+
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 1 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 2 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 3 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 4 })));
 
         let received_updates = mock2.lock().unwrap().received_updates.clone();
-        assert_eq!(received_updates.len(), 4); // 4 inserts, 0 automatic deletions
+        assert_eq!(received_updates.len(), 8); // 4 inserts, 4 automatic deletions
+
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 1 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 2 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 3 })));
+        assert!(received_updates
+            .iter()
+            .any(|u| eq_updates(u, &Update::DeleteValue { relid: 4, v: 4 })));
     }
 }
