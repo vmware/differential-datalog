@@ -266,7 +266,7 @@ where
         Addr::Ip(addr) => realization.add_tcp_receiver(addr)?,
     }
     realization.add_file_sources(node_cfg)?;
-    
+
     println!(
         "realized node configuration locally in {} ms",
         now.elapsed().as_millis()
@@ -330,10 +330,9 @@ where
     P: Send + DDlog + 'static,
     P::Convert: Send + DDlogConvert,
 {
-    /// Subscribe the `TxnMux` of the existing realization to the given server. 
+    /// Subscribe the `TxnMux` of the existing realization to the given server.
     pub fn subscribe_txnmux(&mut self, server: DDlogServer<P>) -> Result<(), &str> {
-        self
-            ._txnmux
+        self._txnmux
             .subscribe(Box::new(server))
             .map_err(|_| "failed to subscribe DDlogServer to TxnMux")
     }
@@ -341,7 +340,7 @@ where
     /// Remove a source from the existing realization.
     /// Also clear the accumulator and disconnect
     /// from the TxnMux.
-    pub fn remove_source(&mut self, src: &Source) -> Result<(), &str>{
+    pub fn remove_source(&mut self, src: &Source) -> Result<(), &str> {
         // Remove entry.
         let (_, accumulator, id) = self._sources.remove(src).unwrap();
         let mut accum_observ = accumulator.lock().unwrap();
@@ -356,7 +355,7 @@ where
         }
     }
 
-    /// Add a `TcpReceiver` to the existing realization feeding the given server 
+    /// Add a `TcpReceiver` to the existing realization feeding the given server
     /// if one is needed given the provided node configuration.
     pub fn add_tcp_receiver(&mut self, addr: &SocketAddr) -> Result<(), String> {
         let receiver =
