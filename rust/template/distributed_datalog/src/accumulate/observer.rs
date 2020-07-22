@@ -59,6 +59,11 @@ where
         self.data.clone()
     }
 
+    pub fn buffer_is_empty(&self) -> bool {
+        trace!("AccumulatingObserver({})::buffer_is_empty()", self.id);
+        self.buffer.is_none()
+    }
+
     pub fn clear_and_return_state(&mut self) -> HashMap<RelId, HashSet<V>> {
         trace!(
             "AccumulatingObserver({})::clear_and_return_state()",

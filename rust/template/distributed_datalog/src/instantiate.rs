@@ -341,16 +341,19 @@ where
     /// Remove a source from the existing realization.
     /// Also clear the accumulator and disconnect
     /// from the TxnMux.
-    pub fn remove_source(&mut self, src: &Source) {
+    pub fn remove_source(&mut self, src: &Source) -> Result<(), &str>{
         // Remove entry.
         let (_, accumulator, id) = self._sources.remove(src).unwrap();
         let mut accum_observ = accumulator.lock().unwrap();
 
         // Clear accumulator.
-        accum_observ.clear();
-
-        // Disconnect from TxnMux.
-        self._txnmux.remove_observable(id);
+        if accum_observ.clear().is_ok() {
+            // Disconnect from TxnMux.
+            self._txnmux.remove_observable(id);
+            Ok(())
+        } else {
+            Err("Cannot remove source, transaction in progress")
+        }
     }
 
     /// Add a `TcpReceiver` to the existing realization feeding the given server 
