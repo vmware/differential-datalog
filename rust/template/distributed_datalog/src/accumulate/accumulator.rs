@@ -52,7 +52,9 @@ where
     fn clear_and_return_state(&mut self) -> HashMap<RelId, HashSet<V>>;
 
     /// Sends a deletion update to all observers, thus clearing the accumulated state.
-    fn clear(&mut self);
+    /// If a transaction is in progress (i.e., the observer has a non-empty buffer), 
+    /// returns an error.
+    fn clear(&mut self) -> Result<(), &str>;
 }
 
 /// An Accumulator implementation that can have multiple observers (can be subscribed to more
@@ -112,32 +114,37 @@ where
         self.observer.clear_and_return_state()
     }
 
-    fn clear(&mut self) {
+    fn clear(&mut self) -> Result<(), &str> {
         trace!("DistributingAccumulator({})::clear", self.id);
+        
+        if self.observer.buffer_is_empty() {
+            let mut delete_updates = self
+                .clear_and_return_state()
+                .into_iter()
+                .flat_map(|(relid, vs)| {
+                    vs.into_iter()
+                        .map(|v| Update::DeleteValue { relid, v })
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>();
 
-        let mut delete_updates = self
-            .clear_and_return_state()
-            .into_iter()
-            .flat_map(|(relid, vs)| {
-                vs.into_iter()
-                    .map(|v| Update::DeleteValue { relid, v })
-                    .collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>();
+            let mut distributor = self.distributor.lock().unwrap();
 
-        let mut distributor = self.distributor.lock().unwrap();
-
-        if !delete_updates.is_empty() {
-            let updates = delete_updates.drain(..);
-            trace!(
-                "DistributingAccumulator({:?}) clearing state of observers: {:?}",
-                self.id,
-                updates
-            );
-            let _ = distributor.on_start();
-            let _ = distributor.on_updates(Box::new(updates));
-            let _ = distributor.on_commit();
-        }
+            if !delete_updates.is_empty() {
+                let updates = delete_updates.drain(..);
+                trace!(
+                    "DistributingAccumulator({:?}) clearing state of observers: {:?}",
+                    self.id,
+                    updates
+                );
+                let _ = distributor.on_start();
+                let _ = distributor.on_updates(Box::new(updates));
+                let _ = distributor.on_commit();
+            }
+            Ok(())
+        } else {
+           Err("Failed to clear accumulator because transaction is in progress") 
+        } 
     }
 }
 
