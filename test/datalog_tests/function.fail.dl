@@ -23,21 +23,6 @@ function vars(): () = {
 typedef Alt = C0{x: bit<32>}
             | C1{x: bit<32>}
 
-// shadow argument name
-function shadow(v: string): () = {
-    var a: Alt = C0{1};
-
-    var i: bit<32> = match (a) {
-        C0{.x = v} -> v,
-        C1{v} -> v
-    }
-}
-
-//---
-
-typedef Alt = C0{x: bit<32>}
-            | C1{x: bit<32>}
-
 // Invalid type annotation in pattern.
 function shadow(v: string): () = {
     var a: Alt = C0{1};
@@ -46,15 +31,6 @@ function shadow(v: string): () = {
         C0{.x = w: bool} -> w,
         C1{w} -> w
     }
-}
-
-//---
-
-// shadow local variable
-function shadow(): () = {
-    var v: string = "bar";
-
-    var v = "foo"
 }
 
 //---

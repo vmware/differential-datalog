@@ -6,10 +6,6 @@ error: ./test/datalog_tests/function.fail.dl:13:13-14:1: Missing field 'f2' in c
     var z = C{.f1 = "foo"}
             ^
 
-error: ./test/datalog_tests/function.fail.dl:11:17-11:18: Variable v already defined in this scope
-        C0{.x = v} -> v,
-                ^
-
 error: ./test/datalog_tests/function.fail.dl:11:17-11:24: Type mismatch:
 expected type: bit<32>
 actual type: bool
@@ -17,10 +13,6 @@ in
 expression '(var w: bool)'
         C0{.x = w: bool} -> w,
                 ^^^^^^^
-
-error: ./test/datalog_tests/function.fail.dl:7:5-7:11: Variable v already defined in this scope
-    var v = "foo"
-    ^^^^^^
 
 error: ./test/datalog_tests/function.fail.dl:6:13-7:1: Access to guarded field 'x' (not all constructors of type 'std::Option' have this field).
     var b = a.x

@@ -322,3 +322,58 @@ output relation Try3(description: string, result: Opt<(string, string)>)
 Try3("Isaac Newton", try3("Isaac Newton")).
 Try3("", try3("")).
 Try3("Albert_Einstein", try3("Albert_Einstein")).
+
+/*
+ * Vector literals.
+ */
+
+output relation BoolVectors(v: Vec<bool>)
+BoolVectors([true, false, true]).
+
+output relation BoolVecVec(v: Vec<Vec<bool>>)
+BoolVecVec([[true, false, true], [true], [false]]).
+
+output relation StringMaps(m: Map<string, (usize, bool)>)
+StringMaps(["foo" -> (1, true), "bar" -> (2, false), "foobar" -> (3, false)]).
+
+output relation MapOfMaps(m: Map<string, Map<double, (usize, bool)>>)
+MapOfMaps(["foo" -> [1.0 -> (1, true), 2 -> (4, false)],
+           "bar" -> [-10 -> (10000, true), 200 -> (2, false)],
+           "foobar" -> map_empty()
+          ]).
+
+output relation MapOfVecs(m: Map<(u32, bigint), Vec<double>>)
+MapOfVecs([ (100, 100) -> [0.1, -100, 0, 1000000],
+            (100, -100) -> vec_empty(),
+            (0, -0) -> [0.1, -100, 0, 1000000]
+          ]).
+
+output relation VecOfMaps(m: Vec<Map<(u32, bigint), double>>)
+VecOfMaps([ [(100, 100) -> 0.1],
+            [(100, 100) -> 0.1, (1000, -100) -> -0.1],
+            [(100, 100) -> 0.1, (1000, -100) -> -0.1, (1000, -10000000000000000000000000000000000000) -> -0]
+          ]).
+
+/* Variable shadowing (now legal). */
+
+typedef Alt = C0{x: bit<32>}
+            | C1{x: bit<32>}
+
+// shadow argument name
+function shadow(v: string): () = {
+    var a: Alt = C0{1};
+
+    var i: bit<32> = match (a) {
+        C0{.x = v} -> v,
+        C1{v} -> v
+    }
+}
+
+// shadow local variable
+function shadow2(): () = {
+    var v: string = "bar";
+
+    var v = "foo"
+}
+
+

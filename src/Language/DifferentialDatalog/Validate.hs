@@ -583,13 +583,13 @@ exprValidate1 d _ _   (ESlice p _ h l)    =
     check d (h >= l) p
           $ "Upper bound of the slice must be greater than lower bound"
 exprValidate1 _ _ _   EMatch{}            = return ()
-exprValidate1 d _ ctx (EVarDecl p v)      = do
+exprValidate1 d _ ctx (EVarDecl p _)      = do
     check d (ctxInSetL ctx || ctxInMatchPat ctx) p "Variable declaration is not allowed in this context"
-    checkNoVar p d ctx v
+    --checkNoVar p d ctx v
 
 exprValidate1 _ _ _   ESeq{}              = return ()
 exprValidate1 _ _ _   EITE{}              = return ()
-exprValidate1 d _ ctx EFor{..}            = checkNoVar exprPos d ctx exprLoopVar
+exprValidate1 _ _ _   EFor{..}            = return () -- checkNoVar exprPos d ctx exprLoopVar
 exprValidate1 _ _ _   ESet{}              = return ()
 exprValidate1 d _ ctx (EContinue p)       = check d (ctxInForLoopBody ctx) p "\"continue\" outside of a loop"
 exprValidate1 d _ ctx (EBreak p)          = check d (ctxInForLoopBody ctx) p "\"break\" outside of a loop"
