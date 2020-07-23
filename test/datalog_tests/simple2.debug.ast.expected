@@ -1,8 +1,12 @@
 typedef Ack = Ack{m: std::u64, n: std::u64, a: std::u64}
+typedef Alt = C0{x: bit<32>} |
+              C1{x: bit<32>}
 typedef Arrng1 = Arrng1{f1: std::Ref<std::Ref<std::Ref<TArrng2>>>, f2: bigint}
 typedef Arrng1Arrng2 = Arrng1Arrng2{x: bigint}
 typedef Arrng1Arrng2_2 = Arrng1Arrng2_2{x: bigint}
 typedef Arrng2 = Arrng2{f1: std::Ref<TArrng2>, f2: bigint, f3: bool}
+typedef BoolVecVec = BoolVecVec{v: std::Vec<std::Vec<bool>>}
+typedef BoolVectors = BoolVectors{v: std::Vec<bool>}
 typedef Chunk = Chunk{json: string}
 typedef ChunkParseError = ChunkParseError{err: string}
 typedef CompressedChunk = CompressedChunk{json: string}
@@ -15,6 +19,8 @@ typedef InputInspectNot2 = InputInspectNot2{x: bit<32>}
 typedef InputTuples = InputTuples{x: bit<32>, y: bit<32>}
 typedef InspectSimpleSum = InspectSimpleSum{x: bit<32>, total: bit<32>}
 typedef Ints = Ints{x: bigint}
+typedef MapOfMaps = MapOfMaps{m: std::Map<string,std::Map<double,(std::usize, bool)>>}
+typedef MapOfVecs = MapOfVecs{m: std::Map<(std::u32, bigint),std::Vec<double>>}
 typedef ModifyMe = ModifyMe{x: string, y: std::s128}
 typedef Object = Object{field: std::u128}
 typedef Objects = Objects{chunk: Object}
@@ -28,6 +34,7 @@ typedef Rseq = Rseq{_s: TSeq}
 typedef Rseqs = Rseqs{_s: TSeq}
 typedef SResult<'V> = std::Result<'V,string>
 typedef SomeInts = SomeInts{x: std::Option<bigint>}
+typedef StringMaps = StringMaps{m: std::Map<string,(std::usize, bool)>}
 typedef Strings = Strings{descr: string, str: string}
 typedef SumsOfDoubles = SumsOfDoubles{x: double, y: double, sum: double}
 typedef TArrng1 = TArrng1{f1: bool, f2: bigint}
@@ -40,6 +47,7 @@ typedef TestRelation = TestRelation{x: bit<32>, y: bit<32>}
 typedef Try1 = Try1{description: string, result: Opt<(string, string)>}
 typedef Try2 = Try2{description: string, result: SResult<(string, string)>}
 typedef Try3 = Try3{description: string, result: Opt<(string, string)>}
+typedef VecOfMaps = VecOfMaps{m: std::Vec<std::Map<(std::u32, bigint),double>>}
 typedef debug::DDlogOpId = (std::u32, std::u32, std::u32)
 #[size = 8]
 #[shared_ref = true]
@@ -377,6 +385,19 @@ extern function log::log (module: log::module_t, level: log::log_level_t, msg: s
 function myfunc (x: string): string
 {
     x
+}
+function shadow (v: string): ()
+{
+    ((var a: Alt) = (C0{.x=32'd1}: Alt);
+     (var i: bit<32>) = match (a) {
+                            (C0{.x=(var v: bit<32>)}: Alt) -> v,
+                            (C1{.x=(var v: bit<32>)}: Alt) -> v
+                        })
+}
+function shadow2 (): ()
+{
+    ((var v: string) = "bar";
+     (var v: string) = "foo")
 }
 extern function std::__builtin_2string (x: 'X): string
 function std::append (v: mut std::Vec<'X>, other: std::Vec<'X>): ()
@@ -916,6 +937,8 @@ input relation Arrng1 [Arrng1]
 output relation Arrng1Arrng2 [Arrng1Arrng2]
 output relation Arrng1Arrng2_2 [Arrng1Arrng2_2]
 input relation Arrng2 [Arrng2]
+output relation BoolVecVec [BoolVecVec]
+output relation BoolVectors [BoolVectors]
 input multiset Chunk [Chunk]
 output multiset ChunkParseError [ChunkParseError]
 output multiset CompressedChunk [CompressedChunk]
@@ -928,6 +951,8 @@ input relation InputInspectNot2 [InputInspectNot2]
 input relation InputTuples [InputTuples]
 output relation InspectSimpleSum [InspectSimpleSum]
 input relation Ints [Ints]
+output relation MapOfMaps [MapOfMaps]
+output relation MapOfVecs [MapOfVecs]
 relation Objects [Objects]
 output relation OutputInspectNot [OutputInspectNot]
 relation ParsedChunk [ParsedChunk]
@@ -937,6 +962,7 @@ input relation Rletter [Rletter]
 output relation Rseq [Rseq]
 input relation Rseqs [Rseqs]
 output relation SomeInts [SomeInts]
+output relation StringMaps [StringMaps]
 output relation Strings [Strings]
 output relation SumsOfDoubles [SumsOfDoubles]
 input relation TArrng1 [(std::Ref<std::Ref<std::Ref<TArrng2>>>, bigint)]
@@ -947,6 +973,7 @@ input relation TestRelation [TestRelation]
 output relation Try1 [Try1]
 output relation Try2 [Try2]
 output relation Try3 [Try3]
+output relation VecOfMaps [VecOfMaps]
 Arrng1Arrng2[(Arrng1Arrng2{.x=x.f2.f2}: Arrng1Arrng2)] :- Arrng1[(__arrng10@ (Arrng1{.f1=(f1: std::Ref<std::Ref<std::Ref<TArrng2>>>), .f2=(f2: bigint)}: Arrng1))], Arrng2[(__arrng21@ (Arrng2{.f1=(x: std::Ref<TArrng2>), .f2=f1.f2.f2, .f3=(_: bool)}: Arrng2))], Inspect debug::debug_event_join((32'd0, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __arrng10, __arrng21, (Arrng1Arrng2{.x=x.f2.f2}: Arrng1Arrng2)).
 Arrng1Arrng2_2[(Arrng1Arrng2_2{.x=x.f2.f2}: Arrng1Arrng2_2)] :- Arrng1[(__arrng10@ (Arrng1{.f1=(f1: std::Ref<std::Ref<std::Ref<TArrng2>>>), .f2=(f2: bigint)}: Arrng1))], Arrng2[(__arrng21@ (Arrng2{.f1=(x: std::Ref<TArrng2>), .f2=f1.f2.f2, .f3=f1.f2.f1}: Arrng2))], Inspect debug::debug_event_join((32'd1, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __arrng10, __arrng21, (Arrng1Arrng2_2{.x=x.f2.f2}: Arrng1Arrng2_2)).
 TArrng1Arrng2[(TArrng1Arrng2{.x=x.f2.f2}: TArrng1Arrng2)] :- TArrng1[(__tarrng10@ (t: (std::Ref<std::Ref<std::Ref<TArrng2>>>, bigint)))], TArrng2[(__tarrng21@ ((x: std::Ref<TArrng2>), t.0.f2.f2))], Inspect debug::debug_event_join((32'd2, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __tarrng10, __tarrng21, (TArrng1Arrng2{.x=x.f2.f2}: TArrng1Arrng2)).
@@ -1001,4 +1028,67 @@ Try2[(Try2{.description="Albert_Einstein", .result=try2("Albert_Einstein")}: Try
 Try3[(Try3{.description="Isaac Newton", .result=try3("Isaac Newton")}: Try3)].
 Try3[(Try3{.description="", .result=try3("")}: Try3)].
 Try3[(Try3{.description="Albert_Einstein", .result=try3("Albert_Einstein")}: Try3)].
+BoolVectors[(BoolVectors{.v=((var __vec: std::Vec<bool>) = (std::vec_with_capacity(64'd3): std::Vec<bool>);
+                             (std::push(__vec, true);
+                              (std::push(__vec, false);
+                               (std::push(__vec, true);
+                                __vec))))}: BoolVectors)].
+BoolVecVec[(BoolVecVec{.v=((var __vec: std::Vec<std::Vec<bool>>) = (std::vec_with_capacity(64'd3): std::Vec<std::Vec<bool>>);
+                           (std::push(__vec, ((var __vec: std::Vec<bool>) = (std::vec_with_capacity(64'd3): std::Vec<bool>);
+                                              (std::push(__vec, true);
+                                               (std::push(__vec, false);
+                                                (std::push(__vec, true);
+                                                 __vec)))));
+                            (std::push(__vec, ((var __vec: std::Vec<bool>) = (std::vec_with_capacity(64'd1): std::Vec<bool>);
+                                               (std::push(__vec, true);
+                                                __vec)));
+                             (std::push(__vec, ((var __vec: std::Vec<bool>) = (std::vec_with_capacity(64'd1): std::Vec<bool>);
+                                                (std::push(__vec, false);
+                                                 __vec)));
+                              __vec))))}: BoolVecVec)].
+StringMaps[(StringMaps{.m=((var __map: std::Map<string,(std::usize, bool)>) = (std::map_empty(): std::Map<string,(std::usize, bool)>);
+                           (std::insert(__map, "foo", (64'd1, true));
+                            (std::insert(__map, "bar", (64'd2, false));
+                             (std::insert(__map, "foobar", (64'd3, false));
+                              __map))))}: StringMaps)].
+MapOfMaps[(MapOfMaps{.m=((var __map: std::Map<string,std::Map<double,(std::usize, bool)>>) = (std::map_empty(): std::Map<string,std::Map<double,(std::usize, bool)>>);
+                         (std::insert(__map, "foo", ((var __map: std::Map<double,(bit<64>, bool)>) = (std::map_empty(): std::Map<double,(bit<64>, bool)>);
+                                                     (std::insert(__map, 64'f1.0, (64'd1, true));
+                                                      (std::insert(__map, 64'f2.0, (64'd4, false));
+                                                       __map))));
+                          (std::insert(__map, "bar", ((var __map: std::Map<double,(bit<64>, bool)>) = (std::map_empty(): std::Map<double,(bit<64>, bool)>);
+                                                      (std::insert(__map, (- 64'f10.0), (64'd10000, true));
+                                                       (std::insert(__map, 64'f200.0, (64'd2, false));
+                                                        __map))));
+                           (std::insert(__map, "foobar", (std::map_empty(): std::Map<double,(std::usize, bool)>));
+                            __map))))}: MapOfMaps)].
+MapOfVecs[(MapOfVecs{.m=((var __map: std::Map<(std::u32, bigint),std::Vec<double>>) = (std::map_empty(): std::Map<(std::u32, bigint),std::Vec<double>>);
+                         (std::insert(__map, (32'd100, 100), ((var __vec: std::Vec<double>) = (std::vec_with_capacity(64'd4): std::Vec<double>);
+                                                              (std::push(__vec, 64'f0.1);
+                                                               (std::push(__vec, (- 64'f100.0));
+                                                                (std::push(__vec, 64'f0.0);
+                                                                 (std::push(__vec, 64'f1000000.0);
+                                                                  __vec))))));
+                          (std::insert(__map, (32'd100, (- 100)), (std::vec_empty(): std::Vec<double>));
+                           (std::insert(__map, (32'd0, (- 0)), ((var __vec: std::Vec<double>) = (std::vec_with_capacity(64'd4): std::Vec<double>);
+                                                                (std::push(__vec, 64'f0.1);
+                                                                 (std::push(__vec, (- 64'f100.0));
+                                                                  (std::push(__vec, 64'f0.0);
+                                                                   (std::push(__vec, 64'f1000000.0);
+                                                                    __vec))))));
+                            __map))))}: MapOfVecs)].
+VecOfMaps[(VecOfMaps{.m=((var __vec: std::Vec<std::Map<(std::u32, bigint),double>>) = (std::vec_with_capacity(64'd3): std::Vec<std::Map<(std::u32, bigint),double>>);
+                         (std::push(__vec, ((var __map: std::Map<(bit<32>, bigint),double>) = (std::map_empty(): std::Map<(bit<32>, bigint),double>);
+                                            (std::insert(__map, (32'd100, 100), 64'f0.1);
+                                             __map)));
+                          (std::push(__vec, ((var __map: std::Map<(bit<32>, bigint),double>) = (std::map_empty(): std::Map<(bit<32>, bigint),double>);
+                                             (std::insert(__map, (32'd100, 100), 64'f0.1);
+                                              (std::insert(__map, (32'd1000, (- 100)), (- 64'f0.1));
+                                               __map))));
+                           (std::push(__vec, ((var __map: std::Map<(bit<32>, bigint),double>) = (std::map_empty(): std::Map<(bit<32>, bigint),double>);
+                                              (std::insert(__map, (32'd100, 100), 64'f0.1);
+                                               (std::insert(__map, (32'd1000, (- 100)), (- 64'f0.1));
+                                                (std::insert(__map, (32'd1000, (- 10000000000000000000000000000000000000)), (- 64'f0.0));
+                                                 __map)))));
+                            __vec))))}: VecOfMaps)].
 

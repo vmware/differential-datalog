@@ -337,6 +337,8 @@ term ::= "_"                 (* wildcard *)
        | bool_literal        (* Boolean literal *)
        | fp_literal          (* floating point literal *)
        | string_literal      (* string literal *)
+       | vec_literal         (* vector literal *)
+       | map_literal         (* map literal *)
        | cons_term           (* type constructor invocation *)
        | apply_term          (* function application *)
        | var_term            (* variable reference *)
@@ -409,9 +411,11 @@ they produce results of type `string`, e.g.:
 Other terms:
 
 ```EBNF
+vec_literal  :: "[" expr ("," expr)* "]"
+map_literal  :: "[" expr "->" expr ("," expr "->" expr)* "]"
 bool_literal ::= "true" | "false"
 cons_term    ::= (* positional arguments *)
-                 cons_name ["{" [expr (,expr)*] "}"]
+                 cons_name ["{" [expr ("," expr)*] "}"]
                  (* named arguments *)
                | cons_name ["{" "." field_name "=" expr
                             ("," "." field_name "=" expr)* "}"]

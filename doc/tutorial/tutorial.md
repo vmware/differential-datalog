@@ -704,7 +704,7 @@ Evaluation order can be controlled using several constructs:
 
 1. A new block (scope) can be created with curly braces `{ }`
 
-1. A for loop
+1. A `for`-loop
 
 1. `continue` terminates current loop iteration
 
@@ -768,6 +768,133 @@ output relation EndpointString(s: string)
 
 EndpointString(addr_port(ip, proto, preferred_port)) :-
     Endpoint(ip, proto, preferred_port).
+```
+
+#### Container types, FlatMap, and for-loops
+
+DDlog supports three built-in container data types: `Vec`, `Set`, and `Map`.  These
+are *generic* types that can be parameterized by any other
+DDlog types, e.g., `Vec<string>` is a vector of strings, `Map<string,bool>` is
+a map from strings to Booleans.
+
+We will use a DDlog standard library function that splits a string
+into a list of substrings according to a separator:
+
+```
+function split(s: string, sep: string): Vec<string>
+```
+
+We define a DDlog function which splits IP addresses at spaces:
+
+```
+function split_ip_list(x: string): Vec<string> {
+   split(x, " ")
+}
+```
+
+Consider an input relation `HostAddress` associating each host with a
+string of all its IP addresses, separated by whitespaces.  We want to
+compute a `HostIP` relation that consists of (host, ip) pairs:
+
+```
+input relation HostAddress(host: bit<64>, addrs: string)
+output relation HostIP(host: bit<64>, addr: string)
+```
+
+For this purpose we can use `FlatMap`: this operator applies a
+function that produces a set or a vector for each value in a relation, and creates a
+result that is the union of all the resulting sets:
+
+```
+HostIP(host, addr) :- HostAddress(host, addrs),
+                      var addr = FlatMap(split_ip_list(addrs)).
+```
+
+You can read this rule as follows:
+
+1. For every `(host, addrs)` pair in the `HostAddress` relation, use `split_ip_list()`
+to split `addrs` into individul addresses.
+
+1. Bind each address in the resulting set to the `addr` variable, producing a new set of `(host,
+addr)` records.
+
+1. Store the resulting records in the `HostIP` relation.
+
+For-loops allow manipulating container types in a more procedural fashion, without first flattening them.
+The following function concatenates a vector of strings, each starting at a new line.
+
+```
+function vsep(strs: Vec<string>): string {
+    var res = "";
+    for (s in strs) {
+        res = res ++ s ++ "\n"
+    };
+    res
+}
+```
+
+Loops can only iterate over container types: sets, maps, and vectors.  When iterating over sets
+and vectors, the loop variable (`s` in the above example) has the same type as elements of the container
+(e.g., `string`).  When iterating over maps, the loop variable is a 2-tuple `(key,value)`.
+
+A `continue` statement used anywhere inside the body of a loop terminates the
+current loop iteration:
+
+```
+// Returns only even elements of the vector.
+function evens(vec: Vec<bigint>): Vec<bigint> {
+    var res: Vec<bigint> = vec_empty();
+    for (x in vec) {
+        if (x % 2 != 0) { continue };
+        vec_push(res, x)
+    };
+    res
+}
+```
+
+A `break` statement used anywhere inside the body of a loop terminates the loop:
+
+```
+// Returns prefix of `vec` before the first occurrence of value `v`.
+function prefixBefore(vec: Vec<'A>, v: 'A): Vec<'A> {
+    var res: Vec<'A> = vec_empty();
+    for (x in vec) {
+        if (x == v) { break };
+        vec_push(res, x)
+    };
+    res
+}
+```
+
+#### Vector and map literals
+
+Let's say we wanted to create a vector with three elements: `0`, `x`, and
+`f(y)`.  This can be achieved by repeatedly calling the `push()` function
+from the standard library:
+
+```
+var v = vec_with_capacity(3);
+v.push(0);
+v.push(x);
+v.push(f(y));
+...
+```
+
+The above code can be simplified using **vector literals** that allow
+creating a vector by listing its elements in square brackets:
+
+```
+var v = [0, x, f(y)];
+```
+
+Likewise, **map literals** can be used to create maps by listing their
+key-value pairs:
+
+```
+var m = ["foo" -> 0,
+         "bar" -> 1,
+         "foobar" -> 2];
+...
 ```
 
 ### Functions
@@ -967,102 +1094,6 @@ BookByAuthor(b, author) :-
     // `author_name` will be bound to `b.author`.
     Library(.book = b@Book{.author = author_name}),
     author in Author(.name = author_name).
-```
-
-#### Container types, FlatMap, and for-loops
-
-DDlog supports three built-in container data types: `Vec`, `Set`, and `Map`.  These
-are *generic* types that can be parameterized by any other
-DDlog types, e.g., `Vec<string>` is a vector of strings, `Map<string,bool>` is
-a map from strings to Booleans.
-
-We will use a DDlog standard library function that splits a string
-into a list of substrings according to a separator:
-
-```
-function split(s: string, sep: string): Vec<string>
-```
-
-We define a DDlog function which splits IP addresses at spaces:
-
-```
-function split_ip_list(x: string): Vec<string> {
-   split(x, " ")
-}
-```
-
-Consider an input relation `HostAddress` associating each host with a
-string of all its IP addresses, separated by whitespaces.  We want to
-compute a `HostIP` relation that consists of (host, ip) pairs:
-
-```
-input relation HostAddress(host: bit<64>, addrs: string)
-output relation HostIP(host: bit<64>, addr: string)
-```
-
-For this purpose we can use `FlatMap`: this operator applies a
-function that produces a set or a vector for each value in a relation, and creates a
-result that is the union of all the resulting sets:
-
-```
-HostIP(host, addr) :- HostAddress(host, addrs),
-                      var addr = FlatMap(split_ip_list(addrs)).
-```
-
-You can read this rule as follows:
-
-1. For every `(host, addrs)` pair in the `HostAddress` relation, use `split_ip_list()`
-to split `addrs` into individul addresses.
-
-1. Bind each address in the resulting set to the `addr` variable, producing a new set of `(host,
-addr)` records.
-
-1. Store the resulting records in the `HostIP` relation.
-
-For-loops allow manipulating container types in a more procedural fashion, without first flattening them.
-The following function concatenates a vector of strings, each starting at a new line.
-
-```
-function vsep(strs: Vec<string>): string {
-    var res = "";
-    for (s in strs) {
-        res = res ++ s ++ "\n"
-    };
-    res
-}
-```
-
-Loops can only iterate over container types: sets, maps, and vectors.  When iterating over sets
-and vectors, the loop variable (`s` in the above example) has the same type as elements of the container
-(e.g., `string`).  When iterating over maps, the loop variable is a 2-tuple `(key,value)`.
-
-A `continue` statement used anywhere inside the body of a loop terminates the
-current loop iteration:
-
-```
-// Returns only even elements of the vector.
-function evens(vec: Vec<bigint>): Vec<bigint> {
-    var res: Vec<bigint> = vec_empty();
-    for (x in vec) {
-        if (x % 2 != 0) { continue };
-        vec_push(res, x)
-    };
-    res
-}
-```
-
-A `break` statement used anywhere inside the body of a loop terminates the loop:
-
-```
-// Returns prefix of `vec` before the first occurrence of value `v`.
-function prefixBefore(vec: Vec<'A>, v: 'A): Vec<'A> {
-    var res: Vec<'A> = vec_empty();
-    for (x in vec) {
-        if (x == v) { break };
-        vec_push(res, x)
-    };
-    res
-}
 ```
 
 #### Rules with multiple heads

@@ -511,6 +511,32 @@ term' = withPos $
      <|> econtinue
      <|> ebreak
      <|> ereturn
+     <|> emap_literal
+     <|> evec_literal
+
+emap_literal = mkmap <$> (ismap *> (brackets $ commaSep1 $ (,) <$> expr <* reservedOp "->" <*> expr))
+    where ismap = try $ lookAhead $ do
+                        _ <- symbol "["
+                        _ <- expr
+                        reservedOp "->"
+          mkmap pairs = E $ ESeq p (E $ ESet p (E $ EVarDecl p "__map") (E $ EApply p ["map_empty"] [])) m
+             where
+             p = (fst $ pos $ fst $ head pairs, snd $ pos $ snd $ last pairs)
+             m = foldr (\(k,v) e -> E $ ESeq (fst $ pos e, snd $ pos v) (E $ EApply (fst $ pos e, snd $ pos v) ["insert"] [E $ EVar p "__map", k, v]) e)
+                        (E $ EVar p "__map")
+                        pairs
+
+evec_literal = mkvec <$> (isvec *> (brackets $ commaSep1 expr))
+    where isvec = try $ lookAhead $ do
+                        _ <- symbol "["
+                        _ <- expr
+                        (comma <|> symbol "]")
+          mkvec vs = E $ ESeq p (E $ ESet p (E $ EVarDecl p "__vec") (E $ EApply p ["vec_with_capacity"] [E $ EInt p $ fromIntegral $ length vs])) vec
+             where
+             p = (fst $ pos $ head vs, snd $ pos $ last vs)
+             vec = foldr (\v e -> E $ ESeq (fst $ pos e, snd $ pos v) (E $ EApply (fst $ pos e, snd $ pos v) ["push"] [E $ EVar p "__vec", v]) e)
+                         (E $ EVar p "__vec")
+                         vs
 
 econtinue = (E $ EContinue nopos) <$ reserved "continue"
 ebreak    = (E $ EBreak nopos) <$ reserved "break"
