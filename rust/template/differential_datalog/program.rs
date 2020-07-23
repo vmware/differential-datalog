@@ -1369,10 +1369,20 @@ impl Program {
                             /* notify client about changes */
                             if let Some(cb) = &prog.get_relation(relid).change_cb {
                                 let mut cb = cb.lock().unwrap().clone();
-                                collection.consolidate().inspect(move |x| {
-                                    //assert!(x.2 == 1 || x.2 == -1, "x: {:?}", x);
-                                    cb(relid, &x.0, x.2)
-                                }).probe_with(&mut probe1);
+                                let consolidated = with_prof_context(
+                                    &format!("consolidate {}", relid),
+                                    || collection.consolidate()
+                                    );
+                                let inspected = with_prof_context(
+                                    &format!("inspect {}", relid),
+                                    || consolidated.inspect(move |x| {
+                                        //assert!(x.2 == 1 || x.2 == -1, "x: {:?}", x);
+                                        cb(relid, &x.0, x.2)
+                                       }));
+                                with_prof_context(
+                                    &format!("probe {}", relid),
+                                    || inspected.probe_with(&mut probe1)
+                                    );
                             }
                         };
 
