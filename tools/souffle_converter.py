@@ -1,4 +1,4 @@
-#! /usr/bin/env python2.7
+#!/usr/bin/env python3
 """This program converts Datalog programs written in the Souffle dialect to
    Datalog programs written in the Differential Datalog dialect"""
 
@@ -8,6 +8,7 @@ import gzip
 import os
 import argparse
 import parglare  # parser generator
+from functools import reduce
 
 class ConversionOptions(object):
     """Options that influence how the conversion from Souffle to DDlog is done"""
@@ -42,7 +43,7 @@ def strip_quotes(string):
 
 def dict_intersection(dict1, dict2):
     """Return a dictionary which has the keys common to dict1 and dict2 and the values from dict1"""
-    keys = dict1.viewkeys() & dict2.viewkeys()
+    keys = dict1.keys() & dict2.keys()
     return {x: dict1[x] for x in keys}
 
 
@@ -113,13 +114,13 @@ def getParser(debugParser):
     global parglareParser, verbose
     if parglareParser is None:
         if verbose:
-            print "Creating parser"
+            print("Creating parser")
         fileName = "souffle-grammar.pg"
         directory = os.path.dirname(os.path.abspath(__file__))
         g = parglare.Grammar.from_file(directory + "/" + fileName)
         parglareParser = parglare.Parser(g, build_tree=True, debug=debugParser)
         if verbose:
-            print "Parser constructed"
+            print("Parser constructed")
     return parglareParser
 
 
@@ -160,7 +161,7 @@ class Type(object):
     def create(cls, name, equivalentTo):
         """Create a type that is equivalent to another one"""
         if name in cls.types:
-            print "Warning: redefinition of type " + name + " ignored"
+            print("Warning: redefinition of type", name, ", ignored")
             return None
         if name != equivalentTo:
             typ = Type(name, "T" + name)
@@ -170,10 +171,10 @@ class Type(object):
         if equivalentTo is None:
             equivalentTo = "IString"
         else:
-            assert isinstance(equivalentTo, basestring)
+            assert isinstance(equivalentTo, str)
         assert equivalentTo is not None
         typ.equivalentTo = equivalentTo
-        # print "Created " + typ.name + " same as " + typ.equivalentTo
+        # print("Created", typ.name, "same as", typ.equivalentTo)
         return typ
 
     @classmethod
@@ -272,13 +273,13 @@ class Relation(object):
 
     @classmethod
     def create(cls, name, component):
-        assert isinstance(name, basestring)
+        assert isinstance(name, str)
         name = SouffleConverter.relative_name(component, name)
         if name in cls.relations:
             raise Exception("duplicate relation name " + name)
         ri = Relation(name)
         cls.relations[name] = ri
-        # print "Registered relation " + name
+        # print("Registered relation", name)
         return ri
 
     def mark_as_input(self):
@@ -314,7 +315,7 @@ class Component(object):
     """Represents a souffle component."""
 
     def __init__(self, name, declTree, typeParameters):
-        # print "Created component", name, typeParameters
+        # print("Created component", name, typeParameters)
         assert isinstance(typeParameters, list)
         self.name = name
         self.declarations = declTree
@@ -331,8 +332,8 @@ class Component(object):
 
     def instantiate(self, typeArgs, converter):
         """Instantiate this component with the specified newName and type arguments"""
-        # print "Instantiating", self.name, "as", converter.current_component, \
-        #    "with parameters", typeArgs
+        # print("Instantiating", self.name, "as", converter.current_component, \
+        #    "with parameters", typeArgs)
         assert isinstance(converter, SouffleConverter)
         if typeArgs is not None and len(typeArgs) != len(self.parameters):
             raise Exception("Cannot instantiate " + self.name + " with " +
@@ -343,7 +344,7 @@ class Component(object):
         for parentName, typeParams in self.inherits:
             parent = converter.getComponent(parentName)
             assert parent is not None
-            # print "Adding overrides of", parent.name, parent.overrides, self.overrides
+            # print("Adding overrides of", parent.name, parent.overrides, self.overrides)
             save = converter.overridden.copy()
             converter.overridden = converter.overridden.union(self.overrides)
             parentTypeArgs = []
@@ -353,13 +354,13 @@ class Component(object):
             for param in typeParams:
                 typ = converter.resolve_type(param)
                 parentTypeArgs.append(typ)
-            # print "Instantiating parent component", parentName, "with arguments", parentTypeArgs
+            # print("Instantiating parent component", parentName, "with arguments", parentTypeArgs)
             parent.instantiate(parentTypeArgs, converter)
 
             converter.typeSubstitution = saveSubstitution
             converter.overridden = save.copy()
         # insert own body
-        # print "Instantiating", self.name, "body"
+        # print("Instantiating", self.name, "body")
         saveSubstitution = converter.typeSubstitution
         converter.setTypeSubstitution(self.parameters, typeArgs)
         converter.instantiating.append(self)
@@ -402,8 +403,8 @@ class Files(object):
             self.outputData("start", ";")
         global verbose
         if verbose:
-            print "Reading from", self.inputName, "writing output to", \
-                outputName, "writing data to", outputDataName
+            print("Reading from", self.inputName, "writing output to", \
+                outputName, "writing data to", outputDataName)
 
     def output(self, text):
         if text == "":
@@ -571,7 +572,7 @@ class SouffleConverter(object):
         data.close()
 
         if sort:
-            output = sorted(output, cmp=lambda x, y: compare(x, y, isString))
+            output = sorted(output)
         if is_output:
             for record in output:
                 for i in range(len(fields)):
@@ -606,7 +607,7 @@ class SouffleConverter(object):
     @staticmethod
     def get_relid(decl):
         """Return the RelId non-terminal as a relation name"""
-        # print decl.tree_str()
+        # print(decl.tree_str())
         lst = getList(decl, "Identifier", "RelId")
         values = [e.value for e in lst]
         return "_".join(values)
@@ -663,7 +664,7 @@ class SouffleConverter(object):
 
             global verbose
             if verbose:
-                print "Reading", rel + "_shadow"
+                print("Reading", rel + "_shadow")
             data = None
             for directory in ["./", "./facts/"]:
                 for suffix in ["", ".gz"]:
@@ -673,7 +674,7 @@ class SouffleConverter(object):
                             data = tryFile
                             break
             if data is None:
-                print "** Cannot find input file for " + rel
+                print("** Cannot find input file for", rel)
                 return
             output = self.process_file(rel, data, delimiter, False, False)
             for row in output:
@@ -692,7 +693,7 @@ class SouffleConverter(object):
             rel = self.get_relid(r)
             origrel = self.get_orig_relid(r)
             ri = Relation.get(rel, self.getCurrentComponentLegalName())
-            print "Output relation ", ri.name
+            print("Output relation", ri.name)
             ri.isoutput = True
             if self.conversion_options.skip_files or self.preprocessing:
                 Relation.dumpOrder.append(ri.name)
@@ -701,7 +702,7 @@ class SouffleConverter(object):
             filenames = self.generateFilenames(origrel)
             global verbose
             if verbose:
-                print "Reading output relation", rel
+                print("Reading output relation", rel)
             data = None
             for suffix in ["", ".csv"]:
                 for filename in filenames:
@@ -710,8 +711,8 @@ class SouffleConverter(object):
                         data = tryFile
                         break
             if data is None:
-                print "*** Cannot find output file for " + rel + \
-                      "; the reference output will be incomplete"
+                print("*** Cannot find output file for " + rel + \
+                      "; the reference output will be incomplete")
                 return
             output = self.process_file(rel, data, "\t", True, True)
             for row in output:
@@ -721,7 +722,7 @@ class SouffleConverter(object):
     def get_type_parameters(self, typeParameters):
         """Returns the type parameters as a list or None if there are no type parameters
            The same grammar production is used for type arguments."""
-        # print typeParameters.tree_str()
+        # print(typeParameters.tree_str())
         tps = getField(typeParameters, "TypeParameters")
         if getOptField(tps, "TypeParameterList") is not None:
             plist = getListField(tps, "TypeId", "TypeParameterList")
@@ -768,7 +769,7 @@ class SouffleConverter(object):
         return op
 
     def convert_arg(self, arg):
-        # print arg.tree_str()
+        # print(arg.tree_str())
         string = getOptField(arg, "String")
         if string is not None:
             return "string_intern(" + string.value + ")"
@@ -959,7 +960,7 @@ class SouffleConverter(object):
 
     def convert_function_call(self, function):
         """Convert a call to a function"""
-        # print function.tree_str()
+        # print(function.tree_str())
         func = self.get_function_name(function)
         args = getListField(function, "Arg", "FunctionArgumentList")
         argStrings = [self.convert_arg(arg) for arg in args]
@@ -1107,7 +1108,7 @@ class SouffleConverter(object):
         - the second field is a boolean indicating whether the term evaluation should be postponed.
           This is because in Souffle the order is irrelevant, but in DDlog is not.
         """
-        # print term.tree_str()
+        # print(term.tree_str())
         lit = getOptField(term, "Literal")
         if lit is not None:
             return self.convert_literal(lit)
@@ -1210,7 +1211,7 @@ class SouffleConverter(object):
 
     def process_rule(self, rule):
         """Convert a rule and emit the output"""
-        # print rule.tree_str()
+        # print(rule.tree_str())
         head = getField(rule, "Head")
         tail = getField(rule, "Body")
         headAtoms = getList(head, "Atom", "Head")
@@ -1226,11 +1227,11 @@ class SouffleConverter(object):
             terms = [getList(l, "Term", "Conjunction") for l in disjunctions]
 
         nonOverridden = []
-        # print "Overridden:", self.overridden
+        # print("Overridden:", self.overridden)
         for atom in headAtoms:
             rel = self.get_relid(atom)
             if rel in self.overridden:
-                # print "Skipping", rel, "overridden"
+                # print("Skipping", rel, "overridden")
                 pass
             else:
                 nonOverridden.append(atom)
@@ -1278,14 +1279,14 @@ class SouffleConverter(object):
         qualifiers = [qual.children[0].value for qual in q]
         if self.preprocessing:
             for ident in idents:
-                # print "Decl", ident.value, qualifiers
+                # print("Decl", ident.value, qualifiers)
                 rel = Relation.create(ident.value, self.getCurrentComponentLegalName())
-                # print "Type substitution", self.typeSubstitution
+                # print("Type substitution", self.typeSubstitution)
                 for param in params:
                     arr = getArray(param, "Identifier")
                     typeName = arr[1].value
                     typeName = self.resolve_type(typeName)
-                    # print "Adding relation parameter", arr[0].value, typeName
+                    # print("Adding relation parameter", arr[0].value, typeName)
                     rel.addParameter(arr[0].value, typeName)
 
                 if "input" in qualifiers:
@@ -1305,7 +1306,7 @@ class SouffleConverter(object):
         atom = getField(fact, "Atom")
         rel = self.get_relid(atom)
         if rel in self.overridden:
-            # print "Skipping", rel, "overridden"
+            # print("Skipping", rel, "overridden")
             return
         head = self.convert_atom(atom)
         self.files.output(head + ".")
@@ -1319,7 +1320,7 @@ class SouffleConverter(object):
     def process_type(self, typedecl):
         ident = getIdentifier(typedecl)
         if self.preprocessing:
-            # print "Creating type", ident
+            # print("Creating type", ident)
             union = getOptField(typedecl, "UnionType")
             numtype = getOptField(typedecl, "NUMBER_TYPE")
             recordType = getOptField(typedecl, "RecordType")
@@ -1479,7 +1480,7 @@ def convert(inputName, outputPrefix, options, debug=False):
     files.output("relation " + converter.dummyRelation + "(x: Tnumber)")
     files.output(converter.dummyRelation + "(0).")
 
-    # print "=================== finished preprocessing"
+    # print("=================== finished preprocessing")
     converter.preprocessing = False
     converter.process(tree)
     files.done(Relation.dumpOrder)

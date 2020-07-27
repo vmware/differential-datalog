@@ -1,4 +1,4 @@
-#! /usr/bin/env python2.7
+#! /usr/bin/env python3
 """Run Souffle Datalog programs tests in batches"""
 
 import os
@@ -6,7 +6,7 @@ import sys
 
 def exit(code):
     if code != 0:
-        print "Terminating with exit code " + str(code)
+        print("Terminating with exit code", str(code))
     sys.exit(code)
 
 def main():
@@ -26,7 +26,7 @@ def main():
         batchsize = 5
 
     while start <= end:
-        print "Running from", start
+        print("Running from", start)
         code = os.system("./run-souffle-tests.py -s " + str(start) + " -r " + str(batchsize))
         if code == (2 << 8):
             # run-souffle-tests.py will terminate with exit code 2 when no tests are run

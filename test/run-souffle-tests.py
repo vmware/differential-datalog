@@ -1,4 +1,4 @@
-#! /usr/bin/env python2.7
+#! /usr/bin/env python3
 """Run various Souffle Datalog programs tests
    Returns 0 when no errors occurred, 1 when some error occurs, and 2 when no tests are run"""
 
@@ -100,25 +100,25 @@ xfail = [
 
 def exit(code):
     if code != 0:
-        print "Terminating with exit code " + str(code)
+        print("Terminating with exit code", str(code))
     sys.exit(code)
 
 def run_command(command, indata=None):
     """Runs a command in a shell; returns the stdout; on error prints stderr"""
-    # print "Running", command
+    # print("Running", command)
     p = subprocess.Popen(command,
                          stdin=subprocess.PIPE,
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE)
     stdout, stderr = p.communicate(indata)
     if p.returncode != 0 and stderr is not None:
-        sys.stderr.write("{}".format(stderr))
-    return p.returncode, "{}".format(stdout)
+        sys.stderr.write("{}".format(stderr.decode()))
+    return p.returncode, "{}".format(stdout.decode())
 
 def compile_example(directory, f):
     """Run the Souffle example in directory 'directory'.  The test file is named f.
        Returns the exit code of the compilation command."""
-    print "Testing " + directory
+    print("Testing", directory)
     global tests_compiled, tests_compiled_successfully, libpath
     tests_compiled = tests_compiled + 1
     savedir = os.getcwd()
@@ -139,7 +139,7 @@ def compile_example(directory, f):
         run_command(["rm", f + ".tmp"])
         tests_compiled_successfully = tests_compiled_successfully + 1
     else:
-        print "Error compiling " + directory + "/" + f
+        print("Error compiling", directory + "/" + f)
     os.chdir(savedir)
     return code
 
@@ -152,7 +152,7 @@ def should_run(d):
         global tests_xfail
         tests_xfail = tests_xfail + 1
         if verbose:
-            print "Expected to fail", d
+            print("Expected to fail", d)
         return False
     if len(todo) > 0:
         return d in todo
@@ -204,12 +204,12 @@ def run_remote_tests():
             if tests_to_skip > 0:
                 tests_to_skip = tests_to_skip - 1
                 if verbose:
-                    print "Skipping", directory
+                    print("Skipping", directory)
                 continue
 
             newName = normalize_name(directory)
             if newName != directory:
-                print "Using", newName, "for", directory
+                print("Using", newName, "for", directory)
 
             if not os.path.isdir(newName):
                 os.chdir(tg)
@@ -237,21 +237,21 @@ def run_merged_test(filename):
     code, _ = run_command(["ddlog", "-i", filename + ".dl", "-L",
                            "../lib", "--no-dynlib", "--no-staticlib"])
     if code != 0:
-        print "*** Error in compiling"
+        print("*** Error in compiling")
         return code
     os.chdir(filename + "_ddlog")
-    print "Compiling Rust at", datetime.datetime.now().time()
+    print("Compiling Rust at", datetime.datetime.now().time())
     code, _ = run_command(["cargo", "build"])
     if code != 0:
         return code
     os.chdir("..")
-    with open(filename + ".dat") as f:
+    with open(filename + ".dat", 'r') as f:
         lines = f.read()
-    print "Running program at", datetime.datetime.now().time()
+    print("Running program at", datetime.datetime.now().time())
     code, result = run_command(["./" + filename + "_ddlog/target/debug/" + filename +
-                                "_cli", "--no-init-snapshot"], lines)
+                                "_cli", "--no-init-snapshot"], lines.encode())
     if code != 0:
-        print "Error running ddlog program", code
+        print("Error running ddlog program", code)
     with open(filename + ".dump", "w") as dump:
         dump.write(result)
     run_command(["sort", filename + ".dump", "-o", "tmp.sorted"])
@@ -260,14 +260,14 @@ def run_merged_test(filename):
     run_command(["mv", "tmp.sorted", filename + ".dump.expected"])
     code, _ = run_command(["diff", "-q", filename + ".dump", filename + ".dump.expected"])
     if code != 0:
-        print "*** Error: Output differs"
-    print "Completed program at", datetime.datetime.now().time()
+        print("*** Error: Output differs")
+    print("Completed program at", datetime.datetime.now().time())
     return code
 
 def main():
     os.environ["RUSTFLAGS"] = "-Awarnings" # " -opt-level=z"
     global todo, tests_xfail, libpath, verbose
-    print "Starting at", datetime.datetime.now().time()
+    print("Starting at", datetime.datetime.now().time())
     argParser = argparse.ArgumentParser(
         "run-souffle-tests.py",
         description="Runs a number of Datalog Souffle tests from github.")
@@ -297,9 +297,9 @@ def main():
         tests_to_run = int(args.run)
     save_skip = tests_to_skip
     modules = run_remote_tests()
-    print "Converted successfully", tests_compiled_successfully, "out of", \
+    print("Converted successfully", tests_compiled_successfully, "out of", \
         tests_compiled, "skipped xfail", tests_xfail, \
-        "running", tests_to_run, "after skipping", save_skip
+        "running", tests_to_run, "after skipping", save_skip)
     imports = ["import " + m + "::souffle as " + m for m in modules]
     imports = [s.replace("/", "::") for s in imports]
 

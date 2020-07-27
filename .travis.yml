@@ -69,7 +69,7 @@ addons:
       - subversion
 
 before_install:
-- pip install --user parglare==0.10.0
+- pip3 install --user parglare==0.12.0
 # Download and unpack the stack executable
 - mkdir -p ~/.local/bin
 - export PATH=$HOME/.local/bin:$PATH
