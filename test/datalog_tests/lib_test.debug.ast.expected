@@ -254,6 +254,10 @@ function internment::to_lowercase (s: internment::istring): string
 {
     internment::istring_to_lowercase(s)
 }
+function internment::to_string (s: internment::istring): string
+{
+    (internment::ival(s): string)
+}
 function internment::to_uppercase (s: internment::istring): string
 {
     internment::istring_to_uppercase(s)
