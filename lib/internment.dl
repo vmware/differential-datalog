@@ -82,3 +82,7 @@ function to_uppercase(s: istring): string {
 function reverse(s: istring): string {
     istring_reverse(s)
 }
+
+function to_string(s: istring): string {
+    ival(s)
+}
