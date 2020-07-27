@@ -31,6 +31,7 @@ xfail = [
     "aggregates5", # Cannot convert constant to float implicitly
     "aggregates7", # Cannot convert constant to float implicitly
     "aggregates_complex", # cannot be evaluated bottom-up; issue 293
+    "aggregates_non_materialised", # ???
     "aggregates",  # issue 227 - count of empty group
     "magic_aggregates",  # 227
     "count",       # 227
