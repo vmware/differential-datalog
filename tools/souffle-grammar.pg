@@ -2,7 +2,7 @@
 // https://souffle-lang.github.io
 // This grammar is written in the syntax of the Python Parglare parser generator.
 
-Program: DeclarationList EOF
+Program: DeclarationList
        ;
 
 DeclarationList: EMPTY

@@ -46,7 +46,7 @@ RUN cd differential-datalog && stack --no-terminal --install-ghc test --only-dep
 RUN rm -rf differential-datalog
 
 # Python packages needed by souffle scripts
-RUN pip install parglare==0.10.0
+RUN pip3 install parglare==0.12.0
 
 # Install Golang
 RUN curl -o go.tar.gz https://dl.google.com/go/go1.13.8.linux-amd64.tar.gz

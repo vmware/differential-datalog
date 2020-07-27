@@ -25,6 +25,8 @@ rustup toolchain install ${RUST_VERSION}
 rustup component add rustfmt
 rustup component add clippy
 
+pip3 install parglare==0.12.0
+
 ./tools/install-flatbuf.sh
 cd flatbuffers
 export CLASSPATH=`pwd`"/java":$CLASSPATH
