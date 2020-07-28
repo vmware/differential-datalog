@@ -9,6 +9,7 @@ import os
 import argparse
 import parglare  # parser generator
 from functools import reduce
+import re
 
 class ConversionOptions(object):
     """Options that influence how the conversion from Souffle to DDlog is done"""
@@ -38,8 +39,7 @@ def var_name(ident):
 def strip_quotes(string):
     assert string[0] == "\"", "String is not quoted"
     assert string[len(string) - 1] == "\"", "String is not quoted"
-    return string[1:-1].decode('string_escape')
-
+    return string[1:-1]
 
 def dict_intersection(dict1, dict2):
     """Return a dictionary which has the keys common to dict1 and dict2 and the values from dict1"""
@@ -544,14 +544,14 @@ class SouffleConverter(object):
                 converter.append(lambda a: json.dumps(a, ensure_ascii=False))
 
         if inFileName.endswith(".gz"):
-            data = gzip.open(inFileName, "r")
+            data = gzip.open(inFileName, "rt")
         else:
             data = open(inFileName, "r")
         lineno = 0
 
         output = []
-        for line in data:
-            fields = line.rstrip('\n').split(inDelimiter)
+        for line in data.readlines():
+            fields = re.split(inDelimiter, line.rstrip('\n'))
             # I have seen cases where there's a redundant \t at the end of the line.  So check for an
             # empty field at the end
             if len(fields) > 0 and fields[-1] == "" and len(fields) == len(converter) + 1:
@@ -562,7 +562,7 @@ class SouffleConverter(object):
             if len(converter) == 0 and len(fields) == 1 and fields[0] == "()":
                 fields = []
             elif len(fields) != len(converter):
-                raise Exception(inFileName + ":" + str(lineno) +
+                raise Exception(inFileName + " line " + str(lineno) +
                                 " does not match schema (expected " +
                                 str(len(converter)) + " parameters):" + line)
             for i in range(len(fields)):
