@@ -1237,10 +1237,10 @@ pub fn std_group_max<K, V: Ord>(g: &std_Group<K, V>) -> V {
     g.iter().max().unwrap()
 }
 
-pub fn std_group_sum<K, V: ops::Add + ops::AddAssign>(g: &std_Group<K, V>) -> V {
+pub fn std_group_sum<K, V: ops::Add<Output=V>>(g: &std_Group<K, V>) -> V {
     let mut res = std_group_first(g);
     for v in g.iter().skip(1) {
-        res += v;
+        res = res + v;
     }
     res
 }

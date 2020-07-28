@@ -37,6 +37,12 @@ function to_number(s: IString): Tnumber {
         Some{x} -> x as Tnumber
     }
 }
+function to_number(f: double): Tnumber {
+    match (int_from_d(f)) {
+        None -> 0,
+        Some{x} -> x as Tnumber
+    }
+}
 function to_istring(n: Tnumber): IString {
     string_intern(__builtin_2string(n))
 }
@@ -125,5 +131,16 @@ function exp(l: signed<32>): signed<32> {
 function group_mean(g: Group<'K, signed<32>>): signed<32> {
     var sum = group_sum(g);
     var count = group_count(g);
-    sum / (count as signed<64> as signed<32>)
+    if (count == 0)
+       0
+    else
+       sum / (count as signed<64> as signed<32>)
+}
+function group_mean_d(g: Group<'K, double>): double {
+    var sum = group_sum(g);
+    var count = group_count(g);
+    if (count == 0)
+       0
+    else
+       sum / (count as double)
 }

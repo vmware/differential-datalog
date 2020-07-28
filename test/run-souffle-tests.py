@@ -27,11 +27,9 @@ xfail = [
     "souffle_tests_ddlog", # auto-generated
     "souffle7",  # issue 202 - recursive type
     "aggregates2", # aggregation used in head
-    "aggregates4", # Implicit cast from signed to unsigned
-    "aggregates5", # Cannot convert constant to float implicitly
-    "aggregates7", # Cannot convert constant to float implicitly
+    "aggregates5", # Rule must start with a positive literal
     "aggregates_complex", # cannot be evaluated bottom-up; issue 293
-    "aggregates_non_materialised", # ???
+    "aggregates_non_materialised", # Rule must start with a positive literal
     "aggregates",  # issue 227 - count of empty group
     "magic_aggregates",  # 227
     "count",       # 227
@@ -94,8 +92,7 @@ xfail = [
     "sort",             # 202
     "tak",              # 197
     "tic-tac-toe",      # 197
-    "weighted_distances", # 197
-    "float_operations" # uses the overloaded function to_number
+    "weighted_distances" # 197
 ]
 
 def exit(code):

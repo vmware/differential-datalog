@@ -2,7 +2,8 @@
 """This program converts Datalog programs written in the Souffle dialect to
    Datalog programs written in the Differential Datalog dialect"""
 
-# pylint: disable=invalid-name,missing-docstring,global-variable-not-assigned,line-too-long,too-many-locals,too-many-return-statements,too-many-branches
+# pylint: disable=invalid-name,missing-docstring,global-variable-not-assigned,line-too-long,too-many-locals
+# pylint: disable=too-many-return-statements,too-many-branches
 import json
 import gzip
 import os
@@ -10,6 +11,7 @@ import argparse
 import parglare  # parser generator
 from functools import reduce
 import re
+
 
 class ConversionOptions(object):
     """Options that influence how the conversion from Souffle to DDlog is done"""
@@ -26,7 +28,16 @@ class ConversionOptions(object):
 parglareParser = None  # Cache here the Parglare parser
 verbose = False
 
-### Various utilities
+# Various utilities
+
+
+def convert_hex(hexstr):
+    return str(int(hexstr, 16))
+
+
+def convert_binary(binarystr):
+    return str(int(binarystr, 2))
+
 
 def var_name(ident):
     """Convert a Souffle identifier to one suitable for use as a variable name in DDlog"""
@@ -40,6 +51,7 @@ def strip_quotes(string):
     assert string[0] == "\"", "String is not quoted"
     assert string[len(string) - 1] == "\"", "String is not quoted"
     return string[1:-1]
+
 
 def dict_intersection(dict1, dict2):
     """Return a dictionary which has the keys common to dict1 and dict2 and the values from dict1"""
@@ -77,6 +89,7 @@ def getOptField(node, field):
 def getField(node, field):
     """Returns the first field named 'field' from 'node'"""
     lst = [x for x in node.children if x.symbol.name == field]
+    # noinspection PySimplifyBooleanCheck
     if lst == []:
         raise Exception("No field " + field + " in " + node.tree_str())
     return lst[0]
@@ -129,8 +142,8 @@ def getIdentifier(node):
     ident = getField(node, "Identifier")
     return ident.value
 
+# ###############################################
 
-################################################33
 
 class Type(object):
     """Information about a type"""
@@ -201,14 +214,14 @@ class Type(object):
             self.isnumber = True
             return True
         if self.name == "Tunsigned" or self.name == "bit<32>":
-            self.isnumber
+            self.isnumber = True
             return True
         if self.name == "IString":
             self.isnumber = False
             return False
-        if self.name == "float":
-            self.isnumber = False # Is this right?
-            return False
+        if self.name == "Tfloat" or self.name == "double" or self.name == "float":
+            self.isnumber = True
+            return True
         typ = Type.get(self.equivalentTo)
         result = typ.isNumber()
         self.isnumber = result
@@ -223,7 +236,7 @@ class Parameter(object):
         self.typeName = typeName
 
     def declaration(self):
-        """Return a string that is a DDlogo declaration of this parameter."""
+        """Return a string that is a DDlog declaration of this parameter."""
         typ = self.getType()
         return var_name(self.name) + ":" + typ.outputName
 
@@ -234,6 +247,7 @@ class Parameter(object):
     def getName(self):
         """Get the parameter's type"""
         return self.name
+
 
 class Relation(object):
     """Represents information about a relation"""
@@ -387,6 +401,7 @@ class Files(object):
         self.output("import souffle_types")
         Type.create("IString", "IString")
         Type.create("float", "double")
+        Type.create("Tfloat", "double")
         Type.create("double", "double")
         Type.create("signed<32>", "signed<32>")
         Type.create("bit<32>", "bit<32>")
@@ -403,8 +418,8 @@ class Files(object):
             self.outputData("start", ";")
         global verbose
         if verbose:
-            print("Reading from", self.inputName, "writing output to", \
-                outputName, "writing data to", outputDataName)
+            print("Reading from", self.inputName, "writing output to",
+                  outputName, "writing data to", outputDataName)
 
     def output(self, text):
         if text == "":
@@ -462,6 +477,7 @@ class SouffleConverter(object):
         # During postprocessing we traverse the AST again and we emit the output to files.
         self.preprocessing = False
         self.current_component = ""  # instance name of the component currently being instantiated
+        self.context_types = dict()   # context mapping variables to types
         self.bound_variables = dict()  # variables that have been bound, each with an inferred type
         self.all_variables = set()  # all variable names that appear in the program
         self.converting_tail = False  # True if we are converting a tail clause
@@ -473,7 +489,7 @@ class SouffleConverter(object):
             "bxor": "^",
             "bnot": "~",
         }
-        self.currentType = None # Used to guess types for variables, from context. May be incorrect.
+        self.currentType = None  # Used to guess types for variables, from context. May be incorrect.
         self.components = {}  # Indexed by name
         self.overridden = set()  # set of relation names that are overridden and should not
         #                              be emitted
@@ -487,6 +503,9 @@ class SouffleConverter(object):
         if component == "":
             return name
         return component + separator + name
+
+    def setCurrentType(self, type):
+        self.currentType = type
 
     def setTypeSubstitution(self, parameters, values):
         """The specified parameters should be substituted with the specified values"""
@@ -550,6 +569,7 @@ class SouffleConverter(object):
         lineno = 0
 
         output = []
+        fields = []
         for line in data.readlines():
             fields = re.split(inDelimiter, line.rstrip('\n'))
             # I have seen cases where there's a redundant \t at the end of the line.  So check for an
@@ -679,7 +699,7 @@ class SouffleConverter(object):
             output = self.process_file(rel, data, delimiter, False, False)
             for row in output:
                 self.files.outputData(
-                    "insert " + self.conversion_options.relationPrefix + \
+                    "insert " + self.conversion_options.relationPrefix +
                     ri.name + "_shadow(" + ",".join(row) + ")", ",")
 
     def process_output(self, outputdecl):
@@ -711,7 +731,7 @@ class SouffleConverter(object):
                         data = tryFile
                         break
             if data is None:
-                print("*** Cannot find output file for " + rel + \
+                print("*** Cannot find output file for " + rel +
                       "; the reference output will be incomplete")
                 return
             output = self.process_file(rel, data, "\t", True, True)
@@ -822,34 +842,36 @@ class SouffleConverter(object):
             v = var_name(ident.value)
             self.all_variables.add(v)
             if self.converting_tail and v != "_":
+                if v in self.context_types:
+                    self.currentType = self.context_types[v]
                 self.bound_variables[v] = self.currentType
             return v
 
         fl = getOptField(arg, "FLOAT")
         if fl is not None:
             val = fl.value
-            self.currentType = "double"
-            return "(64'f" + val + ": double)"
+            self.setCurrentType("Tfloat")
+            return "(64'f" + val + ": Tfloat)"
 
         num = getOptField(arg, "NUMBER")
         if num is not None:
-            self.currentType = "Tnumber"
+            self.setCurrentType("Tnumber")
             val = num.value
             if val.startswith("0x"):
-                val = "32'sh" + val[2:]
+                val = convert_hex(val[2:])
             elif val.startswith("0b"):
-                val = "32'sb" + val[2:]
-            return "(" + val + ":Tnumber)"
+                val = convert_binary(val[2:])
+            return "(" + val + ")"
 
         num = getOptField(arg, "UNUMBER")
         if num is not None:
-            self.currentType = "Tunsigned"
+            self.setCurrentType("Tunsigned")
             val = num.value[0:-1]
             if val.startswith("0x"):
-                val = "32'h" + val[2:]
+                val = convert_hex(val[2:])
             elif val.startswith("0b"):
-                val = "32'b" + val[2:]
-            return "(" + val + ":Tunsigned)"
+                val = convert_binary(val[2:])
+            return "(" + val + ")"
 
         if len(args) == 2:
             # Binary operator
@@ -857,9 +879,9 @@ class SouffleConverter(object):
             op = self.convert_op(binop)
             left = self.convert_arg(args[0])
             right = self.convert_arg(args[1])
-            if self.currentType == "double" and op == "^":
+            if self.currentType == "Tfloat" and op == "^":
                 return "powf_d(" + left + ", " + right + ")"
-            self.currentType = "Tnumber"
+            self.setCurrentType("Tnumber")
             if op == "^":
                 return "pow32(" + left + ", (" + right + " as bit<32>))"
             elif (op == "land") or (op == "lor"):
@@ -897,6 +919,7 @@ class SouffleConverter(object):
         assert agg is not None, "Expected an aggregate" + str(right)
         # Save the bound variables
         save = self.bound_variables.copy()
+        self.context_types.update(self.bound_variables)
         self.bound_variables.clear()
 
         body = getField(agg, "AggregateBody")
@@ -911,11 +934,14 @@ class SouffleConverter(object):
             raise Exception("Unhandled aggregate " + agg.tree_str())
         bodyBoundVariables = self.bound_variables.copy()
 
+        self.context_types.update(self.bound_variables)
         self.bound_variables.clear()
         arg = getOptField(agg, "Arg")
         call = "()"  # used when there is no argument to aggregate, e.g., count
+        argType = "Tnumber"
         if arg is not None:
             call = self.convert_arg(arg)
+            argType = self.currentType
         argVariables = self.bound_variables.copy()
 
         common = bodyBoundVariables.copy()
@@ -929,12 +955,14 @@ class SouffleConverter(object):
         func = agg.children[0].value
         if func == "count":
             func = "count32"
+        if argType == "Tfloat":
+            func += "_d"
         result += "group_" + func + "(" + call + "))"
 
         # Restore the bound variables
         self.bound_variables = save.copy()
         args = common
-        args[variable] = "Tnumber"
+        args[variable] = argType
         dict_append(self.bound_variables, args)
 
         self.aggregates += "relation " + relname + "(" + join_dict(", ", ":", args) + ")\n"
@@ -949,7 +977,7 @@ class SouffleConverter(object):
         arg_strings = []
         index = 0
         for arg in args:
-            self.currentType = rel.parameters[index].getType().outputName
+            self.setCurrentType(rel.parameters[index].getType().outputName)
             index = index + 1
             arg_strings.append(self.convert_arg(arg))
         return rel.name + "(" + ", ".join(arg_strings) + ")"
@@ -978,33 +1006,34 @@ class SouffleConverter(object):
                     result = func + "(" + result + ", " + e + ")"
                 return result
         if func == "to_unsigned":
-            if self.currentType == "double":
+            if self.currentType == "Tfloat":
                 func = "ftou"
             else:
                 # Guessing that the input is a number... we could be wrong
                 func = "itou"
-            self.currentType = "Tunsigned"
+            self.setCurrentType("Tunsigned")
         elif func == "to_float":
             if self.currentType == "Tunsigned":
                 func = "utof"
             else:
                 # Assume it's a number...
                 func = "itof"
-            self.currentType = "double"
+            self.setCurrentType("Tfloat")
         elif func == "to_number":
             if self.currentType == "Tstring":
                 func = "to_number"
-            elif self.currentType == "double":
+            elif self.currentType == "Tfloat":
                 func = "ftoi"
             elif self.currentType == "Tunsigned":
                 func = "utoi"
-            self.currentType = "Tnumber"
+            self.setCurrentType("Tnumber")
         elif func == "to_string":
             func = "to_istring"
-            self.currentType = "Tstring"
+            self.setCurrentType("Tstring")
 
         return func + "(" + ", ".join(argStrings) + ")"
 
+    # noinspection PyRedundantParentheses
     def convert_literal(self, lit):
         """Convert a literal from the Souffle grammar.
         Returns a tuple with two elements: a string, which is the result of the conversion
@@ -1022,8 +1051,6 @@ class SouffleConverter(object):
             args = getArray(lit, "Arg")
             assert len(args) == 2
             op = relop.children[0].value
-            if op != "=" and op != "!=":
-                self.currentType = "Tnumber"
             prefix = "("
             suffix = ")"
             # This could be translated as equality test or assignment,
@@ -1102,6 +1129,7 @@ class SouffleConverter(object):
         if term is not None:
             return self.term_has_relation(term)
 
+    # noinspection PyRedundantParentheses
     def convert_term(self, term):
         """Convert a Souffle term.  Returns a tuple with two fields:
         - the first field is the string representing the conversion
@@ -1138,21 +1166,22 @@ class SouffleConverter(object):
                 result.append(term)
         return result + tail
 
+    # noinspection PyRedundantParentheses
     def flatten(self, tail, listbody, hasDisjunction):
         """
         The function returns a list consisting of Terms, Disjunctions and terminal characters
         so as to better manage the non-conjunctive form.
         """
         for x in tail.children:
-            if (x.symbol.name == "Term"):
-                if (getOptField(x, "Literal") != None) or (getOptField(x, "!") != None):
+            if x.symbol.name == "Term":
+                if (getOptField(x, "Literal") is not None) or (getOptField(x, "!") is not None):
                     listbody.append(x)
                 child = getOptField(x, "Disjunction")
-                if child != None:
-                    if getOptField(child, "OR") != None:
+                if child is not None:
+                    if getOptField(child, "OR") is not None:
                         hasDisjunction = True
                     listbody.append(child)
-            elif (x.symbol.name in ["OR", "(", ")", ",", "!"]):
+            elif x.symbol.name in ["OR", "(", ")", ",", "!"]:
                 listbody.append(x)
             else:
                 # In case x is not a Term or a terminal character, the function
@@ -1218,13 +1247,14 @@ class SouffleConverter(object):
         disjunctions = getList(tail, "Conjunction", "Body")
 
         transformed = False
+        terms = []
         if self.conversion_options.toDNF:
             (listbody, transformed) = self.flatten(tail, [], False)
             if transformed:
                 terms = self.conDisjunction(listbody)
 
         if not transformed:
-            terms = [getList(l, "Term", "Conjunction") for l in disjunctions]
+            terms = [getList(le, "Term", "Conjunction") for le in disjunctions]
 
         nonOverridden = []
         # print("Overridden:", self.overridden)
@@ -1255,8 +1285,8 @@ class SouffleConverter(object):
                 convertedDisjunctions += [self.convert_terms(x)]
             for convertedDisjunction in convertedDisjunctions:
                 if len(convertedDisjunction) > 0 and \
-                    convertedDisjunction[0].startswith("not") or\
-                    convertedDisjunction[0].startswith("var"):
+                        convertedDisjunction[0].startswith("not") or \
+                        convertedDisjunction[0].startswith("var"):
                     # DDlog does not support rules that start with a negation.
                     # Insert a reference to a dummy non-empty relation before.
                     convertedDisjunction.insert(0, self.dummyRelation + "(0)")
@@ -1330,7 +1360,7 @@ class SouffleConverter(object):
             if predefinedType is not None:
                 equiv = None
                 if getOptField(predefinedType, "TNUMBER") is not None or \
-                   getOptField(predefinedType, "TUNSIGNED") is not None:
+                        getOptField(predefinedType, "TUNSIGNED") is not None:
                     equiv = "number"
                 elif getOptField(predefinedType, "TFLOAT") is not None:
                     equiv = "double"
@@ -1371,6 +1401,7 @@ class SouffleConverter(object):
 
     def process_decl(self, decl):
         """Process a declaration; dispatches on declaration kind"""
+        self.context_types = dict()
         typedecl = getOptField(decl, "TypeDecl")
         if typedecl is not None:
             self.process_type(typedecl)
@@ -1379,17 +1410,7 @@ class SouffleConverter(object):
         if fact_decl is not None:
             self.process_fact_decl(fact_decl)
             return
-        relationdecl = getOptField(decl, "RelationDecl")
-        if relationdecl is not None:
-            self.process_relation_decl(relationdecl)
-            return
-        inputdecl = getOptField(decl, "InputDecl")
-        if inputdecl is not None:
-            self.process_input(inputdecl)
-            return
-        outputdecl = getOptField(decl, "OutputDecl")
-        if outputdecl is not None:
-            self.process_output(outputdecl)
+        if self.process_rel_decl(decl):
             return
         rule = getOptField(decl, "Rule")
         if rule is not None:
@@ -1411,7 +1432,7 @@ class SouffleConverter(object):
             typeArgs = self.get_type_parameters(ctype)
             saveCurrent = self.current_component
             self.current_component = SouffleConverter.relative_name(
-                    self.current_component, ident, "::")
+                self.current_component, ident, "::")
             typeArgs = [self.resolve_type(t) for t in typeArgs]
             # apparently instantiation clears the overrides
             save = self.overridden.copy()
@@ -1434,23 +1455,27 @@ class SouffleConverter(object):
             return
         raise Exception("Unexpected node " + decl.tree_str())
 
+    def process_rel_decl(self, decl):
+        relationdecl = getOptField(decl, "RelationDecl")
+        if relationdecl is not None:
+            self.process_relation_decl(relationdecl)
+            return True
+        inputdecl = getOptField(decl, "InputDecl")
+        if inputdecl is not None:
+            self.process_input(inputdecl)
+            return True
+        outputdecl = getOptField(decl, "OutputDecl")
+        if outputdecl is not None:
+            self.process_output(outputdecl)
+            return True
+        return False
+
     def process_only_facts(self, decl):
         typedecl = getOptField(decl, "TypeDecl")
         if typedecl is not None:
             self.process_type(typedecl)
             return
-        relationdecl = getOptField(decl, "RelationDecl")
-        if relationdecl is not None:
-            self.process_relation_decl(relationdecl)
-            return
-        inputdecl = getOptField(decl, "InputDecl")
-        if inputdecl is not None:
-            self.process_input(inputdecl)
-            return
-        outputdecl = getOptField(decl, "OutputDecl")
-        if outputdecl is not None:
-            self.process_output(outputdecl)
-            return
+        self.process_rel_decl(decl)
 
     def process(self, tree):
         decls = getListField(tree, "Declaration", "DeclarationList")
@@ -1517,6 +1542,7 @@ def main():
     options.toDNF = args.convert_dnf
     options.relationPrefix = args.prefix if args.prefix else ""
     convert(args.input, args.out, options, args.d)
+
 
 if __name__ == "__main__":
     main()
