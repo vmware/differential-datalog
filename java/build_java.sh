@@ -13,12 +13,6 @@ else
     export CC=gcc
 fi
 
-case $(uname -s) in
-    Darwin*)    SHLIBEXT=dylib; JDK_OS=darwin;;
-    Linux*)     SHLIBEXT=so; JDK_OS=linux;;
-    *)          echo "Unsupported OS"; exit 1
-esac
-
 # Compile a DDlog program and a Java program that uses it.
 # Requires the flatbuf library to be installed and in the CLASSPATH
 # the DDLFLAGS environment variable is passed as arguments to ddlog
@@ -56,8 +50,15 @@ function compile {
 
     # Compile Java program
     javac -encoding utf8 -Xlint:unchecked ${JAVAPROG}
+
+    case $(uname -s) in
+        Darwin*)    SHLIBEXT=dylib; JDK_OS=darwin; LINKER_FLAGS="-l${DLPROG}_ddlog -dynamiclib";;
+        Linux*)     SHLIBEXT=so; JDK_OS=linux; LINKER_FLAGS="-Wl,-static -l${DLPROG}_ddlog -Wl,-Bdynamic -shared" ;;
+        *)          echo "Unsupported OS"; exit 1
+    esac
+
     # Create a shared library containing all the native code: ddlogapi.c, ${DLPROG}_ddlog.a
-    ${CC} -Werror -std=gnu11 -shared -fPIC -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${JDK_OS} -I${DLDIR}/${DLPROG}_ddlog -I../../lib ../ddlogapi.c -L${DLDIR}/${DLPROG}_ddlog/target/${BUILD} -Wl,-static -l${DLPROG}_ddlog -Wl,-Bdynamic -o libddlogapi.${SHLIBEXT}
+    ${CC} -Werror -std=gnu11 -fPIC -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${JDK_OS} -I${DLDIR}/${DLPROG}_ddlog -I../../lib ../ddlogapi.c -L${DLDIR}/${DLPROG}_ddlog/target/${BUILD} ${LINKER_FLAGS} -o libddlogapi.${SHLIBEXT}
 }
 
 function cleanup {
