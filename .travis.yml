@@ -10,7 +10,7 @@
 
 # Use new container infrastructure to enable caching
 sudo: required
-dist: trusty
+dist: bionic
 jdk: oraclejdk8
 osx_image: xcode9.3
 python: 3.6
@@ -68,6 +68,7 @@ addons:
     packages:
       - libgmp-dev
       - subversion
+      - python3-pip
 
 before_install:
 - python3 -m pip install --user parglare==0.12.0
