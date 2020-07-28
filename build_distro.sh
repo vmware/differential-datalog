@@ -62,6 +62,7 @@ make
 cd ..
 cp java/ddlogapi.jar "$DIST_DIR/java/"
 cp java/ddlogapi_DDlogAPI.h "$DIST_DIR/java/"
+cp java/ddlogapi_DDlogAPI_DDlogCommandVector.h "$DIST_DIR/java/"
 cp -r doc "$DIST_DIR/"
 
 # Step 5: Archive everything.
