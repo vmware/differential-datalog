@@ -1,0 +1,95 @@
+/* Bindings for the Rust URL library.
+ */
+
+extern type Url
+
+/* Parse an absolute URL from a string. */
+extern function url_parse(url: string): Result<Url, string>
+
+/* Parse a string as an URL, with this URL as the base URL.
+ * Note: a trailing slash is significant. Without it, the last
+ * path component is considered to be a “file” name to be removed
+ * to get at the “directory” that is used as the base */
+extern function join(url: Url, other: string): Result<Url, string>
+
+extern function url_to_string(url: Url): string
+function to_string(url: Url): string {
+    url.url_to_string()
+}
+
+/* Return the scheme of this URL, lower-cased, as an ASCII string without
+ * the ':' delimiter. */
+extern function scheme(url: Url): string 
+
+/* Return whether the URL has an 'authority', which can contain a
+ * username, password, host, and port number.
+ * 
+ * URLs that do not are either path-only like unix:/run/foo.socket or
+ * cannot-be-a-base like data:text/plain,Stuff. */
+extern function has_authority(url: Url): bool
+
+/* Return whether this URL is a cannot-be-a-base URL, meaning that parsing a
+ * relative URL string with this URL as the base will return an error.
+ *
+ * This is the case if the scheme and : delimiter are not followed by a / slash,
+ * as is typically the case of data: and mailto: URLs. */
+extern function cannot_be_a_base(url: Url): bool
+
+/* Return the username for this URL (typically the empty string) as a
+ * percent-encoded ASCII string. */
+extern function username(url: Url): string
+
+/* Return the password for this URL, if any, as a percent-encoded ASCII string. */
+extern function password(url: Url): Option<string>
+
+/* Equivalent to url.host().is_some(). */
+extern function has_host(url: Url): bool
+
+/* Return the string representation of the host (domain or IP address) for
+ * this URL, if any.
+ *
+ * Non-ASCII domains are punycode-encoded per IDNA. IPv6 addresses are given
+ * between [ and ] brackets.
+ * 
+ * Cannot-be-a-base URLs (typical of data: and mailto:) and some file: URLs
+ * don’t have a host. */
+extern function host_str(url: Url): Option<string>
+
+/* If this URL has a host and it is a domain name (not an IP address),
+ * return it. */
+extern function domain(url: Url): Option<string>
+
+/* Return the port number for this URL, if any.
+ *
+ * Note that default port numbers are never reflected by the serialization,
+ * use the port_or_known_default() method if you want a default port number
+ * returned. */
+extern function port(url: Url): Option<u16>
+
+/* Return the port number for this URL, or the default port number if it is
+ * known.
+ *
+ * This method only knows the default port number of the http, https, ws, wss,
+ * ftp, and gopher schemes.
+ *
+ * For URLs in these schemes, this method always returns Some(_). For other
+ * schemes, it is the same as Url::port().
+ */
+extern function port_or_known_default(url: Url): Option<u16>
+
+/* Return the path for this URL, as a percent-encoded ASCII string. For
+ * cannot-be-a-base URLs, this is an arbitrary string that doesn’t start with
+ * '/'. For other URLs, this starts with a '/' slash and continues with
+ * slash-separated path segments. */
+extern function path(url: Url): string
+
+/* Return this URL’s query string, if any, as a percent-encoded ASCII
+ * string. */
+extern function query(url: Url): Option<string>
+
+/* Return this URL’s fragment identifier, if any.
+ *
+ * A fragment is the part of the URL after the # symbol. The fragment is
+ * optional and, if present, contains a fragment identifier that identifies
+ * a secondary resource, such as a section heading of a document. */
+extern function fragment(url: Url): Option<string>

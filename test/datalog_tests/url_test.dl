@@ -1,0 +1,99 @@
+import url
+
+output relation URLTest(description: string, val: string)
+
+URLTest("https://example.net", url_parse("https://example.net").unwrap_or_default().to_string()).
+
+URLTest("\"https://example.net/a/b.html\".join(\"c.png\")",
+        url_parse("https://example.net/a/b.html").unwrap_or_default().join("c.png").unwrap_or_default().to_string()).
+
+URLTest("\"file:///tmp/foo\".scheme()",
+        url_parse("file:///tmp/foo").unwrap_or_default().scheme()).
+
+URLTest("\"ftp://rms@example.com\".has_authority()",
+        url_parse("ftp://rms@example.com").unwrap_or_default().has_authority().to_string()).
+URLTest("\"unix:/run/foo.socket\".has_authority()",
+        url_parse("unix:/run/foo.socket").unwrap_or_default().has_authority().to_string()).
+URLTest("\"data:text/plain,Stuff\".has_authority()",
+        url_parse("data:text/plain,Stuff").unwrap_or_default().has_authority().to_string()).
+
+URLTest("\"ftp://rms@example.com\".cannot_be_a_base()",
+        url_parse("ftp://rms@example.com").unwrap_or_default().cannot_be_a_base().to_string()).
+URLTest("\"unix:/run/foo.socket\".cannot_be_a_base()",
+        url_parse("unix:/run/foo.socket").unwrap_or_default().cannot_be_a_base().to_string()).
+URLTest("\"data:text/plain,Stuff\".cannot_be_a_base()",
+        url_parse("data:text/plain,Stuff").unwrap_or_default().cannot_be_a_base().to_string()).
+
+URLTest("\"ftp://rms@example.com\".username()",
+        url_parse("ftp://rms@example.com").unwrap_or_default().username()).
+URLTest("\"ftp://:secret123@example.com\".username()",
+        url_parse("ftp://:secret123@example.com").unwrap_or_default().username()).
+URLTest("\"https://example.com\".username()",
+        url_parse("https://example.com").unwrap_or_default().username()).
+
+URLTest("\"ftp://rms:secret123@example.com\".password()",
+        url_parse("ftp://rms:secret123@example.com").unwrap_or_default().password().unwrap_or_default()).
+URLTest("\"ftp://:secret123@example.com\".password()",
+        url_parse("ftp://:secret123@example.com").unwrap_or_default().password().unwrap_or_default()).
+URLTest("\"ftp://rms@example.com\".password()",
+        url_parse("ftp://rms@example.com").unwrap_or_default().password().unwrap_or_default()).
+URLTest("\"https://example.com\".password()",
+        url_parse("https://example.com").unwrap_or_default().password().unwrap_or_default()).
+
+URLTest("\"ftp://rms@example.com\".has_host()",
+        url_parse("ftp://rms@example.com").unwrap_or_default().has_host().to_string()).
+URLTest("\"unix:/run/foo.socket\".has_host()",
+        url_parse("unix:/run/foo.socket").unwrap_or_default().has_host().to_string()).
+URLTest("\"data:text/plain,Stuff\".has_host()",
+        url_parse("data:text/plain,Stuff").unwrap_or_default().has_host().to_string()).
+
+URLTest("\"https://127.0.0.1/index.html\".host_str()",
+        url_parse("https://127.0.0.1/index.html").unwrap_or_default().host_str().unwrap_or("<none>")).
+URLTest("\"ftp://rms@example.com\".host_str()",
+        url_parse("ftp://rms@example.com").unwrap_or_default().host_str().unwrap_or("<none>")).
+URLTest("\"unix:/run/foo.socket\".host_str()",
+        url_parse("unix:/run/foo.socket").unwrap_or_default().host_str().unwrap_or("<none>")).
+URLTest("\"data:text/plain,Stuff\".host_str()",
+        url_parse("data:text/plain,Stuff").unwrap_or_default().host_str().unwrap_or("<none>")).
+
+URLTest("\"https://127.0.0.1/index.html\".domain()",
+        url_parse("https://127.0.0.1/index.html").unwrap_or_default().domain().unwrap_or("<none>")).
+URLTest("\"ftp://rms@example.com\".domain()",
+        url_parse("ftp://rms@example.com").unwrap_or_default().domain().unwrap_or("<none>")).
+URLTest("\"unix:/run/foo.socket\".domain()",
+        url_parse("unix:/run/foo.socket").unwrap_or_default().domain().unwrap_or("<none>")).
+URLTest("\"data:text/plain,Stuff\".domain()",
+        url_parse("data:text/plain,Stuff").unwrap_or_default().domain().unwrap_or("<none>")).
+
+URLTest("\"https://example.com\".port()",
+        url_parse("https://example.com").unwrap_or_default().port().unwrap_or_default().to_string()).
+URLTest("\"https://example.com:443/\".port()",
+        url_parse("https://example.com:443/").unwrap_or_default().port().unwrap_or_default().to_string()).
+URLTest("\"ssh://example.com:22\".port()",
+        url_parse("ssh://example.com:22").unwrap_or_default().port().unwrap_or_default().to_string()).
+
+URLTest("\"https://example.com\".port_or_known_default()",
+        url_parse("https://example.com").unwrap_or_default().port_or_known_default().unwrap_or_default().to_string()).
+URLTest("\"https://example.com:443/\".port_or_known_default()",
+        url_parse("https://example.com:443/").unwrap_or_default().port_or_known_default().unwrap_or_default().to_string()).
+URLTest("\"ssh://example.com:22\".port_or_known_default()",
+        url_parse("ssh://example.com:22").unwrap_or_default().port_or_known_default().unwrap_or_default().to_string()).
+
+URLTest("\"https://example.com/api/versions?page=2\".path()",
+        url_parse("https://example.com/api/versions?page=2").unwrap_or_default().path()).
+URLTest("\"https://example.com\".path()",
+        url_parse("https://example.com").unwrap_or_default().path()).
+URLTest("\"https://example.com/countries/việt nam\".path()",
+        url_parse("https://example.com/countries/việt nam").unwrap_or_default().path()).
+
+URLTest("\"https://example.com/products?page=2\".query()",
+        url_parse("https://example.com/products?page=2").unwrap_or_default().query().unwrap_or("<none>")).
+URLTest("\"https://example.com/products\".query()",
+        url_parse("https://example.com/products").unwrap_or_default().query().unwrap_or("<none>")).
+URLTest("\"https://example.com/?country=español\".query()",
+        url_parse("https://example.com/?country=español").unwrap_or_default().query().unwrap_or("<none>")).
+
+URLTest("\"https://example.com/data.csv#row=4\".fragment()",
+        url_parse("https://example.com/data.csv#row=4").unwrap_or_default().fragment().unwrap_or("<none>")).
+URLTest("\"https://example.com/data.csv#cell=4,1-6,2\".fragment()",
+        url_parse("https://example.com/data.csv#cell=4,1-6,2").unwrap_or_default().fragment().unwrap_or("<none>")).

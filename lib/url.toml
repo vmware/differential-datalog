@@ -1,0 +1,3 @@
+[dependencies.url]
+version = "2.1"
+features = ["serde"]
