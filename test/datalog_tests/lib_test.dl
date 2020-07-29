@@ -6,3 +6,4 @@ import fp_test
 import regex_test
 import internment_test
 import tinyset_test
+import url_test

@@ -103,6 +103,8 @@ typedef tinyset_test::Intersects = tinyset_test::Intersects{setid1: string, seti
 typedef tinyset_test::Intersects2 = tinyset_test::Intersects2{setid1: string, setid2: string, set: tinyset::Set64<std::u32>}
 typedef tinyset_test::SetElement = tinyset_test::SetElement{setid: string, element: std::u32}
 typedef tinyset_test::Sets = tinyset_test::Sets{setid: string, set: tinyset::Set64<std::u32>}
+extern type url::Url
+typedef url_test::URLTest = url_test::URLTest{description: string, val: string}
 typedef uuid::Error = string
 extern type uuid::Uuid
 typedef uuid_test::UUID = uuid_test::UUID{description: string, result: string}
@@ -1046,6 +1048,26 @@ extern function tinyset::singleton (x: 'X): tinyset::Set64<'X>
 extern function tinyset::size (s: tinyset::Set64<'X>): bit<64>
 extern function tinyset::union (s1: tinyset::Set64<'X>, s2: tinyset::Set64<'X>): tinyset::Set64<'X>
 extern function tinyset::unions (sets: std::Vec<tinyset::Set64<'X>>): tinyset::Set64<'X>
+extern function url::cannot_be_a_base (url: url::Url): bool
+extern function url::domain (url: url::Url): std::Option<string>
+extern function url::fragment (url: url::Url): std::Option<string>
+extern function url::has_authority (url: url::Url): bool
+extern function url::has_host (url: url::Url): bool
+extern function url::host_str (url: url::Url): std::Option<string>
+extern function url::join (url: url::Url, other: string): std::Result<url::Url,string>
+extern function url::password (url: url::Url): std::Option<string>
+extern function url::path (url: url::Url): string
+extern function url::port (url: url::Url): std::Option<std::u16>
+extern function url::port_or_known_default (url: url::Url): std::Option<std::u16>
+extern function url::query (url: url::Url): std::Option<string>
+extern function url::scheme (url: url::Url): string
+function url::to_string (url: url::Url): string
+{
+    url::url_to_string(url)
+}
+extern function url::url_parse (url: string): std::Result<url::Url,string>
+extern function url::url_to_string (url: url::Url): string
+extern function url::username (url: url::Url): string
 extern function uuid::as_u128 (uuid: uuid::Uuid): std::u128
 extern function uuid::from_bytes (b: std::Vec<std::u8>): std::Result<uuid::Uuid,uuid::Error>
 extern function uuid::from_u128 (v: std::u128): uuid::Uuid
@@ -1108,6 +1130,7 @@ output relation tinyset_test::Intersects [tinyset_test::Intersects]
 output relation tinyset_test::Intersects2 [tinyset_test::Intersects2]
 input relation tinyset_test::SetElement [tinyset_test::SetElement]
 output relation tinyset_test::Sets [tinyset_test::Sets]
+output relation url_test::URLTest [url_test::URLTest]
 output relation uuid_test::UUID [uuid_test::UUID]
 std_test::SortedVector[(std_test::SortedVector{.v=sorted}: std_test::SortedVector)] :- std_test::Vector[(__std_test_vector0@ (std_test::Vector{.v=(v: std::Vec<bigint>)}: std_test::Vector))], (var sorted: std::Vec<bigint>) = (std::sort_imm(v): std::Vec<bigint>), Inspect debug::debug_event((32'd0, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __std_test_vector0, (std_test::SortedVector{.v=sorted}: std_test::SortedVector)).
 std_test::SortedVectorInPlace[(std_test::SortedVectorInPlace{.v=sorted}: std_test::SortedVectorInPlace)] :- std_test::Vector[(__std_test_vector0@ (std_test::Vector{.v=(v: std::Vec<bigint>)}: std_test::Vector))], (var sorted: std::Vec<bigint>) = ((var v2: std::Vec<bigint>) = v;
@@ -1413,4 +1436,45 @@ tinyset_test::Intersects[(tinyset_test::Intersects{.setid1=setid1, .setid2=setid
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    set)), Inspect debug::debug_event((32'd288, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (setid1, set1, setid2, set2), (tinyset_test::Intersects{.setid1=setid1, .setid2=setid2, .set=set}: tinyset_test::Intersects)).
 tinyset_test::Intersects2[(tinyset_test::Intersects2{.setid1=setid1, .setid2=setid2, .set=(tinyset::intersection(set1, set2): tinyset::Set64<std::u32>)}: tinyset_test::Intersects2)] :- tinyset_test::Sets[(__tinyset_test_sets0@ (tinyset_test::Sets{.setid=(setid1: string), .set=(set1: tinyset::Set64<std::u32>)}: tinyset_test::Sets))], tinyset_test::Sets[(__tinyset_test_sets1@ (tinyset_test::Sets{.setid=(setid2: string), .set=(set2: tinyset::Set64<std::u32>)}: tinyset_test::Sets))], Inspect debug::debug_event_join((32'd289, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __tinyset_test_sets0, __tinyset_test_sets1, (tinyset_test::Intersects2{.setid1=setid1, .setid2=setid2, .set=(tinyset::intersection(set1, set2): tinyset::Set64<std::u32>)}: tinyset_test::Intersects2)).
 tinyset_test::Diffs[(tinyset_test::Diffs{.setid1=setid1, .setid2=setid2, .set=(tinyset::difference(set1, set2): tinyset::Set64<std::u32>)}: tinyset_test::Diffs)] :- tinyset_test::Sets[(__tinyset_test_sets0@ (tinyset_test::Sets{.setid=(setid1: string), .set=(set1: tinyset::Set64<std::u32>)}: tinyset_test::Sets))], tinyset_test::Sets[(__tinyset_test_sets1@ (tinyset_test::Sets{.setid=(setid2: string), .set=(set2: tinyset::Set64<std::u32>)}: tinyset_test::Sets))], Inspect debug::debug_event_join((32'd290, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __tinyset_test_sets0, __tinyset_test_sets1, (tinyset_test::Diffs{.setid1=setid1, .setid2=setid2, .set=(tinyset::difference(set1, set2): tinyset::Set64<std::u32>)}: tinyset_test::Diffs)).
+url_test::URLTest[(url_test::URLTest{.description="https://example.net", .val=url::to_string((std::unwrap_or_default(url::url_parse("https://example.net")): url::Url))}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"https://example.net/a/b.html\".join(\"c.png\")", .val=url::to_string((std::unwrap_or_default(url::join((std::unwrap_or_default(url::url_parse("https://example.net/a/b.html")): url::Url), "c.png")): url::Url))}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"file:///tmp/foo\".scheme()", .val=url::scheme((std::unwrap_or_default(url::url_parse("file:///tmp/foo")): url::Url))}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"ftp://rms@example.com\".has_authority()", .val=std::to_string(url::has_authority((std::unwrap_or_default(url::url_parse("ftp://rms@example.com")): url::Url)))}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"unix:/run/foo.socket\".has_authority()", .val=std::to_string(url::has_authority((std::unwrap_or_default(url::url_parse("unix:/run/foo.socket")): url::Url)))}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"data:text/plain,Stuff\".has_authority()", .val=std::to_string(url::has_authority((std::unwrap_or_default(url::url_parse("data:text/plain,Stuff")): url::Url)))}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"ftp://rms@example.com\".cannot_be_a_base()", .val=std::to_string(url::cannot_be_a_base((std::unwrap_or_default(url::url_parse("ftp://rms@example.com")): url::Url)))}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"unix:/run/foo.socket\".cannot_be_a_base()", .val=std::to_string(url::cannot_be_a_base((std::unwrap_or_default(url::url_parse("unix:/run/foo.socket")): url::Url)))}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"data:text/plain,Stuff\".cannot_be_a_base()", .val=std::to_string(url::cannot_be_a_base((std::unwrap_or_default(url::url_parse("data:text/plain,Stuff")): url::Url)))}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"ftp://rms@example.com\".username()", .val=url::username((std::unwrap_or_default(url::url_parse("ftp://rms@example.com")): url::Url))}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"ftp://:secret123@example.com\".username()", .val=url::username((std::unwrap_or_default(url::url_parse("ftp://:secret123@example.com")): url::Url))}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"https://example.com\".username()", .val=url::username((std::unwrap_or_default(url::url_parse("https://example.com")): url::Url))}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"ftp://rms:secret123@example.com\".password()", .val=(std::unwrap_or_default(url::password((std::unwrap_or_default(url::url_parse("ftp://rms:secret123@example.com")): url::Url))): string)}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"ftp://:secret123@example.com\".password()", .val=(std::unwrap_or_default(url::password((std::unwrap_or_default(url::url_parse("ftp://:secret123@example.com")): url::Url))): string)}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"ftp://rms@example.com\".password()", .val=(std::unwrap_or_default(url::password((std::unwrap_or_default(url::url_parse("ftp://rms@example.com")): url::Url))): string)}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"https://example.com\".password()", .val=(std::unwrap_or_default(url::password((std::unwrap_or_default(url::url_parse("https://example.com")): url::Url))): string)}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"ftp://rms@example.com\".has_host()", .val=std::to_string(url::has_host((std::unwrap_or_default(url::url_parse("ftp://rms@example.com")): url::Url)))}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"unix:/run/foo.socket\".has_host()", .val=std::to_string(url::has_host((std::unwrap_or_default(url::url_parse("unix:/run/foo.socket")): url::Url)))}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"data:text/plain,Stuff\".has_host()", .val=std::to_string(url::has_host((std::unwrap_or_default(url::url_parse("data:text/plain,Stuff")): url::Url)))}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"https://127.0.0.1/index.html\".host_str()", .val=(std::unwrap_or(url::host_str((std::unwrap_or_default(url::url_parse("https://127.0.0.1/index.html")): url::Url)), "<none>"): string)}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"ftp://rms@example.com\".host_str()", .val=(std::unwrap_or(url::host_str((std::unwrap_or_default(url::url_parse("ftp://rms@example.com")): url::Url)), "<none>"): string)}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"unix:/run/foo.socket\".host_str()", .val=(std::unwrap_or(url::host_str((std::unwrap_or_default(url::url_parse("unix:/run/foo.socket")): url::Url)), "<none>"): string)}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"data:text/plain,Stuff\".host_str()", .val=(std::unwrap_or(url::host_str((std::unwrap_or_default(url::url_parse("data:text/plain,Stuff")): url::Url)), "<none>"): string)}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"https://127.0.0.1/index.html\".domain()", .val=(std::unwrap_or(url::domain((std::unwrap_or_default(url::url_parse("https://127.0.0.1/index.html")): url::Url)), "<none>"): string)}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"ftp://rms@example.com\".domain()", .val=(std::unwrap_or(url::domain((std::unwrap_or_default(url::url_parse("ftp://rms@example.com")): url::Url)), "<none>"): string)}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"unix:/run/foo.socket\".domain()", .val=(std::unwrap_or(url::domain((std::unwrap_or_default(url::url_parse("unix:/run/foo.socket")): url::Url)), "<none>"): string)}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"data:text/plain,Stuff\".domain()", .val=(std::unwrap_or(url::domain((std::unwrap_or_default(url::url_parse("data:text/plain,Stuff")): url::Url)), "<none>"): string)}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"https://example.com\".port()", .val=std::to_string((std::unwrap_or_default(url::port((std::unwrap_or_default(url::url_parse("https://example.com")): url::Url))): bit<16>))}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"https://example.com:443/\".port()", .val=std::to_string((std::unwrap_or_default(url::port((std::unwrap_or_default(url::url_parse("https://example.com:443/")): url::Url))): bit<16>))}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"ssh://example.com:22\".port()", .val=std::to_string((std::unwrap_or_default(url::port((std::unwrap_or_default(url::url_parse("ssh://example.com:22")): url::Url))): bit<16>))}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"https://example.com\".port_or_known_default()", .val=std::to_string((std::unwrap_or_default(url::port_or_known_default((std::unwrap_or_default(url::url_parse("https://example.com")): url::Url))): bit<16>))}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"https://example.com:443/\".port_or_known_default()", .val=std::to_string((std::unwrap_or_default(url::port_or_known_default((std::unwrap_or_default(url::url_parse("https://example.com:443/")): url::Url))): bit<16>))}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"ssh://example.com:22\".port_or_known_default()", .val=std::to_string((std::unwrap_or_default(url::port_or_known_default((std::unwrap_or_default(url::url_parse("ssh://example.com:22")): url::Url))): bit<16>))}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"https://example.com/api/versions?page=2\".path()", .val=url::path((std::unwrap_or_default(url::url_parse("https://example.com/api/versions?page=2")): url::Url))}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"https://example.com\".path()", .val=url::path((std::unwrap_or_default(url::url_parse("https://example.com")): url::Url))}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"https://example.com/countries/vi\7879t nam\".path()", .val=url::path((std::unwrap_or_default(url::url_parse("https://example.com/countries/vi\7879t nam")): url::Url))}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"https://example.com/products?page=2\".query()", .val=(std::unwrap_or(url::query((std::unwrap_or_default(url::url_parse("https://example.com/products?page=2")): url::Url)), "<none>"): string)}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"https://example.com/products\".query()", .val=(std::unwrap_or(url::query((std::unwrap_or_default(url::url_parse("https://example.com/products")): url::Url)), "<none>"): string)}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"https://example.com/?country=espa\241ol\".query()", .val=(std::unwrap_or(url::query((std::unwrap_or_default(url::url_parse("https://example.com/?country=espa\241ol")): url::Url)), "<none>"): string)}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"https://example.com/data.csv#row=4\".fragment()", .val=(std::unwrap_or(url::fragment((std::unwrap_or_default(url::url_parse("https://example.com/data.csv#row=4")): url::Url)), "<none>"): string)}: url_test::URLTest)].
+url_test::URLTest[(url_test::URLTest{.description="\"https://example.com/data.csv#cell=4,1-6,2\".fragment()", .val=(std::unwrap_or(url::fragment((std::unwrap_or_default(url::url_parse("https://example.com/data.csv#cell=4,1-6,2")): url::Url)), "<none>"): string)}: url_test::URLTest)].
 
