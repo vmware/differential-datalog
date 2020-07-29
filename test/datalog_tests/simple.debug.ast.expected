@@ -172,7 +172,7 @@ typedef serializable_t = ConsInt{x: bigint} |
                          ConsBit{y: bit<32>} |
                          ConsBool{z: bool} |
                          Cons0{}
-typedef souffle_types::TEmtpy = ()
+typedef souffle_types::TEmpty = ()
 typedef souffle_types::Tfloat = double
 typedef souffle_types::Tnumber = signed<32>
 typedef souffle_types::Tsymbol = intern::IString
@@ -901,7 +901,21 @@ function souffle_lib::group_mean (g: std::Group<'K,signed<32>>): signed<32>
 {
     ((var sum: signed<32>) = (std::group_sum(g): signed<32>);
      ((var count: bit<64>) = std::group_count(g);
-      (sum / ((count as signed<64>) as signed<32>))))
+      (if (count == 64'd0) {
+           32'sd0
+       } else {
+             sum
+         } / ((count as signed<64>) as signed<32>))))
+}
+function souffle_lib::group_mean_d (g: std::Group<'K,double>): double
+{
+    ((var sum: double) = (std::group_sum(g): double);
+     ((var count: bit<64>) = std::group_count(g);
+      (if (count == 64'd0) {
+           64'f0.0
+       } else {
+             sum
+         } / (count as double))))
 }
 function souffle_lib::itof (l: signed<32>): double
 {
@@ -984,6 +998,13 @@ function souffle_lib::to_number (s: intern::IString): souffle_types::Tnumber
     match (std::parse_dec_i64(intern::istring_str(s))) {
         (std::None{}: std::Option<signed<64>>) -> 32'sd0,
         (std::Some{.x=(var x: signed<64>)}: std::Option<signed<64>>) -> (x as souffle_types::Tnumber)
+    }
+}
+function souffle_lib::to_number (f: double): souffle_types::Tnumber
+{
+    match (fp::int_from_d(f)) {
+        (std::None{}: std::Option<bigint>) -> 32'sd0,
+        (std::Some{.x=(var x: bigint)}: std::Option<bigint>) -> (x as souffle_types::Tnumber)
     }
 }
 function souffle_lib::utof (l: bit<32>): double
