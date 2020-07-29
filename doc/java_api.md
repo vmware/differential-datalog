@@ -34,11 +34,11 @@ cargo build --features=flatbuf --release
 ```
 
 Link the compiled DDlog program along with the DDlog Java API bindings in a
-single dynamic library.  Assuming the `$DDLOG` environment variable points to
+single dynamic library.  Assuming the `$DDLOG_HOME` environment variable points to
 the directory where DDlog is installed:
 
 ```
-cc -shared -fPIC -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${JDK_OS} -I. -I${DDLOG}/lib ${DDLOG}/java/ddlogapi.c -Ltarget/release/ -lredist_ddlog -o libddlogapi.so
+cc -shared -fPIC -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${JDK_OS} -I. -I${DDLOG_HOME}/lib ${DDLOG_HOME}/java/ddlogapi.c -Ltarget/release/ -lredist_ddlog -o libddlogapi.so
 ```
 
 (on a Mac, use the `.dylib` extension instead of `.so`).
