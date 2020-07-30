@@ -99,55 +99,6 @@ where
     Ok(DDlogServer::new(program, redirects))
 }
 
-/// Add as many `TcpSender` objects as required given the provided node
-/// configuration.
-fn add_tcp_senders<P>(
-    server: &mut DDlogServer<P>,
-    node_cfg: &NodeCfg,
-    accumulators: &mut HashMap<
-        BTreeSet<RelId>,
-        SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>,
-    >,
-    sinks: &mut HashMap<BTreeSet<RelId>, Vec<(SinkRealization<P::Convert>, usize)>>,
-    assignment: &Assignment,
-) -> Result<(), String>
-where
-    P: DDlog,
-{
-    deduce_outputs(node_cfg, assignment)?
-        .into_iter()
-        .try_for_each(|(addr, rel_ids)| {
-            match addr {
-                Addr::Ip(addr) => {
-                    let sender = TcpSender::new(addr)
-                        .map_err(|e| format!("failed to create TcpSender socket: {}", e))?;
-                    let sender = Arc::new(Mutex::new(sender));
-
-                    // TODO: What should we really do if we can't subscribe?
-                    let accumulator = accumulators
-                        .entry(rel_ids.clone())
-                        .or_insert_with(|| Arc::new(Mutex::new(DistributingAccumulator::new())));
-
-                    let subscription = accumulator
-                        .lock()
-                        .unwrap()
-                        .subscribe(Box::new(sender.clone()))
-                        .map_err(|_| "failed to subscribe TCP sender".to_string())?;
-
-                    sinks
-                        .entry(rel_ids.clone())
-                        .or_insert_with(Vec::new)
-                        .insert(0, (SinkRealization::Node(sender), subscription));
-
-                    server
-                        .add_stream(rel_ids)
-                        .subscribe(Box::new(accumulator.clone()))
-                        .map_err(|_| "failed to subscribe accumulator".to_string())
-                }
-            }
-        })
-}
-
 /// Deduce a mapping from file sink to a list of relation IDs for the
 /// given node configuration.
 fn deduce_sinks_or_sources(node_cfg: &NodeCfg, sinks: bool) -> BTreeMap<&Path, BTreeSet<RelId>> {
@@ -156,8 +107,8 @@ fn deduce_sinks_or_sources(node_cfg: &NodeCfg, sinks: bool) -> BTreeMap<&Path, B
         .fold(BTreeMap::new(), |map, (relid, rel_cfgs)| {
             rel_cfgs.iter().fold(map, |mut map, rel_cfg| {
                 match rel_cfg {
-                    RelCfg::Sink(sink) if sinks => match sink {
-                        Sink::File(path) => {
+                    RelCfg::Sink(sink) if sinks => {
+                        if let Sink::File(path) = sink {
                             let _ = map.entry(path).or_default().insert(*relid);
                         }
                     },
@@ -170,64 +121,6 @@ fn deduce_sinks_or_sources(node_cfg: &NodeCfg, sinks: bool) -> BTreeMap<&Path, B
                 };
                 map
             })
-        })
-}
-
-/// Add file sinks to the given server object, as per the node
-/// configuration.
-fn add_file_sinks<P>(
-    server: &mut DDlogServer<P>,
-    node_cfg: &NodeCfg,
-    accumulators: &mut HashMap<
-        BTreeSet<RelId>,
-        SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>,
-    >,
-    sinks: &mut HashMap<BTreeSet<RelId>, (SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>, HashMap<Sink, (SinkRealization<P::Convert>, usize)>)>, 
-) -> Result<(), String>
-where
-    P: Send + DDlog + 'static,
-    P::Convert: Send,
-{
-    deduce_sinks_or_sources(node_cfg, true)
-        .iter()
-        .try_for_each(|(path, rel_ids)| {
-            let file = File::create(path)
-                .map_err(|e| format!("failed to create file {}: {}", path.display(), e))?;
-            let sink = Arc::new(Mutex::new(FileSink::<P::Convert>::new(file)));
-
-            // TODO: From here down, the functionality is moving to either
-            // add_sink() or add_sink_accumulator().
-
-            // TODO: Instead of this, we want to create an accumulator if one does
-            // not exist for this relids and return it.
-            let accumulator = self.add_sink_accumulator();
-            //let accumulator = accumulators
-                //.entry(rel_ids.clone())
-                //.or_insert_with(|| Arc::new(Mutex::new(DistributingAccumulator::new())));
-
-            // TODO: This will happen in add_sink().
-            let subscription = accumulator
-                .lock()
-                .unwrap()
-                .subscribe(Box::new(sink.clone()))
-                .map_err(|_| {
-                    format!(
-                        "failed to subscribe file sink {} to accumulator",
-                        path.display()
-                    )
-                })?;
-
-            // TODO: This will happen in add_sink().
-            sinks
-                .entry(rel_ids.clone())
-                .or_insert_with(Vec::new)
-                .insert(0, (SinkRealization::File(sink), subscription));
-
-            // TODO: Gonna happen in add_sink_accumulator() 
-            server
-                .add_stream(rel_ids.clone())
-                .subscribe(Box::new(accumulator.clone()))
-                .map_err(|_| "failed to subscribe accumulator to DDlogServer".to_string())
         })
 }
 
@@ -249,18 +142,8 @@ where
 
     let mut server = create_server::<P>(&node_cfg)?;
     let sources = HashMap::new();
-    let mut accumulators = HashMap::new();
-    let mut sinks = HashMap::new();
+    let sinks = HashMap::new();
     let txnmux = TxnMux::new();
-
-    add_tcp_senders(
-        &mut server,
-        node_cfg,
-        &mut accumulators,
-        &mut sinks,
-        assignment,
-    )?;
-    add_file_sinks(&mut server, node_cfg, &mut accumulators, &mut sinks)?;
 
     let mut realization = Realization {
         _sources: sources,
@@ -268,9 +151,10 @@ where
         _sinks: sinks,
     };
 
+    realization.add_tcp_senders(node_cfg, &mut server, assignment)?;
+    realization.add_file_sinks(node_cfg, &mut server)?;
     realization.subscribe_txnmux(server)?;
     match addr {
-        //FIXME
         Addr::Ip(addr) => realization.add_tcp_receiver(addr)?,
     }
     realization.add_file_sources(node_cfg)?;
@@ -380,7 +264,7 @@ where
         }
     }
 
-    /// Add a source to an existing realization.
+    /// Add a file source to an existing realization.
     pub fn add_file_source(&mut self, path: &Path) -> Result<(), String> {
         let mut source = Arc::new(Mutex::new(FileSource::<P::Convert>::new(path)));
 
@@ -408,56 +292,64 @@ where
         }
     }
 
-    pub fn remove_sink(&mut self, sink: &Sink) {
-        self._sinks
-            .iter_mut()
-            .for_each(|(_rel_ids, (mut acc, mut sink_map))| {
-                // Look up the sink in Realization._sinks
-                if sink_map.contains_key(sink) {
-                    // Remove entry from sink map
-                    let (_, subscription) = sink_map.remove(sink).unwrap();
-                    // Unsubscribe the accumulator from this sink subscription
-                    acc.unsubscribe(&subscription);
-                }
-            });
-    }
+    //pub fn remove_sink(&mut self, sink: &Sink) {
+        //self._sinks
+            //.iter_mut()
+            //.for_each(|(_rel_ids, (mut acc, mut sink_map))| {
+                //// Look up the sink in Realization._sinks
+                //if sink_map.contains_key(sink) {
+                    //// Remove entry from sink map
+                    //let (_, subscription) = sink_map.remove(sink).unwrap();
+                    //// Unsubscribe the accumulator from this sink subscription
+                    //acc.unsubscribe(&subscription);
+                //}
+            //});
+    //}
 
-    // TODO: Need this to work for file sinks AND tcp sinks.
-    pub fn add_sink(&mut self, sink: &Sink, rel_ids: BTreeSet<RelId>) {
+    /// Add file sink or tcp sender to an existing Realization.
+    /// Creates and adds accumulator for this rel_ids to the Realization if needed.
+    /// Subscribes the accumulator to the sink and adds the sink to 
+    /// the accumulator's map.
+    pub fn add_sink(&mut self, sink: &Sink, rel_ids: BTreeSet<RelId>, server: &mut DDlogServer<P>) -> Result<(), String> {
         // Add the accumulator to the realization if needed.
-        // Either way, gain reference to it.
-        let accumulator = self.add_sink_accumulator();
+        self.add_sink_accumulator(rel_ids.clone(), server)?;
+        let (accumulator, sink_map) = self._sinks.get_mut(&rel_ids.clone()).unwrap();
 
-        // Subscribe the accumulator to this sink.
-        let subscription = accumulator
-            .lock()
-            .unwrap()
-            .subscribe(Box::new(sink.clone()))
-            .map_err(|_| {
-                format!(
-                    "failed to subscribe file sink {} to accumulator",
-                    path.display()
-                )
-            })?;
+        match sink {
+            Sink::File(path) => {
+                let file = File::create(path).map_err(|e| format!("failed to create file {}:, {}", path.display(), e))?;
+                let file_sink = Arc::new(Mutex::new(FileSink::<P::Convert>::new(file)));
+                
+                // Subscribe the accumulator to this sink.
+                let subscription = accumulator
+                    .lock()
+                    .unwrap()
+                    .subscribe(Box::new(file_sink.clone()))
+                    .map_err(|_| format!("failed to subscribe file sink to accumulator"))?;
 
-        let (_, ref mut sink_map) = sinks.get_mut(rel_ids.clone()).unwrap();
-        *sink_map.insert(sink, (SinkRealization::File(sink), subscription));
+                // Add sink to sink map for this accumulator.
+                let _ = sink_map.insert(sink.clone(), (SinkRealization::File(file_sink), subscription));
+            }
+            Sink::TcpSender(addr) => {
+                match addr {
+                    Addr::Ip(address) => {
+                        let tcp_sender = TcpSender::new(*address).map_err(|e| format!("failed to create TcpSender socket: {}", e))?;
+                        let sink = Arc::new(Mutex::new(tcp_sender));
 
-        // OLD STUFF:
-            //let sink = Arc::new(Mutex::new(FileSink::<P::Convert>::new(file)));
-        //let entry = self._sinks
-                    //.entry(rel_ids)
-                    //.and_modify(|(mut accum, mut sink_map)| {
-                        //let subscription = accum.subscribe(Box::new(sink)).unwrap();
-                        //// TODO handle files and tcp sink stuff
-                        //sink_map.insert(sink, (SinkRealization::File(sink), subscription)).unwrap();
-                    //})
-                    //.or_insert_with(|| {
-                        //let accum = Arc::new(Mutex::new(DistributingAccumulator::new()));
-                        //(accum, HashMap::new())
-                    //});
-
-
+                        // Subscribe the accumulator to this sink.
+                        let subscription = accumulator
+                            .lock()
+                            .unwrap()
+                            .subscribe(Box::new(sink.clone()))
+                            .map_err(|_| format!("failed to subscribe file sink to accumulator"))?;
+                        
+                        // Add sink to sink map for this accumulator.
+                        let _ = sink_map.insert(Sink::TcpSender(*addr), (SinkRealization::Node(sink), subscription));
+                    }
+                }
+            }
+        }
+        Ok(())
     } 
 
     //pub fn remove_sink_accumulator(&mut self, acc: usize) {
@@ -475,8 +367,20 @@ where
             //}
     //}
 
-    pub fn add_sink_accumulator(&mut self) {
+    /// Creates and adds a sink accumulator to the existing Realization.
+    /// Adds a stream to the server for the accumulator.
+    /// Creates an entry in Realization _sinks for this rel_ids.
+    pub fn add_sink_accumulator(&mut self, rel_ids: BTreeSet<RelId>, server: &mut DDlogServer<P>) -> Result<(), String> {
+        if !self._sinks.contains_key(&rel_ids.clone()) {
+            let accumulator = Arc::new(Mutex::new(DistributingAccumulator::new()));
+            server
+                .add_stream(rel_ids.clone())
+                .subscribe(Box::new(accumulator.clone()))
+                .map_err(|_| "failed to subscribe accumulator to DDlogServer".to_string())?;
 
+            let _ = self._sinks.insert(rel_ids.clone(), (accumulator, HashMap::new())).unwrap();
+        }
+        Ok(())
     }
 
     /// Add file sources as per the node configuration to the TxnMux for this
@@ -485,6 +389,33 @@ where
         deduce_sinks_or_sources(node_cfg, false)
             .iter()
             .try_for_each(|(path, _rel_ids)| self.add_file_source(path))
+    }
+
+    /// Add file sinks to the given server object, as per the node
+    /// configuration.
+    fn add_file_sinks(&mut self, node_cfg: &NodeCfg, server: &mut DDlogServer<P>) -> Result<(), String> {
+        deduce_sinks_or_sources(node_cfg, true)
+            .iter()
+            .try_for_each(|(path, rel_ids)| {
+                let file = PathBuf::from(path);
+                let file_sink = Sink::File(file);
+                self.add_sink(&file_sink, rel_ids.clone(), server)
+            })
+    }
+
+    /// Add as many `TcpSender` objects as required given the provided node
+    /// configuration.
+    fn add_tcp_senders(&mut self,
+        node_cfg: &NodeCfg,
+        server: &mut DDlogServer<P>,
+        assignment: &Assignment,
+    ) -> Result<(), String> {
+        deduce_outputs(node_cfg, assignment)?
+            .into_iter()
+            .try_for_each(|(addr, rel_ids)| {
+                let addr_sink = Sink::TcpSender(addr); 
+                self.add_sink(&addr_sink, rel_ids.clone(), server)
+            })
     }
 }
 
