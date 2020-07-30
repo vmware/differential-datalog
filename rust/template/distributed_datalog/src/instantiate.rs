@@ -292,19 +292,21 @@ where
         }
     }
 
-    //pub fn remove_sink(&mut self, sink: &Sink) {
-        //self._sinks
-            //.iter_mut()
-            //.for_each(|(_rel_ids, (mut acc, mut sink_map))| {
-                //// Look up the sink in Realization._sinks
-                //if sink_map.contains_key(sink) {
-                    //// Remove entry from sink map
-                    //let (_, subscription) = sink_map.remove(sink).unwrap();
-                    //// Unsubscribe the accumulator from this sink subscription
-                    //acc.unsubscribe(&subscription);
-                //}
-            //});
-    //}
+    /// Remove file sink or tcp sender from an existing Realization.
+    /// Locate the entry in _sinks whose map contains the sink.
+    /// Remove the entry from the sink map.
+    /// Unsubscribe the accumulator from the sink.
+    /// Return an error if unable to find a sink map containing the sink.
+    pub fn remove_sink(&mut self, sink: &Sink) -> Result<(), String> {
+        for (accumulator, sink_map) in self._sinks.values_mut() {
+            if sink_map.contains_key(sink) {
+                let (_, subscription) = sink_map.remove(sink).unwrap();
+                let _ = accumulator.unsubscribe(&subscription);
+                return Ok(())
+            }
+        }
+        Err("failed to remove sink from realization".to_string())
+    }
 
     /// Add file sink or tcp sender to an existing Realization.
     /// Creates and adds accumulator for this rel_ids to the Realization if needed.
