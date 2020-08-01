@@ -299,6 +299,7 @@ function internment::trim (s: internment::istring): string
     internment::istring_trim(s)
 }
 extern function json::from_json_string (json: string): std::Result<'T,string>
+extern function json::from_json_value (json_val: json::JsonValue): std::Result<'T,string>
 function json::jval_as_array (v: json::JsonValue): std::Option<std::Vec<json::JsonValue>>
 {
     match (v) {
@@ -384,6 +385,7 @@ function json::jval_get_or (v: json::JsonValue, attr: internment::istring, def: 
     }
 }
 extern function json::to_json_string (x: 'T): std::Result<string,string>
+extern function json::to_json_value (x: 'T): std::Result<json::JsonValue,string>
 #[has_side_effects = true]
 extern function log::log (module: log::module_t, level: log::log_level_t, msg: string): ()
 function myfunc (x: string): string

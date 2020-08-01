@@ -8,6 +8,18 @@ pub fn json_to_json_string<T: serde::Serialize>(x: &T) -> std_Result<String, Str
     res2std(serde_json::to_string(x))
 }
 
+pub fn json_from_json_value<T: DeserializeOwned>(
+    json_val: &json_JsonValue,
+) -> std_Result<T, String> {
+    res2std(serde_json::from_value(serde_json::value::Value::from(
+        json_val.clone(),
+    )))
+}
+
+pub fn json_to_json_value<T: serde::Serialize>(x: &T) -> std_Result<json_JsonValue, String> {
+    res2std(serde_json::to_value(x.clone()).map(json_JsonValue::from))
+}
+
 pub struct ValueWrapper(serde_json::value::Value);
 
 impl serde::Serialize for ValueWrapper {

@@ -27,4 +27,7 @@ json_test::JsonTest{.description = "{\"x\": \"100000000000\"}", .value = "{\"std
 json_test::JsonTest{.description = "{\"x\": \"x\", \"y\": \"-100000\"}", .value = "{\"std_Err\":{\"err\":\"invalid digit found in string at line 1 column 26\"}}"}
 json_test::JsonTest{.description = "{\"x\": \"x\", \"y\": \"100000\"}", .value = "{\"std_Ok\":{\"res\":{\"x\":\"x\",\"y\":\"100000\"}}}"}
 json_test::JsonTest{.description = "{}", .value = "{\"std_Ok\":{\"res\":{\"s\":null,\"i\":null,\"v\":null}}}"}
+json_test::JsonTestValue{.description = "wrapped {\"@type\": \"t.V1\", \"b\": true}", .value = "{\"std_Ok\":{\"res\":{\"@type\":\"t.V1\",\"b\":true}}}"}
+json_test::JsonTestValue{.description = "wrapped {\"@type\": \"t.V2\", \"b\": false}", .value = "{\"std_Err\":{\"err\":\"missing field `u`\"}}"}
+json_test::JsonTestValue{.description = "wrapped {\"@type\": \"t.V2\", \"u\": 100}", .value = "{\"std_Ok\":{\"res\":{\"@type\":\"t.V2\",\"u\":100}}}"}
 json_test::TVariant1{.b = true}
