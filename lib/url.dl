@@ -19,11 +19,11 @@ function to_string(url: Url): string {
 
 /* Return the scheme of this URL, lower-cased, as an ASCII string without
  * the ':' delimiter. */
-extern function scheme(url: Url): string 
+extern function scheme(url: Url): string
 
 /* Return whether the URL has an 'authority', which can contain a
  * username, password, host, and port number.
- * 
+ *
  * URLs that do not are either path-only like unix:/run/foo.socket or
  * cannot-be-a-base like data:text/plain,Stuff. */
 extern function has_authority(url: Url): bool
@@ -50,7 +50,7 @@ extern function has_host(url: Url): bool
  *
  * Non-ASCII domains are punycode-encoded per IDNA. IPv6 addresses are given
  * between [ and ] brackets.
- * 
+ *
  * Cannot-be-a-base URLs (typical of data: and mailto:) and some file: URLs
  * don’t have a host. */
 extern function host_str(url: Url): Option<string>

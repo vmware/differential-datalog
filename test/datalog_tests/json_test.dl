@@ -1,6 +1,7 @@
 import json
 
 output relation JsonTest(description: string, value: string)
+output relation JsonTestValue(description: string, value: string)
 
 function to_json_string_or_default(x: 'T): string =
     x.to_json_string().unwrap_or_default()
@@ -196,3 +197,10 @@ JsonTest("wrapped " ++ wenum2(),
          to_json_string_or_default(from_json_string(wenum2()): Result<WrappedEnum, string>)).
 JsonTest("wrapped " ++ wenum3(),
          to_json_string_or_default(from_json_string(wenum3()): Result<WrappedEnum, string>)).
+
+JsonTestValue("wrapped " ++ wenum1(),
+         (from_json_string(wenum1()): Result<WrappedEnum, string>).to_json_value().unwrap_or_default().to_json_string_or_default()).
+JsonTestValue("wrapped " ++ wenum2(),
+         (from_json_string(wenum2()): Result<WrappedEnum, string>).to_json_value().unwrap_or_default().to_json_string_or_default()).
+JsonTestValue("wrapped " ++ wenum3(),
+         (from_json_string(wenum3()): Result<WrappedEnum, string>).to_json_value().unwrap_or_default().to_json_string_or_default()).

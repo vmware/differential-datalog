@@ -1,4 +1,5 @@
 dump json_test::JsonTest;
+dump json_test::JsonTestValue;
 
 start;
 insert json_test::Deserialized[@json"{\"@type\": \"t.V1\", \"b\": true}"],
