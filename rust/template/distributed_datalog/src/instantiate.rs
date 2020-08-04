@@ -23,6 +23,7 @@ use crate::accumulate::Accumulator;
 use crate::accumulate::DistributingAccumulator;
 use crate::observe::Observable;
 use crate::observe::SharedObserver;
+use crate::observe::UpdatesObservable;
 use crate::schema::Addr;
 use crate::schema::Node;
 use crate::schema::NodeCfg;
@@ -209,7 +210,7 @@ where
     /// The transaction multiplexer as input to the DDLogServer
     _txnmux: TxnMux<Update<DDValue>, String>,
     /// All sinks of this realization with their subscription
-    _sinks: HashMap<BTreeSet<RelId>, (SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>, HashMap<Sink, (SinkRealization<P::Convert>, usize)>)>,
+    _sinks: HashMap<BTreeSet<RelId>, (SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>, UpdatesObservable<Update<DDValue>, String>, HashMap<Sink, (SinkRealization<P::Convert>, usize)>)>,
 }
 
 impl<P> Realization<P>
@@ -298,7 +299,7 @@ where
     /// Unsubscribe the accumulator from the sink.
     /// Return an error if unable to find a sink map containing the sink.
     pub fn remove_sink(&mut self, sink: &Sink) -> Result<(), String> {
-        for (accumulator, sink_map) in self._sinks.values_mut() {
+        for (accumulator, _, sink_map) in self._sinks.values_mut() {
             if sink_map.contains_key(sink) {
                 let (_, subscription) = sink_map.remove(sink).unwrap();
                 let _ = accumulator.unsubscribe(&subscription);
@@ -315,7 +316,7 @@ where
     pub fn add_sink(&mut self, sink: &Sink, rel_ids: BTreeSet<RelId>, server: &mut DDlogServer<P>) -> Result<(), String> {
         // Add the accumulator to the realization if needed.
         self.add_sink_accumulator(rel_ids.clone(), server)?;
-        let (accumulator, sink_map) = self._sinks.get_mut(&rel_ids.clone()).unwrap();
+        let (accumulator, _, sink_map) = self._sinks.get_mut(&rel_ids.clone()).unwrap();
 
         match sink {
             Sink::File(path) => {
@@ -354,20 +355,37 @@ where
         Ok(())
     } 
 
-    //pub fn remove_sink_accumulator(&mut self, acc: usize) {
-       //// Disconnect accumulator from the server.
-       //// unsubscribe
-       //// Server.remove_stream
-       //// remove accumulator from Realization._sinks
-       //self._sinks
-           //.iter_mut()
-           //.for_each(|(rel_id, (accum, _))| {
-                //if accum == acc {
-                    //let (_, (accum, sink_map)) = self._sinks.remove(rel_id).unwrap();
-                        
-                //}
-            //}
-    //}
+    /// Remove the sink accumulator from the realization.
+    /// Remove accumulator's entry (keyed by rel_ids) from _sinks.
+    /// Disconnect accumulator from the server:
+    /// - Unsubscribe the stream from the accumulator.
+    /// - Remove the stream from the server.
+    /// Clear the accumulator.
+    pub fn remove_sink_accumulator(&mut self, rel_ids: BTreeSet<RelId>, server: &mut DDlogServer<P>) -> Result<(), String> {
+        if let Some(entry) = self._sinks.remove(&rel_ids.clone()) {
+            let (accumulator, mut stream, sink_map) = entry;
+            if sink_map.is_empty() {
+
+                // Disconnect accumulator from server.
+                // First, unsubscribe the stream from the accumulator.
+                let _ = stream.unsubscribe(&());
+                // Next, remove the stream from the server.
+                server.remove_stream(stream);
+
+                let mut accum = accumulator.lock().unwrap();
+                // Clear the accumulator.
+                if accum.clear().is_ok() { 
+                    Ok(())
+                } else {
+                    Err("Cannot remove accumulator, still subscribed to sinks".to_string())
+                }
+            } else {
+                Err("Cannot remove accumulator, still subscribed to sinks".to_string())
+            }
+        } else {
+            Err("Unable to locate accumulator to remove from _sinks".to_string())
+        }
+    }
 
     /// Creates and adds a sink accumulator to the existing Realization.
     /// Adds a stream to the server for the accumulator.
@@ -375,12 +393,11 @@ where
     pub fn add_sink_accumulator(&mut self, rel_ids: BTreeSet<RelId>, server: &mut DDlogServer<P>) -> Result<(), String> {
         if !self._sinks.contains_key(&rel_ids.clone()) {
             let accumulator = Arc::new(Mutex::new(DistributingAccumulator::new()));
-            server
-                .add_stream(rel_ids.clone())
-                .subscribe(Box::new(accumulator.clone()))
-                .map_err(|_| "failed to subscribe accumulator to DDlogServer".to_string())?;
+            let mut update_observ = server.add_stream(rel_ids.clone());
+            update_observ.subscribe(Box::new(accumulator.clone()))
+                         .map_err(|_| "failed to subscribe accumulator to DDlogServer".to_string())?;
 
-            let _ = self._sinks.insert(rel_ids.clone(), (accumulator, HashMap::new())).unwrap();
+            let _ = self._sinks.insert(rel_ids.clone(), (accumulator, update_observ, HashMap::new())).unwrap();
         }
         Ok(())
     }
