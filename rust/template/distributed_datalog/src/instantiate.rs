@@ -324,7 +324,7 @@ where
     ) -> Result<(), String> {
         // Add the accumulator to the realization if needed.
         self.add_sink_accumulator(rel_ids.clone(), server)?;
-        let (accumulator, _, sink_map) = self._sinks.get_mut(&rel_ids.clone()).unwrap();
+        let (accumulator, _, sink_map) = self._sinks.get_mut(&rel_ids).unwrap();
 
         match sink {
             Sink::File(path) => {
@@ -337,7 +337,7 @@ where
                     .lock()
                     .unwrap()
                     .subscribe(Box::new(file_sink.clone()))
-                    .map_err(|_| format!("failed to subscribe file sink to accumulator"))?;
+                    .map_err(|_| "failed to subscribe file sink to accumulator".to_string())?;
 
                 // Add sink to sink map for this accumulator.
                 let _ = sink_map.insert(
@@ -357,7 +357,7 @@ where
                             .lock()
                             .unwrap()
                             .subscribe(Box::new(sink.clone()))
-                            .map_err(|_| format!("failed to subscribe file sink to accumulator"))?;
+                            .map_err(|_| "failed to subscribe file sink to accumulator")?;
 
                         // Add sink to sink map for this accumulator.
                         let _ = sink_map.insert(
@@ -382,7 +382,7 @@ where
         rel_ids: BTreeSet<RelId>,
         server: &mut DDlogServer<P>,
     ) -> Result<(), String> {
-        if let Some(entry) = self._sinks.remove(&rel_ids.clone()) {
+        if let Some(entry) = self._sinks.remove(&rel_ids) {
             let (accumulator, mut stream, sink_map) = entry;
             if sink_map.is_empty() {
                 // Disconnect accumulator from server.
@@ -414,7 +414,7 @@ where
         rel_ids: BTreeSet<RelId>,
         server: &mut DDlogServer<P>,
     ) -> Result<(), String> {
-        if !self._sinks.contains_key(&rel_ids.clone()) {
+        if !self._sinks.contains_key(&rel_ids) {
             let accumulator = Arc::new(Mutex::new(DistributingAccumulator::new()));
             let mut update_observ = server.add_stream(rel_ids.clone());
             update_observ
@@ -424,10 +424,9 @@ where
             let _ = self
                 ._sinks
                 .insert(
-                    rel_ids.clone(),
+                    rel_ids,
                     (accumulator, update_observ, HashMap::new()),
-                )
-                .unwrap();
+                );
         }
         Ok(())
     }
@@ -468,7 +467,7 @@ where
             .into_iter()
             .try_for_each(|(addr, rel_ids)| {
                 let addr_sink = Sink::TcpSender(addr);
-                self.add_sink(&addr_sink, rel_ids.clone(), server)
+                self.add_sink(&addr_sink, rel_ids, server)
             })
     }
 }
