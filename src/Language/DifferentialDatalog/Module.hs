@@ -316,6 +316,7 @@ flattenFuncName mmap mod p fname nargs = do
 flattenFuncName' :: (MonadError String me) => MMap -> DatalogModule -> Pos -> String -> Int -> me String
 flattenFuncName' mmap mod p fname nargs = do
     fname' <- flattenFuncName mmap mod p fname nargs
+    check (moduleDefs mod) (length fname' > 0) p $ "Unknown function '" ++ fname ++ "'"
     check (moduleDefs mod) (length fname' == 1) p
           $ "Ambiguous function name '" ++ fname ++ "' may refer to\n  " ++
             (intercalate "\n  " fname')
