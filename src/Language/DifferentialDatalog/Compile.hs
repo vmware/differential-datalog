@@ -1803,9 +1803,10 @@ mkAssignFilter d ctx e@(ESet _ l r) =
     where
     r' = mkExpr d (CtxSetR e ctx) r EVal
     mtch = mkMatch (mkPatExpr d (CtxSetL e ctx) l EVal) vars "return None"
-    varnames = map (pp . name) $ exprVarDecls d (CtxSetL e ctx) l
+    expr_vardecls = exprVarDecls d (CtxSetL e ctx) l
+    varnames = map (pp . name) expr_vardecls
     vars = tuple varnames
-    vardecls = tuple $ map ("ref" <+>) varnames
+    vardecls = (tuple $ map ("ref" <+>) varnames) <> ":" <+> (tuple $ map (mkType . varType d) expr_vardecls)
 mkAssignFilter _ _ e = error $ "Compile.mkAssignFilter: unexpected expression " ++ show e
 
 mkCondFilter :: (?statics::Statics) => DatalogProgram -> ECtx -> Expr -> Doc
@@ -1820,7 +1821,7 @@ mkFFun d rl@Rule{..} input_filters = do
    open <- openAtom d vALUE_VAR rl 0 (rhsAtom $ ruleRHS !! 0) ("return false")
    let checks = hsep $ punctuate " &&"
                 $ map (\i -> mkExpr d (CtxRuleRCond rl i) (rhsExpr $ ruleRHS !! i) EVal) input_filters
-   return $ "Some(&{fn __f(" <> vALUE_VAR <> ": &DDValue) -> bool"   $$
+   return $ "Some(&{fn __f(" <> vALUE_VAR <> ": &DDValue) -> bool" $$
             (braces' $ open $$ checks)                             $$
             "    __f"                                              $$
             "})"
