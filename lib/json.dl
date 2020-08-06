@@ -50,8 +50,7 @@ typedef JsonValue = // Represents a JSON null value.
 
 /* Get JsonValue value as `bool`.  Returns `None` if value is not `JsonBool`.
  */
-function jval_as_bool(v: JsonValue): Option<bool> =
-{
+function jval_as_bool(v: JsonValue): Option<bool> {
     match (v) {
         JsonBool{b} -> Some{b},
         _ -> None
@@ -60,8 +59,7 @@ function jval_as_bool(v: JsonValue): Option<bool> =
 
 /* Get JsonValue value as `bool`.  Returns `def` if value is not `JsonBool`.
  */
-function jval_as_bool_or(v: JsonValue, def: bool): bool =
-{
+function jval_as_bool_or(v: JsonValue, def: bool): bool {
     match (v) {
         JsonBool{b} -> b,
         _ -> def
@@ -70,8 +68,7 @@ function jval_as_bool_or(v: JsonValue, def: bool): bool =
 
 /* Get JsonValue value as `JsonNum`.  Returns `None` if value is not `JsonNumber`.
  */
-function jval_as_number(v: JsonValue): Option<JsonNum> =
-{
+function jval_as_number(v: JsonValue): Option<JsonNum> {
     match (v) {
         JsonNumber{n} -> Some{n},
         _ -> None
@@ -80,8 +77,7 @@ function jval_as_number(v: JsonValue): Option<JsonNum> =
 
 /* Get JsonValue value as `JsonNum`.  Returns `def` if value is not `JsonNumber`.
  */
-function jval_as_number_or(v: JsonValue, def: JsonNum): JsonNum =
-{
+function jval_as_number_or(v: JsonValue, def: JsonNum): JsonNum {
     match (v) {
         JsonNumber{n} -> n,
         _ -> def
@@ -90,8 +86,7 @@ function jval_as_number_or(v: JsonValue, def: JsonNum): JsonNum =
 
 /* Get JsonValue value as string.  Returns `None` if value is not `JsonString`.
  */
-function jval_as_string(v: JsonValue): Option<istring> =
-{
+function jval_as_string(v: JsonValue): Option<istring> {
     match (v) {
         JsonString{s} -> Some{s},
         _ -> None
@@ -100,8 +95,7 @@ function jval_as_string(v: JsonValue): Option<istring> =
 
 /* Get JsonValue value as string.  Returns `def` if value is not `JsonString`.
  */
-function jval_as_string_or(v: JsonValue, def: istring): istring =
-{
+function jval_as_string_or(v: JsonValue, def: istring): istring {
     match (v) {
         JsonString{s} -> s,
         _ -> def
@@ -110,8 +104,7 @@ function jval_as_string_or(v: JsonValue, def: istring): istring =
 
 /* Get JsonValue value as array.  Returns `None` if value is not `JsonArray`.
  */
-function jval_as_array(v: JsonValue): Option<Vec<JsonValue>> =
-{
+function jval_as_array(v: JsonValue): Option<Vec<JsonValue>> {
     match (v) {
         JsonArray{a} -> Some{a},
         _ -> None
@@ -120,8 +113,7 @@ function jval_as_array(v: JsonValue): Option<Vec<JsonValue>> =
 
 /* Get JsonValue value as array.  Returns `def` if value is not `JsonArray`.
  */
-function jval_as_array_or(v: JsonValue, def: Vec<JsonValue>): Vec<JsonValue> =
-{
+function jval_as_array_or(v: JsonValue, def: Vec<JsonValue>): Vec<JsonValue> {
     match (v) {
         JsonArray{a} -> a,
         _ -> def
@@ -130,8 +122,7 @@ function jval_as_array_or(v: JsonValue, def: Vec<JsonValue>): Vec<JsonValue> =
 
 /* Get JsonValue value as object.  Returns `None` if value is not `JsonObject`.
  */
-function jval_as_object(v: JsonValue): Option<Map<istring, JsonValue>> =
-{
+function jval_as_object(v: JsonValue): Option<Map<istring, JsonValue>> {
     match (v) {
         JsonObject{o} -> Some{o},
         _ -> None
@@ -140,8 +131,7 @@ function jval_as_object(v: JsonValue): Option<Map<istring, JsonValue>> =
 
 /* Get JsonValue value as object.  Returns `def` if value is not `JsonObject`.
  */
-function jval_as_object_or(v: JsonValue, def: Map<istring, JsonValue>): Map<istring, JsonValue> =
-{
+function jval_as_object_or(v: JsonValue, def: Map<istring, JsonValue>): Map<istring, JsonValue> {
     match (v) {
         JsonObject{o} -> o,
         _ -> def
@@ -151,8 +141,7 @@ function jval_as_object_or(v: JsonValue, def: Map<istring, JsonValue>): Map<istr
 /* Get attribute by name.  Returns `None` if value is not `JsonObject` or
  * does not have the specified attribute.
  */
-function jval_get(v: JsonValue, attr: istring): Option<JsonValue> =
-{
+function jval_get(v: JsonValue, attr: istring): Option<JsonValue> {
     match (v) {
         JsonObject{o} -> map_get(o, attr),
         _ -> None
@@ -162,8 +151,7 @@ function jval_get(v: JsonValue, attr: istring): Option<JsonValue> =
 /* Get attribute by name.  Returns `def` if value is not `JsonObject` or
  * does not have the specified attribute.
  */
-function jval_get_or(v: JsonValue, attr: istring, def: JsonValue): JsonValue =
-{
+function jval_get_or(v: JsonValue, attr: istring, def: JsonValue): JsonValue {
     match (v) {
         JsonObject{o} -> unwrap_or(map_get(o, attr), def),
         _ -> def
