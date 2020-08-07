@@ -70,11 +70,16 @@ debugAggregateFunctionName rlidx rhsidx fname =
 -- input to the aggregate operator and the original value.
 -- The return variable is also prepended with __inputs_, which will now be
 -- a tuple.
--- The corrddesponding compiler-generated function also outputs the set of
+-- The corresponding compiler-generated function also outputs the set of
 -- inputs, so that it is visible to the inspect operator.
 -- an RHSCondition is also appended that declares and sets the original
 -- return variable of the pre-updated aggregate operator.
-updateRHSAggregate :: DatalogProgram -> Rule -> Int -> Int -> [RuleRHS]
+-- updateRHSAggregate returns a list of RuleRHS and original index of the RuleRHS.
+-- Since aggregate function get converted into two terms, the original index is
+-- returned, so that the debug inspect operator can use the operator id based on
+-- the original index and the debugger tool can simply correlate the events
+-- to the original source.
+updateRHSAggregate :: DatalogProgram -> Rule -> Int -> Int -> [(RuleRHS, Int)]
 updateRHSAggregate d rule rlidx rhsidx =
   let
      r = (ruleRHS rule) !! rhsidx
@@ -89,8 +94,8 @@ updateRHSAggregate d rule rlidx rhsidx =
                            rhsAggExpr = input }
      rCond = RHSCondition { rhsExpr = eSet (eVarDecl (rhsVar r) (varType d aggVar)) (eTupField (eVar varRet) 1) }
   in case r of
-     RHSAggregate{} -> [rAgg, rCond]
-     _ -> [r]
+     RHSAggregate{} -> [(rAgg, rhsidx), (rCond, rhsidx)]
+     _ -> [(r, rhsidx)]
 
 -- OperatorID is a tuple composed of rule index, rhs index and head index.
 generateOperatorIdExpr :: Int -> Int -> Int -> Expr
@@ -103,22 +108,22 @@ ddlogWeightExpr = eVar "ddlog_weight"
 ddlogTimestampExpr :: Expr
 ddlogTimestampExpr = eVar "ddlog_timestamp"
 
-generateInspectDebugJoin :: DatalogProgram -> Int -> Rule -> Int -> [RuleRHS]
-generateInspectDebugJoin d ruleIdx rule index =
+generateInspectDebugJoin :: DatalogProgram -> Int -> Rule -> Int -> Int -> [RuleRHS]
+generateInspectDebugJoin d ruleIdx rule preRhsIdx index =
   let
     input1 = head $ Compile.recordAfterPrefix d rule (index - 1)
     input2 = eVar $ exprVar $ enode $ atomVal $ rhsAtom (ruleRHS rule !! index)
     outputs = Compile.recordAfterPrefix d rule index
   in map (\i -> RHSInspect {rhsInspectExpr = eApply "debug::debug_event_join"
-                                             [generateOperatorIdExpr ruleIdx index i,
+                                             [generateOperatorIdExpr ruleIdx preRhsIdx i,
                                               ddlogWeightExpr,
                                               ddlogTimestampExpr,
                                               input1,
                                               input2,
                                               outputs !! i]}) [0..length outputs -1]
 
-generateInspectDebug :: DatalogProgram -> Int -> Rule -> Int -> [RuleRHS]
-generateInspectDebug d ruleIdx rule index =
+generateInspectDebug :: DatalogProgram -> Int -> Rule -> Int -> Int -> [RuleRHS]
+generateInspectDebug d ruleIdx rule preRhsIdx index =
   let
     input1 = if index == 0
                 then eVar $ exprVar $ enode $ atomVal $ rhsAtom $ head $ ruleRHS rule
@@ -133,7 +138,7 @@ generateInspectDebug d ruleIdx rule index =
                      rhs -> error $ "generateInspectDebug " ++ show rhs
     outputs = Compile.recordAfterPrefix d rule index
   in map (\i -> RHSInspect {rhsInspectExpr = eApply "debug::debug_event"
-                                             [generateOperatorIdExpr ruleIdx index i,
+                                             [generateOperatorIdExpr ruleIdx preRhsIdx i,
                                               ddlogWeightExpr,
                                               ddlogTimestampExpr,
                                               eString opType,
@@ -141,32 +146,32 @@ generateInspectDebug d ruleIdx rule index =
                                               outputs !! i]}) [0..length outputs - 1]
 
 
-generateInspectDebugAggregate :: DatalogProgram -> Int -> Rule -> Int -> [RuleRHS]
-generateInspectDebugAggregate d ruleIdx rule index =
+generateInspectDebugAggregate :: DatalogProgram -> Int -> Rule -> Int -> Int -> [RuleRHS]
+generateInspectDebugAggregate d ruleIdx rule preRhsIdx index =
   let
     input1 = eTupField (eVar $ rhsVar $ (ruleRHS rule !! index)) 0
     outputs = Compile.recordAfterPrefix d rule index
   in map (\i -> RHSInspect {rhsInspectExpr = eApply "debug::debug_event"
-                                             [generateOperatorIdExpr ruleIdx index i,
+                                             [generateOperatorIdExpr ruleIdx preRhsIdx i,
                                               ddlogWeightExpr,
                                               ddlogTimestampExpr,
                                               eString "Aggregate",
                                               input1,
                                               outputs !! i]}) [0..length outputs -1]
 
-mkInspect :: DatalogProgram -> Int -> Rule -> Int -> Maybe [RuleRHS]
-mkInspect d ruleIdx rule index =
+mkInspect :: DatalogProgram -> Int -> Rule -> Int -> Int -> Maybe [RuleRHS]
+mkInspect d ruleIdx rule preRhsIdx index =
   let rhsRule = ruleRHS rule
   in if index == 0 && index < length rhsRule - 1
         then Nothing
         else if rhsIsCondition (rhsRule !! index) && index /= length rhsRule - 1 && rhsIsCondition (rhsRule !! (index + 1))
                 then Nothing
                 else if index == 0
-                     then Just $ generateInspectDebug d ruleIdx rule index -- single term rule
+                     then Just $ generateInspectDebug d ruleIdx rule preRhsIdx index -- single term rule
                      else case rhsRule !! index of
-                          RHSLiteral{rhsPolarity=True} -> Just $ generateInspectDebugJoin d ruleIdx rule index -- join
-                          RHSAggregate{} -> Just $ generateInspectDebugAggregate d ruleIdx rule index -- aggregate
-                          _ -> Just $ generateInspectDebug d ruleIdx rule index -- antijoin, flatmap, filter/assignment, inspect
+                          RHSLiteral{rhsPolarity=True} -> Just $ generateInspectDebugJoin d ruleIdx rule preRhsIdx index -- join
+                          RHSAggregate{} -> Just $ generateInspectDebugAggregate d ruleIdx rule preRhsIdx index -- aggregate
+                          _ -> Just $ generateInspectDebug d ruleIdx rule preRhsIdx index -- antijoin, flatmap, filter/assignment, inspect
 
 -- Insert inspect debug hook after each RHS term, except for the following:
 -- 1. If a group of conditions appear consecutively, inspect debug hook is only
@@ -175,9 +180,9 @@ mkInspect d ruleIdx rule index =
 -- only contains one literal.
 -- 3. If a rule has multiple heads, then multiple inspect is inserted after the last
 -- term corresponding to each head.
-insertRHSInspectDebugHooks :: DatalogProgram -> Int -> Rule -> [RuleRHS]
-insertRHSInspectDebugHooks d rlIdx rule =
-  concatMap (\i -> let inspect = concat $ maybeToList $ mkInspect d rlIdx rule i in
+insertRHSInspectDebugHooks :: DatalogProgram -> Int -> Rule -> [Int] -> [RuleRHS]
+insertRHSInspectDebugHooks d rlIdx rule rhsIdxs =
+  concatMap (\i -> let inspect = concat $ maybeToList $ mkInspect d rlIdx rule (rhsIdxs !! i) i in
                    (ruleRHS rule !! i) : inspect) [0..length (ruleRHS rule) - 1]
 
 debugUpdateRHSRules :: DatalogProgram -> Int -> Rule -> [RuleRHS]
@@ -186,8 +191,8 @@ debugUpdateRHSRules d rlIdx rule =
     -- First pass updates RHSLiteral without any binding with a binding.
     rhs =  map addBindingToRHSLiteral $ zip (ruleRHS rule) [0..]
     -- Second pass updates RHSAggregate to use the debug function (so that inputs are not dropped).
-    rhs' = concatMap (updateRHSAggregate d rule{ruleRHS = rhs} rlIdx) [0..length rhs - 1]
-  in insertRHSInspectDebugHooks d rlIdx rule {ruleRHS = rhs'}
+    (rhs', preRhsIdxs) = unzip $ concatMap (updateRHSAggregate d rule{ruleRHS = rhs} rlIdx) [0..length rhs - 1]
+  in insertRHSInspectDebugHooks d rlIdx rule {ruleRHS = rhs'} preRhsIdxs
 
 -- Insert an aggregate function that wraps the original function used in the aggregate term.
 -- For example, if an aggregate operator uses std::group_max(), i.e., var c = Aggregate((a), group_max(b)).
