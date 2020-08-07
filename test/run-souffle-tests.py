@@ -52,6 +52,8 @@ xfail = [
     "magic_nqueens",    # 202
     "inline_nqueens",   # 202
     "magic_turing1",    # 198
+    "magic_bindings",   #
+    "magic_infbinding",
     "math",             # Missing reference outputs in Souffle
     "minesweeper",      # 198
     "neg1",             # 198
