@@ -250,7 +250,7 @@ def run_merged_test(filename):
     code, result = run_command(["./" + filename + "_ddlog/target/debug/" + filename +
                                 "_cli", "--no-init-snapshot"], lines.encode())
     if code != 0:
-        print("Error running ddlog program", code)
+        print("Error running ddlog program; exit code", code)
     with open(filename + ".dump", "w") as dump:
         dump.write(result)
     run_command(["sort", filename + ".dump", "-o", "tmp.sorted"])
