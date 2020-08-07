@@ -5,6 +5,7 @@
 set -ex
 
 source ../build_java.sh
+LIBDDLOG="libmylib.so" # use a custom library name
 compile a.dl A.java debug
 java -Djava.library.path=. A
 cleanup

@@ -162,18 +162,26 @@ public class DDlogAPI {
      */
     public DDlogAPI(String library, int workers, Consumer<DDlogCommand<DDlogRecord>> callback, boolean storeData)
             throws DDlogException {
-        System.loadLibrary(library);
+        ensureDllLoaded(library);
         this.tableId = new HashMap<String, Integer>();
         String onCommit = callback == null ? null : "onCommit";
         this.commitCallback = callback;
         this.hprog = this.ddlog_run(storeData, workers, onCommit);
     }
 
-    static void ensureDllLoaded() {
+    static void ensureDllLoaded(String libname) {
+        /* Notice that, despite the fact that you can specify the library name,
+           you cannot really have more than 1 ddlog library loaded at the same time,
+           because there is no way to specify an entry point in the library for ddlog_run.
+         */
         if (!nativeLibraryLoaded) {
-            System.loadLibrary(ddlogLibrary);
+            System.loadLibrary(libname);
             nativeLibraryLoaded = true;
         }
+    }
+
+    static void ensureDllLoaded() {
+        ensureDllLoaded(ddlogLibrary);
     }
 
     /// Callback invoked from commit.

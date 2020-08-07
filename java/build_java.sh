@@ -17,14 +17,15 @@ fi
 # Should be invoked using $(libname), since bash
 # functions cannot return strings.
 function libname {
-    if [ -z "${LIBDDLOG}" ]; then
+    if [[ -n "${LIBDDLOG}" ]]; then
         echo "${LIBDDLOG}"
-    fi
-    case $(uname -s) in
+    else
+      case $(uname -s) in
         Darwin*)    echo "libddlogapi.dylib";;
         Linux*)     echo "libddlogapi.so";;
         *)          echo 1>&2 "Unsupported OS"; exit 1
-    esac
+      esac
+    fi
 }
 
 # Compile a DDlog program and a Java program that uses it.
