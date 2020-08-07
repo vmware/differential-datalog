@@ -125,6 +125,7 @@ public class DDlogAPI {
             throw new DDlogException("DDlogAPI method invoked after the DDlog program has terminated.");
         }
     }
+
     /**
      * Create an API to access the DDlog program.
      * @param workers   number of threads the DDlog program can use
@@ -146,9 +147,31 @@ public class DDlogAPI {
         this.hprog = this.ddlog_run(storeData, workers, onCommit);
     }
 
+    /**
+     * Create an API to access the DDlog program.
+     * @param library   Name of the dynamic library to load.
+     * @param workers   number of threads the DDlog program can use
+     * @param storeData If true the DDlog background program will store a copy
+     *                  of all tables, which can be obtained with "dump".
+     * @param callback  A method that is invoked for every tuple added or deleted to
+     *                  an output table.  The command argument indicates the table,
+     *                  whether it is deletion or insertion, and the actual value
+     *                  that is being inserted or deleted.  This callback is invoked
+     *                  many times, on potentially different threads, when the "commit"
+     *                  API function is called.
+     */
+    public DDlogAPI(String library, int workers, Consumer<DDlogCommand<DDlogRecord>> callback, boolean storeData)
+            throws DDlogException {
+        System.loadLibrary(library);
+        this.tableId = new HashMap<String, Integer>();
+        String onCommit = callback == null ? null : "onCommit";
+        this.commitCallback = callback;
+        this.hprog = this.ddlog_run(storeData, workers, onCommit);
+    }
+
     static void ensureDllLoaded() {
         if (!nativeLibraryLoaded) {
-            System.loadLibrary("ddlogapi");
+            System.loadLibrary(ddlogLibrary);
             nativeLibraryLoaded = true;
         }
     }
@@ -640,16 +663,34 @@ public class DDlogAPI {
         return exitCode == 0;
     }
 
+
     /**
      * Compile a ddlog program stored in a file and generate
-     * a shared library named *ddlogapi.*.
+     * a shared library named *ddlogapi.* (according to host system conventions).
      * @param ddlogFile  Pathname to the ddlog program.
      * @param verbose    If true show stdout and stderr of processes invoked.
      * @param ddlogLibraryPath  Additional list of paths for needed ddlog libraries.
      * @return  true on success.
      */
     public static boolean compileDDlogProgram(
+            String ddlogFile,
+            boolean verbose,
+            String... ddlogLibraryPath) throws DDlogException {
+        return compileDDlogProgram(ddlogFile, libName(ddlogLibrary), verbose, ddlogLibraryPath);
+    }
+
+    /**
+     * Compile a ddlog program stored in a file and generate
+     * a shared library with the specified name.
+     * @param ddlogFile  Pathname to the ddlog program.
+     * @param outLibName Name of the library that should be generated.
+     * @param verbose    If true show stdout and stderr of processes invoked.
+     * @param ddlogLibraryPath  Additional list of paths for needed ddlog libraries.
+     * @return  true on success.
+     */
+    public static boolean compileDDlogProgram(
         String ddlogFile,
+        String outLibName,
         boolean verbose,
         String... ddlogLibraryPath) throws DDlogException {
         boolean success = compileDDlogProgramToRust(ddlogFile, verbose, ddlogLibraryPath);
@@ -690,13 +731,8 @@ public class DDlogAPI {
         command.add("-L" + rustDir + "/target/release/");
         String libRoot = Paths.get(rustDir).getFileName().toString();
         command.add("-l" + libRoot);
-        /*
-          Flags for the linker.
-          command.add("-z");
-          command.add("noexecstack");
-        */
         command.add("-o");
-        command.add(libName(ddlogLibrary));
+        command.add(outLibName);
         exitCode = runProcess(command, null, verbose);
         return exitCode == 0;
     }
