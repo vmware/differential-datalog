@@ -901,21 +901,13 @@ function souffle_lib::group_mean (g: std::Group<'K,signed<32>>): signed<32>
 {
     ((var sum: signed<32>) = (std::group_sum(g): signed<32>);
      ((var count: bit<64>) = std::group_count(g);
-      (if (count == 64'd0) {
-           32'sd0
-       } else {
-             sum
-         } / ((count as signed<64>) as signed<32>))))
+      (sum / ((count as signed<64>) as signed<32>))))
 }
 function souffle_lib::group_mean_d (g: std::Group<'K,double>): double
 {
     ((var sum: double) = (std::group_sum(g): double);
      ((var count: bit<64>) = std::group_count(g);
-      (if (count == 64'd0) {
-           64'f0.0
-       } else {
-             sum
-         } / (count as double))))
+      (sum / (count as double))))
 }
 function souffle_lib::itof (l: signed<32>): double
 {
