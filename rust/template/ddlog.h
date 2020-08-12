@@ -750,6 +750,19 @@ extern int ddlog_enable_cpu_profiling(ddlog_prog prog, bool enable);
  */
 extern char* ddlog_profile(ddlog_prog prog);
 
+/*
+ * Controls recording of timely operator runtimes. When enabled,
+ * DDlog receives timely dataflow events and writes them out to a CSV file
+ * where they can be queried later for useful information about program
+ * execution. This is particularly useful for DDlog programs running with
+ * multiple workers. When disabled, the recording stops, but the previously
+ * accumulated profile is preserved.
+ *
+ * Recording timely events can be expensive in large dataflows and is
+ * therefore disabled by default.
+ */
+extern int ddlog_enable_timely_profiling(ddlog_prog prog, bool enable);
+
 /***********************************************************************
  * Record API
  ***********************************************************************/

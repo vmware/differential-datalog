@@ -8,6 +8,7 @@ use std::cmp::max;
 use std::fmt;
 use std::time::Duration;
 use timely::logging::{OperatesEvent, ScheduleEvent, StartStop, TimelyEvent};
+use crate::profile_statistics::Statistics;
 
 thread_local! {
     pub static PROF_CONTEXT: RefCell<String> = RefCell::new("".to_string());
@@ -32,18 +33,29 @@ pub fn with_prof_context<T, F: FnOnce() -> T>(s: &str, f: F) -> T {
  */
 #[derive(Debug)]
 pub enum ProfMsg {
-    TimelyMessage(Vec<((Duration, usize, TimelyEvent), String)>),
+    /// Send message batch as well as who the message is for (_, profile_cpu, profile_timely).
+    TimelyMessage(Vec<((Duration, usize, TimelyEvent), Option<String>)>, bool, bool),
     DifferentialMessage(Vec<(Duration, usize, DifferentialEvent)>),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Profile {
     addresses: SequenceTrie<usize, usize>,
+    op_address: FnvHashMap<usize, Vec<usize>>,
+    /// Full name of operator including context for mapping to ddlog.
     names: FnvHashMap<usize, String>,
+    /// Short name of the op only.
+    short_names: FnvHashMap<usize, String>,
     sizes: FnvHashMap<usize, isize>,
     peak_sizes: FnvHashMap<usize, isize>,
     starts: FnvHashMap<(usize, usize), Duration>,
     durations: FnvHashMap<usize, (Duration, usize)>,
+    // Initialization creates a file
+    timely_stats: Option<Statistics>,
+    // Keep track of whether we already tried initializing timely_stats, this avoids us
+    // repeatedly trying to initialize it on every event batch. If we failed once we give
+    // up.
+    stats_init: bool,
 }
 
 impl fmt::Display for Profile {
@@ -65,11 +77,15 @@ impl Profile {
     pub fn new() -> Profile {
         Profile {
             addresses: SequenceTrie::new(),
+            op_address: FnvHashMap::default(),
             names: FnvHashMap::default(),
+            short_names: FnvHashMap::default(),
             sizes: FnvHashMap::default(),
             peak_sizes: FnvHashMap::default(),
             starts: FnvHashMap::default(),
             durations: FnvHashMap::default(),
+            timely_stats: None,
+            stats_init: false,
         }
     }
 
@@ -139,37 +155,86 @@ impl Profile {
 
     pub fn update(&mut self, msg: &ProfMsg) {
         match msg {
-            ProfMsg::TimelyMessage(msg) => self.handle_timely(msg),
+            ProfMsg::TimelyMessage(events, profile_cpu, profile_timely) => {
+                // Init stats struct for timely events. The profile_timely bool can become true
+                // at any time, so we check it on every message batch arrival.
+                if !self.stats_init && *profile_timely {
+                    self.stats_init = true;
+
+                    match Statistics::new("stats.csv") {
+                        Ok(init_stats) => {
+                            self.timely_stats = Some(init_stats);
+                        }
+                        Err(e) => {
+                            eprintln!("Warning: Unable to create stats.csv for program profiling.");
+                            eprintln!("Reason {}", e);
+                            // stats stays None.
+                        }
+                    }
+                }
+                for ((duration, id, event), context) in events.iter() {
+                    match event {
+                        TimelyEvent::Operates(o) => {
+                            let context = context.as_ref().
+                                expect("Operates events should always have valid context attached");
+                            self.handle_operates(&o, context);
+                        },
+                        event => {
+                            if *profile_timely {
+                                // In the None case it is totally fine to do nothing. This just means that
+                                // profiling timely was on but we were unable to initialize the file.
+                                if let Some(stats) = self.timely_stats.as_mut() {
+                                    stats.handle_event(*duration, *id, &event, &self.op_address, &self.short_names);
+                                }
+                            }
+                            if *profile_cpu {
+                                self.handle_cpu_profiling(duration, *id, event);
+                            }
+
+                        }
+
+                    }
+                }
+            }
+
             ProfMsg::DifferentialMessage(msg) => self.handle_differential(msg),
         }
     }
 
-    fn handle_timely(&mut self, msg: &[((Duration, usize, TimelyEvent), String)]) {
-        for ((ts, worker, event), ctx) in msg.iter() {
+    /// Add events into relevant maps. This must always be done as we might need this information
+    /// later if CPU profile or timely profile is turned on. If we don't always record it, it might
+    /// be too late later.
+    fn handle_operates(&mut self, OperatesEvent{id, addr, name}: &OperatesEvent, context: &String) {
+            self.addresses.insert(addr, *id);
+            self.op_address.insert(*id, addr.clone());
+
+            self.short_names.insert(*id, name.clone());
+            self.names.insert(*id, {
+                /* Remove redundant spaces. */
+                let frags: Vec<String> = (name.clone() + ": " + &context.replace('\n', " "))
+                    .split_whitespace()
+                    .map(|x| x.to_string())
+                    .collect();
+                frags.join(" ")
+            });
+    }
+
+    // We always want to handle TimelyEvent::Operates as they are used for more than just
+    // CPU profiling. Other events are only handled when profile_cpu is true.
+    fn handle_cpu_profiling(&mut self, ts: &Duration, worker_id: usize, event: &TimelyEvent) {
             match event {
-                TimelyEvent::Operates(OperatesEvent { id, addr, name }) => {
-                    self.addresses.insert(addr, *id);
-                    self.names.insert(*id, {
-                        /* Remove redundant spaces. */
-                        let frags: Vec<String> = (name.clone() + ": " + &ctx.replace('\n', " "))
-                            .split_whitespace()
-                            .map(|x| x.to_string())
-                            .collect();
-                        frags.join(" ")
-                    });
-                }
                 TimelyEvent::Schedule(ScheduleEvent { id, start_stop }) => {
                     match start_stop {
                         StartStop::Start => {
-                            self.starts.insert((*id, *worker), *ts);
+                            self.starts.insert((*id, worker_id), *ts);
                         }
                         StartStop::Stop => {
                             let (total, ncalls) = self
                                 .durations
                                 .entry(*id)
                                 .or_insert((Duration::new(0, 0), 0));
-                            let start = self.starts.get(&(*id,*worker)).cloned().unwrap_or_else(||{
-                                eprintln!("TimelyEvent::Stop without a start for operator {}, worker {}", *id, *worker);
+                            let start = self.starts.get(&(*id,worker_id)).cloned().unwrap_or_else(||{
+                                eprintln!("TimelyEvent::Stop without a start for operator {}, worker {}", *id, worker_id);
                                 Duration::new(0,0)
                             });
                             *total += *ts - start;
@@ -179,7 +244,6 @@ impl Profile {
                 }
                 _ => (),
             }
-        }
     }
 
     fn handle_differential(&mut self, msg: &[(Duration, usize, DifferentialEvent)]) {

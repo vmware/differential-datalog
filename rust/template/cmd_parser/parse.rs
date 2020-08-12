@@ -12,6 +12,7 @@ use std::borrow::Cow;
 #[derive(Copy, Debug, PartialEq, Eq, Clone)]
 pub enum ProfileCmd {
     CPU(bool),
+    Timely(bool),
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -61,6 +62,14 @@ named!(pub profile_cmd<&[u8], ProfileCmd>,
                  (ProfileCmd::CPU(enable)))
 );
 
+named!(pub profile_timely_cmd<&[u8], ProfileCmd>,
+       do_parse!(apply!(sym,"timely") >>
+                 enable: alt!(do_parse!(apply!(sym,"on") >> (true)) |
+                              do_parse!(apply!(sym,"off") >> (false))) >>
+                 (ProfileCmd::Timely(enable)))
+);
+
+
 named!(pub parse_command<&[u8], Command>,
     do_parse!(
         spaces >>
@@ -76,6 +85,10 @@ named!(pub parse_command<&[u8], Command>,
                             (Command::Comment))                                                 |
                   do_parse!(apply!(sym,"profile")   >>
                             cmd: opt!(profile_cmd)  >>
+                            apply!(sym,";")         >>
+                            (Command::Profile(cmd)))                                            |
+                  do_parse!(apply!(sym,"profile")   >>
+                            cmd: opt!(profile_timely_cmd)  >>
                             apply!(sym,";")         >>
                             (Command::Profile(cmd)))                                            |
                   do_parse!(apply!(sym,"dump")      >>
