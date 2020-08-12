@@ -121,7 +121,7 @@ public class BaseQueriesTest {
             if (!success) {
                 String[] lines = programBody.split("\n");
                 for (int i = 0; i < lines.length; i++) {
-                    System.out.print(String.format("%3s ", i+1));
+                    System.out.printf("%3s ", i+1);
                     System.out.println(lines[i]);
                 }
                 throw new RuntimeException("Error compiling datalog program");

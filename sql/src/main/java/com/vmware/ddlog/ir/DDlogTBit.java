@@ -15,7 +15,6 @@ import com.facebook.presto.sql.tree.Node;
 
 import javax.annotation.Nullable;
 import java.math.BigInteger;
-import java.util.Objects;
 
 public class DDlogTBit extends DDlogType
         implements IsNumericType, IBoundedNumericType, IDDlogBaseType {

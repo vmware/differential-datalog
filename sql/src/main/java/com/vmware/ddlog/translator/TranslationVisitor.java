@@ -380,6 +380,8 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                         aggregatedType,  // sum
                         aggregatedType   // count
                 ).setMayBeNull(aggregatedType.mayBeNull);
+            case "array_agg":
+                return aggregatedType;
             default:
                 throw new TranslationException("Unexpected aggregate", node);
         }
@@ -407,6 +409,8 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                 IsNumericType num = incType.toNumeric();
                 aggregate += "_" + num.simpleName();
                 break;
+            case "array_agg":
+                return new DDlogEApply(node, "vec_push", resultType, variable, increment);
             default:
                 break;
         }
@@ -461,6 +465,9 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             case "sum_distinct":
                 DDlogType setType = new DDlogTUser(f, "Set", false, dataType.setMayBeNull(false));
                 return new DDlogEApply(f, "set_empty", setType);
+            case "array_agg":
+                DDlogType type = new DDlogTArray(f, dataType, false);
+                return new DDlogEApply(f, "vec_empty", type);
             default:
                 throw new TranslationException("Unexpected aggregate: " + aggregate, f);
         }

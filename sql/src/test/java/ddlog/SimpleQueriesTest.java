@@ -3,8 +3,46 @@ package ddlog;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.List;
 
 public class SimpleQueriesTest extends BaseQueriesTest {
+    @Test
+    public void arrayTest() {
+        String query = "create table a(column1 integer not null, column2 integer not null, column3 integer array not null)";
+        String program = this.header(false) +
+                "typedef Ta = Ta{column1:signed<64>, column2:signed<64>, column3:Vec<signed<64>>}\n" +
+                this.relations(false) +
+                "input relation Ra[Ta]\n";
+        this.testTranslation(query, program);
+    }
+
+    @Test
+    public void inTest() {
+        String query = "create view v0 as select distinct column1 from t1 where column2 IN ('a', 'b')";
+        String program = this.header(false) +
+                this.relations(false) +
+                "relation Rtmp[Tt2]\n" +
+                "output relation Rv0[Tt2]\n" +
+                "Rv0[v1] :- Rt1[v],vec_contains(vec_push_imm(vec_push_imm(vec_empty(), \"a\"), \"b\"), v.column2)," +
+                "var v0 = Tt2{.column1 = v.column1},var v1 = v0.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
+    public void inArrayTest() {
+        List<String> queries = Arrays.asList(
+                "create table a(column1 integer not null, column2 integer not null, column3 integer array not null)",
+                "create view v0 as select distinct column1 from a where array_contains(column3, column1)");
+        String program = this.header(false) +
+                "typedef Ta = Ta{column1:signed<64>, column2:signed<64>, column3:Vec<signed<64>>}\n" +
+                this.relations(false) +
+                "input relation Ra[Ta]\n" +
+                "relation Rtmp[Tt2]\n" +
+                "output relation Rv0[Tt2]\n" +
+                "Rv0[v1] :- Ra[v],sql_array_contains(v.column3, v.column1),var v0 = Tt2{.column1 = v.column1},var v1 = v0.";
+        this.testTranslation(queries, program, false);
+    }
+
     @Test
     public void testSelect() {
         String query = "create view v0 as select distinct column1, column2 from t1";

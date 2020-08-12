@@ -7,6 +7,8 @@ import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * This is a singleton pattern class
@@ -27,6 +29,7 @@ public class SqlSemantics {
         this.aggregateFunctions.add("some");
         this.aggregateFunctions.add("any");
         this.aggregateFunctions.add("every");
+        this.aggregateFunctions.add("array_agg");
 
         this.arithmeticFunctions.put("a_eq", DDlogEBinOp.BOp.Eq);
         this.arithmeticFunctions.put("a_neq", DDlogEBinOp.BOp.Neq);
@@ -58,6 +61,7 @@ public class SqlSemantics {
     }
 
     public static SqlSemantics semantics = new SqlSemantics();
+    static final Pattern arrayType = Pattern.compile("ARRAY\\((.+)\\)");
 
     public static DDlogType createType(Node node, String sqltype, boolean mayBeNull) {
         DDlogType type = null;
@@ -79,6 +83,13 @@ public class SqlSemantics {
             type = new DDlogTUser(null, "Time", false);
         } else if (sqltype.equals("datetime") || sqltype.equals("timestamp")) {
             type = new DDlogTUser(node, "DateTime", false);
+        } else {
+            Matcher m = arrayType.matcher(sqltype);
+            if (m.find()) {
+                String subtype = m.group(1);
+                DDlogType stype = createType(node, subtype, mayBeNull);
+                type = new DDlogTArray(node, stype, false);
+            }
         }
         if (type == null)
             throw new TranslationException("SQL type not yet implemented: " + sqltype, node);
