@@ -23,7 +23,6 @@ use server_api_ddlog::Relations::*;
 
 use maplit::btreeset;
 use maplit::hashmap;
-use maplit::hashset;
 
 use test_env_log::test;
 
@@ -129,7 +128,7 @@ fn unsubscribe(
             RelIdentifier::RelId(server_api_1_P1In as usize),
             Record::String("test1".to_string()),
         )]
-        .into_iter()
+        .iter()
         .map(|cmd| updcmd2upd(cmd).unwrap()),
     ))?;
     server.on_commit()?;
@@ -143,7 +142,7 @@ fn unsubscribe(
             RelIdentifier::RelId(server_api_1_P1In as usize),
             Record::String("test2".to_string()),
         )]
-        .into_iter()
+        .iter()
         .map(|cmd| updcmd2upd(cmd).unwrap()),
     ))?;
     server.on_commit()?;
@@ -277,7 +276,7 @@ fn multiple_transactions(
 
 fn setup() -> (DDlogServer, UpdatesObservable, MockObserver) {
     let (program, _) = HDDlog::run(1, false, |_, _: &Record, _| {}).unwrap();
-    let mut server = DDlogServer::new(program, hashmap! {});
+    let mut server = DDlogServer::new(Some(program), hashmap! {});
 
     let observer = SharedObserver::new(Mutex::new(Mock::new()));
     let mut stream = server.add_stream(btreeset! {server_api_1_P1Out as usize});
@@ -288,7 +287,7 @@ fn setup() -> (DDlogServer, UpdatesObservable, MockObserver) {
 
 fn setup_tcp() -> (DDlogServer, UpdatesObservable, MockObserver, Box<dyn Any>) {
     let (program, _) = HDDlog::run(1, false, |_, _: &Record, _| {}).unwrap();
-    let mut server = DDlogServer::new(program, hashmap! {});
+    let mut server = DDlogServer::new(Some(program), hashmap! {});
 
     let observer = SharedObserver::new(Mutex::new(Mock::new()));
     let mut stream = server.add_stream(btreeset! {server_api_1_P1Out as usize});

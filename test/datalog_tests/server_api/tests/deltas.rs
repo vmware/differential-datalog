@@ -41,7 +41,7 @@ where
     F: FnOnce(&mut UpdatesObservable, SharedObserver<DDlogServer>) -> Result<Box<dyn Any>, String>,
 {
     let (program1, _) = HDDlog::run(1, false, |_, _: &Record, _| {}).unwrap();
-    let mut server1 = DDlogServer::new(program1, hashmap! {});
+    let mut server1 = DDlogServer::new(Some(program1), hashmap! {});
 
     let deltas = Arc::new(Mutex::new(Vec::new()));
     let deltas2 = deltas.clone();
@@ -50,7 +50,7 @@ where
     })
     .unwrap();
     let server2 = DDlogServer::new(
-        program2,
+        Some(program2),
         hashmap! {
             server_api_1_P1Out as usize => server_api_2_P2In as usize,
         },
@@ -131,10 +131,10 @@ where
     //     P1[s1]     P2[s2]
     //
     let (program1, _) = HDDlog::run(1, false, |_, _: &Record, _| {}).unwrap();
-    let mut server1 = DDlogServer::new(program1, hashmap! {});
+    let mut server1 = DDlogServer::new(Some(program1), hashmap! {});
 
     let (program2, _) = HDDlog::run(1, false, |_, _: &Record, _| {}).unwrap();
-    let mut server2 = DDlogServer::new(program2, hashmap! {});
+    let mut server2 = DDlogServer::new(Some(program2), hashmap! {});
 
     let deltas = Arc::new(Mutex::new(Vec::new()));
     let deltas2 = deltas.clone();
@@ -146,7 +146,7 @@ where
         server_api_1_P1Out as usize => server_api_3_P1Out as usize,
         server_api_2_P2Out as usize => server_api_3_P2Out as usize,
     };
-    let server3 = DDlogServer::new(program3, redirect);
+    let server3 = DDlogServer::new(Some(program3), redirect);
 
     let stream1 = server1.add_stream(btreeset! {server_api_1_P1Out as usize});
     let stream2 = server2.add_stream(btreeset! {server_api_2_P2Out as usize});
