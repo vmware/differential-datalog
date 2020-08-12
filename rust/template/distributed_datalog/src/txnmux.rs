@@ -169,6 +169,12 @@ where
         trace!("TxnMux({})::create_observer", self.id);
         Box::new(CachingObserver::new(self.observer.clone()))
     }
+
+    /// For testing: Checks that the given id exists in the
+    /// TxnMux's subscriptions.
+    pub fn subscription_exists(&self, id: usize) -> bool {
+        self.subscriptions.contains_key(&id)
+    }
 }
 
 impl<T, E> Drop for TxnMux<T, E>

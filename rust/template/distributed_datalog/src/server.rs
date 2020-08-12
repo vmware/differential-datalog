@@ -43,7 +43,7 @@ where
     P: DDlog,
 {
     /// Create a new server with no outlets.
-    pub fn new(prog: P, redirect: HashMap<RelId, RelId>) -> Self {
+    pub fn new(prog: Option<P>, redirect: HashMap<RelId, RelId>) -> Self {
         let created = Instant::now();
         let id = Id::<()>::new().get();
         trace!("DDlogServer({})::new", id);
@@ -51,7 +51,7 @@ where
         Self {
             id,
             created,
-            prog: Some(prog),
+            prog,
             outlets: Vec::new(),
             redirect,
         }
