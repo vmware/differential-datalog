@@ -8,6 +8,7 @@
 mod callback;
 mod ddlog;
 mod profile;
+mod profile_statistics;
 mod replay;
 mod valmap;
 mod variable;

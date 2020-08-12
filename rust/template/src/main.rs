@@ -97,6 +97,11 @@ fn handle_cmd(
             hddlog.enable_cpu_profiling(enable);
             Ok(())
         }
+        Command::Profile(Some(ProfileCmd::Timely(enable))) => {
+            hddlog.enable_timely_profiling(enable);
+            Ok(())
+        }
+
         Command::Dump(None) => {
             let _ = hddlog.db.as_ref().map(|db| {
                 db.lock()

@@ -869,6 +869,8 @@ pub struct RunningProgram {
     need_to_flush: bool,
     /* CPU profiling enabled (can be expensive). */
     profile_cpu: Arc<AtomicBool>,
+    /// Consume timely_events and output them to CSV file. Can be expensive.
+    profile_timely: Arc<AtomicBool>,
     /* Profiling thread. */
     prof_thread_handle: Option<thread::JoinHandle<()>>,
     /* Profiling statistics. */
@@ -891,6 +893,7 @@ impl Debug for RunningProgram {
         let _ = builder.field("transaction_in_progress", &self.transaction_in_progress);
         let _ = builder.field("need_to_flush", &self.need_to_flush);
         let _ = builder.field("profile_cpu", &self.profile_cpu);
+        let _ = builder.field("profile_timely", &self.profile_timely);
         let _ = builder.field("prof_thread_handle", &self.prof_thread_handle);
         let _ = builder.field("profile", &self.profile);
         builder.finish()
@@ -1121,7 +1124,6 @@ impl Program {
         let reply_send: Arc<Mutex<Vec<Option<_>>>> =
             Arc::new(Mutex::new(reply_send.into_iter().map(Some).collect()));
 
-        /* Profiling channel */
         let (prof_send, prof_recv) = mpsc::sync_channel::<ProfMsg>(PROF_MSG_BUF_SIZE);
 
         /* Channel used by workers 1..n to send their thread handles to worker 0. */
@@ -1135,11 +1137,16 @@ impl Program {
         let profile = Arc::new(Mutex::new(Profile::new()));
         let profile2 = profile.clone();
 
-        /* Thread to collect profiling data */
-        let prof_thread = thread::spawn(move || Self::prof_thread_func(prof_recv, profile2));
-
         let profile_cpu = Arc::new(AtomicBool::new(false));
+        let profile_timely = Arc::new(AtomicBool::new(false));
+
+        /* Thread to collect profiling data */
+        let prof_thread = thread::spawn(move ||
+            Self::prof_thread_func(prof_recv, profile2));
+
         let profile_cpu2 = profile_cpu.clone();
+        let profile_timely2 = profile_timely.clone();
+
 
         /* Shared timestamp managed by worker 0 and read by all other workers */
         let frontier_ts = TSAtomic::new(0);
@@ -1171,22 +1178,40 @@ impl Program {
                 {
                     let mut probe1 = probe.clone();
                     let profile_cpu3 = profile_cpu2.clone();
+                    let profile_timely3 = profile_timely2.clone();
+
                     let prof_send1 = prof_send.clone();
                     let prof_send2 = prof_send.clone();
                     let progress_barrier = progress_barrier.clone();
 
                     worker.log_register().insert::<TimelyEvent,_>("timely", move |_time, data| {
                         let profcpu: &AtomicBool = &*profile_cpu3;
+                        let proftimely: &AtomicBool = &*profile_timely3;
+
                         /* Filter out events we don't care about to avoid the overhead of sending
                          * the event around just to drop it eventually. */
-                        let mut filtered:Vec<((Duration, usize, TimelyEvent), String)> = data.drain(..).filter(|event| match event.2 {
+                        let filtered: Vec<((Duration, usize, TimelyEvent), Option<String>)> = data.drain(..).filter(|event| match event.2 {
+                            // Always send Operates events as they're used for always-on memory profiling.
                             TimelyEvent::Operates(_) => true,
-                            TimelyEvent::Schedule(_) => profcpu.load(Ordering::Acquire),
+                            TimelyEvent::Schedule(_) =>
+                                profcpu.load(Ordering::Acquire) | proftimely.load(Ordering::Acquire),
+                            TimelyEvent::GuardedMessage(_) |
+                            TimelyEvent::Park(_) |
+                            TimelyEvent::Progress(_) |
+                            TimelyEvent::PushProgress(_) => proftimely.load(Ordering::Acquire),
                             _ => false
-                        }).map(|x|(x, get_prof_context())).collect();
+                        }).map(|(d, s, e)|
+                            // Only Operate events care about the context string.
+                            match e {
+                                TimelyEvent::Operates(_) => ((d, s, e), Some(get_prof_context())),
+                                _ => ((d, s, e), None),
+                        }).collect();
+
                         if !filtered.is_empty() {
                             //eprintln!("timely event {:?}", filtered);
-                            prof_send1.send(ProfMsg::TimelyMessage(filtered.drain(..).collect())).unwrap();
+                            prof_send1.send(ProfMsg::TimelyMessage(filtered,
+                                                                   profcpu.load(Ordering::Acquire),
+                                                                   proftimely.load(Ordering::Acquire))).unwrap();
                         }
                     });
 
@@ -1611,20 +1636,21 @@ impl Program {
             transaction_in_progress: false,
             need_to_flush: false,
             profile_cpu,
+            profile_timely,
             prof_thread_handle: Some(prof_thread),
             profile,
         })
     }
 
-    /* Profiler thread function */
+    /// This thread function is always invoked whether or not profiling is on. If it isn't, the
+    /// thread will blocks on the channel read as no message will ever arrive.
     fn prof_thread_func(chan: mpsc::Receiver<ProfMsg>, profile: Arc<Mutex<Profile>>) {
         loop {
             match chan.recv() {
-                Ok(msg) => profile.lock().unwrap().update(&msg),
-                _ => {
-                    //eprintln!("profiling thread exiting");
-                    return;
+                Ok(msg) => {
+                    profile.lock().unwrap().update(&msg);
                 }
+                _ => return,
             }
         }
     }
@@ -2161,6 +2187,11 @@ impl RunningProgram {
     pub fn enable_cpu_profiling(&self, enable: bool) {
         self.profile_cpu.store(enable, Ordering::SeqCst);
     }
+
+    pub fn enable_timely_profiling(&self, enable: bool) {
+        self.profile_timely.store(enable, Ordering::SeqCst);
+    }
+
 
     /// Terminate program, kill worker threads.
     pub fn stop(&mut self) -> Response<()> {
