@@ -231,6 +231,26 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
     }
 
     @Override
+    protected DDlogExpression visitInListExpression(InListExpression node, TranslationContext context) {
+        List<DDlogExpression> exprs = Linq.map(node.getValues(), n -> this.process(n, context));
+        if (exprs.size() == 0)
+            throw new TranslationException("Zero-sized list?", node);
+        DDlogTArray type = new DDlogTArray(node, exprs.get(0).getType(), false);
+        DDlogExpression empty = new DDlogEApply(node, "vec_empty", type);
+        DDlogExpression result = empty;
+        for (DDlogExpression e: exprs)
+            result = new DDlogEApply(node, "vec_push_imm", type, result, e);
+        return result;
+    }
+
+    @Override
+    protected DDlogExpression visitInPredicate(InPredicate node, TranslationContext context) {
+        DDlogExpression value = this.process(node.getValue(), context);
+        DDlogExpression list = this.process(node.getValueList(), context);
+        return new DDlogEApply(node, "vec_contains", DDlogTBool.instance, list, value);
+    }
+
+    @Override
     public DDlogExpression process(Node node, @Nullable TranslationContext context) {
         assert context != null;
         DDlogExpression subst = context.getSubstitution(node);
@@ -443,6 +463,13 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
             case "concat":
                 boolean mayBeNull = Linq.any(args, a -> a.getType().mayBeNull);
                 return DDlogTString.instance.setMayBeNull(mayBeNull);
+            case "array_agg":
+                if (args.size() != 1)
+                    throw new TranslationException("Expected exactly 1 argument for aggregate", node);
+                DDlogExpression arg = args.get(0);
+                return new DDlogTArray(node, arg.getType(), false);
+            case "array_contains":
+                return DDlogTBool.instance;
             default:
                 throw new UnsupportedOperationException(function);
         }

@@ -6,9 +6,11 @@ import com.vmware.ddlog.translator.Translator;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
+
 public class WeaveTest extends BaseQueriesTest {
     @Test
-    public void testWeave() {
+    public void testWeave() throws IOException {
         Translator t = new Translator(null);
         String node_info = "create table node_info\n" +
                 "(\n" +
