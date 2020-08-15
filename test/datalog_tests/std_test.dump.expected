@@ -18,3 +18,5 @@ std_test::SetDifference{.s1 = [2, 3, 4], .s2 = [1, 2, 3], .diff = [4]}: +1
 std_test::SetDifference{.s1 = [1000], .s2 = [1], .diff = [1000]}: +1
 std_test::MapSizes:
 std_test::MapSizes{.m = [(1, "e"), (2, "d"), (3, "c"), (4, "b"), (5, "a")], .size = 5}: +1
+std_test::Pow{.descr = "$pow32(2: u64, 32)", .val = "4294967296"}
+std_test::Pow{.descr = "pow32(2: u32, 32)", .val = "0"}

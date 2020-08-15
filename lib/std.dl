@@ -21,7 +21,7 @@ typedef s128 = signed<128>
 typedef usize = u64
 
 /*
- * Weight of a record in a DDlog collection.  This type is internal to the 
+ * Weight of a record in a DDlog collection.  This type is internal to the
  * DDlog engine and is only visible to the programmer inside the `Inspect`
  * operator.  Positive weight indicates that the record is being added
  * to a collection; negative weight corresponds to a deletion.
@@ -74,7 +74,51 @@ function max(x: 'A, y: 'A): 'A = if (x > y) x else y
 /*
  * Arithmetic functions
  */
-extern function pow32(base:'A, exp: bit<32>): 'A
+extern function u8_pow32(base: u8, exp: bit<32>): u8
+extern function u16_pow32(base: u16, exp: bit<32>): u16
+extern function u32_pow32(base: u32, exp: bit<32>): u32
+extern function u64_pow32(base: u64, exp: bit<32>): u64
+extern function u128_pow32(base: u128, exp: bit<32>): u128
+extern function s8_pow32(base: s8, exp: bit<32>): s8
+extern function s16_pow32(base: s16, exp: bit<32>): s16
+extern function s32_pow32(base: s32, exp: bit<32>): s32
+extern function s64_pow32(base: s64, exp: bit<32>): s64
+extern function s128_pow32(base: s128, exp: bit<32>): s128
+extern function bigint_pow32(base: bigint, exp: bit<32>): bigint
+
+function pow32(base: u8, exp: bit<32>): u8 {
+    u8_pow32(base, exp)
+}
+function pow32(base: u16, exp: bit<32>): u16 {
+    u16_pow32(base, exp)
+}
+function pow32(base: u32, exp: bit<32>): u32 {
+    u32_pow32(base, exp)
+}
+function pow32(base: u64, exp: bit<32>): u64 {
+    u64_pow32(base, exp)
+}
+function pow32(base: u128, exp: bit<32>): u128 {
+    u128_pow32(base, exp)
+}
+function pow32(base: s8, exp: bit<32>): s8 {
+    s8_pow32(base, exp)
+}
+function pow32(base: s16, exp: bit<32>): s16 {
+    s16_pow32(base, exp)
+}
+function pow32(base: s32, exp: bit<32>): s32 {
+    s32_pow32(base, exp)
+}
+function pow32(base: s64, exp: bit<32>): s64 {
+    s64_pow32(base, exp)
+}
+function pow32(base: s128, exp: bit<32>): s128 {
+    s128_pow32(base, exp)
+}
+function pow32(base: bigint, exp: bit<32>): bigint {
+    bigint_pow32(base, exp)
+}
 
 /*
  * Option

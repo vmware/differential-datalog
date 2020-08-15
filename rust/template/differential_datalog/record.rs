@@ -1,5 +1,11 @@
 //! An untyped representation of DDlog values and database update commands.
 
+#![allow(unknown_lints)]
+
+#![allow(
+  improper_ctypes_definitions
+)]
+
 use num::{BigInt, BigUint, ToPrimitive};
 use ordered_float::OrderedFloat;
 use std::borrow::Cow;
