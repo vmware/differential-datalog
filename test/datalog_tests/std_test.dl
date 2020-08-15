@@ -24,3 +24,8 @@ input relation Maps(m: Map<u64, string>)
 output relation MapSizes(m: Map<u64, string>, size: usize)
 
 MapSizes(m, m.size()) :- Maps(m).
+
+output relation Pow(descr: string, val: string)
+
+Pow("pow32(2: u32, 32)", "${pow32(2: u32, 32)}").
+Pow("$pow32(2: u64, 32)", "${pow32(2: u64, 32)}").

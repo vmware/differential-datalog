@@ -31,6 +31,7 @@ xfail = [
     "aggregates_complex", # cannot be evaluated bottom-up; issue 293
     "aggregates_non_materialised", # Rule must start with a positive literal
     "aggregates",  # issue 227 - count of empty group
+    "indexed_inequalities", # DDlog cannot infer the type of `2` in `2^32`.
     "magic_aggregates",  # 227
     "count",       # 227
     "magic_count", # 227

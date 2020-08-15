@@ -2,6 +2,7 @@
 extern crate num;
 
 use differential_datalog::arcval;
+use differential_datalog::int;
 use differential_datalog::record::*;
 
 use serde::de::Deserialize;
@@ -113,7 +114,37 @@ where
 }
 
 // Arithmetic functions
-pub fn std_pow32<T: num::One + ops::Mul + Clone>(base: &T, exp: &u32) -> T {
+pub fn std_u8_pow32(base: &u8, exp: &u32) -> u8 {
+    base.wrapping_pow(*exp)
+}
+pub fn std_u16_pow32(base: &u16, exp: &u32) -> u16 {
+    base.wrapping_pow(*exp)
+}
+pub fn std_u32_pow32(base: &u32, exp: &u32) -> u32 {
+    base.wrapping_pow(*exp)
+}
+pub fn std_u64_pow32(base: &u64, exp: &u32) -> u64 {
+    base.wrapping_pow(*exp)
+}
+pub fn std_u128_pow32(base: &u128, exp: &u32) -> u128 {
+    base.wrapping_pow(*exp)
+}
+pub fn std_s8_pow32(base: &i8, exp: &u32) -> i8 {
+    base.wrapping_pow(*exp)
+}
+pub fn std_s16_pow32(base: &i16, exp: &u32) -> i16 {
+    base.wrapping_pow(*exp)
+}
+pub fn std_s32_pow32(base: &i32, exp: &u32) -> i32 {
+    base.wrapping_pow(*exp)
+}
+pub fn std_s64_pow32(base: &i64, exp: &u32) -> i64 {
+    base.wrapping_pow(*exp)
+}
+pub fn std_s128_pow32(base: &i128, exp: &u32) -> i128 {
+    base.wrapping_pow(*exp)
+}
+pub fn std_bigint_pow32(base: &int::Int, exp: &u32) -> int::Int {
     num::pow::pow(base.clone(), *exp as usize)
 }
 
