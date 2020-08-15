@@ -955,7 +955,7 @@ class SouffleConverter(object):
         func = agg.children[0].value
         if func == "count":
             func = "count32"
-        if argType == "Tfloat":
+        if func == "mean" and argType == "Tfloat":
             func += "_d"
         result += "group_" + func + "(" + call + "))"
 
