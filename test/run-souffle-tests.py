@@ -24,6 +24,7 @@ tests_to_run = 20 # number of tests to run at once in Rust
 
 # expected to fail
 xfail = [
+    "arithm", # cannot infer argument type in pow32(2)
     "souffle_tests_ddlog", # auto-generated
     "souffle7",  # issue 202 - recursive type
     "aggregates2", # aggregation used in head
