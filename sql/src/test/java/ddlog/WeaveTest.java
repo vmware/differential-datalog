@@ -6,11 +6,9 @@ import com.vmware.ddlog.translator.Translator;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.IOException;
-
 public class WeaveTest extends BaseQueriesTest {
     @Test
-    public void testWeave() throws IOException {
+    public void testWeave() {
         Translator t = new Translator(null);
         String node_info = "create table node_info\n" +
                 "(\n" +
@@ -429,6 +427,25 @@ public class WeaveTest extends BaseQueriesTest {
         create = t.translateSqlStatement(view_pods_that_tolerate_node_taints);
         Assert.assertNotNull(create);
 
+        String assigned_pods = "create view assigned_pods as\n" +
+                "select distinct\n" +
+                "  pod_name,\n" +
+                "  status,\n" +
+                "  node_name,\n" +
+                "  namespace,\n" +
+                "  cpu_request,\n" +
+                "  memory_request,\n" +
+                "  ephemeral_storage_request,\n" +
+                "  pods_request,\n" +
+                "  owner_name,\n" +
+                "  creation_timestamp,\n" +
+                "  has_node_selector_labels,\n" +
+                "  has_pod_affinity_requirements\n" +
+                "from pod_info\n" +
+                "where node_name is not null\n";
+        create = t.translateSqlStatement(assigned_pods);
+        Assert.assertNotNull(create);
+
         DDlogProgram program = t.getDDlogProgram();
         String p = program.toString();
         Assert.assertNotNull(p);
@@ -596,6 +613,11 @@ public class WeaveTest extends BaseQueriesTest {
                 "tolerations_operator:Option<string>, node_name:string, taint_key:string, taint_value:Option<string>, " +
                 "taint_effect:string, num_taints:signed<64>}\n" +
 
+                "typedef TRtmp31 = TRtmp31{pod_name:string, status:string, node_name:Option<string>, namespace:string, " +
+                "cpu_request:bigint, memory_request:bigint, ephemeral_storage_request:bigint, pods_request:bigint, " +
+                "owner_name:string, creation_timestamp:string, has_node_selector_labels:bool, " +
+                "has_pod_affinity_requirements:bool}\n" +
+
                 "function agg(g: Group<(string, string, signed<64>, string, signed<64>), " +
                 "(TRtmp, Tpod_node_selector_labels, Tnode_labels)>):Tagg {\n" +
                 "(var gb, var gb4, var gb5, var gb6, var gb7) = group_key(g);\n" +
@@ -741,6 +763,8 @@ public class WeaveTest extends BaseQueriesTest {
                 "relation Rtmp27[TRtmp26]\n" +
                 "relation Rtmp29[TRtmp4]\n" +
                 "output relation Rpods_that_tolerate_node_taints[TRtmp4]\n" +
+                "relation Rtmp31[TRtmp31]\n" +
+                "output relation Rassigned_pods[TRtmp31]\n" +
 
                 "Rpods_to_assign_no_limit[v1] :- Rpod_info[v],unwrapBool(b_and_RN(((v.status == \"Pending\") and is_null(v.node_name))," +
                 " s_eq_NR(v.schedulerName, \"dcm-scheduler\")))," +
@@ -909,7 +933,14 @@ public class WeaveTest extends BaseQueriesTest {
                 ".taint_effect = v15.taint_effect,.num_taints = v15.num_taints},var gb17 = v0.pod_name," +
                 "var gb18 = v15.node_name,var gb19 = v15.num_taints,var aggResult24 = Aggregate((gb17, gb18, gb19), " +
                 "agg30((v, v0, v15))),var v23 = TRtmp4{.pod_name = gb17,.node_name = gb18}," +
-                "aggResult24.col,var v25 = v23.";
+                "aggResult24.col,var v25 = v23.\n" +
+                "Rassigned_pods[v1] :- Rpod_info[v],(not is_null(v.node_name))," +
+                "var v0 = TRtmp31{.pod_name = v.pod_name,.status = v.status,.node_name = v.node_name," +
+                ".namespace = v.namespace,.cpu_request = v.cpu_request,.memory_request = v.memory_request," +
+                ".ephemeral_storage_request = v.ephemeral_storage_request,.pods_request = v.pods_request," +
+                ".owner_name = v.owner_name,.creation_timestamp = v.creation_timestamp," +
+                ".has_node_selector_labels = v.has_node_selector_labels," +
+                ".has_pod_affinity_requirements = v.has_pod_affinity_requirements},var v1 = v0.";
         Assert.assertEquals(expected, p);
         this.compiledDDlog(p);
     }
