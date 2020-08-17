@@ -236,8 +236,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
         if (exprs.size() == 0)
             throw new TranslationException("Zero-sized list?", node);
         DDlogTArray type = new DDlogTArray(node, exprs.get(0).getType(), false);
-        DDlogExpression empty = new DDlogEApply(node, "vec_empty", type);
-        DDlogExpression result = empty;
+        DDlogExpression result = new DDlogEApply(node, "vec_empty", type);
         for (DDlogExpression e: exprs)
             result = new DDlogEApply(node, "vec_push_imm", type, result, e);
         return result;
@@ -389,9 +388,9 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
             context.warning("isNotNull can never be false", node);
             return new DDlogEBool(node, true);
         }
-        DDlogExpression isNull = new DDlogEApply(node, "isNull", DDlogTBool.instance,
+        DDlogExpression isNull = new DDlogEApply(node, "is_null", DDlogTBool.instance,
                 fixNull(arg, DDlogTBool.instance.setMayBeNull(true)));
-        return new DDlogEUnOp(node, DDlogEUnOp.UOp.BNeg, isNull);
+        return new DDlogEUnOp(node, DDlogEUnOp.UOp.Not, isNull);
     }
 
     @Override
