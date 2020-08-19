@@ -207,7 +207,7 @@ where
     >,
 }
 
-impl<P> Default for Realization<P> 
+impl<P> Default for Realization<P>
 where
     P: Send + DDlog + 'static,
     P::Convert: Send + DDlogConvert,
@@ -319,7 +319,10 @@ where
                 return Ok(());
             }
         }
-        let err = format!("Failed to remove sink: {:?}, not found in realization", sink);
+        let err = format!(
+            "Failed to remove sink: {:?}, not found in realization",
+            sink
+        );
         Err(err)
     }
 
