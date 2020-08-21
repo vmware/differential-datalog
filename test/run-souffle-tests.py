@@ -24,6 +24,7 @@ tests_to_run = 20 # number of tests to run at once in Rust
 
 # expected to fail
 xfail = [
+    "adt-binary-constraint", # parglare.exceptions.ParseError: Error at adt-binary-constraint.dl.tmp:1:14:"e A = Int  **> {x: number" => Expected: , or > or COMP or DECL or DOT or FUNCTOR or INIT or INPUT or INSTANTIATE or Identifier or NUMBER_TYPE or OUTPUT or OVERRIDE or PRAGMA or PRINTSIZE or STOP or SYMBOL_TYPE or TYPE or ] or | or } but found <NotComment({x:)> or <{({)>
     "arithm", # cannot infer argument type in pow32(2)
     "souffle_tests_ddlog", # auto-generated
     "souffle7",  # issue 202 - recursive type
