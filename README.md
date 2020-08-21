@@ -77,6 +77,7 @@ but somewhat limits the flexibility, as changes to the relational schema or rule
 - DDlog [command reference](doc/command_reference/command_reference.md) for writing and testing your own Datalog programs.
 - [How to](doc/java_api.md) use DDlog from Java.
 - [How to](go/README.md) use DDlog from Go and [Go API documentation](https://pkg.go.dev/github.com/vmware/differential-datalog/go/pkg/ddlog).
+- [How to](test/datalog_tests/rust_api_test) using DDlog from Rust (by example)
 - [DDlog overview paper](doc/datalog2.0-workshop/paper.pdf), Datalog 2.0 workshop, 2019.
 
 ## Installation

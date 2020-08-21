@@ -46,6 +46,11 @@ test-rust:
 test-tutorial:
     script:
         - (cd test/datalog_tests && DDLOGFLAGS="-g" ./run-test.sh tutorial release)
+
+test-rust-api:
+    script:
+        - test/datalog_tests/rust_api_test/test.sh
+
 # Test individual libraries
 
 test-libs:
