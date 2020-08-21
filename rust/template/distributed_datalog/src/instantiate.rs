@@ -397,21 +397,14 @@ where
         server: &mut DDlogServer<P>,
     ) -> Result<(), String> {
         if let Some(entry) = self._sinks.remove(&rel_ids) {
-            let (accumulator, mut stream, sink_map) = entry;
+            let (_, mut stream, sink_map) = entry;
             if sink_map.is_empty() {
                 // Disconnect accumulator from server.
                 // First, unsubscribe the stream from the accumulator.
                 let _ = stream.unsubscribe(&());
                 // Next, remove the stream from the server.
                 server.remove_stream(stream);
-
-                let mut accum = accumulator.lock().unwrap();
-                // Clear the accumulator.
-                if accum.clear().is_ok() {
-                    Ok(())
-                } else {
-                    Err("Cannot remove accumulator, failed to clear".to_string())
-                }
+                Ok(())
             } else {
                 Err("Cannot remove accumulator, still subscribed to sinks".to_string())
             }
