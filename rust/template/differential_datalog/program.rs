@@ -1141,12 +1141,10 @@ impl Program {
         let profile_timely = Arc::new(AtomicBool::new(false));
 
         /* Thread to collect profiling data */
-        let prof_thread = thread::spawn(move ||
-            Self::prof_thread_func(prof_recv, profile2));
+        let prof_thread = thread::spawn(move || Self::prof_thread_func(prof_recv, profile2));
 
         let profile_cpu2 = profile_cpu.clone();
         let profile_timely2 = profile_timely.clone();
-
 
         /* Shared timestamp managed by worker 0 and read by all other workers */
         let frontier_ts = TSAtomic::new(0);
@@ -2191,7 +2189,6 @@ impl RunningProgram {
     pub fn enable_timely_profiling(&self, enable: bool) {
         self.profile_timely.store(enable, Ordering::SeqCst);
     }
-
 
     /// Terminate program, kill worker threads.
     pub fn stop(&mut self) -> Response<()> {

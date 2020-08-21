@@ -69,7 +69,6 @@ named!(pub profile_timely_cmd<&[u8], ProfileCmd>,
                  (ProfileCmd::Timely(enable)))
 );
 
-
 named!(pub parse_command<&[u8], Command>,
     do_parse!(
         spaces >>

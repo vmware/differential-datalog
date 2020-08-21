@@ -1,5 +1,6 @@
 //! Memory profile of a DDlog program.
 
+use crate::profile_statistics::Statistics;
 use differential_dataflow::logging::DifferentialEvent;
 use fnv::FnvHashMap;
 use sequence_trie::SequenceTrie;
@@ -8,7 +9,6 @@ use std::cmp::max;
 use std::fmt;
 use std::time::Duration;
 use timely::logging::{OperatesEvent, ScheduleEvent, StartStop, TimelyEvent};
-use crate::profile_statistics::Statistics;
 
 thread_local! {
     pub static PROF_CONTEXT: RefCell<String> = RefCell::new("".to_string());
@@ -34,7 +34,11 @@ pub fn with_prof_context<T, F: FnOnce() -> T>(s: &str, f: F) -> T {
 #[derive(Debug)]
 pub enum ProfMsg {
     /// Send message batch as well as who the message is for (_, profile_cpu, profile_timely).
-    TimelyMessage(Vec<((Duration, usize, TimelyEvent), Option<String>)>, bool, bool),
+    TimelyMessage(
+        Vec<((Duration, usize, TimelyEvent), Option<String>)>,
+        bool,
+        bool,
+    ),
     DifferentialMessage(Vec<(Duration, usize, DifferentialEvent)>),
 }
 
@@ -175,24 +179,29 @@ impl Profile {
                 for ((duration, id, event), context) in events.iter() {
                     match event {
                         TimelyEvent::Operates(o) => {
-                            let context = context.as_ref().
-                                expect("Operates events should always have valid context attached");
+                            let context = context.as_ref().expect(
+                                "Operates events should always have valid context attached",
+                            );
                             self.handle_operates(&o, context);
-                        },
+                        }
                         event => {
                             if *profile_timely {
                                 // In the None case it is totally fine to do nothing. This just means that
                                 // profiling timely was on but we were unable to initialize the file.
                                 if let Some(stats) = self.timely_stats.as_mut() {
-                                    stats.handle_event(*duration, *id, &event, &self.op_address, &self.short_names);
+                                    stats.handle_event(
+                                        *duration,
+                                        *id,
+                                        &event,
+                                        &self.op_address,
+                                        &self.short_names,
+                                    );
                                 }
                             }
                             if *profile_cpu {
                                 self.handle_cpu_profiling(duration, *id, event);
                             }
-
                         }
-
                     }
                 }
             }
@@ -204,46 +213,50 @@ impl Profile {
     /// Add events into relevant maps. This must always be done as we might need this information
     /// later if CPU profile or timely profile is turned on. If we don't always record it, it might
     /// be too late later.
-    fn handle_operates(&mut self, OperatesEvent{id, addr, name}: &OperatesEvent, context: &String) {
-            self.addresses.insert(addr, *id);
-            self.op_address.insert(*id, addr.clone());
+    fn handle_operates(&mut self, OperatesEvent { id, addr, name }: &OperatesEvent, context: &str) {
+        self.addresses.insert(addr, *id);
+        self.op_address.insert(*id, addr.clone());
 
-            self.short_names.insert(*id, name.clone());
-            self.names.insert(*id, {
-                /* Remove redundant spaces. */
-                let frags: Vec<String> = (name.clone() + ": " + &context.replace('\n', " "))
-                    .split_whitespace()
-                    .map(|x| x.to_string())
-                    .collect();
-                frags.join(" ")
-            });
+        self.short_names.insert(*id, name.clone());
+        self.names.insert(*id, {
+            /* Remove redundant spaces. */
+            let frags: Vec<String> = (name.clone() + ": " + &context.replace('\n', " "))
+                .split_whitespace()
+                .map(|x| x.to_string())
+                .collect();
+            frags.join(" ")
+        });
     }
 
     // We always want to handle TimelyEvent::Operates as they are used for more than just
     // CPU profiling. Other events are only handled when profile_cpu is true.
     fn handle_cpu_profiling(&mut self, ts: &Duration, worker_id: usize, event: &TimelyEvent) {
-            match event {
-                TimelyEvent::Schedule(ScheduleEvent { id, start_stop }) => {
-                    match start_stop {
-                        StartStop::Start => {
-                            self.starts.insert((*id, worker_id), *ts);
-                        }
-                        StartStop::Stop => {
-                            let (total, ncalls) = self
-                                .durations
-                                .entry(*id)
-                                .or_insert((Duration::new(0, 0), 0));
-                            let start = self.starts.get(&(*id,worker_id)).cloned().unwrap_or_else(||{
-                                eprintln!("TimelyEvent::Stop without a start for operator {}, worker {}", *id, worker_id);
-                                Duration::new(0,0)
-                            });
-                            *total += *ts - start;
-                            *ncalls += 1;
-                        }
-                    }
+        if let TimelyEvent::Schedule(ScheduleEvent { id, start_stop }) = event {
+            match start_stop {
+                StartStop::Start => {
+                    self.starts.insert((*id, worker_id), *ts);
                 }
-                _ => (),
+                StartStop::Stop => {
+                    let (total, ncalls) = self
+                        .durations
+                        .entry(*id)
+                        .or_insert((Duration::new(0, 0), 0));
+                    let start = self
+                        .starts
+                        .get(&(*id, worker_id))
+                        .cloned()
+                        .unwrap_or_else(|| {
+                            eprintln!(
+                                "TimelyEvent::Stop without a start for operator {}, worker {}",
+                                *id, worker_id
+                            );
+                            Duration::new(0, 0)
+                        });
+                    *total += *ts - start;
+                    *ncalls += 1;
+                }
             }
+        }
     }
 
     fn handle_differential(&mut self, msg: &[(Duration, usize, DifferentialEvent)]) {

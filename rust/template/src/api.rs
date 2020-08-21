@@ -171,7 +171,6 @@ impl HDDlog {
     pub fn enable_timely_profiling(&self, enable: bool) {
         self.record_enable_timely_profiling(enable);
         self.prog.lock().unwrap().enable_timely_profiling(enable);
-
     }
 
     /*
@@ -502,14 +501,17 @@ impl HDDlog {
 
     fn record_enable_timely_profiling(&self, enable: bool) {
         if let Some(ref f) = self.replay_file {
-            let _ = f.lock().unwrap().record_timely_profiling(enable).map_err(|_| {
-                self.eprintln(
+            let _ = f
+                .lock()
+                .unwrap()
+                .record_timely_profiling(enable)
+                .map_err(|_| {
+                    self.eprintln(
                     "ddlog_timely_profiling_enable(): failed to record invocation in replay file",
                 )
-            });
+                });
         }
     }
-
 
     fn record_profile(&self) {
         if let Some(ref f) = self.replay_file {
@@ -1282,7 +1284,6 @@ pub unsafe extern "C" fn ddlog_enable_timely_profiling(
     prog.enable_timely_profiling(enable);
     0
 }
-
 
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_profile(prog: *const HDDlog) -> *const raw::c_char {

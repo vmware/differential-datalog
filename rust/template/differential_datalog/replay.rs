@@ -276,9 +276,12 @@ pub trait RecordReplay: Write {
     }
 
     fn record_timely_profiling(&mut self, enable: bool) -> Result<()> {
-        writeln!(self, "profile timely {};", if enable { "on" } else { "off" })
+        writeln!(
+            self,
+            "profile timely {};",
+            if enable { "on" } else { "off" }
+        )
     }
-
 
     /// Record profiling.
     fn record_profile(&mut self) -> Result<()> {
