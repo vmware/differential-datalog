@@ -2468,15 +2468,9 @@ crate from programs written in Rust, C/C++, Java, or any other language that
 is able to invoke DDlog's C API through a foreign function interface.
 
 1. **Rust**
-In order to use the generated crate directly from another Rust program,
-add it as a dependency to your `Cargo.toml`, e.g.,
- ```
- [dependencies]
- playpen = {path = "../playpen_ddlog"}
- ```
- And invoke it through the API defined in the `./playpen_ddlog/api.rs` file.
 
- **TODO: link to a separate API document**
+See [Rust API test](../../test/datalog_tests/rust_api_test) for a by-example
+description of the DDlog Rust API.
 
 1. **C/C++**
 The compiled program will contain a static library `playpen_ddlog/target/release/libplaypen_ddlog.a`
