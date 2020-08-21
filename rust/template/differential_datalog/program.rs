@@ -1194,6 +1194,7 @@ impl Program {
                             TimelyEvent::Schedule(_) =>
                                 profcpu.load(Ordering::Acquire) | proftimely.load(Ordering::Acquire),
                             TimelyEvent::GuardedMessage(_) |
+                            TimelyEvent::Messages(_) |
                             TimelyEvent::Park(_) |
                             TimelyEvent::Progress(_) |
                             TimelyEvent::PushProgress(_) => proftimely.load(Ordering::Acquire),
