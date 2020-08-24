@@ -64,83 +64,111 @@ extern function f(): bigint
 extern function g(a: bigint): bigint
 extern function h(a: (bigint, bigint)): (bigint, bigint)
 
-function a0(): bigint
-    = 1
+function a0(): bigint {
+    1
+}
 
-function a1(): bigint
-    = 1 + 2
+function a1(): bigint {
+    1 + 2
+}
 
-function a2(): bit<32>
-    = 32'd0 + 32'd1
+function a2(): bit<32> {
+    32'd0 + 32'd1
+}
 
-function a3(): bit<32>
-    = 0: bit<32>
+function a3(): bit<32> {
+    0: bit<32>
+}
 
-function a4(): bit<32>
-    = (0: bit<64>)[40:9]
+function a4(): bit<32> {
+    (0: bit<64>)[40:9]
+}
 
-function a5(a: bit<32>, b: bit<32>): bit<32>
-    = (a ^ b) | (a & b) | (a | b) | (~a) | (a << 32'd5) | (a >> 32'd5) | (a[15:0] ++ a[31:16])
+function a5(a: bit<32>, b: bit<32>): bit<32> {
+    (a ^ b) | (a & b) | (a | b) | (~a) | (a << 32'd5) | (a >> 32'd5) | (a[15:0] ++ a[31:16])
+}
 
-function a51(a: signed<32>, b: signed<32>): signed<32>
-    = (a ^ b) | (a & b) | (a | b) | (~a) | (a << 32'd5) | (a >> 32'd5)
+function a51(a: signed<32>, b: signed<32>): signed<32> {
+    (a ^ b) | (a & b) | (a | b) | (~a) | (a << 32'd5) | (a >> 32'd5)
+}
 
-function a6(a: bit<16>, b: bit<16>): bit<16>
-    = (a + b) + (a - b) + (a / b) + (a * b) + (a % b)
+function a6(a: bit<16>, b: bit<16>): bit<16> {
+    (a + b) + (a - b) + (a / b) + (a * b) + (a % b)
+}
 
-function a7(a: bit<16>, b: bit<16>): bool
-    = (a < b) or (a > b) or (a <= b) or (a >= b) or (a == b) or (a != b) or { a < b }
+function a7(a: bit<16>, b: bit<16>): bool {
+    (a < b) or (a > b) or (a <= b) or (a >= b) or (a == b) or (a != b) or { a < b }
+}
 
-function a8(): bit<32>
-    = 32'd125 | 32'hFF | 32'o777 | 32'b1010101011
+function a8(): bit<32> {
+    32'd125 | 32'hFF | 32'o777 | 32'b1010101011
+}
 
-function a9(): bit<32>
-    = 32'd1_2_5 | 32'hF_F___ | 32'o7_7_7 | 32'b10_1010_1011
+function a9(): bit<32> {
+    32'd1_2_5 | 32'hF_F___ | 32'o7_7_7 | 32'b10_1010_1011
+}
 
-function a10(): signed<32>
-    = 32'sd0 + 32'sd1
+function a10(): signed<32> {
+    32'sd0 + 32'sd1
+}
 
-function a11(): signed<32>
-    = 0: signed<32>
+function a11(): signed<32> {
+    0: signed<32>
+}
 
-function a12(a: signed<16>, b: signed<16>): signed<16>
-    = (a + b) + (a - b) + (a / b) + (a * b) + (a % b)
+function a12(a: signed<16>, b: signed<16>): signed<16> {
+    (a + b) + (a - b) + (a / b) + (a * b) + (a % b)
+}
 
-function a13(a: signed<16>, b: signed<16>): bool
-    = (a < b) or (a > b) or (a <= b) or (a >= b) or (a == b) or (a != b) or { a < b }
+function a13(a: signed<16>, b: signed<16>): bool {
+    (a < b) or (a > b) or (a <= b) or (a >= b) or (a == b) or (a != b) or { a < b }
+}
 
-function b0(): bool
-    = true and false
+function b0(): bool {
+    true and false
+}
 
-function b1(a: bool): bool
-    = (a and true) or (a or false) or (a => false) or (not a)
+function b1(a: bool): bool {
+    (a and true) or (a or false) or (a => false) or (not a)
+}
 
-function v2(): bool
-    = b1(true)
+function v2(): bool {
+    b1(true)
+}
 
-function c0(a: bit<32>, b: bit<16>): bit<16>
-    = a; b
+function c0(a: bit<32>, b: bit<16>): bit<16> {
+    a; b
+}
 
-function s0(): string
-    = "Some string"
+function s0(): string {
+    "Some string"
+}
 
-function s1(): string
-    = "\t\r\n\"\\\a"
+function s1(): string {
+    "\t\r\n\"\\\a"
+}
 
-function v(): string =
+function v(): string {
     var v1: string = "hello";
     var v2 = "there";
     v2
+}
+
+function p(): string {
+    var notable = "hi";
+    notable
+}
 
 typedef Alt = C0{x: bit<32>}
             | C1{x: bit<32>}
 
-function x(): Alt
-    = C0{32'd5}
+function x(): Alt {
+    C0{32'd5}
+}
 
 typedef C = C{f1: string, f2: string}
 
-function vars(): () = {
+function vars(): () {
     var x: bigint = 0;
     x = 10;
     var y = C{.f1 = "foo", .f2 = "bar"};
@@ -153,8 +181,8 @@ function vars(): () = {
     C{var c, var d} = y
 }
 
-function dbl(): double = 0: double
-function flt(): float = 0: float
+function dbl(): double { 0: double }
+function flt(): float { 0: float }
 
 output relation Compare(label: string, value: bool)
 
@@ -172,7 +200,7 @@ Compare("C0{32'd3} < C1{32'd4}", C0{32'd3} < C1{32'd4}).
 Compare("None < Some{1}", None < Some{32'sd1}).
 Compare("Some{0} < Some{1}", Some{0: u32} < Some{32'd1}).
 
-function patterns(): () = {
+function patterns(): () {
     var a: Alt = C0{1};
 
     var b = match (a) {
@@ -186,7 +214,7 @@ function patterns(): () = {
     }
 }
 
-function shadow(): string = {
+function shadow(): string {
     var b: Option<string> = None;
     var a = Some{"foo"};
     match (a) {
@@ -197,19 +225,20 @@ function shadow(): string = {
 
 typedef nested_t = N{field: C}
 
-function fnested(x: nested_t): string = {
+function fnested(x: nested_t): string {
     N{C{var res, _}} = x;
     res
 }
 
 extern function parameterized(x: 'A, y: 'A): 'A
 
-function parameterized2(x: 'A, y: 'A): bool = x == y
+function parameterized2(x: 'A, y: 'A): bool { x == y }
 
 typedef string_syn = string
 
-function use_parameterized(x: string, y: string_syn): string =
+function use_parameterized(x: string, y: string_syn): string {
     parameterized(x, y)
+}
 
 output relation VecTest(x: Vec<string>)
 
@@ -252,7 +281,7 @@ typedef T2 = C21{f1: T1, f2: bigint}
 typedef T3 = C31{f1: T1, f2: bigint, s: string, b: bit<32>}
            | C32{f3: ((bool, (bool, bool, bool)), T1)}
 
-function f1(x: T1, y: T2, q: T3) : bool = {
+function f1(x: T1, y: T2, q: T3) : bool {
     match (x) {
         C11 -> true,
         _   -> false
@@ -549,9 +578,9 @@ Strings("foo\\""bar").
 
 Strings("foo\\" ++ [|bar|]).
 
-function dummy(x: string): string = x ++ " dummy"
+function dummy(x: string): string { x ++ " dummy" }
 
-function strings(): () = {
+function strings(): () {
     var str1 = "foo" ++ "bar";
     var str2 = "foo" "bar" ++ "buzz" ++ [|
 raw string |] ++ "quoted string";
@@ -576,7 +605,7 @@ Strings("word1\
 Strings("line1\n\
         \line2").
 
-function tostring1(): () = {
+function tostring1(): () {
     var a: bigint  = 5;
     var b: bit<32> = 5;
     var c: bool    = true;
@@ -590,7 +619,7 @@ typedef serializable_t = ConsInt {x: bigint}
                        | ConsBool{z: bool}
                        | Cons0{}
 
-function to_string(x: serializable_t): string = {
+function to_string(x: serializable_t): string {
     match (x) {
         ConsInt{v}      -> "ConsInt(" ++ v ++ ")",
         ConsBit{v}      -> "ConsBool(${v})",
@@ -600,7 +629,7 @@ function to_string(x: serializable_t): string = {
     }
 }
 
-function tostring2(): () = {
+function tostring2(): () {
     var a: bigint     = 5;
     var b: bit<32> = 5;
     var c: bool    = true;
@@ -625,7 +654,7 @@ typedef IPAddr = IP4{ip4: IP4Addr}
 typedef FooStruct = Option1 {f1: bigint, f2: IPAddr, f3: (bool, string)}
                   | Option2 {f4: bit<32>, f5: IPAddr}
 
-function foo(): bool = {
+function foo(): bool {
     var v1: bigint             = 0;
     var v2: bit<32>         = 1;
     var v3: bit<129>        = 129'd0;
@@ -671,7 +700,7 @@ Counts1(x, count) :-
     var count = Aggregate((x), count_xs(y)).
 
 // Count the number of occurrences of `x` in `ys`
-function count_xs(ys: Group<string, string>): u64 = {
+function count_xs(ys: Group<string, string>): u64 {
     var res: u64 = 0;
     for (y in ys) {
         if (y == group_key(ys)) {
@@ -687,7 +716,7 @@ Symmetric1(x, sym) :-
     var sym = Aggregate((x), find_x_in_group(y)).
 
 // Check if `x` occurs in `ys`
-function find_x_in_group(ys: Group<'A, 'A>): bool = {
+function find_x_in_group(ys: Group<'A, 'A>): bool {
     for (y in ys) {
         if (y == group_key(ys)) {
             return true
@@ -738,7 +767,7 @@ Concat(s) :-
     var s = Aggregate((x,z), concat_ys(y)).
 
 // Convert group into a string prefixed by group-by variable names
-function concat_ys(ys: Group<(string, string),string>): string = {
+function concat_ys(ys: Group<(string, string),string>): string {
     (var x, var z) = group_key(ys);
     var res = x ++ "-" ++ z ++ ":";
     for (y in ys) {
@@ -893,8 +922,8 @@ import graph
 
 input relation Edge(from: bigint, to: bigint)
 
-function edge_from(e: Edge): bigint = e.from
-function edge_to(e: Edge): bigint = e.to
+function edge_from(e: Edge): bigint { e.from }
+function edge_to(e: Edge): bigint { e.to }
 
 output relation SCCLabel[(bigint, bigint)]
 
@@ -1230,7 +1259,7 @@ LongJoin(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x
 typedef Tt1 = Tt1{column1:signed<64>, column2:string, column3:bool}
 typedef Tt2 = Tt2{column1:signed<64>}
 typedef Ttmp0 = Ttmp0{col4:signed<64>}
-function agg1(g1: Group<'K, (Tt1)>):Ttmp0 =
+function agg1(g1: Group<'K, (Tt1)>):Ttmp0 {
     var first3 = true;
     (var max5 = 64'sd0);
     (for (i2 in g1) {
@@ -1243,12 +1272,11 @@ function agg1(g1: Group<'K, (Tt1)>):Ttmp0 =
         })
     });
     (Ttmp0{.col4 = max5})
-
+}
 
 /* tests for `break`, `continue`, and `return` statements. */
 
-function all(xs: Vec<bool>): bool =
-{
+function all(xs: Vec<bool>): bool {
     for (x in xs) {
         if (not x) return false
     };
@@ -1256,8 +1284,7 @@ function all(xs: Vec<bool>): bool =
 }
 
 // At least one element of xs is true.
-function any(xs: Vec<bool>): bool =
-{
+function any(xs: Vec<bool>): bool {
     var res = false;
     for (x in xs) {
         if (x) {
@@ -1269,8 +1296,7 @@ function any(xs: Vec<bool>): bool =
 }
 
 // A weird implementation of any using continue inside return.
-function weird_any(xs: Vec<bool>): bool =
-{
+function weird_any(xs: Vec<bool>): bool {
     var res = false;
     for (x in xs) {
         return if (x == true) { true } else { continue }
@@ -1298,8 +1324,7 @@ ControlFlow("weird_any(false, true, false)",
 ControlFlow("weird_any(false, false, false)",
     "${weird_any(vec_push_imm(vec_push_imm(vec_push_imm(vec_empty(): Vec<bool>, false), false), false))}").
 
-function filter_gt(xs: Vec<bigint>, threshold: bigint): Vec<bigint> =
-{
+function filter_gt(xs: Vec<bigint>, threshold: bigint): Vec<bigint> {
     var res: Vec<bigint> = vec_empty();
     for (x in xs) {
         if (x <= threshold) continue;
@@ -1309,8 +1334,7 @@ function filter_gt(xs: Vec<bigint>, threshold: bigint): Vec<bigint> =
 }
 
 // Filter out C0's; stop processing when reaching C1{1}.
-function filter_C0(xs: Vec<Alt>): Vec<bigint> =
-{
+function filter_C0(xs: Vec<Alt>): Vec<bigint> {
     var res: Vec<bigint> = vec_empty();
     for (x in xs) {
         var val: bigint = match (x) {
@@ -1328,10 +1352,9 @@ function filter_C0(xs: Vec<Alt>): Vec<bigint> =
 
 // Test the use of continue, break, and return in function call arguments.
 
-function mult2(x: bigint): bigint = x << 1
+function mult2(x: bigint): bigint { x << 1 }
 
-function double_evens(xs: Vec<bigint>): Vec<bigint> =
-{
+function double_evens(xs: Vec<bigint>): Vec<bigint> {
     var res: Vec<bigint> = vec_empty();
 
     for (x in xs) {
