@@ -36,41 +36,45 @@ data DLAction = ActionCompile
               | ActionVersion
               deriving Eq
 
-data Config = Config { confDatalogFile   :: FilePath
-                     , confAction        :: DLAction
-                     , confLibDirs       :: [FilePath]
-                     , confOutputDir     :: FilePath
-                     , confOutputInput   :: String
-                     , confStaticLib     :: Bool
-                     , confDynamicLib    :: Bool
-                     , confJava          :: Bool
-                     , confOutputInternal:: Bool
-                     , confDebugHooks    :: Bool
-                     , confDumpFlat      :: Bool
-                     , confDumpValid     :: Bool
-                     , confDumpDebug     :: Bool
-                     , confDumpOpt       :: Bool
-                     , confReValidate    :: Bool
-                     , confOmitProfile   :: Bool
-                     , confOmitWorkspace :: Bool
+data Config = Config { confDatalogFile     :: FilePath
+                     , confAction          :: DLAction
+                     , confLibDirs         :: [FilePath]
+                     , confOutputDir       :: FilePath
+                     , confOutputInput     :: String
+                     , confStaticLib       :: Bool
+                     , confDynamicLib      :: Bool
+                     , confJava            :: Bool
+                     , confOutputInternal  :: Bool
+                     , confDebugHooks      :: Bool
+                     , confDumpFlat        :: Bool
+                     , confDumpValid       :: Bool
+                     , confDumpDebug       :: Bool
+                     , confDumpOpt         :: Bool
+                     , confReValidate      :: Bool
+                     , confOmitProfile     :: Bool
+                     , confOmitWorkspace   :: Bool
+                     , confRunRustfmt      :: Bool
+                     , confRustFlatBuffers :: Bool
                      }
 
 defaultConfig :: Config
-defaultConfig = Config { confDatalogFile    = ""
-                       , confAction         = ActionCompile
-                       , confLibDirs        = []
-                       , confOutputDir      = ""
-                       , confStaticLib      = True
-                       , confDynamicLib     = False
-                       , confOutputInternal = False
-                       , confOutputInput    = ""
-                       , confJava           = False
-                       , confDebugHooks     = False
-                       , confDumpFlat       = False
-                       , confDumpValid      = False
-                       , confDumpDebug      = False
-                       , confDumpOpt        = False
-                       , confReValidate     = False
-                       , confOmitProfile   = False
-                       , confOmitWorkspace = False
+defaultConfig = Config { confDatalogFile     = ""
+                       , confAction          = ActionCompile
+                       , confLibDirs         = []
+                       , confOutputDir       = ""
+                       , confStaticLib       = True
+                       , confDynamicLib      = False
+                       , confOutputInternal  = False
+                       , confOutputInput     = ""
+                       , confJava            = False
+                       , confDebugHooks      = False
+                       , confDumpFlat        = False
+                       , confDumpValid       = False
+                       , confDumpDebug       = False
+                       , confDumpOpt         = False
+                       , confReValidate      = False
+                       , confOmitProfile     = False
+                       , confOmitWorkspace   = False
+                       , confRunRustfmt      = False
+                       , confRustFlatBuffers = False
                        }

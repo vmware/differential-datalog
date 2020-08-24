@@ -37,7 +37,9 @@ import qualified Data.Map as M
 import qualified Data.ByteString.Lazy as BL
 import System.Directory
 import System.FilePath
-import System.IO hiding (readFile, writeFile)
+import System.IO hiding (readFile, writeFile, stdout, stderr)
+import System.Process
+import System.Exit
 
 if' :: Bool -> a -> a -> a
 if' True  x _ = x
@@ -176,3 +178,43 @@ updateFile path content = do
                 writeFile tmppath content
                 renameFile tmppath path
        else writeFile path content
+
+-- | Runs a command, exiting with an error for users if it fails
+--
+-- Emits an error in this format if the command fails to run:
+-- ```
+-- <process name> failed to exit with code <exit code>
+-- while running `<command> <args>`
+-- stdout:
+-- <stdout>
+-- stderr:
+-- <stderr>
+-- ```
+--
+-- 'process_name' - The name of the process being run, will be displayed to users if
+--                  it fails
+--
+-- 'command' - The command to be run
+--
+-- 'args' - The arguments passed to the command
+--
+-- 'working_dir' - The working directory the command should be executed in, use `Nothing`
+--                 for the current directory
+runCommandReportingErr :: String -> FilePath -> [String] -> Maybe FilePath -> IO ()
+runCommandReportingErr process_name command args working_dir = do
+    let process = (proc command args) {cwd = working_dir}
+    (exit_code, proc_stdout, proc_stderr) <- readCreateProcessWithExitCode process ""
+    case exit_code of
+        ExitSuccess -> return ()
+        ExitFailure err_code ->
+            errorWithoutStackTrace $
+                process_name
+                    ++ " failed with exit code "
+                    ++ show err_code
+                    ++ "\nwhile running `"
+                    ++ (show command ++ " " ++ intercalate " " args)
+                    ++ "`\n"
+                    ++ "stdout:\n"
+                    ++ proc_stdout
+                    ++ "\nstderr:\n"
+                    ++ proc_stderr

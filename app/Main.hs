@@ -23,7 +23,7 @@ SOFTWARE.
 
 {-# LANGUAGE RecordWildCards, ImplicitParams, LambdaCase, FlexibleContexts, TemplateHaskell #-}
 
-import Prelude hiding(readFile, writeFile)
+import Prelude hiding (readFile, writeFile)
 import System.Environment
 import System.FilePath.Posix
 import System.Console.GetOpt
@@ -63,6 +63,8 @@ data TOption = Help
              | ReValidate
              | OmitProfile
              | OmitWorkspace
+             | RunRustfmt
+             | RustFlatBuffers
 
 options :: [OptDescr TOption]
 options = [ Option ['h'] ["help"]             (NoArg Help)                      "Display help message."
@@ -86,6 +88,8 @@ options = [ Option ['h'] ["help"]             (NoArg Help)                      
           , Option []    ["re-validate"]      (NoArg ReValidate)                "[developers only] Re-validate the program after type inference and optimization passes."
           , Option []    ["omit-profile"]     (NoArg OmitProfile)               "Skips adding a Cargo profile (silences warnings for some rust builds, included by default)"
           , Option []    ["omit-workspace"]   (NoArg OmitWorkspace)             "Skips adding a Cargo workspace (silences errors for some rust builds, included by default)"
+          , Option []    ["run-rustfmt"]      (NoArg RunRustfmt)                "Attempts to run rustfmt on the generated code after it's emitted"
+          , Option []    ["rust-flatbuffers"] (NoArg RustFlatBuffers)           "Builds flatbuffers bindings for Rust"
           ]
 
 addOption :: Config -> TOption -> IO Config
@@ -114,11 +118,13 @@ addOption config DumpOpt          = return config { confDumpOpt = True }
 addOption config ReValidate       = return config { confReValidate = True }
 addOption config OmitProfile      = return config { confOmitProfile = True }
 addOption config OmitWorkspace    = return config { confOmitWorkspace = True }
+addOption config RunRustfmt       = return config { confRunRustfmt = True }
+addOption config RustFlatBuffers  = return config { confRustFlatBuffers = True }
 
 validateConfig :: Config -> IO ()
-validateConfig Config{..} = do
-    when (confDatalogFile == "" && confAction /= ActionHelp && confAction /= ActionVersion)
-         $ errorWithoutStackTrace "input file not specified"
+validateConfig Config {..} = do
+  when (confDatalogFile == "" && confAction /= ActionHelp && confAction /= ActionVersion) $
+    errorWithoutStackTrace "input file not specified"
 
 main :: IO ()
 main = do
@@ -126,23 +132,32 @@ main = do
     prog <- getProgName
     home <- lookupEnv "DDLOG_HOME"
     config <- case getOpt Permute options args of
-                   (flags, [], []) -> do conf <- foldM addOption defaultConfig flags
-                                         validateConfig conf
-                                         return conf
-                                      `catch`
-                                      (\e -> do putStrLn $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
-                                                throw (e::SomeException))
-                   _ -> errorWithoutStackTrace $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
+        (flags, [], []) ->
+            do
+                conf <- foldM addOption defaultConfig flags
+                validateConfig conf
+                return conf
+                `catch` ( \e -> do
+                              putStrLn $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
+                              throw (e :: SomeException)
+                        )
+        _ -> errorWithoutStackTrace $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
     config' <- case home of
-         Just(p) -> addOption config (LibDir $ p ++ "/lib")
-         _       -> return config
+        Just (p) -> addOption config (LibDir $ p ++ "/lib")
+        _ -> return config
     case confAction config' of
-         ActionHelp -> putStrLn $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
-         ActionVersion -> do putStrLn $ "DDlog " ++ dDLOG_VERSION ++ " (" ++ gitHash ++ ")"
-                             putStrLn $ "Copyright (c) 2019-2020 VMware, Inc. (MIT License)"
-         ActionValidate -> do _ <- parseValidate config'
-                              return ()
-         ActionCompile -> compileProg config'
+        ActionHelp -> putStrLn $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
+        ActionVersion -> do
+            putStrLn $ "DDlog " ++ dDLOG_VERSION ++ " (" ++ gitHash ++ ")"
+            putStrLn $ "Copyright (c) 2019-2020 VMware, Inc. (MIT License)"
+        ActionValidate -> do
+            _ <- parseValidate config'
+            return ()
+        ActionCompile -> do
+            compileProg config'
+            -- Run rustfmt on the generated code if it's enabled
+            when (confRunRustfmt config') $
+                runCommandReportingErr "rustfmt" "cargo" ["fmt", "--all"] $ Just (confOutputDir config')
 
 parseValidate :: Config -> IO (DatalogProgram, Doc, Doc)
 parseValidate Config{..} = do
