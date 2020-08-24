@@ -1,7 +1,4 @@
-#![allow(
-    clippy::ptr_arg,
-    clippy::trivially_copy_pass_by_ref
-)]
+#![allow(clippy::ptr_arg, clippy::trivially_copy_pass_by_ref)]
 
 use lazy_static::lazy_static;
 use std::collections;

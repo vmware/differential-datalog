@@ -24,13 +24,12 @@ pub mod uint;
 #[macro_use]
 pub mod record;
 
-pub mod test_value;
-
 #[cfg(test)]
 mod test;
-
 #[cfg(test)]
 mod test_record;
+
+pub mod test_value;
 
 pub use callback::Callback;
 pub use ddlog::DDlog;

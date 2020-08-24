@@ -5,6 +5,7 @@ use differential_datalog::arcval;
 use differential_datalog::int;
 use differential_datalog::record::*;
 
+use fnv::FnvHasher;
 use serde::de::Deserialize;
 use serde::de::Deserializer;
 use serde::ser::Serialize;
@@ -22,7 +23,6 @@ use std::ops;
 use std::slice;
 use std::vec;
 use std::vec::Vec;
-use twox_hash::XxHash;
 
 #[cfg(feature = "flatbuf")]
 use flatbuf::{FBIter, FromFlatBuffer, ToFlatBuffer, ToFlatBufferTable, ToFlatBufferVectorElement};
@@ -1063,18 +1063,20 @@ pub fn std_string_reverse(s: &String) -> String {
 // Hashing
 
 pub fn std_hash64<T: Hash>(x: &T) -> u64 {
-    let mut hasher = XxHash::with_seed(XX_SEED1);
+    let mut hasher = FnvHasher::with_key(XX_SEED1);
     x.hash(&mut hasher);
     hasher.finish()
 }
 
 pub fn std_hash128<T: Hash>(x: &T) -> u128 {
-    let mut hasher = XxHash::with_seed(XX_SEED1);
+    let mut hasher = FnvHasher::with_key(XX_SEED1);
     x.hash(&mut hasher);
     let w1 = hasher.finish();
-    let mut hasher = XxHash::with_seed(XX_SEED2);
+
+    let mut hasher = FnvHasher::with_key(XX_SEED2);
     x.hash(&mut hasher);
     let w2 = hasher.finish();
+
     ((w1 as u128) << 64) | (w2 as u128)
 }
 

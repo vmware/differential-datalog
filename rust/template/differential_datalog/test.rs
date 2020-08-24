@@ -3,7 +3,7 @@
     non_camel_case_types,
     non_upper_case_globals,
     dead_code,
-    clippy::block_in_if_condition_stmt,
+    clippy::blocks_in_if_conditions,
     clippy::clone_on_copy,
     clippy::eq_op,
     clippy::cmp_owned,
@@ -199,7 +199,7 @@ fn test_one_relation(nthreads: usize) {
     let set = BTreeMap::from_iter(vals.iter().map(|x| (U64(*x), 1)));
 
     running.transaction_start().unwrap();
-    for (x, _) in &set {
+    for x in set.keys() {
         running.insert(1, x.clone().into_ddvalue()).unwrap();
     }
     running.transaction_commit().unwrap();
@@ -209,7 +209,7 @@ fn test_one_relation(nthreads: usize) {
     /* 2. Deletion */
     let mut set2 = set.clone();
     running.transaction_start().unwrap();
-    for (x, _) in &set {
+    for x in set.keys() {
         set2.remove(x);
         running.delete_value(1, x.clone().into_ddvalue()).unwrap();
         //assert_eq!(running.relation_clone_content(1).unwrap(), set2);
@@ -237,7 +237,7 @@ fn test_one_relation(nthreads: usize) {
     /* 5. Rollback */
     let before = relset.lock().unwrap().clone();
     running.transaction_start().unwrap();
-    for (x, _) in &set {
+    for x in set.keys() {
         running.insert(1, x.clone().into_ddvalue()).unwrap();
     }
     //println!("delta: {:?}", *running.relation_delta(1).unwrap().lock().unwrap());
@@ -264,7 +264,7 @@ fn test_one_relation_multi() {
 /* Two tables + 1 rule that keeps the two synchronized
  */
 fn test_two_relations(nthreads: usize) {
-    fn ifun(_v: &DDValue, _ts: TupleTS, _w: Weight) -> () {}
+    fn ifun(_v: &DDValue, _ts: TupleTS, _w: Weight) {}
 
     let relset1: Arc<Mutex<Delta<U64>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel1 = {
@@ -321,7 +321,7 @@ fn test_two_relations(nthreads: usize) {
     let set = BTreeMap::from_iter(vals.iter().map(|x| (U64(*x), 1)));
 
     running.transaction_start().unwrap();
-    for (x, _) in &set {
+    for x in set.keys() {
         running.insert(1, x.clone().into_ddvalue()).unwrap();
         //assert_eq!(running.relation_clone_content(1).unwrap(),
         //           running.relation_clone_content(2).unwrap());
@@ -333,7 +333,7 @@ fn test_two_relations(nthreads: usize) {
 
     /* 2. Clear T1 */
     running.transaction_start().unwrap();
-    for (x, _) in &set {
+    for x in set.keys() {
         running.delete_value(1, x.clone().into_ddvalue()).unwrap();
         //        assert_eq!(running.relation_clone_content(1).unwrap(),
         //                   running.relation_clone_content(2).unwrap());
@@ -345,7 +345,7 @@ fn test_two_relations(nthreads: usize) {
 
     /* 3. Rollback */
     running.transaction_start().unwrap();
-    for (x, _) in &set {
+    for x in set.keys() {
         running.insert(1, x.clone().into_ddvalue()).unwrap();
         //assert_eq!(running.relation_clone_content(1).unwrap(),
         //           running.relation_clone_content(2).unwrap());
@@ -373,7 +373,6 @@ fn test_two_relations_multi() {
 fn test_semijoin(nthreads: usize) {
     let relset1: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel1 = {
-        let relset1 = relset1.clone();
         Relation {
             name: "T1".to_string(),
             input: true,
@@ -399,7 +398,6 @@ fn test_semijoin(nthreads: usize) {
 
     let relset2: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel2 = {
-        let relset2 = relset2.clone();
         Relation {
             name: "T2".to_string(),
             input: true,
@@ -478,7 +476,7 @@ fn test_semijoin(nthreads: usize) {
     );
 
     running.transaction_start().unwrap();
-    for (x, _) in &set {
+    for x in set.keys() {
         running.insert(1, x.clone().into_ddvalue()).unwrap();
         running.insert(2, x.clone().into_ddvalue()).unwrap();
     }
@@ -504,7 +502,6 @@ fn test_semijoin_multi() {
 fn test_join(nthreads: usize) {
     let relset1: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel1 = {
-        let relset1 = relset1.clone();
         Relation {
             name: "T1".to_string(),
             input: true,
@@ -525,7 +522,6 @@ fn test_join(nthreads: usize) {
     }
     let relset2: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel2 = {
-        let relset2 = relset2.clone();
         Relation {
             name: "T2".to_string(),
             input: true,
@@ -649,7 +645,7 @@ fn test_join(nthreads: usize) {
     );
 
     running.transaction_start().unwrap();
-    for (x, _) in &set {
+    for x in set.keys() {
         running.insert(1, x.clone().into_ddvalue()).unwrap();
         running.insert(2, x.clone().into_ddvalue()).unwrap();
     }
@@ -691,7 +687,6 @@ fn test_join_multi() {
 fn test_antijoin(nthreads: usize) {
     let relset1: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel1 = {
-        let relset1 = relset1.clone();
         Relation {
             name: "T1".to_string(),
             input: true,
@@ -713,7 +708,6 @@ fn test_antijoin(nthreads: usize) {
 
     let relset2: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel2 = {
-        let relset2 = relset2.clone();
         Relation {
             name: "T2".to_string(),
             input: true,
@@ -740,7 +734,6 @@ fn test_antijoin(nthreads: usize) {
 
     let relset21: Arc<Mutex<Delta<U64>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel21 = {
-        let relset21 = relset21.clone();
         Relation {
             name: "T21".to_string(),
             input: false,
@@ -819,7 +812,7 @@ fn test_antijoin(nthreads: usize) {
 
     /* 1. T2 and T1 contain identical keys; antijoin is empty */
     running.transaction_start().unwrap();
-    for (x, _) in &set {
+    for x in set.keys() {
         running.insert(1, x.clone().into_ddvalue()).unwrap();
         running.insert(2, x.clone().into_ddvalue()).unwrap();
     }
@@ -829,7 +822,7 @@ fn test_antijoin(nthreads: usize) {
 
     /* 1. T2 is empty; antijoin is identical to T1 */
     running.transaction_start().unwrap();
-    for (x, _) in &set {
+    for x in set.keys() {
         running.delete_value(2, x.clone().into_ddvalue()).unwrap();
     }
     running.transaction_commit().unwrap();
@@ -1035,9 +1028,9 @@ fn test_map(nthreads: usize) {
     let expected2 = BTreeMap::from_iter(
         vals.iter()
             .map(|x| U64(*x).into_ddvalue())
-            .map(|x| mfun(x))
-            .filter(|x| ffun(&x))
-            .filter_map(|x| fmfun(x))
+            .map(mfun)
+            .filter(ffun)
+            .filter_map(fmfun)
             .flat_map(|x| match flatmapfun(x) {
                 Some(iter) => iter,
                 None => Box::new(None.into_iter()),
@@ -1048,7 +1041,7 @@ fn test_map(nthreads: usize) {
     expected3.insert(U64(expected2.len() as u64), 1);
 
     running.transaction_start().unwrap();
-    for (x, _) in &set {
+    for x in set.keys() {
         running.insert(1, x.clone().into_ddvalue()).unwrap();
     }
     running.transaction_commit().unwrap();
@@ -1077,6 +1070,7 @@ fn test_recursion(nthreads: usize) {
         let Tuple2(ref fst, ref snd) = unsafe { Tuple2::<String>::from_ddvalue_ref(&v) };
         Some(((*fst).clone().into_ddvalue(), (*snd).clone().into_ddvalue()))
     }
+
     fn arrange_by_snd(v: DDValue) -> Option<(DDValue, DDValue)> {
         let Tuple2(ref fst, ref snd) = unsafe { Tuple2::<String>::from_ddvalue_ref(&v) };
         Some((
@@ -1084,11 +1078,9 @@ fn test_recursion(nthreads: usize) {
             (**fst).clone().into_ddvalue(),
         ))
     }
+
     fn anti_arrange1(v: DDValue) -> Option<(DDValue, DDValue)> {
-        //println!("anti_arrange({:?})", v);
-        let res = Some((v.clone(), v.clone()));
-        //println!("res: {:?}", res);
-        res
+        Some((v.clone(), v))
     }
 
     fn anti_arrange2(v: DDValue) -> Option<(DDValue, DDValue)> {
@@ -1363,7 +1355,7 @@ fn test_recursion(nthreads: usize) {
     let expect_set2 = BTreeMap::from_iter(expect_vals2.iter().map(|x| (x.clone(), 1)));
 
     running.transaction_start().unwrap();
-    for (x, _) in &set {
+    for x in set.keys() {
         running.insert(1, x.clone().into_ddvalue()).unwrap();
     }
     running.transaction_commit().unwrap();

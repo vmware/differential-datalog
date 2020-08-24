@@ -51,22 +51,26 @@ data Config = Config { confDatalogFile   :: FilePath
                      , confDumpDebug     :: Bool
                      , confDumpOpt       :: Bool
                      , confReValidate    :: Bool
+                     , confOmitProfile   :: Bool
+                     , confOmitWorkspace :: Bool
                      }
 
 defaultConfig :: Config
-defaultConfig = Config { confDatalogFile   = ""
-                       , confAction        = ActionCompile
-                       , confLibDirs       = []
-                       , confOutputDir     = ""
-                       , confStaticLib     = True
-                       , confDynamicLib    = False
-                       , confOutputInternal= False
-                       , confOutputInput   = ""
-                       , confJava          = False
-                       , confDebugHooks    = False
-                       , confDumpFlat      = False
-                       , confDumpValid     = False
-                       , confDumpDebug     = False
-                       , confDumpOpt       = False
-                       , confReValidate    = False
+defaultConfig = Config { confDatalogFile    = ""
+                       , confAction         = ActionCompile
+                       , confLibDirs        = []
+                       , confOutputDir      = ""
+                       , confStaticLib      = True
+                       , confDynamicLib     = False
+                       , confOutputInternal = False
+                       , confOutputInput    = ""
+                       , confJava           = False
+                       , confDebugHooks     = False
+                       , confDumpFlat       = False
+                       , confDumpValid      = False
+                       , confDumpDebug      = False
+                       , confDumpOpt        = False
+                       , confReValidate     = False
+                       , confOmitProfile   = False
+                       , confOmitWorkspace = False
                        }
