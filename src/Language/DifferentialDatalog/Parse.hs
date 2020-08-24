@@ -486,7 +486,7 @@ constructor = withPos $ Constructor nopos <$> attributes
                                           <*> consIdent
                                           <*> (option [] $ braces $ commaSep arg)
 
-expr =  buildExpressionParser etable term
+expr = buildExpressionParser etable term
     <?> "expression"
 
 term  =  elhs
@@ -719,7 +719,7 @@ etable = [[postf $ choice [postTry, postSlice, postApply, postField, postType, p
          ,[pref  $ choice [preRef]]
          ,[pref  $ choice [prefixOp "-" UMinus]]
          ,[pref  $ choice [prefixOp "~" BNeg]]
-         ,[pref  $ choice [prefixOp "not" Not]]
+         ,[pref  $ choice [prefixKeyWord "not" Not]]
          ,[binary "%" Mod AssocLeft,
            binary "*" Times AssocLeft,
            binary "/" Div AssocLeft]
@@ -737,8 +737,8 @@ etable = [[postf $ choice [postTry, postSlice, postApply, postField, postType, p
          ,[binary "&" BAnd AssocLeft]
          ,[binary "^" BXor AssocLeft]
          ,[binary "|" BOr AssocLeft]
-         ,[binary "and" And AssocLeft]
-         ,[binary "or" Or AssocLeft]
+         ,[binaryKeyWord "and" And AssocLeft]
+         ,[binaryKeyWord "or" Or AssocLeft]
          ,[binary "=>" Impl AssocLeft]
          ,[assign AssocNone]
          ,[sbinary ";" ESeq AssocRight]
@@ -776,7 +776,9 @@ eAsType = reserved "as" *> typeSpecSimple
 
 preRef = (\start e -> E $ ERef (start, snd $ pos e) e) <$> getPosition <* reservedOp "&"
 prefixOp n fun = (\start e -> E $ EUnOp (start, snd $ pos e) fun e) <$> getPosition <* reservedOp n
+prefixKeyWord n fun = (\start e -> E $ EUnOp (start, snd $ pos e) fun e) <$> getPosition <* reserved n
 binary n fun  = Infix $ (\le re -> E $ EBinOp (fst $ pos le, snd $ pos re) fun le re) <$ reservedOp n
+binaryKeyWord n fun  = Infix $ (\le re -> E $ EBinOp (fst $ pos le, snd $ pos re) fun le re) <$ reserved n
 sbinary n fun = Infix $ (\l  r  -> E $ fun (fst $ pos l, snd $ pos r) l r) <$ reservedOp n
 
 assign = Infix $ (\l r  -> E $ ESet (fst $ pos l, snd $ pos r) l r) <$ reservedOp "="

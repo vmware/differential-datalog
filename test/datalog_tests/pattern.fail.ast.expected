@@ -41,3 +41,7 @@ error: ./test/datalog_tests/pattern.fail.dl:12:12-12:13: Non-exhaustive match pa
 error: ./test/datalog_tests/pattern.fail.dl:6:12-6:13: Non-exhaustive match patterns
     match (s) {
            ^
+
+Failed to parse input file: "./test/datalog_tests/pattern.fail.dl" (line 7, column 14):
+unexpected 'o'
+expecting operator

@@ -175,3 +175,11 @@ function f1(s: string) : bool = {
     }
 }
 
+//---
+
+// bug parsing "andover" as "and over"
+
+function b(): bool {
+    var over = false;
+    true andover
+}

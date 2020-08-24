@@ -788,6 +788,11 @@ function mult2 (x: bigint): bigint
 {
     (x << 32'd1)
 }
+function p (): string
+{
+    ((var notable: string) = "hi";
+     notable)
+}
 extern function parameterized (x: 'A, y: 'A): 'A
 function parameterized2 (x: 'A, y: 'A): bool
 {
