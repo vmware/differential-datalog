@@ -60,9 +60,11 @@ TODO: Generated Java code structure:
 
 {-# LANGUAGE RecordWildCards, FlexibleContexts, LambdaCase, OverloadedStrings, ImplicitParams, TemplateHaskell #-}
 
-module Language.DifferentialDatalog.FlatBuffer(
-    flatBufferValidate,
-    compileFlatBufferBindings)
+module Language.DifferentialDatalog.FlatBuffer
+  ( flatBufferValidate,
+    compileFlatBufferBindings,
+    compileFlatBufferRustBindings,
+  )
 where
 
 -- FIXME: support `DeleteKey` and `Modify` commands.  The former require collecting
@@ -80,8 +82,6 @@ import Control.Monad.State
 import Text.PrettyPrint
 import Control.Monad.Except
 import System.FilePath
-import System.Process
-import GHC.IO.Exception
 --import Debug.Trace
 import qualified Data.ByteString.Char8 as BS
 
@@ -98,37 +98,49 @@ import Language.DifferentialDatalog.Index
 import Language.DifferentialDatalog.Error
 import {-# SOURCE #-} qualified Language.DifferentialDatalog.Compile as R -- "R" for "Rust"
 
-compileFlatBufferBindings :: (?cfg::Config) => DatalogProgram -> String -> FilePath -> IO ()
-compileFlatBufferBindings prog specname dir = do
-    let flatbuf_dir = dir </> "flatbuf"
-    let java_dir = dir </> "flatbuf" </> "java"
-    --updateFile (java_dir </> specname <.> ".java") (render $ compileJava prog specname)
-    updateFile (flatbuf_dir </> "flatbuf.fbs") (render $ compileFlatBufferSchema prog specname)
-    mapM_ (\(fname, doc) -> updateFile (java_dir </> fname) $ render doc)
-          $ compileFlatBufferJavaBindings prog specname
-    compileFlatBufferRustBindings prog specname dir
-    -- compile Java bindings for FlatBuffer schema
-    let flatcj_proc = (proc "flatc" (["-j", "-o", "java/", "flatbuf.fbs"])) {
-                          cwd = Just $ dir </> "flatbuf"
-                     }
-    (jcode, jstdo, jstde) <- readCreateProcessWithExitCode flatcj_proc ""
-    when (jcode /= ExitSuccess) $ do
-        errorWithoutStackTrace $ "flatc failed with exit code " ++ show jcode ++
-                                 "\nstdout:\n" ++ jstde ++
-                                 "\n\nstdout:\n" ++ jstdo
-    -- compile Rust bindings for FlatBuffer schema
-    let flatcr_proc = (proc "flatc" (["-r", "flatbuf.fbs"])) {
-                          cwd = Just $ dir </> "flatbuf"
-                     }
-    (rcode, rstdo, rstde) <- readCreateProcessWithExitCode flatcr_proc ""
-    when (rcode /= ExitSuccess) $ do
-        errorWithoutStackTrace $ "flatc failed with exit code " ++ show rcode ++
-                                 "\nstdout:\n" ++ rstde ++
-                                 "\n\nstdout:\n" ++ rstdo
-    -- Copy generated file if it's changed (we could generate it in place, but
-    -- flatc always overwrites its output, forcing Rust re-compilation)
-    fbgenerated <- readFile $ flatbuf_dir </> "flatbuf_generated.rs"
-    updateFile (dir </> "types" </> "flatbuf_generated.rs") fbgenerated
+compileFlatBufferBindings :: (?cfg :: Config) => DatalogProgram -> String -> FilePath -> IO ()
+compileFlatBufferBindings prog specname dir =
+    -- Produce flatbuffer bindings if either the java or rust bindings are enabled
+    if (confJava ?cfg || confRustFlatBuffers ?cfg)
+        then do
+            let flatbuf_dir = dir </> "flatbuf"
+
+            -- updateFile (java_dir </> specname <.> ".java") (render $ compileJava prog specname)
+            -- Generate the flatbuffers schema
+            updateFile (flatbuf_dir </> "flatbuf.fbs") (render $ compileFlatBufferSchema prog specname)
+
+            -- Compile Java bindings if they're enabled
+            when (confJava ?cfg) $
+                mapM_ (\(fname, doc) -> updateFile (flatbuf_dir </> "java" </> fname) $ render doc) $
+                    compileFlatBufferJavaBindings prog specname
+            -- Always compile Rust bindings
+            compileFlatBufferRustBindings prog specname dir
+
+            let flatc_command = runCommandReportingErr "flatc" "flatc"
+            -- compile Java bindings for FlatBuffer schema
+            when (confJava ?cfg) $
+                flatc_command ["-j", "-o", "java/", "flatbuf.fbs"] $ Just flatbuf_dir
+            -- compile Rust bindings for FlatBuffer schema
+            flatc_command ["-r", "flatbuf.fbs"] $ Just flatbuf_dir
+
+            -- Copy generated file if it's changed (we could generate it in place, but
+            -- flatc always overwrites its output, forcing Rust re-compilation)
+            fbgenerated <- readFile $ flatbuf_dir </> "flatbuf_generated.rs"
+            updateFile (dir </> "types" </> "flatbuf_generated.rs") fbgenerated
+    else
+        -- If flatbuffers are completely disabled then generate dummy files
+        generateDummyRustBindings ["types/flatbuf.rs", "types/flatbuf_generated.rs", "value/flatbuf.rs"] dir
+
+-- | Generates 'fake' rust files in the generated code so that tooling isn't broken by modules that don't exist
+--
+-- The generated files contain rust `compile_error!`s that tell the user that they didn't build flatbuffers
+-- and how to do so. These errors should only activate when a user hasn't enabled the flatbuffer bindings,
+-- but still tried to use them.
+generateDummyRustBindings :: (?cfg :: Config) => [String] -> FilePath -> IO ()
+generateDummyRustBindings files dir = do
+    let compile_error = "compile_error!(\"flatbuffers was used when it was not enabled, "
+            ++ "run ddlog with `--java` or `--rust-flatbuffers` to enable them\");\n"
+    mapM_ (\(file) -> updateFile (dir </> file) compile_error) files
 
 -- | Checks that we are able to generate FlatBuffer schema for all types used in
 -- program's input and output relations.

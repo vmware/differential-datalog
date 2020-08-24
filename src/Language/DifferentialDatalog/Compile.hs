@@ -476,7 +476,7 @@ mkConstructorName tname t c =
 --
 -- 'crate_types' - list of Cargo library crate types, e.g., [\"staticlib\"],
 --                  [\"cdylib\"], [\"staticlib\", \"cdylib\"]
-compile :: (?cfg::Config) => DatalogProgram -> String -> Doc -> Doc -> FilePath -> [String] -> IO ()
+compile :: (?cfg :: Config) => DatalogProgram -> String -> Doc -> Doc -> FilePath -> [String] -> IO ()
 compile d_unoptimized specname rs_code toml_code dir crate_types = do
     -- Create dir if it does not exist.
     createDirectoryIfMissing True (dir </> rustProjectDir specname)
@@ -488,8 +488,8 @@ compile d_unoptimized specname rs_code toml_code dir crate_types = do
     when (confDumpDebug ?cfg) $
         writeFile (replaceExtension (confDatalogFile ?cfg) ".opt.ast") (show d)
     let (types, value, main) = compileLib d specname rs_code
-    when (confJava ?cfg) $
-        compileFlatBufferBindings d specname (dir </> rustProjectDir specname)
+    -- Produce flatbuffer bindings if either the java or rust bindings are enabled
+    compileFlatBufferBindings d specname (dir </> rustProjectDir specname)
     -- Substitute specname template files; write files if changed.
     mapM_ (\(path, content) -> do
             let path' = dir </> path
