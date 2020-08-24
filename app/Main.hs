@@ -61,6 +61,8 @@ data TOption = Help
              | DumpDebug
              | DumpOpt
              | ReValidate
+             | OmitProfile
+             | OmitWorkspace
 
 options :: [OptDescr TOption]
 options = [ Option ['h'] ["help"]             (NoArg Help)                      "Display help message."
@@ -82,6 +84,8 @@ options = [ Option ['h'] ["help"]             (NoArg Help)                      
           , Option []    ["pp-debug"]         (NoArg DumpDebug)                 "Dump the source after compilation pass 3 (injecting debugging hooks) to FILE.debug.ast.  If the '-g' option is not specified, then pass 3 is a no-op and will produce identical output to pass 2."
           , Option []    ["pp-optimized"]     (NoArg DumpOpt)                   "Dump the source after compilation pass 4 (optimization) to FILE.opt.ast."
           , Option []    ["re-validate"]      (NoArg ReValidate)                "[developers only] Re-validate the program after type inference and optimization passes."
+          , Option []    ["omit-profile"]     (NoArg OmitProfile)               "Skips adding a Cargo profile (silences warnings for some rust builds, included by default)"
+          , Option []    ["omit-workspace"]   (NoArg OmitWorkspace)             "Skips adding a Cargo workspace (silences errors for some rust builds, included by default)"
           ]
 
 addOption :: Config -> TOption -> IO Config
@@ -108,6 +112,8 @@ addOption config DumpValid        = return config { confDumpValid = True }
 addOption config DumpDebug        = return config { confDumpDebug = True }
 addOption config DumpOpt          = return config { confDumpOpt = True }
 addOption config ReValidate       = return config { confReValidate = True }
+addOption config OmitProfile      = return config { confOmitProfile = True }
+addOption config OmitWorkspace    = return config { confOmitWorkspace = True }
 
 validateConfig :: Config -> IO ()
 validateConfig Config{..} = do

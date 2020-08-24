@@ -27,7 +27,7 @@ test-rust:
     - /usr/share/zookeeper/bin/zkServer.sh start
     - (cd rust/template/ && cargo fmt --all -- --check)
     - (cd lib && rustfmt *.rs --check)
-    - (cd rust/template/ && cargo clippy --all -- -D warnings)
+    - (cd rust/template/ && cargo clippy --all --features command-line,ovsdb -- -D warnings)
     - for i in $(seq 100); do
         /usr/share/zookeeper/bin/zkServer.sh status && break;
       done

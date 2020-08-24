@@ -1,3 +1,5 @@
+#![cfg(feature = "command-line")]
+
 // Note that this file should only contain a single test. The test in
 // here invokes itself and having multiple test running in parallel
 // while that is happening is probably a bad idea.

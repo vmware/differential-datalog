@@ -89,7 +89,7 @@ fi
 
 # Compile produced Rust files
 cd ${base}_ddlog
-cargo build ${CARGOFLAGS}
+cargo build ${CARGOFLAGS} --features command-line,ovsdb
 cd ..
 
 if [ "x${FLATBUF}" == "x1" ]; then

@@ -603,7 +603,7 @@ fn test_struct() {
             ),
         )],
     );
-    let mut foo_mod = foo1.clone();
+    let mut foo_mod = foo1;
     upd.mutate(&mut foo_mod).unwrap();
     let foo_expected = Foo {
         f1: BTreeMap::from_iter(vec![(5, "5".to_owned()), (6, "six".to_owned())]),

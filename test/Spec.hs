@@ -250,7 +250,7 @@ withProgress True action = do
 --
 -- * Creates Cargo project in a directory obtained by removing file
 -- extension from 'file'.
-generateDDLogRust :: Bool -> FilePath -> [String] -> IO ()
+generateDDLogRust :: Bool -> FilePath -> [String]-> IO ()
 generateDDLogRust java file crate_types = do
     fname <- makeAbsolute file
     body <- readFile fname
