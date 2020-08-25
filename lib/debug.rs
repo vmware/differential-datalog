@@ -16,9 +16,10 @@ pub fn debug_debug_event<T1: ToString, A1: Clone + IntoRecord, A2: Clone + IntoR
         .create(true)
         .open("debug.log".to_string())
         .unwrap();
-    let _ = write!(
+
+    let _ = writeln!(
         &file,
-        "{:?}, {}, {}, {}, {}, {}\n",
+        "{:?}, {}, {}, {}, {}, {}",
         &operator_id,
         &w.to_string(),
         &ts.to_string(),
@@ -26,7 +27,6 @@ pub fn debug_debug_event<T1: ToString, A1: Clone + IntoRecord, A2: Clone + IntoR
         &input1.clone().into_record(),
         &out.clone().into_record()
     );
-    ()
 }
 
 pub fn debug_debug_event_join<
@@ -47,9 +47,10 @@ pub fn debug_debug_event_join<
         .create(true)
         .open("debug.log".to_string())
         .unwrap();
-    let _ = write!(
+
+    let _ = writeln!(
         &file,
-        "{:?}, {}, {}, Join, {}, {}, {}\n",
+        "{:?}, {}, {}, Join, {}, {}, {}",
         &operator_id,
         &w.to_string(),
         &ts.to_string(),
@@ -57,7 +58,6 @@ pub fn debug_debug_event_join<
         &input2.clone().into_record(),
         &out.clone().into_record()
     );
-    ()
 }
 
 pub fn debug_debug_split_group<'a, K, I: 'static + Clone, V: 'static>(
@@ -67,6 +67,7 @@ pub fn debug_debug_split_group<'a, K, I: 'static + Clone, V: 'static>(
     for (i, _) in g.iter() {
         inputs.push(i.clone())
     }
+
     let orig_project = g.project.clone();
     (
         inputs,
