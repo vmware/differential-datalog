@@ -61,10 +61,9 @@ TODO: Generated Java code structure:
 {-# LANGUAGE RecordWildCards, FlexibleContexts, LambdaCase, OverloadedStrings, ImplicitParams, TemplateHaskell #-}
 
 module Language.DifferentialDatalog.FlatBuffer
-  ( flatBufferValidate,
-    compileFlatBufferBindings,
-    compileFlatBufferRustBindings,
-  )
+    ( flatBufferValidate,
+      compileFlatBufferBindings,
+    )
 where
 
 -- FIXME: support `DeleteKey` and `Modify` commands.  The former require collecting
