@@ -74,7 +74,7 @@ options = [ Option ['h'] ["help"]             (NoArg Help)                      
           , Option ['L'] []                   (ReqArg LibDir   "PATH")          "Extra DDlog library directory."
           , Option ['o'] ["output-dir"]       (ReqArg OutputDir "DIR")          "Output directory (default based on program name)."
           , Option []    ["dynlib"]           (NoArg DynLib)                    "Generate dynamic library."
-          , Option ['j'] ["java"]             (NoArg Java)                      "Generate Java bindings."
+          , Option ['j'] ["java"]             (NoArg Java)                      "Generate Java bindings. Implies '--rust-flatbuffers'."
           , Option []    ["output-internal-relations"]  (NoArg OutputInternal)  "All non-input relations are marked as output relations."
           , Option []    ["output-input-relations"]  (ReqArg OutputInput "PREFIX") "Mirror each input relation into an output relation named by prepending the prefix."
           , Option []    ["no-dynlib"]        (NoArg NoDynLib)                  "Do not generate dynamic library (default)."
