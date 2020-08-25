@@ -1,7 +1,5 @@
-use arc_interner;
 use differential_datalog::record;
 use differential_datalog::record::*;
-use serde;
 use std::cmp;
 use std::fmt;
 
@@ -28,6 +26,7 @@ impl<A: Eq + Send + Sync + Hash + 'static> PartialOrd for internment_Intern<A> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         let sptr = self.as_ref() as *const A as usize;
         let optr = other.as_ref() as *const A as usize;
+
         sptr.partial_cmp(&optr)
     }
 }
@@ -36,6 +35,7 @@ impl<A: Eq + Send + Sync + Hash + 'static> Ord for internment_Intern<A> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         let sptr = self.as_ref() as *const A as usize;
         let optr = other.as_ref() as *const A as usize;
+
         sptr.cmp(&optr)
     }
 }
@@ -54,7 +54,13 @@ impl<A: Eq + Hash + Send + Sync + 'static> internment_Intern<A> {
             intern: arc_interner::ArcIntern::new(x),
         }
     }
-    pub fn as_ref(&self) -> &A {
+}
+
+impl<A> AsRef<A> for internment_Intern<A>
+where
+    A: Eq + Hash + Send + Sync + 'static,
+{
+    fn as_ref(&self) -> &A {
         self.intern.as_ref()
     }
 }
@@ -103,13 +109,13 @@ impl<'de, A: Deserialize<'de> + Eq + Hash + Send + Sync + 'static> serde::Deseri
     where
         D: serde::Deserializer<'de>,
     {
-        A::deserialize(deserializer).map(|s| internment_Intern::new(s))
+        A::deserialize(deserializer).map(internment_Intern::new)
     }
 }
 
 impl<A: FromRecord + Eq + Hash + Send + Sync + 'static> FromRecord for internment_Intern<A> {
     fn from_record(val: &Record) -> Result<Self, String> {
-        A::from_record(val).map(|x| internment_Intern::new(x))
+        A::from_record(val).map(internment_Intern::new)
     }
 }
 

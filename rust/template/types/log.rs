@@ -44,7 +44,7 @@ pub fn log_log(module: &i32, level: &i32, msg: &String) {
             cb(*level, msg.as_str());
         }
     } else if *level <= cfg.default_level && cfg.default_callback.is_some() {
-        (cfg.default_callback.as_ref().unwrap())(*level, msg.as_str());
+        cfg.default_callback.as_ref().unwrap()(*level, msg.as_str());
     }
 }
 

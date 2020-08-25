@@ -984,11 +984,11 @@ pub fn std_map_union<K: Ord + Clone, V: Clone>(
 // strings
 
 pub fn std___builtin_2string<T: Display>(x: &T) -> String {
-    format!("{}", *x).to_string()
+    format!("{}", *x)
 }
 
 pub fn std_hex<T: fmt::LowerHex>(x: &T) -> String {
-    format!("{:x}", *x).to_string()
+    format!("{:x}", *x)
 }
 
 pub fn std_parse_dec_u64(s: &String) -> std_Option<u64> {
