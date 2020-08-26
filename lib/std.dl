@@ -144,6 +144,10 @@ function is_some(x: Option<'A>): bool = {
     }
 }
 
+/* Returns default value of a type.
+ */
+extern function default(): 'T
+
 /* Returns the contained `Some` value or a provided default.
  */
 function unwrap_or(x: Option<'A>, def: 'A): 'A = {

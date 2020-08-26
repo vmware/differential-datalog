@@ -29,3 +29,18 @@ output relation Pow(descr: string, val: string)
 
 Pow("pow32(2: u32, 32)", "${pow32(2: u32, 32)}").
 Pow("$pow32(2: u64, 32)", "${pow32(2: u64, 32)}").
+
+output relation Default(descr: string, val: string)
+
+typedef DefaultEnum = DEnum1
+                    | DEnum2{ x: u32 }
+
+function to_string(e: DefaultEnum): string {
+    match (e) {
+        DEnum1 -> "DEnum1",
+        DEnum2{e} -> "DEnum2{${e}}"
+    }
+}
+
+Default("u32", "${default(): u32}").
+Default("DefaultEnum", "${default(): DefaultEnum}").

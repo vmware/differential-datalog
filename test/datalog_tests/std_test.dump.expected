@@ -20,3 +20,5 @@ std_test::MapSizes:
 std_test::MapSizes{.m = [(1, "e"), (2, "d"), (3, "c"), (4, "b"), (5, "a")], .size = 5}: +1
 std_test::Pow{.descr = "$pow32(2: u64, 32)", .val = "4294967296"}
 std_test::Pow{.descr = "pow32(2: u32, 32)", .val = "0"}
+std_test::Default{.descr = "DefaultEnum", .val = "DEnum1"}
+std_test::Default{.descr = "u32", .val = "0"}
