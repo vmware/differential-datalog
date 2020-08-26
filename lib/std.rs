@@ -34,6 +34,10 @@ use flatbuffers as fbrt;
 const XX_SEED1: u64 = 0x23b691a751d0e108;
 const XX_SEED2: u64 = 0x20b09801dce5ff84;
 
+pub fn std_default<T: Default>() -> T {
+    T::default()
+}
+
 // Result
 
 /* Convert Rust result type to DDlog's std::Result. */

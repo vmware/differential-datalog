@@ -38,9 +38,6 @@ syn keyword dlConstant         true false
 "Storage class
 "syn keyword dlStorageClass
 
-"Operators
-syn keyword dlOperator	        default
-
 "Keywords for ADTs
 syn keyword dlType	        bool istring string bigint bit signed type typedef
 

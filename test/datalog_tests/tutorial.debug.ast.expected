@@ -409,6 +409,7 @@ function std::count (g: std::Group<'K,'V>): std::usize
 {
     std::group_count(g)
 }
+extern function std::default (): 'T
 #[return_by_ref = true]
 extern function std::deref (x: std::Ref<'A>): 'A
 function std::difference (s1: std::Set<'X>, s2: std::Set<'X>): std::Set<'X>

@@ -23,3 +23,5 @@ insert std_test::Maps([(5, "a"), (4, "b"), (3, "c"), (2, "d"), (1, "e")]),
 commit dump_changes;
 
 dump std_test::Pow;
+
+dump std_test::Default;
