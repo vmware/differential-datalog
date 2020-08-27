@@ -624,13 +624,19 @@ collectStatics d = execState (progExprMapCtxM d (checkStaticExpr)) M.empty
 -- computed by 'collectStatics'.
 mkStatics :: DatalogProgram -> Statics -> Doc
 mkStatics d statics =
-    vcat $
-    map (\((e, t), i) ->
-            let static_name = "__STATIC_" <> pp i in
-            let ?statics = deleteStatic e t statics in
-            let e' = mkExpr d CtxTop (eTyped e t) EVal in
-            "lazy_static!{ pub static ref" <+> static_name <> ":" <+> mkType t <+> "=" <+> e' <+> "; }")
-        $ M.toList statics
+    "lazy_static! {"
+    $$ (nest' $ vcat $ static_decls)
+    $$ "}"
+    where
+        static_decls =
+            map
+                ( \((e, t), i) ->
+                      let static_name = "__STATIC_" <> pp i
+                       in let ?statics = deleteStatic e t statics
+                           in let e' = mkExpr d CtxTop (eTyped e t) EVal
+                               in "pub static ref" <+> static_name <> ":" <+> mkType t <+> "=" <+> e' <+> ";"
+                )
+                $ M.toList statics
 
 -- Add dummy relation to the spec if it does not contain any.
 -- Otherwise, we have to tediously handle this corner case in various
@@ -1029,6 +1035,7 @@ mkRelationsTryFromRelId d =
 
 mkRelId2Name :: DatalogProgram -> Doc
 mkRelId2Name d =
+    -- TODO: Documentation on the generated function
     "pub fn relid2name(rid: RelId) -> Option<&'static str> {" $$
     "   match rid {"                                          $$
     (nest' $ nest' $ vcat $ entries)                          $$
@@ -1042,66 +1049,79 @@ mkRelId2Name d =
 
 mkRelId2NameC :: Doc
 mkRelId2NameC =
-    "pub fn relid2cname(rid: RelId) -> Option<&'static ffi::CStr> {"        $$
-    "    RELIDMAPC.get(&rid).map(|c: &'static ffi::CString|c.as_ref())"                            $$
-    "}"
+    -- TODO: Documentation on the generated function
+    "pub fn relid2cname(rid: RelId) -> Option<&'static ::std::ffi::CStr> {"
+    $$ "    RELIDMAPC.get(&rid).copied()"
+    $$ "}"
 
 mkRelIdMap :: DatalogProgram -> Doc
-mkRelIdMap d =
-    "lazy_static! {"                                                        $$
-    "    pub static ref RELIDMAP: FnvHashMap<Relations, &'static str> = {"  $$
-    "        let mut m = FnvHashMap::default();"                            $$
-    (nest' $ nest' $ vcat entries)                                          $$
-    "        m"                                                             $$
-    "   };"                                                                 $$
-    "}"
+mkRelIdMap prog =
+    createLazyStatic lazy_static
     where
-    entries = map mkrel $ M.elems $ progRelations d
-    mkrel :: Relation -> Doc
-    mkrel rel = "m.insert(Relations::" <> rname (name rel) <> ", \"" <> pp (name rel) <> "\");"
+        mapKey rel = "Relations::" <> rname (name rel)
+        mapValue rel = "\"" <> pp (name rel) <> "\""
+        entries = [(mapKey rel, mapValue rel) | rel <- M.elems (progRelations prog)]
+        lazy_static =
+            LazyStatic
+                { staticName = "RELIDMAP",
+                  staticDoc = Just "A map of `RelId`s to their name as an `&'static str`",
+                  keyType = "Relations",
+                  valueType = "&'static str",
+                  staticEntries = entries
+                }
 
 mkRelIdMapC :: DatalogProgram -> Doc
-mkRelIdMapC d =
-    "lazy_static! {"                                                            $$
-    "    pub static ref RELIDMAPC: FnvHashMap<RelId, ffi::CString> = {"         $$
-    "        let mut m = FnvHashMap::default();"                                $$
-    (nest' $ nest' $ vcat entries)                                              $$
-    "        m"                                                                 $$
-    "   };"                                                                     $$
-    "}"
+mkRelIdMapC prog =
+    createLazyStatic lazy_static
     where
-    entries = map mkrel $ M.elems $ progRelations d
-    mkrel :: Relation -> Doc
-    mkrel rel = "m.insert(" <> pp (relIdentifier d rel) <>
-        ", ffi::CString::new(\"" <> pp (name rel) <> "\").unwrap_or_else(|_|ffi::CString::new(r\"Cannot convert relation name to C string\").unwrap()));"
+        mapKey rel = pp (relIdentifier prog rel)
+        -- We make a the relation into a string, make it into a byte sequence with `b""`
+        -- and then append a null terminator with `\0`
+        mapValue rel =
+            "::std::ffi::CStr::from_bytes_with_nul(b\"" <> pp (name rel) <> "\\0\")"
+                <> ".expect(\"Unreachable: A null byte was specifically inserted\")"
+        entries = [(mapKey rel, mapValue rel) | rel <- M.elems (progRelations prog)]
+        lazy_static =
+            LazyStatic
+                { staticName = "RELIDMAPC",
+                  staticDoc = Just "A map of `RelId`s to their name as an `&'static CStr`",
+                  keyType = "RelId",
+                  valueType = "&'static ::std::ffi::CStr",
+                  staticEntries = entries
+                }
 
+-- REFACTOR: `mkInputRelIdMap` and `mkOutputRelIdMap` can be combined pretty easily
 mkInputRelIdMap :: DatalogProgram -> Doc
-mkInputRelIdMap d =
-    "lazy_static! {"                                                                $$
-    "    pub static ref INPUT_RELIDMAP: FnvHashMap<Relations, &'static str> = {"    $$
-    "        let mut m = FnvHashMap::default();"                                    $$
-    (nest' $ nest' $ vcat entries)                                                  $$
-    "        m"                                                                     $$
-    "    };"                                                                        $$
-    "}"
+mkInputRelIdMap prog =
+    createLazyStatic lazy_static
     where
-    entries = map mkrel $ filter ((== RelInput) . relRole) $ M.elems $ progRelations d
-    mkrel :: Relation -> Doc
-    mkrel rel = "m.insert(Relations::" <> rname (name rel) <> ", \"" <> pp (name rel) <> "\");"
+        mapKey rel = "Relations::" <> (rname . name $ rel)
+        mapValue rel = "\"" <> (pp . name $ rel) <> "\""
+        entries = [(mapKey rel, mapValue rel) | rel <- filter ((== RelInput) . relRole) (M.elems (progRelations prog))]
+        lazy_static =
+            LazyStatic
+                { staticName = "INPUT_RELIDMAP",
+                  staticDoc = Just "A map of input `Relations`s to their name as an `&'static str`",
+                  keyType = "Relations",
+                  valueType = "&'static str",
+                  staticEntries = entries
+                }
 
 mkOutputRelIdMap :: DatalogProgram -> Doc
-mkOutputRelIdMap d =
-    "lazy_static! {"                                                                $$
-    "    pub static ref OUTPUT_RELIDMAP: FnvHashMap<Relations, &'static str> = {"   $$
-    "        let mut m = FnvHashMap::default();"                                    $$
-    (nest' $ nest' $ vcat entries)                                                  $$
-    "        m"                                                                     $$
-    "    };"                                                                        $$
-    "}"
+mkOutputRelIdMap prog =
+    createLazyStatic lazy_static
     where
-    entries = map mkrel $ filter ((== RelOutput) . relRole) $ M.elems $ progRelations d
-    mkrel :: Relation -> Doc
-    mkrel rel = "m.insert(Relations::" <> rname (name rel) <> ", \"" <> pp (name rel) <> "\");"
+        mapKey rel = "Relations::" <> (rname . name $ rel)
+        mapValue rel = "\"" <> (pp . name $ rel) <> "\""
+        entries = [(mapKey rel, mapValue rel) | rel <- filter ((== RelOutput) . relRole) (M.elems (progRelations prog))]
+        lazy_static =
+            LazyStatic
+                { staticName = "OUTPUT_RELIDMAP",
+                  staticDoc = Just "A map of output `Relations`s to their name as an `&'static str`",
+                  keyType = "Relations",
+                  valueType = "&'static str",
+                  staticEntries = entries
+                }
 
 -- Convert string to `enum Indexes`
 mkIndexesTryFromStr :: DatalogProgram -> Doc
@@ -1122,6 +1142,7 @@ mkIndexesTryFromStr d =
 
 mkIndexesIntoArrId :: DatalogProgram -> CompilerState -> Doc
 mkIndexesIntoArrId d CompilerState{..} =
+    -- TODO: Documentation on the generated function
     "pub fn indexes2arrid(idx: Indexes) -> ArrId {"                  $$
     "    match idx {"                                                $$
     (nest' $ nest' $ vcat $ entries)                                 $$
@@ -1143,7 +1164,7 @@ mkIndexesTryFromIdxId :: DatalogProgram -> Doc
 mkIndexesTryFromIdxId d =
     "impl TryFrom<IdxId> for Indexes {"                                   $$
     "    type Error = ();"                                                $$
-    "    fn try_from(iid: IdxId) -> result::Result<Self, Self::Error> {"  $$
+    "    fn try_from(iid: IdxId) -> ::core::result::Result<Self, Self::Error> {"  $$
     "         match iid {"                                                $$
                   (nest' $ nest' $ vcat $ entries)                        $$
     "             _  => Err(())"                                          $$
@@ -1157,6 +1178,7 @@ mkIndexesTryFromIdxId d =
 
 mkIdxId2Name :: DatalogProgram -> Doc
 mkIdxId2Name d =
+    -- TODO: Documentation on the generated function
     "pub fn indexid2name(iid: IdxId) -> Option<&'static str> {" $$
     "   match iid {"                                            $$
     (nest' $ nest' $ vcat $ entries)                            $$
@@ -1170,38 +1192,106 @@ mkIdxId2Name d =
 
 mkIdxId2NameC :: Doc
 mkIdxId2NameC =
-    "pub fn indexid2cname(iid: IdxId) -> Option<&'static ffi::CStr> {"      $$
-    "    IDXIDMAPC.get(&iid).map(|c: &'static ffi::CString|c.as_ref())"     $$
-    "}"
+    -- TODO: Documentation on the generated function
+    "pub fn indexid2cname(iid: IdxId) -> Option<&'static ::std::ffi::CStr> {"
+    $$ "    IDXIDMAPC.get(&iid).copied()"
+    $$ "}"
 
+-- Generates a static HashMap named `IDXIDMAP` that associates `Indexes`s to their name
+-- rendered as an `&'static str`
 mkIdxIdMap :: DatalogProgram -> Doc
-mkIdxIdMap d =
-    "lazy_static! {"                                                        $$
-    "    pub static ref IDXIDMAP: FnvHashMap<Indexes, &'static str> = {"    $$
-    "        let mut m = FnvHashMap::default();"                            $$
-    (nest' $ nest' $ vcat entries)                                          $$
-    "        m"                                                             $$
-    "   };"                                                                 $$
-    "}"
+mkIdxIdMap prog =
+    createLazyStatic lazy_static
     where
-    entries = map mkidx $ M.elems $ progIndexes d
-    mkidx :: Index -> Doc
-    mkidx idx = "m.insert(Indexes::" <> rname (name idx) <> ", \"" <> pp (name idx) <> "\");"
+        mapKey idx = "Indexes::" <> (rname . name $ idx)
+        mapValue idx = "\"" <> (pp . name $ idx) <> "\""
+        entries = [(mapKey idx, mapValue idx) | idx <- M.elems (progIndexes prog)]
+        lazy_static =
+            LazyStatic
+                { staticName = "IDXIDMAP",
+                  -- TODO: Doc comment for the generated static
+                  staticDoc = Just "A map of `Indexes` to their name as an `&'static str`",
+                  keyType = "Indexes",
+                  valueType = "&'static str",
+                  staticEntries = entries
+                }
 
+-- Generates a static HashMap named `IDXIDMAPC` that associates `IdxId`s to their name
+-- rendered as an `&'static CStr`
 mkIdxIdMapC :: DatalogProgram -> Doc
-mkIdxIdMapC d =
-    "lazy_static! {"                                                            $$
-    "    pub static ref IDXIDMAPC: FnvHashMap<IdxId, ffi::CString> = {"         $$
-    "        let mut m = FnvHashMap::default();"                                $$
-    (nest' $ nest' $ vcat entries)                                              $$
-    "        m"                                                                 $$
-    "   };"                                                                     $$
-    "}"
+mkIdxIdMapC prog =
+    createLazyStatic lazy_static
     where
-    entries = map mkidx $ M.elems $ progIndexes d
-    mkidx :: Index -> Doc
-    mkidx idx = "m.insert(" <> pp (idxIdentifier d idx) <>
-        ", ffi::CString::new(\"" <> pp (name idx) <> "\").unwrap_or_else(|_|ffi::CString::new(r\"Cannot convert index name to C string\").unwrap()));"
+        mapKey idx = pp (idxIdentifier prog idx)
+        -- We make a the relation into a string, make it into a byte sequence with `b""`
+        -- and then append a null terminator with `\0`
+        mapValue idx =
+            "::std::ffi::CStr::from_bytes_with_nul(b\"" <> pp (name idx) <> "\\0\")"
+                <> nest' ".expect(\"Unreachable: A null byte was specifically inserted\")"
+        entries = [(mapKey idx, mapValue idx) | idx <- M.elems (progIndexes prog)]
+        lazy_static =
+            LazyStatic
+                { staticName = "IDXIDMAPC",
+                  staticDoc = Just "A map of `IdxId`s to their name as an `&'static CStr`",
+                  keyType = "IdxId",
+                  valueType = "&'static ::std::ffi::CStr",
+                  staticEntries = entries
+                }
+
+-- The data required to make a static HashMap
+data LazyStatic = LazyStatic {
+    -- The name of the static (Rust convention calls for SCREAMING_SNAKE_CASE)
+    staticName    :: String,
+    -- The documentation for the static, displayed as a doc comment
+    staticDoc     :: Maybe String,
+    -- The static's HashMap's key's type
+    keyType       :: String,
+    -- The static's HashMap's value's type
+    valueType     :: String,
+    -- (key, value) pairs of each entry to be placed in the HashMap 
+    staticEntries :: [(Doc, Doc)]
+}
+
+-- Creates a static variable holding a `FnvHashMap` pre-allocated and pre-filled with the supplied values
+--
+-- The generated code will take roughly this form:
+-- ```rust
+-- lazy_static! {
+--     /// {documentation}
+--     pub static ref {static name}: ::fnv::FnvHashMap<{key}, {value}> = {
+--         let mut map = ::fnv::FnvHashMap::with_capacity_and_hasher({length elements}, ::fnv::FnvBuildHasher::default());
+--         // For each element
+--         map.insert({key}, {value});
+-- 
+--         map
+--     };
+-- }
+-- ```
+createLazyStatic :: LazyStatic -> Doc
+createLazyStatic lazy_static =
+    "lazy_static! {"
+        $$      doc_comment
+        $$ "    pub static ref" <+> static_name <> ": ::fnv::FnvHashMap<" <> key_type <> "," <+> value_type <> "> = {"
+        -- Pre-allocate the HashMap, maps using a hasher other than `RandomState` can't use `with_capacity()`, so we
+        -- use `with_capacity_and_hasher()`, giving it our pre-allocation capacity and a default hasher provided by fnv
+        $$ "        let mut map = ::fnv::FnvHashMap::with_capacity_and_hasher(" <> (int map_len) <> ", ::fnv::FnvBuildHasher::default());"
+        $$          (nest' . nest' $ vcat entries)
+        $$ "        map"
+        $$ "    };"
+        $$ "}"
+    where
+        -- Get the total number of entries so we can pre-allocate the map
+        map_len = length (staticEntries lazy_static)
+        entries = map (hashMapIndex "map") (staticEntries lazy_static)
+        static_name = text $ staticName lazy_static
+        doc_comment = maybe empty (\doc -> nest' $ "///" <+> text doc) $ staticDoc lazy_static
+        key_type = text $ keyType lazy_static
+        value_type = text $ valueType lazy_static
+
+        -- Creates a `<map>.insert(<key>, <value>);` to insert a value
+        hashMapIndex :: String -> (Doc, Doc) -> Doc
+        hashMapIndex map_name (key, value) =
+            text map_name <> ".insert(" <> key <> "," <+> value <> ");"
 
 mkFunc :: (?statics::Statics) => DatalogProgram -> Function -> Doc
 mkFunc d f@Function{..} | isJust funcDef =
