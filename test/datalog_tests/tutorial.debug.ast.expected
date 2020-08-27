@@ -539,7 +539,7 @@ extern function std::map_get (m: std::Map<'K,'V>, k: 'K): std::Option<'V>
 extern function std::map_insert (m: mut std::Map<'K,'V>, k: 'K, v: 'V): ()
 extern function std::map_insert_imm (m: std::Map<'K,'V>, k: 'K, v: 'V): std::Map<'K,'V>
 extern function std::map_is_empty (m: std::Map<'K,'V>): bool
-extern function std::map_remove (m: mut std::Map<'K,'V>, k: 'K): ()
+extern function std::map_remove (m: mut std::Map<'K,'V>, k: 'K): std::Option<'V>
 extern function std::map_singleton (k: 'K, v: 'V): std::Map<'K,'V>
 extern function std::map_size (m: std::Map<'K,'V>): std::usize
 extern function std::map_union (m1: std::Map<'K,'V>, m2: std::Map<'K,'V>): std::Map<'K,'V>
@@ -638,9 +638,9 @@ function std::push_imm (v: std::Vec<'X>, x: 'X): std::Vec<'X>
 }
 extern function std::range (from: 'A, to: 'A, step: 'A): std::Vec<'A>
 extern function std::ref_new (x: 'A): std::Ref<'A>
-function std::remove (m: mut std::Map<'K,'V>, k: 'K): ()
+function std::remove (m: mut std::Map<'K,'V>, k: 'K): std::Option<'V>
 {
-    std::map_remove(m, k)
+    (std::map_remove(m, k): std::Option<'V>)
 }
 function std::replace (s: string, from: string, to: string): string
 {

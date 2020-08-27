@@ -22,3 +22,9 @@ std_test::Pow{.descr = "$pow32(2: u64, 32)", .val = "4294967296"}
 std_test::Pow{.descr = "pow32(2: u32, 32)", .val = "0"}
 std_test::Default{.descr = "DefaultEnum", .val = "DEnum1"}
 std_test::Default{.descr = "u32", .val = "0"}
+std_test::MapDelete{.descr = "alphabet", .m = [(0, "a"), (1, "b"), (2, "c"), (3, "d"), (4, "e")], .s = std::None{}}
+std_test::MapDelete{.descr = "alphabet\\4", .m = [(0, "a"), (1, "b"), (2, "c"), (3, "d")], .s = std::Some{.x = "e"}}
+std_test::MapDelete{.descr = "alphabet\\4\\3", .m = [(0, "a"), (1, "b"), (2, "c")], .s = std::Some{.x = "d"}}
+std_test::MapDelete{.descr = "alphabet\\4\\3\\2", .m = [(0, "a"), (1, "b")], .s = std::Some{.x = "c"}}
+std_test::MapDelete{.descr = "alphabet\\4\\3\\2\\1", .m = [(0, "a")], .s = std::Some{.x = "b"}}
+std_test::MapDelete{.descr = "alphabet\\4\\3\\2\\1\\0", .m = [], .s = std::Some{.x = "a"}}

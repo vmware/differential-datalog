@@ -25,3 +25,5 @@ commit dump_changes;
 dump std_test::Pow;
 
 dump std_test::Default;
+
+dump std_test::MapDelete;

@@ -44,3 +44,24 @@ function to_string(e: DefaultEnum): string {
 
 Default("u32", "${default(): u32}").
 Default("DefaultEnum", "${default(): DefaultEnum}").
+
+output relation MapDelete(descr: string, m: Map<usize, string>, s: Option<string>)
+
+MapDelete("alphabet", alphabet_map(), None).
+MapDelete("${d}\\${m.size() - 1}", m2, s) :-
+    MapDelete(d, m, _),
+    m.size() > 0,
+    (var m2, var s) = {
+        var m2 = m;
+        var s = m2.remove(m.size() - 1);
+        (m2, s)
+    }.
+
+function alphabet_map(): Map<usize, string> {
+    [ 0 -> "a"
+    , 1 -> "b"
+    , 2 -> "c"
+    , 3 -> "d"
+    , 4 -> "e"
+    ]
+}

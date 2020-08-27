@@ -950,8 +950,8 @@ pub fn std_map_insert<K: Ord + Clone, V: Clone>(m: &mut std_Map<K, V>, k: &K, v:
     m.x.insert((*k).clone(), (*v).clone());
 }
 
-pub fn std_map_remove<K: Ord + Clone, V: Clone>(m: &mut std_Map<K, V>, k: &K) {
-    m.x.remove(k);
+pub fn std_map_remove<K: Ord + Clone, V: Clone>(m: &mut std_Map<K, V>, k: &K) -> std_Option<V> {
+    option2std(m.x.remove(k))
 }
 
 pub fn std_map_insert_imm<K: Ord + Clone, V: Clone>(
