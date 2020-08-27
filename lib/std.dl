@@ -523,7 +523,7 @@ function insert(m: mut Map<'K,'V>, k: 'K, v: 'V): () {
     map_insert(m, k, v)
 }
 
-function remove(m: mut Map<'K,'V>, k: 'K): () {
+function remove(m: mut Map<'K,'V>, k: 'K): Option<'V> {
     map_remove(m, k)
 }
 
@@ -647,7 +647,7 @@ extern function vec_sort_imm(v: Vec<'X>): Vec<'X>
 
 extern function map_size(m: Map<'K, 'V>): usize
 extern function map_insert(m: mut Map<'K,'V>, k: 'K, v: 'V): ()
-extern function map_remove(m: mut Map<'K,'V>, k: 'K): ()
+extern function map_remove(m: mut Map<'K,'V>, k: 'K): Option<'V>
 extern function map_insert_imm(m: Map<'K,'V>, k: 'K, v: 'V): Map<'K,'V>
 extern function map_get(m: Map<'K,'V>, k:'K): Option<'V>
 extern function map_contains_key(m: Map<'K,'V>, k: 'K): bool
