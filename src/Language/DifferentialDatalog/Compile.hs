@@ -624,19 +624,13 @@ collectStatics d = execState (progExprMapCtxM d (checkStaticExpr)) M.empty
 -- computed by 'collectStatics'.
 mkStatics :: DatalogProgram -> Statics -> Doc
 mkStatics d statics =
-    "lazy_static! {"
-    $$ (nest' $ vcat $ static_decls)
-    $$ "}"
-    where
-        static_decls =
-            map
-                ( \((e, t), i) ->
-                      let static_name = "__STATIC_" <> pp i
-                       in let ?statics = deleteStatic e t statics
-                           in let e' = mkExpr d CtxTop (eTyped e t) EVal
-                               in "pub static ref" <+> static_name <> ":" <+> mkType t <+> "=" <+> e' <+> ";"
-                )
-                $ M.toList statics
+    vcat $
+    map (\((e, t), i) ->
+            let static_name = "__STATIC_" <> pp i in
+            let ?statics = deleteStatic e t statics in
+            let e' = mkExpr d CtxTop (eTyped e t) EVal in
+            "lazy_static!{ pub static ref" <+> static_name <> ":" <+> mkType t <+> "=" <+> e' <+> "; }")
+        $ M.toList statics
 
 -- Add dummy relation to the spec if it does not contain any.
 -- Otherwise, we have to tediously handle this corner case in various
