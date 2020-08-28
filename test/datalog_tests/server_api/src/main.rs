@@ -3,7 +3,7 @@ use std::sync::Mutex;
 use std::thread::park;
 
 use env_logger::init;
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use log::debug;
 use log::info;
 use log::log_enabled;
@@ -164,9 +164,7 @@ impl State {
 }
 
 fn zookeeper(member: Addr, nodes: Vec<String>) -> Result<(), String> {
-    lazy_static! {
-        static ref STATE: Mutex<State> = Mutex::new(State::new());
-    }
+    static STATE: Lazy<Mutex<State>> = Lazy::new(|| Mutex::new(State::new()));
 
     let watch = move |event: WatchedEvent| {
         debug!("Watch event: {:?}", event);

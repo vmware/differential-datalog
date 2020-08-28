@@ -1,6 +1,6 @@
 use differential_datalog::record;
 use differential_datalog::record::*;
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use serde;
 use std::collections;
 use std::marker;
@@ -55,11 +55,11 @@ impl<T: Clone + Eq + Hash> Interner<T> {
 
 type StringInterner = Interner<String>;
 
-lazy_static! {
-    static ref global_string_interner: sync::Arc<sync::Mutex<StringInterner>> =
-        sync::Arc::new(sync::Mutex::new(StringInterner::new()));
-}
+// TODO: Arc is unneeded
+static global_string_interner: Lazy<sync::Arc<sync::Mutex<StringInterner>>> =
+    Lazy::new(|| sync::Arc::new(sync::Mutex::new(StringInterner::new())));
 
+// TODO: Arc can be replaced by an `&'static Mutex<_>`
 thread_local!(static STRING_INTERNER: sync::Arc<sync::Mutex<StringInterner>> = global_string_interner.clone());
 
 impl Default for intern_IString {

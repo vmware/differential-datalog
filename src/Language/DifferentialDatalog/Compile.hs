@@ -624,12 +624,16 @@ collectStatics d = execState (progExprMapCtxM d (checkStaticExpr)) M.empty
 -- computed by 'collectStatics'.
 mkStatics :: DatalogProgram -> Statics -> Doc
 mkStatics d statics =
-    vcat $
-    map (\((e, t), i) ->
-            let static_name = "__STATIC_" <> pp i in
-            let ?statics = deleteStatic e t statics in
-            let e' = mkExpr d CtxTop (eTyped e t) EVal in
-            "lazy_static!{ pub static ref" <+> static_name <> ":" <+> mkType t <+> "=" <+> e' <+> "; }")
+    vcat
+        $ map
+            ( \((e, t), i) ->
+                  let static_name = "__STATIC_" <> pp i
+                   in let ?statics = deleteStatic e t statics
+                       in let e' = mkExpr d CtxTop (eTyped e t) EVal
+                           in "pub static" <+> static_name <> ": ::once_cell::sync::Lazy<" <+> mkType t <> ">" <+> "="
+                                  <+> "::once_cell::sync::Lazy::new(||"
+                                  <+> e' <> ");"
+            )
         $ M.toList statics
 
 -- Add dummy relation to the spec if it does not contain any.
@@ -1250,29 +1254,27 @@ data LazyStatic = LazyStatic {
 --
 -- The generated code will take roughly this form:
 -- ```rust
--- lazy_static! {
---     /// {documentation}
---     pub static ref {static name}: ::fnv::FnvHashMap<{key}, {value}> = {
+-- /// {documentation}
+-- pub static {static name}: ::once_cell::sync::Lazy<::fnv::FnvHashMap<{key}, {value}>> =
+--     ::once_cell::sync::Lazy::new(|| {
 --         let mut map = ::fnv::FnvHashMap::with_capacity_and_hasher({length elements}, ::fnv::FnvBuildHasher::default());
 --         // For each element
 --         map.insert({key}, {value});
--- 
+--
 --         map
---     };
--- }
+--     });
 -- ```
 createLazyStatic :: LazyStatic -> Doc
 createLazyStatic lazy_static =
-    "lazy_static! {"
-        $$      doc_comment
-        $$ "    pub static ref" <+> static_name <> ": ::fnv::FnvHashMap<" <> key_type <> "," <+> value_type <> "> = {"
+    doc_comment
+        $$ "pub static" <+> static_name <> ": ::once_cell::sync::Lazy<::fnv::FnvHashMap<" <> key_type <> "," <+> value_type <> ">> ="
+        $$ "    ::once_cell::sync::Lazy::new(|| {"
         -- Pre-allocate the HashMap, maps using a hasher other than `RandomState` can't use `with_capacity()`, so we
         -- use `with_capacity_and_hasher()`, giving it our pre-allocation capacity and a default hasher provided by fnv
         $$ "        let mut map = ::fnv::FnvHashMap::with_capacity_and_hasher(" <> (int map_len) <> ", ::fnv::FnvBuildHasher::default());"
         $$          (nest' . nest' $ vcat entries)
         $$ "        map"
-        $$ "    };"
-        $$ "}"
+        $$ "    });"
     where
         -- Get the total number of entries so we can pre-allocate the map
         map_len = length (staticEntries lazy_static)

@@ -1,6 +1,6 @@
 #![allow(clippy::ptr_arg, clippy::trivially_copy_pass_by_ref)]
 
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use std::collections;
 use std::ffi;
 use std::os::raw;
@@ -24,14 +24,11 @@ impl LogConfig {
     }
 }
 
-lazy_static! {
-    /* Logger configuration for each module consists of the maximal enabled
-     * log level (messages above this level are ignored) and callback.
-     */
-    static ref LOG_CONFIG: sync::RwLock<LogConfig> = {
-        sync::RwLock::new(LogConfig::new())
-    };
-}
+/* Logger configuration for each module consists of the maximal enabled
+ * log level (messages above this level are ignored) and callback.
+ */
+static LOG_CONFIG: Lazy<sync::RwLock<LogConfig>> =
+    Lazy::new(|| sync::RwLock::new(LogConfig::new()));
 
 /*
  * Logging API exposed to the DDlog program.
