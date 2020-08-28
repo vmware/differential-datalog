@@ -297,13 +297,13 @@ typeDef = (TypeDef nopos []) <$ reserved "typedef" <*> typeIdent <*>
 func = (Function nopos [] <$  (try $ reserved "extern" *> reserved "function")
                          <*> funcIdent
                          <*> (parens $ commaSep farg)
-                         <*> (colon *> typeSpecSimple)
+                         <*> (option (TTuple nopos []) (colon *> typeSpecSimple))
                          <*> (return Nothing))
        <|>
        (Function nopos [] <$  reserved "function"
                          <*> funcIdent
                          <*> (parens $ commaSep farg)
-                         <*> (colon *> typeSpecSimple)
+                         <*> (option (TTuple nopos []) (colon *> typeSpecSimple))
                          <*> (Just <$> ((reservedOp "=" *> expr) <|> (braces expr))))
 
 farg = withPos $ (FuncArg nopos) <$> varIdent <*> (colon *> option False (True <$ reserved "mut")) <*> typeSpecSimple
