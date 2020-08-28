@@ -204,3 +204,34 @@ JsonTestValue("wrapped " ++ wenum2(),
          (from_json_string(wenum2()): Result<WrappedEnum, string>).to_json_value().unwrap_or_default().to_json_string_or_default()).
 JsonTestValue("wrapped " ++ wenum3(),
          (from_json_string(wenum3()): Result<WrappedEnum, string>).to_json_value().unwrap_or_default().to_json_string_or_default()).
+
+/* JsonPtr test. */
+
+JsonTest("set_by_ptr test", mutilate_jval().to_json_string_or_default()).
+
+function mutilate_jval(): JsonValue {
+    var jval: JsonValue = from_json_string(nestedStruct1()).unwrap_or_default();
+    // replace existing field.
+    jval.set_by_ptr([JKeyPtr{i"nested"}, JKeyPtr{i"x"}], from_json_string(boolStruct2()).unwrap_or_default());
+    // create new field.
+    jval.set_by_ptr([JKeyPtr{i"nested"}, JKeyPtr{i"y"}], from_json_string(boolStruct2()).unwrap_or_default());
+    // replace z with array.
+    jval.set_by_ptr([JKeyPtr{i"nested"}, JKeyPtr{i"z"}], JsonArray{[from_json_string(wenum1()).unwrap_or_default(), from_json_string(wenum2()).unwrap_or_default()]});
+    // replace array element.
+    jval.set_by_ptr([JKeyPtr{i"nested"}, JKeyPtr{i"z"}, JIdxPtr{1}], from_json_string(wenum3()).unwrap_or_default());
+    // replace value inside array.
+    jval.set_by_ptr([JKeyPtr{i"nested"}, JKeyPtr{i"z"}, JIdxPtr{1}, JKeyPtr{i"b"}], from_json_string(struct_with_map1()).unwrap_or_default());
+    // extend array.
+    jval.set_by_ptr([JKeyPtr{i"nested"}, JKeyPtr{i"z"}, JIdxPtr{10}, JKeyPtr{i"b"}], from_json_string(struct_with_map1()).unwrap_or_default());
+    // convert null into map
+    jval.set_by_ptr([JKeyPtr{i"nested"}, JKeyPtr{i"z"}, JIdxPtr{9}, JKeyPtr{i"q"}], from_json_string(struct_with_map1()).unwrap_or_default());
+
+    // this should be a no-op.
+    jval.set_by_ptr([JKeyPtr{i"t"}, JKeyPtr{i"z"}], from_json_string(struct_with_map1()).unwrap_or_default());
+
+    jval
+}
+
+JsonTest("get_by_ptr(nested/z/10/b)", mutilate_jval().get_by_ptr([JKeyPtr{i"nested"}, JKeyPtr{i"z"}, JIdxPtr{10}, JKeyPtr{i"b"}]).to_json_string().unwrap_or_default()).
+JsonTest("get_by_ptr(nested/z/10/c)", mutilate_jval().get_by_ptr([JKeyPtr{i"nested"}, JKeyPtr{i"z"}, JIdxPtr{10}, JKeyPtr{i"c"}]).to_json_string().unwrap_or_default()).
+JsonTest("get_by_ptr([])", mutilate_jval().get_by_ptr(vec_empty()).to_json_string().unwrap_or_default()).

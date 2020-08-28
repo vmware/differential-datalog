@@ -55,6 +55,9 @@ extern type internment::Intern<'A>
 typedef internment::istring = internment::Intern<string>
 typedef json::JsonNum = json::JsonInt{i: std::s128} |
                         json::JsonFloat{d: double}
+typedef json::JsonPtr = std::Vec<json::JsonPtrItem>
+typedef json::JsonPtrItem = json::JKeyPtr{key: internment::istring} |
+                            json::JIdxPtr{idx: std::usize}
 #[rust = "serde(from = \"__json::ValueWrapper\", into = \"__json::ValueWrapper\")"]
 typedef json::JsonValue = json::JsonNull{} |
                           json::JsonBool{b: bool} |
@@ -300,6 +303,27 @@ function internment::trim (s: internment::istring): string
 }
 extern function json::from_json_string (json: string): std::Result<'T,string>
 extern function json::from_json_value (json_val: json::JsonValue): std::Result<'T,string>
+function json::get_by_ptr (jval: json::JsonValue, ptr: json::JsonPtr): std::Option<json::JsonValue>
+{
+    json::get_by_ptr_(jval, ptr, 64'd0)
+}
+function json::get_by_ptr_ (jval: json::JsonValue, ptr: json::JsonPtr, idx: std::usize): std::Option<json::JsonValue>
+{
+    match ((std::nth(ptr, idx): std::Option<json::JsonPtrItem>)) {
+        (std::None{}: std::Option<json::JsonPtrItem>) -> (std::Some{.x=jval}: std::Option<json::JsonValue>),
+        (std::Some{.x=(json::JKeyPtr{.key=(var key: internment::Intern<string>)}: json::JsonPtrItem)}: std::Option<json::JsonPtrItem>) -> json::get_by_ptr_(match (json::jval_get(jval, key)) {
+                                                                                                                                                                (std::None{}: std::Option<json::JsonValue>) -> ((return (std::None{}: std::Option<json::JsonValue>)): json::JsonValue),
+                                                                                                                                                                (std::Some{.x=(var __x: json::JsonValue)}: std::Option<json::JsonValue>) -> __x
+                                                                                                                                                            }, ptr, (idx + 64'd1)),
+        (std::Some{.x=(json::JIdxPtr{.idx=(var n: bit<64>)}: json::JsonPtrItem)}: std::Option<json::JsonPtrItem>) -> match (jval) {
+                                                                                                                         (json::JsonArray{.a=(var vals: std::Vec<json::JsonValue>)}: json::JsonValue) -> json::get_by_ptr_(match ((std::nth(vals, n): std::Option<json::JsonValue>)) {
+                                                                                                                                                                                                                               (std::None{}: std::Option<json::JsonValue>) -> ((return (std::None{}: std::Option<json::JsonValue>)): json::JsonValue),
+                                                                                                                                                                                                                               (std::Some{.x=(var __x: json::JsonValue)}: std::Option<json::JsonValue>) -> __x
+                                                                                                                                                                                                                           }, ptr, (idx + 64'd1)),
+                                                                                                                         (_: json::JsonValue) -> (std::None{}: std::Option<json::JsonValue>)
+                                                                                                                     }
+    }
+}
 function json::jval_as_array (v: json::JsonValue): std::Option<std::Vec<json::JsonValue>>
 {
     match (v) {
@@ -382,6 +406,43 @@ function json::jval_get_or (v: json::JsonValue, attr: internment::istring, def: 
     match (v) {
         (json::JsonObject{.o=(var o: std::Map<internment::istring,json::JsonValue>)}: json::JsonValue) -> (std::unwrap_or((std::map_get(o, attr): std::Option<json::JsonValue>), def): json::JsonValue),
         (_: json::JsonValue) -> def
+    }
+}
+function json::set_by_ptr (jval: mut json::JsonValue, ptr: json::JsonPtr, v: json::JsonValue): std::Result<(),string>
+{
+    json::set_by_ptr_(jval, ptr, v, 64'd0)
+}
+function json::set_by_ptr_ (jval: mut json::JsonValue, ptr: json::JsonPtr, v: json::JsonValue, idx: std::usize): std::Result<(),string>
+{
+    match ((std::nth(ptr, idx): std::Option<json::JsonPtrItem>)) {
+        (std::None{}: std::Option<json::JsonPtrItem>) -> (jval = v;
+                                                          (std::Ok{.res=()}: std::Result<(),string>)),
+        (std::Some{.x=(json::JKeyPtr{.key=(var key: internment::Intern<string>)}: json::JsonPtrItem)}: std::Option<json::JsonPtrItem>) -> (if (jval == (json::JsonNull{}: json::JsonValue)) {
+                                                                                                                                               jval = (json::JsonObject{.o=(std::map_empty(): std::Map<internment::istring,json::JsonValue>)}: json::JsonValue)
+                                                                                                                                           } else {
+                                                                                                                                                 ()
+                                                                                                                                             };
+                                                                                                                                           match (jval) {
+                                                                                                                                               (json::JsonObject{.o=(var m: std::Map<internment::istring,json::JsonValue>)}: json::JsonValue) -> ((var old: json::JsonValue) = (std::unwrap_or((std::remove(m, key): std::Option<json::JsonValue>), (json::JsonNull{}: json::JsonValue)): json::JsonValue);
+                                                                                                                                                                                                                                                  (json::set_by_ptr_(old, ptr, v, (idx + 64'd1));
+                                                                                                                                                                                                                                                   (std::insert(m, key, old);
+                                                                                                                                                                                                                                                    (std::Ok{.res=()}: std::Result<(),string>)))),
+                                                                                                                                               (_: json::JsonValue) -> (std::Err{.err="Not a JSON map"}: std::Result<(),string>)
+                                                                                                                                           }),
+        (std::Some{.x=(json::JIdxPtr{.idx=(var n: bit<64>)}: json::JsonPtrItem)}: std::Option<json::JsonPtrItem>) -> (if (jval == (json::JsonNull{}: json::JsonValue)) {
+                                                                                                                          jval = (json::JsonArray{.a=(std::vec_empty(): std::Vec<json::JsonValue>)}: json::JsonValue)
+                                                                                                                      } else {
+                                                                                                                            ()
+                                                                                                                        };
+                                                                                                                      match (jval) {
+                                                                                                                          (json::JsonArray{.a=(var xs: std::Vec<json::JsonValue>)}: json::JsonValue) -> (std::resize(xs, (std::max((n + 64'd1), std::len(xs)): bit<64>), (json::JsonNull{}: json::JsonValue));
+                                                                                                                                                                                                         ((var old: json::JsonValue) = (json::JsonNull{}: json::JsonValue);
+                                                                                                                                                                                                          (std::swap_nth(xs, n, old);
+                                                                                                                                                                                                           (json::set_by_ptr_(old, ptr, v, (idx + 64'd1));
+                                                                                                                                                                                                            (std::swap_nth(xs, n, old);
+                                                                                                                                                                                                             (std::Ok{.res=()}: std::Result<(),string>)))))),
+                                                                                                                          (_: json::JsonValue) -> (std::Err{.err="Not a JSON array"}: std::Result<(),string>)
+                                                                                                                      })
     }
 }
 extern function json::to_json_string (x: 'T): std::Result<string,string>
@@ -668,6 +729,10 @@ function std::replace (s: string, from: string, to: string): string
 {
     std::string_replace(s, from, to)
 }
+function std::resize (v: mut std::Vec<'X>, new_len: std::usize, value: 'X): ()
+{
+    std::vec_resize(v, new_len, value)
+}
 extern function std::result_unwrap_or_default (res: std::Result<'V,'E>): 'V
 function std::reverse (s: string): string
 {
@@ -736,6 +801,10 @@ extern function std::string_trim (s: string): string
 function std::substr (s: string, start: std::usize, end: std::usize): string
 {
     std::string_substr(s, start, end)
+}
+function std::swap_nth (v: mut std::Vec<'X>, idx: std::usize, value: mut 'X): ()
+{
+    std::vec_swap_nth(v, idx, value)
 }
 function std::to_bytes (s: string): std::Vec<std::u8>
 {
@@ -894,6 +963,10 @@ function std::unwrap_or_default (res: std::Result<'V,'E>): 'V
 {
     (std::result_unwrap_or_default(res): 'V)
 }
+function std::update_nth (v: mut std::Vec<'X>, idx: std::usize, value: 'X): ()
+{
+    std::vec_update_nth(v, idx, value)
+}
 extern function std::vec_append (v: mut std::Vec<'X>, other: std::Vec<'X>): ()
 extern function std::vec_contains (v: std::Vec<'X>, x: 'X): bool
 extern function std::vec_empty (): std::Vec<'A>
@@ -902,10 +975,14 @@ extern function std::vec_len (v: std::Vec<'X>): std::usize
 extern function std::vec_nth (v: std::Vec<'X>, n: std::usize): std::Option<'X>
 extern function std::vec_push (v: mut std::Vec<'X>, x: 'X): ()
 extern function std::vec_push_imm (v: std::Vec<'X>, x: 'X): std::Vec<'X>
+extern function std::vec_resize (v: mut std::Vec<'X>, new_len: std::usize, value: 'X): ()
+extern function std::vec_set_nth (v: std::Vec<'X>, n: std::usize, value: 'X): ()
 extern function std::vec_singleton (x: 'X): std::Vec<'X>
 extern function std::vec_sort (v: mut std::Vec<'X>): ()
 extern function std::vec_sort_imm (v: std::Vec<'X>): std::Vec<'X>
+extern function std::vec_swap_nth (v: mut std::Vec<'X>, idx: std::usize, value: mut 'X): ()
 extern function std::vec_to_set (s: std::Vec<'A>): std::Set<'A>
+extern function std::vec_update_nth (v: mut std::Vec<'X>, idx: std::usize, value: 'X): ()
 extern function std::vec_with_capacity (len: std::usize): std::Vec<'A>
 extern function std::vec_with_length (len: std::usize, x: 'A): std::Vec<'A>
 function ti_f (value: std::Option<string>): std::Option<(string, string)>

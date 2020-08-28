@@ -190,3 +190,81 @@ typedef JsonNum = // Integer number.  The value must be in the range between the
  */
 #[custom_serde]
 typedef JsonWrapper<'T> = JsonWrapper{x: 'T}
+
+/* JsonPtr - points to a location withing a JSON document. */
+typedef JsonPtr = Vec<JsonPtrItem>
+
+typedef JsonPtrItem = JKeyPtr{ key: istring }
+                    | JIdxPtr{ idx: usize }
+
+/* Returns value at the given location or `None` if `ptr` does
+ * not point to an existing location in the document. */
+function get_by_ptr(jval: JsonValue, ptr: JsonPtr): Option<JsonValue> {
+    get_by_ptr_(jval, ptr, 0)
+}
+
+function get_by_ptr_(jval: JsonValue, ptr: JsonPtr, idx: usize): Option<JsonValue> {
+    match (ptr.nth(idx)) {
+        None -> Some{jval},
+        Some{JKeyPtr{key}} -> {
+            get_by_ptr_(jval.jval_get(key)?, ptr, idx+1)
+        },
+        Some{JIdxPtr{n}} -> {
+            match (jval) {
+                JsonArray{vals} -> get_by_ptr_(vals.nth(n)?, ptr, idx+1),
+                _ -> None
+            }
+        }
+    }
+}
+
+/* Update value at the given location.  If the location specified by `ptr` does
+ * not exist in the document, attempts to create it by inserting missing map keys
+ * and expanding array sizes by padding them with nulls.
+ *
+ * Fails in one of two cases: (1) when attempting to modify the field of a value that is
+ * not a map or a null, and (2) when attempting to modify an index of an object
+ * that is not an array or null. */
+function set_by_ptr(jval: mut JsonValue, ptr: JsonPtr, v: JsonValue): Result<(), string> {
+    set_by_ptr_(jval, ptr, v, 0)
+}
+
+// TODO: more detailed error messages.
+function set_by_ptr_(jval: mut JsonValue, ptr: JsonPtr, v: JsonValue, idx: usize): Result<(), string> {
+    match (ptr.nth(idx)) {
+        None -> {
+            jval = v;
+            Ok{()}
+        },
+        Some{JKeyPtr{key}} -> {
+            if (jval == JsonNull) {
+                jval = JsonObject{map_empty()}
+            };
+            match (jval) {
+                JsonObject{m} -> {
+                    var old = m.remove(key).unwrap_or(JsonNull);
+                    set_by_ptr_(old, ptr, v, idx+1);
+                    m.insert(key, old);
+                    Ok{()}
+                },
+                _ -> Err{"Not a JSON map"}
+            }
+        },
+        Some{JIdxPtr{n}} -> {
+            if (jval == JsonNull) {
+                jval = JsonArray{vec_empty()}
+            };
+            match (jval) {
+                JsonArray{xs} -> {
+                    xs.resize(max(n+1, xs.len()), JsonNull);
+                    var old = JsonNull;
+                    xs.swap_nth(n, old);
+                    set_by_ptr_(old, ptr, v, idx+1);
+                    xs.swap_nth(n, old);
+                    Ok{()}
+                },
+                _ -> Err{"Not a JSON array"}
+            }
+        }
+    }
+}
