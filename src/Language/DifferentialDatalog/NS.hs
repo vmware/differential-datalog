@@ -142,12 +142,24 @@ getRelation d n = fromJust $ lookupRelation d n
 arg2v :: Function -> FuncArg -> Var
 arg2v f a = ArgVar f (name a)
 
+-- All variables visible in 'ctx'.  This function is safe to call before
+-- type checking.
 ctxAllVars :: DatalogProgram -> ECtx -> [Var]
-ctxAllVars d ctx = let (lvs, rvs) = ctxVars d ctx in lvs ++ rvs
+ctxAllVars d ctx = let (lvs, rvs) = ctxVars' d ctx False in lvs ++ rvs
+
+-- All variables visible in the 'ctx', classified into (writable, read-only
+-- varables).
+-- This function is _unsafe_ to use before type inference.
+ctxVars :: DatalogProgram -> ECtx -> ([Var], [Var])
+ctxVars d ctx = ctxVars' d ctx True
 
 -- All variables available in the scope: (l-vars, read-only vars).
-ctxVars :: DatalogProgram -> ECtx -> ([Var], [Var])
-ctxVars d ctx =
+--
+-- The 'with_types' flag is true if 'd' contains enough type information
+-- to determine variable types (i.e., it has been through type inference).
+-- When false, `ctxVars` may misclassify
+ctxVars' :: DatalogProgram -> ECtx -> Bool -> ([Var], [Var])
+ctxVars' d ctx with_types =
     case ctx of
          CtxTop                   -> ([], [])
          CtxFunc f                -> (map (arg2v f) $ funcMutArgs f, map (arg2v f) $ funcImmutArgs f)
@@ -161,7 +173,7 @@ ctxVars d ctx =
          CtxRuleRGroupBy rl i     -> ([], ruleRHSVars d rl i)
          CtxKey rel@Relation{..}  -> ([], [KeyVar rel])
          CtxIndex idx@Index{..}   -> ([], map (\v -> (IdxVar idx $ name v)) idxVars)
-         CtxApply _ _ _           -> ([], plvars ++ prvars)
+         CtxApply _ _ _           -> (plvars, prvars)
          CtxField _ _             -> (plvars, prvars)
          CtxTupField _ _          -> (plvars, prvars)
          CtxStruct _ _ _          -> (plvars, prvars)
@@ -170,24 +182,33 @@ ctxVars d ctx =
          CtxMatchExpr _ _         -> ([], plvars ++ prvars)
          CtxMatchPat _ _ _        -> ([], plvars ++ prvars)
          CtxMatchVal e pctx i     -> let patternVars = exprVarDecls d (CtxMatchPat e pctx i)
-                                                       $ fst $ (exprCases e) !! i in
-                                     {-if exprIsVarOrFieldLVal d pctx $ exprMatchExpr e
-                                        then (plvars ++ patternVars, prvars)
-                                        else -}
-                                     (plvars, patternVars ++ prvars)
+                                                       $ fst $ (exprCases e) !! i
+                                         patternVarNames = map name patternVars
+                                         plvars' = filter (\v -> notElem (name v) patternVarNames) plvars
+                                         prvars' = filter (\v -> notElem (name v) patternVarNames) prvars in
+                                     -- 'exprIsVarOrFieldLVal' needs to determine the type of 'e' and
+                                     -- may crash if called before type inference.
+                                     if with_types && (exprIsVarOrFieldLVal d pctx $ exprMatchExpr e)
+                                        then (patternVars ++ plvars', prvars')
+                                        else (plvars', patternVars ++ prvars')
          CtxSeq1 _ _              -> (plvars, prvars)
          CtxSeq2 e pctx           -> let seq1vars = exprVarDecls d (CtxSeq1 e pctx) $ exprLeft e
-                                     in (plvars ++ seq1vars, prvars)
+                                         varNames = map name seq1vars
+                                         plvars' = filter (\v -> notElem (name v) varNames) plvars
+                                         prvars' = filter (\v -> notElem (name v) varNames) prvars
+                                     in (plvars' ++ seq1vars, prvars')
          CtxITEIf _ _             -> ([], plvars ++ prvars)
          CtxITEThen _ _           -> (plvars, prvars)
          CtxITEElse _ _           -> (plvars, prvars)
          CtxForIter _ _           -> (plvars, prvars)
          CtxForBody e@EFor{..} pctx -> let loopvar = ForVar pctx e
+                                           prvars' = (filter ((/= name loopvar) . name) prvars)
+                                           iterVarNames = map name $ exprVars d (CtxForIter e pctx) exprIter
                                            -- variables that occur in the iterator expression cannot
                                            -- be modified inside the loop
-                                           plvars_not_iter = filter (\v -> notElem v $ exprVars d (CtxForIter e pctx) exprIter) plvars
-                                           plvars_iter = filter (\v -> elem v $ exprVars d (CtxForIter e pctx) exprIter) plvars
-                                       in (plvars_not_iter, prvars ++ plvars_iter ++ [loopvar])
+                                           plvars_not_iter = filter (\v -> name v /= (name loopvar) && notElem (name v) iterVarNames) plvars
+                                           plvars_iter = filter (\v -> name v /= (name loopvar) && elem (name v) iterVarNames) plvars
+                                       in (plvars_not_iter, prvars' ++ plvars_iter ++ [loopvar])
          CtxForBody _ _           -> error $ "NS.ctxMVars: invalid context " ++ show ctx
          CtxSetL _ _              -> (plvars, prvars)
          CtxSetR _ _              -> (plvars, prvars)
@@ -200,4 +221,4 @@ ctxVars d ctx =
          CtxAs _ _                -> (plvars, prvars)
          CtxRef _ _               -> (plvars, prvars)
          CtxTry _ _               -> (plvars, prvars)
-    where (plvars, prvars) = ctxVars d $ ctxParent ctx
+    where (plvars, prvars) = ctxVars' d (ctxParent ctx) with_types
