@@ -58,7 +58,7 @@ import qualified Data.Set as S
 import qualified Data.Map as M
 import qualified Data.Graph.Inductive as G
 import Data.WideWord
---import Debug.Trace
+-- import Debug.Trace
 
 import Language.DifferentialDatalog.Config
 import Language.DifferentialDatalog.PP
@@ -1825,7 +1825,7 @@ openAtom d var rl idx Atom{..} on_error = do
     let varnames = map (pp . name) $ exprVarDecls d (CtxRuleRAtom rl idx) atomVal
         var_clones = tuple $ map cloneRef varnames
         vars = tuple $ map ("ref" <+>) varnames
-        mtch = mkMatch (mkPatExpr d (CtxRuleRAtom rl idx) atomVal EReference) var_clones on_error
+        mtch = mkMatch (mkPatExpr d (CtxRuleRAtom rl idx) atomVal EReference False) var_clones on_error
     return $
         "let" <+> vars <+> "= match unsafe { " <+> constructor <> "::from_ddvalue_ref(" <> var <> ") }.0 {" $$
         (nest' mtch)                                                                                        $$
@@ -1922,7 +1922,7 @@ mkAssignFilter d ctx e@(ESet _ l r) =
     "};"
     where
     r' = mkExpr d (CtxSetR e ctx) r EVal
-    mtch = mkMatch (mkPatExpr d (CtxSetL e ctx) l EVal) vars "return None"
+    mtch = mkMatch (mkPatExpr d (CtxSetL e ctx) l EVal False) vars "return None"
     expr_vardecls = exprVarDecls d (CtxSetL e ctx) l
     varnames = map (pp . name) expr_vardecls
     vars = tuple varnames
@@ -2330,7 +2330,7 @@ mkArrangementKey d rel pattern = do
     -- Manufacture fake context to make sure 'pattern' has a known type
     -- in 'mkPatExpr'.
     let pattern_ctx = CtxTyped (ETyped nopos pattern $ relType rel) CtxTop
-    let mtch = mkMatch (mkPatExpr d pattern_ctx pattern EReference) res "None"
+    let mtch = mkMatch (mkPatExpr d pattern_ctx pattern EReference False) res "None"
     return $ "match" <+> "unsafe {" <+> constructor <> "::from_ddvalue(" <> vALUE_VAR <> ") }.0 {"  $$
              nest' mtch                                                                     $$
              "}"
@@ -2370,12 +2370,14 @@ mkMatch (Match pat cond subpatterns) if_matches if_misses =
 -- Compile Datalog pattern expression to Rust.
 --
 -- 'kind' - variables bound by this pattern must be of this kind.
+-- 'mut' - true iff match expression is mutable, and hence pattern variables
+--         should be mutable too.
 --
 -- Assumes:
 -- * the expression being matched is of kind EVal
 -- * if 'kind == EVal', the pattern does not contain any 'ERef's
-mkPatExpr :: (?statics::Statics) => DatalogProgram -> ECtx -> Expr -> EKind -> Match
-mkPatExpr d ctx (E e) kind = evalState (mkPatExpr' d EVal ctx e kind) 0
+mkPatExpr :: (?statics::Statics) => DatalogProgram -> ECtx -> Expr -> EKind -> Bool -> Match
+mkPatExpr d ctx (E e) kind mut = evalState (mkPatExpr' d EVal ctx e kind mut) 0
 
 allocPatVar :: State Int Doc
 allocPatVar = do
@@ -2386,22 +2388,23 @@ allocPatVar = do
 -- Computes prefix to be attached to variables in pattern, given
 -- the kind of relation being matched and the kind we want for the
 -- new variable.
-varprefix :: EKind -> EKind -> Doc
-varprefix EReference EReference = empty
-varprefix _          EReference = "ref"
-varprefix EVal       EVal       = empty
-varprefix inkind     varkind    = error $ "varprefix " ++ show inkind ++ " " ++ show varkind
+varprefix :: EKind -> EKind -> Bool -> Doc
+varprefix EReference EReference _     = empty
+varprefix _          EReference True  = "ref mut"
+varprefix _          EReference False = "ref"
+varprefix EVal       EVal       _     = empty
+varprefix inkind     varkind    _     = error $ "varprefix " ++ show inkind ++ " " ++ show varkind
 
-mkPatExpr' :: (?statics::Statics) => DatalogProgram -> EKind -> ECtx -> ENode -> EKind -> State Int Match
-mkPatExpr' _ inkind _   EVar{..}        varkind   = return $ Match (varprefix inkind varkind <+> pp exprVar) empty []
-mkPatExpr' _ inkind _   EVarDecl{..}    varkind   = return $ Match (varprefix inkind varkind <+> pp exprVName) empty []
-mkPatExpr' _ _      _   (EBool _ True)  _         = return $ Match "true" empty []
-mkPatExpr' _ _      _   (EBool _ False) _         = return $ Match "false" empty []
-mkPatExpr' _ inkind _   EString{..}     varkind   = do
+mkPatExpr' :: (?statics::Statics) => DatalogProgram -> EKind -> ECtx -> ENode -> EKind -> Bool -> State Int Match
+mkPatExpr' _ inkind _   EVar{..}        varkind mut  = return $ Match (varprefix inkind varkind mut <+> pp exprVar) empty []
+mkPatExpr' _ inkind _   EVarDecl{..}    varkind mut  = return $ Match (varprefix inkind varkind mut <+> pp exprVName) empty []
+mkPatExpr' _ _      _   (EBool _ True)  _       _    = return $ Match "true" empty []
+mkPatExpr' _ _      _   (EBool _ False) _       _    = return $ Match "false" empty []
+mkPatExpr' _ inkind _   EString{..}     varkind _    = do
     vname <- allocPatVar
-    return $ Match (varprefix inkind varkind <+> vname) (vname <> ".as_str() ==" <+> "\"" <> pp exprString <> "\"") []
-mkPatExpr' d inkind ctx e@EStruct{..}   varkind   = do
-    fields <- mapM (\(f, E e') -> (f,) <$> mkPatExpr' d inkind (CtxStruct e ctx f) e' varkind) exprStructFields
+    return $ Match (varprefix inkind varkind False <+> vname) (vname <> ".as_str() ==" <+> "\"" <> pp exprString <> "\"") []
+mkPatExpr' d inkind ctx e@EStruct{..}   varkind mut  = do
+    fields <- mapM (\(f, E e') -> (f,) <$> mkPatExpr' d inkind (CtxStruct e ctx f) e' varkind mut) exprStructFields
     let t = consType d exprConstructor
         struct_name = name t
         pat = mkConstructorName struct_name (fromJust $ tdefType t) exprConstructor <>
@@ -2410,32 +2413,32 @@ mkPatExpr' d inkind ctx e@EStruct{..}   varkind   = do
                                        $ map (\(_,m) -> mCond m) fields
         subpatterns = concatMap (\(_, m) -> mSubpatterns m) fields
     return $ Match pat cond subpatterns
-mkPatExpr' d inkind ctx e@ETuple{..}    varkind   = do
-    fields <- mapIdxM (\(E f) i -> mkPatExpr' d inkind (CtxTuple e ctx i) f varkind) exprTupleFields
+mkPatExpr' d inkind ctx e@ETuple{..}    varkind mut  = do
+    fields <- mapIdxM (\(E f) i -> mkPatExpr' d inkind (CtxTuple e ctx i) f varkind mut) exprTupleFields
     let pat = tupleStruct $ map (pp . mPattern) fields
         cond = hsep $ intersperse "&&" $ filter (/= empty)
                                        $ map (pp . mCond) fields
         subpatterns = concatMap mSubpatterns fields
     return $ Match pat cond subpatterns
-mkPatExpr' _ _      _   EPHolder{}      _         = return $ Match "_" empty []
-mkPatExpr' d inkind ctx e@ETyped{..}    varkind   = mkPatExpr' d inkind (CtxTyped e ctx) (enode exprExpr) varkind
-mkPatExpr' d inkind ctx e@EBinding{..}  varkind   = do
+mkPatExpr' _ _      _   EPHolder{}      _       _    = return $ Match "_" empty []
+mkPatExpr' d inkind ctx e@ETyped{..}    varkind mut  = mkPatExpr' d inkind (CtxTyped e ctx) (enode exprExpr) varkind mut
+mkPatExpr' d inkind ctx e@EBinding{..}  varkind _    = do
     -- Rust does not allow variable declarations inside bindings.
     -- To bypass this, we convert the bind pattern into a nested pattern.
     -- Unfortunately, this means that binding can only be used when there
     -- is a single pattern to match against, e.g., in an atom or an assignment
     -- clause in a rule.
-    Match pat cond subpatterns <- mkPatExpr' d inkind (CtxBinding e ctx) (enode exprPattern) varkind
-    return $ Match (varprefix inkind varkind <+> pp exprVar) empty ((pp exprVar, Match pat cond []):subpatterns)
-mkPatExpr' d inkind ctx e@ERef{..}      varkind   = do
+    Match pat cond subpatterns <- mkPatExpr' d inkind (CtxBinding e ctx) (enode exprPattern) varkind False
+    return $ Match (varprefix inkind varkind False <+> pp exprVar) empty ((pp exprVar, Match pat cond []):subpatterns)
+mkPatExpr' d inkind ctx e@ERef{..}      varkind _    = do
     vname <- allocPatVar
     subpattern <- mkPatExpr' d EReference {- deref() returns reference -}
-                             (CtxRef e ctx) (enode exprPattern) varkind
-    return $ Match (varprefix inkind varkind <+> vname)
+                             (CtxRef e ctx) (enode exprPattern) varkind False
+    return $ Match (varprefix inkind varkind False <+> vname)
                    empty [("(" <> deref (pp vname, varkind, undefined) <> ").deref()" , subpattern)]
-mkPatExpr' d inkind ctx e               varkind   = do
+mkPatExpr' d inkind ctx e               varkind _    = do
     vname <- allocPatVar
-    return $ Match (varprefix inkind varkind <+> vname)
+    return $ Match (varprefix inkind varkind False <+> vname)
                    (deref (vname, varkind, undefined) <+> "==" <+> mkExpr d ctx (E e) EVal)
                    []
 
@@ -2523,16 +2526,17 @@ mkExpr' d ctx e@ESlice{..} = (mkSlice (val exprOp, w) exprH exprL, EVal)
 mkExpr' d ctx e@EMatch{..} = (doc, EVal)
     where
     e' = exprMap (E . sel3) e
-    m = {-if exprIsVarOrFieldLVal d (CtxMatchExpr (exprMap (E . sel3) e) ctx) (E $ sel3 exprMatchExpr)
-           then mutref exprMatchExpr
-           else ref exprMatchExpr -}
-        deref exprMatchExpr
+    m = deref exprMatchExpr
+    -- Is the match expression mutable? Evaluate its mutability
+    -- in the parent context, as everything is immutable in CtxMatchExpr
+    -- context.
+    mut = exprIsVarOrFieldLVal d ctx (E $ sel3 exprMatchExpr)
     doc = ("match" <+> m <+> "{")
           $$
           (nest' $ vcat $ punctuate comma cases)
           $$
           "}"
-    cases = mapIdx (\(c,v) idx -> let Match pat cond [] = mkPatExpr d (CtxMatchPat e' ctx idx) (E $ sel3 c) EReference
+    cases = mapIdx (\(c,v) idx -> let Match pat cond [] = mkPatExpr d (CtxMatchPat e' ctx idx) (E $ sel3 c) EReference mut
                                       cond' = if cond == empty then empty else ("if" <+> cond) in
                                   pat <+> cond' <+> "=>" <+> val v) exprCases
 
