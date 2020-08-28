@@ -137,9 +137,11 @@ pub fn relid2cname(_rid: RelId) -> Option<&'static ffi::CStr> {
     panic!("relid2cname not implemented")
 }
 
-pub static RELIDMAP: Lazy<FnvHashMap<Relations, &'static str>> = Lazy::new(|| FnvHashMap::default());
-pub static INPUT_RELIDMAP: Lazy<FnvHashMap<Relations, &'static str>> = Lazy::new(|| FnvHashMap::default());
-pub static OUTPUT_RELIDMAP: Lazy<FnvHashMap<Relations, &'static str>> = Lazy::new(|| FnvHashMap::default());
+pub static RELIDMAP: Lazy<FnvHashMap<Relations, &'static str>> = Lazy::new(FnvHashMap::default);
+pub static INPUT_RELIDMAP: Lazy<FnvHashMap<Relations, &'static str>> =
+    Lazy::new(FnvHashMap::default);
+pub static OUTPUT_RELIDMAP: Lazy<FnvHashMap<Relations, &'static str>> =
+    Lazy::new(FnvHashMap::default);
 
 pub fn indexid2name(_iid: IdxId) -> Option<&'static str> {
     panic!("indexid2name not implemented")
@@ -153,4 +155,4 @@ pub fn indexes2arrid(idx: Indexes) -> ArrId {
     panic!("indexes2arrid not implemented")
 }
 
-pub static IDXIDMAP: Lazy<FnvHashMap<Indexes, &'static str>> = Lazy::new(|| FnvHashMap::default());
+pub static IDXIDMAP: Lazy<FnvHashMap<Indexes, &'static str>> = Lazy::new(FnvHashMap::default);
