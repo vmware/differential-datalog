@@ -14,6 +14,32 @@ SortedVectorInPlace(sorted) :-
         v2
     }.
 
+output relation IntVecTest(descr: string, vec: Vec<s64>)
+
+IntVecTest("vec0", vec0()).
+IntVecTest("vec0.resize(10)", {var v = vec0(); v.resize(10, -100); v}).
+IntVecTest("vec0.update_nth(10, -1)", {var v = vec0(); v.update_nth(10, -1); v}).
+IntVecTest("vec0.update_nth(1, -1)", {var v = vec0(); v.update_nth(1, -1); v}).
+IntVecTest("vec0.swap_nth(10, -1)", {
+    var v = vec0();
+    var val = -1;
+    v.swap_nth(10, val);
+    v.push(val);
+    v
+}).
+IntVecTest("vec0.swap_nth(5, -1)", {
+    var v = vec0();
+    var val = -1;
+    v.swap_nth(5, val);
+    v.push(val);
+    v
+}).
+
+
+function vec0(): Vec<s64> {
+    [ 0, 1, 2, 3, 4, 5]
+}
+
 input relation SetPairs(s1: Set<u64>, s2: Set<u64>)
 output relation SetDifference(s1: Set<u64>, s2: Set<u64>, diff: Set<u64>)
 
