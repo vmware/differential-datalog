@@ -28,3 +28,9 @@ std_test::MapDelete{.descr = "alphabet\\4\\3", .m = [(0, "a"), (1, "b"), (2, "c"
 std_test::MapDelete{.descr = "alphabet\\4\\3\\2", .m = [(0, "a"), (1, "b")], .s = std::Some{.x = "c"}}
 std_test::MapDelete{.descr = "alphabet\\4\\3\\2\\1", .m = [(0, "a")], .s = std::Some{.x = "b"}}
 std_test::MapDelete{.descr = "alphabet\\4\\3\\2\\1\\0", .m = [], .s = std::Some{.x = "a"}}
+std_test::IntVecTest{.descr = "vec0", .vec = [0, 1, 2, 3, 4, 5]}
+std_test::IntVecTest{.descr = "vec0.resize(10)", .vec = [0, 1, 2, 3, 4, 5, -100, -100, -100, -100]}
+std_test::IntVecTest{.descr = "vec0.swap_nth(10, -1)", .vec = [0, 1, 2, 3, 4, 5, -1]}
+std_test::IntVecTest{.descr = "vec0.swap_nth(5, -1)", .vec = [0, 1, 2, 3, 4, -1, 5]}
+std_test::IntVecTest{.descr = "vec0.update_nth(1, -1)", .vec = [0, -1, 2, 3, 4, 5]}
+std_test::IntVecTest{.descr = "vec0.update_nth(10, -1)", .vec = [0, 1, 2, 3, 4, 5]}

@@ -351,8 +351,8 @@ impl<T: Clone> std_Vec<T> {
     pub fn extend_from_slice(&mut self, other: &[T]) {
         self.x.extend_from_slice(other);
     }
-    pub fn resize(&mut self, new_len: usize, value: T) {
-        self.x.resize(new_len, value);
+    pub fn resize(&mut self, new_len: usize, value: &T) {
+        self.x.resize_with(new_len, || value.clone());
     }
 }
 
@@ -466,7 +466,7 @@ pub fn std_vec_empty<X: Ord + Clone>() -> std_Vec<X> {
 
 pub fn std_vec_with_length<X: Ord + Clone>(len: &std_usize, x: &X) -> std_Vec<X> {
     let mut res = std_Vec::with_capacity(*len as usize);
-    res.resize(*len as usize, x.clone());
+    res.resize(*len as usize, x);
     res
 }
 
@@ -518,6 +518,22 @@ pub fn std_vec_sort_imm<X: Ord + Clone>(v: &std_Vec<X>) -> std_Vec<X> {
     let mut res = (*v).clone();
     res.x.sort();
     res
+}
+
+pub fn std_vec_resize<X: Clone>(v: &mut std_Vec<X>, new_len: &std_usize, value: &X) {
+    v.resize(*new_len as usize, value)
+}
+
+pub fn std_vec_swap_nth<X: Clone>(v: &mut std_Vec<X>, idx: &std_usize, value: &mut X) {
+    if (*idx as usize) < v.x.len() {
+        std::mem::swap(&mut v.x[*idx as usize], value);
+    };
+}
+
+pub fn std_vec_update_nth<X: Clone>(v: &mut std_Vec<X>, idx: &std_usize, value: &X) {
+    if (*idx as usize) < v.x.len() {
+        v.x[*idx as usize] = value.clone();
+    }
 }
 
 // Set
