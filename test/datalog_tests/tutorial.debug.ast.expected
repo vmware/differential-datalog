@@ -646,6 +646,10 @@ function std::replace (s: string, from: string, to: string): string
 {
     std::string_replace(s, from, to)
 }
+function std::resize (v: mut std::Vec<'X>, new_len: std::usize, value: 'X): ()
+{
+    std::vec_resize(v, new_len, value)
+}
 extern function std::result_unwrap_or_default (res: std::Result<'V,'E>): 'V
 function std::reverse (s: string): string
 {
@@ -714,6 +718,10 @@ extern function std::string_trim (s: string): string
 function std::substr (s: string, start: std::usize, end: std::usize): string
 {
     std::string_substr(s, start, end)
+}
+function std::swap_nth (v: mut std::Vec<'X>, idx: std::usize, value: mut 'X): ()
+{
+    std::vec_swap_nth(v, idx, value)
 }
 function std::to_bytes (s: string): std::Vec<std::u8>
 {
@@ -872,6 +880,10 @@ function std::unwrap_or_default (res: std::Result<'V,'E>): 'V
 {
     (std::result_unwrap_or_default(res): 'V)
 }
+function std::update_nth (v: mut std::Vec<'X>, idx: std::usize, value: 'X): ()
+{
+    std::vec_update_nth(v, idx, value)
+}
 extern function std::vec_append (v: mut std::Vec<'X>, other: std::Vec<'X>): ()
 extern function std::vec_contains (v: std::Vec<'X>, x: 'X): bool
 extern function std::vec_empty (): std::Vec<'A>
@@ -880,10 +892,14 @@ extern function std::vec_len (v: std::Vec<'X>): std::usize
 extern function std::vec_nth (v: std::Vec<'X>, n: std::usize): std::Option<'X>
 extern function std::vec_push (v: mut std::Vec<'X>, x: 'X): ()
 extern function std::vec_push_imm (v: std::Vec<'X>, x: 'X): std::Vec<'X>
+extern function std::vec_resize (v: mut std::Vec<'X>, new_len: std::usize, value: 'X): ()
+extern function std::vec_set_nth (v: std::Vec<'X>, n: std::usize, value: 'X): ()
 extern function std::vec_singleton (x: 'X): std::Vec<'X>
 extern function std::vec_sort (v: mut std::Vec<'X>): ()
 extern function std::vec_sort_imm (v: std::Vec<'X>): std::Vec<'X>
+extern function std::vec_swap_nth (v: mut std::Vec<'X>, idx: std::usize, value: mut 'X): ()
 extern function std::vec_to_set (s: std::Vec<'A>): std::Set<'A>
+extern function std::vec_update_nth (v: mut std::Vec<'X>, idx: std::usize, value: 'X): ()
 extern function std::vec_with_capacity (len: std::usize): std::Vec<'A>
 extern function std::vec_with_length (len: std::usize, x: 'A): std::Vec<'A>
 extern function string_slice_unsafe (x: string, from: bit<64>, to: bit<64>): string
