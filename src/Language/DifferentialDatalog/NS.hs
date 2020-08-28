@@ -179,7 +179,7 @@ ctxVars' d ctx with_types =
          CtxStruct _ _ _          -> (plvars, prvars)
          CtxTuple _ _ _           -> (plvars, prvars)
          CtxSlice  _ _            -> ([], plvars ++ prvars)
-         CtxMatchExpr _ _         -> ([], plvars ++ prvars)
+         CtxMatchExpr _ _         -> (plvars, prvars)
          CtxMatchPat _ _ _        -> ([], plvars ++ prvars)
          CtxMatchVal e pctx i     -> let patternVars = exprVarDecls d (CtxMatchPat e pctx i)
                                                        $ fst $ (exprCases e) !! i
