@@ -147,8 +147,8 @@ arg2v f a = ArgVar f (name a)
 ctxAllVars :: DatalogProgram -> ECtx -> [Var]
 ctxAllVars d ctx = let (lvs, rvs) = ctxVars' d ctx False in lvs ++ rvs
 
--- All variables visible in the 'ctx', classified into (writable, read-only
--- varables).
+-- All variables visible in 'ctx', classified into (writable, read-only)
+-- variables.
 -- This function is _unsafe_ to use before type inference.
 ctxVars :: DatalogProgram -> ECtx -> ([Var], [Var])
 ctxVars d ctx = ctxVars' d ctx True
@@ -157,7 +157,8 @@ ctxVars d ctx = ctxVars' d ctx True
 --
 -- The 'with_types' flag is true if 'd' contains enough type information
 -- to determine variable types (i.e., it has been through type inference).
--- When false, `ctxVars` may misclassify
+-- When false, `ctxVars` may misclassify variables, so it should only be
+-- invoked this way in situations where variable mutability does not matter.
 ctxVars' :: DatalogProgram -> ECtx -> Bool -> ([Var], [Var])
 ctxVars' d ctx with_types =
     case ctx of

@@ -524,16 +524,20 @@ pub fn std_vec_resize<X: Clone>(v: &mut std_Vec<X>, new_len: &std_usize, value: 
     v.resize(*new_len as usize, value)
 }
 
-pub fn std_vec_swap_nth<X: Clone>(v: &mut std_Vec<X>, idx: &std_usize, value: &mut X) {
+pub fn std_vec_swap_nth<X: Clone>(v: &mut std_Vec<X>, idx: &std_usize, value: &mut X) -> bool {
     if (*idx as usize) < v.x.len() {
         std::mem::swap(&mut v.x[*idx as usize], value);
+        return true;
     };
+    return false;
 }
 
-pub fn std_vec_update_nth<X: Clone>(v: &mut std_Vec<X>, idx: &std_usize, value: &X) {
+pub fn std_vec_update_nth<X: Clone>(v: &mut std_Vec<X>, idx: &std_usize, value: &X) -> bool {
     if (*idx as usize) < v.x.len() {
         v.x[*idx as usize] = value.clone();
-    }
+        return true;
+    };
+    return false;
 }
 
 // Set
@@ -999,6 +1003,12 @@ pub fn std_map_union<K: Ord + Clone, V: Clone>(
     let mut m = m1.clone();
     m.x.append(&mut m2.x.clone());
     m
+}
+
+pub fn std_map_keys<K: Ord + Clone, V>(m: &std_Map<K, V>) -> std_Vec<K> {
+    std_Vec {
+        x: m.x.keys().cloned().collect(),
+    }
 }
 
 // strings
