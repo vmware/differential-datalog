@@ -192,3 +192,76 @@ function try1(name: string): Result<(string, string), string> {
     var last_name = components.nth(1)?;
     Some{(first_name, last_name)}
 }
+
+//---
+
+function f(x: mut string, y: u32) {
+    var z = 0;
+
+    // ok: z is a local variable.
+    z = y;
+
+    // ok: x is a `mut` argument.
+    x = "foo";
+
+    // error: y is a read-only argument.
+    y = 0
+}
+
+//---
+
+function f(x: mut string, y: u32) {
+    var vec = [0, 1, 2];
+    for (val in vec) {
+        // error: loop variable cannot be modified in the body of the loop.
+        val = y
+    }
+}
+
+//---
+
+typedef TestStruct = TestStruct {
+    f1: string,
+    f2: bool
+}
+
+function f() {
+    var interned: Intern<TestStruct> = TestStruct{"foo", false}.intern();
+    
+    // ok: overwriting the entire interned variable.
+    interned = TestStruct{"bar", true}.intern();
+
+    // error: cannot modify the contents of an interned value.
+    interned.f1 = "bar"
+}
+
+//---
+typedef TestStruct = TestStruct {
+    f1: string,
+    f2: bool
+}
+
+function f() {
+    var interned: Intern<TestStruct> = TestStruct{"foo", false}.intern();
+    
+    var vec = [0, 1, 2];
+    for (val in vec) {
+        // error: cannot modify a variable while iterating over it.
+        vec.push(val)
+    }
+}
+
+//---
+
+typedef TestStruct = TestStruct {
+    f1: string,
+    f2: bool
+}
+
+function f() {
+    var interned: Intern<TestStruct> = TestStruct{"foo", false}.intern();
+    
+    var vec = [0, 1, 2];
+    // error: attempt to modify a variable inside an if-condition.
+    if ({vec.push(3); vec.len()} > 5) { () }
+}

@@ -176,6 +176,44 @@ function write_to_tuple_field(): (string, u64) {
     m
 }
 
+function mutable_match() {
+    var m = ModifyMe{"foo", 123456789};
+    match (m) {
+        ModifyMe{x, 123456789} -> x = "bar",
+        _ -> ()
+    }
+}
+
+typedef NestedStruct = NestedStruct {
+    x: Option<ModifyMe>
+}
+
+function mutable_match_field(n: mut NestedStruct) {
+    match (n.x) {
+        Some{ModifyMe{x, 123456789}} -> x = "bar",
+        Some{m} -> m.x = "bar",
+        x -> x = Some{ModifyMe{"buzz", 0}}
+    }
+}
+
+output relation Nested(descr: string, n: NestedStruct)
+Nested("1",{
+    var n = NestedStruct{Some{ModifyMe{"foo", 123456789}}};
+    n.mutable_match_field();
+    n
+}).
+Nested("2",{
+    var n = NestedStruct{Some{ModifyMe{"", 0}}};
+    n.mutable_match_field();
+    n
+}).
+Nested("3",{
+    var n = NestedStruct{None};
+    n.mutable_match_field();
+    n
+}).
+
+
 /* Test "multiset" relations. */
 
 import json
@@ -375,5 +413,3 @@ function shadow2(): () = {
 
     var v = "foo"
 }
-
-

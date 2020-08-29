@@ -1348,6 +1348,104 @@ multiple times for different input/output relations).
 Several useful graph transformers are declared in `lib/graph.dl` and implemented in
 `lib/graph.rs`
 
+### Variable mutability
+
+We summarize variable mutability rules in DDlog.  Variables declared in the
+context of a rule are immutable: they are bound once and do not change their
+value within the rule.  Mutability of variables in an expression is determined
+according to the following rules:
+
+* Local variables declared using `var v` are mutable.
+
+* Function arguments with `mut` qualifier are mutable.
+
+* Other function arguments are immutable.
+
+* Loop variables are automatically modified at each iteration of the loop, but
+  cannot be modified in the body of the loop.
+
+* Variables declared in the rule scope and used inside an expression (e.g., in
+  an assignment clause) are immutable.
+
+* Variables declared inside a match pattern are mutable if and only if the expression
+  being matched is mutable:
+
+Mutable variables and their fields can be assigned to or passed as mutable
+arguments to functions.
+
+```
+function f(x: mut string, y: u32) {
+    var z = 0;
+
+    // ok: z is a local variable.
+    z = y;
+
+    // ok: x is a `mut` argument.
+    x = "foo"
+
+    // error: y is a read-only argument.
+    y = 0;
+
+    var vec = [0, 1, 2];
+    for (val in vec) {
+        // error: loop variable cannot be modified in the body of the loop.
+        val = y
+    };
+
+    var opt: Option<u32> = Some{0};
+
+    match (opt) {
+        Some{u} -> {
+            // ok: `opt` is mutable; hence it components are mutable.
+            u = 5
+        },
+        _ -> ()
+    }
+}
+```
+
+There are several exceptions to the above rules:
+
+* Field of variables of type `Ref<>` or `Intern<>` are immutable.
+
+* Variables used in the expression that the loop iterates over cannot be modified
+  in the body of the loop.
+
+* In addition, to prevent errors, DDlog disallows modifying any variables inside
+  `if`-conditions, or inside operands of binary or unary operators.
+
+```
+typedef TestStruct = TestStruct {
+    f1: string,
+    f2: bool
+}
+
+function f() {
+    var test: TestStruct = TestStruct{"foo", false};
+    var interned: Intern<TestStruct> = TestStruct{"foo", false}.intern();
+    
+    // ok: modifying field of a local variable.
+    test.f1 = "bar";
+
+    // ok: overwriting the entire interned variable.
+    interned = TestStruct{"bar", true}.intern();
+
+    // error: cannot modify the contents of an interned value.
+    interned.f1 = "bar";
+
+    var vec = [0, 1, 2];
+    for (val in vec) {
+        // error: cannot modify a variable while iterating over it.
+        vec.push(val)
+    };
+
+    // error: attempt to modify a variable inside an if-condition.
+    if ({vec.push(3); vec.len()} > 5) {
+        ...
+    }
+}
+```
+
 ## Multisets and streams
 
 All DDlog relations considered so far implement set semantics.  A set can contain
