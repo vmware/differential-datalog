@@ -1154,6 +1154,10 @@ function std::key (g: std::Group<'K,'V>): 'K
 {
     (std::group_key(g): 'K)
 }
+function std::keys (m: std::Map<'K,'V>): std::Vec<'K>
+{
+    (std::map_keys(m): std::Vec<'K>)
+}
 function std::len (s: string): std::usize
 {
     std::string_len(s)
@@ -1168,6 +1172,7 @@ extern function std::map_get (m: std::Map<'K,'V>, k: 'K): std::Option<'V>
 extern function std::map_insert (m: mut std::Map<'K,'V>, k: 'K, v: 'V): ()
 extern function std::map_insert_imm (m: std::Map<'K,'V>, k: 'K, v: 'V): std::Map<'K,'V>
 extern function std::map_is_empty (m: std::Map<'K,'V>): bool
+extern function std::map_keys (m: std::Map<'K,'V>): std::Vec<'K>
 extern function std::map_remove (m: mut std::Map<'K,'V>, k: 'K): std::Option<'V>
 extern function std::map_singleton (k: 'K, v: 'V): std::Map<'K,'V>
 extern function std::map_size (m: std::Map<'K,'V>): std::usize
@@ -1348,7 +1353,7 @@ function std::substr (s: string, start: std::usize, end: std::usize): string
 {
     std::string_substr(s, start, end)
 }
-function std::swap_nth (v: mut std::Vec<'X>, idx: std::usize, value: mut 'X): ()
+function std::swap_nth (v: mut std::Vec<'X>, idx: std::usize, value: mut 'X): bool
 {
     std::vec_swap_nth(v, idx, value)
 }
@@ -1509,7 +1514,7 @@ function std::unwrap_or_default (res: std::Result<'V,'E>): 'V
 {
     (std::result_unwrap_or_default(res): 'V)
 }
-function std::update_nth (v: mut std::Vec<'X>, idx: std::usize, value: 'X): ()
+function std::update_nth (v: mut std::Vec<'X>, idx: std::usize, value: 'X): bool
 {
     std::vec_update_nth(v, idx, value)
 }
@@ -1526,9 +1531,9 @@ extern function std::vec_set_nth (v: std::Vec<'X>, n: std::usize, value: 'X): ()
 extern function std::vec_singleton (x: 'X): std::Vec<'X>
 extern function std::vec_sort (v: mut std::Vec<'X>): ()
 extern function std::vec_sort_imm (v: std::Vec<'X>): std::Vec<'X>
-extern function std::vec_swap_nth (v: mut std::Vec<'X>, idx: std::usize, value: mut 'X): ()
+extern function std::vec_swap_nth (v: mut std::Vec<'X>, idx: std::usize, value: mut 'X): bool
 extern function std::vec_to_set (s: std::Vec<'A>): std::Set<'A>
-extern function std::vec_update_nth (v: mut std::Vec<'X>, idx: std::usize, value: 'X): ()
+extern function std::vec_update_nth (v: mut std::Vec<'X>, idx: std::usize, value: 'X): bool
 extern function std::vec_with_capacity (len: std::usize): std::Vec<'A>
 extern function std::vec_with_length (len: std::usize, x: 'A): std::Vec<'A>
 function strings (): ()

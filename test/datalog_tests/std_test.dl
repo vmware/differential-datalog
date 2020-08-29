@@ -17,7 +17,7 @@ SortedVectorInPlace(sorted) :-
 output relation IntVecTest(descr: string, vec: Vec<s64>)
 
 IntVecTest("vec0", vec0()).
-IntVecTest("vec0.resize(10)", {var v = vec0(); v.resize(10, -100); v}).
+IntVecTest("vec0.resize(10,-100)", {var v = vec0(); v.resize(10, -100); v}).
 IntVecTest("vec0.update_nth(10, -1)", {var v = vec0(); v.update_nth(10, -1); v}).
 IntVecTest("vec0.update_nth(1, -1)", {var v = vec0(); v.update_nth(1, -1); v}).
 IntVecTest("vec0.swap_nth(10, -1)", {

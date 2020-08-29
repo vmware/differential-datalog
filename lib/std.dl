@@ -513,14 +513,16 @@ function resize(v: mut Vec<'X>, new_len: usize, value: 'X) {
 
 /* Swap value at index `idx` for `value`.
  * Stores the old value at this index in `value` unless `idx` exceeds
- * the size of the vector (in which case the vector remains unmodified). */
-function swap_nth(v: mut Vec<'X>, idx: usize, value: mut 'X) {
+ * the size of the vector (in which case the vector remains unmodified).
+ * Returns true if the swap happened and false otherwise. */
+function swap_nth(v: mut Vec<'X>, idx: usize, value: mut 'X): bool {
     vec_swap_nth(v, idx, value)
 }
 
 /* Set value at index `idx` to `value`.
- * If `idx` exceeds the size of the vector (in which case the vector remains unmodified). */
-function update_nth(v: mut Vec<'X>, idx: usize, value: 'X) {
+ * If `idx` exceeds the size of the vector (in which case the vector remains unmodified).
+ * Returns true if updated happened and false otherwise. */
+function update_nth(v: mut Vec<'X>, idx: usize, value: 'X): bool {
     vec_update_nth(v, idx, value)
 }
 
@@ -563,6 +565,10 @@ function is_empty(m: Map<'K,'V>): bool {
 
 function union(m1: Map<'K, 'V>, m2: Map<'K,'V>): Map<'K, 'V> {
     map_union(m1, m2)
+}
+
+function keys(m: Map<'K, 'V>): Vec<'K> {
+    map_keys(m)
 }
 
 /*
@@ -664,8 +670,8 @@ extern function vec_to_set(s: Vec<'A>): Set<'A>
 extern function vec_sort(v: mut Vec<'X>)
 extern function vec_sort_imm(v: Vec<'X>): Vec<'X>
 extern function vec_resize(v: mut Vec<'X>, new_len: usize, value: 'X)
-extern function vec_swap_nth(v: mut Vec<'X>, idx: usize, value: mut 'X)
-extern function vec_update_nth(v: mut Vec<'X>, idx: usize, value: 'X)
+extern function vec_swap_nth(v: mut Vec<'X>, idx: usize, value: mut 'X): bool
+extern function vec_update_nth(v: mut Vec<'X>, idx: usize, value: 'X): bool
 
 extern function map_size(m: Map<'K, 'V>): usize
 extern function map_insert(m: mut Map<'K,'V>, k: 'K, v: 'V)
@@ -675,6 +681,7 @@ extern function map_get(m: Map<'K,'V>, k:'K): Option<'V>
 extern function map_contains_key(m: Map<'K,'V>, k: 'K): bool
 extern function map_is_empty(m: Map<'K,'V>): bool
 extern function map_union(m1: Map<'K, 'V>, m2: Map<'K,'V>): Map<'K, 'V>
+extern function map_keys(m: Map<'K, 'V>): Vec<'K>
 
 extern function set_size(s: Set<'X>): usize
 extern function set_insert(s: mut Set<'X>, v: 'X)
