@@ -22,6 +22,8 @@ typedef Ints = Ints{x: bigint}
 typedef MapOfMaps = MapOfMaps{m: std::Map<string,std::Map<double,(std::usize, bool)>>}
 typedef MapOfVecs = MapOfVecs{m: std::Map<(std::u32, bigint),std::Vec<double>>}
 typedef ModifyMe = ModifyMe{x: string, y: std::s128}
+typedef Nested = Nested{descr: string, n: NestedStruct}
+typedef NestedStruct = NestedStruct{x: std::Option<ModifyMe>}
 typedef Object = Object{field: std::u128}
 typedef Objects = Objects{chunk: Object}
 typedef Opt<'X> = std::Option<'X>
@@ -449,6 +451,22 @@ extern function json::to_json_string (x: 'T): std::Result<string,string>
 extern function json::to_json_value (x: 'T): std::Result<json::JsonValue,string>
 #[has_side_effects = true]
 extern function log::log (module: log::module_t, level: log::log_level_t, msg: string): ()
+function mutable_match (): ()
+{
+    ((var m: ModifyMe) = (ModifyMe{.x="foo", .y=128'sd123456789}: ModifyMe);
+     match (m) {
+         (ModifyMe{.x=(var x: string), .y=128'sd123456789}: ModifyMe) -> x = "bar",
+         (_: ModifyMe) -> ()
+     })
+}
+function mutable_match_field (n: mut NestedStruct): ()
+{
+    match (n.x) {
+        (std::Some{.x=(ModifyMe{.x=(var x: string), .y=128'sd123456789}: ModifyMe)}: std::Option<ModifyMe>) -> x = "bar",
+        (std::Some{.x=(var m: ModifyMe)}: std::Option<ModifyMe>) -> m.x = "bar",
+        (var x: std::Option<ModifyMe>) -> x = (std::Some{.x=(ModifyMe{.x="buzz", .y=128'sd0}: ModifyMe)}: std::Option<ModifyMe>)
+    }
+}
 function myfunc (x: string): string
 {
     x
@@ -1096,6 +1114,7 @@ output relation InspectSimpleSum [InspectSimpleSum]
 input relation Ints [Ints]
 output relation MapOfMaps [MapOfMaps]
 output relation MapOfVecs [MapOfVecs]
+output relation Nested [Nested]
 relation Objects [Objects]
 output relation OutputInspectNot [OutputInspectNot]
 relation ParsedChunk [ParsedChunk]
@@ -1148,10 +1167,19 @@ OutputInspectNot[(OutputInspectNot{.x=x, .y=y}: OutputInspectNot)] :- InputInspe
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              "delete"
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          }) ++ ": x=") ++ (std::__builtin_2string(y): string)) ++ " y=") ++ (std::__builtin_2string(y): string))), Inspect debug::debug_event((32'd10, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", (x, y), (OutputInspectNot{.x=x, .y=y}: OutputInspectNot)).
 TI_R[(TI_R{.a=a}: TI_R)] :- TI_R[(__ti_r0@ (TI_R{.a=(a: std::Set<string>)}: TI_R))], (std::set_size(a) > 64'd1), Inspect debug::debug_event((32'd11, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __ti_r0, (TI_R{.a=a}: TI_R)).
-ChunkParseError[(ChunkParseError{.err=err}: ChunkParseError)] :- ParsedChunk[(__parsedchunk0@ (ParsedChunk{.data=(std::Err{.err=(err: string)}: std::Result<Object,string>)}: ParsedChunk))], Inspect debug::debug_event((32'd12, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __parsedchunk0, (ChunkParseError{.err=err}: ChunkParseError)).
-ParsedChunk[(ParsedChunk{.data=(json::from_json_string(json): std::Result<Object,string>)}: ParsedChunk)] :- Chunk[(__chunk0@ (Chunk{.json=(json: string)}: Chunk))], Inspect debug::debug_event((32'd13, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __chunk0, (ParsedChunk{.data=(json::from_json_string(json): std::Result<Object,string>)}: ParsedChunk)).
-Objects[(Objects{.chunk=objs}: Objects)] :- ParsedChunk[(__parsedchunk0@ (ParsedChunk{.data=(std::Ok{.res=(objs: Object)}: std::Result<Object,string>)}: ParsedChunk))], Inspect debug::debug_event((32'd14, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __parsedchunk0, (Objects{.chunk=objs}: Objects)).
-CompressedChunk[(CompressedChunk{.json=json}: CompressedChunk)] :- Objects[(__objects0@ (Objects{.chunk=(objs: Object)}: Objects))], (std::Ok{.res=(var json: string)}: std::Result<string,string>) = json::to_json_string(objs), Inspect debug::debug_event((32'd15, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __objects0, (CompressedChunk{.json=json}: CompressedChunk)).
+Nested[(Nested{.descr="1", .n=((var n: NestedStruct) = (NestedStruct{.x=(std::Some{.x=(ModifyMe{.x="foo", .y=128'sd123456789}: ModifyMe)}: std::Option<ModifyMe>)}: NestedStruct);
+                               (mutable_match_field(n);
+                                n))}: Nested)].
+Nested[(Nested{.descr="2", .n=((var n: NestedStruct) = (NestedStruct{.x=(std::Some{.x=(ModifyMe{.x="", .y=128'sd0}: ModifyMe)}: std::Option<ModifyMe>)}: NestedStruct);
+                               (mutable_match_field(n);
+                                n))}: Nested)].
+Nested[(Nested{.descr="3", .n=((var n: NestedStruct) = (NestedStruct{.x=(std::None{}: std::Option<ModifyMe>)}: NestedStruct);
+                               (mutable_match_field(n);
+                                n))}: Nested)].
+ChunkParseError[(ChunkParseError{.err=err}: ChunkParseError)] :- ParsedChunk[(__parsedchunk0@ (ParsedChunk{.data=(std::Err{.err=(err: string)}: std::Result<Object,string>)}: ParsedChunk))], Inspect debug::debug_event((32'd15, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __parsedchunk0, (ChunkParseError{.err=err}: ChunkParseError)).
+ParsedChunk[(ParsedChunk{.data=(json::from_json_string(json): std::Result<Object,string>)}: ParsedChunk)] :- Chunk[(__chunk0@ (Chunk{.json=(json: string)}: Chunk))], Inspect debug::debug_event((32'd16, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __chunk0, (ParsedChunk{.data=(json::from_json_string(json): std::Result<Object,string>)}: ParsedChunk)).
+Objects[(Objects{.chunk=objs}: Objects)] :- ParsedChunk[(__parsedchunk0@ (ParsedChunk{.data=(std::Ok{.res=(objs: Object)}: std::Result<Object,string>)}: ParsedChunk))], Inspect debug::debug_event((32'd17, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __parsedchunk0, (Objects{.chunk=objs}: Objects)).
+CompressedChunk[(CompressedChunk{.json=json}: CompressedChunk)] :- Objects[(__objects0@ (Objects{.chunk=(objs: Object)}: Objects))], (std::Ok{.res=(var json: string)}: std::Result<string,string>) = json::to_json_string(objs), Inspect debug::debug_event((32'd18, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __objects0, (CompressedChunk{.json=json}: CompressedChunk)).
 Fib[(Fib{.x=64'd0, .f=fib(64'd0)}: Fib)].
 Fib[(Fib{.x=64'd1, .f=fib(64'd1)}: Fib)].
 Fib[(Fib{.x=64'd2, .f=fib(64'd2)}: Fib)].
@@ -1161,7 +1189,7 @@ Fib[(Fib{.x=64'd10, .f=fib(64'd10)}: Fib)].
 Fib[(Fib{.x=64'd20, .f=fib(64'd20)}: Fib)].
 Ack[(Ack{.m=64'd2, .n=64'd1, .a=ack(64'd2, 64'd1)}: Ack)].
 Strings[(Strings{.descr="x={10:bit<12>}, y={10:float}, z={-4:signed<125>}", .str=((((("x=" ++ (std::__builtin_2string((12'd10: bit<12>)): string)) ++ ", y=") ++ (std::__builtin_2string((32'f10.0: float)): string)) ++ ", z=") ++ (std::__builtin_2string((- (128'sd4: signed<128>))): string))}: Strings)].
-Rseq[(Rseq{._s=(TSeq1{.x=(_l, (std::ref_new(_s): std::Ref<TSeq>))}: TSeq)}: Rseq)] :- Rletter[(__rletter0@ (Rletter{._l=(_l: string)}: Rletter))], Rseqs[(__rseqs1@ (Rseqs{._s=(_s: TSeq)}: Rseqs))], Inspect debug::debug_event_join((32'd25, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __rletter0, __rseqs1, (Rseq{._s=(TSeq1{.x=(_l, (std::ref_new(_s): std::Ref<TSeq>))}: TSeq)}: Rseq)).
+Rseq[(Rseq{._s=(TSeq1{.x=(_l, (std::ref_new(_s): std::Ref<TSeq>))}: TSeq)}: Rseq)] :- Rletter[(__rletter0@ (Rletter{._l=(_l: string)}: Rletter))], Rseqs[(__rseqs1@ (Rseqs{._s=(_s: TSeq)}: Rseqs))], Inspect debug::debug_event_join((32'd28, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __rletter0, __rseqs1, (Rseq{._s=(TSeq1{.x=(_l, (std::ref_new(_s): std::Ref<TSeq>))}: TSeq)}: Rseq)).
 Try1[(Try1{.description="Isaac Newton", .result=try1("Isaac Newton")}: Try1)].
 Try1[(Try1{.description="", .result=try1("")}: Try1)].
 Try1[(Try1{.description="Albert_Einstein", .result=try1("Albert_Einstein")}: Try1)].

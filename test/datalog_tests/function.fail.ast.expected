@@ -111,3 +111,23 @@ extern function foo(x: u32): ()
 error: ./test/datalog_tests/function.fail.dl:8:21-8:38: expression 'std::nth(components, 1)' must be of type 'Result<>', but its type is 'std::Option<'a>'
     var last_name = components.nth(1)?;
                     ^^^^^^^^^^^^^^^^^
+
+error: ./test/datalog_tests/function.fail.dl:13:5-13:7: Expression is not an l-value
+    y = 0
+    ^^
+
+error: ./test/datalog_tests/function.fail.dl:7:9-7:13: Expression is not an l-value
+        val = y
+        ^^^^
+
+error: ./test/datalog_tests/function.fail.dl:15:5-15:17: Expression is not an l-value
+    interned.f1 = "bar"
+    ^^^^^^^^^^^^
+
+error: ./test/datalog_tests/function.fail.dl:13:9-13:12: Expression is not an l-value
+        vec.push(val)
+        ^^^
+
+error: ./test/datalog_tests/function.fail.dl:13:10-13:13: Expression is not an l-value
+    if ({vec.push(3); vec.len()} > 5) { () }
+         ^^^
