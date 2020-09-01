@@ -130,12 +130,12 @@ identifier   = T.identifier lexer
 lcIdentifier = T.identifier lcLexer
 ucIdentifier = T.identifier ucLexer
 semiSep      = T.semiSep lexer
---semiSep1   = T.semiSep1 lexer
+--semiSep1     = T.semiSep1 lexer
 colon        = T.colon lexer
 commaSep     = T.commaSep lexer
 commaSep1    = T.commaSep1 lexer
 symbol       = try . T.symbol lexer
---semi         = T.semi lexer
+semi         = T.semi lexer
 comma        = T.comma lexer
 braces       = T.braces lexer
 parens       = T.parens lexer
@@ -304,7 +304,7 @@ func = (Function nopos [] <$  (try $ reserved "extern" *> reserved "function")
                          <*> funcIdent
                          <*> (parens $ commaSep farg)
                          <*> (option (TTuple nopos []) (colon *> typeSpecSimple))
-                         <*> (Just <$> ((reservedOp "=" *> expr) <|> (braces expr))))
+                         <*> (Just <$> ((reservedOp "=" *> expr) <|> (braces eseq))))
 
 farg = withPos $ (FuncArg nopos) <$> varIdent <*> (colon *> option False (True <$ reserved "mut")) <*> typeSpecSimple
 
@@ -490,7 +490,7 @@ expr = buildExpressionParser etable term
 
 term  =  elhs
      <|> (withPos $ eTuple <$> (parens $ commaSep expr))
-     <|> braces expr
+     <|> braces eseq
      <|> term'
      <?> "expression term"
 term' = withPos $
@@ -512,6 +512,19 @@ term' = withPos $
      <|> ereturn
      <|> emap_literal
      <|> evec_literal
+
+-- Semicolon-separated expressions with an optional extra semicolon in the end.
+eseq = do
+    p1 <- getPosition
+    me <- optionMaybe expr
+    p2 <- getPosition
+    case me of
+       Nothing -> return $ E $ ETuple (p1, p2) []
+       Just e -> do extra_semi <- optionMaybe semi
+                    if isNothing extra_semi
+                       then return e
+                       else do suffix <- eseq
+                               return $ E $ ESeq (fst $ pos e, snd $ pos suffix) e suffix
 
 emap_literal = mkmap <$> (ismap *> (brackets $ commaSep1 $ (,) <$> expr <* reservedOp "->" <*> expr))
     where ismap = try $ lookAhead $ do
@@ -740,7 +753,7 @@ etable = [[postf $ choice [postTry, postSlice, postApply, postField, postType, p
          ,[binaryKeyWord "or" Or AssocLeft]
          ,[binary "=>" Impl AssocLeft]
          ,[assign AssocNone]
-         ,[sbinary ";" ESeq AssocRight]
+         --,[sbinary ";" ESeq AssocRight]
          ]
 
 pref  p = Prefix  . chainl1 p $ return       (.)
@@ -778,8 +791,7 @@ prefixOp n fun = (\start e -> E $ EUnOp (start, snd $ pos e) fun e) <$> getPosit
 prefixKeyWord n fun = (\start e -> E $ EUnOp (start, snd $ pos e) fun e) <$> getPosition <* reserved n
 binary n fun  = Infix $ (\le re -> E $ EBinOp (fst $ pos le, snd $ pos re) fun le re) <$ reservedOp n
 binaryKeyWord n fun  = Infix $ (\le re -> E $ EBinOp (fst $ pos le, snd $ pos re) fun le re) <$ reserved n
-sbinary n fun = Infix $ (\l  r  -> E $ fun (fst $ pos l, snd $ pos r) l r) <$ reservedOp n
-
+--sbinary n fun = Infix $ (\l  r  -> E $ fun (fst $ pos l, snd $ pos r) l r) <$ reservedOp n
 assign = Infix $ (\l r  -> E $ ESet (fst $ pos l, snd $ pos r) l r) <$ reservedOp "="
 
 {- F-expression (variable or field name) -}

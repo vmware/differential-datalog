@@ -126,42 +126,42 @@ typedef tcp_pkt_t = TCPPkt{src: bit<16>, dst: bit<16>, flags: bit<9>}
 typedef udp_pkt_t = UDPPkt{src: bit<16>, dst: bit<16>, len: bit<16>}
 function __debug_17_1_std::group_min (g: std::Group<string,('I, bit<64>)>): (std::Vec<'I>, bit<64>)
 {
-    (((var inputs: std::Vec<'I>), (var original_group: std::Group<string,bit<64>>)) = debug::debug_split_group(g);
-     (inputs, std::group_min(original_group)))
+    {((var inputs: std::Vec<'I>), (var original_group: std::Group<string,bit<64>>)) = debug::debug_split_group(g);
+     (inputs, std::group_min(original_group))}
 }
 function __debug_18_1_std::group_max (g: std::Group<string,('I, bit<64>)>): (std::Vec<'I>, bit<64>)
 {
-    (((var inputs: std::Vec<'I>), (var original_group: std::Group<string,bit<64>>)) = debug::debug_split_group(g);
-     (inputs, std::group_max(original_group)))
+    {((var inputs: std::Vec<'I>), (var original_group: std::Group<string,bit<64>>)) = debug::debug_split_group(g);
+     (inputs, std::group_max(original_group))}
 }
 function __debug_19_1_best_vendor (g: std::Group<string,('I, (string, bit<64>))>): (std::Vec<'I>, (string, bit<64>))
 {
-    (((var inputs: std::Vec<'I>), (var original_group: std::Group<string,(string, bit<64>)>)) = debug::debug_split_group(g);
-     (inputs, best_vendor(original_group)))
+    {((var inputs: std::Vec<'I>), (var original_group: std::Group<string,(string, bit<64>)>)) = debug::debug_split_group(g);
+     (inputs, best_vendor(original_group))}
 }
 function __debug_20_2_best_vendor_string (g: std::Group<string,('I, (string, bit<64>))>): (std::Vec<'I>, string)
 {
-    (((var inputs: std::Vec<'I>), (var original_group: std::Group<string,(string, bit<64>)>)) = debug::debug_split_group(g);
-     (inputs, best_vendor_string(original_group)))
+    {((var inputs: std::Vec<'I>), (var original_group: std::Group<string,(string, bit<64>)>)) = debug::debug_split_group(g);
+     (inputs, best_vendor_string(original_group))}
 }
 function __debug_33_1_std::group_max (g: std::Group<string,('I, bit<16>)>): (std::Vec<'I>, bit<16>)
 {
-    (((var inputs: std::Vec<'I>), (var original_group: std::Group<string,bit<16>>)) = debug::debug_split_group(g);
-     (inputs, std::group_max(original_group)))
+    {((var inputs: std::Vec<'I>), (var original_group: std::Group<string,bit<16>>)) = debug::debug_split_group(g);
+     (inputs, std::group_max(original_group))}
 }
 function __debug_34_1_std::group_max (g: std::Group<string,('I, bit<16>)>): (std::Vec<'I>, bit<16>)
 {
-    (((var inputs: std::Vec<'I>), (var original_group: std::Group<string,bit<16>>)) = debug::debug_split_group(g);
-     (inputs, std::group_max(original_group)))
+    {((var inputs: std::Vec<'I>), (var original_group: std::Group<string,bit<16>>)) = debug::debug_split_group(g);
+     (inputs, std::group_max(original_group))}
 }
 function __debug_35_1_std::group_to_vec (g: std::Group<internment::Intern<string>,('I, bit<64>)>): (std::Vec<'I>, std::Vec<bit<64>>)
 {
-    (((var inputs: std::Vec<'I>), (var original_group: std::Group<internment::Intern<string>,bit<64>>)) = debug::debug_split_group(g);
-     (inputs, std::group_to_vec(original_group)))
+    {((var inputs: std::Vec<'I>), (var original_group: std::Group<internment::Intern<string>,bit<64>>)) = debug::debug_split_group(g);
+     (inputs, std::group_to_vec(original_group))}
 }
 function addr_port (ip: ip_addr_t, proto: string, preferred_port: bit<16>): string
 {
-    ((var port: bit<16>) = match (proto) {
+    {(var port: bit<16>) = match (proto) {
                                "FTP" -> 16'd20,
                                "HTTPS" -> 16'd443,
                                (_: string) -> if (preferred_port != 16'd0) {
@@ -170,7 +170,7 @@ function addr_port (ip: ip_addr_t, proto: string, preferred_port: bit<16>): stri
                                                     ((return (("" ++ (to_string(ip): string)) ++ ":80")): bit<16>)
                                                 }
                            };
-     ((("" ++ (to_string(ip): string)) ++ ":") ++ (std::__builtin_2string(port): string)))
+     ((("" ++ (to_string(ip): string)) ++ ":") ++ (std::__builtin_2string(port): string))}
 }
 function addr_to_tuple (addr: ip4_addr_t): (bit<8>, bit<8>, bit<8>, bit<8>)
 {
@@ -178,47 +178,50 @@ function addr_to_tuple (addr: ip4_addr_t): (bit<8>, bit<8>, bit<8>, bit<8>)
 }
 function best_vendor (g: std::Group<'K,(string, bit<64>)>): (string, bit<64>)
 {
-    ((var min_vendor: string) = "";
-     ((var min_price: bit<64>) = 64'd18446744073709551615;
-      (for (vendor_price in g) {
+    {(var min_vendor: string) = "";
+     {(var min_price: bit<64>) = 64'd18446744073709551615;
+      {for (vendor_price in g) {
            if (vendor_price.1 < min_price) {
-               (min_vendor = vendor_price.0;
-                min_price = vendor_price.1)
+               {min_vendor = vendor_price.0;
+                {min_price = vendor_price.1;
+                 ()}}
            } else {
                  ()
              }
        };
-       (min_vendor, min_price))))
+       (min_vendor, min_price)}}}
 }
 function best_vendor_string (g: std::Group<string,(string, bit<64>)>): string
 {
-    ((var min_vendor: string) = "";
-     ((var min_price: bit<64>) = 64'd18446744073709551615;
-      (for (vendor_price in g) {
+    {(var min_vendor: string) = "";
+     {(var min_price: bit<64>) = 64'd18446744073709551615;
+      {for (vendor_price in g) {
            if (vendor_price.1 < min_price) {
-               (min_vendor = vendor_price.0;
-                min_price = vendor_price.1)
+               {min_vendor = vendor_price.0;
+                {min_price = vendor_price.1;
+                 ()}}
            } else {
                  ()
              }
        };
-       ((((("Best deal for " ++ (std::group_key(g): string)) ++ ": ") ++ min_vendor) ++ ", $") ++ (std::__builtin_2string(min_price): string)))))
+       ((((("Best deal for " ++ (std::group_key(g): string)) ++ ": ") ++ min_vendor) ++ ", $") ++ (std::__builtin_2string(min_price): string))}}}
 }
 extern function debug::debug_event (operator_id: debug::DDlogOpId, w: std::DDWeight, ts: 'T1, operator_type: string, input1: 'A1, out: 'A2): ()
 extern function debug::debug_event_join (operator_id: debug::DDlogOpId, w: std::DDWeight, ts: 'T1, input1: 'A1, input2: 'A2, out: 'A3): ()
 extern function debug::debug_split_group (g: std::Group<'K,('I, 'V)>): (std::Vec<'I>, std::Group<'K,'V>)
 function evens (vec: std::Vec<bigint>): std::Vec<bigint>
 {
-    ((var res: std::Vec<bigint>) = (std::vec_empty(): std::Vec<bigint>);
-     (for (x in vec) {
-          (if ((x % 2) != 0) {
+    {(var res: std::Vec<bigint>) = (std::vec_empty(): std::Vec<bigint>);
+     {for (x in vec) {
+          {if ((x % 2) != 0) {
                (continue: ())
            } else {
                  ()
              };
-           std::vec_push(res, x))
+           {std::vec_push(res, x);
+            ()}}
       };
-      res))
+      res}}
 }
 function get_price_in_cents (inventory: std::Map<string,string>, item: string): std::Option<std::u64>
 {
@@ -368,16 +371,17 @@ function pkt_udp_port2 (pkt: eth_pkt_t): std::Option<bit<16>>
 }
 function prefixBefore (vec: std::Vec<'A>, v: 'A): std::Vec<'A>
 {
-    ((var res: std::Vec<'A>) = (std::vec_empty(): std::Vec<'A>);
-     (for (x in vec) {
-          (if (x == v) {
+    {(var res: std::Vec<'A>) = (std::vec_empty(): std::Vec<'A>);
+     {for (x in vec) {
+          {if (x == v) {
                (break: ())
            } else {
                  ()
              };
-           std::vec_push(res, x))
+           {std::vec_push(res, x);
+            ()}}
       };
-      res))
+      res}}
 }
 function split_ip_list (x: string): std::Vec<string>
 {
@@ -443,14 +447,14 @@ extern function std::group_to_setmap (g: std::Group<'K1,('K2, 'V)>): std::Map<'K
 extern function std::group_to_vec (g: std::Group<'K,'V>): std::Vec<'V>
 function std::group_unzip (g: std::Group<'K,('X, 'Y)>): (std::Vec<'X>, std::Vec<'Y>)
 {
-    ((var xs: std::Vec<'X>) = (std::vec_empty(): std::Vec<'X>);
-     ((var ys: std::Vec<'Y>) = (std::vec_empty(): std::Vec<'Y>);
-      (for (v in g) {
-           (((var x: 'X), (var y: 'Y)) = v;
-            (std::vec_push(xs, x);
-             std::vec_push(ys, y)))
+    {(var xs: std::Vec<'X>) = (std::vec_empty(): std::Vec<'X>);
+     {(var ys: std::Vec<'Y>) = (std::vec_empty(): std::Vec<'Y>);
+      {for (v in g) {
+           {((var x: 'X), (var y: 'Y)) = v;
+            {std::vec_push(xs, x);
+             std::vec_push(ys, y)}}
        };
-       (xs, ys))))
+       (xs, ys)}}}
 }
 extern function std::hash128 (x: 'X): bit<128>
 extern function std::hash64 (x: 'X): bit<64>
@@ -926,11 +930,12 @@ function to_string (h: nethost_t): string
 }
 function vsep (strs: std::Vec<string>): string
 {
-    ((var res: string) = "";
-     (for (s in strs) {
-          res = ((res ++ s) ++ "\n")
+    {(var res: string) = "";
+     {for (s in strs) {
+          {res = ((res ++ s) ++ "\n");
+           ()}
       };
-      res))
+      res}}
 }
 output relation Address [Address]
 input relation Author [Author]

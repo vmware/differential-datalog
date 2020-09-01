@@ -402,7 +402,15 @@ inferTypes d es = do
             where
             t = case M.lookup ctx ctxtypes of
                      Just t' -> t'
-                     Nothing -> error $ "inferTypes: context has not been assigned a type:\n" ++ show ctx
+                     Nothing -> case e of
+                                     -- Relations that interrupt control flow sometimes have
+                                     -- type unrestricted by context, e.g., in '{return; ()}',
+                                     -- the type of `return` can be anything.
+                                     -- We default them to empty tuples.
+                                     EContinue{} -> tTuple []
+                                     EBreak{}    -> tTuple []
+                                     EReturn{}   -> tTuple []
+                                     _           -> error $ "inferTypes: context has not been assigned a type:\n" ++ show ctx
             expr = exprMap fst e
             annotated = if ctxIsTyped ctx
                            then E expr

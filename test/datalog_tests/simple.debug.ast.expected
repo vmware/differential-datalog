@@ -235,88 +235,88 @@ typedef t22 = float
 typedef tnid_t = bit<16>
 function __debug_100_1_std::group_to_vec (g: std::Group<string,('I, string)>): (std::Vec<'I>, std::Vec<string>)
 {
-    (((var inputs: std::Vec<'I>), (var original_group: std::Group<string,string>)) = debug::debug_split_group(g);
-     (inputs, std::group_to_vec(original_group)))
+    {((var inputs: std::Vec<'I>), (var original_group: std::Group<string,string>)) = debug::debug_split_group(g);
+     (inputs, std::group_to_vec(original_group))}
 }
 function __debug_101_1_std::group_to_map (g: std::Group<string,('I, (string, string))>): (std::Vec<'I>, std::Map<string,string>)
 {
-    (((var inputs: std::Vec<'I>), (var original_group: std::Group<string,(string, string)>)) = debug::debug_split_group(g);
-     (inputs, std::group_to_map(original_group)))
+    {((var inputs: std::Vec<'I>), (var original_group: std::Group<string,(string, string)>)) = debug::debug_split_group(g);
+     (inputs, std::group_to_map(original_group))}
 }
 function __debug_102_1_std::group_to_set (g: std::Group<string,('I, string)>): (std::Vec<'I>, std::Set<string>)
 {
-    (((var inputs: std::Vec<'I>), (var original_group: std::Group<string,string>)) = debug::debug_split_group(g);
-     (inputs, std::group_to_set(original_group)))
+    {((var inputs: std::Vec<'I>), (var original_group: std::Group<string,string>)) = debug::debug_split_group(g);
+     (inputs, std::group_to_set(original_group))}
 }
 function __debug_103_1_std::group_sum (g: std::Group<string,('I, bit<32>)>): (std::Vec<'I>, bit<32>)
 {
-    (((var inputs: std::Vec<'I>), (var original_group: std::Group<string,bit<32>>)) = debug::debug_split_group(g);
-     (inputs, std::group_sum(original_group)))
+    {((var inputs: std::Vec<'I>), (var original_group: std::Group<string,bit<32>>)) = debug::debug_split_group(g);
+     (inputs, std::group_sum(original_group))}
 }
 function __debug_104_2_std::group_count (g: std::Group<string,('I, ())>): (std::Vec<'I>, std::usize)
 {
-    (((var inputs: std::Vec<'I>), (var original_group: std::Group<string,()>)) = debug::debug_split_group(g);
-     (inputs, std::group_count(original_group)))
+    {((var inputs: std::Vec<'I>), (var original_group: std::Group<string,()>)) = debug::debug_split_group(g);
+     (inputs, std::group_count(original_group))}
 }
 function __debug_105_1_concat_ys (g: std::Group<(string, string),('I, string)>): (std::Vec<'I>, string)
 {
-    (((var inputs: std::Vec<'I>), (var original_group: std::Group<(string, string),string>)) = debug::debug_split_group(g);
-     (inputs, concat_ys(original_group)))
+    {((var inputs: std::Vec<'I>), (var original_group: std::Group<(string, string),string>)) = debug::debug_split_group(g);
+     (inputs, concat_ys(original_group))}
 }
 function __debug_112_2_std::group_to_vec (g: std::Group<string,('I, string)>): (std::Vec<'I>, std::Vec<string>)
 {
-    (((var inputs: std::Vec<'I>), (var original_group: std::Group<string,string>)) = debug::debug_split_group(g);
-     (inputs, std::group_to_vec(original_group)))
+    {((var inputs: std::Vec<'I>), (var original_group: std::Group<string,string>)) = debug::debug_split_group(g);
+     (inputs, std::group_to_vec(original_group))}
 }
 function __debug_113_1_std::group_to_set (g: std::Group<string,('I, bit<32>)>): (std::Vec<'I>, std::Set<bit<32>>)
 {
-    (((var inputs: std::Vec<'I>), (var original_group: std::Group<string,bit<32>>)) = debug::debug_split_group(g);
-     (inputs, std::group_to_set(original_group)))
+    {((var inputs: std::Vec<'I>), (var original_group: std::Group<string,bit<32>>)) = debug::debug_split_group(g);
+     (inputs, std::group_to_set(original_group))}
 }
 function __debug_248_2_std::group_to_set (g: std::Group<bit<32>,('I, bit<16>)>): (std::Vec<'I>, std::Set<bit<16>>)
 {
-    (((var inputs: std::Vec<'I>), (var original_group: std::Group<bit<32>,bit<16>>)) = debug::debug_split_group(g);
-     (inputs, std::group_to_set(original_group)))
+    {((var inputs: std::Vec<'I>), (var original_group: std::Group<bit<32>,bit<16>>)) = debug::debug_split_group(g);
+     (inputs, std::group_to_set(original_group))}
 }
 function __debug_249_3_std::group_set_unions (g: std::Group<bit<32>,('I, std::Set<tnid_t>)>): (std::Vec<'I>, std::Set<bit<16>>)
 {
-    (((var inputs: std::Vec<'I>), (var original_group: std::Group<bit<32>,std::Set<tnid_t>>)) = debug::debug_split_group(g);
-     (inputs, std::group_set_unions(original_group)))
+    {((var inputs: std::Vec<'I>), (var original_group: std::Group<bit<32>,std::Set<tnid_t>>)) = debug::debug_split_group(g);
+     (inputs, std::group_set_unions(original_group))}
 }
 function __debug_93_1_count_xs (g: std::Group<string,('I, string)>): (std::Vec<'I>, std::u64)
 {
-    (((var inputs: std::Vec<'I>), (var original_group: std::Group<string,string>)) = debug::debug_split_group(g);
-     (inputs, count_xs(original_group)))
+    {((var inputs: std::Vec<'I>), (var original_group: std::Group<string,string>)) = debug::debug_split_group(g);
+     (inputs, count_xs(original_group))}
 }
 function __debug_94_1_find_x_in_group (g: std::Group<string,('I, string)>): (std::Vec<'I>, bool)
 {
-    (((var inputs: std::Vec<'I>), (var original_group: std::Group<string,string>)) = debug::debug_split_group(g);
-     (inputs, find_x_in_group(original_group)))
+    {((var inputs: std::Vec<'I>), (var original_group: std::Group<string,string>)) = debug::debug_split_group(g);
+     (inputs, find_x_in_group(original_group))}
 }
 function __debug_95_1_std::group_count (g: std::Group<string,('I, string)>): (std::Vec<'I>, std::usize)
 {
-    (((var inputs: std::Vec<'I>), (var original_group: std::Group<string,string>)) = debug::debug_split_group(g);
-     (inputs, std::group_count(original_group)))
+    {((var inputs: std::Vec<'I>), (var original_group: std::Group<string,string>)) = debug::debug_split_group(g);
+     (inputs, std::group_count(original_group))}
 }
 function __debug_96_1_std::group_count (g: std::Group<(),('I, ())>): (std::Vec<'I>, std::usize)
 {
-    (((var inputs: std::Vec<'I>), (var original_group: std::Group<(),()>)) = debug::debug_split_group(g);
-     (inputs, std::group_count(original_group)))
+    {((var inputs: std::Vec<'I>), (var original_group: std::Group<(),()>)) = debug::debug_split_group(g);
+     (inputs, std::group_count(original_group))}
 }
 function __debug_97_1_std::group_sum (g: std::Group<(),('I, bit<64>)>): (std::Vec<'I>, bit<64>)
 {
-    (((var inputs: std::Vec<'I>), (var original_group: std::Group<(),bit<64>>)) = debug::debug_split_group(g);
-     (inputs, std::group_sum(original_group)))
+    {((var inputs: std::Vec<'I>), (var original_group: std::Group<(),bit<64>>)) = debug::debug_split_group(g);
+     (inputs, std::group_sum(original_group))}
 }
 function __debug_98_2_std::group_sum (g: std::Group<(),('I, bit<64>)>): (std::Vec<'I>, bit<64>)
 {
-    (((var inputs: std::Vec<'I>), (var original_group: std::Group<(),bit<64>>)) = debug::debug_split_group(g);
-     (inputs, std::group_sum(original_group)))
+    {((var inputs: std::Vec<'I>), (var original_group: std::Group<(),bit<64>>)) = debug::debug_split_group(g);
+     (inputs, std::group_sum(original_group))}
 }
 function __debug_99_1_std::group_to_set (g: std::Group<string,('I, string)>): (std::Vec<'I>, std::Set<string>)
 {
-    (((var inputs: std::Vec<'I>), (var original_group: std::Group<string,string>)) = debug::debug_split_group(g);
-     (inputs, std::group_to_set(original_group)))
+    {((var inputs: std::Vec<'I>), (var original_group: std::Group<string,string>)) = debug::debug_split_group(g);
+     (inputs, std::group_to_set(original_group))}
 }
 function a0 (): bigint
 {
@@ -380,29 +380,29 @@ function a9 (): bit<32>
 }
 function agg1 (g1: std::Group<'K,Tt1>): Ttmp0
 {
-    ((var first3: bool) = true;
-     ((var max5: signed<64>) = 64'sd0;
-      (for (i2 in g1) {
-           ((var v0: Tt1) = i2;
+    {(var first3: bool) = true;
+     {(var max5: signed<64>) = 64'sd0;
+      {for (i2 in g1) {
+           {(var v0: Tt1) = i2;
             max5 = if first3 {
                        v0.column1
                    } else {
-                         (first3 = false;
-                          64'sd0)
-                     })
+                         {first3 = false;
+                          64'sd0}
+                     }}
        };
-       (Ttmp0{.col4=max5}: Ttmp0))))
+       (Ttmp0{.col4=max5}: Ttmp0)}}}
 }
 function all (xs: std::Vec<bool>): bool
 {
-    (for (x in xs) {
+    {for (x in xs) {
          if (not x) {
              ((return false): ())
          } else {
                ()
            }
      };
-     ((return true): bool))
+     ((return true): bool)}
 }
 extern function allocate::adjust_allocation (allocated: std::Map<'A,'N>, toallocate: std::Vec<'A>, min_val: 'N, max_val: 'N): std::Vec<('A, 'N)>
 extern function allocate::allocate (allocated: std::Set<'N>, toallocate: std::Vec<'B>, min_val: 'N, max_val: 'N): std::Vec<('B, 'N)>
@@ -410,16 +410,16 @@ extern function allocate::allocate_opt (allocated: std::Set<'N>, toallocate: std
 extern function allocate::allocate_with_hint (allocated: std::Set<'N>, toallocate: std::Vec<('B, std::Option<'N>)>, min_val: 'N, max_val: 'N): std::Vec<('B, 'N)>
 function any (xs: std::Vec<bool>): bool
 {
-    ((var res: bool) = false;
-     (for (x in xs) {
+    {(var res: bool) = false;
+     {for (x in xs) {
           if x {
-              (res = true;
-               (break: ()))
+              {res = true;
+               (break: ())}
           } else {
                 ()
             }
       };
-      ((return res): bool)))
+      ((return res): bool)}}
 }
 function b0 (): bool
 {
@@ -431,29 +431,31 @@ function b1 (a: bool): bool
 }
 function c0 (a: bit<32>, b: bit<16>): bit<16>
 {
-    (a;
-     b)
+    {a;
+     b}
 }
 function concat_ys (ys: std::Group<(string, string),string>): string
 {
-    (((var x: string), (var z: string)) = (std::group_key(ys): (string, string));
-     ((var res: string) = (((x ++ "-") ++ z) ++ ":");
-      (for (y in ys) {
-           res = (res ++ y)
+    {((var x: string), (var z: string)) = (std::group_key(ys): (string, string));
+     {(var res: string) = (((x ++ "-") ++ z) ++ ":");
+      {for (y in ys) {
+           {res = (res ++ y);
+            ()}
        };
-       res)))
+       res}}}
 }
 function count_xs (ys: std::Group<string,string>): std::u64
 {
-    ((var res: std::u64) = 64'd0;
-     (for (y in ys) {
+    {(var res: std::u64) = 64'd0;
+     {for (y in ys) {
           if (y == (std::group_key(ys): string)) {
-              res = (res + 64'd1)
+              {res = (res + 64'd1);
+               ()}
           } else {
                 ()
             }
       };
-      res))
+      res}}
 }
 function dbl (): double
 {
@@ -464,8 +466,8 @@ extern function debug::debug_event_join (operator_id: debug::DDlogOpId, w: std::
 extern function debug::debug_split_group (g: std::Group<'K,('I, 'V)>): (std::Vec<'I>, std::Group<'K,'V>)
 function double_evens (xs: std::Vec<bigint>): std::Vec<bigint>
 {
-    ((var res: std::Vec<bigint>) = (std::vec_empty(): std::Vec<bigint>);
-     (for (x in xs) {
+    {(var res: std::Vec<bigint>) = (std::vec_empty(): std::Vec<bigint>);
+     {for (x in xs) {
           std::vec_push(res, mult2(if (x == 0) {
                                        (break: bigint)
                                    } else {
@@ -480,7 +482,7 @@ function double_evens (xs: std::Vec<bigint>): std::Vec<bigint>
                                            }
                                      }))
       };
-      res))
+      res}}
 }
 function dummy (x: string): string
 {
@@ -497,42 +499,42 @@ function edge_to (e: Edge): bigint
 extern function f (): bigint
 function f1 (x: T1, y: T2, q: T3): bool
 {
-    (match (x) {
+    {match (x) {
          (C11{.f1=(_: bigint), .f2=(_: (bigint, string))}: T1) -> true,
          (_: T1) -> false
      };
-     (match (x) {
+     {match (x) {
           (C11{.f1=(_: bigint), .f2=(_: (bigint, string))}: T1) -> true,
           (C12{.f3=(_: bit<32>), .f4=(_: (bool, bool, bool))}: T1) -> false
       };
-      (match (y) {
+      {match (y) {
            (C21{.f1=(_: T1), .f2=(_: bigint)}: T2) -> true,
            (C22{.f3=((_: bool), (C11{.f1=(_: bigint), .f2=(_: (bigint, string))}: T1))}: T2) -> true,
            (_: T2) -> false
        };
-       (match (y) {
+       {match (y) {
             (C21{.f1=(_: T1), .f2=(_: bigint)}: T2) -> true,
             (C22{.f3=(true, (C11{.f1=(_: bigint), .f2=(_: (bigint, string))}: T1))}: T2) -> true,
             (C22{.f3=(true, (C12{.f3=(_: bit<32>), .f4=(_: (bool, bool, bool))}: T1))}: T2) -> true,
             (C22{.f3=(false, (C11{.f1=(_: bigint), .f2=(_: (bigint, string))}: T1))}: T2) -> true,
             (C22{.f3=(false, (C12{.f3=(_: bit<32>), .f4=(_: (bool, bool, bool))}: T1))}: T2) -> true
         };
-        ((var z: (bool, (bool, (bool, bool)))) = (true, (false, (true, false)));
-         (match (z) {
+        {(var z: (bool, (bool, (bool, bool)))) = (true, (false, (true, false)));
+         {match (z) {
               (true, (_: (bool, (bool, bool)))) -> true,
               (false, ((_: bool), (true, true))) -> true,
               (false, ((_: bool), (true, false))) -> true,
               (false, ((_: bool), (false, true))) -> true,
               (false, ((_: bool), (false, false))) -> true
           };
-          (match (z) {
+          {match (z) {
                ((_: bool), ((_: bool), (true, true))) -> true,
                ((_: bool), ((_: bool), (true, false))) -> true,
                ((_: bool), ((_: bool), (false, true))) -> true,
                (false, ((_: bool), (false, false))) -> true,
                (true, ((_: bool), (false, false))) -> true
            };
-           (match (q) {
+           {match (q) {
                 (C31{.f1=(_: T1), .f2=(_: bigint), .s=(_: string), .b=(_: bit<32>)}: T3) -> true,
                 (C32{.f3=((true, ((_: bool), (_: bool), false)), (_: T1))}: T3) -> true,
                 (C32{.f3=((false, ((_: bool), (_: bool), false)), (_: T1))}: T3) -> true,
@@ -542,7 +544,7 @@ function f1 (x: T1, y: T2, q: T3): bool
                 (C32{.f3=(((_: bool), ((_: bool), (_: bool), true)), (C12{.f3=(_: bit<32>), .f4=((_: bool), (_: bool), false)}: T1))}: T3) -> false,
                 (C32{.f3=(((_: bool), ((_: bool), (_: bool), true)), (C12{.f3=(_: bit<32>), .f4=((_: bool), (_: bool), true)}: T1))}: T3) -> false
             };
-            (match (q) {
+            {match (q) {
                  (C31{.f1=(_: T1), .f2=0, .s="foo", .b=32'd15}: T3) -> true,
                  (C31{.f1=(_: T1), .f2=(_: bigint), .s=(_: string), .b=32'd15}: T3) -> true,
                  (C31{.f1=(_: T1), .f2=0, .s=(_: string), .b=(_: bit<32>)}: T3) -> true,
@@ -550,18 +552,18 @@ function f1 (x: T1, y: T2, q: T3): bool
                  (C32{.f3=(_: ((bool, (bool, bool, bool)), T1))}: T3) -> true,
                  (C31{.f1=(_: T1), .f2=(_: bigint), .s=(_: string), .b=(_: bit<32>)}: T3) -> true
              };
-             ((var s: string) = "bar";
+             {(var s: string) = "bar";
               match (s) {
                   "foo" -> true,
                   "bar" -> true,
                   (_: string) -> false
-              }))))))))))
+              }}}}}}}}}}}
 }
 function filter_C0 (xs: std::Vec<Alt>): std::Vec<bigint>
 {
-    ((var res: std::Vec<bigint>) = (std::vec_empty(): std::Vec<bigint>);
-     (for (x in xs) {
-          ((var val: bigint) = match (x) {
+    {(var res: std::Vec<bigint>) = (std::vec_empty(): std::Vec<bigint>);
+     {for (x in xs) {
+          {(var val: bigint) = match (x) {
                                    (C0{.x=(var v: bit<32>)}: Alt) -> (continue: bigint),
                                    (C1{.x=(var v: bit<32>)}: Alt) -> if (v > 32'd0) {
                                                                          (v as bigint)
@@ -569,33 +571,35 @@ function filter_C0 (xs: std::Vec<Alt>): std::Vec<bigint>
                                                                            (break: bigint)
                                                                        }
                                };
-           std::vec_push(res, val))
+           {std::vec_push(res, val);
+            ()}}
       };
-      res))
+      res}}
 }
 function filter_gt (xs: std::Vec<bigint>, threshold: bigint): std::Vec<bigint>
 {
-    ((var res: std::Vec<bigint>) = (std::vec_empty(): std::Vec<bigint>);
-     (for (x in xs) {
-          (if (x <= threshold) {
+    {(var res: std::Vec<bigint>) = (std::vec_empty(): std::Vec<bigint>);
+     {for (x in xs) {
+          {if (x <= threshold) {
                (continue: ())
            } else {
                  ()
              };
-           std::vec_push(res, x))
+           std::vec_push(res, x)}
       };
-      ((return res): std::Vec<bigint>)))
+      ((return res): std::Vec<bigint>)}}
 }
 function find_x_in_group (ys: std::Group<'A,'A>): bool
 {
-    (for (y in ys) {
+    {for (y in ys) {
          if (y == (std::group_key(ys): 'A)) {
-             ((return true): ())
+             {((return true): ());
+              ()}
          } else {
                ()
            }
      };
-     false)
+     false}
 }
 function flt (): float
 {
@@ -603,27 +607,27 @@ function flt (): float
 }
 function fnested (x: nested_t): string
 {
-    ((N{.field=(C{.f1=(var res: string), .f2=(_: string)}: C)}: nested_t) = x;
-     res)
+    {(N{.field=(C{.f1=(var res: string), .f2=(_: string)}: C)}: nested_t) = x;
+     res}
 }
 function foo (): bool
 {
-    ((var v1: bigint) = 0;
-     ((var v2: bit<32>) = 32'd1;
-      ((var v3: bit<129>) = 129'd0;
-       ((var v4: bool) = true;
-        ((var v5: (bigint, string)) = (0, "test_string");
-         ((var v6: IPAddr) = (IP4{.ip4=32'd2864434397}: IPAddr);
-          ((var v7: FooStruct) = (Option1{.f1=0, .f2=(IP4{.ip4=32'd0}: IPAddr), .f3=(true, "bar")}: FooStruct);
-           (v3 = (v3 + 129'd703710);
-            (match (v6) {
+    {(var v1: bigint) = 0;
+     {(var v2: bit<32>) = 32'd1;
+      {(var v3: bit<129>) = 129'd0;
+       {(var v4: bool) = true;
+        {(var v5: (bigint, string)) = (0, "test_string");
+         {(var v6: IPAddr) = (IP4{.ip4=32'd2864434397}: IPAddr);
+          {(var v7: FooStruct) = (Option1{.f1=0, .f2=(IP4{.ip4=32'd0}: IPAddr), .f3=(true, "bar")}: FooStruct);
+           {v3 = (v3 + 129'd703710);
+            {match (v6) {
                  (IP4{.ip4=(_: bit<32>)}: IPAddr) -> true,
                  (_: IPAddr) -> false
              };
              match (v7) {
                  (Option1{.f1=(_: bigint), .f2=(IP6{.ip6=(_: bit<128>)}: IPAddr), .f3=((_: bool), "bar")}: FooStruct) -> true,
                  (_: FooStruct) -> false
-             })))))))))
+             }}}}}}}}}}
 }
 extern function fp::abs_d (f: double): double
 extern function fp::abs_f (f: float): float
@@ -790,8 +794,8 @@ function mult2 (x: bigint): bigint
 }
 function p (): string
 {
-    ((var notable: string) = "hi";
-     notable)
+    {(var notable: string) = "hi";
+     notable}
 }
 extern function parameterized (x: 'A, y: 'A): 'A
 function parameterized2 (x: 'A, y: 'A): bool
@@ -800,15 +804,16 @@ function parameterized2 (x: 'A, y: 'A): bool
 }
 function patterns (): ()
 {
-    ((var a: Alt) = (C0{.x=32'd1}: Alt);
-     ((var b: bool) = match (a) {
+    {(var a: Alt) = (C0{.x=32'd1}: Alt);
+     {(var b: bool) = match (a) {
                           (C0{.x=(_: bit<32>)}: Alt) -> true,
                           (C1{.x=(_: bit<32>)}: Alt) -> false
                       };
-      (var i: bit<32>) = match (a) {
-                             (C0{.x=(var v: bit<32>)}: Alt) -> v,
-                             (C1{.x=(var v: bit<32>)}: Alt) -> v
-                         }))
+      {(var i: bit<32>) = match (a) {
+                              (C0{.x=(var v: bit<32>)}: Alt) -> v,
+                              (C1{.x=(var v: bit<32>)}: Alt) -> v
+                          };
+       ()}}}
 }
 extern function regex::regex (pattern: string): regex::Regex
 extern function regex::regex_all_matches (regex: regex::Regex, text: string): std::Vec<string>
@@ -825,12 +830,12 @@ function s1 (): string
 }
 function shadow (): string
 {
-    ((var b: std::Option<string>) = (std::None{}: std::Option<string>);
-     ((var a: std::Option<string>) = (std::Some{.x="foo"}: std::Option<string>);
+    {(var b: std::Option<string>) = (std::None{}: std::Option<string>);
+     {(var a: std::Option<string>) = (std::Some{.x="foo"}: std::Option<string>);
       match (a) {
           (std::Some{.x=(var v: string)}: std::Option<string>) -> v,
           (std::None{}: std::Option<string>) -> ""
-      }))
+      }}}
 }
 function souffle_lib::acos (l: signed<32>): signed<32>
 {
@@ -904,15 +909,15 @@ function souffle_lib::group_count32 (g: std::Group<'K,'V>): souffle_types::Tnumb
 }
 function souffle_lib::group_mean (g: std::Group<'K,signed<32>>): signed<32>
 {
-    ((var sum: signed<32>) = (std::group_sum(g): signed<32>);
-     ((var count: bit<64>) = std::group_count(g);
-      (sum / ((count as signed<64>) as signed<32>))))
+    {(var sum: signed<32>) = (std::group_sum(g): signed<32>);
+     {(var count: bit<64>) = std::group_count(g);
+      (sum / ((count as signed<64>) as signed<32>))}}
 }
 function souffle_lib::group_mean_d (g: std::Group<'K,double>): double
 {
-    ((var sum: double) = (std::group_sum(g): double);
-     ((var count: bit<64>) = std::group_count(g);
-      (sum / (count as double))))
+    {(var sum: double) = (std::group_sum(g): double);
+     {(var count: bit<64>) = std::group_count(g);
+      (sum / (count as double))}}
 }
 function souffle_lib::itof (l: signed<32>): double
 {
@@ -1072,14 +1077,14 @@ extern function std::group_to_setmap (g: std::Group<'K1,('K2, 'V)>): std::Map<'K
 extern function std::group_to_vec (g: std::Group<'K,'V>): std::Vec<'V>
 function std::group_unzip (g: std::Group<'K,('X, 'Y)>): (std::Vec<'X>, std::Vec<'Y>)
 {
-    ((var xs: std::Vec<'X>) = (std::vec_empty(): std::Vec<'X>);
-     ((var ys: std::Vec<'Y>) = (std::vec_empty(): std::Vec<'Y>);
-      (for (v in g) {
-           (((var x: 'X), (var y: 'Y)) = v;
-            (std::vec_push(xs, x);
-             std::vec_push(ys, y)))
+    {(var xs: std::Vec<'X>) = (std::vec_empty(): std::Vec<'X>);
+     {(var ys: std::Vec<'Y>) = (std::vec_empty(): std::Vec<'Y>);
+      {for (v in g) {
+           {((var x: 'X), (var y: 'Y)) = v;
+            {std::vec_push(xs, x);
+             std::vec_push(ys, y)}}
        };
-       (xs, ys))))
+       (xs, ys)}}}
 }
 extern function std::hash128 (x: 'X): bit<128>
 extern function std::hash64 (x: 'X): bit<64>
@@ -1538,23 +1543,23 @@ extern function std::vec_with_capacity (len: std::usize): std::Vec<'A>
 extern function std::vec_with_length (len: std::usize, x: 'A): std::Vec<'A>
 function strings (): ()
 {
-    ((var str1: string) = ("foo" ++ "bar");
-     ((var str2: string) = ((("foobar" ++ "buzz") ++ "\nraw string ") ++ "quoted string");
-      ((var str3: string) = ("str1: " ++ str1);
-       ((var str4: string) = (((((("str1: " ++ str1) ++ ", str2: ") ++ str2) ++ ", str3: ") ++ str3) ++ ".");
-        ((var str5: string) = [|str1: ${str1},
+    {(var str1: string) = ("foo" ++ "bar");
+     {(var str2: string) = ((("foobar" ++ "buzz") ++ "\nraw string ") ++ "quoted string");
+      {(var str3: string) = ("str1: " ++ str1);
+       {(var str4: string) = (((((("str1: " ++ str1) ++ ", str2: ") ++ str2) ++ ", str3: ") ++ str3) ++ ".");
+        {(var str5: string) = [|str1: ${str1},
 str2: ${str2},
 str3: ${str3}.|];
-         ((var str6: string) = ("" ++ (str1 ++ str2));
-          ((var str7: string) = ("" ++ ((var x: string) = (str1 ++ str2);
-                                        x));
-           ((var str8: string) = ("" ++ ((var x: string) = (str1 ++ str2);
-                                         dummy(x)));
-            ((var b: bool) = (str1 < str2);
-             ((var b1: bool) = ("" < str1);
-              ((var b2: bool) = ([|${}|] < "");
-               ((var b3: bool) = ((str1 != str2) and (str1 >= str2));
-                ()))))))))))))
+         {(var str6: string) = ("" ++ (str1 ++ str2));
+          {(var str7: string) = ("" ++ {(var x: string) = (str1 ++ str2);
+                                        x});
+           {(var str8: string) = ("" ++ {(var x: string) = (str1 ++ str2);
+                                         dummy(x)});
+            {(var b: bool) = (str1 < str2);
+             {(var b1: bool) = ("" < str1);
+              {(var b2: bool) = ([|${}|] < "");
+               {(var b3: bool) = ((str1 != str2) and (str1 >= str2));
+                ()}}}}}}}}}}}}
 }
 function to_string (x: serializable_t): string
 {
@@ -1568,22 +1573,22 @@ function to_string (x: serializable_t): string
 }
 function tostring1 (): ()
 {
-    ((var a: bigint) = 5;
-     ((var b: bit<32>) = 32'd5;
-      ((var c: bool) = true;
-       ((var d: string) = "foo";
-        ((var err: string) = ((((((("a=" ++ (std::__builtin_2string(a): string)) ++ ", b=") ++ (std::__builtin_2string(b): string)) ++ ", c=") ++ (std::__builtin_2string(c): string)) ++ ", d=") ++ d);
-         ())))))
+    {(var a: bigint) = 5;
+     {(var b: bit<32>) = 32'd5;
+      {(var c: bool) = true;
+       {(var d: string) = "foo";
+        {(var err: string) = ((((((("a=" ++ (std::__builtin_2string(a): string)) ++ ", b=") ++ (std::__builtin_2string(b): string)) ++ ", c=") ++ (std::__builtin_2string(c): string)) ++ ", d=") ++ d);
+         ()}}}}}
 }
 function tostring2 (): ()
 {
-    ((var a: bigint) = 5;
-     ((var b: bit<32>) = 32'd5;
-      ((var c: bool) = true;
-       ((var d: string) = "foo";
-        ((var e: serializable_t) = (ConsInt{.x=0}: serializable_t);
-         ((var err: string) = ((((((((("a=" ++ (std::__builtin_2string(a): string)) ++ ", b=") ++ (std::__builtin_2string(b): string)) ++ ", c=") ++ (std::__builtin_2string(c): string)) ++ ", d=") ++ d) ++ ", e:") ++ (to_string(e): string));
-          ()))))))
+    {(var a: bigint) = 5;
+     {(var b: bit<32>) = 32'd5;
+      {(var c: bool) = true;
+       {(var d: string) = "foo";
+        {(var e: serializable_t) = (ConsInt{.x=0}: serializable_t);
+         {(var err: string) = ((((((((("a=" ++ (std::__builtin_2string(a): string)) ++ ", b=") ++ (std::__builtin_2string(b): string)) ++ ", c=") ++ (std::__builtin_2string(c): string)) ++ ", d=") ++ d) ++ ", e:") ++ (to_string(e): string));
+          ()}}}}}}
 }
 function use_parameterized (x: string, y: string_syn): string
 {
@@ -1591,9 +1596,9 @@ function use_parameterized (x: string, y: string_syn): string
 }
 function v (): string
 {
-    ((var v1: string) = "hello";
-     ((var v2: string) = "there";
-      v2))
+    {(var v1: string) = "hello";
+     {(var v2: string) = "there";
+      v2}}
 }
 function v2 (): bool
 {
@@ -1601,25 +1606,26 @@ function v2 (): bool
 }
 function vars (): ()
 {
-    ((var x: bigint) = 0;
-     (x = 10;
-      ((var y: C) = (C{.f1="foo", .f2="bar"}: C);
-       ((var z: C) = (C{.f1="bar", .f2="foo"}: C);
-        (((var a: bigint), (var b: bigint)) = ((x + 5), (x - 5));
-         ((C{.f1=(var e: string), .f2=(_: string)}: C) = y;
-          (C{.f1=(var c: string), .f2=(var d: string)}: C) = y))))))
+    {(var x: bigint) = 0;
+     {x = 10;
+      {(var y: C) = (C{.f1="foo", .f2="bar"}: C);
+       {(var z: C) = (C{.f1="bar", .f2="foo"}: C);
+        {((var a: bigint), (var b: bigint)) = ((x + 5), (x - 5));
+         {(C{.f1=(var e: string), .f2=(_: string)}: C) = y;
+          {(C{.f1=(var c: string), .f2=(var d: string)}: C) = y;
+           ()}}}}}}}
 }
 function weird_any (xs: std::Vec<bool>): bool
 {
-    ((var res: bool) = false;
-     (for (x in xs) {
+    {(var res: bool) = false;
+     {for (x in xs) {
           ((return if (x == true) {
                        true
                    } else {
                          (continue: bool)
                      }): ())
       };
-      false))
+      false}}
 }
 function x (): Alt
 {
@@ -1775,9 +1781,9 @@ Compare[(Compare{.label="C0{32'd3} < C1{32'd4}", .value=((C0{.x=32'd3}: Alt) < (
 Compare[(Compare{.label="None < Some{1}", .value=((std::None{}: std::Option<signed<32>>) < (std::Some{.x=32'sd1}: std::Option<signed<32>>))}: Compare)].
 Compare[(Compare{.label="Some{0} < Some{1}", .value=((std::Some{.x=(32'd0: std::u32)}: std::Option<bit<32>>) < (std::Some{.x=32'd1}: std::Option<bit<32>>))}: Compare)].
 VecTest[(VecTest{.x=(std::vec_empty(): std::Vec<string>)}: VecTest)].
-VecTest[(VecTest{.x=((var v: std::Vec<string>) = (std::vec_empty(): std::Vec<string>);
-                     (std::vec_push(v, "Hello,");
-                      v))}: VecTest)].
+VecTest[(VecTest{.x={(var v: std::Vec<string>) = (std::vec_empty(): std::Vec<string>);
+                     {std::vec_push(v, "Hello,");
+                      v}}}: VecTest)].
 VecTest[(VecTest{.x=(std::vec_push_imm((std::vec_push_imm((std::vec_empty(): std::Vec<string>), "Hello, "): std::Vec<string>), "world!"): std::Vec<string>)}: VecTest)].
 Reach[(Reach{.s1=x, .s2=y}: Reach)] :- Links[(__links0@ (Links{.l=(l: bigint), .s1=(x: string), .s2=(y: string)}: Links))], Inspect debug::debug_event((32'd20, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __links0, (Reach{.s1=x, .s2=y}: Reach)).
 Reach[(Reach{.s1=x, .s2=y}: Reach)] :- Links[(__links0@ (Links{.l=(l: bigint), .s1=(y: string), .s2=(x: string)}: Links))], Inspect debug::debug_event((32'd21, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __links0, (Reach{.s1=x, .s2=y}: Reach)).
@@ -1916,18 +1922,18 @@ Filtered[(Filtered{.r=r.r}: Filtered)] :- Referee[(r@ (Referee{.r=((&(Referenced
 Referee2[(std::ref_new((Referee2{.r=r}: Referee2)): std::Ref<Referee2>)] :- Referenced[(__referenced0@ (r: Referenced))], Inspect debug::debug_event((32'd117, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __referenced0, (std::ref_new((Referee2{.r=r}: Referee2)): std::Ref<Referee2>)).
 Filtered2[(Filtered2{.r=r}: Filtered2)] :- Referee2[(r@ ((&(Referee2{.r=(Referenced{.x=true, .y=(_: std::Option<string>)}: Referenced)}: Referee2)): std::Ref<Referee2>))], Inspect debug::debug_event((32'd118, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", r, (Filtered2{.r=r}: Filtered2)).
 Filtered3[(Filtered3{.r=r.r}: Filtered3)] :- Referee[(r@ (Referee{.r=(_: std::Ref<Referenced>)}: Referee))], (r.r.x == true), Inspect debug::debug_event((32'd119, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", r, (Filtered3{.r=r.r}: Filtered3)).
-NewAllocation[(NewAllocation{.id=id, .alloc=alloc}: NewAllocation)] :- Alloc[(__alloc0@ (Alloc{.id=(id: bigint), .allocated=(allocated: std::Map<string,bit<32>>), .toallocate=(toallocate: std::Vec<string>), .min_val=(min_val: bit<32>), .max_val=(max_val: bit<32>)}: Alloc))], (var allocated_nums: std::Set<bit<32>>) = ((var allocated_nums: std::Set<bit<32>>) = (std::set_empty(): std::Set<bit<32>>);
-                                                                                                                                                                                                                                                                                                                               (for (a in allocated) {
-                                                                                                                                                                                                                                                                                                                                    (((_: string), (var num: bit<32>)) = a;
-                                                                                                                                                                                                                                                                                                                                     std::set_insert(allocated_nums, num))
+NewAllocation[(NewAllocation{.id=id, .alloc=alloc}: NewAllocation)] :- Alloc[(__alloc0@ (Alloc{.id=(id: bigint), .allocated=(allocated: std::Map<string,bit<32>>), .toallocate=(toallocate: std::Vec<string>), .min_val=(min_val: bit<32>), .max_val=(max_val: bit<32>)}: Alloc))], (var allocated_nums: std::Set<bit<32>>) = {(var allocated_nums: std::Set<bit<32>>) = (std::set_empty(): std::Set<bit<32>>);
+                                                                                                                                                                                                                                                                                                                               {for (a in allocated) {
+                                                                                                                                                                                                                                                                                                                                    {((_: string), (var num: bit<32>)) = a;
+                                                                                                                                                                                                                                                                                                                                     std::set_insert(allocated_nums, num)}
                                                                                                                                                                                                                                                                                                                                 };
-                                                                                                                                                                                                                                                                                                                                allocated_nums)), (var alloc: std::Vec<(string, bit<32>)>) = (allocate::allocate(allocated_nums, toallocate, min_val, max_val): std::Vec<(string, bit<32>)>), Inspect debug::debug_event((32'd120, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (id, toallocate, min_val, max_val, allocated_nums), (NewAllocation{.id=id, .alloc=alloc}: NewAllocation)).
-NewAllocationOpt[(NewAllocationOpt{.id=id, .alloc=alloc}: NewAllocationOpt)] :- Alloc[(__alloc0@ (Alloc{.id=(id: bigint), .allocated=(allocated: std::Map<string,bit<32>>), .toallocate=(toallocate: std::Vec<string>), .min_val=(min_val: bit<32>), .max_val=(max_val: bit<32>)}: Alloc))], (var allocated_nums: std::Set<bit<32>>) = ((var allocated_nums: std::Set<bit<32>>) = (std::set_empty(): std::Set<bit<32>>);
-                                                                                                                                                                                                                                                                                                                                        (for (a in allocated) {
-                                                                                                                                                                                                                                                                                                                                             (((_: string), (var num: bit<32>)) = a;
-                                                                                                                                                                                                                                                                                                                                              std::set_insert(allocated_nums, num))
+                                                                                                                                                                                                                                                                                                                                allocated_nums}}, (var alloc: std::Vec<(string, bit<32>)>) = (allocate::allocate(allocated_nums, toallocate, min_val, max_val): std::Vec<(string, bit<32>)>), Inspect debug::debug_event((32'd120, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (id, toallocate, min_val, max_val, allocated_nums), (NewAllocation{.id=id, .alloc=alloc}: NewAllocation)).
+NewAllocationOpt[(NewAllocationOpt{.id=id, .alloc=alloc}: NewAllocationOpt)] :- Alloc[(__alloc0@ (Alloc{.id=(id: bigint), .allocated=(allocated: std::Map<string,bit<32>>), .toallocate=(toallocate: std::Vec<string>), .min_val=(min_val: bit<32>), .max_val=(max_val: bit<32>)}: Alloc))], (var allocated_nums: std::Set<bit<32>>) = {(var allocated_nums: std::Set<bit<32>>) = (std::set_empty(): std::Set<bit<32>>);
+                                                                                                                                                                                                                                                                                                                                        {for (a in allocated) {
+                                                                                                                                                                                                                                                                                                                                             {((_: string), (var num: bit<32>)) = a;
+                                                                                                                                                                                                                                                                                                                                              std::set_insert(allocated_nums, num)}
                                                                                                                                                                                                                                                                                                                                          };
-                                                                                                                                                                                                                                                                                                                                         allocated_nums)), (var alloc: std::Vec<(string, std::Option<bit<32>>)>) = (allocate::allocate_opt(allocated_nums, toallocate, min_val, max_val): std::Vec<(string, std::Option<bit<32>>)>), Inspect debug::debug_event((32'd121, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (id, toallocate, min_val, max_val, allocated_nums), (NewAllocationOpt{.id=id, .alloc=alloc}: NewAllocationOpt)).
+                                                                                                                                                                                                                                                                                                                                         allocated_nums}}, (var alloc: std::Vec<(string, std::Option<bit<32>>)>) = (allocate::allocate_opt(allocated_nums, toallocate, min_val, max_val): std::Vec<(string, std::Option<bit<32>>)>), Inspect debug::debug_event((32'd121, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (id, toallocate, min_val, max_val, allocated_nums), (NewAllocationOpt{.id=id, .alloc=alloc}: NewAllocationOpt)).
 Adjusted[(Adjusted{.id=id, .alloc=alloc}: Adjusted)] :- Alloc[(__alloc0@ (Alloc{.id=(id: bigint), .allocated=(allocated: std::Map<string,bit<32>>), .toallocate=(toallocate: std::Vec<string>), .min_val=(min_val: bit<32>), .max_val=(max_val: bit<32>)}: Alloc))], (var alloc: std::Vec<(string, bit<32>)>) = (allocate::adjust_allocation(allocated, toallocate, min_val, max_val): std::Vec<(string, bit<32>)>), Inspect debug::debug_event((32'd122, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __alloc0, (Adjusted{.id=id, .alloc=alloc}: Adjusted)).
 YX[(YX{.y=y, .x=x}: YX)] :- XY[(__xy0@ (XY{.x=(x: bigint), .y=(y: bigint)}: XY))], YZX[(__yzx1@ (YZX{.y=(y: bigint), .z=(z: bigint), .x=(x: bigint)}: YZX))], Inspect debug::debug_event_join((32'd123, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __xy0, __yzx1, (YX{.y=y, .x=x}: YX)).
 IConcatString[(IConcatString{.s=intern::string_intern((intern::istring_str(s1) ++ s2))}: IConcatString)] :- IString1[(__istring10@ (IString1{.s=(s1: intern::IObj<string>)}: IString1))], String2[(__string21@ (String2{.s=(s2: string)}: String2))], Inspect debug::debug_event_join((32'd124, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __istring10, __string21, (IConcatString{.s=intern::string_intern((intern::istring_str(s1) ++ s2))}: IConcatString)).
@@ -2077,11 +2083,11 @@ BigintVectors[(BigintVectors{.expr="filter_gt((10, 20, 30), 15)", .vec=filter_gt
 BigintVectors[(BigintVectors{.expr="filter_C0(C0{1}, C1{2}, C1{0}, C1{3})", .vec=filter_C0((std::vec_push_imm((std::vec_push_imm((std::vec_push_imm((std::vec_push_imm((std::vec_empty(): std::Vec<Alt>), (C0{.x=32'd1}: Alt)): std::Vec<Alt>), (C1{.x=32'd2}: Alt)): std::Vec<Alt>), (C1{.x=32'd0}: Alt)): std::Vec<Alt>), (C1{.x=32'd3}: Alt)): std::Vec<Alt>))}: BigintVectors)].
 BigintVectors[(BigintVectors{.expr="double_evens(1,2,-1,4)", .vec=double_evens((std::vec_push_imm((std::vec_push_imm((std::vec_push_imm((std::vec_push_imm((std::vec_empty(): std::Vec<bigint>), 1): std::Vec<bigint>), 2): std::Vec<bigint>), (- 1)): std::Vec<bigint>), 4): std::Vec<bigint>))}: BigintVectors)].
 BigintVectors[(BigintVectors{.expr="double_evens(1,2,0,4)", .vec=double_evens((std::vec_push_imm((std::vec_push_imm((std::vec_push_imm((std::vec_push_imm((std::vec_empty(): std::Vec<bigint>), 1): std::Vec<bigint>), 2): std::Vec<bigint>), 0): std::Vec<bigint>), 4): std::Vec<bigint>))}: BigintVectors)].
-Trees[(Trees{.tree=((var leaf1: Tree<bit<64>>) = (LeafNode{.v=64'd100}: Tree<bit<64>>);
-                    ((var leaf2: Tree<bit<64>>) = (LeafNode{.v=64'd200}: Tree<bit<64>>);
-                     ((var leaf3: Tree<bit<64>>) = (LeafNode{.v=64'd300}: Tree<bit<64>>);
-                      ((var nonleaf: Tree<bit<64>>) = (NonLeafNode{.branches=(std::vec_push_imm((std::vec_push_imm((std::vec_empty(): std::Vec<Tree<std::u64>>), leaf1): std::Vec<Tree<bit<64>>>), leaf2): std::Vec<Tree<bit<64>>>)}: Tree<bit<64>>);
-                       (NonLeafNode{.branches=(std::vec_push_imm((std::vec_push_imm((std::vec_empty(): std::Vec<Tree<std::u64>>), leaf3): std::Vec<Tree<bit<64>>>), nonleaf): std::Vec<Tree<bit<64>>>)}: Tree<std::u64>)))))}: Trees)].
+Trees[(Trees{.tree={(var leaf1: Tree<bit<64>>) = (LeafNode{.v=64'd100}: Tree<bit<64>>);
+                    {(var leaf2: Tree<bit<64>>) = (LeafNode{.v=64'd200}: Tree<bit<64>>);
+                     {(var leaf3: Tree<bit<64>>) = (LeafNode{.v=64'd300}: Tree<bit<64>>);
+                      {(var nonleaf: Tree<bit<64>>) = (NonLeafNode{.branches=(std::vec_push_imm((std::vec_push_imm((std::vec_empty(): std::Vec<Tree<std::u64>>), leaf1): std::Vec<Tree<bit<64>>>), leaf2): std::Vec<Tree<bit<64>>>)}: Tree<bit<64>>);
+                       (NonLeafNode{.branches=(std::vec_push_imm((std::vec_push_imm((std::vec_empty(): std::Vec<Tree<std::u64>>), leaf3): std::Vec<Tree<bit<64>>>), nonleaf): std::Vec<Tree<bit<64>>>)}: Tree<std::u64>)}}}}}: Trees)].
 Doubles[(Doubles{.s="64'f5.0", .d=64'f5.0}: Doubles)].
 Doubles[(Doubles{.s="64'f5e2", .d=64'f500.0}: Doubles)].
 Doubles[(Doubles{.s="-5", .d=(- 64'f5.0)}: Doubles)].

@@ -799,7 +799,7 @@ instance PP e => PP (ExprNode e) where
                                $$
                                "}"
     pp (EVarDecl _ v)        = "var" <+> pp v
-    pp (ESeq _ l r)          = parens $ (pp l <> semi) $$ pp r
+    pp (ESeq _ l r)          = braces $ (pp l <> semi) $$ pp r
     pp (EITE _ c t e)        = ("if" <+> pp c <+> lbrace)
                                $$
                                (nest' $ pp t)

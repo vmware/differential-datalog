@@ -734,7 +734,15 @@ function addr_port(ip: ip_addr_t, proto: string, preferred_port: bit<16>): strin
 
 The result computed by a function is the value of the last expression evaluated
 or the value produced by the first `return` statement encountered when
-evaluating the function.  If the `else` is missing the value `()` (empty tuple)
+evaluating the function.  A semicolon at the end of a sequence of expressions
+discards the value of the last expressions and produces an empty tuple.  For
+instance, expressions `{ var x: u32 = y + 1; x }` and
+`{ var x: u32 = y + 1; x; }` have different meaning.  The former returns the
+32-bit value of variable `x`, whereas the latter is equivalent to
+`{ var x: u32 = y + 1; x; () }`, which produces an empty tuple `()`,
+described [below](#tuples).
+
+If the `else` clause of an `if-else` expression is missing the value `()`
 is used for the `else` branch.  In `match` expressions the patterns must cover
 all possible cases (for instance, the match expression above would not be
 correct without the last "catch-all" (`_`) case).
@@ -745,8 +753,7 @@ expression.  A variable can be assigned multiple times, overwriting
 previous values.
 
 DDlog assignments cannot be chained like in C; although an assignment
-is an expression, it produces the value `()` (an empty tuple,
-described [below](#tuples)).
+is an expression, it produces an empty tuple.
 
 `match` matches the value of its argument against a series of
 *patterns*.  The simplest pattern is a constant value, e.g., `"FTP"`.
