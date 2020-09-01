@@ -171,9 +171,10 @@ function bool_identity(b: Option<bool>): Option<bool> = b
 
 typedef Tagg = Tagg{col:bool}
 
-function agg():Tagg =
+function agg():Tagg {
   (var any = Some{false}: Option<bool>);
   (Tagg{.col = bool_identity(any)})
+}
 
 //---
 

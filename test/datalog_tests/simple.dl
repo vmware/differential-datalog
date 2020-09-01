@@ -178,7 +178,7 @@ function vars(): () {
 
     C{.f1 = var e} = y;
 
-    C{var c, var d} = y
+    C{var c, var d} = y;
 }
 
 function dbl(): double { 0: double }
@@ -200,7 +200,7 @@ Compare("C0{32'd3} < C1{32'd4}", C0{32'd3} < C1{32'd4}).
 Compare("None < Some{1}", None < Some{32'sd1}).
 Compare("Some{0} < Some{1}", Some{0: u32} < Some{32'd1}).
 
-function patterns(): () {
+function patterns() {
     var a: Alt = C0{1};
 
     var b = match (a) {
@@ -211,7 +211,7 @@ function patterns(): () {
     var i: bit<32> = match (a) {
         C0{.x = var v: bit<32>} -> v,
         C1{v} -> v
-    }
+    };
 }
 
 function shadow(): string {
@@ -580,7 +580,7 @@ Strings("foo\\" ++ [|bar|]).
 
 function dummy(x: string): string { x ++ " dummy" }
 
-function strings(): () {
+function strings() {
     var str1 = "foo" ++ "bar";
     var str2 = "foo" "bar" ++ "buzz" ++ [|
 raw string |] ++ "quoted string";
@@ -596,7 +596,6 @@ str3: ${str3}.|];
     var b1 = "" < str1;
     var b2 = [|${}|] < "";
     var b3 = str1 != str2 and str1 >= str2;
-    ()
 }
 
 Strings("word1\
@@ -611,7 +610,6 @@ function tostring1(): () {
     var c: bool    = true;
     var d: string  = "foo";
     var err = "a=${a}, b=${b}, c=${c}, d=${d}";
-    ()
 }
 
 typedef serializable_t = ConsInt {x: bigint}
@@ -629,14 +627,13 @@ function to_string(x: serializable_t): string {
     }
 }
 
-function tostring2(): () {
+function tostring2() {
     var a: bigint     = 5;
     var b: bit<32> = 5;
     var c: bool    = true;
     var d: string  = "foo";
     var e: serializable_t = ConsInt{0};
     var err = "a=${a}, b=${b}, c=${c}, d=${d}, e:${e}";
-    ()
 }
 
 /* More random examples */
@@ -704,7 +701,7 @@ function count_xs(ys: Group<string, string>): u64 {
     var res: u64 = 0;
     for (y in ys) {
         if (y == group_key(ys)) {
-            res = res + 1
+            res = res + 1;
         }
     };
     res
@@ -719,7 +716,7 @@ Symmetric1(x, sym) :-
 function find_x_in_group(ys: Group<'A, 'A>): bool {
     for (y in ys) {
         if (y == group_key(ys)) {
-            return true
+            return true;
         }
     };
     false
@@ -771,7 +768,7 @@ function concat_ys(ys: Group<(string, string),string>): string {
     (var x, var z) = group_key(ys);
     var res = x ++ "-" ++ z ++ ":";
     for (y in ys) {
-        res = res ++ y
+        res = res ++ y;
     };
     res
 }
@@ -1345,7 +1342,7 @@ function filter_C0(xs: Vec<Alt>): Vec<bigint> {
                 break
             }
         };
-        vec_push(res, val)
+        vec_push(res, val);
     };
     res
 }

@@ -103,8 +103,8 @@ typedef std::u8 = bit<8>
 typedef std::usize = std::u64
 function __debug_8_1_std::group_sum (g: std::Group<bit<32>,('I, bit<32>)>): (std::Vec<'I>, bit<32>)
 {
-    (((var inputs: std::Vec<'I>), (var original_group: std::Group<bit<32>,bit<32>>)) = debug::debug_split_group(g);
-     (inputs, std::group_sum(original_group)))
+    {((var inputs: std::Vec<'I>), (var original_group: std::Group<bit<32>,bit<32>>)) = debug::debug_split_group(g);
+     (inputs, std::group_sum(original_group))}
 }
 function ack (m: std::u64, n: std::u64): std::u64
 {
@@ -130,6 +130,10 @@ function agg_avg_double_N (aggregate: std::Option<(double, double)>, item: std::
 extern function debug::debug_event (operator_id: debug::DDlogOpId, w: std::DDWeight, ts: 'T1, operator_type: string, input1: 'A1, out: 'A2): ()
 extern function debug::debug_event_join (operator_id: debug::DDlogOpId, w: std::DDWeight, ts: 'T1, input1: 'A1, input2: 'A2, out: 'A3): ()
 extern function debug::debug_split_group (g: std::Group<'K,('I, 'V)>): (std::Vec<'I>, std::Group<'K,'V>)
+function do_nothing (): ()
+{
+    ()
+}
 function fib (x: std::u64): std::u64
 {
     if (x == 64'd0) {
@@ -417,34 +421,34 @@ function json::set_by_ptr (jval: mut json::JsonValue, ptr: json::JsonPtr, v: jso
 function json::set_by_ptr_ (jval: mut json::JsonValue, ptr: json::JsonPtr, v: json::JsonValue, idx: std::usize): std::Result<(),string>
 {
     match ((std::nth(ptr, idx): std::Option<json::JsonPtrItem>)) {
-        (std::None{}: std::Option<json::JsonPtrItem>) -> (jval = v;
-                                                          (std::Ok{.res=()}: std::Result<(),string>)),
-        (std::Some{.x=(json::JKeyPtr{.key=(var key: internment::Intern<string>)}: json::JsonPtrItem)}: std::Option<json::JsonPtrItem>) -> (if (jval == (json::JsonNull{}: json::JsonValue)) {
+        (std::None{}: std::Option<json::JsonPtrItem>) -> {jval = v;
+                                                          (std::Ok{.res=()}: std::Result<(),string>)},
+        (std::Some{.x=(json::JKeyPtr{.key=(var key: internment::Intern<string>)}: json::JsonPtrItem)}: std::Option<json::JsonPtrItem>) -> {if (jval == (json::JsonNull{}: json::JsonValue)) {
                                                                                                                                                jval = (json::JsonObject{.o=(std::map_empty(): std::Map<internment::istring,json::JsonValue>)}: json::JsonValue)
                                                                                                                                            } else {
                                                                                                                                                  ()
                                                                                                                                              };
                                                                                                                                            match (jval) {
-                                                                                                                                               (json::JsonObject{.o=(var m: std::Map<internment::istring,json::JsonValue>)}: json::JsonValue) -> ((var old: json::JsonValue) = (std::unwrap_or((std::remove(m, key): std::Option<json::JsonValue>), (json::JsonNull{}: json::JsonValue)): json::JsonValue);
-                                                                                                                                                                                                                                                  (json::set_by_ptr_(old, ptr, v, (idx + 64'd1));
-                                                                                                                                                                                                                                                   (std::insert(m, key, old);
-                                                                                                                                                                                                                                                    (std::Ok{.res=()}: std::Result<(),string>)))),
+                                                                                                                                               (json::JsonObject{.o=(var m: std::Map<internment::istring,json::JsonValue>)}: json::JsonValue) -> {(var old: json::JsonValue) = (std::unwrap_or((std::remove(m, key): std::Option<json::JsonValue>), (json::JsonNull{}: json::JsonValue)): json::JsonValue);
+                                                                                                                                                                                                                                                  {json::set_by_ptr_(old, ptr, v, (idx + 64'd1));
+                                                                                                                                                                                                                                                   {std::insert(m, key, old);
+                                                                                                                                                                                                                                                    (std::Ok{.res=()}: std::Result<(),string>)}}},
                                                                                                                                                (_: json::JsonValue) -> (std::Err{.err="Not a JSON map"}: std::Result<(),string>)
-                                                                                                                                           }),
-        (std::Some{.x=(json::JIdxPtr{.idx=(var n: bit<64>)}: json::JsonPtrItem)}: std::Option<json::JsonPtrItem>) -> (if (jval == (json::JsonNull{}: json::JsonValue)) {
+                                                                                                                                           }},
+        (std::Some{.x=(json::JIdxPtr{.idx=(var n: bit<64>)}: json::JsonPtrItem)}: std::Option<json::JsonPtrItem>) -> {if (jval == (json::JsonNull{}: json::JsonValue)) {
                                                                                                                           jval = (json::JsonArray{.a=(std::vec_empty(): std::Vec<json::JsonValue>)}: json::JsonValue)
                                                                                                                       } else {
                                                                                                                             ()
                                                                                                                         };
                                                                                                                       match (jval) {
-                                                                                                                          (json::JsonArray{.a=(var xs: std::Vec<json::JsonValue>)}: json::JsonValue) -> (std::resize(xs, (std::max((n + 64'd1), std::len(xs)): bit<64>), (json::JsonNull{}: json::JsonValue));
-                                                                                                                                                                                                         ((var old: json::JsonValue) = (json::JsonNull{}: json::JsonValue);
-                                                                                                                                                                                                          (std::swap_nth(xs, n, old);
-                                                                                                                                                                                                           (json::set_by_ptr_(old, ptr, v, (idx + 64'd1));
-                                                                                                                                                                                                            (std::swap_nth(xs, n, old);
-                                                                                                                                                                                                             (std::Ok{.res=()}: std::Result<(),string>)))))),
+                                                                                                                          (json::JsonArray{.a=(var xs: std::Vec<json::JsonValue>)}: json::JsonValue) -> {std::resize(xs, (std::max((n + 64'd1), std::len(xs)): bit<64>), (json::JsonNull{}: json::JsonValue));
+                                                                                                                                                                                                         {(var old: json::JsonValue) = (json::JsonNull{}: json::JsonValue);
+                                                                                                                                                                                                          {std::swap_nth(xs, n, old);
+                                                                                                                                                                                                           {json::set_by_ptr_(old, ptr, v, (idx + 64'd1));
+                                                                                                                                                                                                            {std::swap_nth(xs, n, old);
+                                                                                                                                                                                                             (std::Ok{.res=()}: std::Result<(),string>)}}}}},
                                                                                                                           (_: json::JsonValue) -> (std::Err{.err="Not a JSON array"}: std::Result<(),string>)
-                                                                                                                      })
+                                                                                                                      }}
     }
 }
 extern function json::to_json_string (x: 'T): std::Result<string,string>
@@ -453,11 +457,11 @@ extern function json::to_json_value (x: 'T): std::Result<json::JsonValue,string>
 extern function log::log (module: log::module_t, level: log::log_level_t, msg: string): ()
 function mutable_match (): ()
 {
-    ((var m: ModifyMe) = (ModifyMe{.x="foo", .y=128'sd123456789}: ModifyMe);
+    {(var m: ModifyMe) = (ModifyMe{.x="foo", .y=128'sd123456789}: ModifyMe);
      match (m) {
          (ModifyMe{.x=(var x: string), .y=128'sd123456789}: ModifyMe) -> x = "bar",
          (_: ModifyMe) -> ()
-     })
+     }}
 }
 function mutable_match_field (n: mut NestedStruct): ()
 {
@@ -473,16 +477,16 @@ function myfunc (x: string): string
 }
 function shadow (v: string): ()
 {
-    ((var a: Alt) = (C0{.x=32'd1}: Alt);
+    {(var a: Alt) = (C0{.x=32'd1}: Alt);
      (var i: bit<32>) = match (a) {
                             (C0{.x=(var v: bit<32>)}: Alt) -> v,
                             (C1{.x=(var v: bit<32>)}: Alt) -> v
-                        })
+                        }}
 }
 function shadow2 (): ()
 {
-    ((var v: string) = "bar";
-     (var v: string) = "foo")
+    {(var v: string) = "bar";
+     (var v: string) = "foo"}
 }
 extern function std::__builtin_2string (x: 'X): string
 function std::append (v: mut std::Vec<'X>, other: std::Vec<'X>): ()
@@ -544,14 +548,14 @@ extern function std::group_to_setmap (g: std::Group<'K1,('K2, 'V)>): std::Map<'K
 extern function std::group_to_vec (g: std::Group<'K,'V>): std::Vec<'V>
 function std::group_unzip (g: std::Group<'K,('X, 'Y)>): (std::Vec<'X>, std::Vec<'Y>)
 {
-    ((var xs: std::Vec<'X>) = (std::vec_empty(): std::Vec<'X>);
-     ((var ys: std::Vec<'Y>) = (std::vec_empty(): std::Vec<'Y>);
-      (for (v in g) {
-           (((var x: 'X), (var y: 'Y)) = v;
-            (std::vec_push(xs, x);
-             std::vec_push(ys, y)))
+    {(var xs: std::Vec<'X>) = (std::vec_empty(): std::Vec<'X>);
+     {(var ys: std::Vec<'Y>) = (std::vec_empty(): std::Vec<'Y>);
+      {for (v in g) {
+           {((var x: 'X), (var y: 'Y)) = v;
+            {std::vec_push(xs, x);
+             std::vec_push(ys, y)}}
        };
-       (xs, ys))))
+       (xs, ys)}}}
 }
 extern function std::hash128 (x: 'X): bit<128>
 extern function std::hash64 (x: 'X): bit<64>
@@ -1010,84 +1014,84 @@ extern function std::vec_with_capacity (len: std::usize): std::Vec<'A>
 extern function std::vec_with_length (len: std::usize, x: 'A): std::Vec<'A>
 function ti_f (value: std::Option<string>): std::Option<(string, string)>
 {
-    ((var strs: std::Vec<string>) = match (value) {
+    {(var strs: std::Vec<string>) = match (value) {
                                         (std::Some{.x=(var s: string)}: std::Option<string>) -> std::string_split(s, ":"),
                                         (std::None{}: std::Option<string>) -> ((return (std::None{}: std::Option<(string, string)>)): std::Vec<string>)
                                     };
      match (((std::vec_nth(strs, 64'd0): std::Option<string>), (std::vec_nth(strs, 64'd1): std::Option<string>))) {
          ((std::Some{.x=(var port_name: string)}: std::Option<string>), (std::Some{.x=(var src_ip: string)}: std::Option<string>)) -> (std::Some{.x=(port_name, src_ip)}: std::Option<(string, string)>),
          (_: (std::Option<string>, std::Option<string>)) -> (std::None{}: std::Option<(string, string)>)
-     })
+     }}
 }
 function try1 (name: string): std::Option<(string, string)>
 {
-    ((var components: std::Vec<string>) = std::split(name, " ");
-     ((var first_name: string) = match ((std::nth(components, 64'd0): std::Option<string>)) {
+    {(var components: std::Vec<string>) = std::split(name, " ");
+     {(var first_name: string) = match ((std::nth(components, 64'd0): std::Option<string>)) {
                                      (std::None{}: std::Option<string>) -> ((return (std::None{}: std::Option<(string, string)>)): string),
                                      (std::Some{.x=(var __x: string)}: std::Option<string>) -> __x
                                  };
-      ((var last_name: string) = match ((std::nth(components, 64'd1): std::Option<string>)) {
+      {(var last_name: string) = match ((std::nth(components, 64'd1): std::Option<string>)) {
                                      (std::None{}: std::Option<string>) -> ((return (std::None{}: std::Option<(string, string)>)): string),
                                      (std::Some{.x=(var __x: string)}: std::Option<string>) -> __x
                                  };
-       (std::Some{.x=(first_name, last_name)}: std::Option<(string, string)>))))
+       (std::Some{.x=(first_name, last_name)}: std::Option<(string, string)>)}}}
 }
 function try2 (name: string): std::Result<(string, string),string>
 {
-    ((var components: std::Vec<string>) = std::split(name, " ");
-     ((var first_name: string) = match (match ((std::nth(components, 64'd0): std::Option<string>)) {
+    {(var components: std::Vec<string>) = std::split(name, " ");
+     {(var first_name: string) = match (match ((std::nth(components, 64'd0): std::Option<string>)) {
                                             (std::None{}: std::Option<string>) -> (std::Err{.err="No first name"}: std::Result<string,string>),
                                             (std::Some{.x=(var n: string)}: std::Option<string>) -> (std::Ok{.res=n}: std::Result<string,string>)
                                         }) {
                                      (std::Err{.err=(var __e: string)}: std::Result<string,string>) -> ((return (std::Err{.err=__e}: std::Result<(string, string),string>)): string),
                                      (std::Ok{.res=(var __x: string)}: std::Result<string,string>) -> __x
                                  };
-      ((var last_name: string) = match (match ((std::nth(components, 64'd1): std::Option<string>)) {
+      {(var last_name: string) = match (match ((std::nth(components, 64'd1): std::Option<string>)) {
                                             (std::None{}: std::Option<string>) -> (std::Err{.err="No last name"}: std::Result<string,string>),
                                             (std::Some{.x=(var n: string)}: std::Option<string>) -> (std::Ok{.res=n}: std::Result<string,string>)
                                         }) {
                                      (std::Err{.err=(var __e: string)}: std::Result<string,string>) -> ((return (std::Err{.err=__e}: std::Result<(string, string),string>)): string),
                                      (std::Ok{.res=(var __x: string)}: std::Result<string,string>) -> __x
                                  };
-       (std::Ok{.res=(first_name, last_name)}: std::Result<(string, string),string>))))
+       (std::Ok{.res=(first_name, last_name)}: std::Result<(string, string),string>)}}}
 }
 function try3 (name: string): Opt<(string, string)>
 {
-    ((var components: std::Vec<string>) = std::split(name, " ");
-     ((var first_name: string) = match (match ((std::nth(components, 64'd0): std::Option<string>)) {
+    {(var components: std::Vec<string>) = std::split(name, " ");
+     {(var first_name: string) = match (match ((std::nth(components, 64'd0): std::Option<string>)) {
                                             (std::None{}: std::Option<string>) -> (std::Err{.err="No first name"}: std::Result<string,string>),
                                             (std::Some{.x=(var n: string)}: std::Option<string>) -> (std::Ok{.res=n}: std::Result<string,string>)
                                         }) {
                                      (std::Err{.err=(_: string)}: std::Result<string,string>) -> ((return (std::None{}: Opt<(string, string)>)): string),
                                      (std::Ok{.res=(var __x: string)}: std::Result<string,string>) -> __x
                                  };
-      ((var last_name: string) = match (match ((std::nth(components, 64'd1): std::Option<string>)) {
+      {(var last_name: string) = match (match ((std::nth(components, 64'd1): std::Option<string>)) {
                                             (std::None{}: std::Option<string>) -> (std::Err{.err="No last name"}: std::Result<string,string>),
                                             (std::Some{.x=(var n: string)}: std::Option<string>) -> (std::Ok{.res=n}: std::Result<string,string>)
                                         }) {
                                      (std::Err{.err=(_: string)}: std::Result<string,string>) -> ((return (std::None{}: Opt<(string, string)>)): string),
                                      (std::Ok{.res=(var __x: string)}: std::Result<string,string>) -> __x
                                  };
-       (std::Some{.x=(first_name, last_name)}: std::Option<(string, string)>))))
+       (std::Some{.x=(first_name, last_name)}: std::Option<(string, string)>)}}}
 }
 function weird_zero (x: 'A): std::usize
 {
-    ((var empty_vec: std::Vec<'A>) = (std::vec_empty(): std::Vec<'A>);
-     std::vec_len(empty_vec))
+    {(var empty_vec: std::Vec<'A>) = (std::vec_empty(): std::Vec<'A>);
+     std::vec_len(empty_vec)}
 }
 function write_to_struct_field (): ModifyMe
 {
-    ((var m: ModifyMe) = (ModifyMe{.x="foo", .y=128'sd123456789}: ModifyMe);
-     (m.x = "bar";
-      (m.y = (- m.y);
-       m)))
+    {(var m: ModifyMe) = (ModifyMe{.x="foo", .y=128'sd123456789}: ModifyMe);
+     {m.x = "bar";
+      {m.y = (- m.y);
+       m}}}
 }
 function write_to_tuple_field (): (string, std::u64)
 {
-    ((var m: (string, bit<64>)) = ("foo", 64'd123456789);
-     (m.0 = "bar";
-      (m.1 = (- m.1);
-       m)))
+    {(var m: (string, bit<64>)) = ("foo", 64'd123456789);
+     {m.0 = "bar";
+      {m.1 = (- m.1);
+       m}}}
 }
 function zero_test (): std::usize
 {
@@ -1148,14 +1152,14 @@ SumsOfDoubles[(SumsOfDoubles{.x=x, .y=y, .sum=z}: SumsOfDoubles)] :- Doubles[(__
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              } else {
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    "delete"
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                }) ++ ": (") ++ (std::__builtin_2string(x): string)) ++ ", ") ++ (std::__builtin_2string(y): string)) ++ ", ") ++ (std::__builtin_2string(z): string)) ++ ")")), Inspect debug::debug_event((32'd7, 32'd5, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", (y, x, z), (SumsOfDoubles{.x=x, .y=y, .sum=z}: SumsOfDoubles)).
-InspectSimpleSum[(InspectSimpleSum{.x=x, .total=total}: InspectSimpleSum)] :- InputTuples[(__inputtuples0@ (InputTuples{.x=(x: bit<32>), .y=(y: bit<32>)}: InputTuples))], var __inputs_total = Aggregate(x, __debug_8_1_std::group_sum((__inputtuples0, y))), Inspect debug::debug_event((32'd8, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_total.0, (__inputs_total, x)), (var total: bit<32>) = __inputs_total.1, Inspect debug::debug_event((32'd8, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_total, x), (x, total)), Inspect ((var z: bit<64>) = (64'd1 + 64'd2);
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       ((var w: signed<64>) = ddlog_weight;
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ((var t: bit<64>) = ddlog_timestamp;
+InspectSimpleSum[(InspectSimpleSum{.x=x, .total=total}: InspectSimpleSum)] :- InputTuples[(__inputtuples0@ (InputTuples{.x=(x: bit<32>), .y=(y: bit<32>)}: InputTuples))], var __inputs_total = Aggregate(x, __debug_8_1_std::group_sum((__inputtuples0, y))), Inspect debug::debug_event((32'd8, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_total.0, (__inputs_total, x)), (var total: bit<32>) = __inputs_total.1, Inspect debug::debug_event((32'd8, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_total, x), (x, total)), Inspect {(var z: bit<64>) = (64'd1 + 64'd2);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       {(var w: signed<64>) = ddlog_weight;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        {(var t: bit<64>) = ddlog_timestamp;
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          inspect_log::log("../simple2.log", ((((((("" ++ (std::__builtin_2string(t): string)) ++ ": ") ++ if (w > 64'sd0) {
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               "insert"
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           } else {
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 "delete"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            }) ++ ": x=") ++ (std::__builtin_2string(x): string)) ++ ", total=") ++ (std::__builtin_2string(total): string)))))), Inspect debug::debug_event((32'd8, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", (x, total), (InspectSimpleSum{.x=x, .total=total}: InspectSimpleSum)).
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            }) ++ ": x=") ++ (std::__builtin_2string(x): string)) ++ ", total=") ++ (std::__builtin_2string(total): string)))}}}, Inspect debug::debug_event((32'd8, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", (x, total), (InspectSimpleSum{.x=x, .total=total}: InspectSimpleSum)).
 FilteredRelation[(FilteredRelation{.y=y}: FilteredRelation)] :- TestRelation[(__testrelation0@ (TestRelation{.x=32'd6, .y=(y: bit<32>)}: TestRelation))], Inspect inspect_log::log("../simple2.log", ((((("" ++ (std::__builtin_2string(ddlog_timestamp): string)) ++ ": ") ++ if (ddlog_weight > 64'sd0) {
                                                                                                                                                                                                                                                                                    "insert"
                                                                                                                                                                                                                                                                                } else {
@@ -1167,15 +1171,15 @@ OutputInspectNot[(OutputInspectNot{.x=x, .y=y}: OutputInspectNot)] :- InputInspe
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              "delete"
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          }) ++ ": x=") ++ (std::__builtin_2string(y): string)) ++ " y=") ++ (std::__builtin_2string(y): string))), Inspect debug::debug_event((32'd10, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", (x, y), (OutputInspectNot{.x=x, .y=y}: OutputInspectNot)).
 TI_R[(TI_R{.a=a}: TI_R)] :- TI_R[(__ti_r0@ (TI_R{.a=(a: std::Set<string>)}: TI_R))], (std::set_size(a) > 64'd1), Inspect debug::debug_event((32'd11, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __ti_r0, (TI_R{.a=a}: TI_R)).
-Nested[(Nested{.descr="1", .n=((var n: NestedStruct) = (NestedStruct{.x=(std::Some{.x=(ModifyMe{.x="foo", .y=128'sd123456789}: ModifyMe)}: std::Option<ModifyMe>)}: NestedStruct);
-                               (mutable_match_field(n);
-                                n))}: Nested)].
-Nested[(Nested{.descr="2", .n=((var n: NestedStruct) = (NestedStruct{.x=(std::Some{.x=(ModifyMe{.x="", .y=128'sd0}: ModifyMe)}: std::Option<ModifyMe>)}: NestedStruct);
-                               (mutable_match_field(n);
-                                n))}: Nested)].
-Nested[(Nested{.descr="3", .n=((var n: NestedStruct) = (NestedStruct{.x=(std::None{}: std::Option<ModifyMe>)}: NestedStruct);
-                               (mutable_match_field(n);
-                                n))}: Nested)].
+Nested[(Nested{.descr="1", .n={(var n: NestedStruct) = (NestedStruct{.x=(std::Some{.x=(ModifyMe{.x="foo", .y=128'sd123456789}: ModifyMe)}: std::Option<ModifyMe>)}: NestedStruct);
+                               {mutable_match_field(n);
+                                n}}}: Nested)].
+Nested[(Nested{.descr="2", .n={(var n: NestedStruct) = (NestedStruct{.x=(std::Some{.x=(ModifyMe{.x="", .y=128'sd0}: ModifyMe)}: std::Option<ModifyMe>)}: NestedStruct);
+                               {mutable_match_field(n);
+                                n}}}: Nested)].
+Nested[(Nested{.descr="3", .n={(var n: NestedStruct) = (NestedStruct{.x=(std::None{}: std::Option<ModifyMe>)}: NestedStruct);
+                               {mutable_match_field(n);
+                                n}}}: Nested)].
 ChunkParseError[(ChunkParseError{.err=err}: ChunkParseError)] :- ParsedChunk[(__parsedchunk0@ (ParsedChunk{.data=(std::Err{.err=(err: string)}: std::Result<Object,string>)}: ParsedChunk))], Inspect debug::debug_event((32'd15, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __parsedchunk0, (ChunkParseError{.err=err}: ChunkParseError)).
 ParsedChunk[(ParsedChunk{.data=(json::from_json_string(json): std::Result<Object,string>)}: ParsedChunk)] :- Chunk[(__chunk0@ (Chunk{.json=(json: string)}: Chunk))], Inspect debug::debug_event((32'd16, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __chunk0, (ParsedChunk{.data=(json::from_json_string(json): std::Result<Object,string>)}: ParsedChunk)).
 Objects[(Objects{.chunk=objs}: Objects)] :- ParsedChunk[(__parsedchunk0@ (ParsedChunk{.data=(std::Ok{.res=(objs: Object)}: std::Result<Object,string>)}: ParsedChunk))], Inspect debug::debug_event((32'd17, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __parsedchunk0, (Objects{.chunk=objs}: Objects)).
@@ -1199,67 +1203,67 @@ Try2[(Try2{.description="Albert_Einstein", .result=try2("Albert_Einstein")}: Try
 Try3[(Try3{.description="Isaac Newton", .result=try3("Isaac Newton")}: Try3)].
 Try3[(Try3{.description="", .result=try3("")}: Try3)].
 Try3[(Try3{.description="Albert_Einstein", .result=try3("Albert_Einstein")}: Try3)].
-BoolVectors[(BoolVectors{.v=((var __vec: std::Vec<bool>) = (std::vec_with_capacity(64'd3): std::Vec<bool>);
-                             (std::push(__vec, true);
-                              (std::push(__vec, false);
-                               (std::push(__vec, true);
-                                __vec))))}: BoolVectors)].
-BoolVecVec[(BoolVecVec{.v=((var __vec: std::Vec<std::Vec<bool>>) = (std::vec_with_capacity(64'd3): std::Vec<std::Vec<bool>>);
-                           (std::push(__vec, ((var __vec: std::Vec<bool>) = (std::vec_with_capacity(64'd3): std::Vec<bool>);
-                                              (std::push(__vec, true);
-                                               (std::push(__vec, false);
-                                                (std::push(__vec, true);
-                                                 __vec)))));
-                            (std::push(__vec, ((var __vec: std::Vec<bool>) = (std::vec_with_capacity(64'd1): std::Vec<bool>);
-                                               (std::push(__vec, true);
-                                                __vec)));
-                             (std::push(__vec, ((var __vec: std::Vec<bool>) = (std::vec_with_capacity(64'd1): std::Vec<bool>);
-                                                (std::push(__vec, false);
-                                                 __vec)));
-                              __vec))))}: BoolVecVec)].
-StringMaps[(StringMaps{.m=((var __map: std::Map<string,(std::usize, bool)>) = (std::map_empty(): std::Map<string,(std::usize, bool)>);
-                           (std::insert(__map, "foo", (64'd1, true));
-                            (std::insert(__map, "bar", (64'd2, false));
-                             (std::insert(__map, "foobar", (64'd3, false));
-                              __map))))}: StringMaps)].
-MapOfMaps[(MapOfMaps{.m=((var __map: std::Map<string,std::Map<double,(std::usize, bool)>>) = (std::map_empty(): std::Map<string,std::Map<double,(std::usize, bool)>>);
-                         (std::insert(__map, "foo", ((var __map: std::Map<double,(bit<64>, bool)>) = (std::map_empty(): std::Map<double,(bit<64>, bool)>);
-                                                     (std::insert(__map, 64'f1.0, (64'd1, true));
-                                                      (std::insert(__map, 64'f2.0, (64'd4, false));
-                                                       __map))));
-                          (std::insert(__map, "bar", ((var __map: std::Map<double,(bit<64>, bool)>) = (std::map_empty(): std::Map<double,(bit<64>, bool)>);
-                                                      (std::insert(__map, (- 64'f10.0), (64'd10000, true));
-                                                       (std::insert(__map, 64'f200.0, (64'd2, false));
-                                                        __map))));
-                           (std::insert(__map, "foobar", (std::map_empty(): std::Map<double,(std::usize, bool)>));
-                            __map))))}: MapOfMaps)].
-MapOfVecs[(MapOfVecs{.m=((var __map: std::Map<(std::u32, bigint),std::Vec<double>>) = (std::map_empty(): std::Map<(std::u32, bigint),std::Vec<double>>);
-                         (std::insert(__map, (32'd100, 100), ((var __vec: std::Vec<double>) = (std::vec_with_capacity(64'd4): std::Vec<double>);
-                                                              (std::push(__vec, 64'f0.1);
-                                                               (std::push(__vec, (- 64'f100.0));
-                                                                (std::push(__vec, 64'f0.0);
-                                                                 (std::push(__vec, 64'f1000000.0);
-                                                                  __vec))))));
-                          (std::insert(__map, (32'd100, (- 100)), (std::vec_empty(): std::Vec<double>));
-                           (std::insert(__map, (32'd0, (- 0)), ((var __vec: std::Vec<double>) = (std::vec_with_capacity(64'd4): std::Vec<double>);
-                                                                (std::push(__vec, 64'f0.1);
-                                                                 (std::push(__vec, (- 64'f100.0));
-                                                                  (std::push(__vec, 64'f0.0);
-                                                                   (std::push(__vec, 64'f1000000.0);
-                                                                    __vec))))));
-                            __map))))}: MapOfVecs)].
-VecOfMaps[(VecOfMaps{.m=((var __vec: std::Vec<std::Map<(std::u32, bigint),double>>) = (std::vec_with_capacity(64'd3): std::Vec<std::Map<(std::u32, bigint),double>>);
-                         (std::push(__vec, ((var __map: std::Map<(bit<32>, bigint),double>) = (std::map_empty(): std::Map<(bit<32>, bigint),double>);
-                                            (std::insert(__map, (32'd100, 100), 64'f0.1);
-                                             __map)));
-                          (std::push(__vec, ((var __map: std::Map<(bit<32>, bigint),double>) = (std::map_empty(): std::Map<(bit<32>, bigint),double>);
-                                             (std::insert(__map, (32'd100, 100), 64'f0.1);
-                                              (std::insert(__map, (32'd1000, (- 100)), (- 64'f0.1));
-                                               __map))));
-                           (std::push(__vec, ((var __map: std::Map<(bit<32>, bigint),double>) = (std::map_empty(): std::Map<(bit<32>, bigint),double>);
-                                              (std::insert(__map, (32'd100, 100), 64'f0.1);
-                                               (std::insert(__map, (32'd1000, (- 100)), (- 64'f0.1));
-                                                (std::insert(__map, (32'd1000, (- 10000000000000000000000000000000000000)), (- 64'f0.0));
-                                                 __map)))));
-                            __vec))))}: VecOfMaps)].
+BoolVectors[(BoolVectors{.v={(var __vec: std::Vec<bool>) = (std::vec_with_capacity(64'd3): std::Vec<bool>);
+                             {std::push(__vec, true);
+                              {std::push(__vec, false);
+                               {std::push(__vec, true);
+                                __vec}}}}}: BoolVectors)].
+BoolVecVec[(BoolVecVec{.v={(var __vec: std::Vec<std::Vec<bool>>) = (std::vec_with_capacity(64'd3): std::Vec<std::Vec<bool>>);
+                           {std::push(__vec, {(var __vec: std::Vec<bool>) = (std::vec_with_capacity(64'd3): std::Vec<bool>);
+                                              {std::push(__vec, true);
+                                               {std::push(__vec, false);
+                                                {std::push(__vec, true);
+                                                 __vec}}}});
+                            {std::push(__vec, {(var __vec: std::Vec<bool>) = (std::vec_with_capacity(64'd1): std::Vec<bool>);
+                                               {std::push(__vec, true);
+                                                __vec}});
+                             {std::push(__vec, {(var __vec: std::Vec<bool>) = (std::vec_with_capacity(64'd1): std::Vec<bool>);
+                                                {std::push(__vec, false);
+                                                 __vec}});
+                              __vec}}}}}: BoolVecVec)].
+StringMaps[(StringMaps{.m={(var __map: std::Map<string,(std::usize, bool)>) = (std::map_empty(): std::Map<string,(std::usize, bool)>);
+                           {std::insert(__map, "foo", (64'd1, true));
+                            {std::insert(__map, "bar", (64'd2, false));
+                             {std::insert(__map, "foobar", (64'd3, false));
+                              __map}}}}}: StringMaps)].
+MapOfMaps[(MapOfMaps{.m={(var __map: std::Map<string,std::Map<double,(std::usize, bool)>>) = (std::map_empty(): std::Map<string,std::Map<double,(std::usize, bool)>>);
+                         {std::insert(__map, "foo", {(var __map: std::Map<double,(bit<64>, bool)>) = (std::map_empty(): std::Map<double,(bit<64>, bool)>);
+                                                     {std::insert(__map, 64'f1.0, (64'd1, true));
+                                                      {std::insert(__map, 64'f2.0, (64'd4, false));
+                                                       __map}}});
+                          {std::insert(__map, "bar", {(var __map: std::Map<double,(bit<64>, bool)>) = (std::map_empty(): std::Map<double,(bit<64>, bool)>);
+                                                      {std::insert(__map, (- 64'f10.0), (64'd10000, true));
+                                                       {std::insert(__map, 64'f200.0, (64'd2, false));
+                                                        __map}}});
+                           {std::insert(__map, "foobar", (std::map_empty(): std::Map<double,(std::usize, bool)>));
+                            __map}}}}}: MapOfMaps)].
+MapOfVecs[(MapOfVecs{.m={(var __map: std::Map<(std::u32, bigint),std::Vec<double>>) = (std::map_empty(): std::Map<(std::u32, bigint),std::Vec<double>>);
+                         {std::insert(__map, (32'd100, 100), {(var __vec: std::Vec<double>) = (std::vec_with_capacity(64'd4): std::Vec<double>);
+                                                              {std::push(__vec, 64'f0.1);
+                                                               {std::push(__vec, (- 64'f100.0));
+                                                                {std::push(__vec, 64'f0.0);
+                                                                 {std::push(__vec, 64'f1000000.0);
+                                                                  __vec}}}}});
+                          {std::insert(__map, (32'd100, (- 100)), (std::vec_empty(): std::Vec<double>));
+                           {std::insert(__map, (32'd0, (- 0)), {(var __vec: std::Vec<double>) = (std::vec_with_capacity(64'd4): std::Vec<double>);
+                                                                {std::push(__vec, 64'f0.1);
+                                                                 {std::push(__vec, (- 64'f100.0));
+                                                                  {std::push(__vec, 64'f0.0);
+                                                                   {std::push(__vec, 64'f1000000.0);
+                                                                    __vec}}}}});
+                            __map}}}}}: MapOfVecs)].
+VecOfMaps[(VecOfMaps{.m={(var __vec: std::Vec<std::Map<(std::u32, bigint),double>>) = (std::vec_with_capacity(64'd3): std::Vec<std::Map<(std::u32, bigint),double>>);
+                         {std::push(__vec, {(var __map: std::Map<(bit<32>, bigint),double>) = (std::map_empty(): std::Map<(bit<32>, bigint),double>);
+                                            {std::insert(__map, (32'd100, 100), 64'f0.1);
+                                             __map}});
+                          {std::push(__vec, {(var __map: std::Map<(bit<32>, bigint),double>) = (std::map_empty(): std::Map<(bit<32>, bigint),double>);
+                                             {std::insert(__map, (32'd100, 100), 64'f0.1);
+                                              {std::insert(__map, (32'd1000, (- 100)), (- 64'f0.1));
+                                               __map}}});
+                           {std::push(__vec, {(var __map: std::Map<(bit<32>, bigint),double>) = (std::map_empty(): std::Map<(bit<32>, bigint),double>);
+                                              {std::insert(__map, (32'd100, 100), 64'f0.1);
+                                               {std::insert(__map, (32'd1000, (- 100)), (- 64'f0.1));
+                                                {std::insert(__map, (32'd1000, (- 10000000000000000000000000000000000000)), (- 64'f0.0));
+                                                 __map}}}});
+                            __vec}}}}}: VecOfMaps)].
 

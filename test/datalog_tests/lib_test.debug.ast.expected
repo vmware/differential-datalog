@@ -120,8 +120,8 @@ extern type uuid::Uuid
 typedef uuid_test::UUID = uuid_test::UUID{description: string, result: string}
 function __debug_306_1_tinyset::group_to_set (g: std::Group<string,('I, bit<32>)>): (std::Vec<'I>, tinyset::Set64<bit<32>>)
 {
-    (((var inputs: std::Vec<'I>), (var original_group: std::Group<string,bit<32>>)) = debug::debug_split_group(g);
-     (inputs, tinyset::group_to_set(original_group)))
+    {((var inputs: std::Vec<'I>), (var original_group: std::Group<string,bit<32>>)) = debug::debug_split_group(g);
+     (inputs, tinyset::group_to_set(original_group))}
 }
 extern function debug::debug_event (operator_id: debug::DDlogOpId, w: std::DDWeight, ts: 'T1, operator_type: string, input1: 'A1, out: 'A2): ()
 extern function debug::debug_event_join (operator_id: debug::DDlogOpId, w: std::DDWeight, ts: 'T1, input1: 'A1, input2: 'A2, out: 'A3): ()
@@ -396,34 +396,34 @@ function json::set_by_ptr (jval: mut json::JsonValue, ptr: json::JsonPtr, v: jso
 function json::set_by_ptr_ (jval: mut json::JsonValue, ptr: json::JsonPtr, v: json::JsonValue, idx: std::usize): std::Result<(),string>
 {
     match ((std::nth(ptr, idx): std::Option<json::JsonPtrItem>)) {
-        (std::None{}: std::Option<json::JsonPtrItem>) -> (jval = v;
-                                                          (std::Ok{.res=()}: std::Result<(),string>)),
-        (std::Some{.x=(json::JKeyPtr{.key=(var key: internment::Intern<string>)}: json::JsonPtrItem)}: std::Option<json::JsonPtrItem>) -> (if (jval == (json::JsonNull{}: json::JsonValue)) {
+        (std::None{}: std::Option<json::JsonPtrItem>) -> {jval = v;
+                                                          (std::Ok{.res=()}: std::Result<(),string>)},
+        (std::Some{.x=(json::JKeyPtr{.key=(var key: internment::Intern<string>)}: json::JsonPtrItem)}: std::Option<json::JsonPtrItem>) -> {if (jval == (json::JsonNull{}: json::JsonValue)) {
                                                                                                                                                jval = (json::JsonObject{.o=(std::map_empty(): std::Map<internment::istring,json::JsonValue>)}: json::JsonValue)
                                                                                                                                            } else {
                                                                                                                                                  ()
                                                                                                                                              };
                                                                                                                                            match (jval) {
-                                                                                                                                               (json::JsonObject{.o=(var m: std::Map<internment::istring,json::JsonValue>)}: json::JsonValue) -> ((var old: json::JsonValue) = (std::unwrap_or((std::remove(m, key): std::Option<json::JsonValue>), (json::JsonNull{}: json::JsonValue)): json::JsonValue);
-                                                                                                                                                                                                                                                  (json::set_by_ptr_(old, ptr, v, (idx + 64'd1));
-                                                                                                                                                                                                                                                   (std::insert(m, key, old);
-                                                                                                                                                                                                                                                    (std::Ok{.res=()}: std::Result<(),string>)))),
+                                                                                                                                               (json::JsonObject{.o=(var m: std::Map<internment::istring,json::JsonValue>)}: json::JsonValue) -> {(var old: json::JsonValue) = (std::unwrap_or((std::remove(m, key): std::Option<json::JsonValue>), (json::JsonNull{}: json::JsonValue)): json::JsonValue);
+                                                                                                                                                                                                                                                  {json::set_by_ptr_(old, ptr, v, (idx + 64'd1));
+                                                                                                                                                                                                                                                   {std::insert(m, key, old);
+                                                                                                                                                                                                                                                    (std::Ok{.res=()}: std::Result<(),string>)}}},
                                                                                                                                                (_: json::JsonValue) -> (std::Err{.err="Not a JSON map"}: std::Result<(),string>)
-                                                                                                                                           }),
-        (std::Some{.x=(json::JIdxPtr{.idx=(var n: bit<64>)}: json::JsonPtrItem)}: std::Option<json::JsonPtrItem>) -> (if (jval == (json::JsonNull{}: json::JsonValue)) {
+                                                                                                                                           }},
+        (std::Some{.x=(json::JIdxPtr{.idx=(var n: bit<64>)}: json::JsonPtrItem)}: std::Option<json::JsonPtrItem>) -> {if (jval == (json::JsonNull{}: json::JsonValue)) {
                                                                                                                           jval = (json::JsonArray{.a=(std::vec_empty(): std::Vec<json::JsonValue>)}: json::JsonValue)
                                                                                                                       } else {
                                                                                                                             ()
                                                                                                                         };
                                                                                                                       match (jval) {
-                                                                                                                          (json::JsonArray{.a=(var xs: std::Vec<json::JsonValue>)}: json::JsonValue) -> (std::resize(xs, (std::max((n + 64'd1), std::len(xs)): bit<64>), (json::JsonNull{}: json::JsonValue));
-                                                                                                                                                                                                         ((var old: json::JsonValue) = (json::JsonNull{}: json::JsonValue);
-                                                                                                                                                                                                          (std::swap_nth(xs, n, old);
-                                                                                                                                                                                                           (json::set_by_ptr_(old, ptr, v, (idx + 64'd1));
-                                                                                                                                                                                                            (std::swap_nth(xs, n, old);
-                                                                                                                                                                                                             (std::Ok{.res=()}: std::Result<(),string>)))))),
+                                                                                                                          (json::JsonArray{.a=(var xs: std::Vec<json::JsonValue>)}: json::JsonValue) -> {std::resize(xs, (std::max((n + 64'd1), std::len(xs)): bit<64>), (json::JsonNull{}: json::JsonValue));
+                                                                                                                                                                                                         {(var old: json::JsonValue) = (json::JsonNull{}: json::JsonValue);
+                                                                                                                                                                                                          {std::swap_nth(xs, n, old);
+                                                                                                                                                                                                           {json::set_by_ptr_(old, ptr, v, (idx + 64'd1));
+                                                                                                                                                                                                            {std::swap_nth(xs, n, old);
+                                                                                                                                                                                                             (std::Ok{.res=()}: std::Result<(),string>)}}}}},
                                                                                                                           (_: json::JsonValue) -> (std::Err{.err="Not a JSON array"}: std::Result<(),string>)
-                                                                                                                      })
+                                                                                                                      }}
     }
 }
 extern function json::to_json_string (x: 'T): std::Result<string,string>
@@ -466,50 +466,50 @@ function json_test::map1 (): string
 }
 function json_test::mutilate_jval (): json::JsonValue
 {
-    ((var jval: json::JsonValue) = (std::unwrap_or_default((json::from_json_string(json_test::nestedStruct1()): std::Result<json::JsonValue,string>)): json::JsonValue);
-     (json::set_by_ptr(jval, ((var __vec: std::Vec<json::JsonPtrItem>) = (std::vec_with_capacity(64'd2): std::Vec<json::JsonPtrItem>);
-                              (std::push(__vec, (json::JKeyPtr{.key=(internment::intern("nested"): internment::Intern<string>)}: json::JsonPtrItem));
-                               (std::push(__vec, (json::JKeyPtr{.key=(internment::intern("x"): internment::Intern<string>)}: json::JsonPtrItem));
-                                __vec))), (std::unwrap_or_default((json::from_json_string(json_test::boolStruct2()): std::Result<json::JsonValue,string>)): json::JsonValue));
-      (json::set_by_ptr(jval, ((var __vec: std::Vec<json::JsonPtrItem>) = (std::vec_with_capacity(64'd2): std::Vec<json::JsonPtrItem>);
-                               (std::push(__vec, (json::JKeyPtr{.key=(internment::intern("nested"): internment::Intern<string>)}: json::JsonPtrItem));
-                                (std::push(__vec, (json::JKeyPtr{.key=(internment::intern("y"): internment::Intern<string>)}: json::JsonPtrItem));
-                                 __vec))), (std::unwrap_or_default((json::from_json_string(json_test::boolStruct2()): std::Result<json::JsonValue,string>)): json::JsonValue));
-       (json::set_by_ptr(jval, ((var __vec: std::Vec<json::JsonPtrItem>) = (std::vec_with_capacity(64'd2): std::Vec<json::JsonPtrItem>);
-                                (std::push(__vec, (json::JKeyPtr{.key=(internment::intern("nested"): internment::Intern<string>)}: json::JsonPtrItem));
-                                 (std::push(__vec, (json::JKeyPtr{.key=(internment::intern("z"): internment::Intern<string>)}: json::JsonPtrItem));
-                                  __vec))), (json::JsonArray{.a=((var __vec: std::Vec<json::JsonValue>) = (std::vec_with_capacity(64'd2): std::Vec<json::JsonValue>);
-                                                                 (std::push(__vec, (std::unwrap_or_default((json::from_json_string(json_test::wenum1()): std::Result<json::JsonValue,string>)): json::JsonValue));
-                                                                  (std::push(__vec, (std::unwrap_or_default((json::from_json_string(json_test::wenum2()): std::Result<json::JsonValue,string>)): json::JsonValue));
-                                                                   __vec)))}: json::JsonValue));
-        (json::set_by_ptr(jval, ((var __vec: std::Vec<json::JsonPtrItem>) = (std::vec_with_capacity(64'd3): std::Vec<json::JsonPtrItem>);
-                                 (std::push(__vec, (json::JKeyPtr{.key=(internment::intern("nested"): internment::Intern<string>)}: json::JsonPtrItem));
-                                  (std::push(__vec, (json::JKeyPtr{.key=(internment::intern("z"): internment::Intern<string>)}: json::JsonPtrItem));
-                                   (std::push(__vec, (json::JIdxPtr{.idx=64'd1}: json::JsonPtrItem));
-                                    __vec)))), (std::unwrap_or_default((json::from_json_string(json_test::wenum3()): std::Result<json::JsonValue,string>)): json::JsonValue));
-         (json::set_by_ptr(jval, ((var __vec: std::Vec<json::JsonPtrItem>) = (std::vec_with_capacity(64'd4): std::Vec<json::JsonPtrItem>);
-                                  (std::push(__vec, (json::JKeyPtr{.key=(internment::intern("nested"): internment::Intern<string>)}: json::JsonPtrItem));
-                                   (std::push(__vec, (json::JKeyPtr{.key=(internment::intern("z"): internment::Intern<string>)}: json::JsonPtrItem));
-                                    (std::push(__vec, (json::JIdxPtr{.idx=64'd1}: json::JsonPtrItem));
-                                     (std::push(__vec, (json::JKeyPtr{.key=(internment::intern("b"): internment::Intern<string>)}: json::JsonPtrItem));
-                                      __vec))))), (std::unwrap_or_default((json::from_json_string(json_test::struct_with_map1()): std::Result<json::JsonValue,string>)): json::JsonValue));
-          (json::set_by_ptr(jval, ((var __vec: std::Vec<json::JsonPtrItem>) = (std::vec_with_capacity(64'd4): std::Vec<json::JsonPtrItem>);
-                                   (std::push(__vec, (json::JKeyPtr{.key=(internment::intern("nested"): internment::Intern<string>)}: json::JsonPtrItem));
-                                    (std::push(__vec, (json::JKeyPtr{.key=(internment::intern("z"): internment::Intern<string>)}: json::JsonPtrItem));
-                                     (std::push(__vec, (json::JIdxPtr{.idx=64'd10}: json::JsonPtrItem));
-                                      (std::push(__vec, (json::JKeyPtr{.key=(internment::intern("b"): internment::Intern<string>)}: json::JsonPtrItem));
-                                       __vec))))), (std::unwrap_or_default((json::from_json_string(json_test::struct_with_map1()): std::Result<json::JsonValue,string>)): json::JsonValue));
-           (json::set_by_ptr(jval, ((var __vec: std::Vec<json::JsonPtrItem>) = (std::vec_with_capacity(64'd4): std::Vec<json::JsonPtrItem>);
-                                    (std::push(__vec, (json::JKeyPtr{.key=(internment::intern("nested"): internment::Intern<string>)}: json::JsonPtrItem));
-                                     (std::push(__vec, (json::JKeyPtr{.key=(internment::intern("z"): internment::Intern<string>)}: json::JsonPtrItem));
-                                      (std::push(__vec, (json::JIdxPtr{.idx=64'd9}: json::JsonPtrItem));
-                                       (std::push(__vec, (json::JKeyPtr{.key=(internment::intern("q"): internment::Intern<string>)}: json::JsonPtrItem));
-                                        __vec))))), (std::unwrap_or_default((json::from_json_string(json_test::struct_with_map1()): std::Result<json::JsonValue,string>)): json::JsonValue));
-            (json::set_by_ptr(jval, ((var __vec: std::Vec<json::JsonPtrItem>) = (std::vec_with_capacity(64'd2): std::Vec<json::JsonPtrItem>);
-                                     (std::push(__vec, (json::JKeyPtr{.key=(internment::intern("t"): internment::Intern<string>)}: json::JsonPtrItem));
-                                      (std::push(__vec, (json::JKeyPtr{.key=(internment::intern("z"): internment::Intern<string>)}: json::JsonPtrItem));
-                                       __vec))), (std::unwrap_or_default((json::from_json_string(json_test::struct_with_map1()): std::Result<json::JsonValue,string>)): json::JsonValue));
-             jval)))))))))
+    {(var jval: json::JsonValue) = (std::unwrap_or_default((json::from_json_string(json_test::nestedStruct1()): std::Result<json::JsonValue,string>)): json::JsonValue);
+     {json::set_by_ptr(jval, {(var __vec: std::Vec<json::JsonPtrItem>) = (std::vec_with_capacity(64'd2): std::Vec<json::JsonPtrItem>);
+                              {std::push(__vec, (json::JKeyPtr{.key=(internment::intern("nested"): internment::Intern<string>)}: json::JsonPtrItem));
+                               {std::push(__vec, (json::JKeyPtr{.key=(internment::intern("x"): internment::Intern<string>)}: json::JsonPtrItem));
+                                __vec}}}, (std::unwrap_or_default((json::from_json_string(json_test::boolStruct2()): std::Result<json::JsonValue,string>)): json::JsonValue));
+      {json::set_by_ptr(jval, {(var __vec: std::Vec<json::JsonPtrItem>) = (std::vec_with_capacity(64'd2): std::Vec<json::JsonPtrItem>);
+                               {std::push(__vec, (json::JKeyPtr{.key=(internment::intern("nested"): internment::Intern<string>)}: json::JsonPtrItem));
+                                {std::push(__vec, (json::JKeyPtr{.key=(internment::intern("y"): internment::Intern<string>)}: json::JsonPtrItem));
+                                 __vec}}}, (std::unwrap_or_default((json::from_json_string(json_test::boolStruct2()): std::Result<json::JsonValue,string>)): json::JsonValue));
+       {json::set_by_ptr(jval, {(var __vec: std::Vec<json::JsonPtrItem>) = (std::vec_with_capacity(64'd2): std::Vec<json::JsonPtrItem>);
+                                {std::push(__vec, (json::JKeyPtr{.key=(internment::intern("nested"): internment::Intern<string>)}: json::JsonPtrItem));
+                                 {std::push(__vec, (json::JKeyPtr{.key=(internment::intern("z"): internment::Intern<string>)}: json::JsonPtrItem));
+                                  __vec}}}, (json::JsonArray{.a={(var __vec: std::Vec<json::JsonValue>) = (std::vec_with_capacity(64'd2): std::Vec<json::JsonValue>);
+                                                                 {std::push(__vec, (std::unwrap_or_default((json::from_json_string(json_test::wenum1()): std::Result<json::JsonValue,string>)): json::JsonValue));
+                                                                  {std::push(__vec, (std::unwrap_or_default((json::from_json_string(json_test::wenum2()): std::Result<json::JsonValue,string>)): json::JsonValue));
+                                                                   __vec}}}}: json::JsonValue));
+        {json::set_by_ptr(jval, {(var __vec: std::Vec<json::JsonPtrItem>) = (std::vec_with_capacity(64'd3): std::Vec<json::JsonPtrItem>);
+                                 {std::push(__vec, (json::JKeyPtr{.key=(internment::intern("nested"): internment::Intern<string>)}: json::JsonPtrItem));
+                                  {std::push(__vec, (json::JKeyPtr{.key=(internment::intern("z"): internment::Intern<string>)}: json::JsonPtrItem));
+                                   {std::push(__vec, (json::JIdxPtr{.idx=64'd1}: json::JsonPtrItem));
+                                    __vec}}}}, (std::unwrap_or_default((json::from_json_string(json_test::wenum3()): std::Result<json::JsonValue,string>)): json::JsonValue));
+         {json::set_by_ptr(jval, {(var __vec: std::Vec<json::JsonPtrItem>) = (std::vec_with_capacity(64'd4): std::Vec<json::JsonPtrItem>);
+                                  {std::push(__vec, (json::JKeyPtr{.key=(internment::intern("nested"): internment::Intern<string>)}: json::JsonPtrItem));
+                                   {std::push(__vec, (json::JKeyPtr{.key=(internment::intern("z"): internment::Intern<string>)}: json::JsonPtrItem));
+                                    {std::push(__vec, (json::JIdxPtr{.idx=64'd1}: json::JsonPtrItem));
+                                     {std::push(__vec, (json::JKeyPtr{.key=(internment::intern("b"): internment::Intern<string>)}: json::JsonPtrItem));
+                                      __vec}}}}}, (std::unwrap_or_default((json::from_json_string(json_test::struct_with_map1()): std::Result<json::JsonValue,string>)): json::JsonValue));
+          {json::set_by_ptr(jval, {(var __vec: std::Vec<json::JsonPtrItem>) = (std::vec_with_capacity(64'd4): std::Vec<json::JsonPtrItem>);
+                                   {std::push(__vec, (json::JKeyPtr{.key=(internment::intern("nested"): internment::Intern<string>)}: json::JsonPtrItem));
+                                    {std::push(__vec, (json::JKeyPtr{.key=(internment::intern("z"): internment::Intern<string>)}: json::JsonPtrItem));
+                                     {std::push(__vec, (json::JIdxPtr{.idx=64'd10}: json::JsonPtrItem));
+                                      {std::push(__vec, (json::JKeyPtr{.key=(internment::intern("b"): internment::Intern<string>)}: json::JsonPtrItem));
+                                       __vec}}}}}, (std::unwrap_or_default((json::from_json_string(json_test::struct_with_map1()): std::Result<json::JsonValue,string>)): json::JsonValue));
+           {json::set_by_ptr(jval, {(var __vec: std::Vec<json::JsonPtrItem>) = (std::vec_with_capacity(64'd4): std::Vec<json::JsonPtrItem>);
+                                    {std::push(__vec, (json::JKeyPtr{.key=(internment::intern("nested"): internment::Intern<string>)}: json::JsonPtrItem));
+                                     {std::push(__vec, (json::JKeyPtr{.key=(internment::intern("z"): internment::Intern<string>)}: json::JsonPtrItem));
+                                      {std::push(__vec, (json::JIdxPtr{.idx=64'd9}: json::JsonPtrItem));
+                                       {std::push(__vec, (json::JKeyPtr{.key=(internment::intern("q"): internment::Intern<string>)}: json::JsonPtrItem));
+                                        __vec}}}}}, (std::unwrap_or_default((json::from_json_string(json_test::struct_with_map1()): std::Result<json::JsonValue,string>)): json::JsonValue));
+            {json::set_by_ptr(jval, {(var __vec: std::Vec<json::JsonPtrItem>) = (std::vec_with_capacity(64'd2): std::Vec<json::JsonPtrItem>);
+                                     {std::push(__vec, (json::JKeyPtr{.key=(internment::intern("t"): internment::Intern<string>)}: json::JsonPtrItem));
+                                      {std::push(__vec, (json::JKeyPtr{.key=(internment::intern("z"): internment::Intern<string>)}: json::JsonPtrItem));
+                                       __vec}}}, (std::unwrap_or_default((json::from_json_string(json_test::struct_with_map1()): std::Result<json::JsonValue,string>)): json::JsonValue));
+             jval}}}}}}}}}
 }
 function json_test::nestedStruct1 (): string
 {
@@ -762,14 +762,14 @@ extern function std::group_to_setmap (g: std::Group<'K1,('K2, 'V)>): std::Map<'K
 extern function std::group_to_vec (g: std::Group<'K,'V>): std::Vec<'V>
 function std::group_unzip (g: std::Group<'K,('X, 'Y)>): (std::Vec<'X>, std::Vec<'Y>)
 {
-    ((var xs: std::Vec<'X>) = (std::vec_empty(): std::Vec<'X>);
-     ((var ys: std::Vec<'Y>) = (std::vec_empty(): std::Vec<'Y>);
-      (for (v in g) {
-           (((var x: 'X), (var y: 'Y)) = v;
-            (std::vec_push(xs, x);
-             std::vec_push(ys, y)))
+    {(var xs: std::Vec<'X>) = (std::vec_empty(): std::Vec<'X>);
+     {(var ys: std::Vec<'Y>) = (std::vec_empty(): std::Vec<'Y>);
+      {for (v in g) {
+           {((var x: 'X), (var y: 'Y)) = v;
+            {std::vec_push(xs, x);
+             std::vec_push(ys, y)}}
        };
-       (xs, ys))))
+       (xs, ys)}}}
 }
 extern function std::hash128 (x: 'X): bit<128>
 extern function std::hash64 (x: 'X): bit<64>
@@ -1228,13 +1228,13 @@ extern function std::vec_with_capacity (len: std::usize): std::Vec<'A>
 extern function std::vec_with_length (len: std::usize, x: 'A): std::Vec<'A>
 function std_test::alphabet_map (): std::Map<std::usize,string>
 {
-    ((var __map: std::Map<bit<64>,string>) = (std::map_empty(): std::Map<bit<64>,string>);
-     (std::insert(__map, 64'd0, "a");
-      (std::insert(__map, 64'd1, "b");
-       (std::insert(__map, 64'd2, "c");
-        (std::insert(__map, 64'd3, "d");
-         (std::insert(__map, 64'd4, "e");
-          __map))))))
+    {(var __map: std::Map<bit<64>,string>) = (std::map_empty(): std::Map<bit<64>,string>);
+     {std::insert(__map, 64'd0, "a");
+      {std::insert(__map, 64'd1, "b");
+       {std::insert(__map, 64'd2, "c");
+        {std::insert(__map, 64'd3, "d");
+         {std::insert(__map, 64'd4, "e");
+          __map}}}}}}
 }
 function std_test::to_string (e: std_test::DefaultEnum): string
 {
@@ -1245,14 +1245,14 @@ function std_test::to_string (e: std_test::DefaultEnum): string
 }
 function std_test::vec0 (): std::Vec<std::s64>
 {
-    ((var __vec: std::Vec<signed<64>>) = (std::vec_with_capacity(64'd6): std::Vec<signed<64>>);
-     (std::push(__vec, 64'sd0);
-      (std::push(__vec, 64'sd1);
-       (std::push(__vec, 64'sd2);
-        (std::push(__vec, 64'sd3);
-         (std::push(__vec, 64'sd4);
-          (std::push(__vec, 64'sd5);
-           __vec)))))))
+    {(var __vec: std::Vec<signed<64>>) = (std::vec_with_capacity(64'd6): std::Vec<signed<64>>);
+     {std::push(__vec, 64'sd0);
+      {std::push(__vec, 64'sd1);
+       {std::push(__vec, 64'sd2);
+        {std::push(__vec, 64'sd3);
+         {std::push(__vec, 64'sd4);
+          {std::push(__vec, 64'sd5);
+           __vec}}}}}}}
 }
 extern function tinyset::contains (s: tinyset::Set64<'X>, v: 'X): bool
 extern function tinyset::difference (s1: tinyset::Set64<'X>, s2: tinyset::Set64<'X>): tinyset::Set64<'X>
@@ -1310,11 +1310,11 @@ extern function uuid::to_urn_lower (uuid: uuid::Uuid): string
 extern function uuid::to_urn_upper (uuid: uuid::Uuid): string
 function uuid_test::test_uuid_from_bytes (): uuid::Uuid
 {
-    ((var bytes: std::Vec<bit<8>>) = (std::vec_empty(): std::Vec<bit<8>>);
-     (for (i in (std::range((8'd0: bit<8>), (8'd15: bit<8>), (8'd1: bit<8>)): std::Vec<bit<8>>)) {
+    {(var bytes: std::Vec<bit<8>>) = (std::vec_empty(): std::Vec<bit<8>>);
+     {for (i in (std::range((8'd0: bit<8>), (8'd15: bit<8>), (8'd1: bit<8>)): std::Vec<bit<8>>)) {
           std::vec_push(bytes, (i as bit<8>))
       };
-      (std::unwrap_or(uuid::from_bytes(bytes), uuid::nil()): uuid::Uuid)))
+      (std::unwrap_or(uuid::from_bytes(bytes), uuid::nil()): uuid::Uuid)}}
 }
 function uuid_test::uuid_parse_or_nil (str: string): uuid::Uuid
 {
@@ -1359,29 +1359,29 @@ output relation tinyset_test::Sets [tinyset_test::Sets]
 output relation url_test::URLTest [url_test::URLTest]
 output relation uuid_test::UUID [uuid_test::UUID]
 std_test::SortedVector[(std_test::SortedVector{.v=sorted}: std_test::SortedVector)] :- std_test::Vector[(__std_test_vector0@ (std_test::Vector{.v=(v: std::Vec<bigint>)}: std_test::Vector))], (var sorted: std::Vec<bigint>) = (std::sort_imm(v): std::Vec<bigint>), Inspect debug::debug_event((32'd0, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __std_test_vector0, (std_test::SortedVector{.v=sorted}: std_test::SortedVector)).
-std_test::SortedVectorInPlace[(std_test::SortedVectorInPlace{.v=sorted}: std_test::SortedVectorInPlace)] :- std_test::Vector[(__std_test_vector0@ (std_test::Vector{.v=(v: std::Vec<bigint>)}: std_test::Vector))], (var sorted: std::Vec<bigint>) = ((var v2: std::Vec<bigint>) = v;
-                                                                                                                                                                                                                                                      (std::sort(v2);
-                                                                                                                                                                                                                                                       v2)), Inspect debug::debug_event((32'd1, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __std_test_vector0, (std_test::SortedVectorInPlace{.v=sorted}: std_test::SortedVectorInPlace)).
+std_test::SortedVectorInPlace[(std_test::SortedVectorInPlace{.v=sorted}: std_test::SortedVectorInPlace)] :- std_test::Vector[(__std_test_vector0@ (std_test::Vector{.v=(v: std::Vec<bigint>)}: std_test::Vector))], (var sorted: std::Vec<bigint>) = {(var v2: std::Vec<bigint>) = v;
+                                                                                                                                                                                                                                                      {std::sort(v2);
+                                                                                                                                                                                                                                                       v2}}, Inspect debug::debug_event((32'd1, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __std_test_vector0, (std_test::SortedVectorInPlace{.v=sorted}: std_test::SortedVectorInPlace)).
 std_test::IntVecTest[(std_test::IntVecTest{.descr="vec0", .vec=std_test::vec0()}: std_test::IntVecTest)].
-std_test::IntVecTest[(std_test::IntVecTest{.descr="vec0.resize(10,-100)", .vec=((var v: std::Vec<std::s64>) = std_test::vec0();
-                                                                                (std::resize(v, 64'd10, (- 64'sd100));
-                                                                                 v))}: std_test::IntVecTest)].
-std_test::IntVecTest[(std_test::IntVecTest{.descr="vec0.update_nth(10, -1)", .vec=((var v: std::Vec<std::s64>) = std_test::vec0();
-                                                                                   (std::update_nth(v, 64'd10, (- 64'sd1));
-                                                                                    v))}: std_test::IntVecTest)].
-std_test::IntVecTest[(std_test::IntVecTest{.descr="vec0.update_nth(1, -1)", .vec=((var v: std::Vec<std::s64>) = std_test::vec0();
-                                                                                  (std::update_nth(v, 64'd1, (- 64'sd1));
-                                                                                   v))}: std_test::IntVecTest)].
-std_test::IntVecTest[(std_test::IntVecTest{.descr="vec0.swap_nth(10, -1)", .vec=((var v: std::Vec<std::s64>) = std_test::vec0();
-                                                                                 ((var val: signed<64>) = (- 64'sd1);
-                                                                                  (std::swap_nth(v, 64'd10, val);
-                                                                                   (std::push(v, val);
-                                                                                    v))))}: std_test::IntVecTest)].
-std_test::IntVecTest[(std_test::IntVecTest{.descr="vec0.swap_nth(5, -1)", .vec=((var v: std::Vec<std::s64>) = std_test::vec0();
-                                                                                ((var val: signed<64>) = (- 64'sd1);
-                                                                                 (std::swap_nth(v, 64'd5, val);
-                                                                                  (std::push(v, val);
-                                                                                   v))))}: std_test::IntVecTest)].
+std_test::IntVecTest[(std_test::IntVecTest{.descr="vec0.resize(10,-100)", .vec={(var v: std::Vec<std::s64>) = std_test::vec0();
+                                                                                {std::resize(v, 64'd10, (- 64'sd100));
+                                                                                 v}}}: std_test::IntVecTest)].
+std_test::IntVecTest[(std_test::IntVecTest{.descr="vec0.update_nth(10, -1)", .vec={(var v: std::Vec<std::s64>) = std_test::vec0();
+                                                                                   {std::update_nth(v, 64'd10, (- 64'sd1));
+                                                                                    v}}}: std_test::IntVecTest)].
+std_test::IntVecTest[(std_test::IntVecTest{.descr="vec0.update_nth(1, -1)", .vec={(var v: std::Vec<std::s64>) = std_test::vec0();
+                                                                                  {std::update_nth(v, 64'd1, (- 64'sd1));
+                                                                                   v}}}: std_test::IntVecTest)].
+std_test::IntVecTest[(std_test::IntVecTest{.descr="vec0.swap_nth(10, -1)", .vec={(var v: std::Vec<std::s64>) = std_test::vec0();
+                                                                                 {(var val: signed<64>) = (- 64'sd1);
+                                                                                  {std::swap_nth(v, 64'd10, val);
+                                                                                   {std::push(v, val);
+                                                                                    v}}}}}: std_test::IntVecTest)].
+std_test::IntVecTest[(std_test::IntVecTest{.descr="vec0.swap_nth(5, -1)", .vec={(var v: std::Vec<std::s64>) = std_test::vec0();
+                                                                                {(var val: signed<64>) = (- 64'sd1);
+                                                                                 {std::swap_nth(v, 64'd5, val);
+                                                                                  {std::push(v, val);
+                                                                                   v}}}}}: std_test::IntVecTest)].
 std_test::SetDifference[(std_test::SetDifference{.s1=s1, .s2=s2, .diff=(std::set_difference(s1, s2): std::Set<std::u64>)}: std_test::SetDifference)] :- std_test::SetPairs[(__std_test_setpairs0@ (std_test::SetPairs{.s1=(s1: std::Set<std::u64>), .s2=(s2: std::Set<std::u64>)}: std_test::SetPairs))], Inspect debug::debug_event((32'd8, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __std_test_setpairs0, (std_test::SetDifference{.s1=s1, .s2=s2, .diff=(std::set_difference(s1, s2): std::Set<std::u64>)}: std_test::SetDifference)).
 std_test::SetDifference[(std_test::SetDifference{.s1=s2, .s2=s1, .diff=(std::set_difference(s2, s1): std::Set<std::u64>)}: std_test::SetDifference)] :- std_test::SetPairs[(__std_test_setpairs0@ (std_test::SetPairs{.s1=(s1: std::Set<std::u64>), .s2=(s2: std::Set<std::u64>)}: std_test::SetPairs))], Inspect debug::debug_event((32'd9, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __std_test_setpairs0, (std_test::SetDifference{.s1=s2, .s2=s1, .diff=(std::set_difference(s2, s1): std::Set<std::u64>)}: std_test::SetDifference)).
 std_test::MapSizes[(std_test::MapSizes{.m=m, .size=std::size(m)}: std_test::MapSizes)] :- std_test::Maps[(__std_test_maps0@ (std_test::Maps{.m=(m: std::Map<std::u64,string>)}: std_test::Maps))], Inspect debug::debug_event((32'd10, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __std_test_maps0, (std_test::MapSizes{.m=m, .size=std::size(m)}: std_test::MapSizes)).
@@ -1390,9 +1390,9 @@ std_test::Pow[(std_test::Pow{.descr="$pow32(2: u64, 32)", .val=("" ++ (std::__bu
 std_test::Default[(std_test::Default{.descr="u32", .val=("" ++ (std::__builtin_2string((std::default(): std::u32)): string))}: std_test::Default)].
 std_test::Default[(std_test::Default{.descr="DefaultEnum", .val=("" ++ (std_test::to_string((std::default(): std_test::DefaultEnum)): string))}: std_test::Default)].
 std_test::MapDelete[(std_test::MapDelete{.descr="alphabet", .m=std_test::alphabet_map(), .s=(std::None{}: std::Option<string>)}: std_test::MapDelete)].
-std_test::MapDelete[(std_test::MapDelete{.descr=((("" ++ d) ++ "\\") ++ (std::__builtin_2string((std::size(m) - 64'd1)): string)), .m=m2, .s=s}: std_test::MapDelete)] :- std_test::MapDelete[(__std_test_mapdelete0@ (std_test::MapDelete{.descr=(d: string), .m=(m: std::Map<std::usize,string>), .s=(_: std::Option<string>)}: std_test::MapDelete))], (std::size(m) > 64'd0), ((var m2: std::Map<std::usize,string>), (var s: std::Option<string>)) = ((var m2: std::Map<bit<64>,string>) = m;
-                                                                                                                                                                                                                                                                                                                                                                                                                                                           ((var s: std::Option<string>) = (std::remove(m2, (std::size(m) - 64'd1)): std::Option<string>);
-                                                                                                                                                                                                                                                                                                                                                                                                                                                            (m2, s))), Inspect debug::debug_event((32'd16, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (d, m), (std_test::MapDelete{.descr=((("" ++ d) ++ "\\") ++ (std::__builtin_2string((std::size(m) - 64'd1)): string)), .m=m2, .s=s}: std_test::MapDelete)).
+std_test::MapDelete[(std_test::MapDelete{.descr=((("" ++ d) ++ "\\") ++ (std::__builtin_2string((std::size(m) - 64'd1)): string)), .m=m2, .s=s}: std_test::MapDelete)] :- std_test::MapDelete[(__std_test_mapdelete0@ (std_test::MapDelete{.descr=(d: string), .m=(m: std::Map<std::usize,string>), .s=(_: std::Option<string>)}: std_test::MapDelete))], (std::size(m) > 64'd0), ((var m2: std::Map<std::usize,string>), (var s: std::Option<string>)) = {(var m2: std::Map<bit<64>,string>) = m;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                           {(var s: std::Option<string>) = (std::remove(m2, (std::size(m) - 64'd1)): std::Option<string>);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                            (m2, s)}}, Inspect debug::debug_event((32'd16, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (d, m), (std_test::MapDelete{.descr=((("" ++ d) ++ "\\") ++ (std::__builtin_2string((std::size(m) - 64'd1)): string)), .m=m2, .s=s}: std_test::MapDelete)).
 uuid_test::UUID[(uuid_test::UUID{.description="uuid::to_hyphenated_lower(uuid::nil())", .result=uuid::to_hyphenated_lower(uuid::nil())}: uuid_test::UUID)].
 uuid_test::UUID[(uuid_test::UUID{.description="uuid::to_hyphenated_upper(uuid::nil())", .result=uuid::to_hyphenated_upper(uuid::nil())}: uuid_test::UUID)].
 uuid_test::UUID[(uuid_test::UUID{.description="uuid::to_simple_lower(uuid::nil())", .result=uuid::to_simple_lower(uuid::nil())}: uuid_test::UUID)].
@@ -1439,8 +1439,8 @@ net_test::NetChecks[(net_test::NetChecks{.description="ipv4_from_octet_vec(ipv4_
 net_test::NetChecks[(net_test::NetChecks{.description="iPV4_LOCALHOST()", .value=("" ++ (net::ipv4::to_string(net::ipv4::iPV4_LOCALHOST()): string))}: net_test::NetChecks)].
 net_test::NetChecks[(net_test::NetChecks{.description="iPV4_UNSPECIFIED()", .value=("" ++ (net::ipv4::to_string(net::ipv4::iPV4_UNSPECIFIED()): string))}: net_test::NetChecks)].
 net_test::NetChecks[(net_test::NetChecks{.description="iPV4_BROADCAST()", .value=("" ++ (net::ipv4::to_string(net::ipv4::iPV4_BROADCAST()): string))}: net_test::NetChecks)].
-net_test::NetChecks[(net_test::NetChecks{.description="ipv4_octets(ipv4_new(192,168,0,1))", .value=(((var a: bit<8>), (var b: bit<8>), (var c: bit<8>), (var d: bit<8>)) = net::ipv4::ipv4_octets(net::ipv4::ipv4_new(8'd192, 8'd168, 8'd0, 8'd1));
-                                                                                                    (((((((("(" ++ (std::__builtin_2string(a): string)) ++ ",") ++ (std::__builtin_2string(b): string)) ++ ",") ++ (std::__builtin_2string(c): string)) ++ ",") ++ (std::__builtin_2string(d): string)) ++ ")"))}: net_test::NetChecks)].
+net_test::NetChecks[(net_test::NetChecks{.description="ipv4_octets(ipv4_new(192,168,0,1))", .value={((var a: bit<8>), (var b: bit<8>), (var c: bit<8>), (var d: bit<8>)) = net::ipv4::ipv4_octets(net::ipv4::ipv4_new(8'd192, 8'd168, 8'd0, 8'd1));
+                                                                                                    (((((((("(" ++ (std::__builtin_2string(a): string)) ++ ",") ++ (std::__builtin_2string(b): string)) ++ ",") ++ (std::__builtin_2string(c): string)) ++ ",") ++ (std::__builtin_2string(d): string)) ++ ")")}}: net_test::NetChecks)].
 net_test::NetChecks[(net_test::NetChecks{.description="ipv4_is_unspecified(iPV4_UNSPECIFIED())", .value=("" ++ (std::__builtin_2string(net::ipv4::ipv4_is_unspecified(net::ipv4::iPV4_UNSPECIFIED())): string))}: net_test::NetChecks)].
 net_test::NetChecks[(net_test::NetChecks{.description="ipv4_is_unspecified(ipv4_new(10,0,0,0))", .value=("" ++ (std::__builtin_2string(net::ipv4::ipv4_is_unspecified(net::ipv4::ipv4_new(8'd10, 8'd0, 8'd0, 8'd0))): string))}: net_test::NetChecks)].
 net_test::NetChecks[(net_test::NetChecks{.description="ipv4_is_loopback(ipv4_new(127,0,0,5))", .value=("" ++ (std::__builtin_2string(net::ipv4::ipv4_is_loopback(net::ipv4::ipv4_new(8'd127, 8'd0, 8'd0, 8'd5))): string))}: net_test::NetChecks)].
@@ -1491,10 +1491,10 @@ net_test::NetChecks[(net_test::NetChecks{.description="ipv6_from_str(::175.16.1.
 net_test::NetChecks[(net_test::NetChecks{.description="ipv6_from_str(ffff:192.10.2.255)", .value=("" ++ (net::ipv6::to_string((std::unwrap_or(net::ipv6::ipv6_from_str("ffff:192.10.2.255"), net::ipv6::iPV6_UNSPECIFIED()): net::ipv6::Ipv6Addr)): string))}: net_test::NetChecks)].
 net_test::NetChecks[(net_test::NetChecks{.description="ipv6_from_str(::)", .value=("" ++ (net::ipv6::to_string((std::unwrap_or(net::ipv6::ipv6_from_str("::"), net::ipv6::iPV6_LOCALHOST()): net::ipv6::Ipv6Addr)): string))}: net_test::NetChecks)].
 net_test::NetChecks[(net_test::NetChecks{.description="ipv6_to_u128(ipv6_from_str(::ffff:192.10.2.255))", .value=("" ++ std::hex(net::ipv6::ipv6_to_u128((std::unwrap_or(net::ipv6::ipv6_from_str("::ffff:192.10.2.255"), net::ipv6::iPV6_UNSPECIFIED()): net::ipv6::Ipv6Addr))))}: net_test::NetChecks)].
-net_test::NetChecks[(net_test::NetChecks{.description="ipv6_segments(ipv6_from_str(::ffff:192.10.2.255))", .value=(((var a: bit<16>), (var b: bit<16>), (var c: bit<16>), (var d: bit<16>), (var e: bit<16>), (var f: bit<16>), (var g: bit<16>), (var h: bit<16>)) = net::ipv6::ipv6_segments((std::unwrap_or(net::ipv6::ipv6_from_str("::ffff:192.10.2.255"), net::ipv6::iPV6_UNSPECIFIED()): net::ipv6::Ipv6Addr));
-                                                                                                                   (((((((((((((((("(" ++ (std::__builtin_2string(a): string)) ++ ",") ++ (std::__builtin_2string(b): string)) ++ ",") ++ (std::__builtin_2string(c): string)) ++ ",") ++ (std::__builtin_2string(d): string)) ++ ",") ++ (std::__builtin_2string(e): string)) ++ ",") ++ (std::__builtin_2string(f): string)) ++ ",") ++ (std::__builtin_2string(g): string)) ++ ",") ++ (std::__builtin_2string(h): string)) ++ ")"))}: net_test::NetChecks)].
-net_test::NetChecks[(net_test::NetChecks{.description="ipv6_octets(ipv6_from_str(::ffff:192.10.2.255))", .value=(((var a: bit<8>), (var b: bit<8>), (var c: bit<8>), (var d: bit<8>), (var e: bit<8>), (var f: bit<8>), (var g: bit<8>), (var h: bit<8>), (var i: bit<8>), (var j: bit<8>), (var k: bit<8>), (var l: bit<8>), (var m: bit<8>), (var n: bit<8>), (var o: bit<8>), (var p: bit<8>)) = net::ipv6::ipv6_octets((std::unwrap_or(net::ipv6::ipv6_from_str("::ffff:192.10.2.255"), net::ipv6::iPV6_UNSPECIFIED()): net::ipv6::Ipv6Addr));
-                                                                                                                 (((((((((((((((((((((((((((((((("(" ++ (std::__builtin_2string(a): string)) ++ ",") ++ (std::__builtin_2string(b): string)) ++ ",") ++ (std::__builtin_2string(c): string)) ++ ",") ++ (std::__builtin_2string(d): string)) ++ ",") ++ (std::__builtin_2string(e): string)) ++ ",") ++ (std::__builtin_2string(f): string)) ++ ",") ++ (std::__builtin_2string(g): string)) ++ ",") ++ (std::__builtin_2string(h): string)) ++ ",") ++ (std::__builtin_2string(i): string)) ++ ",") ++ (std::__builtin_2string(j): string)) ++ ",") ++ (std::__builtin_2string(k): string)) ++ ",") ++ (std::__builtin_2string(l): string)) ++ ",") ++ (std::__builtin_2string(m): string)) ++ ",") ++ (std::__builtin_2string(n): string)) ++ ",") ++ (std::__builtin_2string(o): string)) ++ ",") ++ (std::__builtin_2string(p): string)) ++ ")"))}: net_test::NetChecks)].
+net_test::NetChecks[(net_test::NetChecks{.description="ipv6_segments(ipv6_from_str(::ffff:192.10.2.255))", .value={((var a: bit<16>), (var b: bit<16>), (var c: bit<16>), (var d: bit<16>), (var e: bit<16>), (var f: bit<16>), (var g: bit<16>), (var h: bit<16>)) = net::ipv6::ipv6_segments((std::unwrap_or(net::ipv6::ipv6_from_str("::ffff:192.10.2.255"), net::ipv6::iPV6_UNSPECIFIED()): net::ipv6::Ipv6Addr));
+                                                                                                                   (((((((((((((((("(" ++ (std::__builtin_2string(a): string)) ++ ",") ++ (std::__builtin_2string(b): string)) ++ ",") ++ (std::__builtin_2string(c): string)) ++ ",") ++ (std::__builtin_2string(d): string)) ++ ",") ++ (std::__builtin_2string(e): string)) ++ ",") ++ (std::__builtin_2string(f): string)) ++ ",") ++ (std::__builtin_2string(g): string)) ++ ",") ++ (std::__builtin_2string(h): string)) ++ ")")}}: net_test::NetChecks)].
+net_test::NetChecks[(net_test::NetChecks{.description="ipv6_octets(ipv6_from_str(::ffff:192.10.2.255))", .value={((var a: bit<8>), (var b: bit<8>), (var c: bit<8>), (var d: bit<8>), (var e: bit<8>), (var f: bit<8>), (var g: bit<8>), (var h: bit<8>), (var i: bit<8>), (var j: bit<8>), (var k: bit<8>), (var l: bit<8>), (var m: bit<8>), (var n: bit<8>), (var o: bit<8>), (var p: bit<8>)) = net::ipv6::ipv6_octets((std::unwrap_or(net::ipv6::ipv6_from_str("::ffff:192.10.2.255"), net::ipv6::iPV6_UNSPECIFIED()): net::ipv6::Ipv6Addr));
+                                                                                                                 (((((((((((((((((((((((((((((((("(" ++ (std::__builtin_2string(a): string)) ++ ",") ++ (std::__builtin_2string(b): string)) ++ ",") ++ (std::__builtin_2string(c): string)) ++ ",") ++ (std::__builtin_2string(d): string)) ++ ",") ++ (std::__builtin_2string(e): string)) ++ ",") ++ (std::__builtin_2string(f): string)) ++ ",") ++ (std::__builtin_2string(g): string)) ++ ",") ++ (std::__builtin_2string(h): string)) ++ ",") ++ (std::__builtin_2string(i): string)) ++ ",") ++ (std::__builtin_2string(j): string)) ++ ",") ++ (std::__builtin_2string(k): string)) ++ ",") ++ (std::__builtin_2string(l): string)) ++ ",") ++ (std::__builtin_2string(m): string)) ++ ",") ++ (std::__builtin_2string(n): string)) ++ ",") ++ (std::__builtin_2string(o): string)) ++ ",") ++ (std::__builtin_2string(p): string)) ++ ")")}}: net_test::NetChecks)].
 net_test::NetChecks[(net_test::NetChecks{.description="ipv6_from_segment_vec(ipv6_segment_vec(ipv6_from_str(::ffff:192.10.2.255)))", .value=("" ++ (net::ipv6::to_string((std::unwrap_or(net::ipv6::ipv6_from_segment_vec(net::ipv6::ipv6_segment_vec((std::unwrap_or(net::ipv6::ipv6_from_str("::ffff:192.10.2.255"), net::ipv6::iPV6_UNSPECIFIED()): net::ipv6::Ipv6Addr))), net::ipv6::iPV6_UNSPECIFIED()): net::ipv6::Ipv6Addr)): string))}: net_test::NetChecks)].
 net_test::NetChecks[(net_test::NetChecks{.description="ipv6_from_octet_vec(ipv6_octet_vec(ipv6_from_str(::ffff:192.10.2.255)))", .value=("" ++ (net::ipv6::to_string((std::unwrap_or(net::ipv6::ipv6_from_octet_vec(net::ipv6::ipv6_octet_vec((std::unwrap_or(net::ipv6::ipv6_from_str("::ffff:192.10.2.255"), net::ipv6::iPV6_UNSPECIFIED()): net::ipv6::Ipv6Addr))), net::ipv6::iPV6_UNSPECIFIED()): net::ipv6::Ipv6Addr)): string))}: net_test::NetChecks)].
 net_test::NetChecks[(net_test::NetChecks{.description="ipv6_is_unspecified(iPV6_UNSPECIFIED())", .value=("" ++ (std::__builtin_2string(net::ipv6::ipv6_is_unspecified(net::ipv6::iPV6_UNSPECIFIED())): string))}: net_test::NetChecks)].
@@ -1569,18 +1569,18 @@ json_test::JsonTestValue[(json_test::JsonTestValue{.description=("wrapped " ++ j
 json_test::JsonTestValue[(json_test::JsonTestValue{.description=("wrapped " ++ json_test::wenum2()), .value=json_test::to_json_string_or_default((std::unwrap_or_default(json::to_json_value((json::from_json_string(json_test::wenum2()): std::Result<json_test::WrappedEnum,string>))): json::JsonValue))}: json_test::JsonTestValue)].
 json_test::JsonTestValue[(json_test::JsonTestValue{.description=("wrapped " ++ json_test::wenum3()), .value=json_test::to_json_string_or_default((std::unwrap_or_default(json::to_json_value((json::from_json_string(json_test::wenum3()): std::Result<json_test::WrappedEnum,string>))): json::JsonValue))}: json_test::JsonTestValue)].
 json_test::JsonTest[(json_test::JsonTest{.description="set_by_ptr test", .value=json_test::to_json_string_or_default(json_test::mutilate_jval())}: json_test::JsonTest)].
-json_test::JsonTest[(json_test::JsonTest{.description="get_by_ptr(nested/z/10/b)", .value=(std::unwrap_or_default(json::to_json_string(json::get_by_ptr(json_test::mutilate_jval(), ((var __vec: std::Vec<json::JsonPtrItem>) = (std::vec_with_capacity(64'd4): std::Vec<json::JsonPtrItem>);
-                                                                                                                                                                                     (std::push(__vec, (json::JKeyPtr{.key=(internment::intern("nested"): internment::Intern<string>)}: json::JsonPtrItem));
-                                                                                                                                                                                      (std::push(__vec, (json::JKeyPtr{.key=(internment::intern("z"): internment::Intern<string>)}: json::JsonPtrItem));
-                                                                                                                                                                                       (std::push(__vec, (json::JIdxPtr{.idx=64'd10}: json::JsonPtrItem));
-                                                                                                                                                                                        (std::push(__vec, (json::JKeyPtr{.key=(internment::intern("b"): internment::Intern<string>)}: json::JsonPtrItem));
-                                                                                                                                                                                         __vec)))))))): string)}: json_test::JsonTest)].
-json_test::JsonTest[(json_test::JsonTest{.description="get_by_ptr(nested/z/10/c)", .value=(std::unwrap_or_default(json::to_json_string(json::get_by_ptr(json_test::mutilate_jval(), ((var __vec: std::Vec<json::JsonPtrItem>) = (std::vec_with_capacity(64'd4): std::Vec<json::JsonPtrItem>);
-                                                                                                                                                                                     (std::push(__vec, (json::JKeyPtr{.key=(internment::intern("nested"): internment::Intern<string>)}: json::JsonPtrItem));
-                                                                                                                                                                                      (std::push(__vec, (json::JKeyPtr{.key=(internment::intern("z"): internment::Intern<string>)}: json::JsonPtrItem));
-                                                                                                                                                                                       (std::push(__vec, (json::JIdxPtr{.idx=64'd10}: json::JsonPtrItem));
-                                                                                                                                                                                        (std::push(__vec, (json::JKeyPtr{.key=(internment::intern("c"): internment::Intern<string>)}: json::JsonPtrItem));
-                                                                                                                                                                                         __vec)))))))): string)}: json_test::JsonTest)].
+json_test::JsonTest[(json_test::JsonTest{.description="get_by_ptr(nested/z/10/b)", .value=(std::unwrap_or_default(json::to_json_string(json::get_by_ptr(json_test::mutilate_jval(), {(var __vec: std::Vec<json::JsonPtrItem>) = (std::vec_with_capacity(64'd4): std::Vec<json::JsonPtrItem>);
+                                                                                                                                                                                     {std::push(__vec, (json::JKeyPtr{.key=(internment::intern("nested"): internment::Intern<string>)}: json::JsonPtrItem));
+                                                                                                                                                                                      {std::push(__vec, (json::JKeyPtr{.key=(internment::intern("z"): internment::Intern<string>)}: json::JsonPtrItem));
+                                                                                                                                                                                       {std::push(__vec, (json::JIdxPtr{.idx=64'd10}: json::JsonPtrItem));
+                                                                                                                                                                                        {std::push(__vec, (json::JKeyPtr{.key=(internment::intern("b"): internment::Intern<string>)}: json::JsonPtrItem));
+                                                                                                                                                                                         __vec}}}}}))): string)}: json_test::JsonTest)].
+json_test::JsonTest[(json_test::JsonTest{.description="get_by_ptr(nested/z/10/c)", .value=(std::unwrap_or_default(json::to_json_string(json::get_by_ptr(json_test::mutilate_jval(), {(var __vec: std::Vec<json::JsonPtrItem>) = (std::vec_with_capacity(64'd4): std::Vec<json::JsonPtrItem>);
+                                                                                                                                                                                     {std::push(__vec, (json::JKeyPtr{.key=(internment::intern("nested"): internment::Intern<string>)}: json::JsonPtrItem));
+                                                                                                                                                                                      {std::push(__vec, (json::JKeyPtr{.key=(internment::intern("z"): internment::Intern<string>)}: json::JsonPtrItem));
+                                                                                                                                                                                       {std::push(__vec, (json::JIdxPtr{.idx=64'd10}: json::JsonPtrItem));
+                                                                                                                                                                                        {std::push(__vec, (json::JKeyPtr{.key=(internment::intern("c"): internment::Intern<string>)}: json::JsonPtrItem));
+                                                                                                                                                                                         __vec}}}}}))): string)}: json_test::JsonTest)].
 json_test::JsonTest[(json_test::JsonTest{.description="get_by_ptr([])", .value=(std::unwrap_or_default(json::to_json_string(json::get_by_ptr(json_test::mutilate_jval(), (std::vec_empty(): std::Vec<json::JsonPtrItem>)))): string)}: json_test::JsonTest)].
 fp_test::F[(fp_test::F{.s="nan_f()", .d=fp::nan_f()}: fp_test::F)].
 fp_test::F[(fp_test::F{.s="floor_f(32'f0.5)", .d=fp::floor_f(32'f0.5)}: fp_test::F)].
@@ -1696,15 +1696,15 @@ internment_test::Projections[(internment_test::Projections{.inp=internment_test:
 internment_test::Projections[(internment_test::Projections{.inp=internment_test::istruct2struct((internment::ival(i): internment_test::IStruct)), .p=("f2=" ++ (std::__builtin_2string(f2): string))}: internment_test::Projections)] :- internment_test::IStruct[(i@ ((&(internment_test::IStruct{.u=((&(t@ (internment_test::Tag2{.f2=(f2: bit<32>), .f3=(_: string)}: internment_test::IUnion))): internment::Intern<internment_test::IUnion>), .t=(_: internment::Intern<(std::s32, double)>), .x=(_: bigint)}: internment_test::IStruct)): internment::Intern<internment_test::IStruct>))], Inspect debug::debug_event((32'd304, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", i, (internment_test::Projections{.inp=internment_test::istruct2struct((internment::ival(i): internment_test::IStruct)), .p=("f2=" ++ (std::__builtin_2string(f2): string))}: internment_test::Projections)).
 internment_test::Projections[(internment_test::Projections{.inp=internment_test::istruct2struct((internment::ival(i): internment_test::IStruct)), .p=("f3=" ++ f3)}: internment_test::Projections)] :- internment_test::IStruct[(i@ ((&(internment_test::IStruct{.u=(t@ ((&(internment_test::Tag2{.f2=(_: bit<32>), .f3=(f3: string)}: internment_test::IUnion)): internment::Intern<internment_test::IUnion>)), .t=(_: internment::Intern<(std::s32, double)>), .x=(_: bigint)}: internment_test::IStruct)): internment::Intern<internment_test::IStruct>))], Inspect debug::debug_event((32'd305, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", i, (internment_test::Projections{.inp=internment_test::istruct2struct((internment::ival(i): internment_test::IStruct)), .p=("f3=" ++ f3)}: internment_test::Projections)).
 tinyset_test::Sets[(tinyset_test::Sets{.setid=setid, .set=set}: tinyset_test::Sets)] :- tinyset_test::SetElement[(__tinyset_test_setelement0@ (tinyset_test::SetElement{.setid=(setid: string), .element=(v: bit<32>)}: tinyset_test::SetElement))], var __inputs_set = Aggregate(setid, __debug_306_1_tinyset::group_to_set((__tinyset_test_setelement0, v))), Inspect debug::debug_event((32'd306, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_set.0, (__inputs_set, setid)), (var set: tinyset::Set64<bit<32>>) = __inputs_set.1, Inspect debug::debug_event((32'd306, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_set, setid), (tinyset_test::Sets{.setid=setid, .set=set}: tinyset_test::Sets)).
-tinyset_test::Intersects[(tinyset_test::Intersects{.setid1=setid1, .setid2=setid2, .set=set}: tinyset_test::Intersects)] :- tinyset_test::Sets[(__tinyset_test_sets0@ (tinyset_test::Sets{.setid=(setid1: string), .set=(set1: tinyset::Set64<std::u32>)}: tinyset_test::Sets))], tinyset_test::Sets[(__tinyset_test_sets1@ (tinyset_test::Sets{.setid=(setid2: string), .set=(set2: tinyset::Set64<std::u32>)}: tinyset_test::Sets))], Inspect debug::debug_event_join((32'd307, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __tinyset_test_sets0, __tinyset_test_sets1, (setid1, set1, setid2, set2)), (var set: tinyset::Set64<std::u32>) = ((var set: tinyset::Set64<std::u32>) = (tinyset::empty(): tinyset::Set64<std::u32>);
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  (for (x in set1) {
+tinyset_test::Intersects[(tinyset_test::Intersects{.setid1=setid1, .setid2=setid2, .set=set}: tinyset_test::Intersects)] :- tinyset_test::Sets[(__tinyset_test_sets0@ (tinyset_test::Sets{.setid=(setid1: string), .set=(set1: tinyset::Set64<std::u32>)}: tinyset_test::Sets))], tinyset_test::Sets[(__tinyset_test_sets1@ (tinyset_test::Sets{.setid=(setid2: string), .set=(set2: tinyset::Set64<std::u32>)}: tinyset_test::Sets))], Inspect debug::debug_event_join((32'd307, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __tinyset_test_sets0, __tinyset_test_sets1, (setid1, set1, setid2, set2)), (var set: tinyset::Set64<std::u32>) = {(var set: tinyset::Set64<std::u32>) = (tinyset::empty(): tinyset::Set64<std::u32>);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  {for (x in set1) {
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        if tinyset::contains(set2, x) {
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            tinyset::insert(set, x)
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        } else {
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              ()
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          }
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    };
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   set)), Inspect debug::debug_event((32'd307, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (setid1, set1, setid2, set2), (tinyset_test::Intersects{.setid1=setid1, .setid2=setid2, .set=set}: tinyset_test::Intersects)).
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   set}}, Inspect debug::debug_event((32'd307, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (setid1, set1, setid2, set2), (tinyset_test::Intersects{.setid1=setid1, .setid2=setid2, .set=set}: tinyset_test::Intersects)).
 tinyset_test::Intersects2[(tinyset_test::Intersects2{.setid1=setid1, .setid2=setid2, .set=(tinyset::intersection(set1, set2): tinyset::Set64<std::u32>)}: tinyset_test::Intersects2)] :- tinyset_test::Sets[(__tinyset_test_sets0@ (tinyset_test::Sets{.setid=(setid1: string), .set=(set1: tinyset::Set64<std::u32>)}: tinyset_test::Sets))], tinyset_test::Sets[(__tinyset_test_sets1@ (tinyset_test::Sets{.setid=(setid2: string), .set=(set2: tinyset::Set64<std::u32>)}: tinyset_test::Sets))], Inspect debug::debug_event_join((32'd308, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __tinyset_test_sets0, __tinyset_test_sets1, (tinyset_test::Intersects2{.setid1=setid1, .setid2=setid2, .set=(tinyset::intersection(set1, set2): tinyset::Set64<std::u32>)}: tinyset_test::Intersects2)).
 tinyset_test::Diffs[(tinyset_test::Diffs{.setid1=setid1, .setid2=setid2, .set=(tinyset::difference(set1, set2): tinyset::Set64<std::u32>)}: tinyset_test::Diffs)] :- tinyset_test::Sets[(__tinyset_test_sets0@ (tinyset_test::Sets{.setid=(setid1: string), .set=(set1: tinyset::Set64<std::u32>)}: tinyset_test::Sets))], tinyset_test::Sets[(__tinyset_test_sets1@ (tinyset_test::Sets{.setid=(setid2: string), .set=(set2: tinyset::Set64<std::u32>)}: tinyset_test::Sets))], Inspect debug::debug_event_join((32'd309, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __tinyset_test_sets0, __tinyset_test_sets1, (tinyset_test::Diffs{.setid1=setid1, .setid2=setid2, .set=(tinyset::difference(set1, set2): tinyset::Set64<std::u32>)}: tinyset_test::Diffs)).
 url_test::URLTest[(url_test::URLTest{.description="https://example.net", .val=url::to_string((std::unwrap_or_default(url::url_parse("https://example.net")): url::Url))}: url_test::URLTest)].

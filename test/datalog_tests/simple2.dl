@@ -398,7 +398,7 @@ typedef Alt = C0{x: bit<32>}
             | C1{x: bit<32>}
 
 // shadow argument name
-function shadow(v: string): () = {
+function shadow(v: string) {
     var a: Alt = C0{1};
 
     var i: bit<32> = match (a) {
@@ -408,8 +408,10 @@ function shadow(v: string): () = {
 }
 
 // shadow local variable
-function shadow2(): () = {
+function shadow2() {
     var v: string = "bar";
 
     var v = "foo"
 }
+
+function do_nothing() {}
