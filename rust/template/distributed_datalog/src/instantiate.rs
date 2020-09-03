@@ -7,6 +7,7 @@
 
 use std::collections::HashMap;
 use std::collections::{BTreeMap, BTreeSet};
+use std::fmt::Debug;
 use std::fs::File;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -37,6 +38,9 @@ use crate::tcp_channel::TcpReceiver;
 use crate::tcp_channel::TcpSender;
 use crate::txnmux::TxnMux;
 use crate::DDlogServer;
+
+use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 /// A mapping from member address to relation IDs used for describing
 /// output relationships.
@@ -157,22 +161,24 @@ where
 
 /// All possible sources of a Realization
 #[derive(Debug)]
-enum SourceRealization<C>
+enum SourceRealization<C, D>
 where
     C: DDlogConvert,
+    D: DeserializeOwned + Debug + Into<Update<DDValue>> + Send,
 {
     File(Arc<Mutex<FileSource<C>>>),
-    Node(Arc<Mutex<TcpReceiver<Update<DDValue>>>>),
+    Node(Arc<Mutex<TcpReceiver<Update<DDValue>, D>>>),
 }
 
 /// All possible sinks of a Realization
 #[derive(Debug)]
-enum SinkRealization<C>
+enum SinkRealization<C, S>
 where
     C: DDlogConvert,
+    S: Serialize + Debug + Send + 'static
 {
     File(SharedObserver<FileSink<C>>),
-    Node(SharedObserver<TcpSender<Update<DDValue>>>),
+    Node(SharedObserver<TcpSender<S>>),
 }
 
 /// An object representing a realized configuration.
@@ -189,7 +195,7 @@ where
     _sources: HashMap<
         Source,
         (
-            Option<SourceRealization<P::Convert>>,
+            Option<SourceRealization<P::Convert, P::UpdateSerializer>>,
             SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>,
             usize,
         ),
@@ -202,7 +208,7 @@ where
         (
             SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>,
             UpdatesObservable<Update<DDValue>, String>,
-            HashMap<Sink, (SinkRealization<P::Convert>, usize)>,
+            HashMap<Sink, (SinkRealization<P::Convert, P::UpdateSerializer>, usize)>,
         ),
     >,
 }

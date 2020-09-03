@@ -1,29 +1,31 @@
 use differential_datalog::record;
-use differential_datalog::record::*;
+use differential_datalog::record::Record;
 use std::cmp;
 use std::fmt;
+use std::hash::Hash;
+use std::ops::Deref;
 
 #[cfg(feature = "flatbuf")]
-use flatbuf::{FromFlatBuffer, ToFlatBuffer, ToFlatBufferTable, ToFlatBufferVectorElement};
+use crate::flatbuf::{FromFlatBuffer, ToFlatBuffer, ToFlatBufferTable, ToFlatBufferVectorElement};
 
 /* `flatc`-generated declarations re-exported by `flatbuf.rs` */
 #[cfg(feature = "flatbuf")]
-use flatbuf::fb;
+use crate::flatbuf::fb;
 
 /* FlatBuffers runtime */
 #[cfg(feature = "flatbuf")]
 use flatbuffers as fbrt;
 
 #[derive(Default, Eq, PartialEq, Clone, Hash)]
-pub struct internment_Intern<A>
+pub struct Intern<A>
 where
     A: Eq + Send + Sync + Hash + 'static,
 {
     intern: arc_interner::ArcIntern<A>,
 }
 
-impl<A: Eq + Send + Sync + Hash + 'static> PartialOrd for internment_Intern<A> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+impl<A: Eq + Send + Sync + Hash + 'static> PartialOrd for Intern<A> {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         let sptr = self.as_ref() as *const A as usize;
         let optr = other.as_ref() as *const A as usize;
 
@@ -31,8 +33,8 @@ impl<A: Eq + Send + Sync + Hash + 'static> PartialOrd for internment_Intern<A> {
     }
 }
 
-impl<A: Eq + Send + Sync + Hash + 'static> Ord for internment_Intern<A> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+impl<A: Eq + Send + Sync + Hash + 'static> Ord for Intern<A> {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
         let sptr = self.as_ref() as *const A as usize;
         let optr = other.as_ref() as *const A as usize;
 
@@ -40,7 +42,7 @@ impl<A: Eq + Send + Sync + Hash + 'static> Ord for internment_Intern<A> {
     }
 }
 
-impl<A: Eq + Send + Sync + Hash + 'static> Deref for internment_Intern<A> {
+impl<A: Eq + Send + Sync + Hash + 'static> Deref for Intern<A> {
     type Target = A;
 
     fn deref(&self) -> &Self::Target {
@@ -48,15 +50,15 @@ impl<A: Eq + Send + Sync + Hash + 'static> Deref for internment_Intern<A> {
     }
 }
 
-impl<A: Eq + Hash + Send + Sync + 'static> internment_Intern<A> {
-    pub fn new(x: A) -> internment_Intern<A> {
-        internment_Intern {
+impl<A: Eq + Hash + Send + Sync + 'static> Intern<A> {
+    pub fn new(x: A) -> Intern<A> {
+        Intern {
             intern: arc_interner::ArcIntern::new(x),
         }
     }
 }
 
-impl<A> AsRef<A> for internment_Intern<A>
+impl<A> AsRef<A> for Intern<A>
 where
     A: Eq + Hash + Send + Sync + 'static,
 {
@@ -65,13 +67,11 @@ where
     }
 }
 
-pub fn internment_intern<A: Eq + Hash + Send + Sync + Clone + 'static>(
-    x: &A,
-) -> internment_Intern<A> {
-    internment_Intern::new(x.clone())
+pub fn intern<A: Eq + Hash + Send + Sync + Clone + 'static>(x: &A) -> Intern<A> {
+    Intern::new(x.clone())
 }
 
-pub fn internment_ival<A: Eq + Hash + Send + Sync + Clone>(x: &internment_Intern<A>) -> &A {
+pub fn ival<A: Eq + Hash + Send + Sync + Clone>(x: &Intern<A>) -> &A {
     x.intern.as_ref()
 }
 
@@ -79,21 +79,21 @@ pub fn internment_ival<A: Eq + Hash + Send + Sync + Clone>(x: &internment_Intern
     s.x
 }*/
 
-impl<A: fmt::Display + Eq + Hash + Send + Sync + Clone> fmt::Display for internment_Intern<A> {
+impl<A: fmt::Display + Eq + Hash + Send + Sync + Clone> fmt::Display for Intern<A> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(self.as_ref(), f)
         //record::format_ddlog_str(&intern_istring_str(self), f)
     }
 }
 
-impl<A: fmt::Debug + Eq + Hash + Send + Sync + Clone> fmt::Debug for internment_Intern<A> {
+impl<A: fmt::Debug + Eq + Hash + Send + Sync + Clone> fmt::Debug for Intern<A> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(self.as_ref(), f)
         //record::format_ddlog_str(&intern_istring_str(self), f)
     }
 }
 
-impl<A: Serialize + Eq + Hash + Send + Sync + Clone> serde::Serialize for internment_Intern<A> {
+impl<A: Serialize + Eq + Hash + Send + Sync + Clone> serde::Serialize for Intern<A> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -103,54 +103,54 @@ impl<A: Serialize + Eq + Hash + Send + Sync + Clone> serde::Serialize for intern
 }
 
 impl<'de, A: Deserialize<'de> + Eq + Hash + Send + Sync + 'static> serde::Deserialize<'de>
-    for internment_Intern<A>
+    for Intern<A>
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        A::deserialize(deserializer).map(internment_Intern::new)
+        A::deserialize(deserializer).map(Intern::new)
     }
 }
 
-impl<A: FromRecord + Eq + Hash + Send + Sync + 'static> FromRecord for internment_Intern<A> {
+impl<A: FromRecord + Eq + Hash + Send + Sync + 'static> FromRecord for Intern<A> {
     fn from_record(val: &Record) -> Result<Self, String> {
-        A::from_record(val).map(internment_Intern::new)
+        A::from_record(val).map(Intern::new)
     }
 }
 
-impl<A: IntoRecord + Eq + Hash + Send + Sync + Clone> IntoRecord for internment_Intern<A> {
+impl<A: IntoRecord + Eq + Hash + Send + Sync + Clone> IntoRecord for Intern<A> {
     fn into_record(self) -> Record {
-        internment_ival(&self).clone().into_record()
+        ival(&self).clone().into_record()
     }
 }
 
-impl<A> Mutator<internment_Intern<A>> for Record
+impl<A> Mutator<Intern<A>> for Record
 where
     A: Clone + Eq + Send + Sync + Hash,
     Record: Mutator<A>,
 {
-    fn mutate(&self, x: &mut internment_Intern<A>) -> Result<(), String> {
-        let mut v = internment_ival(x).clone();
+    fn mutate(&self, x: &mut Intern<A>) -> Result<(), String> {
+        let mut v = ival(x).clone();
         self.mutate(&mut v)?;
-        *x = internment_intern(&v);
+        *x = intern(&v);
         Ok(())
     }
 }
 
 #[cfg(feature = "flatbuf")]
-impl<A, FB> FromFlatBuffer<FB> for internment_Intern<A>
+impl<A, FB> FromFlatBuffer<FB> for Intern<A>
 where
     A: Eq + Hash + Send + Sync + 'static,
     A: FromFlatBuffer<FB>,
 {
-    fn from_flatbuf(fb: FB) -> Response<Self> {
-        Ok(internment_Intern::new(A::from_flatbuf(fb)?))
+    fn from_flatbuf(fb: FB) -> Result<Self, String> {
+        Ok(Intern::new(A::from_flatbuf(fb)?))
     }
 }
 
 #[cfg(feature = "flatbuf")]
-impl<'b, A, T> ToFlatBuffer<'b> for internment_Intern<A>
+impl<'b, A, T> ToFlatBuffer<'b> for Intern<A>
 where
     T: 'b,
     A: Eq + Send + Sync + Hash + ToFlatBuffer<'b, Target = T>,
@@ -170,7 +170,7 @@ impl<'a> FromFlatBuffer<fb::__String<'a>> for intern_istring {
 }*/
 
 #[cfg(feature = "flatbuf")]
-impl<'b, A, T> ToFlatBufferTable<'b> for internment_Intern<A>
+impl<'b, A, T> ToFlatBufferTable<'b> for Intern<A>
 where
     T: 'b,
     A: Eq + Send + Sync + Hash + ToFlatBufferTable<'b, Target = T>,
@@ -185,7 +185,7 @@ where
 }
 
 #[cfg(feature = "flatbuf")]
-impl<'b, A, T> ToFlatBufferVectorElement<'b> for internment_Intern<A>
+impl<'b, A, T> ToFlatBufferVectorElement<'b> for Intern<A>
 where
     T: 'b + fbrt::Push + Copy,
     A: Eq + Send + Sync + Hash + ToFlatBufferVectorElement<'b, Target = T>,
@@ -197,7 +197,7 @@ where
     }
 }
 
-pub fn internment_istring_join(strings: &std_Vec<internment_istring>, sep: &String) -> String {
+pub fn istring_join(strings: &crate::ddlog_std::Vec<istring>, sep: &String) -> String {
     strings
         .x
         .iter()
@@ -207,59 +207,55 @@ pub fn internment_istring_join(strings: &std_Vec<internment_istring>, sep: &Stri
         .join(sep.as_str())
 }
 
-pub fn internment_istring_split(s: &internment_istring, sep: &String) -> std_Vec<String> {
-    std_Vec {
+pub fn istring_split(s: &istring, sep: &String) -> crate::ddlog_std::Vec<String> {
+    crate::ddlog_std::Vec {
         x: s.as_ref().split(sep).map(|x| x.to_owned()).collect(),
     }
 }
 
-pub fn internment_istring_contains(s1: &internment_istring, s2: &String) -> bool {
+pub fn istring_contains(s1: &istring, s2: &String) -> bool {
     s1.as_ref().contains(s2.as_str())
 }
 
-pub fn internment_istring_substr(
-    s: &internment_istring,
-    start: &std_usize,
-    end: &std_usize,
-) -> String {
+pub fn istring_substr(s: &istring, start: &std_usize, end: &std_usize) -> String {
     let len = s.as_ref().len();
     let from = cmp::min(*start as usize, len);
     let to = cmp::max(from, cmp::min(*end as usize, len));
     s.as_ref()[from..to].to_string()
 }
 
-pub fn internment_istring_replace(s: &internment_istring, from: &String, to: &String) -> String {
+pub fn istring_replace(s: &istring, from: &String, to: &String) -> String {
     s.as_ref().replace(from, to)
 }
 
-pub fn internment_istring_starts_with(s: &internment_istring, prefix: &String) -> bool {
+pub fn istring_starts_with(s: &istring, prefix: &String) -> bool {
     s.as_ref().starts_with(prefix)
 }
 
-pub fn internment_istring_ends_with(s: &internment_istring, suffix: &String) -> bool {
+pub fn istring_ends_with(s: &istring, suffix: &String) -> bool {
     s.as_ref().ends_with(suffix)
 }
 
-pub fn internment_istring_trim(s: &internment_istring) -> String {
+pub fn istring_trim(s: &istring) -> String {
     s.as_ref().trim().to_string()
 }
 
-pub fn internment_istring_len(s: &internment_istring) -> std_usize {
+pub fn istring_len(s: &istring) -> std_usize {
     s.as_ref().len() as std_usize
 }
 
-pub fn internment_istring_to_bytes(s: &internment_istring) -> std_Vec<u8> {
-    std_Vec::from(s.as_ref().as_bytes())
+pub fn istring_to_bytes(s: &istring) -> crate::ddlog_std::Vec<u8> {
+    crate::ddlog_std::Vec::from(s.as_ref().as_bytes())
 }
 
-pub fn internment_istring_to_lowercase(s: &internment_istring) -> String {
+pub fn istring_to_lowercase(s: &istring) -> String {
     s.as_ref().to_lowercase()
 }
 
-pub fn internment_istring_to_uppercase(s: &internment_istring) -> String {
+pub fn istring_to_uppercase(s: &istring) -> String {
     s.as_ref().to_uppercase()
 }
 
-pub fn internment_istring_reverse(s: &internment_istring) -> String {
+pub fn istring_reverse(s: &istring) -> String {
     s.as_ref().chars().rev().collect()
 }

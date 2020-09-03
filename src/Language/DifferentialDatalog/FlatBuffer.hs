@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2019 VMware, Inc.
+Copyright (c) 2019-2020 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -95,6 +95,7 @@ import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Relation
 import Language.DifferentialDatalog.Index
 import Language.DifferentialDatalog.Error
+import Language.DifferentialDatalog.Module
 import {-# SOURCE #-} qualified Language.DifferentialDatalog.Compile as R -- "R" for "Rust"
 
 compileFlatBufferBindings :: (?cfg :: Config) => DatalogProgram -> String -> FilePath -> IO ()
@@ -224,7 +225,7 @@ compileFlatBufferRustBindings d prog_name dir = do
         "pub use flatbuf_generated::ddlog::" <> rustFBModule <+> " as fb;"   $$
         (vcat $ map rustTypeFromFlatbuf
               -- One FromFlatBuffer implementation per Rust type
-              $ nubBy (\t1 t2 -> R.mkType t1 == R.mkType t2)
+              $ nubBy (\t1 t2 -> R.mkType d True t1 == R.mkType d True t2)
               $ progRustTypesToSerialize)
     updateFile (dir </> "value/flatbuf.rs") $ render $
         (pp value_template)                                              $$
@@ -386,7 +387,7 @@ typeTableName x =
          TOpaque{typeArgs = [elemType], ..} | elem typeName sET_TYPES
                        -> "__Table_Vec_" <> mkTypeIdentifier elemType
          TOpaque{typeArgs = [keyType, valType], ..} | typeName == mAP_TYPE
-                       -> typeTableName $ tOpaque "std::Vec" [tTuple [keyType, valType]]
+                       -> typeTableName $ tOpaque (mOD_STD ++ "::Vec") [tTuple [keyType, valType]]
          t             -> error $ "typeTableName: Unexpected type " ++ show t
 
 -- True if type is serialized into a vector inside FlatBuffer.
@@ -1505,13 +1506,13 @@ rustValueFromFlatbuf =
     where
     rel_enums = map (\rel@Relation{..} ->
                      pp (relIdentifier ?d rel) <+> "=> Ok(" <>
-                         R.mkValue ?d ("<" <> R.mkType relType <> ">::from_flatbuf(fb::" <> typeTableName relType <> "::init_from_table(v))?")
+                         R.mkValue ?d ("<" <> R.mkType ?d False relType <> ">::from_flatbuf(fb::" <> typeTableName relType <> "::init_from_table(v))?")
                                    relType <> ".into_ddvalue()),")
                     progIORelations
     idx_enums = map (\idx@Index{..} ->
                      let t = idxKeyType idx in
                      pp (idxIdentifier ?d idx) <+> "=> Ok(" <>
-                         R.mkValue ?d ("<" <> R.mkType t <> ">::from_flatbuf(fb::" <> typeTableName t <> "::init_from_table(v))?") t <> ".into_ddvalue()),")
+                         R.mkValue ?d ("<" <> R.mkType ?d False t <> ">::from_flatbuf(fb::" <> typeTableName t <> "::init_from_table(v))?") t <> ".into_ddvalue()),")
                     $ M.elems $ progIndexes ?d
     rel_to_enums = map (\rel@Relation{..} ->
                     pp (relIdentifier ?d rel) <+> "=> {"                                                                           $$
@@ -1531,7 +1532,7 @@ rustTypeFromFlatbuf :: (?d::DatalogProgram) => Type -> Doc
 rustTypeFromFlatbuf t@TUser{..} | typeHasUniqueConstructor t =
     "impl <'a> FromFlatBuffer<fb::" <> tname <> "<'a>> for" <+> rtype <+> "{"                       $$
     "    fn from_flatbuf(v: fb::" <> tname <> "<'a>) -> Response<Self> {"                           $$
-    "        Ok(" <> R.rname typeName <> (braces $ commaSep from_args) <> ")"                       $$
+    "        Ok(" <> R.rnameScoped True typeName <> (braces $ commaSep from_args) <> ")"            $$
     "    }"                                                                                         $$
     "}"                                                                                             $$
     "impl <'b> ToFlatBuffer<'b> for" <+> rtype <+> "{"                                              $$
@@ -1556,7 +1557,7 @@ rustTypeFromFlatbuf t@TUser{..} | typeHasUniqueConstructor t =
     "    }"                                                                                         $$
     "}"
     where
-    rtype = R.mkType t
+    rtype = R.mkType ?d True t
     tname = typeTableName t
     tstruct = typ' ?d t
     arg_names = map (\a -> let n = rustFieldName a in
@@ -1564,7 +1565,7 @@ rustTypeFromFlatbuf t@TUser{..} | typeHasUniqueConstructor t =
                               then n
                               else n <> "_type," <+> n)
                     $ consArgs $ head $ typeCons tstruct
-    from_args = map (\a -> pp (name a) <> ": <" <> R.mkType a <> ">::from_flatbuf(" <> extract_field rtype a <> ")?")
+    from_args = map (\a -> pp (name a) <> ": <" <> R.mkType ?d True a <> ">::from_flatbuf(" <> extract_field rtype a <> ")?")
                     $ consArgs $ head $ typeCons tstruct
     to_args = map (\a -> serialize_field "self." a (rustFieldName a))
                   $ consArgs $ head $ typeCons tstruct
@@ -1613,13 +1614,13 @@ rustTypeFromFlatbuf t@TUser{..} =
     "    }"                                                                                                 $$
     "}"
     where
-    rtype = R.mkType t
+    rtype = R.mkType ?d True t
     tname = typeTableName t
     fbstruct = "fb::" <> fbStructName typeName typeArgs
     tstruct = typ' ?d t
     cons = map (\c -> let fbcname = fbConstructorName typeArgs c
-                          cname = R.rname typeName <> "::" <> R.rname (name c)
-                          args = map (\a -> pp (name a) <> ": <" <> R.mkType a <> ">::from_flatbuf(" <> extract_field cname a <> ")?")
+                          cname = R.mkConstructorName True typeName tstruct (name c)
+                          args = map (\a -> pp (name a) <> ": <" <> R.mkType ?d True a <> ">::from_flatbuf(" <> extract_field cname a <> ")?")
                                      $ consArgs c
                       in if null args
                             then fbstruct <> "::" <> fbcname <+> "=> {"                                $$
@@ -1631,7 +1632,7 @@ rustTypeFromFlatbuf t@TUser{..} =
                                  "},")
                $ typeCons tstruct
     to_cons = map (\c -> let fbcname = fbConstructorName typeArgs c
-                             cname = R.rname typeName <> "::" <> R.rname (name c)
+                             cname = R.mkConstructorName True typeName tstruct (name c)
                              args = map (\a -> serialize_field "" a (rustFieldName a)) $ consArgs c
                              arg_names = map (\a -> let n = pp (name a) in
                                                if typeHasUniqueConstructor a
@@ -1652,7 +1653,7 @@ rustTypeFromFlatbuf t@TUser{..} =
 rustTypeFromFlatbuf t@TTuple{..} =
     "impl <'a> FromFlatBuffer<fb::" <> tname <> "<'a>> for" <+> rtype <+> "{"                       $$
     "    fn from_flatbuf(v: fb::" <> tname <> "<'a>) -> Response<Self> {"                           $$
-    "        Ok(" <> R.tupleStruct from_args <> ")"                                                 $$
+    "        Ok(" <> R.tupleStruct True from_args <> ")"                                            $$
     "    }"                                                                                         $$
     "}"                                                                                             $$
     "impl <'b> ToFlatBuffer<'b> for" <+> rtype <+> "{"                                              $$
@@ -1678,13 +1679,13 @@ rustTypeFromFlatbuf t@TTuple{..} =
     "}"
     where
     tname = typeTableName t
-    rtype = R.mkType t
+    rtype = R.mkType ?d True t
     arg_names = mapIdx (\a i -> let n = pp $ "a" ++ show i in
                            if typeHasUniqueConstructor a
                               then n
                               else n <> "_type," <+> n)
                        typeTupArgs
-    from_args = mapIdx (\a i -> "<" <> R.mkType a <> ">::from_flatbuf(" <> extract_field rtype (Field nopos [] ("a" ++ show i) a) <> ")?")
+    from_args = mapIdx (\a i -> "<" <> R.mkType ?d True a <> ">::from_flatbuf(" <> extract_field rtype (Field nopos [] ("a" ++ show i) a) <> ")?")
                 typeTupArgs
     to_args = mapIdx (\a i -> serialize_field "self." (Field nopos [] (show i) a) ("a" <> pp i))
                      typeTupArgs
@@ -1716,7 +1717,7 @@ rustTypeFromFlatbuf t@TOpaque{..} | isSharedRef ?d t = empty
     "    }"                                                                                                 $$
     "}"
     where
-    rtype = R.mkType t
+    rtype = R.mkType ?d True t
     tname = typeTableName t
 
 -- For builtin types ('bool', 'bit<>', 'signed', 'string', 'bigint'),
@@ -1738,7 +1739,7 @@ rustTypeFromFlatbuf t | typeIsScalar t =
     "    }"                                                                                                 $$
     "}"
     where
-    rtype = R.mkType t
+    rtype = R.mkType ?d True t
     tname = typeTableName t
 
 rustTypeFromFlatbuf _ = empty

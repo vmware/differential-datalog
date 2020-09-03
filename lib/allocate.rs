@@ -1,14 +1,13 @@
-extern crate num;
 use std::cmp;
 use std::collections::BTreeSet;
 use std::ops;
 
-pub fn allocate_allocate<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Copy>(
-    allocated: &std_Set<N>,
-    toallocate: &std_Vec<B>,
+pub fn allocate<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Copy>(
+    allocated: &crate::ddlog_std::Set<N>,
+    toallocate: &crate::ddlog_std::Vec<B>,
     min_val: &N,
     max_val: &N,
-) -> std_Vec<(B, N)> {
+) -> crate::ddlog_std::Vec<(B, N)> {
     assert!(*max_val >= *min_val);
     let range = *max_val - *min_val;
 
@@ -19,7 +18,7 @@ pub fn allocate_allocate<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Cop
         next = *max_val;
     };
     let mut offset = N::zero();
-    let mut res = std_Vec::new();
+    let mut res = crate::ddlog_std::Vec::new();
     for b in toallocate.x.iter() {
         loop {
             next = if next == *max_val {
@@ -47,12 +46,12 @@ pub fn allocate_allocate<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Cop
     return res;
 }
 
-pub fn allocate_allocate_with_hint<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Copy>(
-    allocated: &std_Set<N>,
-    toallocate: &std_Vec<(B, std_Option<N>)>,
+pub fn allocate_with_hint<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Copy>(
+    allocated: &crate::ddlog_std::Set<N>,
+    toallocate: &crate::ddlog_std::Vec<(B, crate::ddlog_std::Option<N>)>,
     min_val: &N,
     max_val: &N,
-) -> std_Vec<(B, N)> {
+) -> crate::ddlog_std::Vec<(B, N)> {
     assert!(*max_val >= *min_val);
     let range = *max_val - *min_val;
     let mut new_allocations: BTreeSet<N> = BTreeSet::new();
@@ -63,12 +62,12 @@ pub fn allocate_allocate_with_hint<B: Ord + Clone, N: num::Num + ops::Add + cmp:
     if next < *min_val || next > *max_val {
         next = *min_val;
     };
-    let mut res = std_Vec::new();
+    let mut res = crate::ddlog_std::Vec::new();
     for (b, hint) in toallocate.x.iter() {
         let mut offset = N::zero();
         next = match hint {
-            std_Option::std_None => next,
-            std_Option::std_Some { x: h } => *h,
+            crate::ddlog_std::Option::None => next,
+            crate::ddlog_std::Option::Some { x: h } => *h,
         };
         loop {
             if allocated.x.contains(&next) || new_allocations.contains(&next) {
@@ -100,12 +99,12 @@ pub fn allocate_allocate_with_hint<B: Ord + Clone, N: num::Num + ops::Add + cmp:
     return res;
 }
 
-pub fn allocate_allocate_opt<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Copy>(
-    allocated: &std_Set<N>,
-    toallocate: &std_Vec<B>,
+pub fn allocate_opt<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Copy>(
+    allocated: &crate::ddlog_std::Set<N>,
+    toallocate: &crate::ddlog_std::Vec<B>,
     min_val: &N,
     max_val: &N,
-) -> std_Vec<(B, std_Option<N>)> {
+) -> crate::ddlog_std::Vec<(B, crate::ddlog_std::Option<N>)> {
     assert!(*max_val >= *min_val);
     let range = *max_val - *min_val;
 
@@ -116,14 +115,14 @@ pub fn allocate_allocate_opt<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord +
         next = *max_val;
     };
     let mut offset = N::zero();
-    let mut res = std_Vec::new();
+    let mut res = crate::ddlog_std::Vec::new();
     // Signal that address space has been exhausted, but iteration must continue to
     // assign `None` to all remaining items.
     let mut exhausted = false;
     for b in toallocate.x.iter() {
         loop {
             if exhausted {
-                res.x.push(((*b).clone(), std_Option::std_None));
+                res.x.push(((*b).clone(), crate::ddlog_std::Option::None));
                 break;
             };
             if offset == range {
@@ -139,7 +138,8 @@ pub fn allocate_allocate_opt<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord +
             if allocated.x.contains(&next) {
                 continue;
             } else {
-                res.x.push(((*b).clone(), std_Option::std_Some { x: next }));
+                res.x
+                    .push(((*b).clone(), crate::ddlog_std::Option::Some { x: next }));
                 break;
             }
         }
@@ -147,12 +147,12 @@ pub fn allocate_allocate_opt<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord +
     return res;
 }
 
-pub fn allocate_adjust_allocation<A: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Copy>(
-    allocated: &std_Map<A, N>,
-    toallocate: &std_Vec<A>,
+pub fn adjust_allocation<A: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Copy>(
+    allocated: &crate::ddlog_std::Map<A, N>,
+    toallocate: &crate::ddlog_std::Vec<A>,
     min_val: &N,
     max_val: &N,
-) -> std_Vec<(A, N)> {
+) -> crate::ddlog_std::Vec<(A, N)> {
     assert!(*max_val >= *min_val);
     let range = *max_val - *min_val;
 
@@ -163,7 +163,7 @@ pub fn allocate_adjust_allocation<A: Ord + Clone, N: num::Num + ops::Add + cmp::
         next = *max_val;
     };
     let mut offset = N::zero();
-    let mut res = std_Vec::new();
+    let mut res = crate::ddlog_std::Vec::new();
     // Signal that address space has been exhausted, but iteration must continue to
     // preserve existing allocations.
     let mut exhausted = false;

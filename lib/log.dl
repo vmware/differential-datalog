@@ -20,7 +20,7 @@
  *
  * Other related files:
  * `log4j.dl` - specializes the logging API for using log4j loggers
- * `rust/template/types/log.rs` - Rust logging API
+ * `rust/template/types/ddlog_log.rs` - Rust logging API
  * `ddlog_log.h` - matching C bindings
  * `DDlogAPI.java (DDlogAPI.log_set_callback method)` - Java API to control
  *  logging.
@@ -70,4 +70,4 @@ typedef log_level_t = signed<32>
  * of an Inspect operator.
  */
 #[has_side_effects]
-extern function log(module: module_t, level: log_level_t, msg: string): ()
+extern function log(module: module_t, level: log_level_t, msg: string)

@@ -34,7 +34,7 @@ static LOG_CONFIG: Lazy<sync::RwLock<LogConfig>> =
  * Logging API exposed to the DDlog program.
  * (see detailed documentation in `log.dl`)
  */
-pub fn log_log(module: &i32, level: &i32, msg: &String) {
+pub fn log(module: &i32, level: &i32, msg: &String) {
     let cfg = LOG_CONFIG.read().unwrap();
     if let Some((cb, current_level)) = cfg.mod_callbacks.get(&module) {
         if *level <= *current_level {

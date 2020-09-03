@@ -81,7 +81,7 @@ import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Var
 
 bUILTIN_2STRING_FUNC :: String
-bUILTIN_2STRING_FUNC = "std::__builtin_2string"
+bUILTIN_2STRING_FUNC = mOD_STD ++ "::__builtin_2string"
 
 -- depth-first fold of an expression
 exprFoldCtxM :: (Monad m) => (ECtx -> ExprNode b -> m b) -> ECtx -> Expr -> m b

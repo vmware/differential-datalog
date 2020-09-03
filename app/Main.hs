@@ -30,6 +30,7 @@ import System.Console.GetOpt
 import Control.Exception
 import Control.Monad
 import Data.List
+import qualified Data.Map as M
 import Text.PrettyPrint
 
 import Language.DifferentialDatalog.Config
@@ -159,10 +160,10 @@ main = do
             when (confRunRustfmt config') $
                 runCommandReportingErr "rustfmt" "cargo" ["fmt", "--all"] $ Just (confOutputDir config')
 
-parseValidate :: Config -> IO (DatalogProgram, Doc, Doc)
+parseValidate :: Config -> IO ([DatalogModule], DatalogProgram, M.Map ModuleName Doc, Doc)
 parseValidate Config{..} = do
     fdata <- readFile confDatalogFile
-    (d, rs_code, toml_code) <- parseDatalogProgram (takeDirectory confDatalogFile:confLibDirs) True fdata confDatalogFile
+    (modules, d, rs_code, toml_code) <- parseDatalogProgram (takeDirectory confDatalogFile:confLibDirs) True fdata confDatalogFile
     d'' <- case confOutputInternal of
          False -> return d
          True ->  return $ progOutputInternalRelations d
@@ -185,15 +186,15 @@ parseValidate Config{..} = do
         case flatBufferValidate d of
              Left e  -> errorWithoutStackTrace $ "error: " ++ e
              Right{} -> return ()
-    return (d', rs_code, toml_code)
+    return (modules, d', rs_code, toml_code)
 
 compileProg :: Config -> IO ()
 compileProg conf@Config{..} = do
     let specname = takeBaseName confDatalogFile
-    (prog, rs_code, toml_code) <- parseValidate conf
+    (modules, prog, rs_code, toml_code) <- parseValidate conf
     -- generate Rust project
     let dir = (if confOutputDir == "" then takeDirectory confDatalogFile else confOutputDir)
     let crate_types = (if confStaticLib then ["staticlib"] else []) ++
                       (if confDynamicLib then ["cdylib"] else [])
     let ?cfg = conf
-    compile prog specname rs_code toml_code dir crate_types
+    compile prog specname modules rs_code toml_code dir crate_types

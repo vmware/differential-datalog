@@ -19,6 +19,7 @@ num = { version = "0.2", features = ["serde"] }
 sequence_trie = "0.3"
 serde = { version = "1.0", features = ["derive"] }
 typetag = "0.1"
+erased-serde = "0.3"
 
 [dev-dependencies]
 byteorder = "0.4.2"

@@ -95,10 +95,11 @@ import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.ECtx
 import Language.DifferentialDatalog.Error
 import Language.DifferentialDatalog.Var
+import Language.DifferentialDatalog.Module
 import {-# SOURCE #-} Language.DifferentialDatalog.Rule
 
 sET_TYPES :: [String]
-sET_TYPES = ["std::Set", "std::Vec", tINYSET_TYPE]
+sET_TYPES = [mOD_STD ++ "::Set", mOD_STD ++ "::Vec", tINYSET_TYPE]
 
 tINYSET_TYPE :: String
 tINYSET_TYPE = "tinyset::Set64"
@@ -108,41 +109,41 @@ dYNAMIC_TYPES :: [String]
 dYNAMIC_TYPES = mAP_TYPE : sET_TYPES
 
 gROUP_TYPE :: String
-gROUP_TYPE = "std::Group"
+gROUP_TYPE = mOD_STD ++ "::Group"
 
 mAP_TYPE :: String
-mAP_TYPE = "std::Map"
+mAP_TYPE = mOD_STD ++ "::Map"
 
 -- Special types used by Inspect operator.
 ePOCH_TYPE :: String
-ePOCH_TYPE = "std::DDEpoch"
+ePOCH_TYPE = mOD_STD ++ "::DDEpoch"
 
 iTERATION_TYPE :: String
-iTERATION_TYPE = "std::DDIteration"
+iTERATION_TYPE = mOD_STD ++ "::DDIteration"
 
 nESTED_TS_TYPE :: String
-nESTED_TS_TYPE = "std::DDNestedTS"
+nESTED_TS_TYPE = mOD_STD ++ "::DDNestedTS"
 
 wEIGHT_TYPE :: String
-wEIGHT_TYPE = "std::DDWeight"
+wEIGHT_TYPE = mOD_STD ++ "::DDWeight"
 
 oPTION_TYPE :: String
-oPTION_TYPE = "std::Option"
+oPTION_TYPE = mOD_STD ++ "::Option"
 
 sOME_CONSTRUCTOR :: String
-sOME_CONSTRUCTOR = "std::Some"
+sOME_CONSTRUCTOR = mOD_STD ++ "::Some"
 
 nONE_CONSTRUCTOR :: String
-nONE_CONSTRUCTOR = "std::None"
+nONE_CONSTRUCTOR = mOD_STD ++ "::None"
 
 rESULT_TYPE :: String
-rESULT_TYPE = "std::Result"
+rESULT_TYPE = mOD_STD ++ "::Result"
 
 eRR_CONSTRUCTOR :: String
-eRR_CONSTRUCTOR = "std::Err"
+eRR_CONSTRUCTOR = mOD_STD ++ "::Err"
 
 oK_CONSTRUCTOR :: String
-oK_CONSTRUCTOR = "std::Ok"
+oK_CONSTRUCTOR = mOD_STD ++ "::Ok"
 
 -- | An object with type
 class WithType a where

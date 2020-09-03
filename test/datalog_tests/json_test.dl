@@ -160,7 +160,7 @@ JsonTest(struct_with_map1(),
 
 typedef U64FromString = U64FromString {
     x: string,
-    #[rust="serde(with=\"serde_string\")"]
+    #[rust="serde(with=\"crate::json::serde_string\")"]
     y: u64
 }
 
@@ -173,7 +173,7 @@ JsonTest(u64FromString2(),
          to_json_string_or_default(from_json_string(u64FromString2()): Result<U64FromString, string>)).
 
 typedef S32FromString = S32FromString {
-    #[rust="serde(with=\"serde_string\")"]
+    #[rust="serde(with=\"crate::json::serde_string\")"]
     x: s32
 }
 

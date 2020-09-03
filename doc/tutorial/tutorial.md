@@ -912,7 +912,7 @@ gives some additional details on writing DDlog functions.
 #### Polymorphic functions
 
 DDlog supports two forms of polymorphism: parametric and ad hoc polymorphism.
-The following declarations from `std.dl` illustrate both:
+The following declarations from `ddlog_std.dl` illustrate both:
 
 ```
 function size(s: Set<'X>): usize {...}
@@ -1006,6 +1006,10 @@ pub fn string_slice(x: &String, from: &u64, to: &u64) -> String {
 
 DDlog will automatically pickup this file and inline its contents in the
 generated `lib.rs`.
+
+See [more detailed discussion](#implementing-extern-functions-and-types-in-Rust)
+on integrating Rust and DDlog code below.
+
 
 #### Functions with side effects
 
@@ -1160,7 +1164,7 @@ BestPrice(item, best_price) :-
 ```
 
 Here `group_min()` is one of several aggregation functions defined in
-`lib/std.rs`.
+`lib/ddlog_std.rs`.
 
 It is possible to group a relation by multiple fields.  For
 example, the following rule computes the lowest price that each vendor
@@ -1274,10 +1278,10 @@ associates with each record: **timestamp** and **weight**.  The timestamp,
 stored in the `ddlog_timestamp` special variable, represents the logical time
 when the record was created.  For non-recursive rules, the timestamp consists of
 a global epoch, i.e., the serial number of the transaction that created the
-record (see `DDEpoch` type declared in `lib/std.dl`).  For recursive rules, the
+record (see `DDEpoch` type declared in `lib/ddlog_std.dl`).  For recursive rules, the
 timestamp additionally includes iteration number of the inner fixed point
 computation when the record was produced (see `DDNestedTS` type in
-`lib/std.dl`).
+`lib/ddlog_std.dl`).
 
 The `ddlog_weight` variable stores the weight of a record, i.e., the number of
 times the record has been derived at the current logical timestamp.  Newly
@@ -1927,7 +1931,8 @@ for various combinations of expression type and function return type.
 Similar to extern functions, extern types are types implemented outside of
 DDlog, in Rust, that are accessible to DDlog programs.  We already encountered
 examples of extern types like `Ref<>` and `Intern<>`.  Their implementation
-can be found in `std.dl/std.rs` and `internment.dl/internment.rs` respectively.
+can be found in `ddlog_std.dl` & `ddlog_std.rs` and `internment.dl` & `internment.rs`
+respectively.
 
 All extern types are required to implement a number of generic and DDlog-specific
 traits: `Default`, `Eq`, `PartialEq`, `Clone`, `Hash`, `PartialOrd`, `Ord`,
@@ -1936,7 +1941,10 @@ traits: `Default`, `Eq`, `PartialEq`, `Clone`, `Hash`, `PartialOrd`, `Ord`,
 
 Outside of DDlog libraries, extern types should only be defined when
 absolutely necessary, as they are not easy to implement correctly, and their
-API is not yet fully standardized.
+API is not yet fully standardized.  
+
+See [more detailed discussion](#implementing-extern-functions-and-types-in-Rust)
+on integrating Rust and DDlog code below.
 
 ## Explicit relation types
 
@@ -2318,12 +2326,120 @@ ddlog -i test.dl -L../modules
 
 Multiple `-L` options are allowed to access modules scattered across multiple directories.
 
+
+## Implementing extern functions and types in Rust
+
+We have encountered many examples of extern functions and types throughout the
+tutorial.  Here we summarize the rules for integrating Rust code into your DDlog
+program.
+
+Since the DDlog compiler generates Rust, external Rust code integrates with
+DDlog seamlessly and efficiently.  At a high level, the compiler generates 
+several crates for a DDlog program `prog`: 
+
+```
+prog_ddlog
+    |                           +-+
+    +----+types                   |
+    |       +                     |
+    |       |                     |
+    |       +--+Cargo.toml        |
+    |       |                     |  types crate:
+    |       +--+std_ddlog.rs      |  types, functions, external Rust code
+    |       |                     |
+    |       +--+mod1.dl           |
+    |       |                     |
+    |       +--+mod2              |
+    |       |    +                |
+    |       |    +--+lib.rs       |
+    |       |    |                |
+    |       |    +--+submod1.rs   |
+    |       |    |                |
+    |       |    +--+submod2.rs   |
+    |       |                     |
+    |       +--+lib.rs            |
+    |                           +-+
+    +----+value                 +-+
+    |        +--+Cargo.toml       |  value crate:
+    |        |                    |  wrapper types
+    |        +--+lib.rs           |
+    |                           +-+
+    |                           +-+
+    +----+Cargo.toml              |
+    |                             |
+    +----+src                     |  main crate:
+           +                      |  Rust encoding of DDlog rules and relations.
+           +--+lib.rs             |
+           |                      |
+           +--+main.rs            |
+           |                      |
+           +--+api.rs             |
+                                +-+
+```
+
+The `types` crate is the one relevant for the purposes of this section.  It
+contains all function and type declaraions, including extern functions and
+types.  Its internal module structure mirrors the structure of the DDlog
+program, with a separate Rust module for each DDlog module.  For example,
+declarations from a DDlog module `mod2/submod1.dl` are placed in
+`prog_ddlog/types/mod1/submod1.rs`.  Types and functions declared in the main
+module of the program are placed in `types/lib.rs`.  If `submod1.dl` contains
+extern function or type declarations, corresponding Rust declarations must be
+placed in `mod2/submodule1.rs`.  This file is picked up by the DDlog compiler
+and its contents is appended verbatim to the generated
+`prog_ddlog/types/mod1/submod1.rs` module.
+
+Extern type and function declarations must follow these rules:
+
+- Extern type and function names must match their DDlog declarations.
+
+- Extern types must implement a number of traits expected by DDlog.
+  See the [section on extern types](#extern-types) for details.
+
+- Extern function signatures must match DDlog declarations.  Arguments are
+  passed by reference, functions return results by value, unless labeled
+  with [`return_by_ref` attribute](#return_by_ref).  DDlog generates
+  commented out function prototypes in Rust to help the user come up with
+  correct signatures.
+  See the [section on extern functions](#extern-functions) for details.
+
+- Rust code can access function and type declarations in other program
+  modules and libraries through the `crate::` namespace, e.g., to import
+  the standard DDlog library:
+
+  ```
+  use crate::ddlog_std;
+  ```
+
+- Extern functions and types often contain dependencies on third-party crates.
+  Such dependencies must be added to the generated `types/Cargo.toml` file.
+  To this end, create a file with the same name and location as the DDlog module
+  and `.toml` extension, containing dependency clauses in `Cargo.toml` format.
+  As an example, the `lib/regex.dl` library that implements DDlog bindings to the
+  regular expressions crate `regex` has an accompanying `lib/regex.toml` file
+  with the following contents:
+
+  ```
+  [dependencies.regex]
+  version = "1.1"
+  ```
+
+  There is an important caveat: only one module in your program can import any
+  given external crate. As a workaround, we recommend creating a separate DDlog
+  library for each extern crate and only list this crate as a dependency for this
+  library, e.g., `lib/regex.dl for the `regex` crate, `lib/url.dl` for the url
+  crate, etc. Other libraries import the corresponding DDlog library and can then
+  use it either via the DDlog bindings or by calling the Rust API in the external
+  crate directly.
+
 ## The standard library
 
-The module system enables the creation of reusable DDlog libraries.  Some of these libraries
-are distributed with DDlog in the `lib` directory.  A particularly important one is the standard
-library [`std.dl`](../../lib/std.dl), which defines types like `Vec`, `Set`, `Map`, `Option`, `Ref`, and others.
-This library is imported automatically into every DDlog program.
+The module system enables the creation of reusable DDlog libraries.  Some of
+these libraries are distributed with DDlog in the `lib` directory.  A
+particularly important one is the standard library
+[`ddlog_std.dl`](../../lib/ddlog_std.dl), that defines types like `Vec`, `Set`,
+`Map`, `Option`, `Result`, `Ref`, and others.  This library is imported
+automatically into every DDlog program.
 
 ## Indexes
 

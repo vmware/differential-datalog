@@ -29,8 +29,15 @@ Description: DDlog's module system implemented as syntactic sugar over core synt
 {-# LANGUAGE RecordWildCards, FlexibleContexts, TupleSections, LambdaCase, OverloadedStrings #-}
 
 module Language.DifferentialDatalog.Module(
+    mOD_STD,
+    DatalogModule(..),
+    emptyModule,
+    moduleNameToPath,
+    moduleIsChildOf,
+    mainModuleName,
     nameScope,
     nameLocal,
+    nameLocalStr,
     scoped,
     parseDatalogProgram) where
 
@@ -58,15 +65,51 @@ import Language.DifferentialDatalog.DatalogProgram
 import Language.DifferentialDatalog.Error
 --import Language.DifferentialDatalog.Validate
 
+-- DDlog standard library name.
+mOD_STD :: String
+mOD_STD = "ddlog_std"
+
+-- 'child' is an immediate submodule of 'parent'.
+moduleIsChildOf :: ModuleName -> ModuleName -> Bool
+moduleIsChildOf (ModuleName child) (ModuleName parent) =
+    parent `isPrefixOf` child && length child == length parent + 1
+
+moduleNameToPath :: ModuleName -> FilePath
+moduleNameToPath (ModuleName []) = "lib.rs"
+moduleNameToPath (ModuleName [n]) = n <.> "rs"
+moduleNameToPath (ModuleName (n:ns)) = n </> moduleNameToPath (ModuleName ns)
+
+nameScope :: (WithName a) => a -> ModuleName
+nameScope = ModuleName . init . split "::" . name
+
+nameLocal :: (WithName a) => a -> Doc
+nameLocal = pp . nameLocalStr
+
+nameLocalStr :: (WithName a) => a -> String
+nameLocalStr = last . split "::" . name
+
+scoped :: ModuleName -> String -> String
+scoped mod n = intercalate "::" (modulePath mod ++ [n])
+
+mainModuleName :: ModuleName
+mainModuleName = ModuleName []
+
 data DatalogModule = DatalogModule {
     moduleName :: ModuleName,
     moduleFile :: FilePath,
     moduleDefs :: DatalogProgram
 }
 
+emptyModule :: ModuleName -> DatalogModule
+emptyModule mname = DatalogModule {
+    moduleName = mname,
+    moduleFile = "",
+    moduleDefs = emptyDatalogProgram
+}
+
 -- Standard library module name.
 stdLibs :: [ModuleName]
-stdLibs = [ModuleName ["std"], ModuleName ["internment"]]
+stdLibs = [ModuleName [mOD_STD], ModuleName ["internment"]]
 
 stdImport :: ModuleName -> Import
 stdImport lib = Import nopos lib (ModuleName [])
@@ -83,7 +126,7 @@ stdImports = map stdImport stdLibs
 --
 -- if 'import_std' is true, imports the standard libraries
 -- to each module.
-parseDatalogProgram :: [FilePath] -> Bool -> String -> FilePath -> IO (DatalogProgram, Doc, Doc)
+parseDatalogProgram :: [FilePath] -> Bool -> String -> FilePath -> IO ([DatalogModule], DatalogProgram, M.Map ModuleName Doc, Doc)
 parseDatalogProgram roots import_std fdata fname = do
     roots' <- nub <$> mapM canonicalizePath roots
     prog <- parseDatalogString fdata fname
@@ -94,22 +137,14 @@ parseDatalogProgram roots import_std fdata fname = do
     imports <- evalStateT (parseImports roots' main_mod) []
     let all_modules = main_mod : imports
     prog'' <- flattenNamespace all_modules
-    -- collect Rust files associated with each module and place it in a separate Rust module
-    rs <- (vcat . catMaybes) <$>
+    -- Collect Rust files associated with each module.
+    rs <- (M.fromList . catMaybes) <$>
           mapM ((\mod -> do
                     let rsfile = addExtension (dropExtension $ moduleFile mod) "rs"
-                    -- top-level module name is empty
-                    let mname = if moduleName mod == ModuleName []
-                                   then "__top"
-                                   else "__" <> (pp $ name2rust $ show $ moduleName mod)
                     rs_exists <- doesFileExist rsfile
                     if rs_exists
                        then do rs_code <- readFile rsfile
-                               return $ Just $ "pub use" <+> mname <> "::*;"   $$
-                                               "mod" <+> mname <+> "{"         $$
-                                               (nest' $ "use super::*;")       $$
-                                               (nest' $ pp rs_code)            $$
-                                               "}"
+                               return $ Just (moduleName mod, pp rs_code)
                        else return Nothing))
                all_modules
     -- collect .toml files associated with modules
@@ -121,7 +156,7 @@ parseDatalogProgram roots import_std fdata fname = do
                                        return $ Just $ pp toml_code
                                else return Nothing))
                all_modules
-    return (prog'', rs, toml)
+    return (all_modules, prog'', rs, toml)
 
 mergeModules :: (MonadError String me) => [DatalogProgram] -> me DatalogProgram
 mergeModules mods = do
@@ -257,15 +292,6 @@ applyFlattenNames mod mmap a@Apply{..} = do
              , applyInputs      = inputs
              , applyOutputs     = outputs }
 
-nameScope :: String -> ModuleName
-nameScope n = ModuleName $ init $ split "::" n
-
-nameLocal :: String -> String
-nameLocal n = last $ split "::" n
-
-scoped :: ModuleName -> String -> String
-scoped mod n = intercalate "::" (modulePath mod ++ [n])
-
 candidates :: (MonadError String me) => DatalogModule -> Pos -> String -> me [ModuleName]
 candidates DatalogModule{..} p n = do
     let mod = nameScope n
@@ -278,7 +304,7 @@ candidates DatalogModule{..} p n = do
 flattenName :: (MonadError String me) => (DatalogProgram -> String -> Maybe a) -> String -> MMap -> DatalogModule -> Pos -> String -> me (String, a)
 flattenName lookup_fun entity mmap mod p c = do
     cand_mods <- candidates mod p c
-    let lname = nameLocal c
+    let lname = nameLocalStr c
     let cands = concatMap (\m -> maybeToList $ (m,) <$> lookup_fun (moduleDefs m) lname) $ map (mmap M.!) cand_mods
     case cands of
          [(m,x)] -> return $ (scoped (moduleName m) lname, x)
@@ -298,7 +324,7 @@ flattenTypeName mmap mod p c = fst <$> flattenName lookupType "type" mmap mod p 
 flattenFuncName :: (MonadError String me) => MMap -> DatalogModule -> Pos -> String -> Int -> me [String]
 flattenFuncName mmap mod p fname nargs = do
     cand_mods <- candidates mod p fname
-    let lname = nameLocal fname
+    let lname = nameLocalStr fname
     let cands = filter (\m -> isJust $ lookupFuncs (moduleDefs m) lname nargs) $ map (mmap M.!) cand_mods
     case cands of
          [] -> err (moduleDefs mod) p $ "Unknown function '" ++ fname ++ "'"

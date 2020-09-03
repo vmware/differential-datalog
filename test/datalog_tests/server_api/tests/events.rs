@@ -19,6 +19,7 @@ use distributed_datalog::UpdatesObservable as UpdatesObservableT;
 
 use server_api_ddlog::api::updcmd2upd;
 use server_api_ddlog::api::HDDlog;
+use server_api_ddlog::UpdateSerializer;
 use server_api_ddlog::Relations::*;
 
 use maplit::btreeset;
@@ -292,8 +293,8 @@ fn setup_tcp() -> (DDlogServer, UpdatesObservable, MockObserver, Box<dyn Any>) {
     let observer = SharedObserver::new(Mutex::new(Mock::new()));
     let mut stream = server.add_stream(btreeset! {server_api_1_P1Out as usize});
 
-    let mut recv = TcpReceiver::<Update<DDValue>>::new("127.0.0.1:0").unwrap();
-    let send = TcpSender::new(*recv.addr()).unwrap();
+    let mut recv = TcpReceiver::<Update<DDValue>, UpdateSerializer>::new("127.0.0.1:0").unwrap();
+    let send = TcpSender::<UpdateSerializer>::new(*recv.addr()).unwrap();
 
     let _ = stream.subscribe(Box::new(send)).unwrap();
     let _ = recv.subscribe(Box::new(observer.clone())).unwrap();

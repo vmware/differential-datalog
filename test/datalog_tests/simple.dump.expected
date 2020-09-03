@@ -1001,23 +1001,23 @@ Allocation{.name = "b", .id = "4", .x = 1}: -1
 Allocation{.name = "b", .id = "5", .x = 2}: -1
 Allocation after clear
 Filtered:
-Filtered{.r = Referenced{.x = true, .y = std::Some{.x = "hello"}}}: +1
+Filtered{.r = Referenced{.x = true, .y = ddlog_std::Some{.x = "hello"}}}: +1
 Filtered2:
-Filtered2{.r = Referee2{.r = Referenced{.x = true, .y = std::Some{.x = "hello"}}}}: +1
+Filtered2{.r = Referee2{.r = Referenced{.x = true, .y = ddlog_std::Some{.x = "hello"}}}}: +1
 Filtered3:
-Filtered3{.r = Referenced{.x = true, .y = std::Some{.x = "hello"}}}: +1
+Filtered3{.r = Referenced{.x = true, .y = ddlog_std::Some{.x = "hello"}}}: +1
 Referee:
-Referee{.r = Referenced{.x = true, .y = std::Some{.x = "hello"}}}: +1
+Referee{.r = Referenced{.x = true, .y = ddlog_std::Some{.x = "hello"}}}: +1
 Referee2:
-Referee2{.r = Referenced{.x = true, .y = std::Some{.x = "hello"}}}: +1
+Referee2{.r = Referenced{.x = true, .y = ddlog_std::Some{.x = "hello"}}}: +1
 Referee
-Referee{.r = Referenced{.x = true, .y = std::Some{.x = "hello"}}}
+Referee{.r = Referenced{.x = true, .y = ddlog_std::Some{.x = "hello"}}}
 Filtered
-Filtered{.r = Referenced{.x = true, .y = std::Some{.x = "hello"}}}
+Filtered{.r = Referenced{.x = true, .y = ddlog_std::Some{.x = "hello"}}}
 Referee2
-Referee2{.r = Referenced{.x = true, .y = std::Some{.x = "hello"}}}
+Referee2{.r = Referenced{.x = true, .y = ddlog_std::Some{.x = "hello"}}}
 Filtered2
-Filtered2{.r = Referee2{.r = Referenced{.x = true, .y = std::Some{.x = "hello"}}}}
+Filtered2{.r = Referee2{.r = Referenced{.x = true, .y = ddlog_std::Some{.x = "hello"}}}}
 Adjusted:
 Adjusted{.id = 1, .alloc = []}: +1
 Adjusted{.id = 2, .alloc = [("a", 0)]}: +1
@@ -1066,27 +1066,27 @@ NewAllocation{.id = 20, .alloc = []}: +1
 NewAllocation{.id = 21, .alloc = []}: +1
 NewAllocationOpt:
 NewAllocationOpt{.id = 1, .alloc = []}: +1
-NewAllocationOpt{.id = 2, .alloc = [("a", std::Some{.x = 0})]}: +1
-NewAllocationOpt{.id = 3, .alloc = [("a", std::Some{.x = 0}), ("b", std::None{})]}: +1
-NewAllocationOpt{.id = 4, .alloc = [("a", std::Some{.x = 0}), ("b", std::Some{.x = 1})]}: +1
-NewAllocationOpt{.id = 5, .alloc = [("a", std::Some{.x = 1000}), ("b", std::Some{.x = 1001})]}: +1
-NewAllocationOpt{.id = 5, .alloc = [("a", std::Some{.x = 4294967294}), ("b", std::Some{.x = 4294967295})]}: +1
-NewAllocationOpt{.id = 6, .alloc = [("a", std::Some{.x = 4294967292}), ("b", std::Some{.x = 4294967293})]}: +1
-NewAllocationOpt{.id = 7, .alloc = [("a", std::Some{.x = 0}), ("b", std::Some{.x = 1})]}: +1
-NewAllocationOpt{.id = 8, .alloc = [("a", std::Some{.x = 0}), ("b", std::Some{.x = 1}), ("c", std::Some{.x = 2}), ("d", std::Some{.x = 3}), ("e", std::Some{.x = 4}), ("f", std::Some{.x = 5})]}: +1
-NewAllocationOpt{.id = 9, .alloc = [("x", std::Some{.x = 10001}), ("b", std::Some{.x = 10002}), ("c", std::Some{.x = 10003}), ("d", std::Some{.x = 10004}), ("e", std::Some{.x = 10005}), ("z", std::Some{.x = 10006})]}: +1
-NewAllocationOpt{.id = 10, .alloc = [("x", std::Some{.x = 1}), ("b", std::Some{.x = 2}), ("c", std::Some{.x = 3}), ("d", std::Some{.x = 4}), ("e", std::Some{.x = 5}), ("z", std::Some{.x = 6})]}: +1
-NewAllocationOpt{.id = 11, .alloc = [("x", std::Some{.x = 6}), ("b", std::Some{.x = 7}), ("c", std::Some{.x = 8}), ("d", std::Some{.x = 9}), ("e", std::Some{.x = 10}), ("z", std::Some{.x = 0})]}: +1
-NewAllocationOpt{.id = 12, .alloc = [("x", std::Some{.x = 6}), ("b", std::Some{.x = 7}), ("c", std::Some{.x = 8}), ("d", std::Some{.x = 9}), ("e", std::Some{.x = 10}), ("z", std::Some{.x = 0}), ("p", std::Some{.x = 2}), ("q", std::Some{.x = 4})]}: +1
-NewAllocationOpt{.id = 13, .alloc = [("x", std::Some{.x = 6}), ("b", std::Some{.x = 7}), ("c", std::Some{.x = 8}), ("d", std::Some{.x = 9}), ("e", std::Some{.x = 10}), ("z", std::Some{.x = 0}), ("p", std::Some{.x = 2}), ("q", std::Some{.x = 4}), ("r", std::None{})]}: +1
-NewAllocationOpt{.id = 14, .alloc = [("x", std::Some{.x = 4294967286}), ("b", std::Some{.x = 4294967288}), ("c", std::Some{.x = 4294967290}), ("d", std::Some{.x = 4294967291}), ("e", std::Some{.x = 4294967292}), ("z", std::Some{.x = 4294967293}), ("p", std::Some{.x = 4294967294}), ("q", std::None{}), ("r", std::None{})]}: +1
-NewAllocationOpt{.id = 15, .alloc = [("x", std::Some{.x = 4294967286}), ("b", std::Some{.x = 4294967287}), ("c", std::Some{.x = 4294967288}), ("d", std::Some{.x = 4294967289}), ("e", std::Some{.x = 4294967290}), ("z", std::Some{.x = 4294967291}), ("p", std::Some{.x = 4294967292}), ("q", std::Some{.x = 4294967293}), ("r", std::Some{.x = 4294967294})]}: +1
-NewAllocationOpt{.id = 16, .alloc = [("x", std::Some{.x = 10}), ("b", std::Some{.x = 12}), ("c", std::Some{.x = 14}), ("d", std::Some{.x = 15}), ("e", std::Some{.x = 16}), ("z", std::Some{.x = 17}), ("p", std::Some{.x = 18}), ("q", std::Some{.x = 19}), ("r", std::None{})]}: +1
-NewAllocationOpt{.id = 17, .alloc = [("x", std::None{}), ("b", std::None{}), ("c", std::None{}), ("d", std::None{}), ("e", std::None{}), ("z", std::None{}), ("p", std::None{}), ("q", std::None{}), ("r", std::None{})]}: +1
-NewAllocationOpt{.id = 18, .alloc = [("x", std::None{}), ("b", std::None{}), ("c", std::None{}), ("d", std::None{}), ("e", std::None{}), ("z", std::None{}), ("p", std::None{}), ("q", std::None{}), ("r", std::None{})]}: +1
-NewAllocationOpt{.id = 19, .alloc = [("x", std::None{}), ("b", std::None{}), ("c", std::None{}), ("d", std::None{}), ("e", std::None{}), ("z", std::None{}), ("p", std::None{}), ("q", std::None{}), ("r", std::None{})]}: +1
-NewAllocationOpt{.id = 20, .alloc = [("x", std::None{}), ("b", std::None{}), ("c", std::None{}), ("d", std::None{}), ("e", std::None{}), ("z", std::None{}), ("p", std::None{}), ("q", std::None{}), ("r", std::None{})]}: +1
-NewAllocationOpt{.id = 21, .alloc = [("x", std::None{}), ("b", std::None{}), ("c", std::None{}), ("d", std::None{}), ("e", std::None{}), ("z", std::None{}), ("p", std::None{}), ("q", std::None{}), ("r", std::None{})]}: +1
+NewAllocationOpt{.id = 2, .alloc = [("a", ddlog_std::Some{.x = 0})]}: +1
+NewAllocationOpt{.id = 3, .alloc = [("a", ddlog_std::Some{.x = 0}), ("b", ddlog_std::None{})]}: +1
+NewAllocationOpt{.id = 4, .alloc = [("a", ddlog_std::Some{.x = 0}), ("b", ddlog_std::Some{.x = 1})]}: +1
+NewAllocationOpt{.id = 5, .alloc = [("a", ddlog_std::Some{.x = 1000}), ("b", ddlog_std::Some{.x = 1001})]}: +1
+NewAllocationOpt{.id = 5, .alloc = [("a", ddlog_std::Some{.x = 4294967294}), ("b", ddlog_std::Some{.x = 4294967295})]}: +1
+NewAllocationOpt{.id = 6, .alloc = [("a", ddlog_std::Some{.x = 4294967292}), ("b", ddlog_std::Some{.x = 4294967293})]}: +1
+NewAllocationOpt{.id = 7, .alloc = [("a", ddlog_std::Some{.x = 0}), ("b", ddlog_std::Some{.x = 1})]}: +1
+NewAllocationOpt{.id = 8, .alloc = [("a", ddlog_std::Some{.x = 0}), ("b", ddlog_std::Some{.x = 1}), ("c", ddlog_std::Some{.x = 2}), ("d", ddlog_std::Some{.x = 3}), ("e", ddlog_std::Some{.x = 4}), ("f", ddlog_std::Some{.x = 5})]}: +1
+NewAllocationOpt{.id = 9, .alloc = [("x", ddlog_std::Some{.x = 10001}), ("b", ddlog_std::Some{.x = 10002}), ("c", ddlog_std::Some{.x = 10003}), ("d", ddlog_std::Some{.x = 10004}), ("e", ddlog_std::Some{.x = 10005}), ("z", ddlog_std::Some{.x = 10006})]}: +1
+NewAllocationOpt{.id = 10, .alloc = [("x", ddlog_std::Some{.x = 1}), ("b", ddlog_std::Some{.x = 2}), ("c", ddlog_std::Some{.x = 3}), ("d", ddlog_std::Some{.x = 4}), ("e", ddlog_std::Some{.x = 5}), ("z", ddlog_std::Some{.x = 6})]}: +1
+NewAllocationOpt{.id = 11, .alloc = [("x", ddlog_std::Some{.x = 6}), ("b", ddlog_std::Some{.x = 7}), ("c", ddlog_std::Some{.x = 8}), ("d", ddlog_std::Some{.x = 9}), ("e", ddlog_std::Some{.x = 10}), ("z", ddlog_std::Some{.x = 0})]}: +1
+NewAllocationOpt{.id = 12, .alloc = [("x", ddlog_std::Some{.x = 6}), ("b", ddlog_std::Some{.x = 7}), ("c", ddlog_std::Some{.x = 8}), ("d", ddlog_std::Some{.x = 9}), ("e", ddlog_std::Some{.x = 10}), ("z", ddlog_std::Some{.x = 0}), ("p", ddlog_std::Some{.x = 2}), ("q", ddlog_std::Some{.x = 4})]}: +1
+NewAllocationOpt{.id = 13, .alloc = [("x", ddlog_std::Some{.x = 6}), ("b", ddlog_std::Some{.x = 7}), ("c", ddlog_std::Some{.x = 8}), ("d", ddlog_std::Some{.x = 9}), ("e", ddlog_std::Some{.x = 10}), ("z", ddlog_std::Some{.x = 0}), ("p", ddlog_std::Some{.x = 2}), ("q", ddlog_std::Some{.x = 4}), ("r", ddlog_std::None{})]}: +1
+NewAllocationOpt{.id = 14, .alloc = [("x", ddlog_std::Some{.x = 4294967286}), ("b", ddlog_std::Some{.x = 4294967288}), ("c", ddlog_std::Some{.x = 4294967290}), ("d", ddlog_std::Some{.x = 4294967291}), ("e", ddlog_std::Some{.x = 4294967292}), ("z", ddlog_std::Some{.x = 4294967293}), ("p", ddlog_std::Some{.x = 4294967294}), ("q", ddlog_std::None{}), ("r", ddlog_std::None{})]}: +1
+NewAllocationOpt{.id = 15, .alloc = [("x", ddlog_std::Some{.x = 4294967286}), ("b", ddlog_std::Some{.x = 4294967287}), ("c", ddlog_std::Some{.x = 4294967288}), ("d", ddlog_std::Some{.x = 4294967289}), ("e", ddlog_std::Some{.x = 4294967290}), ("z", ddlog_std::Some{.x = 4294967291}), ("p", ddlog_std::Some{.x = 4294967292}), ("q", ddlog_std::Some{.x = 4294967293}), ("r", ddlog_std::Some{.x = 4294967294})]}: +1
+NewAllocationOpt{.id = 16, .alloc = [("x", ddlog_std::Some{.x = 10}), ("b", ddlog_std::Some{.x = 12}), ("c", ddlog_std::Some{.x = 14}), ("d", ddlog_std::Some{.x = 15}), ("e", ddlog_std::Some{.x = 16}), ("z", ddlog_std::Some{.x = 17}), ("p", ddlog_std::Some{.x = 18}), ("q", ddlog_std::Some{.x = 19}), ("r", ddlog_std::None{})]}: +1
+NewAllocationOpt{.id = 17, .alloc = [("x", ddlog_std::None{}), ("b", ddlog_std::None{}), ("c", ddlog_std::None{}), ("d", ddlog_std::None{}), ("e", ddlog_std::None{}), ("z", ddlog_std::None{}), ("p", ddlog_std::None{}), ("q", ddlog_std::None{}), ("r", ddlog_std::None{})]}: +1
+NewAllocationOpt{.id = 18, .alloc = [("x", ddlog_std::None{}), ("b", ddlog_std::None{}), ("c", ddlog_std::None{}), ("d", ddlog_std::None{}), ("e", ddlog_std::None{}), ("z", ddlog_std::None{}), ("p", ddlog_std::None{}), ("q", ddlog_std::None{}), ("r", ddlog_std::None{})]}: +1
+NewAllocationOpt{.id = 19, .alloc = [("x", ddlog_std::None{}), ("b", ddlog_std::None{}), ("c", ddlog_std::None{}), ("d", ddlog_std::None{}), ("e", ddlog_std::None{}), ("z", ddlog_std::None{}), ("p", ddlog_std::None{}), ("q", ddlog_std::None{}), ("r", ddlog_std::None{})]}: +1
+NewAllocationOpt{.id = 20, .alloc = [("x", ddlog_std::None{}), ("b", ddlog_std::None{}), ("c", ddlog_std::None{}), ("d", ddlog_std::None{}), ("e", ddlog_std::None{}), ("z", ddlog_std::None{}), ("p", ddlog_std::None{}), ("q", ddlog_std::None{}), ("r", ddlog_std::None{})]}: +1
+NewAllocationOpt{.id = 21, .alloc = [("x", ddlog_std::None{}), ("b", ddlog_std::None{}), ("c", ddlog_std::None{}), ("d", ddlog_std::None{}), ("e", ddlog_std::None{}), ("z", ddlog_std::None{}), ("p", ddlog_std::None{}), ("q", ddlog_std::None{}), ("r", ddlog_std::None{})]}: +1
 NewAllocation
 NewAllocation{.id = 1, .alloc = []}
 NewAllocation{.id = 2, .alloc = [("a", 0)]}
@@ -1112,27 +1112,27 @@ NewAllocation{.id = 20, .alloc = []}
 NewAllocation{.id = 21, .alloc = []}
 NewAllocationOpt
 NewAllocationOpt{.id = 1, .alloc = []}
-NewAllocationOpt{.id = 2, .alloc = [("a", std::Some{.x = 0})]}
-NewAllocationOpt{.id = 3, .alloc = [("a", std::Some{.x = 0}), ("b", std::None{})]}
-NewAllocationOpt{.id = 4, .alloc = [("a", std::Some{.x = 0}), ("b", std::Some{.x = 1})]}
-NewAllocationOpt{.id = 5, .alloc = [("a", std::Some{.x = 1000}), ("b", std::Some{.x = 1001})]}
-NewAllocationOpt{.id = 5, .alloc = [("a", std::Some{.x = 4294967294}), ("b", std::Some{.x = 4294967295})]}
-NewAllocationOpt{.id = 6, .alloc = [("a", std::Some{.x = 4294967292}), ("b", std::Some{.x = 4294967293})]}
-NewAllocationOpt{.id = 7, .alloc = [("a", std::Some{.x = 0}), ("b", std::Some{.x = 1})]}
-NewAllocationOpt{.id = 8, .alloc = [("a", std::Some{.x = 0}), ("b", std::Some{.x = 1}), ("c", std::Some{.x = 2}), ("d", std::Some{.x = 3}), ("e", std::Some{.x = 4}), ("f", std::Some{.x = 5})]}
-NewAllocationOpt{.id = 9, .alloc = [("x", std::Some{.x = 10001}), ("b", std::Some{.x = 10002}), ("c", std::Some{.x = 10003}), ("d", std::Some{.x = 10004}), ("e", std::Some{.x = 10005}), ("z", std::Some{.x = 10006})]}
-NewAllocationOpt{.id = 10, .alloc = [("x", std::Some{.x = 1}), ("b", std::Some{.x = 2}), ("c", std::Some{.x = 3}), ("d", std::Some{.x = 4}), ("e", std::Some{.x = 5}), ("z", std::Some{.x = 6})]}
-NewAllocationOpt{.id = 11, .alloc = [("x", std::Some{.x = 6}), ("b", std::Some{.x = 7}), ("c", std::Some{.x = 8}), ("d", std::Some{.x = 9}), ("e", std::Some{.x = 10}), ("z", std::Some{.x = 0})]}
-NewAllocationOpt{.id = 12, .alloc = [("x", std::Some{.x = 6}), ("b", std::Some{.x = 7}), ("c", std::Some{.x = 8}), ("d", std::Some{.x = 9}), ("e", std::Some{.x = 10}), ("z", std::Some{.x = 0}), ("p", std::Some{.x = 2}), ("q", std::Some{.x = 4})]}
-NewAllocationOpt{.id = 13, .alloc = [("x", std::Some{.x = 6}), ("b", std::Some{.x = 7}), ("c", std::Some{.x = 8}), ("d", std::Some{.x = 9}), ("e", std::Some{.x = 10}), ("z", std::Some{.x = 0}), ("p", std::Some{.x = 2}), ("q", std::Some{.x = 4}), ("r", std::None{})]}
-NewAllocationOpt{.id = 14, .alloc = [("x", std::Some{.x = 4294967286}), ("b", std::Some{.x = 4294967288}), ("c", std::Some{.x = 4294967290}), ("d", std::Some{.x = 4294967291}), ("e", std::Some{.x = 4294967292}), ("z", std::Some{.x = 4294967293}), ("p", std::Some{.x = 4294967294}), ("q", std::None{}), ("r", std::None{})]}
-NewAllocationOpt{.id = 15, .alloc = [("x", std::Some{.x = 4294967286}), ("b", std::Some{.x = 4294967287}), ("c", std::Some{.x = 4294967288}), ("d", std::Some{.x = 4294967289}), ("e", std::Some{.x = 4294967290}), ("z", std::Some{.x = 4294967291}), ("p", std::Some{.x = 4294967292}), ("q", std::Some{.x = 4294967293}), ("r", std::Some{.x = 4294967294})]}
-NewAllocationOpt{.id = 16, .alloc = [("x", std::Some{.x = 10}), ("b", std::Some{.x = 12}), ("c", std::Some{.x = 14}), ("d", std::Some{.x = 15}), ("e", std::Some{.x = 16}), ("z", std::Some{.x = 17}), ("p", std::Some{.x = 18}), ("q", std::Some{.x = 19}), ("r", std::None{})]}
-NewAllocationOpt{.id = 17, .alloc = [("x", std::None{}), ("b", std::None{}), ("c", std::None{}), ("d", std::None{}), ("e", std::None{}), ("z", std::None{}), ("p", std::None{}), ("q", std::None{}), ("r", std::None{})]}
-NewAllocationOpt{.id = 18, .alloc = [("x", std::None{}), ("b", std::None{}), ("c", std::None{}), ("d", std::None{}), ("e", std::None{}), ("z", std::None{}), ("p", std::None{}), ("q", std::None{}), ("r", std::None{})]}
-NewAllocationOpt{.id = 19, .alloc = [("x", std::None{}), ("b", std::None{}), ("c", std::None{}), ("d", std::None{}), ("e", std::None{}), ("z", std::None{}), ("p", std::None{}), ("q", std::None{}), ("r", std::None{})]}
-NewAllocationOpt{.id = 20, .alloc = [("x", std::None{}), ("b", std::None{}), ("c", std::None{}), ("d", std::None{}), ("e", std::None{}), ("z", std::None{}), ("p", std::None{}), ("q", std::None{}), ("r", std::None{})]}
-NewAllocationOpt{.id = 21, .alloc = [("x", std::None{}), ("b", std::None{}), ("c", std::None{}), ("d", std::None{}), ("e", std::None{}), ("z", std::None{}), ("p", std::None{}), ("q", std::None{}), ("r", std::None{})]}
+NewAllocationOpt{.id = 2, .alloc = [("a", ddlog_std::Some{.x = 0})]}
+NewAllocationOpt{.id = 3, .alloc = [("a", ddlog_std::Some{.x = 0}), ("b", ddlog_std::None{})]}
+NewAllocationOpt{.id = 4, .alloc = [("a", ddlog_std::Some{.x = 0}), ("b", ddlog_std::Some{.x = 1})]}
+NewAllocationOpt{.id = 5, .alloc = [("a", ddlog_std::Some{.x = 1000}), ("b", ddlog_std::Some{.x = 1001})]}
+NewAllocationOpt{.id = 5, .alloc = [("a", ddlog_std::Some{.x = 4294967294}), ("b", ddlog_std::Some{.x = 4294967295})]}
+NewAllocationOpt{.id = 6, .alloc = [("a", ddlog_std::Some{.x = 4294967292}), ("b", ddlog_std::Some{.x = 4294967293})]}
+NewAllocationOpt{.id = 7, .alloc = [("a", ddlog_std::Some{.x = 0}), ("b", ddlog_std::Some{.x = 1})]}
+NewAllocationOpt{.id = 8, .alloc = [("a", ddlog_std::Some{.x = 0}), ("b", ddlog_std::Some{.x = 1}), ("c", ddlog_std::Some{.x = 2}), ("d", ddlog_std::Some{.x = 3}), ("e", ddlog_std::Some{.x = 4}), ("f", ddlog_std::Some{.x = 5})]}
+NewAllocationOpt{.id = 9, .alloc = [("x", ddlog_std::Some{.x = 10001}), ("b", ddlog_std::Some{.x = 10002}), ("c", ddlog_std::Some{.x = 10003}), ("d", ddlog_std::Some{.x = 10004}), ("e", ddlog_std::Some{.x = 10005}), ("z", ddlog_std::Some{.x = 10006})]}
+NewAllocationOpt{.id = 10, .alloc = [("x", ddlog_std::Some{.x = 1}), ("b", ddlog_std::Some{.x = 2}), ("c", ddlog_std::Some{.x = 3}), ("d", ddlog_std::Some{.x = 4}), ("e", ddlog_std::Some{.x = 5}), ("z", ddlog_std::Some{.x = 6})]}
+NewAllocationOpt{.id = 11, .alloc = [("x", ddlog_std::Some{.x = 6}), ("b", ddlog_std::Some{.x = 7}), ("c", ddlog_std::Some{.x = 8}), ("d", ddlog_std::Some{.x = 9}), ("e", ddlog_std::Some{.x = 10}), ("z", ddlog_std::Some{.x = 0})]}
+NewAllocationOpt{.id = 12, .alloc = [("x", ddlog_std::Some{.x = 6}), ("b", ddlog_std::Some{.x = 7}), ("c", ddlog_std::Some{.x = 8}), ("d", ddlog_std::Some{.x = 9}), ("e", ddlog_std::Some{.x = 10}), ("z", ddlog_std::Some{.x = 0}), ("p", ddlog_std::Some{.x = 2}), ("q", ddlog_std::Some{.x = 4})]}
+NewAllocationOpt{.id = 13, .alloc = [("x", ddlog_std::Some{.x = 6}), ("b", ddlog_std::Some{.x = 7}), ("c", ddlog_std::Some{.x = 8}), ("d", ddlog_std::Some{.x = 9}), ("e", ddlog_std::Some{.x = 10}), ("z", ddlog_std::Some{.x = 0}), ("p", ddlog_std::Some{.x = 2}), ("q", ddlog_std::Some{.x = 4}), ("r", ddlog_std::None{})]}
+NewAllocationOpt{.id = 14, .alloc = [("x", ddlog_std::Some{.x = 4294967286}), ("b", ddlog_std::Some{.x = 4294967288}), ("c", ddlog_std::Some{.x = 4294967290}), ("d", ddlog_std::Some{.x = 4294967291}), ("e", ddlog_std::Some{.x = 4294967292}), ("z", ddlog_std::Some{.x = 4294967293}), ("p", ddlog_std::Some{.x = 4294967294}), ("q", ddlog_std::None{}), ("r", ddlog_std::None{})]}
+NewAllocationOpt{.id = 15, .alloc = [("x", ddlog_std::Some{.x = 4294967286}), ("b", ddlog_std::Some{.x = 4294967287}), ("c", ddlog_std::Some{.x = 4294967288}), ("d", ddlog_std::Some{.x = 4294967289}), ("e", ddlog_std::Some{.x = 4294967290}), ("z", ddlog_std::Some{.x = 4294967291}), ("p", ddlog_std::Some{.x = 4294967292}), ("q", ddlog_std::Some{.x = 4294967293}), ("r", ddlog_std::Some{.x = 4294967294})]}
+NewAllocationOpt{.id = 16, .alloc = [("x", ddlog_std::Some{.x = 10}), ("b", ddlog_std::Some{.x = 12}), ("c", ddlog_std::Some{.x = 14}), ("d", ddlog_std::Some{.x = 15}), ("e", ddlog_std::Some{.x = 16}), ("z", ddlog_std::Some{.x = 17}), ("p", ddlog_std::Some{.x = 18}), ("q", ddlog_std::Some{.x = 19}), ("r", ddlog_std::None{})]}
+NewAllocationOpt{.id = 17, .alloc = [("x", ddlog_std::None{}), ("b", ddlog_std::None{}), ("c", ddlog_std::None{}), ("d", ddlog_std::None{}), ("e", ddlog_std::None{}), ("z", ddlog_std::None{}), ("p", ddlog_std::None{}), ("q", ddlog_std::None{}), ("r", ddlog_std::None{})]}
+NewAllocationOpt{.id = 18, .alloc = [("x", ddlog_std::None{}), ("b", ddlog_std::None{}), ("c", ddlog_std::None{}), ("d", ddlog_std::None{}), ("e", ddlog_std::None{}), ("z", ddlog_std::None{}), ("p", ddlog_std::None{}), ("q", ddlog_std::None{}), ("r", ddlog_std::None{})]}
+NewAllocationOpt{.id = 19, .alloc = [("x", ddlog_std::None{}), ("b", ddlog_std::None{}), ("c", ddlog_std::None{}), ("d", ddlog_std::None{}), ("e", ddlog_std::None{}), ("z", ddlog_std::None{}), ("p", ddlog_std::None{}), ("q", ddlog_std::None{}), ("r", ddlog_std::None{})]}
+NewAllocationOpt{.id = 20, .alloc = [("x", ddlog_std::None{}), ("b", ddlog_std::None{}), ("c", ddlog_std::None{}), ("d", ddlog_std::None{}), ("e", ddlog_std::None{}), ("z", ddlog_std::None{}), ("p", ddlog_std::None{}), ("q", ddlog_std::None{}), ("r", ddlog_std::None{})]}
+NewAllocationOpt{.id = 21, .alloc = [("x", ddlog_std::None{}), ("b", ddlog_std::None{}), ("c", ddlog_std::None{}), ("d", ddlog_std::None{}), ("e", ddlog_std::None{}), ("z", ddlog_std::None{}), ("p", ddlog_std::None{}), ("q", ddlog_std::None{}), ("r", ddlog_std::None{})]}
 Adjusted
 Adjusted{.id = 1, .alloc = []}
 Adjusted{.id = 2, .alloc = [("a", 0)]}

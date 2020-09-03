@@ -53,6 +53,7 @@ typedefValidateAttrs d tdef@TypeDef{..} = do
     _ <- tdefCheckCustomSerdeAttr d tdef
     _ <- tdefCheckCustomFromRecord d tdef
     _ <- tdefCheckSharedRefAttr d tdef
+    _ <- tdefCheckAliasAttr d tdef
     _ <- checkRustAttrs d tdefAttrs
     maybe (return ()) (typeValidateAttrs d) tdefType
     return ()
@@ -83,6 +84,11 @@ typedefValidateAttr d TypeDef{..} attr = do
                 $ "'sharef_ref' attribute is only applicable to extern types."
             check d (length tdefArgs == 1) (pos attr)
                 $ "Types annotated with 'shared_ref' must have exactly one type argument, e.g., \"Ref<'T>\"."
+         "alias" -> do
+             case tdefType of
+                  Just TUser{} -> err d (pos attr) "The 'alias' attribute does not apply to struct types."
+                  Nothing -> err d (pos attr) "The 'alias' attribute does not apply to extern types."
+                  _ -> return ()
          n -> err d (pos attr) $ "Unknown attribute " ++ n
 
 typeValidateAttrs :: (MonadError String me) => DatalogProgram -> Type -> me ()
@@ -194,6 +200,23 @@ tdefCheckSharedRefAttr d TypeDef{..} =
 tdefGetSharedRefAttr :: DatalogProgram -> TypeDef -> Bool
 tdefGetSharedRefAttr d tdef =
     case tdefCheckSharedRefAttr d tdef of
+         Left e  -> error e
+         Right b -> b
+
+{- 'alias' attribute: Tells DDlog not to generate Rust declaration for the type
+ - and instead replace all occurrences of the type with its definition. -}
+tdefCheckAliasAttr :: (MonadError String me) => DatalogProgram -> TypeDef -> me Bool
+tdefCheckAliasAttr d TypeDef{..} =        
+    case find ((== "alias") . name) tdefAttrs of
+         Nothing   -> return False
+         Just attr -> do
+             check d (attrVal attr == eTrue) (pos attr)
+                   "The value of 'alias' attribute must be 'true' or empty"
+             return True
+
+tdefGetAliasAttr :: DatalogProgram -> TypeDef -> Bool
+tdefGetAliasAttr d tdef =
+    case tdefCheckAliasAttr d tdef of
          Left e  -> error e
          Right b -> b
 

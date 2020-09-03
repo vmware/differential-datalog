@@ -3,9 +3,9 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::string::ToString;
 
-pub fn debug_debug_event<T1: ToString, A1: Clone + IntoRecord, A2: Clone + IntoRecord>(
+pub fn debug_event<T1: ToString, A1: Clone + IntoRecord, A2: Clone + IntoRecord>(
     operator_id: &(u32, u32, u32),
-    w: &std_DDWeight,
+    w: &crate::ddlog_std::DDWeight,
     ts: &T1,
     operator_type: &String,
     input1: &A1,
@@ -29,14 +29,14 @@ pub fn debug_debug_event<T1: ToString, A1: Clone + IntoRecord, A2: Clone + IntoR
     );
 }
 
-pub fn debug_debug_event_join<
+pub fn debug_event_join<
     T1: ToString,
     A1: Clone + IntoRecord,
     A2: Clone + IntoRecord,
     A3: Clone + IntoRecord,
 >(
     operator_id: &(u32, u32, u32),
-    w: &std_DDWeight,
+    w: &crate::ddlog_std::DDWeight,
     ts: &T1,
     input1: &A1,
     input2: &A2,
@@ -60,10 +60,11 @@ pub fn debug_debug_event_join<
     );
 }
 
-pub fn debug_debug_split_group<'a, K, I: 'static + Clone, V: 'static>(
-    g: &'a std_Group<'a, K, (I, V)>,
-) -> (std_Vec<I>, std_Group<'a, K, V>) {
-    let mut inputs = std_Vec::with_capacity(std_group_count(g) as usize);
+pub fn debug_split_group<'a, K, I: 'static + Clone, V: 'static>(
+    g: &'a crate::ddlog_std::Group<'a, K, (I, V)>,
+) -> (crate::ddlog_std::Vec<I>, crate::ddlog_std::Group<'a, K, V>) {
+    let mut inputs =
+        crate::ddlog_std::Vec::with_capacity(crate::ddlog_std::group_count(g) as usize);
     for (i, _) in g.iter() {
         inputs.push(i.clone())
     }
@@ -71,10 +72,10 @@ pub fn debug_debug_split_group<'a, K, I: 'static + Clone, V: 'static>(
     let orig_project = g.project.clone();
     (
         inputs,
-        std_Group::new(
+        crate::ddlog_std::Group::new(
             g.key,
             g.group,
-            std::rc::Rc::new(move |v| (orig_project)(v).1),
+            ::std::rc::Rc::new(move |v| (orig_project)(v).1),
         ),
     )
 }

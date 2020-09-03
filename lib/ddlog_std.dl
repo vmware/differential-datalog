@@ -6,10 +6,15 @@
 import debug
 import log
 
+#[alias]
 typedef u8   = bit<8>
+#[alias]
 typedef u16  = bit<16>
+#[alias]
 typedef u32  = bit<32>
+#[alias]
 typedef u64  = bit<64>
+#[alias]
 typedef u128 = bit<128>
 
 typedef s8   = signed<8>
@@ -18,7 +23,8 @@ typedef s32  = signed<32>
 typedef s64  = signed<64>
 typedef s128 = signed<128>
 
-typedef usize = u64
+#[alias]
+typedef usize = bit<64>
 
 /*
  * Weight of a record in a DDlog collection.  This type is internal to the
@@ -124,7 +130,7 @@ function pow32(base: bigint, exp: bit<32>): bigint {
  * Option
  */
 
-#[rust="serde(from=\"Option<A>\", into=\"Option<A>\", bound(serialize=\"A: Clone+Serialize\"))"]
+#[rust="serde(from=\"::std::option::Option<A>\", into=\"::std::option::Option<A>\", bound(serialize=\"A: Clone+Serialize\"))"]
 // This type has a custrom FromRecord implementation in std.rs.
 #[custom_from_record]
 typedef Option<'A> = None

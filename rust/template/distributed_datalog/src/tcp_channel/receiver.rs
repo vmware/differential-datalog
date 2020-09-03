@@ -94,9 +94,10 @@ where
 /// The receiving end of a TCP channel has an address
 /// and streams data to an observer.
 #[derive(Debug)]
-pub struct TcpReceiver<T>
+pub struct TcpReceiver<T, D>
 where
     T: Debug + Send,
+    D: Debug + Send,
 {
     /// The TCP receiver's unique ID.
     id: usize,
@@ -110,11 +111,21 @@ where
     /// The transaction multiplexer we use to ensure serialization of
     /// transactions from all accepted connections.
     txnmux: Arc<Mutex<TxnMux<T, String>>>,
+    _phantom: std::marker::PhantomData<D>
 }
 
-impl<T> TcpReceiver<T>
+/// `T` - type received from the network.  This type is not required to implement `Deserialize`.
+/// `D` - a "wrapper" type that implements `Deserialize` and that can be converted into `T`.
+///
+/// `T` and `D` can be the same type.
+///
+/// Using two separate type arguments supports the use case when `Deserialize` implementation
+/// resides outside the crate that declares `T` and is defined over a wrapper type, without
+/// introducing a separate filter to perform the conversion.
+impl<T, D> TcpReceiver<T, D>
 where
-    T: DeserializeOwned + Send + Debug + 'static,
+    T: Send + Debug + 'static,
+    D: DeserializeOwned + Into<T> + Send + Debug
 {
     /// Create a new TCP receiver with no observer.
     ///
@@ -150,6 +161,7 @@ where
             fd,
             thread,
             txnmux,
+            _phantom: std::marker::PhantomData
         })
     }
 
@@ -231,7 +243,7 @@ where
     ) -> Result<(), String> {
         let mut reader = BufReader::new(socket);
         loop {
-            let mut message = match deserialize_from(&mut reader) {
+            let mut message: Message<D> = match deserialize_from(&mut reader) {
                 Ok(m) => m,
                 Err(e) => {
                     if fd.is_shutdown() {
@@ -256,10 +268,10 @@ where
             let result = match message {
                 Message::Start => observer.on_start(),
                 Message::Updates(ref mut updates) => {
-                    observer.on_updates(Box::new(updates.drain(..)))
+                    observer.on_updates(Box::new(updates.drain(..).map(|u| u.into())))
                 }
                 Message::UpdateList(ref mut updates) => {
-                    observer.on_updates(Box::new(updates.split_off(0).into_iter().flatten()))
+                    observer.on_updates(Box::new(updates.split_off(0).into_iter().flatten().map(|u| u.into())))
                 }
                 Message::Commit => observer.on_commit(),
                 Message::Complete => observer.on_completed(),
@@ -281,9 +293,10 @@ where
     }
 }
 
-impl<T> Drop for TcpReceiver<T>
+impl<T, D> Drop for TcpReceiver<T, D>
 where
     T: Debug + Send,
+    D: Debug + Send,
 {
     fn drop(&mut self) {
         // Note that we only ever shut down the file descriptor, but
@@ -307,9 +320,10 @@ where
     }
 }
 
-impl<T> Observable<T, String> for TcpReceiver<T>
+impl<T, D> Observable<T, String> for TcpReceiver<T, D>
 where
     T: Debug + Send + 'static,
+    D: Debug + Send,
 {
     type Subscription = ();
 
@@ -350,13 +364,13 @@ mod tests {
     /// Drop a `TcpReceiver`.
     #[test]
     fn drop() {
-        let _recv = TcpReceiver::<()>::new("127.0.0.1:0").unwrap();
+        let _recv = TcpReceiver::<(),()>::new("127.0.0.1:0").unwrap();
     }
 
     /// Connect to a `TcpReceiver`.
     #[test]
     fn accept() {
-        let recv = TcpReceiver::<()>::new("127.0.0.1:0").unwrap();
+        let recv = TcpReceiver::<(),()>::new("127.0.0.1:0").unwrap();
         {
             let _send = TcpStream::connect(recv.addr()).unwrap();
         }
@@ -368,7 +382,7 @@ mod tests {
     fn never_accepted() {
         let test = || {
             let addr = {
-                let recv = TcpReceiver::<()>::new("127.0.0.1:0").unwrap();
+                let recv = TcpReceiver::<(),()>::new("127.0.0.1:0").unwrap();
                 recv.addr().clone()
             };
 
@@ -399,7 +413,7 @@ mod tests {
     #[test]
     fn sender_cleanup() {
         let mut send = {
-            let recv = TcpReceiver::<()>::new("127.0.0.1:0").unwrap();
+            let recv = TcpReceiver::<(),()>::new("127.0.0.1:0").unwrap();
             let send = TcpStream::connect(recv.addr()).unwrap();
             send
         };
@@ -414,11 +428,11 @@ mod tests {
     #[test]
     fn multiple_senders() {
         let mock = Arc::new(Mutex::new(MockObserver::new()));
-        let mut recv = TcpReceiver::<u64>::new("127.0.0.1:0").unwrap();
+        let mut recv = TcpReceiver::<u64,u64>::new("127.0.0.1:0").unwrap();
         let addr = recv.addr();
-        let mut send1 = TcpSender::new(*addr).unwrap();
-        let mut send2 = TcpSender::new(*addr).unwrap();
-        let mut send3 = TcpSender::new(*addr).unwrap();
+        let mut send1 = TcpSender::<u64>::new(*addr).unwrap();
+        let mut send2 = TcpSender::<u64>::new(*addr).unwrap();
+        let mut send3 = TcpSender::<u64>::new(*addr).unwrap();
 
         recv.subscribe(Box::new(mock.clone())).unwrap();
 

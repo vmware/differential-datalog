@@ -36,7 +36,8 @@ module Language.DifferentialDatalog.Compile (
     mkType,
     mkValue,
     tupleStruct,
-    rname,
+    rnameFlat,
+    rnameScoped,
     recordAfterPrefix
 ) where
 
@@ -63,6 +64,7 @@ import Data.WideWord
 import Language.DifferentialDatalog.Config
 import Language.DifferentialDatalog.PP
 import Language.DifferentialDatalog.Name
+import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Ops
 import Language.DifferentialDatalog.Util
@@ -118,8 +120,12 @@ header template specname =
     in pp $ replace "datalog_example" specname h
 
 -- 'types' crate containing DDlog type declarations.
-typesHeader :: String -> Doc
-typesHeader specname = header (BS.unpack $ $(embedFile "rust/template/types/lib.rs")) specname
+typesLibHeader :: String -> Doc
+typesLibHeader specname = header (BS.unpack $ $(embedFile "rust/template/types/lib.rs")) specname
+
+-- Header to prepend to each each generated module in the 'types' crate.
+typesModuleHeader :: String -> Doc
+typesModuleHeader specname = header (BS.unpack $ $(embedFile "rust/template/types/module.rs")) specname
 
 -- 'value' crate that declares relations and value types.
 valueHeader :: String -> Doc
@@ -152,7 +158,7 @@ templateFiles specname =
         [ (dir </> "src/build.rs"               , $(embedFile "rust/template/src/build.rs"))
         , (dir </> "src/main.rs"                , $(embedFile "rust/template/src/main.rs"))
         , (dir </> "src/api.rs"                 , $(embedFile "rust/template/src/api.rs"))
-        , (dir </> "src/ovsdb.rs"               , $(embedFile "rust/template/src/ovsdb.rs"))
+        , (dir </> "src/ovsdb_api.rs"           , $(embedFile "rust/template/src/ovsdb_api.rs"))
         , (dir </> "src/update_handler.rs"      , $(embedFile "rust/template/src/update_handler.rs"))
         , (dir </> "ddlog.h"                    , $(embedFile "rust/template/ddlog.h"))
         , (dir </> "ddlog_ovsdb_test.c"         , $(embedFile "rust/template/ddlog_ovsdb_test.c"))
@@ -216,7 +222,7 @@ rustLibFiles specname =
         , (dir </> "ovsdb/Cargo.toml"                                     , $(embedFile "rust/template/ovsdb/Cargo.toml"))
         , (dir </> "ovsdb/lib.rs"                                         , $(embedFile "rust/template/ovsdb/lib.rs"))
         , (dir </> "ovsdb/test.rs"                                        , $(embedFile "rust/template/ovsdb/test.rs"))
-        , (dir </> "types/log.rs"                                         , $(embedFile "rust/template/types/log.rs"))
+        , (dir </> "types/ddlog_log.rs"                                   , $(embedFile "rust/template/types/ddlog_log.rs"))
         , (dir </> "value/Cargo.toml"                                     , $(embedFile "rust/template/value/Cargo.toml"))
         , (dir </> ".cargo/config"                                        , $(embedFile "rust/template/.cargo/config"))
         ]
@@ -343,26 +349,37 @@ emptyCompilerState = CompilerState {
     cArrangements = M.empty
 }
 
--- Convert name to a valid Rust identifier by replacing "::" with "_"
-rname :: String -> Doc
-rname = pp . replace "::" "_"
+-- Relations, indexes, relation transformers and Value's are stored in the flat namespace.
+-- Flatter a name by replacing "::" with "_"
+rnameFlat :: String -> Doc
+rnameFlat = pp . replace "::" "_"
+
+-- Types and functions are stored in Rust modules that mirror the DDlog
+-- module hierarchy.
+-- 'local' is true iff the name is being used in the same crate where it was
+-- declared, i.e., the 'types' crate.
+rnameScoped :: Bool -> String -> Doc
+rnameScoped local n = rnameScoped' (if local then "crate" else "::types") n
+
+rnameScoped' :: String -> String -> Doc
+rnameScoped' scope n = pp scope <> "::" <> pp n
 
 mkRelEnum :: DatalogProgram -> Doc
 mkRelEnum d =
     "#[derive(Copy,Clone,Debug,PartialEq,Eq,Hash)]"                                                                                       $$
     "pub enum Relations {"                                                                                                                $$
-    (nest' $ vcat $ punctuate comma $ map (\rel -> rname (name rel) <+> "=" <+> pp (relIdentifier d rel)) $ M.elems $ progRelations d)    $$
+    (nest' $ vcat $ punctuate comma $ map (\rel -> rnameFlat (name rel) <+> "=" <+> pp (relIdentifier d rel)) $ M.elems $ progRelations d)    $$
     "}"
 
 mkIdxEnum :: DatalogProgram -> Doc
 mkIdxEnum d =
     "#[derive(Copy,Clone,Debug,PartialEq,Eq,Hash)]"                                                                                       $$
     "pub enum Indexes {"                                                                                                                  $$
-    (nest' $ vcat $ punctuate comma $ map (\idx -> rname (name idx) <+> "=" <+> pp (idxIdentifier d idx)) $ M.elems $ progIndexes d)      $$
+    (nest' $ vcat $ punctuate comma $ map (\idx -> rnameFlat (name idx) <+> "=" <+> pp (idxIdentifier d idx)) $ M.elems $ progIndexes d)      $$
     "}"
 
 relId :: String -> Doc
-relId rel = "Relations::" <> rname rel <+> "as RelId"
+relId rel = "Relations::" <> rnameFlat rel <+> "as RelId"
 
 -- t must be normalized
 addType :: Type -> CompilerMonad ()
@@ -440,15 +457,20 @@ tuple :: [Doc] -> Doc
 tuple [x] = x
 tuple xs = parens $ hsep $ punctuate comma xs
 
-tupleTypeName :: [a] -> Doc
-tupleTypeName xs = "tuple" <> pp (length xs)
+tupleTypeName :: Bool -> [a] -> Doc
+tupleTypeName local xs =
+    tupleTypeName' (if local then "crate" else "::types") xs
+
+tupleTypeName' :: String -> [a] -> Doc
+tupleTypeName' crate xs =
+    pp crate <> "::" <> pp mOD_STD <> "::tuple" <> pp (length xs)
 
 -- Rust does not implement Eq and other traits for tuples with >12 elements.
 -- Use structs with n fields for longer tuples.
-tupleStruct :: [Doc] -> Doc
-tupleStruct [x]                  = x
-tupleStruct xs | length xs <= 12 = tuple xs
-               | otherwise       = tupleTypeName xs <> tuple xs
+tupleStruct :: Bool -> [Doc] -> Doc
+tupleStruct _     [x]                  = x
+tupleStruct local xs  | length xs <= 12 = tuple xs
+                      | otherwise       = tupleTypeName local xs <> tuple xs
 
 -- Structs with a single constructor are compiled into Rust structs;
 -- structs with multiple constructor are compiled into Rust enums.
@@ -457,18 +479,23 @@ isStructType TStruct{..} | length typeCons == 1 = True
 isStructType TStruct{..}                        = False
 isStructType t                                  = error $ "Compile.isStructType " ++ show t
 
-mkConstructorName :: String -> Type -> String -> Doc
-mkConstructorName tname t c =
+-- 'local' is true iff the constructor is being used in the same crate where it was
+-- declared, i.e., the 'types' crate.
+mkConstructorName :: Bool -> String -> Type -> String -> Doc
+mkConstructorName local tname t c =
     if isStructType t
-       then rname tname
-       else rname tname <> "::" <> rname c
+       then rnameScoped local tname
+       else rnameScoped local tname <> "::" <> nameLocal c
 
 -- | Create a compilable Cargo crate.  If the crate already exists, only writes files
 -- modified by the recompilation.
 --
 -- 'specname' - will be used as Cargo package and library names
 --
--- 'rs_code' - additional Rust code to be added to the generated program 'lib.rs'.
+-- 'modules' - list of modules in the original DDlog program. This function
+-- will generate a Rust module for each DDlog module in the 'types' crate.
+--
+-- 'rs_code' - additional Rust code to be added to the generated modules.
 --
 -- 'toml_code' - code to be added to the generated 'Cargo.toml' file
 --
@@ -476,8 +503,8 @@ mkConstructorName tname t c =
 --
 -- 'crate_types' - list of Cargo library crate types, e.g., [\"staticlib\"],
 --                  [\"cdylib\"], [\"staticlib\", \"cdylib\"]
-compile :: (?cfg :: Config) => DatalogProgram -> String -> Doc -> Doc -> FilePath -> [String] -> IO ()
-compile d_unoptimized specname rs_code toml_code dir crate_types = do
+compile :: (?cfg :: Config) => DatalogProgram -> String -> [DatalogModule] -> M.Map ModuleName Doc -> Doc -> FilePath -> [String] -> IO ()
+compile d_unoptimized specname modules rs_code toml_code dir crate_types = do
     -- Create dir if it does not exist.
     createDirectoryIfMissing True (dir </> rustProjectDir specname)
     -- dump dependency graph to file
@@ -487,10 +514,10 @@ compile d_unoptimized specname rs_code toml_code dir crate_types = do
     let d = addDummyRel $ optimize d_unoptimized
     when (confDumpDebug ?cfg) $
         writeFile (replaceExtension (confDatalogFile ?cfg) ".opt.ast") (show d)
-    let (types, value, main) = compileLib d specname rs_code
+    let (types, value, main) = compileLib d specname modules rs_code
     -- Produce flatbuffer bindings if either the java or rust bindings are enabled
     compileFlatBufferBindings d specname (dir </> rustProjectDir specname)
-    -- Substitute specname template files; write files if changed.
+    -- Substitute specname in template files; write files if changed.
     mapM_ (\(path, content) -> do
             let path' = dir </> path
                 content' = replace "datalog_example" specname content
@@ -503,7 +530,8 @@ compile d_unoptimized specname rs_code toml_code dir crate_types = do
          $ rustLibFiles specname
     -- Generate lib files if changed.
     updateFile (dir </> rustProjectDir specname </> "types/Cargo.toml") (render $ typesCargo specname toml_code)
-    updateFile (dir </> rustProjectDir specname </> "types/lib.rs")     (render types)
+    mapM_ (\(mname, mtext) -> updateFile (dir </> rustProjectDir specname </> "types" </> moduleNameToPath mname) $ render mtext)
+          $ M.toList types
     updateFile (dir </> rustProjectDir specname </> "value/lib.rs")     (render value)
     let toml_footer =
             ( if (confOmitProfile ?cfg)
@@ -540,21 +568,38 @@ compile d_unoptimized specname rs_code toml_code dir crate_types = do
 
 -- | Compile Datalog program into Rust code.
 --
--- Returns Rust code for three crates that comp:
+-- Returns Rust code for three crates:
 -- * 'types' crate containing DDlog type declarations, functions, and all imported
 --   Rust library code.
 -- * 'value' crate that declares relations and value types.
 -- * 'main' crate that contains rule definitions in Rust and imports the other two.
 --
-compileLib :: (?cfg::Config) => DatalogProgram -> String -> Doc -> (Doc, Doc, Doc)
-compileLib d specname rs_code = (typesLib, valueLib, mainLib)
+compileLib :: (?cfg::Config) => DatalogProgram -> String -> [DatalogModule] -> M.Map ModuleName Doc -> (M.Map ModuleName Doc, Doc, Doc)
+compileLib d specname modules rs_code = (typeLibAllFuncs, valueLib, mainLib)
     where
+    modules' = addMissingModules modules
     statics = collectStatics d
-    typesLib = typesHeader specname         $+$
-               rs_code                      $+$
-               typedefs                     $+$
-               mkStatics d statics          $+$
-               funcs
+    -- Start with empty modules, except the main module that contains statics
+    -- declarations.
+    typeLib0 = M.fromList $ map (\m -> if moduleName m == mainModuleName
+                                       then (moduleName m, typesLibHeader specname $+$ mkStatics d statics)
+                                       else (moduleName m, typesModuleHeader specname)) modules'
+    -- Add Rust header, static declarations, module list to the main types module only.
+    -- Add submodule lists.
+    typeLibMods = M.mapWithKey (\mname mtext ->
+                                 let children = filter (\other_mod -> other_mod `moduleIsChildOf` mname)
+                                                $ map moduleName modules'
+                                 in mtext $+$ vcat (map (\(ModuleName c) -> "pub mod" <+> pp (last c) <> ";") children))
+                               typeLib0
+    -- Add Rust code.
+    typeLibRs = foldl' (\libs (mname, rs) -> M.adjust ($+$ rs) mname libs) typeLibMods $ M.toList rs_code
+    -- Add typedefs
+    typeLibTdefs = foldl' (\libs tdef -> M.adjust ($+$ mkTypedef d tdef) (nameScope tdef) libs) typeLibRs $ progTypedefs d
+    -- Add functions
+    typeLibExternFuncs = let ?statics = statics in
+                         foldl' (\libs func -> M.adjust ($+$ mkFunc d func) (nameScope func) libs) typeLibTdefs fextern
+    typeLibAllFuncs = let ?statics = statics in
+                       foldl' (\libs func -> M.adjust ($+$ mkFunc d func) (nameScope func) libs) typeLibExternFuncs fdef
     valueLib = valueHeader specname         $+$
                mkValType d (cTypes cstate)  $+$ -- 'Value' enum type
                mkValueFromRecord d          $+$ -- Function to convert cmd_parser::Record to Value
@@ -562,6 +607,7 @@ compileLib d specname rs_code = (typesLib, valueLib, mainLib)
                mkRelEnum d                  $+$ -- 'enum Relations'
                mkIdxEnum d                      -- 'enum Indexes'
     mainLib = mainHeader specname           $+$
+              mkUpdateDeserializer d        $+$
               prog
     -- Compute ordered SCCs of the dependency graph.  These will define the
     -- structure of the program.
@@ -582,11 +628,34 @@ compileLib d specname rs_code = (typesLib, valueLib, mainLib)
                                   mkProg nodes)
                               $ emptyCompilerState { cArrangements = arrs
                                                    , cTypes        = types }
-    -- Type declarations
-    typedefs = vcat $ map (mkTypedef d) $ M.elems $ progTypedefs d
     -- Functions
     (fdef, fextern) = partition (isJust . funcDef) $ concat $ M.elems $ progFunctions d
-    funcs = let ?statics = statics in vcat $ (map (mkFunc d) fextern ++ map (mkFunc d) fdef)
+
+-- Generate Deserialize implementation for UpdateSerializer wrapper.
+mkUpdateDeserializer :: DatalogProgram -> Doc
+mkUpdateDeserializer d =
+    "decl_update_deserializer!(UpdateSerializer," <> commaSep rels <> ");"
+    where
+    rels = map (\rel -> "(" <> pp (relIdentifier d rel) <> ", Value::" <> mkValConstructorName d (typ rel) <> ")" )
+           $ filter (\rel -> elem (relRole rel) [RelInput, RelOutput])
+           $ M.elems $ progRelations d
+
+
+-- DDlog does not require that there exist all intermediate modules in a
+-- hierarchy, e.g., a program can contain module `m1::m2` but not `m1.`  Rust
+-- on the other hand is strict in this sense.  This function injects
+-- intermediate empty modules before generating Rust code to keep the Rust
+-- compiler happy.
+addMissingModules :: [DatalogModule] -> [DatalogModule]
+addMissingModules modules =
+    foldl' (\modules' mname ->
+             if S.member mname module_names
+             then modules'
+             else emptyModule mname : modules') modules all_module_names
+    where
+    module_names = S.fromList $ map moduleName modules
+    all_module_names = S.toList $ S.fromList $ concat $ S.map (\(ModuleName n) -> map ModuleName $ inits n) module_names
+
 
 -- This type stores the set of statically evaluated constant sub-expressions.
 -- We need to track the type of each expression, as generic functions like
@@ -627,10 +696,14 @@ mkStatics d statics =
     vcat
         $ map
             ( \((e, t), i) ->
-                  let static_name = "__STATIC_" <> pp i
+                  let static_name = "__STATIC_" ++ show i
                    in let ?statics = deleteStatic e t statics
-                       in let e' = mkExpr d CtxTop (eTyped e t) EVal
-                           in "pub static" <+> static_name <> ": ::once_cell::sync::Lazy<" <+> mkType t <> ">" <+> "="
+                       in let -- Manufacture a bogus function to make sure that the static expression
+                              -- is evaluated function context, so that 'mkType' and 'mkFuncName'
+                              -- functions are called with 'local = True'.
+                              bogus_func = Function nopos [] static_name [] (tTuple []) (Just $ eTuple []) 
+                              e' = mkExpr d (CtxFunc bogus_func) (eTyped e t) EVal
+                           in "pub static" <+> pp static_name <> ": ::once_cell::sync::Lazy<" <> mkType d True t <> ">" <+> "="
                                   <+> "::once_cell::sync::Lazy::new(||"
                                   <+> e' <> ");"
             )
@@ -652,35 +725,37 @@ addDummyRel d =
               else progIndexes d
 
 mkTypedef :: DatalogProgram -> TypeDef -> Doc
+-- Don't generate definitions of types annotated with the 'alias' attribute.
+mkTypedef d tdef@TypeDef{..} | tdefGetAliasAttr d tdef = empty
 mkTypedef d tdef@TypeDef{..} =
     vcat (map (\attr -> "#[" <> pp attr <> "]") rustAttrs) $$
     case tdefType of
          Just TStruct{..} | length typeCons == 1
                           -> let (fields, extras) = unzip $ map (mkField tdefName True) $ consArgs $ head typeCons in
                              derive_struct                                                             $$
-                             "pub struct" <+> rname tdefName <> targs <+> "{"                          $$
+                             "pub struct" <+> nameLocal tdefName <> targs <+> "{"                      $$
                              (nest' $ vcat $ punctuate comma fields)                                   $$
                              "}"                                                                       $$
                              impl_abomonate                                                            $$
                              mkFromRecord d tdef                                                       $$
                              mkStructIntoRecord tdef                                                   $$
-                             mkStructMutator tdef                                                      $$
+                             mkStructMutator d tdef                                                    $$
                              display                                                                   $$
                              vcat extras
                           | otherwise
                           -> let (constructors, extras) = unzip $ map mkConstructor typeCons in
                              derive_enum                                                               $$
-                             "pub enum" <+> rname tdefName <> targs <+> "{"                            $$
+                             "pub enum" <+> nameLocal tdefName <> targs <+> "{"                        $$
                              (nest' $ vcat $ punctuate comma constructors)                             $$
                              "}"                                                                       $$
                              impl_abomonate                                                            $$
                              mkFromRecord d tdef                                                       $$
                              mkEnumIntoRecord tdef                                                     $$
-                             mkEnumMutator tdef                                                        $$
+                             mkEnumMutator d tdef                                                      $$
                              display                                                                   $$
                              default_enum                                                              $$
                              vcat extras
-         Just t           -> "pub type" <+> rname tdefName <+> targs <+> "=" <+> mkType t <> ";"
+         Just t           -> "pub type" <+> nameLocal tdefName <+> targs <+> "=" <+> mkType d True t <> ";"
          Nothing          -> empty -- The user must provide definitions of opaque types
     where
     rustAttrs = getRustAttrs d tdefAttrs
@@ -692,13 +767,13 @@ mkTypedef d tdef@TypeDef{..} =
                else "<" <> (hsep $ punctuate comma $ map pp tdefArgs) <> ">"
     targs_traits = if null tdefArgs
                       then empty
-                      else "<" <> (hsep $ punctuate comma $ map ((<> ": Val") . pp) tdefArgs) <> ">"
+                      else "<" <> (hsep $ punctuate comma $ map ((<> ": crate::Val") . pp) tdefArgs) <> ">"
     targs_disp = if null tdefArgs
                     then empty
-                    else "<" <> (hsep $ punctuate comma $ map ((<> ": fmt::Debug") . pp) tdefArgs) <> ">"
+                    else "<" <> (hsep $ punctuate comma $ map ((<> ": ::std::fmt::Debug") . pp) tdefArgs) <> ">"
     targs_def = if null tdefArgs
                    then empty
-                   else "<" <> (hsep $ punctuate comma $ map ((<> ": Default") . pp) tdefArgs) <> ">"
+                   else "<" <> (hsep $ punctuate comma $ map ((<> ": ::std::default::Default") . pp) tdefArgs) <> ">"
 
     -- Generate struct field, including #-annotations.
     -- If this field requires its own serde module (due to the deserialize_map_from_array attribute),
@@ -706,7 +781,7 @@ mkTypedef d tdef@TypeDef{..} =
     mkField :: String -> Bool -> Field -> (Doc, Doc)
     mkField cons pub f = ( from_arr_attr $$
                            vcat (map (\attr -> "#[" <> pp attr <> "]") rattrs) $$
-                           (if pub then "pub" else empty) <+> pp (name f) <> ":" <+> mkType f
+                           (if pub then "pub" else empty) <+> pp (name f) <> ":" <+> mkType d True f
                         , from_array_module)
         where rattrs = getRustAttrs d $ fieldAttrs f
               TOpaque _ _ [ktype, vtype] = typ' d f
@@ -715,10 +790,10 @@ mkTypedef d tdef@TypeDef{..} =
               from_array_module = maybe empty (\fname -> let kfunc = getFunc d fname [vtype] in
                                                          "deserialize_map_from_array!(" <>
                                                          from_array_module_name <> "," <>
-                                                         mkType ktype <> "," <> mkType vtype <> "," <>
-                                                         mkFuncName d kfunc <> ");")
+                                                         mkType d True ktype <> "," <> mkType d True vtype <> "," <>
+                                                         mkFuncName d True kfunc <> ");")
                                   $ fieldGetDeserializeArrayAttr d f
-              from_array_module_name = "__serde_" <> rname cons <> "_" <> pp (name f)
+              from_array_module_name = "__serde" <> rnameFlat cons <> "_" <> pp (name f)
 
     mkConstructor :: Constructor -> (Doc, Doc)
     mkConstructor c = (cons, vcat extras)
@@ -728,23 +803,23 @@ mkTypedef d tdef@TypeDef{..} =
         rattrs = getRustAttrs d $ consAttrs c
         cons = vcat (map (\attr -> "#[" <> pp attr <> "]") rattrs) $$
                if null $ consArgs c
-                  then rname (name c)
-                  else rname (name c) <+> "{" $$
+                  then nameLocal c
+                  else nameLocal c <+> "{" $$
                        nest' args $$
                        "}"
 
-    impl_abomonate = "impl" <+> targs_traits <+> "abomonation::Abomonation for" <+> rname tdefName <> targs <> "{}"
+    impl_abomonate = "impl" <+> targs_traits <+> "abomonation::Abomonation for" <+> nameLocal tdefName <> targs <> "{}"
 
-    display = "impl" <+> targs_disp <+> "fmt::Display for" <+> rname tdefName <> targs <+> "{"                 $$
-              "    fn fmt(&self, __formatter: &mut fmt::Formatter) -> fmt::Result {"                           $$
+    display = "impl" <+> targs_disp <+> "::std::fmt::Display for" <+> nameLocal tdefName <> targs <+> "{" $$
+              "    fn fmt(&self, __formatter: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {"             $$
               "        match self {"                                                                           $$
               (nest' $ nest' $ nest' $ vcat $ punctuate comma $ map mkDispCons $ typeCons $ fromJust tdefType) $$
               "        }"                                                                                      $$
               "    }"                                                                                          $$
               "}"                                                                                              $$
-              "impl" <+> targs_disp <+> "fmt::Debug for" <+> rname tdefName <> targs <+> "{"                   $$
-              "    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {"                                     $$
-              "        fmt::Display::fmt(&self, f)"                                                            $$
+              "impl" <+> targs_disp <+> "::std::fmt::Debug for" <+> nameLocal tdefName <> targs <+> "{"        $$
+              "    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {"                       $$
+              "        ::std::fmt::Display::fmt(&self, f)"                                                     $$
               "    }"                                                                                          $$
               "}"
     mkDispCons :: Constructor -> Doc
@@ -754,8 +829,8 @@ mkTypedef d tdef@TypeDef{..} =
             "__formatter.write_str(\"" <> (pp $ name c) <> "{\")?;" $$
             (vcat $
              mapIdx (\a i -> (if isString d a
-                                 then "record::format_ddlog_str(" <> (pp $ name a) <> ", __formatter)?;"
-                                 else "fmt::Debug::fmt(" <> (pp $ name a) <> ", __formatter)?;")
+                                 then "differential_datalog::record::format_ddlog_str(" <> (pp $ name a) <> ", __formatter)?;"
+                                 else "::std::fmt::Debug::fmt(" <> (pp $ name a) <> ", __formatter)?;")
                              $$
                              (if i + 1 < length consArgs
                                  then "__formatter.write_str(\",\")?;"
@@ -764,17 +839,17 @@ mkTypedef d tdef@TypeDef{..} =
             "__formatter.write_str(\"}\")")
         $$
         "}"
-        where cname = mkConstructorName tdefName (fromJust tdefType) (name c)
+        where cname = mkConstructorName True tdefName (fromJust tdefType) (name c)
 
     default_enum =
-              "impl "  <+> targs_def <+> "Default for" <+> rname tdefName <> targs <+> "{"                     $$
+              "impl" <+> targs_def <+> "::std::default::Default for" <+> nameLocal tdefName <> targs <+> "{"   $$
               "    fn default() -> Self {"                                                                     $$
               "        " <> cname <> "{" <> def_args <> "}"                                                    $$
               "    }"                                                                                          $$
               "}"
         where c = head $ typeCons $ fromJust tdefType
-              cname = mkConstructorName tdefName (fromJust tdefType) (name c)
-              def_args = commaSep $ map (\a -> (pp $ name a) <+> ": Default::default()") $ consArgs c
+              cname = mkConstructorName True tdefName (fromJust tdefType) (name c)
+              def_args = commaSep $ map (\a -> (pp $ name a) <+> ": ::std::default::Default::default()") $ consArgs c
 {-
 Generate FromRecord trait implementation for a struct type:
 
@@ -808,37 +883,37 @@ impl <T: FromRecord> FromRecord for DummyEnum<T> {
 mkFromRecord :: DatalogProgram -> TypeDef -> Doc
 mkFromRecord d t@TypeDef{..} | tdefGetCustomFromRecord d t = empty
                              | otherwise =
-    "impl" <+> targs_bounds <+> "record::FromRecord for" <+> rname (name t) <> targs <+> "{"                                    $$
-    "    fn from_record(val: &record::Record) -> result::Result<Self, String> {"                                                $$
+    "impl" <+> targs_bounds <+> "differential_datalog::record::FromRecord for" <+> nameLocal t <> targs <+> "{"                 $$
+    "    fn from_record(val: &differential_datalog::record::Record) -> ::std::result::Result<Self, String> {"                   $$
     "        match val {"                                                                                                       $$
-    "            record::Record::PosStruct(constr, _args) => {"                                                                 $$
+    "            differential_datalog::record::Record::PosStruct(constr, _args) => {"                                           $$
     "                match constr.as_ref() {"                                                                                   $$
     (nest' $ nest' $ nest' $ nest' $ nest' pos_constructors)                                                                    $$
-    "                    c => result::Result::Err(format!(\"unknown constructor {} of type" <+> rname (name t) <+> "in {:?}\", c, *val))" $$
+    "                    c => ::std::result::Result::Err(format!(\"unknown constructor {} of type" <+> (pp $ name t) <+> "in {:?}\", c, *val))" $$
     "                }"                                                                                                         $$
     "            },"                                                                                                            $$
-    "            record::Record::NamedStruct(constr, _args) => {"                                                               $$
+    "            differential_datalog::record::Record::NamedStruct(constr, _args) => {"                                         $$
     "                match constr.as_ref() {"                                                                                   $$
     (nest' $ nest' $ nest' $ nest' $ nest' named_constructors)                                                                  $$
-    "                    c => result::Result::Err(format!(\"unknown constructor {} of type" <+> rname (name t) <+> "in {:?}\", c, *val))" $$
+    "                    c => ::std::result::Result::Err(format!(\"unknown constructor {} of type" <+> (pp $ name t) <+> "in {:?}\", c, *val))" $$
     "                }"                                                                                                         $$
     "            },"                                                                                                            $$
-    "            record::Record::Serialized(format, s) => {"                                                                    $$
+    "            differential_datalog::record::Record::Serialized(format, s) => {"                                              $$
     "                if format == \"json\" {"                                                                                   $$
     "                    serde_json::from_str(&*s).map_err(|e|format!(\"{}\", e))"                                              $$
     "                } else {"                                                                                                  $$
-    "                    result::Result::Err(format!(\"unsupported serialization format '{}'\", format))"                       $$
+    "                    ::std::result::Result::Err(format!(\"unsupported serialization format '{}'\", format))"                $$
     "                }"                                                                                                         $$
     "            },"                                                                                                            $$
     "            v => {"                                                                                                        $$
-    "                result::Result::Err(format!(\"not a struct {:?}\", *v))"                                                   $$
+    "                ::std::result::Result::Err(format!(\"not a struct {:?}\", *v))"                                            $$
     "            }"                                                                                                             $$
     "        }"                                                                                                                 $$
     "    }"                                                                                                                     $$
     "}"
     where
     targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
-    targs_bounds = "<" <> (hcat $ punctuate comma $ map ((<> ": record::FromRecord + serde::de::DeserializeOwned + Default") . pp) tdefArgs) <> ">"
+    targs_bounds = "<" <> (hcat $ punctuate comma $ map ((<> ": differential_datalog::record::FromRecord + serde::de::DeserializeOwned + ::std::default::Default") . pp) tdefArgs) <> ">"
     pos_constructors = vcat $ map mkposcons $ typeCons $ fromJust tdefType
     mkposcons :: Constructor -> Doc
     mkposcons c@Constructor{..} =
@@ -851,8 +926,8 @@ mkFromRecord d t@TypeDef{..} | tdefGetCustomFromRecord d t = empty
         $$  "    Ok(" <> cname <> "{" <> (hsep $ punctuate comma fields) <> "})"
         $$  "},"
         where
-        cname = mkConstructorName tdefName (fromJust tdefType) (name c)
-        fields = mapIdx (\f i -> pp (name f) <> ": <" <> (mkType f) <> ">::from_record(&_args[" <> pp i <> "])?") consArgs
+        cname = mkConstructorName True tdefName (fromJust tdefType) (name c)
+        fields = mapIdx (\f i -> pp (name f) <> ": <" <> (mkType d True f) <> ">::from_record(&_args[" <> pp i <> "])?") consArgs
     named_constructors = vcat $ map mknamedcons $ typeCons $ fromJust tdefType
     mknamedcons :: Constructor -> Doc
     mknamedcons c@Constructor{..} =
@@ -860,37 +935,37 @@ mkFromRecord d t@TypeDef{..} | tdefGetCustomFromRecord d t = empty
         "    Ok(" <> cname <> "{" <> (hsep $ punctuate comma fields) <> "})"     $$
         "},"
         where
-        cname = mkConstructorName tdefName (fromJust tdefType) (name c)
-        fields = map (\f -> pp (name f) <> ": record::arg_extract::<" <> mkType f <> ">(_args, \"" <> (pp $ unddname f) <> "\")?") consArgs
+        cname = mkConstructorName True tdefName (fromJust tdefType) (name c)
+        fields = map (\f -> pp (name f) <> ": differential_datalog::record::arg_extract::<" <> mkType d True f <> ">(_args, \"" <> (pp $ unddname f) <> "\")?") consArgs
 
 mkStructIntoRecord :: TypeDef -> Doc
 mkStructIntoRecord t@TypeDef{..} =
-    "decl_struct_into_record!(" <> rname (name t) <> "[\"" <> pp (name t) <> "\"]" <> targs <> "," <+> args <> ");"
+    "::differential_datalog::decl_struct_into_record!(" <> nameLocal t <> "[\"" <> pp (name t) <> "\"]" <> targs <> "," <+> args <> ");"
     where
     targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
     args = commaSep $ map (pp . name) $ consArgs $ head $ typeCons $ fromJust tdefType
 
-mkStructMutator :: TypeDef -> Doc
-mkStructMutator t@TypeDef{..} =
-    "decl_record_mutator_struct!(" <> rname (name t) <> ", " <> targs <> "," <+> args <> ");"
+mkStructMutator :: DatalogProgram -> TypeDef -> Doc
+mkStructMutator d t@TypeDef{..} =
+    "::differential_datalog::decl_record_mutator_struct!(" <> nameLocal t <> ", " <> targs <> "," <+> args <> ");"
     where
     targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
-    args = commaSep $ map (\arg -> pp (name arg) <> ":" <+> mkType arg) $ consArgs $ head $ typeCons $ fromJust tdefType
+    args = commaSep $ map (\arg -> pp (name arg) <> ":" <+> mkType d True arg) $ consArgs $ head $ typeCons $ fromJust tdefType
 
 mkEnumIntoRecord :: TypeDef -> Doc
 mkEnumIntoRecord t@TypeDef{..} =
-    "decl_enum_into_record!(" <> rname (name t) <> "," <+> targs <> "," <+> cons <> ");"
+    "::differential_datalog::decl_enum_into_record!(" <> nameLocal t <> "," <+> targs <> "," <+> cons <> ");"
     where
     targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
-    cons = commaSep $ map (\c -> (rname $ name c) <> "[\"" <> pp (name c) <> "\"]" <> "{" <> (commaSep $ map (pp . name) $ consArgs c) <> "}")
+    cons = commaSep $ map (\c -> nameLocal c <> "[\"" <> pp (name c) <> "\"]" <> "{" <> (commaSep $ map (pp . name) $ consArgs c) <> "}")
                     $ typeCons $ fromJust tdefType
 
-mkEnumMutator :: TypeDef -> Doc
-mkEnumMutator t@TypeDef{..} =
-    "decl_record_mutator_enum!(" <> rname (name t) <> "," <+> targs <> "," <+> cons <> ");"
+mkEnumMutator :: DatalogProgram -> TypeDef -> Doc
+mkEnumMutator d t@TypeDef{..} =
+    "::differential_datalog::decl_record_mutator_enum!(" <> nameLocal t <> "," <+> targs <> "," <+> cons <> ");"
     where
     targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
-    cons = commaSep $ map (\c -> (rname $ name c) <> "{" <> (commaSep $ map (\arg -> pp (name arg) <> ":" <+> mkType arg) $ consArgs c) <> "}")
+    cons = commaSep $ map (\c -> nameLocal c <> "{" <> (commaSep $ map (\arg -> pp (name arg) <> ":" <+> mkType d True arg) $ consArgs c) <> "}")
                     $ typeCons $ fromJust tdefType
 
 unddname :: (WithName a) => a -> String
@@ -928,18 +1003,18 @@ mkValueFromRecord d@DatalogProgram{..} =
     mkIdxId2NameC                                                                                   $$
     mkIdxIdMap d                                                                                    $$
     mkIdxIdMapC d                                                                                   $$
-    "pub fn relval_from_record(rel: Relations, _rec: &record::Record) -> result::Result<DDValue, String> {" $$
+    "pub fn relval_from_record(rel: Relations, _rec: &differential_datalog::record::Record) -> ::std::result::Result<DDValue, String> {" $$
     "    match rel {"                                                                               $$
     (nest' $ nest' $ vcommaSep entries)                                                             $$
     "    }"                                                                                         $$
     "}"                                                                                             $$
-    "pub fn relkey_from_record(rel: Relations, _rec: &record::Record) -> result::Result<DDValue, String> {" $$
+    "pub fn relkey_from_record(rel: Relations, _rec: &differential_datalog::record::Record) -> ::std::result::Result<DDValue, String> {" $$
     "    match rel {"                                                                               $$
     (nest' $ nest' $ vcommaSep key_entries)                                                         $$
     "        _ => Err(format!(\"relation {:?} does not have a primary key\", rel))"                 $$
     "    }"                                                                                         $$
     "}"                                                                                             $$
-    "pub fn idxkey_from_record(idx: Indexes, _rec: &record::Record) -> result::Result<DDValue, String> {"   $$
+    "pub fn idxkey_from_record(idx: Indexes, _rec: &differential_datalog::record::Record) -> ::std::result::Result<DDValue, String> {"   $$
     "    match idx {"                                                                               $$
     (nest' $ nest' $ vcommaSep idx_entries)                                                         $$
     "    }"                                                                                         $$
@@ -948,22 +1023,22 @@ mkValueFromRecord d@DatalogProgram{..} =
     entries = map mkrelval $ M.elems progRelations
     mkrelval :: Relation ->  Doc
     mkrelval rel@Relation{..} =
-        "Relations::" <> rname(name rel) <+> "=> {"                                                                     $$
-        "    Ok(Value::" <> mkValConstructorName d t <> (parens $ "<" <> mkType t <> ">::from_record(_rec)?).into_ddvalue()")   $$
+        "Relations::" <> rnameFlat (name rel) <+> "=> {"                                                                        $$
+        "    Ok(Value::" <> mkValConstructorName d t <> (parens $ "<" <> mkType d False t <> ">::from_record(_rec)?).into_ddvalue()") $$
         "}"
         where t = typeNormalize d relType
     key_entries = map mkrelkey $ filter (isJust . relPrimaryKey) $ M.elems progRelations
     mkrelkey :: Relation ->  Doc
     mkrelkey rel@Relation{..} =
-        "Relations::" <> rname(name rel) <+> "=> {"                                                                     $$
-        "    Ok(Value::" <> mkValConstructorName d t <> (parens $ "<" <> mkType t <> ">::from_record(_rec)?).into_ddvalue()")   $$
+        "Relations::" <> rnameFlat (name rel) <+> "=> {"                                                                          $$
+        "    Ok(Value::" <> mkValConstructorName d t <> (parens $ "<" <> mkType d False t <> ">::from_record(_rec)?).into_ddvalue()")   $$
         "}"
         where t = typeNormalize d $ fromJust $ relKeyType d rel
     idx_entries = map mkidxkey $ M.elems progIndexes
     mkidxkey :: Index ->  Doc
     mkidxkey idx@Index{..} =
-        "Indexes::" <> rname (name idx) <+> "=> {"                                                                      $$
-        "    Ok(Value::" <> mkValConstructorName d t <> (parens $ "<" <> mkType t <> ">::from_record(_rec)?).into_ddvalue()")   $$
+        "Indexes::" <> rnameFlat (name idx) <+> "=> {"                                                                          $$
+        "    Ok(Value::" <> mkValConstructorName d t <> (parens $ "<" <> mkType d False t <> ">::from_record(_rec)?).into_ddvalue()") $$
         "}"
         where t = typeNormalize d $ idxKeyType idx
 
@@ -972,7 +1047,7 @@ mkRelationsTryFromStr :: DatalogProgram -> Doc
 mkRelationsTryFromStr d =
     "impl TryFrom<&str> for Relations {"                                  $$
     "    type Error = ();"                                                $$
-    "    fn try_from(rname: &str) -> result::Result<Self, Self::Error> {" $$
+    "    fn try_from(rname: &str) -> ::std::result::Result<Self, Self::Error> {" $$
     "         match rname {"                                              $$
                   (nest' $ nest' $ vcat $ entries)                        $$
     "             _  => Err(())"                                          $$
@@ -982,7 +1057,7 @@ mkRelationsTryFromStr d =
     where
     entries = map mkrel $ M.elems $ progRelations d
     mkrel :: Relation -> Doc
-    mkrel rel = "\"" <> pp (name rel) <> "\" => Ok(Relations::" <> rname (name rel) <> "),"
+    mkrel rel = "\"" <> pp (name rel) <> "\" => Ok(Relations::" <> rnameFlat (name rel) <> "),"
 
 mkIsOutputRels :: DatalogProgram -> Doc
 mkIsOutputRels d =
@@ -997,7 +1072,7 @@ mkIsOutputRels d =
     where
     entries = map mkrel $ filter ((== RelOutput) .relRole) $ M.elems $ progRelations d
     mkrel :: Relation -> Doc
-    mkrel rel = "Relations::" <> rname (name rel) <> " => true,"
+    mkrel rel = "Relations::" <> rnameFlat (name rel) <> " => true,"
 
 mkIsInputRels :: DatalogProgram -> Doc
 mkIsInputRels d =
@@ -1012,14 +1087,14 @@ mkIsInputRels d =
     where
     entries = map mkrel $ filter ((== RelInput) .relRole) $ M.elems $ progRelations d
     mkrel :: Relation -> Doc
-    mkrel rel = "Relations::" <> rname (name rel) <> " => true,"
+    mkrel rel = "Relations::" <> rnameFlat (name rel) <> " => true,"
 
 -- Convert RelId to enum Relations
 mkRelationsTryFromRelId :: DatalogProgram -> Doc
 mkRelationsTryFromRelId d =
     "impl TryFrom<RelId> for Relations {"                                 $$
     "    type Error = ();"                                                $$
-    "    fn try_from(rid: RelId) -> result::Result<Self, Self::Error> {"  $$
+    "    fn try_from(rid: RelId) -> ::std::result::Result<Self, Self::Error> {"  $$
     "         match rid {"                                                $$
                   (nest' $ nest' $ vcat $ entries)                        $$
     "             _  => Err(())"                                          $$
@@ -1029,7 +1104,7 @@ mkRelationsTryFromRelId d =
     where
     entries = map mkrel $ M.elems $ progRelations d
     mkrel :: Relation -> Doc
-    mkrel rel = pp (relIdentifier d rel) <+> "=> Ok(Relations::" <> rname (name rel) <> "),"
+    mkrel rel = pp (relIdentifier d rel) <+> "=> Ok(Relations::" <> rnameFlat (name rel) <> "),"
 
 mkRelId2Name :: DatalogProgram -> Doc
 mkRelId2Name d =
@@ -1056,7 +1131,7 @@ mkRelIdMap :: DatalogProgram -> Doc
 mkRelIdMap prog =
     createLazyStatic lazy_static
     where
-        mapKey rel = "Relations::" <> rname (name rel)
+        mapKey rel = "Relations::" <> rnameFlat (name rel)
         mapValue rel = "\"" <> pp (name rel) <> "\""
         entries = [(mapKey rel, mapValue rel) | rel <- M.elems (progRelations prog)]
         lazy_static =
@@ -1093,7 +1168,7 @@ mkInputRelIdMap :: DatalogProgram -> Doc
 mkInputRelIdMap prog =
     createLazyStatic lazy_static
     where
-        mapKey rel = "Relations::" <> (rname . name $ rel)
+        mapKey rel = "Relations::" <> (rnameFlat . name $ rel)
         mapValue rel = "\"" <> (pp . name $ rel) <> "\""
         entries = [(mapKey rel, mapValue rel) | rel <- filter ((== RelInput) . relRole) (M.elems (progRelations prog))]
         lazy_static =
@@ -1109,7 +1184,7 @@ mkOutputRelIdMap :: DatalogProgram -> Doc
 mkOutputRelIdMap prog =
     createLazyStatic lazy_static
     where
-        mapKey rel = "Relations::" <> (rname . name $ rel)
+        mapKey rel = "Relations::" <> (rnameFlat . name $ rel)
         mapValue rel = "\"" <> (pp . name $ rel) <> "\""
         entries = [(mapKey rel, mapValue rel) | rel <- filter ((== RelOutput) . relRole) (M.elems (progRelations prog))]
         lazy_static =
@@ -1126,7 +1201,7 @@ mkIndexesTryFromStr :: DatalogProgram -> Doc
 mkIndexesTryFromStr d =
     "impl TryFrom<&str> for Indexes {"                                    $$
     "    type Error = ();"                                                $$
-    "    fn try_from(iname: &str) -> result::Result<Self, Self::Error> {" $$
+    "    fn try_from(iname: &str) -> ::std::result::Result<Self, Self::Error> {" $$
     "         match iname {"                                              $$
                   (nest' $ nest' $ vcat $ entries)                        $$
     "             _  => Err(())"                                          $$
@@ -1136,7 +1211,7 @@ mkIndexesTryFromStr d =
     where
     entries = map mkidx $ M.elems $ progIndexes d
     mkidx :: Index -> Doc
-    mkidx idx = "\"" <> pp (name idx) <> "\" => Ok(Indexes::" <> rname (name idx) <> "),"
+    mkidx idx = "\"" <> pp (name idx) <> "\" => Ok(Indexes::" <> rnameFlat (name idx) <> "),"
 
 mkIndexesIntoArrId :: DatalogProgram -> CompilerState -> Doc
 mkIndexesIntoArrId d CompilerState{..} =
@@ -1149,7 +1224,7 @@ mkIndexesIntoArrId d CompilerState{..} =
     where
     entries = map mkidx $ M.elems $ progIndexes d
     mkidx :: Index -> Doc
-    mkidx idx = "Indexes::" <> rname (name idx) <+> "=> (" <+> pp (relIdentifier d $ idxRelation d idx)
+    mkidx idx = "Indexes::" <> rnameFlat (name idx) <+> "=> (" <+> pp (relIdentifier d $ idxRelation d idx)
                                                     <> "," <+> pp (findidx idx) <> "),"
     findidx :: Index -> Int
     findidx idx@Index{..} =
@@ -1172,7 +1247,7 @@ mkIndexesTryFromIdxId d =
     where
     entries = map mkidx $ M.elems $ progIndexes d
     mkidx :: Index -> Doc
-    mkidx idx = pp (idxIdentifier d idx) <+> "=> Ok(Indexes::" <> rname (name idx) <> "),"
+    mkidx idx = pp (idxIdentifier d idx) <+> "=> Ok(Indexes::" <> rnameFlat (name idx) <> "),"
 
 mkIdxId2Name :: DatalogProgram -> Doc
 mkIdxId2Name d =
@@ -1201,7 +1276,7 @@ mkIdxIdMap :: DatalogProgram -> Doc
 mkIdxIdMap prog =
     createLazyStatic lazy_static
     where
-        mapKey idx = "Indexes::" <> (rname . name $ idx)
+        mapKey idx = "Indexes::" <> (rnameFlat . name $ idx)
         mapValue idx = "\"" <> (pp . name $ idx) <> "\""
         entries = [(mapKey idx, mapValue idx) | idx <- M.elems (progIndexes prog)]
         lazy_static =
@@ -1246,7 +1321,7 @@ data LazyStatic = LazyStatic {
     keyType       :: String,
     -- The static's HashMap's value's type
     valueType     :: String,
-    -- (key, value) pairs of each entry to be placed in the HashMap 
+    -- (key, value) pairs of each entry to be placed in the HashMap
     staticEntries :: [(Doc, Doc)]
 }
 
@@ -1291,18 +1366,18 @@ createLazyStatic lazy_static =
 
 mkFunc :: (?statics::Statics) => DatalogProgram -> Function -> Doc
 mkFunc d f@Function{..} | isJust funcDef =
-    "pub fn" <+> mkFuncName d f <> tvars <> (parens $ hsep $ punctuate comma $ map mkArg funcArgs) <+> "->" <+> mkType funcType      $$
-    "{"                                                                                                                              $$
-    (nest' $ mkExpr d (CtxFunc f) (fromJust funcDef) EVal)                                                                           $$
+    "pub fn" <+> mkFuncNameShort d f <> tvars <> (parens $ hsep $ punctuate comma $ map mkArg funcArgs) <+> "->" <+> mkType d True funcType $$
+    "{"                                                                                                                                     $$
+    (nest' $ mkExpr d (CtxFunc f) (fromJust funcDef) EVal)                                                                                  $$
     "}"
                         | -- generate commented out prototypes of extern functions for user convenvience.
-                          otherwise = "/* fn" <+> rname (name f) <> tvars <> (parens $ hsep $ punctuate comma $ map mkArg funcArgs) <+> "->" <+> mkType funcType <+> "*/"
+                          otherwise = "/* fn" <+> (mkFuncNameShort d f) <> tvars <> (parens $ hsep $ punctuate comma $ map mkArg funcArgs) <+> "->" <+> mkType d True funcType <+> "*/"
     where
     mkArg :: FuncArg -> Doc
-    mkArg a = pp (name a) <> ":" <+> "&" <> (if argMut a then "mut" else empty) <+> mkType a
+    mkArg a = pp (name a) <> ":" <+> "&" <> (if argMut a then "mut" else empty) <+> mkType d True a
     tvars = case funcTypeVars f of
                  []  -> empty
-                 tvs -> "<" <> (hcat $ punctuate comma $ map ((<> ": Val") . pp) tvs) <> ">"
+                 tvs -> "<" <> (hcat $ punctuate comma $ map ((<> ": crate::Val") . pp) tvs) <> ">"
 
 -- Generate Value type as an enum with one entry per type in types
 mkValType :: (?cfg::Config) => DatalogProgram -> S.Set Type -> Doc
@@ -1315,25 +1390,25 @@ mkValType d types =
     mkVal :: Type -> Doc
     mkVal t =
         "#[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]"            $$
-        "pub struct" <+> tname <+> parens ("pub" <+> mkTypeScoped "super::" t) <> ";"                               $$
+        "pub struct" <+> tname <+> parens ("pub" <+> mkType d False t) <> ";"                                       $$
         "impl abomonation::Abomonation for" <+> tname <+> "{}"                                                      $$
-        "impl fmt::Display for" <+> tname <+> "{"                                                                   $$
-        "    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {"                                            $$
+        "impl ::std::fmt::Display for" <+> tname <+> "{"                                                            $$
+        "    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {"                              $$
         "        self.clone().into_record().fmt(f)"                                                                 $$
         "    }"                                                                                                     $$
         "}"                                                                                                         $$
-        "impl record::IntoRecord for" <+> tname <+> "{"                                                             $$
-        "    fn into_record(self) -> record::Record {"                                                              $$
+        "impl differential_datalog::record::IntoRecord for" <+> tname <+> "{"                                       $$
+        "    fn into_record(self) -> differential_datalog::record::Record {"                                        $$
         "        self.0.into_record()"                                                                              $$
         "    }"                                                                                                     $$
         "}"                                                                                                         $$
-        "impl record::Mutator<" <> tname <> "> for record::Record {"                                                $$
-        "    fn mutate(&self, v: &mut" <+> tname <+> ") -> result::Result<(), std::string::String> {"               $$
+        "impl differential_datalog::record::Mutator<" <> tname <> "> for differential_datalog::record::Record {"    $$
+        "    fn mutate(&self, v: &mut" <+> tname <+> ") -> ::std::result::Result<(), ::std::string::String> {"      $$
         "        self.mutate(&mut v.0)"                                                                             $$
         "    }"                                                                                                     $$
         "}"                                                                                                         $$
         "//#[typetag::serde]"                                                                                       $$
-        "decl_ddval_convert!{" <> tname <> "}"
+        "::differential_datalog::decl_ddval_convert!{" <> tname <> "}"
         where tname = mkValConstructorName d t
 
 -- Precompute the set of arrangements used by the program.  This is done as a separate
@@ -1435,7 +1510,7 @@ compileApplyNode :: (?cfg::Config) => DatalogProgram -> Apply -> ProgNode
 compileApplyNode d Apply{..} = ApplyNode $
     "{fn transformer() -> Box<dyn for<'a> Fn(&mut FnvHashMap<RelId, collection::Collection<scopes::Child<'a, worker::Worker<communication::Allocator>, TS>,DDValue,Weight>>)> {" $$
     "    Box::new(|collections| {"                                                                                                                             $$
-    "        let (" <> commaSep outputs <> ") =" <+> rname applyTransformer <> (parens $ commaSep inputs) <> ";"                                               $$
+    "        let (" <> commaSep outputs <> ") =" <+> rnameScoped False applyTransformer <> (parens $ commaSep inputs) <> ";"                                   $$
     (nest' $ nest' $ vcat update_collections)                                                                                                                  $$
     "    })"                                                                                                                                                   $$
     "}; transformer}"
@@ -1443,13 +1518,13 @@ compileApplyNode d Apply{..} = ApplyNode $
     Transformer{..} = getTransformer d applyTransformer
     inputs = concatMap (\(i, ti) ->
                          if hotypeIsFunction (hofType ti)
-                            then [rname i]
+                            then [rnameScoped False i]
                             else ["collections.get(&(" <> relId i <> ")).unwrap()", extractValue d (relType $ getRelation d i)])
                        (zip applyInputs transInputs)
              ++
              map (\o -> parens $ "|v|" <> mkValue d "v" (relType $ getRelation d o) <> ".into_ddvalue()") applyOutputs
-    outputs = map rname applyOutputs
-    update_collections = map (\o -> "collections.insert(" <> relId o <> "," <+> rname o <> ");") applyOutputs
+    outputs = map rnameFlat applyOutputs
+    update_collections = map (\o -> "collections.insert(" <> relId o <> "," <+> rnameFlat o <> ");") applyOutputs
 
 extractValue :: (?cfg::Config) => DatalogProgram -> Type -> Doc
 extractValue d t = parens $
@@ -1749,10 +1824,10 @@ mkFilterMap d prefix rl idx = do
 mkInspect :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> Doc -> Rule -> Int -> Expr -> Bool -> CompilerMonad Doc
 mkInspect d prefix rl idx e input_val = do
     -- Inspected
-    let weight = "let ddlog_weight = &(" <> wEIGHT_VAR <> " as std_DDWeight);"
+    let weight = "let ddlog_weight = &(" <> wEIGHT_VAR <+> "as" <+> rnameScoped False wEIGHT_TYPE <> ");"
     let timestamp = if ruleIsRecursive d rl
-        then "let ddlog_timestamp = &std_DDNestedTS{epoch:" <+> tIMESTAMP_VAR <> ".0 as std_DDEpoch, iter:" <+> tIMESTAMP_VAR <> ".1.x as std_DDIteration};"
-        else "let ddlog_timestamp = &(" <> tIMESTAMP_VAR <> ".0 as std_DDEpoch);"
+        then "let ddlog_timestamp = &" <> rnameScoped False nESTED_TS_TYPE <> "{epoch:" <+> tIMESTAMP_VAR <> ".0 as" <+> rnameScoped False ePOCH_TYPE <> ", iter:" <+> tIMESTAMP_VAR <> ".1.x as" <+> rnameScoped False iTERATION_TYPE <> "};"
+        else "let ddlog_timestamp = &(" <> tIMESTAMP_VAR <> ".0 as" <+> rnameScoped False ePOCH_TYPE <> ");"
     let inspected = (braces $ mkExpr d (CtxRuleRInspect rl idx) e EVal) <> ";"
     let ifun = braces'
                 $ weight $$
@@ -1779,9 +1854,9 @@ mkAggregate d filters input_val rl@Rule{..} idx = do
     open <- if input_val
                then openAtom d vALUE_VAR rl 0 (rhsAtom $ head ruleRHS) "unreachable!()"
                else openTuple d vALUE_VAR group_vars
-    let project = "{fn __f(" <> vALUE_VAR <> ": &DDValue) -> " <+> mkType (exprType d ctx rhsAggExpr) $$
-                  (braces' $ open $$ mkExpr d ctx rhsAggExpr EVal)                                   $$
-                  "std::rc::Rc::new(__f)}"
+    let project = "{fn __f(" <> vALUE_VAR <> ": &DDValue) -> " <+> mkType d False (exprType d ctx rhsAggExpr) $$
+                  (braces' $ open $$ mkExpr d ctx rhsAggExpr EVal)                                            $$
+                  "::std::rc::Rc::new(__f)}"
     -- Aggregate function:
     -- - compute aggregate
     -- - return variables still in scope after this term
@@ -1790,9 +1865,9 @@ mkAggregate d filters input_val rl@Rule{..} idx = do
     let tmap = ruleAggregateTypeParams d rl idx
     let agg_func = getFunc d rhsAggFunc [tOpaque gROUP_TYPE [ktype, vtype]]
     -- Pass group-by variables to the aggregate function.
-    let grp = "&std_Group::new(&" <> (mkExpr d gctx rhsGroupBy EVal) <> "," <+> gROUP_VAR <> "," <+> project <> ")"
-    let tparams = commaSep $ map (\tvar -> mkType (tmap M.! tvar)) $ funcTypeVars agg_func
-    let aggregate = "let" <+> pp rhsVar <+> "=" <+> rname rhsAggFunc <>
+    let grp = "&" <> rnameScoped False gROUP_TYPE <> "::new(&" <> (mkExpr d gctx rhsGroupBy EVal) <> "," <+> gROUP_VAR <> "," <+> project <> ")"
+    let tparams = commaSep $ map (\tvar -> mkType d False (tmap M.! tvar)) $ funcTypeVars agg_func
+    let aggregate = "let" <+> pp rhsVar <+> "=" <+> rnameScoped False rhsAggFunc <>
                     "::<" <> tparams <> ">(" <> grp <> ");"
     result <- mkVarsTupleValue d $ map (\v -> (v, if name v == rhsVar then EVal else EReference)) $ rhsVarsAfter d rl idx
     let key_vars = exprVars d gctx rhsGroupBy
@@ -1838,7 +1913,7 @@ openTuple :: (?cfg::Config) => DatalogProgram -> Doc -> [Var] -> CompilerMonad D
 openTuple d var vs = do
     let t = tTuple $ map (varType d) vs
     cons <- mkValConstructorName' d t
-    let pattern = tupleStruct $ map (("ref" <+>) . pp . name) vs
+    let pattern = tupleStruct False $ map (("ref" <+>) . pp . name) vs
     return $ "let" <+> pattern <+> "= unsafe {" <+> cons <> "::from_ddvalue_ref(" <+> var <+> ") }.0;"
 
 -- Generate Rust constructor name for a type;
@@ -1868,7 +1943,7 @@ mkValConstructorName d t' =
          _           -> error $ "unexpected type " ++ show t ++ " in Compile.mkValConstructorName'"
     where
     t = typeNormalize d t'
-    consuser = rname (typeName t) <>
+    consuser = rnameFlat (typeName t) <>
                case typeArgs t of
                     [] -> empty
                     as -> "__" <> (hcat $ punctuate "_" $ map (mkValConstructorName d) as)
@@ -1886,7 +1961,7 @@ mkTupleValue :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> [(Expr, E
 mkTupleValue d es = do
     let t = tTuple $ map (\(e, ctx) -> exprType'' d ctx e) es
     constructor <- mkValConstructorName' d t
-    return $ constructor <> (parens $ tupleStruct $ map (\(e, ctx) -> mkExpr d ctx e EVal) es) <> ".into_ddvalue()"
+    return $ constructor <> (parens $ tupleStruct False $ map (\(e, ctx) -> mkExpr d ctx e EVal) es) <> ".into_ddvalue()"
 
 mkVarsTupleValue :: (?cfg::Config) => DatalogProgram -> [(Var, EKind)] -> CompilerMonad Doc
 mkVarsTupleValue d vs = do
@@ -1894,13 +1969,13 @@ mkVarsTupleValue d vs = do
     constructor <- mkValConstructorName' d t
     let clone (v, EReference) = cloneRef $ pp $ name v
         clone (v, _) = (pp $ name v) <> ".clone()"
-    return $ constructor <> (parens $ tupleStruct $ map clone vs) <> ".into_ddvalue()"
+    return $ constructor <> (parens $ tupleStruct False $ map clone vs) <> ".into_ddvalue()"
 
 mkFieldTupleValue :: (?cfg::Config) => DatalogProgram -> [Field] -> CompilerMonad Doc
 mkFieldTupleValue d fs = do
     let t = tTuple $ map typ fs
     constructor <- mkValConstructorName' d t
-    return $ constructor <> (parens $ tupleStruct $ map (cloneRef . pp . name) fs) <> ".into_ddvalue()"
+    return $ constructor <> (parens $ tupleStruct False $ map (cloneRef . pp . name) fs) <> ".into_ddvalue()"
 
 -- Compile all contiguous RHSCondition terms following 'last_idx'
 mkFilters :: (?statics::Statics) => DatalogProgram -> Rule -> Int -> [Doc]
@@ -1928,7 +2003,7 @@ mkAssignFilter d ctx e@(ESet _ l r) =
     expr_vardecls = exprVarDecls d (CtxSetL e ctx) l
     varnames = map (pp . name) expr_vardecls
     vars = tuple varnames
-    vardecls = (tuple $ map ("ref" <+>) varnames) <> ":" <+> (tuple $ map (mkType . varType d) expr_vardecls)
+    vardecls = (tuple $ map ("ref" <+>) varnames) <> ":" <+> (tuple $ map (mkType d False . varType d) expr_vardecls)
 mkAssignFilter _ _ e = error $ "Compile.mkAssignFilter: unexpected expression " ++ show e
 
 mkCondFilter :: (?statics::Statics) => DatalogProgram -> ECtx -> Expr -> Doc
@@ -2247,7 +2322,7 @@ rhsVarsAfter d rl i =
 mkProg :: [ProgNode] -> CompilerMonad Doc
 mkProg nodes = do
     let rels = vcat $
-               map (\ProgRel{..} -> "let" <+> rname prelName <+> "=" <+> prelCode <> ";")
+               map (\ProgRel{..} -> "let" <+> rnameFlat prelName <+> "=" <+> prelCode <> ";")
                    (concatMap nodeRels nodes)
     let facts = concatMap prelFacts $ concatMap nodeRels nodes
     let pnodes = map mkNode nodes
@@ -2266,11 +2341,11 @@ mkProg nodes = do
 
 mkNode :: ProgNode -> Doc
 mkNode (RelNode (ProgRel rel _ _)) =
-    "ProgNode::Rel{rel:" <+> rname rel <> "}"
+    "ProgNode::Rel{rel:" <+> rnameFlat rel <> "}"
 mkNode (SCCNode rels) =
     "ProgNode::SCC{rels: vec![" <>
     (commaSep $ map (\RecProgRel{..} ->
-                      "RecursiveRelation{rel: " <> (rname $ prelName rprelRel) <>
+                      "RecursiveRelation{rel: " <> (rnameFlat $ prelName rprelRel) <>
                       ", distinct: " <> (if rprelDistinct then "true" else "false") <> "}") rels) <> "]}"
 mkNode (ApplyNode fun) =
     "ProgNode::Apply{tfun:" <+> fun <> "}"
@@ -2409,7 +2484,7 @@ mkPatExpr' d inkind ctx e@EStruct{..}   varkind mut  = do
     fields <- mapM (\(f, E e') -> (f,) <$> mkPatExpr' d inkind (CtxStruct e ctx f) e' varkind mut) exprStructFields
     let t = consType d exprConstructor
         struct_name = name t
-        pat = mkConstructorName struct_name (fromJust $ tdefType t) exprConstructor <>
+        pat = mkConstructorName (isJust $ ctxInFunc ctx) struct_name (fromJust $ tdefType t) exprConstructor <>
               (braces $ hsep $ punctuate comma $ map (\(fname, m) -> pp fname <> ":" <+> mPattern m) fields)
         cond = hsep $ intersperse "&&" $ filter (/= empty)
                                        $ map (\(_,m) -> mCond m) fields
@@ -2417,7 +2492,7 @@ mkPatExpr' d inkind ctx e@EStruct{..}   varkind mut  = do
     return $ Match pat cond subpatterns
 mkPatExpr' d inkind ctx e@ETuple{..}    varkind mut  = do
     fields <- mapIdxM (\(E f) i -> mkPatExpr' d inkind (CtxTuple e ctx i) f varkind mut) exprTupleFields
-    let pat = tupleStruct $ map (pp . mPattern) fields
+    let pat = tupleStruct (isJust $ ctxInFunc ctx) $ map (pp . mPattern) fields
         cond = hsep $ intersperse "&&" $ filter (/= empty)
                                        $ map (pp . mCond) fields
         subpatterns = concatMap mSubpatterns fields
@@ -2468,10 +2543,11 @@ mkExpr_ d ctx e = (t', k', e')
 mkExpr' :: (?statics::Statics) => DatalogProgram -> ECtx -> ExprNode (Doc, EKind, ENode) -> (Doc, EKind)
 
 -- Expression is compiled to a lazy static.
-mkExpr' d ctx e | isJust static_idx = (parens $ "&*__STATIC_" <> pp (fromJust static_idx), EReference)
+mkExpr' d ctx e | isJust static_idx = (parens $ "&*" <> crate <> "::__STATIC_" <> pp (fromJust static_idx), EReference)
     where
     e' = exprMap (E . sel3) e
     static_idx = lookupStatic d (E e') ctx ?statics
+    crate = if (isJust $ ctxInFunc ctx) then "crate" else "::types"
 
 -- All variables are references
 mkExpr' _ _ EVar{..}    = (pp exprVar, EReference)
@@ -2479,9 +2555,10 @@ mkExpr' _ _ EVar{..}    = (pp exprVar, EReference)
 -- Function arguments are passed as read-only or mutable references
 -- Functions return real values unless they are labeled return-by-reference.
 mkExpr' d ctx e@(EApply{..})  =
-    (mkFuncName d f <> (parens $ commaSep
-                        $ map (\(a, mut) -> if mut then mutref a else ref a)
-                        $ zip exprArgs (map argMut $ funcArgs f)), kind)
+    (mkFuncName d (isJust $ ctxInFunc ctx) f 
+     <> (parens $ commaSep
+                $ map (\(a, mut) -> if mut then mutref a else ref a)
+                $ zip exprArgs (map argMut $ funcArgs f)), kind)
     where
     f = applyExprGetFunc d ctx $ exprMap (E . sel3) e
     kind = if funcGetReturnByRefAttr d f then EReference else EVal
@@ -2492,13 +2569,13 @@ mkExpr' _ _ ETupField{..} = ("(" <> sel1 exprTuple <> "." <> pp exprTupField <> 
 mkExpr' _ _ (EBool _ True) = ("true", EVal)
 mkExpr' _ _ (EBool _ False) = ("false", EVal)
 mkExpr' _ _ EInt{..} = (mkInt exprIVal, EVal)
-mkExpr' _ _ EDouble{..} = ("OrderedFloat::<f64>" <> (parens $ pp exprDVal), EVal)
-mkExpr' _ _ EFloat{..} = ("OrderedFloat::<f32>" <> (parens $ pp exprFVal), EVal)
+mkExpr' _ _ EDouble{..} = ("::ordered_float::OrderedFloat::<f64>" <> (parens $ pp exprDVal), EVal)
+mkExpr' _ _ EFloat{..} = ("::ordered_float::OrderedFloat::<f32>" <> (parens $ pp exprFVal), EVal)
 mkExpr' _ _ EString{..} = ("String::from(r###\"" <> pp exprString <> "\"###)", EVal)
-mkExpr' _ _ EBit{..} | exprWidth <= 128 = (parens $ pp exprIVal <+> "as" <+> mkType (tBit exprWidth), EVal)
-                     | otherwise        = ("Uint::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
-mkExpr' _ _ ESigned{..} | exprWidth <= 128 = (parens $ pp exprIVal <+> "as" <+> mkType (tSigned exprWidth), EVal)
-                        | otherwise        = ("Int::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
+mkExpr' d ctx EBit{..} | exprWidth <= 128 = (parens $ pp exprIVal <+> "as" <+> mkType d (isJust $ ctxInFunc ctx) (tBit exprWidth), EVal)
+                       | otherwise        = ("::differential_datalog::uint::Uint::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
+mkExpr' d ctx ESigned{..} | exprWidth <= 128 = (parens $ pp exprIVal <+> "as" <+> mkType d (isJust $ ctxInFunc ctx) (tSigned exprWidth), EVal)
+                          | otherwise        = ("::differential_datalog::int::Int::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
 
 -- Struct fields must be values
 mkExpr' d ctx EStruct{..} | ctxInSetL ctx
@@ -2506,20 +2583,20 @@ mkExpr' d ctx EStruct{..} | ctxInSetL ctx
                           | isstruct
                           = (parens $ tname <> fieldvals, EVal)
                           | otherwise
-                          = (parens $ tname <> "::" <> rname exprConstructor <> fieldvals, EVal)
+                          = (parens $ tname <> "::" <> nameLocal exprConstructor <> fieldvals, EVal)
     where fieldvals  = braces $ commaSep $ map (\(fname, v) -> pp fname <> ":" <+> val v) exprStructFields
           fieldlvals = braces $ commaSep $ map (\(fname, v) -> pp fname <> ":" <+> lval v) exprStructFields
           tdef = consType d exprConstructor
           isstruct = isStructType $ fromJust $ tdefType tdef
-          tname = rname $ name tdef
+          tname = rnameScoped (isJust $ ctxInFunc ctx) $ name tdef
 
 -- Tuple fields must be values
 mkExpr' _ ctx ETuple{..} | ctxInSetL ctx
-                         = (tupleStruct $ map lval exprTupleFields, ELVal)
+                         = (tupleStruct (isJust $ ctxInFunc ctx) $ map lval exprTupleFields, ELVal)
                          | otherwise
-                         = (tupleStruct $ map val exprTupleFields, EVal)
+                         = (tupleStruct (isJust $ ctxInFunc ctx) $ map val exprTupleFields, EVal)
 
-mkExpr' d ctx e@ESlice{..} = (mkSlice (val exprOp, w) exprH exprL, EVal)
+mkExpr' d ctx e@ESlice{..} = (mkSlice d (val exprOp, w) exprH exprL, EVal)
     where
     e' = exprMap (E . sel3) e
     TBit _ w = exprType' d (CtxSlice e' ctx) $ E $ sel3 exprOp
@@ -2580,7 +2657,7 @@ mkExpr' d ctx e@ESet{..} | islet     = ("let" <+> assign <> optsemi, EVal)
     e' = exprMap (E . sel3) e
     islet = exprIsDeconstruct d $ E $ sel3 exprLVal
     t = if islet
-        then ":" <+> (mkType $ exprType d (CtxSetL e' ctx) $ E $ sel3 exprLVal)
+        then ":" <+> (mkType d (isJust $ ctxInFunc ctx) $ exprType d (CtxSetL e' ctx) $ E $ sel3 exprLVal)
         else empty
     assign = lval exprLVal <> t <+> "=" <+> val exprRVal
     optsemi = if not (ctxIsSeq1 ctx) then ";" else empty
@@ -2627,20 +2704,18 @@ mkExpr' d ctx e@EUnOp{..} = (v, EVal)
              UMinus | smallInt d t
                     -> mkTruncate (parens $ arg <> ".wrapping_neg()") t
              UMinus | isFP d t
-                    -> "OrderedFloat" <> (parens $ "-" <> arg <> ".into_inner()")
+                    -> "::ordered_float::OrderedFloat" <> (parens $ "-" <> arg <> ".into_inner()")
              UMinus -> mkTruncate (parens $ "-" <> arg) t
 mkExpr' _ _ EPHolder{} = ("_", ELVal)
 
 -- * LHS of assignment will get type ascription elsewhere (see 'ESet').
--- * 'continue', 'break', 'return' do not need type ascriptions.
 -- * Do type coercion for integer constants
--- * Otherwise, introduce an intermediate variable with explicit type
 mkExpr' d ctx ETyped{..} | ctxInSetL ctx = (e', categ)
                          | isint && toDouble
                                          = (parens $ e' <> ".to_double()", categ)
                          | isint && toFloat
                                          = (parens $ e' <+> ".to_float()", categ)
-                         | isint         = (parens $ e' <+> "as" <+> mkType exprTSpec, categ)
+                         | isint         = (parens $ e' <+> "as" <+> mkType d (isJust $ ctxInFunc ctx) exprTSpec, categ)
                          | otherwise     = (e', categ)
     where
     (e', categ, e) = exprExpr
@@ -2654,11 +2729,11 @@ mkExpr' d ctx EAs{..} | bothIntegers && narrow_from && narrow_to && width_cmp /=
                       -- use Rust's type cast syntax to convert between
                       -- primitive types; no need to truncate the result if
                       -- target width is greater than or equal to source
-                      = (parens $ val exprExpr <+> "as" <+> mkType exprTSpec, EVal)
+                      = (parens $ val exprExpr <+> "as" <+> mkType d in_func exprTSpec, EVal)
                       | bothIntegers && narrow_from && narrow_to
                       -- apply lossy type conversion between primitive Rust types;
                       -- truncate the result if needed
-                      = (mkTruncate (parens $ val exprExpr <+> "as" <+> mkType exprTSpec) to_type,
+                      = (mkTruncate (parens $ val exprExpr <+> "as" <+> mkType d in_func exprTSpec) to_type,
                          EVal)
                       | bothIntegers && width_cmp == GT && tfrom == tto
                       -- from_type is wider than to_type, but they both
@@ -2685,32 +2760,33 @@ mkExpr' d ctx EAs{..} | bothIntegers && narrow_from && narrow_to && width_cmp /=
                       -- they both correspond to the same Rust type
                       = (val exprExpr, EVal)
                       | bothIntegers
-                      = (parens $ tto <> "::from_" <> tfrom <> "(" <> val exprExpr <> ")", EVal)
+                      = (parens $ tto <> "::from_" <> nameLocal (render tfrom) <> "(" <> val exprExpr <> ")", EVal)
 
                       -- convert long integers to FP
-                      | isFloat d to_type && (tfrom == "Int" || tfrom == "Uint")
+                      | isFloat d to_type && (tfrom == "::differential_datalog::int::Int" || tfrom == "::differential_datalog::uint::Uint")
                       = (parens $ "(" <> val exprExpr <> ").to_float()", EVal)
-                      | isDouble d to_type && (tfrom == "Int" || tfrom == "Uint")
+                      | isDouble d to_type && (tfrom == "::differential_datalog::int::Int" || tfrom == "::differential_datalog::uint::Uint")
                       = (parens $ "(" <> val exprExpr <> ").to_double()", EVal)
                       -- convert integer to float
                       | isFloat d to_type && isInteger d from_type
-                      = (parens $ "OrderedFloat(" <> val exprExpr <> " as f32)", EVal)
+                      = (parens $ "::ordered_float::OrderedFloat(" <> val exprExpr <> " as f32)", EVal)
                       | isDouble d to_type && isInteger d from_type
-                      = (parens $ "OrderedFloat(" <> val exprExpr <> " as f64)", EVal)
+                      = (parens $ "::ordered_float::OrderedFloat(" <> val exprExpr <> " as f64)", EVal)
                       -- convert some FP to double
                       | isDouble d to_type && isFP d from_type
-                      = (parens $ "OrderedFloat::<f64>::from((*" <> val exprExpr <> ") as f64)", EVal)
+                      = (parens $ "::ordered_float::OrderedFloat::<f64>::from((*" <> val exprExpr <> ") as f64)", EVal)
                       -- convert some FP to float
                       | isFloat d to_type && isFP d from_type
-                      = (parens $ "OrderedFloat::<f32>::from((*" <> val exprExpr <> ") as f32)", EVal)
+                      = (parens $ "::ordered_float::OrderedFloat::<f32>::from((*" <> val exprExpr <> ") as f32)", EVal)
                       | otherwise
                       = error $ "Unexpected cast from " ++ (show from_type) ++ " to " ++ (show to_type)
     where
     e' = sel3 exprExpr
     from_type = exprType' d (CtxAs e' ctx) $ E e'
     to_type   = typ' d exprTSpec
-    tfrom = mkType from_type  -- Rust type
-    tto   = mkType to_type    -- Rust type
+    in_func = isJust $ ctxInFunc ctx
+    tfrom = mkType d in_func from_type  -- Rust type
+    tto   = mkType d in_func to_type    -- Rust type
     bothIntegers = (isInteger d from_type) && (isInteger d to_type)
     narrow_from = (isBit d from_type || isSigned d from_type) && typeWidth from_type <= 128
     narrow_to   = (isBit d to_type || isSigned d to_type)  && typeWidth to_type <= 128
@@ -2723,56 +2799,63 @@ mkExpr' d ctx EAs{..} | bothIntegers && narrow_from && narrow_to && width_cmp /=
 
 mkExpr' _ _ e = error $ "Compile.mkExpr': unexpected expression at " ++ show (pos e)
 
-mkFuncName :: DatalogProgram -> Function -> Doc
-mkFuncName d f | length namesakes == 1 = rname $ name f
-               | otherwise =
-    (rname $ name f) <> "_" <> targ0 <> "_" <> pp (length $ funcArgs f)
+-- 'local' is true iff the function is being used in the same crate where it was
+-- declared, i.e., the 'types' crate.
+mkFuncName :: DatalogProgram -> Bool -> Function -> Doc
+mkFuncName d local f =
+    pp $ intercalate "::" $ (if local then "crate" else "::types") : (modulePath $ nameScope f) ++ [render $ mkFuncNameShort d f]
+
+-- Rust function name without the scope.
+mkFuncNameShort :: DatalogProgram -> Function -> Doc
+mkFuncNameShort d f | length namesakes == 1 = nameLocal $ name f
+                    | otherwise =
+    (nameLocal $ name f) <> "_" <> targ0 <> "_" <> pp (length $ funcArgs f)
     where
     arg0 = funcArgs f !! 0
     targ0 = mkValConstructorName d $ typ arg0
     namesakes = progFunctions d M.! (name f)
 
-mkType :: (WithType a) => a -> Doc
-mkType x = mkType' empty $ typ x
 
--- DDlog user-defined types are declared in `scope`.
-mkTypeScoped :: (WithType a) => Doc -> a -> Doc
-mkTypeScoped scope x = mkType' scope $ typ x
+-- 'local' is true iff the type is being used inside the 'types' crate.
+mkType :: (WithType a) => DatalogProgram -> Bool -> a -> Doc
+mkType d local x = mkType' d (if local then "crate" else "::types") $ typ x
 
-mkType' :: Doc -> Type -> Doc
-mkType' _       TBool{}                    = "bool"
-mkType' _       TInt{}                     = "Int"
-mkType' _       TString{}                  = "String"
-mkType' _       TBit{..} | typeWidth <= 8  = "u8"
-                         | typeWidth <= 16 = "u16"
-                         | typeWidth <= 32 = "u32"
-                         | typeWidth <= 64 = "u64"
-                         | typeWidth <= 128= "u128"
-                         | otherwise       = "Uint"
-mkType' _       t@TSigned{..} | typeWidth == 8  = "i8"
-                              | typeWidth == 16 = "i16"
-                              | typeWidth == 32 = "i32"
-                              | typeWidth == 64 = "i64"
-                              | typeWidth == 128= "i128"
-                              | otherwise       = errorWithoutStackTrace $ "Only machine widths (8/16/32/64/128) supported: " ++ show t
-mkType' _       TDouble{}                  = "OrderedFloat<f64>"
-mkType' _       TFloat{}                   = "OrderedFloat<f32>"
-mkType' scope   TTuple{..} | length typeTupArgs <= 12
-                                  = parens $ commaSep $ map (mkType' scope) typeTupArgs
-mkType' scope   TTuple{..}        = tupleTypeName typeTupArgs <>
-                                     if null typeTupArgs
-                                        then empty
-                                        else "<" <> (commaSep $ map (mkType' scope) typeTupArgs) <> ">"
-mkType' scope   TUser{..}         = scope <> rname typeName <>
+mkType' :: DatalogProgram -> String -> Type -> Doc
+mkType' _ _       TBool{}                    = "bool"
+mkType' _ _       TInt{}                     = "::differential_datalog::int::Int"
+mkType' _ _       TString{}                  = "String"
+mkType' _ _       TBit{..} | typeWidth <= 8  = "u8"
+                           | typeWidth <= 16 = "u16"
+                           | typeWidth <= 32 = "u32"
+                           | typeWidth <= 64 = "u64"
+                           | typeWidth <= 128= "u128"
+                           | otherwise       = "::differential_datalog::uint::Uint"
+mkType' _ _       t@TSigned{..} | typeWidth == 8  = "i8"
+                                | typeWidth == 16 = "i16"
+                                | typeWidth == 32 = "i32"
+                                | typeWidth == 64 = "i64"
+                                | typeWidth == 128= "i128"
+                                | otherwise       = errorWithoutStackTrace $ "Only machine widths (8/16/32/64/128) supported: " ++ show t
+mkType' _ _       TDouble{}                  = "::ordered_float::OrderedFloat<f64>"
+mkType' _ _       TFloat{}                   = "::ordered_float::OrderedFloat<f32>"
+mkType' d scope   TTuple{..} | length typeTupArgs <= 12
+                                    = parens $ commaSep $ map (mkType' d scope) typeTupArgs
+mkType' d scope   TTuple{..}        = tupleTypeName' scope typeTupArgs <>
+                                      if null typeTupArgs
+                                         then empty
+                                         else "<" <> (commaSep $ map (mkType' d scope) typeTupArgs) <> ">"
+mkType' d scope   TUser{..} | tdefGetAliasAttr d (getType d typeName)
+                                    = mkType' d scope $ fromJust $ tdefType $ getType d typeName
+mkType' d scope   TUser{..}         = rnameScoped' scope typeName <>
                                      if null typeArgs
                                         then empty
-                                        else "<" <> (commaSep $ map (mkType' scope) typeArgs) <> ">"
-mkType' scope   TOpaque{..}       = scope <> rname typeName <>
-                                     if null typeArgs
-                                        then empty
-                                        else "<" <> (commaSep $ map (mkType' scope) typeArgs) <> ">"
-mkType' _       TVar{..}          = pp tvarName
-mkType' _       t                 = error $ "Compile.mkType' " ++ show t
+                                        else "<" <> (commaSep $ map (mkType' d scope) typeArgs) <> ">"
+mkType' d scope   TOpaque{..}       = rnameScoped' scope typeName <>
+                                      if null typeArgs
+                                         then empty
+                                         else "<" <> (commaSep $ map (mkType' d scope) typeArgs) <> ">"
+mkType' _ _       TVar{..}          = pp tvarName
+mkType' _ _       t                 = error $ "Compile.mkType' " ++ show t
 
 smallInt :: DatalogProgram -> Type -> Bool
 smallInt d t = ((isSigned d t || isBit d t) && (typeWidth (typ' d t) <= 128))
@@ -2796,7 +2879,7 @@ mkBinOp d op (e1, t1) (e2, t2) =
         Div    | smallInt d t1
                -> parens $ e1 <> ".wrapping_div(" <> e2 <> ")"
                | isFP d t1
-               -> "OrderedFloat" <> (parens $ e1 <> ".into_inner()" <+> "/" <+> e2 <> ".into_inner()")
+               -> "::ordered_float::OrderedFloat" <> (parens $ e1 <> ".into_inner()" <+> "/" <+> e2 <> ".into_inner()")
                | otherwise
                -> parens $ e1 <+> "/" <+> e2
         ShiftR | smallInt d t1
@@ -2813,22 +2896,22 @@ mkBinOp d op (e1, t1) (e2, t2) =
         Plus   | smallInt d t1
                -> parens $ e1 <> ".wrapping_add(" <> e2 <> ")"
                | isFP d t1
-               -> "OrderedFloat" <> (parens $ e1 <> ".into_inner()" <+> "+" <+> e2 <> ".into_inner()")
+               -> "::ordered_float::OrderedFloat" <> (parens $ e1 <> ".into_inner()" <+> "+" <+> e2 <> ".into_inner()")
                | otherwise
                -> parens $ e1 <+> "+" <+> e2
         Minus  | smallInt d t1
                -> parens $ e1 <> ".wrapping_sub(" <> e2 <> ")"
                | isFP d t1
-               -> "OrderedFloat" <> (parens $ e1 <> ".into_inner()"<+> "-" <+> e2 <> ".into_inner()")
+               -> "::ordered_float::OrderedFloat" <> (parens $ e1 <> ".into_inner()"<+> "-" <+> e2 <> ".into_inner()")
                | otherwise
                -> parens $ e1 <+> "-" <+> e2
         Times  | smallInt d t1
                -> parens $ e1 <> ".wrapping_mul(" <> e2 <> ")"
                | isFP d t1
-               -> "OrderedFloat" <> (parens $ e1 <> ".into_inner()" <+> "*" <+> e2 <> ".into_inner()")
+               -> "::ordered_float::OrderedFloat" <> (parens $ e1 <> ".into_inner()" <+> "*" <+> e2 <> ".into_inner()")
                | otherwise
                -> parens $ e1 <+> "*" <+> e2
-        Concat -> mkConcat (e1, typeWidth t1) (e2, typeWidth t2)
+        Concat -> mkConcat d (e1, typeWidth t1) (e2, typeWidth t2)
 
 -- These operators require truncating the output value to correct
 -- width.
@@ -2837,36 +2920,36 @@ bopsRequireTruncation = [ShiftL, Plus, Minus, Times]
 
 -- Produce code to cast bitvector to a different-width BV.
 -- The value of 'e' must fit in the new width.
-castBV :: Doc -> Int -> Int -> Doc
-castBV e w1 w2 | t1 == t2
-               = e
-               | w1 <= 128 && w2 <= 128
-               = parens $ e <+> "as" <+> t2
-               | w2 > 128
-               = "Uint::from_" <> t1 <> "(" <> e <> ")"
-               | otherwise
-               = e <> "to_" <> t2 <> "().unwrap()"
+castBV :: DatalogProgram -> Doc -> Int -> Int -> Doc
+castBV d e w1 w2 | t1 == t2
+                 = e
+                 | w1 <= 128 && w2 <= 128
+                 = parens $ e <+> "as" <+> t2
+                 | w2 > 128
+                 = "::differential_datalog::uint::Uint::from_" <> nameLocal (render t1) <> "(" <> e <> ")"
+                 | otherwise
+                 = e <> "to_" <> t2 <> "().unwrap()"
     where
-    t1 = mkType $ tBit w1
-    t2 = mkType $ tBit w2
+    t1 = mkType d True $ tBit w1
+    t2 = mkType d True $ tBit w2
 
 -- Concatenate two bitvectors
-mkConcat :: (Doc, Int) -> (Doc, Int) -> Doc
-mkConcat (e1, w1) (e2, w2) =
+mkConcat :: DatalogProgram -> (Doc, Int) -> (Doc, Int) -> Doc
+mkConcat d (e1, w1) (e2, w2) =
     parens $ e1'' <+> "|" <+> e2'
     where
-    e1' = castBV e1 w1 (w1+w2)
-    e2' = castBV e2 w2 (w1+w2)
+    e1' = castBV d e1 w1 (w1+w2)
+    e2' = castBV d e2 w2 (w1+w2)
     e1'' = parens $ e1' <+> "<<" <+> pp w2
 
-mkSlice :: (Doc, Int) -> Int -> Int -> Doc
-mkSlice (e, w) h l = castBV res w (h - l + 1)
+mkSlice :: DatalogProgram -> (Doc, Int) -> Int -> Int -> Doc
+mkSlice d (e, w) h l = castBV d res w (h - l + 1)
     where
     res = parens $ (parens $ e <+> ">>" <+> pp l) <+> "&" <+> mask
     mask = mkBVMask (h - l + 1)
 
 mkBVMask :: Int -> Doc
-mkBVMask w | w > 128   = "Uint::parse_bytes(b\"" <> m <> "\", 16)"
+mkBVMask w | w > 128   = "::differential_datalog::uint::Uint::parse_bytes(b\"" <> m <> "\", 16)"
            | otherwise = "0x" <> m
     where
     m = pp $ showHex (((1::Integer) `shiftL` w) - 1) ""
@@ -2887,11 +2970,11 @@ mkTruncate v t =
 
 mkInt :: Integer -> Doc
 mkInt v | v <= (toInteger (maxBound::Word128)) && v >= (toInteger (minBound::Word128))
-        = "Int::from_u128(" <> pp v <> ")"
+        = "::differential_datalog::int::Int::from_u128(" <> pp v <> ")"
         | v <= (toInteger (maxBound::Int128))  && v >= (toInteger (minBound::Int128))
-        = "Int::from_i128(" <> pp v <> ")"
+        = "::differential_datalog::int::Int::from_i128(" <> pp v <> ")"
         | otherwise
-        = "Int::parse_bytes(b\"" <> pp v <> "\", 10)"
+        = "::differential_datalog::int::Int::parse_bytes(b\"" <> pp v <> "\", 10)"
 
 -- Compute the atom or tuple of variables after the prefix of length n.
 -- If this is the last term, then it is an expression of the LHS variables for each head

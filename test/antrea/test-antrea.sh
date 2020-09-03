@@ -4,6 +4,8 @@
 
 set -e
 
+stack install
+
 #export DDLOGFLAGS="--output-input-relations=O --output-internal-relations"
 #../datalog_tests/run-test.sh networkpolicy_controller.dl release
 ddlog -i networkpolicy_controller.dl -j -L../../lib
@@ -20,7 +22,16 @@ run_test() {
     else
         unset DIFFERENTIAL_EAGER_MERGE
     fi
-    /usr/bin/time ./networkpolicy_controller_ddlog/target/release/networkpolicy_controller_cli -w $1 --no-print --no-store < $2 > antrea.dump
+
+    if [[ $2 == *.gz ]]
+    then
+        gunzip -kf $2
+        dat=${2%.gz}
+    else
+        dat=$2
+    fi
+
+    /usr/bin/time ./networkpolicy_controller_ddlog/target/release/networkpolicy_controller_cli -w $1 --no-print --no-store < $dat > antrea.dump
 
     # Dump profile on the terminal.
     #sed -n '/^Profile:$/,$p' antrea.dump
@@ -45,5 +56,5 @@ run_test 1 "antrea.dat" "antrea.dump.expected" 100000
 run_test 2 "antrea.dat" "antrea.dump.expected"
 run_test 2 "antrea.dat" "antrea.dump.expected" 100000
 
-run_test 1 "antrea-test-data/antrea.dat" "antrea-test-data/antrea.dump.expected.4.gz"
-run_test 1 "antrea-test-data/antrea.dat" "antrea-test-data/antrea.dump.expected.4.gz" 10
+run_test 1 "antrea-test-data/antrea.dat.gz" "antrea-test-data/antrea.dump.expected.4.gz"
+run_test 1 "antrea-test-data/antrea.dat.gz" "antrea-test-data/antrea.dump.expected.4.gz" 10
