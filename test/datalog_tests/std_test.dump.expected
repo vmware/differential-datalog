@@ -22,12 +22,12 @@ std_test::Pow{.descr = "$pow32(2: u64, 32)", .val = "4294967296"}
 std_test::Pow{.descr = "pow32(2: u32, 32)", .val = "0"}
 std_test::Default{.descr = "DefaultEnum", .val = "DEnum1"}
 std_test::Default{.descr = "u32", .val = "0"}
-std_test::MapDelete{.descr = "alphabet", .m = [(0, "a"), (1, "b"), (2, "c"), (3, "d"), (4, "e")], .s = std::None{}}
-std_test::MapDelete{.descr = "alphabet\\4", .m = [(0, "a"), (1, "b"), (2, "c"), (3, "d")], .s = std::Some{.x = "e"}}
-std_test::MapDelete{.descr = "alphabet\\4\\3", .m = [(0, "a"), (1, "b"), (2, "c")], .s = std::Some{.x = "d"}}
-std_test::MapDelete{.descr = "alphabet\\4\\3\\2", .m = [(0, "a"), (1, "b")], .s = std::Some{.x = "c"}}
-std_test::MapDelete{.descr = "alphabet\\4\\3\\2\\1", .m = [(0, "a")], .s = std::Some{.x = "b"}}
-std_test::MapDelete{.descr = "alphabet\\4\\3\\2\\1\\0", .m = [], .s = std::Some{.x = "a"}}
+std_test::MapDelete{.descr = "alphabet", .m = [(0, "a"), (1, "b"), (2, "c"), (3, "d"), (4, "e")], .s = ddlog_std::None{}}
+std_test::MapDelete{.descr = "alphabet\\4", .m = [(0, "a"), (1, "b"), (2, "c"), (3, "d")], .s = ddlog_std::Some{.x = "e"}}
+std_test::MapDelete{.descr = "alphabet\\4\\3", .m = [(0, "a"), (1, "b"), (2, "c")], .s = ddlog_std::Some{.x = "d"}}
+std_test::MapDelete{.descr = "alphabet\\4\\3\\2", .m = [(0, "a"), (1, "b")], .s = ddlog_std::Some{.x = "c"}}
+std_test::MapDelete{.descr = "alphabet\\4\\3\\2\\1", .m = [(0, "a")], .s = ddlog_std::Some{.x = "b"}}
+std_test::MapDelete{.descr = "alphabet\\4\\3\\2\\1\\0", .m = [], .s = ddlog_std::Some{.x = "a"}}
 std_test::IntVecTest{.descr = "vec0", .vec = [0, 1, 2, 3, 4, 5]}
 std_test::IntVecTest{.descr = "vec0.resize(10,-100)", .vec = [0, 1, 2, 3, 4, 5, -100, -100, -100, -100]}
 std_test::IntVecTest{.descr = "vec0.swap_nth(10, -1)", .vec = [0, 1, 2, 3, 4, 5, -1]}

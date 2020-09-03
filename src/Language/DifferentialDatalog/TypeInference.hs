@@ -662,7 +662,7 @@ exprConstraints_ de@(DDExpr ctx (E e@EApply{..})) = do
     -- All functions that 'exprFunc' may be referring to.
     candidates = concatMap (\f -> getFuncs ?d f (length exprArgs)) exprFunc
     efirst_arg = DDExpr (CtxApply e ctx 0) (head exprArgs)
-    fname = nameLocal $ head exprFunc
+    fname = nameLocalStr $ head exprFunc
 
 -- Struct field access: 'e1.f', where field 'f' is present in user-defined
 -- structs in 'S1',...,'Sn'.

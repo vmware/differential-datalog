@@ -391,11 +391,11 @@ fn record_into_field(rec: Record) -> Result<Value, String> {
             }
         }
         // Option<> is deserialized into a set of size 0 or 1.
-        Record::NamedStruct(name, _) if name == "std::None" => Ok(Value::Array(vec![
+        Record::NamedStruct(name, _) if name == "ddlog_std::None" => Ok(Value::Array(vec![
             Value::String("set".to_owned()),
             Value::Array(vec![]),
         ])),
-        Record::NamedStruct(name, mut fields) if name == "std::Some" => Ok(Value::Array(vec![
+        Record::NamedStruct(name, mut fields) if name == "ddlog_std::Some" => Ok(Value::Array(vec![
             Value::String("set".to_owned()),
             Value::Array(vec![record_into_field(fields.remove(0).1)?]),
         ])),
@@ -445,11 +445,11 @@ fn uuid_from_int(i: &BigInt) -> Result<String, String> {
 }
 
 // exported to DDlog; hence the funny name
-pub fn ovsdb_uuid2str(i: &u128) -> String {
+pub fn uuid2str(i: &u128) -> String {
     uuid::Uuid::from_u128(i.to_be()).to_hyphenated().to_string()
 }
 
-pub fn ovsdb_uuid2name(i: &u128) -> String {
+pub fn uuid2name(i: &u128) -> String {
     let s = uuid::Uuid::from_u128(i.to_be()).to_simple().to_string();
     format!(
         "u{}_{}_{}_{}_{}",

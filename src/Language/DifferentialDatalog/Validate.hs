@@ -559,8 +559,8 @@ exprValidate1 d _ ctx (EVar p v)          = do _ <- checkVar p d ctx v
                                                return ()
 exprValidate1 d _ _   (EApply p fnames as) = do
     fs <- concat <$> mapM (\fname -> checkFuncs p d fname (length as)) fnames
-    check d (length fs > 0) p $ "Unknown function '" ++ (nameLocal $ head fnames) ++ "'"
-    check d (length fs == 1 || (not $ null as)) p $ "Ambiguous function name '" ++ (nameLocal $ head fnames) ++ "' may refer to:\n  " ++
+    check d (length fs > 0) p $ "Unknown function '" ++ (nameLocalStr $ head fnames) ++ "'"
+    check d (length fs == 1 || (not $ null as)) p $ "Ambiguous function name '" ++ (nameLocalStr $ head fnames) ++ "' may refer to:\n  " ++
                                                     (intercalate "\n  " $ map (\f -> name f ++ " at " ++ spos f) fs)
 exprValidate1 _ _ _   EField{}            = return ()
 exprValidate1 _ _ _   ETupField{}         = return ()

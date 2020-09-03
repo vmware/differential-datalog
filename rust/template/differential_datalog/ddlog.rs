@@ -12,6 +12,9 @@ use crate::record::Record;
 use crate::record::UpdCmd;
 use crate::valmap::DeltaMap;
 
+use serde::de::DeserializeOwned;
+use serde::Serialize;
+
 /// Convert to and from values/objects of a DDlog program.
 pub trait DDlogConvert: Debug {
     /// Convert a `RelId` into its symbolic name.
@@ -28,6 +31,14 @@ pub trait DDlogConvert: Debug {
 /// transactions.
 pub trait DDlog: Debug {
     type Convert: DDlogConvert;
+
+    /// Wrapper type that implements Serialize/Deserialize functionality for Update<DDValue>.
+    type UpdateSerializer: Debug
+        + Send
+        + Serialize
+        + DeserializeOwned
+        + From<Update<DDValue>>
+        + Into<Update<DDValue>>;
 
     /// Run the program.
     fn run<F>(workers: usize, do_store: bool, cb: F) -> Result<(Self, DeltaMap<DDValue>), String>

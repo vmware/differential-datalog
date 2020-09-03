@@ -3,8 +3,8 @@ First5{.str = "Hello"}: +1
 Phrases:
 Phrases{.phrase = "Hello, World!"}: +1
 PriceInCents:
-PriceInCents{.item = "Atlantis", .price1 = std::None{}, .price2 = 0, .price3 = std::None{}}: +1
-PriceInCents{.item = "Falcon 9", .price1 = std::Some{.x = 6200000000}, .price2 = 6200000000, .price3 = std::Some{.x = 6200000000}}: +1
+PriceInCents{.item = "Atlantis", .price1 = ddlog_std::None{}, .price2 = 0, .price3 = ddlog_std::None{}}: +1
+PriceInCents{.item = "Falcon 9", .price1 = ddlog_std::Some{.x = 6200000000}, .price2 = 6200000000, .price3 = ddlog_std::Some{.x = 6200000000}}: +1
 Phrases:
 Phrases{.phrase = "Goodbye, Ruby Tuesday"}
 Phrases{.phrase = "Goodbye, World"}

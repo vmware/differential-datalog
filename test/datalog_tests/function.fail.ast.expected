@@ -14,15 +14,15 @@ expression '(var w: bool)'
         C0{.x = w: bool} -> w,
                 ^^^^^^^
 
-error: ./test/datalog_tests/function.fail.dl:6:13-7:1: Access to guarded field 'x' (not all constructors of type 'std::Option' have this field).
+error: ./test/datalog_tests/function.fail.dl:6:13-7:1: Access to guarded field 'x' (not all constructors of type 'ddlog_std::Option' have this field).
     var b = a.x
             ^
 
-error: ./test/datalog_tests/function.fail.dl:6:5-6:17: Type constructor in the left-hand side of an assignment is only allowed for types with one constructor,  but "std::Option" has multiple constructors
+error: ./test/datalog_tests/function.fail.dl:6:5-6:17: Type constructor in the left-hand side of an assignment is only allowed for types with one constructor,  but "ddlog_std::Option" has multiple constructors
     Some{var s} = x
     ^^^^^^^^^^^^
 
-error: ./test/datalog_tests/function.fail.dl:8:16-8:27: Type constructor in the left-hand side of an assignment is only allowed for types with one constructor,  but "std::Option" has multiple constructors
+error: ./test/datalog_tests/function.fail.dl:8:16-8:27: Type constructor in the left-hand side of an assignment is only allowed for types with one constructor,  but "ddlog_std::Option" has multiple constructors
     T{.field = Some{var s}} = x
                ^^^^^^^^^^^
 
@@ -96,7 +96,7 @@ error: ./test/datalog_tests/function.fail.dl:7:5-7:9: Expression is not an l-val
 
 error: ./test/datalog_tests/function.fail.dl:10:16-10:34: Type mismatch:
 expected type: bool
-actual type: std::Option<bool>
+actual type: ddlog_std::Option<bool>
 in
 expression 'bool_identity(any)'
   (Tagg{.col = bool_identity(any)})
@@ -108,7 +108,7 @@ Only non-extern functions can be overloaded.
 extern function foo(x: u32): ()
 ^
 
-error: ./test/datalog_tests/function.fail.dl:8:21-8:38: expression 'std::nth(components, 1)' must be of type 'Result<>', but its type is 'std::Option<'a>'
+error: ./test/datalog_tests/function.fail.dl:8:21-8:38: expression 'ddlog_std::nth(components, 1)' must be of type 'Result<>', but its type is 'ddlog_std::Option<'a>'
     var last_name = components.nth(1)?;
                     ^^^^^^^^^^^^^^^^^
 

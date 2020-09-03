@@ -35,6 +35,7 @@ import System.Environment
 import Data.List
 import Data.Maybe
 import Data.List.Split
+import Data.Tuple.Select
 import Control.Exception
 import Control.DeepSeq
 import Control.Monad
@@ -45,6 +46,7 @@ import Text.PrettyPrint
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Set as S
+import qualified Data.Map as M
 import qualified Codec.Compression.GZip as GZ
 
 import Language.DifferentialDatalog.Config
@@ -131,9 +133,9 @@ unitTests dir = do
     testGroup "unit tests" $
           [ testCase (takeBaseName dir) $ unitTest dir ]
 
-parseValidate :: FilePath -> Bool -> String -> IO (DatalogProgram, Doc, Doc)
+parseValidate :: FilePath -> Bool -> String -> IO ([DatalogModule], DatalogProgram, M.Map ModuleName Doc, Doc)
 parseValidate file java program = do
-    (d, rs_code, toml_code) <- parseDatalogProgram [takeDirectory file, "lib"] True program file
+    (modules, d, rs_code, toml_code) <- parseDatalogProgram [takeDirectory file, "lib"] True program file
     d' <- case validate d of
                Left e   -> errorWithoutStackTrace $ "error: " ++ e
                Right d' -> return d'
@@ -141,13 +143,13 @@ parseValidate file java program = do
         case flatBufferValidate d' of
              Left e  -> errorWithoutStackTrace $ "error: " ++ e
              Right{} -> return ()
-    return (d', rs_code, toml_code)
+    return (modules, d', rs_code, toml_code)
 
 -- compile a program that is supposed to fail compilation
 compileFailingProgram :: String -> String -> IO String
 compileFailingProgram file program = do
-   (((show <$> parseValidate file False program)) >>
-               fail "Compilation should have failed") `catch`
+   ((((show . sel2) <$> parseValidate file False program)) >>
+    fail "Compilation should have failed") `catch`
              (\e -> return $ show (e::SomeException))
 
 shouldFail :: String -> Bool
@@ -184,7 +186,7 @@ parserTest fname = do
                                        "\nbut got:\n" ++ ast
       else do
         -- parse Datalog file and output its AST
-        (prog, _, _) <- parseValidate fname False body
+        (_, prog, _, _) <- parseValidate fname False body
         writeFile astfile (show prog ++ "\n")
         -- parse reference output
         fdata <- readFile astfile
@@ -255,11 +257,11 @@ generateDDLogRust java file crate_types = do
     fname <- makeAbsolute file
     body <- readFile fname
     let specname = takeBaseName fname
-    (prog, rs_code, toml_code) <- parseValidate fname java body
+    (modules, prog, rs_code, toml_code) <- parseValidate fname java body
     -- generate Rust project
     let dir = takeDirectory fname
     let ?cfg = defaultConfig { confDatalogFile = fname, confJava = java }
-    compile prog specname rs_code toml_code dir crate_types
+    compile prog specname modules rs_code toml_code dir crate_types
 
 -- Feed test data via pipe if a .dat file exists
 cliTest :: Bool -> FilePath -> String -> FilePath -> [String] -> IO ()

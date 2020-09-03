@@ -1,9 +1,11 @@
 //! Serialize DDlog types to/from FlatBuffers.
 
 use super::*;
+use ::ordered_float::OrderedFloat;
+use differential_datalog::int::Int;
 use differential_datalog::program::Response;
+use differential_datalog::uint::Uint;
 use flatbuffers as fbrt;
-use ordered_float::OrderedFloat;
 
 /// Trait for types that can be de-serialized from FlatBuffer-embedded objects.
 pub trait FromFlatBuffer<T>: Sized {
@@ -443,7 +445,7 @@ impl<'b> ToFlatBuffer<'b> for Int {
         fb::__BigInt::create(
             fbb,
             &fb::__BigIntArgs {
-                sign: sign != Sign::Minus,
+                sign: sign != ::num::bigint::Sign::Minus,
                 bytes: Some(vec),
             },
         )

@@ -6,11 +6,12 @@ use differential_dataflow::collection::Collection;
 use differential_dataflow::lattice::Lattice;
 use differential_dataflow::operators::consolidate::Consolidate;
 use differential_dataflow::operators::ThresholdTotal;
+use differential_datalog::program::Weight;
 use std::mem;
 use timely::dataflow::scopes::Scope;
 use timely::order::TotalOrder;
 
-pub fn graph_SCC<S, V, E, N, EF, LF>(
+pub fn SCC<S, V, E, N, EF, LF>(
     edges: &Collection<S, V, Weight>,
     _edges: EF,
     from: fn(&E) -> N,
@@ -43,7 +44,7 @@ where
     scclabels.map(_scclabels)
 }
 
-pub fn graph_ConnectedComponents<S, V, E, N, EF, LF>(
+pub fn ConnectedComponents<S, V, E, N, EF, LF>(
     edges: &Collection<S, V, Weight>,
     _edges: EF,
     from: fn(&E) -> N,
@@ -70,7 +71,7 @@ where
     labels.map(_cclabels)
 }
 
-pub fn graph_ConnectedComponents64<S, V, E, N, EF, LF>(
+pub fn ConnectedComponents64<S, V, E, N, EF, LF>(
     edges: &Collection<S, V, Weight>,
     _edges: EF,
     from: fn(&E) -> N,
@@ -104,7 +105,7 @@ where
     labels.map(_cclabels)
 }
 
-pub fn graph_UnsafeBidirectionalEdges<S, V, E, N, EF, LF>(
+pub fn UnsafeBidirectionalEdges<S, V, E, N, EF, LF>(
     edges: &Collection<S, V, Weight>,
     _edges: EF,
     from: fn(&E) -> N,

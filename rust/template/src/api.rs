@@ -186,6 +186,7 @@ impl HDDlog {
 
 impl DDlog for HDDlog {
     type Convert = DDlogConverter;
+    type UpdateSerializer = UpdateSerializer;
 
     fn run<F>(workers: usize, do_store: bool, cb: F) -> Result<(Self, DeltaMap<DDValue>), String>
     where

@@ -59,7 +59,7 @@ import qualified Data.GraphViz                     as GV
 import qualified Data.GraphViz.Attributes.Complete as GV
 import qualified Data.GraphViz.Printing            as GV
 
-import Language.DifferentialDatalog.Debug
+import {-# SOURCE #-} Language.DifferentialDatalog.Debug
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Syntax

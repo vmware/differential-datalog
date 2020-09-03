@@ -914,10 +914,10 @@ impl FromRecord for u8 {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
             Record::Int(i) => match i.to_u8() {
-                Some(x) => Result::Ok(x),
-                None => Result::Err(format!("cannot convert {} to u8", i)),
+                Some(x) => Ok(x),
+                None => Err(format!("cannot convert {} to u8", i)),
             },
-            v => Result::Err(format!("not an int {:?}", *v)),
+            v => Err(format!("not an int {:?}", *v)),
         }
     }
 }
@@ -939,10 +939,10 @@ impl FromRecord for u16 {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
             Record::Int(i) => match i.to_u16() {
-                Some(x) => Result::Ok(x),
-                None => Result::Err(format!("cannot convert {} to u16", i)),
+                Some(x) => Ok(x),
+                None => Err(format!("cannot convert {} to u16", i)),
             },
-            v => Result::Err(format!("not an int {:?}", *v)),
+            v => Err(format!("not an int {:?}", *v)),
         }
     }
 }
@@ -964,10 +964,10 @@ impl FromRecord for u32 {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
             Record::Int(i) => match i.to_u32() {
-                Some(x) => Result::Ok(x),
-                None => Result::Err(format!("cannot convert {} to u32", i)),
+                Some(x) => Ok(x),
+                None => Err(format!("cannot convert {} to u32", i)),
             },
-            v => Result::Err(format!("not an int {:?}", *v)),
+            v => Err(format!("not an int {:?}", *v)),
         }
     }
 }
@@ -989,10 +989,10 @@ impl FromRecord for u64 {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
             Record::Int(i) => match i.to_u64() {
-                Some(x) => Result::Ok(x),
-                None => Result::Err(format!("cannot convert {} to u64", i)),
+                Some(x) => Ok(x),
+                None => Err(format!("cannot convert {} to u64", i)),
             },
-            v => Result::Err(format!("not an int {:?}", *v)),
+            v => Err(format!("not an int {:?}", *v)),
         }
     }
 }
@@ -1013,10 +1013,10 @@ impl Mutator<u64> for Record {
 impl FromRecord for OrderedFloat<f32> {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
-            Record::Float(i) => Result::Ok(*i),
+            Record::Float(i) => Ok(*i),
             // Floating point values parsed from a command file are always stored as doubles.
-            Record::Double(i) => Result::Ok(OrderedFloat::<f32>::from(**i as f32)),
-            v => Result::Err(format!("not a float {:?}", *v)),
+            Record::Double(i) => Ok(OrderedFloat::<f32>::from(**i as f32)),
+            v => Err(format!("not a float {:?}", *v)),
         }
     }
 }
@@ -1037,8 +1037,8 @@ impl Mutator<OrderedFloat<f32>> for Record {
 impl FromRecord for OrderedFloat<f64> {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
-            Record::Double(i) => Result::Ok(*i),
-            v => Result::Err(format!("not a double {:?}", *v)),
+            Record::Double(i) => Ok(*i),
+            v => Err(format!("not a double {:?}", *v)),
         }
     }
 }
@@ -1060,10 +1060,10 @@ impl FromRecord for u128 {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
             Record::Int(i) => match i.to_u128() {
-                Some(x) => Result::Ok(x),
-                None => Result::Err(format!("cannot convert {} to u128", i)),
+                Some(x) => Ok(x),
+                None => Err(format!("cannot convert {} to u128", i)),
             },
-            v => Result::Err(format!("not an int {:?}", *v)),
+            v => Err(format!("not an int {:?}", *v)),
         }
     }
 }
@@ -1085,10 +1085,10 @@ impl FromRecord for i8 {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
             Record::Int(i) => match i.to_i8() {
-                Some(x) => Result::Ok(x),
-                None => Result::Err(format!("cannot convert {} to i8", i)),
+                Some(x) => Ok(x),
+                None => Err(format!("cannot convert {} to i8", i)),
             },
-            v => Result::Err(format!("not an int {:?}", *v)),
+            v => Err(format!("not an int {:?}", *v)),
         }
     }
 }
@@ -1110,10 +1110,10 @@ impl FromRecord for i16 {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
             Record::Int(i) => match i.to_i16() {
-                Some(x) => Result::Ok(x),
-                None => Result::Err(format!("cannot convert {} to i16", i)),
+                Some(x) => Ok(x),
+                None => Err(format!("cannot convert {} to i16", i)),
             },
-            v => Result::Err(format!("not an int {:?}", *v)),
+            v => Err(format!("not an int {:?}", *v)),
         }
     }
 }
@@ -1135,10 +1135,10 @@ impl FromRecord for i32 {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
             Record::Int(i) => match i.to_i32() {
-                Some(x) => Result::Ok(x),
-                None => Result::Err(format!("cannot convert {} to i32", i)),
+                Some(x) => Ok(x),
+                None => Err(format!("cannot convert {} to i32", i)),
             },
-            v => Result::Err(format!("not an int {:?}", *v)),
+            v => Err(format!("not an int {:?}", *v)),
         }
     }
 }
@@ -1160,10 +1160,10 @@ impl FromRecord for i64 {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
             Record::Int(i) => match i.to_i64() {
-                Some(x) => Result::Ok(x),
-                None => Result::Err(format!("cannot convert {} to i64", i)),
+                Some(x) => Ok(x),
+                None => Err(format!("cannot convert {} to i64", i)),
             },
-            v => Result::Err(format!("not an int {:?}", *v)),
+            v => Err(format!("not an int {:?}", *v)),
         }
     }
 }
@@ -1185,10 +1185,10 @@ impl FromRecord for i128 {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
             Record::Int(i) => match i.to_i128() {
-                Some(x) => Result::Ok(x),
-                None => Result::Err(format!("cannot convert {} to i128", i)),
+                Some(x) => Ok(x),
+                None => Err(format!("cannot convert {} to i128", i)),
             },
-            v => Result::Err(format!("not an int {:?}", *v)),
+            v => Err(format!("not an int {:?}", *v)),
         }
     }
 }
@@ -1209,8 +1209,8 @@ impl Mutator<i128> for Record {
 impl FromRecord for BigInt {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
-            Record::Int(i) => Result::Ok(i.clone()),
-            v => Result::Err(format!("not an int {:?}", *v)),
+            Record::Int(i) => Ok(i.clone()),
+            v => Err(format!("not an int {:?}", *v)),
         }
     }
 }
@@ -1232,10 +1232,10 @@ impl FromRecord for BigUint {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
             Record::Int(i) => match i.to_biguint() {
-                Some(x) => Result::Ok(x),
-                None => Result::Err(format!("cannot convert {} to BigUint", i)),
+                Some(x) => Ok(x),
+                None => Err(format!("cannot convert {} to BigUint", i)),
             },
-            v => Result::Err(format!("not an int {:?}", *v)),
+            v => Err(format!("not an int {:?}", *v)),
         }
     }
 }
@@ -1256,8 +1256,8 @@ impl Mutator<BigUint> for Record {
 impl FromRecord for bool {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
-            Record::Bool(b) => Result::Ok(*b),
-            v => Result::Err(format!("not a bool {:?}", *v)),
+            Record::Bool(b) => Ok(*b),
+            v => Err(format!("not a bool {:?}", *v)),
         }
     }
 }
@@ -1278,8 +1278,8 @@ impl Mutator<bool> for Record {
 impl FromRecord for String {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
-            Record::String(s) => Result::Ok(s.clone()),
-            v => Result::Err(format!("not a string {:?}", *v)),
+            Record::String(s) => Ok(s.clone()),
+            v => Err(format!("not a string {:?}", *v)),
         }
     }
 }
@@ -1301,7 +1301,7 @@ impl FromRecord for () {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
             Record::Tuple(args) if args.is_empty() => Ok(()),
-            v => Result::Err(format!("not a 0-tuple {:?}", *v)),
+            v => Err(format!("not a 0-tuple {:?}", *v)),
         }
     }
 }
@@ -1321,12 +1321,12 @@ impl Mutator<()> for Record {
 macro_rules! decl_tuple_from_record {
     ( $n:tt, $( $t:tt , $i:tt),+ ) => {
         impl <$($t: FromRecord),*> FromRecord for ($($t),*) {
-            fn from_record(val: &Record) -> Result<Self, String> {
+            fn from_record(val: &Record) -> std::result::Result<Self, String> {
                 match val {
                     $crate::record::Record::Tuple(args) if args.len() == $n => {
-                        Ok(( $($t::from_record(&args[$i])?),*))
+                        std::result::Result::Ok(( $($t::from_record(&args[$i])?),*))
                     },
-                    v => { Result::Err(format!("not a {}-tuple {:?}", $n, *v)) }
+                    v => { std::result::Result::Err(format!("not a {}-tuple {:?}", $n, *v)) }
                 }
             }
         }
@@ -1338,9 +1338,9 @@ macro_rules! decl_tuple_from_record {
         }
 
         impl <$($t: FromRecord),*> Mutator<($($t),*)> for Record {
-            fn mutate(&self, v: &mut ($($t),*)) -> Result<(), String> {
+            fn mutate(&self, v: &mut ($($t),*)) -> std::result::Result<(), String> {
                 *v = <($($t),*)>::from_record(self)?;
-                Ok(())
+                std::result::Result::Ok(())
             }
         }
     };
@@ -1448,7 +1448,7 @@ impl<T: FromRecord> FromRecord for vec::Vec<T> {
             Record::Array(_, args) => Result::from_iter(args.iter().map(|x| T::from_record(x))),
             v => {
                 T::from_record(v).map(|x| vec![x])
-                //Result::Err(format!("not an array {:?}", *v))
+                //Err(format!("not an array {:?}", *v))
             }
         }
     }
@@ -1473,11 +1473,11 @@ impl<T: FromRecord> Mutator<vec::Vec<T>> for Record {
 macro_rules! decl_arr_from_record {
     ( $i:tt ) => {
         impl<T: FromRecord + Default> FromRecord for [T; $i] {
-            fn from_record(val: &Record) -> Result<Self, String> {
+            fn from_record(val: &Record) -> ::std::result::Result<Self, String> {
                 let vec = Vec::from_record(val)?;
                 let mut arr = <[T; $i]>::default();
                 if vec.len() != $i {
-                    return Result::Err(format!(
+                    return ::std::result::Result::Err(format!(
                         "cannot convert {:?} to array of length {}",
                         *val, $i
                     ));
@@ -1487,7 +1487,7 @@ macro_rules! decl_arr_from_record {
                     arr[idx] = v;
                     idx += 1;
                 }
-                Ok(arr)
+                ::std::result::Result::Ok(arr)
             }
         }
 
@@ -1503,9 +1503,9 @@ macro_rules! decl_arr_from_record {
         }
 
         impl<T: FromRecord + Default> Mutator<[T; $i]> for Record {
-            fn mutate(&self, v: &mut [T; $i]) -> Result<(), String> {
+            fn mutate(&self, v: &mut [T; $i]) -> ::std::result::Result<(), String> {
                 *v = <[T; $i]>::from_record(self)?;
-                Ok(())
+                ::std::result::Result::Ok(())
             }
         }
     };
@@ -1639,14 +1639,14 @@ macro_rules! decl_struct_into_record {
     ( $n:ident [ $nstr:expr ] <$( $targ:ident),*>, $( $arg:ident ),* ) => {
         impl <$($targ: $crate::record::IntoRecord),*> $crate::record::IntoRecord for $n<$($targ),*> {
             fn into_record(self) -> $crate::record::Record {
-                $crate::record::Record::NamedStruct(borrow::Cow::from($nstr),vec![$((borrow::Cow::from(stringify!($arg)), self.$arg.into_record())),*])
+                $crate::record::Record::NamedStruct(::std::borrow::Cow::from($nstr),vec![$((::std::borrow::Cow::from(stringify!($arg)), self.$arg.into_record())),*])
             }
         }
     };
     ( $n:ident, <$( $targ:ident),*>, $( $arg:ident ),* ) => {
         impl <$($targ: $crate::record::IntoRecord),*> $crate::record::IntoRecord for $n<$($targ),*> {
             fn into_record(self) -> $crate::record::Record {
-                $crate::record::Record::NamedStruct(borrow::Cow::from(stringify!($n)),vec![$((borrow::Cow::from(stringify!($arg)), self.$arg.into_record())),*])
+                $crate::record::Record::NamedStruct(::std::borrow::Cow::from(stringify!($n)),vec![$((::std::borrow::Cow::from(stringify!($arg)), self.$arg.into_record())),*])
             }
         }
     };
@@ -1658,10 +1658,10 @@ macro_rules! decl_record_mutator_struct {
         impl<$($targ),*> $crate::record::Mutator<$n<$($targ),*>> for $crate::record::Record
             where $($crate::record::Record: $crate::record::Mutator<$targ>),*
         {
-            fn mutate(&self, _x: &mut $n<$($targ),*>) -> Result<(), String> {
+            fn mutate(&self, _x: &mut $n<$($targ),*>) -> ::std::result::Result<(), String> {
                 match self {
                     $crate::record::Record::PosStruct(..) => {
-                        return Err(format!("Cannot use positional struct as mutator"));
+                        return ::std::result::Result::Err(format!("Cannot use positional struct as mutator"));
                     },
                     $crate::record::Record::NamedStruct(_, _args) => {
                         $(if let Some(arg_upd) = $crate::record::arg_find(_args, stringify!($arg)) {
@@ -1669,10 +1669,10 @@ macro_rules! decl_record_mutator_struct {
                           };)*
                     },
                     _ => {
-                        return Result::Err(format!("not a struct {:?}", *self));
+                        return ::std::result::Result::Err(format!("not a struct {:?}", *self));
                     }
                 };
-                Ok(())
+                ::std::result::Result::Ok(())
             }
         }
     };
@@ -1684,10 +1684,10 @@ macro_rules! decl_record_mutator_enum {
         impl<$($targ: $crate::record::FromRecord+serde::de::DeserializeOwned+Default),*> $crate::record::Mutator<$n<$($targ),*>> for $crate::record::Record
             where $($crate::record::Record: $crate::record::Mutator<$targ>),*
         {
-            fn mutate(&self, x: &mut $n<$($targ),*>) -> Result<(), String> {
+            fn mutate(&self, x: &mut $n<$($targ),*>) -> ::std::result::Result<(), String> {
                 match self {
                     $crate::record::Record::PosStruct(..) => {
-                        return Err(format!("Cannot use positional struct as mutator"));
+                        return ::std::result::Result::Err(format!("Cannot use positional struct as mutator"));
                     },
                     $crate::record::Record::NamedStruct(constr, args) => {
                         match (x, constr.as_ref()) {
@@ -1707,10 +1707,10 @@ macro_rules! decl_record_mutator_enum {
                         }
                     },
                     _ => {
-                        return Result::Err(format!("not a struct {:?}", *self));
+                        return ::std::result::Result::Err(format!("not a struct {:?}", *self));
                     }
                 };
-                Ok(())
+                ::std::result::Result::Ok(())
             }
         }
     };
@@ -1722,7 +1722,7 @@ macro_rules! decl_enum_into_record {
         impl <$($targ: $crate::record::IntoRecord),*> $crate::record::IntoRecord for $n<$($targ),*> {
             fn into_record(self) -> $crate::record::Record {
                 match self {
-                    $($n::$cons{$($arg),*} => $crate::record::Record::NamedStruct(borrow::Cow::from($consn), vec![$((borrow::Cow::from(stringify!($arg)), $arg.into_record())),*])),*
+                    $($n::$cons{$($arg),*} => $crate::record::Record::NamedStruct(::std::borrow::Cow::from($consn), vec![$((::std::borrow::Cow::from(stringify!($arg)), $arg.into_record())),*])),*
                 }
             }
         }
@@ -1731,7 +1731,7 @@ macro_rules! decl_enum_into_record {
         impl <$($targ: $crate::record::IntoRecord),*> $crate::record::IntoRecord for $n<$($targ),*> {
             fn into_record(self) -> $crate::record::Record {
                 match self {
-                    $($n::$cons($($arg),*) => $crate::record::Record::NamedStruct(borrow::Cow::from($consn), vec![$((borrow::Cow::from(stringify!($arg)), $arg.into_record())),*])),*
+                    $($n::$cons($($arg),*) => $crate::record::Record::NamedStruct(::std::borrow::Cow::from($consn), vec![$((::std::borrow::Cow::from(stringify!($arg)), $arg.into_record())),*])),*
                 }
             }
         }

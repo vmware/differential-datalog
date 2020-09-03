@@ -174,7 +174,6 @@ arguments matching its declaration:
         var x: type1<bigint> // error: not enough type arguments
     }
     ```
-1. Recursive type definitions are not allowed.
 1. A type variable must be declared in the syntactic scope where it is
    used.  There are two types of syntactic scopes that can contain
    type variables: `typedef`'s and functions.  In a typedef, type
@@ -231,7 +230,6 @@ arg ::= arg_name ":" simple_type_spec
 
 1. The body of the function must be a valid expression whose type
    matches the return type of the function.
-1. Recursive functions are not allowed.
 1. Just like regular functions, `extern` functions are expected to be
    side-effect-free.  While there is nothing preventing the user from
    defining functions with side effects (e.g., for tracing purposes),

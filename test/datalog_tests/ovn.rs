@@ -5,8 +5,8 @@ pub type Set<T> = FnvHashSet<T>;
 pub fn build_dhcp_netmask(_cidr: &String) -> String {
     "not implemented: build_dhcp_netmask".to_owned()
 }
-pub fn eth_addr_from_string(_str: &String) -> std_Option<mac_addr_t> {
-    std_Option::std_None
+pub fn eth_addr_from_string(_str: &String) -> crate::ddlog_std::Option<mac_addr_t> {
+    crate::ddlog_std::Option::None
 }
 pub fn extract_ips(_str: &String) -> Set<ip_addr_t> {
     FnvHashSet::default()
@@ -23,10 +23,10 @@ pub fn in6_generate_lla(_mac: &mac_addr_t) -> ip6_addr_t {
     0
 }
 pub fn ip_address_and_port_from_lb_key(_key: &String) -> ip_port_t {
-    ip_port_t{ip: "0.0.0.0".to_owned(), port: std_Option::std_None}
+    ip_port_t{ip: "0.0.0.0".to_owned(), port: crate::ddlog_std::Option::None}
 }
-pub fn ip_parse(_str: &String) -> std_Option<ip_addr_t> {
-    std_Option::std_None
+pub fn ip_parse(_str: &String) -> crate::ddlog_std::Option<ip_addr_t> {
+    crate::ddlog_std::Option::None
 }
 
 pub fn ipv6_string_mapped(_addr: &ip6_addr_t) -> String {

@@ -89,11 +89,11 @@ SI{C{"s"}}
 Query SI_by_x["s"]:
 SI{C{"s"}}
 Query TI_by_m[10]:
-TI{std::Some{10}}
+TI{ddlog_std::Some{10}}
 Query TI_by_some[10]:
-TI{std::Some{10}}
+TI{ddlog_std::Some{10}}
 Query TI_by_none[]:
-TI{std::None{}}
+TI{ddlog_std::None{}}
 Query UI_by_x["a"]:
 A{"a"}
 Query UI_by_b[false]:
@@ -112,11 +112,11 @@ Query WI_by_t[(false, 2, "string")]:
 Query XI_by_m[A{"aa"}, B{false}, D{(false,2,"string")}]:
 XI{[A{"aa"}, B{false}, D{(false, 2, "string")}]}
 Query YI_by_v[...]:
-YI{[std::Some{(false, 255, "")}, std::Some{(true, 254, "!")}, std::None{}]}
+YI{[ddlog_std::Some{(false, 255, "")}, ddlog_std::Some{(true, 254, "!")}, ddlog_std::None{}]}
 Query YI_by_none[]:
-YI{[std::Some{(false, 255, "")}, std::Some{(true, 254, "!")}, std::None{}]}
+YI{[ddlog_std::Some{(false, 255, "")}, ddlog_std::Some{(true, 254, "!")}, ddlog_std::None{}]}
 Query YI_by_self[...]:
-YI{[std::Some{(false, 255, "")}, std::Some{(true, 254, "!")}, std::None{}]}
+YI{[ddlog_std::Some{(false, 255, "")}, ddlog_std::Some{(true, 254, "!")}, ddlog_std::None{}]}
 Query ZI_by_d[0]:
 Query ZI0_by_self["Привіт!"]:
 "Привіт!"
@@ -138,9 +138,9 @@ Query ZI4_by_self[...]:
 Query ZI5_by_self[...]:
 {"key1"=>B{false}, "key2"=>A{"val2"}}
 Query ZI6_by_self["ZI6"]:
-std::Some{"ZI6"}
+ddlog_std::Some{"ZI6"}
 Query ZI6_by_none[]:
-std::None{}
+ddlog_std::None{}
 Query ZI7_by_self["♛"]:
 "♛"
 Query ZI7_by_val["ZI7"]:
@@ -290,12 +290,12 @@ SI{C{"s"}}
 Dump SI_by_x:
 SI{C{"s"}}
 Dump TI_by_m:
-TI{std::None{}}
-TI{std::Some{10}}
+TI{ddlog_std::None{}}
+TI{ddlog_std::Some{10}}
 Dump TI_by_some:
-TI{std::Some{10}}
+TI{ddlog_std::Some{10}}
 Dump TI_by_none:
-TI{std::None{}}
+TI{ddlog_std::None{}}
 Dump UI_by_x:
 A{"a"}
 Dump UI_by_b:
@@ -315,11 +315,11 @@ Dump WI_by_t:
 Dump XI_by_m:
 XI{[A{"aa"}, B{false}, D{(false, 2, "string")}]}
 Dump YI_by_v:
-YI{[std::Some{(false, 255, "")}, std::Some{(true, 254, "!")}, std::None{}]}
+YI{[ddlog_std::Some{(false, 255, "")}, ddlog_std::Some{(true, 254, "!")}, ddlog_std::None{}]}
 Dump YI_by_none:
-YI{[std::Some{(false, 255, "")}, std::Some{(true, 254, "!")}, std::None{}]}
+YI{[ddlog_std::Some{(false, 255, "")}, ddlog_std::Some{(true, 254, "!")}, ddlog_std::None{}]}
 Dump YI_by_self:
-YI{[std::Some{(false, 255, "")}, std::Some{(true, 254, "!")}, std::None{}]}
+YI{[ddlog_std::Some{(false, 255, "")}, ddlog_std::Some{(true, 254, "!")}, ddlog_std::None{}]}
 Dump ZI_by_d:
 HI{1234566788901239813761283}
 Dump ZI0_by_self:
@@ -345,10 +345,10 @@ Dump ZI4_by_self:
 Dump ZI5_by_self:
 {"key1"=>B{false}, "key2"=>A{"val2"}}
 Dump ZI6_by_self:
-std::None{}
-std::Some{"ZI6"}
+ddlog_std::None{}
+ddlog_std::Some{"ZI6"}
 Dump ZI6_by_none:
-std::None{}
+ddlog_std::None{}
 Dump ZI7_by_self:
 "ZI7"
 "♛"

@@ -66,20 +66,20 @@ public class Test {
     }
 
     private String printTI(TIReader v) {
-        std_Option__bit_32_Reader m = (std_Option__bit_32_Reader)(v).m();
-        if (m instanceof std_Option__bit_32_Reader.std_Some) {
-            return "TI{std::Some{" + ((std_Option__bit_32_Reader.std_Some)m).x() + "}}";
+        ddlog_std_Option__bit_32_Reader m = (ddlog_std_Option__bit_32_Reader)(v).m();
+        if (m instanceof ddlog_std_Option__bit_32_Reader.ddlog_std_Some) {
+            return "TI{ddlog_std::Some{" + ((ddlog_std_Option__bit_32_Reader.ddlog_std_Some)m).x() + "}}";
         } else {
-            return "TI{std::None{}}";
+            return "TI{ddlog_std::None{}}";
         }
     }
 
     private String printWI(WIReader v) {
-        std_Option__ManyReader m = (std_Option__ManyReader)(v).m();
-        if (m instanceof std_Option__ManyReader.std_Some) {
-            return "WI{std::Some{" + printMany(((std_Option__ManyReader.std_Some)m).x()) + "}}";
+        ddlog_std_Option__ManyReader m = (ddlog_std_Option__ManyReader)(v).m();
+        if (m instanceof ddlog_std_Option__ManyReader.ddlog_std_Some) {
+            return "WI{ddlog_std::Some{" + printMany(((ddlog_std_Option__ManyReader.ddlog_std_Some)m).x()) + "}}";
         } else {
-            return "WI{std::None{}}";
+            return "WI{ddlog_std::None{}}";
         }
     }
 
@@ -91,13 +91,13 @@ public class Test {
     }
 
     private String printYI(YIReader v) {
-        List<std_Option___bool__bit_8___string_Reader> val = v.v();
+        List<ddlog_std_Option___bool__bit_8___string_Reader> val = v.v();
         ArrayList<String> strings = new ArrayList<String>(val.size());
         val.forEach((x) -> {
-            if (x instanceof std_Option___bool__bit_8___string_Reader.std_Some) {
-                strings.add("std::Some{" + printTuple(((std_Option___bool__bit_8___string_Reader.std_Some)x).x()) + "}");
+            if (x instanceof ddlog_std_Option___bool__bit_8___string_Reader.ddlog_std_Some) {
+                strings.add("ddlog_std::Some{" + printTuple(((ddlog_std_Option___bool__bit_8___string_Reader.ddlog_std_Some)x).x()) + "}");
             } else {
-                strings.add("std::None{}");
+                strings.add("ddlog_std::None{}");
             }
         });
         return "YI{[" + String.join(", ", strings) + "]}";
@@ -110,10 +110,10 @@ public class Test {
     }
 
     private String printOptString(Object v) {
-        if (v instanceof std_Option__stringReader.std_Some) {
-            return "std::Some{\"" + ((std_Option__stringReader.std_Some)v).x() + "\"}";
+        if (v instanceof ddlog_std_Option__stringReader.ddlog_std_Some) {
+            return "ddlog_std::Some{\"" + ((ddlog_std_Option__stringReader.ddlog_std_Some)v).x() + "\"}";
         } else {
-            return "std::None{}";
+            return "ddlog_std::None{}";
         }
     }
 
@@ -133,7 +133,7 @@ public class Test {
         return "{" + String.join(", ", strings) + "}";
     }
 
-    private String printZI12(Tuple4__string__bigint__std_Vec_bigint____bit_16___Many_Reader v) {
+    private String printZI12(Tuple4__string__bigint__ddlog_std_Vec_bigint____bit_16___Many_Reader v) {
         return "(\"" + v.a0() + "\", " + v.a1() +
                 ", " + v.a2() + ", ("  + v.a3().a0() + ", " + printMany(v.a3().a1()) + "))";
     }
@@ -467,7 +467,7 @@ public class Test {
             // output relation OZI12[(string, bigint, Vec<bigint>, (bit<16>, Many))]
             case typesTestRelation.OZI12: {
                 fb_file.println("From " + relid + " " + command.kind() + " " +
-                        printZI12((Tuple4__string__bigint__std_Vec_bigint____bit_16___Many_Reader)command.value()));
+                        printZI12((Tuple4__string__bigint__ddlog_std_Vec_bigint____bit_16___Many_Reader)command.value()));
                 break;
             }
             // output relation OZI13[Generic<Ref<tuple>, Many>]
@@ -621,9 +621,9 @@ public class Test {
             builder.insert_SI(c);
         }
         {
-            std_Option__bit_32_Writer b = builder.create_std_Some__bit_32_(10);
+            ddlog_std_Option__bit_32_Writer b = builder.create_ddlog_std_Some__bit_32_(10);
             builder.insert_TI(b);
-            std_Option__bit_32_Writer b1 = builder.create_std_None__bit_32_();
+            ddlog_std_Option__bit_32_Writer b1 = builder.create_ddlog_std_None__bit_32_();
             builder.insert_TI(b1);
         }
         builder.insert_UI_A("a");
@@ -638,9 +638,9 @@ public class Test {
             builder.insert_VI(false, d);
         }
         {
-            std_Option__ManyWriter om0 = builder.create_std_None__Many();
+            ddlog_std_Option__ManyWriter om0 = builder.create_ddlog_std_None__Many();
             builder.insert_WI(om0);
-            std_Option__ManyWriter om1 = builder.create_std_Some__Many(builder.create_B(true));
+            ddlog_std_Option__ManyWriter om1 = builder.create_ddlog_std_Some__Many(builder.create_B(true));
             builder.insert_WI(om1);
         }
         {
@@ -652,12 +652,12 @@ public class Test {
             builder.insert_XI(Arrays.asList(m));
         }
         {
-            std_Option___bool__bit_8___string_Writer[] v = {
-                builder.create_std_Some___bool__bit_8___string_(
+            ddlog_std_Option___bool__bit_8___string_Writer[] v = {
+                builder.create_ddlog_std_Some___bool__bit_8___string_(
                     builder.create_Tuple3__bool__bit_8___string(false, (byte)-1, "")),
-                builder.create_std_Some___bool__bit_8___string_(
+                builder.create_ddlog_std_Some___bool__bit_8___string_(
                     builder.create_Tuple3__bool__bit_8___string(true, (byte)-2, "!")),
-                builder.create_std_None___bool__bit_8___string_()
+                builder.create_ddlog_std_None___bool__bit_8___string_()
             };
             builder.insert_YI(Arrays.asList(v));
         }
@@ -680,8 +680,8 @@ public class Test {
             map.put("key2", builder.create_A("val2"));
             builder.insert_ZI5(map);
         }
-        builder.insert_ZI6_std_Some("ZI6");
-        builder.insert_ZI6_std_None();
+        builder.insert_ZI6_ddlog_std_Some("ZI6");
+        builder.insert_ZI6_ddlog_std_None();
         builder.insert_ZI7("♛");
         builder.insert_ZI7("ZI7");
         builder.insert_ZI8(100);
@@ -1130,7 +1130,7 @@ public class Test {
         query_file.println("Query TI_by_m[10]:");
         typesTestQuery.queryTI_by_m(this.api,
                 bldr -> {
-                    return bldr.create_std_Some__bit_32_(10);
+                    return bldr.create_ddlog_std_Some__bit_32_(10);
                 },
                 v -> {
                     query_file.println(printTI(v));
@@ -1196,12 +1196,12 @@ public class Test {
         query_file.println("Query YI_by_v[...]:");
         typesTestQuery.queryYI_by_v(this.api,
                 bldr -> {
-                    std_Option___bool__bit_8___string_Writer[] v = {
-                        bldr.create_std_Some___bool__bit_8___string_(
+                    ddlog_std_Option___bool__bit_8___string_Writer[] v = {
+                        bldr.create_ddlog_std_Some___bool__bit_8___string_(
                                 bldr.create_Tuple3__bool__bit_8___string(false, (byte)-1, "")),
-                        bldr.create_std_Some___bool__bit_8___string_(
+                        bldr.create_ddlog_std_Some___bool__bit_8___string_(
                                 bldr.create_Tuple3__bool__bit_8___string(true, (byte)-2, "!")),
-                        bldr.create_std_None___bool__bit_8___string_()
+                        bldr.create_ddlog_std_None___bool__bit_8___string_()
                     };
                     return Arrays.asList(v);
                 },
@@ -1212,12 +1212,12 @@ public class Test {
         query_file.println("Query YI_by_self[...]:");
         typesTestQuery.queryYI_by_self(this.api,
                 bldr -> {
-                    std_Option___bool__bit_8___string_Writer[] v = {
-                        bldr.create_std_Some___bool__bit_8___string_(
+                    ddlog_std_Option___bool__bit_8___string_Writer[] v = {
+                        bldr.create_ddlog_std_Some___bool__bit_8___string_(
                                 bldr.create_Tuple3__bool__bit_8___string(false, (byte)-1, "")),
-                        bldr.create_std_Some___bool__bit_8___string_(
+                        bldr.create_ddlog_std_Some___bool__bit_8___string_(
                                 bldr.create_Tuple3__bool__bit_8___string(true, (byte)-2, "!")),
-                        bldr.create_std_None___bool__bit_8___string_()
+                        bldr.create_ddlog_std_None___bool__bit_8___string_()
                     };
                     return bldr.create_YI(Arrays.asList(v));
                 },
@@ -1277,7 +1277,7 @@ public class Test {
         query_file.println("Query ZI6_by_self[\"ZI6\"]:");
         typesTestQuery.queryZI6_by_self(this.api,
                 bldr -> {
-                    return bldr.create_std_Some__string("ZI6");
+                    return bldr.create_ddlog_std_Some__string("ZI6");
                 },
                 v -> { query_file.println(printOptString(v)); });
         query_file.println("Query ZI6_by_none[]:");
@@ -1328,7 +1328,7 @@ public class Test {
                     ints.add(BigInteger.valueOf(0));
                     ints.add(BigInteger.valueOf(0));
                     ints.add(BigInteger.valueOf(1));
-                    return bldr.create_Tuple4__string__bigint__std_Vec_bigint____bit_16___Many_(
+                    return bldr.create_Tuple4__string__bigint__ddlog_std_Vec_bigint____bit_16___Many_(
                             "ZI12",
                             BigInteger.valueOf(1000000),
                             ints,

@@ -17,6 +17,7 @@ use distributed_datalog::TcpSender;
 use distributed_datalog::TxnMux;
 use distributed_datalog::UpdatesObservable as UpdatesObservableT;
 
+use server_api_ddlog::UpdateSerializer;
 use server_api_ddlog::api::updcmd2upd;
 use server_api_ddlog::api::HDDlog;
 use server_api_ddlog::Relations::server_api_1_P1In;
@@ -104,8 +105,8 @@ fn single_delta_tcp() -> Result<(), String> {
         observable: &mut UpdatesObservable,
         observer: SharedObserver<DDlogServer>,
     ) -> Result<Box<dyn Any>, String> {
-        let mut recv = TcpReceiver::new("127.0.0.1:0").unwrap();
-        let send = TcpSender::new(*recv.addr()).unwrap();
+        let mut recv = TcpReceiver::<Update<DDValue>, UpdateSerializer>::new("127.0.0.1:0").unwrap();
+        let send = TcpSender::<UpdateSerializer>::new(*recv.addr()).unwrap();
 
         let _ = recv.subscribe(Box::new(observer)).unwrap();
         let _ = observable.subscribe(Box::new(send)).unwrap();
@@ -236,11 +237,11 @@ fn multi_transaction_tcp() -> Result<(), String> {
         let mut mux = TxnMux::new();
         let _ = mux.subscribe(Box::new(observer)).unwrap();
 
-        let recv1 = TcpReceiver::new("127.0.0.1:0").unwrap();
-        let send1 = TcpSender::new(*recv1.addr()).unwrap();
+        let recv1 = TcpReceiver::<Update<DDValue>, UpdateSerializer>::new("127.0.0.1:0").unwrap();
+        let send1 = TcpSender::<UpdateSerializer>::new(*recv1.addr()).unwrap();
 
-        let recv2 = TcpReceiver::new("127.0.0.1:0").unwrap();
-        let send2 = TcpSender::new(*recv2.addr()).unwrap();
+        let recv2 = TcpReceiver::<Update<DDValue>, UpdateSerializer>::new("127.0.0.1:0").unwrap();
+        let send2 = TcpSender::<UpdateSerializer>::new(*recv2.addr()).unwrap();
 
         let _ = observable1.subscribe(Box::new(send1)).unwrap();
         let _ = observable2.subscribe(Box::new(send2)).unwrap();

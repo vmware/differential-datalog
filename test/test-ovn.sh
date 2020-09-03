@@ -15,7 +15,7 @@ set -e
 # TODO: use -j6 once build script is fixed
 # TODO: use primary OVN repo
 (cd ovn &&
- git checkout ddlog_ci7 &&
+ git checkout ddlog_ci8 &&
  ./boot.sh &&
  ./configure --with-ddlog=../../lib --with-ovs-source=../ovs --enable-shared &&
  (make northd/ddlog.stamp && make check -j1 NORTHD_CLI=1 ||

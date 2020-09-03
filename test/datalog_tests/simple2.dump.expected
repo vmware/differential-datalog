@@ -19,9 +19,9 @@ MapOfMaps{.m = [("bar", [(-10, (10000, true)), (200, (2, false))]), ("foo", [(1,
 MapOfVecs:
 MapOfVecs{.m = [((0, 0), [0.1, -100, 0, 1000000]), ((100, -100), []), ((100, 100), [0.1, -100, 0, 1000000])]}: +1
 Nested:
-Nested{.descr = "1", .n = NestedStruct{.x = std::Some{.x = ModifyMe{.x = "bar", .y = 123456789}}}}: +1
-Nested{.descr = "2", .n = NestedStruct{.x = std::Some{.x = ModifyMe{.x = "bar", .y = 0}}}}: +1
-Nested{.descr = "3", .n = NestedStruct{.x = std::Some{.x = ModifyMe{.x = "buzz", .y = 0}}}}: +1
+Nested{.descr = "1", .n = NestedStruct{.x = ddlog_std::Some{.x = ModifyMe{.x = "bar", .y = 123456789}}}}: +1
+Nested{.descr = "2", .n = NestedStruct{.x = ddlog_std::Some{.x = ModifyMe{.x = "bar", .y = 0}}}}: +1
+Nested{.descr = "3", .n = NestedStruct{.x = ddlog_std::Some{.x = ModifyMe{.x = "buzz", .y = 0}}}}: +1
 RFloatToInt:
 RFloatToInt{._x = -333}: +1
 StringMaps:
@@ -29,17 +29,17 @@ StringMaps{.m = [("bar", (2, false)), ("foo", (1, true)), ("foobar", (3, false))
 Strings:
 Strings{.descr = "x={10:bit<12>}, y={10:float}, z={-4:signed<125>}", .str = "x=10, y=10, z=-4"}: +1
 Try1:
-Try1{.description = "", .result = std::None{}}: +1
-Try1{.description = "Albert_Einstein", .result = std::None{}}: +1
-Try1{.description = "Isaac Newton", .result = std::Some{.x = ("Isaac", "Newton")}}: +1
+Try1{.description = "", .result = ddlog_std::None{}}: +1
+Try1{.description = "Albert_Einstein", .result = ddlog_std::None{}}: +1
+Try1{.description = "Isaac Newton", .result = ddlog_std::Some{.x = ("Isaac", "Newton")}}: +1
 Try2:
-Try2{.description = "", .result = std::Err{.err = "No last name"}}: +1
-Try2{.description = "Albert_Einstein", .result = std::Err{.err = "No last name"}}: +1
-Try2{.description = "Isaac Newton", .result = std::Ok{.res = ("Isaac", "Newton")}}: +1
+Try2{.description = "", .result = ddlog_std::Err{.err = "No last name"}}: +1
+Try2{.description = "Albert_Einstein", .result = ddlog_std::Err{.err = "No last name"}}: +1
+Try2{.description = "Isaac Newton", .result = ddlog_std::Ok{.res = ("Isaac", "Newton")}}: +1
 Try3:
-Try3{.description = "", .result = std::None{}}: +1
-Try3{.description = "Albert_Einstein", .result = std::None{}}: +1
-Try3{.description = "Isaac Newton", .result = std::Some{.x = ("Isaac", "Newton")}}: +1
+Try3{.description = "", .result = ddlog_std::None{}}: +1
+Try3{.description = "Albert_Einstein", .result = ddlog_std::None{}}: +1
+Try3{.description = "Isaac Newton", .result = ddlog_std::Some{.x = ("Isaac", "Newton")}}: +1
 VecOfMaps:
 VecOfMaps{.m = [[((100, 100), 0.1)], [((100, 100), 0.1), ((1000, -100), -0.1)], [((100, 100), 0.1), ((1000, -10000000000000000000000000000000000000), 0), ((1000, -100), -0.1)]]}: +1
 RFloatToInt{._x = -333}

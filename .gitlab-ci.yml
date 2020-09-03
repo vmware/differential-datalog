@@ -63,7 +63,7 @@ test-server_api:
     script:
     # The NF variable is defined by the Haskell tasty package, documented here:
     # http://hackage.haskell.org/package/tasty
-    - stack --no-terminal test --ta '-p "$(NF) == \"generate server_api\" || ($(NF-1) == \"compiler tests\" && $(NF) == \"server_api\")"';
+    - stack --no-terminal test --ta '-p "$(NF) == \"generate server_api\" || ($(NF-1) == \"compiler tests\" && $(NF) == \"server_api\")"'
     - cd test/datalog_tests/server_api/;
       i=0;
       true;
@@ -235,7 +235,7 @@ test-antrea:
         - ddlog-ci-1
     script:
         - cd test/antrea
-        - git clone -b v2 https://github.com/ddlog-dev/antrea-test-data.git
+        - git clone -b v3 https://github.com/ddlog-dev/antrea-test-data.git
         - ./test-antrea.sh
 
 # Test the SQL-to-DDlog compiler.

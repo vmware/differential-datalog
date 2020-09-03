@@ -32,9 +32,6 @@ use fnv::FnvHashMap;
 use fnv::FnvHashSet;
 use num::One;
 
-use serde::de::*;
-use serde::ser::*;
-
 use differential_dataflow::difference::Diff;
 use differential_dataflow::difference::Monoid;
 use differential_dataflow::difference::Semigroup;
@@ -1019,35 +1016,6 @@ where
                 let _ = builder.field("m", &m.to_string());
                 builder.finish()
             }
-        }
-    }
-}
-
-impl<V> Serialize for Update<V>
-where
-    V: Debug + Serialize,
-{
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let upd = match self {
-            Update::Insert { relid, v } => (true, relid, v),
-            Update::DeleteValue { relid, v } => (false, relid, v),
-            _ => panic!("Cannot serialize InsertOrUpdate/Modify/DeleteKey update"),
-        };
-
-        upd.serialize(serializer)
-    }
-}
-
-impl<'de, V> Deserialize<'de> for Update<V>
-where
-    V: DeserializeOwned,
-{
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let (b, relid, v) = <(bool, RelId, V) as Deserialize>::deserialize(deserializer)?;
-        if b {
-            Ok(Update::Insert { relid, v })
-        } else {
-            Ok(Update::DeleteValue { relid, v })
         }
     }
 }
