@@ -60,17 +60,9 @@ test-libs:
            ./test-libs.sh)
 
 test-server_api:
+    extends: .install-ddlog
     script:
-    # The NF variable is defined by the Haskell tasty package, documented here:
-    # http://hackage.haskell.org/package/tasty
-    - stack --no-terminal test --ta '-p "$(NF) == \"generate server_api\" || ($(NF-1) == \"compiler tests\" && $(NF) == \"server_api\")"'
-    - cd test/datalog_tests/server_api/;
-      i=0;
-      true;
-      while [ $? -eq 0 -a $i -lt 100 ]; do
-        i=$((i+1));
-        RUST_LOG=trace cargo test;
-      done
+        - (export DDLOG_HOME=`pwd` && test/datalog_tests/test-server_api.sh)
 
 test-simple:
     tags:
