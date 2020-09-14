@@ -2522,6 +2522,44 @@ purpose.  They do not affect the performance of the DDlog program and cannot be
 used as an optimization technique (DDlog does use indexes for performance, but
 these indexes are constructed automatically and are not visible to the user).
 
+## Compiler flags
+
+flags to the `ddlog` compiler.
+
+### `nested-ts-32`
+
+This option is useful in recursive programs where the recursive fragment of the
+program may require more than `2^16` iterations.  Since in practice most
+recursive computations perform fewer iterations, DDlog uses a 16-bit iteration
+counter (or timestamp in the Differential Dataflow terminology) by default.
+When this is not sufficient, the `nested-ts-32` can be used to tell DDlog to use
+32-bit iteration counter instead.
+
+Consider the following example that enumerates all numbers from `0` to `65599`
+and stores the last 70 numbers in an output relation:
+
+```
+relation Rb(x: u32)
+output relation Rque(x: u32)
+
+Rb(0).
+Rb(x+1) :- Rb(x), x < 65599.
+Rque(x) :- Rb(x), x > 65530.
+```
+
+The recursive fragment of this program performs `65600` iterations; hence a
+16-bit counter is not sufficient.
+
+If the DDlog project was compiled without the `nested-ts-32` flag, 32-bit
+timestamps can be enabled when compiling the generated Rust project by enabling
+its using the `nested_ts_32` feature:
+
+```
+cargo build --release --features "nested_ts_32"
+```
+
+**TODO: Document other flags**
+
 ## Meta-attributes
 
 Meta-attributes are annotations that can be attached to various DDlog program
