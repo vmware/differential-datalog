@@ -48,7 +48,7 @@ env:
    # - TOOL=stack TEST_SUITE='-p redist' JAVA=1
    # - TOOL=stack TEST_SUITE='-p span_uuid'
    # - TOOL=stack TEST_SUITE='-p souffle0'
-   - TOOL=stack TEST_SUITE='-p simple'
+   - TOOL=stack TEST_SUITE='-p "$(NF) == \"generate simple\" || $(NF) == \"simple\""'
    # - TOOL=stack TEST_SUITE='-p path'
    # - TOOL=stack TEST_SUITE='-p ovn'
    # - TOOL=stack TEST_SUITE='-p modules'

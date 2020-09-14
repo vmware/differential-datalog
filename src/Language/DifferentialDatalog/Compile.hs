@@ -136,11 +136,16 @@ mainHeader :: String -> Doc
 mainHeader specname = header (BS.unpack $ $(embedFile "rust/template/src/lib.rs")) specname
 
 -- Top-level 'Cargo.toml'.
-mainCargo :: String -> [String] -> String -> Doc
+mainCargo :: (?cfg::Config) => String -> [String] -> String -> Doc
 mainCargo specname crate_types toml_footer =
-    (pp $ replace "datalog_example" specname $ BS.unpack $ $(embedFile "rust/template/Cargo.toml")) $$
+    (pp $ replace "datalog_example" specname template) $$
     "crate-type = [" <> (hsep $ punctuate "," $ map (\t -> "\"" <> pp t <> "\"") $ "rlib" : crate_types) <> "]\n" $$
     text toml_footer
+    where
+    template = (if confNestedTS32 ?cfg
+                then replace "[dependencies.differential_datalog]" "[dependencies.differential_datalog]\nfeatures=[\"nested_ts_32\"]"
+                else id)
+               $ BS.unpack $ $(embedFile "rust/template/Cargo.toml")
 
 -- 'types/Cargo.toml' - imports Rust dependencies.
 typesCargo :: String -> Doc -> Doc
@@ -1826,7 +1831,7 @@ mkInspect d prefix rl idx e input_val = do
     -- Inspected
     let weight = "let ddlog_weight = &(" <> wEIGHT_VAR <+> "as" <+> rnameScoped False wEIGHT_TYPE <> ");"
     let timestamp = if ruleIsRecursive d rl
-        then "let ddlog_timestamp = &" <> rnameScoped False nESTED_TS_TYPE <> "{epoch:" <+> tIMESTAMP_VAR <> ".0 as" <+> rnameScoped False ePOCH_TYPE <> ", iter:" <+> tIMESTAMP_VAR <> ".1.x as" <+> rnameScoped False iTERATION_TYPE <> "};"
+        then "let ddlog_timestamp = &" <> rnameScoped False nESTED_TS_TYPE <> "{epoch:" <+> tIMESTAMP_VAR <> ".0 as" <+> rnameScoped False ePOCH_TYPE <> ", iter:" <+> rnameScoped False iTERATION_TYPE <> "::from(" <> tIMESTAMP_VAR <> ".1)};"
         else "let ddlog_timestamp = &(" <> tIMESTAMP_VAR <> ".0 as" <+> rnameScoped False ePOCH_TYPE <> ");"
     let inspected = (braces $ mkExpr d (CtxRuleRInspect rl idx) e EVal) <> ";"
     let ifun = braces'

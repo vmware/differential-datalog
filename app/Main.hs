@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018 VMware, Inc.
+Copyright (c) 2018-2020 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -66,6 +66,7 @@ data TOption = Help
              | OmitWorkspace
              | RunRustfmt
              | RustFlatBuffers
+             | NestedTS32
 
 options :: [OptDescr TOption]
 options = [ Option ['h'] ["help"]             (NoArg Help)                      "Display help message."
@@ -87,10 +88,11 @@ options = [ Option ['h'] ["help"]             (NoArg Help)                      
           , Option []    ["pp-debug"]         (NoArg DumpDebug)                 "Dump the source after compilation pass 3 (injecting debugging hooks) to FILE.debug.ast.  If the '-g' option is not specified, then pass 3 is a no-op and will produce identical output to pass 2."
           , Option []    ["pp-optimized"]     (NoArg DumpOpt)                   "Dump the source after compilation pass 4 (optimization) to FILE.opt.ast."
           , Option []    ["re-validate"]      (NoArg ReValidate)                "[developers only] Re-validate the program after type inference and optimization passes."
-          , Option []    ["omit-profile"]     (NoArg OmitProfile)               "Skips adding a Cargo profile (silences warnings for some rust builds, included by default)"
-          , Option []    ["omit-workspace"]   (NoArg OmitWorkspace)             "Skips adding a Cargo workspace (silences errors for some rust builds, included by default)"
-          , Option []    ["run-rustfmt"]      (NoArg RunRustfmt)                "Attempts to run rustfmt on the generated code after it's emitted"
-          , Option []    ["rust-flatbuffers"] (NoArg RustFlatBuffers)           "Builds flatbuffers bindings for Rust"
+          , Option []    ["omit-profile"]     (NoArg OmitProfile)               "Skip adding a Cargo profile (silences warnings for some rust builds, included by default)"
+          , Option []    ["omit-workspace"]   (NoArg OmitWorkspace)             "Skip adding a Cargo workspace (silences errors for some rust builds, included by default)"
+          , Option []    ["run-rustfmt"]      (NoArg RunRustfmt)                "Run rustfmt on the generated code"
+          , Option []    ["rust-flatbuffers"] (NoArg RustFlatBuffers)           "Build flatbuffers bindings for Rust"
+          , Option []    ["nested-ts-32"]     (NoArg NestedTS32)                "Use 32-bit instead of 16-bit nested timestamps. Supports recursive programs that may perform >65,536 iterations. Slightly increases the memory footprint of the program."
           ]
 
 addOption :: Config -> TOption -> IO Config
@@ -121,6 +123,7 @@ addOption config OmitProfile      = return config { confOmitProfile = True }
 addOption config OmitWorkspace    = return config { confOmitWorkspace = True }
 addOption config RunRustfmt       = return config { confRunRustfmt = True }
 addOption config RustFlatBuffers  = return config { confRustFlatBuffers = True }
+addOption config NestedTS32       = return config { confNestedTS32 = True }
 
 validateConfig :: Config -> IO ()
 validateConfig Config {..} = do
@@ -193,7 +196,7 @@ compileProg conf@Config{..} = do
     let specname = takeBaseName confDatalogFile
     (modules, prog, rs_code, toml_code) <- parseValidate conf
     -- generate Rust project
-    let dir = (if confOutputDir == "" then takeDirectory confDatalogFile else confOutputDir)
+    let dir = if confOutputDir == "" then takeDirectory confDatalogFile else confOutputDir
     let crate_types = (if confStaticLib then ["staticlib"] else []) ++
                       (if confDynamicLib then ["cdylib"] else [])
     let ?cfg = conf

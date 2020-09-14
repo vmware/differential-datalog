@@ -31,7 +31,9 @@ typedef OutputInspectNot = OutputInspectNot{x: bit<32>, y: bit<32>}
 typedef ParsedChunk = ParsedChunk{data: ddlog_std::Result<Object,string>}
 typedef RFloatToInt = RFloatToInt{_x: signed<32>}
 typedef RFtoIDummy = RFtoIDummy{x: signed<32>}
+typedef Rb = Rb{x: ddlog_std::u32}
 typedef Rletter = Rletter{_l: string}
+typedef Rque = Rque{x: ddlog_std::u32}
 typedef Rseq = Rseq{_s: TSeq}
 typedef Rseqs = Rseqs{_s: TSeq}
 typedef SResult<'V> = ddlog_std::Result<'V,string>
@@ -1130,7 +1132,9 @@ output relation OutputInspectNot [OutputInspectNot]
 relation ParsedChunk [ParsedChunk]
 output relation RFloatToInt [RFloatToInt]
 relation RFtoIDummy [RFtoIDummy]
+relation Rb [Rb]
 input relation Rletter [Rletter]
+output relation Rque [Rque]
 output relation Rseq [Rseq]
 input relation Rseqs [Rseqs]
 output relation SomeInts [SomeInts]
@@ -1272,4 +1276,7 @@ VecOfMaps[(VecOfMaps{.m={(var __vec: ddlog_std::Vec<ddlog_std::Map<(ddlog_std::u
                                                       {ddlog_std::insert(__map, (32'd1000, (- 10000000000000000000000000000000000000)), (- 64'f0.0));
                                                        __map}}}});
                             __vec}}}}}: VecOfMaps)].
+Rb[(Rb{.x=32'd0}: Rb)].
+Rb[(Rb{.x=(x + 32'd1)}: Rb)] :- Rb[(__rb0@ (Rb{.x=(x: bit<32>)}: Rb))], (x < 32'd65599), Inspect debug::debug_event((32'd45, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __rb0, (Rb{.x=(x + 32'd1)}: Rb)).
+Rque[(Rque{.x=x}: Rque)] :- Rb[(__rb0@ (Rb{.x=(x: bit<32>)}: Rb))], (x > 32'd65530), Inspect debug::debug_event((32'd46, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __rb0, (Rque{.x=x}: Rque)).
 

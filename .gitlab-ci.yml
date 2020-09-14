@@ -76,12 +76,12 @@ test-simple:
     tags:
         - ddlog-ci-1
     script:
-    - (cd test/datalog_tests && DDLOGFLAGS="-g" ./run-test.sh simple release)
+    - (cd test/datalog_tests && DDLOGFLAGS="-g" CARGOFLAGS="--features nested_ts_32"  ./run-test.sh simple release)
     - cd test/datalog_tests/simple_ddlog/ && LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/ cargo build --features='profile'
 
 test-simple2:
     script:
-    - (cd test/datalog_tests && DDLOGFLAGS="-g" ./run-test.sh simple2 release)
+    - (cd test/datalog_tests && DDLOGFLAGS="-g --nested-ts-32" ./run-test.sh simple2 release)
 
 test-modules:
     script: stack --no-terminal test --ta "-p modules"

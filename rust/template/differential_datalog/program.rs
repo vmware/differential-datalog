@@ -164,6 +164,12 @@ impl PathSummary<TS16> for TS16 {
     }
 }
 
+impl From<TS16> for u64 {
+    fn from(ts: TS16) -> Self {
+        ts.x as u64
+    }
+}
+
 /* Outer timestamp */
 pub type TS = u32;
 type TSAtomic = AtomicU32;
@@ -171,6 +177,10 @@ type TSAtomic = AtomicU32;
 /* Timestamp for the nested scope
  * Use 16-bit timestamps for inner scopes to save memory
  */
+#[cfg(feature = "nested_ts_32")]
+pub type TSNested = u32;
+
+#[cfg(not(feature = "nested_ts_32"))]
 pub type TSNested = TS16;
 
 /* `Inspect` operator expects the timestampt to be a tuple.
@@ -185,7 +195,7 @@ trait ToTupleTS {
  */
 impl ToTupleTS for TS {
     fn to_tuple_ts(&self) -> TupleTS {
-        (*self, TS16 { x: 0 })
+        (*self, TSNested::default())
     }
 }
 

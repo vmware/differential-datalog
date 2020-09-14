@@ -415,3 +415,12 @@ function shadow2() {
 }
 
 function do_nothing() {}
+
+// Test 32-bit timestamp.
+
+relation Rb(x: u32)
+output relation Rque(x: u32)
+
+Rb(0).
+Rb(x+1) :- Rb(x), x < 65599.
+Rque(x) :- Rb(x), x > 65530.
