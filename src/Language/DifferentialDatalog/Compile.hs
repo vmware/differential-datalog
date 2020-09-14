@@ -350,7 +350,7 @@ emptyCompilerState = CompilerState {
 }
 
 -- Relations, indexes, relation transformers and Value's are stored in the flat namespace.
--- Flatter a name by replacing "::" with "_"
+-- Flatten a name by replacing "::" with "_"
 rnameFlat :: String -> Doc
 rnameFlat = pp . replace "::" "_"
 
@@ -492,8 +492,8 @@ mkConstructorName local tname t c =
 --
 -- 'specname' - will be used as Cargo package and library names
 --
--- 'modules' - list of modules in the original DDlog program. This function
--- will generate a Rust module for each DDlog module in the 'types' crate.
+-- 'modules' - list of all DDlog modules used in the original program. This function
+-- will generate a Rust module for each DDlog module and place it in the 'types' crate.
 --
 -- 'rs_code' - additional Rust code to be added to the generated modules.
 --
