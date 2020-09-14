@@ -260,7 +260,7 @@ generateDDLogRust java file crate_types = do
     (modules, prog, rs_code, toml_code) <- parseValidate fname java body
     -- generate Rust project
     let dir = takeDirectory fname
-    let ?cfg = defaultConfig { confDatalogFile = fname, confJava = java }
+    let ?cfg = defaultConfig { confDatalogFile = fname, confJava = java, confOmitWorkspace = True }
     compile prog specname modules rs_code toml_code dir crate_types
 
 -- Feed test data via pipe if a .dat file exists
