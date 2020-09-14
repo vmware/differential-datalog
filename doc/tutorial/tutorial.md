@@ -1434,7 +1434,7 @@ typedef TestStruct = TestStruct {
 function f() {
     var test: TestStruct = TestStruct{"foo", false};
     var interned: Intern<TestStruct> = TestStruct{"foo", false}.intern();
-    
+
     // ok: modifying field of a local variable.
     test.f1 = "bar";
 
@@ -1875,7 +1875,7 @@ function unwrap_or(x: Option<'A>, def: 'A): 'A
 function unwrap_or_default(opt: Option<'A>): 'A
 
 /* Returns the contained Ok value or a provided default. */
-function unwrap_or(res: Result<'V,'E>, def: 'V): 'V 
+function unwrap_or(res: Result<'V,'E>, def: 'V): 'V
 
 /* Returns the default value for the given type if `res` is an error. */
 function unwrap_or_default(res: Result<'V,'E>): 'V
@@ -1941,7 +1941,7 @@ traits: `Default`, `Eq`, `PartialEq`, `Clone`, `Hash`, `PartialOrd`, `Ord`,
 
 Outside of DDlog libraries, extern types should only be defined when
 absolutely necessary, as they are not easy to implement correctly, and their
-API is not yet fully standardized.  
+API is not yet fully standardized.
 
 See [more detailed discussion](#implementing-extern-functions-and-types-in-Rust)
 on integrating Rust and DDlog code below.
@@ -2334,58 +2334,56 @@ tutorial.  Here we summarize the rules for integrating Rust code into your DDlog
 program.
 
 Since the DDlog compiler generates Rust, external Rust code integrates with
-DDlog seamlessly and efficiently.  At a high level, the compiler generates 
-several crates for a DDlog program `prog`: 
+DDlog seamlessly and efficiently.  Consider a DDlog program `prog.dl` that
+imports modules `mod1` and `mod2`:
+
+```
+prog.dl  // imports `mod1` and `mod2`.
+mod1.dl
+mod2/
+ |
+ +--+submod1.dl
+ +--+submod2.dl
+```
+
+
+The compiler generates several Rust crates for this program:
 
 ```
 prog_ddlog
     |                           +-+
     +----+types                   |
-    |       +                     |
-    |       |                     |
-    |       +--+Cargo.toml        |
-    |       |                     |  types crate:
+    |       +--+Cargo.toml        |  types crate:
     |       +--+std_ddlog.rs      |  types, functions, external Rust code
-    |       |                     |
     |       +--+mod1.dl           |
-    |       |                     |
     |       +--+mod2              |
-    |       |    +                |
     |       |    +--+lib.rs       |
-    |       |    |                |
     |       |    +--+submod1.rs   |
-    |       |    |                |
     |       |    +--+submod2.rs   |
-    |       |                     |
     |       +--+lib.rs            |
     |                           +-+
     +----+value                 +-+
     |        +--+Cargo.toml       |  value crate:
-    |        |                    |  wrapper types
-    |        +--+lib.rs           |
+    |        +--+lib.rs           |  wrapper types
     |                           +-+
     |                           +-+
     +----+Cargo.toml              |
-    |                             |
     +----+src                     |  main crate:
-           +                      |  Rust encoding of DDlog rules and relations.
-           +--+lib.rs             |
-           |                      |
+           +--+lib.rs             |  Rust encoding of DDlog rules and relations.
            +--+main.rs            |
-           |                      |
            +--+api.rs             |
                                 +-+
 ```
 
 The `types` crate is the one relevant for the purposes of this section.  It
-contains all function and type declaraions, including extern functions and
+contains all function and type declarations, including extern functions and
 types.  Its internal module structure mirrors the structure of the DDlog
 program, with a separate Rust module for each DDlog module.  For example,
 declarations from a DDlog module `mod2/submod1.dl` are placed in
 `prog_ddlog/types/mod1/submod1.rs`.  Types and functions declared in the main
 module of the program are placed in `types/lib.rs`.  If `submod1.dl` contains
 extern function or type declarations, corresponding Rust declarations must be
-placed in `mod2/submodule1.rs`.  This file is picked up by the DDlog compiler
+placed in `mod2/submod1.rs`.  This file is picked up by the DDlog compiler
 and its contents is appended verbatim to the generated
 `prog_ddlog/types/mod1/submod1.rs` module.
 
