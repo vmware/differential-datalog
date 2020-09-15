@@ -62,6 +62,9 @@ test-libs:
 test-server_api:
     extends: .install-ddlog
     script:
+        # It seems that stale files cause cargo to rebuild the project
+        # unnecessarily in CI.
+        - rm -rf test/datalog_tests/server_api_ddlog
         - (export DDLOG_HOME=`pwd` && test/datalog_tests/test-server_api.sh)
 
 test-simple:
