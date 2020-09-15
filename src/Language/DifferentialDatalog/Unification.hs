@@ -434,6 +434,7 @@ typeToTExpr TUser{..}    = TEUser typeName $ map typeToTExpr typeArgs
 typeToTExpr TVar{..}     = TETArg tvarName
 typeToTExpr TOpaque{..}  = TEExtern typeName $ map typeToTExpr typeArgs
 typeToTExpr t@TStruct{}  = error $ "typeToTExpr: unexpected '" ++ show t ++ "'"
+typeToTExpr TFunction{}  = error $ "not implemented: typeToTExpr TFunction" -- TODO
 
 -- Unwrap all layers of shared references.
 teDeref :: (?d::DatalogProgram) => TExpr -> TExpr

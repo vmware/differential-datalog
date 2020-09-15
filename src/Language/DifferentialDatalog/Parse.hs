@@ -306,7 +306,8 @@ func = (Function nopos [] <$  (try $ reserved "extern" *> reserved "function")
                          <*> (option (TTuple nopos []) (colon *> typeSpecSimple))
                          <*> (Just <$> ((reservedOp "=" *> expr) <|> (braces eseq))))
 
-farg = withPos $ (FuncArg nopos) <$> varIdent <*> (colon *> option False (True <$ reserved "mut")) <*> typeSpecSimple
+farg = withPos $ (FuncArg nopos) <$> varIdent <*> (colon *> atype)
+atype = withPos $ ArgType nopos <$> (option False (True <$ reserved "mut")) <*> typeSpecSimple
 
 transformer = (Transformer nopos True <$  (reserved "extern" *> reserved "transformer")
                                       <*> transIdent

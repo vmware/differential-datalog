@@ -63,6 +63,13 @@ import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Unification
 import Language.DifferentialDatalog.Var
 
+
+-- TODO: remove when support for closures is done.
+inFunc :: ECtx -> Maybe Function
+inFunc (CtxFunc f) = Just f
+inFunc CtxTop      = Nothing
+inFunc ctx         = inFunc (ctxParent ctx)
+
 -- Constraint generator state.
 data GeneratorState = GeneratorState {
     -- Constraints generated so far.
@@ -211,6 +218,7 @@ typeToTExpr' de TUser{..}    = TEUser typeName <$> mapM (typeToTExpr' de) typeAr
 typeToTExpr' de TVar{..}     = teTVarAux de tvarName
 typeToTExpr' de TOpaque{..}  = TEExtern typeName <$> mapM (typeToTExpr' de) typeArgs
 typeToTExpr' _  t@TStruct{}  = error $ "typeToTExpr': unexpected '" ++ show t ++ "'"
+typeToTExpr' _  TFunction{}  = error "not implemented: typeToTExpr' TFunction" -- TODO
 
 -- | Matches function parameter types against concrete argument types, e.g.,
 -- given
@@ -466,7 +474,7 @@ inferTypes d es = do
                                      (eStruct oK_CONSTRUCTOR [("res", eVarDecl "__x" t)] inner_type, eVar "__x")]
                           | otherwise -> error $ "TypeInference.add_types: e=" ++ show expr ++ " type=" ++ show inner_type ++ " function: " ++ funcName
                     where
-                    Function{..} = fromJust $ ctxInFunc ctx
+                    Function{..} = fromJust $ inFunc ctx
                     TUser _ _ [_, etype] = typ'' ?d funcType
                     (inner_expr, inner_type) = exprExpr
                     TUser _ _ [_, inner_etype] = typ'' ?d inner_type
@@ -808,7 +816,7 @@ exprConstraints_ de@(DDExpr ctx (E e@ESet{..})) = do
 exprConstraints_ (DDExpr ctx (E e@EReturn{..})) =
     addConstraint =<< tvarTypeOfExpr (DDExpr (CtxReturn e ctx) exprRetVal) <~~~~ typeToTExpr funcType
     where
-    Just Function{..} = ctxInFunc ctx
+    Just Function{..} = inFunc ctx
 
 -- Binary operator 'e1 op e2', where `op` is one of '==, !=, <, >, <=, >='.
 --
@@ -975,7 +983,7 @@ exprConstraints_ de@(DDExpr ctx (E e@ETry{..})) | isOption ?d funcType = do
                                                 | otherwise = error $ "TypeInference.exprConstraints_ '" ++ show e ++ "': invalid function return type"
     where 
     e1 = DDExpr (CtxTry e ctx) exprExpr
-    Function{..} = fromJust $ ctxInFunc ctx
+    Function{..} = fromJust $ inFunc ctx
     TUser _ _ [_, terr] = typ'' ?d funcType
 
 -- 'break', 'continue', '_' expressions are happy to take any type required by
@@ -983,3 +991,4 @@ exprConstraints_ de@(DDExpr ctx (E e@ETry{..})) | isOption ?d funcType = do
 exprConstraints_ (DDExpr _ (E EBreak{})) = return ()
 exprConstraints_ (DDExpr _ (E EContinue{})) = return ()
 exprConstraints_ (DDExpr _ (E EPHolder{})) = return ()
+exprConstraints_ (DDExpr _ (E EClosure{})) = error "not implemented: exprConstraints_ EClosure" -- TODO

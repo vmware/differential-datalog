@@ -230,8 +230,13 @@ debugAggregateFunction d rlidx rhsidx =
                funcName = fname,
                funcArgs = [FuncArg {argPos = nopos,
                                     argName = "g",
-                                    argMut = False,
-                                    argType = tOpaque gROUP_TYPE [tkey, tTuple [tVar "I", tval]]}],
+                                    argType = ArgType {
+                                        atypePos = nopos,
+                                        atypeMut = False,
+                                        atypeType = tOpaque gROUP_TYPE [tkey, tTuple [tVar "I", tval]]
+                                    }
+                                   }
+                          ],
                funcType = tTuple [tinputs, tret],
                funcDef = Just funcBody}
 

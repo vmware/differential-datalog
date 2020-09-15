@@ -49,6 +49,7 @@ import {-# SOURCE #-} Language.DifferentialDatalog.Rule
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Var
 import {-# SOURCE #-} Language.DifferentialDatalog.TypeInference
+import {-# SOURCE #-} Language.DifferentialDatalog.Type
 
 lookupType :: DatalogProgram -> String -> Maybe TypeDef
 lookupType DatalogProgram{..} n = M.lookup n progTypedefs
@@ -81,7 +82,7 @@ getFuncs d n nargs = fromJust $ lookupFuncs d n nargs
 -- function.
 lookupFunc :: DatalogProgram -> String -> [Type] -> Maybe Function
 lookupFunc d@DatalogProgram{..} n arg_types =
-    find (\Function{..} -> isRight $ inferTypeArgs d nopos "" $ zip (map argType funcArgs) arg_types) candidates
+    find (\Function{..} -> isRight $ inferTypeArgs d nopos "" $ zip (map typ funcArgs) arg_types) candidates
     where
     candidates = maybe [] id $ lookupFuncs d n (length arg_types)
 
@@ -222,4 +223,14 @@ ctxVars' d ctx with_types =
          CtxAs _ _                -> (plvars, prvars)
          CtxRef _ _               -> (plvars, prvars)
          CtxTry _ _               -> (plvars, prvars)
+         CtxClosure e pctx         -> -- Captured variables are immutable.
+                                      -- Closure arguments can be mutable. We need to know the type of the closure to establish
+                                      -- argument mutability.
+                                      let EClosure{..} = e
+                                          closure_vars = map (ClosureArgVar pctx e) [0 .. length exprClosureArgs - 1] in
+                                      if with_types
+                                      then let TFunction _ args _ = exprType' d pctx $ E e
+                                               (closure_mut_vars, closure_imm_vars) = partition (atypeMut . snd) $ zip closure_vars args in
+                                           (map fst closure_mut_vars, (map fst closure_imm_vars) ++ plvars ++ prvars)
+                                      else ([], closure_vars ++ plvars ++ prvars)
     where (plvars, prvars) = ctxVars' d (ctxParent ctx) with_types
