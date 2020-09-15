@@ -177,6 +177,9 @@ typeValidate d tvars (TOpaque p n args) = do
     return ()
 typeValidate d tvars (TVar p v)       =
     check d (elem v tvars) p $ "Unknown type variable " ++ v
+typeValidate d tvars (TFunction _ as ret) = do
+    mapM_ (typeValidate d tvars . typ) as
+    typeValidate d tvars ret
 
 consValidate :: (MonadError String me) => DatalogProgram -> [String] -> Constructor -> me ()
 consValidate d tvars Constructor{..} = do
@@ -251,7 +254,7 @@ funcValidateProto d fs = do
     mapM_ (\f@Function{..} -> do
             uniqNames (Just d) ("Multiple definitions of argument " ++) funcArgs
             let tvars = funcTypeVars f
-            mapM_ (typeValidate d tvars . argType) funcArgs
+            mapM_ (typeValidate d tvars . typ) funcArgs
             typeValidate d tvars funcType)
           fs
 
@@ -594,7 +597,7 @@ exprValidate1 _ _ _   EFor{..}            = return () -- checkNoVar exprPos d ct
 exprValidate1 _ _ _   ESet{}              = return ()
 exprValidate1 d _ ctx (EContinue p)       = check d (ctxInForLoopBody ctx) p "\"continue\" outside of a loop"
 exprValidate1 d _ ctx (EBreak p)          = check d (ctxInForLoopBody ctx) p "\"break\" outside of a loop"
-exprValidate1 d _ ctx (EReturn p _)       = check d (isJust $ ctxInFunc ctx) p "\"return\" outside of a function body"
+exprValidate1 d _ ctx (EReturn p _)       = check d (isJust $ ctxInFuncOrClosure ctx) p "\"return\" outside of a function body"
 exprValidate1 _ _ _   EBinOp{}            = return ()
 exprValidate1 _ _ _   EUnOp{}             = return ()
 
@@ -612,11 +615,14 @@ exprValidate1 d _ ctx (ERef p _)          =
     -- Rust does not allow pattern matching inside 'Arc'
     check d (ctxInRuleRHSPattern ctx || ctxInIndex ctx) p "Dereference pattern not allowed in this context"
 exprValidate1 d _ ctx (ETry p _)          = do
-    check d (isJust $ ctxInFunc ctx) p "?-expressions are only allowed in the body of a function"
-    let Function{..} = fromJust $ ctxInFunc ctx
-    check d (isOption d funcType || isResult d funcType) p
-          $ "?-expressions are only allowed in functions that return 'Option<>' or 'Result<>', " ++
-            "but function '" ++ funcName ++ "' returns '" ++ show funcType ++ "'"
+    check d (isJust $ ctxInFuncOrClosure ctx) p "?-expressions are only allowed in the body of a function or closure"
+exprValidate1 _ _ _   EClosure{}          = return ()
+
+-- TODO: move this logic inside type inference.
+--    let Function{..} = fromJust $ ctxInFunc ctx
+--    check d (isOption d funcType || isResult d funcType) p
+--          $ "?-expressions are only allowed in functions that return 'Option<>' or 'Result<>', " ++
+--            "but function '" ++ funcName ++ "' returns '" ++ show funcType ++ "'"
 
 -- True if a placeholder ("_") can appear in this context
 ctxPHolderAllowed :: ECtx -> Bool

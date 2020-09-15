@@ -141,6 +141,8 @@ exprFoldCtxM' f ctx e@(ERef p x)              = do x' <- exprFoldCtxM f (CtxRef 
                                                    f ctx $ ERef p x'
 exprFoldCtxM' f ctx e@(ETry p x)              = do x' <- exprFoldCtxM f (CtxTry e ctx) x
                                                    f ctx $ ETry p x'
+exprFoldCtxM' f ctx e@(EClosure p as r x)     = do x' <- exprFoldCtxM f (CtxClosure e ctx) x
+                                                   f ctx $ EClosure p as r x'
 
 exprMapM :: (Monad m) => (a -> m b) -> ExprNode a -> m (ExprNode b)
 exprMapM g e = case e of
@@ -175,7 +177,7 @@ exprMapM g e = case e of
                    EAs p x t           -> (\x' -> EAs p x' t) <$> g x
                    ERef p x            -> ERef p <$> g x
                    ETry p x            -> ETry p <$> g x
-
+                   EClosure p as r x   -> EClosure p as r <$> g x
 
 exprMap :: (a -> b) -> ExprNode a -> ExprNode b
 exprMap f e = runIdentity $ exprMapM (\e' -> return $ f e') e
@@ -233,6 +235,7 @@ exprCollectCtxM f op ctx e = exprFoldCtxM g ctx e
                                      EAs _ v _             -> x' `op` v
                                      ERef _ v              -> x' `op` v
                                      ETry _ v              -> x' `op` v
+                                     EClosure _ _ _ v      -> x' `op` v
 
 exprCollectM :: (Monad m) => (ExprNode b -> m b) -> (b -> b -> b) -> Expr -> m b
 exprCollectM f op e = exprCollectCtxM (\_ e' -> f e') op undefined e
@@ -525,6 +528,7 @@ exprInjectStringConversion d e t = do
                                      "Cannot automatically convert '" ++ show e ++
                                      "' of variable type '" ++ tvarName ++ "' to string"
                   TStruct{}   -> error "unexpected TStruct in exprInjectStringConversions"
+                  TFunction{} -> error "Automatic string conversion for closures is not supported"
     f <- case lookupFunc d fname [t'] of
               Nothing  -> err d (pos e) $ "Cannot find declaration of function '" ++ fname ++
                                           "' needed to convert expression '" ++ show e ++ "' to string"

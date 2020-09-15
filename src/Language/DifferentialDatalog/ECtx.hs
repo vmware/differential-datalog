@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018-2019 VMware, Inc.
+Copyright (c) 2018-2020 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -47,7 +47,9 @@ module Language.DifferentialDatalog.ECtx(
      ctxIsIndex,
      ctxInIndex,
      ctxIsFunc,
-     ctxInFunc,
+     ctxIsClosure,
+     ctxInClosure,
+     ctxInFuncOrClosure,
      ctxIsForLoopBody,
      ctxInForLoopBody)
 where
@@ -61,6 +63,15 @@ import Language.DifferentialDatalog.Syntax
 ctxAncestors :: ECtx -> [ECtx]
 ctxAncestors CtxTop = [CtxTop]
 ctxAncestors ctx    = ctx : (ctxAncestors $ ctxParent ctx)
+
+-- | List all ancestor contexts, stopping upon reaching a closure context.
+-- Example use: when determining the type of 'x' in 'return x' inside a 
+-- closure, which is in turn located inside a function, we want to find the
+-- containing closure, not the function.
+ctxLocalAncestors :: ECtx -> [ECtx]
+ctxLocalAncestors CtxTop            = [CtxTop]
+ctxLocalAncestors ctx@CtxClosure{}  = [ctx]
+ctxLocalAncestors ctx               = ctx : (ctxLocalAncestors $ ctxParent ctx)
 
 ctxIsRuleL :: ECtx -> Bool
 ctxIsRuleL CtxRuleL{} = True
@@ -147,16 +158,30 @@ ctxIsFunc :: ECtx -> Bool
 ctxIsFunc CtxFunc{} = True
 ctxIsFunc _         = False
 
--- | Returns the function that the context belongs to or 'Nothing'
--- if 'ctx' is outside the body of a function.
-ctxInFunc :: ECtx -> Maybe Function
-ctxInFunc (CtxFunc f) = Just f
-ctxInFunc CtxTop      = Nothing
-ctxInFunc ctx         = ctxInFunc (ctxParent ctx)
+ctxIsClosure :: ECtx -> Bool
+ctxIsClosure CtxClosure{} = True
+ctxIsClosure _            = False
+
+-- | Returns the closure context ('CtxClosure') that 'ctx' belongs to or 'Nothing'
+-- if 'ctx' does not belong to a closure.
+ctxInClosure :: ECtx -> Maybe ECtx
+ctxInClosure ctx@CtxClosure{} = Just ctx
+ctxInClosure CtxTop           = Nothing
+ctxInClosure ctx              = ctxInClosure $ ctxParent ctx
+
+-- | Returns the closure ('CtxClosure') or function ('CtxFunc') context that 'ctx' belongs
+-- to or 'Nothing' if 'ctx' does not belong to a function or closure.
+ctxInFuncOrClosure :: ECtx -> Maybe ECtx
+ctxInFuncOrClosure ctx@CtxClosure{} = Just ctx
+ctxInFuncOrClosure ctx@CtxFunc{}    = Just ctx
+ctxInFuncOrClosure CtxTop           = Nothing
+ctxInFuncOrClosure ctx              = ctxInFuncOrClosure $ ctxParent ctx
 
 ctxIsForLoopBody :: ECtx -> Bool
 ctxIsForLoopBody CtxForBody{} = True
 ctxIsForLoopBody _            = False
 
+-- | The context is located in the body of a for-loop, where a 'continue'
+-- statement is valid.  This does _not_ include a closure inside a loop.
 ctxInForLoopBody :: ECtx -> Bool
-ctxInForLoopBody ctx = any ctxIsForLoopBody $ ctxAncestors ctx
+ctxInForLoopBody ctx = any ctxIsForLoopBody $ ctxLocalAncestors ctx

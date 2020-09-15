@@ -44,6 +44,8 @@ data Var = -- Variable declared in an expression ('var v').
          | BindingVar {varCtx::ECtx, varExpr::ENode}
            -- Function argument.
          | ArgVar {varFunc::Function, varName::String}
+           -- Closure argument.
+         | ClosureArgVar {varCtx::ECtx, varExpr::ENode, varArgIdx::Int}
            -- Primary key variable.
          | KeyVar {varRel::Relation}
            -- Index variable.
@@ -59,17 +61,18 @@ data Var = -- Variable declared in an expression ('var v').
          deriving (Eq, Ord)
 
 instance WithPos Var where
-    pos (ExprVar _ e)       = pos e
-    pos (ForVar _ e)        = pos e
-    pos (BindingVar _ e)    = pos e
-    pos (ArgVar f v)        = pos $ fromJust $ find ((==v) . name) $ funcArgs f
-    pos (KeyVar rel)        = pos $ fromJust $ relPrimaryKey rel
-    pos (IdxVar idx v)      = pos $ fromJust $ find ((==v) . name) $ idxVars idx
-    pos (FlatMapVar rl i)   = pos $ rhsMapExpr $ ruleRHS rl !! i
-    pos (AggregateVar rl i) = pos $ rhsAggExpr $ ruleRHS rl !! i
-    pos WeightVar           = nopos
-    pos (TSVar rl)          = pos rl
-    atPos _ _               = error "atPos 'Var' is not supported"
+    pos (ExprVar _ e)         = pos e
+    pos (ForVar _ e)          = pos e
+    pos (BindingVar _ e)      = pos e
+    pos (ArgVar f v)          = pos $ fromJust $ find ((==v) . name) $ funcArgs f
+    pos (ClosureArgVar _ e i) = pos $ exprClosureArgs e !! i
+    pos (KeyVar rel)          = pos $ fromJust $ relPrimaryKey rel
+    pos (IdxVar idx v)        = pos $ fromJust $ find ((==v) . name) $ idxVars idx
+    pos (FlatMapVar rl i)     = pos $ rhsMapExpr $ ruleRHS rl !! i
+    pos (AggregateVar rl i)   = pos $ rhsAggExpr $ ruleRHS rl !! i
+    pos WeightVar             = nopos
+    pos (TSVar rl)            = pos rl
+    atPos _ _                 = error "atPos 'Var' is not supported"
  
 instance WithName Var where
     name (ExprVar _ EVarDecl{..})       = exprVName
@@ -80,6 +83,7 @@ instance WithName Var where
     name (BindingVar _ EBinding{..})    = exprVar
     name (BindingVar _ e)               = error $ "BindingVar.name: unexpected expression " ++ show e
     name (ArgVar _ v)                   = v
+    name (ClosureArgVar _ e i)          = name $ exprClosureArgs e !! i
     name (KeyVar rel)                   = keyVar $ fromJust $ relPrimaryKey rel
     name (IdxVar _ s)                   = s
     name (FlatMapVar rule i)            = rhsVar $ ruleRHS rule !! i

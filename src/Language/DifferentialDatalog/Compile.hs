@@ -109,6 +109,11 @@ tIMESTAMP_VAR = "__timestamp"
 wEIGHT_VAR :: Doc
 wEIGHT_VAR = "__weight"
 
+-- True iff expression is generated inside the 'types' module.
+-- Currently, this includes all expressions in the body of a function.
+inTypesModule :: ECtx -> Bool
+inTypesModule ctx = any ctxIsFunc $ ctxAncestors ctx
+
 -- Extract static template header before the "/*- !!!!!!!!!!!!!!!!!!!! -*/"
 -- separator from file; substitute "datalog_example" with 'specname' in
 -- the header.
@@ -2489,7 +2494,7 @@ mkPatExpr' d inkind ctx e@EStruct{..}   varkind mut  = do
     fields <- mapM (\(f, E e') -> (f,) <$> mkPatExpr' d inkind (CtxStruct e ctx f) e' varkind mut) exprStructFields
     let t = consType d exprConstructor
         struct_name = name t
-        pat = mkConstructorName (isJust $ ctxInFunc ctx) struct_name (fromJust $ tdefType t) exprConstructor <>
+        pat = mkConstructorName (inTypesModule ctx) struct_name (fromJust $ tdefType t) exprConstructor <>
               (braces $ hsep $ punctuate comma $ map (\(fname, m) -> pp fname <> ":" <+> mPattern m) fields)
         cond = hsep $ intersperse "&&" $ filter (/= empty)
                                        $ map (\(_,m) -> mCond m) fields
@@ -2497,7 +2502,7 @@ mkPatExpr' d inkind ctx e@EStruct{..}   varkind mut  = do
     return $ Match pat cond subpatterns
 mkPatExpr' d inkind ctx e@ETuple{..}    varkind mut  = do
     fields <- mapIdxM (\(E f) i -> mkPatExpr' d inkind (CtxTuple e ctx i) f varkind mut) exprTupleFields
-    let pat = tupleStruct (isJust $ ctxInFunc ctx) $ map (pp . mPattern) fields
+    let pat = tupleStruct (inTypesModule ctx) $ map (pp . mPattern) fields
         cond = hsep $ intersperse "&&" $ filter (/= empty)
                                        $ map (pp . mCond) fields
         subpatterns = concatMap mSubpatterns fields
@@ -2552,7 +2557,7 @@ mkExpr' d ctx e | isJust static_idx = (parens $ "&*" <> crate <> "::__STATIC_" <
     where
     e' = exprMap (E . sel3) e
     static_idx = lookupStatic d (E e') ctx ?statics
-    crate = if (isJust $ ctxInFunc ctx) then "crate" else "::types"
+    crate = if (inTypesModule ctx) then "crate" else "::types"
 
 -- All variables are references
 mkExpr' _ _ EVar{..}    = (pp exprVar, EReference)
@@ -2560,7 +2565,7 @@ mkExpr' _ _ EVar{..}    = (pp exprVar, EReference)
 -- Function arguments are passed as read-only or mutable references
 -- Functions return real values unless they are labeled return-by-reference.
 mkExpr' d ctx e@(EApply{..})  =
-    (mkFuncName d (isJust $ ctxInFunc ctx) f 
+    (mkFuncName d (inTypesModule ctx) f 
      <> (parens $ commaSep
                 $ map (\(a, mut) -> if mut then mutref a else ref a)
                 $ zip exprArgs (map argMut $ funcArgs f)), kind)
@@ -2577,9 +2582,9 @@ mkExpr' _ _ EInt{..} = (mkInt exprIVal, EVal)
 mkExpr' _ _ EDouble{..} = ("::ordered_float::OrderedFloat::<f64>" <> (parens $ pp exprDVal), EVal)
 mkExpr' _ _ EFloat{..} = ("::ordered_float::OrderedFloat::<f32>" <> (parens $ pp exprFVal), EVal)
 mkExpr' _ _ EString{..} = ("String::from(r###\"" <> pp exprString <> "\"###)", EVal)
-mkExpr' d ctx EBit{..} | exprWidth <= 128 = (parens $ pp exprIVal <+> "as" <+> mkType d (isJust $ ctxInFunc ctx) (tBit exprWidth), EVal)
+mkExpr' d ctx EBit{..} | exprWidth <= 128 = (parens $ pp exprIVal <+> "as" <+> mkType d (inTypesModule ctx) (tBit exprWidth), EVal)
                        | otherwise        = ("::differential_datalog::uint::Uint::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
-mkExpr' d ctx ESigned{..} | exprWidth <= 128 = (parens $ pp exprIVal <+> "as" <+> mkType d (isJust $ ctxInFunc ctx) (tSigned exprWidth), EVal)
+mkExpr' d ctx ESigned{..} | exprWidth <= 128 = (parens $ pp exprIVal <+> "as" <+> mkType d (inTypesModule ctx) (tSigned exprWidth), EVal)
                           | otherwise        = ("::differential_datalog::int::Int::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
 
 -- Struct fields must be values
@@ -2593,13 +2598,13 @@ mkExpr' d ctx EStruct{..} | ctxInSetL ctx
           fieldlvals = braces $ commaSep $ map (\(fname, v) -> pp fname <> ":" <+> lval v) exprStructFields
           tdef = consType d exprConstructor
           isstruct = isStructType $ fromJust $ tdefType tdef
-          tname = rnameScoped (isJust $ ctxInFunc ctx) $ name tdef
+          tname = rnameScoped (inTypesModule ctx) $ name tdef
 
 -- Tuple fields must be values
 mkExpr' _ ctx ETuple{..} | ctxInSetL ctx
-                         = (tupleStruct (isJust $ ctxInFunc ctx) $ map lval exprTupleFields, ELVal)
+                         = (tupleStruct (inTypesModule ctx) $ map lval exprTupleFields, ELVal)
                          | otherwise
-                         = (tupleStruct (isJust $ ctxInFunc ctx) $ map val exprTupleFields, EVal)
+                         = (tupleStruct (inTypesModule ctx) $ map val exprTupleFields, EVal)
 
 mkExpr' d ctx e@ESlice{..} = (mkSlice d (val exprOp, w) exprH exprL, EVal)
     where
@@ -2662,7 +2667,7 @@ mkExpr' d ctx e@ESet{..} | islet     = ("let" <+> assign <> optsemi, EVal)
     e' = exprMap (E . sel3) e
     islet = exprIsDeconstruct d $ E $ sel3 exprLVal
     t = if islet
-        then ":" <+> (mkType d (isJust $ ctxInFunc ctx) $ exprType d (CtxSetL e' ctx) $ E $ sel3 exprLVal)
+        then ":" <+> (mkType d (inTypesModule ctx) $ exprType d (CtxSetL e' ctx) $ E $ sel3 exprLVal)
         else empty
     assign = lval exprLVal <> t <+> "=" <+> val exprRVal
     optsemi = if not (ctxIsSeq1 ctx) then ";" else empty
@@ -2720,7 +2725,7 @@ mkExpr' d ctx ETyped{..} | ctxInSetL ctx = (e', categ)
                                          = (parens $ e' <> ".to_double()", categ)
                          | isint && toFloat
                                          = (parens $ e' <+> ".to_float()", categ)
-                         | isint         = (parens $ e' <+> "as" <+> mkType d (isJust $ ctxInFunc ctx) exprTSpec, categ)
+                         | isint         = (parens $ e' <+> "as" <+> mkType d (inTypesModule ctx) exprTSpec, categ)
                          | otherwise     = (e', categ)
     where
     (e', categ, e) = exprExpr
@@ -2734,11 +2739,11 @@ mkExpr' d ctx EAs{..} | bothIntegers && narrow_from && narrow_to && width_cmp /=
                       -- use Rust's type cast syntax to convert between
                       -- primitive types; no need to truncate the result if
                       -- target width is greater than or equal to source
-                      = (parens $ val exprExpr <+> "as" <+> mkType d in_func exprTSpec, EVal)
+                      = (parens $ val exprExpr <+> "as" <+> mkType d in_types exprTSpec, EVal)
                       | bothIntegers && narrow_from && narrow_to
                       -- apply lossy type conversion between primitive Rust types;
                       -- truncate the result if needed
-                      = (mkTruncate (parens $ val exprExpr <+> "as" <+> mkType d in_func exprTSpec) to_type,
+                      = (mkTruncate (parens $ val exprExpr <+> "as" <+> mkType d in_types exprTSpec) to_type,
                          EVal)
                       | bothIntegers && width_cmp == GT && tfrom == tto
                       -- from_type is wider than to_type, but they both
@@ -2789,9 +2794,9 @@ mkExpr' d ctx EAs{..} | bothIntegers && narrow_from && narrow_to && width_cmp /=
     e' = sel3 exprExpr
     from_type = exprType' d (CtxAs e' ctx) $ E e'
     to_type   = typ' d exprTSpec
-    in_func = isJust $ ctxInFunc ctx
-    tfrom = mkType d in_func from_type  -- Rust type
-    tto   = mkType d in_func to_type    -- Rust type
+    in_types = inTypesModule ctx
+    tfrom = mkType d in_types from_type  -- Rust type
+    tto   = mkType d in_types to_type    -- Rust type
     bothIntegers = (isInteger d from_type) && (isInteger d to_type)
     narrow_from = (isBit d from_type || isSigned d from_type) && typeWidth from_type <= 128
     narrow_to   = (isBit d to_type || isSigned d to_type)  && typeWidth to_type <= 128

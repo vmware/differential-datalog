@@ -159,8 +159,12 @@ instance WithType Field where
     setType f t = f { fieldType = t }
 
 instance WithType FuncArg where
-    typ = argType
-    setType a t = a { argType = t }
+    typ = atypeType . argType
+    setType a t = a { argType = (argType a){atypeType = t} }
+
+instance WithType ArgType where
+    typ = atypeType
+    setType a t = a { atypeType = t }
 
 instance WithType Relation where
     typ = relType
@@ -168,18 +172,19 @@ instance WithType Relation where
 
 -- | True iff t is a polymorphic type, i.e., contains any type variables.
 typeIsPolymorphic :: Type -> Bool
-typeIsPolymorphic TBool{}     = False
-typeIsPolymorphic TInt{}      = False
-typeIsPolymorphic TString{}   = False
-typeIsPolymorphic TBit{}      = False
-typeIsPolymorphic TSigned{}   = False
-typeIsPolymorphic TDouble{}   = False
-typeIsPolymorphic TFloat{}    = False
-typeIsPolymorphic TStruct{..} = any (any (typeIsPolymorphic . typ) . consArgs) typeCons
-typeIsPolymorphic TTuple{..}  = any typeIsPolymorphic typeTupArgs
-typeIsPolymorphic TUser{..}   = any typeIsPolymorphic typeArgs
-typeIsPolymorphic TVar{}      = True
-typeIsPolymorphic TOpaque{..} = any typeIsPolymorphic typeArgs
+typeIsPolymorphic TBool{}       = False
+typeIsPolymorphic TInt{}        = False
+typeIsPolymorphic TString{}     = False
+typeIsPolymorphic TBit{}        = False
+typeIsPolymorphic TSigned{}     = False
+typeIsPolymorphic TDouble{}     = False
+typeIsPolymorphic TFloat{}      = False
+typeIsPolymorphic TStruct{..}   = any (any (typeIsPolymorphic . typ) . consArgs) typeCons
+typeIsPolymorphic TTuple{..}    = any typeIsPolymorphic typeTupArgs
+typeIsPolymorphic TUser{..}     = any typeIsPolymorphic typeArgs
+typeIsPolymorphic TVar{}        = True
+typeIsPolymorphic TOpaque{..}   = any typeIsPolymorphic typeArgs
+typeIsPolymorphic TFunction{..} = any (typeIsPolymorphic . typ) typeFuncArgs || typeIsPolymorphic typeRetType
 
 -- | Compute type of an expression.  The expression must be previously
 -- validated.
@@ -304,6 +309,8 @@ exprNodeType' _ _   (ETyped _ _ t)         = t
 exprNodeType' _ _   (EAs _ _ t)            = t
 exprNodeType' _ ctx (ERef _ _)             = ctxExpectType ctx
 exprNodeType' _ _   (ETry _ _)             = error "exprNodeType: ?-expressions should be eliminated during type inference."
+exprNodeType' _ _   (EClosure _ _ (Just r) _)  = r
+exprNodeType' _ _   e@(EClosure _ _ Nothing _) = error $ "exprNodeType: closure " ++ show e ++ " has unknown return type after type inference."
 --exprNodeType' d ctx (ERef p _)             = eunknown d p ctx
 
 --exprTypes :: Refine -> ECtx -> Expr -> [Type]
@@ -670,6 +677,10 @@ typeMapM fun t@TVar{}      = fun t
 typeMapM fun t@TOpaque{..} = do
     args <- mapM (typeMapM fun) typeArgs
     fun $ t { typeArgs = args }
+typeMapM fun t@TFunction{..} = do
+    args <- mapM (\a -> setType a <$> typeMapM fun (atypeType a)) typeFuncArgs
+    ret <- typeMapM fun typeRetType
+    return t{typeFuncArgs = args, typeRetType = ret}
 
 typeMap :: (Type -> Type) -> Type -> Type
 typeMap f t = runIdentity $ typeMapM (return . f) t
@@ -709,6 +720,8 @@ varType _ v@ForVar{}                       = error $ "varType " ++ show v
 varType d (BindingVar ctx e@EBinding{..})  = exprType d (CtxBinding e ctx) exprPattern
 varType _ v@BindingVar{}                   = error $ "varType " ++ show v
 varType _ ArgVar{..}                       = typ $ fromJust $ find ((== varName) . name) $ funcArgs varFunc
+varType d ClosureArgVar{..}                = let TFunction{..} = exprType' d varCtx $ E varExpr in
+                                             typ $ typeFuncArgs !! varArgIdx
 varType _ KeyVar{..}                       = typ varRel
 varType _ IdxVar{..}                       = typ $ fromJust $ find ((== varName) . name) $ idxVars varIndex
 varType d (FlatMapVar rl i)                = case typ' d $ exprType d (CtxRuleRFlatMap rl i) (rhsMapExpr $ ruleRHS rl !! i) of

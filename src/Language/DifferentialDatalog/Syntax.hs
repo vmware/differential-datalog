@@ -34,6 +34,7 @@ SOFTWARE.
 module Language.DifferentialDatalog.Syntax (
         Attribute(..),
         ppAttributes,
+        ArgType(..),
         Type(..),
         typeTypeVars,
         tBool,
@@ -48,6 +49,7 @@ module Language.DifferentialDatalog.Syntax (
         tUser,
         tVar,
         tOpaque,
+        tFunction,
         structFields,
         structLookupField,
         structGetField,
@@ -111,7 +113,9 @@ module Language.DifferentialDatalog.Syntax (
         eAs,
         eRef,
         eTry,
+        eClosure,
         FuncArg(..),
+        argMut,
         Function(..),
         funcMutArgs,
         funcImmutArgs,
@@ -205,6 +209,25 @@ instance PP Field where
 instance Show Field where
     show = render . pp
 
+-- | Argument of a closure of function has type and 'mut' flag.
+data ArgType = ArgType { atypePos  :: Pos
+                       , atypeMut  :: Bool
+                       , atypeType :: Type
+                       }
+
+instance Eq ArgType where
+    (==) (ArgType _ m1 t1) (ArgType _ m2 t2) = (m1, t1) == (m2, t2)
+
+instance Ord ArgType where
+    compare (ArgType _ m1 t1) (ArgType _ m2 t2) = compare (m1, t1) (m2, t2)
+
+instance WithPos ArgType where
+    pos = atypePos
+    atPos a p = a{atypePos = p}
+
+instance PP ArgType where
+    pp ArgType{..} = (if atypeMut then "mut" else empty) <+> pp atypeType
+
 data Type = TBool     {typePos :: Pos}
           | TInt      {typePos :: Pos}
           | TString   {typePos :: Pos}
@@ -217,20 +240,22 @@ data Type = TBool     {typePos :: Pos}
           | TUser     {typePos :: Pos, typeName :: String, typeArgs :: [Type]}
           | TVar      {typePos :: Pos, tvarName :: String}
           | TOpaque   {typePos :: Pos, typeName :: String, typeArgs :: [Type]}
+          | TFunction {typePos :: Pos, typeFuncArgs :: [ArgType], typeRetType :: Type}
 
-tBool      = TBool     nopos
-tInt       = TInt      nopos
-tString    = TString   nopos
-tBit       = TBit      nopos
-tSigned    = TSigned   nopos
-tDouble    = TDouble   nopos
-tFloat     = TFloat    nopos
-tStruct    = TStruct   nopos
-tTuple [t] = t
-tTuple ts  = TTuple    nopos ts
-tUser      = TUser     nopos
-tVar       = TVar      nopos
-tOpaque    = TOpaque   nopos
+tBool           = TBool     nopos
+tInt            = TInt      nopos
+tString         = TString   nopos
+tBit            = TBit      nopos
+tSigned         = TSigned   nopos
+tDouble         = TDouble   nopos
+tFloat          = TFloat    nopos
+tStruct         = TStruct   nopos
+tTuple [t]      = t
+tTuple ts       = TTuple    nopos ts
+tUser           = TUser     nopos
+tVar            = TVar      nopos
+tOpaque         = TOpaque   nopos
+tFunction as t  = TFunction nopos as t
 
 structGetField :: Type -> String -> Field
 structGetField t f = fromJust $ structLookupField t f
@@ -258,74 +283,77 @@ structTypeDef _ t           = error $ "structTypeDef " ++ show t
 -}
 
 instance Eq Type where
-    (==) TBool{}            TBool{}             = True
-    (==) TInt{}             TInt{}              = True
-    (==) TString{}          TString{}           = True
-    (==) (TBit _ w1)        (TBit _ w2)         = w1 == w2
-    (==) (TSigned _ w1)     (TSigned _ w2)      = w1 == w2
-    (==) (TDouble _)        (TDouble _)         = True
-    (==) (TFloat _)         (TFloat _)          = True
-    (==) (TStruct _ cs1)    (TStruct _ cs2)     = cs1 == cs2
-    (==) (TTuple _ ts1)     (TTuple _ ts2)      = ts1 == ts2
-    (==) (TUser _ n1 as1)   (TUser _ n2 as2)    = n1 == n2 && as1 == as2
-    (==) (TVar _ v1)        (TVar _ v2)         = v1 == v2
-    (==) (TOpaque _ t1 as1) (TOpaque _ t2 as2)  = t1 == t2 && as1 == as2
-    (==) _                  _                   = False
+    (==) TBool{}              TBool{}              = True
+    (==) TInt{}               TInt{}               = True
+    (==) TString{}            TString{}            = True
+    (==) (TBit _ w1)          (TBit _ w2)          = w1 == w2
+    (==) (TSigned _ w1)       (TSigned _ w2)       = w1 == w2
+    (==) (TDouble _)          (TDouble _)          = True
+    (==) (TFloat _)           (TFloat _)           = True
+    (==) (TStruct _ cs1)      (TStruct _ cs2)      = cs1 == cs2
+    (==) (TTuple _ ts1)       (TTuple _ ts2)       = ts1 == ts2
+    (==) (TUser _ n1 as1)     (TUser _ n2 as2)     = n1 == n2 && as1 == as2
+    (==) (TVar _ v1)          (TVar _ v2)          = v1 == v2
+    (==) (TOpaque _ t1 as1)   (TOpaque _ t2 as2)   = t1 == t2 && as1 == as2
+    (==) (TFunction _ as1 r1) (TFunction _ as2 r2) = (as1, r1) == (as2, r2)
+    (==) _                    _                    = False
 
 -- assign rank to constructors; used in the implementation of Ord
 trank :: Type -> Int
-trank TBool  {} = 0
-trank TInt   {} = 1
-trank TString{} = 2
-trank TBit   {} = 3
-trank TSigned{} = 4
-trank TDouble{} = 5
-trank TFloat {} = 6
-trank TStruct{} = 7
-trank TTuple {} = 8
-trank TUser  {} = 9
-trank TVar   {} =10
-trank TOpaque{} =11
+trank TBool  {}   = 0
+trank TInt   {}   = 1
+trank TString{}   = 2
+trank TBit   {}   = 3
+trank TSigned{}   = 4
+trank TDouble{}   = 5
+trank TFloat {}   = 6
+trank TStruct{}   = 7
+trank TTuple {}   = 8
+trank TUser  {}   = 9
+trank TVar   {}   =10
+trank TOpaque{}   =11
+trank TFunction{} =12
 
 instance Ord Type where
-    compare TBool{}            TBool{}             = EQ
-    compare TInt{}             TInt{}              = EQ
-    compare TString{}          TString{}           = EQ
-    compare (TBit _ w1)        (TBit _ w2)         = compare w1 w2
-    compare (TSigned _ w1)     (TSigned _ w2)      = compare w1 w2
-    compare (TDouble _)        (TDouble _)         = EQ
-    compare (TFloat _)         (TFloat _)          = EQ
-    compare (TStruct _ cs1)    (TStruct _ cs2)     = compare cs1 cs2
-    compare (TTuple _ ts1)     (TTuple _ ts2)      = compare ts1 ts2
-    compare (TUser _ n1 as1)   (TUser _ n2 as2)    = compare (n1, as1) (n2, as2)
-    compare (TVar _ v1)        (TVar _ v2)         = compare v1 v2
-    compare (TOpaque _ t1 as1) (TOpaque _ t2 as2)  = compare (t1, as1) (t2, as2)
-    compare t1                 t2                  = compare (trank t1) (trank t2)
-
+    compare TBool{}              TBool{}                  = EQ
+    compare TInt{}               TInt{}                   = EQ
+    compare TString{}            TString{}                = EQ
+    compare (TBit _ w1)          (TBit _ w2)              = compare w1 w2
+    compare (TSigned _ w1)       (TSigned _ w2)           = compare w1 w2
+    compare (TDouble _)          (TDouble _)              = EQ
+    compare (TFloat _)           (TFloat _)               = EQ
+    compare (TStruct _ cs1)      (TStruct _ cs2)          = compare cs1 cs2
+    compare (TTuple _ ts1)       (TTuple _ ts2)           = compare ts1 ts2
+    compare (TUser _ n1 as1)     (TUser _ n2 as2)         = compare (n1, as1) (n2, as2)
+    compare (TVar _ v1)          (TVar _ v2)              = compare v1 v2
+    compare (TOpaque _ t1 as1)   (TOpaque _ t2 as2)       = compare (t1, as1) (t2, as2)
+    compare (TFunction _ as1 r1) (TFunction _ as2 r2)     = compare (as1, r1) (as2, r2)
+    compare t1                   t2                       = compare (trank t1) (trank t2)
 
 instance WithPos Type where
     pos = typePos
     atPos t p = t{typePos = p}
 
 instance PP Type where
-    pp (TBool _)        = "bool"
-    pp (TInt _)         = "bigint"
-    pp (TString _)      = "string"
-    pp (TBit _ w)       = "bit<" <> pp w <> ">"
-    pp (TSigned _ w)    = "signed<" <> pp w <> ">"
-    pp (TDouble _)      = "double"
-    pp (TFloat _)       = "float"
-    pp (TStruct _ cons) = vcat $ punctuate (" |") $ map pp cons
-    pp (TTuple _ as)    = parens $ commaSep $ map pp as
-    pp (TUser _ n as)   = pp n <>
-                          if null as
-                             then empty
-                             else "<" <> (hcat $ punctuate comma $ map pp as) <> ">"
-    pp (TVar _ v)       = "'" <> pp v
-    pp (TOpaque _ t as) = pp t <>
-                          if null as
-                             then empty
-                             else "<" <> (hcat $ punctuate comma $ map pp as) <> ">"
+    pp (TBool _)          = "bool"
+    pp (TInt _)           = "bigint"
+    pp (TString _)        = "string"
+    pp (TBit _ w)         = "bit<" <> pp w <> ">"
+    pp (TSigned _ w)      = "signed<" <> pp w <> ">"
+    pp (TDouble _)        = "double"
+    pp (TFloat _)         = "float"
+    pp (TStruct _ cons)   = vcat $ punctuate (" |") $ map pp cons
+    pp (TTuple _ as)      = parens $ commaSep $ map pp as
+    pp (TUser _ n as)     = pp n <>
+                            if null as
+                               then empty
+                               else "<" <> (hcat $ punctuate comma $ map pp as) <> ">"
+    pp (TVar _ v)         = "'" <> pp v
+    pp (TOpaque _ t as)   = pp t <>
+                            if null as
+                               then empty
+                               else "<" <> (hcat $ punctuate comma $ map pp as) <> ">"
+    pp (TFunction _ as r) = "function" <> parens (commaSep $ map pp as) <> ":" <> pp r
 
 instance Show Type where
     show = render . pp
@@ -333,19 +361,20 @@ instance Show Type where
 
 -- | Type variables used in type declaration in the order they appear in the declaration
 typeTypeVars :: Type -> [String]
-typeTypeVars TBool{}     = []
-typeTypeVars TInt{}      = []
-typeTypeVars TString{}   = []
-typeTypeVars TBit{}      = []
-typeTypeVars TSigned{}   = []
-typeTypeVars TDouble{}   = []
-typeTypeVars TFloat{}    = []
-typeTypeVars TStruct{..} = nub $ concatMap (typeTypeVars . fieldType)
-                               $ concatMap consArgs typeCons
-typeTypeVars TTuple{..}  = nub $ concatMap typeTypeVars typeTupArgs
-typeTypeVars TUser{..}   = nub $ concatMap typeTypeVars typeArgs
-typeTypeVars TVar{..}    = [tvarName]
-typeTypeVars TOpaque{..} = nub $ concatMap typeTypeVars typeArgs
+typeTypeVars TBool{}       = []
+typeTypeVars TInt{}        = []
+typeTypeVars TString{}     = []
+typeTypeVars TBit{}        = []
+typeTypeVars TSigned{}     = []
+typeTypeVars TDouble{}     = []
+typeTypeVars TFloat{}      = []
+typeTypeVars TStruct{..}   = nub $ concatMap (typeTypeVars . fieldType)
+                                 $ concatMap consArgs typeCons
+typeTypeVars TTuple{..}    = nub $ concatMap typeTypeVars typeTupArgs
+typeTypeVars TUser{..}     = nub $ concatMap typeTypeVars typeArgs
+typeTypeVars TVar{..}      = [tvarName]
+typeTypeVars TOpaque{..}   = nub $ concatMap typeTypeVars typeArgs
+typeTypeVars TFunction{..} = nub $ concatMap (typeTypeVars . atypeType) typeFuncArgs ++ typeTypeVars typeRetType
 
 data TypeDef = TypeDef { tdefPos   :: Pos
                        , tdefAttrs :: [Attribute]
@@ -665,6 +694,33 @@ data ExprNode e = EVar          {exprPos :: Pos, exprVar :: String}
                 | EAs           {exprPos :: Pos, exprExpr :: e, exprTSpec :: Type}
                 | ERef          {exprPos :: Pos, exprPattern :: e}
                 | ETry          {exprPos :: Pos, exprExpr :: e}
+                | EClosure      {exprPos :: Pos, exprClosureArgs :: [ClosureExprArg], exprClosureType :: Maybe Type, exprExpr :: e}
+
+-- Argument of a closure expression:
+-- * name
+-- * optional 'mut' attribute and type
+data ClosureExprArg = ClosureExprArg {
+    ceargPos  :: Pos,
+    ceargName :: String,
+    ceargType :: Maybe ArgType
+}
+
+instance WithName ClosureExprArg where
+    name = ceargName
+    setName a n = a {ceargName = n}
+
+instance Eq ClosureExprArg where
+    (==) (ClosureExprArg _ n1 t1) (ClosureExprArg _ n2 t2) = (n1, t1) == (n2, t2)
+
+instance Ord ClosureExprArg where
+    compare (ClosureExprArg _ n1 t1) (ClosureExprArg _ n2 t2) = compare (n1, t1) (n2, t2)
+
+instance WithPos ClosureExprArg where
+    pos = ceargPos
+    atPos a p = a{ceargPos = p}
+
+instance PP ClosureExprArg where
+    pp ClosureExprArg{..} = pp ceargName <> maybe empty ((":" <+>) . pp) ceargType
 
 instance Eq e => Eq (ExprNode e) where
     (==) (EVar _ v1)              (EVar _ v2)                = v1 == v2
@@ -698,6 +754,7 @@ instance Eq e => Eq (ExprNode e) where
     (==) (EAs _ e1 t1)            (EAs _ e2 t2)              = e1 == e2 && t1 == t2
     (==) (ERef _ p1)              (ERef _ p2)                = p1 == p2
     (==) (ETry _ e1)              (ETry _ e2)                = e1 == e2
+    (==) (EClosure _ as1 r1 e1)   (EClosure _ as2 r2 e2)     = (as1, r1, e1) == (as2, r2, e2)
     (==) _                        _                          = False
 
 -- Assign rank to constructors; used in the implementation of Ord.
@@ -733,6 +790,7 @@ erank ETyped    {} = 27
 erank EAs       {} = 28
 erank ERef      {} = 29
 erank ETry      {} = 30
+erank EClosure  {} = 31
 
 instance Ord e => Ord (ExprNode e) where
     compare (EVar _ v1)              (EVar _ v2)                = compare v1 v2
@@ -766,6 +824,7 @@ instance Ord e => Ord (ExprNode e) where
     compare (EAs _ e1 t1)            (EAs _ e2 t2)              = compare (e1, t1) (e2, t2)
     compare (ERef _ p1)              (ERef _ p2)                = compare p1 p2
     compare (ETry _ e1)              (ETry _ e2)                = compare e1 e2
+    compare (EClosure _ as1 r1 e1)   (EClosure _ as2 r2 e2)     = compare (as1, r1, e1) (as2, r2, e2)
     compare e1                       e2                         = compare (erank e1) (erank e2)
 
 instance WithPos (ExprNode e) where
@@ -820,6 +879,7 @@ instance PP e => PP (ExprNode e) where
     pp (EAs _ e t)           = parens $ pp e <+> "as" <+> pp t
     pp (ERef _ e)            = parens $ "&" <> pp e
     pp (ETry _ e)            = parens $ pp e <> "?"
+    pp (EClosure _ as r e)   = parens $ "function" <> parens (commaSep $ map pp as) <> (maybe empty ((":" <>) . pp) r) <> pp e
 
 instance PP e => Show (ExprNode e) where
     show = render . pp
@@ -879,18 +939,18 @@ eTyped e t          = E $ ETyped    nopos e t
 eAs e t             = E $ EAs       nopos e t
 eRef e              = E $ ERef      nopos e
 eTry e              = E $ ETry      nopos e
+eClosure ts r e     = E $ EClosure  nopos ts r e
 
 data FuncArg = FuncArg { argPos  :: Pos
                        , argName :: String
-                       , argMut  :: Bool
-                       , argType :: Type
+                       , argType :: ArgType
                        }
 
 instance Eq FuncArg where
-    (==) (FuncArg _ n1 m1 t1) (FuncArg _ n2 m2 t2) = (m1, n1, t1) == (m2, n2, t2)
+    (==) (FuncArg _ n1 t1) (FuncArg _ n2 t2) = (n1, t1) == (n2, t2)
 
 instance Ord FuncArg where
-    compare (FuncArg _ n1 m1 t1) (FuncArg _ n2 m2 t2) = compare (m1, n1, t1) (m2, n2, t2)
+    compare (FuncArg _ n1 t1) (FuncArg _ n2 t2) = compare (n1, t1) (n2, t2)
 
 instance WithPos FuncArg where
     pos = argPos
@@ -901,7 +961,10 @@ instance WithName FuncArg where
     setName a n = a { argName = n }
 
 instance PP FuncArg where
-    pp FuncArg{..} = pp argName <> ":" <+> (if argMut then "mut" else empty) <+> pp argType
+    pp FuncArg{..} = pp argName <> ":" <+> pp argType
+
+argMut :: FuncArg -> Bool
+argMut = atypeMut . argType
 
 data Function = Function { funcPos   :: Pos
                          , funcAttrs :: [Attribute]
@@ -912,7 +975,7 @@ data Function = Function { funcPos   :: Pos
                          }
 
 funcMutArgs :: Function -> [FuncArg]
-funcMutArgs f = filter argMut $ funcArgs f
+funcMutArgs f = filter argMut$ funcArgs f
 
 funcImmutArgs :: Function -> [FuncArg]
 funcImmutArgs f = filter (not . argMut) $ funcArgs f
@@ -953,7 +1016,7 @@ funcShowProto Function{..} = render $
 
 -- | Type variables used in function declaration in the order they appear in the declaration
 funcTypeVars :: Function -> [String]
-funcTypeVars Function{..} = nub $ concatMap (typeTypeVars . argType) funcArgs ++
+funcTypeVars Function{..} = nub $ concatMap (typeTypeVars . atypeType . argType) funcArgs ++
                                   typeTypeVars funcType
 
 data ModuleName = ModuleName {modulePath :: [String]}
@@ -998,7 +1061,7 @@ hotypeIsFunction _                = False
 hotypeTypeVars :: HOType -> [String]
 hotypeTypeVars HOTypeRelation{..} = typeTypeVars hotType
 hotypeTypeVars HOTypeFunction{..} = nub $
-    concatMap (typeTypeVars . argType) hotArgs ++
+    concatMap (typeTypeVars . atypeType . argType) hotArgs ++
     typeTypeVars hotType
 
 -- | Argument or field of a higher-order type
@@ -1261,6 +1324,8 @@ data ECtx = -- | Top-level context. Serves as the root of the context hierarchy.
           | CtxRef            {ctxParExpr::ENode, ctxPar::ECtx}
             -- | Argument of a ?-expression 'e?'
           | CtxTry            {ctxParExpr::ENode, ctxPar::ECtx}
+            -- | Expression inside a closure
+          | CtxClosure        {ctxParExpr::ENode, ctxPar::ECtx}
           deriving (Eq, Ord)
 
 instance PP ECtx where
@@ -1311,6 +1376,7 @@ instance PP ECtx where
                     CtxAs{..}             -> "CtxAs             " <+> epar
                     CtxRef{..}            -> "CtxRef            " <+> epar
                     CtxTry{..}            -> "CtxTry            " <+> epar
+                    CtxClosure{..}        -> "CtxClosure        " <+> epar
                     CtxTop                -> error "pp CtxTop"
 
 instance Show ECtx where
