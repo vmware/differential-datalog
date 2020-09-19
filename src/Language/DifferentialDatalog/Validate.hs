@@ -38,7 +38,6 @@ import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Pos
-import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.Name
 import {-# SOURCE #-} Language.DifferentialDatalog.Type
 import Language.DifferentialDatalog.TypeInference
@@ -234,21 +233,19 @@ checkAcyclicTypeAliases d@DatalogProgram{..} = do
 
 funcValidateProto :: (MonadError String me) => DatalogProgram -> [Function] -> me ()
 funcValidateProto d fs = do
-    let fname = name $ head fs
     let extern_idx = findIndex (isNothing . funcDef) fs
     let extern_fun = fs !! fromJust extern_idx
     check d (length fs == 1 || extern_idx == Nothing) (pos extern_fun)
         $ "Extern function '" ++ name extern_fun ++ "' clashes with function declaration(s) at\n  " ++
           (intercalate "\n  " $ map spos $ take (fromJust extern_idx)  fs ++ drop (fromJust extern_idx + 1) fs) ++
           "\nOnly non-extern functions can be overloaded."
-    mapIdxM_ (\f i -> mapM_ (\j -> -- If functions have the same number of arguments, then their first arguments
-                                   -- must have different types.
-                                   when ((length $ funcArgs f) == (length $ funcArgs $ fs !! j)) $ do
-                                       check d ((length $ funcArgs f) /= 0) (pos f)
-                                         $ "Multiple declarations of function '" ++ fname ++ "()' at\n  " ++ (spos f) ++ "\n  " ++ (spos $ fs !! j)
-                                       check d (not $ unifyTypes d (typ $ head $ funcArgs f) (typ $ head $ funcArgs $ fs !! j)) (pos $ head $ funcArgs f)
-                                         $ "Conflicting declarations of function '" ++ name f ++ "' at\n  " ++  (spos f) ++ "\n  " ++ (spos $ fs !! j) ++
-                                           "\nFunctions that share the same name and number of arguments must differ in the type of their first argument.")
+    mapIdxM_ (\f i -> mapM_ (\j -> -- If functions have the same number of arguments, then at least one of the argument types
+                                   -- or the return type must differ.
+                                   when ((length $ funcArgs f) == (length $ funcArgs $ fs !! j)) (do
+                                       let f' = fs !! j
+                                       check d (any (\(a1, a2) -> not $ unifyTypes d (typ a1) (typ a2))
+                                                    $ zip (funcType f : (map typ $ funcArgs f)) (funcType f' : map typ (funcArgs f'))) (pos f)
+                                             $ "Multiple declarations of function '" ++ funcShowProto f ++ "' at\n  " ++ (spos f) ++ "\n  " ++ (spos f')))
                             [0..i-1]) fs
     -- Validate individual prototypes.
     mapM_ (\f@Function{..} -> do
@@ -370,7 +367,7 @@ ruleRHSValidate d rl RHSAggregate{} idx = do
     let RHSAggregate v group_by fname e = ruleRHS rl !! idx
     let gctx = CtxRuleRGroupBy rl idx
     check d (notElem v $ map name $ exprVars d gctx group_by) (pos e) $ "Aggregate variable " ++ v ++ " already declared in this scope"
-    case lookupFuncs d fname 1 of
+    case lookupFuncs d fname (Just 1) of
          Nothing  -> err d (pos e) $ "Aggregation function not found. '" ++ fname ++ "' must refer to a function that takes one argument of type Group<>"
          Just [_] -> return ()
          Just fs  -> err d (pos e) $ "Ambiguous aggregation function name '" ++ fname ++ "' may refer to:\n  " ++
@@ -418,7 +415,7 @@ applyValidate d a@Apply{..} = do
     types <- mapM (\(decl, conc) ->
             case hofType decl of
                  HOTypeFunction{..} -> do
-                     fs' <- checkFuncs (pos a) d conc (length hotArgs)
+                     fs' <- checkFuncs (pos a) d conc (Just $ length hotArgs)
                      let (f@Function{..}):fs = fs'
                      check d (null fs) (pos a)
                            $ "Multiple definitions of function '" ++ conc ++ "' found"
@@ -560,11 +557,9 @@ exprValidate1 _ _ ctx EVar{..} | ctxInRuleRHSPositivePattern ctx
                                           = return ()
 exprValidate1 d _ ctx (EVar p v)          = do _ <- checkVar p d ctx v
                                                return ()
-exprValidate1 d _ _   (EApply p fnames as) = do
-    fs <- concat <$> mapM (\fname -> checkFuncs p d fname (length as)) fnames
-    check d (length fs > 0) p $ "Unknown function '" ++ (nameLocalStr $ head fnames) ++ "'"
-    check d (length fs == 1 || (not $ null as)) p $ "Ambiguous function name '" ++ (nameLocalStr $ head fnames) ++ "' may refer to:\n  " ++
-                                                    (intercalate "\n  " $ map (\f -> name f ++ " at " ++ spos f) fs)
+exprValidate1 _ _ _   EApply{}            = return ()
+exprValidate1 d _ _   (EFunc p fnames)    =
+    mapM_ (\fname -> checkFuncs p d fname Nothing) fnames
 exprValidate1 _ _ _   EField{}            = return ()
 exprValidate1 _ _ _   ETupField{}         = return ()
 exprValidate1 _ _ _   EBool{}             = return ()
@@ -616,13 +611,8 @@ exprValidate1 d _ ctx (ERef p _)          =
     check d (ctxInRuleRHSPattern ctx || ctxInIndex ctx) p "Dereference pattern not allowed in this context"
 exprValidate1 d _ ctx (ETry p _)          = do
     check d (isJust $ ctxInFuncOrClosure ctx) p "?-expressions are only allowed in the body of a function or closure"
-exprValidate1 _ _ _   EClosure{}          = return ()
-
--- TODO: move this logic inside type inference.
---    let Function{..} = fromJust $ ctxInFunc ctx
---    check d (isOption d funcType || isResult d funcType) p
---          $ "?-expressions are only allowed in functions that return 'Option<>' or 'Result<>', " ++
---            "but function '" ++ funcName ++ "' returns '" ++ show funcType ++ "'"
+exprValidate1 d _ _   EClosure{..}        = do
+    uniqNames (Just d) ("Multiple definitions of argument " ++) exprClosureArgs
 
 -- True if a placeholder ("_") can appear in this context
 ctxPHolderAllowed :: ECtx -> Bool
@@ -690,9 +680,22 @@ exprValidate3 d ctx e@(EMatch _ x cs) = do
                 ct0 (map fst cs)
     check d (consTreeEmpty ct) (pos x) "Non-exhaustive match patterns"
 exprValidate3 d ctx (ESet _ l _)         = checkLExpr d ctx l
-exprValidate3 d ctx e@(EApply _ _ as)      = do
-    let fun = applyExprGetFunc d ctx e
-    mapM_ (\(a, mut) -> when mut $ checkLExpr d ctx a)
-          $ zip as (map argMut $ funcArgs fun)
+exprValidate3 d ctx e@(EApply _ f as)    = do
+    let ft = exprType' d (CtxApplyFunc e ctx) f
+    mapIdxM_ (\(a, mut) i -> when mut $ checkLExpr d (CtxApplyArg e ctx i) a)
+             $ zip as (map atypeMut $ typeFuncArgs ft)
 
+{-
+-- We currently allow converting functions that return values by-reference into
+-- closures by cloning their result (see 'Compile.mkExpr EFunc').  This might
+-- not be the right design, as the user can accidentally write inefficient code.
+-- Alternatively, we may disallow such conversion.  Here is the code to do this:
+
+exprValidate3 d ctx e@(EFunc p [f]) | not (ctxIsApplyFunc $ ctxStripTypeAnnotations ctx) = do
+    let TFunction _ args _ = exprType' d ctx $ E e
+    let (func, _) = getFunc d f $ map typ args
+    check d (not $ funcGetReturnByRefAttr d func) p
+          $ "Function '" ++ show (name f) ++ "' with '#[return_by_ref]' annotation cannot be used as a closure. " ++
+            "Consider wrapping it in a new closure: '|..|" <> name f <> "(..)'"
+-}
 exprValidate3 _ _   _               = return ()

@@ -1,0 +1,125 @@
+import vec
+
+function int_vec(): Vec<s64> {
+    range(-10, 10, 1)
+}
+
+output relation IntVecTransforms(description: string, v: Vec<s64>)
+
+// filter.
+IntVecTransforms("odds", int_vec().filter(|x| x % 2 != 0)).
+
+function is_even(x: s64): bool {
+    x % 2 == 0
+}
+
+IntVecTransforms("evens", int_vec().filter(is_even)).
+// map.
+IntVecTransforms("+100", int_vec().map(|x|x+100)).
+
+// retain.
+IntVecTransforms("(0,5]", {
+                     var res = int_vec();
+                     res.retain(|x|: bool { x > 0 and x <= 5 });
+                     res
+                 }).
+
+IntVecTransforms(">3", {
+                     var res = int_vec();
+                     var threshold = 3;
+                     res.retain(|x: s64| x > threshold);
+                     res
+                 }).
+
+// find.
+IntVecTransforms("not in [-5, 0, 7]", {
+                     var res = int_vec();
+                     var exclude = [-5, 0];
+                     exclude.push(7);
+                     res.retain(|x| is_none(exclude.find(|y| y==x )));
+                     res
+                 }).
+
+// all.
+IntVecTransforms("not in [-5, 0, 100] uaing 'all'", {
+                     var res = int_vec();
+                     var exclude = [-5, 0, 100];
+                     res.retain(|x| exclude.all(|y| y != x)  );
+                     res
+                 }).
+
+// any.
+IntVecTransforms("not in [-5, 0, 100] using 'any'", {
+                     var res = int_vec();
+                     var exclude = [-5, 0, 100];
+                     res.retain(|x| not exclude.any(|y| y == x)  );
+                     res
+                 }).
+
+// sort_by.
+IntVecTransforms("sort_by(identity)", {
+                     var res = int_vec();
+                     res.sort_by(|x|x);
+                     res
+                 }).
+
+IntVecTransforms("sort_by(-x)", {
+                     var res = int_vec();
+                     res.sort_by(|x|-x);
+                     res
+                 }).
+
+IntVecTransforms("sort_by(to_string)", {
+                     var res = int_vec();
+                     res.sort_by(to_string);
+                     res
+                 }).
+
+// min_by.
+IntVecTransforms("min_by(x*x)", vec_singleton(int_vec().min_by(|x| x*x).unwrap_or_default())).
+
+// max_by.
+IntVecTransforms("max_by(to_string)", vec_singleton(int_vec().max_by(to_string).unwrap_or_default())).
+
+// filter_map.
+IntVecTransforms("filter_map(if (x < 0){None} else {Some{x+1000}})", int_vec().filter_map(|x| if (x < 0) { None } else { Some{x + 1000} })).
+
+// flatmap. 
+IntVecTransforms("flatmap(|x| [x, x + delta1, x + delta2])",
+                 {
+                     var delta1 = -1000;
+                     var delta2 = delta1 - 1000;
+                     int_vec().flatmap(|x| [x, x + delta1, x + delta2])
+                 }).
+
+/* Use closures in relations. */
+relation IntClosures(f: |s64|: s64)
+
+relation Increments(i: s64)
+
+Increments(100).
+Increments(200).
+
+IntClosures(|x| x + inc) :- Increments(inc).
+IntClosures(|x| x*x).
+
+typedef vec_to_vec_t = |Vec<s64>|: Vec<s64>
+
+relation IntVecClosures(f: vec_to_vec_t)
+
+IntVecClosures(|v|v.map(f)) :- IntClosures(f).
+IntVecClosures(|v|v.map(ref_new).map(deref)).
+
+IntVecTransforms("closure ${f}", f(int_vec())) :- IntVecClosures(f).
+
+/* Comparing closures. */
+output relation CompareClosures(c1: string, c2: string, equal: bool)
+
+// fold.
+CompareClosures("${c1}", "${c2}", c1 == c2) :-
+    IntVecClosures(c1),
+    IntVecClosures(c2).
+
+output relation VecFolds(description: string, a: s64)
+
+VecFolds("1+2+3+4+5", [1,2,3,4,5].fold(|a,x| a + x, 0)).

@@ -1,0 +1,3 @@
+dump vec_test::IntVecTransforms;
+dump vec_test::CompareClosures;
+dump vec_test::VecFolds;

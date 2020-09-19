@@ -243,11 +243,11 @@ fieldCheckDeserializeArrayAttr :: (MonadError String me) => DatalogProgram -> Fi
 fieldCheckDeserializeArrayAttr d field@Field{..} =
     case filter ((== "deserialize_from_array") . name) fieldAttrs of
          []                   -> return Nothing
-         [attr@Attribute{attrVal = E (EApply _ [fname] _)}] -> do
+         [attr@Attribute{attrVal = E (EApply _ (E (EFunc _ [fname])) _)}] -> do
              check d (isMap d field) (pos attr) $ "'deserialize_from_array' attribute is only applicable to fields of type 'Map<>'."
              let TOpaque _ _ [ktype, vtype] = typ' d field
-             kfunc@Function{..} <- checkFunc (pos attr) d fname [vtype]
-             _ <- funcTypeArgSubsts d (pos attr) kfunc [vtype, ktype]
+             (kfunc@Function{..}, _) <- checkFunc (pos attr) d fname [vtype] $ Just ktype
+             _ <- funcTypeArgSubsts d (pos attr) kfunc [vtype] (Just ktype)
              return $ Just fname
          [Attribute{..}] -> err d attrPos
              $ "Invalid 'deserialize_from_array' attribute value '" ++ show attrVal ++ "': the value of the attribute must be the name of the key function, e.g.: \"deserialize_from_array=key_func()\"."

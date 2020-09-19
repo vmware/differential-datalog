@@ -37,3 +37,7 @@ error: ./test/datalog_tests/rules.fail.dl:9:13-9:18: expression '(1 + 2)' of a n
 error: ./test/datalog_tests/rules.fail.dl:10:19-10:28: ?-expressions are only allowed in the body of a function or closure
           var z = y.nth(5)?.
                   ^^^^^^^^^
+
+error: ./test/datalog_tests/rules.fail.dl:6:18-6:20: Expression is not an l-value
+IntClosures(|x| {x = 10; x} ).
+                 ^^

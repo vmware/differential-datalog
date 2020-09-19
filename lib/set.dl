@@ -1,0 +1,103 @@
+/*
+ * Functions for working with sets (see basic set operations defined in
+ * `ddlog_std.dl`).
+ */
+
+/* Applies closure `f` to each element of the set. */
+function map(s: Set<'A>, f: function('A): 'B): Set<'B> {
+    var res = set_empty();
+    for (x in s) {
+        res.insert(f(x))
+    };
+    res
+}
+
+/* Returns the element that gives the minimum value from the specified function.
+ * If several elements are equally minimum, the first element is returned.
+ * If the set is empty, `None` is returned. */
+function min_by(s: Set<'A>, f: function('A): 'B): Option<'A> {
+    set_min_by(s, f)
+}
+
+/* Returns the element that gives the maximum value from the specified function.
+ * If several elements are equally maximum, the first element is returned.
+ * If the set is empty, `None` is returned. */
+function max_by(s: Set<'A>, f: function('A): 'B): Option<'A> {
+    set_max_by(s, f)
+}
+
+/* Returns the first element of the set that satisfies predicate `f` or
+ * `None` if none of the elements satisfy the predicate. */
+function find(s: Set<'A>, f: function('A): bool): Option<'A> {
+    for (x in s) {
+        if (f(x)) {
+            return Some{x}
+        }
+    };
+    None
+}
+
+/* Returns a vector containing only those elements in `s` that satisfy predicate
+ * `f`. */
+function filter(s: Set<'A>, f: function('A): bool): Set<'A> {
+    var res = set_empty();
+    for (x in s) {
+        if (f(x)) {
+            res.insert(x)
+        }
+    };
+    res
+}
+
+/* Both filters and maps the set.
+ *
+ * Calls the closure on each element of the set.  If the closure returns
+ * `Some{element}`, then that element is returned. */
+function filter_map(s: Set<'A>, f: function('A): Option<'B>): Set<'B> {
+    var res = set_empty();
+    for (x in s) {
+        match (f(x)) {
+            None -> (),
+            Some{y} -> res.insert(y)
+        }
+    };
+    res
+}
+
+
+/* Returnds `true` iff all elements of the set satisfy predicate `f`. */
+function all(s: Set<'A>, f: function('A): bool): bool {
+    for (x in s) {
+        if (not f(x)) {
+            return false
+        }
+    };
+    true
+}
+
+/* Returnds `true` iff at least one element of the set satisfies predicate `f`. */
+function any(s: Set<'A>, f: function('A): bool): bool {
+    for (x in s) {
+        if (f(x)) {
+            return true
+        }
+    };
+    false
+}
+
+/* Iterates over the set is ascending order, aggregating its contents using `f`.
+ *
+ * `f` - takes the previous value of the accumulator and the next element in the
+ * set and returns the new value of the accumulator.
+ *
+ * `initializer` - initial value of the accumulator. */
+function fold(s: Set<'A>, f: function('B, 'A): 'B, initializer: 'B): 'B {
+    var res = initializer;
+    for (x in s) {
+        res = f(res, x)
+    };
+    res
+}
+
+extern function set_min_by(s: Set<'A>, f: function('A): 'B): Option<'A>
+extern function set_max_by(s: Set<'A>, f: function('A): 'B): Option<'A>

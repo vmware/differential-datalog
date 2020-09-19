@@ -35,7 +35,6 @@ module Language.DifferentialDatalog.NS(
     ) where
 
 import qualified Data.Map as M
-import Data.Either
 import Data.List
 import Data.Maybe
 import Control.Monad.Except
@@ -62,37 +61,47 @@ checkType p d n = case lookupType d n of
 getType :: DatalogProgram -> String -> TypeDef
 getType d n = fromJust $ lookupType d n
 
--- Given only function name and the number of arguments, lookup can return
+-- Given only function name (and optionally the number of arguments), lookup can return
 -- multiple functions.
-
-lookupFuncs :: DatalogProgram -> String -> Int -> Maybe [Function]
-lookupFuncs DatalogProgram{..} n nargs =
+lookupFuncs :: DatalogProgram -> String -> Maybe Int -> Maybe [Function]
+lookupFuncs DatalogProgram{..} n Nothing =
+    M.lookup n progFunctions
+lookupFuncs DatalogProgram{..} n (Just nargs) =
     filter ((== nargs) . length . funcArgs) <$> M.lookup n progFunctions
 
-checkFuncs :: (MonadError String me) => Pos -> DatalogProgram -> String -> Int -> me [Function]
+
+checkFuncs :: (MonadError String me) => Pos -> DatalogProgram -> String -> Maybe Int -> me [Function]
 checkFuncs p d n nargs = case lookupFuncs d n nargs of
-                              Nothing -> err d p $ "Unknown function: '" ++ n ++ "'"
+                              Nothing -> err d p $ "Unknown function: '" ++ n ++ "'" ++
+                                                   (maybe "" (\x -> " with " ++ show x ++ " arguments") nargs)
                               Just fs -> return fs
 
-getFuncs :: DatalogProgram -> String -> Int -> [Function]
+getFuncs :: DatalogProgram -> String -> Maybe Int -> [Function]
 getFuncs d n nargs = fromJust $ lookupFuncs d n nargs
 
--- Find a function by its name and argument types.  This function should only be
+-- Find a function by its name, argument types, and return type.  This function should only be
 -- called after type inference, at which point there should be exactly one such
 -- function.
-lookupFunc :: DatalogProgram -> String -> [Type] -> Maybe Function
-lookupFunc d@DatalogProgram{..} n arg_types =
-    find (\Function{..} -> isRight $ inferTypeArgs d nopos "" $ zip (map typ funcArgs) arg_types) candidates
+-- TODO: change ret_type from Maybe Type to Type once we've change aggregation
+-- syntax to use expression in the LHS.
+lookupFunc :: DatalogProgram -> String -> [Type] -> Maybe Type -> Maybe (Function, M.Map String Type)
+lookupFunc d@DatalogProgram{..} n arg_types ret_type =
+    listToMaybe $
+    mapMaybe (\f@Function{..} -> case inferTypeArgs d nopos "" $ zip (map typ funcArgs ++ [funcType]) (arg_types ++ maybeToList ret_type) of
+                                      Left _ -> Nothing
+                                      Right tmap -> Just (f,tmap)
+             ) candidates
     where
-    candidates = maybe [] id $ lookupFuncs d n (length arg_types)
+    candidates = maybe [] id $ lookupFuncs d n (Just $ length arg_types)
 
-checkFunc :: (MonadError String me) => Pos -> DatalogProgram -> String -> [Type] -> me Function
-checkFunc p d n arg_types = case lookupFunc d n arg_types of
-                                 Nothing -> err d p $ "Unknown function: '" ++ n ++ "(" ++ (intercalate "," $ map show arg_types) ++ ")'"
-                                 Just f  -> return f
+checkFunc :: (MonadError String me) => Pos -> DatalogProgram -> String -> [Type] -> Maybe Type -> me (Function, M.Map String Type)
+checkFunc p d n arg_types ret_type =
+    case lookupFunc d n arg_types ret_type of
+         Nothing -> err d p $ "Unknown function: '" ++ n ++ "(" ++ (intercalate "," $ map show arg_types) ++ "): " <> (maybe "_" show ret_type) <> "'"
+         Just f  -> return f
 
-getFunc :: DatalogProgram -> String -> [Type] -> Function
-getFunc d n arg_types = fromJust $ lookupFunc d n arg_types
+getFunc :: DatalogProgram -> String -> [Type] -> Maybe Type -> (Function, M.Map String Type)
+getFunc d n arg_types ret_type = fromJust $ lookupFunc d n arg_types ret_type
 
 lookupTransformer :: DatalogProgram -> String -> Maybe Transformer
 lookupTransformer DatalogProgram{..} n = M.lookup n progTransformers
@@ -175,7 +184,8 @@ ctxVars' d ctx with_types =
          CtxRuleRGroupBy rl i     -> ([], ruleRHSVars d rl i)
          CtxKey rel@Relation{..}  -> ([], [KeyVar rel])
          CtxIndex idx@Index{..}   -> ([], map (\v -> (IdxVar idx $ name v)) idxVars)
-         CtxApply _ _ _           -> (plvars, prvars)
+         CtxApplyArg _ _ _        -> (plvars, prvars)
+         CtxApplyFunc _ _         -> (plvars, prvars)
          CtxField _ _             -> (plvars, prvars)
          CtxTupField _ _          -> (plvars, prvars)
          CtxStruct _ _ _          -> (plvars, prvars)

@@ -25,6 +25,8 @@ typedef s128 = signed<128>
 
 #[alias]
 typedef usize = bit<64>
+#[alias]
+typedef isize = signed<64>
 
 /*
  * Weight of a record in a DDlog collection.  This type is internal to the
@@ -150,6 +152,15 @@ function is_some(x: Option<'A>): bool = {
     }
 }
 
+/* Applies transformation `f` to the value stored inside `Option`.
+ */
+function map(opt: Option<'A>, f: function('A): 'B): Option<'B> {
+    match (opt) {
+        None -> None,
+        Some{x} -> Some{f(x)}
+    }
+}
+
 /* Returns default value of a type.
  */
 extern function default(): 'T
@@ -223,6 +234,26 @@ function unwrap_or(res: Result<'V,'E>, def: 'V): 'V = {
  */
 function unwrap_or_default(res: Result<'V,'E>): 'V {
     result_unwrap_or_default(res)
+}
+
+/* Maps a `Result<'V1, 'E>` to `Result<'V2, 'E>` by applying a function to a
+ * contained `Ok` value, leaving an `Err` value untouched.
+ */
+function map(res: Result<'V1, 'E>, f: function('V1): 'V2): Result<'V2, 'E> {
+    match (res) {
+        Err{e} -> Err{e},
+        Ok{x} -> Ok{f(x)}
+    }
+}
+
+/* Maps a `Result<'V, 'E1>` to `Result<'V, 'E2>` by applying a function to a
+ * contained `Err` value, leaving an `Ok` value untouched.
+ */
+function map_err(res: Result<'V, 'E1>, f: function('E1): 'E2): Result<'V, 'E2> {
+    match (res) {
+        Err{e} -> Err{f(e)},
+        Ok{x} -> Ok{x}
+    }
 }
 
 /*
@@ -517,6 +548,14 @@ function resize(v: mut Vec<'X>, new_len: usize, value: 'X) {
     vec_resize(v, new_len, value)
 }
 
+/*
+ * Shortens the vector, keeping the first `len` elements and dropping the rest.
+ * If `len` is greater than the vector's current length, this has no effect.
+ */
+function truncate(v: mut Vec<'X>, len: usize) {
+    vec_truncate(v, len)
+}
+
 /* Swap value at index `idx` for `value`.
  * Stores the old value at this index in `value` unless `idx` exceeds
  * the size of the vector (in which case the vector remains unmodified).
@@ -676,6 +715,7 @@ extern function vec_to_set(s: Vec<'A>): Set<'A>
 extern function vec_sort(v: mut Vec<'X>)
 extern function vec_sort_imm(v: Vec<'X>): Vec<'X>
 extern function vec_resize(v: mut Vec<'X>, new_len: usize, value: 'X)
+extern function vec_truncate(v: mut Vec<'X>, len: usize)
 extern function vec_swap_nth(v: mut Vec<'X>, idx: usize, value: mut 'X): bool
 extern function vec_update_nth(v: mut Vec<'X>, idx: usize, value: 'X): bool
 

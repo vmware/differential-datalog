@@ -30,16 +30,20 @@ module Language.DifferentialDatalog.Function(
 
 import Control.Monad.Except
 import Data.List
+import Data.Maybe
 import qualified Data.Map as M
 
+import Language.DifferentialDatalog.Error
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Syntax
 import {-# SOURCE #-} Language.DifferentialDatalog.Type
 import {-# SOURCE #-} Language.DifferentialDatalog.TypeInference
 
-funcTypeArgSubsts :: (MonadError String me) => DatalogProgram -> Pos -> Function -> [Type] -> me (M.Map String Type)
-funcTypeArgSubsts d p f@Function{..} argtypes =
-    inferTypeArgs d p ("in call to " ++ funcShowProto f) (zip (map typ funcArgs ++ [funcType]) argtypes)
+funcTypeArgSubsts :: (MonadError String me) => DatalogProgram -> Pos -> Function -> [Type] -> Maybe Type -> me (M.Map String Type)
+funcTypeArgSubsts d p f@Function{..} argtypes ret_type = do
+    check d (length funcArgs == length argtypes) p
+          $ "Expected function with " ++ (show $ length argtypes) ++ " arguments, but " ++ funcShowProto f ++ " takes " ++ show (length funcArgs)
+    inferTypeArgs d p ("in call to " ++ funcShowProto f) (zip (map typ funcArgs ++ [funcType]) (argtypes ++ maybeToList ret_type))
 
 -- | Functions that take an argument of type `Group<>` are treated in a special
 -- way in Compile.hs. This function returns the list of `Group` types passed as

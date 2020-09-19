@@ -1,0 +1,12 @@
+map_test::MapTransforms{.description = "filter(>1)", .v = [((2, "2"), map_test::Foo{.x = 2})]}
+map_test::MapTransforms{.description = "filter_map(k<=1, +10)", .v = [((2, "2"), map_test::Foo{.x = 12})]}
+map_test::MapTransforms{.description = "filter_map_with_key(k<=1, +10)", .v = [((2, "2"), map_test::Foo{.x = 12})]}
+map_test::MapTransforms{.description = "filter_with_key(k<=1 and v.x>1)", .v = []}
+map_test::MapTransforms{.description = "map(+10)", .v = [((0, "0"), map_test::Foo{.x = 10}), ((1, "1"), map_test::Foo{.x = 11}), ((2, "2"), map_test::Foo{.x = 12})]}
+map_test::MapTransforms{.description = "map_in_place(+10)", .v = [((0, "0"), map_test::Foo{.x = 10}), ((1, "1"), map_test::Foo{.x = 11}), ((2, "2"), map_test::Foo{.x = 12})]}
+map_test::MapTransforms{.description = "map_keys(/2)", .v = [((0, "0"), map_test::Foo{.x = 0}), ((0, "1"), map_test::Foo{.x = 1}), ((1, "2"), map_test::Foo{.x = 2})]}
+map_test::MapTransforms{.description = "map_with_key(+key+10)", .v = [((0, "0"), map_test::Foo{.x = 10}), ((1, "1"), map_test::Foo{.x = 12}), ((2, "2"), map_test::Foo{.x = 14})]}
+map_test::MapTransforms{.description = "retain(!=1)", .v = [((0, "0"), map_test::Foo{.x = 0}), ((2, "2"), map_test::Foo{.x = 2})]}
+map_test::MapTransforms{.description = "retain_with_key(!=1)", .v = [((0, "0"), map_test::Foo{.x = 0}), ((2, "2"), map_test::Foo{.x = 2})]}
+map_test::MapFolds{.description = "concatenate key-value pairs", .a = " 0:0 1:1 2:2"}
+map_test::MapFolds{.description = "concatenate values", .a = " 0 1 2"}

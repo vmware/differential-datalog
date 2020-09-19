@@ -357,6 +357,7 @@ typeTableName x =
          TBool{}       -> "__Bool"
          TInt{}        -> "__BigInt"
          TString{}     -> "__String"
+         TFunction{}   -> "__String"
          TDouble{}     -> "__Double"
          TFloat{}      -> "__Float"
          TBit{..}    | typeWidth <= 8
@@ -467,6 +468,7 @@ typeSubtypes stack t | elem t stack = -- prevent infinite recursion when process
         TBool{}       -> return ()
         TInt{}        -> return ()
         TString{}     -> return ()
+        TFunction{}   -> return ()
         TBit{}        -> return ()
         TSigned{}     -> return ()
         TDouble{}     -> return ()
@@ -501,6 +503,7 @@ typeFlatbufSchema x =
          t | typeIsScalar t
                      -> tdecl
          TString{}   -> empty
+         TFunction{} -> empty
          TBit{}      -> empty
          TSigned{}   -> empty
          TInt{}      -> empty
@@ -553,6 +556,7 @@ fbType x =
          TBool{}            -> "bool"
          TInt{}             -> "__BigInt"
          TString{}          -> "string"
+         TFunction{}        -> "string"
          TDouble{}          -> "double"
          TFloat{}           -> "float"
          TBit{..} | typeWidth <= 8
@@ -716,6 +720,7 @@ jFBReadType x =
     case typeNormalizeForFlatBuf x of
         TBool{}            -> "boolean"
         TString{}          -> "String"
+        TFunction{}        -> "String"
         TFloat{}           -> "float"
         TDouble{}          -> "double"
         TBit{..} | typeWidth <= 16
@@ -739,6 +744,7 @@ jConvType rw x =
         TDouble{}          -> "double"
         TFloat{}           -> "float"
         TString{}          -> "String"
+        TFunction{}        -> "String"
         TBit{..} | typeWidth <= 16
                            -> "int"
         TBit{..} | typeWidth <= 64
@@ -852,6 +858,7 @@ jConv2FBType fbctx e t =
             TDouble{}          -> e
             TFloat{}           -> e
             TString{}          -> "fbbuilder.createString(" <> e <> ")"
+            TFunction{}        -> "fbbuilder.createString(" <> e <> ")"
             TBit{..} | typeWidth <= 64
                                -> e
             TBit{..}           -> biguint
@@ -1408,6 +1415,7 @@ jReadField nesting fbctx e t =
                       TDouble{}          -> e'
                       TFloat{}           -> e'
                       TString{}          -> e'
+                      TFunction{}        -> e'
                       TBit{..} | typeWidth <= 64
                                          -> (parens $ jConvTypeR t) <> e'
                       TBit{..}           -> biguint

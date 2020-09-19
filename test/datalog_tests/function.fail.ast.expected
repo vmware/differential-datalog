@@ -52,7 +52,7 @@ function cast(x: bit<16>): bool = x as bool
 
 Failed to parse input file: "./test/datalog_tests/function.fail.dl" (line 3, column 30):
 unexpected "3"
-expecting "bit", "signed", "bigint", "double", "float", "string", "bool", "#", constructor name, type name, "'", "(" or ">"
+expecting "bit", "signed", "bigint", "double", "float", "string", "bool", "#", constructor name, type name, "'", "function", "|", "(" or ">"
 
 error: ./test/datalog_tests/function.fail.dl:3:37-5:1: There are no direct casts from floating point to integers; use the library functions int_from_*.double
 function cast(x: double): bit<32> = x as bit<32>
@@ -94,13 +94,16 @@ error: ./test/datalog_tests/function.fail.dl:7:5-7:9: Expression is not an l-val
     x.0 = "foo";
     ^^^^
 
-error: ./test/datalog_tests/function.fail.dl:10:16-10:34: Type mismatch:
+error: ./test/datalog_tests/function.fail.dl:10:16-10:29: Type mismatch:
 expected type: bool
 actual type: ddlog_std::Option<bool>
 in
-expression 'bool_identity(any)'
+expected type: function( ddlog_std::Option<bool>):bool
+actual type: function( ddlog_std::Option<bool>):ddlog_std::Option<bool>
+in
+expression 'bool_identity'
   (Tagg{.col = bool_identity(any)})
-               ^^^^^^^^^^^^^^^^^^
+               ^^^^^^^^^^^^^
 
 error: ./test/datalog_tests/function.fail.dl:5:1-6:1: Extern function 'foo' clashes with function declaration(s) at
   ./test/datalog_tests/function.fail.dl:6:1-8:1
@@ -108,9 +111,9 @@ Only non-extern functions can be overloaded.
 extern function foo(x: u32): ()
 ^
 
-error: ./test/datalog_tests/function.fail.dl:8:21-8:38: expression 'ddlog_std::nth(components, 1)' must be of type 'Result<>', but its type is 'ddlog_std::Option<'a>'
+error: ./test/datalog_tests/function.fail.dl:8:21-8:39: expression 'ddlog_std::nth(components, 1)' must be of type 'Result<>', but its type is 'ddlog_std::Option<string>'
     var last_name = components.nth(1)?;
-                    ^^^^^^^^^^^^^^^^^
+                    ^^^^^^^^^^^^^^^^^^
 
 error: ./test/datalog_tests/function.fail.dl:13:5-13:7: Expression is not an l-value
     y = 0
@@ -131,3 +134,28 @@ error: ./test/datalog_tests/function.fail.dl:13:9-13:12: Expression is not an l-
 error: ./test/datalog_tests/function.fail.dl:13:10-13:13: Expression is not an l-value
     if ({vec.push(3); vec.len()} > 5) { () }
          ^^^
+
+error: ./test/datalog_tests/function.fail.dl:5:20-5:27: Multiple definitions of argument x at the following locations:
+  ./test/datalog_tests/function.fail.dl:5:20-5:27
+  ./test/datalog_tests/function.fail.dl:5:29-5:36
+    var closure = |x: bool, x: bool|: u64 {0};
+                   ^^^^^^^
+
+error: ./test/datalog_tests/function.fail.dl:6:16-6:17: Type mismatch:
+expected type: function( 'a):()
+actual type: function( bit<16>, bit<16>):bit<16>
+in
+expression 'a'
+function b() { a(0) }
+               ^
+
+error: ./test/datalog_tests/function.fail.dl:6:16-6:17: Type mismatch:
+expected type: ()
+actual type: bit<16>
+in
+expected type: function( bit<32>, 'a):()
+actual type: function( bit<16>, bit<16>):bit<16>
+in
+expression 'a'
+function b() { a(32'd0, 5) }
+               ^

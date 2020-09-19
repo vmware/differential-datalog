@@ -1,7 +1,7 @@
 import regex
 
 relation RegexTestInput(
-    regex: string,
+    re: string,
     text: string)
 
 
@@ -11,17 +11,17 @@ RegexTestInput([|'([^']+)'\s+\((\d{4})\)|], "Not my favorite movie: 'Citizen Kan
 RegexTestInput("[", "foo").
 
 output relation RegexTestOutput(
-    regex: string,
+    re: string,
     text: string,
     match_found: bool,
     match_found_checked: bool,
     first_match: Option<string>,
     all_matches: Vec<string>)
 
-RegexTestOutput(regex,
+RegexTestOutput(re,
                 text,
-                regex_match(regex(regex), text),
-                regex_match(unwrap_or(regex_checked(regex), regex("")), text),
-                regex_first_match(regex(regex), text),
-                regex_all_matches(regex(regex), text)) :-
-    RegexTestInput(regex, text).
+                regex_match(regex(re), text),
+                regex_match(unwrap_or(regex_checked(re), regex("")), text),
+                regex_first_match(regex(re), text),
+                regex_all_matches(regex(re), text)) :-
+    RegexTestInput(re, text).

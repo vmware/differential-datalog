@@ -64,12 +64,6 @@ import Language.DifferentialDatalog.Unification
 import Language.DifferentialDatalog.Var
 
 
--- TODO: remove when support for closures is done.
-inFunc :: ECtx -> Maybe Function
-inFunc (CtxFunc f) = Just f
-inFunc CtxTop      = Nothing
-inFunc ctx         = inFunc (ctxParent ctx)
-
 -- Constraint generator state.
 data GeneratorState = GeneratorState {
     -- Constraints generated so far.
@@ -206,19 +200,20 @@ teTuple ts  = TETuple ts
 -- expression, we introduce fresh type variables for type arguments of the
 -- function.
 typeToTExpr' :: (?d::DatalogProgram) => DDExpr -> Type -> GeneratorMonad TExpr
-typeToTExpr' _  TBool{}      = return TEBool
-typeToTExpr' _  TInt{}       = return TEBigInt
-typeToTExpr' _  TString{}    = return TEString
-typeToTExpr' _  TBit{..}     = return $ TEBit $ IConst typeWidth
-typeToTExpr' _  TSigned{..}  = return $ TESigned $ IConst typeWidth
-typeToTExpr' _  TFloat{}     = return TEFloat
-typeToTExpr' _  TDouble{}    = return TEDouble
-typeToTExpr' de TTuple{..}   = teTuple <$> mapM (typeToTExpr' de . typ) typeTupArgs
-typeToTExpr' de TUser{..}    = TEUser typeName <$> mapM (typeToTExpr' de) typeArgs
-typeToTExpr' de TVar{..}     = teTVarAux de tvarName
-typeToTExpr' de TOpaque{..}  = TEExtern typeName <$> mapM (typeToTExpr' de) typeArgs
-typeToTExpr' _  t@TStruct{}  = error $ "typeToTExpr': unexpected '" ++ show t ++ "'"
-typeToTExpr' _  TFunction{}  = error "not implemented: typeToTExpr' TFunction" -- TODO
+typeToTExpr' _  TBool{}         = return TEBool
+typeToTExpr' _  TInt{}          = return TEBigInt
+typeToTExpr' _  TString{}       = return TEString
+typeToTExpr' _  TBit{..}        = return $ TEBit $ IConst typeWidth
+typeToTExpr' _  TSigned{..}     = return $ TESigned $ IConst typeWidth
+typeToTExpr' _  TFloat{}        = return TEFloat
+typeToTExpr' _  TDouble{}       = return TEDouble
+typeToTExpr' de TTuple{..}      = teTuple <$> mapM (typeToTExpr' de . typ) typeTupArgs
+typeToTExpr' de TUser{..}       = TEUser typeName <$> mapM (typeToTExpr' de) typeArgs
+typeToTExpr' de TVar{..}        = teTVarAux de tvarName
+typeToTExpr' de TOpaque{..}     = TEExtern typeName <$> mapM (typeToTExpr' de) typeArgs
+typeToTExpr' _  t@TStruct{}     = error $ "typeToTExpr': unexpected '" ++ show t ++ "'"
+typeToTExpr' de TFunction{..}   = TEFunc <$> mapM (\arg -> (if atypeMut arg then IConst 1 else IConst 0,) <$> typeToTExpr' de (typ arg)) typeFuncArgs 
+                                         <*> typeToTExpr' de typeRetType
 
 -- | Matches function parameter types against concrete argument types, e.g.,
 -- given
@@ -405,7 +400,7 @@ inferTypes d es = do
             case ctx of
                 CtxBinOpR _ ctx' | ctxtypes M.! ctx' == tString && t /= tString
                                  -> do e'' <- exprInjectStringConversion d (enode e') t
-                                       return (E $ ETyped (pos e') e'' tString, t)
+                                       return (e'', t)
                 _ -> return (e', t)
             where
             t = case M.lookup ctx ctxtypes of
@@ -438,44 +433,62 @@ inferTypes d es = do
                                      TDouble{}   -> E expr
                                      _           -> error $ "inferTypes: unexpected floating point type '" ++ show t ++ "'"
                  -- Annotate all expressions whose type cannot be derived in a bottom-up manner:
-                 -- var decls, placeholders, function calls, structs, etc.
+                 -- var decls, placeholders, polymorphic functions, structs, etc.
                  -- This should be enough to determine the type of any
                  -- expression without type inference, by scanning it bottom up.
                  EVarDecl{}  -> annotated
                  EVar{} | ctxInRuleRHSPattern ctx 
                              -> annotated
                  EPHolder{}  -> annotated
-                 EApply{..}  -> do
-                    let fs = mapMaybe (\fname -> lookupFunc d fname $ map snd exprArgs) exprFunc
-                    let f = case fs of
-                                 [f'] -> f'
-                                 _ -> error $ "TypeInference.add_types: e=" ++ show expr ++ "\nfs = " ++ show (map name fs)
-                    if typeIsPolymorphic (funcType f)
+                 EFunc{..}  -> do
+                    let t' = typ' ?d t
+                    let arg_types = map typ $ typeFuncArgs t'
+                    let fs = mapMaybe (\fname -> lookupFunc ?d fname arg_types (Just $ typeRetType t')) exprFuncName
+                    let (f, _) = case fs of
+                                      [f'] -> f'
+                                      _ -> error $ "TypeInference.add_types: e=" ++ show expr ++ "\nfs = " ++ show (map (name . fst) fs)
+                    if funcIsPolymorphic ?d $ name f
                     then if ctxIsTyped ctx
-                         then E $ expr{exprFunc = [name f]}
-                         else E $ ETyped (pos e) (E $ expr{exprFunc = [name f]}) t
-                    else E $ expr{exprFunc = [name f]}
-                 EStruct{}   -> annotated
-                 EContinue{} -> annotated
-                 EBreak{}    -> annotated
-                 EReturn{}   -> annotated
-                 ERef{}      -> annotated
-                 ETry{..} | isOption ?d inner_type && isOption ?d funcType
+                         then E $ expr{exprFuncName = [name f]}
+                         else E $ ETyped (pos e) (E $ expr{exprFuncName = [name f]}) t
+                    else E $ expr{exprFuncName = [name f]}
+                 -- Make sure that closures are annotated with argument and
+                 -- return types.
+                 EClosure{..} ->
+                    let TFunction{..} = typ' ?d t in
+                    E $ EClosure (pos e)
+                                 (map (\(carg, arg) -> carg{ceargType = Just arg}) $ zip exprClosureArgs typeFuncArgs)
+                                 (Just typeRetType)
+                                 (fst exprExpr)
+                 EStruct{}    -> annotated
+                 EContinue{}  -> annotated
+                 EBreak{}     -> annotated
+                 EReturn{}    -> annotated
+                 ERef{}       -> annotated
+                 ETry{..} | isOption ?d inner_type && isOption ?d ret_type
                              -> E $ EMatch (pos e) inner_expr
-                                    [(eStruct nONE_CONSTRUCTOR [] inner_type, eReturn (eStruct nONE_CONSTRUCTOR [] funcType) t),
+                                    [(eStruct nONE_CONSTRUCTOR [] inner_type, eReturn (eStruct nONE_CONSTRUCTOR [] ret_type) t),
                                      (eStruct sOME_CONSTRUCTOR [("x", eVarDecl "__x" t)] inner_type, eVar "__x")]
-                          | isResult ?d inner_type && isOption ?d funcType
+                          | isResult ?d inner_type && isOption ?d ret_type
                              -> E $ EMatch (pos e) inner_expr
-                                    [(eStruct eRR_CONSTRUCTOR [("err", eTyped ePHolder inner_etype)] inner_type, eReturn (eStruct nONE_CONSTRUCTOR [] funcType) t),
+                                    [(eStruct eRR_CONSTRUCTOR [("err", eTyped ePHolder inner_etype)] inner_type, eReturn (eStruct nONE_CONSTRUCTOR [] ret_type) t),
                                      (eStruct oK_CONSTRUCTOR [("res", eVarDecl "__x" t)] inner_type, eVar "__x")]
-                          | isResult ?d inner_type && isResult ?d funcType
+                          | isResult ?d inner_type && isResult ?d ret_type
                              -> E $ EMatch (pos e) inner_expr
-                                    [(eStruct eRR_CONSTRUCTOR [("err", eVarDecl "__e" etype)] inner_type, eReturn (eStruct eRR_CONSTRUCTOR [("err", eVar "__e")] funcType) t),
+                                    [(eStruct eRR_CONSTRUCTOR [("err", eVarDecl "__e" etype)] inner_type, eReturn (eStruct eRR_CONSTRUCTOR [("err", eVar "__e")] ret_type) t),
                                      (eStruct oK_CONSTRUCTOR [("res", eVarDecl "__x" t)] inner_type, eVar "__x")]
-                          | otherwise -> error $ "TypeInference.add_types: e=" ++ show expr ++ " type=" ++ show inner_type ++ " function: " ++ funcName
+                          | otherwise -> error $ "TypeInference.add_types: e=" ++ show expr ++ " type=" ++ show inner_type ++ " function or closure: " ++ show ctx'
                     where
-                    Function{..} = fromJust $ inFunc ctx
-                    TUser _ _ [_, etype] = typ'' ?d funcType
+                    ctx' = fromMaybe (error $ "inferTypes '" ++ show expr ++ "': '?' not inside function or closure")
+                                     $ ctxInFuncOrClosure ctx
+                    ret_type = case ctx' of
+                                    CtxFunc{..} -> funcType ctxFunc
+                                    ctx''@CtxClosure{} ->
+                                        case M.lookup ctx'' ctxtypes of
+                                             Just t' -> t'
+                                             _ -> error $ "inferTypes '" ++ show expr ++ "': unknown closure type"
+                                    _ -> error $ "inferTypes '" ++ show expr ++ "': ctx' = " ++ show ctx'
+                    TUser _ _ [_, etype] = typ'' ?d ret_type
                     (inner_expr, inner_type) = exprExpr
                     TUser _ _ [_, inner_etype] = typ'' ?d inner_type
                  _           -> E expr
@@ -538,14 +551,14 @@ contextConstraints de@(DDExpr (CtxRuleRAggregate rl i) _) = do
     where
     RHSAggregate{..} = ruleRHS rl !! i
     -- 'ruleRHSValidate' makes sure that there's only one.
-    [Function{funcArgs = [grp_type], funcType = ret_type}] = getFuncs ?d rhsAggFunc 1
+    [Function{funcArgs = [grp_type], funcType = ret_type}] = getFuncs ?d rhsAggFunc (Just 1)
     TOpaque{typeArgs = [_, vtype]} = typ' ?d grp_type
 
 contextConstraints de@(DDExpr ctx@(CtxRuleRGroupBy rl i) _) =
     addConstraint =<< tvarTypeOfExpr (DDExpr ctx rhsGroupBy) <~~~~> typeToTExpr' de ktype
     where
     RHSAggregate{..} = ruleRHS rl !! i
-    [Function{funcArgs = [grp_type]}] = getFuncs ?d rhsAggFunc 1
+    [Function{funcArgs = [grp_type]}] = getFuncs ?d rhsAggFunc (Just 1)
     TOpaque{typeArgs = [ktype, _]} = typ' ?d grp_type
 
 
@@ -632,45 +645,45 @@ exprConstraints_ de@(DDExpr _ (E EFloat{})) =
 exprConstraints_ de@(DDExpr _ (E EDouble{})) =
     addConstraint =<< deIsFP de
 
--- f(e1,...,en)
---
--- |de|=f_ret |a1|...|aj| and
--- |e1|=f_arg_1 |a1|...|aj| and ... and |en|=f_arg_n |a1|...|aj|, where |a1|...|aj| are fresh type variables
-exprConstraints_ de@(DDExpr ctx (E e@EApply{..})) = do
-    -- Generate argument and return-type constraints for all candidate
-    -- functions.
-    constraints <- mapM (\Function{..} -> do
-                          ret_c <- tvarTypeOfExpr de <====> typeToTExpr' de funcType
-                          arg_cs <- mapIdxM (\(farg, earg) i -> tvarTypeOfExpr (DDExpr (CtxApply e ctx i) earg) <~~~~> typeToTExpr' de (typ farg))
-                                            $ zip funcArgs exprArgs
-                          return $ ret_c : arg_cs)
-                        candidates
-    case constraints of
-         [cs] -> addConstraints cs
+exprConstraints_ de@(DDExpr _ (E e@EFunc{..})) = do
+    -- Generate type constraints for all candidate functions.
+    candidate_types <- mapM (\Function{..} -> do
+                              ret_t <- typeToTExpr' de funcType
+                              arg_ts <- mapM (\arg -> (if argMut arg then IConst 1 else IConst 0,) <$> typeToTExpr' de (typ arg)) funcArgs
+                              return $ TEFunc arg_ts ret_t)
+                            candidate_funcs
+    case candidate_types of
+         [te] -> addConstraint =<< tvarTypeOfExpr de <==== te
          _    -> do
-           -- Type expression for the first argument of each candidate function.
-           te_arg0 <- mapM (typeToTExpr' de . typ . head . funcArgs) candidates
-           let -- Match the first argument against the first formal argument of each candidate
-               -- function.  If a unique match is found, we've found our candidate and can expand the lazy
-               -- constraint.  If multiple potential matches remain, return Nothing and try again later, when
-               -- the argument type has been further concretized, but if the argument is already fully
-               -- concretized, complain.  If there are no matches, signal type conflict.
-               expand te = case findIndices (\(Function{..}, arg0) -> unifyTExprs te arg0) $ zip candidates te_arg0 of
-                                []  -> err ?d (pos e) $ "Unknown function '" ++ fname ++ "(" ++ show te ++ (concat $ replicate (length exprArgs - 1) ",_") ++ ")'"
-                                [i] -> return $ Just $ constraints !! i
+           dev <- tvarTypeOfExpr de
+           ce <- teTypeOfExpr de
+           let -- Match function type against each candidate function.  If a unique match is found, we've found
+               -- our candidate and can expand the lazy constraint.  If multiple potential matches remain, return
+               -- Nothing and try again later, when the argument type has been further concretized, but if the
+               -- argument is already fully concretized, complain.  If there are no matches, signal type conflict.
+               expand te = case findIndices (\candidate_te -> unifyTExprs te candidate_te) $ candidate_types of
+                                []  -> case te of
+                                            TEFunc{} -> err ?d (pos e) $ "Unknown function '" ++ fname ++ "' of type '" ++ show te ++ "'"
+                                            _ ->  err ?d (pos e) $ "Expected expression of type '" ++ show te ++ "', but found function '" ++ fname ++ "'"
+                                [i] -> return $ Just [dev ==== (candidate_types !! i)]
                                 is | teIsConstant te -> err ?d (pos e) 
-                                                        $ "Ambiguous call to function '" ++ fname ++
-                                                          "(" ++ show te ++ (concat $ replicate (length exprArgs - 1) ",_") ++ ")' may refer to:\n  " ++
-                                                           (intercalate "\n  " $ map (\i -> (name $ candidates !! i) ++ " at " ++ (spos $ candidates !! i)) is)
+                                                        $ "Ambiguous reference to function '" ++ fname ++ "' of type '" ++ show te ++ "'" ++
+                                                          " may refer to:\n  " ++
+                                                          (intercalate "\n  " $ map (\i -> (name $ candidate_funcs !! i) ++ " at " ++ (spos $ candidate_funcs !! i)) is)
                                    | otherwise -> return Nothing
-           ce <- teTypeOfExpr efirst_arg
-           addConstraint $ CLazy ce expand Nothing efirst_arg 
-                         $ "Function '" ++ fname ++ "(" ++ show efirst_arg ++ ", ...)'"
+           addConstraint $ CLazy ce expand Nothing de $ "Function '" ++ fname ++ "' at " ++ (show $ pos e)
     where
-    -- All functions that 'exprFunc' may be referring to.
-    candidates = concatMap (\f -> getFuncs ?d f (length exprArgs)) exprFunc
-    efirst_arg = DDExpr (CtxApply e ctx 0) (head exprArgs)
-    fname = nameLocalStr $ head exprFunc
+    -- All functions that 'exprFuncName' may be referring to.
+    candidate_funcs = concatMap (\f -> getFuncs ?d f Nothing) exprFuncName
+    fname = nameLocalStr $ head exprFuncName
+
+
+-- f(e1,...,en)
+-- |f| = function(|e1|,..,|en|): |e|
+exprConstraints_ de@(DDExpr ctx (E e@EApply{..})) = do
+    let defunc = DDExpr (CtxApplyFunc e ctx) exprFunc
+    ftype <- TEFunc <$> (mapIdxM (\a i -> (IVar $ MutabilityOfArg defunc i, ) <$> teTypeOfExpr (DDExpr (CtxApplyArg e ctx i) a)) exprArgs) <*> teTypeOfExpr de
+    addConstraint =<< tvarTypeOfExpr defunc <==== ftype
 
 -- Struct field access: 'e1.f', where field 'f' is present in user-defined
 -- structs in 'S1',...,'Sn'.
@@ -812,11 +825,19 @@ exprConstraints_ de@(DDExpr ctx (E e@ESet{..})) = do
 
 -- 'return e1'
 --
--- '|e1|=retType'
-exprConstraints_ (DDExpr ctx (E e@EReturn{..})) =
-    addConstraint =<< tvarTypeOfExpr (DDExpr (CtxReturn e ctx) exprRetVal) <~~~~ typeToTExpr funcType
-    where
-    Just Function{..} = inFunc ctx
+-- Inside function:
+-- '|e1|=ret_type', where 'ret_type' is the return type of the function;
+--
+-- Inside closure:
+-- '|e1|=|eclosure|', where 'eclosure'
+exprConstraints_ (DDExpr ctx (E e@EReturn{..})) = do
+    ret_type <- case ctxInFuncOrClosure ctx of
+                     Just CtxFunc{..} -> return $ typeToTExpr $ funcType ctxFunc
+                     Just ctx'@CtxClosure{..} -> teTypeOfExpr (DDExpr ctx' $ exprExpr ctxParExpr)
+                     _ -> -- Validate.hs should make sure this does not happen.
+                          error $ "exprConstraints_ " ++ show e ++ " return not inside function or closure"
+    addConstraint =<< tvarTypeOfExpr (DDExpr (CtxReturn e ctx) exprRetVal) <~~~~ ret_type
+
 
 -- Binary operator 'e1 op e2', where `op` is one of '==, !=, <, >, <=, >='.
 --
@@ -951,44 +972,71 @@ exprConstraints_ de@(DDExpr _ (E EAs{..})) =
 
 -- ?-expression: 'e1?'
 --
--- * In a function whose return type is 'Option<_>'.
+-- * In a function or closure whose return type is 'Option<_>'.
 --   |e1| = Option<T> ==> |e| = T
 --   |e1| = Result<T,E> ==> |e| = T
--- * In a function whose return type is 'Result<_,E>'
+-- * In a function or closure whose return type is 'Result<_,E>'
 --   |e1| = Result<T,E1> ==> |e| = T, E1 == E
-exprConstraints_ de@(DDExpr ctx (E e@ETry{..})) | isOption ?d funcType = do
-    ce1 <- teTypeOfExpr e1
-    dte <- tvarTypeOfExpr de
-    let expand TETVar{} = return Nothing
-        expand (TEUser rt [te])     | rt == oPTION_TYPE
-                                    = return $ Just [dte ==== te]
-        expand (TEUser rt [tres,_]) | rt == rESULT_TYPE
-                                    = return $ Just [dte ==== tres]
-        expand te = err ?d (pos e1)
-                        $ "expression '" ++ show e1 ++ "' must be of type 'Option<>' or 'Result<>', but its type is '" ++ show te ++ "'"
-    addConstraint $ CLazy ce1 expand Nothing e1
-                  $ "expression '" ++ show e1 ++ "' must be of type 'Option<>' or 'Result<>'"
-                                                | isResult ?d funcType = do
-    ce1 <- teTypeOfExpr e1
-    dte1 <- tvarTypeOfExpr e1
-    dte <- tvarTypeOfExpr de
-    let expand TETVar{} = return Nothing
-        expand (TEUser rt [tres,_]) | rt == rESULT_TYPE
-                                    = return $ Just [dte ==== tres, 
-                                                     dte1 ~~~~ (TEUser rESULT_TYPE [tres, typeToTExpr terr])]
-        expand te = err ?d (pos e1)
-                        $ "expression '" ++ show e1 ++ "' must be of type 'Result<>', but its type is '" ++ show te ++ "'"
-    addConstraint $ CLazy ce1 expand Nothing e1
-                  $ "expression '" ++ show e1 ++ "' must be of type 'Option<>'"
-                                                | otherwise = error $ "TypeInference.exprConstraints_ '" ++ show e ++ "': invalid function return type"
-    where 
-    e1 = DDExpr (CtxTry e ctx) exprExpr
-    Function{..} = fromJust $ inFunc ctx
-    TUser _ _ [_, terr] = typ'' ?d funcType
+exprConstraints_ de@(DDExpr ctx (E e@ETry{})) = do
+    dtv <- tvarTypeOfExpr de
+    let de1 = DDExpr (CtxTry e ctx) $ exprExpr e
+    dtv1 <- tvarTypeOfExpr de1
+    dte1 <- teTypeOfExpr de1
+    -- In a function return type is the return type of the function.
+    -- In a closure, return type is the type of the body of the closure.
+    ret_type <- case ctxInFuncOrClosure ctx of
+                     Just CtxFunc{..} -> return $ typeToTExpr $ funcType ctxFunc
+                     Just ctx'@CtxClosure{..} -> teTypeOfExpr (DDExpr ctx' $ exprExpr ctxParExpr)
+                     _ -> -- Validate.hs should make sure this does not happen.
+                          error $ "exprConstraints_ " ++ show e ++ ": '?' not inside function or closure"
+    -- Create a lazy constraint that triggers once we know the return type and
+    -- the type of 'de1'.  Valid cobinations are:
+    -- (Result<>, Result<>), (Option<>, Result<>), (Option<>, Option<>)
+    let expand (TETuple [rt, et]) =
+            case teExpandAliases rt of
+                 TETVar{} -> return Nothing
+                 TEUser rtname [_] | rtname == oPTION_TYPE ->
+                    case teExpandAliases et of
+                         TETVar{} -> return Nothing
+                         TEUser etname [etarg] | etname == oPTION_TYPE ->
+                             return $ Just [dtv ==== etarg]
+                         TEUser etname [etok, _] | etname == rESULT_TYPE ->
+                             return $ Just [dtv ==== etok]
+                         _ -> err ?d (pos e)
+                                  $ "expression '" ++ show de1 ++ "' must be of type 'Option<>' or 'Result<>', but its type is '" ++ show et ++ "'"
+                 TEUser rtname [_, rterr] | rtname == rESULT_TYPE ->
+                    case teExpandAliases et of
+                         TETVar{} -> return Nothing
+                         TEUser etname [etok, _] | etname == rESULT_TYPE ->
+                             return $ Just [dtv ==== etok,
+                                            dtv1 ~~~~ (TEUser rESULT_TYPE [etok, rterr])]
+                         _ -> err ?d (pos e)
+                                  $ "expression '" ++ show de1 ++ "' must be of type 'Result<>', but its type is '" ++ show et ++ "'"
+                 _ -> err ?d (pos e)
+                          $ "'?' can only be used inside functions or closures that return 'Option<>' or 'Result<>', not '" ++ show rt ++ "'"
+        expand x = error $ "exprConstraints_ '" ++ show de ++ "': unexpected type in expand: '" ++ show x ++ "'"
+    addConstraint $ CLazy (TETuple [ret_type, dte1]) expand Nothing de
+                  $ "'?' operator must be applicable to expression '" ++ show de1 ++ "'"
 
 -- 'break', 'continue', '_' expressions are happy to take any type required by
 -- their context and so generate no type constraints.
 exprConstraints_ (DDExpr _ (E EBreak{})) = return ()
 exprConstraints_ (DDExpr _ (E EContinue{})) = return ()
 exprConstraints_ (DDExpr _ (E EPHolder{})) = return ()
-exprConstraints_ (DDExpr _ (E EClosure{})) = error "not implemented: exprConstraints_ EClosure" -- TODO
+
+-- e = function(v1,...,vn) e0
+-- |e| = function(|v1|,..,|vn|): |e0|.
+--
+-- In addition, if types of some of v1,.., vn are specified, add constraints
+-- |vi| = ti for each specified type.
+-- If the return type is specified, add constraint |e0| = |t0|.
+exprConstraints_ de@(DDExpr ctx (E e@EClosure{..})) = do
+    addConstraint =<< tvarTypeOfExpr de <====> (TEFunc <$> (mapIdxM (\_ i -> (IVar $ MutabilityOfArg de i,) <$> teTypeOfVar (ClosureArgVar ctx e i)) exprClosureArgs)
+                                                       <*> teTypeOfExpr (DDExpr (CtxClosure e ctx) exprExpr))
+    mapIdxM_ (\a i -> case ceargType a of
+                           Just t -> addConstraint =<< tvarTypeOfVar (ClosureArgVar ctx e i) <==== typeToTExpr (typ t)
+                           Nothing -> return ())
+             exprClosureArgs
+    case exprClosureType of
+         Just t -> addConstraint =<< tvarTypeOfExpr (DDExpr (CtxClosure e ctx) exprExpr) <~~~~ typeToTExpr t
+         Nothing -> return ()

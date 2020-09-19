@@ -1,0 +1,150 @@
+/*
+ * Functions for working with maps (see basic map operations defined in
+ * `ddlog_std.dl`).
+ */
+
+/* Applies closure `f` to each value in the map. */
+function map(m: Map<'K,'V1>, f: function('V1): 'V2): Map<'K,'V2> {
+    var res = map_empty();
+    for (kv in m) {
+        res.insert(kv.0, f(kv.1))
+    };
+    res
+}
+
+/* Applies closure `f` to each key/value pair in the map. */
+function map(m: Map<'K,'V1>, f: function('K, 'V1): 'V2): Map<'K, 'V2> {
+    var res = map_empty();
+    for (kv in m) {
+        res.insert(kv.0, f(kv.0, kv.1))
+    };
+    res
+}
+
+/* Apply transformation `f` to all entries in the map in place, i.e., by
+ * modifying `m` rather than creating a new map. */
+function map_in_place(m: mut Map<'K,'V>, f: function('K, mut 'V)) {
+    map_map_in_place(m, f)
+}
+
+/* Returns a map obtained by applying `f` to each key of `m`.
+ * The size of the result may be smaller if `f` maps two or more distinct keys
+ * to the same new key. In this case the value at the greatest of the original
+ * keys is retained. */
+function map_keys(m: Map<'K1,'V>, f: function('K1): 'K2): Map<'K2, 'V> {
+    var res = map_empty();
+    for (kv in m) {
+        res.insert(f(kv.0), kv.1)
+    };
+    res
+}
+
+/* Returns a map containing only values that satisfy the predicate. */
+function filter(m: Map<'K, 'V>, f: function('V): bool): Map<'K, 'V> {
+    var res = map_empty();
+    for (kv in m) {
+        if (f(kv.1)) {
+            res.insert(kv.0, kv.1)
+        }
+    };
+    res
+}
+
+/* Returns a map containing only key/value pairs that satisfy the predicate. */
+function filter(m: Map<'K, 'V>, f: function('K, 'V): bool): Map<'K, 'V> {
+    var res = map_empty();
+    for (kv in m) {
+        if (f(kv.0, kv.1)) {
+            res.insert(kv.0, kv.1)
+        }
+    };
+    res
+}
+
+/* Map values and collect the `Some{}` results. */
+function filter_map(m: Map<'K,'V1>, f: function('V1): Option<'V2>): Map<'K,'V2> {
+    var res = map_empty();
+    for (kv in m) {
+        match (f(kv.1)) {
+            None -> (),
+            Some{v} -> {
+                res.insert(kv.0, v)
+            }
+        }
+    };
+    res
+}
+
+/* Map key/value pairs and collect the `Some{}` results. */
+function filter_map(m: Map<'K,'V1>, f: function('K, 'V1): Option<'V2>): Map<'K,'V2> {
+    var res = map_empty();
+    for (kv in m) {
+        match (f(kv.0, kv.1)) {
+            None -> (),
+            Some{v} -> {
+                res.insert(kv.0, v)
+            }
+        }
+    };
+    res
+}
+
+/* Retains only the values specified by the predicate.
+ * In other words, remove all values `v` such that `f(v)` returns `false`. */
+function retain(m: mut Map<'K,'V>, f: function('V): bool) {
+    var keys = m.keys();
+    for (k in keys) {
+        match (m.get(k)) {
+            Some{v} -> if (not f(v)) {
+                m.remove(k);
+            },
+            None -> ()
+        }
+    };
+}
+
+/* Retains only the key/value pairs specified by the predicate.
+ * In other words, remove all pairs `k->v` such that `f(k,v)` returns
+ * `false`. */
+function retain(m: mut Map<'K,'V>, f: function('K, 'V): bool) {
+    var keys = m.keys();
+    for (k in keys) {
+        match (m.get(k)) {
+            Some{v} -> if (not f(k,v)) {
+                m.remove(k);
+            },
+            None -> ()
+        }
+    };
+}
+
+/* Iterates over map values is ascending order of keys, aggregating its contents using `f`.
+ *
+ * `f` - takes the previous value of the accumulator and the next value in the
+ * map and returns the new value of the accumulator.
+ *
+ * `initializer` - initial value of the accumulator. */
+function fold(m: Map<'K,'V>, f: function('A, 'V): 'A, initializer: 'A): 'A {
+    var res = initializer;
+    for (kv in m) {
+        res = f(res, kv.1)
+    };
+    res
+}
+
+/* Iterates over key/value pairs in the map is ascending order of keys, aggregating
+ * its contents using `f`.
+ *
+ * `f` - takes the previous value of the accumulator and the next key/value
+ * pait in the map and returns the new value of the accumulator.
+ *
+ * `initializer` - initial value of the accumulator. */
+function fold(m: Map<'K,'V>, f: function('A, 'K, 'V): 'A, initializer: 'A): 'A {
+    var res = initializer;
+    for (kv in m) {
+        res = f(res, kv.0, kv.1)
+    };
+    res
+}
+
+extern function map_map_in_place(m: mut Map<'K,'V>, f: function('K, mut 'V))

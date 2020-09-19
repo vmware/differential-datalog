@@ -152,6 +152,54 @@ output relation First5(str: string)
 
 First5(string_slice_unsafe(p, 0,5)) :- Phrases(p).
 
+/*
+ * Example: closures.
+ */
+
+import vec
+
+function times2(x: s64): s64 {
+    x << 1
+}
+
+function vector_times2(v: Vec<s64>): Vec<s64> {
+    // Pass function `times2` as an argument to `map`.
+    v.map(times2)
+}
+
+function vector_times_n(v: Vec<s64>, n: s64): Vec<s64> {
+    v.map(|x| x * n)
+}
+
+relation Closures(f: |u64|: string)
+
+Closures(|x| "closure1: ${x}").
+Closures(|x| "closure2: ${x}").
+
+relation Arguments(arg: u64)
+
+// Apply all closures in `Closures` to all values in `Arguments`.
+output relation ClosuresXArguments(arg: u64, res: string)
+
+ClosuresXArguments(arg, f(arg)) :- Closures(f), Arguments(arg).
+
+function test_vector_transformers(): u64 {
+    var vec = [[1,2,3], [4,5,6], [7]];
+
+    /* Remove entries in with less than 2 elements;
+     * truncate remaining entries and flatten them into a 1-dimensional
+     * vector; compute the sum of elements in the resulting vector. 
+     * 
+     * Comments in the end of each line show the output of
+     * each transformation. */
+    vec.filter(|v| v.len() > 1)   // [[1,2,3], [4,5,6]]
+       .flatmap(|v| {
+           var res = v;
+           res.truncate(2);
+           res
+        }) // [1,2,4,5]
+       .fold(|acc, x| acc + x, 0) // 12
+}
 
 /*
  * Example: assignment clauses and antijoins

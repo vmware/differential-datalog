@@ -424,3 +424,40 @@ output relation Rque(x: u32)
 Rb(0).
 Rb(x+1) :- Rb(x), x < 65599.
 Rque(x) :- Rb(x), x > 65530.
+
+// Polymorphic functions.
+
+function poly(x: string): () {}
+// same name, different first argument type.
+function poly(x: u64): () {}
+// same first argument type, different number of arguments.
+function poly(x: u64, y: u32): () {}
+// same number of args; different second argument type.
+function poly(x: u64, y: string): () {}
+// functions differ only in the type of the last argument.
+function poly(x: u64, y: string): string {"foo"}
+
+function poly_test(): ((), string) {
+    (poly(0, "bar"), poly(0, "foo"))
+}
+
+// Closure with mutable and generic arguments.
+function apply_transform(x: mut 'A, f: |mut 'A|) {
+    f(x)
+}
+
+// Instantiate the closure with different type arguments.
+output relation ApplyTransform(description: string, value: string)
+
+ApplyTransform("foo_foo", {
+    var s = "foo";
+    apply_transform(s, |x|{ x = "${x}_${x}" });
+    s
+}).
+
+ApplyTransform("5*10", {
+    var factor = 10;
+    var x = 5;
+    apply_transform(x, |x| x = x*factor);
+    "${x}"
+}).

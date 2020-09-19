@@ -4,6 +4,10 @@
 
 typedef DDlogOpId = (u32, u32, u32)
 
+/*
+ * Function declarations in this file must match their usage in Debug.hs
+ */
+
 extern function debug_event(operator_id: DDlogOpId, w: DDWeight, ts: 'T1,
                             operator_type: string, input1: 'A1, out: 'A2): ()
 extern function debug_event_join(operator_id: DDlogOpId, w: DDWeight, ts: 'T1,

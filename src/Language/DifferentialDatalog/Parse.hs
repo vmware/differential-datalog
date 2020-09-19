@@ -157,12 +157,13 @@ typevarIdent = ucIdentifier <?> "type variable name"
 modIdent     = identifier   <?> "module name"
 attrIdent    = identifier   <?> "attribute name"
 
-consIdent    = ucScopedIdentifier <?> "constructor name"
-relIdent     = ucScopedIdentifier <?> "relation name"
-indexIdent   = scopedIdentifier   <?> "index name"
-funcIdent    = lcScopedIdentifier <?> "function name"
-transIdent   = ucScopedIdentifier <?> "transformer name"
-typeIdent    = scopedIdentifier   <?> "type name"
+consIdent       = ucScopedIdentifier <?> "constructor name"
+relIdent        = ucScopedIdentifier <?> "relation name"
+indexIdent      = scopedIdentifier   <?> "index name"
+funcIdent       = lcScopedIdentifier <?> "function name"
+globalFuncIdent = lcGlobalIdentifier <?> "qualified function name"
+transIdent      = ucScopedIdentifier <?> "transformer name"
+typeIdent       = scopedIdentifier   <?> "type name"
 
 scopedIdentifier = do
     (intercalate "::") <$> identifier `sepBy1` reservedOp "::"
@@ -176,6 +177,13 @@ ucScopedIdentifier = do
 lcScopedIdentifier = do
     path <- try $ lookAhead $ identifier `sepBy1` reservedOp "::"
     if isLower (head $ last path) || head (last path) == '_'
+       then scopedIdentifier
+       else unexpected (last path)
+
+-- Like 'lcScopedIdentifier', but requires explicit module name in the path.
+lcGlobalIdentifier = do
+    path <- try $ lookAhead $ identifier `sepBy1` reservedOp "::"
+    if (isLower (head $ last path) || head (last path) == '_') && length path > 1
        then scopedIdentifier
        else unexpected (last path)
 
@@ -426,13 +434,14 @@ atom is_head = withPos $ do
        binding <- optionMaybe $ try $ varIdent <* reserved "in"
        p2 <- getPosition
        isref <- option False $ (\_ -> True) <$> reservedOp "&"
+       p2' <- getPosition
        rname <- relIdent
        val <- brackets expr
               <|>
               (withPos $ (E . EStruct nopos rname) <$> (option [] $ parens $ commaSep (namedarg <|> anonarg)))
        p3 <- getPosition
        let val' = if isref && is_head
-                     then E (EApply (p2,p3) ["ref_new"] [val])
+                     then E (EApply (p2,p3) (E $ EFunc (p2,p2') ["ref_new"]) [val])
                      else if isref
                           then E (ERef (p2,p3) val)
                           else val
@@ -452,6 +461,7 @@ typeSpec = withPos $
         <|> structType
         <|> userType
         <|> typeVar
+        <|> functionType
         <|> tupleType
 
 typeSpecSimple = withPos $
@@ -464,6 +474,7 @@ typeSpecSimple = withPos $
               <|> boolType
               <|> tupleType
               <|> userType
+              <|> functionType
               <|> typeVar
 
 bitType    = TBit    nopos <$ reserved "bit" <*> (fromIntegral <$> angles decimal)
@@ -481,6 +492,9 @@ tupleType  = (\fs -> case fs of
                           [f] -> f
                           _   -> TTuple nopos fs)
              <$> (parens $ commaSep typeSpecSimple)
+functionType =  (TFunction nopos <$ reserved "function" <*> (parens $ commaSep atype) <*> (option (TTuple nopos []) $ colon *> typeSpecSimple))
+            <|> (TFunction nopos <$> (symbol "|" *> commaSep atype <* symbol "|") <*> (option (TTuple nopos []) $ colon *> typeSpecSimple))
+
 
 constructor = withPos $ Constructor nopos <$> attributes
                                           <*> consIdent
@@ -495,14 +509,14 @@ term  =  elhs
      <|> term'
      <?> "expression term"
 term' = withPos $
-         eapply
-     <|> ebinding
+         ebinding
      <|> epholder
      <|> estruct
      <|> enumber
      <|> ebool
      <|> estring
      <|> einterned_string
+     <|> efunc
      <|> evar
      <|> ematch
      <|> eite
@@ -513,6 +527,12 @@ term' = withPos $
      <|> ereturn
      <|> emap_literal
      <|> evec_literal
+     <|> eclosure
+
+eclosure =  (E <$> (EClosure nopos <$ reserved "function" <*> (parens $ commaSep closure_arg) <*> (optionMaybe $ colon *> typeSpecSimple) <*> braces eseq))
+        <|> (E <$> (EClosure nopos <$> (symbol "|" *> commaSep closure_arg <* symbol "|") <*> (optionMaybe $ colon *> typeSpecSimple) <*> expr))
+
+closure_arg = withPos $ ClosureExprArg nopos <$> varIdent <*> (optionMaybe $ colon *> atype)
 
 -- Semicolon-separated expressions with an optional extra semicolon in the end.
 eseq = do
@@ -532,10 +552,10 @@ emap_literal = mkmap <$> (ismap *> (brackets $ commaSep1 $ (,) <$> expr <* reser
                         _ <- symbol "["
                         _ <- expr
                         reservedOp "->"
-          mkmap pairs = E $ ESeq p (E $ ESet p (E $ EVarDecl p "__map") (E $ EApply p ["map_empty"] [])) m
+          mkmap pairs = E $ ESeq p (E $ ESet p (E $ EVarDecl p "__map") (E $ EApply p (E $ EFunc p ["map_empty"]) [])) m
              where
              p = (fst $ pos $ fst $ head pairs, snd $ pos $ snd $ last pairs)
-             m = foldr (\(k,v) e -> E $ ESeq (fst $ pos e, snd $ pos v) (E $ EApply (fst $ pos e, snd $ pos v) ["insert"] [E $ EVar p "__map", k, v]) e)
+             m = foldr (\(k,v) e -> E $ ESeq (fst $ pos e, snd $ pos v) (E $ EApply (fst $ pos e, snd $ pos v) (E $ EFunc (pos v) ["insert"]) [E $ EVar p "__map", k, v]) e)
                         (E $ EVar p "__map")
                         pairs
 
@@ -544,10 +564,10 @@ evec_literal = mkvec <$> (isvec *> (brackets $ commaSep1 expr))
                         _ <- symbol "["
                         _ <- expr
                         (comma <|> symbol "]")
-          mkvec vs = E $ ESeq p (E $ ESet p (E $ EVarDecl p "__vec") (E $ EApply p ["vec_with_capacity"] [E $ EInt p $ fromIntegral $ length vs])) vec
+          mkvec vs = E $ ESeq p (E $ ESet p (E $ EVarDecl p "__vec") (E $ EApply p (E $ EFunc p ["vec_with_capacity"]) [E $ EInt p $ fromIntegral $ length vs])) vec
              where
              p = (fst $ pos $ head vs, snd $ pos $ last vs)
-             vec = foldr (\v e -> E $ ESeq (fst $ pos e, snd $ pos v) (E $ EApply (fst $ pos e, snd $ pos v) ["push"] [E $ EVar p "__vec", v]) e)
+             vec = foldr (\v e -> E $ ESeq (fst $ pos e, snd $ pos v) (E $ EApply (fst $ pos e, snd $ pos v) (E $ EFunc (pos v) ["push"]) [E $ EVar p "__vec", v]) e)
                          (E $ EVar p "__vec")
                          vs
 
@@ -555,16 +575,17 @@ econtinue = (E $ EContinue nopos) <$ reserved "continue"
 ebreak    = (E $ EBreak nopos) <$ reserved "break"
 ereturn   = (E . EReturn nopos) <$ reserved "return" <*> option (eTuple []) expr
 
-eapply = eApply <$ isapply <*> funcIdent <*> (parens $ commaSep expr)
-    where isapply = try $ lookAhead $ do
-                        _ <- funcIdent
-                        symbol "("
-
 ebinding = eBinding <$ isbinding <*> (varIdent <* reservedOp "@") <*> expr
     where isbinding = try $ lookAhead $ (\_ -> ()) <$> varIdent <* reservedOp "@"
 
 ebool = eBool <$> ((True <$ reserved "true") <|> (False <$ reserved "false"))
 evar = eVar <$> varIdent
+
+-- Fully qualified function names ('module::func') are parsed as EFunc.  Other
+-- function names are parsed as 'EVar' (as we don't have a way to tell them
+-- apart from variables) and later converted to 'EFunc' when flattening the
+-- module hierarchy in 'Module.hs'.
+efunc = eFunc <$> globalFuncIdent
 
 ematch = eMatch <$ reserved "match" <*> parens expr
                <*> (braces $ (commaSep1 $ (,) <$> pattern <* reservedOp "->" <*> expr))
@@ -608,8 +629,12 @@ estring =   equoted_string
         <|> einterpolated_raw_string
 
 einterned_string = do
-    e <- try $ string "i" *> estring
-    return $ E $ EApply (pos e) ["intern"] [e]
+    (e, p) <- try $ do p1 <- getPosition
+                       _ <- string "i"
+                       p2 <- getPosition
+                       e' <- estring
+                       return (e', (p1, p2))
+    return $ E $ EApply (pos e) (E $ EFunc p ["intern"]) [e]
 
 eraw_string = eString <$> ((try $ string "[|") *> manyTill anyChar (try $ string "|]" *> whiteSpace))
 
@@ -675,6 +700,13 @@ stripUnder = filter (/= '_')
 digitPrefix :: Stream s m Char => ParsecT s u m Char -> ParsecT s u m String
 digitPrefix dig = (:) <$> dig <*> (many (dig <|> char '_'))
 
+-- Use 'term' instead of 'expr' for condition, if and then clauses to make
+-- parsing unambiguous, e.g., consider the following expression:
+-- 'if (x) { y } else { z } ++ if (q) { r } else { t }'.
+-- We would like to parse if as:
+-- '(if (x) { y } else { z }) ++ (if (q) { r } else { t })', but when parsing
+-- the "else" clause as 'expr' instead of 'term', we end up with
+-- 'if (x) { y } else ({ z } ++ if (q) { r } else { t })'.
 eite = do reserved "if"
           cond <- term
           th   <- term
@@ -728,7 +760,7 @@ mkNumberLit (Just w) (FloatNumber v) | w == 32 = return $ eFloat $ double2Float 
                                      | w == 64 = return $ eDouble v
                                      | otherwise = fail "Only 32- and 64-bit floating point values are supported"
 
-etable = [[postf $ choice [postTry, postSlice, postApply, postField, postType, postAs, postTupField]]
+etable = [[postf $ choice [postTry, postSlice, postDotApply, postApply, postField, postType, postAs, postTupField]]
          ,[pref  $ choice [preRef]]
          ,[pref  $ choice [prefixOp "-" UMinus]]
          ,[pref  $ choice [prefixOp "~" BNeg]]
@@ -761,7 +793,10 @@ pref  p = Prefix  . chainl1 p $ return       (.)
 postf p = Postfix . chainl1 p $ return (flip (.))
 postField = (\f end e -> E $ EField (fst $ pos e, end) e f) <$> field <*> getPosition
 postTupField = (\f end e -> E $ ETupField (fst $ pos e, end) e (fromIntegral f)) <$> tupField <*> getPosition
-postApply = (\(f, args) end e -> E $ EApply (fst $ pos e, end) [f] (e:args)) <$> dotcall <*> getPosition
+-- Object-oriented function call notation: 'x.f(y)'.
+postDotApply = (\(f, args) end e -> E $ EApply (fst $ pos e, end) f (e:args)) <$> dotcall <*> getPosition
+-- Traditional function application: 'f(x,y)'.
+postApply = (\args end e -> E $ EApply (fst $ pos e, end) e args) <$> call <*> getPosition
 postType = (\t end e -> E $ ETyped (fst $ pos e, end) e t) <$> etype <*> getPosition
 postAs = (\t end e -> E $ EAs (fst $ pos e, end) e t) <$> eAsType <*> getPosition
 postSlice  = try $ (\(h,l) end e -> E $ ESlice (fst $ pos e, end) e h l) <$> slice <*> getPosition
@@ -778,11 +813,15 @@ tupField = isfield *> dot *> lexeme decimal
                         _ <- dot
                         _ <- notFollowedBy relIdent
                         lexeme decimal
-dotcall = (,) <$ isapply <*> (dot *> funcIdent) <*> (parens $ commaSep expr)
+dotcall = (,) <$ isapply <*> (withPos $ eFunc <$ dot <*> funcIdent) <*> (parens $ commaSep expr)
     where isapply = try $ lookAhead $ do
                         _ <- dot
                         _ <- funcIdent
                         symbol "("
+
+call = iscall *> (parens $ commaSep expr)
+    where iscall = try $ lookAhead $ do
+                         symbol "("
 
 etype = reservedOp ":" *> typeSpecSimple
 eAsType = reserved "as" *> typeSpecSimple

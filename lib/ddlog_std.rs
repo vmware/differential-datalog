@@ -531,6 +531,10 @@ pub fn vec_resize<X: Clone>(v: &mut Vec<X>, new_len: &std_usize, value: &X) {
     v.resize(*new_len as usize, value)
 }
 
+pub fn vec_truncate<X>(v: &mut Vec<X>, new_len: &std_usize) {
+    v.x.truncate(*new_len as usize)
+}
+
 pub fn vec_swap_nth<X: Clone>(v: &mut Vec<X>, idx: &std_usize, value: &mut X) -> bool {
     if (*idx as usize) < v.x.len() {
         ::std::mem::swap(&mut v.x[*idx as usize], value);

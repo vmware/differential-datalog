@@ -21,7 +21,7 @@ function getNormalizedUID(name: string): u128 = {
 // normalizeExpr converts an expression to the form "key1 OP [value1...]".
 function normalizeExpr(ekey: string, operator: k8s::LabelSelectorOperator, values: Vec<string>): string =
 {
-    if vec_is_empty(values) {
+    if (vec_is_empty(values)) {
         "${ekey} ${operator}"
     } else {
         "${ekey} ${operator} [${string_join(values, \",\")}]"

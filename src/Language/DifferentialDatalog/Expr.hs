@@ -42,9 +42,10 @@ module Language.DifferentialDatalog.Expr (
     exprFreeVars,
     exprIsConst,
     exprVarDecls,
+    exprStripTypeAnnotations,
+    exprStripTypeAnnotationsRec,
     isLVar,
-    applyExprGetFunc,
-    exprFuncsRec,
+    funcExprGetFunc,
     exprIsPattern,
     exprIsPatternImpl,
     exprContainsPHolders,
@@ -65,6 +66,7 @@ import Control.Monad.Except
 import Control.Monad.Identity
 import Control.Monad.State
 import qualified Data.Set as S
+import qualified Data.Map as M
 --import Debug.Trace
 
 import Language.DifferentialDatalog.Attribute
@@ -89,7 +91,8 @@ exprFoldCtxM f ctx (E n) = exprFoldCtxM' f ctx n
 
 exprFoldCtxM' :: (Monad m) => (ECtx -> ExprNode b -> m b) -> ECtx -> ENode -> m b
 exprFoldCtxM' f ctx   (EVar p v)              = f ctx $ EVar p v
-exprFoldCtxM' f ctx e@(EApply p fun as)       = f ctx =<< EApply p fun <$> (mapIdxM (\a i -> exprFoldCtxM f (CtxApply e ctx i) a) as)
+exprFoldCtxM' f ctx e@(EApply p fun as)       = f ctx =<< EApply p <$> exprFoldCtxM f (CtxApplyFunc e ctx) fun
+                                                                   <*> (mapIdxM (\a i -> exprFoldCtxM f (CtxApplyArg e ctx i) a) as)
 exprFoldCtxM' f ctx e@(EField p s fl)         = do s' <- exprFoldCtxM f (CtxField e ctx) s
                                                    f ctx $ EField p s' fl
 exprFoldCtxM' f ctx e@(ETupField p s fl)      = do s' <- exprFoldCtxM f (CtxTupField e ctx) s
@@ -143,11 +146,12 @@ exprFoldCtxM' f ctx e@(ETry p x)              = do x' <- exprFoldCtxM f (CtxTry 
                                                    f ctx $ ETry p x'
 exprFoldCtxM' f ctx e@(EClosure p as r x)     = do x' <- exprFoldCtxM f (CtxClosure e ctx) x
                                                    f ctx $ EClosure p as r x'
+exprFoldCtxM' f ctx   (EFunc p fs)            = f ctx $ EFunc p fs
 
 exprMapM :: (Monad m) => (a -> m b) -> ExprNode a -> m (ExprNode b)
 exprMapM g e = case e of
                    EVar p v            -> return $ EVar p v
-                   EApply p f as       -> EApply p f <$> mapM g as
+                   EApply p f as       -> EApply p <$> g f <*> mapM g as
                    EField p s f        -> (\s' -> EField p s' f) <$> g s
                    ETupField p s f     -> (\s' -> ETupField p s' f) <$> g s
                    EBool p b           -> return $ EBool p b
@@ -178,6 +182,7 @@ exprMapM g e = case e of
                    ERef p x            -> ERef p <$> g x
                    ETry p x            -> ETry p <$> g x
                    EClosure p as r x   -> EClosure p as r <$> g x
+                   EFunc p fs          -> return $ EFunc p fs
 
 exprMap :: (a -> b) -> ExprNode a -> ExprNode b
 exprMap f e = runIdentity $ exprMapM (\e' -> return $ f e') e
@@ -205,7 +210,7 @@ exprCollectCtxM f op ctx e = exprFoldCtxM g ctx e
     where g ctx' x = do x' <- f ctx' x
                         return $ case x of
                                      EVar _ _              -> x'
-                                     EApply _ _ as         -> foldl' op x' as
+                                     EApply _ ef as        -> foldl' op (x' `op` ef) as
                                      EField _ s _          -> x' `op` s
                                      ETupField _ s _       -> x' `op` s
                                      EBool _ _             -> x'
@@ -236,6 +241,7 @@ exprCollectCtxM f op ctx e = exprFoldCtxM g ctx e
                                      ERef _ v              -> x' `op` v
                                      ETry _ v              -> x' `op` v
                                      EClosure _ _ _ v      -> x' `op` v
+                                     EFunc _ _             -> x'
 
 exprCollectM :: (Monad m) => (ExprNode b -> m b) -> (b -> b -> b) -> Expr -> m b
 exprCollectM f op e = exprCollectCtxM (\_ e' -> f e') op undefined e
@@ -280,6 +286,15 @@ exprFreeVars d ctx e = visible_vars `intersect` used_vars
 exprIsConst :: Expr -> Bool
 exprIsConst e = null $ exprVars (error "exprIsConst: ctx is undefined") (error "exprIsConst: ctx is undefined") e
 
+-- Strip type annotations from an expression.
+exprStripTypeAnnotations :: Expr -> ECtx -> (Expr, ECtx)
+exprStripTypeAnnotations (E e@ETyped{..}) ctx = exprStripTypeAnnotations exprExpr (CtxTyped e ctx)
+exprStripTypeAnnotations e ctx = (e, ctx)
+
+-- Strip type annotations from an expression and all its subexpressions.
+exprStripTypeAnnotationsRec :: Expr -> ECtx -> Expr
+exprStripTypeAnnotationsRec e ctx = exprFoldCtx (\ctx' e' -> fst $ exprStripTypeAnnotations (E e') ctx') ctx e
+
 -- Variables declared inside expression, visible in the code that follows the expression.
 exprVarDecls :: DatalogProgram -> ECtx -> Expr -> [Var]
 exprVarDecls d ctx e =
@@ -315,27 +330,36 @@ exprFuncs' acc e = nub $ exprCollect (\case
                                      (++) e
 -}
 
--- Given a function application expression, returns the function.
+-- Given a function expression, returns the function.
 -- Assumes the expression has been validated.
-applyExprGetFunc :: DatalogProgram -> ECtx -> ENode -> Function
-applyExprGetFunc d ctx e@EApply{exprFunc=[fname], ..} =
-    getFunc d fname $ mapIdx (\a i -> exprType d (CtxApply e ctx i) a) exprArgs
-applyExprGetFunc _ _   e = error $ "applyExprGetFunc " ++ show e
+funcExprGetFunc :: DatalogProgram -> ECtx -> ENode -> (Function, M.Map String Type)
+funcExprGetFunc d ctx e@EFunc{exprFuncName=[fname], ..} =
+    getFunc d fname (map typ $ typeFuncArgs t) (Just $ typeRetType t)
+    where
+    t = exprType' d ctx $ E e
+funcExprGetFunc _ _   e = error $ "funcExprGetFunc " ++ show e
 
--- Recursively enumerate all functions invoked by the expression
-exprFuncsRec :: DatalogProgram -> ECtx -> Expr -> S.Set Function
-exprFuncsRec d ctx e = execState (exprFuncsRec_ d ctx e) S.empty
+-- Recursively enumerate all functions invoked by the expression.
+-- Closures make precise analysis hard.  To protext the callers from
+-- using inaccurate results, we return 'Nothing' if closures are used
+-- by any of the functions discovered during recursive traveral.
+exprFuncsRec :: DatalogProgram -> ECtx -> Expr -> Maybe (S.Set Function)
+exprFuncsRec d ctx e = execState (exprFuncsRec_ d ctx e) $ Just S.empty
 
-exprFuncsRec_ :: DatalogProgram -> ECtx -> Expr -> State (S.Set Function) ()
+exprFuncsRec_ :: DatalogProgram -> ECtx -> Expr -> State (Maybe (S.Set Function)) ()
 exprFuncsRec_ d ctx e = do
     _ <- exprFoldCtxM (\ctx' e' -> do
                           case e' of
-                               EApply{} -> do let f@Function{..} = applyExprGetFunc d ctx' e'
-                                              new <- gets $ S.notMember f
-                                              when new $ do modify $ S.insert f
-                                                            case funcDef of
-                                                                 Nothing -> return ()
-                                                                 Just e'' -> exprFuncsRec_ d (CtxFunc f) e''
+                               EApply{..} -> case exprStripTypeAnnotations exprFunc ctx' of
+                                                  (E ef@EFunc{}, ctx'') -> do
+                                                      let (f@Function{..}, _) = funcExprGetFunc d ctx'' ef
+                                                      new <- gets $ maybe False (S.notMember f)
+                                                      when new $ do
+                                                          modify $ (\st -> S.insert f <$> st)
+                                                          case funcDef of
+                                                               Nothing -> return ()
+                                                               Just e'' -> exprFuncsRec_ d (CtxFunc f) e''
+                                                  _ -> put Nothing
                                _ -> return ()
                           return $ E e')
                      ctx e
@@ -452,12 +476,15 @@ exprIsVarOrField' _                = False
 -- | Expression maps distinct assignments to input variables 'vs'
 -- to distinct outputs.
 exprIsInjective :: DatalogProgram -> ECtx -> S.Set Var -> Expr -> Bool
-exprIsInjective d ctx vs e =
+exprIsInjective d ctx vs e | isNothing funcs = False
+                           | otherwise =
     exprIsInjective_ d ctx vs e &&
     all (\f -> case funcDef f of
                     Nothing -> False
                     Just e' -> exprIsInjective_ d (CtxFunc f) (S.fromList $ map (ArgVar f . name) $ funcArgs f) e')
-        (exprFuncsRec d ctx e)
+        (fromJust funcs)
+    where
+    funcs = exprFuncsRec d ctx e
 
 -- Non-recursive part of exprIsInjective
 exprIsInjective_ :: DatalogProgram -> ECtx -> S.Set Var -> Expr -> Bool
@@ -496,15 +523,24 @@ exprIsPolymorphic d ctx e =
 
 -- | True if expression does not contain calls to functions with side effects.
 exprIsPure :: DatalogProgram -> ECtx -> Expr -> Bool
-exprIsPure d ctx e = all (\f -> not $ funcGetSideEffectAttr d f) (exprFuncsRec d ctx e)
+exprIsPure d ctx e | isNothing funcs = False
+                   | otherwise = all (\f -> not $ funcGetSideEffectAttr d f) $ fromJust funcs
+    where funcs = exprFuncsRec d ctx e
 
 -- | Transform types referenced in the expression
 exprTypeMapM :: (Monad m) => (Type -> m Type) -> Expr -> m Expr
 exprTypeMapM fun e = exprFoldM fun' e
     where
-    fun' (ETyped p e' t) = (E . ETyped p e') <$> typeMapM fun t
-    fun' (EAs p e' t)    = (E . EAs p e') <$> typeMapM fun t
-    fun' e'              = return $ E e'
+    fun' (ETyped p e' t)      = (E . ETyped p e') <$> typeMapM fun t
+    fun' (EAs p e' t)         = (E . EAs p e') <$> typeMapM fun t
+    fun' (EClosure p as r e') = E <$> (EClosure p <$> (mapM (\a -> case ceargType a of
+                                                                       Nothing -> return a
+                                                                       Just atype -> do t' <- typeMapM fun $ atypeType atype
+                                                                                        return a{ceargType = Just $ atype{atypeType = t'}})
+                                                      as)
+                                                 <*> (maybe (return Nothing) (\rt -> Just <$> typeMapM fun rt) r)
+                                                 <*> (return e'))
+    fun' e'                  = return $ E e'
 
 -- Automatically insert string conversion functions in the Concat
 -- operator:  '"x:" ++ x', where 'x' is of type int becomes
@@ -528,14 +564,16 @@ exprInjectStringConversion d e t = do
                                      "Cannot automatically convert '" ++ show e ++
                                      "' of variable type '" ++ tvarName ++ "' to string"
                   TStruct{}   -> error "unexpected TStruct in exprInjectStringConversions"
-                  TFunction{} -> error "Automatic string conversion for closures is not supported"
-    f <- case lookupFunc d fname [t'] of
-              Nothing  -> err d (pos e) $ "Cannot find declaration of function '" ++ fname ++
-                                          "' needed to convert expression '" ++ show e ++ "' to string"
-              Just fun -> return fun
-    -- validate its signature
-    check d (isString d $ funcType f) (pos f)
-           "string conversion function must return 'string'"
-    return $ E $ EApply (pos e) [fname] [E e]
+                  TFunction{} -> return $ bUILTIN_2STRING_FUNC
+    (f, _) <- case lookupFunc d fname [t'] (Just tString) of
+                   Nothing  -> err d (pos e) $ "Cannot find declaration of function '" ++ fname ++ "(" ++ show t' ++ "): string'" ++
+                                               " needed to convert expression '" ++ show e ++ "' to string"
+                   Just fun -> return fun
+    -- 'to_string' is a polymorphic function.  Normally, 'TypeInference.inferTypes' would generate type
+    -- annotations for such functions, but since 'exprInjectStringConversions' is itself called from
+    -- 'inferTypes', we must add type annotation manually.
+    return $ E $ EApply (pos e)
+                        (E $ ETyped (pos e) (E $ EFunc (pos e) [fname]) $ TFunction (pos f) [ArgType nopos False t] tString)
+                        [E e]
     where mk2string_func cs = scoped scope "to_string"
               where scope = nameScope cs

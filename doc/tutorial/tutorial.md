@@ -927,8 +927,11 @@ instead of concrete argument types.
 Ad hoc polymorphism allows multiple functions with the same name but different
 arguments.  The two `size()` functions above do not introduce any ambiguity,
 since the compiler is able to infer the correct function to call in each case
-from the type of the argument.  Specifically, the compiler uses the number of
-arguments and the type of the **first** argument to disambiguate the callee.
+from the type of the argument.  Specifically, the compiler uses a combination of
+the number and types of arguments and the return type to disambiguate between
+multiple candidates when compiling a function call, and generates an error when
+sufficient type information to perform the disambiguation cannot be inferred
+from the context.
 
 #### Object-oriented function call syntax
 
@@ -1028,6 +1031,166 @@ extern function log(module: module_t, level: log_level_t, msg: string): ()
 The compiler automatically infers these annotations for non-extern functions
 that invoke extern functions with side effects, so only extern functions must
 be annotated.
+
+#### Higher-order functions, lambda expressions, and closures
+
+DDlog allows functions to take other functions as arguments.  This is
+particularly useful when working with containers like vectors and maps.
+Consider, for example, the `map` function from the `vec.dl` library that applies
+a user-defined transformation to each element of a vector:
+
+```
+// Apply `f` to all elements of `v`.
+function map(v: Vec<'A>, f: function('A): 'B): Vec<'B> {
+    var res = vec_with_capacity(v.len());
+    for (x in v) {
+        res.push(f(x))
+    };
+    res
+}
+```
+
+The second argument of this function has type `function('A): 'B`, i.e., it is
+itself a function that takes an argument of type `'A` and returns a value of
+type `'B`.  How do we create a value of this type?  One option is to use
+a function whose signature matches the type of `f`, e.g.:
+
+```
+import vec
+
+function times2(x: s64): s64 {
+    x << 1
+}
+
+function vector_times2(v: Vec<s64>): Vec<s64> {
+    // Pass function `times2` as an argument to `map`.
+    v.map(times2)
+}
+```
+
+This works well when a suitable transformer function exists, but it is sometimes
+convenient of even necessary to create one on the fly.  Consider the following
+function that multiplies each element of an input vector by a number that is
+also provided as an argument:
+
+```
+function vector_times_n(v: Vec<s64>, n: s64): Vec<s64> {
+    v.map(|x| x * n)
+}
+```
+
+Here, `|x| x * n` is a **lambda expression**, or anonymous function, that multiplies
+its argument `x` by `n`.  The type of this function is `function(s64): s64`,
+i.e., it matches the type signature expected by `map`, with type arguments `'A` and
+`'B` bound to `s64`.
+
+One interesting thing about this lambda expression is that it accesses variable `n`
+that is not one of its arguments.  This variable comes from the local scope where the
+lambda expression is defined.  Such functions that capture variables from their
+environment are known as **closures**, thus technically a lambda expression (which is
+a syntactic construct) generates a closure (a runtime object) of type `function (..):..`.
+
+Lambda expressions can have optional type annotations on their arguments and return values:
+
+```
+v.map(|x: s64|:s64 { x * n })
+```
+
+When type annotations are missing, the compiler relies on
+[type inference](#type-inference-and-type-annotations) to determine the type of the
+expression.  DDlog allows writing lambda expressions using the `function` keyword
+instead of vertical bars (`||`):
+
+```    
+v.map(function(x: s64):s64 { x * n })
+```
+
+Conversely, function types can be written using vertical bars.  The following
+declarations are equivalent:
+
+```
+function map(v: Vec<'A>, f: function('A): 'B): Vec<'B>
+```
+
+```
+function map(v: Vec<'A>, f: |'A|: 'B): Vec<'B>
+```
+
+Closures are first-class objects in DDlog and can be used as fields in structs or
+tuples and stored in relations.  In the following example we declare two relations
+containing closures and values respectively and apply all closures in the former
+to all values in the latter:
+
+```
+relation Closures(f: |u64|: string)
+
+Closures(|x| "closure1: ${x}").
+Closures(|x| "closure2: ${x}").
+
+relation Arguments(arg: u64)
+
+// Apply all closures in `Closures` to all values in `Arguments`.
+output relation ClosuresXArguments(arg: u64, res: string)
+
+ClosuresXArguments(arg, f(arg)) :- Closures(f), Arguments(arg).
+```
+
+Similar to regular functions, closures can take mutable arguments:
+
+```
+// Applies specified transformer function to `x`, modifying `x` in-place.
+function apply_transform(x: mut 'A, f: |mut 'A|) {
+    f(x)
+}
+
+function test_apply_transform() {
+    var s = "foo";
+    apply_transform(s, |x|{ x = "${x}_${x}" });
+    // The value of `s` is now "foo_foo".
+}
+```
+
+Note, however, that closures cannot currently modify captured variables.
+
+Among other applications, higher-order functions enable the creation of
+reusable primitives for working with container types.  DDlog provides
+some of these as part of `vec.dl`, `set.dl` and `map.dl` libraries,
+including functions for mapping, filtering, searching, and reducing
+collections.  Here are a few examples:
+
+```
+/* Returns a vector containing only those elements in `v` that satisfy predicate `f`,
+ * preserving the order of the elements in the original vector. */
+function filter(v: Vec<'A>, f: function('A): bool): Vec<'A>
+
+/* Applies closure `f` to each element of the vector and concatenates the
+ * resulting vectors, returning a flat vector. */
+function flatmap(v: Vec<'A>, f: function('A): Vec<'B>): Vec<'B>
+
+/* Iterates over the vector, aggregating its contents using `f`. */
+function fold(v: Vec<'A>, f: function('B, 'A): 'B, initializer: 'B): 'B
+```
+
+These functions enable more concise and clear code than for-loops.
+Besides, they compose nicely into complex processing pipelines:
+
+```
+var vec = [[1,2,3], [4,5,6], [7]];
+
+/* Remove entries in with less than 2 elements;
+ * truncate remaining entries and flatten them into a 1-dimensional
+ * vector; compute the sum of elements in the resulting vector.
+ *
+ * Comments in the end of each line show the output of
+ * each transformation. */
+vec.filter(|v| v.len() > 1)   // [[1,2,3], [4,5,6]]
+   .flatmap(|v| {
+       var res = v;
+       res.truncate(2);
+       res
+    }) // [1,2,4,5]
+   .fold(|acc, x| acc + x, 0) // 12
+```
 
 ### Advanced rules
 
@@ -1823,6 +1986,17 @@ function pkt_ip4(pkt: eth_pkt_t): Option<ip4_pkt_t> {
 }
 ```
 
+The standard library defines several useful functions for working with optional values:
+
+```
+/* `x` is a `None`. */
+function is_none(x: Option<'A>): bool
+/* `x` is a `Some{}`. */
+function is_some(x: Option<'A>): bool
+/* Applies transformation `f` to the value stored inside `Option`. */
+function map(opt: Option<'A>, f: function('A): 'B): Option<'B> {
+```
+
 ### `Result<>` type and error handling
 
 In addition to the `Option` type introduced above, the standard library defines
@@ -1855,15 +2029,29 @@ function get_price_in_cents(inventory: Map<string, string>, item: string): Optio
 
 As a result, bugs like NULL pointer dereferences and unhandled exceptions are
 impossible in DDlog.  On the flip side, explicitly checking the result of every
-function call can be burdensome.  DDlog offers two mechanisms for handling
+function call can be burdensome.  DDlog offers several mechanisms for handling
 errors in a concise and safe manner:
+
+1. `map` and `map_error` functions
 
 1. `unwrap_` functions
 
 1. The `?` operator
 
+`map` and `map_error` functions, defined in the standard library, convert the
+`Result<>` type into a different `Result<>` type:
 
-`unwrap_` functions, defined in the standard library, unwrap the `Option` or
+```
+/* Maps a `Result<'V1, 'E>` to `Result<'V2, 'E>` by applying a function to a
+ * contained `Ok` value, leaving an `Err` value untouched.  */
+function map(res: Result<'V1, 'E>, f: function('V1): 'V2): Result<'V2, 'E>
+
+/* Maps a `Result<'V, 'E1>` to `Result<'V, 'E2>` by applying a function to a
+ * contained `Err` value, leaving an `Ok` value untouched. */
+function map_err(res: Result<'V, 'E1>, f: function('E1): 'E2): Result<'V, 'E2>
+```
+
+`unwrap_` functions, also defined in the standard library, unwrap the `Option` or
 `Result` type, returning their inner value on success or a default value on
 error:
 

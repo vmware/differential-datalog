@@ -74,6 +74,7 @@ module Language.DifferentialDatalog.Syntax (
         rhsIsAggregate,
         Atom(..),
         Rule(..),
+        ClosureExprArg(..),
         ExprNode(..),
         Expr(..),
         ENode,
@@ -81,6 +82,7 @@ module Language.DifferentialDatalog.Syntax (
         eVar,
         eTypedVar,
         eApply,
+        eApplyFunc,
         eField,
         eTupField,
         eBool,
@@ -114,6 +116,7 @@ module Language.DifferentialDatalog.Syntax (
         eRef,
         eTry,
         eClosure,
+        eFunc,
         FuncArg(..),
         argMut,
         Function(..),
@@ -661,10 +664,8 @@ instance Show Rule where
     show = render . pp
 
 data ExprNode e = EVar          {exprPos :: Pos, exprVar :: String}
-                  -- After flattening the module hierarchy, a function name can
-                  -- refer to functions in one or more modules.  Type inference
-                  -- resolves the ambiguity, leaving exactly one.
-                | EApply        {exprPos :: Pos, exprFunc :: [String], exprArgs :: [e]}
+                  -- Call function of closure.
+                | EApply        {exprPos :: Pos, exprFunc :: e, exprArgs :: [e]}
                 | EField        {exprPos :: Pos, exprStruct :: e, exprField :: String}
                 | ETupField     {exprPos :: Pos, exprTuple :: e, exprTupField :: Int}
                 | EBool         {exprPos :: Pos, exprBVal :: Bool}
@@ -694,7 +695,13 @@ data ExprNode e = EVar          {exprPos :: Pos, exprVar :: String}
                 | EAs           {exprPos :: Pos, exprExpr :: e, exprTSpec :: Type}
                 | ERef          {exprPos :: Pos, exprPattern :: e}
                 | ETry          {exprPos :: Pos, exprExpr :: e}
+                  -- 'function(x, y) {e}'
                 | EClosure      {exprPos :: Pos, exprClosureArgs :: [ClosureExprArg], exprClosureType :: Maybe Type, exprExpr :: e}
+                  -- Expression that refers to a function by name.
+                  -- After flattening the module hierarchy, a function name can
+                  -- refer to functions in one or more modules.  Type inference
+                  -- resolves the ambiguity, leaving exactly one.
+                | EFunc         {exprPos :: Pos, exprFuncName :: [String]}
 
 -- Argument of a closure expression:
 -- * name
@@ -755,6 +762,7 @@ instance Eq e => Eq (ExprNode e) where
     (==) (ERef _ p1)              (ERef _ p2)                = p1 == p2
     (==) (ETry _ e1)              (ETry _ e2)                = e1 == e2
     (==) (EClosure _ as1 r1 e1)   (EClosure _ as2 r2 e2)     = (as1, r1, e1) == (as2, r2, e2)
+    (==) (EFunc _ f1)             (EFunc _ f2)               = f1 == f2
     (==) _                        _                          = False
 
 -- Assign rank to constructors; used in the implementation of Ord.
@@ -791,6 +799,7 @@ erank EAs       {} = 28
 erank ERef      {} = 29
 erank ETry      {} = 30
 erank EClosure  {} = 31
+erank EFunc     {} = 32
 
 instance Ord e => Ord (ExprNode e) where
     compare (EVar _ v1)              (EVar _ v2)                = compare v1 v2
@@ -825,6 +834,7 @@ instance Ord e => Ord (ExprNode e) where
     compare (ERef _ p1)              (ERef _ p2)                = compare p1 p2
     compare (ETry _ e1)              (ETry _ e2)                = compare e1 e2
     compare (EClosure _ as1 r1 e1)   (EClosure _ as2 r2 e2)     = compare (as1, r1, e1) (as2, r2, e2)
+    compare (EFunc _ f1)              (EFunc _ f2)              = compare f1 f2
     compare e1                       e2                         = compare (erank e1) (erank e2)
 
 instance WithPos (ExprNode e) where
@@ -833,8 +843,7 @@ instance WithPos (ExprNode e) where
 
 instance PP e => PP (ExprNode e) where
     pp (EVar _ v)            = pp v
-    pp (EApply _ [f] as)     = pp f <> (parens $ commaSep $ map pp as)
-    pp (EApply _ fs as)      = "/*" <> commaSep (map pp fs) <> "*/" <> (parens $ commaSep $ map pp as)
+    pp (EApply _ e as)       = pp e <> (parens $ commaSep $ map pp as)
     pp (EField _ s f)        = pp s <> char '.' <> pp f
     pp (ETupField _ s f)     = pp s <> char '.' <> pp f
     pp (EBool _ True)        = "true"
@@ -879,7 +888,10 @@ instance PP e => PP (ExprNode e) where
     pp (EAs _ e t)           = parens $ pp e <+> "as" <+> pp t
     pp (ERef _ e)            = parens $ "&" <> pp e
     pp (ETry _ e)            = parens $ pp e <> "?"
-    pp (EClosure _ as r e)   = parens $ "function" <> parens (commaSep $ map pp as) <> (maybe empty ((":" <>) . pp) r) <> pp e
+    pp (EClosure _ as r e)   = parens $ "function" <> parens (commaSep $ map pp as) <> (maybe empty ((":" <>) . pp) r) <> (braces $ pp e)
+    pp (EFunc _ [f])         = pp f
+    pp (EFunc _ fs)          = "/*" <> commaSep (map pp fs) <> "*/"
+
 
 instance PP e => Show (ExprNode e) where
     show = render . pp
@@ -905,7 +917,8 @@ instance WithPos Expr where
 
 eVar v              = E $ EVar      nopos v
 eTypedVar v t       = eTyped (eVar v) t
-eApply f as         = E $ EApply    nopos [f] as
+eApply f as         = E $ EApply    nopos f as
+eApplyFunc f as     = E $ EApply    nopos (eFunc f) as
 eField e f          = E $ EField    nopos e f
 eTupField e f       = E $ ETupField nopos e f
 eBool b             = E $ EBool     nopos b
@@ -940,6 +953,7 @@ eAs e t             = E $ EAs       nopos e t
 eRef e              = E $ ERef      nopos e
 eTry e              = E $ ETry      nopos e
 eClosure ts r e     = E $ EClosure  nopos ts r e
+eFunc f             = E $ EFunc     nopos [f]
 
 data FuncArg = FuncArg { argPos  :: Pos
                        , argName :: String
@@ -975,7 +989,7 @@ data Function = Function { funcPos   :: Pos
                          }
 
 funcMutArgs :: Function -> [FuncArg]
-funcMutArgs f = filter argMut$ funcArgs f
+funcMutArgs f = filter argMut $ funcArgs f
 
 funcImmutArgs :: Function -> [FuncArg]
 funcImmutArgs f = filter (not . argMut) $ funcArgs f
@@ -1270,8 +1284,10 @@ data ECtx = -- | Top-level context. Serves as the root of the context hierarchy.
           | CtxKey            {ctxRelation::Relation}
             -- | Index expression
           | CtxIndex          {ctxIndex::Index}
-            -- | Argument passed to a function
-          | CtxApply          {ctxParExpr::ENode, ctxPar::ECtx, ctxIdx::Int}
+            -- | Argument of a function call
+          | CtxApplyArg       {ctxParExpr::ENode, ctxPar::ECtx, ctxIdx::Int}
+            -- | Function or closure being invoked.
+          | CtxApplyFunc      {ctxParExpr::ENode, ctxPar::ECtx}
             -- | Field expression: 'X.f'
           | CtxField          {ctxParExpr::ENode, ctxPar::ECtx}
             -- | Tuple field expression: 'X.N'
@@ -1349,7 +1365,8 @@ instance PP ECtx where
                     CtxKey{..}            -> "CtxKey            " <+> rel
                     CtxIndex{..}          -> "CtxIndex          " <+> pp (name ctxIndex)
                     CtxFunc{..}           -> "CtxFunc           " <+> (pp $ name ctxFunc)
-                    CtxApply{..}          -> "CtxApply          " <+> epar <+> pp ctxIdx
+                    CtxApplyArg{..}       -> "CtxApplyArg       " <+> epar <+> pp ctxIdx
+                    CtxApplyFunc{..}      -> "CtxApplyFunc      " <+> epar
                     CtxField{..}          -> "CtxField          " <+> epar
                     CtxTupField{..}       -> "CtxTupField       " <+> epar
                     CtxStruct{..}         -> "CtxStruct         " <+> epar <+> pp ctxArg

@@ -1,0 +1,2 @@
+dump map_test::MapTransforms;
+dump map_test::MapFolds;

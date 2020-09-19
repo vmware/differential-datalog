@@ -47,11 +47,13 @@ module Language.DifferentialDatalog.ECtx(
      ctxIsIndex,
      ctxInIndex,
      ctxIsFunc,
+     ctxIsApplyFunc,
      ctxIsClosure,
      ctxInClosure,
      ctxInFuncOrClosure,
      ctxIsForLoopBody,
-     ctxInForLoopBody)
+     ctxInForLoopBody,
+     ctxStripTypeAnnotations)
 where
 
 import Data.Maybe
@@ -158,6 +160,10 @@ ctxIsFunc :: ECtx -> Bool
 ctxIsFunc CtxFunc{} = True
 ctxIsFunc _         = False
 
+ctxIsApplyFunc :: ECtx -> Bool
+ctxIsApplyFunc CtxApplyFunc{} = True
+ctxIsApplyFunc _              = False
+
 ctxIsClosure :: ECtx -> Bool
 ctxIsClosure CtxClosure{} = True
 ctxIsClosure _            = False
@@ -185,3 +191,8 @@ ctxIsForLoopBody _            = False
 -- statement is valid.  This does _not_ include a closure inside a loop.
 ctxInForLoopBody :: ECtx -> Bool
 ctxInForLoopBody ctx = any ctxIsForLoopBody $ ctxLocalAncestors ctx
+
+-- | Find the first parent that is not a type annotation.
+ctxStripTypeAnnotations :: ECtx -> ECtx
+ctxStripTypeAnnotations CtxTyped{..} = ctxStripTypeAnnotations ctxPar
+ctxStripTypeAnnotations ctx          = ctx

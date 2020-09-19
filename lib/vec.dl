@@ -1,0 +1,152 @@
+/*
+ * Functions for working with vectors (see basic vector operations defined in
+ * `ddlog_std.dl`).
+ */
+
+/* Applies closure `f` to each element of the vector. */
+function map(v: Vec<'A>, f: function('A): 'B): Vec<'B> {
+    var res = vec_with_capacity(v.len());
+    for (x in v) {
+        res.push(f(x))
+    };
+    res
+}
+
+/* Applies closure `f` to each element of the vector and concatenates the
+ * resulting vectors, returning a flat vector. */
+function flatmap(v: Vec<'A>, f: function('A): Vec<'B>): Vec<'B> {
+    var res = vec_empty();
+    for (x in v) {
+        res.append(f(x))
+    };
+    res
+}
+
+/* Sorts the vector with a key extraction function, but may not preserve the
+ * order of equal elements. */
+function sort_by(v: mut Vec<'A>, f: function('A): 'B) {
+    vec_sort_by(v, f)
+}
+
+/* Returns the element that gives the minimum value from the specified function.
+ * If several elements are equally minimum, the first element is returned.
+ * If the vector is empty, `None` is returned. */
+function min_by(v: Vec<'A>, f: function('A): 'B): Option<'A> {
+    vec_min_by(v, f)
+}
+
+/* Returns the element that gives the maximum value from the specified function.
+ * If several elements are equally maximum, the first element is returned.
+ * If the vector is empty, `None` is returned. */
+function max_by(v: Vec<'A>, f: function('A): 'B): Option<'A> {
+    vec_max_by(v, f)
+}
+
+/* Returns the first element of the vector that satisfies predicate `f` or
+ * `None` if none of the elements satisfy the predicate. */
+function find(v: Vec<'A>, f: function('A): bool): Option<'A> {
+    for (x in v) {
+        if (f(x)) {
+            return Some{x}
+        }
+    };
+    None
+}
+
+/* Returns a vector containing only those elements in `v` that satisfy predicate `f`,
+ * preserving the order of the elements in the original vector. */
+function filter(v: Vec<'A>, f: function('A): bool): Vec<'A> {
+    var res = vec_empty();
+    for (x in v) {
+        if (f(x)) {
+            res.push(x)
+        }
+    };
+    res
+}
+
+/* Both filters and maps the vector.
+ *
+ * Calls the closure on each element of the vector.  If the closure returns
+ * `Some{element}`, then that element is returned. */
+function filter_map(v: Vec<'A>, f: function('A): Option<'B>): Vec<'B> {
+    var res = vec_empty();
+    for (x in v) {
+        match (f(x)) {
+            None -> (),
+            Some{y} -> res.push(y)
+        }
+    };
+    res
+}
+
+
+/* Retains only the elements specified by the predicate.
+ * In other words, remove all elements `e` such that `f(e)` returns `false`.
+ * This method operates in place, visiting each element exactly once in the
+ * original order, and preserves the order of the retained elements. */
+function retain(v: mut Vec<'A>, f: function('A): bool) {
+    var del: s64 = 0;
+    var len = v.len();
+
+    for (i in range(0, (len as isize) - 1, 1)) {
+        var x = v.nth(i as usize).unwrap_or_default();
+        if (not f(x)) {
+            del = del + 1
+        } else if (del > 0) {
+            v.update_nth((i - del) as usize, x);
+        }
+    };
+    if (del > 0) {
+        v.truncate(len - (del as usize));
+    }
+}
+
+/* Returns `true` iff all elements of the vector satisfy predicate `f`. */
+function all(v: Vec<'A>, f: function('A): bool): bool {
+    for (x in v) {
+        if (not f(x)) {
+            return false
+        }
+    };
+    true
+}
+
+/* Returns `true` iff at least one element of the vector satisfies predicate `f`. */
+function any(v: Vec<'A>, f: function('A): bool): bool {
+    for (x in v) {
+        if (f(x)) {
+            return true
+        }
+    };
+    false
+}
+
+/* Counts the number of elements in `v` that satisfy predicate `f`. */
+function count(v: Vec<'A>, f: function('A): bool): usize {
+    var cnt = 0;
+    for (x in v) {
+        if (f(x)) {
+            cnt = cnt + 1
+        }
+    };
+    cnt
+}
+
+/* Iterates over the vector, aggregating its contents using `f`.
+ *
+ * `f` - takes the previous value of the accumulator and the next element in the
+ * vector and returns the new value of the accumulator.
+ *
+ * `initializer` - initial value of the accumulator. */
+function fold(v: Vec<'A>, f: function('B, 'A): 'B, initializer: 'B): 'B {
+    var res = initializer;
+    for (x in v) {
+        res = f(res, x)
+    };
+    res
+}
+
+extern function vec_sort_by(v: mut Vec<'A>, f: function('A): 'B)
+extern function vec_min_by(v: Vec<'A>, f: function('A): 'B): Option<'A>
+extern function vec_max_by(v: Vec<'A>, f: function('A): 'B): Option<'A>
