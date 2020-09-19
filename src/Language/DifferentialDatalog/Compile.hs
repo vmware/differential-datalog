@@ -233,6 +233,7 @@ rustLibFiles specname =
         , (dir </> "ovsdb/lib.rs"                                         , $(embedFile "rust/template/ovsdb/lib.rs"))
         , (dir </> "ovsdb/test.rs"                                        , $(embedFile "rust/template/ovsdb/test.rs"))
         , (dir </> "types/ddlog_log.rs"                                   , $(embedFile "rust/template/types/ddlog_log.rs"))
+        , (dir </> "types/closure.rs"                                     , $(embedFile "rust/template/types/closure.rs"))
         , (dir </> "value/Cargo.toml"                                     , $(embedFile "rust/template/value/Cargo.toml"))
         , (dir </> ".cargo/config"                                        , $(embedFile "rust/template/.cargo/config"))
         ]
@@ -797,7 +798,7 @@ mkTypedef d tdef@TypeDef{..} =
               TOpaque _ _ [ktype, vtype] = typ' d f
               from_arr_attr = maybe empty (\_ -> "#[serde(with=\"" <> from_array_module_name <> "\")]")
                               $ fieldGetDeserializeArrayAttr d f
-              from_array_module = maybe empty (\fname -> let kfunc = getFunc d fname [vtype] in
+              from_array_module = maybe empty (\fname -> let kfunc = fst $ getFunc d fname [vtype] $ Just ktype in
                                                          "deserialize_map_from_array!(" <>
                                                          from_array_module_name <> "," <>
                                                          mkType d True ktype <> "," <> mkType d True vtype <> "," <>
@@ -1872,8 +1873,7 @@ mkAggregate d filters input_val rl@Rule{..} idx = do
     -- - return variables still in scope after this term
     let ktype = ruleAggregateKeyType d rl idx
     let vtype = ruleAggregateValType d rl idx
-    let tmap = ruleAggregateTypeParams d rl idx
-    let agg_func = getFunc d rhsAggFunc [tOpaque gROUP_TYPE [ktype, vtype]]
+    let (agg_func, tmap) = getFunc d rhsAggFunc [tOpaque gROUP_TYPE [ktype, vtype]] Nothing --(varType d $ AggregateVar rl idx)
     -- Pass group-by variables to the aggregate function.
     let grp = "&" <> rnameScoped False gROUP_TYPE <> "::new(&" <> (mkExpr d gctx rhsGroupBy EVal) <> "," <+> gROUP_VAR <> "," <+> project <> ")"
     let tparams = commaSep $ map (\tvar -> mkType d False (tmap M.! tvar)) $ funcTypeVars agg_func
@@ -1938,25 +1938,30 @@ mkValConstructorName' d t = do
 mkValConstructorName :: DatalogProgram -> Type -> Doc
 mkValConstructorName d t' =
     case t of
-         TTuple{..}  -> "__Tuple" <> pp (length typeTupArgs) <> "__" <>
-                        (hcat $ punctuate "_" $ map (mkValConstructorName d) typeTupArgs)
-         TBool{}     -> "__Boolval"
-         TInt{}      -> "__Intval"
-         TString{}   -> "__Stringval"
-         TBit{..}    -> "__Bitval" <> pp typeWidth
-         TSigned{..} -> "__Signedval" <> pp typeWidth
-         TDouble{}   -> "__Doubleval"
-         TFloat{}    -> "__Floatval"
-         TUser{}     -> consuser
-         TOpaque{}   -> consuser
-         TVar{..}    -> pp tvarName
-         _           -> error $ "unexpected type " ++ show t ++ " in Compile.mkValConstructorName'"
+         TTuple{..}     -> "__Tuple" <> pp (length typeTupArgs) <> "__" <>
+                            (hcat $ punctuate "_" $ map (mkValConstructorName d) typeTupArgs)
+         TBool{}        -> "__Boolval"
+         TInt{}         -> "__Intval"
+         TString{}      -> "__Stringval"
+         TBit{..}       -> "__Bitval" <> pp typeWidth
+         TSigned{..}    -> "__Signedval" <> pp typeWidth
+         TDouble{}      -> "__Doubleval"
+         TFloat{}       -> "__Floatval"
+         TUser{}        -> consuser
+         TOpaque{}      -> consuser
+         TVar{..}       -> pp tvarName
+         TFunction{..}  -> "__Closure" <> (hcat $ punctuate "_" $ map mk_arg_type typeFuncArgs)
+                                       <> "_ret_"
+                                       <> (mkValConstructorName d typeRetType)
+         _              -> error $ "unexpected type " ++ show t ++ " in Compile.mkValConstructorName'"
     where
     t = typeNormalize d t'
     consuser = rnameFlat (typeName t) <>
                case typeArgs t of
                     [] -> empty
                     as -> "__" <> (hcat $ punctuate "_" $ map (mkValConstructorName d) as)
+    mk_arg_type :: ArgType -> Doc
+    mk_arg_type atype = (if atypeMut atype then "mut_" else "imm_") <> mkValConstructorName d (typ atype)
 
 mkValue' :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> ECtx -> Expr -> CompilerMonad Doc
 mkValue' d ctx e = do
@@ -2562,16 +2567,116 @@ mkExpr' d ctx e | isJust static_idx = (parens $ "&*" <> crate <> "::__STATIC_" <
 -- All variables are references
 mkExpr' _ _ EVar{..}    = (pp exprVar, EReference)
 
--- Function arguments are passed as read-only or mutable references
--- Functions return real values unless they are labeled return-by-reference.
-mkExpr' d ctx e@(EApply{..})  =
-    (mkFuncName d (inTypesModule ctx) f 
+-- Special case of a function call expression where function name is specified
+-- without type annotation.  This should only be the case if the function name
+-- uniquely identifies the function.  In this case we can find the function and
+-- generate function call expression without determining its exact type.  This
+-- is a bit hacky, but is helpful when generating code for function calls
+-- generated by 'Debug.hs'.
+mkExpr' d ctx EApply{exprFunc = (_, _, EFunc{exprFuncName}), exprArgs} =
+    (-- Avoid using code generated by 'mkExpr EFunc', which requires
+     -- establishing function type.  Lazy evaluation means that we won't
+     -- execute that code.
+     mkFuncName d local func
      <> (parens $ commaSep
                 $ map (\(a, mut) -> if mut then mutref a else ref a)
-                $ zip exprArgs (map argMut $ funcArgs f)), kind)
+                $ zip exprArgs (map argMut funcArgs)), kind)
     where
-    f = applyExprGetFunc d ctx $ exprMap (E . sel3) e
-    kind = if funcGetReturnByRefAttr d f then EReference else EVal
+    local = inTypesModule ctx
+    [fname] = exprFuncName
+    [func@Function{..}] = getFuncs d fname $ Just $ length exprArgs
+    kind = if funcGetReturnByRefAttr d func then EReference else EVal
+
+-- Function arguments are passed as read-only or mutable references
+-- Functions return values unless they are labeled return-by-reference.
+mkExpr' d ctx e@(EApply{..}) =
+    if is_closure
+    then (sel1 exprFunc <>  ".call"
+          <> (parens $ tuple
+                     $ map (\(a, mut) -> if mut then mutref a else ref a)
+                     $ zip exprArgs (map atypeMut arg_types)), kind)
+    else (sel1 exprFunc
+          <> (parens $ commaSep
+                     $ map (\(a, mut) -> if mut then mutref a else ref a)
+                     $ zip exprArgs (map atypeMut arg_types)), kind)
+    where
+    e' = exprMap (E . sel3) e
+    efunc = E $ sel3 exprFunc
+    efunc_ctx = CtxApplyFunc e' ctx
+    TFunction _ arg_types _ = exprType' d efunc_ctx efunc
+    (kind, is_closure) =
+        case exprStripTypeAnnotations efunc efunc_ctx of
+             (E efunc'@EFunc{}, ctx'') -> let (f, _) = funcExprGetFunc d ctx'' efunc'
+                                          in (if funcGetReturnByRefAttr d f then EReference else EVal, False)
+             -- TODO: support return_by_ref attribute on closures?
+             _ -> (EVal, True)
+
+-- If the function is referenced inside a function invocation, simply return the
+-- name of the function; otherwise wrap the function in a closure.
+mkExpr' d ctx e@EFunc{..} =
+    (res, EVal)
+    where
+    arg_deref :: FuncArg -> Doc
+    arg_deref a = if argMut a then "&mut *" else "&*"
+    -- Clone return value if function returns by-reference.
+    clone_ref = if funcGetReturnByRefAttr d f then ".clone()" else empty
+    res = case parctx ctx of
+               CtxApplyFunc{} -> fname
+               _ -> "(Box::new(closure::ClosureImpl{"                                                                   $$
+                    "    description: \"" <> fname <> "\","                                                             $$
+                    "    captured: (),"                                                                                 $$
+                    "    f:" <+> (braces' $ "fn __f(__args:" <> (tuple $ map mkarg funcArgs) <> ", __captured: &()) ->" <+> ret_type_code       $$
+                                            (if length funcArgs == 1
+                                             then "{unsafe{" <> fname <> "(" <> arg_deref (funcArgs !! 0) <> "__args)}" <> clone_ref <> "};"
+                                             else "{unsafe{" <> fname <> "(" <> commaSep (mapIdx (\a i -> arg_deref a <> "__args." <> pp i) funcArgs) <> ")}" <> clone_ref <> "};") $$
+                                            "__f")                                                                      $$
+                    "}) as Box<dyn closure::Closure<(" <> commaSep (map mkarg funcArgs) <> ")," <+> ret_type_code <> ">>)"
+    local = inTypesModule ctx
+
+    e' = exprMap (E . sel3) e
+    (f@Function{..}, tmap) = funcExprGetFunc d ctx e'
+    fname = mkFuncName d local f
+    ret_type_code = mkType d local $ typeSubstTypeArgs tmap funcType
+
+    mkarg :: FuncArg -> Doc
+    mkarg a = (if argMut a then "*mut" else "*const") <+> (mkType d local $ typeSubstTypeArgs tmap $ typ a)
+
+    -- Transitively unwrap type annotations.
+    parctx :: ECtx -> ECtx
+    parctx (CtxTyped _ ctx_) = parctx ctx_
+    parctx ctx_ = ctx_
+
+mkExpr' d ctx e@EClosure{..} =
+    (braces' $ "(Box::new(closure::ClosureImpl{"                                                                           $$
+               -- Strip type annotations for readability.
+               "    description:" <+> (pp $ show $ show $ pp $ exprStripTypeAnnotationsRec (E e') ctx) <> ","              $$
+               "    captured:" <+> (tuple $ map (\v -> pp (name v) <> ".clone()") captured_vars) <> ","                    $$
+               "    f:" <+> braces' ("fn __f(__args:" <> tuple arg_type_docs <> "," <+>
+                                            "__captured: &" <> (tuple $ map (mkType d local . varType d) captured_vars) <> ") ->" <+> ret_type_code    $$
+                                     (braces' $ vcat ref_captured_vars $$
+                                                vcat ref_args          $$
+                                                val exprExpr)          $$
+                                     "__f") $$
+               "}) as Box<dyn closure::Closure<(" <> commaSep arg_type_docs <> ")," <+> ret_type_code <> ">>)"
+    , EVal)
+    where
+    e' = exprMap (E . sel3) e
+    local = inTypesModule ctx
+    TFunction _ arg_types ret_type = exprType' d ctx (E e')
+    ret_type_code = mkType d local ret_type
+    arg_type_docs = map (\t -> (if atypeMut t then "*mut" else "*const") <+> mkType d local t)
+                        arg_types
+    -- Captured variables are exactly the free variables that occur in 'e'.
+    captured_vars = exprFreeVars d ctx $ E e'
+    -- Create references to captured variables inside the closure.
+    ref_captured_vars = if length captured_vars == 1
+                        then ["let" <+> pp (name $ captured_vars !! 0) <+> "= __captured;"]
+                        else mapIdx (\v i -> "let" <+> pp (name v) <+> "= &__captured." <> pp i <> ";") captured_vars
+    arg_deref :: ClosureExprArg -> Doc
+    arg_deref a = if (atypeMut $ fromJust $ ceargType a) then "&mut *" else "&*"
+    ref_args = if length exprClosureArgs == 1
+               then ["let" <+> pp (name $ exprClosureArgs !! 0) <+> "= unsafe{" <> arg_deref (exprClosureArgs !! 0) <> "__args};"]
+               else mapIdx (\a i -> "let" <+> pp (name a) <+> "= unsafe{" <> arg_deref a <> "__args." <> pp i <> "};") exprClosureArgs
 
 -- Field access automatically dereferences subexpression
 mkExpr' _ _ EField{..} = (sel1 exprStruct <> "." <> pp exprField, ELVal)
@@ -2819,10 +2924,9 @@ mkFuncName d local f =
 mkFuncNameShort :: DatalogProgram -> Function -> Doc
 mkFuncNameShort d f | length namesakes == 1 = nameLocal $ name f
                     | otherwise =
-    (nameLocal $ name f) <> "_" <> targ0 <> "_" <> pp (length $ funcArgs f)
+    (nameLocal $ name f) <> "_" <> args
     where
-    arg0 = funcArgs f !! 0
-    targ0 = mkValConstructorName d $ typ arg0
+    args = hcat $ punctuate "_" $ map (mkValConstructorName d) $ (map typ $ funcArgs f) ++ [funcType f]
     namesakes = progFunctions d M.! (name f)
 
 
@@ -2865,6 +2969,10 @@ mkType' d scope   TOpaque{..}       = rnameScoped' scope typeName <>
                                          then empty
                                          else "<" <> (commaSep $ map (mkType' d scope) typeArgs) <> ">"
 mkType' _ _       TVar{..}          = pp tvarName
+mkType' d scope   TFunction{..}     = "Box<dyn closure::Closure<" <> (tuple $ map mkarg typeFuncArgs) <> "," <+> ret_type_code <> ">>"
+                                      where
+                                      mkarg a = (if atypeMut a then "*mut" else "*const") <+> mkType' d scope (typ a)
+                                      ret_type_code = mkType' d scope typeRetType
 mkType' _ _       t                 = error $ "Compile.mkType' " ++ show t
 
 smallInt :: DatalogProgram -> Type -> Bool

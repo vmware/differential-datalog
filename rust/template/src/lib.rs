@@ -48,6 +48,7 @@ pub mod ovsdb_api;
 pub mod update_handler;
 
 use crate::api::updcmd2upd;
+use ::types::closure;
 use ::types::string_append;
 use ::types::string_append_str;
 

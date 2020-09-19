@@ -37,7 +37,7 @@ is defined in the local scope).
 
 ## Top-level declarations
 
-A Datalog program is a list of type definitions, functions, relations, and rules.
+A DDlog program is a list of type definitions, functions, relations, and rules.
 The ordering of declarations does not matter, e.g., a type can be used
 before being defined.  Declarations can be optionally annotated by
 meta-attributes.
@@ -114,6 +114,7 @@ type_spec ::= bigint_type
             | float_type
             | tuple_type
             | union_type     (* tagged union *)
+            | function_type  (* function type *)
             | type_alias     (* reference to user-defined type *)
             | typevar_name   (* type variable *)
 
@@ -129,6 +130,7 @@ simple_type_spec ::= bigint_type
                    | tuple_type
                    | type_alias
                    | typevar_name
+                   | function_type
 ```
 
 ```EBNF
@@ -141,6 +143,8 @@ double_type      ::= "double"
 float_type       ::= "float"
 tuple_type       ::= "(" simple_type_spec* ")"
 union_type       ::= (constructor "|")* constructor
+function_type    ::= "function" "(" [["mut"] type_spec ("," ["mut"] type_spec)*] ")" [":" type_spec]
+                   | "|" [["mut"] type_spec ("," ["mut"] type_spec)*] "|" [":" type_spec]
 type_alias       ::= type_name           (* type name declared using typedef*)
                      ["<" type_spec [("," type_spec)*] ">"] (* type arguments *)
 
@@ -208,9 +212,10 @@ arguments matching its declaration:
 
 ## Functions
 
-Functions are pure (side-effect-free computations).  A function
-declared with `extern` keyword refers to an external function
-defined outside of Datalog.  Such functions are declared without a
+DDlog functions are side-effect-free, except for functions labeled with
+the "#[has_side_effects]" attribute or functions that invoke such functions
+transitively.  A function declared with `extern` keyword refers to an external
+function defined outside of DDlog.  Such functions are declared without a
 body.
 
 ```EBNF
@@ -275,8 +280,9 @@ primary key (r) r.f1
 ```EBNF
 expr ::= term
        | expr "["decimal "," decimal"]"                 (*bit slice (e[h:l])*)
-       | expr ":" simple_type_spec                      (*explicit type signature*)
+       | expr ":" simple_type_spec                      (*type annotation*)
        | expr "." identifier                            (*struct field*)
+       | expr "(" [expr (,expr)*] ")"                   (*function call*)
        | expr "." func_name "(" [expr (,expr)*] ")"     (*dot function call notation*)
        | expr "." decimal                               (*tuple field access*)
        | "-" expr                                       (*unary arithmetic negation*)
@@ -313,7 +319,7 @@ The following table lists operators order by decreasing priority.
 
 |**priority** | **operators**                     |
 | ------ |:--------------------------------------:|
-| Highest| e[h:l], x:t, x.f, x?, x as t, x.f()    |
+| Highest| e[h:l], x:t, x.f, x?, x as t, x.f() f(x) x.N  |
 |        | ~                       |
 |        | not                     |
 |        | %  / *                  |
@@ -338,8 +344,8 @@ term ::= "_"                 (* wildcard *)
        | vec_literal         (* vector literal *)
        | map_literal         (* map literal *)
        | cons_term           (* type constructor invocation *)
-       | apply_term          (* function application *)
        | var_term            (* variable reference *)
+       | func_term           (* function name *)
        | match_term          (* match term *)
        | ite_term            (* if-then-else term *)
        | for_term            (* for-loop *)
@@ -347,6 +353,7 @@ term ::= "_"                 (* wildcard *)
        | "break"             (* break out of a loop *)
        | return_term         (* return from a function *)
        | vardecl_term        (* local variable declaration *)
+       | lambda_term         (* lambda-expression *)
 ```
 
 **Integer literal syntax is currently arcane and may be changed.**
@@ -417,7 +424,6 @@ cons_term    ::= (* positional arguments *)
                  (* named arguments *)
                | cons_name ["{" "." field_name "=" expr
                             ("," "." field_name "=" expr)* "}"]
-apply_term   ::= func_name "(" [expr (,expr)*] ")"
 var_term     ::= var_name
 ite_term     ::= "if" term term [ "else" term ]
 for_term     ::= "for" "(" var_name "in" expr ")" term
@@ -426,6 +432,9 @@ vardecl_term ::= "var" var_name
 
 match_term   ::= "match" "(" expr ")" "{" match_clause (,match_clause)*"}"
 match_clause ::= pattern "->" expr
+
+lambda_term  ::= "function" "(" [expr ("," expr)*] ")" [":" simple_type_spec] expr
+               | "|" [expr ("," expr)*] "|" [":" simple_type_spec] expr
 ```
 
 ```EBNF
@@ -580,7 +589,7 @@ y = "x:{udf_t2string(x)}";
 
 ## Rules
 
-A Datalog rule consists of the *head* comprised of one or more *atoms* (multiple
+A DDlog rule consists of the *head* comprised of one or more *atoms* (multiple
 atoms abbreviate rules with identical right-hand sides) and zero or more *body* clauses.
 
 ```EBNF

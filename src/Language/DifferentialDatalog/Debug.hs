@@ -119,7 +119,7 @@ generateInspectDebugJoin d ruleIdx rule preRhsIdx index =
     input1 = head $ Compile.recordAfterPrefix d rule (index - 1)
     input2 = eVar $ exprVar $ enode $ atomVal $ rhsAtom (ruleRHS rule !! index)
     outputs = Compile.recordAfterPrefix d rule index
-  in map (\i -> RHSInspect {rhsInspectExpr = eApply "debug::debug_event_join"
+  in map (\i -> RHSInspect {rhsInspectExpr = eApplyFunc "debug::debug_event_join"
                                              [generateOperatorIdExpr ruleIdx preRhsIdx i,
                                               ddlogWeightExpr,
                                               ddlogTimestampExpr,
@@ -142,7 +142,7 @@ generateInspectDebug d ruleIdx rule preRhsIdx index =
                      RHSCondition{} -> "Condition"
                      rhs -> error $ "generateInspectDebug " ++ show rhs
     outputs = Compile.recordAfterPrefix d rule index
-  in map (\i -> RHSInspect {rhsInspectExpr = eApply "debug::debug_event"
+  in map (\i -> RHSInspect {rhsInspectExpr = eApplyFunc "debug::debug_event"
                                              [generateOperatorIdExpr ruleIdx preRhsIdx i,
                                               ddlogWeightExpr,
                                               ddlogTimestampExpr,
@@ -156,7 +156,7 @@ generateInspectDebugAggregate d ruleIdx rule preRhsIdx index =
   let
     input1 = eTupField (eVar $ rhsVar $ (ruleRHS rule !! index)) 0
     outputs = Compile.recordAfterPrefix d rule index
-  in map (\i -> RHSInspect {rhsInspectExpr = eApply "debug::debug_event"
+  in map (\i -> RHSInspect {rhsInspectExpr = eApplyFunc "debug::debug_event"
                                              [generateOperatorIdExpr ruleIdx preRhsIdx i,
                                               ddlogWeightExpr,
                                               ddlogTimestampExpr,
@@ -223,8 +223,8 @@ debugAggregateFunction d rlidx rhsidx =
     tret = varType d (AggregateVar rule rhsidx)
     fname = debugAggregateFunctionName rlidx rhsidx rhsAggFunc
     funcBody = eSeq (eSet (eTuple [eVarDecl "inputs" tinputs, eVarDecl "original_group" $ tOpaque gROUP_TYPE [tkey, tval]])
-                          (eApply "debug::debug_split_group" [eVar "g"]))
-                    (eTuple [eVar "inputs", eApply rhsAggFunc [eVar "original_group"]])
+                          (eApplyFunc "debug::debug_split_group" [eVar "g"]))
+                    (eTuple [eVar "inputs", eApplyFunc rhsAggFunc [eVar "original_group"]])
   in Function {funcPos = nopos,
                funcAttrs = [],
                funcName = fname,

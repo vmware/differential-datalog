@@ -170,6 +170,8 @@ typedef ddlog_std::Result<'V,'E> = ddlog_std::Ok{res: 'V} |
                                    ddlog_std::Err{err: 'E}
 extern type ddlog_std::Set<'A>
 extern type ddlog_std::Vec<'A>
+#[alias = true]
+typedef ddlog_std::isize = signed<64>
 typedef ddlog_std::s128 = signed<128>
 typedef ddlog_std::s16 = signed<16>
 typedef ddlog_std::s32 = signed<32>
@@ -372,7 +374,7 @@ function c0 (a: bit<32>, b: bit<16>): bit<16>
 }
 function concat_ys (ys: ddlog_std::Group<(string, string),string>): string
 {
-    {((var x: string), (var z: string)) = (ddlog_std::group_key(ys): (string, string));
+    {((var x: string), (var z: string)) = (ddlog_std::group_key: function(ddlog_std::Group<(string, string),string>):(string, string))(ys);
      {(var res: string) = (((x ++ "-") ++ z) ++ ":");
       {for (y in ys) {
            {res = (res ++ y);
@@ -384,7 +386,7 @@ function count_xs (ys: ddlog_std::Group<string,string>): ddlog_std::u64
 {
     {(var res: ddlog_std::u64) = 64'd0;
      {for (y in ys) {
-          if (y == (ddlog_std::group_key(ys): string)) {
+          if (y == (ddlog_std::group_key: function(ddlog_std::Group<string,string>):string)(ys)) {
               {res = (res + 64'd1);
                ()}
           } else {
@@ -470,7 +472,7 @@ function ddlog_std::__debug_99_1_group_to_set (g: ddlog_std::Group<string,('I, s
 }
 function ddlog_std::append (v: mut ddlog_std::Vec<'X>, other: ddlog_std::Vec<'X>): ()
 {
-    ddlog_std::vec_append(v, other)
+    (ddlog_std::vec_append: function(mut ddlog_std::Vec<'X>, ddlog_std::Vec<'X>):())(v, other)
 }
 extern function ddlog_std::bigint_pow32 (base: bigint, exp: bit<32>): bigint
 function ddlog_std::contains (s1: string, s2: string): bool
@@ -479,26 +481,26 @@ function ddlog_std::contains (s1: string, s2: string): bool
 }
 function ddlog_std::contains (v: ddlog_std::Vec<'X>, x: 'X): bool
 {
-    ddlog_std::vec_contains(v, x)
+    (ddlog_std::vec_contains: function(ddlog_std::Vec<'X>, 'X):bool)(v, x)
 }
 function ddlog_std::contains (s: ddlog_std::Set<'X>, v: 'X): bool
 {
-    ddlog_std::set_contains(s, v)
+    (ddlog_std::set_contains: function(ddlog_std::Set<'X>, 'X):bool)(s, v)
 }
 function ddlog_std::contains_key (m: ddlog_std::Map<'K,'V>, k: 'K): bool
 {
-    ddlog_std::map_contains_key(m, k)
+    (ddlog_std::map_contains_key: function(ddlog_std::Map<'K,'V>, 'K):bool)(m, k)
 }
 function ddlog_std::count (g: ddlog_std::Group<'K,'V>): ddlog_std::usize
 {
-    ddlog_std::group_count(g)
+    (ddlog_std::group_count: function(ddlog_std::Group<'K,'V>):bit<64>)(g)
 }
 extern function ddlog_std::default (): 'T
 #[return_by_ref = true]
 extern function ddlog_std::deref (x: ddlog_std::Ref<'A>): 'A
 function ddlog_std::difference (s1: ddlog_std::Set<'X>, s2: ddlog_std::Set<'X>): ddlog_std::Set<'X>
 {
-    (ddlog_std::set_difference(s1, s2): ddlog_std::Set<'X>)
+    (ddlog_std::set_difference: function(ddlog_std::Set<'X>, ddlog_std::Set<'X>):ddlog_std::Set<'X>)(s1, s2)
 }
 function ddlog_std::ends_with (s: string, suffix: string): bool
 {
@@ -506,11 +508,11 @@ function ddlog_std::ends_with (s: string, suffix: string): bool
 }
 function ddlog_std::first (g: ddlog_std::Group<'K,'V>): 'V
 {
-    (ddlog_std::group_first(g): 'V)
+    (ddlog_std::group_first: function(ddlog_std::Group<'K,'V>):'V)(g)
 }
 function ddlog_std::get (m: ddlog_std::Map<'K,'V>, k: 'K): ddlog_std::Option<'V>
 {
-    (ddlog_std::map_get(m, k): ddlog_std::Option<'V>)
+    (ddlog_std::map_get: function(ddlog_std::Map<'K,'V>, 'K):ddlog_std::Option<'V>)(m, k)
 }
 extern function ddlog_std::group_count (g: ddlog_std::Group<'K,'V>): ddlog_std::usize
 extern function ddlog_std::group_first (g: ddlog_std::Group<'K,'V>): 'V
@@ -527,12 +529,12 @@ extern function ddlog_std::group_to_setmap (g: ddlog_std::Group<'K1,('K2, 'V)>):
 extern function ddlog_std::group_to_vec (g: ddlog_std::Group<'K,'V>): ddlog_std::Vec<'V>
 function ddlog_std::group_unzip (g: ddlog_std::Group<'K,('X, 'Y)>): (ddlog_std::Vec<'X>, ddlog_std::Vec<'Y>)
 {
-    {(var xs: ddlog_std::Vec<'X>) = (ddlog_std::vec_empty(): ddlog_std::Vec<'X>);
-     {(var ys: ddlog_std::Vec<'Y>) = (ddlog_std::vec_empty(): ddlog_std::Vec<'Y>);
+    {(var xs: ddlog_std::Vec<'X>) = (ddlog_std::vec_empty: function():ddlog_std::Vec<'X>)();
+     {(var ys: ddlog_std::Vec<'Y>) = (ddlog_std::vec_empty: function():ddlog_std::Vec<'Y>)();
       {for (v in g) {
            {((var x: 'X), (var y: 'Y)) = v;
-            {ddlog_std::vec_push(xs, x);
-             ddlog_std::vec_push(ys, y)}}
+            {(ddlog_std::vec_push: function(mut ddlog_std::Vec<'X>, 'X):())(xs, x);
+             (ddlog_std::vec_push: function(mut ddlog_std::Vec<'Y>, 'Y):())(ys, y)}}
        };
        (xs, ys)}}}
 }
@@ -543,35 +545,35 @@ extern function ddlog_std::htonl (x: bit<32>): bit<32>
 extern function ddlog_std::htons (x: bit<16>): bit<16>
 function ddlog_std::insert (m: mut ddlog_std::Map<'K,'V>, k: 'K, v: 'V): ()
 {
-    ddlog_std::map_insert(m, k, v)
+    (ddlog_std::map_insert: function(mut ddlog_std::Map<'K,'V>, 'K, 'V):())(m, k, v)
 }
 function ddlog_std::insert (s: mut ddlog_std::Set<'X>, v: 'X): ()
 {
-    ddlog_std::set_insert(s, v)
+    (ddlog_std::set_insert: function(mut ddlog_std::Set<'X>, 'X):())(s, v)
 }
 function ddlog_std::insert_imm (m: ddlog_std::Map<'K,'V>, k: 'K, v: 'V): ddlog_std::Map<'K,'V>
 {
-    (ddlog_std::map_insert_imm(m, k, v): ddlog_std::Map<'K,'V>)
+    (ddlog_std::map_insert_imm: function(ddlog_std::Map<'K,'V>, 'K, 'V):ddlog_std::Map<'K,'V>)(m, k, v)
 }
 function ddlog_std::insert_imm (s: ddlog_std::Set<'X>, v: 'X): ddlog_std::Set<'X>
 {
-    (ddlog_std::set_insert_imm(s, v): ddlog_std::Set<'X>)
+    (ddlog_std::set_insert_imm: function(ddlog_std::Set<'X>, 'X):ddlog_std::Set<'X>)(s, v)
 }
 function ddlog_std::intersection (s1: ddlog_std::Set<'X>, s2: ddlog_std::Set<'X>): ddlog_std::Set<'X>
 {
-    (ddlog_std::set_intersection(s1, s2): ddlog_std::Set<'X>)
+    (ddlog_std::set_intersection: function(ddlog_std::Set<'X>, ddlog_std::Set<'X>):ddlog_std::Set<'X>)(s1, s2)
 }
 function ddlog_std::is_empty (v: ddlog_std::Vec<'X>): bool
 {
-    ddlog_std::vec_is_empty(v)
+    (ddlog_std::vec_is_empty: function(ddlog_std::Vec<'X>):bool)(v)
 }
 function ddlog_std::is_empty (m: ddlog_std::Map<'K,'V>): bool
 {
-    ddlog_std::map_is_empty(m)
+    (ddlog_std::map_is_empty: function(ddlog_std::Map<'K,'V>):bool)(m)
 }
 function ddlog_std::is_empty (s: ddlog_std::Set<'X>): bool
 {
-    ddlog_std::set_is_empty(s)
+    (ddlog_std::set_is_empty: function(ddlog_std::Set<'X>):bool)(s)
 }
 function ddlog_std::is_err (res: ddlog_std::Result<'V,'E>): bool
 {
@@ -607,11 +609,11 @@ function ddlog_std::join (strings: ddlog_std::Vec<string>, sep: string): string
 }
 function ddlog_std::key (g: ddlog_std::Group<'K,'V>): 'K
 {
-    (ddlog_std::group_key(g): 'K)
+    (ddlog_std::group_key: function(ddlog_std::Group<'K,'V>):'K)(g)
 }
 function ddlog_std::keys (m: ddlog_std::Map<'K,'V>): ddlog_std::Vec<'K>
 {
-    (ddlog_std::map_keys(m): ddlog_std::Vec<'K>)
+    (ddlog_std::map_keys: function(ddlog_std::Map<'K,'V>):ddlog_std::Vec<'K>)(m)
 }
 function ddlog_std::len (s: string): ddlog_std::usize
 {
@@ -619,10 +621,31 @@ function ddlog_std::len (s: string): ddlog_std::usize
 }
 function ddlog_std::len (v: ddlog_std::Vec<'X>): ddlog_std::usize
 {
-    ddlog_std::vec_len(v)
+    (ddlog_std::vec_len: function(ddlog_std::Vec<'X>):bit<64>)(v)
+}
+function ddlog_std::map (opt: ddlog_std::Option<'A>, f: function('A):'B): ddlog_std::Option<'B>
+{
+    match (opt) {
+        (ddlog_std::None{}: ddlog_std::Option<'A>) -> (ddlog_std::None{}: ddlog_std::Option<'B>),
+        (ddlog_std::Some{.x=(var x: 'A)}: ddlog_std::Option<'A>) -> (ddlog_std::Some{.x=f(x)}: ddlog_std::Option<'B>)
+    }
+}
+function ddlog_std::map (res: ddlog_std::Result<'V1,'E>, f: function('V1):'V2): ddlog_std::Result<'V2,'E>
+{
+    match (res) {
+        (ddlog_std::Err{.err=(var e: 'E)}: ddlog_std::Result<'V1,'E>) -> (ddlog_std::Err{.err=e}: ddlog_std::Result<'V2,'E>),
+        (ddlog_std::Ok{.res=(var x: 'V1)}: ddlog_std::Result<'V1,'E>) -> (ddlog_std::Ok{.res=f(x)}: ddlog_std::Result<'V2,'E>)
+    }
 }
 extern function ddlog_std::map_contains_key (m: ddlog_std::Map<'K,'V>, k: 'K): bool
 extern function ddlog_std::map_empty (): ddlog_std::Map<'K,'V>
+function ddlog_std::map_err (res: ddlog_std::Result<'V,'E1>, f: function('E1):'E2): ddlog_std::Result<'V,'E2>
+{
+    match (res) {
+        (ddlog_std::Err{.err=(var e: 'E1)}: ddlog_std::Result<'V,'E1>) -> (ddlog_std::Err{.err=f(e)}: ddlog_std::Result<'V,'E2>),
+        (ddlog_std::Ok{.res=(var x: 'V)}: ddlog_std::Result<'V,'E1>) -> (ddlog_std::Ok{.res=x}: ddlog_std::Result<'V,'E2>)
+    }
+}
 extern function ddlog_std::map_get (m: ddlog_std::Map<'K,'V>, k: 'K): ddlog_std::Option<'V>
 extern function ddlog_std::map_insert (m: mut ddlog_std::Map<'K,'V>, k: 'K, v: 'V): ()
 extern function ddlog_std::map_insert_imm (m: ddlog_std::Map<'K,'V>, k: 'K, v: 'V): ddlog_std::Map<'K,'V>
@@ -642,7 +665,7 @@ function ddlog_std::max (x: 'A, y: 'A): 'A
 }
 function ddlog_std::max (g: ddlog_std::Group<'K,'V>): 'V
 {
-    (ddlog_std::group_max(g): 'V)
+    (ddlog_std::group_max: function(ddlog_std::Group<'K,'V>):'V)(g)
 }
 function ddlog_std::min (x: 'A, y: 'A): 'A
 {
@@ -654,19 +677,19 @@ function ddlog_std::min (x: 'A, y: 'A): 'A
 }
 function ddlog_std::min (g: ddlog_std::Group<'K,'V>): 'V
 {
-    (ddlog_std::group_min(g): 'V)
+    (ddlog_std::group_min: function(ddlog_std::Group<'K,'V>):'V)(g)
 }
 function ddlog_std::nth (g: ddlog_std::Group<'K,'V>, n: ddlog_std::usize): ddlog_std::Option<'V>
 {
-    (ddlog_std::group_nth(g, n): ddlog_std::Option<'V>)
+    (ddlog_std::group_nth: function(ddlog_std::Group<'K,'V>, bit<64>):ddlog_std::Option<'V>)(g, n)
 }
 function ddlog_std::nth (v: ddlog_std::Vec<'X>, n: ddlog_std::usize): ddlog_std::Option<'X>
 {
-    (ddlog_std::vec_nth(v, n): ddlog_std::Option<'X>)
+    (ddlog_std::vec_nth: function(ddlog_std::Vec<'X>, bit<64>):ddlog_std::Option<'X>)(v, n)
 }
 function ddlog_std::nth (s: ddlog_std::Set<'X>, n: ddlog_std::usize): ddlog_std::Option<'X>
 {
-    (ddlog_std::set_nth(s, n): ddlog_std::Option<'X>)
+    (ddlog_std::set_nth: function(ddlog_std::Set<'X>, bit<64>):ddlog_std::Option<'X>)(s, n)
 }
 extern function ddlog_std::ntohl (x: bit<32>): bit<32>
 extern function ddlog_std::ntohs (x: bit<16>): bit<16>
@@ -719,17 +742,17 @@ function ddlog_std::pow32 (base: bigint, exp: bit<32>): bigint
 }
 function ddlog_std::push (v: mut ddlog_std::Vec<'X>, x: 'X): ()
 {
-    ddlog_std::vec_push(v, x)
+    (ddlog_std::vec_push: function(mut ddlog_std::Vec<'X>, 'X):())(v, x)
 }
 function ddlog_std::push_imm (v: ddlog_std::Vec<'X>, x: 'X): ddlog_std::Vec<'X>
 {
-    (ddlog_std::vec_push_imm(v, x): ddlog_std::Vec<'X>)
+    (ddlog_std::vec_push_imm: function(ddlog_std::Vec<'X>, 'X):ddlog_std::Vec<'X>)(v, x)
 }
 extern function ddlog_std::range (from: 'A, to: 'A, step: 'A): ddlog_std::Vec<'A>
 extern function ddlog_std::ref_new (x: 'A): ddlog_std::Ref<'A>
 function ddlog_std::remove (m: mut ddlog_std::Map<'K,'V>, k: 'K): ddlog_std::Option<'V>
 {
-    (ddlog_std::map_remove(m, k): ddlog_std::Option<'V>)
+    (ddlog_std::map_remove: function(mut ddlog_std::Map<'K,'V>, 'K):ddlog_std::Option<'V>)(m, k)
 }
 function ddlog_std::replace (s: string, from: string, to: string): string
 {
@@ -737,7 +760,7 @@ function ddlog_std::replace (s: string, from: string, to: string): string
 }
 function ddlog_std::resize (v: mut ddlog_std::Vec<'X>, new_len: ddlog_std::usize, value: 'X): ()
 {
-    ddlog_std::vec_resize(v, new_len, value)
+    (ddlog_std::vec_resize: function(mut ddlog_std::Vec<'X>, bit<64>, 'X):())(v, new_len, value)
 }
 extern function ddlog_std::result_unwrap_or_default (res: ddlog_std::Result<'V,'E>): 'V
 function ddlog_std::reverse (s: string): string
@@ -764,23 +787,23 @@ extern function ddlog_std::set_union (s1: ddlog_std::Set<'X>, s2: ddlog_std::Set
 extern function ddlog_std::set_unions (sets: ddlog_std::Vec<ddlog_std::Set<'X>>): ddlog_std::Set<'X>
 function ddlog_std::setref_unions (g: ddlog_std::Group<'K,ddlog_std::Ref<ddlog_std::Set<'A>>>): ddlog_std::Ref<ddlog_std::Set<'A>>
 {
-    (ddlog_std::group_setref_unions(g): ddlog_std::Ref<ddlog_std::Set<'A>>)
+    (ddlog_std::group_setref_unions: function(ddlog_std::Group<'K,ddlog_std::Ref<ddlog_std::Set<'A>>>):ddlog_std::Ref<ddlog_std::Set<'A>>)(g)
 }
 function ddlog_std::size (m: ddlog_std::Map<'K,'V>): ddlog_std::usize
 {
-    ddlog_std::map_size(m)
+    (ddlog_std::map_size: function(ddlog_std::Map<'K,'V>):bit<64>)(m)
 }
 function ddlog_std::size (s: ddlog_std::Set<'X>): ddlog_std::usize
 {
-    ddlog_std::set_size(s)
+    (ddlog_std::set_size: function(ddlog_std::Set<'X>):bit<64>)(s)
 }
 function ddlog_std::sort (v: mut ddlog_std::Vec<'X>): ()
 {
-    ddlog_std::vec_sort(v)
+    (ddlog_std::vec_sort: function(mut ddlog_std::Vec<'X>):())(v)
 }
 function ddlog_std::sort_imm (v: ddlog_std::Vec<'X>): ddlog_std::Vec<'X>
 {
-    (ddlog_std::vec_sort_imm(v): ddlog_std::Vec<'X>)
+    (ddlog_std::vec_sort_imm: function(ddlog_std::Vec<'X>):ddlog_std::Vec<'X>)(v)
 }
 function ddlog_std::split (s: string, sep: string): ddlog_std::Vec<string>
 {
@@ -810,7 +833,7 @@ function ddlog_std::substr (s: string, start: ddlog_std::usize, end: ddlog_std::
 }
 function ddlog_std::swap_nth (v: mut ddlog_std::Vec<'X>, idx: ddlog_std::usize, value: mut 'X): bool
 {
-    ddlog_std::vec_swap_nth(v, idx, value)
+    (ddlog_std::vec_swap_nth: function(mut ddlog_std::Vec<'X>, bit<64>, mut 'X):bool)(v, idx, value)
 }
 function ddlog_std::to_bytes (s: string): ddlog_std::Vec<ddlog_std::u8>
 {
@@ -822,90 +845,90 @@ function ddlog_std::to_lowercase (s: string): string
 }
 function ddlog_std::to_map (g: ddlog_std::Group<'K1,('K2, 'V)>): ddlog_std::Map<'K2,'V>
 {
-    (ddlog_std::group_to_map(g): ddlog_std::Map<'K2,'V>)
+    (ddlog_std::group_to_map: function(ddlog_std::Group<'K1,('K2, 'V)>):ddlog_std::Map<'K2,'V>)(g)
 }
 function ddlog_std::to_set (o: ddlog_std::Option<'X>): ddlog_std::Set<'X>
 {
     match (o) {
-        (ddlog_std::Some{.x=(var x: 'X)}: ddlog_std::Option<'X>) -> (ddlog_std::set_singleton(x): ddlog_std::Set<'X>),
-        (ddlog_std::None{}: ddlog_std::Option<'X>) -> (ddlog_std::set_empty(): ddlog_std::Set<'X>)
+        (ddlog_std::Some{.x=(var x: 'X)}: ddlog_std::Option<'X>) -> (ddlog_std::set_singleton: function('X):ddlog_std::Set<'X>)(x),
+        (ddlog_std::None{}: ddlog_std::Option<'X>) -> (ddlog_std::set_empty: function():ddlog_std::Set<'X>)()
     }
 }
 function ddlog_std::to_set (g: ddlog_std::Group<'K,'V>): ddlog_std::Set<'V>
 {
-    (ddlog_std::group_to_set(g): ddlog_std::Set<'V>)
+    (ddlog_std::group_to_set: function(ddlog_std::Group<'K,'V>):ddlog_std::Set<'V>)(g)
 }
 function ddlog_std::to_set (s: ddlog_std::Vec<'A>): ddlog_std::Set<'A>
 {
-    (ddlog_std::vec_to_set(s): ddlog_std::Set<'A>)
+    (ddlog_std::vec_to_set: function(ddlog_std::Vec<'A>):ddlog_std::Set<'A>)(s)
 }
 function ddlog_std::to_setmap (g: ddlog_std::Group<'K1,('K2, 'V)>): ddlog_std::Map<'K2,ddlog_std::Set<'V>>
 {
-    (ddlog_std::group_to_setmap(g): ddlog_std::Map<'K2,ddlog_std::Set<'V>>)
+    (ddlog_std::group_to_setmap: function(ddlog_std::Group<'K1,('K2, 'V)>):ddlog_std::Map<'K2,ddlog_std::Set<'V>>)(g)
 }
 function ddlog_std::to_string (ts: ddlog_std::DDNestedTS): string
 {
-    (((("(" ++ (ddlog_std::__builtin_2string(ts.epoch): string)) ++ ",") ++ (ddlog_std::__builtin_2string(ts.iter): string)) ++ ")")
+    (((("(" ++ (ddlog_std::__builtin_2string: function(bit<64>):string)(ts.epoch)) ++ ",") ++ (ddlog_std::__builtin_2string: function(bit<64>):string)(ts.iter)) ++ ")")
 }
 function ddlog_std::to_string (x: bool): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(bool):string)(x)
 }
 function ddlog_std::to_string (x: bigint): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(bigint):string)(x)
 }
 function ddlog_std::to_string (x: float): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(float):string)(x)
 }
 function ddlog_std::to_string (x: double): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(double):string)(x)
 }
 function ddlog_std::to_string (x: ddlog_std::s8): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(signed<8>):string)(x)
 }
 function ddlog_std::to_string (x: ddlog_std::s16): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(signed<16>):string)(x)
 }
 function ddlog_std::to_string (x: ddlog_std::s32): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(signed<32>):string)(x)
 }
 function ddlog_std::to_string (x: ddlog_std::s64): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(signed<64>):string)(x)
 }
 function ddlog_std::to_string (x: ddlog_std::s128): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(signed<128>):string)(x)
 }
 function ddlog_std::to_string (x: ddlog_std::u8): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(bit<8>):string)(x)
 }
 function ddlog_std::to_string (x: ddlog_std::u16): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(bit<16>):string)(x)
 }
 function ddlog_std::to_string (x: ddlog_std::u32): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(bit<32>):string)(x)
 }
 function ddlog_std::to_string (x: ddlog_std::u64): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(bit<64>):string)(x)
 }
 function ddlog_std::to_string (x: ddlog_std::u128): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(bit<128>):string)(x)
 }
 function ddlog_std::to_string (x: string): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(string):string)(x)
 }
 function ddlog_std::to_uppercase (s: string): string
 {
@@ -914,21 +937,25 @@ function ddlog_std::to_uppercase (s: string): string
 function ddlog_std::to_vec (o: ddlog_std::Option<'X>): ddlog_std::Vec<'X>
 {
     match (o) {
-        (ddlog_std::Some{.x=(var x: 'X)}: ddlog_std::Option<'X>) -> (ddlog_std::vec_singleton(x): ddlog_std::Vec<'X>),
-        (ddlog_std::None{}: ddlog_std::Option<'X>) -> (ddlog_std::vec_empty(): ddlog_std::Vec<'X>)
+        (ddlog_std::Some{.x=(var x: 'X)}: ddlog_std::Option<'X>) -> (ddlog_std::vec_singleton: function('X):ddlog_std::Vec<'X>)(x),
+        (ddlog_std::None{}: ddlog_std::Option<'X>) -> (ddlog_std::vec_empty: function():ddlog_std::Vec<'X>)()
     }
 }
 function ddlog_std::to_vec (g: ddlog_std::Group<'K,'V>): ddlog_std::Vec<'V>
 {
-    (ddlog_std::group_to_vec(g): ddlog_std::Vec<'V>)
+    (ddlog_std::group_to_vec: function(ddlog_std::Group<'K,'V>):ddlog_std::Vec<'V>)(g)
 }
 function ddlog_std::to_vec (s: ddlog_std::Set<'A>): ddlog_std::Vec<'A>
 {
-    (ddlog_std::set_to_vec(s): ddlog_std::Vec<'A>)
+    (ddlog_std::set_to_vec: function(ddlog_std::Set<'A>):ddlog_std::Vec<'A>)(s)
 }
 function ddlog_std::trim (s: string): string
 {
     ddlog_std::string_trim(s)
+}
+function ddlog_std::truncate (v: mut ddlog_std::Vec<'X>, len: ddlog_std::usize): ()
+{
+    (ddlog_std::vec_truncate: function(mut ddlog_std::Vec<'X>, bit<64>):())(v, len)
 }
 extern function ddlog_std::u128_pow32 (base: ddlog_std::u128, exp: bit<32>): ddlog_std::u128
 extern function ddlog_std::u16_pow32 (base: ddlog_std::u16, exp: bit<32>): ddlog_std::u16
@@ -937,15 +964,15 @@ extern function ddlog_std::u64_pow32 (base: ddlog_std::u64, exp: bit<32>): ddlog
 extern function ddlog_std::u8_pow32 (base: ddlog_std::u8, exp: bit<32>): ddlog_std::u8
 function ddlog_std::union (m1: ddlog_std::Map<'K,'V>, m2: ddlog_std::Map<'K,'V>): ddlog_std::Map<'K,'V>
 {
-    (ddlog_std::map_union(m1, m2): ddlog_std::Map<'K,'V>)
+    (ddlog_std::map_union: function(ddlog_std::Map<'K,'V>, ddlog_std::Map<'K,'V>):ddlog_std::Map<'K,'V>)(m1, m2)
 }
 function ddlog_std::union (s1: ddlog_std::Set<'X>, s2: ddlog_std::Set<'X>): ddlog_std::Set<'X>
 {
-    (ddlog_std::set_union(s1, s2): ddlog_std::Set<'X>)
+    (ddlog_std::set_union: function(ddlog_std::Set<'X>, ddlog_std::Set<'X>):ddlog_std::Set<'X>)(s1, s2)
 }
 function ddlog_std::unions (sets: ddlog_std::Vec<ddlog_std::Set<'X>>): ddlog_std::Set<'X>
 {
-    (ddlog_std::set_unions(sets): ddlog_std::Set<'X>)
+    (ddlog_std::set_unions: function(ddlog_std::Vec<ddlog_std::Set<'X>>):ddlog_std::Set<'X>)(sets)
 }
 function ddlog_std::unwrap_or (x: ddlog_std::Option<'A>, def: 'A): 'A
 {
@@ -963,15 +990,15 @@ function ddlog_std::unwrap_or (res: ddlog_std::Result<'V,'E>, def: 'V): 'V
 }
 function ddlog_std::unwrap_or_default (opt: ddlog_std::Option<'A>): 'A
 {
-    (ddlog_std::option_unwrap_or_default(opt): 'A)
+    (ddlog_std::option_unwrap_or_default: function(ddlog_std::Option<'A>):'A)(opt)
 }
 function ddlog_std::unwrap_or_default (res: ddlog_std::Result<'V,'E>): 'V
 {
-    (ddlog_std::result_unwrap_or_default(res): 'V)
+    (ddlog_std::result_unwrap_or_default: function(ddlog_std::Result<'V,'E>):'V)(res)
 }
 function ddlog_std::update_nth (v: mut ddlog_std::Vec<'X>, idx: ddlog_std::usize, value: 'X): bool
 {
-    ddlog_std::vec_update_nth(v, idx, value)
+    (ddlog_std::vec_update_nth: function(mut ddlog_std::Vec<'X>, bit<64>, 'X):bool)(v, idx, value)
 }
 extern function ddlog_std::vec_append (v: mut ddlog_std::Vec<'X>, other: ddlog_std::Vec<'X>): ()
 extern function ddlog_std::vec_contains (v: ddlog_std::Vec<'X>, x: 'X): bool
@@ -988,6 +1015,7 @@ extern function ddlog_std::vec_sort (v: mut ddlog_std::Vec<'X>): ()
 extern function ddlog_std::vec_sort_imm (v: ddlog_std::Vec<'X>): ddlog_std::Vec<'X>
 extern function ddlog_std::vec_swap_nth (v: mut ddlog_std::Vec<'X>, idx: ddlog_std::usize, value: mut 'X): bool
 extern function ddlog_std::vec_to_set (s: ddlog_std::Vec<'A>): ddlog_std::Set<'A>
+extern function ddlog_std::vec_truncate (v: mut ddlog_std::Vec<'X>, len: ddlog_std::usize): ()
 extern function ddlog_std::vec_update_nth (v: mut ddlog_std::Vec<'X>, idx: ddlog_std::usize, value: 'X): bool
 extern function ddlog_std::vec_with_capacity (len: ddlog_std::usize): ddlog_std::Vec<'A>
 extern function ddlog_std::vec_with_length (len: ddlog_std::usize, x: 'A): ddlog_std::Vec<'A>
@@ -996,21 +1024,21 @@ extern function debug::debug_event_join (operator_id: debug::DDlogOpId, w: ddlog
 extern function debug::debug_split_group (g: ddlog_std::Group<'K,('I, 'V)>): (ddlog_std::Vec<'I>, ddlog_std::Group<'K,'V>)
 function double_evens (xs: ddlog_std::Vec<bigint>): ddlog_std::Vec<bigint>
 {
-    {(var res: ddlog_std::Vec<bigint>) = (ddlog_std::vec_empty(): ddlog_std::Vec<bigint>);
+    {(var res: ddlog_std::Vec<bigint>) = (ddlog_std::vec_empty: function():ddlog_std::Vec<bigint>)();
      {for (x in xs) {
-          ddlog_std::vec_push(res, mult2(if (x == 0) {
-                                             (break: bigint)
-                                         } else {
-                                               if (x < 0) {
-                                                   ((return res): bigint)
-                                               } else {
-                                                     if ((x % 2) != 0) {
-                                                         (continue: bigint)
-                                                     } else {
-                                                           x
-                                                       }
-                                                 }
-                                           }))
+          (ddlog_std::vec_push: function(mut ddlog_std::Vec<bigint>, bigint):())(res, mult2(if (x == 0) {
+                                                                                                (break: bigint)
+                                                                                            } else {
+                                                                                                  if (x < 0) {
+                                                                                                      ((return res): bigint)
+                                                                                                  } else {
+                                                                                                        if ((x % 2) != 0) {
+                                                                                                            (continue: bigint)
+                                                                                                        } else {
+                                                                                                              x
+                                                                                                          }
+                                                                                                    }
+                                                                                              }))
       };
       res}}
 }
@@ -1091,7 +1119,7 @@ function f1 (x: T1, y: T2, q: T3): bool
 }
 function filter_C0 (xs: ddlog_std::Vec<Alt>): ddlog_std::Vec<bigint>
 {
-    {(var res: ddlog_std::Vec<bigint>) = (ddlog_std::vec_empty(): ddlog_std::Vec<bigint>);
+    {(var res: ddlog_std::Vec<bigint>) = (ddlog_std::vec_empty: function():ddlog_std::Vec<bigint>)();
      {for (x in xs) {
           {(var val: bigint) = match (x) {
                                    (C0{.x=(var v: bit<32>)}: Alt) -> (continue: bigint),
@@ -1101,28 +1129,28 @@ function filter_C0 (xs: ddlog_std::Vec<Alt>): ddlog_std::Vec<bigint>
                                                                            (break: bigint)
                                                                        }
                                };
-           {ddlog_std::vec_push(res, val);
+           {(ddlog_std::vec_push: function(mut ddlog_std::Vec<bigint>, bigint):())(res, val);
             ()}}
       };
       res}}
 }
 function filter_gt (xs: ddlog_std::Vec<bigint>, threshold: bigint): ddlog_std::Vec<bigint>
 {
-    {(var res: ddlog_std::Vec<bigint>) = (ddlog_std::vec_empty(): ddlog_std::Vec<bigint>);
+    {(var res: ddlog_std::Vec<bigint>) = (ddlog_std::vec_empty: function():ddlog_std::Vec<bigint>)();
      {for (x in xs) {
           {if (x <= threshold) {
                (continue: ())
            } else {
                  ()
              };
-           ddlog_std::vec_push(res, x)}
+           (ddlog_std::vec_push: function(mut ddlog_std::Vec<bigint>, bigint):())(res, x)}
       };
       ((return res): ddlog_std::Vec<bigint>)}}
 }
 function find_x_in_group (ys: ddlog_std::Group<'A,'A>): bool
 {
     {for (y in ys) {
-         if (y == (ddlog_std::group_key(ys): 'A)) {
+         if (y == (ddlog_std::group_key: function(ddlog_std::Group<'A,'A>):'A)(ys)) {
              {((return true): ());
               ()}
          } else {
@@ -1306,7 +1334,7 @@ function internment::to_lowercase (s: internment::istring): string
 }
 function internment::to_string (s: internment::istring): string
 {
-    (internment::ival(s): string)
+    (internment::ival: function(internment::Intern<string>):string)(s)
 }
 function internment::to_uppercase (s: internment::istring): string
 {
@@ -1435,18 +1463,18 @@ function souffle_lib::ftou (l: double): bit<32>
 }
 function souffle_lib::group_count32 (g: ddlog_std::Group<'K,'V>): souffle_types::Tnumber
 {
-    souffle_lib::castTo32(ddlog_std::group_count(g))
+    souffle_lib::castTo32((ddlog_std::group_count: function(ddlog_std::Group<'K,'V>):bit<64>)(g))
 }
 function souffle_lib::group_mean (g: ddlog_std::Group<'K,signed<32>>): signed<32>
 {
-    {(var sum: signed<32>) = (ddlog_std::group_sum(g): signed<32>);
-     {(var count: bit<64>) = ddlog_std::group_count(g);
+    {(var sum: signed<32>) = (ddlog_std::group_sum: function(ddlog_std::Group<'K,signed<32>>):signed<32>)(g);
+     {(var count: bit<64>) = (ddlog_std::group_count: function(ddlog_std::Group<'K,signed<32>>):bit<64>)(g);
       (sum / ((count as signed<64>) as signed<32>))}}
 }
 function souffle_lib::group_mean_d (g: ddlog_std::Group<'K,double>): double
 {
-    {(var sum: double) = (ddlog_std::group_sum(g): double);
-     {(var count: bit<64>) = ddlog_std::group_count(g);
+    {(var sum: double) = (ddlog_std::group_sum: function(ddlog_std::Group<'K,double>):double)(g);
+     {(var count: bit<64>) = (ddlog_std::group_count: function(ddlog_std::Group<'K,double>):bit<64>)(g);
       (sum / (count as double))}}
 }
 function souffle_lib::itof (l: signed<32>): double
@@ -1523,7 +1551,7 @@ function souffle_lib::tanh (l: signed<32>): signed<32>
 }
 function souffle_lib::to_istring (n: souffle_types::Tnumber): intern::IString
 {
-    intern::string_intern(ddlog_std::__builtin_2string(n))
+    intern::string_intern((ddlog_std::__builtin_2string: function(signed<32>):string)(n))
 }
 function souffle_lib::to_number (s: intern::IString): souffle_types::Tnumber
 {
@@ -1570,8 +1598,8 @@ str3: ${str3}.|];
 function to_string (x: serializable_t): string
 {
     match (x) {
-        (ConsInt{.x=(var v: bigint)}: serializable_t) -> (("ConsInt(" ++ (ddlog_std::__builtin_2string(v): string)) ++ ")"),
-        (ConsBit{.y=(var v: bit<32>)}: serializable_t) -> (("ConsBool(" ++ (ddlog_std::__builtin_2string(v): string)) ++ ")"),
+        (ConsInt{.x=(var v: bigint)}: serializable_t) -> (("ConsInt(" ++ (ddlog_std::__builtin_2string: function(bigint):string)(v)) ++ ")"),
+        (ConsBit{.y=(var v: bit<32>)}: serializable_t) -> (("ConsBool(" ++ (ddlog_std::__builtin_2string: function(bit<32>):string)(v)) ++ ")"),
         (ConsBool{.z=true}: serializable_t) -> "ConsBool(true)",
         (ConsBool{.z=false}: serializable_t) -> "ConsBool(false)",
         (Cons0{}: serializable_t) -> "Cons0"
@@ -1583,7 +1611,7 @@ function tostring1 (): ()
      {(var b: bit<32>) = 32'd5;
       {(var c: bool) = true;
        {(var d: string) = "foo";
-        {(var err: string) = ((((((("a=" ++ (ddlog_std::__builtin_2string(a): string)) ++ ", b=") ++ (ddlog_std::__builtin_2string(b): string)) ++ ", c=") ++ (ddlog_std::__builtin_2string(c): string)) ++ ", d=") ++ d);
+        {(var err: string) = ((((((("a=" ++ (ddlog_std::__builtin_2string: function(bigint):string)(a)) ++ ", b=") ++ (ddlog_std::__builtin_2string: function(bit<32>):string)(b)) ++ ", c=") ++ (ddlog_std::__builtin_2string: function(bool):string)(c)) ++ ", d=") ++ d);
          ()}}}}}
 }
 function tostring2 (): ()
@@ -1593,12 +1621,12 @@ function tostring2 (): ()
       {(var c: bool) = true;
        {(var d: string) = "foo";
         {(var e: serializable_t) = (ConsInt{.x=0}: serializable_t);
-         {(var err: string) = ((((((((("a=" ++ (ddlog_std::__builtin_2string(a): string)) ++ ", b=") ++ (ddlog_std::__builtin_2string(b): string)) ++ ", c=") ++ (ddlog_std::__builtin_2string(c): string)) ++ ", d=") ++ d) ++ ", e:") ++ (to_string(e): string));
+         {(var err: string) = ((((((((("a=" ++ (ddlog_std::__builtin_2string: function(bigint):string)(a)) ++ ", b=") ++ (ddlog_std::__builtin_2string: function(bit<32>):string)(b)) ++ ", c=") ++ (ddlog_std::__builtin_2string: function(bool):string)(c)) ++ ", d=") ++ d) ++ ", e:") ++ (to_string: function(serializable_t):string)(e));
           ()}}}}}}
 }
 function use_parameterized (x: string, y: string_syn): string
 {
-    (parameterized(x, y): string)
+    (parameterized: function(string, string):string)(x, y)
 }
 function v (): string
 {
@@ -1786,11 +1814,11 @@ Compare[(Compare{.label="C0{32'd3} < C0{32'd4}", .value=((C0{.x=32'd3}: Alt) < (
 Compare[(Compare{.label="C0{32'd3} < C1{32'd4}", .value=((C0{.x=32'd3}: Alt) < (C1{.x=32'd4}: Alt))}: Compare)].
 Compare[(Compare{.label="None < Some{1}", .value=((ddlog_std::None{}: ddlog_std::Option<signed<32>>) < (ddlog_std::Some{.x=32'sd1}: ddlog_std::Option<signed<32>>))}: Compare)].
 Compare[(Compare{.label="Some{0} < Some{1}", .value=((ddlog_std::Some{.x=(32'd0: ddlog_std::u32)}: ddlog_std::Option<bit<32>>) < (ddlog_std::Some{.x=32'd1}: ddlog_std::Option<bit<32>>))}: Compare)].
-VecTest[(VecTest{.x=(ddlog_std::vec_empty(): ddlog_std::Vec<string>)}: VecTest)].
-VecTest[(VecTest{.x={(var v: ddlog_std::Vec<string>) = (ddlog_std::vec_empty(): ddlog_std::Vec<string>);
-                     {ddlog_std::vec_push(v, "Hello,");
+VecTest[(VecTest{.x=(ddlog_std::vec_empty: function():ddlog_std::Vec<string>)()}: VecTest)].
+VecTest[(VecTest{.x={(var v: ddlog_std::Vec<string>) = (ddlog_std::vec_empty: function():ddlog_std::Vec<string>)();
+                     {(ddlog_std::vec_push: function(mut ddlog_std::Vec<string>, string):())(v, "Hello,");
                       v}}}: VecTest)].
-VecTest[(VecTest{.x=(ddlog_std::vec_push_imm((ddlog_std::vec_push_imm((ddlog_std::vec_empty(): ddlog_std::Vec<string>), "Hello, "): ddlog_std::Vec<string>), "world!"): ddlog_std::Vec<string>)}: VecTest)].
+VecTest[(VecTest{.x=(ddlog_std::vec_push_imm: function(ddlog_std::Vec<string>, string):ddlog_std::Vec<string>)((ddlog_std::vec_push_imm: function(ddlog_std::Vec<string>, string):ddlog_std::Vec<string>)(((ddlog_std::vec_empty: function():ddlog_std::Vec<string>)(): ddlog_std::Vec<string>), "Hello, "), "world!")}: VecTest)].
 Reach[(Reach{.s1=x, .s2=y}: Reach)] :- Links[(__links0@ (Links{.l=(l: bigint), .s1=(x: string), .s2=(y: string)}: Links))], Inspect debug::debug_event((32'd20, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __links0, (Reach{.s1=x, .s2=y}: Reach)).
 Reach[(Reach{.s1=x, .s2=y}: Reach)] :- Links[(__links0@ (Links{.l=(l: bigint), .s1=(y: string), .s2=(x: string)}: Links))], Inspect debug::debug_event((32'd21, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __links0, (Reach{.s1=x, .s2=y}: Reach)).
 Reach[(Reach{.s1=x, .s2=y}: Reach)] :- Links[(__links0@ (Links{.l=(l: bigint), .s1=(x: string), .s2=(z: string)}: Links))], Reach[(__reach1@ (Reach{.s1=(z: string), .s2=(y: string)}: Reach))], Inspect debug::debug_event_join((32'd22, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __links0, __reach1, (Reach{.s1=x, .s2=y}: Reach)).
@@ -1872,7 +1900,7 @@ T[(T{.x=a.b, .y=e}: T)] :- XX[(__xx0@ (a: XX))], Y[(__y1@ (Y{.b=a.d, .e=(e: stri
 R7[(R7{.f1=1, .f2=16'd2}: R7)].
 R7[(R7{.f1=1, .f2=16'd3}: R7)].
 R7[(R7Other{}: R7)].
-Table12[(Table12{.id=ddlog_std::hash128((id, name, f2, f3)), .name=name, .f3=f3}: Table12)] :- Table1[(__table10@ (Table1{.id=(id: bit<64>), .name=(name: string)}: Table1))], Table2[(__table21@ (Table2{.name=(name: string), .f2=(f2: bigint), .f3=(f3: S)}: Table2))], Inspect debug::debug_event_join((32'd65, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __table10, __table21, (Table12{.id=ddlog_std::hash128((id, name, f2, f3)), .name=name, .f3=f3}: Table12)).
+Table12[(Table12{.id=(ddlog_std::hash128: function((bit<64>, string, bigint, S)):bit<128>)((id, name, f2, f3)), .name=name, .f3=f3}: Table12)] :- Table1[(__table10@ (Table1{.id=(id: bit<64>), .name=(name: string)}: Table1))], Table2[(__table21@ (Table2{.name=(name: string), .f2=(f2: bigint), .f3=(f3: S)}: Table2))], Inspect debug::debug_event_join((32'd65, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __table10, __table21, (Table12{.id=(ddlog_std::hash128: function((bit<64>, string, bigint, S)):bit<128>)((id, name, f2, f3)), .name=name, .f3=f3}: Table12)).
 R2_nl[(R2_nl{.a2=x}: R2_nl)] :- R1_nl[(__r1_nl0@ (R1_nl{.a1=(x: string)}: R1_nl))], Inspect debug::debug_event((32'd66, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __r1_nl0, (R2_nl{.a2=x}: R2_nl)).
 R2_nl[(R2_nl{.a2=x}: R2_nl)] :- R3_nl[(__r3_nl0@ (R3_nl{.a3=(x: string), .b3=(y: string)}: R3_nl))], R4_nl[(__r4_nl1@ (R4_nl{.a4=(y: string), .b4=(z: string)}: R4_nl))], Inspect debug::debug_event_join((32'd67, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __r3_nl0, __r4_nl1, (R2_nl{.a2=x}: R2_nl)).
 R3_nl[(R3_nl{.a3=x, .b3=y}: R3_nl)],
@@ -1922,25 +1950,25 @@ ExternalId[(ExternalId{.host=host, .id=id}: ExternalId)] :- ExternalIds[(__exter
 Allocation[(Allocation{.name=name, .id=id, .x=x}: Allocation)] :- Request[(__request0@ (Request{.name=(name: string), .id=(id: string)}: Request))], Realized[(__realized1@ (Realized{.name=(name: string), .id=(id: string), .x=(x: bit<32>)}: Realized))], Inspect debug::debug_event_join((32'd111, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __request0, __realized1, (Allocation{.name=name, .id=id, .x=x}: Allocation)).
 ToAllocate[(ToAllocate{.name=name, .ids=ids}: ToAllocate)] :- Request[(__request0@ (Request{.name=(name: string), .id=(id: string)}: Request))], not Realized[(Realized{.name=(name: string), .id=(id: string), .x=(_: bit<32>)}: Realized)], Inspect debug::debug_event((32'd112, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Antijoin", __request0, (__request0, name, id)), var __inputs_ids = Aggregate(name, ddlog_std::__debug_112_2_group_to_vec(((__request0, name, id), id))), Inspect debug::debug_event((32'd112, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_ids.0, (__inputs_ids, name)), (var ids: ddlog_std::Vec<string>) = __inputs_ids.1, Inspect debug::debug_event((32'd112, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_ids, name), (ToAllocate{.name=name, .ids=ids}: ToAllocate)).
 Allocated[(Allocated{.name=name, .xs=xs}: Allocated)] :- Realized[(__realized0@ (Realized{.name=(name: string), .id=(_: string), .x=(x: bit<32>)}: Realized))], var __inputs_xs = Aggregate(name, ddlog_std::__debug_113_1_group_to_set((__realized0, x))), Inspect debug::debug_event((32'd113, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_xs.0, (__inputs_xs, name)), (var xs: ddlog_std::Set<bit<32>>) = __inputs_xs.1, Inspect debug::debug_event((32'd113, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_xs, name), (Allocated{.name=name, .xs=xs}: Allocated)).
-Allocation[(Allocation{.name=name, .id=id, .x=x}: Allocation)] :- ToAllocate[(__toallocate0@ (ToAllocate{.name=(name: string), .ids=(ids: ddlog_std::Vec<string>)}: ToAllocate))], Allocated[(__allocated1@ (Allocated{.name=(name: string), .xs=(xs: ddlog_std::Set<bit<32>>)}: Allocated))], Inspect debug::debug_event_join((32'd114, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __toallocate0, __allocated1, (name, ids, xs)), var allocation = FlatMap((allocate::allocate(xs, ids, 32'd1, ((32'd1 << 32'd24) - 32'd1)): ddlog_std::Vec<(string, bit<32>)>)), Inspect debug::debug_event((32'd114, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Flatmap", (name, ids, xs), (allocation, name)), ((var id: string), (var x: bit<32>)) = allocation, Inspect debug::debug_event((32'd114, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (allocation, name), (Allocation{.name=name, .id=id, .x=x}: Allocation)).
-Referee[(Referee{.r=(ddlog_std::ref_new(r): ddlog_std::Ref<Referenced>)}: Referee)] :- Referenced[(r@ (Referenced{.x=(_: bool), .y=(ddlog_std::Some{.x=(_: string)}: ddlog_std::Option<string>)}: Referenced))], Inspect debug::debug_event((32'd115, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", r, (Referee{.r=(ddlog_std::ref_new(r): ddlog_std::Ref<Referenced>)}: Referee)).
+Allocation[(Allocation{.name=name, .id=id, .x=x}: Allocation)] :- ToAllocate[(__toallocate0@ (ToAllocate{.name=(name: string), .ids=(ids: ddlog_std::Vec<string>)}: ToAllocate))], Allocated[(__allocated1@ (Allocated{.name=(name: string), .xs=(xs: ddlog_std::Set<bit<32>>)}: Allocated))], Inspect debug::debug_event_join((32'd114, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __toallocate0, __allocated1, (name, ids, xs)), var allocation = FlatMap((allocate::allocate: function(ddlog_std::Set<bit<32>>, ddlog_std::Vec<string>, bit<32>, bit<32>):ddlog_std::Vec<(string, bit<32>)>)(xs, ids, 32'd1, ((32'd1 << 32'd24) - 32'd1))), Inspect debug::debug_event((32'd114, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Flatmap", (name, ids, xs), (allocation, name)), ((var id: string), (var x: bit<32>)) = allocation, Inspect debug::debug_event((32'd114, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (allocation, name), (Allocation{.name=name, .id=id, .x=x}: Allocation)).
+Referee[(Referee{.r=(ddlog_std::ref_new: function(Referenced):ddlog_std::Ref<Referenced>)(r)}: Referee)] :- Referenced[(r@ (Referenced{.x=(_: bool), .y=(ddlog_std::Some{.x=(_: string)}: ddlog_std::Option<string>)}: Referenced))], Inspect debug::debug_event((32'd115, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", r, (Referee{.r=(ddlog_std::ref_new: function(Referenced):ddlog_std::Ref<Referenced>)(r)}: Referee)).
 Filtered[(Filtered{.r=r.r}: Filtered)] :- Referee[(r@ (Referee{.r=((&(Referenced{.x=true, .y=(_: ddlog_std::Option<string>)}: Referenced)): ddlog_std::Ref<Referenced>)}: Referee))], Inspect debug::debug_event((32'd116, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", r, (Filtered{.r=r.r}: Filtered)).
-Referee2[(ddlog_std::ref_new((Referee2{.r=r}: Referee2)): ddlog_std::Ref<Referee2>)] :- Referenced[(__referenced0@ (r: Referenced))], Inspect debug::debug_event((32'd117, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __referenced0, (ddlog_std::ref_new((Referee2{.r=r}: Referee2)): ddlog_std::Ref<Referee2>)).
+Referee2[(ddlog_std::ref_new: function(Referee2):ddlog_std::Ref<Referee2>)((Referee2{.r=r}: Referee2))] :- Referenced[(__referenced0@ (r: Referenced))], Inspect debug::debug_event((32'd117, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __referenced0, (ddlog_std::ref_new: function(Referee2):ddlog_std::Ref<Referee2>)((Referee2{.r=r}: Referee2))).
 Filtered2[(Filtered2{.r=r}: Filtered2)] :- Referee2[(r@ ((&(Referee2{.r=(Referenced{.x=true, .y=(_: ddlog_std::Option<string>)}: Referenced)}: Referee2)): ddlog_std::Ref<Referee2>))], Inspect debug::debug_event((32'd118, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", r, (Filtered2{.r=r}: Filtered2)).
 Filtered3[(Filtered3{.r=r.r}: Filtered3)] :- Referee[(r@ (Referee{.r=(_: ddlog_std::Ref<Referenced>)}: Referee))], (r.r.x == true), Inspect debug::debug_event((32'd119, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", r, (Filtered3{.r=r.r}: Filtered3)).
-NewAllocation[(NewAllocation{.id=id, .alloc=alloc}: NewAllocation)] :- Alloc[(__alloc0@ (Alloc{.id=(id: bigint), .allocated=(allocated: ddlog_std::Map<string,bit<32>>), .toallocate=(toallocate: ddlog_std::Vec<string>), .min_val=(min_val: bit<32>), .max_val=(max_val: bit<32>)}: Alloc))], (var allocated_nums: ddlog_std::Set<bit<32>>) = {(var allocated_nums: ddlog_std::Set<bit<32>>) = (ddlog_std::set_empty(): ddlog_std::Set<bit<32>>);
+NewAllocation[(NewAllocation{.id=id, .alloc=alloc}: NewAllocation)] :- Alloc[(__alloc0@ (Alloc{.id=(id: bigint), .allocated=(allocated: ddlog_std::Map<string,bit<32>>), .toallocate=(toallocate: ddlog_std::Vec<string>), .min_val=(min_val: bit<32>), .max_val=(max_val: bit<32>)}: Alloc))], (var allocated_nums: ddlog_std::Set<bit<32>>) = {(var allocated_nums: ddlog_std::Set<bit<32>>) = (ddlog_std::set_empty: function():ddlog_std::Set<bit<32>>)();
                                                                                                                                                                                                                                                                                                                                                  {for (a in allocated) {
                                                                                                                                                                                                                                                                                                                                                       {((_: string), (var num: bit<32>)) = a;
-                                                                                                                                                                                                                                                                                                                                                       ddlog_std::set_insert(allocated_nums, num)}
+                                                                                                                                                                                                                                                                                                                                                       (ddlog_std::set_insert: function(mut ddlog_std::Set<bit<32>>, bit<32>):())(allocated_nums, num)}
                                                                                                                                                                                                                                                                                                                                                   };
-                                                                                                                                                                                                                                                                                                                                                  allocated_nums}}, (var alloc: ddlog_std::Vec<(string, bit<32>)>) = (allocate::allocate(allocated_nums, toallocate, min_val, max_val): ddlog_std::Vec<(string, bit<32>)>), Inspect debug::debug_event((32'd120, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (id, toallocate, min_val, max_val, allocated_nums), (NewAllocation{.id=id, .alloc=alloc}: NewAllocation)).
-NewAllocationOpt[(NewAllocationOpt{.id=id, .alloc=alloc}: NewAllocationOpt)] :- Alloc[(__alloc0@ (Alloc{.id=(id: bigint), .allocated=(allocated: ddlog_std::Map<string,bit<32>>), .toallocate=(toallocate: ddlog_std::Vec<string>), .min_val=(min_val: bit<32>), .max_val=(max_val: bit<32>)}: Alloc))], (var allocated_nums: ddlog_std::Set<bit<32>>) = {(var allocated_nums: ddlog_std::Set<bit<32>>) = (ddlog_std::set_empty(): ddlog_std::Set<bit<32>>);
+                                                                                                                                                                                                                                                                                                                                                  allocated_nums}}, (var alloc: ddlog_std::Vec<(string, bit<32>)>) = (allocate::allocate: function(ddlog_std::Set<bit<32>>, ddlog_std::Vec<string>, bit<32>, bit<32>):ddlog_std::Vec<(string, bit<32>)>)(allocated_nums, toallocate, min_val, max_val), Inspect debug::debug_event((32'd120, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (id, toallocate, min_val, max_val, allocated_nums), (NewAllocation{.id=id, .alloc=alloc}: NewAllocation)).
+NewAllocationOpt[(NewAllocationOpt{.id=id, .alloc=alloc}: NewAllocationOpt)] :- Alloc[(__alloc0@ (Alloc{.id=(id: bigint), .allocated=(allocated: ddlog_std::Map<string,bit<32>>), .toallocate=(toallocate: ddlog_std::Vec<string>), .min_val=(min_val: bit<32>), .max_val=(max_val: bit<32>)}: Alloc))], (var allocated_nums: ddlog_std::Set<bit<32>>) = {(var allocated_nums: ddlog_std::Set<bit<32>>) = (ddlog_std::set_empty: function():ddlog_std::Set<bit<32>>)();
                                                                                                                                                                                                                                                                                                                                                           {for (a in allocated) {
                                                                                                                                                                                                                                                                                                                                                                {((_: string), (var num: bit<32>)) = a;
-                                                                                                                                                                                                                                                                                                                                                                ddlog_std::set_insert(allocated_nums, num)}
+                                                                                                                                                                                                                                                                                                                                                                (ddlog_std::set_insert: function(mut ddlog_std::Set<bit<32>>, bit<32>):())(allocated_nums, num)}
                                                                                                                                                                                                                                                                                                                                                            };
-                                                                                                                                                                                                                                                                                                                                                           allocated_nums}}, (var alloc: ddlog_std::Vec<(string, ddlog_std::Option<bit<32>>)>) = (allocate::allocate_opt(allocated_nums, toallocate, min_val, max_val): ddlog_std::Vec<(string, ddlog_std::Option<bit<32>>)>), Inspect debug::debug_event((32'd121, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (id, toallocate, min_val, max_val, allocated_nums), (NewAllocationOpt{.id=id, .alloc=alloc}: NewAllocationOpt)).
-Adjusted[(Adjusted{.id=id, .alloc=alloc}: Adjusted)] :- Alloc[(__alloc0@ (Alloc{.id=(id: bigint), .allocated=(allocated: ddlog_std::Map<string,bit<32>>), .toallocate=(toallocate: ddlog_std::Vec<string>), .min_val=(min_val: bit<32>), .max_val=(max_val: bit<32>)}: Alloc))], (var alloc: ddlog_std::Vec<(string, bit<32>)>) = (allocate::adjust_allocation(allocated, toallocate, min_val, max_val): ddlog_std::Vec<(string, bit<32>)>), Inspect debug::debug_event((32'd122, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __alloc0, (Adjusted{.id=id, .alloc=alloc}: Adjusted)).
+                                                                                                                                                                                                                                                                                                                                                           allocated_nums}}, (var alloc: ddlog_std::Vec<(string, ddlog_std::Option<bit<32>>)>) = (allocate::allocate_opt: function(ddlog_std::Set<bit<32>>, ddlog_std::Vec<string>, bit<32>, bit<32>):ddlog_std::Vec<(string, ddlog_std::Option<bit<32>>)>)(allocated_nums, toallocate, min_val, max_val), Inspect debug::debug_event((32'd121, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (id, toallocate, min_val, max_val, allocated_nums), (NewAllocationOpt{.id=id, .alloc=alloc}: NewAllocationOpt)).
+Adjusted[(Adjusted{.id=id, .alloc=alloc}: Adjusted)] :- Alloc[(__alloc0@ (Alloc{.id=(id: bigint), .allocated=(allocated: ddlog_std::Map<string,bit<32>>), .toallocate=(toallocate: ddlog_std::Vec<string>), .min_val=(min_val: bit<32>), .max_val=(max_val: bit<32>)}: Alloc))], (var alloc: ddlog_std::Vec<(string, bit<32>)>) = (allocate::adjust_allocation: function(ddlog_std::Map<string,bit<32>>, ddlog_std::Vec<string>, bit<32>, bit<32>):ddlog_std::Vec<(string, bit<32>)>)(allocated, toallocate, min_val, max_val), Inspect debug::debug_event((32'd122, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __alloc0, (Adjusted{.id=id, .alloc=alloc}: Adjusted)).
 YX[(YX{.y=y, .x=x}: YX)] :- XY[(__xy0@ (XY{.x=(x: bigint), .y=(y: bigint)}: XY))], YZX[(__yzx1@ (YZX{.y=(y: bigint), .z=(z: bigint), .x=(x: bigint)}: YZX))], Inspect debug::debug_event_join((32'd123, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __xy0, __yzx1, (YX{.y=y, .x=x}: YX)).
 IConcatString[(IConcatString{.s=intern::string_intern((intern::istring_str(s1) ++ s2))}: IConcatString)] :- IString1[(__istring10@ (IString1{.s=(s1: intern::IObj<string>)}: IString1))], String2[(__string21@ (String2{.s=(s2: string)}: String2))], Inspect debug::debug_event_join((32'd124, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __istring10, __string21, (IConcatString{.s=intern::string_intern((intern::istring_str(s1) ++ s2))}: IConcatString)).
 ConcatString[(ConcatString{.s=intern::istring_str(s)}: ConcatString)] :- IConcatString[(__iconcatstring0@ (IConcatString{.s=(s: intern::IObj<string>)}: IConcatString))], Inspect debug::debug_event((32'd125, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __iconcatstring0, (ConcatString{.s=intern::istring_str(s)}: ConcatString)).
@@ -1948,7 +1976,7 @@ Ris_true[(Ris_true{._s=intern::string_intern("true")}: Ris_true)].
 Re[(Re{._x=(32'd10 % 32'd3), ._t=intern::string_intern("10%3"), ._y=32'd1}: Re)] :- Ris_true[(__ris_true0@ (Ris_true{._s=(_: intern::IObj<string>)}: Ris_true))], Inspect debug::debug_event((32'd127, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __ris_true0, (Re{._x=(32'd10 % 32'd3), ._t=intern::string_intern("10%3"), ._y=32'd1}: Re)).
 CMethod[(CMethod{.c1=a, .c2=b}: CMethod)] :- BMethod[(__bmethod0@ (BMethod{.b1=intern::string_intern("c"), .b2=(b: intern::IObj<string>)}: BMethod))], AMethod[(__amethod1@ (AMethod{.a1=(b: intern::IObj<string>), .a2=(a: intern::IObj<string>)}: AMethod))], Inspect debug::debug_event_join((32'd128, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __bmethod0, __amethod1, (CMethod{.c1=a, .c2=b}: CMethod)).
 DMethod[(DMethod{.c1=a, .c2=b}: DMethod)] :- AMethod[(__amethod0@ (AMethod{.a1=(b: intern::IObj<string>), .a2=(a: intern::IObj<string>)}: AMethod))], BMethod[(__bmethod1@ (BMethod{.b1=intern::string_intern("c"), .b2=(b: intern::IObj<string>)}: BMethod))], Inspect debug::debug_event_join((32'd129, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __amethod0, __bmethod1, (DMethod{.c1=a, .c2=b}: DMethod)).
-Power3[(Power3{.y=ddlog_std::pow32(x, 32'd3)}: Power3)] :- Numbers[(__numbers0@ (Numbers{.x=(x: bigint)}: Numbers))], Inspect debug::debug_event((32'd130, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __numbers0, (Power3{.y=ddlog_std::pow32(x, 32'd3)}: Power3)).
+Power3[(Power3{.y=(ddlog_std::pow32: function(bigint, bit<32>):bigint)(x, 32'd3)}: Power3)] :- Numbers[(__numbers0@ (Numbers{.x=(x: bigint)}: Numbers))], Inspect debug::debug_event((32'd130, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __numbers0, (Power3{.y=(ddlog_std::pow32: function(bigint, bit<32>):bigint)(x, 32'd3)}: Power3)).
 RegexMatch[(RegexMatch{.regex=regex, .text=text, .m=regex::regex_match(regex::regex(regex), text)}: RegexMatch)] :- Regex[(__regex0@ (Regex{.regex=(regex: string), .text=(text: string)}: Regex))], Inspect debug::debug_event((32'd131, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __regex0, (RegexMatch{.regex=regex, .text=text, .m=regex::regex_match(regex::regex(regex), text)}: RegexMatch)).
 Arithm[(Arithm{.n=32'd0}: Arithm)].
 Arithm[(Arithm{.n=(32'd1 + 32'd0)}: Arithm)].
@@ -2079,21 +2107,21 @@ R14[(R14{.t=(1, (true, ("", 32'd1)))}: R14)].
 R14[(R14{.t=(0, (true, ("", 32'd1)))}: R14)].
 J[(J{.b=b}: J)] :- R13[(__r130@ (R13{.t=(a: (t00, t01, t02, t03))}: R13))], R14[(__r141@ (R14{.t=(c: (bigint, (bool, (string, bit<32>))))}: R14))], Inspect debug::debug_event_join((32'd253, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __r130, __r141, (a, c)), (a.3 == c.1.1.1), (var b: bool) = a.1, Inspect debug::debug_event((32'd253, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", a, (J{.b=b}: J)).
 LongJoin[(LongJoin{.x0=x0, .x1=x1, .x2=x2, .x3=x3, .x4=x4, .x5=x5, .x6=x6, .x7=x7, .x8=x8, .x9=x9, .x10=x10, .x11=x11, .x12=x12, .x13=x13, .x14=x14, .x15=x15, .x16=x16, .x17=x17, .x18=x18, .x19=x19}: LongJoin)] :- Long[(__long0@ (Long{.x0=(x0: bit<16>), .x1=(x1: bit<16>), .x2=(x2: bit<16>), .x3=(x3: bit<16>), .x4=(x4: bit<16>), .x5=(x5: bit<16>), .x6=(x6: bit<16>), .x7=(x7: bit<16>), .x8=(x8: bit<16>), .x9=(x9: bit<16>), .x10=(x10: bit<16>), .x11=(x11: bit<16>), .x12=(x12: bit<16>), .x13=(x13: bit<16>), .x14=(x14: bit<16>), .x15=(x15: bit<16>), .x16=(x16: bit<16>), .x17=(x17: bit<16>), .x18=(x18: bit<16>), .x19=(x19: bit<16>)}: Long))], Long[(__long1@ (Long{.x0=(x0: bit<16>), .x1=(x1: bit<16>), .x2=(x2: bit<16>), .x3=(x3: bit<16>), .x4=(x4: bit<16>), .x5=(x5: bit<16>), .x6=(x6: bit<16>), .x7=(x7: bit<16>), .x8=(x8: bit<16>), .x9=(x9: bit<16>), .x10=(x10: bit<16>), .x11=(x11: bit<16>), .x12=(x12: bit<16>), .x13=(x13: bit<16>), .x14=(x14: bit<16>), .x15=(x15: bit<16>), .x16=(x16: bit<16>), .x17=(x17: bit<16>), .x18=(x18: bit<16>), .x19=(x19: bit<16>)}: Long))], Inspect debug::debug_event_join((32'd254, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __long0, __long1, (x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19)), Long[(__long2@ (Long{.x0=(x0: bit<16>), .x1=(x1: bit<16>), .x2=(x2: bit<16>), .x3=(x3: bit<16>), .x4=(x4: bit<16>), .x5=(x5: bit<16>), .x6=(x6: bit<16>), .x7=(x7: bit<16>), .x8=(x8: bit<16>), .x9=(x9: bit<16>), .x10=(x10: bit<16>), .x11=(x11: bit<16>), .x12=(x12: bit<16>), .x13=(x13: bit<16>), .x14=(x14: bit<16>), .x15=(x15: bit<16>), .x16=(x16: bit<16>), .x17=(x17: bit<16>), .x18=(x18: bit<16>), .x19=(x19: bit<16>)}: Long))], Inspect debug::debug_event_join((32'd254, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, (x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19), __long2, (LongJoin{.x0=x0, .x1=x1, .x2=x2, .x3=x3, .x4=x4, .x5=x5, .x6=x6, .x7=x7, .x8=x8, .x9=x9, .x10=x10, .x11=x11, .x12=x12, .x13=x13, .x14=x14, .x15=x15, .x16=x16, .x17=x17, .x18=x18, .x19=x19}: LongJoin)).
-ControlFlow[(ControlFlow{.expr="all(true, true, false)", .value=("" ++ (ddlog_std::__builtin_2string(all((ddlog_std::vec_push_imm((ddlog_std::vec_push_imm((ddlog_std::vec_push_imm((ddlog_std::vec_empty(): ddlog_std::Vec<bool>), true): ddlog_std::Vec<bool>), true): ddlog_std::Vec<bool>), false): ddlog_std::Vec<bool>))): string))}: ControlFlow)].
-ControlFlow[(ControlFlow{.expr="all(true, true, true)", .value=("" ++ (ddlog_std::__builtin_2string(all((ddlog_std::vec_push_imm((ddlog_std::vec_push_imm((ddlog_std::vec_push_imm((ddlog_std::vec_empty(): ddlog_std::Vec<bool>), true): ddlog_std::Vec<bool>), true): ddlog_std::Vec<bool>), true): ddlog_std::Vec<bool>))): string))}: ControlFlow)].
-ControlFlow[(ControlFlow{.expr="any(false, true, false)", .value=("" ++ (ddlog_std::__builtin_2string(any((ddlog_std::vec_push_imm((ddlog_std::vec_push_imm((ddlog_std::vec_push_imm((ddlog_std::vec_empty(): ddlog_std::Vec<bool>), false): ddlog_std::Vec<bool>), true): ddlog_std::Vec<bool>), false): ddlog_std::Vec<bool>))): string))}: ControlFlow)].
-ControlFlow[(ControlFlow{.expr="any(false, false, false)", .value=("" ++ (ddlog_std::__builtin_2string(any((ddlog_std::vec_push_imm((ddlog_std::vec_push_imm((ddlog_std::vec_push_imm((ddlog_std::vec_empty(): ddlog_std::Vec<bool>), false): ddlog_std::Vec<bool>), false): ddlog_std::Vec<bool>), false): ddlog_std::Vec<bool>))): string))}: ControlFlow)].
-ControlFlow[(ControlFlow{.expr="weird_any(false, true, false)", .value=("" ++ (ddlog_std::__builtin_2string(weird_any((ddlog_std::vec_push_imm((ddlog_std::vec_push_imm((ddlog_std::vec_push_imm((ddlog_std::vec_empty(): ddlog_std::Vec<bool>), false): ddlog_std::Vec<bool>), true): ddlog_std::Vec<bool>), false): ddlog_std::Vec<bool>))): string))}: ControlFlow)].
-ControlFlow[(ControlFlow{.expr="weird_any(false, false, false)", .value=("" ++ (ddlog_std::__builtin_2string(weird_any((ddlog_std::vec_push_imm((ddlog_std::vec_push_imm((ddlog_std::vec_push_imm((ddlog_std::vec_empty(): ddlog_std::Vec<bool>), false): ddlog_std::Vec<bool>), false): ddlog_std::Vec<bool>), false): ddlog_std::Vec<bool>))): string))}: ControlFlow)].
-BigintVectors[(BigintVectors{.expr="filter_gt((10, 20, 30), 15)", .vec=filter_gt((ddlog_std::vec_push_imm((ddlog_std::vec_push_imm((ddlog_std::vec_push_imm((ddlog_std::vec_empty(): ddlog_std::Vec<bigint>), 10): ddlog_std::Vec<bigint>), 20): ddlog_std::Vec<bigint>), 30): ddlog_std::Vec<bigint>), 15)}: BigintVectors)].
-BigintVectors[(BigintVectors{.expr="filter_C0(C0{1}, C1{2}, C1{0}, C1{3})", .vec=filter_C0((ddlog_std::vec_push_imm((ddlog_std::vec_push_imm((ddlog_std::vec_push_imm((ddlog_std::vec_push_imm((ddlog_std::vec_empty(): ddlog_std::Vec<Alt>), (C0{.x=32'd1}: Alt)): ddlog_std::Vec<Alt>), (C1{.x=32'd2}: Alt)): ddlog_std::Vec<Alt>), (C1{.x=32'd0}: Alt)): ddlog_std::Vec<Alt>), (C1{.x=32'd3}: Alt)): ddlog_std::Vec<Alt>))}: BigintVectors)].
-BigintVectors[(BigintVectors{.expr="double_evens(1,2,-1,4)", .vec=double_evens((ddlog_std::vec_push_imm((ddlog_std::vec_push_imm((ddlog_std::vec_push_imm((ddlog_std::vec_push_imm((ddlog_std::vec_empty(): ddlog_std::Vec<bigint>), 1): ddlog_std::Vec<bigint>), 2): ddlog_std::Vec<bigint>), (- 1)): ddlog_std::Vec<bigint>), 4): ddlog_std::Vec<bigint>))}: BigintVectors)].
-BigintVectors[(BigintVectors{.expr="double_evens(1,2,0,4)", .vec=double_evens((ddlog_std::vec_push_imm((ddlog_std::vec_push_imm((ddlog_std::vec_push_imm((ddlog_std::vec_push_imm((ddlog_std::vec_empty(): ddlog_std::Vec<bigint>), 1): ddlog_std::Vec<bigint>), 2): ddlog_std::Vec<bigint>), 0): ddlog_std::Vec<bigint>), 4): ddlog_std::Vec<bigint>))}: BigintVectors)].
+ControlFlow[(ControlFlow{.expr="all(true, true, false)", .value=("" ++ (ddlog_std::__builtin_2string: function(bool):string)(all((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bool>, bool):ddlog_std::Vec<bool>)((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bool>, bool):ddlog_std::Vec<bool>)((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bool>, bool):ddlog_std::Vec<bool>)(((ddlog_std::vec_empty: function():ddlog_std::Vec<bool>)(): ddlog_std::Vec<bool>), true), true), false))))}: ControlFlow)].
+ControlFlow[(ControlFlow{.expr="all(true, true, true)", .value=("" ++ (ddlog_std::__builtin_2string: function(bool):string)(all((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bool>, bool):ddlog_std::Vec<bool>)((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bool>, bool):ddlog_std::Vec<bool>)((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bool>, bool):ddlog_std::Vec<bool>)(((ddlog_std::vec_empty: function():ddlog_std::Vec<bool>)(): ddlog_std::Vec<bool>), true), true), true))))}: ControlFlow)].
+ControlFlow[(ControlFlow{.expr="any(false, true, false)", .value=("" ++ (ddlog_std::__builtin_2string: function(bool):string)(any((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bool>, bool):ddlog_std::Vec<bool>)((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bool>, bool):ddlog_std::Vec<bool>)((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bool>, bool):ddlog_std::Vec<bool>)(((ddlog_std::vec_empty: function():ddlog_std::Vec<bool>)(): ddlog_std::Vec<bool>), false), true), false))))}: ControlFlow)].
+ControlFlow[(ControlFlow{.expr="any(false, false, false)", .value=("" ++ (ddlog_std::__builtin_2string: function(bool):string)(any((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bool>, bool):ddlog_std::Vec<bool>)((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bool>, bool):ddlog_std::Vec<bool>)((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bool>, bool):ddlog_std::Vec<bool>)(((ddlog_std::vec_empty: function():ddlog_std::Vec<bool>)(): ddlog_std::Vec<bool>), false), false), false))))}: ControlFlow)].
+ControlFlow[(ControlFlow{.expr="weird_any(false, true, false)", .value=("" ++ (ddlog_std::__builtin_2string: function(bool):string)(weird_any((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bool>, bool):ddlog_std::Vec<bool>)((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bool>, bool):ddlog_std::Vec<bool>)((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bool>, bool):ddlog_std::Vec<bool>)(((ddlog_std::vec_empty: function():ddlog_std::Vec<bool>)(): ddlog_std::Vec<bool>), false), true), false))))}: ControlFlow)].
+ControlFlow[(ControlFlow{.expr="weird_any(false, false, false)", .value=("" ++ (ddlog_std::__builtin_2string: function(bool):string)(weird_any((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bool>, bool):ddlog_std::Vec<bool>)((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bool>, bool):ddlog_std::Vec<bool>)((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bool>, bool):ddlog_std::Vec<bool>)(((ddlog_std::vec_empty: function():ddlog_std::Vec<bool>)(): ddlog_std::Vec<bool>), false), false), false))))}: ControlFlow)].
+BigintVectors[(BigintVectors{.expr="filter_gt((10, 20, 30), 15)", .vec=filter_gt((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bigint>, bigint):ddlog_std::Vec<bigint>)((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bigint>, bigint):ddlog_std::Vec<bigint>)((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bigint>, bigint):ddlog_std::Vec<bigint>)(((ddlog_std::vec_empty: function():ddlog_std::Vec<bigint>)(): ddlog_std::Vec<bigint>), 10), 20), 30), 15)}: BigintVectors)].
+BigintVectors[(BigintVectors{.expr="filter_C0(C0{1}, C1{2}, C1{0}, C1{3})", .vec=filter_C0((ddlog_std::vec_push_imm: function(ddlog_std::Vec<Alt>, Alt):ddlog_std::Vec<Alt>)((ddlog_std::vec_push_imm: function(ddlog_std::Vec<Alt>, Alt):ddlog_std::Vec<Alt>)((ddlog_std::vec_push_imm: function(ddlog_std::Vec<Alt>, Alt):ddlog_std::Vec<Alt>)((ddlog_std::vec_push_imm: function(ddlog_std::Vec<Alt>, Alt):ddlog_std::Vec<Alt>)(((ddlog_std::vec_empty: function():ddlog_std::Vec<Alt>)(): ddlog_std::Vec<Alt>), (C0{.x=32'd1}: Alt)), (C1{.x=32'd2}: Alt)), (C1{.x=32'd0}: Alt)), (C1{.x=32'd3}: Alt)))}: BigintVectors)].
+BigintVectors[(BigintVectors{.expr="double_evens(1,2,-1,4)", .vec=double_evens((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bigint>, bigint):ddlog_std::Vec<bigint>)((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bigint>, bigint):ddlog_std::Vec<bigint>)((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bigint>, bigint):ddlog_std::Vec<bigint>)((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bigint>, bigint):ddlog_std::Vec<bigint>)(((ddlog_std::vec_empty: function():ddlog_std::Vec<bigint>)(): ddlog_std::Vec<bigint>), 1), 2), (- 1)), 4))}: BigintVectors)].
+BigintVectors[(BigintVectors{.expr="double_evens(1,2,0,4)", .vec=double_evens((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bigint>, bigint):ddlog_std::Vec<bigint>)((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bigint>, bigint):ddlog_std::Vec<bigint>)((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bigint>, bigint):ddlog_std::Vec<bigint>)((ddlog_std::vec_push_imm: function(ddlog_std::Vec<bigint>, bigint):ddlog_std::Vec<bigint>)(((ddlog_std::vec_empty: function():ddlog_std::Vec<bigint>)(): ddlog_std::Vec<bigint>), 1), 2), 0), 4))}: BigintVectors)].
 Trees[(Trees{.tree={(var leaf1: Tree<bit<64>>) = (LeafNode{.v=64'd100}: Tree<bit<64>>);
                     {(var leaf2: Tree<bit<64>>) = (LeafNode{.v=64'd200}: Tree<bit<64>>);
                      {(var leaf3: Tree<bit<64>>) = (LeafNode{.v=64'd300}: Tree<bit<64>>);
-                      {(var nonleaf: Tree<bit<64>>) = (NonLeafNode{.branches=(ddlog_std::vec_push_imm((ddlog_std::vec_push_imm((ddlog_std::vec_empty(): ddlog_std::Vec<Tree<ddlog_std::u64>>), leaf1): ddlog_std::Vec<Tree<bit<64>>>), leaf2): ddlog_std::Vec<Tree<bit<64>>>)}: Tree<bit<64>>);
-                       (NonLeafNode{.branches=(ddlog_std::vec_push_imm((ddlog_std::vec_push_imm((ddlog_std::vec_empty(): ddlog_std::Vec<Tree<ddlog_std::u64>>), leaf3): ddlog_std::Vec<Tree<bit<64>>>), nonleaf): ddlog_std::Vec<Tree<bit<64>>>)}: Tree<ddlog_std::u64>)}}}}}: Trees)].
+                      {(var nonleaf: Tree<bit<64>>) = (NonLeafNode{.branches=(ddlog_std::vec_push_imm: function(ddlog_std::Vec<Tree<ddlog_std::u64>>, Tree<bit<64>>):ddlog_std::Vec<Tree<bit<64>>>)((ddlog_std::vec_push_imm: function(ddlog_std::Vec<Tree<ddlog_std::u64>>, Tree<bit<64>>):ddlog_std::Vec<Tree<ddlog_std::u64>>)(((ddlog_std::vec_empty: function():ddlog_std::Vec<Tree<ddlog_std::u64>>)(): ddlog_std::Vec<Tree<ddlog_std::u64>>), leaf1), leaf2)}: Tree<bit<64>>);
+                       (NonLeafNode{.branches=(ddlog_std::vec_push_imm: function(ddlog_std::Vec<Tree<ddlog_std::u64>>, Tree<bit<64>>):ddlog_std::Vec<Tree<bit<64>>>)((ddlog_std::vec_push_imm: function(ddlog_std::Vec<Tree<ddlog_std::u64>>, Tree<bit<64>>):ddlog_std::Vec<Tree<ddlog_std::u64>>)(((ddlog_std::vec_empty: function():ddlog_std::Vec<Tree<ddlog_std::u64>>)(): ddlog_std::Vec<Tree<ddlog_std::u64>>), leaf3), nonleaf)}: Tree<ddlog_std::u64>)}}}}}: Trees)].
 Doubles[(Doubles{.s="64'f5.0", .d=64'f5.0}: Doubles)].
 Doubles[(Doubles{.s="64'f5e2", .d=64'f500.0}: Doubles)].
 Doubles[(Doubles{.s="-5", .d=(- 64'f5.0)}: Doubles)].
@@ -2102,7 +2130,7 @@ Doubles[(Doubles{.s="5/3", .d=(64'f5.0 / 64'f3.0)}: Doubles)].
 Doubles[(Doubles{.s="5*3", .d=(64'f5.0 * 64'f3.0)}: Doubles)].
 Doubles[(Doubles{.s="0: double", .d=(64'f0.0: double)}: Doubles)].
 Doubles[(Doubles{.s="floor_d(64'f0.1)", .d=fp::floor_d(64'f0.1)}: Doubles)].
-Doubles[(Doubles{.s=("" ++ (ddlog_std::__builtin_2string((64'f5.0 + 64'f5.0)): string)), .d=(64'f5.0 + 64'f3.0)}: Doubles)].
+Doubles[(Doubles{.s=("" ++ (ddlog_std::__builtin_2string: function(double):string)((64'f5.0 + 64'f5.0))), .d=(64'f5.0 + 64'f3.0)}: Doubles)].
 Floats[(Floats{.s="32'f5.0", .f=32'f5.0}: Floats)].
 Floats[(Floats{.s="32'f5e2", .f=32'f500.0}: Floats)].
 Floats[(Floats{.s="5 + 3", .f=(32'f5.0 + 32'f3.0)}: Floats)].

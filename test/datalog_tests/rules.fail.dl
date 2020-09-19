@@ -83,3 +83,10 @@ output relation Try(x: string)
 Try(z) :- Input(x),
           var y = x.split(" "),
           var z = y.nth(5)?.
+
+//---
+
+// modify immutable closure argument.
+
+relation IntClosures(f: |s64|: s64)
+IntClosures(|x| {x = 10; x} ).

@@ -266,3 +266,24 @@ function f() {
     // error: attempt to modify a variable inside an if-condition.
     if ({vec.push(3); vec.len()} > 5) { () }
 }
+
+//---
+
+function f() {
+    // duplicate argument name in closure.
+    var closure = |x: bool, x: bool|: u64 {0};
+}
+
+//---
+
+// Call function with the wrong number of arguments.
+
+function a(x: bit<16>, y: bit<16>): bit<16> { x + y }
+function b() { a(0) }
+
+//---
+
+// Call function with wrong argument types.
+
+function a(x: bit<16>, y: bit<16>): bit<16> { x + y }
+function b() { a(32'd0, 5) }

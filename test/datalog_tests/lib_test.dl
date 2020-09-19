@@ -7,3 +7,6 @@ import regex_test
 import internment_test
 import tinyset_test
 import url_test
+import vec_test
+import map_test
+import set_test

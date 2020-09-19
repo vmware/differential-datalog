@@ -14,7 +14,7 @@ typedef t = t1
 
 Failed to parse input file: "./test/datalog_tests/rectype.fail.dl" (line 4, column 13):
 unexpected "{"
-expecting "bit", "signed", "bigint", "double", "float", "string", "bool", "#", constructor name, type name, "'" or "("
+expecting "bit", "signed", "bigint", "double", "float", "string", "bool", "#", constructor name, type name, "'", "function", "|" or "("
 
 error: ./test/datalog_tests/rectype.fail.dl:5:1-6:1: Recursive alias types: TSeq2 -> TSeq2
 typedef TSeq2 = Option<(string, Ref<TSeq2>)>

@@ -63,6 +63,8 @@ import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.DatalogProgram
 import Language.DifferentialDatalog.Error
+import Language.DifferentialDatalog.ECtx
+import {-# SOURCE #-} Language.DifferentialDatalog.Expr
 --import Language.DifferentialDatalog.Validate
 
 -- DDlog standard library name.
@@ -256,7 +258,7 @@ flattenNamespace1 mmap mod@DatalogModule{..} = do
     -- rename types
     prog3 <- progTypeMapM prog2' (typeFlatten mmap mod)
     -- rename constructors and functions
-    prog4 <- progExprMapCtxM prog3 (\_ e -> exprFlatten mmap mod e)
+    prog4 <- progExprMapCtxM prog3 (exprFlatten mmap mod)
     prog5 <- progRHSMapM prog4 (\case
                                  rhs@RHSAggregate{..} -> do
                                      f' <- flattenFuncName' mmap mod (pos rhsAggExpr) rhsAggFunc 1
@@ -266,11 +268,11 @@ flattenNamespace1 mmap mod@DatalogModule{..} = do
     return prog6
 
 attrFlatten :: (MonadError String me) => DatalogModule -> MMap -> Attribute -> me Attribute
-attrFlatten mod mmap a@Attribute{attrName="deserialize_from_array", attrVal=(E EApply{..})} = do
+attrFlatten mod mmap a@Attribute{attrName="deserialize_from_array", ..} = do
     -- The value of deserialize_from_array attribute is the name of the key
     -- function.
-    f' <- flattenFuncName' mmap mod (pos a) (head exprFunc) 1
-    return $ a{attrVal = E $ EApply exprPos [f'] exprArgs}
+    e' <- exprFoldCtxM (exprFlatten mmap mod) CtxTop attrVal
+    return $ a{attrVal = e'}
 attrFlatten _   _    a = return a
 
 applyFlattenNames :: (MonadError String me) => DatalogModule -> MMap -> Apply -> me Apply
@@ -321,7 +323,7 @@ flattenTypeName mmap mod p c = fst <$> flattenName lookupType "type" mmap mod p 
 
 -- Function 'fname' can be declared in multiple modules.  Return all matching function
 -- names; postpone disambiguation till type inference.
-flattenFuncName :: (MonadError String me) => MMap -> DatalogModule -> Pos -> String -> Int -> me [String]
+flattenFuncName :: (MonadError String me) => MMap -> DatalogModule -> Pos -> String -> Maybe Int -> me [String]
 flattenFuncName mmap mod p fname nargs = do
     cand_mods <- candidates mod p fname
     let lname = nameLocalStr fname
@@ -334,7 +336,7 @@ flattenFuncName mmap mod p fname nargs = do
 -- matching function.
 flattenFuncName' :: (MonadError String me) => MMap -> DatalogModule -> Pos -> String -> Int -> me String
 flattenFuncName' mmap mod p fname nargs = do
-    fname' <- flattenFuncName mmap mod p fname nargs
+    fname' <- flattenFuncName mmap mod p fname $ Just nargs
     check (moduleDefs mod) (length fname' > 0) p $ "Unknown function '" ++ fname ++ "'"
     check (moduleDefs mod) (length fname' == 1) p
           $ "Ambiguous function name '" ++ fname ++ "' may refer to\n  " ++
@@ -361,14 +363,26 @@ typeFlatten mmap mod t = do
                            return $ t { typeName = n }
          _           -> return t
 
-exprFlatten :: (MonadError String me) => MMap -> DatalogModule -> ENode -> me Expr
-exprFlatten mmap mod e@EApply{..} = do
-    fs <- flattenFuncName mmap mod (pos e) (head exprFunc) (length exprArgs)
-    return $ E $ e { exprFunc = fs }
-exprFlatten mmap mod e@EStruct{..} = do
+exprFlatten :: (MonadError String me) => MMap -> DatalogModule -> ECtx -> ENode -> me Expr
+exprFlatten mmap mod _ e@EFunc{..} = do
+    fs <- flattenFuncName mmap mod (pos e) (head exprFuncName) Nothing
+    return $ E $ e { exprFuncName = fs }
+-- The parser is not always able to distinguish function name from variable
+-- name.  Here is where we disambiguate by checking if a variable with this name
+-- is visible in the current scope.  If not, we seach for a function with this
+-- name.  If found, convert expression to 'EFunc'; otherwise still treat it as a
+-- variable (this is the case when we are declaring a variable inside a rule).
+exprFlatten mmap mod ctx e@EVar{..} | ctxInRuleRHSPattern ctx = return $ E e
+                                    | otherwise = do
+    case lookupVar (moduleDefs mod) ctx exprVar of
+         Nothing -> case exprFlatten mmap mod ctx $ EFunc (pos e) [exprVar] of
+                         Left _     -> return $ E e
+                         Right e'   -> return e'
+         Just _  -> return $ E e
+exprFlatten mmap mod _ e@EStruct{..} = do
     c <- flattenConsName mmap mod (pos e) exprConstructor
     return $ E $ e { exprConstructor = c }
-exprFlatten _    _   e = return $ E e
+exprFlatten _ _ _   e = return $ E e
 
 name2rust :: String -> String
 name2rust = replace "::" "_"

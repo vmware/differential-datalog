@@ -1,0 +1,111 @@
+import map
+
+typedef Foo = Foo {
+    x: bigint
+}
+
+typedef TestMap = Map<(s64, string), Foo>
+
+function test_map(): Map<(s64, string), Foo> {
+    [ (0, "0") -> Foo{0}
+    , (1, "1") -> Foo{1}
+    , (2, "2") -> Foo{2}
+    ]
+}
+
+output relation MapTransforms(description: string, v: TestMap)
+
+// map.
+MapTransforms(
+    "map(+10)",
+    {
+        var delta = 10;
+        test_map().map(|foo| Foo{foo.x + delta})
+    }).
+
+// map with key.
+MapTransforms(
+    "map_with_key(+key+10)",
+    {
+        var delta1 = 5;
+        var delta2 = Foo{5};
+        test_map().map(|k, v| Foo{k.0 as bigint + v.x + delta1 + delta2.x})
+    }).
+
+// map_keys.
+MapTransforms(
+    "map_keys(/2)",
+    {
+        var div = 2;
+        test_map().map_keys(|k| (k.0/div, k.1))
+    }).
+
+
+// map_in_place.
+MapTransforms(
+    "map_in_place(+10)",
+    {
+        var delta = 10;
+        var m = test_map();
+        m.map_in_place(|k, v| v.x = v.x + delta);
+        m
+    }).
+
+// filter.
+MapTransforms(
+    "filter(>1)",
+    {
+        test_map().filter(|v| v.x > 1)
+    }).
+
+// filter with key.
+MapTransforms(
+    "filter_with_key(k<=1 and v.x>1)",
+    {
+        test_map().filter(|k, v| k.0 <= 1 and v.x > 1)
+    }).
+
+// filter_map.
+MapTransforms(
+    "filter_map(k<=1, +10)",
+    {
+        var delta = 10;
+        test_map().filter_map(|v| if (v.x <= 1) { None } else { Some{ Foo { v.x + delta } } })
+    }).
+
+// filter_map with key.
+MapTransforms(
+    "filter_map_with_key(k<=1, +10)",
+    {
+        var delta = 10;
+        test_map().filter_map(|k, v| if (k.0 <= 1) { None } else { Some{ Foo { v.x + delta } } })
+    }).
+
+// retain.
+MapTransforms(
+    "retain(!=1)",
+    {
+        var exclude = 1;
+        var m = test_map();
+        m.retain(|v| v.x != exclude);
+        m
+    }).
+
+// retain with key.
+MapTransforms(
+    "retain_with_key(!=1)",
+    {
+        var exclude = "1";
+        var m = test_map();
+        m.retain(|k, v| k.1 != exclude);
+        m
+    }).
+
+output relation MapFolds(description: string, a: string)
+
+// fold.
+MapFolds("concatenate values",
+         test_map().fold(|a, x| a ++ " " ++ x.x, "")).
+// fold with key.
+MapFolds("concatenate key-value pairs",
+         test_map().fold(|a, k, v| "${a} ${k.0}:${v.x}", "")).

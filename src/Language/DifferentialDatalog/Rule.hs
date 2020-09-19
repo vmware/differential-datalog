@@ -32,7 +32,6 @@ module Language.DifferentialDatalog.Rule (
     ruleLHSVars,
     ruleTypeMapM,
     ruleHasJoins,
-    ruleAggregateTypeParams,
     ruleAggregateKeyType,
     ruleAggregateValType,
     ruleIsDistinctByConstruction,
@@ -41,12 +40,10 @@ module Language.DifferentialDatalog.Rule (
 ) where
 
 import qualified Data.Set as S
-import qualified Data.Map as M
 import Data.List
 --import Debug.Trace
 import Text.PrettyPrint
 
-import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.PP
 import Language.DifferentialDatalog.Syntax
 import {-# SOURCE #-} Language.DifferentialDatalog.Expr
@@ -54,7 +51,6 @@ import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Var
 import Language.DifferentialDatalog.Relation
-import Language.DifferentialDatalog.Function
 import Language.DifferentialDatalog.Type
 
 -- | Pretty-print the first 'len' literals of a rule. 
@@ -96,26 +92,6 @@ ruleRHSVars' d rl i =
                                           in nub $ avar':gvars'
     where
     vs = ruleRHSVars d rl i
-
--- Compute type argument map for the aggregate function.
--- e.g., given an aggregate function:
--- extern function group2map(g: Group<('K,'V)>): Map<'K,'V>
---
--- and its invocation:
--- Aggregate4(x, map) :- AggregateMe1(x,y), Aggregate((x), map = group2map((x,y)))
---
--- compute concrete types for 'K and 'V
-ruleAggregateTypeParams :: DatalogProgram -> Rule -> Int -> M.Map String Type
-ruleAggregateTypeParams d rl idx =
-    case funcTypeArgSubsts d (pos e) f [group_type] of
-         Left er -> error $ "ruleAggregateTypeParams: " ++ er
-         Right tmap -> tmap
-    where
-    RHSAggregate _ _ fname e = ruleRHS rl !! idx
-    group_by_type = ruleAggregateKeyType d rl idx
-    val_type = ruleAggregateValType d rl idx
-    group_type = tOpaque gROUP_TYPE [group_by_type, val_type]
-    f = getFunc d fname [group_type]
 
 ruleAggregateKeyType :: DatalogProgram -> Rule -> Int -> Type
 ruleAggregateKeyType d rl idx =

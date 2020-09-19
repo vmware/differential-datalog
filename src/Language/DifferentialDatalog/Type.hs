@@ -38,6 +38,7 @@ module Language.DifferentialDatalog.Type(
     typeStaticMemberTypes,
     typeMemberTypes,
     typeIsPolymorphic,
+    funcIsPolymorphic,
     exprType,
     exprType',
     exprType'',
@@ -186,6 +187,15 @@ typeIsPolymorphic TVar{}        = True
 typeIsPolymorphic TOpaque{..}   = any typeIsPolymorphic typeArgs
 typeIsPolymorphic TFunction{..} = any (typeIsPolymorphic . typ) typeFuncArgs || typeIsPolymorphic typeRetType
 
+-- | True iff f is a polymorphic function.
+funcIsPolymorphic :: DatalogProgram -> String -> Bool
+funcIsPolymorphic d fname = (length fs > 1) ||
+                            (typeIsPolymorphic $ funcType f) ||
+                            (any typeIsPolymorphic $ map typ $ funcArgs f)
+    where
+    fs = getFuncs d fname Nothing
+    f = head fs
+
 -- | Compute type of an expression.  The expression must be previously
 -- validated.
 exprType :: DatalogProgram -> ECtx -> Expr -> Type
@@ -237,12 +247,15 @@ exprNodeType' d ctx (EVar p v)            =
                  -> varType d $ ExprVar ctx $ EVar p v
          _       -> error $ "exprNodeType': unknown variable " ++ v ++ " at " ++ show p
 
-exprNodeType' d ctx (EApply _ [f] ts) | -- Type inference engine annotates calls to functions whose return type is polymorphic.
-                                      typeIsPolymorphic t  = ctxExpectType ctx
-                                      | otherwise            = t
-    where t = funcType $ getFunc d f ts
+exprNodeType' d _   (EApply _ f _) = typeRetType $ typ' d f
 
-exprNodeType' _ _   e@EApply{} = error $ "exprNodeType' called with unresolved function name: " ++ show e
+exprNodeType' d ctx (EFunc _ [f]) | -- Type inference engine type-annotates polymorphic functions.
+                                    funcIsPolymorphic d f = ctxExpectType ctx
+                                  | otherwise            = t
+    where [func] = getFuncs d f Nothing
+          t = TFunction (pos func) (map argType $ funcArgs func) (funcType func)
+
+exprNodeType' _ _   e@EFunc{} = error $ "exprNodeType' called with unresolved function name: " ++ show e
 
 exprNodeType' d _   (EField _ e f) =
     let t@TStruct{} = typDeref' d e 
@@ -309,8 +322,7 @@ exprNodeType' _ _   (ETyped _ _ t)         = t
 exprNodeType' _ _   (EAs _ _ t)            = t
 exprNodeType' _ ctx (ERef _ _)             = ctxExpectType ctx
 exprNodeType' _ _   (ETry _ _)             = error "exprNodeType: ?-expressions should be eliminated during type inference."
-exprNodeType' _ _   (EClosure _ _ (Just r) _)  = r
-exprNodeType' _ _   e@(EClosure _ _ Nothing _) = error $ "exprNodeType: closure " ++ show e ++ " has unknown return type after type inference."
+exprNodeType' _ _   (EClosure _ args r _)  = tFunction (map (fromJust . ceargType) args) (fromJust r)
 --exprNodeType' d ctx (ERef p _)             = eunknown d p ctx
 
 --exprTypes :: Refine -> ECtx -> Expr -> [Type]
@@ -376,12 +388,14 @@ _typDeref'' d rt@(TOpaque _ _ [t]) | isSharedRef d rt = _typDeref'' d t
 _typDeref'' _ t = t
 
 typeSubstTypeArgs :: M.Map String Type -> Type -> Type
-typeSubstTypeArgs subst (TUser _ n as)   = tUser n (map (typeSubstTypeArgs subst) as)
-typeSubstTypeArgs subst (TOpaque _ n as) = tOpaque n (map (typeSubstTypeArgs subst) as)
-typeSubstTypeArgs subst (TStruct _ cs)   = tStruct $ map (consSubstTypeArgs subst)  cs
-typeSubstTypeArgs subst (TTuple _ ts)    = tTuple $ map (typeSubstTypeArgs subst)  ts
-typeSubstTypeArgs subst (TVar _ tv)      = subst M.! tv
-typeSubstTypeArgs _     t                = t
+typeSubstTypeArgs subst (TUser _ n as)      = tUser n (map (typeSubstTypeArgs subst) as)
+typeSubstTypeArgs subst (TOpaque _ n as)    = tOpaque n (map (typeSubstTypeArgs subst) as)
+typeSubstTypeArgs subst (TStruct _ cs)      = tStruct $ map (consSubstTypeArgs subst)  cs
+typeSubstTypeArgs subst (TTuple _ ts)       = tTuple $ map (typeSubstTypeArgs subst)  ts
+typeSubstTypeArgs subst (TVar _ tv)         = subst M.! tv
+typeSubstTypeArgs subst (TFunction _ as r)  = tFunction (map (\a -> a{atypeType = typeSubstTypeArgs subst $ typ a}) as)
+                                                        (typeSubstTypeArgs subst r)
+typeSubstTypeArgs _     t                   = t
 
 consSubstTypeArgs :: M.Map String Type -> Constructor -> Constructor
 consSubstTypeArgs subst c = c{consArgs = args}
@@ -502,6 +516,8 @@ typeNormalize' d t =
          TUser{..}          -> t'{typeArgs = map (typeNormalize d) typeArgs}
          TOpaque{..}        -> t'{typeArgs = map (typeNormalize d) typeArgs}
          TVar{..}           -> t'
+         TFunction{..}      -> t'{ typeFuncArgs = map (\a -> a{atypeType = typeNormalize d $ typ a}) typeFuncArgs
+                                 , typeRetType = typeNormalize d typeRetType}
          _                  -> error $ "Type.typeNormalize': unexpected type " ++ show t'
     where t' = typ'' d t
 
@@ -510,12 +526,13 @@ typeUserTypes :: Type -> [String]
 typeUserTypes = nub . typeUserTypes'
 
 typeUserTypes' :: Type -> [String]
-typeUserTypes' TStruct{..} = concatMap (typeUserTypes . typ)
-                             $ concatMap consArgs typeCons
-typeUserTypes' TTuple{..}  = concatMap (typeUserTypes . typ) typeTupArgs
-typeUserTypes' TUser{..}   = typeName : concatMap typeUserTypes typeArgs
-typeUserTypes' TOpaque{..} = concatMap typeUserTypes typeArgs
-typeUserTypes' _           = []
+typeUserTypes' TStruct{..}      = concatMap (typeUserTypes . typ)
+                                  $ concatMap consArgs typeCons
+typeUserTypes' TTuple{..}       = concatMap (typeUserTypes . typ) typeTupArgs
+typeUserTypes' TUser{..}        = typeName : concatMap typeUserTypes typeArgs
+typeUserTypes' TOpaque{..}      = concatMap typeUserTypes typeArgs
+typeUserTypes' TFunction{..}    = concatMap (typeUserTypes . typ) typeFuncArgs ++ typeUserTypes typeRetType
+typeUserTypes' _                = []
 
 -- This function is used in validating recursive data types.
 -- It computes the set of user-defined types that type 'T' contains as statically
@@ -731,8 +748,7 @@ varType d (FlatMapVar rl i)                = case typ' d $ exprType d (CtxRuleRF
                                                   _                    -> error $ "varType FlatMapVar " ++ show rl ++ " " ++ show i 
 varType d (AggregateVar rl i)              = let ktype = ruleAggregateKeyType d rl i
                                                  vtype = ruleAggregateValType d rl i
-                                                 f = getFunc d (rhsAggFunc $ ruleRHS rl !! i) [tOpaque gROUP_TYPE [ktype, vtype]]
-                                                 tmap = ruleAggregateTypeParams d rl i
+                                                 (f,tmap) = getFunc d (rhsAggFunc $ ruleRHS rl !! i) [tOpaque gROUP_TYPE [ktype, vtype]] Nothing
                                              in typeSubstTypeArgs tmap $ funcType f
 varType _ WeightVar                        = tUser wEIGHT_TYPE []
 varType d (TSVar rl)                       = if ruleIsRecursive d rl

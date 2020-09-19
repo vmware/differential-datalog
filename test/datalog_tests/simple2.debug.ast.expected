@@ -1,6 +1,7 @@
 typedef Ack = Ack{m: ddlog_std::u64, n: ddlog_std::u64, a: ddlog_std::u64}
 typedef Alt = C0{x: bit<32>} |
               C1{x: bit<32>}
+typedef ApplyTransform = ApplyTransform{description: string, value: string}
 typedef Arrng1 = Arrng1{f1: ddlog_std::Ref<ddlog_std::Ref<ddlog_std::Ref<TArrng2>>>, f2: bigint}
 typedef Arrng1Arrng2 = Arrng1Arrng2{x: bigint}
 typedef Arrng1Arrng2_2 = Arrng1Arrng2_2{x: bigint}
@@ -71,6 +72,8 @@ typedef ddlog_std::Result<'V,'E> = ddlog_std::Ok{res: 'V} |
                                    ddlog_std::Err{err: 'E}
 extern type ddlog_std::Set<'A>
 extern type ddlog_std::Vec<'A>
+#[alias = true]
+typedef ddlog_std::isize = signed<64>
 typedef ddlog_std::s128 = signed<128>
 typedef ddlog_std::s16 = signed<16>
 typedef ddlog_std::s32 = signed<32>
@@ -130,6 +133,10 @@ function agg_avg_double_N (aggregate: ddlog_std::Option<(double, double)>, item:
         ((ddlog_std::Some{.x=((var sum: double), (var ct: double))}: ddlog_std::Option<(double, double)>), (ddlog_std::Some{.x=(var y: double)}: ddlog_std::Option<double>)) -> (ddlog_std::Some{.x=((sum + y), (ct + 64'f1.0))}: ddlog_std::Option<(double, double)>)
     }
 }
+function apply_transform (x: mut 'A, f: function(mut 'A):()): ()
+{
+    f(x)
+}
 extern function ddlog_std::__builtin_2string (x: 'X): string
 function ddlog_std::__debug_8_1_group_sum (g: ddlog_std::Group<bit<32>,('I, bit<32>)>): (ddlog_std::Vec<'I>, bit<32>)
 {
@@ -138,7 +145,7 @@ function ddlog_std::__debug_8_1_group_sum (g: ddlog_std::Group<bit<32>,('I, bit<
 }
 function ddlog_std::append (v: mut ddlog_std::Vec<'X>, other: ddlog_std::Vec<'X>): ()
 {
-    ddlog_std::vec_append(v, other)
+    (ddlog_std::vec_append: function(mut ddlog_std::Vec<'X>, ddlog_std::Vec<'X>):())(v, other)
 }
 extern function ddlog_std::bigint_pow32 (base: bigint, exp: bit<32>): bigint
 function ddlog_std::contains (s1: string, s2: string): bool
@@ -147,26 +154,26 @@ function ddlog_std::contains (s1: string, s2: string): bool
 }
 function ddlog_std::contains (v: ddlog_std::Vec<'X>, x: 'X): bool
 {
-    ddlog_std::vec_contains(v, x)
+    (ddlog_std::vec_contains: function(ddlog_std::Vec<'X>, 'X):bool)(v, x)
 }
 function ddlog_std::contains (s: ddlog_std::Set<'X>, v: 'X): bool
 {
-    ddlog_std::set_contains(s, v)
+    (ddlog_std::set_contains: function(ddlog_std::Set<'X>, 'X):bool)(s, v)
 }
 function ddlog_std::contains_key (m: ddlog_std::Map<'K,'V>, k: 'K): bool
 {
-    ddlog_std::map_contains_key(m, k)
+    (ddlog_std::map_contains_key: function(ddlog_std::Map<'K,'V>, 'K):bool)(m, k)
 }
 function ddlog_std::count (g: ddlog_std::Group<'K,'V>): ddlog_std::usize
 {
-    ddlog_std::group_count(g)
+    (ddlog_std::group_count: function(ddlog_std::Group<'K,'V>):bit<64>)(g)
 }
 extern function ddlog_std::default (): 'T
 #[return_by_ref = true]
 extern function ddlog_std::deref (x: ddlog_std::Ref<'A>): 'A
 function ddlog_std::difference (s1: ddlog_std::Set<'X>, s2: ddlog_std::Set<'X>): ddlog_std::Set<'X>
 {
-    (ddlog_std::set_difference(s1, s2): ddlog_std::Set<'X>)
+    (ddlog_std::set_difference: function(ddlog_std::Set<'X>, ddlog_std::Set<'X>):ddlog_std::Set<'X>)(s1, s2)
 }
 function ddlog_std::ends_with (s: string, suffix: string): bool
 {
@@ -174,11 +181,11 @@ function ddlog_std::ends_with (s: string, suffix: string): bool
 }
 function ddlog_std::first (g: ddlog_std::Group<'K,'V>): 'V
 {
-    (ddlog_std::group_first(g): 'V)
+    (ddlog_std::group_first: function(ddlog_std::Group<'K,'V>):'V)(g)
 }
 function ddlog_std::get (m: ddlog_std::Map<'K,'V>, k: 'K): ddlog_std::Option<'V>
 {
-    (ddlog_std::map_get(m, k): ddlog_std::Option<'V>)
+    (ddlog_std::map_get: function(ddlog_std::Map<'K,'V>, 'K):ddlog_std::Option<'V>)(m, k)
 }
 extern function ddlog_std::group_count (g: ddlog_std::Group<'K,'V>): ddlog_std::usize
 extern function ddlog_std::group_first (g: ddlog_std::Group<'K,'V>): 'V
@@ -195,12 +202,12 @@ extern function ddlog_std::group_to_setmap (g: ddlog_std::Group<'K1,('K2, 'V)>):
 extern function ddlog_std::group_to_vec (g: ddlog_std::Group<'K,'V>): ddlog_std::Vec<'V>
 function ddlog_std::group_unzip (g: ddlog_std::Group<'K,('X, 'Y)>): (ddlog_std::Vec<'X>, ddlog_std::Vec<'Y>)
 {
-    {(var xs: ddlog_std::Vec<'X>) = (ddlog_std::vec_empty(): ddlog_std::Vec<'X>);
-     {(var ys: ddlog_std::Vec<'Y>) = (ddlog_std::vec_empty(): ddlog_std::Vec<'Y>);
+    {(var xs: ddlog_std::Vec<'X>) = (ddlog_std::vec_empty: function():ddlog_std::Vec<'X>)();
+     {(var ys: ddlog_std::Vec<'Y>) = (ddlog_std::vec_empty: function():ddlog_std::Vec<'Y>)();
       {for (v in g) {
            {((var x: 'X), (var y: 'Y)) = v;
-            {ddlog_std::vec_push(xs, x);
-             ddlog_std::vec_push(ys, y)}}
+            {(ddlog_std::vec_push: function(mut ddlog_std::Vec<'X>, 'X):())(xs, x);
+             (ddlog_std::vec_push: function(mut ddlog_std::Vec<'Y>, 'Y):())(ys, y)}}
        };
        (xs, ys)}}}
 }
@@ -211,35 +218,35 @@ extern function ddlog_std::htonl (x: bit<32>): bit<32>
 extern function ddlog_std::htons (x: bit<16>): bit<16>
 function ddlog_std::insert (m: mut ddlog_std::Map<'K,'V>, k: 'K, v: 'V): ()
 {
-    ddlog_std::map_insert(m, k, v)
+    (ddlog_std::map_insert: function(mut ddlog_std::Map<'K,'V>, 'K, 'V):())(m, k, v)
 }
 function ddlog_std::insert (s: mut ddlog_std::Set<'X>, v: 'X): ()
 {
-    ddlog_std::set_insert(s, v)
+    (ddlog_std::set_insert: function(mut ddlog_std::Set<'X>, 'X):())(s, v)
 }
 function ddlog_std::insert_imm (m: ddlog_std::Map<'K,'V>, k: 'K, v: 'V): ddlog_std::Map<'K,'V>
 {
-    (ddlog_std::map_insert_imm(m, k, v): ddlog_std::Map<'K,'V>)
+    (ddlog_std::map_insert_imm: function(ddlog_std::Map<'K,'V>, 'K, 'V):ddlog_std::Map<'K,'V>)(m, k, v)
 }
 function ddlog_std::insert_imm (s: ddlog_std::Set<'X>, v: 'X): ddlog_std::Set<'X>
 {
-    (ddlog_std::set_insert_imm(s, v): ddlog_std::Set<'X>)
+    (ddlog_std::set_insert_imm: function(ddlog_std::Set<'X>, 'X):ddlog_std::Set<'X>)(s, v)
 }
 function ddlog_std::intersection (s1: ddlog_std::Set<'X>, s2: ddlog_std::Set<'X>): ddlog_std::Set<'X>
 {
-    (ddlog_std::set_intersection(s1, s2): ddlog_std::Set<'X>)
+    (ddlog_std::set_intersection: function(ddlog_std::Set<'X>, ddlog_std::Set<'X>):ddlog_std::Set<'X>)(s1, s2)
 }
 function ddlog_std::is_empty (v: ddlog_std::Vec<'X>): bool
 {
-    ddlog_std::vec_is_empty(v)
+    (ddlog_std::vec_is_empty: function(ddlog_std::Vec<'X>):bool)(v)
 }
 function ddlog_std::is_empty (m: ddlog_std::Map<'K,'V>): bool
 {
-    ddlog_std::map_is_empty(m)
+    (ddlog_std::map_is_empty: function(ddlog_std::Map<'K,'V>):bool)(m)
 }
 function ddlog_std::is_empty (s: ddlog_std::Set<'X>): bool
 {
-    ddlog_std::set_is_empty(s)
+    (ddlog_std::set_is_empty: function(ddlog_std::Set<'X>):bool)(s)
 }
 function ddlog_std::is_err (res: ddlog_std::Result<'V,'E>): bool
 {
@@ -275,11 +282,11 @@ function ddlog_std::join (strings: ddlog_std::Vec<string>, sep: string): string
 }
 function ddlog_std::key (g: ddlog_std::Group<'K,'V>): 'K
 {
-    (ddlog_std::group_key(g): 'K)
+    (ddlog_std::group_key: function(ddlog_std::Group<'K,'V>):'K)(g)
 }
 function ddlog_std::keys (m: ddlog_std::Map<'K,'V>): ddlog_std::Vec<'K>
 {
-    (ddlog_std::map_keys(m): ddlog_std::Vec<'K>)
+    (ddlog_std::map_keys: function(ddlog_std::Map<'K,'V>):ddlog_std::Vec<'K>)(m)
 }
 function ddlog_std::len (s: string): ddlog_std::usize
 {
@@ -287,10 +294,31 @@ function ddlog_std::len (s: string): ddlog_std::usize
 }
 function ddlog_std::len (v: ddlog_std::Vec<'X>): ddlog_std::usize
 {
-    ddlog_std::vec_len(v)
+    (ddlog_std::vec_len: function(ddlog_std::Vec<'X>):bit<64>)(v)
+}
+function ddlog_std::map (opt: ddlog_std::Option<'A>, f: function('A):'B): ddlog_std::Option<'B>
+{
+    match (opt) {
+        (ddlog_std::None{}: ddlog_std::Option<'A>) -> (ddlog_std::None{}: ddlog_std::Option<'B>),
+        (ddlog_std::Some{.x=(var x: 'A)}: ddlog_std::Option<'A>) -> (ddlog_std::Some{.x=f(x)}: ddlog_std::Option<'B>)
+    }
+}
+function ddlog_std::map (res: ddlog_std::Result<'V1,'E>, f: function('V1):'V2): ddlog_std::Result<'V2,'E>
+{
+    match (res) {
+        (ddlog_std::Err{.err=(var e: 'E)}: ddlog_std::Result<'V1,'E>) -> (ddlog_std::Err{.err=e}: ddlog_std::Result<'V2,'E>),
+        (ddlog_std::Ok{.res=(var x: 'V1)}: ddlog_std::Result<'V1,'E>) -> (ddlog_std::Ok{.res=f(x)}: ddlog_std::Result<'V2,'E>)
+    }
 }
 extern function ddlog_std::map_contains_key (m: ddlog_std::Map<'K,'V>, k: 'K): bool
 extern function ddlog_std::map_empty (): ddlog_std::Map<'K,'V>
+function ddlog_std::map_err (res: ddlog_std::Result<'V,'E1>, f: function('E1):'E2): ddlog_std::Result<'V,'E2>
+{
+    match (res) {
+        (ddlog_std::Err{.err=(var e: 'E1)}: ddlog_std::Result<'V,'E1>) -> (ddlog_std::Err{.err=f(e)}: ddlog_std::Result<'V,'E2>),
+        (ddlog_std::Ok{.res=(var x: 'V)}: ddlog_std::Result<'V,'E1>) -> (ddlog_std::Ok{.res=x}: ddlog_std::Result<'V,'E2>)
+    }
+}
 extern function ddlog_std::map_get (m: ddlog_std::Map<'K,'V>, k: 'K): ddlog_std::Option<'V>
 extern function ddlog_std::map_insert (m: mut ddlog_std::Map<'K,'V>, k: 'K, v: 'V): ()
 extern function ddlog_std::map_insert_imm (m: ddlog_std::Map<'K,'V>, k: 'K, v: 'V): ddlog_std::Map<'K,'V>
@@ -310,7 +338,7 @@ function ddlog_std::max (x: 'A, y: 'A): 'A
 }
 function ddlog_std::max (g: ddlog_std::Group<'K,'V>): 'V
 {
-    (ddlog_std::group_max(g): 'V)
+    (ddlog_std::group_max: function(ddlog_std::Group<'K,'V>):'V)(g)
 }
 function ddlog_std::min (x: 'A, y: 'A): 'A
 {
@@ -322,19 +350,19 @@ function ddlog_std::min (x: 'A, y: 'A): 'A
 }
 function ddlog_std::min (g: ddlog_std::Group<'K,'V>): 'V
 {
-    (ddlog_std::group_min(g): 'V)
+    (ddlog_std::group_min: function(ddlog_std::Group<'K,'V>):'V)(g)
 }
 function ddlog_std::nth (g: ddlog_std::Group<'K,'V>, n: ddlog_std::usize): ddlog_std::Option<'V>
 {
-    (ddlog_std::group_nth(g, n): ddlog_std::Option<'V>)
+    (ddlog_std::group_nth: function(ddlog_std::Group<'K,'V>, bit<64>):ddlog_std::Option<'V>)(g, n)
 }
 function ddlog_std::nth (v: ddlog_std::Vec<'X>, n: ddlog_std::usize): ddlog_std::Option<'X>
 {
-    (ddlog_std::vec_nth(v, n): ddlog_std::Option<'X>)
+    (ddlog_std::vec_nth: function(ddlog_std::Vec<'X>, bit<64>):ddlog_std::Option<'X>)(v, n)
 }
 function ddlog_std::nth (s: ddlog_std::Set<'X>, n: ddlog_std::usize): ddlog_std::Option<'X>
 {
-    (ddlog_std::set_nth(s, n): ddlog_std::Option<'X>)
+    (ddlog_std::set_nth: function(ddlog_std::Set<'X>, bit<64>):ddlog_std::Option<'X>)(s, n)
 }
 extern function ddlog_std::ntohl (x: bit<32>): bit<32>
 extern function ddlog_std::ntohs (x: bit<16>): bit<16>
@@ -387,17 +415,17 @@ function ddlog_std::pow32 (base: bigint, exp: bit<32>): bigint
 }
 function ddlog_std::push (v: mut ddlog_std::Vec<'X>, x: 'X): ()
 {
-    ddlog_std::vec_push(v, x)
+    (ddlog_std::vec_push: function(mut ddlog_std::Vec<'X>, 'X):())(v, x)
 }
 function ddlog_std::push_imm (v: ddlog_std::Vec<'X>, x: 'X): ddlog_std::Vec<'X>
 {
-    (ddlog_std::vec_push_imm(v, x): ddlog_std::Vec<'X>)
+    (ddlog_std::vec_push_imm: function(ddlog_std::Vec<'X>, 'X):ddlog_std::Vec<'X>)(v, x)
 }
 extern function ddlog_std::range (from: 'A, to: 'A, step: 'A): ddlog_std::Vec<'A>
 extern function ddlog_std::ref_new (x: 'A): ddlog_std::Ref<'A>
 function ddlog_std::remove (m: mut ddlog_std::Map<'K,'V>, k: 'K): ddlog_std::Option<'V>
 {
-    (ddlog_std::map_remove(m, k): ddlog_std::Option<'V>)
+    (ddlog_std::map_remove: function(mut ddlog_std::Map<'K,'V>, 'K):ddlog_std::Option<'V>)(m, k)
 }
 function ddlog_std::replace (s: string, from: string, to: string): string
 {
@@ -405,7 +433,7 @@ function ddlog_std::replace (s: string, from: string, to: string): string
 }
 function ddlog_std::resize (v: mut ddlog_std::Vec<'X>, new_len: ddlog_std::usize, value: 'X): ()
 {
-    ddlog_std::vec_resize(v, new_len, value)
+    (ddlog_std::vec_resize: function(mut ddlog_std::Vec<'X>, bit<64>, 'X):())(v, new_len, value)
 }
 extern function ddlog_std::result_unwrap_or_default (res: ddlog_std::Result<'V,'E>): 'V
 function ddlog_std::reverse (s: string): string
@@ -432,23 +460,23 @@ extern function ddlog_std::set_union (s1: ddlog_std::Set<'X>, s2: ddlog_std::Set
 extern function ddlog_std::set_unions (sets: ddlog_std::Vec<ddlog_std::Set<'X>>): ddlog_std::Set<'X>
 function ddlog_std::setref_unions (g: ddlog_std::Group<'K,ddlog_std::Ref<ddlog_std::Set<'A>>>): ddlog_std::Ref<ddlog_std::Set<'A>>
 {
-    (ddlog_std::group_setref_unions(g): ddlog_std::Ref<ddlog_std::Set<'A>>)
+    (ddlog_std::group_setref_unions: function(ddlog_std::Group<'K,ddlog_std::Ref<ddlog_std::Set<'A>>>):ddlog_std::Ref<ddlog_std::Set<'A>>)(g)
 }
 function ddlog_std::size (m: ddlog_std::Map<'K,'V>): ddlog_std::usize
 {
-    ddlog_std::map_size(m)
+    (ddlog_std::map_size: function(ddlog_std::Map<'K,'V>):bit<64>)(m)
 }
 function ddlog_std::size (s: ddlog_std::Set<'X>): ddlog_std::usize
 {
-    ddlog_std::set_size(s)
+    (ddlog_std::set_size: function(ddlog_std::Set<'X>):bit<64>)(s)
 }
 function ddlog_std::sort (v: mut ddlog_std::Vec<'X>): ()
 {
-    ddlog_std::vec_sort(v)
+    (ddlog_std::vec_sort: function(mut ddlog_std::Vec<'X>):())(v)
 }
 function ddlog_std::sort_imm (v: ddlog_std::Vec<'X>): ddlog_std::Vec<'X>
 {
-    (ddlog_std::vec_sort_imm(v): ddlog_std::Vec<'X>)
+    (ddlog_std::vec_sort_imm: function(ddlog_std::Vec<'X>):ddlog_std::Vec<'X>)(v)
 }
 function ddlog_std::split (s: string, sep: string): ddlog_std::Vec<string>
 {
@@ -478,7 +506,7 @@ function ddlog_std::substr (s: string, start: ddlog_std::usize, end: ddlog_std::
 }
 function ddlog_std::swap_nth (v: mut ddlog_std::Vec<'X>, idx: ddlog_std::usize, value: mut 'X): bool
 {
-    ddlog_std::vec_swap_nth(v, idx, value)
+    (ddlog_std::vec_swap_nth: function(mut ddlog_std::Vec<'X>, bit<64>, mut 'X):bool)(v, idx, value)
 }
 function ddlog_std::to_bytes (s: string): ddlog_std::Vec<ddlog_std::u8>
 {
@@ -490,90 +518,90 @@ function ddlog_std::to_lowercase (s: string): string
 }
 function ddlog_std::to_map (g: ddlog_std::Group<'K1,('K2, 'V)>): ddlog_std::Map<'K2,'V>
 {
-    (ddlog_std::group_to_map(g): ddlog_std::Map<'K2,'V>)
+    (ddlog_std::group_to_map: function(ddlog_std::Group<'K1,('K2, 'V)>):ddlog_std::Map<'K2,'V>)(g)
 }
 function ddlog_std::to_set (o: ddlog_std::Option<'X>): ddlog_std::Set<'X>
 {
     match (o) {
-        (ddlog_std::Some{.x=(var x: 'X)}: ddlog_std::Option<'X>) -> (ddlog_std::set_singleton(x): ddlog_std::Set<'X>),
-        (ddlog_std::None{}: ddlog_std::Option<'X>) -> (ddlog_std::set_empty(): ddlog_std::Set<'X>)
+        (ddlog_std::Some{.x=(var x: 'X)}: ddlog_std::Option<'X>) -> (ddlog_std::set_singleton: function('X):ddlog_std::Set<'X>)(x),
+        (ddlog_std::None{}: ddlog_std::Option<'X>) -> (ddlog_std::set_empty: function():ddlog_std::Set<'X>)()
     }
 }
 function ddlog_std::to_set (g: ddlog_std::Group<'K,'V>): ddlog_std::Set<'V>
 {
-    (ddlog_std::group_to_set(g): ddlog_std::Set<'V>)
+    (ddlog_std::group_to_set: function(ddlog_std::Group<'K,'V>):ddlog_std::Set<'V>)(g)
 }
 function ddlog_std::to_set (s: ddlog_std::Vec<'A>): ddlog_std::Set<'A>
 {
-    (ddlog_std::vec_to_set(s): ddlog_std::Set<'A>)
+    (ddlog_std::vec_to_set: function(ddlog_std::Vec<'A>):ddlog_std::Set<'A>)(s)
 }
 function ddlog_std::to_setmap (g: ddlog_std::Group<'K1,('K2, 'V)>): ddlog_std::Map<'K2,ddlog_std::Set<'V>>
 {
-    (ddlog_std::group_to_setmap(g): ddlog_std::Map<'K2,ddlog_std::Set<'V>>)
+    (ddlog_std::group_to_setmap: function(ddlog_std::Group<'K1,('K2, 'V)>):ddlog_std::Map<'K2,ddlog_std::Set<'V>>)(g)
 }
 function ddlog_std::to_string (ts: ddlog_std::DDNestedTS): string
 {
-    (((("(" ++ (ddlog_std::__builtin_2string(ts.epoch): string)) ++ ",") ++ (ddlog_std::__builtin_2string(ts.iter): string)) ++ ")")
+    (((("(" ++ (ddlog_std::__builtin_2string: function(bit<64>):string)(ts.epoch)) ++ ",") ++ (ddlog_std::__builtin_2string: function(bit<64>):string)(ts.iter)) ++ ")")
 }
 function ddlog_std::to_string (x: bool): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(bool):string)(x)
 }
 function ddlog_std::to_string (x: bigint): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(bigint):string)(x)
 }
 function ddlog_std::to_string (x: float): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(float):string)(x)
 }
 function ddlog_std::to_string (x: double): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(double):string)(x)
 }
 function ddlog_std::to_string (x: ddlog_std::s8): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(signed<8>):string)(x)
 }
 function ddlog_std::to_string (x: ddlog_std::s16): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(signed<16>):string)(x)
 }
 function ddlog_std::to_string (x: ddlog_std::s32): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(signed<32>):string)(x)
 }
 function ddlog_std::to_string (x: ddlog_std::s64): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(signed<64>):string)(x)
 }
 function ddlog_std::to_string (x: ddlog_std::s128): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(signed<128>):string)(x)
 }
 function ddlog_std::to_string (x: ddlog_std::u8): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(bit<8>):string)(x)
 }
 function ddlog_std::to_string (x: ddlog_std::u16): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(bit<16>):string)(x)
 }
 function ddlog_std::to_string (x: ddlog_std::u32): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(bit<32>):string)(x)
 }
 function ddlog_std::to_string (x: ddlog_std::u64): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(bit<64>):string)(x)
 }
 function ddlog_std::to_string (x: ddlog_std::u128): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(bit<128>):string)(x)
 }
 function ddlog_std::to_string (x: string): string
 {
-    ddlog_std::__builtin_2string(x)
+    (ddlog_std::__builtin_2string: function(string):string)(x)
 }
 function ddlog_std::to_uppercase (s: string): string
 {
@@ -582,21 +610,25 @@ function ddlog_std::to_uppercase (s: string): string
 function ddlog_std::to_vec (o: ddlog_std::Option<'X>): ddlog_std::Vec<'X>
 {
     match (o) {
-        (ddlog_std::Some{.x=(var x: 'X)}: ddlog_std::Option<'X>) -> (ddlog_std::vec_singleton(x): ddlog_std::Vec<'X>),
-        (ddlog_std::None{}: ddlog_std::Option<'X>) -> (ddlog_std::vec_empty(): ddlog_std::Vec<'X>)
+        (ddlog_std::Some{.x=(var x: 'X)}: ddlog_std::Option<'X>) -> (ddlog_std::vec_singleton: function('X):ddlog_std::Vec<'X>)(x),
+        (ddlog_std::None{}: ddlog_std::Option<'X>) -> (ddlog_std::vec_empty: function():ddlog_std::Vec<'X>)()
     }
 }
 function ddlog_std::to_vec (g: ddlog_std::Group<'K,'V>): ddlog_std::Vec<'V>
 {
-    (ddlog_std::group_to_vec(g): ddlog_std::Vec<'V>)
+    (ddlog_std::group_to_vec: function(ddlog_std::Group<'K,'V>):ddlog_std::Vec<'V>)(g)
 }
 function ddlog_std::to_vec (s: ddlog_std::Set<'A>): ddlog_std::Vec<'A>
 {
-    (ddlog_std::set_to_vec(s): ddlog_std::Vec<'A>)
+    (ddlog_std::set_to_vec: function(ddlog_std::Set<'A>):ddlog_std::Vec<'A>)(s)
 }
 function ddlog_std::trim (s: string): string
 {
     ddlog_std::string_trim(s)
+}
+function ddlog_std::truncate (v: mut ddlog_std::Vec<'X>, len: ddlog_std::usize): ()
+{
+    (ddlog_std::vec_truncate: function(mut ddlog_std::Vec<'X>, bit<64>):())(v, len)
 }
 extern function ddlog_std::u128_pow32 (base: ddlog_std::u128, exp: bit<32>): ddlog_std::u128
 extern function ddlog_std::u16_pow32 (base: ddlog_std::u16, exp: bit<32>): ddlog_std::u16
@@ -605,15 +637,15 @@ extern function ddlog_std::u64_pow32 (base: ddlog_std::u64, exp: bit<32>): ddlog
 extern function ddlog_std::u8_pow32 (base: ddlog_std::u8, exp: bit<32>): ddlog_std::u8
 function ddlog_std::union (m1: ddlog_std::Map<'K,'V>, m2: ddlog_std::Map<'K,'V>): ddlog_std::Map<'K,'V>
 {
-    (ddlog_std::map_union(m1, m2): ddlog_std::Map<'K,'V>)
+    (ddlog_std::map_union: function(ddlog_std::Map<'K,'V>, ddlog_std::Map<'K,'V>):ddlog_std::Map<'K,'V>)(m1, m2)
 }
 function ddlog_std::union (s1: ddlog_std::Set<'X>, s2: ddlog_std::Set<'X>): ddlog_std::Set<'X>
 {
-    (ddlog_std::set_union(s1, s2): ddlog_std::Set<'X>)
+    (ddlog_std::set_union: function(ddlog_std::Set<'X>, ddlog_std::Set<'X>):ddlog_std::Set<'X>)(s1, s2)
 }
 function ddlog_std::unions (sets: ddlog_std::Vec<ddlog_std::Set<'X>>): ddlog_std::Set<'X>
 {
-    (ddlog_std::set_unions(sets): ddlog_std::Set<'X>)
+    (ddlog_std::set_unions: function(ddlog_std::Vec<ddlog_std::Set<'X>>):ddlog_std::Set<'X>)(sets)
 }
 function ddlog_std::unwrap_or (x: ddlog_std::Option<'A>, def: 'A): 'A
 {
@@ -631,15 +663,15 @@ function ddlog_std::unwrap_or (res: ddlog_std::Result<'V,'E>, def: 'V): 'V
 }
 function ddlog_std::unwrap_or_default (opt: ddlog_std::Option<'A>): 'A
 {
-    (ddlog_std::option_unwrap_or_default(opt): 'A)
+    (ddlog_std::option_unwrap_or_default: function(ddlog_std::Option<'A>):'A)(opt)
 }
 function ddlog_std::unwrap_or_default (res: ddlog_std::Result<'V,'E>): 'V
 {
-    (ddlog_std::result_unwrap_or_default(res): 'V)
+    (ddlog_std::result_unwrap_or_default: function(ddlog_std::Result<'V,'E>):'V)(res)
 }
 function ddlog_std::update_nth (v: mut ddlog_std::Vec<'X>, idx: ddlog_std::usize, value: 'X): bool
 {
-    ddlog_std::vec_update_nth(v, idx, value)
+    (ddlog_std::vec_update_nth: function(mut ddlog_std::Vec<'X>, bit<64>, 'X):bool)(v, idx, value)
 }
 extern function ddlog_std::vec_append (v: mut ddlog_std::Vec<'X>, other: ddlog_std::Vec<'X>): ()
 extern function ddlog_std::vec_contains (v: ddlog_std::Vec<'X>, x: 'X): bool
@@ -656,6 +688,7 @@ extern function ddlog_std::vec_sort (v: mut ddlog_std::Vec<'X>): ()
 extern function ddlog_std::vec_sort_imm (v: ddlog_std::Vec<'X>): ddlog_std::Vec<'X>
 extern function ddlog_std::vec_swap_nth (v: mut ddlog_std::Vec<'X>, idx: ddlog_std::usize, value: mut 'X): bool
 extern function ddlog_std::vec_to_set (s: ddlog_std::Vec<'A>): ddlog_std::Set<'A>
+extern function ddlog_std::vec_truncate (v: mut ddlog_std::Vec<'X>, len: ddlog_std::usize): ()
 extern function ddlog_std::vec_update_nth (v: mut ddlog_std::Vec<'X>, idx: ddlog_std::usize, value: 'X): bool
 extern function ddlog_std::vec_with_capacity (len: ddlog_std::usize): ddlog_std::Vec<'A>
 extern function ddlog_std::vec_with_length (len: ddlog_std::usize, x: 'A): ddlog_std::Vec<'A>
@@ -829,7 +862,7 @@ function internment::to_lowercase (s: internment::istring): string
 }
 function internment::to_string (s: internment::istring): string
 {
-    (internment::ival(s): string)
+    (internment::ival: function(internment::Intern<string>):string)(s)
 }
 function internment::to_uppercase (s: internment::istring): string
 {
@@ -847,14 +880,14 @@ function json::get_by_ptr (jval: json::JsonValue, ptr: json::JsonPtr): ddlog_std
 }
 function json::get_by_ptr_ (jval: json::JsonValue, ptr: json::JsonPtr, idx: ddlog_std::usize): ddlog_std::Option<json::JsonValue>
 {
-    match ((ddlog_std::nth(ptr, idx): ddlog_std::Option<json::JsonPtrItem>)) {
+    match ((ddlog_std::nth: function(ddlog_std::Vec<json::JsonPtrItem>, bit<64>):ddlog_std::Option<json::JsonPtrItem>)(ptr, idx)) {
         (ddlog_std::None{}: ddlog_std::Option<json::JsonPtrItem>) -> (ddlog_std::Some{.x=jval}: ddlog_std::Option<json::JsonValue>),
         (ddlog_std::Some{.x=(json::JKeyPtr{.key=(var key: internment::Intern<string>)}: json::JsonPtrItem)}: ddlog_std::Option<json::JsonPtrItem>) -> json::get_by_ptr_(match (json::jval_get(jval, key)) {
                                                                                                                                                                             (ddlog_std::None{}: ddlog_std::Option<json::JsonValue>) -> ((return (ddlog_std::None{}: ddlog_std::Option<json::JsonValue>)): json::JsonValue),
                                                                                                                                                                             (ddlog_std::Some{.x=(var __x: json::JsonValue)}: ddlog_std::Option<json::JsonValue>) -> __x
                                                                                                                                                                         }, ptr, (idx + 64'd1)),
         (ddlog_std::Some{.x=(json::JIdxPtr{.idx=(var n: bit<64>)}: json::JsonPtrItem)}: ddlog_std::Option<json::JsonPtrItem>) -> match (jval) {
-                                                                                                                                     (json::JsonArray{.a=(var vals: ddlog_std::Vec<json::JsonValue>)}: json::JsonValue) -> json::get_by_ptr_(match ((ddlog_std::nth(vals, n): ddlog_std::Option<json::JsonValue>)) {
+                                                                                                                                     (json::JsonArray{.a=(var vals: ddlog_std::Vec<json::JsonValue>)}: json::JsonValue) -> json::get_by_ptr_(match ((ddlog_std::nth: function(ddlog_std::Vec<json::JsonValue>, bit<64>):ddlog_std::Option<json::JsonValue>)(vals, n)) {
                                                                                                                                                                                                                                                  (ddlog_std::None{}: ddlog_std::Option<json::JsonValue>) -> ((return (ddlog_std::None{}: ddlog_std::Option<json::JsonValue>)): json::JsonValue),
                                                                                                                                                                                                                                                  (ddlog_std::Some{.x=(var __x: json::JsonValue)}: ddlog_std::Option<json::JsonValue>) -> __x
                                                                                                                                                                                                                                              }, ptr, (idx + 64'd1)),
@@ -935,14 +968,14 @@ function json::jval_as_string_or (v: json::JsonValue, def: internment::istring):
 function json::jval_get (v: json::JsonValue, attr: internment::istring): ddlog_std::Option<json::JsonValue>
 {
     match (v) {
-        (json::JsonObject{.o=(var o: ddlog_std::Map<internment::istring,json::JsonValue>)}: json::JsonValue) -> (ddlog_std::map_get(o, attr): ddlog_std::Option<json::JsonValue>),
+        (json::JsonObject{.o=(var o: ddlog_std::Map<internment::istring,json::JsonValue>)}: json::JsonValue) -> (ddlog_std::map_get: function(ddlog_std::Map<internment::istring,json::JsonValue>, internment::Intern<string>):ddlog_std::Option<json::JsonValue>)(o, attr),
         (_: json::JsonValue) -> (ddlog_std::None{}: ddlog_std::Option<json::JsonValue>)
     }
 }
 function json::jval_get_or (v: json::JsonValue, attr: internment::istring, def: json::JsonValue): json::JsonValue
 {
     match (v) {
-        (json::JsonObject{.o=(var o: ddlog_std::Map<internment::istring,json::JsonValue>)}: json::JsonValue) -> (ddlog_std::unwrap_or((ddlog_std::map_get(o, attr): ddlog_std::Option<json::JsonValue>), def): json::JsonValue),
+        (json::JsonObject{.o=(var o: ddlog_std::Map<internment::istring,json::JsonValue>)}: json::JsonValue) -> (ddlog_std::unwrap_or: function(ddlog_std::Option<json::JsonValue>, json::JsonValue):json::JsonValue)((ddlog_std::map_get: function(ddlog_std::Map<internment::istring,json::JsonValue>, internment::Intern<string>):ddlog_std::Option<json::JsonValue>)(o, attr), def),
         (_: json::JsonValue) -> def
     }
 }
@@ -952,32 +985,32 @@ function json::set_by_ptr (jval: mut json::JsonValue, ptr: json::JsonPtr, v: jso
 }
 function json::set_by_ptr_ (jval: mut json::JsonValue, ptr: json::JsonPtr, v: json::JsonValue, idx: ddlog_std::usize): ddlog_std::Result<(),string>
 {
-    match ((ddlog_std::nth(ptr, idx): ddlog_std::Option<json::JsonPtrItem>)) {
+    match ((ddlog_std::nth: function(ddlog_std::Vec<json::JsonPtrItem>, bit<64>):ddlog_std::Option<json::JsonPtrItem>)(ptr, idx)) {
         (ddlog_std::None{}: ddlog_std::Option<json::JsonPtrItem>) -> {jval = v;
                                                                       (ddlog_std::Ok{.res=()}: ddlog_std::Result<(),string>)},
         (ddlog_std::Some{.x=(json::JKeyPtr{.key=(var key: internment::Intern<string>)}: json::JsonPtrItem)}: ddlog_std::Option<json::JsonPtrItem>) -> {if (jval == (json::JsonNull{}: json::JsonValue)) {
-                                                                                                                                                           jval = (json::JsonObject{.o=(ddlog_std::map_empty(): ddlog_std::Map<internment::istring,json::JsonValue>)}: json::JsonValue)
+                                                                                                                                                           jval = (json::JsonObject{.o=(ddlog_std::map_empty: function():ddlog_std::Map<internment::istring,json::JsonValue>)()}: json::JsonValue)
                                                                                                                                                        } else {
                                                                                                                                                              ()
                                                                                                                                                          };
                                                                                                                                                        match (jval) {
-                                                                                                                                                           (json::JsonObject{.o=(var m: ddlog_std::Map<internment::istring,json::JsonValue>)}: json::JsonValue) -> {(var old: json::JsonValue) = (ddlog_std::unwrap_or((ddlog_std::remove(m, key): ddlog_std::Option<json::JsonValue>), (json::JsonNull{}: json::JsonValue)): json::JsonValue);
+                                                                                                                                                           (json::JsonObject{.o=(var m: ddlog_std::Map<internment::istring,json::JsonValue>)}: json::JsonValue) -> {(var old: json::JsonValue) = (ddlog_std::unwrap_or: function(ddlog_std::Option<json::JsonValue>, json::JsonValue):json::JsonValue)((ddlog_std::remove: function(mut ddlog_std::Map<internment::istring,json::JsonValue>, internment::Intern<string>):ddlog_std::Option<json::JsonValue>)(m, key), (json::JsonNull{}: json::JsonValue));
                                                                                                                                                                                                                                                                     {json::set_by_ptr_(old, ptr, v, (idx + 64'd1));
-                                                                                                                                                                                                                                                                     {ddlog_std::insert(m, key, old);
+                                                                                                                                                                                                                                                                     {(ddlog_std::insert: function(mut ddlog_std::Map<internment::istring,json::JsonValue>, internment::Intern<string>, json::JsonValue):())(m, key, old);
                                                                                                                                                                                                                                                                       (ddlog_std::Ok{.res=()}: ddlog_std::Result<(),string>)}}},
                                                                                                                                                            (_: json::JsonValue) -> (ddlog_std::Err{.err="Not a JSON map"}: ddlog_std::Result<(),string>)
                                                                                                                                                        }},
         (ddlog_std::Some{.x=(json::JIdxPtr{.idx=(var n: bit<64>)}: json::JsonPtrItem)}: ddlog_std::Option<json::JsonPtrItem>) -> {if (jval == (json::JsonNull{}: json::JsonValue)) {
-                                                                                                                                      jval = (json::JsonArray{.a=(ddlog_std::vec_empty(): ddlog_std::Vec<json::JsonValue>)}: json::JsonValue)
+                                                                                                                                      jval = (json::JsonArray{.a=(ddlog_std::vec_empty: function():ddlog_std::Vec<json::JsonValue>)()}: json::JsonValue)
                                                                                                                                   } else {
                                                                                                                                         ()
                                                                                                                                     };
                                                                                                                                   match (jval) {
-                                                                                                                                      (json::JsonArray{.a=(var xs: ddlog_std::Vec<json::JsonValue>)}: json::JsonValue) -> {ddlog_std::resize(xs, (ddlog_std::max((n + 64'd1), ddlog_std::len(xs)): bit<64>), (json::JsonNull{}: json::JsonValue));
+                                                                                                                                      (json::JsonArray{.a=(var xs: ddlog_std::Vec<json::JsonValue>)}: json::JsonValue) -> {(ddlog_std::resize: function(mut ddlog_std::Vec<json::JsonValue>, bit<64>, json::JsonValue):())(xs, (ddlog_std::max: function(bit<64>, bit<64>):bit<64>)((n + 64'd1), (ddlog_std::len: function(ddlog_std::Vec<json::JsonValue>):bit<64>)(xs)), (json::JsonNull{}: json::JsonValue));
                                                                                                                                                                                                                            {(var old: json::JsonValue) = (json::JsonNull{}: json::JsonValue);
-                                                                                                                                                                                                                            {ddlog_std::swap_nth(xs, n, old);
+                                                                                                                                                                                                                            {(ddlog_std::swap_nth: function(mut ddlog_std::Vec<json::JsonValue>, bit<64>, mut json::JsonValue):bool)(xs, n, old);
                                                                                                                                                                                                                              {json::set_by_ptr_(old, ptr, v, (idx + 64'd1));
-                                                                                                                                                                                                                              {ddlog_std::swap_nth(xs, n, old);
+                                                                                                                                                                                                                              {(ddlog_std::swap_nth: function(mut ddlog_std::Vec<json::JsonValue>, bit<64>, mut json::JsonValue):bool)(xs, n, old);
                                                                                                                                                                                                                                (ddlog_std::Ok{.res=()}: ddlog_std::Result<(),string>)}}}}},
                                                                                                                                       (_: json::JsonValue) -> (ddlog_std::Err{.err="Not a JSON array"}: ddlog_std::Result<(),string>)
                                                                                                                                   }}
@@ -1007,6 +1040,30 @@ function myfunc (x: string): string
 {
     x
 }
+function poly (x: string): ()
+{
+    ()
+}
+function poly (x: ddlog_std::u64): ()
+{
+    ()
+}
+function poly (x: ddlog_std::u64, y: ddlog_std::u32): ()
+{
+    ()
+}
+function poly (x: ddlog_std::u64, y: string): ()
+{
+    ()
+}
+function poly (x: ddlog_std::u64, y: string): string
+{
+    "foo"
+}
+function poly_test (): ((), string)
+{
+    ((poly: function(bit<64>, string):())(64'd0, "bar"), (poly: function(bit<64>, string):string)(64'd0, "foo"))
+}
 function shadow (v: string): ()
 {
     {(var a: Alt) = (C0{.x=32'd1}: Alt);
@@ -1026,7 +1083,7 @@ function ti_f (value: ddlog_std::Option<string>): ddlog_std::Option<(string, str
                                               (ddlog_std::Some{.x=(var s: string)}: ddlog_std::Option<string>) -> ddlog_std::string_split(s, ":"),
                                               (ddlog_std::None{}: ddlog_std::Option<string>) -> ((return (ddlog_std::None{}: ddlog_std::Option<(string, string)>)): ddlog_std::Vec<string>)
                                           };
-     match (((ddlog_std::vec_nth(strs, 64'd0): ddlog_std::Option<string>), (ddlog_std::vec_nth(strs, 64'd1): ddlog_std::Option<string>))) {
+     match (((ddlog_std::vec_nth: function(ddlog_std::Vec<string>, bit<64>):ddlog_std::Option<string>)(strs, 64'd0), (ddlog_std::vec_nth: function(ddlog_std::Vec<string>, bit<64>):ddlog_std::Option<string>)(strs, 64'd1))) {
          ((ddlog_std::Some{.x=(var port_name: string)}: ddlog_std::Option<string>), (ddlog_std::Some{.x=(var src_ip: string)}: ddlog_std::Option<string>)) -> (ddlog_std::Some{.x=(port_name, src_ip)}: ddlog_std::Option<(string, string)>),
          (_: (ddlog_std::Option<string>, ddlog_std::Option<string>)) -> (ddlog_std::None{}: ddlog_std::Option<(string, string)>)
      }}
@@ -1034,11 +1091,11 @@ function ti_f (value: ddlog_std::Option<string>): ddlog_std::Option<(string, str
 function try1 (name: string): ddlog_std::Option<(string, string)>
 {
     {(var components: ddlog_std::Vec<string>) = ddlog_std::split(name, " ");
-     {(var first_name: string) = match ((ddlog_std::nth(components, 64'd0): ddlog_std::Option<string>)) {
+     {(var first_name: string) = match ((ddlog_std::nth: function(ddlog_std::Vec<string>, bit<64>):ddlog_std::Option<string>)(components, 64'd0)) {
                                      (ddlog_std::None{}: ddlog_std::Option<string>) -> ((return (ddlog_std::None{}: ddlog_std::Option<(string, string)>)): string),
                                      (ddlog_std::Some{.x=(var __x: string)}: ddlog_std::Option<string>) -> __x
                                  };
-      {(var last_name: string) = match ((ddlog_std::nth(components, 64'd1): ddlog_std::Option<string>)) {
+      {(var last_name: string) = match ((ddlog_std::nth: function(ddlog_std::Vec<string>, bit<64>):ddlog_std::Option<string>)(components, 64'd1)) {
                                      (ddlog_std::None{}: ddlog_std::Option<string>) -> ((return (ddlog_std::None{}: ddlog_std::Option<(string, string)>)): string),
                                      (ddlog_std::Some{.x=(var __x: string)}: ddlog_std::Option<string>) -> __x
                                  };
@@ -1047,14 +1104,14 @@ function try1 (name: string): ddlog_std::Option<(string, string)>
 function try2 (name: string): ddlog_std::Result<(string, string),string>
 {
     {(var components: ddlog_std::Vec<string>) = ddlog_std::split(name, " ");
-     {(var first_name: string) = match (match ((ddlog_std::nth(components, 64'd0): ddlog_std::Option<string>)) {
+     {(var first_name: string) = match (match ((ddlog_std::nth: function(ddlog_std::Vec<string>, bit<64>):ddlog_std::Option<string>)(components, 64'd0)) {
                                             (ddlog_std::None{}: ddlog_std::Option<string>) -> (ddlog_std::Err{.err="No first name"}: ddlog_std::Result<string,string>),
                                             (ddlog_std::Some{.x=(var n: string)}: ddlog_std::Option<string>) -> (ddlog_std::Ok{.res=n}: ddlog_std::Result<string,string>)
                                         }) {
                                      (ddlog_std::Err{.err=(var __e: string)}: ddlog_std::Result<string,string>) -> ((return (ddlog_std::Err{.err=__e}: ddlog_std::Result<(string, string),string>)): string),
                                      (ddlog_std::Ok{.res=(var __x: string)}: ddlog_std::Result<string,string>) -> __x
                                  };
-      {(var last_name: string) = match (match ((ddlog_std::nth(components, 64'd1): ddlog_std::Option<string>)) {
+      {(var last_name: string) = match (match ((ddlog_std::nth: function(ddlog_std::Vec<string>, bit<64>):ddlog_std::Option<string>)(components, 64'd1)) {
                                             (ddlog_std::None{}: ddlog_std::Option<string>) -> (ddlog_std::Err{.err="No last name"}: ddlog_std::Result<string,string>),
                                             (ddlog_std::Some{.x=(var n: string)}: ddlog_std::Option<string>) -> (ddlog_std::Ok{.res=n}: ddlog_std::Result<string,string>)
                                         }) {
@@ -1066,14 +1123,14 @@ function try2 (name: string): ddlog_std::Result<(string, string),string>
 function try3 (name: string): Opt<(string, string)>
 {
     {(var components: ddlog_std::Vec<string>) = ddlog_std::split(name, " ");
-     {(var first_name: string) = match (match ((ddlog_std::nth(components, 64'd0): ddlog_std::Option<string>)) {
+     {(var first_name: string) = match (match ((ddlog_std::nth: function(ddlog_std::Vec<string>, bit<64>):ddlog_std::Option<string>)(components, 64'd0)) {
                                             (ddlog_std::None{}: ddlog_std::Option<string>) -> (ddlog_std::Err{.err="No first name"}: ddlog_std::Result<string,string>),
                                             (ddlog_std::Some{.x=(var n: string)}: ddlog_std::Option<string>) -> (ddlog_std::Ok{.res=n}: ddlog_std::Result<string,string>)
                                         }) {
                                      (ddlog_std::Err{.err=(_: string)}: ddlog_std::Result<string,string>) -> ((return (ddlog_std::None{}: Opt<(string, string)>)): string),
                                      (ddlog_std::Ok{.res=(var __x: string)}: ddlog_std::Result<string,string>) -> __x
                                  };
-      {(var last_name: string) = match (match ((ddlog_std::nth(components, 64'd1): ddlog_std::Option<string>)) {
+      {(var last_name: string) = match (match ((ddlog_std::nth: function(ddlog_std::Vec<string>, bit<64>):ddlog_std::Option<string>)(components, 64'd1)) {
                                             (ddlog_std::None{}: ddlog_std::Option<string>) -> (ddlog_std::Err{.err="No last name"}: ddlog_std::Result<string,string>),
                                             (ddlog_std::Some{.x=(var n: string)}: ddlog_std::Option<string>) -> (ddlog_std::Ok{.res=n}: ddlog_std::Result<string,string>)
                                         }) {
@@ -1084,8 +1141,8 @@ function try3 (name: string): Opt<(string, string)>
 }
 function weird_zero (x: 'A): ddlog_std::usize
 {
-    {(var empty_vec: ddlog_std::Vec<'A>) = (ddlog_std::vec_empty(): ddlog_std::Vec<'A>);
-     ddlog_std::vec_len(empty_vec)}
+    {(var empty_vec: ddlog_std::Vec<'A>) = (ddlog_std::vec_empty: function():ddlog_std::Vec<'A>)();
+     (ddlog_std::vec_len: function(ddlog_std::Vec<'A>):bit<64>)(empty_vec)}
 }
 function write_to_struct_field (): ModifyMe
 {
@@ -1103,9 +1160,10 @@ function write_to_tuple_field (): (string, ddlog_std::u64)
 }
 function zero_test (): ddlog_std::usize
 {
-    weird_zero(32'd0)
+    (weird_zero: function(bit<32>):bit<64>)(32'd0)
 }
 output relation Ack [Ack]
+output relation ApplyTransform [ApplyTransform]
 input relation Arrng1 [Arrng1]
 output relation Arrng1Arrng2 [Arrng1Arrng2]
 output relation Arrng1Arrng2_2 [Arrng1Arrng2_2]
@@ -1156,31 +1214,31 @@ TArrng1Arrng2[(TArrng1Arrng2{.x=x.f2.f2}: TArrng1Arrng2)] :- TArrng1[(__tarrng10
 RFtoIDummy[(RFtoIDummy{.x=32'sd0}: RFtoIDummy)].
 RFloatToInt[(RFloatToInt{._x=_x}: RFloatToInt)] :- RFtoIDummy[(__rftoidummy0@ (RFtoIDummy{.x=32'sd0}: RFtoIDummy))], (var _x: signed<32>) = ftoi_((- (64'f333.36: double))), Inspect debug::debug_event((32'd4, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __rftoidummy0, (RFloatToInt{._x=_x}: RFloatToInt)).
 SomeInts[(SomeInts{.x=y}: SomeInts)] :- Ints[(__ints0@ (Ints{.x=(x: bigint)}: Ints))], (var y: ddlog_std::Option<bigint>) = (ddlog_std::Some{.x=x}: ddlog_std::Option<bigint>), Inspect debug::debug_event((32'd5, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __ints0, y), SomeInts[(__someints2@ (SomeInts{.x=(y: ddlog_std::Option<bigint>)}: SomeInts))], Inspect debug::debug_event_join((32'd5, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, y, __someints2, (SomeInts{.x=y}: SomeInts)).
-FuncTest[(ddlog_std::ref_new((FuncTest{.x="foo"}: FuncTest)): ddlog_std::Ref<FuncTest>)].
-SumsOfDoubles[(SumsOfDoubles{.x=x, .y=y, .sum=z}: SumsOfDoubles)] :- Doubles[(__doubles0@ (Doubles{.xs=(xs: ddlog_std::Vec<double>)}: Doubles))], var x = FlatMap(xs), Inspect debug::debug_event((32'd7, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Flatmap", __doubles0, x), Doubles[(__doubles2@ (Doubles{.xs=(ys: ddlog_std::Vec<double>)}: Doubles))], Inspect debug::debug_event_join((32'd7, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, x, __doubles2, (x, ys)), var y = FlatMap(ys), Inspect debug::debug_event((32'd7, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Flatmap", (x, ys), (y, x)), (var z: double) = (x + y), Inspect debug::debug_event((32'd7, 32'd4, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (y, x), (y, x, z)), Inspect inspect_log::log("../simple2.log", (((((((((("" ++ (ddlog_std::__builtin_2string(ddlog_timestamp): string)) ++ ": ") ++ if (ddlog_weight > 64'sd0) {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   "insert"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               } else {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     "delete"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 }) ++ ": (") ++ (ddlog_std::__builtin_2string(x): string)) ++ ", ") ++ (ddlog_std::__builtin_2string(y): string)) ++ ", ") ++ (ddlog_std::__builtin_2string(z): string)) ++ ")")), Inspect debug::debug_event((32'd7, 32'd5, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", (y, x, z), (SumsOfDoubles{.x=x, .y=y, .sum=z}: SumsOfDoubles)).
+FuncTest[(ddlog_std::ref_new: function(FuncTest):ddlog_std::Ref<FuncTest>)((FuncTest{.x="foo"}: FuncTest))].
+SumsOfDoubles[(SumsOfDoubles{.x=x, .y=y, .sum=z}: SumsOfDoubles)] :- Doubles[(__doubles0@ (Doubles{.xs=(xs: ddlog_std::Vec<double>)}: Doubles))], var x = FlatMap(xs), Inspect debug::debug_event((32'd7, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Flatmap", __doubles0, x), Doubles[(__doubles2@ (Doubles{.xs=(ys: ddlog_std::Vec<double>)}: Doubles))], Inspect debug::debug_event_join((32'd7, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, x, __doubles2, (x, ys)), var y = FlatMap(ys), Inspect debug::debug_event((32'd7, 32'd3, 32'd0), ddlog_weight, ddlog_timestamp, "Flatmap", (x, ys), (y, x)), (var z: double) = (x + y), Inspect debug::debug_event((32'd7, 32'd4, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (y, x), (y, x, z)), Inspect inspect_log::log("../simple2.log", (((((((((("" ++ (ddlog_std::__builtin_2string: function(bit<64>):string)(ddlog_timestamp)) ++ ": ") ++ if (ddlog_weight > 64'sd0) {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     "insert"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 } else {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       "delete"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   }) ++ ": (") ++ (ddlog_std::__builtin_2string: function(double):string)(x)) ++ ", ") ++ (ddlog_std::__builtin_2string: function(double):string)(y)) ++ ", ") ++ (ddlog_std::__builtin_2string: function(double):string)(z)) ++ ")")), Inspect debug::debug_event((32'd7, 32'd5, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", (y, x, z), (SumsOfDoubles{.x=x, .y=y, .sum=z}: SumsOfDoubles)).
 InspectSimpleSum[(InspectSimpleSum{.x=x, .total=total}: InspectSimpleSum)] :- InputTuples[(__inputtuples0@ (InputTuples{.x=(x: bit<32>), .y=(y: bit<32>)}: InputTuples))], var __inputs_total = Aggregate(x, ddlog_std::__debug_8_1_group_sum((__inputtuples0, y))), Inspect debug::debug_event((32'd8, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Aggregate", __inputs_total.0, (__inputs_total, x)), (var total: bit<32>) = __inputs_total.1, Inspect debug::debug_event((32'd8, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", (__inputs_total, x), (x, total)), Inspect {(var z: bit<64>) = (64'd1 + 64'd2);
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              {(var w: signed<64>) = ddlog_weight;
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               {(var t: bit<64>) = ddlog_timestamp;
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               inspect_log::log("../simple2.log", ((((((("" ++ (ddlog_std::__builtin_2string(t): string)) ++ ": ") ++ if (w > 64'sd0) {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          "insert"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      } else {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            "delete"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        }) ++ ": x=") ++ (ddlog_std::__builtin_2string(x): string)) ++ ", total=") ++ (ddlog_std::__builtin_2string(total): string)))}}}, Inspect debug::debug_event((32'd8, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", (x, total), (InspectSimpleSum{.x=x, .total=total}: InspectSimpleSum)).
-FilteredRelation[(FilteredRelation{.y=y}: FilteredRelation)] :- TestRelation[(__testrelation0@ (TestRelation{.x=32'd6, .y=(y: bit<32>)}: TestRelation))], Inspect inspect_log::log("../simple2.log", ((((("" ++ (ddlog_std::__builtin_2string(ddlog_timestamp): string)) ++ ": ") ++ if (ddlog_weight > 64'sd0) {
-                                                                                                                                                                                                                                                                                         "insert"
-                                                                                                                                                                                                                                                                                     } else {
-                                                                                                                                                                                                                                                                                           "delete"
-                                                                                                                                                                                                                                                                                       }) ++ ": y=") ++ (ddlog_std::__builtin_2string(y): string))), Inspect debug::debug_event((32'd9, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", __testrelation0, (FilteredRelation{.y=y}: FilteredRelation)).
-OutputInspectNot[(OutputInspectNot{.x=x, .y=y}: OutputInspectNot)] :- InputInspectNot1[(__inputinspectnot10@ (InputInspectNot1{.x=(x: bit<32>), .y=(y: bit<32>)}: InputInspectNot1))], not InputInspectNot2[(InputInspectNot2{.x=(x: bit<32>)}: InputInspectNot2)], Inspect debug::debug_event((32'd10, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Antijoin", __inputinspectnot10, (x, y)), Inspect inspect_log::log("../simple2.log", ((((((("" ++ (ddlog_std::__builtin_2string(ddlog_timestamp): string)) ++ ": ") ++ if (ddlog_weight > 64'sd0) {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 "insert"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             } else {
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   "delete"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               }) ++ ": x=") ++ (ddlog_std::__builtin_2string(y): string)) ++ " y=") ++ (ddlog_std::__builtin_2string(y): string))), Inspect debug::debug_event((32'd10, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", (x, y), (OutputInspectNot{.x=x, .y=y}: OutputInspectNot)).
-TI_R[(TI_R{.a=a}: TI_R)] :- TI_R[(__ti_r0@ (TI_R{.a=(a: ddlog_std::Set<string>)}: TI_R))], (ddlog_std::set_size(a) > 64'd1), Inspect debug::debug_event((32'd11, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __ti_r0, (TI_R{.a=a}: TI_R)).
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               inspect_log::log("../simple2.log", ((((((("" ++ (ddlog_std::__builtin_2string: function(bit<64>):string)(t)) ++ ": ") ++ if (w > 64'sd0) {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            "insert"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        } else {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              "delete"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          }) ++ ": x=") ++ (ddlog_std::__builtin_2string: function(bit<32>):string)(x)) ++ ", total=") ++ (ddlog_std::__builtin_2string: function(bit<32>):string)(total)))}}}, Inspect debug::debug_event((32'd8, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", (x, total), (InspectSimpleSum{.x=x, .total=total}: InspectSimpleSum)).
+FilteredRelation[(FilteredRelation{.y=y}: FilteredRelation)] :- TestRelation[(__testrelation0@ (TestRelation{.x=32'd6, .y=(y: bit<32>)}: TestRelation))], Inspect inspect_log::log("../simple2.log", ((((("" ++ (ddlog_std::__builtin_2string: function(bit<64>):string)(ddlog_timestamp)) ++ ": ") ++ if (ddlog_weight > 64'sd0) {
+                                                                                                                                                                                                                                                                                                           "insert"
+                                                                                                                                                                                                                                                                                                       } else {
+                                                                                                                                                                                                                                                                                                             "delete"
+                                                                                                                                                                                                                                                                                                         }) ++ ": y=") ++ (ddlog_std::__builtin_2string: function(bit<32>):string)(y))), Inspect debug::debug_event((32'd9, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", __testrelation0, (FilteredRelation{.y=y}: FilteredRelation)).
+OutputInspectNot[(OutputInspectNot{.x=x, .y=y}: OutputInspectNot)] :- InputInspectNot1[(__inputinspectnot10@ (InputInspectNot1{.x=(x: bit<32>), .y=(y: bit<32>)}: InputInspectNot1))], not InputInspectNot2[(InputInspectNot2{.x=(x: bit<32>)}: InputInspectNot2)], Inspect debug::debug_event((32'd10, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Antijoin", __inputinspectnot10, (x, y)), Inspect inspect_log::log("../simple2.log", ((((((("" ++ (ddlog_std::__builtin_2string: function(bit<64>):string)(ddlog_timestamp)) ++ ": ") ++ if (ddlog_weight > 64'sd0) {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   "insert"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               } else {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     "delete"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 }) ++ ": x=") ++ (ddlog_std::__builtin_2string: function(bit<32>):string)(y)) ++ " y=") ++ (ddlog_std::__builtin_2string: function(bit<32>):string)(y))), Inspect debug::debug_event((32'd10, 32'd2, 32'd0), ddlog_weight, ddlog_timestamp, "Inspect", (x, y), (OutputInspectNot{.x=x, .y=y}: OutputInspectNot)).
+TI_R[(TI_R{.a=a}: TI_R)] :- TI_R[(__ti_r0@ (TI_R{.a=(a: ddlog_std::Set<string>)}: TI_R))], ((ddlog_std::set_size: function(ddlog_std::Set<string>):bit<64>)(a) > 64'd1), Inspect debug::debug_event((32'd11, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __ti_r0, (TI_R{.a=a}: TI_R)).
 Nested[(Nested{.descr="1", .n={(var n: NestedStruct) = (NestedStruct{.x=(ddlog_std::Some{.x=(ModifyMe{.x="foo", .y=128'sd123456789}: ModifyMe)}: ddlog_std::Option<ModifyMe>)}: NestedStruct);
                                {mutable_match_field(n);
                                 n}}}: Nested)].
@@ -1191,9 +1249,9 @@ Nested[(Nested{.descr="3", .n={(var n: NestedStruct) = (NestedStruct{.x=(ddlog_s
                                {mutable_match_field(n);
                                 n}}}: Nested)].
 ChunkParseError[(ChunkParseError{.err=err}: ChunkParseError)] :- ParsedChunk[(__parsedchunk0@ (ParsedChunk{.data=(ddlog_std::Err{.err=(err: string)}: ddlog_std::Result<Object,string>)}: ParsedChunk))], Inspect debug::debug_event((32'd15, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __parsedchunk0, (ChunkParseError{.err=err}: ChunkParseError)).
-ParsedChunk[(ParsedChunk{.data=(json::from_json_string(json): ddlog_std::Result<Object,string>)}: ParsedChunk)] :- Chunk[(__chunk0@ (Chunk{.json=(json: string)}: Chunk))], Inspect debug::debug_event((32'd16, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __chunk0, (ParsedChunk{.data=(json::from_json_string(json): ddlog_std::Result<Object,string>)}: ParsedChunk)).
+ParsedChunk[(ParsedChunk{.data=(json::from_json_string: function(string):ddlog_std::Result<Object,string>)(json)}: ParsedChunk)] :- Chunk[(__chunk0@ (Chunk{.json=(json: string)}: Chunk))], Inspect debug::debug_event((32'd16, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __chunk0, (ParsedChunk{.data=(json::from_json_string: function(string):ddlog_std::Result<Object,string>)(json)}: ParsedChunk)).
 Objects[(Objects{.chunk=objs}: Objects)] :- ParsedChunk[(__parsedchunk0@ (ParsedChunk{.data=(ddlog_std::Ok{.res=(objs: Object)}: ddlog_std::Result<Object,string>)}: ParsedChunk))], Inspect debug::debug_event((32'd17, 32'd0, 32'd0), ddlog_weight, ddlog_timestamp, "Map", __parsedchunk0, (Objects{.chunk=objs}: Objects)).
-CompressedChunk[(CompressedChunk{.json=json}: CompressedChunk)] :- Objects[(__objects0@ (Objects{.chunk=(objs: Object)}: Objects))], (ddlog_std::Ok{.res=(var json: string)}: ddlog_std::Result<string,string>) = json::to_json_string(objs), Inspect debug::debug_event((32'd18, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __objects0, (CompressedChunk{.json=json}: CompressedChunk)).
+CompressedChunk[(CompressedChunk{.json=json}: CompressedChunk)] :- Objects[(__objects0@ (Objects{.chunk=(objs: Object)}: Objects))], (ddlog_std::Ok{.res=(var json: string)}: ddlog_std::Result<string,string>) = (json::to_json_string: function(Object):ddlog_std::Result<string,string>)(objs), Inspect debug::debug_event((32'd18, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __objects0, (CompressedChunk{.json=json}: CompressedChunk)).
 Fib[(Fib{.x=64'd0, .f=fib(64'd0)}: Fib)].
 Fib[(Fib{.x=64'd1, .f=fib(64'd1)}: Fib)].
 Fib[(Fib{.x=64'd2, .f=fib(64'd2)}: Fib)].
@@ -1202,8 +1260,8 @@ Fib[(Fib{.x=64'd4, .f=fib(64'd4)}: Fib)].
 Fib[(Fib{.x=64'd10, .f=fib(64'd10)}: Fib)].
 Fib[(Fib{.x=64'd20, .f=fib(64'd20)}: Fib)].
 Ack[(Ack{.m=64'd2, .n=64'd1, .a=ack(64'd2, 64'd1)}: Ack)].
-Strings[(Strings{.descr="x={10:bit<12>}, y={10:float}, z={-4:signed<125>}", .str=((((("x=" ++ (ddlog_std::__builtin_2string((12'd10: bit<12>)): string)) ++ ", y=") ++ (ddlog_std::__builtin_2string((32'f10.0: float)): string)) ++ ", z=") ++ (ddlog_std::__builtin_2string((- (128'sd4: signed<128>))): string))}: Strings)].
-Rseq[(Rseq{._s=(TSeq1{.x=(_l, (ddlog_std::ref_new(_s): ddlog_std::Ref<TSeq>))}: TSeq)}: Rseq)] :- Rletter[(__rletter0@ (Rletter{._l=(_l: string)}: Rletter))], Rseqs[(__rseqs1@ (Rseqs{._s=(_s: TSeq)}: Rseqs))], Inspect debug::debug_event_join((32'd28, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __rletter0, __rseqs1, (Rseq{._s=(TSeq1{.x=(_l, (ddlog_std::ref_new(_s): ddlog_std::Ref<TSeq>))}: TSeq)}: Rseq)).
+Strings[(Strings{.descr="x={10:bit<12>}, y={10:float}, z={-4:signed<125>}", .str=((((("x=" ++ (ddlog_std::__builtin_2string: function(bit<12>):string)((12'd10: bit<12>))) ++ ", y=") ++ (ddlog_std::__builtin_2string: function(float):string)((32'f10.0: float))) ++ ", z=") ++ (ddlog_std::__builtin_2string: function(signed<128>):string)((- (128'sd4: signed<128>))))}: Strings)].
+Rseq[(Rseq{._s=(TSeq1{.x=(_l, (ddlog_std::ref_new: function(TSeq):ddlog_std::Ref<TSeq>)(_s))}: TSeq)}: Rseq)] :- Rletter[(__rletter0@ (Rletter{._l=(_l: string)}: Rletter))], Rseqs[(__rseqs1@ (Rseqs{._s=(_s: TSeq)}: Rseqs))], Inspect debug::debug_event_join((32'd28, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, __rletter0, __rseqs1, (Rseq{._s=(TSeq1{.x=(_l, (ddlog_std::ref_new: function(TSeq):ddlog_std::Ref<TSeq>)(_s))}: TSeq)}: Rseq)).
 Try1[(Try1{.description="Isaac Newton", .result=try1("Isaac Newton")}: Try1)].
 Try1[(Try1{.description="", .result=try1("")}: Try1)].
 Try1[(Try1{.description="Albert_Einstein", .result=try1("Albert_Einstein")}: Try1)].
@@ -1213,70 +1271,77 @@ Try2[(Try2{.description="Albert_Einstein", .result=try2("Albert_Einstein")}: Try
 Try3[(Try3{.description="Isaac Newton", .result=try3("Isaac Newton")}: Try3)].
 Try3[(Try3{.description="", .result=try3("")}: Try3)].
 Try3[(Try3{.description="Albert_Einstein", .result=try3("Albert_Einstein")}: Try3)].
-BoolVectors[(BoolVectors{.v={(var __vec: ddlog_std::Vec<bool>) = (ddlog_std::vec_with_capacity(64'd3): ddlog_std::Vec<bool>);
-                             {ddlog_std::push(__vec, true);
-                              {ddlog_std::push(__vec, false);
-                               {ddlog_std::push(__vec, true);
+BoolVectors[(BoolVectors{.v={(var __vec: ddlog_std::Vec<bool>) = (ddlog_std::vec_with_capacity: function(bit<64>):ddlog_std::Vec<bool>)(64'd3);
+                             {(ddlog_std::push: function(mut ddlog_std::Vec<bool>, bool):())(__vec, true);
+                              {(ddlog_std::push: function(mut ddlog_std::Vec<bool>, bool):())(__vec, false);
+                               {(ddlog_std::push: function(mut ddlog_std::Vec<bool>, bool):())(__vec, true);
                                 __vec}}}}}: BoolVectors)].
-BoolVecVec[(BoolVecVec{.v={(var __vec: ddlog_std::Vec<ddlog_std::Vec<bool>>) = (ddlog_std::vec_with_capacity(64'd3): ddlog_std::Vec<ddlog_std::Vec<bool>>);
-                           {ddlog_std::push(__vec, {(var __vec: ddlog_std::Vec<bool>) = (ddlog_std::vec_with_capacity(64'd3): ddlog_std::Vec<bool>);
-                                                    {ddlog_std::push(__vec, true);
-                                                     {ddlog_std::push(__vec, false);
-                                                      {ddlog_std::push(__vec, true);
-                                                       __vec}}}});
-                            {ddlog_std::push(__vec, {(var __vec: ddlog_std::Vec<bool>) = (ddlog_std::vec_with_capacity(64'd1): ddlog_std::Vec<bool>);
-                                                     {ddlog_std::push(__vec, true);
-                                                      __vec}});
-                             {ddlog_std::push(__vec, {(var __vec: ddlog_std::Vec<bool>) = (ddlog_std::vec_with_capacity(64'd1): ddlog_std::Vec<bool>);
-                                                      {ddlog_std::push(__vec, false);
-                                                       __vec}});
+BoolVecVec[(BoolVecVec{.v={(var __vec: ddlog_std::Vec<ddlog_std::Vec<bool>>) = (ddlog_std::vec_with_capacity: function(bit<64>):ddlog_std::Vec<ddlog_std::Vec<bool>>)(64'd3);
+                           {(ddlog_std::push: function(mut ddlog_std::Vec<ddlog_std::Vec<bool>>, ddlog_std::Vec<bool>):())(__vec, {(var __vec: ddlog_std::Vec<bool>) = (ddlog_std::vec_with_capacity: function(bit<64>):ddlog_std::Vec<bool>)(64'd3);
+                                                                                                                                   {(ddlog_std::push: function(mut ddlog_std::Vec<bool>, bool):())(__vec, true);
+                                                                                                                                    {(ddlog_std::push: function(mut ddlog_std::Vec<bool>, bool):())(__vec, false);
+                                                                                                                                     {(ddlog_std::push: function(mut ddlog_std::Vec<bool>, bool):())(__vec, true);
+                                                                                                                                      __vec}}}});
+                            {(ddlog_std::push: function(mut ddlog_std::Vec<ddlog_std::Vec<bool>>, ddlog_std::Vec<bool>):())(__vec, {(var __vec: ddlog_std::Vec<bool>) = (ddlog_std::vec_with_capacity: function(bit<64>):ddlog_std::Vec<bool>)(64'd1);
+                                                                                                                                    {(ddlog_std::push: function(mut ddlog_std::Vec<bool>, bool):())(__vec, true);
+                                                                                                                                     __vec}});
+                             {(ddlog_std::push: function(mut ddlog_std::Vec<ddlog_std::Vec<bool>>, ddlog_std::Vec<bool>):())(__vec, {(var __vec: ddlog_std::Vec<bool>) = (ddlog_std::vec_with_capacity: function(bit<64>):ddlog_std::Vec<bool>)(64'd1);
+                                                                                                                                     {(ddlog_std::push: function(mut ddlog_std::Vec<bool>, bool):())(__vec, false);
+                                                                                                                                      __vec}});
                               __vec}}}}}: BoolVecVec)].
-StringMaps[(StringMaps{.m={(var __map: ddlog_std::Map<string,(ddlog_std::usize, bool)>) = (ddlog_std::map_empty(): ddlog_std::Map<string,(ddlog_std::usize, bool)>);
-                           {ddlog_std::insert(__map, "foo", (64'd1, true));
-                            {ddlog_std::insert(__map, "bar", (64'd2, false));
-                             {ddlog_std::insert(__map, "foobar", (64'd3, false));
+StringMaps[(StringMaps{.m={(var __map: ddlog_std::Map<string,(ddlog_std::usize, bool)>) = (ddlog_std::map_empty: function():ddlog_std::Map<string,(ddlog_std::usize, bool)>)();
+                           {(ddlog_std::insert: function(mut ddlog_std::Map<string,(ddlog_std::usize, bool)>, string, (bit<64>, bool)):())(__map, "foo", (64'd1, true));
+                            {(ddlog_std::insert: function(mut ddlog_std::Map<string,(ddlog_std::usize, bool)>, string, (bit<64>, bool)):())(__map, "bar", (64'd2, false));
+                             {(ddlog_std::insert: function(mut ddlog_std::Map<string,(ddlog_std::usize, bool)>, string, (bit<64>, bool)):())(__map, "foobar", (64'd3, false));
                               __map}}}}}: StringMaps)].
-MapOfMaps[(MapOfMaps{.m={(var __map: ddlog_std::Map<string,ddlog_std::Map<double,(ddlog_std::usize, bool)>>) = (ddlog_std::map_empty(): ddlog_std::Map<string,ddlog_std::Map<double,(ddlog_std::usize, bool)>>);
-                         {ddlog_std::insert(__map, "foo", {(var __map: ddlog_std::Map<double,(bit<64>, bool)>) = (ddlog_std::map_empty(): ddlog_std::Map<double,(bit<64>, bool)>);
-                                                           {ddlog_std::insert(__map, 64'f1.0, (64'd1, true));
-                                                            {ddlog_std::insert(__map, 64'f2.0, (64'd4, false));
-                                                             __map}}});
-                          {ddlog_std::insert(__map, "bar", {(var __map: ddlog_std::Map<double,(bit<64>, bool)>) = (ddlog_std::map_empty(): ddlog_std::Map<double,(bit<64>, bool)>);
-                                                            {ddlog_std::insert(__map, (- 64'f10.0), (64'd10000, true));
-                                                             {ddlog_std::insert(__map, 64'f200.0, (64'd2, false));
-                                                              __map}}});
-                           {ddlog_std::insert(__map, "foobar", (ddlog_std::map_empty(): ddlog_std::Map<double,(ddlog_std::usize, bool)>));
+MapOfMaps[(MapOfMaps{.m={(var __map: ddlog_std::Map<string,ddlog_std::Map<double,(ddlog_std::usize, bool)>>) = (ddlog_std::map_empty: function():ddlog_std::Map<string,ddlog_std::Map<double,(ddlog_std::usize, bool)>>)();
+                         {(ddlog_std::insert: function(mut ddlog_std::Map<string,ddlog_std::Map<double,(ddlog_std::usize, bool)>>, string, ddlog_std::Map<double,(bit<64>, bool)>):())(__map, "foo", {(var __map: ddlog_std::Map<double,(bit<64>, bool)>) = (ddlog_std::map_empty: function():ddlog_std::Map<double,(bit<64>, bool)>)();
+                                                                                                                                                                                                      {(ddlog_std::insert: function(mut ddlog_std::Map<double,(bit<64>, bool)>, double, (bit<64>, bool)):())(__map, 64'f1.0, (64'd1, true));
+                                                                                                                                                                                                       {(ddlog_std::insert: function(mut ddlog_std::Map<double,(bit<64>, bool)>, double, (bit<64>, bool)):())(__map, 64'f2.0, (64'd4, false));
+                                                                                                                                                                                                        __map}}});
+                          {(ddlog_std::insert: function(mut ddlog_std::Map<string,ddlog_std::Map<double,(ddlog_std::usize, bool)>>, string, ddlog_std::Map<double,(bit<64>, bool)>):())(__map, "bar", {(var __map: ddlog_std::Map<double,(bit<64>, bool)>) = (ddlog_std::map_empty: function():ddlog_std::Map<double,(bit<64>, bool)>)();
+                                                                                                                                                                                                       {(ddlog_std::insert: function(mut ddlog_std::Map<double,(bit<64>, bool)>, double, (bit<64>, bool)):())(__map, (- 64'f10.0), (64'd10000, true));
+                                                                                                                                                                                                        {(ddlog_std::insert: function(mut ddlog_std::Map<double,(bit<64>, bool)>, double, (bit<64>, bool)):())(__map, 64'f200.0, (64'd2, false));
+                                                                                                                                                                                                         __map}}});
+                           {(ddlog_std::insert: function(mut ddlog_std::Map<string,ddlog_std::Map<double,(ddlog_std::usize, bool)>>, string, ddlog_std::Map<double,(ddlog_std::usize, bool)>):())(__map, "foobar", (ddlog_std::map_empty: function():ddlog_std::Map<double,(ddlog_std::usize, bool)>)());
                             __map}}}}}: MapOfMaps)].
-MapOfVecs[(MapOfVecs{.m={(var __map: ddlog_std::Map<(ddlog_std::u32, bigint),ddlog_std::Vec<double>>) = (ddlog_std::map_empty(): ddlog_std::Map<(ddlog_std::u32, bigint),ddlog_std::Vec<double>>);
-                         {ddlog_std::insert(__map, (32'd100, 100), {(var __vec: ddlog_std::Vec<double>) = (ddlog_std::vec_with_capacity(64'd4): ddlog_std::Vec<double>);
-                                                                    {ddlog_std::push(__vec, 64'f0.1);
-                                                                     {ddlog_std::push(__vec, (- 64'f100.0));
-                                                                      {ddlog_std::push(__vec, 64'f0.0);
-                                                                       {ddlog_std::push(__vec, 64'f1000000.0);
-                                                                        __vec}}}}});
-                          {ddlog_std::insert(__map, (32'd100, (- 100)), (ddlog_std::vec_empty(): ddlog_std::Vec<double>));
-                           {ddlog_std::insert(__map, (32'd0, (- 0)), {(var __vec: ddlog_std::Vec<double>) = (ddlog_std::vec_with_capacity(64'd4): ddlog_std::Vec<double>);
-                                                                      {ddlog_std::push(__vec, 64'f0.1);
-                                                                       {ddlog_std::push(__vec, (- 64'f100.0));
-                                                                        {ddlog_std::push(__vec, 64'f0.0);
-                                                                         {ddlog_std::push(__vec, 64'f1000000.0);
-                                                                          __vec}}}}});
+MapOfVecs[(MapOfVecs{.m={(var __map: ddlog_std::Map<(ddlog_std::u32, bigint),ddlog_std::Vec<double>>) = (ddlog_std::map_empty: function():ddlog_std::Map<(ddlog_std::u32, bigint),ddlog_std::Vec<double>>)();
+                         {(ddlog_std::insert: function(mut ddlog_std::Map<(ddlog_std::u32, bigint),ddlog_std::Vec<double>>, (bit<32>, bigint), ddlog_std::Vec<double>):())(__map, (32'd100, 100), {(var __vec: ddlog_std::Vec<double>) = (ddlog_std::vec_with_capacity: function(bit<64>):ddlog_std::Vec<double>)(64'd4);
+                                                                                                                                                                                                   {(ddlog_std::push: function(mut ddlog_std::Vec<double>, double):())(__vec, 64'f0.1);
+                                                                                                                                                                                                    {(ddlog_std::push: function(mut ddlog_std::Vec<double>, double):())(__vec, (- 64'f100.0));
+                                                                                                                                                                                                     {(ddlog_std::push: function(mut ddlog_std::Vec<double>, double):())(__vec, 64'f0.0);
+                                                                                                                                                                                                      {(ddlog_std::push: function(mut ddlog_std::Vec<double>, double):())(__vec, 64'f1000000.0);
+                                                                                                                                                                                                       __vec}}}}});
+                          {(ddlog_std::insert: function(mut ddlog_std::Map<(ddlog_std::u32, bigint),ddlog_std::Vec<double>>, (bit<32>, bigint), ddlog_std::Vec<double>):())(__map, (32'd100, (- 100)), (ddlog_std::vec_empty: function():ddlog_std::Vec<double>)());
+                           {(ddlog_std::insert: function(mut ddlog_std::Map<(ddlog_std::u32, bigint),ddlog_std::Vec<double>>, (bit<32>, bigint), ddlog_std::Vec<double>):())(__map, (32'd0, (- 0)), {(var __vec: ddlog_std::Vec<double>) = (ddlog_std::vec_with_capacity: function(bit<64>):ddlog_std::Vec<double>)(64'd4);
+                                                                                                                                                                                                     {(ddlog_std::push: function(mut ddlog_std::Vec<double>, double):())(__vec, 64'f0.1);
+                                                                                                                                                                                                      {(ddlog_std::push: function(mut ddlog_std::Vec<double>, double):())(__vec, (- 64'f100.0));
+                                                                                                                                                                                                       {(ddlog_std::push: function(mut ddlog_std::Vec<double>, double):())(__vec, 64'f0.0);
+                                                                                                                                                                                                        {(ddlog_std::push: function(mut ddlog_std::Vec<double>, double):())(__vec, 64'f1000000.0);
+                                                                                                                                                                                                         __vec}}}}});
                             __map}}}}}: MapOfVecs)].
-VecOfMaps[(VecOfMaps{.m={(var __vec: ddlog_std::Vec<ddlog_std::Map<(ddlog_std::u32, bigint),double>>) = (ddlog_std::vec_with_capacity(64'd3): ddlog_std::Vec<ddlog_std::Map<(ddlog_std::u32, bigint),double>>);
-                         {ddlog_std::push(__vec, {(var __map: ddlog_std::Map<(bit<32>, bigint),double>) = (ddlog_std::map_empty(): ddlog_std::Map<(bit<32>, bigint),double>);
-                                                  {ddlog_std::insert(__map, (32'd100, 100), 64'f0.1);
-                                                   __map}});
-                          {ddlog_std::push(__vec, {(var __map: ddlog_std::Map<(bit<32>, bigint),double>) = (ddlog_std::map_empty(): ddlog_std::Map<(bit<32>, bigint),double>);
-                                                   {ddlog_std::insert(__map, (32'd100, 100), 64'f0.1);
-                                                    {ddlog_std::insert(__map, (32'd1000, (- 100)), (- 64'f0.1));
-                                                     __map}}});
-                           {ddlog_std::push(__vec, {(var __map: ddlog_std::Map<(bit<32>, bigint),double>) = (ddlog_std::map_empty(): ddlog_std::Map<(bit<32>, bigint),double>);
-                                                    {ddlog_std::insert(__map, (32'd100, 100), 64'f0.1);
-                                                     {ddlog_std::insert(__map, (32'd1000, (- 100)), (- 64'f0.1));
-                                                      {ddlog_std::insert(__map, (32'd1000, (- 10000000000000000000000000000000000000)), (- 64'f0.0));
-                                                       __map}}}});
+VecOfMaps[(VecOfMaps{.m={(var __vec: ddlog_std::Vec<ddlog_std::Map<(ddlog_std::u32, bigint),double>>) = (ddlog_std::vec_with_capacity: function(bit<64>):ddlog_std::Vec<ddlog_std::Map<(ddlog_std::u32, bigint),double>>)(64'd3);
+                         {(ddlog_std::push: function(mut ddlog_std::Vec<ddlog_std::Map<(ddlog_std::u32, bigint),double>>, ddlog_std::Map<(bit<32>, bigint),double>):())(__vec, {(var __map: ddlog_std::Map<(bit<32>, bigint),double>) = (ddlog_std::map_empty: function():ddlog_std::Map<(bit<32>, bigint),double>)();
+                                                                                                                                                                                {(ddlog_std::insert: function(mut ddlog_std::Map<(bit<32>, bigint),double>, (bit<32>, bigint), double):())(__map, (32'd100, 100), 64'f0.1);
+                                                                                                                                                                                 __map}});
+                          {(ddlog_std::push: function(mut ddlog_std::Vec<ddlog_std::Map<(ddlog_std::u32, bigint),double>>, ddlog_std::Map<(bit<32>, bigint),double>):())(__vec, {(var __map: ddlog_std::Map<(bit<32>, bigint),double>) = (ddlog_std::map_empty: function():ddlog_std::Map<(bit<32>, bigint),double>)();
+                                                                                                                                                                                 {(ddlog_std::insert: function(mut ddlog_std::Map<(bit<32>, bigint),double>, (bit<32>, bigint), double):())(__map, (32'd100, 100), 64'f0.1);
+                                                                                                                                                                                  {(ddlog_std::insert: function(mut ddlog_std::Map<(bit<32>, bigint),double>, (bit<32>, bigint), double):())(__map, (32'd1000, (- 100)), (- 64'f0.1));
+                                                                                                                                                                                   __map}}});
+                           {(ddlog_std::push: function(mut ddlog_std::Vec<ddlog_std::Map<(ddlog_std::u32, bigint),double>>, ddlog_std::Map<(bit<32>, bigint),double>):())(__vec, {(var __map: ddlog_std::Map<(bit<32>, bigint),double>) = (ddlog_std::map_empty: function():ddlog_std::Map<(bit<32>, bigint),double>)();
+                                                                                                                                                                                  {(ddlog_std::insert: function(mut ddlog_std::Map<(bit<32>, bigint),double>, (bit<32>, bigint), double):())(__map, (32'd100, 100), 64'f0.1);
+                                                                                                                                                                                   {(ddlog_std::insert: function(mut ddlog_std::Map<(bit<32>, bigint),double>, (bit<32>, bigint), double):())(__map, (32'd1000, (- 100)), (- 64'f0.1));
+                                                                                                                                                                                    {(ddlog_std::insert: function(mut ddlog_std::Map<(bit<32>, bigint),double>, (bit<32>, bigint), double):())(__map, (32'd1000, (- 10000000000000000000000000000000000000)), (- 64'f0.0));
+                                                                                                                                                                                     __map}}}});
                             __vec}}}}}: VecOfMaps)].
 Rb[(Rb{.x=32'd0}: Rb)].
 Rb[(Rb{.x=(x + 32'd1)}: Rb)] :- Rb[(__rb0@ (Rb{.x=(x: bit<32>)}: Rb))], (x < 32'd65599), Inspect debug::debug_event((32'd45, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __rb0, (Rb{.x=(x + 32'd1)}: Rb)).
 Rque[(Rque{.x=x}: Rque)] :- Rb[(__rb0@ (Rb{.x=(x: bit<32>)}: Rb))], (x > 32'd65530), Inspect debug::debug_event((32'd46, 32'd1, 32'd0), ddlog_weight, ddlog_timestamp, "Condition", __rb0, (Rque{.x=x}: Rque)).
+ApplyTransform[(ApplyTransform{.description="foo_foo", .value={(var s: string) = "foo";
+                                                               {(apply_transform: function(mut string, function(mut string):()):())(s, (function(x: mut string):(){x = ((("" ++ x) ++ "_") ++ x)}));
+                                                                s}}}: ApplyTransform)].
+ApplyTransform[(ApplyTransform{.description="5*10", .value={(var factor: bit<64>) = 64'd10;
+                                                            {(var x: bit<64>) = 64'd5;
+                                                             {(apply_transform: function(mut bit<64>, function(mut bit<64>):()):())(x, (function(x: mut bit<64>):(){x = (x * factor)}));
+                                                              ("" ++ (ddlog_std::__builtin_2string: function(bit<64>):string)(x))}}}}: ApplyTransform)].
 

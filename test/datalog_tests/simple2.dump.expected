@@ -1,5 +1,8 @@
 Ack:
 Ack{.m = 2, .n = 1, .a = 5}: +1
+ApplyTransform:
+ApplyTransform{.description = "5*10", .value = "50"}: +1
+ApplyTransform{.description = "foo_foo", .value = "foo_foo"}: +1
 BoolVecVec:
 BoolVecVec{.v = [[true, false, true], [true], [false]]}: +1
 BoolVectors:
