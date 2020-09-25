@@ -459,27 +459,18 @@ enum Msg {
 #[derive(Clone, Debug)]
 pub struct ThreadUpdateHandler {
     /* Channel to worker thread. */
-    msg_channel: Arc<Mutex<SyncSender<Msg>>>,
+    msg_channel: Arc<Mutex<Sender<Msg>>>,
 
     /* Barrier to synchronize completion of transaction with worker. */
     commit_barrier: Arc<Barrier>,
 }
 
 impl ThreadUpdateHandler {
-    pub const DEFAULT_QUEUE_CAPACITY: usize = 100_000;
-
     pub fn new<F>(handler_generator: F) -> Self
     where
         F: FnOnce() -> Box<dyn UpdateHandler> + Send + 'static,
     {
-        Self::with_capacity(handler_generator, Self::DEFAULT_QUEUE_CAPACITY)
-    }
-
-    pub fn with_capacity<F>(handler_generator: F, queue_capacity: usize) -> Self
-    where
-        F: FnOnce() -> Box<dyn UpdateHandler> + Send + 'static,
-    {
-        let (tx_msg_channel, rx_message_channel) = sync_channel(queue_capacity);
+        let (tx_msg_channel, rx_message_channel) = channel();
         let commit_barrier = Arc::new(Barrier::new(2));
         let commit_barrier2 = commit_barrier.clone();
         spawn(move || {
