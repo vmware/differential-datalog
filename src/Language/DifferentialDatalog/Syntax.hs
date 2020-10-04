@@ -841,11 +841,13 @@ instance WithPos (ExprNode e) where
     pos = exprPos
     atPos e p = e{exprPos = p}
 
+-- Expressions that do not represent a single `term` must be printed in parens, so that
+-- they parse correctly in contexts that require a `term`.
 instance PP e => PP (ExprNode e) where
     pp (EVar _ v)            = pp v
-    pp (EApply _ e as)       = pp e <> (parens $ commaSep $ map pp as)
-    pp (EField _ s f)        = pp s <> char '.' <> pp f
-    pp (ETupField _ s f)     = pp s <> char '.' <> pp f
+    pp (EApply _ e as)       = parens $ pp e <> (parens $ commaSep $ map pp as)
+    pp (EField _ s f)        = parens $ pp s <> char '.' <> pp f
+    pp (ETupField _ s f)     = parens $ pp s <> char '.' <> pp f
     pp (EBool _ True)        = "true"
     pp (EBool _ False)       = "false"
     pp (EInt _ v)            = pp v
@@ -860,7 +862,7 @@ instance PP e => PP (ExprNode e) where
     pp (EStruct _ s fs)      = pp s <> (braces $ commaSep
                                         $ map (\(n,e) -> (if null n then empty else ("." <> pp n <> "=")) <> pp e) fs)
     pp (ETuple _ fs)         = parens $ commaSep $ map pp fs
-    pp (ESlice _ e h l)      = pp e <> (brackets $ pp h <> colon <> pp l)
+    pp (ESlice _ e h l)      = parens $ pp e <> (brackets $ pp h <> colon <> pp l)
     pp (EMatch _ e cs)       = "match" <+> parens (pp e) <+> "{"
                                $$
                                (nest' $ vcommaSep $ (map (\(c,v) -> pp c <+> "->" <+> pp v) cs))
@@ -876,7 +878,7 @@ instance PP e => PP (ExprNode e) where
     pp (EFor _ v e b)        = "for" <+> (parens $ pp v <+> "in" <+> pp e) <+> lbrace $$
                                (nest' $ pp b)                                         $$
                                rbrace
-    pp (ESet _ l r)          = pp l <+> "=" <+> pp r
+    pp (ESet _ l r)          = parens $ pp l <+> "=" <+> pp r
     pp (EBreak _)            = "break"
     pp (EContinue _)         = "continue"
     pp (EReturn _ e)         = parens $ "return" <+> pp e
