@@ -111,7 +111,7 @@ Only non-extern functions can be overloaded.
 extern function foo(x: u32): ()
 ^
 
-error: ./test/datalog_tests/function.fail.dl:8:21-8:39: expression 'ddlog_std::nth(components, 1)' must be of type 'Result<>', but its type is 'ddlog_std::Option<string>'
+error: ./test/datalog_tests/function.fail.dl:8:21-8:39: expression '(ddlog_std::nth(components, 1))' must be of type 'Result<>', but its type is 'ddlog_std::Option<string>'
     var last_name = components.nth(1)?;
                     ^^^^^^^^^^^^^^^^^^
 
