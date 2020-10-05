@@ -29,3 +29,5 @@ dump std_test::Default;
 dump std_test::MapDelete;
 
 dump std_test::IntVecTest;
+
+dump std_test::Ranges;

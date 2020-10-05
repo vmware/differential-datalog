@@ -91,3 +91,13 @@ function alphabet_map(): Map<usize, string> {
     , 4 -> "e"
     ]
 }
+
+output relation Ranges(descr: string, rng: Vec<isize>)
+
+Ranges("10,100,0", range_vec(10, 100, 0)).
+Ranges("10,10,1", range_vec(10, 10, 1)).
+Ranges("100,101,1", range_vec(100, 101, 1)).
+Ranges("10,15,2", range_vec(10,15,2)).
+Ranges("10,16,2", range_vec(10,16,2)).
+Ranges("15,10,2", range_vec(15,10,2)).
+Ranges("15,10,-1", range_vec(15,10,-1)).

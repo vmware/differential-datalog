@@ -34,3 +34,10 @@ std_test::IntVecTest{.descr = "vec0.swap_nth(10, -1)", .vec = [0, 1, 2, 3, 4, 5,
 std_test::IntVecTest{.descr = "vec0.swap_nth(5, -1)", .vec = [0, 1, 2, 3, 4, -1, 5]}
 std_test::IntVecTest{.descr = "vec0.update_nth(1, -1)", .vec = [0, -1, 2, 3, 4, 5]}
 std_test::IntVecTest{.descr = "vec0.update_nth(10, -1)", .vec = [0, 1, 2, 3, 4, 5]}
+std_test::Ranges{.descr = "10,10,1", .rng = []}
+std_test::Ranges{.descr = "10,100,0", .rng = []}
+std_test::Ranges{.descr = "10,15,2", .rng = [10, 12, 14]}
+std_test::Ranges{.descr = "10,16,2", .rng = [10, 12, 14]}
+std_test::Ranges{.descr = "100,101,1", .rng = [100]}
+std_test::Ranges{.descr = "15,10,-1", .rng = [15, 14, 13, 12, 11]}
+std_test::Ranges{.descr = "15,10,2", .rng = []}

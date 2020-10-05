@@ -247,6 +247,10 @@ pub fn option_unwrap_or_default<T: Default + Clone>(opt: &Option<T>) -> T {
     }
 }
 
+/*
+This function has been deprecated since its definition seems to be
+buggy.  By commenting it out we will cause an error for users.
+
 // Range
 pub fn range<A: Clone + Ord + ops::Add<Output = A> + PartialOrd>(
     from: &A,
@@ -258,6 +262,29 @@ pub fn range<A: Clone + Ord + ops::Add<Output = A> + PartialOrd>(
     while x <= *to {
         vec.push(x.clone());
         x = x + step.clone();
+    }
+    vec
+}
+*/
+
+// Range
+pub fn range_vec<A: Clone + Ord + ops::Add<Output = A> + PartialOrd + Zero>(
+    from: &A,
+    to: &A,
+    step: &A,
+) -> Vec<A> {
+    let mut vec = Vec::new();
+    let mut x = from.clone();
+    if step < &A::zero() {
+        while x > *to {
+            vec.push(x.clone());
+            x = x + step.clone();
+        }
+    } else if step > &A::zero() {
+        while x < *to {
+            vec.push(x.clone());
+            x = x + step.clone();
+        }
     }
     vec
 }
