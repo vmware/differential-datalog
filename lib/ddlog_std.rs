@@ -10,6 +10,7 @@ use fnv::FnvHasher;
 use serde::de::Deserializer;
 use serde::ser::Serializer;
 
+use num_traits::identities::Zero;
 use std::borrow;
 use std::cmp;
 use std::collections::btree_map;
