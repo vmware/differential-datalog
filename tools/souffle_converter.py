@@ -1030,7 +1030,13 @@ class SouffleConverter(object):
         elif func == "to_string":
             func = "to_istring"
             self.setCurrentType("Tstring")
-
+        elif func == "range":
+            if len(argStrings) == 2:
+                argStrings.append("1")
+            if len(argStrings) != 3:
+                raise Exception("Expected 'range' to have 2 or 3 arguments")
+            self.setCurrentType("Tnumber")
+            return "FlatMap(range_vec(" + ", ".join(argStrings) + "))"
         return func + "(" + ", ".join(argStrings) + ")"
 
     # noinspection PyRedundantParentheses

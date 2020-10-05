@@ -300,6 +300,7 @@ FunctionCall: "min" "(" FunctionArgumentList ")"
             | "atanh" "(" FunctionArgumentList ")"
             | "log" "(" FunctionArgumentList ")"
             | "exp" "(" FunctionArgumentList ")"
+            | "range" "(" FunctionArgumentList ")"
             ;
 
 FunctorCall: "@" Identifier "(" FunctionArgumentList ")"
