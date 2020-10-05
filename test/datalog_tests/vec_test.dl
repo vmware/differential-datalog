@@ -1,7 +1,7 @@
 import vec
 
 function int_vec(): Vec<s64> {
-    range(-10, 10, 1)
+    range_vec(-10, 11, 1)
 }
 
 output relation IntVecTransforms(description: string, v: Vec<s64>)

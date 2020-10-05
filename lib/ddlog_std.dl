@@ -257,9 +257,20 @@ function map_err(res: Result<'V, 'E1>, f: function('E1): 'E2): Result<'V, 'E2> {
 }
 
 /*
- * Range
+ * This function is deprecated; please use range_vec.
+ *
+ * Range; all values starting at 'from' and ending at 'to'
+ * inclusively, in steps of 'step'.  'step' must be positive.
  */
 extern function range(from: 'A, to: 'A, step: 'A): Vec<'A>
+
+/*
+ * Range function that produces a vector.  The vector contains
+ * all values starting at 'from' (inclusive) up to 'to' (exclusive),
+ * in increments of 'step'.  If 'step' is zero the returned vector
+ * is always empty.
+ */
+extern function range_vec(from: 'A, to: 'A, step: 'A): Vec<'A>
 
 /*
  * String conversion

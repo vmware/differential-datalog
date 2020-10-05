@@ -89,7 +89,7 @@ function retain(v: mut Vec<'A>, f: function('A): bool) {
     var del: s64 = 0;
     var len = v.len();
 
-    for (i in range(0, (len as isize) - 1, 1)) {
+    for (i in range_vec(0, (len as isize), 1)) {
         var x = v.nth(i as usize).unwrap_or_default();
         if (not f(x)) {
             del = del + 1
