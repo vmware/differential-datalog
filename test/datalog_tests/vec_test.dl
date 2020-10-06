@@ -41,7 +41,7 @@ IntVecTransforms("not in [-5, 0, 7]", {
                  }).
 
 // all.
-IntVecTransforms("not in [-5, 0, 100] uaing 'all'", {
+IntVecTransforms("not in [-5, 0, 100] using 'all'", {
                      var res = int_vec();
                      var exclude = [-5, 0, 100];
                      res.retain(|x| exclude.all(|y| y != x)  );
@@ -75,11 +75,11 @@ IntVecTransforms("sort_by(to_string)", {
                      res
                  }).
 
-// min_by.
-IntVecTransforms("min_by(x*x)", vec_singleton(int_vec().min_by(|x| x*x).unwrap_or_default())).
+// arg_min.
+IntVecTransforms("arg_min(x*x)", vec_singleton(int_vec().arg_min(|x| x*x).unwrap_or_default())).
 
-// max_by.
-IntVecTransforms("max_by(to_string)", vec_singleton(int_vec().max_by(to_string).unwrap_or_default())).
+// arg_max.
+IntVecTransforms("arg_max(to_string)", vec_singleton(int_vec().arg_max(to_string).unwrap_or_default())).
 
 // filter_map.
 IntVecTransforms("filter_map(if (x < 0){None} else {Some{x+1000}})", int_vec().filter_map(|x| if (x < 0) { None } else { Some{x + 1000} })).
