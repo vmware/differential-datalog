@@ -1,10 +1,10 @@
 set_test::SetTransforms{.description = "all(contains(3))", .s = []}
 set_test::SetTransforms{.description = "any(contains(3))", .s = [(0, [0, 1, 2]), (1, [2, 3, 4]), (2, [4, 5, 6]), (3, [6, 7, 8]), (4, [8, 9, 10])]}
+set_test::SetTransforms{.description = "arg_max(max)", .s = [(4, [8, 9, 10])]}
+set_test::SetTransforms{.description = "arg_min(min)", .s = [(0, [0, 1, 2])]}
 set_test::SetTransforms{.description = "filter(contains 2)", .s = [(0, [0, 1, 2]), (1, [2, 3, 4])]}
 set_test::SetTransforms{.description = "filter_map(==1, :=100)", .s = [(100, [2, 3, 4])]}
 set_test::SetTransforms{.description = "find(contains(3))", .s = [(1, [2, 3, 4])]}
 set_test::SetTransforms{.description = "map(push 100)", .s = [(0, [0, 1, 2, 100]), (1, [2, 3, 4, 100]), (2, [4, 5, 6, 100]), (3, [6, 7, 8, 100]), (4, [8, 9, 10, 100])]}
-set_test::SetTransforms{.description = "max_by(max)", .s = [(4, [8, 9, 10])]}
-set_test::SetTransforms{.description = "min_by(min)", .s = [(0, [0, 1, 2])]}
 set_test::SetFolds{.description = "fold(+)", .a = 10}
 set_test::SetFolds{.description = "fold(fold(+))", .a = 75}

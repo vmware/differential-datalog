@@ -15,15 +15,15 @@ function map(s: Set<'A>, f: function('A): 'B): Set<'B> {
 /* Returns the element that gives the minimum value from the specified function.
  * If several elements are equally minimum, the first element is returned.
  * If the set is empty, `None` is returned. */
-function min_by(s: Set<'A>, f: function('A): 'B): Option<'A> {
-    set_min_by(s, f)
+function arg_min(s: Set<'A>, f: function('A): 'B): Option<'A> {
+    set_arg_min(s, f)
 }
 
 /* Returns the element that gives the maximum value from the specified function.
  * If several elements are equally maximum, the first element is returned.
  * If the set is empty, `None` is returned. */
-function max_by(s: Set<'A>, f: function('A): 'B): Option<'A> {
-    set_max_by(s, f)
+function arg_max(s: Set<'A>, f: function('A): 'B): Option<'A> {
+    set_arg_max(s, f)
 }
 
 /* Returns the first element of the set that satisfies predicate `f` or
@@ -99,5 +99,5 @@ function fold(s: Set<'A>, f: function('B, 'A): 'B, initializer: 'B): 'B {
     res
 }
 
-extern function set_min_by(s: Set<'A>, f: function('A): 'B): Option<'A>
-extern function set_max_by(s: Set<'A>, f: function('A): 'B): Option<'A>
+extern function set_arg_min(s: Set<'A>, f: function('A): 'B): Option<'A>
+extern function set_arg_max(s: Set<'A>, f: function('A): 'B): Option<'A>

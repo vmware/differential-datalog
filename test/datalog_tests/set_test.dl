@@ -34,15 +34,15 @@ SetTransforms(
         None
     })).
 
-// min_by.
+// arg_min.
 SetTransforms(
-    "min_by(min)",
-    set_singleton(test_set().min_by(|x| x.1.min_by(|x|x)).unwrap_or_default())).
+    "arg_min(min)",
+    set_singleton(test_set().arg_min(|x| x.1.arg_min(|x|x)).unwrap_or_default())).
 
-// max_by.
+// arg_max.
 SetTransforms(
-    "max_by(max)",
-    set_singleton(test_set().max_by(|x| x.1.max_by(|x|x)).unwrap_or_default())).
+    "arg_max(max)",
+    set_singleton(test_set().arg_max(|x| x.1.arg_max(|x|x)).unwrap_or_default())).
 
 // find.
 SetTransforms(
