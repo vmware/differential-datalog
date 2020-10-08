@@ -1,6 +1,4 @@
-#![allow(
-    clippy::trivially_copy_pass_by_ref
-)]
+#![allow(clippy::trivially_copy_pass_by_ref)]
 
 //! Runtime support for DDlog closures.
 

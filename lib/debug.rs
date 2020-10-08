@@ -60,22 +60,16 @@ pub fn debug_event_join<
     );
 }
 
-pub fn debug_split_group<'a, K, I: 'static + Clone, V: 'static>(
-    g: &'a crate::ddlog_std::Group<'a, K, (I, V)>,
-) -> (crate::ddlog_std::Vec<I>, crate::ddlog_std::Group<'a, K, V>) {
+pub fn debug_split_group<K: Clone, I: 'static + Clone, V: Clone + 'static>(
+    g: &crate::ddlog_std::Group<K, (I, V)>,
+) -> (crate::ddlog_std::Vec<I>, crate::ddlog_std::Group<K, V>) {
     let mut inputs =
         crate::ddlog_std::Vec::with_capacity(crate::ddlog_std::group_count(g) as usize);
-    for (i, _) in g.iter() {
-        inputs.push(i.clone())
+    let mut vals = ::std::vec::Vec::with_capacity(crate::ddlog_std::group_count(g) as usize);
+    for (i, v) in g.iter() {
+        inputs.push(i);
+        vals.push(v);
     }
 
-    let orig_project = g.project.clone();
-    (
-        inputs,
-        crate::ddlog_std::Group::new(
-            g.key,
-            g.group,
-            ::std::rc::Rc::new(move |v| (orig_project)(v).1),
-        ),
-    )
+    (inputs, crate::ddlog_std::Group::new(g.key(), vals))
 }

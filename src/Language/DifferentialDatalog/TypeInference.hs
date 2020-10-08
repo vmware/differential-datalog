@@ -443,7 +443,7 @@ inferTypes d es = do
                  EFunc{..}  -> do
                     let t' = typ' ?d t
                     let arg_types = map typ $ typeFuncArgs t'
-                    let fs = mapMaybe (\fname -> lookupFunc ?d fname arg_types (Just $ typeRetType t')) exprFuncName
+                    let fs = mapMaybe (\fname -> lookupFunc ?d fname arg_types (typeRetType t')) exprFuncName
                     let (f, _) = case fs of
                                       [f'] -> f'
                                       _ -> error $ "TypeInference.add_types: e=" ++ show expr ++ "\nfs = " ++ show (map (name . fst) fs)
@@ -538,29 +538,18 @@ contextConstraints de@(DDExpr (CtxRuleRCond rl i) _) | rhsIsFilterCondition $ ru
     addConstraint =<< tvarTypeOfExpr de <~~~~ TEBool
                                                      | otherwise = return ()
 
--- When evaluating aggregate: 'var v = Aggregate((v1,..,vn), f(e))'
--- where 'function f<'A1,...,'Am>(g: Group<K,V>): T', where K,V,T may
--- depend on type arguments 'Ai', the following type constraints are
--- added:
+-- When evaluating aggregate: 'var g = e.group_by(v1,..,vn)'
 -- (|v1|,...,|vn|)=K,
 -- |e| = V,
--- |v| = T
-contextConstraints de@(DDExpr (CtxRuleRAggregate rl i) _) = do
-    addConstraint =<< tvarTypeOfExpr de <~~~~> typeToTExpr' de vtype
-    addConstraint =<< tvarTypeOfVar (AggregateVar rl i) <====> typeToTExpr' de ret_type
+-- |v| = Group<K,V>
+contextConstraints de@(DDExpr (CtxRuleRProject rl i) _) = do
+    tval <- teTypeOfExpr de
+    tkey <- teTypeOfExpr (DDExpr (CtxRuleRGroupBy rl i) rhsGroupBy)
+    addConstraint =<< tvarTypeOfVar (GroupVar rl i) <==== TEExtern gROUP_TYPE [tkey, tval]
     where
-    RHSAggregate{..} = ruleRHS rl !! i
-    -- 'ruleRHSValidate' makes sure that there's only one.
-    [Function{funcArgs = [grp_type], funcType = ret_type}] = getFuncs ?d rhsAggFunc (Just 1)
-    TOpaque{typeArgs = [_, vtype]} = typ' ?d grp_type
+    RHSGroupBy{..} = ruleRHS rl !! i
 
-contextConstraints de@(DDExpr ctx@(CtxRuleRGroupBy rl i) _) =
-    addConstraint =<< tvarTypeOfExpr (DDExpr ctx rhsGroupBy) <~~~~> typeToTExpr' de ktype
-    where
-    RHSAggregate{..} = ruleRHS rl !! i
-    [Function{funcArgs = [grp_type]}] = getFuncs ?d rhsAggFunc (Just 1)
-    TOpaque{typeArgs = [ktype, _]} = typ' ?d grp_type
-
+contextConstraints (DDExpr CtxRuleRGroupBy{} _) = return ()
 
 -- When evaluating 'var v = FlatMap(e)'
 -- the following type constraints are added:

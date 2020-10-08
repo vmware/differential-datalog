@@ -148,8 +148,8 @@ parseValidate file java program = do
 -- compile a program that is supposed to fail compilation
 compileFailingProgram :: String -> String -> IO String
 compileFailingProgram file program = do
-   ((((show . sel2) <$> parseValidate file False program)) >>
-    fail "Compilation should have failed") `catch`
+   (do prog <- sel2 <$> parseValidate file False program
+       fail $ "Compilation should have failed, instead the following program was generated:\n" ++ show prog) `catch`
              (\e -> return $ show (e::SomeException))
 
 shouldFail :: String -> Bool

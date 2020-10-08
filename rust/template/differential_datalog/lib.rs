@@ -2,7 +2,10 @@
     clippy::unknown_clippy_lints,
     clippy::get_unwrap,
     clippy::missing_safety_doc,
-    clippy::type_complexity
+    clippy::type_complexity,
+    clippy::match_like_matches_macro,
+    //match_like_matches_macro not supported in older versions of clippy
+    clippy::unknown_clippy_lints
 )]
 
 mod callback;

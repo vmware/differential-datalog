@@ -102,7 +102,7 @@ impl CSVLogEvent {
         let mut s = String::new();
         for n in v {
             s.push_str(&n.to_string());
-            s.push_str("-");
+            s.push('-');
         }
         s
     }

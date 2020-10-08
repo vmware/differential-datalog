@@ -334,7 +334,7 @@ exprFuncs' acc e = nub $ exprCollect (\case
 -- Assumes the expression has been validated.
 funcExprGetFunc :: DatalogProgram -> ECtx -> ENode -> (Function, M.Map String Type)
 funcExprGetFunc d ctx e@EFunc{exprFuncName=[fname], ..} =
-    getFunc d fname (map typ $ typeFuncArgs t) (Just $ typeRetType t)
+    getFunc d fname (map typ $ typeFuncArgs t) (typeRetType t)
     where
     t = exprType' d ctx $ E e
 funcExprGetFunc _ _   e = error $ "funcExprGetFunc " ++ show e
@@ -565,7 +565,7 @@ exprInjectStringConversion d e t = do
                                      "' of variable type '" ++ tvarName ++ "' to string"
                   TStruct{}   -> error "unexpected TStruct in exprInjectStringConversions"
                   TFunction{} -> return $ bUILTIN_2STRING_FUNC
-    (f, _) <- case lookupFunc d fname [t'] (Just tString) of
+    (f, _) <- case lookupFunc d fname [t'] tString of
                    Nothing  -> err d (pos e) $ "Cannot find declaration of function '" ++ fname ++ "(" ++ show t' ++ "): string'" ++
                                                " needed to convert expression '" ++ show e ++ "' to string"
                    Just fun -> return fun

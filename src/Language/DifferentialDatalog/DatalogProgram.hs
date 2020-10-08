@@ -106,10 +106,10 @@ rhsExprMapCtxM fun r rhsidx l@RHSLiteral{}   = do
 rhsExprMapCtxM fun r rhsidx c@RHSCondition{} = do
     e <- exprFoldCtxM fun (CtxRuleRCond r rhsidx) (rhsExpr c)
     return c{rhsExpr = e}
-rhsExprMapCtxM fun r rhsidx a@RHSAggregate{} = do
-    e <- exprFoldCtxM fun (CtxRuleRAggregate r rhsidx) (rhsAggExpr a)
+rhsExprMapCtxM fun r rhsidx a@RHSGroupBy{} = do
+    e <- exprFoldCtxM fun (CtxRuleRProject r rhsidx) (rhsProject a)
     g <- exprFoldCtxM fun (CtxRuleRGroupBy r rhsidx) (rhsGroupBy a)
-    return a{rhsGroupBy = g, rhsAggExpr = e}
+    return a{rhsGroupBy = g, rhsProject = e}
 rhsExprMapCtxM fun r rhsidx m@RHSFlatMap{}   = do
     e <- exprFoldCtxM fun (CtxRuleRFlatMap r rhsidx) (rhsMapExpr m)
     return m{rhsMapExpr = e}
@@ -316,5 +316,4 @@ progInjectDebuggingHooks d =
   let
     rules = progRules d
     updatedRules = [(rules !! i) {ruleRHS = debugUpdateRHSRules d i (rules !! i)}  | i <- [0..length rules - 1]]
-    debugFuncs = M.fromList $ map (\f -> (name f, [f])) $ debugAggregateFunctions d
-  in d { progRules = updatedRules, progFunctions = M.unionWith (++) (progFunctions d) debugFuncs }
+  in d { progRules = updatedRules }

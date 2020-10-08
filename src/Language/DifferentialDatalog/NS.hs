@@ -84,23 +84,23 @@ getFuncs d n nargs = fromJust $ lookupFuncs d n nargs
 -- function.
 -- TODO: change ret_type from Maybe Type to Type once we've change aggregation
 -- syntax to use expression in the LHS.
-lookupFunc :: DatalogProgram -> String -> [Type] -> Maybe Type -> Maybe (Function, M.Map String Type)
+lookupFunc :: DatalogProgram -> String -> [Type] -> Type -> Maybe (Function, M.Map String Type)
 lookupFunc d@DatalogProgram{..} n arg_types ret_type =
     listToMaybe $
-    mapMaybe (\f@Function{..} -> case inferTypeArgs d nopos "" $ zip (map typ funcArgs ++ [funcType]) (arg_types ++ maybeToList ret_type) of
+    mapMaybe (\f@Function{..} -> case inferTypeArgs d nopos "" $ zip (map typ funcArgs ++ [funcType]) (arg_types ++ [ret_type]) of
                                       Left _ -> Nothing
                                       Right tmap -> Just (f,tmap)
              ) candidates
     where
     candidates = maybe [] id $ lookupFuncs d n (Just $ length arg_types)
 
-checkFunc :: (MonadError String me) => Pos -> DatalogProgram -> String -> [Type] -> Maybe Type -> me (Function, M.Map String Type)
+checkFunc :: (MonadError String me) => Pos -> DatalogProgram -> String -> [Type] -> Type -> me (Function, M.Map String Type)
 checkFunc p d n arg_types ret_type =
     case lookupFunc d n arg_types ret_type of
-         Nothing -> err d p $ "Unknown function: '" ++ n ++ "(" ++ (intercalate "," $ map show arg_types) ++ "): " <> (maybe "_" show ret_type) <> "'"
+         Nothing -> err d p $ "Unknown function: '" ++ n ++ "(" ++ (intercalate "," $ map show arg_types) ++ "): " <> (show ret_type) <> "'"
          Just f  -> return f
 
-getFunc :: DatalogProgram -> String -> [Type] -> Maybe Type -> (Function, M.Map String Type)
+getFunc :: DatalogProgram -> String -> [Type] -> Type -> (Function, M.Map String Type)
 getFunc d n arg_types ret_type = fromJust $ lookupFunc d n arg_types ret_type
 
 lookupTransformer :: DatalogProgram -> String -> Maybe Transformer
@@ -180,7 +180,7 @@ ctxVars' d ctx with_types =
          CtxRuleRFlatMap rl i     -> ([], ruleRHSVars d rl i)
          CtxRuleRInspect rl i     -> let vars = (ruleRHSVars d rl i) ++ [WeightVar] in
                                      ([], TSVar rl : vars)
-         CtxRuleRAggregate rl i   -> ([], ruleRHSVars d rl i)
+         CtxRuleRProject rl i     -> ([], ruleRHSVars d rl i)
          CtxRuleRGroupBy rl i     -> ([], ruleRHSVars d rl i)
          CtxKey rel@Relation{..}  -> ([], [KeyVar rel])
          CtxIndex idx@Index{..}   -> ([], map (\v -> (IdxVar idx $ name v)) idxVars)

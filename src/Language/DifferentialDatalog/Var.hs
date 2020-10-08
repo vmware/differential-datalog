@@ -52,8 +52,8 @@ data Var = -- Variable declared in an expression ('var v').
          | IdxVar {varIndex::Index, varName::String}
            -- Variable returned by FlatMap.
          | FlatMapVar {varRule::Rule, varRhsIdx::Int}
-           -- Variable returned by Aggregate.
-         | AggregateVar {varRule::Rule, varRhsIdx::Int}
+           -- Variable returned by group_by.
+         | GroupVar {varRule::Rule, varRhsIdx::Int}
            -- ddlog_weight
          | WeightVar
            -- ddlog_timestamp
@@ -69,7 +69,8 @@ instance WithPos Var where
     pos (KeyVar rel)          = pos $ fromJust $ relPrimaryKey rel
     pos (IdxVar idx v)        = pos $ fromJust $ find ((==v) . name) $ idxVars idx
     pos (FlatMapVar rl i)     = pos $ rhsMapExpr $ ruleRHS rl !! i
-    pos (AggregateVar rl i)   = pos $ rhsAggExpr $ ruleRHS rl !! i
+    pos (GroupVar rl i)       = (fst $ pos $ rhsProject rhs, snd $ pos $ rhsGroupBy rhs)
+                                where rhs = ruleRHS rl !! i
     pos WeightVar             = nopos
     pos (TSVar rl)            = pos rl
     atPos _ _                 = error "atPos 'Var' is not supported"
@@ -87,7 +88,7 @@ instance WithName Var where
     name (KeyVar rel)                   = keyVar $ fromJust $ relPrimaryKey rel
     name (IdxVar _ s)                   = s
     name (FlatMapVar rule i)            = rhsVar $ ruleRHS rule !! i
-    name (AggregateVar rule i)          = rhsVar $ ruleRHS rule !! i 
+    name (GroupVar rule i)              = rhsVar $ ruleRHS rule !! i 
     name WeightVar                      = "ddlog_weight"
     name TSVar{}                        = "ddlog_timestamp"
     setName _ _                         = error "setName 'Var' is not supported"

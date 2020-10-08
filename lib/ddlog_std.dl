@@ -456,6 +456,10 @@ function count(g: Group<'K, 'V>): usize {
     group_count(g)
 }
 
+function size(g: Group<'K, 'V>): usize {
+    group_count(g)
+}
+
 function first(g: Group<'K, 'V>): 'V {
     group_first(g)
 }
@@ -491,7 +495,16 @@ function group_unzip(g: Group<'K, ('X,'Y)>): (Vec<'X>, Vec<'Y>) = {
     (xs,ys)
 }
 
+function union(g: Group<'K, Set<'A>>): Set<'A> {
+    group_set_unions(g)
+}
+
+/* Obsolete; use `union(Group<_, Ref<Set<>>>)` instead. */
 function setref_unions(g: Group<'K, Ref<Set<'A>>>): Ref<Set<'A>> {
+    group_setref_unions(g)
+}
+
+function union(g: Group<'K, Ref<Set<'A>>>): Ref<Set<'A>> {
     group_setref_unions(g)
 }
 
@@ -668,7 +681,12 @@ function union(s1: Set<'X>, s2: Set<'X>): Set<'X> {
     set_union(s1, s2)
 }
 
+/* Obsolete; use `union(Vec<Set<>>)` instead. */
 function unions(sets: Vec<Set<'X>>): Set<'X> {
+    set_unions(sets)
+}
+
+function union(sets: Vec<Set<'X>>): Set<'X> {
     set_unions(sets)
 }
 
@@ -753,3 +771,13 @@ extern function set_intersection(s1: Set<'X>, s2: Set<'X>): Set<'X>
 extern function set_difference(s1: Set<'X>, s2: Set<'X>): Set<'X>
 
 extern function __builtin_2string(x: 'X): string
+
+/* Representation of a group used for all I/O
+ * (serialization, formatting, (Into/From)Record, Flatbuf).
+ *
+ * This is part of DDlog internals and should not be used in
+ * application code. */
+typedef DDlogGroup<'K, 'V> = DDlogGroup {
+    key: 'K,
+    vals: Vec<'V>
+}

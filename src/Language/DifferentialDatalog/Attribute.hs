@@ -246,7 +246,7 @@ fieldCheckDeserializeArrayAttr d field@Field{..} =
          [attr@Attribute{attrVal = E (EApply _ (E (EFunc _ [fname])) _)}] -> do
              check d (isMap d field) (pos attr) $ "'deserialize_from_array' attribute is only applicable to fields of type 'Map<>'."
              let TOpaque _ _ [ktype, vtype] = typ' d field
-             (kfunc@Function{..}, _) <- checkFunc (pos attr) d fname [vtype] $ Just ktype
+             (kfunc@Function{..}, _) <- checkFunc (pos attr) d fname [vtype] ktype
              _ <- funcTypeArgSubsts d (pos attr) kfunc [vtype] (Just ktype)
              return $ Just fname
          [Attribute{..}] -> err d attrPos

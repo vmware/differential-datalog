@@ -32,8 +32,8 @@ module Language.DifferentialDatalog.Rule (
     ruleLHSVars,
     ruleTypeMapM,
     ruleHasJoins,
-    ruleAggregateKeyType,
-    ruleAggregateValType,
+    ruleGroupByKeyType,
+    ruleGroupByValType,
     ruleIsDistinctByConstruction,
     ruleHeadIsRecursive,
     ruleIsRecursive
@@ -84,26 +84,26 @@ ruleRHSVars' d rl i =
          RHSFlatMap _ _                -> FlatMapVar rl i : vs
          -- Inspect does not introduce new variables
          RHSInspect _                  -> vs
-         -- Aggregation hides all variables except groupBy vars
-         -- and the aggregate variable
-         RHSAggregate _ grpby _ _      -> let ctx = CtxRuleRGroupBy rl i
-                                              gvars' = exprVars d ctx grpby
-                                              avar' = AggregateVar rl i
-                                          in nub $ avar':gvars'
+         -- group_by hides all variables except group-by vars
+         -- and the group variable
+         RHSGroupBy _  _ grpby       -> let ctx = CtxRuleRGroupBy rl i
+                                            gvars' = exprVars d ctx grpby
+                                            avar' = GroupVar rl i
+                                        in nub $ avar':gvars'
     where
     vs = ruleRHSVars d rl i
 
-ruleAggregateKeyType :: DatalogProgram -> Rule -> Int -> Type
-ruleAggregateKeyType d rl idx =
+ruleGroupByKeyType :: DatalogProgram -> Rule -> Int -> Type
+ruleGroupByKeyType d rl idx =
     exprType d gctx $ rhsGroupBy $ ruleRHS rl !! idx
     where
     gctx = CtxRuleRGroupBy rl idx
 
-ruleAggregateValType :: DatalogProgram -> Rule -> Int -> Type
-ruleAggregateValType d rl idx =
-    exprType d ctx $ rhsAggExpr $ ruleRHS rl !! idx
+ruleGroupByValType :: DatalogProgram -> Rule -> Int -> Type
+ruleGroupByValType d rl idx =
+    exprType d ctx $ rhsProject $ ruleRHS rl !! idx
     where
-    ctx = CtxRuleRAggregate rl idx
+    ctx = CtxRuleRProject rl idx
 
 -- | Variables used in a RHS term of a rule.
 ruleRHSTermVars :: DatalogProgram -> Rule -> Int -> [Var]
@@ -113,8 +113,8 @@ ruleRHSTermVars d rl i =
          RHSCondition{..} -> exprFreeVars d (CtxRuleRCond rl i) rhsExpr
          RHSFlatMap{..}   -> exprFreeVars d (CtxRuleRFlatMap rl i) rhsMapExpr
          RHSInspect{..}   -> exprFreeVars d (CtxRuleRInspect rl i) rhsInspectExpr
-         RHSAggregate{..} -> nub $ exprVars d (CtxRuleRGroupBy rl i) rhsGroupBy ++
-                                   exprFreeVars d (CtxRuleRAggregate rl i) rhsAggExpr
+         RHSGroupBy{..}   -> nub $ exprVars d (CtxRuleRGroupBy rl i) rhsGroupBy ++
+                                   exprFreeVars d (CtxRuleRProject rl i) rhsProject
 
 -- | All variables visible after the last RHS clause of the rule
 ruleVars :: DatalogProgram -> Rule -> [Var]
@@ -135,7 +135,7 @@ ruleTypeMapM fun rule@Rule{..} = do
     rhs <- mapM (\rhs -> case rhs of
                   RHSLiteral pol (Atom p r v) -> (RHSLiteral pol . Atom p r) <$> exprTypeMapM fun v
                   RHSCondition c              -> RHSCondition <$> exprTypeMapM fun c
-                  RHSAggregate v g f e        -> RHSAggregate v g f <$> exprTypeMapM fun e
+                  RHSGroupBy v p g            -> RHSGroupBy v <$> exprTypeMapM fun p <*> exprTypeMapM fun g
                   RHSFlatMap v e              -> RHSFlatMap v <$> exprTypeMapM fun e
                   RHSInspect e                -> RHSInspect <$> exprTypeMapM fun e)
                 ruleRHS
@@ -177,9 +177,9 @@ ruleIsDistinctByConstruction d rl@Rule{..} head_idx = f True 0
         exprIsInjective d (CtxRuleL rl head_idx) (S.fromList $ ruleVars d rl) (atomVal head_atom)
     f True i | rhsIsCondition (ruleRHS !! i)
                                             = f True (i + 1)
-    -- Aggregate operator returns a distinct collection over group-by and aggregate
+    -- group-by operator returns a distinct collection over group-by and group
     -- variables even if the prefix before isn't distinct.
-    f _    i | rhsIsAggregate (ruleRHS !! i)= f True (i + 1)
+    f _    i | rhsIsGroupBy (ruleRHS !! i)= f True (i + 1)
     f True i | rhsIsPositiveLiteral (ruleRHS !! i)
                                             =
         let a = rhsAtom $ ruleRHS !! i in

@@ -1617,8 +1617,6 @@ impl<T: FromRecord + Ord> Mutator<BTreeSet<T>> for Record {
 /*
  * Use the following macros to generate `IntoRecord` and `Mutator` trait implementations for
  * user-defined structs and enums.
- *
- * TODO: implement similar macros for `FromRecord`.
  */
 
 pub fn arg_extract<T: FromRecord + Default>(
@@ -1636,7 +1634,7 @@ pub fn arg_find<'a>(args: &'a [(Name, Record)], argname: &str) -> Option<&'a Rec
 
 #[macro_export]
 macro_rules! decl_struct_into_record {
-    ( $n:ident [ $nstr:expr ] <$( $targ:ident),*>, $( $arg:ident ),* ) => {
+    ( $n:ident, [ $nstr:expr ] <$( $targ:ident),*>, $( $arg:ident ),* ) => {
         impl <$($targ: $crate::record::IntoRecord),*> $crate::record::IntoRecord for $n<$($targ),*> {
             fn into_record(self) -> $crate::record::Record {
                 $crate::record::Record::NamedStruct(::std::borrow::Cow::from($nstr),vec![$((::std::borrow::Cow::from(stringify!($arg)), self.$arg.into_record())),*])
@@ -1653,10 +1651,86 @@ macro_rules! decl_struct_into_record {
 }
 
 #[macro_export]
+macro_rules! decl_struct_from_record {
+    ( $n:ident [$full_name:expr] <$( $targ:ident),*>, [$constructor_name:expr][$nargs:expr]{$( [$idx:expr] $arg:ident [$alt_arg:expr]: $type:ty),*} ) => {
+        impl <$($targ: $crate::record::FromRecord + serde::de::DeserializeOwned + ::std::default::Default),*> $crate::record::FromRecord for $n<$($targ),*> {
+            fn from_record(val: &$crate::record::Record) -> ::std::result::Result<Self, String> {
+                match val {
+                    $crate::record::Record::PosStruct(constr, _args) => {
+                        match constr.as_ref() {
+                            $constructor_name if _args.len() == $nargs => {
+                                  Ok($n{ $($arg : <$type>::from_record(&_args[$idx])?,)* })
+                            },
+                            c => ::std::result::Result::Err(format!("unknown constructor {} of type '{}' in {:?}", c, $full_name, *val))
+                        }
+                    },
+                    $crate::record::Record::NamedStruct(constr, _args) => {
+                        match constr.as_ref() {
+                            $constructor_name => {
+                                Ok($n{ $($arg : $crate::record::arg_extract::<$type>(_args, $alt_arg)?,)* })
+                            },
+                            c => ::std::result::Result::Err(format!("unknown constructor {} of type '{}' in {:?}", c, $full_name, *val))
+                        }
+                    },
+                    $crate::record::Record::Serialized(format, s) => {
+                        if format == "json" {
+                            serde_json::from_str(&*s).map_err(|e|format!("{}", e))
+                        } else {
+                            ::std::result::Result::Err(format!("unsupported serialization format '{}'", format))
+                        }
+                    },
+                    v => {
+                        ::std::result::Result::Err(format!("not a struct {:?}", *v))
+                    }
+                }
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! decl_enum_from_record {
+    ( $n:ident [$full_name:expr] <$( $targ:ident),*>, $($cons:ident [$cons_name:expr][$nargs:expr]{$( [$idx:expr] $arg:ident [$alt_arg:expr]: $type:ty),*}),* ) => {
+        impl <$($targ: $crate::record::FromRecord + serde::de::DeserializeOwned + ::std::default::Default),*> $crate::record::FromRecord for $n<$($targ),*> {
+            fn from_record(val: &$crate::record::Record) -> ::std::result::Result<Self, String> {
+                match val {
+                    $crate::record::Record::PosStruct(constr, _args) => {
+                        match constr.as_ref() {
+                            $($cons_name if _args.len() == $nargs => {
+                                  Ok($n::$cons{ $($arg : <$type>::from_record(&_args[$idx])?,)* })
+                            },)*
+                            c => ::std::result::Result::Err(format!("unknown constructor {} of type '{}' in {:?}", c, $full_name, *val))
+                        }
+                    },
+                    $crate::record::Record::NamedStruct(constr, _args) => {
+                        match constr.as_ref() {
+                            $($cons_name => {
+                                Ok($n::$cons{ $($arg : $crate::record::arg_extract::<$type>(_args, $alt_arg)?,)* })
+                            },)*
+                            c => ::std::result::Result::Err(format!("unknown constructor {} of type '{}' in {:?}", c, $full_name, *val))
+                        }
+                    },
+                    $crate::record::Record::Serialized(format, s) => {
+                        if format == "json" {
+                            serde_json::from_str(&*s).map_err(|e|format!("{}", e))
+                        } else {
+                            ::std::result::Result::Err(format!("unsupported serialization format '{}'", format))
+                        }
+                    },
+                    v => {
+                        ::std::result::Result::Err(format!("not a struct {:?}", *v))
+                    }
+                }
+            }
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! decl_record_mutator_struct {
     ( $n:ident, <$( $targ:ident),*>, $( $arg:ident : $type:ty),* ) => {
         impl<$($targ),*> $crate::record::Mutator<$n<$($targ),*>> for $crate::record::Record
-            where $($crate::record::Record: $crate::record::Mutator<$targ>),*
+            where $($crate::record::Record: $crate::record::Mutator<$targ>, $targ: $crate::record::FromRecord),*
         {
             fn mutate(&self, _x: &mut $n<$($targ),*>) -> ::std::result::Result<(), String> {
                 match self {
@@ -1680,7 +1754,7 @@ macro_rules! decl_record_mutator_struct {
 
 #[macro_export]
 macro_rules! decl_record_mutator_enum {
-    ( $n:ident, <$( $targ:ident),*>, $($cons:ident {$( $arg:ident : $type:ty),*}),* ) => {
+    ( $n:ident<$( $targ:ident),*>, $($cons:ident {$( $arg:ident : $type:ty),*}),* ) => {
         impl<$($targ: $crate::record::FromRecord+serde::de::DeserializeOwned+Default),*> $crate::record::Mutator<$n<$($targ),*>> for $crate::record::Record
             where $($crate::record::Record: $crate::record::Mutator<$targ>),*
         {
@@ -1718,7 +1792,7 @@ macro_rules! decl_record_mutator_enum {
 
 #[macro_export]
 macro_rules! decl_enum_into_record {
-    ( $n:ident, <$( $targ:ident),*>, $($cons:ident [$consn:expr] {$($arg:ident),*} ),* ) => {
+    ( $n:ident<$( $targ:ident),*>, $($cons:ident [$consn:expr] {$($arg:ident),*} ),* ) => {
         impl <$($targ: $crate::record::IntoRecord),*> $crate::record::IntoRecord for $n<$($targ),*> {
             fn into_record(self) -> $crate::record::Record {
                 match self {
@@ -1727,7 +1801,7 @@ macro_rules! decl_enum_into_record {
             }
         }
     };
-    ( $n:ident, <$( $targ:ident),*>, $($cons:ident [$consn:expr] ($($arg:ident),*) ),* ) => {
+    ( $n:ident<$( $targ:ident),*>, $($cons:ident [$consn:expr] ($($arg:ident),*) ),* ) => {
         impl <$($targ: $crate::record::IntoRecord),*> $crate::record::IntoRecord for $n<$($targ),*> {
             fn into_record(self) -> $crate::record::Record {
                 match self {
@@ -1740,7 +1814,7 @@ macro_rules! decl_enum_into_record {
 
 #[macro_export]
 macro_rules! decl_val_enum_into_record {
-    ( $n:ident, <$( $targ:ident),*>, $($cons:ident {$arg:ident} ),* ) => {
+    ( $n:ident<$( $targ:ident),*>, $($cons:ident {$arg:ident} ),* ) => {
         impl <$($targ: $crate::record::IntoRecord),*> $crate::record::IntoRecord for $n<$($targ),*> {
             fn into_record(self) -> $crate::record::Record {
                 match self {
@@ -1749,7 +1823,7 @@ macro_rules! decl_val_enum_into_record {
             }
         }
     };
-    ( $n:ident, <$( $targ:ident),*>, $($cons:ident ($arg:ident) ),* ) => {
+    ( $n:ident<$( $targ:ident),*>, $($cons:ident ($arg:ident) ),* ) => {
         impl <$($targ: $crate::record::IntoRecord),*> $crate::record::IntoRecord for $n<$($targ),*> {
             fn into_record(self) -> $crate::record::Record {
                 match self {

@@ -312,8 +312,8 @@ ruleValidateExpressions d rl = do
                                RHSLiteral{..} -> [(CtxRuleRAtom rl i, atomVal rhsAtom)]
                                RHSCondition{..} -> [(CtxRuleRCond rl i, rhsExpr)]
                                RHSFlatMap{..} -> [(CtxRuleRFlatMap rl i, rhsMapExpr)]
-                               RHSAggregate{..} -> [ (CtxRuleRGroupBy rl i, rhsGroupBy)
-                                                   , (CtxRuleRAggregate rl i, rhsAggExpr)]
+                               RHSGroupBy{..} -> [ (CtxRuleRGroupBy rl i, rhsGroupBy)
+                                                 , (CtxRuleRProject rl i, rhsProject)]
                                RHSInspect{..} -> [(CtxRuleRInspect rl i, rhsInspectExpr)])
                         $ ruleRHS rl
     let lhs_es = mapIdx (\lhs i -> (CtxRuleL rl i, atomVal lhs)) $ ruleLHS rl
@@ -324,7 +324,7 @@ ruleValidateExpressions d rl = do
                                      RHSLiteral{..} -> (tail es, rhss ++ [rhs{rhsAtom = rhsAtom {atomVal = head es}}])
                                      RHSCondition{..} -> (tail es, rhss ++ [rhs{rhsExpr = head es}])
                                      RHSFlatMap{..} -> (tail es, rhss ++ [rhs{rhsMapExpr = head es}])
-                                     RHSAggregate{..} -> (tail $ tail es, rhss ++ [rhs{rhsGroupBy = head es, rhsAggExpr = head $ tail es}])
+                                     RHSGroupBy{..} -> (tail $ tail es, rhss ++ [rhs{rhsGroupBy = head es, rhsProject = head $ tail es}])
                                      RHSInspect{..} -> (tail es, rhss ++ [rhs{rhsInspectExpr = head es}]))
                             (es', []) $ ruleRHS rl
     let ([], lhss') = foldl' (\(es, lhss) lhs -> (tail es, lhss ++ [lhs{atomVal = head es}]))
@@ -338,8 +338,8 @@ ruleValidateExpressions d rl = do
                                 RHSLiteral{..} -> [(CtxRuleRAtom rl' i, atomVal rhsAtom)]
                                 RHSCondition{..} -> [(CtxRuleRCond rl' i, rhsExpr)]
                                 RHSFlatMap{..} -> [(CtxRuleRFlatMap rl' i, rhsMapExpr)]
-                                RHSAggregate{..} -> [ (CtxRuleRGroupBy rl' i, rhsGroupBy)
-                                                    , (CtxRuleRAggregate rl' i, rhsAggExpr)]
+                                RHSGroupBy{..} -> [ (CtxRuleRGroupBy rl' i, rhsGroupBy)
+                                                  , (CtxRuleRProject rl' i, rhsProject)]
                                 RHSInspect{..} -> [(CtxRuleRInspect rl' i, rhsInspectExpr)])
                          $ ruleRHS rl'
     let lhs_es' = mapIdx (\lhs i -> (CtxRuleL rl' i, atomVal lhs)) $ ruleLHS rl'
@@ -363,15 +363,17 @@ ruleRHSValidate _ _ RHSCondition{} _ = return ()
 ruleRHSValidate _ _ RHSFlatMap{} _ = return ()
 ruleRHSValidate _ _ RHSInspect{} _ = return ()
 
-ruleRHSValidate d rl RHSAggregate{} idx = do
-    let RHSAggregate v group_by fname e = ruleRHS rl !! idx
+ruleRHSValidate d rl RHSGroupBy{} idx = do
+    let RHSGroupBy v e group_by = ruleRHS rl !! idx
     let gctx = CtxRuleRGroupBy rl idx
-    check d (notElem v $ map name $ exprVars d gctx group_by) (pos e) $ "Aggregate variable " ++ v ++ " already declared in this scope"
-    case lookupFuncs d fname (Just 1) of
-         Nothing  -> err d (pos e) $ "Aggregation function not found. '" ++ fname ++ "' must refer to a function that takes one argument of type Group<>"
-         Just [_] -> return ()
-         Just fs  -> err d (pos e) $ "Ambiguous aggregation function name '" ++ fname ++ "' may refer to:\n  " ++
-                                     (intercalate "\n  " $ map name fs)
+    check d (notElem v $ map name $ exprVars d gctx group_by) (pos e) $ "Group variable '" ++ v ++ "' already declared in this scope"
+    case exprStripTypeAnnotationsRec group_by gctx of
+         E EVar{} -> return ()
+         E ETuple{..} -> mapM_ (\case
+                                 E EVar{} -> return ()
+                                 e' -> err d (pos e') "Group-by expression must be a variable or a tuple of variables, e.g., 'group_by(x)' or 'group_by((x,y))'")
+                                exprTupleFields
+         _ -> err d (pos group_by) "Group-by expression must be a variable or a tuple of variables, e.g., 'group_by(x)' or 'group_by((x,y))'"
     return ()
 
 ruleLHSValidate :: (MonadError String me) => DatalogProgram -> Rule -> Atom -> me ()

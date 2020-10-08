@@ -2,7 +2,13 @@
 //! CLI), parsing them with cmd_parser crate, executing commands, and tracking database state in a
 //! map.
 
-#![allow(dead_code, non_snake_case)]
+#![allow(
+    dead_code,
+    non_snake_case,
+    clippy::match_like_matches_macro,
+    //match_like_matches_macro not supported in older versions of clippy
+    clippy::unknown_clippy_lints
+)]
 
 use std::convert::TryFrom;
 use std::io::stdout;

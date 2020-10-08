@@ -748,7 +748,7 @@ mkTypedef d tdef@TypeDef{..} =
                              (nest' $ vcat $ punctuate comma fields)                                   $$
                              "}"                                                                       $$
                              impl_abomonate                                                            $$
-                             mkFromRecord d tdef                                                       $$
+                             mkStructFromRecord d tdef                                                 $$
                              mkStructIntoRecord tdef                                                   $$
                              mkStructMutator d tdef                                                    $$
                              display                                                                   $$
@@ -760,7 +760,7 @@ mkTypedef d tdef@TypeDef{..} =
                              (nest' $ vcat $ punctuate comma constructors)                             $$
                              "}"                                                                       $$
                              impl_abomonate                                                            $$
-                             mkFromRecord d tdef                                                       $$
+                             mkEnumFromRecord d tdef                                                       $$
                              mkEnumIntoRecord tdef                                                     $$
                              mkEnumMutator d tdef                                                      $$
                              display                                                                   $$
@@ -798,7 +798,7 @@ mkTypedef d tdef@TypeDef{..} =
               TOpaque _ _ [ktype, vtype] = typ' d f
               from_arr_attr = maybe empty (\_ -> "#[serde(with=\"" <> from_array_module_name <> "\")]")
                               $ fieldGetDeserializeArrayAttr d f
-              from_array_module = maybe empty (\fname -> let kfunc = fst $ getFunc d fname [vtype] $ Just ktype in
+              from_array_module = maybe empty (\fname -> let kfunc = fst $ getFunc d fname [vtype] ktype in
                                                          "deserialize_map_from_array!(" <>
                                                          from_array_module_name <> "," <>
                                                          mkType d True ktype <> "," <> mkType d True vtype <> "," <>
@@ -891,81 +891,49 @@ impl <T: FromRecord> FromRecord for DummyEnum<T> {
     }
 }
 -}
-mkFromRecord :: DatalogProgram -> TypeDef -> Doc
-mkFromRecord d t@TypeDef{..} | tdefGetCustomFromRecord d t = empty
-                             | otherwise =
-    "impl" <+> targs_bounds <+> "differential_datalog::record::FromRecord for" <+> nameLocal t <> targs <+> "{"                 $$
-    "    fn from_record(val: &differential_datalog::record::Record) -> ::std::result::Result<Self, String> {"                   $$
-    "        match val {"                                                                                                       $$
-    "            differential_datalog::record::Record::PosStruct(constr, _args) => {"                                           $$
-    "                match constr.as_ref() {"                                                                                   $$
-    (nest' $ nest' $ nest' $ nest' $ nest' pos_constructors)                                                                    $$
-    "                    c => ::std::result::Result::Err(format!(\"unknown constructor {} of type" <+> (pp $ name t) <+> "in {:?}\", c, *val))" $$
-    "                }"                                                                                                         $$
-    "            },"                                                                                                            $$
-    "            differential_datalog::record::Record::NamedStruct(constr, _args) => {"                                         $$
-    "                match constr.as_ref() {"                                                                                   $$
-    (nest' $ nest' $ nest' $ nest' $ nest' named_constructors)                                                                  $$
-    "                    c => ::std::result::Result::Err(format!(\"unknown constructor {} of type" <+> (pp $ name t) <+> "in {:?}\", c, *val))" $$
-    "                }"                                                                                                         $$
-    "            },"                                                                                                            $$
-    "            differential_datalog::record::Record::Serialized(format, s) => {"                                              $$
-    "                if format == \"json\" {"                                                                                   $$
-    "                    serde_json::from_str(&*s).map_err(|e|format!(\"{}\", e))"                                              $$
-    "                } else {"                                                                                                  $$
-    "                    ::std::result::Result::Err(format!(\"unsupported serialization format '{}'\", format))"                $$
-    "                }"                                                                                                         $$
-    "            },"                                                                                                            $$
-    "            v => {"                                                                                                        $$
-    "                ::std::result::Result::Err(format!(\"not a struct {:?}\", *v))"                                            $$
-    "            }"                                                                                                             $$
-    "        }"                                                                                                                 $$
-    "    }"                                                                                                                     $$
-    "}"
+mkStructFromRecord :: DatalogProgram -> TypeDef -> Doc
+mkStructFromRecord d t@TypeDef{..} | tdefGetCustomFromRecord d t = empty
+                                   | otherwise =
+    "::differential_datalog::decl_struct_from_record!(" <> nameLocal t <> "[\"" <> pp (name t) <> "\"]" <> targs <> "," <+> constructor <> ");"
     where
     targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
-    targs_bounds = "<" <> (hcat $ punctuate comma $ map ((<> ": differential_datalog::record::FromRecord + serde::de::DeserializeOwned + ::std::default::Default") . pp) tdefArgs) <> ">"
-    pos_constructors = vcat $ map mkposcons $ typeCons $ fromJust tdefType
-    mkposcons :: Constructor -> Doc
-    mkposcons c@Constructor{..} =
-        "\"" <> pp (name c) <> "\""
-        <+> ( if (length consArgs) == 0
-                then "if _args.is_empty()"
-                else "if _args.len() ==" <+> (pp $ length consArgs)
-            )
-        <+> "=> {"
-        $$  "    Ok(" <> cname <> "{" <> (hsep $ punctuate comma fields) <> "})"
-        $$  "},"
+    Constructor{..} = head $ typeCons $ fromJust tdefType
+    constructor = "[\"" <> pp consName <> "\"][" <> (pp $ length consArgs) <> "]{" <> commaSep fields  <> "}"
+    fields = mapIdx (\f i -> "[" <> pp i <> "]" <> pp (name f) <> "[\"" <> (pp $ unddname f) <> "\"]:" <+> (mkType d True f))
+                    consArgs
+
+mkEnumFromRecord :: DatalogProgram -> TypeDef -> Doc
+mkEnumFromRecord d t@TypeDef{..} | tdefGetCustomFromRecord d t = empty
+                             | otherwise =
+    "::differential_datalog::decl_enum_from_record!(" <> nameLocal t <> "[\"" <> pp (name t) <> "\"]" <> targs <> "," <+> constructors <> ");"
+    where
+    targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
+    constructors = commaSep $ map mkcons $ typeCons $ fromJust tdefType
+    mkcons :: Constructor -> Doc
+    mkcons c@Constructor{..} =
+        cname <> "[\"" <> pp (name c) <> "\"][" <> (pp $ length consArgs) <> "]{" <> commaSep fields  <> "}"
         where
-        cname = mkConstructorName True tdefName (fromJust tdefType) (name c)
-        fields = mapIdx (\f i -> pp (name f) <> ": <" <> (mkType d True f) <> ">::from_record(&_args[" <> pp i <> "])?") consArgs
-    named_constructors = vcat $ map mknamedcons $ typeCons $ fromJust tdefType
-    mknamedcons :: Constructor -> Doc
-    mknamedcons c@Constructor{..} =
-        "\"" <> pp (name c) <> "\" => {" $$
-        "    Ok(" <> cname <> "{" <> (hsep $ punctuate comma fields) <> "})"     $$
-        "},"
-        where
-        cname = mkConstructorName True tdefName (fromJust tdefType) (name c)
-        fields = map (\f -> pp (name f) <> ": differential_datalog::record::arg_extract::<" <> mkType d True f <> ">(_args, \"" <> (pp $ unddname f) <> "\")?") consArgs
+        cname = pp $ nameLocal c
+        fields = mapIdx (\f i -> "[" <> pp i <> "]" <> pp (name f) <> "[\"" <> (pp $ unddname f) <> "\"]:" <+> (mkType d True f)) consArgs
+
 
 mkStructIntoRecord :: TypeDef -> Doc
 mkStructIntoRecord t@TypeDef{..} =
-    "::differential_datalog::decl_struct_into_record!(" <> nameLocal t <> "[\"" <> pp (name t) <> "\"]" <> targs <> "," <+> args <> ");"
+    "::differential_datalog::decl_struct_into_record!(" <> nameLocal t <> ", [\"" <> pp (name t) <> "\"]" <> targs <> "," <+> args <> ");"
     where
     targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
     args = commaSep $ map (pp . name) $ consArgs $ head $ typeCons $ fromJust tdefType
 
 mkStructMutator :: DatalogProgram -> TypeDef -> Doc
 mkStructMutator d t@TypeDef{..} =
-    "::differential_datalog::decl_record_mutator_struct!(" <> nameLocal t <> ", " <> targs <> "," <+> args <> ");"
+    "::differential_datalog::decl_record_mutator_struct!(" <> nameLocal t <> "," <+> targs <> "," <+> args <> ");"
     where
     targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
     args = commaSep $ map (\arg -> pp (name arg) <> ":" <+> mkType d True arg) $ consArgs $ head $ typeCons $ fromJust tdefType
 
 mkEnumIntoRecord :: TypeDef -> Doc
 mkEnumIntoRecord t@TypeDef{..} =
-    "::differential_datalog::decl_enum_into_record!(" <> nameLocal t <> "," <+> targs <> "," <+> cons <> ");"
+    "::differential_datalog::decl_enum_into_record!(" <> nameLocal t <> targs <> "," <+> cons <> ");"
     where
     targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
     cons = commaSep $ map (\c -> nameLocal c <> "[\"" <> pp (name c) <> "\"]" <> "{" <> (commaSep $ map (pp . name) $ consArgs c) <> "}")
@@ -973,7 +941,7 @@ mkEnumIntoRecord t@TypeDef{..} =
 
 mkEnumMutator :: DatalogProgram -> TypeDef -> Doc
 mkEnumMutator d t@TypeDef{..} =
-    "::differential_datalog::decl_record_mutator_enum!(" <> nameLocal t <> "," <+> targs <> "," <+> cons <> ");"
+    "::differential_datalog::decl_record_mutator_enum!(" <> nameLocal t <> targs <> "," <+> cons <> ");"
     where
     targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
     cons = commaSep $ map (\c -> nameLocal c <> "{" <> (commaSep $ map (\arg -> pp (name arg) <> ":" <+> mkType d True arg) $ consArgs c) <> "}")
@@ -1717,7 +1685,7 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
             case rhs of
                  RHSLiteral True a  -> mkJoin d conditions inpval a rl rhs_idx
                  RHSLiteral False a -> mkAntijoin d conditions inpval a rl rhs_idx
-                 RHSAggregate{}     -> mkAggregate d conditions inpval rl rhs_idx
+                 RHSGroupBy{}       -> mkGroupBy d conditions inpval rl rhs_idx
                  _                  -> error $ "compileRule: operator " ++ show rhs ++ " does not expect arranged input"
     let mkCollectionOperator | rhs_idx == length ruleRHS
                              = mkHead d prefix rl
@@ -1777,7 +1745,7 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                    else "Some(" <> xform <> ")"
 
 
--- 'Join', 'Antijoin', 'Semijoin', and 'Aggregate' operators take arranged collection
+-- 'Join', 'Antijoin', 'Semijoin', and 'GroupBy' operators take arranged collection
 -- as input.  'rhsInputArrangement' returns the arrangement expected by the operator
 -- or Nothing if the operator takes a flat collection (e.g., it's a 'FlatMap').
 --
@@ -1791,7 +1759,7 @@ rhsInputArrangement d rl rhs_idx (RHSLiteral _ atom) =
     in Just $ (map (\(_,e,c) -> (e,c)) vmap,
                -- variables visible before join that are still in use after it
                (rhsVarsAfter d rl (rhs_idx - 1)) `intersect` (rhsVarsAfter d rl rhs_idx))
-rhsInputArrangement d rl rhs_idx (RHSAggregate _ grpby _ _) =
+rhsInputArrangement d rl rhs_idx (RHSGroupBy _ _ grpby) =
     let ctx = CtxRuleRGroupBy rl rhs_idx
     in Just $ (map (\(v, ctx') -> (eVar v, ctx')) $ exprVarOccurrences ctx grpby,
                -- all visible variables to preserve multiset semantics
@@ -1853,36 +1821,29 @@ mkInspect d prefix rl idx e input_val = do
         "    next: Box::new(" <> next <> ")"                                                                                $$
         "}"
 
-mkAggregate :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> [Int] -> Bool -> Rule -> Int -> CompilerMonad Doc
-mkAggregate d filters input_val rl@Rule{..} idx = do
-    let rhs@RHSAggregate{..} = ruleRHS !! idx
-    let ctx = CtxRuleRAggregate rl idx
+mkGroupBy :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> [Int] -> Bool -> Rule -> Int -> CompilerMonad Doc
+mkGroupBy d filters input_val rl@Rule{..} idx = do
+    let rhs@RHSGroupBy{..} = ruleRHS !! idx
+    let ctx = CtxRuleRProject rl idx
     let gctx = CtxRuleRGroupBy rl idx
     let Just (_, group_vars) = rhsInputArrangement d rl idx rhs
     -- Filter inputs before grouping
     ffun <- mkFFun d rl filters
-    -- Function to extract the argument of aggregation function from 'Value'
+    -- Compute projection.
     open <- if input_val
                then openAtom d vALUE_VAR rl 0 (rhsAtom $ head ruleRHS) "unreachable!()"
                else openTuple d vALUE_VAR group_vars
-    let project = "{fn __f(" <> vALUE_VAR <> ": &DDValue) -> " <+> mkType d False (exprType d ctx rhsAggExpr) $$
-                  (braces' $ open $$ mkExpr d ctx rhsAggExpr EVal)                                            $$
+    let project = "{fn __f(" <> vALUE_VAR <> ": &DDValue) -> " <+> mkType d False (exprType d ctx rhsProject) $$
+                  (braces' $ open $$ mkExpr d ctx rhsProject EVal)                                            $$
                   "::std::rc::Rc::new(__f)}"
-    -- Aggregate function:
-    -- - compute aggregate
-    -- - return variables still in scope after this term
-    let ktype = ruleAggregateKeyType d rl idx
-    let vtype = ruleAggregateValType d rl idx
-    let (agg_func, tmap) = getFunc d rhsAggFunc [tOpaque gROUP_TYPE [ktype, vtype]] Nothing --(varType d $ AggregateVar rl idx)
-    -- Pass group-by variables to the aggregate function.
-    let grp = "&" <> rnameScoped False gROUP_TYPE <> "::new(&" <> (mkExpr d gctx rhsGroupBy EVal) <> "," <+> gROUP_VAR <> "," <+> project <> ")"
-    let tparams = commaSep $ map (\tvar -> mkType d False (tmap M.! tvar)) $ funcTypeVars agg_func
-    let aggregate = "let ref" <+> pp rhsVar <+> "=" <+> rnameScoped False rhsAggFunc <>
-                    "::<" <> tparams <> ">(" <> grp <> ");"
-    -- Apply filters following aggregation.
+    -- * Create 'struct Group'
+    -- * Apply filters following group_by.
+    -- * Return variables still in scope after the last filter.
+    let grp = rnameScoped False gROUP_TYPE <> "::new_by_ref(" <> (mkExpr d gctx rhsGroupBy EVal) <> "," <+> gROUP_VAR <> "," <+> project <> ")"
+    let aggregate = "let ref" <+> pp rhsVar <+> "= unsafe{" <> grp <> "};"
     let post_filters = mkFilters d rl idx
         last_idx = idx + length post_filters
-    result <- mkVarsTupleValue d $ map (\v -> (v, EReference)) $ rhsVarsAfter d rl last_idx
+    result <- mkVarsTupleValue d $ map (, EReference) $ rhsVarsAfter d rl last_idx
     let key_vars = exprVars d gctx rhsGroupBy
     open_key <- openTuple d kEY_VAR key_vars
     let agfun = braces'
@@ -2330,9 +2291,9 @@ rhsVarsAfter d rl i =
     case ruleRHS rl !! i of
          -- Inspect operators cannot change the collection it inspects. No variables are dropped.
          RHSInspect _ -> rhsVarsAfter d rl (i-1)
-         _            -> filter (\f -> -- If an aggregation occurs in the remaining part of the rule,
+         _            -> filter (\f -> -- If an grouping occurs in the remaining part of the rule,
                                        -- keep all variables to preserve multiset semantics
-                                       if any rhsIsAggregate $ drop (i+1) (ruleRHS rl)
+                                       if any rhsIsGroupBy $ drop (i+1) (ruleRHS rl)
                                           then True
                                           else elem f $ (ruleLHSVars d rl) `union`
                                                         (concatMap (ruleRHSTermVars d rl) [i+1..length (ruleRHS rl) - 1]))

@@ -71,7 +71,7 @@ module Language.DifferentialDatalog.Syntax (
         rhsIsCondition,
         rhsIsFilterCondition,
         rhsIsAssignment,
-        rhsIsAggregate,
+        rhsIsGroupBy,
         Atom(..),
         Rule(..),
         ClosureExprArg(..),
@@ -590,8 +590,32 @@ instance Show Atom where
 -- positive/negative polarity, Boolean conditions, aggregation,
 -- disaggregation (flatmap), inspect operations.
 data RuleRHS = RHSLiteral   {rhsPolarity :: Bool, rhsAtom :: Atom}
-             | RHSCondition {rhsExpr :: Expr}
-             | RHSAggregate {rhsVar :: String, rhsGroupBy :: Expr, rhsAggFunc :: String, rhsAggExpr :: Expr}
+               -- Expression that can filter or map input collation, or both:
+               -- * Filtering: `x == y`
+               -- * Mapping: `var x = f(y)`
+               -- * Filter/map: `Some{x} = f(y)`
+             | RHSCondition {
+                   rhsExpr :: Expr
+               }
+               -- Group input records:
+               -- 'var <rhsVar> = <rhsProject>.group_by(<rhsGroupBy>)'
+               -- Example 'var group = (x,y,z).group_by(q,t)'
+               -- We also support expressions that both group and reduce records, e.g.:
+               -- `(var minx, var miny) = (x,y).group_by(q).arg_min(|t|t.0)`.  These get
+               -- desugared into a pair of 'RHSGroupBy' and 'RHSCondition' clauses:
+               -- `var __group = (x,y).group_by(q),
+               --  (var minx, var miny) = __group.arg_min(|t|t.0)`.
+             | RHSGroupBy {
+                   -- The resulting group of type 'Group<K,V>', where 'K' is the type of 'rhsGroupBy'
+                   -- and 'V' is the type of 'rhsProject'.
+                   rhsVar :: String,
+                   -- Maps a record in the input collection into a value to store in the group.
+                   -- This can be arbitrary expression over variables visible right before the 'group_by'
+                   -- clause.
+                   rhsProject :: Expr,
+                   -- Group-by expression must be a tuple consisting of variable names, e.g., `group_by(q)`, `group_by(p,q,r)`.
+                   rhsGroupBy :: Expr
+               }
              | RHSFlatMap   {rhsVar :: String, rhsMapExpr :: Expr}
              | RHSInspect   {rhsInspectExpr :: Expr}
              deriving (Eq, Ord)
@@ -600,9 +624,7 @@ instance PP RuleRHS where
     pp (RHSLiteral True a)    = pp a
     pp (RHSLiteral False a)   = "not" <+> pp a
     pp (RHSCondition c)       = pp c
-    pp (RHSAggregate v g f e) = "var" <+> pp v <+> "=" <+> "Aggregate" <> "(" <>
-                                pp g <> comma <+>
-                                pp f <> (parens $ pp e) <> ")"
+    pp (RHSGroupBy v p gb)    = "var" <+> pp v <+> "=" <+> pp p <> ".group_by(" <> pp gb <> ")"
     pp (RHSFlatMap v e)       = "var" <+> pp v <+> "=" <+> "FlatMap" <> (parens $ pp e)
     pp (RHSInspect e)         = "Inspect" <+> pp e
 
@@ -621,9 +643,9 @@ rhsIsNegativeLiteral :: RuleRHS -> Bool
 rhsIsNegativeLiteral RHSLiteral{..} | not rhsPolarity = True
 rhsIsNegativeLiteral _                                = False
 
-rhsIsAggregate :: RuleRHS -> Bool
-rhsIsAggregate RHSAggregate{} = True
-rhsIsAggregate _              = False
+rhsIsGroupBy :: RuleRHS -> Bool
+rhsIsGroupBy RHSGroupBy{} = True
+rhsIsGroupBy _            = False
 
 rhsIsCondition :: RuleRHS -> Bool
 rhsIsCondition RHSCondition{} = True
@@ -1278,9 +1300,9 @@ data ECtx = -- | Top-level context. Serves as the root of the context hierarchy.
           | CtxRuleRFlatMap   {ctxRule::Rule, ctxIdx::Int}
             -- | Inspect clause in the RHS of a rule
           | CtxRuleRInspect   {ctxRule::Rule, ctxIdx::Int}
-            -- | Aggregation function argument in an Aggregate clause in the RHS of a rule
-          | CtxRuleRAggregate {ctxRule::Rule, ctxIdx::Int}
-            -- | Group-by expression of an Aggregate clause in the RHS of a rule
+            -- | Projection expression  in an group_by clause in the RHS of a rule
+          | CtxRuleRProject   {ctxRule::Rule, ctxIdx::Int}
+            -- | Group-by expression of a group_by clause in the RHS of a rule
           | CtxRuleRGroupBy   {ctxRule::Rule, ctxIdx::Int}
             -- | Key expression
           | CtxKey            {ctxRelation::Relation}
@@ -1362,7 +1384,7 @@ instance PP ECtx where
                     CtxRuleRCond{..}      -> "CtxRuleRCond      " <+> rule <+> pp ctxIdx
                     CtxRuleRFlatMap{..}   -> "CtxRuleRFlatMap   " <+> rule <+> pp ctxIdx
                     CtxRuleRInspect{..}   -> "CtxRuleRInspect   " <+> rule <+> pp ctxIdx
-                    CtxRuleRAggregate{..} -> "CtxRuleRAggregate " <+> rule <+> pp ctxIdx
+                    CtxRuleRProject{..}   -> "CtxRuleRProject   " <+> rule <+> pp ctxIdx
                     CtxRuleRGroupBy{..}   -> "CtxRuleRGroupBy   " <+> rule <+> pp ctxIdx
                     CtxKey{..}            -> "CtxKey            " <+> rel
                     CtxIndex{..}          -> "CtxIndex          " <+> pp (name ctxIndex)
@@ -1407,7 +1429,7 @@ ctxParent CtxRuleRAtom{}      = CtxTop
 ctxParent CtxRuleRCond{}      = CtxTop
 ctxParent CtxRuleRFlatMap{}   = CtxTop
 ctxParent CtxRuleRInspect{}   = CtxTop
-ctxParent CtxRuleRAggregate{} = CtxTop
+ctxParent CtxRuleRProject{}   = CtxTop
 ctxParent CtxRuleRGroupBy{}   = CtxTop
 ctxParent CtxKey{}            = CtxTop
 ctxParent CtxIndex{}          = CtxTop
