@@ -1,0 +1,112 @@
+import group
+import vec
+
+/* Some data to group and aggregate. */
+input relation Data(x: usize, y: Vec<string>, z: Vec<bigint>, q: string)
+
+// map
+output relation Map1(key: Vec<string>, val: Vec<string>)
+
+Map1(y, val) :-
+    Data(x, y, z, q),
+    var val = (z,q).group_by(y).map(|zq| zq.1 ++ ": " ++ zq.0.map(to_string).join(",")).
+
+output relation Map2(key: Vec<string>, val: Vec<string>)
+
+// As above, but store the group in a variable and aggregate it later in the rule.
+Map1(y, val) :-
+    Data(x, y, z, q),
+    var group = (z,q).group_by(y),
+    // a no-op join to make sure that `group` ends up stored in an intermediate
+    // relation.
+    Data(.y = y),
+    var val = group.map(|zq| zq.1 ++ ":: " ++ zq.0.map(to_string).join(",")).
+
+// As above, but this time introduce an explicit relation for the group.
+relation Group1(g: Group<Vec<string>, (Vec<bigint>, string)>)
+
+Group1(group) :-
+    Data(x, y, z, q),
+    var group = (z,q).group_by(y).
+
+Map1(group.key(),
+     group.map(|zq| zq.1 ++ "::: " ++ zq.0.map(to_string).join(","))) :-
+    Group1(group).
+
+// flatmap
+output relation FlatMap1(key: Vec<string>, val: Vec<string>)
+
+FlatMap1(y, val) :-
+    Data(x, y, z, q),
+    var val = (z,q).group_by(y).flatmap(|zq| zq.0.map(to_string).push_imm(zq.1)).
+
+// argmin
+output relation ArgMin1(key: (Vec<string>, usize), val: (Vec<bigint>, string))
+
+ArgMin1((y,x), min_val) :-
+    Data(x,y,z,q),
+    var min_val = (z,q).group_by((y,x)).arg_min(|zq| zq.0.nth(0).unwrap_or_default()).
+
+// argmax
+output relation ArgMax1(key: (Vec<string>, usize), val: (Vec<bigint>, string))
+
+ArgMax1((y,x), max_val) :-
+    Data(x,y,z,q),
+    var max_val = (z,q).group_by((y,x)).arg_max(|zq| zq.0.nth(0).unwrap_or_default()).
+
+// find
+output relation Find1(val: Data)
+
+Find1(finding) :-
+    d in Data(),
+    Some{var finding} = d.group_by(()).find(|d| d.z.nth(1).unwrap_or_default() == 3).
+
+// no matches
+Find1(finding) :-
+    d in Data(),
+    var g = d.group_by(()),
+    Some{var finding} = g.find(|d| d.z.nth(1).unwrap_or_default() == 5).
+
+// filter
+output relation Filter1(val: Vec<Data>)
+
+Filter1(g.filter(|d| d.z.len() == 3)) :-
+    d in Data(),
+    var g = d.group_by(()),
+    d in Data().
+
+// filter_map
+output relation FilterMap1(val: Vec<bigint>)
+
+FilterMap1(g.filter_map(|d| d.z.nth(2))) :-
+    d in Data(),
+    var g = d.group_by(()),
+    d in Data().
+
+// all
+output relation All1(key: Vec<string>, all: bool)
+
+All1(y, all) :-
+    Data(x,y,z,q),
+    var all = z.group_by(y).all(|z| z.all(|val| val > 0)).
+
+// any
+output relation Any1(key: Vec<string>, all: bool)
+
+Any1(y, all) :-
+    Data(x,y,z,q),
+    var all = z.group_by(y).any(|z| z.any(|val| val == 1)).
+
+// count
+output relation Count1(x: usize, count: usize)
+
+Count1(x, count) :-
+    Data(x,y,z,q),
+    var count = ().group_by(x).count().
+
+// fold
+output relation Fold1(x: usize, sum: bigint)
+
+Fold1(x, count) :-
+    Data(x,y,z,q),
+    var count = z.group_by(x).fold(|s0, z| z.fold(|s1, v| s1 + v, s0), 0).

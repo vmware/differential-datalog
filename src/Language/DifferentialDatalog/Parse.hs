@@ -21,7 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 -}
 
-{-# LANGUAGE FlexibleContexts, RecordWildCards, TupleSections, LambdaCase #-}
+{-# LANGUAGE FlexibleContexts, RecordWildCards, TupleSections, LambdaCase, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
 module Language.DifferentialDatalog.Parse (
@@ -32,6 +32,7 @@ module Language.DifferentialDatalog.Parse (
 
 import Control.Applicative hiding (many,optional,Const)
 import Control.Monad.Except
+import qualified Control.Monad.State as ST
 import Text.Parsec hiding ((<|>))
 import Text.Parsec.Expr
 import Text.Parsec.Language
@@ -40,6 +41,7 @@ import qualified Data.Map as M
 import Data.Maybe
 import Data.List
 import Data.List.Extra (groupSort)
+import Data.Functor.Identity
 import Data.Char
 import Numeric
 import GHC.Float
@@ -52,6 +54,7 @@ import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Ops
 import Language.DifferentialDatalog.Error
+import {-# SOURCE #-} Language.DifferentialDatalog.Expr
 
 -- parse a string containing a datalog program and produce the intermediate representation
 parseDatalogString :: String -> String -> IO DatalogProgram
@@ -408,20 +411,66 @@ apply = Apply nopos <$  reserved "apply" <*> transIdent
 
 rule = Rule nopos <$>
        (commaSep1 $ atom True) <*>
-       (option [] (reservedOp ":-" *> commaSep rulerhs)) <* dot
+       (option [] (reservedOp ":-" *> (concat <$> commaSep rulerhs))) <* dot
 
-rulerhs =  do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ try $ varIdent <* reserved "in") *> (optional $ reservedOp "&") *> relIdent *> (symbol "(" <|> symbol "[")
-              RHSLiteral <$> (option True (False <$ reserved "not")) <*> atom False
-       <|> do _ <- try $ lookAhead $ reserved "var" *> varIdent *> reservedOp "=" *> reserved "Aggregate"
-              RHSAggregate <$> (reserved "var" *> varIdent) <*>
-                               (reservedOp "=" *> reserved "Aggregate" *> symbol "(" *> group_by_expr) <*>
-                               (comma *> funcIdent) <*>
-                               (parens expr <* symbol ")")
-       <|> do _ <- try $ lookAhead $ reserved "var" *> varIdent *> reservedOp "=" *> reserved "FlatMap"
-              RHSFlatMap <$> (reserved "var" *> varIdent) <*>
-                             (reservedOp "=" *> reserved "FlatMap" *> parens expr)
-       <|> (RHSInspect <$ reserved "Inspect" <*> expr)
-       <|> (RHSCondition <$> expr)
+rulerhs :: ParsecT String () Identity [RuleRHS]
+rulerhs =  (do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ try $ varIdent <* reserved "in") *> (optional $ reservedOp "&") *> relIdent *> (symbol "(" <|> symbol "[")
+               (\x -> [x]) <$> (RHSLiteral <$> (option True (False <$ reserved "not")) <*> atom False))
+          <|> aggregate
+          <|> do _ <- try $ lookAhead $ reserved "var" *> varIdent *> reservedOp "=" *> reserved "FlatMap"
+                 (\x -> [x]) <$> (RHSFlatMap <$> (reserved "var" *> varIdent) <*>
+                                                 (reservedOp "=" *> reserved "FlatMap" *> parens expr))
+          <|> (((\x -> [x]) . RHSInspect) <$ reserved "Inspect" <*> expr)
+          <|> rhsCondition
+
+-- If expression contains any group-by subexpressions, transform them into
+-- separate RHSGroupBy clauses and replace them with fresh variables, e.g.:
+-- 'var c = (x,y).group_by(z).count()'
+-- becomes
+-- 'var __group = (x,y).group_by(z),
+--  var c = __group.count()'
+rhsCondition = do
+    e <- expr
+    case ST.runState (runExceptT $ exprFoldM extractGroupBy e) Nothing of
+         (Left emsg, _)       -> errorWithoutStackTrace emsg
+         (Right e', group_by) ->
+               case e' of
+                    E (ESet _ (E (EVarDecl _ gvar1)) (E (EVar _ gvar2))) | gvar1 == "__group" && gvar1 == gvar2
+                                                                         -> return $ maybeToList group_by
+                    _ -> return $ (maybeToList group_by) ++ [RHSCondition e']
+
+extractGroupBy (EApply p (E (EFunc _ [f])) args) | f == "group_by" = do
+    checkNoProg (length args == 2) p
+                $ "The 'group_by' operator must be invoked with two arguments, e.g., 'expr1.group_by(expr2)' or 'group_by(expr1, expr2)'," ++
+                  " but it is invoked with " ++ show (length args)
+    let [project, group_by] = args
+    previous_groupby_clause <- ST.get
+    checkNoProg (isNothing previous_groupby_clause) p
+                $ "'group_by' operator can occur at most once in an expression. Previous occurrence: " ++
+                  show (pos $ rhsGroupBy $ fromJust previous_groupby_clause)
+    ST.put $ Just $ RHSGroupBy "__group" project group_by
+    return $ E $ EVar p "__group"
+extractGroupBy e  = return $ E e
+
+-- Deprecated Aggregate syntax.
+aggregate = do
+    _ <- try $ lookAhead $ reserved "var" *> varIdent *> reservedOp "=" *> reserved "Aggregate"
+    before_var <- getPosition
+    var <- reserved "var" *> varIdent
+    after_var <- getPosition
+    _ <- reservedOp "=" *> reserved "Aggregate" *> symbol "("
+    grp_by <- group_by_expr
+    before_func <- getPosition
+    f <- comma *> funcIdent
+    after_func <- getPosition
+    project <- parens expr 
+    after_project <- getPosition
+    _ <- symbol ")"
+    end <- getPosition
+    return [ RHSGroupBy "__group" project grp_by
+           , RHSCondition $ E $ ESet (before_var, end)
+                                     (E $ EVarDecl (before_var, after_var) var)
+                                     (E $ EApply (before_func, end) (E $ EFunc (before_func, after_func) [f]) [E $ EVar (after_func, after_project) "__group"])]
 
 {- group-by expression: variable or a tuple of variables -}
 group_by_expr = withPos

@@ -115,7 +115,7 @@ input relation InputTuples(x: bit<32>, y: bit<32>)
 
 InspectSimpleSum(x, total) :-
     InputTuples(x, y),
-    var total = Aggregate((x), group_sum(y)),
+    var total = y.group_by(x).group_sum(),
     Inspect {
         var z = 1 + 2;
         var w = ddlog_weight;

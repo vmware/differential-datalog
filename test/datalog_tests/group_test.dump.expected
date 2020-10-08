@@ -1,0 +1,27 @@
+group_test::Map1{.key = ["1", "2"], .val = ["one-1: 1,2", "one-2: 3,4", "one-2: 3,4"]}
+group_test::Map1{.key = ["1", "2"], .val = ["one-1:: 1,2", "one-2:: 3,4", "one-2:: 3,4"]}
+group_test::Map1{.key = ["1", "2"], .val = ["one-1::: 1,2", "one-2::: 3,4", "one-2::: 3,4"]}
+group_test::Map1{.key = ["2", "3"], .val = ["two-1: 0,1,2", "two-2: 0,3,4", "two-2: 0,3,4"]}
+group_test::Map1{.key = ["2", "3"], .val = ["two-1:: 0,1,2", "two-2:: 0,3,4", "two-2:: 0,3,4"]}
+group_test::Map1{.key = ["2", "3"], .val = ["two-1::: 0,1,2", "two-2::: 0,3,4", "two-2::: 0,3,4"]}
+group_test::FlatMap1{.key = ["1", "2"], .val = ["1", "2", "one-1", "3", "4", "one-2", "3", "4", "one-2"]}
+group_test::FlatMap1{.key = ["2", "3"], .val = ["0", "1", "2", "two-1", "0", "3", "4", "two-2", "0", "3", "4", "two-2"]}
+group_test::ArgMin1{.key = (["1", "2"], 1), .val = ([1, 2], "one-1")}
+group_test::ArgMin1{.key = (["1", "2"], 2), .val = ([3, 4], "one-2")}
+group_test::ArgMin1{.key = (["2", "3"], 1), .val = ([0, 1, 2], "two-1")}
+group_test::ArgMin1{.key = (["2", "3"], 2), .val = ([0, 3, 4], "two-2")}
+group_test::ArgMax1{.key = (["1", "2"], 1), .val = ([3, 4], "one-2")}
+group_test::ArgMax1{.key = (["1", "2"], 2), .val = ([3, 4], "one-2")}
+group_test::ArgMax1{.key = (["2", "3"], 1), .val = ([0, 1, 2], "two-1")}
+group_test::ArgMax1{.key = (["2", "3"], 2), .val = ([0, 3, 4], "two-2")}
+group_test::Find1{.val = group_test::Data{.x = 1, .y = ["2", "3"], .z = [0, 3, 4], .q = "two-2"}}
+group_test::Filter1{.val = [group_test::Data{.x = 1, .y = ["2", "3"], .z = [0, 1, 2], .q = "two-1"}, group_test::Data{.x = 1, .y = ["2", "3"], .z = [0, 3, 4], .q = "two-2"}, group_test::Data{.x = 2, .y = ["2", "3"], .z = [0, 3, 4], .q = "two-2"}]}
+group_test::FilterMap1{.val = [2, 4, 4]}
+group_test::All1{.key = ["1", "2"], .all = true}
+group_test::All1{.key = ["2", "3"], .all = false}
+group_test::Any1{.key = ["1", "2"], .all = true}
+group_test::Any1{.key = ["2", "3"], .all = true}
+group_test::Count1{.x = 1, .count = 4}
+group_test::Count1{.x = 2, .count = 2}
+group_test::Fold1{.x = 1, .sum = 20}
+group_test::Fold1{.x = 2, .sum = 14}

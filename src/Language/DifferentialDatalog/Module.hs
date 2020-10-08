@@ -259,13 +259,8 @@ flattenNamespace1 mmap mod@DatalogModule{..} = do
     prog3 <- progTypeMapM prog2' (typeFlatten mmap mod)
     -- rename constructors and functions
     prog4 <- progExprMapCtxM prog3 (exprFlatten mmap mod)
-    prog5 <- progRHSMapM prog4 (\case
-                                 rhs@RHSAggregate{..} -> do
-                                     f' <- flattenFuncName' mmap mod (pos rhsAggExpr) rhsAggFunc 1
-                                     return $ rhs{rhsAggFunc = f'}
-                                 rhs -> return rhs)
-    prog6 <- progAttributeMapM prog5 (attrFlatten mod mmap)
-    return prog6
+    prog5 <- progAttributeMapM prog4 (attrFlatten mod mmap)
+    return prog5
 
 attrFlatten :: (MonadError String me) => DatalogModule -> MMap -> Attribute -> me Attribute
 attrFlatten mod mmap a@Attribute{attrName="deserialize_from_array", ..} = do

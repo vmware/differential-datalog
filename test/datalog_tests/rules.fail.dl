@@ -90,3 +90,55 @@ Try(z) :- Input(x),
 
 relation IntClosures(f: |s64|: s64)
 IntClosures(|x| {x = 10; x} ).
+
+//---
+
+// Call group_by with the wrong number of arguments
+
+relation GroupMe(x: usize, y: usize)
+relation Grouped()
+
+Grouped() :-
+    GroupMe(x,y),
+    var g = x.group_by(x, y).
+
+//---
+
+// Call group_by twice.
+
+relation GroupMe(x: usize, y: usize)
+relation Grouped()
+
+Grouped() :-
+    GroupMe(x,y),
+    x.group_by(y).size() == ().group_by(x).size().
+
+//---
+
+// Call group_by in invalid contect.
+
+function f(x: usize, y: usize) {
+    x.group_by(y)
+}
+
+//---
+
+// Currently only allow grouping by one or more variables.
+
+relation GroupMe(x: usize, y: usize)
+relation Grouped()
+
+Grouped() :-
+    GroupMe(x,y),
+    var sz = ().group_by(x + y).size().
+
+//---
+
+// Currently only allow grouping by one or more variables.
+
+relation GroupMe(x: usize, y: usize)
+relation Grouped()
+
+Grouped() :-
+    GroupMe(x,y),
+    var sz = ().group_by((x,x + y)).size().

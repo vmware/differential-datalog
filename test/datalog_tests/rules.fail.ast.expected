@@ -11,24 +11,36 @@ error: ./test/datalog_tests/rules.fail.dl:10:1-11:1: Relation R3 is mutually rec
 R2(x) :- R1(x), not R3(x, "foo").
 ^
 
-error: ./test/datalog_tests/rules.fail.dl:9:23-9:28: Type mismatch:
-expected type: string
-actual type: (string,string)
-in
-expression '(x, z)'
-    var s = Aggregate((x,z), concat_ys(y)).
-                      ^^^^^
-
-error: ./test/datalog_tests/rules.fail.dl:9:23-9:28: Type mismatch:
-expected type: bigint
+error: ./test/datalog_tests/rules.fail.dl:9:28-9:39: Type mismatch:
+expected type: (string,string)
 actual type: string
 in
-expected type: (string,bigint)
-actual type: (string,string)
+expected type: ddlog_std::Group<(string,string),string>
+actual type: ddlog_std::Group<string,string>
 in
-expression '(x, z)'
+expected type: function( ddlog_std::Group<(string,string),string>):string
+actual type: function( ddlog_std::Group<string,string>):string
+in
+expression 'concat_ys'
     var s = Aggregate((x,z), concat_ys(y)).
-                      ^^^^^
+                           ^^^^^^^^^^^
+
+error: ./test/datalog_tests/rules.fail.dl:9:28-9:39: Type mismatch:
+expected type: string
+actual type: bigint
+in
+expected type: (string,string)
+actual type: (string,bigint)
+in
+expected type: ddlog_std::Group<(string,string),string>
+actual type: ddlog_std::Group<(string,bigint),string>
+in
+expected type: function( ddlog_std::Group<(string,string),string>):string
+actual type: function( ddlog_std::Group<(string,bigint),string>):string
+in
+expression 'concat_ys'
+    var s = Aggregate((x,z), concat_ys(y)).
+                           ^^^^^^^^^^^
 
 error: ./test/datalog_tests/rules.fail.dl:9:13-9:18: expression '(1 + 2)' of a numeric type appears in a context where type '()' is expected
     Inspect 1 + 2.
@@ -41,3 +53,19 @@ error: ./test/datalog_tests/rules.fail.dl:10:19-10:28: ?-expressions are only al
 error: ./test/datalog_tests/rules.fail.dl:6:18-6:20: Expression is not an l-value
 IntClosures(|x| {x = 10; x} ).
                  ^^
+
+./test/datalog_tests/rules.fail.dl:10:13-10:29: The 'group_by' operator must be invoked with two arguments, e.g., 'expr1.group_by(expr2)' or 'group_by(expr1, expr2)', but it is invoked with 3
+
+./test/datalog_tests/rules.fail.dl:10:29-10:43: 'group_by' operator can occur at most once in an expression. Previous occurrence: ("./test/datalog_tests/rules.fail.dl" (line 10, column 16),"./test/datalog_tests/rules.fail.dl" (line 10, column 17))
+
+./test/datalog_tests/rules.fail.dl:6:6-6:15: Unknown function 'group_by'
+    x.group_by(y)
+     ^^^^^^^^^
+
+error: ./test/datalog_tests/rules.fail.dl:10:26-10:31: Group-by expression must be a variable or a tuple of variables, e.g., 'group_by(x)' or 'group_by((x,y))'
+    var sz = ().group_by(x + y).size().
+                         ^^^^^
+
+error: ./test/datalog_tests/rules.fail.dl:10:29-10:34: Group-by expression must be a variable or a tuple of variables, e.g., 'group_by(x)' or 'group_by((x,y))'
+    var sz = ().group_by((x,x + y)).size().
+                            ^^^^^

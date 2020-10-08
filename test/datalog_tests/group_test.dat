@@ -1,0 +1,23 @@
+start;
+
+insert group_test::Data(1, ["1", "2"], [1,2], "one-1"),
+insert group_test::Data(1, ["1", "2"], [3,4], "one-2"),
+insert group_test::Data(2, ["1", "2"], [3,4], "one-2"),
+
+insert group_test::Data(1, ["2", "3"], [0,1,2], "two-1"),
+insert group_test::Data(1, ["2", "3"], [0,3,4], "two-2"),
+insert group_test::Data(2, ["2", "3"], [0,3,4], "two-2"),
+
+commit;
+
+dump group_test::Map1;
+dump group_test::FlatMap1;
+dump group_test::ArgMin1;
+dump group_test::ArgMax1;
+dump group_test::Find1;
+dump group_test::Filter1;
+dump group_test::FilterMap1;
+dump group_test::All1;
+dump group_test::Any1;
+dump group_test::Count1;
+dump group_test::Fold1;

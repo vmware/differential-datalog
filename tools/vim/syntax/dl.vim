@@ -22,7 +22,7 @@ syn match  dlDelimiter	       "[\[\]!?@#\~&|\^=<>%+-,;\:\.@]"
 syn region dlRawString start='\[|' end="|]"
 
 "Regular keywords
-syn keyword dlStatement        mut break continue return and extern function apply transformer not or input index on output relation stream multiset match var let switch FlatMap Aggregate import as primary key
+syn keyword dlStatement        mut break continue return and extern function apply transformer not or input index on output relation stream multiset match var let switch FlatMap Aggregate import as primary key group_by
 
 syn keyword dlTodo             contained TODO FIXME XXX
 

@@ -746,10 +746,9 @@ varType d (FlatMapVar rl i)                = case typ' d $ exprType d (CtxRuleRF
                                                   TOpaque _ tname [kt,vt] | tname == mAP_TYPE
                                                                        -> tTuple [kt,vt]
                                                   _                    -> error $ "varType FlatMapVar " ++ show rl ++ " " ++ show i 
-varType d (AggregateVar rl i)              = let ktype = ruleAggregateKeyType d rl i
-                                                 vtype = ruleAggregateValType d rl i
-                                                 (f,tmap) = getFunc d (rhsAggFunc $ ruleRHS rl !! i) [tOpaque gROUP_TYPE [ktype, vtype]] Nothing
-                                             in typeSubstTypeArgs tmap $ funcType f
+varType d (GroupVar rl i)                  = let ktype = ruleGroupByKeyType d rl i
+                                                 vtype = ruleGroupByValType d rl i
+                                             in tOpaque gROUP_TYPE [ktype, vtype]
 varType _ WeightVar                        = tUser wEIGHT_TYPE []
 varType d (TSVar rl)                       = if ruleIsRecursive d rl
                                              then tUser nESTED_TS_TYPE []

@@ -10,3 +10,4 @@ import url_test
 import vec_test
 import map_test
 import set_test
+import group_test

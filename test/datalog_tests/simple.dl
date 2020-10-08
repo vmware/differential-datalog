@@ -694,7 +694,7 @@ output relation Counts1(x: string, occurrences: u64)
 
 Counts1(x, count) :-
     AggregateMe1(x, y),
-    var count = Aggregate((x), count_xs(y)).
+    var count = y.group_by(x).count_xs().
 
 // Count the number of occurrences of `x` in `ys`
 function count_xs(ys: Group<string, string>): u64 {
@@ -710,7 +710,7 @@ output relation Symmetric1(x: string, sym: bool)
 
 Symmetric1(x, sym) :-
     AggregateMe1(x, y),
-    var sym = Aggregate((x), find_x_in_group(y)).
+    var sym = y.group_by(x).find_x_in_group().
 
 // Check if `x` occurs in `ys`
 function find_x_in_group(ys: Group<'A, 'A>): bool {
@@ -723,42 +723,44 @@ function find_x_in_group(ys: Group<'A, 'A>): bool {
 }
 
 output relation Aggregate1(x: string, cnt: bit<64>)
-Aggregate1(x, cnt) :- AggregateMe1(x,y), var cnt = Aggregate((x), group_count(y)).
+Aggregate1(x, cnt) :- AggregateMe1(x,y), var cnt = y.group_by(x).count().
 
 output relation AggregateCnt(cnt: bit<64>)
-AggregateCnt(cnt) :- AggregateMe1(x,y), var cnt = Aggregate((), group_count(())).
+AggregateCnt(cnt) :- AggregateMe1(x,y), var cnt = ().group_by(()).count().
 
 output relation AggregateCnt2(cnt: bit<64>)
-AggregateCnt2(cnt) :- AggregateMe1(x,y), var cnt = Aggregate((), group_sum(1: bit<64>)).
+AggregateCnt2(cnt) :- AggregateMe1(x,y), var cnt = 1.group_by(()).group_sum().
 
 output relation AggregateCnt3(cnt: bit<64>)
-AggregateCnt3(cnt) :- AggregateMe1(x,y), y != "1", var cnt = Aggregate((), group_sum(1: bit<64>)).
+AggregateCnt3(cnt) :- AggregateMe1(x,y), y != "1", var cnt = 1.group_by(()).group_sum().
 
 output relation Aggregate2(x: string, set: Set<string>)
-Aggregate2(x, set) :- AggregateMe1(x,y), var set = Aggregate((x), group_to_set(y)).
+Aggregate2(x, set) :- AggregateMe1(x,y), var set = y.group_by(x).to_set().
 
 output relation Aggregate3(x: string, vec: Vec<string>)
-Aggregate3(x, vec) :- AggregateMe1(x,y), var vec = Aggregate((x), group_to_vec(y)).
+Aggregate3(x, vec) :- AggregateMe1(x,y), var vec = y.group_by(x).to_vec().
 
 output relation Aggregate4(x: string, map: Map<string,string>)
-Aggregate4(x, map) :- AggregateMe1(x,y), var map = Aggregate((x), group_to_map((x,y))).
+Aggregate4(x, map) :- AggregateMe1(x,y), var map = (x,y).group_by(x).to_map().
 
 output relation Disaggregate(x: string, y: string)
-Disaggregate(x,y) :- AggregateMe1(x,y), var set = Aggregate((x), group_to_set(y)), var y = FlatMap(set).
+Disaggregate(x,y) :- AggregateMe1(x,y), var set = y.group_by(x).to_set(), var y = FlatMap(set).
 
 input relation AggregateMeInts(x: string, y: bit<32>)
 
 output relation Sum(x: string, sum: bit<32>)
-Sum(x, sum) :- AggregateMeInts(x, y), var sum = Aggregate((x), group_sum(y)).
+Sum(x, sum) :- AggregateMeInts(x, y), var sum = y.group_by(x).group_sum().
 
 input relation AggregateMe3(x: string, y: string, z: string)
 
 output relation AggregateByX(x: string, cnt: bit<64>)
 
+// Old syntax for group_by.
 AggregateByX(x, cnt) :- AggregateMe3(x,y,z), AggregateMe1(x,y),
                         var cnt = Aggregate((x), group_count(())).
 
 output relation Concat(s: string)
+// Old syntax for group_by.
 Concat(s) :-
     AggregateMe3(x,y,z),
     var s = Aggregate((x,z), concat_ys(y)).
@@ -826,11 +828,11 @@ Allocation(name, id, x) :-
 
 relation ToAllocate(name: string, ids: Vec<string>)
 ToAllocate(name, ids) :-
-    Request(name, id), not Realized(name, id, _), var ids = Aggregate((name), group_to_vec(id)).
+    Request(name, id), not Realized(name, id, _), var ids = id.group_by(name).to_vec().
 
 relation Allocated(name: string, xs: Set<bit<32>>)
 Allocated(name, xs) :-
-    Realized(name, _, x), var xs = Aggregate((name), group_to_set(x)).
+    Realized(name, _, x), var xs = x.group_by(name).to_set().
 
 Allocation(name, id, x) :-
     ToAllocate(name, ids),
@@ -1178,14 +1180,14 @@ output relation Span(entity: entid_t, tns: Set<tnid_t>)
 Span(entity: entid_t, bindings) :-
     DdlogNode(entity),
     DdlogBinding(tn, entity),
-    var bindings = Aggregate((entity), group_to_set(tn)).
+    var bindings = tn.group_by(entity).to_set().
 
 /* Recursive step: propagate span along graph edges */
 Span(parent, tns) :-
     DdlogNode(parent),
     DdlogDependency(child, parent),
     Span(child, child_tns),
-    var tns = Aggregate((parent), group_set_unions(child_tns)).
+    var tns = child_tns.group_by(parent).union().
 
 input relation Signed8(x: signed<8>)
 input relation Signed16(x: signed<16>)

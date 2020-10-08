@@ -1,6 +1,9 @@
 /// Rust implementation of DDlog standard library functions and types.
 use differential_datalog::arcval;
 use differential_datalog::ddval::DDValue;
+use differential_datalog::decl_record_mutator_struct;
+use differential_datalog::decl_struct_from_record;
+use differential_datalog::decl_struct_into_record;
 use differential_datalog::int;
 use differential_datalog::program::Weight;
 use differential_datalog::record::arg_extract;
@@ -8,6 +11,7 @@ use differential_datalog::record::Record;
 
 use fnv::FnvHasher;
 use serde::de::Deserializer;
+use serde::ser::SerializeStruct;
 use serde::ser::Serializer;
 
 use num_traits::identities::Zero;
@@ -1145,110 +1149,347 @@ pub fn hash128<T: Hash>(x: &T) -> u128 {
 pub type ProjectFunc<X> = ::std::rc::Rc<dyn Fn(&DDValue) -> X>;
 
 /*
- * Group type (used in aggregation operators)
+ * Group type (returned by the `group_by` operator).
+ *
+ * A group captures output of the differential dataflow `reduce` operator.
+ * Thus, upon creation it is backed by references to DD state.  However, we
+ * would like to be able to manipulate groups as normal variables, store then
+ * in relations, which requires copying the contents of a group during cloning.
+ * Since we want the same code (e.g., the same aggregation functions) to work
+ * on both reference-backed and value-backed groups, we represent groups as
+ * an enum and provide uniform API over both variants.
+ *
+ * There is a problem of managing the lifetime of a group.  Since one of the
+ * two variants contains references, the group type is parameterized by the
+ * lifetime of these refs.  However, in order to be able to freely store and
+ * pass groups to and from functions, we want `'static` lifetime.  Because
+ * of the way we use groups in DDlog-generated code, we can safely transmute
+ * them to the `'static` lifetime upon creation.  Here is why.  A group is
+ * always created like this:
+ * ```
+ * let ref g = GroupEnum::ByRef{key, vals, project}
+ * ```
+ * where `vals` haa local lifetime `'a` that contains the lifetime
+ * `'b` of the resulting reference `g`.  Since we are never going to move
+ * `vals` refs out of the group (the accessor API returns them
+ * by-value), it is ok to tranmute `g` from `&'b Group<'a>` to
+ * `&'b Group<'static>` and have the `'b` lifetime protect access to the group.
+ * The only way to use the group outside of `'b` is to clone it, which will
+ * create an instance of `ByVal` that truly has `'static` lifetime.
  */
-pub struct Group<'a, K, V> {
-    /* TODO: remove "pub" */
-    pub key: &'a K,
-    pub group: &'a [(&'a DDValue, Weight)],
-    pub project: ProjectFunc<V>,
+
+pub type Group<K, V> = GroupEnum<'static, K, V>;
+
+pub enum GroupEnum<'a, K, V> {
+    ByRef {
+        key: K,
+        group: &'a [(&'a DDValue, Weight)],
+        project: ProjectFunc<V>,
+    },
+    ByVal {
+        key: K,
+        group: ::std::vec::Vec<V>,
+    },
 }
 
-/* This is needed so we can support for-loops over `Group`'s
- */
-pub struct GroupIter<'a, V> {
-    iter: slice::Iter<'a, (&'a DDValue, Weight)>,
-    project: ProjectFunc<V>,
-}
-
-impl<'a, V> GroupIter<'a, V> {
-    pub fn new<K>(grp: &Group<'a, K, V>) -> GroupIter<'a, V> {
-        GroupIter {
-            iter: grp.group.iter(),
-            project: grp.project.clone(),
+/* Always clone by value. */
+impl<K: Clone, V: Clone> Clone for Group<K, V> {
+    fn clone(&self) -> Self {
+        match self {
+            GroupEnum::ByRef {
+                key,
+                group,
+                project,
+            } => GroupEnum::ByVal {
+                key: key.clone(),
+                group: group.iter().map(|(v, _)| project(v)).collect(),
+            },
+            GroupEnum::ByVal { key, group } => GroupEnum::ByVal {
+                key: key.clone(),
+                group: group.clone(),
+            },
         }
     }
 }
 
-impl<'a, V> Iterator for GroupIter<'a, V> {
+impl<K: Default, V: Default> Default for Group<K, V> {
+    fn default() -> Self {
+        GroupEnum::ByVal {
+            key: K::default(),
+            group: vec![],
+        }
+    }
+}
+
+/* We compare two groups by comparing values returned by their `project()`
+ * functions, not the underlying DDValue's.  DDValue's are not visiable to
+ * the DDlog program; hence two groups are iff they have the same
+ * projections. */
+
+impl<K: PartialEq, V: Clone + PartialEq> PartialEq for Group<K, V> {
+    fn eq(&self, other: &Self) -> bool {
+        (self.key_ref() == other.key_ref()) && (self.iter().eq(other.iter()))
+    }
+}
+
+impl<K: PartialEq, V: Clone + PartialEq> Eq for Group<K, V> {}
+
+impl<K: PartialOrd, V: Clone + PartialOrd> PartialOrd for Group<K, V> {
+    fn partial_cmp(&self, other: &Self) -> ::std::option::Option<cmp::Ordering> {
+        match self.key_ref().partial_cmp(other.key_ref()) {
+            None => None,
+            Some(cmp::Ordering::Equal) => self.iter().partial_cmp(other.iter()),
+            ord => ord,
+        }
+    }
+}
+
+impl<K: Ord, V: Clone + Ord> Ord for Group<K, V> {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        match self.key_ref().cmp(other.key_ref()) {
+            cmp::Ordering::Equal => self.iter().cmp(other.iter()),
+            ord => ord,
+        }
+    }
+}
+
+/* Likewise, we hash projections, not the underlying DDValue's. */
+impl<K: Hash, V: Clone + Hash> Hash for Group<K, V> {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
+        self.key_ref().hash(state);
+        for v in self.iter() {
+            v.hash(state);
+        }
+    }
+}
+
+/* We rely on DDlogGroup to serialize/deserialize and print groups. */
+
+impl<K: Clone, V: Clone> DDlogGroup<K, V> {
+    pub fn from_group(g: &Group<K, V>) -> Self {
+        let vals: ::std::vec::Vec<V> = g.iter().collect();
+        DDlogGroup {
+            key: g.key(),
+            vals: Vec::from(vals),
+        }
+    }
+}
+
+impl<K, V> From<DDlogGroup<K, V>> for Group<K, V> {
+    fn from(g: DDlogGroup<K, V>) -> Self {
+        Group::new(g.key, g.vals.x)
+    }
+}
+
+impl<K: ::std::fmt::Debug + Clone, V: ::std::fmt::Debug + Clone> ::std::fmt::Debug for Group<K, V> {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::result::Result<(), ::std::fmt::Error> {
+        ::std::fmt::Debug::fmt(&DDlogGroup::from_group(self), f)
+    }
+}
+
+impl<K: IntoRecord + Clone, V: IntoRecord + Clone> IntoRecord for Group<K, V> {
+    fn into_record(self) -> Record {
+        DDlogGroup::from_group(&self).into_record()
+    }
+}
+
+impl<K, V> Mutator<Group<K, V>> for Record
+where
+    Record: Mutator<K>,
+    Record: Mutator<V>,
+    K: IntoRecord + FromRecord + Clone,
+    V: IntoRecord + FromRecord + Clone,
+{
+    fn mutate(&self, grp: &mut Group<K, V>) -> ::std::result::Result<(), String> {
+        let mut dgrp = DDlogGroup::from_group(grp);
+        self.mutate(&mut dgrp)?;
+        *grp = Group::from(dgrp);
+        Ok(())
+    }
+}
+
+impl<K, V> FromRecord for Group<K, V>
+where
+    K: Default + FromRecord + serde::de::DeserializeOwned,
+    V: Default + FromRecord + serde::de::DeserializeOwned,
+{
+    fn from_record(rec: &Record) -> ::std::result::Result<Self, String> {
+        DDlogGroup::from_record(rec).map(|g| Group::from(g))
+    }
+}
+
+impl<K: Clone + Serialize, V: Clone + Serialize> Serialize for Group<K, V> {
+    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        DDlogGroup::from_group(self).serialize(serializer)
+    }
+}
+
+impl<'de, K: Deserialize<'de>, V: Deserialize<'de>> Deserialize<'de> for Group<K, V> {
+    fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        DDlogGroup::deserialize(deserializer).map(|g| Group::from(g))
+    }
+}
+
+/* This is needed so we can support for-loops over `Group`'s */
+pub enum GroupIter<'a, V> {
+    ByRef {
+        iter: slice::Iter<'a, (&'static DDValue, Weight)>,
+        project: ProjectFunc<V>,
+    },
+    ByVal {
+        iter: slice::Iter<'a, V>,
+    },
+}
+
+impl<'a, V> GroupIter<'a, V> {
+    pub fn new<K>(grp: &'a Group<K, V>) -> GroupIter<'a, V> {
+        match grp {
+            GroupEnum::ByRef { group, project, .. } => GroupIter::ByRef {
+                iter: group.iter(),
+                project: project.clone(),
+            },
+            GroupEnum::ByVal { group, .. } => GroupIter::ByVal { iter: group.iter() },
+        }
+    }
+}
+
+impl<'a, V: Clone> Iterator for GroupIter<'a, V> {
     type Item = V;
 
     fn next(&mut self) -> ::std::option::Option<Self::Item> {
-        match self.iter.next() {
-            None => None,
-            Some((x, _)) => Some((self.project)(x)),
+        match self {
+            GroupIter::ByRef { iter, project } => match iter.next() {
+                None => None,
+                Some((x, _)) => Some(project(x)),
+            },
+            GroupIter::ByVal { iter } => match iter.next() {
+                None => None,
+                Some(x) => Some(x.clone()),
+            },
         }
     }
 
     fn size_hint(&self) -> (usize, ::std::option::Option<usize>) {
-        self.iter.size_hint()
+        match self {
+            GroupIter::ByRef { iter, .. } => iter.size_hint(),
+            GroupIter::ByVal { iter } => iter.size_hint(),
+        }
     }
 }
 
-impl<'a, K: Clone, V> Group<'a, K, V> {
-    fn key(&self) -> K {
-        self.key.clone()
-    }
-}
-
-impl<'a, K, V> Group<'a, K, V> {
-    pub fn new(
-        key: &'a K,
+impl<K, V> Group<K, V> {
+    /* Unsafe constructor for use in auto-generated code only. */
+    pub unsafe fn new_by_ref<'a>(
+        key: K,
         group: &'a [(&'a DDValue, Weight)],
         project: ProjectFunc<V>,
-    ) -> Group<'a, K, V> {
-        Group {
+    ) -> Group<K, V> {
+        GroupEnum::ByRef {
             key,
-            group,
+            group: ::std::mem::transmute::<_, &'static [(&'static DDValue, Weight)]>(group),
             project,
         }
     }
 
+    pub fn new<'a>(key: K, group: ::std::vec::Vec<V>) -> Group<K, V> {
+        GroupEnum::ByVal { key, group }
+    }
+
+    pub fn key_ref(&self) -> &K {
+        match self {
+            GroupEnum::ByRef { key, .. } => key,
+            GroupEnum::ByVal { key, .. } => key,
+        }
+    }
+
     fn size(&self) -> std_usize {
-        self.group.len() as std_usize
-    }
-
-    fn first(&'a self) -> V {
-        (self.project)(self.group[0].0)
-    }
-
-    fn nth_unchecked(&'a self, n: std_usize) -> V {
-        (self.project)(self.group[n as usize].0)
-    }
-
-    pub fn iter(&'a self) -> GroupIter<'a, V> {
-        GroupIter::new(self)
-    }
-}
-
-impl<'a, K, V> Group<'a, K, V> {
-    fn nth(&'a self, n: std_usize) -> Option<V> {
-        if self.size() > n {
-            Option::Some {
-                x: (self.project)(self.group[n as usize].0),
-            }
-        } else {
-            Option::None
+        match self {
+            GroupEnum::ByRef { group, .. } => group.len() as std_usize,
+            GroupEnum::ByVal { group, .. } => group.len() as std_usize,
         }
     }
 }
+
+impl<K: Clone, V> Group<K, V> {
+    /* Extract key by value; use `key_ref` to get a reference to key. */
+    pub fn key(&self) -> K {
+        match self {
+            GroupEnum::ByRef { key, .. } => key.clone(),
+            GroupEnum::ByVal { key, .. } => key.clone(),
+        }
+    }
+}
+
+impl<K, V: Clone> Group<K, V> {
+    fn first(&self) -> V {
+        match self {
+            GroupEnum::ByRef { group, project, .. } => project(group[0].0),
+            GroupEnum::ByVal { group, .. } => group[0].clone(),
+        }
+    }
+
+    fn nth_unchecked(&self, n: std_usize) -> V {
+        match self {
+            GroupEnum::ByRef { group, project, .. } => project(group[n as usize].0),
+            GroupEnum::ByVal { group, .. } => group[n as usize].clone(),
+        }
+    }
+
+    pub fn iter<'a>(&'a self) -> GroupIter<'a, V> {
+        GroupIter::new(self)
+    }
+
+    fn nth(&self, n: std_usize) -> Option<V> {
+        match self {
+            GroupEnum::ByRef { group, project, .. } => {
+                if self.size() > n {
+                    Option::Some {
+                        x: project(group[n as usize].0),
+                    }
+                } else {
+                    Option::None
+                }
+            }
+            GroupEnum::ByVal { group, .. } => {
+                if self.size() > n {
+                    Option::Some {
+                        x: group[n as usize].clone(),
+                    }
+                } else {
+                    Option::None
+                }
+            }
+        }
+    }
+}
+
+/*
+ * DDlog-visible functions.
+ */
 
 pub fn group_key<K: Clone, V>(g: &Group<K, V>) -> K {
     g.key()
 }
 
-/*
- * Standard aggregation functions
- */
+/* Standard aggregation functions. */
 pub fn group_count<K, V>(g: &Group<K, V>) -> std_usize {
     g.size()
 }
 
-pub fn group_first<K, V>(g: &Group<K, V>) -> V {
+pub fn group_first<K, V: Clone>(g: &Group<K, V>) -> V {
     g.first()
 }
 
-pub fn group_nth<K, V>(g: &Group<K, V>, n: &std_usize) -> Option<V> {
+pub fn group_nth<K, V: Clone>(g: &Group<K, V>, n: &std_usize) -> Option<V> {
     g.nth(*n)
 }
 
@@ -1320,15 +1561,15 @@ pub fn group_to_setmap<K1, K2: Ord + Clone, V: Clone + Ord>(
     res
 }
 
-pub fn group_min<K, V: Ord>(g: &Group<K, V>) -> V {
+pub fn group_min<K, V: Clone + Ord>(g: &Group<K, V>) -> V {
     g.iter().min().unwrap()
 }
 
-pub fn group_max<K, V: Ord>(g: &Group<K, V>) -> V {
+pub fn group_max<K, V: Clone + Ord>(g: &Group<K, V>) -> V {
     g.iter().max().unwrap()
 }
 
-pub fn group_sum<K, V: ops::Add<Output = V>>(g: &Group<K, V>) -> V {
+pub fn group_sum<K, V: Clone + ops::Add<Output = V>>(g: &Group<K, V>) -> V {
     let mut res = group_first(g);
     for v in g.iter().skip(1) {
         res = res + v;
