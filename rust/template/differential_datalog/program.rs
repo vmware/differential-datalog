@@ -367,7 +367,7 @@ pub type JoinFunc = fn(&DDValue, &DDValue, &DDValue) -> Option<DDValue>;
 pub type SemijoinFunc = fn(&DDValue, &DDValue, &()) -> Option<DDValue>;
 
 /// Aggregation function: aggregates multiple values into a single value.
-pub type AggFunc = fn(&DDValue, &[(&DDValue, Weight)]) -> DDValue;
+pub type AggFunc = fn(&DDValue, &[(&DDValue, Weight)]) -> Option<DDValue>;
 
 /// A Datalog relation or rule can depend on other relations and their
 /// arrangements.
@@ -2001,12 +2001,20 @@ impl Program {
                 let col = with_prof_context(&description, || {
                     ffun.map_or_else(
                         || {
-                            arr.reduce(move |key, src, dst| dst.push((aggfun(key, src), 1)))
-                                .map(|(_, v)| v)
+                            arr.reduce(move |key, src, dst| {
+                                if let Some(x) = aggfun(key, src) {
+                                    dst.push((x, 1));
+                                };
+                            })
+                            .map(|(_, v)| v)
                         },
                         |f| {
                             arr.filter(move |_, v| f(v))
-                                .reduce(move |key, src, dst| dst.push((aggfun(key, src), 1)))
+                                .reduce(move |key, src, dst| {
+                                    if let Some(x) = aggfun(key, src) {
+                                        dst.push((x, 1));
+                                    };
+                                })
                                 .map(|(_, v)| v)
                         },
                     )

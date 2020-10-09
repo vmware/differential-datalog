@@ -871,16 +871,16 @@ fn test_map(nthreads: usize) {
         Some((Empty {}.into_ddvalue(), v))
     }
 
-    fn agfun3(_key: &DDValue, src: &[(&DDValue, Weight)]) -> DDValue {
-        U64(src.len() as u64).into_ddvalue()
+    fn agfun3(_key: &DDValue, src: &[(&DDValue, Weight)]) -> Option<DDValue> {
+        Some(U64(src.len() as u64).into_ddvalue())
     }
 
     fn gfun4(v: DDValue) -> Option<(DDValue, DDValue)> {
         Some((v.clone(), v))
     }
 
-    fn agfun4(key: &DDValue, _src: &[(&DDValue, Weight)]) -> DDValue {
-        key.clone()
+    fn agfun4(key: &DDValue, _src: &[(&DDValue, Weight)]) -> Option<DDValue> {
+        Some(key.clone())
     }
 
     fn ffun(v: &DDValue) -> bool {

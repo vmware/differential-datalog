@@ -1,6 +1,5 @@
 //! Tests for functions and macros in `record.rs`
 
-use std::borrow;
 use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
