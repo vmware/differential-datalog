@@ -30,6 +30,7 @@ xfail = [
     "souffle7",  # issue 202 - recursive type
     "aggregates2", # aggregation used in head
     "aggregates5", # Rule must start with a positive literal
+    "aggregates7", # pow32 issue
     "aggregates_complex", # cannot be evaluated bottom-up; issue 293
     "aggregates_non_materialised", # Rule must start with a positive literal
     "aggregates",  # issue 227 - count of empty group
@@ -98,7 +99,9 @@ xfail = [
     "sort",             # 202
     "tak",              # 197
     "tic-tac-toe",      # 197
-    "weighted_distances" # 197
+    "weighted_distances", # 197
+    "aggregate_witnesses",
+    "adt-enum"
 ]
 
 def exit(code):
