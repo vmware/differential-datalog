@@ -214,10 +214,6 @@ pub trait DDValConvert: Sized {
         Self::from_ddval_ref(&v.val)
     }
 
-    /// Extract mutable reference to concrete type from `&mut DDVal`.  This causes
-    /// undefined behavior if `v` does not contain a value of type `Self`.
-    unsafe fn from_ddval_mut_ref(v: &mut DDVal) -> &mut Self;
-
     /// Extracts concrete value contained in `v`.  Panics if `v` does not contain a
     /// value of type `Self`.
     unsafe fn from_ddval(v: DDVal) -> Self;
@@ -248,16 +244,6 @@ macro_rules! decl_ddval_convert {
                     &*(&v.v as *const usize as *const Self)
                 } else {
                     &*(v.v as *const Self)
-                }
-            }
-
-            unsafe fn from_ddval_mut_ref(v: &mut $crate::ddval::DDVal) -> &mut Self {
-                if ::std::mem::size_of::<Self>() <= ::std::mem::size_of::<usize>() {
-                    &mut *(&mut v.v as *mut usize as *mut Self)
-                } else {
-                    let arc = ::std::sync::Arc::from_raw(v.v as *const Self);
-                    v.v = ::std::sync::Arc::into_raw(arc) as usize;
-                    &mut *(v.v as *mut Self)
                 }
             }
 
@@ -363,9 +349,10 @@ macro_rules! decl_ddval_convert {
                             this: &mut $crate::ddval::DDVal,
                             record: &$crate::record::Record,
                         ) -> Result<(), ::std::string::String> {
-                            $crate::record::Mutator::mutate(record, unsafe {
-                                <$t>::from_ddval_mut_ref(this)
-                            })
+                            let mut clone = unsafe { <$t>::from_ddval_ref(this) }.clone();
+                            $crate::record::Mutator::mutate(record, &mut clone)?;
+                            *this = clone.into_ddval();
+                            Ok(())
                         };
                         __f
                     },
