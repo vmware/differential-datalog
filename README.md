@@ -42,7 +42,7 @@ is used in conjunction with a persistent database, with database records being f
 ground facts and the derived facts computed by DDlog being written back to the database.
 
     At the moment, DDlog can only operate on databases that completely fit the memory of a single
-    machine. Se are working on a distributed version of DDlog that will be able to
+    machine. We are working on a distributed version of DDlog that will be able to
     partition its state and computation across multiple machines.
 
 6. **Typed**: In its classical textbook form Datalog is more of a mathematical formalism than a
