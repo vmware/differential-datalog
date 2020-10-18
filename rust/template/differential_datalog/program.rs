@@ -2678,7 +2678,7 @@ impl RunningProgram {
             Update::Modify { relid, k, m } => match s.entry(k.clone()) {
                 hash_map::Entry::Occupied(mut oe) => {
                     let new = oe.get_mut();
-                    let old = new.clone();
+                    let old: DDValue = (*new).clone();
                     m.mutate(new)?;
                     Self::delta_dec(ds, &old);
                     updates.push(Update::DeleteValue { relid, v: old });
