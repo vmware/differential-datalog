@@ -65,49 +65,34 @@ parseDatalogString program file = do
 
 -- The following Rust keywords are declared as Datalog keywords to
 -- prevent users from declaring variables with the same names.
-rustKeywords = ["type", "match", "self", "ref"]
+rustKeywords =
+    [ "abstract", "async", "await", "become", "box"
+    , "const", "crate", "do", "dyn", "final", "fn"
+    , "impl", "let", "loop", "macro", "match", "mod"
+    , "move", "override", "priv", "pub", "ref", "self"
+    , "Self", "static", "struct", "super", "trait"
+    , "try", "type", "typeof", "unsafe", "unsized"
+    , "use", "virtual", "where", "while", "yield"
+    ]
 
-reservedOpNames = [":", "::", "|", "&", "==", "=", ":-", "%", "*", "/", "+", "-", ".", "->", "=>", "<=",
-                   "<=>", ">=", "<", ">", "!=", ">>", "<<", "~", "@", "#"]
-reservedNames = ["as",
-                 "apply",
-                 "_",
-                 "Aggregate",
-                 "FlatMap",
-                 "Inspect",
-                 "and",
-                 "bigint",
-                 "bit",
-                 "bool",
-                 "break",
-                 "continue",
-                 "double",
-                 "extern",
-                 "else",
-                 "false",
-                 "float",
-                 "for",
-                 "function",
-                 "if",
-                 "import",
-                 "in",
-                 "mut",
-                 "input",
-                 "output",
-                 "multiset",
-                 "not",
-                 "or",
-                 "relation",
-                 "return",
-                 "signed",
-                 "skip",
-                 "string",
-                 "stream",
-                 "transformer",
-                 "true",
-                 "typedef",
-                 "var"] ++ rustKeywords
+-- Datalog keywords
+ddlogKeywords =
+    [ "_", "Aggregate", "and", "apply", "as", "bigint"
+    , "bit", "bool", "break", "continue", "double"
+    , "else", "extern", "false", "FlatMap", "float"
+    , "for", "function", "if", "import", "in", "input"
+    , "Inspect", "multiset", "mut", "not", "or", "output"
+    , "relation", "return", "signed", "skip", "stream"
+    , "string", "transformer", "true", "typedef", "var"
+    ]
 
+reservedOpNames =
+    [ ":", "::", "|", "&", "==", "=", ":-", "%", "*"
+    , "/", "+", "-", ".", "->", "=>", "<=", "<=>"
+    , ">=", "<", ">", "!=", ">>", "<<", "~", "@", "#"
+    ]
+
+reservedNames = ddlogKeywords ++ rustKeywords
 
 ccnDef = emptyDef { T.commentStart      = "/*"
                   , T.commentEnd        = "*/"
