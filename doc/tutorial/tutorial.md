@@ -232,7 +232,7 @@ dump Phrases;
 `Phrases` should be empty again.  DDlog only computes the change of `Phrases`
 incrementally, without recomputing all records.
 
-See [this document](../command_reference/command_reference.md) for a complete list of commands
+See [Command Language Reference](../command_reference/command_reference.md) for a complete list of commands
 supported by the CLI tool.
 
 ### Running DDlog programs in batch mode
@@ -1619,6 +1619,61 @@ function f() {
     }
 }
 ```
+
+## Primary keys
+
+We have so far used `insert` and `delete` commands to make changes to input
+relations.  Both commands take a complete value to be added or removed from
+the relation.  It is often more convenient to refer to records in the relation by
+a unique key if such a key exists for the given relation.  E.g., one may wish
+to delete a value associated with a specified key by specifying
+only the key and not the entire value.  DDlog supports three commands for
+accessing input relations by key: `delete_key`, `insert_or_update`, and `modify`
+(see [Command Language Reference](../command_reference/command_reference.md)
+for details).  These commands are only applicable to input relations declared with a
+**primary key**.
+
+A primary key typically consists of one or more columns, but in general in can be
+be an arbitrary function of the record.  In the following example, we define the
+primary key as a tuple consisting of `author` and `title` columns.  We specify
+is as a closure that takes a record `x` and returns the `(author, title)`
+pair:
+
+```
+input relation Article(author: string, title: string, year: u16, pages: usize)
+primary key (x) (x.author, x.title)
+```
+
+We can now access records in the `Article` relation by key:
+
+```
+start;
+
+insert Article("D. L. Parnas", "On the Criteria To Be Used in Decomposing System into Modules", 1974, 6),
+insert Article("C. A. R. Hoare", "Communicating Sequential Processes", 1980, 40),
+insert Article("Test Author", "Test Title", 2020, 10),
+
+# Delete test record by only specifying its primary key.
+delete_key Article ("Test Author", "Test Title"),
+
+# We accidentally specified incorrect year for Parnas's article.
+# Modify the record by only specifying values of field(s) we want to change.
+modify Article ("D. L. Parnas", "On the Criteria To Be Used in Decomposing System into Modules") <- Article{.year = 1972},
+
+# Delete Hoare's paper and replace it with a new record with the same primary key.
+insert_or_update Article("C. A. R. Hoare", "Communicating Sequential Processes", 1978, 30),
+
+commit;
+```
+
+In addition to enabling new commands, defining a primary key
+changes the semantics of `insert` and `delete` commands.  The `insert` command
+fails when a record with the same primary key exists in the relation with the
+same or different value.  Likewise, `delete` fails if the specified record does
+not exist.  In contrast, duplicate insertions and deletions are ignored for
+regular relations.
+
+
 
 ## Multisets and streams
 

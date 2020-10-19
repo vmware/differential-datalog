@@ -234,6 +234,28 @@ dump BestVendor;
 echo BestDeal:;
 dump BestDeal;
 
+
+start;
+
+insert Article("D. L. Parnas", "On the Criteria To Be Used in Decomposing System into Modules", 1974, 6),
+insert Article("C. A. R. Hoare", "Communicating Sequential Processes", 1980, 40),
+insert Article("Test Author", "Test Title", 2020, 10),
+
+# Delete test record by only specifying its primary key.
+delete_key Article ("Test Author", "Test Title"),
+
+# We accidentally specified incorrect year for Parnas's article.
+# Modify the record by only specifying values of field(s) we want to change.
+modify Article ("D. L. Parnas", "On the Criteria To Be Used in Decomposing System into Modules") <- Article{.year = 1972},
+
+# Delete Hoare's paper and replace it with a new record with the same primary key.
+insert_or_update Article("C. A. R. Hoare", "Communicating Sequential Processes", 1978, 30),
+
+commit;
+
+echo OutArticle:;
+dump OutArticle;
+
 start;
 
 insert MSetIn(0),

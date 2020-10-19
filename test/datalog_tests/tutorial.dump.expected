@@ -152,6 +152,9 @@ BestVendor{.item = "B", .vendor = "Overpriced Inc", .price = 123}
 BestDeal:
 BestDeal{.best = "Best deal for A: Scrooge Ltd, $110"}
 BestDeal{.best = "Best deal for B: Overpriced Inc, $123"}
+OutArticle:
+Article{.author = "C. A. R. Hoare", .title = "Communicating Sequential Processes", .year = 1978, .pages = 30}
+Article{.author = "D. L. Parnas", .title = "On the Criteria To Be Used in Decomposing System into Modules", .year = 1972, .pages = 6}
 MSetOut:
 MSetOut{.x = 0}: +1
 MSetOut{.x = 1}: +2
