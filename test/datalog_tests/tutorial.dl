@@ -369,7 +369,18 @@ BestDeal(best) :-
 
 
 /*
- * Example: streams and multiset.
+ * Example: primary key.
+ */
+
+input relation Article(author: string, title: string, year: u16, pages: usize)
+primary key (x) (x.author, x.title)
+
+// Output relation to mirror the contents of `Article`.
+output relation OutArticle[Article]
+OutArticle[a] :- a in Article().
+
+/*
+ * Example: streams and multisets.
  */
 
 input multiset MSetIn(x: u32)
