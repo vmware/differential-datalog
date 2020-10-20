@@ -604,9 +604,8 @@ rhs_clause ::= atom                                      (* 1.atom *)
              | expr                                      (* 3.condition *)
              | expr "=" expr                             (* 4.assignment *)
              | "var" var_name "=" "FlatMap" "(" expr ")" (* 5.flat map *)
-             | "var" var_name = "Aggregate" "("          (* 6.aggregation *)
-                "(" [var_name ("," var_name)*] ")" ","
-                    func_name "(" expr ")" ")"
+             | "var" var_name = expr "." "group_by"      (* 6.grouping; in general a *)
+                                "(" expr ")"             (*   group_by clause can be any expression containing `expr.group_by(expr)` subexpression. *)
 ```
 
 An atom is a predicate that holds when a given value belongs to a relation.
@@ -674,26 +673,11 @@ Here, `extract_ips` must return a *set* of IP addresses:
 extern function extract_ips(addrs: string): Set<ip_addr_t>
 ```
 
-The sixth form groups records computed so far by a subset of fields,
-computes an aggreagate for each group using specified aggregate function,
-and binds the result to a new variable:
+The sixth form groups records computed so far by a subset of fields:
 
 ```
-ShortestPath(x,y, c) :- Path(x,y,cost), var c = Aggregate((x,y), min(cost))
+ShortestPath(x,y, c) :- Path(x,y,cost), var c = cost.group_by((x,y)).min()
 ```
-
-The aggregate function (e.g., `min` in this example) must have the following
-signature:
-
-```
-function min(Group<'A>): 'B
-```
-
-where `'A` is the type of expression passed as argument to the function and
-`'B` is the aggregate value computed by the function.  `Group` is a DDlog
-built-in type.  It can only currently be manipulated from Rust, meaning that
-aggregate functions can only be defined in Rust and imported to a DDlog
-program as `extern function`.
 
 The seventh form is an inspect operation. It behaves as a pass-through filter
 and contains an arbitrary expression that can produce a side effect, such as
@@ -724,7 +708,7 @@ typedef DDTimestamp = DDTSGlobal{epoch: DDEpoch}
 A clause in the body of a rule can introduce variables that are
 visible in clauses following it and in the head of the rule. Variables
 are introduced *explicitly* in the left-hand side of an assignment
-clause, a flat-map or an aggregate clause or *implicitly*,
+clause or a flat-map clause or *implicitly*,
 by referring to them in a positive atom.  An implicit declaration must
 appear in a *pattern expression*, i.e., an expression built
 recursively out of variable names, wildcards, tuples, type
@@ -748,12 +732,12 @@ R(x,y) :- S(x), T(f(x), y). // ok, x is introduced before being used in f(x)
 ### Constraints on rules
 
 1. Negative atoms and condition clauses may not introduce new variables.
-1. Variables introduced in a clause are visible in clauses following it.  An aggregate
+1. Variables introduced in a clause are visible in clauses following it.  A group_by
    clause has the effect of concealing all variables except for the
-   group-by variables and the aggregate variable.
+   group-by variables.
    ```
-   R(x,y) :- S(x), T(x, y), var z = Aggregate((x), min(y)). // error:
-        // y cannot be used in the head, as it is concealed by aggregation
+   R(x,y) :- S(x), T(x, y), var z = y.group_by(x).min(). // error:
+        // y cannot be used in the head, as it is concealed by grouping
    ```
 1. *Safety*: Negative literals may not introduce new variables or use wildcards.
    ```
@@ -783,7 +767,7 @@ graph from 'R2' to 'R1' labeled 'p'.
 
 1. *Stratified negation*: No cycle in a graph can contain an edge
    labeled with negative polarity.
-1. A body of a rule with an aggregate clause cannot contain an atom mutually
+1. A body of a rule with a group_by clause cannot contain an atom mutually
    recursive with its head.
 
 
