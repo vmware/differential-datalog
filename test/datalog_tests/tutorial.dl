@@ -309,46 +309,35 @@ Sum(x,y,x+y),
 Product(x,y,x*y) :- X(x), X(y).
 
 /*
- * Example: aggregation
+ * Example: group_by
  */
 
-input relation Price(item: string, vendor: string, price: bit<64>)
-output relation BestPrice(item: string, price: bit<64>)
+import group
+
+input relation Price(item: string, vendor: string, price: u64)
+output relation BestPrice(item: string, price: u64)
 
 BestPrice(item, best_price) :-
     Price(.item = item, .price = price),
-    var best_price = price.group_by(item).min().
+    var group: Group<string, u64> = price.group_by(item),
+    var best_price = group.min().
 
-output relation WorstPrice(item: string, price: bit<64>)
+output relation WorstPrice(item: string, price: u64)
 
 WorstPrice(item, best_price) :-
     Price(.item = item, .price = price),
     var best_price = price.group_by(item).max().
 
-output relation BestVendor(item: string, vendor: string, price: bit<64>)
-
-function best_vendor(g: Group<'K, (string, bit<64>)>): (string, bit<64>)
-{
-    var min_vendor = "";
-    var min_price: bit<64> = 'hffffffffffffffff;
-    for (vendor_price in g) {
-        if (vendor_price.1 < min_price) {
-            min_vendor = vendor_price.0;
-            min_price = vendor_price.1;
-        }
-    };
-    (min_vendor, min_price)
-}
+output relation BestVendor(item: string, vendor: string, price: u64)
 
 BestVendor(item, best_vendor, best_price) :-
     Price(item, vendor, price),
-    var best_vendor_price = (vendor, price).group_by(item).best_vendor(),
-    (var best_vendor, var best_price) = best_vendor_price.
+    (var best_vendor, var best_price) = (vendor, price).group_by(item).arg_min(|vendor_price| vendor_price.1).
 
-function best_vendor_string(g: Group<string, (string, bit<64>)>): string
+function best_vendor_string(g: Group<string, (string, u64)>): string
 {
     var min_vendor = "";
-    var min_price: bit<64> = 'hffffffffffffffff;
+    var min_price = 'hffffffffffffffff;
     for (vendor_price in g) {
         if (vendor_price.1 < min_price) {
             min_vendor = vendor_price.0;

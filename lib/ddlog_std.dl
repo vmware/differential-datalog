@@ -456,26 +456,35 @@ function count(g: Group<'K, 'V>): usize {
     group_count(g)
 }
 
+/* The number of elements in the group.  The result is always greater than 0. */
 function size(g: Group<'K, 'V>): usize {
     group_count(g)
 }
 
+/* The first element of the group.  This operation is well defined,
+ * as a group returned by `group-by` cannot be empty. */
 function first(g: Group<'K, 'V>): 'V {
     group_first(g)
 }
 
+/* Nth element of the group. */
 function nth(g: Group<'K,'V>, n: usize): Option<'V> {
     group_nth(g, n)
 }
 
+/* Extract the set of group elements.  Since the group may contain duplicates,
+ * the size of the resulting set can be smaller than the size of the group. */
 function to_set(g: Group<'K, 'V>): Set<'V> {
     group_to_set(g)
 }
 
+/* Convert group to a vector of its elements.  The resulting 
+ * vector has the same size as the group. */
 function to_vec(g: Group<'K, 'V>): Vec<'V> {
     group_to_vec(g)
 }
 
+/* Convert a group of key-value tuples into a map. */
 function to_map(g: Group<'K1, ('K2,'V)>): Map<'K2,'V> {
     group_to_map(g)
 }
@@ -485,8 +494,8 @@ function to_setmap(g: Group<'K1, ('K2,'V)>): Map<'K2,Set<'V>> {
 }
 
 function group_unzip(g: Group<'K, ('X,'Y)>): (Vec<'X>, Vec<'Y>) = {
-    var xs: Vec<'X> = vec_empty();
-    var ys: Vec<'Y> = vec_empty();
+    var xs: Vec<'X> = vec_with_capacity(g.size());
+    var ys: Vec<'Y> = vec_with_capacity(g.size());
     for (v in g) {
         (var x, var y) = v;
         vec_push(xs, x);

@@ -1310,87 +1310,148 @@ on itself, either directly or via a chain of rules.  The [language
 reference](../language_reference/language_reference.md#constraints-on-dependency-graph)
 describes constraints on the recursive programs accepted by DDlog.
 
-#### Aggregation
+#### Grouping
 
-The `Aggregate` operator groups records that have the same values of a subset of
-variables (group-by variables) and applies an aggregation function to each group.
+The `group_by` operator groups records that share common values of a subset of
+variables (group-by variables).
 The following program groups the `Price` relation by `item` and selects the minimal
 price for each item:
 
 ```
-input relation Price(item: string, vendor: string, price: bit<64>)
-output relation BestPrice(item: string, price: bit<64>)
+input relation Price(item: string, vendor: string, price: u64)
+output relation BestPrice(item: string, price: u64)
 
 BestPrice(item, best_price) :-
     Price(.item = item, .price = price),
-    var best_price = Aggregate((item), group_min(price)).
+    var group: Group<string, u64> = price.group_by(item),
+    var best_price = group.min().
 ```
 
-Here `group_min()` is one of several aggregation functions defined in
-`lib/ddlog_std.rs`.
+The `group_by` operator first selects the `price` variable from each record and
+then groups the resulting table of prices such that all records in a group share the
+same value of the `item` variable.  It yields a new table with one record per group.
+The contents of the group is bound to a variable of type `Group<string,u64>`,
+where `string` is the type of group key, i.e., the variable(s) that we group by
+(in this case, `item`), and `u64` is the type of values in the group.
 
-It is possible to group a relation by multiple fields.  For
-example, the following rule computes the lowest price that each vendor
-charged for each item:
+In general, the `group_by` operator has the following syntax:
+
+```
+<select clause>.group_by(<group-by vars>)
+```
+
+where `<select clause>` is an arbitrary expression that projects records
+from the input relation into values to be grouped. `<group-by vars>` is a single
+variable or a tuple of variables to be used as the key to group by:
+
+```
+/* Group by an empty tuple: aggregates the entire relation into a single group. */
+var group: Group<(), usize> = (x: usize).group_by(())
+
+/* Group by a single variable.  Generates one group per each unique value
+ * of y. */
+var group: Group<string, usize> = (x: usize).group_by(y: string)
+
+/* Group by multiple variables.  Generates a group per each unique combination
+ * of `y` and `z`. */
+var group: Group<(string, bool), usize> = x.group_by((y: string, z: bool))
+```
+
+The following rule groups prices by both item name and vendor in order to compute
+the lowest price that each vendor charges for each item:
 
 ```
 BestPricePerVendor(item, vendor, best_price) :-
     Price(.item = item, .vendor = vendor, .price = price),
-    var best_price = Aggregate((item, vendor), group_min(price)).
+    var group = price.group_by((item, vendor)),
+    var best_price = group.min().
+```
+
+Typically, the group returned by `group_by` is immediately
+reduced to a single value, e.g., by computing its minimal element as in the
+`BestPrice` example.  In this case, we can pass the group directly
+to the reduction function without having to first store it in a variable:
+
+```
+BestPrice(item, best_price) :-
+    Price(.item = item, .price = price),
+    // Group and immediately reduce.
+    var best_price = price.group_by(item).min().
+```
+
+In fact, the `group_by` operator can be used as any normal expression, e.g.:
+
+```
+// Items under 100 dollars.
+Under100(item) :-
+    Price(.item = item, .price = price),
+    // Group and immediately reduce.
+    price.group_by(item).min() < 100.
+```
+
+`min()` is one of several standard reduction functions defined in
+`lib/ddlog_std.dl`.  Below we list few of the others:
+
+```
+/**/
+function key(g: Group<'K, 'V>): 'K
+
+/* The number of elements in the group.  The result is always greater than 0. */
+function size(g: Group<'K, 'V>): usize
+
+/* The first element of the group.  This operation is well defined,
+ * as a group returned by `group-by` cannot be empty. */
+function first(g: Group<'K, 'V>): 'V
+
+/* Nth element of the group. */
+function nth(g: Group<'K,'V>, n: usize): Option<'V>
+
+/* Convert group to a vector of its elements.  The resulting 
+ * vector has the same size as the group. */
+function to_vec(g: Group<'K, 'V>): Vec<'V>
 ```
 
 What if we wanted to return the name of the vendor along with the
-lowest price for each item?  The following naive attempt will not work:
+lowest price for each item?  The following naive attempt will **not work**:
 
 ```
 output relation BestVendor(item: string, vendor: string, price: bit<64>)
 
-BestVendor(item, vendor, best_price) :-
+BestVendor(item, vendor /*unknown variable*/, best_price) :-
     Price(.item = item, .vendor = vendor, .price = price),
-    var best_price = Aggregate((item), group_min(price)).
+    var best_price = price.group_by(item).min().
 ```
 
 DDlog will complain that `vendor` is unknown in the head of the rule. What
 happens here is that we first group records with the same `item` value
 and then reduce each group to a single value, `best_price`.  All other
 variables (except `item` and `best_price`) disappear from the scope and cannot
-be used in the body of the rule following the `Aggregate` operator or in
+be used in the body of the rule following the `group_by` operator or in
 its head.
 
-A correct solution requires a different aggregation function that takes a
-group of `(vendor, price)` tuples and picks one with the smallest price.  To
-enable such use cases, DDlog allows users to implement their own custom
-aggregation functions:
+A correct solution requires a different function that takes a
+group of `(vendor, price)` tuples and picks one with the smallest price.
+This can be achieved using the `arg_min` function,
+that takes a group and a closure that maps an element of the group into
+an integer value and returns the first element in the group that minimizes
+the value returned by the closure:
 
 ```
-/* User-defined aggregate that picks a tuple with the smallest price */
-function best_vendor(g: Group<'K, (string, bit<64>)>): (string, bit<64>)
-{
-    var min_vendor = "";
-    var min_price: bit<64> = 'hffffffffffffffff;
-    for (vendor_price in g) {
-        if (vendor_price.1 < min_price) {
-            min_vendor = vendor_price.0;
-            min_price = vendor_price.1
-        }
-    };
-    (min_vendor, min_price)
-}
+// Defines `arg_min` and other higher-order functions over groups.
+import group
 
 BestVendor(item, best_vendor, best_price) :-
     Price(item, vendor, price),
-    var best_vendor_price = Aggregate((item), best_vendor((vendor, price))),
-    (var best_vendor, var best_price) = best_vendor_price.
+    (var best_vendor, var best_price) = (vendor, price).group_by(item).arg_min(|vendor_price| vendor_price.1).
 ```
 
-The aggregation function takes an argument of type `Group`, parameterized by
-group key and group value types.  The group key is a tuple consisting of all
-group-by variables.  The value type is the type of records in the group and.
+`group_min`, along with other useful higher-order functions over groups,
+is defined in `lib/group.dl`.
 
-The aggregation function can access the group key using the `group_key()`
-function.  The following custom aggregation function computes the cheapest
-vendor for each item and returns a string containing item name, vendor,
-and price:
+You will occasionally find that you want to write a custom reduction that is
+not found in one of standard libraries.  The following custom reduction
+function computes the cheapest vendor for each item and returns a string
+containing item name, vendor, and price:
 
 ```
 function best_vendor_string(g: Group<string, (string, bit<64>)>): string
@@ -1409,7 +1470,7 @@ function best_vendor_string(g: Group<string, (string, bit<64>)>): string
 output relation BestDeal(best: string)
 BestDeal(best) :-
     Price(item, vendor, price),
-    var best = Aggregate((item), best_vendor_string((vendor, price))).
+    var best = (vendor, price).group_by(item).best_vendor_string().
 ```
 
 #### Debugging and tracing using `Inspect`
