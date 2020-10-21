@@ -5,18 +5,24 @@ use crate::{
     program::{ArrId, Dep, TKeyAgent, TKeyEnter, TSNested, TValAgent, TValEnter, TupleTS, Weight},
 };
 use differential_dataflow::{
+    difference::{Diff, Monoid},
+    hashable::Hashable,
     lattice::Lattice,
     operators::{
         arrange::{arrangement::Arranged, Arrange},
-        Threshold, ThresholdTotal,
+        JoinCore, Threshold, ThresholdTotal,
     },
     trace::{BatchReader, Cursor, TraceReader},
-    Collection,
+    AsCollection, Collection, Data,
 };
 use fnv::{FnvHashMap, FnvHashSet};
 use num::Zero;
+use std::ops::Mul;
 use timely::{
-    dataflow::scopes::{Child, Scope, ScopeParent},
+    dataflow::{
+        operators::Concatenate,
+        scopes::{Child, Scope, ScopeParent},
+    },
     order::{Product, TotalOrder},
     progress::{timestamp::Refines, Timestamp},
 };
@@ -465,4 +471,63 @@ impl XFormCollection {
             },
         }
     }
+}
+
+// Versions of semijoin and antijoin operators that take arrangement instead of collection.
+fn semijoin_arranged<G, K, V, R1, R2, T1, T2>(
+    arranged: &Arranged<G, T1>,
+    other: &Arranged<G, T2>,
+) -> Collection<G, (K, V), <R1 as Mul<R2>>::Output>
+where
+    G: Scope,
+    G::Timestamp: Lattice + Ord,
+    T1: TraceReader<Key = K, Val = V, Time = G::Timestamp, R = R1> + Clone + 'static,
+    T1::Batch: BatchReader<K, V, G::Timestamp, R1>,
+    T1::Cursor: Cursor<K, V, G::Timestamp, R1>,
+    T2: TraceReader<Key = K, Val = (), Time = G::Timestamp, R = R2> + Clone + 'static,
+    T2::Batch: BatchReader<K, (), G::Timestamp, R2>,
+    T2::Cursor: Cursor<K, (), G::Timestamp, R2>,
+    K: Data + Hashable,
+    V: Data,
+    R2: Diff,
+    R1: Diff + Mul<R2>,
+    <R1 as Mul<R2>>::Output: Diff,
+{
+    arranged.join_core(other, |k, v, _| Some((k.clone(), v.clone())))
+}
+
+pub(super) fn antijoin_arranged<G, K, V, R1, R2, T1, T2>(
+    arranged: &Arranged<G, T1>,
+    other: &Arranged<G, T2>,
+) -> Collection<G, (K, V), R1>
+where
+    G: Scope,
+    G::Timestamp: Lattice + Ord,
+    T1: TraceReader<Key = K, Val = V, Time = G::Timestamp, R = R1> + Clone + 'static,
+    T1::Batch: BatchReader<K, V, G::Timestamp, R1>,
+    T1::Cursor: Cursor<K, V, G::Timestamp, R1>,
+    T2: TraceReader<Key = K, Val = (), Time = G::Timestamp, R = R2> + Clone + 'static,
+    T2::Batch: BatchReader<K, (), G::Timestamp, R2>,
+    T2::Cursor: Cursor<K, (), G::Timestamp, R2>,
+    K: Data + Hashable,
+    V: Data,
+    R2: Diff,
+    R1: Diff + Mul<R2, Output = R1>,
+{
+    arranged
+        .as_collection(|k, v| (k.clone(), v.clone()))
+        .concat(&semijoin_arranged(arranged, other).negate())
+}
+
+// TODO: remove when `fn concatenate()` in `collection.rs` makes it to a released version of DD
+pub fn concatenate_collections<G, D, R, I>(scope: &mut G, iterator: I) -> Collection<G, D, R>
+where
+    G: Scope,
+    D: Data,
+    R: Monoid,
+    I: IntoIterator<Item = Collection<G, D, R>>,
+{
+    scope
+        .concatenate(iterator.into_iter().map(|x| x.inner))
+        .as_collection()
 }
