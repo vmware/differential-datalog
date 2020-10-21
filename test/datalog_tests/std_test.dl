@@ -40,6 +40,12 @@ function vec0(): Vec<s64> {
     [ 0, 1, 2, 3, 4, 5]
 }
 
+output relation VecZipTest(descr: string, vec: Vec<(string, s64)>, unz: (Vec<string>, Vec<s64>))
+
+VecZipTest("same length", ["0", "1", "2", "3", "4", "5"].zip(vec0()), ["0", "1", "2", "3", "4", "5"].zip(vec0()).unzip()).
+VecZipTest("longer", ["0", "1", "2", "3", "4", "5", "6"].zip(vec0()), ["0", "1", "2", "3", "4", "5", "6"].zip(vec0()).unzip()).
+VecZipTest("shorter", ["0", "1", "2", "3"].zip(vec0()), ["0", "1", "2", "3"].zip(vec0()).unzip()).
+
 input relation SetPairs(s1: Set<u64>, s2: Set<u64>)
 output relation SetDifference(s1: Set<u64>, s2: Set<u64>, diff: Set<u64>)
 
