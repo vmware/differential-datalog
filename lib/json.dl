@@ -57,6 +57,10 @@ function jval_as_bool(v: JsonValue): Option<bool> {
     }
 }
 
+function as_bool(v: JsonValue): Option<bool> {
+    jval_as_bool(v)
+}
+
 /* Get JsonValue value as `bool`.  Returns `def` if value is not `JsonBool`.
  */
 function jval_as_bool_or(v: JsonValue, def: bool): bool {
@@ -73,6 +77,10 @@ function jval_as_number(v: JsonValue): Option<JsonNum> {
         JsonNumber{n} -> Some{n},
         _ -> None
     }
+}
+
+function as_number(v: JsonValue): Option<JsonNum> {
+    jval_as_number(v)
 }
 
 /* Get JsonValue value as `JsonNum`.  Returns `def` if value is not `JsonNumber`.
@@ -93,6 +101,10 @@ function jval_as_string(v: JsonValue): Option<istring> {
     }
 }
 
+function as_string(v: JsonValue): Option<istring> {
+    jval_as_string(v)
+}
+
 /* Get JsonValue value as string.  Returns `def` if value is not `JsonString`.
  */
 function jval_as_string_or(v: JsonValue, def: istring): istring {
@@ -109,6 +121,10 @@ function jval_as_array(v: JsonValue): Option<Vec<JsonValue>> {
         JsonArray{a} -> Some{a},
         _ -> None
     }
+}
+
+function as_array(v: JsonValue): Option<Vec<JsonValue>> {
+    jval_as_array(v)
 }
 
 /* Get JsonValue value as array.  Returns `def` if value is not `JsonArray`.
@@ -129,6 +145,10 @@ function jval_as_object(v: JsonValue): Option<Map<istring, JsonValue>> {
     }
 }
 
+function as_object(v: JsonValue): Option<Map<istring, JsonValue>> {
+    jval_as_object(v)
+}
+
 /* Get JsonValue value as object.  Returns `def` if value is not `JsonObject`.
  */
 function jval_as_object_or(v: JsonValue, def: Map<istring, JsonValue>): Map<istring, JsonValue> {
@@ -146,6 +166,10 @@ function jval_get(v: JsonValue, attr: istring): Option<JsonValue> {
         JsonObject{o} -> map_get(o, attr),
         _ -> None
     }
+}
+
+function get(v: JsonValue, attr: istring): Option<JsonValue> {
+    jval_get(v, attr)
 }
 
 /* Get attribute by name.  Returns `def` if value is not `JsonObject` or
