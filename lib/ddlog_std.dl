@@ -181,16 +181,45 @@ function unwrap_or_default(opt: Option<'A>): 'A {
     option_unwrap_or_default(opt)
 }
 
-function to_set(o: Option<'X>): Set<'X> = {
+function to_set(o: Option<'X>): Set<'X> {
     match (o) {
         Some{x} -> set_singleton(x),
         None -> set_empty()
     }
 }
-function to_vec(o: Option<'X>): Vec<'X> = {
+function to_vec(o: Option<'X>): Vec<'X> {
     match (o) {
         Some{x} -> vec_singleton(x),
         None -> vec_empty()
+    }
+}
+
+/* Transforms the `Option<'T>` into a `Result<'T, 'E>`,
+ * mapping `Some{x}` to `Ok{v}` and `None` to `Err{e}`. */
+function ok_or(o: Option<'T>, e: 'E): Result<'T, 'E> {
+    match (o) {
+        Some{x} -> Ok{x},
+        None    -> Err{e}
+    }
+}
+
+/* Transforms `Option<'T>` into `Result<'T, 'E>`, mapping `Some{x}
+ * to `Ok{v}` and `None` to `Err{e()}`.
+ * Function `e` is only evaluated on error. */
+function ok_or_else(o: Option<'T>, e: function(): 'E): Result<'T, 'E> {
+    match (o) {
+        Some{x} -> Ok{x},
+        None    -> Err{e()}
+    }
+}
+
+/* Returns `None` if the option is `None`, otherwise calls `f` with the
+ * wrapped value and returns the result.
+ */
+function and_then(o: Option<'T>, f: function('T): Option<'U>): Option<'U> {
+    match (o) {
+        None -> None,
+        Some{x} -> f(x)
     }
 }
 
