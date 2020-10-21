@@ -12,24 +12,23 @@
 // TODO: namespace cleanup
 // TODO: single input relation
 
-use std::collections::btree_map::BTreeMap;
-use std::collections::btree_set::BTreeSet;
-use std::collections::hash_map;
-use std::fmt::{self, Debug, Formatter};
-use std::ops::{Add, Deref, Mul};
-use std::result::Result;
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
-use std::sync::mpsc;
-use std::sync::{Arc, Barrier, Mutex};
-use std::thread;
-use std::time::Duration;
+use std::{
+    collections::{hash_map, BTreeMap, BTreeSet, HashMap},
+    fmt::{self, Debug, Formatter},
+    ops::{Add, Deref, Mul},
+    sync::{
+        atomic::{AtomicBool, AtomicU32, Ordering},
+        mpsc, Arc, Barrier, Mutex,
+    },
+    thread,
+    time::Duration,
+};
 
 use abomonation::Abomonation;
 
 // use deterministic hash-map and hash-set, as differential dataflow expects deterministic order of
 // creating relations
-use fnv::FnvHashMap;
-use fnv::FnvHashSet;
+use fnv::{FnvBuildHasher, FnvHashMap, FnvHashSet};
 use num::One;
 
 use differential_dataflow::difference::Diff;
@@ -46,7 +45,7 @@ use differential_dataflow::trace::implementations::ord::OrdKeySpine as DefaultKe
 use differential_dataflow::trace::implementations::ord::OrdValSpine as DefaultValTrace;
 use differential_dataflow::trace::wrappers::enter::TraceEnter;
 use differential_dataflow::trace::{BatchReader, Cursor, TraceReader};
-//use differential_dataflow::trace::cursor::CursorDebug;
+// use differential_dataflow::trace::cursor::CursorDebug;
 use differential_dataflow::AsCollection;
 use differential_dataflow::Collection;
 use differential_dataflow::Data;
@@ -61,10 +60,7 @@ use timely::progress::timestamp::Refines;
 use timely::progress::{PathSummary, Timestamp};
 use timely::worker::Worker;
 
-use crate::ddval::*;
-use crate::profile::*;
-use crate::record::Mutator;
-use crate::variable::*;
+use crate::{ddval::*, profile::*, record::Mutator, variable::*};
 
 type ValTrace<S> = DefaultValTrace<DDValue, DDValue, <S as ScopeParent>::Timestamp, Weight, u32>;
 type KeyTrace<S> = DefaultKeyTrace<DDValue, <S as ScopeParent>::Timestamp, Weight, u32>;
@@ -75,10 +71,9 @@ type TKeyAgent<S> = TraceAgent<KeyTrace<S>>;
 type TValEnter<'a, P, T> = TraceEnter<TValAgent<P>, T>;
 type TKeyEnter<'a, P, T> = TraceEnter<TKeyAgent<P>, T>;
 
-/* 16-bit timestamp.
- * TODO: get rid of this and use `u16` directly when/if differential implements
- * `Lattice`, `Timestamp`, `PathSummary` traits for `u16`.
- */
+/// 16-bit timestamp.
+// TODO: get rid of this and use `u16` directly when/if differential implements
+// `Lattice`, `Timestamp`, `PathSummary` traits for `u16`.
 #[derive(Copy, PartialOrd, PartialEq, Eq, Debug, Default, Clone, Hash, Ord)]
 pub struct TS16 {
     pub x: u16,
@@ -114,32 +109,31 @@ impl TS16 {
 }
 
 impl PartialOrder for TS16 {
-    #[inline(always)]
     fn less_equal(&self, other: &Self) -> bool {
         self.x.less_equal(&other.x)
     }
-    #[inline(always)]
+
     fn less_than(&self, other: &Self) -> bool {
         self.x.less_than(&other.x)
     }
 }
+
 impl Lattice for TS16 {
-    #[inline(always)]
     fn minimum() -> Self {
         TS16 {
             x: u16::min_value(),
         }
     }
-    #[inline(always)]
+
     fn join(&self, other: &Self) -> Self {
         TS16 {
-            x: ::std::cmp::max(self.x, other.x),
+            x: std::cmp::max(self.x, other.x),
         }
     }
-    #[inline(always)]
+
     fn meet(&self, other: &Self) -> Self {
         TS16 {
-            x: ::std::cmp::min(self.x, other.x),
+            x: std::cmp::min(self.x, other.x),
         }
     }
 }
@@ -147,20 +141,14 @@ impl Lattice for TS16 {
 impl Timestamp for TS16 {
     type Summary = TS16;
 }
+
 impl PathSummary<TS16> for TS16 {
-    #[inline]
     fn results_in(&self, src: &TS16) -> Option<TS16> {
-        match self.x.checked_add(src.x) {
-            None => None,
-            Some(y) => Some(TS16 { x: y }),
-        }
+        self.x.checked_add(src.x).map(|y| TS16 { x: y })
     }
-    #[inline]
+
     fn followed_by(&self, other: &TS16) -> Option<TS16> {
-        match self.x.checked_add(other.x) {
-            None => None,
-            Some(y) => Some(TS16 { x: y }),
-        }
+        self.x.checked_add(other.x).map(|y| TS16 { x: y })
     }
 }
 
@@ -170,29 +158,28 @@ impl From<TS16> for u64 {
     }
 }
 
-/* Outer timestamp */
+/// Outer timestamp
 pub type TS = u32;
 type TSAtomic = AtomicU32;
 
-/* Timestamp for the nested scope
- * Use 16-bit timestamps for inner scopes to save memory
- */
+/// Timestamp for the nested scope
+/// Use 16-bit timestamps for inner scopes to save memory
 #[cfg(feature = "nested_ts_32")]
 pub type TSNested = u32;
 
+/// Timestamp for the nested scope
+/// Use 16-bit timestamps for inner scopes to save memory
 #[cfg(not(feature = "nested_ts_32"))]
 pub type TSNested = TS16;
 
-/* `Inspect` operator expects the timestampt to be a tuple.
- */
+/// `Inspect` operator expects the timestampt to be a tuple.
 pub type TupleTS = (TS, TSNested);
 
 trait ToTupleTS {
     fn to_tuple_ts(&self) -> TupleTS;
 }
 
-/* 0-extend top-level timestamp to a tuple.
- */
+/// 0-extend top-level timestamp to a tuple.
 impl ToTupleTS for TS {
     fn to_tuple_ts(&self) -> TupleTS {
         (*self, TSNested::default())
@@ -205,10 +192,10 @@ impl ToTupleTS for Product<TS, TSNested> {
     }
 }
 
-// Diff associated with records in differential dataflow
+/// Diff associated with records in differential dataflow
 pub type Weight = i32;
 
-/* Message buffer for profiling messages */
+/// Message buffer for profiling messages
 const PROF_MSG_BUF_SIZE: usize = 10000;
 
 /// Result type returned by this library
@@ -242,12 +229,15 @@ pub struct Program {
 type TransformerMap<'a> =
     FnvHashMap<RelId, Collection<Child<'a, Worker<Allocator>, TS>, DDValue, Weight>>;
 
-/// Represents a dataflow fragment implemented outside of DDlog directly in
-/// differential-dataflow.  Takes the set of already constructed collections and modifies this
-/// set, adding new collections.  Note that the transformer can only be applied in the top scope
+/// Represents a dataflow fragment implemented outside of DDlog directly in differential-dataflow.
+///
+/// Takes the set of already constructed collections and modifies this
+/// set, adding new collections. Note that the transformer can only be applied in the top scope
 /// (`Child<'a, Worker<Allocator>, TS>`), as we currently don't have a way to ensure that the
 /// transformer is monotonic and thus it may not converge if used in a nested scope.
 pub type TransformerFuncRes = Box<dyn for<'a> Fn(&mut TransformerMap<'a>)>;
+
+/// A function returning a dataflow fragment implemented in differential-dataflow
 pub type TransformerFunc = fn() -> TransformerFuncRes;
 
 /// Program node is either an individual non-recursive relation, a transformer application or
@@ -259,9 +249,11 @@ pub enum ProgNode {
     SCC { rels: Vec<RecursiveRelation> },
 }
 
-/// Relation computed in a nested scope as a fixed point.  The `distinct` flag
-/// indicates that the `distinct` operator should be applied to the relation before
-/// closing the loop to enforce convergence of the fixed point computation.
+/// Relation computed in a nested scope as a fixed point.
+///
+/// The `distinct` flag indicates that the `distinct` operator should be applied
+/// to the relation before closing the loop to enforce convergence of the fixed
+/// point computation.
 #[derive(Clone)]
 pub struct RecursiveRelation {
     pub rel: Relation,
@@ -287,7 +279,8 @@ impl Clone for Box<dyn CBFn> {
     }
 }
 
-/// Caching mode for input relations only:
+/// Caching mode for input relations only
+///
 /// `NoCache` - don't cache the contents of the relation.
 /// `CacheSet` - cache relation as a set.  Duplicate inserts are
 ///     ignored (for relations without a key) or fail (for relations
@@ -387,13 +380,15 @@ impl Dep {
 }
 
 /// Transformations, such as maps, flatmaps, filters, joins, etc. are the building blocks of
-/// DDlog rules.  Different kinds of transformations can be applied only to flat collections,
-/// only to arranged collections, or both.  We therefore use separate types to represent
+/// DDlog rules.
+///
+/// Different kinds of transformations can be applied only to flat collections,
+/// only to arranged collections, or both. We therefore use separate types to represent
 /// collection and arrangement transformations.
 ///
 /// Note that differential sometimes allows the same kind of transformation to be applied to both
 /// collections and arrangements; however the former is implemented on top of the latter and incurs
-/// the additional cost of arranging the collection.  We only support the arranged version of these
+/// the additional cost of arranging the collection. We only support the arranged version of these
 /// transformations, forcing the user to explicitly arrange the collection if necessary (or, as much
 /// as possible, keep the data arranged throughout the chain of transformations).
 ///
@@ -783,9 +778,9 @@ where
     }
 }
 
-/* Helper type that represents an arranged collection of one of two
- * types (e.g., an arrangement created in a local scope or entered from
- * the parent scope) */
+/// Helper type that represents an arranged collection of one of two
+/// types (e.g., an arrangement created in a local scope or entered from
+/// the parent scope)
 enum A<'a, 'b, P, T>
 where
     P: ScopeParent,
@@ -840,16 +835,16 @@ where
     }
 }
 
-/* Set relation content. */
+/// Set relation content.
 pub type ValSet = FnvHashSet<DDValue>;
 
-/* Multiset relation content. */
+/// Multiset relation content.
 pub type ValMSet = DeltaSet;
 
-/* Indexed relation content. */
+/// Indexed relation content.
 pub type IndexedValSet = FnvHashMap<DDValue, DDValue>;
 
-/* Relation delta */
+/// Relation delta
 pub type DeltaSet = FnvHashMap<DDValue, isize>;
 
 /// Runtime representation of a datalog program.
@@ -858,29 +853,29 @@ pub type DeltaSet = FnvHashMap<DDValue, isize>;
 /// of scope. Error occurring as part of that operation are silently
 /// ignored. If you want to handle such errors, call `stop` manually.
 pub struct RunningProgram {
-    /* Producer sides of channels used to send commands to workers.
-     * We use async channels to avoid deadlocks when workers are blocked
-     * in `step_or_park`. */
+    /// Producer sides of channels used to send commands to workers.
+    /// We use async channels to avoid deadlocks when workers are blocked
+    /// in `step_or_park`.
     senders: Vec<mpsc::Sender<Msg>>,
-    /* Channels to receive replies from worker threads.  We could use a single
-     * channel with multiple senders, but use many channels instead to avoid
-     * deadlocks when one of the workers has died, but `recv` blocks instead
-     * of failing, since the channel is still considered alive. */
+    /// Channels to receive replies from worker threads. We could use a single
+    /// channel with multiple senders, but use many channels instead to avoid
+    /// deadlocks when one of the workers has died, but `recv` blocks instead
+    /// of failing, since the channel is still considered alive.
     reply_recv: Vec<mpsc::Receiver<Reply>>,
     relations: FnvHashMap<RelId, RelationInstance>,
-    /* Join handle of the thread running timely computaiton. */
+    /// Join handle of the thread running timely computation.
     thread_handle: Option<thread::JoinHandle<Result<(), String>>>,
-    /* Timely worker threads. */
+    /// Timely worker threads.
     worker_threads: Vec<thread::Thread>,
     transaction_in_progress: bool,
     need_to_flush: bool,
-    /* CPU profiling enabled (can be expensive). */
+    /// CPU profiling enabled (can be expensive).
     profile_cpu: Arc<AtomicBool>,
     /// Consume timely_events and output them to CSV file. Can be expensive.
     profile_timely: Arc<AtomicBool>,
-    /* Profiling thread. */
+    /// Profiling thread.
     prof_thread_handle: Option<thread::JoinHandle<()>>,
-    /* Profiling statistics. */
+    /// Profiling statistics.
     pub profile: Arc<Mutex<Profile>>,
 }
 
@@ -889,50 +884,50 @@ pub struct RunningProgram {
 // that quickly gets very cumbersome.
 impl Debug for RunningProgram {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let mut builder = f.debug_struct("RunningProgram");
-        let _ = builder.field("senders", &self.senders);
-        let _ = builder.field("reply_recv", &self.reply_recv);
-        let _ = builder.field(
-            "relations",
-            &(&self.relations as *const FnvHashMap<RelId, RelationInstance>),
-        );
-        let _ = builder.field("thread_handle", &self.thread_handle);
-        let _ = builder.field("transaction_in_progress", &self.transaction_in_progress);
-        let _ = builder.field("need_to_flush", &self.need_to_flush);
-        let _ = builder.field("profile_cpu", &self.profile_cpu);
-        let _ = builder.field("profile_timely", &self.profile_timely);
-        let _ = builder.field("prof_thread_handle", &self.prof_thread_handle);
-        let _ = builder.field("profile", &self.profile);
-        builder.finish()
+        f.debug_struct("RunningProgram")
+            .field("senders", &self.senders)
+            .field("reply_recv", &self.reply_recv)
+            .field(
+                "relations",
+                &(&self.relations as *const FnvHashMap<RelId, RelationInstance>),
+            )
+            .field("thread_handle", &self.thread_handle)
+            .field("transaction_in_progress", &self.transaction_in_progress)
+            .field("need_to_flush", &self.need_to_flush)
+            .field("profile_cpu", &self.profile_cpu)
+            .field("profile_timely", &self.profile_timely)
+            .field("prof_thread_handle", &self.prof_thread_handle)
+            .field("profile", &self.profile)
+            .finish()
     }
 }
 
-/* Runtime representation of relation */
+/// Runtime representation of relation
 enum RelationInstance {
     Stream {
-        /* Changes since start of transaction. */
+        /// Changes since start of transaction.
         delta: DeltaSet,
     },
     Multiset {
-        /* Multiset of all elements in the relation. */
+        /// Multiset of all elements in the relation.
         elements: ValMSet,
-        /* Changes since start of transaction. */
+        /// Changes since start of transaction.
         delta: DeltaSet,
     },
     Flat {
-        /* Set of all elements in the relation. Used to enforce set semantics for input relations
-         * (repeated inserts and deletes are ignored). */
+        /// Set of all elements in the relation. Used to enforce set semantics for input relations
+        /// (repeated inserts and deletes are ignored).
         elements: ValSet,
-        /* Changes since start of transaction. */
+        /// Changes since start of transaction.
         delta: DeltaSet,
     },
     Indexed {
         key_func: fn(&DDValue) -> DDValue,
-        /* Set of all elements in the relation indexed by key. Used to enforce set semantics,
-         * uniqueness of keys, and to query input relations by key. */
+        /// Set of all elements in the relation indexed by key. Used to enforce set semantics,
+        /// uniqueness of keys, and to query input relations by key.
         elements: IndexedValSet,
-        /* Changes since start of transaction.  Only maintained for input relations and is used to
-         * enforce set semantics. */
+        /// Changes since start of transaction.  Only maintained for input relations and is used to
+        /// enforce set semantics.
         delta: DeltaSet,
     },
 }
@@ -946,6 +941,7 @@ impl RelationInstance {
             RelationInstance::Indexed { delta, .. } => delta,
         }
     }
+
     pub fn delta_mut(&mut self) -> &mut DeltaSet {
         match self {
             RelationInstance::Stream { delta } => delta,
@@ -958,6 +954,7 @@ impl RelationInstance {
 
 /// A data type to represent insert and delete commands.  A unified type lets us
 /// combine many updates in one message.
+///
 /// `DeleteValue` takes a complete value to be deleted;
 /// `DeleteKey` takes key only and is only defined for relations with 'key_func';
 /// `Modify` takes a key and a `Mutator` trait object that represents an update
@@ -995,42 +992,64 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Update::Insert { relid, v } => {
-                let mut builder = f.debug_struct("Insert");
-                let _ = builder.field("relid", relid);
-                let _ = builder.field("v", v);
-                builder.finish()
-            }
-            Update::InsertOrUpdate { relid, v } => {
-                let mut builder = f.debug_struct("InsertOrUpdate");
-                let _ = builder.field("relid", relid);
-                let _ = builder.field("v", v);
-                builder.finish()
-            }
-            Update::DeleteValue { relid, v } => {
-                let mut builder = f.debug_struct("DeleteValue");
-                let _ = builder.field("relid", relid);
-                let _ = builder.field("v", v);
-                builder.finish()
-            }
-            Update::DeleteKey { relid, k } => {
-                let mut builder = f.debug_struct("DeleteKey");
-                let _ = builder.field("relid", relid);
-                let _ = builder.field("k", k);
-                builder.finish()
-            }
-            Update::Modify { relid, k, m } => {
-                let mut builder = f.debug_struct("Modify");
-                let _ = builder.field("relid", relid);
-                let _ = builder.field("k", k);
-                let _ = builder.field("m", &m.to_string());
-                builder.finish()
-            }
+            Update::Insert { relid, v } => f
+                .debug_struct("Insert")
+                .field("relid", relid)
+                .field("v", v)
+                .finish(),
+
+            Update::InsertOrUpdate { relid, v } => f
+                .debug_struct("InsertOrUpdate")
+                .field("relid", relid)
+                .field("v", v)
+                .finish(),
+
+            Update::DeleteValue { relid, v } => f
+                .debug_struct("DeleteValue")
+                .field("relid", relid)
+                .field("v", v)
+                .finish(),
+
+            Update::DeleteKey { relid, k } => f
+                .debug_struct("DeleteKey")
+                .field("relid", relid)
+                .field("k", k)
+                .finish(),
+
+            Update::Modify { relid, k, m } => f
+                .debug_struct("Modify")
+                .field("relid", relid)
+                .field("k", k)
+                .field("m", &m.to_string())
+                .finish(),
         }
     }
 }
 
+/// Creates functions to check the type of an update
+macro_rules! is_update_kind {
+    ($($function:ident -> $update_kind:ident),* $(,)?) => {
+        $(
+            is_update_kind!(@doc
+                #[doc = concat!("Returns `true` if the the current update is an `", stringify!($update_kind), "`")]
+                pub fn $function(&self) -> bool {
+                    matches!(self, Update::$update_kind { .. })
+                }
+            );
+        )*
+    };
+
+    // Little bit of a hack around rust's macro system, putting a `concat!(..)` directly
+    // within a macro doesn't work, but coercing the concatenated string into a literal
+    // before putting it inside the doc attribute does
+    (@doc #[doc = $doc:expr] $item:item) => {
+        #[doc = $doc]
+        $item
+    };
+}
+
 impl<V> Update<V> {
+    /// Get the relationship id of the current update
     pub fn relid(&self) -> RelId {
         match self {
             Update::Insert { relid, .. } => *relid,
@@ -1040,12 +1059,39 @@ impl<V> Update<V> {
             Update::Modify { relid, .. } => *relid,
         }
     }
-    pub fn is_delete_key(&self) -> bool {
+
+    is_update_kind! {
+        is_insert           -> Insert,
+        is_insert_or_update -> InsertOrUpdate,
+        is_delete_value     -> DeleteValue,
+        is_delete_key       -> DeleteKey,
+        is_modify           -> Modify,
+    }
+
+    /// Returns whether the current update has a key of some sort
+    ///
+    /// Returns `true` if the update is a `DeleteKey` or a `Modify`
+    pub fn has_key(&self) -> bool {
+        matches!(self, Update::DeleteKey { .. } | Update::Modify { .. })
+    }
+
+    /// Attempts to get the key of the current update
+    ///
+    /// Returns `Some` if the update is a `DeleteKey` or a `Modify` and `None` otherwise
+    pub fn get_key(&self) -> Option<&V> {
         match self {
-            Update::DeleteKey { .. } => true,
-            _ => false,
+            Update::DeleteKey { k, .. } => Some(k),
+            Update::Modify { k, .. } => Some(k),
+            _ => None,
         }
     }
+
+    /// Attempts to get the key of the current update
+    ///
+    /// # Panics
+    ///
+    /// Panics if the update is not a `DeleteKey` or a `Modify`, use `Update::get_key()`
+    /// for a fallible version
     pub fn key(&self) -> &V {
         match self {
             Update::DeleteKey { k, .. } => k,
@@ -1055,48 +1101,48 @@ impl<V> Update<V> {
     }
 }
 
-/* Messages sent to timely worker threads.  Most of these messages can be sent
- * to worker 0 only. */
+/// Messages sent to timely worker threads.  Most of these messages can be sent
+/// to worker 0 only.
 #[derive(Debug, Clone)]
 enum Msg {
-    // Update input relation (worker 0 only).
+    /// Update input relation (worker 0 only).
     Update(Vec<Update<DDValue>>),
-    // Propagate changes through the pipeline (worker 0 only).
+    /// Propagate changes through the pipeline (worker 0 only).
     Flush,
-    // Query arrangement.  If the second argument is `None`, returns
-    // all values in the collection; otherwise returns values associated
-    // with the specified key.
+    /// Query arrangement.  If the second argument is `None`, returns
+    /// all values in the collection; otherwise returns values associated
+    /// with the specified key.
     Query(ArrId, Option<DDValue>),
-    // Stop all workers (worker 0 only)
+    /// Stop all workers (worker 0 only)
     Stop,
 }
 
-/* Reply messages from timely worker threads. */
+/// Reply messages from timely worker threads.
 #[derive(Debug)]
 enum Reply {
-    // Acknowledge flush completion (sent by worker 0 only).
+    /// Acknowledge flush completion (sent by worker 0 only).
     FlushAck,
-    // Result of a query.
+    /// Result of a query.
     QueryRes(Option<BTreeSet<DDValue>>),
 }
 
 impl Program {
     /// Instantiate the program with `nworkers` timely threads.
+    // REFACTOR: Split this up into functions or something, it's currently a 600 line function
     pub fn run(&self, nworkers: usize) -> Result<RunningProgram, String> {
-        /* Clone the program, so that it can be moved into the timely computation */
+        // Clone the program, so that it can be moved into the timely computation
         let prog = self.clone();
 
-        /* Setup channels to communicate with the dataflow.
-         * We use async channels to avoid deadlocks when workers are parked in
-         * `step_or_park`.  This has the downside of introducing an unbounded buffer
-         * that is only guaranteed to be fully flushed when the transaction commits.
-         */
+        // Setup channels to communicate with the dataflow.
+        // We use async channels to avoid deadlocks when workers are parked in
+        // `step_or_park`.  This has the downside of introducing an unbounded buffer
+        // that is only guaranteed to be fully flushed when the transaction commits.
         let (request_send, request_recv): (Vec<_>, Vec<_>) =
             (0..nworkers).map(|_| mpsc::channel::<Msg>()).unzip();
         let request_recv: Arc<Mutex<Vec<Option<_>>>> =
             Arc::new(Mutex::new(request_recv.into_iter().map(Some).collect()));
 
-        /* Channels for responses from worker threads. */
+        // Channels for responses from worker threads.
         let (reply_send, reply_recv): (Vec<_>, Vec<_>) =
             (0..nworkers).map(|_| mpsc::channel::<Reply>()).unzip();
         let reply_send: Arc<Mutex<Vec<Option<_>>>> =
@@ -1104,52 +1150,53 @@ impl Program {
 
         let (prof_send, prof_recv) = mpsc::sync_channel::<ProfMsg>(PROF_MSG_BUF_SIZE);
 
-        /* Channel used by workers 1..n to send their thread handles to worker 0. */
+        // Channel used by workers 1..n to send their thread handles to worker 0.
         let (thandle_send, thandle_recv) = mpsc::sync_channel::<(usize, thread::Thread)>(0);
         let thandle_recv = Arc::new(Mutex::new(thandle_recv));
 
-        /* Channel used by the main timely thread to send worker 0 handle to the caller. */
+        // Channel used by the main timely thread to send worker 0 handle to the caller.
         let (wsend, wrecv) = mpsc::sync_channel::<Vec<thread::Thread>>(0);
 
-        /* Profile data structure */
+        // Profile data structure
         let profile = Arc::new(Mutex::new(Profile::new()));
         let profile2 = profile.clone();
 
         let profile_cpu = Arc::new(AtomicBool::new(false));
         let profile_timely = Arc::new(AtomicBool::new(false));
 
-        /* Thread to collect profiling data */
+        // Thread to collect profiling data
         let prof_thread = thread::spawn(move || Self::prof_thread_func(prof_recv, profile2));
 
         let profile_cpu2 = profile_cpu.clone();
         let profile_timely2 = profile_timely.clone();
 
-        /* Shared timestamp managed by worker 0 and read by all other workers */
+        // Shared timestamp managed by worker 0 and read by all other workers
         let frontier_ts = TSAtomic::new(0);
         let progress_barrier = Arc::new(Barrier::new(nworkers));
 
-        /* We must run the timely computation from a separate thread, since we need this thread to
-         * take the ownership of `WorkerGuards`, returned by `timely::execute`.  `WorkerGuards` cannot
-         * be sent across threads (i.e., they do not implement `Send` and therefore cannot be
-         * safely stored in `RunningProgram`). */
+        // We must run the timely computation from a separate thread, since we need this thread to
+        // take the ownership of `WorkerGuards`, returned by `timely::execute`.  `WorkerGuards` cannot
+        // be sent across threads (i.e., they do not implement `Send` and therefore cannot be
+        // safely stored in `RunningProgram`).
         let h = thread::spawn(move ||
-            /* Start up timely computation. */
+            // Start up timely computation.
             timely::execute(Configuration::Process(nworkers), move |worker: &mut Worker<Allocator>| -> Result<_, String> {
                 let worker_index = worker.index();
 
-                /* Peer workers thread handles; only used by worker 0. */
+                // Peer workers thread handles; only used by worker 0.
                 let mut peers: FnvHashMap<usize, thread::Thread> = FnvHashMap::default();
                 if worker_index != 0 {
-                    /* Send worker's thread handle to worker 0. */
+                    // Send worker's thread handle to worker 0.
                     thandle_send.send((worker_index, thread::current())).unwrap();
                 } else {
-                    /* Worker 0: receive `nworkers-1` handles. */
+                    // Worker 0: receive `nworkers-1` handles.
                     let thandle_recv = thandle_recv.lock().unwrap();
                     for _ in 1..nworkers {
                         let (worker, thandle) = thandle_recv.recv().unwrap();
                         peers.insert(worker, thandle);
                     }
                 }
+
                 let probe = probe::Handle::new();
                 {
                     let mut probe1 = probe.clone();
@@ -1164,31 +1211,37 @@ impl Program {
                         let profcpu: &AtomicBool = &*profile_cpu3;
                         let proftimely: &AtomicBool = &*profile_timely3;
 
-                        /* Filter out events we don't care about to avoid the overhead of sending
-                         * the event around just to drop it eventually. */
-                        let filtered: Vec<((Duration, usize, TimelyEvent), Option<String>)> = data.drain(..).filter(|event| match event.2 {
-                            // Always send Operates events as they're used for always-on memory profiling.
-                            TimelyEvent::Operates(_) => true,
-                            TimelyEvent::Schedule(_) =>
-                                profcpu.load(Ordering::Acquire) | proftimely.load(Ordering::Acquire),
-                            TimelyEvent::GuardedMessage(_) |
-                            TimelyEvent::Messages(_) |
-                            TimelyEvent::Park(_) |
-                            TimelyEvent::Progress(_) |
-                            TimelyEvent::PushProgress(_) => proftimely.load(Ordering::Acquire),
-                            _ => false
-                        }).map(|(d, s, e)|
-                            // Only Operate events care about the context string.
-                            match e {
+                        // Filter out events we don't care about to avoid the overhead of sending
+                        // the event around just to drop it eventually.
+                        let filtered: Vec<((Duration, usize, TimelyEvent), Option<String>)> = data
+                            .drain(..)
+                            .filter(|event| match event.2 {
+                                // Always send Operates events as they're used for always-on memory profiling.
+                                TimelyEvent::Operates(_) => true,
+                                TimelyEvent::Schedule(_) => profcpu.load(Ordering::Acquire) | proftimely.load(Ordering::Acquire),
+                                TimelyEvent::GuardedMessage(_) |
+                                TimelyEvent::Messages(_) |
+                                TimelyEvent::Park(_) |
+                                TimelyEvent::Progress(_) |
+                                TimelyEvent::PushProgress(_) => proftimely.load(Ordering::Acquire),
+                                _ => false
+                            })
+                            .map(|(d, s, e)| match e {
+                                // Only Operate events care about the context string.
                                 TimelyEvent::Operates(_) => ((d, s, e), Some(get_prof_context())),
                                 _ => ((d, s, e), None),
-                        }).collect();
+                            })
+                            .collect();
 
                         if !filtered.is_empty() {
                             //eprintln!("timely event {:?}", filtered);
-                            prof_send1.send(ProfMsg::TimelyMessage(filtered,
-                                                                   profcpu.load(Ordering::Acquire),
-                                                                   proftimely.load(Ordering::Acquire))).unwrap();
+                            prof_send1
+                                .send(ProfMsg::TimelyMessage(
+                                    filtered,
+                                    profcpu.load(Ordering::Acquire),
+                                    proftimely.load(Ordering::Acquire)
+                                ))
+                                .unwrap();
                         }
                     });
 
@@ -1196,8 +1249,11 @@ impl Program {
                         if data.is_empty() {
                             return;
                         }
-                        /* Send update to profiling channel */
-                        prof_send2.send(ProfMsg::DifferentialMessage(data.drain(..).collect())).unwrap();
+
+                        // Send update to profiling channel
+                        prof_send2
+                            .send(ProfMsg::DifferentialMessage(data.drain(..).collect()))
+                            .unwrap();
                     });
 
                     let request_recv = {
@@ -1205,6 +1261,7 @@ impl Program {
                         std::mem::swap(&mut request_recv.lock().unwrap()[worker_index], &mut opt_rx);
                         opt_rx.unwrap()
                     };
+
                     let reply_send = {
                         let mut opt_tx = None;
                         std::mem::swap(&mut reply_send.lock().unwrap()[worker_index], &mut opt_tx);
@@ -1215,140 +1272,193 @@ impl Program {
                         let mut sessions : FnvHashMap<RelId, InputSession<TS, DDValue, Weight>> = FnvHashMap::default();
                         let mut collections : FnvHashMap<RelId, Collection<Child<Worker<Allocator>, TS>,DDValue,Weight>> = FnvHashMap::default();
                         let mut arrangements = FnvHashMap::default();
+
                         for (nodeid, node) in prog.nodes.iter().enumerate() {
                             match node {
                                 ProgNode::Rel{rel} => {
-                                    /* Relation may already be in the map if it was created by an `Apply` node */
-                                    let mut collection = match collections.remove(&rel.id) {
-                                        None => {
+                                    // Relation may already be in the map if it was created by an `Apply` node
+                                    let mut collection = collections
+                                        .remove(&rel.id)
+                                        .unwrap_or_else(|| {
                                             let (session, collection) = outer.new_collection::<DDValue,Weight>();
                                             sessions.insert(rel.id, session);
-                                            collection
-                                        },
-                                        Some(c) => c
-                                    };
-                                    /* apply rules */
-                                    let mut rule_collections: Vec<_> = rel.rules.iter().map(|rule| {
-                                        prog.mk_rule(rule, |rid| collections.get(&rid),
-                                                     Arrangements{arrangements1: &arrangements,
-                                                     arrangements2: &FnvHashMap::default()})
 
-                                    }).collect();
+                                            collection
+                                        });
+
+                                    // apply rules
+                                    let mut rule_collections: Vec<_> = rel
+                                        .rules
+                                        .iter()
+                                        .map(|rule| {
+                                            prog.mk_rule(
+                                                rule,
+                                                |rid| collections.get(&rid),
+                                                Arrangements {
+                                                    arrangements1: &arrangements,
+                                                    arrangements2: &FnvHashMap::default(),
+                                                },
+                                            )
+                                        })
+                                        .collect();
+
                                     rule_collections.push(collection);
-                                    collection = with_prof_context(&format!("concatenate rules for {}", rel.name),
-                                                                   || concatenate_collections(outer, rule_collections.into_iter()));
-                                    /* don't distinct input collections, as this is already done by the set_update logic */
+                                    collection = with_prof_context(
+                                        &format!("concatenate rules for {}", rel.name),
+                                        || concatenate_collections(outer, rule_collections.into_iter()),
+                                    );
+
+                                    // don't distinct input collections, as this is already done by the set_update logic
                                     if !rel.input && rel.distinct {
-                                        collection = with_prof_context(&format!("{}.threshold_total", rel.name),
-                                                                       ||collection.threshold_total(|_,c| if c.is_zero() { 0 } else { 1 }));
+                                        collection = with_prof_context(
+                                            &format!("{}.threshold_total", rel.name),
+                                            || collection.threshold_total(|_, c| if c.is_zero() { 0 } else { 1 }),
+                                        );
                                     }
-                                    /* create arrangements */
+
+                                    // create arrangements
                                     for (i,arr) in rel.arrangements.iter().enumerate() {
-                                        with_prof_context(&arr.name(),
-                                                          ||arrangements.insert((rel.id, i), arr.build_arrangement_root(&collection)));
-                                    };
+                                        with_prof_context(
+                                            &arr.name(),
+                                            || arrangements.insert(
+                                                (rel.id, i),
+                                                arr.build_arrangement_root(&collection),
+                                            ),
+                                        );
+                                    }
+
                                     collections.insert(rel.id, collection);
                                 },
-                                ProgNode::Apply{tfun} => {
+                                ProgNode::Apply { tfun } => {
                                     tfun()(&mut collections);
                                 },
-                                ProgNode::SCC{rels} => {
-                                    /* create collections; add them to map; we will overwrite them with
-                                     * updated collections returned from the inner scope. */
+                                ProgNode::SCC { rels } => {
+                                    // create collec tions; add them to map; we will overwrite them with
+                                    // updated collections returned from the inner scope.
                                     for r in rels.iter() {
                                         let (session, collection) = outer.new_collection::<DDValue,Weight>();
                                         assert!(!r.rel.input, "input relation in nested scope: {}", r.rel.name);
+
                                         sessions.insert(r.rel.id, session);
                                         collections.insert(r.rel.id, collection);
-                                    };
-                                    /* create a nested scope for mutually recursive relations */
+                                    }
+
+                                    // create a nested scope for mutually recursive relations
                                     let new_collections = outer.scoped("recursive component", |inner| -> Result<_, String> {
-                                        /* create variables for relations defined in the SCC. */
-                                        let mut vars = FnvHashMap::default();
-                                        /* arrangements created inside the nested scope */
+                                        // create variables for relations defined in the SCC.
+                                        let mut vars = HashMap::with_capacity_and_hasher(rels.len(), FnvBuildHasher::default());
+                                        // arrangements created inside the nested scope
                                         let mut local_arrangements = FnvHashMap::default();
-                                        /* arrangements entered from global scope */
+                                        // arrangements entered from global scope
                                         let mut inner_arrangements = FnvHashMap::default();
-                                        /* collections entered from global scope */
+
+                                        // collections entered from global scope
                                         let mut inner_collections = FnvHashMap::default();
                                         for r in rels.iter() {
-                                            let var = Variable::from(&collections
-                                                .get(&r.rel.id)
-                                                .ok_or_else(|| format!("failed to find collection with relation ID {}", r.rel.id))?
-                                                .enter(inner), r.distinct, &r.rel.name);
+                                            let var = Variable::from(
+                                                &collections
+                                                    .get(&r.rel.id)
+                                                    .ok_or_else(|| format!("failed to find collection with relation ID {}", r.rel.id))?
+                                                    .enter(inner),
+                                                r.distinct,
+                                                &r.rel.name,
+                                            );
+
                                             vars.insert(r.rel.id, var);
-                                        };
-                                        /* create arrangements */
+                                        }
+
+                                        // create arrangements
                                         for rel in rels {
                                             for (i, arr) in rel.rel.arrangements.iter().enumerate() {
-                                                /* check if arrangement is actually used inside this node */
-                                                if prog.arrangement_used_by_nodes((rel.rel.id, i)).iter().any(|n|*n == nodeid) {
+                                                // check if arrangement is actually used inside this node
+                                                if prog.arrangement_used_by_nodes((rel.rel.id, i)).iter().any(|n| *n == nodeid) {
                                                     with_prof_context(
                                                         &format!("local {}", arr.name()),
-                                                        ||local_arrangements.insert((rel.rel.id, i),
-                                                                                    arr.build_arrangement(vars.get(&rel.rel.id)?.deref())));
+                                                        || local_arrangements.insert(
+                                                            (rel.rel.id, i),
+                                                            arr.build_arrangement(vars.get(&rel.rel.id)?.deref()),
+                                                        ),
+                                                    );
                                                 }
                                             }
-                                        };
-                                        let relrels: Vec<_>= rels.iter().map(|r|&r.rel).collect();
+                                        }
+
+                                        let relrels: Vec<_> = rels.iter().map(|r| &r.rel).collect();
                                         for dep in Self::dependencies(relrels.as_slice()) {
                                             match dep {
                                                 Dep::Rel(relid) => {
                                                     assert!(!vars.contains_key(&relid));
                                                     let collection = collections
-                                                                         .get(&relid)
-                                                                         .ok_or_else(|| format!("failed to find collection with relation ID {}", relid))?
-                                                                         .enter(inner);
+                                                        .get(&relid)
+                                                        .ok_or_else(|| format!("failed to find collection with relation ID {}", relid))?
+                                                        .enter(inner);
 
                                                     inner_collections.insert(relid, collection);
                                                 },
                                                 Dep::Arr(arrid) => {
-                                                    let arrangement = arrangements.get(&arrid)
-                                                                              .ok_or_else(|| format!("Arr: unknown arrangement {:?}", arrid))?
-                                                                              .enter(inner);
+                                                    let arrangement = arrangements
+                                                        .get(&arrid)
+                                                        .ok_or_else(|| format!("Arr: unknown arrangement {:?}", arrid))?
+                                                        .enter(inner);
 
                                                     inner_arrangements.insert(arrid, arrangement);
                                                 }
                                             }
-                                        };
-                                        /* apply rules to variables */
+                                        }
+
+                                        // apply rules to variables
                                         for rel in rels {
                                             for rule in &rel.rel.rules {
                                                 let c = prog.mk_rule(
                                                     rule,
-                                                    |rid| vars.get(&rid).map(|v|&(**v)).or_else(|| inner_collections.get(&rid)),
-                                                    Arrangements{arrangements1: &local_arrangements,
-                                                                 arrangements2: &inner_arrangements});
+                                                    |rid| {
+                                                        vars
+                                                            .get(&rid)
+                                                            .map(|v| &(**v))
+                                                            .or_else(|| inner_collections.get(&rid))
+                                                    },
+                                                    Arrangements {
+                                                        arrangements1: &local_arrangements,
+                                                        arrangements2: &inner_arrangements,
+                                                    },
+                                                );
+
                                                 vars
                                                     .get_mut(&rel.rel.id)
                                                     .ok_or_else(|| format!("no variable found for relation ID {}", rel.rel.id))?
                                                     .add(&c);
-                                            };
+                                            }
+                                        }
 
-                                        };
-                                        /* bring new relations back to the outer scope */
+                                        // bring new relations back to the outer scope
                                         let mut new_collections = FnvHashMap::default();
                                         for rel in rels {
                                             let var = vars
                                                 .get(&rel.rel.id)
                                                 .ok_or_else(|| format!("no variable found for relation ID {}", rel.rel.id))?;
+
                                             let mut collection = var.leave();
-                                            /* var.distinct() will be called automatically by var.drop() if var has `distinct` flag set */
+                                            // var.distinct() will be called automatically by var.drop() if var has `distinct` flag set
                                             if rel.rel.distinct && !rel.distinct {
-                                                collection = with_prof_context(&format!("{}.distinct_total", rel.rel.name),
-                                                                 || collection.threshold_total(|_,c| if c.is_zero() { 0 } else { 1 }));
-                                            };
-                                            new_collections
-                                                .insert(rel.rel.id, collection);
-                                        };
+                                                collection = with_prof_context(
+                                                    &format!("{}.distinct_total", rel.rel.name),
+                                                    || collection.threshold_total(|_,c| if c.is_zero() { 0 } else { 1 }),
+                                                );
+                                            }
+
+                                            new_collections.insert(rel.rel.id, collection);
+                                        }
+
                                         Ok(new_collections)
                                     })?;
-                                    /* add new collections to the map */
+
+                                    // add new collections to the map
                                     collections.extend(new_collections);
-                                    /* create arrangements */
+
+                                    // create arrangements
                                     for rel in rels {
                                         for (i, arr) in rel.rel.arrangements.iter().enumerate() {
-                                            /* only if the arrangement is used outside of this node */
+                                            // only if the arrangement is used outside of this node
                                             if prog.arrangement_used_by_nodes((rel.rel.id, i)).iter().any(|n|*n != nodeid) || arr.queryable() {
                                                 with_prof_context(
                                                     &format!("global {}", arr.name()),
@@ -1361,36 +1471,40 @@ impl Program {
                                                     }
                                                 )?;
                                             }
-                                        };
-                                    };
+                                        }
+                                    }
                                 }
-                            };
-                        };
-
-                        for (relid, collection) in collections {
-                            /* notify client about changes */
-                            if let Some(cb) = &prog.get_relation(relid).change_cb {
-                                let mut cb = cb.lock().unwrap().clone();
-                                let consolidated = with_prof_context(
-                                    &format!("consolidate {}", relid),
-                                    || collection.consolidate()
-                                    );
-                                let inspected = with_prof_context(
-                                    &format!("inspect {}", relid),
-                                    || consolidated.inspect(move |x| {
-                                        //assert!(x.2 == 1 || x.2 == -1, "x: {:?}", x);
-                                        cb(relid, &x.0, x.2)
-                                       }));
-                                with_prof_context(
-                                    &format!("probe {}", relid),
-                                    || inspected.probe_with(&mut probe1)
-                                    );
                             }
                         };
 
-                        /* Attach probes to index arrangements, so we know when all updates
-                         * for a given epoch have been added to the arrangement, and return
-                         * arrangement trace. */
+                        for (relid, collection) in collections {
+                            // notify client about changes
+                            if let Some(cb) = &prog.get_relation(relid).change_cb {
+                                let mut cb = cb.lock().unwrap().clone();
+
+                                let consolidated = with_prof_context(
+                                    &format!("consolidate {}", relid),
+                                    || collection.consolidate(),
+                                );
+
+                                let inspected = with_prof_context(
+                                    &format!("inspect {}", relid),
+                                    || consolidated.inspect(move |x| {
+                                        // assert!(x.2 == 1 || x.2 == -1, "x: {:?}", x);
+                                        cb(relid, &x.0, x.2)
+                                    }),
+                                );
+
+                                with_prof_context(
+                                    &format!("probe {}", relid),
+                                    || inspected.probe_with(&mut probe1),
+                                );
+                            }
+                        }
+
+                        // Attach probes to index arrangements, so we know when all updates
+                        // for a given epoch have been added to the arrangement, and return
+                        // arrangement trace.
                         let mut traces: BTreeMap<ArrId, _> = BTreeMap::new();
                         for ((relid, arrid), arr) in arrangements.into_iter() {
                             if let ArrangedCollection::Map(arranged) = arr {
@@ -1400,6 +1514,7 @@ impl Program {
                                 }
                             }
                         }
+
                         Ok((sessions, traces))
                     })?;
                     //println!("worker {} started", worker.index());
@@ -1414,31 +1529,35 @@ impl Program {
                               .ok_or_else(|| format!("no session found for relation ID {}", relid))?
                               .update(v.clone(), 1);
                         }
+
                         epoch += 1;
                         Self::advance(&mut all_sessions, &mut traces, epoch);
                         Self::flush(&mut all_sessions, &probe, worker, &peers, &frontier_ts, &progress_barrier);
+
                         reply_send.send(Reply::FlushAck).map_err(|e| format!("failed to send ACK: {}", e))?;
                     }
 
                     // Close session handles for non-input sessions;
                     // close all sessions for workers other than worker 0.
-                    let mut sessions: FnvHashMap<RelId, InputSession<TS, DDValue, Weight>> =
-                        all_sessions.drain().filter(|(relid,_)| worker_index == 0 && prog.get_relation(*relid).input).collect();
+                    let mut sessions: FnvHashMap<RelId, InputSession<TS, DDValue, Weight>> = all_sessions
+                        .drain()
+                        .filter(|(relid, _)| worker_index == 0 && prog.get_relation(*relid).input)
+                        .collect();
 
-                    /* Only worker 0 receives data */
+                    // Only worker 0 receives data
                     if worker_index == 0 {
                         loop {
-                            /* Non-blocking receive, so that we can do some garbage collecting
-                             * when there is no real work to do. */
+                            // Non-blocking receive, so that we can do some garbage collecting
+                            // when there is no real work to do.
                             match request_recv.try_recv() {
                                 Err(mpsc::TryRecvError::Empty) => {
-                                    /* Command channel empty: use idle time to work on garbage collection.
-                                     * This will block when there is no more compaction left to do.
-                                     * The sender must unpark worker 0 after sending to the channel. */
+                                    // Command channel empty: use idle time to work on garbage collection.
+                                    // This will block when there is no more compaction left to do.
+                                    // The sender must unpark worker 0 after sending to the channel.
                                     worker.step_or_park(None);
                                 },
                                 Err(mpsc::TryRecvError::Disconnected)  => {
-                                    /* Sender hung */
+                                    // Sender hung
                                     eprintln!("Sender hung");
                                     Self::stop_workers(&peers, &frontier_ts, &progress_barrier);
                                     break;
@@ -1477,6 +1596,7 @@ impl Program {
                                     epoch += 1;
                                     Self::advance(&mut sessions, &mut traces, epoch);
                                     Self::flush(&mut sessions, &probe, worker, &peers, &frontier_ts, &progress_barrier);
+
                                     //println!("flushed");
                                     reply_send.send(Reply::FlushAck).map_err(|e| format!("failed to send ACK: {}", e))?;
                                 },
@@ -1487,30 +1607,34 @@ impl Program {
                                     Self::stop_workers(&peers, &frontier_ts, &progress_barrier);
                                     break;
                                 }
-                            };
+                            }
                         }
                     } else /* worker_index != 0 */ {
                         loop {
-                            /* Differential does not require any synchronization between workers: as
-                             * long as we keep calling `step_or_park`, all workers will eventually
-                             * process all inputs.  Barriers in the following code are needed so that
-                             * worker 0 can know exactly when all other workers have processed all data
-                             * for the `frontier_ts` timestamp, so that it knows when a transaction has
-                             * been fully committed and produced all its outputs. */
+                            // Differential does not require any synchronization between workers: as
+                            // long as we keep calling `step_or_park`, all workers will eventually
+                            // process all inputs.  Barriers in the following code are needed so that
+                            // worker 0 can know exactly when all other workers have processed all data
+                            // for the `frontier_ts` timestamp, so that it knows when a transaction has
+                            // been fully committed and produced all its outputs.
                             progress_barrier.wait();
                             let time = frontier_ts.load(Ordering::SeqCst);
-                            if time == /*0xffffffffffffffff*/TS::max_value() {
-                                return Ok(())
-                            };
-                            /* `sessions` is empty, but we must advance trace frontiers, so we
-                             * don't hinder trace compaction. */
+
+                            // TS::max_value() == 0xffffffffffffffff*
+                            if time == TS::max_value() {
+                                return Ok(());
+                            }
+
+                            // `sessions` is empty, but we must advance trace frontiers, so we
+                            // don't hinder trace compaction.
                             Self::advance(&mut sessions, &mut traces, time);
                             while probe.less_than(&time) {
                                 if !worker.step_or_park(None) {
-                                    /* Dataflow terminated. */
-                                    return Ok(())
-                                };
-                            };
+                                    // Dataflow terminated.
+                                    return Ok(());
+                                }
+                            }
+
                             progress_barrier.wait();
                             /* We're all caught up with `frontier_ts` and can now spend some time
                              * garbage collecting.  The `step_or_park` call below will block if there
@@ -1535,16 +1659,24 @@ impl Program {
                                         /* Command channel empty: use idle time to work on garbage collection. */
                                         worker.step_or_park(None);
                                     },
+
                                     _ => { }
                                 }
                             }
                         }
                     }
                 }
+
                 Ok(())
             }
         ).map(|g| {
-            wsend.send(g.guards().iter().map(|wg| wg.thread().clone()).collect()).unwrap();
+            wsend.send(
+                g.guards()
+                    .iter()
+                    .map(|wg| wg.thread().clone()).collect()
+            )
+            .unwrap();
+
             g.join();
         }));
 
@@ -1573,33 +1705,32 @@ impl Program {
                             },
                         );
                     }
-                    CachingMode::Set => {
-                        match rel.key_func {
-                            None => {
-                                rels.insert(
-                                    relid,
-                                    RelationInstance::Flat {
-                                        elements: FnvHashSet::default(),
-                                        delta: FnvHashMap::default(),
-                                    },
-                                );
-                            }
-                            Some(f) => {
-                                rels.insert(
-                                    relid,
-                                    RelationInstance::Indexed {
-                                        key_func: f,
-                                        elements: FnvHashMap::default(),
-                                        delta: FnvHashMap::default(),
-                                    },
-                                );
-                            }
-                        };
-                    }
-                };
-            };
+                    CachingMode::Set => match rel.key_func {
+                        None => {
+                            rels.insert(
+                                relid,
+                                RelationInstance::Flat {
+                                    elements: FnvHashSet::default(),
+                                    delta: FnvHashMap::default(),
+                                },
+                            );
+                        }
+                        Some(f) => {
+                            rels.insert(
+                                relid,
+                                RelationInstance::Indexed {
+                                    key_func: f,
+                                    elements: FnvHashMap::default(),
+                                    delta: FnvHashMap::default(),
+                                },
+                            );
+                        }
+                    },
+                }
+            }
         }
-        /* Wait for the initial transaction to complete */
+
+        // Wait for the initial transaction to complete
         reply_recv[0]
             .recv()
             .map_err(|e| format!("failed to receive ACK: {}", e))?;
@@ -1828,7 +1959,7 @@ impl Program {
         r.dependencies().contains(&Dep::Arr(arrid))
     }
 
-    /* Returns all input relations of the program */
+    /// Returns all input relations of the program
     fn input_relations(&self) -> Vec<RelId> {
         self.nodes
             .iter()
@@ -1851,7 +1982,7 @@ impl Program {
             .collect()
     }
 
-    /* Return all relations required to compute rels, excluding recursive dependencies on rels */
+    /// Return all relations required to compute rels, excluding recursive dependencies on rels
     fn dependencies(rels: &[&Relation]) -> FnvHashSet<Dep> {
         let mut result = FnvHashSet::default();
         for rel in rels {
@@ -1916,10 +2047,7 @@ impl Program {
                 ref next,
             } => {
                 let flattened = with_prof_context(&description, || {
-                    col.flat_map(move |x|
-                                   /* TODO: replace this with f(x).into_iter().flatten() when the
-                                    * iterator_flatten feature makes it out of experimental API. */
-                                   match fmfun(x) {Some(iter) => iter, None => Box::new(None.into_iter())})
+                    col.flat_map(move |x| fmfun(x).into_iter().flatten())
                 });
                 Self::xform_collection(flattened, &*next, arrangements)
             }
@@ -2160,13 +2288,12 @@ impl Program {
     }
 }
 
-/* Interface to a running datalog computation
- */
-/* This should not panic, so that the client has a chance to recover from failures */
+/// Interface to a running datalog computation
+// This should not panic, so that the client has a chance to recover from failures
 // TODO: error messages
 impl RunningProgram {
-    /// Controls forwarding of `TimelyEvent::Schedule` event to the CPU
-    /// profiling thread.
+    /// Controls forwarding of `TimelyEvent::Schedule` event to the CPU profiling thread.
+    ///
     /// `enable = true`  - enables forwarding. This can be expensive in large dataflows.
     /// `enable = false` - disables forwarding.
     pub fn enable_cpu_profiling(&self, enable: bool) {
@@ -2177,7 +2304,7 @@ impl RunningProgram {
         self.profile_timely.store(enable, Ordering::SeqCst);
     }
 
-    /// Terminate program, kill worker threads.
+    /// Terminate program, killing all worker threads.
     pub fn stop(&mut self) -> Response<()> {
         if let Some(thread) = self.thread_handle.take() {
             self.flush()
@@ -2192,29 +2319,26 @@ impl RunningProgram {
                     Ok(Err(errstr)) => Err(format!("timely dataflow error: {}", errstr)),
                     Ok(Ok(())) => {
                         if let Some(thread) = self.prof_thread_handle.take() {
-                            match thread.join() {
-                                Err(_) => {
-                                    Err("profiling thread terminated with an error".to_string())
-                                }
-                                Ok(_) => Ok(()),
-                            }
+                            thread
+                                .join()
+                                .map_err(|_| "profiling thread terminated with an error".to_owned())
                         } else {
                             Ok(())
                         }
                     }
                 })?;
-        };
+        }
 
         Ok(())
     }
 
-    /// Start a transaction.  Does not return a transaction handle, as there
-    /// can be at most one transaction in progress at any given time.  Fails
+    /// Start a transaction. Does not return a transaction handle, as there
+    /// can be at most one transaction in progress at any given time. Fails
     /// if there is already a transaction in progress.
     pub fn transaction_start(&mut self) -> Response<()> {
         if self.transaction_in_progress {
             return Err("transaction already in progress".to_string());
-        };
+        }
 
         self.transaction_in_progress = true;
         Result::Ok(())
@@ -2224,7 +2348,7 @@ impl RunningProgram {
     pub fn transaction_commit(&mut self) -> Response<()> {
         if !self.transaction_in_progress {
             return Err("transaction_commit: no transaction in progress".to_string());
-        };
+        }
 
         self.flush().and_then(|_| self.delta_cleanup()).map(|_| {
             self.transaction_in_progress = false;
@@ -2245,23 +2369,22 @@ impl RunningProgram {
     /// Insert one record into input relation. Relations have set semantics, i.e.,
     /// adding an existing record is a no-op.
     pub fn insert(&mut self, relid: RelId, v: DDValue) -> Response<()> {
-        self.apply_updates(vec![Update::Insert { relid, v }].into_iter())
+        self.apply_update(Update::Insert { relid, v }, &mut Vec::new())
     }
 
-    /// Insert one record into input relation or replace existing record with the same
-    /// key.
+    /// Insert one record into input relation or replace existing record with the same key.
     pub fn insert_or_update(&mut self, relid: RelId, v: DDValue) -> Response<()> {
-        self.apply_updates(vec![Update::InsertOrUpdate { relid, v }].into_iter())
+        self.apply_update(Update::InsertOrUpdate { relid, v }, &mut Vec::new())
     }
 
     /// Remove a record if it exists in the relation.
     pub fn delete_value(&mut self, relid: RelId, v: DDValue) -> Response<()> {
-        self.apply_updates(vec![Update::DeleteValue { relid, v }].into_iter())
+        self.apply_update(Update::DeleteValue { relid, v }, &mut Vec::new())
     }
 
     /// Remove a key if it exists in the relation.
     pub fn delete_key(&mut self, relid: RelId, k: DDValue) -> Response<()> {
-        self.apply_updates(vec![Update::DeleteKey { relid, k }].into_iter())
+        self.apply_update(Update::DeleteKey { relid, k }, &mut Vec::new())
     }
 
     /// Modify a key if it exists in the relation.
@@ -2271,7 +2394,36 @@ impl RunningProgram {
         k: DDValue,
         m: Arc<dyn Mutator<DDValue> + Send + Sync>,
     ) -> Response<()> {
-        self.apply_updates(vec![Update::Modify { relid, k, m }].into_iter())
+        self.apply_update(Update::Modify { relid, k, m }, &mut Vec::new())
+    }
+
+    /// Applies a single update, allows individual update functions to not incur an allocation
+    fn apply_update(
+        &mut self,
+        update: Update<DDValue>,
+        filtered_updates: &mut Vec<Update<DDValue>>,
+    ) -> Response<()> {
+        let rel = self
+            .relations
+            .get_mut(&update.relid())
+            .ok_or_else(|| format!("apply_updates: unknown input relation {}", update.relid()))?;
+
+        match rel {
+            RelationInstance::Stream { delta } => {
+                Self::stream_update(delta, update, filtered_updates)
+            }
+            RelationInstance::Multiset { elements, delta } => {
+                Self::mset_update(elements, delta, update, filtered_updates)
+            }
+            RelationInstance::Flat { elements, delta } => {
+                Self::set_update(elements, delta, update, filtered_updates)
+            }
+            RelationInstance::Indexed {
+                key_func,
+                elements,
+                delta,
+            } => Self::indexed_set_update(*key_func, elements, delta, update, filtered_updates),
+        }
     }
 
     /// Apply multiple insert and delete operations in one batch.
@@ -2282,37 +2434,12 @@ impl RunningProgram {
     ) -> Response<()> {
         if !self.transaction_in_progress {
             return Err("apply_updates: no transaction in progress".to_string());
-        };
+        }
 
-        /* Remove no-op updates to maintain set semantics */
+        // Remove no-op updates to maintain set semantics
         let mut filtered_updates = Vec::new();
-        for upd in updates {
-            let rel = self
-                .relations
-                .get_mut(&upd.relid())
-                .ok_or_else(|| format!("apply_updates: unknown input relation {}", upd.relid()))?;
-            match rel {
-                RelationInstance::Stream { delta } => {
-                    Self::stream_update(delta, upd, &mut filtered_updates)?
-                }
-                RelationInstance::Multiset { elements, delta } => {
-                    Self::mset_update(elements, delta, upd, &mut filtered_updates)?
-                }
-                RelationInstance::Flat { elements, delta } => {
-                    Self::set_update(elements, delta, upd, &mut filtered_updates)?
-                }
-                RelationInstance::Indexed {
-                    key_func,
-                    elements,
-                    delta,
-                } => Self::indexed_set_update(
-                    *key_func,
-                    elements,
-                    delta,
-                    upd,
-                    &mut filtered_updates,
-                )?,
-            };
+        for update in updates {
+            self.apply_update(update, &mut filtered_updates)?;
         }
 
         self.send(0, Msg::Update(filtered_updates)).map(|_| {
@@ -2324,45 +2451,50 @@ impl RunningProgram {
     pub fn clear_relation(&mut self, relid: RelId) -> Response<()> {
         if !self.transaction_in_progress {
             return Err("clear_relation: no transaction in progress".to_string());
-        };
+        }
 
-        let upds = {
+        let updates = {
             let rel = self
                 .relations
                 .get_mut(&relid)
                 .ok_or_else(|| format!("clear_relation: unknown input relation {}", relid))?;
+
             match rel {
                 RelationInstance::Stream { .. } => {
                     return Err("clear_relation: operation not supported for streams".to_string())
                 }
                 RelationInstance::Multiset { elements, .. } => {
-                    let mut upds: Vec<Update<DDValue>> = Vec::with_capacity(elements.len());
-                    Self::delta_undo_updates(relid, elements, &mut upds);
-                    upds
+                    let mut updates: Vec<Update<DDValue>> = Vec::with_capacity(elements.len());
+                    Self::delta_undo_updates(relid, elements, &mut updates);
+
+                    updates
                 }
                 RelationInstance::Flat { elements, .. } => {
-                    let mut upds: Vec<Update<DDValue>> = Vec::with_capacity(elements.len());
+                    let mut updates: Vec<Update<DDValue>> = Vec::with_capacity(elements.len());
                     for v in elements.iter() {
-                        upds.push(Update::DeleteValue {
+                        updates.push(Update::DeleteValue {
                             relid,
                             v: v.clone(),
                         });
                     }
-                    upds
+
+                    updates
                 }
                 RelationInstance::Indexed { elements, .. } => {
-                    let mut upds: Vec<Update<DDValue>> = Vec::with_capacity(elements.len());
+                    let mut updates: Vec<Update<DDValue>> = Vec::with_capacity(elements.len());
                     for k in elements.keys() {
-                        upds.push(Update::DeleteKey {
+                        updates.push(Update::DeleteKey {
                             relid,
                             k: k.clone(),
                         });
                     }
-                    upds
+
+                    updates
                 }
             }
         };
-        self.apply_updates(upds.into_iter())
+
+        self.apply_updates(updates.into_iter())
     }
 
     /// Returns all values in the arrangement with the specified key.
@@ -2380,8 +2512,8 @@ impl RunningProgram {
         arrid: ArrId,
         k: Option<DDValue>,
     ) -> Response<BTreeSet<DDValue>> {
-        /* Send query and receive replies from all workers.  If a key is specified, then at most
-         * one worker will send a non-empty reply. */
+        // Send query and receive replies from all workers. If a key is specified, then at most
+        // one worker will send a non-empty reply.
         self.broadcast(Msg::Query(arrid, k))?;
 
         let mut res: BTreeSet<DDValue> = BTreeSet::new();
@@ -2393,6 +2525,7 @@ impl RunningProgram {
                     worker_index, e
                 )
             })?;
+
             match reply {
                 Reply::QueryRes(Some(mut vals)) => {
                     if !vals.is_empty() {
@@ -2422,16 +2555,15 @@ impl RunningProgram {
         }
     }
 
-    /* increment the counter associated with value `x` in the delta-set
-     * delta(x) == false => remove entry (equivalent to delta(x):=0)
-     * x not in delta => delta(x) := true
-     * delta(x) == true => error
-     */
+    /// increment the counter associated with value `x` in the delta-set
+    /// `delta(x) == false` => remove entry (equivalent to delta(x):=0)
+    /// `x not in delta => `delta(x) := true`
+    /// `delta(x) == true` => error
     fn delta_inc(ds: &mut DeltaSet, x: &DDValue) {
-        let e = ds.entry(x.clone());
-        match e {
+        let entry = ds.entry(x.clone());
+        match entry {
             hash_map::Entry::Occupied(mut oe) => {
-                //debug_assert!(!*oe.get());
+                // debug_assert!(!*oe.get());
                 let v = oe.get_mut();
                 if *v == -1 {
                     oe.remove_entry();
@@ -2445,10 +2577,10 @@ impl RunningProgram {
         }
     }
 
-    /* reverse of delta_inc */
+    /// reverse of delta_inc
     fn delta_dec(ds: &mut DeltaSet, key: &DDValue) {
-        let e = ds.entry(key.clone());
-        match e {
+        let entry = ds.entry(key.clone());
+        match entry {
             hash_map::Entry::Occupied(mut oe) => {
                 //debug_assert!(*oe.get());
                 let v = oe.get_mut();
@@ -2464,16 +2596,16 @@ impl RunningProgram {
         }
     }
 
-    /* Update delta set of an input stream relation before performing an update.
-     * `ds` is delta since start of transaction.
-     * `x` is the value being inserted or deleted.
-     * `insert` indicates type of update (`true` for insert, `false` for delete) */
+    /// Update delta set of an input stream relation before performing an update.
+    /// `ds` is delta since start of transaction.
+    /// `x` is the value being inserted or deleted.
+    /// `insert` indicates type of update (`true` for insert, `false` for delete)
     fn stream_update(
         ds: &mut DeltaSet,
-        upd: Update<DDValue>,
+        update: Update<DDValue>,
         updates: &mut Vec<Update<DDValue>>,
     ) -> Response<()> {
-        match &upd {
+        match &update {
             Update::Insert { v, .. } => {
                 Self::delta_inc(ds, v);
             }
@@ -2483,32 +2615,33 @@ impl RunningProgram {
             Update::InsertOrUpdate { relid, .. } => {
                 return Err(format!(
                     "Cannot perform insert_or_update operation on relation {} that does not have a primary key",
-                    relid
+                    relid,
                 ));
             }
             Update::DeleteKey { relid, .. } => {
                 return Err(format!(
                     "Cannot delete by key from relation {} that does not have a primary key",
-                    relid
+                    relid,
                 ));
             }
             Update::Modify { relid, .. } => {
                 return Err(format!(
                     "Cannot modify record in relation {} that does not have a primary key",
-                    relid
+                    relid,
                 ));
             }
         };
-        updates.push(upd);
+        updates.push(update);
+
         Ok(())
     }
 
-    /* Update value and delta multisets of an input multiset relation before performing an update.
-     * `s` is the current content of the relation.
-     * `ds` is delta since start of transaction.
-     * `x` is the value being inserted or deleted.
-     * `insert` indicates type of update (`true` for insert, `false` for delete).
-     * Returns `true` if the update modifies the relation, i.e., it's not a no-op. */
+    /// Update value and delta multisets of an input multiset relation before performing an update.
+    /// `s` is the current content of the relation.
+    /// `ds` is delta since start of transaction.
+    /// `x` is the value being inserted or deleted.
+    /// `insert` indicates type of update (`true` for insert, `false` for delete).
+    /// Returns `true` if the update modifies the relation, i.e., it's not a no-op.
     fn mset_update(
         s: &mut ValMSet,
         ds: &mut DeltaSet,
@@ -2544,15 +2677,16 @@ impl RunningProgram {
             }
         };
         updates.push(upd);
+
         Ok(())
     }
 
-    /* Update value set and delta set of an input relation before performing an update.
-     * `s` is the current content of the relation.
-     * `ds` is delta since start of transaction.
-     * `x` is the value being inserted or deleted.
-     * `insert` indicates type of update (`true` for insert, `false` for delete).
-     * Returns `true` if the update modifies the relation, i.e., it's not a no-op. */
+    /// Update value set and delta set of an input relation before performing an update.
+    /// `s` is the current content of the relation.
+    /// `ds` is delta since start of transaction.
+    /// `x` is the value being inserted or deleted.
+    /// `insert` indicates type of update (`true` for insert, `false` for delete).
+    /// Returns `true` if the update modifies the relation, i.e., it's not a no-op.
     fn set_update(
         s: &mut ValSet,
         ds: &mut DeltaSet,
@@ -2564,54 +2698,57 @@ impl RunningProgram {
                 let new = s.insert(v.clone());
                 if new {
                     Self::delta_inc(ds, v);
-                };
+                }
+
                 new
             }
             Update::DeleteValue { v, .. } => {
                 let present = s.remove(&v);
                 if present {
                     Self::delta_dec(ds, v);
-                };
+                }
+
                 present
             }
             Update::InsertOrUpdate { relid, .. } => {
                 return Err(format!(
                     "Cannot perform insert_or_update operation on relation {} that does not have a primary key",
-                    relid
+                    relid,
                 ));
             }
             Update::DeleteKey { relid, .. } => {
                 return Err(format!(
                     "Cannot delete by key from relation {} that does not have a primary key",
-                    relid
+                    relid,
                 ));
             }
             Update::Modify { relid, .. } => {
                 return Err(format!(
                     "Cannot modify record in relation {} that does not have a primary key",
-                    relid
+                    relid,
                 ));
             }
         };
+
         if ok {
-            updates.push(upd)
-        };
+            updates.push(upd);
+        }
+
         Ok(())
     }
 
-    /* insert:
-     *      key exists in `s`:
-     *          - error
-     *      key not in `s`:
-     *          - s.insert(x)
-     *          - ds(x)++;
-     * delete:
-     *      key not in `s`
-     *          - return error
-     *      key in `s` with value `v`:
-     *          - s.delete(key)
-     *          - ds(v)--
-     */
+    /// insert:
+    ///      key exists in `s`:
+    ///          - error
+    ///      key not in `s`:
+    ///          - s.insert(x)
+    ///          - ds(x)++;
+    /// delete:
+    ///      key not in `s`
+    ///          - return error
+    ///      key in `s` with value `v`:
+    ///          - s.delete(key)
+    ///          - ds(v)--
     fn indexed_set_update(
         key_func: fn(&DDValue) -> DDValue,
         s: &mut IndexedValSet,
@@ -2630,9 +2767,11 @@ impl RunningProgram {
                     ve.insert(v.clone());
                     Self::delta_inc(ds, &v);
                     updates.push(Update::Insert { relid, v });
+
                     Ok(())
                 }
             },
+
             Update::InsertOrUpdate { relid, v } => match s.entry(key_func(&v)) {
                 hash_map::Entry::Occupied(mut oe) => {
                     // Delete old value.
@@ -2649,15 +2788,18 @@ impl RunningProgram {
 
                     // Update store
                     *oe.get_mut() = v;
+
                     Ok(())
                 }
                 hash_map::Entry::Vacant(ve) => {
                     ve.insert(v.clone());
                     Self::delta_inc(ds, &v);
                     updates.push(Update::Insert { relid, v });
+
                     Ok(())
                 }
             },
+
             Update::DeleteValue { relid, v } => match s.entry(key_func(&v)) {
                 hash_map::Entry::Occupied(oe) => {
                     if *oe.get() != v {
@@ -2673,6 +2815,7 @@ impl RunningProgram {
                     Err(format!("DeleteValue: key not found {:?}", key_func(&v)))
                 }
             },
+
             Update::DeleteKey { relid, k } => match s.entry(k.clone()) {
                 hash_map::Entry::Occupied(oe) => {
                     let old = oe.get().clone();
@@ -2683,6 +2826,7 @@ impl RunningProgram {
                 }
                 hash_map::Entry::Vacant(_) => Err(format!("DeleteKey: key not found {:?}", k)),
             },
+
             Update::Modify { relid, k, m } => match s.entry(k.clone()) {
                 hash_map::Entry::Occupied(mut oe) => {
                     let new = oe.get_mut();
@@ -2695,6 +2839,7 @@ impl RunningProgram {
                         relid,
                         v: new.clone(),
                     });
+
                     Ok(())
                 }
                 hash_map::Entry::Vacant(_) => Err(format!("Modify: key not found {:?}", k)),
@@ -2702,10 +2847,9 @@ impl RunningProgram {
         }
     }
 
-    /* Returns a reference to indexed input relation content.
-     * If called in the middle of a transaction, returns state snapshot including changes
-     * made by the current transaction.
-     */
+    /// Returns a reference to indexed input relation content.
+    /// If called in the middle of a transaction, returns state snapshot including changes
+    /// made by the current transaction.
     pub fn get_input_relation_index(&self, relid: RelId) -> Response<&IndexedValSet> {
         match self.relations.get(&relid) {
             None => Err(format!("unknown relation {}", relid)),
@@ -2714,10 +2858,9 @@ impl RunningProgram {
         }
     }
 
-    /* Returns a reference to a flat input relation content.
-     * If called in the middle of a transaction, returns state snapshot including changes
-     * made by the current transaction.
-     */
+    /// Returns a reference to a flat input relation content.
+    /// If called in the middle of a transaction, returns state snapshot including changes
+    /// made by the current transaction.
     pub fn get_input_relation_data(&self, relid: RelId) -> Response<&ValSet> {
         match self.relations.get(&relid) {
             None => Err(format!("unknown relation {}", relid)),
@@ -2726,10 +2869,9 @@ impl RunningProgram {
         }
     }
 
-    /* Returns a reference to an input multiset content.
-     * If called in the middle of a transaction, returns state snapshot including changes
-     * made by the current transaction.
-     */
+    /// Returns a reference to an input multiset content.
+    /// If called in the middle of a transaction, returns state snapshot including changes
+    /// made by the current transaction.
     pub fn get_input_multiset_data(&self, relid: RelId) -> Response<&ValMSet> {
         match self.relations.get(&relid) {
             None => Err(format!("unknown relation {}", relid)),
@@ -2738,9 +2880,9 @@ impl RunningProgram {
         }
     }
 
-    /* Returns a reference to delta accumulated by the current transaction
-     */
-    /*pub fn relation_delta(&mut self, relid: RelId) -> Response<&DeltaSet<V>> {
+    /*
+    /// Returns a reference to delta accumulated by the current transaction
+    pub fn relation_delta(&mut self, relid: RelId) -> Response<&DeltaSet<V>> {
         if !self.transaction_in_progress {
             return resp_from_error!("no transaction in progress");
         };
@@ -2751,34 +2893,38 @@ impl RunningProgram {
                 Some(rel) => Ok(&rel.delta)
             }
         })
-    }*/
+    }
+    */
 
-    /* Send message to a worker thread. */
+    /// Send message to a worker thread.
     fn send(&self, worker_index: usize, msg: Msg) -> Response<()> {
         match self.senders[worker_index].send(msg) {
-            Err(_) => Err("failed to communicate with timely dataflow thread".to_string()),
             Ok(()) => {
                 /* Worker 0 may be blocked in `step_or_park`.  Unpark to ensure receipt of the
                  * message. */
                 self.worker_threads[worker_index].unpark();
                 Ok(())
             }
+
+            Err(_) => Err("failed to communicate with timely dataflow thread".to_string()),
         }
     }
 
-    /* Broadcast message to all worker threads. */
+    /// Broadcast message to all worker threads.
     fn broadcast(&self, msg: Msg) -> Response<()> {
         for worker_index in 0..self.senders.len() {
             self.send(worker_index, msg.clone())?;
         }
+
         Ok(())
     }
 
-    /* Clear delta sets of all input relations on transaction commit. */
+    /// Clear delta sets of all input relations on transaction commit.
     fn delta_cleanup(&mut self) -> Response<()> {
         for rel in self.relations.values_mut() {
             rel.delta_mut().clear();
         }
+
         Ok(())
     }
 
@@ -2791,29 +2937,31 @@ impl RunningProgram {
                     updates.push(Update::DeleteValue {
                         relid,
                         v: k.clone(),
-                    })
+                    });
                 }
-            };
+            }
         }
+
         for (k, w) in ds {
             if *w < 0 {
                 for _ in 0..(-*w) {
                     updates.push(Update::Insert {
                         relid,
                         v: k.clone(),
-                    })
+                    });
                 }
             }
         }
     }
 
-    /* Reverse all changes recorded in delta sets to rollback the transaction. */
+    /// Reverse all changes recorded in delta sets to rollback the transaction.
     fn delta_undo(&mut self) -> Response<()> {
-        let mut updates = vec![];
+        let mut updates = Vec::with_capacity(self.relations.len());
         for (relid, rel) in &self.relations {
             Self::delta_undo_updates(*relid, rel.delta(), &mut updates);
         }
-        //println!("updates: {:?}", updates);
+
+        // println!("updates: {:?}", updates);
         self.apply_updates(updates.into_iter())
             .and_then(|_| self.flush())
             .map(|_| {
@@ -2825,11 +2973,11 @@ impl RunningProgram {
             })
     }
 
-    /* Propagates all changes through the dataflow pipeline. */
+    /// Propagates all changes through the dataflow pipeline.
     fn flush(&mut self) -> Response<()> {
         if !self.need_to_flush {
             return Ok(());
-        };
+        }
 
         self.send(0, Msg::Flush).and_then(|()| {
             self.need_to_flush = false;
@@ -2840,7 +2988,7 @@ impl RunningProgram {
                 Ok(Reply::FlushAck) => Ok(()),
                 Ok(msg) => Err(format!(
                     "received unexpected reply to flush request: {:?}",
-                    msg
+                    msg,
                 )),
             }
         })
