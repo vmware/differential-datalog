@@ -462,7 +462,10 @@ function size(g: Group<'K, 'V>): usize {
 }
 
 /* The first element of the group.  This operation is well defined,
- * as a group returned by `group-by` cannot be empty. */
+ * as a group returned by `group-by` cannot be empty.
+ *
+ * Note: DDlog does not guarantee any specific ordering of elements withing
+ * the group, e.g., the first element is not necessarily the smallest one. */
 function first(g: Group<'K, 'V>): 'V {
     group_first(g)
 }
@@ -479,7 +482,8 @@ function to_set(g: Group<'K, 'V>): Set<'V> {
 }
 
 /* Convert group to a vector of its elements.  The resulting 
- * vector has the same size as the group. */
+ * vector has the same size and the same elements (and in the same
+ * order) as the group. */
 function to_vec(g: Group<'K, 'V>): Vec<'V> {
     group_to_vec(g)
 }
