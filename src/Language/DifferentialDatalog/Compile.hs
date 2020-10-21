@@ -926,7 +926,8 @@ mkStructIntoRecord t@TypeDef{..} =
 
 mkStructMutator :: DatalogProgram -> TypeDef -> Doc
 mkStructMutator d t@TypeDef{..} =
-    "::differential_datalog::decl_record_mutator_struct!(" <> nameLocal t <> "," <+> targs <> "," <+> args <> ");"
+    -- Rustfmt tries to remove the empty `<>` on enums, even though it's within a macro invocation
+    "#[rustfmt::skip] ::differential_datalog::decl_record_mutator_struct!(" <> nameLocal t <> "," <+> targs <> "," <+> args <> ");"
     where
     targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
     args = commaSep $ map (\arg -> pp (name arg) <> ":" <+> mkType d True arg) $ consArgs $ head $ typeCons $ fromJust tdefType
@@ -941,7 +942,8 @@ mkEnumIntoRecord t@TypeDef{..} =
 
 mkEnumMutator :: DatalogProgram -> TypeDef -> Doc
 mkEnumMutator d t@TypeDef{..} =
-    "::differential_datalog::decl_record_mutator_enum!(" <> nameLocal t <> targs <> "," <+> cons <> ");"
+    -- Rustfmt tries to remove the empty `<>` on enums, even though it's within a macro invocation
+    "#[rustfmt::skip] ::differential_datalog::decl_record_mutator_enum!(" <> nameLocal t <> targs <> "," <+> cons <> ");"
     where
     targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
     cons = commaSep $ map (\c -> nameLocal c <> "{" <> (commaSep $ map (\arg -> pp (name arg) <> ":" <+> mkType d True arg) $ consArgs c) <> "}")
