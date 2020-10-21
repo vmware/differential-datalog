@@ -608,6 +608,20 @@ function sort_imm(v: Vec<'X>): Vec<'X> {
     vec_sort_imm(v)
 }
 
+function zip(v1: Vec<'X>, v2: Vec<'Y>): Vec<('X, 'Y)> {
+    vec_zip(v1, v2)
+}
+
+function unzip(v: Vec<('X, 'Y)>): (Vec<'X>, Vec<'Y>) {
+    var v1 = vec_with_capacity(v.len());
+    var v2 = vec_with_capacity(v.len());
+    for (val in v) {
+        v1.push(val.0);
+        v2.push(val.1);
+    };
+    (v1, v2)
+}
+
 /* Resize vector.  If `new_size` is greater than `v.len()`, then
  * all new slots are filled with `value`. */
 function resize(v: mut Vec<'X>, new_len: usize, value: 'X) {
@@ -789,6 +803,7 @@ extern function vec_resize(v: mut Vec<'X>, new_len: usize, value: 'X)
 extern function vec_truncate(v: mut Vec<'X>, len: usize)
 extern function vec_swap_nth(v: mut Vec<'X>, idx: usize, value: mut 'X): bool
 extern function vec_update_nth(v: mut Vec<'X>, idx: usize, value: 'X): bool
+extern function vec_zip(v1: Vec<'X>, v2: Vec<'Y>): Vec<('X, 'Y)>
 
 extern function map_size(m: Map<'K, 'V>): usize
 extern function map_insert(m: mut Map<'K,'V>, k: 'K, v: 'V)

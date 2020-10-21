@@ -30,4 +30,6 @@ dump std_test::MapDelete;
 
 dump std_test::IntVecTest;
 
+dump std_test::VecZipTest;
+
 dump std_test::Ranges;

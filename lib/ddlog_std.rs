@@ -583,6 +583,17 @@ pub fn vec_update_nth<X: Clone>(v: &mut Vec<X>, idx: &std_usize, value: &X) -> b
     return false;
 }
 
+pub fn vec_zip<X: Clone, Y: Clone>(v1: &Vec<X>, v2: &Vec<Y>) -> Vec<(X, Y)> {
+    Vec {
+        x: v1
+            .x
+            .iter()
+            .zip(v2.x.iter())
+            .map(|(x, y)| (x.clone(), y.clone()))
+            .collect(),
+    }
+}
+
 // Set
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Default)]
