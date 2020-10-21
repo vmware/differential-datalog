@@ -44,7 +44,7 @@ pub mod flatbuf;
 impl TryFrom<&RelIdentifier> for Relations {
     type Error = ();
 
-    fn try_from(rel_id: &RelIdentifier) -> result::Result<Self, Self::Error> {
+    fn try_from(rel_id: &RelIdentifier) -> result::Result<Self, ()> {
         match rel_id {
             RelIdentifier::RelName(rname) => Relations::try_from(rname.as_ref()),
             RelIdentifier::RelId(id) => Relations::try_from(*id),
@@ -76,7 +76,7 @@ impl Relations {
 impl TryFrom<&str> for Relations {
     type Error = ();
 
-    fn try_from(rname: &str) -> result::Result<Self, Self::Error> {
+    fn try_from(rname: &str) -> result::Result<Self, ()> {
         panic!("Relations::try_from::<&str> not implemented")
     }
 }
@@ -84,7 +84,7 @@ impl TryFrom<&str> for Relations {
 impl TryFrom<RelId> for Relations {
     type Error = ();
 
-    fn try_from(rid: RelId) -> result::Result<Self, Self::Error> {
+    fn try_from(rid: RelId) -> result::Result<Self, ()> {
         panic!("Relations::try_from::<RelId> not implemented")
     }
 }
@@ -97,7 +97,7 @@ pub enum Indexes {
 impl TryFrom<&str> for Indexes {
     type Error = ();
 
-    fn try_from(_iname: &str) -> result::Result<Self, Self::Error> {
+    fn try_from(_iname: &str) -> result::Result<Self, ()> {
         panic!("Indexes::try_from::<&str> not implemented")
     }
 }
@@ -105,7 +105,7 @@ impl TryFrom<&str> for Indexes {
 impl TryFrom<IdxId> for Indexes {
     type Error = ();
 
-    fn try_from(_iid: IdxId) -> result::Result<Self, Self::Error> {
+    fn try_from(_iid: IdxId) -> result::Result<Self, ()> {
         panic!("Indexes::try_from::<IdxId> not implemented")
     }
 }

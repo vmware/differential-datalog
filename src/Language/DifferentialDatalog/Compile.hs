@@ -1026,7 +1026,7 @@ mkRelationsTryFromStr :: DatalogProgram -> Doc
 mkRelationsTryFromStr d =
     "impl TryFrom<&str> for Relations {"                                  $$
     "    type Error = ();"                                                $$
-    "    fn try_from(rname: &str) -> ::std::result::Result<Self, Self::Error> {" $$
+    "    fn try_from(rname: &str) -> ::std::result::Result<Self, ()> {"   $$
     "         match rname {"                                              $$
                   (nest' $ nest' $ vcat $ entries)                        $$
     "             _  => Err(())"                                          $$
@@ -1073,7 +1073,7 @@ mkRelationsTryFromRelId :: DatalogProgram -> Doc
 mkRelationsTryFromRelId d =
     "impl TryFrom<RelId> for Relations {"                                 $$
     "    type Error = ();"                                                $$
-    "    fn try_from(rid: RelId) -> ::std::result::Result<Self, Self::Error> {"  $$
+    "    fn try_from(rid: RelId) -> ::std::result::Result<Self, ()> {"    $$
     "         match rid {"                                                $$
                   (nest' $ nest' $ vcat $ entries)                        $$
     "             _  => Err(())"                                          $$
@@ -1180,7 +1180,7 @@ mkIndexesTryFromStr :: DatalogProgram -> Doc
 mkIndexesTryFromStr d =
     "impl TryFrom<&str> for Indexes {"                                    $$
     "    type Error = ();"                                                $$
-    "    fn try_from(iname: &str) -> ::std::result::Result<Self, Self::Error> {" $$
+    "    fn try_from(iname: &str) -> ::std::result::Result<Self, ()> {"   $$
     "         match iname {"                                              $$
                   (nest' $ nest' $ vcat $ entries)                        $$
     "             _  => Err(())"                                          $$
@@ -1216,7 +1216,7 @@ mkIndexesTryFromIdxId :: DatalogProgram -> Doc
 mkIndexesTryFromIdxId d =
     "impl TryFrom<IdxId> for Indexes {"                                   $$
     "    type Error = ();"                                                $$
-    "    fn try_from(iid: IdxId) -> ::core::result::Result<Self, Self::Error> {"  $$
+    "    fn try_from(iid: IdxId) -> ::core::result::Result<Self, ()> {"   $$
     "         match iid {"                                                $$
                   (nest' $ nest' $ vcat $ entries)                        $$
     "             _  => Err(())"                                          $$
