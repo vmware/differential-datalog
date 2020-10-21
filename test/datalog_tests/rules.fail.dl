@@ -142,3 +142,14 @@ relation Grouped()
 Grouped() :-
     GroupMe(x,y),
     var sz = ().group_by((x,x + y)).size().
+
+//---
+
+// Type mismatch in FlatMap
+
+input relation Vecs(v: Vec<Option<usize>>)
+relation Flat(x: usize)
+
+Flat(x) :-
+    Vecs(v),
+    var x = FlatMap(v).

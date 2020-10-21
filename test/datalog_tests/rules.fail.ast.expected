@@ -69,3 +69,11 @@ error: ./test/datalog_tests/rules.fail.dl:10:26-10:31: Group-by expression must 
 error: ./test/datalog_tests/rules.fail.dl:10:29-10:34: Group-by expression must be a variable or a tuple of variables, e.g., 'group_by(x)' or 'group_by((x,y))'
     var sz = ().group_by((x,x + y)).size().
                             ^^^^^
+
+error: ./test/datalog_tests/rules.fail.dl:10:21-10:22: Type mismatch:
+expected type: bit<64>
+actual type: ddlog_std::Option<ddlog_std::usize<>>
+in
+variable 'x'
+    var x = FlatMap(v).
+                    ^
