@@ -622,6 +622,17 @@ function unzip(v: Vec<('X, 'Y)>): (Vec<'X>, Vec<'Y>) {
     (v1, v2)
 }
 
+/* Convert vector of tuple into a map.  Key-value pairs are added in the
+ * order they occur in the input vector; hence the resulting map will
+ * contain the last value associated with each key. */
+function to_map(v: Vec<('K, 'V)>): Map<'K, 'V> {
+    var res = map_empty();
+    for (kv in v) {
+       res.insert(kv.0, kv.1); 
+    };
+    res
+}
+
 /* Resize vector.  If `new_size` is greater than `v.len()`, then
  * all new slots are filled with `value`. */
 function resize(v: mut Vec<'X>, new_len: usize, value: 'X) {
