@@ -11,6 +11,8 @@ use std::{
 /// `DeleteKey` takes key only and is only defined for relations with 'key_func';
 /// `Modify` takes a key and a `Mutator` trait object that represents an update
 /// to be applied to the given key.
+// TODO: Rename `v`, `k` and `m` to meaningful names, `v` -> `value`, `k` -> `key`
+//       and `m` -> `mutator`
 #[derive(Clone)]
 pub enum Update<V> {
     Insert {
@@ -92,6 +94,7 @@ impl<V> Update<V> {
         match self {
             Update::DeleteKey { k, .. } => Some(k),
             Update::Modify { k, .. } => Some(k),
+
             _ => None,
         }
     }
@@ -106,6 +109,7 @@ impl<V> Update<V> {
         match self {
             Update::DeleteKey { k, .. } => k,
             Update::Modify { k, .. } => k,
+
             _ => panic!("Update::key: not a DeleteKey command"),
         }
     }
@@ -149,6 +153,92 @@ where
                 .field("k", k)
                 .field("m", &m.to_string())
                 .finish(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::record::Record;
+
+    #[test]
+    fn get_update_relid() {
+        let relid = 0xF00DBEEF;
+        let (v, k): (u32, u32) = (0, 0);
+
+        let updates = &[
+            Update::Insert { relid, v },
+            Update::InsertOrUpdate { relid, v },
+            Update::DeleteValue { relid, v },
+            Update::DeleteKey { relid, k },
+            Update::Modify {
+                relid,
+                k,
+                m: Arc::new(Record::Bool(false)),
+            },
+        ];
+
+        for update in updates {
+            assert_eq!(update.relid(), relid);
+        }
+    }
+
+    #[test]
+    fn is_update_kind() {
+        let relid = 0;
+        let (v, k): (u32, u32) = (0, 0);
+
+        let insert = Update::Insert { relid, v };
+        assert!(insert.is_insert());
+
+        let insert_or_update = Update::InsertOrUpdate { relid, v };
+        assert!(insert_or_update.is_insert_or_update());
+
+        let delete_value = Update::DeleteValue { relid, v };
+        assert!(delete_value.is_delete_value());
+
+        let delete_key = Update::DeleteKey { relid, k };
+        assert!(delete_key.is_delete_key());
+
+        let modify = Update::Modify {
+            relid,
+            k,
+            m: Arc::new(Record::Bool(false)),
+        };
+        assert!(modify.is_modify());
+    }
+
+    #[test]
+    fn update_has_key() {
+        let relid = 0;
+        let (v, k): (u32, u32) = (0, 0);
+
+        let no_keys = &[
+            Update::Insert { relid, v },
+            Update::InsertOrUpdate { relid, v },
+            Update::DeleteValue { relid, v },
+        ];
+
+        for update in no_keys {
+            assert!(!update.has_key());
+            assert!(update.get_key().is_none());
+        }
+
+        let have_keys = &[
+            Update::DeleteKey { relid, k },
+            Update::Modify {
+                relid,
+                k,
+                m: Arc::new(Record::Bool(false)),
+            },
+        ];
+
+        for update in have_keys {
+            assert!(update.has_key());
+            assert!(update.get_key().is_some());
+            // Making sure they don't panic
+            update.key();
         }
     }
 }
