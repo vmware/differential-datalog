@@ -345,9 +345,9 @@ deIsSharedRef de tv = do
 deIsIterable :: (?d::DatalogProgram) => DDExpr -> TypeVar -> GeneratorMonad Constraint
 deIsIterable de tv = do
     let expand TETVar{} = return Nothing
-        expand (TEExtern n [t'])    | elem n sET_TYPES = return $ Just [tv ~~~~ t']
-        expand (TEExtern n [_, t']) | n == gROUP_TYPE  = return $ Just [tv ~~~~ t']
-        expand (TEExtern n [k,v])   | n == mAP_TYPE    = return $ Just [tv ~~~~ teTuple [k,v]]
+        expand (TEExtern n [t'])    | elem n sET_TYPES = return $ Just [tv ==== t']
+        expand (TEExtern n [_, t']) | n == gROUP_TYPE  = return $ Just [tv ==== t']
+        expand (TEExtern n [k,v])   | n == mAP_TYPE    = return $ Just [tv ==== teTuple [k,v]]
         expand te = err ?d (pos de)
                     $ "expression '" ++ show de ++ "' must be of an iterable type, e.g., 'Set<>', 'Map<>', 'Vec<>', or 'Group<>', but its type is " ++ show te
     ce <- teTypeOfExpr de
@@ -363,7 +363,7 @@ deIsIterable de tv = do
 -- * Primary key expression.
 -- * All expressions in a rule, including RHS and LHS literals.
 --
--- Returns transformed input expressions with 
+-- Returns transformed input expressions with
 -- * type annotations attached to some of the subexpressions
 -- * integer and floating point literals converted to their inferred types
 -- * string conversions injected.
