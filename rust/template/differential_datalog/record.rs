@@ -1755,7 +1755,7 @@ macro_rules! decl_record_mutator_struct {
 #[macro_export]
 macro_rules! decl_record_mutator_enum {
     ( $n:ident<$( $targ:ident),*>, $($cons:ident {$( $arg:ident : $type:ty),*}),* ) => {
-        impl<$($targ: $crate::record::FromRecord+serde::de::DeserializeOwned+Default),*> $crate::record::Mutator<$n<$($targ),*>> for $crate::record::Record
+        impl<$($targ: $crate::record::FromRecord+serde::de::DeserializeOwned+::std::default::Default),*> $crate::record::Mutator<$n<$($targ),*>> for $crate::record::Record
             where $($crate::record::Record: $crate::record::Mutator<$targ>),*
         {
             fn mutate(&self, x: &mut $n<$($targ),*>) -> ::std::result::Result<(), String> {
