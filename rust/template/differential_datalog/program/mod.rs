@@ -17,19 +17,19 @@ mod timestamp;
 mod update;
 
 pub use arrange::{
-    AggFunc, ArrangeFunc, Arrangement, FilterFunc, FilterMapFunc, FlatMapFunc, InspectFunc,
-    JoinFunc, MapFunc, SemijoinFunc, XFormArrangement, XFormCollection,
+    concatenate_collections, AggFunc, ArrangeFunc, Arrangement, FilterFunc, FilterMapFunc,
+    FlatMapFunc, InspectFunc, JoinFunc, MapFunc, SemijoinFunc, XFormArrangement, XFormCollection,
 };
 pub use timestamp::{TSNested, TupleTS, TS, TS16};
 pub use update::Update;
 
 use crate::{ddval::*, profile::*, record::Mutator, variable::*};
-use arrange::{ArrangedCollection, Arrangements, A};
+use arrange::{antijoin_arranged, ArrangedCollection, Arrangements, A};
 use fnv::{FnvBuildHasher, FnvHashMap, FnvHashSet};
 use std::{
     collections::{hash_map, BTreeMap, BTreeSet, HashMap},
     fmt::{self, Debug, Formatter},
-    ops::{Deref, Mul},
+    ops::Deref,
     sync::{
         atomic::{AtomicBool, Ordering},
         mpsc, Arc, Barrier, Mutex,
@@ -39,10 +39,7 @@ use std::{
 };
 use timestamp::{TSAtomic, ToTupleTS};
 
-use differential_dataflow::difference::Diff;
-use differential_dataflow::difference::Monoid;
 use differential_dataflow::difference::Semigroup;
-use differential_dataflow::hashable::Hashable;
 use differential_dataflow::input::{Input, InputSession};
 use differential_dataflow::lattice::Lattice;
 use differential_dataflow::logging::DifferentialEvent;
@@ -54,9 +51,7 @@ use differential_dataflow::trace::implementations::ord::OrdValSpine as DefaultVa
 use differential_dataflow::trace::wrappers::enter::TraceEnter;
 use differential_dataflow::trace::{BatchReader, Cursor, TraceReader};
 // use differential_dataflow::trace::cursor::CursorDebug;
-use differential_dataflow::AsCollection;
 use differential_dataflow::Collection;
-use differential_dataflow::Data;
 use timely::communication::initialize::Configuration;
 use timely::communication::Allocator;
 use timely::dataflow::operators::*;
@@ -2287,63 +2282,4 @@ impl Drop for RunningProgram {
     fn drop(&mut self) {
         let _ = self.stop();
     }
-}
-
-// Versions of semijoin and antijoin operators that take arrangement instead of collection.
-fn semijoin_arranged<G, K, V, R1, R2, T1, T2>(
-    arranged: &Arranged<G, T1>,
-    other: &Arranged<G, T2>,
-) -> Collection<G, (K, V), <R1 as Mul<R2>>::Output>
-where
-    G: Scope,
-    G::Timestamp: Lattice + Ord,
-    T1: TraceReader<Key = K, Val = V, Time = G::Timestamp, R = R1> + Clone + 'static,
-    T1::Batch: BatchReader<K, V, G::Timestamp, R1>,
-    T1::Cursor: Cursor<K, V, G::Timestamp, R1>,
-    T2: TraceReader<Key = K, Val = (), Time = G::Timestamp, R = R2> + Clone + 'static,
-    T2::Batch: BatchReader<K, (), G::Timestamp, R2>,
-    T2::Cursor: Cursor<K, (), G::Timestamp, R2>,
-    K: Data + Hashable,
-    V: Data,
-    R2: Diff,
-    R1: Diff + Mul<R2>,
-    <R1 as Mul<R2>>::Output: Diff,
-{
-    arranged.join_core(other, |k, v, _| Some((k.clone(), v.clone())))
-}
-
-fn antijoin_arranged<G, K, V, R1, R2, T1, T2>(
-    arranged: &Arranged<G, T1>,
-    other: &Arranged<G, T2>,
-) -> Collection<G, (K, V), R1>
-where
-    G: Scope,
-    G::Timestamp: Lattice + Ord,
-    T1: TraceReader<Key = K, Val = V, Time = G::Timestamp, R = R1> + Clone + 'static,
-    T1::Batch: BatchReader<K, V, G::Timestamp, R1>,
-    T1::Cursor: Cursor<K, V, G::Timestamp, R1>,
-    T2: TraceReader<Key = K, Val = (), Time = G::Timestamp, R = R2> + Clone + 'static,
-    T2::Batch: BatchReader<K, (), G::Timestamp, R2>,
-    T2::Cursor: Cursor<K, (), G::Timestamp, R2>,
-    K: Data + Hashable,
-    V: Data,
-    R2: Diff,
-    R1: Diff + Mul<R2, Output = R1>,
-{
-    arranged
-        .as_collection(|k, v| (k.clone(), v.clone()))
-        .concat(&semijoin_arranged(arranged, other).negate())
-}
-
-// TODO: remove when `fn concatenate()` in `collection.rs` makes it to a released version of DD
-pub fn concatenate_collections<G, D, R, I>(scope: &mut G, iterator: I) -> Collection<G, D, R>
-where
-    G: Scope,
-    D: Data,
-    R: Monoid,
-    I: IntoIterator<Item = Collection<G, D, R>>,
-{
-    scope
-        .concatenate(iterator.into_iter().map(|x| x.inner))
-        .as_collection()
 }
