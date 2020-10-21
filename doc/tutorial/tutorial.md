@@ -1445,7 +1445,7 @@ BestVendor(item, best_vendor, best_price) :-
     (var best_vendor, var best_price) = (vendor, price).group_by(item).arg_min(|vendor_price| vendor_price.1).
 ```
 
-`group_min`, along with other useful higher-order functions over groups,
+`arg_min`, along with other useful higher-order functions over groups,
 is defined in `lib/group.dl`.
 
 You will occasionally find that you want to write a custom reduction that is

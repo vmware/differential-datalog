@@ -453,6 +453,7 @@ extractGroupBy (EApply p (E (EFunc _ [f])) args) | f == "group_by" = do
 extractGroupBy e  = return $ E e
 
 -- Deprecated Aggregate syntax.
+-- TODO: generate warning.
 aggregate = do
     _ <- try $ lookAhead $ reserved "var" *> varIdent *> reservedOp "=" *> reserved "Aggregate"
     before_var <- getPosition

@@ -737,7 +737,7 @@ R(x,y) :- S(x), T(f(x), y). // ok, x is introduced before being used in f(x)
    group-by variables.
    ```
    R(x,y) :- S(x), T(x, y), var z = y.group_by(x).min(). // error:
-        // y cannot be used in the head, as it is concealed by grouping
+    // ^ y cannot be used in the head, as it is concealed by grouping
    ```
 1. *Safety*: Negative literals may not introduce new variables or use wildcards.
    ```
