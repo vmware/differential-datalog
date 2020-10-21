@@ -324,7 +324,7 @@ flattenFuncName mmap mod p fname nargs = do
     let lname = nameLocalStr fname
     let cands = filter (\m -> isJust $ lookupFuncs (moduleDefs m) lname nargs) $ map (mmap M.!) cand_mods
     case cands of
-         [] -> err (moduleDefs mod) p $ "Unknown function '" ++ fname ++ "'"
+         [] -> err (moduleDefs mod) p $ "Unknown function '" ++ fname ++ "'" ++ maybe "" (\n -> " with " ++ show n ++ " arguments") nargs
          ms -> return $ map (\m -> scoped (moduleName m) lname) ms
 
 -- Like 'flattenFuncName', but additionally insists that there is a unique
