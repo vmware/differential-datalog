@@ -16,7 +16,10 @@ function boolStruct2(): string = [|{"b":true, "foo":"bar"}|]
 function boolStruct3(): string = [|{"foo":"bar"}|]
 
 JsonTest(boolStruct1(),
-         to_json_string_or_default(from_json_string(boolStruct1()): Result<BoolStruct, string>)).
+         {  // try to force type inference error in Rust.
+            var bstruct: Result<BoolStruct, string> = Some{boolStruct1()}.map(|bs| Ok{from_json_string(bs)?}).unwrap_or_default();
+            bstruct.to_json_string_or_default()
+         }).
 JsonTest(boolStruct2(),
          to_json_string_or_default(from_json_string(boolStruct2()): Result<BoolStruct, string>)).
 JsonTest(boolStruct3(),

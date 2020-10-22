@@ -2586,7 +2586,7 @@ mkExpr' d ctx e@EFunc{..} =
     -- Clone return value if function returns by-reference.
     clone_ref = if funcGetReturnByRefAttr d f then ".clone()" else empty
     res = case parctx ctx of
-               CtxApplyFunc{} -> fname
+               CtxApplyFunc{} -> fname <> targs
                _ -> "(Box::new(closure::ClosureImpl{"                                                                   $$
                     "    description: \"" <> fname <> "\","                                                             $$
                     "    captured: (),"                                                                                 $$
@@ -2602,6 +2602,12 @@ mkExpr' d ctx e@EFunc{..} =
     (f@Function{..}, tmap) = funcExprGetFunc d ctx e'
     fname = mkFuncName d local f
     ret_type_code = mkType d local $ typeSubstTypeArgs tmap funcType
+    targs = case funcTypeVars f of
+                 []  -> empty
+                 tvs -> -- Extern functions can have type arguments that don't match their DDlog declaration.
+                        if isJust funcDef
+                        then "::<" <> commaSep (map (\tv -> mkType d local $ tmap M.! tv) tvs) <> ">"
+                        else empty
 
     mkarg :: FuncArg -> Doc
     mkarg a = (if argMut a then "*mut" else "*const") <+> (mkType d local $ typeSubstTypeArgs tmap $ typ a)
