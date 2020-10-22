@@ -10,7 +10,11 @@
  * structure expected by 'T, for example if 'T is a struct type but the input
  * contains something other than a JSON map.
  */
-extern function from_json_string(json: string): Result<'T, string>
+function from_json_string(json: string): Result<'T, string> {
+    _from_json_string(json)
+}
+
+extern function _from_json_string(json: string): Result<'T, string>
 
 /* Serialize the given data structure as a String of JSON.
  *
@@ -24,7 +28,11 @@ extern function to_json_string(x: 'T): Result<string, string>
  * structure expected by 'T, for example if 'T is a struct type but the input
  * contains something other than a JSON map.
  */
-extern function from_json_value(json_val: JsonValue): Result<'T, string>
+function from_json_value(json_val: JsonValue): Result<'T, string> {
+    _from_json_value(json_val)
+}
+
+extern function _from_json_value(json_val: JsonValue): Result<'T, string>
 
 /* Serialize the given data structure as a JsonValue.
  *

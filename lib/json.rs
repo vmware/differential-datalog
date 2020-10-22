@@ -5,7 +5,7 @@ use std::result::Result;
 use crate::ddlog_std::res2std;
 use crate::internment;
 
-pub fn from_json_string<'de, T: serde::Deserialize<'de>>(
+pub fn _from_json_string<'de, T: serde::Deserialize<'de>>(
     json: &'de String,
 ) -> crate::ddlog_std::Result<T, String> {
     res2std(serde_json::from_str::<'de>(&*json))
@@ -15,7 +15,7 @@ pub fn to_json_string<T: serde::Serialize>(x: &T) -> crate::ddlog_std::Result<St
     res2std(serde_json::to_string(x))
 }
 
-pub fn from_json_value<T: DeserializeOwned>(
+pub fn _from_json_value<T: DeserializeOwned>(
     val: &JsonValue,
 ) -> crate::ddlog_std::Result<T, String> {
     res2std(serde_json::from_value(serde_json::value::Value::from(
