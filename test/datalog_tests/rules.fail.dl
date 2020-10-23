@@ -153,3 +153,25 @@ relation Flat(x: usize)
 Flat(x) :-
     Vecs(v),
     var x = FlatMap(v).
+
+//---
+
+// Variable shadowing in a rule.
+
+input relation Foo(x: usize, y: usize)
+output relation Bar(z: usize)
+
+Bar(x+y) :-
+    Foo(x, y),
+    var y = x.
+
+//---
+
+// Variable shadowing in a rule.
+
+input relation Foo(x: usize, y: Vec<usize>)
+output relation Bar(z: usize)
+
+Bar(x+y) :-
+    Foo(x, y),
+    var y = FlatMap(y).

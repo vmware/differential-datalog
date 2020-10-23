@@ -359,8 +359,13 @@ ruleRHSValidate :: (MonadError String me) => DatalogProgram -> Rule -> RuleRHS -
 ruleRHSValidate d rl@Rule{..} (RHSLiteral _ atom) idx =
     atomValidate d (CtxRuleRAtom rl idx) atom
 
-ruleRHSValidate _ _ RHSCondition{} _ = return ()
-ruleRHSValidate _ _ RHSFlatMap{} _ = return ()
+ruleRHSValidate d rl RHSCondition{..} i = do
+    let ctx = CtxRuleRCond rl i
+    mapM_ (\v -> checkNoVar (pos v) d ctx (name v))
+          (exprVarDecls d ctx rhsExpr)
+ruleRHSValidate d rl RHSFlatMap{..} i = do
+    let ctx = CtxRuleRFlatMap rl i
+    checkNoVar (pos rhsMapExpr) d ctx rhsVar
 ruleRHSValidate _ _ RHSInspect{} _ = return ()
 
 ruleRHSValidate d rl RHSGroupBy{} idx = do

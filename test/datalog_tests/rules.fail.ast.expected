@@ -77,3 +77,11 @@ in
 variable 'x'
     var x = FlatMap(v).
                     ^
+
+error: ./test/datalog_tests/rules.fail.dl:10:5-10:11: Variable y already defined in this scope
+    var y = x.
+    ^^^^^^
+
+error: ./test/datalog_tests/rules.fail.dl:10:21-10:22: Variable y already defined in this scope
+    var y = FlatMap(y).
+                    ^
