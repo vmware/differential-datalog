@@ -4,7 +4,7 @@ use std::io::Write;
 use std::string::ToString;
 
 pub fn debug_event<T1: ToString, A1: Clone + IntoRecord, A2: Clone + IntoRecord>(
-    operator_id: &(u32, u32, u32),
+    operator_id: &crate::ddlog_std::tuple3<u32, u32, u32>,
     w: &crate::ddlog_std::DDWeight,
     ts: &T1,
     operator_type: &String,
@@ -19,8 +19,10 @@ pub fn debug_event<T1: ToString, A1: Clone + IntoRecord, A2: Clone + IntoRecord>
 
     let _ = writeln!(
         &file,
-        "{:?}, {}, {}, {}, {}, {}",
-        &operator_id,
+        "({},{},{}), {}, {}, {}, {}, {}",
+        &operator_id.0,
+        &operator_id.1,
+        &operator_id.2,
         &w.to_string(),
         &ts.to_string(),
         &operator_type,
@@ -35,7 +37,7 @@ pub fn debug_event_join<
     A2: Clone + IntoRecord,
     A3: Clone + IntoRecord,
 >(
-    operator_id: &(u32, u32, u32),
+    operator_id: &crate::ddlog_std::tuple3<u32, u32, u32>,
     w: &crate::ddlog_std::DDWeight,
     ts: &T1,
     input1: &A1,
@@ -50,8 +52,10 @@ pub fn debug_event_join<
 
     let _ = writeln!(
         &file,
-        "{:?}, {}, {}, Join, {}, {}, {}",
-        &operator_id,
+        "({},{},{}), {}, {}, Join, {}, {}, {}",
+        &operator_id.0,
+        &operator_id.1,
+        &operator_id.2,
         &w.to_string(),
         &ts.to_string(),
         &input1.clone().into_record(),
@@ -61,15 +65,15 @@ pub fn debug_event_join<
 }
 
 pub fn debug_split_group<K: Clone, I: 'static + Clone, V: Clone + 'static>(
-    g: &crate::ddlog_std::Group<K, (I, V)>,
-) -> (crate::ddlog_std::Vec<I>, crate::ddlog_std::Group<K, V>) {
+    g: &crate::ddlog_std::Group<K, crate::ddlog_std::tuple2<I, V>>,
+) -> crate::ddlog_std::tuple2<crate::ddlog_std::Vec<I>, crate::ddlog_std::Group<K, V>> {
     let mut inputs =
         crate::ddlog_std::Vec::with_capacity(crate::ddlog_std::group_count(g) as usize);
     let mut vals = ::std::vec::Vec::with_capacity(crate::ddlog_std::group_count(g) as usize);
-    for (i, v) in g.iter() {
+    for crate::ddlog_std::tuple2(i, v) in g.iter() {
         inputs.push(i);
         vals.push(v);
     }
 
-    (inputs, crate::ddlog_std::Group::new(g.key(), vals))
+    crate::ddlog_std::tuple2(inputs, crate::ddlog_std::Group::new(g.key(), vals))
 }

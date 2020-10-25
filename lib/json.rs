@@ -116,7 +116,7 @@ impl From<JsonValue> for serde_json::value::Value {
             ),
             JsonValue::JsonObject { o } => serde_json::value::Value::Object(
                 o.into_iter()
-                    .map(|(k, v)| {
+                    .map(|crate::ddlog_std::tuple2(k, v)| {
                         (
                             internment::ival(&k).clone(),
                             serde_json::value::Value::from(v),

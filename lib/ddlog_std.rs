@@ -1,5 +1,4 @@
 /// Rust implementation of DDlog standard library functions and types.
-use differential_datalog::arcval;
 use differential_datalog::ddval::DDValue;
 use differential_datalog::decl_record_mutator_struct;
 use differential_datalog::decl_struct_from_record;
@@ -30,6 +29,7 @@ use std::ops::Deref;
 use std::option;
 use std::result;
 use std::slice;
+use std::sync::Arc;
 use std::vec;
 
 #[cfg(feature = "flatbuf")]
@@ -68,10 +68,111 @@ pub fn result_unwrap_or_default<T: Default + Clone, E>(res: &Result<T, E>) -> T 
 }
 
 // Ref
-pub type Ref<A> = arcval::ArcVal<A>;
+
+#[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]
+pub struct Ref<T> {
+    x: Arc<T>,
+}
+
+impl<T: Default> Default for Ref<T> {
+    fn default() -> Self {
+        Self {
+            x: Arc::new(T::default()),
+        }
+    }
+}
+
+impl<T> Deref for Ref<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &*self.x
+    }
+}
+
+impl<T> From<T> for Ref<T> {
+    fn from(x: T) -> Self {
+        Self { x: Arc::new(x) }
+    }
+}
+
+impl<T: abomonation::Abomonation> abomonation::Abomonation for Ref<T> {
+    unsafe fn entomb<W: ::std::io::Write>(&self, write: &mut W) -> ::std::io::Result<()> {
+        self.deref().entomb(write)
+    }
+    unsafe fn exhume<'a, 'b>(
+        &'a mut self,
+        bytes: &'b mut [u8],
+    ) -> ::std::option::Option<&'b mut [u8]> {
+        Arc::get_mut(&mut self.x).unwrap().exhume(bytes)
+    }
+    fn extent(&self) -> usize {
+        self.deref().extent()
+    }
+}
+
+impl<T> Ref<T> {
+    pub fn get_mut(this: &mut Self) -> ::std::option::Option<&mut T> {
+        Arc::get_mut(&mut this.x)
+    }
+}
+
+impl<T: fmt::Display> fmt::Display for Ref<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.deref().fmt(f)
+    }
+}
+
+impl<T: fmt::Debug> fmt::Debug for Ref<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.deref().fmt(f)
+    }
+}
+
+impl<T: Serialize> Serialize for Ref<T> {
+    fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.deref().serialize(serializer)
+    }
+}
+
+impl<'de, T: Deserialize<'de>> Deserialize<'de> for Ref<T> {
+    fn deserialize<D>(deserializer: D) -> ::std::result::Result<Ref<T>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        T::deserialize(deserializer).map(Self::from)
+    }
+}
+
+impl<T: FromRecord> FromRecord for Ref<T> {
+    fn from_record(val: &Record) -> ::std::result::Result<Self, String> {
+        T::from_record(val).map(Self::from)
+    }
+}
+
+impl<T: IntoRecord + Clone> IntoRecord for Ref<T> {
+    fn into_record(self) -> Record {
+        (*self.x).clone().into_record()
+    }
+}
+
+impl<T: Clone> Mutator<Ref<T>> for Record
+where
+    Record: Mutator<T>,
+{
+    fn mutate(&self, arc: &mut Ref<T>) -> ::std::result::Result<(), String> {
+        let mut copy: T = (*arc).deref().clone();
+        self.mutate(&mut copy)?;
+        *arc = Ref::from(copy);
+        Ok(())
+    }
+}
 
 pub fn ref_new<A: Clone>(x: &A) -> Ref<A> {
-    arcval::ArcVal::from(x.clone())
+    Ref::from(x.clone())
 }
 
 pub fn deref<A: Clone>(x: &Ref<A>) -> &A {
@@ -583,13 +684,13 @@ pub fn vec_update_nth<X: Clone>(v: &mut Vec<X>, idx: &std_usize, value: &X) -> b
     return false;
 }
 
-pub fn vec_zip<X: Clone, Y: Clone>(v1: &Vec<X>, v2: &Vec<Y>) -> Vec<(X, Y)> {
+pub fn vec_zip<X: Clone, Y: Clone>(v1: &Vec<X>, v2: &Vec<Y>) -> Vec<tuple2<X, Y>> {
     Vec {
         x: v1
             .x
             .iter()
             .zip(v2.x.iter())
-            .map(|(x, y)| (x.clone(), y.clone()))
+            .map(|(x, y)| tuple2(x.clone(), y.clone()))
             .collect(),
     }
 }
@@ -877,10 +978,10 @@ impl<'a, K: Ord, V> MapIter<'a, K, V> {
 }
 
 impl<'a, K: Clone, V: Clone> Iterator for MapIter<'a, K, V> {
-    type Item = (K, V);
+    type Item = tuple2<K, V>;
 
     fn next(&mut self) -> ::std::option::Option<Self::Item> {
-        self.iter.next().map(|(k, v)| (k.clone(), v.clone()))
+        self.iter.next().map(|(k, v)| tuple2(k.clone(), v.clone()))
     }
 
     fn size_hint(&self) -> (usize, ::std::option::Option<usize>) {
@@ -921,11 +1022,35 @@ impl<K: FromRecord + Ord, V: FromRecord + PartialEq> Mutator<Map<K, V>> for Reco
     }
 }
 
+pub struct MapIntoIter<K, V> {
+    iter: btree_map::IntoIter<K, V>,
+}
+
+impl<K: Ord, V> MapIntoIter<K, V> {
+    pub fn new(map: Map<K, V>) -> MapIntoIter<K, V> {
+        MapIntoIter {
+            iter: map.x.into_iter(),
+        }
+    }
+}
+
+impl<K, V> Iterator for MapIntoIter<K, V> {
+    type Item = tuple2<K, V>;
+
+    fn next(&mut self) -> ::std::option::Option<Self::Item> {
+        self.iter.next().map(|(k, v)| tuple2(k, v))
+    }
+
+    fn size_hint(&self) -> (usize, ::std::option::Option<usize>) {
+        self.iter.size_hint()
+    }
+}
+
 impl<K: Ord, V> IntoIterator for Map<K, V> {
-    type Item = (K, V);
-    type IntoIter = btree_map::IntoIter<K, V>;
+    type Item = tuple2<K, V>;
+    type IntoIter = MapIntoIter<K, V>;
     fn into_iter(self) -> Self::IntoIter {
-        self.x.into_iter()
+        Self::IntoIter::new(self)
     }
 }
 
@@ -975,12 +1100,12 @@ impl<'a, K, V, F> FromFlatBuffer<fbrt::Vector<'a, F>> for Map<K, V>
 where
     F: fbrt::Follow<'a> + 'a,
     K: Ord,
-    (K, V): FromFlatBuffer<F::Inner>,
+    tuple2<K, V>: FromFlatBuffer<F::Inner>,
 {
     fn from_flatbuf(fb: fbrt::Vector<'a, F>) -> ::std::result::Result<Self, String> {
         let mut m = Map::new();
         for x in FBIter::from_vector(fb) {
-            let (k, v) = <(K, V)>::from_flatbuf(x)?;
+            let tuple2(k, v) = <tuple2<K, V>>::from_flatbuf(x)?;
             m.insert(k, v);
         }
         Ok(m)
@@ -992,15 +1117,15 @@ impl<'b, K, V, T> ToFlatBuffer<'b> for Map<K, V>
 where
     K: Ord + Clone,
     V: Clone,
-    (K, V): ToFlatBufferVectorElement<'b, Target = T>,
+    tuple2<K, V>: ToFlatBufferVectorElement<'b, Target = T>,
     T: 'b + fbrt::Push + Copy,
 {
     type Target = fbrt::WIPOffset<fbrt::Vector<'b, <T as fbrt::Push>::Output>>;
 
     fn to_flatbuf(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {
-        let vec: ::std::vec::Vec<<(K, V) as ToFlatBufferVectorElement<'b>>::Target> = self
+        let vec: ::std::vec::Vec<<tuple2<K, V> as ToFlatBufferVectorElement<'b>>::Target> = self
             .iter()
-            .map(|(k, v)| (k, v).to_flatbuf_vector_element(fbb))
+            .map(|tuple2(k, v)| tuple2(k, v).to_flatbuf_vector_element(fbb))
             .collect();
         fbb.create_vector(vec.as_slice())
     }
@@ -1547,19 +1672,19 @@ pub fn group_to_vec<K, V: Ord + Clone>(g: &Group<K, V>) -> Vec<V> {
     res
 }
 
-pub fn group_to_map<K1, K2: Ord + Clone, V: Clone>(g: &Group<K1, (K2, V)>) -> Map<K2, V> {
+pub fn group_to_map<K1, K2: Ord + Clone, V: Clone>(g: &Group<K1, tuple2<K2, V>>) -> Map<K2, V> {
     let mut res = Map::new();
-    for (k, v) in g.iter() {
+    for tuple2(k, v) in g.iter() {
         map_insert(&mut res, &k, &v);
     }
     res
 }
 
 pub fn group_to_setmap<K1, K2: Ord + Clone, V: Clone + Ord>(
-    g: &Group<K1, (K2, V)>,
+    g: &Group<K1, tuple2<K2, V>>,
 ) -> Map<K2, Set<V>> {
     let mut res = Map::new();
-    for (k, v) in g.iter() {
+    for tuple2(k, v) in g.iter() {
         match res.x.entry(k) {
             btree_map::Entry::Vacant(ve) => {
                 ve.insert(set_singleton(&v));
@@ -1608,6 +1733,9 @@ macro_rules! decl_tuple {
     ( $name:ident, $( $t:tt ),+ ) => {
         #[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
         pub struct $name< $($t),* >($(pub $t),*);
+
+        impl <$($t),*> abomonation::Abomonation for $name<$($t),*>{}
+
         impl <$($t: FromRecord),*> FromRecord for $name<$($t),*> {
             fn from_record(val: &Record) -> ::std::result::Result<Self, String> {
                 <($($t),*)>::from_record(val).map(|($($t),*)|$name($($t),*))

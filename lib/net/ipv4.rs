@@ -119,9 +119,9 @@ pub fn iPV4_BROADCAST() -> Ipv4Addr {
     Ipv4Addr(::std::net::Ipv4Addr::BROADCAST)
 }
 
-pub fn ipv4_octets(addr: &Ipv4Addr) -> (u8, u8, u8, u8) {
+pub fn ipv4_octets(addr: &Ipv4Addr) -> crate::ddlog_std::tuple4<u8, u8, u8, u8> {
     let octets = addr.octets();
-    (octets[0], octets[1], octets[2], octets[3])
+    crate::ddlog_std::tuple4(octets[0], octets[1], octets[2], octets[3])
 }
 
 pub fn ipv4_octet_vec(addr: &Ipv4Addr) -> crate::ddlog_std::Vec<u8> {

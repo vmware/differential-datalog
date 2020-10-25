@@ -6,6 +6,13 @@ use std::borrow::Cow;
 // `HDDlog` implements `trait differential_datalog::DDlog` (see below).
 use tutorial_ddlog::api::HDDlog;
 
+// `enum Relations` enumerates program relations
+use tutorial_ddlog::Relations;
+
+// The crate contains several functions that convert between numeric
+// relation id's and symbolic names.
+use tutorial_ddlog::relid2name;
+
 // The differential_datalog crate contains the DDlog runtime that is
 // the same for all DDlog programs and simply gets copied to each generated
 // DDlog workspace unmodified (this will change in future releases).
@@ -27,16 +34,6 @@ use differential_datalog::record::UpdCmd; // Dynamically typed representation of
 // The auto-generated `types` crate contains Rust types that correspond to user-defined DDlog
 // types, one for each typedef and each relation in the DDlog program.
 use types::*;
-
-// The auto-generated `value` crate contains
-// * The `Value` model that define a wrapper type for each input and
-//   output relation in the DDlog program, as well as
-// * `enum Relations` that enumerates program relations
-// * Several functions that convert between numeric relation id's and
-//   symbolic names.
-use value::relid2name;
-use value::Relations;
-use value::Value;
 
 fn main() -> Result<(), String> {
 
@@ -82,20 +79,18 @@ fn main() -> Result<(), String> {
             relid: Relations::Word1 as RelId, // .. into relation with this Id.
             // `Word1` type, declared in the `types` crate has the same fields as
             // the corresponding DDlog type.
-            // `Value::Word1` from the `value` crate is a wrapper around this type
-            // that implements `into_ddvalue()`
-            v: Value::Word1(Word1 {
+            v: Word1 {
                 word: "foo-".to_string(),
                 cat: Category::CategoryOther,
-            })
+            }
             .into_ddvalue(),
         },
         Update::Insert {
             relid: Relations::Word2 as RelId,
-            v: Value::Word2(Word2 {
+            v: Word2 {
                 word: "bar".to_string(),
                 cat: Category::CategoryOther,
-            })
+            }
             .into_ddvalue(),
         },
     ];
@@ -108,7 +103,7 @@ fn main() -> Result<(), String> {
 
     println!("\nState after transaction 1");
     dump_delta(&delta);
-    
+
     // This shows how to extract values from `DeltaMap`.
     println!("\nEnumerating new phrases");
 
@@ -121,8 +116,8 @@ fn main() -> Result<(), String> {
         // `val` has type `DDValue`; converting it to a concrete Rust
         // type is an unsafe operation: specifying the wrong Rust type
         // will lead to undefined behavior.
-        let phrase: &Value::Phrases = unsafe { Value::Phrases::from_ddvalue_ref(val) };
-        println!("New phrase: {}", phrase.0.phrase);
+        let phrase: &Phrases = unsafe { Phrases::from_ddvalue_ref(val) };
+        println!("New phrase: {}", phrase.phrase);
     };
 
     hddlog.transaction_start()?;

@@ -25,7 +25,7 @@ where
     N: differential_dataflow::ExchangeData + std::hash::Hash,
     E: differential_dataflow::ExchangeData,
     EF: Fn(V) -> E + 'static,
-    LF: Fn((N, N)) -> V + 'static,
+    LF: Fn(crate::ddlog_std::tuple2<N, N>) -> V + 'static,
 {
     let pairs = edges.map(move |v| {
         let e = _edges(v);
@@ -41,7 +41,7 @@ where
     let nodes = cycles.map_in_place(|x| x.0 = x.1.clone()).consolidate();
     /* Propagate smallest ID within SCC */
     let scclabels = propagate::propagate(&cycles, &nodes);
-    scclabels.map(_scclabels)
+    scclabels.map(move |(n, l)| _scclabels(crate::ddlog_std::tuple2(n, l)))
 }
 
 pub fn ConnectedComponents<S, V, E, N, EF, LF>(
@@ -58,7 +58,7 @@ where
     N: differential_dataflow::ExchangeData + std::hash::Hash,
     E: differential_dataflow::ExchangeData,
     EF: Fn(V) -> E + 'static,
-    LF: Fn((N, N)) -> V + 'static,
+    LF: Fn(crate::ddlog_std::tuple2<N, N>) -> V + 'static,
 {
     let pairs = edges.map(move |v| {
         let e = _edges(v);
@@ -68,7 +68,7 @@ where
     /* Initially each node is labeled by its own id */
     let nodes = pairs.map_in_place(|x| x.0 = x.1.clone()).consolidate();
     let labels = propagate::propagate(&pairs, &nodes);
-    labels.map(_cclabels)
+    labels.map(move |(n, l)| _cclabels(crate::ddlog_std::tuple2(n, l)))
 }
 
 pub fn ConnectedComponents64<S, V, E, N, EF, LF>(
@@ -86,7 +86,7 @@ where
     N: differential_dataflow::ExchangeData + std::hash::Hash,
     E: differential_dataflow::ExchangeData,
     EF: Fn(V) -> E + 'static,
-    LF: Fn((N, N)) -> V + 'static,
+    LF: Fn(crate::ddlog_std::tuple2<N, N>) -> V + 'static,
 {
     let pairs = edges.map(move |v| {
         let e = _edges(v);
@@ -102,7 +102,7 @@ where
      * to drop the footprint for the first iterative computation.
      */
     let labels = propagate::propagate_at(&pairs, &nodes, |x| u64::from(x.clone()));
-    labels.map(_cclabels)
+    labels.map(move |(n, l)| _cclabels(crate::ddlog_std::tuple2(n, l)))
 }
 
 pub fn UnsafeBidirectionalEdges<S, V, E, N, EF, LF>(
@@ -119,7 +119,7 @@ where
     N: differential_dataflow::ExchangeData + std::hash::Hash,
     E: differential_dataflow::ExchangeData,
     EF: Fn(V) -> E + 'static,
-    LF: Fn((N, N)) -> V + 'static,
+    LF: Fn(crate::ddlog_std::tuple2<N, N>) -> V + 'static,
 {
     let mins = edges.map(move |v| {
         let e = _edges(v);
@@ -134,5 +134,5 @@ where
 
     let bidirectional = mins.threshold_total(|_, count| if *count > 1 { 1 } else { 0 });
     let bidirectional = bidirectional.concat(&bidirectional.map(|(x, y)| (y.clone(), x.clone())));
-    bidirectional.map(_biedges)
+    bidirectional.map(move |(n1, n2)| _biedges(crate::ddlog_std::tuple2(n1, n2)))
 }
