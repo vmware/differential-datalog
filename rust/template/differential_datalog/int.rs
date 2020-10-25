@@ -31,6 +31,8 @@ impl Default for Int {
     }
 }
 
+decl_ddval_convert! {Int}
+
 impl Abomonation for Int {}
 
 impl Int {

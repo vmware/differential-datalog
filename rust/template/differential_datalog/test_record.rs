@@ -571,13 +571,13 @@ pub struct NestedStruct<T> {
 }
 pub struct StructWithNoFields;
 
-decl_struct_into_record!(Foo ["Foo"] <T>, f1);
+decl_struct_into_record!(Foo, ["Foo"] <T>, f1);
 decl_record_mutator_struct!(Foo, <T>, f1: T);
 
-decl_struct_into_record!(NestedStruct ["Foo"] <T>, x,y);
+decl_struct_into_record!(NestedStruct, ["Foo"] <T>, x,y);
 decl_record_mutator_struct!(NestedStruct, <T>, x: bool, y: Foo<T>);
 
-decl_struct_into_record!(StructWithNoFields ["StructWithNoFields"] <>,);
+decl_struct_into_record!(StructWithNoFields, ["StructWithNoFields"] <>,);
 decl_record_mutator_struct!(StructWithNoFields, <>, );
 
 #[test]
@@ -663,8 +663,8 @@ impl<T: FromRecord + Default> FromRecord for DummyEnum<T> {
     }
 }
 
-decl_enum_into_record!(DummyEnum,<T>,Constr1["Constr1"]{f1,f2},Constr2["Constr2"]{f1,f2,f3},Constr3["Constr3"]{f1});
-decl_record_mutator_enum!(DummyEnum,<T>,Constr1{f1:Bbool ,f2: String},Constr2{f1: T, f2: BigInt, f3: Foo<T>},Constr3{f1: (bool, bool)});
+decl_enum_into_record!(DummyEnum<T>,Constr1["Constr1"]{f1,f2},Constr2["Constr2"]{f1,f2,f3},Constr3["Constr3"]{f1});
+decl_record_mutator_enum!(DummyEnum<T>,Constr1{f1:Bbool ,f2: String},Constr2{f1: T, f2: BigInt, f3: Foo<T>},Constr3{f1: (bool, bool)});
 
 #[test]
 fn test_enum() {

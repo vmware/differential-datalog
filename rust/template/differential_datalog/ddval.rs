@@ -66,6 +66,8 @@ use crate::record::IntoRecord;
 use crate::record::Mutator;
 use crate::record::Record;
 
+use ordered_float::OrderedFloat;
+
 /// Type-erased representation of a value.  Can store the actual value or a pointer to it.
 /// This could be just a `usize`, but we wrap it in a struct as we don't want it to implement
 /// `Copy`.
@@ -370,7 +372,10 @@ macro_rules! decl_ddval_convert {
                             this: &$crate::ddval::DDVal,
                             f: &mut ::std::fmt::Formatter,
                         ) -> Result<(), ::std::fmt::Error> {
-                            ::std::fmt::Display::fmt(unsafe { <$t>::from_ddval_ref(this) }, f)
+                            ::std::fmt::Display::fmt(
+                                &unsafe { <$t>::from_ddval_ref(this) }.clone().into_record(),
+                                f,
+                            )
                         };
                         __f
                     },
@@ -407,3 +412,21 @@ macro_rules! decl_ddval_convert {
         }
     };
 }
+
+/* Implement `DDValConvert` for builtin types. */
+
+decl_ddval_convert! {()}
+decl_ddval_convert! {u8}
+decl_ddval_convert! {u16}
+decl_ddval_convert! {u32}
+decl_ddval_convert! {u64}
+decl_ddval_convert! {u128}
+decl_ddval_convert! {i8}
+decl_ddval_convert! {i16}
+decl_ddval_convert! {i32}
+decl_ddval_convert! {i64}
+decl_ddval_convert! {i128}
+decl_ddval_convert! {String}
+decl_ddval_convert! {bool}
+decl_ddval_convert! {OrderedFloat<f32>}
+decl_ddval_convert! {OrderedFloat<f64>}

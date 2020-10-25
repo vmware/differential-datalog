@@ -7,7 +7,7 @@ pub fn allocate<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Copy>(
     toallocate: &crate::ddlog_std::Vec<B>,
     min_val: &N,
     max_val: &N,
-) -> crate::ddlog_std::Vec<(B, N)> {
+) -> crate::ddlog_std::Vec<crate::ddlog_std::tuple2<B, N>> {
     assert!(*max_val >= *min_val);
     let range = *max_val - *min_val;
 
@@ -34,7 +34,7 @@ pub fn allocate<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Copy>(
                 offset = offset + N::one();
                 continue;
             } else {
-                res.x.push(((*b).clone(), next));
+                res.x.push(crate::ddlog_std::tuple2((*b).clone(), next));
                 if offset == range {
                     return res;
                 };
@@ -48,10 +48,10 @@ pub fn allocate<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Copy>(
 
 pub fn allocate_with_hint<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Copy>(
     allocated: &crate::ddlog_std::Set<N>,
-    toallocate: &crate::ddlog_std::Vec<(B, crate::ddlog_std::Option<N>)>,
+    toallocate: &crate::ddlog_std::Vec<crate::ddlog_std::tuple2<B, crate::ddlog_std::Option<N>>>,
     min_val: &N,
     max_val: &N,
-) -> crate::ddlog_std::Vec<(B, N)> {
+) -> crate::ddlog_std::Vec<crate::ddlog_std::tuple2<B, N>> {
     assert!(*max_val >= *min_val);
     let range = *max_val - *min_val;
     let mut new_allocations: BTreeSet<N> = BTreeSet::new();
@@ -63,7 +63,7 @@ pub fn allocate_with_hint<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Co
         next = *min_val;
     };
     let mut res = crate::ddlog_std::Vec::new();
-    for (b, hint) in toallocate.x.iter() {
+    for crate::ddlog_std::tuple2(b, hint) in toallocate.x.iter() {
         let mut offset = N::zero();
         next = match hint {
             crate::ddlog_std::Option::None => next,
@@ -82,7 +82,7 @@ pub fn allocate_with_hint<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Co
                 };
                 continue;
             } else {
-                res.x.push(((*b).clone(), next));
+                res.x.push(crate::ddlog_std::tuple2((*b).clone(), next));
                 new_allocations.insert(next);
                 if offset == range {
                     return res;
@@ -104,7 +104,7 @@ pub fn allocate_opt<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Copy>(
     toallocate: &crate::ddlog_std::Vec<B>,
     min_val: &N,
     max_val: &N,
-) -> crate::ddlog_std::Vec<(B, crate::ddlog_std::Option<N>)> {
+) -> crate::ddlog_std::Vec<crate::ddlog_std::tuple2<B, crate::ddlog_std::Option<N>>> {
     assert!(*max_val >= *min_val);
     let range = *max_val - *min_val;
 
@@ -122,7 +122,10 @@ pub fn allocate_opt<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Copy>(
     for b in toallocate.x.iter() {
         loop {
             if exhausted {
-                res.x.push(((*b).clone(), crate::ddlog_std::Option::None));
+                res.x.push(crate::ddlog_std::tuple2(
+                    (*b).clone(),
+                    crate::ddlog_std::Option::None,
+                ));
                 break;
             };
             if offset == range {
@@ -138,8 +141,10 @@ pub fn allocate_opt<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Copy>(
             if allocated.x.contains(&next) {
                 continue;
             } else {
-                res.x
-                    .push(((*b).clone(), crate::ddlog_std::Option::Some { x: next }));
+                res.x.push(crate::ddlog_std::tuple2(
+                    (*b).clone(),
+                    crate::ddlog_std::Option::Some { x: next },
+                ));
                 break;
             }
         }
@@ -152,7 +157,7 @@ pub fn adjust_allocation<A: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Cop
     toallocate: &crate::ddlog_std::Vec<A>,
     min_val: &N,
     max_val: &N,
-) -> crate::ddlog_std::Vec<(A, N)> {
+) -> crate::ddlog_std::Vec<crate::ddlog_std::tuple2<A, N>> {
     assert!(*max_val >= *min_val);
     let range = *max_val - *min_val;
 
@@ -170,7 +175,7 @@ pub fn adjust_allocation<A: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Cop
     for b in toallocate.x.iter() {
         match allocated.x.get(b) {
             Some(x) => {
-                res.push(((*b).clone(), x.clone()));
+                res.push(crate::ddlog_std::tuple2((*b).clone(), x.clone()));
             }
             None => loop {
                 if exhausted {
@@ -189,7 +194,7 @@ pub fn adjust_allocation<A: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Cop
                 if allocated_ids.contains(&next) {
                     continue;
                 } else {
-                    res.x.push(((*b).clone(), next));
+                    res.x.push(crate::ddlog_std::tuple2((*b).clone(), next));
                     break;
                 }
             },

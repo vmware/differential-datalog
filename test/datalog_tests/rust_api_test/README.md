@@ -18,19 +18,16 @@ them from its main module to create several DDlog transactions.
 
 The generated crates are:
 
-* `tutorial_ddlog` - declares `HDDlog` type that serves as a reference to a running DDlog program.
+* `tutorial_ddlog`
+  * declares `HDDlog` type that serves as a reference to a running DDlog program.
+  * `enum Relations` - enumerates program relations
+  * several functions that convert between numeric relation id's and symbolic names.
 
 * `differential_datalog` - contains the DDlog runtime that is the same for all DDlog programs and
   simply gets copied to each generated DDlog workspace unmodified (this will change in future releases).
 
 * `types` - contains Rust types that correspond to user-defined DDlog types, one for each `typedef` and
    each relation in the DDlog program.
-
-* `value` - contains:
-  * The `Value` module that defines a wrapper type for each input and
-    output relation in the DDlog program
-  * `enum Relations` that enumerates program relations
-  * Several functions that convert between numeric relation id's and symbolic names.
 
 The code is heavily documented and can be used as a tutorial for understanding
 the API as well as a template for writing your own DDlog clients.

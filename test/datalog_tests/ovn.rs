@@ -12,8 +12,8 @@ pub fn extract_ips(_str: &String) -> Set<ip_addr_t> {
     FnvHashSet::default()
 }
 
-pub fn extract_mac(_str: &String) -> (mac_addr_t, String) {
-    (0, "extract_mac not implemented".to_owned())
+pub fn extract_mac(_str: &String) -> crate::ddlog_std::tuple2<mac_addr_t, String> {
+    crate::ddlog_std::tuple2(0, "extract_mac not implemented".to_owned())
 }
 pub fn extract_subnets(_str: &String) -> Set<ip_subnet_t> {
     FnvHashSet::default()

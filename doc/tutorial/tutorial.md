@@ -1101,7 +1101,7 @@ When type annotations are missing, the compiler relies on
 expression.  DDlog allows writing lambda expressions using the `function` keyword
 instead of vertical bars (`||`):
 
-```    
+```
 v.map(function(x: s64):s64 { x * n })
 ```
 
@@ -2665,10 +2665,6 @@ prog_ddlog
     |       |    +--+submod1.rs   |
     |       |    +--+submod2.rs   |
     |       +--+lib.rs            |
-    |                           +-+
-    +----+value                 +-+
-    |        +--+Cargo.toml       |  value crate:
-    |        +--+lib.rs           |  wrapper types
     |                           +-+
     |                           +-+
     +----+Cargo.toml              |

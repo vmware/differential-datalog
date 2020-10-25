@@ -175,9 +175,9 @@ pub fn iPV6_UNSPECIFIED() -> Ipv6Addr {
     Ipv6Addr::new(::std::net::Ipv6Addr::UNSPECIFIED)
 }
 
-pub fn ipv6_segments(addr: &Ipv6Addr) -> (u16, u16, u16, u16, u16, u16, u16, u16) {
+pub fn ipv6_segments(addr: &Ipv6Addr) -> crate::ddlog_std::tuple8<u16, u16, u16, u16, u16, u16, u16, u16> {
     let segments = addr.segments();
-    (
+    crate::ddlog_std::tuple8(
         segments[0],
         segments[1],
         segments[2],

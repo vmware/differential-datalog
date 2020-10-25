@@ -33,7 +33,6 @@ impl Mutator<Empty> for Record {
     }
 }
 
-// #[typetag::serde]
 decl_ddval_convert! {Empty}
 
 #[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
@@ -55,7 +54,6 @@ impl Mutator<Bool> for Record {
     }
 }
 
-// #[typetag::serde]
 decl_ddval_convert! {Bool}
 
 #[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
@@ -77,7 +75,6 @@ impl Mutator<Uint> for Record {
     }
 }
 
-// #[typetag::serde]
 decl_ddval_convert! {Uint}
 
 #[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
@@ -99,7 +96,6 @@ impl Mutator<String> for Record {
     }
 }
 
-// #[typetag::serde]
 decl_ddval_convert! {String}
 
 #[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
@@ -121,7 +117,6 @@ impl Mutator<U8> for Record {
     }
 }
 
-// #[typetag::serde]
 decl_ddval_convert! {U8}
 
 #[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
@@ -143,7 +138,6 @@ impl Mutator<U16> for Record {
     }
 }
 
-// #[typetag::serde]
 decl_ddval_convert! {U16}
 
 #[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
@@ -165,7 +159,6 @@ impl Mutator<U32> for Record {
     }
 }
 
-// #[typetag::serde]
 decl_ddval_convert! {U32}
 
 #[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
@@ -187,7 +180,6 @@ impl Mutator<U64> for Record {
     }
 }
 
-// #[typetag::serde]
 decl_ddval_convert! {U64}
 
 #[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
@@ -209,7 +201,6 @@ impl Mutator<I64> for Record {
     }
 }
 
-// #[typetag::serde]
 decl_ddval_convert! {I64}
 
 #[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
@@ -231,7 +222,6 @@ impl Mutator<BoolTuple> for Record {
     }
 }
 
-// #[typetag::serde]
 decl_ddval_convert! {BoolTuple}
 
 #[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
@@ -253,10 +243,8 @@ impl<T> Mutator<Tuple2<T>> for Record {
     }
 }
 
-// #[typetag::serde]
 decl_ddval_convert! {Tuple2<U64>}
 
-// #[typetag::serde]
 decl_ddval_convert! {Tuple2<String>}
 
 #[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
@@ -281,7 +269,6 @@ impl Mutator<Q> for Record {
     }
 }
 
-// #[typetag::serde]
 decl_ddval_convert! {Q}
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
@@ -335,7 +322,6 @@ impl Mutator<S> for Record {
     }
 }
 
-// #[typetag::serde]
 decl_ddval_convert! {S}
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]

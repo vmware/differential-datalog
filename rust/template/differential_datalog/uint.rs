@@ -31,6 +31,8 @@ impl Default for Uint {
 
 impl Abomonation for Uint {}
 
+decl_ddval_convert! {Uint}
+
 impl Uint {
     pub fn from_biguint(v: BigUint) -> Uint {
         Uint { x: v }
