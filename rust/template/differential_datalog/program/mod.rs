@@ -26,6 +26,7 @@ use fnv::{FnvBuildHasher, FnvHashMap, FnvHashSet};
 use std::{
     collections::{hash_map, BTreeMap, BTreeSet, HashMap},
     fmt::{self, Debug, Formatter},
+    iter,
     ops::Deref,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -2003,22 +2004,22 @@ impl RunningProgram {
     /// Insert one record into input relation. Relations have set semantics, i.e.,
     /// adding an existing record is a no-op.
     pub fn insert(&mut self, relid: RelId, v: DDValue) -> Response<()> {
-        self.apply_update(Update::Insert { relid, v }, &mut Vec::new())
+        self.apply_updates(iter::once(Update::Insert { relid, v }))
     }
 
     /// Insert one record into input relation or replace existing record with the same key.
     pub fn insert_or_update(&mut self, relid: RelId, v: DDValue) -> Response<()> {
-        self.apply_update(Update::InsertOrUpdate { relid, v }, &mut Vec::new())
+        self.apply_updates(iter::once(Update::InsertOrUpdate { relid, v }))
     }
 
     /// Remove a record if it exists in the relation.
     pub fn delete_value(&mut self, relid: RelId, v: DDValue) -> Response<()> {
-        self.apply_update(Update::DeleteValue { relid, v }, &mut Vec::new())
+        self.apply_updates(iter::once(Update::DeleteValue { relid, v }))
     }
 
     /// Remove a key if it exists in the relation.
     pub fn delete_key(&mut self, relid: RelId, k: DDValue) -> Response<()> {
-        self.apply_update(Update::DeleteKey { relid, k }, &mut Vec::new())
+        self.apply_updates(iter::once(Update::DeleteKey { relid, k }))
     }
 
     /// Modify a key if it exists in the relation.
@@ -2028,10 +2029,10 @@ impl RunningProgram {
         k: DDValue,
         m: Arc<dyn Mutator<DDValue> + Send + Sync>,
     ) -> Response<()> {
-        self.apply_update(Update::Modify { relid, k, m }, &mut Vec::new())
+        self.apply_updates(iter::once(Update::Modify { relid, k, m }))
     }
 
-    /// Applies a single update, allows individual update functions to not incur an allocation
+    /// Applies a single update.
     fn apply_update(
         &mut self,
         update: Update<DDValue>,
@@ -2040,7 +2041,7 @@ impl RunningProgram {
         let rel = self
             .relations
             .get_mut(&update.relid())
-            .ok_or_else(|| format!("apply_updates: unknown input relation {}", update.relid()))?;
+            .ok_or_else(|| format!("apply_update: unknown input relation {}", update.relid()))?;
 
         match rel {
             RelationInstance::Stream { delta } => {
