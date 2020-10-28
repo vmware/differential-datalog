@@ -38,28 +38,6 @@ pub enum Update<V> {
     },
 }
 
-/// Creates functions to check the type of an update
-macro_rules! is_update_kind {
-    ($($function:ident -> $update_kind:ident),* $(,)?) => {
-        $(
-            is_update_kind!(@doc
-                #[doc = concat!("Returns `true` if the the current update is an `", stringify!($update_kind), "`")]
-                pub fn $function(&self) -> bool {
-                    matches!(self, Update::$update_kind { .. })
-                }
-            );
-        )*
-    };
-
-    // Little bit of a hack around rust's macro system, putting a `concat!(..)` directly
-    // within a macro doesn't work, but coercing the concatenated string into a literal
-    // before putting it inside the doc attribute does
-    (@doc #[doc = $doc:expr] $item:item) => {
-        #[doc = $doc]
-        $item
-    };
-}
-
 impl<V> Update<V> {
     /// Get the relationship id of the current update
     pub fn relid(&self) -> RelId {
@@ -72,19 +50,55 @@ impl<V> Update<V> {
         }
     }
 
-    is_update_kind! {
-        is_insert           -> Insert,
-        is_insert_or_update -> InsertOrUpdate,
-        is_delete_value     -> DeleteValue,
-        is_delete_key       -> DeleteKey,
-        is_modify           -> Modify,
+    /// Returns `true` if the the current update is an Insert.
+    pub fn is_insert(&self) -> bool {
+        match self {
+            Update::Insert { .. } => true,
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if the the current update is an InsertOrUpdate.
+    pub fn is_insert_or_update(&self) -> bool {
+        match self {
+            Update::InsertOrUpdate { .. } => true,
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if the the current update is a DeleteValue.
+    pub fn is_delete_value(&self) -> bool {
+        match self {
+            Update::DeleteValue { .. } => true,
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if the the current update is a DeleteKey.
+    pub fn is_delete_key(&self) -> bool {
+        match self {
+            Update::DeleteKey { .. } => true,
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if the the current update is a Modify.
+    pub fn is_modify(&self) -> bool {
+        match self {
+            Update::Modify { .. } => true,
+            _ => false,
+        }
     }
 
     /// Returns whether the current update has a key of some sort
     ///
     /// Returns `true` if the update is a `DeleteKey` or a `Modify`
     pub fn has_key(&self) -> bool {
-        matches!(self, Update::DeleteKey { .. } | Update::Modify { .. })
+        match self {
+            Update::DeleteKey { .. } => true,
+            Update::Modify { .. } => true,
+            _ => false,
+        }
     }
 
     /// Attempts to get the key of the current update
