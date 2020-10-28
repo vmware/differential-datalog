@@ -139,6 +139,8 @@ dot          = T.dot lexer
 stringLit    = T.stringLiteral lexer
 --charLit    = T.charLiteral lexer
 
+commaSepEnd p = p `sepEndBy` comma
+
 varIdent     = lcIdentifier <?> "variable name"
 targIdent    = identifier   <?> "transformer argument name"
 typevarIdent = ucIdentifier <?> "type variable name"
@@ -333,7 +335,7 @@ relation = do
     isref <- option False $ (\_ -> True) <$> reservedOp "&"
     relName <- relIdent
     ((do start <- getPosition
-         fields <- parens $ commaSep arg
+         fields <- parens $ commaSepEnd arg
          pkey <- optionMaybe $ symbol "primary" *> symbol "key" *> key_expr
          end <- getPosition
          let p = (start, end)
