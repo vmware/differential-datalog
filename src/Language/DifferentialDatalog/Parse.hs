@@ -285,11 +285,11 @@ imprt = Import nopos <$ reserved "import" <*> modname <*> (option (ModuleName []
 modname = ModuleName <$> modIdent `sepBy1` reservedOp "::"
 
 typeDef = (TypeDef nopos []) <$ reserved "typedef" <*> typeIdent <*>
-                                (option [] (symbol "<" *> (commaSep $ symbol "'" *> typevarIdent) <* symbol ">")) <*>
+                                (option [] (symbol "<" *> (commaSepEnd $ symbol "'" *> typevarIdent) <* symbol ">")) <*>
                                 (Just <$ reservedOp "=" <*> typeSpec)
        <|>
           (TypeDef nopos []) <$ (try $ reserved "extern" *> reserved "type") <*> typeIdent <*>
-                                (option [] (symbol "<" *> (commaSep $ symbol "'" *> typevarIdent) <* symbol ">")) <*>
+                                (option [] (symbol "<" *> (commaSepEnd $ symbol "'" *> typevarIdent) <* symbol ">")) <*>
                                 (return Nothing)
 
 func = (Function nopos [] <$  (try $ reserved "extern" *> reserved "function")
@@ -318,7 +318,7 @@ targ = withPos $ HOField nopos <$> targIdent <*> (colon *> hotypeSpec)
 
 hotypeSpec = withPos $ (HOTypeRelation nopos <$ reserved "relation" <*> (brackets typeSpecSimple))
                        <|>
-                       (HOTypeFunction nopos <$ reserved "function" <*> (parens $ commaSep farg) <*> (colon *> typeSpecSimple))
+                       (HOTypeFunction nopos <$ reserved "function" <*> (parens $ commaSepEnd farg) <*> (colon *> typeSpecSimple))
 
 index = withPos $ Index nopos <$ symbol "index" <*> indexIdent <*> parens (commaSep arg) <*>
                   (symbol "on" *> atom False)
@@ -521,16 +521,16 @@ doubleType = TDouble nopos <$ reserved "double"
 floatType  = TFloat  nopos <$ reserved "float"
 stringType = TString nopos <$ reserved "string"
 boolType   = TBool   nopos <$ reserved "bool"
-userType   = TUser   nopos <$> typeIdent <*> (option [] $ symbol "<" *> commaSep typeSpec <* symbol ">")
+userType   = TUser   nopos <$> typeIdent <*> (option [] $ symbol "<" *> commaSepEnd typeSpec <* symbol ">")
 typeVar    = TVar    nopos <$ symbol "'" <*> typevarIdent
 structType = TStruct nopos <$ isstruct <*> sepBy1 constructor (reservedOp "|")
     where isstruct = try $ lookAhead $ attributes *> consIdent *> (symbol "{" <|> symbol "|")
 tupleType  = (\fs -> case fs of
                           [f] -> f
                           _   -> TTuple nopos fs)
-             <$> (parens $ commaSep typeSpecSimple)
-functionType =  (TFunction nopos <$ reserved "function" <*> (parens $ commaSep atype) <*> (option (TTuple nopos []) $ colon *> typeSpecSimple))
-            <|> (TFunction nopos <$> (symbol "|" *> commaSep atype <* symbol "|") <*> (option (TTuple nopos []) $ colon *> typeSpecSimple))
+             <$> (parens $ commaSepEnd typeSpecSimple)
+functionType =  (TFunction nopos <$ reserved "function" <*> (parens $ commaSepEnd atype) <*> (option (TTuple nopos []) $ colon *> typeSpecSimple))
+            <|> (TFunction nopos <$> (symbol "|" *> commaSepEnd atype <* symbol "|") <*> (option (TTuple nopos []) $ colon *> typeSpecSimple))
 
 
 constructor = withPos $ Constructor nopos <$> attributes
