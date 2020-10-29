@@ -71,11 +71,20 @@ ComponentBody: "{" DeclarationList "}"
 TypeDecl: TYPE Identifier
         | TYPE Identifier "<:" PredefinedType
         | TYPE Identifier "=" UnionType
+        | TYPE Identifier "=" SumBranchList
         | TYPE Identifier "=" "[" "]"
         | TYPE Identifier "=" "[" RecordType "]"
         | SYMBOL_TYPE Identifier
         | NUMBER_TYPE Identifier
         ;
+
+SumBranchList: SumBranch
+             | SumBranch "|" SumBranchList
+             ;
+
+SumBranch: Identifier "{" "}"
+         | Identifier "{" RecordType "}"
+         ;
 
 PredefinedType: TNUMBER
               | TFLOAT
@@ -210,6 +219,7 @@ Arg: String
    | "[" RecordList "]"
    | Aggregate
    | NIL
+   | "$" Identifier "(" ArgList ")"
    ;
 
 FunctorList : "(" ")"

@@ -510,7 +510,7 @@ function to_set(g: Group<'K, 'V>): Set<'V> {
     group_to_set(g)
 }
 
-/* Convert group to a vector of its elements.  The resulting 
+/* Convert group to a vector of its elements.  The resulting
  * vector has the same size and the same elements (and in the same
  * order) as the group. */
 function to_vec(g: Group<'K, 'V>): Vec<'V> {
@@ -628,7 +628,7 @@ function unzip(v: Vec<('X, 'Y)>): (Vec<'X>, Vec<'Y>) {
 function to_map(v: Vec<('K, 'V)>): Map<'K, 'V> {
     var res = map_empty();
     for (kv in v) {
-       res.insert(kv.0, kv.1); 
+       res.insert(kv.0, kv.1);
     };
     res
 }

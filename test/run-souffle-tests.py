@@ -24,7 +24,6 @@ tests_to_run = 20 # number of tests to run at once in Rust
 
 # expected to fail
 xfail = [
-    "adt-binary-constraint", # parglare.exceptions.ParseError: Error at adt-binary-constraint.dl.tmp:1:14:"e A = Int  **> {x: number" => Expected: , or > or COMP or DECL or DOT or FUNCTOR or INIT or INPUT or INSTANTIATE or Identifier or NUMBER_TYPE or OUTPUT or OVERRIDE or PRAGMA or PRINTSIZE or STOP or SYMBOL_TYPE or TYPE or ] or | or } but found <NotComment({x:)> or <{({)>
     "arithm", # cannot infer argument type in pow32(2)
     "souffle_tests_ddlog", # auto-generated
     "souffle7",  # issue 202 - recursive type
@@ -32,7 +31,7 @@ xfail = [
     "aggregates5", # Rule must start with a positive literal
     "aggregates7", # pow32 issue
     "aggregates_complex", # cannot be evaluated bottom-up; issue 293
-    "aggregates_non_materialised", # Rule must start with a positive literal
+    "aggregates_non_materialised", # 198
     "aggregates",  # issue 227 - count of empty group
     "aggregates_nested", # ??
     "indexed_inequalities", # DDlog cannot infer the type of `2` in `2^32`.
@@ -57,14 +56,13 @@ xfail = [
     "magic_nqueens",    # 202
     "inline_nqueens",   # 202
     "magic_turing1",    # 198
-    "magic_bindings",   #
-    "magic_infbinding",
+    "magic_bindings",   # issue 198
+    "magic_infbinding", # issue 198
     "math",             # Missing reference outputs in Souffle
     "minesweeper",      # 198
     "neg1",             # 198
     "neg2",             # 198
     "neg3",             # 198
-    "numeric_binary_constraint_op", # Rule must start with a positive literal
     "range",            # 198
     "rec_lists",        # 202
     "rec_lists2",       # 202
@@ -72,7 +70,6 @@ xfail = [
     "subsumption",      # 202
     "subtype",          # 197
     "turing1",          # 198
-    "unsigned_operations", # Rule must start with a positive literal
     "unused_constraints", # 198
     "access-policy",    # 198
     "amicable",         # 198
@@ -100,8 +97,7 @@ xfail = [
     "tak",              # 197
     "tic-tac-toe",      # 197
     "weighted_distances", # 197
-    "aggregate_witnesses",
-    "adt-enum"
+    "aggregate_witnesses" # aggregate does not assign to variable
 ]
 
 def exit(code):
@@ -266,7 +262,7 @@ def run_merged_test(filename):
     run_command(["mv", "tmp.sorted", filename + ".dump.expected"])
     code, _ = run_command(["diff", "-q", filename + ".dump", filename + ".dump.expected"])
     if code != 0:
-        print("*** Error: Output differs")
+        print("*** Error: Output differs: " + filename + ".dump[.expected]")
     print("Completed program at", datetime.datetime.now().time())
     return code
 
