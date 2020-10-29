@@ -2,11 +2,29 @@
 
 set -e
 
-(cd ovn-test-data && git checkout v5)
+clone_repo() {
+    REPO_URL=$1
+    REPO_DIR=$2
+    if [ -z "$3" ]; then
+        REPO_BRANCH="master"
+    else
+        REPO_BRANCH=$3
+    fi
+
+    if [ ! -d "${REPO_DIR}/.git" ]
+    then
+        git clone -b "${REPO_BRANCH}" "${REPO_URL}" "${REPO_DIR}" 
+    else
+        (cd "${REPO_DIR}" && git fetch "${REPO_URL}" && git checkout "${REPO_BRANCH}")
+    fi
+}
+
+clone_repo https://github.com/ryzhyk/ovs.git ovs ovs-for-ddlog
+clone_repo https://github.com/ryzhyk/ovn.git ovn
+clone_repo https://github.com/ddlog-dev/ovn-test-data.git ovn-test-data v5
 
 # TODO: use OVS master once these changes are there.
 (cd ovs &&
- git checkout ovs-for-ddlog &&
  ./boot.sh &&
  ./configure  &&
  make -j6)

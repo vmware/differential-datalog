@@ -2,6 +2,18 @@
 
 set -e
 
+# Clone or refresh the repo.
+DATA_REPO_NAME=redist_opt-test-data
+DATA_REPO=https://github.com/ddlog-dev/${DATA_REPO_NAME}.git
+DATA_REPO_BRANCH=v2
+
+if [ ! -d "${DATA_REPO_NAME}/.git" ]
+then
+    git clone -b ${DATA_REPO_BRANCH} ${DATA_REPO}
+else
+    (cd "${DATA_REPO_NAME}" && git fetch "${DATA_REPO}" && git checkout "${DATA_REPO_BRANCH}")
+fi
+
 ./run-test.sh redist_opt release
 
 # $1 - number of iterations
