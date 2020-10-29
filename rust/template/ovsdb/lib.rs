@@ -395,10 +395,12 @@ fn record_into_field(rec: Record) -> Result<Value, String> {
             Value::String("set".to_owned()),
             Value::Array(vec![]),
         ])),
-        Record::NamedStruct(name, mut fields) if name == "ddlog_std::Some" => Ok(Value::Array(vec![
-            Value::String("set".to_owned()),
-            Value::Array(vec![record_into_field(fields.remove(0).1)?]),
-        ])),
+        Record::NamedStruct(name, mut fields) if name == "ddlog_std::Some" => {
+            Ok(Value::Array(vec![
+                Value::String("set".to_owned()),
+                Value::Array(vec![record_into_field(fields.remove(0).1)?]),
+            ]))
+        }
         Record::Array(CollectionKind::Set, v) => {
             let elems: Result<Vec<Value>, String> = v.into_iter().map(record_into_field).collect();
             Ok(Value::Array(vec![

@@ -39,8 +39,8 @@ use crate::tcp_channel::TcpSender;
 use crate::txnmux::TxnMux;
 use crate::DDlogServer;
 
-use serde::Serialize;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 
 /// A mapping from member address to relation IDs used for describing
 /// output relationships.
@@ -175,7 +175,7 @@ where
 enum SinkRealization<C, S>
 where
     C: DDlogConvert,
-    S: Serialize + Debug + Send + 'static
+    S: Serialize + Debug + Send + 'static,
 {
     File(SharedObserver<FileSink<C>>),
     Node(SharedObserver<TcpSender<S>>),

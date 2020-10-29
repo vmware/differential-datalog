@@ -108,7 +108,7 @@ where
 }
 
 /// `TcpSender` can be an observer for any type `V` that can be converted to `T`.
-/// This way we can support scenarios where `T` is a wrapper that implements the 
+/// This way we can support scenarios where `T` is a wrapper that implements the
 /// `Serialize` trait for another type without having to insert an additional
 /// transformer in the chain.
 impl<T, V> Observer<V, String> for TcpSender<T>
@@ -125,7 +125,10 @@ where
     /// Send a series of items over the TCP channel.
     fn on_updates<'a>(&mut self, updates: Box<dyn Iterator<Item = V> + 'a>) -> Result<(), String> {
         trace!("TcpSender({})::on_updates", self.id);
-        self.buffer.lock().unwrap().on_updates(Box::new(updates.map(|u| T::from(u))))
+        self.buffer
+            .lock()
+            .unwrap()
+            .on_updates(Box::new(updates.map(T::from)))
     }
 
     /// Flush the TCP stream and signal the commit.
@@ -169,7 +172,7 @@ mod tests {
     /// Connect a `TcpSender` to a `TcpReceiver`.
     #[test]
     fn connect() {
-        let recv = TcpReceiver::<(),()>::new("127.0.0.1:0").unwrap();
+        let recv = TcpReceiver::<(), ()>::new("127.0.0.1:0").unwrap();
         {
             let _send = TcpSender::<()>::new(*recv.addr());
         }
@@ -194,7 +197,7 @@ mod tests {
     #[test]
     fn delayed_connect() {
         let mut send = TcpSender::<u64>::new("127.0.0.1:5006".parse().unwrap()).unwrap();
-        let mut recv = TcpReceiver::<u64,u64>::new("127.0.0.1:5006").unwrap();
+        let mut recv = TcpReceiver::<u64, u64>::new("127.0.0.1:5006").unwrap();
         let observer = SharedObserver::new(Mutex::new(MockObserver::new()));
         let _ = recv.subscribe(Box::new(observer.clone())).unwrap();
 
