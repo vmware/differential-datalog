@@ -13,6 +13,8 @@ variables:
     # potentially changing GitLab behavior as well as to achieve some
     # form of independence of the underlying CI pipeline.
     IS_CI_RUN: 1
+    # Tell ./test.sh script not to redirect test stdout and stderr to file.
+    NO_STD_REDIRECT: 1
 
 # Template for tests that expect ddlog to be in the $PATH.
 .install-ddlog:
@@ -21,116 +23,86 @@ variables:
 
 # Test Rust template only.
 test-rust:
-    variables:
-      ZOOKEEPER_ENDPOINTS: "127.0.0.1:2181"
     script:
-    - /usr/share/zookeeper/bin/zkServer.sh start
-    - (cd rust/template/ && cargo fmt --all -- --check)
-    - (cd lib && rustfmt *.rs --check)
-    - (cd rust/template/ && cargo clippy --all --features command-line,ovsdb -- -D warnings)
-    - for i in $(seq 100); do
-        /usr/share/zookeeper/bin/zkServer.sh status && break;
-      done
-    - (cd rust/template/ && cargo test --all)
-    - (cd rust/template/distributed_datalog && (
-        i=0;
-        true;
-        while [ $? -eq 0 -a $i -lt 100 ]; do
-          i=$((i+1));
-          cargo test -- tcp_channel::;
-        done
-      ))
+        - ./test.sh crates
+        - ./test.sh tcp_channel
 
 # Run individual stack-based tests, when possible combining them with Java tests
 # that depend on the same DDlog program.
 test-tutorial:
-    script:
-        - (cd test/datalog_tests && DDLOGFLAGS="-g" ./run-test.sh tutorial release)
+    script: ./test.sh tutorial
 
 test-rust-api:
-    script:
-        - test/datalog_tests/rust_api_test/test.sh
+    script: ./test.sh rust_api
 
 # Test individual libraries
 
 test-libs:
     extends: .install-ddlog
-    script:
-        - (cd test/datalog_tests &&
-           ./test-libs.sh)
+    script: ./test.sh libs
 
 test-server_api:
     extends: .install-ddlog
-    script:
-        # It seems that stale files cause cargo to rebuild the project
-        # unnecessarily in CI.
-        - rm -rf test/datalog_tests/server_api_ddlog
-        - (export DDLOG_HOME=`pwd` && test/datalog_tests/test-server_api.sh)
+    script: ./test.sh server_api
 
 test-simple:
     tags:
         - ddlog-ci-1
-    script:
-    - (cd test/datalog_tests && DDLOGFLAGS="-g" CARGOFLAGS="--features nested_ts_32"  ./run-test.sh simple release)
-    - cd test/datalog_tests/simple_ddlog/ && LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/ cargo build --features='profile'
+    script: ./test.sh simple
 
 test-simple2:
-    script:
-    - (cd test/datalog_tests && DDLOGFLAGS="-g --nested-ts-32" ./run-test.sh simple2 release)
+    script: ./test.sh simple2
 
 test-modules:
-    script: stack --no-terminal test --ta "-p modules"
+    script: ./test.sh modules
 
 test-ovn-ftl:
-    script: stack --no-terminal test --ta "-p ovn_ftl"
+    script: ./test.sh ovn_ftl
 
 test-ovn:
-    script: stack test --ta '-p "$(NF) == \"generate ovn\" || ($(NF-1) == \"compiler tests\" && $(NF) == \"ovn\")"'
+    script: ./test.sh ovn_mockup
 
 test-path:
     script:
-        - stack --no-terminal test --ta "-p fail"
-        - stack --no-terminal test --ta "-p path"
+        - ./test.sh negative
+        - ./test.sh path
 
 test-souffle0:
     extends: .install-ddlog
     tags:
         - ddlog-ci-1
-    script:
-        - (cd test/souffle0 &&
-          ../../tools/souffle_converter.py test.dl souffle --convert-dnf &&
-          ../datalog_tests/run-test.sh souffle.dl release)
+    script: ./test.sh static_analysis 
 
 test-redist:
     extends: .install-ddlog
     tags:
         - ddlog-ci-1
     script:
-        - STACK_CARGO_FLAGS='--release' stack test --ta '-p "$(NF) == \"generate redist\" || ($(NF-1) == \"compiler tests\" && $(NF) == \"redist\")"'
-        - (cd java/test1 && ./run.sh)
-        - (cd java/test_flatbuf && ./run.sh)
+        - ./test.sh redist
+        - ./test.sh java1
+        - ./test.sh flatbuf0
 
 test-span_string:
     extends: .install-ddlog
     script:
-        - stack --no-terminal test --ta "-p span_string"
-        - (cd java/test3 && ./run.sh)
+        - ./test.sh span_string
+        - ./test.sh java3
 
 test-output-internal:
-    script: ./test/datalog_tests/run-tests.sh three
+    script: ./test.sh stream
 
 # All other Java tests.
 test-span_uuid:
     extends: .install-ddlog
     script:
-        - stack --no-terminal test --ta "-p span_uuid"
-        - (cd java/test && ./run.sh)
+        - ./test.sh span_uuid
+        - ./test.sh java0
 
 test-java1:
     extends: .install-ddlog
     script:
-        - (cd java/test2 && ./run.sh)
-        - (cd java/test4 && ./run.sh)
+        - ./test.sh java2
+        - ./test.sh java4
 
 # these tests are currently failing (#372)
 #test-java2:
@@ -143,8 +115,7 @@ test-flatbuf:
     extends: .install-ddlog
     tags:
         - ddlog-ci-1
-    script:
-        - (cd java/test_flatbuf1 && ./run.sh)
+    script: ./test.sh flatbuf1
 
 # Template for souffle tests
 .test-imported-souffle:
@@ -155,58 +126,45 @@ test-flatbuf:
 # Tests from the souffle github repo.
 test-imported-souffle-tests1:
     extends: .test-imported-souffle
-    script:
-        - (cd test && ./run-souffle-tests-in-batches.py 0 24)
+    script: ./test.sh souffle_tests1
 
 test-imported-souffle-tests2:
     extends: .test-imported-souffle
-    script:
-        - (cd test && ./run-souffle-tests-in-batches.py 25 49)
+    script: ./test.sh souffle_tests2
 
 test-imported-souffle-tests3:
     extends: .test-imported-souffle
-    script:
-        - (cd test && ./run-souffle-tests-in-batches.py 50 74)
+    script: ./test.sh souffle_tests3
 
 test-imported-souffle-tests4:
     extends: .test-imported-souffle
-    script:
-        - (cd test && ./run-souffle-tests-in-batches.py 75 99)
+    script: ./test.sh souffle_tests4
 
 test-imported-souffle-tests5:
     extends: .test-imported-souffle
-    script:
-        - (cd test && ./run-souffle-tests-in-batches.py 100 124)
+    script: ./test.sh souffle_tests5
 
 test-imported-souffle-tests6:
     extends: .test-imported-souffle
-    script:
-        - (cd test && ./run-souffle-tests-in-batches.py 125 149)
+    script: ./test.sh souffle_tests6
 
 test-imported-souffle-tests7:
     extends: .test-imported-souffle
-    script:
-        - (cd test && ./run-souffle-tests-in-batches.py 150 175)
+    script: ./test.sh souffle_tests7
 
 # Test DDlog code from the Declarative Cluster Management project
 test-dcm:
     extends: .install-ddlog
     tags:
         - ddlog-ci-1
-    script:
-        - (cd test/datalog_tests &&
-          git clone https://github.com/ddlog-dev/dcm-test-data.git &&
-          ./test-dcm.sh)
+    script: ./test.sh dcm
 
 # Torture-test optimized version of redist
 test-redist_opt:
     extends: .install-ddlog
     tags:
         - ddlog-ci-2
-    script:
-        - cd test/datalog_tests
-        - git clone -b v2 https://github.com/ddlog-dev/redist_opt-test-data.git
-        - ./test-redist_opt.sh
+    script: ./test.sh redist_opt
 
 # Test ovn-northd-ddlog
 test-ovn-northd:
@@ -216,40 +174,26 @@ test-ovn-northd:
     variables: {}
     tags:
         - ddlog-ci-2
-    script:
-        - cd test
-        - git clone https://github.com/ryzhyk/ovs.git
-        - git clone https://github.com/ryzhyk/ovn.git
-        - git clone https://github.com/ddlog-dev/ovn-test-data.git
-        - ./test-ovn.sh
+    script: ./test.sh ovn_check
 
 # Test antrea
 test-antrea:
     extends: .install-ddlog
     tags:
         - ddlog-ci-1
-    script:
-        - cd test/antrea
-        - git clone -b v3 https://github.com/ddlog-dev/antrea-test-data.git
-        - ./test-antrea.sh
+    script: ./test.sh antrea_check
 
 # Test the SQL-to-DDlog compiler.
 test-sql:
     extends: .install-ddlog
-    script:
-        - (cd java && make)
-        - (export DDLOG_HOME=`pwd` && cd sql && ./install-ddlog-jar.sh && mvn test)
+    script: ./test.sh sql
 
 # Test Go bindings
 test-golang:
     extends: .install-ddlog
-    script:
-        - (cd go && ./test.sh)
-        - (cd go && ./run-example.sh)
+    script: ./test.sh go
 
 # Test stream relations.
 test-stream:
     extends: .install-ddlog
-    script:
-        - cd test/datalog_tests
-        - ./test-stream.sh
+    script: ./test.sh stream

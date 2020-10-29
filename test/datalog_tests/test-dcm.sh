@@ -2,6 +2,17 @@
 
 set -e
 
+# Clone or refresh the repo.
+DCM_DATA_REPO=https://github.com/ddlog-dev/dcm-test-data.git
+LOCAL_DCM_DATA_REPO=dcm-test-data
+
+if [ ! -d "${LOCAL_DCM_DATA_REPO}/.git" ]
+then
+    git clone $DCM_DATA_REPO
+else
+    (cd $LOCAL_DCM_DATA_REPO && git pull $DCM_DATA_REPO)
+fi
+
 ./run-test.sh dcm1 release
 
 # $1 - number of workers
@@ -17,7 +28,6 @@ run_test() {
     fi
     /usr/bin/time ./dcm1_ddlog/target/release/dcm1_cli -w $1 --no-print --no-store < $2 > dcm1.dump
 
-    # The output should be $1 copies of redist_opt.dump.expected
     diff -q $3 dcm1.dump
 }
 
