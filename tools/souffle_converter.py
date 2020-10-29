@@ -1528,9 +1528,13 @@ class SouffleConverter(object):
                 components = []
                 for case in cases:
                     name = getIdentifier(case)
-                    fieldTypes = getList(case, "TypeId", "RecordType")
-                    fieldNames = getListField(case, "Identifier", "RecordType")
-                    # The fields names are not currently used for anything.
+                    fieldTypes = []
+                    fieldNames = []
+                    if getOptField(case, "RecordType"):
+                        fieldTypes = getList(case, "TypeId", "RecordType")
+                        fieldNames = getListField(case, "Identifier", "RecordType")
+                    # The fields names are not currently used for anything, because
+                    # in Souffle field names between alternatives do not have to be disjoint, like in DDlog
                     fieldN: List[str] = [self.fresh_variable(f.value) for f in fieldNames]
                     fieldT: List[Type] = [Type.get(self.convert_typeid(f)) for f in fieldTypes]
                     fields: List[Tuple[str, Type]] = list(zip(fieldN, fieldT))
