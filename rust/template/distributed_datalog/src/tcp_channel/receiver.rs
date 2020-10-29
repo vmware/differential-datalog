@@ -111,7 +111,7 @@ where
     /// The transaction multiplexer we use to ensure serialization of
     /// transactions from all accepted connections.
     txnmux: Arc<Mutex<TxnMux<T, String>>>,
-    _phantom: std::marker::PhantomData<D>
+    _phantom: std::marker::PhantomData<D>,
 }
 
 /// `T` - type received from the network.  This type is not required to implement `Deserialize`.
@@ -125,7 +125,7 @@ where
 impl<T, D> TcpReceiver<T, D>
 where
     T: Send + Debug + 'static,
-    D: DeserializeOwned + Into<T> + Send + Debug
+    D: DeserializeOwned + Into<T> + Send + Debug,
 {
     /// Create a new TCP receiver with no observer.
     ///
@@ -161,7 +161,7 @@ where
             fd,
             thread,
             txnmux,
-            _phantom: std::marker::PhantomData
+            _phantom: std::marker::PhantomData,
         })
     }
 
@@ -270,9 +270,9 @@ where
                 Message::Updates(ref mut updates) => {
                     observer.on_updates(Box::new(updates.drain(..).map(|u| u.into())))
                 }
-                Message::UpdateList(ref mut updates) => {
-                    observer.on_updates(Box::new(updates.split_off(0).into_iter().flatten().map(|u| u.into())))
-                }
+                Message::UpdateList(ref mut updates) => observer.on_updates(Box::new(
+                    updates.split_off(0).into_iter().flatten().map(|u| u.into()),
+                )),
                 Message::Commit => observer.on_commit(),
                 Message::Complete => observer.on_completed(),
             };
@@ -364,13 +364,13 @@ mod tests {
     /// Drop a `TcpReceiver`.
     #[test]
     fn drop() {
-        let _recv = TcpReceiver::<(),()>::new("127.0.0.1:0").unwrap();
+        let _recv = TcpReceiver::<(), ()>::new("127.0.0.1:0").unwrap();
     }
 
     /// Connect to a `TcpReceiver`.
     #[test]
     fn accept() {
-        let recv = TcpReceiver::<(),()>::new("127.0.0.1:0").unwrap();
+        let recv = TcpReceiver::<(), ()>::new("127.0.0.1:0").unwrap();
         {
             let _send = TcpStream::connect(recv.addr()).unwrap();
         }
@@ -382,7 +382,7 @@ mod tests {
     fn never_accepted() {
         let test = || {
             let addr = {
-                let recv = TcpReceiver::<(),()>::new("127.0.0.1:0").unwrap();
+                let recv = TcpReceiver::<(), ()>::new("127.0.0.1:0").unwrap();
                 recv.addr().clone()
             };
 
@@ -413,7 +413,7 @@ mod tests {
     #[test]
     fn sender_cleanup() {
         let mut send = {
-            let recv = TcpReceiver::<(),()>::new("127.0.0.1:0").unwrap();
+            let recv = TcpReceiver::<(), ()>::new("127.0.0.1:0").unwrap();
             let send = TcpStream::connect(recv.addr()).unwrap();
             send
         };
@@ -428,7 +428,7 @@ mod tests {
     #[test]
     fn multiple_senders() {
         let mock = Arc::new(Mutex::new(MockObserver::new()));
-        let mut recv = TcpReceiver::<u64,u64>::new("127.0.0.1:0").unwrap();
+        let mut recv = TcpReceiver::<u64, u64>::new("127.0.0.1:0").unwrap();
         let addr = recv.addr();
         let mut send1 = TcpSender::<u64>::new(*addr).unwrap();
         let mut send2 = TcpSender::<u64>::new(*addr).unwrap();
