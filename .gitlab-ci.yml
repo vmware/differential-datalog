@@ -1,5 +1,7 @@
 default:
     image: ddlog/gitlab-ci:latest
+    before_script:
+        - export PATH="${PWD}/bin:${PATH}"
 
 variables:
     # Controls differential dataflow's eager compaction behavior
@@ -16,90 +18,117 @@ variables:
     # Tell ./test.sh script not to redirect test stdout and stderr to file.
     NO_STD_REDIRECT: 1
 
-# Template for tests that expect ddlog to be in the $PATH.
-.install-ddlog:
-    before_script:
-        - stack install
+build_ddlog:
+    stage: build
+    tags:
+        - ddlog-ci-1
+    script:
+        - stack install --local-bin-path ./bin
+    artifacts:
+        paths:
+            - ./bin/ddlog
+            - ./bin/ovsdb2ddlog
+            - ./bin/debugparser
 
 # Test Rust template only.
 test-rust:
+    stage: test
+    tags:
+        - ddlog-ci-1
     script:
         - ./test.sh crates
         - ./test.sh tcp_channel
 
+test-modules:
+    stage: test
+    script: ./test.sh modules
+
+test-ovn-ftl:
+    stage: test
+    tags:
+        - ddlog-ci-1
+    script: ./test.sh ovn_ftl
+
+test-ovn:
+    stage: test
+    tags:
+        - ddlog-ci-1
+    script: ./test.sh ovn_mockup
+
+test-path:
+    stage: test
+    tags:
+        - ddlog-ci-1
+    script:
+        - ./test.sh negative
+        - ./test.sh path
+
 # Run individual stack-based tests, when possible combining them with Java tests
 # that depend on the same DDlog program.
 test-tutorial:
+    stage: test
     script: ./test.sh tutorial
 
 test-rust-api:
+    stage: test
     script: ./test.sh rust_api
 
 # Test individual libraries
 
 test-libs:
-    extends: .install-ddlog
+    stage: test
+    tags:
+        - ddlog-ci-1
     script: ./test.sh libs
 
 test-server_api:
-    extends: .install-ddlog
+    stage: test
     script: ./test.sh server_api
 
 test-simple:
+    stage: test
     tags:
         - ddlog-ci-1
     script: ./test.sh simple
 
 test-simple2:
+    stage: test
     script: ./test.sh simple2
 
-test-modules:
-    script: ./test.sh modules
-
-test-ovn-ftl:
-    script: ./test.sh ovn_ftl
-
-test-ovn:
-    script: ./test.sh ovn_mockup
-
-test-path:
+test-span_string:
+    stage: test
     script:
-        - ./test.sh negative
-        - ./test.sh path
+        - ./test.sh span_string
+        - ./test.sh java3
 
 test-souffle0:
-    extends: .install-ddlog
+    stage: test
     tags:
         - ddlog-ci-1
     script: ./test.sh static_analysis 
 
 test-redist:
-    extends: .install-ddlog
+    stage: test
     tags:
         - ddlog-ci-1
     script:
-        - ./test.sh redist
+        #- ./test.sh redist
         - ./test.sh java1
         - ./test.sh flatbuf0
 
-test-span_string:
-    extends: .install-ddlog
-    script:
-        - ./test.sh span_string
-        - ./test.sh java3
-
 test-output-internal:
-    script: ./test.sh stream
+    stage: test
+    script: ./test.sh output_internal
 
 # All other Java tests.
 test-span_uuid:
-    extends: .install-ddlog
+    stage: test
     script:
         - ./test.sh span_uuid
         - ./test.sh java0
 
 test-java1:
-    extends: .install-ddlog
+    stage: test
     script:
         - ./test.sh java2
         - ./test.sh java4
@@ -112,14 +141,14 @@ test-java1:
 #        - (cd java/test6 && ./run.sh)
 
 test-flatbuf:
-    extends: .install-ddlog
+    stage: test
     tags:
         - ddlog-ci-1
     script: ./test.sh flatbuf1
 
 # Template for souffle tests
 .test-imported-souffle:
-    extends: .install-ddlog
+    stage: test
     tags:
         - ddlog-ci-1
 
@@ -154,21 +183,21 @@ test-imported-souffle-tests7:
 
 # Test DDlog code from the Declarative Cluster Management project
 test-dcm:
-    extends: .install-ddlog
+    stage: test
     tags:
         - ddlog-ci-1
     script: ./test.sh dcm
 
 # Torture-test optimized version of redist
 test-redist_opt:
-    extends: .install-ddlog
+    stage: test
     tags:
         - ddlog-ci-2
     script: ./test.sh redist_opt
 
 # Test ovn-northd-ddlog
 test-ovn-northd:
-    extends: .install-ddlog
+    stage: test
     # Don't use eager merging, as northd tends to perform many small
     # transactions, making things slow.
     variables: {}
@@ -178,22 +207,22 @@ test-ovn-northd:
 
 # Test antrea
 test-antrea:
-    extends: .install-ddlog
+    stage: test
     tags:
         - ddlog-ci-1
     script: ./test.sh antrea_check
 
 # Test the SQL-to-DDlog compiler.
 test-sql:
-    extends: .install-ddlog
+    stage: test
     script: ./test.sh sql
 
 # Test Go bindings
 test-golang:
-    extends: .install-ddlog
+    stage: test
     script: ./test.sh go
 
 # Test stream relations.
 test-stream:
-    extends: .install-ddlog
+    stage: test
     script: ./test.sh stream

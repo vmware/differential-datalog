@@ -1,9 +1,8 @@
 #!/bin/bash
 # Shell script which generates a Java program from a DDlog program and compiles it
 
-# Only run `stack install` if we are inside the DDlog source tree;
-# otherwise expect `ddlog` to already be in `$PATH`
-if test -f "../../stack.yaml"; then
+# When running in CI, the DDlog compiler should be prinstalled by the build stage.
+if [ -z "${IS_CI_RUN}" ]; then
     stack install
 fi
 

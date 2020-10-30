@@ -45,6 +45,7 @@ test_groups=("crates:Test DDlog runtime crates."
              "antrea:Test Antrea controller implemented in DDlog"
              "souffle:Tests imported from Souffle Datalog."
              "d3log:Distributed DDlog (D3log) tests."
+             "misc:Miscellaneous other tests."
              "stack:Tests using Haskell stack infrastructure.")
 
 # List of tests in each group.  Test name must match the name of a function below.
@@ -96,13 +97,14 @@ souffle=("static_analysis:Souffle static analysis test."
 d3log=("tcp_channel:TCP channel test"
        "server_api:Test D3log server API")
 
+misc=("span_string"
+      "span_uuid"
+      "path:Trivial graph reachability test")
+
 stack=("modules:Test modules and imports"
        "ovn_ftl:Test FTL syntax"
        "ovn_mockup:OVN-inspired example"
-       "path:Trivial graph reachability test"
        "redist:'redist' example"
-       "span_string:'span_string' example"
-       "span_uuid:'span_uuid' example"
        "negative:Negative tests that validate compiler error handling")
 
 # 'crates' test group.
@@ -315,23 +317,23 @@ ovn_mockup() {
     (cd "${THIS_DIR}" && stack test --ta '-p "$(NF) == \"generate ovn\" || ($(NF-1) == \"compiler tests\" && $(NF) == \"ovn\")"')
 }
 
-path() {
-    (cd "${THIS_DIR}" && stack --no-terminal test --ta "-p path")
-}
-
 redist() {
     (cd "${THIS_DIR}" && STACK_CARGO_FLAGS='--release' stack test --ta '-p "$(NF) == \"generate redist\" || ($(NF-1) == \"compiler tests\" && $(NF) == \"redist\")"')
 }
 
+# 'misc' test group.
+
 span_string() {
-    (cd "${THIS_DIR}" && stack --no-terminal test --ta "-p span_string")
+    (cd "${THIS_DIR}/test/datalog_tests" && ./run-test.sh span_string release)
 }
 
 span_uuid() {
-    (cd "${THIS_DIR}" && stack --no-terminal test --ta "-p span_uuid")
+    (cd "${THIS_DIR}/test/datalog_tests" && ./run-test.sh span_uuid release)
 }
 
-
+path() {
+    (cd "${THIS_DIR}/test/datalog_tests" && ./run-test.sh path release)
+}
 
 #==========================================
 # Main test script.
