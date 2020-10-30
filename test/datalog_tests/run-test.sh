@@ -56,11 +56,14 @@ else
     usage
 fi
 
-if [ "x${PROFILE}" == "x1" ]; then
-    stack install --profile
-    export GHCRTS="-xc"
-else
-    stack install
+# When running in CI, the DDlog compiler should be prinstalled by the build stage.
+if [ -z "${IS_CI_RUN}" ]; then
+    if [ "x${PROFILE}" == "x1" ]; then
+        stack install --profile
+        export GHCRTS="-xc"
+    else
+        stack install
+    fi
 fi
 
 CLASSPATH=$(pwd)/${base}_ddlog/flatbuf/java:$(pwd)/../../java/ddlogapi.jar:$CLASSPATH
