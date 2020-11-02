@@ -121,14 +121,14 @@ stdImports :: [Import]
 stdImports = map stdImport stdLibs
 
 -- | Parse a datalog program along with all its imports; returns a "flat"
--- program without imports and the list of Rust files associated with each
--- module in the program.
+-- program without imports.  In addition, returns `.rs` and `.toml` code
+-- for each module.
 --
 -- 'roots' is the list of directories to search for imports
 --
 -- if 'import_std' is true, imports the standard libraries
 -- to each module.
-parseDatalogProgram :: [FilePath] -> Bool -> String -> FilePath -> IO ([DatalogModule], DatalogProgram, M.Map ModuleName Doc, Doc)
+parseDatalogProgram :: [FilePath] -> Bool -> String -> FilePath -> IO ([DatalogModule], DatalogProgram, M.Map ModuleName (Doc, Doc))
 parseDatalogProgram roots import_std fdata fname = do
     roots' <- nub <$> mapM canonicalizePath roots
     prog <- parseDatalogString fdata fname
@@ -139,26 +139,22 @@ parseDatalogProgram roots import_std fdata fname = do
     imports <- evalStateT (parseImports roots' main_mod) []
     let all_modules = main_mod : imports
     prog'' <- flattenNamespace all_modules
-    -- Collect Rust files associated with each module.
-    rs <- (M.fromList . catMaybes) <$>
-          mapM ((\mod -> do
-                    let rsfile = addExtension (dropExtension $ moduleFile mod) "rs"
-                    rs_exists <- doesFileExist rsfile
-                    if rs_exists
-                       then do rs_code <- readFile rsfile
-                               return $ Just (moduleName mod, pp rs_code)
-                       else return Nothing))
+    -- Collect '.rs' and '.toml' files associated with each module.
+    rs <- M.fromList <$>
+          mapM (\mod -> do
+                   let rsfile = addExtension (dropExtension $ moduleFile mod) "rs"
+                   let tomlfile = addExtension (dropExtension $ moduleFile mod) "toml"
+                   rs_exists <- doesFileExist rsfile
+                   toml_exists <- doesFileExist tomlfile
+                   rs_code <- if rs_exists
+                              then pp <$> readFile rsfile
+                              else return empty
+                   toml_code <- if toml_exists
+                                then pp <$> readFile tomlfile
+                                else return empty
+                   return (moduleName mod, (rs_code, toml_code)))
                all_modules
-    -- collect .toml files associated with modules
-    toml <- (vcat . catMaybes) <$>
-          mapM ((\mod -> do let tomlfile = addExtension (dropExtension $ moduleFile mod) "toml"
-                            exists <- doesFileExist tomlfile
-                            if exists
-                               then do toml_code <- readFile tomlfile
-                                       return $ Just $ pp toml_code
-                               else return Nothing))
-               all_modules
-    return (all_modules, prog'', rs, toml)
+    return (all_modules, prog'', rs)
 
 mergeModules :: (MonadError String me) => [DatalogProgram] -> me DatalogProgram
 mergeModules mods = do
