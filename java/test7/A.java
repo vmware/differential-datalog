@@ -30,6 +30,7 @@ public class A {
         DDlogRecord rec = c.value();
         System.out.println(rec.toString());
         result.dispose();
+        this.api.dumpIndex("AII", i -> System.out.println(i));
         this.api.stop();
     }
 

@@ -480,6 +480,7 @@ extern int ddlog_query_index_from_flatbuf(ddlog_prog prog,
 
 /*
  * Enumerates the entire contents of an index.
+ * Note that an index over a multiset will still enumerate records only once.
  *
  * `idxid` - id of the index to dump.
  * `cb` - callback invoked for each record in the index.

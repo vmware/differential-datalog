@@ -22,6 +22,7 @@ public class DDlogAPI {
     static native void ddlog_stop_recording(long hprog, int fd) throws DDlogException;
     static native void ddlog_dump_input_snapshot(long hprog, String filename, boolean append) throws DDlogException, IOException;
     native void dump_table(long hprog, int table, String callbackMethod) throws DDlogException;
+    native void dump_index(long hprog, int index, String callbackMethod) throws DDlogException;
     static native void ddlog_stop(long hprog, long callbackHandle) throws DDlogException;
     static native void ddlog_transaction_start(long hprog) throws DDlogException;
     static native void ddlog_transaction_commit(long hprog) throws DDlogException;
@@ -59,6 +60,8 @@ public class DDlogAPI {
     // Getters
     static native int ddlog_get_table_id(String table);
     static native String ddlog_get_table_name(int id);
+    static native int ddlog_get_index_id(String index);
+    static native String ddlog_get_index_name(int id);
     static native boolean ddlog_is_bool(long handle);
     static native boolean ddlog_get_bool(long handle);
     static native boolean ddlog_is_int(long handle);
@@ -113,6 +116,10 @@ public class DDlogAPI {
     // Callback to invoke for each record on `DDlogAPI.dumpTable()`.
     // The callback is invoked sequentially by the same DDlog worker thread.
     private BiConsumer<DDlogRecord, Long> dumpCallback;
+
+    // Callback to invoke for each record on `DDlogAPI.dumpIndex()`.
+    // The callback is invoked sequentially by the same DDlog worker thread.
+    private Consumer<DDlogRecord> dumpIndexCallback;
 
     // Stores pointer to `struct CallbackInfo` for each registered logging
     // callback.  This is needed so that we can deallocate the `CallbackInfo*`
@@ -197,8 +204,8 @@ public class DDlogAPI {
     /**
      * Get DDlog relation ID from its name.
      * @param table  relation name whose id is sought.
-     * @return -1 when the relation is not found, or the relation id,
-     *          a positive number otherwise.
+     * @return -1 when the relation is not found,
+     *          otherwise the relation id, a positive number
      *
      * See <code>ddlog.h: ddlog_get_table_id()</code>
      */
@@ -218,6 +225,27 @@ public class DDlogAPI {
      */
     public String getTableName(int id) {
         return ddlog_get_table_name(id);
+    }
+
+    /**
+     * Get DDlog index ID from its name.
+     * @param index  index name whose id is sought.
+     * @return -1 when the index is not found,
+     *          otherwise a positive number.
+     *
+     * See <code>ddlog.h: ddlog_get_index_id()</code>
+     */
+    public int getIndexId(String table) {
+        return ddlog_get_index_id(table);
+    }
+
+    /**
+     * Get DDlog index name from ID.
+     *
+     * See <code>ddlog.h: ddlog_get_index_name()</code>
+     */
+    public String getIndexName(int id) {
+        return ddlog_get_index_name(id);
     }
 
     /**
@@ -515,10 +543,15 @@ public class DDlogAPI {
     }
 
     /**
-     * Dump the data in the specified table.
+     * Dump the data in the specified *output* table.
      *
      * For this to work the DDlogAPI must have been created with a
      * storeData parameter set to true.
+     * @param table DDlog relation name
+     * @param callback  Callback invoked with each record inserted or deleted from the table.
+     *                  The second argument can be larger than 1 for a multiset relation.
+     * Note: this method is not thread-safe: once invoked it should not
+     * be invoked again until the previous invocation has returned.
      */
     public void dumpTable(String table, BiConsumer<DDlogRecord, Long> callback) throws DDlogException {
         this.checkHandle();
@@ -528,6 +561,31 @@ public class DDlogAPI {
         String onDump = callback == null ? null : "dumpCallback";
         this.dumpCallback = callback;
         this.dump_table(this.hprog, id, onDump);
+    }
+
+    /// Callback invoked from dumpIndex.
+    void dumpIndexCallback(long handle) {
+        if (this.dumpIndexCallback != null) {
+            DDlogRecord record = DDlogRecord.fromSharedHandle(handle);
+            this.dumpIndexCallback.accept(record);
+        }
+    }
+
+    /**
+     * Dump the data in the specified index.
+     * @param index     DDlog index name
+     * @param callback  Callback invoked with each record inserted or deleted from the index.
+     * Note: this method is not thread-safe: once invoked it should not
+     * be invoked again until the previous invocation has returned.
+     */
+    public void dumpIndex(String index, Consumer<DDlogRecord> callback) throws DDlogException {
+        this.checkHandle();
+        int id = this.getIndexId(index);
+        if (id == -1)
+            throw new RuntimeException("Unknown index " + index);
+        String onDump = callback == null ? null : "dumpIndexCallback";
+        this.dumpIndexCallback = callback;
+        this.dump_index(this.hprog, id, onDump);
     }
 
     /**

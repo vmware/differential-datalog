@@ -559,6 +559,25 @@ JNIEXPORT jstring JNICALL Java_ddlogapi_DDlogAPI_ddlog_1get_1table_1name(
     return result;
 }
 
+JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1get_1index_1id(
+    JNIEnv *env, jclass class, jstring index) {
+    const char* tbl = (*env)->GetStringUTFChars(env, index, NULL);
+    table_id id = ddlog_get_index_id(tbl);
+    (*env)->ReleaseStringUTFChars(env, index, tbl);
+    return (jint)id;
+}
+
+JNIEXPORT jstring JNICALL Java_ddlogapi_DDlogAPI_ddlog_1get_1index_1name(
+    JNIEnv *env, jclass class, jint id) {
+    const char* index = ddlog_get_index_name(id);
+    if (index == NULL) {
+        throwDDlogException(env, "Unknown index id");
+        return NULL;
+    };
+    jstring result = (*env)->NewStringUTF(env, index);
+    return result;
+}
+
 bool dump_callback(uintptr_t callbackInfo, const ddlog_record* rec, ssize_t weight) {
     struct CallbackInfo* cbi = (struct CallbackInfo*)callbackInfo;
     JNIEnv* env = cbi->env;
@@ -574,6 +593,25 @@ JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_dump_1table(
         return;
     cbinfo->env = env;  // the dump_callback will be called on the same thread
     if (ddlog_dump_table((ddlog_prog)progHandle, table, dump_callback, (uintptr_t)cbinfo) < 0) {
+        throwDDlogException(env, NULL);
+    }
+    free(cbinfo);
+}
+
+void dump_index_callback(uintptr_t callbackInfo, const ddlog_record* rec) {
+    struct CallbackInfo* cbi = (struct CallbackInfo*)callbackInfo;
+    JNIEnv* env = cbi->env;
+    assert(env);
+    (*env)->CallVoidMethod(env, cbi->obj, cbi->method, (jlong)rec);
+}
+
+JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_dump_1index(
+    JNIEnv *env, jobject obj, jlong progHandle, jint index, jstring callback) {
+    struct CallbackInfo* cbinfo = createCallback(env, obj, callback, "(J)V");
+    if (cbinfo == NULL)
+        return;
+    cbinfo->env = env;  // the dump_callback will be called on the same thread
+    if (ddlog_dump_index((ddlog_prog)progHandle, index, dump_index_callback, (uintptr_t)cbinfo) < 0) {
         throwDDlogException(env, NULL);
     }
     free(cbinfo);
