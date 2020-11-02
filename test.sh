@@ -76,6 +76,9 @@ java=("java0:Java API test 0"
       "java2:Java API test 2"
       "java3:Java API test 3"
       "java4:Java API test 4"
+#      "java5:Java API test 5"  # This test fails due to #372
+#      "java6:Java API test 6"  # This test coredumps
+      "java7:Java API test 7"
       "flatbuf0:Java Flatbuf API test 0"
       "flatbuf1:Java Flatbuf API test 1")
 
@@ -130,7 +133,7 @@ differential_datalog() {
 cmd_parser() {
     (cd "${THIS_DIR}/rust/template/cmd_parser" && cargo test)
 }
- 
+
 ovsdb() {
     (cd "${THIS_DIR}/rust/template/ovsdb" && cargo test)
 }
@@ -209,6 +212,18 @@ java3() {
 
 java4() {
     (cd "${THIS_DIR}/java/test4" && ./run.sh)
+}
+
+java5() {
+    (cd "${THIS_DIR}/java/test5" && ./run.sh)
+}
+
+java6() {
+    (cd "${THIS_DIR}/java/test6" && ./run.sh)
+}
+
+java7() {
+    (cd "${THIS_DIR}/java/test7" && ./run.sh)
 }
 
 flatbuf0() {

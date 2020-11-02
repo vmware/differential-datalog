@@ -7,7 +7,7 @@ in `java/test_flatbuf`.
 ## Prerequisites
 
 See the [README](https://github.com/vmware/differential-datalog#prerequisites)
-for instructions on how to install the Google FlatBuffers library required to 
+for instructions on how to install the Google FlatBuffers library required to
 compile DDlog Java bindings.
 
 ## Compile DDlog Java bindings
@@ -181,6 +181,7 @@ formatted in camel case instead of snake case, e.g.:
 - `applyUpdates` - apply updates to output tables
 - `transactionCommit` - commit the transaction
 - `dumpTable` - dump the content of an output relation
+- `dumpIndex` - dump the content of an index
 
 Most `DDlogAPI` methods throw an instance of `DDlogException`, containing an
 error message from DDlog.  In addition, methods that work with files, e.g.,
@@ -282,7 +283,7 @@ workflow:
     ```
 
 1. Go back to step 1 to perform new updates.  Note that this requires creating a
-   new builder instance for each new set of updates. 
+   new builder instance for each new set of updates.
 
 Additional classes are generated to facilitate the construction of more complex
 types.  For example, consider a relation that has a field whose type is a tuple:
