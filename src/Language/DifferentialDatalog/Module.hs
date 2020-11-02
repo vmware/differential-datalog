@@ -271,7 +271,7 @@ applyFlattenNames mod mmap a@Apply{..} = do
     (trans_name, Transformer{..}) <- flattenTransName mmap mod (pos a) applyTransformer
     check (moduleDefs mod) (length applyInputs == length transInputs) (pos a)
           $ "Transformer '" ++ transName ++ "' expects " ++ show (length transInputs) ++ " inputs"
-    inputs <- mapM (\(hot, i) -> case hot of 
+    inputs <- mapM (\(hot, i) -> case hot of
                                       HOTypeFunction{..} -> flattenFuncName' mmap mod (pos a) i (length hotArgs)
                                       HOTypeRelation{}   -> flattenRelName mmap mod (pos a) i)
                    $ zip (map hofType transInputs) applyInputs
