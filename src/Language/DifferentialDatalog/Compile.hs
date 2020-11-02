@@ -509,7 +509,8 @@ mkConstructorName local tname t c =
 -- 'specname' - will be used as Cargo package and library names
 --
 -- 'modules' - list of all DDlog modules used in the original program. This function
--- will generate a Rust module for each DDlog module and place it in the 'types' crate.
+-- will generate a Rust module for each DDlog module and partition these modules
+-- into Rust crates.
 --
 -- 'rs_code' - additional Rust code to be added to the generated modules.
 --
@@ -581,10 +582,9 @@ compile d_unoptimized specname modules rs_code dir crate_types = do
 
 -- | Compile Datalog program into Rust code.
 --
--- Returns Rust code for three crates:
+-- Returns Rust code for two crates:
 -- * 'types' crate containing DDlog type declarations, functions, and all imported
 --   Rust library code.
--- * 'value' crate that declares relations and value types.
 -- * 'main' crate that contains rule definitions in Rust and imports the other two.
 --
 compileLib :: (?cfg::Config) => DatalogProgram -> String -> [DatalogModule] -> M.Map ModuleName (Doc, Doc) -> (M.Map ModuleName Doc, Doc)
