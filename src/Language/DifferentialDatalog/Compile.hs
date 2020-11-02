@@ -510,14 +510,12 @@ mkConstructorName local tname t c =
 --
 -- 'rs_code' - additional Rust code to be added to the generated modules.
 --
--- 'toml_code' - code to be added to the generated 'Cargo.toml' file
---
 -- 'dir' - directory for the crate; will be created if does not exist
 --
 -- 'crate_types' - list of Cargo library crate types, e.g., [\"staticlib\"],
 --                  [\"cdylib\"], [\"staticlib\", \"cdylib\"]
-compile :: (?cfg :: Config) => DatalogProgram -> String -> [DatalogModule] -> M.Map ModuleName Doc -> Doc -> FilePath -> [String] -> IO ()
-compile d_unoptimized specname modules rs_code toml_code dir crate_types = do
+compile :: (?cfg :: Config) => DatalogProgram -> String -> [DatalogModule] -> M.Map ModuleName (Doc, Doc) -> FilePath -> [String] -> IO ()
+compile d_unoptimized specname modules rs_code dir crate_types = do
     -- Create dir if it does not exist.
     createDirectoryIfMissing True (dir </> rustProjectDir specname)
     -- dump dependency graph to file
@@ -542,6 +540,7 @@ compile d_unoptimized specname modules rs_code toml_code dir crate_types = do
             updateFile path' content)
          $ rustLibFiles specname
     -- Generate lib files if changed.
+    let toml_code = vcat $ map snd $ M.elems rs_code
     updateFile (dir </> rustProjectDir specname </> "types/Cargo.toml") (render $ typesCargo specname toml_code)
     mapM_ (\(mname, mtext) -> updateFile (dir </> rustProjectDir specname </> "types" </> moduleNameToPath mname) $ render mtext)
           $ M.toList types
@@ -585,7 +584,7 @@ compile d_unoptimized specname modules rs_code toml_code dir crate_types = do
 -- * 'value' crate that declares relations and value types.
 -- * 'main' crate that contains rule definitions in Rust and imports the other two.
 --
-compileLib :: (?cfg::Config) => DatalogProgram -> String -> [DatalogModule] -> M.Map ModuleName Doc -> (M.Map ModuleName Doc, Doc)
+compileLib :: (?cfg::Config) => DatalogProgram -> String -> [DatalogModule] -> M.Map ModuleName (Doc, Doc) -> (M.Map ModuleName Doc, Doc)
 compileLib d specname modules rs_code = (typeLib, mainLib)
     where
     modules' = addMissingModules modules
@@ -601,7 +600,7 @@ compileLib d specname modules rs_code = (typeLib, mainLib)
                                  in mtext $+$ vcat (map (\(ModuleName c) -> "pub mod" <+> pp (last c) <> ";") children))
                                typeLib0
     -- Add Rust code.
-    typeLibRs = foldl' (\libs (mname, rs) -> M.adjust ($+$ rs) mname libs) typeLibMods $ M.toList rs_code
+    typeLibRs = foldl' (\libs (mname, (rs, _)) -> M.adjust ($+$ rs) mname libs) typeLibMods $ M.toList rs_code
     -- Add typedefs
     typeLibTdefs = foldl' (\libs tdef -> M.adjust ($+$ mkTypedef d tdef) (nameScope tdef) libs) typeLibRs $ progTypedefs d
     -- Add functions
