@@ -4,7 +4,15 @@
 
 set -e
 
-stack install
+# When running in CI, the DDlog compiler should be preinstalled by the build stage.
+if [ -z "${IS_CI_RUN}" ]; then
+    if [ "x${PROFILE}" == "x1" ]; then
+        stack install --profile
+        export GHCRTS="-xc"
+    else
+        stack install
+    fi
+fi
 
 # Clone or refresh the repo.
 DATA_REPO_NAME="antrea-test-data"

@@ -56,7 +56,7 @@ else
     usage
 fi
 
-# When running in CI, the DDlog compiler should be prinstalled by the build stage.
+# When running in CI, the DDlog compiler should be preinstalled by the build stage.
 if [ -z "${IS_CI_RUN}" ]; then
     if [ "x${PROFILE}" == "x1" ]; then
         stack install --profile
