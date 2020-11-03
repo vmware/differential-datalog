@@ -11,7 +11,6 @@ import org.jooq.DSLContext;
 import org.jooq.Field;
 import org.jooq.Record;
 import org.jooq.Result;
-import org.jooq.SQLDialect;
 import org.jooq.Table;
 import org.jooq.impl.DSL;
 import org.jooq.tools.jdbc.MockDataProvider;
@@ -32,15 +31,16 @@ public class DDlogJooqProvider implements MockDataProvider {
     private static final String LONG_TYPE = "java.lang.Long";
 
     private final DDlogAPI dDlogAPI;
+    private final DSLContext dslContext;
     private final Map<String, List<Field<?>>> tables = new HashMap<>();
 
     public DDlogJooqProvider(final DDlogAPI dDlogAPI, final List<String> sqlStatements) {
         this.dDlogAPI = dDlogAPI;
-        final DSLContext using = DSL.using("jdbc:h2:mem:");
+        dslContext = DSL.using("jdbc:h2:mem:");
         for (final String sql : sqlStatements) {
-            using.execute(sql);
+            dslContext.execute(sql);
         }
-        for (final Table<?> table: using.meta().getTables()) {
+        for (final Table<?> table: dslContext.meta().getTables()) {
             if (table.getSchema().getName().equals("PUBLIC")) {
                 tables.put(table.getName(), Arrays.asList(table.fields()));
             }
@@ -49,10 +49,9 @@ public class DDlogJooqProvider implements MockDataProvider {
 
     @Override
     public MockResult[] execute(final MockExecuteContext ctx) throws SQLException {
-        DSLContext create = DSL.using(SQLDialect.H2);
-        MockResult[] mock = new MockResult[1];
+        final MockResult[] mock = new MockResult[1];
         // The execute context contains SQL string(s), bind values, and other meta-data
-        String sql = ctx.sql();
+        final String sql = ctx.sql();
 
         if (sql.toUpperCase().startsWith("SELECT")) {
             final String[] s = ctx.sql().toUpperCase().split(" ");
@@ -60,12 +59,11 @@ public class DDlogJooqProvider implements MockDataProvider {
                 throw new SQLException("Statement not supported: " + sql);
             }
             final String tableName = s[s.length - 1];
-
             final List<Field<?>> fields = tables.get(tableName);
-            Result<Record> result = create.newResult(fields);
+            final Result<Record> result = dslContext.newResult(fields);
             try {
                 dDlogAPI.dumpTable("R" + tableName.toLowerCase(), (record, l) -> {
-                    final Record jooqRecord = create.newRecord(fields);
+                    final Record jooqRecord = dslContext.newRecord(fields);
                     final Object[] returnValue = new Object[fields.size()];
                     for (int i = 0; i < fields.size(); i++) {
                         returnValue[i] = structToValue(fields.get(i), record.getStructField(i));
