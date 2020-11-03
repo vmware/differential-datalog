@@ -76,7 +76,7 @@ public class JooqProviderTest {
                           fetch.stream().mapToInt(r -> r.get(0, Integer.class)).toArray());
     }
 
-    public File writeProgramToFile(String programBody) throws IOException {
+    public static File writeProgramToFile(String programBody) throws IOException {
         File tmp = new File("/tmp/program.dl");
         BufferedWriter bw = new BufferedWriter(new FileWriter(tmp));
         bw.write(programBody);
