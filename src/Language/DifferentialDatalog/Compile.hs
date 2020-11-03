@@ -196,12 +196,12 @@ rustLibFiles specname =
         , (dir </> "differential_datalog/program/timestamp.rs"            , $(embedFile "rust/template/differential_datalog/program/timestamp.rs"))
         , (dir </> "differential_datalog/record.rs"                       , $(embedFile "rust/template/differential_datalog/record.rs"))
         , (dir </> "differential_datalog/replay.rs"                       , $(embedFile "rust/template/differential_datalog/replay.rs"))
-        , (dir </> "differential_datalog/test.rs"                         , $(embedFile "rust/template/differential_datalog/test.rs"))
-        , (dir </> "differential_datalog/test_value.rs"                   , $(embedFile "rust/template/differential_datalog/test_value.rs"))
         , (dir </> "differential_datalog/test_record.rs"                  , $(embedFile "rust/template/differential_datalog/test_record.rs"))
-        , (dir </> "differential_datalog/uint.rs"                         , $(embedFile "rust/template/differential_datalog/uint.rs"))
         , (dir </> "differential_datalog/valmap.rs"                       , $(embedFile "rust/template/differential_datalog/valmap.rs"))
         , (dir </> "differential_datalog/variable.rs"                     , $(embedFile "rust/template/differential_datalog/variable.rs"))
+        , (dir </> "differential_datalog_test/Cargo.toml"                 , $(embedFile "rust/template/differential_datalog_test/Cargo.toml"))
+        , (dir </> "differential_datalog_test/lib.rs"                     , $(embedFile "rust/template/differential_datalog_test/lib.rs"))
+        , (dir </> "differential_datalog_test/test_value.rs"              , $(embedFile "rust/template/differential_datalog_test/test_value.rs"))
         , (dir </> "cmd_parser/Cargo.toml"                                , $(embedFile "rust/template/cmd_parser/Cargo.toml"))
         , (dir </> "cmd_parser/lib.rs"                                    , $(embedFile "rust/template/cmd_parser/lib.rs"))
         , (dir </> "cmd_parser/parse.rs"                                  , $(embedFile "rust/template/cmd_parser/parse.rs"))
@@ -240,6 +240,9 @@ rustLibFiles specname =
         , (dir </> "types/ddlog_log.rs"                                   , $(embedFile "rust/template/types/ddlog_log.rs"))
         , (dir </> "types/closure.rs"                                     , $(embedFile "rust/template/types/closure.rs"))
         , (dir </> ".cargo/config.toml"                                   , $(embedFile "rust/template/.cargo/config.toml"))
+        , (dir </> "types/int.rs"                                         , $(embedFile "rust/template/types/int.rs"))
+        , (dir </> "types/uint.rs"                                        , $(embedFile "rust/template/types/uint.rs"))
+        , (dir </> "types/ddval_convert.rs"                               , $(embedFile "rust/template/types/ddval_convert.rs"))
         ]
     where dir = rustProjectDir specname
 
@@ -606,13 +609,8 @@ compileLib d specname modules rs_code = (typeLib, mainLib)
     -- Add functions
     typeLibExternFuncs = let ?statics = statics in
                          foldl' (\libs func -> M.adjust ($+$ mkFunc d func) (nameScope func) libs) typeLibTdefs fextern
-    typeLibAllFuncs = let ?statics = statics in
-                       foldl' (\libs func -> M.adjust ($+$ mkFunc d func) (nameScope func) libs) typeLibExternFuncs fdef
-    -- Add 'DDValConvert' impls to 'types' crate.
-    -- Since multiple DDlog types can map to the same Rust type, we convert
-    -- types to Rust and fold over the resulting set.
-    typeLib = S.foldl (\libs _ -> M.adjust ($+$ "") mainModuleName libs) typeLibAllFuncs
-                      $ S.map (render . mkType d True) $ S.filter (typeNeedsDDValConvert d) $ cTypes cstate
+    typeLib = let ?statics = statics in
+              foldl' (\libs func -> M.adjust ($+$ mkFunc d func) (nameScope func) libs) typeLibExternFuncs fdef
     mainLib = mainHeader specname           $+$
               mkUpdateDeserializer d        $+$
               mkDDValueFromRecord d         $+$ -- Function to convert cmd_parser::Record to Value
@@ -2660,9 +2658,9 @@ mkExpr' _ _ EDouble{..} = ("::ordered_float::OrderedFloat::<f64>" <> (parens $ p
 mkExpr' _ _ EFloat{..} = ("::ordered_float::OrderedFloat::<f32>" <> (parens $ pp exprFVal), EVal)
 mkExpr' _ _ EString{..} = ("String::from(r###\"" <> pp exprString <> "\"###)", EVal)
 mkExpr' d ctx EBit{..} | exprWidth <= 128 = (parens $ pp exprIVal <+> "as" <+> mkType d (inTypesModule ctx) (tBit exprWidth), EVal)
-                       | otherwise        = ("::differential_datalog::uint::Uint::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
+                       | otherwise        = ("uint::Uint::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
 mkExpr' d ctx ESigned{..} | exprWidth <= 128 = (parens $ pp exprIVal <+> "as" <+> mkType d (inTypesModule ctx) (tSigned exprWidth), EVal)
-                          | otherwise        = ("::differential_datalog::int::Int::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
+                          | otherwise        = ("int::Int::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
 
 -- Struct fields must be values
 mkExpr' d ctx EStruct{..} | ctxInSetL ctx
@@ -2850,9 +2848,9 @@ mkExpr' d ctx EAs{..} | bothIntegers && narrow_from && narrow_to && width_cmp /=
                       = (parens $ tto <> "::from_" <> nameLocal (render tfrom) <> "(" <> val exprExpr <> ")", EVal)
 
                       -- convert long integers to FP
-                      | isFloat d to_type && (tfrom == "::differential_datalog::int::Int" || tfrom == "::differential_datalog::uint::Uint")
+                      | isFloat d to_type && (tfrom == "int::Int" || tfrom == "uint::Uint")
                       = (parens $ "(" <> val exprExpr <> ").to_float()", EVal)
-                      | isDouble d to_type && (tfrom == "::differential_datalog::int::Int" || tfrom == "::differential_datalog::uint::Uint")
+                      | isDouble d to_type && (tfrom == "int::Int" || tfrom == "uint::Uint")
                       = (parens $ "(" <> val exprExpr <> ").to_double()", EVal)
                       -- convert integer to float
                       | isFloat d to_type && isInteger d from_type
@@ -2908,14 +2906,14 @@ mkType d local x = mkType' d (if local then "crate" else "::types") $ typ x
 
 mkType' :: DatalogProgram -> String -> Type -> Doc
 mkType' _ _       TBool{}                    = "bool"
-mkType' _ _       TInt{}                     = "::differential_datalog::int::Int"
+mkType' _ _       TInt{}                     = "int::Int"
 mkType' _ _       TString{}                  = "String"
 mkType' _ _       TBit{..} | typeWidth <= 8  = "u8"
                            | typeWidth <= 16 = "u16"
                            | typeWidth <= 32 = "u32"
                            | typeWidth <= 64 = "u64"
                            | typeWidth <= 128= "u128"
-                           | otherwise       = "::differential_datalog::uint::Uint"
+                           | otherwise       = "uint::Uint"
 mkType' _ _       t@TSigned{..} | typeWidth == 8  = "i8"
                                 | typeWidth == 16 = "i16"
                                 | typeWidth == 32 = "i32"
@@ -3016,7 +3014,7 @@ castBV d e w1 w2 | t1 == t2
                  | w1 <= 128 && w2 <= 128
                  = parens $ e <+> "as" <+> t2
                  | w2 > 128
-                 = "::differential_datalog::uint::Uint::from_" <> nameLocal (render t1) <> "(" <> e <> ")"
+                 = "uint::Uint::from_" <> nameLocal (render t1) <> "(" <> e <> ")"
                  | otherwise
                  = e <> "to_" <> t2 <> "().unwrap()"
     where
@@ -3039,7 +3037,7 @@ mkSlice d (e, w) h l = castBV d res w (h - l + 1)
     mask = mkBVMask (h - l + 1)
 
 mkBVMask :: Int -> Doc
-mkBVMask w | w > 128   = "::differential_datalog::uint::Uint::parse_bytes(b\"" <> m <> "\", 16)"
+mkBVMask w | w > 128   = "uint::Uint::parse_bytes(b\"" <> m <> "\", 16)"
            | otherwise = "0x" <> m
     where
     m = pp $ showHex (((1::Integer) `shiftL` w) - 1) ""
@@ -3060,11 +3058,11 @@ mkTruncate v t =
 
 mkInt :: Integer -> Doc
 mkInt v | v <= (toInteger (maxBound::Word128)) && v >= (toInteger (minBound::Word128))
-        = "::differential_datalog::int::Int::from_u128(" <> pp v <> ")"
+        = "int::Int::from_u128(" <> pp v <> ")"
         | v <= (toInteger (maxBound::Int128))  && v >= (toInteger (minBound::Int128))
-        = "::differential_datalog::int::Int::from_i128(" <> pp v <> ")"
+        = "int::Int::from_i128(" <> pp v <> ")"
         | otherwise
-        = "::differential_datalog::int::Int::parse_bytes(b\"" <> pp v <> "\", 10)"
+        = "int::Int::parse_bytes(b\"" <> pp v <> "\", 10)"
 
 -- Compute the atom or tuple of variables after the prefix of length n.
 -- If this is the last term, then it is an expression of the LHS variables for each head

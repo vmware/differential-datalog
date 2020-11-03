@@ -58,6 +58,10 @@ mod flatbuf_generated;
 #[cfg(feature = "flatbuf")]
 pub mod flatbuf;
 
+pub mod ddval_convert;
+pub mod int;
+pub mod uint;
+
 pub trait Val:
     Default
     + Eq

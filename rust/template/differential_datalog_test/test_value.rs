@@ -6,10 +6,11 @@ use std::fmt::Debug;
 use std::fmt::Display;
 use std::fmt::Formatter;
 
-use crate::record::IntoRecord;
-use crate::record::Mutator;
-use crate::record::Record;
-use crate::uint;
+use differential_datalog::record::IntoRecord;
+use differential_datalog::record::Mutator;
+use differential_datalog::record::Record;
+use types::decl_ddval_convert;
+use types::uint;
 
 /// `Value` type that implements `trait DDValConvert` and is thus useful for testing Rust modules that
 /// interact with the DDlog API, but do not define their own value type.
@@ -81,7 +82,7 @@ impl Display for String {
 }
 impl IntoRecord for String {
     fn into_record(self) -> Record {
-        unimplemented!("String::IntoRecord");
+        Record::String(self.0)
     }
 }
 impl Mutator<String> for Record {

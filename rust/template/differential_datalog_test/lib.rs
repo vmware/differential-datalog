@@ -1,15 +1,24 @@
+//! Tests for the `differential_datalog` crate.
+//!
+//! These tests live in a separate crate, as they depend on the `types` crate that defines the
+//! `DDValConvert` trait.  Since `types` itself depends on `differential_datalog`, tests had to be
+//! factored in a separate crate.
+
 #![allow(
     non_snake_case,
     non_camel_case_types,
     non_upper_case_globals,
     dead_code,
     clippy::blocks_in_if_conditions,
+    clippy::type_complexity,
     clippy::clone_on_copy,
     clippy::eq_op,
     clippy::cmp_owned,
     clippy::nonminimal_bool,
     clippy::toplevel_ref_arg,
-    clippy::trivially_copy_pass_by_ref
+    clippy::trivially_copy_pass_by_ref,
+    // blocks_in_if_conditions is unknown to older version of clippy.
+    clippy::unknown_clippy_lints
 )]
 
 use std::collections::btree_map::{BTreeMap, Entry};
@@ -25,9 +34,13 @@ use timely::worker::Worker;
 use differential_dataflow::operators::Join;
 use differential_dataflow::Collection;
 
-use crate::ddval::*;
-use crate::program::*;
-use crate::test_value::*;
+use differential_datalog::ddval::*;
+use differential_datalog::program::*;
+
+use types::ddval_convert::DDValConvert;
+
+pub mod test_value;
+use test_value::*;
 
 const TEST_SIZE: u64 = 1000;
 

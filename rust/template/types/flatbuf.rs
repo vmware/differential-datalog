@@ -1,10 +1,10 @@
 //! Serialize DDlog types to/from FlatBuffers.
 
-use super::*;
+use crate::int;
+use crate::uint;
+use crate::*;
 use ::ordered_float::OrderedFloat;
-use differential_datalog::int::Int;
 use differential_datalog::program::Response;
-use differential_datalog::uint::Uint;
 use flatbuffers as fbrt;
 
 /// Trait for types that can be de-serialized from FlatBuffer-embedded objects.
@@ -427,16 +427,16 @@ impl<'b> ToFlatBufferVectorElement<'b> for String {
     }
 }
 
-impl<'a> FromFlatBuffer<fb::__BigInt<'a>> for Int {
-    fn from_flatbuf(fb: fb::__BigInt<'a>) -> Response<Int> {
+impl<'a> FromFlatBuffer<fb::__BigInt<'a>> for int::Int {
+    fn from_flatbuf(fb: fb::__BigInt<'a>) -> Response<int::Int> {
         let bytes = fb
             .bytes()
             .ok_or_else(|| format!("Int::from_flatbuf: invalid buffer: failed to extract bytes"))?;
-        Ok(Int::from_bytes_be(fb.sign(), bytes))
+        Ok(int::Int::from_bytes_be(fb.sign(), bytes))
     }
 }
 
-impl<'b> ToFlatBuffer<'b> for Int {
+impl<'b> ToFlatBuffer<'b> for int::Int {
     type Target = fbrt::WIPOffset<fb::__BigInt<'b>>;
 
     fn to_flatbuf(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {
@@ -452,7 +452,7 @@ impl<'b> ToFlatBuffer<'b> for Int {
     }
 }
 
-impl<'b> ToFlatBufferTable<'b> for Int {
+impl<'b> ToFlatBufferTable<'b> for int::Int {
     type Target = fb::__BigInt<'b>;
     fn to_flatbuf_table(
         &self,
@@ -462,24 +462,24 @@ impl<'b> ToFlatBufferTable<'b> for Int {
     }
 }
 
-impl<'b> ToFlatBufferVectorElement<'b> for Int {
-    type Target = <Int as ToFlatBuffer<'b>>::Target;
+impl<'b> ToFlatBufferVectorElement<'b> for int::Int {
+    type Target = <int::Int as ToFlatBuffer<'b>>::Target;
 
     fn to_flatbuf_vector_element(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {
         self.to_flatbuf(fbb)
     }
 }
 
-impl<'a> FromFlatBuffer<fb::__BigUint<'a>> for Uint {
-    fn from_flatbuf(fb: fb::__BigUint<'a>) -> Response<Uint> {
+impl<'a> FromFlatBuffer<fb::__BigUint<'a>> for uint::Uint {
+    fn from_flatbuf(fb: fb::__BigUint<'a>) -> Response<uint::Uint> {
         let bytes = fb.bytes().ok_or_else(|| {
-            format!("Uint::from_flatbuf: invalid buffer: failed to extract bytes")
+            format!("uint::Uint::from_flatbuf: invalid buffer: failed to extract bytes")
         })?;
-        Ok(Uint::from_bytes_be(bytes))
+        Ok(uint::Uint::from_bytes_be(bytes))
     }
 }
 
-impl<'b> ToFlatBuffer<'b> for Uint {
+impl<'b> ToFlatBuffer<'b> for uint::Uint {
     type Target = fbrt::WIPOffset<fb::__BigUint<'b>>;
 
     fn to_flatbuf(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {
@@ -488,7 +488,7 @@ impl<'b> ToFlatBuffer<'b> for Uint {
     }
 }
 
-impl<'b> ToFlatBufferTable<'b> for Uint {
+impl<'b> ToFlatBufferTable<'b> for uint::Uint {
     type Target = fb::__BigUint<'b>;
     fn to_flatbuf_table(
         &self,
@@ -498,8 +498,8 @@ impl<'b> ToFlatBufferTable<'b> for Uint {
     }
 }
 
-impl<'b> ToFlatBufferVectorElement<'b> for Uint {
-    type Target = <Uint as ToFlatBuffer<'b>>::Target;
+impl<'b> ToFlatBufferVectorElement<'b> for uint::Uint {
+    type Target = <uint::Uint as ToFlatBuffer<'b>>::Target;
 
     fn to_flatbuf_vector_element(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {
         self.to_flatbuf(fbb)
