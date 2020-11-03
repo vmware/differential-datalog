@@ -48,16 +48,16 @@ public class JooqProviderTest {
 
         final DDlogAPI dDlogAPI = new DDlogAPI(1, null, true);
         final int numInserts = 5;
+        dDlogAPI.transactionStart();
         for (int i = 0; i < numInserts; i++) {
             final DDlogRecord rec = new DDlogRecord(i);
             final DDlogRecord cap = new DDlogRecord(20);
             final DDlogRecord struct = DDlogRecord.makeStruct("Thosts", rec, cap);
             final int id = dDlogAPI.getTableId("Rhosts");
             final DDlogRecCommand command = new DDlogRecCommand(DDlogCommand.Kind.Insert, id, struct);
-            dDlogAPI.transactionStart();
             dDlogAPI.applyUpdates(new DDlogRecCommand[]{command});
-            dDlogAPI.transactionCommit();
         }
+        dDlogAPI.transactionCommit();
 
         final List<String> ddl = new ArrayList<>();
         ddl.add(s1);
