@@ -54,11 +54,7 @@ public class DDlogJooqProvider implements MockDataProvider {
         // The execute context contains SQL string(s), bind values, and other meta-data
         String sql = ctx.sql();
 
-        // Exceptions are propagated through the JDBC and jOOQ APIs
-        if (sql.toUpperCase().startsWith("DROP")) {
-            throw new SQLException("Statement not supported: " + sql);
-        }
-        else if (sql.toUpperCase().startsWith("SELECT")) {
+        if (sql.toUpperCase().startsWith("SELECT")) {
             final String[] s = ctx.sql().toUpperCase().split(" ");
             if (!s[s.length - 2].equals("FROM")) {
                 throw new SQLException("Statement not supported: " + sql);
@@ -81,6 +77,9 @@ public class DDlogJooqProvider implements MockDataProvider {
                 e.printStackTrace();
             }
             mock[0] = new MockResult(1, result);
+        } else {
+            // Exceptions are propagated through the JDBC and jOOQ APIs
+            throw new SQLException("Statement not supported: " + sql);
         }
         return mock;
     }
