@@ -1,0 +1,18 @@
+[package]
+name = "differential_datalog_test"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+differential-dataflow = "0.11.0"
+abomonation = "0.7"
+fnv = "1.0.2"
+timely = "0.11"
+serde = { version = "1.0", features = ["derive"] }
+erased-serde = "0.3"
+differential_datalog = { path = "../differential_datalog" }
+types = { path = "../types" }
+
+[lib]
+name = "differential_datalog_test"
+path = "lib.rs"

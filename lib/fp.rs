@@ -1,5 +1,5 @@
-use differential_datalog::int::*;
-use differential_datalog::uint::*;
+use crate::int::*;
+use crate::uint::*;
 use num::bigint::BigInt;
 use num_traits::cast::FromPrimitive;
 use ordered_float::OrderedFloat;

@@ -37,14 +37,12 @@ use timely::dataflow::scopes;
 use timely::worker;
 
 use differential_datalog::ddval::*;
-use differential_datalog::int::*;
 use differential_datalog::program::*;
 use differential_datalog::record;
 use differential_datalog::record::FromRecord;
 use differential_datalog::record::IntoRecord;
 use differential_datalog::record::RelIdentifier;
 use differential_datalog::record::UpdCmd;
-use differential_datalog::uint::*;
 use differential_datalog::DDlogConvert;
 use num_traits::cast::FromPrimitive;
 use num_traits::identities::One;
@@ -58,8 +56,11 @@ pub mod update_handler;
 
 use crate::api::updcmd2upd;
 use ::types::closure;
+use ::types::ddval_convert::DDValConvert;
+use ::types::int;
 use ::types::string_append;
 use ::types::string_append_str;
+use ::types::uint;
 
 use serde::ser::SerializeTuple;
 use serde::Deserialize;

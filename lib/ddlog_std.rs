@@ -3,7 +3,6 @@ use differential_datalog::ddval::DDValue;
 use differential_datalog::decl_record_mutator_struct;
 use differential_datalog::decl_struct_from_record;
 use differential_datalog::decl_struct_into_record;
-use differential_datalog::int;
 use differential_datalog::program::Weight;
 use differential_datalog::record::arg_extract;
 use differential_datalog::record::Record;
@@ -259,7 +258,7 @@ pub fn s64_pow32(base: &i64, exp: &u32) -> i64 {
 pub fn s128_pow32(base: &i128, exp: &u32) -> i128 {
     base.wrapping_pow(*exp)
 }
-pub fn bigint_pow32(base: &int::Int, exp: &u32) -> int::Int {
+pub fn bigint_pow32(base: &crate::int::Int, exp: &u32) -> crate::int::Int {
     num::pow::pow(base.clone(), *exp as usize)
 }
 

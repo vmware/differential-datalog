@@ -21,7 +21,6 @@ csv = "1.1"
 num = { version = "0.3", features = ["serde"] }
 sequence_trie = "0.3"
 serde = { version = "1.0", features = ["derive"] }
-typetag = "0.1"
 erased-serde = "0.3"
 
 [dev-dependencies]

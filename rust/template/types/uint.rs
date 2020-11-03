@@ -1,8 +1,9 @@
 #![allow(non_snake_case)]
 
-use super::int;
-use super::record::{FromRecord, IntoRecord, Mutator, Record};
+use crate::decl_ddval_convert;
+use crate::int;
 use abomonation::Abomonation;
+use differential_datalog::record::{FromRecord, IntoRecord, Mutator, Record};
 use num::bigint::ToBigInt;
 use num::bigint::{BigInt, BigUint};
 use num::ToPrimitive;

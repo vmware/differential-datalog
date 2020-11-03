@@ -87,13 +87,13 @@ mod tests {
 
     use tempfile::NamedTempFile;
 
-    use differential_datalog::ddval::DDValConvert;
     use differential_datalog::program::IdxId;
     use differential_datalog::program::RelId;
     use differential_datalog::record::Record;
     use differential_datalog::record::RelIdentifier;
     use differential_datalog::record::UpdCmd;
-    use differential_datalog::test_value::*;
+    use differential_datalog_test::test_value::*;
+    use types::ddval_convert::DDValConvert;
 
     #[derive(Debug)]
     struct DummyConverter;
@@ -157,12 +157,12 @@ mod tests {
         let expected = r#"start;
 commit;
 start;
-insert test_rel[String("5")],
-insert test_rel[String("4")],
-insert test_rel[String("9")],
-insert test_rel[String("1")],
-insert test_rel[String("2")],
-insert test_rel[String("3")];
+insert test_rel["5"],
+insert test_rel["4"],
+insert test_rel["9"],
+insert test_rel["1"],
+insert test_rel["2"],
+insert test_rel["3"];
 commit;
 "#;
         assert_eq!(content, expected);

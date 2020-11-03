@@ -20,9 +20,6 @@ use differential_datalog::DDlog; // Trait that must be implemented by an instanc
 use differential_datalog::DeltaMap; // Type that represents a set of changes to DDlog relations.
                                     // Returned by `DDlog::transaction_commit_dump_changes()`.
 use differential_datalog::ddval::DDValue; // Generic type that wraps all DDlog value.
-use differential_datalog::ddval::DDValConvert; // Trait to convert Rust types to/from DDValue.
-                                               // All types in the `value::Value` module (see below)
-                                               // implement this trait.
 use differential_datalog::program::RelId; // Numeric relations id.
 use differential_datalog::program::Update; // Type-safe representation of a DDlog command (insert/delete_val/delete_key/...)
 
@@ -34,6 +31,9 @@ use differential_datalog::record::UpdCmd; // Dynamically typed representation of
 // The auto-generated `types` crate contains Rust types that correspond to user-defined DDlog
 // types, one for each typedef and each relation in the DDlog program.
 use types::*;
+use types::ddval_convert::DDValConvert; // Trait to convert Rust types to/from DDValue.
+                                        // All types in the `value::Value` module (see below)
+                                        // implement this trait.
 
 fn main() -> Result<(), String> {
 
