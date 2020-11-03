@@ -64,7 +64,7 @@ public class DDlogJooqProvider implements MockDataProvider {
 
     private MockResult executeSelectStar(final String sql) throws SQLException {
         final String[] s = sql.toUpperCase().split(" ");
-        if (!(s[1].equals("*") && s[2].equals("FROM"))) {
+        if (!(s.length == 4 && s[1].equals("*") && s[2].equals("FROM"))) {
             throw new SQLException("Statement not supported: " + sql);
         }
         final String tableName = s[3];
