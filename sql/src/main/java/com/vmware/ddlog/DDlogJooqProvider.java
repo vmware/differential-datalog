@@ -54,27 +54,7 @@ public class DDlogJooqProvider implements MockDataProvider {
         final String sql = ctx.sql();
 
         if (sql.toUpperCase().startsWith("SELECT")) {
-            final String[] s = ctx.sql().toUpperCase().split(" ");
-            if (!s[s.length - 2].equals("FROM")) {
-                throw new SQLException("Statement not supported: " + sql);
-            }
-            final String tableName = s[s.length - 1];
-            final List<Field<?>> fields = tables.get(tableName);
-            final Result<Record> result = dslContext.newResult(fields);
-            try {
-                dDlogAPI.dumpTable("R" + tableName.toLowerCase(), (record, l) -> {
-                    final Record jooqRecord = dslContext.newRecord(fields);
-                    final Object[] returnValue = new Object[fields.size()];
-                    for (int i = 0; i < fields.size(); i++) {
-                        returnValue[i] = structToValue(fields.get(i), record.getStructField(i));
-                    }
-                    jooqRecord.fromArray(returnValue);
-                    result.add(jooqRecord);
-                });
-            } catch (final DDlogException e) {
-                e.printStackTrace();
-            }
-            mock[0] = new MockResult(1, result);
+            mock[0] = executeSelectStar(sql);
         } else {
             // Exceptions are propagated through the JDBC and jOOQ APIs
             throw new SQLException("Statement not supported: " + sql);
@@ -82,10 +62,37 @@ public class DDlogJooqProvider implements MockDataProvider {
         return mock;
     }
 
+    private MockResult executeSelectStar(final String sql) throws SQLException {
+        final String[] s = sql.toUpperCase().split(" ");
+        if (!(s[1].equals("*") && s[2].equals("FROM"))) {
+            throw new SQLException("Statement not supported: " + sql);
+        }
+        final String tableName = s[3];
+        final List<Field<?>> fields = tables.get(tableName);
+        if (fields == null) {
+            throw new SQLException("Unknown table: " + tableName);
+        }
+        final Result<Record> result = dslContext.newResult(fields);
+        try {
+            dDlogAPI.dumpTable("R" + tableName.toLowerCase(), (record, l) -> {
+                final Record jooqRecord = dslContext.newRecord(fields);
+                final Object[] returnValue = new Object[fields.size()];
+                for (int i = 0; i < fields.size(); i++) {
+                    returnValue[i] = structToValue(fields.get(i), record.getStructField(i));
+                }
+                jooqRecord.fromArray(returnValue);
+                result.add(jooqRecord);
+            });
+        } catch (final DDlogException e) {
+            throw new SQLException(e);
+        }
+        return new MockResult(1, result);
+    }
+
     @Nullable
     private Object structToValue(final Field<?> field, final DDlogRecord record) {
         final Class<?> cls = field.getType();
-        if (record.isStruct() && record.getStructName().equals("std.None")) {
+        if (record.isStruct() && record.getStructName().equals("ddlog_std::None")) {
             return null;
         }
         if (record.isStruct() && record.getStructName().equals("ddlog_std::Some")) {
