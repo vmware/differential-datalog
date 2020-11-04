@@ -77,6 +77,7 @@ data Statement = ForStatement    { statPos :: Pos
                                  , assignExpr :: Expr
                                  , varStatement :: Statement }
                | InsertStatement { statPos :: Pos
+                                 , statModule :: ModuleName
                                  , insertAtom :: Atom }
                | BlockStatement  { statPos :: Pos
                                  , seqList :: [Statement] }
@@ -91,8 +92,8 @@ instance Eq Statement where
           e1 == e2 && l1 == l2
     (==) (AssignStatement _ e1 s1) (AssignStatement _ e2 s2) =
           e1 == e2 && s1 == s2
-    (==) (InsertStatement _ a1) (InsertStatement _ a2) =
-          a1 == a2
+    (==) (InsertStatement _ m1 a1) (InsertStatement _ m2 a2) =
+          (m1, a1) == (m2, a2)
     (==) (BlockStatement _ l1) (BlockStatement _ l2) =
           l1 == l2
     (==) (EmptyStatement _) (EmptyStatement _) = True
@@ -107,7 +108,7 @@ instance PP Statement where
                                 (nest' $ vcat $ (punctuate "," $ map (\(e',s) -> pp e' <+> "->" <+> pp s) l))
                                 $$ "}"
     pp (AssignStatement _ e s) = pp e <+> "in" $$ ((nest' . pp) s)
-    pp (InsertStatement _ a) =  pp a
+    pp (InsertStatement _ _ a) =  pp a
     pp (BlockStatement _ l) =  "{" $+$
                                 (nest' $ vcat $ (punctuate ";" $ map pp l))
                                 $$ "}"
@@ -164,5 +165,5 @@ convertStatement (BlockStatement _ l) =
     concat rulesList
 convertStatement (EmptyStatement _) =
     []
-convertStatement (InsertStatement p a) =
-    [Rule p [a] []]
+convertStatement (InsertStatement p m a) =
+    [Rule p m [a] []]

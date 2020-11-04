@@ -74,22 +74,22 @@ pub fn regex(regex: &String) -> Regex {
                         Regex::new(r"a^").unwrap())
 }
 
-pub fn regex_checked(regex: &String) -> crate::ddlog_std::Result<Regex, String> {
-    crate::ddlog_std::res2std(Regex::new(regex.as_str()))
+pub fn regex_checked(regex: &String) -> ddlog_std::Result<Regex, String> {
+    ddlog_std::res2std(Regex::new(regex.as_str()))
 }
 
 pub fn regex_match(regex: &Regex, s: &String) -> bool {
     regex.is_match(&s.as_str())
 }
 
-pub fn regex_first_match(regex: &Regex, s: &String) -> crate::ddlog_std::Option<String> {
-    crate::ddlog_std::Option::from(regex.find(&s.as_str()).map(|m| m.as_str().to_string()))
+pub fn regex_first_match(regex: &Regex, s: &String) -> ddlog_std::Option<String> {
+    ddlog_std::Option::from(regex.find(&s.as_str()).map(|m| m.as_str().to_string()))
 }
 
-pub fn regex_all_matches(regex: &Regex, s: &String) -> crate::ddlog_std::Vec<String> {
+pub fn regex_all_matches(regex: &Regex, s: &String) -> ddlog_std::Vec<String> {
     let v: Vec<_> = regex
         .find_iter(&s.as_str())
         .map(|m| m.as_str().to_string())
         .collect();
-    crate::ddlog_std::Vec::from(v)
+    ddlog_std::Vec::from(v)
 }

@@ -64,6 +64,7 @@ import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Syntax
 import {-# SOURCE #-} Language.DifferentialDatalog.Expr
+import {-# SOURCE #-} Language.DifferentialDatalog.Module
 import {-# SOURCE #-} Language.DifferentialDatalog.Rule
 import {-# SOURCE #-} Language.DifferentialDatalog.Type
 
@@ -292,14 +293,16 @@ progOutputInternalRelations d =
 progMirrorInputRelations :: DatalogProgram -> String -> DatalogProgram
 progMirrorInputRelations d prefix =
   let
+    output_relname rel = scoped (nameScope rel) (prefix ++ nameLocalStr rel)
     inputRels = M.toList $ M.filter (\r -> relRole r == RelInput) $ progRelations d
-    relCopies = map (\(n,r) -> (prefix ++ n, r { relRole = RelOutput,
-                                                 relName = prefix ++ relName r,
+    relCopies = map (\(n,r) -> (output_relname n, r { relRole = RelOutput,
+                                                 relName = output_relname (relName r),
                                                  relPrimaryKey = Nothing
                                                })) $ inputRels
     makeRule relName relation = Rule { rulePos = relPos relation,
+                                       ruleModule = nameScope relName,
                                        ruleLHS = [Atom { atomPos = relPos relation,
-                                                         atomRelation = prefix ++ relName,
+                                                         atomRelation = output_relname relName,
                                                          atomVal = eVar "x"
                                                        }],
                                        ruleRHS = [RHSLiteral { rhsPolarity = True,

@@ -1,6 +1,6 @@
-use crate::ddlog_bigint::*;
+use ddlog_bigint::*;
 use num::bigint::BigInt;
-use num_traits::cast::FromPrimitive;
+use num::traits::FromPrimitive;
 use ordered_float::OrderedFloat;
 
 pub fn floor_f(f: &OrderedFloat<f32>) -> OrderedFloat<f32> {
@@ -317,41 +317,41 @@ pub fn nan_d() -> OrderedFloat<f64> {
     OrderedFloat::<f64>(::std::f64::NAN)
 }
 
-pub fn int_from_f(v: &OrderedFloat<f32>) -> crate::ddlog_std::Option<Int> {
+pub fn int_from_f(v: &OrderedFloat<f32>) -> ddlog_std::Option<Int> {
     match (BigInt::from_f32(**v)) {
-        None => crate::ddlog_std::Option::None,
-        Some(x) => crate::ddlog_std::Option::Some {
+        None => ddlog_std::Option::None,
+        Some(x) => ddlog_std::Option::Some {
             x: Int::from_bigint(x),
         },
     }
 }
 
-pub fn int_from_d(v: &OrderedFloat<f64>) -> crate::ddlog_std::Option<Int> {
+pub fn int_from_d(v: &OrderedFloat<f64>) -> ddlog_std::Option<Int> {
     match (BigInt::from_f64(**v)) {
-        None => crate::ddlog_std::Option::None,
-        Some(x) => crate::ddlog_std::Option::Some {
+        None => ddlog_std::Option::None,
+        Some(x) => ddlog_std::Option::Some {
             x: Int::from_bigint(x),
         },
     }
 }
 
-pub fn parse_f(s: &String) -> crate::ddlog_std::Result<OrderedFloat<f32>, String> {
+pub fn parse_f(s: &String) -> ddlog_std::Result<OrderedFloat<f32>, String> {
     match (s.parse::<f32>()) {
-        Ok(res) => crate::ddlog_std::Result::Ok {
+        Ok(res) => ddlog_std::Result::Ok {
             res: OrderedFloat::<f32>(res),
         },
-        Err(err) => crate::ddlog_std::Result::Err {
+        Err(err) => ddlog_std::Result::Err {
             err: format!("{}", err),
         },
     }
 }
 
-pub fn parse_d(s: &String) -> crate::ddlog_std::Result<OrderedFloat<f64>, String> {
+pub fn parse_d(s: &String) -> ddlog_std::Result<OrderedFloat<f64>, String> {
     match (s.parse::<f64>()) {
-        Ok(res) => crate::ddlog_std::Result::Ok {
+        Ok(res) => ddlog_std::Result::Ok {
             res: OrderedFloat::<f64>(res),
         },
-        Err(err) => crate::ddlog_std::Result::Err {
+        Err(err) => ddlog_std::Result::Err {
             err: format!("{}", err),
         },
     }

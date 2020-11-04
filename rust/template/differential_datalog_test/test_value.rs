@@ -6,11 +6,10 @@ use std::fmt::Debug;
 use std::fmt::Display;
 use std::fmt::Formatter;
 
+use datalog_example_ddlog::ddlog_bigint;
 use differential_datalog::record::IntoRecord;
 use differential_datalog::record::Mutator;
 use differential_datalog::record::Record;
-use types::ddlog_bigint;
-use types::decl_ddval_convert;
 
 /// `Value` type that implements `trait DDValConvert` and is thus useful for testing Rust modules that
 /// interact with the DDlog API, but do not define their own value type.

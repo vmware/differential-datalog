@@ -26,7 +26,7 @@ Module     : Module
 Description: DDlog's module system implemented as syntactic sugar over core syntax.
 -}
 
-{-# LANGUAGE RecordWildCards, FlexibleContexts, TupleSections, LambdaCase, OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards, FlexibleContexts, TupleSections, LambdaCase, OverloadedStrings, ImplicitParams #-}
 
 module Language.DifferentialDatalog.Module(
     mOD_STD,
@@ -40,7 +40,8 @@ module Language.DifferentialDatalog.Module(
     nameLocal,
     nameLocalStr,
     scoped,
-    parseDatalogProgram) where
+    parseDatalogProgram,
+    stdLibs) where
 
 import Prelude hiding((<>), mod, readFile, writeFile)
 import Control.Monad.State.Lazy
@@ -146,6 +147,7 @@ parseDatalogProgram roots import_std fdata fname = do
                    then prog { progImports = stdImports ++ progImports prog }
                    else prog
     let main_mod = DatalogModule (ModuleName []) fname prog'
+    let ?specname = takeBaseName fname
     imports <- evalStateT (parseImports roots' main_mod) []
     let all_modules = main_mod : imports
     prog'' <- flattenNamespace all_modules
@@ -171,18 +173,18 @@ parseDatalogProgram roots import_std fdata fname = do
                all_modules
     return (all_modules, prog'', rs)
 
-mergeModules :: (MonadError String me) => [DatalogProgram] -> me DatalogProgram
+mergeModules :: (MonadError String me) => [(ModuleName, DatalogProgram)] -> me DatalogProgram
 mergeModules mods = do
     let prog = DatalogProgram {
         progImports      = [],
-        progTypedefs     = M.unions $ map progTypedefs mods,
-        progFunctions    = M.unions $ map progFunctions mods,
-        progTransformers = M.unions $ map progTransformers mods,
-        progRelations    = M.unions $ map progRelations mods,
-        progIndexes      = M.unions $ map progIndexes mods,
-        progRules        = concatMap progRules mods,
-        progApplys       = concatMap progApplys mods,
-        progSources      = M.unions $ map progSources mods
+        progTypedefs     = M.unions $ map (progTypedefs . snd) mods,
+        progFunctions    = M.unions $ map (progFunctions .snd) mods,
+        progTransformers = M.unions $ map (progTransformers . snd) mods,
+        progRelations    = M.unions $ map (progRelations . snd) mods,
+        progIndexes      = M.unions $ map (progIndexes . snd) mods,
+        progRules        = concatMap (\(mname, m) -> map (\rule -> rule {ruleModule = mname}) $ progRules m) mods,
+        progApplys       = concatMap (progApplys . snd) mods,
+        progSources      = M.unions $ map (progSources . snd) mods
     }
         jp = Just prog
     uniq jp (name2rust . name) (\m -> ("Function name '" ++ funcName m ++ "' will cause name collisions"))
@@ -197,7 +199,7 @@ mergeModules mods = do
          $ M.elems $ progTypedefs prog
     return prog
 
-parseImports :: [FilePath] -> DatalogModule -> StateT [ModuleName] IO [DatalogModule]
+parseImports :: (?specname::String) => [FilePath] -> DatalogModule -> StateT [ModuleName] IO [DatalogModule]
 parseImports roots mod = concat <$>
     mapM (\imp@Import{..} -> do
            exists <- gets $ elem importModule
@@ -206,20 +208,23 @@ parseImports roots mod = concat <$>
               else parseImport roots mod imp)
          (progImports $ moduleDefs mod)
 
-parseImport :: [FilePath] -> DatalogModule -> Import -> StateT [ModuleName] IO [DatalogModule]
+parseImport :: (?specname::String) => [FilePath] -> DatalogModule -> Import -> StateT [ModuleName] IO [DatalogModule]
 parseImport roots mod imp = do
     when (importModule imp == moduleName mod)
-         $ errorWithoutStackTrace $ "Module '" ++ show (moduleName mod) ++ "' is trying to import self"
+         $ errorWithoutStackTrace $ "Error: module '" ++ show (moduleName mod) ++ "' imports self"
+    when (importModule imp == ModuleName [?specname])
+         $ errorWithoutStackTrace $ "Error: module '" ++ show (moduleName mod) ++ "' imports the main module of the program ('" ++ ?specname ++ "')"
+
     modify (importModule imp:)
     fname <- lift $ findModule roots mod $ importModule imp
     prog <- lift $ do fdata <- readFile fname
                       parseDatalogString fdata fname
-    mapM_ (\imp' -> when (elem (importModule imp') stdLibs && notElem (moduleName mod) stdLibs)
+    mapM_ (\imp' -> when (elem (importModule imp') stdLibs && notElem (importModule imp) stdLibs)
                     $ errorWithoutStackTrace $ "Module '" ++ show (importModule imp') ++ "' is part of the DDlog standard library and is imported automatically by all modules")
           $ progImports prog
     -- Standard libraries manage their dependencies explicitly.  Do not
     -- automatically import standard libraries into other standard libraries.
-    let prog_imports = if elem (moduleName mod) stdLibs
+    let prog_imports = if elem (importModule imp) stdLibs
                        then progImports prog
                        else stdImports ++ progImports prog
     let mod' = DatalogModule (importModule imp) fname $ prog { progImports = prog_imports }
@@ -247,7 +252,7 @@ flattenNamespace :: [DatalogModule] -> IO DatalogProgram
 flattenNamespace mods = do
     let mmap = M.fromList $ map (\m -> (moduleName m, m)) mods
     let prog = do mods' <- mapM (flattenNamespace1 mmap) mods
-                  mergeModules mods'
+                  mergeModules (zip (map moduleName mods) mods')
     case prog of
          Left e  -> errorWithoutStackTrace e
          Right p -> return p
@@ -301,6 +306,7 @@ applyFlattenNames mod mmap a@Apply{..} = do
                                        HOTypeRelation{}   -> flattenRelName mmap mod (pos a) o)
                     $ zip (map hofType transOutputs) applyOutputs
     return a { applyTransformer = trans_name
+             , applyModule      = moduleName mod
              , applyInputs      = inputs
              , applyOutputs     = outputs }
 

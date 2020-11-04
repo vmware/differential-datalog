@@ -38,19 +38,19 @@ impl record::Mutator<Url> for record::Record {
     }
 }
 
-pub fn url_parse(s: &String) -> crate::ddlog_std::Result<Url, String> {
+pub fn url_parse(s: &String) -> ddlog_std::Result<Url, String> {
     match ::url::Url::parse(s) {
-        Ok(url) => crate::ddlog_std::Result::Ok { res: Url { url } },
-        Err(e) => crate::ddlog_std::Result::Err {
+        Ok(url) => ddlog_std::Result::Ok { res: Url { url } },
+        Err(e) => ddlog_std::Result::Err {
             err: format!("{}", e),
         },
     }
 }
 
-pub fn join(url: &Url, other: &String) -> crate::ddlog_std::Result<Url, String> {
+pub fn join(url: &Url, other: &String) -> ddlog_std::Result<Url, String> {
     match url.url.join(other.as_str()) {
-        Ok(url) => crate::ddlog_std::Result::Ok { res: Url { url } },
-        Err(e) => crate::ddlog_std::Result::Err {
+        Ok(url) => ddlog_std::Result::Ok { res: Url { url } },
+        Err(e) => ddlog_std::Result::Err {
             err: format!("{}", e),
         },
     }
@@ -71,30 +71,30 @@ pub fn cannot_be_a_base(url: &Url) -> bool {
 pub fn username(url: &Url) -> String {
     url.url.username().to_string()
 }
-pub fn password(url: &Url) -> crate::ddlog_std::Option<String> {
-    crate::ddlog_std::option2std(url.url.password().map(|x| x.to_string()))
+pub fn password(url: &Url) -> ddlog_std::Option<String> {
+    ddlog_std::option2std(url.url.password().map(|x| x.to_string()))
 }
 pub fn has_host(url: &Url) -> bool {
     url.url.has_host()
 }
-pub fn host_str(url: &Url) -> crate::ddlog_std::Option<String> {
-    crate::ddlog_std::option2std(url.url.host_str().map(|x| x.to_string()))
+pub fn host_str(url: &Url) -> ddlog_std::Option<String> {
+    ddlog_std::option2std(url.url.host_str().map(|x| x.to_string()))
 }
-pub fn domain(url: &Url) -> crate::ddlog_std::Option<String> {
-    crate::ddlog_std::option2std(url.url.domain().map(|x| x.to_string()))
+pub fn domain(url: &Url) -> ddlog_std::Option<String> {
+    ddlog_std::option2std(url.url.domain().map(|x| x.to_string()))
 }
-pub fn port(url: &Url) -> crate::ddlog_std::Option<u16> {
-    crate::ddlog_std::option2std(url.url.port())
+pub fn port(url: &Url) -> ddlog_std::Option<u16> {
+    ddlog_std::option2std(url.url.port())
 }
-pub fn port_or_known_default(url: &Url) -> crate::ddlog_std::Option<u16> {
-    crate::ddlog_std::option2std(url.url.port_or_known_default())
+pub fn port_or_known_default(url: &Url) -> ddlog_std::Option<u16> {
+    ddlog_std::option2std(url.url.port_or_known_default())
 }
 pub fn path(url: &Url) -> String {
     url.url.path().to_string()
 }
-pub fn query(url: &Url) -> crate::ddlog_std::Option<String> {
-    crate::ddlog_std::option2std(url.url.query().map(|x| x.to_string()))
+pub fn query(url: &Url) -> ddlog_std::Option<String> {
+    ddlog_std::option2std(url.url.query().map(|x| x.to_string()))
 }
-pub fn fragment(url: &Url) -> crate::ddlog_std::Option<String> {
-    crate::ddlog_std::option2std(url.url.fragment().map(|x| x.to_string()))
+pub fn fragment(url: &Url) -> ddlog_std::Option<String> {
+    ddlog_std::option2std(url.url.fragment().map(|x| x.to_string()))
 }

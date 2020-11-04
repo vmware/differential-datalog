@@ -87,13 +87,13 @@ mod tests {
 
     use tempfile::NamedTempFile;
 
+    use differential_datalog::ddval::DDValConvert;
     use differential_datalog::program::IdxId;
     use differential_datalog::program::RelId;
     use differential_datalog::record::Record;
     use differential_datalog::record::RelIdentifier;
     use differential_datalog::record::UpdCmd;
     use differential_datalog_test::test_value::*;
-    use types::ddlog_rt::DDValConvert;
 
     #[derive(Debug)]
     struct DummyConverter;

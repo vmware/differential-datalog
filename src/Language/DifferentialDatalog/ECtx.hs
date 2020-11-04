@@ -47,6 +47,7 @@ module Language.DifferentialDatalog.ECtx(
      ctxIsIndex,
      ctxInIndex,
      ctxIsFunc,
+     ctxInFunc,
      ctxIsApplyFunc,
      ctxIsClosure,
      ctxInClosure,
@@ -159,6 +160,11 @@ ctxInRuleRHSPattern _                     = False
 ctxIsFunc :: ECtx -> Bool
 ctxIsFunc CtxFunc{} = True
 ctxIsFunc _         = False
+
+ctxInFunc :: ECtx -> Maybe Function
+ctxInFunc CtxFunc{..}  = Just ctxFunc
+ctxInFunc CtxTop       = Nothing
+ctxInFunc ctx          = ctxInFunc $ ctxParent ctx
 
 ctxIsApplyFunc :: ECtx -> Bool
 ctxIsApplyFunc CtxApplyFunc{} = True

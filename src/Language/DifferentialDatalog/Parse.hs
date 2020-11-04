@@ -390,13 +390,14 @@ parseAssignStatement = do e <- try $ do e <- expr
                           s <- statement
                           return $ AssignStatement nopos e s
 
-parseInsertStatement = InsertStatement nopos <$> try (atom True)
+parseInsertStatement = InsertStatement nopos (ModuleName []) <$> try (atom True)
 
-apply = Apply nopos <$  reserved "apply" <*> transIdent
-                    <*> (parens $ commaSepEnd (relIdent <|> funcIdent))
-                    <*> (reservedOp "->" *> (parens $ commaSepEnd relIdent))
+apply = Apply nopos (ModuleName [])
+              <$  reserved "apply" <*> transIdent
+              <*> (parens $ commaSepEnd (relIdent <|> funcIdent))
+              <*> (reservedOp "->" *> (parens $ commaSepEnd relIdent))
 
-rule = Rule nopos <$>
+rule = Rule nopos (ModuleName []) <$>
        (commaSepEnd1 $ atom True) <*>
        (option [] (reservedOp ":-" *> (concat <$> commaSepEnd rulerhs))) <* dot
 

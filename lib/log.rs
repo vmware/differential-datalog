@@ -1,1 +1,1 @@
-pub use crate::ddlog_log::log;
+pub use ddlog_log::log;

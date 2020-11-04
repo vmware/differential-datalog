@@ -436,7 +436,9 @@ fn record_into_field(rec: Record) -> Result<Value, String> {
 }
 
 fn uuid_from_u128(i: u128) -> String {
-    uuid::Uuid::from_u128(i.to_be()).to_hyphenated().to_string()
+    uuid::Uuid::from_u128(i /*.to_be()*/)
+        .to_hyphenated()
+        .to_string()
 }
 
 fn uuid_from_int(i: &BigInt) -> Result<String, String> {
@@ -444,21 +446,4 @@ fn uuid_from_int(i: &BigInt) -> Result<String, String> {
         i.to_u128()
             .ok_or_else(|| format!("uuid {} is not a u128", i))?,
     ))
-}
-
-// exported to DDlog; hence the funny name
-pub fn uuid2str(i: &u128) -> String {
-    uuid::Uuid::from_u128(i.to_be()).to_hyphenated().to_string()
-}
-
-pub fn uuid2name(i: &u128) -> String {
-    let s = uuid::Uuid::from_u128(i.to_be()).to_simple().to_string();
-    format!(
-        "u{}_{}_{}_{}_{}",
-        &s[0..8],
-        &s[8..12],
-        &s[12..16],
-        &s[16..20],
-        &s[20..32]
-    )
 }

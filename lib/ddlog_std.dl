@@ -288,7 +288,7 @@ function map_err(res: Result<'V, 'E1>, f: function('E1): 'E2): Result<'V, 'E2> {
  * Range; all values starting at 'from' and ending at 'to'
  * inclusively, in steps of 'step'.  'step' must be positive.
  */
-extern function range(from: 'A, to: 'A, step: 'A): Vec<'A>
+//extern function range(from: 'A, to: 'A, step: 'A): Vec<'A>
 
 /*
  * Range function that produces a vector.  The vector contains
@@ -654,7 +654,7 @@ function swap_nth(v: mut Vec<'X>, idx: usize, value: mut 'X): bool {
 
 /* Set value at index `idx` to `value`.
  * If `idx` exceeds the size of the vector (in which case the vector remains unmodified).
- * Returns true if updated happened and false otherwise. */
+ * Returns true if update happened and false otherwise. */
 function update_nth(v: mut Vec<'X>, idx: usize, value: 'X): bool {
     vec_update_nth(v, idx, value)
 }
@@ -803,7 +803,6 @@ extern function vec_push_imm(v: Vec<'X>, x: 'X): Vec<'X>
 extern function vec_contains(v: Vec<'X>, x: 'X): bool
 extern function vec_is_empty(v: Vec<'X>): bool
 extern function vec_nth(v: Vec<'X>, n: usize): Option<'X>
-extern function vec_set_nth(v: Vec<'X>, n: usize, value: 'X)
 extern function vec_to_set(s: Vec<'A>): Set<'A>
 extern function vec_sort(v: mut Vec<'X>)
 extern function vec_sort_imm(v: Vec<'X>): Vec<'X>

@@ -57,11 +57,12 @@ import qualified Data.Set as S
 import qualified Data.Map as M
 import qualified Data.Graph.Inductive as G
 import Data.WideWord
--- import Debug.Trace
+--import Debug.Trace
 
 import Language.DifferentialDatalog.Config
 import Language.DifferentialDatalog.PP
 import Language.DifferentialDatalog.Name
+import Language.DifferentialDatalog.Crate
 import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Ops
@@ -113,57 +114,79 @@ tIMESTAMP_VAR = "__timestamp"
 wEIGHT_VAR :: Doc
 wEIGHT_VAR = "__weight"
 
--- True iff expression is generated inside the 'types' module.
--- Currently, this includes all expressions in the body of a function.
-inTypesModule :: ECtx -> Bool
-inTypesModule ctx = any ctxIsFunc $ ctxAncestors ctx
+-- Module that 'ctx' belongs to.
+ctxModule :: (?crate_graph::CrateGraph) => ECtx -> ModuleName
+ctxModule CtxTop              = error "Compile.ctxModule CtxTop"
+ctxModule CtxFunc{..}         = nameScope ctxFunc
+ctxModule CtxRuleL{..}        = ruleModule ctxRule
+ctxModule CtxRuleRAtom{..}    = ruleModule ctxRule
+ctxModule CtxRuleRCond{..}    = ruleModule ctxRule
+ctxModule CtxRuleRFlatMap{..} = ruleModule ctxRule
+ctxModule CtxRuleRInspect{..} = ruleModule ctxRule
+ctxModule CtxRuleRProject{..} = ruleModule ctxRule
+ctxModule CtxRuleRGroupBy{..} = ruleModule ctxRule
+ctxModule CtxKey{..}          = nameScope ctxRelation
+ctxModule CtxIndex{..}        = nameScope $ atomRelation $ idxAtom ctxIndex
+ctxModule ctx                 = ctxModule $ ctxParent ctx
+
+-- Crate that 'ctx' belongs to.
+ctxCrate :: (?crate_graph::CrateGraph) => ECtx -> Crate
+ctxCrate ctx = cgModuleCrate ?crate_graph $ ctxModule ctx
 
 -- Extract static template header before the "/*- !!!!!!!!!!!!!!!!!!!! -*/"
 -- separator from file; substitute "datalog_example" with 'specname' in
 -- the header.
-header :: String -> String -> Doc
-header template specname =
+header :: (?specname::String) => String -> Doc
+header template =
     let h = case splitOn "/*- !!!!!!!!!!!!!!!!!!!! -*/" template of
                 []  -> error "Missing separator in lib.rs"
                 x:_ -> x
-    in pp $ replace "datalog_example" specname h
+    in pp $ replace "datalog_example" ?specname h
 
 -- 'types' crate containing DDlog type declarations.
-typesLibHeader :: String -> Doc
-typesLibHeader specname = header (unpackFixNewline $ $(embedFile "rust/template/types/lib.rs")) specname
+typesLibHeader :: (?specname::String) => Doc
+typesLibHeader = header (unpackFixNewline $ $(embedFile "rust/template/types/lib.rs"))
 
 -- Header to prepend to each each generated module in the 'types' crate.
-typesModuleHeader :: String -> Doc
-typesModuleHeader specname = header (unpackFixNewline $ $(embedFile "rust/template/types/module.rs")) specname
+typesModuleHeader :: (?specname::String) => Doc
+typesModuleHeader = header (unpackFixNewline $ $(embedFile "rust/template/types/lib.rs"))
 
 -- Main crate containing compiled program rules.
-mainHeader :: String -> Doc
-mainHeader specname = header (unpackFixNewline $ $(embedFile "rust/template/src/lib.rs")) specname
+mainHeader :: (?specname::String) => Doc
+mainHeader = header (unpackFixNewline $ $(embedFile "rust/template/src/lib.rs"))
 
 -- Top-level 'Cargo.toml'.
-mainCargo :: (?cfg::Config) => String -> [String] -> String -> Doc
-mainCargo specname crate_types toml_footer =
-    (pp $ replace "datalog_example" specname template) $$
-    "crate-type = [" <> (hsep $ punctuate "," $ map (\t -> "\"" <> pp t <> "\"") $ "rlib" : crate_types) <> "]\n" $$
+mainCargo :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph) => M.Map ModuleName (Doc, Doc, Doc) -> [String] -> String -> Doc
+mainCargo rs_code crate_types toml_footer =
+    (pp $ replace "datalog_example" ?specname template)                                                             $$
+    "crate-type = [" <> (hsep $ punctuate "," $ map (\t -> "\"" <> pp t <> "\"") $ "rlib" : crate_types) <> "]\n"   $$
+    ""                                                                                                              $$
+    deps                                                                                                            $$
+    ""                                                                                                              $$
+    extra_toml_code                                                                                                 $$
     text toml_footer
     where
-    template = (if confNestedTS32 ?cfg
-                then replace "[dependencies.differential_datalog]" "[dependencies.differential_datalog]\nfeatures=[\"nested_ts_32\"]"
-                else id)
+    deps = vcat $ map (\crate -> "[dependencies." <> pp (crateName crate) <> "]" $$
+                                 "path = \"types/" <> pp (crateDirPath crate) <> "\"")
+                $ cgCrates ?crate_graph
+    template = replace "\"differential_datalog/c_api\"" "\"differential_datalog/c_api\", \"types/c_api\""
+               $ replace "\"differential_datalog/flatbuf\"" "\"differential_datalog/flatbuf\", \"types/flatbuf\""
+               $ (if confNestedTS32 ?cfg
+                  then replace "[dependencies.differential_datalog]" "[dependencies.differential_datalog]\nfeatures=[\"nested_ts_32\"]"
+                  else id)
                $ unpackFixNewline $ $(embedFile "rust/template/Cargo.toml")
+    -- Add 'toml' code from 'rs_code'.  Note: we append the same toml code to
+    -- both types crate and the main crate, since the `.flatbuf.rs` code may
+    -- require these dependencies too.  Alternatively, we may want to support
+    -- a separate TOML file for the flatbuf code: `.flatbuf.toml`.
+    extra_toml_code = vcat $ map sel3 $ M.elems rs_code
 
--- 'types/Cargo.toml' - imports Rust dependencies.
-typesCargo :: String -> Doc -> Doc
-typesCargo specname toml_code =
-    (pp $ replace "datalog_example" specname $ unpackFixNewline $ $(embedFile "rust/template/types/Cargo.toml")) $$
-    "" $$ toml_code
-
-rustProjectDir :: String -> String
-rustProjectDir specname = specname ++ "_ddlog"
+rustProjectDir :: (?specname::String) => String
+rustProjectDir = ?specname ++ "_ddlog"
 
 -- IMPORTANT: KEEP THIS IN SYNC WITH FILE LIST IN 'build.rs'.
-templateFiles :: String -> [(String, String)]
-templateFiles specname =
+templateFiles :: (?specname::String) => [(String, String)]
+templateFiles =
     map (mapSnd (unpackFixNewline)) $
         [ (dir </> "src/build.rs"               , $(embedFile "rust/template/src/build.rs"))
         , (dir </> "src/main.rs"                , $(embedFile "rust/template/src/main.rs"))
@@ -174,11 +197,11 @@ templateFiles specname =
         , (dir </> "ddlog.h"                    , $(embedFile "rust/template/ddlog.h"))
         , (dir </> "ddlog_ovsdb_test.c"         , $(embedFile "rust/template/ddlog_ovsdb_test.c"))
         ]
-    where dir = rustProjectDir specname
+    where dir = rustProjectDir
 
 -- Rust differential_datalog library
-rustLibFiles :: String -> [(String, String)]
-rustLibFiles specname =
+rustLibFiles :: (?specname::String) => [(String, String)]
+rustLibFiles =
     map (mapSnd (unpackFixNewline)) $
         [ (dir </> "differential_datalog/Cargo.toml"                      , $(embedFile "rust/template/differential_datalog/Cargo.toml"))
         , (dir </> "differential_datalog/callback.rs"                     , $(embedFile "rust/template/differential_datalog/callback.rs"))
@@ -186,7 +209,6 @@ rustLibFiles specname =
         , (dir </> "differential_datalog/ddval/mod.rs"                    , $(embedFile "rust/template/differential_datalog/ddval/mod.rs"))
         , (dir </> "differential_datalog/ddval/ddvalue.rs"                , $(embedFile "rust/template/differential_datalog/ddval/ddvalue.rs"))
         , (dir </> "differential_datalog/ddval/ddval_convert.rs"          , $(embedFile "rust/template/differential_datalog/ddval/ddval_convert.rs"))
-        , (dir </> "differential_datalog/int.rs"                          , $(embedFile "rust/template/differential_datalog/int.rs"))
         , (dir </> "differential_datalog/lib.rs"                          , $(embedFile "rust/template/differential_datalog/lib.rs"))
         , (dir </> "differential_datalog/profile.rs"                      , $(embedFile "rust/template/differential_datalog/profile.rs"))
         , (dir </> "differential_datalog/profile_statistics.rs"           , $(embedFile "rust/template/differential_datalog/profile_statistics.rs"))
@@ -239,8 +261,7 @@ rustLibFiles specname =
         , (dir </> "ovsdb/test.rs"                                        , $(embedFile "rust/template/ovsdb/test.rs"))
         , (dir </> ".cargo/config.toml"                                   , $(embedFile "rust/template/.cargo/config.toml"))
         ]
-    where dir = rustProjectDir specname
-
+    where dir = rustProjectDir
 
 {- The following types model corresponding entities in program.rs -}
 
@@ -323,11 +344,23 @@ lval (x, ENoReturn, _)  = error $ "Compile.lval: cannot convert expression to l-
 cloneRef :: Doc -> Doc
 cloneRef r = "(*" <> r <> ").clone()"
 
--- Compiled relation: Rust code for the 'struct Relation' plus ground facts for this relation.
+-- Compiled relation.  This struct is generated during the first pass, and is
+-- used to populate Rust crates during the second pass of the compiler.
 data ProgRel = ProgRel {
-    prelName    :: String,
-    prelCode    :: Doc,
-    prelFacts   :: [Doc]
+    prelName            :: String,
+    -- Rust code to populate `struct Relation`.  Lives in the main crate.
+    prelCode            :: Doc,
+    -- Rust code for the key function if the relation has a primary key.  Lives
+    -- in the module that declares the relation.
+    prelKey             :: Maybe Doc,
+    -- Rust code for relations rules.  Each rule lives in the module where the
+    -- corresponding DDlog rule is declared.
+    prelRules           :: [(ModuleName, Doc)],
+    -- Rust code for facts (rules without the RHS).
+    prelFacts           :: [(ModuleName, Doc, Doc)],
+    -- Rust code for relation arrangements to be placed in the module that
+    -- declares the relation.
+    prelArrangements    :: [Doc]
 }
 
 -- Recursive relation contains additional flag that indicates whether the
@@ -340,25 +373,23 @@ data RecProgRel = RecProgRel {
 
 -- Compiled program node: individual relation or a recursive fragment
 data ProgNode = SCCNode   [RecProgRel]
-              | ApplyNode Doc
+              | ApplyNode ModuleName Int Doc
               | RelNode   ProgRel
 
 nodeRels :: ProgNode -> [ProgRel]
-nodeRels (SCCNode rels) = map rprelRel rels
-nodeRels (RelNode rel)  = [rel]
-nodeRels (ApplyNode _)  = []
+nodeRels (SCCNode rels)     = map rprelRel rels
+nodeRels (RelNode rel)      = [rel]
+nodeRels (ApplyNode _ _ _)  = []
 
 {- State accumulated by the compiler as it traverses the program -}
 type CompilerMonad = State CompilerState
 
 data CompilerState = CompilerState {
-    cTypes        :: S.Set Type,
     cArrangements :: M.Map String [Arrangement]
 }
 
 emptyCompilerState :: CompilerState
 emptyCompilerState = CompilerState {
-    cTypes        = S.empty,
     cArrangements = M.empty
 }
 
@@ -367,36 +398,42 @@ emptyCompilerState = CompilerState {
 rnameFlat :: String -> Doc
 rnameFlat = pp . replace "::" "_"
 
--- Types and functions are stored in Rust modules that mirror the DDlog
--- module hierarchy.
--- 'local' is true iff the name is being used in the same crate where it was
--- declared, i.e., the 'types' crate.
-rnameScoped :: Bool -> String -> Doc
-rnameScoped local n = rnameScoped' (if local then "crate" else "::types") n
+-- Types, functions, rules, etc., are stored in Rust modules that mirror the DDlog
+-- module hierarchy.  This function generates a qualified Rust identifier (e.g.,
+-- 'crate_name::module_name::name') that refers to entity whose fully qualified
+-- DDlog identifier is 'n'.
+-- 'local_module' - module accessing the identifier or 'Nothing' if it's accessed
+-- from an external crate.
+-- 'n' - fully qualified DDlog identifier
+rnameScoped :: (?crate_graph::CrateGraph, ?specname::String) => Maybe ModuleName -> String -> Doc
+rnameScoped local_module n =
+    ridentScoped local_module (nameScope n) (nameLocalStr n)
 
-rnameScoped' :: String -> String -> Doc
-rnameScoped' scope n = pp scope <> "::" <> pp n
+-- Generate a qualified Rust identifier that refers to variable 'n' declared in
+-- 'target_module' from 'local_module'.
+ridentScoped :: (?crate_graph::CrateGraph, ?specname::String) => Maybe ModuleName -> ModuleName -> String -> Doc
+ridentScoped Nothing target_module n =
+    pp $ intercalate "::" $ absolutePath target_module ++ [n]
+ridentScoped (Just local_module) target_module n =
+    pp $ intercalate "::" $ relativePath local_module target_module ++ [n]
 
 mkRelEnum :: DatalogProgram -> Doc
 mkRelEnum d =
-    "#[derive(Copy,Clone,Debug,PartialEq,Eq,Hash)]"                                                                                       $$
-    "pub enum Relations {"                                                                                                                $$
-    (nest' $ vcat $ punctuate comma $ map (\rel -> rnameFlat (name rel) <+> "=" <+> pp (relIdentifier d rel)) $ M.elems $ progRelations d)    $$
+    "#[derive(Copy,Clone,Debug,PartialEq,Eq,Hash)]"                                                                                        $$
+    "pub enum Relations {"                                                                                                                 $$
+    (nest' $ vcat $ punctuate comma $ map (\rel -> rnameFlat (name rel) <+> "=" <+> pp (relIdentifier d rel)) $ M.elems $ progRelations d) $$
     "}"
 
 mkIdxEnum :: DatalogProgram -> Doc
 mkIdxEnum d =
     "#[derive(Copy,Clone,Debug,PartialEq,Eq,Hash)]"                                                                                       $$
     "pub enum Indexes {"                                                                                                                  $$
-    (nest' $ vcat $ punctuate comma $ map (\idx -> rnameFlat (name idx) <+> "=" <+> pp (idxIdentifier d idx)) $ M.elems $ progIndexes d)      $$
+    (nest' $ vcat $ punctuate comma $ map (\idx -> rnameFlat (name idx) <+> "=" <+> pp (idxIdentifier d idx)) $ M.elems $ progIndexes d)  $$
     "}"
 
-relId :: String -> Doc
-relId rel = "Relations::" <> rnameFlat rel <+> "as RelId"
-
--- t must be normalized
-addType :: Type -> CompilerMonad ()
-addType t = modify $ \s -> s{cTypes = S.insert t $ cTypes s}
+relId :: DatalogProgram -> String -> Doc
+--relId rel = "Relations::" <> rnameFlat rel <+> "as RelId"
+relId d rel = pp $ M.findIndex rel $ progRelations d
 
 -- Create a new arrangement for use in a join operator:
 -- * If the arrangement exists, do nothing
@@ -470,18 +507,14 @@ tuple :: [Doc] -> Doc
 tuple [x] = x
 tuple xs = parens $ hsep $ punctuate comma xs
 
-tupleTypeName :: Bool -> [a] -> Doc
-tupleTypeName local xs =
-    tupleTypeName' (if local then "crate" else "::types") xs
+tupleTypeName :: (?crate_graph::CrateGraph, ?specname::String) => Maybe ModuleName -> [a] -> Doc
+tupleTypeName local_module xs =
+    rnameScoped local_module (mOD_STD ++ "::tuple" ++ show (length xs))
 
-tupleTypeName' :: String -> [a] -> Doc
-tupleTypeName' crate xs =
-    pp crate <> "::" <> pp mOD_STD <> "::tuple" <> pp (length xs)
-
-tupleStruct :: Bool -> [Doc] -> Doc
-tupleStruct _     [x]                  = x
-tupleStruct local xs  | length xs == 0 = tuple xs
-                      | otherwise      = tupleTypeName local xs <> tuple xs
+tupleStruct :: (?crate_graph::CrateGraph, ?specname::String) => Maybe ModuleName -> [Doc] -> Doc
+tupleStruct _            [x]                  = x
+tupleStruct local_module xs  | length xs == 0 = tuple xs
+                             | otherwise      = tupleTypeName local_module xs <> tuple xs
 
 -- Structs with a single constructor are compiled into Rust structs;
 -- structs with multiple constructor are compiled into Rust enums.
@@ -492,11 +525,11 @@ isStructType t                                  = error $ "Compile.isStructType 
 
 -- 'local' is true iff the constructor is being used in the same crate where it was
 -- declared, i.e., the 'types' crate.
-mkConstructorName :: Bool -> String -> Type -> String -> Doc
-mkConstructorName local tname t c =
+mkConstructorName :: (?crate_graph::CrateGraph, ?specname::String) => Maybe ModuleName -> String -> Type -> String -> Doc
+mkConstructorName local_module tname t c =
     if isStructType t
-       then rnameScoped local tname
-       else rnameScoped local tname <> "::" <> nameLocal c
+       then rnameScoped local_module tname
+       else rnameScoped local_module tname <> "::" <> nameLocal c
 
 -- | Create a compilable Cargo crate.  If the crate already exists, only writes files
 -- modified by the recompilation.
@@ -515,33 +548,35 @@ mkConstructorName local tname t c =
 --                  [\"cdylib\"], [\"staticlib\", \"cdylib\"]
 compile :: (?cfg :: Config) => DatalogProgram -> String -> [DatalogModule] -> M.Map ModuleName (Doc, Doc, Doc) -> FilePath -> [String] -> IO ()
 compile d_unoptimized specname modules rs_code dir crate_types = do
+    let ?modules = modules
+    let ?specname = specname
+    let -- Partition modules into crates.
+        ?crate_graph = partitionIntoCrates ?modules
     -- Create dir if it does not exist.
-    createDirectoryIfMissing True (dir </> rustProjectDir specname)
+    createDirectoryIfMissing True (dir </> rustProjectDir)
     -- dump dependency graph to file
-    updateFile (dir </> rustProjectDir specname </> specname <.> "dot")
+    updateFile (dir </> rustProjectDir </> ?specname <.> "dot")
                (depGraphToDot $ progDependencyGraph d_unoptimized)
     -- Apply optimizations; make sure the program has at least one relation.
     let d = addDummyRel $ optimize d_unoptimized
     when (confDumpDebug ?cfg) $
         writeFile (replaceExtension (confDatalogFile ?cfg) ".opt.ast") (show d)
-    let (types, main) = compileLib d specname modules rs_code
+    let (types, main) = compileLib d rs_code
     -- Produce flatbuffer bindings if either the java or rust bindings are enabled
-    compileFlatBufferBindings d specname rs_code (dir </> rustProjectDir specname)
+    compileFlatBufferBindings d rs_code (dir </> rustProjectDir)
     -- Substitute specname in template files; write files if changed.
     mapM_ (\(path, content) -> do
             let path' = dir </> path
-                content' = replace "datalog_example" specname content
+                content' = replace "datalog_example" ?specname content
             updateFile path' content')
-          $ templateFiles specname
+          $ templateFiles
     -- Update rustLibFiles if they changed.
     mapM_ (\(path, content) -> do
             let path' = dir </> path
             updateFile path' content)
-         $ rustLibFiles specname
+          rustLibFiles
     -- Generate lib files if changed.
-    let toml_code = vcat $ map sel3 $ M.elems rs_code
-    updateFile (dir </> rustProjectDir specname </> "types/Cargo.toml") (render $ typesCargo specname toml_code)
-    mapM_ (\(mname, mtext) -> updateFile (dir </> rustProjectDir specname </> "types" </> moduleNameToPath mname) $ render mtext)
+    mapM_ (\(mpath, mtext) -> updateFile (dir </> rustProjectDir </> mpath) $ render mtext)
           $ M.toList types
     let toml_footer =
             ( if (confOmitProfile ?cfg)
@@ -566,81 +601,316 @@ compile d_unoptimized specname modules rs_code dir crate_types = do
                         ++ "members = [\n"
                         ++ "    \"cmd_parser\",\n"
                         ++ "    \"differential_datalog\",\n"
-                        ++ "    \"distributed_datalog\",\n"
                         ++ "    \"ovsdb\",\n"
-                        ++ "    \"types\",\n"
                         ++ "]\n"
                 )
-    updateFile (dir </> rustProjectDir specname </> "Cargo.toml")       (render $ mainCargo specname crate_types toml_footer)
-    updateFile (dir </> rustProjectDir specname </> "src/lib.rs")       (render main)
+    updateFile (dir </> rustProjectDir </> "Cargo.toml")       (render $ mainCargo rs_code crate_types toml_footer)
+    updateFile (dir </> rustProjectDir </> "src/lib.rs")       (render main)
     return ()
 
--- | Compile Datalog program into Rust code.
---
--- Returns Rust code for two crates:
--- * 'types' crate containing DDlog type declarations, functions, and all imported
---   Rust library code.
--- * 'main' crate that contains rule definitions in Rust and imports the other two.
---
-compileLib :: (?cfg::Config) => DatalogProgram -> String -> [DatalogModule] -> M.Map ModuleName (Doc, Doc, Doc) -> (M.Map ModuleName Doc, Doc)
-compileLib d specname modules rs_code = (typeLib, mainLib)
+
+compileLib :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?modules::[DatalogModule]) => DatalogProgram -> M.Map ModuleName (Doc, Doc, Doc) -> (M.Map FilePath Doc, Doc)
+compileLib d rs_code =
+    (crates, main_lib)
     where
-    modules' = addMissingModules modules
     statics = collectStatics d
-    -- Start with empty modules, except the main module that contains static declarations.
-    typeLib0 = M.fromList $ map (\m -> if moduleName m == mainModuleName
-                                       then (moduleName m, typesLibHeader specname $+$ mkStatics d statics)
-                                       else (moduleName m, typesModuleHeader specname)) modules'
-    -- Add submodule lists.
-    typeLibMods = M.mapWithKey (\mname mtext ->
-                                 let children = filter (\other_mod -> other_mod `moduleIsChildOf` mname)
-                                                $ map moduleName modules'
-                                 in mtext $+$ vcat (map (\(ModuleName c) -> "pub mod" <+> pp (last c) <> ";") children))
-                               typeLib0
-    -- Add Rust code.
-    typeLibRs = foldl' (\libs (mname, (rs, _, _)) -> M.adjust ($+$ rs) mname libs) typeLibMods $ M.toList rs_code
-    -- Add typedefs
-    typeLibTdefs = foldl' (\libs tdef -> M.adjust ($+$ mkTypedef d tdef) (nameScope tdef) libs) typeLibRs $ progTypedefs d
-    -- Add functions
-    typeLibExternFuncs = let ?statics = statics in
-                         foldl' (\libs func -> M.adjust ($+$ mkFunc d func) (nameScope func) libs) typeLibTdefs fextern
-    typeLib = let ?statics = statics in
-              foldl' (\libs func -> M.adjust ($+$ mkFunc d func) (nameScope func) libs) typeLibExternFuncs fdef
-    mainLib = mainHeader specname           $+$
-              mkUpdateDeserializer d        $+$
-              mkDDValueFromRecord d         $+$ -- Function to convert cmd_parser::Record to Value
-              mkIndexesIntoArrId d cstate   $+$
-              mkRelEnum d                   $+$ -- 'enum Relations'
-              mkIdxEnum d                   $+$ -- 'enum Indexes'
-              prog
+    -- First pass: Compile DDlog rules, generate arrangements.
+    (nodes, cstate) = compileRules d statics
+    -- Second pass: Populate Rust crates with compiled code in `nodes`.
+    crates = M.unions $ map (compileCrate d statics nodes rs_code) $ cgCrates ?crate_graph
+    -- Generate the main library file.
+    main_lib = compileMainLib d nodes cstate
+
+compileRules :: (?cfg::Config, ?specname::String, ?modules::[DatalogModule], ?crate_graph::CrateGraph) => DatalogProgram -> Statics -> ([ProgNode], CompilerState)
+compileRules d statics =
+    runState (do -- First pass: compute arrangements
+                 createArrangements d
+                 -- Second pass: compile relations
+                 mapIdxM (\scc i -> compileSCC d statics depgraph i scc) sccs)
+             $ emptyCompilerState { cArrangements = arrs }
+    where
     -- Compute ordered SCCs of the dependency graph.  These will define the
     -- structure of the program.
     depgraph = progDependencyGraph d
     sccs = G.topsort' $ G.condensation depgraph
     -- Initialize arrangements map
     arrs = M.fromList $ map (, []) $ M.keys $ progRelations d
-    -- Initialize types
-    -- Make sure that empty tuple is always in Value, so it can be
-    -- used to implement Value::default()
-    types = S.fromList $ (tTuple []) : (map (typeNormalize d . relType) $ M.elems $ progRelations d)
-    -- Compile SCCs
-    (prog, cstate) = let ?statics = statics in
-                     runState (do -- First pass: compute arrangements
-                                  createArrangements d
-                                  -- Second pass: compile relations
-                                  nodes <- mapM (compileSCC d depgraph) sccs
-                                  mkProg nodes)
-                              $ emptyCompilerState { cArrangements = arrs
-                                                   , cTypes        = types }
-    -- Functions
-    (fdef, fextern) = partition (isJust . funcDef) $ concat $ M.elems $ progFunctions d
+
+compileCrate :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?modules::[DatalogModule])
+    => DatalogProgram -> Statics -> [ProgNode] -> M.Map ModuleName (Doc, Doc, Doc) -> Crate -> M.Map FilePath Doc
+compileCrate d statics nodes rs_code crate =
+    M.fromList $ toml:modules
+    where
+    -- Generate 'Cargo.toml'.
+    toml = mkCargoToml rs_code crate
+    -- Generate individual modules.
+    modules = map (compileModule d statics nodes rs_code crate) $ S.toList crate
+
+mkCargoToml :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?modules::[DatalogModule])
+    => M.Map ModuleName (Doc, Doc, Doc) -> Crate -> (FilePath, Doc)
+mkCargoToml rs_code crate =
+    (filepath, code)
+    where
+    filepath = "types" </> (crateDirPath crate) </> "Cargo.toml"
+    code = "[package]"                                                                     $$
+           "name = \"" <> pp crate_name <> "\""                                            $$
+           "version = \"0.1.0\""                                                           $$
+           "edition = \"2018\""                                                            $$
+           ""                                                                              $$
+           "[features]"                                                                    $$
+           "default = []"                                                                  $$
+           "flatbuf = [\"differential_datalog/flatbuf\"," <> fb_features <> "]"            $$
+           "c_api = [\"differential_datalog/c_api\"," <> capi_features <> "]"              $$
+           ""                                                                              $$
+           "[dependencies]"                                                                $$
+           "differential_datalog = { path = \"" <> pp root <> "../differential_datalog\" }"$$
+           "abomonation = \"0.7\""                                                         $$
+           "ordered-float = { version = \"2.0.0\", features = [\"serde\"] }"               $$
+           "fnv = \"1.0.2\""                                                               $$
+           "once_cell = \"1.4.1\""                                                         $$
+           "libc = \"0.2\""                                                                $$
+           "time = { version = \"0.2\", features = [\"serde\"] }"                          $$
+           "serde_json = \"1.0\""                                                          $$
+           "serde = { version = \"1.0\", features = [\"derive\"] }"                        $$
+           "num = \"0.3\""                                                                 $$
+           "erased-serde = \"0.3\""                                                        $$
+           "differential-dataflow = \"0.11.0\""                                            $$
+           "timely = \"0.11\""                                                             $$
+           ""                                                                              $$
+           dependencies                                                                    $$
+           ""                                                                              $$
+           "[lib]"                                                                         $$
+           "name = \"" <> pp crate_name <> "\""                                            $$
+           "path = \"" <> pp main_mod_name <> ".rs\""                                      $$
+           extra_toml_code
+    main_mod = crateMainModule crate
+    -- Main module name without path.
+    main_mod_name = moduleNameLocal main_mod
+    crate_name = crateName crate
+    -- Path to the root of the Rust project.
+    root = rootDirPath crate
+    -- Dependencies.
+    dependencies = vcat
+                   $ map (\dep -> pp (crateName dep) <+> "= { path = \"" <> pp (crateDirPathFrom crate dep) <> "\" }" )
+                   $ crateDependencies crate
+    -- Enable 'flatbuf' and 'capi' features in all dependencies.
+    fb_features = commaSep $ map (\dep -> "\"" <> pp (crateName dep) <> "/flatbuf\"") $ crateDependencies crate
+    capi_features = commaSep $ map (\dep -> "\"" <> pp (crateName dep) <> "/c_api\"") $ crateDependencies crate
+    -- Add 'toml' code from 'rs_code'.
+    extra_toml_code = vcat $ map sel3 $ M.elems rs_code
+
+crateDependencies :: (?crate_graph::CrateGraph, ?modules::[DatalogModule]) => Crate -> [Crate]
+crateDependencies crate =
+    filter (/= crate) -- Ignore dependencies on self.
+    $ nub
+    $ concatMap ((map (cgModuleCrate ?crate_graph . importModule)) . progImports . moduleDefs)
+    $ mapMaybe lookupModule
+    $ S.toList crate
+
+-- Find module by name.
+lookupModule :: (?modules::[DatalogModule]) => ModuleName -> Maybe DatalogModule
+lookupModule modname =
+    find ((==modname) . moduleName) ?modules
+
+-- Relative path from the crate directory to the top-level of the Rust project.
+rootDirPath :: Crate -> String
+rootDirPath crate = concat $ replicate (length (modulePath $ crateMainModule crate)) "../"
+
+-- Relative path from 'from' crate to 'to' crate.
+crateDirPathFrom :: (?specname::String) => Crate -> Crate -> String
+crateDirPathFrom from to = rootDirPath from ++ crateDirPath to
+
+-- path from the root to 'crate'.
+crateDirPath :: (?specname::String) => Crate -> String
+crateDirPath crate = intercalate "/" $ modulePath $ crateMainModule crate
+
+-- Module name without path.
+moduleNameLocal :: (?specname::String) => ModuleName -> String
+moduleNameLocal mod_name =
+    case modulePath mod_name of
+         []     -> ?specname
+         path   -> last path
+
+-- The name with which 'mod_other' is visible from 'mod_local'.
+relativePath :: (?specname::String, ?crate_graph::CrateGraph) => ModuleName -> ModuleName -> [String]
+relativePath mod_local mod_other | mod_local == mod_other
+                                 = []
+                                 | crate_local == crate_other
+                                 = "crate" : path_other
+                                 | otherwise
+                                 = crateName crate_other : path_other
+    where
+    crate_local = cgModuleCrate ?crate_graph mod_local
+    crate_other = cgModuleCrate ?crate_graph mod_other
+    path_other = modulePathFromCrateRoot crate_other mod_other
+
+absolutePath :: (?specname::String, ?crate_graph::CrateGraph) => ModuleName -> [String]
+absolutePath mod_other = (crateName crate_other : path_other)
+    where
+    crate_other = cgModuleCrate ?crate_graph mod_other
+    path_other = modulePathFromCrateRoot crate_other mod_other
+
+moduleFilePathFromCrateRoot :: (?specname::String) => Crate -> ModuleName -> String
+moduleFilePathFromCrateRoot crate mod_name | is_main   = moduleNameLocal mod_name ++ ".rs"
+                                           | is_dir    = intercalate "/" $ relative_path ++ ["mod.rs"]
+                                           | otherwise = (intercalate "/" relative_path) ++ ".rs"
+    where
+    -- Main module of the crate?
+    is_main = (mod_name == crateMainModule crate)
+    -- Real module or directory?
+    is_dir = any (\mod_name' -> (mod_name /= mod_name') && (modulePath mod_name) `isPrefixOf` (modulePath mod_name')) crate
+    prefix_len = length $ modulePath $ crateMainModule crate
+    relative_path = drop prefix_len $ modulePath mod_name
+
+modulePathFromCrateRoot :: Crate -> ModuleName -> [String]
+modulePathFromCrateRoot crate mod_name | is_main   = []
+                                       | otherwise = relative_path
+    where
+    -- Main module of the crate?
+    is_main = (mod_name == crateMainModule crate)
+    prefix_len = length $ modulePath $ crateMainModule crate
+    relative_path = drop prefix_len $ modulePath mod_name
+
+compileModule :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph)
+    => DatalogProgram -> Statics -> [ProgNode] -> M.Map ModuleName (Doc, Doc, Doc) -> Crate -> ModuleName -> (FilePath, Doc)
+compileModule d statics nodes rs_code crate mod_name =
+    (filepath, code)
+    where
+    crate_statics = fromMaybe M.empty $ M.lookup (crateName crate) statics
+    -- Main module of the crate?
+    is_main = (mod_name == crateMainModule crate)
+    filepath = "types" </> crateDirPath crate </> moduleFilePathFromCrateRoot crate mod_name
+    -- Start with empty module, except the main module that contains static declarations.
+    prelude = if is_main
+              then typesLibHeader $+$ mkStatics d (Just crate) crate_statics
+              else typesModuleHeader
+    -- Submodule lists.
+    children = filter (\other_mod -> other_mod `moduleIsChildOf` mod_name)
+                      $ S.toList crate
+    submodules = vcat (map (\(ModuleName c) -> "pub mod" <+> pp (last c) <> ";") children)
+    -- Rust code.
+    user_rust_code = maybe empty sel1 $ M.lookup mod_name rs_code
+    -- Typedefs.
+    tdefs = vcat $ map (mkTypedef d)
+                 $ filter ((== mod_name) . nameScope)
+                 $ M.elems $ progTypedefs d
+    -- Functions.
+    (fdef, fextern) = partition (isJust . funcDef)
+                                $ filter ((== mod_name) . nameScope)
+                                $ concat $ M.elems $ progFunctions d
+    externFuncs = let ?statics = crate_statics
+                  in vcat $ map (mkFunc d) fextern
+    ddlogFuncs = let ?statics = crate_statics
+                 in vcat $ map (mkFunc d) fdef
+    -- Primary keys for relations declared in this module.
+    keys = vcat
+           $ concatMap (mapMaybe prelKey . filter ((== mod_name) . nameScope . prelName) . nodeRels)
+           $ nodes
+    -- Arrangements for relations declared in this module.
+    arrangements = vcat
+                   $ concatMap ((concatMap prelArrangements) . filter  ((== mod_name) . nameScope . prelName) . nodeRels)
+                   $ nodes
+    -- Rules specified in this module.
+    rules = vcat
+            $ concatMap (map snd . filter ((== mod_name) . fst) . (concatMap prelRules) . nodeRels)
+            $ nodes
+    -- Facts specified in this module.
+    facts = vcat
+            $ concatMap (map sel3 . filter ((== mod_name) . sel1) . (concatMap prelFacts) . nodeRels)
+            $ nodes
+    -- Transformers.
+    transformers = vcat
+                   $ mapMaybe (\case
+                       ApplyNode mname _ acode | mname == mod_name -> Just acode
+                       _ -> Nothing)
+                   $ nodes
+    code = prelude          $+$
+           submodules       $+$
+           user_rust_code   $+$
+           tdefs            $+$
+           externFuncs      $+$
+           ddlogFuncs       $+$
+           keys             $+$
+           arrangements     $+$
+           rules            $+$
+           facts            $+$
+           transformers
+
+-- | Compile DDlog rules into Rust.
+compileMainLib :: (?cfg::Config, ?specname::String, ?modules::[DatalogModule], ?crate_graph::CrateGraph) => DatalogProgram -> [ProgNode] -> CompilerState -> Doc
+compileMainLib d nodes cstate =
+    mainHeader                             $+$
+    reexports                              $+$
+    mkUpdateDeserializer d                 $+$
+    mkDDValueFromRecord d                  $+$ -- Function to convert cmd_parser::Record to Value
+    mkIndexesIntoArrId d cstate            $+$
+    mkRelEnum d                            $+$ -- 'enum Relations'
+    mkIdxEnum d                            $+$ -- 'enum Indexes'
+    mkProg nodes
+    where
+    mod_type_reexports = foldl' (mrAddTypedef d) emptyModuleReexports
+                                (M.elems $ progTypedefs d)
+    mod_reexports = foldl' mrAddFunction mod_type_reexports
+                           (concat $ M.elems $ progFunctions d)
+    reexports = "pub mod typedefs" $+$
+                (braces' $ ppModuleReexports d mod_reexports)
+
+data ModuleReexports = ModuleReexports {
+    mrLocalDefs     :: [TypeDef],
+    mrLocalFuncs    :: [Function],
+    mrSubmodules    :: ReexportTree
+}
+
+type ReexportTree = M.Map String ModuleReexports
+
+emptyModuleReexports :: ModuleReexports
+emptyModuleReexports = ModuleReexports [] [] M.empty 
+
+mrAddTypedef :: DatalogProgram -> ModuleReexports -> TypeDef -> ModuleReexports
+mrAddTypedef d mr tdef | tdefGetAliasAttr d tdef = mr
+                       | otherwise =
+    mrAddTypedef' mr (modulePath $ nameScope tdef) tdef
+
+mrAddTypedef' :: ModuleReexports -> [String] -> TypeDef -> ModuleReexports
+mrAddTypedef' mr [] def = mr { mrLocalDefs = def:(mrLocalDefs mr) }
+
+mrAddTypedef' mr (mname:path) def =
+    mr { mrSubmodules = M.alter addtdef mname $ mrSubmodules mr}
+    where
+    addtdef Nothing    = Just $ mrAddTypedef' emptyModuleReexports path def
+    addtdef (Just mr') = Just $ mrAddTypedef' mr' path def
+
+mrAddFunction :: ModuleReexports -> Function -> ModuleReexports
+mrAddFunction mr func = mrAddFunction' mr (modulePath $ nameScope func) func
+
+mrAddFunction' :: ModuleReexports -> [String] -> Function -> ModuleReexports
+mrAddFunction' mr [] func = mr { mrLocalFuncs = func:(mrLocalFuncs mr) }
+
+mrAddFunction' mr (mname:path) func =
+    mr { mrSubmodules = M.alter addfunc mname $ mrSubmodules mr}
+    where
+    addfunc Nothing    = Just $ mrAddFunction' emptyModuleReexports path func
+    addfunc (Just mr') = Just $ mrAddFunction' mr' path func
+
+ppModuleReexports  :: (?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> ModuleReexports -> Doc
+ppModuleReexports d ModuleReexports{..} =
+    (vcat $ map (\tdef -> "pub use ::" <> rnameScoped Nothing (name tdef) <> semi)
+            mrLocalDefs)
+    $+$
+    (vcat $ map (\func -> "pub use ::" <> mkFuncName d Nothing func <> semi)
+            mrLocalFuncs)
+    $+$
+    (vcat $ map (\(mname, mr') -> ("pub mod " <> pp mname) $+$
+                                  (braces' $ ppModuleReexports d mr'))
+          $ M.toList mrSubmodules)
+
 
 -- Generate Deserialize implementation for UpdateSerializer wrapper.
-mkUpdateDeserializer :: DatalogProgram -> Doc
+mkUpdateDeserializer :: (?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> Doc
 mkUpdateDeserializer d =
     "decl_update_deserializer!(UpdateSerializer," <> commaSep rels <> ");"
     where
-    rels = map (\rel -> "(" <> pp (relIdentifier d rel) <> "," <+> mkType d False rel <> ")" )
+    rels = map (\rel -> "(" <> pp (relIdentifier d rel) <> "," <+> mkType d Nothing rel <> ")" )
            $ filter (\rel -> elem (relRole rel) [RelInput, RelOutput])
            $ M.elems $ progRelations d
 
@@ -650,6 +920,7 @@ mkUpdateDeserializer d =
 -- on the other hand is strict in this sense.  This function injects
 -- intermediate empty modules before generating Rust code to keep the Rust
 -- compiler happy.
+{-
 addMissingModules :: [DatalogModule] -> [DatalogModule]
 addMissingModules modules =
     foldl' (\modules' mname ->
@@ -659,59 +930,71 @@ addMissingModules modules =
     where
     module_names = S.fromList $ map moduleName modules
     all_module_names = S.toList $ S.fromList $ concat $ S.map (\(ModuleName n) -> map ModuleName $ inits n) module_names
+-}
 
-
--- This type stores the set of statically evaluated constant sub-expressions.
+-- This type stores the set of statically evaluated constant sub-expressions
+-- for each crate in the program.
 -- We need to track the type of each expression, as generic functions like
 -- 'set_empty()' can have different types in different contexts.
 -- The value associated with each key is the unique index of the static
 -- expression used to generate a name for it.
-type Statics = M.Map (Expr, Type) Int
+type CrateStatics = M.Map (Expr, Type) Int
+type Statics = M.Map String CrateStatics
 
-addStatic :: DatalogProgram -> Expr -> ECtx -> Statics -> Statics
+moduleStatics :: (?crate_graph::CrateGraph) => Statics -> ModuleName -> CrateStatics
+moduleStatics statics modname =
+    fromMaybe M.empty $ M.lookup (crateName $ cgModuleCrate ?crate_graph modname) statics
+
+addStatic :: (?crate_graph::CrateGraph) => DatalogProgram -> Expr -> ECtx -> Statics -> Statics
 addStatic d e ctx statics =
-    M.alter (maybe (Just $ M.size statics) Just) (e, exprType'' d ctx e) statics
+    M.alter (\case
+              Nothing -> Just $ M.singleton (e, exprType'' d ctx e) 0
+              Just mod_statics -> Just $ M.alter (maybe (Just $ M.size mod_statics) Just) (e, exprType'' d ctx e) mod_statics)
+            (crateName $ ctxCrate ctx)
+            statics
 
-deleteStatic :: Expr -> Type -> Statics -> Statics
+deleteStatic :: Expr -> Type -> CrateStatics -> CrateStatics
 deleteStatic e t statics = M.delete (e,t) statics
 
-lookupStatic :: DatalogProgram -> Expr -> ECtx -> Statics -> Maybe Int
+lookupStatic :: DatalogProgram -> Expr -> ECtx -> CrateStatics -> Maybe Int
 lookupStatic d e ctx statics = M.lookup (e, exprType'' d ctx e) statics
 
 -- Extract all subexpressions of the program to be evaluated as lazy statics.
 -- Rust lazy statics are computed once on the first access.  The current policy
 -- is to evaluate function calls that take constant arguments and are side
 -- effect-free statically.
-collectStatics :: DatalogProgram -> Statics
-collectStatics d = execState (progExprMapCtxM d (checkStaticExpr)) M.empty
+collectStatics :: (?crate_graph::CrateGraph) => DatalogProgram -> Statics
+collectStatics d =
+    execState (progExprMapCtxM d checkStaticExpr) M.empty
     where
     checkStaticExpr :: ECtx -> ENode -> State (Statics) Expr
-    checkStaticExpr ctx e@EApply{} | null (exprFreeVars d ctx (E e))
-                                     && (not $ exprIsPolymorphic d ctx (E e))
-                                     && exprIsPure d ctx (E e) = do
-        modify (addStatic d (E e) ctx)
+    checkStaticExpr ctx e = do
+        when (exprIsStatic d ctx (E e)) $ modify (addStatic d (E e) ctx)
         return $ E e
-    checkStaticExpr _   e = return $ E e
 
 -- Generate Rust lazy static declarations, one for each static expression
 -- computed by 'collectStatics'.
-mkStatics :: DatalogProgram -> Statics -> Doc
-mkStatics d statics =
+mkStatics :: (?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> Maybe Crate -> CrateStatics -> Doc
+mkStatics d crate statics =
     vcat
         $ map
             ( \((e, t), i) ->
                   let static_name = "__STATIC_" ++ show i
                    in let ?statics = deleteStatic e t statics
-                       in let -- Manufacture a bogus function to make sure that the static expression
-                              -- is evaluated function context, so that 'mkType' and 'mkFuncName'
-                              -- functions are called with 'local = True'.
-                              bogus_func = Function nopos [] static_name [] (tTuple []) (Just $ eTuple []) 
-                              e' = mkExpr d (CtxFunc bogus_func) (eTyped e t) EVal
-                           in "pub static" <+> pp static_name <> ": ::once_cell::sync::Lazy<" <> mkType d True t <> ">" <+> "="
-                                  <+> "::once_cell::sync::Lazy::new(||"
-                                  <+> e' <> ");"
+                      in let -- Manufacture a bogus function to make sure that the static expression
+                             -- is evaluated in the context of the module where the static is declared.
+                             bogus_func = Function nopos [] (scoped modname static_name) [] (tTuple []) (Just $ eTuple [])
+                             e' = mkExpr d (CtxFunc bogus_func) (eTyped e t) EVal
+                         in "pub static" <+> pp static_name <> ": ::once_cell::sync::Lazy<" <> mkType d scope t <> ">" <+> "="
+                                <+> "::once_cell::sync::Lazy::new(||" <+> e' <> ");"
             )
         $ M.toList statics
+    where
+    -- Module where the static declaration should be places:
+    -- Either the main module of 'crate', or the main module of the
+    -- entire Rust project ("_"), if 'crate' is 'Nothing'.
+    scope = crateMainModule <$> crate
+    modname = fromMaybe (ModuleName ["_"]) scope
 
 -- Add dummy relation to the spec if it does not contain any.
 -- Otherwise, we have to tediously handle this corner case in various
@@ -728,7 +1011,7 @@ addDummyRel d =
               then M.singleton "__Null_by_none" $ Index nopos "__Null_by_none" [] $ Atom nopos "__Null" $ eTuple []
               else progIndexes d
 
-mkTypedef :: DatalogProgram -> TypeDef -> Doc
+mkTypedef :: (?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> TypeDef -> Doc
 -- Don't generate definitions of types annotated with the 'alias' attribute.
 mkTypedef d tdef | tdefGetAliasAttr d tdef = empty
 mkTypedef d tdef@TypeDef{..} =
@@ -759,7 +1042,7 @@ mkTypedef d tdef@TypeDef{..} =
                              display                                                                   $$
                              default_enum                                                              $$
                              vcat extras
-         Just t           -> "pub type" <+> nameLocal tdefName <+> targs <+> "=" <+> mkType d True t <> ";"
+         Just t           -> "pub type" <+> nameLocal tdefName <+> targs <+> "=" <+> mkType d scope t <> ";"
          Nothing          -> empty -- The user must provide definitions of opaque types
     where
     rustAttrs = getRustAttrs d tdefAttrs
@@ -771,13 +1054,14 @@ mkTypedef d tdef@TypeDef{..} =
                else "<" <> (hsep $ punctuate comma $ map pp tdefArgs) <> ">"
     targs_traits = if null tdefArgs
                       then empty
-                      else "<" <> (hsep $ punctuate comma $ map ((<> ": crate::ddlog_rt::Val") . pp) tdefArgs) <> ">"
+                      else "<" <> (hsep $ punctuate comma $ map ((<> ": ::ddlog_rt::Val") . pp) tdefArgs) <> ">"
     targs_disp = if null tdefArgs
                     then empty
                     else "<" <> (hsep $ punctuate comma $ map ((<> ": ::std::fmt::Debug") . pp) tdefArgs) <> ">"
     targs_def = if null tdefArgs
                    then empty
                    else "<" <> (hsep $ punctuate comma $ map ((<> ": ::std::default::Default") . pp) tdefArgs) <> ">"
+    scope = Just $ nameScope tdef
 
     -- Generate struct field, including #-annotations.
     -- If this field requires its own serde module (due to the deserialize_map_from_array attribute),
@@ -785,17 +1069,17 @@ mkTypedef d tdef@TypeDef{..} =
     mkField :: String -> Bool -> Field -> (Doc, Doc)
     mkField cons pub f = ( from_arr_attr $$
                            vcat (map (\attr -> "#[" <> pp attr <> "]") rattrs) $$
-                           (if pub then "pub" else empty) <+> pp (name f) <> ":" <+> mkType d True f
+                           (if pub then "pub" else empty) <+> pp (name f) <> ":" <+> mkType d scope f
                         , from_array_module)
         where rattrs = getRustAttrs d $ fieldAttrs f
               TOpaque _ _ [ktype, vtype] = typ' d f
               from_arr_attr = maybe empty (\_ -> "#[serde(with=\"" <> from_array_module_name <> "\")]")
                               $ fieldGetDeserializeArrayAttr d f
               from_array_module = maybe empty (\fname -> let kfunc = fst $ getFunc d fname [vtype] ktype in
-                                                         "crate::deserialize_map_from_array!(" <>
+                                                         "ddlog_rt::deserialize_map_from_array!(" <>
                                                          from_array_module_name <> "," <>
-                                                         mkType d True ktype <> "," <> mkType d True vtype <> "," <>
-                                                         mkFuncName d True kfunc <> ");")
+                                                         mkType d scope ktype <> "," <> mkType d scope vtype <> "," <>
+                                                         mkFuncName d scope kfunc <> ");")
                                   $ fieldGetDeserializeArrayAttr d f
               from_array_module_name = "__serde" <> rnameFlat cons <> "_" <> pp (name f)
 
@@ -843,7 +1127,7 @@ mkTypedef d tdef@TypeDef{..} =
             "__formatter.write_str(\"}\")")
         $$
         "}"
-        where cname = mkConstructorName True tdefName (fromJust tdefType) (name c)
+        where cname = mkConstructorName scope tdefName (fromJust tdefType) (name c)
 
     default_enum =
               "impl" <+> targs_def <+> "::std::default::Default for" <+> nameLocal tdefName <> targs <+> "{"   $$
@@ -852,11 +1136,11 @@ mkTypedef d tdef@TypeDef{..} =
               "    }"                                                                                          $$
               "}"
         where c = head $ typeCons $ fromJust tdefType
-              cname = mkConstructorName True tdefName (fromJust tdefType) (name c)
+              cname = mkConstructorName scope tdefName (fromJust tdefType) (name c)
               def_args = commaSep $ map (\a -> (pp $ name a) <+> ": ::std::default::Default::default()") $ consArgs c
 
 -- Generate FromRecord trait implementation for a struct type.
-mkStructFromRecord :: DatalogProgram -> TypeDef -> Doc
+mkStructFromRecord :: (?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> TypeDef -> Doc
 mkStructFromRecord d t@TypeDef{..} | tdefGetCustomFromRecord d t = empty
                                    | otherwise =
     "::differential_datalog::decl_struct_from_record!(" <> nameLocal t <> "[\"" <> pp (name t) <> "\"]" <> targs <> "," <+> constructor <> ");"
@@ -864,12 +1148,12 @@ mkStructFromRecord d t@TypeDef{..} | tdefGetCustomFromRecord d t = empty
     targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
     Constructor{..} = head $ typeCons $ fromJust tdefType
     constructor = "[\"" <> pp consName <> "\"][" <> (pp $ length consArgs) <> "]{" <> commaSep fields  <> "}"
-    fields = mapIdx (\f i -> "[" <> pp i <> "]" <> pp (name f) <> "[\"" <> (pp $ unddname f) <> "\"]:" <+> (mkType d True f))
+    fields = mapIdx (\f i -> "[" <> pp i <> "]" <> pp (name f) <> "[\"" <> (pp $ unddname f) <> "\"]:" <+> (mkType d (Just $ nameScope t) f))
                     consArgs
 
-mkEnumFromRecord :: DatalogProgram -> TypeDef -> Doc
+mkEnumFromRecord :: (?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> TypeDef -> Doc
 mkEnumFromRecord d t@TypeDef{..} | tdefGetCustomFromRecord d t = empty
-                             | otherwise =
+                                 | otherwise =
     "::differential_datalog::decl_enum_from_record!(" <> nameLocal t <> "[\"" <> pp (name t) <> "\"]" <> targs <> "," <+> constructors <> ");"
     where
     targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
@@ -878,8 +1162,8 @@ mkEnumFromRecord d t@TypeDef{..} | tdefGetCustomFromRecord d t = empty
     mkcons c@Constructor{..} =
         cname <> "[\"" <> pp (name c) <> "\"][" <> (pp $ length consArgs) <> "]{" <> commaSep fields  <> "}"
         where
-        cname = pp $ nameLocal c
-        fields = mapIdx (\f i -> "[" <> pp i <> "]" <> pp (name f) <> "[\"" <> (pp $ unddname f) <> "\"]:" <+> (mkType d True f)) consArgs
+        cname = nameLocal c
+        fields = mapIdx (\f i -> "[" <> pp i <> "]" <> pp (name f) <> "[\"" <> (pp $ unddname f) <> "\"]:" <+> (mkType d (Just $ nameScope t) f)) consArgs
 
 
 mkStructIntoRecord :: TypeDef -> Doc
@@ -889,13 +1173,13 @@ mkStructIntoRecord t@TypeDef{..} =
     targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
     args = commaSep $ map (pp . name) $ consArgs $ head $ typeCons $ fromJust tdefType
 
-mkStructMutator :: DatalogProgram -> TypeDef -> Doc
+mkStructMutator :: (?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> TypeDef -> Doc
 mkStructMutator d t@TypeDef{..} =
     -- Rustfmt tries to remove the empty `<>` on enums, even though it's within a macro invocation
     "#[rustfmt::skip] ::differential_datalog::decl_record_mutator_struct!(" <> nameLocal t <> "," <+> targs <> "," <+> args <> ");"
     where
     targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
-    args = commaSep $ map (\arg -> pp (name arg) <> ":" <+> mkType d True arg) $ consArgs $ head $ typeCons $ fromJust tdefType
+    args = commaSep $ map (\arg -> pp (name arg) <> ":" <+> mkType d (Just $ nameScope t) arg) $ consArgs $ head $ typeCons $ fromJust tdefType
 
 mkEnumIntoRecord :: TypeDef -> Doc
 mkEnumIntoRecord t@TypeDef{..} =
@@ -905,13 +1189,13 @@ mkEnumIntoRecord t@TypeDef{..} =
     cons = commaSep $ map (\c -> nameLocal c <> "[\"" <> pp (name c) <> "\"]" <> "{" <> (commaSep $ map (pp . name) $ consArgs c) <> "}")
                     $ typeCons $ fromJust tdefType
 
-mkEnumMutator :: DatalogProgram -> TypeDef -> Doc
+mkEnumMutator :: (?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> TypeDef -> Doc
 mkEnumMutator d t@TypeDef{..} =
     -- Rustfmt tries to remove the empty `<>` on enums, even though it's within a macro invocation
     "#[rustfmt::skip] ::differential_datalog::decl_record_mutator_enum!(" <> nameLocal t <> targs <> "," <+> cons <> ");"
     where
     targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
-    cons = commaSep $ map (\c -> nameLocal c <> "{" <> (commaSep $ map (\arg -> pp (name arg) <> ":" <+> mkType d True arg) $ consArgs c) <> "}")
+    cons = commaSep $ map (\c -> nameLocal c <> "{" <> (commaSep $ map (\arg -> pp (name arg) <> ":" <+> mkType d (Just $ nameScope t) arg) $ consArgs c) <> "}")
                     $ typeCons $ fromJust tdefType
 
 unddname :: (WithName a) => a -> String
@@ -931,7 +1215,7 @@ unddname x = if isPrefixOf "__" (name x) && elem short reservedNames
     }
 }
 -}
-mkDDValueFromRecord :: (?cfg::Config) => DatalogProgram -> Doc
+mkDDValueFromRecord :: (?cfg::Config, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> Doc
 mkDDValueFromRecord d@DatalogProgram{..} =
     mkRelationsTryFromStr d                                                                         $$
     mkIsOutputRels d                                                                                $$
@@ -971,21 +1255,21 @@ mkDDValueFromRecord d@DatalogProgram{..} =
     mkrelval :: Relation ->  Doc
     mkrelval rel@Relation{..} =
         "Relations::" <> rnameFlat (name rel) <+> "=> {"                            $$
-        "    Ok(<" <> mkType d False t <> ">::from_record(_rec)?.into_ddvalue())"   $$
+        "    Ok(<" <> mkType d Nothing t <> ">::from_record(_rec)?.into_ddvalue())"   $$
         "}"
         where t = typeNormalize d relType
     key_entries = map mkrelkey $ filter (isJust . relPrimaryKey) $ M.elems progRelations
     mkrelkey :: Relation ->  Doc
     mkrelkey rel =
         "Relations::" <> rnameFlat (name rel) <+> "=> {"                            $$
-        "    Ok(<" <> mkType d False t <> ">::from_record(_rec)?.into_ddvalue())"   $$
+        "    Ok(<" <> mkType d Nothing t <> ">::from_record(_rec)?.into_ddvalue())"   $$
         "}"
         where t = typeNormalize d $ fromJust $ relKeyType d rel
     idx_entries = map mkidxkey $ M.elems progIndexes
     mkidxkey :: Index ->  Doc
     mkidxkey idx =
         "Indexes::" <> rnameFlat (name idx) <+> "=> {"                              $$
-        "    Ok(<" <> mkType d False t <> ">::from_record(_rec)?.into_ddvalue())"   $$
+        "    Ok(<" <> mkType d Nothing t <> ">::from_record(_rec)?.into_ddvalue())"   $$
         "}"
         where t = typeNormalize d $ idxKeyType idx
 
@@ -1036,7 +1320,7 @@ mkIsInputRels d =
     mkrel :: Relation -> Doc
     mkrel rel = "Relations::" <> rnameFlat (name rel) <> " => true,"
 
-makeRelationsTypeId :: DatalogProgram -> Doc
+makeRelationsTypeId :: (?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> Doc
 makeRelationsTypeId datalog =
     "impl Relations {"
         $$ "    pub fn type_id(&self) -> ::std::any::TypeId {"
@@ -1051,14 +1335,14 @@ makeRelationsTypeId datalog =
     type_id_for :: Relation -> Doc
     type_id_for relation =
         "Relations::" <> rnameFlat (name relation)
-            <+> "=> ::std::any::TypeId::of::<" <> (mkType datalog False relation) <> ">(),"
+            <+> "=> ::std::any::TypeId::of::<" <> (mkType datalog Nothing relation) <> ">(),"
 
 -- Convert RelId to enum Relations
 mkRelationsTryFromRelId :: DatalogProgram -> Doc
 mkRelationsTryFromRelId d =
-    "impl TryFrom<RelId> for Relations {"                                 $$
+    "impl TryFrom<program::RelId> for Relations {"                        $$
     "    type Error = ();"                                                $$
-    "    fn try_from(rid: RelId) -> ::std::result::Result<Self, ()> {"    $$
+    "    fn try_from(rid: program::RelId) -> ::std::result::Result<Self, ()> {"    $$
     "         match rid {"                                                $$
                   (nest' $ nest' $ vcat $ entries)                        $$
     "             _  => Err(())"                                          $$
@@ -1073,7 +1357,7 @@ mkRelationsTryFromRelId d =
 mkRelId2Name :: DatalogProgram -> Doc
 mkRelId2Name d =
     -- TODO: Documentation on the generated function
-    "pub fn relid2name(rid: RelId) -> Option<&'static str> {" $$
+    "pub fn relid2name(rid: program::RelId) -> Option<&'static str> {" $$
     "   match rid {"                                          $$
     (nest' $ nest' $ vcat $ entries)                          $$
     "       _  => None"                                       $$
@@ -1088,7 +1372,7 @@ mkRelId2NameC :: Doc
 mkRelId2NameC =
     -- TODO: Documentation on the generated function
     "#[cfg(feature = \"c_api\")]"
-    $$ "pub fn relid2cname(rid: RelId) -> Option<&'static ::std::ffi::CStr> {"
+    $$ "pub fn relid2cname(rid: program::RelId) -> Option<&'static ::std::ffi::CStr> {"
     $$ "    RELIDMAPC.get(&rid).copied()"
     $$ "}"
 
@@ -1124,7 +1408,7 @@ mkRelIdMapC prog =
             LazyStatic
                 { staticName = "RELIDMAPC",
                   staticDoc = Just "A map of `RelId`s to their name as an `&'static CStr`",
-                  keyType = "RelId",
+                  keyType = "program::RelId",
                   valueType = "&'static ::std::ffi::CStr",
                   staticEntries = entries,
                   c_api = True
@@ -1185,7 +1469,7 @@ mkIndexesTryFromStr d =
 mkIndexesIntoArrId :: DatalogProgram -> CompilerState -> Doc
 mkIndexesIntoArrId d CompilerState{..} =
     -- TODO: Documentation on the generated function
-    "pub fn indexes2arrid(idx: Indexes) -> ArrId {"                  $$
+    "pub fn indexes2arrid(idx: Indexes) -> program::ArrId {"         $$
     "    match idx {"                                                $$
     (nest' $ nest' $ vcat $ entries)                                 $$
     "    }"                                                          $$
@@ -1204,9 +1488,9 @@ mkIndexesIntoArrId d CompilerState{..} =
 -- Convert IdxId to `enum Indexes`
 mkIndexesTryFromIdxId :: DatalogProgram -> Doc
 mkIndexesTryFromIdxId d =
-    "impl TryFrom<IdxId> for Indexes {"                                   $$
+    "impl TryFrom<program::IdxId> for Indexes {"                          $$
     "    type Error = ();"                                                $$
-    "    fn try_from(iid: IdxId) -> ::core::result::Result<Self, ()> {"   $$
+    "    fn try_from(iid: program::IdxId) -> ::core::result::Result<Self, ()> {" $$
     "         match iid {"                                                $$
                   (nest' $ nest' $ vcat $ entries)                        $$
     "             _  => Err(())"                                          $$
@@ -1221,7 +1505,7 @@ mkIndexesTryFromIdxId d =
 mkIdxId2Name :: DatalogProgram -> Doc
 mkIdxId2Name d =
     -- TODO: Documentation on the generated function
-    "pub fn indexid2name(iid: IdxId) -> Option<&'static str> {" $$
+    "pub fn indexid2name(iid: program::IdxId) -> Option<&'static str> {" $$
     "   match iid {"                                            $$
     (nest' $ nest' $ vcat $ entries)                            $$
     "       _  => None"                                         $$
@@ -1236,7 +1520,7 @@ mkIdxId2NameC :: Doc
 mkIdxId2NameC =
     -- TODO: Documentation on the generated function
     "#[cfg(feature = \"c_api\")]"
-    $$ "pub fn indexid2cname(iid: IdxId) -> Option<&'static ::std::ffi::CStr> {"
+    $$ "pub fn indexid2cname(iid: program::IdxId) -> Option<&'static ::std::ffi::CStr> {"
     $$ "    IDXIDMAPC.get(&iid).copied()"
     $$ "}"
 
@@ -1277,7 +1561,7 @@ mkIdxIdMapC prog =
             LazyStatic
                 { staticName = "IDXIDMAPC",
                   staticDoc = Just "A map of `IdxId`s to their name as an `&'static CStr`",
-                  keyType = "IdxId",
+                  keyType = "program::IdxId",
                   valueType = "&'static ::std::ffi::CStr",
                   staticEntries = entries,
                   c_api = True
@@ -1340,20 +1624,21 @@ createLazyStatic lazy_static =
         hashMapIndex map_name (key, value) =
             text map_name <> ".insert(" <> key <> "," <+> value <> ");"
 
-mkFunc :: (?statics::Statics) => DatalogProgram -> Function -> Doc
+mkFunc :: (?statics::CrateStatics, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> Function -> Doc
 mkFunc d f@Function{..} | isJust funcDef =
-    "pub fn" <+> mkFuncNameShort d f <> tvars <> (parens $ hsep $ punctuate comma $ map mkArg funcArgs) <+> "->" <+> mkType d True funcType $$
-    "{"                                                                                                                                     $$
-    (nest' $ mkExpr d (CtxFunc f) (fromJust funcDef) EVal)                                                                                  $$
+    "pub fn" <+> mkFuncNameShort d f <> tvars <> (parens $ hsep $ punctuate comma $ map mkArg funcArgs) <+> "->" <+> mkType d scope funcType $$
+    "{"                                                                                                                                              $$
+    (nest' $ mkExpr d (CtxFunc f) (fromJust funcDef) EVal)                                                                                           $$
     "}"
                         | -- generate commented out prototypes of extern functions for user convenvience.
-                          otherwise = "/* fn" <+> (mkFuncNameShort d f) <> tvars <> (parens $ hsep $ punctuate comma $ map mkArg funcArgs) <+> "->" <+> mkType d True funcType <+> "*/"
+                          otherwise = "/* fn" <+> (mkFuncNameShort d f) <> tvars <> (parens $ hsep $ punctuate comma $ map mkArg funcArgs) <+> "->" <+> mkType d scope funcType <+> "*/"
     where
+    scope = Just $ nameScope f
     mkArg :: FuncArg -> Doc
-    mkArg a = pp (name a) <> ":" <+> "&" <> (if argMut a then "mut" else empty) <+> mkType d True a
+    mkArg a = pp (name a) <> ":" <+> "&" <> (if argMut a then "mut" else empty) <+> mkType d scope a
     tvars = case funcTypeVars f of
                  []  -> empty
-                 tvs -> "<" <> (hcat $ punctuate comma $ map ((<> ": crate::ddlog_rt::Val") . pp) tvs) <> ">"
+                 tvs -> "<" <> (hcat $ punctuate comma $ map ((<> ": ::ddlog_rt::Val") . pp) tvs) <> ">"
 
 -- Precompute the set of arrangements used by the program.  This is done as a separate
 -- compiler pass to maximize arrangement sharing: if a particular key is only used in
@@ -1401,20 +1686,22 @@ createRuleArrangement d rule idx = do
          RHSLiteral False _            -> addAntijoinArrangement (name rel) arr
          _                             -> return ()
 
--- Generate Rust struct for ProgNode
-compileSCC :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> DepGraph -> [G.Node] -> CompilerMonad ProgNode
-compileSCC d dep nodes | recursive = compileSCCNode d relnames
-                       | otherwise = case depnode of
-                                          DepNodeRel rel -> compileRelNode d rel
-                                          DepNodeApply a -> return $ compileApplyNode d a
+-- Generate Rust struct for ProgNode.
+compileSCC :: (?cfg::Config, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> Statics -> DepGraph -> Int -> [G.Node] -> CompilerMonad ProgNode
+compileSCC d statics dep i nodes | recursive = compileSCCNode d statics relnames
+                                 | otherwise =
+    case depnode of
+         DepNodeRel rel -> compileRelNode d statics rel
+         DepNodeApply a -> return $ let ?statics = moduleStatics statics $ applyModule a
+                                    in compileApplyNode d a i
     where
     recursive = any (\(from, to) -> elem from nodes && elem to nodes) $ G.edges dep
     relnames = map ((\(DepNodeRel rel) -> rel) . fromJust . G.lab dep) nodes
     depnode = fromJust $ G.lab dep $ head nodes
 
-compileRelNode :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> String -> CompilerMonad ProgNode
-compileRelNode d relname = do
-    rel <- compileRelation d relname
+compileRelNode :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph) => DatalogProgram -> Statics -> String -> CompilerMonad ProgNode
+compileRelNode d statics relname = do
+    rel <- compileRelation d statics relname
     return $ RelNode rel
 
 {-
@@ -1450,50 +1737,46 @@ where
      EF: Fn(V) -> E + 'static,
      LF: Fn((N,N)) -> V + 'static
 -}
-compileApplyNode :: (?cfg :: Config) => DatalogProgram -> Apply -> ProgNode
-compileApplyNode d Apply{..} =
-    ApplyNode $
-        "{"
-            $$ "    fn transformer() -> Box<"
-            $$ "        dyn for<'a> Fn("
-            $$ "            &mut FnvHashMap<"
-            $$ "                RelId,"
-            $$ "                collection::Collection<"
-            $$ "                scopes::Child<'a, worker::Worker<communication::Allocator>, TS>,"
-            $$ "                    DDValue,"
-            $$ "                    Weight,"
-            $$ "                >,"
+compileApplyNode :: (?cfg :: Config, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> Apply -> Int -> ProgNode
+compileApplyNode d Apply{..} idx =
+    ApplyNode applyModule idx $
+               "pub fn __apply_" <> pp idx <+> "() -> Box<"
+            $$ "    dyn for<'a> Fn("
+            $$ "        &mut ::fnv::FnvHashMap<"
+            $$ "            program::RelId,"
+            $$ "            collection::Collection<"
+            $$ "            scopes::Child<'a, worker::Worker<communication::Allocator>, program::TS>,"
+            $$ "                DDValue,"
+            $$ "                Weight,"
             $$ "            >,"
-            $$ "        ),"
-            $$ "    > {"
-            $$ "        Box::new(|collections| {"
-            $$ "            let (" <> commaSep outputs <> ") =" <+> rnameScoped False applyTransformer <> (parens $ commaSep inputs) <> ";"
-            $$ (nest' $ nest' $ nest' $ vcat update_collections)
-            $$ "        })"
-            $$ "    }"
-            $$ "    transformer"
+            $$ "        >,"
+            $$ "    ),"
+            $$ "> {"
+            $$ "    Box::new(|collections| {"
+            $$ "        let (" <> commaSep outputs <> ") =" <+> rnameScoped (Just applyModule) applyTransformer <> (parens $ commaSep inputs) <> ";"
+            $$ (nest' $ nest' $ vcat update_collections)
+            $$ "    })"
             $$ "}"
-  where
+    where
     Transformer{..} = getTransformer d applyTransformer
     inputs =
         concatMap
             ( \(i, ti) ->
                 if hotypeIsFunction (hofType ti)
-                    then [rnameScoped False i]
-                    else ["collections.get(&(" <> relId i <> ")).unwrap()", extractValue d (relType $ getRelation d i)]
+                    then [rnameScoped (Just applyModule) i]
+                    else ["collections.get(&(" <> relId d i <> ")).unwrap()", extractValue (relType $ getRelation d i)]
             )
             (zip applyInputs transInputs)
             ++ map (\_ -> parens $ "|v| v.into_ddvalue()") applyOutputs
     outputs = map rnameFlat applyOutputs
-    update_collections = map (\o -> "collections.insert(" <> relId o <> "," <+> rnameFlat o <> ");") applyOutputs
+    update_collections = map (\o -> "collections.insert(" <> relId d o <> "," <+> rnameFlat o <> ");") applyOutputs
+    extractValue :: Type -> Doc
+    extractValue t = parens $
+            "|" <> vALUE_VAR <> ": DDValue| {<" <> mkType d (Just applyModule) t <> ">::from_ddvalue(" <> vALUE_VAR <> ") }"
 
-extractValue :: (?cfg::Config) => DatalogProgram -> Type -> Doc
-extractValue d t = parens $
-        "|" <> vALUE_VAR <> ": DDValue| <" <> mkType d False t <> ">::from_ddvalue(" <> vALUE_VAR <> ")"
-
-compileSCCNode :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> [String] -> CompilerMonad ProgNode
-compileSCCNode d relnames = do
-    prels <- mapM (\rel -> do prel <- compileRelation d rel
+compileSCCNode :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph) => DatalogProgram -> Statics -> [String] -> CompilerMonad ProgNode
+compileSCCNode d statics relnames = do
+    prels <- mapM (\rel -> do prel <- compileRelation d statics rel
                               -- Only `distinct` relation if its weights can grow
                               -- unboundedly inside fixed point computation.
                               return $ RecProgRel prel $ not $ relIsBounded d rel) relnames
@@ -1534,62 +1817,91 @@ let ancestor = {
     }
 };
 -}
-compileRelation :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> String -> CompilerMonad ProgRel
-compileRelation d rn = do
+compileRelation :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph) => DatalogProgram -> Statics -> String -> CompilerMonad ProgRel
+compileRelation d statics rn = do
     let rel@Relation{..} = getRelation d rn
+    let -- Each rule is stored in a static variable in the module where the rule is declared.
+        rule_name :: Int -> Doc
+        rule_name i = "__Rule_" <> rnameFlat (name rel) <> "_" <> pp i
+        -- Each fact is stored in a static variable in the module where the rule is declared.
+        fact_name :: Int -> Doc
+        fact_name i = "__Fact_" <> rnameFlat (name rel) <> "_" <> pp i
+        -- Each arrangement is stored in a static variable in the module where the relation is declared.
+        arng_name :: Int -> Doc
+        arng_name i = "__Arng_" <> rnameFlat (name rel) <> "_" <> pp i
     -- collect all rules for this relation
     let (facts, rules) =
                 partition (null . ruleRHS)
                 $ relRules d rn
-    rules' <- mapM (\rl -> compileRule d rl 0 True) rules
-    facts' <- mapM (compileFact d) facts
-    key_func <- maybe (return "None")
-                      (\k -> do lambda <- compileKey d rel k
-                                return $ "Some(" <> lambda <> ")")
-                relPrimaryKey
-
+    rules' <- mapIdxM (\rl i -> do
+                        rl' <- let ?statics = moduleStatics statics (ruleModule rl)
+                               in compileRule d rl 0 True
+                        return (ruleModule rl, "pub static" <+> rule_name i <+> ": ::once_cell::sync::Lazy<program::Rule> = ::once_cell::sync::Lazy::new(||" <+> rl' <> ");")) rules
+    let facts' = mapIdx (\fact i ->
+                          let fact' = let ?statics = moduleStatics statics (ruleModule fact)
+                                      in compileFact d fact 
+                          in (ruleModule fact,
+                              ridentScoped Nothing (ruleModule fact) (render $ fact_name i) <> ".clone()",
+                              "pub static" <+> fact_name i <+> ": ::once_cell::sync::Lazy<(program::RelId, DDValue)> = ::once_cell::sync::Lazy::new(||" <+> fact' <> ");")) facts
+    let (key_func, key_code) = maybe ("None", Nothing)
+                               (\k -> let ?statics = moduleStatics statics (nameScope rel) in
+                                      let (func_name, code) = compileKey d rel k in
+                                      ( "Some(" <> ridentScoped Nothing (nameScope rel) (render func_name) <> ")"
+                                      , Just code))
+                               relPrimaryKey
     let cb = if relRole == RelOutput
                 then "change_cb:    Some(sync::Arc::new(sync::Mutex::new(__update_cb.clone())))"
                 else "change_cb:    None"
     arrangements <- gets $ (M.! rn) . cArrangements
-    compiled_arrangements <- mapM (mkArrangement d rel) arrangements
+    let compiled_arrangements = mapIdx (\arng i ->
+                                         let ?statics = moduleStatics statics (nameScope rel) in
+                                         let arng' = mkArrangement d rel arng in
+                                         "pub static" <+> arng_name i <+> ": ::once_cell::sync::Lazy<program::Arrangement> = ::once_cell::sync::Lazy::new(||" <+> arng' <> ");") arrangements
     let code =
-            "Relation {"                                                                                        $$
+            "program::Relation {"                                                                               $$
             "    name:         \"" <> pp rn <> "\".to_string(),"                                                $$
             "    input:        " <> (if relRole == RelInput then "true" else "false") <> ","                    $$
             "    distinct:     " <> (if relRole == RelOutput && relSemantics == RelSet && not (relIsDistinctByConstruction d rel)
                                         then "true"
                                         else "false") <> ","  $$
             "    caching_mode: " <> (case relSemantics of
-                                          RelMultiset -> "CachingMode::Multiset"
-                                          RelSet -> "CachingMode::Set"
-                                          RelStream -> "CachingMode::Stream") <> ","         $$
-            "    key_func:     " <> key_func <> ","                                                             $$
-            "    id:           " <> relId rn <> ","                                                             $$
-            "    rules:        vec!["                                                                           $$
-            (nest' $ nest' $ vcat (punctuate comma rules') <> "],")                                             $$
-            "    arrangements: vec!["                                                                           $$
-            (nest' $ nest' $ vcat (punctuate comma compiled_arrangements) <> "],")                              $$
-            (nest' cb)                                                                                          $$
+                                          RelMultiset -> "program::CachingMode::Multiset"
+                                          RelSet -> "program::CachingMode::Set"
+                                          RelStream -> "program::CachingMode::Stream") <> ","                                   $$
+            "    key_func:     " <> key_func <> ","                                                                             $$
+            "    id:           " <> relId d rn <> ","                                                                           $$
+            "    rules:        vec!["                                                                                           $$
+            (nest' $ nest' $ vcommaSep $ mapIdx (\rule i -> ridentScoped Nothing (ruleModule rule) (render $ rule_name i) <> ".clone()") rules) $$
+            "    ],"                                                                                                            $$
+            "    arrangements: vec!["                                                                                           $$
+            (nest' $ nest' $ vcommaSep $ mapIdx (\_ i -> (pp $ ridentScoped Nothing (nameScope rel) (render $ arng_name i)) <> ".clone()") arrangements) $$
+            "    ],"  $$
+            (nest' cb)                                                                                                          $$
             "}"
-    return ProgRel{ prelName = rn, prelCode = code, prelFacts = facts' }
+    return ProgRel{ prelName            = rn
+                  , prelCode            = code
+                  , prelRules           = rules'
+                  , prelFacts           = facts'
+                  , prelKey             = key_code
+                  , prelArrangements    = compiled_arrangements
+                  }
 
-compileKey :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> Relation -> KeyExpr -> CompilerMonad Doc
-compileKey d rel KeyExpr{..} = do
-    v <- mkDDValue d (CtxKey rel) keyExpr
-    return $
-        "(|" <> kEY_VAR <> ": &DDValue| {"                                                                                  $$
-        "    let ref" <+> pp keyVar <+> "= *<" <> mkType d False rel <> ">::from_ddvalue_ref(" <> kEY_VAR <> ");"  $$
-        "    " <> v                                                                                                         $$
-        "})"
+compileKey :: (?cfg::Config, ?specname::String, ?statics::CrateStatics, ?crate_graph::CrateGraph) => DatalogProgram -> Relation -> KeyExpr -> (Doc, Doc)
+compileKey d rel@Relation{..} KeyExpr{..} =
+    let v = mkDDValue d (CtxKey rel) keyExpr
+        func_name = "__Key_" <> rnameFlat (name rel)
+    in ( func_name
+       , "pub fn" <+> func_name <> "(" <> kEY_VAR <> ": &DDValue) -> DDValue {"                                                         $$
+         "    let ref" <+> pp keyVar <+> "= *{<" <> mkType d (Just $ nameScope rel) rel <> ">::from_ddvalue_ref(" <> kEY_VAR <> ") };"  $$
+         "    " <> v                                                                                                                    $$
+         "}")
 
 {- Generate Rust representation of a ground fact -}
-compileFact :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> Rule -> CompilerMonad Doc
-compileFact d rl@Rule{..} = do
+compileFact :: (?cfg::Config, ?specname::String, ?statics::CrateStatics, ?crate_graph::CrateGraph) => DatalogProgram -> Rule -> Doc
+compileFact d rl@Rule{..} =
     let rel = atomRelation $ head ruleLHS
-    v <- mkDDValue d (CtxRuleL rl 0) $ atomVal $ head ruleLHS
-    return $ "(" <> relId rel <> "," <+> v <> ") /*" <> pp rl <> "*/"
-
+        v = mkDDValue d (CtxRuleL rl 0) $ atomVal $ head ruleLHS
+    in "(" <> relId d rel <> "," <+> v <> ") /*" <> pp rl <> "*/"
 
 -- If the rule contains a join, antijoin, or aggregation operator then its first literal
 -- will have to be arranged before applying the operator.  This function checks
@@ -1633,7 +1945,7 @@ ruleArrangeFstLiteral d rl@Rule{..} | null ruleRHS = Nothing
 -- 'input_val' - true if the relation generated by the last operator is a Value, not
 -- tuple.  This is the case when we've only encountered antijoins so far (since antijoins
 -- do not rearrange the input relation).
-compileRule :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> Rule -> Int -> Bool -> CompilerMonad Doc
+compileRule :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?statics::CrateStatics) => DatalogProgram -> Rule -> Int -> Bool -> CompilerMonad Doc
 compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ show rl ++ " / " ++ show last_rhs_idx) $-} do
     -- First relation in the body of the rule
     let fstatom = rhsAtom $ head ruleRHS
@@ -1655,9 +1967,9 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                                then getJoinArrangement (atomRelation fstatom) $ fromJust input_arrangement
                                else return Nothing
     -- Open up input constructor; bring Datalog variables into scope
-    open <- if input_val
+    let open = if input_val
                then openAtom  d ("&" <> vALUE_VAR) rl 0 (rhsAtom $ head ruleRHS) "return None"
-               else openTuple d ("&" <> vALUE_VAR) $ rhsVarsAfter d rl last_rhs_idx
+               else openTuple d rl ("&" <> vALUE_VAR) $ rhsVarsAfter d rl last_rhs_idx
     -- Apply filters and assignments between last_rhs_idx and rhs_idx
     let filters = mkFilters d rl last_rhs_idx
     let prefix = open $+$ vcat filters
@@ -1669,7 +1981,7 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                  RHSGroupBy{}       -> mkGroupBy d conditions inpval rl rhs_idx
                  _                  -> error $ "compileRule: operator " ++ show rhs ++ " does not expect arranged input"
     let mkCollectionOperator | rhs_idx == length ruleRHS
-                             = mkHead d prefix rl
+                             = return $ mkHead d prefix rl
                              | otherwise =
             case rhs of
                  RHSFlatMap v e -> mkFlatMap d prefix rl rhs_idx v e
@@ -1688,9 +2000,9 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
        Just arid -> do
             xform <- mkArrangedOperator conds input_val
             return $ "/*" <+> pp rl <+> "*/"                                                    $$
-                     "Rule::ArrangementRule {"                                                  $$
+                     "program::Rule::ArrangementRule {"                                         $$
                      "    description:" <+> pp (show $ show rl) <> ".to_string(),"              $$
-                     "    arr: (" <+> relId (atomRelation fstatom) <> "," <+> pp arid <> "),"   $$
+                     "    arr: (" <+> relId d (atomRelation fstatom) <> "," <+> pp arid <> ")," $$
                      "    xform:" <+> xform                                                     $$
                      "}"
        Nothing -> do
@@ -1698,8 +2010,8 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                         Just (key_vars, val_vars) -> do
                             -- Evaluate arrange_input_by in the context of 'rhs'
                             let key_str = parens $ commaSep $ map (pp . fst) key_vars
-                            akey <- mkTupleValue d key_vars
-                            aval <- mkVarsTupleValue d $ map (, EReference) val_vars
+                            let akey = mkTupleValue d rl key_vars
+                            let aval = mkVarsTupleValue rl $ map (, EReference) val_vars
                             let afun = braces'
                                        $ prefix $$
                                          "Some((" <> akey <> "," <+> aval <> "))"
@@ -1718,9 +2030,9 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                 -- to generate Inspect rust code does not need another CollectionRule.
                 if last_rhs_idx == 0 && input_val
                    then "/*" <+> pp rl <+> "*/"                                         $$
-                        "Rule::CollectionRule {"                                        $$
+                        "program::Rule::CollectionRule {"                               $$
                         "    description:" <+> pp (show $ show rl) <> ".to_string(),"   $$
-                        "    rel:" <+> relId (atomRelation fstatom) <> ","              $$
+                        "    rel:" <+> relId d (atomRelation fstatom) <> ","              $$
                         "    xform: Some(" <> xform <> ")"                              $$
                         "}"
                    else "Some(" <> xform <> ")"
@@ -1747,9 +2059,9 @@ rhsInputArrangement d rl rhs_idx (RHSGroupBy _ _ grpby) =
                rhsVarsAfter d rl (rhs_idx - 1))
 rhsInputArrangement _ _  _       _ = Nothing
 
-mkFlatMap :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> Doc -> Rule -> Int -> String -> Expr -> CompilerMonad Doc
+mkFlatMap :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?statics::CrateStatics) => DatalogProgram -> Doc -> Rule -> Int -> String -> Expr -> CompilerMonad Doc
 mkFlatMap d prefix rl idx v e = do
-    vars <- mkVarsTupleValue d $ map (, EVal) $ rhsVarsAfter d rl idx
+    let vars = mkVarsTupleValue rl $ map (, EVal) $ rhsVarsAfter d rl idx
     -- Flatten
     let flatten = "let __flattened =" <+> mkExpr d (CtxRuleRFlatMap rl idx) e EVal <> ";"
     -- Clone variables before passing them to the closure.
@@ -1768,9 +2080,9 @@ mkFlatMap d prefix rl idx v e = do
         "    next: Box::new(" <> next <> ")"                                                                                $$
         "}"
 
-mkFilterMap :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> Doc -> Rule -> Int -> CompilerMonad Doc
+mkFilterMap :: (?cfg::Config, ?statics::CrateStatics, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> Doc -> Rule -> Int -> CompilerMonad Doc
 mkFilterMap d prefix rl idx = do
-    v <- mkVarsTupleValue d $ map (, EReference) $ rhsVarsAfter d rl idx
+    let v = mkVarsTupleValue rl $ map (, EReference) $ rhsVarsAfter d rl idx
     let fmfun = braces' $ prefix $$
                           "Some" <> parens v
     next <- compileRule d rl (idx - 1) False  -- Use the previous index to evaluate the rule again and call mkInspect
@@ -1781,13 +2093,13 @@ mkFilterMap d prefix rl idx = do
         "    next: Box::new(" <> next <> ")"                                                                                $$
         "}"
 
-mkInspect :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> Doc -> Rule -> Int -> Expr -> Bool -> CompilerMonad Doc
+mkInspect :: (?cfg::Config, ?statics::CrateStatics, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> Doc -> Rule -> Int -> Expr -> Bool -> CompilerMonad Doc
 mkInspect d prefix rl idx e input_val = do
     -- Inspected
-    let weight = "let ddlog_weight = &(" <> wEIGHT_VAR <+> "as" <+> rnameScoped False wEIGHT_TYPE <> ");"
+    let weight = "let ddlog_weight = &(" <> wEIGHT_VAR <+> "as" <+> rnameScoped Nothing wEIGHT_TYPE <> ");"
     let timestamp = if ruleIsRecursive d rl
-        then "let ddlog_timestamp = &" <> rnameScoped False nESTED_TS_TYPE <> "{epoch:" <+> tIMESTAMP_VAR <> ".0 as" <+> rnameScoped False ePOCH_TYPE <> ", iter:" <+> rnameScoped False iTERATION_TYPE <> "::from(" <> tIMESTAMP_VAR <> ".1)};"
-        else "let ddlog_timestamp = &(" <> tIMESTAMP_VAR <> ".0 as" <+> rnameScoped False ePOCH_TYPE <> ");"
+        then "let ddlog_timestamp = &" <> rnameScoped Nothing nESTED_TS_TYPE <> "{epoch:" <+> tIMESTAMP_VAR <> ".0 as" <+> rnameScoped Nothing ePOCH_TYPE <> ", iter:" <+> rnameScoped Nothing iTERATION_TYPE <> "::from(" <> tIMESTAMP_VAR <> ".1)};"
+        else "let ddlog_timestamp = &(" <> tIMESTAMP_VAR <> ".0 as" <+> rnameScoped Nothing ePOCH_TYPE <> ");"
     let inspected = (braces $ mkExpr d (CtxRuleRInspect rl idx) e EVal) <> ";"
     let ifun = braces'
                 $ weight $$
@@ -1802,31 +2114,31 @@ mkInspect d prefix rl idx e input_val = do
         "    next: Box::new(" <> next <> ")"                                                                                $$
         "}"
 
-mkGroupBy :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> [Int] -> Bool -> Rule -> Int -> CompilerMonad Doc
+mkGroupBy :: (?cfg::Config, ?statics::CrateStatics, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> [Int] -> Bool -> Rule -> Int -> CompilerMonad Doc
 mkGroupBy d filters input_val rl@Rule{..} idx = do
     let rhs@RHSGroupBy{..} = ruleRHS !! idx
     let ctx = CtxRuleRProject rl idx
     let gctx = CtxRuleRGroupBy rl idx
     let Just (_, group_vars) = rhsInputArrangement d rl idx rhs
     -- Filter inputs before grouping
-    ffun <- mkFFun d rl filters
+    let ffun = mkFFun d rl filters
     -- Compute projection.
-    open <- if input_val
+    let open = if input_val
                then openAtom d vALUE_VAR rl 0 (rhsAtom $ head ruleRHS) "unreachable!()"
-               else openTuple d vALUE_VAR group_vars
-    let project = "{fn __f(" <> vALUE_VAR <> ": &DDValue) -> " <+> mkType d False (exprType d ctx rhsProject) $$
+               else openTuple d rl vALUE_VAR group_vars
+    let project = "{fn __f(" <> vALUE_VAR <> ": &DDValue) -> " <+> mkType d (Just ruleModule) (exprType d ctx rhsProject) $$
                   (braces' $ open $$ mkExpr d ctx rhsProject EVal)                                            $$
                   "::std::sync::Arc::new(__f)}"
     -- * Create 'struct Group'
     -- * Apply filters following group_by.
     -- * Return variables still in scope after the last filter.
-    let grp = rnameScoped False gROUP_TYPE <> "::new_by_ref(" <> (mkExpr d gctx rhsGroupBy EVal) <> "," <+> gROUP_VAR <> "," <+> project <> ")"
+    let grp = rnameScoped Nothing gROUP_TYPE <> "::new_by_ref(" <> (mkExpr d gctx rhsGroupBy EVal) <> "," <+> gROUP_VAR <> "," <+> project <> ")"
     let aggregate = "let ref" <+> pp rhsVar <+> "= unsafe{" <> grp <> "};"
     let post_filters = mkFilters d rl idx
         last_idx = idx + length post_filters
-    result <- mkVarsTupleValue d $ map (, EReference) $ rhsVarsAfter d rl last_idx
+    let result = mkVarsTupleValue rl $ map (, EReference) $ rhsVarsAfter d rl last_idx
     let key_vars = exprVars d gctx rhsGroupBy
-    open_key <- openTuple d kEY_VAR key_vars
+    let open_key = openTuple d rl kEY_VAR key_vars
     let agfun = braces'
                 $ open_key  $$
                   aggregate $$
@@ -1850,50 +2162,33 @@ mkGroupBy d filters input_val rl@Rule{..} idx = do
 --     Value::Rel1(v1,v2,v3) => (v1,v2),
 --     _ => return None
 -- };
-openAtom :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> Doc -> Rule -> Int -> Atom -> Doc -> CompilerMonad Doc
-openAtom d var rl idx Atom{..} on_error = do
+openAtom :: (?cfg::Config, ?specname::String, ?statics::CrateStatics, ?crate_graph::CrateGraph) => DatalogProgram -> Doc -> Rule -> Int -> Atom -> Doc -> Doc
+openAtom d var rl idx Atom{..} on_error =
     let rel = getRelation d atomRelation
-    let t = relType rel
-    t' <- addRelType d t
-    let varnames = map (pp . name) $ exprVarDecls d (CtxRuleRAtom rl idx) atomVal
+        t = relType rel
+        t' = mkRelType d (ruleModule rl) t
+        varnames = map (pp . name) $ exprVarDecls d (CtxRuleRAtom rl idx) atomVal
         var_clones = tuple $ map cloneRef varnames
         vars = tuple $ map ("ref" <+>) varnames
         mtch = mkMatch (mkPatExpr d (CtxRuleRAtom rl idx) atomVal EReference False) var_clones on_error
-    return $
-        "let" <+> vars <+> "= match *<" <> t' <> ">::from_ddvalue_ref(" <> var <> ") {" $$
-        (nest' mtch)                                                                                        $$
-        "};"
+    in "let" <+> vars <+> "= match *<" <> t' <> ">::from_ddvalue_ref(" <> var <> ") {" $$
+       (nest' mtch)                                                                    $$
+       "};"
 
 -- Generate Rust code to open up tuples and bring variables into scope.
-openTuple :: (?cfg::Config) => DatalogProgram -> Doc -> [Var] -> CompilerMonad Doc
-openTuple d var vs = do
+openTuple :: (?cfg::Config, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> Rule -> Doc -> [Var] -> Doc
+openTuple d rl var vs =
     let t = tTuple $ map (varType d) vs
-    t' <- addRelType d t
-    let pattern = tupleStruct False $ map (("ref" <+>) . pp . name) vs
-    return $ "let" <+> pattern <+> "= *<" <> t' <> ">::from_ddvalue_ref(" <+> var <+> ");"
+        t' = mkRelType d (ruleModule rl) t
+        pattern = tupleStruct (Just $ ruleModule rl) $ map (("ref" <+>) . pp . name) vs
+    in "let" <+> pattern <+> "= *<" <> t' <> ">::from_ddvalue_ref(" <+> var <+> ");"
 
--- Type 'typ x' is used as the value type of a relation.  Add it to
--- 'CompilerMonad' so we generate 'DDValue' conversion methods for it.
+-- Type 'typ x' is used as the value type of a relation.
 -- Returns compiled representation of the type.
-addRelType :: (WithType a) => DatalogProgram -> a -> CompilerMonad Doc
-addRelType d x = do
+mkRelType :: (WithType a, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> ModuleName -> a -> Doc
+mkRelType d scope x =
     let t = typeNormalize d x
-    addType t
-    return $ mkType d False t
-
--- Scalar types have their own 'DDValConvert' implementations.
-typeNeedsDDValConvert :: DatalogProgram -> Type -> Bool
-typeNeedsDDValConvert d t =
-    case typeNormalize d t of
-         TTuple{..} | null typeTupArgs -> False
-         TBool{}                       -> False
-         TInt{}                        -> False
-         TString{}                     -> False
-         TBit{}                        -> False
-         TSigned{}                     -> False
-         TDouble{}                     -> False
-         TFloat{}                      -> False
-         _                             -> True
+    in mkType d (Just scope) t
 
 -- Generate valid Rust identifier that encodes the type.
 mkTypeIdentifier :: DatalogProgram -> Type -> Doc
@@ -1925,34 +2220,26 @@ mkTypeIdentifier d t' =
     mk_arg_type atype = (if atypeMut atype then "mut_" else "imm_") <> mkTypeIdentifier d (typ atype)
 
 
-mkDDValue :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> ECtx -> Expr -> CompilerMonad Doc
-mkDDValue d ctx e = do
-    let t = exprType d ctx e
-    _ <- addRelType d t
-    return $ (parens $ mkExpr d ctx e EVal) <> ".into_ddvalue()"
+mkDDValue :: (?cfg::Config, ?specname::String, ?statics::CrateStatics, ?crate_graph::CrateGraph) => DatalogProgram -> ECtx -> Expr -> Doc
+mkDDValue d ctx e =
+    (parens $ mkExpr d ctx e EVal) <> ".into_ddvalue()"
 
-mkTupleValue :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> [(Expr, ECtx)] -> CompilerMonad Doc
-mkTupleValue d es = do
-    let t = tTuple $ map (\(e, ctx) -> exprType'' d ctx e) es
-    _ <- addRelType d t
-    return $ (parens $ tupleStruct False $ map (\(e, ctx) -> mkExpr d ctx e EVal) es) <> ".into_ddvalue()"
+mkTupleValue :: (?cfg::Config, ?statics::CrateStatics, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> Rule -> [(Expr, ECtx)] -> Doc
+mkTupleValue d rl es =
+    (parens $ tupleStruct (Just $ ruleModule rl) $ map (\(e, ctx) -> mkExpr d ctx e EVal) es) <> ".into_ddvalue()"
 
-mkVarsTupleValue :: (?cfg::Config) => DatalogProgram -> [(Var, EKind)] -> CompilerMonad Doc
-mkVarsTupleValue d vs = do
-    let t = tTuple $ map (varType d . fst) vs
-    _ <- addRelType d t
+mkVarsTupleValue :: (?cfg::Config, ?crate_graph::CrateGraph, ?specname::String) => Rule -> [(Var, EKind)] -> Doc
+mkVarsTupleValue rl vs =
     let clone (v, EReference) = cloneRef $ pp $ name v
         clone (v, _) = (pp $ name v) <> ".clone()"
-    return $ (parens $ tupleStruct False $ map clone vs) <> ".into_ddvalue()"
+    in (parens $ tupleStruct (Just $ ruleModule rl) $ map clone vs) <> ".into_ddvalue()"
 
-mkFieldTupleValue :: (?cfg::Config) => DatalogProgram -> [Field] -> CompilerMonad Doc
-mkFieldTupleValue d fs = do
-    let t = tTuple $ map typ fs
-    _ <- addRelType d t
-    return $ (parens $ tupleStruct False $ map (cloneRef . pp . name) fs) <> ".into_ddvalue()"
+mkFieldTupleValue :: (?cfg::Config, ?crate_graph::CrateGraph, ?specname::String) => ModuleName -> [Field] -> Doc
+mkFieldTupleValue scope fs =
+    (parens $ tupleStruct (Just scope) $ map (cloneRef . pp . name) fs) <> ".into_ddvalue()"
 
 -- Compile all contiguous RHSCondition terms following 'last_idx'
-mkFilters :: (?statics::Statics) => DatalogProgram -> Rule -> Int -> [Doc]
+mkFilters :: (?statics::CrateStatics, ?specname::String, ?crate_graph::CrateGraph) => DatalogProgram -> Rule -> Int -> [Doc]
 mkFilters d rl@Rule{..} last_idx =
     mapIdx (\rhs i -> mkFilter d (CtxRuleRCond rl $ i + last_idx + 1) $ rhsExpr rhs)
     $ takeWhile (\case
@@ -1962,11 +2249,11 @@ mkFilters d rl@Rule{..} last_idx =
 
 -- Implement RHSCondition semantics in Rust; brings new variables into
 -- scope if this is an assignment
-mkFilter :: (?statics::Statics) => DatalogProgram -> ECtx -> Expr -> Doc
+mkFilter :: (?statics::CrateStatics, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> ECtx -> Expr -> Doc
 mkFilter d ctx (E e@ESet{}) = mkAssignFilter d ctx e
 mkFilter d ctx e            = mkCondFilter d ctx e
 
-mkAssignFilter :: (?statics::Statics) => DatalogProgram -> ECtx -> ENode -> Doc
+mkAssignFilter :: (?statics::CrateStatics, ?specname::String, ?crate_graph::CrateGraph) => DatalogProgram -> ECtx -> ENode -> Doc
 mkAssignFilter d ctx e@(ESet _ l r) =
     "let" <+> vardecls <+> "= match" <+> r' <+> "{"                 $$
     (nest' mtch)                                                    $$
@@ -1977,30 +2264,30 @@ mkAssignFilter d ctx e@(ESet _ l r) =
     expr_vardecls = exprVarDecls d (CtxSetL e ctx) l
     varnames = map (pp . name) expr_vardecls
     vars = tuple varnames
-    vardecls = (tuple $ map ("ref" <+>) varnames) <> ":" <+> (tuple $ map (mkType d False . varType d) expr_vardecls)
+    vardecls = (tuple $ map ("ref" <+>) varnames) <> ":" <+> (tuple $ map (mkType d (Just $ ctxModule ctx) . varType d) expr_vardecls)
 mkAssignFilter _ _ e = error $ "Compile.mkAssignFilter: unexpected expression " ++ show e
 
-mkCondFilter :: (?statics::Statics) => DatalogProgram -> ECtx -> Expr -> Doc
+mkCondFilter :: (?statics::CrateStatics, ?specname::String, ?crate_graph::CrateGraph) => DatalogProgram -> ECtx -> Expr -> Doc
 mkCondFilter d ctx e =
     "if !" <> mkExpr d ctx e EVal <+> "{return None;};"
 
 -- Generate the ffun field of `XFormArrangement::Join/Semijoin/Aggregate`.
 -- This field is used if input to the operator is an arranged relation.
-mkFFun :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> Rule -> [Int] -> CompilerMonad Doc
-mkFFun _ Rule{} [] = return "None"
-mkFFun d rl@Rule{..} input_filters = do
-   open <- openAtom d vALUE_VAR rl 0 (rhsAtom $ ruleRHS !! 0) ("return false")
-   let checks = hsep $ punctuate " &&"
+mkFFun :: (?cfg::Config, ?specname::String, ?statics::CrateStatics, ?crate_graph::CrateGraph) => DatalogProgram -> Rule -> [Int] -> Doc
+mkFFun _ Rule{} [] = "None"
+mkFFun d rl@Rule{..} input_filters =
+   let open = openAtom d vALUE_VAR rl 0 (rhsAtom $ ruleRHS !! 0) ("return false")
+       checks = hsep $ punctuate " &&"
                 $ map (\i -> mkExpr d (CtxRuleRCond rl i) (rhsExpr $ ruleRHS !! i) EVal) input_filters
-   return $ "Some({fn __f(" <> vALUE_VAR <> ": &DDValue) -> bool" $$
-            (braces' $ open $$ checks)                             $$
-            "    __f"                                              $$
-            "})"
+   in "Some({fn __f(" <> vALUE_VAR <> ": &DDValue) -> bool" $$
+      (braces' $ open $$ checks)                             $$
+      "    __f"                                              $$
+      "})"
 
 -- Compile XForm::Join or XForm::Semijoin
 -- Returns generated xform and index of the last RHS term consumed by
 -- the XForm
-mkJoin :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> [Int] -> Bool -> Atom -> Rule -> Int -> CompilerMonad Doc
+mkJoin :: (?cfg::Config, ?specname::String, ?statics::CrateStatics, ?crate_graph::CrateGraph) => DatalogProgram -> [Int] -> Bool -> Atom -> Rule -> Int -> CompilerMonad Doc
 mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
     -- Build arrangement to join with
     let ctx = CtxRuleRAtom rl join_idx
@@ -2020,11 +2307,10 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
     -- Open input Value or tuple.  We may need to do this twice: once to filter
     -- input before join and once to filter output of the join.
     let open_input v = if input_val
-                          then openAtom d v rl 0 (rhsAtom $ ruleRHS !! 0) "return None"
-                          else openTuple d v post_join_vars
+                       then openAtom d v rl 0 (rhsAtom $ ruleRHS !! 0) "return None"
+                       else openTuple d rl v post_join_vars
     -- Filter inputs using 'input_filters'
-    ffun <- mkFFun d rl input_filters
-
+    let ffun = mkFFun d rl input_filters
     -- simplify pattern to only extract new variables from it
     let simplify (E e@EStruct{..})  = E e{exprStructFields = map (\(n,v) -> (n, simplify v)) exprStructFields}
         simplify (E e@ETuple{..})   = E e{exprTupleFields = map simplify exprTupleFields}
@@ -2035,17 +2321,17 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
         simplify (E e@ERef{..})     = E e{exprPattern = simplify exprPattern}
         simplify _                  = ePHolder
     -- Join function: open up both values, apply filters.
-    open <- if is_semi
+    let open = if is_semi
                then open_input vALUE_VAR1
-               else liftM2 ($$) (open_input vALUE_VAR1)
-                           (openAtom d vALUE_VAR2 rl join_idx (atom{atomVal = simplify $ atomVal atom}) "return None")
+               else open_input vALUE_VAR1 $$
+                    openAtom d vALUE_VAR2 rl join_idx (atom{atomVal = simplify $ atomVal atom}) "return None"
     let filters = mkFilters d rl join_idx
         last_idx = join_idx + length filters
     -- If we're at the end of the rule, generate head atom; otherwise
     -- return all live variables in a tuple
     (ret, next) <- if last_idx == length ruleRHS - 1
-        then (, "None") <$> mkDDValue d (CtxRuleL rl 0) (atomVal $ head $ ruleLHS)
-        else do ret <- mkVarsTupleValue d $ map (, EReference) $ rhsVarsAfter d rl last_idx
+        then return (mkDDValue d (CtxRuleL rl 0) (atomVal $ head $ ruleLHS), "None")
+        else do let ret = mkVarsTupleValue rl $ map (, EReference) $ rhsVarsAfter d rl last_idx
                 next <- compileRule d rl last_idx False
                 return (ret, next)
     let jfun = braces' $ open                     $$
@@ -2056,8 +2342,8 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
            then "XFormArrangement::Semijoin{"                                                                                   $$
                 "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ join_idx + 1) <> ".to_string(),"                   $$
                 "    ffun:" <+> ffun <> ","                                                                                     $$
-                "    arrangement: (" <> relId (atomRelation atom) <> "," <> pp aid <> "),"                                      $$
-                "    jfun: {fn __f(_: &DDValue ," <> vALUE_VAR1 <> ": &DDValue,_" <> vALUE_VAR2 <> ": &()) -> Option<DDValue>"       $$
+                "    arrangement: (" <> relId d (atomRelation atom) <> "," <> pp aid <> "),"                                    $$
+                "    jfun: {fn __f(_: &DDValue ," <> vALUE_VAR1 <> ": &DDValue,_" <> vALUE_VAR2 <> ": &()) -> Option<DDValue>"  $$
                 nest' jfun                                                                                                      $$
                 "    __f},"                                                                                                     $$
                 "    next: Box::new(" <> next  <> ")"                                                                           $$
@@ -2065,27 +2351,27 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
            else "XFormArrangement::Join{"                                                                                       $$
                 "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ join_idx + 1) <> ".to_string(),"                   $$
                 "    ffun:" <+> ffun <> ","                                                                                     $$
-                "    arrangement: (" <> relId (atomRelation atom) <> "," <> pp aid <> "),"                                      $$
-                "    jfun: {fn __f(_: &DDValue ," <> vALUE_VAR1 <> ": &DDValue," <> vALUE_VAR2 <> ": &DDValue) -> Option<DDValue>"     $$
+                "    arrangement: (" <> relId d (atomRelation atom) <> "," <> pp aid <> "),"                                    $$
+                "    jfun: {fn __f(_: &DDValue ," <> vALUE_VAR1 <> ": &DDValue," <> vALUE_VAR2 <> ": &DDValue) -> Option<DDValue>"  $$
                 nest' jfun                                                                                                      $$
                 "    __f},"                                                                                                     $$
                 "    next: Box::new(" <> next <> ")"                                                                            $$
                 "}"
 
 -- Compile XForm::Antijoin
-mkAntijoin :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> [Int] -> Bool -> Atom -> Rule -> Int -> CompilerMonad Doc
+mkAntijoin :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?statics::CrateStatics) => DatalogProgram -> [Int] -> Bool -> Atom -> Rule -> Int -> CompilerMonad Doc
 mkAntijoin d input_filters input_val Atom{..} rl ajoin_idx = do
     -- create arrangement to anti-join with
     let ctx = CtxRuleRAtom rl ajoin_idx
     let (arr, _) = normalizeArrangement d ctx atomVal
     -- Filter inputs using 'input_filters'
-    ffun <- mkFFun d rl input_filters
+    let ffun = mkFFun d rl input_filters
     aid <- fromJust <$> getAntijoinArrangement atomRelation arr
     next <- compileRule d rl ajoin_idx input_val
     return $ "XFormArrangement::Antijoin {"                                                                   $$
              "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ ajoin_idx + 1) <> ".to_string(),"   $$
              "    ffun:" <+> ffun <> ","                                                                      $$
-             "    arrangement: (" <> relId atomRelation <> "," <> pp aid <> "),"                              $$
+             "    arrangement: (" <> relId d atomRelation <> "," <> pp aid <> "),"                              $$
              "    next: Box::new(" <> next <> ")"                                                             $$
              "}"
 
@@ -2266,17 +2552,16 @@ arrangeInput d fstatom arrange_input_by = do
     normalize' _  e                                                = E e
 
 -- Compile XForm::FilterMap that generates the head of the rule
-mkHead :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> Doc -> Rule -> CompilerMonad Doc
-mkHead d prefix rl = do
-    v <- mkDDValue d (CtxRuleL rl 0) (atomVal $ head $ ruleLHS rl)
-    let fmfun = braces' $ prefix $$
+mkHead :: (?cfg::Config, ?specname::String, ?statics::CrateStatics, ?crate_graph::CrateGraph) => DatalogProgram -> Doc -> Rule -> Doc
+mkHead d prefix rl =
+    let v = mkDDValue d (CtxRuleL rl 0) (atomVal $ head $ ruleLHS rl)
+        fmfun = braces' $ prefix $$
                           "Some" <> parens v
-    return $
-        "XFormCollection::FilterMap{"                                                               $$
-        "    description:" <+> (pp $ show $ show $ "head of" <+> pp rl) <+> ".to_string(),"         $$
-        nest' ("fmfun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<DDValue>" $$ fmfun $$ "__f},")  $$
-        "    next: Box::new(None)"                                                                  $$
-        "}"
+    in "XFormCollection::FilterMap{"                                                               $$
+       "    description:" <+> (pp $ show $ show $ "head of" <+> pp rl) <+> ".to_string(),"         $$
+       nest' ("fmfun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<DDValue>" $$ fmfun $$ "__f},")  $$
+       "    next: Box::new(None)"                                                                  $$
+       "}"
 
 -- Variables in the RHS of the rule declared before or in i'th term
 -- and used after the term.
@@ -2293,69 +2578,67 @@ rhsVarsAfter d rl i =
                                                         (concatMap (ruleRHSTermVars d rl) [i+1..length (ruleRHS rl) - 1]))
                                 $ ruleRHSVars d rl (i+1)
 
-mkProg :: [ProgNode] -> CompilerMonad Doc
-mkProg nodes = do
-    let rels = vcat $
-               map (\ProgRel{..} -> "let" <+> rnameFlat prelName <+> "=" <+> prelCode <> ";")
-                   (concatMap nodeRels nodes)
-    let facts = concatMap prelFacts $ concatMap nodeRels nodes
-    let pnodes = map mkNode nodes
-        prog = "Program {"                                      $$
-               "    nodes: vec!["                               $$
-               (nest' $ nest' $ vcat $ punctuate comma pnodes)  $$
-               "    ],"                                         $$
-               "    init_data: vec!["                           $$
-               (nest' $ nest' $ vcat $ punctuate comma facts)   $$
-               "    ]"                                          $$
-               "}"
-    return $
-        "pub fn prog(__update_cb: Box<dyn CBFn>) -> Program {"  $$
-        (nest' $ rels $$ prog)                                                 $$
-        "}"
+mkProg :: (?crate_graph::CrateGraph, ?specname::String) => [ProgNode] -> Doc
+mkProg nodes =
+    "pub fn prog(__update_cb: Box<dyn program::CBFn>) -> program::Program {"                        $$
+    (nest' relations)                                                                               $$
+    "    let nodes: std::vec::Vec<program::ProgNode> = vec!["                                       $$
+    (nest' $ nest' pnodes)                                                                          $$
+    "    ];"                                                                                        $$
+    "    let init_data: std::vec::Vec<(program::RelId, DDValue)> = vec![" <> facts <> "];"          $$
+    "    program::Program {"                                                                        $$
+    "        nodes,"                                                                                $$
+    "        init_data,"                                                                            $$
+    "    }"                                                                                         $$
+    "}"
+    where
+    relations = vcat $ map (\ProgRel{..} -> "let" <+> rnameFlat prelName <+> "=" <+> prelCode <> ";")
+                     $ concatMap nodeRels nodes
+    pnodes = nest' $ vcommaSep $ map mkNode nodes
+    facts = vcommaSep $ concatMap ((map sel2) . prelFacts)
+                      $ concatMap nodeRels nodes
 
-mkNode :: ProgNode -> Doc
-mkNode (RelNode (ProgRel rel _ _)) =
-    "ProgNode::Rel{rel:" <+> rnameFlat rel <> "}"
+mkNode :: (?crate_graph::CrateGraph, ?specname::String) => ProgNode -> Doc
+mkNode (RelNode ProgRel{..}) =
+    "program::ProgNode::Rel{rel:" <+> rnameFlat prelName <> "}"
 mkNode (SCCNode rels) =
-    "ProgNode::SCC{rels: vec![" <>
+    "program::ProgNode::SCC{rels: vec![" <>
     (commaSep $ map (\RecProgRel{..} ->
-                      "RecursiveRelation{rel: " <> (rnameFlat $ prelName rprelRel) <>
+                      "program::RecursiveRelation{rel: " <> (rnameFlat $ prelName rprelRel) <>
                       ", distinct: " <> (if rprelDistinct then "true" else "false") <> "}") rels) <> "]}"
-mkNode (ApplyNode fun) =
-    "ProgNode::Apply{tfun:" <+> fun <> "}"
+mkNode (ApplyNode mname i _) =
+    "program::ProgNode::Apply{tfun:" <+> ridentScoped Nothing mname ("__apply_" ++ show i) <> "}"
 
-mkArrangement :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> Relation -> Arrangement -> CompilerMonad Doc
-mkArrangement d rel ArrangementMap{..} = do
-    filter_key <- mkArrangementKey d rel arngPattern
-    let afun = braces' $
+mkArrangement :: (?cfg::Config, ?statics::CrateStatics, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> Relation -> Arrangement -> Doc
+mkArrangement d rel ArrangementMap{..} =
+    let filter_key = mkArrangementKey d rel arngPattern
+        afun = braces' $
                "let __cloned =" <+> vALUE_VAR <> ".clone();"                                                $$
                filter_key <> ".map(|x|(x,__cloned))"
-    return $
-        "Arrangement::Map{"                                                                                       $$
-        "   name: r###\"" <> pp arngPattern <> " /*join*/\"###.to_string(),"                                      $$
-        (nest' $ "afun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<(DDValue,DDValue)>" $$ afun $$ "__f},")  $$
-        "    queryable:" <+> (if null arngIndexes then "false" else "true")                                       $$
-        "}"
+    in "program::Arrangement::Map{"                                                                              $$
+       "   name: r###\"" <> pp arngPattern <> " /*join*/\"###.to_string(),"                                      $$
+       (nest' $ "afun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<(DDValue,DDValue)>" $$ afun $$ "__f},")  $$
+       "    queryable:" <+> (if null arngIndexes then "false" else "true")                                       $$
+       "}"
 
-mkArrangement d rel ArrangementSet{..} = do
-    filter_key <- mkArrangementKey d rel arngPattern
-    let fmfun = braces' filter_key
-    -- Arrangement contains distinct elements by construction and does
-    -- not require expensive `distinct()` or `distinct_total()` applied to
-    -- it if it is defined over all fields of a distinct relation (i.e.,
-    -- the pattern expression does not contain placeholders).
-    let distinct_by_construction = relIsDistinct d rel && (not $ exprContainsPHolders arngPattern)
-    return $
-        "Arrangement::Set{"                                                                                                          $$
-        "    name: r###\"" <> pp arngPattern <> " /*" <> (if arngDistinct then "antijoin" else "semijoin") <> "*/\"###.to_string()," $$
-        (nest' $ "fmfun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<DDValue>" $$ fmfun $$ "__f},")                             $$
-        "    distinct:" <+> (if arngDistinct && not distinct_by_construction then "true" else "false")                               $$
-        "}"
+mkArrangement d rel ArrangementSet{..} =
+    let filter_key = mkArrangementKey d rel arngPattern
+        fmfun = braces' filter_key
+        -- Arrangement contains distinct elements by construction and does
+        -- not require expensive `distinct()` or `distinct_total()` applied to
+        -- it if it is defined over all fields of a distinct relation (i.e.,
+        -- the pattern expression does not contain placeholders).
+        distinct_by_construction = relIsDistinct d rel && (not $ exprContainsPHolders arngPattern)
+    in "program::Arrangement::Set{"                                                                                                 $$
+       "    name: r###\"" <> pp arngPattern <> " /*" <> (if arngDistinct then "antijoin" else "semijoin") <> "*/\"###.to_string()," $$
+       (nest' $ "fmfun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<DDValue>" $$ fmfun $$ "__f},")                             $$
+       "    distinct:" <+> (if arngDistinct && not distinct_by_construction then "true" else "false")                               $$
+       "}"
 
 -- Generate part of the arrangement computation that filters inputs and computes the key part of the
 -- arrangement.
-mkArrangementKey :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> Relation -> Expr -> CompilerMonad Doc
-mkArrangementKey d rel pattern = do
+mkArrangementKey :: (?cfg::Config, ?statics::CrateStatics, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> Relation -> Expr -> Doc
+mkArrangementKey d rel pattern =
     -- extract variables with types from pattern.
     let getvars :: Type -> Expr -> [Field]
         getvars t (E EStruct{..}) =
@@ -2371,20 +2654,23 @@ mkArrangementKey d rel pattern = do
             where TOpaque _ _ [t'] = typ' d t
         getvars t (E EVar{..})    = [Field nopos [] exprVar t]
         getvars _ _               = []
-    let t = relType rel
-    -- Order variables by their integer value: '_0', '_1', ...
-    patvars <- mkFieldTupleValue d
-               $ sortBy (\f1 f2 -> compare ((read $ tail $ name f1)::Int) (read $ tail $ name f2))
-               $ getvars t pattern
-    t' <- addRelType d t
-    let res = "Some(" <> patvars <> ")"
-    -- Manufacture fake context to make sure 'pattern' has a known type
-    -- in 'mkPatExpr'.
-    let pattern_ctx = CtxTyped (ETyped nopos pattern $ relType rel) CtxTop
-    let mtch = mkMatch (mkPatExpr d pattern_ctx pattern EReference False) res "None"
-    return $ "match" <+> "<" <+> t' <> ">::from_ddvalue(" <> vALUE_VAR <> ") {"  $$
-             nest' mtch                                                                    $$
-             "}"
+
+        relt = relType rel
+        -- Order variables by their integer value: '_0', '_1', ...
+        patvars = mkFieldTupleValue (nameScope rel)
+                  $ sortBy (\f1 f2 -> compare ((read $ tail $ name f1)::Int) (read $ tail $ name f2))
+                  $ getvars relt pattern
+        relt' = mkRelType d (nameScope rel) relt
+        res = "Some(" <> patvars <> ")"
+        -- Manufacture fake context to make sure 'pattern' has a known type in 'mkPatExpr'.
+        -- Make sure that the context belongs to 'rel', so that the expression is
+        -- generated within the same module.
+        pattern_ctx = CtxTyped (ETyped nopos pattern $ relType rel)
+                               (CtxIndex $ Index nopos "" [] $ Atom nopos (name rel) ePHolder)
+        mtch = mkMatch (mkPatExpr d pattern_ctx pattern EReference False) res "None"
+        in "match" <+> "<" <+> relt' <> ">::from_ddvalue(" <> vALUE_VAR <> ") {"    $$
+           nest' mtch                                                               $$
+           "}"
 
 -- Encodes Rust match pattern.
 --
@@ -2427,7 +2713,7 @@ mkMatch (Match pat cond subpatterns) if_matches if_misses =
 -- Assumes:
 -- * the expression being matched is of kind EVal
 -- * if 'kind == EVal', the pattern does not contain any 'ERef's
-mkPatExpr :: (?statics::Statics) => DatalogProgram -> ECtx -> Expr -> EKind -> Bool -> Match
+mkPatExpr :: (?statics::CrateStatics, ?specname::String, ?crate_graph::CrateGraph) => DatalogProgram -> ECtx -> Expr -> EKind -> Bool -> Match
 mkPatExpr d ctx (E e) kind mut = evalState (mkPatExpr' d EVal ctx e kind mut) 0
 
 allocPatVar :: State Int Doc
@@ -2446,7 +2732,7 @@ varprefix _          EReference False = "ref"
 varprefix EVal       EVal       _     = empty
 varprefix inkind     varkind    _     = error $ "varprefix " ++ show inkind ++ " " ++ show varkind
 
-mkPatExpr' :: (?statics::Statics) => DatalogProgram -> EKind -> ECtx -> ENode -> EKind -> Bool -> State Int Match
+mkPatExpr' :: (?statics::CrateStatics, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> EKind -> ECtx -> ENode -> EKind -> Bool -> State Int Match
 mkPatExpr' _ inkind _   EVar{..}        varkind mut  = return $ Match (varprefix inkind varkind mut <+> pp exprVar) empty []
 mkPatExpr' _ inkind _   EVarDecl{..}    varkind mut  = return $ Match (varprefix inkind varkind mut <+> pp exprVName) empty []
 mkPatExpr' _ _      _   (EBool _ True)  _       _    = return $ Match "true" empty []
@@ -2458,7 +2744,7 @@ mkPatExpr' d inkind ctx e@EStruct{..}   varkind mut  = do
     fields <- mapM (\(f, E e') -> (f,) <$> mkPatExpr' d inkind (CtxStruct e ctx f) e' varkind mut) exprStructFields
     let t = consType d exprConstructor
         struct_name = name t
-        pat = mkConstructorName (inTypesModule ctx) struct_name (fromJust $ tdefType t) exprConstructor <>
+        pat = mkConstructorName (Just $ ctxModule ctx) struct_name (fromJust $ tdefType t) exprConstructor <>
               (braces $ hsep $ punctuate comma $ map (\(fname, m) -> pp fname <> ":" <+> mPattern m) fields)
         cond = hsep $ intersperse "&&" $ filter (/= empty)
                                        $ map (\(_,m) -> mCond m) fields
@@ -2466,7 +2752,7 @@ mkPatExpr' d inkind ctx e@EStruct{..}   varkind mut  = do
     return $ Match pat cond subpatterns
 mkPatExpr' d inkind ctx e@ETuple{..}    varkind mut  = do
     fields <- mapIdxM (\(E f) i -> mkPatExpr' d inkind (CtxTuple e ctx i) f varkind mut) exprTupleFields
-    let pat = tupleStruct (inTypesModule ctx) $ map (pp . mPattern) fields
+    let pat = tupleStruct (Just $ ctxModule ctx) $ map (pp . mPattern) fields
         cond = hsep $ intersperse "&&" $ filter (/= empty)
                                        $ map (pp . mCond) fields
         subpatterns = concatMap mSubpatterns fields
@@ -2497,7 +2783,7 @@ mkPatExpr' d inkind ctx e               varkind _    = do
 -- We generate the code so that all variables are references and must
 -- be dereferenced before use or cloned when passed to a constructor,
 -- assigned to another variable or returned.
-mkExpr :: (?statics::Statics) => DatalogProgram -> ECtx -> Expr -> EKind -> Doc
+mkExpr :: (?statics::CrateStatics, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> ECtx -> Expr -> EKind -> Doc
 mkExpr d ctx e k =
     case k of
          EVal       -> val e'
@@ -2507,21 +2793,20 @@ mkExpr d ctx e k =
     where
     e' = exprFoldCtx (mkExpr_ d) ctx e
 
-mkExpr_ :: (?statics::Statics) => DatalogProgram -> ECtx -> ExprNode (Doc, EKind, ENode) -> (Doc, EKind, ENode)
+mkExpr_ :: (?statics::CrateStatics, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> ECtx -> ExprNode (Doc, EKind, ENode) -> (Doc, EKind, ENode)
 mkExpr_ d ctx e = (t', k', e')
     where (t', k') = mkExpr' d ctx e
           e' = exprMap (E . sel3) e
 
 -- Compiled expressions are represented as '(Doc, EKind)' tuple, where
 -- the second components is the kind of the compiled representation
-mkExpr' :: (?statics::Statics) => DatalogProgram -> ECtx -> ExprNode (Doc, EKind, ENode) -> (Doc, EKind)
+mkExpr' :: (?statics::CrateStatics, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> ECtx -> ExprNode (Doc, EKind, ENode) -> (Doc, EKind)
 
 -- Expression is compiled to a lazy static.
-mkExpr' d ctx e | isJust static_idx = (parens $ "&*" <> crate <> "::__STATIC_" <> pp (fromJust static_idx), EReference)
+mkExpr' d ctx e | isJust static_idx = (parens $ "&*crate::__STATIC_" <> pp (fromJust static_idx), EReference)
     where
     e' = exprMap (E . sel3) e
     static_idx = lookupStatic d (E e') ctx ?statics
-    crate = if (inTypesModule ctx) then "crate" else "::types"
 
 -- All variables are references
 mkExpr' _ _ EVar{..}    = (pp exprVar, EReference)
@@ -2536,12 +2821,11 @@ mkExpr' d ctx EApply{exprFunc = (_, _, EFunc{exprFuncName}), exprArgs} =
     (-- Avoid using code generated by 'mkExpr EFunc', which requires
      -- establishing function type.  Lazy evaluation means that we won't
      -- execute that code.
-     mkFuncName d local func
+     mkFuncName d (Just $ ctxModule ctx) func
      <> (parens $ commaSep
                 $ map (\(a, mut) -> if mut then mutref a else ref a)
                 $ zip exprArgs (map argMut funcArgs)), kind)
     where
-    local = inTypesModule ctx
     [fname] = exprFuncName
     [func@Function{..}] = getFuncs d fname $ Just $ length exprArgs
     kind = if funcGetReturnByRefAttr d func then EReference else EVal
@@ -2581,7 +2865,7 @@ mkExpr' d ctx e@EFunc{} =
     clone_ref = if funcGetReturnByRefAttr d f then ".clone()" else empty
     res = case parctx ctx of
                CtxApplyFunc{} -> fname <> targs
-               _ -> "(Box::new(" <> crate <> "::ddlog_rt::ClosureImpl{"                                                 $$
+               _ -> "(Box::new(::ddlog_rt::ClosureImpl{"                                                 $$
                     "    description: \"" <> fname <> "\","                                                             $$
                     "    captured: (),"                                                                                 $$
                     "    f:" <+> (braces' $ "fn __f(__args:" <> (tuple $ map mkarg funcArgs) <> ", __captured: &()) ->" <+> ret_type_code       $$
@@ -2589,23 +2873,22 @@ mkExpr' d ctx e@EFunc{} =
                                              then "{unsafe{" <> fname <> "(" <> arg_deref (funcArgs !! 0) <> "__args)}" <> clone_ref <> "};"
                                              else "{unsafe{" <> fname <> "(" <> commaSep (mapIdx (\a i -> arg_deref a <> "__args." <> pp i) funcArgs) <> ")}" <> clone_ref <> "};") $$
                                             "__f")                                                                      $$
-                    "}) as Box<dyn" <+> crate <> "::ddlog_rt::Closure<(" <> commaSep (map mkarg funcArgs) <> ")," <+> ret_type_code <> ">>)"
-    local = inTypesModule ctx
-    crate = if local then "crate" else "::types"
+                    "}) as Box<dyn ::ddlog_rt::Closure<(" <> commaSep (map mkarg funcArgs) <> ")," <+> ret_type_code <> ">>)"
+    local_module = Just $ ctxModule ctx
 
     e' = exprMap (E . sel3) e
     (f@Function{..}, tmap) = funcExprGetFunc d ctx e'
-    fname = mkFuncName d local f
-    ret_type_code = mkType d local $ typeSubstTypeArgs tmap funcType
+    fname = mkFuncName d local_module f
+    ret_type_code = mkType d local_module $ typeSubstTypeArgs tmap funcType
     targs = case funcTypeVars f of
                  []  -> empty
                  tvs -> -- Extern functions can have type arguments that don't match their DDlog declaration.
                         if isJust funcDef
-                        then "::<" <> commaSep (map (\tv -> mkType d local $ tmap M.! tv) tvs) <> ">"
+                        then "::<" <> commaSep (map (\tv -> mkType d local_module $ tmap M.! tv) tvs) <> ">"
                         else empty
 
     mkarg :: FuncArg -> Doc
-    mkarg a = (if argMut a then "*mut" else "*const") <+> (mkType d local $ typeSubstTypeArgs tmap $ typ a)
+    mkarg a = (if argMut a then "*mut" else "*const") <+> (mkType d local_module $ typeSubstTypeArgs tmap $ typ a)
 
     -- Transitively unwrap type annotations.
     parctx :: ECtx -> ECtx
@@ -2613,25 +2896,24 @@ mkExpr' d ctx e@EFunc{} =
     parctx ctx_ = ctx_
 
 mkExpr' d ctx e@EClosure{..} =
-    (braces' $ "(Box::new(" <> crate <> "::ddlog_rt::ClosureImpl{"                                                         $$
+    (braces' $ "(Box::new(::ddlog_rt::ClosureImpl{"                                                         $$
                -- Strip type annotations for readability.
                "    description:" <+> (pp $ show $ show $ pp $ exprStripTypeAnnotationsRec (E e') ctx) <> ","              $$
                "    captured:" <+> (tuple $ map (\v -> pp (name v) <> ".clone()") captured_vars) <> ","                    $$
                "    f:" <+> braces' ("fn __f(__args:" <> tuple arg_type_docs <> "," <+>
-                                            "__captured: &" <> (tuple $ map (mkType d local . varType d) captured_vars) <> ") ->" <+> ret_type_code    $$
+                                            "__captured: &" <> (tuple $ map (mkType d local_module . varType d) captured_vars) <> ") ->" <+> ret_type_code    $$
                                      (braces' $ vcat ref_captured_vars $$
                                                 vcat ref_args          $$
                                                 val exprExpr)          $$
                                      "__f") $$
-               "}) as Box<dyn" <+> crate <> "::ddlog_rt::Closure<(" <> commaSep arg_type_docs <> ")," <+> ret_type_code <> ">>)"
+               "}) as Box<dyn ::ddlog_rt::Closure<(" <> commaSep arg_type_docs <> ")," <+> ret_type_code <> ">>)"
     , EVal)
     where
     e' = exprMap (E . sel3) e
-    local = inTypesModule ctx
-    crate = if local then "crate" else "::types"
+    local_module = Just $ ctxModule ctx
     TFunction _ arg_types ret_type = exprType' d ctx (E e')
-    ret_type_code = mkType d local ret_type
-    arg_type_docs = map (\t -> (if atypeMut t then "*mut" else "*const") <+> mkType d local t)
+    ret_type_code = mkType d local_module ret_type
+    arg_type_docs = map (\t -> (if atypeMut t then "*mut" else "*const") <+> mkType d local_module t)
                         arg_types
     -- Captured variables are exactly the free variables that occur in 'e'.
     captured_vars = exprFreeVars d ctx $ E e'
@@ -2650,14 +2932,14 @@ mkExpr' _ _ EField{..} = (sel1 exprStruct <> "." <> pp exprField, ELVal)
 mkExpr' _ _ ETupField{..} = ("(" <> sel1 exprTuple <> "." <> pp exprTupField <> ")", ELVal)
 mkExpr' _ _ (EBool _ True) = ("true", EVal)
 mkExpr' _ _ (EBool _ False) = ("false", EVal)
-mkExpr' _ ctx EInt{..} = (mkInt (inTypesModule ctx) exprIVal, EVal)
+mkExpr' _ _ EInt{..} = (mkInt exprIVal, EVal)
 mkExpr' _ _ EDouble{..} = ("::ordered_float::OrderedFloat::<f64>" <> (parens $ pp exprDVal), EVal)
 mkExpr' _ _ EFloat{..} = ("::ordered_float::OrderedFloat::<f32>" <> (parens $ pp exprFVal), EVal)
 mkExpr' _ _ EString{..} = ("String::from(r###\"" <> pp exprString <> "\"###)", EVal)
-mkExpr' d ctx EBit{..} | exprWidth <= 128 = (parens $ pp exprIVal <+> "as" <+> mkType d (inTypesModule ctx) (tBit exprWidth), EVal)
-                       | otherwise        = (mkBigUintType (inTypesModule ctx) <> "::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
-mkExpr' d ctx ESigned{..} | exprWidth <= 128 = (parens $ pp exprIVal <+> "as" <+> mkType d (inTypesModule ctx) (tSigned exprWidth), EVal)
-                          | otherwise        = (mkBigIntType (inTypesModule ctx) <> "::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
+mkExpr' d ctx EBit{..} | exprWidth <= 128 = (parens $ pp exprIVal <+> "as" <+> mkType d (Just $ ctxModule ctx) (tBit exprWidth), EVal)
+                       | otherwise        = (mkBigUintType <> "::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
+mkExpr' d ctx ESigned{..} | exprWidth <= 128 = (parens $ pp exprIVal <+> "as" <+> mkType d (Just $ ctxModule ctx) (tSigned exprWidth), EVal)
+                          | otherwise        = (mkBigIntType <> "::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
 
 -- Struct fields must be values
 mkExpr' d ctx EStruct{..} | ctxInSetL ctx
@@ -2670,15 +2952,15 @@ mkExpr' d ctx EStruct{..} | ctxInSetL ctx
           fieldlvals = braces $ commaSep $ map (\(fname, v) -> pp fname <> ":" <+> lval v) exprStructFields
           tdef = consType d exprConstructor
           isstruct = isStructType $ fromJust $ tdefType tdef
-          tname = rnameScoped (inTypesModule ctx) $ name tdef
+          tname = rnameScoped (Just $ ctxModule ctx) $ name tdef
 
 -- Tuple fields must be values
 mkExpr' _ ctx ETuple{..} | ctxInSetL ctx
-                         = (tupleStruct (inTypesModule ctx) $ map lval exprTupleFields, ELVal)
+                         = (tupleStruct (Just $ ctxModule ctx) $ map lval exprTupleFields, ELVal)
                          | otherwise
-                         = (tupleStruct (inTypesModule ctx) $ map val exprTupleFields, EVal)
+                         = (tupleStruct (Just $ ctxModule ctx) $ map val exprTupleFields, EVal)
 
-mkExpr' d ctx e@ESlice{..} = (mkSlice d (inTypesModule ctx) (val exprOp, w) exprH exprL, EVal)
+mkExpr' d ctx e@ESlice{..} = (mkSlice d (val exprOp, w) exprH exprL, EVal)
     where
     e' = exprMap (E . sel3) e
     TBit _ w = exprType' d (CtxSlice e' ctx) $ E $ sel3 exprOp
@@ -2739,7 +3021,7 @@ mkExpr' d ctx e@ESet{..} | islet     = ("let" <+> assign <> optsemi, EVal)
     e' = exprMap (E . sel3) e
     islet = exprIsDeconstruct d $ E $ sel3 exprLVal
     t = if islet
-        then ":" <+> (mkType d (inTypesModule ctx) $ exprType d (CtxSetL e' ctx) $ E $ sel3 exprLVal)
+        then ":" <+> (mkType d (Just $ ctxModule ctx) $ exprType d (CtxSetL e' ctx) $ E $ sel3 exprLVal)
         else empty
     assign = lval exprLVal <> t <+> "=" <+> val exprRVal
     optsemi = if not (ctxIsSeq1 ctx) then ";" else empty
@@ -2762,18 +3044,17 @@ mkExpr' d ctx e@EBinOp{..} = (v', EVal)
     t  = exprType' d ctx (E e')
     t1 = exprType' d (CtxBinOpL e' ctx) (E $ sel3 exprLeft)
     t2 = exprType' d (CtxBinOpR e' ctx) (E $ sel3 exprRight)
-    crate = if inTypesModule ctx then "crate" else "::types"
     v = case exprBOp of
              Concat | t == tString
                     -> case sel3 exprRight of
-                            EString _ s -> crate <> "::ddlog_rt::string_append_str(" <> e1 <> ", r###\"" <> pp s <> "\"###)"
-                            _           -> crate <> "::ddlog_rt::string_append(" <> e1 <> "," <+> ref exprRight <> ")"
-             op     -> mkBinOp d ctx op (e1, t1) (e2, t2)
+                            EString _ s -> "::ddlog_rt::string_append_str(" <> e1 <> ", r###\"" <> pp s <> "\"###)"
+                            _           -> "::ddlog_rt::string_append(" <> e1 <> "," <+> ref exprRight <> ")"
+             op     -> mkBinOp d op (e1, t1) (e2, t2)
 
     -- Truncate bitvector result in case the type used to represent it
     -- in Rust is larger than the bitvector width.
     v' = if elem exprBOp bopsRequireTruncation
-            then mkTruncate ctx v t
+            then mkTruncate v t
             else v
 
 mkExpr' d ctx e@EUnOp{..} = (v, EVal)
@@ -2783,12 +3064,12 @@ mkExpr' d ctx e@EUnOp{..} = (v, EVal)
     t = exprType' d ctx (E e')
     v = case exprUOp of
              Not    -> parens $ "!" <> arg
-             BNeg   -> mkTruncate ctx (parens $ "!" <> arg) t
+             BNeg   -> mkTruncate (parens $ "!" <> arg) t
              UMinus | smallInt d t
-                    -> mkTruncate ctx (parens $ arg <> ".wrapping_neg()") t
+                    -> mkTruncate (parens $ arg <> ".wrapping_neg()") t
              UMinus | isFP d t
                     -> "::ordered_float::OrderedFloat" <> (parens $ "-" <> arg <> ".into_inner()")
-             UMinus -> mkTruncate ctx (parens $ "-" <> arg) t
+             UMinus -> mkTruncate (parens $ "-" <> arg) t
 mkExpr' _ _ EPHolder{} = ("_", ELVal)
 
 -- * LHS of assignment will get type ascription elsewhere (see 'ESet').
@@ -2798,7 +3079,7 @@ mkExpr' d ctx ETyped{..} | ctxInSetL ctx = (e', categ)
                                          = (parens $ e' <> ".to_double()", categ)
                          | isint && toFloat
                                          = (parens $ e' <+> ".to_float()", categ)
-                         | isint         = (parens $ e' <+> "as" <+> mkType d (inTypesModule ctx) exprTSpec, categ)
+                         | isint         = (parens $ e' <+> "as" <+> mkType d (Just $ ctxModule ctx) exprTSpec, categ)
                          | otherwise     = (e', categ)
     where
     (e', categ, e) = exprExpr
@@ -2812,11 +3093,11 @@ mkExpr' d ctx EAs{..} | bothIntegers && narrow_from && narrow_to && width_cmp /=
                       -- use Rust's type cast syntax to convert between
                       -- primitive types; no need to truncate the result if
                       -- target width is greater than or equal to source
-                      = (parens $ val exprExpr <+> "as" <+> mkType d in_types exprTSpec, EVal)
+                      = (parens $ val exprExpr <+> "as" <+> mkType d local_module exprTSpec, EVal)
                       | bothIntegers && narrow_from && narrow_to
                       -- apply lossy type conversion between primitive Rust types;
                       -- truncate the result if needed
-                      = (mkTruncate ctx (parens $ val exprExpr <+> "as" <+> mkType d in_types exprTSpec) to_type,
+                      = (mkTruncate (parens $ val exprExpr <+> "as" <+> mkType d local_module exprTSpec) to_type,
                          EVal)
                       | bothIntegers && width_cmp == GT && tfrom == tto
                       -- from_type is wider than to_type, but they both
@@ -2846,9 +3127,9 @@ mkExpr' d ctx EAs{..} | bothIntegers && narrow_from && narrow_to && width_cmp /=
                       = (parens $ tto <> "::from_" <> nameLocal (render tfrom) <> "(" <> val exprExpr <> ")", EVal)
 
                       -- convert long integers to FP
-                      | isFloat d to_type && (tfrom == mkBigIntType in_types || tfrom == mkBigUintType in_types)
+                      | isFloat d to_type && (tfrom == mkBigIntType || tfrom == mkBigUintType)
                       = (parens $ "(" <> val exprExpr <> ").to_float()", EVal)
-                      | isDouble d to_type && (tfrom == mkBigIntType in_types || tfrom == mkBigUintType in_types)
+                      | isDouble d to_type && (tfrom == mkBigIntType || tfrom == mkBigUintType)
                       = (parens $ "(" <> val exprExpr <> ").to_double()", EVal)
                       -- convert integer to float
                       | isFloat d to_type && isInteger d from_type
@@ -2867,9 +3148,9 @@ mkExpr' d ctx EAs{..} | bothIntegers && narrow_from && narrow_to && width_cmp /=
     e' = sel3 exprExpr
     from_type = exprType' d (CtxAs e' ctx) $ E e'
     to_type   = typ' d exprTSpec
-    in_types = inTypesModule ctx
-    tfrom = mkType d in_types from_type  -- Rust type
-    tto   = mkType d in_types to_type    -- Rust type
+    local_module = Just $ ctxModule ctx
+    tfrom = mkType d local_module from_type  -- Rust type
+    tto   = mkType d local_module to_type    -- Rust type
     bothIntegers = (isInteger d from_type) && (isInteger d to_type)
     narrow_from = (isBit d from_type || isSigned d from_type) && typeWidth from_type <= 128
     narrow_to   = (isBit d to_type || isSigned d to_type)  && typeWidth to_type <= 128
@@ -2884,9 +3165,9 @@ mkExpr' _ _ e = error $ "Compile.mkExpr': unexpected expression at " ++ show (po
 
 -- 'local' is true iff the function is being used in the same crate where it was
 -- declared, i.e., the 'types' crate.
-mkFuncName :: DatalogProgram -> Bool -> Function -> Doc
-mkFuncName d local f =
-    pp $ intercalate "::" $ (if local then "crate" else "::types") : (modulePath $ nameScope f) ++ [render $ mkFuncNameShort d f]
+mkFuncName :: (?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> Maybe ModuleName -> Function -> Doc
+mkFuncName d local_module f =
+    ridentScoped local_module (nameScope f) (render $ mkFuncNameShort d f)
 
 -- Rust function name without the scope.
 mkFuncNameShort :: DatalogProgram -> Function -> Doc
@@ -2899,19 +3180,19 @@ mkFuncNameShort d f | length namesakes == 1 = nameLocal $ name f
 
 
 -- 'local' is true iff the type is being used inside the 'types' crate.
-mkType :: (WithType a) => DatalogProgram -> Bool -> a -> Doc
-mkType d local x = mkType' d (if local then "crate" else "::types") $ typ x
+mkType :: (WithType a, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> Maybe ModuleName -> a -> Doc
+mkType d scope x = mkType' d scope $ typ x
 
-mkType' :: DatalogProgram -> String -> Type -> Doc
+mkType' :: (?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> Maybe ModuleName -> Type -> Doc
 mkType' _ _       TBool{}                    = "bool"
-mkType' _ scope   TInt{}                     = pp scope <> "::ddlog_bigint::Int"
+mkType' _ _       TInt{}                     = mkBigIntType
 mkType' _ _       TString{}                  = "String"
-mkType' _ scope   TBit{..} | typeWidth <= 8  = "u8"
+mkType' _ _       TBit{..} | typeWidth <= 8  = "u8"
                            | typeWidth <= 16 = "u16"
                            | typeWidth <= 32 = "u32"
                            | typeWidth <= 64 = "u64"
                            | typeWidth <= 128= "u128"
-                           | otherwise       = pp scope <> "::ddlog_bigint::Uint"
+                           | otherwise       = mkBigUintType
 mkType' _ _       t@TSigned{..} | typeWidth == 8  = "i8"
                                 | typeWidth == 16 = "i16"
                                 | typeWidth == 32 = "i32"
@@ -2922,22 +3203,22 @@ mkType' _ _       TDouble{}                  = "::ordered_float::OrderedFloat<f6
 mkType' _ _       TFloat{}                   = "::ordered_float::OrderedFloat<f32>"
 mkType' d scope   TTuple{..} | length typeTupArgs == 0
                                     = parens $ commaSep $ map (mkType' d scope) typeTupArgs
-mkType' d scope   TTuple{..}        = tupleTypeName' scope typeTupArgs <>
+mkType' d scope   TTuple{..}        = tupleTypeName scope typeTupArgs <>
                                       if null typeTupArgs
                                          then empty
                                          else "<" <> (commaSep $ map (mkType' d scope) typeTupArgs) <> ">"
 mkType' d scope   TUser{..} | tdefGetAliasAttr d (getType d typeName)
                                     = mkType' d scope $ fromJust $ tdefType $ getType d typeName
-mkType' d scope   TUser{..}         = rnameScoped' scope typeName <>
-                                     if null typeArgs
-                                        then empty
-                                        else "<" <> (commaSep $ map (mkType' d scope) typeArgs) <> ">"
-mkType' d scope   TOpaque{..}       = rnameScoped' scope typeName <>
+mkType' d scope   TUser{..}         = rnameScoped scope typeName <>
+                                      if null typeArgs
+                                         then empty
+                                         else "<" <> (commaSep $ map (mkType' d scope) typeArgs) <> ">"
+mkType' d scope   TOpaque{..}       = rnameScoped scope typeName <>
                                       if null typeArgs
                                          then empty
                                          else "<" <> (commaSep $ map (mkType' d scope) typeArgs) <> ">"
 mkType' _ _       TVar{..}          = pp tvarName
-mkType' d scope   TFunction{..}     = "Box<dyn" <+> pp scope <+> "::ddlog_rt::Closure<" <> (tuple $ map mkarg typeFuncArgs) <> "," <+> ret_type_code <> ">>"
+mkType' d scope   TFunction{..}     = "Box<dyn" <+> rnameScoped scope "ddlog_rt::Closure" <> "<" <> (tuple $ map mkarg typeFuncArgs) <> "," <+> ret_type_code <> ">>"
                                       where
                                       mkarg a = (if atypeMut a then "*mut" else "*const") <+> mkType' d scope (typ a)
                                       ret_type_code = mkType' d scope typeRetType
@@ -2946,14 +3227,14 @@ mkType' _ _       t                 = error $ "Compile.mkType' " ++ show t
 smallInt :: DatalogProgram -> Type -> Bool
 smallInt d t = ((isSigned d t || isBit d t) && (typeWidth (typ' d t) <= 128))
 
-mkBigUintType :: Bool -> Doc
-mkBigUintType local = (if local then "crate" else "::types") <> "::ddlog_bigint::Uint"
+mkBigUintType :: Doc
+mkBigUintType = "::ddlog_bigint::Uint"
 
-mkBigIntType :: Bool -> Doc
-mkBigIntType local = (if local then "crate" else "::types") <> "::ddlog_bigint::Int"
+mkBigIntType :: Doc
+mkBigIntType = "::ddlog_bigint::Int"
 
-mkBinOp :: DatalogProgram -> ECtx -> BOp -> (Doc, Type) -> (Doc, Type) -> Doc
-mkBinOp d ctx op (e1, t1) (e2, t2) =
+mkBinOp :: (?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> BOp -> (Doc, Type) -> (Doc, Type) -> Doc
+mkBinOp d op (e1, t1) (e2, t2) =
     case op of
         Eq     -> parens $ e1 <+> "==" <+> e2
         Neq    -> parens $ e1 <+> "!=" <+> e2
@@ -3003,7 +3284,7 @@ mkBinOp d ctx op (e1, t1) (e2, t2) =
                -> "::ordered_float::OrderedFloat" <> (parens $ e1 <> ".into_inner()" <+> "*" <+> e2 <> ".into_inner()")
                | otherwise
                -> parens $ e1 <+> "*" <+> e2
-        Concat -> mkConcat d (inTypesModule ctx) (e1, typeWidth t1) (e2, typeWidth t2)
+        Concat -> mkConcat d (e1, typeWidth t1) (e2, typeWidth t2)
 
 -- These operators require truncating the output value to correct
 -- width.
@@ -3012,42 +3293,42 @@ bopsRequireTruncation = [ShiftL, Plus, Minus, Times]
 
 -- Produce code to cast bitvector to a different-width BV.
 -- The value of 'e' must fit in the new width.
-castBV :: DatalogProgram -> Bool -> Doc -> Int -> Int -> Doc
-castBV d local e w1 w2 | t1 == t2
-                       = e
-                       | w1 <= 128 && w2 <= 128
-                       = parens $ e <+> "as" <+> t2
-                       | w2 > 128
-                       = mkBigUintType local <> "::from_" <> nameLocal (render t1) <> "(" <> e <> ")"
-                       | otherwise
-                       = e <> "to_" <> t2 <> "().unwrap()"
+castBV :: (?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> Doc -> Int -> Int -> Doc
+castBV d e w1 w2 | t1 == t2
+                 = e
+                 | w1 <= 128 && w2 <= 128
+                 = parens $ e <+> "as" <+> t2
+                 | w2 > 128
+                 = mkBigUintType <> "::from_" <> nameLocal (render t1) <> "(" <> e <> ")"
+                 | otherwise
+                 = e <> "to_" <> t2 <> "().unwrap()"
     where
-    t1 = mkType d True $ tBit w1
-    t2 = mkType d True $ tBit w2
+    t1 = mkType d (error "mkType bit<> should not depend on scope") $ tBit w1
+    t2 = mkType d (error "mkType bit<> should not depend on scope") $ tBit w2
 
 -- Concatenate two bitvectors
-mkConcat :: DatalogProgram -> Bool -> (Doc, Int) -> (Doc, Int) -> Doc
-mkConcat d local (e1, w1) (e2, w2) =
+mkConcat :: (?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> (Doc, Int) -> (Doc, Int) -> Doc
+mkConcat d (e1, w1) (e2, w2) =
     parens $ e1'' <+> "|" <+> e2'
     where
-    e1' = castBV d local e1 w1 (w1+w2)
-    e2' = castBV d local e2 w2 (w1+w2)
+    e1' = castBV d e1 w1 (w1+w2)
+    e2' = castBV d e2 w2 (w1+w2)
     e1'' = parens $ e1' <+> "<<" <+> pp w2
 
-mkSlice :: DatalogProgram -> Bool -> (Doc, Int) -> Int -> Int -> Doc
-mkSlice d local (e, w) h l = castBV d local res w (h - l + 1)
+mkSlice :: (?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> (Doc, Int) -> Int -> Int -> Doc
+mkSlice d (e, w) h l = castBV d res w (h - l + 1)
     where
     res = parens $ (parens $ e <+> ">>" <+> pp l) <+> "&" <+> mask
-    mask = mkBVMask local (h - l + 1)
+    mask = mkBVMask (h - l + 1)
 
-mkBVMask :: Bool -> Int -> Doc
-mkBVMask local w | w > 128   = mkBigUintType local <> "::parse_bytes(b\"" <> m <> "\", 16)"
-                 | otherwise = "0x" <> m
+mkBVMask :: Int -> Doc
+mkBVMask w | w > 128   = mkBigUintType <> "::parse_bytes(b\"" <> m <> "\", 16)"
+           | otherwise = "0x" <> m
     where
     m = pp $ showHex (((1::Integer) `shiftL` w) - 1) ""
 
-mkTruncate :: ECtx -> Doc -> Type -> Doc
-mkTruncate ctx v t =
+mkTruncate :: Doc -> Type -> Doc
+mkTruncate v t =
     case t of
          TBit{..}    | needsTruncation typeWidth
                      -> parens $ v <+> "&" <+> mask typeWidth
@@ -3057,16 +3338,16 @@ mkTruncate ctx v t =
     needsTruncation w = mask w /= empty
     mask :: Int -> Doc
     mask w | w < 8 || w > 8  && w < 16 || w > 16 && w < 32 || w > 32 && w < 64 || w > 64 && w < 128
-           = mkBVMask (inTypesModule ctx) w
+           = mkBVMask w
     mask _ = empty
 
-mkInt :: Bool -> Integer -> Doc
-mkInt local v | v <= (toInteger (maxBound::Word128)) && v >= (toInteger (minBound::Word128))
-              = mkBigIntType local <> "::from_u128(" <> pp v <> ")"
-              | v <= (toInteger (maxBound::Int128))  && v >= (toInteger (minBound::Int128))
-              = mkBigIntType local <> "::from_i128(" <> pp v <> ")"
-              | otherwise
-              = mkBigIntType local <> "::parse_bytes(b\"" <> pp v <> "\", 10)"
+mkInt :: Integer -> Doc
+mkInt v | v <= (toInteger (maxBound::Word128)) && v >= (toInteger (minBound::Word128))
+        = mkBigIntType <> "::from_u128(" <> pp v <> ")"
+        | v <= (toInteger (maxBound::Int128))  && v >= (toInteger (minBound::Int128))
+        = mkBigIntType <> "::from_i128(" <> pp v <> ")"
+        | otherwise
+        = mkBigIntType <> "::parse_bytes(b\"" <> pp v <> "\", 10)"
 
 -- Compute the atom or tuple of variables after the prefix of length n.
 -- If this is the last term, then it is an expression of the LHS variables for each head

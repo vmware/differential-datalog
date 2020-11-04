@@ -202,14 +202,14 @@ parserTest fname = do
 compilerTest :: Bool -> FilePath -> [String] -> IO ()
 compilerTest progress file cli_args = do
     fname <- makeAbsolute file
-    let specname = takeBaseName fname
+    let ?specname = takeBaseName fname
     let dir = takeDirectory fname
 
     -- compile generated Java code
     classpath <- (maybe "" (searchPathSeparator:)) <$> lookupEnv "CLASSPATH"
     p <- (maybe "" id) <$> lookupEnv "PATH"
-    let javac_proc = (shell $ "javac ddlog" </> specname </> "*.java") {
-                          cwd = Just $ dir </> rustProjectDir specname </> "flatbuf" </> "java",
+    let javac_proc = (shell $ "javac ddlog" </> ?specname </> "*.java") {
+                          cwd = Just $ dir </> rustProjectDir </> "flatbuf" </> "java",
                           env = Just [("CLASSPATH", (dir </> "../../java" ++ searchPathSeparator:".") ++ classpath),
                                       ("PATH", p)]
                      }
@@ -222,7 +222,7 @@ compilerTest progress file cli_args = do
     -- compile it with Cargo
     cargo_flags <- cargo_build_flags
     let cargo_proc = (proc "cargo" (["build", "--features=flatbuf"] ++ cargo_flags)) {
-                          cwd = Just $ dir </> rustProjectDir specname
+                          cwd = Just $ dir </> rustProjectDir
                      }
     (ccode, cstdo, cstde) <- withProgress progress $ readCreateProcessWithExitCode cargo_proc ""
     when (ccode /= ExitSuccess) $ do
@@ -230,7 +230,7 @@ compilerTest progress file cli_args = do
                                  "\nstderr:\n" ++ cstde ++
                                  "\n\nstdout:\n" ++ cstdo
 
-    cliTest progress fname specname dir cli_args
+    cliTest progress fname dir cli_args
 
 progressThread :: IO ()
 progressThread = do
@@ -264,8 +264,8 @@ generateDDLogRust java file crate_types = do
     compile prog specname modules rs_code dir crate_types
 
 -- Feed test data via pipe if a .dat file exists
-cliTest :: Bool -> FilePath -> String -> FilePath -> [String] -> IO ()
-cliTest progress fname specname rust_dir extra_args = do
+cliTest :: (?specname::String) => Bool -> FilePath -> FilePath -> [String] -> IO ()
+cliTest progress fname rust_dir extra_args = do
     let extra_args' = if null extra_args then [] else ("--" : extra_args)
     let dumpfile = replaceExtension fname "dump"
     let errfile  = replaceExtension fname "err"
@@ -276,8 +276,8 @@ cliTest progress fname specname rust_dir extra_args = do
         herr <- openFile errfile  WriteMode
         hdat <- openFile datfile ReadMode
         cargo_flags <- cargo_build_flags
-        let cli_proc = (proc "cargo" (["run", "--bin", specname ++ "_cli"] ++ cargo_flags ++ extra_args')) {
-                cwd = Just $ rust_dir </> rustProjectDir specname,
+        let cli_proc = (proc "cargo" (["run", "--bin", ?specname ++ "_cli"] ++ cargo_flags ++ extra_args')) {
+                cwd = Just $ rust_dir </> rustProjectDir,
                 std_in=UseHandle hdat,
                 std_out=UseHandle hout,
                 std_err=UseHandle herr

@@ -111,6 +111,10 @@ if [ -f ${base}.dat ]; then
     elif [ -f ${base}.dump.expected ]; then
         diff -q ${base}.dump ${base}.dump.expected
     fi
+
+    # Don't dump potentially huge contents of the log to the console.
+    set +x
+
     if [ -f ${base}.log.expected ]; then
         diff -q <(echo `sort ../${base}.log`) <(echo `sort ${base}.log.expected`)
     fi

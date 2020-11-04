@@ -13,13 +13,19 @@ use tutorial_ddlog::Relations;
 // relation id's and symbolic names.
 use tutorial_ddlog::relid2name;
 
-// The differential_datalog crate contains the DDlog runtime that is
+// Type and function definitions.
+use tutorial_ddlog::typedefs::*;
+
+                                  // The differential_datalog crate contains the DDlog runtime that is
 // the same for all DDlog programs and simply gets copied to each generated
 // DDlog workspace unmodified (this will change in future releases).
 use differential_datalog::DDlog; // Trait that must be implemented by an instance of a DDlog program.
 use differential_datalog::DeltaMap; // Type that represents a set of changes to DDlog relations.
                                     // Returned by `DDlog::transaction_commit_dump_changes()`.
 use differential_datalog::ddval::DDValue; // Generic type that wraps all DDlog value.
+use differential_datalog::ddval::DDValConvert; // Trait to convert Rust types to/from DDValue.
+                                               // All types used in input and output relations, indexes, and
+                                               // primary keys implement this trait.
 use differential_datalog::program::RelId; // Numeric relations id.
 use differential_datalog::program::Update; // Type-safe representation of a DDlog command (insert/delete_val/delete_key/...)
 
@@ -28,12 +34,6 @@ use differential_datalog::record::Record; // Dynamically typed representation of
 use differential_datalog::record::RelIdentifier; // Relation identifier: either `RelId` or `Cow<str>`g.
 use differential_datalog::record::UpdCmd; // Dynamically typed representation of DDlog command.
 
-// The auto-generated `types` crate contains Rust types that correspond to user-defined DDlog
-// types, one for each typedef and each relation in the DDlog program.
-use types::*;
-use types::ddlog_rt::DDValConvert; // Trait to convert Rust types to/from DDValue.
-                                   // All types in the `value::Value` module (see below)
-                                   // implement this trait.
 
 fn main() -> Result<(), String> {
 
