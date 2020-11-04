@@ -127,7 +127,7 @@ rust_fmt() {
 
 rust_lint() {
     (cd "${THIS_DIR}/rust/template/" && cargo clippy --features command-line,ovsdb,c_api -- -D warnings) &&
-    (cd "${THIS_DIR}/rust/template/types" && cargo clippy --features flatbuf,ovsdb -- -D warnings) &&
+    (cd "${THIS_DIR}/rust/template/types" && cargo clippy --features ovsdb -- -D warnings) &&
     (cd "${THIS_DIR}/rust/template/cmd_parser" && cargo clippy -- -D warnings) &&
     (cd "${THIS_DIR}/rust/template/ovsdb" && cargo clippy -- -D warnings) &&
     (cd "${THIS_DIR}/rust/template/differential_datalog" && cargo clippy -- -D warnings)

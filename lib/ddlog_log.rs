@@ -1,5 +1,4 @@
-//! Logging Configuration API, (detailed documentation in `ddlog_log.h`)
-#![allow(clippy::ptr_arg, clippy::trivially_copy_pass_by_ref)]
+/* Logging Configuration API, (detailed documentation in `ddlog_log.h`) */
 
 use once_cell::sync::Lazy;
 use std::collections;
@@ -32,6 +31,7 @@ static LOG_CONFIG: Lazy<sync::RwLock<LogConfig>> =
 
 /// Logging API exposed to the DDlog program.
 /// (see detailed documentation in `log.dl`)
+#[allow(clippy::ptr_arg, clippy::trivially_copy_pass_by_ref)]
 pub fn log(module: &i32, level: &i32, msg: &String) {
     let cfg = LOG_CONFIG.read().unwrap();
     if let Some((cb, current_level)) = cfg.mod_callbacks.get(&module) {

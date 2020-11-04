@@ -280,7 +280,7 @@ mod tests {
     use differential_datalog::program::RelId;
     use differential_datalog::record::UpdCmd;
     use differential_datalog_test::test_value::*;
-    use types::ddval_convert::DDValConvert;
+    use types::ddlog_rt::DDValConvert;
 
     use crate::await_expected;
     use crate::MockObserver;

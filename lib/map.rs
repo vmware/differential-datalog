@@ -1,4 +1,4 @@
-use crate::closure::Closure;
+use crate::ddlog_rt::Closure;
 use crate::ddlog_std;
 
 pub fn map_map_in_place<K: Ord, V>(

@@ -20,7 +20,7 @@
  *
  * Other related files:
  * `log4j.dl` - specializes the logging API for using log4j loggers
- * `rust/template/types/ddlog_log.rs` - Rust logging API
+ * `ddlog_log.rs` - Rust logging API
  * `ddlog_log.h` - matching C bindings
  * `DDlogAPI.java (DDlogAPI.log_set_callback method)` - Java API to control
  *  logging.

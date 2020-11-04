@@ -258,7 +258,7 @@ pub fn s64_pow32(base: &i64, exp: &u32) -> i64 {
 pub fn s128_pow32(base: &i128, exp: &u32) -> i128 {
     base.wrapping_pow(*exp)
 }
-pub fn bigint_pow32(base: &crate::int::Int, exp: &u32) -> crate::int::Int {
+pub fn bigint_pow32(base: &crate::ddlog_bigint::Int, exp: &u32) -> crate::ddlog_bigint::Int {
     num::pow::pow(base.clone(), *exp as usize)
 }
 

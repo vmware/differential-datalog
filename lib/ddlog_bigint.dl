@@ -1,0 +1,4 @@
+/* Implementation of dynamically sized signed and unsigned integers that back 
+ * DDlog's `bigint`, as well as `bit<>` types wider that 128 bits.  This module
+ * does not have any DDlog declarations; see `ddlog_bigint.rs` for the list of
+ * Rust declarations exported by this module. */

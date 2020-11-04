@@ -1,0 +1,3 @@
+/* Rust types, functions and traits imported by every DDlog module, including 
+ * `ddlog_std`.  This module does not have any DDlog declarations; see
+ * `ddlog_rt.rs` for the list of Rust declarations exported by this module. */

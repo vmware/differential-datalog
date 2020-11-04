@@ -55,12 +55,6 @@ pub mod ovsdb_api;
 pub mod update_handler;
 
 use crate::api::updcmd2upd;
-use ::types::closure;
-use ::types::ddval_convert::DDValConvert;
-use ::types::int;
-use ::types::string_append;
-use ::types::string_append_str;
-use ::types::uint;
 
 use serde::ser::SerializeTuple;
 use serde::Deserialize;

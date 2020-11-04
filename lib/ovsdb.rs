@@ -2,8 +2,8 @@ pub use ddlog_ovsdb_adapter::uuid2name;
 pub use ddlog_ovsdb_adapter::uuid2str;
 use std::iter::FromIterator;
 
+use crate::ddlog_rt::Val;
 use crate::ddlog_std;
-use crate::Val;
 
 pub fn map_extract_val_uuids<K: Val>(
     ids: &ddlog_std::Map<K, uuid_or_string_t>,

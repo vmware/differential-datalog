@@ -9,8 +9,8 @@ use std::fmt::Formatter;
 use differential_datalog::record::IntoRecord;
 use differential_datalog::record::Mutator;
 use differential_datalog::record::Record;
+use types::ddlog_bigint;
 use types::decl_ddval_convert;
-use types::uint;
 
 /// `Value` type that implements `trait DDValConvert` and is thus useful for testing Rust modules that
 /// interact with the DDlog API, but do not define their own value type.
@@ -54,7 +54,7 @@ impl Mutator<Bool> for Record {
 }
 
 #[derive(Default, Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
-pub struct Uint(pub uint::Uint);
+pub struct Uint(pub ddlog_bigint::Uint);
 impl Abomonation for Uint {}
 impl Display for Uint {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {

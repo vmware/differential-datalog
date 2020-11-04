@@ -31,9 +31,9 @@ use differential_datalog::record::UpdCmd; // Dynamically typed representation of
 // The auto-generated `types` crate contains Rust types that correspond to user-defined DDlog
 // types, one for each typedef and each relation in the DDlog program.
 use types::*;
-use types::ddval_convert::DDValConvert; // Trait to convert Rust types to/from DDValue.
-                                        // All types in the `value::Value` module (see below)
-                                        // implement this trait.
+use types::ddlog_rt::DDValConvert; // Trait to convert Rust types to/from DDValue.
+                                   // All types in the `value::Value` module (see below)
+                                   // implement this trait.
 
 fn main() -> Result<(), String> {
 

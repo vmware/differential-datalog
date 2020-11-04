@@ -237,12 +237,7 @@ rustLibFiles specname =
         , (dir </> "ovsdb/Cargo.toml"                                     , $(embedFile "rust/template/ovsdb/Cargo.toml"))
         , (dir </> "ovsdb/lib.rs"                                         , $(embedFile "rust/template/ovsdb/lib.rs"))
         , (dir </> "ovsdb/test.rs"                                        , $(embedFile "rust/template/ovsdb/test.rs"))
-        , (dir </> "types/ddlog_log.rs"                                   , $(embedFile "rust/template/types/ddlog_log.rs"))
-        , (dir </> "types/closure.rs"                                     , $(embedFile "rust/template/types/closure.rs"))
         , (dir </> ".cargo/config.toml"                                   , $(embedFile "rust/template/.cargo/config.toml"))
-        , (dir </> "types/int.rs"                                         , $(embedFile "rust/template/types/int.rs"))
-        , (dir </> "types/uint.rs"                                        , $(embedFile "rust/template/types/uint.rs"))
-        , (dir </> "types/ddval_convert.rs"                               , $(embedFile "rust/template/types/ddval_convert.rs"))
         ]
     where dir = rustProjectDir specname
 
@@ -776,7 +771,7 @@ mkTypedef d tdef@TypeDef{..} =
                else "<" <> (hsep $ punctuate comma $ map pp tdefArgs) <> ">"
     targs_traits = if null tdefArgs
                       then empty
-                      else "<" <> (hsep $ punctuate comma $ map ((<> ": crate::Val") . pp) tdefArgs) <> ">"
+                      else "<" <> (hsep $ punctuate comma $ map ((<> ": crate::ddlog_rt::Val") . pp) tdefArgs) <> ">"
     targs_disp = if null tdefArgs
                     then empty
                     else "<" <> (hsep $ punctuate comma $ map ((<> ": ::std::fmt::Debug") . pp) tdefArgs) <> ">"
@@ -797,7 +792,7 @@ mkTypedef d tdef@TypeDef{..} =
               from_arr_attr = maybe empty (\_ -> "#[serde(with=\"" <> from_array_module_name <> "\")]")
                               $ fieldGetDeserializeArrayAttr d f
               from_array_module = maybe empty (\fname -> let kfunc = fst $ getFunc d fname [vtype] ktype in
-                                                         "deserialize_map_from_array!(" <>
+                                                         "crate::deserialize_map_from_array!(" <>
                                                          from_array_module_name <> "," <>
                                                          mkType d True ktype <> "," <> mkType d True vtype <> "," <>
                                                          mkFuncName d True kfunc <> ");")
@@ -1358,7 +1353,7 @@ mkFunc d f@Function{..} | isJust funcDef =
     mkArg a = pp (name a) <> ":" <+> "&" <> (if argMut a then "mut" else empty) <+> mkType d True a
     tvars = case funcTypeVars f of
                  []  -> empty
-                 tvs -> "<" <> (hcat $ punctuate comma $ map ((<> ": crate::Val") . pp) tvs) <> ">"
+                 tvs -> "<" <> (hcat $ punctuate comma $ map ((<> ": crate::ddlog_rt::Val") . pp) tvs) <> ">"
 
 -- Precompute the set of arrangements used by the program.  This is done as a separate
 -- compiler pass to maximize arrangement sharing: if a particular key is only used in
@@ -2586,7 +2581,7 @@ mkExpr' d ctx e@EFunc{} =
     clone_ref = if funcGetReturnByRefAttr d f then ".clone()" else empty
     res = case parctx ctx of
                CtxApplyFunc{} -> fname <> targs
-               _ -> "(Box::new(closure::ClosureImpl{"                                                                   $$
+               _ -> "(Box::new(" <> crate <> "::ddlog_rt::ClosureImpl{"                                                 $$
                     "    description: \"" <> fname <> "\","                                                             $$
                     "    captured: (),"                                                                                 $$
                     "    f:" <+> (braces' $ "fn __f(__args:" <> (tuple $ map mkarg funcArgs) <> ", __captured: &()) ->" <+> ret_type_code       $$
@@ -2594,8 +2589,9 @@ mkExpr' d ctx e@EFunc{} =
                                              then "{unsafe{" <> fname <> "(" <> arg_deref (funcArgs !! 0) <> "__args)}" <> clone_ref <> "};"
                                              else "{unsafe{" <> fname <> "(" <> commaSep (mapIdx (\a i -> arg_deref a <> "__args." <> pp i) funcArgs) <> ")}" <> clone_ref <> "};") $$
                                             "__f")                                                                      $$
-                    "}) as Box<dyn closure::Closure<(" <> commaSep (map mkarg funcArgs) <> ")," <+> ret_type_code <> ">>)"
+                    "}) as Box<dyn" <+> crate <> "::ddlog_rt::Closure<(" <> commaSep (map mkarg funcArgs) <> ")," <+> ret_type_code <> ">>)"
     local = inTypesModule ctx
+    crate = if local then "crate" else "::types"
 
     e' = exprMap (E . sel3) e
     (f@Function{..}, tmap) = funcExprGetFunc d ctx e'
@@ -2617,7 +2613,7 @@ mkExpr' d ctx e@EFunc{} =
     parctx ctx_ = ctx_
 
 mkExpr' d ctx e@EClosure{..} =
-    (braces' $ "(Box::new(closure::ClosureImpl{"                                                                           $$
+    (braces' $ "(Box::new(" <> crate <> "::ddlog_rt::ClosureImpl{"                                                         $$
                -- Strip type annotations for readability.
                "    description:" <+> (pp $ show $ show $ pp $ exprStripTypeAnnotationsRec (E e') ctx) <> ","              $$
                "    captured:" <+> (tuple $ map (\v -> pp (name v) <> ".clone()") captured_vars) <> ","                    $$
@@ -2627,11 +2623,12 @@ mkExpr' d ctx e@EClosure{..} =
                                                 vcat ref_args          $$
                                                 val exprExpr)          $$
                                      "__f") $$
-               "}) as Box<dyn closure::Closure<(" <> commaSep arg_type_docs <> ")," <+> ret_type_code <> ">>)"
+               "}) as Box<dyn" <+> crate <> "::ddlog_rt::Closure<(" <> commaSep arg_type_docs <> ")," <+> ret_type_code <> ">>)"
     , EVal)
     where
     e' = exprMap (E . sel3) e
     local = inTypesModule ctx
+    crate = if local then "crate" else "::types"
     TFunction _ arg_types ret_type = exprType' d ctx (E e')
     ret_type_code = mkType d local ret_type
     arg_type_docs = map (\t -> (if atypeMut t then "*mut" else "*const") <+> mkType d local t)
@@ -2653,14 +2650,14 @@ mkExpr' _ _ EField{..} = (sel1 exprStruct <> "." <> pp exprField, ELVal)
 mkExpr' _ _ ETupField{..} = ("(" <> sel1 exprTuple <> "." <> pp exprTupField <> ")", ELVal)
 mkExpr' _ _ (EBool _ True) = ("true", EVal)
 mkExpr' _ _ (EBool _ False) = ("false", EVal)
-mkExpr' _ _ EInt{..} = (mkInt exprIVal, EVal)
+mkExpr' _ ctx EInt{..} = (mkInt (inTypesModule ctx) exprIVal, EVal)
 mkExpr' _ _ EDouble{..} = ("::ordered_float::OrderedFloat::<f64>" <> (parens $ pp exprDVal), EVal)
 mkExpr' _ _ EFloat{..} = ("::ordered_float::OrderedFloat::<f32>" <> (parens $ pp exprFVal), EVal)
 mkExpr' _ _ EString{..} = ("String::from(r###\"" <> pp exprString <> "\"###)", EVal)
 mkExpr' d ctx EBit{..} | exprWidth <= 128 = (parens $ pp exprIVal <+> "as" <+> mkType d (inTypesModule ctx) (tBit exprWidth), EVal)
-                       | otherwise        = ("uint::Uint::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
+                       | otherwise        = (mkBigUintType (inTypesModule ctx) <> "::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
 mkExpr' d ctx ESigned{..} | exprWidth <= 128 = (parens $ pp exprIVal <+> "as" <+> mkType d (inTypesModule ctx) (tSigned exprWidth), EVal)
-                          | otherwise        = ("int::Int::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
+                          | otherwise        = (mkBigIntType (inTypesModule ctx) <> "::parse_bytes(b\"" <> pp exprIVal <> "\", 10)", EVal)
 
 -- Struct fields must be values
 mkExpr' d ctx EStruct{..} | ctxInSetL ctx
@@ -2681,7 +2678,7 @@ mkExpr' _ ctx ETuple{..} | ctxInSetL ctx
                          | otherwise
                          = (tupleStruct (inTypesModule ctx) $ map val exprTupleFields, EVal)
 
-mkExpr' d ctx e@ESlice{..} = (mkSlice d (val exprOp, w) exprH exprL, EVal)
+mkExpr' d ctx e@ESlice{..} = (mkSlice d (inTypesModule ctx) (val exprOp, w) exprH exprL, EVal)
     where
     e' = exprMap (E . sel3) e
     TBit _ w = exprType' d (CtxSlice e' ctx) $ E $ sel3 exprOp
@@ -2765,17 +2762,18 @@ mkExpr' d ctx e@EBinOp{..} = (v', EVal)
     t  = exprType' d ctx (E e')
     t1 = exprType' d (CtxBinOpL e' ctx) (E $ sel3 exprLeft)
     t2 = exprType' d (CtxBinOpR e' ctx) (E $ sel3 exprRight)
+    crate = if inTypesModule ctx then "crate" else "::types"
     v = case exprBOp of
              Concat | t == tString
                     -> case sel3 exprRight of
-                            EString _ s -> "string_append_str(" <> e1 <> ", r###\"" <> pp s <> "\"###)"
-                            _           -> "string_append(" <> e1 <> "," <+> ref exprRight <> ")"
-             op     -> mkBinOp d op (e1, t1) (e2, t2)
+                            EString _ s -> crate <> "::ddlog_rt::string_append_str(" <> e1 <> ", r###\"" <> pp s <> "\"###)"
+                            _           -> crate <> "::ddlog_rt::string_append(" <> e1 <> "," <+> ref exprRight <> ")"
+             op     -> mkBinOp d ctx op (e1, t1) (e2, t2)
 
     -- Truncate bitvector result in case the type used to represent it
     -- in Rust is larger than the bitvector width.
     v' = if elem exprBOp bopsRequireTruncation
-            then mkTruncate v t
+            then mkTruncate ctx v t
             else v
 
 mkExpr' d ctx e@EUnOp{..} = (v, EVal)
@@ -2785,12 +2783,12 @@ mkExpr' d ctx e@EUnOp{..} = (v, EVal)
     t = exprType' d ctx (E e')
     v = case exprUOp of
              Not    -> parens $ "!" <> arg
-             BNeg   -> mkTruncate (parens $ "!" <> arg) t
+             BNeg   -> mkTruncate ctx (parens $ "!" <> arg) t
              UMinus | smallInt d t
-                    -> mkTruncate (parens $ arg <> ".wrapping_neg()") t
+                    -> mkTruncate ctx (parens $ arg <> ".wrapping_neg()") t
              UMinus | isFP d t
                     -> "::ordered_float::OrderedFloat" <> (parens $ "-" <> arg <> ".into_inner()")
-             UMinus -> mkTruncate (parens $ "-" <> arg) t
+             UMinus -> mkTruncate ctx (parens $ "-" <> arg) t
 mkExpr' _ _ EPHolder{} = ("_", ELVal)
 
 -- * LHS of assignment will get type ascription elsewhere (see 'ESet').
@@ -2818,7 +2816,7 @@ mkExpr' d ctx EAs{..} | bothIntegers && narrow_from && narrow_to && width_cmp /=
                       | bothIntegers && narrow_from && narrow_to
                       -- apply lossy type conversion between primitive Rust types;
                       -- truncate the result if needed
-                      = (mkTruncate (parens $ val exprExpr <+> "as" <+> mkType d in_types exprTSpec) to_type,
+                      = (mkTruncate ctx (parens $ val exprExpr <+> "as" <+> mkType d in_types exprTSpec) to_type,
                          EVal)
                       | bothIntegers && width_cmp == GT && tfrom == tto
                       -- from_type is wider than to_type, but they both
@@ -2848,9 +2846,9 @@ mkExpr' d ctx EAs{..} | bothIntegers && narrow_from && narrow_to && width_cmp /=
                       = (parens $ tto <> "::from_" <> nameLocal (render tfrom) <> "(" <> val exprExpr <> ")", EVal)
 
                       -- convert long integers to FP
-                      | isFloat d to_type && (tfrom == "int::Int" || tfrom == "uint::Uint")
+                      | isFloat d to_type && (tfrom == mkBigIntType in_types || tfrom == mkBigUintType in_types)
                       = (parens $ "(" <> val exprExpr <> ").to_float()", EVal)
-                      | isDouble d to_type && (tfrom == "int::Int" || tfrom == "uint::Uint")
+                      | isDouble d to_type && (tfrom == mkBigIntType in_types || tfrom == mkBigUintType in_types)
                       = (parens $ "(" <> val exprExpr <> ").to_double()", EVal)
                       -- convert integer to float
                       | isFloat d to_type && isInteger d from_type
@@ -2906,14 +2904,14 @@ mkType d local x = mkType' d (if local then "crate" else "::types") $ typ x
 
 mkType' :: DatalogProgram -> String -> Type -> Doc
 mkType' _ _       TBool{}                    = "bool"
-mkType' _ _       TInt{}                     = "int::Int"
+mkType' _ scope   TInt{}                     = pp scope <> "::ddlog_bigint::Int"
 mkType' _ _       TString{}                  = "String"
-mkType' _ _       TBit{..} | typeWidth <= 8  = "u8"
+mkType' _ scope   TBit{..} | typeWidth <= 8  = "u8"
                            | typeWidth <= 16 = "u16"
                            | typeWidth <= 32 = "u32"
                            | typeWidth <= 64 = "u64"
                            | typeWidth <= 128= "u128"
-                           | otherwise       = "uint::Uint"
+                           | otherwise       = pp scope <> "::ddlog_bigint::Uint"
 mkType' _ _       t@TSigned{..} | typeWidth == 8  = "i8"
                                 | typeWidth == 16 = "i16"
                                 | typeWidth == 32 = "i32"
@@ -2939,7 +2937,7 @@ mkType' d scope   TOpaque{..}       = rnameScoped' scope typeName <>
                                          then empty
                                          else "<" <> (commaSep $ map (mkType' d scope) typeArgs) <> ">"
 mkType' _ _       TVar{..}          = pp tvarName
-mkType' d scope   TFunction{..}     = "Box<dyn closure::Closure<" <> (tuple $ map mkarg typeFuncArgs) <> "," <+> ret_type_code <> ">>"
+mkType' d scope   TFunction{..}     = "Box<dyn" <+> pp scope <+> "::ddlog_rt::Closure<" <> (tuple $ map mkarg typeFuncArgs) <> "," <+> ret_type_code <> ">>"
                                       where
                                       mkarg a = (if atypeMut a then "*mut" else "*const") <+> mkType' d scope (typ a)
                                       ret_type_code = mkType' d scope typeRetType
@@ -2948,8 +2946,14 @@ mkType' _ _       t                 = error $ "Compile.mkType' " ++ show t
 smallInt :: DatalogProgram -> Type -> Bool
 smallInt d t = ((isSigned d t || isBit d t) && (typeWidth (typ' d t) <= 128))
 
-mkBinOp :: DatalogProgram -> BOp -> (Doc, Type) -> (Doc, Type) -> Doc
-mkBinOp d op (e1, t1) (e2, t2) =
+mkBigUintType :: Bool -> Doc
+mkBigUintType local = (if local then "crate" else "::types") <> "::ddlog_bigint::Uint"
+
+mkBigIntType :: Bool -> Doc
+mkBigIntType local = (if local then "crate" else "::types") <> "::ddlog_bigint::Int"
+
+mkBinOp :: DatalogProgram -> ECtx -> BOp -> (Doc, Type) -> (Doc, Type) -> Doc
+mkBinOp d ctx op (e1, t1) (e2, t2) =
     case op of
         Eq     -> parens $ e1 <+> "==" <+> e2
         Neq    -> parens $ e1 <+> "!=" <+> e2
@@ -2999,7 +3003,7 @@ mkBinOp d op (e1, t1) (e2, t2) =
                -> "::ordered_float::OrderedFloat" <> (parens $ e1 <> ".into_inner()" <+> "*" <+> e2 <> ".into_inner()")
                | otherwise
                -> parens $ e1 <+> "*" <+> e2
-        Concat -> mkConcat d (e1, typeWidth t1) (e2, typeWidth t2)
+        Concat -> mkConcat d (inTypesModule ctx) (e1, typeWidth t1) (e2, typeWidth t2)
 
 -- These operators require truncating the output value to correct
 -- width.
@@ -3008,42 +3012,42 @@ bopsRequireTruncation = [ShiftL, Plus, Minus, Times]
 
 -- Produce code to cast bitvector to a different-width BV.
 -- The value of 'e' must fit in the new width.
-castBV :: DatalogProgram -> Doc -> Int -> Int -> Doc
-castBV d e w1 w2 | t1 == t2
-                 = e
-                 | w1 <= 128 && w2 <= 128
-                 = parens $ e <+> "as" <+> t2
-                 | w2 > 128
-                 = "uint::Uint::from_" <> nameLocal (render t1) <> "(" <> e <> ")"
-                 | otherwise
-                 = e <> "to_" <> t2 <> "().unwrap()"
+castBV :: DatalogProgram -> Bool -> Doc -> Int -> Int -> Doc
+castBV d local e w1 w2 | t1 == t2
+                       = e
+                       | w1 <= 128 && w2 <= 128
+                       = parens $ e <+> "as" <+> t2
+                       | w2 > 128
+                       = mkBigUintType local <> "::from_" <> nameLocal (render t1) <> "(" <> e <> ")"
+                       | otherwise
+                       = e <> "to_" <> t2 <> "().unwrap()"
     where
     t1 = mkType d True $ tBit w1
     t2 = mkType d True $ tBit w2
 
 -- Concatenate two bitvectors
-mkConcat :: DatalogProgram -> (Doc, Int) -> (Doc, Int) -> Doc
-mkConcat d (e1, w1) (e2, w2) =
+mkConcat :: DatalogProgram -> Bool -> (Doc, Int) -> (Doc, Int) -> Doc
+mkConcat d local (e1, w1) (e2, w2) =
     parens $ e1'' <+> "|" <+> e2'
     where
-    e1' = castBV d e1 w1 (w1+w2)
-    e2' = castBV d e2 w2 (w1+w2)
+    e1' = castBV d local e1 w1 (w1+w2)
+    e2' = castBV d local e2 w2 (w1+w2)
     e1'' = parens $ e1' <+> "<<" <+> pp w2
 
-mkSlice :: DatalogProgram -> (Doc, Int) -> Int -> Int -> Doc
-mkSlice d (e, w) h l = castBV d res w (h - l + 1)
+mkSlice :: DatalogProgram -> Bool -> (Doc, Int) -> Int -> Int -> Doc
+mkSlice d local (e, w) h l = castBV d local res w (h - l + 1)
     where
     res = parens $ (parens $ e <+> ">>" <+> pp l) <+> "&" <+> mask
-    mask = mkBVMask (h - l + 1)
+    mask = mkBVMask local (h - l + 1)
 
-mkBVMask :: Int -> Doc
-mkBVMask w | w > 128   = "uint::Uint::parse_bytes(b\"" <> m <> "\", 16)"
-           | otherwise = "0x" <> m
+mkBVMask :: Bool -> Int -> Doc
+mkBVMask local w | w > 128   = mkBigUintType local <> "::parse_bytes(b\"" <> m <> "\", 16)"
+                 | otherwise = "0x" <> m
     where
     m = pp $ showHex (((1::Integer) `shiftL` w) - 1) ""
 
-mkTruncate :: Doc -> Type -> Doc
-mkTruncate v t =
+mkTruncate :: ECtx -> Doc -> Type -> Doc
+mkTruncate ctx v t =
     case t of
          TBit{..}    | needsTruncation typeWidth
                      -> parens $ v <+> "&" <+> mask typeWidth
@@ -3053,16 +3057,16 @@ mkTruncate v t =
     needsTruncation w = mask w /= empty
     mask :: Int -> Doc
     mask w | w < 8 || w > 8  && w < 16 || w > 16 && w < 32 || w > 32 && w < 64 || w > 64 && w < 128
-           = mkBVMask w
+           = mkBVMask (inTypesModule ctx) w
     mask _ = empty
 
-mkInt :: Integer -> Doc
-mkInt v | v <= (toInteger (maxBound::Word128)) && v >= (toInteger (minBound::Word128))
-        = "int::Int::from_u128(" <> pp v <> ")"
-        | v <= (toInteger (maxBound::Int128))  && v >= (toInteger (minBound::Int128))
-        = "int::Int::from_i128(" <> pp v <> ")"
-        | otherwise
-        = "int::Int::parse_bytes(b\"" <> pp v <> "\", 10)"
+mkInt :: Bool -> Integer -> Doc
+mkInt local v | v <= (toInteger (maxBound::Word128)) && v >= (toInteger (minBound::Word128))
+              = mkBigIntType local <> "::from_u128(" <> pp v <> ")"
+              | v <= (toInteger (maxBound::Int128))  && v >= (toInteger (minBound::Int128))
+              = mkBigIntType local <> "::from_i128(" <> pp v <> ")"
+              | otherwise
+              = mkBigIntType local <> "::parse_bytes(b\"" <> pp v <> "\", 10)"
 
 -- Compute the atom or tuple of variables after the prefix of length n.
 -- If this is the last term, then it is an expression of the LHS variables for each head
