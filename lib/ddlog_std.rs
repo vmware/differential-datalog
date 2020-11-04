@@ -1,9 +1,7 @@
 /// Rust implementation of DDlog standard library functions and types.
-use differential_datalog::ddval::DDValue;
 use differential_datalog::decl_record_mutator_struct;
 use differential_datalog::decl_struct_from_record;
 use differential_datalog::decl_struct_into_record;
-use differential_datalog::program::Weight;
 use differential_datalog::record::arg_extract;
 use differential_datalog::record::Record;
 
@@ -12,7 +10,7 @@ use serde::de::Deserializer;
 use serde::ser::SerializeStruct;
 use serde::ser::Serializer;
 
-use num_traits::identities::Zero;
+use num::Zero;
 use std::borrow;
 use std::cmp;
 use std::collections::btree_map;
@@ -24,7 +22,6 @@ use std::hash::Hash;
 use std::hash::Hasher;
 use std::iter::FromIterator;
 use std::ops;
-use std::ops::Deref;
 use std::option;
 use std::result;
 use std::slice;
@@ -200,7 +197,7 @@ pub fn s64_pow32(base: &i64, exp: &u32) -> i64 {
 pub fn s128_pow32(base: &i128, exp: &u32) -> i128 {
     base.wrapping_pow(*exp)
 }
-pub fn bigint_pow32(base: &crate::ddlog_bigint::Int, exp: &u32) -> crate::ddlog_bigint::Int {
+pub fn bigint_pow32(base: &ddlog_bigint::Int, exp: &u32) -> ddlog_bigint::Int {
     num::pow::pow(base.clone(), *exp as usize)
 }
 

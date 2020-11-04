@@ -1,5 +1,6 @@
 //! Tests for the `differential_datalog` crate.
 //!
+//!
 //! These tests live in a separate crate, as they depend on the `types` crate that defines the
 //! `DDValConvert` trait.  Since `types` itself depends on `differential_datalog`, tests had to be
 //! factored in a separate crate.
@@ -36,8 +37,6 @@ use differential_dataflow::Collection;
 
 use differential_datalog::ddval::*;
 use differential_datalog::program::*;
-
-use types::ddlog_rt::DDValConvert;
 
 pub mod test_value;
 use test_value::*;
@@ -1437,4 +1436,39 @@ fn test_recursion_1() {
 #[test]
 fn test_recursion_multi() {
     test_recursion(16)
+}
+
+#[test]
+fn conversion_lossless() {
+    let boolean = Bool(true);
+    let val = boolean.clone().into_ddvalue();
+
+    assert_eq!(Some(&boolean), Bool::try_from_ddvalue_ref(&val));
+    assert_eq!(Some(boolean.clone()), Bool::try_from_ddvalue(val.clone()));
+    assert_eq!(&boolean, Bool::from_ddvalue_ref(&val));
+    assert_eq!(boolean, Bool::from_ddvalue(val));
+}
+
+#[test]
+fn checked_conversions() {
+    let val = Bool(true).into_ddvalue();
+
+    assert!(Empty::try_from_ddvalue_ref(&val).is_none());
+    assert!(Empty::try_from_ddvalue(val).is_none());
+}
+
+#[test]
+#[should_panic(expected = "attempted to convert a DDValue into the incorrect type")]
+fn incorrect_from_type() {
+    let val = Bool(true).into_ddvalue();
+
+    let _panic = Empty::from_ddvalue(val);
+}
+
+#[test]
+#[should_panic(expected = "attempted to convert a DDValue into the incorrect type")]
+fn incorrect_from_ref_type() {
+    let val = Bool(true).into_ddvalue();
+
+    let _panic = Empty::from_ddvalue_ref(&val);
 }

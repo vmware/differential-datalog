@@ -658,18 +658,19 @@ rhsIsFilterCondition _                         = False
 rhsIsAssignment :: RuleRHS -> Bool
 rhsIsAssignment rhs = rhsIsCondition rhs && not (rhsIsFilterCondition rhs)
 
-data Rule = Rule { rulePos :: Pos
-                 , ruleLHS :: [Atom]
-                 , ruleRHS :: [RuleRHS]
+data Rule = Rule { rulePos      :: Pos
+                 , ruleModule   :: ModuleName
+                 , ruleLHS      :: [Atom]
+                 , ruleRHS      :: [RuleRHS]
                  }
 
 instance Eq Rule where
-    (==) (Rule _ lhs1 rhs1) (Rule _ lhs2 rhs2) =
-        lhs1 == lhs2 && rhs1 == rhs2
+    (==) (Rule _ m1 lhs1 rhs1) (Rule _ m2 lhs2 rhs2) =
+        m1 == m2 && lhs1 == lhs2 && rhs1 == rhs2
 
 instance Ord Rule where
-    compare (Rule _ lhs1 rhs1) (Rule _ lhs2 rhs2) =
-        compare (lhs1, rhs1) (lhs2, rhs2)
+    compare (Rule _ m1 lhs1 rhs1) (Rule _ m2 lhs2 rhs2) =
+        compare (m1, lhs1, rhs1) (m2, lhs2, rhs2)
 
 instance WithPos Rule where
     pos = rulePos
@@ -1151,27 +1152,31 @@ instance PP Transformer where
 instance Show Transformer where
     show = render . pp
 
--- | Type variables used in transformer declaration in the order they appear in the declaration
+-- | Type variables used in transformer declaration in the order they appear in the declaration.
 transformerTypeVars :: Transformer -> [String]
 transformerTypeVars Transformer{..} = nub $
     concatMap (hotypeTypeVars . hofType) $ transInputs ++ transOutputs
 
--- | Relation transformer instantiation
+-- | Relation transformer instantiation.
 data Apply = Apply { applyPos         :: Pos
+                   -- Module where the transformer is instantiated.
+                   -- (we track it so we can generate code for it in
+                   -- the corresponding Rust module.)
+                   , applyModule      :: ModuleName
                    , applyTransformer :: String
                    , applyInputs      :: [String]
                    , applyOutputs     :: [String]
                    }
 
 instance Eq Apply where
-    (==) (Apply _ t1 i1 o1) (Apply _ t2 i2 o2) = (t1, i1, o1) == (t2, i2, o2)
+    (==) (Apply _ m1 t1 i1 o1) (Apply _ m2 t2 i2 o2) = (m1, t1, i1, o1) == (m2, t2, i2, o2)
 
 instance WithPos Apply where
     pos = applyPos
     atPos a p = a{applyPos = p}
 
 instance PP Apply where
-    pp (Apply _ t i o) = "apply" <+> pp t <> (parens $ commaSep $ map pp i) <+> "->" <+> (parens $ commaSep $ map pp o)
+    pp (Apply _ _ t i o) = "apply" <+> pp t <> (parens $ commaSep $ map pp i) <+> "->" <+> (parens $ commaSep $ map pp o)
 
 instance Show Apply where
     show = render . pp

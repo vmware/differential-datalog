@@ -11,8 +11,7 @@ num = "0.3"
 serde_json = "1.0"
 
 [dependencies.uuid]
-version = "0.7"
-features = ["u128"]
+version = "0.8"
 
 [lib]
 name = "ddlog_ovsdb_adapter"

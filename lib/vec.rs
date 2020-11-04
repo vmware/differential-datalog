@@ -1,5 +1,4 @@
-use crate::ddlog_rt::Closure;
-use crate::ddlog_std;
+use ddlog_rt::Closure;
 
 pub fn vec_sort_by<A, B: Ord>(v: &mut ddlog_std::Vec<A>, f: &Box<dyn Closure<*const A, B>>) {
     v.x.sort_unstable_by_key(|x| f.call(x))

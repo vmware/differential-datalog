@@ -4,8 +4,8 @@ use std::io::Write;
 use std::string::ToString;
 
 pub fn debug_event<T1: ToString, A1: Clone + IntoRecord, A2: Clone + IntoRecord>(
-    operator_id: &crate::ddlog_std::tuple3<u32, u32, u32>,
-    w: &crate::ddlog_std::DDWeight,
+    operator_id: &ddlog_std::tuple3<u32, u32, u32>,
+    w: &ddlog_std::DDWeight,
     ts: &T1,
     operator_type: &String,
     input1: &A1,
@@ -37,8 +37,8 @@ pub fn debug_event_join<
     A2: Clone + IntoRecord,
     A3: Clone + IntoRecord,
 >(
-    operator_id: &crate::ddlog_std::tuple3<u32, u32, u32>,
-    w: &crate::ddlog_std::DDWeight,
+    operator_id: &ddlog_std::tuple3<u32, u32, u32>,
+    w: &ddlog_std::DDWeight,
     ts: &T1,
     input1: &A1,
     input2: &A2,
@@ -65,15 +65,14 @@ pub fn debug_event_join<
 }
 
 pub fn debug_split_group<K: Clone, I: 'static + Clone, V: Clone + 'static>(
-    g: &crate::ddlog_std::Group<K, crate::ddlog_std::tuple2<I, V>>,
-) -> crate::ddlog_std::tuple2<crate::ddlog_std::Vec<I>, crate::ddlog_std::Group<K, V>> {
-    let mut inputs =
-        crate::ddlog_std::Vec::with_capacity(crate::ddlog_std::group_count(g) as usize);
-    let mut vals = ::std::vec::Vec::with_capacity(crate::ddlog_std::group_count(g) as usize);
-    for crate::ddlog_std::tuple2(i, v) in g.iter() {
+    g: &ddlog_std::Group<K, ddlog_std::tuple2<I, V>>,
+) -> ddlog_std::tuple2<ddlog_std::Vec<I>, ddlog_std::Group<K, V>> {
+    let mut inputs = ddlog_std::Vec::with_capacity(ddlog_std::group_count(g) as usize);
+    let mut vals = ::std::vec::Vec::with_capacity(ddlog_std::group_count(g) as usize);
+    for ddlog_std::tuple2(i, v) in g.iter() {
         inputs.push(i);
         vals.push(v);
     }
 
-    crate::ddlog_std::tuple2(inputs, crate::ddlog_std::Group::new(g.key(), vals))
+    ddlog_std::tuple2(inputs, ddlog_std::Group::new(g.key(), vals))
 }

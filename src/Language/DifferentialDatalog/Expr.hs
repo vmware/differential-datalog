@@ -55,6 +55,7 @@ module Language.DifferentialDatalog.Expr (
     exprIsInjective,
     exprIsPolymorphic,
     exprIsPure,
+    exprIsStatic,
     exprTypeMapM,
     exprInjectStringConversion
     ) where
@@ -526,6 +527,14 @@ exprIsPure :: DatalogProgram -> ECtx -> Expr -> Bool
 exprIsPure d ctx e | isNothing funcs = False
                    | otherwise = all (\f -> not $ funcGetSideEffectAttr d f) $ fromJust funcs
     where funcs = exprFuncsRec d ctx e
+
+-- | Expression can be evaluated statically.
+exprIsStatic :: DatalogProgram -> ECtx -> Expr -> Bool
+exprIsStatic d ctx e@(E EApply{}) =
+    null (exprFreeVars d ctx e) &&
+    (not $ exprIsPolymorphic d ctx e) &&
+    exprIsPure d ctx e
+exprIsStatic _ _ _ = False
 
 -- | Transform types referenced in the expression
 exprTypeMapM :: (Monad m) => (Type -> m Type) -> Expr -> m Expr

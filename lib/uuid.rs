@@ -3,7 +3,6 @@ use serde::de::Deserializer;
 use serde::ser::Serializer;
 use std::default::Default;
 use std::fmt;
-use std::ops::Deref;
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd)]
 pub struct Uuid(::uuid::Uuid);
@@ -96,7 +95,7 @@ pub fn nAMESPACE_X500() -> Uuid {
     Uuid::new(::uuid::Uuid::NAMESPACE_X500)
 }
 
-pub fn new_v5(namespace: &Uuid, name: &crate::ddlog_std::Vec<u8>) -> Uuid {
+pub fn new_v5(namespace: &Uuid, name: &ddlog_std::Vec<u8>) -> Uuid {
     Uuid::new(::uuid::Uuid::new_v5(namespace, &**name))
 }
 
@@ -108,12 +107,12 @@ pub fn from_u128_le(v: &u128) -> Uuid {
     Uuid::new(::uuid::Uuid::from_u128_le(*v))
 }
 
-pub fn from_bytes(b: &crate::ddlog_std::Vec<u8>) -> crate::ddlog_std::Result<Uuid, Error> {
-    crate::ddlog_std::res2std(::uuid::Uuid::from_slice(&**b).map(Uuid::new))
+pub fn from_bytes(b: &ddlog_std::Vec<u8>) -> ddlog_std::Result<Uuid, Error> {
+    ddlog_std::res2std(::uuid::Uuid::from_slice(&**b).map(Uuid::new))
 }
 
-pub fn parse_str(s: &String) -> crate::ddlog_std::Result<Uuid, Error> {
-    crate::ddlog_std::res2std(::uuid::Uuid::parse_str(&s).map(Uuid::new))
+pub fn parse_str(s: &String) -> ddlog_std::Result<Uuid, Error> {
+    ddlog_std::res2std(::uuid::Uuid::parse_str(&s).map(Uuid::new))
 }
 
 pub fn to_hyphenated_lower(uuid: &Uuid) -> String {

@@ -492,22 +492,22 @@ public class Test {
                 fb_file.println("From " + relid + " " + command.kind() + " " + printOr("ZI15", r.c()));
                 break;
             }
-            case typesTestRelation.Omodule_ZI16: {
+            case typesTestRelation.module_OZI16: {
                 module_ZI16Reader r = (module_ZI16Reader)command.value();
                 fb_file.println("From " + relid + " " + command.kind() + " module::ZI16{\"" + r.x() + "\"}");
                 break;
             }
-            case typesTestRelation.Omodule_ZI17: {
+            case typesTestRelation.module_OZI17: {
                 String r = (String)command.value();
                 fb_file.println("From " + relid + " " + command.kind() + " \"" + r + "\"");
                 break;
             }
-            case typesTestRelation.Omodule_ZI18: {
+            case typesTestRelation.module_OZI18: {
                 module_ZI18Reader b = (module_ZI18Reader)command.value();
                 fb_file.println("From " + relid + " " + command.kind() + " module::ZI18{" + printMTuple(b.t()) + "}");
                 break;
             }
-            case typesTestRelation.Omodule_ZI19: {
+            case typesTestRelation.module_OZI19: {
                 Tuple2__bit_32___stringReader b = (Tuple2__bit_32___stringReader)command.value();
                 fb_file.println("From " + relid + " " + command.kind() + " " + printMTuple(b));
                 break;

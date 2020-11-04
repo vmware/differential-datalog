@@ -9,7 +9,7 @@ use std::ops::BitOr;
 use std::vec;
 use tinyset::u64set;
 
-use crate::ddlog_std::option2std;
+use ddlog_std::option2std;
 
 #[derive(Eq, Clone, Hash, PartialEq)]
 pub struct Set64<T: u64set::Fits64> {
@@ -230,14 +230,14 @@ pub fn is_empty<X: u64set::Fits64>(s: &Set64<X>) -> bool {
     s.x.len() == 0
 }
 
-pub fn nth<X: u64set::Fits64 + Ord + Clone>(s: &Set64<X>, n: &u64) -> crate::ddlog_std::Option<X> {
+pub fn nth<X: u64set::Fits64 + Ord + Clone>(s: &Set64<X>, n: &u64) -> ddlog_std::Option<X> {
     option2std(s.iter().nth(*n as usize))
 }
 
-pub fn set2vec<X: u64set::Fits64 + Ord + Clone>(s: &Set64<X>) -> crate::ddlog_std::Vec<X> {
+pub fn set2vec<X: u64set::Fits64 + Ord + Clone>(s: &Set64<X>) -> ddlog_std::Vec<X> {
     let mut v: Vec<_> = s.x.iter().collect();
     v.sort();
-    crate::ddlog_std::Vec { x: v }
+    ddlog_std::Vec { x: v }
 }
 
 pub fn union<X: u64set::Fits64 + Clone>(s1: &Set64<X>, s2: &Set64<X>) -> Set64<X> {
@@ -245,7 +245,7 @@ pub fn union<X: u64set::Fits64 + Clone>(s1: &Set64<X>, s2: &Set64<X>) -> Set64<X
     Set64 { x: s.bitor(&s2.x) }
 }
 
-pub fn unions<X: u64set::Fits64 + Clone>(sets: &crate::ddlog_std::Vec<Set64<X>>) -> Set64<X> {
+pub fn unions<X: u64set::Fits64 + Clone>(sets: &ddlog_std::Vec<Set64<X>>) -> Set64<X> {
     let mut s = u64set::Set64::new();
     for si in sets.x.iter() {
         for v in si.unsorted_iter() {
@@ -271,7 +271,7 @@ pub fn difference<X: u64set::Fits64 + Clone>(s1: &Set64<X>, s2: &Set64<X>) -> Se
     }
 }
 
-pub fn group_to_set<K, V: u64set::Fits64>(g: &crate::ddlog_std::Group<K, V>) -> Set64<V> {
+pub fn group_to_set<K, V: u64set::Fits64>(g: &ddlog_std::Group<K, V>) -> Set64<V> {
     let mut res = Set64::new();
     for ref v in g.iter() {
         insert(&mut res, v);
@@ -280,7 +280,7 @@ pub fn group_to_set<K, V: u64set::Fits64>(g: &crate::ddlog_std::Group<K, V>) -> 
 }
 
 pub fn group_set_unions<K, V: u64set::Fits64 + Clone>(
-    g: &crate::ddlog_std::Group<K, Set64<V>>,
+    g: &ddlog_std::Group<K, Set64<V>>,
 ) -> Set64<V> {
     let mut res = u64set::Set64::new();
     for gr in g.iter() {
@@ -294,16 +294,16 @@ pub fn group_set_unions<K, V: u64set::Fits64 + Clone>(
 }
 
 pub fn group_setref_unions<K, V: u64set::Fits64 + Ord + Clone>(
-    g: &crate::ddlog_std::Group<K, crate::ddlog_std::Ref<Set64<V>>>,
-) -> crate::ddlog_std::Ref<Set64<V>> {
-    if crate::ddlog_std::group_count(g) == 1 {
-        crate::ddlog_std::group_first(g)
+    g: &ddlog_std::Group<K, ddlog_std::Ref<Set64<V>>>,
+) -> ddlog_std::Ref<Set64<V>> {
+    if ddlog_std::group_count(g) == 1 {
+        ddlog_std::group_first(g)
     } else {
-        let mut res = crate::ddlog_std::ref_new(&Set64 {
+        let mut res = ddlog_std::ref_new(&Set64 {
             x: u64set::Set64::new(),
         });
         {
-            let rres = crate::ddlog_std::Ref::get_mut(&mut res).unwrap();
+            let rres = ddlog_std::Ref::get_mut(&mut res).unwrap();
             for gr in g.iter() {
                 for v in gr.unsorted_iter() {
                     rres.insert(v.clone());

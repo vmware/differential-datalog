@@ -1,9 +1,6 @@
-pub use ddlog_ovsdb_adapter::uuid2name;
-pub use ddlog_ovsdb_adapter::uuid2str;
 use std::iter::FromIterator;
 
-use crate::ddlog_rt::Val;
-use crate::ddlog_std;
+use ddlog_rt::Val;
 
 pub fn map_extract_val_uuids<K: Val>(
     ids: &ddlog_std::Map<K, uuid_or_string_t>,
@@ -69,6 +66,26 @@ pub fn group2map_remove_sentinel<K1, K2: Ord + Clone>(
         }
     }
     res
+}
+
+pub fn uuid2str(i: &u128) -> String {
+    ::uuid::Uuid::from_u128(*i /*.to_be()*/)
+        .to_hyphenated()
+        .to_string()
+}
+
+pub fn uuid2name(i: &u128) -> String {
+    let s = ::uuid::Uuid::from_u128(*i /*.to_be()*/)
+        .to_simple()
+        .to_string();
+    format!(
+        "u{}_{}_{}_{}_{}",
+        &s[0..8],
+        &s[8..12],
+        &s[12..16],
+        &s[16..20],
+        &s[20..32]
+    )
 }
 
 pub fn set_map_uuid2str(ids: &ddlog_std::Set<uuid>) -> ddlog_std::Set<String> {

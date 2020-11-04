@@ -81,6 +81,7 @@ import System.FilePath
 --import Debug.Trace
 
 import Language.DifferentialDatalog.Config
+import Language.DifferentialDatalog.Crate
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Type
 import Language.DifferentialDatalog.PP
@@ -94,8 +95,8 @@ import Language.DifferentialDatalog.Error
 import Language.DifferentialDatalog.Module
 import {-# SOURCE #-} qualified Language.DifferentialDatalog.Compile as R -- "R" for "Rust"
 
-compileFlatBufferBindings :: (?cfg :: Config) => DatalogProgram -> String -> M.Map ModuleName (Doc, Doc, Doc) -> FilePath -> IO ()
-compileFlatBufferBindings prog specname rs_code dir =
+compileFlatBufferBindings :: (?cfg :: Config, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> M.Map ModuleName (Doc, Doc, Doc) -> FilePath -> IO ()
+compileFlatBufferBindings prog rs_code dir =
     -- Produce flatbuffer bindings if either the java or rust bindings are enabled
     if (confJava ?cfg || confRustFlatBuffers ?cfg)
         then do
@@ -103,14 +104,14 @@ compileFlatBufferBindings prog specname rs_code dir =
 
             -- updateFile (java_dir </> specname <.> ".java") (render $ compileJava prog specname)
             -- Generate the flatbuffers schema
-            updateFile (flatbuf_dir </> "flatbuf.fbs") (render $ compileFlatBufferSchema prog specname)
+            updateFile (flatbuf_dir </> "flatbuf.fbs") (render $ compileFlatBufferSchema prog ?specname)
 
             -- Compile Java bindings if they're enabled
             when (confJava ?cfg) $
                 mapM_ (\(fname, doc) -> updateFile (flatbuf_dir </> "java" </> fname) $ render doc) $
-                    compileFlatBufferJavaBindings prog specname
+                    compileFlatBufferJavaBindings prog ?specname
             -- Always compile Rust bindings
-            compileFlatBufferRustBindings prog specname rs_code dir
+            compileFlatBufferRustBindings prog ?specname rs_code dir
 
             let flatc_command = runCommandReportingErr "flatc" "flatc"
             -- compile Java bindings for FlatBuffer schema
@@ -122,10 +123,10 @@ compileFlatBufferBindings prog specname rs_code dir =
             -- Copy generated file if it's changed (we could generate it in place, but
             -- flatc always overwrites its output, forcing Rust re-compilation)
             fbgenerated <- readFile $ flatbuf_dir </> "flatbuf_generated.rs"
-            updateFile (dir </> "types" </> "flatbuf_generated.rs") fbgenerated
+            updateFile (dir </> "src" </> "flatbuf_generated.rs") fbgenerated
     else
         -- If flatbuffers are completely disabled then generate dummy files
-        generateDummyRustBindings ["types/flatbuf.rs", "types/flatbuf_generated.rs", "src/flatbuf.rs"] dir
+        generateDummyRustBindings ["src/flatbuf_generated.rs", "src/flatbuf.rs"] dir
 
 -- | Generates 'fake' rust files in the generated code so that tooling isn't broken by modules that don't exist
 --
@@ -206,26 +207,22 @@ compileFlatBufferSchema d prog_name =
     "root_type __Commands;"
 
 -- | Generate FlatBuffer Rust bindings, including:
--- * `types/flatbuf.rs` - flabuf-related traits (`ToFlatBuffer`, `FromFlatBuffer`, ...)
---                        and their implementation for all standard, library,
---                        user-defined types.
--- * `src/flatbuf.rs` - serialize commands to/from flatbuffers.
-compileFlatBufferRustBindings :: (?cfg::Config) => DatalogProgram -> String -> M.Map ModuleName (Doc, Doc, Doc) -> FilePath ->  IO ()
+-- * flabuf-related traits (`ToFlatBuffer`, `FromFlatBuffer`, ...)
+-- * Their implementation for all standard, library, user-defined types.
+-- * Code to serialize commands to/from flatbuffers.
+compileFlatBufferRustBindings :: (?cfg::Config, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> String -> M.Map ModuleName (Doc, Doc, Doc) -> FilePath ->  IO ()
 compileFlatBufferRustBindings d prog_name rs_code dir = do
     let ?d = d
     let ?prog_name = prog_name
-    let types_template = replace "datalog_example" prog_name $ R.unpackFixNewline $(embedFile "rust/template/types/flatbuf.rs")
-    let value_template = replace "datalog_example" prog_name $ R.unpackFixNewline $(embedFile "rust/template/src/flatbuf.rs")
-    updateFile (dir </> "types/flatbuf.rs") $ render $
-        (pp types_template)                                                 $$
+    let template = replace "datalog_example" prog_name $ R.unpackFixNewline $(embedFile "rust/template/src/flatbuf.rs")
+    updateFile (dir </> "src/flatbuf.rs") $ render $
+        (pp template)                                                       $$
         "pub use flatbuf_generated::ddlog::" <> rustFBModule <+> " as fb;"  $$
         (vcat $ map sel2 $ M.elems rs_code)                                 $$
         (vcat $ map rustTypeFromFlatbuf
               -- One FromFlatBuffer implementation per Rust type
-              $ nubBy (\t1 t2 -> R.mkType d True t1 == R.mkType d True t2)
-              $ progRustTypesToSerialize)
-    updateFile (dir </> "src/flatbuf.rs") $ render $
-        (pp value_template)                                              $$
+              $ nubBy (\t1 t2 -> R.mkType d Nothing t1 == R.mkType d Nothing t2)
+              $ progRustTypesToSerialize)                                   $$
         rustValueFromFlatbuf
 
 -- | Generate Java convenience API that provides a type-safe way to serialize/deserialize
@@ -1473,38 +1470,38 @@ jReadField nesting fbctx e t =
 
 {- Rust bindings -}
 
-rustValueFromFlatbuf :: (?d::DatalogProgram, ?cfg::Config) => Doc
+rustValueFromFlatbuf :: (?d::DatalogProgram, ?cfg::Config, ?crate_graph::CrateGraph, ?specname::String) => Doc
 rustValueFromFlatbuf =
-    "fn relval_from_flatbuf(relid: RelId, v: fbrt::Table) -> Response<DDValue> {"               $$
+    "fn relval_from_flatbuf(relid: program::RelId, v: fbrt::Table) -> Response<DDValue> {"               $$
     "    match relid {"                                                                         $$
     (nest' $ nest' $ vcat rel_enums)                                                            $$
     "        _ => Err(format!(\"DDValue::relval_from_flatbuf: invalid relid {}\", relid))"      $$
     "    }"                                                                                     $$
     "}"                                                                                         $$
-    "fn idxkey_from_flatbuf(idxid: IdxId, v: fbrt::Table) -> Response<DDValue> {"               $$
+    "fn idxkey_from_flatbuf(idxid: program::IdxId, v: fbrt::Table) -> Response<DDValue> {"      $$
     "    match idxid {"                                                                         $$
     (nest' $ nest' $ vcat idx_enums)                                                            $$
     "        _ => Err(format!(\"DDValue::idxkey_from_flatbuf: invalid idxid {}\", idxid))"      $$
     "    }"                                                                                     $$
     "}"                                                                                         $$
-    "fn relval_to_flatbuf<'b>(relid: RelId, val: &DDValue, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> (fb::__Value, fbrt::WIPOffset<fbrt::UnionWIPOffset>) {" $$
+    "fn relval_to_flatbuf<'b>(relid: program::RelId, val: &DDValue, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> (fb::__Value, fbrt::WIPOffset<fbrt::UnionWIPOffset>) {" $$
     "    match relid {"                                                                         $$
     (nest' $ nest' $ vcat rel_to_enums)                                                         $$
     "        val => panic!(\"relval_to_flatbuf: invalid relid {}\", relid)"                     $$
     "    }"                                                                                     $$
     "}"                                                                                         $$
-    "fn relval_to_flatbuf_table<'b>(relid: RelId, val: &DDValue, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> fbrt::WIPOffset<fb::__ValueTable<'b>> {" $$
+    "fn relval_to_flatbuf_table<'b>(relid: program::RelId, val: &DDValue, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> fbrt::WIPOffset<fb::__ValueTable<'b>> {" $$
     "    let (v_type, v) = relval_to_flatbuf(relid, val, fbb);"                                 $$
     "    let v = Some(v);"                                                                      $$
     "    fb::__ValueTable::create(fbb, &fb::__ValueTableArgs{v_type, v})"                       $$
     "}"                                                                                         $$
-    "fn idxval_to_flatbuf<'b>(idxid: IdxId, val: &DDValue, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> (fb::__Value, fbrt::WIPOffset<fbrt::UnionWIPOffset>) {" $$
+    "fn idxval_to_flatbuf<'b>(idxid: program::IdxId, val: &DDValue, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> (fb::__Value, fbrt::WIPOffset<fbrt::UnionWIPOffset>) {" $$
     "    match idxid {"                                                                         $$
     (nest' $ nest' $ vcat idx_to_enums)                                                         $$
     "        val => panic!(\"idxval_to_flatbuf: invalid idxid {}\", idxid)"                     $$
     "    }"                                                                                     $$
     "}"                                                                                         $$
-    "fn idxval_to_flatbuf_vector_element<'b>(idxid: IdxId, val: &DDValue, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> fbrt::WIPOffset<fb::__ValueTable<'b>> {" $$
+    "fn idxval_to_flatbuf_vector_element<'b>(idxid: program::IdxId, val: &DDValue, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> fbrt::WIPOffset<fb::__ValueTable<'b>> {" $$
     "    let (v_type, v) = idxval_to_flatbuf(idxid, val, fbb);"                                 $$
     "    let v = Some(v);"                                                                      $$
     "    fb::__ValueTable::create(fbb, &fb::__ValueTableArgs{v_type, v})"                       $$
@@ -1512,32 +1509,32 @@ rustValueFromFlatbuf =
     where
     rel_enums = map (\rel@Relation{..} ->
                      pp (relIdentifier ?d rel) <+> "=> Ok(" <>
-                         "<" <> R.mkType ?d False relType <> ">::from_flatbuf(fb::" <> typeTableName relType <> "::init_from_table(v))?.into_ddvalue()),")
+                         "<" <> R.mkType ?d Nothing relType <> ">::from_flatbuf(fb::" <> typeTableName relType <> "::init_from_table(v))?.into_ddvalue()),")
                     progIORelations
     idx_enums = map (\idx@Index{} ->
                      let t = idxKeyType idx in
                      pp (idxIdentifier ?d idx) <+> "=> Ok(" <>
-                         "<" <> R.mkType ?d False t <> ">::from_flatbuf(fb::" <> typeTableName t <> "::init_from_table(v))?.into_ddvalue()),")
+                         "<" <> R.mkType ?d Nothing t <> ">::from_flatbuf(fb::" <> typeTableName t <> "::init_from_table(v))?.into_ddvalue()),")
                     $ M.elems $ progIndexes ?d
     rel_to_enums = map (\rel@Relation{..} ->
                     pp (relIdentifier ?d rel) <+> "=> {"                                                                           $$
-                    "    (fb::__Value::" <> typeTableName relType <> ", <" <+> R.mkType ?d False rel <> ">::from_ddvalue_ref(val).to_flatbuf_table(fbb).as_union_value())"   $$
+                    "    (fb::__Value::" <> typeTableName relType <> ", <" <+> R.mkType ?d Nothing rel <> ">::from_ddvalue_ref(val).to_flatbuf_table(fbb).as_union_value())"   $$
                     "},")
                    $ progIORelations
     idx_to_enums = map (\idx@Index{} ->
                     let t = relType $ idxRelation ?d idx in
                     pp (idxIdentifier ?d idx) <+> "=> {"                                                                           $$
-                    "    (fb::__Value::" <> typeTableName t <> ", <" <+> R.mkType ?d False t <> ">::from_ddvalue_ref(val).to_flatbuf_table(fbb).as_union_value())"   $$
+                    "    (fb::__Value::" <> typeTableName t <> ", <" <+> R.mkType ?d Nothing t <> ">::from_ddvalue_ref(val).to_flatbuf_table(fbb).as_union_value())"   $$
                     "},")
                    $ M.elems $ progIndexes ?d
 
 -- Deserialize struct with unique constructor.  Such structs are stored in
 -- tables.
-rustTypeFromFlatbuf :: (?d::DatalogProgram) => Type -> Doc
+rustTypeFromFlatbuf :: (?d::DatalogProgram, ?crate_graph::CrateGraph, ?specname::String) => Type -> Doc
 rustTypeFromFlatbuf t@TUser{..} | typeHasUniqueConstructor t =
     "impl <'a> FromFlatBuffer<fb::" <> tname <> "<'a>> for" <+> rtype <+> "{"                       $$
     "    fn from_flatbuf(v: fb::" <> tname <> "<'a>) -> Response<Self> {"                           $$
-    "        Ok(" <> R.rnameScoped True typeName <> (braces $ commaSep from_args) <> ")"            $$
+    "        Ok(" <> R.rnameScoped Nothing typeName <> (braces $ commaSep from_args) <> ")"         $$
     "    }"                                                                                         $$
     "}"                                                                                             $$
     "impl <'b> ToFlatBuffer<'b> for" <+> rtype <+> "{"                                              $$
@@ -1562,7 +1559,7 @@ rustTypeFromFlatbuf t@TUser{..} | typeHasUniqueConstructor t =
     "    }"                                                                                         $$
     "}"
     where
-    rtype = R.mkType ?d True t
+    rtype = R.mkType ?d Nothing t
     tname = typeTableName t
     tstruct = typ' ?d t
     arg_names = map (\a -> let n = rustFieldName a in
@@ -1570,7 +1567,7 @@ rustTypeFromFlatbuf t@TUser{..} | typeHasUniqueConstructor t =
                               then n
                               else n <> "_type," <+> n)
                     $ consArgs $ head $ typeCons tstruct
-    from_args = map (\a -> pp (name a) <> ": <" <> R.mkType ?d True a <> ">::from_flatbuf(" <> extract_field rtype a <> ")?")
+    from_args = map (\a -> pp (name a) <> ": <" <> R.mkType ?d Nothing a <> ">::from_flatbuf(" <> extract_field rtype a <> ")?")
                     $ consArgs $ head $ typeCons tstruct
     to_args = map (\a -> serialize_field "self." a (rustFieldName a))
                   $ consArgs $ head $ typeCons tstruct
@@ -1619,13 +1616,13 @@ rustTypeFromFlatbuf t@TUser{..} =
     "    }"                                                                                                 $$
     "}"
     where
-    rtype = R.mkType ?d True t
+    rtype = R.mkType ?d Nothing t
     tname = typeTableName t
     fbstruct = "fb::" <> fbStructName typeName typeArgs
     tstruct = typ' ?d t
     cons = map (\c -> let fbcname = fbConstructorName typeArgs c
-                          cname = R.mkConstructorName True typeName tstruct (name c)
-                          args = map (\a -> pp (name a) <> ": <" <> R.mkType ?d True a <> ">::from_flatbuf(" <> extract_field cname a <> ")?")
+                          cname = R.mkConstructorName Nothing typeName tstruct (name c)
+                          args = map (\a -> pp (name a) <> ": <" <> R.mkType ?d Nothing a <> ">::from_flatbuf(" <> extract_field cname a <> ")?")
                                      $ consArgs c
                       in if null args
                             then fbstruct <> "::" <> fbcname <+> "=> {"                                $$
@@ -1637,7 +1634,7 @@ rustTypeFromFlatbuf t@TUser{..} =
                                  "},")
                $ typeCons tstruct
     to_cons = map (\c -> let fbcname = fbConstructorName typeArgs c
-                             cname = R.mkConstructorName True typeName tstruct (name c)
+                             cname = R.mkConstructorName Nothing typeName tstruct (name c)
                              args = map (\a -> serialize_field "" a (rustFieldName a)) $ consArgs c
                              arg_names = map (\a -> let n = pp (name a) in
                                                if typeHasUniqueConstructor a
@@ -1658,7 +1655,7 @@ rustTypeFromFlatbuf t@TUser{..} =
 rustTypeFromFlatbuf t@TTuple{..} =
     "impl <'a> FromFlatBuffer<fb::" <> tname <> "<'a>> for" <+> rtype <+> "{"                       $$
     "    fn from_flatbuf(v: fb::" <> tname <> "<'a>) -> Response<Self> {"                           $$
-    "        Ok(" <> R.tupleStruct True from_args <> ")"                                            $$
+    "        Ok(" <> R.tupleStruct Nothing from_args <> ")"                                         $$
     "    }"                                                                                         $$
     "}"                                                                                             $$
     "impl <'b> ToFlatBuffer<'b> for" <+> rtype <+> "{"                                              $$
@@ -1684,13 +1681,13 @@ rustTypeFromFlatbuf t@TTuple{..} =
     "}"
     where
     tname = typeTableName t
-    rtype = R.mkType ?d True t
+    rtype = R.mkType ?d Nothing t
     arg_names = mapIdx (\a i -> let n = pp $ "a" ++ show i in
                            if typeHasUniqueConstructor a
                               then n
                               else n <> "_type," <+> n)
                        typeTupArgs
-    from_args = mapIdx (\a i -> "<" <> R.mkType ?d True a <> ">::from_flatbuf(" <> extract_field rtype (Field nopos [] ("a" ++ show i) a) <> ")?")
+    from_args = mapIdx (\a i -> "<" <> R.mkType ?d Nothing a <> ">::from_flatbuf(" <> extract_field rtype (Field nopos [] ("a" ++ show i) a) <> ")?")
                 typeTupArgs
     to_args = mapIdx (\a i -> serialize_field "self." (Field nopos [] (show i) a) ("a" <> pp i))
                      typeTupArgs
@@ -1722,7 +1719,7 @@ rustTypeFromFlatbuf t@TOpaque{} | isSharedRef ?d t = empty
     "    }"                                                                                                 $$
     "}"
     where
-    rtype = R.mkType ?d True t
+    rtype = R.mkType ?d Nothing t
     tname = typeTableName t
 
 -- For builtin types ('bool', 'bit<>', 'signed', 'string', 'bigint'),
@@ -1744,7 +1741,7 @@ rustTypeFromFlatbuf t | typeIsScalar t =
     "    }"                                                                                                 $$
     "}"
     where
-    rtype = R.mkType ?d True t
+    rtype = R.mkType ?d Nothing t
     tname = typeTableName t
 
 rustTypeFromFlatbuf _ = empty

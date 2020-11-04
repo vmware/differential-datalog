@@ -3,11 +3,9 @@ use serde::de::Deserializer;
 use serde::ser::Serializer;
 use std::fmt;
 use std::hash::Hash;
-use std::ops::Deref;
 use std::str::FromStr;
 
-use crate::ddlog_std::option2std;
-use crate::net;
+use ddlog_std::option2std;
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd)]
 pub struct Ipv6Addr(::std::net::Ipv6Addr);
@@ -94,12 +92,12 @@ pub fn ipv6_new(
 }
 
 pub fn ipv6_from_segment_vec(
-    segments: &crate::ddlog_std::Vec<u16>,
-) -> crate::ddlog_std::Option<Ipv6Addr> {
+    segments: &ddlog_std::Vec<u16>,
+) -> ddlog_std::Option<Ipv6Addr> {
     if segments.len() != 8 {
-        return crate::ddlog_std::Option::None;
+        return ddlog_std::Option::None;
     };
-    crate::ddlog_std::Option::Some {
+    ddlog_std::Option::Some {
         x: Ipv6Addr::new(::std::net::Ipv6Addr::from([
             segments[0],
             segments[1],
@@ -137,12 +135,12 @@ pub fn ipv6_from_octets(
 }
 
 pub fn ipv6_from_octet_vec(
-    octets: &crate::ddlog_std::Vec<u8>,
-) -> crate::ddlog_std::Option<Ipv6Addr> {
+    octets: &ddlog_std::Vec<u8>,
+) -> ddlog_std::Option<Ipv6Addr> {
     if octets.len() != 16 {
-        return crate::ddlog_std::Option::None;
+        return ddlog_std::Option::None;
     };
-    crate::ddlog_std::Option::Some {
+    ddlog_std::Option::Some {
         x: Ipv6Addr::new(::std::net::Ipv6Addr::from([
             octets[0], octets[1], octets[2], octets[3], octets[4], octets[5], octets[6], octets[7],
             octets[8], octets[9], octets[10], octets[11], octets[12], octets[13], octets[14],
@@ -155,8 +153,8 @@ pub fn ipv6_from_u128(ip: &u128) -> Ipv6Addr {
     Ipv6Addr::new(::std::net::Ipv6Addr::from(*ip))
 }
 
-pub fn ipv6_from_str(s: &String) -> crate::ddlog_std::Result<Ipv6Addr, String> {
-    crate::ddlog_std::res2std(::std::net::Ipv6Addr::from_str(&*s).map(Ipv6Addr::new))
+pub fn ipv6_from_str(s: &String) -> ddlog_std::Result<Ipv6Addr, String> {
+    ddlog_std::res2std(::std::net::Ipv6Addr::from_str(&*s).map(Ipv6Addr::new))
 }
 
 pub fn ipv6Addr2string(addr: &Ipv6Addr) -> String {
@@ -175,9 +173,9 @@ pub fn iPV6_UNSPECIFIED() -> Ipv6Addr {
     Ipv6Addr::new(::std::net::Ipv6Addr::UNSPECIFIED)
 }
 
-pub fn ipv6_segments(addr: &Ipv6Addr) -> crate::ddlog_std::tuple8<u16, u16, u16, u16, u16, u16, u16, u16> {
+pub fn ipv6_segments(addr: &Ipv6Addr) -> ddlog_std::tuple8<u16, u16, u16, u16, u16, u16, u16, u16> {
     let segments = addr.segments();
-    crate::ddlog_std::tuple8(
+    ddlog_std::tuple8(
         segments[0],
         segments[1],
         segments[2],
@@ -189,23 +187,23 @@ pub fn ipv6_segments(addr: &Ipv6Addr) -> crate::ddlog_std::tuple8<u16, u16, u16,
     )
 }
 
-pub fn ipv6_segment_vec(addr: &Ipv6Addr) -> crate::ddlog_std::Vec<u16> {
-    crate::ddlog_std::Vec::from(addr.segments().as_ref())
+pub fn ipv6_segment_vec(addr: &Ipv6Addr) -> ddlog_std::Vec<u16> {
+    ddlog_std::Vec::from(addr.segments().as_ref())
 }
 
 pub fn ipv6_octets(
     addr: &Ipv6Addr,
-) -> crate::ddlog_std::tuple16<u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8> {
+) -> ddlog_std::tuple16<u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8> {
     let octets = addr.octets();
-    crate::ddlog_std::tuple16(
+    ddlog_std::tuple16(
         octets[0], octets[1], octets[2], octets[3], octets[4], octets[5], octets[6], octets[7],
         octets[8], octets[9], octets[10], octets[11], octets[12], octets[13], octets[14],
         octets[15],
     )
 }
 
-pub fn ipv6_octet_vec(addr: &Ipv6Addr) -> crate::ddlog_std::Vec<u8> {
-    crate::ddlog_std::Vec::from(addr.octets().as_ref())
+pub fn ipv6_octet_vec(addr: &Ipv6Addr) -> ddlog_std::Vec<u8> {
+    ddlog_std::Vec::from(addr.octets().as_ref())
 }
 
 pub fn ipv6_is_unspecified(addr: &Ipv6Addr) -> bool {
@@ -220,6 +218,6 @@ pub fn ipv6_is_multicast(addr: &Ipv6Addr) -> bool {
     addr.is_multicast()
 }
 
-pub fn ipv6_to_ipv4(addr: &Ipv6Addr) -> crate::ddlog_std::Option<net::ipv4::Ipv4Addr> {
-    option2std(addr.to_ipv4().map(net::ipv4::Ipv4Addr::new))
+pub fn ipv6_to_ipv4(addr: &Ipv6Addr) -> ddlog_std::Option<super::ipv4::Ipv4Addr> {
+    option2std(addr.to_ipv4().map(super::ipv4::Ipv4Addr::new))
 }

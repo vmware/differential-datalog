@@ -17,46 +17,31 @@ impl Default for TimeWrapper {
 
 pub fn res2std_time_wrap<E: Display>(
     r: ::std::result::Result<::time::Time, E>,
-) -> crate::ddlog_std::Result<Time, String> {
+) -> ddlog_std::Result<Time, String> {
     match (r) {
         Ok(res) => {
             let t = TimeWrapper { val: res };
-            crate::ddlog_std::Result::Ok { res: t }
+            ddlog_std::Result::Ok { res: t }
         }
-        Err(e) => crate::ddlog_std::Result::Err {
+        Err(e) => ddlog_std::Result::Err {
             err: format!("{}", e),
         },
     }
 }
 
-pub fn try_from_hms(h: &u8, m: &u8, s: &u8) -> crate::ddlog_std::Result<Time, String> {
+pub fn try_from_hms(h: &u8, m: &u8, s: &u8) -> ddlog_std::Result<Time, String> {
     res2std_time_wrap(::time::Time::try_from_hms(*h, *m, *s))
 }
 
-pub fn try_from_hms_milli(
-    h: &u8,
-    m: &u8,
-    s: &u8,
-    ms: &u16,
-) -> crate::ddlog_std::Result<Time, String> {
+pub fn try_from_hms_milli(h: &u8, m: &u8, s: &u8, ms: &u16) -> ddlog_std::Result<Time, String> {
     res2std_time_wrap(::time::Time::try_from_hms_milli(*h, *m, *s, *ms))
 }
 
-pub fn try_from_hms_micro(
-    h: &u8,
-    m: &u8,
-    s: &u8,
-    mc: &u32,
-) -> crate::ddlog_std::Result<Time, String> {
+pub fn try_from_hms_micro(h: &u8, m: &u8, s: &u8, mc: &u32) -> ddlog_std::Result<Time, String> {
     res2std_time_wrap(::time::Time::try_from_hms_micro(*h, *m, *s, *mc))
 }
 
-pub fn try_from_hms_nano(
-    h: &u8,
-    m: &u8,
-    s: &u8,
-    mc: &u32,
-) -> crate::ddlog_std::Result<Time, String> {
+pub fn try_from_hms_nano(h: &u8, m: &u8, s: &u8, mc: &u32) -> ddlog_std::Result<Time, String> {
     res2std_time_wrap(::time::Time::try_from_hms_nano(*h, *m, *s, *mc))
 }
 
@@ -90,7 +75,7 @@ pub fn time2string(t: &Time) -> String {
     t.val.format(default_time_format)
 }
 
-pub fn string2time(s: &String) -> crate::ddlog_std::Result<Time, String> {
+pub fn string2time(s: &String) -> ddlog_std::Result<Time, String> {
     res2std_time_wrap(::time::Time::parse(s, default_time_format))
 }
 
@@ -100,7 +85,7 @@ pub fn midnight() -> Time {
     }
 }
 
-pub fn time_parse(s: &String, format: &String) -> crate::ddlog_std::Result<Time, String> {
+pub fn time_parse(s: &String, format: &String) -> ddlog_std::Result<Time, String> {
     res2std_time_wrap(::time::Time::parse(s, format))
 }
 
@@ -150,23 +135,23 @@ impl Default for DateWrapper {
 
 pub fn res2std_date_wrap<E: Display>(
     r: ::std::result::Result<::time::Date, E>,
-) -> crate::ddlog_std::Result<Date, String> {
+) -> ddlog_std::Result<Date, String> {
     match (r) {
         Ok(res) => {
             let t = DateWrapper { val: res };
-            crate::ddlog_std::Result::Ok { res: t }
+            ddlog_std::Result::Ok { res: t }
         }
-        Err(e) => crate::ddlog_std::Result::Err {
+        Err(e) => ddlog_std::Result::Err {
             err: format!("{}", e),
         },
     }
 }
 
-pub fn try_from_ymd(year: &i32, month: &u8, day: &u8) -> crate::ddlog_std::Result<Date, String> {
+pub fn try_from_ymd(year: &i32, month: &u8, day: &u8) -> ddlog_std::Result<Date, String> {
     res2std_date_wrap(::time::Date::try_from_ymd(*year, *month, *day))
 }
 
-pub fn try_from_yo(year: &i32, ordinal: &u16) -> crate::ddlog_std::Result<Date, String> {
+pub fn try_from_yo(year: &i32, ordinal: &u16) -> ddlog_std::Result<Date, String> {
     res2std_date_wrap(::time::Date::try_from_yo(*year, *ordinal))
 }
 
@@ -198,7 +183,7 @@ pub fn try_from_iso_ywd(
     year: &i32,
     week: &u8,
     weekday: &Weekday,
-) -> crate::ddlog_std::Result<Date, String> {
+) -> ddlog_std::Result<Date, String> {
     res2std_date_wrap(::time::Date::try_from_iso_ywd(
         *year,
         *week,
@@ -282,11 +267,11 @@ pub fn date_format(d: &Date, format: &String) -> String {
     d.val.format(format)
 }
 
-pub fn string2date(s: &String) -> crate::ddlog_std::Result<Date, String> {
+pub fn string2date(s: &String) -> ddlog_std::Result<Date, String> {
     res2std_date_wrap(::time::Date::parse(s, default_date_format))
 }
 
-pub fn date_parse(s: &String, format: &String) -> crate::ddlog_std::Result<Date, String> {
+pub fn date_parse(s: &String, format: &String) -> ddlog_std::Result<Date, String> {
     res2std_date_wrap(::time::Date::parse(s, format))
 }
 
@@ -307,7 +292,7 @@ impl record::Mutator<Date> for record::Record {
 
 const defaultDateTimeFormat: &str = "%Y-%m-%dT%T";
 
-pub fn datetime_parse(s: &String, format: &String) -> crate::ddlog_std::Result<DateTime, String> {
+pub fn datetime_parse(s: &String, format: &String) -> ddlog_std::Result<DateTime, String> {
     let prim = ::time::PrimitiveDateTime::parse(s, format);
     match (prim) {
         Ok(res) => {
@@ -315,9 +300,9 @@ pub fn datetime_parse(s: &String, format: &String) -> crate::ddlog_std::Result<D
                 date: DateWrapper { val: res.date() },
                 time: TimeWrapper { val: res.time() },
             };
-            crate::ddlog_std::Result::Ok { res: dt }
+            ddlog_std::Result::Ok { res: dt }
         }
-        Err(m) => crate::ddlog_std::Result::Err {
+        Err(m) => ddlog_std::Result::Err {
             err: format!("{}", m),
         },
     }
@@ -328,7 +313,7 @@ pub fn dateTime2string(d: &DateTime) -> String {
     prim.format(defaultDateTimeFormat)
 }
 
-pub fn string2datetime(s: &String) -> crate::ddlog_std::Result<DateTime, String> {
+pub fn string2datetime(s: &String) -> ddlog_std::Result<DateTime, String> {
     datetime_parse(s, &String::from(defaultDateTimeFormat))
 }
 

@@ -3,10 +3,7 @@ use serde::de::Deserializer;
 use serde::ser::Serializer;
 use std::fmt;
 use std::hash::Hash;
-use std::ops::Deref;
 use std::str::FromStr;
-
-use crate::net;
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd)]
 pub struct Ipv4Addr(::std::net::Ipv4Addr);
@@ -88,19 +85,19 @@ pub fn ipv4_from_u32(ip: &u32) -> Ipv4Addr {
 }
 
 pub fn ipv4_from_octet_vec(
-    octets: &crate::ddlog_std::Vec<u8>,
-) -> crate::ddlog_std::Option<Ipv4Addr> {
+    octets: &ddlog_std::Vec<u8>,
+) -> ddlog_std::Option<Ipv4Addr> {
     if octets.len() != 4 {
-        return crate::ddlog_std::Option::None;
+        return ddlog_std::Option::None;
     };
-    crate::ddlog_std::Option::Some {
+    ddlog_std::Option::Some {
         x: Ipv4Addr::new(::std::net::Ipv4Addr::from([
             octets[0], octets[1], octets[2], octets[3],
         ])),
     }
 }
-pub fn ipv4_from_str(s: &String) -> crate::ddlog_std::Result<Ipv4Addr, String> {
-    crate::ddlog_std::res2std(::std::net::Ipv4Addr::from_str(&*s).map(Ipv4Addr))
+pub fn ipv4_from_str(s: &String) -> ddlog_std::Result<Ipv4Addr, String> {
+    ddlog_std::res2std(::std::net::Ipv4Addr::from_str(&*s).map(Ipv4Addr))
 }
 
 pub fn ipv4Addr2string(addr: &Ipv4Addr) -> String {
@@ -119,13 +116,13 @@ pub fn iPV4_BROADCAST() -> Ipv4Addr {
     Ipv4Addr(::std::net::Ipv4Addr::BROADCAST)
 }
 
-pub fn ipv4_octets(addr: &Ipv4Addr) -> crate::ddlog_std::tuple4<u8, u8, u8, u8> {
+pub fn ipv4_octets(addr: &Ipv4Addr) -> ddlog_std::tuple4<u8, u8, u8, u8> {
     let octets = addr.octets();
-    crate::ddlog_std::tuple4(octets[0], octets[1], octets[2], octets[3])
+    ddlog_std::tuple4(octets[0], octets[1], octets[2], octets[3])
 }
 
-pub fn ipv4_octet_vec(addr: &Ipv4Addr) -> crate::ddlog_std::Vec<u8> {
-    crate::ddlog_std::Vec::from(addr.octets().as_ref())
+pub fn ipv4_octet_vec(addr: &Ipv4Addr) -> ddlog_std::Vec<u8> {
+    ddlog_std::Vec::from(addr.octets().as_ref())
 }
 
 pub fn ipv4_is_unspecified(addr: &Ipv4Addr) -> bool {
@@ -156,12 +153,12 @@ pub fn ipv4_is_documentation(addr: &Ipv4Addr) -> bool {
     addr.is_documentation()
 }
 
-pub fn ipv4_to_ipv6_compatible(addr: &Ipv4Addr) -> net::ipv6::Ipv6Addr {
-    net::ipv6::Ipv6Addr::new(addr.to_ipv6_compatible())
+pub fn ipv4_to_ipv6_compatible(addr: &Ipv4Addr) -> super::ipv6::Ipv6Addr {
+    super::ipv6::Ipv6Addr::new(addr.to_ipv6_compatible())
 }
 
-pub fn ipv4_to_ipv6_mapped(addr: &Ipv4Addr) -> net::ipv6::Ipv6Addr {
-    net::ipv6::Ipv6Addr::new(addr.to_ipv6_mapped())
+pub fn ipv4_to_ipv6_mapped(addr: &Ipv4Addr) -> crate::ipv6::Ipv6Addr {
+    super::ipv6::Ipv6Addr::new(addr.to_ipv6_mapped())
 }
 
 pub fn ipv4_to_u32(addr: &Ipv4Addr) -> u32 {

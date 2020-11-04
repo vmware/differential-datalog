@@ -1,5 +1,4 @@
-use crate::ddlog_rt::Closure;
-use crate::ddlog_std;
+use ddlog_rt::Closure;
 
 pub fn set_arg_min<A: Ord + Clone, B: Ord>(
     s: &ddlog_std::Set<A>,

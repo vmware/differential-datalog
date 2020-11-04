@@ -7,12 +7,12 @@ build = "src/build.rs"
 
 [features]
 default = ["command-line", "c_api"]
-flatbuf = ["flatbuffers", "differential_datalog/flatbuf", "types/flatbuf"]
+flatbuf = ["flatbuffers", "differential_datalog/flatbuf"]
 profile = ["cpuprofiler"]
-ovsdb = ["ddlog_ovsdb_adapter", "types/ovsdb"]
+ovsdb = ["ddlog_ovsdb_adapter"]
 command-line = ["cmd_parser", "rustop"]
 nested_ts_32 = ["differential_datalog/nested_ts_32"]
-c_api = ["differential_datalog/c_api", "types/c_api"]
+c_api = ["differential_datalog/c_api"]
 
 [target.'cfg(not(windows))'.build-dependencies]
 libtool = "0.1"
@@ -28,9 +28,6 @@ optional = true
 path = "./ovsdb"
 optional = true
 
-[dependencies.types]
-path = "./types"
-
 [dependencies]
 abomonation = "0.7"
 time = { version = "0.2", features = ["serde"] }
@@ -44,6 +41,7 @@ num-traits = "0.2"
 num = { version = "0.3", features = ["serde"] }
 rustop = { version = "1.0.2", optional = true }
 serde = { version = "1.0", features = ["derive"] }
+erased-serde = "0.3"
 timely = "0.11"
 
 # FlatBuffers dependency enabled by the `flatbuf` feature.

@@ -29,8 +29,13 @@ Description: Decompose generated Rust project into crates.
 {-# LANGUAGE RecordWildCards, FlexibleContexts, TupleSections, LambdaCase, ImplicitParams, ScopedTypeVariables #-}
 
 module Language.DifferentialDatalog.Crate(
+    Crate,
+    CrateGraph(..),
     partitionIntoCrates,
-    crateMainModule
+    crateMainModule,
+    crateName,
+    cgModuleCrate,
+    cgLookupCrate
 ) where
 
 import Data.List
@@ -38,6 +43,7 @@ import Data.Maybe
 import qualified Data.Map as M
 import qualified Data.Set as S
 import qualified Data.Graph.Inductive as G
+--import Debug.Trace
 
 import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.Syntax
@@ -50,7 +56,18 @@ type Crate = S.Set ModuleName
 -- construction crate modules form a crate with a unique root.
 crateMainModule :: Crate -> ModuleName
 crateMainModule crate =
-    maximumBy (\m1 m2 -> (length $ modulePath m1) `compare` (length $ modulePath m2)) crate
+    minimumBy (\m1 m2 -> (length $ modulePath m1) `compare` (length $ modulePath m2)) crate
+
+-- Crate name as the path to its main module.
+-- Prepend "types__" to crate names to avoid name clashes with other Rust
+-- crates (from 'crates.io'), except standard library crates, whose names
+-- we don't want to obfuscate.
+-- FIXME: this naming schema does not exclude name clashes.
+crateName :: Crate -> String
+crateName crate | elem (crateMainModule crate) stdLibs =
+    intercalate "__" $ (modulePath $ crateMainModule crate)
+                | otherwise =
+    intercalate "__" $ "types" : (modulePath $ crateMainModule crate)
 
 -- A crate graph is a graph with crates as vertices and with two
 -- types of edges:
@@ -63,7 +80,7 @@ data CrateGraph = CrateGraph {
     cgCrates    :: [Crate],
     -- Map from module names to index of the crate the module belongs to.
     cgMod2Crate :: M.Map ModuleName Int
-} deriving (Eq)
+} deriving (Eq, Show)
 
 cgEmpty :: CrateGraph
 cgEmpty =
@@ -73,15 +90,22 @@ cgEmpty =
     }
 
 cgAddCrate :: CrateGraph -> Crate -> CrateGraph
-cgAddCrate CrateGraph{..} crate =
+cgAddCrate cg@CrateGraph{..} crate | elem crate cgCrates = cg
+                                   | otherwise =
     CrateGraph {
         cgCrates = cgCrates ++ [crate],
         cgMod2Crate = foldl' (\modCrates m -> M.insert m (length cgCrates) modCrates)
                              cgMod2Crate (S.toList crate)
     }
 
+cgLookupCrate :: CrateGraph -> String -> Maybe Crate
+cgLookupCrate cg crate_name = find ((== crate_name) . crateName) $ cgCrates cg
+
+cgModuleCrate :: CrateGraph -> ModuleName -> Crate
+cgModuleCrate CrateGraph{..} mod_name = cgCrates !! (cgMod2Crate M.! mod_name)
+
 -- Module dependencies.  Currently just the list of module imports, but
--- we may want to use a more accurate methos based on actual dependencies
+-- we may want to use a more accurate method based on actual dependencies
 -- used by types and functions in the module.
 moduleDeps :: (?mmap :: M.Map ModuleName DatalogModule) => ModuleName -> [ModuleName]
 moduleDeps m = fromMaybe [] $ ((map importModule) . progImports . moduleDefs) <$> ?mmap M.!? m

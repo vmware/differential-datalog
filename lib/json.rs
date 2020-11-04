@@ -2,28 +2,25 @@ use ordered_float::OrderedFloat;
 use serde::de::DeserializeOwned;
 use std::result::Result;
 
-use crate::ddlog_std::res2std;
-use crate::internment;
+use ddlog_std::res2std;
 
 pub fn _from_json_string<'de, T: serde::Deserialize<'de>>(
     json: &'de String,
-) -> crate::ddlog_std::Result<T, String> {
+) -> ddlog_std::Result<T, String> {
     res2std(serde_json::from_str::<'de>(&*json))
 }
 
-pub fn to_json_string<T: serde::Serialize>(x: &T) -> crate::ddlog_std::Result<String, String> {
+pub fn to_json_string<T: serde::Serialize>(x: &T) -> ddlog_std::Result<String, String> {
     res2std(serde_json::to_string(x))
 }
 
-pub fn _from_json_value<T: DeserializeOwned>(
-    val: &JsonValue,
-) -> crate::ddlog_std::Result<T, String> {
+pub fn _from_json_value<T: DeserializeOwned>(val: &JsonValue) -> ddlog_std::Result<T, String> {
     res2std(serde_json::from_value(serde_json::value::Value::from(
         val.clone(),
     )))
 }
 
-pub fn to_json_value<T: serde::Serialize>(x: &T) -> crate::ddlog_std::Result<JsonValue, String> {
+pub fn to_json_value<T: serde::Serialize>(x: &T) -> ddlog_std::Result<JsonValue, String> {
     res2std(serde_json::to_value(x.clone()).map(JsonValue::from))
 }
 
@@ -88,7 +85,7 @@ impl From<serde_json::value::Value> for JsonValue {
             serde_json::value::Value::Array(a) => {
                 let v: Vec<JsonValue> = a.into_iter().map(|v| JsonValue::from(v)).collect();
                 JsonValue::JsonArray {
-                    a: crate::ddlog_std::Vec::from(v),
+                    a: ddlog_std::Vec::from(v),
                 }
             }
             serde_json::value::Value::Object(o) => JsonValue::JsonObject {
@@ -116,7 +113,7 @@ impl From<JsonValue> for serde_json::value::Value {
             ),
             JsonValue::JsonObject { o } => serde_json::value::Value::Object(
                 o.into_iter()
-                    .map(|crate::ddlog_std::tuple2(k, v)| {
+                    .map(|ddlog_std::tuple2(k, v)| {
                         (
                             internment::ival(&k).clone(),
                             serde_json::value::Value::from(v),

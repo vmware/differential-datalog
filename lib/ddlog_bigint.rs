@@ -1,4 +1,3 @@
-use crate::decl_ddval_convert;
 use abomonation::Abomonation;
 use num::bigint::BigInt;
 use num::bigint::BigUint;
@@ -37,8 +36,6 @@ impl Default for Int {
         }
     }
 }
-
-decl_ddval_convert! {Int}
 
 impl Abomonation for Int {}
 
@@ -345,8 +342,6 @@ impl Default for Uint {
 }
 
 impl Abomonation for Uint {}
-
-decl_ddval_convert! {Uint}
 
 impl Uint {
     pub fn from_biguint(v: BigUint) -> Uint {

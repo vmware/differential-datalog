@@ -1,10 +1,12 @@
-impl<'a, T, F> FromFlatBuffer<fbrt::Vector<'a, F>> for tinyset::Set64<T>
+use types__tinyset::*;
+
+impl<'a, T, F> FromFlatBuffer<fbrt::Vector<'a, F>> for Set64<T>
 where
     T: Ord + FromFlatBuffer<F::Inner> + ::tinyset::u64set::Fits64,
     F: fbrt::Follow<'a> + 'a,
 {
     fn from_flatbuf(fb: fbrt::Vector<'a, F>) -> Result<Self, String> {
-        let mut set = tinyset::Set64::new();
+        let mut set = Set64::new();
         for x in FBIter::from_vector(fb) {
             set.insert(T::from_flatbuf(x)?);
         }
@@ -13,12 +15,12 @@ where
 }
 
 // For scalar types, the FlatBuffers API returns slice instead of 'Vector'.
-impl<'a, T> FromFlatBuffer<&'a [T]> for tinyset::Set64<T>
+impl<'a, T> FromFlatBuffer<&'a [T]> for Set64<T>
 where
     T: Ord + ::tinyset::u64set::Fits64,
 {
     fn from_flatbuf(fb: &'a [T]) -> Result<Self, String> {
-        let mut set = tinyset::Set64::new();
+        let mut set = Set64::new();
         for x in fb.iter() {
             set.insert(x.clone());
         }
@@ -26,7 +28,7 @@ where
     }
 }
 
-impl<'b, T> ToFlatBuffer<'b> for tinyset::Set64<T>
+impl<'b, T> ToFlatBuffer<'b> for Set64<T>
 where
     T: Ord + ::tinyset::u64set::Fits64 + ToFlatBufferVectorElement<'b>,
 {

@@ -32,7 +32,5 @@ serial_test_derive = "0.2"
 tempfile = "3.1"
 test-env-log = "0.1"
 waitfor = "0.1"
-# Import DDValConvert trait.
-types = { path = "../types" }
 # Import `test_value.rs`.
 differential_datalog_test = { path = "../differential_datalog_test" }

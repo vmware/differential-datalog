@@ -33,11 +33,14 @@ module Language.DifferentialDatalog.Optimize (
 where
 
 import Data.List
+import Data.Maybe
 import Control.Monad.State
 import qualified Data.Map as M
 --import Debug.Trace
 
 import Language.DifferentialDatalog.Config
+import Language.DifferentialDatalog.Crate
+import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Type
@@ -45,7 +48,7 @@ import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Rule
 import Language.DifferentialDatalog.Validate
 
-optimize :: (?cfg::Config) => DatalogProgram -> DatalogProgram
+optimize :: (?cfg::Config, ?crate_graph::CrateGraph) => DatalogProgram -> DatalogProgram
 optimize d = 
     let d' = optEliminateCommonPrefixes $ optExpandMultiheadRules d
     in if confReValidate ?cfg
@@ -86,11 +89,13 @@ expandMultiheadRule d rl ruleidx = (Just rel, rule1 : rules)
                    }
     -- rule to compute the new relation
     rule1 = Rule { rulePos = nopos
+                 , ruleModule = ruleModule rl
                  , ruleLHS = [Atom nopos relname $ eTuple $ map (\v -> eTypedVar (name v) (varType d v)) lhsvars]
                  , ruleRHS = ruleRHS rl
                  }
     -- rule per head of the original rule
     rules = map (\atom -> Rule { rulePos = pos rl
+                               , ruleModule = ruleModule rl
                                , ruleLHS = [atom]
                                , ruleRHS = [RHSLiteral True 
                                            $ Atom nopos relname 
@@ -110,16 +115,16 @@ expandMultiheadRule d rl ruleidx = (Just rel, rule1 : rules)
 -- TODO: this optimization must be preceeded by rule normalization to detect different, but
 -- equivalent prefixes.
 --
-optEliminateCommonPrefixes :: DatalogProgram -> DatalogProgram
+optEliminateCommonPrefixes :: (?crate_graph::CrateGraph) => DatalogProgram -> DatalogProgram
 optEliminateCommonPrefixes d = evalState (optEliminateCommonPrefixes' d) 0
 
 type RulePrefix = [RuleRHS]
 
-optEliminateCommonPrefixes' :: DatalogProgram -> State Int DatalogProgram
+optEliminateCommonPrefixes' :: (?crate_graph::CrateGraph) => DatalogProgram -> State Int DatalogProgram
 optEliminateCommonPrefixes' d = do
-    let ordered_prefixes = map fst
-                           $ reverse -- longest prefix first
+    let ordered_prefixes = reverse -- longest prefix first
                            $ sortOn (length . fst)
+                           $ map fst
                            $ filter ((>1) . snd)
                            $ collectPrefixes d
     --trace ("ordered_prefixes:\n" ++ show ordered_prefixes) $
@@ -130,17 +135,22 @@ optEliminateCommonPrefixes' d = do
 
 -- Collect all prefixes in the program, only including prefixes of length >1 
 -- (to avoid infinite recursion replacing prefix of length 1)
--- counting the number of occurrences of each prefix
-collectPrefixes :: DatalogProgram -> [(RulePrefix, Int)]
+-- counting the number of occurrences of each prefix in each crate.
+-- We group prefixes per crate, as we currently don't have a way to generate
+-- intermediate relations available from multiple crates.
+collectPrefixes :: (?crate_graph::CrateGraph) => DatalogProgram -> [((RulePrefix, String), Int)]
 collectPrefixes d =
-    foldl' (\prefs rule -> foldl' (\prefs' pref -> addPrefix pref prefs') 
-                                  prefs $ rulePrefixes rule)
-           [] $ progRules d
+    M.toList
+    $ foldl' (\prefs rule -> foldl' (\prefs' pref -> addPrefix pref (crateName $ cgModuleCrate ?crate_graph $ ruleModule rule) prefs')
+                                    prefs $ rulePrefixes rule)
+             M.empty $ progRules d
 
-addPrefix :: RulePrefix -> [(RulePrefix, Int)] -> [(RulePrefix, Int)]
-addPrefix p [] = [(p, 1)]
-addPrefix p ((p',i):ps) | p' == p   = (p, i+1) : ps
-                        | otherwise = (p', i) : addPrefix p ps
+addPrefix :: RulePrefix -> String -> M.Map (RulePrefix, String) Int -> M.Map (RulePrefix, String) Int
+addPrefix p crate_name prefixes =
+    M.alter (\case
+              Nothing -> Just 1
+              Just n  -> Just $ n + 1)
+            (p, crate_name) prefixes
 
 -- A prefix must contain >1 components, must be followed by at least one component.
 -- The component following the prefix must be a join or an antijoin (we don't want to
@@ -152,16 +162,19 @@ rulePrefixes Rule{..} =
     $ inits ruleRHS
 
 -- Replace prefix with a fresh relation
-replacePrefix :: DatalogProgram -> RulePrefix -> State Int DatalogProgram
-replacePrefix d pref = {-trace ("replacePrefix " ++ show pref) $-} do
+replacePrefix :: (?crate_graph::CrateGraph) => DatalogProgram -> (RulePrefix, String) -> State Int DatalogProgram
+replacePrefix d (pref, crate_name) = {-trace ("replacePrefix " ++ show pref) $-} do
+    let crate = fromJust $ cgLookupCrate ?crate_graph crate_name
+    -- Module to place the new relation in.
+    let mname = crateMainModule crate
     let pref_len = length pref
     -- allocate relation name
     idx <- get
     put $ idx + 1
-    let relname = "__Prefix_" ++ show idx
+    let relname = scoped mname $ "__Prefix_" ++ show idx
     -- variables visible in the rest of the rule 
     -- (manufacture a bogus rule consisting only of the prefix to call ruleRHSVars on it)
-    let vars = ruleRHSVars d (Rule nopos [] pref) pref_len
+    let vars = ruleRHSVars d (Rule nopos mname [] pref) pref_len
     -- relation
     let rel = Relation { relPos        = nopos
                        , relRole       = RelInternal
@@ -175,7 +188,8 @@ replacePrefix d pref = {-trace ("replacePrefix " ++ show pref) $-} do
                     , atomRelation = relname
                     , atomVal      = eTuple $ map (\v -> eTypedVar (name v) (varType d v)) vars
                     }
-    let rule = Rule { rulePos       = nopos
+    let rule = Rule { rulePos      = nopos
+                    , ruleModule   = mname
                     , ruleLHS      = [atom]
                     , ruleRHS      = pref
                     }

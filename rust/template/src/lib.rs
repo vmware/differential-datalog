@@ -37,7 +37,7 @@ use timely::dataflow::scopes;
 use timely::worker;
 
 use differential_datalog::ddval::*;
-use differential_datalog::program::*;
+use differential_datalog::program;
 use differential_datalog::record;
 use differential_datalog::record::FromRecord;
 use differential_datalog::record::IntoRecord;
@@ -68,15 +68,15 @@ use serde::Serializer;
 pub struct DDlogConverter {}
 
 impl DDlogConvert for DDlogConverter {
-    fn relid2name(relId: RelId) -> Option<&'static str> {
+    fn relid2name(relId: program::RelId) -> Option<&'static str> {
         relid2name(relId)
     }
 
-    fn indexid2name(idxId: IdxId) -> Option<&'static str> {
+    fn indexid2name(idxId: program::IdxId) -> Option<&'static str> {
         indexid2name(idxId)
     }
 
-    fn updcmd2upd(upd_cmd: &UpdCmd) -> ::std::result::Result<Update<DDValue>, String> {
+    fn updcmd2upd(upd_cmd: &UpdCmd) -> ::std::result::Result<program::Update<DDValue>, String> {
         updcmd2upd(upd_cmd)
     }
 }
@@ -107,14 +107,14 @@ impl DDlogConvert for DDlogConverter {
  * `Deserialize` for each `relid`.
  */
 #[derive(Debug)]
-pub struct UpdateSerializer(Update<DDValue>);
+pub struct UpdateSerializer(program::Update<DDValue>);
 
-impl From<Update<DDValue>> for UpdateSerializer {
-    fn from(u: Update<DDValue>) -> Self {
+impl From<program::Update<DDValue>> for UpdateSerializer {
+    fn from(u: program::Update<DDValue>) -> Self {
         UpdateSerializer(u)
     }
 }
-impl From<UpdateSerializer> for Update<DDValue> {
+impl From<UpdateSerializer> for program::Update<DDValue> {
     fn from(u: UpdateSerializer) -> Self {
         u.0
     }
@@ -124,12 +124,12 @@ impl Serialize for UpdateSerializer {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut tup = serializer.serialize_tuple(3)?;
         match &self.0 {
-            Update::Insert { relid, v } => {
+            program::Update::Insert { relid, v } => {
                 tup.serialize_element(&true)?;
                 tup.serialize_element(relid)?;
                 tup.serialize_element(v)?;
             }
-            Update::DeleteValue { relid, v } => {
+            program::Update::DeleteValue { relid, v } => {
                 tup.serialize_element(&false)?;
                 tup.serialize_element(relid)?;
                 tup.serialize_element(v)?;
@@ -158,15 +158,15 @@ macro_rules! decl_update_deserializer {
                     fn visit_seq<A>(self, mut seq: A) -> ::std::result::Result<Self::Value, A::Error>
                     where A: ::serde::de::SeqAccess<'de> {
                         let polarity = seq.next_element::<bool>()?.ok_or_else(|| <A::Error as ::serde::de::Error>::custom("Missing polarity"))?;
-                        let relid = seq.next_element::<RelId>()?.ok_or_else(|| <A::Error as ::serde::de::Error>::custom("Missing relation id"))?;
+                        let relid = seq.next_element::<program::RelId>()?.ok_or_else(|| <A::Error as ::serde::de::Error>::custom("Missing relation id"))?;
                         match relid {
                             $(
                                 $rel => {
                                     let v = seq.next_element::<$typ>()?.ok_or_else(|| <A::Error as ::serde::de::Error>::custom("Missing value"))?.into_ddvalue();
                                     if polarity {
-                                        Ok(UpdateSerializer(Update::Insert{relid, v}))
+                                        Ok(UpdateSerializer(program::Update::Insert{relid, v}))
                                     } else {
-                                        Ok(UpdateSerializer(Update::DeleteValue{relid, v}))
+                                        Ok(UpdateSerializer(program::Update::DeleteValue{relid, v}))
                                     }
                                 },
                             )*
@@ -187,6 +187,9 @@ macro_rules! decl_update_deserializer {
 #[cfg(feature = "flatbuf")]
 pub mod flatbuf;
 
+#[cfg(feature = "flatbuf")]
+pub mod flatbuf_generated;
+
 impl TryFrom<&RelIdentifier> for Relations {
     type Error = ();
 
@@ -203,7 +206,14 @@ impl TryFrom<&RelIdentifier> for Relations {
 // Code below this point is needed to test-compile template
 // code and is not part of the template.
 
-pub fn prog(__update_cb: Box<dyn CBFn>) -> Program {
+/* Import bits of DDlog runtime required by `differential_datalog_test` and the `main_crate` test. */
+#[path = "../../../lib/ddlog_bigint.rs"]
+pub mod ddlog_bigint;
+
+#[path = "../../../lib/ddlog_log.rs"]
+pub mod ddlog_log;
+
+pub fn prog(__update_cb: Box<dyn program::CBFn>) -> program::Program {
     panic!("prog not implemented")
 }
 
@@ -241,10 +251,10 @@ impl TryFrom<&str> for Relations {
     }
 }
 
-impl TryFrom<RelId> for Relations {
+impl TryFrom<program::RelId> for Relations {
     type Error = ();
 
-    fn try_from(rid: RelId) -> ::std::result::Result<Self, ()> {
+    fn try_from(rid: program::RelId) -> ::std::result::Result<Self, ()> {
         panic!("Relations::try_from::<RelId> not implemented")
     }
 }
@@ -262,11 +272,11 @@ impl TryFrom<&str> for Indexes {
     }
 }
 
-impl TryFrom<IdxId> for Indexes {
+impl TryFrom<program::IdxId> for Indexes {
     type Error = ();
 
-    fn try_from(_iid: IdxId) -> ::std::result::Result<Self, ()> {
-        panic!("Indexes::try_from::<IdxId> not implemented")
+    fn try_from(_iid: program::IdxId) -> ::std::result::Result<Self, ()> {
+        panic!("Indexes::try_from::<program::IdxId> not implemented")
     }
 }
 
@@ -291,11 +301,11 @@ pub fn idxkey_from_record(
     panic!("idxkey_from_record not implemented")
 }
 
-pub fn relid2name(_rid: RelId) -> Option<&'static str> {
+pub fn relid2name(_rid: program::RelId) -> Option<&'static str> {
     panic!("relid2name not implemented")
 }
 
-pub fn relid2cname(_rid: RelId) -> Option<&'static ::std::ffi::CStr> {
+pub fn relid2cname(_rid: program::RelId) -> Option<&'static ::std::ffi::CStr> {
     panic!("relid2cname not implemented")
 }
 
@@ -305,15 +315,15 @@ pub static INPUT_RELIDMAP: Lazy<FnvHashMap<Relations, &'static str>> =
 pub static OUTPUT_RELIDMAP: Lazy<FnvHashMap<Relations, &'static str>> =
     Lazy::new(FnvHashMap::default);
 
-pub fn indexid2name(_iid: IdxId) -> Option<&'static str> {
+pub fn indexid2name(_iid: program::IdxId) -> Option<&'static str> {
     panic!("indexid2name not implemented")
 }
 
-pub fn indexid2cname(_iid: IdxId) -> Option<&'static ::std::ffi::CStr> {
+pub fn indexid2cname(_iid: program::IdxId) -> Option<&'static ::std::ffi::CStr> {
     panic!("indexid2cname not implemented")
 }
 
-pub fn indexes2arrid(idx: Indexes) -> ArrId {
+pub fn indexes2arrid(idx: Indexes) -> program::ArrId {
     panic!("indexes2arrid not implemented")
 }
 
