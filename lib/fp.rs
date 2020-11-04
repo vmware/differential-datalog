@@ -1,5 +1,4 @@
-use crate::int::*;
-use crate::uint::*;
+use crate::ddlog_bigint::*;
 use num::bigint::BigInt;
 use num_traits::cast::FromPrimitive;
 use ordered_float::OrderedFloat;

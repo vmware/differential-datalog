@@ -30,6 +30,7 @@ Description: DDlog's module system implemented as syntactic sugar over core synt
 
 module Language.DifferentialDatalog.Module(
     mOD_STD,
+    mOD_RT,
     DatalogModule(..),
     emptyModule,
     moduleNameToPath,
@@ -71,6 +72,10 @@ import {-# SOURCE #-} Language.DifferentialDatalog.Expr
 mOD_STD :: String
 mOD_STD = "ddlog_std"
 
+-- DDlog runtime support library.
+mOD_RT :: String
+mOD_RT = "ddlog_rt"
+
 -- 'child' is an immediate submodule of 'parent'.
 moduleIsChildOf :: ModuleName -> ModuleName -> Bool
 moduleIsChildOf (ModuleName child) (ModuleName parent) =
@@ -109,9 +114,14 @@ emptyModule mname = DatalogModule {
     moduleDefs = emptyDatalogProgram
 }
 
--- Standard library module name.
+-- Standard library module names.
 stdLibs :: [ModuleName]
-stdLibs = [ModuleName [mOD_STD], ModuleName ["internment"]]
+stdLibs = [ ModuleName [mOD_RT]
+          , ModuleName [mOD_STD]
+          , ModuleName ["ddlog_bigint"]
+          , ModuleName ["ddlog_log"]
+          , ModuleName ["debug"]
+          , ModuleName ["internment"] ]
 
 stdImport :: ModuleName -> Import
 stdImport lib = Import nopos lib (ModuleName [])
@@ -199,10 +209,14 @@ parseImport roots mod imp = do
     fname <- lift $ findModule roots mod $ importModule imp
     prog <- lift $ do fdata <- readFile fname
                       parseDatalogString fdata fname
-    mapM_ (\imp' -> when (elem (importModule imp') stdLibs)
+    mapM_ (\imp' -> when (elem (importModule imp') stdLibs && notElem (moduleName mod) stdLibs)
                     $ errorWithoutStackTrace $ "Module '" ++ show (importModule imp') ++ "' is part of the DDlog standard library and is imported automatically by all modules")
           $ progImports prog
-    let prog_imports = filter (stdImport (importModule imp) /=) $ stdImports ++ progImports prog
+    -- Standard libraries manage their dependencies explicitly.  Do not
+    -- automatically import standard libraries into other standard libraries.
+    let prog_imports = if elem (moduleName mod) stdLibs
+                       then progImports prog
+                       else stdImports ++ progImports prog
     let mod' = DatalogModule (importModule imp) fname $ prog { progImports = prog_imports }
     imports <- parseImports roots mod'
     return $ mod' : imports

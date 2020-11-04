@@ -37,7 +37,7 @@ use differential_dataflow::Collection;
 use differential_datalog::ddval::*;
 use differential_datalog::program::*;
 
-use types::ddval_convert::DDValConvert;
+use types::ddlog_rt::DDValConvert;
 
 pub mod test_value;
 use test_value::*;

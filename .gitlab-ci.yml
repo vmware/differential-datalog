@@ -4,7 +4,7 @@ default:
         - export PATH="${PWD}/bin:${PATH}"
 
 variables:
-    DOCKER_AUTH_CONFIG: "{\"auths\": { \"docker.com\": { \"auth\": \"ZGRsb2djaTpIb3VIZWdnb2RVbjQ=\"}}}"
+    #DOCKER_AUTH_CONFIG: "{\"auths\": { \"docker.com\": { \"auth\": \"ZGRsb2djaTpIb3VIZWdnb2RVbjQ=\"}}}"
     # Controls differential dataflow's eager compaction behavior
     DIFFERENTIAL_EAGER_MERGE: 100000
     # Some of our tests assume certain functionality to be available in

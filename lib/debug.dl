@@ -2,6 +2,9 @@
  * an external debugger tool.
  */
 
+import ddlog_rt
+import ddlog_std
+
 typedef DDlogOpId = (u32, u32, u32)
 
 /*

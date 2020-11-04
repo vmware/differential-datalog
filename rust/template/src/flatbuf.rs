@@ -6,8 +6,6 @@ use differential_datalog::DeltaMap;
 use flatbuffers as fbrt;
 
 use types::flatbuf::*;
-use types::int;
-use types::uint;
 
 // Wrapper type, so we can implement traits for it.
 pub struct DDValueUpdate(pub Update<DDValue>);

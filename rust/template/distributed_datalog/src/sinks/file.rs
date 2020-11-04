@@ -93,7 +93,7 @@ mod tests {
     use differential_datalog::record::RelIdentifier;
     use differential_datalog::record::UpdCmd;
     use differential_datalog_test::test_value::*;
-    use types::ddval_convert::DDValConvert;
+    use types::ddlog_rt::DDValConvert;
 
     #[derive(Debug)]
     struct DummyConverter;

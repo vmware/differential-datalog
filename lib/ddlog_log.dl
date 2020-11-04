@@ -1,0 +1,2 @@
+/* This module does not have any DDlog declarations; see `ddlog_log.rs`
+ * for the list of Rust declarations exported by this module. */
