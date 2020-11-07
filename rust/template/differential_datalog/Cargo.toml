@@ -17,7 +17,7 @@ fnv = "1.0.2"
 timely = "0.11"
 libc = "0.2"
 csv = "1.1"
-num = { version = "0.2", features = ["serde"] }
+num = { version = "0.3", features = ["serde"] }
 sequence_trie = "0.3"
 serde = { version = "1.0", features = ["derive"] }
 typetag = "0.1"
