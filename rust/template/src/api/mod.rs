@@ -1,5 +1,6 @@
 mod c_api;
 
+#[cfg(feature = "c_api")]
 pub use c_api::*;
 
 use std::ffi;
