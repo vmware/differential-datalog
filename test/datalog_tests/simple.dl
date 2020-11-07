@@ -1417,3 +1417,59 @@ Floats("5/3", 32'f5.0 / 32'f3.0).
 Floats("5*3", 32'f5.0 * 32'f3.0).
 Floats("0: float", 0: float).
 Floats("floor_f(32'f0.1)", floor_f(32'f0.1)).
+
+// Trailing commas in relations
+input relation TrailingInputRelation(
+    a: u32,
+    b: u32,
+)
+relation TrailingInternalRelation(
+    a: u32,
+    b: u32,
+)
+output relation TrailingOutputRelation(
+    a: u32,
+    b: u32,
+)
+
+// Trailing commas in match arms
+function trailing_commas_in_matches(maybe: Option<u32>): u32 {
+    match (maybe) {
+        Some { int } -> int,
+        None -> 500,
+    }
+}
+
+// Trailing commas in facts
+relation TrailingCommasInFacts(name: string, act: u32, fact2: u32)
+TrailingCommasInFacts(
+    "foo",
+    10,
+    20,
+).
+
+// Trailing commas in structs
+typedef TrailingCommasInStructs = TrailingCommasInStructs {
+    foo: string,
+    bar: string,
+    baz: string,
+}
+
+// Trailing commas in function calls
+function trailing_commas_in_function_calls() {
+    trailing_commas_in_matches(
+        None,
+    );
+    trailing_commas_in_matches(
+        Some { 10 },
+    );
+}
+
+// Trailing commas in indexes
+index TrailingCommasInIndexes(
+    name: string,
+) on TrailingCommasInFacts(
+    name,
+    _,
+    _,
+)
