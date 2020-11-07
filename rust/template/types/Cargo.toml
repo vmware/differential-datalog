@@ -8,6 +8,7 @@ autobins = false
 default = []
 flatbuf = ["flatbuffers", "differential_datalog/flatbuf"]
 ovsdb = ["ddlog_ovsdb_adapter"]
+c_api = ["differential_datalog/c_api"]
 
 [dependencies.differential_datalog]
 path = "../differential_datalog"

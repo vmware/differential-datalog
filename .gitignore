@@ -73,3 +73,5 @@ sql/lib/sqlop.dl
 sql/program_ddlog
 sql/libddlogapi.*
 sql/program.dl
+
+testsuite.log/

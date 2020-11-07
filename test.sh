@@ -121,7 +121,7 @@ rust_fmt() {
 }
 
 rust_lint() {
-    (cd "${THIS_DIR}/rust/template/" && cargo clippy --features command-line,ovsdb -- -D warnings) &&
+    (cd "${THIS_DIR}/rust/template/" && cargo clippy --features command-line,ovsdb,c_api -- -D warnings) &&
     (cd "${THIS_DIR}/rust/template/cmd_parser" && cargo clippy -- -D warnings) &&
     (cd "${THIS_DIR}/rust/template/ovsdb" && cargo clippy -- -D warnings) &&
     (cd "${THIS_DIR}/rust/template/differential_datalog" && cargo clippy -- -D warnings)
@@ -139,7 +139,7 @@ ovsdb() {
 }
 
 main_crate() {
-    (cd "${THIS_DIR}/rust/template" && cargo test --features command-line,ovsdb)
+    (cd "${THIS_DIR}/rust/template" && cargo test --features command-line,ovsdb,c_api)
 }
 
 # 'basic' test group.
@@ -157,7 +157,7 @@ libs() {
 }
 
 simple() {
-    (cd "${THIS_DIR}/test/datalog_tests" && DDLOGFLAGS="-g" CARGOFLAGS="--features nested_ts_32,profile" ./run-test.sh simple release)
+    (cd "${THIS_DIR}/test/datalog_tests" && DDLOGFLAGS="-g" CARGOFLAGS="--features nested_ts_32,profile,c_api" ./run-test.sh simple release)
 }
 
 simple2() {

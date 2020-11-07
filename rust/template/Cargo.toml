@@ -6,12 +6,13 @@ autobins = false
 build = "src/build.rs"
 
 [features]
-default = ["command-line"]
+default = ["command-line", "c_api"]
 flatbuf = ["flatbuffers", "differential_datalog/flatbuf", "types/flatbuf"]
 profile = ["cpuprofiler"]
 ovsdb = ["ddlog_ovsdb_adapter", "types/ovsdb"]
 command-line = ["cmd_parser", "rustop"]
 nested_ts_32 = ["differential_datalog/nested_ts_32"]
+c_api = ["differential_datalog/c_api", "types/c_api"]
 
 [target.'cfg(not(windows))'.build-dependencies]
 libtool = "0.1"
