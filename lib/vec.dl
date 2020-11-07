@@ -148,12 +148,12 @@ function fold(v: Vec<'A>, f: function('B, 'A): 'B, initializer: 'B): 'B {
 }
 
 // Gets the first element of a vector if it exists
-function first(vec: Vec<'T>) -> Option<'T> {
+function first(vec: Vec<'T>): Option<'T> {
     vec.nth(0)
 }
 
 // Gets the last element of a vector if it exists
-function last(vec: Vec<'T>) -> Option<'T> {
+function last(vec: Vec<'T>): Option<'T> {
     vec.nth(vec.len() - 1)
 }
 
