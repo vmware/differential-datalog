@@ -120,8 +120,8 @@ ucIdentifier = T.identifier ucLexer
 semiSep      = T.semiSep lexer
 --semiSep1     = T.semiSep1 lexer
 colon        = T.colon lexer
-commaSep     = T.commaSep lexer
-commaSep1    = T.commaSep1 lexer
+-- commaSep     = T.commaSep lexer
+-- commaSep1    = T.commaSep1 lexer
 symbol       = try . T.symbol lexer
 semi         = T.semi lexer
 comma        = T.comma lexer
@@ -138,8 +138,8 @@ lexeme       = T.lexeme lexer
 dot          = T.dot lexer
 stringLit    = T.stringLiteral lexer
 --charLit    = T.charLiteral lexer
-
 commaSepEnd p = p `sepEndBy` comma
+commaSepEnd1 p = p `sepEndBy1` comma
 
 varIdent     = lcIdentifier <?> "variable name"
 targIdent    = identifier   <?> "transformer argument name"
@@ -294,13 +294,13 @@ typeDef = (TypeDef nopos []) <$ reserved "typedef" <*> typeIdent <*>
 
 func = (Function nopos [] <$  (try $ reserved "extern" *> reserved "function")
                          <*> funcIdent
-                         <*> (parens $ commaSep farg)
+                         <*> (parens $ commaSepEnd farg)
                          <*> (option (TTuple nopos []) (colon *> typeSpecSimple))
                          <*> (return Nothing))
        <|>
        (Function nopos [] <$  reserved "function"
                          <*> funcIdent
-                         <*> (parens $ commaSep farg)
+                         <*> (parens $ commaSepEnd farg)
                          <*> (option (TTuple nopos []) (colon *> typeSpecSimple))
                          <*> (Just <$> ((reservedOp "=" *> expr) <|> (braces eseq))))
 
@@ -309,8 +309,8 @@ atype = withPos $ ArgType nopos <$> (option False (True <$ reserved "mut")) <*> 
 
 transformer = (Transformer nopos True <$  (reserved "extern" *> reserved "transformer")
                                       <*> transIdent
-                                      <*> (parens $ commaSep targ)
-                                      <*> (reservedOp "->" *> (parens $ commaSep targ)))
+                                      <*> (parens $ commaSepEnd targ)
+                                      <*> (reservedOp "->" *> (parens $ commaSepEnd targ)))
               <|>
               (reserved "transformer" *> fail "Only extern trasformers are currently supported")
 
@@ -320,7 +320,7 @@ hotypeSpec = withPos $ (HOTypeRelation nopos <$ reserved "relation" <*> (bracket
                        <|>
                        (HOTypeFunction nopos <$ reserved "function" <*> (parens $ commaSepEnd farg) <*> (colon *> typeSpecSimple))
 
-index = withPos $ Index nopos <$ symbol "index" <*> indexIdent <*> parens (commaSep arg) <*>
+index = withPos $ Index nopos <$ symbol "index" <*> indexIdent <*> parens (commaSepEnd arg) <*>
                   (symbol "on" *> atom False)
 
 rel_semantics =  RelSet      <$ reserved "relation"
@@ -382,7 +382,7 @@ parseIfStatement = IfStatement nopos <$ reserved "if"
                                     <*> (optionMaybe (reserved "else" *> statement))
 
 parseMatchStatement = MatchStatement nopos <$ reserved "match" <*> parens expr
-                                          <*> (braces $ (commaSep1 $ (,) <$> pattern <* reservedOp "->" <*> statement))
+                                          <*> (braces $ (commaSepEnd1 $ (,) <$> pattern <* reservedOp "->" <*> statement))
 
 parseAssignStatement = do e <- try $ do e <- expr
                                         reserved "in"
@@ -393,12 +393,12 @@ parseAssignStatement = do e <- try $ do e <- expr
 parseInsertStatement = InsertStatement nopos <$> try (atom True)
 
 apply = Apply nopos <$  reserved "apply" <*> transIdent
-                    <*> (parens $ commaSep (relIdent <|> funcIdent))
-                    <*> (reservedOp "->" *> (parens $ commaSep relIdent))
+                    <*> (parens $ commaSepEnd (relIdent <|> funcIdent))
+                    <*> (reservedOp "->" *> (parens $ commaSepEnd relIdent))
 
 rule = Rule nopos <$>
-       (commaSep1 $ atom True) <*>
-       (option [] (reservedOp ":-" *> (concat <$> commaSep rulerhs))) <* dot
+       (commaSepEnd1 $ atom True) <*>
+       (option [] (reservedOp ":-" *> (concat <$> commaSepEnd rulerhs))) <* dot
 
 rulerhs :: ParsecT String () Identity [RuleRHS]
 rulerhs =  (do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ try $ varIdent <* reserved "in") *> (optional $ reservedOp "&") *> relIdent *> (symbol "(" <|> symbol "[")
@@ -463,7 +463,7 @@ aggregate = do
 {- group-by expression: variable or a tuple of variables -}
 group_by_expr = withPos
    (     evar
-     <|> (eTuple <$> (parens $ commaSep $ withPos evar))
+     <|> (eTuple <$> (parens $ commaSepEnd $ withPos evar))
      <?> "variable or tuple")
 
 atom is_head = withPos $ do
@@ -475,7 +475,7 @@ atom is_head = withPos $ do
        rname <- relIdent
        val <- brackets expr
               <|>
-              (withPos $ (E . EStruct nopos rname) <$> (option [] $ parens $ commaSep (namedarg <|> anonarg)))
+              (withPos $ (E . EStruct nopos rname) <$> (option [] $ parens $ commaSepEnd (namedarg <|> anonarg)))
        p3 <- getPosition
        let val' = if isref && is_head
                      then E (EApply (p2,p3) (E $ EFunc (p2,p2') ["ref_new"]) [val])
@@ -535,13 +535,13 @@ functionType =  (TFunction nopos <$ reserved "function" <*> (parens $ commaSepEn
 
 constructor = withPos $ Constructor nopos <$> attributes
                                           <*> consIdent
-                                          <*> (option [] $ braces $ commaSep arg)
+                                          <*> (option [] $ braces $ commaSepEnd arg)
 
 expr = buildExpressionParser etable term
     <?> "expression"
 
 term  =  elhs
-     <|> (withPos $ eTuple <$> (parens $ commaSep expr))
+     <|> (withPos $ eTuple <$> (parens $ commaSepEnd expr))
      <|> braces eseq
      <|> term'
      <?> "expression term"
@@ -566,8 +566,8 @@ term' = withPos $
      <|> evec_literal
      <|> eclosure
 
-eclosure =  (E <$> (EClosure nopos <$ reserved "function" <*> (parens $ commaSep closure_arg) <*> (optionMaybe $ colon *> typeSpecSimple) <*> braces eseq))
-        <|> (E <$> (EClosure nopos <$> (symbol "|" *> commaSep closure_arg <* symbol "|") <*> (optionMaybe $ colon *> typeSpecSimple) <*> expr))
+eclosure =  (E <$> (EClosure nopos <$ reserved "function" <*> (parens $ commaSepEnd closure_arg) <*> (optionMaybe $ colon *> typeSpecSimple) <*> braces eseq))
+        <|> (E <$> (EClosure nopos <$> (symbol "|" *> commaSepEnd closure_arg <* symbol "|") <*> (optionMaybe $ colon *> typeSpecSimple) <*> expr))
 
 closure_arg = withPos $ ClosureExprArg nopos <$> varIdent <*> (optionMaybe $ colon *> atype)
 
@@ -584,7 +584,7 @@ eseq = do
                        else do suffix <- eseq
                                return $ E $ ESeq (fst $ pos e, snd $ pos suffix) e suffix
 
-emap_literal = mkmap <$> (ismap *> (brackets $ commaSep1 $ (,) <$> expr <* reservedOp "->" <*> expr))
+emap_literal = mkmap <$> (ismap *> (brackets $ commaSepEnd1 $ (,) <$> expr <* reservedOp "->" <*> expr))
     where ismap = try $ lookAhead $ do
                         _ <- symbol "["
                         _ <- expr
@@ -596,7 +596,7 @@ emap_literal = mkmap <$> (ismap *> (brackets $ commaSep1 $ (,) <$> expr <* reser
                         (E $ EVar p "__map")
                         pairs
 
-evec_literal = mkvec <$> (isvec *> (brackets $ commaSep1 expr))
+evec_literal = mkvec <$> (isvec *> (brackets $ commaSepEnd1 expr))
     where isvec = try $ lookAhead $ do
                         _ <- symbol "["
                         _ <- expr
@@ -625,7 +625,7 @@ evar = eVar <$> varIdent
 efunc = eFunc <$> globalFuncIdent
 
 ematch = eMatch <$ reserved "match" <*> parens expr
-               <*> (braces $ (commaSep1 $ (,) <$> pattern <* reservedOp "->" <*> expr))
+               <*> (braces $ (commaSepEnd1 $ (,) <$> pattern <* reservedOp "->" <*> expr))
 
 {- Match pattern -}
 pattern = buildExpressionParser petable pterm
@@ -634,8 +634,8 @@ pattern = buildExpressionParser petable pterm
 petable = [[postf postType]]
 
 pterm = (withPos $
-           eTuple   <$> (parens $ commaSep pattern)
-       <|> E <$> ((EStruct nopos) <$> consIdent <*> (option [] $ braces $ commaSep (namedpat <|> anonpat)))
+           eTuple   <$> (parens $ commaSepEnd pattern)
+       <|> E <$> ((EStruct nopos) <$> consIdent <*> (option [] $ braces $ commaSepEnd (namedpat <|> anonpat)))
        <|> (E . EVarDecl nopos) <$> varIdent
        <|> (E . EVarDecl nopos) <$ reserved "var" <*> varIdent
        <|> epholder
@@ -648,8 +648,8 @@ anonpat = ("",) <$> pattern
 namedpat = (,) <$> (dot *> varIdent) <*> (reservedOp "=" *> pattern)
 
 lhs = (withPos $
-           eTuple <$> (parens $ commaSep lhs)
-       <|> E <$> ((EStruct nopos) <$> consIdent <*> (option [] $ braces $ commaSep $ namedlhs <|> anonlhs))
+           eTuple <$> (parens $ commaSepEnd lhs)
+       <|> E <$> ((EStruct nopos) <$> consIdent <*> (option [] $ braces $ commaSepEnd $ namedlhs <|> anonlhs))
        <|> fexpr
        <|> evardcl
        <|> epholder)
@@ -724,7 +724,7 @@ interpolate' mprefix = do
         p <- getPosition
         interpolate' $ (Just $ E $ EBinOp (fst $ pos prefix', p) Concat prefix' e))
 
-estruct = E <$> ((EStruct nopos) <$> consIdent <*> (option [] $ braces $ commaSep (namedarg <|> anonarg)))
+estruct = E <$> ((EStruct nopos) <$> consIdent <*> (option [] $ braces $ commaSepEnd (namedarg <|> anonarg)))
 
 enumber' = (lookAhead $ char '\'' <|> digit) *> (do w <- width
                                                     v <- sradval
@@ -850,13 +850,13 @@ tupField = isfield *> dot *> lexeme decimal
                         _ <- dot
                         _ <- notFollowedBy relIdent
                         lexeme decimal
-dotcall = (,) <$ isapply <*> (withPos $ eFunc <$ dot <*> funcIdent) <*> (parens $ commaSep expr)
+dotcall = (,) <$ isapply <*> (withPos $ eFunc <$ dot <*> funcIdent) <*> (parens $ commaSepEnd expr)
     where isapply = try $ lookAhead $ do
                         _ <- dot
                         _ <- funcIdent
                         symbol "("
 
-call = iscall *> (parens $ commaSep expr)
+call = iscall *> (parens $ commaSepEnd expr)
     where iscall = try $ lookAhead $ do
                          symbol "("
 
