@@ -161,7 +161,8 @@ templateFiles specname =
     map (mapSnd (BS.unpack)) $
         [ (dir </> "src/build.rs"               , $(embedFile "rust/template/src/build.rs"))
         , (dir </> "src/main.rs"                , $(embedFile "rust/template/src/main.rs"))
-        , (dir </> "src/api.rs"                 , $(embedFile "rust/template/src/api.rs"))
+        , (dir </> "src/api/mod.rs"             , $(embedFile "rust/template/src/api/mod.rs"))
+        , (dir </> "src/api/c_api.rs"           , $(embedFile "rust/template/src/api/c_api.rs"))
         , (dir </> "src/ovsdb_api.rs"           , $(embedFile "rust/template/src/ovsdb_api.rs"))
         , (dir </> "src/update_handler.rs"      , $(embedFile "rust/template/src/update_handler.rs"))
         , (dir </> "ddlog.h"                    , $(embedFile "rust/template/ddlog.h"))
