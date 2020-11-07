@@ -24,8 +24,7 @@ use std::thread::*;
 use differential_datalog::Callback;
 use differential_datalog::DeltaMap;
 
-/* Single-threaded (non-thread-safe callback)
- */
+/// Single-threaded (non-thread-safe callback)
 pub trait ST_CBFn: FnMut(RelId, &DDValue, isize) {
     fn clone_boxed(&self) -> Box<dyn ST_CBFn>;
 }
@@ -46,30 +45,28 @@ impl Clone for Box<dyn ST_CBFn> {
 }
 
 pub trait UpdateHandler: Debug {
-    /* Returns a handler to be invoked on each output relation update. */
+    /// Returns a handler to be invoked on each output relation update.
     fn update_cb(&self) -> Box<dyn ST_CBFn>;
 
-    /* Notifies the handler that a transaction_commit method is about to be
-     * called. The handler has an opportunity to prepare to handle
-     * update notifications. */
+    /// Notifies the handler that a transaction_commit method is about to be
+    /// called. The handler has an opportunity to prepare to handle
+    /// update notifications.
     fn before_commit(&self);
 
-    /* Notifies the handler that transaction_commit has finished.  The
-     * `success` flag indicates whether the commit succeeded or failed. */
+    /// Notifies the handler that transaction_commit has finished. The
+    /// `success` flag indicates whether the commit succeeded or failed.
     fn after_commit(&self, success: bool);
 }
 
-/* Multi-threaded update handler that can be invoked from multiple DDlog
- * worker threads.
- */
+/// Multi-threaded update handler that can be invoked from multiple DDlog
+/// worker threads.
 pub trait MTUpdateHandler: UpdateHandler + Sync + Send {
-    /* Returns a thread-safe handler to be invoked on each output
-     * relation update. */
+    /// Returns a thread-safe handler to be invoked on each output
+    /// relation update.
     fn mt_update_cb(&self) -> Box<dyn CBFn>;
 }
 
-/* Rust magic to make `MTUpdateHandler` clonable.
- */
+/// Rust magic to make `MTUpdateHandler` clonable.
 pub trait IMTUpdateHandler: MTUpdateHandler {
     fn clone_boxed(&self) -> Box<dyn IMTUpdateHandler>;
 }
@@ -89,8 +86,7 @@ impl Clone for Box<dyn IMTUpdateHandler> {
     }
 }
 
-/* A no-op `UpdateHandler` implementation
- */
+/// A no-op `UpdateHandler` implementation
 #[derive(Clone, Copy, Debug, Default)]
 pub struct NullUpdateHandler {}
 
@@ -114,9 +110,7 @@ impl MTUpdateHandler for NullUpdateHandler {
     }
 }
 
-/* `UpdateHandler` implementation that invokes user-provided closure.
- */
-
+/// `UpdateHandler` implementation that invokes user-provided closure.
 #[derive(Clone)]
 pub struct CallbackUpdateHandler<F: Callback> {
     cb: F,
@@ -160,8 +154,7 @@ pub type ExternCCallback = extern "C" fn(
     weight: libc::ssize_t,
 );
 
-/* `UpdateHandler` implementation that invokes user-provided C function.
- */
+/// `UpdateHandler` implementation that invokes user-provided C function.
 #[cfg(feature = "c_api")]
 #[derive(Clone, Copy, Debug)]
 pub struct ExternCUpdateHandler {
@@ -210,9 +203,8 @@ impl MTUpdateHandler for ExternCUpdateHandler {
     }
 }
 
-/* Multi-threaded `UpdateHandler` implementation that stores updates
- * in a `DeltaMap` and locks the map on every update.
- */
+/// Multi-threaded `UpdateHandler` implementation that stores updates
+/// in a `DeltaMap` and locks the map on every update.
 #[derive(Clone, Debug)]
 pub struct MTValMapUpdateHandler {
     db: Arc<Mutex<DeltaMap<DDValue>>>,
@@ -240,23 +232,22 @@ impl MTUpdateHandler for MTValMapUpdateHandler {
     }
 }
 
-/* Single-threaded `UpdateHandler` implementation that stores updates
- * in a `DeltaMap`, locking the map for the entire duration of a commit.
- * After the commit is done, the map can be accessed from a different
- * thread.
- */
+/// Single-threaded `UpdateHandler` implementation that stores updates
+/// in a `DeltaMap`, locking the map for the entire duration of a commit.
+/// After the commit is done, the map can be accessed from a different
+/// thread.
 #[derive(Clone, Debug)]
 pub struct ValMapUpdateHandler {
     db: Arc<Mutex<DeltaMap<DDValue>>>,
-    /* Stores pointer to `MutexGuard` between `before_commit()` and
-     * `after_commit()`.  This has to be unsafe, because Rust does
-     * not let us express a borrow from a field of the same struct in a
-     * safe way. */
+    /// Stores pointer to `MutexGuard` between `before_commit()` and
+    /// `after_commit()`.  This has to be unsafe, because Rust does
+    /// not let us express a borrow from a field of the same struct in a
+    /// safe way.
     locked: Arc<Cell<*mut libc::c_void>>,
 }
 
 impl Drop for ValMapUpdateHandler {
-    /* Release the mutex if still held. */
+    /// Release the mutex if still held.
     fn drop<'a>(&'a mut self) {
         let guard_ptr =
             self.locked.replace(ptr::null_mut()) as *mut MutexGuard<'a, DeltaMap<DDValue>>;
@@ -281,8 +272,8 @@ impl UpdateHandler for ValMapUpdateHandler {
         let handler = self.clone();
         Box::new(move |relid, v, w| {
             let guard_ptr = handler.locked.get();
-            /* `update_cb` can also be called during rollback and stop operations.
-             * Ignore those. */
+            // `update_cb` can also be called during rollback and stop operations.
+            // Ignore those.
             if !guard_ptr.is_null() {
                 let mut guard: Box<MutexGuard<'_, DeltaMap<DDValue>>> =
                     unsafe { Box::from_raw(guard_ptr as *mut MutexGuard<'_, DeltaMap<DDValue>>) };
@@ -300,22 +291,21 @@ impl UpdateHandler for ValMapUpdateHandler {
         let guard_ptr = self.locked.replace(ptr::null_mut());
         assert_ne!(guard_ptr, ptr::null_mut());
         let _guard = unsafe { Box::from_raw(guard_ptr as *mut MutexGuard<'_, DeltaMap<DDValue>>) };
-        /* Lock will be released when `_guard` goes out of scope. */
+        // Lock will be released when `_guard` goes out of scope.
     }
 }
 
-/* `UpdateHandler` implementation that records _changes_ to output relations
- * rather than complete state.
- */
+/// `UpdateHandler` implementation that records _changes_ to output relations
+/// rather than complete state.
 #[derive(Clone, Debug)]
 pub struct DeltaUpdateHandler {
-    /* Setting the `DeltaMap` to `None` disables recording. */
+    /// Setting the `DeltaMap` to `None` disables recording.
     db: Arc<Mutex<Option<DeltaMap<DDValue>>>>,
     locked: Arc<Cell<*mut libc::c_void>>,
 }
 
 impl Drop for DeltaUpdateHandler {
-    /* Release the mutex if still held. */
+    /// Release the mutex if still held.
     fn drop<'a>(&'a mut self) {
         let guard_ptr =
             self.locked.replace(ptr::null_mut()) as *mut MutexGuard<'a, DeltaMap<DDValue>>;
@@ -347,7 +337,7 @@ impl UpdateHandler for DeltaUpdateHandler {
                 if let Some(db) = (*guard).as_mut() {
                     db.update(relid, v, w)
                 };
-                /* make sure that guard does not get dropped */
+                // make sure that guard does not get dropped
                 Box::into_raw(guard);
             }
         })
@@ -361,13 +351,12 @@ impl UpdateHandler for DeltaUpdateHandler {
         let guard_ptr = self.locked.replace(ptr::null_mut());
         assert_ne!(guard_ptr, ptr::null_mut());
         let _guard = unsafe { Box::from_raw(guard_ptr as *mut MutexGuard<'_, DeltaMap<DDValue>>) };
-        /* Lock will be released when `_guard` goes out of scope. */
+        // Lock will be released when `_guard` goes out of scope.
     }
 }
 
-/* `UpdateHandler` implementation that chains multiple single-threaded
- * handlers.
- */
+/// `UpdateHandler` implementation that chains multiple single-threaded
+/// handlers.
 #[derive(Debug)]
 pub struct ChainedUpdateHandler {
     handlers: Vec<Box<dyn UpdateHandler>>,
@@ -401,9 +390,8 @@ impl UpdateHandler for ChainedUpdateHandler {
     }
 }
 
-/* `UpdateHandler` implementation that chains multiple multi-threaded
- * handlers.
- */
+/// `UpdateHandler` implementation that chains multiple multi-threaded
+/// handlers.
 #[derive(Clone, Debug)]
 pub struct MTChainedUpdateHandler {
     handlers: Vec<Box<dyn IMTUpdateHandler>>,
@@ -448,12 +436,8 @@ impl MTUpdateHandler for MTChainedUpdateHandler {
     }
 }
 
-/* `UpdateHandler` implementation that handles updates in a separate
- * worker thread.
- */
-
-/* We use a single mpsc channel to notify worker about
- * update, start, and commit events. */
+/// We use a single mpsc channel to notify worker about
+/// update, start, and commit events.
 enum Msg {
     BeforeCommit,
     Update { relid: RelId, v: DDValue, w: isize },
@@ -461,12 +445,14 @@ enum Msg {
     Stop,
 }
 
+/// `UpdateHandler` implementation that handles updates in a separate
+/// worker thread.
 #[derive(Clone, Debug)]
 pub struct ThreadUpdateHandler {
-    /* Channel to worker thread. */
+    /// Channel to worker thread.
     msg_channel: Arc<Mutex<Sender<Msg>>>,
 
-    /* Barrier to synchronize completion of transaction with worker. */
+    /// Barrier to synchronize completion of transaction with worker.
     commit_barrier: Arc<Barrier>,
 }
 
@@ -552,7 +538,7 @@ impl UpdateHandler for ThreadUpdateHandler {
             .send(Msg::AfterCommit { success })
             .is_ok()
         {
-            /* Wait for all queued updates to get processed by worker. */
+            // Wait for all queued updates to get processed by worker.
             self.commit_barrier.wait();
         }
     }
