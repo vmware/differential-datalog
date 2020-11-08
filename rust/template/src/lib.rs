@@ -11,7 +11,14 @@
     unused_variables,
     clippy::unknown_clippy_lints,
     clippy::missing_safety_doc,
-    clippy::toplevel_ref_arg
+    clippy::toplevel_ref_arg,
+    clippy::double_parens,
+    clippy::clone_on_copy,
+    clippy::just_underscores_and_digits,
+    clippy::match_single_binding,
+    clippy::op_ref,
+    clippy::nonminimal_bool,
+    clippy::redundant_clone
 )]
 
 use num::bigint::BigInt;

@@ -1069,7 +1069,8 @@ mkRelId2Name d =
 mkRelId2NameC :: Doc
 mkRelId2NameC =
     -- TODO: Documentation on the generated function
-    "pub fn relid2cname(rid: RelId) -> Option<&'static ::std::ffi::CStr> {"
+    "#[cfg(feature = \"c_api\")]"
+    $$ "pub fn relid2cname(rid: RelId) -> Option<&'static ::std::ffi::CStr> {"
     $$ "    RELIDMAPC.get(&rid).copied()"
     $$ "}"
 
@@ -1086,7 +1087,8 @@ mkRelIdMap prog =
                   staticDoc = Just "A map of `RelId`s to their name as an `&'static str`",
                   keyType = "Relations",
                   valueType = "&'static str",
-                  staticEntries = entries
+                  staticEntries = entries,
+                  c_api = False
                 }
 
 mkRelIdMapC :: DatalogProgram -> Doc
@@ -1106,7 +1108,8 @@ mkRelIdMapC prog =
                   staticDoc = Just "A map of `RelId`s to their name as an `&'static CStr`",
                   keyType = "RelId",
                   valueType = "&'static ::std::ffi::CStr",
-                  staticEntries = entries
+                  staticEntries = entries,
+                  c_api = True
                 }
 
 -- REFACTOR: `mkInputRelIdMap` and `mkOutputRelIdMap` can be combined pretty easily
@@ -1123,7 +1126,8 @@ mkInputRelIdMap prog =
                   staticDoc = Just "A map of input `Relations`s to their name as an `&'static str`",
                   keyType = "Relations",
                   valueType = "&'static str",
-                  staticEntries = entries
+                  staticEntries = entries,
+                  c_api = False
                 }
 
 mkOutputRelIdMap :: DatalogProgram -> Doc
@@ -1139,7 +1143,8 @@ mkOutputRelIdMap prog =
                   staticDoc = Just "A map of output `Relations`s to their name as an `&'static str`",
                   keyType = "Relations",
                   valueType = "&'static str",
-                  staticEntries = entries
+                  staticEntries = entries,
+                  c_api = False
                 }
 
 -- Convert string to `enum Indexes`
@@ -1212,7 +1217,8 @@ mkIdxId2Name d =
 mkIdxId2NameC :: Doc
 mkIdxId2NameC =
     -- TODO: Documentation on the generated function
-    "pub fn indexid2cname(iid: IdxId) -> Option<&'static ::std::ffi::CStr> {"
+    "#[cfg(feature = \"c_api\")]"
+    $$ "pub fn indexid2cname(iid: IdxId) -> Option<&'static ::std::ffi::CStr> {"
     $$ "    IDXIDMAPC.get(&iid).copied()"
     $$ "}"
 
@@ -1232,7 +1238,8 @@ mkIdxIdMap prog =
                   staticDoc = Just "A map of `Indexes` to their name as an `&'static str`",
                   keyType = "Indexes",
                   valueType = "&'static str",
-                  staticEntries = entries
+                  staticEntries = entries,
+                  c_api = False
                 }
 
 -- Generates a static HashMap named `IDXIDMAPC` that associates `IdxId`s to their name
@@ -1254,7 +1261,8 @@ mkIdxIdMapC prog =
                   staticDoc = Just "A map of `IdxId`s to their name as an `&'static CStr`",
                   keyType = "IdxId",
                   valueType = "&'static ::std::ffi::CStr",
-                  staticEntries = entries
+                  staticEntries = entries,
+                  c_api = True
                 }
 
 -- The data required to make a static HashMap
@@ -1268,7 +1276,9 @@ data LazyStatic = LazyStatic {
     -- The static's HashMap's value's type
     valueType     :: String,
     -- (key, value) pairs of each entry to be placed in the HashMap
-    staticEntries :: [(Doc, Doc)]
+    staticEntries :: [(Doc, Doc)],
+    -- Whether or not the map should be feature-gated
+    c_api :: Bool
 }
 
 -- Creates a static variable holding a `FnvHashMap` pre-allocated and pre-filled with the supplied values
@@ -1276,6 +1286,7 @@ data LazyStatic = LazyStatic {
 -- The generated code will take roughly this form:
 -- ```rust
 -- /// {documentation}
+-- #[cfg(feature = "c_api")] // only if c_api is true
 -- pub static {static name}: ::once_cell::sync::Lazy<::fnv::FnvHashMap<{key}, {value}>> =
 --     ::once_cell::sync::Lazy::new(|| {
 --         let mut map = ::fnv::FnvHashMap::with_capacity_and_hasher({length elements}, ::fnv::FnvBuildHasher::default());
@@ -1288,7 +1299,8 @@ data LazyStatic = LazyStatic {
 createLazyStatic :: LazyStatic -> Doc
 createLazyStatic lazy_static =
     doc_comment
-        $$ "pub static" <+> static_name <> ": ::once_cell::sync::Lazy<::fnv::FnvHashMap<" <> key_type <> "," <+> value_type <> ">> ="
+        $$ (if (c_api lazy_static) then "#[cfg(feature = \"c_api\")]\n" else "")
+        <> "pub static" <+> static_name <> ": ::once_cell::sync::Lazy<::fnv::FnvHashMap<" <> key_type <> "," <+> value_type <> ">> ="
         $$ "    ::once_cell::sync::Lazy::new(|| {"
         -- Pre-allocate the HashMap, maps using a hasher other than `RandomState` can't use `with_capacity()`, so we
         -- use `with_capacity_and_hasher()`, giving it our pre-allocation capacity and a default hasher provided by fnv
