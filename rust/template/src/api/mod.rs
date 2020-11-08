@@ -75,6 +75,7 @@ impl HDDlog {
         relid2name(tid).ok_or_else(|| format!("unknown relation {}", tid))
     }
 
+    #[cfg(feature = "c_api")]
     pub fn get_table_cname(tid: RelId) -> Result<&'static ffi::CStr, String> {
         relid2cname(tid).ok_or_else(|| format!("unknown relation {}", tid))
     }
@@ -87,6 +88,7 @@ impl HDDlog {
         indexid2name(iid).ok_or_else(|| format!("unknown index {}", iid))
     }
 
+    #[cfg(feature = "c_api")]
     pub fn get_index_cname(iid: IdxId) -> Result<&'static ffi::CStr, String> {
         indexid2cname(iid).ok_or_else(|| format!("unknown index {}", iid))
     }
