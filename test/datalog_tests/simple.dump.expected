@@ -50,7 +50,7 @@ Cast_float{.description = "16'd100  as float", .expected = 100, .actual = 100}: 
 Cast_float{.description = "16'sd100  as float", .expected = 100, .actual = 100}: +1
 Cast_float{.description = "24'd100  as float", .expected = 100, .actual = 100}: +1
 Cast_float{.description = "256'd100 as float", .expected = 100, .actual = 100}: +1
-Cast_float{.description = "264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as float", .expected = NaN, .actual = NaN}: +1
+Cast_float{.description = "264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as float", .expected = inf, .actual = NaN}: +1
 Cast_float{.description = "32'd100  as float", .expected = 100, .actual = 100}: +1
 Cast_float{.description = "32'f3.5  as float", .expected = 3.5, .actual = 3.5}: +1
 Cast_float{.description = "32'sd100  as float", .expected = 100, .actual = 100}: +1
@@ -295,7 +295,7 @@ Cast_float{.description = "16'd100  as float", .expected = 100, .actual = 100}
 Cast_float{.description = "16'sd100  as float", .expected = 100, .actual = 100}
 Cast_float{.description = "24'd100  as float", .expected = 100, .actual = 100}
 Cast_float{.description = "256'd100 as float", .expected = 100, .actual = 100}
-Cast_float{.description = "264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as float", .expected = NaN, .actual = NaN}
+Cast_float{.description = "264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as float", .expected = inf, .actual = NaN}
 Cast_float{.description = "32'd100  as float", .expected = 100, .actual = 100}
 Cast_float{.description = "32'f3.5  as float", .expected = 3.5, .actual = 3.5}
 Cast_float{.description = "32'sd100  as float", .expected = 100, .actual = 100}
@@ -577,7 +577,7 @@ Cast_float{.description = "16'd100  as float", .expected = 100, .actual = 100}
 Cast_float{.description = "16'sd100  as float", .expected = 100, .actual = 100}
 Cast_float{.description = "24'd100  as float", .expected = 100, .actual = 100}
 Cast_float{.description = "256'd100 as float", .expected = 100, .actual = 100}
-Cast_float{.description = "264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as float", .expected = NaN, .actual = NaN}
+Cast_float{.description = "264'hfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa as float", .expected = inf, .actual = NaN}
 Cast_float{.description = "32'd100  as float", .expected = 100, .actual = 100}
 Cast_float{.description = "32'f3.5  as float", .expected = 3.5, .actual = 3.5}
 Cast_float{.description = "32'sd100  as float", .expected = 100, .actual = 100}
@@ -798,26 +798,26 @@ VecTest{.x = ["Hello,"]}
 VecTest{.x = ["Hello, ", "world!"]}
 
 Table12:
-Table12{.id = 17336224497861733919815152341411388488, .name = "foo", .f3 = S{.f1 = (true, true), .f2 = 5}}: +1
-Table12{.id = 22392505968159599858842954353828065157, .name = "foo", .f3 = S{.f1 = (true, true), .f2 = 5}}: +1
-Table12{.id = 26063088688772124841760885552794197892, .name = "foo", .f3 = S{.f1 = (false, true), .f2 = 10000}}: +1
-Table12{.id = 36321399577296340159974216194704581781, .name = "foo", .f3 = S{.f1 = (false, true), .f2 = 10000}}: +1
-Table12{.id = 113382101442147745457521300129795215207, .name = "foo", .f3 = S{.f1 = (true, false), .f2 = 43981}}: +1
-Table12{.id = 219958081222635694184279952590792948910, .name = "foo", .f3 = S{.f1 = (true, false), .f2 = 43981}}: +1
-Table12{.id = 272619523799390796265446674841421092831, .name = "foo", .f3 = S{.f1 = (true, false), .f2 = 43981}}: +1
-Table12{.id = 321030108949051789385195425839092517952, .name = "foo", .f3 = S{.f1 = (true, true), .f2 = 5}}: +1
-Table12{.id = 325669392534005072907793818316143570048, .name = "buzzzzzzzz", .f3 = S{.f1 = (true, true), .f2 = 5}}: +1
-Table12{.id = 336361578369808350499874654832390851244, .name = "foo", .f3 = S{.f1 = (false, true), .f2 = 10000}}: +1
-Table12{.id = 17336224497861733919815152341411388488, .name = "foo", .f3 = S{.f1 = (true, true), .f2 = 5}}
-Table12{.id = 22392505968159599858842954353828065157, .name = "foo", .f3 = S{.f1 = (true, true), .f2 = 5}}
-Table12{.id = 26063088688772124841760885552794197892, .name = "foo", .f3 = S{.f1 = (false, true), .f2 = 10000}}
-Table12{.id = 36321399577296340159974216194704581781, .name = "foo", .f3 = S{.f1 = (false, true), .f2 = 10000}}
-Table12{.id = 113382101442147745457521300129795215207, .name = "foo", .f3 = S{.f1 = (true, false), .f2 = 43981}}
-Table12{.id = 219958081222635694184279952590792948910, .name = "foo", .f3 = S{.f1 = (true, false), .f2 = 43981}}
-Table12{.id = 272619523799390796265446674841421092831, .name = "foo", .f3 = S{.f1 = (true, false), .f2 = 43981}}
-Table12{.id = 321030108949051789385195425839092517952, .name = "foo", .f3 = S{.f1 = (true, true), .f2 = 5}}
-Table12{.id = 325669392534005072907793818316143570048, .name = "buzzzzzzzz", .f3 = S{.f1 = (true, true), .f2 = 5}}
-Table12{.id = 336361578369808350499874654832390851244, .name = "foo", .f3 = S{.f1 = (false, true), .f2 = 10000}}
+Table12{.id = 1213330043809143068405926999307758591, .name = "foo", .f3 = S{.f1 = (true, false), .f2 = 43981}}: +1
+Table12{.id = 14117109482676791095865403453923040286, .name = "foo", .f3 = S{.f1 = (true, false), .f2 = 43981}}: +1
+Table12{.id = 42011938051762719786230735114314331271, .name = "foo", .f3 = S{.f1 = (true, false), .f2 = 43981}}: +1
+Table12{.id = 43251340162115315519194819645842305951, .name = "foo", .f3 = S{.f1 = (false, true), .f2 = 10000}}: +1
+Table12{.id = 57508822172632933514569127209420538405, .name = "foo", .f3 = S{.f1 = (true, true), .f2 = 5}}: +1
+Table12{.id = 62705356905319025098154288955322615984, .name = "buzzzzzzzz", .f3 = S{.f1 = (true, true), .f2 = 5}}: +1
+Table12{.id = 169984602114493764886931227714024466710, .name = "foo", .f3 = S{.f1 = (false, true), .f2 = 10000}}: +1
+Table12{.id = 176499803952035943435841015729623381639, .name = "foo", .f3 = S{.f1 = (false, true), .f2 = 10000}}: +1
+Table12{.id = 217432015071893969708508233644005308664, .name = "foo", .f3 = S{.f1 = (true, true), .f2 = 5}}: +1
+Table12{.id = 318350904379688215820024412914943476848, .name = "foo", .f3 = S{.f1 = (true, true), .f2 = 5}}: +1
+Table12{.id = 1213330043809143068405926999307758591, .name = "foo", .f3 = S{.f1 = (true, false), .f2 = 43981}}
+Table12{.id = 14117109482676791095865403453923040286, .name = "foo", .f3 = S{.f1 = (true, false), .f2 = 43981}}
+Table12{.id = 42011938051762719786230735114314331271, .name = "foo", .f3 = S{.f1 = (true, false), .f2 = 43981}}
+Table12{.id = 43251340162115315519194819645842305951, .name = "foo", .f3 = S{.f1 = (false, true), .f2 = 10000}}
+Table12{.id = 57508822172632933514569127209420538405, .name = "foo", .f3 = S{.f1 = (true, true), .f2 = 5}}
+Table12{.id = 62705356905319025098154288955322615984, .name = "buzzzzzzzz", .f3 = S{.f1 = (true, true), .f2 = 5}}
+Table12{.id = 169984602114493764886931227714024466710, .name = "foo", .f3 = S{.f1 = (false, true), .f2 = 10000}}
+Table12{.id = 176499803952035943435841015729623381639, .name = "foo", .f3 = S{.f1 = (false, true), .f2 = 10000}}
+Table12{.id = 217432015071893969708508233644005308664, .name = "foo", .f3 = S{.f1 = (true, true), .f2 = 5}}
+Table12{.id = 318350904379688215820024412914943476848, .name = "foo", .f3 = S{.f1 = (true, true), .f2 = 5}}
 Rel3:
 Rel3{.x = 0, .y = IP4{.ip4 = 100}, .z = Option1{.f1 = 0, .f2 = IP4{.ip4 = 300}, .f3 = (true, "foo")}}: +1
 Rel3:
