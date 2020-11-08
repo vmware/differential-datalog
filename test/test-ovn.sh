@@ -13,11 +13,16 @@ clone_repo() {
 
     if [ ! -d "${REPO_DIR}/.git" ]
     then
-        git clone -b "${REPO_BRANCH}" "${REPO_URL}" "${REPO_DIR}" 
+        git clone -b "${REPO_BRANCH}" "${REPO_URL}" "${REPO_DIR}"
     else
         (cd "${REPO_DIR}" && git fetch "${REPO_URL}" && git checkout "${REPO_BRANCH}")
     fi
 }
+
+# When running in CI, the DDlog compiler should be prinstalled by the build stage.
+if [ -z "${IS_CI_RUN}" ]; then
+    stack install
+fi
 
 clone_repo https://github.com/ryzhyk/ovs.git ovs ovs-for-ddlog
 clone_repo https://github.com/ryzhyk/ovn.git ovn
@@ -33,7 +38,7 @@ clone_repo https://github.com/ddlog-dev/ovn-test-data.git ovn-test-data v5
 # TODO: use -j6 once build script is fixed
 # TODO: use primary OVN repo
 (cd ovn &&
- git checkout ddlog_ci10 &&
+ git checkout ddlog_ci11 &&
  ./boot.sh &&
  ./configure --with-ddlog=../../lib --with-ovs-source=../ovs --enable-shared &&
  (make northd/ddlog.stamp && make check -j1 NORTHD_CLI=1 ||
