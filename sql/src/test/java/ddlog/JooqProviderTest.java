@@ -54,10 +54,12 @@ public class JooqProviderTest {
         // Pass the mock connection to a jOOQ DSLContext:
         DSLContext create = DSL.using(connection);
 
-        // Test 1: insert statements
-        create.execute("insert into hosts values ('n1', 10, true)");
+        // Test 1: insert statements.
+        // We test single inserts as well as batch statements. We also test different
+        // kinds of whitespace (the \n below is deliberate).
+        create.execute("insert into \nhosts values ('n1', 10, true)");
         create.batch("insert into hosts values ('n54', 18, false)",
-                     "insert into hosts values ('n9', 2, true)");
+                     "insert into hosts values ('n9', 2, true)").execute();
         final Field<String> field1 = field("id", String.class);
         final Field<Integer> field2 = field("capacity", Integer.class);
         final Field<Boolean> field3 = field("up", Boolean.class);

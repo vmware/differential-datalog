@@ -12,6 +12,7 @@ import ddlogapi.DDlogRecord;
 import org.jooq.DSLContext;
 import org.jooq.Field;
 import org.jooq.Record;
+import org.jooq.Record1;
 import org.jooq.Result;
 import org.jooq.Table;
 import org.jooq.impl.DSL;
@@ -27,6 +28,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import static org.jooq.impl.DSL.field;
+
 public class DDlogJooqProvider implements MockDataProvider {
     private static final String INTEGER_TYPE = "java.lang.Integer";
     private static final String STRING_TYPE = "java.lang.String";
@@ -36,11 +39,13 @@ public class DDlogJooqProvider implements MockDataProvider {
     private static final String DDLOG_NONE_TYPE = "ddlog_std::None";
     private final DDlogAPI dDlogAPI;
     private final DSLContext dslContext;
+    private final Field<Integer> updateCountField;
     private final Map<String, List<Field<?>>> tables = new HashMap<>();
 
     public DDlogJooqProvider(final DDlogAPI dDlogAPI, final List<String> sqlStatements) {
         this.dDlogAPI = dDlogAPI;
-        dslContext = DSL.using("jdbc:h2:mem:");
+        this.dslContext = DSL.using("jdbc:h2:mem:");
+        this.updateCountField = field("UPDATE_COUNT", Integer.class);
         for (final String sql : sqlStatements) {
             dslContext.execute(sql);
         }
@@ -53,22 +58,33 @@ public class DDlogJooqProvider implements MockDataProvider {
 
     @Override
     public MockResult[] execute(final MockExecuteContext ctx) throws SQLException {
-        final MockResult[] mock = new MockResult[1];
-        // The execute context contains SQL string(s), bind values, and other meta-data
-        final String sql = ctx.sql();
-        if (sql.toUpperCase().startsWith("SELECT")) {
-            mock[0] = executeSelectStar(sql);
-        } else if (sql.toUpperCase().startsWith("INSERT INTO")) {
-            mock[0] = executeInsert(sql);
-        } else {
-            // Exceptions are propagated through the JDBC and jOOQ APIs
-            throw new SQLException("Statement not supported: " + sql);
+        final String[] batchSql = ctx.batchSQL();
+        final MockResult[] mock = new MockResult[batchSql.length];
+        try {
+            dDlogAPI.transactionStart();
+            for (int i = 0; i < batchSql.length; i++) {
+                mock[i] = execute(batchSql[i]);
+            }
+            dDlogAPI.transactionCommit();
+        } catch (final DDlogException e) {
+            throw new RuntimeException(e);
         }
         return mock;
     }
 
+    private MockResult execute(final String sql) throws SQLException {
+        if (sql.toUpperCase().startsWith("SELECT")) {
+            return executeSelectStar(sql);
+        } else if (sql.toUpperCase().startsWith("INSERT INTO")) {
+            return executeInsert(sql);
+        } else {
+            // Exceptions are propagated through the JDBC and jOOQ APIs
+            throw new SQLException("Statement not supported: " + sql);
+        }
+    }
+
     private MockResult executeSelectStar(final String sql) throws SQLException {
-        final String[] s = sql.split("[ ]+");
+        final String[] s = sql.split("[ \t\n]+");
         if (!(s.length == 4 && s[1].equalsIgnoreCase("*") && s[2].equalsIgnoreCase("FROM"))) {
             throw new SQLException("Statement not supported: " + sql);
         }
@@ -96,7 +112,7 @@ public class DDlogJooqProvider implements MockDataProvider {
 
     private MockResult executeInsert(final String sql) throws SQLException {
         final String[] s = sql.replaceAll("[(),]", "")
-                              .split("[ ]+");
+                              .split("[ \t\n]+");
         if (!(s.length >= 4 && s[1].equalsIgnoreCase("INTO")
                 && s[3].equalsIgnoreCase("VALUES"))) {
             throw new SQLException("Statement not supported: " + sql);
@@ -112,13 +128,15 @@ public class DDlogJooqProvider implements MockDataProvider {
         final int tableId = dDlogAPI.getTableId("R" + tableName.toLowerCase());
         final DDlogRecCommand command = new DDlogRecCommand(DDlogCommand.Kind.Insert, tableId, dDlogRecord);
         try {
-            dDlogAPI.transactionStart();
             dDlogAPI.applyUpdates(new DDlogRecCommand[]{command});
-            dDlogAPI.transactionCommit();
         } catch (final DDlogException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
-        return new MockResult(1, null);
+        final Result<Record1<Integer>> result = dslContext.newResult(updateCountField);
+        final Record1<Integer> resultRecord = dslContext.newRecord(updateCountField);
+        resultRecord.setValue(updateCountField, 1);
+        result.add(resultRecord);
+        return new MockResult(1, result);
     }
 
     @Nullable
