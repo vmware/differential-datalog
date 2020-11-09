@@ -78,6 +78,27 @@ check_interval = 0
     [runners.cache.gcs]
 ```
 
+Since docker hub is now throttling pulls from unauthenticated users, I also
+created registry mirrors on all machines that run gitlab runners by following
+[these instructions](https://about.gitlab.com/blog/2020/10/30/mitigating-the-impact-of-docker-hub-pull-requests-limits/),
+namely:
+
+```
+docker run -d -p 6000:5000 \
+    -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io \
+    --restart always \
+    --name registry registry:2
+```
+
+and added the following to docker's `daemon.json`:
+
+```
+{
+  "registry-mirrors": ["http://127.0.0.1:6000"]
+}
+```
+
+
 ## Creating a GitLab mirror for your own fork of DDlog
 
 Follow these steps to connect your fork of the DDlog repo to GitLab CI,
