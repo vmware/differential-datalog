@@ -9,17 +9,6 @@ use std::marker;
 use std::sync;
 use std::vec;
 
-#[cfg(feature = "flatbuf")]
-use crate::flatbuf::{FromFlatBuffer, ToFlatBuffer, ToFlatBufferTable, ToFlatBufferVectorElement};
-
-/* `flatc`-generated declarations re-exported by `flatbuf.rs` */
-#[cfg(feature = "flatbuf")]
-use crate::flatbuf::fb;
-
-/* FlatBuffers runtime */
-#[cfg(feature = "flatbuf")]
-use flatbuffers as fbrt;
-
 type Symbol = u32;
 
 #[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]
@@ -133,48 +122,5 @@ impl Mutator<IString> for Record {
         self.mutate(&mut string)?;
         *s = string_intern(&string);
         Ok(())
-    }
-}
-
-#[cfg(feature = "flatbuf")]
-impl<'a> FromFlatBuffer<&'a str> for IString {
-    fn from_flatbuf(fb: &'a str) -> Result<Self, String> {
-        Ok(string_intern(&String::from_flatbuf(fb)?))
-    }
-}
-
-#[cfg(feature = "flatbuf")]
-impl<'b> ToFlatBuffer<'b> for IString {
-    type Target = fbrt::WIPOffset<&'b str>;
-
-    fn to_flatbuf(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {
-        istring_str(self).to_flatbuf(fbb)
-    }
-}
-
-#[cfg(feature = "flatbuf")]
-impl<'a> FromFlatBuffer<fb::__String<'a>> for IString {
-    fn from_flatbuf(v: fb::__String<'a>) -> Result<Self, String> {
-        Ok(string_intern(&String::from_flatbuf(v)?))
-    }
-}
-
-#[cfg(feature = "flatbuf")]
-impl<'b> ToFlatBufferTable<'b> for IString {
-    type Target = fb::__String<'b>;
-    fn to_flatbuf_table(
-        &self,
-        fbb: &mut fbrt::FlatBufferBuilder<'b>,
-    ) -> fbrt::WIPOffset<Self::Target> {
-        istring_str(self).to_flatbuf_table(fbb)
-    }
-}
-
-#[cfg(feature = "flatbuf")]
-impl<'b> ToFlatBufferVectorElement<'b> for IString {
-    type Target = fbrt::WIPOffset<&'b str>;
-
-    fn to_flatbuf_vector_element(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {
-        self.to_flatbuf(fbb)
     }
 }

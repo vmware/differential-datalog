@@ -25,16 +25,6 @@ use differential_datalog::record::FromRecord as FromRec;
 use differential_datalog::record::IntoRecord as IntoRec;
 use differential_datalog::record::Record;
 
-#[cfg(feature = "flatbuf")]
-use crate::flatbuf::{FromFlatBuffer, ToFlatBuffer, ToFlatBufferTable, ToFlatBufferVectorElement};
-
-#[cfg(feature = "flatbuf")]
-use crate::flatbuf::fb;
-
-/* FlatBuffers runtime */
-#[cfg(feature = "flatbuf")]
-use flatbuffers as fbrt;
-
 #[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]
 pub struct Int {
     x: BigInt,
@@ -341,53 +331,6 @@ impl num::Zero for Int {
     }
 }
 
-#[cfg(feature = "flatbuf")]
-impl<'a> FromFlatBuffer<fb::__BigInt<'a>> for Int {
-    fn from_flatbuf(fb: fb::__BigInt<'a>) -> std::result::Result<Int, String> {
-        let bytes = fb
-            .bytes()
-            .ok_or_else(|| format!("Int::from_flatbuf: invalid buffer: failed to extract bytes"))?;
-        Ok(Int::from_bytes_be(fb.sign(), bytes))
-    }
-}
-
-#[cfg(feature = "flatbuf")]
-impl<'b> ToFlatBuffer<'b> for Int {
-    type Target = fbrt::WIPOffset<fb::__BigInt<'b>>;
-
-    fn to_flatbuf(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {
-        let (sign, bytes) = self.to_bytes_be();
-        let vec = fbb.create_vector(&bytes);
-        fb::__BigInt::create(
-            fbb,
-            &fb::__BigIntArgs {
-                sign: sign != ::num::bigint::Sign::Minus,
-                bytes: Some(vec),
-            },
-        )
-    }
-}
-
-#[cfg(feature = "flatbuf")]
-impl<'b> ToFlatBufferTable<'b> for Int {
-    type Target = fb::__BigInt<'b>;
-    fn to_flatbuf_table(
-        &self,
-        fbb: &mut fbrt::FlatBufferBuilder<'b>,
-    ) -> fbrt::WIPOffset<Self::Target> {
-        self.to_flatbuf(fbb)
-    }
-}
-
-#[cfg(feature = "flatbuf")]
-impl<'b> ToFlatBufferVectorElement<'b> for Int {
-    type Target = <Int as ToFlatBuffer<'b>>::Target;
-
-    fn to_flatbuf_vector_element(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {
-        self.to_flatbuf(fbb)
-    }
-}
-
 #[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]
 pub struct Uint {
     x: BigUint,
@@ -647,45 +590,5 @@ impl num::Zero for Uint {
 
     fn is_zero(&self) -> bool {
         self.x == BigUint::zero()
-    }
-}
-
-#[cfg(feature = "flatbuf")]
-impl<'a> FromFlatBuffer<fb::__BigUint<'a>> for Uint {
-    fn from_flatbuf(fb: fb::__BigUint<'a>) -> std::result::Result<Uint, String> {
-        let bytes = fb.bytes().ok_or_else(|| {
-            format!("Uint::from_flatbuf: invalid buffer: failed to extract bytes")
-        })?;
-        Ok(Uint::from_bytes_be(bytes))
-    }
-}
-
-#[cfg(feature = "flatbuf")]
-impl<'b> ToFlatBuffer<'b> for Uint {
-    type Target = fbrt::WIPOffset<fb::__BigUint<'b>>;
-
-    fn to_flatbuf(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {
-        let vec = fbb.create_vector(&self.to_bytes_be());
-        fb::__BigUint::create(fbb, &fb::__BigUintArgs { bytes: Some(vec) })
-    }
-}
-
-#[cfg(feature = "flatbuf")]
-impl<'b> ToFlatBufferTable<'b> for Uint {
-    type Target = fb::__BigUint<'b>;
-    fn to_flatbuf_table(
-        &self,
-        fbb: &mut fbrt::FlatBufferBuilder<'b>,
-    ) -> fbrt::WIPOffset<Self::Target> {
-        self.to_flatbuf(fbb)
-    }
-}
-
-#[cfg(feature = "flatbuf")]
-impl<'b> ToFlatBufferVectorElement<'b> for Uint {
-    type Target = <Uint as ToFlatBuffer<'b>>::Target;
-
-    fn to_flatbuf_vector_element(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {
-        self.to_flatbuf(fbb)
     }
 }

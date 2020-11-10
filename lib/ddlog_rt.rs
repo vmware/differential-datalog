@@ -10,18 +10,6 @@ use serde::de::Error;
 use serde::Deserializer;
 use serde::Serializer;
 
-#[cfg(feature = "flatbuf")]
-use flatbuffers as fbrt;
-
-#[cfg(feature = "flatbuf")]
-use crate::flatbuf;
-
-#[cfg(feature = "flatbuf")]
-use crate::flatbuf::ToFlatBuffer;
-
-#[cfg(feature = "flatbuf")]
-use crate::flatbuf::fb;
-
 use differential_datalog::ddval::DDVal;
 use differential_datalog::ddval::DDValue;
 
@@ -355,59 +343,6 @@ impl<Args: 'static + Clone, Output: 'static + Clone> Abomonation
     }
     fn extent(&self) -> usize {
         panic!("Closure::extent: not implemented")
-    }
-}
-
-#[cfg(feature = "flatbuf")]
-impl<'a, Args: 'static + Clone, Output: 'static + Clone> flatbuf::FromFlatBuffer<&'a str>
-    for Box<dyn Closure<Args, Output>>
-{
-    fn from_flatbuf(s: &'a str) -> Result<Self, String> {
-        Err(format!("'from_flatbuf' not implemented for closures."))
-    }
-}
-
-#[cfg(feature = "flatbuf")]
-impl<'a, Args: 'static + Clone, Output: 'static + Clone> flatbuf::FromFlatBuffer<fb::__String<'a>>
-    for Box<dyn Closure<Args, Output>>
-{
-    fn from_flatbuf(v: fb::__String<'a>) -> Result<Self, String> {
-        Err(format!("'from_flatbuf' not implemented for closures."))
-    }
-}
-
-#[cfg(feature = "flatbuf")]
-impl<'b, Args: 'static + Clone, Output: 'static + Clone> ToFlatBuffer<'b>
-    for Box<dyn Closure<Args, Output>>
-{
-    type Target = fbrt::WIPOffset<&'b str>;
-    fn to_flatbuf(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {
-        fbb.create_string(&format!("{}", self))
-    }
-}
-
-#[cfg(feature = "flatbuf")]
-impl<'b, Args: 'static + Clone, Output: 'static + Clone> flatbuf::ToFlatBufferTable<'b>
-    for Box<dyn Closure<Args, Output>>
-{
-    type Target = fb::__String<'b>;
-    fn to_flatbuf_table(
-        &self,
-        fbb: &mut fbrt::FlatBufferBuilder<'b>,
-    ) -> fbrt::WIPOffset<Self::Target> {
-        let v = self.to_flatbuf(fbb);
-        fb::__String::create(fbb, &fb::__StringArgs { v: Some(v) })
-    }
-}
-
-#[cfg(feature = "flatbuf")]
-impl<'b, Args: 'static + Clone, Output: 'static + Clone> flatbuf::ToFlatBufferVectorElement<'b>
-    for Box<dyn Closure<Args, Output>>
-{
-    type Target = <Self as flatbuf::ToFlatBuffer<'b>>::Target;
-
-    fn to_flatbuf_vector_element(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {
-        self.to_flatbuf(fbb)
     }
 }
 
