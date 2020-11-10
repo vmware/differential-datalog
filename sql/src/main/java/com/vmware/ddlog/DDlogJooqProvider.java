@@ -95,6 +95,10 @@ public class DDlogJooqProvider implements MockDataProvider {
         this.dDlogAPI = dDlogAPI;
         this.dslContext = DSL.using("jdbc:h2:mem:");
         this.updateCountField = field("UPDATE_COUNT", Integer.class);
+
+        // We translate DDL statements from the Presto dialect to H2.
+        // We then execute these statements in a temporary database so that JOOQ can extract useful metadata
+        // that we will use later (for example, the record types for views).
         for (final String sql : sqlStatements) {
             final Statement statement = parser.createStatement(sql, options);
             final String statementInH2Dialect = translateCreateTableDialect.process(statement, sql);
