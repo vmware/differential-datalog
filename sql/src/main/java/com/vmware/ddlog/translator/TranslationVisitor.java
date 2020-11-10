@@ -89,9 +89,10 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         context.reserveGlobalName(relName);
         DDlogRelationDeclaration rel = new DDlogRelationDeclaration(
                 node, DDlogRelationDeclaration.Role.Input, relName, tuser);
-        if (keyColumns.size() > 0)
-            // This type name will not appear in the generater program
+        if (keyColumns.size() > 0) {
+            // This type name will not appear in the generated program
             rel = rel.setPrimaryKey(keyColumns, context.freshLocalName("TKey"));
+        }
         context.add(rel);
         return rel;
     }

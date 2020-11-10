@@ -29,6 +29,30 @@ public class SimpleQueriesTest extends BaseQueriesTest {
     }
 
     @Test
+    public void keyTest() {
+        String query = "create table a(column1 integer not null with (primary_key = true),\n" +
+                " column2 integer not null with (primary_key = true)\n" +
+                ", column3 integer array not null with (primary_key = true))";
+        String program = "import fp\n" +
+                "import time\n" +
+                "import sql\n" +
+                "import sqlop\n" +
+                "\n" +
+                "typedef Tt1 = Tt1{column1:signed<64>, column2:string, column3:bool, column4:double}\n" +
+                "typedef Tt2 = Tt2{column1:signed<64>}\n" +
+                "typedef Tt3 = Tt3{d:Date, t:Time, dt:DateTime}\n" +
+                "typedef Tt4 = Tt4{column1:Option<signed<64>>, column2:Option<string>}\n" +
+                "typedef Ta = Ta{column1:signed<64>, column2:signed<64>, column3:Vec<signed<64>>}\n" +
+                "\n" +
+                "input relation Rt1[Tt1]\n" +
+                "input relation Rt2[Tt2]\n" +
+                "input relation Rt3[Tt3]\n" +
+                "input relation Rt4[Tt4]\n" +
+                "input relation Ra[Ta] primary key (row) (row.column1, row.column2, row.column3)\n";
+        this.testTranslation(query, program, false);
+    }
+
+    @Test
     public void inArrayTest() {
         List<String> queries = Arrays.asList(
                 "create table a(column1 integer not null, column2 integer not null, column3 integer array not null)",
