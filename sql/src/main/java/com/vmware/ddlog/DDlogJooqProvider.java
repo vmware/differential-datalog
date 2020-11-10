@@ -134,10 +134,12 @@ public class DDlogJooqProvider implements MockDataProvider {
         protected MockResult visitQuerySpecification(final QuerySpecification node, String sql) {
             // The checks below encode assumption A1 (see javadoc for the DDlogJooqProvider class)
             final Select select = node.getSelect();
-            if (!(select.getSelectItems().size() == 1 && select.getSelectItems().get(0) instanceof AllColumns)) {
+            if (!(select.getSelectItems().size() == 1
+                    && select.getSelectItems().get(0) instanceof AllColumns
+                    && node.getFrom().isPresent()
+                    && node.getFrom().get() instanceof com.facebook.presto.sql.tree.Table)) {
                 throw new RuntimeException("Statement not supported: " + sql);
             }
-            assert node.getFrom().isPresent() && node.getFrom().get() instanceof com.facebook.presto.sql.tree.Table;
             final String tableName = ((com.facebook.presto.sql.tree.Table) node.getFrom().get()).getName().toString();
             final List<Field<?>> fields = tables.get(tableName.toUpperCase());
             if (fields == null) {
@@ -170,15 +172,22 @@ public class DDlogJooqProvider implements MockDataProvider {
         protected MockResult visitInsert(final Insert node, final String sql) {
             try {
                 // The assertions below encode assumption A2 (see javadoc for the DDlogJooqProvider class)
-                assert node.getQuery().getQueryBody() instanceof Values;
+                if (!(node.getQuery().getQueryBody() instanceof Values)) {
+                    throw new RuntimeException("Statement not supported: " + sql);
+                }
                 final Values values = (Values) node.getQuery().getQueryBody();
                 final String tableName = node.getTarget().toString();
                 final List<Field<?>> fields = tables.get(tableName.toUpperCase());
                 final int tableId = dDlogAPI.getTableId(ddlogRelationName(tableName));
                 for (final Expression row: values.getRows()) {
-                    assert row instanceof Row;
+                    if (!(row instanceof Row)) {
+                        throw new RuntimeException("Statement not supported: " + sql);
+                    }
                     final List<Expression> items = ((Row) row).getItems();
-                    assert items.size() == fields.size();
+                    if (items.size() != fields.size()) {
+                        throw new RuntimeException(
+                                String.format("Incorrect row size for insertion into table %s: %s", tableName, sql));
+                    }
                     final DDlogRecord[] recordsArray = new DDlogRecord[items.size()];
                     for (int i = 0; i < items.size(); i++) {
                         recordsArray[i] = parseLiterals.process(items.get(i), fields.get(i).getDataType().nullable());
