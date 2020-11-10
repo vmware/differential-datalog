@@ -5,17 +5,6 @@ use std::fmt;
 use std::hash::Hash;
 use std::ops::Deref;
 
-#[cfg(feature = "flatbuf")]
-use crate::flatbuf::{FromFlatBuffer, ToFlatBuffer, ToFlatBufferTable, ToFlatBufferVectorElement};
-
-/* `flatc`-generated declarations re-exported by `flatbuf.rs` */
-#[cfg(feature = "flatbuf")]
-use crate::flatbuf::fb;
-
-/* FlatBuffers runtime */
-#[cfg(feature = "flatbuf")]
-use flatbuffers as fbrt;
-
 #[derive(Default, Eq, PartialEq, Clone, Hash)]
 pub struct Intern<A>
 where
@@ -135,65 +124,6 @@ where
         self.mutate(&mut v)?;
         *x = intern(&v);
         Ok(())
-    }
-}
-
-#[cfg(feature = "flatbuf")]
-impl<A, FB> FromFlatBuffer<FB> for Intern<A>
-where
-    A: Eq + Hash + Send + Sync + 'static,
-    A: FromFlatBuffer<FB>,
-{
-    fn from_flatbuf(fb: FB) -> Result<Self, String> {
-        Ok(Intern::new(A::from_flatbuf(fb)?))
-    }
-}
-
-#[cfg(feature = "flatbuf")]
-impl<'b, A, T> ToFlatBuffer<'b> for Intern<A>
-where
-    T: 'b,
-    A: Eq + Send + Sync + Hash + ToFlatBuffer<'b, Target = T>,
-{
-    type Target = T;
-
-    fn to_flatbuf(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {
-        self.as_ref().to_flatbuf(fbb)
-    }
-}
-
-/*#[cfg(feature = "flatbuf")]
-impl<'a> FromFlatBuffer<fb::__String<'a>> for intern_istring {
-    fn from_flatbuf(v: fb::__String<'a>) -> Response<Self> {
-        Ok(intern_string_intern(&String::from_flatbuf(v)?))
-    }
-}*/
-
-#[cfg(feature = "flatbuf")]
-impl<'b, A, T> ToFlatBufferTable<'b> for Intern<A>
-where
-    T: 'b,
-    A: Eq + Send + Sync + Hash + ToFlatBufferTable<'b, Target = T>,
-{
-    type Target = T;
-    fn to_flatbuf_table(
-        &self,
-        fbb: &mut fbrt::FlatBufferBuilder<'b>,
-    ) -> fbrt::WIPOffset<Self::Target> {
-        self.as_ref().to_flatbuf_table(fbb)
-    }
-}
-
-#[cfg(feature = "flatbuf")]
-impl<'b, A, T> ToFlatBufferVectorElement<'b> for Intern<A>
-where
-    T: 'b + fbrt::Push + Copy,
-    A: Eq + Send + Sync + Hash + ToFlatBufferVectorElement<'b, Target = T>,
-{
-    type Target = T;
-
-    fn to_flatbuf_vector_element(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {
-        self.as_ref().to_flatbuf_vector_element(fbb)
     }
 }
 

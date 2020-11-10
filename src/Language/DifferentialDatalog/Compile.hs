@@ -513,7 +513,7 @@ mkConstructorName local tname t c =
 --
 -- 'crate_types' - list of Cargo library crate types, e.g., [\"staticlib\"],
 --                  [\"cdylib\"], [\"staticlib\", \"cdylib\"]
-compile :: (?cfg :: Config) => DatalogProgram -> String -> [DatalogModule] -> M.Map ModuleName (Doc, Doc) -> FilePath -> [String] -> IO ()
+compile :: (?cfg :: Config) => DatalogProgram -> String -> [DatalogModule] -> M.Map ModuleName (Doc, Doc, Doc) -> FilePath -> [String] -> IO ()
 compile d_unoptimized specname modules rs_code dir crate_types = do
     -- Create dir if it does not exist.
     createDirectoryIfMissing True (dir </> rustProjectDir specname)
@@ -526,7 +526,7 @@ compile d_unoptimized specname modules rs_code dir crate_types = do
         writeFile (replaceExtension (confDatalogFile ?cfg) ".opt.ast") (show d)
     let (types, main) = compileLib d specname modules rs_code
     -- Produce flatbuffer bindings if either the java or rust bindings are enabled
-    compileFlatBufferBindings d specname (dir </> rustProjectDir specname)
+    compileFlatBufferBindings d specname rs_code (dir </> rustProjectDir specname)
     -- Substitute specname in template files; write files if changed.
     mapM_ (\(path, content) -> do
             let path' = dir </> path
@@ -539,7 +539,7 @@ compile d_unoptimized specname modules rs_code dir crate_types = do
             updateFile path' content)
          $ rustLibFiles specname
     -- Generate lib files if changed.
-    let toml_code = vcat $ map snd $ M.elems rs_code
+    let toml_code = vcat $ map sel3 $ M.elems rs_code
     updateFile (dir </> rustProjectDir specname </> "types/Cargo.toml") (render $ typesCargo specname toml_code)
     mapM_ (\(mname, mtext) -> updateFile (dir </> rustProjectDir specname </> "types" </> moduleNameToPath mname) $ render mtext)
           $ M.toList types
@@ -582,7 +582,7 @@ compile d_unoptimized specname modules rs_code dir crate_types = do
 --   Rust library code.
 -- * 'main' crate that contains rule definitions in Rust and imports the other two.
 --
-compileLib :: (?cfg::Config) => DatalogProgram -> String -> [DatalogModule] -> M.Map ModuleName (Doc, Doc) -> (M.Map ModuleName Doc, Doc)
+compileLib :: (?cfg::Config) => DatalogProgram -> String -> [DatalogModule] -> M.Map ModuleName (Doc, Doc, Doc) -> (M.Map ModuleName Doc, Doc)
 compileLib d specname modules rs_code = (typeLib, mainLib)
     where
     modules' = addMissingModules modules
@@ -598,7 +598,7 @@ compileLib d specname modules rs_code = (typeLib, mainLib)
                                  in mtext $+$ vcat (map (\(ModuleName c) -> "pub mod" <+> pp (last c) <> ";") children))
                                typeLib0
     -- Add Rust code.
-    typeLibRs = foldl' (\libs (mname, (rs, _)) -> M.adjust ($+$ rs) mname libs) typeLibMods $ M.toList rs_code
+    typeLibRs = foldl' (\libs (mname, (rs, _, _)) -> M.adjust ($+$ rs) mname libs) typeLibMods $ M.toList rs_code
     -- Add typedefs
     typeLibTdefs = foldl' (\libs tdef -> M.adjust ($+$ mkTypedef d tdef) (nameScope tdef) libs) typeLibRs $ progTypedefs d
     -- Add functions

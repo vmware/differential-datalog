@@ -73,6 +73,7 @@ import Data.List
 import Data.Char
 import Data.Maybe
 import Data.FileEmbed
+import Data.Tuple.Select
 import Control.Monad.State
 import Text.PrettyPrint
 import Control.Monad.Except
@@ -93,8 +94,8 @@ import Language.DifferentialDatalog.Error
 import Language.DifferentialDatalog.Module
 import {-# SOURCE #-} qualified Language.DifferentialDatalog.Compile as R -- "R" for "Rust"
 
-compileFlatBufferBindings :: (?cfg :: Config) => DatalogProgram -> String -> FilePath -> IO ()
-compileFlatBufferBindings prog specname dir =
+compileFlatBufferBindings :: (?cfg :: Config) => DatalogProgram -> String -> M.Map ModuleName (Doc, Doc, Doc) -> FilePath -> IO ()
+compileFlatBufferBindings prog specname rs_code dir =
     -- Produce flatbuffer bindings if either the java or rust bindings are enabled
     if (confJava ?cfg || confRustFlatBuffers ?cfg)
         then do
@@ -109,7 +110,7 @@ compileFlatBufferBindings prog specname dir =
                 mapM_ (\(fname, doc) -> updateFile (flatbuf_dir </> "java" </> fname) $ render doc) $
                     compileFlatBufferJavaBindings prog specname
             -- Always compile Rust bindings
-            compileFlatBufferRustBindings prog specname dir
+            compileFlatBufferRustBindings prog specname rs_code dir
 
             let flatc_command = runCommandReportingErr "flatc" "flatc"
             -- compile Java bindings for FlatBuffer schema
@@ -209,15 +210,16 @@ compileFlatBufferSchema d prog_name =
 --                        and their implementation for all standard, library,
 --                        user-defined types.
 -- * `src/flatbuf.rs` - serialize commands to/from flatbuffers.
-compileFlatBufferRustBindings :: (?cfg::Config) => DatalogProgram -> String -> FilePath ->  IO ()
-compileFlatBufferRustBindings d prog_name dir = do
+compileFlatBufferRustBindings :: (?cfg::Config) => DatalogProgram -> String -> M.Map ModuleName (Doc, Doc, Doc) -> FilePath ->  IO ()
+compileFlatBufferRustBindings d prog_name rs_code dir = do
     let ?d = d
     let ?prog_name = prog_name
     let types_template = replace "datalog_example" prog_name $ R.unpackFixNewline $(embedFile "rust/template/types/flatbuf.rs")
     let value_template = replace "datalog_example" prog_name $ R.unpackFixNewline $(embedFile "rust/template/src/flatbuf.rs")
     updateFile (dir </> "types/flatbuf.rs") $ render $
-        (pp types_template)                                              $$
-        "pub use flatbuf_generated::ddlog::" <> rustFBModule <+> " as fb;"   $$
+        (pp types_template)                                                 $$
+        "pub use flatbuf_generated::ddlog::" <> rustFBModule <+> " as fb;"  $$
+        (vcat $ map sel2 $ M.elems rs_code)                                 $$
         (vcat $ map rustTypeFromFlatbuf
               -- One FromFlatBuffer implementation per Rust type
               $ nubBy (\t1 t2 -> R.mkType d True t1 == R.mkType d True t2)

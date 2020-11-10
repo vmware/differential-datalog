@@ -163,7 +163,7 @@ main = do
             when (confRunRustfmt config') $
                 runCommandReportingErr "rustfmt" "cargo" ["fmt", "--all"] $ Just (confOutputDir config')
 
-parseValidate :: Config -> IO ([DatalogModule], DatalogProgram, M.Map ModuleName (Doc, Doc))
+parseValidate :: Config -> IO ([DatalogModule], DatalogProgram, M.Map ModuleName (Doc, Doc, Doc))
 parseValidate Config{..} = do
     fdata <- readFile confDatalogFile
     (modules, d, rs_code) <- parseDatalogProgram (takeDirectory confDatalogFile:confLibDirs) True fdata confDatalogFile

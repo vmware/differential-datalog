@@ -138,7 +138,7 @@ stdImports = map stdImport stdLibs
 --
 -- if 'import_std' is true, imports the standard libraries
 -- to each module.
-parseDatalogProgram :: [FilePath] -> Bool -> String -> FilePath -> IO ([DatalogModule], DatalogProgram, M.Map ModuleName (Doc, Doc))
+parseDatalogProgram :: [FilePath] -> Bool -> String -> FilePath -> IO ([DatalogModule], DatalogProgram, M.Map ModuleName (Doc, Doc, Doc))
 parseDatalogProgram roots import_std fdata fname = do
     roots' <- nub <$> mapM canonicalizePath roots
     prog <- parseDatalogString fdata fname
@@ -153,16 +153,21 @@ parseDatalogProgram roots import_std fdata fname = do
     rs <- M.fromList <$>
           mapM (\mod -> do
                    let rsfile = addExtension (dropExtension $ moduleFile mod) "rs"
+                   let fbfile = addExtension (dropExtension $ moduleFile mod) ".flatbuf.rs"
                    let tomlfile = addExtension (dropExtension $ moduleFile mod) "toml"
                    rs_exists <- doesFileExist rsfile
+                   flatbuf_exists <- doesFileExist fbfile
                    toml_exists <- doesFileExist tomlfile
                    rs_code <- if rs_exists
                               then pp <$> readFile rsfile
                               else return empty
+                   flatbuf_code <- if flatbuf_exists
+                                   then pp <$> readFile fbfile
+                                   else return empty
                    toml_code <- if toml_exists
                                 then pp <$> readFile tomlfile
                                 else return empty
-                   return (moduleName mod, (rs_code, toml_code)))
+                   return (moduleName mod, (rs_code, flatbuf_code, toml_code)))
                all_modules
     return (all_modules, prog'', rs)
 

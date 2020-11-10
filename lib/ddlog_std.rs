@@ -31,15 +31,6 @@ use std::slice;
 use std::sync::Arc;
 use std::vec;
 
-#[cfg(feature = "flatbuf")]
-use crate::flatbuf::{
-    FBIter, FromFlatBuffer, ToFlatBuffer, ToFlatBufferTable, ToFlatBufferVectorElement,
-};
-
-/* FlatBuffers runtime */
-#[cfg(feature = "flatbuf")]
-use flatbuffers as fbrt;
-
 const XX_SEED1: u64 = 0x23b691a751d0e108;
 const XX_SEED2: u64 = 0x20b09801dce5ff84;
 
@@ -176,55 +167,6 @@ pub fn ref_new<A: Clone>(x: &A) -> Ref<A> {
 
 pub fn deref<A: Clone>(x: &Ref<A>) -> &A {
     x.deref()
-}
-
-#[cfg(feature = "flatbuf")]
-impl<T, FB> FromFlatBuffer<FB> for Ref<T>
-where
-    T: FromFlatBuffer<FB>,
-{
-    fn from_flatbuf(fb: FB) -> ::std::result::Result<Self, String> {
-        Ok(Ref::from(T::from_flatbuf(fb)?))
-    }
-}
-
-#[cfg(feature = "flatbuf")]
-impl<'b, T> ToFlatBuffer<'b> for Ref<T>
-where
-    T: ToFlatBuffer<'b>,
-{
-    type Target = T::Target;
-
-    fn to_flatbuf(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {
-        self.deref().to_flatbuf(fbb)
-    }
-}
-
-#[cfg(feature = "flatbuf")]
-impl<'b, T> ToFlatBufferTable<'b> for Ref<T>
-where
-    T: ToFlatBufferTable<'b>,
-{
-    type Target = T::Target;
-
-    fn to_flatbuf_table(
-        &self,
-        fbb: &mut fbrt::FlatBufferBuilder<'b>,
-    ) -> fbrt::WIPOffset<Self::Target> {
-        self.deref().to_flatbuf_table(fbb)
-    }
-}
-
-#[cfg(feature = "flatbuf")]
-impl<'b, T> ToFlatBufferVectorElement<'b> for Ref<T>
-where
-    T: ToFlatBufferVectorElement<'b>,
-{
-    type Target = T::Target;
-
-    fn to_flatbuf_vector_element(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {
-        self.deref().to_flatbuf_vector_element(fbb)
-    }
 }
 
 // Arithmetic functions
@@ -551,50 +493,6 @@ impl<T> IntoIterator for Vec<T> {
     }
 }
 
-#[cfg(feature = "flatbuf")]
-impl<'a, T, F> FromFlatBuffer<fbrt::Vector<'a, F>> for Vec<T>
-where
-    T: Ord + FromFlatBuffer<F::Inner>,
-    F: fbrt::Follow<'a> + 'a,
-{
-    fn from_flatbuf(fb: fbrt::Vector<'a, F>) -> ::std::result::Result<Self, String> {
-        let mut vec = Vec::with_capacity(fb.len());
-        for x in FBIter::from_vector(fb) {
-            vec.push(T::from_flatbuf(x)?);
-        }
-        Ok(vec)
-    }
-}
-
-// For scalar types, the FlatBuffers API returns slice instead of 'Vector'.
-#[cfg(feature = "flatbuf")]
-impl<'a, T> FromFlatBuffer<&'a [T]> for Vec<T>
-where
-    T: Clone,
-{
-    fn from_flatbuf(fb: &'a [T]) -> ::std::result::Result<Self, String> {
-        let mut vec = Vec::with_capacity(fb.len());
-        vec.extend_from_slice(fb);
-        Ok(vec)
-    }
-}
-
-#[cfg(feature = "flatbuf")]
-impl<'b, T> ToFlatBuffer<'b> for Vec<T>
-where
-    T: ToFlatBufferVectorElement<'b>,
-{
-    type Target = fbrt::WIPOffset<fbrt::Vector<'b, <T::Target as fbrt::Push>::Output>>;
-
-    fn to_flatbuf(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {
-        let vec: ::std::vec::Vec<T::Target> = self
-            .iter()
-            .map(|x| x.to_flatbuf_vector_element(fbb))
-            .collect();
-        fbb.create_vector(vec.as_slice())
-    }
-}
-
 pub fn vec_len<X: Ord + Clone>(v: &Vec<X>) -> std_usize {
     v.x.len() as std_usize
 }
@@ -825,52 +723,6 @@ impl<T: fmt::Debug + Ord> fmt::Debug for Set<T> {
     }
 }
 
-#[cfg(feature = "flatbuf")]
-impl<'a, T, F> FromFlatBuffer<fbrt::Vector<'a, F>> for Set<T>
-where
-    T: Ord + FromFlatBuffer<F::Inner>,
-    F: fbrt::Follow<'a> + 'a,
-{
-    fn from_flatbuf(fb: fbrt::Vector<'a, F>) -> ::std::result::Result<Self, String> {
-        let mut set = Set::new();
-        for x in FBIter::from_vector(fb) {
-            set.insert(T::from_flatbuf(x)?);
-        }
-        Ok(set)
-    }
-}
-
-// For scalar types, the FlatBuffers API returns slice instead of 'Vector'.
-#[cfg(feature = "flatbuf")]
-impl<'a, T> FromFlatBuffer<&'a [T]> for Set<T>
-where
-    T: Ord + Clone,
-{
-    fn from_flatbuf(fb: &'a [T]) -> ::std::result::Result<Self, String> {
-        let mut set = Set::new();
-        for x in fb.iter() {
-            set.insert(x.clone());
-        }
-        Ok(set)
-    }
-}
-
-#[cfg(feature = "flatbuf")]
-impl<'b, T> ToFlatBuffer<'b> for Set<T>
-where
-    T: Ord + ToFlatBufferVectorElement<'b>,
-{
-    type Target = fbrt::WIPOffset<fbrt::Vector<'b, <T::Target as fbrt::Push>::Output>>;
-
-    fn to_flatbuf(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {
-        let vec: ::std::vec::Vec<T::Target> = self
-            .iter()
-            .map(|x| x.to_flatbuf_vector_element(fbb))
-            .collect();
-        fbb.create_vector(vec.as_slice())
-    }
-}
-
 pub fn set_size<X: Ord + Clone>(s: &Set<X>) -> std_usize {
     s.x.len() as std_usize
 }
@@ -1091,42 +943,6 @@ impl<K: fmt::Debug + Ord, V: fmt::Debug> fmt::Debug for Map<K, V> {
         }
         formatter.write_str("]")?;
         Ok(())
-    }
-}
-
-#[cfg(feature = "flatbuf")]
-impl<'a, K, V, F> FromFlatBuffer<fbrt::Vector<'a, F>> for Map<K, V>
-where
-    F: fbrt::Follow<'a> + 'a,
-    K: Ord,
-    tuple2<K, V>: FromFlatBuffer<F::Inner>,
-{
-    fn from_flatbuf(fb: fbrt::Vector<'a, F>) -> ::std::result::Result<Self, String> {
-        let mut m = Map::new();
-        for x in FBIter::from_vector(fb) {
-            let tuple2(k, v) = <tuple2<K, V>>::from_flatbuf(x)?;
-            m.insert(k, v);
-        }
-        Ok(m)
-    }
-}
-
-#[cfg(feature = "flatbuf")]
-impl<'b, K, V, T> ToFlatBuffer<'b> for Map<K, V>
-where
-    K: Ord + Clone,
-    V: Clone,
-    tuple2<K, V>: ToFlatBufferVectorElement<'b, Target = T>,
-    T: 'b + fbrt::Push + Copy,
-{
-    type Target = fbrt::WIPOffset<fbrt::Vector<'b, <T as fbrt::Push>::Output>>;
-
-    fn to_flatbuf(&self, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> Self::Target {
-        let vec: ::std::vec::Vec<<tuple2<K, V> as ToFlatBufferVectorElement<'b>>::Target> = self
-            .iter()
-            .map(|tuple2(k, v)| tuple2(k, v).to_flatbuf_vector_element(fbb))
-            .collect();
-        fbb.create_vector(vec.as_slice())
     }
 }
 

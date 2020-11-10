@@ -133,7 +133,7 @@ unitTests dir = do
     testGroup "unit tests" $
           [ testCase (takeBaseName dir) $ unitTest dir ]
 
-parseValidate :: FilePath -> Bool -> String -> IO ([DatalogModule], DatalogProgram, M.Map ModuleName (Doc, Doc))
+parseValidate :: FilePath -> Bool -> String -> IO ([DatalogModule], DatalogProgram, M.Map ModuleName (Doc, Doc, Doc))
 parseValidate file java program = do
     (modules, d, rs_code) <- parseDatalogProgram [takeDirectory file, "lib"] True program file
     d' <- case validate d of
