@@ -37,7 +37,7 @@ public class JooqProviderTest {
      */
     @Test
     public void testInsertAndSelect() throws IOException, DDlogException {
-        String s1 = "create table hosts (id varchar(36), capacity integer, up boolean)";
+        String s1 = "create table hosts (id varchar(36) with (primary_key = true), capacity integer, up boolean)";
         String v2 = "create view hostsv as select distinct * from hosts";
         String v1 = "create view good_hosts as select distinct * from hosts where capacity < 10";
         List<String> ddl = new ArrayList<>();
@@ -90,6 +90,8 @@ public class JooqProviderTest {
         assertFalse(goodHostsResults.contains(test1));
         assertFalse(goodHostsResults.contains(test2));
         assertTrue(goodHostsResults.contains(test3));
+
+        // Test 3: make sure selects read out the same content inserted above
     }
 
     public static void compileAndLoad(final String name, final List<String> ddl) throws IOException, DDlogException {
