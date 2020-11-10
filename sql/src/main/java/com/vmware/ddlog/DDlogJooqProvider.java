@@ -9,6 +9,9 @@ import com.facebook.presto.sql.parser.SqlParser;
 import com.facebook.presto.sql.tree.AllColumns;
 import com.facebook.presto.sql.tree.AstVisitor;
 import com.facebook.presto.sql.tree.BooleanLiteral;
+import com.facebook.presto.sql.tree.ColumnDefinition;
+import com.facebook.presto.sql.tree.CreateTable;
+import com.facebook.presto.sql.tree.CreateView;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.Insert;
 import com.facebook.presto.sql.tree.LongLiteral;
@@ -18,6 +21,7 @@ import com.facebook.presto.sql.tree.Row;
 import com.facebook.presto.sql.tree.Select;
 import com.facebook.presto.sql.tree.Statement;
 import com.facebook.presto.sql.tree.StringLiteral;
+import com.facebook.presto.sql.tree.TableElement;
 import com.facebook.presto.sql.tree.Values;
 import ddlogapi.DDlogAPI;
 import ddlogapi.DDlogCommand;
@@ -37,6 +41,7 @@ import org.jooq.tools.jdbc.MockResult;
 
 import javax.annotation.Nullable;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -78,22 +83,29 @@ public class DDlogJooqProvider implements MockDataProvider {
     private final DDlogAPI dDlogAPI;
     private final DSLContext dslContext;
     private final Field<Integer> updateCountField;
-    private final Map<String, List<Field<?>>> tables = new HashMap<>();
+    private final Map<String, List<Field<?>>> tablesToFields = new HashMap<>();
+    private final Map<String, List<? extends Field<?>>> tablesToPrimaryKeys = new HashMap<>();
     private final SqlParser parser = new SqlParser();
     private final ParsingOptions options = ParsingOptions.builder().build();
     private final QueryVisitor queryVisitor = new QueryVisitor();
     private final ParseLiterals parseLiterals = new ParseLiterals();
+    private final TranslateCreateTableDialect translateCreateTableDialect = new TranslateCreateTableDialect();
 
     public DDlogJooqProvider(final DDlogAPI dDlogAPI, final List<String> sqlStatements) {
         this.dDlogAPI = dDlogAPI;
         this.dslContext = DSL.using("jdbc:h2:mem:");
         this.updateCountField = field("UPDATE_COUNT", Integer.class);
         for (final String sql : sqlStatements) {
-            dslContext.execute(sql);
+            final Statement statement = parser.createStatement(sql, options);
+            final String statementInH2Dialect = translateCreateTableDialect.process(statement, sql);
+            dslContext.execute(statementInH2Dialect);
         }
         for (final Table<?> table: dslContext.meta().getTables()) {
             if (table.getSchema().getName().equals("PUBLIC")) { // H2-specific assumption
-                tables.put(table.getName(), Arrays.asList(table.fields()));
+                tablesToFields.put(table.getName(), Arrays.asList(table.fields()));
+                if (table.getPrimaryKey() != null) {
+                    tablesToPrimaryKeys.put(table.getName(), table.getPrimaryKey().getFields());
+                }
             }
         }
     }
@@ -141,7 +153,7 @@ public class DDlogJooqProvider implements MockDataProvider {
                 throw new RuntimeException("Statement not supported: " + sql);
             }
             final String tableName = ((com.facebook.presto.sql.tree.Table) node.getFrom().get()).getName().toString();
-            final List<Field<?>> fields = tables.get(tableName.toUpperCase());
+            final List<Field<?>> fields = tablesToFields.get(tableName.toUpperCase());
             if (fields == null) {
                 throw new RuntimeException(String.format("Unknown table %s queried in statement: %s", tableName, sql));
             }
@@ -177,7 +189,7 @@ public class DDlogJooqProvider implements MockDataProvider {
                 }
                 final Values values = (Values) node.getQuery().getQueryBody();
                 final String tableName = node.getTarget().toString();
-                final List<Field<?>> fields = tables.get(tableName.toUpperCase());
+                final List<Field<?>> fields = tablesToFields.get(tableName.toUpperCase());
                 final int tableId = dDlogAPI.getTableId(ddlogRelationName(tableName));
                 for (final Expression row: values.getRows()) {
                     if (!(row instanceof Row)) {
@@ -229,6 +241,48 @@ public class DDlogJooqProvider implements MockDataProvider {
         @Override
         protected DDlogRecord visitBooleanLiteral(final BooleanLiteral node, final Boolean isNullable) {
             return maybeOption(isNullable, new DDlogRecord(node.getValue()));
+        }
+    }
+
+    private static class TranslateCreateTableDialect extends AstVisitor<String, String> {
+        @Override
+        protected String visitCreateTable(final CreateTable node, final String sql) {
+            final List<String> primaryKeyColumns = new ArrayList<>();
+            final List<String> columnsToCreate = new ArrayList<>();
+            for (final TableElement element: node.getElements()) {
+                if (element instanceof ColumnDefinition) {
+                    final ColumnDefinition cd = (ColumnDefinition) element;
+                    if (cd.getProperties().size() == 1) {
+                        final String propertyName = cd.getProperties().get(0).getName().getValue();
+                        final String propertyValue = cd.getProperties().get(0).getValue().toString();
+                        if (propertyName.equals("primary_key") && propertyValue.equals("true")) {
+                            primaryKeyColumns.add(cd.getName().getValue());
+                        } else {
+                            throw new RuntimeException(String.format("Unsupported property %s in sql: %s",
+                                                                    propertyName, sql));
+                        }
+                    }
+                    if (cd.getProperties().size() > 1) {
+                        throw new RuntimeException(String.format("Unsupported properties %s in sql: %s",
+                                cd.getProperties(), sql));
+                    }
+                    columnsToCreate.add(String.format("%s %s", cd.getName().getValue(), cd.getType()));
+                }
+            }
+
+            final String columns = String.join(", ", columnsToCreate);
+            if (primaryKeyColumns.size() > 0) {
+                final String primaryKeyColumnsStr = String.join(", ", primaryKeyColumns);
+                return String.format("create table %s (%s, primary key (%s))", node.getName().toString(), columns,
+                                                                               primaryKeyColumnsStr);
+            } else {
+                return String.format("create table %s (%s)", node.getName().toString(), columns);
+            }
+        }
+
+        @Override
+        protected String visitCreateView(final CreateView node, final String sql) {
+            return sql;
         }
     }
 
