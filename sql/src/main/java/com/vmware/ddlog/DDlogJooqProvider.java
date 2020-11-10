@@ -73,8 +73,8 @@ public class DDlogJooqProvider implements MockDataProvider {
     private static final String STRING_TYPE = "java.lang.String";
     private static final String BOOLEAN_TYPE = "java.lang.Boolean";
     private static final String LONG_TYPE = "java.lang.Long";
-    private static final String DDLOG_SOME_TYPE = "ddlog_std::Some";
-    private static final String DDLOG_NONE_TYPE = "ddlog_std::None";
+    private static final String DDLOG_SOME = "ddlog_std::Some";
+    private static final String DDLOG_NONE = "ddlog_std::None";
     private final DDlogAPI dDlogAPI;
     private final DSLContext dslContext;
     private final Field<Integer> updateCountField;
@@ -246,7 +246,7 @@ public class DDlogJooqProvider implements MockDataProvider {
             try {
                 final DDlogRecord[] arr = new DDlogRecord[1];
                 arr[0] = record;
-                return DDlogRecord.makeStruct(DDLOG_SOME_TYPE, arr);
+                return DDlogRecord.makeStruct(DDLOG_SOME, arr);
             } catch (final DDlogException e) {
                 throw new RuntimeException(e);
             }
@@ -258,10 +258,10 @@ public class DDlogJooqProvider implements MockDataProvider {
     @Nullable
     private static Object structToValue(final Field<?> field, final DDlogRecord record) {
         final Class<?> cls = field.getType();
-        if (record.isStruct() && record.getStructName().equals(DDLOG_NONE_TYPE)) {
+        if (record.isStruct() && record.getStructName().equals(DDLOG_NONE)) {
             return null;
         }
-        if (record.isStruct() && record.getStructName().equals(DDLOG_SOME_TYPE)) {
+        if (record.isStruct() && record.getStructName().equals(DDLOG_SOME)) {
             return structToValue(field, record.getStructField(0));
         }
         switch (cls.getName()) {
