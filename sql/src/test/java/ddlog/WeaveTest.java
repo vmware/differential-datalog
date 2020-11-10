@@ -12,7 +12,7 @@ public class WeaveTest extends BaseQueriesTest {
         Translator t = new Translator(null);
         String node_info = "create table node_info\n" +
                 "(\n" +
-                "  name varchar(36) not null /*primary key*/,\n" +
+                "  name varchar(36) not null with (primary_key = true),\n" +
                 "  unschedulable boolean not null,\n" +
                 "  out_of_disk boolean not null,\n" +
                 "  memory_pressure boolean not null,\n" +
@@ -35,7 +35,7 @@ public class WeaveTest extends BaseQueriesTest {
         String pod_info =
                 "create table pod_info\n" +
                         "(\n" +
-                        "  pod_name varchar(100) not null /*primary key*/,\n" +
+                        "  pod_name varchar(100) not null with (primary_key = true),\n" +
                         "  status varchar(36) not null,\n" +
                         "  node_name varchar(36) /*null*/,\n" +
                         "  namespace varchar(100) not null,\n" +
@@ -282,7 +282,7 @@ public class WeaveTest extends BaseQueriesTest {
                         "-- a dynamic \"LIMIT\" clause.\n" +
                         "create table batch_size\n" +
                         "(\n" +
-                        "  pendingPodsLimit integer not null --primary key\n" +
+                        "  pendingPodsLimit integer not null with (primary_key = true)\n" +
                         ")";
         create = t.translateSqlStatement(batch_size);
         Assert.assertNotNull(create);
@@ -717,8 +717,8 @@ public class WeaveTest extends BaseQueriesTest {
                 "(Tagg9{.col = (count22 == gb19)})\n" +
                 "}\n\n" +
 
-                "input relation Rnode_info[Tnode_info]\n" +
-                "input relation Rpod_info[Tpod_info]\n" +
+                "input relation Rnode_info[Tnode_info] primary key (row) (row.name)\n" +
+                "input relation Rpod_info[Tpod_info] primary key (row) (row.pod_name)\n" +
                 "input relation Rpod_ports_request[Tpod_ports_request]\n" +
                 "input relation Rcontainer_host_ports[Tcontainer_host_ports]\n" +
                 "input relation Rpod_node_selector_labels[Tpod_node_selector_labels]\n" +
@@ -737,7 +737,7 @@ public class WeaveTest extends BaseQueriesTest {
 
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rpods_to_assign_no_limit[TRtmp]\n" +
-                "input relation Rbatch_size[Tbatch_size]\n" +
+                "input relation Rbatch_size[Tbatch_size] primary key (row) (row.pendingPodsLimit)\n" +
                 "output relation Rpods_to_assign[TRtmp]\n" +
                 "relation Rtmp1[TRtmp1]\n" +
                 "output relation Rpods_with_port_requests[TRtmp1]\n" +

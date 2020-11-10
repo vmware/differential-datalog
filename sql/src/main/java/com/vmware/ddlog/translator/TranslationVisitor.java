@@ -73,15 +73,25 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
 
         List<TableElement> elements = node.getElements();
         List<DDlogField> fields = new ArrayList<DDlogField>();
+        List<DDlogField> keyColumns = new ArrayList<DDlogField>();
         for (TableElement te: elements) {
-            DDlogIRNode field = this.process(te, context);
-            fields.add(field.to(DDlogField.class));
+            DDlogIRNode f = this.process(te, context);
+            DDlogField field = f.to(DDlogField.class);
+            fields.add(field);
+            if (te instanceof ColumnDefinition) {
+                ColumnDefinition cd = (ColumnDefinition)te;
+                if (Linq.any(cd.getProperties(), p -> p.getName().getValue().equals("primary_key")))
+                    keyColumns.add(field);
+            }
         }
         DDlogTUser tuser = context.createStruct(node, fields, name);
         String relName = DDlogRelationDeclaration.relationName(name);
         context.reserveGlobalName(relName);
         DDlogRelationDeclaration rel = new DDlogRelationDeclaration(
                 node, DDlogRelationDeclaration.Role.Input, relName, tuser);
+        if (keyColumns.size() > 0)
+            // This type name will not appear in the generater program
+            rel = rel.setPrimaryKey(keyColumns, context.freshLocalName("TKey"));
         context.add(rel);
         return rel;
     }

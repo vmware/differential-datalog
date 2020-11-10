@@ -12,8 +12,10 @@
 package com.vmware.ddlog.ir;
 
 import com.facebook.presto.sql.tree.Node;
+import com.vmware.ddlog.util.Linq;
 
 import javax.annotation.Nullable;
+import java.util.List;
 
 public class DDlogRelationDeclaration extends DDlogNode {
     public enum Role {
@@ -38,6 +40,9 @@ public class DDlogRelationDeclaration extends DDlogNode {
     private final Role role;
     private final String name;
     private final DDlogType type;
+    private final String primaryKeyVariable = "row";
+    @Nullable
+    private DDlogExpression keyExpression = null;
 
     public DDlogRelationDeclaration(@Nullable Node node, Role role, String name,
                                     DDlogType type) {
@@ -45,6 +50,17 @@ public class DDlogRelationDeclaration extends DDlogNode {
         this.role = role;
         this.name = this.checkNull(name);
         this.type = this.checkNull(type);
+    }
+
+    public DDlogRelationDeclaration setPrimaryKey(List<DDlogField> columns, String typeName) {
+        if (this.role != Role.Input)
+            throw new RuntimeException("Only input relations can have primary keys");
+        DDlogTStruct ts = new DDlogTStruct(null, typeName, columns);
+        DDlogRelationDeclaration result = new DDlogRelationDeclaration(this.node, this.role, this.name, this.type);
+        DDlogExpression row = new DDlogEVar(null, primaryKeyVariable, ts);
+        result.keyExpression = new DDlogETuple(null, Linq.map(columns,
+                c -> new DDlogEField(null, row, c.getName(), c.getType())));
+        return result;
     }
 
     public String getName() {
@@ -69,12 +85,13 @@ public class DDlogRelationDeclaration extends DDlogNode {
 
     @Override
     public String toString() {
-        // We prefix the relation name with R
         String result = this.role.toString();
         if (!result.isEmpty())
             result += " ";
         result += "relation " + this.name
                 + "[" + this.type.toString() + "]";
+        if (this.keyExpression != null)
+            result += " primary key (" + primaryKeyVariable + ") " + this.keyExpression.toString();
         return result;
     }
 }
