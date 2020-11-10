@@ -44,6 +44,30 @@ import java.util.Map;
 
 import static org.jooq.impl.DSL.field;
 
+
+/**
+ * This class provides a restricted mechanism to make a DDlog program appear like an SQL database that can be
+ * queried over a JDBC connection. To initialize, it requires a set of "create table" and "create view" statements
+ * to be supplied during initialization. For example:
+ *
+ *         final DDlogAPI dDlogAPI = new DDlogAPI(1, null, true);
+ *
+ *         // Initialise the data provider. ddl represents a list of Strings that are SQL DDL statements
+ *         // like "create table" and "create view"
+ *         MockDataProvider provider = new DDlogJooqProvider(dDlogAPI, ddl);
+ *         MockConnection connection = new MockConnection(provider);
+ *
+ *         // Pass the mock connection to a jOOQ DSLContext:
+ *         DSLContext create = DSL.using(connection);
+ *
+ * After that, the connection that is created with this MockProvider can execute a restricted subset of SQL queries.
+ * We assume these queries are of one of the following forms:
+ *   A1. "select * from T" where T is a table name which corresponds to a ddlog output relation. By definition,
+ *                        T can therefore only be an SQL view for which there is a corresponding
+ *                        "create view T as ..." that is passed to the  DdlogJooqProvider.
+ *   A2. "insert into T values (<row>)" where T is a base table. That is, there should be a corresponding
+ *                                     "create table T..." DDL statement that is passed to the DDlogJooqProvider.
+ */
 public class DDlogJooqProvider implements MockDataProvider {
     private static final String INTEGER_TYPE = "java.lang.Integer";
     private static final String STRING_TYPE = "java.lang.String";
@@ -68,12 +92,15 @@ public class DDlogJooqProvider implements MockDataProvider {
             dslContext.execute(sql);
         }
         for (final Table<?> table: dslContext.meta().getTables()) {
-            if (table.getSchema().getName().equals("PUBLIC")) {
+            if (table.getSchema().getName().equals("PUBLIC")) { // H2-specific assumption
                 tables.put(table.getName(), Arrays.asList(table.fields()));
             }
         }
     }
 
+    /*
+     * All executed SQL queries against a JOOQ connection are received here
+     */
     @Override
     public MockResult[] execute(final MockExecuteContext ctx) throws SQLException {
         final String[] batchSql = ctx.batchSQL();
@@ -81,7 +108,7 @@ public class DDlogJooqProvider implements MockDataProvider {
         try {
             dDlogAPI.transactionStart();
             for (int i = 0; i < batchSql.length; i++) {
-                mock[i] = execute(batchSql[i]);
+                mock[i] = executeOne(batchSql[i]);
             }
             dDlogAPI.transactionCommit();
         } catch (final DDlogException e) {
@@ -90,7 +117,7 @@ public class DDlogJooqProvider implements MockDataProvider {
         return mock;
     }
 
-    private MockResult execute(final String sql) throws SQLException {
+    private MockResult executeOne(final String sql) throws SQLException {
         final Statement statement = parser.createStatement(sql, options);
         final MockResult result = queryVisitor.process(statement, sql);
         if (result == null) {
@@ -99,9 +126,13 @@ public class DDlogJooqProvider implements MockDataProvider {
         return result;
     }
 
+    /*
+     * Visits an SQL query and converts into a JOOQ MockResult type.
+     */
     private class QueryVisitor extends AstVisitor<MockResult, String> {
         @Override
         protected MockResult visitQuerySpecification(final QuerySpecification node, String sql) {
+            // The checks below encode assumption A1 (see javadoc for the DDlogJooqProvider class)
             final Select select = node.getSelect();
             if (!(select.getSelectItems().size() == 1 && select.getSelectItems().get(0) instanceof AllColumns)) {
                 throw new RuntimeException("Statement not supported: " + sql);
@@ -110,7 +141,7 @@ public class DDlogJooqProvider implements MockDataProvider {
             final String tableName = ((com.facebook.presto.sql.tree.Table) node.getFrom().get()).getName().toString();
             final List<Field<?>> fields = tables.get(tableName.toUpperCase());
             if (fields == null) {
-                throw new RuntimeException("Unknown table: " + tableName);
+                throw new RuntimeException(String.format("Unknown table %s queried in statement: %s", tableName, sql));
             }
             final Result<Record> result = dslContext.newResult(fields);
             try {
@@ -138,6 +169,7 @@ public class DDlogJooqProvider implements MockDataProvider {
         @Override
         protected MockResult visitInsert(final Insert node, final String sql) {
             try {
+                // The assertions below encode assumption A2 (see javadoc for the DDlogJooqProvider class)
                 assert node.getQuery().getQueryBody() instanceof Values;
                 final Values values = (Values) node.getQuery().getQueryBody();
                 final String tableName = node.getTarget().toString();
@@ -166,6 +198,9 @@ public class DDlogJooqProvider implements MockDataProvider {
         }
     }
 
+    /*
+     * Translates literals into corresponding DDlogRecord instances
+     */
     private static class ParseLiterals extends AstVisitor<DDlogRecord, Boolean> {
 
         @Override
@@ -188,14 +223,24 @@ public class DDlogJooqProvider implements MockDataProvider {
         }
     }
 
+    /*
+     * This corresponds to the naming convention followed by the SQL -> DDlog compiler
+     */
     private static String ddlogTableTypeName(final String tableName) {
         return "T" + tableName.toLowerCase();
     }
 
+    /*
+     * This corresponds to the naming convention followed by the SQL -> DDlog compiler
+     */
     private static String ddlogRelationName(final String tableName) {
         return "R" + tableName.toLowerCase();
     }
 
+    /*
+     * The SQL -> DDlog compiler represents nullable fields as ddlog Option<> types. We therefore
+     * wrap DDlogRecords if needed.
+     */
     private static DDlogRecord maybeOption(final Boolean isNullable, final DDlogRecord record) {
         if (isNullable) {
             try {
@@ -229,7 +274,7 @@ public class DDlogJooqProvider implements MockDataProvider {
             case STRING_TYPE:
                 return record.getString();
             default:
-                throw new RuntimeException("Unknown datatype %s of field %s in table %s in update received");
+                throw new RuntimeException("Unknown datatype " + cls.getName());
         }
     }
 }
