@@ -72,6 +72,10 @@ import static org.jooq.impl.DSL.field;
  *                        "create view T as ..." that is passed to the  DdlogJooqProvider.
  *   A2. "insert into T values (<row>)" where T is a base table. That is, there should be a corresponding
  *                                     "create table T..." DDL statement that is passed to the DDlogJooqProvider.
+ *   A3. "delete from T where P1 = A and P2 = B..." where T is a base table and P1, P2... are columns in T's
+ *                                         primary key. That is, there should be a corresponding
+ *                                        "create table T..." DDL statement that is passed to the DDlogJooqProvider
+ *                                         where P1, P2... etc are columns in T's primary key.
  */
 public class DDlogJooqProvider implements MockDataProvider {
     private static final String INTEGER_TYPE = "java.lang.Integer";
@@ -224,6 +228,8 @@ public class DDlogJooqProvider implements MockDataProvider {
 
         @Override
         protected MockResult visitDelete(final Delete node, final String sql) {
+            // The assertions below, and in the ParseWhereClauseForDeletes visitor encode assumption A3
+            // (see javadoc for the DDlogJooqProvider class)
             final String tableName = node.getTable().getName().toString();
             if (!node.getWhere().isPresent()) {
                 throw new RuntimeException("Delete queries without where clauses are unsupported: " + sql);
