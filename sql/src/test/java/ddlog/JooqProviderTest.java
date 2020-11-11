@@ -36,7 +36,7 @@ public class JooqProviderTest {
      * therefore conduct a series of tests within a single method.
      */
     @Test
-    public void testInsertAndSelect() throws IOException, DDlogException {
+    public void testSqlOps() throws IOException, DDlogException {
         String s1 = "create table hosts (id varchar(36) with (primary_key = true), capacity integer, up boolean)";
         String v2 = "create view hostsv as select distinct * from hosts";
         String v1 = "create view good_hosts as select distinct * from hosts where capacity < 10";
@@ -44,7 +44,7 @@ public class JooqProviderTest {
         ddl.add(s1);
         ddl.add(v2);
         ddl.add(v1);
-        compileAndLoad("testInserts", ddl);
+        compileAndLoad(ddl);
         final DDlogAPI dDlogAPI = new DDlogAPI(1, null, true);
 
         // Initialise the data provider
@@ -91,14 +91,25 @@ public class JooqProviderTest {
         assertFalse(goodHostsResults.contains(test2));
         assertTrue(goodHostsResults.contains(test3));
 
-        // Test 3: make sure selects read out the same content inserted above
+        // Test 3: make sure deletes work
+        create.execute("delete from hosts where id = 'n9'");
+
+        final Result<Record> hostsvResultsAfterDelete = create.fetch("select * from hostsv");
+        assertTrue(hostsvResultsAfterDelete.contains(test1));
+        assertTrue(hostsvResultsAfterDelete.contains(test2));
+        assertFalse(hostsvResultsAfterDelete.contains(test3));
+
+        final Result<Record> goodHostsResultsAfterDelete = create.fetch("select * from good_hosts");
+        assertFalse(goodHostsResultsAfterDelete.contains(test1));
+        assertFalse(goodHostsResultsAfterDelete.contains(test2));
+        assertFalse(goodHostsResultsAfterDelete.contains(test3));
     }
 
-    public static void compileAndLoad(final String name, final List<String> ddl) throws IOException, DDlogException {
+    public static void compileAndLoad(final List<String> ddl) throws IOException, DDlogException {
         final Translator t = new Translator(null);
         ddl.forEach(t::translateSqlStatement);
         final DDlogProgram dDlogProgram = t.getDDlogProgram();
-        final String fileName = String.format("/tmp/%s.dl", name);
+        final String fileName = "/tmp/program.dl";
         File tmp = new File(fileName);
         BufferedWriter bw = new BufferedWriter(new FileWriter(tmp));
         bw.write(dDlogProgram.toString());

@@ -9,11 +9,13 @@ import com.facebook.presto.sql.parser.SqlParser;
 import com.facebook.presto.sql.tree.AllColumns;
 import com.facebook.presto.sql.tree.AstVisitor;
 import com.facebook.presto.sql.tree.BooleanLiteral;
-import com.facebook.presto.sql.tree.ColumnDefinition;
-import com.facebook.presto.sql.tree.CreateTable;
-import com.facebook.presto.sql.tree.CreateView;
+import com.facebook.presto.sql.tree.ComparisonExpression;
+import com.facebook.presto.sql.tree.Delete;
 import com.facebook.presto.sql.tree.Expression;
+import com.facebook.presto.sql.tree.Identifier;
 import com.facebook.presto.sql.tree.Insert;
+import com.facebook.presto.sql.tree.Literal;
+import com.facebook.presto.sql.tree.LogicalBinaryExpression;
 import com.facebook.presto.sql.tree.LongLiteral;
 import com.facebook.presto.sql.tree.Query;
 import com.facebook.presto.sql.tree.QuerySpecification;
@@ -21,7 +23,6 @@ import com.facebook.presto.sql.tree.Row;
 import com.facebook.presto.sql.tree.Select;
 import com.facebook.presto.sql.tree.Statement;
 import com.facebook.presto.sql.tree.StringLiteral;
-import com.facebook.presto.sql.tree.TableElement;
 import com.facebook.presto.sql.tree.Values;
 import ddlogapi.DDlogAPI;
 import ddlogapi.DDlogCommand;
@@ -41,7 +42,6 @@ import org.jooq.tools.jdbc.MockResult;
 
 import javax.annotation.Nullable;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -221,6 +221,81 @@ public class DDlogJooqProvider implements MockDataProvider {
                 throw new RuntimeException(e);
             }
         }
+
+        @Override
+        protected MockResult visitDelete(final Delete node, final String sql) {
+            final String tableName = node.getTable().getName().toString();
+            if (!node.getWhere().isPresent()) {
+                throw new RuntimeException("Delete queries without where clauses are unsupported: " + sql);
+            }
+            try {
+                final Expression where = node.getWhere().get();
+                final ParseWhereClauseForDeletes visitor = new ParseWhereClauseForDeletes(tableName);
+                visitor.process(where, tableName);
+                final DDlogRecord[] matchExpression = visitor.matchExpressions;
+                final DDlogRecord record = matchExpression.length > 1 ? DDlogRecord.makeTuple(matchExpression)
+                                                                      : matchExpression[0];
+
+                final int tableId = dDlogAPI.getTableId(ddlogRelationName(tableName));
+                final DDlogRecCommand command = new DDlogRecCommand(DDlogCommand.Kind.DeleteKey, tableId, record);
+                dDlogAPI.applyUpdates(new DDlogRecCommand[]{command});
+            } catch (final DDlogException e) {
+                throw new RuntimeException(e);
+            }
+            final Result<Record1<Integer>> result = dslContext.newResult(updateCountField);
+            final Record1<Integer> resultRecord = dslContext.newRecord(updateCountField);
+            resultRecord.setValue(updateCountField, 1);
+            result.add(resultRecord);
+            return new MockResult(1, result);
+        }
+    }
+
+    private class ParseWhereClauseForDeletes extends AstVisitor<Void, String> {
+        final DDlogRecord[] matchExpressions;
+
+        public ParseWhereClauseForDeletes(final String tableName) {
+            matchExpressions = new DDlogRecord[tablesToPrimaryKeys.get(tableName.toUpperCase()).size()];
+        }
+
+        @Override
+        protected Void visitLogicalBinaryExpression(final LogicalBinaryExpression node, final String tableName) {
+            if (!node.getOperator().equals(LogicalBinaryExpression.Operator.AND)) {
+                throw new RuntimeException("Only equality-based comparisons on " +
+                        "all (not some) primary-key columns are allowed: " + node);
+            }
+            return super.visitLogicalBinaryExpression(node, tableName);
+        }
+
+        @Override
+        protected Void visitComparisonExpression(final ComparisonExpression node, final String tableName) {
+            final Expression left = node.getLeft();
+            final Expression right = node.getRight();
+            if (left instanceof Identifier && right instanceof Literal) {
+                setMatchExpression((Identifier) left, (Literal) right, tableName);
+                return null;
+            } else if (right instanceof Identifier && left instanceof Literal) {
+                setMatchExpression((Identifier) right, (Literal) left, tableName);
+                return null;
+            }
+            throw new RuntimeException("Unexpected comparison expression: "+ node);
+        }
+
+        private void setMatchExpression(final Identifier identifier, final Literal literal, final String tableName) {
+            final List<? extends Field<?>> fields = tablesToPrimaryKeys.get(tableName.toUpperCase());
+
+            /*
+             * The match-expressions correspond to each column in the primary key, in the same
+             * order as the primary key declaration in the SQL create table statement.
+             */
+            for (int i = 0; i < fields.size(); i++) {
+                if (fields.get(i).getUnqualifiedName().last().equalsIgnoreCase(identifier.getValue())) {
+                    matchExpressions[i] = parseLiterals.process(literal, fields.get(i).getDataType().nullable());
+                    return;
+                }
+            }
+            throw new RuntimeException(String.format("Field %s being queried is not a primary key in table %s",
+                                                      identifier, tableName));
+        }
     }
 
     /*
@@ -245,48 +320,6 @@ public class DDlogJooqProvider implements MockDataProvider {
         @Override
         protected DDlogRecord visitBooleanLiteral(final BooleanLiteral node, final Boolean isNullable) {
             return maybeOption(isNullable, new DDlogRecord(node.getValue()));
-        }
-    }
-
-    private static class TranslateCreateTableDialect extends AstVisitor<String, String> {
-        @Override
-        protected String visitCreateTable(final CreateTable node, final String sql) {
-            final List<String> primaryKeyColumns = new ArrayList<>();
-            final List<String> columnsToCreate = new ArrayList<>();
-            for (final TableElement element: node.getElements()) {
-                if (element instanceof ColumnDefinition) {
-                    final ColumnDefinition cd = (ColumnDefinition) element;
-                    if (cd.getProperties().size() == 1) {
-                        final String propertyName = cd.getProperties().get(0).getName().getValue();
-                        final String propertyValue = cd.getProperties().get(0).getValue().toString();
-                        if (propertyName.equals("primary_key") && propertyValue.equals("true")) {
-                            primaryKeyColumns.add(cd.getName().getValue());
-                        } else {
-                            throw new RuntimeException(String.format("Unsupported property %s in sql: %s",
-                                                                    propertyName, sql));
-                        }
-                    }
-                    if (cd.getProperties().size() > 1) {
-                        throw new RuntimeException(String.format("Unsupported properties %s in sql: %s",
-                                cd.getProperties(), sql));
-                    }
-                    columnsToCreate.add(String.format("%s %s", cd.getName().getValue(), cd.getType()));
-                }
-            }
-
-            final String columns = String.join(", ", columnsToCreate);
-            if (primaryKeyColumns.size() > 0) {
-                final String primaryKeyColumnsStr = String.join(", ", primaryKeyColumns);
-                return String.format("create table %s (%s, primary key (%s))", node.getName().toString(), columns,
-                                                                               primaryKeyColumnsStr);
-            } else {
-                return String.format("create table %s (%s)", node.getName().toString(), columns);
-            }
-        }
-
-        @Override
-        protected String visitCreateView(final CreateView node, final String sql) {
-            return sql;
         }
     }
 
