@@ -1,6 +1,7 @@
 package ddlog;
 
 import com.vmware.ddlog.ir.*;
+import com.vmware.ddlog.translator.Translator;
 import ddlogapi.DDlogAPI;
 import ddlogapi.DDlogException;
 import ddlogapi.DDlogRecord;
@@ -10,7 +11,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SqlRecordTest {
+public class SqlRecordTest extends BaseQueriesTest {
     @Test
     public void sqlRecordTest() {
         List<DDlogField> fields = new ArrayList<DDlogField>();
@@ -181,5 +182,18 @@ public class SqlRecordTest {
         Assert.assertArrayEquals(original, encoding);
         SqlRecord rec1 = new SqlRecord(encoding);
         Assert.assertEquals(rec, rec1);
+    }
+
+    @Test
+    public void createRecordFromRelation() {
+        Translator t = this.createInputTables(false);
+        DDlogProgram ddprogram = t.getDDlogProgram();
+        DDlogRelationDeclaration decl = ddprogram.getRelation("Rt2");
+        Assert.assertNotNull(decl);
+        DDlogType type = decl.getType();
+        DDlogTStruct ts = t.resolveType(type).to(DDlogTStruct.class);
+        SqlRecord rec = ts.createEmptyRecord();
+        rec.add(2L);
+        Assert.assertNotNull(rec.getEncoding());
     }
 }
