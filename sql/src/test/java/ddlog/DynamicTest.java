@@ -45,8 +45,8 @@ public class DynamicTest extends BaseQueriesTest {
 
     @Test
     public void testDynamicLoading() throws IOException, DDlogException {
-        //if (!runSlowTests)
-        //    return;
+        if (!runSlowTests)
+            return;
         String ddlogProgram = "import sql\n" + // not needed, but we test the libraries too
                 "import sqlop\n" +
                 "input relation R(v: bit<16>)\n" +
