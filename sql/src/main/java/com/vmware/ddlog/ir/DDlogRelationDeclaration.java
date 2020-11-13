@@ -71,6 +71,13 @@ public class DDlogRelationDeclaration extends DDlogNode {
         return this.type;
     }
 
+    @Nullable
+    public DDlogType getPrimaryKeyType() {
+        if (this.keyExpression != null)
+            return this.keyExpression.type;
+        return null;
+    }
+
     public static String relationName(String name) {
         return "R" + name;
     }

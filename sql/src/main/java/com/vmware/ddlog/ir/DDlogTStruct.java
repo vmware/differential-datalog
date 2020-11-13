@@ -51,7 +51,6 @@ public class DDlogTStruct extends DDlogType {
         return this;
     }
 
-
     public String getName() { return this.name; }
 
     public List<DDlogField> getFields() { return this.args; }
@@ -80,5 +79,44 @@ public class DDlogTStruct extends DDlogType {
         }
         this.error("Field " + col + " not present in struct " + this.name);
         return null;  // unreachable
+    }
+
+    public enum Kind {
+        Null((byte)0x80),   // set if a value is null
+        Nullable((byte)0x40),  // set if a value may be null
+        Long((byte)0),
+        String((byte)1),
+        Bool((byte)2);
+
+        public final byte encoding;
+
+        Kind(byte encoding) { this.encoding = encoding; }
+    }
+
+    @Nullable
+    private byte[] encodings = null;
+
+    public SqlRecord createEmptyRecord() {
+        if (this.encodings == null) {
+            this.encodings = new byte[this.args.size()];
+            for (int i = 0; i < this.args.size(); i++) {
+                DDlogType t = this.args.get(i).getType();
+                byte mask = 0;
+                if (t.mayBeNull) {
+                    mask = Kind.Nullable.encoding;
+                }
+                if (t.is(DDlogTSigned.class)) {
+                    mask |= Kind.Long.encoding;
+                } else if (t.is(DDlogTBool.class)) {
+                    mask |= Kind.Bool.encoding;
+                } else if (t.is(DDlogTString.class)) {
+                    mask |= Kind.String.encoding;
+                } else {
+                    throw new RuntimeException("Type not yet handled " + t);
+                }
+                this.encodings[i] = mask;
+            }
+        }
+        return new SqlRecord(this.name, this.args.size(), this.encodings);
     }
 }

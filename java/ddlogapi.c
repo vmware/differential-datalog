@@ -970,3 +970,262 @@ JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1delete_1key_1cmd(
     ddlog_cmd* result = ddlog_delete_key_cmd(table, (ddlog_record*)handle);
     return (jlong)result;
 }
+
+enum Kind {
+    Kind_IsNull = 0x80,
+    Kind_Nullable = 0x40,
+    Kind_Long = 0,
+    Kind_String = 1,
+    Kind_Bool = 2
+};
+
+JNIEXPORT jbyteArray JNICALL Java_ddlogapi_DDlogAPI_ddlog_1encode_1record(
+    JNIEnv* env, jclass obj, jlong handle) {
+    if (handle == 0) {
+         throwDDlogException(env, "null buffer supplied");
+         return NULL;
+    }
+    ddlog_record* rec = (ddlog_record*)handle;
+    // First scan the ddlog record and measure the size required for the buffer
+    jboolean isStruct = (jboolean)ddlog_is_struct(rec);
+    if (!isStruct) {
+        throwDDlogException(env, "Record is not a struct");
+        return NULL;
+    }
+    size_t buffer_size = 4;  // size
+    size_t cons_size;
+    const char* constructor = ddlog_get_constructor_with_length(rec, &cons_size);
+    buffer_size += 4 + cons_size;
+    size_t fields = 0;
+    for (; ; fields++) {
+        // fprintf(stderr, "Measuring field %ld\n", fields);
+        const ddlog_record* field = ddlog_get_struct_field(rec, fields);
+        if (field == NULL)
+            break;
+        if (ddlog_is_struct(field)) {
+            // The only struct supported is Option
+            size_t inner_cons_size;
+            const char* inner_cons = ddlog_get_constructor_with_length(rec, &inner_cons_size);
+            if (inner_cons_size != 4) {
+                throwDDlogException(env, "Unsupported structure");
+                return NULL;
+            }
+            if (!memcmp(inner_cons, "None", 4))
+                continue;
+            if (memcmp(inner_cons, "Some", 4)) {
+                throwDDlogException(env, "Unsupported structure");
+                return NULL;
+            }
+            const ddlog_record* inner = ddlog_get_struct_field(field, 0);
+            if (field == NULL) {
+                throwDDlogException(env, "'Some' does not have 1 field");
+                return NULL;
+            }
+            if (ddlog_get_struct_field(field, 1)) {
+                throwDDlogException(env, "'Some' has more than 1 field");
+                return NULL;
+            }
+            field = inner;
+        }
+        if (ddlog_is_bool(field)) {
+            buffer_size += 1;
+        } else if (ddlog_is_int(field)) {
+            ssize_t bytes = ddlog_get_int(field, NULL, 0);
+            if (bytes > sizeof(jlong)) {
+                fprintf(stderr, "integer size too large %ld", bytes);
+                throwDDlogException(env, "longs are the only integers ones supported");
+                return NULL;
+            }
+            buffer_size += sizeof(jlong);
+        } else if (ddlog_is_string(field)) {
+            size_t bytes = ddlog_get_strlen(field);
+            buffer_size += 4 + bytes;
+        } else {
+            throwDDlogException(env, "Unsupported field type");
+            return NULL;
+        }
+    }
+
+    buffer_size += fields;
+    jbyteArray result = (*env)->NewByteArray(env, buffer_size);
+    // Scan again and copy.
+    int f = fields;
+    size_t data_index = 4 + fields;
+    jint size = cons_size;
+    (*env)->SetByteArrayRegion(env, result, data_index, sizeof(jint), (const char*)&size);
+    data_index += sizeof(jint);
+    (*env)->SetByteArrayRegion(env, result, data_index, cons_size, constructor);
+    data_index += cons_size;
+
+    (*env)->SetByteArrayRegion(env, result, 0, 4, (const jbyte*)&f);
+    for (size_t i = 0; i < fields; i++) {
+        const ddlog_record* field = ddlog_get_struct_field(rec, i);
+        jbyte kind = 0;
+        if (ddlog_is_struct(field)) {
+            size_t inner_cons_size;
+            const char* inner_cons = ddlog_get_constructor_with_length(rec, &inner_cons_size);
+            if (inner_cons_size == 4 && !memcmp(inner_cons, "None", 4)) {
+                jbyte b = Kind_IsNull;
+                (*env)->SetByteArrayRegion(env, result, 4 + i, 1, (const jbyte*)&b);
+                continue;
+            }
+            field = ddlog_get_struct_field(field, 0);
+            kind = Kind_Nullable;
+        }
+        if (ddlog_is_bool(field)) {
+            kind |= Kind_Bool;
+            bool b = ddlog_get_bool(field);
+            jbyte v = b ? 1 : 0;
+            (*env)->SetByteArrayRegion(env, result, data_index, 1, (const jbyte*)&v);
+            data_index++;
+        } else if (ddlog_is_int(field)) {
+            kind |= Kind_Long;
+            jlong v = ddlog_get_i64(field);
+            (*env)->SetByteArrayRegion(env, result, data_index, sizeof(jlong), (const jbyte*)&v);
+            data_index += sizeof(jlong);
+        } else if (ddlog_is_string(field)) {
+            kind |= Kind_String;
+            size_t bytes;
+            const char* str = ddlog_get_str_with_length(field, &bytes);
+            jint v = bytes;
+            (*env)->SetByteArrayRegion(env, result, data_index, sizeof(jint), (const jbyte*)&v);
+            data_index += sizeof(jint);
+            (*env)->SetByteArrayRegion(env, result, data_index, bytes, str);
+            data_index += bytes;
+        }
+        (*env)->SetByteArrayRegion(env, result, 4 + i, 1, &kind);
+    }
+    return result;
+}
+
+JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1create_1sql_1record(
+    JNIEnv* env, jclass obj, jbyteArray bytes) {
+    jbyte *buf = (*env)->GetByteArrayElements(env, bytes, NULL);
+    if (buf == NULL) {
+        throwDDlogException(env, "null buffer supplied");
+        return 0;
+    }
+    jbyte* original = buf;
+    size_t size = (*env)->GetArrayLength(env, bytes);
+    jint expect = sizeof(jint);
+    if (size < expect) {
+        throwDDlogException(env, "Buffer size too small for fields");
+        return 0;
+    }
+    jint len = *(int*)buf;
+    buf += expect;
+    size -= expect;
+
+    if (size < len) {
+        throwDDlogException(env, "Buffer size too small for kinds");
+        return 0;
+    }
+    jbyte* encodings = buf;
+    buf += len;
+    size -= len;
+
+    expect = sizeof(jint);
+    if (size < expect) {
+        fprintf(stderr, "Remaining size %ld\n", size);
+        throwDDlogException(env, "Buffer size too small for constructor size");
+        return 0;
+    }
+    jint constrsz = *(jint*)buf;
+    buf += expect;
+    size -= expect;
+    if (size < (size_t)constrsz) {
+        fprintf(stderr, "Remaining size %ld\n", size);
+        throwDDlogException(env, "Buffer size too small for constructor");
+        return 0;
+    }
+    const char* constructor = buf;
+    buf += constrsz;
+    size -= constrsz;
+    ddlog_record** fields = malloc(len * sizeof(ddlog_record*));
+    if (fields == NULL)
+        return 0;
+    size_t index;
+    for (index = 0; index < len; index++) {
+        // fprintf(stderr, "Producing field %ld, remaining %ld\n", index, size);
+        jbyte kind = encodings[index];
+        ddlog_record* rec;
+        if (kind & Kind_IsNull) {
+            // fprintf(stderr, "Field is NULL\n");
+            rec = ddlog_struct_static_cons("None", NULL, 0);
+            fields[index] = rec;
+            continue;
+        }
+        switch (kind & 0x3F) {
+            case Kind_Long: {
+                expect = sizeof(jlong);
+                if (size < expect) {
+                    fprintf(stderr, "Remaining size %ld\n", size);
+                    throwDDlogException(env, "Buffer size too small for long");
+                    goto error;
+                }
+                jlong l = *(jlong*)buf;
+                buf += expect;
+                size -= expect;
+                rec = ddlog_i64(l);
+                break;
+            }
+            case Kind_String: {
+                expect = sizeof(jint);
+                if (size < expect) {
+                    fprintf(stderr, "Remaining size %ld\n", size);
+                    throwDDlogException(env, "Buffer size too small for string size");
+                    goto error;
+                }
+                jint sz = *(jint*)buf;
+                buf += expect;
+                size -= expect;
+                if (size < (size_t)sz) {
+                    fprintf(stderr, "Remaining size %ld\n", size);
+                    throwDDlogException(env, "Buffer size too small for string");
+                    goto error;
+                }
+                rec = ddlog_string_with_length(buf, sz);
+                buf += sz;
+                size -= sz;
+                break;
+            }
+            case Kind_Bool: {
+                expect = 1;
+                if (size < expect) {
+                    fprintf(stderr, "Remaining size %ld\n", size);
+                    throwDDlogException(env, "Buffer size too small for bool");
+                    goto error;
+                }
+                jbyte b = *buf;
+                buf += expect;
+                size -= expect;
+                rec = ddlog_bool(b);
+                break;
+            }
+            default:
+                throwDDlogException(env, "Unexpected kind");
+                goto error;
+        }
+        if (kind & Kind_Nullable)
+            // Treat rec as an array with 1 element
+            rec = ddlog_struct_static_cons("Some", &rec, 1);
+        fields[index] = rec;
+    }
+
+    if (size != 0) {
+        fprintf(stderr, "Remaining size %ld\n", size);
+        throwDDlogException(env, "The buffer was not consumed entirely");
+        goto error;
+    }
+    ddlog_record* result = ddlog_struct_with_length(constructor, constrsz, fields, len);
+    free(fields);
+    (*env)->ReleaseByteArrayElements(env, bytes, original, JNI_ABORT);
+    return (jlong)result;
+
+  error:
+    //for (size_t j = 0; j < index; j++)
+        //ddlog_free(fields[j]);
+    //free(fields);
+    (*env)->ReleaseByteArrayElements(env, bytes, original, JNI_ABORT);
+    return 0;
+}
