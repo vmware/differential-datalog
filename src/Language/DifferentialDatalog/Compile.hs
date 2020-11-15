@@ -481,7 +481,7 @@ tupleStruct local xs  | length xs == 0 = tuple xs
 -- structs with multiple constructor are compiled into Rust enums.
 isStructType :: Type -> Bool
 isStructType TStruct{..} | length typeCons == 1 = True
-isStructType TStruct{..}                        = False
+isStructType TStruct{}                        = False
 isStructType t                                  = error $ "Compile.isStructType " ++ show t
 
 -- 'local' is true iff the constructor is being used in the same crate where it was
@@ -730,7 +730,7 @@ addDummyRel d =
 
 mkTypedef :: DatalogProgram -> TypeDef -> Doc
 -- Don't generate definitions of types annotated with the 'alias' attribute.
-mkTypedef d tdef@TypeDef{..} | tdefGetAliasAttr d tdef = empty
+mkTypedef d tdef | tdefGetAliasAttr d tdef = empty
 mkTypedef d tdef@TypeDef{..} =
     vcat (map (\attr -> "#[" <> pp attr <> "]") rustAttrs) $$
     case tdefType of
@@ -975,14 +975,14 @@ mkDDValueFromRecord d@DatalogProgram{..} =
         where t = typeNormalize d relType
     key_entries = map mkrelkey $ filter (isJust . relPrimaryKey) $ M.elems progRelations
     mkrelkey :: Relation ->  Doc
-    mkrelkey rel@Relation{..} =
+    mkrelkey rel =
         "Relations::" <> rnameFlat (name rel) <+> "=> {"                            $$
         "    Ok(<" <> mkType d False t <> ">::from_record(_rec)?.into_ddvalue())"   $$
         "}"
         where t = typeNormalize d $ fromJust $ relKeyType d rel
     idx_entries = map mkidxkey $ M.elems progIndexes
     mkidxkey :: Index ->  Doc
-    mkidxkey idx@Index{..} =
+    mkidxkey idx =
         "Indexes::" <> rnameFlat (name idx) <+> "=> {"                              $$
         "    Ok(<" <> mkType d False t <> ">::from_record(_rec)?.into_ddvalue())"   $$
         "}"
@@ -1540,7 +1540,7 @@ compileRelation d rn = do
     return ProgRel{ prelName = rn, prelCode = code, prelFacts = facts' }
 
 compileKey :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> Relation -> KeyExpr -> CompilerMonad Doc
-compileKey d rel@Relation{..} KeyExpr{..} = do
+compileKey d rel KeyExpr{..} = do
     v <- mkDDValue d (CtxKey rel) keyExpr
     return $
         "(|" <> kEY_VAR <> ": &DDValue| {"                                                                                  $$
@@ -1854,8 +1854,8 @@ typeNeedsDDValConvert d t =
          TBool{}                       -> False
          TInt{}                        -> False
          TString{}                     -> False
-         TBit{..}                      -> False
-         TSigned{..}                   -> False
+         TBit{}                        -> False
+         TSigned{}                     -> False
          TDouble{}                     -> False
          TFloat{}                      -> False
          _                             -> True
@@ -1928,8 +1928,8 @@ mkFilters d rl@Rule{..} last_idx =
 -- Implement RHSCondition semantics in Rust; brings new variables into
 -- scope if this is an assignment
 mkFilter :: (?statics::Statics) => DatalogProgram -> ECtx -> Expr -> Doc
-mkFilter d ctx (E e@ESet{..}) = mkAssignFilter d ctx e
-mkFilter d ctx e              = mkCondFilter d ctx e
+mkFilter d ctx (E e@ESet{}) = mkAssignFilter d ctx e
+mkFilter d ctx e            = mkCondFilter d ctx e
 
 mkAssignFilter :: (?statics::Statics) => DatalogProgram -> ECtx -> ENode -> Doc
 mkAssignFilter d ctx e@(ESet _ l r) =
@@ -2039,7 +2039,7 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
 
 -- Compile XForm::Antijoin
 mkAntijoin :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> [Int] -> Bool -> Atom -> Rule -> Int -> CompilerMonad Doc
-mkAntijoin d input_filters input_val Atom{..} rl@Rule{..} ajoin_idx = do
+mkAntijoin d input_filters input_val Atom{..} rl ajoin_idx = do
     -- create arrangement to anti-join with
     let ctx = CtxRuleRAtom rl ajoin_idx
     let (arr, _) = normalizeArrangement d ctx atomVal
@@ -2537,7 +2537,7 @@ mkExpr' d ctx e@(EApply{..}) =
 
 -- If the function is referenced inside a function invocation, simply return the
 -- name of the function; otherwise wrap the function in a closure.
-mkExpr' d ctx e@EFunc{..} =
+mkExpr' d ctx e@EFunc{} =
     (res, EVal)
     where
     arg_deref :: FuncArg -> Doc

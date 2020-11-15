@@ -77,7 +77,7 @@ relIsRecursive d rel =
 -- being computed.
 relIsDistinctByConstruction :: DatalogProgram -> Relation -> Bool
 -- Distinctness is enforced on input relations.
-relIsDistinctByConstruction _ Relation{relRole = RelInput, ..}  = True
+relIsDistinctByConstruction _ Relation{relRole = RelInput}  = True
 -- For recursive relations, we enforce distinctness of the relation is
 -- _not_ bounded.
 relIsDistinctByConstruction d rel | relIsRecursive d (name rel) =

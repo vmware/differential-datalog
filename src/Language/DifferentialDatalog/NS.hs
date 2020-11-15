@@ -85,7 +85,7 @@ getFuncs d n nargs = fromJust $ lookupFuncs d n nargs
 -- TODO: change ret_type from Maybe Type to Type once we've change aggregation
 -- syntax to use expression in the LHS.
 lookupFunc :: DatalogProgram -> String -> [Type] -> Type -> Maybe (Function, M.Map String Type)
-lookupFunc d@DatalogProgram{..} n arg_types ret_type =
+lookupFunc d@DatalogProgram{} n arg_types ret_type =
     listToMaybe $
     mapMaybe (\f@Function{..} -> case inferTypeArgs d nopos "" $ zip (map typ funcArgs ++ [funcType]) (arg_types ++ [ret_type]) of
                                       Left _ -> Nothing
@@ -182,7 +182,7 @@ ctxVars' d ctx with_types =
                                      ([], TSVar rl : vars)
          CtxRuleRProject rl i     -> ([], ruleRHSVars d rl i)
          CtxRuleRGroupBy rl i     -> ([], ruleRHSVars d rl i)
-         CtxKey rel@Relation{..}  -> ([], [KeyVar rel])
+         CtxKey rel@Relation{}    -> ([], [KeyVar rel])
          CtxIndex idx@Index{..}   -> ([], map (\v -> (IdxVar idx $ name v)) idxVars)
          CtxApplyArg _ _ _        -> (plvars, prvars)
          CtxApplyFunc _ _         -> (plvars, prvars)

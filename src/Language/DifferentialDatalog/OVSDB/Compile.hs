@@ -231,7 +231,7 @@ mkTable' tkind t@Table{..} = do
              key
 
 mkDeltaPlusRules :: (?schema::OVSDBSchema, ?config::Config) => Table -> Doc
-mkDeltaPlusRules t@Table{..} =
+mkDeltaPlusRules t =
     (mkTableName t TableDeltaPlus) <> "(" <> commaSep cols <> ") :-"        $$
     (nest' $ mkTableName t TableOutput <> "(" <> commaSep cols <> "),")     $$
     (nest' $ "not" <+> mkTableName t TableInput <> "(._uuid = _uuid).")
@@ -241,14 +241,14 @@ mkDeltaPlusRules t@Table{..} =
 
 -- DeltaMinus(uuid) :- Input(uuid, key, _), not Output(_, key, _).
 mkDeltaMinusRules :: (?schema::OVSDBSchema, ?config::Config) => Table ->  Doc
-mkDeltaMinusRules t@Table{..} =
+mkDeltaMinusRules t =
     (mkTableName t TableDeltaMinus) <> "(uuid) :-"                         $$
     (nest' $ mkTableName t TableInput <> "(._uuid = uuid),")   $$
     (nest' $ "not" <+> mkTableName t TableOutput <> "(._uuid = uuid).")
 
 -- DeltaUpdate(uuid, new) :- Output(uuid, new), Input(uuid, old), old != new.
 mkDeltaUpdateRules :: (?schema::OVSDBSchema, ?config::Config) => Table -> Doc
-mkDeltaUpdateRules t@Table{..} =
+mkDeltaUpdateRules t =
     (mkTableName t TableDeltaUpdate) <> "(" <> commaSep outcols <> ") :-"               $$
     (nest' $ mkTableName t TableOutput <> "(" <> commaSep outcols <> "),")              $$
     (nest' $ mkTableName t TableInput <> "(" <> commaSep realcols <> "),")              $$

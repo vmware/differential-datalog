@@ -333,7 +333,7 @@ exprFuncs' acc e = nub $ exprCollect (\case
 -- Given a function expression, returns the function.
 -- Assumes the expression has been validated.
 funcExprGetFunc :: DatalogProgram -> ECtx -> ENode -> (Function, M.Map String Type)
-funcExprGetFunc d ctx e@EFunc{exprFuncName=[fname], ..} =
+funcExprGetFunc d ctx e@EFunc{exprFuncName=[fname]} =
     getFunc d fname (map typ $ typeFuncArgs t) (typeRetType t)
     where
     t = exprType' d ctx $ E e

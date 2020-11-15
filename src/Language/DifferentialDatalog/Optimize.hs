@@ -60,8 +60,8 @@ optExpandMultiheadRules :: DatalogProgram -> DatalogProgram
 optExpandMultiheadRules d = optExpandMultiheadRules' d 0
 
 optExpandMultiheadRules' :: DatalogProgram -> Int -> DatalogProgram
-optExpandMultiheadRules' d@DatalogProgram{progRules=[], ..} _ = d
-optExpandMultiheadRules' d@DatalogProgram{progRules=r:rs, ..} i
+optExpandMultiheadRules' d@DatalogProgram{progRules=[]} _ = d
+optExpandMultiheadRules' d@DatalogProgram{progRules=r:rs} i
     | length (ruleLHS r) == 1 = progAddRules [r] d'
     | otherwise               = progAddRules rules $ maybe d' (\rel -> progAddRel rel d') $ mrel
     where d' = optExpandMultiheadRules' d{progRules = rs} (i+1)

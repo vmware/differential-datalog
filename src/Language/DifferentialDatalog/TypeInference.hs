@@ -429,7 +429,7 @@ inferTypes d es = do
                                       _           -> error $ "inferTypes: unexpected integer type '" ++ show t ++ "'"
                  -- Convert doubles to floats if necessary.
                  EDouble{..} -> case t of
-                                     TFloat{..}  -> E $ EFloat  (pos e) $ double2Float exprDVal
+                                     TFloat{}    -> E $ EFloat  (pos e) $ double2Float exprDVal
                                      TDouble{}   -> E expr
                                      _           -> error $ "inferTypes: unexpected floating point type '" ++ show t ++ "'"
                  -- Annotate all expressions whose type cannot be derived in a bottom-up manner:

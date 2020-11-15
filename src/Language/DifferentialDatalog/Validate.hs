@@ -190,7 +190,7 @@ fieldsValidate d targs fields = do
     mapM_ (fieldValidate d targs) fields
 
 fieldValidate :: (MonadError String me) => DatalogProgram -> [String] -> Field -> me ()
-fieldValidate d targs field@Field{..} = typeValidate d targs $ typ field
+fieldValidate d targs field@Field{} = typeValidate d targs $ typ field
 
 checkAcyclicTypes :: (MonadError String me) => DatalogProgram -> me ()
 checkAcyclicTypes d@DatalogProgram{..} = do
@@ -322,10 +322,10 @@ ruleValidateExpressions d rl = do
     let (es'', rhss') = foldl' (\(es, rhss) rhs ->
                                 case rhs of
                                      RHSLiteral{..} -> (tail es, rhss ++ [rhs{rhsAtom = rhsAtom {atomVal = head es}}])
-                                     RHSCondition{..} -> (tail es, rhss ++ [rhs{rhsExpr = head es}])
-                                     RHSFlatMap{..} -> (tail es, rhss ++ [rhs{rhsMapExpr = head es}])
-                                     RHSGroupBy{..} -> (tail $ tail es, rhss ++ [rhs{rhsGroupBy = head es, rhsProject = head $ tail es}])
-                                     RHSInspect{..} -> (tail es, rhss ++ [rhs{rhsInspectExpr = head es}]))
+                                     RHSCondition{} -> (tail es, rhss ++ [rhs{rhsExpr = head es}])
+                                     RHSFlatMap{}   -> (tail es, rhss ++ [rhs{rhsMapExpr = head es}])
+                                     RHSGroupBy{}   -> (tail $ tail es, rhss ++ [rhs{rhsGroupBy = head es, rhsProject = head $ tail es}])
+                                     RHSInspect{}   -> (tail es, rhss ++ [rhs{rhsInspectExpr = head es}]))
                             (es', []) $ ruleRHS rl
     let ([], lhss') = foldl' (\(es, lhss) lhs -> (tail es, lhss ++ [lhs{atomVal = head es}]))
                             (es'', []) $ ruleLHS rl
@@ -356,7 +356,7 @@ atomValidate d ctx atom = do
 -- Validate an RHS term of a rule.  Once all RHS and LHS terms have been
 -- validated, it is safe to call 'ruleValidateExpressions'.
 ruleRHSValidate :: (MonadError String me) => DatalogProgram -> Rule -> RuleRHS -> Int -> me ()
-ruleRHSValidate d rl@Rule{..} (RHSLiteral _ atom) idx =
+ruleRHSValidate d rl (RHSLiteral _ atom) idx =
     atomValidate d (CtxRuleRAtom rl idx) atom
 
 ruleRHSValidate d rl RHSCondition{..} i = do
@@ -560,7 +560,7 @@ exprsPostCheck d es = do
 -- This function does not perform type checking: just checks that all functions and
 -- variables are defined; the number of arguments matches declarations, etc.
 exprValidate1 :: (MonadError String me) => DatalogProgram -> [String] -> ECtx -> ExprNode Expr -> me ()
-exprValidate1 _ _ ctx EVar{..} | ctxInRuleRHSPositivePattern ctx
+exprValidate1 _ _ ctx EVar{} | ctxInRuleRHSPositivePattern ctx
                                           = return ()
 exprValidate1 d _ ctx (EVar p v)          = do _ <- checkVar p d ctx v
                                                return ()
@@ -595,7 +595,7 @@ exprValidate1 d _ ctx (EVarDecl p _)      = do
 
 exprValidate1 _ _ _   ESeq{}              = return ()
 exprValidate1 _ _ _   EITE{}              = return ()
-exprValidate1 _ _ _   EFor{..}            = return () -- checkNoVar exprPos d ctx exprLoopVar
+exprValidate1 _ _ _   EFor{}              = return () -- checkNoVar exprPos d ctx exprLoopVar
 exprValidate1 _ _ _   ESet{}              = return ()
 exprValidate1 d _ ctx (EContinue p)       = check d (ctxInForLoopBody ctx) p "\"continue\" outside of a loop"
 exprValidate1 d _ ctx (EBreak p)          = check d (ctxInForLoopBody ctx) p "\"break\" outside of a loop"
