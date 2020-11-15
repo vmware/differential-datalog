@@ -30,6 +30,7 @@ Description: Compile 'DatalogProgram' to Rust.  See program.rs for corresponding
 
 module Language.DifferentialDatalog.Compile (
     compile,
+    unpackFixNewline,
     rustProjectDir,
     mkConstructorName,
     mkType,
@@ -80,6 +81,12 @@ import Language.DifferentialDatalog.FlatBuffer
 import Language.DifferentialDatalog.Attribute
 import Language.DifferentialDatalog.Var
 
+-- Some OSs think that they run on a typewriter and insert '\r'
+-- at the end of each line.  We eliminate these characters as they confuse
+-- `cargo`.
+unpackFixNewline :: BS.ByteString -> String
+unpackFixNewline = filter (/= '\r') . BS.unpack
+
 -- Input argument name for Rust functions that take a datalog record.
 vALUE_VAR :: Doc
 vALUE_VAR = "__v"
@@ -123,15 +130,15 @@ header template specname =
 
 -- 'types' crate containing DDlog type declarations.
 typesLibHeader :: String -> Doc
-typesLibHeader specname = header (BS.unpack $ $(embedFile "rust/template/types/lib.rs")) specname
+typesLibHeader specname = header (unpackFixNewline $ $(embedFile "rust/template/types/lib.rs")) specname
 
 -- Header to prepend to each each generated module in the 'types' crate.
 typesModuleHeader :: String -> Doc
-typesModuleHeader specname = header (BS.unpack $ $(embedFile "rust/template/types/module.rs")) specname
+typesModuleHeader specname = header (unpackFixNewline $ $(embedFile "rust/template/types/module.rs")) specname
 
 -- Main crate containing compiled program rules.
 mainHeader :: String -> Doc
-mainHeader specname = header (BS.unpack $ $(embedFile "rust/template/src/lib.rs")) specname
+mainHeader specname = header (unpackFixNewline $ $(embedFile "rust/template/src/lib.rs")) specname
 
 -- Top-level 'Cargo.toml'.
 mainCargo :: (?cfg::Config) => String -> [String] -> String -> Doc
@@ -143,12 +150,12 @@ mainCargo specname crate_types toml_footer =
     template = (if confNestedTS32 ?cfg
                 then replace "[dependencies.differential_datalog]" "[dependencies.differential_datalog]\nfeatures=[\"nested_ts_32\"]"
                 else id)
-               $ BS.unpack $ $(embedFile "rust/template/Cargo.toml")
+               $ unpackFixNewline $ $(embedFile "rust/template/Cargo.toml")
 
 -- 'types/Cargo.toml' - imports Rust dependencies.
 typesCargo :: String -> Doc -> Doc
 typesCargo specname toml_code =
-    (pp $ replace "datalog_example" specname $ BS.unpack $ $(embedFile "rust/template/types/Cargo.toml")) $$
+    (pp $ replace "datalog_example" specname $ unpackFixNewline $ $(embedFile "rust/template/types/Cargo.toml")) $$
     "" $$ toml_code
 
 rustProjectDir :: String -> String
@@ -157,7 +164,7 @@ rustProjectDir specname = specname ++ "_ddlog"
 -- IMPORTANT: KEEP THIS IN SYNC WITH FILE LIST IN 'build.rs'.
 templateFiles :: String -> [(String, String)]
 templateFiles specname =
-    map (mapSnd (BS.unpack)) $
+    map (mapSnd (unpackFixNewline)) $
         [ (dir </> "src/build.rs"               , $(embedFile "rust/template/src/build.rs"))
         , (dir </> "src/main.rs"                , $(embedFile "rust/template/src/main.rs"))
         , (dir </> "src/api/mod.rs"             , $(embedFile "rust/template/src/api/mod.rs"))
@@ -172,7 +179,7 @@ templateFiles specname =
 -- Rust differential_datalog library
 rustLibFiles :: String -> [(String, String)]
 rustLibFiles specname =
-    map (mapSnd (BS.unpack)) $
+    map (mapSnd (unpackFixNewline)) $
         [ (dir </> "differential_datalog/Cargo.toml"                      , $(embedFile "rust/template/differential_datalog/Cargo.toml"))
         , (dir </> "differential_datalog/callback.rs"                     , $(embedFile "rust/template/differential_datalog/callback.rs"))
         , (dir </> "differential_datalog/ddlog.rs"                        , $(embedFile "rust/template/differential_datalog/ddlog.rs"))

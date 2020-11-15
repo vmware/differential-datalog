@@ -24,6 +24,7 @@ dependencies:
 - containers
 - binary
 - bytestring
+- bytestring-conversion
 - extra
 - fgl
 - split

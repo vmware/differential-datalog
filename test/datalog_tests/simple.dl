@@ -145,7 +145,8 @@ function s0(): string {
 }
 
 function s1(): string {
-    "\t\r\n\"\\\a"
+    //"\t\r\n\"\\\a"
+    "\t\n\"\\\a"
 }
 
 function v(): string {
@@ -539,7 +540,7 @@ Strings("foo").
 Strings("bar\n").
 Strings("\t\tbar").
 Strings("\"buzz").
-Strings("\r\n\abuzz").
+Strings("\n\abuzz").
 Strings("\\buzz").
 Strings("\\buzz").
 

@@ -17,13 +17,19 @@ fetch_stack_linux() {
   curl -sL https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
 }
 
+fetch_stack_windows() {
+  curl -L https://www.stackage.org/stack/windows-x86_64 > stack.exe && unzip stack.exe -d ~/.local/bin
+}
+
 # We need stack to generate cabal files with precise bounds, even for cabal
 # builds.
 mkdir -p ~/.local/bin
 if [ "$(uname)" = "Darwin" ]; then
   retry fetch_stack_osx
-else
+elif [ "$(uname)" = "Linux" ]; then
   retry fetch_stack_linux
+else
+  retry fetch_stack_windows
 fi
 
 retry stack --no-terminal setup
