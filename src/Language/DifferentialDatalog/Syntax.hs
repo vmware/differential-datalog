@@ -149,7 +149,6 @@ import Prelude hiding((<>))
 import Text.PrettyPrint
 import Data.Maybe
 import Data.List
-import Data.String.Utils
 import qualified Data.Map as M
 
 import Language.DifferentialDatalog.Pos
@@ -1377,7 +1376,7 @@ instance PP ECtx where
         rel  = short $ pp $ ctxRelation ctx
         mlen = 100
         short :: (PP a) => a -> Doc
-        short = pp . (\x -> if length x < mlen then x else take (mlen - 3) x ++ "...") . replace "\n" " " . render . pp
+        short = pp . (\x -> if length x < mlen then x else take (mlen - 3) x ++ "...") . (map (\c -> if c == '\n' then ' ' else c)) . render . pp
         ctx' = case ctx of
                     CtxRuleL{..}          -> "CtxRuleL          " <+> rule <+> pp ctxAtomIdx
                     CtxRuleRAtom{..}      -> "CtxRuleRAtom      " <+> rule <+> pp ctxAtomIdx

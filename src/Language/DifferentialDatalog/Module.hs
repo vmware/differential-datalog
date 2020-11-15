@@ -49,7 +49,7 @@ import qualified System.FilePath as F
 import System.Directory
 import System.FilePath.Posix
 import Data.List
-import Data.String.Utils
+import Data.List.Split
 import Data.Maybe
 --import Debug.Trace
 import Text.PrettyPrint
@@ -82,13 +82,13 @@ moduleNameToPath (ModuleName [n]) = n <.> "rs"
 moduleNameToPath (ModuleName (n:ns)) = n </> moduleNameToPath (ModuleName ns)
 
 nameScope :: (WithName a) => a -> ModuleName
-nameScope = ModuleName . init . split "::" . name
+nameScope = ModuleName . init . splitOn "::" . name
 
 nameLocal :: (WithName a) => a -> Doc
 nameLocal = pp . nameLocalStr
 
 nameLocalStr :: (WithName a) => a -> String
-nameLocalStr = last . split "::" . name
+nameLocalStr = last . splitOn "::" . name
 
 scoped :: ModuleName -> String -> String
 scoped mod n = intercalate "::" (modulePath mod ++ [n])

@@ -72,7 +72,6 @@ import qualified Data.Map as M
 import Data.List
 import Data.Char
 import Data.Maybe
-import Data.String.Utils
 import Data.FileEmbed
 import Control.Monad.State
 import Text.PrettyPrint
