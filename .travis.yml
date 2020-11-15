@@ -13,7 +13,7 @@ sudo: required
 dist: bionic
 jdk: oraclejdk8
 osx_image: xcode11
-python: 3.6
+#python: 3.6
 
 # 'gitlab-ci' is meant for testing GitLab CI integration and not build
 # by Travis.
@@ -68,10 +68,10 @@ addons:
     packages:
       - libgmp-dev
       - subversion
-      - python3-pip
+      #- python3-pip
 
 before_install:
-- python3 -m pip install --user parglare==0.12.0
+#- python3 -m pip install --user parglare==0.12.0
 # Download and unpack the stack executable
 - mkdir -p ~/.local/bin
 - export PATH=$HOME/.local/bin:$PATH
@@ -80,7 +80,7 @@ before_install:
 - export CLASSPATH=$CLASSPATH:`pwd`/flatbuffers/java
 # Travis does not set JAVA_HOME on MacOS
 - if [ `uname -s` = Darwin ]; then export JAVA_HOME=`/usr/libexec/java_home`; fi
-- if [ `uname -s` = Darwin -a x${TOOL} = xrun_souffle_tests ]; then brew install subversion; fi
+#- if [ `uname -s` = Darwin -a x${TOOL} = xrun_souffle_tests ]; then brew install subversion; fi
 
 install:
 # Build dependencies
@@ -91,7 +91,7 @@ script:
 #- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --haddock --no-haddock-deps
 #- DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"  --haddock --no-haddock-deps
 - if [ x${TOOL} = xstack ]; then DDLOG_TEST_PROGRESS=1 stack --no-terminal test --ta "$TEST_SUITE"; fi
-- if [ x${TOOL} = xrun_souffle_tests ]; then cd test && travis_wait 30 ./run-souffle-tests.py  ackermann andersen bigrams cba_expr_value centroids clique cliquer comp-parametrized-inherit comp-parametrized-multilvl degree dfa dfa_min disconnected dominance double_tree earley equal factoring family fib; fi
+#- if [ x${TOOL} = xrun_souffle_tests ]; then cd test && travis_wait 30 ./run-souffle-tests.py  ackermann andersen bigrams cba_expr_value centroids clique cliquer comp-parametrized-inherit comp-parametrized-multilvl degree dfa dfa_min disconnected dominance double_tree earley equal factoring family fib; fi
 - if [ x${JAVA} = x1 ]; then stack install && cd java/test_flatbuf && ./run.sh; fi
 
 before_deploy:
