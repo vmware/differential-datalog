@@ -104,7 +104,7 @@ consValidateAttrs d struct cons@Constructor{..} = do
     return ()
 
 consValidateAttr :: (MonadError String me) => DatalogProgram -> Type -> Constructor -> Attribute -> me ()
-consValidateAttr d struct Constructor{..} attr = do
+consValidateAttr d struct Constructor{} attr = do
     let TStruct{..} = struct
     case name attr of
          "rust" -> check d (length typeCons > 1) (pos attr) $ "Per-constructor 'rust' attributes are only supported for types with multiple constructors"
@@ -246,7 +246,7 @@ fieldCheckDeserializeArrayAttr d field@Field{..} =
          [attr@Attribute{attrVal = E (EApply _ (E (EFunc _ [fname])) _)}] -> do
              check d (isMap d field) (pos attr) $ "'deserialize_from_array' attribute is only applicable to fields of type 'Map<>'."
              let TOpaque _ _ [ktype, vtype] = typ' d field
-             (kfunc@Function{..}, _) <- checkFunc (pos attr) d fname [vtype] ktype
+             (kfunc, _) <- checkFunc (pos attr) d fname [vtype] ktype
              _ <- funcTypeArgSubsts d (pos attr) kfunc [vtype] (Just ktype)
              return $ Just fname
          [Attribute{..}] -> err d attrPos

@@ -515,7 +515,7 @@ typeNormalize' d t =
          TTuple{..}         -> t'{typeTupArgs = map (typeNormalize d) typeTupArgs}
          TUser{..}          -> t'{typeArgs = map (typeNormalize d) typeArgs}
          TOpaque{..}        -> t'{typeArgs = map (typeNormalize d) typeArgs}
-         TVar{..}           -> t'
+         TVar{}             -> t'
          TFunction{..}      -> t'{ typeFuncArgs = map (\a -> a{atypeType = typeNormalize d $ typ a}) typeFuncArgs
                                  , typeRetType = typeNormalize d typeRetType}
          _                  -> error $ "Type.typeNormalize': unexpected type " ++ show t'

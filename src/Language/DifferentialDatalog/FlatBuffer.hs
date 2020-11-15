@@ -437,7 +437,7 @@ relTypesToSerialize Relation{..} =
 -- Types used in index declaration (possibly, recursively), for which serialization
 -- logic must be generated.
 idxTypesToSerialize :: (?d::DatalogProgram) => Index -> [Type]
-idxTypesToSerialize idx@Index{..} =
+idxTypesToSerialize idx =
     execState (typeSubtypes [] $ idxKeyType idx)
               [typeNormalize ?d $ idxKeyType idx]
 
@@ -564,7 +564,7 @@ fbType x =
                             -> "uint32"
          TBit{..} | typeWidth <= 64
                             -> "uint64"
-         TBit{..}           -> "__BigUint"
+         TBit{}             -> "__BigUint"
          TSigned{..} | typeWidth <= 8
                             -> "int8"
          TSigned{..} | typeWidth <= 16
@@ -573,7 +573,7 @@ fbType x =
                             -> "int32"
          TSigned{..} | typeWidth <= 64
                             -> "int64"
-         TSigned{..}        -> "__BigInt"
+         TSigned{}          -> "__BigInt"
          TTuple{..}         -> fbTupleName typeTupArgs
          TUser{..}              -> fbStructName typeName typeArgs
          TOpaque{typeArgs = [elemType], ..} | elem typeName sET_TYPES
@@ -644,9 +644,9 @@ typeNormalizeForFlatBuf x = typeMap _typeNormalizeForFlatBuf $ typ x
 _typeNormalizeForFlatBuf :: (?d::DatalogProgram) => Type -> Type
 _typeNormalizeForFlatBuf t =
     case t' of
-         rt@TOpaque{typeArgs = [innerType],..} | isSharedRef ?d rt
-                                               -> innerType
-         _                                     -> t'
+         rt@TOpaque{typeArgs = [innerType]} | isSharedRef ?d rt
+                                            -> innerType
+         _                                  -> t'
     where t' = typ'' ?d t
 
 {- Functions to work with the FlatBuffers-generated Java API. -}
@@ -689,7 +689,7 @@ jFBWriteType nested x =
                            -> "int"
         TBit{..} | typeWidth <= 64
                            -> "long"
-        TBit{..}           -> "int"
+        TBit{}             -> "int"
         TSigned{..} | typeWidth <= 8
                            -> "byte"
         TSigned{..} | typeWidth <= 16
@@ -698,9 +698,9 @@ jFBWriteType nested x =
                            -> "int"
         TSigned{..} | typeWidth <= 64
                            -> "long"
-        TSigned{..}        -> "int"
-        TTuple{..}         -> "int"
-        TUser{..}          -> "int"
+        TSigned{}          -> "int"
+        TTuple{}           -> "int"
+        TUser{}            -> "int"
         TOpaque{typeArgs = [elemType], ..} | elem typeName sET_TYPES
                            -> if nested
                                  then "int"
@@ -746,7 +746,7 @@ jConvType rw x =
                            -> "int"
         TBit{..} | typeWidth <= 64
                            -> "long"
-        TBit{..}           -> "java.math.BigInteger"
+        TBit{}             -> "java.math.BigInteger"
         TSigned{..} | typeWidth <= 8
                            -> "byte"
         TSigned{..} | typeWidth <= 16
@@ -755,7 +755,7 @@ jConvType rw x =
                            -> "int"
         TSigned{..} | typeWidth <= 64
                            -> "long"
-        TSigned{..}        -> "java.math.BigInteger"
+        TSigned{}          -> "java.math.BigInteger"
         TTuple{..} | rw == Read
                            -> fbTupleName typeTupArgs <> "Reader"
                    | rw == Write
@@ -858,16 +858,16 @@ jConv2FBType fbctx e t =
             TFunction{}        -> "fbbuilder.createString(" <> e <> ")"
             TBit{..} | typeWidth <= 64
                                -> e
-            TBit{..}           -> biguint
+            TBit{}             -> biguint
             TSigned{..} | typeWidth <= 64
                                -> e
-            TSigned{..}        -> bigint
-            TTuple{..}         -> e <> ".offset"
-            ut@TUser{..} | typeHasUniqueConstructor ut
+            TSigned{}          -> bigint
+            TTuple{}           -> e <> ".offset"
+            ut@TUser{} | typeHasUniqueConstructor ut
                                -> e <> ".offset"
-                         | otherwise
+                       | otherwise
                                -> e <> ".type," <+> e <> ".offset"
-            ot@TOpaque{typeArgs = [_], ..}
+            ot@TOpaque{typeArgs = [_]}
                                -> pp builderClass <> ".create_" <> mkTypeIdentifier ot <> (parens $ "fbbuilder," <+> e)
             ot@TOpaque{typeArgs = [_,_], ..} | typeName == mAP_TYPE
                                -> pp builderClass <> ".create_" <> mkTypeIdentifier ot <> (parens $ "fbbuilder," <+> e)
@@ -913,10 +913,10 @@ jConvCreateTable t cons =
          TString{}          -> jConv2FBType FBUnion "v" t
          TBit{..} | typeWidth <= 64
                             -> prim
-         TBit{..}           -> jConv2FBType FBUnion "v" t
+         TBit{}             -> jConv2FBType FBUnion "v" t
          TSigned{..} | typeWidth <= 64
                             -> prim
-         TSigned{..}        -> jConv2FBType FBUnion "v" t
+         TSigned{}          -> jConv2FBType FBUnion "v" t
          TTuple{..}         ->
              jFBCallConstructor (typeTableName t) (mapIdx (\at i -> jConv2FBType (FBField (typeTableName t) ("a" ++ show i)) ("a" <> pp i) at)
                                                           typeTupArgs)
@@ -930,7 +930,7 @@ jConvCreateTable t cons =
                  [ jFBPackage <> "." <> fbStructName typeName typeArgs <> "." <> cons_name
                  , jFBCallConstructor cons_name
                                       (map (\a -> jConv2FBType (FBField cons_name (name a)) (pp $ name a) $ typ a) consArgs)]
-         TOpaque{..} -> jConv2FBType FBUnion "v" t
+         TOpaque{} -> jConv2FBType FBUnion "v" t
          t'                 -> error $ "FlatBuffer.jConvCreateTable: unsupported type " ++ show t'
 
     where
@@ -985,7 +985,7 @@ mkJavaBuilder = ("ddlog" </> ?prog_name </> builderClass <.> "java",
                (vcat $ map mk_type_factory progTypesToSerialize)))
     where
     -- Create constructor methods
-    mk_type_factory t@TUser{..} | typeHasUniqueConstructor t =
+    mk_type_factory t@TUser{} | typeHasUniqueConstructor t =
         -- Unique constructor: generate a single 'create_XXX' method with the
         -- name that matches type name, not constructor name.
         "public" <+> tname <+> "create_" <> typeTableName t <> "(" <> commaSep (map (\arg -> jConvTypeW arg <+> pp (name arg)) consArgs) <> ")" $$
@@ -1169,7 +1169,7 @@ mkJavaQuery = ("ddlog" </> ?prog_name </> queryClass <.> "java",
                           jFBCallConstructor table
                                              (mapIdx (\v i -> jConv2FBType (FBField table ("a" ++ show i)) (arg v) (typ v)) vs)
 
-    mk_dump idx@Index{..} =
+    mk_dump idx@Index{} =
         "public static void dump" <> mkIdxId idx <>
             (parens $ commaSep
              $ ["DDlogAPI hddlog",
@@ -1185,7 +1185,7 @@ mkJavaQuery = ("ddlog" </> ?prog_name </> queryClass <.> "java",
         rel = idxRelation ?d idx
 
     -- deserialize response
-    deserialize idx@Index{..} =
+    deserialize idx@Index{} =
             "try {"                                                                                                 $$
             "    " <> jFBPackage <> ".__Values vals =" <+> jFBPackage <> ".__Values.getRootAs__Values(resfb.buf);"  $$
             "    int len = vals.valuesLength();"                                                                    $$
@@ -1273,10 +1273,10 @@ mkCommandReader = ("ddlog" </> ?prog_name </> "CommandReader" <.> "java",
                 progIORelations
 
 typeFlatbufJavaWriter :: (?d::DatalogProgram, ?prog_name::String) => Type -> Maybe (FilePath, Doc)
-typeFlatbufJavaWriter t@TUser{..} = Just ( "ddlog" </> ?prog_name </> (render class_name) <.> "java"
-                                         , "// Automatically generated by the DDlog compiler."  $$
-                                           "package ddlog." <> pp ?prog_name <> ";"             $$
-                                           code)
+typeFlatbufJavaWriter t@TUser{} = Just ( "ddlog" </> ?prog_name </> (render class_name) <.> "java"
+                                       , "// Automatically generated by the DDlog compiler."  $$
+                                         "package ddlog." <> pp ?prog_name <> ";"             $$
+                                         code)
     where
     class_name = jConvTypeW t
     type_type = if length (typeCons $ typ' ?d t) <= 127
@@ -1294,9 +1294,9 @@ typeFlatbufJavaWriter t@TUser{..} = Just ( "ddlog" </> ?prog_name </> (render cl
                    "protected" <+> type_type <+> "type;"                                                                              $$
                    "protected int offset;")
 
-typeFlatbufJavaWriter t@TTuple{..} = Just ( "ddlog" </> ?prog_name </> (render class_name) <.> "java"
-                                         , "package ddlog." <> pp ?prog_name <> ";" $$
-                                           code)
+typeFlatbufJavaWriter t@TTuple{} = Just ( "ddlog" </> ?prog_name </> (render class_name) <.> "java"
+                                        , "package ddlog." <> pp ?prog_name <> ";" $$
+                                          code)
     where
     class_name = jConvTypeW t
     code = "public final class" <+> class_name $$
@@ -1415,14 +1415,14 @@ jReadField nesting fbctx e t =
                       TFunction{}        -> e'
                       TBit{..} | typeWidth <= 64
                                          -> (parens $ jConvTypeR t) <> e'
-                      TBit{..}           -> biguint
+                      TBit{}             -> biguint
                       TSigned{..} | typeWidth <= 64
                                          -> (parens $ jConvTypeR t) <> e'
-                      TSigned{..}        -> bigint
-                      TTuple{..}         -> "new" <+> jConvTypeR t <> parens e'
-                      TUser{..} | typeHasUniqueConstructor t
+                      TSigned{}          -> bigint
+                      TTuple{}           -> "new" <+> jConvTypeR t <> parens e'
+                      TUser{} | typeHasUniqueConstructor t
                                          -> "new" <+> jConvTypeR t <> parens e'
-                                | otherwise
+                              | otherwise
                                          -> jConvTypeR t <> ".init" <> parens e'
                       TOpaque{typeArgs = [elemType], ..} | elem typeName sET_TYPES ->
                           let elem_type = jConvObjTypeR elemType
@@ -1513,7 +1513,7 @@ rustValueFromFlatbuf =
                      pp (relIdentifier ?d rel) <+> "=> Ok(" <>
                          "<" <> R.mkType ?d False relType <> ">::from_flatbuf(fb::" <> typeTableName relType <> "::init_from_table(v))?.into_ddvalue()),")
                     progIORelations
-    idx_enums = map (\idx@Index{..} ->
+    idx_enums = map (\idx@Index{} ->
                      let t = idxKeyType idx in
                      pp (idxIdentifier ?d idx) <+> "=> Ok(" <>
                          "<" <> R.mkType ?d False t <> ">::from_flatbuf(fb::" <> typeTableName t <> "::init_from_table(v))?.into_ddvalue()),")
@@ -1523,7 +1523,7 @@ rustValueFromFlatbuf =
                     "    (fb::__Value::" <> typeTableName relType <> ", unsafe {<" <+> R.mkType ?d False rel <> ">::from_ddvalue_ref(val) }.to_flatbuf_table(fbb).as_union_value())"   $$
                     "},")
                    $ progIORelations
-    idx_to_enums = map (\idx@Index{..} ->
+    idx_to_enums = map (\idx@Index{} ->
                     let t = relType $ idxRelation ?d idx in
                     pp (idxIdentifier ?d idx) <+> "=> {"                                                                           $$
                     "    (fb::__Value::" <> typeTableName t <> ", unsafe {<" <+> R.mkType ?d False t <> ">::from_ddvalue_ref(val) }.to_flatbuf_table(fbb).as_union_value())"   $$
@@ -1698,8 +1698,8 @@ rustTypeFromFlatbuf t@TTuple{..} =
 -- and 'ToFlatBuffer<>' for containers in their corresponding libraries.  Here we
 -- additionally generate 'FromFlatBuffer<fb::>' for wrapper tables,
 -- 'ToFlatBufferVectorElement<>', and 'ToFlatBufferTable<>'.
-rustTypeFromFlatbuf t@TOpaque{..} | isSharedRef ?d t = empty
-                                  | otherwise =
+rustTypeFromFlatbuf t@TOpaque{} | isSharedRef ?d t = empty
+                                | otherwise =
     "impl <'a> FromFlatBuffer<fb::" <> tname <> "<'a>> for" <+> rtype <+> "{"                               $$
     "    fn from_flatbuf(v: fb::" <> tname <> "<'a>) -> Response<Self> {"                                   $$
     "        let vec = v.v().ok_or_else(||format!(\"" <> rtype <> "::from_flatbuf: invalid buffer: failed to extract nested vector\"))?;"       $$

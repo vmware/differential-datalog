@@ -652,9 +652,9 @@ rhsIsCondition RHSCondition{} = True
 rhsIsCondition _              = False
 
 rhsIsFilterCondition :: RuleRHS -> Bool
-rhsIsFilterCondition (RHSCondition (E ESet{..})) = False
-rhsIsFilterCondition (RHSCondition _)            = True
-rhsIsFilterCondition _                           = False
+rhsIsFilterCondition (RHSCondition (E ESet{})) = False
+rhsIsFilterCondition (RHSCondition _)          = True
+rhsIsFilterCondition _                         = False
 
 rhsIsAssignment :: RuleRHS -> Bool
 rhsIsAssignment rhs = rhsIsCondition rhs && not (rhsIsFilterCondition rhs)
@@ -1386,38 +1386,38 @@ instance PP ECtx where
                     CtxRuleRInspect{..}   -> "CtxRuleRInspect   " <+> rule <+> pp ctxIdx
                     CtxRuleRProject{..}   -> "CtxRuleRProject   " <+> rule <+> pp ctxIdx
                     CtxRuleRGroupBy{..}   -> "CtxRuleRGroupBy   " <+> rule <+> pp ctxIdx
-                    CtxKey{..}            -> "CtxKey            " <+> rel
+                    CtxKey{}              -> "CtxKey            " <+> rel
                     CtxIndex{..}          -> "CtxIndex          " <+> pp (name ctxIndex)
                     CtxFunc{..}           -> "CtxFunc           " <+> (pp $ name ctxFunc)
                     CtxApplyArg{..}       -> "CtxApplyArg       " <+> epar <+> pp ctxIdx
-                    CtxApplyFunc{..}      -> "CtxApplyFunc      " <+> epar
-                    CtxField{..}          -> "CtxField          " <+> epar
-                    CtxTupField{..}       -> "CtxTupField       " <+> epar
+                    CtxApplyFunc{}        -> "CtxApplyFunc      " <+> epar
+                    CtxField{}            -> "CtxField          " <+> epar
+                    CtxTupField{}         -> "CtxTupField       " <+> epar
                     CtxStruct{..}         -> "CtxStruct         " <+> epar <+> pp ctxArg
                     CtxTuple{..}          -> "CtxTuple          " <+> epar <+> pp ctxIdx
-                    CtxSlice{..}          -> "CtxSlice          " <+> epar
-                    CtxMatchExpr{..}      -> "CtxMatchExpr      " <+> epar
+                    CtxSlice{}            -> "CtxSlice          " <+> epar
+                    CtxMatchExpr{}        -> "CtxMatchExpr      " <+> epar
                     CtxMatchPat{..}       -> "CtxMatchPat       " <+> epar <+> pp ctxIdx
                     CtxMatchVal{..}       -> "CtxMatchVal       " <+> epar <+> pp ctxIdx
-                    CtxSeq1{..}           -> "CtxSeq1           " <+> epar
-                    CtxSeq2{..}           -> "CtxSeq2           " <+> epar
-                    CtxITEIf{..}          -> "CtxITEIf          " <+> epar
-                    CtxITEThen{..}        -> "CtxITEThen        " <+> epar
-                    CtxITEElse{..}        -> "CtxITEElse        " <+> epar
-                    CtxForIter{..}        -> "CtxForIter        " <+> epar
-                    CtxForBody{..}        -> "CtxForBody        " <+> epar
-                    CtxSetL{..}           -> "CtxSetL           " <+> epar
-                    CtxSetR{..}           -> "CtxSetR           " <+> epar
-                    CtxReturn{..}         -> "CtxReturn         " <+> epar
-                    CtxBinOpL{..}         -> "CtxBinOpL         " <+> epar
-                    CtxBinOpR{..}         -> "CtxBinOpR         " <+> epar
-                    CtxUnOp{..}           -> "CtxUnOp           " <+> epar
-                    CtxBinding{..}        -> "CtxBinding        " <+> epar
-                    CtxTyped{..}          -> "CtxTyped          " <+> epar
-                    CtxAs{..}             -> "CtxAs             " <+> epar
-                    CtxRef{..}            -> "CtxRef            " <+> epar
-                    CtxTry{..}            -> "CtxTry            " <+> epar
-                    CtxClosure{..}        -> "CtxClosure        " <+> epar
+                    CtxSeq1{}             -> "CtxSeq1           " <+> epar
+                    CtxSeq2{}             -> "CtxSeq2           " <+> epar
+                    CtxITEIf{}            -> "CtxITEIf          " <+> epar
+                    CtxITEThen{}          -> "CtxITEThen        " <+> epar
+                    CtxITEElse{}          -> "CtxITEElse        " <+> epar
+                    CtxForIter{}          -> "CtxForIter        " <+> epar
+                    CtxForBody{}          -> "CtxForBody        " <+> epar
+                    CtxSetL{}             -> "CtxSetL           " <+> epar
+                    CtxSetR{}             -> "CtxSetR           " <+> epar
+                    CtxReturn{}           -> "CtxReturn         " <+> epar
+                    CtxBinOpL{}           -> "CtxBinOpL         " <+> epar
+                    CtxBinOpR{}           -> "CtxBinOpR         " <+> epar
+                    CtxUnOp{}             -> "CtxUnOp           " <+> epar
+                    CtxBinding{}          -> "CtxBinding        " <+> epar
+                    CtxTyped{}            -> "CtxTyped          " <+> epar
+                    CtxAs{}               -> "CtxAs             " <+> epar
+                    CtxRef{}              -> "CtxRef            " <+> epar
+                    CtxTry{}              -> "CtxTry            " <+> epar
+                    CtxClosure{}          -> "CtxClosure        " <+> epar
                     CtxTop                -> error "pp CtxTop"
 
 instance Show ECtx where
