@@ -29,6 +29,7 @@ import Prelude hiding(readFile, writeFile)
 import Data.Graph.Inductive
 import Control.Monad.Except
 import Data.List
+import Data.List.Split
 import Data.Maybe
 import Data.Bits
 import Data.Word
@@ -218,3 +219,8 @@ runCommandReportingErr process_name command args working_dir = do
                     ++ proc_stdout
                     ++ "\nstderr:\n"
                     ++ proc_stderr
+
+-- Replace all occurrences of 'old' with 'replacement' without using the
+-- non-Windows-compatibles 'MissingH' crate.
+replace :: (Eq a) => [a] -> [a] -> [a] -> [a]
+replace old replacement = intercalate replacement . splitOn old

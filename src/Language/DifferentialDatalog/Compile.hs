@@ -48,7 +48,6 @@ import Data.List
 import Data.Bits hiding (isSigned)
 import Data.List.Split
 import Data.FileEmbed
-import Data.String.Utils
 import System.FilePath
 import System.Directory
 import qualified Data.ByteString.Char8 as BS

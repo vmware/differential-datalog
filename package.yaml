@@ -27,7 +27,8 @@ dependencies:
 - extra
 - fgl
 - split
-- MissingH
+# MissingH is not compatible with Windows due to regex-posix dependency.
+#- MissingH
 - raw-strings-qq
 - tuple
 - file-embed
