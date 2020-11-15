@@ -206,11 +206,11 @@ compilerTest progress file cli_args = do
     let dir = takeDirectory fname
 
     -- compile generated Java code
-    classpath <- (maybe "" (":" ++ )) <$> lookupEnv "CLASSPATH"
+    classpath <- (maybe "" (searchPathSeparator:)) <$> lookupEnv "CLASSPATH"
     p <- (maybe "" id) <$> lookupEnv "PATH"
     let javac_proc = (shell $ "javac ddlog" </> specname </> "*.java") {
                           cwd = Just $ dir </> rustProjectDir specname </> "flatbuf" </> "java",
-                          env = Just [("CLASSPATH", (dir </> "../../java:.") ++ classpath),
+                          env = Just [("CLASSPATH", (dir </> "../../java" ++ searchPathSeparator:".") ++ classpath),
                                       ("PATH", p)]
                      }
     (jcode, jstdo, jstde) <- readCreateProcessWithExitCode javac_proc ""
@@ -315,13 +315,15 @@ goldenVsFiles :: TestName -> [FilePath] -> [FilePath] -> [Bool] -> IO () -> Test
 goldenVsFiles name ref new should_sort act =
   goldenTest name
              (do {refs <- mapM readDecompress ref; evaluate $ rnf refs; return refs})
-             (act >> do {news <- mapM BS.readFile new; evaluate $ rnf news; return news})
+             (act >> do {news <- mapM (BS.readFile) new; evaluate $ rnf news; return $ map (BS.filter (/= 13)) news})
              cmp upd
   where
   readDecompress :: FilePath -> IO BS.ByteString
   readDecompress f = do
     dat <- BS.readFile f
-    return $ if takeExtension f == ".gz"
+    -- Filter CR characters (ASCII 13) to avoid errors when comparing
+    -- UNIX-generated reference output with actual output on Windows.
+    return $ BS.filter (/= 13) $  if takeExtension f == ".gz"
        then LBS.toStrict $ GZ.decompress $ LBS.fromStrict dat
        else dat
   writeCompress :: FilePath -> BS.ByteString -> IO ()

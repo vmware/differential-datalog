@@ -56,6 +56,7 @@ env:
 #addons: {apt: {packages: [ghc-8.2.2], sources: [hvr-ghc]}}
 
 os:
+  - windows
   - osx
   - linux
 
@@ -71,15 +72,19 @@ addons:
       #- python3-pip
 
 before_install:
+- uname -s
 #- python3 -m pip install --user parglare==0.12.0
 # Download and unpack the stack executable
 - mkdir -p ~/.local/bin
 - export PATH=$HOME/.local/bin:$PATH
 - ./tools/install-stack.sh
 - ./tools/install-flatbuf.sh
-- export CLASSPATH=$CLASSPATH:`pwd`/flatbuffers/java
+- export CLASSPATH=`pwd`/flatbuffers/java
 # Travis does not set JAVA_HOME on MacOS
-- if [ `uname -s` = Darwin ]; then export JAVA_HOME=`/usr/libexec/java_home`; fi
+- if [ `uname -s` = Darwin ]; then export JAVA_HOME=`/usr/libexec/java_home`; fi  
+# Install Java on Windows (Travis currently does not support Java in the Windows
+# environment).
+- if ( [ "$(uname)" != "Darwin" ] && [ "$(uname)" != "Linux" ] ); then export JAVA_HOME=${JAVA_HOME:-/c/jdk} && export PATH=${JAVA_HOME}/bin:${PATH} && choco install jdk8 -params 'installdir=c:\\jdk' -y; fi
 #- if [ `uname -s` = Darwin -a x${TOOL} = xrun_souffle_tests ]; then brew install subversion; fi
 
 install:

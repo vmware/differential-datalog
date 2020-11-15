@@ -78,7 +78,6 @@ import Text.PrettyPrint
 import Control.Monad.Except
 import System.FilePath
 --import Debug.Trace
-import qualified Data.ByteString.Char8 as BS
 
 import Language.DifferentialDatalog.Config
 import Language.DifferentialDatalog.Syntax
@@ -214,8 +213,8 @@ compileFlatBufferRustBindings :: (?cfg::Config) => DatalogProgram -> String -> F
 compileFlatBufferRustBindings d prog_name dir = do
     let ?d = d
     let ?prog_name = prog_name
-    let types_template = replace "datalog_example" prog_name $ BS.unpack $(embedFile "rust/template/types/flatbuf.rs")
-    let value_template = replace "datalog_example" prog_name $ BS.unpack $(embedFile "rust/template/src/flatbuf.rs")
+    let types_template = replace "datalog_example" prog_name $ R.unpackFixNewline $(embedFile "rust/template/types/flatbuf.rs")
+    let value_template = replace "datalog_example" prog_name $ R.unpackFixNewline $(embedFile "rust/template/src/flatbuf.rs")
     updateFile (dir </> "types/flatbuf.rs") $ render $
         (pp types_template)                                              $$
         "pub use flatbuf_generated::ddlog::" <> rustFBModule <+> " as fb;"   $$
