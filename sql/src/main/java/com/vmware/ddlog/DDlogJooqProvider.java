@@ -144,7 +144,7 @@ public class DDlogJooqProvider implements MockDataProvider {
     private void onChange(final DDlogCommand<DDlogRecord> command) {
         final int relationId = command.relid();
         final String relationName = dDlogAPI.getTableName(relationId);
-        final String tableName = relationName.substring(1).toUpperCase();
+        final String tableName = relationNameToTableName(relationName);
         final List<Field<?>> fields = tablesToFields.get(tableName);
         final DDlogRecord record = command.value();
         final Record jooqRecord = dslContext.newRecord(fields);
@@ -356,6 +356,13 @@ public class DDlogJooqProvider implements MockDataProvider {
      */
     private static String ddlogRelationName(final String tableName) {
         return "R" + tableName.toLowerCase();
+    }
+
+    /*
+     * This corresponds to the naming convention followed by the SQL -> DDlog compiler
+     */
+    private static String relationNameToTableName(final String relationName) {
+        return relationName.substring(1).toUpperCase();
     }
 
     /*
