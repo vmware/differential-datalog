@@ -382,6 +382,7 @@ public class DDlogJooqProvider implements MockDataProvider {
         if (isStruct) {
             final String structName = record.getStructName();
             if (structName.equals(DDLOG_NONE)) {
+                jooqRecord.setValue(field,null);
                 return;
             }
             if (structName.equals(DDLOG_SOME)) {
