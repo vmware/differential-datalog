@@ -112,48 +112,49 @@ pub trait DDValConvert: Sized {
 macro_rules! decl_ddval_convert {
     ($($t:ty),* $(,)?) => {
         $(impl $crate::ddval::DDValConvert for $t {
-            unsafe fn from_ddval_ref(v: &$crate::ddval::DDVal) -> &Self {
-                use ::std::mem::size_of;
+            unsafe fn from_ddval_ref(value: &$crate::ddval::DDVal) -> &Self {
+                use ::std::mem::{size_of, align_of};
 
-                if size_of::<Self>() <= size_of::<usize>() {
-                    &*(&v.v as *const usize as *const Self)
+                if size_of::<Self>() <= size_of::<usize>() && align_of::<Self>() <= align_of::<usize>() {
+                    &*<*const usize>::cast::<Self>(&value.v)
                 } else {
-                    &*(v.v as *const Self)
+                    &*(value.v as *const Self)
                 }
             }
 
-            unsafe fn from_ddval(v: $crate::ddval::DDVal) -> Self {
+            unsafe fn from_ddval(value: $crate::ddval::DDVal) -> Self {
                 use ::std::{
-                    mem::{self, size_of, transmute},
+                    mem::{size_of, align_of},
                     sync::Arc,
                 };
 
-                if size_of::<Self>() <= size_of::<usize>() {
-                    let res: Self = transmute::<[u8; size_of::<Self>()], Self>(
-                        *(&v.v as *const usize as *const [u8; size_of::<Self>()]),
-                    );
-                    mem::forget(v);
-
-                    res
+                if size_of::<Self>() <= size_of::<usize>() && align_of::<Self>() <= align_of::<usize>() {
+                    // Use an unaligned read since the value inside of the DDVal
+                    // is potentially unaligned
+                    <*const usize>::cast::<Self>(&value.v).read_unaligned()
                 } else {
-                    let arc = Arc::from_raw(v.v as *const Self);
+                    let arc = Arc::from_raw(value.v as *const Self);
                     Arc::try_unwrap(arc).unwrap_or_else(|a| (*a).clone())
                 }
             }
 
             fn into_ddval(self) -> $crate::ddval::DDVal {
                 use ::std::{
-                    mem::{size_of, transmute},
+                    mem::{size_of, align_of},
                     sync::Arc,
                 };
                 use $crate::ddval::DDVal;
 
-                if size_of::<Self>() <= size_of::<usize>() {
+                // The size and alignment of the `T` must be less than or equal to a
+                // `usize`'s, otherwise we store it within an `Arc`
+                if size_of::<Self>() <= size_of::<usize>() && align_of::<Self>() <= align_of::<usize>() {
                     let mut v: usize = 0;
+                    // Safety: The value we're writing into the `usize` potentially
+                    //         has a different alignment than a `usize`, so we use
+                    //         an unaligned write to avoid UB
                     unsafe {
-                        *(&mut v as *mut usize as *mut [u8; size_of::<Self>()]) =
-                            transmute::<Self, [u8; size_of::<Self>()]>(self);
-                    };
+                        <*mut usize>::cast::<Self>(&mut v).write_unaligned(self);
+                    }
 
                     DDVal { v }
                 } else {
@@ -173,7 +174,7 @@ macro_rules! decl_ddval_convert {
                     cmp::Ordering,
                     fmt::{self, Debug, Display, Formatter},
                     hash::{Hash, Hasher},
-                    mem::{self, size_of, transmute, ManuallyDrop},
+                    mem::{self, size_of, align_of, ManuallyDrop},
                     sync::Arc,
                 };
                 use $crate::{
@@ -182,7 +183,7 @@ macro_rules! decl_ddval_convert {
                 };
 
                 fn clone(this: &DDVal) -> DDVal {
-                    if size_of::<$t>() <= size_of::<usize>() {
+                    if size_of::<$t>() <= size_of::<usize>() && align_of::<$t>() <= align_of::<usize>() {
                         unsafe { <$t>::from_ddval_ref(this) }.clone().into_ddval()
                     } else {
                         let arc = unsafe { ManuallyDrop::new(Arc::from_raw(this.v as *const $t)) };
@@ -234,12 +235,12 @@ macro_rules! decl_ddval_convert {
                 }
 
                 fn drop(this: &mut DDVal) {
-                    if size_of::<$t>() <= size_of::<usize>() {
-                        // Allow `_val`'s Drop impl to run automatically
+                    if size_of::<$t>() <= size_of::<usize>() && align_of::<$t>() <= align_of::<usize>() {
+                        // Allow the inner value's Drop impl to run automatically
                         let _val = unsafe {
-                            transmute::<[u8; size_of::<$t>()], $t>(
-                                *(&this.v as *const usize as *const [u8; size_of::<$t>()]),
-                            );
+                            // Use an unaligned read since the value inside of the DDVal
+                            // is potentially unaligned
+                            <*const usize>::cast::<$t>(&this.v).read_unaligned()
                         };
                     } else {
                         let arc = unsafe { Arc::from_raw(this.v as *const $t) };
@@ -248,7 +249,9 @@ macro_rules! decl_ddval_convert {
                 }
 
                 fn ddval_serialize(this: &DDVal) -> &dyn erased_serde::Serialize {
-                    (unsafe { <$t>::from_ddval_ref(this) }) as &dyn erased_serde::Serialize
+                    unsafe {
+                        <$t>::from_ddval_ref(this) as &dyn erased_serde::Serialize
+                    }
                 }
 
                 fn type_id(_this: &DDVal) -> TypeId {
