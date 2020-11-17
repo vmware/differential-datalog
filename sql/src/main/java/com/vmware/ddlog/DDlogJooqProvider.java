@@ -44,8 +44,11 @@ import javax.annotation.Nullable;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.jooq.impl.DSL.field;
 
@@ -94,6 +97,7 @@ public class DDlogJooqProvider implements MockDataProvider {
     private final QueryVisitor queryVisitor = new QueryVisitor();
     private final ParseLiterals parseLiterals = new ParseLiterals();
     private final TranslateCreateTableDialect translateCreateTableDialect = new TranslateCreateTableDialect();
+    private final Map<String, Set<Record>> materializedViews = new ConcurrentHashMap<>();
 
     public DDlogJooqProvider(final DDlogAPI dDlogAPI, final List<String> sqlStatements) {
         this.dDlogAPI = dDlogAPI;
@@ -130,11 +134,34 @@ public class DDlogJooqProvider implements MockDataProvider {
             for (int i = 0; i < batchSql.length; i++) {
                 mock[i] = executeOne(batchSql[i]);
             }
-            dDlogAPI.transactionCommit();
+            dDlogAPI.transactionCommitDumpChanges(this::onChange);
         } catch (final DDlogException e) {
             throw new RuntimeException(e);
         }
         return mock;
+    }
+
+    private void onChange(final DDlogCommand<DDlogRecord> command) {
+        final int relationId = command.relid();
+        final String relationName = dDlogAPI.getTableName(relationId);
+        final String tableName = relationName.substring(1).toUpperCase();
+        final List<Field<?>> fields = tablesToFields.get(tableName);
+        final DDlogRecord record = command.value();
+        final Record jooqRecord = dslContext.newRecord(fields);
+        for (int i = 0; i < fields.size(); i++) {
+            structToValue(fields.get(i), record.getStructField(i), jooqRecord);
+        }
+        final Set<Record> materializedView = materializedViews.computeIfAbsent(tableName, (k) -> new LinkedHashSet<>());
+        switch (command.kind()) {
+            case Insert:
+                materializedView.add(jooqRecord);
+                break;
+            case DeleteKey:
+                throw new RuntimeException("Did not expect DeleteKey command type");
+            case DeleteVal:
+                materializedView.remove(jooqRecord);
+                break;
+        }
     }
 
     private MockResult executeOne(final String sql) throws SQLException {
@@ -166,19 +193,7 @@ public class DDlogJooqProvider implements MockDataProvider {
                 throw new RuntimeException(String.format("Unknown table %s queried in statement: %s", tableName, sql));
             }
             final Result<Record> result = dslContext.newResult(fields);
-            try {
-                dDlogAPI.dumpTable(ddlogRelationName(tableName), (record, l) -> {
-                    final Record jooqRecord = dslContext.newRecord(fields);
-                    final Object[] returnValue = new Object[fields.size()];
-                    for (int i = 0; i < fields.size(); i++) {
-                        returnValue[i] = structToValue(fields.get(i), record.getStructField(i));
-                    }
-                    jooqRecord.fromArray(returnValue);
-                    result.add(jooqRecord);
-                });
-            } catch (final DDlogException e) {
-                throw new RuntimeException(e);
-            }
+            result.addAll(materializedViews.computeIfAbsent(tableName.toUpperCase(), (k) -> new LinkedHashSet<>()));
             return new MockResult(1, result);
         }
 
@@ -362,23 +377,36 @@ public class DDlogJooqProvider implements MockDataProvider {
     }
 
     @Nullable
-    private static Object structToValue(final Field<?> field, final DDlogRecord record) {
+    private static void structToValue(final Field<?> field, final DDlogRecord record, final Record jooqRecord) {
+        final boolean isStruct = record.isStruct();
+        if (isStruct) {
+            final String structName = record.getStructName();
+            if (structName.equals(DDLOG_NONE)) {
+                return;
+            }
+            if (structName.equals(DDLOG_SOME)) {
+                toValue(field, record.getStructField(0), jooqRecord);
+                return;
+            }
+        }
+        toValue(field, record, jooqRecord);
+    }
+
+    private static void toValue(final Field<?> field, final DDlogRecord record, final Record jooqRecord) {
         final Class<?> cls = field.getType();
-        if (record.isStruct() && record.getStructName().equals(DDLOG_NONE)) {
-            return null;
-        }
-        if (record.isStruct() && record.getStructName().equals(DDLOG_SOME)) {
-            return structToValue(field, record.getStructField(0));
-        }
         switch (cls.getName()) {
             case BOOLEAN_TYPE:
-                return record.getBoolean();
+                jooqRecord.setValue((Field<Boolean>) field, record.getBoolean());
+                return;
             case INTEGER_TYPE:
-                return record.getInt().intValue();
+                jooqRecord.setValue((Field<Integer>) field, record.getInt().intValue());
+                return;
             case LONG_TYPE:
-                return record.getInt().longValue();
+                jooqRecord.setValue((Field<Long>) field, record.getInt().longValue());
+                return;
             case STRING_TYPE:
-                return record.getString();
+                jooqRecord.setValue((Field<String>) field, record.getString());
+                return;
             default:
                 throw new RuntimeException("Unknown datatype " + cls.getName());
         }
