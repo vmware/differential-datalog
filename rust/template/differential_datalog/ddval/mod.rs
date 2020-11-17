@@ -59,7 +59,12 @@ pub use ddval_convert::DDValConvert;
 pub use ddvalue::DDValue;
 
 use crate::record::Record;
-use std::{any::TypeId, fmt::Formatter, hash::Hasher};
+use std::{
+    any::TypeId,
+    cmp::Ordering,
+    fmt::{Error, Formatter},
+    hash::Hasher,
+};
 
 /// Type-erased representation of a value.  Can store the actual value or a pointer to it.
 /// This could be just a `usize`, but we wrap it in a struct as we don't want it to implement
@@ -72,13 +77,20 @@ pub struct DDVal {
 pub struct DDValMethods {
     pub clone: fn(this: &DDVal) -> DDVal,
     pub into_record: fn(this: DDVal) -> Record,
-    pub eq: fn(this: &DDVal, other: &DDVal) -> bool,
-    pub partial_cmp: fn(this: &DDVal, other: &DDVal) -> Option<std::cmp::Ordering>,
-    pub cmp: fn(this: &DDVal, other: &DDVal) -> std::cmp::Ordering,
+
+    /// Safety: The types of the values contained in `this` and `other` must be the same
+    pub eq: unsafe fn(this: &DDVal, other: &DDVal) -> bool,
+
+    /// Safety: The types of the values contained in `this` and `other` must be the same
+    pub partial_cmp: unsafe fn(this: &DDVal, other: &DDVal) -> Option<Ordering>,
+
+    /// Safety: The types of the values contained in `this` and `other` must be the same
+    pub cmp: unsafe fn(this: &DDVal, other: &DDVal) -> Ordering,
+
     pub hash: fn(this: &DDVal, state: &mut dyn Hasher),
     pub mutate: fn(this: &mut DDVal, record: &Record) -> Result<(), String>,
-    pub fmt_debug: fn(this: &DDVal, f: &mut Formatter) -> Result<(), std::fmt::Error>,
-    pub fmt_display: fn(this: &DDVal, f: &mut Formatter) -> Result<(), std::fmt::Error>,
+    pub fmt_debug: fn(this: &DDVal, f: &mut Formatter) -> Result<(), Error>,
+    pub fmt_display: fn(this: &DDVal, f: &mut Formatter) -> Result<(), Error>,
     pub drop: fn(this: &mut DDVal),
     pub ddval_serialize: fn(this: &DDVal) -> &dyn erased_serde::Serialize,
     pub type_id: fn(this: &DDVal) -> TypeId,

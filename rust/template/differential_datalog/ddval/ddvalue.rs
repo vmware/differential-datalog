@@ -5,6 +5,7 @@ use crate::{
 use abomonation::Abomonation;
 use serde::ser::{Serialize, Serializer};
 use std::{
+    any::TypeId,
     cmp::Ordering,
     fmt::{self, Debug, Display, Formatter},
     hash::{Hash, Hasher},
@@ -33,6 +34,10 @@ impl DDValue {
         std::mem::forget(self);
 
         res
+    }
+
+    pub fn type_id(&self) -> TypeId {
+        (self.vtable.type_id)(&self.val)
     }
 }
 
@@ -93,7 +98,8 @@ impl Debug for DDValue {
 impl PartialOrd for DDValue {
     fn partial_cmp(&self, other: &DDValue) -> Option<Ordering> {
         if (self.vtable.type_id)(&self.val) == (other.vtable.type_id)(&other.val) {
-            (self.vtable.partial_cmp)(&self.val, &other.val)
+            // Safety: The types of both values are the same
+            unsafe { (self.vtable.partial_cmp)(&self.val, &other.val) }
         } else {
             // TODO: Should this panic instead?
             None
@@ -104,7 +110,8 @@ impl PartialOrd for DDValue {
 impl PartialEq for DDValue {
     fn eq(&self, other: &Self) -> bool {
         if (self.vtable.type_id)(&self.val) == (other.vtable.type_id)(&other.val) {
-            (self.vtable.eq)(&self.val, &other.val)
+            // Safety: The types of both values are the same
+            unsafe { (self.vtable.eq)(&self.val, &other.val) }
         } else {
             // TODO: Should this panic instead?
             false
@@ -122,7 +129,8 @@ impl Ord for DDValue {
             "attempted to compare two values of different types",
         );
 
-        (self.vtable.cmp)(&self.val, &other.val)
+        // Safety: The types of both values are the same
+        unsafe { (self.vtable.cmp)(&self.val, &other.val) }
     }
 }
 
