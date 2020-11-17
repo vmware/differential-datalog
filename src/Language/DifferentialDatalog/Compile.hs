@@ -183,7 +183,9 @@ rustLibFiles specname =
         [ (dir </> "differential_datalog/Cargo.toml"                      , $(embedFile "rust/template/differential_datalog/Cargo.toml"))
         , (dir </> "differential_datalog/callback.rs"                     , $(embedFile "rust/template/differential_datalog/callback.rs"))
         , (dir </> "differential_datalog/ddlog.rs"                        , $(embedFile "rust/template/differential_datalog/ddlog.rs"))
-        , (dir </> "differential_datalog/ddval.rs"                        , $(embedFile "rust/template/differential_datalog/ddval.rs"))
+        , (dir </> "differential_datalog/ddval/mod.rs"                    , $(embedFile "rust/template/differential_datalog/ddval/mod.rs"))
+        , (dir </> "differential_datalog/ddval/ddvalue.rs"                , $(embedFile "rust/template/differential_datalog/ddval/ddvalue.rs"))
+        , (dir </> "differential_datalog/ddval/ddval_convert.rs"          , $(embedFile "rust/template/differential_datalog/ddval/ddval_convert.rs"))
         , (dir </> "differential_datalog/int.rs"                          , $(embedFile "rust/template/differential_datalog/int.rs"))
         , (dir </> "differential_datalog/lib.rs"                          , $(embedFile "rust/template/differential_datalog/lib.rs"))
         , (dir </> "differential_datalog/profile.rs"                      , $(embedFile "rust/template/differential_datalog/profile.rs"))
@@ -942,6 +944,7 @@ mkDDValueFromRecord d@DatalogProgram{..} =
     mkRelationsTryFromStr d                                                                         $$
     mkIsOutputRels d                                                                                $$
     mkIsInputRels d                                                                                 $$
+    makeRelationsTypeId d                                                                           $$
     mkRelationsTryFromRelId d                                                                       $$
     mkRelId2Name d                                                                                  $$
     mkRelId2NameC                                                                                   $$
@@ -1040,6 +1043,22 @@ mkIsInputRels d =
     entries = map mkrel $ filter ((== RelInput) .relRole) $ M.elems $ progRelations d
     mkrel :: Relation -> Doc
     mkrel rel = "Relations::" <> rnameFlat (name rel) <> " => true,"
+
+makeRelationsTypeId :: DatalogProgram -> Doc
+makeRelationsTypeId datalog =
+    "impl Relations {"
+    $$ "    pub fn type_id(&self) -> ::std::any::TypeId {"
+    $$ "        match self {"
+    $$              (nest' $ nest' $ nest' $ vcat type_ids)
+    $$ "        }"
+    $$ "    }"
+    $$ "}"
+    where
+        type_ids = map type_id_for $ M.elems $ progRelations datalog
+
+        type_id_for :: Relation -> Doc
+        type_id_for relation = "Relations::" <> rnameFlat (name relation)
+            <+> "=> ::std::any::TypeId::of::<" <> pp (name relation) <> ">(),"
 
 -- Convert RelId to enum Relations
 mkRelationsTryFromRelId :: DatalogProgram -> Doc

@@ -27,7 +27,7 @@ use std::hash::Hash;
 use std::ops::Deref;
 use std::ptr;
 use std::result;
-use std::sync;
+use std::{any::TypeId, sync};
 
 use ordered_float::*;
 
@@ -231,6 +231,10 @@ impl Relations {
 
     pub fn is_output(&self) -> bool {
         panic!("Relations::is_output not implemented")
+    }
+
+    pub fn type_id(&self) -> TypeId {
+        panic!("Relations::type_id not implemented")
     }
 }
 
