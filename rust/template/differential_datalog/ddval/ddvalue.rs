@@ -14,7 +14,7 @@ use std::{
 /// It consists of value and associated vtable.
 pub struct DDValue {
     pub(super) val: DDVal,
-    vtable: &'static DDValMethods,
+    pub(super) vtable: &'static DDValMethods,
 }
 
 impl Drop for DDValue {
@@ -31,6 +31,7 @@ impl DDValue {
     pub fn into_ddval(self) -> DDVal {
         let res = DDVal { v: self.val.v };
         std::mem::forget(self);
+
         res
     }
 }
@@ -51,9 +52,11 @@ impl Abomonation for DDValue {
     unsafe fn entomb<W: std::io::Write>(&self, _write: &mut W) -> std::io::Result<()> {
         panic!("DDValue::entomb: not implemented")
     }
+
     unsafe fn exhume<'a, 'b>(&'a mut self, _bytes: &'b mut [u8]) -> Option<&'b mut [u8]> {
         panic!("DDValue::exhume: not implemented")
     }
+
     fn extent(&self) -> usize {
         panic!("DDValue::extent: not implemented")
     }
@@ -89,20 +92,36 @@ impl Debug for DDValue {
 
 impl PartialOrd for DDValue {
     fn partial_cmp(&self, other: &DDValue) -> Option<Ordering> {
-        (self.vtable.partial_cmp)(&self.val, &other.val)
+        if (self.vtable.type_id)(&self.val) == (other.vtable.type_id)(&other.val) {
+            (self.vtable.partial_cmp)(&self.val, &other.val)
+        } else {
+            // TODO: Should this panic instead?
+            None
+        }
     }
 }
 
 impl PartialEq for DDValue {
     fn eq(&self, other: &Self) -> bool {
-        (self.vtable.eq)(&self.val, &other.val)
+        if (self.vtable.type_id)(&self.val) == (other.vtable.type_id)(&other.val) {
+            (self.vtable.eq)(&self.val, &other.val)
+        } else {
+            // TODO: Should this panic instead?
+            false
+        }
     }
 }
 
 impl Eq for DDValue {}
 
 impl Ord for DDValue {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> Ordering {
+        assert_eq!(
+            (self.vtable.type_id)(&self.val),
+            (other.vtable.type_id)(&other.val),
+            "attempted to compare two values of different types",
+        );
+
         (self.vtable.cmp)(&self.val, &other.val)
     }
 }
