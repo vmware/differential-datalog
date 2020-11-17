@@ -84,129 +84,109 @@ macro_rules! decl_ddval_convert {
             }
 
             fn into_ddvalue(self) -> $crate::ddval::DDValue {
-                const VTABLE: $crate::ddval::DDValMethods = $crate::ddval::DDValMethods {
-                    clone: {
-                        fn __f(this: &$crate::ddval::DDVal) -> $crate::ddval::DDVal {
-                            if ::std::mem::size_of::<$t>() <= ::std::mem::size_of::<usize>() {
-                                unsafe { <$t>::from_ddval_ref(this) }.clone().into_ddval()
-                            } else {
-                                let arc =
-                                    unsafe { ::std::sync::Arc::from_raw(this.v as *const $t) };
-                                let res = $crate::ddval::DDVal {
-                                    v: ::std::sync::Arc::into_raw(::std::sync::Arc::clone(&arc))
-                                        as usize,
-                                };
-                                ::std::sync::Arc::into_raw(arc);
-                                res
-                            }
+                fn clone(this: &$crate::ddval::DDVal) -> $crate::ddval::DDVal {
+                    if ::std::mem::size_of::<$t>() <= ::std::mem::size_of::<usize>() {
+                        unsafe { <$t>::from_ddval_ref(this) }.clone().into_ddval()
+                    } else {
+                        let arc = unsafe {
+                            ::std::mem::ManuallyDrop::new(::std::sync::Arc::from_raw(
+                                this.v as *const $t,
+                            ))
                         };
-                        __f
-                    },
-                    into_record: {
-                        fn __f(this: $crate::ddval::DDVal) -> $crate::record::Record {
-                            unsafe { <$t>::from_ddval(this) }.into_record()
+                        let res = $crate::ddval::DDVal {
+                            v: ::std::sync::Arc::into_raw(::std::sync::Arc::clone(&arc)) as usize,
                         };
-                        __f
-                    },
-                    eq: {
-                        fn __f(this: &$crate::ddval::DDVal, other: &$crate::ddval::DDVal) -> bool {
-                            unsafe { <$t>::from_ddval_ref(this).eq(<$t>::from_ddval_ref(other)) }
-                        };
-                        __f
-                    },
-                    partial_cmp: {
-                        fn __f(
-                            this: &$crate::ddval::DDVal,
-                            other: &$crate::ddval::DDVal,
-                        ) -> Option<::std::cmp::Ordering> {
-                            unsafe {
-                                <$t>::from_ddval_ref(this).partial_cmp(<$t>::from_ddval_ref(other))
-                            }
-                        };
-                        __f
-                    },
-                    cmp: {
-                        fn __f(
-                            this: &$crate::ddval::DDVal,
-                            other: &$crate::ddval::DDVal,
-                        ) -> ::std::cmp::Ordering {
-                            unsafe { <$t>::from_ddval_ref(this).cmp(<$t>::from_ddval_ref(other)) }
-                        };
-                        __f
-                    },
-                    hash: {
-                        fn __f(
-                            this: &$crate::ddval::DDVal,
-                            mut state: &mut dyn ::std::hash::Hasher,
-                        ) {
-                            ::std::hash::Hash::hash(
-                                unsafe { <$t>::from_ddval_ref(this) },
-                                &mut state,
+
+                        res
+                    }
+                }
+
+                fn into_record(this: $crate::ddval::DDVal) -> $crate::record::Record {
+                    unsafe { <$t>::from_ddval(this) }.into_record()
+                }
+
+                fn eq(this: &$crate::ddval::DDVal, other: &$crate::ddval::DDVal) -> bool {
+                    unsafe { <$t>::from_ddval_ref(this).eq(<$t>::from_ddval_ref(other)) }
+                }
+
+                fn partial_cmp(
+                    this: &$crate::ddval::DDVal,
+                    other: &$crate::ddval::DDVal,
+                ) -> Option<::std::cmp::Ordering> {
+                    unsafe { <$t>::from_ddval_ref(this).partial_cmp(<$t>::from_ddval_ref(other)) }
+                }
+
+                fn cmp(
+                    this: &$crate::ddval::DDVal,
+                    other: &$crate::ddval::DDVal,
+                ) -> ::std::cmp::Ordering {
+                    unsafe { <$t>::from_ddval_ref(this).cmp(<$t>::from_ddval_ref(other)) }
+                }
+
+                fn hash(this: &$crate::ddval::DDVal, mut state: &mut dyn ::std::hash::Hasher) {
+                    ::std::hash::Hash::hash(unsafe { <$t>::from_ddval_ref(this) }, &mut state);
+                }
+
+                fn mutate(
+                    this: &mut $crate::ddval::DDVal,
+                    record: &$crate::record::Record,
+                ) -> Result<(), ::std::string::String> {
+                    let mut clone = unsafe { <$t>::from_ddval_ref(this) }.clone();
+                    $crate::record::Mutator::mutate(record, &mut clone)?;
+                    *this = clone.into_ddval();
+                    Ok(())
+                }
+
+                fn fmt_debug(
+                    this: &$crate::ddval::DDVal,
+                    f: &mut ::std::fmt::Formatter,
+                ) -> Result<(), ::std::fmt::Error> {
+                    ::std::fmt::Debug::fmt(unsafe { <$t>::from_ddval_ref(this) }, f)
+                }
+
+                fn fmt_display(
+                    this: &$crate::ddval::DDVal,
+                    f: &mut ::std::fmt::Formatter,
+                ) -> Result<(), ::std::fmt::Error> {
+                    ::std::fmt::Display::fmt(
+                        &unsafe { <$t>::from_ddval_ref(this) }.clone().into_record(),
+                        f,
+                    )
+                }
+
+                fn drop(this: &mut $crate::ddval::DDVal) {
+                    if ::std::mem::size_of::<$t>() <= ::std::mem::size_of::<usize>() {
+                        // Allow `_val`'s Drop impl to run automatically
+                        let _val = unsafe {
+                            ::std::mem::transmute::<[u8; ::std::mem::size_of::<$t>()], $t>(
+                                *(&this.v as *const usize
+                                    as *const [u8; ::std::mem::size_of::<$t>()]),
                             );
                         };
-                        __f
-                    },
-                    mutate: {
-                        fn __f(
-                            this: &mut $crate::ddval::DDVal,
-                            record: &$crate::record::Record,
-                        ) -> Result<(), ::std::string::String> {
-                            let mut clone = unsafe { <$t>::from_ddval_ref(this) }.clone();
-                            $crate::record::Mutator::mutate(record, &mut clone)?;
-                            *this = clone.into_ddval();
-                            Ok(())
-                        };
-                        __f
-                    },
-                    fmt_debug: {
-                        fn __f(
-                            this: &$crate::ddval::DDVal,
-                            f: &mut ::std::fmt::Formatter,
-                        ) -> Result<(), ::std::fmt::Error> {
-                            ::std::fmt::Debug::fmt(unsafe { <$t>::from_ddval_ref(this) }, f)
-                        };
-                        __f
-                    },
-                    fmt_display: {
-                        fn __f(
-                            this: &$crate::ddval::DDVal,
-                            f: &mut ::std::fmt::Formatter,
-                        ) -> Result<(), ::std::fmt::Error> {
-                            ::std::fmt::Display::fmt(
-                                &unsafe { <$t>::from_ddval_ref(this) }.clone().into_record(),
-                                f,
-                            )
-                        };
-                        __f
-                    },
-                    drop: {
-                        fn __f(this: &mut $crate::ddval::DDVal) {
-                            if ::std::mem::size_of::<$t>() <= ::std::mem::size_of::<usize>() {
-                                unsafe {
-                                    let _v: $t = ::std::mem::transmute::<
-                                        [u8; ::std::mem::size_of::<$t>()],
-                                        $t,
-                                    >(
-                                        *(&this.v as *const usize
-                                            as *const [u8; ::std::mem::size_of::<$t>()]),
-                                    );
-                                };
-                            // v's destructor will do the rest.
-                            } else {
-                                let _arc =
-                                    unsafe { ::std::sync::Arc::from_raw(this.v as *const $t) };
-                                // arc's destructor will do the rest.
-                            }
-                        };
-                        __f
-                    },
-                    ddval_serialize: {
-                        fn __f(this: &$crate::ddval::DDVal) -> &dyn erased_serde::Serialize {
-                            (unsafe { <$t>::from_ddval_ref(this) }) as &dyn erased_serde::Serialize
-                        };
-                        __f
-                    },
+                    } else {
+                        let arc = unsafe { ::std::sync::Arc::from_raw(this.v as *const $t) };
+                        ::std::mem::drop(arc);
+                    }
+                }
+
+                fn ddval_serialize(this: &$crate::ddval::DDVal) -> &dyn erased_serde::Serialize {
+                    (unsafe { <$t>::from_ddval_ref(this) }) as &dyn erased_serde::Serialize
+                }
+
+                static VTABLE: $crate::ddval::DDValMethods = $crate::ddval::DDValMethods {
+                    clone,
+                    into_record,
+                    eq,
+                    partial_cmp,
+                    cmp,
+                    hash,
+                    mutate,
+                    fmt_debug,
+                    fmt_display,
+                    drop,
+                    ddval_serialize,
                 };
+
                 $crate::ddval::DDValue::new(self.into_ddval(), &VTABLE)
             }
         }
