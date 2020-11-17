@@ -91,8 +91,9 @@ pub trait DDValConvert: Sized {
             .expect("attempted to convert a DDValue into the incorrect type")
     }
 
-    /// Convert a value to a `DDVal`, erasing its original type.  This is a safe conversion
-    /// that cannot fail.
+    /// Convert a value to a `DDVal`, erasing its original type.
+    ///
+    /// This is a safe conversion that cannot fail.
     fn into_ddval(self) -> DDVal;
 
     /// Creates a `DDValue` from the current value
@@ -109,8 +110,8 @@ pub trait DDValConvert: Sized {
 ///
 #[macro_export]
 macro_rules! decl_ddval_convert {
-    ( $t:ty ) => {
-        impl $crate::ddval::DDValConvert for $t {
+    ($($t:ty),* $(,)?) => {
+        $(impl $crate::ddval::DDValConvert for $t {
             unsafe fn from_ddval_ref(v: &$crate::ddval::DDVal) -> &Self {
                 use ::std::mem::size_of;
 
@@ -271,24 +272,76 @@ macro_rules! decl_ddval_convert {
 
                 DDValue::new(self.into_ddval(), &VTABLE)
             }
-        }
+        })*
     };
 }
 
 /* Implement `DDValConvert` for builtin types. */
 
-decl_ddval_convert! {()}
-decl_ddval_convert! {u8}
-decl_ddval_convert! {u16}
-decl_ddval_convert! {u32}
-decl_ddval_convert! {u64}
-decl_ddval_convert! {u128}
-decl_ddval_convert! {i8}
-decl_ddval_convert! {i16}
-decl_ddval_convert! {i32}
-decl_ddval_convert! {i64}
-decl_ddval_convert! {i128}
-decl_ddval_convert! {String}
-decl_ddval_convert! {bool}
-decl_ddval_convert! {OrderedFloat<f32>}
-decl_ddval_convert! {OrderedFloat<f64>}
+decl_ddval_convert!(
+    (),
+    u8,
+    u16,
+    u32,
+    u64,
+    u128,
+    i8,
+    i16,
+    i32,
+    i64,
+    i128,
+    String,
+    bool,
+    OrderedFloat<f32>,
+    OrderedFloat<f64>
+);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Clone, PartialEq, Eq)]
+    struct Foo {
+        baz: usize,
+        bar: usize,
+    }
+    decl_ddval_convert!(Foo);
+
+    struct Bar;
+    decl_ddval_convert!(Bar);
+
+    #[test]
+    fn conversion_lossless() {
+        let foo = Foo { baz: 10, bar: 20 };
+        let val = foo.into_ddvalue();
+
+        assert_eq!(Some(&foo), Foo::try_from_ddvalue_ref(&val));
+        assert_eq!(Some(foo), Foo::try_from_ddvalue(val));
+        assert_eq!(&foo, Foo::from_ddvalue_ref(&val));
+        assert_eq!(foo, Foo::from_ddvalue(val));
+    }
+
+    #[test]
+    fn checked_conversions() {
+        let foo = Foo { baz: 10, bar: 20 }.into_ddvalue();
+
+        assert!(Bar::try_from_ddvalue_ref(&val).is_none());
+        assert!(Bar::try_from_ddvalue(val).is_none());
+    }
+
+    #[test]
+    #[should_panic(expected = "attempted to convert a DDValue into the incorrect type")]
+    fn incorrect_from_type() {
+        let val = Foo { baz: 10, bar: 20 }.into_ddvalue();
+
+        let _panic = Bar::from_ddvalue(val);
+    }
+
+    #[test]
+    #[should_panic(expected = "attempted to convert a DDValue into the incorrect type")]
+    fn incorrect_from_ref_type() {
+        let val = Foo { baz: 10, bar: 20 }.into_ddvalue();
+
+        let _panic = Bar::from_ddvalue_ref(&val);
+    }
+}
