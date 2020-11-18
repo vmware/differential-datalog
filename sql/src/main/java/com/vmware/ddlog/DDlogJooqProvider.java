@@ -131,14 +131,17 @@ public final class DDlogJooqProvider implements MockDataProvider {
         final String[] batchSql = ctx.batchSQL();
         final MockResult[] mock = new MockResult[batchSql.length];
         try {
-            dDlogAPI.transactionStart();
-            final Object[][] bindings = ctx.batchBindings();
-            for (int i = 0; i < batchSql.length; i++) {
-                final Object[] binding = bindings != null && bindings.length > i ? bindings[i] : new Object[0];
-                final QueryContext context = new QueryContext(batchSql[i], binding);
-                mock[i] = executeOne(context);
+            try {
+                dDlogAPI.transactionStart();
+                final Object[][] bindings = ctx.batchBindings();
+                for (int i = 0; i < batchSql.length; i++) {
+                    final Object[] binding = bindings != null && bindings.length > i ? bindings[i] : new Object[0];
+                    final QueryContext context = new QueryContext(batchSql[i], binding);
+                    mock[i] = executeOne(context);
+                }
+            } finally {
+                    dDlogAPI.transactionCommitDumpChanges(this::onChange);
             }
-            dDlogAPI.transactionCommitDumpChanges(this::onChange);
         } catch (final DDlogException e) {
             throw new RuntimeException(e);
         }
@@ -226,9 +229,10 @@ public final class DDlogJooqProvider implements MockDataProvider {
                     }
                     final List<Expression> items = ((Row) row).getItems();
                     if (items.size() != fields.size()) {
-                        throw new RuntimeException(
-                                String.format("Incorrect row size for insertion into table %s: %s", tableName,
-                                        context.sql()));
+                        final String error = String.format("Incorrect row size for insertion into table %s. " +
+                                                   "Please specify all the table's fields in their declared order: %s",
+                                                    tableName, context.sql());
+                        throw new RuntimeException(error);
                     }
                     final DDlogRecord[] recordsArray = new DDlogRecord[items.size()];
                     if (context.hasBinding()) {
