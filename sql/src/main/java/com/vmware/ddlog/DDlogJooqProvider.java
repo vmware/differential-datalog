@@ -219,9 +219,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
                 final String tableName = node.getTarget().toString();
                 final List<Field<?>> fields = tablesToFields.get(tableName.toUpperCase());
                 final int tableId = dDlogAPI.getTableId(ddlogRelationName(tableName));
-                if (values.getRows().size() != 1 && context.binding().length != 0) {
-                    throw new RuntimeException("Multiple value rows not supported: " + context.sql());
-                }
+                int bindingIndex = 0;
                 for (final Expression row: values.getRows()) {
                     if (!(row instanceof Row)) {
                         throw new RuntimeException("Statement not supported: " + context.sql());
@@ -237,7 +235,8 @@ public final class DDlogJooqProvider implements MockDataProvider {
                         // Is a statement with bind variables
                         for (int i = 0; i < items.size(); i++) {
                             final boolean isNullableField = fields.get(i).getDataType().nullable();
-                            final DDlogRecord record = toValue(fields.get(i), context.binding()[i]);
+                            final DDlogRecord record = toValue(fields.get(i), context.binding()[bindingIndex]);
+                            bindingIndex++;
                             recordsArray[i] = maybeOption(isNullableField, record);
                         }
                     }
@@ -447,47 +446,47 @@ public final class DDlogJooqProvider implements MockDataProvider {
                 return;
             }
             if (structName.equals(DDLOG_SOME)) {
-                toValue(field, record.getStructField(0), jooqRecord);
+                setValue(field, record.getStructField(0), jooqRecord);
                 return;
             }
         }
-        toValue(field, record, jooqRecord);
+        setValue(field, record, jooqRecord);
     }
 
-    private static DDlogRecord toValue(final Field<?> field, final Object object) {
+    private static DDlogRecord toValue(final Field<?> field, final Object in) {
         final Class<?> cls = field.getType();
         switch (cls.getName()) {
             case BOOLEAN_TYPE:
-                return new DDlogRecord((boolean) object);
+                return new DDlogRecord((boolean) in);
             case INTEGER_TYPE:
-                return new DDlogRecord((int) object);
+                return new DDlogRecord((int) in);
             case LONG_TYPE:
-                return new DDlogRecord((long) object);
+                return new DDlogRecord((long) in);
             case STRING_TYPE:
                 try {
-                    return new DDlogRecord((String) object);
+                    return new DDlogRecord((String) in);
                 } catch (final DDlogException e) {
-                    throw new RuntimeException("Could not create String DDlogRecord for object: " + object);
+                    throw new RuntimeException("Could not create String DDlogRecord for object: " + in);
                 }
             default:
                 throw new RuntimeException("Unknown datatype " + cls.getName());
         }
     }
 
-    private static void toValue(final Field<?> field, final DDlogRecord record, final Record jooqRecord) {
+    private static void setValue(final Field<?> field, final DDlogRecord in, final Record out) {
         final Class<?> cls = field.getType();
         switch (cls.getName()) {
             case BOOLEAN_TYPE:
-                jooqRecord.setValue((Field<Boolean>) field, record.getBoolean());
+                out.setValue((Field<Boolean>) field, in.getBoolean());
                 return;
             case INTEGER_TYPE:
-                jooqRecord.setValue((Field<Integer>) field, record.getInt().intValue());
+                out.setValue((Field<Integer>) field, in.getInt().intValue());
                 return;
             case LONG_TYPE:
-                jooqRecord.setValue((Field<Long>) field, record.getInt().longValue());
+                out.setValue((Field<Long>) field, in.getInt().longValue());
                 return;
             case STRING_TYPE:
-                jooqRecord.setValue((Field<String>) field, record.getString());
+                out.setValue((Field<String>) field, in.getString());
                 return;
             default:
                 throw new RuntimeException("Unknown datatype " + cls.getName());
