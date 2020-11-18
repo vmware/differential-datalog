@@ -129,18 +129,20 @@ public final class DDlogJooqProvider implements MockDataProvider {
         final String[] batchSql = ctx.batchSQL();
         final MockResult[] mock = new MockResult[batchSql.length];
         try {
-            try {
-                dDlogAPI.transactionStart();
-                final Object[][] bindings = ctx.batchBindings();
-                for (int i = 0; i < batchSql.length; i++) {
-                    final Object[] binding = bindings != null && bindings.length > i ? bindings[i] : new Object[0];
-                    final QueryContext context = new QueryContext(batchSql[i], binding);
-                    mock[i] = executeOne(context);
-                }
-            } finally {
-                    dDlogAPI.transactionCommitDumpChanges(this::onChange);
+            dDlogAPI.transactionStart();
+            final Object[][] bindings = ctx.batchBindings();
+            for (int i = 0; i < batchSql.length; i++) {
+                final Object[] binding = bindings != null && bindings.length > i ? bindings[i] : new Object[0];
+                final QueryContext context = new QueryContext(batchSql[i], binding);
+                mock[i] = executeOne(context);
             }
+            dDlogAPI.transactionCommitDumpChanges(this::onChange);
         } catch (final DDlogException e) {
+            try {
+                dDlogAPI.transactionRollback();
+            } catch (DDlogException rollbackFailed) {
+                throw new RuntimeException(rollbackFailed);
+            }
             throw new RuntimeException(e);
         }
         return mock;
