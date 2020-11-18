@@ -28,6 +28,7 @@ import java.util.List;
 import static junit.framework.TestCase.assertFalse;
 import static junit.framework.TestCase.assertTrue;
 import static org.jooq.impl.DSL.field;
+import static org.jooq.impl.DSL.table;
 
 public class JooqProviderTest {
 
@@ -58,6 +59,7 @@ public class JooqProviderTest {
         // We test single inserts as well as batch statements. We also test different
         // kinds of whitespace (the \n below is deliberate).
         create.execute("insert into \nhosts values ('n1', 10, true)");
+//        create.insertInto(table("hosts")).values("n1", 10, true).execute();
         create.batch("insert into hosts values ('n54', 18, false)",
                      "insert into hosts values ('n9', 2, true)").execute();
         final Field<String> field1 = field("id", String.class);

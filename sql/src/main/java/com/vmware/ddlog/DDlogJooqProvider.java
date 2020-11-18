@@ -80,7 +80,7 @@ import static org.jooq.impl.DSL.field;
  *                                        "create table T..." DDL statement that is passed to the DDlogJooqProvider
  *                                         where P1, P2... etc are columns in T's primary key.
  */
-public class DDlogJooqProvider implements MockDataProvider {
+public final class DDlogJooqProvider implements MockDataProvider {
     private static final String INTEGER_TYPE = "java.lang.Integer";
     private static final String STRING_TYPE = "java.lang.String";
     private static final String BOOLEAN_TYPE = "java.lang.Boolean";
@@ -131,8 +131,11 @@ public class DDlogJooqProvider implements MockDataProvider {
         final MockResult[] mock = new MockResult[batchSql.length];
         try {
             dDlogAPI.transactionStart();
+            final Object[][] bindings = ctx.batchBindings();
             for (int i = 0; i < batchSql.length; i++) {
-                mock[i] = executeOne(batchSql[i]);
+                final Object[] binding = bindings != null && bindings.length > i ? bindings[i] : new Object[0];
+                final QueryContext context = new QueryContext(batchSql[i], binding);
+                mock[i] = executeOne(context);
             }
             dDlogAPI.transactionCommitDumpChanges(this::onChange);
         } catch (final DDlogException e) {
@@ -164,11 +167,11 @@ public class DDlogJooqProvider implements MockDataProvider {
         }
     }
 
-    private MockResult executeOne(final String sql) throws SQLException {
-        final Statement statement = parser.createStatement(sql, options);
-        final MockResult result = queryVisitor.process(statement, sql);
+    private MockResult executeOne(final QueryContext context) throws SQLException {
+        final Statement statement = parser.createStatement(context.sql(), options);
+        final MockResult result = queryVisitor.process(statement, context);
         if (result == null) {
-            throw new SQLException("Could not execute SQL statement " + sql);
+            throw new SQLException("Could not execute SQL statement " + context);
         }
         return result;
     }
@@ -176,21 +179,22 @@ public class DDlogJooqProvider implements MockDataProvider {
     /*
      * Visits an SQL query and converts into a JOOQ MockResult type.
      */
-    private class QueryVisitor extends AstVisitor<MockResult, String> {
+    private class QueryVisitor extends AstVisitor<MockResult, QueryContext> {
         @Override
-        protected MockResult visitQuerySpecification(final QuerySpecification node, String sql) {
+        protected MockResult visitQuerySpecification(final QuerySpecification node, final QueryContext context) {
             // The checks below encode assumption A1 (see javadoc for the DDlogJooqProvider class)
             final Select select = node.getSelect();
             if (!(select.getSelectItems().size() == 1
                     && select.getSelectItems().get(0) instanceof AllColumns
                     && node.getFrom().isPresent()
                     && node.getFrom().get() instanceof com.facebook.presto.sql.tree.Table)) {
-                throw new RuntimeException("Statement not supported: " + sql);
+                throw new RuntimeException("Statement not supported: " + context.sql());
             }
             final String tableName = ((com.facebook.presto.sql.tree.Table) node.getFrom().get()).getName().toString();
             final List<Field<?>> fields = tablesToFields.get(tableName.toUpperCase());
             if (fields == null) {
-                throw new RuntimeException(String.format("Unknown table %s queried in statement: %s", tableName, sql));
+                throw new RuntimeException(String.format("Unknown table %s queried in statement: %s", tableName,
+                                           context.sql()));
             }
             final Result<Record> result = dslContext.newResult(fields);
             result.addAll(materializedViews.computeIfAbsent(tableName.toUpperCase(), (k) -> new LinkedHashSet<>()));
@@ -198,34 +202,46 @@ public class DDlogJooqProvider implements MockDataProvider {
         }
 
         @Override
-        protected MockResult visitQuery(final Query node, final String context) {
+        protected MockResult visitQuery(final Query node, final QueryContext context) {
             final QuerySpecification specification = (QuerySpecification) node.getQueryBody();
             return visitQuerySpecification(specification, context);
         }
 
         @Override
-        protected MockResult visitInsert(final Insert node, final String sql) {
+        protected MockResult visitInsert(final Insert node, final QueryContext context) {
             try {
                 // The assertions below encode assumption A2 (see javadoc for the DDlogJooqProvider class)
                 if (!(node.getQuery().getQueryBody() instanceof Values)) {
-                    throw new RuntimeException("Statement not supported: " + sql);
+                    throw new RuntimeException("Statement not supported: " + context.sql());
                 }
                 final Values values = (Values) node.getQuery().getQueryBody();
                 final String tableName = node.getTarget().toString();
                 final List<Field<?>> fields = tablesToFields.get(tableName.toUpperCase());
                 final int tableId = dDlogAPI.getTableId(ddlogRelationName(tableName));
+                if (values.getRows().size() != 1 && context.binding().length != 0) {
+                    throw new RuntimeException("Multiple value rows not supported: " + context.sql());
+                }
                 for (final Expression row: values.getRows()) {
                     if (!(row instanceof Row)) {
-                        throw new RuntimeException("Statement not supported: " + sql);
+                        throw new RuntimeException("Statement not supported: " + context.sql());
                     }
                     final List<Expression> items = ((Row) row).getItems();
                     if (items.size() != fields.size()) {
                         throw new RuntimeException(
-                                String.format("Incorrect row size for insertion into table %s: %s", tableName, sql));
+                                String.format("Incorrect row size for insertion into table %s: %s", tableName,
+                                        context.sql()));
                     }
                     final DDlogRecord[] recordsArray = new DDlogRecord[items.size()];
                     for (int i = 0; i < items.size(); i++) {
-                        recordsArray[i] = parseLiterals.process(items.get(i), fields.get(i).getDataType().nullable());
+                        final boolean isNullableField = fields.get(i).getDataType().nullable();
+                        if (context.binding().length > 0) {
+                            // Is a statement with bind variables
+                            final DDlogRecord record = toValue(fields.get(i), context.binding()[i]);
+                            recordsArray[i] = maybeOption(isNullableField, record);
+                        } else {
+                            // need to parse SQL to
+                            recordsArray[i] = parseLiterals.process(items.get(i), isNullableField);
+                        }
                     }
                     final DDlogRecord record = DDlogRecord.makeStruct(ddlogTableTypeName(tableName), recordsArray);
                     final DDlogRecCommand command = new DDlogRecCommand(DDlogCommand.Kind.Insert, tableId, record);
@@ -235,14 +251,14 @@ public class DDlogJooqProvider implements MockDataProvider {
                 final Record1<Integer> resultRecord = dslContext.newRecord(updateCountField);
                 resultRecord.setValue(updateCountField, values.getRows().size());
                 result.add(resultRecord);
-                return new MockResult(1, result);
+                return new MockResult(values.getRows().size(), result);
             } catch (DDlogException e) {
                 throw new RuntimeException(e);
             }
         }
 
         @Override
-        protected MockResult visitDelete(final Delete node, final String sql) {
+        protected MockResult visitDelete(final Delete node, final QueryContext sql) {
             // The assertions below, and in the ParseWhereClauseForDeletes visitor encode assumption A3
             // (see javadoc for the DDlogJooqProvider class)
             final String tableName = node.getTable().getName().toString();
@@ -400,6 +416,26 @@ public class DDlogJooqProvider implements MockDataProvider {
         toValue(field, record, jooqRecord);
     }
 
+    private static DDlogRecord toValue(final Field<?> field, final Object object) {
+        final Class<?> cls = field.getType();
+        switch (cls.getName()) {
+            case BOOLEAN_TYPE:
+                return new DDlogRecord((boolean) object);
+            case INTEGER_TYPE:
+                return new DDlogRecord((int) object);
+            case LONG_TYPE:
+                return new DDlogRecord((long) object);
+            case STRING_TYPE:
+                try {
+                    return new DDlogRecord((String) object);
+                } catch (final DDlogException e) {
+                    throw new RuntimeException("Could not create String DDlogRecord for object: " + object);
+                }
+            default:
+                throw new RuntimeException("Unknown datatype " + cls.getName());
+        }
+    }
+
     private static void toValue(final Field<?> field, final DDlogRecord record, final Record jooqRecord) {
         final Class<?> cls = field.getType();
         switch (cls.getName()) {
@@ -417,6 +453,24 @@ public class DDlogJooqProvider implements MockDataProvider {
                 return;
             default:
                 throw new RuntimeException("Unknown datatype " + cls.getName());
+        }
+    }
+
+    private static final class QueryContext {
+        final String sql;
+        final Object[] binding;
+
+        QueryContext(final String sql, final Object[] binding) {
+            this.sql = sql;
+            this.binding = binding;
+        }
+
+        public String sql() {
+            return sql;
+        }
+
+        public Object[] binding() {
+            return binding;
         }
     }
 }
