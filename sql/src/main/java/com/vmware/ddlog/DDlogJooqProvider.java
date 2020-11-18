@@ -17,6 +17,7 @@ import com.facebook.presto.sql.tree.Insert;
 import com.facebook.presto.sql.tree.Literal;
 import com.facebook.presto.sql.tree.LogicalBinaryExpression;
 import com.facebook.presto.sql.tree.LongLiteral;
+import com.facebook.presto.sql.tree.Parameter;
 import com.facebook.presto.sql.tree.Query;
 import com.facebook.presto.sql.tree.QuerySpecification;
 import com.facebook.presto.sql.tree.Row;
@@ -234,7 +235,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
                     final DDlogRecord[] recordsArray = new DDlogRecord[items.size()];
                     for (int i = 0; i < items.size(); i++) {
                         final boolean isNullableField = fields.get(i).getDataType().nullable();
-                        if (context.binding().length > 0) {
+                        if (context.hasBinding()) {
                             // Is a statement with bind variables
                             final DDlogRecord record = toValue(fields.get(i), context.binding()[i]);
                             recordsArray[i] = maybeOption(isNullableField, record);
@@ -258,17 +259,17 @@ public final class DDlogJooqProvider implements MockDataProvider {
         }
 
         @Override
-        protected MockResult visitDelete(final Delete node, final QueryContext sql) {
+        protected MockResult visitDelete(final Delete node, final QueryContext context) {
             // The assertions below, and in the ParseWhereClauseForDeletes visitor encode assumption A3
             // (see javadoc for the DDlogJooqProvider class)
             final String tableName = node.getTable().getName().toString();
             if (!node.getWhere().isPresent()) {
-                throw new RuntimeException("Delete queries without where clauses are unsupported: " + sql);
+                throw new RuntimeException("Delete queries without where clauses are unsupported: " + context.sql());
             }
             try {
                 final Expression where = node.getWhere().get();
                 final ParseWhereClauseForDeletes visitor = new ParseWhereClauseForDeletes(tableName);
-                visitor.process(where, tableName);
+                visitor.process(where, context);
                 final DDlogRecord[] matchExpression = visitor.matchExpressions;
                 final DDlogRecord record = matchExpression.length > 1 ? DDlogRecord.makeTuple(matchExpression)
                                                                       : matchExpression[0];
@@ -287,37 +288,52 @@ public final class DDlogJooqProvider implements MockDataProvider {
         }
     }
 
-    private class ParseWhereClauseForDeletes extends AstVisitor<Void, String> {
+    private class ParseWhereClauseForDeletes extends AstVisitor<Void, QueryContext> {
         final DDlogRecord[] matchExpressions;
+        final String tableName;
+        int bindingIndex = 0;
 
         public ParseWhereClauseForDeletes(final String tableName) {
+            this.tableName = tableName;
             matchExpressions = new DDlogRecord[tablesToPrimaryKeys.get(tableName.toUpperCase()).size()];
         }
 
         @Override
-        protected Void visitLogicalBinaryExpression(final LogicalBinaryExpression node, final String tableName) {
+        protected Void visitLogicalBinaryExpression(final LogicalBinaryExpression node, final QueryContext context) {
             if (!node.getOperator().equals(LogicalBinaryExpression.Operator.AND)) {
                 throw new RuntimeException("Only equality-based comparisons on " +
                         "all (not some) primary-key columns are allowed: " + node);
             }
-            return super.visitLogicalBinaryExpression(node, tableName);
+            return super.visitLogicalBinaryExpression(node, context);
         }
 
         @Override
-        protected Void visitComparisonExpression(final ComparisonExpression node, final String tableName) {
+        protected Void visitComparisonExpression(final ComparisonExpression node, final QueryContext context) {
             final Expression left = node.getLeft();
             final Expression right = node.getRight();
-            if (left instanceof Identifier && right instanceof Literal) {
-                setMatchExpression((Identifier) left, (Literal) right, tableName);
-                return null;
-            } else if (right instanceof Identifier && left instanceof Literal) {
-                setMatchExpression((Identifier) right, (Literal) left, tableName);
-                return null;
+            if (context.hasBinding()) {
+                if (left instanceof Identifier && right instanceof Parameter) {
+                    setMatchExpression((Identifier) left, context.binding()[bindingIndex]);
+                    bindingIndex++;
+                    return null;
+                } else if (right instanceof Identifier && left instanceof Parameter) {
+                    setMatchExpression((Identifier) right, context.binding()[bindingIndex]);
+                    bindingIndex++;
+                    return null;
+                }
+            } else {
+                if (left instanceof Identifier && right instanceof Literal) {
+                    setMatchExpression((Identifier) left, (Literal) right);
+                    return null;
+                } else if (right instanceof Identifier && left instanceof Literal) {
+                    setMatchExpression((Identifier) right, (Literal) left);
+                    return null;
+                }
             }
             throw new RuntimeException("Unexpected comparison expression: "+ node);
         }
 
-        private void setMatchExpression(final Identifier identifier, final Literal literal, final String tableName) {
+        private void setMatchExpression(final Identifier identifier, final Literal literal) {
             final List<? extends Field<?>> fields = tablesToPrimaryKeys.get(tableName.toUpperCase());
 
             /*
@@ -332,6 +348,23 @@ public final class DDlogJooqProvider implements MockDataProvider {
             }
             throw new RuntimeException(String.format("Field %s being queried is not a primary key in table %s",
                                                       identifier, tableName));
+        }
+
+        private void setMatchExpression(final Identifier identifier, final Object parameter) {
+            final List<? extends Field<?>> fields = tablesToPrimaryKeys.get(tableName.toUpperCase());
+
+            /*
+             * The match-expressions correspond to each column in the primary key, in the same
+             * order as the primary key declaration in the SQL create table statement.
+             */
+            for (int i = 0; i < fields.size(); i++) {
+                if (fields.get(i).getUnqualifiedName().last().equalsIgnoreCase(identifier.getValue())) {
+                    matchExpressions[i] = toValue(fields.get(i), parameter);
+                    return;
+                }
+            }
+            throw new RuntimeException(String.format("Field %s being queried is not a primary key in table %s",
+                    identifier, tableName));
         }
     }
 
@@ -405,7 +438,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
         if (isStruct) {
             final String structName = record.getStructName();
             if (structName.equals(DDLOG_NONE)) {
-                jooqRecord.setValue(field,null);
+                jooqRecord.setValue(field, null);
                 return;
             }
             if (structName.equals(DDLOG_SOME)) {
@@ -471,6 +504,10 @@ public final class DDlogJooqProvider implements MockDataProvider {
 
         public Object[] binding() {
             return binding;
+        }
+
+        public boolean hasBinding() {
+            return binding.length > 0;
         }
     }
 }
