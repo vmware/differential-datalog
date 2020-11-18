@@ -132,7 +132,7 @@ public class JooqProviderTest {
               .values("n1", 10, true)
               .execute();
         create.batch(create.insertInto(table("hosts")).values("n54", 18, false),
-                    create.insertInto(table("hosts")).values("n9", 2, true))
+                     create.insertInto(table("hosts")).values("n9", 2, true))
               .execute();
         final Field<String> field1 = field("id", String.class);
         final Field<Integer> field2 = field("capacity", Integer.class);
@@ -166,7 +166,7 @@ public class JooqProviderTest {
         assertTrue(goodHostsResults.contains(test3));
 
         // Make sure deletes work
-        create.deleteFrom(table("hosts")).where(field("id").eq("n9"));
+        create.deleteFrom(table("hosts")).where(field("id").eq("n9")).execute();
 
         final Result<Record> hostsvResultsAfterDelete = create.selectFrom(table("hostsv")).fetch();
         assertTrue(hostsvResultsAfterDelete.contains(test1));
@@ -177,6 +177,37 @@ public class JooqProviderTest {
         assertFalse(goodHostsResultsAfterDelete.contains(test1));
         assertFalse(goodHostsResultsAfterDelete.contains(test2));
         assertFalse(goodHostsResultsAfterDelete.contains(test3));
+    }
+
+    /*
+     * Test batches with a mix of plain insert and delete statements
+     */
+    @Test
+    public void testDeletesAndInsertsInTheSameBatchNoBindings() {
+        create.execute("insert into hosts values ('n1', 10, true)");
+        create.batch("delete from hosts where id = 'n1'",
+                     "insert into hosts values ('n2', 15, false)").execute();
+        final Result<Record> results = create.selectFrom(table("hostsv")).fetch();
+        assertEquals(1, results.size());
+        assertEquals("n2", results.get(0).get(0, String.class));
+        assertEquals(15, (int) results.get(0).get(1, Integer.class));
+        assertFalse(results.get(0).get(2, Boolean.class));
+    }
+
+    /*
+     * Test batches with a mix of insert and delete statements with bindings
+     */
+    @Test
+    public void testDeletesAndInsertsInTheSameBatchWithBindings() {
+        create.execute("insert into hosts values ('n1', 10, true)");
+        create.batch(create.deleteFrom(table("hosts")).where(field("id").eq("n1")),
+                     create.insertInto(table("hosts")).values("n2", 15, false))
+              .execute();
+        final Result<Record> results = create.selectFrom(table("hostsv")).fetch();
+        assertEquals(1, results.size());
+        assertEquals("n2", results.get(0).get(0, String.class));
+        assertEquals(15, (int) results.get(0).get(1, Integer.class));
+        assertFalse(results.get(0).get(2, Boolean.class));
     }
 
     public static void compileAndLoad(final List<String> ddl) throws IOException, DDlogException {
