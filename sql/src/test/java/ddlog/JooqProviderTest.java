@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import static junit.framework.Assert.fail;
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertFalse;
 import static junit.framework.TestCase.assertTrue;
@@ -194,7 +195,7 @@ public class JooqProviderTest {
     }
 
     /*
-     * Test batches with a mix of insert and delete statements with bindings
+     * Test multi-row inserts
      */
     @Test
     public void testMultiRowInsertsNoBindings() {
@@ -207,7 +208,7 @@ public class JooqProviderTest {
     }
 
     /*
-     * Test batches with a mix of insert and delete statements with bindings
+     * Test multi-row inserts with bindings
      */
     @Test
     public void testMultiRowInsertsWithBindings() {
@@ -223,6 +224,19 @@ public class JooqProviderTest {
         assertTrue(results.contains(test3));
     }
 
+    /*
+     * Test inserts with a subset of fields specified. This is currently unsupported and should throw an exception
+     */
+    @Test
+    public void testPartialInserts() {
+        try {
+            create.insertInto(table("hosts"), field1, field2)
+                    .values("n1", 10)
+                    .execute();
+            fail();
+        } catch (final RuntimeException ignored) {
+        }
+    }
 
     public static void compileAndLoad(final List<String> ddl) throws IOException, DDlogException {
         final Translator t = new Translator(null);
