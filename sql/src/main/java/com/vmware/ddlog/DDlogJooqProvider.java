@@ -86,6 +86,7 @@ import static org.jooq.impl.DSL.field;
 public final class DDlogJooqProvider implements MockDataProvider {
     private static final String DDLOG_SOME = "ddlog_std::Some";
     private static final String DDLOG_NONE = "ddlog_std::None";
+    private static final Object[] DEFAULT_BINDING = new Object[0];
     private final DDlogAPI dDlogAPI;
     private final DSLContext dslContext;
     private final Field<Integer> updateCountField;
@@ -132,7 +133,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
             dDlogAPI.transactionStart();
             final Object[][] bindings = ctx.batchBindings();
             for (int i = 0; i < batchSql.length; i++) {
-                final Object[] binding = bindings != null && bindings.length > i ? bindings[i] : new Object[0];
+                final Object[] binding = bindings != null && bindings.length > i ? bindings[i] : DEFAULT_BINDING;
                 final QueryContext context = new QueryContext(batchSql[i], binding);
                 mock[i] = executeOne(context);
             }
