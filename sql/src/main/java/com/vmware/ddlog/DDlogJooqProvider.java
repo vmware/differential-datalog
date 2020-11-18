@@ -504,10 +504,6 @@ public final class DDlogJooqProvider implements MockDataProvider {
             return sql;
         }
 
-        public Object[] binding() {
-            return binding;
-        }
-
         public Object nextBinding() {
             final Object ret = binding[bindingIndex];
             bindingIndex++;
