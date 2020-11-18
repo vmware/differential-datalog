@@ -233,14 +233,18 @@ public final class DDlogJooqProvider implements MockDataProvider {
                                         context.sql()));
                     }
                     final DDlogRecord[] recordsArray = new DDlogRecord[items.size()];
-                    for (int i = 0; i < items.size(); i++) {
-                        final boolean isNullableField = fields.get(i).getDataType().nullable();
-                        if (context.hasBinding()) {
-                            // Is a statement with bind variables
+                    if (context.hasBinding()) {
+                        // Is a statement with bind variables
+                        for (int i = 0; i < items.size(); i++) {
+                            final boolean isNullableField = fields.get(i).getDataType().nullable();
                             final DDlogRecord record = toValue(fields.get(i), context.binding()[i]);
                             recordsArray[i] = maybeOption(isNullableField, record);
-                        } else {
-                            // need to parse SQL to
+                        }
+                    }
+                    else {
+                        // need to parse literals into DDLogRecords
+                        for (int i = 0; i < items.size(); i++) {
+                            final boolean isNullableField = fields.get(i).getDataType().nullable();
                             recordsArray[i] = parseLiterals.process(items.get(i), isNullableField);
                         }
                     }
@@ -312,12 +316,13 @@ public final class DDlogJooqProvider implements MockDataProvider {
             final Expression left = node.getLeft();
             final Expression right = node.getRight();
             if (context.hasBinding()) {
+                final Object parameter = context.binding()[bindingIndex];
                 if (left instanceof Identifier && right instanceof Parameter) {
-                    setMatchExpression((Identifier) left, context.binding()[bindingIndex]);
+                    setMatchExpression((Identifier) left, parameter);
                     bindingIndex++;
                     return null;
                 } else if (right instanceof Identifier && left instanceof Parameter) {
-                    setMatchExpression((Identifier) right, context.binding()[bindingIndex]);
+                    setMatchExpression((Identifier) right, parameter);
                     bindingIndex++;
                     return null;
                 }
