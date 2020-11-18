@@ -31,6 +31,7 @@ import ddlogapi.DDlogException;
 import ddlogapi.DDlogRecCommand;
 import ddlogapi.DDlogRecord;
 import org.jooq.DSLContext;
+import org.jooq.DataType;
 import org.jooq.Field;
 import org.jooq.Record;
 import org.jooq.Record1;
@@ -43,6 +44,7 @@ import org.jooq.tools.jdbc.MockResult;
 
 import javax.annotation.Nullable;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -82,10 +84,6 @@ import static org.jooq.impl.DSL.field;
  *                                         where P1, P2... etc are columns in T's primary key.
  */
 public final class DDlogJooqProvider implements MockDataProvider {
-    private static final String INTEGER_TYPE = "java.lang.Integer";
-    private static final String STRING_TYPE = "java.lang.String";
-    private static final String BOOLEAN_TYPE = "java.lang.Boolean";
-    private static final String LONG_TYPE = "java.lang.Long";
     private static final String DDLOG_SOME = "ddlog_std::Some";
     private static final String DDLOG_NONE = "ddlog_std::None";
     private final DDlogAPI dDlogAPI;
@@ -458,42 +456,42 @@ public final class DDlogJooqProvider implements MockDataProvider {
     }
 
     private static DDlogRecord toValue(final Field<?> field, final Object in) {
-        final Class<?> cls = field.getType();
-        switch (cls.getName()) {
-            case BOOLEAN_TYPE:
+        final DataType<?> dataType = field.getDataType();
+        switch (dataType.getSQLType()) {
+            case Types.BOOLEAN:
                 return new DDlogRecord((boolean) in);
-            case INTEGER_TYPE:
+            case Types.INTEGER:
                 return new DDlogRecord((int) in);
-            case LONG_TYPE:
+            case Types.BIGINT:
                 return new DDlogRecord((long) in);
-            case STRING_TYPE:
+            case Types.VARCHAR:
                 try {
                     return new DDlogRecord((String) in);
                 } catch (final DDlogException e) {
                     throw new RuntimeException("Could not create String DDlogRecord for object: " + in);
                 }
             default:
-                throw new RuntimeException("Unknown datatype " + cls.getName());
+                throw new RuntimeException("Unknown datatype " + field);
         }
     }
 
     private static void setValue(final Field<?> field, final DDlogRecord in, final Record out) {
-        final Class<?> cls = field.getType();
-        switch (cls.getName()) {
-            case BOOLEAN_TYPE:
+        final DataType<?> dataType = field.getDataType();
+        switch (dataType.getSQLType()) {
+            case Types.BOOLEAN:
                 out.setValue((Field<Boolean>) field, in.getBoolean());
                 return;
-            case INTEGER_TYPE:
+            case Types.INTEGER:
                 out.setValue((Field<Integer>) field, in.getInt().intValue());
                 return;
-            case LONG_TYPE:
+            case Types.BIGINT:
                 out.setValue((Field<Long>) field, in.getInt().longValue());
                 return;
-            case STRING_TYPE:
+            case Types.VARCHAR:
                 out.setValue((Field<String>) field, in.getString());
                 return;
             default:
-                throw new RuntimeException("Unknown datatype " + cls.getName());
+                throw new RuntimeException("Unknown datatype " + field);
         }
     }
 
