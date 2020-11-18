@@ -137,13 +137,12 @@ public final class DDlogJooqProvider implements MockDataProvider {
                 mock[i] = executeOne(context);
             }
             dDlogAPI.transactionCommitDumpChanges(this::onChange);
-        } catch (final DDlogException e) {
+        } catch (final DDlogException | RuntimeException e) {
             try {
                 dDlogAPI.transactionRollback();
             } catch (DDlogException rollbackFailed) {
                 throw new RuntimeException(rollbackFailed);
             }
-            throw new RuntimeException(e);
         }
         return mock;
     }
