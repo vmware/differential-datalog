@@ -221,7 +221,6 @@ public final class DDlogJooqProvider implements MockDataProvider {
                 final String tableName = node.getTarget().toString();
                 final List<Field<?>> fields = tablesToFields.get(tableName.toUpperCase());
                 final int tableId = dDlogAPI.getTableId(ddlogRelationName(tableName));
-                int bindingIndex = 0;
                 for (final Expression row: values.getRows()) {
                     if (!(row instanceof Row)) {
                         throw new RuntimeException("Statement not supported: " + context.sql());
@@ -235,11 +234,10 @@ public final class DDlogJooqProvider implements MockDataProvider {
                     }
                     final DDlogRecord[] recordsArray = new DDlogRecord[items.size()];
                     if (context.hasBinding()) {
-                        // Is a statement with bind variables
+                        // Is a statement with bound variables
                         for (int i = 0; i < items.size(); i++) {
                             final boolean isNullableField = fields.get(i).getDataType().nullable();
-                            final DDlogRecord record = toValue(fields.get(i), context.binding()[bindingIndex]);
-                            bindingIndex++;
+                            final DDlogRecord record = toValue(fields.get(i), context.nextBinding());
                             recordsArray[i] = maybeOption(isNullableField, record);
                         }
                     }
@@ -297,7 +295,6 @@ public final class DDlogJooqProvider implements MockDataProvider {
     private class ParseWhereClauseForDeletes extends AstVisitor<Void, QueryContext> {
         final DDlogRecord[] matchExpressions;
         final String tableName;
-        int bindingIndex = 0;
 
         public ParseWhereClauseForDeletes(final String tableName) {
             this.tableName = tableName;
@@ -318,14 +315,11 @@ public final class DDlogJooqProvider implements MockDataProvider {
             final Expression left = node.getLeft();
             final Expression right = node.getRight();
             if (context.hasBinding()) {
-                final Object parameter = context.binding()[bindingIndex];
                 if (left instanceof Identifier && right instanceof Parameter) {
-                    setMatchExpression((Identifier) left, parameter);
-                    bindingIndex++;
+                    setMatchExpression((Identifier) left, context.nextBinding());
                     return null;
                 } else if (right instanceof Identifier && left instanceof Parameter) {
-                    setMatchExpression((Identifier) right, parameter);
-                    bindingIndex++;
+                    setMatchExpression((Identifier) right, context.nextBinding());
                     return null;
                 }
             } else {
@@ -499,6 +493,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
     private static final class QueryContext {
         final String sql;
         final Object[] binding;
+        int bindingIndex = 0;
 
         QueryContext(final String sql, final Object[] binding) {
             this.sql = sql;
@@ -511,6 +506,12 @@ public final class DDlogJooqProvider implements MockDataProvider {
 
         public Object[] binding() {
             return binding;
+        }
+
+        public Object nextBinding() {
+            final Object ret = binding[bindingIndex];
+            bindingIndex++;
+            return ret;
         }
 
         public boolean hasBinding() {
