@@ -38,6 +38,27 @@ public class JooqProviderTest {
 
     @Nullable
     private static DSLContext create;
+    private final Field<String> field1 = field("id", String.class);
+    private final Field<Integer> field2 = field("capacity", Integer.class);
+    private final Field<Boolean> field3 = field("up", Boolean.class);
+    private final Record test1 = create.newRecord(field1, field2, field3);
+    private final Record test2 = create.newRecord(field1, field2, field3);
+    private final Record test3 = create.newRecord(field1, field2, field3);
+
+    public JooqProviderTest() {
+        test1.setValue(field1, "n1");
+        test1.setValue(field2, 10);
+        test1.setValue(field3, true);
+
+        test2.setValue(field1, "n54");
+        test2.setValue(field2, 18);
+        test2.setValue(field3, false);
+
+        test3.setValue(field1, "n9");
+        test3.setValue(field2, 2);
+        test3.setValue(field3, true);
+    }
+
 
     @BeforeClass
     public static void setup() throws IOException, DDlogException {
@@ -77,25 +98,6 @@ public class JooqProviderTest {
         create.execute("insert into \nhosts values ('n1', 10, true)");
         create.batch("insert into hosts values ('n54', 18, false)",
                      "insert into hosts values ('n9', 2, true)").execute();
-        final Field<String> field1 = field("id", String.class);
-        final Field<Integer> field2 = field("capacity", Integer.class);
-        final Field<Boolean> field3 = field("up", Boolean.class);
-
-        final Record test1 = create.newRecord(field1, field2, field3);
-        final Record test2 = create.newRecord(field1, field2, field3);
-        final Record test3 = create.newRecord(field1, field2, field3);
-
-        test1.setValue(field1, "n1");
-        test1.setValue(field2, 10);
-        test1.setValue(field3, true);
-
-        test2.setValue(field1, "n54");
-        test2.setValue(field2, 18);
-        test2.setValue(field3, false);
-
-        test3.setValue(field1, "n9");
-        test3.setValue(field2, 2);
-        test3.setValue(field3, true);
 
         // Make sure selects read out the same content inserted above
         final Result<Record> hostsvResults = create.fetch("select * from hostsv");
@@ -134,25 +136,6 @@ public class JooqProviderTest {
         create.batch(create.insertInto(table("hosts")).values("n54", 18, false),
                      create.insertInto(table("hosts")).values("n9", 2, true))
               .execute();
-        final Field<String> field1 = field("id", String.class);
-        final Field<Integer> field2 = field("capacity", Integer.class);
-        final Field<Boolean> field3 = field("up", Boolean.class);
-
-        final Record test1 = create.newRecord(field1, field2, field3);
-        final Record test2 = create.newRecord(field1, field2, field3);
-        final Record test3 = create.newRecord(field1, field2, field3);
-
-        test1.setValue(field1, "n1");
-        test1.setValue(field2, 10);
-        test1.setValue(field3, true);
-
-        test2.setValue(field1, "n54");
-        test2.setValue(field2, 18);
-        test2.setValue(field3, false);
-
-        test3.setValue(field1, "n9");
-        test3.setValue(field2, 2);
-        test3.setValue(field3, true);
 
         // Make sure selects read out the same content inserted above
         final Result<Record> hostsvResults = create.selectFrom(table("hostsv")).fetch();
@@ -209,6 +192,37 @@ public class JooqProviderTest {
         assertEquals(15, (int) results.get(0).get(1, Integer.class));
         assertFalse(results.get(0).get(2, Boolean.class));
     }
+
+    /*
+     * Test batches with a mix of insert and delete statements with bindings
+     */
+    @Test
+    public void testMultiRowInsertsNoBindings() {
+        create.execute("insert into hosts values ('n1', 10, true), ('n54', 18, false), ('n9', 2, true)");
+        final Result<Record> results = create.selectFrom(table("hostsv")).fetch();
+        assertEquals(3, results.size());
+        assertTrue(results.contains(test1));
+        assertTrue(results.contains(test2));
+        assertTrue(results.contains(test3));
+    }
+
+    /*
+     * Test batches with a mix of insert and delete statements with bindings
+     */
+    @Test
+    public void testMultiRowInsertsWithBindings() {
+        create.insertInto(table("hosts"))
+              .values("n1", 10, true)
+              .values("n54", 18, false)
+              .values("n9", 2, true)
+              .execute();
+        final Result<Record> results = create.selectFrom(table("hostsv")).fetch();
+        assertEquals(3, results.size());
+        assertTrue(results.contains(test1));
+        assertTrue(results.contains(test2));
+        assertTrue(results.contains(test3));
+    }
+
 
     public static void compileAndLoad(final List<String> ddl) throws IOException, DDlogException {
         final Translator t = new Translator(null);
