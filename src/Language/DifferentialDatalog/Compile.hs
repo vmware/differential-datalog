@@ -612,7 +612,7 @@ compileLib d specname modules rs_code = (typeLib, mainLib)
     -- Add 'DDValConvert' impls to 'types' crate.
     -- Since multiple DDlog types can map to the same Rust type, we convert
     -- types to Rust and fold over the resulting set.
-    typeLib = S.foldl (\libs t -> M.adjust ($+$ "::differential_datalog::decl_ddval_convert!{" <> pp t <> "}") mainModuleName libs) typeLibAllFuncs
+    typeLib = S.foldl (\libs _ -> M.adjust ($+$ "") mainModuleName libs) typeLibAllFuncs
                       $ S.map (render . mkType d True) $ S.filter (typeNeedsDDValConvert d) $ cTypes cstate
     mainLib = mainHeader specname           $+$
               mkUpdateDeserializer d        $+$
@@ -1047,18 +1047,19 @@ mkIsInputRels d =
 makeRelationsTypeId :: DatalogProgram -> Doc
 makeRelationsTypeId datalog =
     "impl Relations {"
-    $$ "    pub fn type_id(&self) -> ::std::any::TypeId {"
-    $$ "        match self {"
-    $$              (nest' $ nest' $ nest' $ vcat type_ids)
-    $$ "        }"
-    $$ "    }"
-    $$ "}"
-    where
-        type_ids = map type_id_for $ M.elems $ progRelations datalog
+        $$ "    pub fn type_id(&self) -> ::std::any::TypeId {"
+        $$ "        match self {"
+        $$ (nest' $ nest' $ nest' $ vcat type_ids)
+        $$ "        }"
+        $$ "    }"
+        $$ "}"
+  where
+    type_ids = map type_id_for $ M.elems $ progRelations datalog
 
-        type_id_for :: Relation -> Doc
-        type_id_for relation = "Relations::" <> rnameFlat (name relation)
-            <+> "=> ::std::any::TypeId::of::<" <> pp (name relation) <> ">(),"
+    type_id_for :: Relation -> Doc
+    type_id_for relation =
+        "Relations::" <> rnameFlat (name relation)
+            <+> "=> ::std::any::TypeId::of::<" <> (mkType datalog False relation) <> ">(),"
 
 -- Convert RelId to enum Relations
 mkRelationsTryFromRelId :: DatalogProgram -> Doc
@@ -1457,29 +1458,46 @@ where
      EF: Fn(V) -> E + 'static,
      LF: Fn((N,N)) -> V + 'static
 -}
-compileApplyNode :: (?cfg::Config) => DatalogProgram -> Apply -> ProgNode
-compileApplyNode d Apply{..} = ApplyNode $
-    "{fn transformer() -> Box<dyn for<'a> Fn(&mut FnvHashMap<RelId, collection::Collection<scopes::Child<'a, worker::Worker<communication::Allocator>, TS>,DDValue,Weight>>)> {" $$
-    "    Box::new(|collections| {"                                                                                                                             $$
-    "        let (" <> commaSep outputs <> ") =" <+> rnameScoped False applyTransformer <> (parens $ commaSep inputs) <> ";"                                   $$
-    (nest' $ nest' $ vcat update_collections)                                                                                                                  $$
-    "    })"                                                                                                                                                   $$
-    "}; transformer}"
+compileApplyNode :: (?cfg :: Config) => DatalogProgram -> Apply -> ProgNode
+compileApplyNode d Apply{..} =
+    ApplyNode $
+        "{"
+            $$ "    fn transformer() -> Box<"
+            $$ "        dyn for<'a> Fn("
+            $$ "            &mut FnvHashMap<"
+            $$ "                RelId,"
+            $$ "                collection::Collection<"
+            $$ "                scopes::Child<'a, worker::Worker<communication::Allocator>, TS>,"
+            $$ "                    DDValue,"
+            $$ "                    Weight,"
+            $$ "                >,"
+            $$ "            >,"
+            $$ "        ),"
+            $$ "    > {"
+            $$ "        Box::new(|collections| {"
+            $$ "            let (" <> commaSep outputs <> ") =" <+> rnameScoped False applyTransformer <> (parens $ commaSep inputs) <> ";"
+            $$ (nest' $ nest' $ nest' $ vcat update_collections)
+            $$ "        })"
+            $$ "    }"
+            $$ "    transformer"
+            $$ "}"
   where
     Transformer{..} = getTransformer d applyTransformer
-    inputs = concatMap (\(i, ti) ->
-                         if hotypeIsFunction (hofType ti)
-                            then [rnameScoped False i]
-                            else ["collections.get(&(" <> relId i <> ")).unwrap()", extractValue d (relType $ getRelation d i)])
-                       (zip applyInputs transInputs)
-             ++
-             map (\_ -> parens $ "|v| v.into_ddvalue()") applyOutputs
+    inputs =
+        concatMap
+            ( \(i, ti) ->
+                if hotypeIsFunction (hofType ti)
+                    then [rnameScoped False i]
+                    else ["collections.get(&(" <> relId i <> ")).unwrap()", extractValue d (relType $ getRelation d i)]
+            )
+            (zip applyInputs transInputs)
+            ++ map (\_ -> parens $ "|v| v.into_ddvalue()") applyOutputs
     outputs = map rnameFlat applyOutputs
     update_collections = map (\o -> "collections.insert(" <> relId o <> "," <+> rnameFlat o <> ");") applyOutputs
 
 extractValue :: (?cfg::Config) => DatalogProgram -> Type -> Doc
 extractValue d t = parens $
-        "|" <> vALUE_VAR <> ": DDValue| unsafe {<" <> mkType d False t <> ">::from_ddvalue(" <> vALUE_VAR <> ") }"
+        "|" <> vALUE_VAR <> ": DDValue| <" <> mkType d False t <> ">::from_ddvalue(" <> vALUE_VAR <> ")"
 
 compileSCCNode :: (?cfg::Config, ?statics::Statics) => DatalogProgram -> [String] -> CompilerMonad ProgNode
 compileSCCNode d relnames = do
@@ -1569,7 +1587,7 @@ compileKey d rel KeyExpr{..} = do
     v <- mkDDValue d (CtxKey rel) keyExpr
     return $
         "(|" <> kEY_VAR <> ": &DDValue| {"                                                                                  $$
-        "    let ref" <+> pp keyVar <+> "= *unsafe {<" <> mkType d False rel <> ">::from_ddvalue_ref(" <> kEY_VAR <> ") };"  $$
+        "    let ref" <+> pp keyVar <+> "= *<" <> mkType d False rel <> ">::from_ddvalue_ref(" <> kEY_VAR <> ");"  $$
         "    " <> v                                                                                                         $$
         "})"
 
@@ -1850,7 +1868,7 @@ openAtom d var rl idx Atom{..} on_error = do
         vars = tuple $ map ("ref" <+>) varnames
         mtch = mkMatch (mkPatExpr d (CtxRuleRAtom rl idx) atomVal EReference False) var_clones on_error
     return $
-        "let" <+> vars <+> "= match *unsafe {<" <> t' <> ">::from_ddvalue_ref(" <> var <> ") } {" $$
+        "let" <+> vars <+> "= match *<" <> t' <> ">::from_ddvalue_ref(" <> var <> ") {" $$
         (nest' mtch)                                                                                        $$
         "};"
 
@@ -1860,7 +1878,7 @@ openTuple d var vs = do
     let t = tTuple $ map (varType d) vs
     t' <- addRelType d t
     let pattern = tupleStruct False $ map (("ref" <+>) . pp . name) vs
-    return $ "let" <+> pattern <+> "= *unsafe {<" <> t' <> ">::from_ddvalue_ref(" <+> var <+> ") };"
+    return $ "let" <+> pattern <+> "= *<" <> t' <> ">::from_ddvalue_ref(" <+> var <+> ");"
 
 -- Type 'typ x' is used as the value type of a relation.  Add it to
 -- 'CompilerMonad' so we generate 'DDValue' conversion methods for it.
@@ -2372,7 +2390,7 @@ mkArrangementKey d rel pattern = do
     -- in 'mkPatExpr'.
     let pattern_ctx = CtxTyped (ETyped nopos pattern $ relType rel) CtxTop
     let mtch = mkMatch (mkPatExpr d pattern_ctx pattern EReference False) res "None"
-    return $ "match" <+> "unsafe {<" <+> t' <> ">::from_ddvalue(" <> vALUE_VAR <> ") } {"  $$
+    return $ "match" <+> "<" <+> t' <> ">::from_ddvalue(" <> vALUE_VAR <> ") {"  $$
              nest' mtch                                                                    $$
              "}"
 
