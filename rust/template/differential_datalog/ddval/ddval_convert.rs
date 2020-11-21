@@ -1,9 +1,15 @@
 use crate::{
-    ddval::{DDVal, DDValue},
-    record::IntoRecord,
+    ddval::{DDVal, DDValMethods, DDValue},
+    record::{IntoRecord, Mutator, Record},
 };
-use ordered_float::OrderedFloat;
-use std::any::TypeId;
+use std::{
+    any::{Any, TypeId},
+    cmp::Ordering,
+    fmt::{self, Debug, Display, Formatter},
+    hash::{Hash, Hasher},
+    mem::{self, align_of, size_of, ManuallyDrop},
+    sync::Arc,
+};
 
 /// Trait to convert `DDVal` into concrete value type and back.
 pub trait DDValConvert: Sized {
@@ -101,250 +107,205 @@ pub trait DDValConvert: Sized {
 
     /// Converts the current value into a `DDValue`
     fn into_ddvalue(self) -> DDValue;
+
+    /// The vtable containing all `DDValue` methods for the current type
+    const VTABLE: DDValMethods;
 }
 
-/// Macro to implement `DDValConvert` for type `t` that satisfies the following type bounds:
-///
-/// t: Eq + Ord + Clone + Send + Debug + Sync + Hash + PartialOrd + IntoRecord + 'static,
-/// Record: Mutator<t>
-///
-#[macro_export]
-macro_rules! decl_ddval_convert {
-    ($($t:ty),* $(,)?) => {
-        $(impl $crate::ddval::DDValConvert for $t {
-            unsafe fn from_ddval_ref(value: &$crate::ddval::DDVal) -> &Self {
-                use ::std::mem::{size_of, align_of};
+/// Implement `DDValConvert` for all types that satisfy its type constraints
+impl<T> DDValConvert for T
+where
+    T: Any
+        + Clone
+        + Debug
+        + IntoRecord
+        + Eq
+        + PartialEq
+        + Ord
+        + PartialOrd
+        + Hash
+        + Send
+        + Sync
+        + erased_serde::Serialize
+        + 'static,
+    Record: Mutator<T>,
+{
+    unsafe fn from_ddval_ref(value: &DDVal) -> &Self {
+        let fits_in_usize =
+            size_of::<Self>() <= size_of::<usize>() && align_of::<Self>() <= align_of::<usize>();
 
-                if size_of::<Self>() <= size_of::<usize>() && align_of::<Self>() <= align_of::<usize>() {
-                    &*<*const usize>::cast::<Self>(&value.v)
-                } else {
-                    &*(value.v as *const Self)
+        if fits_in_usize {
+            &*<*const usize>::cast::<Self>(&value.v)
+        } else {
+            &*(value.v as *const Self)
+        }
+    }
+
+    unsafe fn from_ddval(value: DDVal) -> Self {
+        let fits_in_usize =
+            size_of::<Self>() <= size_of::<usize>() && align_of::<Self>() <= align_of::<usize>();
+
+        if fits_in_usize {
+            <*const usize>::cast::<Self>(&value.v).read()
+        } else {
+            let arc = Arc::from_raw(value.v as *const Self);
+            Arc::try_unwrap(arc).unwrap_or_else(|a| (*a).clone())
+        }
+    }
+
+    fn into_ddval(self) -> DDVal {
+        let fits_in_usize =
+            size_of::<Self>() <= size_of::<usize>() && align_of::<Self>() <= align_of::<usize>();
+
+        // The size and alignment of the `T` must be less than or equal to a
+        // `usize`'s, otherwise we store it within an `Arc`
+        if fits_in_usize {
+            let mut v: usize = 0;
+            unsafe { <*mut usize>::cast::<Self>(&mut v).write(self) };
+
+            DDVal { v }
+        } else {
+            DDVal {
+                v: Arc::into_raw(Arc::new(self)) as usize,
+            }
+        }
+    }
+
+    fn ddvalue(&self) -> DDValue {
+        DDValConvert::into_ddvalue(self.clone())
+    }
+
+    fn into_ddvalue(self) -> DDValue {
+        DDValue::new(self.into_ddval(), &Self::VTABLE)
+    }
+
+    const VTABLE: DDValMethods = {
+        let clone = |this: &DDVal| -> DDVal {
+            let fits_in_usize = size_of::<Self>() <= size_of::<usize>()
+                && align_of::<Self>() <= align_of::<usize>();
+
+            if fits_in_usize {
+                unsafe { <Self>::from_ddval_ref(this) }.clone().into_ddval()
+            } else {
+                let arc = unsafe { ManuallyDrop::new(Arc::from_raw(this.v as *const Self)) };
+
+                DDVal {
+                    v: Arc::into_raw(Arc::clone(&arc)) as usize,
                 }
             }
+        };
 
-            unsafe fn from_ddval(value: $crate::ddval::DDVal) -> Self {
-                use ::std::{
-                    mem::{size_of, align_of},
-                    sync::Arc,
-                };
+        let into_record =
+            |this: DDVal| -> Record { unsafe { <Self>::from_ddval(this) }.into_record() };
 
-                if size_of::<Self>() <= size_of::<usize>() && align_of::<Self>() <= align_of::<usize>() {
-                    // Use an unaligned read since the value inside of the DDVal
-                    // is potentially unaligned
-                    <*const usize>::cast::<Self>(&value.v).read_unaligned()
-                } else {
-                    let arc = Arc::from_raw(value.v as *const Self);
-                    Arc::try_unwrap(arc).unwrap_or_else(|a| (*a).clone())
-                }
+        let eq: unsafe fn(&DDVal, &DDVal) -> bool =
+            |this, other| unsafe { <Self>::from_ddval_ref(this).eq(<Self>::from_ddval_ref(other)) };
+
+        let partial_cmp: unsafe fn(&DDVal, &DDVal) -> Option<Ordering> = |this, other| unsafe {
+            <Self>::from_ddval_ref(this).partial_cmp(<Self>::from_ddval_ref(other))
+        };
+
+        let cmp: unsafe fn(&DDVal, &DDVal) -> Ordering = |this, other| unsafe {
+            <Self>::from_ddval_ref(this).cmp(<Self>::from_ddval_ref(other))
+        };
+
+        let hash = |this: &DDVal, mut state: &mut dyn Hasher| {
+            Hash::hash(unsafe { <Self>::from_ddval_ref(this) }, &mut state);
+        };
+
+        let mutate = |this: &mut DDVal, record: &Record| -> Result<(), String> {
+            let mut clone = unsafe { <Self>::from_ddval_ref(this) }.clone();
+            Mutator::mutate(record, &mut clone)?;
+            *this = clone.into_ddval();
+
+            Ok(())
+        };
+
+        let fmt_debug = |this: &DDVal, f: &mut Formatter| -> Result<(), fmt::Error> {
+            Debug::fmt(unsafe { <Self>::from_ddval_ref(this) }, f)
+        };
+
+        let fmt_display = |this: &DDVal, f: &mut Formatter| -> Result<(), fmt::Error> {
+            Display::fmt(
+                &unsafe { <Self>::from_ddval_ref(this) }
+                    .clone()
+                    .into_record(),
+                f,
+            )
+        };
+
+        let drop = |this: &mut DDVal| {
+            let fits_in_usize = size_of::<Self>() <= size_of::<usize>()
+                && align_of::<Self>() <= align_of::<usize>();
+
+            if fits_in_usize {
+                // Allow the inner value's Drop impl to run automatically
+                let _val = unsafe { <*const usize>::cast::<Self>(&this.v).read() };
+            } else {
+                let arc = unsafe { Arc::from_raw(this.v as *const Self) };
+                mem::drop(arc);
             }
+        };
 
-            fn into_ddval(self) -> $crate::ddval::DDVal {
-                use ::std::{
-                    mem::{size_of, align_of},
-                    sync::Arc,
-                };
-                use $crate::ddval::DDVal;
+        let ddval_serialize: fn(&DDVal) -> &dyn erased_serde::Serialize =
+            |this| unsafe { <Self>::from_ddval_ref(this) as &dyn erased_serde::Serialize };
 
-                // The size and alignment of the `T` must be less than or equal to a
-                // `usize`'s, otherwise we store it within an `Arc`
-                if size_of::<Self>() <= size_of::<usize>() && align_of::<Self>() <= align_of::<usize>() {
-                    let mut v: usize = 0;
-                    // Safety: The value we're writing into the `usize` potentially
-                    //         has a different alignment than a `usize`, so we use
-                    //         an unaligned write to avoid UB
-                    unsafe {
-                        <*mut usize>::cast::<Self>(&mut v).write_unaligned(self);
-                    }
+        let type_id = |_this: &DDVal| -> TypeId { TypeId::of::<Self>() };
 
-                    DDVal { v }
-                } else {
-                    DDVal {
-                        v: Arc::into_raw(Arc::new(self)) as usize,
-                    }
-                }
-            }
-
-            fn ddvalue(&self) -> $crate::ddval::DDValue {
-                $crate::ddval::DDValConvert::into_ddvalue(self.clone())
-            }
-
-            fn into_ddvalue(self) -> $crate::ddval::DDValue {
-                use ::std::{
-                    any::TypeId,
-                    cmp::Ordering,
-                    fmt::{self, Debug, Display, Formatter},
-                    hash::{Hash, Hasher},
-                    mem::{self, size_of, align_of, ManuallyDrop},
-                    sync::Arc,
-                };
-                use $crate::{
-                    ddval::{DDVal, DDValMethods, DDValue},
-                    record::{Mutator, Record},
-                };
-
-                fn clone(this: &DDVal) -> DDVal {
-                    if size_of::<$t>() <= size_of::<usize>() && align_of::<$t>() <= align_of::<usize>() {
-                        unsafe { <$t>::from_ddval_ref(this) }.clone().into_ddval()
-                    } else {
-                        let arc = unsafe { ManuallyDrop::new(Arc::from_raw(this.v as *const $t)) };
-                        let res = DDVal {
-                            v: Arc::into_raw(Arc::clone(&arc)) as usize,
-                        };
-
-                        res
-                    }
-                }
-
-                fn into_record(this: DDVal) -> Record {
-                    unsafe { <$t>::from_ddval(this) }.into_record()
-                }
-
-                fn eq(this: &DDVal, other: &DDVal) -> bool {
-                    unsafe { <$t>::from_ddval_ref(this).eq(<$t>::from_ddval_ref(other)) }
-                }
-
-                fn partial_cmp(this: &DDVal, other: &DDVal) -> Option<Ordering> {
-                    unsafe { <$t>::from_ddval_ref(this).partial_cmp(<$t>::from_ddval_ref(other)) }
-                }
-
-                fn cmp(this: &DDVal, other: &DDVal) -> Ordering {
-                    unsafe { <$t>::from_ddval_ref(this).cmp(<$t>::from_ddval_ref(other)) }
-                }
-
-                fn hash(this: &DDVal, mut state: &mut dyn Hasher) {
-                    Hash::hash(unsafe { <$t>::from_ddval_ref(this) }, &mut state);
-                }
-
-                fn mutate(this: &mut DDVal, record: &Record) -> Result<(), ::std::string::String> {
-                    let mut clone = unsafe { <$t>::from_ddval_ref(this) }.clone();
-                    Mutator::mutate(record, &mut clone)?;
-                    *this = clone.into_ddval();
-
-                    Ok(())
-                }
-
-                fn fmt_debug(this: &DDVal, f: &mut Formatter) -> Result<(), fmt::Error> {
-                    Debug::fmt(unsafe { <$t>::from_ddval_ref(this) }, f)
-                }
-
-                fn fmt_display(this: &DDVal, f: &mut Formatter) -> Result<(), fmt::Error> {
-                    Display::fmt(
-                        &unsafe { <$t>::from_ddval_ref(this) }.clone().into_record(),
-                        f,
-                    )
-                }
-
-                fn drop(this: &mut DDVal) {
-                    if size_of::<$t>() <= size_of::<usize>() && align_of::<$t>() <= align_of::<usize>() {
-                        // Allow the inner value's Drop impl to run automatically
-                        let _val = unsafe {
-                            // Use an unaligned read since the value inside of the DDVal
-                            // is potentially unaligned
-                            <*const usize>::cast::<$t>(&this.v).read_unaligned()
-                        };
-                    } else {
-                        let arc = unsafe { Arc::from_raw(this.v as *const $t) };
-                        mem::drop(arc);
-                    }
-                }
-
-                fn ddval_serialize(this: &DDVal) -> &dyn erased_serde::Serialize {
-                    unsafe {
-                        <$t>::from_ddval_ref(this) as &dyn erased_serde::Serialize
-                    }
-                }
-
-                fn type_id(_this: &DDVal) -> TypeId {
-                    TypeId::of::<$t>()
-                }
-
-                static VTABLE: DDValMethods = DDValMethods {
-                    clone,
-                    into_record,
-                    eq,
-                    partial_cmp,
-                    cmp,
-                    hash,
-                    mutate,
-                    fmt_debug,
-                    fmt_display,
-                    drop,
-                    ddval_serialize,
-                    type_id,
-                };
-
-                DDValue::new(self.into_ddval(), &VTABLE)
-            }
-        })*
+        DDValMethods {
+            clone,
+            into_record,
+            eq,
+            partial_cmp,
+            cmp,
+            hash,
+            mutate,
+            fmt_debug,
+            fmt_display,
+            drop,
+            ddval_serialize,
+            type_id,
+        }
     };
 }
-
-/* Implement `DDValConvert` for builtin types. */
-
-decl_ddval_convert!(
-    (),
-    u8,
-    u16,
-    u32,
-    u64,
-    u128,
-    i8,
-    i16,
-    i32,
-    i64,
-    i128,
-    String,
-    bool,
-    OrderedFloat<f32>,
-    OrderedFloat<f64>
-);
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[derive(Clone, PartialEq, Eq)]
-    struct Foo {
-        baz: usize,
-        bar: usize,
-    }
-    decl_ddval_convert!(Foo);
-
-    struct Bar;
-    decl_ddval_convert!(Bar);
+    use crate::test_value::{Bool, Empty};
 
     #[test]
     fn conversion_lossless() {
-        let foo = Foo { baz: 10, bar: 20 };
-        let val = foo.into_ddvalue();
+        let boolean = Bool(true);
+        let val = boolean.clone().into_ddvalue();
 
-        assert_eq!(Some(&foo), Foo::try_from_ddvalue_ref(&val));
-        assert_eq!(Some(foo), Foo::try_from_ddvalue(val));
-        assert_eq!(&foo, Foo::from_ddvalue_ref(&val));
-        assert_eq!(foo, Foo::from_ddvalue(val));
+        assert_eq!(Some(&boolean), Bool::try_from_ddvalue_ref(&val));
+        assert_eq!(Some(boolean.clone()), Bool::try_from_ddvalue(val.clone()));
+        assert_eq!(&boolean, Bool::from_ddvalue_ref(&val));
+        assert_eq!(boolean, Bool::from_ddvalue(val));
     }
 
     #[test]
     fn checked_conversions() {
-        let foo = Foo { baz: 10, bar: 20 }.into_ddvalue();
+        let val = Bool(true).into_ddvalue();
 
-        assert!(Bar::try_from_ddvalue_ref(&val).is_none());
-        assert!(Bar::try_from_ddvalue(val).is_none());
+        assert!(Empty::try_from_ddvalue_ref(&val).is_none());
+        assert!(Empty::try_from_ddvalue(val).is_none());
     }
 
     #[test]
     #[should_panic(expected = "attempted to convert a DDValue into the incorrect type")]
     fn incorrect_from_type() {
-        let val = Foo { baz: 10, bar: 20 }.into_ddvalue();
+        let val = Bool(true).into_ddvalue();
 
-        let _panic = Bar::from_ddvalue(val);
+        let _panic = Empty::from_ddvalue(val);
     }
 
     #[test]
     #[should_panic(expected = "attempted to convert a DDValue into the incorrect type")]
     fn incorrect_from_ref_type() {
-        let val = Foo { baz: 10, bar: 20 }.into_ddvalue();
+        let val = Bool(true).into_ddvalue();
 
-        let _panic = Bar::from_ddvalue_ref(&val);
+        let _panic = Empty::from_ddvalue_ref(&val);
     }
 }
