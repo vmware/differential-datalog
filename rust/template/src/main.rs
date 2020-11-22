@@ -41,14 +41,24 @@ fn handle_cmd(
     interactive: bool,
     upds: &mut Vec<Update<DDValue>>,
     cmd: Command,
+    transaction: &mut Option<TransactionHandle>,
 ) -> (Result<(), String>, bool) {
     let resp = (if !is_upd_cmd(&cmd) {
-        apply_updates(hddlog, upds)
+        apply_updates(
+            hddlog,
+            upds,
+            transaction
+                .as_ref()
+                .take()
+                .expect("no transaction in progress"),
+        )
     } else {
         Ok(())
     })
     .and(match cmd {
-        Command::Start => hddlog.transaction_start(),
+        Command::Start => hddlog
+            .transaction_start()
+            .map(|handle| *transaction = Some(handle)),
         Command::LogLevel(level) => {
             log_set_default_callback(
                 Some(Box::new(move |level, msg| {
@@ -69,13 +79,17 @@ fn handle_cmd(
             }
 
             let res = if record_delta {
-                hddlog.transaction_commit_dump_changes().map(|changes| {
-                    if print_deltas {
-                        dump_delta(&changes)
-                    }
-                })
+                hddlog
+                    .transaction_commit_dump_changes(
+                        transaction.take().expect("no transaction in progress"),
+                    )
+                    .map(|changes| {
+                        if print_deltas {
+                            dump_delta(&changes)
+                        }
+                    })
             } else {
-                hddlog.transaction_commit()
+                hddlog.transaction_commit(transaction.take().expect("no transaction in progress"))
             };
 
             #[cfg(feature = "profile")]
@@ -89,7 +103,9 @@ fn handle_cmd(
             res
         }
         Command::Comment => Ok(()),
-        Command::Rollback => hddlog.transaction_rollback(),
+        Command::Rollback => {
+            hddlog.transaction_rollback(transaction.take().expect("no transaction in progress"))
+        }
         Command::Timestamp => {
             println!("Timestamp: {}", start_time.elapsed().whole_nanoseconds());
             Ok(())
@@ -131,6 +147,7 @@ fn handle_cmd(
                 .db
                 .as_ref()
                 .map(|db| db.lock().unwrap().format_rel_as_set(relid, &mut stdout()));
+
             Ok(())
         }
         Command::Clear(rname) => {
@@ -144,7 +161,13 @@ fn handle_cmd(
                     return (Err(err), interactive);
                 }
             };
-            hddlog.clear_relation(relid)
+            hddlog.clear_relation(
+                relid,
+                transaction
+                    .as_ref()
+                    .take()
+                    .expect("no transaction in progress"),
+            )
         }
         Command::Exit => {
             return (Ok(()), false);
@@ -169,7 +192,14 @@ fn handle_cmd(
                 }
             };
             if last {
-                apply_updates(hddlog, upds)
+                apply_updates(
+                    hddlog,
+                    upds,
+                    transaction
+                        .as_ref()
+                        .take()
+                        .expect("no transaction in progress"),
+                )
             } else {
                 Ok(())
             }
@@ -215,9 +245,13 @@ fn dump_delta(delta: &DeltaMap<DDValue>) {
     }
 }
 
-fn apply_updates(hddlog: &HDDlog, upds: &mut Vec<Update<DDValue>>) -> Response<()> {
+fn apply_updates(
+    hddlog: &HDDlog,
+    upds: &mut Vec<Update<DDValue>>,
+    transaction: &TransactionHandle,
+) -> Response<()> {
     if !upds.is_empty() {
-        hddlog.apply_valupdates(upds.drain(..))
+        hddlog.apply_valupdates(upds.drain(..), transaction)
     } else {
         Ok(())
     }
@@ -233,6 +267,8 @@ fn is_upd_cmd(c: &Command) -> bool {
 fn run(mut hddlog: HDDlog, print_deltas: bool) -> Result<(), String> {
     let upds = Arc::new(Mutex::new(Vec::new()));
     let start_time = Instant::now();
+    let transaction = Arc::new(Mutex::new(None));
+
     interact(|cmd, interactive| {
         handle_cmd(
             start_time,
@@ -241,6 +277,7 @@ fn run(mut hddlog: HDDlog, print_deltas: bool) -> Result<(), String> {
             interactive,
             &mut upds.lock().unwrap(),
             cmd,
+            &mut transaction.lock().unwrap(),
         )
     })?;
 

@@ -69,7 +69,7 @@ fn main() -> Result<(), String> {
 
     // There can be at most one transaction at a time.  Attempt to start another transaction
     // when there is one in execution will return an error.
-    hddlog.transaction_start()?;
+    let transaction = hddlog.transaction_start()?;
 
     // A transaction can consist of multiple `apply_valupdates()` calls, each taking
     // multiple updates.  An update inserts, deletes or modifies a record in a DDlog
@@ -94,11 +94,11 @@ fn main() -> Result<(), String> {
             .into_ddvalue(),
         },
     ];
-    hddlog.apply_valupdates(updates.into_iter())?;
+    hddlog.apply_valupdates(updates.into_iter(), &transaction)?;
 
     // Commit the transaction; returns a `DeltaMap` object that contains the set
     // of changes to output relations produced by the transaction.
-    let mut delta = hddlog.transaction_commit_dump_changes()?;
+    let mut delta = hddlog.transaction_commit_dump_changes(transaction)?;
     //assert_eq!(delta, delta_expected);
 
     println!("\nState after transaction 1");
@@ -113,14 +113,11 @@ fn main() -> Result<(), String> {
         // weight = 1 - insert.
         // weight = -1 - delete.
         assert_eq!(*weight, 1);
-        // `val` has type `DDValue`; converting it to a concrete Rust
-        // type is an unsafe operation: specifying the wrong Rust type
-        // will lead to undefined behavior.
-        let phrase: &Phrases = unsafe { Phrases::from_ddvalue_ref(val) };
+        let phrase: &Phrases = Phrases::from_ddvalue_ref(val);
         println!("New phrase: {}", phrase.phrase);
     };
 
-    hddlog.transaction_start()?;
+    let transaction = hddlog.transaction_start()?;
 
     // `Record` type
 
@@ -149,9 +146,9 @@ fn main() -> Result<(), String> {
     // typed commands.
     // This will fail if the records in `commands` don't match the DDlog type
     // declarations (e.g., missing constructor arguments, string instead of integer, etc.)
-    hddlog.apply_updates(commands.iter())?;
+    hddlog.apply_updates(commands.iter(), &transaction)?;
 
-    let delta = hddlog.transaction_commit_dump_changes()?;
+    let delta = hddlog.transaction_commit_dump_changes(transaction)?;
 
     println!("\nState after transaction 2");
     dump_delta(&delta);
