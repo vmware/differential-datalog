@@ -1677,7 +1677,7 @@ def convert(inputName: str, outputPrefix: str, options: ConversionOptions, debug
 
     # Create a dummy relation with one variable.  This is used
     # to handle rules that have only negated terms
-    converter.dummyRelation = converter.fresh_variable("Rdummy")
+    converter.dummyRelation = converter.fresh_variable("Dummy")
     files.output("relation " + converter.dummyRelation + "(x: Tnumber)")
     files.output(converter.dummyRelation + "(0).")
 
