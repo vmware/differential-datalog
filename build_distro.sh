@@ -58,7 +58,7 @@ cd ../../
 # First copy Java sources only, then build and copy the .jar.
 cp -r java "$DIST_DIR/"
 cd java
-make
+CLASSPATH=. make
 cd ..
 cp java/ddlogapi.jar "$DIST_DIR/java/"
 cp java/ddlogapi_DDlogAPI.h "$DIST_DIR/java/"
