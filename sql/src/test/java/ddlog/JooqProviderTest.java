@@ -238,6 +238,18 @@ public class JooqProviderTest {
         }
     }
 
+    /*
+     * Test updates
+     */
+    @Test
+    public void testUpdates() {
+        create.execute("insert into hosts values ('n1', 10, true)");
+        create.execute("insert into hosts values ('n1', 11, false)");
+        final Result<Record> results = create.selectFrom(table("hostsv")).fetch();
+        System.out.println(results);
+    }
+
+
     public static void compileAndLoad(final List<String> ddl) throws IOException, DDlogException {
         final Translator t = new Translator(null);
         ddl.forEach(t::translateSqlStatement);
