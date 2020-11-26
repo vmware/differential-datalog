@@ -6,30 +6,24 @@ package com.vmware.ddlog;
 
 import com.facebook.presto.sql.parser.ParsingOptions;
 import com.facebook.presto.sql.parser.SqlParser;
-import com.facebook.presto.sql.tree.AllColumns;
-import com.facebook.presto.sql.tree.AstVisitor;
-import com.facebook.presto.sql.tree.BooleanLiteral;
-import com.facebook.presto.sql.tree.ComparisonExpression;
-import com.facebook.presto.sql.tree.Delete;
-import com.facebook.presto.sql.tree.Expression;
-import com.facebook.presto.sql.tree.Identifier;
-import com.facebook.presto.sql.tree.Insert;
-import com.facebook.presto.sql.tree.Literal;
-import com.facebook.presto.sql.tree.LogicalBinaryExpression;
-import com.facebook.presto.sql.tree.LongLiteral;
-import com.facebook.presto.sql.tree.Parameter;
-import com.facebook.presto.sql.tree.Query;
-import com.facebook.presto.sql.tree.QuerySpecification;
-import com.facebook.presto.sql.tree.Row;
-import com.facebook.presto.sql.tree.Select;
 import com.facebook.presto.sql.tree.Statement;
-import com.facebook.presto.sql.tree.StringLiteral;
-import com.facebook.presto.sql.tree.Values;
 import ddlogapi.DDlogAPI;
 import ddlogapi.DDlogCommand;
 import ddlogapi.DDlogException;
 import ddlogapi.DDlogRecCommand;
 import ddlogapi.DDlogRecord;
+import org.apache.calcite.sql.SqlBasicCall;
+import org.apache.calcite.sql.SqlCall;
+import org.apache.calcite.sql.SqlDelete;
+import org.apache.calcite.sql.SqlDynamicParam;
+import org.apache.calcite.sql.SqlIdentifier;
+import org.apache.calcite.sql.SqlInsert;
+import org.apache.calcite.sql.SqlKind;
+import org.apache.calcite.sql.SqlLiteral;
+import org.apache.calcite.sql.SqlNode;
+import org.apache.calcite.sql.SqlSelect;
+import org.apache.calcite.sql.parser.SqlParseException;
+import org.apache.calcite.sql.util.SqlBasicVisitor;
 import org.jooq.DSLContext;
 import org.jooq.DataType;
 import org.jooq.Field;
@@ -43,7 +37,6 @@ import org.jooq.tools.jdbc.MockExecuteContext;
 import org.jooq.tools.jdbc.MockResult;
 
 import javax.annotation.Nullable;
-import java.sql.SQLException;
 import java.sql.Types;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -94,7 +87,6 @@ public final class DDlogJooqProvider implements MockDataProvider {
     private final Map<String, List<? extends Field<?>>> tablesToPrimaryKeys = new HashMap<>();
     private final SqlParser parser = new SqlParser();
     private final ParsingOptions options = ParsingOptions.builder().build();
-    private final QueryVisitor queryVisitor = new QueryVisitor();
     private final ParseLiterals parseLiterals = new ParseLiterals();
     private final TranslateCreateTableDialect translateCreateTableDialect = new TranslateCreateTableDialect();
     private final Map<String, Set<Record>> materializedViews = new ConcurrentHashMap<>();
@@ -126,7 +118,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
      * All executed SQL queries against a JOOQ connection are received here
      */
     @Override
-    public MockResult[] execute(final MockExecuteContext ctx) throws SQLException {
+    public MockResult[] execute(final MockExecuteContext ctx) {
         final String[] batchSql = ctx.batchSQL();
         final MockResult[] mock = new MockResult[batchSql.length];
         try {
@@ -135,10 +127,13 @@ public final class DDlogJooqProvider implements MockDataProvider {
             for (int i = 0; i < batchSql.length; i++) {
                 final Object[] binding = bindings != null && bindings.length > i ? bindings[i] : DEFAULT_BINDING;
                 final QueryContext context = new QueryContext(batchSql[i], binding);
-                mock[i] = executeOne(context);
+                final org.apache.calcite.sql.parser.SqlParser parser =
+                        org.apache.calcite.sql.parser.SqlParser.create(batchSql[i]);
+                final SqlNode sqlNode = parser.parseStmt();
+                mock[i] = sqlNode.accept(new QueryVisitor(context));
             }
             dDlogAPI.transactionCommitDumpChanges(this::onChange);
-        } catch (final DDlogException | RuntimeException e) {
+        } catch (final DDlogException | RuntimeException | SqlParseException e) {
             try {
                 dDlogAPI.transactionRollback();
             } catch (DDlogException rollbackFailed) {
@@ -175,113 +170,110 @@ public final class DDlogJooqProvider implements MockDataProvider {
         }
     }
 
-    private MockResult executeOne(final QueryContext context) throws SQLException {
-        final Statement statement = parser.createStatement(context.sql(), options);
-        final MockResult result = queryVisitor.process(statement, context);
-        if (result == null) {
-            throw new SQLException("Could not execute SQL statement " + context);
-        }
-        return result;
-    }
+    private class QueryVisitor extends SqlBasicVisitor<MockResult> {
+        private final QueryContext context;
 
-    /*
-     * Visits an SQL query and converts into a JOOQ MockResult type.
-     */
-    private class QueryVisitor extends AstVisitor<MockResult, QueryContext> {
+        QueryVisitor(final QueryContext context) {
+            this.context = context;
+        }
+
         @Override
-        protected MockResult visitQuerySpecification(final QuerySpecification node, final QueryContext context) {
+        public MockResult visit(final SqlCall call) {
+            switch (call.getKind()) {
+                case SELECT:
+                    return visitSelect(call);
+                case UPDATE:
+                    break;
+                case INSERT:
+                    return visitInsert(call);
+                case DELETE:
+                    return visitDelete(call);
+                default:
+                    throw new UnsupportedOperationException(call.toString());
+            }
+            throw new RuntimeException(call.toString());
+        }
+
+        private MockResult visitSelect(final SqlCall call) {
             // The checks below encode assumption A1 (see javadoc for the DDlogJooqProvider class)
-            final Select select = node.getSelect();
-            if (!(select.getSelectItems().size() == 1
-                    && select.getSelectItems().get(0) instanceof AllColumns
-                    && node.getFrom().isPresent()
-                    && node.getFrom().get() instanceof com.facebook.presto.sql.tree.Table)) {
+            final SqlSelect select = (SqlSelect) call;
+            if (!(select.getSelectList().size() == 1
+                    && select.getSelectList().get(0).toString().equals("*"))) {
                 throw new RuntimeException("Statement not supported: " + context.sql());
             }
-            final String tableName = ((com.facebook.presto.sql.tree.Table) node.getFrom().get()).getName().toString();
+            final String tableName = ((SqlIdentifier) select.getFrom()).getSimple();
             final List<Field<?>> fields = tablesToFields.get(tableName.toUpperCase());
             if (fields == null) {
                 throw new RuntimeException(String.format("Unknown table %s queried in statement: %s", tableName,
-                                           context.sql()));
+                        context.sql()));
             }
             final Result<Record> result = dslContext.newResult(fields);
             result.addAll(materializedViews.computeIfAbsent(tableName.toUpperCase(), (k) -> new LinkedHashSet<>()));
             return new MockResult(1, result);
         }
 
-        @Override
-        protected MockResult visitQuery(final Query node, final QueryContext context) {
-            final QuerySpecification specification = (QuerySpecification) node.getQueryBody();
-            return visitQuerySpecification(specification, context);
-        }
-
-        @Override
-        protected MockResult visitInsert(final Insert node, final QueryContext context) {
-            try {
-                // The assertions below encode assumption A2 (see javadoc for the DDlogJooqProvider class)
-                if (!(node.getQuery().getQueryBody() instanceof Values)) {
-                    throw new RuntimeException("Statement not supported: " + context.sql());
+        private MockResult visitInsert(final SqlCall call) {
+            final SqlInsert insert = (SqlInsert) call;
+            if (insert.getSource().getKind() != SqlKind.VALUES) {
+                throw new UnsupportedOperationException(call.toString());
+            }
+            final SqlNode[] values = ((SqlBasicCall) insert.getSource()).getOperands();
+            final String tableName = ((SqlIdentifier) insert.getTargetTable()).getSimple();
+            final List<Field<?>> fields = tablesToFields.get(tableName.toUpperCase());
+            final int tableId = dDlogAPI.getTableId(ddlogRelationName(tableName));
+            for (final SqlNode value: values) {
+                if (value.getKind() != SqlKind.ROW) {
+                    throw new UnsupportedOperationException(call.toString());
                 }
-                final Values values = (Values) node.getQuery().getQueryBody();
-                final String tableName = node.getTarget().toString();
-                final List<Field<?>> fields = tablesToFields.get(tableName.toUpperCase());
-                final int tableId = dDlogAPI.getTableId(ddlogRelationName(tableName));
-                for (final Expression row: values.getRows()) {
-                    if (!(row instanceof Row)) {
-                        throw new RuntimeException("Statement not supported: " + context.sql());
+                final SqlNode[] rowElements = ((SqlBasicCall) value).operands;
+                final DDlogRecord[] recordsArray = new DDlogRecord[rowElements.length];
+                if (context.hasBinding()) {
+                    // Is a statement with bound variables
+                    for (int i = 0; i < rowElements.length; i++) {
+                        final boolean isNullableField = fields.get(i).getDataType().nullable();
+                        final DDlogRecord record = toValue(fields.get(i), context.nextBinding());
+                        recordsArray[i] = maybeOption(isNullableField, record);
                     }
-                    final List<Expression> items = ((Row) row).getItems();
-                    if (items.size() != fields.size()) {
-                        final String error = String.format("Incorrect row size for insertion into table %s. " +
-                                                   "Please specify all the table's fields in their declared order: %s",
-                                                    tableName, context.sql());
-                        throw new RuntimeException(error);
+                }
+                else {
+                    // need to parse literals into DDLogRecords
+                    for (int i = 0; i < rowElements.length; i++) {
+                        final boolean isNullableField = fields.get(i).getDataType().nullable();
+                        final DDlogRecord result = rowElements[i].accept(parseLiterals);
+                        recordsArray[i] = maybeOption(isNullableField, result);
                     }
-                    final DDlogRecord[] recordsArray = new DDlogRecord[items.size()];
-                    if (context.hasBinding()) {
-                        // Is a statement with bound variables
-                        for (int i = 0; i < items.size(); i++) {
-                            final boolean isNullableField = fields.get(i).getDataType().nullable();
-                            final DDlogRecord record = toValue(fields.get(i), context.nextBinding());
-                            recordsArray[i] = maybeOption(isNullableField, record);
-                        }
-                    }
-                    else {
-                        // need to parse literals into DDLogRecords
-                        for (int i = 0; i < items.size(); i++) {
-                            final boolean isNullableField = fields.get(i).getDataType().nullable();
-                            recordsArray[i] = parseLiterals.process(items.get(i), isNullableField);
-                        }
-                    }
-                    final DDlogRecord record = DDlogRecord.makeStruct(ddlogTableTypeName(tableName), recordsArray);
+                }
+                final DDlogRecord record;
+                try {
+                    record = DDlogRecord.makeStruct(ddlogTableTypeName(tableName), recordsArray);
                     final DDlogRecCommand command = new DDlogRecCommand(DDlogCommand.Kind.Insert, tableId, record);
                     dDlogAPI.applyUpdates(new DDlogRecCommand[]{command});
+                } catch (final DDlogException e) {
+                    throw new RuntimeException(e);
                 }
-                final Result<Record1<Integer>> result = dslContext.newResult(updateCountField);
-                final Record1<Integer> resultRecord = dslContext.newRecord(updateCountField);
-                resultRecord.setValue(updateCountField, values.getRows().size());
-                result.add(resultRecord);
-                return new MockResult(values.getRows().size(), result);
-            } catch (DDlogException e) {
-                throw new RuntimeException(e);
             }
+            final Result<Record1<Integer>> result = dslContext.newResult(updateCountField);
+            final Record1<Integer> resultRecord = dslContext.newRecord(updateCountField);
+            resultRecord.setValue(updateCountField, values.length);
+            result.add(resultRecord);
+            return new MockResult(values.length, result);
         }
 
-        @Override
-        protected MockResult visitDelete(final Delete node, final QueryContext context) {
+        private MockResult visitDelete(final SqlCall call) {
             // The assertions below, and in the ParseWhereClauseForDeletes visitor encode assumption A3
             // (see javadoc for the DDlogJooqProvider class)
-            final String tableName = node.getTable().getName().toString();
-            if (!node.getWhere().isPresent()) {
+            final SqlDelete delete = (SqlDelete) call;
+            final String tableName = ((SqlIdentifier) delete.getTargetTable()).getSimple();
+            if (delete.getCondition() == null) {
                 throw new RuntimeException("Delete queries without where clauses are unsupported: " + context.sql());
             }
             try {
-                final Expression where = node.getWhere().get();
-                final ParseWhereClauseForDeletes visitor = new ParseWhereClauseForDeletes(tableName);
-                visitor.process(where, context);
+                final SqlBasicCall where = (SqlBasicCall) delete.getCondition();
+                final ParseWhereClauseForDeletes visitor = new ParseWhereClauseForDeletes(tableName, context);
+                where.accept(visitor);
                 final DDlogRecord[] matchExpression = visitor.matchExpressions;
                 final DDlogRecord record = matchExpression.length > 1 ? DDlogRecord.makeTuple(matchExpression)
-                                                                      : matchExpression[0];
+                        : matchExpression[0];
 
                 final int tableId = dDlogAPI.getTableId(ddlogRelationName(tableName));
                 final DDlogRecCommand command = new DDlogRecCommand(DDlogCommand.Kind.DeleteKey, tableId, record);
@@ -297,49 +289,50 @@ public final class DDlogJooqProvider implements MockDataProvider {
         }
     }
 
-    private class ParseWhereClauseForDeletes extends AstVisitor<Void, QueryContext> {
+    private class ParseWhereClauseForDeletes extends SqlBasicVisitor<Void> {
         final DDlogRecord[] matchExpressions;
         final String tableName;
+        final QueryContext context;
 
-        public ParseWhereClauseForDeletes(final String tableName) {
+        public ParseWhereClauseForDeletes(final String tableName, final QueryContext context) {
             this.tableName = tableName;
+            this.context = context;
             matchExpressions = new DDlogRecord[tablesToPrimaryKeys.get(tableName.toUpperCase()).size()];
         }
 
         @Override
-        protected Void visitLogicalBinaryExpression(final LogicalBinaryExpression node, final QueryContext context) {
-            if (!node.getOperator().equals(LogicalBinaryExpression.Operator.AND)) {
-                throw new RuntimeException("Only equality-based comparisons on " +
-                        "all (not some) primary-key columns are allowed: " + node);
+        public Void visit(final SqlCall call) {
+            final SqlBasicCall expr = (SqlBasicCall) call;
+            switch (expr.getOperator().getKind()) {
+                case AND:
+                    return super.visit(call);
+                case EQUALS:
+                    final SqlNode left = expr.getOperands()[0];
+                    final SqlNode right = expr.getOperands()[1];
+                    if (context.hasBinding()) {
+                        if (left instanceof SqlIdentifier && right instanceof SqlDynamicParam) {
+                            setMatchExpression((SqlIdentifier) left, context.nextBinding());
+                            return null;
+                        } else if (right instanceof SqlIdentifier && left instanceof SqlDynamicParam) {
+                            setMatchExpression((SqlIdentifier) right, context.nextBinding());
+                            return null;
+                        }
+                    } else {
+                        if (left instanceof SqlIdentifier && right instanceof SqlLiteral) {
+                            setMatchExpression((SqlIdentifier) left, (SqlLiteral) right);
+                            return null;
+                        } else if (right instanceof SqlIdentifier && left instanceof SqlLiteral) {
+                            setMatchExpression((SqlIdentifier) right, (SqlLiteral) left);
+                            return null;
+                        }
+                    }
+                    throw new RuntimeException("Unexpected comparison expression: " + call);
+                default:
+                    throw new UnsupportedOperationException("Unsupported expression in where clause");
             }
-            return super.visitLogicalBinaryExpression(node, context);
         }
 
-        @Override
-        protected Void visitComparisonExpression(final ComparisonExpression node, final QueryContext context) {
-            final Expression left = node.getLeft();
-            final Expression right = node.getRight();
-            if (context.hasBinding()) {
-                if (left instanceof Identifier && right instanceof Parameter) {
-                    setMatchExpression((Identifier) left, context.nextBinding());
-                    return null;
-                } else if (right instanceof Identifier && left instanceof Parameter) {
-                    setMatchExpression((Identifier) right, context.nextBinding());
-                    return null;
-                }
-            } else {
-                if (left instanceof Identifier && right instanceof Literal) {
-                    setMatchExpression((Identifier) left, (Literal) right);
-                    return null;
-                } else if (right instanceof Identifier && left instanceof Literal) {
-                    setMatchExpression((Identifier) right, (Literal) left);
-                    return null;
-                }
-            }
-            throw new RuntimeException("Unexpected comparison expression: "+ node);
-        }
-
-        private void setMatchExpression(final Identifier identifier, final Literal literal) {
+        private void setMatchExpression(final SqlIdentifier identifier, final SqlLiteral literal) {
             final List<? extends Field<?>> fields = tablesToPrimaryKeys.get(tableName.toUpperCase());
 
             /*
@@ -347,16 +340,17 @@ public final class DDlogJooqProvider implements MockDataProvider {
              * order as the primary key declaration in the SQL create table statement.
              */
             for (int i = 0; i < fields.size(); i++) {
-                if (fields.get(i).getUnqualifiedName().last().equalsIgnoreCase(identifier.getValue())) {
-                    matchExpressions[i] = parseLiterals.process(literal, fields.get(i).getDataType().nullable());
+                if (fields.get(i).getUnqualifiedName().last().equalsIgnoreCase(identifier.getSimple())) {
+                    final boolean isNullable = fields.get(i).getDataType().nullable();
+                    matchExpressions[i] = maybeOption(isNullable, literal.accept(parseLiterals));
                     return;
                 }
             }
             throw new RuntimeException(String.format("Field %s being queried is not a primary key in table %s",
-                                                      identifier, tableName));
+                    identifier, tableName));
         }
 
-        private void setMatchExpression(final Identifier identifier, final Object parameter) {
+        private void setMatchExpression(final SqlIdentifier identifier, final Object parameter) {
             final List<? extends Field<?>> fields = tablesToPrimaryKeys.get(tableName.toUpperCase());
 
             /*
@@ -364,7 +358,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
              * order as the primary key declaration in the SQL create table statement.
              */
             for (int i = 0; i < fields.size(); i++) {
-                if (fields.get(i).getUnqualifiedName().last().equalsIgnoreCase(identifier.getValue())) {
+                if (fields.get(i).getUnqualifiedName().last().equalsIgnoreCase(identifier.getSimple())) {
                     matchExpressions[i] = toValue(fields.get(i), parameter);
                     return;
                 }
@@ -377,25 +371,23 @@ public final class DDlogJooqProvider implements MockDataProvider {
     /*
      * Translates literals into corresponding DDlogRecord instances
      */
-    private static class ParseLiterals extends AstVisitor<DDlogRecord, Boolean> {
+    private static class ParseLiterals extends SqlBasicVisitor<DDlogRecord> {
 
         @Override
-        protected DDlogRecord visitStringLiteral(final StringLiteral node, final Boolean isNullable) {
-            try {
-                return maybeOption(isNullable, new DDlogRecord(node.getValue()));
-            } catch (final DDlogException e) {
-                throw new RuntimeException(e);
+        public DDlogRecord visit(final SqlLiteral sqlLiteral) {
+            switch (sqlLiteral.getTypeName()) {
+                case BOOLEAN:
+                    return new DDlogRecord(sqlLiteral.booleanValue());
+                case DECIMAL:
+                    return new DDlogRecord(sqlLiteral.intValue(false));
+                case CHAR:
+                    try {
+                        return new DDlogRecord(sqlLiteral.toValue());
+                    } catch (final DDlogException ignored) {
+                    }
+                default:
+                    throw new UnsupportedOperationException(sqlLiteral.toValue());
             }
-        }
-
-        @Override
-        protected DDlogRecord visitLongLiteral(final LongLiteral node, final Boolean isNullable) {
-            return maybeOption(isNullable, new DDlogRecord(node.getValue()));
-        }
-
-        @Override
-        protected DDlogRecord visitBooleanLiteral(final BooleanLiteral node, final Boolean isNullable) {
-            return maybeOption(isNullable, new DDlogRecord(node.getValue()));
         }
     }
 
