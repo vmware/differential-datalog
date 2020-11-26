@@ -1282,7 +1282,7 @@ pub fn hash128<T: Hash>(x: &T) -> u128 {
     ((w1 as u128) << 64) | (w2 as u128)
 }
 
-pub type ProjectFunc<X> = ::std::rc::Rc<dyn Fn(&DDValue) -> X>;
+pub type ProjectFunc<X> = ::std::sync::Arc<dyn Fn(&DDValue) -> X + Send + Sync>;
 
 /*
  * Group type (returned by the `group_by` operator).
@@ -1315,6 +1315,11 @@ pub type ProjectFunc<X> = ::std::rc::Rc<dyn Fn(&DDValue) -> X>;
  */
 
 pub type Group<K, V> = GroupEnum<'static, K, V>;
+
+fn test() {
+    fn is_sync<T: Send + Sync>() {}
+    is_sync::<Group<u8, u8>>(); // compiles only if true
+}
 
 pub enum GroupEnum<'a, K, V> {
     ByRef {
