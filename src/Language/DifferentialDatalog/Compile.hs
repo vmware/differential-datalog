@@ -1824,7 +1824,7 @@ mkGroupBy d filters input_val rl@Rule{..} idx = do
                else openTuple d vALUE_VAR group_vars
     let project = "{fn __f(" <> vALUE_VAR <> ": &DDValue) -> " <+> mkType d False (exprType d ctx rhsProject) $$
                   (braces' $ open $$ mkExpr d ctx rhsProject EVal)                                            $$
-                  "::std::rc::Rc::new(__f)}"
+                  "::std::sync::Arc::new(__f)}"
     -- * Create 'struct Group'
     -- * Apply filters following group_by.
     -- * Return variables still in scope after the last filter.
