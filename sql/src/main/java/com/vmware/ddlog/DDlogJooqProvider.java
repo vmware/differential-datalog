@@ -80,13 +80,12 @@ public final class DDlogJooqProvider implements MockDataProvider {
     private static final String DDLOG_SOME = "ddlog_std::Some";
     private static final String DDLOG_NONE = "ddlog_std::None";
     private static final Object[] DEFAULT_BINDING = new Object[0];
+    private static final ParseLiterals PARSE_LITERALS = new ParseLiterals();
     private final DDlogAPI dDlogAPI;
     private final DSLContext dslContext;
     private final Field<Integer> updateCountField;
     private final Map<String, List<Field<?>>> tablesToFields = new HashMap<>();
     private final Map<String, List<? extends Field<?>>> tablesToPrimaryKeys = new HashMap<>();
-    private final ParseLiterals parseLiterals = new ParseLiterals();
-    private final TranslateCreateTableDialect translateCreateTableDialect = new TranslateCreateTableDialect();
     private final Map<String, Set<Record>> materializedViews = new ConcurrentHashMap<>();
 
     public DDlogJooqProvider(final DDlogAPI dDlogAPI, final List<String> sqlStatements) {
@@ -99,6 +98,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
         // that we will use later (for example, the record types for views).
         final com.facebook.presto.sql.parser.SqlParser parser = new com.facebook.presto.sql.parser.SqlParser();
         final ParsingOptions options = ParsingOptions.builder().build();
+        final TranslateCreateTableDialect translateCreateTableDialect = new TranslateCreateTableDialect();
         for (final String sql : sqlStatements) {
             final Statement statement = parser.createStatement(sql, options);
             final String statementInH2Dialect = translateCreateTableDialect.process(statement, sql);
@@ -132,14 +132,18 @@ public final class DDlogJooqProvider implements MockDataProvider {
                 mock[i] = sqlNode.accept(new QueryVisitor(context));
             }
             dDlogAPI.transactionCommitDumpChanges(this::onChange);
-        } catch (final DDlogException | RuntimeException | SqlParseException e) {
-            try {
-                dDlogAPI.transactionRollback();
-            } catch (DDlogException rollbackFailed) {
-                throw new RuntimeException(rollbackFailed);
-            }
+        } catch (final DDlogException | DDlogJooqProviderException | SqlParseException e) {
+            rollback();
         }
         return mock;
+    }
+
+    private void rollback() {
+        try {
+            dDlogAPI.transactionRollback();
+        } catch (final DDlogException e) {
+            throw new DDlogJooqProviderException(e);
+        }
     }
 
     private void onChange(final DDlogCommand<DDlogRecord> command) {
@@ -188,9 +192,9 @@ public final class DDlogJooqProvider implements MockDataProvider {
                 case DELETE:
                     return visitDelete(call);
                 default:
-                    throw new UnsupportedOperationException(call.toString());
+                    throw new DDlogJooqProviderException(call.toString());
             }
-            throw new RuntimeException(call.toString());
+            throw new DDlogJooqProviderException(call.toString());
         }
 
         private MockResult visitSelect(final SqlCall call) {
@@ -198,13 +202,13 @@ public final class DDlogJooqProvider implements MockDataProvider {
             final SqlSelect select = (SqlSelect) call;
             if (!(select.getSelectList().size() == 1
                     && select.getSelectList().get(0).toString().equals("*"))) {
-                throw new RuntimeException("Statement not supported: " + context.sql());
+                throw new DDlogJooqProviderException("Statement not supported: " + context.sql());
             }
             final String tableName = ((SqlIdentifier) select.getFrom()).getSimple();
             final List<Field<?>> fields = tablesToFields.get(tableName.toUpperCase());
             if (fields == null) {
-                throw new RuntimeException(String.format("Unknown table %s queried in statement: %s", tableName,
-                        context.sql()));
+                throw new DDlogJooqProviderException(String.format("Unknown table %s queried in statement: %s",
+                                                                    tableName, context.sql()));
             }
             final Result<Record> result = dslContext.newResult(fields);
             result.addAll(materializedViews.computeIfAbsent(tableName.toUpperCase(), (k) -> new LinkedHashSet<>()));
@@ -212,9 +216,11 @@ public final class DDlogJooqProvider implements MockDataProvider {
         }
 
         private MockResult visitInsert(final SqlCall call) {
+            // The assertions below, and in the ParseWhereClauseForDeletes visitor encode assumption A2
+            // (see javadoc for the DDlogJooqProvider class)
             final SqlInsert insert = (SqlInsert) call;
             if (insert.getSource().getKind() != SqlKind.VALUES) {
-                throw new UnsupportedOperationException(call.toString());
+                throw new DDlogJooqProviderException(call.toString());
             }
             final SqlNode[] values = ((SqlBasicCall) insert.getSource()).getOperands();
             final String tableName = ((SqlIdentifier) insert.getTargetTable()).getSimple();
@@ -222,7 +228,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
             final int tableId = dDlogAPI.getTableId(ddlogRelationName(tableName));
             for (final SqlNode value: values) {
                 if (value.getKind() != SqlKind.ROW) {
-                    throw new UnsupportedOperationException(call.toString());
+                    throw new DDlogJooqProviderException(call.toString());
                 }
                 final SqlNode[] rowElements = ((SqlBasicCall) value).operands;
                 final DDlogRecord[] recordsArray = new DDlogRecord[rowElements.length];
@@ -238,17 +244,16 @@ public final class DDlogJooqProvider implements MockDataProvider {
                     // need to parse literals into DDLogRecords
                     for (int i = 0; i < rowElements.length; i++) {
                         final boolean isNullableField = fields.get(i).getDataType().nullable();
-                        final DDlogRecord result = rowElements[i].accept(parseLiterals);
+                        final DDlogRecord result = rowElements[i].accept(PARSE_LITERALS);
                         recordsArray[i] = maybeOption(isNullableField, result);
                     }
                 }
-                final DDlogRecord record;
                 try {
-                    record = DDlogRecord.makeStruct(ddlogTableTypeName(tableName), recordsArray);
+                    final DDlogRecord record = DDlogRecord.makeStruct(ddlogTableTypeName(tableName), recordsArray);
                     final DDlogRecCommand command = new DDlogRecCommand(DDlogCommand.Kind.Insert, tableId, record);
                     dDlogAPI.applyUpdates(new DDlogRecCommand[]{command});
                 } catch (final DDlogException e) {
-                    throw new RuntimeException(e);
+                    throw new DDlogJooqProviderException(e);
                 }
             }
             final Result<Record1<Integer>> result = dslContext.newResult(updateCountField);
@@ -264,7 +269,8 @@ public final class DDlogJooqProvider implements MockDataProvider {
             final SqlDelete delete = (SqlDelete) call;
             final String tableName = ((SqlIdentifier) delete.getTargetTable()).getSimple();
             if (delete.getCondition() == null) {
-                throw new RuntimeException("Delete queries without where clauses are unsupported: " + context.sql());
+                throw new DDlogJooqProviderException("Delete queries without where clauses are unsupported: "
+                                                     + context.sql());
             }
             try {
                 final SqlBasicCall where = (SqlBasicCall) delete.getCondition();
@@ -278,7 +284,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
                 final DDlogRecCommand command = new DDlogRecCommand(DDlogCommand.Kind.DeleteKey, tableId, record);
                 dDlogAPI.applyUpdates(new DDlogRecCommand[]{command});
             } catch (final DDlogException e) {
-                throw new RuntimeException(e);
+                throw new DDlogJooqProviderException(e);
             }
             final Result<Record1<Integer>> result = dslContext.newResult(updateCountField);
             final Record1<Integer> resultRecord = dslContext.newRecord(updateCountField);
@@ -325,9 +331,9 @@ public final class DDlogJooqProvider implements MockDataProvider {
                             return null;
                         }
                     }
-                    throw new RuntimeException("Unexpected comparison expression: " + call);
+                    throw new DDlogJooqProviderException("Unexpected comparison expression: " + call);
                 default:
-                    throw new UnsupportedOperationException("Unsupported expression in where clause");
+                    throw new DDlogJooqProviderException("Unsupported expression in where clause "+ call);
             }
         }
 
@@ -341,12 +347,12 @@ public final class DDlogJooqProvider implements MockDataProvider {
             for (int i = 0; i < fields.size(); i++) {
                 if (fields.get(i).getUnqualifiedName().last().equalsIgnoreCase(identifier.getSimple())) {
                     final boolean isNullable = fields.get(i).getDataType().nullable();
-                    matchExpressions[i] = maybeOption(isNullable, literal.accept(parseLiterals));
+                    matchExpressions[i] = maybeOption(isNullable, literal.accept(PARSE_LITERALS));
                     return;
                 }
             }
-            throw new RuntimeException(String.format("Field %s being queried is not a primary key in table %s",
-                    identifier, tableName));
+            throw new DDlogJooqProviderException(String.format("Field %s being queried is not a primary key in table %s",
+                                                 identifier, tableName));
         }
 
         private void setMatchExpression(final SqlIdentifier identifier, final Object parameter) {
@@ -362,31 +368,8 @@ public final class DDlogJooqProvider implements MockDataProvider {
                     return;
                 }
             }
-            throw new RuntimeException(String.format("Field %s being queried is not a primary key in table %s",
-                    identifier, tableName));
-        }
-    }
-
-    /*
-     * Translates literals into corresponding DDlogRecord instances
-     */
-    private static class ParseLiterals extends SqlBasicVisitor<DDlogRecord> {
-
-        @Override
-        public DDlogRecord visit(final SqlLiteral sqlLiteral) {
-            switch (sqlLiteral.getTypeName()) {
-                case BOOLEAN:
-                    return new DDlogRecord(sqlLiteral.booleanValue());
-                case DECIMAL:
-                    return new DDlogRecord(sqlLiteral.intValue(false));
-                case CHAR:
-                    try {
-                        return new DDlogRecord(sqlLiteral.toValue());
-                    } catch (final DDlogException ignored) {
-                    }
-                default:
-                    throw new UnsupportedOperationException(sqlLiteral.toValue());
-            }
+            throw new DDlogJooqProviderException(String.format("Field %s being queried is not a primary key in table %s",
+                                                 identifier, tableName));
         }
     }
 
@@ -418,11 +401,9 @@ public final class DDlogJooqProvider implements MockDataProvider {
     private static DDlogRecord maybeOption(final Boolean isNullable, final DDlogRecord record) {
         if (isNullable) {
             try {
-                final DDlogRecord[] arr = new DDlogRecord[1];
-                arr[0] = record;
-                return DDlogRecord.makeStruct(DDLOG_SOME, arr);
+                return DDlogRecord.makeStruct(DDLOG_SOME, record);
             } catch (final DDlogException e) {
-                throw new RuntimeException(e);
+                throw new DDlogJooqProviderException(e);
             }
         } else {
             return record;
@@ -459,10 +440,10 @@ public final class DDlogJooqProvider implements MockDataProvider {
                 try {
                     return new DDlogRecord((String) in);
                 } catch (final DDlogException e) {
-                    throw new RuntimeException("Could not create String DDlogRecord for object: " + in);
+                    throw new DDlogJooqProviderException("Could not create String DDlogRecord for object: " + in);
                 }
             default:
-                throw new RuntimeException("Unknown datatype " + field);
+                throw new DDlogJooqProviderException("Unknown datatype " + field);
         }
     }
 
@@ -482,7 +463,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
                 out.setValue((Field<String>) field, in.getString());
                 return;
             default:
-                throw new RuntimeException("Unknown datatype " + field);
+                throw new DDlogJooqProviderException("Unknown datatype " + field);
         }
     }
 
@@ -508,6 +489,16 @@ public final class DDlogJooqProvider implements MockDataProvider {
 
         public boolean hasBinding() {
             return binding.length > 0;
+        }
+    }
+
+    public static final class DDlogJooqProviderException extends RuntimeException {
+        private DDlogJooqProviderException(final Throwable e) {
+            super(e);
+        }
+
+        private DDlogJooqProviderException(final String msg) {
+            super(msg);
         }
     }
 }
