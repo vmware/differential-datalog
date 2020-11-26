@@ -5,7 +5,6 @@
 package com.vmware.ddlog;
 
 import com.facebook.presto.sql.parser.ParsingOptions;
-import com.facebook.presto.sql.parser.SqlParser;
 import com.facebook.presto.sql.tree.Statement;
 import ddlogapi.DDlogAPI;
 import ddlogapi.DDlogCommand;
@@ -23,6 +22,7 @@ import org.apache.calcite.sql.SqlLiteral;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.SqlSelect;
 import org.apache.calcite.sql.parser.SqlParseException;
+import org.apache.calcite.sql.parser.SqlParser;
 import org.apache.calcite.sql.util.SqlBasicVisitor;
 import org.jooq.DSLContext;
 import org.jooq.DataType;
@@ -85,8 +85,6 @@ public final class DDlogJooqProvider implements MockDataProvider {
     private final Field<Integer> updateCountField;
     private final Map<String, List<Field<?>>> tablesToFields = new HashMap<>();
     private final Map<String, List<? extends Field<?>>> tablesToPrimaryKeys = new HashMap<>();
-    private final SqlParser parser = new SqlParser();
-    private final ParsingOptions options = ParsingOptions.builder().build();
     private final ParseLiterals parseLiterals = new ParseLiterals();
     private final TranslateCreateTableDialect translateCreateTableDialect = new TranslateCreateTableDialect();
     private final Map<String, Set<Record>> materializedViews = new ConcurrentHashMap<>();
@@ -99,6 +97,8 @@ public final class DDlogJooqProvider implements MockDataProvider {
         // We translate DDL statements from the Presto dialect to H2.
         // We then execute these statements in a temporary database so that JOOQ can extract useful metadata
         // that we will use later (for example, the record types for views).
+        final com.facebook.presto.sql.parser.SqlParser parser = new com.facebook.presto.sql.parser.SqlParser();
+        final ParsingOptions options = ParsingOptions.builder().build();
         for (final String sql : sqlStatements) {
             final Statement statement = parser.createStatement(sql, options);
             final String statementInH2Dialect = translateCreateTableDialect.process(statement, sql);
@@ -127,8 +127,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
             for (int i = 0; i < batchSql.length; i++) {
                 final Object[] binding = bindings != null && bindings.length > i ? bindings[i] : DEFAULT_BINDING;
                 final QueryContext context = new QueryContext(batchSql[i], binding);
-                final org.apache.calcite.sql.parser.SqlParser parser =
-                        org.apache.calcite.sql.parser.SqlParser.create(batchSql[i]);
+                final SqlParser parser = SqlParser.create(batchSql[i]);
                 final SqlNode sqlNode = parser.parseStmt();
                 mock[i] = sqlNode.accept(new QueryVisitor(context));
             }
