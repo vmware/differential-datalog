@@ -294,11 +294,11 @@ impl DDlog for HDDlog {
         // relation
         let inspect_update: fn(&Update<DDValue>) -> Result<(), String> = |update| {
             let relation = Relations::try_from(update.relid())
-                .map_err(|_| format!("unknown index {}", update.relid()))?;
+                .map_err(|_| format!("unknown relation id {}", update.relid()))?;
 
             if let Some(value) = update.get_value() {
                 if relation.type_id() != value.type_id() {
-                    return Err("attempted to insert the incorrect type into a relation".to_owned());
+                    return Err(format!("attempted to insert the incorrect type {:?} into relation {:?} whose value type is {:?}", value.type_id(), relation, relation.type_id()));
                 }
             }
 
