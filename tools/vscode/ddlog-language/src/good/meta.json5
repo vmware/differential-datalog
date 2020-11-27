@@ -1,0 +1,132 @@
+{
+  "repository": {
+        "meta": {
+            "patterns":          
+            [
+                {
+                    "name": "meta.function-definition.ddlog",
+                    "begin": "\\b(function)\\s+([a-z_][a-zA-Z0-9_]*)",
+                    "beginCaptures": {
+                        "1": {
+                            "name": "keyword.graph.ddlog"
+                        },
+                        "2": {
+                            "name": "entity.name.function.ddlog"
+                        },
+                        "3": {
+                            "name": "keyword.operator.grouping.ddlog"
+                        }
+                    },
+                    "end": "[\\{\\=]",
+                    "endCaptures": {
+                        "0": {
+                            "name": "keyword.operator.alternate-grouping.ddlog"
+                        },
+                        "1": {
+                            "name": "keyword.operator.assignment.ddlog"
+                        }                        
+                    },
+                    "patterns":
+                    [
+                        {
+                            "include": "#comment"
+                        },
+                        {
+                            "include": "#constant"
+                        },
+                        {
+                            "include": "#entity"
+                        },
+                        {
+                            "include": "#meta"
+                        },
+                        {
+                            "include": "#punctuation"
+                        },
+                        {
+                            "include": "#string"
+                        },
+                        {
+                            "include": "#support"
+                        },
+                        {
+                            "include": "#type"
+                        },
+                        {
+                            "include": "#variable"
+                        },
+                        {
+                            "include": "#operator"
+                        },
+                        {
+                            "include": "#keyword"
+                        },
+                        {
+                            "include": "#storage"
+                        }
+                    ]
+                },
+                {
+                    "name": "meta.extern-function.ddlog",
+                    "begin": "\\b(extern function)\\s+([a-z_][a-zA-Z0-9_]+)",
+                    "beginCaptures": {
+                        "1": {
+                            "name": "keyword.graph.ddlog"
+                        },
+                        "2": {
+                            "name": "entity.name.function.ddlog"
+                        },
+                        "3": {
+                            "name": "keyword.operator.grouping.ddlog"
+                        }
+                    },
+                    "end": "\\(",
+                    "endCaptures": {
+                        "0": {
+                            "name": "keyword.operator.grouping.ddlog"
+                        }
+                    },
+                    "patterns":
+                    [
+                        {
+                            "include": "#comment"
+                        },
+                        {
+                            "include": "#constant"
+                        },
+                        {
+                            "include": "#entity"
+                        },
+                        {
+                            "include": "#meta"
+                        },
+                        {
+                            "include": "#punctuation"
+                        },
+                        {
+                            "include": "#string"
+                        },
+                        {
+                            "include": "#support"
+                        },
+                        {
+                            "include": "#type"
+                        },
+                        {
+                            "include": "#variable"
+                        },
+                        {
+                            "include": "#operator"
+                        },
+                        {
+                            "include": "#keyword"
+                        },
+                        {
+                            "include": "#storage"
+                        }
+                    ]                                       
+                }
+           ]
+        }
+  }
+}

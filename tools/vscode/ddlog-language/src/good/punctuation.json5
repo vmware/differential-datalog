@@ -1,0 +1,13 @@
+{
+  "repository": {
+        "punctuation": {
+            "patterns": [
+                {
+                    "name": "punctuation.other.comma.ddlog",
+                    "match": ","
+                }
+		
+            ]
+        }
+  }
+}

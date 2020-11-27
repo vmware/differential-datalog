@@ -1,0 +1,36 @@
+{
+  "repository": {
+        "storage": {
+            "patterns": [
+                {
+                    "name": "storage.modifier.external.ddlog",
+                    "match": "\\b(extern)\\b"
+                },
+                {
+                    "name": "storage.modifier.mutable.ddlog",
+                    "match": "\\b(mut)\\b"
+                },                
+                {
+                    "name": "storage.type.function.ddlog",
+                    "match": "\\b(function)\\b"
+                },
+                {
+                    "name": "storage.type.ddlog",
+                    "match": "\\b(typedef|type)\\b"
+                },
+                {
+                    "name": "storage.type.ddlog",
+                    "match": "\\b(bigint|bit|bool|signed|double|float|string)\\b"
+                },
+                {
+                    "name": "storage.type.ddlog",
+                    "match": "\\b(Map|Set|Vec|Ref)\\b"
+                },
+                {
+                    "name": "storage.type.core.ddlog",
+                    "match": "\\b(usize|u8|u16|u32|u64|u128|s8|s16|s32|s64|s128|Option|Result)\\b"
+                }                
+            ]
+        }
+  }
+}

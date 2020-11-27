@@ -1,0 +1,50 @@
+{
+    "name": "vscode-ddlog-syntax",
+    "displayName": "vscode-ddlog-syntax",
+    "description": "Syntax highlighting for DDlog.",
+    "version": "0.0.1",
+    "publisher": "VMware",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/vmware/differential-datalog/tree/master/tools/vscode"
+    },
+    "scripts": {
+        "start": "gulp watch"
+    },
+    "engines": {
+        "vscode": "^1.20.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "ddlog",
+                "aliases": [
+                    "ddlog"
+                ],
+                "extensions": [
+                    ".dl"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "ddlog",
+                "scopeName": "source.ddlog",
+                "path": "./syntaxes/ddlog.tmLanguage.json"
+            }
+        ]
+    },
+    "galleryBanner": {
+        "color": "#1e1e1e",
+        "theme": "dark"
+    },
+    "devDependencies": {
+        "gulp": "^4.0.2",
+        "gulp-json5-to-json": "^0.2.1",
+        "gulp-merge-json": "^1.3.1"
+    }
+}

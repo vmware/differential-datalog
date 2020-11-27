@@ -1,0 +1,40 @@
+{
+  "repository": {
+        "keyword": {
+            "patterns": [
+                {
+                    "name": "keyword.control.ddlog",
+                    "match": "\\b(else|if|in|for|return|control|skip|continue|break)\\b"
+                },
+                {
+                    "name": "keyword.control.ddlog",
+                    "match": "\\s(else|if|in|for|return|control|skip|continue|break)\\s"
+                },
+                {
+                    "name": "keyword.graph.ddlog",
+                    "match": "\\b(input|output|relation|function|match|rule)\\b"
+                },
+                {
+                    "name": "keyword.module.ddlog",
+                    "match": "\\b(import|extern|as)\\b"
+                },
+                {
+                    "name": "keyword.type.ddlog",
+                    "match": "\\b(typedef|type)\\b"
+                },
+                {
+                    "name": "keyword.special.ddlog",
+                    "match": "\\b(Aggregate|FlatMap)\\b"
+                },
+                {
+                    "name": "keyword.other.ddlog",
+                    "match": "\\b(group_by|primary key)\\b"
+                },
+                {
+                    "name": "keyword.variable.ddlog",
+                    "match": "\\b(var)\\b"
+                }                
+            ]
+        }
+    }
+}
