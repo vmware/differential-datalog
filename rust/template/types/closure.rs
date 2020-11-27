@@ -77,8 +77,8 @@ impl<Args, Output, Captured: Debug + Val> Serialize for ClosureImpl<Args, Output
 /* Rust forces 'static trait bound on `Args` and `Output`, as the borrow checker is not smart
  * enough to realize that they are only used as arguments to `f`.
  */
-impl<Args: Clone + 'static, Output: Clone + 'static, Captured: Debug + Val + Send + Sync> Closure<Args, Output>
-    for ClosureImpl<Args, Output, Captured>
+impl<Args: Clone + 'static, Output: Clone + 'static, Captured: Debug + Val + Send + Sync>
+    Closure<Args, Output> for ClosureImpl<Args, Output, Captured>
 {
     fn call(&self, args: Args) -> Output {
         (self.f)(args, &self.captured)
