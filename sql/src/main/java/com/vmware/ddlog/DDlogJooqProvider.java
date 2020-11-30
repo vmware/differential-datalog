@@ -21,6 +21,7 @@ import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.sql.SqlLiteral;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.SqlSelect;
+import org.apache.calcite.sql.SqlUpdate;
 import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.sql.parser.SqlParser;
 import org.apache.calcite.sql.util.SqlBasicVisitor;
@@ -43,6 +44,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -138,6 +140,16 @@ public final class DDlogJooqProvider implements MockDataProvider {
         return mock;
     }
 
+    public Result<Record> fetchTable(final String tableName) {
+        final List<Field<?>> fields = tablesToFields.get(tableName.toUpperCase());
+        if (fields == null) {
+            throw new DDlogJooqProviderException(String.format("Unknown table %s queried", tableName));
+        }
+        final Result<Record> result = dslContext.newResult(fields);
+        result.addAll(materializedViews.computeIfAbsent(tableName.toUpperCase(), (k) -> new LinkedHashSet<>()));
+        return result;
+    }
+
     private void rollback() {
         try {
             dDlogAPI.transactionRollback();
@@ -204,19 +216,52 @@ public final class DDlogJooqProvider implements MockDataProvider {
                 return exception("Statement not supported: " + context.sql());
             }
             final String tableName = ((SqlIdentifier) select.getFrom()).getSimple();
-            final List<Field<?>> fields = tablesToFields.get(tableName.toUpperCase());
-            if (fields == null) {
-                return exception(String.format("Unknown table %s queried in statement: %s",
-                                                                    tableName, context.sql()));
-            }
-            final Result<Record> result = dslContext.newResult(fields);
-            result.addAll(materializedViews.computeIfAbsent(tableName.toUpperCase(), (k) -> new LinkedHashSet<>()));
+            final Result<Record> result = fetchTable(tableName);
             return new MockResult(1, result);
         }
 
         private MockResult visitUpdate(final SqlCall call) {
-            System.out.println(call);
-            return exception("Unsupported query");
+            // The assertions below, and in the ParseWhereClauseForDeletes visitor encode assumption A3
+            // (see javadoc for the DDlogJooqProvider class)
+            final SqlUpdate update = (SqlUpdate) call;
+            final String tableName = ((SqlIdentifier) update.getTargetTable()).getSimple();
+            if (update.getCondition() == null) {
+                return exception("Delete queries without where clauses are unsupported: " + context.sql());
+            }
+            try {
+                final SqlBasicCall where = (SqlBasicCall) update.getCondition();
+                final List<? extends Field<?>> pkFields = tablesToPrimaryKeys.get(tableName.toUpperCase());
+                final List<? extends Field<?>> allFields = tablesToFields.get(tableName.toUpperCase());
+                final DDlogRecord key = matchExpressionFromWhere(where, pkFields, context);
+
+                final int numColumnsToUpdate = update.getTargetColumnList().size();
+                final DDlogRecord[] updatedValues = new DDlogRecord[numColumnsToUpdate];
+                final String[] columnsToUpdate = new String[numColumnsToUpdate];
+                for (int i = 0; i < numColumnsToUpdate; i++) {
+                    final String columnName = ((SqlIdentifier) update.getTargetColumnList().get(i)).getSimple()
+                                                                                                   .toLowerCase();
+                    final Field<?> field = allFields.stream()
+                                                .filter(f -> f.getUnqualifiedName().last().equalsIgnoreCase(columnName))
+                                                .findFirst()
+                                                .get();
+                    final boolean isNullableField = field.getDataType().nullable();
+                    final DDlogRecord valueToUpdateTo = update.getSourceExpressionList().accept(PARSE_LITERALS);
+                    final DDlogRecord maybeWrapped = maybeOption(isNullableField, valueToUpdateTo);
+                    updatedValues[i] = maybeWrapped;
+                    columnsToUpdate[i] = columnName;
+                }
+                final DDlogRecord updateRecord = DDlogRecord.makeNamedStruct("", columnsToUpdate, updatedValues);
+                final int tableId = dDlogAPI.getTableId(ddlogRelationName(tableName));
+                final DDlogRecCommand command = new DDlogRecCommand(DDlogCommand.Kind.Modify, tableId, key, updateRecord);
+                dDlogAPI.applyUpdates(new DDlogRecCommand[]{command});
+            } catch (final DDlogException e) {
+                return exception(e);
+            }
+            final Result<Record1<Integer>> result = dslContext.newResult(updateCountField);
+            final Record1<Integer> resultRecord = dslContext.newRecord(updateCountField);
+            resultRecord.setValue(updateCountField, 1);
+            result.add(resultRecord);
+            return new MockResult(1, result);
         }
 
         private MockResult visitInsert(final SqlCall call) {
@@ -278,11 +323,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
             try {
                 final SqlBasicCall where = (SqlBasicCall) delete.getCondition();
                 final List<? extends Field<?>> pkFields = tablesToPrimaryKeys.get(tableName.toUpperCase());
-                final WhereClauseToMatchExpression visitor = new WhereClauseToMatchExpression(pkFields, context);
-                final DDlogRecord[] matchExpression = where.accept(visitor);
-                final DDlogRecord record = matchExpression.length > 1 ? DDlogRecord.makeTuple(matchExpression)
-                        : matchExpression[0];
-
+                final DDlogRecord record = matchExpressionFromWhere(where, pkFields, context);
                 final int tableId = dDlogAPI.getTableId(ddlogRelationName(tableName));
                 final DDlogRecCommand command = new DDlogRecCommand(DDlogCommand.Kind.DeleteKey, tableId, record);
                 dDlogAPI.applyUpdates(new DDlogRecCommand[]{command});
@@ -295,6 +336,15 @@ public final class DDlogJooqProvider implements MockDataProvider {
             result.add(resultRecord);
             return new MockResult(1, result);
         }
+    }
+
+    private static DDlogRecord matchExpressionFromWhere(final SqlBasicCall where,
+                                                        final List<? extends Field<?>> pkFields,
+                                                        final QueryContext context) throws DDlogException {
+        final WhereClauseToMatchExpression visitor = new WhereClauseToMatchExpression(pkFields, context);
+        final DDlogRecord[] matchExpression = where.accept(visitor);
+        return matchExpression.length > 1 ? DDlogRecord.makeTuple(matchExpression)
+                                                              : matchExpression[0];
     }
 
     private static final class WhereClauseToMatchExpression extends SqlBasicVisitor<DDlogRecord[]> {
@@ -414,7 +464,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
                 return;
             }
             if (structName.equals(DDLOG_SOME)) {
-                setValue(field, record.getStructField(0), jooqRecord);
+                setValue(field, getStructField(record, 0), jooqRecord);
                 return;
             }
         }
@@ -483,6 +533,22 @@ public final class DDlogJooqProvider implements MockDataProvider {
 
         public boolean hasBinding() {
             return binding.length > 0;
+        }
+    }
+
+    private String getTableName(final int relationId) {
+        try {
+            return dDlogAPI.getTableName(relationId);
+        } catch (final DDlogException e) {
+            throw new DDlogJooqProviderException(e);
+        }
+    }
+
+    private static DDlogRecord getStructField(final DDlogRecord record, final int fieldIndex) {
+        try {
+            return record.getStructField(fieldIndex);
+        } catch (final DDlogException e) {
+            throw new DDlogJooqProviderException(e);
         }
     }
 

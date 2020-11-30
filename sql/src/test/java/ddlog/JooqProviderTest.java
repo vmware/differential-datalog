@@ -15,7 +15,6 @@ import org.jooq.Record;
 import org.jooq.Result;
 import org.jooq.impl.DSL;
 import org.jooq.tools.jdbc.MockConnection;
-import org.jooq.tools.jdbc.MockDataProvider;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -39,6 +38,7 @@ public class JooqProviderTest {
 
     @Nullable
     private static DSLContext create;
+    private static DDlogJooqProvider provider;
     private final Field<String> field1 = field("id", String.class);
     private final Field<Integer> field2 = field("capacity", Integer.class);
     private final Field<Boolean> field3 = field("up", Boolean.class);
@@ -74,7 +74,7 @@ public class JooqProviderTest {
         final DDlogAPI dDlogAPI = new DDlogAPI(1, false);
 
         // Initialise the data provider
-        MockDataProvider provider = new DDlogJooqProvider(dDlogAPI, ddl);
+        provider = new DDlogJooqProvider(dDlogAPI, ddl);
         MockConnection connection = new MockConnection(provider);
 
         // Pass the mock connection to a jOOQ DSLContext
@@ -248,7 +248,6 @@ public class JooqProviderTest {
         final Result<Record> results = create.selectFrom(table("hostsv")).fetch();
         System.out.println(results);
     }
-
 
     public static void compileAndLoad(final List<String> ddl) throws IOException, DDlogException {
         final Translator t = new Translator(null);
