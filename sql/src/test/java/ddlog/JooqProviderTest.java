@@ -244,7 +244,7 @@ public class JooqProviderTest {
     @Test
     public void testUpdates() {
         create.execute("insert into hosts values ('n1', 10, true)");
-        create.execute("insert into hosts values ('n1', 11, false)");
+        create.execute("update hosts set capacity = 11 where id = 'n1'");
         final Result<Record> results = create.selectFrom(table("hostsv")).fetch();
         System.out.println(results);
     }

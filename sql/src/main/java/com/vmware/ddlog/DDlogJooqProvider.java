@@ -36,7 +36,6 @@ import org.jooq.tools.jdbc.MockDataProvider;
 import org.jooq.tools.jdbc.MockExecuteContext;
 import org.jooq.tools.jdbc.MockResult;
 
-import javax.annotation.Nullable;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.Arrays;
@@ -174,7 +173,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
         }
     }
 
-    private class QueryVisitor extends SqlBasicVisitor<MockResult> {
+    private final class QueryVisitor extends SqlBasicVisitor<MockResult> {
         private final QueryContext context;
 
         QueryVisitor(final QueryContext context) {
@@ -217,7 +216,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
 
         private MockResult visitUpdate(final SqlCall call) {
             System.out.println(call);
-            return null;
+            return exception("Unsupported query");
         }
 
         private MockResult visitInsert(final SqlCall call) {
@@ -274,14 +273,13 @@ public final class DDlogJooqProvider implements MockDataProvider {
             final SqlDelete delete = (SqlDelete) call;
             final String tableName = ((SqlIdentifier) delete.getTargetTable()).getSimple();
             if (delete.getCondition() == null) {
-                return exception("Delete queries without where clauses are unsupported: "
-                                                       + context.sql());
+                return exception("Delete queries without where clauses are unsupported: " + context.sql());
             }
             try {
                 final SqlBasicCall where = (SqlBasicCall) delete.getCondition();
-                final WhereClauseToMatchExpression visitor = new WhereClauseToMatchExpression(tableName, context);
-                where.accept(visitor);
-                final DDlogRecord[] matchExpression = visitor.matchExpressions;
+                final List<? extends Field<?>> pkFields = tablesToPrimaryKeys.get(tableName.toUpperCase());
+                final WhereClauseToMatchExpression visitor = new WhereClauseToMatchExpression(pkFields, context);
+                final DDlogRecord[] matchExpression = where.accept(visitor);
                 final DDlogRecord record = matchExpression.length > 1 ? DDlogRecord.makeTuple(matchExpression)
                         : matchExpression[0];
 
@@ -299,19 +297,19 @@ public final class DDlogJooqProvider implements MockDataProvider {
         }
     }
 
-    private class WhereClauseToMatchExpression extends SqlBasicVisitor<Void> {
-        final DDlogRecord[] matchExpressions;
-        final String tableName;
-        final QueryContext context;
+    private static final class WhereClauseToMatchExpression extends SqlBasicVisitor<DDlogRecord[]> {
+        private final DDlogRecord[] matchExpressions;
+        private final QueryContext context;
+        private final List<? extends Field<?>> pkFields;
 
-        public WhereClauseToMatchExpression(final String tableName, final QueryContext context) {
-            this.tableName = tableName;
+        public WhereClauseToMatchExpression(final List<? extends Field<?>> pkFields, final QueryContext context) {
             this.context = context;
-            matchExpressions = new DDlogRecord[tablesToPrimaryKeys.get(tableName.toUpperCase()).size()];
+            this.pkFields = pkFields;
+            this.matchExpressions = new DDlogRecord[pkFields.size()];
         }
 
         @Override
-        public Void visit(final SqlCall call) {
+        public DDlogRecord[] visit(final SqlCall call) {
             final SqlBasicCall expr = (SqlBasicCall) call;
             switch (expr.getOperator().getKind()) {
                 case AND:
@@ -321,19 +319,15 @@ public final class DDlogJooqProvider implements MockDataProvider {
                     final SqlNode right = expr.getOperands()[1];
                     if (context.hasBinding()) {
                         if (left instanceof SqlIdentifier && right instanceof SqlDynamicParam) {
-                            setMatchExpression((SqlIdentifier) left, context.nextBinding());
-                            return null;
+                            return setMatchExpression((SqlIdentifier) left, context.nextBinding());
                         } else if (right instanceof SqlIdentifier && left instanceof SqlDynamicParam) {
-                            setMatchExpression((SqlIdentifier) right, context.nextBinding());
-                            return null;
+                            return setMatchExpression((SqlIdentifier) right, context.nextBinding());
                         }
                     } else {
                         if (left instanceof SqlIdentifier && right instanceof SqlLiteral) {
-                            setMatchExpression((SqlIdentifier) left, (SqlLiteral) right);
-                            return null;
+                            return setMatchExpression((SqlIdentifier) left, (SqlLiteral) right);
                         } else if (right instanceof SqlIdentifier && left instanceof SqlLiteral) {
-                            setMatchExpression((SqlIdentifier) right, (SqlLiteral) left);
-                            return null;
+                            return setMatchExpression((SqlIdentifier) right, (SqlLiteral) left);
                         }
                     }
                     throw new DDlogJooqProviderException("Unexpected comparison expression: " + call);
@@ -342,39 +336,35 @@ public final class DDlogJooqProvider implements MockDataProvider {
             }
         }
 
-        private void setMatchExpression(final SqlIdentifier identifier, final SqlLiteral literal) {
-            final List<? extends Field<?>> fields = tablesToPrimaryKeys.get(tableName.toUpperCase());
-
+        private DDlogRecord[] setMatchExpression(final SqlIdentifier identifier, final SqlLiteral literal) {
             /*
              * The match-expressions correspond to each column in the primary key, in the same
              * order as the primary key declaration in the SQL create table statement.
              */
-            for (int i = 0; i < fields.size(); i++) {
-                if (fields.get(i).getUnqualifiedName().last().equalsIgnoreCase(identifier.getSimple())) {
-                    final boolean isNullable = fields.get(i).getDataType().nullable();
+            for (int i = 0; i < pkFields.size(); i++) {
+                if (pkFields.get(i).getUnqualifiedName().last().equalsIgnoreCase(identifier.getSimple())) {
+                    final boolean isNullable = pkFields.get(i).getDataType().nullable();
                     matchExpressions[i] = maybeOption(isNullable, literal.accept(PARSE_LITERALS));
-                    return;
+                    return matchExpressions;
                 }
             }
-            throw new DDlogJooqProviderException(String.format("Field %s being queried is not a primary key in table %s",
-                                                 identifier, tableName));
+            throw new DDlogJooqProviderException(String.format("Field %s being queried is not a primary key",
+                                                 identifier));
         }
 
-        private void setMatchExpression(final SqlIdentifier identifier, final Object parameter) {
-            final List<? extends Field<?>> fields = tablesToPrimaryKeys.get(tableName.toUpperCase());
-
+        private DDlogRecord[] setMatchExpression(final SqlIdentifier identifier, final Object parameter) {
             /*
              * The match-expressions correspond to each column in the primary key, in the same
              * order as the primary key declaration in the SQL create table statement.
              */
-            for (int i = 0; i < fields.size(); i++) {
-                if (fields.get(i).getUnqualifiedName().last().equalsIgnoreCase(identifier.getSimple())) {
-                    matchExpressions[i] = toValue(fields.get(i), parameter);
-                    return;
+            for (int i = 0; i < pkFields.size(); i++) {
+                if (pkFields.get(i).getUnqualifiedName().last().equalsIgnoreCase(identifier.getSimple())) {
+                    matchExpressions[i] = toValue(pkFields.get(i), parameter);
+                    return matchExpressions;
                 }
             }
-            throw new DDlogJooqProviderException(String.format("Field %s being queried is not a primary key in table %s",
-                                                 identifier, tableName));
+            throw new DDlogJooqProviderException(String.format("Field %s being queried is not a primary key",
+                                                 identifier));
         }
     }
 
@@ -415,7 +405,6 @@ public final class DDlogJooqProvider implements MockDataProvider {
         }
     }
 
-    @Nullable
     private static void structToValue(final Field<?> field, final DDlogRecord record, final Record jooqRecord) throws DDlogException {
         final boolean isStruct = record.isStruct();
         if (isStruct) {
