@@ -680,7 +680,7 @@ fn test_int() {
     );
     assert_eq!(
         record(br"-5 "),
-        Ok((&br""[..], Record::Int(-5_i32.to_bigint().unwrap())))
+        Ok((&br""[..], Record::Int((-5_i32).to_bigint().unwrap())))
     );
     assert_eq!(
         hex_val(br"0xabcd "),

@@ -286,7 +286,7 @@ mod tests {
     use crate::MockObserver;
     use crate::SharedObserver;
 
-    const TRANSACTION_DUMP: &'static [u8] = include_bytes!("file_test.dat");
+    const TRANSACTION_DUMP: &[u8] = include_bytes!("file_test.dat");
 
     #[derive(Debug)]
     struct DummyConverter;
