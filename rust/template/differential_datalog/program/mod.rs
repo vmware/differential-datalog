@@ -275,14 +275,14 @@ pub enum XFormArrangement {
     /// FlatMap arrangement into a collection
     FlatMap {
         description: String,
-        fmfun: &'static FlatMapFunc,
+        fmfun: FlatMapFunc,
         /// Transformation to apply to resulting collection.
         /// `None` terminates the chain of transformations.
         next: Box<Option<XFormCollection>>,
     },
     FilterMap {
         description: String,
-        fmfun: &'static FilterMapFunc,
+        fmfun: FilterMapFunc,
         /// Transformation to apply to resulting collection.
         /// `None` terminates the chain of transformations.
         next: Box<Option<XFormCollection>>,
@@ -291,9 +291,9 @@ pub enum XFormArrangement {
     Aggregate {
         description: String,
         /// Filter arrangement before grouping
-        ffun: Option<&'static FilterFunc>,
+        ffun: Option<FilterFunc>,
         /// Aggregation to apply to each group.
-        aggfun: &'static AggFunc,
+        aggfun: AggFunc,
         /// Apply transformation to the resulting collection.
         next: Box<Option<XFormCollection>>,
     },
@@ -301,11 +301,11 @@ pub enum XFormArrangement {
     Join {
         description: String,
         /// Filter arrangement before joining
-        ffun: Option<&'static FilterFunc>,
+        ffun: Option<FilterFunc>,
         /// Arrangement to join with.
         arrangement: ArrId,
         /// Function used to put together ouput value.
-        jfun: &'static JoinFunc,
+        jfun: JoinFunc,
         /// Join returns a collection: apply `next` transformation to it.
         next: Box<Option<XFormCollection>>,
     },
@@ -313,11 +313,11 @@ pub enum XFormArrangement {
     Semijoin {
         description: String,
         /// Filter arrangement before joining
-        ffun: Option<&'static FilterFunc>,
+        ffun: Option<FilterFunc>,
         /// Arrangement to semijoin with.
         arrangement: ArrId,
         /// Function used to put together ouput value.
-        jfun: &'static SemijoinFunc,
+        jfun: SemijoinFunc,
         /// Join returns a collection: apply `next` transformation to it.
         next: Box<Option<XFormCollection>>,
     },
@@ -325,7 +325,7 @@ pub enum XFormArrangement {
     Antijoin {
         description: String,
         /// Filter arrangement before joining
-        ffun: Option<&'static FilterFunc>,
+        ffun: Option<FilterFunc>,
         /// Arrangement to antijoin with
         arrangement: ArrId,
         /// Antijoin returns a collection: apply `next` transformation to it.
@@ -399,37 +399,37 @@ pub enum XFormCollection {
     /// Arrange the collection, apply `next` transformation to the resulting collection.
     Arrange {
         description: String,
-        afun: &'static ArrangeFunc,
+        afun: ArrangeFunc,
         next: Box<XFormArrangement>,
     },
     /// Apply `mfun` to each element in the collection
     Map {
         description: String,
-        mfun: &'static MapFunc,
+        mfun: MapFunc,
         next: Box<Option<XFormCollection>>,
     },
     /// FlatMap
     FlatMap {
         description: String,
-        fmfun: &'static FlatMapFunc,
+        fmfun: FlatMapFunc,
         next: Box<Option<XFormCollection>>,
     },
     /// Filter collection
     Filter {
         description: String,
-        ffun: &'static FilterFunc,
+        ffun: FilterFunc,
         next: Box<Option<XFormCollection>>,
     },
     /// Map and filter
     FilterMap {
         description: String,
-        fmfun: &'static FilterMapFunc,
+        fmfun: FilterMapFunc,
         next: Box<Option<XFormCollection>>,
     },
     /// Inspector
     Inspect {
         description: String,
-        ifun: &'static InspectFunc,
+        ifun: InspectFunc,
         next: Box<Option<XFormCollection>>,
     },
 }
@@ -525,7 +525,7 @@ pub enum Arrangement {
         /// Arrangement name; does not have to be unique
         name: String,
         /// Function used to produce arrangement.
-        afun: &'static ArrangeFunc,
+        afun: ArrangeFunc,
         /// The arrangement can be queried using `RunningProgram::query_arrangement`
         /// and `RunningProgram::dump_arrangement`.
         queryable: bool,
@@ -535,7 +535,7 @@ pub enum Arrangement {
         /// Arrangement name; does not have to be unique
         name: String,
         /// Function used to produce arrangement.
-        fmfun: &'static FilterMapFunc,
+        fmfun: FilterMapFunc,
         /// Apply distinct_total() before arranging filtered collection.
         /// This is necessary if the arrangement is to be used in an antijoin.
         distinct: bool,
@@ -551,8 +551,8 @@ impl Arrangement {
     }
 
     fn queryable(&self) -> bool {
-        match self {
-            Arrangement::Map { queryable, .. } => *queryable,
+        match *self {
+            Arrangement::Map { queryable, .. } => queryable,
             Arrangement::Set { .. } => false,
         }
     }
@@ -566,15 +566,15 @@ impl Arrangement {
         Collection<S, DDValue, Weight>: ThresholdTotal<S, DDValue, Weight>,
         S::Timestamp: Lattice + Ord + TotalOrder,
     {
-        match self {
+        match *self {
             Arrangement::Map { afun, .. } => {
-                ArrangedCollection::Map(collection.flat_map(*afun).arrange())
+                ArrangedCollection::Map(collection.flat_map(afun).arrange())
             }
             Arrangement::Set {
                 fmfun, distinct, ..
             } => {
-                let filtered = collection.flat_map(*fmfun);
-                if *distinct {
+                let filtered = collection.flat_map(fmfun);
+                if distinct {
                     ArrangedCollection::Set(
                         filtered
                             .threshold_total(|_, c| if c.is_zero() { 0 } else { 1 })
@@ -596,15 +596,15 @@ impl Arrangement {
         S: Scope,
         S::Timestamp: Lattice + Ord,
     {
-        match self {
+        match *self {
             Arrangement::Map { afun, .. } => {
-                ArrangedCollection::Map(collection.flat_map(*afun).arrange())
+                ArrangedCollection::Map(collection.flat_map(afun).arrange())
             }
             Arrangement::Set {
                 fmfun, distinct, ..
             } => {
-                let filtered = collection.flat_map(*fmfun);
-                if *distinct {
+                let filtered = collection.flat_map(fmfun);
+                if distinct {
                     ArrangedCollection::Set(
                         filtered
                             .threshold(|_, c| if c.is_zero() { 0 } else { 1 })
@@ -1659,26 +1659,26 @@ impl Program {
         T: Refines<P::Timestamp> + Lattice + Timestamp + Ord,
         T: ToTupleTS,
     {
-        match xform {
+        match *xform {
             XFormCollection::Arrange {
-                description,
+                ref description,
                 afun,
                 ref next,
             } => {
-                let arr = with_prof_context(&description, || col.flat_map(*afun).arrange_by_key());
+                let arr = with_prof_context(&description, || col.flat_map(afun).arrange_by_key());
                 Self::xform_arrangement(&arr, &*next, arrangements)
             }
             XFormCollection::Map {
-                description,
+                ref description,
                 mfun,
                 ref next,
             } => {
-                let mapped = with_prof_context(&description, || col.map(*mfun));
+                let mapped = with_prof_context(&description, || col.map(mfun));
                 Self::xform_collection(mapped, &*next, arrangements)
             }
             XFormCollection::FlatMap {
-                description,
-                fmfun: &fmfun,
+                ref description,
+                fmfun,
                 ref next,
             } => {
                 let flattened = with_prof_context(&description, || {
@@ -1687,24 +1687,24 @@ impl Program {
                 Self::xform_collection(flattened, &*next, arrangements)
             }
             XFormCollection::Filter {
-                description,
-                ffun: &ffun,
+                ref description,
+                ffun,
                 ref next,
             } => {
                 let filtered = with_prof_context(&description, || col.filter(ffun));
                 Self::xform_collection(filtered, &*next, arrangements)
             }
             XFormCollection::FilterMap {
-                description,
-                fmfun: &fmfun,
+                ref description,
+                fmfun,
                 ref next,
             } => {
                 let flattened = with_prof_context(&description, || col.flat_map(fmfun));
                 Self::xform_collection(flattened, &*next, arrangements)
             }
             XFormCollection::Inspect {
-                description,
-                ifun: &ifun,
+                ref description,
+                ifun,
                 ref next,
             } => {
                 let inspect = with_prof_context(&description, || {
@@ -1729,11 +1729,11 @@ impl Program {
         TR::Batch: BatchReader<DDValue, DDValue, T, Weight>,
         TR::Cursor: Cursor<DDValue, DDValue, T, Weight>,
     {
-        match xform {
+        match *xform {
             XFormArrangement::FlatMap {
-                description,
-                fmfun: &fmfun,
-                next,
+                ref description,
+                fmfun,
+                ref next,
             } => with_prof_context(&description, || {
                 Self::xform_collection(
                     arr.flat_map_ref(move |_, v| match fmfun(v.clone()) {
@@ -1745,9 +1745,9 @@ impl Program {
                 )
             }),
             XFormArrangement::FilterMap {
-                description,
-                fmfun: &fmfun,
-                next,
+                ref description,
+                fmfun,
+                ref next,
             } => with_prof_context(&description, || {
                 Self::xform_collection(
                     arr.flat_map_ref(move |_, v| fmfun(v.clone())),
@@ -1756,10 +1756,10 @@ impl Program {
                 )
             }),
             XFormArrangement::Aggregate {
-                description,
+                ref description,
                 ffun,
-                aggfun: &aggfun,
-                next,
+                aggfun,
+                ref next,
             } => {
                 let col = with_prof_context(&description, || {
                     ffun.map_or_else(
@@ -1785,12 +1785,12 @@ impl Program {
                 Self::xform_collection(col, &*next, arrangements)
             }
             XFormArrangement::Join {
-                description,
+                ref description,
                 ffun,
                 arrangement,
-                jfun: &jfun,
-                next,
-            } => match arrangements.lookup_arr(*arrangement) {
+                jfun,
+                ref next,
+            } => match arrangements.lookup_arr(arrangement) {
                 A::Arrangement1(ArrangedCollection::Map(arranged)) => {
                     let col = with_prof_context(&description, || {
                         ffun.map_or_else(
@@ -1813,12 +1813,12 @@ impl Program {
                 _ => panic!("Join: not a map arrangement {:?}", arrangement),
             },
             XFormArrangement::Semijoin {
-                description,
+                ref description,
                 ffun,
                 arrangement,
-                jfun: &jfun,
-                next,
-            } => match arrangements.lookup_arr(*arrangement) {
+                jfun,
+                ref next,
+            } => match arrangements.lookup_arr(arrangement) {
                 A::Arrangement1(ArrangedCollection::Set(arranged)) => {
                     let col = with_prof_context(&description, || {
                         ffun.map_or_else(
@@ -1840,11 +1840,11 @@ impl Program {
                 _ => panic!("Semijoin: not a set arrangement {:?}", arrangement),
             },
             XFormArrangement::Antijoin {
-                description,
+                ref description,
                 ffun,
                 arrangement,
-                next,
-            } => match arrangements.lookup_arr(*arrangement) {
+                ref next,
+            } => match arrangements.lookup_arr(arrangement) {
                 A::Arrangement1(ArrangedCollection::Set(arranged)) => {
                     let col = with_prof_context(&description, || {
                         ffun.map_or_else(

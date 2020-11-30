@@ -239,7 +239,7 @@ rustLibFiles specname =
         , (dir </> "ovsdb/test.rs"                                        , $(embedFile "rust/template/ovsdb/test.rs"))
         , (dir </> "types/ddlog_log.rs"                                   , $(embedFile "rust/template/types/ddlog_log.rs"))
         , (dir </> "types/closure.rs"                                     , $(embedFile "rust/template/types/closure.rs"))
-        , (dir </> ".cargo/config"                                        , $(embedFile "rust/template/.cargo/config"))
+        , (dir </> ".cargo/config.toml"                                   , $(embedFile "rust/template/.cargo/config.toml"))
         ]
     where dir = rustProjectDir specname
 
@@ -1714,7 +1714,7 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                             xform' <- mkArrangedOperator [] False
                             return $ "XFormCollection::Arrange {"                                                                                    $$
                                      "    description:" <+> (pp $ show $ show $ "arrange" <+> rulePPPrefix rl (last_rhs_idx+1) <+> "by" <+> key_str) <+> ".to_string(),"                                                                                                                             $$
-                                     (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<(DDValue,DDValue)>" $$ afun $$ "__f},")        $$
+                                     (nest' $ "afun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<(DDValue,DDValue)>" $$ afun $$ "__f},")        $$
                                      "    next: Box::new(" <> xform' <> ")"                                                                          $$
                                      "}"
                         Nothing -> mkCollectionOperator
@@ -1772,7 +1772,7 @@ mkFlatMap d prefix rl idx v e = do
     return $
         "XFormCollection::FlatMap{"                                                                                         $$
         "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <+> ".to_string(),"                           $$
-        (nest' $ "fmfun: &{fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<Box<dyn Iterator<Item=DDValue>>>" $$ fmfun $$ "__f},")$$
+        (nest' $ "fmfun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<Box<dyn Iterator<Item=DDValue>>>" $$ fmfun $$ "__f},")$$
         "    next: Box::new(" <> next <> ")"                                                                                $$
         "}"
 
@@ -1785,7 +1785,7 @@ mkFilterMap d prefix rl idx = do
     return $
         "XFormCollection::FilterMap{"                                                                                       $$
         "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <+> ".to_string(),"                           $$
-        nest' ("fmfun: &{fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<DDValue>" $$ fmfun $$ "__f},")                      $$
+        nest' ("fmfun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<DDValue>" $$ fmfun $$ "__f},")                      $$
         "    next: Box::new(" <> next <> ")"                                                                                $$
         "}"
 
@@ -1806,7 +1806,7 @@ mkInspect d prefix rl idx e input_val = do
     return $
         "XFormCollection::Inspect{"                                                                                         $$
         "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <+> ".to_string(),"                           $$
-        (nest' $ "ifun: &{fn __f(" <> vALUE_VAR <> ": &DDValue, " <> tIMESTAMP_VAR <> ": TupleTS, " <> wEIGHT_VAR <> ": Weight) -> ()" $$ ifun $$ "__f},")$$
+        (nest' $ "ifun: {fn __f(" <> vALUE_VAR <> ": &DDValue, " <> tIMESTAMP_VAR <> ": TupleTS, " <> wEIGHT_VAR <> ": Weight) -> ()" $$ ifun $$ "__f},")$$
         "    next: Box::new(" <> next <> ")"                                                                                $$
         "}"
 
@@ -1845,7 +1845,7 @@ mkGroupBy d filters input_val rl@Rule{..} idx = do
         "XFormArrangement::Aggregate{"                                                                                           $$
         "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <> ".to_string(),"                                 $$
         "    ffun:" <+> ffun <> ","                                                                                              $$
-        "    aggfun: &{fn __f(" <> kEY_VAR <> ": &DDValue," <+> gROUP_VAR <> ": &[(&DDValue, Weight)]) -> Option<DDValue>" $$ agfun $$ "__f}," $$
+        "    aggfun: {fn __f(" <> kEY_VAR <> ": &DDValue," <+> gROUP_VAR <> ": &[(&DDValue, Weight)]) -> Option<DDValue>" $$ agfun $$ "__f}," $$
         "    next: Box::new(" <> next <> ")"                                                                                     $$
         "}"
 
@@ -2000,7 +2000,7 @@ mkFFun d rl@Rule{..} input_filters = do
    open <- openAtom d vALUE_VAR rl 0 (rhsAtom $ ruleRHS !! 0) ("return false")
    let checks = hsep $ punctuate " &&"
                 $ map (\i -> mkExpr d (CtxRuleRCond rl i) (rhsExpr $ ruleRHS !! i) EVal) input_filters
-   return $ "Some(&{fn __f(" <> vALUE_VAR <> ": &DDValue) -> bool" $$
+   return $ "Some({fn __f(" <> vALUE_VAR <> ": &DDValue) -> bool" $$
             (braces' $ open $$ checks)                             $$
             "    __f"                                              $$
             "})"
@@ -2065,7 +2065,7 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
                 "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ join_idx + 1) <> ".to_string(),"                   $$
                 "    ffun:" <+> ffun <> ","                                                                                     $$
                 "    arrangement: (" <> relId (atomRelation atom) <> "," <> pp aid <> "),"                                      $$
-                "    jfun: &{fn __f(_: &DDValue ," <> vALUE_VAR1 <> ": &DDValue,_" <> vALUE_VAR2 <> ": &()) -> Option<DDValue>"       $$
+                "    jfun: {fn __f(_: &DDValue ," <> vALUE_VAR1 <> ": &DDValue,_" <> vALUE_VAR2 <> ": &()) -> Option<DDValue>"       $$
                 nest' jfun                                                                                                      $$
                 "    __f},"                                                                                                     $$
                 "    next: Box::new(" <> next  <> ")"                                                                           $$
@@ -2074,7 +2074,7 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
                 "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ join_idx + 1) <> ".to_string(),"                   $$
                 "    ffun:" <+> ffun <> ","                                                                                     $$
                 "    arrangement: (" <> relId (atomRelation atom) <> "," <> pp aid <> "),"                                      $$
-                "    jfun: &{fn __f(_: &DDValue ," <> vALUE_VAR1 <> ": &DDValue," <> vALUE_VAR2 <> ": &DDValue) -> Option<DDValue>"     $$
+                "    jfun: {fn __f(_: &DDValue ," <> vALUE_VAR1 <> ": &DDValue," <> vALUE_VAR2 <> ": &DDValue) -> Option<DDValue>"     $$
                 nest' jfun                                                                                                      $$
                 "    __f},"                                                                                                     $$
                 "    next: Box::new(" <> next <> ")"                                                                            $$
@@ -2282,7 +2282,7 @@ mkHead d prefix rl = do
     return $
         "XFormCollection::FilterMap{"                                                               $$
         "    description:" <+> (pp $ show $ show $ "head of" <+> pp rl) <+> ".to_string(),"         $$
-        nest' ("fmfun: &{fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<DDValue>" $$ fmfun $$ "__f},")  $$
+        nest' ("fmfun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<DDValue>" $$ fmfun $$ "__f},")  $$
         "    next: Box::new(None)"                                                                  $$
         "}"
 
@@ -2341,7 +2341,7 @@ mkArrangement d rel ArrangementMap{..} = do
     return $
         "Arrangement::Map{"                                                                                       $$
         "   name: r###\"" <> pp arngPattern <> " /*join*/\"###.to_string(),"                                      $$
-        (nest' $ "afun: &{fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<(DDValue,DDValue)>" $$ afun $$ "__f},")  $$
+        (nest' $ "afun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<(DDValue,DDValue)>" $$ afun $$ "__f},")  $$
         "    queryable:" <+> (if null arngIndexes then "false" else "true")                                       $$
         "}"
 
@@ -2356,7 +2356,7 @@ mkArrangement d rel ArrangementSet{..} = do
     return $
         "Arrangement::Set{"                                                                                                          $$
         "    name: r###\"" <> pp arngPattern <> " /*" <> (if arngDistinct then "antijoin" else "semijoin") <> "*/\"###.to_string()," $$
-        (nest' $ "fmfun: &{fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<DDValue>" $$ fmfun $$ "__f},")                             $$
+        (nest' $ "fmfun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<DDValue>" $$ fmfun $$ "__f},")                             $$
         "    distinct:" <+> (if arngDistinct && not distinct_by_construction then "true" else "false")                               $$
         "}"
 
