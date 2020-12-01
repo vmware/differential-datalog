@@ -1,0 +1,10 @@
+[workspace]
+members = [
+    "rust/template",
+    "rust/template/cmd_parser",
+    "rust/template/differential_datalog",
+    "rust/template/distributed_datalog",
+    "rust/template/ovsdb",
+    "rust/template/types",
+]
+exclude = ["test/**"]
