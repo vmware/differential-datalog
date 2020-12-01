@@ -57,7 +57,7 @@ public class DDlogRecord {
         return this.handle;
     }
 
-    private static DDlogRecord fromHandle(long handle) {
+    public static DDlogRecord fromHandle(long handle) {
         DDlogRecord result = new DDlogRecord();
         if (handle == 0)
             throw new RuntimeException("Received invalid handle.");
@@ -70,7 +70,7 @@ public class DDlogRecord {
      * Creates an object where the handle is shared with other
      * objects.
      */
-    static DDlogRecord fromSharedHandle(long handle) {
+    public static DDlogRecord fromSharedHandle(long handle) {
         DDlogRecord result = fromHandle(handle);
         result.shared = true;
         return result;
@@ -297,7 +297,7 @@ public class DDlogRecord {
             throw new RuntimeException("Unexpected error in DDlogAPI.ddlog_get_int()");
         return new BigInteger(buf);
     }
-
+    
     public int getTupleSize() {
         if (!DDlogAPI.ddlog_is_tuple(this.checkHandle()))
             throw new RuntimeException("Value is not a tuple");
@@ -426,9 +426,7 @@ public class DDlogRecord {
         }
 
         if (DDlogAPI.ddlog_is_string(this.handle)) {
-            String s = DDlogAPI.ddlog_get_str(this.handle);
-            // TODO: this should escape some characters...
-            return "\"" + s + "\"";
+            return DDlogAPI.ddlog_get_str(this.handle);
         }
 
         StringBuilder builder = new StringBuilder();

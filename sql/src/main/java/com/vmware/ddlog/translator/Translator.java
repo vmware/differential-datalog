@@ -19,6 +19,7 @@ import com.facebook.presto.sql.tree.Statement;
 // If these are missing you have not run the sql/install-ddlog-jar.sh script
 import com.vmware.ddlog.ir.DDlogIRNode;
 import com.vmware.ddlog.ir.DDlogProgram;
+import com.vmware.ddlog.ir.DDlogType;
 import org.jooq.DSLContext;
 import org.jooq.Field;
 
@@ -78,6 +79,10 @@ public class Translator {
             t -> tablesToFields.put(t, t.fieldStream().collect(Collectors.toList()))
         );
         return tablesToFields;
+    }
+
+    public DDlogType resolveType(DDlogType type) {
+        return this.translationContext.resolveType(type);
     }
 
     public DDlogProgram generateSqlLibrary() {

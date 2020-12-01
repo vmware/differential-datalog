@@ -39,6 +39,10 @@ public class DDlogAPI {
     static native void ddlog_enable_cpu_profiling(long hprog, boolean enable) throws DDlogException;
     static native long ddlog_log_replace_callback(int module, long old_cbinfo, ObjIntConsumer<String> cb, int max_level);
     static native long ddlog_log_replace_default_callback(long old_cbinfo, ObjIntConsumer<String> cb, int max_level);
+    // These methods are here for supporting the SQL-to-DDlog compiler.
+    // Returns a handle to a ddlog_record.
+    public static native long ddlog_create_sql_record(byte[] buffer) throws DDlogException;
+    public static native byte[] ddlog_encode_record(long handle) throws DDlogException;
 
     static native void ddlog_free(long handle);
 
@@ -805,17 +809,23 @@ public class DDlogAPI {
 
     static boolean loaded = false;
 
+    public static void loadLibrary() {
+        if (loaded)
+            return;
+        final Path libraryPath = Paths.get(libName(ddlogLibrary)).toAbsolutePath();
+        System.load(libraryPath.toString());
+    }
+
     /**
      * Load the the ddlogLibrary in the current process.
      * @return The API that can be used to interact with this library.
      */
     public static DDlogAPI loadDDlog() throws DDlogException {
         if (loaded)
-            throw new RuntimeException("Attempt to load a secon dddlog library. "
+            throw new RuntimeException("Attempt to load a second dddlog library. "
                     + " Only one library can be loaded safely.");
+        loadLibrary();
         loaded = true;
-        final Path libraryPath = Paths.get(libName(ddlogLibrary)).toAbsolutePath();
-        System.load(libraryPath.toString());
         return new ddlogapi.DDlogAPI(1, null, false);
     }
 }

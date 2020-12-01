@@ -13,6 +13,7 @@ package com.vmware.ddlog.ir;
 
 import com.vmware.ddlog.util.Linq;
 
+import javax.annotation.Nullable;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -79,6 +80,14 @@ public class DDlogProgram extends DDlogNode {
             if (!this.imports.get(i).compare(other.imports.get(i), policy))
                 return false;
         return true;
+    }
+
+    @Nullable
+    public DDlogRelationDeclaration getRelation(String name) {
+        for (DDlogRelationDeclaration d: this.relations)
+            if (d.getName().equals(name))
+                return d;
+        return null;
     }
 
     public void toFile(String filename) throws FileNotFoundException {

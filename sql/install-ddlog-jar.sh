@@ -1,4 +1,6 @@
-#!/bin/sh
+#!/bin/bash
 
-cd ../java
+pushd ../java
+make
 mvn install:install-file -Dfile=ddlogapi.jar -DgroupId=ddlog -DartifactId=ddlogapi -Dversion=0.1 -Dpackaging=jar
+popd

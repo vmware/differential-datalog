@@ -38,7 +38,6 @@ public abstract class DDlogType extends DDlogNode {
      * True if the given type is a numeric type.
      * @param type  Type to analyze.
      */
-    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     public static boolean isNumeric(DDlogType type) {
         return type instanceof IsNumericType;
     }
