@@ -543,10 +543,10 @@ pub enum Arrangement {
 }
 
 impl Arrangement {
-    fn name(&self) -> String {
+    fn name(&self) -> &str {
         match self {
-            Arrangement::Map { name, .. } => name.clone(),
-            Arrangement::Set { name, .. } => name.clone(),
+            Arrangement::Map { name, .. } => name,
+            Arrangement::Set { name, .. } => name,
         }
     }
 
@@ -903,9 +903,10 @@ impl Program {
                         opt_tx.unwrap()
                     };
 
-                    let (mut all_sessions, mut traces) = worker.dataflow::<TS,_,_>(|outer: &mut Child<Worker<Allocator>, TS>| -> Result<_, String> {
+                    let (mut all_sessions, mut traces) = worker.dataflow::<TS, _, _>(|outer: &mut Child<Worker<Allocator>, TS>| -> Result<_, String> {
                         let mut sessions : FnvHashMap<RelId, InputSession<TS, DDValue, Weight>> = FnvHashMap::default();
-                        let mut collections : FnvHashMap<RelId, Collection<Child<Worker<Allocator>, TS>,DDValue,Weight>> = FnvHashMap::default();
+                        let mut collections : FnvHashMap<RelId, Collection<Child<Worker<Allocator>, TS>, DDValue, Weight>> =
+                            HashMap::with_capacity_and_hasher(prog.nodes.len(), FnvBuildHasher::default());
                         let mut arrangements = FnvHashMap::default();
 
                         for (nodeid, node) in prog.nodes.iter().enumerate() {
@@ -915,7 +916,7 @@ impl Program {
                                     let mut collection = collections
                                         .remove(&rel.id)
                                         .unwrap_or_else(|| {
-                                            let (session, collection) = outer.new_collection::<DDValue,Weight>();
+                                            let (session, collection) = outer.new_collection::<DDValue, Weight>();
                                             sessions.insert(rel.id, session);
 
                                             collection
@@ -940,7 +941,7 @@ impl Program {
                                     rule_collections.push(collection);
                                     collection = with_prof_context(
                                         &format!("concatenate rules for {}", rel.name),
-                                        || concatenate_collections(outer, rule_collections.into_iter()),
+                                        || concatenate_collections(outer, rule_collections),
                                     );
 
                                     // don't distinct input collections, as this is already done by the set_update logic
@@ -954,7 +955,7 @@ impl Program {
                                     // create arrangements
                                     for (i,arr) in rel.arrangements.iter().enumerate() {
                                         with_prof_context(
-                                            &arr.name(),
+                                            arr.name(),
                                             || arrangements.insert(
                                                 (rel.id, i),
                                                 arr.build_arrangement_root(&collection),
@@ -964,11 +965,17 @@ impl Program {
 
                                     collections.insert(rel.id, collection);
                                 },
-                                ProgNode::Apply { tfun } => {
+
+                                &ProgNode::Apply { tfun } => {
                                     tfun()(&mut collections);
                                 },
+
                                 ProgNode::SCC { rels } => {
-                                    // create collec tions; add them to map; we will overwrite them with
+                                    // Preallocate the memory required to store the new relations
+                                    sessions.reserve(rels.len());
+                                    collections.reserve(rels.len());
+
+                                    // create collections; add them to map; we will overwrite them with
                                     // updated collections returned from the inner scope.
                                     for r in rels.iter() {
                                         let (session, collection) = outer.new_collection::<DDValue,Weight>();
@@ -987,8 +994,7 @@ impl Program {
                                         // arrangements entered from global scope
                                         let mut inner_arrangements = FnvHashMap::default();
 
-                                        // collections entered from global scope
-                                        let mut inner_collections = FnvHashMap::default();
+
                                         for r in rels.iter() {
                                             let var = Variable::from(
                                                 &collections
@@ -1006,7 +1012,7 @@ impl Program {
                                         for rel in rels {
                                             for (i, arr) in rel.rel.arrangements.iter().enumerate() {
                                                 // check if arrangement is actually used inside this node
-                                                if prog.arrangement_used_by_nodes((rel.rel.id, i)).iter().any(|n| *n == nodeid) {
+                                                if prog.arrangement_used_by_nodes((rel.rel.id, i)).any(|n| n == nodeid) {
                                                     with_prof_context(
                                                         &format!("local {}", arr.name()),
                                                         || local_arrangements.insert(
@@ -1018,8 +1024,11 @@ impl Program {
                                             }
                                         }
 
-                                        let relrels: Vec<_> = rels.iter().map(|r| &r.rel).collect();
-                                        for dep in Self::dependencies(relrels.as_slice()) {
+                                        let dependencies = Self::dependencies(rels.iter().map(|relation| &relation.rel));
+                                        // collections entered from global scope
+                                        let mut inner_collections = HashMap::with_capacity_and_hasher(dependencies.len(), FnvBuildHasher::default());
+
+                                        for dep in dependencies {
                                             match dep {
                                                 Dep::Rel(relid) => {
                                                     assert!(!vars.contains_key(&relid));
@@ -1066,7 +1075,7 @@ impl Program {
                                         }
 
                                         // bring new relations back to the outer scope
-                                        let mut new_collections = FnvHashMap::default();
+                                        let mut new_collections = HashMap::with_capacity_and_hasher(rels.len(), FnvBuildHasher::default());
                                         for rel in rels {
                                             let var = vars
                                                 .get(&rel.rel.id)
@@ -1094,7 +1103,7 @@ impl Program {
                                     for rel in rels {
                                         for (i, arr) in rel.rel.arrangements.iter().enumerate() {
                                             // only if the arrangement is used outside of this node
-                                            if prog.arrangement_used_by_nodes((rel.rel.id, i)).iter().any(|n|*n != nodeid) || arr.queryable() {
+                                            if arr.queryable() || prog.arrangement_used_by_nodes((rel.rel.id, i)).any(|n| n != nodeid) {
                                                 with_prof_context(
                                                     &format!("global {}", arr.name()),
                                                     || -> Result<_, String> {
@@ -1144,7 +1153,7 @@ impl Program {
                         for ((relid, arrid), arr) in arrangements.into_iter() {
                             if let ArrangedCollection::Map(arranged) = arr {
                                 if prog.get_relation(relid).arrangements[arrid].queryable() {
-                                    arranged.as_collection(|k,_| k.clone()).probe_with(&mut probe1);
+                                    arranged.as_collection(|k, _| k.clone()).probe_with(&mut probe1);
                                     traces.insert((relid, arrid), arranged.trace.clone());
                                 }
                             }
@@ -1502,7 +1511,7 @@ impl Program {
                         // negative weights in one of the input multisets.
                         if weight != 0 {
                             vals.insert(cursor.val(&storage).clone());
-                        };
+                        }
                         cursor.step_val(&storage);
                     }
                     vals
@@ -1544,34 +1553,31 @@ impl Program {
                 ProgNode::Rel { rel: r } => {
                     if r.id == relid {
                         return r;
-                    };
+                    }
                 }
                 ProgNode::Apply { .. } => {}
                 ProgNode::SCC { rels: rs } => {
                     for r in rs {
                         if r.rel.id == relid {
                             return &r.rel;
-                        };
+                        }
                     }
                 }
             }
         }
+
         panic!("get_relation({}): relation not found", relid)
     }
 
     /* indices of program nodes that use arrangement */
-    fn arrangement_used_by_nodes(&self, arrid: ArrId) -> Vec<usize> {
-        self.nodes
-            .iter()
-            .enumerate()
-            .filter_map(|(i, n)| {
-                if Self::node_uses_arrangement(n, arrid) {
-                    Some(i)
-                } else {
-                    None
-                }
-            })
-            .collect()
+    fn arrangement_used_by_nodes<'a>(&'a self, arrid: ArrId) -> impl Iterator<Item = usize> + 'a {
+        self.nodes.iter().enumerate().filter_map(move |(i, n)| {
+            if Self::node_uses_arrangement(n, arrid) {
+                Some(i)
+            } else {
+                None
+            }
+        })
     }
 
     fn node_uses_arrangement(n: &ProgNode, arrid: ArrId) -> bool {
@@ -1595,39 +1601,41 @@ impl Program {
     }
 
     /// Returns all input relations of the program
-    fn input_relations(&self) -> Vec<RelId> {
-        self.nodes
-            .iter()
-            .flat_map(|node| match node {
-                ProgNode::Rel { rel: r } => {
-                    if r.input {
-                        vec![r.id]
-                    } else {
-                        vec![]
-                    }
+    fn input_relations<'a>(&'a self) -> impl Iterator<Item = RelId> + 'a {
+        self.nodes.iter().filter_map(|node| match node {
+            ProgNode::Rel { rel: r } => {
+                if r.input {
+                    Some(r.id)
+                } else {
+                    None
                 }
-                ProgNode::Apply { .. } => vec![],
-                ProgNode::SCC { rels: rs } => {
-                    for r in rs {
-                        assert!(!r.rel.input, "input relation ({}) in SCC", r.rel.name);
-                    }
-                    vec![]
+            }
+            ProgNode::Apply { .. } => None,
+            ProgNode::SCC { rels: rs } => {
+                for r in rs {
+                    assert!(!r.rel.input, "input relation ({}) in SCC", r.rel.name);
                 }
-            })
-            .collect()
+
+                None
+            }
+        })
     }
 
     /// Return all relations required to compute rels, excluding recursive dependencies on rels
-    fn dependencies(rels: &[&Relation]) -> FnvHashSet<Dep> {
+    fn dependencies<'a, R>(mut rels: R) -> FnvHashSet<Dep>
+    where
+        R: Iterator<Item = &'a Relation> + Clone + 'a,
+    {
         let mut result = FnvHashSet::default();
-        for rel in rels {
+        for rel in rels.clone() {
             for rule in &rel.rules {
                 result = result.union(&rule.dependencies()).cloned().collect();
             }
         }
+
         result
             .into_iter()
-            .filter(|d| rels.iter().all(|r| r.id != d.relid()))
+            .filter(|d| rels.all(|r| r.id != d.relid()))
             .collect()
     }
 
