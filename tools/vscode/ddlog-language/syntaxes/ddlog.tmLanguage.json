@@ -44,19 +44,9 @@
         "constant": {
             "patterns": [
                 {
-                    "comment": "Floating point literal (without exponent)",
+                    "comment": "Floating point literal",
                     "name": "constant.numeric.float.ddlog",
-                    "match": "\\b(32'f|64'f)?[0-9][0-9_]*\\.[0-9][0-9_]*([eE][+-]?[0-9_]+)?\\b"
-                },
-                {
-                    "comment": "Floating point literal (with exponent)",
-                    "name": "constant.numeric.float.ddlog",
-                    "match": "\\b(32'f|64'f)?[0-9][0-9_]*\\.[0-9][0-9_]*[eE][+-][0-9_]+\\b"
-                },
-                {
-                    "comment": "Floating point literal (exponent)",
-                    "name": "constant.numeric.float.ddlog",
-                    "match": "\\b(32'f|64'f)?([0-9][0-9_]*\\.)?[0-9][0-9_]*[eE][+-][0-9_]+\\b"
+                    "match": "\\b(32'f|64'f)?([0-9][0-9_]*\\.)?[0-9][0-9_]*([eE][+-]?[0-9_]+)?\\b"
                 },
                 {
                     "comment": "Integer literal (decimal)",
@@ -88,15 +78,11 @@
             "patterns": [
                 {
                     "name": "keyword.control.ddlog",
-                    "match": "\\b(else|if|in|for|return|control|skip|continue|break)\\b"
-                },
-                {
-                    "name": "keyword.control.ddlog",
-                    "match": "\\s(else|if|in|for|return|control|skip|continue|break)\\s"
+                    "match": "\\b(else|if|in|for|return|control|skip|continue|break|function|match)\\b"
                 },
                 {
                     "name": "keyword.graph.ddlog",
-                    "match": "\\b(input|output|relation|function|match|rule)\\b"
+                    "match": "\\b(input|output|relation)\\b"
                 },
                 {
                     "name": "keyword.module.ddlog",
@@ -131,12 +117,9 @@
                         },
                         "2": {
                             "name": "entity.name.function.ddlog"
-                        },
-                        "3": {
-                            "name": "keyword.operator.grouping.ddlog"
                         }
                     },
-                    "end": "[\\{\\=]",
+                    "end": "[\\{]",
                     "endCaptures": {
                         "0": {
                             "name": "keyword.operator.alternate-grouping.ddlog"

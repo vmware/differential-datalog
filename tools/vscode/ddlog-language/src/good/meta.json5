@@ -12,12 +12,9 @@
                         },
                         "2": {
                             "name": "entity.name.function.ddlog"
-                        },
-                        "3": {
-                            "name": "keyword.operator.grouping.ddlog"
                         }
                     },
-                    "end": "[\\{\\=]",
+                    "end": "[\\{]",
                     "endCaptures": {
                         "0": {
                             "name": "keyword.operator.alternate-grouping.ddlog"

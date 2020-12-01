@@ -4,15 +4,11 @@
             "patterns": [
                 {
                     "name": "keyword.control.ddlog",
-                    "match": "\\b(else|if|in|for|return|control|skip|continue|break)\\b"
-                },
-                {
-                    "name": "keyword.control.ddlog",
-                    "match": "\\s(else|if|in|for|return|control|skip|continue|break)\\s"
+                    "match": "\\b(else|if|in|for|return|control|skip|continue|break|function|match)\\b"
                 },
                 {
                     "name": "keyword.graph.ddlog",
-                    "match": "\\b(input|output|relation|function|match|rule)\\b"
+                    "match": "\\b(input|output|relation)\\b"
                 },
                 {
                     "name": "keyword.module.ddlog",
