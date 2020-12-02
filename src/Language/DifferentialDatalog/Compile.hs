@@ -212,6 +212,7 @@ rustLibFiles =
         , (dir </> "differential_datalog/program/update.rs"               , $(embedFile "rust/template/differential_datalog/program/update.rs"))
         , (dir </> "differential_datalog/program/arrange.rs"              , $(embedFile "rust/template/differential_datalog/program/arrange.rs"))
         , (dir </> "differential_datalog/program/timestamp.rs"            , $(embedFile "rust/template/differential_datalog/program/timestamp.rs"))
+        , (dir </> "differential_datalog/program/worker.rs"               , $(embedFile "rust/template/differential_datalog/program/worker.rs"))
         , (dir </> "differential_datalog/record.rs"                       , $(embedFile "rust/template/differential_datalog/record.rs"))
         , (dir </> "differential_datalog/replay.rs"                       , $(embedFile "rust/template/differential_datalog/replay.rs"))
         , (dir </> "differential_datalog/test_record.rs"                  , $(embedFile "rust/template/differential_datalog/test_record.rs"))
