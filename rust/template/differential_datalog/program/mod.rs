@@ -30,9 +30,10 @@ use std::{
     ops::Deref,
     sync::{
         atomic::{AtomicBool, Ordering},
-        mpsc, Arc, Barrier, Mutex,
+        mpsc::{self, Receiver, Sender, TryRecvError},
+        Arc, Barrier, Mutex,
     },
-    thread,
+    thread::{self, JoinHandle, Thread},
     time::Duration,
 };
 use timestamp::{TSAtomic, ToTupleTS};
@@ -50,8 +51,10 @@ use differential_dataflow::trace::wrappers::enter::TraceEnter;
 use differential_dataflow::trace::{BatchReader, Cursor, TraceReader};
 // use differential_dataflow::trace::cursor::CursorDebug;
 use differential_dataflow::Collection;
-use timely::communication::initialize::Configuration;
-use timely::communication::Allocator;
+use timely::communication::{
+    initialize::{Configuration, WorkerGuards},
+    Allocator,
+};
 use timely::dataflow::operators::*;
 use timely::dataflow::scopes::*;
 use timely::dataflow::ProbeHandle;
@@ -640,17 +643,16 @@ pub struct RunningProgram {
     /// Producer sides of channels used to send commands to workers.
     /// We use async channels to avoid deadlocks when workers are blocked
     /// in `step_or_park`.
-    senders: Vec<mpsc::Sender<Msg>>,
+    senders: Vec<Sender<Msg>>,
     /// Channels to receive replies from worker threads. We could use a single
     /// channel with multiple senders, but use many channels instead to avoid
     /// deadlocks when one of the workers has died, but `recv` blocks instead
     /// of failing, since the channel is still considered alive.
-    reply_recv: Vec<mpsc::Receiver<Reply>>,
+    reply_recv: Vec<Receiver<Reply>>,
     relations: FnvHashMap<RelId, RelationInstance>,
-    /// Join handle of the thread running timely computation.
-    thread_handle: Option<thread::JoinHandle<Result<(), String>>>,
-    /// Timely worker threads.
-    worker_threads: Vec<thread::Thread>,
+    worker_guards: Option<WorkerGuards<Result<(), String>>>,
+    /// Handles used to unpark worker threads
+    worker_threads: Vec<Thread>,
     transaction_in_progress: bool,
     need_to_flush: bool,
     /// CPU profiling enabled (can be expensive).
@@ -658,7 +660,7 @@ pub struct RunningProgram {
     /// Consume timely_events and output them to CSV file. Can be expensive.
     profile_timely: Arc<AtomicBool>,
     /// Profiling thread.
-    prof_thread_handle: Option<thread::JoinHandle<()>>,
+    prof_thread_handle: Option<JoinHandle<()>>,
     /// Profiling statistics.
     pub profile: Arc<Mutex<Profile>>,
 }
@@ -675,7 +677,6 @@ impl Debug for RunningProgram {
                 "relations",
                 &(&self.relations as *const FnvHashMap<RelId, RelationInstance>),
             )
-            .field("thread_handle", &self.thread_handle)
             .field("transaction_in_progress", &self.transaction_in_progress)
             .field("need_to_flush", &self.need_to_flush)
             .field("profile_cpu", &self.profile_cpu)
@@ -789,9 +790,6 @@ impl Program {
         let (thandle_send, thandle_recv) = mpsc::sync_channel::<(usize, thread::Thread)>(0);
         let thandle_recv = Arc::new(Mutex::new(thandle_recv));
 
-        // Channel used by the main timely thread to send worker 0 handle to the caller.
-        let (wsend, wrecv) = mpsc::sync_channel::<Vec<thread::Thread>>(0);
-
         // Profile data structure
         let profile = Arc::new(Mutex::new(Profile::new()));
         let profile2 = profile.clone();
@@ -809,523 +807,515 @@ impl Program {
         let frontier_ts = TSAtomic::new(0);
         let progress_barrier = Arc::new(Barrier::new(nworkers));
 
-        // We must run the timely computation from a separate thread, since we need this thread to
-        // take the ownership of `WorkerGuards`, returned by `timely::execute`.  `WorkerGuards` cannot
-        // be sent across threads (i.e., they do not implement `Send` and therefore cannot be
-        // safely stored in `RunningProgram`).
-        let h = thread::spawn(move ||
-            // Start up timely computation.
-            timely::execute(Configuration::Process(nworkers), move |worker: &mut Worker<Allocator>| -> Result<_, String> {
-                let worker_index = worker.index();
+        // Start up timely computation.
+        let worker_guards = timely::execute(Configuration::Process(nworkers), move |worker: &mut Worker<Allocator>| -> Result<_, String> {
+            let worker_index = worker.index();
 
-                // Peer workers thread handles; only used by worker 0.
-                let mut peers: FnvHashMap<usize, thread::Thread> = FnvHashMap::default();
-                if worker_index != 0 {
-                    // Send worker's thread handle to worker 0.
-                    thandle_send.send((worker_index, thread::current())).unwrap();
-                } else {
-                    // Worker 0: receive `nworkers-1` handles.
-                    let thandle_recv = thandle_recv.lock().unwrap();
-                    for _ in 1..nworkers {
-                        let (worker, thandle) = thandle_recv.recv().unwrap();
-                        peers.insert(worker, thandle);
-                    }
+            // Peer workers thread handles; only used by worker 0.
+            let mut peers: FnvHashMap<usize, thread::Thread> = FnvHashMap::default();
+            if worker_index != 0 {
+                // Send worker's thread handle to worker 0.
+                thandle_send.send((worker_index, thread::current())).unwrap();
+            } else {
+                // Worker 0: receive `nworkers-1` handles.
+                let thandle_recv = thandle_recv.lock().unwrap();
+                for _ in 1..nworkers {
+                    let (worker, thandle) = thandle_recv.recv().unwrap();
+                    peers.insert(worker, thandle);
                 }
+            }
 
-                let probe = probe::Handle::new();
-                {
-                    let mut probe1 = probe.clone();
-                    let profile_cpu3 = profile_cpu2.clone();
-                    let profile_timely3 = profile_timely2.clone();
+            let probe = probe::Handle::new();
+            {
+                let mut probe1 = probe.clone();
+                let profile_cpu3 = profile_cpu2.clone();
+                let profile_timely3 = profile_timely2.clone();
 
-                    let prof_send1 = prof_send.clone();
-                    let prof_send2 = prof_send.clone();
-                    let progress_barrier = progress_barrier.clone();
+                let prof_send1 = prof_send.clone();
+                let prof_send2 = prof_send.clone();
+                let progress_barrier = progress_barrier.clone();
 
-                    worker.log_register().insert::<TimelyEvent,_>("timely", move |_time, data| {
-                        let profcpu: &AtomicBool = &*profile_cpu3;
-                        let proftimely: &AtomicBool = &*profile_timely3;
+                worker.log_register().insert::<TimelyEvent,_>("timely", move |_time, data| {
+                    let profcpu: &AtomicBool = &*profile_cpu3;
+                    let proftimely: &AtomicBool = &*profile_timely3;
 
-                        // Filter out events we don't care about to avoid the overhead of sending
-                        // the event around just to drop it eventually.
-                        let filtered: Vec<((Duration, usize, TimelyEvent), Option<String>)> = data
-                            .drain(..)
-                            .filter(|event| match event.2 {
-                                // Always send Operates events as they're used for always-on memory profiling.
-                                TimelyEvent::Operates(_) => true,
-                                TimelyEvent::Schedule(_) => profcpu.load(Ordering::Acquire) | proftimely.load(Ordering::Acquire),
-                                TimelyEvent::GuardedMessage(_) |
-                                TimelyEvent::Messages(_) |
-                                TimelyEvent::Park(_) |
-                                TimelyEvent::Progress(_) |
-                                TimelyEvent::PushProgress(_) => proftimely.load(Ordering::Acquire),
-                                _ => false
-                            })
-                            .map(|(d, s, e)| match e {
-                                // Only Operate events care about the context string.
-                                TimelyEvent::Operates(_) => ((d, s, e), Some(get_prof_context())),
-                                _ => ((d, s, e), None),
-                            })
-                            .collect();
+                    // Filter out events we don't care about to avoid the overhead of sending
+                    // the event around just to drop it eventually.
+                    let filtered: Vec<((Duration, usize, TimelyEvent), Option<String>)> = data
+                        .drain(..)
+                        .filter(|event| match event.2 {
+                            // Always send Operates events as they're used for always-on memory profiling.
+                            TimelyEvent::Operates(_) => true,
+                            TimelyEvent::Schedule(_) => profcpu.load(Ordering::Acquire) | proftimely.load(Ordering::Acquire),
+                            TimelyEvent::GuardedMessage(_) |
+                            TimelyEvent::Messages(_) |
+                            TimelyEvent::Park(_) |
+                            TimelyEvent::Progress(_) |
+                            TimelyEvent::PushProgress(_) => proftimely.load(Ordering::Acquire),
+                            _ => false
+                        })
+                        .map(|(d, s, e)| match e {
+                            // Only Operate events care about the context string.
+                            TimelyEvent::Operates(_) => ((d, s, e), Some(get_prof_context())),
+                            _ => ((d, s, e), None),
+                        })
+                        .collect();
 
-                        if !filtered.is_empty() {
-                            //eprintln!("timely event {:?}", filtered);
-                            prof_send1
-                                .send(ProfMsg::TimelyMessage(
-                                    filtered,
-                                    profcpu.load(Ordering::Acquire),
-                                    proftimely.load(Ordering::Acquire)
-                                ))
-                                .unwrap();
-                        }
-                    });
-
-                    worker.log_register().insert::<DifferentialEvent,_>("differential/arrange", move |_time, data| {
-                        if data.is_empty() {
-                            return;
-                        }
-
-                        // Send update to profiling channel
-                        prof_send2
-                            .send(ProfMsg::DifferentialMessage(data.drain(..).collect()))
+                    if !filtered.is_empty() {
+                        //eprintln!("timely event {:?}", filtered);
+                        prof_send1
+                            .send(ProfMsg::TimelyMessage(
+                                filtered,
+                                profcpu.load(Ordering::Acquire),
+                                proftimely.load(Ordering::Acquire)
+                            ))
                             .unwrap();
-                    });
+                    }
+                });
 
-                    let request_recv = {
-                        let mut opt_rx = None;
-                        std::mem::swap(&mut request_recv.lock().unwrap()[worker_index], &mut opt_rx);
-                        opt_rx.unwrap()
-                    };
+                worker.log_register().insert::<DifferentialEvent,_>("differential/arrange", move |_time, data| {
+                    if data.is_empty() {
+                        return;
+                    }
 
-                    let reply_send = {
-                        let mut opt_tx = None;
-                        std::mem::swap(&mut reply_send.lock().unwrap()[worker_index], &mut opt_tx);
-                        opt_tx.unwrap()
-                    };
+                    // Send update to profiling channel
+                    prof_send2
+                        .send(ProfMsg::DifferentialMessage(data.drain(..).collect()))
+                        .unwrap();
+                });
 
-                    let (mut all_sessions, mut traces) = worker.dataflow::<TS, _, _>(|outer: &mut Child<Worker<Allocator>, TS>| -> Result<_, String> {
-                        let mut sessions : FnvHashMap<RelId, InputSession<TS, DDValue, Weight>> = FnvHashMap::default();
-                        let mut collections : FnvHashMap<RelId, Collection<Child<Worker<Allocator>, TS>, DDValue, Weight>> =
+                let request_recv = {
+                    let mut opt_rx = None;
+                    std::mem::swap(&mut request_recv.lock().unwrap()[worker_index], &mut opt_rx);
+                    opt_rx.unwrap()
+                };
+
+                let reply_send = {
+                    let mut opt_tx = None;
+                    std::mem::swap(&mut reply_send.lock().unwrap()[worker_index], &mut opt_tx);
+                    opt_tx.unwrap()
+                };
+
+                let (mut all_sessions, mut traces) = worker.dataflow::<TS, _, _>(|outer: &mut Child<Worker<Allocator>, TS>| -> Result<_, String> {
+                    let mut sessions : FnvHashMap<RelId, InputSession<TS, DDValue, Weight>> = FnvHashMap::default();
+                    let mut collections : FnvHashMap<RelId, Collection<Child<Worker<Allocator>, TS>, DDValue, Weight>> =
                             HashMap::with_capacity_and_hasher(prog.nodes.len(), FnvBuildHasher::default());
-                        let mut arrangements = FnvHashMap::default();
+                    let mut arrangements = FnvHashMap::default();
 
-                        for (nodeid, node) in prog.nodes.iter().enumerate() {
-                            match node {
-                                ProgNode::Rel{rel} => {
-                                    // Relation may already be in the map if it was created by an `Apply` node
-                                    let mut collection = collections
-                                        .remove(&rel.id)
-                                        .unwrap_or_else(|| {
-                                            let (session, collection) = outer.new_collection::<DDValue, Weight>();
-                                            sessions.insert(rel.id, session);
-
-                                            collection
-                                        });
-
-                                    // apply rules
-                                    let mut rule_collections: Vec<_> = rel
-                                        .rules
-                                        .iter()
-                                        .map(|rule| {
-                                            prog.mk_rule(
-                                                rule,
-                                                |rid| collections.get(&rid),
-                                                Arrangements {
-                                                    arrangements1: &arrangements,
-                                                    arrangements2: &FnvHashMap::default(),
-                                                },
-                                            )
-                                        })
-                                        .collect();
-
-                                    rule_collections.push(collection);
-                                    collection = with_prof_context(
-                                        &format!("concatenate rules for {}", rel.name),
-                                        || concatenate_collections(outer, rule_collections),
-                                    );
-
-                                    // don't distinct input collections, as this is already done by the set_update logic
-                                    if !rel.input && rel.distinct {
-                                        collection = with_prof_context(
-                                            &format!("{}.threshold_total", rel.name),
-                                            || collection.threshold_total(|_, c| if c.is_zero() { 0 } else { 1 }),
-                                        );
-                                    }
-
-                                    // create arrangements
-                                    for (i,arr) in rel.arrangements.iter().enumerate() {
-                                        with_prof_context(
-                                            arr.name(),
-                                            || arrangements.insert(
-                                                (rel.id, i),
-                                                arr.build_arrangement_root(&collection),
-                                            ),
-                                        );
-                                    }
-
-                                    collections.insert(rel.id, collection);
-                                },
-
-                                &ProgNode::Apply { tfun } => {
-                                    tfun()(&mut collections);
-                                },
-
-                                ProgNode::SCC { rels } => {
-                                    // Preallocate the memory required to store the new relations
-                                    sessions.reserve(rels.len());
-                                    collections.reserve(rels.len());
-
-                                    // create collections; add them to map; we will overwrite them with
-                                    // updated collections returned from the inner scope.
-                                    for r in rels.iter() {
+                    for (nodeid, node) in prog.nodes.iter().enumerate() {
+                        match node {
+                            ProgNode::Rel{rel} => {
+                                // Relation may already be in the map if it was created by an `Apply` node
+                                let mut collection = collections
+                                    .remove(&rel.id)
+                                    .unwrap_or_else(|| {
                                         let (session, collection) = outer.new_collection::<DDValue,Weight>();
-                                        assert!(!r.rel.input, "input relation in nested scope: {}", r.rel.name);
+                                        sessions.insert(rel.id, session);
 
-                                        sessions.insert(r.rel.id, session);
-                                        collections.insert(r.rel.id, collection);
+                                        collection
+                                    });
+
+                                // apply rules
+                                let mut rule_collections: Vec<_> = rel
+                                    .rules
+                                    .iter()
+                                    .map(|rule| {
+                                        prog.mk_rule(
+                                            rule,
+                                            |rid| collections.get(&rid),
+                                            Arrangements {
+                                                arrangements1: &arrangements,
+                                                arrangements2: &FnvHashMap::default(),
+                                            },
+                                        )
+                                    })
+                                    .collect();
+
+                                rule_collections.push(collection);
+                                collection = with_prof_context(
+                                    &format!("concatenate rules for {}", rel.name),
+                                    || concatenate_collections(outer, rule_collections.into_iter()),
+                                );
+
+                                // don't distinct input collections, as this is already done by the set_update logic
+                                if !rel.input && rel.distinct {
+                                    collection = with_prof_context(
+                                        &format!("{}.threshold_total", rel.name),
+                                        || collection.threshold_total(|_, c| if c.is_zero() { 0 } else { 1 }),
+                                    );
+                                }
+
+                                // create arrangements
+                                for (i,arr) in rel.arrangements.iter().enumerate() {
+                                    with_prof_context(
+                                        arr.name(),
+                                        || arrangements.insert(
+                                            (rel.id, i),
+                                            arr.build_arrangement_root(&collection),
+                                        ),
+                                    );
+                                }
+                                
+                                collections.insert(rel.id, collection);
+                            },
+                            &ProgNode::Apply { tfun } => {
+                                tfun()(&mut collections);
+                            },
+                            ProgNode::SCC { rels } => {
+                                // Preallocate the memory required to store the new relations
+                                sessions.reserve(rels.len());
+                                collections.reserve(rels.len());
+
+                                // create collections; add them to map; we will overwrite them with
+                                // updated collections returned from the inner scope.
+                                for r in rels.iter() {
+                                    let (session, collection) = outer.new_collection::<DDValue,Weight>();
+                                    assert!(!r.rel.input, "input relation in nested scope: {}", r.rel.name);
+
+                                    sessions.insert(r.rel.id, session);
+                                    collections.insert(r.rel.id, collection);
+                                }
+
+                                // create a nested scope for mutually recursive relations
+                                let new_collections = outer.scoped("recursive component", |inner| -> Result<_, String> {
+                                    // create variables for relations defined in the SCC.
+                                    let mut vars = HashMap::with_capacity_and_hasher(rels.len(), FnvBuildHasher::default());
+                                    // arrangements created inside the nested scope
+                                    let mut local_arrangements = FnvHashMap::default();
+                                    // arrangements entered from global scope
+                                    let mut inner_arrangements = FnvHashMap::default();
+
+                                    for r in rels.iter() {
+                                        let var = Variable::from(
+                                            &collections
+                                                .get(&r.rel.id)
+                                                .ok_or_else(|| format!("failed to find collection with relation ID {}", r.rel.id))?
+                                                .enter(inner),
+                                            r.distinct,
+                                            &r.rel.name,
+                                        );
+
+                                        vars.insert(r.rel.id, var);
                                     }
-
-                                    // create a nested scope for mutually recursive relations
-                                    let new_collections = outer.scoped("recursive component", |inner| -> Result<_, String> {
-                                        // create variables for relations defined in the SCC.
-                                        let mut vars = HashMap::with_capacity_and_hasher(rels.len(), FnvBuildHasher::default());
-                                        // arrangements created inside the nested scope
-                                        let mut local_arrangements = FnvHashMap::default();
-                                        // arrangements entered from global scope
-                                        let mut inner_arrangements = FnvHashMap::default();
-
-
-                                        for r in rels.iter() {
-                                            let var = Variable::from(
-                                                &collections
-                                                    .get(&r.rel.id)
-                                                    .ok_or_else(|| format!("failed to find collection with relation ID {}", r.rel.id))?
-                                                    .enter(inner),
-                                                r.distinct,
-                                                &r.rel.name,
-                                            );
-
-                                            vars.insert(r.rel.id, var);
-                                        }
-
-                                        // create arrangements
-                                        for rel in rels {
-                                            for (i, arr) in rel.rel.arrangements.iter().enumerate() {
-                                                // check if arrangement is actually used inside this node
-                                                if prog.arrangement_used_by_nodes((rel.rel.id, i)).any(|n| n == nodeid) {
-                                                    with_prof_context(
-                                                        &format!("local {}", arr.name()),
-                                                        || local_arrangements.insert(
-                                                            (rel.rel.id, i),
-                                                            arr.build_arrangement(vars.get(&rel.rel.id)?.deref()),
-                                                        ),
-                                                    );
-                                                }
-                                            }
-                                        }
-
-                                        let dependencies = Self::dependencies(rels.iter().map(|relation| &relation.rel));
-                                        // collections entered from global scope
-                                        let mut inner_collections = HashMap::with_capacity_and_hasher(dependencies.len(), FnvBuildHasher::default());
-
-                                        for dep in dependencies {
-                                            match dep {
-                                                Dep::Rel(relid) => {
-                                                    assert!(!vars.contains_key(&relid));
-                                                    let collection = collections
-                                                        .get(&relid)
-                                                        .ok_or_else(|| format!("failed to find collection with relation ID {}", relid))?
-                                                        .enter(inner);
-
-                                                    inner_collections.insert(relid, collection);
-                                                },
-                                                Dep::Arr(arrid) => {
-                                                    let arrangement = arrangements
-                                                        .get(&arrid)
-                                                        .ok_or_else(|| format!("Arr: unknown arrangement {:?}", arrid))?
-                                                        .enter(inner);
-
-                                                    inner_arrangements.insert(arrid, arrangement);
-                                                }
-                                            }
-                                        }
-
-                                        // apply rules to variables
-                                        for rel in rels {
-                                            for rule in &rel.rel.rules {
-                                                let c = prog.mk_rule(
-                                                    rule,
-                                                    |rid| {
-                                                        vars
-                                                            .get(&rid)
-                                                            .map(|v| &(**v))
-                                                            .or_else(|| inner_collections.get(&rid))
-                                                    },
-                                                    Arrangements {
-                                                        arrangements1: &local_arrangements,
-                                                        arrangements2: &inner_arrangements,
-                                                    },
-                                                );
-
-                                                vars
-                                                    .get_mut(&rel.rel.id)
-                                                    .ok_or_else(|| format!("no variable found for relation ID {}", rel.rel.id))?
-                                                    .add(&c);
-                                            }
-                                        }
-
-                                        // bring new relations back to the outer scope
-                                        let mut new_collections = HashMap::with_capacity_and_hasher(rels.len(), FnvBuildHasher::default());
-                                        for rel in rels {
-                                            let var = vars
-                                                .get(&rel.rel.id)
-                                                .ok_or_else(|| format!("no variable found for relation ID {}", rel.rel.id))?;
-
-                                            let mut collection = var.leave();
-                                            // var.distinct() will be called automatically by var.drop() if var has `distinct` flag set
-                                            if rel.rel.distinct && !rel.distinct {
-                                                collection = with_prof_context(
-                                                    &format!("{}.distinct_total", rel.rel.name),
-                                                    || collection.threshold_total(|_,c| if c.is_zero() { 0 } else { 1 }),
-                                                );
-                                            }
-
-                                            new_collections.insert(rel.rel.id, collection);
-                                        }
-
-                                        Ok(new_collections)
-                                    })?;
-
-                                    // add new collections to the map
-                                    collections.extend(new_collections);
 
                                     // create arrangements
                                     for rel in rels {
                                         for (i, arr) in rel.rel.arrangements.iter().enumerate() {
-                                            // only if the arrangement is used outside of this node
-                                            if arr.queryable() || prog.arrangement_used_by_nodes((rel.rel.id, i)).any(|n| n != nodeid) {
+                                            // check if arrangement is actually used inside this node
+                                            if prog.arrangement_used_by_nodes((rel.rel.id, i)).any(|n| n == nodeid) {
                                                 with_prof_context(
-                                                    &format!("global {}", arr.name()),
-                                                    || -> Result<_, String> {
-                                                        let collection = collections
-                                                            .get(&rel.rel.id)
-                                                            .ok_or_else(|| format!("no collection found for relation ID {}", rel.rel.id))?;
-
-                                                        Ok(arrangements.insert((rel.rel.id, i), arr.build_arrangement(collection)))
-                                                    }
-                                                )?;
+                                                    &format!("local {}", arr.name()),
+                                                    || local_arrangements.insert(
+                                                        (rel.rel.id, i),
+                                                        arr.build_arrangement(vars.get(&rel.rel.id)?.deref()),
+                                                    ),
+                                                );
                                             }
+                                        }
+                                    }
+
+                                    let relrels: Vec<_> = rels.iter().map(|r| &r.rel).collect();
+                                    let dependencies = Self::dependencies(relrels.as_slice());
+
+                                    // collections entered from global scope
+                                    let mut inner_collections = HashMap::with_capacity_and_hasher(dependencies.len(), FnvBuildHasher::default());
+
+                                    for dep in dependencies {
+                                        match dep {
+                                            Dep::Rel(relid) => {
+                                                assert!(!vars.contains_key(&relid));
+                                                let collection = collections
+                                                    .get(&relid)
+                                                    .ok_or_else(|| format!("failed to find collection with relation ID {}", relid))?
+                                                    .enter(inner);
+
+                                                inner_collections.insert(relid, collection);
+                                            },
+                                            Dep::Arr(arrid) => {
+                                                let arrangement = arrangements
+                                                    .get(&arrid)
+                                                    .ok_or_else(|| format!("Arr: unknown arrangement {:?}", arrid))?
+                                                    .enter(inner);
+
+                                                inner_arrangements.insert(arrid, arrangement);
+                                            }
+                                        }
+                                    }
+
+                                    // apply rules to variables
+                                    for rel in rels {
+                                        for rule in &rel.rel.rules {
+                                            let c = prog.mk_rule(
+                                                rule,
+                                                |rid| {
+                                                    vars
+                                                        .get(&rid)
+                                                        .map(|v| &(**v))
+                                                        .or_else(|| inner_collections.get(&rid))
+                                                },
+                                                Arrangements {
+                                                    arrangements1: &local_arrangements,
+                                                    arrangements2: &inner_arrangements,
+                                                },
+                                            );
+
+                                            vars
+                                                .get_mut(&rel.rel.id)
+                                                .ok_or_else(|| format!("no variable found for relation ID {}", rel.rel.id))?
+                                                .add(&c);
+                                        }
+                                    }
+
+                                    // bring new relations back to the outer scope
+                                    let mut new_collections = HashMap::with_capacity_and_hasher(rels.len(), FnvBuildHasher::default());
+                                    for rel in rels {
+                                        let var = vars
+                                            .get(&rel.rel.id)
+                                            .ok_or_else(|| format!("no variable found for relation ID {}", rel.rel.id))?;
+
+                                        let mut collection = var.leave();
+                                        // var.distinct() will be called automatically by var.drop() if var has `distinct` flag set
+                                        if rel.rel.distinct && !rel.distinct {
+                                            collection = with_prof_context(
+                                                &format!("{}.distinct_total", rel.rel.name),
+                                                || collection.threshold_total(|_,c| if c.is_zero() { 0 } else { 1 }),
+                                            );
+                                        }
+
+                                        new_collections.insert(rel.rel.id, collection);
+                                    }
+
+                                    Ok(new_collections)
+                                })?;
+
+                                // add new collections to the map
+                                collections.extend(new_collections);
+
+                                // create arrangements
+                                for rel in rels {
+                                    for (i, arr) in rel.rel.arrangements.iter().enumerate() {
+                                        // only if the arrangement is used outside of this node
+                                        if arr.queryable() || prog.arrangement_used_by_nodes((rel.rel.id, i)).iter().any(|n| n != nodeid) {
+                                            with_prof_context(
+                                                &format!("global {}", arr.name()),
+                                                || -> Result<_, String> {
+                                                    let collection = collections
+                                                        .get(&rel.rel.id)
+                                                        .ok_or_else(|| format!("no collection found for relation ID {}", rel.rel.id))?;
+
+                                                    Ok(arrangements.insert((rel.rel.id, i), arr.build_arrangement(collection)))
+                                                }
+                                            )?;
                                         }
                                     }
                                 }
                             }
-                        };
-
-                        for (relid, collection) in collections {
-                            // notify client about changes
-                            if let Some(cb) = &prog.get_relation(relid).change_cb {
-                                let mut cb = cb.lock().unwrap().clone();
-
-                                let consolidated = with_prof_context(
-                                    &format!("consolidate {}", relid),
-                                    || collection.consolidate(),
-                                );
-
-                                let inspected = with_prof_context(
-                                    &format!("inspect {}", relid),
-                                    || consolidated.inspect(move |x| {
-                                        // assert!(x.2 == 1 || x.2 == -1, "x: {:?}", x);
-                                        cb(relid, &x.0, x.2)
-                                    }),
-                                );
-
-                                with_prof_context(
-                                    &format!("probe {}", relid),
-                                    || inspected.probe_with(&mut probe1),
-                                );
-                            }
                         }
+                    };
 
-                        // Attach probes to index arrangements, so we know when all updates
-                        // for a given epoch have been added to the arrangement, and return
-                        // arrangement trace.
-                        let mut traces: BTreeMap<ArrId, _> = BTreeMap::new();
-                        for ((relid, arrid), arr) in arrangements.into_iter() {
-                            if let ArrangedCollection::Map(arranged) = arr {
-                                if prog.get_relation(relid).arrangements[arrid].queryable() {
-                                    arranged.as_collection(|k, _| k.clone()).probe_with(&mut probe1);
-                                    traces.insert((relid, arrid), arranged.trace.clone());
-                                }
-                            }
+                    for (relid, collection) in collections {
+                        // notify client about changes
+                        if let Some(cb) = &prog.get_relation(relid).change_cb {
+                            let mut cb = cb.lock().unwrap().clone();
+
+                            let consolidated = with_prof_context(
+                                &format!("consolidate {}", relid),
+                                || collection.consolidate(),
+                            );
+
+                            let inspected = with_prof_context(
+                                &format!("inspect {}", relid),
+                                || consolidated.inspect(move |x| {
+                                    // assert!(x.2 == 1 || x.2 == -1, "x: {:?}", x);
+                                    cb(relid, &x.0, x.2)
+                                }),
+                            );
+
+                            with_prof_context(
+                                &format!("probe {}", relid),
+                                || inspected.probe_with(&mut probe1),
+                            );
                         }
-
-                        Ok((sessions, traces))
-                    })?;
-                    //println!("worker {} started", worker.index());
-
-                    let mut epoch: TS = 0;
-
-                    // feed initial data to sessions
-                    if worker_index == 0 {
-                        for (relid, v) in prog.init_data.iter() {
-                            all_sessions
-                              .get_mut(relid)
-                              .ok_or_else(|| format!("no session found for relation ID {}", relid))?
-                              .update(v.clone(), 1);
-                        }
-
-                        epoch += 1;
-                        Self::advance(&mut all_sessions, &mut traces, epoch);
-                        Self::flush(&mut all_sessions, &probe, worker, &peers, &frontier_ts, &progress_barrier);
-
-                        reply_send.send(Reply::FlushAck).map_err(|e| format!("failed to send ACK: {}", e))?;
                     }
 
-                    // Close session handles for non-input sessions;
-                    // close all sessions for workers other than worker 0.
-                    let mut sessions: FnvHashMap<RelId, InputSession<TS, DDValue, Weight>> = all_sessions
-                        .drain()
-                        .filter(|(relid, _)| worker_index == 0 && prog.get_relation(*relid).input)
-                        .collect();
+                    // Attach probes to index arrangements, so we know when all updates
+                    // for a given epoch have been added to the arrangement, and return
+                    // arrangement trace.
+                    let mut traces: BTreeMap<ArrId, _> = BTreeMap::new();
+                    for ((relid, arrid), arr) in arrangements.into_iter() {
+                        if let ArrangedCollection::Map(arranged) = arr {
+                            if prog.get_relation(relid).arrangements[arrid].queryable() {
+                                arranged.as_collection(|k,_| k.clone()).probe_with(&mut probe1);
+                                traces.insert((relid, arrid), arranged.trace.clone());
+                            }
+                        }
+                    }
 
-                    // Only worker 0 receives data
-                    if worker_index == 0 {
-                        loop {
+                    Ok((sessions, traces))
+                })?;
+                //println!("worker {} started", worker.index());
+
+                let mut epoch: TS = 0;
+
+                // feed initial data to sessions
+                if worker_index == 0 {
+                    for (relid, v) in prog.init_data.iter() {
+                        all_sessions
+                            .get_mut(relid)
+                            .ok_or_else(|| format!("no session found for relation ID {}", relid))?
+                            .update(v.clone(), 1);
+                    }
+
+                    epoch += 1;
+                    Self::advance(&mut all_sessions, &mut traces, epoch);
+                    Self::flush(&mut all_sessions, &probe, worker, &peers, &frontier_ts, &progress_barrier);
+
+                    reply_send.send(Reply::FlushAck).map_err(|e| format!("failed to send ACK: {}", e))?;
+                }
+
+                // Close session handles for non-input sessions;
+                // close all sessions for workers other than worker 0.
+                let mut sessions: FnvHashMap<RelId, InputSession<TS, DDValue, Weight>> = all_sessions
+                    .drain()
+                    .filter(|(relid, _)| worker_index == 0 && prog.get_relation(*relid).input)
+                    .collect();
+
+                // Only worker 0 receives data
+                if worker_index == 0 {
+                    loop {
+                        // Non-blocking receive, so that we can do some garbage collecting
+                        // when there is no real work to do.
+                        match request_recv.try_recv() {
+                            Err(mpsc::TryRecvError::Empty) => {
+                                // Command channel empty: use idle time to work on garbage collection.
+                                // This will block when there is no more compaction left to do.
+                                // The sender must unpark worker 0 after sending to the channel.
+                                worker.step_or_park(None);
+                            },
+                            Err(mpsc::TryRecvError::Disconnected)  => {
+                                // Sender hung
+                                eprintln!("Sender hung");
+                                Self::stop_workers(&peers, &frontier_ts, &progress_barrier);
+                                break;
+                            },
+                            Ok(Msg::Update(mut updates)) => {
+                                //println!("updates: {:?}", updates);
+                                for update in updates.drain(..) {
+                                    match update {
+                                        Update::Insert{relid, v} => {
+                                            sessions
+                                                .get_mut(&relid)
+                                                .ok_or_else(|| format!("no session found for relation ID {}", relid))?
+                                                .update(v, 1);
+                                        },
+                                        Update::DeleteValue{relid, v} => {
+                                            sessions
+                                                .get_mut(&relid)
+                                                .ok_or_else(|| format!("no session found for relation ID {}", relid))?
+                                                .update(v, -1);
+                                        },
+                                        Update::InsertOrUpdate{..} => {
+                                            return Err("InsertOrUpdate command received by worker thread".to_string());
+                                        },
+                                        Update::DeleteKey{..} => {
+                                            // workers don't know about keys
+                                            return Err("DeleteKey command received by worker thread".to_string());
+                                        },
+                                        Update::Modify{..} => {
+                                            return Err("Modify command received by worker thread".to_string());
+                                        }
+                                    }
+                                };
+                            },
+                            Ok(Msg::Flush) => {
+                                //println!("flushing");
+                                epoch += 1;
+                                Self::advance(&mut sessions, &mut traces, epoch);
+                                Self::flush(&mut sessions, &probe, worker, &peers, &frontier_ts, &progress_barrier);
+
+                                //println!("flushed");
+                                reply_send.send(Reply::FlushAck).map_err(|e| format!("failed to send ACK: {}", e))?;
+                            },
+                            Ok(Msg::Query(arrid, key)) => {
+                                Self::handle_query(&mut traces, &reply_send, arrid, key)?;
+                            },
+                            Ok(Msg::Stop) => {
+                                Self::stop_workers(&peers, &frontier_ts, &progress_barrier);
+                                break;
+                            }
+                        }
+                    }
+
+                // worker_index != 0
+                } else {
+                    loop {
+                        // Differential does not require any synchronization between workers: as
+                        // long as we keep calling `step_or_park`, all workers will eventually
+                        // process all inputs.  Barriers in the following code are needed so that
+                        // worker 0 can know exactly when all other workers have processed all data
+                        // for the `frontier_ts` timestamp, so that it knows when a transaction has
+                        // been fully committed and produced all its outputs.
+                        progress_barrier.wait();
+                        let time = frontier_ts.load(Ordering::SeqCst);
+
+                        // TS::max_value() == 0xffffffffffffffff*
+                        if time == TS::max_value() {
+                            return Ok(());
+                        }
+
+                        // `sessions` is empty, but we must advance trace frontiers, so we
+                        // don't hinder trace compaction.
+                        Self::advance(&mut sessions, &mut traces, time);
+                        while probe.less_than(&time) {
+                            if !worker.step_or_park(None) {
+                                // Dataflow terminated.
+                                return Ok(());
+                            }
+                        }
+
+                        progress_barrier.wait();
+                        // We're all caught up with `frontier_ts` and can now spend some time
+                        // garbage collecting.  The `step_or_park` call below will block if there
+                        // is no more garbage collecting left to do.  It will wake up when one of
+                        // the following conditions occurs: (1) there is more garbage collecting to
+                        // do as a result of other threads making progress, (2) new inputs have
+                        // been received, (3) worker 0 unparked the thread, (4) main thread sent
+                        // us a message and unparked the thread.  We check if the frontier has been
+                        // advanced by worker 0 and, if so, go back to the barrier to synchronize
+                        // with other workers.
+                        while frontier_ts.load(Ordering::SeqCst) == time {
                             // Non-blocking receive, so that we can do some garbage collecting
                             // when there is no real work to do.
                             match request_recv.try_recv() {
-                                Err(mpsc::TryRecvError::Empty) => {
-                                    // Command channel empty: use idle time to work on garbage collection.
-                                    // This will block when there is no more compaction left to do.
-                                    // The sender must unpark worker 0 after sending to the channel.
-                                    worker.step_or_park(None);
-                                },
-                                Err(mpsc::TryRecvError::Disconnected)  => {
-                                    // Sender hung
-                                    eprintln!("Sender hung");
-                                    Self::stop_workers(&peers, &frontier_ts, &progress_barrier);
-                                    break;
-                                },
-                                Ok(Msg::Update(mut updates)) => {
-                                    //println!("updates: {:?}", updates);
-                                    for update in updates.drain(..) {
-                                        match update {
-                                            Update::Insert{relid, v} => {
-                                                sessions
-                                                  .get_mut(&relid)
-                                                  .ok_or_else(|| format!("no session found for relation ID {}", relid))?
-                                                  .update(v, 1);
-                                            },
-                                            Update::DeleteValue{relid, v} => {
-                                                sessions
-                                                  .get_mut(&relid)
-                                                  .ok_or_else(|| format!("no session found for relation ID {}", relid))?
-                                                  .update(v, -1);
-                                            },
-                                            Update::InsertOrUpdate{..} => {
-                                                return Err("InsertOrUpdate command received by worker thread".to_string());
-                                            },
-                                            Update::DeleteKey{..} => {
-                                                // workers don't know about keys
-                                                return Err("DeleteKey command received by worker thread".to_string());
-                                            },
-                                            Update::Modify{..} => {
-                                                return Err("Modify command received by worker thread".to_string());
-                                            }
-                                        }
-                                    };
-                                },
-                                Ok(Msg::Flush) => {
-                                    //println!("flushing");
-                                    epoch += 1;
-                                    Self::advance(&mut sessions, &mut traces, epoch);
-                                    Self::flush(&mut sessions, &probe, worker, &peers, &frontier_ts, &progress_barrier);
-
-                                    //println!("flushed");
-                                    reply_send.send(Reply::FlushAck).map_err(|e| format!("failed to send ACK: {}", e))?;
-                                },
                                 Ok(Msg::Query(arrid, key)) => {
                                     Self::handle_query(&mut traces, &reply_send, arrid, key)?;
                                 },
-                                Ok(Msg::Stop) => {
-                                    Self::stop_workers(&peers, &frontier_ts, &progress_barrier);
-                                    break;
-                                }
-                            }
-                        }
-                    } else /* worker_index != 0 */ {
-                        loop {
-                            // Differential does not require any synchronization between workers: as
-                            // long as we keep calling `step_or_park`, all workers will eventually
-                            // process all inputs.  Barriers in the following code are needed so that
-                            // worker 0 can know exactly when all other workers have processed all data
-                            // for the `frontier_ts` timestamp, so that it knows when a transaction has
-                            // been fully committed and produced all its outputs.
-                            progress_barrier.wait();
-                            let time = frontier_ts.load(Ordering::SeqCst);
+                                Ok(msg) => {
+                                    return Err(format!("Worker {} received unexpected message: {:?}", worker_index, msg));
+                                },
+                                Err(TryRecvError::Empty) => {
+                                    // Command channel empty: use idle time to work on garbage collection.
+                                    worker.step_or_park(None);
+                                },
 
-                            // TS::max_value() == 0xffffffffffffffff*
-                            if time == TS::max_value() {
-                                return Ok(());
-                            }
-
-                            // `sessions` is empty, but we must advance trace frontiers, so we
-                            // don't hinder trace compaction.
-                            Self::advance(&mut sessions, &mut traces, time);
-                            while probe.less_than(&time) {
-                                if !worker.step_or_park(None) {
-                                    // Dataflow terminated.
-                                    return Ok(());
-                                }
-                            }
-
-                            progress_barrier.wait();
-                            /* We're all caught up with `frontier_ts` and can now spend some time
-                             * garbage collecting.  The `step_or_park` call below will block if there
-                             * is no more garbage collecting left to do.  It will wake up when one of
-                             * the following conditions occurs: (1) there is more garbage collecting to
-                             * do as a result of other threads making progress, (2) new inputs have
-                             * been received, (3) worker 0 unparked the thread, (4) main thread sent
-                             * us a message and unparked the thread.  We check if the frontier has been
-                             * advanced by worker 0 and, if so, go back to the barrier to synchrnonize
-                             * with other workers. */
-                            while frontier_ts.load(Ordering::SeqCst) == time {
-                                /* Non-blocking receive, so that we can do some garbage collecting
-                                 * when there is no real work to do. */
-                                match request_recv.try_recv() {
-                                    Ok(Msg::Query(arrid, key)) => {
-                                        Self::handle_query(&mut traces, &reply_send, arrid, key)?;
-                                    },
-                                    Ok(msg) => {
-                                        return Err(format!("Worker {} received unexpected message: {:?}", worker_index, msg));
-                                    },
-                                    Err(mpsc::TryRecvError::Empty) => {
-                                        /* Command channel empty: use idle time to work on garbage collection. */
-                                        worker.step_or_park(None);
-                                    },
-
-                                    _ => { }
-                                }
+                                // The sender disconnected, so we can gracefully exit
+                                Err(TryRecvError::Disconnected) => break,
                             }
                         }
                     }
                 }
-
-                Ok(())
             }
-        ).map(|g| {
-            wsend.send(
-                g.guards()
-                    .iter()
-                    .map(|wg| wg.thread().clone()).collect()
-            )
-            .unwrap();
 
-            g.join();
-        }));
+            Ok(())
+        })
+        .map_err(|err| format!("Failed to start timely computation: {:?}", err))?;
 
-        let worker_threads = wrecv.recv().unwrap();
-        //println!("timely computation started");
+        // Thread handles we'll use to unpark the worker threads
+        let worker_threads = worker_guards
+            .guards()
+            .iter()
+            .map(|handle| handle.thread().clone())
+            .collect();
 
         let mut rels = FnvHashMap::default();
         for relid in self.input_relations() {
@@ -1383,8 +1373,8 @@ impl Program {
             senders: request_send,
             reply_recv,
             relations: rels,
-            thread_handle: Some(h),
             worker_threads,
+            worker_guards: Some(worker_guards),
             transaction_in_progress: false,
             need_to_flush: false,
             profile_cpu,
@@ -1949,28 +1939,18 @@ impl RunningProgram {
 
     /// Terminate program, killing all worker threads.
     pub fn stop(&mut self) -> Response<()> {
-        if let Some(thread) = self.thread_handle.take() {
-            self.flush()
-                .and_then(|_| self.send(0, Msg::Stop))
-                .and_then(|_| match thread.join() {
-                    // Note that we intentionally do not join the profiling thread if the timely
-                    // thread died, because an unexpected death of the timely thread means we
-                    // are in some very weird state and the profiling thread may be stuck
-                    // waiting for worker thread which will not respond. So it's best to skip
-                    // this join in such a case.
-                    Err(_) => Err("timely thread terminated with an error".to_string()),
-                    Ok(Err(errstr)) => Err(format!("timely dataflow error: {}", errstr)),
-                    Ok(Ok(())) => {
-                        if let Some(thread) = self.prof_thread_handle.take() {
-                            thread
-                                .join()
-                                .map_err(|_| "profiling thread terminated with an error".to_owned())
-                        } else {
-                            Ok(())
-                        }
-                    }
-                })?;
-        }
+        self.flush()
+            .and_then(|_| self.send(0, Msg::Stop))
+            .and_then(|_| {
+                self.worker_guards.take().map_or(Ok(()), |worker_guards| {
+                    worker_guards
+                        .join()
+                        .into_iter()
+                        .filter_map(Result::err)
+                        .next()
+                        .map_or(Ok(()), Err)
+                })
+            })?;
 
         Ok(())
     }
@@ -2545,8 +2525,8 @@ impl RunningProgram {
     fn send(&self, worker_index: usize, msg: Msg) -> Response<()> {
         match self.senders[worker_index].send(msg) {
             Ok(()) => {
-                /* Worker 0 may be blocked in `step_or_park`.  Unpark to ensure receipt of the
-                 * message. */
+                // Worker 0 may be blocked in `step_or_park`. Unpark it to ensure
+                // the message is received.
                 self.worker_threads[worker_index].unpark();
                 Ok(())
             }
