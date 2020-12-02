@@ -247,6 +247,7 @@ public class JooqProviderTest {
         create.execute("update hosts set capacity = 11 where id = 'n1'");
         final Result<Record> results = create.selectFrom(table("hostsv")).fetch();
         System.out.println(results);
+        assertEquals(results.get(0).get(1), 11);
     }
 
     public static void compileAndLoad(final List<String> ddl) throws IOException, DDlogException {
