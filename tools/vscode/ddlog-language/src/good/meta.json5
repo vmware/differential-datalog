@@ -8,7 +8,7 @@
                     "begin": "\\b(function)\\s+([a-z_][a-zA-Z0-9_]*)",
                     "beginCaptures": {
                         "1": {
-                            "name": "keyword.graph.ddlog"
+                            "name": "keyword.control.ddlog"
                         },
                         "2": {
                             "name": "entity.name.function.ddlog"
@@ -68,7 +68,7 @@
                     "begin": "\\b(extern function)\\s+([a-z_][a-zA-Z0-9_]+)",
                     "beginCaptures": {
                         "1": {
-                            "name": "keyword.graph.ddlog"
+                            "name": "keyword.control.ddlog"
                         },
                         "2": {
                             "name": "entity.name.function.ddlog"
