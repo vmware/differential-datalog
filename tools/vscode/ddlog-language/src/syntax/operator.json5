@@ -197,10 +197,6 @@
                     "match": "\\b(or)\\b"
                 },
                 {
-                    "name": "keyword.operator.delimiter.ddlog",
-                    "match": "(\\:-)"
-                },
-                {
                     "name": "keyword.operator.scope.ddlog",
                     "match": "(\\::)"
                 },
@@ -219,10 +215,6 @@
                 {
                     "name": "keyword.operator.alternate-grouping.ddlog",
                     "match": "[\\{\\}]"
-                },
-                {
-                    "name": "keyword.operator.delimiter.ddlog",
-                    "match": "(\\:-)"
                 },
                 {
                     "name": "keyword.operator.cast.ddlog",

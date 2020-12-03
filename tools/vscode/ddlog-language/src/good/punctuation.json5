@@ -5,7 +5,11 @@
                 {
                     "name": "punctuation.other.comma.ddlog",
                     "match": ","
-                }
+                },
+                {
+                    "name": "punctuation.other.delimiter.ddlog",
+                    "match": "(\\:-)"
+                }                
             ]
         }
   }
