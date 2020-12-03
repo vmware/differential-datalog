@@ -18,10 +18,7 @@
                     "endCaptures": {
                         "0": {
                             "name": "keyword.operator.alternate-grouping.ddlog"
-                        },
-                        "1": {
-                            "name": "keyword.operator.assignment.ddlog"
-                        }                        
+                        }
                     },
                     "patterns":
                     [
