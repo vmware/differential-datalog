@@ -9,8 +9,12 @@
                 {
                     "name": "punctuation.other.delimiter.ddlog",
                     "match": "(\\:-)"
-                }                
+                },
+                {
+                    "name": "punctuation.other.dot.ddlog",
+                    "match": "(\\.)"
+                }
             ]
         }
-  }
+    }
 }

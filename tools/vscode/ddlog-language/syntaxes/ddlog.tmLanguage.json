@@ -407,6 +407,10 @@
                 {
                     "name": "punctuation.other.delimiter.ddlog",
                     "match": "(\\:-)"
+                },
+                {
+                    "name": "punctuation.other.dot.ddlog",
+                    "match": "(\\.)"
                 }
             ]
         },
@@ -1046,22 +1050,6 @@
                 {
                     "name": "keyword.operator.bit-slicing.ddlog",
                     "match": "(\\[([\\d]+:[\\d]+)\\])"
-                },
-                {
-                    "name": "keyword.operator.member-access.ddlog",
-                    "match": "\\s(\\.)\\b"
-                },
-                {
-                    "name": "keyword.operator.member-access.ddlog",
-                    "match": "\\b(\\.)\\b"
-                },
-                {
-                    "name": "keyword.operator.member-access.ddlog",
-                    "match": "\\B(\\.)\\b"
-                },
-                {
-                    "name": "keyword.operator.member-access.ddlog",
-                    "match": "(\\.)(?=to_string)"
                 },
                 {
                     "name": "keyword.operator.implication.ddlog",
