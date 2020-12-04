@@ -247,9 +247,10 @@ public class JooqProviderTest {
         BufferedWriter bw = new BufferedWriter(new FileWriter(tmp));
         bw.write(dDlogProgram.toString());
         bw.close();
-        if (!DDlogAPI.compileDDlogProgram(fileName, true, "../lib", "./lib")) {
+        DDlogAPI.CompilationResult result = new DDlogAPI.CompilationResult(true);
+        DDlogAPI.compileDDlogProgram(fileName, result, "../lib", "./lib");
+        if (!result.isSuccess())
             throw new RuntimeException("Failed to compile ddlog program");
-        }
         DDlogAPI.loadDDlog();
     }
 }

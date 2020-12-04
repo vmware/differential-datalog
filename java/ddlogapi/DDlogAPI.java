@@ -659,33 +659,85 @@ public class DDlogAPI {
         return ddlogHome;
     }
 
+    public static class CompilationResult {
+        public int exitCode;
+        StringBuilder stdout;
+        StringBuilder stderr;
+        final boolean verbose;  // if true echo messages
+
+        public CompilationResult(boolean verbose) {
+            this.exitCode = 0;
+            this.verbose = verbose;
+            this.stdout = new StringBuilder();
+            this.stderr = new StringBuilder();
+        }
+
+        void appendError(String str) {
+            if (this.verbose)
+                System.err.println(str);
+            this.stderr.append(str);
+        }
+
+        void appendOut(String str) {
+            if (this.verbose)
+                System.out.println(str);
+            this.stdout.append(str);
+        }
+
+        void setExitCode(int exitCode) {
+            this.exitCode = exitCode;
+        }
+
+        public boolean isSuccess() {
+            return this.exitCode == 0;
+        }
+
+        public String getStderr() {
+            return this.stderr.toString();
+        }
+
+        public String getStdout() {
+            return this.stdout.toString();
+        }
+
+        void consumeOutputStream(InputStream stream) {
+            Runnable r = () -> new BufferedReader(new InputStreamReader(stream)).lines().forEach(
+                    str -> CompilationResult.this.appendOut(str));
+            new Thread(r).start();
+        }
+
+        void consumeErrorStream(InputStream stream) {
+            Runnable r = () -> new BufferedReader(new InputStreamReader(stream)).lines().forEach(
+                    str -> CompilationResult.this.appendError(str));
+            new Thread(r).start();
+        }
+    }
+
     /**
      * Run an external process by executing the specified command.
      * @param commands        Command and arguments.
      * @param workdirectory   If not null the working directory.
-     * @param verbose         If true echo output and stderr of subprocess.
-     * @return                The exit code of the process.
+     * @param result          Produce here a description of the compilation process.
      */
-    public static int runProcess(List<String> commands, String workdirectory, boolean verbose) {
+    public static void runProcess(List<String> commands, String workdirectory, CompilationResult result) {
         try {
-            if (verbose)
-                System.out.println("Running " + String.join(" ", commands) +
+            result.appendOut("Running " + String.join(" ", commands) +
                     (workdirectory != null ? " in " + workdirectory : ""));
             ProcessBuilder pb = new ProcessBuilder(commands);
-            if (verbose)
-                pb.inheritIO();
             if (workdirectory != null) {
                 pb.directory(new File(workdirectory));
             }
             Process process = pb.start();
+            result.consumeOutputStream(process.getInputStream());
+            result.consumeErrorStream(process.getErrorStream());
             int exitCode = process.waitFor();
+            result.setExitCode(exitCode);
             if (exitCode != 0)
-                System.err.println("Error running " + String.join(" ", commands));
-            return exitCode;
+                result.appendError("Error running " + String.join(" ", commands));
         } catch (Exception ex) {
-            System.err.println("Error running " + String.join(" ", commands));
-            System.err.println(ex.getMessage());
-            return 1;
+            result.setExitCode(1);
+            result.appendOut("Error running " + String.join(" ", commands));
+            result.appendOut(ex.getMessage());
         }
     }
 
@@ -705,13 +757,12 @@ public class DDlogAPI {
      * Compile a ddlog program stored in a file and generate Rust sources in a directory
      * named <program>_ddlog
      * @param ddlogFile  Pathname to the ddlog program.
-     * @param verbose    If true show stdout and stderr of processes invoked.
+     * @param result     Produce here a description of the compilation process.
      * @param ddlogLibraryPath  Additional list of paths for needed ddlog libraries.
-     * @return  true on success.
      */
-    public static boolean compileDDlogProgramToRust(
+    public static void compileDDlogProgramToRust(
             String ddlogFile,
-            boolean verbose,
+            CompilationResult result,
             String... ddlogLibraryPath) {
         Path path = Paths.get(ddlogFile);
         Path dir = path.getParent();
@@ -729,24 +780,21 @@ public class DDlogAPI {
                 s = currentDir + "/" + s;
             command.add(s);
         }
-        int exitCode = runProcess(command, dir != null ? dir.toString() : null, verbose);
-        return exitCode == 0;
+        runProcess(command, dir != null ? dir.toString() : null, result);
     }
-
 
     /**
      * Compile a ddlog program stored in a file and generate
      * a shared library named *ddlogapi.* (according to host system conventions).
      * @param ddlogFile  Pathname to the ddlog program.
-     * @param verbose    If true show stdout and stderr of processes invoked.
+     * @param result     Produce here a description of the compilation process.
      * @param ddlogLibraryPath  Additional list of paths for needed ddlog libraries.
-     * @return  true on success.
      */
-    public static boolean compileDDlogProgram(
+    public static void compileDDlogProgram(
             String ddlogFile,
-            boolean verbose,
+            CompilationResult result,
             String... ddlogLibraryPath) throws DDlogException {
-        return compileDDlogProgram(ddlogFile, libName(ddlogLibrary), verbose, ddlogLibraryPath);
+        compileDDlogProgram(ddlogFile, libName(ddlogLibrary), result, ddlogLibraryPath);
     }
 
     /**
@@ -754,18 +802,17 @@ public class DDlogAPI {
      * a shared library with the specified name.
      * @param ddlogFile  Pathname to the ddlog program.
      * @param outLibName Name of the library that should be generated.
-     * @param verbose    If true show stdout and stderr of processes invoked.
+     * @param result    Produce here a description of the compilation process.
      * @param ddlogLibraryPath  Additional list of paths for needed ddlog libraries.
-     * @return  true on success.
      */
-    public static boolean compileDDlogProgram(
+    public static void compileDDlogProgram(
         String ddlogFile,
         String outLibName,
-        boolean verbose,
+        CompilationResult result,
         String... ddlogLibraryPath) throws DDlogException {
-        boolean success = compileDDlogProgramToRust(ddlogFile, verbose, ddlogLibraryPath);
-        if (!success)
-            return false;
+        compileDDlogProgramToRust(ddlogFile, result, ddlogLibraryPath);
+        if (!result.isSuccess())
+            return;
 
         String os = System.getProperty("os.name").toLowerCase();
         String ddlogInstallationPath = ddlogInstallationPath();
@@ -779,9 +826,9 @@ public class DDlogAPI {
         if (dot >= 0)
             rustDir = ddlogFile.substring(0, dot);
         rustDir += "_ddlog";
-        int exitCode = runProcess(command, rustDir, verbose);
-        if (exitCode != 0)
-            return false;
+        runProcess(command, rustDir, result);
+        if (!result.isSuccess())
+            return;
 
         // Run C compiler
         command.clear();
@@ -803,8 +850,7 @@ public class DDlogAPI {
         command.add("-l" + libRoot);
         command.add("-o");
         command.add(outLibName);
-        exitCode = runProcess(command, null, verbose);
-        return exitCode == 0;
+        runProcess(command, null, result);
     }
 
     static boolean loaded = false;

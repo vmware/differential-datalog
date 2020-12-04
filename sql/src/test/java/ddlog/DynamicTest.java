@@ -1,5 +1,6 @@
 package ddlog;
 
+import com.google.common.collect.ComputationException;
 import ddlogapi.*;
 import org.jooq.DSLContext;
 import org.jooq.SQLDialect;
@@ -45,8 +46,8 @@ public class DynamicTest extends BaseQueriesTest {
 
     @Test
     public void testDynamicLoading() throws IOException, DDlogException {
-        if (!runSlowTests)
-            return;
+        //if (!runSlowTests)
+        //    return;
         String ddlogProgram = "import sql\n" + // not needed, but we test the libraries too
                 "import sqlop\n" +
                 "input relation R(v: bit<16>)\n" +
@@ -54,8 +55,9 @@ public class DynamicTest extends BaseQueriesTest {
                 "O(v) :- R(v).";
         File file = this.writeProgramToFile(ddlogProgram);
         DDlogAPI api = null;
-        boolean success = DDlogAPI.compileDDlogProgram(file.toString(), true, "../lib", "./lib");
-        if (success) {
+        DDlogAPI.CompilationResult result = new DDlogAPI.CompilationResult(true);
+        DDlogAPI.compileDDlogProgram(file.toString(), result, "../lib", "./lib");
+        if (result.isSuccess()) {
             api = DDlogAPI.loadDDlog();
         }
         if (api == null)
@@ -65,6 +67,7 @@ public class DynamicTest extends BaseQueriesTest {
         DDlogRecord[] fields = { field };
         DDlogRecord record = DDlogRecord.makeStruct("R", fields);
         int id = api.getTableId("R");
+        Assert.assertTrue(id >= 0);
         Assert.assertTrue(id < 10);
         DDlogRecCommand command = new DDlogRecCommand(
                 DDlogCommand.Kind.Insert, id, record);
