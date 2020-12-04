@@ -13,25 +13,25 @@
                     "match": "\\b(32'f|64'f)?([0-9][0-9_]*\\.)?[0-9][0-9_]*[eE][+-][0-9_]+\\b"
                 },                                                                        
                 {
-                    "comment": "Integer literal (decimal)",
-                    "name": "constant.numeric.integer.decimal.ddlog",
-                    "match": "\\b([\\d]+|['][s]?[d]\\s*[0-9_]+)\\b"
-                },
-                {
                     "comment": "Integer literal (hexadecimal)",
                     "name": "constant.numeric.integer.hexadecimal.ddlog",
-                    "match": "\\b([\\d]+|['][s]?[h]\\s*[a-fA-F0-9_]+)\\b"
+                    "match": "\\b((\\d+')?[s]?[h]\\s*[a-fA-F0-9_]+)\\b"
                 }, 
                 {
                     "comment": "Integer literal (octal)",
                     "name": "constant.numeric.integer.octal.ddlog",
-                    "match": "\\b([\\d]+|['][s]?[o]\\s*[0-7_]+)\\b"
+                    "match": "\\b((\\d+')?[s]?[o]\\s*[0-7_]+)\\b"
                 }, 
                 {
                     "comment": "Integer literal (binary)",
                     "name": "constant.numeric.integer.binary.ddlog",
-                    "match": "\\b([\\d]+|['][s]?[b]\\s*[01_]+)\\b"
-                },              
+                    "match": "\\b((\\d+')?[s]?[b]\\s*[01_]+)\\b"
+                }, 
+                {
+                    "comment": "Integer literal (decimal)",
+                    "name": "constant.numeric.integer.decimal.ddlog",
+                    "match": "\\b(((\\d+')?[s]?[d])?\\s*[0-9_]+)\\b"
+                }, 
                 {
                     "name": "constant.language.boolean.ddlog",
                     "match": "\\b(true|false)\\b"
