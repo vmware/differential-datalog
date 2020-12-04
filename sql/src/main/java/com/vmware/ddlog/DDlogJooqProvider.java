@@ -149,25 +149,29 @@ public final class DDlogJooqProvider implements MockDataProvider {
     }
 
     private void onChange(final DDlogCommand<DDlogRecord> command) {
-        final int relationId = command.relid();
-        final String relationName = dDlogAPI.getTableName(relationId);
-        final String tableName = relationNameToTableName(relationName);
-        final List<Field<?>> fields = tablesToFields.get(tableName);
-        final DDlogRecord record = command.value();
-        final Record jooqRecord = dslContext.newRecord(fields);
-        for (int i = 0; i < fields.size(); i++) {
-            structToValue(fields.get(i), record.getStructField(i), jooqRecord);
-        }
-        final Set<Record> materializedView = materializedViews.computeIfAbsent(tableName, (k) -> new LinkedHashSet<>());
-        switch (command.kind()) {
-            case Insert:
-                materializedView.add(jooqRecord);
-                break;
-            case DeleteKey:
-                throw new RuntimeException("Did not expect DeleteKey command type");
-            case DeleteVal:
-                materializedView.remove(jooqRecord);
-                break;
+        try {
+            final int relationId = command.relid();
+            final String relationName = dDlogAPI.getTableName(relationId);
+            final String tableName = relationNameToTableName(relationName);
+            final List<Field<?>> fields = tablesToFields.get(tableName);
+            final DDlogRecord record = command.value();
+            final Record jooqRecord = dslContext.newRecord(fields);
+            for (int i = 0; i < fields.size(); i++) {
+                structToValue(fields.get(i), record.getStructField(i), jooqRecord);
+            }
+            final Set<Record> materializedView = materializedViews.computeIfAbsent(tableName, (k) -> new LinkedHashSet<>());
+            switch (command.kind()) {
+                case Insert:
+                    materializedView.add(jooqRecord);
+                    break;
+                case DeleteKey:
+                    throw new RuntimeException("Did not expect DeleteKey command type");
+                case DeleteVal:
+                    materializedView.remove(jooqRecord);
+                    break;
+            }
+        } catch (DDlogException ex) {
+            throw new RuntimeException(ex);
         }
     }
 
@@ -435,7 +439,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
     }
 
     @Nullable
-    private static void structToValue(final Field<?> field, final DDlogRecord record, final Record jooqRecord) {
+    private static void structToValue(final Field<?> field, final DDlogRecord record, final Record jooqRecord) throws DDlogException {
         final boolean isStruct = record.isStruct();
         if (isStruct) {
             final String structName = record.getStructName();

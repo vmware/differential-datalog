@@ -1,0 +1,1 @@
+input relation AI(a: bit<32>, b: bit<32>, c: Option<bit<32>>) primary key (x) x.a

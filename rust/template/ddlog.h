@@ -1350,11 +1350,37 @@ extern void ddlog_map_push(ddlog_record *map,
  *
  * The function takes ownership of all records, invalidating all
  * `ddlog_record` pointers in `args`.  However it does not take
- * ownership of the `recs` array itself.  The caller is responsible for
+ * ownership of the `args` array itself.  The caller is responsible for
  * deallocating the array if needed.
  */
 extern ddlog_record* ddlog_struct(const char* constructor,
                                   ddlog_record ** args, size_t len);
+
+/*
+ * Create a struct with named fields with specified constructor and
+ * fields.  This creates a "named struct" where arguments are
+ * identified by their names.
+ *
+ * The number and types of field should match the corresponding DDlog
+ * constructor declaration.
+ *
+ * `constructor` can point to statically, dynamically or stack-allocated
+ * strings.  The function copies constructor name to an internal buffer,
+ * so the caller is responsible for deallocating it if necessary.
+ *
+ * `len` is the length of the `args` array and the field_names array.
+ * If `len` is greater than `0`, then `args` and `field_names` must
+ * not be NULL.
+ *
+ * The function takes ownership of all records, invalidating all
+ * `ddlog_record` pointers in `args`.  However it does not take
+ * ownership of either `args`, `field_names`, or each field name.  The
+ * caller is responsible for deallocating these arrays if needed.
+ */
+extern ddlog_record* ddlog_named_struct(const char* constructor,
+                                        const char** field_names,
+                                        ddlog_record** args,
+                                        size_t len);
 
 /*
  * Same as `ddlog_struct()`, but passes constructor name as
@@ -1429,6 +1455,29 @@ extern const ddlog_record* ddlog_get_struct_field(const ddlog_record* rec,
  */
 extern const ddlog_record* ddlog_get_named_struct_field(const ddlog_record* rec,
                                                         const char* name);
+
+/**
+ * Returns `true` if `rec` is a struct with named fields.
+ */
+extern bool ddlog_is_named_struct(const ddlog_record* rec);
+
+/*
+ * Retrieves the name of the i-th field of the record.
+ *
+ * Returns NULL if `rec` is not a struct with named fields or if the struct
+ * does not have a field with the given name, or the field index is
+ * out of bounds.
+ *
+ * The pointer returned by this function is owned by DDlog. The caller
+ * may inspect the returned record, but must not modify it, attach to
+ * other records (e.g., using `ddlog_vector_push()`) or write to the
+ * database.  The lifetime of the pointer coincides with the lifetime of
+ * the record it was obtained from, e.g., the pointer is invalidated
+ * when the value is written to the database.
+ */
+extern const char* ddlog_get_named_struct_field_name(const ddlog_record* rec,
+                                                     size_t i,
+                                                     size_t *len);
 
 /***********************************************************************
  * Command API
@@ -1506,5 +1555,25 @@ extern ddlog_cmd* ddlog_delete_val_cmd(table_id table, ddlog_record *rec);
  * - a record with the specified key does not exist in `table`
  */
 extern ddlog_cmd* ddlog_delete_key_cmd(table_id table, ddlog_record *rec);
+
+/*
+ * Create a modify-by-key command.
+ *
+ * `table` - input table to delete from.
+ * `key` - key to modify.  The function takes ownership of this record.
+ * `values` - values to modify.  The function takes ownership of this record.
+ *
+ * Returns pointer to a new command, which can be sent to DDlog by calling
+ * `ddlog_apply_updates()`.
+ *
+ * This function never fails; however the command it creates may fail to
+ * execute, causing `ddlog_apply_updates()` to return an error if:
+ * - `table` is not a valid input table id
+ * - `table` does not have a primary key
+ * - `key` does not match the primary key type of `table`
+ * - a record with the specified key does not exist in `table`
+ * - `values` does not match the columns of `table`
+ */
+extern ddlog_cmd* ddlog_modify_cmd(table_id table, ddlog_record* key, ddlog_record* values);
 
 #endif

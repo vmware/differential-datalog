@@ -1,0 +1,5 @@
+From 1 Insert AI{0,1,ddlog_std::Some{2}}
+From 1 DeleteVal AI{0,1,ddlog_std::Some{2}}
+From 1 Insert AI{0,2,ddlog_std::Some{2}}
+From 1 DeleteVal AI{0,2,ddlog_std::Some{2}}
+From 1 Insert AI{0,2,ddlog_std::Some{6}}

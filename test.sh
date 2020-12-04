@@ -79,6 +79,7 @@ java=("java0:Java API test 0"
 #      "java5:Java API test 5"  # This test fails due to #372
 #      "java6:Java API test 6"  # This test coredumps
       "java7:Java API test 7"
+      "java8:Java API test 8"
       "flatbuf0:Java Flatbuf API test 0"
       "flatbuf1:Java Flatbuf API test 1")
 
@@ -224,6 +225,10 @@ java6() {
 
 java7() {
     (cd "${THIS_DIR}/java/test7" && ./run.sh)
+}
+
+java8() {
+    (cd "${THIS_DIR}/java/test8" && ./run.sh)
 }
 
 flatbuf0() {
