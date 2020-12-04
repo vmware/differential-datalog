@@ -49,8 +49,8 @@ public class SpanTest {
         }
 
         protected SpanBase(DDlogRecord r) {
-            DDlogRecord entity = r.getStructField(0);
-            DDlogRecord tn = r.getStructField(1);
+            DDlogRecord entity = r.getStructFieldUnchecked(0);
+            DDlogRecord tn = r.getStructFieldUnchecked(1);
             this.entity = entity.getInt();
             this.tn = tn.getInt();
         }
@@ -109,13 +109,13 @@ public class SpanTest {
         boolean recording;
 
         private final DDlogAPI api;
-        private static boolean debug = true;
+        private static final boolean debug = true;
         private static Set<RuleSpan> ruleSpan;
         private static Set<ContainerSpan> containerSpan;
         private int ruleSpanTableId;
         private int containerSpanTableId;
-        private boolean localTables = false;
-        private PrintStream logStream;
+        private final boolean localTables = false;
+        private final PrintStream logStream;
 
         /* LOGGING: Module id's for logging purposes.  Must match declarations in
          * `span_uuid.dl`
@@ -186,27 +186,31 @@ public class SpanTest {
 
         // Alternative implementation of onCommit which does not use reflection.
         void onCommitDirect(DDlogCommand<DDlogRecord> command) {
-            DDlogRecord record = command.value();
-            if (command.relid() == this.ruleSpanTableId) {
-                DDlogRecord entity = record.getStructField(0);
-                DDlogRecord tn = record.getStructField(1);
-                RuleSpan span = new RuleSpan(entity.getInt(), tn.getInt());
-                if (command.kind() == DDlogCommand.Kind.Insert)
-                    ruleSpan.add(span);
-                else if (command.kind() == DDlogCommand.Kind.DeleteVal)
-                    ruleSpan.remove(span);
-                else
-                    throw new RuntimeException("Unexpected command " + this.command);
-            } else if (command.relid() == this.containerSpanTableId) {
-                DDlogRecord entity = record.getStructField(0);
-                DDlogRecord tn = record.getStructField(1);
-                ContainerSpan span = new ContainerSpan(entity.getInt(), tn.getInt());
-                if (command.kind() == DDlogCommand.Kind.Insert)
-                    containerSpan.add(span);
-                else if (command.kind() == DDlogCommand.Kind.DeleteVal)
-                    containerSpan.remove(span);
-                else
-                    throw new RuntimeException("Unexpected command " + this.command);
+            try {
+                DDlogRecord record = command.value();
+                if (command.relid() == this.ruleSpanTableId) {
+                    DDlogRecord entity = record.getStructField(0);
+                    DDlogRecord tn = record.getStructField(1);
+                    RuleSpan span = new RuleSpan(entity.getInt(), tn.getInt());
+                    if (command.kind() == DDlogCommand.Kind.Insert)
+                        ruleSpan.add(span);
+                    else if (command.kind() == DDlogCommand.Kind.DeleteVal)
+                        ruleSpan.remove(span);
+                    else
+                        throw new RuntimeException("Unexpected command " + this.command);
+                } else if (command.relid() == this.containerSpanTableId) {
+                    DDlogRecord entity = record.getStructField(0);
+                    DDlogRecord tn = record.getStructField(1);
+                    ContainerSpan span = new ContainerSpan(entity.getInt(), tn.getInt());
+                    if (command.kind() == DDlogCommand.Kind.Insert)
+                        containerSpan.add(span);
+                    else if (command.kind() == DDlogCommand.Kind.DeleteVal)
+                        containerSpan.remove(span);
+                    else
+                        throw new RuntimeException("Unexpected command " + this.command);
+                }
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
             }
         }
 
@@ -322,7 +326,7 @@ public class SpanTest {
                     try {
                         this.api.transactionStart();
                         assert false: "transactionStart inside a transaction should throw an exception";
-                    } catch (DDlogException e) {}
+                    } catch (DDlogException ignored) {}
 
                     break;
                 case "commit":
@@ -333,7 +337,7 @@ public class SpanTest {
                     try {
                         this.api.transactionCommit();
                         assert false: "transactionCommit outside of transaction should throw an exception";
-                    } catch (DDlogException e) {}
+                    } catch (DDlogException ignored) {}
 
                     /* LOGGING: Change logging settings after the first commit.
                      * Disable logging for the first module completely; raise
@@ -405,7 +409,7 @@ public class SpanTest {
                         this.api.dumpTable("ContainerSpan",
                                (r, w) -> {
                                    assert (w == 1): "non-unit weight in ContainerSpan";
-                                   System.out.println(new ContainerSpan(r)); 
+                                   System.out.println(new ContainerSpan(r));
                                });
                         System.out.println();
                         System.out.println("RuleSpan:");

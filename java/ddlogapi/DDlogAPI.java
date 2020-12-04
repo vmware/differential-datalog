@@ -57,11 +57,12 @@ public class DDlogAPI {
     static native long ddlog_map(long[] handles) throws DDlogException;
     static native long ddlog_pair(long handle1, long handle2);
     static native long ddlog_struct(String constructor, long[] handles) throws DDlogException;
+    static native long ddlog_named_struct(String constructor, String[] names, long[] handles) throws DDlogException;
     // Getters
     static native int ddlog_get_table_id(String table);
-    static native String ddlog_get_table_name(int id);
+    static native String ddlog_get_table_name(int id) throws DDlogException;
     static native int ddlog_get_index_id(String index);
-    static native String ddlog_get_index_name(int id);
+    static native String ddlog_get_index_name(int id) throws DDlogException;
     static native boolean ddlog_is_bool(long handle);
     static native boolean ddlog_get_bool(long handle);
     static native boolean ddlog_is_int(long handle);
@@ -86,12 +87,15 @@ public class DDlogAPI {
     static native long ddlog_get_map_key(long handle, int i);
     static native long ddlog_get_map_val(long handle, int i);
     static native boolean ddlog_is_struct(long handle);
+    static native boolean ddlog_is_named_struct(long handle);
     static native String ddlog_get_constructor(long handle);
-    static native long ddlog_get_struct_field(long handle, int i);
+    static native long ddlog_get_struct_field(long handle, int i) throws DDlogException;
+    static native String ddlog_get_struct_field_name(long handle, int i) throws DDlogException;
 
     static native long ddlog_insert_cmd(int table, long recordHandle);
     static native long ddlog_delete_val_cmd(int table, long recordHandle);
     static native long ddlog_delete_key_cmd(int table, long recordHandle);
+    static native long ddlog_modify_cmd(int table, long keyHandle, long toModifyHandle);
 
     // This is a handle to the program; it wraps a void*.
     private long hprog;
@@ -223,13 +227,13 @@ public class DDlogAPI {
      *
      * See <code>ddlog.h: ddlog_get_table_name()</code>
      */
-    public String getTableName(int id) {
+    public String getTableName(int id) throws DDlogException {
         return ddlog_get_table_name(id);
     }
 
     /**
      * Get DDlog index ID from its name.
-     * @param index  index name whose id is sought.
+     * @param table  table name whose id is sought.
      * @return -1 when the index is not found,
      *          otherwise a positive number.
      *
@@ -244,7 +248,7 @@ public class DDlogAPI {
      *
      * See <code>ddlog.h: ddlog_get_index_name()</code>
      */
-    public String getIndexName(int id) {
+    public String getIndexName(int id) throws DDlogException {
         return ddlog_get_index_name(id);
     }
 

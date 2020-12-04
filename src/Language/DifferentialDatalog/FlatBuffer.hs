@@ -1255,6 +1255,7 @@ mkCommandReader = ("ddlog" </> ?prog_name </> "CommandReader" <.> "java",
                "}"                                                                                              $$
                "public final long weight() { return java.lang.Math.abs((long)this.inner.weight()); }"           $$
                "public final int relid() { return (int)this.inner.relid(); }"                                   $$
+               "public final Object toModify() { return null; }"                                                $$
                "public final Object value() {"                                                                  $$
                "    switch (this.relid()) {"                                                                    $$
                (nest' $ nest' $ vcat cases)                                                                     $$

@@ -21,16 +21,13 @@ package ddlogapi;
  * when relation-specific class is used (the caller must then cast the Object to
  * an appropriate class, depending on relation id).
  * </p>
- *
- * <p>
- * TODO: support modify commands.
- * </p>
  */
 public interface DDlogCommand<R> {
     enum Kind {
         DeleteVal,
         DeleteKey,
-        Insert
+        Insert,
+        Modify
     }
 
     Kind kind();
@@ -49,4 +46,9 @@ public interface DDlogCommand<R> {
      * Record or key value.
      */
     R value();
+
+    /**
+     * Values to modify for 'Modify' command.  null for other commands.
+     */
+    R toModify();
 }

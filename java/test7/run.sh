@@ -8,6 +8,6 @@ compile a.dl A.java debug
 java -Djava.library.path=. A > atest.dump
 diff atest.dump atest.dump.expected
 cleanup
-rm libmylib.so atest.dump
+rm -f libmylib.so atest.dump
 # Additional cleanup
 # rm -rf a_ddlog

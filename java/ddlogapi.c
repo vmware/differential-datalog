@@ -792,6 +792,70 @@ JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1struct(
     return (jlong)result;
 }
 
+JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1named_1struct(
+    JNIEnv *env, jclass obj, jstring s, jobjectArray names, jlongArray handles) {
+    // All the following objects are deallocated on cleanup if not NULL
+    jlong *handlesRef = NULL;
+    const char* sRef = NULL;
+    jlong result = -1;
+    ddlog_record** fields = NULL;
+    const char** fieldNames = NULL;
+
+    jsize len = (*env)->GetArrayLength(env, handles);
+    handlesRef = (*env)->GetLongArrayElements(env, handles, NULL);
+    if (handlesRef == NULL)
+        goto cleanup;
+    sRef = (*env)->GetStringUTFChars(env, s, NULL);
+    if (sRef == NULL)
+        goto cleanup;
+    jsize nameLen = (*env)->GetArrayLength(env, names);
+    if (nameLen != len) {
+        throwDDlogException(env, "number of names does not match number of values");
+        goto cleanup;
+    }
+    fields = malloc(len * sizeof(ddlog_record*));
+    if (fields == NULL) {
+        throwOutOfMemException(env, "Could not allocate buffer for %d fields.", len);
+        goto cleanup;
+    }
+    for (size_t i = 0; i < len; i++)
+        fields[i] = (ddlog_record*)handlesRef[i];
+
+    fieldNames = calloc(len, sizeof(char*));
+    if (fieldNames == NULL) {
+        throwOutOfMemException(env, "Could not allocate buffer for %d names.", len);
+        goto cleanup;
+    }
+    for (size_t i = 0; i < len; i++) {
+        jobject jname = (*env)->GetObjectArrayElement(env, names, i);
+        if (jname == NULL) {
+            throwDDlogException(env, "Field name cannot be null");
+            goto cleanup;
+        }
+        const char* name = (*env)->GetStringUTFChars(env, jname, NULL);
+        fieldNames[i] = name;
+    }
+
+    ddlog_record* rec = ddlog_named_struct(sRef, fieldNames, fields, len);
+    result = (jlong)rec;
+ cleanup:
+    if (handlesRef)
+        (*env)->ReleaseLongArrayElements(env, handles, handlesRef, 0);
+    if (fields)
+        free(fields);
+    if (fieldNames) {
+        for (size_t i = 0; i < len; i++) {
+            if (fieldNames[i] == NULL) break;
+            jobject jname = (*env)->GetObjectArrayElement(env, names, i);
+            (*env)->ReleaseStringUTFChars(env, jname, fieldNames[i]);
+        }
+        free(fieldNames);
+    }
+    if (sRef)
+        (*env)->ReleaseStringUTFChars(env, s, sRef);
+    return result;
+}
+
 JNIEXPORT jboolean JNICALL Java_ddlogapi_DDlogAPI_ddlog_1is_1bool(
     JNIEnv *env, jclass obj, jlong handle) {
     return (jboolean)ddlog_is_bool((ddlog_record*)handle);
@@ -941,10 +1005,22 @@ JNIEXPORT jboolean JNICALL Java_ddlogapi_DDlogAPI_ddlog_1is_1struct(
     return (jboolean)ddlog_is_struct((ddlog_record*)handle);
 }
 
+JNIEXPORT jboolean JNICALL Java_ddlogapi_DDlogAPI_ddlog_1is_named1_1struct(
+    JNIEnv *env, jclass obj, jlong handle) {
+    return (jboolean)ddlog_is_named_struct((ddlog_record*)handle);
+}
+
 JNIEXPORT jstring JNICALL Java_ddlogapi_DDlogAPI_ddlog_1get_1constructor(
     JNIEnv *env, jclass obj, jlong handle) {
     size_t size;
     const char *s = ddlog_get_constructor_with_length((const ddlog_record*)handle, &size);
+    return toJString(env, s, size);
+}
+
+JNIEXPORT jstring JNICALL Java_ddlogapi_DDlogAPI_ddlog_1get_1struct_1field_1name(
+    JNIEnv *env, jclass obj, jlong handle, jint index) {
+    size_t size;
+    const char *s = ddlog_get_named_struct_field_name((const ddlog_record*)handle, index, &size);
     return toJString(env, s, size);
 }
 
@@ -968,5 +1044,11 @@ JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1delete_1val_1cmd(
 JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1delete_1key_1cmd(
     JNIEnv *env, jclass obj, jint table, jlong handle) {
     ddlog_cmd* result = ddlog_delete_key_cmd(table, (ddlog_record*)handle);
+    return (jlong)result;
+}
+
+JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1modify_1cmd(
+    JNIEnv *env, jclass obj, jint table, jlong keyHandle, jlong toModifyHandle) {
+    ddlog_cmd* result = ddlog_modify_cmd(table, (ddlog_record*)keyHandle, (ddlog_record*)toModifyHandle);
     return (jlong)result;
 }
