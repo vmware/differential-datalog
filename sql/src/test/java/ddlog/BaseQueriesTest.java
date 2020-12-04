@@ -116,9 +116,10 @@ public class BaseQueriesTest {
             File tmp = this.writeProgramToFile(programBody);
             basename = tmp.getName();
             //Compiling all the way takes too long
-            //boolean success = DDlogAPI.compileDDlogProgram(tmp.getName(), true,"../lib", "./lib");
-            boolean success = DDlogAPI.compileDDlogProgramToRust(tmp.getName(), true,"../lib", "./lib");
-            if (!success) {
+            DDlogAPI.CompilationResult result = new DDlogAPI.CompilationResult(true);
+            //DDlogAPI.compileDDlogProgram(tmp.getName(), result, "../lib", "./lib");
+            DDlogAPI.compileDDlogProgramToRust(tmp.getName(), result,"../lib", "./lib");
+            if (!result.isSuccess()) {
                 String[] lines = programBody.split("\n");
                 for (int i = 0; i < lines.length; i++) {
                     System.out.printf("%3s ", i+1);
@@ -203,8 +204,9 @@ public class BaseQueriesTest {
             final DDlogProgram dDlogProgram = t.getDDlogProgram();
             final String ddlogProgramAsString = dDlogProgram.toString();
             File tmp = this.writeProgramToFile(ddlogProgramAsString);
-            boolean success = DDlogAPI.compileDDlogProgram(tmp.toString(), false,"..", "lib");
-            Assert.assertTrue(success);
+            DDlogAPI.CompilationResult result = new DDlogAPI.CompilationResult(false);
+            DDlogAPI.compileDDlogProgram(tmp.toString(), result,"..", "lib");
+            Assert.assertTrue(result.isSuccess());
         } catch (IOException | DDlogException e) {
             throw new RuntimeException(e);
         }
