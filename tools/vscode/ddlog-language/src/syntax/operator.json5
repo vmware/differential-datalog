@@ -197,10 +197,6 @@
                     "match": "\\b(or)\\b"
                 },
                 {
-                    "name": "keyword.operator.scope.ddlog",
-                    "match": "(\\::)"
-                },
-                {
                     "name": "keyword.operator.sequentialcomposition.ddlog",
                     "match": "(\\;)"
                 },

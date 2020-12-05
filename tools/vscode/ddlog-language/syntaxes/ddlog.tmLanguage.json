@@ -401,7 +401,7 @@
         "punctuation": {
             "patterns": [
                 {
-                    "name": "punctuation.other.comma.ddlog",
+                    "name": "punctuation.separator.comma.ddlog",
                     "match": ","
                 },
                 {
@@ -409,8 +409,12 @@
                     "match": "(\\:-)"
                 },
                 {
-                    "name": "punctuation.other.dot.ddlog",
+                    "name": "punctuation.accessor.dot.ddlog",
                     "match": "(\\.)"
+                },
+                {
+                    "name": "punctuation.accessor.scope.ddlog",
+                    "match": "(\\::)"
                 }
             ]
         },
@@ -611,7 +615,7 @@
                             "match": "\\b(typedef|type)\\b"
                         },
                         {
-                            "name": "punctuation.other.comma.ddlog",
+                            "name": "punctuation.separator.comma.ddlog",
                             "match": ","
                         },
                         {
@@ -671,7 +675,7 @@
                             "match": "\\b(typedef|type)\\b"
                         },
                         {
-                            "name": "punctuation.other.comma.ddlog",
+                            "name": "punctuation.separator.comma.ddlog",
                             "match": ","
                         },
                         {
@@ -1022,10 +1026,6 @@
                 {
                     "name": "keyword.operator.logical-or.ddlog",
                     "match": "\\b(or)\\b"
-                },
-                {
-                    "name": "keyword.operator.scope.ddlog",
-                    "match": "(\\::)"
                 },
                 {
                     "name": "keyword.operator.sequentialcomposition.ddlog",

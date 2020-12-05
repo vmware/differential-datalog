@@ -33,7 +33,7 @@
                         "match": "\\b(typedef|type)\\b"
                     },                    
                     {
-                        "name": "punctuation.other.comma.ddlog",
+                        "name": "punctuation.separator.comma.ddlog",
                         "match": ","
                     },
                     {
@@ -77,7 +77,7 @@
                         "match": "\\b(typedef|type)\\b"
                     },                    
                     {
-                        "name": "punctuation.other.comma.ddlog",
+                        "name": "punctuation.separator.comma.ddlog",
                         "match": ","
                     },
                     {
