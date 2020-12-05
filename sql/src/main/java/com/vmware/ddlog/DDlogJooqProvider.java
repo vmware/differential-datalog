@@ -77,6 +77,11 @@ import static org.jooq.impl.DSL.field;
  *                                         primary key. That is, there should be a corresponding
  *                                        "create table T..." DDL statement that is passed to the DDlogJooqProvider
  *                                         where P1, P2... etc are columns in T's primary key.
+ *  A4. "update T set C1 = A, C2 = B where P1 = A..." where T is a base table and P1, P2... are columns in T's
+ *                                          primary key. That is, there should be a corresponding
+ *                                          "create table T..." DDL statement that is passed to the DDlogJooqProvider
+ *                                          where P1, P2... etc are columns in T's primary key. C1, C2 etc can
+ *                                          be any column in T.
  */
 public final class DDlogJooqProvider implements MockDataProvider {
     private static final String DDLOG_SOME = "ddlog_std::Some";
@@ -197,12 +202,12 @@ public final class DDlogJooqProvider implements MockDataProvider {
             switch (call.getKind()) {
                 case SELECT:
                     return visitSelect(call);
-                case UPDATE:
-                    return visitUpdate(call);
                 case INSERT:
                     return visitInsert(call);
                 case DELETE:
                     return visitDelete(call);
+                case UPDATE:
+                    return visitUpdate(call);
                 default:
                     return exception(call.toString());
             }
@@ -217,53 +222,6 @@ public final class DDlogJooqProvider implements MockDataProvider {
             }
             final String tableName = ((SqlIdentifier) select.getFrom()).getSimple();
             final Result<Record> result = fetchTable(tableName);
-            return new MockResult(1, result);
-        }
-
-        private MockResult visitUpdate(final SqlCall call) {
-            // The assertions below, and in the ParseWhereClauseForDeletes visitor encode assumption A3
-            // (see javadoc for the DDlogJooqProvider class)
-            final SqlUpdate update = (SqlUpdate) call;
-            final String tableName = ((SqlIdentifier) update.getTargetTable()).getSimple();
-            if (update.getCondition() == null) {
-                return exception("Delete queries without where clauses are unsupported: " + context.sql());
-            }
-            try {
-                final List<? extends Field<?>> allFields = tablesToFields.get(tableName.toUpperCase());
-                final int numColumnsToUpdate = update.getTargetColumnList().size();
-                final DDlogRecord[] updatedValues = new DDlogRecord[numColumnsToUpdate];
-                final String[] columnsToUpdate = new String[numColumnsToUpdate];
-                for (int i = 0; i < numColumnsToUpdate; i++) {
-                    final String columnName = ((SqlIdentifier) update.getTargetColumnList().get(i)).getSimple()
-                                                                                                   .toLowerCase();
-                    final Field<?> field = allFields.stream()
-                                                .filter(f -> f.getUnqualifiedName().last().equalsIgnoreCase(columnName))
-                                                .findFirst()
-                                                .get();
-                    final boolean isNullableField = field.getDataType().nullable();
-                    final DDlogRecord valueToUpdateTo = context.hasBinding()
-                                                          ? toValue(field, context.nextBinding())
-                                                          : update.getSourceExpressionList().accept(PARSE_LITERALS);
-                    final DDlogRecord maybeWrapped = maybeOption(isNullableField, valueToUpdateTo);
-                    updatedValues[i] = maybeWrapped;
-                    columnsToUpdate[i] = columnName;
-                }
-
-                final SqlBasicCall where = (SqlBasicCall) update.getCondition();
-                final List<? extends Field<?>> pkFields = tablesToPrimaryKeys.get(tableName.toUpperCase());
-                final DDlogRecord key = matchExpressionFromWhere(where, pkFields, context);
-
-                final DDlogRecord updateRecord = DDlogRecord.makeNamedStruct("", columnsToUpdate, updatedValues);
-                final int tableId = dDlogAPI.getTableId(ddlogRelationName(tableName));
-                final DDlogRecCommand command = new DDlogRecCommand(DDlogCommand.Kind.Modify, tableId, key, updateRecord);
-                dDlogAPI.applyUpdates(new DDlogRecCommand[]{command});
-            } catch (final DDlogException e) {
-                return exception(e);
-            }
-            final Result<Record1<Integer>> result = dslContext.newResult(updateCountField);
-            final Record1<Integer> resultRecord = dslContext.newRecord(updateCountField);
-            resultRecord.setValue(updateCountField, 1);
-            result.add(resultRecord);
             return new MockResult(1, result);
         }
 
@@ -329,6 +287,53 @@ public final class DDlogJooqProvider implements MockDataProvider {
                 final DDlogRecord record = matchExpressionFromWhere(where, pkFields, context);
                 final int tableId = dDlogAPI.getTableId(ddlogRelationName(tableName));
                 final DDlogRecCommand command = new DDlogRecCommand(DDlogCommand.Kind.DeleteKey, tableId, record);
+                dDlogAPI.applyUpdates(new DDlogRecCommand[]{command});
+            } catch (final DDlogException e) {
+                return exception(e);
+            }
+            final Result<Record1<Integer>> result = dslContext.newResult(updateCountField);
+            final Record1<Integer> resultRecord = dslContext.newRecord(updateCountField);
+            resultRecord.setValue(updateCountField, 1);
+            result.add(resultRecord);
+            return new MockResult(1, result);
+        }
+
+        private MockResult visitUpdate(final SqlCall call) {
+            // The assertions below, and in the ParseWhereClauseForDeletes visitor encode assumption A4
+            // (see javadoc for the DDlogJooqProvider class)
+            final SqlUpdate update = (SqlUpdate) call;
+            final String tableName = ((SqlIdentifier) update.getTargetTable()).getSimple();
+            if (update.getCondition() == null) {
+                return exception("Delete queries without where clauses are unsupported: " + context.sql());
+            }
+            try {
+                final List<? extends Field<?>> allFields = tablesToFields.get(tableName.toUpperCase());
+                final int numColumnsToUpdate = update.getTargetColumnList().size();
+                final DDlogRecord[] updatedValues = new DDlogRecord[numColumnsToUpdate];
+                final String[] columnsToUpdate = new String[numColumnsToUpdate];
+                for (int i = 0; i < numColumnsToUpdate; i++) {
+                    final String columnName = ((SqlIdentifier) update.getTargetColumnList().get(i)).getSimple()
+                            .toLowerCase();
+                    final Field<?> field = allFields.stream()
+                            .filter(f -> f.getUnqualifiedName().last().equalsIgnoreCase(columnName))
+                            .findFirst()
+                            .get();
+                    final boolean isNullableField = field.getDataType().nullable();
+                    final DDlogRecord valueToUpdateTo = context.hasBinding()
+                            ? toValue(field, context.nextBinding())
+                            : update.getSourceExpressionList().accept(PARSE_LITERALS);
+                    final DDlogRecord maybeWrapped = maybeOption(isNullableField, valueToUpdateTo);
+                    updatedValues[i] = maybeWrapped;
+                    columnsToUpdate[i] = columnName;
+                }
+
+                final SqlBasicCall where = (SqlBasicCall) update.getCondition();
+                final List<? extends Field<?>> pkFields = tablesToPrimaryKeys.get(tableName.toUpperCase());
+                final DDlogRecord key = matchExpressionFromWhere(where, pkFields, context);
+
+                final DDlogRecord updateRecord = DDlogRecord.makeNamedStruct("", columnsToUpdate, updatedValues);
+                final int tableId = dDlogAPI.getTableId(ddlogRelationName(tableName));
+                final DDlogRecCommand command = new DDlogRecCommand(DDlogCommand.Kind.Modify, tableId, key, updateRecord);
                 dDlogAPI.applyUpdates(new DDlogRecCommand[]{command});
             } catch (final DDlogException e) {
                 return exception(e);
