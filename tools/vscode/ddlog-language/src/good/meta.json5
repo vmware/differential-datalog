@@ -29,9 +29,6 @@
                             "include": "#constant"
                         },
                         {
-                            "include": "#entity"
-                        },
-                        {
                             "include": "#meta"
                         },
                         {
@@ -87,9 +84,6 @@
                         },
                         {
                             "include": "#constant"
-                        },
-                        {
-                            "include": "#entity"
                         },
                         {
                             "include": "#meta"
@@ -157,9 +151,6 @@
                         "include": "#constant"
                     },
                     {
-                        "include": "#entity"
-                    },
-                    {
                         "include": "#meta"
                     },
                     {
@@ -225,9 +216,6 @@
                         "include": "#constant"
                     },
                     {
-                        "include": "#entity"
-                    },
-                    {
                         "include": "#meta"
                     },
                     {
@@ -255,8 +243,8 @@
                         "include": "#storage"
                     }
                     ]
-                  }                                                                 
-           ]
+                }                                                                 
+            ]
         }
-  }
+    }
 }

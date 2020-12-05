@@ -138,9 +138,6 @@
                             "include": "#constant"
                         },
                         {
-                            "include": "#entity"
-                        },
-                        {
                             "include": "#meta"
                         },
                         {
@@ -195,9 +192,6 @@
                         },
                         {
                             "include": "#constant"
-                        },
-                        {
-                            "include": "#entity"
                         },
                         {
                             "include": "#meta"
@@ -281,9 +275,6 @@
                             "include": "#constant"
                         },
                         {
-                            "include": "#entity"
-                        },
-                        {
                             "include": "#meta"
                         },
                         {
@@ -363,9 +354,6 @@
                         },
                         {
                             "include": "#constant"
-                        },
-                        {
-                            "include": "#entity"
                         },
                         {
                             "include": "#meta"
@@ -571,6 +559,10 @@
                 {
                     "match": "\\b([A-Za-z][_A-Za-z0-9]+)\\b(?=<[_a-zA-Z']+>)",
                     "name": "entity.name.type.ddlog"
+                },
+                {
+                    "match": "('[A-Z][a-zA-Z0-9_]*)",
+                    "name": "entity.name.type-variable.ddlog"
                 },
                 {
                     "name": "entity.name.type.param.ddlog",
@@ -784,10 +776,6 @@
                             "name": "keyword.operator.group.parameters.ddlog"
                         }
                     }
-                },
-                {
-                    "match": "('[A-Z][a-zA-Z0-9_]*)",
-                    "name": "entity.name.type-variable.ddlog"
                 },
                 {
                     "match": "(?<=(\\=))(\\s*)([A-Z][a-zA-Z0-9_]*)",
