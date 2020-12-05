@@ -246,7 +246,17 @@ public class JooqProviderTest {
         create.execute("insert into hosts values ('n1', 10, true)");
         create.execute("update hosts set capacity = 11 where id = 'n1'");
         final Result<Record> results = create.selectFrom(table("hostsv")).fetch();
-        System.out.println(results);
+        assertEquals(results.get(0).get(1), 11);
+    }
+
+    /*
+     * Test updates
+     */
+    @Test
+    public void testUpdatesWithBindings() {
+        create.execute("insert into hosts values ('n1', 10, true)");
+        create.update(table("hosts")).set(field2, 11).where(field1.eq("n1")).execute();
+        final Result<Record> results = create.selectFrom(table("hostsv")).fetch();
         assertEquals(results.get(0).get(1), 11);
     }
 

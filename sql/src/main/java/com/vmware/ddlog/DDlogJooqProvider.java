@@ -229,11 +229,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
                 return exception("Delete queries without where clauses are unsupported: " + context.sql());
             }
             try {
-                final SqlBasicCall where = (SqlBasicCall) update.getCondition();
-                final List<? extends Field<?>> pkFields = tablesToPrimaryKeys.get(tableName.toUpperCase());
                 final List<? extends Field<?>> allFields = tablesToFields.get(tableName.toUpperCase());
-                final DDlogRecord key = matchExpressionFromWhere(where, pkFields, context);
-
                 final int numColumnsToUpdate = update.getTargetColumnList().size();
                 final DDlogRecord[] updatedValues = new DDlogRecord[numColumnsToUpdate];
                 final String[] columnsToUpdate = new String[numColumnsToUpdate];
@@ -245,11 +241,18 @@ public final class DDlogJooqProvider implements MockDataProvider {
                                                 .findFirst()
                                                 .get();
                     final boolean isNullableField = field.getDataType().nullable();
-                    final DDlogRecord valueToUpdateTo = update.getSourceExpressionList().accept(PARSE_LITERALS);
+                    final DDlogRecord valueToUpdateTo = context.hasBinding()
+                                                          ? toValue(field, context.nextBinding())
+                                                          : update.getSourceExpressionList().accept(PARSE_LITERALS);
                     final DDlogRecord maybeWrapped = maybeOption(isNullableField, valueToUpdateTo);
                     updatedValues[i] = maybeWrapped;
                     columnsToUpdate[i] = columnName;
                 }
+
+                final SqlBasicCall where = (SqlBasicCall) update.getCondition();
+                final List<? extends Field<?>> pkFields = tablesToPrimaryKeys.get(tableName.toUpperCase());
+                final DDlogRecord key = matchExpressionFromWhere(where, pkFields, context);
+
                 final DDlogRecord updateRecord = DDlogRecord.makeNamedStruct("", columnsToUpdate, updatedValues);
                 final int tableId = dDlogAPI.getTableId(ddlogRelationName(tableName));
                 final DDlogRecCommand command = new DDlogRecCommand(DDlogCommand.Kind.Modify, tableId, key, updateRecord);
