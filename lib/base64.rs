@@ -8,7 +8,7 @@ pub fn encode(s: &String) -> String {
 
 pub fn decode(s: &String) -> crate::ddlog_std::Result<String, String> {
     match b64decode(s) {
-        Ok(r) => crate::ddlog_std::Result::Ok{
+        Ok(r) => crate::ddlog_std::Result::Ok {
             res: String::from_utf8(r).unwrap(),
         },
         Err(e) => match (e) {
