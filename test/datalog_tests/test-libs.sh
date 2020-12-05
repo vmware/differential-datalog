@@ -26,6 +26,7 @@ test_lib vec_test
 test_lib map_test
 test_lib set_test
 test_lib group_test
+test_lib base64_test
 
 # No flatbuf support for Time, Date, etc yet
 FLATBUF=0 ./run-test.sh time_test.dl release

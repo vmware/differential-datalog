@@ -1,0 +1,2 @@
+base64_test::Base64{.str = "TEST", .encoding = "TEST"}
+base64_test::Base64{.str = "TEST", .encoding = "VEVTVA=="}
