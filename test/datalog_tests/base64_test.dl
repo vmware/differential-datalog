@@ -1,0 +1,5 @@
+import base64
+
+output relation Base64(str: string, encoding: string)
+Base64("TEST", decode(encode("TEST")).unwrap_or("")).
+Base64("TEST", encode("TEST")).

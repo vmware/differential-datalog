@@ -1,0 +1,2 @@
+extern function decode(s: string): Result<string, string>
+extern function encode(s: string): string

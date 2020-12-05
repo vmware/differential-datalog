@@ -11,3 +11,4 @@ import vec_test
 import map_test
 import set_test
 import group_test
+import base64_test
