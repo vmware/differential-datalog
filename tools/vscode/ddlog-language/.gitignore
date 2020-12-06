@@ -1,5 +1,4 @@
 node_modules
-vscode-ddlog-syntax-0.0.1.vsix
 *.vsix
 vscode-ddlog-syntax.code-workspace
 syntaxes/ddlog.tmLanguage.json
