@@ -1095,6 +1095,10 @@ impl FromRecord for OrderedFloat<f32> {
             Record::Float(i) => Ok(*i),
             // Floating point values parsed from a command file are always stored as doubles.
             Record::Double(i) => Ok(OrderedFloat::<f32>::from(**i as f32)),
+            Record::Int(i) => i
+                .to_f32()
+                .map(OrderedFloat)
+                .ok_or_else(|| format!("Cannot convert {} to float", *i)),
             v => Err(format!("not a float {:?}", *v)),
         }
     }
@@ -1117,6 +1121,10 @@ impl FromRecord for OrderedFloat<f64> {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
             Record::Double(i) => Ok(*i),
+            Record::Int(i) => i
+                .to_f64()
+                .map(OrderedFloat)
+                .ok_or_else(|| format!("Cannot convert {} to double", *i)),
             v => Err(format!("not a double {:?}", *v)),
         }
     }

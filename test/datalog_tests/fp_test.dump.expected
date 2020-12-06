@@ -93,6 +93,7 @@ fp_test::FloatsFromRecord{.s = "-32.0e-2", .f = -0.32}
 fp_test::FloatsFromRecord{.s = "-32e2", .f = -3200}
 fp_test::FloatsFromRecord{.s = "0.32", .f = 0.32}
 fp_test::FloatsFromRecord{.s = "0.5", .f = 0.5}
+fp_test::FloatsFromRecord{.s = "1", .f = 1}
 fp_test::FloatsFromRecord{.s = "1.6487212181091308", .f = 1.6487212}
 fp_test::DoublesFromRecord{.s = "-0.5", .d = -0.5}
 fp_test::DoublesFromRecord{.s = "-32.0e-2", .d = -0.32}
