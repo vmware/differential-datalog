@@ -61,8 +61,9 @@ grCycle g = case mapMaybe (grCycleThroughNode g) (nodes g) of
 -- Find a cycle through a specified node.
 grCycleThroughNode :: Graph gr => gr a b -> Node -> Maybe [LNode a]
 grCycleThroughNode g n =
-    listToMaybe $ map (\s -> map (\i -> (i, fromJust $ lab g i)) (n:(esp s n g))) $
-                  filter (\s -> elem n (reachable s g)) $ suc g n
+    listToMaybe $ map (\s -> map (\i -> (i, fromJust $ lab g i)) (n:(esp s n g)))
+                $ filter (\s -> elem n (reachable s g))
+                $ suc g n
 
 -- Group graph nodes; aggregate edges
 grGroup :: (DynGraph gr) => gr a b -> [[Node]] -> gr [Node] b

@@ -26,6 +26,16 @@ R3(x,"foo") :- R2(x).
 
 //---
 
+// non-stratified negation
+
+input relation R1(a1: string)
+
+relation R2(a2: string)
+
+R2(x) :- R1(x), not R2(x).
+
+//---
+
 // Aggregate function does not take enough arguments.
 
 input relation AggregateMe3(x: string, y: string, z: string)

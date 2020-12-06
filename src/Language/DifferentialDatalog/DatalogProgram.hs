@@ -223,6 +223,7 @@ fieldAttributeMapM fun f@Field{..} = do
 
 data DepGraphNode = DepNodeRel   String
                   | DepNodeApply Apply
+                  deriving (Eq)
 
 instance Show DepGraphNode where
     show (DepNodeRel rel) = rel
