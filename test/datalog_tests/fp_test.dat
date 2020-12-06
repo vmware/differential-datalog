@@ -4,6 +4,7 @@ dump fp_test::BB;
 
 start;
 
+insert fp_test::FloatsFromRecord("1", 1),
 insert fp_test::FloatsFromRecord("0.5", 0.5),
 insert fp_test::DoublesFromRecord("0.5", 0.5),
 
