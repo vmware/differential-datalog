@@ -504,15 +504,27 @@ depGraphValidate d@DatalogProgram{..} = do
                   ruleLHS)
           progRules -}
     -- Stratified negation:
-    -- * a relation may not recursively depend on its negation;
+    -- * A relation may not recursively depend on its negation;
     -- * Apply nodes may not occur in recursive loops, as they are assumed to always introduce
     --   negative loops
     mapM_ (\rl@Rule{..} ->
             mapM_ (\a ->
                     do let lscc = sccmap M.! (atomRelation a)
-                       mapM_ (\rhs -> err d (pos rl)
-                                          $ "Relation " ++ (atomRelation $ rhsAtom rhs) ++ " is mutually recursive with " ++ atomRelation a ++
-                                            " and therefore cannot appear negated in this rule")
+                       mapM_ (\rhs -> let rhs_node = fst $ fromJust $ find ((== DepNodeRel (atomRelation (rhsAtom rhs))) . snd) $ G.labNodes g
+                                          a_node = fst $ fromJust $ find ((== DepNodeRel (atomRelation a)) . snd) $ G.labNodes g
+                                          -- Path from rhs to a.
+                                          rhs_to_a = G.esp rhs_node a_node g
+                                          -- Path from a to rhs.
+                                          a_to_rhs = G.esp a_node rhs_node g
+                                          -- If this is not a self-loop, make sure that 'a' does not appear twice in it.
+                                          a_to_rhs' = if length a_to_rhs > 1 then tail a_to_rhs else a_to_rhs
+                                          -- Dependency cycle.
+                                          dep_cycle = intercalate " -> " $ (map (show . fromJust . G.lab g) rhs_to_a) ++
+                                                                           (map (show . fromJust . G.lab g) a_to_rhs')
+                                      in err d (pos rl) $
+                                             "Relation " ++ (atomRelation $ rhsAtom rhs) ++ " is mutually recursive with " ++ atomRelation a ++
+                                             " and therefore cannot appear negated in this rule.\n" ++
+                                             "Dependency cycle: " ++ dep_cycle)
                              $ filter ((== lscc) . (sccmap M.!) . atomRelation . rhsAtom)
                              $ filter (not . rhsPolarity)
                              $ filter rhsIsLiteral ruleRHS)

@@ -7,8 +7,14 @@ expecting letter or digit, "_", "::", "(" or "["
   ./test/datalog_tests/rules.fail.dl:7:1-9:1
 
 
-error: ./test/datalog_tests/rules.fail.dl:10:1-11:1: Relation R3 is mutually recursive with R2 and therefore cannot appear negated in this rule
+error: ./test/datalog_tests/rules.fail.dl:10:1-11:1: Relation R3 is mutually recursive with R2 and therefore cannot appear negated in this rule.
+Dependency cycle: R3 -> R2 -> R3
 R2(x) :- R1(x), not R3(x, "foo").
+^
+
+error: ./test/datalog_tests/rules.fail.dl:9:1-11:1: Relation R2 is mutually recursive with R2 and therefore cannot appear negated in this rule.
+Dependency cycle: R2 -> R2
+R2(x) :- R1(x), not R2(x).
 ^
 
 error: ./test/datalog_tests/rules.fail.dl:9:28-9:39: Type mismatch:
