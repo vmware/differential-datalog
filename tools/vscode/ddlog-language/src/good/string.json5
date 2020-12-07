@@ -4,12 +4,8 @@
             "patterns": [
                 {
                     "name": "constant.character.escape.ddlog",
-                    "match": "\\\\[0nrvtbfa]"
+                    "match": "\\\\[0nrvtbfa&\"]"
                 },
-                {
-                    "name": "constant.other.placeholder.ddlog",
-                    "match": "(\\{)([a-zA-Z0-9_?:$.*<>]+)?(\\})"
-                },                
                 {
                     "name": "string.quoted.double.ddlog",
                     "begin": "\"",
@@ -17,12 +13,8 @@
                     "patterns": [
                         {
                             "name": "constant.character.escape.ddlog",
-                            "match": "\\\\[0nrvtbfa]"
+                            "match": "\\\\[0nrvtbfa&\"]"
                         },
-                        {
-                            "name": "constant.other.placeholder.ddlog",
-                            "match": "(\\{)([a-zA-Z0-9_?:$.*<>]+)?(\\})"
-                        },                        
                         {
                             "name": "string.quoted.interpolated.ddlog",
                             "begin": "(\\{)",
@@ -83,14 +75,6 @@
                     "begin": "(\\[)(\\|)",               
                     "end": "(\\|)(\\])",
                     "patterns": [
-                        {
-                            "name": "constant.character.escape.ddlog",
-                            "match": "\\\\[0nrvtbfa]"
-                        },
-                        {
-                            "name": "constant.other.placeholder.ddlog",
-                            "match": "(\\{)([a-zA-Z0-9_?:$.*<>]+)?(\\})"
-                        },
                        {
                             "name": "string.quoted.interpolated.ddlog",
                             "begin": "(\\{)",
@@ -143,7 +127,7 @@
                                     "include": "#storage"
                                 }
                            ]                    
-                        },                        
+                        }                        
                     ]                                       
                 }               
             ]
