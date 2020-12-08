@@ -1,2 +1,5 @@
-base64_test::Base64{.str = "TEST", .encoding = "TEST"}
-base64_test::Base64{.str = "TEST", .encoding = "VEVTVA=="}
+base64_test::Base64{.decoding = ddlog_std::Ok{.res = [0, 1, 2, 3]}, .encoding = "AAECAw==", .position = 0}
+base64_test::Base64{.decoding = ddlog_std::Ok{.res = [0, 1, 2, 3]}, .encoding = "AAECAw==", .position = 1}
+base64_test::Base64{.decoding = ddlog_std::Ok{.res = [76, 68, 147]}, .encoding = "TEST", .position = 2}
+base64_test::Base64{.decoding = ddlog_std::Err{.err = "Invalid byte 32 at position 5"}, .encoding = "Hello !@#!@#", .position = 4}
+base64_test::Base64{.decoding = ddlog_std::Err{.err = "Invalid byte 33 at position 0"}, .encoding = "!@#!@#", .position = 3}

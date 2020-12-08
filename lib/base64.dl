@@ -1,2 +1,5 @@
-extern function decode(s: string): Result<string, string>
-extern function encode(s: string): string
+// Decodes a base64 encoding; if the input is not a valid encoding it
+// produces an error describing the problem.
+extern function decode(s: string): Result<Vec<u8>, string>
+// Encode a byte array as a base64 string.
+extern function encode(s: Vec<u8>): string

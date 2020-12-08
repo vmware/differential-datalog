@@ -1,5 +1,9 @@
 import base64
 
-output relation Base64(str: string, encoding: string)
-Base64("TEST", decode(encode("TEST")).unwrap_or("")).
-Base64("TEST", encode("TEST")).
+output relation Base64(decoding: Result<Vec<u8>, string>, encoding: string, position: u8)
+
+Base64(Ok{[0,1,2,3]}, encode([0,1,2,3]), 0).
+Base64(decode(encode([0,1,2,3])), encode([0,1,2,3]), 1).
+Base64(decode("TEST"), "TEST", 2).
+Base64(decode("!@#!@#"), "!@#!@#", 3).
+Base64(decode("Hello !@#!@#"), "Hello !@#!@#", 4).
