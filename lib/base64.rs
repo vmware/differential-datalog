@@ -8,7 +8,7 @@ pub fn encode(s: &crate::ddlog_std::Vec<u8>) -> String {
 
 pub fn decode(s: &String) -> crate::ddlog_std::Result<crate::ddlog_std::Vec<u8>, String> {
     match b64decode(s) {
-        Ok(r) => crate::ddlog_std::Result::Ok{
+        Ok(r) => crate::ddlog_std::Result::Ok {
             res: crate::ddlog_std::Vec::from(r),
         },
         Err(e) => match (e) {
