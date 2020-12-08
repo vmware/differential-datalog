@@ -659,7 +659,14 @@ public class DDlogAPI {
         return ddlogHome;
     }
 
+    /**
+     * This class is used to collect the standard output and the standard error
+     * streams from background processes.
+     */
     public static class CompilationResult {
+        /**
+         * Exit code of last process executed.
+         */
         public int exitCode;
         StringBuilder stdout;
         StringBuilder stderr;
@@ -672,13 +679,13 @@ public class DDlogAPI {
             this.stderr = new StringBuilder();
         }
 
-        void appendError(String str) {
+        synchronized void appendError(String str) {
             if (this.verbose)
                 System.err.println(str);
             this.stderr.append(str);
         }
 
-        void appendOut(String str) {
+        synchronized void appendOut(String str) {
             if (this.verbose)
                 System.out.println(str);
             this.stdout.append(str);
@@ -692,23 +699,41 @@ public class DDlogAPI {
             return this.exitCode == 0;
         }
 
+        /**
+         * Get the standard error data collected.  Should be called
+         * when the monitored streams have been closed.
+         */
         public String getStderr() {
             return this.stderr.toString();
         }
 
+        /**
+         * Get the standard output data collected.  Should be called
+         * when the monitored streams have been closed.
+         */
         public String getStdout() {
             return this.stdout.toString();
         }
 
+        /**
+         * Starts a background thread to collect all the data
+         * from the specified stream into stdout.  The thread stops when
+         * the stream is closed.
+         */
         void consumeOutputStream(InputStream stream) {
             Runnable r = () -> new BufferedReader(new InputStreamReader(stream)).lines().forEach(
-                    str -> CompilationResult.this.appendOut(str));
+                    CompilationResult.this::appendOut);
             new Thread(r).start();
         }
 
+        /**
+         * Starts a background thread to collect all the data
+         * from the specified stream into stderr.  The thread stops when
+         * the stream is closed.
+         */
         void consumeErrorStream(InputStream stream) {
             Runnable r = () -> new BufferedReader(new InputStreamReader(stream)).lines().forEach(
-                    str -> CompilationResult.this.appendError(str));
+                    CompilationResult.this::appendError);
             new Thread(r).start();
         }
     }
