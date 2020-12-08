@@ -100,7 +100,19 @@ RecordType: Identifier ":" TypeId
           | Identifier ":" TypeId "," RecordType
           ;
 
-RelationDecl: DECL RelationList RelationBody Qualifiers
+RelationDecl: DECL RelationList RelationBody Qualifiers DependencyList
+            ;
+
+DependencyList: EMPTY
+            | KEYS DependencyListAux
+            ;
+
+DependencyListAux: Dependency
+            | DependencyListAux "," Dependency
+            ;
+
+Dependency: Identifier
+            | "(" IdentifierList ")"
             ;
 
 RelationList: Identifier
@@ -403,3 +415,4 @@ TNUMBER: "number" ;
 TSYMBOL: "symbol" ;
 TUNSIGNED: "unsigned" ;
 TFLOAT: "float" ;
+KEYS: "keys" ;
