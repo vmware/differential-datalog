@@ -8,12 +8,8 @@ use ordered_float::OrderedFloat;
 use serde::de::Error;
 use serde::de::*;
 use serde::ser::*;
-#[cfg(feature = "c_api")]
-use std::ffi::CStr;
 use std::fmt;
 use std::ops::*;
-#[cfg(feature = "c_api")]
-use std::os::raw::c_char;
 use std::str::FromStr;
 
 /* This module is designed to be imported both as a standard DDlog library and as a normal Rust
@@ -166,34 +162,6 @@ impl Int {
             x: BigInt::parse_bytes(buf, radix).unwrap(),
         }
     }
-}
-
-#[no_mangle]
-#[cfg(feature = "c_api")]
-pub extern "C" fn int_from_i64(v: i64) -> *mut Int {
-    Box::into_raw(Box::new(Int::from_i64(v)))
-}
-
-#[no_mangle]
-#[cfg(feature = "c_api")]
-pub extern "C" fn int_from_u64(v: u64) -> *mut Int {
-    Box::into_raw(Box::new(Int::from_u64(v)))
-}
-
-#[no_mangle]
-#[cfg(feature = "c_api")]
-pub unsafe extern "C" fn int_from_str(s: *const c_char, radix: u32) -> *mut Int {
-    let c_str = CStr::from_ptr(s);
-    Box::into_raw(Box::new(Int::parse_bytes(c_str.to_bytes(), radix)))
-}
-
-#[no_mangle]
-#[cfg(feature = "c_api")]
-pub unsafe extern "C" fn int_free(x: *mut Int) {
-    if x.is_null() {
-        return;
-    }
-    Box::from_raw(x);
 }
 
 impl fmt::Display for Int {
@@ -432,28 +400,6 @@ impl Uint {
     }
 }
 
-#[no_mangle]
-#[cfg(feature = "c_api")]
-pub extern "C" fn uint_from_u64(v: u64) -> *mut Uint {
-    Box::into_raw(Box::new(Uint::from_u64(v)))
-}
-
-#[no_mangle]
-#[cfg(feature = "c_api")]
-pub unsafe extern "C" fn uint_from_str(s: *const c_char, radix: u32) -> *mut Uint {
-    let c_str = CStr::from_ptr(s);
-    Box::into_raw(Box::new(Uint::parse_bytes(c_str.to_bytes(), radix)))
-}
-
-#[no_mangle]
-#[cfg(feature = "c_api")]
-pub unsafe extern "C" fn uint_free(x: *mut Uint) {
-    if x.is_null() {
-        return;
-    }
-    Box::from_raw(x);
-}
-
 impl fmt::Display for Uint {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.x)
@@ -592,5 +538,58 @@ impl num::Zero for Uint {
 
     fn is_zero(&self) -> bool {
         self.x == BigUint::zero()
+    }
+}
+
+#[cfg(feature = "c_api")]
+mod c_api {
+
+    use super::Int;
+    use super::Uint;
+
+    use std::ffi::CStr;
+    use std::os::raw::c_char;
+
+    #[no_mangle]
+    pub extern "C" fn int_from_i64(v: i64) -> *mut Int {
+        Box::into_raw(Box::new(Int::from_i64(v)))
+    }
+
+    #[no_mangle]
+    pub extern "C" fn int_from_u64(v: u64) -> *mut Int {
+        Box::into_raw(Box::new(Int::from_u64(v)))
+    }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn int_from_str(s: *const c_char, radix: u32) -> *mut Int {
+        let c_str = CStr::from_ptr(s);
+        Box::into_raw(Box::new(Int::parse_bytes(c_str.to_bytes(), radix)))
+    }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn int_free(x: *mut Int) {
+        if x.is_null() {
+            return;
+        }
+        Box::from_raw(x);
+    }
+
+    #[no_mangle]
+    pub extern "C" fn uint_from_u64(v: u64) -> *mut Uint {
+        Box::into_raw(Box::new(Uint::from_u64(v)))
+    }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn uint_from_str(s: *const c_char, radix: u32) -> *mut Uint {
+        let c_str = CStr::from_ptr(s);
+        Box::into_raw(Box::new(Uint::parse_bytes(c_str.to_bytes(), radix)))
+    }
+
+    #[no_mangle]
+    pub unsafe extern "C" fn uint_free(x: *mut Uint) {
+        if x.is_null() {
+            return;
+        }
+        Box::from_raw(x);
     }
 }
