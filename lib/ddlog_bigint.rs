@@ -39,6 +39,12 @@ impl Default for Int {
 
 impl Abomonation for Int {}
 
+impl From<Uint> for Int {
+    fn from(other: Uint) -> Self {
+        other.to_Int().unwrap()
+    }
+}
+
 // Generated code expects `from_<typename>()`, `to_<typename>()` functions for all
 // supported integer conversions.
 impl Int {
@@ -76,7 +82,7 @@ impl Int {
         Int { x: BigInt::from(v) }
     }
     pub fn from_Uint(v: Uint) -> Int {
-        v.to_Int().unwrap()
+        Self::from(v)
     }
     pub fn from_bytes_be(sign: bool, bytes: &[u8]) -> Int {
         Int {
