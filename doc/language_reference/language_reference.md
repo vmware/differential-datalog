@@ -444,27 +444,27 @@ Consecutive string literals are automatically concatenated, e.g.,
 
 Values of arbitrary types that occur inside interpolated strings or as
 a second argument to the string concatenation operator (`++`) are
-automatically converted to strings.
-Values of primitive types (`string`, `bigint`, `bit`, and `bool`) are converted using
-builtin methods.
+automatically converted to strings.  Values of primitive types
+(`string`, `bigint`, `bit`, and `bool`) are converted using builtin
+methods.
 
-For user-defined types, conversion is performed by calling a user-defined function
-whose name is formed from the type name by changing the first letter of the type name
-to lower case (if it is in upper case) and adding the `"2string"` suffix.  The function
-must take exactly one argument of the given type and return a string.
-Compilation fails if a function with this name and signature is not found.
+For user-defined types, conversion is performed by calling a
+user-defined function called `to_string`.  The function must take
+exactly one argument of the given type and return a string.
+Compilation fails if a function with this name and signature is not
+found.
 
 For example, the last statement in
 ```
 typedef udf_t = Cons1 | Cons2{f: bigint}
-function udf_t2string(x: udf_t): string { ... }
+function to_string(x: udf_t): string { ... }
 x: udf_t;
 
 y = "x:{x}";
 ```
 is equivalent to:
 ```
-y = "x:{udf_t2string(x)}";
+y = "x:{to_string(x)}";
 ```
 
 ### Vector literals
