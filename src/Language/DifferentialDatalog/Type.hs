@@ -745,6 +745,8 @@ varType d (FlatMapVar rl i)                = case typ' d $ exprType d (CtxRuleRF
                                                   TOpaque _ _ [t']     -> t'
                                                   TOpaque _ tname [kt,vt] | tname == mAP_TYPE
                                                                        -> tTuple [kt,vt]
+                                                                          | tname == gROUP_TYPE
+                                                                       -> vt 
                                                   _                    -> error $ "varType FlatMapVar " ++ show rl ++ " " ++ show i 
 varType d (GroupVar rl i)                  = let ktype = ruleGroupByKeyType d rl i
                                                  vtype = ruleGroupByValType d rl i

@@ -165,3 +165,9 @@ Ack{.m = 2, .n = 1, .a = 5}
 Rseq:
 Rseq{._s = TSeq1{.x = ("bar", TSeq1{.x = ("buzz", TSeqNone{})})}}: +1
 Rseq{._s = TSeq1{.x = ("foo", TSeq1{.x = ("buzz", TSeqNone{})})}}: +1
+FlatGroup:
+FlatGroup{.x = 1}: +1
+FlatGroup{.x = 2}: +1
+FlatGroup{.x = 11}: +1
+FlatGroup{.x = 111}: +1
+FlatGroup{.x = 222}: +1
