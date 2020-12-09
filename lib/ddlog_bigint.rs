@@ -39,6 +39,8 @@ impl Default for Int {
 
 impl Abomonation for Int {}
 
+// Generated code expects `from_<typename>()`, `to_<typename>()` functions for all
+// supported integer conversions.
 impl Int {
     pub fn from_bigint(v: BigInt) -> Int {
         Int { x: v }
@@ -343,6 +345,8 @@ impl Default for Uint {
 
 impl Abomonation for Uint {}
 
+// Generated code expects `from_<typename>()`, `to_<typename>()` functions for all
+// supported integer conversions.
 impl Uint {
     pub fn from_biguint(v: BigUint) -> Uint {
         Uint { x: v }
@@ -351,9 +355,6 @@ impl Uint {
         Uint {
             x: v.to_biguint().unwrap(),
         }
-    }
-    pub fn from_Int(v: Int) -> Uint {
-        v.to_Uint().unwrap()
     }
     pub fn from_u8(v: u8) -> Uint {
         Uint {
