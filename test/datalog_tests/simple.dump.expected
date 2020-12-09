@@ -176,6 +176,38 @@ Signed{.n = 7}: +1
 Signed{.n = 8}: +1
 Signed{.n = 9}: +1
 Signed{.n = 10}: +1
+Strings:
+Strings{.s = ""}: +1
+Strings{.s = "\t\tbar"}: +1
+Strings{.s = "\n\u{7}buzz"}: +1
+Strings{.s = "\n    foo\n    buzz\n    bar"}: +1
+Strings{.s = "\n    foo\\r\\n\n    buzz\n    bar"}: +1
+Strings{.s = " \"10\" "}: +1
+Strings{.s = " 13  19 "}: +1
+Strings{.s = " 33 "}: +1
+Strings{.s = " 4 + 4 "}: +1
+Strings{.s = " cd "}: +1
+Strings{.s = "\"buzz"}: +1
+Strings{.s = "16"}: +1
+Strings{.s = "18"}: +1
+Strings{.s = "2"}: +1
+Strings{.s = "\\buzz"}: +1
+Strings{.s = "a[|b"}: +1
+Strings{.s = "a____b"}: +1
+Strings{.s = "a__b"}: +1
+Strings{.s = "ab"}: +1
+Strings{.s = "bar\n"}: +1
+Strings{.s = "barΔ"}: +1
+Strings{.s = "barΔ\nΠ"}: +1
+Strings{.s = "barΔ\nΠ quoted string"}: +1
+Strings{.s = "foo"}: +1
+Strings{.s = "foo\nbar"}: +1
+Strings{.s = "foo\nbuzz\nbar"}: +1
+Strings{.s = "foo-bar"}: +1
+Strings{.s = "foo\\bar"}: +1
+Strings{.s = "foobar*foobarbuzz\nraw string quoted string*str1: foobar*str1: foobar, str2: foobarbuzz\nraw string quoted string, str3: str1: foobar.*str1: ${str1},\nstr2: ${str2},\nstr3: ${str3}.*foobarfoobarbuzz\nraw string quoted string*foobarfoobarbuzz\nraw string quoted string*foobarfoobarbuzz\nraw string quoted string dummy*str1: foobar,\nstr2: foobarbuzz\nraw string quoted string,\nstr3: str1: foobar.*true*true*false*false"}: +1
+Strings{.s = "line1\nline2"}: +1
+Strings{.s = "word1 word2"}: +1
 Trees:
 Trees{.tree = NonLeafNode{.branches = [LeafNode{.v = 300}, NonLeafNode{.branches = [LeafNode{.v = 100}, LeafNode{.v = 200}]}]}}: +1
 UMinus_bigint:
@@ -469,6 +501,39 @@ Signed{.n = 7}
 Signed{.n = 8}
 Signed{.n = 9}
 Signed{.n = 10}
+
+Strings:
+Strings{.s = ""}
+Strings{.s = "\t\tbar"}
+Strings{.s = "\n\u{7}buzz"}
+Strings{.s = "\n    foo\n    buzz\n    bar"}
+Strings{.s = "\n    foo\\r\\n\n    buzz\n    bar"}
+Strings{.s = " \"10\" "}
+Strings{.s = " 13  19 "}
+Strings{.s = " 33 "}
+Strings{.s = " 4 + 4 "}
+Strings{.s = " cd "}
+Strings{.s = "\"buzz"}
+Strings{.s = "16"}
+Strings{.s = "18"}
+Strings{.s = "2"}
+Strings{.s = "\\buzz"}
+Strings{.s = "a[|b"}
+Strings{.s = "a____b"}
+Strings{.s = "a__b"}
+Strings{.s = "ab"}
+Strings{.s = "bar\n"}
+Strings{.s = "barΔ"}
+Strings{.s = "barΔ\nΠ"}
+Strings{.s = "barΔ\nΠ quoted string"}
+Strings{.s = "foo"}
+Strings{.s = "foo\nbar"}
+Strings{.s = "foo\nbuzz\nbar"}
+Strings{.s = "foo-bar"}
+Strings{.s = "foo\\bar"}
+Strings{.s = "foobar*foobarbuzz\nraw string quoted string*str1: foobar*str1: foobar, str2: foobarbuzz\nraw string quoted string, str3: str1: foobar.*str1: ${str1},\nstr2: ${str2},\nstr3: ${str3}.*foobarfoobarbuzz\nraw string quoted string*foobarfoobarbuzz\nraw string quoted string*foobarfoobarbuzz\nraw string quoted string dummy*str1: foobar,\nstr2: foobarbuzz\nraw string quoted string,\nstr3: str1: foobar.*true*true*false*false"}
+Strings{.s = "line1\nline2"}
+Strings{.s = "word1 word2"}
 
 Trees:
 Trees{.tree = NonLeafNode{.branches = [LeafNode{.v = 300}, NonLeafNode{.branches = [LeafNode{.v = 100}, LeafNode{.v = 200}]}]}}
@@ -778,6 +843,39 @@ Signed{.n = 7}
 Signed{.n = 8}
 Signed{.n = 9}
 Signed{.n = 10}
+
+Strings:
+Strings{.s = ""}
+Strings{.s = "\t\tbar"}
+Strings{.s = "\n\u{7}buzz"}
+Strings{.s = "\n    foo\n    buzz\n    bar"}
+Strings{.s = "\n    foo\\r\\n\n    buzz\n    bar"}
+Strings{.s = " \"10\" "}
+Strings{.s = " 13  19 "}
+Strings{.s = " 33 "}
+Strings{.s = " 4 + 4 "}
+Strings{.s = " cd "}
+Strings{.s = "\"buzz"}
+Strings{.s = "16"}
+Strings{.s = "18"}
+Strings{.s = "2"}
+Strings{.s = "\\buzz"}
+Strings{.s = "a[|b"}
+Strings{.s = "a____b"}
+Strings{.s = "a__b"}
+Strings{.s = "ab"}
+Strings{.s = "bar\n"}
+Strings{.s = "barΔ"}
+Strings{.s = "barΔ\nΠ"}
+Strings{.s = "barΔ\nΠ quoted string"}
+Strings{.s = "foo"}
+Strings{.s = "foo\nbar"}
+Strings{.s = "foo\nbuzz\nbar"}
+Strings{.s = "foo-bar"}
+Strings{.s = "foo\\bar"}
+Strings{.s = "foobar*foobarbuzz\nraw string quoted string*str1: foobar*str1: foobar, str2: foobarbuzz\nraw string quoted string, str3: str1: foobar.*str1: ${str1},\nstr2: ${str2},\nstr3: ${str3}.*foobarfoobarbuzz\nraw string quoted string*foobarfoobarbuzz\nraw string quoted string*foobarfoobarbuzz\nraw string quoted string dummy*str1: foobar,\nstr2: foobarbuzz\nraw string quoted string,\nstr3: str1: foobar.*true*true*false*false"}
+Strings{.s = "line1\nline2"}
+Strings{.s = "word1 word2"}
 
 Trees:
 Trees{.tree = NonLeafNode{.branches = [LeafNode{.v = 300}, NonLeafNode{.branches = [LeafNode{.v = 100}, LeafNode{.v = 200}]}]}}

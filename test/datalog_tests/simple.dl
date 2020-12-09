@@ -537,7 +537,7 @@ R3_nl(x,y), R4_nl(x,y) :- R2_nl(x), R2_nl(y).
 
 
 /* strings test */
-input relation Strings(s: string)
+output relation Strings(s: string)
 
 Strings("").
 Strings("foo").
@@ -582,10 +582,25 @@ Strings("foo\n" "bar").
 Strings("foo\\""bar").
 
 Strings("foo\\" ++ [|bar|]).
+Strings("${\"a\" ++ \"b\"}"). // String literals in interpolated string
+Strings($[| ${"c" ++ "d"} |]). // idem
+Strings($[| ${"${1+2}" ++ "${1+2}"} |]). // nested interpolation
+Strings($[| ${"${2+2}"} + ${"${2+2}"} |]).
+Strings($[| ${"${2+2}"} + ${"${2+2}"} |]).
+Strings("${ [|a_|] ++ [|_b|] }").
+Strings("${ $[|a__|] ++ $[|__b|] }").
+Strings("${ $[| ${6+7} |] ++ $[| ${9+10} |] }").
+Strings("${ $[| \"${3+7}\" |] }").
+Strings("${\"${\\\"${8+8}\\\"}\"}").
+Strings("${\"${\\\"${\\\\\\\"${9+9}\\\\\\\"}\\\"}\"}").
+Strings([|a[|b|]).
+Strings("${ parse($[| parse(\"${3+7}\") |]) + 2 }").  // This expands into ("" ++ ((parse(((" parse(\"" ++ (3 + 7)) ++ "\") "))) + 2))
+
+function parse(x: string): bit<64> { parse_dec_u64(x.trim()).unwrap_or(0) }
 
 function dummy(x: string): string { x ++ " dummy" }
 
-function strings() {
+function strings(): string {
     var str1 = "foo" ++ "bar";
     var str2 = "foo" "bar" ++ "buzz" ++ [|
 raw string |] ++ "quoted string";
@@ -597,11 +612,17 @@ str3: ${str3}.|];
     var str6 = "${str1 ++ str2}";
     var str7 = "${{var x = str1 ++ str2; x}}";
     var str8 = "${{var x = str1 ++ str2; dummy(x)}}";
+    var str9 = $[|str1: ${str1},
+str2: ${str2},
+str3: ${str3}.|];
     var b = str1 < str2;
     var b1 = "" < str1;
     var b2 = [|${}|] < "";
     var b3 = str1 != str2 and str1 >= str2;
+    "${str1}*${str2}*${str3}*${str4}*${str5}*${str6}*${str7}*${str8}*${str9}*${b}*${b1}*${b2}*${b3}"
 }
+
+Strings(strings()).
 
 Strings("word1\
         \ word2").

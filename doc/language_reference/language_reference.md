@@ -356,6 +356,16 @@ term ::= "_"                 (* wildcard *)
        | lambda_term         (* lambda-expression *)
 ```
 
+### Boolean literals
+
+```EBNF
+bool_literal ::= "true" | "false"
+```
+
+The Boolean literals are `true` and `false`.
+
+### Numeric literals
+
 **Integer literal syntax is currently arcane and may be changed.**
 
 ```EBNF
@@ -380,45 +390,106 @@ exponent ::= (* empty *)
            | ("e"|"E") ["+"|"-"] decimal
 ```
 
-The "s" in a literal indicates a "signed" literal.
+The "s" in a literal indicates a "signed" literal.  Note that floating
+point widths can only be 32 or 64, while integer width are arbitrary.
 
-We support two types of UTF-8 string literals: quoted strings with escaping,
-e.g., `"foo\nbar"`
-(**We rely on parsec's standard parser for strings, which
-supports unicode and escaping. TODO: check and document its exact
-functionality.**) and raw strings where all characters, including backslash and
-line breaks are interpreted as is:
+### String literals
+
+We support two types of UTF-8 string literals: quoted strings with
+escaping, and raw strings.
+
+In quoted strings, e.g.,`"foo\nbar"` C-like escape are recognized; for
+example single quotes and backslash characters can be escaped using
+backslashes; `\n` is newline, and `\t` is tab.  Unicode character with
+code 100 can be written as `\u{100}`.
+
+Interpolated strings are string literals, that contain expressions
+inside curly brackets preceeded by a dollar sign (`${}`), whose values
+are substituted at runtime.  Quoted strings are interpolated by
+default, e.g., `"x: ${x}, y: ${y}, f(x): ${f(x)}"` is equivalent to
+the following string expressoin: `"x: " ++ x ++ ", y: " ++ y ++ ",
+f(x): " ++ f(x)`.
 
 ```EBNF
 string_literal   ::= '"' utf8_character* '"'
-                     | "[|" utf8_character* "|]"
-```
+                     | raw_string
+                     | raw_interpolated_string
 
-Multiple string literals are automatically concatenated, e.g.,
-`"foo" [|bar|]` is equivalent to `"foobar"`.
-
-Interpolated strings are string literals, that contain
-expressions inside curly brackets preceeded by a dollar sign (`${}`), whose values are substituted at runtime.
-Quoted strings are interpolate by default, e.g.,
-`"x: ${x}, y: ${y}, f(x): ${f(x)}"` is equivalent to
-`"x: " ++ x ++ ", y: " ++ y ++ ", f(x): " ++ f(x)`.
-
-Raw interpolated strings must be preceed by a dollar sign:
-
-```EBNF
+raw_string       ::= "[|" utf8_character* "|]"
 raw_interpolated_string ::= ("$[|" utf8_character* "|]")+
 ```
+
+Raw strings are delimited by `[|` and `|]` (where the closing sequence
+cannot appear nested inside the string).  In raw strings all
+characters, including backslash and line breaks are interpreted as-is.
+Raw strings do not perform interpolation.
+
+Raw interpolated strings, which are preceeded by a dollar sign, will
+perform interpolation: `$[|x: ${x}, y: ${y}, f(x): ${f(x)}|]` produces
+the same string as above.
+
+Compare the value of the raw string `[|a = ${2+3}|]`, which is the
+string containing the following characters: `a = ${2+3}`, with the
+value of the raw interpolated string `$[|a = ${2+3}|]`, which is the
+string containing `a = 5`.
 
 Expressions in curly brackets can be arbitrarily complex, as long as
 they produce results of type `string`, e.g.:
 `$[|foo{var x = "bar"; x}|]` will evaluate to "foobar" at runtime.
 
-Other terms:
+Consecutive string literals are automatically concatenated, e.g.,
+`"foo" [|bar|]` is equivalent to `"foobar"`.
+
+### Automatic string conversion
+
+Values of arbitrary types that occur inside interpolated strings or as
+a second argument to the string concatenation operator (`++`) are
+automatically converted to strings.
+Values of primitive types (`string`, `bigint`, `bit`, and `bool`) are converted using
+builtin methods.
+
+For user-defined types, conversion is performed by calling a user-defined function
+whose name is formed from the type name by changing the first letter of the type name
+to lower case (if it is in upper case) and adding the `"2string"` suffix.  The function
+must take exactly one argument of the given type and return a string.
+Compilation fails if a function with this name and signature is not found.
+
+For example, the last statement in
+```
+typedef udf_t = Cons1 | Cons2{f: bigint}
+function udf_t2string(x: udf_t): string { ... }
+x: udf_t;
+
+y = "x:{x}";
+```
+is equivalent to:
+```
+y = "x:{udf_t2string(x)}";
+```
+
+### Vector literals
 
 ```EBNF
 vec_literal  :: "[" expr ("," expr)* "]"
+```
+
+Vector literals are enclosed within square brackets: `[1,2,3]` is a
+vector literal of bigint values.
+
+### Map literals
+
+```EBNF
 map_literal  :: "[" expr "->" expr ("," expr "->" expr)* "]"
-bool_literal ::= "true" | "false"
+```
+
+A map literal is a vector of key-value pairs, with the arrow symbol
+separating each key from the corresponding value: the following map
+literal `[ 0 -> "zero", 1 -> "one", 2 -> "two" ]` has three elements
+mapping bigint values to strings.
+
+### Other terms:
+
+```EBNF
 cons_term    ::= (* positional arguments *)
                  cons_name ["{" [expr ("," expr)*] "}"]
                  (* named arguments *)
@@ -453,33 +524,6 @@ pattern ::= (* tuple pattern *)
           | string_literal  (* matches specified string value *)
           | int_literal     (* matches specified integer or bitvector value *)
           | "_"             (* wildcard, matches any value *)
-```
-
-### Automatic string conversion
-
-Values of arbitrary types that occur inside interpolated strings or as
-a second argument to the string concatenation operator (`++`) are
-automatically converted to strings.
-Values of primitive types (`string`, `bigint`, `bit`, and `bool`) are converted using
-builtin methods.
-
-For user-defined types, conversion is performed by calling a user-defined function
-whose name is formed from the type name by changing the first letter of the type name
-to lower case (if it is in upper case) and adding the `"2string"` suffix.  The function
-must take exactly one argument of the given type and return a string.
-Compilation fails if a function with this name and signature is not found.
-
-For example, the last statement in
-```
-typedef udf_t = Cons1 | Cons2{f: bigint}
-function udf_t2string(x: udf_t): string { ... }
-x: udf_t;
-
-y = "x:{x}";
-```
-is equivalent to:
-```
-y = "x:{udf_t2string(x)}";
 ```
 
 ### Constraints on expressions
