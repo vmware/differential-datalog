@@ -134,4 +134,3 @@ extern function ipv6_is_multicast(addr: Ipv6Addr): bool
  * ::a.b.c.d and ::ffff:a.b.c.d become a.b.c.d
  */
 extern function ipv6_to_ipv4(addr: Ipv6Addr): Option<Ipv4Addr>
-

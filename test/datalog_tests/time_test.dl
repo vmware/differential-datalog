@@ -15,14 +15,14 @@ TTest("Ok(midnight())", Ok{midnight()}: Result<Time, string>).
 TTest("time_parse(\"10:10\", \"%T\")", time_parse("10:10", "%T")).
 TTest("time_parse(\"10:10:10\", \"%T\")", time_parse("10:10:10", "%T")).
 TTest("time_parse(\"10:10:10.102030405\", \"%T.%N\")", time_parse("10:10:10.102030405", "%T.%N")).
-TTest("string2time(time2string(result_unwrap_or_default(try_from_hms(8'd10, 8'd10, 8'd10))))",
+TTest("string2time(to_string(result_unwrap_or_default(try_from_hms(8'd10, 8'd10, 8'd10))))",
        try_from_hms(8'd10, 8'd10, 8'd10).unwrap_or_default().to_string().to_time()).
-TTest("string2time(time2string(result_unwrap_or_default(try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10))))",
-       string2time(time2string(result_unwrap_or_default(try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10))))).
-TTest("string2time(time2string(result_unwrap_or_default(try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10))))",
-       string2time(time2string(result_unwrap_or_default(try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10))))).
-TTest("string2time(time2string(result_unwrap_or_default(try_from_hms_nano(8'd10, 8'd10, 8'd10, 32'd10))))",
-       string2time(time2string(result_unwrap_or_default(try_from_hms_nano(8'd10, 8'd10, 8'd10, 32'd10))))).
+TTest("string2time(to_string(result_unwrap_or_default(try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10))))",
+       string2time(to_string(result_unwrap_or_default(try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10))))).
+TTest("string2time(to_string(result_unwrap_or_default(try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10))))",
+       string2time(to_string(result_unwrap_or_default(try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10))))).
+TTest("string2time(to_string(result_unwrap_or_default(try_from_hms_nano(8'd10, 8'd10, 8'd10, 32'd10))))",
+       string2time(to_string(result_unwrap_or_default(try_from_hms_nano(8'd10, 8'd10, 8'd10, 32'd10))))).
 TTest("time_parse(time_format(${someTime()}, ${someTimeFormat()}), ${someTimeFormat()})",
        time_parse(time_format(someTime(), someTimeFormat()), someTimeFormat())).
 
@@ -53,7 +53,7 @@ function someDateFormat(): string {
 input relation DITest(d: Date)
 output relation DTest(s: string, t: Result<Date, string>)
 
-DTest(date2string(d), Ok{d}) :- DITest(d).
+DTest(to_string(d), Ok{d}) :- DITest(d).
 DTest("try_from_ymd(32'sd2020, 8'd04, 8'd14)", try_from_ymd(32'sd2020, 8'd04, 8'd14)).
 DTest("try_from_ymd(32'sd2020, 8'd13, 8'd14)", try_from_ymd(32'sd2020, 8'd13, 8'd14)).
 DTest("try_from_ymd(32'sd2020, 8'd0, 8'd14)", try_from_ymd(32'sd2020, 8'd0, 8'd14)).
@@ -61,8 +61,8 @@ DTest("try_from_yo(32'sd2020, 16'd100)", try_from_yo(32'sd2020, 16'd100)).
 DTest("try_from_yo(32'sd2020, 16'd367)", try_from_yo(32'sd2020, 16'd367)).
 DTest("try_from_iso_ywd(32'sd2020, 8'd4, Monday)", try_from_iso_ywd(32'sd2020, 8'd4, Monday)).
 DTest("date_parse(\"2020/04/14\", \"%Y/%m/%d\")", date_parse("2020/04/14", "%Y/%m/%d")).
-DTest("string2date(date2string(someDate()))",
-       string2date(date2string(someDate()))).
+DTest("string2date(to_string(someDate()))",
+       string2date(to_string(someDate()))).
 DTest("Ok{next_day(${someDate()})}", Ok{next_day(someDate())}).
 DTest("Ok{previous_day(${someDate()})}", Ok{previous_day(someDate())}).
 DTest("Ok{from_julian_day(2000000)}", Ok{from_julian_day(2000000)}).
@@ -89,10 +89,10 @@ function someDateTimeFormat(): string {
 input relation DTITest(d: DateTime)
 output relation DTTest(s: string, t: Result<DateTime, string>)
 
-DTTest(dateTime2string(d), Ok{d}) :- DTITest(d).
+DTTest(to_string(d), Ok{d}) :- DTITest(d).
 DTTest("string2datetime(\"2020-10-10T10:20:30\")", string2datetime("2020-10-10T10:20:30")).
-DTTest("string2datetime(dateTime2string(${someDateTime()}))",
-        string2datetime(dateTime2string(someDateTime()))).
+DTTest("string2datetime(to_string(${someDateTime()}))",
+        string2datetime(to_string(someDateTime()))).
 DTTest("datetime_parse(\"2020-10-10T10:20:30\", \"%Y-%m-%dT%H:%M:%S\")",
         datetime_parse("2020-10-10T10:20:30", "%Y-%m-%dT%H:%M:%S")).
 DTTest("datetime_parse(\"2020/10/10T10:20:30\", \"%Y-%m-%dT%H:%M:%S\")",

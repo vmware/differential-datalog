@@ -29,6 +29,6 @@ error: ./test/datalog_tests/strings.fail.dl:6:24-6:28: Unknown variable: str1
     var err = "${str2++str1}"; // str1 is not declared in this scope
                        ^^^^
 
-error: ./test/datalog_tests/strings.fail.dl:19:52-19:53: Cannot find declaration of function 'to_string(serializable_t): string' needed to convert expression 'e' to string
+error: ./test/datalog_tests/strings.fail.dl:16:52-16:53: Cannot find declaration of function 'to_string(serializable_t): string' needed to convert expression 'e' to string
     var err = "a=${a}, b=${b}, c=${c}, d=${d}, e:${e}";
                                                    ^

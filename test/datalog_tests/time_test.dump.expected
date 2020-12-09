@@ -4,14 +4,14 @@ DTTest{.s = "datetime_parse(\"2020-10-10T10:20:30\", \"%Y-%m-%dT%H:%M:%S\")", .t
 DTTest{.s = "datetime_parse(\"2020/10/10T10:20:30\", \"%Y-%m-%dT%H:%M:%S\")", .t = ddlog_std::Err{.err = "expected character `-`, found `/`"}}: +1
 DTTest{.s = "datetime_parse(datetime_format(2020-04-14T10:11:12, %Y-%m-%dT%H::%M), %Y-%m-%dT%H::%M)", .t = ddlog_std::Ok{.res = time::DateTime{.date = "2020-04-14", .time = "10:11:00.000000000"}}}: +1
 DTTest{.s = "string2datetime(\"2020-10-10T10:20:30\")", .t = ddlog_std::Ok{.res = time::DateTime{.date = "2020-10-10", .time = "10:20:30.000000000"}}}: +1
-DTTest{.s = "string2datetime(dateTime2string(2020-04-14T10:11:12))", .t = ddlog_std::Ok{.res = time::DateTime{.date = "2020-04-14", .time = "10:11:12.000000000"}}}: +1
+DTTest{.s = "string2datetime(to_string(2020-04-14T10:11:12))", .t = ddlog_std::Ok{.res = time::DateTime{.date = "2020-04-14", .time = "10:11:12.000000000"}}}: +1
 DTest:
 DTest{.s = "Ok{from_julian_day(2000000)}", .t = ddlog_std::Ok{.res = "0763-09-18"}}: +1
 DTest{.s = "Ok{next_day(2020-04-14)}", .t = ddlog_std::Ok{.res = "2020-04-15"}}: +1
 DTest{.s = "Ok{previous_day(2020-04-14)}", .t = ddlog_std::Ok{.res = "2020-04-13"}}: +1
 DTest{.s = "date_parse(\"2020/04/14\", \"%Y/%m/%d\")", .t = ddlog_std::Ok{.res = "2020-04-14"}}: +1
 DTest{.s = "date_parse(date_format(2020-04-14, %Y-%m-%dT), %Y-%m-%dT)", .t = ddlog_std::Ok{.res = "2020-04-14"}}: +1
-DTest{.s = "string2date(date2string(someDate()))", .t = ddlog_std::Ok{.res = "2020-04-14"}}: +1
+DTest{.s = "string2date(to_string(someDate()))", .t = ddlog_std::Ok{.res = "2020-04-14"}}: +1
 DTest{.s = "try_from_iso_ywd(32'sd2020, 8'd4, Monday)", .t = ddlog_std::Ok{.res = "2020-01-20"}}: +1
 DTest{.s = "try_from_ymd(32'sd2020, 8'd0, 8'd14)", .t = ddlog_std::Err{.err = "month must be in the range 1..=12"}}: +1
 DTest{.s = "try_from_ymd(32'sd2020, 8'd04, 8'd14)", .t = ddlog_std::Ok{.res = "2020-04-14"}}: +1
@@ -34,10 +34,10 @@ Extract{.s = "week(2020-04-14)", .v = 16}: +1
 Extract{.s = "year(2020-04-14)", .v = 2020}: +1
 TTest:
 TTest{.s = "Ok(midnight())", .t = ddlog_std::Ok{.res = "0:00:00.000000000"}}: +1
-TTest{.s = "string2time(time2string(result_unwrap_or_default(try_from_hms(8'd10, 8'd10, 8'd10))))", .t = ddlog_std::Ok{.res = "10:10:10.000000000"}}: +1
-TTest{.s = "string2time(time2string(result_unwrap_or_default(try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10))))", .t = ddlog_std::Ok{.res = "10:10:10.000010000"}}: +1
-TTest{.s = "string2time(time2string(result_unwrap_or_default(try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10))))", .t = ddlog_std::Ok{.res = "10:10:10.010000000"}}: +1
-TTest{.s = "string2time(time2string(result_unwrap_or_default(try_from_hms_nano(8'd10, 8'd10, 8'd10, 32'd10))))", .t = ddlog_std::Ok{.res = "10:10:10.000000010"}}: +1
+TTest{.s = "string2time(to_string(result_unwrap_or_default(try_from_hms(8'd10, 8'd10, 8'd10))))", .t = ddlog_std::Ok{.res = "10:10:10.000000000"}}: +1
+TTest{.s = "string2time(to_string(result_unwrap_or_default(try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10))))", .t = ddlog_std::Ok{.res = "10:10:10.000010000"}}: +1
+TTest{.s = "string2time(to_string(result_unwrap_or_default(try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10))))", .t = ddlog_std::Ok{.res = "10:10:10.010000000"}}: +1
+TTest{.s = "string2time(to_string(result_unwrap_or_default(try_from_hms_nano(8'd10, 8'd10, 8'd10, 32'd10))))", .t = ddlog_std::Ok{.res = "10:10:10.000000010"}}: +1
 TTest{.s = "time_parse(\"10:10\", \"%T\")", .t = ddlog_std::Err{.err = "unexpected end of string"}}: +1
 TTest{.s = "time_parse(\"10:10:10\", \"%T\")", .t = ddlog_std::Ok{.res = "10:10:10.000000000"}}: +1
 TTest{.s = "time_parse(\"10:10:10.102030405\", \"%T.%N\")", .t = ddlog_std::Ok{.res = "10:10:10.102030405"}}: +1
@@ -51,10 +51,10 @@ TTest{.s = "try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10)", .t = ddlog_std::Ok
 TTest{.s = "try_from_hms_nano(8'd10, 8'd10, 8'd10, 32'd10)", .t = ddlog_std::Ok{.res = "10:10:10.000000010"}}: +1
 TTest{.s = "10:11:12.000000000", .t = ddlog_std::Ok{.res = "10:11:12.000000000"}}
 TTest{.s = "Ok(midnight())", .t = ddlog_std::Ok{.res = "0:00:00.000000000"}}
-TTest{.s = "string2time(time2string(result_unwrap_or_default(try_from_hms(8'd10, 8'd10, 8'd10))))", .t = ddlog_std::Ok{.res = "10:10:10.000000000"}}
-TTest{.s = "string2time(time2string(result_unwrap_or_default(try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10))))", .t = ddlog_std::Ok{.res = "10:10:10.000010000"}}
-TTest{.s = "string2time(time2string(result_unwrap_or_default(try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10))))", .t = ddlog_std::Ok{.res = "10:10:10.010000000"}}
-TTest{.s = "string2time(time2string(result_unwrap_or_default(try_from_hms_nano(8'd10, 8'd10, 8'd10, 32'd10))))", .t = ddlog_std::Ok{.res = "10:10:10.000000010"}}
+TTest{.s = "string2time(to_string(result_unwrap_or_default(try_from_hms(8'd10, 8'd10, 8'd10))))", .t = ddlog_std::Ok{.res = "10:10:10.000000000"}}
+TTest{.s = "string2time(to_string(result_unwrap_or_default(try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10))))", .t = ddlog_std::Ok{.res = "10:10:10.000010000"}}
+TTest{.s = "string2time(to_string(result_unwrap_or_default(try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10))))", .t = ddlog_std::Ok{.res = "10:10:10.010000000"}}
+TTest{.s = "string2time(to_string(result_unwrap_or_default(try_from_hms_nano(8'd10, 8'd10, 8'd10, 32'd10))))", .t = ddlog_std::Ok{.res = "10:10:10.000000010"}}
 TTest{.s = "time_parse(\"10:10\", \"%T\")", .t = ddlog_std::Err{.err = "unexpected end of string"}}
 TTest{.s = "time_parse(\"10:10:10\", \"%T\")", .t = ddlog_std::Ok{.res = "10:10:10.000000000"}}
 TTest{.s = "time_parse(\"10:10:10.102030405\", \"%T.%N\")", .t = ddlog_std::Ok{.res = "10:10:10.102030405"}}
@@ -85,7 +85,7 @@ DTest{.s = "Ok{next_day(2020-04-14)}", .t = ddlog_std::Ok{.res = "2020-04-15"}}
 DTest{.s = "Ok{previous_day(2020-04-14)}", .t = ddlog_std::Ok{.res = "2020-04-13"}}
 DTest{.s = "date_parse(\"2020/04/14\", \"%Y/%m/%d\")", .t = ddlog_std::Ok{.res = "2020-04-14"}}
 DTest{.s = "date_parse(date_format(2020-04-14, %Y-%m-%dT), %Y-%m-%dT)", .t = ddlog_std::Ok{.res = "2020-04-14"}}
-DTest{.s = "string2date(date2string(someDate()))", .t = ddlog_std::Ok{.res = "2020-04-14"}}
+DTest{.s = "string2date(to_string(someDate()))", .t = ddlog_std::Ok{.res = "2020-04-14"}}
 DTest{.s = "try_from_iso_ywd(32'sd2020, 8'd4, Monday)", .t = ddlog_std::Ok{.res = "2020-01-20"}}
 DTest{.s = "try_from_ymd(32'sd2020, 8'd0, 8'd14)", .t = ddlog_std::Err{.err = "month must be in the range 1..=12"}}
 DTest{.s = "try_from_ymd(32'sd2020, 8'd04, 8'd14)", .t = ddlog_std::Ok{.res = "2020-04-14"}}
@@ -98,4 +98,4 @@ DTTest{.s = "datetime_parse(\"2020-10-10T10:20:30\", \"%Y-%m-%dT%H:%M:%S\")", .t
 DTTest{.s = "datetime_parse(\"2020/10/10T10:20:30\", \"%Y-%m-%dT%H:%M:%S\")", .t = ddlog_std::Err{.err = "expected character `-`, found `/`"}}
 DTTest{.s = "datetime_parse(datetime_format(2020-04-14T10:11:12, %Y-%m-%dT%H::%M), %Y-%m-%dT%H::%M)", .t = ddlog_std::Ok{.res = time::DateTime{.date = "2020-04-14", .time = "10:11:00.000000000"}}}
 DTTest{.s = "string2datetime(\"2020-10-10T10:20:30\")", .t = ddlog_std::Ok{.res = time::DateTime{.date = "2020-10-10", .time = "10:20:30.000000000"}}}
-DTTest{.s = "string2datetime(dateTime2string(2020-04-14T10:11:12))", .t = ddlog_std::Ok{.res = time::DateTime{.date = "2020-04-14", .time = "10:11:12.000000000"}}}
+DTTest{.s = "string2datetime(to_string(2020-04-14T10:11:12))", .t = ddlog_std::Ok{.res = time::DateTime{.date = "2020-04-14", .time = "10:11:12.000000000"}}}

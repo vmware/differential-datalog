@@ -54,10 +54,7 @@ typedef serializable_t = ConsInt {x: bigint}
                        | ConsBool{z: bool}
                        | Cons0{}
 
-// error: argument type must be serializable_t
-function serializable_t2string(x: bigint): string = {
-    "foo"
-}
+// error: no to_string function for serializable_t
 
 function tostring2(): () = {
     var a: bigint  = 5;
