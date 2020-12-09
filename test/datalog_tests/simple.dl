@@ -124,6 +124,10 @@ function a13(a: signed<16>, b: signed<16>): bool {
     (a < b) or (a > b) or (a <= b) or (a >= b) or (a == b) or (a != b) or { a < b }
 }
 
+function a14(a: bigint): s128 {
+    a as s128
+}
+
 function b0(): bool {
     true and false
 }
