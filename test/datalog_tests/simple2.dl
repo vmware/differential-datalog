@@ -461,3 +461,13 @@ ApplyTransform("5*10", {
     apply_transform(x, |x| x = x*factor);
     "${x}"
 }).
+
+// FlatMap a group.
+input relation GroupThis(x: u32, y: string)
+
+output relation FlatGroup(x: u32)
+
+FlatGroup(x) :-
+    GroupThis(x, y),
+    var g = x.group_by(y),
+    var x = FlatMap(g).

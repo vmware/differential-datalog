@@ -98,3 +98,14 @@ insert Rletter("bar"),
 insert Rseqs(TSeq1{("buzz", TSeqNone)}),
 
 commit dump_changes;
+
+start;
+
+insert GroupThis(1, "1"),
+insert GroupThis(11, "1"),
+insert GroupThis(111, "1"),
+insert GroupThis(2, "2"),
+insert GroupThis(2, "2"),
+insert GroupThis(222, "2"),
+
+commit dump_changes;

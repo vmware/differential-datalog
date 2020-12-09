@@ -1339,6 +1339,55 @@ impl<'a, V: Clone> Iterator for GroupIter<'a, V> {
     }
 }
 
+/* This is needed so we can support FlatMap over `Group`'s */
+pub enum GroupIntoIter<V> {
+    ByRef {
+        iter: slice::Iter<'static, (&'static DDValue, Weight)>,
+        project: ProjectFunc<V>,
+    },
+    ByVal {
+        iter: ::std::vec::IntoIter<V>,
+    },
+}
+
+impl<V: Clone> GroupIntoIter<V> {
+    pub fn new<K>(grp: Group<K, V>) -> GroupIntoIter<V> {
+        match grp {
+            GroupEnum::ByRef { group, project, .. } => GroupIntoIter::ByRef {
+                iter: group.into_iter(),
+                project: project.clone(),
+            },
+            GroupEnum::ByVal { group, .. } => GroupIntoIter::ByVal {
+                iter: group.into_iter(),
+            },
+        }
+    }
+}
+
+impl<V: Clone> Iterator for GroupIntoIter<V> {
+    type Item = V;
+
+    fn next(&mut self) -> ::std::option::Option<Self::Item> {
+        match self {
+            GroupIntoIter::ByRef { iter, project } => match iter.next() {
+                None => None,
+                Some((x, _)) => Some(project(x)),
+            },
+            GroupIntoIter::ByVal { iter } => match iter.next() {
+                None => None,
+                Some(x) => Some(x.clone()),
+            },
+        }
+    }
+
+    fn size_hint(&self) -> (usize, ::std::option::Option<usize>) {
+        match self {
+            GroupIntoIter::ByRef { iter, .. } => iter.size_hint(),
+            GroupIntoIter::ByVal { iter } => iter.size_hint(),
+        }
+    }
+}
+
 impl<K, V> Group<K, V> {
     /* Unsafe constructor for use in auto-generated code only. */
     pub unsafe fn new_by_ref<'a>(
@@ -1422,6 +1471,15 @@ impl<K, V: Clone> Group<K, V> {
                 }
             }
         }
+    }
+}
+
+impl<K, V: Clone> IntoIterator for Group<K, V> {
+    type Item = V;
+    type IntoIter = GroupIntoIter<V>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        GroupIntoIter::new(self)
     }
 }
 
