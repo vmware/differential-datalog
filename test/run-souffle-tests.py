@@ -37,6 +37,7 @@ xfail = [
     "indexed_inequalities", # DDlog cannot infer the type of `2` in `2^32`.
     "magic_aggregates",  # 227
     "count",       # 227
+    "choice_total_order", # Takes too much time
     "magic_count", # 227
     "magic_samegen", # computes a very large join
     "circuit_sat", # issue 221 - starting state is very large

@@ -104,9 +104,16 @@ RelationDecl: DECL RelationList RelationBody Qualifiers DependencyList
             ;
 
 DependencyList: EMPTY
-            | KEYS Identifier
-            | KEYS "(" NonEmptyIdentifierList ")"
+            | KEYS DependencyListAux
             ;
+
+DependencyListAux: Dependency
+                 | DependencyListAux "," Dependency
+                 ;
+
+Dependency: Identifier
+          | "(" NonEmptyIdentifierList ")"
+          ;
 
 RelationList: Identifier
             | Identifier "," RelationList
