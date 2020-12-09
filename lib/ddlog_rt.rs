@@ -63,7 +63,16 @@ pub fn string_append(mut s1: String, s2: &String) -> String {
     s1
 }
 
-/// Used to implement fields with `deserialize_from_array` attributed.
+/// Used to implement fields with `deserialize_from_array` attribute.
+/// Generates a module with `serialize` and `deserialize` methods.
+/// Takes the name of the module to generate, key type (`ktype`),
+/// value type (`vtype`), and a function that extracts key from array
+/// element of type `vtype`.
+///
+/// Example:
+/// ```
+/// ddlog_rt::deserialize_map_from_array!(__serdejson_test_StructWithMap_f,u64,StructWithKey,key_structWithKey);
+/// ````
 #[macro_export]
 macro_rules! deserialize_map_from_array {
     ( $modname:ident, $ktype:ty, $vtype:ty, $kfunc:path ) => {
