@@ -432,7 +432,9 @@ mkIdxEnum d =
     "}"
 
 relId :: DatalogProgram -> String -> Doc
---relId rel = "Relations::" <> rnameFlat rel <+> "as RelId"
+-- It'd be nice to use symbolic names, but they are not available outside of the
+-- main crate.  Consider fixing this in the future.
+-- relId rel = "Relations::" <> rnameFlat rel <+> "as RelId"
 relId d rel = pp $ M.findIndex rel $ progRelations d
 
 -- Create a new arrangement for use in a join operator:
@@ -914,23 +916,6 @@ mkUpdateDeserializer d =
            $ filter (\rel -> elem (relRole rel) [RelInput, RelOutput])
            $ M.elems $ progRelations d
 
-
--- DDlog does not require that there exist all intermediate modules in a
--- hierarchy, e.g., a program can contain module `m1::m2` but not `m1.`  Rust
--- on the other hand is strict in this sense.  This function injects
--- intermediate empty modules before generating Rust code to keep the Rust
--- compiler happy.
-{-
-addMissingModules :: [DatalogModule] -> [DatalogModule]
-addMissingModules modules =
-    foldl' (\modules' mname ->
-             if S.member mname module_names
-             then modules'
-             else emptyModule mname : modules') modules all_module_names
-    where
-    module_names = S.fromList $ map moduleName modules
-    all_module_names = S.toList $ S.fromList $ concat $ S.map (\(ModuleName n) -> map ModuleName $ inits n) module_names
--}
 
 -- This type stores the set of statically evaluated constant sub-expressions
 -- for each crate in the program.

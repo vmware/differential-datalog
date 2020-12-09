@@ -154,9 +154,10 @@ parseDatalogProgram roots import_std fdata fname = do
     -- Collect '.rs' and '.toml' files associated with each module.
     rs <- M.fromList <$>
           mapM (\mod -> do
-                   let rsfile = addExtension (dropExtension $ moduleFile mod) "rs"
-                   let fbfile = addExtension (dropExtension $ moduleFile mod) ".flatbuf.rs"
-                   let tomlfile = addExtension (dropExtension $ moduleFile mod) "toml"
+                   let basename = dropExtension $ moduleFile mod
+                   let rsfile = addExtension basename "rs"
+                   let fbfile = addExtension basename ".flatbuf.rs"
+                   let tomlfile = addExtension basename "toml"
                    rs_exists <- doesFileExist rsfile
                    flatbuf_exists <- doesFileExist fbfile
                    toml_exists <- doesFileExist tomlfile
