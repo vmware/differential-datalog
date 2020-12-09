@@ -20,13 +20,6 @@ where
     }
 }
 
-/*#[cfg(feature = "flatbuf")]
-impl<'a> FromFlatBuffer<fb::__String<'a>> for intern_istring {
-    fn from_flatbuf(v: fb::__String<'a>) -> Response<Self> {
-        Ok(intern_string_intern(&String::from_flatbuf(v)?))
-    }
-}*/
-
 impl<'b, A, T> ToFlatBufferTable<'b> for internment::Intern<A>
 where
     T: 'b,

@@ -53,7 +53,7 @@ import Language.DifferentialDatalog.Util
 type Crate = S.Set ModuleName
 
 -- Returns the top-level module of a crate.  This is well-defined, as by
--- construction crate modules form a crate with a unique root.
+-- construction crate modules form a tree with a unique root.
 crateMainModule :: Crate -> ModuleName
 crateMainModule crate =
     minimumBy (\m1 m2 -> (length $ modulePath m1) `compare` (length $ modulePath m2)) crate
