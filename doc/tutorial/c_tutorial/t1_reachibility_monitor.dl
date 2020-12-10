@@ -1,0 +1,12 @@
+input relation Links(src: string, dst: string, link_status: bool)
+output relation ConnectedNodes(src: string, dst: string)
+
+ConnectedNodes(src, dst) :- Links(src, dst, true).
+ConnectedNodes(src, dst) :- ConnectedNodes(src, intermediate_node), Links(intermediate_node, dst, true), (src != dst).
+
+Links("Menlo Park", "Santa Barbara", true).
+Links("Menlo Park", "Salt Lake City", true).
+Links("Santa Barbara", "Los Angeles", true).
+Links("Los Angeles", "Santa Barbara", true).
+Links("Los Angeles", "Salt Lake City", true).
+Links("Salt Lake City", "Los Angeles", true).
