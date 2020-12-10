@@ -691,13 +691,17 @@ mkCargoToml rs_code crate =
     crate_name = crateName crate
     -- Path to the root of the Rust project.
     root = rootDirPath crate
-    -- Dependencies.
+    -- Dependencies.  We include all transitive dependencies.  Although usually
+    -- an overkill, this may be necessary when type annotations injected by the
+    -- type inference engine refer to types defined in modules that are not
+    -- direct dependencies of 'crate'.
+    deps = crateDependenciesRec crate
     dependencies = vcat
                    $ map (\dep -> pp (crateName dep) <+> "= { path = \"" <> pp (crateDirPathFrom crate dep) <> "\" }" )
-                   $ crateDependencies crate
+                   $ deps
     -- Enable 'flatbuf' and 'capi' features in all dependencies.
-    fb_features = commaSep $ map (\dep -> "\"" <> pp (crateName dep) <> "/flatbuf\"") $ crateDependencies crate
-    capi_features = commaSep $ map (\dep -> "\"" <> pp (crateName dep) <> "/c_api\"") $ crateDependencies crate
+    fb_features = commaSep $ map (\dep -> "\"" <> pp (crateName dep) <> "/flatbuf\"") deps
+    capi_features = commaSep $ map (\dep -> "\"" <> pp (crateName dep) <> "/c_api\"") deps
     -- Add 'toml' code from 'rs_code'.
     extra_toml_code = vcat $ map sel3 $ M.elems rs_code
 
@@ -708,6 +712,13 @@ crateDependencies crate =
     $ concatMap ((map (cgModuleCrate ?crate_graph . importModule)) . progImports . moduleDefs)
     $ mapMaybe lookupModule
     $ S.toList crate
+
+-- Recursive version of 'crateDependencies'.
+crateDependenciesRec :: (?crate_graph::CrateGraph, ?modules::[DatalogModule]) => Crate -> [Crate]
+crateDependenciesRec crate =
+    nub $ deps ++ (concatMap crateDependenciesRec deps)
+    where
+    deps = crateDependencies crate
 
 -- Find module by name.
 lookupModule :: (?modules::[DatalogModule]) => ModuleName -> Maybe DatalogModule
