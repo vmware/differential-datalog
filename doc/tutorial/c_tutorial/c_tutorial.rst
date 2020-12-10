@@ -60,23 +60,7 @@ To exit DDlog shell press `[CTRL+d]`. If you are using `Windows Terminal` do not
 
 Let's fix it. We are going to insert several records into :code:`Links` relation. But first let's define a simple network topology that we are going to work through. To make our life more interesting (and just slightly more complicated) the links between nodes will not be bidirectional by default.
 
-MSR: Embed the figure I made for the topology
-
-A -> B <-> C
-  \>     </>
-       D
-
-
-A: "Menlo Park"
-B: "Santa Barbara"
-C: "Los Angeles"
-D: "Salt Lake City"
-
-So our nodes will be the following:
-A: {"192.168.0.10", "Los Angeles"}
-B: {"192.168.0.20", "Menlo Park"}
-C: {"192.168.0.30", "Santa Barbara"}
-D: {"192.168.0.40", "Salt Lake City"}
+.. image:: ./images/topology.jpg
 
 Let's start again DDlog shell and insert records to recreate the network topology above:
 
