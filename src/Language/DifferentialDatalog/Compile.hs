@@ -143,10 +143,6 @@ header template =
                 x:_ -> x
     in pp $ replace "datalog_example" ?specname h
 
--- 'types' crate containing DDlog type declarations.
-typesLibHeader :: (?specname::String) => Doc
-typesLibHeader = header (unpackFixNewline $ $(embedFile "rust/template/types/lib.rs"))
-
 -- Header to prepend to each each generated module in the 'types' crate.
 typesModuleHeader :: (?specname::String) => Doc
 typesModuleHeader = header (unpackFixNewline $ $(embedFile "rust/template/types/lib.rs"))
@@ -578,8 +574,7 @@ compile d_unoptimized specname modules rs_code dir crate_types = do
             updateFile path' content)
           rustLibFiles
     -- Generate lib files if changed.
-    mapM_ (\(mpath, mtext) -> updateFile (dir </> rustProjectDir </> mpath) $ render mtext)
-          $ M.toList types
+    updateDirectory (dir </> rustProjectDir </> "types") $ M.map render types
     let toml_footer =
             ( if (confOmitProfile ?cfg)
                 then ""
@@ -609,7 +604,6 @@ compile d_unoptimized specname modules rs_code dir crate_types = do
     updateFile (dir </> rustProjectDir </> "Cargo.toml")       (render $ mainCargo rs_code crate_types toml_footer)
     updateFile (dir </> rustProjectDir </> "src/lib.rs")       (render main)
     return ()
-
 
 compileLib :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?modules::[DatalogModule]) => DatalogProgram -> M.Map ModuleName (Doc, Doc, Doc) -> (M.Map FilePath Doc, Doc)
 compileLib d rs_code =
@@ -653,7 +647,7 @@ mkCargoToml :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?modu
 mkCargoToml rs_code crate =
     (filepath, code)
     where
-    filepath = "types" </> (crateDirPath crate) </> "Cargo.toml"
+    filepath = crateDirPath crate </> "Cargo.toml"
     code = "[package]"                                                                     $$
            "name = \"" <> pp crate_name <> "\""                                            $$
            "version = \"0.1.0\""                                                           $$
@@ -792,10 +786,10 @@ compileModule d statics nodes rs_code crate mod_name =
     crate_statics = fromMaybe M.empty $ M.lookup (crateName crate) statics
     -- Main module of the crate?
     is_main = (mod_name == crateMainModule crate)
-    filepath = "types" </> crateDirPath crate </> moduleFilePathFromCrateRoot crate mod_name
+    filepath = crateDirPath crate </> moduleFilePathFromCrateRoot crate mod_name
     -- Start with empty module, except the main module that contains static declarations.
     prelude = if is_main
-              then typesLibHeader $+$ mkStatics d (Just crate) crate_statics
+              then typesModuleHeader $+$ mkStatics d (Just crate) crate_statics
               else typesModuleHeader
     -- Submodule lists.
     children = filter (\other_mod -> other_mod `moduleIsChildOf` mod_name)

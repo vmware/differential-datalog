@@ -181,6 +181,37 @@ updateFile path content = do
                 renameFile tmppath path
        else writeFile path content
 
+-- | Update an entire directory tree, updating files whose contents has changed,
+-- creating new files and deleting files not in `files` list, but keeping
+-- files that haven't changed unmodified.
+updateDirectory :: FilePath -> M.Map FilePath String -> IO ()
+updateDirectory dir files = do
+    -- Prepend directory path to all file names.
+    let files' = M.mapKeys (dir </>) files
+    -- Current directory contents.
+    exists <- doesDirectoryExist dir
+    existing_files <- if exists
+                      then traverseDir dir
+                      else return []
+    -- Files not in the tree.
+    let to_delete = filter (\f -> M.notMember f files') existing_files
+    mapM_ removeFile to_delete
+    -- Update or create files in the tree.
+    mapM_ (\(mpath, mtext) -> updateFile mpath mtext)
+          $ M.toList files'
+
+-- | Traverse directory tree, returning the list of files in it.
+traverseDir :: FilePath -> IO [FilePath]
+traverseDir top = do
+  ds <- listDirectory top
+  paths <- forM ds $ \d -> do
+    let path = top </> d
+    is_dir <- doesDirectoryExist path
+    if is_dir
+       then traverseDir path
+       else return [path]
+  return (concat paths)
+
 -- | Runs a command, exiting with an error for users if it fails
 --
 -- Emits an error in this format if the command fails to run:
