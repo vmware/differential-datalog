@@ -71,7 +71,7 @@
 				"keyword.operator"
 			],
 			"settings": {
-				"foreground": "#FF00FF"
+				"foreground": "#f51ef5"
 			}
 		},		
 		{
@@ -157,7 +157,6 @@
 				"constant.numeric"
 			],
 			"settings": {
-				"fontStyle": "italic",
 				"foreground": "#F78C6C"
 			}
 		},

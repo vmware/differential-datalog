@@ -1,5 +1,6 @@
 # DDLog 
 [![GitHub](https://github.com/vmware/differential-datalog)](https://github.com/vmware/differential-datalog)
+* This directory holds the files required for syntax highlighting ddlog programs in Visual Studio Code.
 
 ## Resources
 - [DDlog Language Reference Manual](https://github.com/vmware/differential-datalog/blob/master/doc/language_reference/language_reference.md)
