@@ -1622,7 +1622,7 @@ impl Program {
     }
 
     /// Return all relations required to compute rels, excluding recursive dependencies on rels
-    fn dependencies<'a, R>(mut rels: R) -> FnvHashSet<Dep>
+    fn dependencies<'a, R>(rels: R) -> FnvHashSet<Dep>
     where
         R: Iterator<Item = &'a Relation> + Clone + 'a,
     {
@@ -1635,7 +1635,7 @@ impl Program {
 
         result
             .into_iter()
-            .filter(|d| rels.all(|r| r.id != d.relid()))
+            .filter(|d| rels.clone().all(|r| r.id != d.relid()))
             .collect()
     }
 
