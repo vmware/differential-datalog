@@ -22,6 +22,7 @@
     clippy::unknown_clippy_lints
 )]
 
+use std::borrow::Cow;
 use std::collections::btree_map::{BTreeMap, Entry};
 use std::collections::btree_set::BTreeSet;
 use std::iter::FromIterator;
@@ -139,7 +140,7 @@ fn test_insert_non_existent_relation() {
 fn test_input_relation_nested() {
     let parent = {
         Relation {
-            name: "parent".to_string(),
+            name: Cow::from("parent"),
             input: true,
             distinct: true,
             caching_mode: CachingMode::Set,
@@ -151,7 +152,7 @@ fn test_input_relation_nested() {
         }
     };
     let ancestor = Relation {
-        name: "ancestor".to_string(),
+        name: Cow::from("ancestor"),
         input: true,
         distinct: true,
         caching_mode: CachingMode::Set,
@@ -185,7 +186,7 @@ fn test_one_relation(nthreads: usize) {
     let rel = {
         let relset1 = relset.clone();
         Relation {
-            name: "T1".to_string(),
+            name: Cow::from("T1"),
             input: true,
             distinct: true,
             caching_mode: CachingMode::Set,
@@ -282,7 +283,7 @@ fn test_two_relations(nthreads: usize) {
     let rel1 = {
         let relset1 = relset1.clone();
         Relation {
-            name: "T1".to_string(),
+            name: Cow::from("T1"),
             input: true,
             distinct: true,
             caching_mode: CachingMode::Set,
@@ -299,17 +300,17 @@ fn test_two_relations(nthreads: usize) {
     let rel2 = {
         let relset2 = relset2.clone();
         Relation {
-            name: "T2".to_string(),
+            name: Cow::from("T2"),
             input: false,
             distinct: true,
             caching_mode: CachingMode::Set,
             key_func: None,
             id: 2,
             rules: vec![Rule::CollectionRule {
-                description: "T2.R1".to_string(),
+                description: Cow::Borrowed("T2.R1"),
                 rel: 1,
                 xform: Some(XFormCollection::Inspect {
-                    description: "Inspect".to_string(),
+                    description: Cow::from("Inspect"),
                     ifun: ifun as InspectFunc,
                     next: Box::new(None),
                 }),
@@ -386,7 +387,7 @@ fn test_semijoin(nthreads: usize) {
     let relset1: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel1 = {
         Relation {
-            name: "T1".to_string(),
+            name: Cow::from("T1"),
             input: true,
             distinct: true,
             caching_mode: CachingMode::Set,
@@ -411,7 +412,7 @@ fn test_semijoin(nthreads: usize) {
     let relset2: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel2 = {
         Relation {
-            name: "T2".to_string(),
+            name: Cow::from("T2"),
             input: true,
             distinct: true,
             caching_mode: CachingMode::Set,
@@ -419,7 +420,7 @@ fn test_semijoin(nthreads: usize) {
             id: 2,
             rules: Vec::new(),
             arrangements: vec![Arrangement::Set {
-                name: "arrange2.0".to_string(),
+                name: Cow::from("arrange2.0"),
                 fmfun: fmfun1 as FilterMapFunc,
                 distinct: false,
             }],
@@ -442,20 +443,20 @@ fn test_semijoin(nthreads: usize) {
     let rel3 = {
         let relset3 = relset3.clone();
         Relation {
-            name: "T3".to_string(),
+            name: Cow::from("T3"),
             input: false,
             distinct: true,
             caching_mode: CachingMode::Set,
             key_func: None,
             id: 3,
             rules: vec![Rule::CollectionRule {
-                description: "T3.R1".to_string(),
+                description: Cow::from("T3.R1"),
                 rel: 1,
                 xform: Some(XFormCollection::Arrange {
-                    description: "arrange by .0".to_string(),
+                    description: Cow::from("arrange by .0"),
                     afun: afun1 as ArrangeFunc,
                     next: Box::new(XFormArrangement::Semijoin {
-                        description: "1.semijoin (2,0)".to_string(),
+                        description: Cow::from("1.semijoin (2,0)"),
                         ffun: None,
                         arrangement: (2, 0),
                         jfun: jfun as SemijoinFunc,
@@ -515,7 +516,7 @@ fn test_join(nthreads: usize) {
     let relset1: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel1 = {
         Relation {
-            name: "T1".to_string(),
+            name: Cow::from("T1"),
             input: true,
             distinct: true,
             caching_mode: CachingMode::Set,
@@ -535,7 +536,7 @@ fn test_join(nthreads: usize) {
     let relset2: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel2 = {
         Relation {
-            name: "T2".to_string(),
+            name: Cow::from("T2"),
             input: true,
             distinct: true,
             caching_mode: CachingMode::Set,
@@ -543,7 +544,7 @@ fn test_join(nthreads: usize) {
             id: 2,
             rules: Vec::new(),
             arrangements: vec![Arrangement::Map {
-                name: "arrange2.0".to_string(),
+                name: Cow::from("arrange2.0"),
                 afun: afun1 as ArrangeFunc,
                 queryable: true,
             }],
@@ -566,20 +567,20 @@ fn test_join(nthreads: usize) {
     let rel3 = {
         let relset3 = relset3.clone();
         Relation {
-            name: "T3".to_string(),
+            name: Cow::from("T3"),
             input: false,
             distinct: true,
             caching_mode: CachingMode::Set,
             key_func: None,
             id: 3,
             rules: vec![Rule::CollectionRule {
-                description: "T3.R1".to_string(),
+                description: Cow::from("T3.R1"),
                 rel: 1,
                 xform: Some(XFormCollection::Arrange {
-                    description: "arrange by .0".to_string(),
+                    description: Cow::from("arrange by .0"),
                     afun: afun1 as ArrangeFunc,
                     next: Box::new(XFormArrangement::Join {
-                        description: "1.semijoin (2,0)".to_string(),
+                        description: Cow::from("1.semijoin (2,0)"),
                         ffun: None,
                         arrangement: (2, 0),
                         jfun: jfun as JoinFunc,
@@ -598,7 +599,7 @@ fn test_join(nthreads: usize) {
     let rel4 = {
         let relset4 = relset4.clone();
         Relation {
-            name: "T4".to_string(),
+            name: Cow::from("T4"),
             input: false,
             distinct: true,
             caching_mode: CachingMode::Set,
@@ -700,7 +701,7 @@ fn test_antijoin(nthreads: usize) {
     let relset1: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel1 = {
         Relation {
-            name: "T1".to_string(),
+            name: Cow::from("T1"),
             input: true,
             distinct: true,
             caching_mode: CachingMode::Set,
@@ -721,7 +722,7 @@ fn test_antijoin(nthreads: usize) {
     let relset2: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel2 = {
         Relation {
-            name: "T2".to_string(),
+            name: Cow::from("T2"),
             input: true,
             distinct: true,
             caching_mode: CachingMode::Set,
@@ -747,23 +748,23 @@ fn test_antijoin(nthreads: usize) {
     let relset21: Arc<Mutex<Delta<U64>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel21 = {
         Relation {
-            name: "T21".to_string(),
+            name: Cow::from("T21"),
             input: false,
             distinct: true,
             caching_mode: CachingMode::Set,
             key_func: None,
             id: 21,
             rules: vec![Rule::CollectionRule {
-                description: "T21.R1".to_string(),
+                description: Cow::from("T21.R1"),
                 rel: 2,
                 xform: Some(XFormCollection::Map {
-                    description: "map by .0".to_string(),
+                    description: Cow::from("map by .0"),
                     mfun: mfun as MapFunc,
                     next: Box::new(None),
                 }),
             }],
             arrangements: vec![Arrangement::Set {
-                name: "arrange2.1".to_string(),
+                name: Cow::from("arrange2.1"),
                 fmfun: fmnull_fun as FilterMapFunc,
                 distinct: true,
             }],
@@ -777,20 +778,20 @@ fn test_antijoin(nthreads: usize) {
     let rel3 = {
         let relset3 = relset3.clone();
         Relation {
-            name: "T3".to_string(),
+            name: Cow::from("T3"),
             input: false,
             distinct: true,
             caching_mode: CachingMode::Set,
             key_func: None,
             id: 3,
             rules: vec![Rule::CollectionRule {
-                description: "T3.R1".to_string(),
+                description: Cow::from("T3.R1"),
                 rel: 1,
                 xform: Some(XFormCollection::Arrange {
-                    description: "arrange by .0".to_string(),
+                    description: Cow::from("arrange by .0"),
                     afun: afun1 as ArrangeFunc,
                     next: Box::new(XFormArrangement::Antijoin {
-                        description: "1.antijoin (21,0)".to_string(),
+                        description: Cow::from("1.antijoin (21,0)"),
                         ffun: None,
                         arrangement: (21, 0),
                         next: Box::new(None),
@@ -860,7 +861,7 @@ fn test_map(nthreads: usize) {
     let rel1 = {
         let relset1 = relset1.clone();
         Relation {
-            name: "T1".to_string(),
+            name: Cow::from("T1"),
             input: true,
             distinct: true,
             caching_mode: CachingMode::Set,
@@ -928,26 +929,26 @@ fn test_map(nthreads: usize) {
     let rel2 = {
         let relset2 = relset2.clone();
         Relation {
-            name: "T2".to_string(),
+            name: Cow::from("T2"),
             input: false,
             distinct: true,
             caching_mode: CachingMode::Set,
             key_func: None,
             id: 2,
             rules: vec![Rule::CollectionRule {
-                description: "T2.R1".to_string(),
+                description: Cow::from("T2.R1"),
                 rel: 1,
                 xform: Some(XFormCollection::Map {
-                    description: "map x2".to_string(),
+                    description: Cow::from("map x2"),
                     mfun: mfun as MapFunc,
                     next: Box::new(Some(XFormCollection::Filter {
-                        description: "filter >10".to_string(),
+                        description: Cow::from("filter >10"),
                         ffun: ffun as FilterFunc,
                         next: Box::new(Some(XFormCollection::FilterMap {
-                            description: "filter >12 map x2".to_string(),
+                            description: Cow::from("filter >12 map x2"),
                             fmfun: fmfun as FilterMapFunc,
                             next: Box::new(Some(XFormCollection::FlatMap {
-                                description: "flat-map >12 [-x,-2x]".to_string(),
+                                description: Cow::from("flat-map >12 [-x,-2x]"),
                                 fmfun: flatmapfun as FlatMapFunc,
                                 next: Box::new(None),
                             })),
@@ -965,20 +966,20 @@ fn test_map(nthreads: usize) {
     let rel3 = {
         let relset3 = relset3.clone();
         Relation {
-            name: "T3".to_string(),
+            name: Cow::from("T3"),
             input: false,
             distinct: true,
             caching_mode: CachingMode::Set,
             key_func: None,
             id: 3,
             rules: vec![Rule::CollectionRule {
-                description: "T3.R1".to_string(),
+                description: Cow::from("T3.R1"),
                 rel: 2,
                 xform: Some(XFormCollection::Arrange {
-                    description: "arrange by ()".to_string(),
+                    description: Cow::from("arrange by ()"),
                     afun: gfun3 as ArrangeFunc,
                     next: Box::new(XFormArrangement::Aggregate {
-                        description: "2.aggregate".to_string(),
+                        description: Cow::from("2.aggregate"),
                         ffun: None,
                         aggfun: agfun3 as AggFunc,
                         next: Box::new(None),
@@ -996,20 +997,20 @@ fn test_map(nthreads: usize) {
     let rel4 = {
         let relset4 = relset4.clone();
         Relation {
-            name: "T4".to_string(),
+            name: Cow::from("T4"),
             input: false,
             distinct: true,
             caching_mode: CachingMode::Set,
             key_func: None,
             id: 4,
             rules: vec![Rule::CollectionRule {
-                description: "T4.R1".to_string(),
+                description: Cow::from("T4.R1"),
                 rel: 2,
                 xform: Some(XFormCollection::Arrange {
-                    description: "arrange by self".to_string(),
+                    description: Cow::from("arrange by self"),
                     afun: gfun4 as ArrangeFunc,
                     next: Box::new(XFormArrangement::Aggregate {
-                        description: "2.aggregate".to_string(),
+                        description: Cow::from("2.aggregate"),
                         ffun: None,
                         aggfun: agfun4 as AggFunc,
                         next: Box::new(None),
@@ -1131,7 +1132,7 @@ fn test_recursion(nthreads: usize) {
     let parent = {
         let parentset = parentset.clone();
         Relation {
-            name: "parent".to_string(),
+            name: Cow::from("parent"),
             input: true,
             distinct: true,
             caching_mode: CachingMode::Set,
@@ -1139,7 +1140,7 @@ fn test_recursion(nthreads: usize) {
             id: 1,
             rules: Vec::new(),
             arrangements: vec![Arrangement::Map {
-                name: "arrange_by_parent".to_string(),
+                name: Cow::from("arrange_by_parent"),
                 afun: arrange_by_fst as ArrangeFunc,
                 queryable: false,
             }],
@@ -1153,7 +1154,7 @@ fn test_recursion(nthreads: usize) {
     let ancestor = {
         let ancestorset = ancestorset.clone();
         Relation {
-            name: "ancestor".to_string(),
+            name: Cow::from("ancestor"),
             input: false,
             distinct: true,
             caching_mode: CachingMode::Set,
@@ -1161,15 +1162,15 @@ fn test_recursion(nthreads: usize) {
             id: 2,
             rules: vec![
                 Rule::CollectionRule {
-                    description: "ancestor.R1".to_string(),
+                    description: Cow::from("ancestor.R1"),
                     rel: 1,
                     xform: None,
                 },
                 Rule::ArrangementRule {
-                    description: "ancestor.R2".to_string(),
+                    description: Cow::from("ancestor.R2"),
                     arr: (2, 2),
                     xform: XFormArrangement::Join {
-                        description: "(2,2).join (1,0)".to_string(),
+                        description: Cow::from("(2,2).join (1,0)"),
                         ffun: None,
                         arrangement: (1, 0),
                         jfun: jfun as JoinFunc,
@@ -1179,17 +1180,17 @@ fn test_recursion(nthreads: usize) {
             ],
             arrangements: vec![
                 Arrangement::Map {
-                    name: "arrange_by_ancestor".to_string(),
+                    name: Cow::from("arrange_by_ancestor"),
                     afun: arrange_by_fst as ArrangeFunc,
                     queryable: false,
                 },
                 Arrangement::Set {
-                    name: "arrange_by_self".to_string(),
+                    name: Cow::from("arrange_by_self"),
                     fmfun: fmnull_fun as FilterMapFunc,
                     distinct: true,
                 },
                 Arrangement::Map {
-                    name: "arrange_by_snd".to_string(),
+                    name: Cow::from("arrange_by_snd"),
                     afun: arrange_by_snd as ArrangeFunc,
                     queryable: false,
                 },
@@ -1210,36 +1211,36 @@ fn test_recursion(nthreads: usize) {
     let common_ancestor = {
         let common_ancestorset = common_ancestorset.clone();
         Relation {
-            name: "common_ancestor".to_string(),
+            name: Cow::from("common_ancestor"),
             input: false,
             distinct: true,
             caching_mode: CachingMode::Set,
             key_func: None,
             id: 3,
             rules: vec![Rule::ArrangementRule {
-                description: "common_ancestor.R1".to_string(),
+                description: Cow::from("common_ancestor.R1"),
                 arr: (2, 0),
                 xform: XFormArrangement::Join {
-                    description: "(2,0).join (2,0)".to_string(),
+                    description: Cow::from("(2,0).join (2,0)"),
                     ffun: None,
                     arrangement: (2, 0),
                     jfun: jfun2 as JoinFunc,
                     next: Box::new(Some(XFormCollection::Arrange {
-                        description: "arrange by self".to_string(),
+                        description: Cow::from("arrange by self"),
                         afun: anti_arrange1 as ArrangeFunc,
                         next: Box::new(XFormArrangement::Antijoin {
-                            description: "(2,0).antijoin (2,1)".to_string(),
+                            description: Cow::from("(2,0).antijoin (2,1)"),
                             ffun: None,
                             arrangement: (2, 1),
                             next: Box::new(Some(XFormCollection::Arrange {
-                                description: "arrange by .1".to_string(),
+                                description: Cow::from("arrange by .1"),
                                 afun: anti_arrange2 as ArrangeFunc,
                                 next: Box::new(XFormArrangement::Antijoin {
-                                    description: "...join (2,1)".to_string(),
+                                    description: Cow::from("...join (2,1)"),
                                     ffun: None,
                                     arrangement: (2, 1),
                                     next: Box::new(Some(XFormCollection::Filter {
-                                        description: "filter .0 != .1".to_string(),
+                                        description: Cow::from("filter .0 != .1"),
                                         ffun: ffun as FilterFunc,
                                         next: Box::new(None),
                                     })),

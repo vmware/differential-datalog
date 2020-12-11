@@ -25,6 +25,7 @@ use crate::{ddval::*, profile::*, record::Mutator};
 use arrange::{antijoin_arranged, ArrangedCollection, Arrangements, A};
 use fnv::{FnvHashMap, FnvHashSet};
 use std::{
+    borrow::Cow,
     collections::{hash_map, BTreeSet},
     fmt::{self, Debug, Formatter},
     iter,
@@ -211,7 +212,7 @@ pub enum CachingMode {
 #[derive(Clone)]
 pub struct Relation {
     /// Relation name; does not have to be unique
-    pub name: String,
+    pub name: Cow<'static, str>,
     /// `true` if this is an input relation. Input relations are populated by the client
     /// of the library via `RunningProgram::insert()`, `RunningProgram::delete()` and `RunningProgram::apply_updates()` methods.
     pub input: bool,
@@ -271,14 +272,14 @@ impl Dep {
 pub enum XFormArrangement {
     /// FlatMap arrangement into a collection
     FlatMap {
-        description: String,
+        description: Cow<'static, str>,
         fmfun: FlatMapFunc,
         /// Transformation to apply to resulting collection.
         /// `None` terminates the chain of transformations.
         next: Box<Option<XFormCollection>>,
     },
     FilterMap {
-        description: String,
+        description: Cow<'static, str>,
         fmfun: FilterMapFunc,
         /// Transformation to apply to resulting collection.
         /// `None` terminates the chain of transformations.
@@ -286,7 +287,7 @@ pub enum XFormArrangement {
     },
     /// Aggregate
     Aggregate {
-        description: String,
+        description: Cow<'static, str>,
         /// Filter arrangement before grouping
         ffun: Option<FilterFunc>,
         /// Aggregation to apply to each group.
@@ -296,7 +297,7 @@ pub enum XFormArrangement {
     },
     /// Join
     Join {
-        description: String,
+        description: Cow<'static, str>,
         /// Filter arrangement before joining
         ffun: Option<FilterFunc>,
         /// Arrangement to join with.
@@ -308,7 +309,7 @@ pub enum XFormArrangement {
     },
     /// Semijoin
     Semijoin {
-        description: String,
+        description: Cow<'static, str>,
         /// Filter arrangement before joining
         ffun: Option<FilterFunc>,
         /// Arrangement to semijoin with.
@@ -320,7 +321,7 @@ pub enum XFormArrangement {
     },
     /// Return a subset of values that correspond to keys not present in `arrangement`.
     Antijoin {
-        description: String,
+        description: Cow<'static, str>,
         /// Filter arrangement before joining
         ffun: Option<FilterFunc>,
         /// Arrangement to antijoin with
@@ -395,37 +396,37 @@ impl XFormArrangement {
 pub enum XFormCollection {
     /// Arrange the collection, apply `next` transformation to the resulting collection.
     Arrange {
-        description: String,
+        description: Cow<'static, str>,
         afun: ArrangeFunc,
         next: Box<XFormArrangement>,
     },
     /// Apply `mfun` to each element in the collection
     Map {
-        description: String,
+        description: Cow<'static, str>,
         mfun: MapFunc,
         next: Box<Option<XFormCollection>>,
     },
     /// FlatMap
     FlatMap {
-        description: String,
+        description: Cow<'static, str>,
         fmfun: FlatMapFunc,
         next: Box<Option<XFormCollection>>,
     },
     /// Filter collection
     Filter {
-        description: String,
+        description: Cow<'static, str>,
         ffun: FilterFunc,
         next: Box<Option<XFormCollection>>,
     },
     /// Map and filter
     FilterMap {
-        description: String,
+        description: Cow<'static, str>,
         fmfun: FilterMapFunc,
         next: Box<Option<XFormCollection>>,
     },
     /// Inspector
     Inspect {
-        description: String,
+        description: Cow<'static, str>,
         ifun: InspectFunc,
         next: Box<Option<XFormCollection>>,
     },
@@ -475,12 +476,12 @@ impl XFormCollection {
 #[derive(Clone)]
 pub enum Rule {
     CollectionRule {
-        description: String,
+        description: Cow<'static, str>,
         rel: RelId,
         xform: Option<XFormCollection>,
     },
     ArrangementRule {
-        description: String,
+        description: Cow<'static, str>,
         arr: ArrId,
         xform: XFormArrangement,
     },
@@ -520,7 +521,7 @@ pub enum Arrangement {
     /// Arrange into (key,value) pairs
     Map {
         /// Arrangement name; does not have to be unique
-        name: String,
+        name: Cow<'static, str>,
         /// Function used to produce arrangement.
         afun: ArrangeFunc,
         /// The arrangement can be queried using `RunningProgram::query_arrangement`
@@ -530,7 +531,7 @@ pub enum Arrangement {
     /// Arrange into a set of values
     Set {
         /// Arrangement name; does not have to be unique
-        name: String,
+        name: Cow<'static, str>,
         /// Function used to produce arrangement.
         fmfun: FilterMapFunc,
         /// Apply distinct_total() before arranging filtered collection.
