@@ -1850,7 +1850,7 @@ compileRelation d statics rn = do
                                          "pub static" <+> arng_name i <+> ": ::once_cell::sync::Lazy<program::Arrangement> = ::once_cell::sync::Lazy::new(||" <+> arng' <> ");") arrangements
     let code =
             "program::Relation {"                                                                               $$
-            "    name:         \"" <> pp rn <> "\".to_string(),"                                                $$
+            "    name:         std::borrow::Cow::from(\"" <> pp rn <> "\"),"                                    $$
             "    input:        " <> (if relRole == RelInput then "true" else "false") <> ","                    $$
             "    distinct:     " <> (if relRole == RelOutput && relSemantics == RelSet && not (relIsDistinctByConstruction d rel)
                                         then "true"
@@ -1992,7 +1992,7 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
             xform <- mkArrangedOperator conds input_val
             return $ "/*" <+> pp rl <+> "*/"                                                    $$
                      "program::Rule::ArrangementRule {"                                         $$
-                     "    description:" <+> pp (show $ show rl) <> ".to_string(),"              $$
+                     "    description: std::borrow::Cow::from(" <+> pp (show $ show rl) <> ")," $$
                      "    arr: (" <+> relId d (atomRelation fstatom) <> "," <+> pp arid <> ")," $$
                      "    xform:" <+> xform                                                     $$
                      "}"
@@ -2008,7 +2008,7 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                                          "Some((" <> akey <> "," <+> aval <> "))"
                             xform' <- mkArrangedOperator [] False
                             return $ "XFormCollection::Arrange {"                                                                                    $$
-                                     "    description:" <+> (pp $ show $ show $ "arrange" <+> rulePPPrefix rl (last_rhs_idx+1) <+> "by" <+> key_str) <+> ".to_string(),"                                                                                                                             $$
+                                     "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ "arrange" <+> rulePPPrefix rl (last_rhs_idx+1) <+> "by" <+> key_str) <> "),"  $$
                                      (nest' $ "afun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<(DDValue,DDValue)>" $$ afun $$ "__f},")        $$
                                      "    next: Box::new(" <> xform' <> ")"                                                                          $$
                                      "}"
@@ -2022,8 +2022,8 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                 if last_rhs_idx == 0 && input_val
                    then "/*" <+> pp rl <+> "*/"                                         $$
                         "program::Rule::CollectionRule {"                               $$
-                        "    description:" <+> pp (show $ show rl) <> ".to_string(),"   $$
-                        "    rel:" <+> relId d (atomRelation fstatom) <> ","              $$
+                        "    description: std::borrow::Cow::from(" <> pp (show $ show rl) <> "),"    $$
+                        "    rel:" <+> relId d (atomRelation fstatom) <> ","            $$
                         "    xform: Some(" <> xform <> ")"                              $$
                         "}"
                    else "Some(" <> xform <> ")"
@@ -2066,7 +2066,7 @@ mkFlatMap d prefix rl idx v e = do
     next <- compileRule d rl idx False
     return $
         "XFormCollection::FlatMap{"                                                                                         $$
-        "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <+> ".to_string(),"                           $$
+        "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <> "),"                $$
         (nest' $ "fmfun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<Box<dyn Iterator<Item=DDValue>>>" $$ fmfun $$ "__f},")$$
         "    next: Box::new(" <> next <> ")"                                                                                $$
         "}"
@@ -2079,8 +2079,8 @@ mkFilterMap d prefix rl idx = do
     next <- compileRule d rl (idx - 1) False  -- Use the previous index to evaluate the rule again and call mkInspect
     return $
         "XFormCollection::FilterMap{"                                                                                       $$
-        "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <+> ".to_string(),"                           $$
-        nest' ("fmfun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<DDValue>" $$ fmfun $$ "__f},")                      $$
+        "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <> "),"                $$
+        nest' ("fmfun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<DDValue>" $$ fmfun $$ "__f},")                       $$
         "    next: Box::new(" <> next <> ")"                                                                                $$
         "}"
 
@@ -2100,7 +2100,7 @@ mkInspect d prefix rl idx e input_val = do
     next <- compileRule d rl idx input_val
     return $
         "XFormCollection::Inspect{"                                                                                         $$
-        "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <+> ".to_string(),"                           $$
+        "    description: std::borrow::Cow::from(" <+> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <> "),"               $$
         (nest' $ "ifun: {fn __f(" <> vALUE_VAR <> ": &DDValue, " <> tIMESTAMP_VAR <> ": TupleTS, " <> wEIGHT_VAR <> ": Weight) -> ()" $$ ifun $$ "__f},")$$
         "    next: Box::new(" <> next <> ")"                                                                                $$
         "}"
@@ -2138,7 +2138,7 @@ mkGroupBy d filters input_val rl@Rule{..} idx = do
     next <- compileRule d rl last_idx False
     return $
         "XFormArrangement::Aggregate{"                                                                                           $$
-        "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <> ".to_string(),"                                 $$
+        "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <> "),"                     $$
         "    ffun:" <+> ffun <> ","                                                                                              $$
         "    aggfun: {fn __f(" <> kEY_VAR <> ": &DDValue," <+> gROUP_VAR <> ": &[(&DDValue, Weight)]) -> Option<DDValue>" $$ agfun $$ "__f}," $$
         "    next: Box::new(" <> next <> ")"                                                                                     $$
@@ -2331,7 +2331,7 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
     return $
         if is_semi
            then "XFormArrangement::Semijoin{"                                                                                   $$
-                "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ join_idx + 1) <> ".to_string(),"                   $$
+                "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ rulePPPrefix rl $ join_idx + 1) <> "),"       $$
                 "    ffun:" <+> ffun <> ","                                                                                     $$
                 "    arrangement: (" <> relId d (atomRelation atom) <> "," <> pp aid <> "),"                                    $$
                 "    jfun: {fn __f(_: &DDValue ," <> vALUE_VAR1 <> ": &DDValue,_" <> vALUE_VAR2 <> ": &()) -> Option<DDValue>"  $$
@@ -2340,7 +2340,7 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
                 "    next: Box::new(" <> next  <> ")"                                                                           $$
                 "}"
            else "XFormArrangement::Join{"                                                                                       $$
-                "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ join_idx + 1) <> ".to_string(),"                   $$
+                "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ rulePPPrefix rl $ join_idx + 1) <> "),"       $$
                 "    ffun:" <+> ffun <> ","                                                                                     $$
                 "    arrangement: (" <> relId d (atomRelation atom) <> "," <> pp aid <> "),"                                    $$
                 "    jfun: {fn __f(_: &DDValue ," <> vALUE_VAR1 <> ": &DDValue," <> vALUE_VAR2 <> ": &DDValue) -> Option<DDValue>"  $$
@@ -2360,9 +2360,9 @@ mkAntijoin d input_filters input_val Atom{..} rl ajoin_idx = do
     aid <- fromJust <$> getAntijoinArrangement atomRelation arr
     next <- compileRule d rl ajoin_idx input_val
     return $ "XFormArrangement::Antijoin {"                                                                   $$
-             "    description:" <+> (pp $ show $ show $ rulePPPrefix rl $ ajoin_idx + 1) <> ".to_string(),"   $$
+             "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ rulePPPrefix rl $ ajoin_idx + 1) <> "),"    $$
              "    ffun:" <+> ffun <> ","                                                                      $$
-             "    arrangement: (" <> relId d atomRelation <> "," <> pp aid <> "),"                              $$
+             "    arrangement: (" <> relId d atomRelation <> "," <> pp aid <> "),"                            $$
              "    next: Box::new(" <> next <> ")"                                                             $$
              "}"
 
@@ -2548,10 +2548,10 @@ mkHead d prefix rl =
     let v = mkDDValue d (CtxRuleL rl 0) (atomVal $ head $ ruleLHS rl)
         fmfun = braces' $ prefix $$
                           "Some" <> parens v
-    in "XFormCollection::FilterMap{"                                                               $$
-       "    description:" <+> (pp $ show $ show $ "head of" <+> pp rl) <+> ".to_string(),"         $$
+    in "XFormCollection::FilterMap{"                                                                  $$
+       "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ "head of" <+> pp rl) <> ")," $$
        nest' ("fmfun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<DDValue>" $$ fmfun $$ "__f},")  $$
-       "    next: Box::new(None)"                                                                  $$
+       "    next: Box::new(None)"                                                                     $$
        "}"
 
 -- Variables in the RHS of the rule declared before or in i'th term
@@ -2607,7 +2607,7 @@ mkArrangement d rel ArrangementMap{..} =
                "let __cloned =" <+> vALUE_VAR <> ".clone();"                                                $$
                filter_key <> ".map(|x|(x,__cloned))"
     in "program::Arrangement::Map{"                                                                              $$
-       "   name: r###\"" <> pp arngPattern <> " /*join*/\"###.to_string(),"                                      $$
+       "   name: std::borrow::Cow::from(r###\"" <> pp arngPattern <> " /*join*/\"###),"                          $$
        (nest' $ "afun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<(DDValue,DDValue)>" $$ afun $$ "__f},")  $$
        "    queryable:" <+> (if null arngIndexes then "false" else "true")                                       $$
        "}"
@@ -2621,7 +2621,7 @@ mkArrangement d rel ArrangementSet{..} =
         -- the pattern expression does not contain placeholders).
         distinct_by_construction = relIsDistinct d rel && (not $ exprContainsPHolders arngPattern)
     in "program::Arrangement::Set{"                                                                                                 $$
-       "    name: r###\"" <> pp arngPattern <> " /*" <> (if arngDistinct then "antijoin" else "semijoin") <> "*/\"###.to_string()," $$
+       "    name: std::borrow::Cow::from(r###\"" <> pp arngPattern <> " /*" <> (if arngDistinct then "antijoin" else "semijoin") <> "*/\"###)," $$
        (nest' $ "fmfun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<DDValue>" $$ fmfun $$ "__f},")                             $$
        "    distinct:" <+> (if arngDistinct && not distinct_by_construction then "true" else "false")                               $$
        "}"
