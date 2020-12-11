@@ -1301,6 +1301,10 @@ impl RunningProgram {
 
     /// Terminate program, killing all worker threads.
     pub fn stop(&mut self) -> Response<()> {
+        if self.worker_guards.is_none() {
+            // Already stopped.
+            return Ok(());
+        };
         self.flush()
             .and_then(|_| self.send(0, Msg::Stop))
             .and_then(|_| {
