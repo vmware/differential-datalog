@@ -25,6 +25,7 @@ SOFTWARE.
 
 module Language.DifferentialDatalog.Rule (
     rulePPPrefix,
+    rulePPStripped,
     ruleRHSVars,
     ruleRHSNewVars,
     ruleVars,
@@ -36,11 +37,12 @@ module Language.DifferentialDatalog.Rule (
     ruleGroupByValType,
     ruleIsDistinctByConstruction,
     ruleHeadIsRecursive,
-    ruleIsRecursive
+    ruleIsRecursive,
 ) where
 
 import qualified Data.Set as S
 import Data.List
+import Data.Functor.Identity
 --import Debug.Trace
 import Text.PrettyPrint
 
@@ -52,10 +54,24 @@ import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Var
 import Language.DifferentialDatalog.Relation
 import Language.DifferentialDatalog.Type
+import Language.DifferentialDatalog.DatalogProgram
+
+-- | Remove all type annotations from the rule.  Used to remove the numerous
+-- annotations injected by type inference to cleanup the rule before
+-- printing it (but also removes all user-defined type annotations, so the
+-- resulting rule may no longer type check and should not be used for
+-- anything other then pretty-printing).
+ruleStripTypeAnnotations :: Rule -> Rule
+ruleStripTypeAnnotations rl@Rule{..} =
+    runIdentity $ ruleExprMapCtxM (\ctx e -> return $ exprStripTypeAnnotationsRec (E e) ctx) rl
 
 -- | Pretty-print the first 'len' literals of a rule. 
 rulePPPrefix :: Rule -> Int -> Doc
-rulePPPrefix rl len = commaSep $ map pp $ take len $ ruleRHS rl
+rulePPPrefix rl len = commaSep $ map pp $ take len $ ruleRHS $ ruleStripTypeAnnotations rl
+
+-- | Pretty-print rule without type annotations.
+rulePPStripped :: Rule -> Doc
+rulePPStripped rl = pp $ ruleStripTypeAnnotations rl
 
 -- | New variables declared in the 'i'th conjunct in the right-hand
 -- side of a rule.
