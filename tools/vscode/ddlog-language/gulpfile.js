@@ -17,12 +17,6 @@ gulp.task('compile-json', (done ) => {
 done()
 });
 
-gulp.task('watch', (done) => {
-  gulp.watch('./src/**/*.json5', [ 'compile-json' ]);
-  done()
-  
-});
-
 function done()
 {
 }

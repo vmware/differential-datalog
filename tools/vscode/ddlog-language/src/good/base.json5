@@ -3,44 +3,44 @@
   "name": "ddlog",
   "scopeName": "source.ddlog",
   "patterns": [
-  {
-    "include": "#comment"
-  },
-  { 
-    "include": "#constant"
-  },
-  { 
-    "include": "#entity"
-  }, 
-  { 
-    "include": "#meta"
-  },   
-  { 
-    "include": "#punctuation"
-  }, 
-  { 
-    "include": "#string"
-  },  
-  { 
-    "include": "#support"
-  },
-  { 
-    "include": "#type"
-  },
-  { 
-    "include": "#variable"
-  },  
-  { 
-    "include": "#operator"
-  },
-  { 
-    "include": "#keyword"
-  },
-  { 
-    "include": "#storage"
-  }
-],
+      {
+        "include": "#comment"
+      },
+      { 
+        "include": "#constant"
+      },
+      { 
+        "include": "#entity"
+      }, 
+      { 
+        "include": "#meta"
+      },   
+      { 
+        "include": "#punctuation"
+      }, 
+      { 
+        "include": "#string"
+      },  
+      { 
+        "include": "#support"
+      },
+      { 
+        "include": "#type"
+      },
+      { 
+        "include": "#variable"
+      },  
+      { 
+        "include": "#operator"
+      },
+      { 
+        "include": "#keyword"
+      },
+      { 
+        "include": "#storage"
+      }
+    ], 
 "repository":
-  {
-  }
+    {
+    }          
 }

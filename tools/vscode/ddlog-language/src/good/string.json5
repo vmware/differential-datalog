@@ -4,7 +4,7 @@
             "patterns": [
                 {
                     "name": "constant.character.escape.ddlog",
-                    "match": "\\\\[0nrvtbfa&\"]"
+                    "match": "\\\\[0nrvtbfa&\"\\\\]"
                 },
                 {
                     "name": "string.quoted.double.ddlog",
@@ -13,11 +13,11 @@
                     "patterns": [
                         {
                             "name": "constant.character.escape.ddlog",
-                            "match": "\\\\[0nrvtbfa&\"]"
+                            "match": "\\\\[0nrvtbfa&\"\\\\]"
                         },
                         {
                             "name": "string.quoted.interpolated.ddlog",
-                            "begin": "(\\{)",
+                            "begin": "(\\$\\{)",
                             "beginCaptures": {
                             "1": {
                                   "name": "keyword.operator.alternate-grouping.ddlog"
@@ -66,7 +66,7 @@
                                 {
                                     "include": "#storage"
                                 }
-                           ]                    
+                            ]                    
                         },
                     ]
                 },
@@ -77,7 +77,7 @@
                     "patterns": [
                        {
                             "name": "string.quoted.interpolated.ddlog",
-                            "begin": "(\\{)",
+                            "begin": "(\\$\\{)",
                             "beginCaptures": {
                             "1": {
                                "name": "keyword.operator.alternate-grouping.ddlog"
@@ -126,7 +126,7 @@
                                 {
                                     "include": "#storage"
                                 }
-                           ]                    
+                            ]                    
                         }                        
                     ]                                       
                 }               

@@ -4,19 +4,19 @@
             "patterns": [
                 {
                     "name": "punctuation.separator.comma.ddlog",
-                    "match": ","
+                    "match": "\\s*(,)\\s*"
                 },
                 {
                     "name": "punctuation.other.delimiter.ddlog",
-                    "match": "(\\:-)"
+                    "match": "\\s*(\\:-)\\s*"
                 },
                 {
                     "name": "punctuation.accessor.dot.ddlog",
-                    "match": "(\\.)"
+                    "match": "\\s*(\\.)\\s*"
                 },
                 {
                     "name": "punctuation.accessor.scope.ddlog",
-                    "match": "(\\::)"
+                    "match": "\\s*(\\::)\\s*"
                 }                
             ]
         }

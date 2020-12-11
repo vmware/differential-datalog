@@ -8,9 +8,6 @@
         "type": "git",
         "url": "https://github.com/vmware/differential-datalog/tree/master/tools/vscode"
     },
-    "scripts": {
-        "start": "gulp watch"
-    },
     "engines": {
         "vscode": "^1.20.0"
     },

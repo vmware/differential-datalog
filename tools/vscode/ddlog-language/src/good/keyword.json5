@@ -24,7 +24,7 @@
                 },
                 {
                     "name": "keyword.other.ddlog",
-                    "match": "\\b(group_by|primary key)\\b"
+                    "match": "\\b(group_by|primary key|index|on)\\b"
                 },
                 {
                     "name": "keyword.variable.ddlog",
