@@ -30,3 +30,4 @@ exprContainsPHolders :: Expr -> Bool
 exprTypeMapM :: (Monad m) => (Type -> m Type) -> Expr -> m Expr
 exprIsPure :: DatalogProgram -> ECtx -> Expr -> Bool
 exprFreeVars :: DatalogProgram -> ECtx -> Expr -> [Var]
+exprStripTypeAnnotationsRec :: Expr -> ECtx -> Expr

@@ -1992,7 +1992,7 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
             xform <- mkArrangedOperator conds input_val
             return $ "/*" <+> pp rl <+> "*/"                                                    $$
                      "program::Rule::ArrangementRule {"                                         $$
-                     "    description: std::borrow::Cow::from(" <+> pp (show $ show rl) <> ")," $$
+                     "    description: std::borrow::Cow::from(" <+> pp (show $ render $ rulePPStripped rl) <> ")," $$
                      "    arr: (" <+> relId d (atomRelation fstatom) <> "," <+> pp arid <> ")," $$
                      "    xform:" <+> xform                                                     $$
                      "}"
@@ -2022,7 +2022,7 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                 if last_rhs_idx == 0 && input_val
                    then "/*" <+> pp rl <+> "*/"                                         $$
                         "program::Rule::CollectionRule {"                               $$
-                        "    description: std::borrow::Cow::from(" <> pp (show $ show rl) <> "),"    $$
+                        "    description: std::borrow::Cow::from(" <> pp (show $ render $ rulePPStripped rl) <> "),"    $$
                         "    rel:" <+> relId d (atomRelation fstatom) <> ","            $$
                         "    xform: Some(" <> xform <> ")"                              $$
                         "}"
@@ -2549,7 +2549,7 @@ mkHead d prefix rl =
         fmfun = braces' $ prefix $$
                           "Some" <> parens v
     in "XFormCollection::FilterMap{"                                                                  $$
-       "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ "head of" <+> pp rl) <> ")," $$
+       "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ "head of" <+> rulePPStripped rl) <> ")," $$
        nest' ("fmfun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<DDValue>" $$ fmfun $$ "__f},")  $$
        "    next: Box::new(None)"                                                                     $$
        "}"

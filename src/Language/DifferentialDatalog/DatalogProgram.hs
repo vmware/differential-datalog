@@ -46,6 +46,7 @@ module Language.DifferentialDatalog.DatalogProgram (
     progMirrorInputRelations,
     progOutputInternalRelations,
     progInjectDebuggingHooks,
+    ruleExprMapCtxM
 )
 where
 
@@ -79,10 +80,7 @@ progExprMapCtxM d fun = do
                                                  Just e  -> Just <$> exprFoldCtxM fun (CtxFunc f) e
                                        return f{funcDef = e}))
                        $ progFunctions d
-    rules' <- mapM (\r -> do lhs <- mapIdxM (\a i -> atomExprMapCtxM fun (CtxRuleL r i) a) $ ruleLHS r
-                             rhs <- mapIdxM (\x i -> rhsExprMapCtxM fun r i x) $ ruleRHS r
-                             return r{ruleLHS = lhs, ruleRHS = rhs})
-                   $ progRules d
+    rules' <- mapM (ruleExprMapCtxM fun) $ progRules d
     return d{ progFunctions = funcs'
             , progRelations = rels'
             , progIndexes   = idxs'
@@ -94,6 +92,12 @@ relExprMapCtxM fun rel = do
                               return key{keyExpr = e'})
              $ relPrimaryKey rel
     return rel{relPrimaryKey = pkey'}
+
+ruleExprMapCtxM :: (Monad m) => (ECtx -> ENode -> m Expr) -> Rule -> m Rule
+ruleExprMapCtxM fun r = do
+    lhs <- mapIdxM (\a i -> atomExprMapCtxM fun (CtxRuleL r i) a) $ ruleLHS r
+    rhs <- mapIdxM (\x i -> rhsExprMapCtxM fun r i x) $ ruleRHS r
+    return r{ruleLHS = lhs, ruleRHS = rhs}
 
 atomExprMapCtxM :: (Monad m) => (ECtx -> ENode -> m Expr) -> ECtx -> Atom -> m Atom
 atomExprMapCtxM fun ctx a = do
