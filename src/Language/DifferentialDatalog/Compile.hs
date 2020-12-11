@@ -671,8 +671,10 @@ mkCargoToml rs_code crate =
            "serde = { version = \"1.0\", features = [\"derive\"] }"                        $$
            "num = \"0.3\""                                                                 $$
            "erased-serde = \"0.3\""                                                        $$
-           "differential-dataflow = \"0.11.0\""                                            $$
-           "timely = \"0.11\""                                                             $$
+           --"differential-dataflow = \"0.11.0\""                                            $$
+           --"timely = \"0.11\""                                                             $$
+           "differential-dataflow = { git = \"https://github.com/ddlog-dev/differential-dataflow\", branch = \"ddlog-1\" }" $$
+           "timely = { git = \"https://github.com/ddlog-dev/timely-dataflow\", branch = \"ddlog-1\" }"  $$
            ""                                                                              $$
            dependencies                                                                    $$
            ""                                                                              $$
