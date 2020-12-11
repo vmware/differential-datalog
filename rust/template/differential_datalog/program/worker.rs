@@ -631,7 +631,10 @@ impl<'a> DDlogWorker<'a> {
                         // updated collections returned from the inner scope.
                         for r in rels.iter() {
                             let (session, collection) = outer.new_collection::<DDValue,Weight>();
-                            assert!(!r.rel.input, "input relation in nested scope: {}", r.rel.name);
+                            //assert!(!r.rel.input, "input relation in nested scope: {}", r.rel.name);
+                            if r.rel.input {
+                                return Err(format!("input relation in nested scope: {}", r.rel.name));
+                            }
 
                             sessions.insert(r.rel.id, session);
                             collections.insert(r.rel.id, collection);
