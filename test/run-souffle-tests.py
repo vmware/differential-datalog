@@ -13,6 +13,7 @@ import datetime
 sys.path.append(os.getcwd() + "/../tools")
 from souffle_converter import convert, ConversionOptions
 
+souffle_release = "2.0.2"  # Run tests from this release of Souffle
 verbose = False
 tests_compiled = 0
 tests_compiled_successfully = 0
@@ -190,7 +191,8 @@ def run_remote_tests():
     """Run a set of tests, returns the list of the ones successfully run"""
     result = []
     testgroups = ["example", "evaluation"]
-    url = "https://github.com/souffle-lang/souffle/trunk/tests/"
+    global souffle_release
+    url = "https://github.com/souffle-lang/souffle/tags/" + souffle_release + "/tests/"
     for tg in testgroups:
         code, _ = run_command(["mkdir", "-p", tg])
         if code != 0:

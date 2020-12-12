@@ -17,6 +17,7 @@ description:         Please see the README on Github at <https://github.com/ryzh
 
 dependencies:
 - base >= 4.7 && < 5
+- ansi-terminal
 - mtl
 - parsec
 - pretty
@@ -31,6 +32,7 @@ dependencies:
 # MissingH is not compatible with Windows due to regex-posix dependency.
 #- MissingH
 - raw-strings-qq
+- time
 - tuple
 - file-embed
 - filepath
@@ -49,6 +51,7 @@ library:
   - -Wall
   - -Werror
   - -fprof-auto
+  - -O2
 executables:
   ddlog:
     main:                Main.hs

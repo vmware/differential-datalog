@@ -27,9 +27,12 @@ import Prelude hiding (readFile, writeFile)
 import System.Environment
 import System.FilePath.Posix
 import System.Console.GetOpt
+import System.Console.ANSI
 import Control.Exception
 import Control.Monad
 import Data.List
+import Data.Time.Clock
+import Data.Time.Format
 import qualified Data.Map as M
 import Text.PrettyPrint
 
@@ -155,13 +158,26 @@ main = do
             putStrLn $ "DDlog " ++ dDLOG_VERSION ++ " (" ++ gitHash ++ ")"
             putStrLn $ "Copyright (c) 2019-2020 VMware, Inc. (MIT License)"
         ActionValidate -> do
-            _ <- parseValidate config'
-            return ()
+            timeAction ("validating " ++ show (confDatalogFile config)) $ do
+                _ <- parseValidate config'
+                return ()
         ActionCompile -> do
-            compileProg config'
-            -- Run rustfmt on the generated code if it's enabled
-            when (confRunRustfmt config') $
-                runCommandReportingErr "rustfmt" "cargo" ["fmt", "--all"] $ Just (confOutputDir config')
+            timeAction ("compiling " ++ show (confDatalogFile config)) $ do
+                compileProg config'
+                -- Run rustfmt on the generated code if it's enabled
+                when (confRunRustfmt config') $
+                    runCommandReportingErr "rustfmt" "cargo" ["fmt", "--all"] $ Just (confOutputDir config')
+
+-- Perform IO action and measure its duration.
+timeAction :: String -> IO () -> IO ()
+timeAction description action = do
+    start_time <- getCurrentTime
+    action
+    end_time <- getCurrentTime
+    setSGR [SetColor Foreground Vivid Green, SetConsoleIntensity BoldIntensity]
+    putStr $ "Finished " ++ description
+    setSGR []
+    putStrLn $ " in " ++ (formatTime defaultTimeLocale "%-2Ess" $ diffUTCTime end_time start_time)
 
 parseValidate :: Config -> IO ([DatalogModule], DatalogProgram, M.Map ModuleName (Doc, Doc, Doc))
 parseValidate Config{..} = do

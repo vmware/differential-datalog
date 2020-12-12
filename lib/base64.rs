@@ -3,7 +3,7 @@ use base64::encode as b64encode;
 use base64::DecodeError as b64DecodeError;
 
 pub fn encode(s: &ddlog_std::Vec<u8>) -> String {
-    b64encode(&s.x)
+    b64encode(&s.vec)
 }
 
 pub fn decode(s: &String) -> ddlog_std::Result<ddlog_std::Vec<u8>, String> {

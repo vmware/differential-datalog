@@ -152,14 +152,14 @@ mainHeader :: (?specname::String) => Doc
 mainHeader = header (unpackFixNewline $ $(embedFile "rust/template/src/lib.rs"))
 
 -- Top-level 'Cargo.toml'.
-mainCargo :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph) => M.Map ModuleName (Doc, Doc, Doc) -> [String] -> String -> Doc
-mainCargo rs_code crate_types toml_footer =
+mainCargo :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph) => [String] -> String -> Doc
+mainCargo crate_types toml_footer =
     (pp $ replace "datalog_example" ?specname template)                                                             $$
     "crate-type = [" <> (hsep $ punctuate "," $ map (\t -> "\"" <> pp t <> "\"") $ "rlib" : crate_types) <> "]\n"   $$
     ""                                                                                                              $$
     deps                                                                                                            $$
     ""                                                                                                              $$
-    extra_toml_code                                                                                                 $$
+    --extra_toml_code                                                                                                 $$
     text toml_footer
     where
     deps = vcat $ map (\crate -> "[dependencies." <> pp (crateName crate) <> "]" $$
@@ -171,11 +171,6 @@ mainCargo rs_code crate_types toml_footer =
                   then replace "[dependencies.differential_datalog]" "[dependencies.differential_datalog]\nfeatures=[\"nested_ts_32\"]"
                   else id)
                $ unpackFixNewline $ $(embedFile "rust/template/Cargo.toml")
-    -- Add 'toml' code from 'rs_code'.  Note: we append the same toml code to
-    -- both types crate and the main crate, since the `.flatbuf.rs` code may
-    -- require these dependencies too.  Alternatively, we may want to support
-    -- a separate TOML file for the flatbuf code: `.flatbuf.toml`.
-    extra_toml_code = vcat $ map sel3 $ M.elems rs_code
 
 rustProjectDir :: (?specname::String) => String
 rustProjectDir = ?specname ++ "_ddlog"
@@ -200,24 +195,24 @@ rustLibFiles :: (?specname::String) => [(String, String)]
 rustLibFiles =
     map (mapSnd (unpackFixNewline)) $
         [ (dir </> "differential_datalog/Cargo.toml"                      , $(embedFile "rust/template/differential_datalog/Cargo.toml"))
-        , (dir </> "differential_datalog/callback.rs"                     , $(embedFile "rust/template/differential_datalog/callback.rs"))
-        , (dir </> "differential_datalog/ddlog.rs"                        , $(embedFile "rust/template/differential_datalog/ddlog.rs"))
-        , (dir </> "differential_datalog/ddval/mod.rs"                    , $(embedFile "rust/template/differential_datalog/ddval/mod.rs"))
-        , (dir </> "differential_datalog/ddval/ddvalue.rs"                , $(embedFile "rust/template/differential_datalog/ddval/ddvalue.rs"))
-        , (dir </> "differential_datalog/ddval/ddval_convert.rs"          , $(embedFile "rust/template/differential_datalog/ddval/ddval_convert.rs"))
-        , (dir </> "differential_datalog/lib.rs"                          , $(embedFile "rust/template/differential_datalog/lib.rs"))
-        , (dir </> "differential_datalog/profile.rs"                      , $(embedFile "rust/template/differential_datalog/profile.rs"))
-        , (dir </> "differential_datalog/profile_statistics.rs"           , $(embedFile "rust/template/differential_datalog/profile_statistics.rs"))
-        , (dir </> "differential_datalog/program/mod.rs"                  , $(embedFile "rust/template/differential_datalog/program/mod.rs"))
-        , (dir </> "differential_datalog/program/update.rs"               , $(embedFile "rust/template/differential_datalog/program/update.rs"))
-        , (dir </> "differential_datalog/program/arrange.rs"              , $(embedFile "rust/template/differential_datalog/program/arrange.rs"))
-        , (dir </> "differential_datalog/program/timestamp.rs"            , $(embedFile "rust/template/differential_datalog/program/timestamp.rs"))
-        , (dir </> "differential_datalog/program/worker.rs"               , $(embedFile "rust/template/differential_datalog/program/worker.rs"))
-        , (dir </> "differential_datalog/record.rs"                       , $(embedFile "rust/template/differential_datalog/record.rs"))
-        , (dir </> "differential_datalog/replay.rs"                       , $(embedFile "rust/template/differential_datalog/replay.rs"))
-        , (dir </> "differential_datalog/test_record.rs"                  , $(embedFile "rust/template/differential_datalog/test_record.rs"))
-        , (dir </> "differential_datalog/valmap.rs"                       , $(embedFile "rust/template/differential_datalog/valmap.rs"))
-        , (dir </> "differential_datalog/variable.rs"                     , $(embedFile "rust/template/differential_datalog/variable.rs"))
+        , (dir </> "differential_datalog/src/callback.rs"                 , $(embedFile "rust/template/differential_datalog/src/callback.rs"))
+        , (dir </> "differential_datalog/src/ddlog.rs"                    , $(embedFile "rust/template/differential_datalog/src/ddlog.rs"))
+        , (dir </> "differential_datalog/src/ddval/mod.rs"                , $(embedFile "rust/template/differential_datalog/src/ddval/mod.rs"))
+        , (dir </> "differential_datalog/src/ddval/ddvalue.rs"            , $(embedFile "rust/template/differential_datalog/src/ddval/ddvalue.rs"))
+        , (dir </> "differential_datalog/src/ddval/ddval_convert.rs"      , $(embedFile "rust/template/differential_datalog/src/ddval/ddval_convert.rs"))
+        , (dir </> "differential_datalog/src/lib.rs"                      , $(embedFile "rust/template/differential_datalog/src/lib.rs"))
+        , (dir </> "differential_datalog/src/profile.rs"                  , $(embedFile "rust/template/differential_datalog/src/profile.rs"))
+        , (dir </> "differential_datalog/src/profile_statistics.rs"       , $(embedFile "rust/template/differential_datalog/src/profile_statistics.rs"))
+        , (dir </> "differential_datalog/src/program/mod.rs"              , $(embedFile "rust/template/differential_datalog/src/program/mod.rs"))
+        , (dir </> "differential_datalog/src/program/update.rs"           , $(embedFile "rust/template/differential_datalog/src/program/update.rs"))
+        , (dir </> "differential_datalog/src/program/arrange.rs"          , $(embedFile "rust/template/differential_datalog/src/program/arrange.rs"))
+        , (dir </> "differential_datalog/src/program/timestamp.rs"        , $(embedFile "rust/template/differential_datalog/src/program/timestamp.rs"))
+        , (dir </> "differential_datalog/src/program/worker.rs"           , $(embedFile "rust/template/differential_datalog/src/program/worker.rs"))
+        , (dir </> "differential_datalog/src/record.rs"                   , $(embedFile "rust/template/differential_datalog/src/record.rs"))
+        , (dir </> "differential_datalog/src/replay.rs"                   , $(embedFile "rust/template/differential_datalog/src/replay.rs"))
+        , (dir </> "differential_datalog/src/test_record.rs"              , $(embedFile "rust/template/differential_datalog/src/test_record.rs"))
+        , (dir </> "differential_datalog/src/valmap.rs"                   , $(embedFile "rust/template/differential_datalog/src/valmap.rs"))
+        , (dir </> "differential_datalog/src/variable.rs"                 , $(embedFile "rust/template/differential_datalog/src/variable.rs"))
         , (dir </> "differential_datalog_test/Cargo.toml"                 , $(embedFile "rust/template/differential_datalog_test/Cargo.toml"))
         , (dir </> "differential_datalog_test/lib.rs"                     , $(embedFile "rust/template/differential_datalog_test/lib.rs"))
         , (dir </> "differential_datalog_test/test_value.rs"              , $(embedFile "rust/template/differential_datalog_test/test_value.rs"))
@@ -602,7 +597,7 @@ compile d_unoptimized specname modules rs_code dir crate_types = do
                         ++ "    \"ovsdb\",\n"
                         ++ "]\n"
                 )
-    updateFile (dir </> rustProjectDir </> "Cargo.toml")       (render $ mainCargo rs_code crate_types toml_footer)
+    updateFile (dir </> rustProjectDir </> "Cargo.toml")       (render $ mainCargo crate_types toml_footer)
     updateFile (dir </> rustProjectDir </> "src/lib.rs")       (render main)
     return ()
 
@@ -700,7 +695,7 @@ mkCargoToml rs_code crate =
     fb_features = commaSep $ map (\dep -> "\"" <> pp (crateName dep) <> "/flatbuf\"") deps
     capi_features = commaSep $ map (\dep -> "\"" <> pp (crateName dep) <> "/c_api\"") deps
     -- Add 'toml' code from 'rs_code'.
-    extra_toml_code = vcat $ map sel3 $ M.elems rs_code
+    extra_toml_code = vcat $ map (sel3 . snd) $ filter ((\mname -> S.member mname crate) . fst) $ M.toList rs_code
 
 crateDependencies :: (?crate_graph::CrateGraph, ?modules::[DatalogModule]) => Crate -> [Crate]
 crateDependencies crate =

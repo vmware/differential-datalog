@@ -1407,32 +1407,33 @@ impl Mutator<()> for Record {
 
 macro_rules! decl_tuple_from_record {
     ( $n:tt, $( $t:tt , $i:tt),+ ) => {
-        impl <$($t: FromRecord),*> FromRecord for ($($t),*) {
+        impl <$($t: FromRecord),*> FromRecord for ($($t,)*) {
             fn from_record(val: &Record) -> std::result::Result<Self, String> {
                 match val {
                     $crate::record::Record::Tuple(args) if args.len() == $n => {
-                        std::result::Result::Ok(( $($t::from_record(&args[$i])?),*))
+                        std::result::Result::Ok(($($t::from_record(&args[$i])?,)*))
                     },
                     v => { std::result::Result::Err(format!("not a {}-tuple {:?}", $n, *v)) }
                 }
             }
         }
 
-        impl <$($t: IntoRecord),*> IntoRecord for ($($t),*) {
+        impl <$($t: IntoRecord),*> IntoRecord for ($($t,)*) {
             fn into_record(self) -> $crate::record::Record {
                 Record::Tuple(vec![$(self.$i.into_record()),*])
             }
         }
 
-        impl <$($t: FromRecord),*> Mutator<($($t),*)> for Record {
-            fn mutate(&self, v: &mut ($($t),*)) -> std::result::Result<(), String> {
-                *v = <($($t),*)>::from_record(self)?;
+        impl <$($t: FromRecord),*> Mutator<($($t,)*)> for Record {
+            fn mutate(&self, v: &mut ($($t,)*)) -> std::result::Result<(), String> {
+                *v = <($($t,)*)>::from_record(self)?;
                 std::result::Result::Ok(())
             }
         }
     };
 }
 
+decl_tuple_from_record!(1, T0, 0);
 decl_tuple_from_record!(2, T0, 0, T1, 1);
 decl_tuple_from_record!(3, T0, 0, T1, 1, T2, 2);
 decl_tuple_from_record!(4, T0, 0, T1, 1, T2, 2, T3, 3);
@@ -1722,13 +1723,16 @@ pub fn arg_find<'a>(args: &'a [(Name, Record)], argname: &str) -> Option<&'a Rec
 #[macro_export]
 macro_rules! decl_struct_into_record {
     ( $n:ident, [ $nstr:expr ] <$( $targ:ident),*>, $( $arg:ident ),* ) => {
+        #[automatically_derived]
         impl <$($targ: $crate::record::IntoRecord),*> $crate::record::IntoRecord for $n<$($targ),*> {
             fn into_record(self) -> $crate::record::Record {
                 $crate::record::Record::NamedStruct(::std::borrow::Cow::from($nstr),vec![$((::std::borrow::Cow::from(stringify!($arg)), self.$arg.into_record())),*])
             }
         }
     };
+
     ( $n:ident, <$( $targ:ident),*>, $( $arg:ident ),* ) => {
+        #[automatically_derived]
         impl <$($targ: $crate::record::IntoRecord),*> $crate::record::IntoRecord for $n<$($targ),*> {
             fn into_record(self) -> $crate::record::Record {
                 $crate::record::Record::NamedStruct(::std::borrow::Cow::from(stringify!($n)),vec![$((::std::borrow::Cow::from(stringify!($arg)), self.$arg.into_record())),*])
@@ -1740,6 +1744,7 @@ macro_rules! decl_struct_into_record {
 #[macro_export]
 macro_rules! decl_struct_from_record {
     ( $n:ident [$full_name:expr] <$( $targ:ident),*>, [$constructor_name:expr][$nargs:expr]{$( [$idx:expr] $arg:ident [$alt_arg:expr]: $type:ty),*} ) => {
+        #[automatically_derived]
         impl <$($targ: $crate::record::FromRecord + serde::de::DeserializeOwned + ::std::default::Default),*> $crate::record::FromRecord for $n<$($targ),*> {
             fn from_record(val: &$crate::record::Record) -> ::std::result::Result<Self, String> {
                 match val {
@@ -1778,6 +1783,7 @@ macro_rules! decl_struct_from_record {
 #[macro_export]
 macro_rules! decl_enum_from_record {
     ( $n:ident [$full_name:expr] <$( $targ:ident),*>, $($cons:ident [$cons_name:expr][$nargs:expr]{$( [$idx:expr] $arg:ident [$alt_arg:expr]: $type:ty),*}),* ) => {
+        #[automatically_derived]
         impl <$($targ: $crate::record::FromRecord + serde::de::DeserializeOwned + ::std::default::Default),*> $crate::record::FromRecord for $n<$($targ),*> {
             fn from_record(val: &$crate::record::Record) -> ::std::result::Result<Self, String> {
                 match val {
@@ -1816,19 +1822,22 @@ macro_rules! decl_enum_from_record {
 #[macro_export]
 macro_rules! decl_record_mutator_struct {
     ( $n:ident, <$( $targ:ident),*>, $( $arg:ident : $type:ty),* ) => {
+        #[automatically_derived]
         impl<$($targ),*> $crate::record::Mutator<$n<$($targ),*>> for $crate::record::Record
             where $($crate::record::Record: $crate::record::Mutator<$targ>, $targ: $crate::record::FromRecord),*
         {
             fn mutate(&self, _x: &mut $n<$($targ),*>) -> ::std::result::Result<(), String> {
                 match self {
                     $crate::record::Record::PosStruct(_, _args) => {
+                        #[allow(unused_mut)]
                         let mut index = 0;
+
                         $(
                             if index == _args.len() {
                                 return ::std::result::Result::Err(format!("Positional struct mutator does not contain all elements"));
                             };
                             let arg_upd = &_args[index];
-                            index = index + 1;
+                            index += 1;
                             <dyn $crate::record::Mutator<$type>>::mutate(arg_upd, &mut _x.$arg)?;
                         )*
                         if index != _args.len() {
@@ -1853,6 +1862,7 @@ macro_rules! decl_record_mutator_struct {
 #[macro_export]
 macro_rules! decl_record_mutator_enum {
     ( $n:ident<$( $targ:ident),*>, $($cons:ident {$( $arg:ident : $type:ty),*}),* ) => {
+        #[automatically_derived]
         impl<$($targ: $crate::record::FromRecord+serde::de::DeserializeOwned+::std::default::Default),*> $crate::record::Mutator<$n<$($targ),*>> for $crate::record::Record
             where $($crate::record::Record: $crate::record::Mutator<$targ>),*
         {
@@ -1868,7 +1878,7 @@ macro_rules! decl_record_mutator_enum {
                                             return ::std::result::Result::Err(format!("Positional struct mutator does not contain all elements"));
                                         };
                                         let arg_upd = &_args[index];
-                                        index = index + 1;
+                                        index += 1;
                                         <dyn $crate::record::Mutator<$type>>::mutate(arg_upd, $arg)?;
                                     )*
                                     if index != _args.len() {
@@ -1910,6 +1920,7 @@ macro_rules! decl_record_mutator_enum {
 #[macro_export]
 macro_rules! decl_enum_into_record {
     ( $n:ident<$( $targ:ident),*>, $($cons:ident [$consn:expr] {$($arg:ident),*} ),* ) => {
+        #[automatically_derived]
         impl <$($targ: $crate::record::IntoRecord),*> $crate::record::IntoRecord for $n<$($targ),*> {
             fn into_record(self) -> $crate::record::Record {
                 match self {
@@ -1918,7 +1929,9 @@ macro_rules! decl_enum_into_record {
             }
         }
     };
+
     ( $n:ident<$( $targ:ident),*>, $($cons:ident [$consn:expr] ($($arg:ident),*) ),* ) => {
+        #[automatically_derived]
         impl <$($targ: $crate::record::IntoRecord),*> $crate::record::IntoRecord for $n<$($targ),*> {
             fn into_record(self) -> $crate::record::Record {
                 match self {
@@ -1932,6 +1945,7 @@ macro_rules! decl_enum_into_record {
 #[macro_export]
 macro_rules! decl_val_enum_into_record {
     ( $n:ident<$( $targ:ident),*>, $($cons:ident {$arg:ident} ),* ) => {
+        #[automatically_derived]
         impl <$($targ: $crate::record::IntoRecord),*> $crate::record::IntoRecord for $n<$($targ),*> {
             fn into_record(self) -> $crate::record::Record {
                 match self {
@@ -1940,7 +1954,9 @@ macro_rules! decl_val_enum_into_record {
             }
         }
     };
+
     ( $n:ident<$( $targ:ident),*>, $($cons:ident ($arg:ident) ),* ) => {
+        #[automatically_derived]
         impl <$($targ: $crate::record::IntoRecord),*> $crate::record::IntoRecord for $n<$($targ),*> {
             fn into_record(self) -> $crate::record::Record {
                 match self {

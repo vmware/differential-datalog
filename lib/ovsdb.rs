@@ -1,6 +1,7 @@
 use std::iter::FromIterator;
 
 use ddlog_rt::Val;
+use types__uuid::crate_uuid;
 
 pub fn map_extract_val_uuids<K: Val>(
     ids: &ddlog_std::Map<K, uuid_or_string_t>,
@@ -69,13 +70,13 @@ pub fn group2map_remove_sentinel<K1, K2: Ord + Clone>(
 }
 
 pub fn uuid2str(i: &u128) -> String {
-    ::uuid::Uuid::from_u128(*i /*.to_be()*/)
+    crate_uuid::Uuid::from_u128(*i /*.to_be()*/)
         .to_hyphenated()
         .to_string()
 }
 
 pub fn uuid2name(i: &u128) -> String {
-    let s = ::uuid::Uuid::from_u128(*i /*.to_be()*/)
+    let s = crate_uuid::Uuid::from_u128(*i /*.to_be()*/)
         .to_simple()
         .to_string();
     format!(
