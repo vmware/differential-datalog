@@ -49,9 +49,9 @@ echo "directory = \"vendor\"" >> config
 cp -r vendor "../../$DIST_DIR/"
 mkdir "../../$DIST_DIR/.cargo"
 cp config "../../$DIST_DIR/.cargo/"
-cp Cargo.lock "../../$DIST_DIR/"
 
 cd ../../
+cp Cargo.lock "$DIST_DIR/"
 
 # Step 4: Add DDlog Java libraries.
 
