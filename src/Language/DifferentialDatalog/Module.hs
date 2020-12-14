@@ -53,7 +53,7 @@ import System.FilePath.Posix
 import Data.List
 import Data.List.Split
 import Data.Maybe
---import Debug.Trace
+-- import Debug.Trace
 import Text.PrettyPrint
 
 import Language.DifferentialDatalog.Pos
@@ -203,6 +203,8 @@ mergeModules mods = do
 parseImports :: (?specname::String) => [FilePath] -> DatalogModule -> StateT [ModuleName] IO [DatalogModule]
 parseImports roots mod = concat <$>
     mapM (\imp@Import{..} -> do
+           when (importModule == moduleName mod)
+                $ errorWithoutStackTrace $ "Error: module '" ++ show (moduleName mod) ++ "' imports self"
            exists <- gets $ elem importModule
            if exists
               then return []
@@ -211,8 +213,6 @@ parseImports roots mod = concat <$>
 
 parseImport :: (?specname::String) => [FilePath] -> DatalogModule -> Import -> StateT [ModuleName] IO [DatalogModule]
 parseImport roots mod imp = do
-    when (importModule imp == moduleName mod)
-         $ errorWithoutStackTrace $ "Error: module '" ++ show (moduleName mod) ++ "' imports self"
     when (importModule imp == ModuleName [?specname])
          $ errorWithoutStackTrace $ "Error: module '" ++ show (moduleName mod) ++ "' imports the main module of the program ('" ++ ?specname ++ "')"
 
