@@ -7,7 +7,7 @@ use std::iter;
 use std::iter::FromIterator;
 use std::ops::BitOr;
 use std::vec;
-use tinyset::u64set;
+pub use tinyset::u64set;
 
 use ddlog_std::option2std;
 

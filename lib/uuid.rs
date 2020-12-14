@@ -3,6 +3,7 @@ use serde::de::Deserializer;
 use serde::ser::Serializer;
 use std::default::Default;
 use std::fmt;
+pub use uuid as crate_uuid;
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd)]
 pub struct Uuid(::uuid::Uuid);
