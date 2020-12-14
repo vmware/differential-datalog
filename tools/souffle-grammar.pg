@@ -104,7 +104,7 @@ RelationDecl: DECL RelationList RelationBody Qualifiers DependencyList
             ;
 
 DependencyList: EMPTY
-            | KEYS DependencyListAux
+            | CHOICEDOMAIN DependencyListAux
             ;
 
 DependencyListAux: Dependency
@@ -419,4 +419,4 @@ TNUMBER: "number" ;
 TSYMBOL: "symbol" ;
 TUNSIGNED: "unsigned" ;
 TFLOAT: "float" ;
-KEYS: "keys" ;
+CHOICEDOMAIN: "choice-domain" ;
