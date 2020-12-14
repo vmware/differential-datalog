@@ -700,7 +700,7 @@ mkCargoToml rs_code crate =
     fb_features = commaSep $ map (\dep -> "\"" <> pp (crateName dep) <> "/flatbuf\"") deps
     capi_features = commaSep $ map (\dep -> "\"" <> pp (crateName dep) <> "/c_api\"") deps
     -- Add 'toml' code from 'rs_code'.
-    extra_toml_code = vcat $ map sel3 $ M.elems rs_code
+    extra_toml_code = vcat $ map (sel3 . snd) $ filter ((\mname -> S.member mname crate) . fst) $ M.toList rs_code
 
 crateDependencies :: (?crate_graph::CrateGraph, ?modules::[DatalogModule]) => Crate -> [Crate]
 crateDependencies crate =
