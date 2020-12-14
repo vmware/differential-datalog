@@ -2,7 +2,7 @@ use types__tinyset::*;
 
 impl<'a, T, F> FromFlatBuffer<fbrt::Vector<'a, F>> for Set64<T>
 where
-    T: Ord + FromFlatBuffer<F::Inner> + ::tinyset::u64set::Fits64,
+    T: Ord + FromFlatBuffer<F::Inner> + u64set::Fits64,
     F: fbrt::Follow<'a> + 'a,
 {
     fn from_flatbuf(fb: fbrt::Vector<'a, F>) -> Result<Self, String> {
@@ -17,7 +17,7 @@ where
 // For scalar types, the FlatBuffers API returns slice instead of 'Vector'.
 impl<'a, T> FromFlatBuffer<&'a [T]> for Set64<T>
 where
-    T: Ord + ::tinyset::u64set::Fits64,
+    T: Ord + u64set::Fits64,
 {
     fn from_flatbuf(fb: &'a [T]) -> Result<Self, String> {
         let mut set = Set64::new();
@@ -30,7 +30,7 @@ where
 
 impl<'b, T> ToFlatBuffer<'b> for Set64<T>
 where
-    T: Ord + ::tinyset::u64set::Fits64 + ToFlatBufferVectorElement<'b>,
+    T: Ord + u64set::Fits64 + ToFlatBufferVectorElement<'b>,
 {
     type Target = fbrt::WIPOffset<fbrt::Vector<'b, <T::Target as fbrt::Push>::Output>>;
 

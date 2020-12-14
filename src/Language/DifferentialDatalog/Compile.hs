@@ -152,14 +152,14 @@ mainHeader :: (?specname::String) => Doc
 mainHeader = header (unpackFixNewline $ $(embedFile "rust/template/src/lib.rs"))
 
 -- Top-level 'Cargo.toml'.
-mainCargo :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph) => M.Map ModuleName (Doc, Doc, Doc) -> [String] -> String -> Doc
-mainCargo rs_code crate_types toml_footer =
+mainCargo :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph) => [String] -> String -> Doc
+mainCargo crate_types toml_footer =
     (pp $ replace "datalog_example" ?specname template)                                                             $$
     "crate-type = [" <> (hsep $ punctuate "," $ map (\t -> "\"" <> pp t <> "\"") $ "rlib" : crate_types) <> "]\n"   $$
     ""                                                                                                              $$
     deps                                                                                                            $$
     ""                                                                                                              $$
-    extra_toml_code                                                                                                 $$
+    --extra_toml_code                                                                                                 $$
     text toml_footer
     where
     deps = vcat $ map (\crate -> "[dependencies." <> pp (crateName crate) <> "]" $$
@@ -171,11 +171,6 @@ mainCargo rs_code crate_types toml_footer =
                   then replace "[dependencies.differential_datalog]" "[dependencies.differential_datalog]\nfeatures=[\"nested_ts_32\"]"
                   else id)
                $ unpackFixNewline $ $(embedFile "rust/template/Cargo.toml")
-    -- Add 'toml' code from 'rs_code'.  Note: we append the same toml code to
-    -- both types crate and the main crate, since the `.flatbuf.rs` code may
-    -- require these dependencies too.  Alternatively, we may want to support
-    -- a separate TOML file for the flatbuf code: `.flatbuf.toml`.
-    extra_toml_code = vcat $ map sel3 $ M.elems rs_code
 
 rustProjectDir :: (?specname::String) => String
 rustProjectDir = ?specname ++ "_ddlog"
@@ -602,7 +597,7 @@ compile d_unoptimized specname modules rs_code dir crate_types = do
                         ++ "    \"ovsdb\",\n"
                         ++ "]\n"
                 )
-    updateFile (dir </> rustProjectDir </> "Cargo.toml")       (render $ mainCargo rs_code crate_types toml_footer)
+    updateFile (dir </> rustProjectDir </> "Cargo.toml")       (render $ mainCargo crate_types toml_footer)
     updateFile (dir </> rustProjectDir </> "src/lib.rs")       (render main)
     return ()
 
