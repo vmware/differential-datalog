@@ -206,7 +206,7 @@ where
 /// Join interned strings with a separator
 pub fn istring_join(strings: &DDlogVec<istring>, separator: &String) -> String {
     strings
-        .x
+        .vec
         .iter()
         .map(|string| string.as_ref())
         .cloned()
@@ -217,7 +217,7 @@ pub fn istring_join(strings: &DDlogVec<istring>, separator: &String) -> String {
 /// Split an interned string by a separator
 pub fn istring_split(string: &istring, separator: &String) -> DDlogVec<String> {
     DDlogVec {
-        x: string
+        vec: string
             .as_ref()
             .split(separator)
             .map(|string| string.to_owned())

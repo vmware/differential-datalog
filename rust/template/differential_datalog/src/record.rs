@@ -1407,32 +1407,33 @@ impl Mutator<()> for Record {
 
 macro_rules! decl_tuple_from_record {
     ( $n:tt, $( $t:tt , $i:tt),+ ) => {
-        impl <$($t: FromRecord),*> FromRecord for ($($t),*) {
+        impl <$($t: FromRecord),*> FromRecord for ($($t,)*) {
             fn from_record(val: &Record) -> std::result::Result<Self, String> {
                 match val {
                     $crate::record::Record::Tuple(args) if args.len() == $n => {
-                        std::result::Result::Ok(( $($t::from_record(&args[$i])?),*))
+                        std::result::Result::Ok(($($t::from_record(&args[$i])?,)*))
                     },
                     v => { std::result::Result::Err(format!("not a {}-tuple {:?}", $n, *v)) }
                 }
             }
         }
 
-        impl <$($t: IntoRecord),*> IntoRecord for ($($t),*) {
+        impl <$($t: IntoRecord),*> IntoRecord for ($($t,)*) {
             fn into_record(self) -> $crate::record::Record {
                 Record::Tuple(vec![$(self.$i.into_record()),*])
             }
         }
 
-        impl <$($t: FromRecord),*> Mutator<($($t),*)> for Record {
-            fn mutate(&self, v: &mut ($($t),*)) -> std::result::Result<(), String> {
-                *v = <($($t),*)>::from_record(self)?;
+        impl <$($t: FromRecord),*> Mutator<($($t,)*)> for Record {
+            fn mutate(&self, v: &mut ($($t,)*)) -> std::result::Result<(), String> {
+                *v = <($($t,)*)>::from_record(self)?;
                 std::result::Result::Ok(())
             }
         }
     };
 }
 
+decl_tuple_from_record!(1, T0, 0);
 decl_tuple_from_record!(2, T0, 0, T1, 1);
 decl_tuple_from_record!(3, T0, 0, T1, 1, T2, 2);
 decl_tuple_from_record!(4, T0, 0, T1, 1, T2, 2, T3, 3);
