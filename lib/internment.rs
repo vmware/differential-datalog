@@ -10,12 +10,6 @@ use std::{
 
 /// An atomically reference counted handle to an interned value
 ///
-/// While this type is thread safe, it may cause logical bugs
-/// due to the underlying internment cache being a global variable,
-/// so don't rely on the existence or pre-internment of a variable
-/// since there's no way to know whether it will or will not exist
-/// within a threaded context.
-///
 /// The `PartialOrd` and `Ord` implementations for this type do not
 /// compare the underlying values but instead compare the pointers
 /// to them. Do not rely on the `PartialOrd` and `Ord` implementations
