@@ -51,6 +51,7 @@ library:
   - -Wall
   - -Werror
   - -fprof-auto
+  - -O2
 executables:
   ddlog:
     main:                Main.hs
