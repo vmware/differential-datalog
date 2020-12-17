@@ -5,7 +5,7 @@ echo "Installing dependencies for DDlog"
 echo "This script should be invoked with '. ./install-dependencies.sh' to set up the environment properly"
 
 case "$OSTYPE" in
-    "linux*") ;;
+    "linux*") sudo apt install libgoogle-perftools-dev ;;
     "osx*") ;;
     "*") echo "Unhandled operating system $OSTYPE"; exit 1;;
 esac
