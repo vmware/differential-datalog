@@ -273,18 +273,23 @@ ieNormalize ie = ieSum' $ map IVar vs ++ cs
 
 -- Integer variables used in constraint encoding.
 data IntVar = -- Integer variable equal to the width of a DDExpr.
-                WidthOfExpr DDExpr
+                WidthOfExpr {ivarId :: Int, ivarExpr :: DDExpr}
                 -- Integer variable that represents mutability of i'th argument
                 -- of an expression of type 'TFunction', e.g., given expression 'f(x)',
                 -- 'MutabilityOfArg f 0' represents the mutability attribute of the first
                 -- argument of function 'f'.
-              | MutabilityOfArg DDExpr Int
-                deriving (Eq, Ord)
+              | MutabilityOfArg {ivarId :: Int, ivarExpr :: DDExpr, ivarArg :: Int}
+
+instance Eq IntVar where
+    (==) ivar1 ivar2 = ivarId ivar1 == ivarId ivar2
+
+instance Ord IntVar where
+    compare ivar1 ivar2 = ivarId ivar1 `compare` ivarId ivar2
 
 instance Show IntVar where
-    show (MutabilityOfArg _ _) = "" -- This makes output noisy and difficult to parse.
-                                    -- "mutability of argument " ++ show i ++ " of function " ++ show e
-    show (WidthOfExpr e) = "width_of(" ++ show e ++ ")"
+    show (MutabilityOfArg _ _ _) = "" -- This makes output noisy and difficult to parse.
+                                      -- "mutability of argument " ++ show i ++ " of function " ++ show e
+    show (WidthOfExpr _ e) = "width_of(" ++ show e ++ ")"
 
 -- Type variables used in constraint encoding.
 -- The goal of type inference is to find a satisfying assignment to all

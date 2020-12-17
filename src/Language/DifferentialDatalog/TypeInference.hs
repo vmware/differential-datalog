@@ -72,14 +72,20 @@ data GeneratorState = GeneratorState {
     -- comparisons.
     genVars        :: M.Map (Maybe ELocator, Maybe VLocator, Maybe String) Int,
     -- The number of type variables in 'genVars'. Used to assign ids to new variables.
-    genNumVars     :: Int
+    genNumVars     :: Int,
+    -- Unique ids of integer variables.
+    genIVars       :: M.Map (ELocator, Int) Int,
+    -- The number of variables in 'genIVars'. Used to assign ids to new variables.
+    genNumIVars     :: Int
 }
 
 emptyGenerator :: GeneratorState
 emptyGenerator = GeneratorState {
     genConstraints = [],
     genVars        = M.empty,
-    genNumVars     = 0
+    genNumVars     = 0,
+    genIVars       = M.empty,
+    genNumIVars    = 0
 }
 
 type GeneratorMonad t = State GeneratorState t
@@ -119,6 +125,26 @@ tvarAux de n = do
                        put $ gen {genVars = M.insert (Just locator, Nothing, Just n) genNumVars genVars, genNumVars = genNumVars + 1}
                        return tv
          Just i -> return $ TVarAux i de n
+
+ivarWidthOfExpr :: DDExpr -> GeneratorMonad IntVar
+ivarWidthOfExpr de = do
+    let locator = ctxToELocator (ddexprCtx de)
+    gen@GeneratorState{..} <- get
+    case M.lookup (locator, 0) genIVars of
+         Nothing -> do let iv = WidthOfExpr genNumIVars de
+                       put $ gen {genIVars = M.insert (locator, 0) genNumIVars genIVars, genNumIVars = genNumIVars + 1}
+                       return iv
+         Just i  -> return $ WidthOfExpr i de
+
+ivarMutabilityOfArg :: DDExpr -> Int -> GeneratorMonad IntVar
+ivarMutabilityOfArg de arg = do
+    let locator = ctxToELocator (ddexprCtx de)
+    gen@GeneratorState{..} <- get
+    case M.lookup (locator, arg) genIVars of
+         Nothing -> do let iv = MutabilityOfArg genNumIVars de arg
+                       put $ gen {genIVars = M.insert (locator, arg) genNumIVars genIVars, genNumIVars = genNumIVars + 1}
+                       return iv
+         Just i  -> return $ MutabilityOfArg i de arg
 
 teTypeOfExpr :: DDExpr -> GeneratorMonad TExpr
 teTypeOfExpr de = TETVar <$> tvarTypeOfExpr de
@@ -274,7 +300,7 @@ deIsBit :: DDExpr -> GeneratorMonad Constraint
 deIsBit de = CPredicate <$> deIsBit_ de
 
 deIsBit_ :: DDExpr -> GeneratorMonad Predicate
-deIsBit_ de = tvarTypeOfExpr de <~~~ (TEBit (IVar $ WidthOfExpr de))
+deIsBit_ de = tvarTypeOfExpr de <~~~> ((TEBit . IVar) <$> ivarWidthOfExpr de)
 
 deIsFP :: (?d::DatalogProgram) => DDExpr -> GeneratorMonad Constraint
 deIsFP de = do
@@ -674,7 +700,7 @@ exprConstraints_ de@(DDExpr _ (E e@EFunc{..})) = do
 -- |f| = function(|e1|,..,|en|): |e|
 exprConstraints_ de@(DDExpr ctx (E e@EApply{..})) = do
     let defunc = DDExpr (CtxApplyFunc e ctx) exprFunc
-    ftype <- TEFunc <$> (mapIdxM (\a i -> (IVar $ MutabilityOfArg defunc i, ) <$> teTypeOfExpr (DDExpr (CtxApplyArg e ctx i) a)) exprArgs) <*> teTypeOfExpr de
+    ftype <- TEFunc <$> (mapIdxM (\a i -> (,) <$> (IVar <$> ivarMutabilityOfArg defunc i) <*> teTypeOfExpr (DDExpr (CtxApplyArg e ctx i) a)) exprArgs) <*> teTypeOfExpr de
     addConstraint =<< tvarTypeOfExpr defunc <==== ftype
 
 -- Struct field access: 'e1.f', where field 'f' is present in user-defined
@@ -890,12 +916,13 @@ exprConstraints_ de@(DDExpr ctx (E e@EBinOp{..})) | elem exprBOp [Eq, Neq, Lt, L
 -- string.
                                                 | exprBOp == Concat = do
     isbit_r <- deIsBit r
+    ivar_r <- ivarWidthOfExpr r
     isstring <- tvarTypeOfExpr de <==== TEString
     dte <- tvarTypeOfExpr de
     ce <- teTypeOfExpr l
     let expand TETVar{} = return Nothing
         expand TEString = return $ Just [isstring]
-        expand (TEBit w) = return $ Just [isbit_r, dte ==== TEBit (IPlus w (IVar $ WidthOfExpr r))] 
+        expand (TEBit w) = return $ Just [isbit_r, dte ==== (TEBit $ IPlus w $ IVar ivar_r)]
         expand te = err ?d (pos l) 
                         $ "expression '" ++ show l ++ "' must be of type that supports concatenation operator (++), i.e., 'bit<>' or 'string', but its type '" ++ show te ++ "' doesn't"
     addConstraint $ CLazy ce expand Nothing l
@@ -1023,7 +1050,8 @@ exprConstraints_ (DDExpr _ (E EPHolder{})) = return ()
 -- |vi| = ti for each specified type.
 -- If the return type is specified, add constraint |e0| = |t0|.
 exprConstraints_ de@(DDExpr ctx (E e@EClosure{..})) = do
-    addConstraint =<< tvarTypeOfExpr de <====> (TEFunc <$> (mapIdxM (\_ i -> (IVar $ MutabilityOfArg de i,) <$> teTypeOfVar (ClosureArgVar ctx e i)) exprClosureArgs)
+    addConstraint =<< tvarTypeOfExpr de <====> (TEFunc <$> (mapIdxM (\_ i -> (,) <$> (IVar <$> ivarMutabilityOfArg de i) <*> teTypeOfVar (ClosureArgVar ctx e i))
+                                                                    exprClosureArgs)
                                                        <*> teTypeOfExpr (DDExpr (CtxClosure e ctx) exprExpr))
     mapIdxM_ (\a i -> case ceargType a of
                            Just t -> addConstraint =<< tvarTypeOfVar (ClosureArgVar ctx e i) <==== typeToTExpr (typ t)
