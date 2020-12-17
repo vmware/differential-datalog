@@ -420,19 +420,19 @@ inferTypes d es = do
     -- Extract ECtx -> Type mapping from 'typing'.
     let ctxtypes = foldl' (\m (tv, t) ->
                             case tv of
-                                 TVarTypeOfExpr _ (DDExpr ctx _) -> M.insert ctx t m
+                                 TVarTypeOfExpr _ (DDExpr ctx _) -> M.insert (ctxToELocator ctx) t m
                                  _                               -> m) M.empty
                           $ M.toList typing
     let add_types :: (MonadError String me) => ECtx -> ExprNode (Expr, Type) -> me (Expr, Type)
         add_types ctx e =
             -- String conversion.
             case ctx of
-                CtxBinOpR _ ctx' | ctxtypes M.! ctx' == tString && t /= tString
+                CtxBinOpR _ ctx' | ctxtypes M.! (ctxToELocator ctx') == tString && t /= tString
                                  -> do e'' <- exprInjectStringConversion d (enode e') t
                                        return (e'', t)
                 _ -> return (e', t)
             where
-            t = case M.lookup ctx ctxtypes of
+            t = case M.lookup (ctxToELocator ctx) ctxtypes of
                      Just t' -> t'
                      Nothing -> case e of
                                      -- Relations that interrupt control flow sometimes have
@@ -513,7 +513,7 @@ inferTypes d es = do
                     ret_type = case ctx' of
                                     CtxFunc{..} -> funcType ctxFunc
                                     ctx''@CtxClosure{} ->
-                                        case M.lookup ctx'' ctxtypes of
+                                        case M.lookup (ctxToELocator ctx'') ctxtypes of
                                              Just t' -> t'
                                              _ -> error $ "inferTypes '" ++ show expr ++ "': unknown closure type"
                                     _ -> error $ "inferTypes '" ++ show expr ++ "': ctx' = " ++ show ctx'
