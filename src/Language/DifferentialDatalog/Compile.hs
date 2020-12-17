@@ -542,7 +542,7 @@ mkConstructorName local_module tname t c =
 --                  [\"cdylib\"], [\"staticlib\", \"cdylib\"]
 compile :: (?cfg :: Config) => DatalogProgram -> String -> [DatalogModule] -> M.Map ModuleName (Doc, Doc, Doc) -> FilePath -> [String] -> IO ()
 compile d_unoptimized specname modules rs_code dir crate_types = do
-    let ?modules = modules
+    let ?modules = M.fromList $ map (\m -> (moduleName m, m)) modules
     let ?specname = specname
     let -- Partition modules into crates.
         ?crate_graph = partitionIntoCrates ?modules
@@ -601,7 +601,7 @@ compile d_unoptimized specname modules rs_code dir crate_types = do
     updateFile (dir </> rustProjectDir </> "src/lib.rs")       (render main)
     return ()
 
-compileLib :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?modules::[DatalogModule]) => DatalogProgram -> M.Map ModuleName (Doc, Doc, Doc) -> (M.Map FilePath Doc, Doc)
+compileLib :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?modules::M.Map ModuleName DatalogModule) => DatalogProgram -> M.Map ModuleName (Doc, Doc, Doc) -> (M.Map FilePath Doc, Doc)
 compileLib d rs_code =
     (crates, main_lib)
     where
@@ -613,7 +613,7 @@ compileLib d rs_code =
     -- Generate the main library file.
     main_lib = compileMainLib d nodes cstate
 
-compileRules :: (?cfg::Config, ?specname::String, ?modules::[DatalogModule], ?crate_graph::CrateGraph) => DatalogProgram -> Statics -> ([ProgNode], CompilerState)
+compileRules :: (?cfg::Config, ?specname::String, ?modules::M.Map ModuleName DatalogModule, ?crate_graph::CrateGraph) => DatalogProgram -> Statics -> ([ProgNode], CompilerState)
 compileRules d statics =
     runState (do -- First pass: compute arrangements
                  createArrangements d
@@ -628,7 +628,7 @@ compileRules d statics =
     -- Initialize arrangements map
     arrs = M.fromList $ map (, []) $ M.keys $ progRelations d
 
-compileCrate :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?modules::[DatalogModule])
+compileCrate :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?modules::M.Map ModuleName DatalogModule)
     => DatalogProgram -> Statics -> [ProgNode] -> M.Map ModuleName (Doc, Doc, Doc) -> Crate -> Int -> M.Map FilePath Doc
 compileCrate d statics nodes rs_code crate crate_id =
     M.fromList $ toml:modules
@@ -638,7 +638,7 @@ compileCrate d statics nodes rs_code crate crate_id =
     -- Generate individual modules.
     modules = map (compileModule d statics nodes rs_code crate) $ S.toList crate
 
-mkCargoToml :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?modules::[DatalogModule])
+mkCargoToml :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?modules::M.Map ModuleName DatalogModule)
     => M.Map ModuleName (Doc, Doc, Doc) -> Crate -> Int -> (FilePath, Doc)
 mkCargoToml rs_code crate crate_id =
     (filepath, code)
@@ -697,26 +697,12 @@ mkCargoToml rs_code crate crate_id =
     -- Add 'toml' code from 'rs_code'.
     extra_toml_code = vcat $ map (sel3 . snd) $ filter ((\mname -> S.member mname crate) . fst) $ M.toList rs_code
 
-crateDependencies :: (?crate_graph::CrateGraph, ?modules::[DatalogModule]) => Int -> [Int]
-crateDependencies crate_id =
-    filter (/= crate_id) -- Ignore dependencies on self.
-    $ nub
-    $ concatMap ((map (cgModuleCrateId ?crate_graph . importModule)) . progImports . moduleDefs)
-    $ mapMaybe lookupModule
-    $ S.toList
-    $ cgCrates ?crate_graph !! crate_id
-
 -- Recursive version of 'crateDependencies'.
-crateDependenciesRec :: (?crate_graph::CrateGraph, ?modules::[DatalogModule]) => Int -> [Int]
+crateDependenciesRec :: (?crate_graph::CrateGraph, ?modules::M.Map ModuleName DatalogModule) => Int -> [Int]
 crateDependenciesRec crate_id =
     nub $ deps ++ (concatMap crateDependenciesRec deps)
     where
-    deps = crateDependencies crate_id
-
--- Find module by name.
-lookupModule :: (?modules::[DatalogModule]) => ModuleName -> Maybe DatalogModule
-lookupModule modname =
-    find ((==modname) . moduleName) ?modules
+    deps = cgCrateDependencies ?crate_graph M.! crate_id
 
 -- Relative path from the crate directory to the top-level of the Rust project.
 rootDirPath :: Crate -> String
@@ -843,7 +829,7 @@ compileModule d statics nodes rs_code crate mod_name =
            transformers
 
 -- | Compile DDlog rules into Rust.
-compileMainLib :: (?cfg::Config, ?specname::String, ?modules::[DatalogModule], ?crate_graph::CrateGraph) => DatalogProgram -> [ProgNode] -> CompilerState -> Doc
+compileMainLib :: (?cfg::Config, ?specname::String, ?modules::M.Map ModuleName DatalogModule, ?crate_graph::CrateGraph) => DatalogProgram -> [ProgNode] -> CompilerState -> Doc
 compileMainLib d nodes cstate =
     mainHeader                             $+$
     reexports                              $+$
