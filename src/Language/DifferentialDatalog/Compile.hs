@@ -218,6 +218,8 @@ rustLibFiles =
         , (dir </> "differential_datalog_test/Cargo.toml"                 , $(embedFile "rust/template/differential_datalog_test/Cargo.toml"))
         , (dir </> "differential_datalog_test/lib.rs"                     , $(embedFile "rust/template/differential_datalog_test/lib.rs"))
         , (dir </> "differential_datalog_test/test_value.rs"              , $(embedFile "rust/template/differential_datalog_test/test_value.rs"))
+        , (dir </> "ddlog_derive/Cargo.toml"                              , $(embedFile "rust/template/ddlog_derive/Cargo.toml"))
+        , (dir </> "ddlog_derive/src/lib.rs"                              , $(embedFile "rust/template/ddlog_derive/src/lib.rs"))
         , (dir </> "cmd_parser/Cargo.toml"                                , $(embedFile "rust/template/cmd_parser/Cargo.toml"))
         , (dir </> "cmd_parser/lib.rs"                                    , $(embedFile "rust/template/cmd_parser/lib.rs"))
         , (dir </> "cmd_parser/parse.rs"                                  , $(embedFile "rust/template/cmd_parser/parse.rs"))
