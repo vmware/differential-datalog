@@ -80,24 +80,41 @@ data CrateGraph = CrateGraph {
     -- Crates.
     cgCrates    :: [Crate],
     -- Map from module names to index of the crate the module belongs to.
-    cgMod2Crate :: M.Map ModuleName Int
+    cgMod2Crate :: M.Map ModuleName Int,
+    -- Graph edges: maps crate id to a list of crate ids that the crate depends on.
+    cgCrateDependencies :: M.Map Int [Int]
 } deriving (Eq, Show)
 
 cgEmpty :: CrateGraph
 cgEmpty =
     CrateGraph {
-        cgCrates       = [],
-        cgMod2Crate    = M.empty
+        cgCrates              = [],
+        cgMod2Crate           = M.empty,
+        cgCrateDependencies   = M.empty
     }
 
 cgAddCrate :: CrateGraph -> Crate -> CrateGraph
 cgAddCrate cg@CrateGraph{..} crate | elem crate cgCrates = cg
                                    | otherwise =
-    CrateGraph {
+    cg {
         cgCrates = cgCrates ++ [crate],
         cgMod2Crate = foldl' (\modCrates m -> M.insert m (length cgCrates) modCrates)
                              cgMod2Crate (S.toList crate)
     }
+
+cgComputeDependencies :: M.Map ModuleName DatalogModule -> CrateGraph -> CrateGraph
+cgComputeDependencies modules cg =
+    cg { cgCrateDependencies = deps}
+    where
+    deps = M.fromList
+           $ mapIdx (\crate crate_id ->
+                      let crate_deps = filter (/= crate_id) -- Ignore dependencies on self.
+                                       $ nub
+                                       $ concatMap ((map (cgModuleCrateId cg . importModule)) . progImports . moduleDefs)
+                                       $ mapMaybe (\m -> M.lookup m modules)
+                                       $ S.toList crate
+                      in (crate_id, crate_deps))
+           $ cgCrates cg
 
 cgLookupCrate :: CrateGraph -> String -> Maybe Crate
 cgLookupCrate cg crate_name = find ((== crate_name) . crateName) $ cgCrates cg
@@ -111,8 +128,8 @@ cgModuleCrateId CrateGraph{..} mod_name = cgMod2Crate M.! mod_name
 -- Module dependencies.  Currently just the list of module imports, but
 -- we may want to use a more accurate method based on actual dependencies
 -- used by types and functions in the module.
-moduleDeps :: (?mmap :: M.Map ModuleName DatalogModule) => ModuleName -> [ModuleName]
-moduleDeps m = fromMaybe [] $ ((map importModule) . progImports . moduleDefs) <$> ?mmap M.!? m
+moduleDeps :: (?modules :: M.Map ModuleName DatalogModule) => ModuleName -> [ModuleName]
+moduleDeps m = fromMaybe [] $ ((map importModule) . progImports . moduleDefs) <$> ?modules M.!? m
 
 -- Expand crate so that modules in the crate form a single connected
 -- subtree of the module graph:
@@ -166,7 +183,7 @@ addLowestCommonAncestor crate =
 -- dependencies: m1 -> m4, m6 -> m3
 --
 -- Crates 1 and 2 form a cycle and will get merged by this function.
-sccGraph :: (?mmap :: M.Map ModuleName DatalogModule) => CrateGraph -> [Crate]
+sccGraph :: (?modules :: M.Map ModuleName DatalogModule) => CrateGraph -> [Crate]
 sccGraph CrateGraph{..} =
     -- For each SCC, compute the union of all crates in the SCC.
     map (S.unions . map (cgCrates !!)) sccs
@@ -221,16 +238,15 @@ mergeOverlappingCrates crates =
 -- 2. Apply three transformations to merge crates to satisfy criteria 1 and 2
 --    until reaching a fix point:
 --    'sccGraph', 'addLowestCommonAncestors', 'joinOverlappingCrates'.
-partitionIntoCrates :: [DatalogModule] -> CrateGraph
+partitionIntoCrates :: M.Map ModuleName DatalogModule -> CrateGraph
 partitionIntoCrates modules =
-    let ?mmap = mmap in partitionIntoCratesRecursive cg0
+    let ?modules = modules in cgComputeDependencies modules $ partitionIntoCratesRecursive cg0
     where
-    mmap = M.fromList $ map (\m -> (moduleName m, m)) modules
     cg0 = foldl' (\cg m -> foldl' (\cg' path -> cgAddCrate cg' (S.singleton $ ModuleName path))
-                                  cg $ inits $ modulePath m)
-                 cgEmpty $ M.keys mmap
+                                    cg $ inits $ modulePath m)
+                   cgEmpty $ M.keys modules
 
-partitionIntoCratesRecursive :: (?mmap :: M.Map ModuleName DatalogModule) => CrateGraph -> CrateGraph
+partitionIntoCratesRecursive :: (?modules :: M.Map ModuleName DatalogModule) => CrateGraph -> CrateGraph
 partitionIntoCratesRecursive cg | cg' == cg = cg
                                 | otherwise = partitionIntoCratesRecursive cg'
     where
