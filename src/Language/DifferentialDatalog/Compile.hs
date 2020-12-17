@@ -2395,7 +2395,7 @@ normalizeArrangement d patctx pat = (renamed, vmap)
     rename ctx (E e) =
         case e of
              EStruct{..}             -> do
-                fs' <- mapM (\(n,e') -> (n,) <$> rename (CtxStruct e ctx n) e') exprStructFields
+                fs' <- mapIdxM (\(n,e') i -> (n,) <$> rename (CtxStruct e ctx (i,n)) e') exprStructFields
                 return $ E e{exprStructFields = fs'}
              ETuple{..}              -> do
                 fs' <- mapIdxM (\e' i -> rename (CtxTuple e ctx i) e') exprTupleFields
@@ -2729,7 +2729,7 @@ mkPatExpr' _ inkind _   EString{..}     varkind _    = do
     vname <- allocPatVar
     return $ Match (varprefix inkind varkind False <+> vname) (vname <> ".as_str() ==" <+> "\"" <> pp exprString <> "\"") []
 mkPatExpr' d inkind ctx e@EStruct{..}   varkind mut  = do
-    fields <- mapM (\(f, E e') -> (f,) <$> mkPatExpr' d inkind (CtxStruct e ctx f) e' varkind mut) exprStructFields
+    fields <- mapIdxM (\(f, E e') i -> (f,) <$> mkPatExpr' d inkind (CtxStruct e ctx (i,f)) e' varkind mut) exprStructFields
     let t = consType d exprConstructor
         struct_name = name t
         pat = mkConstructorName (Just $ ctxModule ctx) struct_name (fromJust $ tdefType t) exprConstructor <>

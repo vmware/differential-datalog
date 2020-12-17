@@ -1321,7 +1321,7 @@ data ECtx = -- | Top-level context. Serves as the root of the context hierarchy.
             -- | Tuple field expression: 'X.N'
           | CtxTupField       {ctxParExpr::ENode, ctxPar::ECtx}
             -- | Argument passed to a type constructor: 'Cons(X, y, z)'
-          | CtxStruct         {ctxParExpr::ENode, ctxPar::ECtx, ctxArg::String}
+          | CtxStruct         {ctxParExpr::ENode, ctxPar::ECtx, ctxArg::(Int, String)}
             -- | Argument passed to a tuple expression: '(X, y, z)'
           | CtxTuple          {ctxParExpr::ENode, ctxPar::ECtx, ctxIdx::Int}
             -- | Bit slice: 'X[h:l]'
@@ -1397,7 +1397,7 @@ instance PP ECtx where
                     CtxApplyFunc{}        -> "CtxApplyFunc      " <+> epar
                     CtxField{}            -> "CtxField          " <+> epar
                     CtxTupField{}         -> "CtxTupField       " <+> epar
-                    CtxStruct{..}         -> "CtxStruct         " <+> epar <+> pp ctxArg
+                    CtxStruct{..}         -> "CtxStruct         " <+> epar <+> pp (snd ctxArg)
                     CtxTuple{..}          -> "CtxTuple          " <+> epar <+> pp ctxIdx
                     CtxSlice{}            -> "CtxSlice          " <+> epar
                     CtxMatchExpr{}        -> "CtxMatchExpr      " <+> epar

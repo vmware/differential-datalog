@@ -737,8 +737,8 @@ varType _ v@ForVar{}                       = error $ "varType " ++ show v
 varType d (BindingVar ctx e@EBinding{..})  = exprType d (CtxBinding e ctx) exprPattern
 varType _ v@BindingVar{}                   = error $ "varType " ++ show v
 varType _ ArgVar{..}                       = typ $ fromJust $ find ((== varName) . name) $ funcArgs varFunc
-varType d ClosureArgVar{..}                = let TFunction{..} = exprType' d varCtx $ E varExpr in
-                                             typ $ typeFuncArgs !! varArgIdx
+varType d ClosureArgVar{..}                = let TFunction{..} = exprType' d varCtx $ E varExpr
+                                             in typ $ typeFuncArgs !! varArgIndex
 varType _ KeyVar{..}                       = typ varRel
 varType _ IdxVar{..}                       = typ $ fromJust $ find ((== varName) . name) $ idxVars varIndex
 varType d (FlatMapVar rl i)                = case typ' d $ exprType d (CtxRuleRFlatMap rl i) (rhsMapExpr $ ruleRHS rl !! i) of

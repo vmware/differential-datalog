@@ -51,7 +51,7 @@ import Language.DifferentialDatalog.Syntax
 import {-# SOURCE #-} Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.NS
-import Language.DifferentialDatalog.Var
+import {-# SOURCE #-} Language.DifferentialDatalog.Var
 import Language.DifferentialDatalog.Relation
 import Language.DifferentialDatalog.Type
 import Language.DifferentialDatalog.DatalogProgram

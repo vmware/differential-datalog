@@ -70,7 +70,7 @@ data GeneratorState = GeneratorState {
     genConstraints :: [Constraint],
     -- TypeVar-to-id map.  We assign unique ids to type variables to speed up
     -- comparisons.
-    genVars        :: M.Map (Maybe DDExpr, Maybe Var, Maybe String) Int,
+    genVars        :: M.Map (Maybe ELocator, Maybe VLocator, Maybe String) Int,
     -- The number of type variables in 'genVars'. Used to assign ids to new variables.
     genNumVars     :: Int
 }
@@ -92,28 +92,31 @@ addConstraints cs = modify $ \gen@GeneratorState{..} -> gen{genConstraints = cs 
 
 tvarTypeOfVar :: Var -> GeneratorMonad TypeVar
 tvarTypeOfVar v = do
+    let locator = varLocator v
     gen@GeneratorState{..} <- get
-    case M.lookup (Nothing, Just v, Nothing) genVars of
+    case M.lookup (Nothing, Just locator, Nothing) genVars of
          Nothing -> do let tv = TVarTypeOfVar genNumVars v
-                       put $ gen {genVars = M.insert (Nothing, Just v, Nothing) genNumVars genVars, genNumVars = genNumVars + 1}
+                       put $ gen {genVars = M.insert (Nothing, Just locator, Nothing) genNumVars genVars, genNumVars = genNumVars + 1}
                        return tv
          Just i  -> return $ TVarTypeOfVar i v
 
 tvarTypeOfExpr :: DDExpr -> GeneratorMonad TypeVar
 tvarTypeOfExpr de = do
+    let locator = ctxToELocator (ddexprCtx de)
     gen@GeneratorState{..} <- get
-    case M.lookup (Just de, Nothing, Nothing) genVars of
+    case M.lookup (Just locator, Nothing, Nothing) genVars of
          Nothing -> do let tv = TVarTypeOfExpr genNumVars de
-                       put $ gen {genVars = M.insert (Just de, Nothing, Nothing) genNumVars genVars, genNumVars = genNumVars + 1}
+                       put $ gen {genVars = M.insert (Just locator, Nothing, Nothing) genNumVars genVars, genNumVars = genNumVars + 1}
                        return tv
          Just i  -> return $ TVarTypeOfExpr i de
 
 tvarAux :: DDExpr -> String -> GeneratorMonad TypeVar
 tvarAux de n = do
+    let locator = ctxToELocator (ddexprCtx de)
     gen@GeneratorState{..} <- get
-    case M.lookup (Just de, Nothing, Just n) genVars of
+    case M.lookup (Just locator, Nothing, Just n) genVars of
          Nothing -> do let tv = TVarAux genNumVars de n
-                       put $ gen {genVars = M.insert (Just de, Nothing, Just n) genNumVars genVars, genNumVars = genNumVars + 1}
+                       put $ gen {genVars = M.insert (Just locator, Nothing, Just n) genNumVars genVars, genNumVars = genNumVars + 1}
                        return tv
          Just i -> return $ TVarAux i de n
 
@@ -505,7 +508,7 @@ inferTypes d es = do
 contextConstraints :: (?d::DatalogProgram) => DDExpr -> GeneratorMonad ()
 contextConstraints de@(DDExpr (CtxFunc f@Function{..}) _) = do
     addConstraint =<< tvarTypeOfExpr de <~~~~ typeToTExpr funcType
-    addConstraints =<< mapM (\a -> tvarTypeOfVar (ArgVar f (name a)) <==== typeToTExpr (typ a)) funcArgs
+    addConstraints =<< mapIdxM (\a i -> tvarTypeOfVar (ArgVar f i (name a)) <==== typeToTExpr (typ a)) funcArgs
 
 -- When evaluating index expression:
 -- 'index I(v1: t1, .., vn: tn) on R[e]',
@@ -513,7 +516,7 @@ contextConstraints de@(DDExpr (CtxFunc f@Function{..}) _) = do
 -- '|vi| = |ti|, |e| = reltype_R'.
 contextConstraints de@(DDExpr (CtxIndex idx@Index{..}) _) = do
     addConstraint =<< tvarTypeOfExpr de <~~~~ typeToTExpr (typ $ getRelation ?d $ atomRelation idxAtom)
-    addConstraints =<< mapM (\v -> tvarTypeOfVar (IdxVar idx (name v)) <==== typeToTExpr (typ v)) idxVars
+    addConstraints =<< mapIdxM (\v i -> tvarTypeOfVar (IdxVar idx i (name v)) <==== typeToTExpr (typ v)) idxVars
 
 -- When evaluating primary key expression:
 -- 'relation R(..) primary key (x) e',
@@ -740,7 +743,7 @@ exprConstraints_ de@(DDExpr ctx (E e@ETupField{..})) = do
 -- 'is_MyStruct |de| and |e1|=MyStruct_f1 |e| and ... and |en| = MyStruct_fn |e|'
 exprConstraints_ de@(DDExpr ctx (E e@EStruct{..})) = do
     addConstraint =<< deIsStruct de tdefName
-    addConstraints =<< mapM (\(arg, efield) -> tvarTypeOfExpr (DDExpr (CtxStruct e ctx (name arg)) efield) <~~~~> typeToTExpr' de (typ arg))
+    addConstraints =<< mapIdxM (\(arg, efield) i -> tvarTypeOfExpr (DDExpr (CtxStruct e ctx (i, name arg)) efield) <~~~~> typeToTExpr' de (typ arg))
                             (zip consArgs $ map snd exprStructFields)
     where
     Constructor{..} = getConstructor ?d exprConstructor
