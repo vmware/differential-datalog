@@ -573,6 +573,10 @@ function push(v: mut Vec<'X>, x: 'X) {
     vec_push(v, x)
 }
 
+function pop(v: mut Vec<'X>): Option<'X> {
+    vec_pop(v)
+}
+
 function append(v: mut Vec<'X>, other: Vec<'X>) {
     vec_append(v, other)
 }
@@ -798,6 +802,7 @@ extern function string_reverse(s: string): string
 
 extern function vec_len(v: Vec<'X>): usize
 extern function vec_push(v: mut Vec<'X>, x: 'X)
+extern function vec_pop(v: mut Vec<'X>): Option<'X>
 extern function vec_append(v: mut Vec<'X>, other: Vec<'X>)
 extern function vec_push_imm(v: Vec<'X>, x: 'X): Vec<'X>
 extern function vec_contains(v: Vec<'X>, x: 'X): bool

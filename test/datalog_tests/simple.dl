@@ -33,6 +33,18 @@ typedef t19 = C000 { f0: bigint }
 typedef t20 = signed<32>
 typedef t21 = double
 typedef t22 = float
+typedef t23 = function(string, string): string
+typedef t24 = |string, string|: string
+
+function fold(vec: Vec<string>, folder: t23): string = {
+   var vcopy = vec;
+   vcopy.push("");
+   var result = vcopy.pop().unwrap_or("");
+   for (v in vcopy) {
+       result = folder(result, v)
+   };
+   result
+}
 
 typedef person = string
 
