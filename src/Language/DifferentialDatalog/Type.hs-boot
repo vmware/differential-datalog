@@ -5,7 +5,7 @@ module Language.DifferentialDatalog.Type where
 import Control.Monad.Except
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Pos
-import Language.DifferentialDatalog.Var
+import {-# SOURCE #-} Language.DifferentialDatalog.Var
 
 data ConsTree
 
@@ -17,7 +17,9 @@ instance WithType Relation where
 instance WithType Type where
 instance WithType Field where
 instance WithType FuncArg where
+instance WithType ArgType where
 
+typ'' :: (WithType a) => DatalogProgram -> a -> Type
 typeStaticMemberTypes :: DatalogProgram -> Type -> [String]
 typesMatch :: (WithType a, WithType b) => DatalogProgram -> a -> b -> Bool
 checkTypesMatch :: (MonadError String me, WithType a, WithType b) => Pos -> DatalogProgram -> a -> b -> me ()

@@ -3,7 +3,7 @@ module Language.DifferentialDatalog.Expr where
 import qualified Data.Set as S
 
 import Language.DifferentialDatalog.Syntax
-import Language.DifferentialDatalog.Var
+import {-# SOURCE #-} Language.DifferentialDatalog.Var
 
 exprFoldCtxM :: (Monad m) => (ECtx -> ExprNode b -> m b) -> ECtx -> Expr -> m b
 exprMapM :: (Monad m) => (a -> m b) -> ExprNode a -> m (ExprNode b)
@@ -31,3 +31,6 @@ exprTypeMapM :: (Monad m) => (Type -> m Type) -> Expr -> m Expr
 exprIsPure :: DatalogProgram -> ECtx -> Expr -> Bool
 exprFreeVars :: DatalogProgram -> ECtx -> Expr -> [Var]
 exprStripTypeAnnotationsRec :: Expr -> ECtx -> Expr
+
+data ELocator
+ctxToELocator :: ECtx -> ELocator

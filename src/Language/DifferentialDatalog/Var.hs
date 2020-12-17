@@ -23,10 +23,11 @@ SOFTWARE.
 
 {-# LANGUAGE RecordWildCards, TypeSynonymInstances, FlexibleInstances #-}
 module Language.DifferentialDatalog.Var(
-    Var(..))
+    Var(..),
+    VLocator,
+    varLocator)
 where
 
-import Data.List
 import Data.Maybe
 import Text.PrettyPrint
 
@@ -34,6 +35,7 @@ import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.PP
 import Language.DifferentialDatalog.Syntax
+import Language.DifferentialDatalog.Expr
 
 -- Uniquely identifies a variable declaration in a DDlog program.
 data Var = -- Variable declared in an expression ('var v').
@@ -43,13 +45,13 @@ data Var = -- Variable declared in an expression ('var v').
            -- Variable declard in a @-binding.
          | BindingVar {varCtx::ECtx, varExpr::ENode}
            -- Function argument.
-         | ArgVar {varFunc::Function, varName::String}
+         | ArgVar {varFunc::Function, varArgIndex::Int, varName::String}
            -- Closure argument.
-         | ClosureArgVar {varCtx::ECtx, varExpr::ENode, varArgIdx::Int}
+         | ClosureArgVar {varCtx::ECtx, varExpr::ENode, varArgIndex::Int}
            -- Primary key variable.
          | KeyVar {varRel::Relation}
            -- Index variable.
-         | IdxVar {varIndex::Index, varName::String}
+         | IdxVar {varIndex::Index, varArgIndex::Int, varName::String}
            -- Variable returned by FlatMap.
          | FlatMapVar {varRule::Rule, varRhsIdx::Int}
            -- Variable returned by group_by.
@@ -64,10 +66,10 @@ instance WithPos Var where
     pos (ExprVar _ e)         = pos e
     pos (ForVar _ e)          = pos e
     pos (BindingVar _ e)      = pos e
-    pos (ArgVar f v)          = pos $ fromJust $ find ((==v) . name) $ funcArgs f
+    pos (ArgVar f i _)        = pos $ funcArgs f !! i
     pos (ClosureArgVar _ e i) = pos $ exprClosureArgs e !! i
     pos (KeyVar rel)          = pos $ fromJust $ relPrimaryKey rel
-    pos (IdxVar idx v)        = pos $ fromJust $ find ((==v) . name) $ idxVars idx
+    pos (IdxVar idx i _)      = pos $ idxVars idx !! i
     pos (FlatMapVar rl i)     = pos $ rhsMapExpr $ ruleRHS rl !! i
     pos (GroupVar rl i)       = (fst $ pos $ rhsProject rhs, snd $ pos $ rhsGroupBy rhs)
                                 where rhs = ruleRHS rl !! i
@@ -83,10 +85,10 @@ instance WithName Var where
     name (ForVar _ e)                   = error $ "ForVar.name: unexpected expression " ++ show e
     name (BindingVar _ EBinding{..})    = exprVar
     name (BindingVar _ e)               = error $ "BindingVar.name: unexpected expression " ++ show e
-    name (ArgVar _ v)                   = v
+    name (ArgVar _ _ v)                 = v
     name (ClosureArgVar _ e i)          = name $ exprClosureArgs e !! i
     name (KeyVar rel)                   = keyVar $ fromJust $ relPrimaryKey rel
-    name (IdxVar _ s)                   = s
+    name (IdxVar _ _ s)                 = s
     name (FlatMapVar rule i)            = rhsVar $ ruleRHS rule !! i
     name (GroupVar rule i)              = rhsVar $ ruleRHS rule !! i 
     name WeightVar                      = "ddlog_weight"
@@ -98,3 +100,22 @@ instance PP Var where
 
 instance Show Var where
     show = render . pp
+
+-- A descriptor that uniquely identifies a variable within
+-- a given context as a path from the root of the context to the
+-- variable declaration.
+data VLocator = VLocator [Int] deriving (Eq, Ord)
+
+varLocator :: Var -> VLocator
+varLocator ExprVar{..}          = VLocator $ 0:(elocatorPath $ ctxToELocator varCtx)
+varLocator ForVar{..}           = VLocator $ 1:(elocatorPath $ ctxToELocator varCtx)
+varLocator BindingVar{..}       = VLocator $ 2:(elocatorPath $ ctxToELocator varCtx)
+varLocator ArgVar{..}           = VLocator  [3,varArgIndex]
+varLocator ClosureArgVar{..}    = VLocator $ 4:(elocatorPath $ ctxToELocator varCtx) ++ [varArgIndex]
+varLocator KeyVar{..}           = VLocator  [5]
+varLocator IdxVar{..}           = VLocator  [6, varArgIndex]
+varLocator FlatMapVar{..}       = VLocator  [7, varRhsIdx]
+varLocator GroupVar{..}         = VLocator  [8, varRhsIdx]
+varLocator WeightVar            = VLocator  [9]
+varLocator TSVar{}              = VLocator  [10]
+

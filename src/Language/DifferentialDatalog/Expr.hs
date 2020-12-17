@@ -57,7 +57,10 @@ module Language.DifferentialDatalog.Expr (
     exprIsPure,
     exprIsStatic,
     exprTypeMapM,
-    exprInjectStringConversion
+    exprInjectStringConversion,
+    ELocator(..),
+    exprFoldWithLocatorM,
+    ctxToELocator
     ) where
 
 import Data.List
@@ -81,7 +84,7 @@ import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Name
 import {-# SOURCE #-} Language.DifferentialDatalog.Type
 import Language.DifferentialDatalog.ECtx
-import Language.DifferentialDatalog.Var
+import {-# SOURCE #-} Language.DifferentialDatalog.Var
 
 bUILTIN_2STRING_FUNC :: String
 bUILTIN_2STRING_FUNC = mOD_STD ++ "::__builtin_2string"
@@ -105,7 +108,7 @@ exprFoldCtxM' f ctx   (EFloat p i)            = f ctx $ EFloat p i
 exprFoldCtxM' f ctx   (EString p s)           = f ctx $ EString p s
 exprFoldCtxM' f ctx   (EBit p w v)            = f ctx $ EBit p w v
 exprFoldCtxM' f ctx   (ESigned p w v)         = f ctx $ ESigned p w v
-exprFoldCtxM' f ctx e@(EStruct p c fs)        = f ctx =<< EStruct p c <$> (mapM (\(fname, fl) -> (fname,) <$> exprFoldCtxM f (CtxStruct e ctx fname) fl) fs)
+exprFoldCtxM' f ctx e@(EStruct p c fs)        = f ctx =<< EStruct p c <$> (mapIdxM (\(fname, fl) i -> (fname,) <$> exprFoldCtxM f (CtxStruct e ctx (i, fname)) fl) fs)
 exprFoldCtxM' f ctx e@(ETuple p fs)           = f ctx =<< ETuple p <$> (mapIdxM (\fl i -> exprFoldCtxM f (CtxTuple e ctx i) fl) fs)
 exprFoldCtxM' f ctx e@(ESlice p v h l)        = do v' <- exprFoldCtxM f (CtxSlice e ctx) v
                                                    f ctx $ ESlice p v' h l
@@ -482,7 +485,7 @@ exprIsInjective d ctx vs e | isNothing funcs = False
     exprIsInjective_ d ctx vs e &&
     all (\f -> case funcDef f of
                     Nothing -> False
-                    Just e' -> exprIsInjective_ d (CtxFunc f) (S.fromList $ map (ArgVar f . name) $ funcArgs f) e')
+                    Just e' -> exprIsInjective_ d (CtxFunc f) (S.fromList $ mapIdx (\a i -> ArgVar f i $ name a) $ funcArgs f) e')
         (fromJust funcs)
     where
     funcs = exprFuncsRec d ctx e
@@ -586,3 +589,144 @@ exprInjectStringConversion d e t = do
                         [E e]
     where mk2string_func cs = scoped scope "to_string"
               where scope = nameScope cs
+
+-- A descriptor that uniquely identifies a sub-expression within
+-- a given context as a path from the root of the context to the
+-- sub-expression.
+data ELocator = ELocator {elocatorPath :: [Int]} deriving (Eq, Ord)
+
+-- depth-first fold of an expression
+exprFoldWithLocatorM :: (Monad m) => (ELocator -> ExprNode b -> m b) -> ELocator -> Expr -> m b
+exprFoldWithLocatorM f loc (E n) = exprFoldWithLocatorM' f loc n
+
+exprFoldWithLocatorM' :: (Monad m) => (ELocator -> ExprNode b -> m b) -> ELocator -> ENode -> m b
+exprFoldWithLocatorM' f loc                 (EVar p v)              = f loc $ EVar p v
+exprFoldWithLocatorM' f loc@(ELocator path) (EApply p fun as)       = 
+    -- 0: function expression
+    -- 1..n: argument expression
+    f loc =<< EApply p <$> exprFoldWithLocatorM f (ELocator $ 0:path) fun
+                                  <*> (mapIdxM (\a i -> exprFoldWithLocatorM f (ELocator $ (1+i) : path) a) as)
+exprFoldWithLocatorM' f loc@(ELocator path) (EField p s fl)         =
+    do s' <- exprFoldWithLocatorM f (ELocator $ 0:path) s
+       f loc $ EField p s' fl
+exprFoldWithLocatorM' f loc@(ELocator path) (ETupField p s fl)      = do
+    s' <- exprFoldWithLocatorM f (ELocator $ 0:path) s
+    f loc $ ETupField p s' fl
+exprFoldWithLocatorM' f loc                   (EBool p b)             = f loc $ EBool p b
+exprFoldWithLocatorM' f loc                   (EInt p i)              = f loc $ EInt p i
+exprFoldWithLocatorM' f loc                   (EDouble p i)           = f loc $ EDouble p i
+exprFoldWithLocatorM' f loc                   (EFloat p i)            = f loc $ EFloat p i
+exprFoldWithLocatorM' f loc                   (EString p s)           = f loc $ EString p s
+exprFoldWithLocatorM' f loc                   (EBit p w v)            = f loc $ EBit p w v
+exprFoldWithLocatorM' f loc                   (ESigned p w v)         = f loc $ ESigned p w v
+exprFoldWithLocatorM' f loc@(ELocator path) (EStruct p c fs)        =
+    f loc =<< EStruct p c <$> (mapIdxM (\(fname, fl) i -> (fname,) <$> exprFoldWithLocatorM f (ELocator $ i : path) fl) fs)
+exprFoldWithLocatorM' f loc@(ELocator path) (ETuple p fs)           =
+    f loc =<< ETuple p <$> (mapIdxM (\fl i -> exprFoldWithLocatorM f (ELocator $ i : path) fl) fs)
+exprFoldWithLocatorM' f loc@(ELocator path) (ESlice p v h l)        = do
+    v' <- exprFoldWithLocatorM f (ELocator $ 0 : path) v
+    f loc $ ESlice p v' h l
+exprFoldWithLocatorM' f loc@(ELocator path) (EMatch p m cs)         = do
+    -- 0 - match expression
+    -- 1,3,5,..,2n-1 - match patterns
+    -- 2,4,6,..,2n   - match values
+    m' <- exprFoldWithLocatorM f (ELocator $ 0:path) m
+    cs' <- mapIdxM (\(e1, e2) i -> (,) <$> (exprFoldWithLocatorM f (ELocator $ (1+2*i):path) e1) <*>
+                                           (exprFoldWithLocatorM f (ELocator $ (2+2*i):path) e2)) cs
+    f loc $ EMatch p m' cs'
+exprFoldWithLocatorM' f loc                   (EVarDecl p v)          = f loc $ EVarDecl p v
+exprFoldWithLocatorM' f loc@(ELocator path) (ESeq p l r)            =
+    f loc =<< ESeq p <$> exprFoldWithLocatorM f (ELocator $ 0:path) l <*>
+                         exprFoldWithLocatorM f (ELocator $ 1:path) r
+exprFoldWithLocatorM' f loc@(ELocator path) (EITE p i t el)         =
+    -- 0: if-confition
+    -- 1: then-clause
+    -- 2: else-clause
+    f loc =<< EITE p <$> exprFoldWithLocatorM f (ELocator $ 0:path) i <*>
+                         exprFoldWithLocatorM f (ELocator $ 1:path) t <*>
+                         exprFoldWithLocatorM f (ELocator $ 2:path) el
+exprFoldWithLocatorM' f loc@(ELocator path) (EFor p v i b)          =
+    -- 0: iterator expression
+    -- 1: loop body
+    f loc =<< EFor p v <$> exprFoldWithLocatorM f (ELocator $ 0:path) i <*>
+                           exprFoldWithLocatorM f (ELocator $ 1:path) b
+exprFoldWithLocatorM' f loc@(ELocator path) (ESet p l r)            = do
+    r' <- exprFoldWithLocatorM f (ELocator $ 0:path) r
+    l' <- exprFoldWithLocatorM f (ELocator $ 1:path) l
+    f loc $ ESet p l' r'
+exprFoldWithLocatorM' f loc                 (EContinue p)           = f loc $ EContinue p
+exprFoldWithLocatorM' f loc                 (EBreak p)              = f loc $ EBreak p
+exprFoldWithLocatorM' f loc@(ELocator path) (EReturn p v)           =
+    f loc =<< EReturn p <$> exprFoldWithLocatorM f (ELocator $ 0:path) v
+exprFoldWithLocatorM' f loc@(ELocator path) (EBinOp p op l r)       =
+    f loc =<< EBinOp p op <$> exprFoldWithLocatorM f (ELocator $ 0:path) l <*>
+                              exprFoldWithLocatorM f (ELocator $ 1:path) r
+exprFoldWithLocatorM' f loc@(ELocator path) (EUnOp p op x)          =
+    f loc =<< EUnOp p op <$> (exprFoldWithLocatorM f (ELocator $ 0:path) x)
+exprFoldWithLocatorM' f loc                 (EPHolder p)            = f loc $ EPHolder p
+exprFoldWithLocatorM' f loc@(ELocator path) (EBinding p v x)        = do
+    x' <- exprFoldWithLocatorM f (ELocator $ 0:path) x
+    f loc $ EBinding p v x'
+exprFoldWithLocatorM' f loc@(ELocator path) (ETyped p x t)          = do
+    x' <- exprFoldWithLocatorM f (ELocator $ 0:path) x
+    f loc $ ETyped p x' t
+exprFoldWithLocatorM' f loc@(ELocator path) (EAs p x t)             = do
+    x' <- exprFoldWithLocatorM f (ELocator $ 0:path) x
+    f loc $ EAs p x' t
+exprFoldWithLocatorM' f loc@(ELocator path) (ERef p x)              = do
+    x' <- exprFoldWithLocatorM f (ELocator $ 0:path) x
+    f loc $ ERef p x'
+exprFoldWithLocatorM' f loc@(ELocator path) (ETry p x)              = do
+    x' <- exprFoldWithLocatorM f (ELocator $ 0:path) x
+    f loc $ ETry p x'
+exprFoldWithLocatorM' f loc@(ELocator path) (EClosure p as r x)     = do
+    x' <- exprFoldWithLocatorM f (ELocator $ 0:path) x
+    f loc $ EClosure p as r x'
+exprFoldWithLocatorM' f loc                 (EFunc p fs)            = f loc $ EFunc p fs
+
+-- Convert context to expression locator relative to a top-level entity,
+-- i.e., rule, function, or index.
+ctxToELocator :: ECtx -> ELocator
+ctxToELocator ctx = ELocator $ reverse $ ctxToLocator' ctx
+
+ctxToLocator' :: ECtx -> [Int]
+ctxToLocator' CtxTop{}                   = []
+ctxToLocator' CtxFunc{}                  = []
+ctxToLocator' (CtxRuleL _ idx)           = [idx, 0]
+ctxToLocator' (CtxRuleRAtom _ idx)       = [idx, 1]
+ctxToLocator' (CtxRuleRCond _ idx)       = [idx, 1]
+ctxToLocator' (CtxRuleRFlatMap _ idx)    = [idx, 1]
+ctxToLocator' (CtxRuleRInspect _ idx)    = [idx, 1]
+ctxToLocator' (CtxRuleRProject _ idx)    = [0,idx,1]
+ctxToLocator' (CtxRuleRGroupBy _ idx)    = [1,idx,1]
+ctxToLocator' (CtxKey _)                 = []
+ctxToLocator' (CtxIndex _)               = []
+ctxToLocator' (CtxApplyArg _ ctx i)      = (i+1) : ctxToLocator' ctx
+ctxToLocator' (CtxApplyFunc _ ctx)       = 0 : ctxToLocator' ctx
+ctxToLocator' (CtxField _ ctx)           = 0 : ctxToLocator' ctx
+ctxToLocator' (CtxTupField _ ctx)        = 0 : ctxToLocator' ctx
+ctxToLocator' (CtxStruct _ ctx (i,_))    = i : ctxToLocator' ctx
+ctxToLocator' (CtxTuple _ ctx i)         = i : ctxToLocator' ctx
+ctxToLocator' (CtxSlice _ ctx)           = 0 : ctxToLocator' ctx
+ctxToLocator' (CtxMatchExpr _ ctx)       = 0 : ctxToLocator' ctx
+ctxToLocator' (CtxMatchPat _ ctx i)      = (1+2*i) : ctxToLocator' ctx
+ctxToLocator' (CtxMatchVal _ ctx i)      = (2+2*i) : ctxToLocator' ctx
+ctxToLocator' (CtxSeq1 _ ctx)            = 0 : ctxToLocator' ctx
+ctxToLocator' (CtxSeq2 _ ctx)            = 1 : ctxToLocator' ctx
+ctxToLocator' (CtxITEIf _ ctx)           = 0 : ctxToLocator' ctx
+ctxToLocator' (CtxITEThen _ ctx)         = 1 : ctxToLocator' ctx
+ctxToLocator' (CtxITEElse _ ctx)         = 2 : ctxToLocator' ctx
+ctxToLocator' (CtxForIter _ ctx)         = 0 : ctxToLocator' ctx
+ctxToLocator' (CtxForBody _ ctx)         = 1 : ctxToLocator' ctx
+ctxToLocator' (CtxSetL _ ctx)            = 1 : ctxToLocator' ctx
+ctxToLocator' (CtxSetR _ ctx)            = 0 : ctxToLocator' ctx
+ctxToLocator' (CtxReturn _ ctx)          = 0 : ctxToLocator' ctx
+ctxToLocator' (CtxBinOpL _ ctx)          = 0 : ctxToLocator' ctx
+ctxToLocator' (CtxBinOpR _ ctx)          = 1 : ctxToLocator' ctx
+ctxToLocator' (CtxUnOp _ ctx)            = 0 : ctxToLocator' ctx
+ctxToLocator' (CtxBinding _ ctx)         = 0 : ctxToLocator' ctx
+ctxToLocator' (CtxTyped _ ctx)           = 0 : ctxToLocator' ctx
+ctxToLocator' (CtxAs _ ctx)              = 0 : ctxToLocator' ctx
+ctxToLocator' (CtxRef _ ctx)             = 0 : ctxToLocator' ctx
+ctxToLocator' (CtxTry _ ctx)             = 0 : ctxToLocator' ctx
+ctxToLocator' (CtxClosure _ ctx)         = 0 : ctxToLocator' ctx

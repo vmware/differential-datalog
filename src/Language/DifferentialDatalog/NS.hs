@@ -40,13 +40,14 @@ import Data.Maybe
 import Control.Monad.Except
 --import Debug.Trace
 
+import Language.DifferentialDatalog.Util
 import {-# SOURCE #-} Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.Error
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Pos
 import {-# SOURCE #-} Language.DifferentialDatalog.Rule
 import Language.DifferentialDatalog.Syntax
-import Language.DifferentialDatalog.Var
+import {-# SOURCE #-} Language.DifferentialDatalog.Var
 import {-# SOURCE #-} Language.DifferentialDatalog.TypeInference
 import {-# SOURCE #-} Language.DifferentialDatalog.Type
 
@@ -150,7 +151,9 @@ getRelation :: DatalogProgram -> String -> Relation
 getRelation d n = fromJust $ lookupRelation d n
 
 arg2v :: Function -> FuncArg -> Var
-arg2v f a = ArgVar f (name a)
+arg2v f a = ArgVar f i (name a)
+    where
+    i = fromJust $ findIndex ((== name a) . name) $ funcArgs f
 
 -- All variables visible in 'ctx'.  This function is safe to call before
 -- type checking.
@@ -183,7 +186,7 @@ ctxVars' d ctx with_types =
          CtxRuleRProject rl i     -> ([], ruleRHSVars d rl i)
          CtxRuleRGroupBy rl i     -> ([], ruleRHSVars d rl i)
          CtxKey rel@Relation{}    -> ([], [KeyVar rel])
-         CtxIndex idx@Index{..}   -> ([], map (\v -> (IdxVar idx $ name v)) idxVars)
+         CtxIndex idx@Index{..}   -> ([], mapIdx (\v i -> (IdxVar idx i $ name v)) idxVars)
          CtxApplyArg _ _ _        -> (plvars, prvars)
          CtxApplyFunc _ _         -> (plvars, prvars)
          CtxField _ _             -> (plvars, prvars)

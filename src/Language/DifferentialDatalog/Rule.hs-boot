@@ -1,7 +1,7 @@
 module Language.DifferentialDatalog.Rule where
 
 import Language.DifferentialDatalog.Syntax
-import Language.DifferentialDatalog.Var
+import {-# SOURCE #-} Language.DifferentialDatalog.Var
 
 ruleRHSVars :: DatalogProgram -> Rule -> Int -> [Var]
 ruleVars :: DatalogProgram -> Rule -> [Var]
