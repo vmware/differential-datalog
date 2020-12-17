@@ -609,7 +609,7 @@ compileLib d rs_code =
     -- First pass: Compile DDlog rules, generate arrangements.
     (nodes, cstate) = compileRules d statics
     -- Second pass: Populate Rust crates with compiled code in `nodes`.
-    crates = M.unions $ map (compileCrate d statics nodes rs_code) $ cgCrates ?crate_graph
+    crates = M.unions $ mapIdx (compileCrate d statics nodes rs_code) $ cgCrates ?crate_graph
     -- Generate the main library file.
     main_lib = compileMainLib d nodes cstate
 
@@ -629,18 +629,18 @@ compileRules d statics =
     arrs = M.fromList $ map (, []) $ M.keys $ progRelations d
 
 compileCrate :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?modules::[DatalogModule])
-    => DatalogProgram -> Statics -> [ProgNode] -> M.Map ModuleName (Doc, Doc, Doc) -> Crate -> M.Map FilePath Doc
-compileCrate d statics nodes rs_code crate =
+    => DatalogProgram -> Statics -> [ProgNode] -> M.Map ModuleName (Doc, Doc, Doc) -> Crate -> Int -> M.Map FilePath Doc
+compileCrate d statics nodes rs_code crate crate_id =
     M.fromList $ toml:modules
     where
     -- Generate 'Cargo.toml'.
-    toml = mkCargoToml rs_code crate
+    toml = mkCargoToml rs_code crate crate_id
     -- Generate individual modules.
     modules = map (compileModule d statics nodes rs_code crate) $ S.toList crate
 
 mkCargoToml :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?modules::[DatalogModule])
-    => M.Map ModuleName (Doc, Doc, Doc) -> Crate -> (FilePath, Doc)
-mkCargoToml rs_code crate =
+    => M.Map ModuleName (Doc, Doc, Doc) -> Crate -> Int -> (FilePath, Doc)
+mkCargoToml rs_code crate crate_id =
     (filepath, code)
     where
     filepath = crateDirPath crate </> "Cargo.toml"
@@ -687,7 +687,7 @@ mkCargoToml rs_code crate =
     -- an overkill, this may be necessary when type annotations injected by the
     -- type inference engine refer to types defined in modules that are not
     -- direct dependencies of 'crate'.
-    deps = crateDependenciesRec crate
+    deps = map (cgCrates ?crate_graph !!) $ crateDependenciesRec crate_id
     dependencies = vcat
                    $ map (\dep -> pp (crateName dep) <+> "= { path = \"" <> pp (crateDirPathFrom crate dep) <> "\" }" )
                    $ deps
@@ -697,20 +697,21 @@ mkCargoToml rs_code crate =
     -- Add 'toml' code from 'rs_code'.
     extra_toml_code = vcat $ map (sel3 . snd) $ filter ((\mname -> S.member mname crate) . fst) $ M.toList rs_code
 
-crateDependencies :: (?crate_graph::CrateGraph, ?modules::[DatalogModule]) => Crate -> [Crate]
-crateDependencies crate =
-    filter (/= crate) -- Ignore dependencies on self.
+crateDependencies :: (?crate_graph::CrateGraph, ?modules::[DatalogModule]) => Int -> [Int]
+crateDependencies crate_id =
+    filter (/= crate_id) -- Ignore dependencies on self.
     $ nub
-    $ concatMap ((map (cgModuleCrate ?crate_graph . importModule)) . progImports . moduleDefs)
+    $ concatMap ((map (cgModuleCrateId ?crate_graph . importModule)) . progImports . moduleDefs)
     $ mapMaybe lookupModule
-    $ S.toList crate
+    $ S.toList
+    $ cgCrates ?crate_graph !! crate_id
 
 -- Recursive version of 'crateDependencies'.
-crateDependenciesRec :: (?crate_graph::CrateGraph, ?modules::[DatalogModule]) => Crate -> [Crate]
-crateDependenciesRec crate =
+crateDependenciesRec :: (?crate_graph::CrateGraph, ?modules::[DatalogModule]) => Int -> [Int]
+crateDependenciesRec crate_id =
     nub $ deps ++ (concatMap crateDependenciesRec deps)
     where
-    deps = crateDependencies crate
+    deps = crateDependencies crate_id
 
 -- Find module by name.
 lookupModule :: (?modules::[DatalogModule]) => ModuleName -> Maybe DatalogModule

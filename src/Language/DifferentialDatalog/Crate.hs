@@ -35,6 +35,7 @@ module Language.DifferentialDatalog.Crate(
     crateMainModule,
     crateName,
     cgModuleCrate,
+    cgModuleCrateId,
     cgLookupCrate
 ) where
 
@@ -103,6 +104,9 @@ cgLookupCrate cg crate_name = find ((== crate_name) . crateName) $ cgCrates cg
 
 cgModuleCrate :: CrateGraph -> ModuleName -> Crate
 cgModuleCrate CrateGraph{..} mod_name = cgCrates !! (cgMod2Crate M.! mod_name)
+
+cgModuleCrateId :: CrateGraph -> ModuleName -> Int
+cgModuleCrateId CrateGraph{..} mod_name = cgMod2Crate M.! mod_name
 
 -- Module dependencies.  Currently just the list of module imports, but
 -- we may want to use a more accurate method based on actual dependencies
