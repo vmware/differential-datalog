@@ -98,7 +98,7 @@ error: ./test/datalog_tests/function.fail.dl:10:16-10:29: Type mismatch:
 expected type: bool
 actual type: ddlog_std::Option<bool>
 in
-expected type: function( ddlog_std::Option<bool>):bool
+expected type: function( 'a9):bool
 actual type: function( ddlog_std::Option<bool>):ddlog_std::Option<bool>
 in
 expression 'bool_identity'
@@ -111,9 +111,16 @@ Only non-extern functions can be overloaded.
 extern function foo(x: u32): ()
 ^
 
-error: ./test/datalog_tests/function.fail.dl:8:21-8:39: expression '(ddlog_std::nth(components, 1))' must be of type 'Result<>', but its type is 'ddlog_std::Option<string>'
-    var last_name = components.nth(1)?;
-                    ^^^^^^^^^^^^^^^^^^
+error: ./test/datalog_tests/function.fail.dl:6:5-10:1: Type mismatch:
+expected type: ddlog_std::Result<(string,string),string>
+actual type: ddlog_std::Option<('a17,'a28)>
+in
+expression '{(var components = (/*ddlog_std::split, internment::split*/(name, " ")));
+ {(var first_name = ((ddlog_std::nth(components, 0))?));
+  {(var last_name = ((ddlog_std::nth(components, 1))?));
+   ddlog_std::Some{.x=(first_name, last_name)}}}}'
+    var components = name.split(" ");
+    ^
 
 error: ./test/datalog_tests/function.fail.dl:13:5-13:7: Expression is not an l-value
     y = 0
@@ -142,7 +149,7 @@ error: ./test/datalog_tests/function.fail.dl:5:20-5:27: Multiple definitions of 
                    ^^^^^^^
 
 error: ./test/datalog_tests/function.fail.dl:6:16-6:17: Type mismatch:
-expected type: function( 'a):()
+expected type: function( 'a2):'a0
 actual type: function( bit<16>, bit<16>):bit<16>
 in
 expression 'a'
@@ -153,7 +160,7 @@ error: ./test/datalog_tests/function.fail.dl:6:16-6:17: Type mismatch:
 expected type: ()
 actual type: bit<16>
 in
-expected type: function( bit<32>, 'a):()
+expected type: function( bit<32>, 'a3):()
 actual type: function( bit<16>, bit<16>):bit<16>
 in
 expression 'a'

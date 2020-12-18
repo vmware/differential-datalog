@@ -895,9 +895,9 @@ exprConstraints_ de@(DDExpr ctx (E e@EBinOp{..})) | elem exprBOp [Eq, Neq, Lt, L
                                                 | elem exprBOp [ShiftL, ShiftR] = do
     addConstraint =<< deIsInt l
     -- If the type of 'r' cannot be inferred, default to 'u32'
-    isbits <- deIsBits r
-    def <- tvarTypeOfExpr r <==== TEBit (IConst 32)
-    addConstraint $ isbits {cDefault = Just [def]}
+    --isbits <- deIsBits r
+    addConstraint =<< tvarTypeOfExpr r <==== TEBit (IConst 32)
+    --addConstraint $ isbits {cDefault = Just [def]}
     addConstraint =<< tvarTypeOfExpr de <====> teTypeOfExpr l
 
 -- Binary operator 'e1 op e2', where `op` is one of '|,&,^'.
