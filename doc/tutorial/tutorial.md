@@ -152,6 +152,23 @@ Second, run the Rust compiler to generate a binary executable:
 (cd playpen_ddlog && cargo build --release)
 ```
 
+#### Compilation speed
+
+Unfortunately the process of compiling the Rust code tends to be quite long.
+The following steps may help:
+- Decompose your DDlog program into separate independent modules
+  that have no circular dependences between them.  This will generate
+  independent Rust crates.
+- Do not delete the plaype_ddlog directory when you change your DDlog
+  program (unless you upgrade the DDlog compiler itself).  When
+  writing new Rust outputs the ddlog compiler will only overwrite the
+  files that change.
+- Use the following environment variable during development:
+  CARGO_PROFILE_RELEASE_OPT_LEVEL="z".  This will speed-up the Rust
+  compilation while generating code that is 50% slower.
+- The Rust debug compilation will be faster, but will produce very
+  large and slow binaries (`cargo build --debug`).
+
 ### Running the "Hello, world!" program
 
 The text-based interface offers a convenient way to interact with the
@@ -1406,7 +1423,7 @@ function first(g: Group<'K, 'V>): 'V
 /* Nth element of the group. */
 function nth(g: Group<'K,'V>, n: usize): Option<'V>
 
-/* Convert group to a vector of its elements.  The resulting 
+/* Convert group to a vector of its elements.  The resulting
  * vector has the same size as the group. */
 function to_vec(g: Group<'K, 'V>): Vec<'V>
 ```
@@ -1542,7 +1559,7 @@ as the one in `lib/log.dl`.
 
 Transformers are a way to invoke incremental computations implemented in Rust
 directly on top of differential dataflow. This is useful for those computations
-that cannot be expressed in DDlog, but can be implemented in differential. A 
+that cannot be expressed in DDlog, but can be implemented in differential. A
 transformer takes one or more relations and returns one or more relations.  A
 transformer can be additionally parameterized by one or more **projection**
 functions that extract values from input relations.  The following stronly
