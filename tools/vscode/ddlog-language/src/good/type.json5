@@ -3,18 +3,258 @@
         "type": {
             "patterns": [
                 {
-                    "match": "\\b([A-Za-z][_A-Za-z0-9]+)\\b(?=<[_a-zA-Z']+>)",
-                    "name": "entity.name.type.ddlog"
-                },
+                    "match": "(\\s*)(?!.*(Some|None|Ok|Err))([A-Z][a-zA-Z0-9_]*)(\\s*)(?=((\\s*)\\{))",
+                    "name": "entity.name.constructor.ddlog"
+                },                
                 {
                     "match": "('[A-Z][a-zA-Z0-9_]*)",
                     "name": "entity.name.type-variable.ddlog"
+                }, 
+                {
+                    "name": "entity.name.typedef-typespec.ddlog",                    
+                    "match": "\\b(typedef)\\s*([a-zA-Z_][a-zA-Z0-9_]*)\\s*(=)\\s*(bigint|bit|bool|signed|double|float|string|Vec|Ref|Set|Map)(\\b)",
+                    "captures": {
+                        "1": {
+                            "name": "keyword.type.ddlog"
+                        },
+                        "2": {
+                            "name": "entity.name.type.ddlog"
+                        },  
+                        "3": {
+                            "name": "keyword.operator.assignment.ddlog"
+                        },
+                        "4": {
+                            "name": "storage.type.ddlog"
+                        }                                                                         
+                    }
+                },
+                {
+                    "name": "entity.name.typedef-type.ddlog",                    
+                    "match": "\\b(typedef)\\s*([a-zA-Z_][a-zA-Z0-9_]*)\\s*(=)\\s*([a-zA-Z_][a-zA-Z0-9_]*)(?!.*(bigint|bit|bool|signed|double|float|string|Vec|Ref|Set|Map))(\\s*)",
+                    "captures": {
+                        "1": {
+                            "name": "keyword.type.ddlog"
+                        },
+                        "2": {
+                            "name": "entity.name.type.ddlog"
+                        },  
+                        "3": {
+                            "name": "keyword.operator.assignment.ddlog"
+                        }                                               
+                    }
+                },
+                {
+                    "name": "entity.name.typedef-constructor-type.ddlog",                    
+                    "begin": "\\b(typedef)\\s*([a-zA-Z_][a-zA-Z0-9_]*)\\s*(=)(\\s*)([A-Z][a-zA-Z0-9_]*)(\\s*)",
+                    "beginCaptures": {
+                        "1": {
+                            "name": "keyword.type.ddlog"
+                        },
+                        "2": {
+                            "name": "entity.name.type.ddlog"
+                        },  
+                        "3": {
+                            "name": "keyword.operator.assignment.ddlog"
+                        },
+                        "4": {
+                            "name": "entity.name.constructor.ddlog"
+                        }
+                    },                    
+                    "end": "\\}?",                    
+                    "endCaptures": {
+                        "0": {
+                            "name": "keyword.operator.alternate-grouping.ddlog"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "#comment"
+                        },
+                        {
+                            "include": "#constant"
+                        },
+                        {
+                            "include": "#entity"
+                        },
+                        {
+                            "include": "#meta"
+                        },
+                        {
+                            "include": "#punctuation"
+                        },
+                        {
+                            "include": "#string"
+                        },
+                        {
+                            "include": "#support"
+                        },
+                        {
+                            "include": "#type"
+                        },
+                        {
+                            "include": "#variable"
+                        },
+                        {
+                            "include": "#operator"
+                        },
+                        {
+                            "include": "#keyword"
+                        },
+                        {
+                            "include": "#storage"
+                        }
+                    ]                                        
+                },
+                {
+                    "name": "entity.name.typedef-tuple-type.ddlog",                    
+                    "begin": "(?<=\\b(typedef)\\s*([a-zA-Z_][a-zA-Z0-9_]*)\\s*(=))(\\s*\\()(\\s*)",
+                    "beginCaptures": {
+                        "1": {
+                            "name": "keyword.type.ddlog"
+                        },
+                        "2": {
+                            "name": "entity.name.type.ddlog"
+                        },  
+                        "3": {
+                            "name": "keyword.operator.assignment.ddlog"
+                        },
+                        "4": {
+                            "name": "punctuation.definition.type.ddlog"
+                        }
+                    },                    
+                    "end": "\\)",                    
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.type.ddlog"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "#constant"
+                        },
+                        {
+                            "include": "#entity"
+                        },
+                        {
+                            "include": "#meta"
+                        },
+                        {
+                            "include": "#punctuation"
+                        },
+                        {
+                            "include": "#string"
+                        },
+                        {
+                            "include": "#support"
+                        },
+                        {
+                            "include": "#type"
+                        },
+                        {
+                            "include": "#variable"
+                        },
+                        {
+                            "include": "#operator"
+                        },
+                        {
+                            "include": "#keyword"
+                        },
+                        {
+                            "include": "#storage"
+                        }
+                    ]                                        
+                },
+                {
+                    "name": "entity.name.tuple.ddlog",
+                    "match": "(\\s*\\(\\s*\\))(\\s*)",
+                    "captures": {
+                        "1": {
+                            "name": "punctuation.definition.type.ddlog"
+                        }
+                    }                    
                 },                
                 {
+                    "name": "entity.name.tuple.ddlog",                    
+                    "begin": "(\\s*\\()(\\s*)(?=\\s*(bigint|bit|bool|signed|double|float|string|Vec|Ref|Set|Map)\\b)",
+                    "beginCaptures": {
+                        "1": {
+                            "name": "punctuation.definition.type.ddlog"
+                        },
+                        "2": {
+                            "name": "storage.type.ddlog"
+                        }          
+                    },                    
+                    "end": "(\\s*\\))(\\s*)",                    
+                    "endCaptures": {
+                        "1": {
+                            "name": "punctuation.definition.type.ddlog"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "#constant"
+                        },
+                        {
+                            "include": "#entity"
+                        },
+                        {
+                            "include": "#meta"
+                        },
+                        {
+                            "include": "#punctuation"
+                        },
+                        {
+                            "include": "#type"
+                        },
+                        {
+                            "include": "#storage"
+                        }
+                    ]                                        
+                }, 
+                {
+                    "name": "entity.name.function-type.ddlog",                    
+                    "begin": "(\\s*[|]\\s*)(?=\\s*(bigint|bit|bool|signed|double|float|string|Vec|Ref|Set|Map)\\b)",
+                    "beginCaptures": {
+                        "1": {
+                            "name": "punctuation.definition.type.ddlog"
+                        },
+                        "2": {
+                            "name": "storage.type.ddlog"
+                        }          
+                    },                    
+                    "end": "(\\s*[|])(\\s*)",                    
+                    "endCaptures": {
+                        "1": {
+                            "name": "punctuation.definition.type.ddlog"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "#constant"
+                        },
+                        {
+                            "include": "#entity"
+                        },
+                        {
+                            "include": "#meta"
+                        },
+                        {
+                            "include": "#punctuation"
+                        },
+                        {
+                            "include": "#type"
+                        },
+                        {
+                            "include": "#storage"
+                        }
+                    ]                                        
+                },                                                                                   
+                {
                     "name": "entity.name.type.param.ddlog",
-                    "begin": "<(?![=<])",
+                    "begin": "\\s*(?<=(bit|signed|Map|Set|Vec|Ref|Option))(<)",
                     "end": "(?<![-])>",
-                    "beginCaptures": {"0": {"name": "punctuation.definition.type.ddlog"}},
+                    "beginCaptures": {"1": {"name": "storage.type.ddlog"},
+                    "2": {"name": "punctuation.definition.type.ddlog"}},
                     "endCaptures": {"0": {"name": "punctuation.definition.type.ddlog"}},
                     "patterns": [
                         {
@@ -102,7 +342,54 @@
                             "include": "#storage"
                         }
                     ]
-                }                
+                },
+                {
+                    "name": "entity.name.type.constructor-type.ddlog",
+                    "begin":  "(\\s*)(?<=([A-Z][a-zA-Z0-9_]*\\s*))(\\{)",
+                    "beginCaptures": {
+                    "0": {"name": "keyword.operator.alternate-grouping.ddlog"},
+                    },
+                    "end": "(\\})",                    
+                    "endCaptures": {"0": {"name": "keyword.operator.alternate-grouping.ddlog"}},
+                    "patterns": [
+                        {
+                            "include": "#comment"
+                        },
+                        {
+                            "include": "#constant"
+                        },
+                        {
+                            "include": "#entity"
+                        },
+                        {
+                            "include": "#meta"
+                        },
+                        {
+                            "include": "#punctuation"
+                        },
+                        {
+                            "include": "#string"
+                        },
+                        {
+                            "include": "#support"
+                        },
+                        {
+                            "include": "#type"
+                        },
+                        {
+                            "include": "#variable"
+                        },
+                        {
+                            "include": "#operator"
+                        },
+                        {
+                            "include": "#keyword"
+                        },
+                        {
+                            "include": "#storage"
+                        }
+                    ]
+                }                                          
             ]
         }
     }

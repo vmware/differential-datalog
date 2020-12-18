@@ -4,7 +4,7 @@
             "patterns": [
                 {
                     "name": "keyword.control.ddlog",
-                    "match": "\\b(else|if|in|for|return|control|skip|continue|break|function|match)\\b"
+                    "match": "\\b(else|if|in|for|return|skip|continue|break|function|match)\\b"
                 },
                 {
                     "name": "keyword.graph.ddlog",

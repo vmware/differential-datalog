@@ -8,7 +8,7 @@
         },
         {
           "name": "support.constant.core.ddlog",
-          "match": "\\b(Some)"
+          "match": "\\b(Some)\\b"
         },
       ]
     }

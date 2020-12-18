@@ -5,7 +5,45 @@
                 {
                     "name": "meta.attributes.ddlog",
                     "begin": "(#\\[)",
-                    "end": "(\\])",                                        
+                    "end": "(\\])", 
+                    "patterns": [  
+                        {
+                            "include": "#comment"
+                        },
+                        {
+                            "include": "#constant"
+                        },
+                        {
+                            "include": "#entity"
+                        },
+                        {
+                            "include": "#meta"
+                        },
+                        {
+                            "include": "#punctuation"
+                        },
+                        {
+                            "include": "#string"
+                        },
+                        {
+                            "include": "#support"
+                        },
+                        {
+                            "include": "#type"
+                        },
+                        {
+                            "include": "#variable"
+                        },
+                        {
+                            "include": "#operator"
+                        },
+                        {
+                            "include": "#keyword"
+                        },
+                        {
+                            "include": "#storage"
+                        }
+                    ]                                                         
                 },
                 {
                     "name": "meta.function-param.ddlog",
@@ -34,19 +72,19 @@
                         },
                         {
                             "name": "variable.parameter.ddlog",
-                            "match": "(?<![:] )([a-z_][a-zA-Z0-9_]+)"
+                            "match": "(?<![:] )(\\b)(?!.*(bigint|bit|bool|signed|double|float|string|Vec|Ref|Set|Map))([a-z_][a-zA-Z0-9_]+)(\\b)"
                         },
                         {
                             "name": "variable.parameter.ddlog",
-                            "match": "(?<![:] )([a-z_]+)"
+                            "match": "(?<![:] )(\\b)(?!.*(bigint|bit|bool|signed|double|float|string|Vec|Ref|Set|Map))([a-z_]+)(\\b)"
                         }, 
                         {
                             "name": "variable.parameter.ddlog",
-                            "match": "(?<![:])([a-z_][a-zA-Z0-9_]+)"
+                            "match": "(?<![:])(\\b)(?!.*(bigint|bit|bool|signed|double|float|string|Vec|Ref|Set|Map))([a-z_][a-zA-Z0-9_]+)(\\b)"
                         },
                         {
                             "name": "variable.parameter.ddlog",
-                            "match": "(?<![:])([a-z_]+)"
+                            "match": "(?<![:])(\\b)(?!.*(bigint|bit|bool|signed|double|float|string|Vec|Ref|Set|Map))([a-z_]+)(\\b)"
                         },
                         {
                             "include": "#comment"
@@ -110,19 +148,19 @@
                         },                   
                         {
                             "name": "variable.parameter.ddlog",
-                            "match": "(?<![:] )([a-z_][a-zA-Z0-9_]+)"
+                            "match": "(?<![:] )(\\b)(?!.*(bigint|bit|bool|signed|double|float|string|Vec|Ref|Set|Map))([a-z_][a-zA-Z0-9_]+)(\\b)"
                         },
                         {
                             "name": "variable.parameter.ddlog",
-                            "match": "(?<![:] )([a-z_]+)"
+                            "match": "(?<![:] )(\\b)(?!.*(bigint|bit|bool|signed|double|float|string|Vec|Ref|Set|Map))([a-z_]+)(\\b)"
                         }, 
                         {
                             "name": "variable.parameter.ddlog",
-                            "match": "(?<![:])([a-z_][a-zA-Z0-9_]+)"
+                            "match": "(?<![:])(\\b)(?!.*(bigint|bit|bool|signed|double|float|string|Vec|Ref|Set|Map))([a-z_][a-zA-Z0-9_]+)(\\b)"
                         },
                         {
                             "name": "variable.parameter.ddlog",
-                            "match": "(?<![:])([a-z_]+)"
+                            "match": "(?<![:])(\\b)(?!.*(bigint|bit|bool|signed|double|float|string|Vec|Ref|Set|Map))([a-z_]+)(\\b)"
                         },
                         {
                             "include": "#comment"
