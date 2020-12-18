@@ -50,7 +50,6 @@ module Language.DifferentialDatalog.Unification(
 where
 
 import Control.Monad.Except
-import Control.Monad.State
 import Data.List
 import qualified Data.Map as M
 import Data.Maybe
@@ -144,19 +143,14 @@ data Constraint = CPredicate {cPred::Predicate}
                         , cExplanation::String
                         }
 
-constraintShow :: Constraint -> TVarShortcuts String
-constraintShow (CPredicate p)                 = predShow p
-constraintShow (CIntEq ie1 ie2 WidthEq _)   = return $ show ie1 ++ " = " ++ show ie2
-constraintShow (CIntEq ie1 ie2 MutEq _)     = return $ ieShowMut ie1 ++ " = " ++ ieShowMut ie2
-constraintShow (CLazy te _ _ _ expl)          = return $ expl ++ " [partial type: " ++ show te ++ "]"
+instance Show Constraint where
+    show (CPredicate p)               = show p
+    show (CIntEq ie1 ie2 WidthEq _)   = show ie1 ++ " = " ++ show ie2
+    show (CIntEq ie1 ie2 MutEq _)     = ieShowMut ie1 ++ " = " ++ ieShowMut ie2
+    show (CLazy te _ _ _ expl)        = expl ++ " [partial type: " ++ show te ++ "]"
 
 constraintsShow :: [Constraint] -> String
-constraintsShow cs = evalState (
-    do cs' <- mapM constraintShow cs
-       return $ intercalate "\n" cs' ) M.empty
-
-instance Show Constraint where
-    show c = evalState (constraintShow c) M.empty
+constraintsShow cs = intercalate "\n" $ map show cs
 
 -- A constraint is in the solved form if it has the following shape:
 -- 'tv = te' or 'te = tv',
@@ -172,16 +166,12 @@ constraintIsSolved _                               = False
 -- is on the left: 'te = tv' is transformed into 'tv = te'.
 constraintNormalize :: Constraint -> Constraint
 constraintNormalize (CPredicate (PEq te tv@TETVar{} e)) = CPredicate $ PEq tv te e
-constraintNormalize (CIntEq ie iv@IVar{} k e)         = CIntEq iv ie k e
+constraintNormalize (CIntEq ie iv@IVar{} k e)           = CIntEq iv ie k e
 constraintNormalize c                                   = c
 
 constraintIsLazy :: Constraint -> Bool
 constraintIsLazy CLazy{} = True
 constraintIsLazy _       = False
-
-constraintIsPredicate :: Constraint -> Bool
-constraintIsPredicate CPredicate{} = True
-constraintIsPredicate _            = False
 
 -- Generate a width constraint in canonical form: all constants are on one side
 -- of the constraint, variables that appear on both sides are cancelled out.
@@ -199,19 +189,9 @@ cIntEq ie1 ie2 kind e = if ie1' == ie2' then Nothing else Just (CIntEq ie1' ie2'
     ie2' = ieSum $ (map IVar $ ievars2 \\ ievars1) ++ if cnst > 0 then [IConst cnst] else []
 
 cwidthReportConflict :: (?d::DatalogProgram, MonadError String me) => Constraint -> me a
-cwidthReportConflict c@(CIntEq _ _ WidthEq e) = err ?d (pos e) $ "Unsatisfiable bit-width constraint '" ++ show c ++ "' in\n" ++
-                                                                   evalState (explanationShow e) M.empty
-cwidthReportConflict c@(CIntEq _ _ MutEq e) = err ?d (pos e) $ "Conflicting argument mutability attributes '" ++ show c ++ "' in\n" ++
-                                                                 evalState (explanationShow e) M.empty
+cwidthReportConflict c@(CIntEq _ _ WidthEq e) = err ?d (pos e) $ "Unsatisfiable bit-width constraint '" ++ show c ++ "' in\n" ++ show e
+cwidthReportConflict c@(CIntEq _ _ MutEq e) = err ?d (pos e) $ "Conflicting argument mutability attributes '" ++ show c ++ "' in\n" ++ show e
 cwidthReportConflict c = error $ "cwidthReportConflict " ++ show c
-
-removeConstraint :: Int -> SolverState -> SolverState
-removeConstraint idx st = st{ solverConstraints = take idx cs ++ drop (idx+1) cs }
-    where cs = solverConstraints st
-
-addConstraints :: [Constraint] -> SolverState -> SolverState
-addConstraints new_cs st = st{ solverConstraints = new_cs ++ cs}
-    where cs = solverConstraints st
 
 -- Integer expressions represent widths of bit and signed types.
 data IExpr = -- Integer constant.
@@ -324,27 +304,9 @@ tvObject (TVarTypeOfExpr _ de) = "expression '"   ++ show de ++ "'" -- TODO: abb
 tvObject (TVarTypeOfVar _ v)   = "variable '"     ++ name v ++ "'"
 tvObject (TVarAux _ _ v)       = "type argument " ++ name v -- TODO: type argument v of function/type ...
 
--- State monad that assigns symbolic names 'a, 'b, ... to type variables in one
--- or more type expressions.
---
--- When pretty printing constraints, predicates or type expressions we would
--- like to replace type variables with short symbolic shortcuts, which should be
--- consistent, i.e., the same variable is alway represent by the same symbolic
--- name.  We achieve this by printing all related type expressions, e.g., all
--- type expressions involved in a type resolution conflict within this monad.
-type TVarShortcuts a = State (M.Map TypeVar String) a
-
 -- Return existing shortcut for 'tv' or generate a new one.
-tvName :: TypeVar -> TVarShortcuts String
-tvName tv = do
-    -- "a", "b", .. , "z", "aa", "ab", ....
-    let allStrings = [ s ++ [c] | s <- "": allStrings, c <- ['a'..'z'] ]
-    names <- get
-    case M.lookup tv names of
-         Just n  -> return n
-         Nothing -> do let n = allStrings !! M.size names
-                       put $ M.insert tv n names
-                       return n
+tvName :: TypeVar -> String
+tvName tv = "a" ++ show (tvarId tv)
 
 -- Type expression: an expression that returns a value of 'Type' sort.
 data TExpr = TEBool
@@ -372,31 +334,27 @@ data TExpr = TEBool
              TEFunc [(IExpr, TExpr)] TExpr
            deriving (Eq, Ord)
 
-teShow :: TExpr -> TVarShortcuts String
-teShow TEBool                 = return "bool"
-teShow TEString               = return "string"
-teShow TEBigInt               = return "bigint"
-teShow (TEBit w)              = return $ "bit<" ++ show w ++ ">"
-teShow (TESigned w)           = return $ "signed<" ++ show w ++ ">"
-teShow TEFloat                = return "float"
-teShow TEDouble               = return "double"
-teShow (TETuple as)           = ((++ ")") . ("(" ++) . intercalate ",") <$> mapM teShow as
-teShow (TEUser n as)          = ((++ ">") . ((n ++ "<") ++) . intercalate ",") <$> mapM teShow as
-teShow (TEExtern n as)        = ((++ ">") . ((n ++ "<") ++) . intercalate ",") <$> mapM teShow as
-teShow (TETArg n)             = return $ "'" ++ n
-teShow (TETVar tv)            = ("'" ++) <$> tvName tv
-teShow (TEFunc as r)          = do args <- mapM (\(m, a) -> ((showMut m ++ " ") ++) <$> teShow a) as
-                                   ret <- teShow r
-                                   return $ "function(" ++ (intercalate "," args) ++ "):" ++ ret
-                                where
-                                -- Format IExpr used to represent the mutability attribute.
-                                showMut :: IExpr -> String
-                                showMut (IConst 0)  = ""
-                                showMut (IConst 1)  = "mut"
-                                showMut ie          = show ie
-
 instance Show TExpr where
-    show te = evalState (teShow te) M.empty
+    show TEBool                 = "bool"
+    show TEString               = "string"
+    show TEBigInt               = "bigint"
+    show (TEBit w)              = "bit<" ++ show w ++ ">"
+    show (TESigned w)           = "signed<" ++ show w ++ ">"
+    show TEFloat                = "float"
+    show TEDouble               = "double"
+    show (TETuple as)           = (++ ")") $ ("(" ++) $ intercalate "," $ map show as
+    show (TEUser n as)          = (++ ">") $ ((n ++ "<") ++) $ intercalate "," $ map show as
+    show (TEExtern n as)        = (++ ">") $ ((n ++ "<") ++) $ intercalate "," $ map show as
+    show (TETArg n)             = "'" ++ n
+    show (TETVar tv)            = "'" ++ tvName tv
+    show (TEFunc as r)          = "function(" ++ (intercalate "," args) ++ "):" ++ show r
+                                  where
+                                  args = map (\(m, a) -> showMut m ++ " " ++ show a) as
+                                  -- Format IExpr used to represent the mutability attribute.
+                                  showMut :: IExpr -> String
+                                  showMut (IConst 0)  = ""
+                                  showMut (IConst 1)  = "mut"
+                                  showMut ie          = show ie
 
 -- Type expression is a constant, i.e., does not contain any type or width variables,
 -- other than, possibly, in 'mut' attributes.
@@ -542,14 +500,8 @@ instance Eq Predicate where
 instance Ord Predicate where
     compare (PEq l1 r1 _) (PEq l2 r2 _) = compare (l1, r1) (l2, r2)
 
-predShow :: Predicate -> TVarShortcuts String
-predShow (PEq te1 te2 _) = do
-    s1 <- teShow te1
-    s2 <- teShow te2
-    return $ s1 ++ " = " ++ s2
-
 instance Show Predicate where
-    show p = evalState (predShow p) M.empty
+    show (PEq te1 te2 _) = show te1 ++ " = " ++ show te2
 
 -- Explanation of a predicate contains metadata used to generate meaningful error
 -- messages if the predicate becomes a contradiction.
@@ -616,18 +568,18 @@ explanationSubstituteAll :: SolverState -> PredicateExplanation -> PredicateExpl
 -- variable or expression the predicate constrains.
 explanationSubstituteAll _   e@ExplanationTVar{}  = e
 explanationSubstituteAll _   e@ExplanationString{}  = e
-explanationSubstituteAll st (ExplanationParent p) = ExplanationParent $ fromJust $ predSubstituteAll st p
+explanationSubstituteAll st (ExplanationParent p) =
+    ExplanationParent
+    $ (\p' -> p'{predExplanation = explanationSubstituteAll st (predExplanation p')})
+    $ fromJust $ predSubstituteAll st p
 
-explanationShow :: PredicateExplanation -> TVarShortcuts String
-explanationShow (ExplanationString _ s)             = return s
-explanationShow (ExplanationTVar tv _)              = return $ tvObject tv
-explanationShow (ExplanationParent (PEq te1 te2 e)) = do
-    ts1 <- teShow te1
-    ts2 <- teShow te2
-    es <- explanationShow e
-    return $ if explanationKind e == Expected
-             then "expected type: " ++ ts2 ++ "\nactual type: " ++ ts1 ++ "\nin\n" ++ es
-             else "expected type: " ++ ts1 ++ "\nactual type: " ++ ts2 ++ "\nin\n" ++ es
+instance Show PredicateExplanation where
+    show (ExplanationString _ s)             = s
+    show (ExplanationTVar tv _)              = tvObject tv
+    show (ExplanationParent (PEq te1 te2 e)) =
+        if explanationKind e == Expected
+        then "expected type: " ++ show te2 ++ "\nactual type: " ++ show te1 ++ "\nin\n" ++ show e
+        else "expected type: " ++ show te1 ++ "\nactual type: " ++ show te2 ++ "\nin\n" ++ show e
 
 explanationKind :: PredicateExplanation -> ExplanationKind
 explanationKind ExplanationString{}   = Expected
@@ -643,14 +595,14 @@ explanationDepth (ExplanationParent p) = explanationDepth (predExplanation p) + 
 -- left and right side cannot be unified).
 predReportConflict :: (?d::DatalogProgram, MonadError String me) => SolverState -> Predicate -> me a
 predReportConflict st (PEq te1 te2 explanation) =
-    evalState (do ts1 <- teShow te1
-                  ts2 <- teShow te2
-                  es <- explanationShow $ explanationSubstituteAll st explanation
-                  return $ err ?d (pos explanation) $
-                               if explanationKind explanation == Expected
-                               then "Type mismatch:\nexpected type: " ++ ts2 ++ "\nactual type: " ++ ts1 ++ "\nin\n" ++ es
-                               else "Type mismatch:\nexpected type: " ++ ts1 ++ "\nactual type: " ++ ts2 ++ "\nin\n" ++ es)
-              M.empty
+    err ?d (pos explanation) $
+        if explanationKind explanation == Expected
+        then "Type mismatch:\nexpected type: " ++ show te2' ++ "\nactual type: " ++ show te1' ++ "\nin\n" ++ es
+        else "Type mismatch:\nexpected type: " ++ show te1' ++ "\nactual type: " ++ show te2' ++ "\nin\n" ++ es
+    where
+    es = show $ explanationSubstituteAll st explanation
+    te1' = teSubstituteAll st te1
+    te2' = teSubstituteAll st te2
 
 -- Explanation of a width constraint.  For now just the explanation of the
 -- predicate it is derived from.
@@ -690,23 +642,23 @@ Pseudocode:
 
 Type inference:
     while (CS is not empty) {
-        1. Pick 'c in C' s.t. 'c = (tv == te)', 'tv in TV', 'te in TE'.
-           - If such 'c' does not exist, pick any predicate constraint in
-             'C' and apply Unify to it. GOTO 1.
-           - If there are only lazy and width constraints left in 'C',
-             pick a lazy constraint with a default solution and expand it
-             to that solution.
-           - If such constraint does not exist, FAIL.
-        2. Variable substitution:
-           - remove 'c' from 'C'
-           - apply Substitution to replace 'tv' with 'te' in all remaining
-             constraints and assignments.
-           - add 'tv -> te' to 'TA'
+        For all constraints 'c in C', apply all recorded variable substitutions to 'c':
+           - if the resulting constraint is a tautology, drop it.
+           - if 'c' is in solved form 'c = (tv == te)', 'tv in TV', 'te in TE',
+             remove 'c' from 'C' and record substitution 'tv -> te'.
+           - If 'c' is any other predicate constraint,
+             apply Unify to it.
+           - If 'c' is a lazy constraint, expand it if possible.
+        If no new constraints were discovered and the constraint set is still
+        not empty:
+           - Pick a lazy constraint with a default clause and replace it with
+             the default clause
+           - If no such constraint exists, FAIL
     }
     Check that a complete typing has been found: all assignments in 'TA' are
     constant expressions (no variables). Otherwise, FAIL: undespecified types.
 
-The above algorithm uses two subroutines:
+The above algorithm uses the following subroutine:
 
 Unify(c), where 'c = (te1 == te2)'
     1. Remove 'c' from 'C'.
@@ -717,13 +669,6 @@ Unify(c), where 'c = (te1 == te2)'
       conflict if 'te' depends on 'tv' (and is not identity 'tv').
     3. If conflict detected, FAIL: conflicting types.
     4. Otherwise, add newly derived equations to 'C'.
-
-Substitution(tv, te):
-    Replace all occurrences of 'tv' with 'te' in 'C' and 'TA'.
-    Eliminate tautologies like 'te1 == te1'
-    Lazy constraints 'c in C' are handled by applying the substitution
-    to the trigger expression and expanding the constraint if its type
-    is fully resolved.
 -}
 
 data SolverState = SolverState {
@@ -750,11 +695,20 @@ emptySolverState = SolverState {
 
 instance Show SolverState where
     show SolverState{..} = "Partial typing:\n" ++
-                           (intercalate "\n" $ map (\(tv, te) -> "  " ++ tvObject tv ++ " = " ++ show te) $ M.toList solverPartialTyping) ++
+                           (intercalate "\n" $ map (\(tv, te) -> tvName tv ++ " (" ++ tvObject tv ++ ") = " ++ show te) $ M.toList solverPartialTyping) ++
                            "\nPartial integer variable assignment:\n" ++
                            (intercalate "\n" $ map (\(iv, ie) -> "  " ++ show iv ++ " = " ++ show ie) $ M.toList solverPartialInt) ++
                            "\nConstraints:\n" ++
-                           (intercalate "\n" $ map (\c -> "  " ++ show c) solverConstraints)
+                           (constraintsShow solverConstraints)
+
+removeConstraint :: Int -> SolverState -> SolverState
+removeConstraint idx st = st{ solverConstraints = take idx cs ++ drop (idx+1) cs }
+    where cs = solverConstraints st
+
+addConstraints :: [Constraint] -> SolverState -> SolverState
+addConstraints new_cs st = st{ solverConstraints = new_cs ++ cs}
+    where cs = solverConstraints st
+
 
 -- Solve a set of type constraint by finding a satisfying assignment to
 -- type variables and width variables.
@@ -766,11 +720,11 @@ solve :: (MonadError String me) => DatalogProgram -> [Constraint] -> Bool -> me 
 solve d cs full = let ?d = d in solve' (emptySolverState {solverConstraints = cs}) full
 
 solve' :: (?d::DatalogProgram, MonadError String me) => SolverState -> Bool -> me Typing
-solve' st full | null (solverConstraints st) = do
+solve' st full | null (solverConstraints st) = {-trace ("solve': " ++ show st) $-} do
     when full
         $ mapM_ (\(tv, te) -> teCheckConstant st tv te) $ M.toList $ solverPartialTyping st
     return $ M.map (teToType . teSubstituteAll st) $ solverPartialTyping st
-               | otherwise =
+               | otherwise = {- trace ("solve': " ++ show st) $ -} do
     -- 1. Pick 'c in C' s.t. 'c = (tv == te)', 'tv in TV', 'te in TE'.
     --   - If such 'c' does not exist, pick any predicate constraint in
     --     'C' and apply Unification to it.
@@ -778,43 +732,23 @@ solve' st full | null (solverConstraints st) = do
     --     pick a disjunctive constraint with a default solution.
     --   - If such constraint does not exist, FAIL.
     --trace ("solve': constraints:\n" ++ constraintsShow (solverConstraints st)) $
-    --trace ("solve': " ++ show st) $
-    case findIndex (\c -> (constraintIsSolved <$> constraintSubstituteAll st c) == Just True) $ solverConstraints st of
-         Nothing -> case findIndex (constraintIsPredicate) $ solverConstraints st of
-                         Nothing -> case findIndex (\c -> constraintIsLazy c && isJust (cDefault c)) $ solverConstraints st of
-                                         Just i -> do let st' = removeConstraint i st
-                                                      let CLazy _ _ (Just def) _ _ = solverConstraints st !! i
-                                                      let st'' = addConstraints (mapMaybe (constraintSubstituteAll st') def) st'
-                                                      solve' st'' full
-                                         Nothing -> case solverConstraints st !! 0 of
-                                                         CLazy{..} -> err ?d (pos cExpr) $ "Failed to infer type of expression '" ++ show cExpr ++ "'"
-                                                         c@CIntEq{} -> cwidthReportConflict c
-                                                         c -> error $ "solve': unexpected constraint " ++ show c
-                                                         {-" partial type: " ++ show cType ++
-                                                         "\nconstraints: " ++ constraintsShow (solverConstraints st) ++
-                                                         "\ntyping:\n  " ++ (intercalate "\n  " $ map (\(tv, te) -> tvObject tv ++ ": " ++ show te) $ M.toList $ solverPartialTyping st)-}
-                         Just i -> do let st' = removeConstraint i st
-                                      new_constraints <- case predSubstituteAll st $ cPred $ solverConstraints st !! i of
-                                                              Nothing -> return []
-                                                              Just c -> unify st c
-                                      let st'' = addConstraints new_constraints st'
-                                      solve' st'' full
-         -- 2. Variable substitution:
-         --  - remove 'c' from 'C'
-         --  - apply Substitution to replace 'tv' with 'te' in all remaining
-         --    constraints and assignments.
-         --  - add 'tv -> te' to 'TA'
-         Just i -> case constraintNormalize $ fromJust $ constraintSubstituteAll st $ solverConstraints st !! i of
-                        CPredicate (PEq (TETVar v) te _) -> do
-                            let st' = removeConstraint i st
-                            st'' <- substitute v te st'
-                            solve' st'' full
-                        CIntEq (IVar v) ie2 _ _ -> do
-                            let st' = removeConstraint i st
-                            st'' <- substituteIVar v ie2 st'
-                            solve' st'' full
-                        c -> error $ "Unification.solve: unexpected constraint " ++ show c
-
+    (new_st, progress_made) <- foldM (\(st', progress) c -> do
+                                       (st'', progress') <- constraintSubstituteAll st' c
+                                       return (st'', progress || progress'))
+                               (st{ solverConstraints = [] }, False) $ solverConstraints st
+    if not progress_made
+    then case findIndex (\c -> constraintIsLazy c && isJust (cDefault c)) $ solverConstraints new_st of
+              Just i -> do let st' = removeConstraint i new_st
+                           let CLazy _ _ (Just def) _ _ = solverConstraints new_st !! i
+                           let st'' = addConstraints def st'
+                           solve' st'' full
+              Nothing -> -- No substitutions or simplifications were made - report error.
+                         case solverConstraints new_st !! 0 of
+                              CLazy{..} -> err ?d (pos cExpr) $ "Failed to infer type of expression '" ++ show cExpr ++ "'"
+                              c@CIntEq{} -> cwidthReportConflict c
+                              c -> error $ "solve': unexpected constraint " ++ show c
+    else -- Next iteration
+         solve' new_st{solverConstraints = reverse $ solverConstraints new_st} full
 
 -- Do _not_ normalize the constraint before unification, as swapping RHS and LHS
 -- sides can confuse the explanation
@@ -860,21 +794,12 @@ unify' st p@(PEq te1 te2 _) | (te1', te2') /= (te1, te2) = unify st $ PEq te1 te
     te1' = teExpandAliases te1
     te2' = teExpandAliases te2
 
-substitute :: (?d::DatalogProgram, MonadError String me) => TypeVar -> TExpr -> SolverState -> me SolverState
-substitute v te st = do
-    let te' = teExpandAliases te
-    let typing'' = M.insert v te' $ solverPartialTyping st
-    let st' = st {solverPartialTyping = typing''}
-    constraints' <- concat <$> (mapM (constraintExpandLazy st' v te') $ solverConstraints st')
-    return $ st' {solverConstraints = constraints'}
-
-teSubstitute :: TypeVar -> TExpr -> TExpr -> TExpr
-teSubstitute v with (TETuple args) = TETuple $ map (teSubstitute v with) args
-teSubstitute v with (TEUser n args) = TEUser n $ map (teSubstitute v with) args
-teSubstitute v with (TEFunc args r) = TEFunc (map (mapSnd (teSubstitute v with)) args) (teSubstitute v with r)
-teSubstitute v with (TEExtern n args) = TEExtern n $ map (teSubstitute v with) args
-teSubstitute v with (TETVar v') | v' == v = with
-teSubstitute _ _ te = te
+substitute :: (?d::DatalogProgram) => TypeVar -> TExpr -> SolverState -> SolverState
+substitute v te st =
+    st {solverPartialTyping = typing'}
+    where
+    te' = teExpandAliases te
+    typing' = M.insert v te' $ solverPartialTyping st
 
 teSubstituteAll :: SolverState -> TExpr -> TExpr
 teSubstituteAll st (TETuple args) = TETuple $ map (teSubstituteAll st) args
@@ -889,29 +814,44 @@ teSubstituteAll st (TEBit ie) = TEBit $ ieSubstituteAll st ie
 teSubstituteAll st (TESigned ie) = TESigned $ ieSubstituteAll st ie
 teSubstituteAll _  te = te
 
--- Attempt to expanda a lazy constraint if its type has been sufficiently
--- concretized.
-constraintExpandLazy :: (?d::DatalogProgram, MonadError String me) => SolverState -> TypeVar -> TExpr -> Constraint -> me [Constraint]
-constraintExpandLazy st v with c@(CLazy obj expand _ _ _) = do
-    let obj' = teSubstitute v with obj
-    -- If 'cType' got at least partially concretized, try to expand the
-    -- lazy constraint.
-    if obj' /= obj
-       then maybe [c{cType = obj'}]
-                  (mapMaybe (constraintSubstituteAll st))
-            <$> (expand $ teExpandAliases obj')
-       else return [c]
-constraintExpandLazy _  _  _ c = return [c]
-
 -- Substitute type variables in constraint with type expressions from the current partial typing.
-constraintSubstituteAll :: (?d::DatalogProgram) => SolverState -> Constraint -> Maybe Constraint
-constraintSubstituteAll st (CPredicate p) = CPredicate <$> predSubstituteAll st p
-constraintSubstituteAll st (CIntEq ie1 ie2 k e) =
-    cIntEq ie1' ie2' k e
-    where
-    ie1' = ieSubstituteAll st ie1
-    ie2' = ieSubstituteAll st ie2
-constraintSubstituteAll _  CLazy{} = Nothing -- error "constraintSubstituteAll: recursive lazy constraints are not supported"
+constraintSubstituteAll :: (?d::DatalogProgram, MonadError String me) => SolverState -> Constraint -> me (SolverState, Bool)
+constraintSubstituteAll st (CPredicate p) = do
+    case CPredicate <$> predSubstituteAll st p of
+         Nothing -> return (st, True {- Constraint eliminated. -})
+         Just c | constraintIsSolved c ->
+             -- Solved? Add substitution.
+             case constraintNormalize c of
+                  CPredicate (PEq (TETVar v) te _) ->
+                      return (substitute v te st, True {- Substitution made -})
+                  c' -> error $ "Unification.constraintSubstituteAll CPredicate: unexpected constraint " ++ show c'
+                | otherwise -> do
+             -- Otherwise, apply unification.
+             cs' <- unify st $ cPred c
+             return (st{ solverConstraints = cs' ++ solverConstraints st }, True {- Constraint unified. -})
+constraintSubstituteAll st (CIntEq ie1 ie2 k e) = do
+    let ie1' = ieSubstituteAll st ie1
+    let ie2' = ieSubstituteAll st ie2
+    case cIntEq ie1' ie2' k e of
+         Nothing -> return (st, True)
+         Just c | constraintIsSolved c ->
+             -- Solved? Add substitution.
+             case constraintNormalize c of
+                  CIntEq (IVar v) ie2'' _ _ ->
+                       return (substituteIVar v ie2'' st, True {- Substitution made -} )
+                  c' -> error $ "Unification.constraintSubstituteAll CIntEq: unexpected constraint " ++ show c'
+         Just c@(CIntEq ie1'' ie2'' k'' _) ->
+             -- Otherwise, add constraint.
+             return (st { solverConstraints = c : solverConstraints st }, (ie1, ie2, k) /= (ie1'', ie2'', k''))
+         Just c -> error $ "Unification.constraintSubstituteAll CIntEq: unexpected constraint " ++ show c
+constraintSubstituteAll st oldc@(CLazy obj expand _ _ _) = do
+    -- Attempt to expand lazy constraint.
+    let obj' = teSubstituteAll st obj
+    if obj' /= obj
+       then maybe (st{ solverConstraints = oldc{cType = obj'}:solverConstraints st }, True)
+                  (\cs -> (addConstraints cs st, True))
+            <$> (expand $ teExpandAliases obj')
+       else return (st{ solverConstraints = oldc : solverConstraints st }, False)
 
 predSubstituteAll :: SolverState -> Predicate -> Maybe Predicate
 predSubstituteAll st (PEq te1 te2 e) =
@@ -920,16 +860,17 @@ predSubstituteAll st (PEq te1 te2 e) =
     te1' = teSubstituteAll st te1
     te2' = teSubstituteAll st te2
 
-substituteIVar :: (?d::DatalogProgram, MonadError String me) => IntVar -> IExpr -> SolverState -> me SolverState
-substituteIVar v ie st = do
-    let width' = M.insert v ie $ solverPartialInt st
-    return $ st { solverPartialInt = width'}
+substituteIVar :: (?d::DatalogProgram) => IntVar -> IExpr -> SolverState -> SolverState
+substituteIVar v ie st =
+    st { solverPartialInt = width'}
+    where
+    width' = M.insert v ie $ solverPartialInt st
 
 ieSubstituteAll :: SolverState -> IExpr -> IExpr
 ieSubstituteAll _  ie@IConst{} = ie
 ieSubstituteAll st ie@(IVar v) =
     case M.lookup v (solverPartialInt st) of
          Nothing  -> ie
-         Just ie' -> ie'
+         Just ie' -> ieSubstituteAll st ie'
 ieSubstituteAll st (IPlus ie1 ie2) =
     ieSum [ieSubstituteAll st ie1, ieSubstituteAll st ie2]
