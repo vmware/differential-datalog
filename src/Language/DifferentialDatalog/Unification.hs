@@ -863,12 +863,10 @@ unify' st p@(PEq te1 te2 _) | (te1', te2') /= (te1, te2) = unify st $ PEq te1 te
 substitute :: (?d::DatalogProgram, MonadError String me) => TypeVar -> TExpr -> SolverState -> me SolverState
 substitute v te st = do
     let te' = teExpandAliases te
-    let typing' = {-M.map (teSubstitute v te') $ -} solverPartialTyping st
-    let typing'' = M.insert v te' typing'
+    let typing'' = M.insert v te' $ solverPartialTyping st
     let st' = st {solverPartialTyping = typing''}
-    constraints' <- concat <$> (mapM (constraintSubstitute st' v te') $ solverConstraints st')
+    constraints' <- concat <$> (mapM (constraintExpandLazy st' v te') $ solverConstraints st')
     return $ st' {solverConstraints = constraints'}
-    --return st'
 
 teSubstitute :: TypeVar -> TExpr -> TExpr -> TExpr
 teSubstitute v with (TETuple args) = TETuple $ map (teSubstitute v with) args
@@ -891,11 +889,10 @@ teSubstituteAll st (TEBit ie) = TEBit $ ieSubstituteAll st ie
 teSubstituteAll st (TESigned ie) = TESigned $ ieSubstituteAll st ie
 teSubstituteAll _  te = te
 
--- -- Version that does not eliminate tautologies.  Useful in resolving disjunctive constraints.
-constraintSubstitute :: (?d::DatalogProgram, MonadError String me) => SolverState -> TypeVar -> TExpr -> Constraint -> me [Constraint]
--- constraintSubstitute _  v with (CPredicate p) = return $ map CPredicate $ predSubstitute v with p
--- constraintSubstitute _  _ _    c@CIntEq{} = return [c]
-constraintSubstitute st v with c@(CLazy obj expand _ _ _) = do
+-- Attempt to expanda a lazy constraint if its type has been sufficiently
+-- concretized.
+constraintExpandLazy :: (?d::DatalogProgram, MonadError String me) => SolverState -> TypeVar -> TExpr -> Constraint -> me [Constraint]
+constraintExpandLazy st v with c@(CLazy obj expand _ _ _) = do
     let obj' = teSubstitute v with obj
     -- If 'cType' got at least partially concretized, try to expand the
     -- lazy constraint.
@@ -904,8 +901,9 @@ constraintSubstitute st v with c@(CLazy obj expand _ _ _) = do
                   (mapMaybe (constraintSubstituteAll st))
             <$> (expand $ teExpandAliases obj')
        else return [c]
-constraintSubstitute _  _  _ c = return [c] -- $ map CPredicate $ predSubstitute v with p
+constraintExpandLazy _  _  _ c = return [c]
 
+-- Substitute type variables in constraint with type expressions from the current partial typing.
 constraintSubstituteAll :: (?d::DatalogProgram) => SolverState -> Constraint -> Maybe Constraint
 constraintSubstituteAll st (CPredicate p) = CPredicate <$> predSubstituteAll st p
 constraintSubstituteAll st (CIntEq ie1 ie2 k e) =
@@ -914,13 +912,6 @@ constraintSubstituteAll st (CIntEq ie1 ie2 k e) =
     ie1' = ieSubstituteAll st ie1
     ie2' = ieSubstituteAll st ie2
 constraintSubstituteAll _  CLazy{} = Nothing -- error "constraintSubstituteAll: recursive lazy constraints are not supported"
-
--- predSubstitute :: TypeVar -> TExpr -> Predicate -> [Predicate]
--- predSubstitute v with (PEq te1 te2 e) =
---     if te1' == te2' then [] else [PEq te1' te2' e]
---     where
---     te1' = teSubstitute v with te1
---     te2' = teSubstitute v with te2
 
 predSubstituteAll :: SolverState -> Predicate -> Maybe Predicate
 predSubstituteAll st (PEq te1 te2 e) =
@@ -931,30 +922,8 @@ predSubstituteAll st (PEq te1 te2 e) =
 
 substituteIVar :: (?d::DatalogProgram, MonadError String me) => IntVar -> IExpr -> SolverState -> me SolverState
 substituteIVar v ie st = do
-    let typing' = M.map (teSubstituteIVar v ie) $ solverPartialTyping st
-    let width' = M.map (ieSubstituteIVar v ie) $ solverPartialInt st
-    let width'' = M.insert v ie width'
-    let st' = st { solverPartialTyping = typing'
-                 , solverPartialInt = width''}
-    constraints' <- concat <$> (mapM (constraintSubstituteIVar st' v ie) $ solverConstraints st)
-    return st' {solverConstraints = constraints'}
-
-teSubstituteIVar :: IntVar -> IExpr -> TExpr -> TExpr
-teSubstituteIVar v with (TETuple args)      = TETuple $ map (teSubstituteIVar v with) args
-teSubstituteIVar v with (TEUser n args)     = TEUser n $ map (teSubstituteIVar v with) args
-teSubstituteIVar v with (TEExtern n args)   = TEExtern n $ map (teSubstituteIVar v with) args
-teSubstituteIVar v with (TEBit ie)          = TEBit $ ieSubstituteIVar v with ie
-teSubstituteIVar v with (TESigned ie)       = TESigned $ ieSubstituteIVar v with ie
-teSubstituteIVar v with (TEFunc args ret)   = TEFunc (map (\(m, t) -> (ieSubstituteIVar v with m, teSubstituteIVar v with t)) args)
-                                                     (teSubstituteIVar v with ret)
-teSubstituteIVar _ _ te = te
-
-ieSubstituteIVar :: IntVar -> IExpr -> IExpr -> IExpr
-ieSubstituteIVar _ _    ie@IConst{} = ie
-ieSubstituteIVar v with ie@(IVar v') | v' == v   = with
-                                     | otherwise = ie
-ieSubstituteIVar v with (IPlus ie1 ie2) =
-    ieSum [ieSubstituteIVar v with ie1, ieSubstituteIVar v with ie2]
+    let width' = M.insert v ie $ solverPartialInt st
+    return $ st { solverPartialInt = width'}
 
 ieSubstituteAll :: SolverState -> IExpr -> IExpr
 ieSubstituteAll _  ie@IConst{} = ie
@@ -964,25 +933,3 @@ ieSubstituteAll st ie@(IVar v) =
          Just ie' -> ie'
 ieSubstituteAll st (IPlus ie1 ie2) =
     ieSum [ieSubstituteAll st ie1, ieSubstituteAll st ie2]
-
-predSubstituteIVar :: IntVar -> IExpr -> Predicate -> [Predicate]
-predSubstituteIVar v with (PEq te1 te2 e) =
-    let te1' = teSubstituteIVar v with te1
-        te2' = teSubstituteIVar v with te2
-    in if te1' == te2' then [] else [PEq te1' te2' e]
-
-constraintSubstituteIVar :: (?d::DatalogProgram, MonadError String me) => SolverState -> IntVar -> IExpr -> Constraint -> me [Constraint]
-constraintSubstituteIVar _ v with (CPredicate p)                = return $ map CPredicate $ predSubstituteIVar v with p
-constraintSubstituteIVar _ v with (CIntEq ie1 ie2 k e)          = do
-    let ie1' = ieSubstituteIVar v with ie1
-    let ie2' = ieSubstituteIVar v with ie2
-    return $ maybeToList $ cIntEq ie1' ie2' k e
-constraintSubstituteIVar st v with c@CLazy{..} = do
-    let obj' = teSubstituteIVar v with cType
-    -- If 'cType' got at least partially concretized, try to expand the
-    -- lazy constraint.
-    if obj' /= cType
-       then maybe [c{cType = obj'}]
-                  (mapMaybe (constraintSubstituteAll st))
-            <$> (cExpand $ teExpandAliases obj')
-       else return [c]
