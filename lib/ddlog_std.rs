@@ -363,6 +363,17 @@ impl<T: Clone> From<&[T]> for Vec<T> {
     }
 }
 
+impl<T> FromIterator<T> for Vec<T> {
+    fn from_iter<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+    {
+        Self {
+            x: ::std::vec::Vec::from_iter(iter),
+        }
+    }
+}
+
 impl<T> From<StdVec<T>> for Vec<T> {
     fn from(vec: StdVec<T>) -> Self {
         Vec { vec }

@@ -18,7 +18,7 @@ extern function regex(pattern: string): Regex
 /*
  * Compile pattern into a regex.  Returns an error if the pattern is invalid.
  */
-extern function regex_checked(pattern: string): Result<Regex, string>
+extern function try_regex(pattern: string): Result<Regex, string>
 
 /*
  * Check if string matches regular expression.
@@ -43,3 +43,30 @@ extern function regex_first_match(regex: Regex, text: string): Option<string>
  * an empty vector is returned.
  */
 extern function regex_all_matches(regex: Regex, text: string): Vec<string>
+
+/*
+ * Compiled set of regular expressions.
+ */
+extern type RegexSet
+
+/*
+ * Compile patterns into a regex set.  If any of the patterns are invalid, it
+ * returns an empty regex set.
+ */
+extern function regex_set(pattern: Vec<string>): RegexSet
+
+/*
+ * Compile patterns into a regex set.  Returns an error if any of the patterns are invalid
+ */
+extern function try_regex_set(patterns: Vec<string>): Result<RegexSet, string>
+
+/*
+ * Check if string matches any of the regular expressions within the set.
+ *
+ * Returns true if the regex matches the string given.
+ * Returns false if `regex` is not a valid regular expression or if no match was
+ * found.
+ *
+ * Example: `regex_set_match(regex_set([[|\d+|]]), "a111b222c")`
+ */
+extern function regex_set_match(regex: RegexSet, text: string): bool
