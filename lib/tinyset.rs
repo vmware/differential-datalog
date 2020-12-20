@@ -237,7 +237,7 @@ pub fn nth<X: u64set::Fits64 + Ord + Clone>(s: &Set64<X>, n: &u64) -> ddlog_std:
 pub fn set2vec<X: u64set::Fits64 + Ord + Clone>(s: &Set64<X>) -> ddlog_std::Vec<X> {
     let mut v: Vec<_> = s.x.iter().collect();
     v.sort();
-    ddlog_std::Vec { x: v }
+    ddlog_std::Vec::from(v)
 }
 
 pub fn union<X: u64set::Fits64 + Clone>(s1: &Set64<X>, s2: &Set64<X>) -> Set64<X> {
@@ -247,7 +247,7 @@ pub fn union<X: u64set::Fits64 + Clone>(s1: &Set64<X>, s2: &Set64<X>) -> Set64<X
 
 pub fn unions<X: u64set::Fits64 + Clone>(sets: &ddlog_std::Vec<Set64<X>>) -> Set64<X> {
     let mut s = u64set::Set64::new();
-    for si in sets.x.iter() {
+    for si in sets.iter() {
         for v in si.unsorted_iter() {
             s.insert(v);
         }

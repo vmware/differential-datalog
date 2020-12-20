@@ -19,7 +19,7 @@ pub fn allocate<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Copy>(
     };
     let mut offset = N::zero();
     let mut res = ddlog_std::Vec::new();
-    for b in toallocate.x.iter() {
+    for b in toallocate.iter() {
         loop {
             next = if next == *max_val {
                 *min_val
@@ -34,7 +34,7 @@ pub fn allocate<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Copy>(
                 offset = offset + N::one();
                 continue;
             } else {
-                res.x.push(ddlog_std::tuple2((*b).clone(), next));
+                res.push(ddlog_std::tuple2((*b).clone(), next));
                 if offset == range {
                     return res;
                 };
@@ -63,7 +63,7 @@ pub fn allocate_with_hint<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Co
         next = *min_val;
     };
     let mut res = ddlog_std::Vec::new();
-    for ddlog_std::tuple2(b, hint) in toallocate.x.iter() {
+    for ddlog_std::tuple2(b, hint) in toallocate.iter() {
         let mut offset = N::zero();
         next = match hint {
             ddlog_std::Option::None => next,
@@ -82,7 +82,7 @@ pub fn allocate_with_hint<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Co
                 };
                 continue;
             } else {
-                res.x.push(ddlog_std::tuple2((*b).clone(), next));
+                res.push(ddlog_std::tuple2((*b).clone(), next));
                 new_allocations.insert(next);
                 if offset == range {
                     return res;
@@ -119,11 +119,10 @@ pub fn allocate_opt<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Copy>(
     // Signal that address space has been exhausted, but iteration must continue to
     // assign `None` to all remaining items.
     let mut exhausted = false;
-    for b in toallocate.x.iter() {
+    for b in toallocate.iter() {
         loop {
             if exhausted {
-                res.x
-                    .push(ddlog_std::tuple2((*b).clone(), ddlog_std::Option::None));
+                res.push(ddlog_std::tuple2((*b).clone(), ddlog_std::Option::None));
                 break;
             };
             if offset == range {
@@ -139,7 +138,7 @@ pub fn allocate_opt<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Copy>(
             if allocated.x.contains(&next) {
                 continue;
             } else {
-                res.x.push(ddlog_std::tuple2(
+                res.push(ddlog_std::tuple2(
                     (*b).clone(),
                     ddlog_std::Option::Some { x: next },
                 ));
@@ -170,7 +169,7 @@ pub fn adjust_allocation<A: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Cop
     // Signal that address space has been exhausted, but iteration must continue to
     // preserve existing allocations.
     let mut exhausted = false;
-    for b in toallocate.x.iter() {
+    for b in toallocate.iter() {
         match allocated.x.get(b) {
             Some(x) => {
                 res.push(ddlog_std::tuple2((*b).clone(), x.clone()));
@@ -192,7 +191,7 @@ pub fn adjust_allocation<A: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Cop
                 if allocated_ids.contains(&next) {
                     continue;
                 } else {
-                    res.x.push(ddlog_std::tuple2((*b).clone(), next));
+                    res.push(ddlog_std::tuple2((*b).clone(), next));
                     break;
                 }
             },
