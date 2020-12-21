@@ -639,7 +639,7 @@ exprFoldWithLocatorM' f loc@(ELocator path) (ESeq p l r)            =
     f loc =<< ESeq p <$> exprFoldWithLocatorM f (ELocator $ 0:path) l <*>
                          exprFoldWithLocatorM f (ELocator $ 1:path) r
 exprFoldWithLocatorM' f loc@(ELocator path) (EITE p i t el)         =
-    -- 0: if-confition
+    -- 0: if-condition
     -- 1: then-clause
     -- 2: else-clause
     f loc =<< EITE p <$> exprFoldWithLocatorM f (ELocator $ 0:path) i <*>
