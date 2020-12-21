@@ -9,7 +9,6 @@
     overflowing_literals,
     unreachable_patterns,
     unused_variables,
-    clippy::unknown_clippy_lints,
     clippy::missing_safety_doc,
     clippy::toplevel_ref_arg,
     clippy::double_parens,

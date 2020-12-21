@@ -10,7 +10,6 @@
     overflowing_literals,
     unreachable_patterns,
     unused_variables,
-    clippy::unknown_clippy_lints,
     clippy::missing_safety_doc,
     clippy::match_single_binding,
     clippy::ptr_arg,

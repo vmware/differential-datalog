@@ -17,9 +17,7 @@
     clippy::cmp_owned,
     clippy::nonminimal_bool,
     clippy::toplevel_ref_arg,
-    clippy::trivially_copy_pass_by_ref,
-    // blocks_in_if_conditions is unknown to older version of clippy.
-    clippy::unknown_clippy_lints
+    clippy::trivially_copy_pass_by_ref
 )]
 
 use std::borrow::Cow;
