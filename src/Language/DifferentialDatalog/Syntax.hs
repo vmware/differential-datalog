@@ -914,7 +914,7 @@ instance PP e => PP (ExprNode e) where
     pp (ETry _ e)            = parens $ pp e <> "?"
     pp (EClosure _ as r e)   = parens $ "function" <> parens (commaSep $ map pp as) <> (maybe empty ((":" <>) . pp) r) <> (braces $ pp e)
     pp (EFunc _ [f])         = pp f
-    pp (EFunc _ fs)          = "/*" <> commaSep (map pp fs) <> "*/"
+    pp (EFunc _ fs)          = "[One of [" <> commaSep (map pp fs) <> "]]"
 
 
 instance PP e => Show (ExprNode e) where
