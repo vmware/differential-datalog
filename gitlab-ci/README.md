@@ -4,8 +4,10 @@
     - https://gitlab.com/ddlog/differential-datalog
 
 - Docker container for GitLab CI
-    - Docker Hub organization to host GitLab CI container images:
+    - Docker Hub repo that hosts GitLab CI container images:
       - https://cloud.docker.com/u/ddlog/repository/docker/ddlog/gitlab-ci
+    - Harbor repo that hosts GitLab CI container images for internal runners:
+      - harbor-repo.vmware.com/ddlog/gitlab-ci
     - Dockerfile to build GitLab CI container images:
       - `tools/Dockerfile` (not the best place for it, but it must be in the same
         directory tree with other installation scripts in `tools`)
@@ -18,8 +20,8 @@
         - New Java, Python or Haskell dependencies are introduced
         - Upgrading to a newer version of FlatBuffers
         - Switching to a different JDK
-      - Upon success, the script prints a command line to upload the image
-        to Docker Hub.
+      - Upon success, the script prints commands to be executed to upload the image
+        to Docker Hub and Harbor.
     - To clean Docker cache when it starts to take too much space (happens after
       running CI for a while):
         `docker system prune -a`
@@ -61,10 +63,11 @@ check_interval = 0
   url = "https://gitlab.com"
   token = "Bjx-aJUGEH6Fp6rBEXkf"
   executor = "docker"
+  environment = ["FF_GITLAB_REGISTRY_HELPER_IMAGE=1"]
   [runners.custom_build_dir]
   [runners.docker]
     tls_verify = false
-    image = "ddlog/gitlab-ci:latest"
+    image = "harbor-repo.vmware.com/ddlog/gitlab-ci:latest"
     privileged = false
     disable_entrypoint_overwrite = false
     oom_kill_disable = false
@@ -77,27 +80,6 @@ check_interval = 0
     [runners.cache.s3]
     [runners.cache.gcs]
 ```
-
-Since docker hub is now throttling pulls from unauthenticated users, I also
-created registry mirrors on all machines that run gitlab runners by following
-[these instructions](https://about.gitlab.com/blog/2020/10/30/mitigating-the-impact-of-docker-hub-pull-requests-limits/),
-namely:
-
-```
-docker run -d -p 6000:5000 \
-    -e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io \
-    --restart always \
-    --name registry registry:2
-```
-
-and added the following to docker's `daemon.json`:
-
-```
-{
-  "registry-mirrors": ["http://127.0.0.1:6000"]
-}
-```
-
 
 ## Creating a GitLab mirror for your own fork of DDlog
 
