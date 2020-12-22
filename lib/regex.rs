@@ -1,16 +1,15 @@
 use ddlog_std::{Option as DDlogOption, Result as DDlogResult, Vec as DDlogVec};
-use differential_datalog::record::{CollectionKind, FromRecord, IntoRecord, Mutator, Record};
+use differential_datalog::record::{CollectionKind, Record};
 use regex::{Error as RegexError, Regex as InnerRegex, RegexSet as InnerRegexSet};
 use serde::{
-    de::{Deserialize, Deserializer, Error},
-    ser::{Serialize, Serializer},
+    de::{Deserializer, Error},
+    ser::Serializer,
 };
 use std::{
     cmp::Ordering,
     fmt::{Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
     iter::{self, IntoIterator},
-    ops::Deref,
 };
 
 #[derive(Debug, Clone)]
