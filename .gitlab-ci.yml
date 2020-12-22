@@ -19,7 +19,11 @@ variables:
     # Tell ./test.sh script not to redirect test stdout and stderr to file.
     NO_STD_REDIRECT: 1
 
+.private_runner:
+    image: harbor-repo.vmware.com/ddlog/gitlab-ci:latest
+
 build_ddlog:
+    extends: .private_runner
     stage: build
     tags:
         - ddlog-ci-1
@@ -33,6 +37,7 @@ build_ddlog:
 
 # Test Rust template only.
 test-rust:
+    extends: .private_runner
     stage: test
     tags:
         - ddlog-ci-1
@@ -45,18 +50,21 @@ test-modules:
     script: ./test.sh modules
 
 test-ovn-ftl:
+    extends: .private_runner
     stage: test
     tags:
         - ddlog-ci-1
     script: ./test.sh ovn_ftl
 
 test-ovn:
+    extends: .private_runner
     stage: test
     tags:
         - ddlog-ci-1
     script: ./test.sh ovn_mockup
 
 test-path:
+    extends: .private_runner
     stage: test
     tags:
         - ddlog-ci-1
@@ -77,6 +85,7 @@ test-rust-api:
 # Test individual libraries
 
 test-libs:
+    extends: .private_runner
     stage: test
     tags:
         - ddlog-ci-1
@@ -87,6 +96,7 @@ test-server_api:
     script: ./test.sh server_api
 
 test-simple:
+    extends: .private_runner
     stage: test
     tags:
         - ddlog-ci-1
@@ -103,12 +113,14 @@ test-span_string:
         - ./test.sh java3
 
 test-souffle0:
+    extends: .private_runner
     stage: test
     tags:
         - ddlog-ci-1
-    script: ./test.sh static_analysis 
+    script: ./test.sh static_analysis
 
 test-redist:
+    extends: .private_runner
     stage: test
     tags:
         - ddlog-ci-1
@@ -142,6 +154,7 @@ test-java1:
 #        - (cd java/test6 && ./run.sh)
 
 test-flatbuf:
+    extends: .private_runner
     stage: test
     tags:
         - ddlog-ci-1
@@ -149,6 +162,7 @@ test-flatbuf:
 
 # Template for souffle tests
 .test-imported-souffle:
+    extends: .private_runner
     stage: test
     tags:
         - ddlog-ci-1
@@ -184,6 +198,7 @@ test-imported-souffle-tests7:
 
 # Test DDlog code from the Declarative Cluster Management project
 test-dcm:
+    extends: .private_runner
     stage: test
     tags:
         - ddlog-ci-1
@@ -191,6 +206,7 @@ test-dcm:
 
 # Torture-test optimized version of redist
 test-redist_opt:
+    extends: .private_runner
     stage: test
     tags:
         - ddlog-ci-2
@@ -198,6 +214,7 @@ test-redist_opt:
 
 # Test ovn-northd-ddlog
 test-ovn-northd:
+    extends: .private_runner
     stage: test
     # Don't use eager merging, as northd tends to perform many small
     # transactions, making things slow.
@@ -208,6 +225,7 @@ test-ovn-northd:
 
 # Test antrea
 test-antrea:
+    extends: .private_runner
     stage: test
     tags:
         - ddlog-ci-1
