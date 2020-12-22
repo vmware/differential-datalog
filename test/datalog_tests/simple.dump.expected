@@ -150,6 +150,8 @@ Floats{.s = "5 + 3", .f = 8}: +1
 Floats{.s = "5*3", .f = 15}: +1
 Floats{.s = "5/3", .f = 1.6666666}: +1
 Floats{.s = "floor_f(32'f0.1)", .f = 0}: +1
+FoldTest:
+FoldTest{.res = "_foo_bar"}: +1
 J:
 J{.b = true}: +1
 R7:
@@ -437,6 +439,9 @@ Floats{.s = "5 + 3", .f = 8}
 Floats{.s = "5*3", .f = 15}
 Floats{.s = "5/3", .f = 1.6666666}
 Floats{.s = "floor_f(32'f0.1)", .f = 0}
+
+FoldTest:
+FoldTest{.res = "_foo_bar"}
 
 J:
 J{.b = true}
@@ -752,6 +757,9 @@ Floats{.s = "5 + 3", .f = 8}
 Floats{.s = "5*3", .f = 15}
 Floats{.s = "5/3", .f = 1.6666666}
 Floats{.s = "floor_f(32'f0.1)", .f = 0}
+
+FoldTest:
+FoldTest{.res = "_foo_bar"}
 
 J:
 J{.b = true}
