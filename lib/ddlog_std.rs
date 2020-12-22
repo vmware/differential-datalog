@@ -369,7 +369,7 @@ impl<T> FromIterator<T> for Vec<T> {
         I: IntoIterator<Item = T>,
     {
         Self {
-            x: ::std::vec::Vec::from_iter(iter),
+            vec: ::std::vec::Vec::from_iter(iter),
         }
     }
 }
@@ -1333,7 +1333,7 @@ impl<V: Clone> GroupIntoIter<V> {
     pub fn new<K>(grp: Group<K, V>) -> GroupIntoIter<V> {
         match grp {
             GroupEnum::ByRef { group, project, .. } => GroupIntoIter::ByRef {
-                iter: group.into_iter(),
+                iter: group.iter(),
                 project: project.clone(),
             },
             GroupEnum::ByVal { group, .. } => GroupIntoIter::ByVal {
@@ -1354,7 +1354,7 @@ impl<V: Clone> Iterator for GroupIntoIter<V> {
             },
             GroupIntoIter::ByVal { iter } => match iter.next() {
                 None => None,
-                Some(x) => Some(x.clone()),
+                Some(x) => Some(x),
             },
         }
     }
