@@ -36,7 +36,7 @@ typedef t22 = float
 typedef t23 = function(string, string): string
 typedef t24 = |string, string|: string
 
-function fold(vec: Vec<string>, folder: t23): string = {
+function fold_test(vec: Vec<string>, folder: t23): string = {
    var vcopy = vec;
    vcopy.push("");
    var result = vcopy.pop().unwrap_or("");
@@ -45,6 +45,9 @@ function fold(vec: Vec<string>, folder: t23): string = {
    };
    result
 }
+
+output relation FoldTest(res: string)
+FoldTest(fold_test(["foo", "bar"], |a, v| a ++ "_" ++ v)).
 
 typedef person = string
 
