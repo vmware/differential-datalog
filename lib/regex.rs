@@ -270,6 +270,6 @@ pub fn try_regex_set(patterns: &[String]) -> DDlogResult<RegexSet, String> {
 }
 
 /// Returns true if any regex in the set matches the given text
-pub fn regex_set_match(regex: &RegexSet, text: &str) -> bool {
+pub fn regex_set_match(regex: &RegexSet, text: &String) -> bool {
     regex.is_match(&text)
 }
