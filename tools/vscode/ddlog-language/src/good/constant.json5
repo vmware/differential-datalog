@@ -10,7 +10,7 @@
                 {
                     "comment": "Floating point literal (exponent)",
                     "name": "constant.numeric.float.ddlog",
-                    "match": "\\b(32'f|64'f)?([0-9][0-9_]*\\.)?[0-9][0-9_]*[eE][+-][0-9_]+\\b"
+                    "match": "\\b(32'f|64'f)?([0-9][0-9_]*\\.)?[0-9][0-9_]*[eE][+-]?[0-9_]+\\b"
                 },                                                                        
                 {
                     "comment": "Integer literal (hexadecimal)",

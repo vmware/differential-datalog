@@ -47,13 +47,13 @@
                 },
                 {
                     "name": "meta.function-param.ddlog",
-                    "begin": "(?<=(\\b)([a-z_][a-zA-Z0-9_]+))(\\()",
+                    "begin": "(?<=(\\b)([a-z_][a-zA-Z0-9_]*))(\\()",
                     "end": "(\\))",
                     "beginCaptures": {"0": {"name": "punctuation.definition.type.ddlog"}},
                     "endCaptures": {"0": {"name": "punctuation.definition.type.ddlog"}},
                     "patterns": [
                         {
-                            "match": "(\\b)([a-z_][a-zA-Z0-9_]+)(?=[(])",
+                            "match": "(\\b)([a-z_][a-zA-Z0-9_]*)(?=[(])",
                             "name": "entity.name.function.ddlog",
                             "captures": {
                             "1": {
@@ -62,29 +62,8 @@
                             }
                         },
                         {
-                            "match": "(\\b)([a-z_]+)(?=[(])",
-                            "name": "entity.name.function.ddlog",
-                            "captures": {
-                            "1": {
-                            "name": "punctuation.definition.type.ddlog"
-                             }
-                            }
-                        },
-                        {
                             "name": "variable.parameter.ddlog",
-                            "match": "(?<![:] )(\\b)(?!.*(bigint|bit|bool|signed|double|float|string|Vec|Ref|Set|Map))([a-z_][a-zA-Z0-9_]+)(\\b)"
-                        },
-                        {
-                            "name": "variable.parameter.ddlog",
-                            "match": "(?<![:] )(\\b)(?!.*(bigint|bit|bool|signed|double|float|string|Vec|Ref|Set|Map))([a-z_]+)(\\b)"
-                        }, 
-                        {
-                            "name": "variable.parameter.ddlog",
-                            "match": "(?<![:])(\\b)(?!.*(bigint|bit|bool|signed|double|float|string|Vec|Ref|Set|Map))([a-z_][a-zA-Z0-9_]+)(\\b)"
-                        },
-                        {
-                            "name": "variable.parameter.ddlog",
-                            "match": "(?<![:])(\\b)(?!.*(bigint|bit|bool|signed|double|float|string|Vec|Ref|Set|Map))([a-z_]+)(\\b)"
+                            "match": "(?<![:]\\s*)(?!.*(bigint|bit|bool|signed|double|float|string|Vec|Ref|Set|Map))\\s*([a-z_][a-zA-Z0-9_]*)(\\b)"
                         },
                         {
                             "include": "#comment"
@@ -120,83 +99,7 @@
                             "include": "#storage"
                         }
                     ]
-                },
-                {
-                    "name": "meta.function-param.ddlog",
-                    "begin": "(?<=(\\b)([a-z_]))(\\()",
-                    "end": "(\\))",
-                    "beginCaptures": {"0": {"name": "punctuation.definition.type.ddlog"}},
-                    "endCaptures": {"0": {"name": "punctuation.definition.type.ddlog"}},
-                    "patterns": [
-                        {
-                            "match": "(\\b)([a-z_][a-zA-Z0-9_]+)(?=[(])",
-                            "name": "entity.name.function.ddlog",
-                            "captures": {
-                            "1": {
-                                "name": "punctuation.definition.type.ddlog"
-                                }
-                            }
-                        },
-                        {
-                            "match": "(\\b)([a-z_]+)(?=[(])",
-                            "name": "entity.name.function.ddlog",
-                            "captures": {
-                            "1": {
-                            "name": "punctuation.definition.type.ddlog"
-                             }
-                            }
-                        },                   
-                        {
-                            "name": "variable.parameter.ddlog",
-                            "match": "(?<![:] )(\\b)(?!.*(bigint|bit|bool|signed|double|float|string|Vec|Ref|Set|Map))([a-z_][a-zA-Z0-9_]+)(\\b)"
-                        },
-                        {
-                            "name": "variable.parameter.ddlog",
-                            "match": "(?<![:] )(\\b)(?!.*(bigint|bit|bool|signed|double|float|string|Vec|Ref|Set|Map))([a-z_]+)(\\b)"
-                        }, 
-                        {
-                            "name": "variable.parameter.ddlog",
-                            "match": "(?<![:])(\\b)(?!.*(bigint|bit|bool|signed|double|float|string|Vec|Ref|Set|Map))([a-z_][a-zA-Z0-9_]+)(\\b)"
-                        },
-                        {
-                            "name": "variable.parameter.ddlog",
-                            "match": "(?<![:])(\\b)(?!.*(bigint|bit|bool|signed|double|float|string|Vec|Ref|Set|Map))([a-z_]+)(\\b)"
-                        },
-                        {
-                            "include": "#comment"
-                        },
-                        {
-                            "include": "#constant"
-                        },
-                        {
-                            "include": "#meta"
-                        },
-                        {
-                            "include": "#punctuation"
-                        },
-                        {
-                            "include": "#string"
-                        },
-                        {
-                            "include": "#support"
-                        },
-                        {
-                            "include": "#type"
-                        },
-                        {
-                            "include": "#variable"
-                        },
-                        {
-                            "include": "#operator"
-                        },
-                        {
-                            "include": "#keyword"
-                        },
-                        {
-                            "include": "#storage"
-                        }
-                    ]
-                }                                                                 
+                }                                                               
             ]
         }
     }

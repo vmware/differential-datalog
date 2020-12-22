@@ -4,20 +4,12 @@
             "patterns": [
                 {
                     "name": "variable.parameter.ddlog",
-                    "match": "\\b([a-z_][a-zA-Z0-9_]+)(?=[:] )"
-                },
-                {
-                    "name": "variable.parameter.ddlog",
-                    "match": "\\b([a-z_]+)(?=[:] )"
-                },                     
-                {
-                    "name": "variable.local.ddlog",
-                    "match": "\\b(?<=var)(\\s*)([a-z_][a-zA-Z0-9_]*)"
+                    "match": "\\b([a-z_][a-zA-Z0-9_]*\\s*)(?=[:]\\s*)"
                 },
                 {
                     "name": "variable.local.ddlog",
-                    "match": "\\b(?<=var)(\\s*)([a-z_]+)"
-                },                  
+                    "match": "\\b(?<=var)(\\s*)([a-z_][a-zA-Z0-9_]*)\\s*"
+                },
                 {
                     "name": "variable.language.ddlog",
                     "match": "\\b(_)\\b"
