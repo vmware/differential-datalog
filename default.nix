@@ -1,3 +1,6 @@
+# This is a NIX shell script to install the dependencies required by DDlog,
+# but unfortunately it has not been kept up-to-date.
+
 { ghc ? null
 , pkgs ? import <nixpkgs> { }
 , buildStatic ? true
@@ -7,7 +10,7 @@ let
 
   ghc = args.ghc or pkgs.haskell.compiler.ghc865;
   java = pkgs.adoptopenjdk-bin;
-  rust-toolchain = "1.41.1";
+  rust-toolchain = "1.47";
   lib = pkgs.lib;
 
   flatbuffers-java = pkgs.runCommand "flatbuffers-java" {
@@ -29,7 +32,7 @@ let
     shellHook = ''
       export PATH="$HOME/.local/bin:$PATH"
     '';
-    
+
     nativeBuildInputs = lib.optional buildStatic [
       pkgs.glibc
       pkgs.glibc.static
@@ -40,7 +43,7 @@ let
     buildInputs = [
       pkgs.flatbuffers
       pkgs.zlib
-      java 
+      java
       pkgs.gitMinimal
       pkgs.rustup
       pkgs.cacert
@@ -99,7 +102,7 @@ let
 
 in dev-shell // {
 
-  inherit 
+  inherit
     stack-shell
   ;
 

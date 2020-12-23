@@ -3,7 +3,7 @@
 [![pipeline status](https://gitlab.com/ddlog/differential-datalog/badges/master/pipeline.svg)](https://gitlab.com/ddlog/differential-datalog/commits/master)
 [![rustc](https://img.shields.io/badge/rustc-1.47+-blue.svg)](https://blog.rust-lang.org/2020/10/08/Rust-1.47.html)
 [![Gitter chat](https://badges.gitter.im/vmware/differential-datalog.png)](https://gitter.im/vmware/differential-datalog)
- 
+
 # Differential Datalog (DDlog)
 
 DDlog is a programming language for *incremental computation*. It is well suited for
@@ -126,17 +126,6 @@ You are now ready to [start coding in DDlog](doc/tutorial/tutorial.md).
   ```
   apt install libc6-dev libgmp-dev
   ```
-
-#### Installing dependencies using Nix
-
-Alternatively, [Nix](https://nixos.org/nix/) package manager provides an automated way to
-install and manage the above dependencies.  It works on many flavors of
-Linux and MacOS.
-
-1. Get Nix https://nixos.org/nix/
-2. Clone this repo and cd into it
-3. Run Nix dev shell: `nix-shell`
-4. Inside dev shell run `initial-setup` to build `ddlog` executable. This should be done only once
 
 #### Building
 
