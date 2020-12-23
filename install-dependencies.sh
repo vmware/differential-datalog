@@ -1,5 +1,5 @@
 #!/bin/bash
-# Script that installs the dependencies needed to build and run Differential Dataflow
+# Script that installs the dependencies needed to build and run Differential Datalog
 
 echo "Installing dependencies for DDlog"
 echo "This script should be invoked with '. ./install-dependencies.sh' to set up the environment properly"
@@ -10,7 +10,7 @@ case "$OSTYPE" in
     "*") echo "Unhandled operating system $OSTYPE"; exit 1;;
 esac
 
-RUST_VERSION="1.41.1"
+RUST_VERSION="1.47"
 
 echo "Installing Haskell"
 ./tools/install-stack.sh
