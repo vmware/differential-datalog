@@ -21,7 +21,38 @@ output relation RegexTestOutput(
 RegexTestOutput(re,
                 text,
                 regex_match(regex(re), text),
-                regex_match(unwrap_or(regex_checked(re), regex("")), text),
+                regex_match(unwrap_or(try_regex(re), regex("")), text),
                 regex_first_match(regex(re), text),
                 regex_all_matches(regex(re), text)) :-
     RegexTestInput(re, text).
+
+relation RegexSetTestInput(
+    re: Vec<string>,
+    text: string)
+
+RegexSetTestInput(
+    [ [|\w+|], [|\d+|], [|\pL+|], [|foo|], [|bar|], [|barfoo|], [|foobar|] ],
+    "foobar").
+
+RegexSetTestInput(
+    [ [|\w+|], [|\d+|], [|\pL+|], [|foo|], [|bar|], [|[|] /*invalid regex*/, [|foobar|] ],
+    "foobar").
+
+RegexSetTestInput(
+    [ [|\d+|], [|barfoo|] ],
+    "foobar").
+
+output relation RegexSetTestOutput(
+    re: Vec<string>,
+    text: string,
+    match_found: bool)
+
+RegexSetTestOutput(re,
+                   text,
+                   regex_set_match(regex_set(re), text)) :-
+    RegexSetTestInput(re, text).
+
+RegexSetTestOutput(re,
+                   text,
+                   regex_set_match(try_regex_set(re).unwrap_or_default(), text)) :-
+    RegexSetTestInput(re, text).

@@ -2,3 +2,6 @@ regex_test::RegexTestOutput{.re = "'([^']+)'\\s+\\((\\d{4})\\)", .text = "Not my
 regex_test::RegexTestOutput{.re = "[", .text = "foo", .match_found = false, .match_found_checked = true, .first_match = ddlog_std::None{}, .all_matches = []}
 regex_test::RegexTestOutput{.re = "\\b\\w{13}\\b", .text = "I categorically deny having triskaidekaphobia.", .match_found = true, .match_found_checked = true, .first_match = ddlog_std::Some{.x = "categorically"}, .all_matches = ["categorically"]}
 regex_test::RegexTestOutput{.re = "\\d+", .text = "a111b222c", .match_found = true, .match_found_checked = true, .first_match = ddlog_std::Some{.x = "111"}, .all_matches = ["111", "222"]}
+regex_test::RegexSetTestOutput{.re = ["\\d+", "barfoo"], .text = "foobar", .match_found = false}
+regex_test::RegexSetTestOutput{.re = ["\\w+", "\\d+", "\\pL+", "foo", "bar", "[", "foobar"], .text = "foobar", .match_found = false}
+regex_test::RegexSetTestOutput{.re = ["\\w+", "\\d+", "\\pL+", "foo", "bar", "barfoo", "foobar"], .text = "foobar", .match_found = true}
