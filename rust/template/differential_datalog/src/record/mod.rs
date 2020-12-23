@@ -8,11 +8,14 @@ use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::collections::{btree_map, BTreeMap, BTreeSet};
+#[cfg(feature = "c_api")]
 use std::ffi::{CStr, CString};
 use std::fmt;
 use std::fmt::Write;
 use std::iter::FromIterator;
+#[cfg(feature = "c_api")]
 use std::ptr;
+#[cfg(feature = "c_api")]
 use std::slice;
 use std::str;
 use std::vec;
