@@ -18,7 +18,7 @@ mod update;
 mod worker;
 
 pub use arrange::concatenate_collections;
-pub use timestamp::{TSNested, TupleTS, TS, TS16};
+pub use timestamp::{TSNested, TupleTS, TS};
 pub use update::Update;
 
 use crate::{ddval::*, profile::*, record::Mutator};
