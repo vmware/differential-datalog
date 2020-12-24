@@ -23,7 +23,7 @@ RegexTestOutput(re,
                 regex_match(regex(re), text),
                 regex_match(unwrap_or(try_regex(re), regex("")), text),
                 regex_first_match(regex(re), text),
-                regex_all_matches(regex(re), text)) :-
+                regex_all_matches(regex(re), text.intern().ival())) :-
     RegexTestInput(re, text).
 
 relation RegexSetTestInput(
