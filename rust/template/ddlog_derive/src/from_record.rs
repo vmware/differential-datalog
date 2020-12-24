@@ -1,64 +1,12 @@
-use super::add_trait_bounds;
-use proc_macro2::{Span, TokenStream};
+use crate::IdentOrIndex;
+
+use super::{add_trait_bounds, get_rename};
+use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{
-    parse_quote, spanned::Spanned, Attribute, Data, DataEnum, DataStruct, DeriveInput, Error,
-    Ident, ImplGenerics, Lit, MetaNameValue, Result, TypeGenerics, WhereClause,
+    parse_quote, spanned::Spanned, Data, DataEnum, DataStruct, DeriveInput, Error, Ident,
+    ImplGenerics, Index, Result, TypeGenerics, WhereClause,
 };
-
-fn get_rename<'a, I>(macro_name: &str, specific_attr: &str, attrs: I) -> Result<Option<String>>
-where
-    I: Iterator<Item = &'a Attribute> + 'a,
-{
-    let mut renames = attrs
-        .filter(|attr| attr.path.is_ident("ddlog"))
-        .map(|attr| attr.parse_args::<MetaNameValue>())
-        .map(|attr| {
-            attr.and_then(|attr| {
-                if attr.path.is_ident("rename") || attr.path.is_ident(specific_attr) {
-                    Ok((attr.span(), attr.lit))
-                } else {
-                    Err(syn::Error::new_spanned(
-                        attr.path,
-                        format!(
-                            "unrecognized attribute, expected `rename` or `{}`",
-                            specific_attr,
-                        ),
-                    ))
-                }
-            })
-        })
-        .map(|lit| {
-            lit.and_then(|(span, lit)| {
-                if let Lit::Str(string) = lit {
-                    Ok((span, string.value()))
-                } else {
-                    Err(Error::new_spanned(
-                        lit,
-                        format!(
-                            "`{}` can only be renamed to string literal values",
-                            macro_name,
-                        ),
-                    ))
-                }
-            })
-        })
-        .collect::<Result<Vec<(Span, String)>>>()?;
-
-    if renames.is_empty() {
-        Ok(None)
-    } else if renames.len() == 1 {
-        Ok(Some(renames.remove(0).1))
-    } else {
-        Err(Error::new(
-            renames[0].0,
-            format!(
-                "got {} separate renames when only one is allowed",
-                renames.len()
-            ),
-        ))
-    }
-}
 
 pub fn from_record_inner(input: DeriveInput) -> Result<TokenStream> {
     // The name of the struct
@@ -102,8 +50,8 @@ pub fn from_record_inner(input: DeriveInput) -> Result<TokenStream> {
 }
 
 fn from_record_struct(
-    struct_name: Ident,
-    struct_string: String,
+    struct_ident: Ident,
+    struct_record_name: String,
     derive_struct: DataStruct,
     (impl_generics, type_generics, where_clause): (
         ImplGenerics,
@@ -120,8 +68,12 @@ fn from_record_struct(
         .cloned()
         .enumerate()
         .map(|(idx, field)| {
+            let field_span = field.span();
             // Tuple structs have no field names, but instead use the tuple indexes
-            let field_ident = field.ident.unwrap_or_else(|| parse_quote!(#idx));
+            let field_ident = field.ident.map_or_else(
+                || IdentOrIndex::Index(Index { index: idx as u32, span: field_span }),
+                IdentOrIndex::Ident,
+            );
             let field_type = field.ty;
 
             // Call `FromRecord::from_record()` directly on each field
@@ -137,8 +89,12 @@ fn from_record_struct(
         .into_iter()
         .enumerate()
         .map(|(idx, field)| {
+            let field_span = field.span();
             // Tuple structs have no field names, but instead use the tuple indexes
-            let field_ident = field.ident.unwrap_or_else(|| parse_quote!(#idx));
+            let field_ident = field.ident.map_or_else(
+                || IdentOrIndex::Index(Index { index: idx as u32, span: field_span }),
+                IdentOrIndex::Ident,
+            );
             let field_type = field.ty;
 
             // Use the given rename provided by `#[ddlog(rename = "...")]` or `#[ddlog(from_record = "...")]`
@@ -156,19 +112,19 @@ fn from_record_struct(
     // Generate the actual code
     Ok(quote! {
         #[automatically_derived]
-        impl #impl_generics differential_datalog::record::FromRecord for #struct_name #type_generics #where_clause {
+        impl #impl_generics differential_datalog::record::FromRecord for #struct_ident #type_generics #where_clause {
             fn from_record(record: &differential_datalog::record::Record) -> std::result::Result<Self, std::string::String> {
                 match record {
                     differential_datalog::record::Record::PosStruct(constructor, args) => {
                         match constructor.as_ref() {
-                            #struct_string if args.len() == #num_fields => {
+                            #struct_record_name if args.len() == #num_fields => {
                                 std::result::Result::Ok(Self { #positional_fields })
                             },
 
                             error => {
                                 std::result::Result::Err(format!(
                                     "unknown constructor {} of type '{}' in {:?}",
-                                    error, #struct_string, *record,
+                                    error, #struct_record_name, *record,
                                 ))
                             }
                         }
@@ -176,14 +132,14 @@ fn from_record_struct(
 
                     differential_datalog::record::Record::NamedStruct(constructor, args) => {
                         match constructor.as_ref() {
-                            #struct_string => {
+                            #struct_record_name => {
                                 std::result::Result::Ok(Self { #named_fields })
                             },
 
                             error => {
                                 std::result::Result::Err(format!(
                                     "unknown constructor {} of type '{}' in {:?}",
-                                    error, #struct_string, *record,
+                                    error, #struct_record_name, *record,
                                 ))
                             }
                         }
@@ -199,8 +155,8 @@ fn from_record_struct(
 }
 
 fn from_record_enum(
-    enum_name: Ident,
-    enum_string: String,
+    enum_ident: Ident,
+    enum_record_name: String,
     derive_enum: DataEnum,
     (impl_generics, type_generics, where_clause): (
         ImplGenerics,
@@ -221,7 +177,10 @@ fn from_record_enum(
             // Use the given rename provided by `#[ddlog(rename = "...")]` or `#[ddlog(from_record = "...")]`
             // as the name of the variant, defaulting to the variant's ident if none is given
             let variant_record_name = get_rename("FromRecord", "from_record", variant.attrs.iter())?
-                .unwrap_or_else(|| variant_ident.to_string());
+                .map_or_else(
+                    || format!("{}::{}", enum_record_name, variant_ident),
+                    |rename| format!("{}::{}", enum_record_name, rename),
+                );
 
             let positional_fields: TokenStream = variant
                 .fields
@@ -229,8 +188,12 @@ fn from_record_enum(
                 .cloned()
                 .enumerate()
                 .map(|(idx, field)| {
+                    let field_span = field.span();
                     // Tuple structs have no field names, but instead use the tuple indexes
-                    let field_ident = field.ident.unwrap_or_else(|| parse_quote!(idx));
+                    let field_ident = field.ident.map_or_else(
+                        || IdentOrIndex::Index(Index { index: idx as u32, span: field_span }),
+                        IdentOrIndex::Ident,
+                    );
                     let field_type = field.ty;
 
                     // Call `FromRecord::from_record()` directly on each field
@@ -261,15 +224,22 @@ fn from_record_enum(
             // Use the given rename provided by `#[ddlog(rename = "...")]` or `#[ddlog(from_record = "...")]`
             // as the name of the variant, defaulting to the variant's ident if none is given
             let variant_record_name = get_rename("FromRecord", "from_record", variant.attrs.iter())?
-                .unwrap_or_else(|| variant_ident.to_string());
+                .map_or_else(
+                    || format!("{}::{}", enum_record_name, variant_ident),
+                    |rename| format!("{}::{}", enum_record_name, rename),
+                );
 
             let named_fields = variant
                 .fields
                 .into_iter()
                 .enumerate()
                 .map(|(idx, field)| {
+                    let field_span = field.span();
                     // Tuple structs have no field names, but instead use the tuple indexes
-                    let field_ident = field.ident.unwrap_or_else(|| parse_quote!(#idx));
+                    let field_ident = field.ident.map_or_else(
+                        || IdentOrIndex::Index(Index { index: idx as u32, span: field_span }),
+                        IdentOrIndex::Ident,
+                    );
                     let field_type = field.ty;
 
                     // If the field is renamed within records then use that as the name to extract
@@ -294,7 +264,7 @@ fn from_record_enum(
 
     Ok(quote! {
         #[automatically_derived]
-        impl #impl_generics differential_datalog::record::FromRecord for #enum_name #type_generics #where_clause {
+        impl #impl_generics differential_datalog::record::FromRecord for #enum_ident #type_generics #where_clause {
             fn from_record(record: &differential_datalog::record::Record) -> std::result::Result<Self, String> {
                 match record {
                     differential_datalog::record::Record::PosStruct(constructor, args) => {
@@ -304,7 +274,7 @@ fn from_record_enum(
                             error => {
                                 std::result::Result::Err(format!(
                                     "unknown constructor {} of type '{}' in {:?}",
-                                    error, #enum_string, *record,
+                                    error, #enum_record_name, *record,
                                 ))
                             },
                         }
@@ -317,7 +287,7 @@ fn from_record_enum(
                             error => {
                                 std::result::Result::Err(format!(
                                     "unknown constructor {} of type '{}' in {:?}",
-                                    error, #enum_string, *record,
+                                    error, #enum_record_name, *record,
                                 ))
                             }
                         }

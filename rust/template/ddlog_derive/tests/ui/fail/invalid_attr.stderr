@@ -1,0 +1,11 @@
+error: unrecognized attribute, expected `rename` or `from_record`
+ --> $DIR/invalid_attr.rs:6:9
+  |
+6 | #[ddlog(flom_record = "Foo")]
+  |         ^^^^^^^^^^^
+
+error: unrecognized attribute, expected `rename` or `into_record`
+  --> $DIR/invalid_attr.rs:10:9
+   |
+10 | #[ddlog(into_recrd = "Bar")]
+   |         ^^^^^^^^^^
