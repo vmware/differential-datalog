@@ -6,19 +6,18 @@ mod tuples;
 use num::{BigInt, BigUint, ToPrimitive};
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
-use std::collections::{btree_map, BTreeMap, BTreeSet};
+use std::{
+    borrow::Cow,
+    collections::{btree_map, BTreeMap, BTreeSet},
+    fmt::{self, Write},
+    iter::FromIterator,
+    str, vec,
+};
 #[cfg(feature = "c_api")]
-use std::ffi::{CStr, CString};
-use std::fmt;
-use std::fmt::Write;
-use std::iter::FromIterator;
-#[cfg(feature = "c_api")]
-use std::ptr;
-#[cfg(feature = "c_api")]
-use std::slice;
-use std::str;
-use std::vec;
+use std::{
+    ffi::{CStr, CString},
+    ptr, slice,
+};
 
 pub type Name = Cow<'static, str>;
 
@@ -683,6 +682,12 @@ impl FromRecord for String {
 impl IntoRecord for String {
     fn into_record(self) -> Record {
         Record::String(self)
+    }
+}
+
+impl<'a> IntoRecord for &'a str {
+    fn into_record(self) -> Record {
+        Record::String(self.to_owned())
     }
 }
 
