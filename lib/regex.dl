@@ -27,7 +27,7 @@ extern function try_regex(pattern: string): Result<Regex, string>
  * Returns false if `regex` is not a valid regular expression or if no match was
  * found.
  *
- * Example: `regex_match(regex([|\d+|]), "a111b222c")` 
+ * Example: `regex_match(regex([|\d+|]), "a111b222c")`
  */
 extern function regex_match(regex: Regex, text: string): bool
 

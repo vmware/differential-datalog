@@ -114,23 +114,23 @@ impl Mutator<Regex> for Record {
 
 /// If the provided string is not a valid regex, this function will return
 /// a regex that will not match any string
-pub fn regex(regex: &str) -> Regex {
+pub fn regex(regex: &String) -> Regex {
     Regex::new(regex).unwrap_or_else(|_| Regex::new(r"a^").unwrap())
 }
 
 /// Attempts to create a regex from the given string, returning an error
 /// if it is invalid
-pub fn try_regex(regex: &str) -> DDlogResult<Regex, String> {
+pub fn try_regex(regex: &String) -> DDlogResult<Regex, String> {
     ddlog_std::res2std(Regex::new(regex))
 }
 
 /// Returns true if the regex matches the given text
-pub fn regex_match(regex: &Regex, text: &str) -> bool {
+pub fn regex_match(regex: &Regex, text: &String) -> bool {
     regex.is_match(&text)
 }
 
 /// Gets the first match of a regex
-pub fn regex_first_match(regex: &Regex, text: &str) -> DDlogOption<String> {
+pub fn regex_first_match(regex: &Regex, text: &String) -> DDlogOption<String> {
     regex
         .find(&text)
         .map(|found| found.as_str().to_string())
@@ -138,7 +138,7 @@ pub fn regex_first_match(regex: &Regex, text: &str) -> DDlogOption<String> {
 }
 
 /// Collects all matches from a regex
-pub fn regex_all_matches(regex: &Regex, text: &str) -> DDlogVec<String> {
+pub fn regex_all_matches(regex: &Regex, text: &String) -> DDlogVec<String> {
     regex
         .find_iter(&text)
         .map(|found| found.as_str().to_owned())
