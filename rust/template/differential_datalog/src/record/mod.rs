@@ -162,6 +162,13 @@ impl Record {
         }
     }
 
+    pub fn positional_struct_fields(&self) -> Option<&[Self]> {
+        match self {
+            Self::PosStruct(_, fields) => Some(fields),
+            _ => None,
+        }
+    }
+
     pub fn struct_constructor(&self) -> Option<&Name> {
         match self {
             Self::PosStruct(constructor, _) | Self::NamedStruct(constructor, _) => {

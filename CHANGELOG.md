@@ -16,6 +16,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - Added the `ddlog_derive` crate that provides derive macros for the `FromRecord`,
   `IntoRecord` and `Mutator` traits
+- Added the `Record::positional_struct_fields()` method to allow fetching positional
+  fields from records
 
 ## [0.33.0] - Dec 24, 2020
 

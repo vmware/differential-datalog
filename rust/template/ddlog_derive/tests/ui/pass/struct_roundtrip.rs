@@ -94,13 +94,8 @@ fn main() {
         Some(&Cow::Borrowed("TupleStruct")),
     );
     assert_eq!(
-        tuple_record.named_struct_fields(),
-        Some(
-            &[
-                (Cow::Borrowed("0"), 100u32.into_record()),
-                (Cow::Borrowed("1"), "foobar".into_record()),
-            ][..]
-        )
+        tuple_record.positional_struct_fields(),
+        Some(&[100u32.into_record(), "foobar".into_record()][..])
     );
 }
 
