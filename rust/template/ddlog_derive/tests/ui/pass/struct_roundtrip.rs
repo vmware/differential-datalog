@@ -1,5 +1,6 @@
 use ddlog_derive::{FromRecord, IntoRecord};
 use differential_datalog::record::{FromRecord, IntoRecord};
+use serde::Deserialize;
 use std::borrow::Cow;
 
 fn main() {
@@ -72,6 +73,16 @@ fn main() {
     );
     assert_eq!(empty_record.named_struct_fields(), Some(&[][..]));
 
+    let unit = UnitStruct;
+    let unit_record = unit.clone().into_record();
+    assert_eq!(UnitStruct::from_record(&unit_record), Ok(unit));
+    assert!(unit_record.is_struct());
+    assert_eq!(
+        unit_record.struct_constructor(),
+        Some(&Cow::Borrowed("UnitStruct")),
+    );
+    assert_eq!(unit_record.positional_struct_fields(), Some(&[][..]));
+
     let renamed_empty = RenamedEmptyStruct {};
     let renamed_empty_record = renamed_empty.clone().into_record();
     assert_eq!(
@@ -99,7 +110,7 @@ fn main() {
     );
 }
 
-#[derive(FromRecord, IntoRecord, Debug, Clone, Default, PartialEq)]
+#[derive(FromRecord, IntoRecord, Debug, Clone, Default, PartialEq, Deserialize)]
 struct DefaultRecordNames {
     foo: u32,
     bar: u64,
@@ -107,7 +118,7 @@ struct DefaultRecordNames {
     biz: String,
 }
 
-#[derive(FromRecord, IntoRecord, Debug, Clone, Default, PartialEq)]
+#[derive(FromRecord, IntoRecord, Debug, Clone, Default, PartialEq, Deserialize)]
 #[ddlog(rename = "some::random::path::RenamedStruct")]
 struct RenamedStruct {
     #[ddlog(rename = "i am a field")]
@@ -120,12 +131,15 @@ struct RenamedStruct {
     biz: String,
 }
 
-#[derive(FromRecord, IntoRecord, Debug, Clone, Default, PartialEq)]
+#[derive(FromRecord, IntoRecord, Debug, Clone, Default, PartialEq, Deserialize)]
 struct EmptyStruct {}
 
-#[derive(FromRecord, IntoRecord, Debug, Clone, Default, PartialEq)]
+#[derive(FromRecord, IntoRecord, Debug, Clone, Default, PartialEq, Deserialize)]
+struct UnitStruct;
+
+#[derive(FromRecord, IntoRecord, Debug, Clone, Default, PartialEq, Deserialize)]
 #[ddlog(rename = "so::alone::and::Empty")]
 struct RenamedEmptyStruct {}
 
-#[derive(FromRecord, IntoRecord, Debug, Clone, Default, PartialEq)]
+#[derive(FromRecord, IntoRecord, Debug, Clone, Default, PartialEq, Deserialize)]
 struct TupleStruct(u32, String);

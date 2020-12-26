@@ -1,11 +1,11 @@
 error: got 2 separate renames when only one is allowed
- --> $DIR/duplicated_attrs.rs:6:9
+ --> $DIR/duplicated_attrs.rs:7:9
   |
-6 | #[ddlog(rename = "Foo")]
+7 | #[ddlog(rename = "Foo")]
   |         ^^^^^^
 
 error: got 2 separate renames when only one is allowed
-  --> $DIR/duplicated_attrs.rs:11:9
+  --> $DIR/duplicated_attrs.rs:12:9
    |
-11 | #[ddlog(into_record = "Bar")]
+12 | #[ddlog(into_record = "Bar")]
    |         ^^^^^^^^^^^
