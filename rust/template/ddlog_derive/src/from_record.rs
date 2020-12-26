@@ -122,7 +122,7 @@ fn from_record_struct(
                             },
 
                             error => {
-                                std::result::Result::Err(format!(
+                                std::result::Result::Err(std::format!(
                                     "unknown constructor {} of type '{}' in {:?}",
                                     error, #struct_record_name, *record,
                                 ))
@@ -137,7 +137,7 @@ fn from_record_struct(
                             },
 
                             error => {
-                                std::result::Result::Err(format!(
+                                std::result::Result::Err(std::format!(
                                     "unknown constructor {} of type '{}' in {:?}",
                                     error, #struct_record_name, *record,
                                 ))
@@ -145,8 +145,16 @@ fn from_record_struct(
                         }
                     },
 
+                    differential_datalog::record::Record::Serialized(format, serialized) => {
+                        if format == "json" {
+                            serde_json::from_str(serialized.as_str()).map_err(|error| format!("{}", error))
+                        } else {
+                            std::result::Result::Err(std::format!("unsupported serialization format '{}'", format))
+                        }
+                    },
+
                     error => {
-                        std::result::Result::Err(format!("not a struct {:?}", *error))
+                        std::result::Result::Err(std::format!("not a struct {:?}", *error))
                     },
                 }
             }
@@ -272,7 +280,7 @@ fn from_record_enum(
                             #positional_variants
 
                             error => {
-                                std::result::Result::Err(format!(
+                                std::result::Result::Err(std::format!(
                                     "unknown constructor {} of type '{}' in {:?}",
                                     error, #enum_record_name, *record,
                                 ))
@@ -285,7 +293,7 @@ fn from_record_enum(
                             #named_variants
 
                             error => {
-                                std::result::Result::Err(format!(
+                                std::result::Result::Err(std::format!(
                                     "unknown constructor {} of type '{}' in {:?}",
                                     error, #enum_record_name, *record,
                                 ))
@@ -293,8 +301,16 @@ fn from_record_enum(
                         }
                     },
 
+                    differential_datalog::record::Record::Serialized(format, serialized) => {
+                        if format == "json" {
+                            serde_json::from_str(serialized.as_str()).map_err(|error| format!("{}", error))
+                        } else {
+                            std::result::Result::Err(std::format!("unsupported serialization format '{}'", format))
+                        }
+                    },
+
                     error => {
-                        std::result::Result::Err(format!("not a struct {:?}", *error))
+                        std::result::Result::Err(std::format!("not a struct {:?}", *error))
                     }
                 }
             }
