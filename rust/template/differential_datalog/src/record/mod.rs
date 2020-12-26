@@ -147,6 +147,17 @@ impl Record {
         }
     }
 
+    pub fn get_struct_field(&self, field_name: &str) -> Option<&Self> {
+        match self {
+            Self::NamedStruct(_, fields) => fields
+                .iter()
+                .find(|(name, _)| name == field_name)
+                .map(|(_, value)| value),
+
+            _ => None,
+        }
+    }
+
     pub fn nth_struct_field(&self, idx: usize) -> Option<&Self> {
         match self {
             Self::PosStruct(_, fields) => fields.get(idx),

@@ -109,7 +109,6 @@ fn from_record_struct(
         })
         .collect::<Result<TokenStream>>()?;
 
-    // Generate the actual code
     Ok(quote! {
         #[automatically_derived]
         impl #impl_generics differential_datalog::record::FromRecord for #struct_ident #type_generics #where_clause {

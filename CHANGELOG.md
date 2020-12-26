@@ -18,6 +18,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `IntoRecord` and `Mutator` traits
 - Added the `Record::positional_struct_fields()` method to allow fetching positional
   fields from records
+- Added the `Record::get_struct_field()` method to allow getting a struct record's
+  field by name
 
 ## [0.33.0] - Dec 24, 2020
 

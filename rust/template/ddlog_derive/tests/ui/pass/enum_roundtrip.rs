@@ -1,5 +1,6 @@
 use ddlog_derive::{FromRecord, IntoRecord};
 use differential_datalog::record::{FromRecord, IntoRecord};
+use serde::Deserialize;
 use std::borrow::Cow;
 
 fn main() {
@@ -7,7 +8,7 @@ fn main() {
     renamed_struct();
 }
 
-#[derive(FromRecord, IntoRecord, Debug, Clone, PartialEq)]
+#[derive(FromRecord, IntoRecord, Debug, Clone, PartialEq, Deserialize)]
 enum DefaultRecordNames {
     Foo,
     Bar(u32, u64),
@@ -72,7 +73,7 @@ fn default_record_names() {
     );
 }
 
-#[derive(FromRecord, IntoRecord, Debug, Clone, PartialEq)]
+#[derive(FromRecord, IntoRecord, Debug, Clone, PartialEq, Deserialize)]
 #[ddlog(rename = "some::random::path::RenamedEnum")]
 enum RenamedEnum {
     #[ddlog(rename = "i am a field")]
