@@ -12,6 +12,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   each update to an output collection complicated the API and was tricky to use
   correctly.  Most importantly, it is superseded by the `commit_dump_changes` API.
 
+### Added
+
+- Added the `ddlog_derive` crate that provides derive macros for the `FromRecord`,
+  `IntoRecord` and `Mutator` traits
+
 ## [0.33.0] - Dec 24, 2020
 
 ### Optimizations
@@ -39,3 +44,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Bug fixes
 
 - Fixed regressions introduced in 0.32.0: #859, #860.
+
+[0.33.0]: https://github.com/vmware/differential-datalog/releases/tag/v0.33.0
+[0.32.1]: https://github.com/vmware/differential-datalog/releases/tag/v0.32.1
