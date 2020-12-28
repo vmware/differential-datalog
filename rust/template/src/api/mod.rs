@@ -54,10 +54,6 @@ pub struct HDDlog {
     pub replay_file: Option<Mutex<fs::File>>,
 }
 
-// `HDDlog` is not `Send` because `WorkerGuards` are not `Send`.  Remove this
-// unsafe impl once we switcht to a more recent DD.
-unsafe impl Send for HDDlog {}
-
 /* Public API */
 impl HDDlog {
     pub fn print_err(f: Option<extern "C" fn(msg: *const raw::c_char)>, msg: &str) {
