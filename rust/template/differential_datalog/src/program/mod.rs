@@ -17,7 +17,7 @@ mod timestamp;
 mod update;
 mod worker;
 
-pub use arrange::{concatenate_collections, diff_distinct};
+pub use arrange::diff_distinct;
 pub use timestamp::{TSNested, TupleTS, TS};
 pub use update::Update;
 
