@@ -3,7 +3,6 @@ use crate::{
     profile::{get_prof_context, with_prof_context, ProfMsg},
     program::{
         arrange::{ArrangedCollection, Arrangements},
-        concatenate_collections,
         timestamp::TSAtomic,
         ArrId, Dep, Msg, ProgNode, Program, Reply, Update, TS,
     },
@@ -580,7 +579,7 @@ impl<'a> DDlogWorker<'a> {
                             });
 
                         // apply rules
-                        let mut rule_collections: Vec<_> = rel
+                        let rule_collections = rel
                             .rules
                             .iter()
                             .map(|rule| {
@@ -592,13 +591,11 @@ impl<'a> DDlogWorker<'a> {
                                         arrangements2: &FnvHashMap::default(),
                                     },
                                 )
-                            })
-                            .collect();
+                            });
 
-                        rule_collections.push(collection);
                         collection = with_prof_context(
                             &format!("concatenate rules for {}", rel.name),
-                            || concatenate_collections(outer, rule_collections.into_iter()),
+                            || collection.concatenate(rule_collections),
                         );
 
                         // don't distinct input collections, as this is already done by the set_update logic
