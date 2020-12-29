@@ -1,3 +1,8 @@
+//! Accumulators are D3log components that participate in failure recovery
+//! by tracking the contents of collections they are subscribed to and
+//! dumping this contents to each new or recovered subscriber connected
+//! as an output observer to the accumulator.
+
 mod accumulator;
 mod observer;
 #[cfg(any(test, feature = "test"))]

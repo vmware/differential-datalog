@@ -41,6 +41,7 @@ impl<T, V, E> AccumulatingObserver<T, V, E>
 where
     V: Clone + Debug + Eq + Hash + Send + 'static,
 {
+    /// Create an empty accumulator.
     pub fn new() -> Self {
         let id = Id::<()>::new().get();
         trace!("AccumulatingObserver({})::new", id);
@@ -54,16 +55,21 @@ where
         }
     }
 
+    /// Returns the contents accumulated so far.
     pub fn get_current_state(&self) -> HashMap<RelId, HashSet<V>> {
         trace!("AccumulatingObserver({})::get_current_state()", self.id);
         self.data.clone()
     }
 
+    /// Check if the buffer storing outstanding updates (not yet added to
+    /// the current state) is empty.
     pub fn buffer_is_empty(&self) -> bool {
         trace!("AccumulatingObserver({})::buffer_is_empty()", self.id);
         self.buffer.is_none()
     }
 
+    /// Returns the current contents of the accumulator, resetting the
+    /// accumulator to the empty state.
     pub fn clear_and_return_state(&mut self) -> HashMap<RelId, HashSet<V>> {
         trace!(
             "AccumulatingObserver({})::clear_and_return_state()",
@@ -71,6 +77,15 @@ where
         );
         let _ = self.buffer.take();
         self.data.drain().collect()
+    }
+}
+
+impl<T, V, E> Default for AccumulatingObserver<T, V, E>
+where
+    V: Clone + Debug + Eq + Hash + Send + 'static,
+{
+    fn default() -> Self {
+        Self::new()
     }
 }
 

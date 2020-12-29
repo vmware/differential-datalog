@@ -12,6 +12,7 @@ use crate::OptionalObserver;
 use crate::SharedObserver;
 use crate::{Observable, UpdatesObservable};
 
+/// Transaction distributor replicates incoming transactions to multiple observers.
 #[derive(Debug)]
 pub struct TxnDistributor<T, E> {
     id: usize,
@@ -25,6 +26,7 @@ where
     T: Debug + Send + 'static,
     E: Debug + Send + 'static,
 {
+    /// Create a new transaction distributor.
     pub fn new() -> Self {
         let id = Id::<()>::new().get();
         trace!("TxnDistributor({})::new", id);
@@ -35,6 +37,7 @@ where
         }
     }
 
+    /// Adds a new observable output.
     pub fn create_observable(&mut self) -> UpdatesObservable<T, E> {
         let subscription = Id::<()>::new().get();
         trace!(
@@ -46,6 +49,16 @@ where
         let observer = SharedObserver::default();
         let _ = self.observers.insert(subscription, observer.clone());
         UpdatesObservable { observer }
+    }
+}
+
+impl<T, E> Default for TxnDistributor<T, E>
+where
+    T: Debug + Send + 'static,
+    E: Debug + Send + 'static,
+{
+    fn default() -> Self {
+        Self::new()
     }
 }
 
