@@ -178,47 +178,17 @@ static void deleteCallback(struct CallbackInfo* cbinfo) {
     free(cbinfo);
 }
 
-void commit_callback(void* callbackInfo, table_id tableid, const ddlog_record* rec, ssize_t w) {
-    struct CallbackInfo* cbi = (struct CallbackInfo*)callbackInfo;
-    if (cbi == NULL || cbi->jvm == NULL)
-        return;
-    JNIEnv* env;
-    (*cbi->jvm)->AttachCurrentThreadAsDaemon(cbi->jvm, (void**)&env, NULL);
-    (*env)->CallVoidMethod(
-        env, cbi->obj, cbi->method, (jint)tableid, (jlong)rec, (jlong)w);
-}
-
 JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1run(
-    JNIEnv *env, jobject obj, jboolean storeData, jint workers, jstring callback) {
+    JNIEnv *env, jobject obj, jboolean storeData, jint workers) {
     jlong handle = 0;
 
     if (workers <= 0)
         workers = 1;
 
-    if (callback == NULL) {
-        handle = (jlong)ddlog_run((unsigned)workers, storeData, NULL, 0, eprintln, NULL);
-        if (handle == 0) {
-            throwDDlogException(env, NULL);
-        }
-        return handle;
-    }
-
-    struct CallbackInfo* cbinfo = createCallback(env, obj, callback, "(IJJ)V");
-    if (cbinfo == NULL)
-        return 0;
-
-    // store the callback pointer in the parent Java object
-    jclass thisClass = (*env)->GetObjectClass(env, obj);
-    jfieldID callbackHandle = (*env)->GetFieldID(env, thisClass, "callbackHandle", "J");
-    if (callbackHandle == NULL)
-        return 0;
-    (*env)->SetLongField(env, obj, callbackHandle, (jlong)cbinfo);
-
-    handle = (jlong)ddlog_run((unsigned)workers, storeData, commit_callback, (uintptr_t)cbinfo, eprintln, NULL);
+    handle = (jlong)ddlog_run((unsigned)workers, storeData, eprintln, NULL);
     if (handle == 0) {
         throwDDlogException(env, NULL);
     }
-
     return handle;
 }
 

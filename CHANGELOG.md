@@ -3,6 +3,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### API changes
+
+- Removed callback argument from `HDDlog::run`, `ddlog_run`, and Go/Java language
+  bindings based on `ddlog_run`.  This optional callback, invoked by DD workers on
+  each update to an output collection complicated the API and was tricky to use
+  correctly.  Most importantly, it is superseded by the `commit_dump_changes` API.
+
 ## [0.33.0] - Dec 24, 2020
 
 ### Optimizations

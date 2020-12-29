@@ -4,7 +4,7 @@ public class A {
     private final DDlogAPI api;
 
     A() throws DDlogException {
-        this.api= new DDlogAPI("mylib", 1, null, false);
+        this.api= new DDlogAPI("mylib", 1, false);
     }
 
     private DDlogRecCommand[] createCommand(DDlogCommand.Kind kind, String table, int argument) throws DDlogException {

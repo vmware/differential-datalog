@@ -250,7 +250,6 @@ fn main() -> Result<(), String> {
         opt delta:bool=true, desc:"Do not record changes. 'commit dump_changes' will produce no output.";                           // --no-delta
         opt init_snapshot:bool=true, desc:"Do not dump initial output snapshot.";                                                   // --no-init-snapshot
         opt print:bool=true, desc:"Backwards compatibility. The value of this flag is ignored.";                                    // --no-print
-        opt trace:bool=false, desc:"Trace updates to output relations to stderr.";                                                  // --trace
         opt workers:usize=1, short:'w', desc:"The number of worker threads. Default is 1.";                                         // --workers or -w
     };
     let (args, rest) = parser.parse_or_exit();
@@ -269,9 +268,8 @@ fn main() -> Result<(), String> {
         );
     }
     fn no_op(_table: usize, _rec: &Record, _w: isize) {}
-    let cb = if args.trace { record_upd } else { no_op };
 
-    match HDDlog::run(args.workers, args.store, cb) {
+    match HDDlog::run(args.workers, args.store) {
         Ok((hddlog, init_output)) => {
             if args.init_snapshot {
                 dump_delta(&init_output);

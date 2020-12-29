@@ -169,39 +169,9 @@ extern const char* ddlog_get_index_name(index_id id);
  * client prefers to use DDlog in streaming mode, via the callback mechanism
  * (see below).
  *
- * `cb` - callback to be invoked for every record added to or removed from an
- * output relation.  DDlog guarantees that the callback can only be invoked in
- * two situations: (1) from the `ddlog_run()` function, as the DDlog program
- * is initialized with static records (if any), (2) from
- * `ddlog_transaction_commit()`, as DDlog applies updates performed by the
- * transaction.
- *   The `cb` function takes the following arguments:
- *	- `arg`	     - opaque used-defined value
- *	- `table`    - table being modified
- *	- `rec`	     - record that has been inserted or deleted
- *	- `weight`   - change in the multiplicity of the record.  The same record can
- *	               be inserted (callback invoked with positive weight) and deleted
- *	               (callback invoked with negative weight) multiple times during
- *                 transaction commit.  In order to determine how the membership of
- *                 the value in the relation was changed by the transaction, sum up
- *                 all its weights.  The result of +1 means that the record was
- *                 inserted; -1 - record was deleted; 0 - record's membership
- *                 did not change.
  * `init_state` - when not NULL, DDlog will store a pointer to `ddlog_delta`
  * containing initial snapshot of output relations at this address.  The caller
  * is responsible for freeing this delta, e.g., using `ddlog_free_delta()`.
- *
- * IMPORTANT: Thread safety: DDlog invokes the callback from its worker threads
- * without any serialization to avoid contention. Hence, if the `workers` argument
- * is greater than 1, then `cb` must be prepared to handle concurrent invocations
- * from multiple threads.
- *
- * IMPORTANT: DDlog does not guarantee that callback is invoked at most once for
- * each record and for each transaction.  Depending on your specific dataflow,
- * it is possible that DDlog will, e.g., create and then delete a record within a
- * transaction, and invoke `cb` both times.
- *
- * Setting `cb` to NULL disables notifications.
  *
  * `print_err_msg` - callback to redirect diagnostic messages to.  Before
  * returning an error, functions in this API invoke this callback to print
@@ -216,11 +186,6 @@ extern const char* ddlog_get_index_name(index_id id);
 extern ddlog_prog ddlog_run(
         unsigned int workers,
         bool do_store,
-        void (*cb)(void *arg,
-                   table_id table,
-                   const ddlog_record *rec,
-                   ssize_t weight),
-        uintptr_t cb_arg,
         void (*print_err_msg)(const char *msg),
         ddlog_delta **init_state);
 

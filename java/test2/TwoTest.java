@@ -5,12 +5,8 @@ public class TwoTest {
     private final DDlogAPI api2;
 
     TwoTest() throws DDlogException {
-        this.api1 = new DDlogAPI(1, this::onCommit, false);
-        this.api2 = new DDlogAPI(1, this::onCommit, false);
-    }
-
-    synchronized void onCommit(DDlogCommand command) {
-        System.out.println(command.toString());
+        this.api1 = new DDlogAPI(1, false);
+        this.api2 = new DDlogAPI(1, false);
     }
 
     private DDlogRecCommand[] createCommand(DDlogCommand.Kind kind, String table, int argument) throws DDlogException {

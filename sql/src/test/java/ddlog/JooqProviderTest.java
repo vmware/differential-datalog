@@ -71,7 +71,7 @@ public class JooqProviderTest {
         ddl.add(v2);
         ddl.add(v1);
         compileAndLoad(ddl);
-        final DDlogAPI dDlogAPI = new DDlogAPI(1, null, false);
+        final DDlogAPI dDlogAPI = new DDlogAPI(1, false);
 
         // Initialise the data provider
         MockDataProvider provider = new DDlogJooqProvider(dDlogAPI, ddl);
