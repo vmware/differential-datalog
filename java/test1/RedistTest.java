@@ -240,9 +240,6 @@ public class RedistTest {
         private final DDlogAPI api;
         private static boolean debug = true;
         private int spanTableId;
-        /// If localTables is true we maintain the Span table
-        /// contents in Java; otherwise it is maintained by DDlog.
-        private boolean localTables = true;
         // The whole Span relation is also represented as a delta (from an empty table).
         private DeltaSpan span;
         // The delta that is being returned by the transaction that is
@@ -250,14 +247,8 @@ public class RedistTest {
         private DeltaSpan currentDelta;
 
         SpanParser() throws DDlogException {
-            if (localTables) {
-                this.api = new DDlogAPI(2, this::onCommit, false);
-                this.spanTableId = this.api.getTableId("Span");
-                if (debug)
-                    System.err.println("Span table id " + this.spanTableId);
-            } else {
-                this.api = new DDlogAPI(2, null, true);
-            }
+            this.api = new DDlogAPI(2, true);
+            this.spanTableId = this.api.getTableId("Span");
             this.command = null;
             this.terminator = "";
             this.commands = new ArrayList<DDlogRecCommand>();
@@ -286,7 +277,6 @@ public class RedistTest {
                 printSpan = false;
                 System.out.println("Span:");
             }
-            this.onCommit(command);  // process change
             DDlogRecord record = command.value();
             if (command.relid() == this.spanTableId) {
                 Span s = new Span(record);
@@ -465,22 +455,19 @@ public class RedistTest {
                     }
                     break;
                 case "dump":
-                    // Hardwired output relation name
-                    if (this.localTables) {
-                        List<Integer> list = new ArrayList<Integer>(this.span.map.keySet());
-                        if (list.isEmpty())
-                            return;
-                        System.out.println("Span:");
-
-                        Collections.sort(list);
-                        for (int entity: list) {
-                            SpanBase s = this.span.getSpan(entity);
-                            System.out.println(s);
+                    boolean [] printSpan = { true };
+                    boolean [] spanNotEmpty = { false };
+                    this.api.dumpTable("Span", (r, w) -> {
+                        spanNotEmpty[0] = true;
+                        if (printSpan[0]) {
+                            System.out.println("Span:");
+                            printSpan[0] = false;
                         }
-                        System.out.println();
-                    } else {
-                        this.api.dumpTable("Span", (r, w) -> System.out.println(new Span(r)));
-                    }
+                        System.out.println(new Span(r));
+                    });
+                    if (spanNotEmpty[0]) {
+                        System.out.println("");
+                    };
                     break;
                 case "exit":
                     this.checkSemicolon();

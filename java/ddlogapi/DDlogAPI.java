@@ -17,7 +17,7 @@ public class DDlogAPI {
     /**
      * The C ddlog API
      */
-    native long ddlog_run(boolean storeData, int workers, String callbackName) throws DDlogException;
+    native long ddlog_run(boolean storeData, int workers) throws DDlogException;
     static native int ddlog_record_commands(long hprog, String filename, boolean append) throws DDlogException, IOException;
     static native void ddlog_stop_recording(long hprog, int fd) throws DDlogException;
     static native void ddlog_dump_input_snapshot(long hprog, String filename, boolean append) throws DDlogException, IOException;
@@ -108,10 +108,6 @@ public class DDlogAPI {
 
     // Maps table names to table IDs
     private final Map<String, Integer> tableId;
-    // Callback to invoke for each modified record on commit.
-    // The command supplied to the callback can only have an Insert or DeleteValue 'kind'.
-    // This callback can be invoked simultaneously from multiple threads.
-    private final Consumer<DDlogCommand<DDlogRecord>> commitCallback;
 
     // Callback to invoke for each modified record on commit_dump_changes.
     // The command supplied to a callback can only have an Insert or DeleteValue 'kind'.
@@ -142,20 +138,12 @@ public class DDlogAPI {
      * @param workers   number of threads the DDlog program can use
      * @param storeData If true the DDlog background program will store a copy
      *                  of all tables, which can be obtained with "dump".
-     * @param callback  A method that is invoked for every tuple added or deleted to
-     *                  an output table.  The command argument indicates the table,
-     *                  whether it is deletion or insertion, and the actual value
-     *                  that is being inserted or deleted.  This callback is invoked
-     *                  many times, on potentially different threads, when the "commit"
-     *                  API function is called.
      */
-    public DDlogAPI(int workers, Consumer<DDlogCommand<DDlogRecord>> callback, boolean storeData)
+    public DDlogAPI(int workers, boolean storeData)
             throws DDlogException {
         ensureDllLoaded();
         this.tableId = new HashMap<String, Integer>();
-        String onCommit = callback == null ? null : "onCommit";
-        this.commitCallback = callback;
-        this.hprog = this.ddlog_run(storeData, workers, onCommit);
+        this.hprog = this.ddlog_run(storeData, workers);
     }
 
     /**
@@ -164,20 +152,12 @@ public class DDlogAPI {
      * @param workers   number of threads the DDlog program can use
      * @param storeData If true the DDlog background program will store a copy
      *                  of all tables, which can be obtained with "dump".
-     * @param callback  A method that is invoked for every tuple added or deleted to
-     *                  an output table.  The command argument indicates the table,
-     *                  whether it is deletion or insertion, and the actual value
-     *                  that is being inserted or deleted.  This callback is invoked
-     *                  many times, on potentially different threads, when the "commit"
-     *                  API function is called.
      */
-    public DDlogAPI(String library, int workers, Consumer<DDlogCommand<DDlogRecord>> callback, boolean storeData)
+    public DDlogAPI(String library, int workers, boolean storeData)
             throws DDlogException {
         ensureDllLoaded(library);
         this.tableId = new HashMap<String, Integer>();
-        String onCommit = callback == null ? null : "onCommit";
-        this.commitCallback = callback;
-        this.hprog = this.ddlog_run(storeData, workers, onCommit);
+        this.hprog = this.ddlog_run(storeData, workers);
     }
 
     static void ensureDllLoaded(String libname) {
@@ -193,16 +173,6 @@ public class DDlogAPI {
 
     static void ensureDllLoaded() {
         ensureDllLoaded(ddlogLibrary);
-    }
-
-    /// Callback invoked from commit.
-    void onCommit(int tableid, long handle, long w) {
-        if (this.commitCallback != null) {
-            DDlogCommand.Kind kind = w > 0 ? DDlogCommand.Kind.Insert : DDlogCommand.Kind.DeleteVal;
-            DDlogRecord record = DDlogRecord.fromSharedHandle(handle);
-            DDlogRecCommand command = new DDlogRecCommand(kind, java.lang.Math.abs(w), tableid, record);
-            this.commitCallback.accept(command);
-        }
     }
 
     /**
@@ -891,6 +861,6 @@ public class DDlogAPI {
         loaded = true;
         final Path libraryPath = Paths.get(libName(ddlogLibrary)).toAbsolutePath();
         System.load(libraryPath.toString());
-        return new ddlogapi.DDlogAPI(1, null, false);
+        return new ddlogapi.DDlogAPI(1, false);
     }
 }

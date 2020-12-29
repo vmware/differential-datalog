@@ -7,7 +7,7 @@ public class SpanTest {
     private final DDlogAPI api;
 
     SpanTest() throws DDlogException {
-        this.api = new DDlogAPI(1, null, false);
+        this.api = new DDlogAPI(1, false);
     }
 
     void onCommit(DDlogCommand command) {

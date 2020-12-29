@@ -3,10 +3,11 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread::spawn;
 
-use differential_datalog::ddval::DDValue;
+use differential_datalog::ddval::{DDValue, DDValConvert};
 use differential_datalog::program::Update;
 use differential_datalog::record::{Record, RelIdentifier, UpdCmd};
 use differential_datalog::DDlog;
+use distributed_datalog::accumulate::{Accumulator, DistributingAccumulator};
 use distributed_datalog::await_expected;
 use distributed_datalog::DDlogServer as DDlogServerT;
 use distributed_datalog::Observable;
@@ -41,21 +42,21 @@ fn single_delta_test<F>(setup: F) -> Result<(), String>
 where
     F: FnOnce(&mut UpdatesObservable, SharedObserver<DDlogServer>) -> Result<Box<dyn Any>, String>,
 {
-    let (program1, _) = HDDlog::run(1, false, |_, _: &Record, _| {}).unwrap();
+    let (program1, _) = HDDlog::run(1, false).unwrap();
     let mut server1 = DDlogServer::new(Some(program1), hashmap! {});
 
-    let deltas = Arc::new(Mutex::new(Vec::new()));
-    let deltas2 = deltas.clone();
-    let (program2, _) = HDDlog::run(1, false, move |relation_id, record: &Record, _| {
-        deltas2.lock().unwrap().push((relation_id, record.clone()));
-    })
+    let (program2, _) = HDDlog::run(1, false)
     .unwrap();
-    let server2 = DDlogServer::new(
+    let mut server2 = DDlogServer::new(
         Some(program2),
         hashmap! {
             server_api_1_P1Out as usize => server_api_2_P2In as usize,
         },
     );
+    let mut output_stream = server2.add_stream(btreeset! {server_api_2_P2Out as usize});
+    // Accumulator to store output of server2.
+    let acc = Arc::new(Mutex::new(DistributingAccumulator::new()));
+    let _acc_subscription = output_stream.subscribe(Box::new(acc.clone())).unwrap();
 
     let mut stream = server1.add_stream(btreeset! {server_api_1_P1Out as usize});
     let _data = setup(&mut stream, SharedObserver::new(Mutex::new(server2)))?;
@@ -72,12 +73,9 @@ where
     server1.on_commit()?;
 
     await_expected(|| {
-        let deltas = deltas.lock().unwrap().clone();
-        let expected = vec![(
-            server_api_2_P2Out as usize,
-            Record::String("delta-me-now".to_string()),
-        )];
-        assert_eq!(deltas, expected);
+        let state = (*acc.lock().unwrap()).get_current_state();
+        let expected = hashmap!{server_api_2_P2Out as usize => hashset!{"delta-me-now".to_string().into_ddvalue()}};
+        assert_eq!(state, expected);
     });
     Ok(())
 }
@@ -131,23 +129,22 @@ where
     //        /        \
     //     P1[s1]     P2[s2]
     //
-    let (program1, _) = HDDlog::run(1, false, |_, _: &Record, _| {}).unwrap();
+    let (program1, _) = HDDlog::run(1, false).unwrap();
     let mut server1 = DDlogServer::new(Some(program1), hashmap! {});
 
-    let (program2, _) = HDDlog::run(1, false, |_, _: &Record, _| {}).unwrap();
+    let (program2, _) = HDDlog::run(1, false).unwrap();
     let mut server2 = DDlogServer::new(Some(program2), hashmap! {});
 
-    let deltas = Arc::new(Mutex::new(Vec::new()));
-    let deltas2 = deltas.clone();
-    let (program3, _) = HDDlog::run(1, false, move |relation_id, record: &Record, _| {
-        deltas2.lock().unwrap().push((relation_id, record.clone()));
-    })
-    .unwrap();
+    let (program3, _) = HDDlog::run(1, false).unwrap();
     let redirect = hashmap! {
         server_api_1_P1Out as usize => server_api_3_P1Out as usize,
         server_api_2_P2Out as usize => server_api_3_P2Out as usize,
     };
-    let server3 = DDlogServer::new(Some(program3), redirect);
+    let mut server3 = DDlogServer::new(Some(program3), redirect);
+    let mut output_stream = server3.add_stream(btreeset! {server_api_3_P3Out as usize});
+    // Accumulator to store output of server3.
+    let acc = Arc::new(Mutex::new(DistributingAccumulator::new()));
+    let acc_subscription = output_stream.subscribe(Box::new(acc.clone())).unwrap();
 
     let stream1 = server1.add_stream(btreeset! {server_api_1_P1Out as usize});
     let stream2 = server2.add_stream(btreeset! {server_api_2_P2Out as usize});
@@ -186,12 +183,9 @@ where
     });
 
     await_expected(|| {
-        let deltas = deltas.lock().unwrap().clone();
-        let expected = vec![(
-            server_api_3_P3Out as usize,
-            Record::String("p1-entryp2-entry".to_string()),
-        )];
-        assert_eq!(deltas, expected);
+        let state = (*acc.lock().unwrap()).get_current_state();
+        let expected = hashmap!{server_api_3_P3Out as usize => hashset!{"p1-entryp2-entry".to_string().into_ddvalue()}};
+        assert_eq!(state, expected);
     });
 
     t1.join().unwrap();

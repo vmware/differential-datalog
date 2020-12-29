@@ -8,7 +8,7 @@ public class XTest {
     private final DDlogAPI api;
 
     XTest() throws DDlogException {
-        this.api = new DDlogAPI(1, null, false);
+        this.api = new DDlogAPI(1, false);
         int id = this.api.getTableId("R0");
         String name = this.api.getTableName(id);
         assert name.equals("R0");

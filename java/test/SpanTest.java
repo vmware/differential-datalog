@@ -114,7 +114,6 @@ public class SpanTest {
         private static Set<ContainerSpan> containerSpan;
         private int ruleSpanTableId;
         private int containerSpanTableId;
-        private final boolean localTables = false;
         private final PrintStream logStream;
 
         /* LOGGING: Module id's for logging purposes.  Must match declarations in
@@ -141,16 +140,7 @@ public class SpanTest {
             DDlogAPI.logSetDefaultCallback(
                     (msg, level) -> logStream.println("Log msg (" + level + "): " + msg),
                     2147483647/*log4j.ALL*/);
-            if (localTables) {
-                //this.api = new DDlogAPI(1, r -> this.onCommit(r));
-                this.api = new DDlogAPI(1, this::onCommitDirect, false);
-                this.ruleSpanTableId = this.api.getTableId("RuleSpan");
-                this.containerSpanTableId = this.api.getTableId("ContainerSpan");
-                ruleSpan = new TreeSet<RuleSpan>(new SpanComparator());
-                containerSpan = new TreeSet<ContainerSpan>(new SpanComparator());
-            } else {
-                this.api = new DDlogAPI(1, null, true);
-            }
+            this.api = new DDlogAPI(1, true);
             this.command = null;
             this.terminator = "";
             this.commands = new ArrayList<DDlogRecCommand>();
@@ -395,32 +385,21 @@ public class SpanTest {
                     break;
                 case "dump":
                     // Hardwired output relation name
-                    if (this.localTables) {
-                        System.out.println("ContainerSpan:");
-                        for (ContainerSpan s: containerSpan)
-                            System.out.println(s);
-                        System.out.println();
-                        System.out.println("RuleSpan:");
-                        for (RuleSpan s: ruleSpan)
-                            System.out.println(s);
-                        System.out.println();
-                    } else {
-                        System.out.println("ContainerSpan:");
-                        this.api.dumpTable("ContainerSpan",
-                               (r, w) -> {
-                                   assert (w == 1): "non-unit weight in ContainerSpan";
-                                   System.out.println(new ContainerSpan(r));
-                               });
-                        System.out.println();
-                        System.out.println("RuleSpan:");
-                        this.api.dumpTable("RuleSpan",
-                                (r, w) -> {
-                                    assert (w == 1): "non-unit weight in RuleSpan";
-                                    System.out.println(new RuleSpan(r));
-                                });
-                        System.out.println();
-                        this.checkSemicolon();
-                    }
+                    System.out.println("ContainerSpan:");
+                    this.api.dumpTable("ContainerSpan",
+                           (r, w) -> {
+                               assert (w == 1): "non-unit weight in ContainerSpan";
+                               System.out.println(new ContainerSpan(r));
+                           });
+                    System.out.println();
+                    System.out.println("RuleSpan:");
+                    this.api.dumpTable("RuleSpan",
+                            (r, w) -> {
+                                assert (w == 1): "non-unit weight in RuleSpan";
+                                System.out.println(new RuleSpan(r));
+                            });
+                    System.out.println();
+                    this.checkSemicolon();
                     break;
                 case "exit":
                     this.checkSemicolon();
@@ -440,10 +419,6 @@ public class SpanTest {
                     }
                 });
             this.api.stop();
-            if (localTables) {
-                ruleSpan.clear();
-                containerSpan.clear();
-            }
         }
     }
 

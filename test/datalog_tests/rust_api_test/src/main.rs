@@ -37,17 +37,15 @@ use differential_datalog::record::UpdCmd; // Dynamically typed representation of
 
 fn main() -> Result<(), String> {
 
-    fn cb(_rel: usize, _rec: &Record, _w: isize) {}
-
     // Instantiate a DDlog program.
     // Returns a handle to the program and initial contents of output relations.
     // Arguments
     // - number of worker threads (you typically want 1 or 2).
     // - Boolean flag that indicates whether DDlog will track the complete snapshot
-    //   of output relations.  Should only be used if you plan to dump `dump_table`
-    //   their contents using `HDDlog::dump_table()`.
-    // - Callback - obsolete and will disappear in future releases.
-    let (mut hddlog, init_state) = HDDlog::run(1, false, cb)?;
+    //   of output relations.  Should only be used for debugging in order to dump
+    //   the contents of output tables using `HDDlog::dump_table()`.  Otherwise,
+    //   indexes are the preferred way to achieve this.
+    let (mut hddlog, init_state) = HDDlog::run(1, false)?;
 
     println!("Initial state");
     dump_delta(&init_state);

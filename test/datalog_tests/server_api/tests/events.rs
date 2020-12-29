@@ -276,7 +276,7 @@ fn multiple_transactions(
 }
 
 fn setup() -> (DDlogServer, UpdatesObservable, MockObserver) {
-    let (program, _) = HDDlog::run(1, false, |_, _: &Record, _| {}).unwrap();
+    let (program, _) = HDDlog::run(1, false).unwrap();
     let mut server = DDlogServer::new(Some(program), hashmap! {});
 
     let observer = SharedObserver::new(Mutex::new(Mock::new()));
@@ -287,7 +287,7 @@ fn setup() -> (DDlogServer, UpdatesObservable, MockObserver) {
 }
 
 fn setup_tcp() -> (DDlogServer, UpdatesObservable, MockObserver, Box<dyn Any>) {
-    let (program, _) = HDDlog::run(1, false, |_, _: &Record, _| {}).unwrap();
+    let (program, _) = HDDlog::run(1, false).unwrap();
     let mut server = DDlogServer::new(Some(program), hashmap! {});
 
     let observer = SharedObserver::new(Mutex::new(Mock::new()));

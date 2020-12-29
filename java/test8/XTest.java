@@ -4,7 +4,7 @@ public class XTest {
     private final DDlogAPI api;
 
     XTest() throws DDlogException {
-        this.api = new DDlogAPI(1, this::onCommit, false);
+        this.api = new DDlogAPI(1, false);
     }
 
     synchronized void onCommit(DDlogCommand command) {
@@ -23,7 +23,7 @@ public class XTest {
         int id = this.api.getTableId("AI");
         commands[0] = new DDlogRecCommand(DDlogCommand.Kind.Insert, id, o);
         this.api.applyUpdates(commands);
-        this.api.transactionCommit();
+        this.api.transactionCommitDumpChanges(this::onCommit);
 
         // Modify value 'b' corresponding to key '0'
         this.api.transactionStart();
@@ -33,7 +33,7 @@ public class XTest {
         DDlogRecord value = DDlogRecord.makeNamedStruct("", names, new DDlogRecord(2));
         commands[0] = new DDlogRecCommand(DDlogCommand.Kind.Modify, id, key, value);
         this.api.applyUpdates(commands);
-        this.api.transactionCommit();
+        this.api.transactionCommitDumpChanges(this::onCommit);
 
         // Modify value 'c' corresponding to key '0'
         this.api.transactionStart();
@@ -42,7 +42,7 @@ public class XTest {
         value = DDlogRecord.makeNamedStruct("", names, DDlogRecord.some(new DDlogRecord(6)));
         commands[0] = new DDlogRecCommand(DDlogCommand.Kind.Modify, id, key, value);
         this.api.applyUpdates(commands);
-        this.api.transactionCommit();
+        this.api.transactionCommitDumpChanges(this::onCommit);
 
         this.api.stop();
     }

@@ -27,7 +27,7 @@ public class BaseQueriesTest {
         // System.out.println("Current directory " + System.getProperty("user.dir"));
         lib.toFile("lib/sqlop.dl");
     }
-    
+
     // These strings are part of almost all expected outputs
     protected final String imports = "import fp\n" +
             "import time\n" +

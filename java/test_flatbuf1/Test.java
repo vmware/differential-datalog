@@ -32,7 +32,7 @@ public class Test {
 
     Test() throws IOException, DDlogException {
         /* Create an instance of the DDlog program with one worker thread. */
-        this.api = new DDlogAPI(1, null, false);
+        this.api = new DDlogAPI(1, false);
         api.recordCommands("replay.dat", false);
 
         this.fb_file  = new PrintStream("fb.dump");

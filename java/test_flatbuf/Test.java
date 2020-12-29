@@ -15,7 +15,7 @@ public class Test {
 
     Test() throws DDlogException, IOException {
         /* Create an instance of the DDlog program with one worker thread. */
-        this.api = new DDlogAPI(1, null, false);
+        this.api = new DDlogAPI(1, false);
         api.recordCommands("replay.dat", false);
     }
 

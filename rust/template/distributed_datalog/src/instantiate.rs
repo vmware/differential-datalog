@@ -17,7 +17,6 @@ use std::time::Instant;
 use differential_datalog::ddval::DDValue;
 use differential_datalog::program::RelId;
 use differential_datalog::program::Update;
-use differential_datalog::record::Record;
 use differential_datalog::{DDlog, DDlogConvert};
 
 use crate::accumulate::Accumulator;
@@ -99,7 +98,7 @@ where
 {
     let redirects = deduce_redirects(node_cfg);
     // TODO: Should the number of workers be made configurable?
-    let (program, _) = P::run(2, false, |_, _: &Record, _| {})?;
+    let (program, _) = P::run(2, false)?;
 
     Ok(DDlogServer::new(Some(program), redirects))
 }
