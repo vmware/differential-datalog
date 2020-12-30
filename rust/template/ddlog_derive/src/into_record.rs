@@ -250,7 +250,7 @@ fn unit_struct_record(record_name: &str) -> TokenStream {
     quote! {
         differential_datalog::record::Record::PosStruct(
             std::borrow::Cow::Borrowed(#record_name),
-            Vec::new(),
+            std::vec::Vec::new(),
         )
     }
 }
