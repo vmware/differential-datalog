@@ -170,13 +170,13 @@ pub struct RecursiveRelation {
     pub distinct: bool,
 }
 
-pub trait RelationCallback: FnMut(RelId, &DDValue, Weight) + Send + Sync {
+pub trait RelationCallback: Fn(RelId, &DDValue, Weight) + Send + Sync {
     fn clone_boxed(&self) -> Box<dyn RelationCallback>;
 }
 
 impl<T> RelationCallback for T
 where
-    T: FnMut(RelId, &DDValue, Weight) + Clone + Send + Sync + ?Sized + 'static,
+    T: Fn(RelId, &DDValue, Weight) + Clone + Send + Sync + ?Sized + 'static,
 {
     fn clone_boxed(&self) -> Box<dyn RelationCallback> {
         Box::new(self.clone())

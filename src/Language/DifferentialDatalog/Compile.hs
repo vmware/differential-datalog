@@ -1775,7 +1775,7 @@ compileRelation d statics rn = do
                                       , Just code))
                                relPrimaryKey
     let cb = if relRole == RelOutput
-                then "change_cb:    Some(sync::Arc::new(sync::Mutex::new(__update_cb.clone())))"
+                then "change_cb:    Some(std::sync::Arc::clone(&__update_cb))"
                 else "change_cb:    None"
     arrangements <- gets $ (M.! rn) . cArrangements
     let compiled_arrangements = mapIdx (\arng i ->
@@ -2505,7 +2505,7 @@ rhsVarsAfter d rl i =
 
 mkProg :: (?crate_graph :: CrateGraph, ?specname :: String) => [ProgNode] -> Doc
 mkProg nodes =
-    "pub fn prog(__update_cb: Box<dyn program::RelationCallback>) -> program::Program {"
+    "pub fn prog(__update_cb: std::sync::Arc<dyn program::RelationCallback>) -> program::Program {"
         $$ (nest' relations)
         $$ "    let nodes: std::vec::Vec<program::ProgNode> = vec!["
         $$ (nest' $ nest' program_nodes)

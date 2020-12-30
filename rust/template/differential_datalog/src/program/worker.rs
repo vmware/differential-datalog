@@ -778,7 +778,7 @@ impl<'a> DDlogWorker<'a> {
             for (relid, collection) in collections {
                 // notify client about changes
                 if let Some(relation_callback) = &program.get_relation(relid).change_cb {
-                    let mut relation_callback = relation_callback.clone_boxed();
+                    let relation_callback = relation_callback.clone();
 
                     let consolidated = with_prof_context(
                         &format!("consolidate {}", relid),
