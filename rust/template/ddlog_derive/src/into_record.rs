@@ -165,10 +165,8 @@ fn rename_variant<'a, I>(ident: &Ident, record_name: &str, attrs: I) -> Result<S
 where
     I: Iterator<Item = &'a Attribute> + 'a,
 {
-    Ok(get_rename("IntoRecord", "into_record", attrs)?.map_or_else(
-        || format!("{}::{}", record_name, ident),
-        |rename| format!("{}::{}", record_name, rename),
-    ))
+    Ok(get_rename("IntoRecord", "into_record", attrs)?
+        .unwrap_or_else(|| format!("{}::{}", record_name, ident)))
 }
 
 fn named_struct_record<'a>(
