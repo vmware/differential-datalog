@@ -1035,17 +1035,17 @@ Innocent
 Innocent{.name = "Bill Smith"}
 Innocent{.name = "John Doe"}
 ValidDestination:
-ValidDestination{.addr = ip_addr_t{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 101}}: +1
-ValidDestination{.addr = ip_addr_t{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 102}}: +1
-ValidDestination{.addr = ip_addr_t{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 103}}: +1
-ValidDestination{.addr = ip_addr_t{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 104}}: +1
-ValidDestination{.addr = ip_addr_t{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 105}}: +1
+ValidDestination{.addr = IPAddr{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 101}}: +1
+ValidDestination{.addr = IPAddr{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 102}}: +1
+ValidDestination{.addr = IPAddr{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 103}}: +1
+ValidDestination{.addr = IPAddr{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 104}}: +1
+ValidDestination{.addr = IPAddr{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 105}}: +1
 ValidDestination
-ValidDestination{.addr = ip_addr_t{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 101}}
-ValidDestination{.addr = ip_addr_t{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 102}}
-ValidDestination{.addr = ip_addr_t{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 103}}
-ValidDestination{.addr = ip_addr_t{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 104}}
-ValidDestination{.addr = ip_addr_t{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 105}}
+ValidDestination{.addr = IPAddr{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 101}}
+ValidDestination{.addr = IPAddr{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 102}}
+ValidDestination{.addr = IPAddr{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 103}}
+ValidDestination{.addr = IPAddr{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 104}}
+ValidDestination{.addr = IPAddr{.b3 = 10, .b2 = 10, .b1 = 10, .b0 = 105}}
 HostAddress:
 HostAddress{.host = 0, .addr = "10.10.10.101"}: +1
 HostAddress{.host = 0, .addr = "10.10.10.102"}: +1

@@ -187,7 +187,7 @@ ZI14{First{"string"}}
 Query ZI14_by_b[5]:
 ZI14{Second{5}}
 Query ZI15_by_a["Or_string"]:
-ZI15{OrFirst{F{"Or_string"}}}
+ZI15{OrFirst{FirstF{"Or_string"}}}
 Query module_ZI16_by_x["zi16"]:
 module_ZI16{"zi16"}
 Query module_ZI18_by_0[-1]:
@@ -398,7 +398,7 @@ ZI14{First{"string"}}
 Dump ZI14_by_b:
 ZI14{Second{5}}
 Dump ZI15_by_a:
-ZI15{OrFirst{F{"Or_string"}}}
+ZI15{OrFirst{FirstF{"Or_string"}}}
 Dump module_ZI16_by_x:
 module_ZI16{"zi16"}
 Dump module_ZI18_by_0:

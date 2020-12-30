@@ -66,11 +66,11 @@ NetHostString:
 NetHostString{.id = 1, .s = "Host: IP=170.187.204.221, MAC=11:22:33:44:55:66"}
 NetHostString{.id = 2, .s = "Host: IP=160.176.192.208, MAC=10:20:30:40:50:60"}
 Address:
-Address{.addr = ip_addr_t{.addr = 168430181}}
-Address{.addr = ip_addr_t{.addr = 2130706433}}
-Address{.addr = ip_addr_t{.addr = 3758096385}}
+Address{.addr = IPAddr{.addr = 168430181}}
+Address{.addr = IPAddr{.addr = 2130706433}}
+Address{.addr = IPAddr{.addr = 3758096385}}
 MCastAddress:
-MCastAddress{.addr = ip_addr_t{.addr = 3758096385}}
+MCastAddress{.addr = IPAddr{.addr = 3758096385}}
 EndpointString
 EndpointString{.s = "170.187.204.221:20"}
 EndpointString{.s = "170.187.204.221:443"}
