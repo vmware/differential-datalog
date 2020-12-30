@@ -56,11 +56,22 @@ pub fn mutator_inner(mut input: DeriveInput) -> Result<TokenStream> {
 fn unit_struct_mutator() -> TokenStream {
     quote! {
         match self {
-            differential_datalog::record::Record::PosStruct(constructor, args)
-                if args.is_empty() => {},
+            differential_datalog::record::Record::PosStruct(_constructor, args) if args.is_empty() => {},
+            differential_datalog::record::Record::NamedStruct(_constructor, args) if args.is_empty() => {},
 
-            differential_datalog::record::Record::NamedStruct(constructor, args)
-                if args.is_empty() => {},
+            differential_datalog::record::Record::PosStruct(_, args) => {
+                return std::result::Result::Err(std::format!(
+                    "incompatible struct, expected a struct with 0 fields and got a struct with {} fields",
+                    args.len(),
+                ));
+            },
+
+            differential_datalog::record::Record::NamedStruct(_, args) => {
+                return std::result::Result::Err(std::format!(
+                    "incompatible struct, expected a struct with 0 fields and got a struct with {} fields",
+                    args.len(),
+                ));
+            },
 
             error => {
                 return std::result::Result::Err(std::format!("not a struct {:?}", error));
@@ -103,6 +114,20 @@ fn tuple_struct_mutator<'a>(
                     #( #field_mutations )*
                 },
 
+            differential_datalog::record::Record::PosStruct(_, args) => {
+                return std::result::Result::Err(std::format!(
+                    "incompatible struct, expected a positional struct with {} fields and got a positional struct with {} fields",
+                    #num_fields, args.len(),
+                ));
+            },
+
+            differential_datalog::record::Record::NamedStruct(_, _) => {
+                return std::result::Result::Err(std::format!(
+                    "incompatible struct, expected a positional struct with {} fields and got a named struct",
+                    #num_fields,
+                ));
+            },
+
             error => {
                 return std::result::Result::Err(std::format!("not a struct {:?}", error));
             },
@@ -133,8 +158,8 @@ fn named_struct_mutator<'a>(
     let mutator = quote! {
         match self {
             differential_datalog::record::Record::NamedStruct(constructor, args) => {
-                    #field_mutations
-                },
+                #field_mutations
+            },
 
             error => {
                 return std::result::Result::Err(std::format!("not a struct {:?}", error));
