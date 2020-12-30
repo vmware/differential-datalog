@@ -93,7 +93,7 @@ fn renamed_struct() {
     assert_eq!(
         renamed_record.struct_constructor(),
         Some(&Cow::Borrowed(
-            "some::random::path::RenamedEnum::i am a field",
+            "i am a field",
         )),
     );
     assert_eq!(renamed_record.positional_struct_fields(), Some(&[][..]));
@@ -104,7 +104,7 @@ fn renamed_struct() {
     assert!(renamed_record.is_struct());
     assert_eq!(
         renamed_record.struct_constructor(),
-        Some(&Cow::Borrowed("some::random::path::RenamedEnum::so am i")),
+        Some(&Cow::Borrowed("so am i")),
     );
     assert_eq!(
         renamed_record.positional_struct_fields(),
@@ -121,7 +121,7 @@ fn renamed_struct() {
     assert_eq!(
         renamed_record.struct_constructor(),
         Some(&Cow::Borrowed(
-            "some::random::path::RenamedEnum::this works"
+            "this works"
         )),
     );
     assert_eq!(

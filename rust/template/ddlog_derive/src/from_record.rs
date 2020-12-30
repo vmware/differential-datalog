@@ -184,10 +184,7 @@ fn from_record_enum(
             // Use the given rename provided by `#[ddlog(rename = "...")]` or `#[ddlog(from_record = "...")]`
             // as the name of the variant, defaulting to the variant's ident if none is given
             let variant_record_name = get_rename("FromRecord", "from_record", variant.attrs.iter())?
-                .map_or_else(
-                    || format!("{}::{}", enum_record_name, variant_ident),
-                    |rename| format!("{}::{}", enum_record_name, rename),
-                );
+                .unwrap_or_else(|| format!("{}::{}", enum_record_name, variant_ident));
 
             let positional_fields: TokenStream = variant
                 .fields
@@ -231,10 +228,7 @@ fn from_record_enum(
             // Use the given rename provided by `#[ddlog(rename = "...")]` or `#[ddlog(from_record = "...")]`
             // as the name of the variant, defaulting to the variant's ident if none is given
             let variant_record_name = get_rename("FromRecord", "from_record", variant.attrs.iter())?
-                .map_or_else(
-                    || format!("{}::{}", enum_record_name, variant_ident),
-                    |rename| format!("{}::{}", enum_record_name, rename),
-                );
+                .unwrap_or_else(|| format!("{}::{}", enum_record_name, variant_ident));
 
             let named_fields = variant
                 .fields
