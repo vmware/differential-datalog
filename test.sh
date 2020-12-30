@@ -53,6 +53,7 @@ test_groups=("crates:Test DDlog runtime crates."
 crates=("rust_fmt:Rust formatting"
         "rust_lint:Rust lints"
         "differential_datalog:Test 'differential_datalog' crate (record API only)"
+        "ddlog_derive:Test 'ddlog_derive' crate"
         "differential_datalog_test:Standalone test for the 'differential_datalog' crate"
         "cmd_parser:Test 'cmd_parser' crate"
         "ovsdb:Test OVSDB bindings crate"
@@ -119,6 +120,7 @@ rust_fmt() {
     (cd "${THIS_DIR}/rust/template/cmd_parser" && cargo fmt -- --check) &&
     (cd "${THIS_DIR}/rust/template/ovsdb" && cargo fmt -- --check) &&
     (cd "${THIS_DIR}/rust/template/differential_datalog" && cargo fmt -- --check) &&
+    (cd "${THIS_DIR}/rust/template/ddlog_derive" && cargo fmt -- --check) &&
     (cd "${THIS_DIR}/rust/template/differential_datalog_test" && cargo fmt -- --check) &&
     (cd "${THIS_DIR}/lib" && rustfmt *.rs --check)
 }
@@ -128,10 +130,15 @@ rust_lint() {
     (cd "${THIS_DIR}/rust/template/cmd_parser" && cargo clippy -- -D warnings) &&
     (cd "${THIS_DIR}/rust/template/ovsdb" && cargo clippy -- -D warnings) &&
     (cd "${THIS_DIR}/rust/template/differential_datalog" && cargo clippy -- -D warnings)
+    (cd "${THIS_DIR}/rust/template/ddlog_derive" && cargo clippy -- -D warnings)
     (cd "${THIS_DIR}/rust/template/differential_datalog_test" && cargo clippy -- -D warnings)
 }
 differential_datalog() {
     (cd "${THIS_DIR}/rust/template/differential_datalog" && cargo test)
+}
+
+ddlog_derive() {
+    (cd "${THIS_DIR}/rust/template/ddlog_derive" && cargo test)
 }
 
 differential_datalog_test() {
