@@ -39,7 +39,7 @@ where
 {
     let first = servers
         .next()
-        .ok_or_else(|| "failed to connect to ZooKeeper: no servers supplied")?
+        .ok_or("failed to connect to ZooKeeper: no servers supplied")?
         .as_ref()
         .to_string();
     let servers = servers.fold(first, |x, y| x + "," + y.as_ref());
