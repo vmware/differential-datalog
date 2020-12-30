@@ -192,9 +192,7 @@ fn test_one_relation(nthreads: usize) {
             id: 1,
             rules: Vec::new(),
             arrangements: Vec::new(),
-            change_cb: Some(Arc::new(Mutex::new(Box::new(move |_, v, w| {
-                set_update("T1", &relset1, v, w)
-            })))),
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T1", &relset1, v, w))),
         }
     };
 
@@ -289,9 +287,7 @@ fn test_two_relations(nthreads: usize) {
             id: 1,
             rules: Vec::new(),
             arrangements: Vec::new(),
-            change_cb: Some(Arc::new(Mutex::new(Box::new(move |_, v, w| {
-                set_update("T1", &relset1, v, w)
-            })))),
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T1", &relset1, v, w))),
         }
     };
     let relset2: Arc<Mutex<Delta<U64>>> = Arc::new(Mutex::new(BTreeMap::default()));
@@ -314,9 +310,7 @@ fn test_two_relations(nthreads: usize) {
                 }),
             }],
             arrangements: Vec::new(),
-            change_cb: Some(Arc::new(Mutex::new(Box::new(move |_, v, w| {
-                set_update("T2", &relset2, v, w)
-            })))),
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T2", &relset2, v, w))),
         }
     };
 
@@ -393,9 +387,7 @@ fn test_semijoin(nthreads: usize) {
             id: 1,
             rules: Vec::new(),
             arrangements: Vec::new(),
-            change_cb: Some(Arc::new(Mutex::new(Box::new(move |_, v, w| {
-                set_update("T1", &relset1, v, w)
-            })))),
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T1", &relset1, v, w))),
         }
     };
     fn fmfun1(v: DDValue) -> Option<DDValue> {
@@ -422,9 +414,7 @@ fn test_semijoin(nthreads: usize) {
                 fmfun: fmfun1 as FilterMapFunc,
                 distinct: false,
             }],
-            change_cb: Some(Arc::new(Mutex::new(Box::new(move |_, v, w| {
-                set_update("T2", &relset2, v, w)
-            })))),
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T2", &relset2, v, w))),
         }
     };
     fn jfun(_key: &DDValue, v1: &DDValue, _v2: &()) -> Option<DDValue> {
@@ -463,9 +453,7 @@ fn test_semijoin(nthreads: usize) {
                 }),
             }],
             arrangements: Vec::new(),
-            change_cb: Some(Arc::new(Mutex::new(Box::new(move |_, v, w| {
-                set_update("T3", &relset3, v, w)
-            })))),
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T3", &relset3, v, w))),
         }
     };
 
@@ -522,9 +510,7 @@ fn test_join(nthreads: usize) {
             id: 1,
             rules: Vec::new(),
             arrangements: Vec::new(),
-            change_cb: Some(Arc::new(Mutex::new(Box::new(move |_, v, w| {
-                set_update("T1", &relset1, v, w)
-            })))),
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T1", &relset1, v, w))),
         }
     };
     fn afun1(v: DDValue) -> Option<(DDValue, DDValue)> {
@@ -546,9 +532,7 @@ fn test_join(nthreads: usize) {
                 afun: afun1 as ArrangeFunc,
                 queryable: true,
             }],
-            change_cb: Some(Arc::new(Mutex::new(Box::new(move |_, v, w| {
-                set_update("T2", &relset2, v, w)
-            })))),
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T2", &relset2, v, w))),
         }
     };
     fn jfun(_key: &DDValue, v1: &DDValue, v2: &DDValue) -> Option<DDValue> {
@@ -587,9 +571,7 @@ fn test_join(nthreads: usize) {
                 }),
             }],
             arrangements: Vec::new(),
-            change_cb: Some(Arc::new(Mutex::new(Box::new(move |_, v, w| {
-                set_update("T3", &relset3, v, w)
-            })))),
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T3", &relset3, v, w))),
         }
     };
 
@@ -605,9 +587,7 @@ fn test_join(nthreads: usize) {
             id: 4,
             rules: Vec::new(),
             arrangements: Vec::new(),
-            change_cb: Some(Arc::new(Mutex::new(Box::new(move |_, v, w| {
-                set_update("T4", &relset4, v, w)
-            })))),
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T4", &relset4, v, w))),
         }
     };
 
@@ -707,9 +687,7 @@ fn test_antijoin(nthreads: usize) {
             id: 1,
             rules: Vec::new(),
             arrangements: Vec::new(),
-            change_cb: Some(Arc::new(Mutex::new(Box::new(move |_, v, w| {
-                set_update("T1", &relset1, v, w)
-            })))),
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T1", &relset1, v, w))),
         }
     };
     fn afun1(v: DDValue) -> Option<(DDValue, DDValue)> {
@@ -728,9 +706,7 @@ fn test_antijoin(nthreads: usize) {
             id: 2,
             rules: Vec::new(),
             arrangements: vec![],
-            change_cb: Some(Arc::new(Mutex::new(Box::new(move |_, v, w| {
-                set_update("T2", &relset2, v, w)
-            })))),
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T2", &relset2, v, w))),
         }
     };
 
@@ -766,9 +742,7 @@ fn test_antijoin(nthreads: usize) {
                 fmfun: fmnull_fun as FilterMapFunc,
                 distinct: true,
             }],
-            change_cb: Some(Arc::new(Mutex::new(Box::new(move |_, v, w| {
-                set_update("T21", &relset21, v, w)
-            })))),
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T21", &relset21, v, w))),
         }
     };
 
@@ -797,9 +771,7 @@ fn test_antijoin(nthreads: usize) {
                 }),
             }],
             arrangements: Vec::new(),
-            change_cb: Some(Arc::new(Mutex::new(Box::new(move |_, v, w| {
-                set_update("T3", &relset3, v, w)
-            })))),
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T3", &relset3, v, w))),
         }
     };
 
@@ -867,9 +839,7 @@ fn test_map(nthreads: usize) {
             id: 1,
             rules: Vec::new(),
             arrangements: Vec::new(),
-            change_cb: Some(Arc::new(Mutex::new(Box::new(move |_, v, w| {
-                set_update("T1", &relset1, v, w)
-            })))),
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T1", &relset1, v, w))),
         }
     };
 
@@ -955,9 +925,7 @@ fn test_map(nthreads: usize) {
                 }),
             }],
             arrangements: Vec::new(),
-            change_cb: Some(Arc::new(Mutex::new(Box::new(move |_, v, w| {
-                set_update("T2", &relset2, v, w)
-            })))),
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T2", &relset2, v, w))),
         }
     };
     let relset3: Arc<Mutex<Delta<U64>>> = Arc::new(Mutex::new(BTreeMap::default()));
@@ -985,9 +953,7 @@ fn test_map(nthreads: usize) {
                 }),
             }],
             arrangements: Vec::new(),
-            change_cb: Some(Arc::new(Mutex::new(Box::new(move |_, v, w| {
-                set_update("T3", &relset3, v, w)
-            })))),
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T3", &relset3, v, w))),
         }
     };
 
@@ -1016,9 +982,7 @@ fn test_map(nthreads: usize) {
                 }),
             }],
             arrangements: Vec::new(),
-            change_cb: Some(Arc::new(Mutex::new(Box::new(move |_, v, w| {
-                set_update("T4", &relset4, v, w)
-            })))),
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T4", &relset4, v, w))),
         }
     };
 
@@ -1142,9 +1106,9 @@ fn test_recursion(nthreads: usize) {
                 afun: arrange_by_fst as ArrangeFunc,
                 queryable: false,
             }],
-            change_cb: Some(Arc::new(Mutex::new(Box::new(move |_, v, w| {
+            change_cb: Some(Arc::new(move |_, v, w| {
                 set_update("parent", &parentset, v, w)
-            })))),
+            })),
         }
     };
 
@@ -1193,9 +1157,9 @@ fn test_recursion(nthreads: usize) {
                     queryable: false,
                 },
             ],
-            change_cb: Some(Arc::new(Mutex::new(Box::new(move |_, v, w| {
+            change_cb: Some(Arc::new(move |_, v, w| {
                 set_update("ancestor", &ancestorset, v, w)
-            })))),
+            })),
         }
     };
 
@@ -1249,9 +1213,9 @@ fn test_recursion(nthreads: usize) {
                 },
             }],
             arrangements: Vec::new(),
-            change_cb: Some(Arc::new(Mutex::new(Box::new(move |_, v, w| {
+            change_cb: Some(Arc::new(move |_, v, w| {
                 set_update("common_ancestor", &common_ancestorset, v, w)
-            })))),
+            })),
         }
     };
 

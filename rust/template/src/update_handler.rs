@@ -14,33 +14,33 @@
 //! - all of the above, but processed by a pool of worker threads
 
 use super::*;
-
-use std::cell::Cell;
-use std::fmt::{self, Debug, Formatter};
-use std::sync::mpsc::*;
-use std::sync::{Arc, Barrier, Mutex, MutexGuard};
-use std::thread::*;
-
-use differential_datalog::program::CBFn;
-use differential_datalog::program::RelId;
-use differential_datalog::Callback;
-use differential_datalog::DeltaMap;
+use crossbeam_channel::{Receiver, Sender};
+use differential_datalog::{
+    program::{RelId, RelationCallback},
+    Callback, DeltaMap,
+};
+use std::{
+    cell::Cell,
+    fmt::{self, Debug, Formatter},
+    sync::{Arc, Barrier, Mutex, MutexGuard},
+    thread,
+};
 
 /// Single-threaded (non-thread-safe callback)
-pub trait ST_CBFn: FnMut(RelId, &DDValue, isize) {
-    fn clone_boxed(&self) -> Box<dyn ST_CBFn>;
+pub trait ST_RelationCallback: FnMut(RelId, &DDValue, isize) {
+    fn clone_boxed(&self) -> Box<dyn ST_RelationCallback>;
 }
 
-impl<T> ST_CBFn for T
+impl<T> ST_RelationCallback for T
 where
     T: 'static + Clone + FnMut(RelId, &DDValue, isize),
 {
-    fn clone_boxed(&self) -> Box<dyn ST_CBFn> {
+    fn clone_boxed(&self) -> Box<dyn ST_RelationCallback> {
         Box::new(self.clone())
     }
 }
 
-impl Clone for Box<dyn ST_CBFn> {
+impl Clone for Box<dyn ST_RelationCallback> {
     fn clone(&self) -> Self {
         self.as_ref().clone_boxed()
     }
@@ -48,7 +48,7 @@ impl Clone for Box<dyn ST_CBFn> {
 
 pub trait UpdateHandler: Debug {
     /// Returns a handler to be invoked on each output relation update.
-    fn update_cb(&self) -> Box<dyn ST_CBFn>;
+    fn update_cb(&self) -> Box<dyn ST_RelationCallback>;
 
     /// Notifies the handler that a transaction_commit method is about to be
     /// called. The handler has an opportunity to prepare to handle
@@ -65,7 +65,7 @@ pub trait UpdateHandler: Debug {
 pub trait MTUpdateHandler: UpdateHandler + Sync + Send {
     /// Returns a thread-safe handler to be invoked on each output
     /// relation update.
-    fn mt_update_cb(&self) -> Box<dyn CBFn>;
+    fn mt_update_cb(&self) -> Box<dyn RelationCallback>;
 }
 
 /// Rust magic to make `MTUpdateHandler` clonable.
@@ -99,7 +99,7 @@ impl NullUpdateHandler {
 }
 
 impl UpdateHandler for NullUpdateHandler {
-    fn update_cb(&self) -> Box<dyn ST_CBFn> {
+    fn update_cb(&self) -> Box<dyn ST_RelationCallback> {
         Box::new(|_, _, _| {})
     }
     fn before_commit(&self) {}
@@ -107,7 +107,7 @@ impl UpdateHandler for NullUpdateHandler {
 }
 
 impl MTUpdateHandler for NullUpdateHandler {
-    fn mt_update_cb(&self) -> Box<dyn CBFn> {
+    fn mt_update_cb(&self) -> Box<dyn RelationCallback> {
         Box::new(|_, _, _| {})
     }
 }
@@ -133,7 +133,7 @@ impl<F: Callback> Debug for CallbackUpdateHandler<F> {
 }
 
 impl<F: Callback> UpdateHandler for CallbackUpdateHandler<F> {
-    fn update_cb(&self) -> Box<dyn ST_CBFn> {
+    fn update_cb(&self) -> Box<dyn ST_RelationCallback> {
         let mut cb = self.cb.clone();
         Box::new(move |relid, v, w| cb(relid, &v.clone().into_record(), w))
     }
@@ -142,7 +142,7 @@ impl<F: Callback> UpdateHandler for CallbackUpdateHandler<F> {
 }
 
 impl<F: Callback> MTUpdateHandler for CallbackUpdateHandler<F> {
-    fn mt_update_cb(&self) -> Box<dyn CBFn> {
+    fn mt_update_cb(&self) -> Box<dyn RelationCallback> {
         let mut cb = self.cb.clone();
         Box::new(move |relid, v, w| cb(relid, &v.clone().into_record(), w as isize))
     }
@@ -173,7 +173,7 @@ impl ExternCUpdateHandler {
 
 #[cfg(feature = "c_api")]
 impl UpdateHandler for ExternCUpdateHandler {
-    fn update_cb(&self) -> Box<dyn ST_CBFn> {
+    fn update_cb(&self) -> Box<dyn ST_RelationCallback> {
         let cb = self.cb;
         let cb_arg = self.cb_arg;
         Box::new(move |relid, v, w| {
@@ -191,7 +191,7 @@ impl UpdateHandler for ExternCUpdateHandler {
 
 #[cfg(feature = "c_api")]
 impl MTUpdateHandler for ExternCUpdateHandler {
-    fn mt_update_cb(&self) -> Box<dyn CBFn> {
+    fn mt_update_cb(&self) -> Box<dyn RelationCallback> {
         let cb = self.cb;
         let cb_arg = self.cb_arg;
         Box::new(move |relid, v, w| {
@@ -219,7 +219,7 @@ impl MTValMapUpdateHandler {
 }
 
 impl UpdateHandler for MTValMapUpdateHandler {
-    fn update_cb(&self) -> Box<dyn ST_CBFn> {
+    fn update_cb(&self) -> Box<dyn ST_RelationCallback> {
         let db = self.db.clone();
         Box::new(move |relid, v, w| db.lock().unwrap().update(relid, v, w))
     }
@@ -228,7 +228,7 @@ impl UpdateHandler for MTValMapUpdateHandler {
 }
 
 impl MTUpdateHandler for MTValMapUpdateHandler {
-    fn mt_update_cb(&self) -> Box<dyn CBFn> {
+    fn mt_update_cb(&self) -> Box<dyn RelationCallback> {
         let db = self.db.clone();
         Box::new(move |relid, v, w| db.lock().unwrap().update(relid, v, w as isize))
     }
@@ -270,7 +270,7 @@ impl ValMapUpdateHandler {
 }
 
 impl UpdateHandler for ValMapUpdateHandler {
-    fn update_cb(&self) -> Box<dyn ST_CBFn> {
+    fn update_cb(&self) -> Box<dyn ST_RelationCallback> {
         let handler = self.clone();
         Box::new(move |relid, v, w| {
             let guard_ptr = handler.locked.get();
@@ -328,7 +328,7 @@ impl DeltaUpdateHandler {
 }
 
 impl UpdateHandler for DeltaUpdateHandler {
-    fn update_cb(&self) -> Box<dyn ST_CBFn> {
+    fn update_cb(&self) -> Box<dyn ST_RelationCallback> {
         let handler = self.clone();
         Box::new(move |relid, v, w| {
             let guard_ptr = handler.locked.get();
@@ -371,8 +371,9 @@ impl ChainedUpdateHandler {
 }
 
 impl UpdateHandler for ChainedUpdateHandler {
-    fn update_cb(&self) -> Box<dyn ST_CBFn> {
-        let mut cbs: Vec<Box<dyn ST_CBFn>> = self.handlers.iter().map(|h| h.update_cb()).collect();
+    fn update_cb(&self) -> Box<dyn ST_RelationCallback> {
+        let mut cbs: Vec<Box<dyn ST_RelationCallback>> =
+            self.handlers.iter().map(|h| h.update_cb()).collect();
         Box::new(move |relid, v, w| {
             for cb in cbs.iter_mut() {
                 cb(relid, v, w);
@@ -406,8 +407,9 @@ impl MTChainedUpdateHandler {
 }
 
 impl UpdateHandler for MTChainedUpdateHandler {
-    fn update_cb(&self) -> Box<dyn ST_CBFn> {
-        let mut cbs: Vec<Box<dyn ST_CBFn>> = self.handlers.iter().map(|h| h.update_cb()).collect();
+    fn update_cb(&self) -> Box<dyn ST_RelationCallback> {
+        let mut cbs: Vec<Box<dyn ST_RelationCallback>> =
+            self.handlers.iter().map(|h| h.update_cb()).collect();
         Box::new(move |relid, v, w| {
             for cb in cbs.iter_mut() {
                 cb(relid, v, w);
@@ -428,8 +430,9 @@ impl UpdateHandler for MTChainedUpdateHandler {
 }
 
 impl MTUpdateHandler for MTChainedUpdateHandler {
-    fn mt_update_cb(&self) -> Box<dyn CBFn> {
-        let mut cbs: Vec<Box<dyn CBFn>> = self.handlers.iter().map(|h| h.mt_update_cb()).collect();
+    fn mt_update_cb(&self) -> Box<dyn RelationCallback> {
+        let mut cbs: Vec<Box<dyn RelationCallback>> =
+            self.handlers.iter().map(|h| h.mt_update_cb()).collect();
         Box::new(move |relid, v, w| {
             for cb in cbs.iter_mut() {
                 cb(relid, v, w);
@@ -452,7 +455,7 @@ enum Msg {
 #[derive(Clone, Debug)]
 pub struct ThreadUpdateHandler {
     /// Channel to worker thread.
-    msg_channel: Arc<Mutex<Sender<Msg>>>,
+    msg_channel: Sender<Msg>,
 
     /// Barrier to synchronize completion of transaction with worker.
     commit_barrier: Arc<Barrier>,
@@ -463,11 +466,11 @@ impl ThreadUpdateHandler {
     where
         F: FnOnce() -> Box<dyn UpdateHandler> + Send + 'static,
     {
-        let (tx_msg_channel, rx_message_channel) = channel();
+        let (tx_msg_channel, rx_message_channel) = crossbeam_channel::unbounded();
         let commit_barrier = Arc::new(Barrier::new(2));
         let commit_barrier2 = commit_barrier.clone();
 
-        spawn(move || {
+        thread::spawn(move || {
             let handler = handler_generator();
             let mut update_cb = handler.update_cb();
             loop {
@@ -498,7 +501,7 @@ impl ThreadUpdateHandler {
         });
 
         Self {
-            msg_channel: Arc::new(Mutex::new(tx_msg_channel)),
+            msg_channel: tx_msg_channel,
             commit_barrier,
         }
     }
@@ -506,13 +509,14 @@ impl ThreadUpdateHandler {
 
 impl Drop for ThreadUpdateHandler {
     fn drop(&mut self) {
-        self.msg_channel.lock().unwrap().send(Msg::Stop).unwrap();
+        self.msg_channel.send(Msg::Stop).unwrap();
     }
 }
 
 impl UpdateHandler for ThreadUpdateHandler {
-    fn update_cb(&self) -> Box<dyn ST_CBFn> {
-        let channel = self.msg_channel.lock().unwrap().clone();
+    fn update_cb(&self) -> Box<dyn ST_RelationCallback> {
+        let channel = self.msg_channel.clone();
+
         Box::new(move |relid, v, w| {
             channel
                 .send(Msg::Update {
@@ -525,21 +529,11 @@ impl UpdateHandler for ThreadUpdateHandler {
     }
 
     fn before_commit(&self) {
-        self.msg_channel
-            .lock()
-            .unwrap()
-            .send(Msg::BeforeCommit)
-            .unwrap();
+        self.msg_channel.send(Msg::BeforeCommit).unwrap();
     }
 
     fn after_commit(&self, success: bool) {
-        if self
-            .msg_channel
-            .lock()
-            .unwrap()
-            .send(Msg::AfterCommit { success })
-            .is_ok()
-        {
+        if self.msg_channel.send(Msg::AfterCommit { success }).is_ok() {
             // Wait for all queued updates to get processed by worker.
             self.commit_barrier.wait();
         }
@@ -547,8 +541,8 @@ impl UpdateHandler for ThreadUpdateHandler {
 }
 
 impl MTUpdateHandler for ThreadUpdateHandler {
-    fn mt_update_cb(&self) -> Box<dyn CBFn> {
-        let channel = self.msg_channel.lock().unwrap().clone();
+    fn mt_update_cb(&self) -> Box<dyn RelationCallback> {
+        let channel = self.msg_channel.clone();
         Box::new(move |relid, v, w| {
             channel
                 .send(Msg::Update {
