@@ -81,7 +81,7 @@ fn main() {
         unit_record.struct_constructor(),
         Some(&Cow::Borrowed("UnitStruct")),
     );
-    assert_eq!(unit_record.positional_struct_fields(), Some(&[][..]));
+    assert_eq!(unit_record.named_struct_fields(), Some(&[][..]));
 
     let renamed_empty = RenamedEmptyStruct {};
     let renamed_empty_record = renamed_empty.clone().into_record();

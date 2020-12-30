@@ -246,7 +246,7 @@ fn tuple_struct_record<'a>(
 
 fn unit_struct_record(record_name: &str) -> TokenStream {
     quote! {
-        differential_datalog::record::Record::PosStruct(
+        differential_datalog::record::Record::NamedStruct(
             std::borrow::Cow::Borrowed(#record_name),
             std::vec::Vec::new(),
         )
