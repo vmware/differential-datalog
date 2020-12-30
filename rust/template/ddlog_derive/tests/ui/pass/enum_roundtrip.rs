@@ -27,7 +27,7 @@ fn default_record_names() {
         default_record.struct_constructor(),
         Some(&Cow::Borrowed("DefaultRecordNames::Foo")),
     );
-    assert_eq!(default_record.positional_struct_fields(), Some(&[][..]));
+    assert_eq!(default_record.named_struct_fields(), Some(&[][..]));
 
     let default = DefaultRecordNames::Bar(10, 20);
     let default_record = default.clone().into_record();
@@ -96,7 +96,7 @@ fn renamed_struct() {
             "i am a field",
         )),
     );
-    assert_eq!(renamed_record.positional_struct_fields(), Some(&[][..]));
+    assert_eq!(renamed_record.named_struct_fields(), Some(&[][..]));
 
     let renamed = RenamedEnum::Bar(10, 20);
     let renamed_record = renamed.clone().into_record();
