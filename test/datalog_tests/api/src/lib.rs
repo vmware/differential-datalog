@@ -8,7 +8,7 @@ mod tests {
 
     #[test]
     fn start_stop() -> Result<(), String> {
-        let (prog, _) = HDDlog::run(1, false, |_, _: &Record, _| {});
+        let (prog, _) = HDDlog::run(1, false);
 
         // the update consists of inserting a single bool
         let table = HDDlog::get_table_id("Rin").unwrap();
