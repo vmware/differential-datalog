@@ -31,8 +31,14 @@ pub fn mutator_inner(mut input: DeriveInput) -> Result<TokenStream> {
     // Add the required trait bounds
     let generics = add_trait_bounds(
         input.generics,
-        vec![parse_quote!(differential_datalog::record::FromRecord)],
+        vec![
+            parse_quote!(differential_datalog::record::FromRecord),
+            parse_quote!(Sized),
+            parse_quote!(std::default::Default),
+            parse_quote!(serde::de::DeserializeOwned),
+        ],
     );
+
     let generics = generics.split_for_impl();
 
     match input.data {
