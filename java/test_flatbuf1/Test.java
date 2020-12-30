@@ -170,9 +170,9 @@ public class Test {
 
     private String printOr(String relname, Or__string__signed_32_Reader r) {
         if (r instanceof Or__string__signed_32_Reader.OrFirst) {
-            return relname + "{OrFirst{F{\"" + ((Or__string__signed_32_Reader.OrFirst)r).f().a() + "\"}}}";
+            return relname + "{OrFirst{FirstF{\"" + ((Or__string__signed_32_Reader.OrFirst)r).f().a() + "\"}}}";
         } else if (r instanceof Or__string__signed_32_Reader.OrSecond) {
-            return relname + "{OrSecond{S{" + ((Or__string__signed_32_Reader.OrSecond)r).s().a() + "}}}";
+            return relname + "{OrSecond{SecondS{" + ((Or__string__signed_32_Reader.OrSecond)r).s().a() + "}}}";
         } else {
             throw new IllegalArgumentException("Invalid Cases value " + r.toString());
         }

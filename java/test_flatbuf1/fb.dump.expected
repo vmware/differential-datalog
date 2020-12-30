@@ -51,8 +51,8 @@ From 52 Insert ("ZI12", 1000000, [0, 0, 1], (16, D{(false, 2, "string")}))
 From 53 Insert Generic{"ZI13",(false, 2, "string"),A{"ZI13"}}
 From 54 Insert ZI14{First{"string"}}
 From 54 Insert ZI14{Second{5}}
-From 55 Insert ZI15{OrFirst{F{"Or_string"}}}
-From 55 Insert ZI15{OrSecond{S{22}}}
+From 55 Insert ZI15{OrFirst{FirstF{"Or_string"}}}
+From 55 Insert ZI15{OrSecond{SecondS{22}}}
 From 56 Insert 0
 From 56 Insert 1000
 From 57 Insert ZI20{(4294967294, "YYY")}

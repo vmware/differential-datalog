@@ -222,6 +222,7 @@ rustLibFiles =
         , (dir </> "ddlog_derive/src/lib.rs"                              , $(embedFile "rust/template/ddlog_derive/src/lib.rs"))
         , (dir </> "ddlog_derive/src/from_record.rs"                      , $(embedFile "rust/template/ddlog_derive/src/from_record.rs"))
         , (dir </> "ddlog_derive/src/into_record.rs"                      , $(embedFile "rust/template/ddlog_derive/src/into_record.rs"))
+        , (dir </> "ddlog_derive/src/mutator.rs"                          , $(embedFile "rust/template/ddlog_derive/src/mutator.rs"))
         , (dir </> "cmd_parser/Cargo.toml"                                , $(embedFile "rust/template/cmd_parser/Cargo.toml"))
         , (dir </> "cmd_parser/lib.rs"                                    , $(embedFile "rust/template/cmd_parser/lib.rs"))
         , (dir </> "cmd_parser/parse.rs"                                  , $(embedFile "rust/template/cmd_parser/parse.rs"))
@@ -662,6 +663,7 @@ mkCargoToml rs_code crate crate_id =
            ""                                                                              $$
            "[dependencies]"                                                                $$
            "differential_datalog = { path = \"" <> pp root <> "../differential_datalog\" }"$$
+           "ddlog_derive = { path = \"" <> pp root <> "../ddlog_derive\" }"$$
            "abomonation = \"0.7\""                                                         $$
            "ordered-float = { version = \"2.0.0\", features = [\"serde\"] }"               $$
            "fnv = \"1.0.2\""                                                               $$
@@ -1001,25 +1003,21 @@ mkTypedef d tdef@TypeDef{..} =
          Just TStruct{..} | length typeCons == 1
                           -> let (fields, extras) = unzip $ map (mkField tdefName True) $ consArgs $ head typeCons in
                              derive_struct                                                             $$
+                             "#[ddlog(rename = \"" <> pp (name $ head typeCons) <> "\")]"              $$
                              "pub struct" <+> nameLocal tdefName <> targs <+> "{"                      $$
                              (nest' $ vcat $ punctuate comma fields)                                   $$
                              "}"                                                                       $$
                              impl_abomonate                                                            $$
-                             mkStructFromRecord d tdef                                                 $$
-                             mkStructIntoRecord tdef                                                   $$
-                             mkStructMutator d tdef                                                    $$
                              display                                                                   $$
                              vcat extras
                           | otherwise
                           -> let (constructors, extras) = unzip $ map mkConstructor typeCons in
                              derive_enum                                                               $$
+                             "#[ddlog(rename = \"" <> pp tdefName <> "\")]"                            $$
                              "pub enum" <+> nameLocal tdefName <> targs <+> "{"                        $$
                              (nest' $ vcat $ punctuate comma constructors)                             $$
                              "}"                                                                       $$
                              impl_abomonate                                                            $$
-                             mkEnumFromRecord d tdef                                                       $$
-                             mkEnumIntoRecord tdef                                                     $$
-                             mkEnumMutator d tdef                                                      $$
                              display                                                                   $$
                              default_enum                                                              $$
                              vcat extras
@@ -1028,8 +1026,9 @@ mkTypedef d tdef@TypeDef{..} =
     where
     rustAttrs = getRustAttrs d tdefAttrs
     derive_serialize = if tdefGetCustomSerdeAttr d tdef then empty else ", Serialize, Deserialize"
-    derive_struct = "#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Default" <> derive_serialize <> ")]"
-    derive_enum = "#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd" <> derive_serialize <> ")]"
+    derive_fromrec = if tdefGetCustomFromRecord d tdef then empty else ", FromRecord"
+    derive_struct = "#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, IntoRecord, Mutator, Default" <> derive_serialize <> derive_fromrec <> ")]"
+    derive_enum = "#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, IntoRecord, Mutator" <> derive_serialize <> derive_fromrec <> ")]"
     targs = if null tdefArgs
                then empty
                else "<" <> (hsep $ punctuate comma $ map pp tdefArgs) <> ">"
@@ -1050,6 +1049,7 @@ mkTypedef d tdef@TypeDef{..} =
     mkField :: String -> Bool -> Field -> (Doc, Doc)
     mkField cons pub f = ( from_arr_attr $$
                            vcat (map (\attr -> "#[" <> pp attr <> "]") rattrs) $$
+                           ddlog_rename f $$
                            (if pub then "pub" else empty) <+> pp (name f) <> ":" <+> mkType d scope f
                         , from_array_module)
         where rattrs = getRustAttrs d $ fieldAttrs f
@@ -1070,7 +1070,8 @@ mkTypedef d tdef@TypeDef{..} =
         (fields, extras) = unzip $ map (mkField (name c) False) $ consArgs c
         args = vcat $ punctuate comma fields
         rattrs = getRustAttrs d $ consAttrs c
-        cons = vcat (map (\attr -> "#[" <> pp attr <> "]") rattrs) $$
+        cons = "#[ddlog(rename = \"" <> pp (name c) <> "\")]"      $$
+               vcat (map (\attr -> "#[" <> pp attr <> "]") rattrs) $$
                if null $ consArgs c
                   then nameLocal c
                   else nameLocal c <+> "{" $$
@@ -1120,69 +1121,12 @@ mkTypedef d tdef@TypeDef{..} =
               cname = mkConstructorName scope tdefName (fromJust tdefType) (name c)
               def_args = commaSep $ map (\a -> (pp $ name a) <+> ": ::std::default::Default::default()") $ consArgs c
 
--- Generate FromRecord trait implementation for a struct type.
-mkStructFromRecord :: (?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> TypeDef -> Doc
-mkStructFromRecord d t@TypeDef{..} | tdefGetCustomFromRecord d t = empty
-                                   | otherwise =
-    "::differential_datalog::decl_struct_from_record!(" <> nameLocal t <> "[\"" <> pp (name t) <> "\"]" <> targs <> "," <+> constructor <> ");"
-    where
-    targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
-    Constructor{..} = head $ typeCons $ fromJust tdefType
-    constructor = "[\"" <> pp consName <> "\"][" <> (pp $ length consArgs) <> "]{" <> commaSep fields  <> "}"
-    fields = mapIdx (\f i -> "[" <> pp i <> "]" <> pp (name f) <> "[\"" <> (pp $ unddname f) <> "\"]:" <+> (mkType d (Just $ nameScope t) f))
-                    consArgs
-
-mkEnumFromRecord :: (?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> TypeDef -> Doc
-mkEnumFromRecord d t@TypeDef{..} | tdefGetCustomFromRecord d t = empty
-                                 | otherwise =
-    "::differential_datalog::decl_enum_from_record!(" <> nameLocal t <> "[\"" <> pp (name t) <> "\"]" <> targs <> "," <+> constructors <> ");"
-    where
-    targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
-    constructors = commaSep $ map mkcons $ typeCons $ fromJust tdefType
-    mkcons :: Constructor -> Doc
-    mkcons c@Constructor{..} =
-        cname <> "[\"" <> pp (name c) <> "\"][" <> (pp $ length consArgs) <> "]{" <> commaSep fields  <> "}"
-        where
-        cname = nameLocal c
-        fields = mapIdx (\f i -> "[" <> pp i <> "]" <> pp (name f) <> "[\"" <> (pp $ unddname f) <> "\"]:" <+> (mkType d (Just $ nameScope t) f)) consArgs
-
-
-mkStructIntoRecord :: TypeDef -> Doc
-mkStructIntoRecord t@TypeDef{..} =
-    "::differential_datalog::decl_struct_into_record!(" <> nameLocal t <> ", [\"" <> pp (name t) <> "\"]" <> targs <> "," <+> args <> ");"
-    where
-    targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
-    args = commaSep $ map (pp . name) $ consArgs $ head $ typeCons $ fromJust tdefType
-
-mkStructMutator :: (?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> TypeDef -> Doc
-mkStructMutator d t@TypeDef{..} =
-    -- Rustfmt tries to remove the empty `<>` on enums, even though it's within a macro invocation
-    "#[rustfmt::skip] ::differential_datalog::decl_record_mutator_struct!(" <> nameLocal t <> "," <+> targs <> "," <+> args <> ");"
-    where
-    targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
-    args = commaSep $ map (\arg -> pp (name arg) <> ":" <+> mkType d (Just $ nameScope t) arg) $ consArgs $ head $ typeCons $ fromJust tdefType
-
-mkEnumIntoRecord :: TypeDef -> Doc
-mkEnumIntoRecord t@TypeDef{..} =
-    "::differential_datalog::decl_enum_into_record!(" <> nameLocal t <> targs <> "," <+> cons <> ");"
-    where
-    targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
-    cons = commaSep $ map (\c -> nameLocal c <> "[\"" <> pp (name c) <> "\"]" <> "{" <> (commaSep $ map (pp . name) $ consArgs c) <> "}")
-                    $ typeCons $ fromJust tdefType
-
-mkEnumMutator :: (?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> TypeDef -> Doc
-mkEnumMutator d t@TypeDef{..} =
-    -- Rustfmt tries to remove the empty `<>` on enums, even though it's within a macro invocation
-    "#[rustfmt::skip] ::differential_datalog::decl_record_mutator_enum!(" <> nameLocal t <> targs <> "," <+> cons <> ");"
-    where
-    targs = "<" <> (hcat $ punctuate comma $ map pp tdefArgs) <> ">"
-    cons = commaSep $ map (\c -> nameLocal c <> "{" <> (commaSep $ map (\arg -> pp (name arg) <> ":" <+> mkType d (Just $ nameScope t) arg) $ consArgs c) <> "}")
-                    $ typeCons $ fromJust tdefType
-
-unddname :: (WithName a) => a -> String
-unddname x = if isPrefixOf "__" (name x) && elem short reservedNames
-                then short
-                else name x
+-- Generate #[ddlog(rename=)] attribute to rename fields that clash with
+-- reserved names.
+ddlog_rename :: (WithName a) => a -> Doc
+ddlog_rename x = if isPrefixOf "__" (name x) && elem short reservedNames
+                 then "#[ddlog(rename=\"" <> pp short <> "\")]"
+                 else empty
     where short = drop 2 $ name x
 
 {-
@@ -1820,7 +1764,7 @@ compileRelation d statics rn = do
                         return (ruleModule rl, "pub static" <+> rule_name i <+> ": ::once_cell::sync::Lazy<program::Rule> = ::once_cell::sync::Lazy::new(||" <+> rl' <> ");")) rules
     let facts' = mapIdx (\fact i ->
                           let fact' = let ?statics = moduleStatics statics (ruleModule fact)
-                                      in compileFact d fact 
+                                      in compileFact d fact
                           in (ruleModule fact,
                               ridentScoped Nothing (ruleModule fact) (render $ fact_name i) <> ".clone()",
                               "pub static" <+> fact_name i <+> ": ::once_cell::sync::Lazy<(program::RelId, DDValue)> = ::once_cell::sync::Lazy::new(||" <+> fact' <> ");")) facts

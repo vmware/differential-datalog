@@ -1,9 +1,6 @@
 use abomonation::Abomonation;
 /// Rust implementation of DDlog standard library functions and types.
-use differential_datalog::{
-    decl_record_mutator_struct, decl_struct_from_record, decl_struct_into_record,
-    record::{arg_extract, Record},
-};
+use differential_datalog::record::{arg_extract, Record};
 use fnv::FnvHasher;
 use num::Zero;
 use serde::{
@@ -1232,8 +1229,8 @@ impl<K, V> Mutator<Group<K, V>> for Record
 where
     Record: Mutator<K>,
     Record: Mutator<V>,
-    K: IntoRecord + FromRecord + Clone,
-    V: IntoRecord + FromRecord + Clone,
+    K: IntoRecord + FromRecord + Clone + Default + DeserializeOwned,
+    V: IntoRecord + FromRecord + Clone + Default + DeserializeOwned,
 {
     fn mutate(&self, grp: &mut Group<K, V>) -> StdResult<(), String> {
         let mut dgrp = DDlogGroup::from_group(grp);
