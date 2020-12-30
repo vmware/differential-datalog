@@ -23,6 +23,7 @@ pub use update::Update;
 
 use crate::{ddval::*, profile::*, record::Mutator};
 use arrange::{antijoin_arranged, ArrangedCollection, Arrangements, A};
+use crossbeam_channel::{Receiver, Sender};
 use fnv::{FnvHashMap, FnvHashSet};
 use std::{
     borrow::Cow,
@@ -31,10 +32,9 @@ use std::{
     iter,
     sync::{
         atomic::{AtomicBool, Ordering},
-        mpsc::{self, Receiver, Sender},
         Arc, Barrier, Mutex,
     },
-    thread::{self, JoinHandle},
+    thread::{self, JoinHandle, Thread},
 };
 use timestamp::{TSAtomic, ToTupleTS};
 use worker::{DDlogWorker, ProfilingData};
@@ -170,22 +170,22 @@ pub struct RecursiveRelation {
     pub distinct: bool,
 }
 
-pub trait CBFn: FnMut(RelId, &DDValue, Weight) + Send {
-    fn clone_boxed(&self) -> Box<dyn CBFn>;
+pub trait RelationCallback: FnMut(RelId, &DDValue, Weight) + Send + Sync {
+    fn clone_boxed(&self) -> Box<dyn RelationCallback>;
 }
 
-impl<T> CBFn for T
+impl<T> RelationCallback for T
 where
-    T: 'static + Send + Clone + FnMut(RelId, &DDValue, Weight),
+    T: FnMut(RelId, &DDValue, Weight) + Clone + Send + Sync + ?Sized + 'static,
 {
-    fn clone_boxed(&self) -> Box<dyn CBFn> {
+    fn clone_boxed(&self) -> Box<dyn RelationCallback> {
         Box::new(self.clone())
     }
 }
 
-impl Clone for Box<dyn CBFn> {
+impl Clone for Box<dyn RelationCallback> {
     fn clone(&self) -> Self {
-        self.as_ref().clone_boxed()
+        self.clone_boxed()
     }
 }
 
@@ -234,7 +234,7 @@ pub struct Relation {
     /// along with relation id uniquely identifies the arrangement (see `ArrId`).
     pub arrangements: Vec<Arrangement>,
     /// Callback invoked when an element is added or removed from relation.
-    pub change_cb: Option<Arc<Mutex<Box<dyn CBFn>>>>,
+    pub change_cb: Option<Arc<dyn RelationCallback + 'static>>,
 }
 
 /// A Datalog relation or rule can depend on other relations and their
@@ -757,21 +757,23 @@ impl Program {
         // We use async channels to avoid deadlocks when workers are parked in
         // `step_or_park`.  This has the downside of introducing an unbounded buffer
         // that is only guaranteed to be fully flushed when the transaction commits.
-        let (request_send, request_recv): (Vec<_>, Vec<_>) =
-            (0..nworkers).map(|_| mpsc::channel::<Msg>()).unzip();
+        let (request_send, request_recv): (Vec<_>, Vec<_>) = (0..nworkers)
+            .map(|_| crossbeam_channel::unbounded::<Msg>())
+            .unzip();
         let request_recv: Arc<Mutex<Vec<Option<_>>>> =
             Arc::new(Mutex::new(request_recv.into_iter().map(Some).collect()));
 
         // Channels for responses from worker threads.
-        let (reply_send, reply_recv): (Vec<_>, Vec<_>) =
-            (0..nworkers).map(|_| mpsc::channel::<Reply>()).unzip();
+        let (reply_send, reply_recv): (Vec<_>, Vec<_>) = (0..nworkers)
+            .map(|_| crossbeam_channel::unbounded::<Reply>())
+            .unzip();
         let reply_send: Arc<Mutex<Vec<Option<_>>>> =
             Arc::new(Mutex::new(reply_send.into_iter().map(Some).collect()));
 
-        let (prof_send, prof_recv) = mpsc::sync_channel::<ProfMsg>(PROF_MSG_BUF_SIZE);
+        let (prof_send, prof_recv) = crossbeam_channel::bounded::<ProfMsg>(PROF_MSG_BUF_SIZE);
 
         // Channel used by workers 1..n to send their thread handles to worker 0.
-        let (thandle_send, thandle_recv) = mpsc::sync_channel::<(usize, thread::Thread)>(0);
+        let (thandle_send, thandle_recv) = crossbeam_channel::bounded::<(usize, Thread)>(0);
         let thandle_recv = Arc::new(Mutex::new(thandle_recv));
 
         // Profile data structure
@@ -883,9 +885,9 @@ impl Program {
 
     /// This thread function is always invoked whether or not profiling is on. If it isn't, the
     /// thread will blocks on the channel read as no message will ever arrive.
-    fn prof_thread_func(chan: mpsc::Receiver<ProfMsg>, profile: Arc<Mutex<Profile>>) {
+    fn prof_thread_func(channel: Receiver<ProfMsg>, profile: Arc<Mutex<Profile>>) {
         loop {
-            match chan.recv() {
+            match channel.recv() {
                 Ok(msg) => {
                     profile.lock().unwrap().update(&msg);
                 }

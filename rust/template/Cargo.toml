@@ -45,6 +45,7 @@ num = { version = "0.3", features = ["serde"] }
 rustop = { version = "1.0.2", optional = true }
 serde = { version = "1.0", features = ["derive"] }
 erased-serde = "0.3"
+crossbeam-channel = "0.5.0"
 
 # FlatBuffers dependency enabled by the `flatbuf` feature.
 # flatbuffers crate version must be in sync with the flatc compiler and Java

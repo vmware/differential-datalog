@@ -9,6 +9,7 @@ use crate::{
     program::{RelId, Weight},
     variable::Variable,
 };
+use crossbeam_channel::{Receiver, Sender, TryRecvError};
 use differential_dataflow::{
     input::{Input, InputSession},
     logging::DifferentialEvent,
@@ -26,8 +27,6 @@ use std::{
     rc::Rc,
     sync::{
         atomic::{AtomicBool, Ordering},
-        mpsc::SyncSender,
-        mpsc::{Receiver, Sender, TryRecvError},
         Arc, Barrier, Mutex,
     },
     thread::{self, Thread},
@@ -85,7 +84,7 @@ impl<'a> DDlogWorker<'a> {
         profiling: ProfilingData,
         request_receivers: Arc<Mutex<Vec<Option<Receiver<Msg>>>>>,
         reply_senders: Arc<Mutex<Vec<Option<Sender<Reply>>>>>,
-        thread_handle_sender: SyncSender<(usize, Thread)>,
+        thread_handle_sender: Sender<(usize, Thread)>,
         thread_handle_receiver: Arc<Mutex<Receiver<(usize, Thread)>>>,
     ) -> Self {
         let worker_index = worker.index();
@@ -778,8 +777,8 @@ impl<'a> DDlogWorker<'a> {
 
             for (relid, collection) in collections {
                 // notify client about changes
-                if let Some(cb) = &program.get_relation(relid).change_cb {
-                    let mut cb = cb.lock().unwrap().clone();
+                if let Some(relation_callback) = &program.get_relation(relid).change_cb {
+                    let mut relation_callback = relation_callback.clone_boxed();
 
                     let consolidated = with_prof_context(
                         &format!("consolidate {}", relid),
@@ -790,7 +789,7 @@ impl<'a> DDlogWorker<'a> {
                         &format!("inspect {}", relid),
                         || consolidated.inspect(move |x| {
                             // assert!(x.2 == 1 || x.2 == -1, "x: {:?}", x);
-                            cb(relid, &x.0, x.2)
+                            (relation_callback)(relid, &x.0, x.2)
                         }),
                     );
 
@@ -826,7 +825,7 @@ pub struct ProfilingData {
     /// Whether timely profiling is enabled
     timely_enabled: Arc<AtomicBool>,
     /// The channel used to send profiling data to the profiling thread
-    data_channel: SyncSender<ProfMsg>,
+    data_channel: Sender<ProfMsg>,
 }
 
 impl ProfilingData {
@@ -834,7 +833,7 @@ impl ProfilingData {
     pub const fn new(
         cpu_enabled: Arc<AtomicBool>,
         timely_enabled: Arc<AtomicBool>,
-        data_channel: SyncSender<ProfMsg>,
+        data_channel: Sender<ProfMsg>,
     ) -> Self {
         Self {
             cpu_enabled,

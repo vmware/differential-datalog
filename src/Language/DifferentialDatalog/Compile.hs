@@ -2503,25 +2503,30 @@ rhsVarsAfter d rl i =
                                                         (concatMap (ruleRHSTermVars d rl) [i+1..length (ruleRHS rl) - 1]))
                                 $ ruleRHSVars d rl (i+1)
 
-mkProg :: (?crate_graph::CrateGraph, ?specname::String) => [ProgNode] -> Doc
+mkProg :: (?crate_graph :: CrateGraph, ?specname :: String) => [ProgNode] -> Doc
 mkProg nodes =
-    "pub fn prog(__update_cb: Box<dyn program::CBFn>) -> program::Program {"                        $$
-    (nest' relations)                                                                               $$
-    "    let nodes: std::vec::Vec<program::ProgNode> = vec!["                                       $$
-    (nest' $ nest' pnodes)                                                                          $$
-    "    ];"                                                                                        $$
-    "    let init_data: std::vec::Vec<(program::RelId, DDValue)> = vec![" <> facts <> "];"          $$
-    "    program::Program {"                                                                        $$
-    "        nodes,"                                                                                $$
-    "        init_data,"                                                                            $$
-    "    }"                                                                                         $$
-    "}"
-    where
-    relations = vcat $ map (\ProgRel{..} -> "let" <+> rnameFlat prelName <+> "=" <+> prelCode <> ";")
-                     $ concatMap nodeRels nodes
-    pnodes = nest' $ vcommaSep $ map mkNode nodes
-    facts = vcommaSep $ concatMap ((map sel2) . prelFacts)
-                      $ concatMap nodeRels nodes
+    "pub fn prog(__update_cb: Box<dyn program::RelationCallback>) -> program::Program {"
+        $$ (nest' relations)
+        $$ "    let nodes: std::vec::Vec<program::ProgNode> = vec!["
+        $$ (nest' $ nest' program_nodes)
+        $$ "    ];"
+        $$ "    let init_data: std::vec::Vec<(program::RelId, DDValue)> = vec![" <> facts <> "];"
+        $$ "    program::Program {"
+        $$ "        nodes,"
+        $$ "        init_data,"
+        $$ "    }"
+        $$ "}"
+  where
+    relations =
+        vcat $
+            map (\ProgRel{..} -> "let" <+> rnameFlat prelName <+> "=" <+> prelCode <> ";") $
+                concatMap nodeRels nodes
+
+    program_nodes = nest' $ vcommaSep $ map mkNode nodes
+    facts =
+        vcommaSep $
+            concatMap ((map sel2) . prelFacts) $
+                concatMap nodeRels nodes
 
 mkNode :: (?crate_graph::CrateGraph, ?specname::String) => ProgNode -> Doc
 mkNode (RelNode ProgRel{..}) =

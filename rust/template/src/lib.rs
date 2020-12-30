@@ -212,7 +212,7 @@ pub mod ddlog_bigint;
 #[path = "../../../lib/ddlog_log.rs"]
 pub mod ddlog_log;
 
-pub fn prog(__update_cb: Box<dyn program::CBFn>) -> program::Program {
+pub fn prog(__update_cb: Box<dyn program::RelationCallback>) -> program::Program {
     panic!("prog not implemented")
 }
 
