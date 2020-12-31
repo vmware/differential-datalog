@@ -27,7 +27,7 @@ use std::{
     rc::Rc,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, Barrier, Mutex,
+        Arc, Barrier,
     },
     thread::{self, Thread},
     time::Duration,
@@ -82,10 +82,10 @@ impl<'a> DDlogWorker<'a> {
         num_workers: usize,
         progress_barrier: Arc<Barrier>,
         profiling: ProfilingData,
-        request_receivers: Arc<Mutex<Vec<Option<Receiver<Msg>>>>>,
-        reply_senders: Arc<Mutex<Vec<Option<Sender<Reply>>>>>,
+        request_receivers: Arc<[Receiver<Msg>]>,
+        reply_senders: Arc<[Sender<Reply>]>,
         thread_handle_sender: Sender<(usize, Thread)>,
-        thread_handle_receiver: Arc<Mutex<Receiver<(usize, Thread)>>>,
+        thread_handle_receiver: Arc<Receiver<(usize, Thread)>>,
     ) -> Self {
         let worker_index = worker.index();
 
@@ -99,12 +99,8 @@ impl<'a> DDlogWorker<'a> {
         // If this is worker zero, receive all other worker's thread handles and
         // populate the `peers` map with them
         if worker_index == 0 {
-            let thread_handle_recv = thread_handle_receiver
-                .lock()
-                .expect("failed to lock thread handle receiver");
-
             for _ in 0..num_workers - 1 {
-                let (worker, thread_handle) = thread_handle_recv
+                let (worker, thread_handle) = thread_handle_receiver
                     .recv()
                     .expect("failed to receive thread handle from timely worker");
 
@@ -118,14 +114,6 @@ impl<'a> DDlogWorker<'a> {
                 .expect("failed to send thread handle for a timely worker");
         }
 
-        // Get the request receiver for the current worker
-        let request_receiver = mem::take(&mut request_receivers.lock().unwrap()[worker_index])
-            .expect("failed to get request receiver for a timely worker");
-
-        // Get the reply sender for the current worker
-        let reply_sender = mem::take(&mut reply_senders.lock().unwrap()[worker_index])
-            .expect("failed to get reply sender for a timely worker");
-
         Self {
             worker,
             program,
@@ -133,8 +121,8 @@ impl<'a> DDlogWorker<'a> {
             peers,
             progress_barrier,
             profiling,
-            request_receiver,
-            reply_sender,
+            request_receiver: request_receivers[worker_index].clone(),
+            reply_sender: reply_senders[worker_index].clone(),
         }
     }
 
@@ -269,7 +257,7 @@ impl<'a> DDlogWorker<'a> {
                         // Command channel empty: use idle time to work on garbage collection.
                         // This will block when there is no more compaction left to do.
                         // The sender must unpark worker 0 after sending to the channel.
-                        self.worker.step_or_park(None);
+                        self.worker.step();
                     }
 
                     Err(TryRecvError::Disconnected) => {
@@ -302,7 +290,7 @@ impl<'a> DDlogWorker<'a> {
                 // don't hinder trace compaction.
                 self.advance(&mut sessions, &mut traces, time);
                 while probe.less_than(&time) {
-                    if !self.worker.step_or_park(None) {
+                    if !self.worker.step() {
                         // Dataflow terminated.
                         return Ok(());
                     }
@@ -336,7 +324,7 @@ impl<'a> DDlogWorker<'a> {
 
                         Err(TryRecvError::Empty) => {
                             // Command channel empty: use idle time to work on garbage collection.
-                            self.worker.step_or_park(None);
+                            self.worker.step();
                         }
 
                         // The sender disconnected, so we can gracefully exit
@@ -391,7 +379,7 @@ impl<'a> DDlogWorker<'a> {
 
                 self.progress_barrier.wait();
                 while probe.less_than(session.time()) {
-                    self.worker.step_or_park(None);
+                    self.worker.step();
                 }
 
                 self.progress_barrier.wait();
@@ -854,9 +842,6 @@ impl ProfilingData {
 
     /// Record a profiling message
     pub fn record(&self, event: ProfMsg) {
-        // We can safely ignore the result of sending a profiling
-        // message to the profiling thread since it doesn't matter
-        // if a profiling message is dropped in some way
         let _ = self.data_channel.send(event);
     }
 }
