@@ -378,18 +378,15 @@ impl HDDlog {
                  * actually used. */
                 let delta_handler = DeltaUpdateHandler::new(deltadb2);
 
-                let store_handler = if do_store {
-                    Some(ValMapUpdateHandler::new(db2))
+                if do_store {
+                    let handlers: Vec<Box<dyn UpdateHandler>> = vec![
+                        Box::new(delta_handler),
+                        Box::new(ValMapUpdateHandler::new(db2)),
+                    ];
+                    Box::new(ChainedUpdateHandler::new(handlers)) as Box<dyn UpdateHandler>
                 } else {
-                    None
-                };
-
-                let mut handlers: Vec<Box<dyn UpdateHandler>> = Vec::new();
-                handlers.push(Box::new(delta_handler));
-                if let Some(h) = store_handler {
-                    handlers.push(Box::new(h))
-                };
-                Box::new(ChainedUpdateHandler::new(handlers)) as Box<dyn UpdateHandler>
+                    Box::new(delta_handler) as Box<dyn UpdateHandler>
+                }
             };
             Box::new(ThreadUpdateHandler::new(handler_generator))
         };
