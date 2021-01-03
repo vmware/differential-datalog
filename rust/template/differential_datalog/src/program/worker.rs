@@ -257,7 +257,7 @@ impl<'a> DDlogWorker<'a> {
                         // Command channel empty: use idle time to work on garbage collection.
                         // This will block when there is no more compaction left to do.
                         // The sender must unpark worker 0 after sending to the channel.
-                        self.worker.step();
+                        self.worker.step_or_park(None);
                     }
 
                     Err(TryRecvError::Disconnected) => {
@@ -290,7 +290,7 @@ impl<'a> DDlogWorker<'a> {
                 // don't hinder trace compaction.
                 self.advance(&mut sessions, &mut traces, time);
                 while probe.less_than(&time) {
-                    if !self.worker.step() {
+                    if !self.worker.step_or_park(None) {
                         // Dataflow terminated.
                         return Ok(());
                     }
@@ -324,7 +324,7 @@ impl<'a> DDlogWorker<'a> {
 
                         Err(TryRecvError::Empty) => {
                             // Command channel empty: use idle time to work on garbage collection.
-                            self.worker.step();
+                            self.worker.step_or_park(None);
                         }
 
                         // The sender disconnected, so we can gracefully exit
@@ -379,7 +379,7 @@ impl<'a> DDlogWorker<'a> {
 
                 self.progress_barrier.wait();
                 while probe.less_than(session.time()) {
-                    self.worker.step();
+                    self.worker.step_or_park(None);
                 }
 
                 self.progress_barrier.wait();
