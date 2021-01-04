@@ -18,6 +18,10 @@ public class DDlogAPI {
      * The C ddlog API
      */
     native long ddlog_run(boolean storeData, int workers) throws DDlogException;
+    static native int ddlog_get_table_id(long hprog, String table);
+    static native String ddlog_get_table_name(long hprog,int id) throws DDlogException;
+    static native int ddlog_get_index_id(long hprog, String index);
+    static native String ddlog_get_index_name(long hprog, int id) throws DDlogException;
     static native int ddlog_record_commands(long hprog, String filename, boolean append) throws DDlogException, IOException;
     static native void ddlog_stop_recording(long hprog, int fd) throws DDlogException;
     static native void ddlog_dump_input_snapshot(long hprog, String filename, boolean append) throws DDlogException, IOException;
@@ -59,10 +63,6 @@ public class DDlogAPI {
     static native long ddlog_struct(String constructor, long[] handles) throws DDlogException;
     static native long ddlog_named_struct(String constructor, String[] names, long[] handles) throws DDlogException;
     // Getters
-    static native int ddlog_get_table_id(String table);
-    static native String ddlog_get_table_name(int id) throws DDlogException;
-    static native int ddlog_get_index_id(String index);
-    static native String ddlog_get_index_name(int id) throws DDlogException;
     static native boolean ddlog_is_bool(long handle);
     static native boolean ddlog_get_bool(long handle);
     static native boolean ddlog_is_int(long handle);
@@ -183,9 +183,10 @@ public class DDlogAPI {
      *
      * See <code>ddlog.h: ddlog_get_table_id()</code>
      */
-    public int getTableId(String table) {
+    public int getTableId(String table) throws DDlogException {
+        this.checkHandle();
         if (!this.tableId.containsKey(table)) {
-            int id = ddlog_get_table_id(table);
+            int id = ddlog_get_table_id(this.hprog, table);
             this.tableId.put(table, id);
             return id;
         }
@@ -198,7 +199,8 @@ public class DDlogAPI {
      * See <code>ddlog.h: ddlog_get_table_name()</code>
      */
     public String getTableName(int id) throws DDlogException {
-        return ddlog_get_table_name(id);
+        this.checkHandle();
+        return ddlog_get_table_name(this.hprog, id);
     }
 
     /**
@@ -209,8 +211,9 @@ public class DDlogAPI {
      *
      * See <code>ddlog.h: ddlog_get_index_id()</code>
      */
-    public int getIndexId(String table) {
-        return ddlog_get_index_id(table);
+    public int getIndexId(String table) throws DDlogException {
+        this.checkHandle();
+        return ddlog_get_index_id(this.hprog, table);
     }
 
     /**
@@ -219,7 +222,8 @@ public class DDlogAPI {
      * See <code>ddlog.h: ddlog_get_index_name()</code>
      */
     public String getIndexName(int id) throws DDlogException {
-        return ddlog_get_index_name(id);
+        this.checkHandle();
+        return ddlog_get_index_name(this.hprog, id);
     }
 
     /**

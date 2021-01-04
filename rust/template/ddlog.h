@@ -114,43 +114,6 @@ typedef struct {
 } ddlog_record_update;
 
 /*
- * Get DDlog table id by name.  The table name is a null-terminated UTF8
- * string.
- *
- * NOTE: for tables declared outside of the main DDlog module, fully qualified
- * module names must be used, e.g., the fully qualified name of a table named
- * "Pod" declared inside the "k8spolicy" module is "k8spolicy.Pod".
- *
- * On error, returns -1.
- */
-extern table_id ddlog_get_table_id(const char* tname);
-
-/*
- * Get DDlog table name from id.
- *
- * Returns a null-terminated UTF8 string on success or NULL on error.
- */
-extern const char* ddlog_get_table_name(table_id id);
-
-/*
- * Get DDlog index id by name.  The index name is a null-terminated UTF8
- * string.
- *
- * NOTE: for indexes declared outside of the main DDlog module, fully qualified
- * module names must be used.
- *
- * On error, returns -1.
- */
-extern index_id ddlog_get_index_id(const char* iname);
-
-/*
- * Get DDlog index name from id.
- *
- * Returns a null-terminated UTF8 string on success or NULL on error.
- */
-extern const char* ddlog_get_index_name(index_id id);
-
-/*
  * Create an instance of DDlog program.
  *
  * `workers` is the number of DDlog worker threads that will be
@@ -188,6 +151,43 @@ extern ddlog_prog ddlog_run(
         bool do_store,
         void (*print_err_msg)(const char *msg),
         ddlog_delta **init_state);
+
+/*
+ * Get DDlog table id by name.  The table name is a null-terminated UTF8
+ * string.
+ *
+ * NOTE: for tables declared outside of the main DDlog module, fully qualified
+ * module names must be used, e.g., the fully qualified name of a table named
+ * "Pod" declared inside the "k8spolicy" module is "k8spolicy.Pod".
+ *
+ * On error, returns -1.
+ */
+extern table_id ddlog_get_table_id(ddlog_prog hprog, const char* tname);
+
+/*
+ * Get DDlog table name from id.
+ *
+ * Returns a null-terminated UTF8 string on success or NULL on error.
+ */
+extern const char* ddlog_get_table_name(ddlog_prog hprog, table_id id);
+
+/*
+ * Get DDlog index id by name.  The index name is a null-terminated UTF8
+ * string.
+ *
+ * NOTE: for indexes declared outside of the main DDlog module, fully qualified
+ * module names must be used.
+ *
+ * On error, returns -1.
+ */
+extern index_id ddlog_get_index_id(ddlog_prog hprog, const char* iname);
+
+/*
+ * Get DDlog index name from id.
+ *
+ * Returns a null-terminated UTF8 string on success or NULL on error.
+ */
+extern const char* ddlog_get_index_name(ddlog_prog hprog, index_id id);
 
 /*
  * Record commands issued to DDlog via this API in a file.

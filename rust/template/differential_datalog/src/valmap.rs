@@ -9,7 +9,7 @@ use std::convert::{AsMut, AsRef};
 use std::fmt::Display;
 use std::io;
 
-use crate::ddlog::DDlogConvert;
+use crate::ddlog::DDlogInventory;
 use crate::program::RelId;
 
 /* Stores a set of changes to output tables.
@@ -61,12 +61,12 @@ impl<V: Display + Ord + Clone> DeltaMap<V> {
         Self { map }
     }
 
-    pub fn format<R>(&self, w: &mut dyn io::Write) -> io::Result<()>
-    where
-        R: DDlogConvert,
-    {
+    pub fn format(&self, w: &mut dyn io::Write, inventory: &dyn DDlogInventory) -> io::Result<()> {
         for (relid, relmap) in &self.map {
-            w.write_fmt(format_args!("{}:\n", R::relid2name(*relid).unwrap()))?;
+            w.write_fmt(format_args!(
+                "{}:\n",
+                inventory.get_table_name(*relid).unwrap()
+            ))?;
             for (val, weight) in relmap {
                 w.write_fmt(format_args!("{}: {}\n", *val, *weight))?;
             }
@@ -83,12 +83,16 @@ impl<V: Display + Ord + Clone> DeltaMap<V> {
         Ok(())
     }
 
-    pub fn format_as_sets<R>(&self, w: &mut dyn io::Write) -> io::Result<()>
-    where
-        R: DDlogConvert,
-    {
+    pub fn format_as_sets(
+        &self,
+        w: &mut dyn io::Write,
+        inventory: &dyn DDlogInventory,
+    ) -> io::Result<()> {
         for (relid, map) in &self.map {
-            w.write_fmt(format_args!("{}:\n", R::relid2name(*relid).unwrap()))?;
+            w.write_fmt(format_args!(
+                "{}:\n",
+                inventory.get_table_name(*relid).unwrap()
+            ))?;
             for (val, weight) in map {
                 if *weight == 1 {
                     w.write_fmt(format_args!("{}\n", *val))?;

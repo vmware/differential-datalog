@@ -1,12 +1,11 @@
 use std::any::Any;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use differential_datalog::ddval::DDValue;
 use differential_datalog::program::Update;
 use differential_datalog::record::Record;
 use differential_datalog::record::RelIdentifier;
 use differential_datalog::record::UpdCmd;
-use differential_datalog::DDlog;
 use distributed_datalog::await_expected;
 use distributed_datalog::DDlogServer as DDlogServerT;
 use distributed_datalog::MockObserver as Mock;
@@ -277,7 +276,7 @@ fn multiple_transactions(
 
 fn setup() -> (DDlogServer, UpdatesObservable, MockObserver) {
     let (program, _) = HDDlog::run(1, false).unwrap();
-    let mut server = DDlogServer::new(Some(program), hashmap! {});
+    let mut server = DDlogServer::new(Some(Arc::new(program)), hashmap! {});
 
     let observer = SharedObserver::new(Mutex::new(Mock::new()));
     let mut stream = server.add_stream(btreeset! {server_api_1_P1Out as usize});
@@ -288,7 +287,7 @@ fn setup() -> (DDlogServer, UpdatesObservable, MockObserver) {
 
 fn setup_tcp() -> (DDlogServer, UpdatesObservable, MockObserver, Box<dyn Any>) {
     let (program, _) = HDDlog::run(1, false).unwrap();
-    let mut server = DDlogServer::new(Some(program), hashmap! {});
+    let mut server = DDlogServer::new(Some(Arc::new(program)), hashmap! {});
 
     let observer = SharedObserver::new(Mutex::new(Mock::new()));
     let mut stream = server.add_stream(btreeset! {server_api_1_P1Out as usize});

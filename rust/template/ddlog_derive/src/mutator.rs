@@ -198,7 +198,7 @@ fn named_struct_mutator<'a>(
                 },
 
             #error => {
-                return std::result::Result::Err(std::format!("not a struct {:?}", #error));
+                return std::result::Result::Err(std::format!("not a named struct {:?}", #error));
             },
         }
     };

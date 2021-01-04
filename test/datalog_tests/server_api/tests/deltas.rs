@@ -6,7 +6,6 @@ use std::thread::spawn;
 use differential_datalog::ddval::{DDValue, DDValConvert};
 use differential_datalog::program::Update;
 use differential_datalog::record::{Record, RelIdentifier, UpdCmd};
-use differential_datalog::DDlog;
 use distributed_datalog::accumulate::{Accumulator, DistributingAccumulator};
 use distributed_datalog::await_expected;
 use distributed_datalog::DDlogServer as DDlogServerT;
@@ -43,12 +42,11 @@ where
     F: FnOnce(&mut UpdatesObservable, SharedObserver<DDlogServer>) -> Result<Box<dyn Any>, String>,
 {
     let (program1, _) = HDDlog::run(1, false).unwrap();
-    let mut server1 = DDlogServer::new(Some(program1), hashmap! {});
+    let mut server1 = DDlogServer::new(Some(Arc::new(program1)), hashmap! {});
 
-    let (program2, _) = HDDlog::run(1, false)
-    .unwrap();
+    let (program2, _) = HDDlog::run(1, false).unwrap();
     let mut server2 = DDlogServer::new(
-        Some(program2),
+        Some(Arc::new(program2)),
         hashmap! {
             server_api_1_P1Out as usize => server_api_2_P2In as usize,
         },
@@ -130,17 +128,17 @@ where
     //     P1[s1]     P2[s2]
     //
     let (program1, _) = HDDlog::run(1, false).unwrap();
-    let mut server1 = DDlogServer::new(Some(program1), hashmap! {});
+    let mut server1 = DDlogServer::new(Some(Arc::new(program1)), hashmap! {});
 
     let (program2, _) = HDDlog::run(1, false).unwrap();
-    let mut server2 = DDlogServer::new(Some(program2), hashmap! {});
+    let mut server2 = DDlogServer::new(Some(Arc::new(program2)), hashmap! {});
 
     let (program3, _) = HDDlog::run(1, false).unwrap();
     let redirect = hashmap! {
         server_api_1_P1Out as usize => server_api_3_P1Out as usize,
         server_api_2_P2Out as usize => server_api_3_P2Out as usize,
     };
-    let mut server3 = DDlogServer::new(Some(program3), redirect);
+    let mut server3 = DDlogServer::new(Some(Arc::new(program3)), redirect);
     let mut output_stream = server3.add_stream(btreeset! {server_api_3_P3Out as usize});
     // Accumulator to store output of server3.
     let acc = Arc::new(Mutex::new(DistributingAccumulator::new()));

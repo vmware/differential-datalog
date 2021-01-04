@@ -17,7 +17,7 @@ use std::time::Instant;
 use differential_datalog::ddval::DDValue;
 use differential_datalog::program::RelId;
 use differential_datalog::program::Update;
-use differential_datalog::{DDlog, DDlogConvert};
+use differential_datalog::{DDlogConvert, DDlogInventory, DDlogTyped};
 
 use crate::accumulate::Accumulator;
 use crate::accumulate::DistributingAccumulator;
@@ -92,13 +92,11 @@ fn deduce_redirects(config: &NodeCfg) -> HashMap<RelId, RelId> {
 }
 
 /// Create a `DDlogServer` as per the given node configuration.
-fn create_server<P>(node_cfg: &NodeCfg) -> Result<DDlogServer<P>, String>
+fn create_server<P>(node_cfg: &NodeCfg, program: Arc<P>) -> Result<DDlogServer<P>, String>
 where
-    P: Send + DDlog,
+    P: Send + DDlogTyped,
 {
     let redirects = deduce_redirects(node_cfg);
-    // TODO: Should the number of workers be made configurable?
-    let (program, _) = P::run(2, false)?;
 
     Ok(DDlogServer::new(Some(program), redirects))
 }
@@ -125,21 +123,30 @@ fn deduce_sinks_or_sources(node_cfg: &NodeCfg, sinks: bool) -> BTreeMap<&Path, B
 }
 
 /// Realize the given configuration locally.
-fn realize<P>(
+fn realize<P, C, D>(
     addr: &Addr,
     node_cfg: &NodeCfg,
     assignment: &Assignment,
-) -> Result<Realization<P>, String>
+    program: Arc<P>,
+) -> Result<Realization<C, D>, String>
 where
-    P: Send + DDlog + 'static,
-    P::Convert: Send + DDlogConvert,
+    P: Send + Sync + DDlogTyped + DDlogInventory + Debug + 'static,
+    C: Send + DDlogConvert + Debug,
+    D: Serialize
+        + DeserializeOwned
+        + Debug
+        + Into<Update<DDValue>>
+        + From<Update<DDValue>>
+        + Send
+        + 'static,
 {
+    let inventory = program.clone() as Arc<dyn DDlogInventory + Send + Sync>;
     let now = Instant::now();
     let mut realization = Realization::new();
-    let mut server = create_server::<P>(&node_cfg)?;
+    let mut server = create_server(&node_cfg, program)?;
 
-    realization.add_tcp_senders(node_cfg, &mut server, assignment)?;
-    realization.add_file_sinks(node_cfg, &mut server)?;
+    realization.add_tcp_senders(node_cfg, &mut server, assignment, inventory.clone())?;
+    realization.add_file_sinks(node_cfg, &mut server, inventory.clone())?;
     realization.subscribe_txnmux(server)?;
     match addr {
         Addr::Ip(addr) => realization.add_tcp_receiver(addr)?,
@@ -158,7 +165,7 @@ where
 #[derive(Debug)]
 enum SourceRealization<C, D>
 where
-    C: DDlogConvert,
+    C: DDlogConvert + Debug,
     D: DeserializeOwned + Debug + Into<Update<DDValue>> + Send,
 {
     File(Arc<Mutex<FileSource<C>>>),
@@ -167,12 +174,11 @@ where
 
 /// All possible sinks of a Realization
 #[derive(Debug)]
-enum SinkRealization<C, S>
+enum SinkRealization<S>
 where
-    C: DDlogConvert,
     S: Serialize + Debug + Send + 'static,
 {
-    File(SharedObserver<FileSink<C>>),
+    File(SharedObserver<FileSink>),
     Node(SharedObserver<TcpSender<S>>),
 }
 
@@ -181,16 +187,16 @@ where
 /// Right now all that clients can do with an object of this type is
 /// dropping it to tear everything down.
 #[derive(Debug)]
-pub struct Realization<P>
+pub struct Realization<C, D>
 where
-    P: Send + DDlog + 'static,
-    P::Convert: Send + DDlogConvert,
+    C: Send + DDlogConvert + Debug,
+    D: Serialize + DeserializeOwned + Debug + Into<Update<DDValue>> + Send + 'static,
 {
     /// All sources of this realization and the subscription the node has to them
     _sources: HashMap<
         Source,
         (
-            Option<SourceRealization<P::Convert, P::UpdateSerializer>>,
+            Option<SourceRealization<C, D>>,
             SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>,
             usize,
         ),
@@ -203,15 +209,15 @@ where
         (
             SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>,
             UpdatesObservable<Update<DDValue>, String>,
-            HashMap<Sink, (SinkRealization<P::Convert, P::UpdateSerializer>, usize)>,
+            HashMap<Sink, (SinkRealization<D>, usize)>,
         ),
     >,
 }
 
-impl<P> Default for Realization<P>
+impl<C, D> Default for Realization<C, D>
 where
-    P: Send + DDlog + 'static,
-    P::Convert: Send + DDlogConvert,
+    C: Send + DDlogConvert + Debug,
+    D: Serialize + DeserializeOwned + Debug + Into<Update<DDValue>> + Send + 'static,
 {
     fn default() -> Self {
         Realization {
@@ -222,18 +228,27 @@ where
     }
 }
 
-impl<P> Realization<P>
+impl<C, D> Realization<C, D>
 where
-    P: Send + DDlog + 'static,
-    P::Convert: Send + DDlogConvert,
+    C: Send + DDlogConvert + Debug,
+    D: Serialize
+        + DeserializeOwned
+        + Debug
+        + Into<Update<DDValue>>
+        + From<Update<DDValue>>
+        + Send
+        + 'static,
 {
     /// Instantiates a new, default Realization.
-    pub fn new() -> Realization<P> {
+    pub fn new() -> Realization<C, D> {
         Default::default()
     }
 
     /// Subscribe the `TxnMux` of the existing realization to the given server.
-    pub fn subscribe_txnmux(&mut self, server: DDlogServer<P>) -> Result<(), &str> {
+    pub fn subscribe_txnmux<P>(&mut self, server: DDlogServer<P>) -> Result<(), &str>
+    where
+        P: Send + Sync + DDlogTyped + Debug + 'static,
+    {
         self._txnmux
             .subscribe(Box::new(server))
             .map_err(|_| "failed to subscribe DDlogServer to TxnMux")
@@ -281,7 +296,7 @@ where
 
     /// Add a file source to an existing realization.
     pub fn add_file_source(&mut self, path: &Path) -> Result<(), String> {
-        let mut source = Arc::new(Mutex::new(FileSource::<P::Convert>::new(path)));
+        let mut source = Arc::new(Mutex::new(FileSource::<C>::new(path)));
 
         let accumulator = Arc::new(Mutex::new(DistributingAccumulator::new()));
 
@@ -331,12 +346,16 @@ where
     /// Creates and adds accumulator for this rel_ids to the Realization if needed.
     /// Subscribes the accumulator to the sink and adds the sink to
     /// the accumulator's map.
-    pub fn add_sink(
+    pub fn add_sink<P>(
         &mut self,
         sink: &Sink,
         rel_ids: BTreeSet<RelId>,
         server: &mut DDlogServer<P>,
-    ) -> Result<(), String> {
+        inventory: Arc<dyn DDlogInventory + Send + Sync>,
+    ) -> Result<(), String>
+    where
+        P: Send + Sync + DDlogTyped + Debug + 'static,
+    {
         // Add the accumulator to the realization if needed.
         self.add_sink_accumulator(rel_ids.clone(), server)?;
         let (accumulator, _, sink_map) = self._sinks.get_mut(&rel_ids).unwrap();
@@ -345,7 +364,7 @@ where
             Sink::File(path) => {
                 let file = File::create(path)
                     .map_err(|e| format!("failed to create file {}:, {}", path.display(), e))?;
-                let file_sink = Arc::new(Mutex::new(FileSink::<P::Convert>::new(file)));
+                let file_sink = Arc::new(Mutex::new(FileSink::new(file, inventory)));
 
                 // Subscribe the accumulator to this sink.
                 let subscription = accumulator
@@ -392,11 +411,14 @@ where
     /// - Unsubscribe the stream from the accumulator.
     /// - Remove the stream from the server.
     /// Clear the accumulator.
-    pub fn remove_sink_accumulator(
+    pub fn remove_sink_accumulator<P>(
         &mut self,
         rel_ids: BTreeSet<RelId>,
         server: &mut DDlogServer<P>,
-    ) -> Result<(), String> {
+    ) -> Result<(), String>
+    where
+        P: Send + DDlogTyped + Debug + 'static,
+    {
         if let Some(entry) = self._sinks.remove(&rel_ids) {
             let (_, mut stream, sink_map) = entry;
             if sink_map.is_empty() {
@@ -417,11 +439,14 @@ where
     /// Creates and adds a sink accumulator to the existing Realization.
     /// Adds a stream to the server for the accumulator.
     /// Creates an entry in Realization _sinks for this rel_ids.
-    pub fn add_sink_accumulator(
+    pub fn add_sink_accumulator<P>(
         &mut self,
         rel_ids: BTreeSet<RelId>,
         server: &mut DDlogServer<P>,
-    ) -> Result<(), String> {
+    ) -> Result<(), String>
+    where
+        P: Send + DDlogTyped + Debug + 'static,
+    {
         if !self._sinks.contains_key(&rel_ids) {
             let accumulator = Arc::new(Mutex::new(DistributingAccumulator::new()));
             let mut update_observ = server.add_stream(rel_ids.clone());
@@ -487,48 +512,65 @@ where
 
     /// Add file sinks to the given server object, as per the node
     /// configuration.
-    fn add_file_sinks(
+    fn add_file_sinks<P>(
         &mut self,
         node_cfg: &NodeCfg,
         server: &mut DDlogServer<P>,
-    ) -> Result<(), String> {
+        inventory: Arc<dyn DDlogInventory + Send + Sync>,
+    ) -> Result<(), String>
+    where
+        P: Send + Sync + DDlogTyped + Debug + 'static,
+    {
         deduce_sinks_or_sources(node_cfg, true)
             .iter()
-            .try_for_each(|(path, rel_ids)| {
+            .try_for_each(move |(path, rel_ids)| {
                 let file = PathBuf::from(path);
                 let file_sink = Sink::File(file);
-                self.add_sink(&file_sink, rel_ids.clone(), server)
+                self.add_sink(&file_sink, rel_ids.clone(), server, inventory.clone())
             })
     }
 
     /// Add as many `TcpSender` objects as required given the provided node
     /// configuration.
-    fn add_tcp_senders(
+    fn add_tcp_senders<P>(
         &mut self,
         node_cfg: &NodeCfg,
         server: &mut DDlogServer<P>,
         assignment: &Assignment,
-    ) -> Result<(), String> {
+        inventory: Arc<dyn DDlogInventory + Send + Sync>,
+    ) -> Result<(), String>
+    where
+        P: Send + Sync + DDlogTyped + Debug + 'static,
+    {
         deduce_outputs(node_cfg, assignment)?
             .into_iter()
-            .try_for_each(|(addr, rel_ids)| {
+            .try_for_each(move |(addr, rel_ids)| {
                 let addr_sink = Sink::TcpSender(addr);
-                self.add_sink(&addr_sink, rel_ids, server)
+                self.add_sink(&addr_sink, rel_ids, server, inventory.clone())
             })
     }
 }
 
 /// Instantiate a configuration on a particular node under the given
 /// assignment.
-pub fn instantiate<P>(
+pub fn instantiate<P, C, D>(
     sys_cfg: SysCfg,
     addr: &Addr,
     assignment: &Assignment,
-) -> Result<Vec<Realization<P>>, String>
+    program: P,
+) -> Result<Vec<Realization<C, D>>, String>
 where
-    P: Send + DDlog + 'static,
-    P::Convert: Send + DDlogConvert,
+    P: Send + Sync + DDlogTyped + DDlogInventory + Debug + 'static,
+    C: Send + DDlogConvert + Debug,
+    D: Serialize
+        + DeserializeOwned
+        + Debug
+        + Into<Update<DDValue>>
+        + From<Update<DDValue>>
+        + Send
+        + 'static,
 {
+    let prog_arc = Arc::new(program);
     assignment
         .iter()
         .filter_map(|(uuid, assigned_addr)| {
@@ -539,7 +581,7 @@ where
             }
         })
         .try_fold(Vec::new(), |mut accumulator, node_cfg| {
-            realize::<P>(addr, node_cfg, assignment).map(|realization| {
+            realize::<P, C, D>(addr, node_cfg, assignment, prog_arc.clone()).map(|realization| {
                 accumulator.push(realization);
                 accumulator
             })

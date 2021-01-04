@@ -19,8 +19,8 @@ use ddlog_log::log_set_default_callback;
 use differential_datalog::ddval::*;
 use differential_datalog::program::*;
 use differential_datalog::record::*;
-use differential_datalog::DDlog;
 use differential_datalog::DeltaMap;
+use differential_datalog::{DDlogProfiling, DDlogTyped, DDlogUntyped};
 use num_traits::cast::ToPrimitive;
 use rustop::opts;
 
@@ -88,26 +88,19 @@ fn handle_cmd(
             println!("Timestamp: {}", start_time.elapsed().whole_nanoseconds());
             Ok(())
         }
-        Command::Profile(None) => {
-            let profile = hddlog.profile();
-            println!("Profile:\n{}", profile);
-            Ok(())
-        }
-        Command::Profile(Some(ProfileCmd::CPU(enable))) => {
-            hddlog.enable_cpu_profiling(enable);
-            Ok(())
-        }
+        Command::Profile(None) => hddlog
+            .profile()
+            .map(|profile| println!("Profile:\n{}", profile)),
+        Command::Profile(Some(ProfileCmd::CPU(enable))) => hddlog.enable_cpu_profiling(enable),
         Command::Profile(Some(ProfileCmd::Timely(enable))) => {
-            hddlog.enable_timely_profiling(enable);
-            Ok(())
+            hddlog.enable_timely_profiling(enable)
         }
 
         Command::Dump(None) => {
-            let _ = hddlog.db.as_ref().map(|db| {
-                db.lock()
-                    .unwrap()
-                    .format_as_sets::<DDlogConverter>(&mut stdout())
-            });
+            let _ = hddlog
+                .db
+                .as_ref()
+                .map(|db| db.lock().unwrap().format_as_sets(&mut stdout(), hddlog));
             Ok(())
         }
         Command::Dump(Some(rname)) => {
@@ -211,7 +204,7 @@ fn dump_delta(delta: &DeltaMap<DDValue>) {
 
 fn apply_updates(hddlog: &HDDlog, upds: &mut Vec<Update<DDValue>>) -> Response<()> {
     if !upds.is_empty() {
-        hddlog.apply_valupdates(upds.drain(..))
+        hddlog.apply_updates(&mut upds.drain(..))
     } else {
         Ok(())
     }
@@ -224,7 +217,7 @@ fn is_upd_cmd(c: &Command) -> bool {
     }
 }
 
-fn run(mut hddlog: HDDlog, print_deltas: bool) -> Result<(), String> {
+fn run(hddlog: HDDlog, print_deltas: bool) -> Result<(), String> {
     let upds = Arc::new(Mutex::new(Vec::new()));
     let start_time = Instant::now();
     interact(|cmd, interactive| {

@@ -1,15 +1,17 @@
 #[cfg(test)]
 mod tests {
     use distributed_datalog::{Addr, DDlogServer, Realization, Sink, Source};
-    use server_api_ddlog::api::HDDlog;
+    use server_api_ddlog::{DDlogConverter, UpdateSerializer};
+    use server_api_ddlog::api::{Inventory, HDDlog};
     use std::collections::{BTreeSet, HashMap};
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
     use std::path::PathBuf;
+    use std::sync::Arc;
     use tempfile::NamedTempFile;
 
     #[test]
     fn add_and_then_remove_file_source_from_realization() {
-        let mut realization = Realization::<HDDlog>::new();
+        let mut realization = Realization::<DDlogConverter, UpdateSerializer>::new();
 
         let file = NamedTempFile::new().unwrap();
         let path = file.path();
@@ -34,7 +36,7 @@ mod tests {
 
     #[test]
     fn add_and_then_remove_tcp_receiver_from_realization() {
-        let mut realization = Realization::<HDDlog>::new();
+        let mut realization = Realization::<DDlogConverter, UpdateSerializer>::new();
 
         let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 5000);
         // Check that realization has tcp receiver.
@@ -54,7 +56,7 @@ mod tests {
 
     #[test]
     fn add_and_remove_tcp_sender_sink() {
-        let mut realization = Realization::<HDDlog>::new();
+        let mut realization = Realization::<DDlogConverter, UpdateSerializer>::new();
 
         // Set up dummy realization.
         let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 5000);
@@ -63,12 +65,12 @@ mod tests {
         rel_ids.insert(2);
         rel_ids.insert(3);
 
-        let mut server = DDlogServer::new(None, HashMap::new());
+        let mut server = DDlogServer::<HDDlog>::new(None, HashMap::new());
         let sink = Sink::TcpSender(Addr::Ip(addr));
 
         // Check that realization successfully adds tcp sender sink.
         assert_eq!(
-            realization.add_sink(&sink, rel_ids.clone(), &mut server),
+            realization.add_sink(&sink, rel_ids.clone(), &mut server, Arc::new(Inventory)),
             Ok(())
         );
         // Check that realization has an accumulator for the sink and that the
@@ -89,7 +91,7 @@ mod tests {
     #[test]
     fn add_and_remove_file_sink() {
         // Set up dummy realization.
-        let mut realization = Realization::<HDDlog>::new();
+        let mut realization = Realization::<DDlogConverter, UpdateSerializer>::new();
 
         let file = NamedTempFile::new().unwrap();
         let path = file.path();
@@ -100,12 +102,12 @@ mod tests {
         rel_ids.insert(3);
 
         let pathbuf = PathBuf::from(path);
-        let mut server = DDlogServer::new(None, HashMap::new());
+        let mut server = DDlogServer::<HDDlog>::new(None, HashMap::new());
         let sink = Sink::File(pathbuf);
 
         // Check that realization successfully adds file sink.
         assert_eq!(
-            realization.add_sink(&sink, rel_ids.clone(), &mut server),
+            realization.add_sink(&sink, rel_ids.clone(), &mut server, Arc::new(Inventory)),
             Ok(())
         );
         // Check that realization has an accumulator for the sink and that the
@@ -127,7 +129,7 @@ mod tests {
     fn remove_sink_accumulator_prematurely() {
         // Should error if the accumulator to be removed still has sinks.
 
-        let mut realization = Realization::<HDDlog>::new();
+        let mut realization = Realization::<DDlogConverter, UpdateSerializer>::new();
 
         let file = NamedTempFile::new().unwrap();
         let path = file.path();
@@ -138,12 +140,12 @@ mod tests {
         rel_ids.insert(3);
 
         let pathbuf = PathBuf::from(path);
-        let mut server = DDlogServer::new(None, HashMap::new());
+        let mut server = DDlogServer::<HDDlog>::new(None, HashMap::new());
         let sink = Sink::File(pathbuf);
 
         // Check that the sink is added successfully.
         assert_eq!(
-            realization.add_sink(&sink, rel_ids.clone(), &mut server),
+            realization.add_sink(&sink, rel_ids.clone(), &mut server, Arc::new(Inventory)),
             Ok(())
         );
         // Check that removing the sink accumulator returns an error.
