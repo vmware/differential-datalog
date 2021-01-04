@@ -73,14 +73,6 @@ pub use ddlog_log as hidden_ddlog_log;
 pub struct DDlogConverter {}
 
 impl DDlogConvert for DDlogConverter {
-    fn relid2name(relId: program::RelId) -> Option<&'static str> {
-        relid2name(relId)
-    }
-
-    fn indexid2name(idxId: program::IdxId) -> Option<&'static str> {
-        indexid2name(idxId)
-    }
-
     fn updcmd2upd(upd_cmd: &UpdCmd) -> ::std::result::Result<program::Update<DDValue>, String> {
         updcmd2upd(upd_cmd)
     }

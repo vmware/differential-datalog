@@ -505,22 +505,22 @@ JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1dump_1index_1to_1flatbuf(
             direct_buf, (jlong)resbuf_size, (jlong)resbuf_offset);
 }
 JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1clear_1relation(
-    JNIEnv *env, jclass obj, jlong progHandle, jint relid) {
+    JNIEnv *env, jobject obj, jlong progHandle, jint relid) {
     int result = ddlog_clear_relation((ddlog_prog)progHandle, relid);
     return (jint)result;
 }
 
 JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1get_1table_1id(
-    JNIEnv *env, jclass class, jstring table) {
+    JNIEnv *env, jobject obj, jlong progHandle, jstring table) {
     const char* tbl = (*env)->GetStringUTFChars(env, table, NULL);
-    table_id id = ddlog_get_table_id(tbl);
+    table_id id = ddlog_get_table_id((ddlog_prog)progHandle, tbl);
     (*env)->ReleaseStringUTFChars(env, table, tbl);
     return (jint)id;
 }
 
 JNIEXPORT jstring JNICALL Java_ddlogapi_DDlogAPI_ddlog_1get_1table_1name(
-    JNIEnv *env, jclass class, jint id) {
-    const char* table = ddlog_get_table_name(id);
+    JNIEnv *env, jobject obj, jlong progHandle, jint id) {
+    const char* table = ddlog_get_table_name((ddlog_prog)progHandle, id);
     if (table == NULL) {
         throwDDlogException(env, "Unknown table id");
         return NULL;
@@ -530,16 +530,16 @@ JNIEXPORT jstring JNICALL Java_ddlogapi_DDlogAPI_ddlog_1get_1table_1name(
 }
 
 JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1get_1index_1id(
-    JNIEnv *env, jclass class, jstring index) {
+    JNIEnv *env, jobject obj, jlong progHandle, jstring index) {
     const char* tbl = (*env)->GetStringUTFChars(env, index, NULL);
-    table_id id = ddlog_get_index_id(tbl);
+    table_id id = ddlog_get_index_id((ddlog_prog)progHandle, tbl);
     (*env)->ReleaseStringUTFChars(env, index, tbl);
     return (jint)id;
 }
 
 JNIEXPORT jstring JNICALL Java_ddlogapi_DDlogAPI_ddlog_1get_1index_1name(
-    JNIEnv *env, jclass class, jint id) {
-    const char* index = ddlog_get_index_name(id);
+    JNIEnv *env, jobject obj, jlong progHandle, jint id) {
+    const char* index = ddlog_get_index_name((ddlog_prog)progHandle, id);
     if (index == NULL) {
         throwDDlogException(env, "Unknown index id");
         return NULL;

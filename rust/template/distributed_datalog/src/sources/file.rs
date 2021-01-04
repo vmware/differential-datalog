@@ -1,4 +1,5 @@
 use std::convert::TryFrom;
+use std::fmt::Debug;
 use std::fs::File as FsFile;
 use std::io::BufRead;
 use std::io::BufReader;
@@ -145,7 +146,7 @@ struct State {
 #[derive(Debug)]
 pub struct File<C>
 where
-    C: DDlogConvert,
+    C: DDlogConvert + Debug,
 {
     /// The file source's unique ID.
     id: usize,
@@ -159,7 +160,7 @@ where
 
 impl<C> File<C>
 where
-    C: DDlogConvert,
+    C: DDlogConvert + Debug,
 {
     /// Create a new adapter streaming data from the file at the given
     /// `path`.
@@ -200,7 +201,7 @@ where
 
 impl<C> Drop for File<C>
 where
-    C: DDlogConvert,
+    C: DDlogConvert + Debug,
 {
     fn drop(&mut self) {
         let _ = self.unsubscribe(&());
@@ -218,7 +219,7 @@ where
 
 impl<C> Observable<Update<DDValue>, String> for File<C>
 where
-    C: DDlogConvert,
+    C: DDlogConvert + Debug,
 {
     type Subscription = ();
 
@@ -277,8 +278,6 @@ mod tests {
     use test_env_log::test;
 
     use differential_datalog::ddval::DDValConvert;
-    use differential_datalog::program::IdxId;
-    use differential_datalog::program::RelId;
     use differential_datalog::record::UpdCmd;
     use differential_datalog_test::test_value::*;
 
@@ -292,14 +291,6 @@ mod tests {
     struct DummyConverter;
 
     impl DDlogConvert for DummyConverter {
-        fn relid2name(_rel_id: RelId) -> Option<&'static str> {
-            unimplemented!()
-        }
-
-        fn indexid2name(_idx_id: IdxId) -> Option<&'static str> {
-            unimplemented!()
-        }
-
         fn updcmd2upd(_upd_cmd: &UpdCmd) -> Result<Update<DDValue>, std::string::String> {
             // Exact details do not matter in this context, so just fake
             // some data.

@@ -1,16 +1,22 @@
-use std::fmt::Display;
-use std::io::Error;
-use std::io::Result;
+use std::collections::{BTreeMap, BTreeSet};
+use std::convert::AsRef;
+use std::fmt::{Debug, Display, Formatter};
+use std::io::Result as IOResult;
 use std::io::Write;
 use std::iter::Peekable;
+use std::ops::Deref;
+use std::string::ToString;
+use std::sync::Mutex;
 
-use crate::ddlog::DDlogConvert;
+use crate::ddlog::{DDlogDump, DDlogInventory, DDlogProfiling, DDlogTyped, DDlogUntyped};
 use crate::ddval::DDValue;
 use crate::program::IdxId;
 use crate::program::RelId;
 use crate::program::Update;
+use crate::record::Record;
 use crate::record::RelIdentifier;
 use crate::record::UpdCmd;
+use crate::DeltaMap;
 
 /// A custom iterator that indicates in each yielded element whether it
 /// is the last one or not.
@@ -48,254 +54,339 @@ where
     }
 }
 
-/// Convert a `RelIdentifier` into its symbolic name.
-fn relident2name<C>(rel_ident: &RelIdentifier) -> Option<&str>
-where
-    C: DDlogConvert,
-{
-    match rel_ident {
-        RelIdentifier::RelName(rname) => Some(rname.as_ref()),
-        RelIdentifier::RelId(id) => C::relid2name(*id),
+/// DDlog API implementation that records each command passing through it and
+/// forwards it to the next handler in the chain.
+///
+/// Error handling:
+/// If the next handler is specified, we invoke it, whether recording succeeded
+/// or failed, and return the status returned by the next handler. Otherwise, we
+/// return the error code produced by the writer.
+pub struct CommandRecorder<W, I> {
+    writer: Mutex<W>,
+    // Typically, `I` is `Box<dyn DDlogInventory + Send + Sync>` or
+    // `Arc<dyn DDlogInventory + Send + Sync>`
+    inventory: I,
+}
+
+impl<W, B> Debug for CommandRecorder<W, B> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "CommandRecorder")
     }
 }
 
-fn record_updates<'w, W, I, U, F, E>(
-    writer: &'w mut W,
-    updates: I,
-    mut record: F,
-    mut error: E,
-) -> impl Iterator<Item = U> + 'w
+impl<W, B> CommandRecorder<W, B> {
+    pub fn new(writer: W, inventory: B) -> Self {
+        CommandRecorder {
+            writer: Mutex::new(writer),
+            inventory,
+        }
+    }
+
+    pub fn release_writer(self) -> W {
+        self.writer.into_inner().unwrap()
+    }
+
+    /// Convert a `RelIdentifier` into its symbolic name.
+    fn relident2name<'a>(
+        inventory: &dyn DDlogInventory,
+        rel_ident: &'a RelIdentifier,
+    ) -> Option<&'a str> {
+        match rel_ident {
+            RelIdentifier::RelName(rname) => Some(rname.as_ref()),
+            RelIdentifier::RelId(id) => inventory.get_table_name(*id).ok(),
+        }
+    }
+}
+
+pub fn record_insert<V>(writer: &mut dyn Write, name: &str, value: V) -> IOResult<()>
+where
+    V: Display,
+{
+    write!(writer, "insert {}[{}]", name, value)
+}
+
+pub fn record_delete<V>(writer: &mut dyn Write, name: &str, value: V) -> IOResult<()>
+where
+    V: Display,
+{
+    write!(writer, "delete {}[{}]", name, value)
+}
+
+pub fn record_insert_or_update<V>(writer: &mut dyn Write, name: &str, value: V) -> IOResult<()>
+where
+    V: Display,
+{
+    write!(writer, "insert_or_update {}[{}]", name, value)
+}
+
+impl<W, I> CommandRecorder<W, I>
 where
     W: Write,
-    I: Iterator<Item = U> + 'w,
-    F: FnMut(&mut W, &U) -> Result<()> + 'w,
-    E: FnMut(Error) + 'w,
+    I: Deref<Target = dyn DDlogInventory + Send + Sync>,
 {
-    Peeking::new(updates).map(move |(upd, last)| {
-        let _ = record(writer, &upd)
-            .and_then(|_| {
-                if !last {
-                    writeln!(writer, ",")
-                } else {
-                    writeln!(writer, ";")
-                }
+    fn do_record_updates<It, U, F>(&self, updates: It, mut record: F) -> Result<(), String>
+    where
+        W: Write,
+        It: Iterator<Item = U>,
+        F: FnMut(&dyn DDlogInventory, &mut W, &U) -> IOResult<()>,
+    {
+        let mut writer = self.writer.lock().unwrap();
+        let inventory = &*self.inventory;
+        Peeking::new(updates)
+            .map(move |(upd, last)| {
+                record(inventory, &mut writer, &upd).and_then(|_| {
+                    if !last {
+                        writeln!(&mut writer, ",")
+                    } else {
+                        writeln!(&mut writer, ";")
+                    }
+                })
             })
-            .map_err(|e| error(e));
-
-        upd
-    })
-}
-
-/// Record a list of `UpdCmd` objects into the given writable object.
-///
-/// `error` is a function that is invoked whenever writing out a record
-/// failed. Note that such errors do not cause the overall operation to
-/// fail.
-pub fn record_upd_cmds<'w, C, W, I, F>(
-    writer: &'w mut W,
-    upds: I,
-    error: F,
-) -> impl Iterator<Item = &'w UpdCmd> + 'w
-where
-    C: DDlogConvert,
-    W: Write,
-    I: Iterator<Item = &'w UpdCmd> + 'w,
-    F: FnMut(Error) + 'w,
-{
-    record_updates(writer, upds, |w, u| w.record_upd_cmd::<C>(&u), error)
-}
-
-/// Record a list of `Update` objects into the given writable object.
-///
-/// `error` is a function that is invoked whenever writing out a record
-/// failed. Note that such errors do not cause the overall operation to
-/// fail.
-pub fn record_val_upds<'w, C, W, I, F>(
-    writer: &'w mut W,
-    upds: I,
-    error: F,
-) -> impl Iterator<Item = Update<DDValue>> + 'w
-where
-    C: DDlogConvert,
-    W: Write,
-    I: Iterator<Item = Update<DDValue>> + 'w,
-    F: FnMut(Error) + 'w,
-{
-    record_updates(writer, upds, |w, u| w.record_val_upd::<C>(&u), error)
-}
-
-/// A trait for recording various operations into something that can be written
-/// to, in order to be able to replay them at a later point in time.
-pub trait RecordReplay: Write {
-    /// Record a transaction start.
-    fn record_start(&mut self) -> Result<()> {
-        writeln!(self, "start;")
-    }
-
-    fn record_insert<V>(&mut self, name: &str, value: V) -> Result<()>
-    where
-        V: Display,
-    {
-        write!(self, "insert {}[{}]", name, value)
-    }
-
-    fn record_delete<V>(&mut self, name: &str, value: V) -> Result<()>
-    where
-        V: Display,
-    {
-        write!(self, "delete {}[{}]", name, value)
-    }
-
-    fn record_insert_or_update<V>(&mut self, name: &str, value: V) -> Result<()>
-    where
-        V: Display,
-    {
-        write!(self, "insert_or_update {}[{}]", name, value)
+            .collect::<Result<_, _>>()
+            .map_err(|e| e.to_string())
     }
 
     /// Record an `UpdCmd`.
-    fn record_upd_cmd<C>(&mut self, upd: &UpdCmd) -> Result<()>
-    where
-        C: DDlogConvert,
-    {
+    fn record_upd_cmd(
+        inventory: &dyn DDlogInventory,
+        writer: &mut W,
+        upd: &UpdCmd,
+    ) -> IOResult<()> {
         match upd {
-            UpdCmd::Insert(rel, record) => {
-                self.record_insert(relident2name::<C>(rel).unwrap_or(&"???"), record)
-            }
-            UpdCmd::InsertOrUpdate(rel, record) => {
-                self.record_insert_or_update(relident2name::<C>(rel).unwrap_or(&"???"), record)
-            }
-            UpdCmd::Delete(rel, record) => {
-                self.record_delete(relident2name::<C>(rel).unwrap_or(&"???"), record)
-            }
-            UpdCmd::DeleteKey(rel, record) => write!(
-                self,
-                "delete_key {} {}",
-                relident2name::<C>(rel).unwrap_or(&"???"),
+            UpdCmd::Insert(rel, record) => record_insert(
+                writer,
+                Self::relident2name(inventory, rel).unwrap_or(&"???"),
                 record,
             ),
-            UpdCmd::Modify(rel, key, mutator) => write!(
-                self,
-                "modify {} {} <- {}",
-                relident2name::<C>(rel).unwrap_or(&"???"),
-                key,
-                mutator,
+            UpdCmd::InsertOrUpdate(rel, record) => record_insert_or_update(
+                writer,
+                Self::relident2name(inventory, rel).unwrap_or(&"???"),
+                record,
             ),
+            UpdCmd::Delete(rel, record) => record_delete(
+                writer,
+                Self::relident2name(inventory, rel).unwrap_or(&"???"),
+                record,
+            ),
+            UpdCmd::DeleteKey(rel, record) => {
+                let rname = Self::relident2name(inventory, rel).unwrap_or(&"???");
+                write!(writer, "delete_key {} {}", rname, record,)
+            }
+            UpdCmd::Modify(rel, key, mutator) => {
+                let rname = Self::relident2name(inventory, rel).unwrap_or(&"???");
+                write!(writer, "modify {} {} <- {}", rname, key, mutator,)
+            }
         }
     }
 
     /// Record an `Update`.
-    fn record_val_upd<C>(&mut self, upd: &Update<DDValue>) -> Result<()>
-    where
-        C: DDlogConvert,
-    {
+    fn record_val_upd(
+        inventory: &dyn DDlogInventory,
+        writer: &mut W,
+        upd: &Update<DDValue>,
+    ) -> IOResult<()> {
         match upd {
-            Update::Insert { relid, v } => {
-                self.record_insert(C::relid2name(*relid).unwrap_or(&"???"), v)
-            }
-            Update::InsertOrUpdate { relid, v } => {
-                self.record_insert_or_update(C::relid2name(*relid).unwrap_or(&"???"), v)
-            }
-            Update::DeleteValue { relid, v } => {
-                self.record_delete(C::relid2name(*relid).unwrap_or(&"???"), v)
-            }
+            Update::Insert { relid, v } => record_insert(
+                writer,
+                inventory.get_table_name(*relid).unwrap_or(&"???"),
+                v,
+            ),
+            Update::InsertOrUpdate { relid, v } => record_insert_or_update(
+                writer,
+                inventory.get_table_name(*relid).unwrap_or(&"???"),
+                v,
+            ),
+            Update::DeleteValue { relid, v } => record_delete(
+                writer,
+                inventory.get_table_name(*relid).unwrap_or(&"???"),
+                v,
+            ),
             Update::DeleteKey { relid, k } => write!(
-                self,
+                writer,
                 "delete_key {} {}",
-                C::relid2name(*relid).unwrap_or(&"???"),
+                inventory.get_table_name(*relid).unwrap_or(&"???"),
                 k,
             ),
             Update::Modify { relid, k, m } => write!(
-                self,
+                writer,
                 "modify {} {} <- {}",
-                C::relid2name(*relid).unwrap_or(&"???"),
+                inventory.get_table_name(*relid).unwrap_or(&"???"),
                 k,
                 m,
             ),
         }
     }
+}
 
-    /// Record a transaction commit.
-    fn record_commit(&mut self, record_changes: bool) -> Result<()> {
-        if record_changes {
-            writeln!(self, "commit dump_changes;")
-        } else {
-            writeln!(self, "commit;")
-        }
+impl<W, I> DDlogUntyped for CommandRecorder<W, I>
+where
+    W: Write,
+    I: Deref<Target = dyn DDlogInventory + Send + Sync>,
+{
+    fn transaction_start(&self) -> Result<(), String> {
+        let mut writer = self.writer.lock().unwrap();
+        writeln!(&mut writer, "start;").map_err(|e| e.to_string())
     }
 
-    /// Record a transaction rollback.
-    fn record_rollback(&mut self) -> Result<()> {
-        writeln!(self, "rollback;")
+    fn transaction_commit(&self) -> Result<(), String> {
+        let mut writer = self.writer.lock().unwrap();
+        writeln!(&mut writer, "commit;").map_err(|e| e.to_string())
     }
 
-    /// Record a clear command.
-    fn record_clear<C>(&mut self, rid: RelId) -> Result<()>
-    where
-        C: DDlogConvert,
-    {
-        writeln!(self, "clear {};", C::relid2name(rid).unwrap_or(&"???"))
+    fn transaction_commit_dump_changes_untyped(
+        &self,
+    ) -> Result<BTreeMap<RelId, Vec<(Record, isize)>>, String> {
+        let mut writer = self.writer.lock().unwrap();
+        writeln!(&mut writer, "commit dump_changes;")
+            .map(|_| BTreeMap::new())
+            .map_err(|e| e.to_string())
     }
 
-    /// Record a dump command.
-    fn record_dump<C>(&mut self, rid: RelId) -> Result<()>
-    where
-        C: DDlogConvert,
-    {
-        writeln!(self, "dump {};", C::relid2name(rid).unwrap_or(&"???"))
+    fn transaction_rollback(&self) -> Result<(), String> {
+        let mut writer = self.writer.lock().unwrap();
+        writeln!(&mut writer, "rollback;").map_err(|e| e.to_string())
     }
 
-    /// Record a dump_index command.
-    fn record_dump_index<C>(&mut self, iid: IdxId) -> Result<()>
-    where
-        C: DDlogConvert,
-    {
+    fn apply_updates_untyped(&self, upds: &mut dyn Iterator<Item = UpdCmd>) -> Result<(), String> {
+        self.do_record_updates(upds, |i, w, u| Self::record_upd_cmd(i, w, &u))
+    }
+
+    fn clear_relation(&self, rid: RelId) -> Result<(), String> {
+        let mut writer = self.writer.lock().unwrap();
         writeln!(
-            self,
-            "dump_index {};",
-            C::indexid2name(iid).unwrap_or(&"???")
+            &mut writer,
+            "clear {};",
+            self.inventory.get_table_name(rid).unwrap_or(&"???")
         )
+        .map_err(|e| e.to_string())
     }
 
-    /// Record a dump_index command.
-    fn record_query_index<C>(&mut self, iid: IdxId, key: &DDValue) -> Result<()>
-    where
-        C: DDlogConvert,
-    {
+    fn query_index_untyped(&self, iid: IdxId, key: &Record) -> Result<Vec<Record>, String> {
+        let mut writer = self.writer.lock().unwrap();
         writeln!(
-            self,
+            &mut writer,
             "query_index {}({});",
-            C::indexid2name(iid).unwrap_or(&"???"),
+            self.inventory.get_index_name(iid).unwrap_or(&"???"),
             key
         )
+        .map(|_| vec![])
+        .map_err(|e| e.to_string())
     }
 
-    /// Record CPU profiling.
-    fn record_cpu_profiling(&mut self, enable: bool) -> Result<()> {
-        writeln!(self, "profile cpu {};", if enable { "on" } else { "off" })
-    }
-
-    fn record_timely_profiling(&mut self, enable: bool) -> Result<()> {
+    fn dump_index_untyped(&self, iid: IdxId) -> Result<Vec<Record>, String> {
+        let mut writer = self.writer.lock().unwrap();
         writeln!(
-            self,
+            &mut writer,
+            "dump_index {};",
+            self.inventory.get_index_name(iid).unwrap_or(&"???")
+        )
+        .map(|_| vec![])
+        .map_err(|e| e.to_string())
+    }
+
+    fn stop(&self) -> Result<(), String> {
+        Ok(())
+    }
+}
+
+impl<W, I> DDlogTyped for CommandRecorder<W, I>
+where
+    W: Write,
+    I: Deref<Target = dyn DDlogInventory + Send + Sync>,
+{
+    fn transaction_commit_dump_changes(&self) -> Result<DeltaMap<DDValue>, String> {
+        let mut writer = self.writer.lock().unwrap();
+        writeln!(&mut writer, "commit dump_changes;")
+            .map(|_| DeltaMap::new())
+            .map_err(|e| e.to_string())
+    }
+
+    fn apply_updates(&self, upds: &mut dyn Iterator<Item = Update<DDValue>>) -> Result<(), String> {
+        self.do_record_updates(upds, |i, w, u| Self::record_val_upd(i, w, &u))
+    }
+
+    fn query_index(&self, iid: IdxId, key: DDValue) -> Result<BTreeSet<DDValue>, String> {
+        let mut writer = self.writer.lock().unwrap();
+        writeln!(
+            &mut writer,
+            "query_index {}({});",
+            self.inventory.get_index_name(iid).unwrap_or(&"???"),
+            key
+        )
+        .map(|_| BTreeSet::new())
+        .map_err(|e| e.to_string())
+    }
+
+    fn dump_index(&self, iid: IdxId) -> Result<BTreeSet<DDValue>, String> {
+        let mut writer = self.writer.lock().unwrap();
+        writeln!(
+            &mut writer,
+            "dump_index {};",
+            self.inventory.get_index_name(iid).unwrap_or(&"???")
+        )
+        .map(|_| BTreeSet::new())
+        .map_err(|e| e.to_string())
+    }
+}
+
+impl<W, I> DDlogDump for CommandRecorder<W, I>
+where
+    W: Write,
+    I: Deref<Target = dyn DDlogInventory + Send + Sync>,
+{
+    fn dump_table(
+        &self,
+        rid: RelId,
+        _cb: Option<&dyn Fn(&Record, isize) -> bool>,
+    ) -> Result<(), String> {
+        let mut writer = self.writer.lock().unwrap();
+        writeln!(
+            &mut writer,
+            "dump {};",
+            self.inventory.get_table_name(rid).unwrap_or(&"???")
+        )
+        .map_err(|e| e.to_string())
+    }
+
+    fn dump_input_snapshot(&self, _w: &mut dyn Write) -> IOResult<()> {
+        Ok(())
+    }
+}
+
+impl<W, I> DDlogProfiling for CommandRecorder<W, I>
+where
+    W: Write,
+    I: Deref<Target = dyn DDlogInventory + Send + Sync>,
+{
+    fn enable_cpu_profiling(&self, enable: bool) -> Result<(), String> {
+        let mut writer = self.writer.lock().unwrap();
+        writeln!(
+            &mut writer,
+            "profile cpu {};",
+            if enable { "on" } else { "off" }
+        )
+        .map_err(|e| e.to_string())
+    }
+
+    fn enable_timely_profiling(&self, enable: bool) -> Result<(), String> {
+        let mut writer = self.writer.lock().unwrap();
+        writeln!(
+            &mut writer,
             "profile timely {};",
             if enable { "on" } else { "off" }
         )
+        .map_err(|e| e.to_string())
     }
 
-    /// Record profiling.
-    fn record_profile(&mut self) -> Result<()> {
-        writeln!(self, "profile;")
+    fn profile(&self) -> Result<String, String> {
+        let mut writer = self.writer.lock().unwrap();
+        writeln!(&mut writer, "profile;")
+            .map_err(|e| e.to_string())
+            .map(|_| "".to_string())
     }
 }
 
-impl<W> RecordReplay for W
-where
-    W: Write,
-{
-    // The default implementation is just fine.
-}
-
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -308,8 +399,12 @@ mod tests {
             let iter = updates.iter();
             let error = |e| panic!("{}", e);
 
-            record_updates(&mut buf, iter, |w, r| write!(w, "update {}", r), error)
-                .for_each(|_| ());
+            let recorder = CommandRecorder::new(&mut buf);
+            recorder.do_record_updates(
+                iter,
+                |w, r| write!(w, "update {}", r),
+            )
+            .for_each(|_| ());
 
             assert_eq!(buf.as_slice(), expected.as_bytes());
         }
@@ -328,3 +423,4 @@ update 10;
         test(updates, expected);
     }
 }
+*/

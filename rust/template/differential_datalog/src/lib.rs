@@ -9,7 +9,7 @@ mod callback;
 mod ddlog;
 mod profile;
 mod profile_statistics;
-mod replay;
+pub mod replay;
 mod valmap;
 mod variable;
 
@@ -24,9 +24,7 @@ pub mod record;
 mod test_record;
 
 pub use callback::Callback;
-pub use ddlog::DDlog;
 pub use ddlog::DDlogConvert;
-pub use replay::record_upd_cmds;
-pub use replay::record_val_upds;
-pub use replay::RecordReplay;
+pub use ddlog::{DDlogDump, DDlogInventory, DDlogProfiling, DDlogTyped, DDlogUntyped};
+pub use replay::CommandRecorder;
 pub use valmap::DeltaMap;

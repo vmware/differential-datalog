@@ -9,7 +9,7 @@ use uid::Id;
 use differential_datalog::ddval::DDValue;
 use differential_datalog::program::RelId;
 use differential_datalog::program::Update;
-use differential_datalog::DDlog;
+use differential_datalog::DDlogTyped;
 
 use crate::observe::Observer;
 use crate::observe::ObserverBox;
@@ -29,21 +29,21 @@ pub struct Outlet {
 #[derive(Debug)]
 pub struct DDlogServer<P>
 where
-    P: DDlog,
+    P: DDlogTyped,
 {
     id: usize,
     created: Instant,
-    prog: Option<P>,
+    prog: Option<Arc<P>>,
     outlets: Vec<Outlet>,
     redirect: HashMap<RelId, RelId>,
 }
 
 impl<P> DDlogServer<P>
 where
-    P: DDlog,
+    P: DDlogTyped,
 {
     /// Create a new server with no outlets.
-    pub fn new(prog: Option<P>, redirect: HashMap<RelId, RelId>) -> Self {
+    pub fn new(prog: Option<Arc<P>>, redirect: HashMap<RelId, RelId>) -> Self {
         let created = Instant::now();
         let id = Id::<()>::new().get();
         trace!("DDlogServer({})::new", id);
@@ -87,7 +87,7 @@ where
         // TODO: Right now we may error out early if an observer's
         //       `on_completed` fails. In the future we probably want to push
         //       those errors somewhere and then continue.
-        if let Some(mut prog) = self.prog.take() {
+        if let Some(prog) = self.prog.take() {
             for outlet in &mut self.outlets {
                 outlet.observer.on_completed()?
             }
@@ -99,7 +99,7 @@ where
 
 impl<P> Observer<Update<DDValue>, String> for DDlogServer<P>
 where
-    P: Debug + Send + DDlog,
+    P: Debug + Send + Sync + DDlogTyped,
 {
     /// Start a transaction when deltas start coming in.
     fn on_start(&mut self) -> Result<(), String> {
@@ -168,7 +168,7 @@ where
         trace!("DDlogServer({})::on_updates", self.id);
 
         if let Some(ref prog) = self.prog {
-            prog.apply_valupdates(updates.map(|upd| match upd {
+            prog.apply_updates(&mut updates.map(|upd| match upd {
                 Update::Insert { relid, v } => Update::Insert {
                     relid: *self.redirect.get(&relid).unwrap_or(&relid),
                     v,
@@ -197,7 +197,7 @@ where
 
 impl<P> Drop for DDlogServer<P>
 where
-    P: DDlog,
+    P: DDlogTyped,
 {
     /// Shutdown the DDlog program and notify listeners of completion.
     fn drop(&mut self) {

@@ -15,6 +15,7 @@ use distributed_datalog::Addr;
 use distributed_datalog::Member;
 
 use server_api_ddlog::api::HDDlog;
+use server_api_ddlog::{DDlogConverter, UpdateSerializer};
 use server_api_test::config;
 
 /// Test delta retrieval in the face of two concurrent transactions over
@@ -52,9 +53,9 @@ fn instantiate_configuration_end_to_end() -> Result<(), String> {
 
     let sys_cfg = config(path1.as_ref(), path2.as_ref(), path3.as_ref());
     let assignment = simple_assign(sys_cfg.keys(), members.iter()).unwrap();
-    let _realization1 = instantiate::<HDDlog>(sys_cfg.clone(), &node1, &assignment).unwrap();
-    let _realization2 = instantiate::<HDDlog>(sys_cfg.clone(), &node2, &assignment).unwrap();
-    let _realization3 = instantiate::<HDDlog>(sys_cfg.clone(), &node3, &assignment).unwrap();
+    let _realization1 = instantiate::<HDDlog, DDlogConverter, UpdateSerializer>(sys_cfg.clone(), &node1, &assignment, HDDlog::run(1, false).unwrap().0).unwrap();
+    let _realization2 = instantiate::<HDDlog, DDlogConverter, UpdateSerializer>(sys_cfg.clone(), &node2, &assignment, HDDlog::run(1, false).unwrap().0).unwrap();
+    let _realization3 = instantiate::<HDDlog, DDlogConverter, UpdateSerializer>(sys_cfg.clone(), &node3, &assignment, HDDlog::run(1, false).unwrap().0).unwrap();
 
     await_expected(move || {
         let mut string = String::new();

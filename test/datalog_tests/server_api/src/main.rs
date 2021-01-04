@@ -25,6 +25,7 @@ use distributed_datalog::ReadMembers;
 use distributed_datalog::Realization;
 
 use server_api_ddlog::api::HDDlog;
+use server_api_ddlog::{DDlogConverter, UpdateSerializer};
 use server_api_test::config;
 
 #[derive(StructOpt, Debug)]
@@ -106,21 +107,21 @@ fn manual(
 
     let assignment = simple_assign(sys_cfg.keys(), members.iter())
         .ok_or_else(|| format!("failed to find an node:member assignment"))?;
-    let _realization = instantiate::<HDDlog>(sys_cfg.clone(), &member, &assignment)?;
+    let _realization = instantiate::<HDDlog, DDlogConverter, UpdateSerializer>(sys_cfg.clone(), &member, &assignment, HDDlog::run(1, false).unwrap().0)?;
 
     println!("Configuration is running. Stop with Ctrl-C.");
     park();
     Ok(())
 }
 
-fn reconfigure(member: &Addr, zookeeper: &ZooKeeper) -> Result<Vec<Realization<HDDlog>>, String> {
+fn reconfigure(member: &Addr, zookeeper: &ZooKeeper) -> Result<Vec<Realization<DDlogConverter, UpdateSerializer>>, String> {
     let members = zookeeper.members()?;
     let sys_cfg = zookeeper.config()?;
 
     let assignment = simple_assign(sys_cfg.keys(), members.iter())
         .ok_or_else(|| format!("failed to find an node:member assignment"))?;
 
-    let realization = instantiate::<HDDlog>(sys_cfg, member, &assignment)?;
+    let realization = instantiate::<HDDlog, DDlogConverter, UpdateSerializer>(sys_cfg, member, &assignment, HDDlog::run(1, false).unwrap().0)?;
     Ok(realization)
 }
 
@@ -151,7 +152,7 @@ fn reconfig_state(member: &Addr, state: &Mutex<State>) -> Result<(), String> {
 #[derive(Default)]
 struct State {
     zookeeper: Option<ZooKeeper>,
-    realization: Option<Vec<Realization<HDDlog>>>,
+    realization: Option<Vec<Realization<DDlogConverter, UpdateSerializer>>>,
 }
 
 impl State {
