@@ -21,13 +21,12 @@ use std::sync::{Arc, Mutex};
 
 use differential_datalog::ddval::*;
 use differential_datalog::program::*;
-use differential_datalog::record;
-use differential_datalog::record::IntoRecord;
-use differential_datalog::record_val_upds;
+use differential_datalog::record::{IntoRecord, Record};
+use differential_datalog::replay;
 use differential_datalog::Callback;
-use differential_datalog::DDlog;
+use differential_datalog::CommandRecorder;
 use differential_datalog::DeltaMap;
-use differential_datalog::RecordReplay;
+use differential_datalog::{DDlogDump, DDlogInventory, DDlogProfiling, DDlogTyped, DDlogUntyped};
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 
@@ -51,11 +50,17 @@ pub struct HDDlog {
     pub print_err: Option<extern "C" fn(msg: *const raw::c_char)>,
     /// When set, all commands sent to the program are recorded in
     /// the specified `.dat` file so that they can be replayed later.
-    pub replay_file: Option<Mutex<fs::File>>,
+    pub command_recorder: Option<CommandRecorder<fs::File, Box<dyn DDlogInventory + Send + Sync>>>,
 }
 
-/* Public API */
 impl HDDlog {
+    pub fn run(workers: usize, do_store: bool) -> Result<(Self, DeltaMap<DDValue>), String>
+    where
+        Self: Sized,
+    {
+        Self::do_run(workers, do_store, None)
+    }
+
     pub fn print_err(f: Option<extern "C" fn(msg: *const raw::c_char)>, msg: &str) {
         match f {
             None => eprintln!("{}", msg),
@@ -67,53 +72,113 @@ impl HDDlog {
         Self::print_err(self.print_err, msg)
     }
 
-    pub fn get_table_id(tname: &str) -> Result<Relations, String> {
-        Relations::try_from(tname).map_err(|()| format!("unknown relation {}", tname))
+    pub fn record_commands(&mut self, file: &mut Option<fs::File>) {
+        let mut old_recorder = None;
+        mem::swap(&mut self.command_recorder, &mut old_recorder);
+        let mut old_file = old_recorder.map(|r| r.release_writer());
+        mem::swap(file, &mut old_file);
+
+        match old_file {
+            None => self.command_recorder = None,
+            Some(f) => self.command_recorder = Some(CommandRecorder::new(f, Box::new(Inventory))),
+        }
     }
 
-    pub fn get_table_name(tid: RelId) -> Result<&'static str, String> {
+    /// Apply a set of updates directly from the flatbuffer
+    /// representation
+    #[cfg(feature = "flatbuf")]
+    fn apply_updates_from_flatbuf(&self, buf: &[u8]) -> Result<(), String> {
+        let cmditer = flatbuf::updates_from_flatbuf(buf)?;
+        let upds: Result<Vec<Update<DDValue>>, String> = cmditer
+            .map(|cmd| flatbuf::DDValueUpdate::from_flatbuf(cmd).map(|x| x.0))
+            .collect();
+        self.apply_updates(&mut upds?.into_iter())
+    }
+
+    /// Similar to `query_index`, but extracts query from a flatbuffer.
+    #[cfg(feature = "flatbuf")]
+    fn query_index_from_flatbuf(&self, buf: &[u8]) -> Result<BTreeSet<DDValue>, String> {
+        let (idxid, key) = flatbuf::query_from_flatbuf(buf)?;
+        self.query_index(idxid, key)
+    }
+}
+
+pub struct Inventory;
+
+impl DDlogInventory for Inventory {
+    fn get_table_id(&self, tname: &str) -> Result<RelId, String> {
+        Relations::try_from(tname)
+            .map_err(|()| format!("unknown relation {}", tname))
+            .map(|rel| rel as RelId)
+    }
+
+    fn get_table_name(&self, tid: RelId) -> Result<&'static str, String> {
         relid2name(tid).ok_or_else(|| format!("unknown relation {}", tid))
     }
 
     #[cfg(feature = "c_api")]
-    pub fn get_table_cname(tid: RelId) -> Result<&'static ffi::CStr, String> {
+    fn get_table_cname(&self, tid: RelId) -> Result<&'static ffi::CStr, String> {
         relid2cname(tid).ok_or_else(|| format!("unknown relation {}", tid))
     }
 
-    pub fn get_index_id(iname: &str) -> Result<Indexes, String> {
-        Indexes::try_from(iname).map_err(|()| format!("unknown index {}", iname))
+    fn get_index_id(&self, iname: &str) -> Result<IdxId, String> {
+        Indexes::try_from(iname)
+            .map_err(|()| format!("unknown index {}", iname))
+            .map(|idx| idx as IdxId)
     }
 
-    pub fn get_index_name(iid: IdxId) -> Result<&'static str, String> {
+    fn get_index_name(&self, iid: IdxId) -> Result<&'static str, String> {
         indexid2name(iid).ok_or_else(|| format!("unknown index {}", iid))
     }
 
     #[cfg(feature = "c_api")]
-    pub fn get_index_cname(iid: IdxId) -> Result<&'static ffi::CStr, String> {
+    fn get_index_cname(&self, iid: IdxId) -> Result<&'static ffi::CStr, String> {
         indexid2cname(iid).ok_or_else(|| format!("unknown index {}", iid))
     }
+}
 
-    pub fn record_commands(&mut self, file: &mut Option<Mutex<fs::File>>) {
-        mem::swap(&mut self.replay_file, file);
+impl DDlogInventory for HDDlog {
+    fn get_table_id(&self, tname: &str) -> Result<RelId, String> {
+        Inventory.get_table_id(tname)
     }
 
-    pub fn dump_input_snapshot<W>(&self, w: &mut W) -> io::Result<()>
-    where
-        W: io::Write,
-    {
+    fn get_table_name(&self, tid: RelId) -> Result<&'static str, String> {
+        Inventory.get_table_name(tid)
+    }
+
+    #[cfg(feature = "c_api")]
+    fn get_table_cname(&self, tid: RelId) -> Result<&'static ffi::CStr, String> {
+        Inventory.get_table_cname(tid)
+    }
+
+    fn get_index_id(&self, iname: &str) -> Result<IdxId, String> {
+        Inventory.get_index_id(iname)
+    }
+
+    fn get_index_name(&self, iid: IdxId) -> Result<&'static str, String> {
+        Inventory.get_index_name(iid)
+    }
+
+    #[cfg(feature = "c_api")]
+    fn get_index_cname(&self, iid: IdxId) -> Result<&'static ffi::CStr, String> {
+        Inventory.get_index_cname(iid)
+    }
+}
+impl DDlogDump for HDDlog {
+    fn dump_input_snapshot(&self, w: &mut dyn io::Write) -> io::Result<()> {
         for (rel, relname) in INPUT_RELIDMAP.iter() {
             let prog = self.prog.lock().unwrap();
             match prog.get_input_relation_data(*rel as RelId) {
                 Ok(valset) => {
                     for v in valset.iter() {
-                        w.record_insert(relname, v)?;
+                        replay::record_insert(w, relname, v)?;
                         writeln!(w, ",")?;
                     }
                 }
                 _ => match prog.get_input_relation_index(*rel as RelId) {
                     Ok(ivalset) => {
                         for v in ivalset.values() {
-                            w.record_insert(relname, v)?;
+                            replay::record_insert(w, relname, v)?;
                             writeln!(w, ",")?;
                         }
                     }
@@ -122,12 +187,12 @@ impl HDDlog {
                             for (v, weight) in ivalmset.iter() {
                                 if *weight >= 0 {
                                     for _ in 0..*weight {
-                                        w.record_insert(relname, v)?;
+                                        replay::record_insert(w, relname, v)?;
                                         writeln!(w, ",")?;
                                     }
                                 } else {
                                     for _ in 0..(-*weight) {
-                                        w.record_delete(relname, v)?;
+                                        replay::record_delete(w, relname, v)?;
                                         writeln!(w, ",")?;
                                     }
                                 }
@@ -143,68 +208,163 @@ impl HDDlog {
         Ok(())
     }
 
-    pub fn clear_relation(&self, table: usize) -> Result<(), String> {
-        self.record_clear_relation(table);
-        self.prog.lock().unwrap().clear_relation(table)
-    }
-
-    pub fn dump_table<F>(&self, table: usize, cb: Option<F>) -> Result<(), &'static str>
-    where
-        F: Fn(&record::Record, isize) -> bool,
-    {
-        self.record_dump_table(table);
+    fn dump_table(
+        &self,
+        table: RelId,
+        cb: Option<&dyn Fn(&record::Record, isize) -> bool>,
+    ) -> Result<(), String> {
+        self.record_command(|r| r.dump_table(table, None));
         if let Some(ref db) = self.db {
             HDDlog::db_dump_table(&mut db.lock().unwrap(), table, cb);
             Ok(())
         } else {
-            Err("cannot dump table: ddlog_run() was invoked with do_store flag set to false")
+            Err(
+                "cannot dump table: ddlog_run() was invoked with do_store flag set to false"
+                    .to_string(),
+            )
         }
-    }
-
-    /// Controls recording of differential operator runtimes.  When enabled,
-    /// DDlog records each activation of every operator and prints the
-    /// per-operator CPU usage summary in the profile.  When disabled, the
-    /// recording stops, but the previously accumulated profile is preserved.
-    ///
-    /// Recording CPU events can be expensive in large dataflows and is
-    /// therefore disabled by default.
-    pub fn enable_cpu_profiling(&self, enable: bool) {
-        self.record_enable_cpu_profiling(enable);
-        self.prog.lock().unwrap().enable_cpu_profiling(enable);
-    }
-
-    pub fn enable_timely_profiling(&self, enable: bool) {
-        self.record_enable_timely_profiling(enable);
-        self.prog.lock().unwrap().enable_timely_profiling(enable);
-    }
-
-    /// returns DDlog program runtime profile
-    pub fn profile(&self) -> String {
-        self.record_profile();
-        let rprog = self.prog.lock().unwrap();
-        let profile: String = rprog.profile.lock().unwrap().to_string();
-        profile
     }
 }
 
-impl DDlog for HDDlog {
-    type Convert = DDlogConverter;
-    type UpdateSerializer = UpdateSerializer;
-
-    fn run(workers: usize, do_store: bool) -> Result<(Self, DeltaMap<DDValue>), String>
-    where
-        Self: Sized,
-    {
-        Self::do_run(workers, do_store, None)
+impl DDlogProfiling for HDDlog {
+    fn enable_cpu_profiling(&self, enable: bool) -> Result<(), String> {
+        self.record_command(|r| r.enable_cpu_profiling(enable));
+        self.prog.lock().unwrap().enable_cpu_profiling(enable);
+        Ok(())
     }
 
+    fn enable_timely_profiling(&self, enable: bool) -> Result<(), String> {
+        self.record_command(|r| r.enable_timely_profiling(enable));
+        self.prog.lock().unwrap().enable_timely_profiling(enable);
+        Ok(())
+    }
+
+    fn profile(&self) -> Result<String, String> {
+        self.record_command(|r| r.profile());
+        let rprog = self.prog.lock().unwrap();
+        let profile: String = rprog.profile.lock().unwrap().to_string();
+        Ok(profile)
+    }
+}
+
+impl DDlogUntyped for HDDlog {
     fn transaction_start(&self) -> Result<(), String> {
-        self.record_transaction_start();
+        self.record_command(|r| r.transaction_start());
         self.prog.lock().unwrap().transaction_start()
     }
 
+    fn transaction_commit(&self) -> Result<(), String> {
+        self.record_command(|r| r.transaction_commit());
+        self.update_handler.before_commit();
+
+        match (self.prog.lock().unwrap().transaction_commit()) {
+            Ok(()) => {
+                self.update_handler.after_commit(true);
+                Ok(())
+            }
+            Err(e) => {
+                self.update_handler.after_commit(false);
+                Err(e)
+            }
+        }
+    }
+
+    fn transaction_commit_dump_changes_untyped(
+        &self,
+    ) -> Result<BTreeMap<RelId, Vec<(Record, isize)>>, String> {
+        self.record_command(|r| r.transaction_commit_dump_changes_untyped());
+        Ok(self
+            .transaction_commit_dump_changes()?
+            .into_iter()
+            .map(|(relid, delta_typed)| {
+                let delta_untyped: Vec<(Record, isize)> = delta_typed
+                    .into_iter()
+                    .map(|(v, w)| (v.into_record(), w))
+                    .collect();
+                (relid, delta_untyped)
+            })
+            .collect())
+    }
+
+    fn transaction_rollback(&self) -> Result<(), String> {
+        self.record_command(|r| r.transaction_rollback());
+        self.prog.lock().unwrap().transaction_rollback()
+    }
+
+    fn clear_relation(&self, table: RelId) -> Result<(), String> {
+        self.record_command(|r| r.clear_relation(table));
+        self.prog.lock().unwrap().clear_relation(table)
+    }
+
+    fn apply_updates_untyped(&self, upds: &mut dyn Iterator<Item = UpdCmd>) -> Result<(), String> {
+        let mut conversion_err = false;
+        let mut msg: Option<String> = None;
+
+        // Iterate through all updates, but only feed them to `apply_updates` until we reach
+        // the first invalid command.
+        // XXX: We must iterate till the end of `upds`, as `ddlog_apply_updates` relies on this to
+        // deallocate all commands.
+        let convert = |u: UpdCmd| {
+            if conversion_err {
+                None
+            } else {
+                match updcmd2upd(&u) {
+                    Ok(u) => Some(u),
+                    Err(e) => {
+                        conversion_err = true;
+                        msg = Some(format!("invalid command {:?}: {}", u, e));
+                        None
+                    }
+                }
+            }
+        };
+
+        let res = if self.command_recorder.is_some() {
+            let update_vec: Vec<_> = upds.collect();
+            self.record_command(|r| r.apply_updates_untyped(&mut update_vec.iter().cloned()));
+
+            self.apply_updates(&mut update_vec.into_iter().flat_map(convert)
+                as &mut dyn Iterator<Item = Update<DDValue>>)
+        } else {
+            self.apply_updates(
+                &mut upds.flat_map(convert) as &mut dyn Iterator<Item = Update<DDValue>>
+            )
+        };
+
+        match msg {
+            Some(e) => Err(e),
+            None => res,
+        }
+    }
+
+    fn query_index_untyped(&self, index: IdxId, key: &Record) -> Result<Vec<Record>, String> {
+        self.record_command(|r| r.query_index_untyped(index, key));
+        let idx = Indexes::try_from(index).map_err(|()| format!("unknown index {}", index))?;
+        let k = idxkey_from_record(idx, key)?;
+        Ok(self
+            .query_index(index, k)?
+            .into_iter()
+            .map(|v| v.into_record())
+            .collect())
+    }
+
+    fn dump_index_untyped(&self, index: IdxId) -> Result<Vec<Record>, String> {
+        self.record_command(|r| r.dump_index_untyped(index));
+        Ok(self
+            .dump_index(index)?
+            .into_iter()
+            .map(|v| v.into_record())
+            .collect())
+    }
+
+    fn stop(&self) -> Result<(), String> {
+        self.prog.lock().unwrap().stop()
+    }
+}
+
+impl DDlogTyped for HDDlog {
     fn transaction_commit_dump_changes(&self) -> Result<DeltaMap<DDValue>, String> {
-        self.record_transaction_commit(true);
+        self.record_command(|r| r.transaction_commit_dump_changes());
         *self.deltadb.lock().unwrap() = Some(DeltaMap::new());
 
         self.update_handler.before_commit();
@@ -221,74 +381,7 @@ impl DDlog for HDDlog {
         }
     }
 
-    fn transaction_commit(&self) -> Result<(), String> {
-        self.record_transaction_commit(false);
-        self.update_handler.before_commit();
-
-        match (self.prog.lock().unwrap().transaction_commit()) {
-            Ok(()) => {
-                self.update_handler.after_commit(true);
-                Ok(())
-            }
-            Err(e) => {
-                self.update_handler.after_commit(false);
-                Err(e)
-            }
-        }
-    }
-
-    fn transaction_rollback(&self) -> Result<(), String> {
-        self.record_transaction_rollback();
-        self.prog.lock().unwrap().transaction_rollback()
-    }
-
-    /// Two implementations of `apply_updates`: one that takes `Record`s and one that takes `DDValue`s.
-    fn apply_updates<V, I>(&self, upds: I) -> Result<(), String>
-    where
-        V: Deref<Target = record::UpdCmd>,
-        I: iter::Iterator<Item = V>,
-    {
-        let mut conversion_err = false;
-        let mut msg: Option<String> = None;
-
-        // Iterate through all updates, but only feed them to `apply_valupdates` until we reach
-        // the first invalid command.
-        // XXX: We must iterate till the end of `upds`, as `ddlog_apply_updates` relies on this to
-        // deallocate all commands.
-        let res = self.apply_valupdates(upds.flat_map(|u| {
-            if conversion_err {
-                None
-            } else {
-                match updcmd2upd(u.deref()) {
-                    Ok(u) => Some(u),
-                    Err(e) => {
-                        conversion_err = true;
-                        msg = Some(format!("invalid command {:?}: {}", *u, e));
-                        None
-                    }
-                }
-            }
-        }));
-
-        match msg {
-            Some(e) => Err(e),
-            None => res,
-        }
-    }
-
-    #[cfg(feature = "flatbuf")]
-    fn apply_updates_from_flatbuf(&self, buf: &[u8]) -> Result<(), String> {
-        let cmditer = flatbuf::updates_from_flatbuf(buf)?;
-        let upds: Result<Vec<Update<DDValue>>, String> = cmditer
-            .map(|cmd| flatbuf::DDValueUpdate::from_flatbuf(cmd).map(|x| x.0))
-            .collect();
-        self.apply_valupdates(upds?.into_iter())
-    }
-
-    fn apply_valupdates<I>(&self, updates: I) -> Result<(), String>
-    where
-        I: Iterator<Item = Update<DDValue>>,
-    {
+    fn apply_updates(&self, upds: &mut dyn Iterator<Item = Update<DDValue>>) -> Result<(), String> {
         // Make sure that the updates being inserted have the correct value types for their
         // relation
         let inspect_update: fn(&Update<DDValue>) -> Result<(), String> = |update| {
@@ -304,56 +397,34 @@ impl DDlog for HDDlog {
             Ok(())
         };
 
-        if let Some(ref f) = self.replay_file {
-            let mut file = f.lock().unwrap();
-            let updates = record_val_upds::<Self::Convert, _, _, _>(&mut *file, updates, |_| ());
+        if self.command_recorder.is_some() {
+            let update_vec: Vec<_> = upds.collect();
+            self.record_command(|r| r.apply_updates(&mut update_vec.iter().cloned()));
 
             self.prog
                 .lock()
                 .unwrap()
-                .apply_updates(updates, inspect_update)
+                .apply_updates(&mut update_vec.into_iter(), inspect_update)
         } else {
             self.prog
                 .lock()
                 .unwrap()
-                .apply_updates(updates, inspect_update)
+                .apply_updates(upds, inspect_update)
         }
     }
 
-    fn dump_index(&self, index: IdxId) -> Result<BTreeSet<DDValue>, String> {
-        self.record_dump_index(index);
-        let idx = Indexes::try_from(index).map_err(|()| format!("unknown index {}", index))?;
-        let arrid = indexes2arrid(idx);
-        self.prog.lock().unwrap().dump_arrangement(arrid)
-    }
-
     fn query_index(&self, index: IdxId, key: DDValue) -> Result<BTreeSet<DDValue>, String> {
-        self.record_query_index(index, &key);
+        self.record_command(|r| r.query_index(index, key.clone()));
         let idx = Indexes::try_from(index).map_err(|()| format!("unknown index {}", index))?;
         let arrid = indexes2arrid(idx);
         self.prog.lock().unwrap().query_arrangement(arrid, key)
     }
 
-    fn query_index_rec(
-        &self,
-        index: IdxId,
-        key: &record::Record,
-    ) -> Result<BTreeSet<DDValue>, String> {
+    fn dump_index(&self, index: IdxId) -> Result<BTreeSet<DDValue>, String> {
+        self.record_command(|r| r.dump_index(index));
         let idx = Indexes::try_from(index).map_err(|()| format!("unknown index {}", index))?;
-        let k = idxkey_from_record(idx, key)?;
-        self.record_query_index(index, &k);
         let arrid = indexes2arrid(idx);
-        self.prog.lock().unwrap().query_arrangement(arrid, k)
-    }
-
-    #[cfg(feature = "flatbuf")]
-    fn query_index_from_flatbuf(&self, buf: &[u8]) -> Result<BTreeSet<DDValue>, String> {
-        let (idxid, key) = flatbuf::query_from_flatbuf(buf)?;
-        self.query_index(idxid, key)
-    }
-
-    fn stop(&mut self) -> Result<(), String> {
-        self.prog.lock().unwrap().stop()
+        self.prog.lock().unwrap().dump_arrangement(arrid)
     }
 }
 
@@ -408,7 +479,7 @@ impl HDDlog {
                 db: Some(db),
                 deltadb,
                 print_err,
-                replay_file: None,
+                command_recorder: None,
             },
             init_state,
         ))
@@ -428,110 +499,18 @@ impl HDDlog {
         };
     }
 
-    fn record_transaction_start(&self) {
-        if let Some(ref f) = self.replay_file {
-            let _ = f.lock().unwrap().record_start().map_err(|_| {
-                self.eprintln("failed to record invocation in replay file");
-            });
-        }
-    }
-
-    fn record_transaction_commit(&self, record_changes: bool) {
-        if let Some(ref f) = self.replay_file {
-            let _ = f
-                .lock()
-                .unwrap()
-                .record_commit(record_changes)
-                .map_err(|_| {
-                    self.eprintln("failed to record invocation in replay file");
-                });
-        }
-    }
-
-    fn record_transaction_rollback(&self) {
-        if let Some(ref f) = self.replay_file {
-            let _ = f.lock().unwrap().record_rollback().map_err(|_| {
-                self.eprintln("failed to record invocation in replay file");
-            });
-        }
-    }
-
-    fn record_clear_relation(&self, rid: RelId) {
-        if let Some(ref f) = self.replay_file {
-            let _ = f
-                .lock()
-                .unwrap()
-                .record_clear::<DDlogConverter>(rid)
-                .map_err(|e| {
-                    self.eprintln("failed to record invocation in replay file");
-                });
-        }
-    }
-
-    fn record_dump_table(&self, rid: RelId) {
-        if let Some(ref f) = self.replay_file {
-            let _ = f
-                .lock()
-                .unwrap()
-                .record_dump::<DDlogConverter>(rid)
-                .map_err(|e| {
-                    self.eprintln("ddlog_dump_table(): failed to record invocation in replay file");
-                });
-        }
-    }
-
-    fn record_dump_index(&self, iid: IdxId) {
-        if let Some(ref f) = self.replay_file {
-            let _ = f
-                .lock()
-                .unwrap()
-                .record_dump_index::<DDlogConverter>(iid)
-                .map_err(|e| {
-                    self.eprintln("ddlog_dump_index(): failed to record invocation in replay file");
-                });
-        }
-    }
-
-    fn record_query_index(&self, iid: IdxId, key: &DDValue) {
-        if let Some(ref f) = self.replay_file {
-            let _ = f
-                .lock()
-                .unwrap()
-                .record_query_index::<DDlogConverter>(iid, key)
-                .map_err(|e| {
-                    self.eprintln("ddlog_dump_index(): failed to record invocation in replay file");
-                });
-        }
-    }
-
-    fn record_enable_cpu_profiling(&self, enable: bool) {
-        if let Some(ref f) = self.replay_file {
-            let _ = f.lock().unwrap().record_cpu_profiling(enable).map_err(|_| {
-                self.eprintln(
-                    "ddlog_cpu_profiling_enable(): failed to record invocation in replay file",
-                )
-            });
-        }
-    }
-
-    fn record_enable_timely_profiling(&self, enable: bool) {
-        if let Some(ref f) = self.replay_file {
-            let _ = f
-                .lock()
-                .unwrap()
-                .record_timely_profiling(enable)
-                .map_err(|_| {
-                    self.eprintln(
-                    "ddlog_timely_profiling_enable(): failed to record invocation in replay file",
-                )
-                });
-        }
-    }
-
-    fn record_profile(&self) {
-        if let Some(ref f) = self.replay_file {
-            let _ = f.lock().unwrap().record_profile().map_err(|_| {
-                self.eprintln("record_profile: failed to record invocation in replay file");
+    fn record_command<T, F>(&self, cmd: F)
+    where
+        F: FnOnce(
+            &CommandRecorder<fs::File, Box<dyn DDlogInventory + Send + Sync>>,
+        ) -> Result<T, String>,
+    {
+        if let Some(ref r) = self.command_recorder {
+            let _ = cmd(r).map_err(|e| {
+                self.eprintln(&format!(
+                    "failed to record invocation in replay file: {}",
+                    e
+                ));
             });
         }
     }

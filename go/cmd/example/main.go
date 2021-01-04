@@ -24,8 +24,6 @@ type Example struct {
 }
 
 var (
-	exampleRelationTableID = ddlog.GetTableID("ExampleRelation")
-	// memory will never be freed, which is fine
 	exampleRelationConstructor = ddlog.NewCString("ExampleRelation")
 )
 
@@ -96,7 +94,7 @@ func main() {
 	r1 := NewRecordExample(e1)
 
 	klog.Infof("Inserting record %s", r1.Dump())
-	cmdInsert1 := ddlog.NewInsertCommand(exampleRelationTableID, r1)
+	cmdInsert1 := ddlog.NewInsertCommand(ddlogProgram.GetTableID("ExampleRelation"), r1)
 	// In practice, each transction would likely include more than one command.
 	if err := ddlogProgram.ApplyUpdatesAsTransaction(cmdInsert1); err != nil {
 		klog.Errorf("Error during transaction: %v", err)
@@ -104,7 +102,7 @@ func main() {
 
 	k1 := NewRecordExampleKey(e1)
 	klog.Infof("Deleting record with key %s", k1.Dump())
-	cmdDelete1 := ddlog.NewDeleteKeyCommand(exampleRelationTableID, k1)
+	cmdDelete1 := ddlog.NewDeleteKeyCommand(ddlogProgram.GetTableID("ExampleRelation"), k1)
 	if err := ddlogProgram.ApplyUpdatesAsTransaction(cmdDelete1); err != nil {
 		klog.Errorf("Error during transaction: %v", err)
 	}

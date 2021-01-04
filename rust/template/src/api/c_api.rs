@@ -10,7 +10,7 @@ use differential_datalog::{
     ddval::DDValue,
     program::{IdxId, RelId},
     record::IntoRecord,
-    DDlog, DeltaMap,
+    DDlogDump, DDlogInventory, DDlogProfiling, DDlogTyped, DDlogUntyped, DeltaMap,
 };
 use std::{
     collections::BTreeMap,
@@ -35,45 +35,88 @@ use std::os::unix::io::{FromRawFd, IntoRawFd, RawFd};
 use std::os::windows::io::{FromRawHandle, IntoRawHandle, RawHandle};
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_get_table_id(tname: *const raw::c_char) -> libc::size_t {
-    if tname.is_null() {
+pub unsafe extern "C" fn ddlog_get_table_id(
+    prog: *const HDDlog,
+    tname: *const raw::c_char,
+) -> libc::size_t {
+    if prog.is_null() || tname.is_null() {
         return libc::size_t::max_value();
     }
 
+    let prog = Arc::from_raw(prog);
+
     let table_str = CStr::from_ptr(tname).to_str().unwrap();
-    match HDDlog::get_table_id(table_str) {
+    let res = match prog.get_table_id(table_str) {
         Ok(relid) => relid as libc::size_t,
         Err(_) => libc::size_t::max_value(),
-    }
+    };
+    Arc::into_raw(prog);
+    res
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_get_table_name(tid: libc::size_t) -> *const raw::c_char {
-    match HDDlog::get_table_cname(tid) {
+pub unsafe extern "C" fn ddlog_get_table_name(
+    prog: *const HDDlog,
+    tid: libc::size_t,
+) -> *const raw::c_char {
+    if prog.is_null() {
+        return ptr::null();
+    }
+
+    let prog = Arc::from_raw(prog);
+
+    let res = match prog.get_table_cname(tid) {
         Ok(name) => name.as_ptr(),
         Err(_) => ptr::null(),
-    }
+    };
+
+    Arc::into_raw(prog);
+    res
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_get_index_id(iname: *const raw::c_char) -> libc::size_t {
+pub unsafe extern "C" fn ddlog_get_index_id(
+    prog: *const HDDlog,
+    iname: *const raw::c_char,
+) -> libc::size_t {
+    if prog.is_null() {
+        return libc::size_t::max_value();
+    }
+
+    let prog = Arc::from_raw(prog);
+
     if iname.is_null() {
         return libc::size_t::max_value();
     }
 
     let index_str = CStr::from_ptr(iname).to_str().unwrap();
-    match HDDlog::get_index_id(index_str) {
+    let res = match prog.get_index_id(index_str) {
         Ok(idxid) => idxid as libc::size_t,
         Err(_) => libc::size_t::max_value(),
-    }
+    };
+
+    Arc::into_raw(prog);
+    res
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_get_index_name(iid: libc::size_t) -> *const raw::c_char {
-    match HDDlog::get_index_cname(iid) {
+pub unsafe extern "C" fn ddlog_get_index_name(
+    prog: *const HDDlog,
+    iid: libc::size_t,
+) -> *const raw::c_char {
+    if prog.is_null() {
+        return ptr::null();
+    }
+
+    let prog = Arc::from_raw(prog);
+
+    let res = match prog.get_index_cname(iid) {
         Ok(name) => name.as_ptr(),
         Err(_) => ptr::null(),
-    }
+    };
+
+    Arc::into_raw(prog);
+    res
 }
 
 #[no_mangle]
@@ -107,7 +150,7 @@ pub unsafe extern "C" fn ddlog_record_commands(prog: *const HDDlog, fd: RawFd) -
     }
     let mut prog = Arc::from_raw(prog);
 
-    let file = if fd == -1 {
+    let mut file = if fd == -1 {
         None
     } else {
         Some(File::from_raw_fd(fd))
@@ -115,12 +158,11 @@ pub unsafe extern "C" fn ddlog_record_commands(prog: *const HDDlog, fd: RawFd) -
 
     let res = match Arc::get_mut(&mut prog) {
         Some(prog) => {
-            let mut old_file = file.map(Mutex::new);
-            prog.record_commands(&mut old_file);
+            prog.record_commands(&mut file);
             /* Convert the old file into FD to prevent it from closing.
              * It is the caller's responsibility to close the file when
              * they are done with it. */
-            old_file.map(|m| m.into_inner().unwrap().into_raw_fd());
+            file.map(|m| m.into_raw_fd());
             0
         }
         None => -1,
@@ -138,7 +180,7 @@ pub unsafe extern "C" fn ddlog_record_commands(prog: *const HDDlog, fd: raw::c_i
     }
     let mut prog = Arc::from_raw(prog);
 
-    let file = if fd == -1 {
+    let mut file = if fd == -1 {
         None
     } else {
         // Convert file descriptor to file handle on Windows.
@@ -148,12 +190,11 @@ pub unsafe extern "C" fn ddlog_record_commands(prog: *const HDDlog, fd: raw::c_i
 
     let res = match Arc::get_mut(&mut prog) {
         Some(prog) => {
-            let mut old_file = file.map(Mutex::new);
-            prog.record_commands(&mut old_file);
+            prog.record_commands(&mut file);
             /* Convert the old file into FD to prevent it from closing.
              * It is the caller's responsibility to close the file when
              * they are done with it. */
-            old_file.map(|m| m.into_inner().unwrap().into_raw_handle());
+            file.map(|m| m.into_raw_handle());
             0
         }
         None => -1,
@@ -506,11 +547,11 @@ pub unsafe extern "C" fn ddlog_query_index(
     }
     let prog = &*prog;
 
-    prog.query_index_rec(idxid as IdxId, &*key)
+    prog.query_index_untyped(idxid as IdxId, &*key)
         .map(|set| {
             if let Some(f) = cb {
                 for val in set.iter() {
-                    f(cb_arg, &val.clone().into_record());
+                    f(cb_arg, val);
                 }
             }
             0
@@ -626,7 +667,7 @@ pub unsafe extern "C" fn ddlog_apply_updates(
     let prog = Arc::from_raw(prog);
 
     let res = prog
-        .apply_updates((0..n).map(|i| Box::from_raw(*upds.add(i))))
+        .apply_updates_untyped(&mut (0..n).map(|i| *Box::from_raw(*upds.add(i))))
         .map(|_| 0)
         .unwrap_or_else(|e| {
             prog.eprintln(&format!("ddlog_apply_updates(): error: {}", e));
@@ -701,12 +742,21 @@ pub unsafe extern "C" fn ddlog_dump_table(
     }
     let prog = &*prog;
 
-    let f = cb.map(|f| move |rec: &Record, w: isize| f(cb_arg, rec, w as libc::ssize_t));
-
-    prog.dump_table(table, f).map(|_| 0).unwrap_or_else(|e| {
-        prog.eprintln(&format!("ddlog_dump_table(): error: {}", e));
-        -1
-    })
+    match cb {
+        None => prog.dump_table(table, None).map(|_| 0).unwrap_or_else(|e| {
+            prog.eprintln(&format!("ddlog_dump_table(): error: {}", e));
+            -1
+        }),
+        Some(f) => {
+            let f = move |rec: &Record, w: isize| f(cb_arg, rec, w as libc::ssize_t);
+            prog.dump_table(table, Some(&f))
+                .map(|_| 0)
+                .unwrap_or_else(|e| {
+                    prog.eprintln(&format!("ddlog_dump_table(): error: {}", e));
+                    -1
+                })
+        }
+    }
 }
 
 #[no_mangle]
@@ -719,8 +769,12 @@ pub unsafe extern "C" fn ddlog_enable_cpu_profiling(
     }
     let prog = &*prog;
 
-    prog.enable_cpu_profiling(enable);
-    0
+    prog.enable_cpu_profiling(enable)
+        .map(|_| 0)
+        .unwrap_or_else(|e| {
+            prog.eprintln(&format!("ddlog_enable_cpu_profiling(): error: {}", e));
+            -1
+        })
 }
 
 #[no_mangle]
@@ -733,8 +787,12 @@ pub unsafe extern "C" fn ddlog_enable_timely_profiling(
     }
     let prog = &*prog;
 
-    prog.enable_timely_profiling(enable);
-    0
+    prog.enable_timely_profiling(enable)
+        .map(|_| 0)
+        .unwrap_or_else(|e| {
+            prog.eprintln(&format!("ddlog_enable_cpu_profiling(): error: {}", e));
+            -1
+        })
 }
 
 #[no_mangle]
@@ -744,7 +802,9 @@ pub unsafe extern "C" fn ddlog_profile(prog: *const HDDlog) -> *const raw::c_cha
     }
     let prog = &*prog;
 
-    let profile = prog.profile();
+    let profile = prog
+        .profile()
+        .unwrap_or_else(|e| format!("Failed to retrieve profile: {}", e));
     CString::new(profile)
         .map(CString::into_raw)
         .unwrap_or_else(|e| {

@@ -1,7 +1,11 @@
+//! Traits that encapsulate a running DDlog program.
+
 use std::collections::btree_set::BTreeSet;
-use std::fmt::Debug;
+use std::collections::BTreeMap;
+#[cfg(feature = "c_api")]
+use std::ffi::CStr;
+use std::io;
 use std::iter::Iterator;
-use std::ops::Deref;
 
 use crate::ddval::DDValue;
 use crate::program::IdxId;
@@ -11,45 +15,74 @@ use crate::record::Record;
 use crate::record::UpdCmd;
 use crate::valmap::DeltaMap;
 
-use serde::de::DeserializeOwned;
-use serde::Serialize;
+/// Convert relation and index names to and from numeric id's.
+pub trait DDlogInventory {
+    /// Convert table name to `RelId`.
+    fn get_table_id(&self, tname: &str) -> Result<RelId, String>;
 
-/// Convert to and from values/objects of a DDlog program.
-pub trait DDlogConvert: Debug {
     /// Convert a `RelId` into its symbolic name.
-    fn relid2name(rel_id: RelId) -> Option<&'static str>;
+    fn get_table_name(&self, tid: RelId) -> Result<&'static str, String>;
+
+    /// Convert a `RelId` into its symbolic name represented as C string.
+    #[cfg(feature = "c_api")]
+    fn get_table_cname(&self, tid: RelId) -> Result<&'static CStr, String>;
+
+    /// Convert index name to `IdxId`.
+    fn get_index_id(&self, iname: &str) -> Result<IdxId, String>;
 
     /// Convert a `IdxId` into its symbolic name.
-    fn indexid2name(idx_id: IdxId) -> Option<&'static str>;
+    fn get_index_name(&self, iid: IdxId) -> Result<&'static str, String>;
 
+    /// Convert a `IdxId` into its symbolic name represented as C string.
+    #[cfg(feature = "c_api")]
+    fn get_index_cname(&self, iid: IdxId) -> Result<&'static CStr, String>;
+}
+
+/// Convert to and from values/objects of a DDlog program.
+/// FIXME: This trait is redundant and will be removed in the next refactoring.
+pub trait DDlogConvert {
     /// Convert an `UpdCmd` into an `Update`.
     fn updcmd2upd(upd_cmd: &UpdCmd) -> Result<Update<DDValue>, String>;
 }
 
-/// A trait capturing program instantiation and handling of
-/// transactions.
-pub trait DDlog: Debug {
-    type Convert: DDlogConvert;
+/// Interface to DDlog's profiling capabilities.
+pub trait DDlogProfiling {
+    /// Controls recording of differential operator runtimes.  When enabled,
+    /// DDlog records each activation of every operator and prints the
+    /// per-operator CPU usage summary in the profile.  When disabled, the
+    /// recording stops, but the previously accumulated profile is preserved.
+    ///
+    /// Recording CPU events can be expensive in large dataflows and is
+    /// therefore disabled by default.
+    fn enable_cpu_profiling(&self, enable: bool) -> Result<(), String>;
 
-    /// Wrapper type that implements Serialize/Deserialize functionality for Update<DDValue>.
-    type UpdateSerializer: Debug
-        + Send
-        + Serialize
-        + DeserializeOwned
-        + From<Update<DDValue>>
-        + Into<Update<DDValue>>;
+    fn enable_timely_profiling(&self, enable: bool) -> Result<(), String>;
 
-    /// Run the program.
-    fn run(workers: usize, do_store: bool) -> Result<(Self, DeltaMap<DDValue>), String>
-    where
-        Self: Sized;
+    /// returns DDlog program runtime profile
+    fn profile(&self) -> Result<String, String>;
+}
 
+/// API to dump DDlog input and output relations.
+pub trait DDlogDump {
+    fn dump_input_snapshot(&self, w: &mut dyn io::Write) -> io::Result<()>;
+
+    fn dump_table(
+        &self,
+        table: RelId,
+        cb: Option<&dyn Fn(&Record, isize) -> bool>,
+    ) -> Result<(), String>;
+}
+/// A trait capturing the handling of transactions using the dynamically typed
+/// representation of DDlog values as `enum Record`.
+pub trait DDlogUntyped {
     /// Start a transaction.
     fn transaction_start(&self) -> Result<(), String>;
 
     /// Commit a transaction previously started using
     /// `transaction_start`, producing a map of deltas.
-    fn transaction_commit_dump_changes(&self) -> Result<DeltaMap<DDValue>, String>;
+    fn transaction_commit_dump_changes_untyped(
+        &self,
+    ) -> Result<BTreeMap<RelId, Vec<(Record, isize)>>, String>;
 
     /// Commit a transaction previously started using
     /// `transaction_start`.
@@ -60,34 +93,33 @@ pub trait DDlog: Debug {
     fn transaction_rollback(&self) -> Result<(), String>;
 
     /// Apply a set of updates.
-    fn apply_updates<V, I>(&self, upds: I) -> Result<(), String>
-    where
-        V: Deref<Target = UpdCmd>,
-        I: Iterator<Item = V>;
+    fn apply_updates_untyped(&self, upds: &mut dyn Iterator<Item = UpdCmd>) -> Result<(), String>;
+
+    fn clear_relation(&self, table: RelId) -> Result<(), String>;
+
+    /// Query index passing key as a record.  Returns all values associated with the given key in the index.
+    fn query_index_untyped(&self, index: IdxId, key: &Record) -> Result<Vec<Record>, String>;
+
+    /// Dump all values in an index.
+    fn dump_index_untyped(&self, index: IdxId) -> Result<Vec<Record>, String>;
+
+    /// Stop the program.
+    fn stop(&self) -> Result<(), String>;
+}
+
+/// Extend `trait DDlog` with methods that offer a strongly typed interface
+/// to relations and indexes using `DDValue`.
+pub trait DDlogTyped: DDlogUntyped {
+    /// Commit a transaction previously started using
+    /// `transaction_start`, producing a map of deltas.
+    fn transaction_commit_dump_changes(&self) -> Result<DeltaMap<DDValue>, String>;
 
     /// Apply a set of updates.
-    fn apply_valupdates<I>(&self, upds: I) -> Result<(), String>
-    where
-        I: Iterator<Item = Update<DDValue>>;
-
-    /// Apply a set of updates directly from the flatbuffer
-    /// representation
-    #[cfg(feature = "flatbuf")]
-    fn apply_updates_from_flatbuf(&self, buf: &[u8]) -> Result<(), String>;
+    fn apply_updates(&self, upds: &mut dyn Iterator<Item = Update<DDValue>>) -> Result<(), String>;
 
     /// Query index.  Returns all values associated with the given key in the index.
     fn query_index(&self, index: IdxId, key: DDValue) -> Result<BTreeSet<DDValue>, String>;
 
-    /// Query index passing key as a record.  Returns all values associated with the given key in the index.
-    fn query_index_rec(&self, index: IdxId, key: &Record) -> Result<BTreeSet<DDValue>, String>;
-
-    /// Similar to `query_index`, but extracts query from a flatbuffer.
-    #[cfg(feature = "flatbuf")]
-    fn query_index_from_flatbuf(&self, buf: &[u8]) -> Result<BTreeSet<DDValue>, String>;
-
     /// Dump all values in an index.
     fn dump_index(&self, index: IdxId) -> Result<BTreeSet<DDValue>, String>;
-
-    /// Stop the program.
-    fn stop(&mut self) -> Result<(), String>;
 }

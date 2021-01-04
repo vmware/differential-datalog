@@ -19,7 +19,7 @@ use tutorial_ddlog::typedefs::*;
                                   // The differential_datalog crate contains the DDlog runtime that is
 // the same for all DDlog programs and simply gets copied to each generated
 // DDlog workspace unmodified (this will change in future releases).
-use differential_datalog::DDlog; // Trait that must be implemented by an instance of a DDlog program.
+use differential_datalog::{DDlogInventory, DDlogUntyped, DDlogTyped}; // Trait that must be implemented by an instance of a DDlog program.
 use differential_datalog::DeltaMap; // Type that represents a set of changes to DDlog relations.
                                     // Returned by `DDlog::transaction_commit_dump_changes()`.
 use differential_datalog::ddval::DDValue; // Generic type that wraps all DDlog value.
@@ -69,7 +69,7 @@ fn main() -> Result<(), String> {
     // when there is one in execution will return an error.
     hddlog.transaction_start()?;
 
-    // A transaction can consist of multiple `apply_valupdates()` calls, each taking
+    // A transaction can consist of multiple `apply_updates()` calls, each taking
     // multiple updates.  An update inserts, deletes or modifies a record in a DDlog
     // relation.
     let updates = vec![
@@ -92,7 +92,7 @@ fn main() -> Result<(), String> {
             .into_ddvalue(),
         },
     ];
-    hddlog.apply_valupdates(updates.into_iter())?;
+    hddlog.apply_updates(&mut updates.into_iter())?;
 
     // Commit the transaction; returns a `DeltaMap` object that contains the set
     // of changes to output relations produced by the transaction.
@@ -122,7 +122,7 @@ fn main() -> Result<(), String> {
 
     // `Record` type
 
-    let relid_word1 = HDDlog::get_table_id("Word1").unwrap() as RelId;
+    let relid_word1 = hddlog.get_table_id("Word1").unwrap() as RelId;
 
     // `UpdCmd` is a dynamically typed representaion of a DDlog command.
     // It takes a vector or `Record`'s, which represent dynamically typed
@@ -143,11 +143,11 @@ fn main() -> Result<(), String> {
         ),
     )];
 
-    // Use `apply_updates` instead of `apply_valupdates` for dynamically
+    // Use `apply_updates_untyped` instead of `apply_updates` for dynamically
     // typed commands.
     // This will fail if the records in `commands` don't match the DDlog type
     // declarations (e.g., missing constructor arguments, string instead of integer, etc.)
-    hddlog.apply_updates(commands.iter())?;
+    hddlog.apply_updates_untyped(&mut commands.into_iter())?;
 
     let delta = hddlog.transaction_commit_dump_changes()?;
 

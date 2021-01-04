@@ -12,9 +12,8 @@ use ddlog_ovsdb_adapter::*;
 use differential_datalog::ddval::*;
 use differential_datalog::program::*;
 use differential_datalog::record::{IntoRecord, Record, UpdCmd};
-use differential_datalog::record_upd_cmds;
-use differential_datalog::DDlog;
 use differential_datalog::DeltaMap;
+use differential_datalog::{DDlogTyped, DDlogUntyped};
 
 use crate::api::{updcmd2upd, HDDlog};
 use crate::DDlogConverter;
@@ -67,7 +66,7 @@ fn apply_updates(
 
     let updates: Result<Vec<Update<DDValue>>, String> =
         commands.iter().map(|c| updcmd2upd(c)).collect();
-    prog.apply_valupdates(updates?.into_iter())
+    prog.apply_updates(&mut updates?.into_iter())
 }
 
 /// Dump OVSDB Delta-Plus, Delta-Minus, and Delta-Update tables as a sequence of OVSDB

@@ -13,19 +13,12 @@ const (
 	numDDlogWorkers = 2
 )
 
-func TestGetTableID(t *testing.T) {
-	// input relation BI(b: bool)
-	tableID := GetTableID("BI")
-	tableName := GetTableName(tableID)
-	assert.Equal(t, "BI", tableName)
-}
-
 type mockHandler struct {
 	mock.Mock
 	test *testing.T
 }
 
-func (m *mockHandler) Handle(tableID TableID, r Record, weight int64) {
+func (m *mockHandler) Handle(p *Program, tableID TableID, r Record, weight int64) {
 	m.Called(tableID, r, weight)
 }
 
@@ -35,8 +28,12 @@ func TestInsert(t *testing.T) {
 	ddlogProgram, err := NewProgram(numDDlogWorkers, m)
 	assert.Nil(t, err, "Error when running DDlog program")
 
-	tableID := GetTableID("L0I")
-	outTableID := GetTableID("OL0I")
+	biID := ddlogProgram.GetTableID("BI")
+	biName := ddlogProgram.GetTableName(biID)
+	assert.Equal(t, "BI", biName)
+
+	tableID := ddlogProgram.GetTableID("L0I")
+	outTableID := ddlogProgram.GetTableID("OL0I")
 	constructor := NewCString("L0I")
 	defer constructor.Free()
 	rStruct := NewRecordStructStatic(
@@ -71,7 +68,7 @@ func benchmarkTransaction(b *testing.B, commitFn func(p *Program) error) {
 	ddlogProgram, err := NewProgram(numDDlogWorkers, outRecordHandler)
 	assert.Nil(b, err, "Error when running DDlog program")
 
-	tableID := GetTableID("ZI21")
+	tableID := ddlogProgram.GetTableID("ZI21")
 	constructor := NewCString("ZI21")
 	defer constructor.Free()
 

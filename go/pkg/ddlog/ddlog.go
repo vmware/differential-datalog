@@ -73,15 +73,15 @@ import (
 type TableID uint
 
 // GetTableID gets the table id by name.
-func GetTableID(name string) TableID {
+func (p *Program) GetTableID(name string) TableID {
 	cs := C.CString(name)
 	defer C.free(unsafe.Pointer(cs))
-	return TableID(C.ddlog_get_table_id(cs))
+	return TableID(C.ddlog_get_table_id(p.ptr, cs))
 }
 
 // GetTableName gets the table name by id.
-func GetTableName(tableID TableID) string {
-	cs := C.ddlog_get_table_name(C.table_id(tableID))
+func (p *Program) GetTableName(tableID TableID) string {
+	cs := C.ddlog_get_table_name(p.ptr, C.table_id(tableID))
 	return C.GoString(cs)
 }
 
@@ -115,7 +115,7 @@ type OutRecordHandler interface {
 	// Handle is called for every change reported by DDlog. There will a call to Handle for each
 	// new or deleted record (there is no notion of "modified" output record in DDlog). Handle
 	// will be called exactly once for each new / deleted record.
-	Handle(TableID, Record, int64)
+	Handle(*Program, TableID, Record, int64)
 }
 
 // OutRecordSink implements the OutRecordHandler interface: use it to discard all the changes
@@ -128,7 +128,7 @@ func NewOutRecordSink() (*OutRecordSink, error) {
 }
 
 // Handle will discard all the changes received from DDlog.
-func (s *OutRecordSink) Handle(tableID TableID, r Record, weight int64) {}
+func (s *OutRecordSink) Handle(p *Program, tableID TableID, r Record, weight int64) {}
 
 // OutRecordDumper implements the OutRecordHandler interface: use it to log all the changes received
 // from DDlog to a file.
@@ -151,10 +151,10 @@ func NewOutRecordDumper(changesFileName string) (*OutRecordDumper, error) {
 
 // Handle logs all the changes received from DDlog to a file. This should roughly match the output
 // format from the DDlog CLI. Errors occurring when writing to disk are ignored.
-func (d *OutRecordDumper) Handle(tableID TableID, r Record, weight int64) {
+func (d *OutRecordDumper) Handle(p *Program, tableID TableID, r Record, weight int64) {
 	d.changesMutex.Lock()
 	defer d.changesMutex.Unlock()
-	fmt.Fprintf(d.changesFile, "%s:\n%s: %+d\n", GetTableName(tableID), r.Dump(), weight)
+	fmt.Fprintf(d.changesFile, "%s:\n%s: %+d\n", p.GetTableName(tableID), r.Dump(), weight)
 }
 
 // NewOutRecordStdoutDumper creates an OutRecordDumper instance which writes all the changes
@@ -379,7 +379,7 @@ func handleOutRecord(progIdx C.uintptr_t, tableID C.size_t, recordPtr *C.ddlog_r
 	}
 	p := pIntf.(*Program)
 	if p.outRecordHandler != nil {
-		p.outRecordHandler.Handle(TableID(tableID), &record{unsafe.Pointer(recordPtr)}, int64(weight))
+		p.outRecordHandler.Handle(p, TableID(tableID), &record{unsafe.Pointer(recordPtr)}, int64(weight))
 	}
 }
 
@@ -393,7 +393,7 @@ func handleOutRecordArray(progIdx C.uintptr_t, changesArray *C.ddlog_record_upda
 	// https://github.com/golang/go/wiki/cgo#turning-c-arrays-into-go-slices
 	changes := (*[1 << 30]C.ddlog_record_update)(unsafe.Pointer(changesArray))[:numChanges:numChanges]
 	for _, change := range changes {
-		p.outRecordHandler.Handle(TableID(change.table), &record{unsafe.Pointer(change.rec)}, int64(change.weight))
+		p.outRecordHandler.Handle(p, TableID(change.table), &record{unsafe.Pointer(change.rec)}, int64(change.weight))
 	}
 }
 
