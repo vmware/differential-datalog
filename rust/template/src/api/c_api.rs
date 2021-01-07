@@ -16,6 +16,7 @@ use std::{
     collections::BTreeMap,
     ffi::{CStr, CString},
     fs::File,
+    mem::ManuallyDrop,
     os::raw,
     ptr,
     sync::{Arc, Mutex},
@@ -43,15 +44,13 @@ pub unsafe extern "C" fn ddlog_get_table_id(
         return libc::size_t::max_value();
     }
 
-    let prog = Arc::from_raw(prog);
+    let prog = &*prog;
 
     let table_str = CStr::from_ptr(tname).to_str().unwrap();
-    let res = match prog.get_table_id(table_str) {
+    match prog.get_table_id(table_str) {
         Ok(relid) => relid as libc::size_t,
         Err(_) => libc::size_t::max_value(),
-    };
-    Arc::into_raw(prog);
-    res
+    }
 }
 
 #[no_mangle]
@@ -63,15 +62,12 @@ pub unsafe extern "C" fn ddlog_get_table_name(
         return ptr::null();
     }
 
-    let prog = Arc::from_raw(prog);
+    let prog = &*prog;
 
-    let res = match prog.get_table_cname(tid) {
+    match prog.get_table_cname(tid) {
         Ok(name) => name.as_ptr(),
         Err(_) => ptr::null(),
-    };
-
-    Arc::into_raw(prog);
-    res
+    }
 }
 
 #[no_mangle]
@@ -83,20 +79,17 @@ pub unsafe extern "C" fn ddlog_get_index_id(
         return libc::size_t::max_value();
     }
 
-    let prog = Arc::from_raw(prog);
+    let prog = &*prog;
 
     if iname.is_null() {
         return libc::size_t::max_value();
     }
 
     let index_str = CStr::from_ptr(iname).to_str().unwrap();
-    let res = match prog.get_index_id(index_str) {
+    match prog.get_index_id(index_str) {
         Ok(idxid) => idxid as libc::size_t,
         Err(_) => libc::size_t::max_value(),
-    };
-
-    Arc::into_raw(prog);
-    res
+    }
 }
 
 #[no_mangle]
@@ -108,15 +101,12 @@ pub unsafe extern "C" fn ddlog_get_index_name(
         return ptr::null();
     }
 
-    let prog = Arc::from_raw(prog);
+    let prog = &*prog;
 
-    let res = match prog.get_index_cname(iid) {
+    match prog.get_index_cname(iid) {
         Ok(name) => name.as_ptr(),
         Err(_) => ptr::null(),
-    };
-
-    Arc::into_raw(prog);
-    res
+    }
 }
 
 #[no_mangle]
@@ -148,7 +138,7 @@ pub unsafe extern "C" fn ddlog_record_commands(prog: *const HDDlog, fd: RawFd) -
     if prog.is_null() {
         return -1;
     }
-    let mut prog = Arc::from_raw(prog);
+    let mut prog = ManuallyDrop::new(Arc::from_raw(prog));
 
     let mut file = if fd == -1 {
         None
@@ -156,7 +146,7 @@ pub unsafe extern "C" fn ddlog_record_commands(prog: *const HDDlog, fd: RawFd) -
         Some(File::from_raw_fd(fd))
     };
 
-    let res = match Arc::get_mut(&mut prog) {
+    match Arc::get_mut(&mut prog) {
         Some(prog) => {
             prog.record_commands(&mut file);
             /* Convert the old file into FD to prevent it from closing.
@@ -166,10 +156,7 @@ pub unsafe extern "C" fn ddlog_record_commands(prog: *const HDDlog, fd: RawFd) -
             0
         }
         None => -1,
-    };
-
-    Arc::into_raw(prog);
-    res
+    }
 }
 
 #[no_mangle]
@@ -178,7 +165,7 @@ pub unsafe extern "C" fn ddlog_record_commands(prog: *const HDDlog, fd: raw::c_i
     if prog.is_null() {
         return -1;
     }
-    let mut prog = Arc::from_raw(prog);
+    let mut prog = ManuallyDrop::new(Arc::from_raw(prog));
 
     let mut file = if fd == -1 {
         None
@@ -188,7 +175,7 @@ pub unsafe extern "C" fn ddlog_record_commands(prog: *const HDDlog, fd: raw::c_i
         Some(File::from_raw_handle(handle as RawHandle))
     };
 
-    let res = match Arc::get_mut(&mut prog) {
+    match Arc::get_mut(&mut prog) {
         Some(prog) => {
             prog.record_commands(&mut file);
             /* Convert the old file into FD to prevent it from closing.
@@ -198,10 +185,7 @@ pub unsafe extern "C" fn ddlog_record_commands(prog: *const HDDlog, fd: raw::c_i
             0
         }
         None => -1,
-    };
-
-    Arc::into_raw(prog);
-    res
+    }
 }
 
 #[no_mangle]
@@ -211,7 +195,7 @@ pub unsafe extern "C" fn ddlog_dump_input_snapshot(prog: *const HDDlog, fd: RawF
         return -1;
     }
 
-    let prog = Arc::from_raw(prog);
+    let prog = &*prog;
     let mut file = File::from_raw_fd(fd);
     let res = prog
         .dump_input_snapshot(&mut file)
@@ -222,7 +206,6 @@ pub unsafe extern "C" fn ddlog_dump_input_snapshot(prog: *const HDDlog, fd: RawF
         });
 
     file.into_raw_fd();
-    Arc::into_raw(prog);
     res
 }
 
@@ -664,17 +647,14 @@ pub unsafe extern "C" fn ddlog_apply_updates(
     if prog.is_null() || upds.is_null() {
         return -1;
     }
-    let prog = Arc::from_raw(prog);
+    let prog = &*prog;
 
-    let res = prog
-        .apply_updates_untyped(&mut (0..n).map(|i| *Box::from_raw(*upds.add(i))))
+    prog.apply_updates_untyped(&mut (0..n).map(|i| *Box::from_raw(*upds.add(i))))
         .map(|_| 0)
         .unwrap_or_else(|e| {
             prog.eprintln(&format!("ddlog_apply_updates(): error: {}", e));
             -1
-        });
-    Arc::into_raw(prog);
-    res
+        })
 }
 
 #[cfg(feature = "flatbuf")]
