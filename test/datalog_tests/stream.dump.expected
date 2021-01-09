@@ -1,0 +1,90 @@
+Initialize ZipCodes.
+Execute a single query.
+ZipResultsRS:
+ZipResultsRS{.zip = 94301, .city = "Palo Alto"}: +1
+ZipResultsSR:
+ZipResultsSR{.zip = 94301, .city = "Palo Alto"}: +1
+Multiple queries in a single transaction.
+ZipResults2RS:
+ZipResults2RS{.zip = 94022, .city = "Los Altos", .distance = 5}: +1
+ZipResults2RS{.zip = 94303, .city = "East Palo Alto", .distance = 6}: +1
+ZipResults2RSFiltered:
+ZipResults2RSFiltered{.zip = 94303, .city = "East Palo Alto", .distance = 6, .descr = "94303 is in East Palo Alto, 6 miles away"}: +1
+ZipResults2RSRFiltered:
+ZipResults2RSRFiltered{.zip = 94022, .city = "Los Altos", .distance = 5, .descr = "94022 is in Los Altos, 5 miles away"}: +1
+ZipResults2RSRFiltered{.zip = 94303, .city = "East Palo Alto", .distance = 6, .descr = "94303 is in East Palo Alto, 6 miles away"}: +1
+ZipResults2SR:
+ZipResults2SR{.zip = 94022, .city = "Los Altos", .distance = 5}: +1
+ZipResults2SR{.zip = 94303, .city = "East Palo Alto", .distance = 6}: +1
+ZipResults2SRFiltered:
+ZipResults2SRFiltered{.zip = 94022, .city = "Los Altos", .distance = 5, .descr = "94022 is in Los Altos, 5 miles away"}: +1
+ZipResults2SRFiltered{.zip = 94303, .city = "East Palo Alto", .distance = 6, .descr = "94303 is in East Palo Alto, 6 miles away"}: +1
+ZipResultsRS:
+ZipResultsRS{.zip = 94022, .city = "Los Altos"}: +1
+ZipResultsRS{.zip = 94303, .city = "East Palo Alto"}: +1
+ZipResultsSR:
+ZipResultsSR{.zip = 94022, .city = "Los Altos"}: +1
+ZipResultsSR{.zip = 94303, .city = "East Palo Alto"}: +1
+Modify zip code table.
+Query the modified table.
+ZipResults2RS:
+ZipResults2RS{.zip = 94303, .city = "East Palo Alto", .distance = 6}: +1
+ZipResults2RS{.zip = 95115, .city = "San Jose", .distance = 4}: +1
+ZipResults2RSFiltered:
+ZipResults2RSFiltered{.zip = 94303, .city = "East Palo Alto", .distance = 6, .descr = "94303 is in East Palo Alto, 6 miles away"}: +1
+ZipResults2RSFiltered{.zip = 95115, .city = "San Jose", .distance = 4, .descr = "95115 is in San Jose, 4 miles away"}: +1
+ZipResults2RSRFiltered:
+ZipResults2RSRFiltered{.zip = 94303, .city = "East Palo Alto", .distance = 6, .descr = "94303 is in East Palo Alto, 6 miles away"}: +1
+ZipResults2SR:
+ZipResults2SR{.zip = 94303, .city = "East Palo Alto", .distance = 6}: +1
+ZipResults2SR{.zip = 95115, .city = "San Jose", .distance = 4}: +1
+ZipResults2SRFiltered:
+ZipResults2SRFiltered{.zip = 94303, .city = "East Palo Alto", .distance = 6, .descr = "94303 is in East Palo Alto, 6 miles away"}: +1
+ZipResultsRS:
+ZipResultsRS{.zip = 94303, .city = "East Palo Alto"}: +1
+ZipResultsRS{.zip = 95115, .city = "San Jose"}: +1
+ZipResultsSR:
+ZipResultsSR{.zip = 94303, .city = "East Palo Alto"}: +1
+ZipResultsSR{.zip = 95115, .city = "San Jose"}: +1
+Modify and query the table in the same transaction.
+ZipResults2RS:
+ZipResults2RS{.zip = 95037, .city = "Morgan Hill", .distance = 12}: +1
+ZipResults2RS{.zip = 95140, .city = "Mount Hamilton", .distance = 10}: +1
+ZipResults2RSFiltered:
+ZipResults2RSFiltered{.zip = 95037, .city = "Morgan Hill", .distance = 12, .descr = "95037 is in Morgan Hill, 12 miles away"}: +1
+ZipResults2RSFiltered{.zip = 95140, .city = "Mount Hamilton", .distance = 10, .descr = "95140 is in Mount Hamilton, 10 miles away"}: +1
+ZipResults2RSRFiltered:
+ZipResults2RSRFiltered{.zip = 95037, .city = "Morgan Hill", .distance = 12, .descr = "95037 is in Morgan Hill, 12 miles away"}: +1
+ZipResults2RSRFiltered{.zip = 95140, .city = "Mount Hamilton", .distance = 10, .descr = "95140 is in Mount Hamilton, 10 miles away"}: +1
+ZipResults2SR:
+ZipResults2SR{.zip = 95037, .city = "Morgan Hill", .distance = 12}: +1
+ZipResults2SR{.zip = 95140, .city = "Mount Hamilton", .distance = 10}: +1
+ZipResults2SRFiltered:
+ZipResults2SRFiltered{.zip = 95037, .city = "Morgan Hill", .distance = 12, .descr = "95037 is in Morgan Hill, 12 miles away"}: +1
+ZipResults2SRFiltered{.zip = 95140, .city = "Mount Hamilton", .distance = 10, .descr = "95140 is in Mount Hamilton, 10 miles away"}: +1
+ZipResultsRS:
+ZipResultsRS{.zip = 95037, .city = "Morgan Hill"}: +1
+ZipResultsRS{.zip = 95140, .city = "Mount Hamilton"}: +1
+ZipResultsSR:
+ZipResultsSR{.zip = 95037, .city = "Morgan Hill"}: +1
+ZipResultsSR{.zip = 95140, .city = "Mount Hamilton"}: +1
+Test streaming queries
+KVStreamResponse:
+KVStreamResponse{.k = 1, .v = "1"}: +1
+KVStreamResponse{.k = 1, .v = "1.1"}: +1
+KVStreamResponse{.k = 2, .v = "2"}: +1
+KVStreamResponse{.k = 2, .v = "2.1"}: +1
+KVStreamResponse{.k = 3, .v = "3"}: +1
+Test relational queries
+KVRelResponse:
+KVRelResponse{.k = 1, .v = "1"}: +1
+KVRelResponse{.k = 1, .v = "1.1"}: +1
+KVRelResponse{.k = 2, .v = "2"}: +1
+KVRelResponse{.k = 2, .v = "2.1"}: +1
+KVRelResponse{.k = 3, .v = "3"}: +1
+KVRelResponse:
+KVRelResponse{.k = 1, .v = "1"}: -1
+KVRelResponse{.k = 1, .v = "1.1"}: -1
+KVRelResponse{.k = 2, .v = "2"}: -1
+KVRelResponse{.k = 2, .v = "2.1"}: -1
+KVRelResponse{.k = 3, .v = "3"}: -1

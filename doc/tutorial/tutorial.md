@@ -238,7 +238,7 @@ Phrases{"Hello, world!"}
 DDlog relations declared using `relation` keyword are sets, i.e., a
 relation cannot contain multiple identical records.  Try adding an
 existing record to `Word1` and check that it only appears once.
-[Later](#multisets-and-streams), we will introduce relations that have multiset
+[Later](#multisets), we will introduce relations that have multiset
 semantics.
 
 ### Incremental evaluation
@@ -1758,9 +1758,7 @@ same or different value.  Likewise, `delete` fails if the specified record does
 not exist.  In contrast, duplicate insertions and deletions are ignored for
 regular relations.
 
-
-
-## Multisets and streams
+## Multisets
 
 All DDlog relations considered so far implement set semantics.  A set can contain
 at most one instance of each value.  If the same value is inserted in the relation
@@ -1859,23 +1857,133 @@ Output `multiset`s are more memory-efficient than `relation`s: internally the
 implementation uses only multisets, and converts them to sets when needed using
 an expensive Differential Dataflow `distinct` operator.
 
-Streams are yet another kind of relation in DDlog that are similar to multisets
-with one additional optimization.  Normally, DDlog stores a copy of the entire
-contents of an `input relation` or `input multiset`.  This copy is used to
-implement the `clear` command, which removes everything from the relation.  In
-addition, it is necessary to enforce the set semantics on `relation`s.  A stream
-is a multiset, whose contents is not cached by DDlog, thus reducing the memory
-footprint of the program.  As a result, it is illegal to use the `clear` command
-on a stream.
+## Streams
+
+Incremental computation is often used in stream analytics in order to update
+results of a query as new data arrives in real time.  Such applications
+typically operate on a mix of persistent data that, once inserted in a relation,
+remains there until explicitly deleted, and **ephemeral data** that gets
+processed and instantly discarded.
+
+As a case in point, the `ZipCodes` relation below, that maps a zip code to the
+city where this zip is located, only changes occasionally.  In contrast, the
+`Parcels` relation, that contains information about parcels received by the
+postal service, may ingest thousands of records per second.  We join the two
+relations and output a copy of records from `Parcels` enriched with the name of
+the city where each parcel must be sent.
 
 ```
-// Declare an input stream.
-input stream StreamIn(x: u32)
+input relation ZipCodes(zip: u32, city: string)
+input relation Parcel(zip: u32, weight: usize)
+
+// Add the name of the destination city to each parcel.
+output relation ParcelCity(zip: u32, city: string, weight: usize)
+ParcelCity(zip, city, weight) :-
+    Parcel(zip, weight),
+    ZipCodes(zip, city).
 ```
 
-Note that any DDlog relation, not just input or output, can be declared as a
-stream of multiset; however these specifiers do not no affect the behavior of
-internal relations, which are always implemented as multisets.
+At runtime, the client inserts a bunch of records in the `Parcel` relation,
+reads the corresponding outputs from `ParcelCity` and clears the `Parcel`
+relation since its contents is no longer needed and to avoid running out of
+memory.  This is cumbersome and expensive.
+
+A better solution is to use the DDlog **stream** abstraction, intended to
+simplify working with ephemeral data, i.e., data that gets discarded after being
+used.  A stream is a relation that only contains records added during the
+current transaction.  When the transaction completes, all previously inserted
+records as well as any records derived from them disappear without a trace and
+the memory footprint of all streams in the program drops to zero.
+
+We re-declare the `Parcel` relation as a stream (by using the `stream` keyword
+instead of `relation`).  Any rule that uses a stream yields a stream; hence
+`ParcelCity` must also be declared as a stream.
+
+```
+input relation ZipCodes(zip: u32, city: string)
+input stream Parcel(zip: u32, weight: usize)
+
+// Add the name of the destination city to each parcel.
+output stream ParcelCity(zip: u32, city: string, weight: usize)
+ParcelCity(zip, city, weight) :-
+    Parcel(zip, weight),
+    ZipCodes(zip, city).
+```
+
+No other changes to the program are required, and we can now observe how
+streams behave at runtime:
+
+```
+echo Populating the zip code table.;
+start;
+insert ZipCodes(94022, "Los Altos"),
+insert ZipCodes(94035, "Moffett Field"),
+insert ZipCodes(94039, "Mountain View"),
+insert ZipCodes(94085, "Sunnyvale"),
+commit dump_changes;
+
+echo Feeding data to the Parcel stream;
+start;
+insert Parcel(94022, 2),
+insert Parcel(94085, 6),
+commit dump_changes;
+
+# DDlog output:
+#   Populating the zip code table.
+#   Feeding data to the Parcel stream
+#   ParcelCity:
+#   ParcelCity{.zip = 94022, .city = "Los Altos", .weight = 2}: +1
+#   ParcelCity{.zip = 94085, .city = "Sunnyvale", .weight = 6}: +1
+
+echo Send more parcels!;
+start;
+insert Parcel(94039, 10),
+insert Parcel(94022, 1),
+commit dump_changes;
+
+# DDlog output:
+#   Send more parcels!
+#   ParcelCity:
+#   ParcelCity{.zip = 94022, .city = "Los Altos", .weight = 1}: +1
+#   ParcelCity{.zip = 94039, .city = "Mountain View", .weight = 10}: +1
+```
+
+Note that although the stream becomes empty at the start of every transaction,
+DDlog does not output delete records (i.e., records with negative weights) for
+streams.
+
+In general, streams can be used in rules just like normal relations.  They can
+be joined with other relations, filtered, and flat-mapped.  There are also some
+restrictions on streams.  Most importantly, streams cannot be part of a
+recursive computation.  In addition streams currently cannot be aggregated using
+the `group_by` operator, or used as one of the inputs to an antijoin.  These
+constraints may be removed in future versions of DDlog.
+
+Consider the following transaction that simultaneously changes the contents of
+the `ZipCode` relation and the `Parcel` stream:
+
+```
+echo Modifying both inputs in the same transaction.;
+start;
+insert ZipCodes(94301, "Palo Alto"),
+insert Parcel(94301, 4),
+insert Parcel(94035, 1),
+commit dump_changes;
+
+# DDlog output:
+#   Modifying both inputs in the same transaction.
+#   ParcelCity:
+#   ParcelCity{.zip = 94035, .city = "Moffett Field", .weight = 1}: +1
+#   ParcelCity{.zip = 94301, .city = "Palo Alto", .weight = 4}: +1
+```
+
+Note that changes to `ZipCode` are reflected in the output of the transaction.
+Generally speaking, the output of each transaction is computed based on the
+contents of all input relations and streams right before the commit.
+
+As far as the API is concerned, streams behave as multisets in that one can push
+duplicate records to a stream.  Since the contents of a stream is discarded
+after each transaction, the `clear` command is not defined for streams.
 
 ## Advanced types
 

@@ -369,13 +369,26 @@ output relation OutArticle[Article]
 OutArticle[a] :- a in Article().
 
 /*
- * Example: streams and multisets.
+ * Example: multisets.
  */
 
 input multiset MSetIn(x: u32)
 output multiset MSetOut(x: u32)
 
 MSetOut(x) :- MSetIn(x).
+
+/*
+ * Example: streams.
+ */
+
+input relation ZipCodes(zip: u32, city: string)
+input stream Parcel(zip: u32, weight: usize)
+
+// Add the name of the destination city to each parcel.
+output stream ParcelCity(zip: u32, city: string, weight: usize)
+ParcelCity(zip, city, weight) :-
+    Parcel(zip, weight),
+    ZipCodes(zip, city).
 
 
 /*

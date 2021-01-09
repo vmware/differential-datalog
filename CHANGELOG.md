@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.34.2] - Jan 18, 2021
+
+### New features
+
+- Support for [ephemeral streams](doc/language_reference/language_reference.md#streams)
+
 ## [0.34.1] - Jan 17, 2021
 
 ### Bug fixes

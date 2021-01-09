@@ -45,6 +45,7 @@ import Language.DifferentialDatalog.ECtx
 import {-# SOURCE #-} Language.DifferentialDatalog.Expr
 import Language.DifferentialDatalog.DatalogProgram
 import Language.DifferentialDatalog.Relation
+import Language.DifferentialDatalog.Rule
 import Language.DifferentialDatalog.Attribute
 import Language.DifferentialDatalog.Error
 
@@ -356,8 +357,16 @@ atomValidate d ctx atom = do
 -- Validate an RHS term of a rule.  Once all RHS and LHS terms have been
 -- validated, it is safe to call 'ruleValidateExpressions'.
 ruleRHSValidate :: (MonadError String me) => DatalogProgram -> Rule -> RuleRHS -> Int -> me ()
-ruleRHSValidate d rl (RHSLiteral _ atom) idx =
+ruleRHSValidate d rl (RHSLiteral polarity atom) idx = do
     atomValidate d (CtxRuleRAtom rl idx) atom
+    let rel = getRelation d $ atomRelation atom
+    when (rulePrefixIsStream d rl idx) $ check d (relSemantics rel /= RelStream) (pos atom)
+        $ "Attempt to join stream relation '" ++ name rel ++ "' and the stream produced by the prefix of the rule before this literal. Stream joins are currently not supported."
+    when (relIsStream rel) $ check d polarity (pos atom)
+        $ "Attempt to negate a stream relation '" ++ name rel ++ "'.  This is currently not supported."
+    -- This is an implementation constraint.  We should be able to antijoin streams.
+    when (polarity == False) $ check d (not $ rulePrefixIsStream d rl idx) (pos atom)
+        $ "Unsupported antijoin. The prefix of the rule before this literal produces a stream. Antijoins with streams are currently not supported."
 
 ruleRHSValidate d rl RHSCondition{..} i = do
     let ctx = CtxRuleRCond rl i
@@ -379,6 +388,8 @@ ruleRHSValidate d rl RHSGroupBy{} idx = do
                                  e' -> err d (pos e') "Group-by expression must be a variable or a tuple of variables, e.g., 'group_by(x)' or 'group_by((x,y))'")
                                 exprTupleFields
          _ -> err d (pos group_by) "Group-by expression must be a variable or a tuple of variables, e.g., 'group_by(x)' or 'group_by((x,y))'"
+    check d (not $ rulePrefixIsStream d rl idx) (pos e)
+          $ "Illegal 'group_by' over a stream: only non-stream relations can be aggregated."
     return ()
 
 ruleLHSValidate :: (MonadError String me) => DatalogProgram -> Rule -> Atom -> me ()
@@ -386,6 +397,10 @@ ruleLHSValidate d rl a@Atom{..} = do
     rel <- checkRelation atomPos d atomRelation
     when (relRole rel == RelInput) $ check d (null $ ruleRHS rl) (pos a)
          $ "Input relation " ++ name rel ++ " cannot appear in the head of a rule"
+    when (relSemantics rel == RelStream) $ check d (ruleBodyIsStream d rl) (pos a)
+         $ "Relation '" ++ name rel ++ "' in the head of the rule is declared as a stream, but the body of the rule computes a regular non-stream relation."
+    when (relSemantics rel /= RelStream) $ check d (not $ ruleBodyIsStream d rl) (pos a)
+         $ "The body of the rule yields a stream relation, but relation '" ++ name rel ++ "' in the head of the rule is not declared as a stream."
 
 -- | Validate relation transformer
 -- * input and output argument names must be unique
@@ -530,11 +545,22 @@ depGraphValidate d@DatalogProgram{..} = do
                              $ filter rhsIsLiteral ruleRHS)
                   ruleLHS)
           progRules
+    mapM_ (\Rule{..} ->
+            mapM_ (\a ->
+                    do let lscc = sccmap M.! (atomRelation a)
+                       mapM_ (\rhs -> err d (pos $ rhsAtom rhs)
+                                      $ "Stream '" ++ (atomRelation $ rhsAtom rhs) ++ "' occurs inside a recursive fragment consisting of: " ++ show (sccs !! lscc))
+                             $ filter ((== RelStream) . relSemantics . getRelation d . atomRelation . rhsAtom)
+                             $ filter ((== lscc) . (sccmap M.!) . atomRelation . rhsAtom)
+                             $ filter rhsIsLiteral ruleRHS)
+                  ruleLHS)
+          progRules
     mapM_ (\scc -> let anode = find depNodeIsApply scc in
                    case anode of
-                        Just (DepNodeApply a) -> err d (pos a)
-                                                 $ "Transformer application appears in a recursive fragment consisting of the following relations: " ++
-                                                 (show scc)
+                        Just (DepNodeApply a) ->
+                             err d (pos a)
+                             $ "Transformer application appears in a recursive fragment consisting of the following relations: " ++
+                               (show scc)
                         _ -> return ())
           $ filter ((> 1) . length) sccs
 

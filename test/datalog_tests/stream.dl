@@ -28,3 +28,91 @@ output stream CompressedChunk(json: string)
 CompressedChunk(json) :-
     Objects(objs),
     Ok{var json} = to_json_string(objs).
+
+/* Test streaming joins. */
+
+// "Persistent" key-value store.
+input relation ZipCodes(zip: u32, city: string)
+
+// Stream of ephemeral queries.
+input stream ZipQueries(zip: u32)
+
+// Relation-stream semijoin.
+output stream ZipResultsRS(zip: u32, city: string)
+ZipResultsRS(zip, city) :-
+    ZipCodes(zip, city),
+    ZipQueries(zip).
+
+// Stream-relation semijoin.
+output stream ZipResultsSR(zip: u32, city: string)
+ZipResultsSR(zip, city) :-
+    ZipQueries(zip),
+    ZipCodes(zip, city).
+
+// Full join
+
+// Stream of ephemeral queries.
+input stream ZipQueries2(zip: u32, distance: u32)
+
+// Relation-stream join.
+output stream ZipResults2RS(zip: u32, city: string, distance: u32)
+ZipResults2RS(zip, city, distance) :-
+    ZipCodes(zip, city),
+    ZipQueries2(zip, distance).
+
+// Filter before and after join.
+output stream ZipResults2RSFiltered(zip: u32, city: string, distance: u32, descr: string)
+ZipResults2RSFiltered(zip, city, distance, descr) :-
+    ZipCodes(zip, city),
+    city != "Los Altos",
+    var descr1 = "${zip} is in ${city}",
+    ZipQueries2(zip, distance),
+    var descr = "${descr1}, ${distance} miles away".
+
+// Stream-relation join.
+output stream ZipResults2SR(zip: u32, city: string, distance: u32)
+ZipResults2SR(zip, city, distance) :-
+    ZipQueries2(zip, distance),
+    ZipCodes(zip, city).
+
+// Filter before and after join.
+output stream ZipResults2SRFiltered(zip: u32, city: string, distance: u32, descr: string)
+ZipResults2SRFiltered(zip, city, distance, descr) :-
+    ZipQueries2(zip, distance),
+    distance > 4,
+    var descr1 = "${zip}",
+    ZipCodes(zip, city),
+    var descr = "${descr1} is in ${city}, ${distance} miles away".
+
+// Relation-stream-relation sandwich.
+output stream ZipResults2RSRFiltered(zip: u32, city: string, distance: u32, descr: string)
+ZipResults2RSRFiltered(zip, city, distance, descr) :-
+    ZipCodes(zip, city),
+    var descr1 = "${zip} is in ${city}",
+    ZipQueries2(zip, distance),
+    distance > 4,
+    var descr2 = "${distance} miles away",
+    ZipCodes(zip, city),
+    var descr = "${descr1}, ${descr2}".
+
+/*
+ * Scale test
+ */
+
+input relation KVStore(k: usize, v: string)
+
+// Streaming queries.
+input stream KVStreamQuery(k: usize)
+output stream KVStreamResponse(k: usize, v: string)
+
+KVStreamResponse(k, v) :-
+    KVStreamQuery(k),
+    KVStore(k, v).
+
+// Relational queries.
+input relation KVRelQuery(k: usize)
+output relation KVRelResponse(k: usize, v: string)
+
+KVRelResponse(k, v) :-
+    KVRelQuery(k),
+    KVStore(k, v).
