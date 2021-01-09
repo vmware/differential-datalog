@@ -673,6 +673,266 @@ fn test_join_multi() {
     test_join(16)
 }
 
+/* Streaming join
+ */
+fn test_streamjoin(nthreads: usize) {
+    let relset1: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let rel1 = {
+        Relation {
+            name: Cow::from("T1"),
+            input: true,
+            distinct: true,
+            caching_mode: CachingMode::Set,
+            key_func: None,
+            id: 1,
+            rules: Vec::new(),
+            arrangements: vec![
+                Arrangement::Map {
+                    name: Cow::from("arrange1.0"),
+                    afun: afun1 as ArrangeFunc,
+                    queryable: false,
+                },
+                Arrangement::Set {
+                    name: Cow::from("arrange1.1"),
+                    fmfun: safun1 as FilterMapFunc,
+                    distinct: false,
+                },
+            ],
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T1", &relset1, v, w))),
+        }
+    };
+    fn fmfun1(v: DDValue) -> Option<DDValue> {
+        let Tuple2(ref v1, ref _v2) = Tuple2::<U64>::from_ddvalue(v);
+        Some(v1.clone().into_ddvalue())
+    }
+
+    fn afun1(v: DDValue) -> Option<(DDValue, DDValue)> {
+        let Tuple2(ref v1, ref v2) = Tuple2::<U64>::from_ddvalue(v);
+        Some((v1.clone().into_ddvalue(), v2.clone().into_ddvalue()))
+    }
+
+    fn safun1(v: DDValue) -> Option<DDValue> {
+        let Tuple2(ref v1, ref _v2) = Tuple2::<U64>::from_ddvalue(v);
+        Some(v1.clone().into_ddvalue())
+    }
+
+    let relset2: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let rel2 = {
+        Relation {
+            name: Cow::from("T2"),
+            input: true,
+            distinct: true,
+            caching_mode: CachingMode::Set,
+            key_func: None,
+            id: 2,
+            rules: Vec::new(),
+            arrangements: vec![],
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T2", &relset2, v, w))),
+        }
+    };
+    fn jfun(v1: &DDValue, v2: &DDValue) -> Option<DDValue> {
+        Some(
+            Tuple2(
+                Box::new(U64::from_ddvalue(v1.clone())),
+                Tuple2::<U64>::from_ddvalue(v2.clone()).1,
+            )
+            .into_ddvalue(),
+        )
+    }
+
+    fn sjfun(v1: &DDValue) -> Option<DDValue> {
+        Some(
+            Tuple2(
+                Box::new(U64::from_ddvalue(v1.clone())),
+                Box::new(U64::from_ddvalue(v1.clone())),
+            )
+            .into_ddvalue(),
+        )
+    }
+
+    fn jfun2(v1: &DDValue, v2: &DDValue) -> Option<DDValue> {
+        Some(
+            Tuple2(
+                Box::new(U64::from_ddvalue(v1.clone())),
+                Box::new(U64::from_ddvalue(v2.clone())),
+            )
+            .into_ddvalue(),
+        )
+    }
+
+    fn sjfun2(v1: &DDValue) -> Option<DDValue> {
+        Some(
+            Tuple2(
+                Box::new(U64::from_ddvalue(v1.clone())),
+                Box::new(U64::from_ddvalue(v1.clone())),
+            )
+            .into_ddvalue(),
+        )
+    }
+
+    fn kfun(v: &DDValue) -> Option<DDValue> {
+        let Tuple2(ref v1, ref _v2) = Tuple2::<U64>::from_ddvalue_ref(v);
+        Some(v1.clone().into_ddvalue())
+    }
+
+    let relset3: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let rel3 = {
+        let relset3 = relset3.clone();
+        Relation {
+            name: Cow::from("T3"),
+            input: false,
+            distinct: false,
+            caching_mode: CachingMode::Set,
+            key_func: None,
+            id: 3,
+            rules: vec![Rule::CollectionRule {
+                description: Cow::from("T3.R1"),
+                rel: 1,
+                xform: Some(XFormCollection::Arrange {
+                    description: Cow::from("arrange by .0"),
+                    afun: afun1 as ArrangeFunc,
+                    next: Box::new(XFormArrangement::StreamJoin {
+                        description: Cow::from("1.streamjoin (2)"),
+                        ffun: None,
+                        rel: 2,
+                        kfun: kfun as KeyFunc,
+                        jfun: jfun as ValJoinFunc,
+                        next: Box::new(None),
+                    }),
+                }),
+            }],
+            arrangements: Vec::new(),
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T3", &relset3, v, w))),
+        }
+    };
+
+    let relset4: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let rel4 = {
+        let relset4 = relset4.clone();
+        Relation {
+            name: Cow::from("T4"),
+            input: false,
+            distinct: false,
+            caching_mode: CachingMode::Set,
+            key_func: None,
+            id: 4,
+            rules: vec![Rule::CollectionRule {
+                description: Cow::from("T4.R1"),
+                rel: 2,
+                xform: Some(XFormCollection::StreamJoin {
+                    description: Cow::from("2.streamjoin (1)"),
+                    afun: afun1,
+                    arrangement: (1, 0),
+                    jfun: jfun2 as ValJoinFunc,
+                    next: Box::new(None),
+                }),
+            }],
+            arrangements: Vec::new(),
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T4", &relset4, v, w))),
+        }
+    };
+
+    let relset5: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let rel5 = {
+        let relset5 = relset5.clone();
+        Relation {
+            name: Cow::from("T5"),
+            input: false,
+            distinct: false,
+            caching_mode: CachingMode::Set,
+            key_func: None,
+            id: 5,
+            rules: vec![Rule::CollectionRule {
+                description: Cow::from("T5.R1"),
+                rel: 1,
+                xform: Some(XFormCollection::Arrange {
+                    description: Cow::from("arrange by .0"),
+                    afun: afun1 as ArrangeFunc,
+                    next: Box::new(XFormArrangement::StreamSemijoin {
+                        description: Cow::from("1.streamsemijoin (2)"),
+                        ffun: None,
+                        rel: 2,
+                        kfun: kfun as KeyFunc,
+                        jfun: sjfun as StreamSemijoinFunc,
+                        next: Box::new(None),
+                    }),
+                }),
+            }],
+            arrangements: Vec::new(),
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T5", &relset5, v, w))),
+        }
+    };
+
+    let relset6: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let rel6 = {
+        let relset6 = relset6.clone();
+        Relation {
+            name: Cow::from("T6"),
+            input: false,
+            distinct: false,
+            caching_mode: CachingMode::Set,
+            key_func: None,
+            id: 6,
+            rules: vec![Rule::CollectionRule {
+                description: Cow::from("T6.R1"),
+                rel: 2,
+                xform: Some(XFormCollection::StreamSemijoin {
+                    description: Cow::from("2.streamsemijoin (1)"),
+                    afun: afun1,
+                    arrangement: (1, 1),
+                    jfun: sjfun2 as StreamSemijoinFunc,
+                    next: Box::new(None),
+                }),
+            }],
+            arrangements: Vec::new(),
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T6", &relset6, v, w))),
+        }
+    };
+
+    let prog: Program = Program {
+        nodes: vec![
+            ProgNode::Rel { rel: rel1 },
+            ProgNode::Rel { rel: rel2 },
+            ProgNode::Rel { rel: rel3 },
+            ProgNode::Rel { rel: rel4 },
+            ProgNode::Rel { rel: rel5 },
+            ProgNode::Rel { rel: rel6 },
+        ],
+        init_data: vec![],
+    };
+
+    let mut running = prog.run(nthreads).unwrap();
+
+    let vals: Vec<u64> = (0..TEST_SIZE).collect();
+    let set = BTreeMap::from_iter(
+        vals.iter()
+            .map(|x| (Tuple2(Box::new(U64(*x)), Box::new(U64(*x))), 1)),
+    );
+
+    running.transaction_start().unwrap();
+    for x in set.keys() {
+        running.insert(1, x.clone().into_ddvalue()).unwrap();
+        running.insert(2, x.clone().into_ddvalue()).unwrap();
+    }
+    running.transaction_commit().unwrap();
+
+    assert_eq!(*relset3.lock().unwrap(), set);
+    assert_eq!(*relset4.lock().unwrap(), set);
+    assert_eq!(*relset5.lock().unwrap(), set);
+    assert_eq!(*relset6.lock().unwrap(), set);
+
+    running.stop().unwrap();
+}
+
+#[test]
+fn test_streamjoin_1() {
+    test_streamjoin(1)
+}
+
+#[test]
+fn test_streamjoin_multi() {
+    test_streamjoin(16)
+}
 /* Antijoin
  */
 fn test_antijoin(nthreads: usize) {

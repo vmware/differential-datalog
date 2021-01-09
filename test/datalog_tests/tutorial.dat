@@ -290,6 +290,33 @@ dump MSetOut;
 # MSetOut{.x = 0} +1
 # MSetOut{.x = 1} +2
 
+echo Populating the zip code table.;
+start;
+insert ZipCodes(94022, "Los Altos"),
+insert ZipCodes(94035, "Moffett Field"),
+insert ZipCodes(94039, "Mountain View"),
+insert ZipCodes(94085, "Sunnyvale"),
+commit dump_changes;
+
+echo Feeding data to the Parcel stream;
+start;
+insert Parcel(94022, 2),
+insert Parcel(94085, 6),
+commit dump_changes;
+
+echo Send more parcels!;
+start;
+insert Parcel(94039, 10),
+insert Parcel(94022, 1),
+commit dump_changes;
+
+echo Modifying both inputs in the same transaction.;
+start;
+insert ZipCodes(94301, "Palo Alto"),
+insert Parcel(94301, 4),
+insert Parcel(94035, 1),
+commit dump_changes;
+
 start;
 
 insert Packet(EthPacket{

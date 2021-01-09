@@ -35,7 +35,8 @@ module Language.DifferentialDatalog.Relation (
     relIsDistinct,
     relIdentifier,
     relsAreMutuallyRecursive,
-    relIsBounded
+    relIsBounded,
+    relIsStream
 ) 
 where
 
@@ -129,3 +130,6 @@ relsAreMutuallyRecursive d rel1 rel2 | rel1 == rel2 = relIsRecursive d rel1
                                   DepNodeRel r -> r == rel2
                                   _            -> False) . snd) $ G.labNodes g
     scc = fromJust $ find (elem nd1) $ G.scc g
+
+relIsStream :: Relation -> Bool
+relIsStream rel = relSemantics rel == RelStream

@@ -91,3 +91,31 @@ error: ./test/datalog_tests/rules.fail.dl:10:5-10:11: Variable y already defined
 error: ./test/datalog_tests/rules.fail.dl:10:21-10:22: Variable y already defined in this scope
     var y = FlatMap(y).
                     ^
+
+error: ./test/datalog_tests/rules.fail.dl:10:23-10:31: Attempt to join stream relation 'S2' and the stream produced by the prefix of the rule before this literal. Stream joins are currently not supported.
+S3(x, z) :- S1(x, y), S2(y, z).
+                      ^^^^^^^^
+
+error: ./test/datalog_tests/rules.fail.dl:10:1-10:10: The body of the rule yields a stream relation, but relation 'S3' in the head of the rule is not declared as a stream.
+S3(x, z) :- S1(x, y), S2(y, z).
+^^^^^^^^^
+
+error: ./test/datalog_tests/rules.fail.dl:10:1-10:10: Relation 'S3' in the head of the rule is declared as a stream, but the body of the rule computes a regular non-stream relation.
+S3(x, z) :- S1(x, y), S2(y, z).
+^^^^^^^^^
+
+error: ./test/datalog_tests/rules.fail.dl:8:31-8:32: Illegal 'group_by' over a stream: only non-stream relations can be aggregated.
+S2(y, z) :- S1(x, y), var z = x.group_by(y).
+                              ^
+
+error: ./test/datalog_tests/rules.fail.dl:9:27-9:35: Unsupported antijoin. The prefix of the rule before this literal produces a stream. Antijoins with streams are currently not supported.
+S3(x, y) :- S1(x, y), not S2(y, _).
+                          ^^^^^^^^
+
+error: ./test/datalog_tests/rules.fail.dl:9:27-9:35: Attempt to negate a stream relation 'S2'.  This is currently not supported.
+S3(x, y) :- S1(x, y), not S2(y, _).
+                          ^^^^^^^^
+
+error: ./test/datalog_tests/rules.fail.dl:10:10-10:15: Stream 'S2' occurs inside a recursive fragment consisting of: [S2,S3]
+S3(x) :- S2(x).
+         ^^^^^

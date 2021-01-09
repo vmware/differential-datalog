@@ -38,6 +38,8 @@ module Language.DifferentialDatalog.Rule (
     ruleIsDistinctByConstruction,
     ruleHeadIsRecursive,
     ruleIsRecursive,
+    rulePrefixIsStream,
+    ruleBodyIsStream
 ) where
 
 import qualified Data.Set as S
@@ -222,3 +224,13 @@ ruleHeadIsRecursive d Rule{..} head_idx =
 ruleIsRecursive :: DatalogProgram -> Rule -> Bool
 ruleIsRecursive d rl@Rule{..} =
     any (ruleHeadIsRecursive d rl) [0 .. length ruleLHS - 1]
+
+-- | True iff the prefix of the rule of length 'n' produces a stream.
+rulePrefixIsStream :: DatalogProgram -> Rule -> Int -> Bool
+rulePrefixIsStream d rl n =
+    any (\rhs -> rhsIsLiteral rhs && (relIsStream $ getRelation d $ atomRelation (rhsAtom rhs)))
+        $ take n $ ruleRHS rl
+
+-- | True iff the body of the rule yields a stream.
+ruleBodyIsStream :: DatalogProgram -> Rule -> Bool
+ruleBodyIsStream d rl = rulePrefixIsStream d rl (length $ ruleRHS rl)

@@ -185,3 +185,78 @@ output relation Bar(z: usize)
 Bar(x+y) :-
     Foo(x, y),
     var y = FlatMap(y).
+
+//---
+
+// Join two streams.
+
+input stream S1(x: usize, y: usize)
+input stream S2(y: usize, z: usize)
+
+output stream S3(x: usize, z: usize)
+
+S3(x, z) :- S1(x, y), S2(y, z).
+
+//---
+
+// Rule body yields a stream, but rule head is a regular relation.
+
+input stream S1(x: usize, y: usize)
+input relation S2(y: usize, z: usize)
+
+output relation S3(x: usize, z: usize)
+
+S3(x, z) :- S1(x, y), S2(y, z).
+
+
+//---
+
+// Rule body yields a relation, but rule head is a stream.
+
+input relation S1(x: usize, y: usize)
+input relation S2(y: usize, z: usize)
+
+output stream S3(x: usize, z: usize)
+
+S3(x, z) :- S1(x, y), S2(y, z).
+
+//---
+
+// Aggregate stream.
+
+input stream S1(x: usize, y: usize)
+output stream S2(y: usize, z: usize)
+
+S2(y, z) :- S1(x, y), var z = x.group_by(y).
+
+//---
+
+// Antijoin with stream prefix.
+
+input stream S1(x: usize, y: usize)
+input relation S2(y: usize, z: usize)
+output stream S3(x: usize, z: usize)
+
+S3(x, y) :- S1(x, y), not S2(y, _).
+
+//---
+
+// Negate a stream.
+
+input relation S1(x: usize, y: usize)
+input stream S2(y: usize, z: usize)
+output stream S3(x: usize, z: usize)
+
+S3(x, y) :- S1(x, y), not S2(y, _).
+
+//---
+
+// Recursive stream.
+
+input stream S1(x: usize)
+stream S2(x: usize)
+stream S3(x: usize)
+
+S2(x) :- S1(x).
+S3(x) :- S2(x).
+S2(x) :- S3(x).

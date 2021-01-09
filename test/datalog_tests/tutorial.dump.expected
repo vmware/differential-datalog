@@ -164,6 +164,19 @@ MSetOut:
 MSetOut{.x = 1}: -1
 MSetOut{.x = 0}
 MSetOut{.x = 1} +2
+Populating the zip code table.
+Feeding data to the Parcel stream
+ParcelCity:
+ParcelCity{.zip = 94022, .city = "Los Altos", .weight = 2}: +1
+ParcelCity{.zip = 94085, .city = "Sunnyvale", .weight = 6}: +1
+Send more parcels!
+ParcelCity:
+ParcelCity{.zip = 94022, .city = "Los Altos", .weight = 1}: +1
+ParcelCity{.zip = 94039, .city = "Mountain View", .weight = 10}: +1
+Modifying both inputs in the same transaction.
+ParcelCity:
+ParcelCity{.zip = 94035, .city = "Moffett Field", .weight = 1}: +1
+ParcelCity{.zip = 94301, .city = "Palo Alto", .weight = 4}: +1
 TCPDstPort:
 TCPDstPort{.port = 80}
 TCPDstPort{.port = 8080}

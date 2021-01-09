@@ -1,0 +1,107 @@
+echo Initialize ZipCodes.;
+
+start;
+insert ZipCodes(94022, "Los Altos"),
+insert ZipCodes(94035, "Moffett Field"),
+insert ZipCodes(94039, "Mountain View"),
+insert ZipCodes(94085, "Sunnyvale"),
+insert ZipCodes(94088, "Onizuka Afb"),
+insert ZipCodes(94301, "Palo Alto"),
+insert ZipCodes(94303, "East Palo Alto"),
+commit dump_changes;
+
+echo Execute a single query.;
+start;
+insert ZipQueries(94301),
+commit dump_changes;
+
+echo Multiple queries in a single transaction.;
+
+start;
+insert ZipQueries(94022),
+insert ZipQueries(94303),
+insert ZipQueries2(94022, 5),
+insert ZipQueries2(94303, 6),
+
+commit dump_changes;
+
+echo Modify zip code table.;
+start;
+
+delete ZipCodes(94022, "Los Altos"),
+insert ZipCodes(95115, "San Jose"),
+insert ZipCodes(95128, "San Jose"),
+
+commit;
+
+echo Query the modified table.;
+
+start;
+insert ZipQueries(94022),
+insert ZipQueries(94303),
+insert ZipQueries(95115),
+insert ZipQueries2(94022, 5),
+insert ZipQueries2(94303, 6),
+insert ZipQueries2(95115, 4),
+
+commit dump_changes;
+
+
+echo Modify and query the table in the same transaction.;
+start;
+
+delete ZipCodes(95128, "San Jose"),
+insert ZipCodes(95140, "Mount Hamilton"),
+insert ZipCodes(95037, "Morgan Hill"),
+
+insert ZipQueries(94022),
+insert ZipQueries(95128),
+insert ZipQueries(95037),
+insert ZipQueries(95140),
+insert ZipQueries2(94022, 5),
+insert ZipQueries2(95128, 4),
+insert ZipQueries2(95037, 12),
+insert ZipQueries2(95140, 10),
+
+commit dump_changes;
+
+start;
+
+insert KVStore(1, "1"),
+insert KVStore(1, "1.1"),
+insert KVStore(2, "2"),
+insert KVStore(2, "2.1"),
+insert KVStore(3, "3"),
+
+commit dump_changes;
+
+echo Test streaming queries;
+
+start;
+
+insert KVStreamQuery(1),
+insert KVStreamQuery(2),
+insert KVStreamQuery(3),
+insert KVStreamQuery(4),
+
+commit dump_changes;
+
+echo Test relational queries;
+
+start;
+
+insert KVRelQuery(1),
+insert KVRelQuery(2),
+insert KVRelQuery(3),
+insert KVRelQuery(4),
+
+commit dump_changes;
+
+start;
+
+delete KVRelQuery(1),
+delete KVRelQuery(2),
+delete KVRelQuery(3),
+delete KVRelQuery(4),
+
+commit dump_changes;

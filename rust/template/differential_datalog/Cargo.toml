@@ -13,6 +13,7 @@ c_api = []
 [dependencies]
 #differential-dataflow = "0.11.0"
 differential-dataflow = { git = "https://github.com/ddlog-dev/differential-dataflow", branch = "ddlog-2" }
+dogsdogsdogs = { git = "https://github.com/ddlog-dev/differential-dataflow", branch = "ddlog-2" }
 #timely = "0.11"
 timely = { git = "https://github.com/ddlog-dev/timely-dataflow", branch = "ddlog-2" }
 
