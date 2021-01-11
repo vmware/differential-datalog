@@ -3,7 +3,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [0.34.0] - Jan 11, 2021
+
+### Bug fixes
+
+- A change in serde caused DDlog-generated Rust code to stop compiling,
+  affecting all recent DDlog releases.
 
 ### API changes
 
