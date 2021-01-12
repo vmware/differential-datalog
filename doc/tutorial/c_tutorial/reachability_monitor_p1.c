@@ -4,7 +4,7 @@
 
 #include <string.h> // required for strncmp()
 #include <errno.h>  // required for error code identifiers
-
+#include <unistd.h>
 #include "ddlog.h"
 
 bool print_records_callback(uintptr_t arg, const ddlog_record *rec, ssize_t weight) {
@@ -97,7 +97,7 @@ int main(int args, char **argv)
     };
 
     // Apply updates
-    ddlog_cmd* cmd = ddlog_insert_cmd(1, new_record);
+    ddlog_cmd* cmd = ddlog_insert_cmd(LinksTableID, new_record);
     if (cmd == NULL) {
         fprintf(stderr, "failed to create insert command\n");
         return EXIT_FAILURE;
