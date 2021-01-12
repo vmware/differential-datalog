@@ -4,7 +4,7 @@
 
 #include <string.h> // required for strncmp()
 #include <errno.h>  // required for error code identifiers
-#include <unistd.h>
+
 #include "ddlog.h"
 
 bool print_records_callback(uintptr_t arg, const ddlog_record *rec, ssize_t weight) {
