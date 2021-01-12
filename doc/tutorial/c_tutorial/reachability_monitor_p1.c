@@ -35,8 +35,10 @@ int main(int args, char **argv)
     };
 
     // Print IDs of tables corresponding to `Links` and `ConnectedNodes` relations
-    printf("Links table id: %lu\n", ddlog_get_table_id("Links"));
-    printf("ConnectedNodes table id: %lu\n", ddlog_get_table_id("ConnectedNodes"));
+    table_id LinksTableID = ddlog_get_table_id("Links");
+    table_id ConnectedNodesTableID = ddlog_get_table_id("ConnectedNodes");
+    printf("Links table id: %lu\n", LinksTableID);
+    printf("ConnectedNodes table id: %lu\n", ConnectedNodesTableID);
 
     char *src_line_ptr = NULL;
     char *dst_line_ptr = NULL;
@@ -84,7 +86,9 @@ int main(int args, char **argv)
     struct_args[2] = lstatus;
     ddlog_record* new_record = ddlog_struct("Links", struct_args, 3);
 
-    printf("Inserting the following record: %s\n", ddlog_dump_record(new_record));
+    char *record_to_insert_as_string = ddlog_dump_record(new_record);
+    printf("Inserting the following record: %s\n", record_to_insert_as_string);
+    ddlog_string_free(record_to_insert_as_string);
 
     // Start transaction
     if (ddlog_transaction_start(prog) < 0) {
@@ -118,7 +122,10 @@ int main(int args, char **argv)
     };
 
     // Printing records in the `ConnectedNodes` relation
-    ddlog_dump_table(prog, 0, &print_records_callback, 1);
+    printf("Links Table Contents:\n");
+    ddlog_dump_table(prog, LinksTableID, &print_records_callback, 1);
+    printf("ConnectedNodes Table Contents:\n");
+    ddlog_dump_table(prog, ConnectedNodesTableID, &print_records_callback, 1);
 
     // Stopping DDlog program
     if (ddlog_stop(prog) < 0) {
