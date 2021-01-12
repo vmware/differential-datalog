@@ -12,12 +12,15 @@ bool print_records_callback(uintptr_t arg, const ddlog_record *rec, ssize_t weig
         return false;
     }
 
-    char* record_str = ddlog_dump_record(rec);
-    if (record_str == NULL) {
+    char* record_as_string = ddlog_dump_record(rec);
+    if (record_as_string == NULL) {
         fprintf(stderr, "failed to dump record\n");
         exit(EXIT_FAILURE);
     }
-    printf("Record: %s\n", record_str);
+    printf("Record: %s\n", record_as_string);
+    // Records returned as strings using `ddlog_dump_record()`
+    // API call should be deallocated to avoid memory leaks
+    ddlog_string_free(record_as_string);
 
     return true;
 }
