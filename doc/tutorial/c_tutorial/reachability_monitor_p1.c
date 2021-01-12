@@ -28,7 +28,7 @@ bool print_records_callback(uintptr_t arg, const ddlog_record *rec, ssize_t weig
 int main(int args, char **argv)
 {
     // Start the DDlog program and connect to it
-    ddlog_prog prog = ddlog_run(1, true, NULL, 0, NULL, NULL);
+    ddlog_prog prog = ddlog_run(1, false, NULL, NULL);
     if (prog == NULL) {
         fprintf(stderr, "failed to initialize DDlog program\n");
         return EXIT_FAILURE;
@@ -41,20 +41,28 @@ int main(int args, char **argv)
     char *src_line_ptr = NULL;
     char *dst_line_ptr = NULL;
     char *link_status_line_ptr = NULL;
-    size_t n = 0;
+    size_t n_src = 0;
+    size_t n_dst = 0;
+    size_t n_link_status = 0;
     bool link_status = false;
 
     // Getting new record values from standard input
     printf("Please enter source name > ");
-    if (getline(&src_line_ptr, &n, stdin) < 0) {
+    if (getline(&src_line_ptr, &n_src, stdin) < 0) {
+        if (src_line_ptr != NULL) free(src_line_ptr);
         return -EINVAL;
     }
     printf("Please enter destination name > ");
-    if (getline(&dst_line_ptr, &n, stdin) < 0) {
+    if (getline(&dst_line_ptr, &n_dst, stdin) < 0) {
+        free(src_line_ptr);
+        if (dst_line_ptr != NULL) free(dst_line_ptr);
         return -EINVAL;
     }
     printf("Please enter the link status between source and destination > ");
-    if (getline(&link_status_line_ptr, &n, stdin) < 0) {
+    if (getline(&link_status_line_ptr, &n_link_status, stdin) < 0) {
+        free(src_line_ptr);
+        free(dst_line_ptr);
+        if (link_status_line_ptr != NULL) free(link_status_line_ptr);
         return -EINVAL;
     }
 
