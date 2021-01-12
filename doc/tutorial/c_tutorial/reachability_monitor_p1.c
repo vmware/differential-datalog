@@ -121,9 +121,9 @@ int main(int args, char **argv)
 
     // Printing records in the `ConnectedNodes` relation
     printf("Links Table Contents:\n");
-    ddlog_dump_table(prog, LinksTableID, &print_records_callback, 1);
+    ddlog_dump_table(prog, LinksTableID, &print_records_callback, (uintptr_t)(void*)(NULL));
     printf("ConnectedNodes Table Contents:\n");
-    ddlog_dump_table(prog, ConnectedNodesTableID, &print_records_callback, 1);
+    ddlog_dump_table(prog, ConnectedNodesTableID, &print_records_callback, (uintptr_t)(void*)(NULL));
 
     // Stopping DDlog program
     if (ddlog_stop(prog) < 0) {
