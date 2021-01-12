@@ -96,15 +96,13 @@ int main(int args, char **argv)
         return EXIT_FAILURE;
     };
 
-    // apply updates
-    ddlog_cmd *cmds[1];
+    // Apply updates
     ddlog_cmd* cmd = ddlog_insert_cmd(1, new_record);
-    cmds[0] = cmd;
     if (cmd == NULL) {
         fprintf(stderr, "failed to create insert command\n");
         return EXIT_FAILURE;
     }
-    if (ddlog_apply_updates(prog, cmds, 1) < 0) {
+    if (ddlog_apply_updates(prog, &cmd, 1) < 0) {
         fprintf(stderr, "failed to apply updates\n");
         return EXIT_FAILURE;
     };
