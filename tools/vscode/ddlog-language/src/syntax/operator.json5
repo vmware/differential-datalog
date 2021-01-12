@@ -1,5 +1,13 @@
 {
   "repository": {
+        "assignment-operator": {
+            "patterns": [
+                   {
+                    "name": "keyword.operator.assignment.ddlog",
+                    "match": "(\\=)"
+                   }
+               ]
+            },      
         "operator": {
             "patterns": [
                 {
@@ -12,47 +20,14 @@
                     },
                     "end": "\\)",
                     "endCaptures": {
-                        "0": {
+                        "1": {
                             "name": "keyword.operator.grouping.ddlog"
                         }
                     },
                     "patterns": [
-                        {
-                            "include": "#comment"
-                        },
-                        {
-                            "include": "#constant"
-                        },
-                        {
-                            "include": "#entity"
-                        },
-                        {
-                            "include": "#meta"
-                        },
-                        {
-                            "include": "#punctuation"
-                        },
-                        {
-                            "include": "#string"
-                        },
-                        {
-                            "include": "#support"
-                        },
-                        {
-                            "include": "#type"
-                        },
-                        {
-                            "include": "#variable"
-                        },
-                        {
-                            "include": "#operator"
-                        },
-                        {
-                            "include": "#keyword"
-                        },
-                        {
-                            "include": "#storage"
-                        }
+                       {
+                            "include": "$self"
+                       }
                     ]
                 },
                 {
@@ -65,49 +40,24 @@
                     },
                     "end": "\\}",
                     "endCaptures": {
-                        "0": {
+                        "1": {
                             "name": "keyword.operator.alternate-grouping.ddlog"
                         }
                     },
                     "patterns": [
-                        {
-                            "include": "#comment"
-                        },
-                        {
-                            "include": "#constant"
-                        },
-                        {
-                            "include": "#entity"
-                        },
-                        {
-                            "include": "#meta"
-                        },
-                        {
-                            "include": "#punctuation"
-                        },
-                        {
-                            "include": "#string"
-                        },
-                        {
-                            "include": "#support"
-                        },
-                        {
-                            "include": "#type"
-                        },
-                        {
-                            "include": "#variable"
-                        },
-                        {
-                            "include": "#operator"
-                        },
-                        {
-                            "include": "#keyword"
-                        },
-                        {
-                            "include": "#storage"
-                        }
+                       {
+                            "include": "$self"
+                       }
                     ]
-                },                
+                }, 
+                {
+                    "match": "(\\s*)(?<=(\\.))(\\s*)([A-Za-z_][a-zA-Z0-9_]*)",
+                    "name": "keyword.operator.struct-field.ddlog"
+                },
+                {
+                    "match": "(\\s*)([A-Za-z_][a-zA-Z0-9_]*)(\\s*)(?=(\\.)?!($))",
+                    "name": "keyword.operator.struct-field.ddlog"
+                }, 
                 {
                     "name": "keyword.operator.type-annotation.ddlog",
                     "match": ":\\s*(?=(mut)?\\s*(bigint|bit|bool|signed|double|float|string|Vec|Ref|Set|Map)(\\b))",
@@ -131,7 +81,7 @@
                 {
                     "name": "keyword.operator.type-annotation.ddlog",
                     "match": ":\\s*(?=([|]\\s*)\\s*(bigint|bit|bool|signed|double|float|string|Vec|Ref|Set|Map)(\\b))",
-                },                                 
+                },
                 {
                     "name": "keyword.operator.type-annotation.ddlog",
                     "match": ":\\s*(?=(\\b)(usize|u8|u16|u32|u64|u128|s8|s16|s32|s64|s128|Option|Result)(\\b))",
@@ -149,16 +99,16 @@
                             "name": "entity.name.constructor.ddlog"
                         }
                     }
-                },                                               
+                },
                 {
                     "name": "keyword.operator.type-annotation.ddlog",
-                    "match": ":\\s*(?=([a-zA-Z_][a-zA-Z0-9_]*))",
+                    "match": ":\\s*(?=([a-zA-Z_][a-zA-Z0-9_]*)(?!(function)))",
                     "captures": {
                         "1": {
                             "name": "entity.name.type.ddlog"
                         }
                     }
-                },
+                },                
                 {
                     "name": "keyword.operator.type-annotation.ddlog",
                     "match": ":\\s*(?=('[A-Z][a-zA-Z0-9_]*))",
@@ -167,11 +117,11 @@
                             "name": "entity.name.type-variable.ddlog"
                         }
                     }
-                }, 
+                },
                 {
                     "name": "keyword.operator.type-annotation.ddlog",
                     "match": ":\\s*",
-                },                
+                },                                 
                 {
                     "name": "keyword.operator.match.ddlog",
                     "match": "\\s*(->)\\s*"
@@ -223,7 +173,11 @@
                 {
                     "name": "keyword.operator.bit-slicing.ddlog",
                     "match": "(\\[(\\d+:\\d+)\\])",                    
-                },                
+                }, 
+                {
+                    "name": "keyword.operator.brackets.ddlog",
+                    "match": "\\s*[\\[\\]]\\s*"
+                },                                           
                 {
                     "name": "keyword.operator.implication.ddlog",
                     "match": "(=>)"
@@ -233,8 +187,7 @@
                     "match": "(\\==|!=)"
                 },
                 {
-                    "name": "keyword.operator.assignment.ddlog",
-                    "match": "(\\=)"
+                    "include": "#assignment-operator"
                 },
                 {
                     "name": "keyword.operator.arithmetic.ddlog",

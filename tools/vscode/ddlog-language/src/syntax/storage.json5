@@ -1,5 +1,45 @@
 {
   "repository": {
+        "type-defined": {
+            "patterns": [
+                   {
+                    "name": "storage.type.ddlog",
+                    "match": "\\b(typedef|type)\\b"
+                   }
+               ]
+            },      
+        "type-primitive-simple-type-spec": {
+            "patterns": [
+                   {
+                    "match": "\\b(bigint|bit|bool|double|float|string)\\b",
+                    "name": "storage.type.ddlog"
+                   }
+               ]
+            },
+        "type-primitive-type-spec": {
+            "patterns": [
+                   {
+                    "match": "\\b(signed)\\b",
+                    "name": "storage.type.ddlog"
+                   }
+               ]
+            },            
+        "type-core": {
+            "patterns": [
+                   {
+                    "name": "storage.type.core.ddlog",
+                    "match": "\\b(usize|u8|u16|u32|u64|u128|s8|s16|s32|s64|s128|Option|Result)\\b"
+                   }
+               ]
+            }, 
+        "type-generic": {
+            "patterns": [
+                   {
+                    "name": "storage.type.ddlog",
+                    "match": "\\b(Map|Set|Vec|Ref)\\b"
+                   }
+               ]
+            },                              
         "storage": {
             "patterns": [
                 {
@@ -15,20 +55,19 @@
                     "match": "\\b(function)\\b"
                 },
                 {
-                    "name": "storage.type.ddlog",
-                    "match": "\\b(typedef|type)\\b"
+                            "include": "#type-defined"
                 },
                 {
-                    "name": "storage.type.ddlog",
-                    "match": "\\b(bigint|bit|bool|signed|double|float|string)\\b"
+                            "include": "#type-primitive-simple-type-spec"
                 },
                 {
-                    "name": "storage.type.ddlog",
-                    "match": "\\b(Map|Set|Vec|Ref)\\b"
+                            "include": "#type-primitive-type-spec"
+                },                
+                {
+                            "include": "#type-generic"
                 },
                 {
-                    "name": "storage.type.core.ddlog",
-                    "match": "\\b(usize|u8|u16|u32|u64|u128|s8|s16|s32|s64|s128|Option|Result)\\b"
+                            "include": "#type-core"
                 }                
             ]
         }

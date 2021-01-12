@@ -25,7 +25,7 @@
         "include": "#support"
       },
       { 
-        "include": "#type"
+        "include": "#typedef"
       },
       { 
         "include": "#variable"

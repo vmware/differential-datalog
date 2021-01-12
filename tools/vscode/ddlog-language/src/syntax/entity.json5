@@ -1,25 +1,28 @@
 {
   "repository": {
-        "entity": {
+        "namespace": {
             "patterns": [
                 {
-                    "match": "(\\b)(?<=relation)(\\s)([A-Z0-9_][a-zA-Z0-9_]*)",
-                    "name": "entity.name.relation.ddlog"
-                },
-                {
                     "match": "(\\s*)(?<=::)(\\s*)([A-Za-z_][a-zA-Z0-9_]*)",
-                    "name": "entity.name.module_path.ddlog"
+                    "name": "entity.name.namespace.ddlog"
                 },
                 {
                     "match": "(\\s*)([A-Za-z_][a-zA-Z0-9_]*)(\\s*)(?=::)",
-                    "name": "entity.name.module_path.ddlog"
+                    "name": "entity.name.namespace.ddlog"
                 },
                 {
                     "match": "(\\b)(?<=import)(\\s)([A-Za-z_][a-zA-Z0-9_]*)",
-                    "name": "entity.name.module_path.ddlog"
-                },                
+                    "name": "entity.name.namespace.ddlog"
+                }
+               ]
+            },      
+        "entity": {
+            "patterns": [
                 {
-                    "match": "(\\b)([A-Z0-9_][a-zA-Z0-9_]*)(\\s*)(?=[\\[])(\\s*)",
+                    "include": "#namespace" 
+                },
+                {
+                    "match": "(\\b)([A-Z][a-zA-Z0-9_]*)(\\s*)(?=[\\[])(\\s*)",
                     "name": "entity.name.relation.ddlog",
                     "captures": {
                         "1": {
@@ -28,16 +31,7 @@
                     }
                 },
                 {
-                    "match": "(\\b)([A-Z0-9_]+)(\\s*)(?=[\\[])(\\s*)",
-                    "name": "entity.name.relation.ddlog",
-                    "captures": {
-                        "1": {
-                            "name": "punctuation.definition.type.ddlog"
-                        }
-                    }
-                },                                                
-                {
-                    "match": "(\\b)(?<=relation)(\\s)([A-Z0-9_]*)(\\s*)",
+                    "match": "(\\b)(?<=relation)(\\s)([A-Z][a-zA-Z0-9_]*)(\\s*)",
                     "name": "entity.name.relation.ddlog"
                 },                             
                 {
@@ -49,20 +43,16 @@
                     "name": "entity.name.function.ddlog",
                     "captures": {
                         "1": {
-                            "name": "punctuation.definition.type.ddlog"
+                            "name": "keyword.operator.grouping.ddlog"
                         }
                     }
                 },
                 {
                     "match": "(\\s*)(?!.*(Some|None|Ok|Err))([A-Z][a-zA-Z0-9_]*)(\\s*)(?=((\\s*)\\{))",
                     "name": "entity.name.constructor.ddlog"
-                },                                                                
+                },  
                 {
-                    "match": "\\b(?<=typedef)\\s*([a-zA-Z_][a-zA-Z0-9_]*)(\\s*)",
-                    "name": "entity.name.type.ddlog"
-                }, 
-                {
-                    "match": "\\b(?<=type)\\s*([a-zA-Z_][a-zA-Z0-9_]*)(\\s*)",
+                    "match": "\\b(?<=.*(typedef|type))\\s*([a-zA-Z_][a-zA-Z0-9_]*)(\\s*)",
                     "name": "entity.name.type.ddlog"
                 }
             ]

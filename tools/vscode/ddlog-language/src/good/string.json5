@@ -1,135 +1,140 @@
 {
   "repository": {
+        "escape-character": {
+            "patterns": [
+                   {
+                    "name": "constant.character.escape.ddlog",
+                    "match": "\\\\[0nrvtbfa&\"\\\\]"
+                   }
+               ]
+            },
+        "string-quoted-interpolated-ddlog": {
+            "patterns": [
+                   {
+                    "name": "string.quoted.interpolated.ddlog", 
+                    "begin": "(\\$\\{)",
+                    "beginCaptures": {
+                    "1": {
+                            "name": "punctuation.section.interpolation.begin"
+                        }
+                    },
+                    "end": "(\\})",
+                    "endCaptures": {
+                    "1": {
+                            "name": "punctuation.section.interpolation.end"
+                         }
+                    },
+                    "patterns": [
+                    {
+                        "include": "#constant"
+                    },
+                    {
+                        "include": "#entity"
+                    },
+                    {
+                        "include": "#meta"
+                    },
+                    {
+                        "include": "#string"
+                    },
+                    {
+                        "include": "#support"
+                    },
+                    {
+                        "include": "#variable"
+                    },
+                    {
+                        "include": "#operator"
+                    },
+                    {
+                        "include": "#keyword"
+                    },
+                    {
+                        "include": "#storage"
+                    }
+                    ]                    
+                }
+            ]
+        },
+        "string-literal": {
+            "patterns": [
+                   {
+                    "name": "string.quoted.double.ddlog",
+                    "begin": "(\")",
+                    "beginCaptures": {
+                        "1": {
+                            "name": "punctuation.definition.string.begin.ddlog"
+                        }
+                    },                   
+                    "end": "(\\1)",
+                    "endCaptures": {
+                        "1": {
+                            "name": "punctuation.definition.string.end.ddlog"
+                        }
+                    },                    
+                    "patterns": [
+                        {
+                            "include": "#escape-character"
+                        },
+                        {
+                            "include": "#string-quoted-interpolated-ddlog"
+                        }
+                    ]
+                    }
+                ]
+            },            
         "string": {
             "patterns": [
                 {
-                    "name": "constant.character.escape.ddlog",
-                    "match": "\\\\[0nrvtbfa&\"\\\\]"
-                },
-                {
-                    "name": "string.quoted.double.ddlog",
-                    "begin": "\"",
-                    "end": "\"",
-                    "patterns": [
-                        {
-                            "name": "constant.character.escape.ddlog",
-                            "match": "\\\\[0nrvtbfa&\"\\\\]"
-                        },
-                        {
-                            "name": "string.quoted.interpolated.ddlog",
-                            "begin": "(\\$\\{)",
-                            "beginCaptures": {
-                            "1": {
-                                  "name": "keyword.operator.alternate-grouping.ddlog"
-                                }
-                            },
-                            "end": "\\}",
-                            "endCaptures": {
-                            "0": {
-                                "name": "keyword.operator.alternate-grouping.ddlog"
-                            }
-                            },
-                             "patterns": [
-                                {
-                                    "include": "#comment"
-                                },
-                                {
-                                    "include": "#constant"
-                                },
-                                {
-                                    "include": "#entity"
-                                },
-                                {
-                                    "include": "#meta"
-                                },
-                                {
-                                    "include": "#punctuation"
-                                },
-                                {
-                                    "include": "#string"
-                                },
-                                {
-                                    "include": "#support"
-                                },
-                                {
-                                    "include": "#type"
-                                },
-                                {
-                                    "include": "#variable"
-                                },
-                                {
-                                    "include": "#operator"
-                                },
-                                {
-                                    "include": "#keyword"
-                                },
-                                {
-                                    "include": "#storage"
-                                }
-                            ]                    
-                        },
-                    ]
+                    "include": "#string-literal"
                 },
                 {
                     "name": "string.quoted.double.raw.ddlog",
-                    "begin": "(\\[)(\\|)",               
-                    "end": "(\\|)(\\])",
+                    "begin": "\\s*(\\[)(\\|)", 
+                    "beginCaptures": {
+                        "1": {
+                            "name": "punctuation.definition.raw-string.begin.ddlog"
+                        },
+                        "2": {
+                            "name": "punctuation.definition.raw-string.begin.ddlog"
+                        }                        
+                    },                                   
+                    "end": "(\\2)(\\])\\s*",
+                    "endCaptures": {
+                        "1": {
+                            "name": "punctuation.definition.raw-string.end.ddlog"
+                        },
+                        "2": {
+                            "name": "punctuation.definition.raw-string.end.ddlog"
+                        }                         
+                    },                    
+                },
+                {
+                    "name": "string.quoted.double.interpolated.raw.ddlog",
+                    "begin": "(\\$\\[)(\\|)",  
+                    "beginCaptures": {
+                        "1": {
+                            "name": "punctuation.definition.raw-string.begin.ddlog"
+                        },
+                        "2": {
+                            "name": "punctuation.definition.raw-string.begin.ddlog"
+                        }                        
+                    },                                   
+                    "end": "(\\2)(\\])",
+                    "endCaptures": {
+                        "1": {
+                            "name": "punctuation.definition.raw-string.end.ddlog"
+                        },
+                        "2": {
+                            "name": "punctuation.definition.raw-string.end.ddlog"
+                        }                         
+                    },                     
                     "patterns": [
-                       {
-                            "name": "string.quoted.interpolated.ddlog",
-                            "begin": "(\\$\\{)",
-                            "beginCaptures": {
-                            "1": {
-                               "name": "keyword.operator.alternate-grouping.ddlog"
-                                }
-                            },
-                            "end": "\\}",
-                            "endCaptures": {
-                            "0": {
-                                "name": "keyword.operator.alternate-grouping.ddlog"
-                               }
-                            },
-                            "patterns": [
-                                {
-                                    "include": "#comment"
-                                },
-                                {
-                                    "include": "#constant"
-                                },
-                                {
-                                    "include": "#entity"
-                                },
-                                {
-                                    "include": "#meta"
-                                },
-                                {
-                                    "include": "#punctuation"
-                                },
-                                {
-                                    "include": "#string"
-                                },
-                                {
-                                    "include": "#support"
-                                },
-                                {
-                                    "include": "#type"
-                                },
-                                {
-                                    "include": "#variable"
-                                },
-                                {
-                                    "include": "#operator"
-                                },
-                                {
-                                    "include": "#keyword"
-                                },
-                                {
-                                    "include": "#storage"
-                                }
-                            ]                    
+                        {
+                            "include": "#string-quoted-interpolated-ddlog"
                         }                        
                     ]                                       
-                }               
+                }                                              
             ]
         }    
     }

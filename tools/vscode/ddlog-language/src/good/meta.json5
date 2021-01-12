@@ -1,47 +1,76 @@
 {
   "repository": {
+        "attribute-key": {
+            "patterns": [
+                   {
+                        "match": "(\\s*)([A-Za-z_][a-zA-Z0-9_]*)(\\s*)(?=(\\=))",
+                        "name": "entity.other.attribute-name.ddlog"
+                   }
+                ]                     
+            },  
+        "attribute-value": {
+            "patterns": [
+                {
+                    "include": "$self"
+                }
+            ]
+            },                           
         "meta": {
             "patterns": [
                 {
+                    "name": "meta.import.ddlog",
+                    "begin": "\\b(import)",
+                    "beginCaptures": {
+                    "1": {
+                        "name": "keyword.module.ddlog"
+                    }
+                    },                    
+                    "end": "$",
+                    "patterns": [
+                        {
+                            "include": "#scope-punctuation"
+                        },                                        
+                        {
+                            "include": "#namespace"
+                        },
+                        {
+                            "include": "#module"
+                        },
+                        {
+                            "match": "(\\s*)(?<=as)(\\s*)([A-Za-z_][a-zA-Z0-9_]*)",
+                            "name": "entity.name.module-alias.ddlog"
+                        }
+                    ]                                                         
+                },                
+                {
                     "name": "meta.attributes.ddlog",
-                    "begin": "(#\\[)",
-                    "end": "(\\])", 
-                    "patterns": [  
+                    "begin": "#\\[(\\w*)\\s*",
+                    "beginCaptures": {
+                    "1": {
+                        "name": "entity.other.attribute-name.ddlog"
+                    }
+                    },                    
+                    "end": "(\\])",
+                    "endCaptures": {
+                    "1": {
+                        "name": "meta.attributes.closing-bracket-ddlog"
+                    }
+                    },
+                    "patterns": [ 
                         {
-                            "include": "#comment"
+                            "include": "#attribute-key"
                         },
                         {
-                            "include": "#constant"
-                        },
-                        {
-                            "include": "#entity"
-                        },
-                        {
-                            "include": "#meta"
+                            "include": "#attribute-value"
                         },
                         {
                             "include": "#punctuation"
                         },
                         {
-                            "include": "#string"
-                        },
+                            "include": "#assignment-operator"
+                        },                        
                         {
-                            "include": "#support"
-                        },
-                        {
-                            "include": "#type"
-                        },
-                        {
-                            "include": "#variable"
-                        },
-                        {
-                            "include": "#operator"
-                        },
-                        {
-                            "include": "#keyword"
-                        },
-                        {
-                            "include": "#storage"
+                            "include": "#meta"
                         }
                     ]                                                         
                 },
@@ -49,15 +78,15 @@
                     "name": "meta.function-param.ddlog",
                     "begin": "(?<=(\\b)([a-z_][a-zA-Z0-9_]*))(\\()",
                     "end": "(\\))",
-                    "beginCaptures": {"0": {"name": "punctuation.definition.type.ddlog"}},
-                    "endCaptures": {"0": {"name": "punctuation.definition.type.ddlog"}},
+                    "beginCaptures": {"0": {"name": "keyword.operator.grouping.ddlog"}},
+                    "endCaptures": {"0": {"name": "keyword.operator.grouping.ddlog"}},
                     "patterns": [
                         {
                             "match": "(\\b)([a-z_][a-zA-Z0-9_]*)(?=[(])",
                             "name": "entity.name.function.ddlog",
                             "captures": {
                             "1": {
-                               "name": "punctuation.definition.type.ddlog"
+                               "name": "keyword.operator.grouping.ddlog"
                              }
                             }
                         },
@@ -84,7 +113,7 @@
                             "include": "#support"
                         },
                         {
-                            "include": "#type"
+                            "include": "#typedef"
                         },
                         {
                             "include": "#variable"

@@ -1,5 +1,13 @@
 {
   "repository": {
+        "module": {
+            "patterns": [
+                   {
+                    "name": "keyword.module.ddlog",
+                    "match": "\\b(import|extern|as)\\b"
+                   }
+               ]
+            },      
         "keyword": {
             "patterns": [
                 {
@@ -11,8 +19,7 @@
                     "match": "\\b(input|output|relation)\\b"
                 },
                 {
-                    "name": "keyword.module.ddlog",
-                    "match": "\\b(import|extern|as)\\b"
+                    "include": "#module"   
                 },
                 {
                     "name": "keyword.type.ddlog",
@@ -20,11 +27,11 @@
                 },
                 {
                     "name": "keyword.special.ddlog",
-                    "match": "\\b(Aggregate|FlatMap)\\b"
+                    "match": "\\b(Aggregate|FlatMap)\\b"    
                 },
                 {
                     "name": "keyword.other.ddlog",
-                    "match": "\\b(group_by|primary key|index|on)\\b"
+                    "match": "\\b(group_by|primary\\s+key|index|on)\\b"
                 },
                 {
                     "name": "keyword.variable.ddlog",

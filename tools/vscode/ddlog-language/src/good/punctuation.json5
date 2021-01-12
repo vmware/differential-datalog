@@ -1,13 +1,28 @@
 {
   "repository": {
+        "comma-punctuation": {
+            "patterns": [
+                   {
+                    "name": "punctuation.separator.comma.ddlog",
+                    "match": "\\s*(,)\\s*"
+                   }
+                ]                     
+            }, 
+        "scope-punctuation": {
+            "patterns": [
+                   {
+                    "name": "punctuation.accessor.scope.ddlog",
+                    "match": "\\s*(\\::)\\s*"
+                   }
+                ]                     
+            },                    
         "punctuation": {
             "patterns": [
                 {
-                    "name": "punctuation.separator.comma.ddlog",
-                    "match": "\\s*(,)\\s*"
+                    "include": "#comma-punctuation"
                 },
                 {
-                    "name": "punctuation.other.delimiter.ddlog",
+                    "name": "punctuation.other.turnstyle.ddlog",
                     "match": "\\s*(\\:-)\\s*"
                 },
                 {
@@ -15,8 +30,7 @@
                     "match": "\\s*(\\.)\\s*"
                 },
                 {
-                    "name": "punctuation.accessor.scope.ddlog",
-                    "match": "\\s*(\\::)\\s*"
+                    "include": "#scope-punctuation"
                 }
             ]
         }

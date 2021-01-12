@@ -13,6 +13,10 @@
                 {
                     "name": "variable.language.ddlog",
                     "match": "\\b(_)\\b"
+                },
+                {
+                    "name": "variable.loop.ddlog",
+                    "match": "\\b(?<=\\()(\\s*)([a-z_][a-zA-Z0-9_]*)\\s*(?=(\\bin\\b)\\s*)"
                 }
             ]
         }
