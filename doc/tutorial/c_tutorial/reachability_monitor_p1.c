@@ -72,7 +72,9 @@ int main(int args, char **argv)
     src_line_ptr[strlen(src_line_ptr) - 1] = '\0';
     dst_line_ptr[strlen(dst_line_ptr) - 1] = '\0';
     // Parsing value for the link status
-    link_status = (strncmp("true", link_status_line_ptr, 4) == 0) ? true : false;
+    if (strlen(link_status_line_ptr) == 5) {
+        link_status = (strncmp("true", link_status_line_ptr, 4) == 0) ? true : false;
+    }
 
     // Creating record values in DDlog format
     ddlog_record* src = ddlog_string(src_line_ptr);
