@@ -12,7 +12,7 @@ bool print_records_callback(uintptr_t arg, const ddlog_record *rec, ssize_t weig
         return false;
     }
 
-    char* record_as_string = ddlog_dump_record(rec);
+    char *record_as_string = ddlog_dump_record(rec);
     if (record_as_string == NULL) {
         fprintf(stderr, "failed to dump record\n");
         exit(EXIT_FAILURE);
@@ -97,7 +97,7 @@ int main(int args, char **argv)
     };
 
     // Apply updates
-    ddlog_cmd* cmd = ddlog_insert_cmd(LinksTableID, new_record);
+    ddlog_cmd *cmd = ddlog_insert_cmd(LinksTableID, new_record);
     if (cmd == NULL) {
         fprintf(stderr, "failed to create insert command\n");
         return EXIT_FAILURE;
