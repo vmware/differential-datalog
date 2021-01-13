@@ -28,7 +28,7 @@ bool print_records_callback(uintptr_t arg, const ddlog_record *rec, ssize_t weig
 int main(int args, char **argv)
 {
     // Start the DDlog program and connect to it
-    ddlog_prog prog = ddlog_run(1, false, NULL, NULL);
+    ddlog_prog prog = ddlog_run(1, true, NULL, NULL);
     if (prog == NULL) {
         fprintf(stderr, "failed to initialize DDlog program\n");
         return EXIT_FAILURE;
@@ -122,8 +122,6 @@ int main(int args, char **argv)
     };
 
     // Printing records in the `ConnectedNodes` relation
-    printf("Links Table Contents:\n");
-    ddlog_dump_table(prog, LinksTableID, &print_records_callback, (uintptr_t)(void*)(NULL));
     printf("ConnectedNodes Table Contents:\n");
     ddlog_dump_table(prog, ConnectedNodesTableID, &print_records_callback, (uintptr_t)(void*)(NULL));
 
