@@ -320,7 +320,7 @@ deref (x, _, _)          = x
 mutref :: (Doc, EKind, ENode) -> Doc
 mutref (x, EReference, _)  = x
 mutref (x, ENoReturn, _)   = x
-mutref (x, _, _)           = parens $ "&mut" <> x
+mutref (x, _, _)           = parens $ "&mut" <+> x
 
 -- convert any expression to EVal by cloning it if necessary
 val :: (Doc, EKind, ENode) -> Doc
@@ -864,7 +864,7 @@ data ModuleReexports = ModuleReexports {
 type ReexportTree = M.Map String ModuleReexports
 
 emptyModuleReexports :: ModuleReexports
-emptyModuleReexports = ModuleReexports [] [] M.empty 
+emptyModuleReexports = ModuleReexports [] [] M.empty
 
 mrAddTypedef :: DatalogProgram -> ModuleReexports -> TypeDef -> ModuleReexports
 mrAddTypedef d mr tdef | tdefGetAliasAttr d tdef = mr
