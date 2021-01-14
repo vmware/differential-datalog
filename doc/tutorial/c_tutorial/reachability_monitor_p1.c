@@ -77,16 +77,16 @@ int main(int args, char **argv)
     }
 
     // Creating record values in DDlog format
-    ddlog_record* src = ddlog_string(src_line_ptr);
-    ddlog_record* dst = ddlog_string(dst_line_ptr);
-    ddlog_record* lstatus = ddlog_bool(link_status);
+    ddlog_record *src = ddlog_string(src_line_ptr);
+    ddlog_record *dst = ddlog_string(dst_line_ptr);
+    ddlog_record *lstatus = ddlog_bool(link_status);
 
     // Placing new record values in one struct to become a single record
     ddlog_record *struct_args[3];
     struct_args[0] = src;
     struct_args[1] = dst;
     struct_args[2] = lstatus;
-    ddlog_record* new_record = ddlog_struct("Links", struct_args, 3);
+    ddlog_record *new_record = ddlog_struct("Links", struct_args, 3);
 
     char *record_to_insert_as_string = ddlog_dump_record(new_record);
     printf("Inserting the following record: %s\n", record_to_insert_as_string);
