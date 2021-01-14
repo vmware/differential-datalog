@@ -706,7 +706,7 @@ removeConstraint idx st = st{ solverConstraints = take idx cs ++ drop (idx+1) cs
     where cs = solverConstraints st
 
 addConstraints :: [Constraint] -> SolverState -> SolverState
-addConstraints new_cs st = st{ solverConstraints = new_cs ++ cs}
+addConstraints new_cs st = st{ solverConstraints = cs ++ new_cs}
     where cs = solverConstraints st
 
 

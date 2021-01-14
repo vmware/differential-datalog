@@ -94,7 +94,7 @@ addConstraint :: Constraint -> GeneratorMonad ()
 addConstraint c = modify $ \gen@GeneratorState{..} -> gen{genConstraints = c : genConstraints}
 
 addConstraints :: [Constraint] -> GeneratorMonad ()
-addConstraints cs = modify $ \gen@GeneratorState{..} -> gen{genConstraints = cs ++ genConstraints}
+addConstraints cs = modify $ \gen@GeneratorState{..} -> gen{genConstraints = genConstraints ++ cs}
 
 tvarTypeOfVar :: Var -> GeneratorMonad TypeVar
 tvarTypeOfVar v = do
@@ -241,7 +241,7 @@ typeToTExpr' de TUser{..}       = TEUser typeName <$> mapM (typeToTExpr' de) typ
 typeToTExpr' de TVar{..}        = teTVarAux de tvarName
 typeToTExpr' de TOpaque{..}     = TEExtern typeName <$> mapM (typeToTExpr' de) typeArgs
 typeToTExpr' _  t@TStruct{}     = error $ "typeToTExpr': unexpected '" ++ show t ++ "'"
-typeToTExpr' de TFunction{..}   = TEFunc <$> mapM (\arg -> (if atypeMut arg then IConst 1 else IConst 0,) <$> typeToTExpr' de (typ arg)) typeFuncArgs 
+typeToTExpr' de TFunction{..}   = TEFunc <$> mapM (\arg -> (if atypeMut arg then IConst 1 else IConst 0,) <$> typeToTExpr' de (typ arg)) typeFuncArgs
                                          <*> typeToTExpr' de typeRetType
 
 -- | Matches function parameter types against concrete argument types, e.g.,
@@ -466,7 +466,7 @@ inferTypes d es = do
                  -- This should be enough to determine the type of any
                  -- expression without type inference, by scanning it bottom up.
                  EVarDecl{}  -> annotated
-                 EVar{} | ctxInRuleRHSPattern ctx 
+                 EVar{} | ctxInRuleRHSPattern ctx
                              -> annotated
                  EPHolder{}  -> annotated
                  EFunc{..}  -> do
@@ -684,7 +684,7 @@ exprConstraints_ de@(DDExpr _ (E e@EFunc{..})) = do
                                             TEFunc{} -> err ?d (pos e) $ "Unknown function '" ++ fname ++ "' of type '" ++ show te ++ "'"
                                             _ ->  err ?d (pos e) $ "Expected expression of type '" ++ show te ++ "', but found function '" ++ fname ++ "'"
                                 [i] -> return $ Just [dev ==== (candidate_types !! i)]
-                                is | teIsConstant te -> err ?d (pos e) 
+                                is | teIsConstant te -> err ?d (pos e)
                                                         $ "Ambiguous reference to function '" ++ fname ++ "' of type '" ++ show te ++ "'" ++
                                                           " may refer to:\n  " ++
                                                           (intercalate "\n  " $ map (\i -> (name $ candidate_funcs !! i) ++ " at " ++ (spos $ candidate_funcs !! i)) is)
@@ -755,7 +755,7 @@ exprConstraints_ de@(DDExpr ctx (E e@ETupField{..})) = do
                             check ?d (length as >= (exprTupField + 1)) (pos e)
                                   $ "Expected tuple with at least " ++ show (exprTupField+1) ++ " fields, but expression '" ++ show e ++ "' of type '" ++ show te ++ "' only has " ++ show (length as)
                             return $ Just [dvar ==== (as !! exprTupField)]
-                         _ -> err ?d (pos de) 
+                         _ -> err ?d (pos de)
                                   $ "expression '" ++ show etuple ++ "' must be a tuple, but its type is '" ++ show te ++ "'"
     ce <- teTypeOfExpr etuple
     addConstraint $ CLazy ce expand Nothing etuple
@@ -823,7 +823,7 @@ exprConstraints_ de@(DDExpr ctx (E e@ESeq{..})) =
 -- '|e1|=Bool and |e2|=|e3|=|e|'
 exprConstraints_ de@(DDExpr ctx (E e@EITE{..})) = do
     addConstraint =<< tvarTypeOfExpr (DDExpr (CtxITEIf e ctx) exprCond) <~~~~ TEBool
-    addConstraint =<< tvarTypeOfExpr (DDExpr (CtxITEThen e ctx) exprThen) <~~~~> teTypeOfExpr (DDExpr (CtxITEElse e ctx) exprElse) 
+    addConstraint =<< tvarTypeOfExpr (DDExpr (CtxITEThen e ctx) exprThen) <~~~~> teTypeOfExpr (DDExpr (CtxITEElse e ctx) exprElse)
     addConstraint =<< tvarTypeOfExpr de <====> teTypeOfExpr (DDExpr (CtxITEThen e ctx) exprThen)
 
 -- 'for (v in e1) {e2}'
@@ -923,7 +923,7 @@ exprConstraints_ de@(DDExpr ctx (E e@EBinOp{..})) | elem exprBOp [Eq, Neq, Lt, L
     let expand TETVar{} = return Nothing
         expand TEString = return $ Just [isstring]
         expand (TEBit w) = return $ Just [isbit_r, dte ==== (TEBit $ IPlus w $ IVar ivar_r)]
-        expand te = err ?d (pos l) 
+        expand te = err ?d (pos l)
                         $ "expression '" ++ show l ++ "' must be of type that supports concatenation operator (++), i.e., 'bit<>' or 'string', but its type '" ++ show te ++ "' doesn't"
     addConstraint $ CLazy ce expand Nothing l
                   $ "expression '" ++ show l ++ "' must be of type that supports concatenation operator (++), i.e., 'bit<>' or 'string'"
@@ -952,7 +952,7 @@ exprConstraints_ de@(DDExpr ctx (E e@EUnOp{..}))  | exprUOp == Not = do
 --
 -- 'is_num |e1| and |e| = |e1|'
 --
-    addConstraint =<< deIsNum op Nothing 
+    addConstraint =<< deIsNum op Nothing
                               (\te -> err ?d (pos de) $ "expression '" ++ show op ++ "' must be of a numeric type, but its type is " ++ show te)
     addConstraint =<< tvarTypeOfExpr de <====> teTypeOfExpr op
                                                 | otherwise =
