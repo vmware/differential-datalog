@@ -6,13 +6,13 @@ error: ./test/datalog_tests/function.fail.dl:13:13-14:1: Missing field 'f2' in c
     var z = C{.f1 = "foo"}
             ^
 
-error: ./test/datalog_tests/function.fail.dl:11:17-11:24: Type mismatch:
-expected type: bit<32>
-actual type: bool
+error: ./test/datalog_tests/function.fail.dl:11:17-11:18: Type mismatch:
+expected type: bool
+actual type: bit<32>
 in
-expression '(var w: bool)'
+expression 'var w'
         C0{.x = w: bool} -> w,
-                ^^^^^^^
+                ^
 
 error: ./test/datalog_tests/function.fail.dl:6:13-7:1: Access to guarded field 'x' (not all constructors of type 'ddlog_std::Option' have this field).
     var b = a.x
@@ -98,7 +98,7 @@ error: ./test/datalog_tests/function.fail.dl:10:16-10:29: Type mismatch:
 expected type: bool
 actual type: ddlog_std::Option<bool>
 in
-expected type: function( 'a9):bool
+expected type: function( ddlog_std::Option<bool>):bool
 actual type: function( ddlog_std::Option<bool>):ddlog_std::Option<bool>
 in
 expression 'bool_identity'
@@ -113,7 +113,7 @@ extern function foo(x: u32): ()
 
 error: ./test/datalog_tests/function.fail.dl:6:5-10:1: Type mismatch:
 expected type: ddlog_std::Result<(string,string),string>
-actual type: ddlog_std::Option<('a17,'a28)>
+actual type: ddlog_std::Option<'a35>
 in
 expression '{(var components = ([One of [ddlog_std::split, internment::split]](name, " ")));
  {(var first_name = ((ddlog_std::nth(components, 0))?));
