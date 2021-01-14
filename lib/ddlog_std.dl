@@ -700,6 +700,7 @@ function is_empty(m: Map<'K,'V>): bool {
     map_is_empty(m)
 }
 
+/// If a key is present in both maps keep the one from m2
 function union(m1: Map<'K, 'V>, m2: Map<'K,'V>): Map<'K, 'V> {
     map_union(m1, m2)
 }
