@@ -45,6 +45,14 @@ extern function istring_to_lowercase(s: istring): string
 extern function istring_to_uppercase(s: istring): string
 extern function istring_reverse(s: istring): string
 
+function parse_dec_u64(s: istring): Option<bit<64>> {
+    parse_dec_u64(s.ival())
+}
+
+function parse_dec_i64(s: istring): Option<signed<64>> {
+    parse_dec_i64(s.ival())
+}
+
 function contains(s1: istring, s2: string): bool {
     istring_contains(s1, s2)
 }
