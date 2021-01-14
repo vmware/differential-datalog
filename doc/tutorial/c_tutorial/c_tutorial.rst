@@ -92,7 +92,6 @@ To make our life more interesting (and just slightly more complicated) the links
 Let's start again DDlog shell and insert records to recreate the network topology above:
 
 .. code-block::
-    :linenos:
 
     $ ./target/release/t1_reachability_monitor_cli
     >> start;
