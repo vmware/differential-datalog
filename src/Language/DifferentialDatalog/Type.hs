@@ -258,7 +258,7 @@ exprNodeType' d ctx (EFunc _ [f]) | -- Type inference engine type-annotates poly
 exprNodeType' _ _   e@EFunc{} = error $ "exprNodeType' called with unresolved function name: " ++ show e
 
 exprNodeType' d _   (EField _ e f) =
-    let t@TStruct{} = typDeref' d e 
+    let t@TStruct{} = typDeref' d e
         fld = fromJust $ find ((==f) . name) $ structFields t
     in fieldType fld
 
@@ -593,7 +593,7 @@ consTreeNodeExpand :: DatalogProgram -> Type -> [CTreeNode]
 consTreeNodeExpand d t =
     case typ' d t of
          TStruct _ cs               -> map (\c -> EStruct nopos (name c)
-                                                  $ map (\a -> (name a, CT (typ a) [EPHolder nopos]))
+                                                  $ map (\a -> (IdentifierWithPos (pos a) $ name a, CT (typ a) [EPHolder nopos]))
                                                   $ consArgs c) cs
          TTuple _ fs                -> [ETuple nopos $ map (\f -> CT (typ f) [EPHolder nopos]) fs]
          TBool{}                    -> [EBool nopos False, EBool nopos True]
@@ -703,7 +703,7 @@ typeMap :: (Type -> Type) -> Type -> Type
 typeMap f t = runIdentity $ typeMapM (return . f) t
 
 -- Returns iterator type when iterating over a collection (element type for
--- sets, vectors, and groups, key-value pair for maps).  The Boolean flag in 
+-- sets, vectors, and groups, key-value pair for maps).  The Boolean flag in
 -- the returned tuple indicates whether the collection iterates by reference
 -- (True) or by value (False) in Rust.
 typeIterType :: DatalogProgram -> Type -> (Type, Bool)
@@ -746,8 +746,8 @@ varType d (FlatMapVar rl i)                = case typ' d $ exprType d (CtxRuleRF
                                                   TOpaque _ tname [kt,vt] | tname == mAP_TYPE
                                                                        -> tTuple [kt,vt]
                                                                           | tname == gROUP_TYPE
-                                                                       -> vt 
-                                                  _                    -> error $ "varType FlatMapVar " ++ show rl ++ " " ++ show i 
+                                                                       -> vt
+                                                  _                    -> error $ "varType FlatMapVar " ++ show rl ++ " " ++ show i
 varType d (GroupVar rl i)                  = let ktype = ruleGroupByKeyType d rl i
                                                  vtype = ruleGroupByValType d rl i
                                              in tOpaque gROUP_TYPE [ktype, vtype]

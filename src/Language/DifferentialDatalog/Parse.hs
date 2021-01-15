@@ -452,7 +452,7 @@ aggregate = do
     before_func <- getPosition
     f <- comma *> funcIdent
     after_func <- getPosition
-    project <- parens expr 
+    project <- parens expr
     after_project <- getPosition
     _ <- symbol ")"
     end <- getPosition
@@ -485,8 +485,12 @@ atom is_head = withPos $ do
                           else val
        return $ Atom nopos rname $ maybe val' (\b -> E $ EBinding (p1, p2) b val') binding
 
-anonarg = ("",) <$> expr
-namedarg = (,) <$> (dot *> varIdent) <*> (reservedOp "=" *> expr)
+anonarg = ((makeIdentifierWithPos ""),) <$> expr
+namedarg = (,) <$> (dot *> posIdent) <*> (reservedOp "=" *> expr)
+
+-- Identifier with position
+posIdent :: ParsecT String () Identity IdentifierWithPos
+posIdent = withPos $ makeIdentifierWithPos <$> varIdent
 
 typeSpec = withPos $
             bitType
@@ -645,8 +649,8 @@ pterm = (withPos $
        <|> enumber)
       <?> "match term"
 
-anonpat = ("",) <$> pattern
-namedpat = (,) <$> (dot *> varIdent) <*> (reservedOp "=" *> pattern)
+anonpat = (makeIdentifierWithPos "",) <$> pattern
+namedpat = (,) <$> (dot *> posIdent) <*> (reservedOp "=" *> pattern)
 
 lhs = (withPos $
            eTuple <$> (parens $ commaSepEnd lhs)
@@ -658,8 +662,8 @@ lhs = (withPos $
 elhs = islhs *> lhs
     where islhs = try $ lookAhead $ lhs *> reservedOp "="
 
-anonlhs = ("",) <$> lhs
-namedlhs = (,) <$> (dot *> varIdent) <*> (reservedOp "=" *> lhs)
+anonlhs = (makeIdentifierWithPos "",) <$> lhs
+namedlhs = (,) <$> (dot *> posIdent) <*> (reservedOp "=" *> lhs)
 
 enumber  = lexeme enumber'
 estring =   equoted_string
