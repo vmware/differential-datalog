@@ -61,6 +61,12 @@ use serde::Deserializer;
 use serde::Serialize;
 use serde::Serializer;
 
+// This import is only needed to convince the OS X compiler to export
+// `extern C` functions declared in ddlog_log.rs in the generated lib.
+#[doc(hidden)]
+#[cfg(feature = "c_api")]
+pub use ddlog_log as hidden_ddlog_log;
+
 /// A default implementation of `DDlogConvert` that just forwards calls
 /// to generated functions of equal name.
 #[derive(Debug)]
