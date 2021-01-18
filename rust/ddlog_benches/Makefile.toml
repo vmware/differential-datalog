@@ -1,0 +1,69 @@
+# Runs all ddlog benchmarks
+[tasks.benchmarks]
+dependencies = ["download-data", "bench-twitter", "bench-livejournal"]
+
+# Runs the benchmark suite on the citations dataset
+[tasks.bench-livejournal]
+command = "cargo"
+args = ["bench", "LiveJournal"]
+dependencies = ["build-ddlog"]
+
+# Runs the benchmark suite on the twitter dataset
+[tasks.bench-twitter]
+command = "cargo"
+args = ["bench", "twitter"]
+dependencies = ["build-ddlog"]
+
+# Runs `ddlog` to generate ddlog code
+[tasks.build-ddlog]
+command = "ddlog"
+args = [
+    "-i",
+    "ddlog/benchmarks.dl",
+    "--output-dir",
+    "generated",
+    "--nested-ts-32",
+    "--omit-profile",
+    "--omit-workspace",
+]
+dependencies = ["clean-generated"]
+
+# Remove the old generated code (prevents OS errors and errors that
+# occur when switching between different versions of ddlog that each
+# generated & depend on different generated files)
+#
+# Note: This is by *no* means a bottleneck or slowdown, the benchmarks
+# themselves take *vastly* more time to run
+[tasks.clean-generated]
+script_runner = "@duckscript"
+script = """
+rm -rf generated
+touch generated/.gitkeep
+"""
+private = true
+
+[tasks.download-data]
+script_runner = "@duckscript"
+script = """
+fn <scope> download_file
+    file = set ${1}
+    url = set ${2}
+
+    if not is_path_exists data/${file}
+        echo downloading '${url}' to 'data/${file}'
+
+        start_time = current_time
+        wget -O data/${file} ${url}
+        end_time = current_time
+
+        millis = calc ${end_time} - ${start_time}
+        sec = calc ${millis} / 1000
+        echo downloaded 'data/${file}' in ${sec}sec
+    else
+        echo '${file}' has already been downloaded, skipping
+    end
+end
+
+download_file twitter-2010-ids.csv.gz https://snap.stanford.edu/data/twitter-2010-ids.csv.gz
+download_file soc-LiveJournal1.txt.gz https://snap.stanford.edu/data/soc-LiveJournal1.txt.gz
+"""

@@ -29,7 +29,7 @@ erased-serde = "0.3"
 crossbeam-channel = "0.5.0"
 
 [dev-dependencies]
-byteorder = "0.4.2"
-getopts = "0.2.14"
-itertools = "^0.6"
-serde_derive = "1.0"
+byteorder = "1.4.2"
+getopts = "0.2.21"
+itertools = "0.10.0"
+serde_derive = "1.0.119"

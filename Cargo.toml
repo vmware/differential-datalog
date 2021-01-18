@@ -8,4 +8,4 @@ members = [
     "rust/template/differential_datalog",
     "rust/template/differential_datalog_test",
 ]
-exclude = ["test/"]
+exclude = ["test/", "rust/ddlog_benches"]
