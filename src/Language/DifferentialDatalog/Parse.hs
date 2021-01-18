@@ -490,7 +490,7 @@ namedarg = (,) <$> (dot *> posVarIdent) <*> (reservedOp "=" *> expr)
 
 -- Identifier with position
 posVarIdent :: ParsecT String () Identity IdentifierWithPos
-posVarIdent = withPos $ makeIdentifierWithPos <$> varIdent
+posVarIdent = withPos $ IdentifierWithPos nopos <$> varIdent
 
 typeSpec = withPos $
             bitType

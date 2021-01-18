@@ -504,7 +504,7 @@ inferTypes d es = do
                                      (eStruct oK_CONSTRUCTOR [(IdentifierWithPos nopos "res", eVarDecl "__x" t)] inner_type, eVar "__x")]
                           | isResult ?d inner_type && isResult ?d ret_type
                              -> E $ EMatch (pos e) inner_expr
-                                    [(eStruct eRR_CONSTRUCTOR [(IdentifierWithPos nopos "err", eVarDecl "__e" etype)] inner_type, eReturn (eStruct eRR_CONSTRUCTOR [(makeIdentifierWithPos "err", eVar "__e")] ret_type) t),
+                                    [(eStruct eRR_CONSTRUCTOR [(IdentifierWithPos nopos "err", eVarDecl "__e" etype)] inner_type, eReturn (eStruct eRR_CONSTRUCTOR [(IdentifierWithPos nopos "err", eVar "__e")] ret_type) t),
                                      (eStruct oK_CONSTRUCTOR [(IdentifierWithPos nopos "res", eVarDecl "__x" t)] inner_type, eVar "__x")]
                           | otherwise -> error $ "TypeInference.add_types: e=" ++ show expr ++ " type=" ++ show inner_type ++ " function or closure: " ++ show ctx'
                     where
