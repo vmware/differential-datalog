@@ -3,6 +3,25 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.34.1] - Jan 17, 2021
+
+### Bug fixes
+
+- Fix linker problem on MacOS.
+
+### Improvements
+
+- A heuristic to make type inference errors easier to understand.
+
+### Libraries
+
+New functions in `internment.dl`:
+
+    ```
+    function parse_dec_u64(s: istring): Option<bit<64>>
+    function parse_dec_i64(s: istring): Option<signed<64>>
+    ```
+
 ## [0.34.0] - Jan 11, 2021
 
 ### Bug fixes
