@@ -485,12 +485,12 @@ atom is_head = withPos $ do
                           else val
        return $ Atom nopos rname $ maybe val' (\b -> E $ EBinding (p1, p2) b val') binding
 
-anonarg = ((makeIdentifierWithPos ""),) <$> expr
-namedarg = (,) <$> (dot *> posIdent) <*> (reservedOp "=" *> expr)
+anonarg = ((IdentifierWithPos nopos ""),) <$> expr
+namedarg = (,) <$> (dot *> posVarIdent) <*> (reservedOp "=" *> expr)
 
 -- Identifier with position
-posIdent :: ParsecT String () Identity IdentifierWithPos
-posIdent = withPos $ makeIdentifierWithPos <$> varIdent
+posVarIdent :: ParsecT String () Identity IdentifierWithPos
+posVarIdent = withPos $ makeIdentifierWithPos <$> varIdent
 
 typeSpec = withPos $
             bitType
@@ -649,8 +649,8 @@ pterm = (withPos $
        <|> enumber)
       <?> "match term"
 
-anonpat = (makeIdentifierWithPos "",) <$> pattern
-namedpat = (,) <$> (dot *> posIdent) <*> (reservedOp "=" *> pattern)
+anonpat = (IdentifierWithPos nopos "",) <$> pattern
+namedpat = (,) <$> (dot *> posVarIdent) <*> (reservedOp "=" *> pattern)
 
 lhs = (withPos $
            eTuple <$> (parens $ commaSepEnd lhs)
@@ -662,8 +662,8 @@ lhs = (withPos $
 elhs = islhs *> lhs
     where islhs = try $ lookAhead $ lhs *> reservedOp "="
 
-anonlhs = (makeIdentifierWithPos "",) <$> lhs
-namedlhs = (,) <$> (dot *> posIdent) <*> (reservedOp "=" *> lhs)
+anonlhs = (IdentifierWithPos nopos "",) <$> lhs
+namedlhs = (,) <$> (dot *> posVarIdent) <*> (reservedOp "=" *> lhs)
 
 enumber  = lexeme enumber'
 estring =   equoted_string

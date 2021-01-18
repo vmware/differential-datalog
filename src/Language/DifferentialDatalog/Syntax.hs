@@ -54,7 +54,6 @@ module Language.DifferentialDatalog.Syntax (
         structLookupField,
         structGetField,
         structFieldGuarded,
-        makeIdentifierWithPos,
         Field(..),
         IdentifierWithPos(..),
         TypeDef(..),
@@ -233,7 +232,6 @@ instance PP ArgType where
     pp ArgType{..} = (if atypeMut then "mut" else empty) <+> pp atypeType
 
 data IdentifierWithPos = IdentifierWithPos { idPos :: Pos, idName :: String }
-makeIdentifierWithPos str = IdentifierWithPos nopos str
 
 instance Eq IdentifierWithPos where
     (==) (IdentifierWithPos _ n1) (IdentifierWithPos _ n2) = n1 == n2
@@ -247,6 +245,10 @@ instance WithPos IdentifierWithPos where
 
 instance PP IdentifierWithPos where
     pp IdentifierWithPos{..} = pp idName
+
+instance WithName IdentifierWithPos where
+    name = idName
+    setName i n = i{idName = n}
 
 data Type = TBool     {typePos :: Pos}
           | TInt      {typePos :: Pos}
@@ -597,7 +599,7 @@ instance WithPos Atom where
 instance PP Atom where
     pp (Atom _ rel (E (EStruct _ cons as))) | rel == cons
                 = pp rel <> (parens $ commaSep $
-                             map (\(n,e) -> (if null (idName n) then empty else ("." <> pp n <> "=")) <> pp e) as)
+                             map (\(n,e) -> (if null (name n) then empty else ("." <> pp n <> "=")) <> pp e) as)
     pp Atom{..} = pp atomRelation <> "[" <> pp atomVal <> "]"
 
 instance Show Atom where
@@ -900,7 +902,7 @@ instance PP e => PP (ExprNode e) where
     pp (EBit _ w v)          = pp w <> "'d" <> pp v
     pp (ESigned _ w v)       = pp w <> "'sd" <> pp v
     pp (EStruct _ s fs)      = pp s <> (braces $ commaSep
-                                        $ map (\(n,e) -> (if null (idName n) then empty else ("." <> pp n <> "=")) <> pp e) fs)
+                                        $ map (\(n,e) -> (if null (name n) then empty else ("." <> pp n <> "=")) <> pp e) fs)
     pp (ETuple _ fs)         = parens $ commaSep $ map pp fs
     pp (ESlice _ e h l)      = parens $ pp e <> (brackets $ pp h <> colon <> pp l)
     pp (EMatch _ e cs)       = "match" <+> parens (pp e) <+> "{"

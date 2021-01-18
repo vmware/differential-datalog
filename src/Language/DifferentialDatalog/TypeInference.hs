@@ -497,15 +497,15 @@ inferTypes d es = do
                  ETry{..} | isOption ?d inner_type && isOption ?d ret_type
                              -> E $ EMatch (pos e) inner_expr
                                     [(eStruct nONE_CONSTRUCTOR [] inner_type, eReturn (eStruct nONE_CONSTRUCTOR [] ret_type) t),
-                                     (eStruct sOME_CONSTRUCTOR [(makeIdentifierWithPos "x", eVarDecl "__x" t)] inner_type, eVar "__x")]
+                                     (eStruct sOME_CONSTRUCTOR [(IdentifierWithPos nopos "x", eVarDecl "__x" t)] inner_type, eVar "__x")]
                           | isResult ?d inner_type && isOption ?d ret_type
                              -> E $ EMatch (pos e) inner_expr
-                                    [(eStruct eRR_CONSTRUCTOR [(makeIdentifierWithPos "err", eTyped ePHolder inner_etype)] inner_type, eReturn (eStruct nONE_CONSTRUCTOR [] ret_type) t),
-                                     (eStruct oK_CONSTRUCTOR [(makeIdentifierWithPos "res", eVarDecl "__x" t)] inner_type, eVar "__x")]
+                                    [(eStruct eRR_CONSTRUCTOR [(IdentifierWithPos nopos "err", eTyped ePHolder inner_etype)] inner_type, eReturn (eStruct nONE_CONSTRUCTOR [] ret_type) t),
+                                     (eStruct oK_CONSTRUCTOR [(IdentifierWithPos nopos "res", eVarDecl "__x" t)] inner_type, eVar "__x")]
                           | isResult ?d inner_type && isResult ?d ret_type
                              -> E $ EMatch (pos e) inner_expr
-                                    [(eStruct eRR_CONSTRUCTOR [(makeIdentifierWithPos "err", eVarDecl "__e" etype)] inner_type, eReturn (eStruct eRR_CONSTRUCTOR [(makeIdentifierWithPos "err", eVar "__e")] ret_type) t),
-                                     (eStruct oK_CONSTRUCTOR [(makeIdentifierWithPos "res", eVarDecl "__x" t)] inner_type, eVar "__x")]
+                                    [(eStruct eRR_CONSTRUCTOR [(IdentifierWithPos nopos "err", eVarDecl "__e" etype)] inner_type, eReturn (eStruct eRR_CONSTRUCTOR [(makeIdentifierWithPos "err", eVar "__e")] ret_type) t),
+                                     (eStruct oK_CONSTRUCTOR [(IdentifierWithPos nopos "res", eVarDecl "__x" t)] inner_type, eVar "__x")]
                           | otherwise -> error $ "TypeInference.add_types: e=" ++ show expr ++ " type=" ++ show inner_type ++ " function or closure: " ++ show ctx'
                     where
                     ctx' = fromMaybe (error $ "inferTypes '" ++ show expr ++ "': '?' not inside function or closure")

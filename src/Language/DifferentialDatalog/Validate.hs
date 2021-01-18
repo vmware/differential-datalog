@@ -108,19 +108,19 @@ exprDesugar d _ e =
             let desugarPos = do
                     check d (length as == length consArgs) p
                            $ "Number of arguments does not match constructor declaration: " ++ show cons
-                    return $ zip (map (makeIdentifierWithPos . name) consArgs) (map snd as)
+                    return $ zip (map ((IdentifierWithPos nopos) . name) consArgs) (map snd as)
             let desugarNamed = do
-                    uniq' (Just d) (\_ -> p) id ("Multiple occurrences of a field " ++) $ map (idName . fst) as
-                    mapM_ (\(n,_) -> check d (isJust $ find ((== idName n) . name) consArgs) (pos n)
-                                           $ "Unknown field " ++ (idName n)) as
-                    return $ map (\f -> (makeIdentifierWithPos $ name f, maybe (E $ EPHolder p) id $ lookup (name f) $ map (\(i,ex) -> (idName i, ex)) as)) consArgs
+                    uniq' (Just d) (\_ -> p) id ("Multiple occurrences of a field " ++) $ map (name . fst) as
+                    mapM_ (\(n,_) -> check d (isJust $ find ((== name n) . name) consArgs) (pos n)
+                                           $ "Unknown field " ++ (name n)) as
+                    return $ map (\f -> (IdentifierWithPos nopos $ name f, maybe (E $ EPHolder p) id $ lookup (name f) $ map (\(i,ex) -> (name i, ex)) as)) consArgs
             as' <- case as of
                         [] | null consArgs
                            -> return as
                         [] -> desugarNamed
-                        _  | all (null . (idName . fst)) as
+                        _  | all (null . (name . fst)) as
                            -> desugarPos
-                        _  | any (null . (idName . fst)) as
+                        _  | any (null . (name . fst)) as
                            -> err d (pos e) $ "Expression mixes named and positional arguments to type constructor " ++ c
                         _  -> desugarNamed
             return $ E e{exprStructFields = as'}
@@ -643,7 +643,7 @@ exprValidate1 _ _ _   EUnOp{}             = return ()
 
 exprValidate1 d _ ctx (EPHolder p)        = do
     let msg = case ctx of
-                   CtxStruct EStruct{..} _ (_,f) -> "Missing field '" ++ (idName f) ++ "' in constructor " ++ exprConstructor
+                   CtxStruct EStruct{..} _ (_,f) -> "Missing field '" ++ (name f) ++ "' in constructor " ++ exprConstructor
                    _               -> "_ is not allowed in this context"
     check d (ctxPHolderAllowed ctx) p msg
 exprValidate1 d _ ctx (EBinding p v _)    = do
