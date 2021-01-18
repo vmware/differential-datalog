@@ -80,3 +80,7 @@ node_modules/
 # We actually cannot commit package-lock.json to the repo, since some corporate
 # sites rewrite urls to npm repositories
 package-lock.json
+rust/ddlog_benches/generated/*_ddlog
+!rust/ddlog_benches/ddlog
+rust/ddlog_benches/data
+!rust/ddlog_benches/data/.gitkeep

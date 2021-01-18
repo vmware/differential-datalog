@@ -1,0 +1,8 @@
+input relation Edge(from: u32, to: u32)
+
+output relation Path(from: u32, to: u32)
+Path(from, to) :- Edge(from, to).
+Path(from, to) :- Edge(from, path), Path(path, to).
+
+output relation Triangles(a: u32, b: u32, c: u32)
+Triangles(a, b, c) :- Edge(a, b), Edge(b, c), Edge(c, a).
