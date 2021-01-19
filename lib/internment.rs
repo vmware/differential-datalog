@@ -1,6 +1,6 @@
-use arc_interner::ArcIntern;
 use ddlog_std::Vec as DDlogVec;
 use differential_datalog::record::{self, Record};
+use internment::ArcIntern;
 use serde::{de::Deserializer, ser::Serializer};
 use std::{
     cmp::{self, Ordering},
