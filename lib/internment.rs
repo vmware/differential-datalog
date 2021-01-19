@@ -40,15 +40,6 @@ where
     }
 }
 
-impl<T> PartialEq<T> for Intern<T>
-where
-    T: Eq + Send + Sync + Hash + 'static,
-{
-    fn eq(&self, other: &T) -> bool {
-        self.as_ref().eq(&other)
-    }
-}
-
 /// Order the interned values by their pointers
 impl<T> PartialOrd for Intern<T>
 where
