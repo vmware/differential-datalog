@@ -1,2 +1,2 @@
-[dependencies.arc-interner]
-version="0.1"
+[dependencies.internment]
+version="0.4.1"
