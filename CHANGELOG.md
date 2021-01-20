@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.35.0] - Jan 19, 2021
+
+### Optimizations
+
+- Use `internment` crate instead of `arc-interner` to make `Intern<T>`
+  more scalable.
+
 ## [0.34.2] - Jan 18, 2021
 
 ### New features
