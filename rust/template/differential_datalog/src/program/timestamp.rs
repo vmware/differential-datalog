@@ -1,12 +1,10 @@
 //! Datalog timestamps
 
 use dogsdogsdogs::altneu::AltNeu;
-use std::sync::atomic::AtomicU32;
 use timely::order::Product;
 
 /// Outer timestamp
 pub type TS = u32;
-pub(crate) type TSAtomic = AtomicU32;
 
 /// Timestamp for the nested scope
 /// Use 16-bit timestamps for inner scopes to save memory

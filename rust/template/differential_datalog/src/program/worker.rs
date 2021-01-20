@@ -3,7 +3,6 @@ use crate::{
     profile::{get_prof_context, with_prof_context, ProfMsg},
     program::{
         arrange::{ArrangedCollection, Arrangements},
-        timestamp::TSAtomic,
         ArrId, Dep, Msg, ProgNode, Program, Reply, Update, TS,
     },
     program::{RelId, Weight},
@@ -58,9 +57,7 @@ pub struct DDlogWorker<'a> {
     worker: &'a mut Worker<Allocator>,
     /// The program this worker is executing
     program: Arc<Program>,
-    /// The atomically synchronized timestamp for the transaction
-    /// frontier
-    frontier_timestamp: &'a TSAtomic,
+    running: &'a AtomicBool,
     /// Peer workers' thread handles, only used by worker 0.
     peers: FnvHashMap<usize, Thread>,
     /// Information on which metrics are enabled and a
@@ -78,7 +75,7 @@ impl<'a> DDlogWorker<'a> {
     pub(super) fn new(
         worker: &'a mut Worker<Allocator>,
         program: Arc<Program>,
-        frontier_timestamp: &'a TSAtomic,
+        running: &'a AtomicBool,
         num_workers: usize,
         profiling: ProfilingData,
         request_receivers: Arc<[Receiver<Msg>]>,
@@ -116,7 +113,7 @@ impl<'a> DDlogWorker<'a> {
         Self {
             worker,
             program,
-            frontier_timestamp,
+            running,
             peers,
             profiling,
             request_receiver: request_receivers[worker_index].clone(),
@@ -134,16 +131,6 @@ impl<'a> DDlogWorker<'a> {
         self.worker.index()
     }
 
-    /// Set the current transaction frontier's timestamp
-    fn set_frontier_timestamp(&self, timestamp: TS) {
-        self.frontier_timestamp.store(timestamp, Ordering::Relaxed);
-    }
-
-    /// Get the current transaction frontier's timestamp
-    fn frontier_timestamp(&self) -> TS {
-        self.frontier_timestamp.load(Ordering::Relaxed)
-    }
-
     /// Unpark every other worker thread
     fn unpark_peers(&self) {
         for thread in self.peers.values() {
@@ -158,176 +145,142 @@ impl<'a> DDlogWorker<'a> {
         let probe = ProbeHandle::new();
         let (mut all_sessions, mut traces) = self.session_dataflow(probe.clone())?;
 
-        let mut epoch: TS = 0;
-
-        // feed initial data to sessions
-        if self.is_leader() {
-            for (relid, v) in self.program.init_data.iter() {
-                all_sessions
-                    .get_mut(relid)
-                    .ok_or_else(|| format!("no session found for relation ID {}", relid))?
-                    .update(v.clone(), 1);
-            }
-
-            epoch += 1;
-            self.advance(&mut all_sessions, &mut traces, epoch);
-            self.flush(&mut all_sessions, &probe);
-
-            self.reply_sender
-                .send(Reply::FlushAck)
-                .map_err(|e| format!("failed to send ACK: {}", e))?;
-        }
+        self.ingest_initial_data(&mut all_sessions, &mut traces, &probe)?;
 
         // Close session handles for non-input sessions;
         // close all sessions for workers other than worker 0.
         let mut sessions: FnvHashMap<RelId, InputSession<TS, DDValue, Weight>> = all_sessions
             .drain()
-            .filter(|&(relid, _)| self.is_leader() && self.program.get_relation(relid).input)
+            .filter(|&(relid, _)| self.program.get_relation(relid).input)
             .collect();
 
-        // Only worker 0 receives data
-        if self.is_leader() {
-            loop {
-                // Non-blocking receive, so that we can do some garbage collecting
-                // when there is no real work to do.
-                match self.request_receiver.try_recv() {
-                    Ok(Msg::Update(mut updates)) => {
-                        //println!("updates: {:?}", updates);
-                        for update in updates.drain(..) {
-                            match update {
-                                Update::Insert { relid, v } => {
-                                    sessions
-                                        .get_mut(&relid)
-                                        .ok_or_else(|| {
-                                            format!("no session found for relation ID {}", relid)
-                                        })?
-                                        .update(v, 1);
-                                }
-                                Update::DeleteValue { relid, v } => {
-                                    sessions
-                                        .get_mut(&relid)
-                                        .ok_or_else(|| {
-                                            format!("no session found for relation ID {}", relid)
-                                        })?
-                                        .update(v, -1);
-                                }
-                                Update::InsertOrUpdate { .. } => {
-                                    return Err("InsertOrUpdate command received by worker thread"
-                                        .to_string());
-                                }
-                                Update::DeleteKey { .. } => {
-                                    // workers don't know about keys
-                                    return Err(
-                                        "DeleteKey command received by worker thread".to_string()
-                                    );
-                                }
-                                Update::Modify { .. } => {
-                                    return Err(
-                                        "Modify command received by worker thread".to_string()
-                                    );
-                                }
-                            }
-                        }
-                    }
+        'worker_loop: while self.running.load(Ordering::Relaxed) {
+            // Non-blocking receive, so that we can do some garbage collecting
+            // when there is no real work to do.
+            match self.request_receiver.try_recv() {
+                Ok(Msg::Update { updates, timestamp }) => {
+                    // Update inputs with the given updates at the given timestamp
+                    self.batch_update(&mut sessions, updates, timestamp)?;
 
-                    Ok(Msg::Flush) => {
-                        //println!("flushing");
-                        epoch += 1;
-                        self.advance(&mut sessions, &mut traces, epoch);
-                        self.flush(&mut sessions, &probe);
+                    // After we've applied a batch of updates we step so we
+                    // push data down a little bit
+                    self.worker.step();
+                }
 
-                        //println!("flushed");
+                // The `Flush` message gives us the timestamp to advance to, so advance there
+                // before flushing & compacting all previous timestamp's traces
+                Ok(Msg::Flush { timestamp }) => {
+                    self.advance(&mut sessions, &mut traces, timestamp);
+                    self.flush(&mut sessions, &probe);
+
+                    // Only the leader sends back a flush acknowledgement even though
+                    // all workers receive the flush signal
+                    if self.is_leader() {
                         self.reply_sender
                             .send(Reply::FlushAck)
                             .map_err(|e| format!("failed to send ACK: {}", e))?;
                     }
+                }
 
-                    Ok(Msg::Query(arrid, key)) => {
-                        self.handle_query(&mut traces, arrid, key)?;
-                    }
+                // Handle queries
+                Ok(Msg::Query(arrid, key)) => self.handle_query(&mut traces, arrid, key)?,
 
-                    Ok(Msg::Stop) => {
-                        self.stop_all_workers();
-                        break;
-                    }
+                // If the channel is empty do nothing
+                Err(TryRecvError::Empty) => {}
 
-                    Err(TryRecvError::Empty) => {
-                        // Command channel empty: use idle time to work on garbage collection.
-                        // This will block when there is no more compaction left to do.
-                        // The sender must unpark worker 0 after sending to the channel.
-                        self.worker.step_or_park(None);
-                    }
-
-                    Err(TryRecvError::Disconnected) => {
-                        eprintln!("sender disconnected");
-                        self.stop_all_workers();
-
-                        break;
-                    }
+                // On either the stop message or a channel disconnection we can shut down
+                // the computation
+                Ok(Msg::Stop) | Err(TryRecvError::Disconnected) => {
+                    // TODO: Log worker #n disconnection
+                    self.stop_all_workers();
+                    break 'worker_loop;
                 }
             }
 
-        // worker_index != 0
-        } else {
-            loop {
-                // Differential does not require any synchronization between workers: as
-                // long as we keep calling `step_or_park`, all workers will eventually
-                // process all inputs.  Barriers in the following code are needed so that
-                // worker 0 can know exactly when all other workers have processed all data
-                // for the `frontier_ts` timestamp, so that it knows when a transaction has
-                // been fully committed and produced all its outputs.
-                let time = self.frontier_timestamp.load(Ordering::SeqCst);
+            // After each command received we step, if there's no timely work to be done
+            // our thread will be parked until it's re-awoken by a command
+            self.worker.step_or_park(None);
+        }
 
-                // TS::max_value() == 0xffffffffffffffff*
-                if time == TS::max_value() {
-                    return Ok(());
+        Ok(())
+    }
+
+    /// Applies updates to the current worker's input sessions
+    fn batch_update(
+        &self,
+        sessions: &mut FnvHashMap<RelId, InputSession<TS, DDValue, Weight>>,
+        updates: Vec<Update<DDValue>>,
+        timestamp: TS,
+    ) -> Result<(), String> {
+        for update in updates {
+            match update {
+                Update::Insert { relid, v } => {
+                    sessions
+                        .get_mut(&relid)
+                        .ok_or_else(|| format!("no session found for relation ID {}", relid))?
+                        .update_at(v, timestamp, 1);
                 }
 
-                // `sessions` is empty, but we must advance trace frontiers, so we
-                // don't hinder trace compaction.
-                self.advance(&mut sessions, &mut traces, time);
-                while probe.less_than(&time) {
-                    if !self.worker.step_or_park(None) {
-                        // Dataflow terminated.
-                        return Ok(());
-                    }
+                Update::DeleteValue { relid, v } => {
+                    sessions
+                        .get_mut(&relid)
+                        .ok_or_else(|| format!("no session found for relation ID {}", relid))?
+                        .update_at(v, timestamp, -1);
                 }
 
-                // We're all caught up with `frontier_ts` and can now spend some time
-                // garbage collecting.  The `step_or_park` call below will block if there
-                // is no more garbage collecting left to do.  It will wake up when one of
-                // the following conditions occurs: (1) there is more garbage collecting to
-                // do as a result of other threads making progress, (2) new inputs have
-                // been received, (3) worker 0 unparked the thread, (4) main thread sent
-                // us a message and unparked the thread.  We check if the frontier has been
-                // advanced by worker 0 and, if so, go back to the barrier to synchronize
-                // with other workers.
-                while self.frontier_timestamp.load(Ordering::SeqCst) == time {
-                    // Non-blocking receive, so that we can do some garbage collecting
-                    // when there is no real work to do.
-                    match self.request_receiver.try_recv() {
-                        Ok(Msg::Query(arrid, key)) => {
-                            self.handle_query(&mut traces, arrid, key)?;
-                        }
+                Update::InsertOrUpdate { .. } => {
+                    return Err("InsertOrUpdate command received by worker thread".to_string());
+                }
 
-                        Ok(msg) => {
-                            return Err(format!(
-                                "Worker {} received unexpected message: {:?}",
-                                self.worker_index(),
-                                msg,
-                            ));
-                        }
+                Update::DeleteKey { .. } => {
+                    // workers don't know about keys
+                    return Err("DeleteKey command received by worker thread".to_string());
+                }
 
-                        Err(TryRecvError::Empty) => {
-                            // Command channel empty: use idle time to work on garbage collection.
-                            self.worker.step_or_park(None);
-                        }
-
-                        // The sender disconnected, so we can gracefully exit
-                        Err(TryRecvError::Disconnected) => break,
-                    }
+                Update::Modify { .. } => {
+                    return Err("Modify command received by worker thread".to_string());
                 }
             }
+        }
+
+        Ok(())
+    }
+
+    /// Feeds the startup data into the computation
+    fn ingest_initial_data<Trace>(
+        &mut self,
+        sessions: &mut FnvHashMap<RelId, InputSession<TS, DDValue, Weight>>,
+        traces: &mut BTreeMap<ArrId, Trace>,
+        probe: &ProbeHandle<TS>,
+    ) -> Result<(), String>
+    where
+        Trace: TraceReader<Key = DDValue, Val = DDValue, Time = TS, R = Weight>,
+        Trace::Batch: BatchReader<DDValue, DDValue, TS, Weight>,
+        Trace::Cursor: Cursor<DDValue, DDValue, TS, Weight>,
+    {
+        // We immediately advance to a timestamp of 1, since timestamp 0 will contain
+        // our initial data
+        let timestamp = 1;
+
+        // Only the leader introduces data into the input sessions
+        if self.is_leader() {
+            for (relid, v) in self.program.init_data.iter() {
+                sessions
+                    .get_mut(relid)
+                    .ok_or_else(|| format!("no session found for relation ID {}", relid))?
+                    .update_at(v.clone(), timestamp - 1, 1);
+            }
+        }
+
+        // All workers advance to timestamp 1 and flush their inputs
+        self.advance(sessions, traces, timestamp);
+        self.flush(sessions, probe);
+
+        // Only the leader sends back a flush acknowledgement to the coordinator thread
+        if self.is_leader() {
+            self.reply_sender
+                .send(Reply::FlushAck)
+                .map_err(|e| format!("failed to send ACK: {}", e))?;
         }
 
         Ok(())
@@ -338,18 +291,18 @@ impl<'a> DDlogWorker<'a> {
         &self,
         sessions: &mut FnvHashMap<RelId, InputSession<TS, DDValue, Weight>>,
         traces: &mut BTreeMap<ArrId, Trace>,
-        epoch: TS,
+        timestamp: TS,
     ) where
         Trace: TraceReader<Key = DDValue, Val = DDValue, Time = TS, R = Weight>,
         Trace::Batch: BatchReader<DDValue, DDValue, TS, Weight>,
         Trace::Cursor: Cursor<DDValue, DDValue, TS, Weight>,
     {
-        for (_, session_input) in sessions.iter_mut() {
-            session_input.advance_to(epoch);
+        for session_input in sessions.values_mut() {
+            session_input.advance_to(timestamp);
         }
 
-        for (_, trace) in traces.iter_mut() {
-            let e = [epoch];
+        for trace in traces.values_mut() {
+            let e = [timestamp];
             let ac = AntichainRef::new(&e);
             trace.distinguish_since(ac);
             trace.advance_by(ac);
@@ -362,28 +315,20 @@ impl<'a> DDlogWorker<'a> {
         sessions: &mut FnvHashMap<RelId, InputSession<TS, DDValue, Weight>>,
         probe: &ProbeHandle<TS>,
     ) {
-        for (_, relation_input) in sessions.iter_mut() {
+        for relation_input in sessions.values_mut() {
             relation_input.flush();
         }
 
-        if let Some((_, session)) = sessions.iter_mut().next() {
-            // Do nothing if timestamp has not advanced since the last
-            // transaction (i.e., no updates have arrived).
-            if self.frontier_timestamp() < *session.time() {
-                self.set_frontier_timestamp(*session.time());
-                self.unpark_peers();
-
-                while probe.less_than(session.time()) {
-                    self.worker.step_or_park(None);
-                }
-            }
+        if let Some(session) = sessions.values_mut().next() {
+            self.unpark_peers();
+            self.worker.step_while(|| probe.less_than(session.time()));
         }
     }
 
     /// Stop all worker threads by setting the frontier timestamp
     /// to the maximum and unparking all other workers
     fn stop_all_workers(&self) {
-        self.set_frontier_timestamp(TS::max_value());
+        self.running.store(false, Ordering::Release);
         self.unpark_peers();
     }
 
