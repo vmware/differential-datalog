@@ -1,12 +1,10 @@
 //! Datalog timestamps
 
 use dogsdogsdogs::altneu::AltNeu;
-use std::sync::atomic::AtomicU32;
 use timely::order::Product;
 
 /// Outer timestamp
 pub type TS = u32;
-pub(crate) type TSAtomic = AtomicU32;
 
 /// Timestamp for the nested scope
 /// Use 16-bit timestamps for inner scopes to save memory
@@ -18,7 +16,7 @@ pub type TSNested = u32;
 #[cfg(not(feature = "nested_ts_32"))]
 pub type TSNested = u16;
 
-/// `Inspect` operator expects the timestampt to be a tuple.
+/// `Inspect` operator expects the timestamp to be a tuple.
 pub type TupleTS = (TS, TSNested);
 
 pub(crate) trait ToTupleTS {
