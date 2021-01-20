@@ -37,7 +37,7 @@ use std::{
     },
     thread::{self, JoinHandle, Thread},
 };
-use timestamp::{TSAtomic, ToTupleTS};
+use timestamp::ToTupleTS;
 use worker::{DDlogWorker, ProfilingData};
 
 use differential_dataflow::difference::Semigroup;
@@ -77,7 +77,7 @@ type TKeyEnter<'a, P, T> = TraceEnter<TKeyAgent<P>, T>;
 pub type Weight = i32;
 
 /// Message buffer for profiling messages
-const PROF_MSG_BUF_SIZE: usize = 10000;
+const PROF_MSG_BUF_SIZE: usize = 10_000;
 
 /// Result type returned by this library
 pub type Response<X> = Result<X, String>;
@@ -844,6 +844,7 @@ pub struct RunningProgram {
     worker_guards: Option<WorkerGuards<Result<(), String>>>,
     transaction_in_progress: bool,
     need_to_flush: bool,
+    timestamp: TS,
     /// CPU profiling enabled (can be expensive).
     profile_cpu: Arc<AtomicBool>,
     /// Consume timely_events and output them to CSV file. Can be expensive.
@@ -930,10 +931,18 @@ impl RelationInstance {
 /// to worker 0 only.
 #[derive(Debug, Clone)]
 enum Msg {
-    /// Update input relation (worker 0 only).
-    Update(Vec<Update<DDValue>>),
-    /// Propagate changes through the pipeline (worker 0 only).
-    Flush,
+    /// Update input relation
+    Update {
+        /// The batch of updates
+        updates: Vec<Update<DDValue>>,
+        /// The timestamp these updates belong to
+        timestamp: TS,
+    },
+    /// Propagate changes through the pipeline
+    Flush {
+        /// The timestamp to advance to
+        timestamp: TS,
+    },
     /// Query arrangement.  If the second argument is `None`, returns
     /// all values in the collection; otherwise returns values associated
     /// with the specified key.
@@ -988,7 +997,7 @@ impl Program {
         let prof_thread = thread::spawn(move || Self::prof_thread_func(prof_recv, cloned_profile));
 
         // Shared timestamp managed by worker 0 and read by all other workers
-        let frontier_ts = TSAtomic::new(0);
+        let running = AtomicBool::new(true);
 
         // Clone the program so that it can be moved into the timely computation
         let program = Arc::new(self.clone());
@@ -1001,7 +1010,7 @@ impl Program {
                 let worker = DDlogWorker::new(
                     worker,
                     program.clone(),
-                    &frontier_ts,
+                    &running,
                     number_workers,
                     profiling.clone(),
                     Arc::clone(&request_recv),
@@ -1074,6 +1083,7 @@ impl Program {
             worker_guards: Some(worker_guards),
             transaction_in_progress: false,
             need_to_flush: false,
+            timestamp: 1,
             profile_cpu,
             profile_timely,
             prof_thread_handle: Some(prof_thread),
@@ -1899,7 +1909,8 @@ impl RunningProgram {
         if self.worker_guards.is_none() {
             // Already stopped.
             return Ok(());
-        };
+        }
+
         self.flush()
             .and_then(|_| self.send(0, Msg::Stop))
             .and_then(|_| {
@@ -2028,9 +2039,24 @@ impl RunningProgram {
             self.apply_update(update, &mut filtered_updates)?;
         }
 
-        self.send(0, Msg::Update(filtered_updates)).map(|_| {
-            self.need_to_flush = true;
-        })
+        if filtered_updates.is_empty() {
+            return Ok(());
+        }
+
+        // cmp::max(filtered_updates.len() / self.senders.len(), MIN_BATCH_SIZE);
+        let chunk_size = filtered_updates.len() / self.senders.len();
+        filtered_updates
+            .chunks(chunk_size)
+            .map(|chunk| Msg::Update {
+                updates: chunk.to_vec(),
+                timestamp: self.timestamp,
+            })
+            .zip((0..self.senders.len()).cycle())
+            .map(|(update, worker_idx)| self.send(worker_idx, update))
+            .collect::<Response<()>>()?;
+
+        self.need_to_flush = true;
+        Ok(())
     }
 
     /// Deletes all values in an input table
@@ -2568,8 +2594,13 @@ impl RunningProgram {
             return Ok(());
         }
 
-        self.send(0, Msg::Flush).and_then(|()| {
+        self.broadcast(Msg::Flush {
+            timestamp: self.timestamp + 1,
+        })
+        .and_then(|()| {
+            self.timestamp += 1;
             self.need_to_flush = false;
+
             match self.reply_recv[0].recv() {
                 Err(_) => Err(
                     "failed to receive flush ack message from timely dataflow thread".to_string(),
