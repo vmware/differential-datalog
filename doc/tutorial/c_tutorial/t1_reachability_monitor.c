@@ -31,7 +31,7 @@ int main(int args, char **argv)
     ddlog_prog prog = ddlog_run(1, true, NULL, NULL);
     if (prog == NULL) {
         fprintf(stderr, "failed to initialize DDlog program\n");
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     };
 
     // Print IDs of tables corresponding to `Links` and `ConnectedNodes` relations
@@ -95,18 +95,18 @@ int main(int args, char **argv)
     // Start transaction
     if (ddlog_transaction_start(prog) < 0) {
         fprintf(stderr, "failed to start transaction\n");
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     };
 
     // Apply updates
     ddlog_cmd *cmd = ddlog_insert_cmd(LinksTableID, new_record);
     if (cmd == NULL) {
         fprintf(stderr, "failed to create insert command\n");
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     }
     if (ddlog_apply_updates(prog, &cmd, 1) < 0) {
         fprintf(stderr, "failed to apply updates\n");
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     };
     printf("Applied update.\n");
 
@@ -118,7 +118,7 @@ int main(int args, char **argv)
     // Commit transaction
     if (ddlog_transaction_commit(prog) < 0) {
         fprintf(stderr, "failed to commit transaction\n");
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     };
 
     // Printing records in the `ConnectedNodes` relation
@@ -128,7 +128,7 @@ int main(int args, char **argv)
     // Stopping DDlog program
     if (ddlog_stop(prog) < 0) {
         fprintf(stderr, "failed to stop DDlog program\n");
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     }
 
     return EXIT_SUCCESS;
