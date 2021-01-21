@@ -34,11 +34,11 @@ int main(int args, char **argv)
         exit(EXIT_FAILURE);
     };
 
-    // Print IDs of tables corresponding to `Links` and `ConnectedNodes` relations
+    // Get table IDs for `Links` and `ConnectedNodes` relations
     table_id LinksTableID = ddlog_get_table_id("Links");
     table_id ConnectedNodesTableID = ddlog_get_table_id("ConnectedNodes");
-    printf("Links table id: %lu\n", LinksTableID);
-    printf("ConnectedNodes table id: %lu\n", ConnectedNodesTableID);
+    printf("Links table ID: %lu\n", LinksTableID);
+    printf("ConnectedNodes table ID: %lu\n", ConnectedNodesTableID);
 
     char *src_line_ptr = NULL;
     char *dst_line_ptr = NULL;
