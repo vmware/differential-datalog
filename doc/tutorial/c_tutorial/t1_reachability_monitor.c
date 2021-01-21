@@ -7,19 +7,16 @@
 
 #include "ddlog.h"
 
+// Callback function that will be invoked for every record returned
+// by the call to `ddlog_dump_table()` function
 bool print_records_callback(uintptr_t arg, const ddlog_record *rec, ssize_t weight) {
-    if (rec == NULL) {
-        return false;
-    }
-
     char *record_as_string = ddlog_dump_record(rec);
     if (record_as_string == NULL) {
         fprintf(stderr, "failed to dump record\n");
         exit(EXIT_FAILURE);
     }
-    printf("Record: %s\n", record_as_string);
-    // Records returned as strings using `ddlog_dump_record()`
-    // API call should be deallocated to avoid memory leaks
+    char *action = (weight == 1) ? "Inserted" : "Deleted";
+    printf("%s record: %s\n", action, record_as_string);
     ddlog_string_free(record_as_string);
 
     return true;
@@ -128,7 +125,7 @@ int main(int args, char **argv)
     ddlog_dump_table(prog, ConnectedNodesTableID, &print_records_callback, (uintptr_t)(void*)(NULL));
 
     // Freeing memory
-    ddlog_free(struct_args);
+    free(struct_args);
     free(src_line_ptr);
     free(dst_line_ptr);
     free(link_status_line_ptr);
