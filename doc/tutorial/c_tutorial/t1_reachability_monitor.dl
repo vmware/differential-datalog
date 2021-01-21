@@ -4,6 +4,8 @@ input relation Links(src: string, dst: string, link_status: bool)
 // Output relations
 output relation ConnectedNodes(src: string, dst: string)
 
-// Rules
+/*
+ * Rules to calculate `ConnectedNodes` relation
+ */
 ConnectedNodes(src, dst) :- Links(src, dst, true).
 ConnectedNodes(src, dst) :- ConnectedNodes(src, intermediate_node), Links(intermediate_node, dst, true), (src != dst).
