@@ -103,22 +103,19 @@ int main(int args, char **argv)
         exit(EXIT_FAILURE);
     };
 
-    // Apply updates
+    // Create `insert` command
     ddlog_cmd *cmd = ddlog_insert_cmd(LinksTableID, new_record);
     if (cmd == NULL) {
         fprintf(stderr, "failed to create insert command\n");
         exit(EXIT_FAILURE);
     }
+
+    // Apply updates to the relation with records
+    // specified in the provided command `cmd`
     if (ddlog_apply_updates(prog, &cmd, 1) < 0) {
         fprintf(stderr, "failed to apply updates\n");
         exit(EXIT_FAILURE);
     };
-
-    // Freeing memory
-    ddlog_free(struct_args);
-    free(src_line_ptr);
-    free(dst_line_ptr);
-    free(link_status_line_ptr);
 
     // Commit transaction
     if (ddlog_transaction_commit(prog) < 0) {
@@ -129,6 +126,12 @@ int main(int args, char **argv)
     // Print records in the `ConnectedNodes` relation
     printf("Content of the ConnectedNodes relation:\n");
     ddlog_dump_table(prog, ConnectedNodesTableID, &print_records_callback, (uintptr_t)(void*)(NULL));
+
+    // Freeing memory
+    ddlog_free(struct_args);
+    free(src_line_ptr);
+    free(dst_line_ptr);
+    free(link_status_line_ptr);
 
     // Stop the DDlog program
     if (ddlog_stop(prog) < 0) {
