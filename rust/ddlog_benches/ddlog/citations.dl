@@ -1,7 +1,0 @@
-input relation Citation(c1: istring, c2: istring)
-
-output relation BibCoupling(c1: istring, c2: istring)
-output relation CoCitation(c1: istring, c2: istring)
-
-BibCoupling(c1, c2) :- Citation(c1, p), Citation(c2, p), c1 < c2.
-CoCitation(c1, c2) :- Citation(p, c1), Citation(p, c2), c1 < c2.
