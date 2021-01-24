@@ -30,7 +30,8 @@ use std::{
     borrow::Cow,
     collections::{hash_map, BTreeSet},
     fmt::{self, Debug, Formatter},
-    iter,
+    iter::{self, Cycle, Skip},
+    ops::Range,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
@@ -853,6 +854,7 @@ pub struct RunningProgram {
     prof_thread_handle: Option<JoinHandle<()>>,
     /// Profiling statistics.
     pub profile: Arc<Mutex<Profile>>,
+    worker_round_robbin: Skip<Cycle<Range<usize>>>,
 }
 
 // Right now this Debug implementation is more or less a short cut.
@@ -1088,6 +1090,7 @@ impl Program {
             profile_timely,
             prof_thread_handle: Some(prof_thread),
             profile,
+            worker_round_robbin: (0..number_workers).cycle().skip(0),
         })
     }
 
@@ -2043,7 +2046,8 @@ impl RunningProgram {
             return Ok(());
         }
 
-        // cmp::max(filtered_updates.len() / self.senders.len(), MIN_BATCH_SIZE);
+        let mut worker_round_robbin = self.worker_round_robbin.clone();
+
         let chunk_size = filtered_updates.len() / self.senders.len();
         filtered_updates
             .chunks(chunk_size)
@@ -2051,9 +2055,12 @@ impl RunningProgram {
                 updates: chunk.to_vec(),
                 timestamp: self.timestamp,
             })
-            .zip((0..self.senders.len()).cycle())
+            .zip(&mut worker_round_robbin)
             .map(|(update, worker_idx)| self.send(worker_idx, update))
             .collect::<Response<()>>()?;
+
+        let next = worker_round_robbin.next().unwrap_or(0);
+        self.worker_round_robbin = (0..self.senders.len()).cycle().skip(next);
 
         self.need_to_flush = true;
         Ok(())
