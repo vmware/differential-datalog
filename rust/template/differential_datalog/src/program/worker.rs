@@ -143,63 +143,56 @@ impl<'a> DDlogWorker<'a> {
         self.init_profiling();
 
         let probe = ProbeHandle::new();
-        let (mut all_sessions, mut traces) = self.session_dataflow(probe.clone())?;
+        let (mut sessions, mut traces) = self.session_dataflow(probe.clone())?;
 
-        self.ingest_initial_data(&mut all_sessions, &mut traces, &probe)?;
-
-        // Close session handles for non-input sessions;
-        // close all sessions for workers other than worker 0.
-        let mut sessions: FnvHashMap<RelId, InputSession<TS, DDValue, Weight>> = all_sessions
-            .drain()
-            .filter(|&(relid, _)| self.program.get_relation(relid).input)
-            .collect();
+        self.ingest_initial_data(&mut sessions, &mut traces, &probe)?;
 
         'worker_loop: while self.running.load(Ordering::Acquire) {
             // Non-blocking receive, so that we can do some garbage collecting
             // when there is no real work to do.
-            match self.request_receiver.try_recv() {
-                Ok(Msg::Update { updates, timestamp }) => {
-                    // Update inputs with the given updates at the given timestamp
-                    self.batch_update(&mut sessions, updates, timestamp)?;
+            let messages: Vec<_> = self.request_receiver.try_iter().fuse().collect();
+            for message in messages {
+                match message {
+                    Msg::Update { updates, timestamp } => {
+                        // Update inputs with the given updates at the given timestamp
+                        self.batch_update(&mut sessions, updates, timestamp)?;
 
-                    // After we've applied a batch of updates we step so we
-                    // push data down a little bit
-                    self.worker.step();
-                }
-
-                // The `Flush` message gives us the timestamp to advance to, so advance there
-                // before flushing & compacting all previous timestamp's traces
-                Ok(Msg::Flush { timestamp }) => {
-                    self.advance(&mut sessions, &mut traces, timestamp);
-                    self.flush(&mut sessions, &probe);
-
-                    // Only the leader sends back a flush acknowledgement even though
-                    // all workers receive the flush signal
-                    if self.is_leader() {
-                        self.reply_sender
-                            .send(Reply::FlushAck)
-                            .map_err(|e| format!("failed to send ACK: {}", e))?;
+                        // After we've applied a batch of updates we step so we
+                        // push data down a little bit
+                        self.worker.step();
                     }
-                }
 
-                // Handle queries
-                Ok(Msg::Query(arrid, key)) => self.handle_query(&mut traces, arrid, key)?,
+                    // The `Flush` message gives us the timestamp to advance to, so advance there
+                    // before flushing & compacting all previous timestamp's traces
+                    Msg::Flush { timestamp } => {
+                        self.advance(&mut sessions, &mut traces, timestamp);
+                        self.flush(&mut sessions, &probe);
 
-                // If the channel is empty do nothing
-                Err(TryRecvError::Empty) => {}
+                        // Only the leader sends back a flush acknowledgement even though
+                        // all workers receive the flush signal
+                        if self.is_leader() {
+                            self.reply_sender
+                                .send(Reply::FlushAck)
+                                .map_err(|e| format!("failed to send ACK: {}", e))?;
+                        }
+                    }
 
-                // On either the stop message or a channel disconnection we can shut down
-                // the computation
-                Ok(Msg::Stop) | Err(TryRecvError::Disconnected) => {
-                    // TODO: Log worker #n disconnection
-                    self.stop_all_workers();
-                    break 'worker_loop;
+                    // Handle queries
+                    Msg::Query(arrid, key) => self.handle_query(&mut traces, arrid, key)?,
+
+                    // On either the stop message or a channel disconnection we can shut down
+                    // the computation
+                    Msg::Stop => {
+                        // TODO: Log worker #n disconnection
+                        self.stop_all_workers();
+                        break 'worker_loop;
+                    }
                 }
             }
 
             // After each command received we step, if there's no timely work to be done
             // our thread will be parked until it's re-awoken by a command
-            self.worker.step_or_park(None);
+            self.worker.step();
         }
 
         self.stop_all_workers();
@@ -485,8 +478,8 @@ impl<'a> DDlogWorker<'a> {
         let program = self.program.clone();
 
         self.worker.dataflow::<TS, _, _>(|outer: &mut Child<Worker<Allocator>, TS>| -> Result<_, String> {
-            let mut sessions : FnvHashMap<RelId, InputSession<TS, DDValue, Weight>> = FnvHashMap::default();
-            let mut collections : FnvHashMap<RelId, Collection<Child<Worker<Allocator>, TS>, DDValue, Weight>> =
+            let mut sessions: FnvHashMap<RelId, InputSession<TS, DDValue, Weight>> = FnvHashMap::default();
+            let mut collections: FnvHashMap<RelId, Collection<Child<Worker<Allocator>, TS>, DDValue, Weight>> =
                     HashMap::with_capacity_and_hasher(program.nodes.len(), FnvBuildHasher::default());
             let mut arrangements = FnvHashMap::default();
 
@@ -503,7 +496,7 @@ impl<'a> DDlogWorker<'a> {
                         let mut collection = collections
                             .remove(&rel.id)
                             .unwrap_or_else(|| {
-                                let (session, collection) = outer.new_collection::<DDValue,Weight>();
+                                let (session, collection) = outer.new_collection::<DDValue, Weight>();
                                 sessions.insert(rel.id, session);
 
                                 collection
