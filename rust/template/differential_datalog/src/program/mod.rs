@@ -28,6 +28,7 @@ use fnv::{FnvHashMap, FnvHashSet};
 use std::{
     any::Any,
     borrow::Cow,
+    cmp,
     collections::{hash_map, BTreeSet},
     fmt::{self, Debug, Formatter},
     iter::{self, Cycle, Skip},
@@ -2048,7 +2049,7 @@ impl RunningProgram {
 
         let mut worker_round_robbin = self.worker_round_robbin.clone();
 
-        let chunk_size = filtered_updates.len() / self.senders.len();
+        let chunk_size = cmp::max(filtered_updates.len() / self.senders.len(), 5000);
         filtered_updates
             .chunks(chunk_size)
             .map(|chunk| Msg::Update {
