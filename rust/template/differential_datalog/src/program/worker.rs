@@ -8,7 +8,7 @@ use crate::{
     program::{RelId, Weight},
     variable::Variable,
 };
-use crossbeam_channel::{Receiver, Sender, TryRecvError};
+use crossbeam_channel::{Receiver, Sender};
 use differential_dataflow::{
     input::{Input, InputSession},
     logging::DifferentialEvent,
@@ -153,19 +153,15 @@ impl<'a> DDlogWorker<'a> {
             let messages: Vec<_> = self.request_receiver.try_iter().fuse().collect();
             for message in messages {
                 match message {
+                    // Update inputs with the given updates at the given timestamp
                     Msg::Update { updates, timestamp } => {
-                        // Update inputs with the given updates at the given timestamp
-                        self.batch_update(&mut sessions, updates, timestamp)?;
-
-                        // After we've applied a batch of updates we step so we
-                        // push data down a little bit
-                        self.worker.step();
+                        self.batch_update(&mut sessions, updates, timestamp)?
                     }
 
                     // The `Flush` message gives us the timestamp to advance to, so advance there
                     // before flushing & compacting all previous timestamp's traces
-                    Msg::Flush { timestamp } => {
-                        self.advance(&mut sessions, &mut traces, timestamp);
+                    Msg::Flush { advance_to } => {
+                        self.advance(&mut sessions, &mut traces, advance_to);
                         self.flush(&mut sessions, &probe);
 
                         // Only the leader sends back a flush acknowledgement even though

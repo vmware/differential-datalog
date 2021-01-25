@@ -943,7 +943,7 @@ enum Msg {
     /// Propagate changes through the pipeline
     Flush {
         /// The timestamp to advance to
-        timestamp: TS,
+        advance_to: TS,
     },
     /// Query arrangement.  If the second argument is `None`, returns
     /// all values in the collection; otherwise returns values associated
@@ -2602,7 +2602,7 @@ impl RunningProgram {
         }
 
         self.broadcast(Msg::Flush {
-            timestamp: self.timestamp + 1,
+            advance_to: self.timestamp + 1,
         })
         .and_then(|()| {
             self.timestamp += 1;
