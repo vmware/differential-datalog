@@ -2517,7 +2517,7 @@ arrangeInput d fstatom arrange_input_by = do
               etype = exprType' d ctx' e
               (TStruct _ [cons]) = typDeref' d etype
               estruct = eStruct (name cons)
-                                (map (\a -> (name a, if name a == f then e' else ePHolder)) $ consArgs cons)
+                                (map (\a -> (IdentifierWithPos nopos $ name a, if name a == f then e' else ePHolder)) $ consArgs cons)
                                 (typDeref' d etype)
               e'' = foldl' (\_e _ -> eRef _e) estruct [(1::Int)..nref etype]
     substVar' (E par@(ETupField _ e idx), ctx) e' = substVar' (e, ctx') e''

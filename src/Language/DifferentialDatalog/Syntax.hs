@@ -55,6 +55,7 @@ module Language.DifferentialDatalog.Syntax (
         structGetField,
         structFieldGuarded,
         Field(..),
+        IdentifierWithPos(..),
         TypeDef(..),
         Constructor(..),
         consType,
@@ -229,6 +230,25 @@ instance WithPos ArgType where
 
 instance PP ArgType where
     pp ArgType{..} = (if atypeMut then "mut" else empty) <+> pp atypeType
+
+data IdentifierWithPos = IdentifierWithPos { idPos :: Pos, idName :: String }
+
+instance Eq IdentifierWithPos where
+    (==) (IdentifierWithPos _ n1) (IdentifierWithPos _ n2) = n1 == n2
+
+instance Ord IdentifierWithPos where
+    compare (IdentifierWithPos _ n1) (IdentifierWithPos _ n2) = compare n1 n2
+
+instance WithPos IdentifierWithPos where
+    pos = idPos
+    atPos i p = i{idPos = p}
+
+instance PP IdentifierWithPos where
+    pp IdentifierWithPos{..} = pp idName
+
+instance WithName IdentifierWithPos where
+    name = idName
+    setName i n = i{idName = n}
 
 data Type = TBool     {typePos :: Pos}
           | TInt      {typePos :: Pos}
@@ -579,7 +599,7 @@ instance WithPos Atom where
 instance PP Atom where
     pp (Atom _ rel (E (EStruct _ cons as))) | rel == cons
                 = pp rel <> (parens $ commaSep $
-                             map (\(n,e) -> (if null n then empty else ("." <> pp n <> "=")) <> pp e) as)
+                             map (\(n,e) -> (if null (name n) then empty else ("." <> pp n <> "=")) <> pp e) as)
     pp Atom{..} = pp atomRelation <> "[" <> pp atomVal <> "]"
 
 instance Show Atom where
@@ -697,7 +717,7 @@ data ExprNode e = EVar          {exprPos :: Pos, exprVar :: String}
                 | EString       {exprPos :: Pos, exprString :: String}
                 | EBit          {exprPos :: Pos, exprWidth :: Int, exprIVal :: Integer}
                 | ESigned       {exprPos :: Pos, exprWidth :: Int, exprIVal :: Integer}
-                | EStruct       {exprPos :: Pos, exprConstructor :: String, exprStructFields :: [(String, e)]}
+                | EStruct       {exprPos :: Pos, exprConstructor :: String, exprStructFields :: [(IdentifierWithPos, e)]}
                 | ETuple        {exprPos :: Pos, exprTupleFields :: [e]}
                 | ESlice        {exprPos :: Pos, exprOp :: e, exprH :: Int, exprL :: Int}
                 | EMatch        {exprPos :: Pos, exprMatchExpr :: e, exprCases :: [(e, e)]}
@@ -882,7 +902,7 @@ instance PP e => PP (ExprNode e) where
     pp (EBit _ w v)          = pp w <> "'d" <> pp v
     pp (ESigned _ w v)       = pp w <> "'sd" <> pp v
     pp (EStruct _ s fs)      = pp s <> (braces $ commaSep
-                                        $ map (\(n,e) -> (if null n then empty else ("." <> pp n <> "=")) <> pp e) fs)
+                                        $ map (\(n,e) -> (if null (name n) then empty else ("." <> pp n <> "=")) <> pp e) fs)
     pp (ETuple _ fs)         = parens $ commaSep $ map pp fs
     pp (ESlice _ e h l)      = parens $ pp e <> (brackets $ pp h <> colon <> pp l)
     pp (EMatch _ e cs)       = "match" <+> parens (pp e) <+> "{"
@@ -1321,7 +1341,7 @@ data ECtx = -- | Top-level context. Serves as the root of the context hierarchy.
             -- | Tuple field expression: 'X.N'
           | CtxTupField       {ctxParExpr::ENode, ctxPar::ECtx}
             -- | Argument passed to a type constructor: 'Cons(X, y, z)'
-          | CtxStruct         {ctxParExpr::ENode, ctxPar::ECtx, ctxArg::(Int, String)}
+          | CtxStruct         {ctxParExpr::ENode, ctxPar::ECtx, ctxArg::(Int, IdentifierWithPos)}
             -- | Argument passed to a tuple expression: '(X, y, z)'
           | CtxTuple          {ctxParExpr::ENode, ctxPar::ECtx, ctxIdx::Int}
             -- | Bit slice: 'X[h:l]'

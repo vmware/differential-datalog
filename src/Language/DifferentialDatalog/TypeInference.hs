@@ -497,15 +497,15 @@ inferTypes d es = do
                  ETry{..} | isOption ?d inner_type && isOption ?d ret_type
                              -> E $ EMatch (pos e) inner_expr
                                     [(eStruct nONE_CONSTRUCTOR [] inner_type, eReturn (eStruct nONE_CONSTRUCTOR [] ret_type) t),
-                                     (eStruct sOME_CONSTRUCTOR [("x", eVarDecl "__x" t)] inner_type, eVar "__x")]
+                                     (eStruct sOME_CONSTRUCTOR [(IdentifierWithPos nopos "x", eVarDecl "__x" t)] inner_type, eVar "__x")]
                           | isResult ?d inner_type && isOption ?d ret_type
                              -> E $ EMatch (pos e) inner_expr
-                                    [(eStruct eRR_CONSTRUCTOR [("err", eTyped ePHolder inner_etype)] inner_type, eReturn (eStruct nONE_CONSTRUCTOR [] ret_type) t),
-                                     (eStruct oK_CONSTRUCTOR [("res", eVarDecl "__x" t)] inner_type, eVar "__x")]
+                                    [(eStruct eRR_CONSTRUCTOR [(IdentifierWithPos nopos "err", eTyped ePHolder inner_etype)] inner_type, eReturn (eStruct nONE_CONSTRUCTOR [] ret_type) t),
+                                     (eStruct oK_CONSTRUCTOR [(IdentifierWithPos nopos "res", eVarDecl "__x" t)] inner_type, eVar "__x")]
                           | isResult ?d inner_type && isResult ?d ret_type
                              -> E $ EMatch (pos e) inner_expr
-                                    [(eStruct eRR_CONSTRUCTOR [("err", eVarDecl "__e" etype)] inner_type, eReturn (eStruct eRR_CONSTRUCTOR [("err", eVar "__e")] ret_type) t),
-                                     (eStruct oK_CONSTRUCTOR [("res", eVarDecl "__x" t)] inner_type, eVar "__x")]
+                                    [(eStruct eRR_CONSTRUCTOR [(IdentifierWithPos nopos "err", eVarDecl "__e" etype)] inner_type, eReturn (eStruct eRR_CONSTRUCTOR [(IdentifierWithPos nopos "err", eVar "__e")] ret_type) t),
+                                     (eStruct oK_CONSTRUCTOR [(IdentifierWithPos nopos "res", eVarDecl "__x" t)] inner_type, eVar "__x")]
                           | otherwise -> error $ "TypeInference.add_types: e=" ++ show expr ++ " type=" ++ show inner_type ++ " function or closure: " ++ show ctx'
                     where
                     ctx' = fromMaybe (error $ "inferTypes '" ++ show expr ++ "': '?' not inside function or closure")
@@ -769,7 +769,7 @@ exprConstraints_ de@(DDExpr ctx (E e@ETupField{..})) = do
 -- 'is_MyStruct |de| and |e1|=MyStruct_f1 |e| and ... and |en| = MyStruct_fn |e|'
 exprConstraints_ de@(DDExpr ctx (E e@EStruct{..})) = do
     addConstraint =<< deIsStruct de tdefName
-    addConstraints =<< mapIdxM (\(arg, efield) i -> tvarTypeOfExpr (DDExpr (CtxStruct e ctx (i, name arg)) efield) <~~~~> typeToTExpr' de (typ arg))
+    addConstraints =<< mapIdxM (\(arg, efield) i -> tvarTypeOfExpr (DDExpr (CtxStruct e ctx (i, IdentifierWithPos (pos arg) $ name arg)) efield) <~~~~> typeToTExpr' de (typ arg))
                             (zip consArgs $ map snd exprStructFields)
     where
     Constructor{..} = getConstructor ?d exprConstructor
