@@ -14,11 +14,7 @@ gulp.task('compile-json', (done ) => {
       beautify: true,
     }))
     .pipe(gulp.dest('./syntaxes'));
-done()
+  done()
 });
 
-function done()
-{
-}
-
-
+function done() {}
