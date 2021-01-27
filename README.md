@@ -86,6 +86,8 @@ but somewhat limits the flexibility, as changes to the relational schema or rule
 
 To install a precompiled version of DDlog, download the [latest binary release](https://github.com/vmware/differential-datalog/releases), extract it from archive, add `ddlog/bin` to your `$PATH`, and set `$DDLOG_HOME` to point to the `ddlog` directory. You will also need to install the Rust toolchain (see instructions below).
 
+If you're using OS X, you will need to override the binary's security settings through [these instructions](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac).
+
 You are now ready to [start coding in DDlog](doc/tutorial/tutorial.md).
 
 ### Compiling DDlog from sources
