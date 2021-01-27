@@ -1,0 +1,31 @@
+{
+  "repository": {
+        "variable": {
+            "patterns": [
+                {
+                    "name": "variable.parameter.ddlog",
+                    "match": "\\b([a-z_][a-zA-Z0-9_]*\\s*)(?=[:]\\s*)"
+                },
+                {
+                    "name": "variable.local.ddlog",
+                    "match": "\\b(?<=var)(\\s*)([a-z_][a-zA-Z0-9_]*)\\s*"
+                },
+                {
+                    "name": "variable.language.ddlog",
+                    "match": "\\b(_)\\b"
+                },
+                {
+                    "name": "variable.loop.ddlog",
+                    "match": "\\b(?<=\\()(\\s*)([a-z_][a-zA-Z0-9_]*)\\s*(?=(\\bin\\b)\\s*)"
+                },
+                {
+                    "match": "^\\s+(return\\s)?(?!skip)(?!false)(?!true)(?!continue)(?!break)(?!else)(?!if)([a-z_][a-zA-Z0-9_]*)\\s+$",
+                    "captures": {
+                    "1": {"name": "keyword.control.ddlog"},
+                    "2": {"name": "variable.other.return-value.ddlog"},
+                    }
+                }               
+            ]
+        }
+    }
+}

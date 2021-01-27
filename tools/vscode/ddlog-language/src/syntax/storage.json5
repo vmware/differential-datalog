@@ -1,0 +1,75 @@
+{
+  "repository": {
+        "type-defined": {
+            "patterns": [
+                   {
+                    "name": "storage.type.ddlog",
+                    "match": "\\b(typedef|type)\\b"
+                   }
+               ]
+            },      
+        "type-primitive-simple-type-spec": {
+            "patterns": [
+                   {
+                    "match": "\\b(bigint|bit|bool|double|float|string)\\b",
+                    "name": "storage.type.ddlog"
+                   }
+               ]
+            },
+        "type-primitive-type-spec": {
+            "patterns": [
+                   {
+                    "match": "\\b(signed)\\b",
+                    "name": "storage.type.ddlog"
+                   }
+               ]
+            },            
+        "type-core": {
+            "patterns": [
+                   {
+                    "name": "storage.type.core.ddlog",
+                    "match": "\\b(usize|u8|u16|u32|u64|u128|s8|s16|s32|s64|s128|Option|Result)\\b"
+                   }
+               ]
+            }, 
+        "type-generic": {
+            "patterns": [
+                   {
+                    "name": "storage.type.ddlog",
+                    "match": "\\b(Map|Set|Vec|Ref)\\b"
+                   }
+               ]
+            },                              
+        "storage": {
+            "patterns": [
+                {
+                    "name": "storage.modifier.external.ddlog",
+                    "match": "\\b(extern)\\b"
+                },
+                {
+                    "name": "storage.modifier.mutable.ddlog",
+                    "match": "\\b(mut)\\b"
+                },                
+                {
+                    "name": "storage.type.function.ddlog",
+                    "match": "\\b(function)\\b"
+                },
+                {
+                            "include": "#type-defined"
+                },
+                {
+                            "include": "#type-primitive-simple-type-spec"
+                },
+                {
+                            "include": "#type-primitive-type-spec"
+                },                
+                {
+                            "include": "#type-generic"
+                },
+                {
+                            "include": "#type-core"
+                }                
+            ]
+        }
+    } 
+}

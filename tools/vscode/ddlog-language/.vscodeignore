@@ -1,0 +1,6 @@
+.gitignore
+.vscode
+src/**
+gulpfile.js
+vscode-ddlog-syntax.code-workspace
+desktop.ini

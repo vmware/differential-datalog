@@ -1,0 +1,26 @@
+{
+    "name": "ddlogtheme",
+    "displayName": "ddlogtheme",
+    "description": "ddlogtheme",
+    "version": "0.0.1",
+    "publisher": "VMware",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/vmware/differential-datalog/tree/master/tools/vscode"
+    },
+    "engines": {
+        "vscode": "^1.50.0"
+    },
+    "categories": [
+        "Themes"
+    ],
+    "contributes": {
+        "themes": [
+            {
+                "label": "ddlogtheme",
+                "uiTheme": "vs-dark",
+                "path": "./themes/ddlog-color-theme.json"
+            }
+        ]
+    }
+}

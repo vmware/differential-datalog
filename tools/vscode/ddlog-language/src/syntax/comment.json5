@@ -1,0 +1,18 @@
+{
+  "repository": {
+        "comment": {
+            "patterns": [
+                {
+                    "name": "comment.block.ddlog",
+                    "begin": "/\\*",
+                    "end": "\\*/"
+                },
+                {
+                    "name": "comment.line.double-slash.ddlog",
+                    "begin": "//",
+                    "end": "$"
+                }
+            ]
+        }
+    }
+}

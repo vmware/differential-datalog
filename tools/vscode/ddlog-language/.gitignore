@@ -1,0 +1,5 @@
+node_modules
+*.vsix
+vscode-ddlog-syntax.code-workspace
+syntaxes/ddlog.tmLanguage.json
+desktop.ini

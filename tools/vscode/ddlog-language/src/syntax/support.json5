@@ -1,0 +1,16 @@
+{
+  "repository": {
+    "support": {
+      "patterns": [
+        {
+          "name": "support.constant.core.ddlog",
+          "match": "\\b(None|Ok|Err)\\b"
+        },
+        {
+          "name": "support.constant.core.ddlog",
+          "match": "\\b(Some)\\b"
+        },
+      ]
+    }
+  }
+}
