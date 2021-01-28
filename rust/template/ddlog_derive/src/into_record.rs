@@ -38,7 +38,7 @@ pub fn into_record_inner(input: DeriveInput) -> Result<TokenStream> {
         // the user will have to manually enforce invariants on it
         Data::Union(union) => Err(Error::new_spanned(
             union.union_token,
-            "`IntoRecord` is not able to be automatically implemented on unions",
+            "`IntoRecord` cannot be automatically implemented on unions",
         )),
     }
 }

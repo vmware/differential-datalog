@@ -176,7 +176,7 @@ fn named_struct_mutator<'a>(
     })
     .collect::<Result<TokenStream>>()?;
 
-    let field_copies = named_struct.named.iter().enumerate().map(|(index, field)| {
+    let positional_mutations = named_struct.named.iter().enumerate().map(|(index, field)| {
         let field_ty = &field.ty;
         let field_ident = field.ident.as_ref().expect("named structs have field names");
         quote! {
@@ -194,7 +194,7 @@ fn named_struct_mutator<'a>(
 
             differential_datalog::record::Record::PosStruct(_, #args)
                 if #args.len() == #num_fields => {
-                    #field_copies
+                    #positional_mutations
                 },
 
             #error => {
