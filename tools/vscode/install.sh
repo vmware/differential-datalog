@@ -32,9 +32,11 @@ rm vscode-ddlog-syntax-0.0.1.vsix
 cd ..
 
 # Package and install the theme
-
-cd ddlog-theme
-../ddlog-language/node_modules/.bin/vsce package
-code --install-extension ddlogtheme-0.0.1.vsix
-rm ddlogtheme-0.0.1.vsix
-cd ..
+# Currently commented-out.
+#
+#cd ddlog-theme
+#../ddlog-language/node_modules/.bin/vsce package
+#code --install-extension ddlogtheme-0.0.1.vsix
+#rm ddlogtheme-0.0.1.vsix
+#cd ..
+#
