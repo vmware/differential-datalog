@@ -63,7 +63,7 @@ pub fn mutator_inner(mut input: DeriveInput) -> Result<TokenStream> {
         // the user will have to manually enforce invariants on it
         Data::Union(union) => Err(Error::new_spanned(
             union.union_token,
-            "`Mutator` is not able to be automatically implemented on unions",
+            "`Mutator` cannot be automatically implemented on unions",
         )),
     }
 }
@@ -91,7 +91,7 @@ fn unit_struct_mutator(args: &Ident, error: &Ident) -> TokenStream {
             },
 
             #error => {
-                return std::result::Result::Err(std::format!("not a struct {:?}", #error));
+                return std::result::Result::Err(std::format!("not a unit struct {:?}", #error));
             },
         }
     }
@@ -148,7 +148,7 @@ fn tuple_struct_mutator<'a>(
             },
 
             #error => {
-                return std::result::Result::Err(std::format!("not a struct {:?}", #error));
+                return std::result::Result::Err(std::format!("not a tuple struct {:?}", #error));
             },
         }
     };
@@ -176,11 +176,26 @@ fn named_struct_mutator<'a>(
     })
     .collect::<Result<TokenStream>>()?;
 
+    let positional_mutations = named_struct.named.iter().enumerate().map(|(index, field)| {
+        let field_ty = &field.ty;
+        let field_ident = field.ident.as_ref().expect("named structs have field names");
+        quote! {
+            <dyn differential_datalog::record::Mutator<#field_ty>>::mutate(&#args[#index], #field_ident)?;
+        }
+    })
+    .collect::<TokenStream>();
+
+    let num_fields = named_struct.named.len();
     let mutator = quote! {
         match self {
             differential_datalog::record::Record::NamedStruct(_, #args) => {
                 #field_mutations
             },
+
+            differential_datalog::record::Record::PosStruct(_, #args)
+                if #args.len() == #num_fields => {
+                    #positional_mutations
+                },
 
             #error => {
                 return std::result::Result::Err(std::format!("not a struct {:?}", #error));
