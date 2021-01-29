@@ -32,6 +32,7 @@ test/datalog_tests/*.c
 test/datalog_tests/*_ddlog
 test/evaluation/
 test/examples/
+test/example/
 java/*/*_ddlog/
 test/ovn
 *.dump
@@ -75,3 +76,7 @@ sql/libddlogapi.*
 sql/program.dl
 
 testsuite.log/
+node_modules/
+# We actually cannot commit package-lock.json to the repo, since some corporate
+# sites rewrite urls to npm repositories
+package-lock.json
