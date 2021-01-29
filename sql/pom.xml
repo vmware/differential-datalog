@@ -18,6 +18,12 @@
       <artifactId>presto-parser</artifactId>
       <version>0.228</version>
     </dependency>
+    <!-- Alternative parser -->
+    <dependency>
+      <groupId>org.apache.calcite</groupId>
+      <artifactId>calcite-core</artifactId>
+      <version>1.26.0</version>
+    </dependency>
     <!-- dynamically query db for schemas -->
     <dependency>
       <groupId>com.h2database</groupId>
