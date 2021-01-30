@@ -268,9 +268,9 @@ relValidate :: (MonadError String me) => DatalogProgram -> Relation -> me Relati
 relValidate d rel@Relation{..} = do
     typeValidate d [] relType
     check d (isNothing relPrimaryKey || relRole == RelInput) (pos rel)
-        $ "Only input relations can be declared with a primary key"
+        $ "Only input relations can be declared with a primary key."
     check d (isNothing relPrimaryKey || relSemantics == RelSet) (pos rel)
-        $ "Streams and multisets cannot be declared with a primary key"
+        $ "Streams and multisets cannot be declared with a primary key."
     case relPrimaryKey of
          Nothing -> return rel
          Just pkey -> do pkey' <- exprValidate d [] (CtxKey rel) $ keyExpr pkey
@@ -280,10 +280,17 @@ indexValidate :: (MonadError String me) => DatalogProgram -> Index -> me Index
 indexValidate d idx = do
     fieldsValidate d [] $ idxVars idx
     atomValidate d (CtxIndex idx) $ idxAtom idx
+    let rel = getRelation d $ atomRelation $ idxAtom idx
+    check d (not $ relIsStream rel) (pos $ idxAtom idx)
+            $ "Indexes over streams are not supported (relation '" ++ name rel ++ "' is declared as a stream at " ++ show (pos rel) ++ ")."
+    check d (not $ atomIsDelayed $ idxAtom idx) (pos $ atomDelay $ idxAtom idx)
+            $ "Indexes over delayed relations are not supported."
+    check d (not $ atomDiff $ idxAtom idx) (pos $ idxAtom idx)
+            $ "Differentiation (') cannot be used in an index."
     val' <- exprValidate d [] (CtxIndex idx) $ atomVal $ idxAtom idx
     let idx' = idx {idxAtom = (idxAtom idx) {atomVal = val'}}
     check d (exprIsPatternImpl $ atomVal $ idxAtom idx') (pos $ idxAtom idx')
-          $ "Index expression is not a pattern"
+          $ "Index expression is not a pattern."
     -- Atom is defined over exactly the variables in the index.
     -- (variables in 'atom_vars \\ idx_vars' should be caught by 'atomValidate'
     -- above, so we only need to check for 'idx_vars \\ atom_vars' here).
@@ -352,7 +359,21 @@ ruleValidateExpressions d rl = do
 
 atomValidate :: (MonadError String me) => DatalogProgram -> ECtx -> Atom -> me ()
 atomValidate d ctx atom = do
-    _ <- checkRelation (pos atom) d $ atomRelation atom
+    rel <- checkRelation (pos atom) d $ atomRelation atom
+    -- This constraint is meant to reduce the risk of divergent programs.
+    -- For example, the following program diverges if 'S1', 'S2' are streams
+    -- (specifically, it will continue spitting out the same value of 'Sum' for
+    -- all future timestamps even after all input sessions have been closed),
+    -- but not if 'S2' is a relation:
+    -- S2(x) :- S1(x).
+    -- S2(x) :- Sum-1(x).
+    -- Sum(x) :- S2(x), x.group_by(()).group_sum().
+    --
+    -- TODO: It does not however guarantee convergence, e.g., this will diverge
+    -- even with relations: 'R1(x) :- R1-1(x)'.  We may need a stronger check
+    -- to prevent such situations.
+    when (atomIsDelayed atom)
+        $ check d (relSemantics rel /= RelStream) (pos $ atomDelay atom) "Cannot apply the delay operator to a stream."
     -- variable cannot be declared and used in the same atom
     uniqNames (Just d) (\v -> "Variable " ++ show v ++ " is both declared and used inside relational atom " ++ show atom)
         $ exprVarDecls d ctx $ atomVal atom
@@ -363,9 +384,9 @@ ruleRHSValidate :: (MonadError String me) => DatalogProgram -> Rule -> RuleRHS -
 ruleRHSValidate d rl (RHSLiteral polarity atom) idx = do
     atomValidate d (CtxRuleRAtom rl idx) atom
     let rel = getRelation d $ atomRelation atom
-    when (rulePrefixIsStream d rl idx) $ check d (relSemantics rel /= RelStream) (pos atom)
+    when (rulePrefixIsStream d rl idx) $ check d (atomSemantics d atom /= RelStream) (pos atom)
         $ "Attempt to join stream relation '" ++ name rel ++ "' and the stream produced by the prefix of the rule before this literal. Stream joins are currently not supported."
-    when (relIsStream rel) $ check d polarity (pos atom)
+    when (atomIsStream d atom) $ check d polarity (pos atom)
         $ "Attempt to negate a stream relation '" ++ name rel ++ "'.  This is currently not supported."
     -- This is an implementation constraint.  We should be able to antijoin streams.
     when (polarity == False) $ check d (not $ rulePrefixIsStream d rl idx) (pos atom)
@@ -392,15 +413,17 @@ ruleRHSValidate d rl RHSGroupBy{} idx = do
                                  e' -> err d (pos e') "Group-by expression must be a variable or a tuple of variables, e.g., 'group_by(x)' or 'group_by((x,y))'")
                                 exprTupleFields
          _ -> err d (pos group_by) "Group-by expression must be a variable or a tuple of variables, e.g., 'group_by(x)' or 'group_by((x,y))'"
-    check d (not $ rulePrefixIsStream d rl idx) (pos e)
-          $ "Illegal 'group_by' over a stream: only non-stream relations can be aggregated."
     return ()
 
 ruleLHSValidate :: (MonadError String me) => DatalogProgram -> Rule -> Atom -> me ()
 ruleLHSValidate d rl a@Atom{..} = do
     rel <- checkRelation atomPos d atomRelation
+    check d (not $ atomIsDelayed a) (pos atomDelay)
+         $ "Delayed relations are not allowed in the head of a rule."
+    check d (not atomDiff) (pos a)
+         $ "Differentiation (') is not allowed in the head of a rule."
     when (relRole rel == RelInput) $ check d (null $ ruleRHS rl) (pos a)
-         $ "Input relation " ++ name rel ++ " cannot appear in the head of a rule"
+         $ "Input relation '" ++ name rel ++ "' cannot appear in the head of a rule."
     when (relSemantics rel == RelStream) $ check d (ruleBodyIsStream d rl) (pos a)
          $ "Relation '" ++ name rel ++ "' in the head of the rule is declared as a stream, but the body of the rule computes a regular non-stream relation."
     when (relSemantics rel /= RelStream) $ check d (not $ ruleBodyIsStream d rl) (pos a)
@@ -541,10 +564,11 @@ depGraphValidate d@DatalogProgram{..} = do
                                           dep_cycle = intercalate " -> " $ (map (show . fromJust . G.lab g) rhs_to_a) ++
                                                                            (map (show . fromJust . G.lab g) a_to_rhs')
                                       in err d (pos rl) $
-                                             "Relation " ++ (atomRelation $ rhsAtom rhs) ++ " is mutually recursive with " ++ atomRelation a ++
+                                             "Relation '" ++ (atomRelation $ rhsAtom rhs) ++ "' is mutually recursive with " ++ atomRelation a ++
                                              " and therefore cannot appear negated in this rule.\n" ++
                                              "Dependency cycle: " ++ dep_cycle)
                              $ filter ((== lscc) . (sccmap M.!) . atomRelation . rhsAtom)
+                             $ filter (not . atomIsDelayed . rhsAtom)
                              $ filter (not . rhsPolarity)
                              $ filter rhsIsLiteral ruleRHS)
                   ruleLHS)
@@ -556,6 +580,18 @@ depGraphValidate d@DatalogProgram{..} = do
                                       $ "Stream '" ++ (atomRelation $ rhsAtom rhs) ++ "' occurs inside a recursive fragment consisting of: " ++ show (sccs !! lscc))
                              $ filter ((== RelStream) . relSemantics . getRelation d . atomRelation . rhsAtom)
                              $ filter ((== lscc) . (sccmap M.!) . atomRelation . rhsAtom)
+                             $ filter (not . atomIsDelayed . rhsAtom)
+                             $ filter rhsIsLiteral ruleRHS)
+                  ruleLHS)
+          progRules
+    mapM_ (\Rule{..} ->
+            mapM_ (\a ->
+                    do let lscc = sccmap M.! (atomRelation a)
+                       mapM_ (\rhs -> err d (pos $ rhsAtom rhs)
+                                      $ "Differentiation operator (') appears in a recursive fragment consisting of: " ++ show (sccs !! lscc))
+                             $ filter ((== lscc) . (sccmap M.!) . atomRelation . rhsAtom)
+                             $ filter (atomDiff . rhsAtom)
+                             $ filter (not . atomIsDelayed . rhsAtom)
                              $ filter rhsIsLiteral ruleRHS)
                   ruleLHS)
           progRules

@@ -169,14 +169,35 @@ Feeding data to the Parcel stream
 ParcelCity:
 ParcelCity{.zip = 94022, .city = "Los Altos", .weight = 2}: +1
 ParcelCity{.zip = 94085, .city = "Sunnyvale", .weight = 6}: +1
+ParcelWeight:
+ParcelWeight{.zip = 94022, .total_weight = 2}: +1
+ParcelWeight{.zip = 94085, .total_weight = 6}: +1
+ParcelWeightAggregated:
+ParcelWeightAggregated{.zip = 94022, .weight = 2}: +1
+ParcelWeightAggregated{.zip = 94085, .weight = 6}: +1
 Send more parcels!
 ParcelCity:
 ParcelCity{.zip = 94022, .city = "Los Altos", .weight = 1}: +1
-ParcelCity{.zip = 94039, .city = "Mountain View", .weight = 10}: +1
+ParcelCity{.zip = 94022, .city = "Los Altos", .weight = 8}: +1
+ParcelCity{.zip = 94085, .city = "Sunnyvale", .weight = 10}: +1
+ParcelWeight:
+ParcelWeight{.zip = 94022, .total_weight = 9}: +1
+ParcelWeight{.zip = 94085, .total_weight = 10}: +1
+ParcelWeightAggregated:
+ParcelWeightAggregated{.zip = 94022, .weight = 2}: -1
+ParcelWeightAggregated{.zip = 94022, .weight = 11}: +1
+ParcelWeightAggregated{.zip = 94085, .weight = 6}: -1
+ParcelWeightAggregated{.zip = 94085, .weight = 16}: +1
 Modifying both inputs in the same transaction.
 ParcelCity:
 ParcelCity{.zip = 94035, .city = "Moffett Field", .weight = 1}: +1
 ParcelCity{.zip = 94301, .city = "Palo Alto", .weight = 4}: +1
+ParcelWeight:
+ParcelWeight{.zip = 94035, .total_weight = 1}: +1
+ParcelWeight{.zip = 94301, .total_weight = 4}: +1
+ParcelWeightAggregated:
+ParcelWeightAggregated{.zip = 94035, .weight = 1}: +1
+ParcelWeightAggregated{.zip = 94301, .weight = 4}: +1
 TCPDstPort:
 TCPDstPort{.port = 80}
 TCPDstPort{.port = 8080}

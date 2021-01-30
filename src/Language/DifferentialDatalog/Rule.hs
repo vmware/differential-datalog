@@ -149,13 +149,13 @@ ruleLHSVars d rl =
 -- | Map function over all types in a rule
 ruleTypeMapM :: (Monad m) => (Type -> m Type) -> Rule -> m Rule
 ruleTypeMapM fun rule@Rule{..} = do
-    lhs <- mapM (\(Atom p r v) -> Atom p r <$> exprTypeMapM fun v) ruleLHS
+    lhs <- mapM (\(Atom p r del diff v) -> Atom p r del diff <$> exprTypeMapM fun v) ruleLHS
     rhs <- mapM (\rhs -> case rhs of
-                  RHSLiteral pol (Atom p r v) -> (RHSLiteral pol . Atom p r) <$> exprTypeMapM fun v
-                  RHSCondition c              -> RHSCondition <$> exprTypeMapM fun c
-                  RHSGroupBy v p g            -> RHSGroupBy v <$> exprTypeMapM fun p <*> exprTypeMapM fun g
-                  RHSFlatMap vs e             -> RHSFlatMap <$> exprTypeMapM fun vs <*> exprTypeMapM fun e
-                  RHSInspect e                -> RHSInspect <$> exprTypeMapM fun e)
+                  RHSLiteral pol (Atom p r del diff v) -> (RHSLiteral pol . Atom p r del diff) <$> exprTypeMapM fun v
+                  RHSCondition c                       -> RHSCondition <$> exprTypeMapM fun c
+                  RHSGroupBy v p g                     -> RHSGroupBy v <$> exprTypeMapM fun p <*> exprTypeMapM fun g
+                  RHSFlatMap vs e                      -> RHSFlatMap <$> exprTypeMapM fun vs <*> exprTypeMapM fun e
+                  RHSInspect e                         -> RHSInspect <$> exprTypeMapM fun e)
                 ruleRHS
     return rule { ruleLHS = lhs, ruleRHS = rhs }
 
@@ -185,8 +185,8 @@ ruleIsDistinctByConstruction d rl@Rule{..} head_idx = f True 0
     -- Recurse over the body of the rule, checking if the output of each
     -- prefix is a distinct relation.
     --
-    -- If the first argument is 'Just vs', then the prefix of the body generates
-    -- a distincts relation over 'vs'; if it is 'Nothing' then the prefix of the
+    -- If the first argument is 'True', then the prefix of the body generates
+    -- a distinct relation; if it is 'False' then the prefix of the
     -- rule outputs a non-distinct relation.
     f :: Bool -> Int -> Bool
     f False i | i == length ruleRHS         = False
@@ -201,8 +201,9 @@ ruleIsDistinctByConstruction d rl@Rule{..} head_idx = f True 0
     f True i | rhsIsPositiveLiteral (ruleRHS !! i)
                                             =
         let a = rhsAtom $ ruleRHS !! i in
-        -- 'a' is a distinct relation and does not contain wildcards
-        if relIsDistinct' (atomRelation a) && (not $ exprContainsPHolders $ atomVal a)
+        -- 'a' is a distinct relation and does not contain wildcards or
+        -- differentiation.
+        if relIsDistinct' (atomRelation a) && (not $ exprContainsPHolders $ atomVal a) && (not $ atomDiff a)
            then f True (i+1)
            else f False (i+1)
     -- Antijoins preserve distinctness
@@ -217,6 +218,7 @@ ruleHeadIsRecursive d Rule{..} head_idx =
     let head_atom = ruleLHS !! head_idx in
     any (relsAreMutuallyRecursive d (atomRelation head_atom))
         $ map (atomRelation . rhsAtom)
+        $ filter (not . atomIsDelayed . rhsAtom)
         $ filter rhsIsLiteral ruleRHS
 
 -- | Checks if any head of the rule is part of a
@@ -228,7 +230,11 @@ ruleIsRecursive d rl@Rule{..} =
 -- | True iff the prefix of the rule of length 'n' produces a stream.
 rulePrefixIsStream :: DatalogProgram -> Rule -> Int -> Bool
 rulePrefixIsStream d rl n =
-    any (\rhs -> rhsIsLiteral rhs && (relIsStream $ getRelation d $ atomRelation (rhsAtom rhs)))
+    any (\rhs -> rhsIsLiteral rhs &&
+                 (relIsStream $ getRelation d $ atomRelation (rhsAtom rhs)) &&
+                 -- Differentiating a stream yields a relation that contains
+                 -- the latest delta in the stream.
+                 (not $ atomDiff $ rhsAtom rhs))
         $ take n $ ruleRHS rl
 
 -- | True iff the body of the rule yields a stream.

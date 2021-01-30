@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018-2020 VMware, Inc.
+Copyright (c) 2018-2021 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -250,6 +250,9 @@ type DepGraph = G.Gr DepGraphNode Bool
 -- and Rel2 in the left-hand-side.  Edge label is equal to the
 -- polarity with which Rel1 occurs in the rule.
 --
+-- We do not add a dependency if Rel1 is delayed in the RHS, as such
+-- dependencies cannot be part of a cycle.
+--
 -- In addition, we conservatively add both a positive and a negative edge
 -- from Rel1 to Rel2 if they appear respectively as input and output of a
 -- transformer application (since we currently don't have a way of knowing
@@ -267,7 +270,7 @@ progDependencyGraph DatalogProgram{..} = G.insEdges (edges ++ apply_edges) g1
     edges = concatMap (\Rule{..} ->
                         concatMap (\a ->
                                     mapMaybe (\case
-                                               RHSLiteral pol a' -> Just (relidx $ atomRelation a', relidx $ atomRelation a, pol)
+                                               RHSLiteral pol a' | not (atomIsDelayed a') -> Just (relidx $ atomRelation a', relidx $ atomRelation a, pol)
                                                _ -> Nothing)
                                              ruleRHS)
                                   ruleLHS)
@@ -308,11 +311,15 @@ progMirrorInputRelations d prefix =
                                        ruleModule = nameScope relName,
                                        ruleLHS = [Atom { atomPos = relPos relation,
                                                          atomRelation = output_relname relName,
+                                                         atomDelay = delayZero,
+                                                         atomDiff = False,
                                                          atomVal = eVar "x"
                                                        }],
                                        ruleRHS = [RHSLiteral { rhsPolarity = True,
                                                                rhsAtom = Atom { atomPos = relPos relation,
                                                                                 atomRelation = relName,
+                                                                                atomDelay = delayZero,
+                                                                                atomDiff = False,
                                                                                 atomVal = eVar "x"
                                                                               }}]}
     rules = map (\(n,r) -> makeRule n r) inputRels

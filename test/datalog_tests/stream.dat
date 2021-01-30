@@ -105,3 +105,125 @@ delete KVRelQuery(3),
 delete KVRelQuery(4),
 
 commit dump_changes;
+
+start;
+
+insert EnableK("a"),
+insert EnableK("b"),
+
+insert StreamToGroup("a", 1),
+insert StreamToGroup("a", 2),
+insert StreamToGroup("b", 3),
+insert StreamToGroup("b", 4),
+insert StreamToGroup("b", 5),
+insert StreamToGroup("c", 6),
+
+commit dump_changes;
+
+start;
+
+delete EnableK("b"),
+
+insert StreamToGroup("a", 7),
+insert StreamToGroup("b", 8),
+insert StreamToGroup("c", 9),
+insert StreamToGroup("d", 10),
+
+commit dump_changes;
+
+start;
+
+insert EnableK("f"),
+insert StreamToGroup("e", 11),
+insert StreamToGroup("f", 12),
+insert StreamToGroup("f", 13),
+
+commit dump_changes;
+
+start;
+
+delete EnableK("a"),
+
+commit dump_changes;
+
+start;
+
+insert EnableK("a"),
+
+insert StreamToGroup("a", 100),
+insert StreamToGroup("a", 200),
+
+commit dump_changes;
+
+
+echo Clock: 1000;
+start;
+insert_or_update CurrentTime(1000),
+commit dump_changes;
+
+echo Data1;
+start;
+insert Data(1001, 10),
+insert Data(1001, 12),
+insert Data(1002, 5),
+commit dump_changes;
+
+echo Data2;
+start;
+insert Data(1002, 100),
+insert Data(1003, 200),
+insert Data(1003, 10),
+commit dump_changes;
+
+echo Clock: 1001;
+start;
+insert_or_update CurrentTime(1001),
+commit dump_changes;
+
+echo Data3;
+start;
+insert Data(1002, 100),
+insert Data(1003, 200),
+insert Data(1003, 10),
+commit dump_changes;
+
+# Move the window forward.
+echo Clock: 1005;
+start;
+insert_or_update CurrentTime(1005),
+commit dump_changes;
+
+echo Data4;
+start;
+insert Data(1003, 100),
+insert Data(1004, 15),
+insert Data(1005, 16),
+insert Data(1006, 60),
+commit dump_changes;
+
+echo Clock: 1007;
+start;
+insert_or_update CurrentTime(1007),
+commit dump_changes;
+
+echo Data5;
+start;
+insert Data(1004, 400),
+insert Data(1006, 600),
+insert Data(1008, 800),
+insert Data(1008, 900),
+commit dump_changes;
+
+# The 1000-1004 window should not get dropped.
+echo Clock: 1011;
+start;
+insert_or_update CurrentTime(1011),
+commit dump_changes;
+
+echo Data5;
+start;
+insert Data(1008,  8),
+insert Data(1009,  8),
+insert Data(1010, 10),
+insert Data(1001,  11),
+commit dump_changes;

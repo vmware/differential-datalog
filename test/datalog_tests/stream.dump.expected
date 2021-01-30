@@ -88,3 +88,134 @@ KVRelResponse{.k = 1, .v = "1.1"}: -1
 KVRelResponse{.k = 2, .v = "2"}: -1
 KVRelResponse{.k = 2, .v = "2.1"}: -1
 KVRelResponse{.k = 3, .v = "3"}: -1
+ControlledStreamOfSums:
+ControlledStreamOfSums{.k = "a", .s = 3}: +1
+ControlledStreamOfSums{.k = "b", .s = 12}: +1
+StreamGroups:
+StreamGroups{.k = "a", .vs = [1, 2]}: +1
+StreamGroups{.k = "b", .vs = [3, 4, 5]}: +1
+StreamGroups{.k = "c", .vs = [6]}: +1
+StreamOfSums:
+StreamOfSums{.k = "a", .s = 3}: +1
+StreamOfSums{.k = "b", .s = 12}: +1
+StreamOfSums{.k = "c", .s = 6}: +1
+ControlledStreamOfSums:
+ControlledStreamOfSums{.k = "a", .s = 3}: -1
+ControlledStreamOfSums{.k = "a", .s = 10}: +1
+ControlledStreamOfSums{.k = "b", .s = 12}: -1
+StreamGroups:
+StreamGroups{.k = "a", .vs = [7]}: +1
+StreamGroups{.k = "b", .vs = [8]}: +1
+StreamGroups{.k = "c", .vs = [9]}: +1
+StreamGroups{.k = "d", .vs = [10]}: +1
+StreamOfSums:
+StreamOfSums{.k = "a", .s = 3}: -1
+StreamOfSums{.k = "a", .s = 10}: +1
+StreamOfSums{.k = "b", .s = 12}: -1
+StreamOfSums{.k = "b", .s = 20}: +1
+StreamOfSums{.k = "c", .s = 6}: -1
+StreamOfSums{.k = "c", .s = 15}: +1
+StreamOfSums{.k = "d", .s = 10}: +1
+ControlledStreamOfSums:
+ControlledStreamOfSums{.k = "f", .s = 25}: +1
+StreamGroups:
+StreamGroups{.k = "e", .vs = [11]}: +1
+StreamGroups{.k = "f", .vs = [12, 13]}: +1
+StreamOfSums:
+StreamOfSums{.k = "e", .s = 11}: +1
+StreamOfSums{.k = "f", .s = 25}: +1
+ControlledStreamOfSums:
+ControlledStreamOfSums{.k = "a", .s = 10}: -1
+ControlledStreamOfSums:
+ControlledStreamOfSums{.k = "a", .s = 300}: +1
+StreamGroups:
+StreamGroups{.k = "a", .vs = [100, 200]}: +1
+StreamOfSums:
+StreamOfSums{.k = "a", .s = 10}: -1
+StreamOfSums{.k = "a", .s = 310}: +1
+Clock: 1000
+TimeWindow:
+TimeWindow{.start = 995, .end = 1000}: +1
+TimeWindow{.start = 1000, .end = 1005}: +1
+Data1
+DataAvg:
+DataAvg{.window = TimeWindow{.start = 1000, .end = 1005}, .avg = 9}: +1
+DataSum:
+DataSum{.window = TimeWindow{.start = 1000, .end = 1005}, .sum = 27}: +1
+DataUnique:
+DataUnique{.window = TimeWindow{.start = 1000, .end = 1005}, .unique_vals = [5, 10, 12]}: +1
+Data2
+DataAvg:
+DataAvg{.window = TimeWindow{.start = 1000, .end = 1005}, .avg = 9}: -1
+DataAvg{.window = TimeWindow{.start = 1000, .end = 1005}, .avg = 56}: +1
+DataSum:
+DataSum{.window = TimeWindow{.start = 1000, .end = 1005}, .sum = 27}: -1
+DataSum{.window = TimeWindow{.start = 1000, .end = 1005}, .sum = 337}: +1
+DataUnique:
+DataUnique{.window = TimeWindow{.start = 1000, .end = 1005}, .unique_vals = [5, 10, 12]}: -1
+DataUnique{.window = TimeWindow{.start = 1000, .end = 1005}, .unique_vals = [5, 10, 12, 100, 200]}: +1
+Clock: 1001
+Data3
+DataAvg:
+DataAvg{.window = TimeWindow{.start = 1000, .end = 1005}, .avg = 56}: -1
+DataAvg{.window = TimeWindow{.start = 1000, .end = 1005}, .avg = 71}: +1
+DataSum:
+DataSum{.window = TimeWindow{.start = 1000, .end = 1005}, .sum = 337}: -1
+DataSum{.window = TimeWindow{.start = 1000, .end = 1005}, .sum = 647}: +1
+Clock: 1005
+TimeWindow:
+TimeWindow{.start = 995, .end = 1000}: -1
+TimeWindow{.start = 1005, .end = 1010}: +1
+Data4
+DataAvg:
+DataAvg{.window = TimeWindow{.start = 1000, .end = 1005}, .avg = 69}: +1
+DataAvg{.window = TimeWindow{.start = 1000, .end = 1005}, .avg = 71}: -1
+DataAvg{.window = TimeWindow{.start = 1005, .end = 1010}, .avg = 38}: +1
+DataSum:
+DataSum{.window = TimeWindow{.start = 1000, .end = 1005}, .sum = 647}: -1
+DataSum{.window = TimeWindow{.start = 1000, .end = 1005}, .sum = 762}: +1
+DataSum{.window = TimeWindow{.start = 1005, .end = 1010}, .sum = 76}: +1
+DataUnique:
+DataUnique{.window = TimeWindow{.start = 1000, .end = 1005}, .unique_vals = [5, 10, 12, 15, 100, 200]}: +1
+DataUnique{.window = TimeWindow{.start = 1000, .end = 1005}, .unique_vals = [5, 10, 12, 100, 200]}: -1
+DataUnique{.window = TimeWindow{.start = 1005, .end = 1010}, .unique_vals = [16, 60]}: +1
+Clock: 1007
+Data5
+DataAvg:
+DataAvg{.window = TimeWindow{.start = 1000, .end = 1005}, .avg = 69}: -1
+DataAvg{.window = TimeWindow{.start = 1000, .end = 1005}, .avg = 96}: +1
+DataAvg{.window = TimeWindow{.start = 1005, .end = 1010}, .avg = 38}: -1
+DataAvg{.window = TimeWindow{.start = 1005, .end = 1010}, .avg = 475}: +1
+DataSum:
+DataSum{.window = TimeWindow{.start = 1000, .end = 1005}, .sum = 762}: -1
+DataSum{.window = TimeWindow{.start = 1000, .end = 1005}, .sum = 1162}: +1
+DataSum{.window = TimeWindow{.start = 1005, .end = 1010}, .sum = 76}: -1
+DataSum{.window = TimeWindow{.start = 1005, .end = 1010}, .sum = 2376}: +1
+DataUnique:
+DataUnique{.window = TimeWindow{.start = 1000, .end = 1005}, .unique_vals = [5, 10, 12, 15, 100, 200]}: -1
+DataUnique{.window = TimeWindow{.start = 1000, .end = 1005}, .unique_vals = [5, 10, 12, 15, 100, 200, 400]}: +1
+DataUnique{.window = TimeWindow{.start = 1005, .end = 1010}, .unique_vals = [16, 60]}: -1
+DataUnique{.window = TimeWindow{.start = 1005, .end = 1010}, .unique_vals = [16, 60, 600, 800, 900]}: +1
+Clock: 1011
+DataAvg:
+DataAvg{.window = TimeWindow{.start = 1000, .end = 1005}, .avg = 96}: -1
+DataSum:
+DataSum{.window = TimeWindow{.start = 1000, .end = 1005}, .sum = 1162}: -1
+DataUnique:
+DataUnique{.window = TimeWindow{.start = 1000, .end = 1005}, .unique_vals = [5, 10, 12, 15, 100, 200, 400]}: -1
+TimeWindow:
+TimeWindow{.start = 1000, .end = 1005}: -1
+TimeWindow{.start = 1010, .end = 1015}: +1
+Data5
+DataAvg:
+DataAvg{.window = TimeWindow{.start = 1005, .end = 1010}, .avg = 341}: +1
+DataAvg{.window = TimeWindow{.start = 1005, .end = 1010}, .avg = 475}: -1
+DataAvg{.window = TimeWindow{.start = 1010, .end = 1015}, .avg = 10}: +1
+DataSum:
+DataSum{.window = TimeWindow{.start = 1005, .end = 1010}, .sum = 2376}: -1
+DataSum{.window = TimeWindow{.start = 1005, .end = 1010}, .sum = 2392}: +1
+DataSum{.window = TimeWindow{.start = 1010, .end = 1015}, .sum = 10}: +1
+DataUnique:
+DataUnique{.window = TimeWindow{.start = 1005, .end = 1010}, .unique_vals = [8, 16, 60, 600, 800, 900]}: +1
+DataUnique{.window = TimeWindow{.start = 1005, .end = 1010}, .unique_vals = [16, 60, 600, 800, 900]}: -1
+DataUnique{.window = TimeWindow{.start = 1010, .end = 1015}, .unique_vals = [10]}: +1

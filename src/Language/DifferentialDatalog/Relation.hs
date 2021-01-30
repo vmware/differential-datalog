@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018 VMware, Inc.
+Copyright (c) 2018-2021 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -36,7 +36,9 @@ module Language.DifferentialDatalog.Relation (
     relIdentifier,
     relsAreMutuallyRecursive,
     relIsBounded,
-    relIsStream
+    relIsStream,
+    atomSemantics,
+    atomIsStream
 ) 
 where
 
@@ -50,6 +52,7 @@ import Language.DifferentialDatalog.Util
 import Language.DifferentialDatalog.Syntax
 import {-# SOURCE #-} Language.DifferentialDatalog.Rule
 import Language.DifferentialDatalog.DatalogProgram
+import Language.DifferentialDatalog.NS
 
 -- | Rules that contain given relation in their heads.
 relRules :: DatalogProgram -> String -> [Rule]
@@ -79,7 +82,7 @@ relIsRecursive d rel =
 relIsDistinctByConstruction :: DatalogProgram -> Relation -> Bool
 -- Distinctness is enforced on input relations.
 relIsDistinctByConstruction _ Relation{relRole = RelInput}  = True
--- For recursive relations, we enforce distinctness of the relation is
+-- For recursive relations, we enforce distinctness if the relation is
 -- _not_ bounded.
 relIsDistinctByConstruction d rel | relIsRecursive d (name rel) =
     not $ relIsBounded d (name rel)
@@ -103,7 +106,7 @@ relIsDistinct d rel = relIsDistinctByConstruction d rel || (relRole rel == RelOu
 
 -- | All _recursive_ rules for this relation are distinct; hence
 -- their output weights are bounded and there is no need to distinct
--- this relation to ensure that fixed-point computation convergence.
+-- this relation to ensure that the fixed-point computation converges.
 relIsBounded :: DatalogProgram -> String -> Bool
 relIsBounded d rel =
     all (\rule@Rule{..} -> all (\(_,i) -> ruleIsDistinctByConstruction d rule i)
@@ -133,3 +136,13 @@ relsAreMutuallyRecursive d rel1 rel2 | rel1 == rel2 = relIsRecursive d rel1
 
 relIsStream :: Relation -> Bool
 relIsStream rel = relSemantics rel == RelStream
+
+--
+atomSemantics :: DatalogProgram -> Atom -> RelationSemantics
+atomSemantics d Atom{..} | atomDiff = RelMultiset
+                         | otherwise = relSemantics rel
+    where
+    rel = getRelation d atomRelation
+
+atomIsStream :: DatalogProgram -> Atom -> Bool
+atomIsStream d a = atomSemantics d a == RelStream

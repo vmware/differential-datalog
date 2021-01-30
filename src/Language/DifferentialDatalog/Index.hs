@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2019 VMware, Inc.
+Copyright (c) 2019-2021 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -41,7 +41,7 @@ import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Type
 
--- | Unique id, assigned to the index
+-- | Unique id assigned to the index.
 idxIdentifier :: DatalogProgram -> Index -> Int
 idxIdentifier d idx = M.findIndex (name idx) $ progIndexes d
 

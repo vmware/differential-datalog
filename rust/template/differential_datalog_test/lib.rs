@@ -106,6 +106,7 @@ where
 fn test_multiple_stops() {
     let prog: Program = Program {
         nodes: vec![],
+        delayed_rels: vec![],
         init_data: vec![],
     };
 
@@ -120,6 +121,7 @@ fn test_multiple_stops() {
 fn test_insert_non_existent_relation() {
     let prog: Program = Program {
         nodes: vec![],
+        delayed_rels: vec![],
         init_data: vec![],
     };
 
@@ -170,6 +172,7 @@ fn test_input_relation_nested() {
                 }],
             },
         ],
+        delayed_rels: vec![],
         init_data: vec![],
     };
 
@@ -198,6 +201,7 @@ fn test_one_relation(nthreads: usize) {
 
     let prog: Program = Program {
         nodes: vec![ProgNode::Rel { rel }],
+        delayed_rels: vec![],
         init_data: vec![],
     };
 
@@ -316,6 +320,7 @@ fn test_two_relations(nthreads: usize) {
 
     let prog: Program = Program {
         nodes: vec![ProgNode::Rel { rel: rel1 }, ProgNode::Rel { rel: rel2 }],
+        delayed_rels: vec![],
         init_data: vec![],
     };
 
@@ -463,6 +468,7 @@ fn test_semijoin(nthreads: usize) {
             ProgNode::Rel { rel: rel2 },
             ProgNode::Rel { rel: rel3 },
         ],
+        delayed_rels: vec![],
         init_data: vec![],
     };
 
@@ -624,6 +630,7 @@ fn test_join(nthreads: usize) {
             },
             ProgNode::Rel { rel: rel4 },
         ],
+        delayed_rels: vec![],
         init_data: vec![],
     };
 
@@ -898,6 +905,7 @@ fn test_streamjoin(nthreads: usize) {
             ProgNode::Rel { rel: rel5 },
             ProgNode::Rel { rel: rel6 },
         ],
+        delayed_rels: vec![],
         init_data: vec![],
     };
 
@@ -1042,6 +1050,7 @@ fn test_antijoin(nthreads: usize) {
             ProgNode::Rel { rel: rel21 },
             ProgNode::Rel { rel: rel3 },
         ],
+        delayed_rels: vec![],
         init_data: vec![],
     };
 
@@ -1253,6 +1262,7 @@ fn test_map(nthreads: usize) {
             ProgNode::Rel { rel: rel3 },
             ProgNode::Rel { rel: rel4 },
         ],
+        delayed_rels: vec![],
         init_data: vec![],
     };
 
@@ -1296,6 +1306,183 @@ fn test_map_1() {
 #[test]
 fn test_map_multi() {
     test_map(16)
+}
+
+/* Delayed relations.
+ */
+fn test_delayed(nthreads: usize) {
+    let relset1: Arc<Mutex<Delta<U64>>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let rel1 = {
+        Relation {
+            name: Cow::from("T1"),
+            input: true,
+            distinct: false,
+            caching_mode: CachingMode::Stream,
+            key_func: None,
+            id: 1,
+            rules: Vec::new(),
+            arrangements: Vec::new(),
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T1", &relset1, v, w))),
+        }
+    };
+
+    let relset2: Arc<Mutex<Delta<U64>>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let rel2 = {
+        let relset2 = relset2.clone();
+        Relation {
+            name: Cow::from("T2"),
+            input: false,
+            distinct: false,
+            caching_mode: CachingMode::Stream,
+            key_func: None,
+            id: 2,
+            rules: vec![
+                Rule::CollectionRule {
+                    description: Cow::from("T2 :- T1|-1"),
+                    rel: 11,
+                    xform: None,
+                },
+                Rule::CollectionRule {
+                    description: Cow::from("T2 :- T3"),
+                    rel: 3,
+                    xform: None,
+                },
+            ],
+            arrangements: Vec::new(),
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T2", &relset2, v, w))),
+        }
+    };
+
+    // Empty relation to union with T1|-1 to prevent outputs from showing up ahead of time.
+    let relset3: Arc<Mutex<Delta<U64>>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let rel3 = {
+        Relation {
+            name: Cow::from("T3"),
+            input: true,
+            distinct: false,
+            caching_mode: CachingMode::Stream,
+            key_func: None,
+            id: 3,
+            rules: Vec::new(),
+            arrangements: Vec::new(),
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T3", &relset3, v, w))),
+        }
+    };
+
+    let relset4: Arc<Mutex<Delta<U64>>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let rel4 = {
+        let relset4 = relset4.clone();
+        Relation {
+            name: Cow::from("T4"),
+            input: false,
+            distinct: false,
+            caching_mode: CachingMode::Stream,
+            key_func: None,
+            id: 4,
+            rules: vec![
+                Rule::CollectionRule {
+                    description: Cow::from("T4 :- T1"),
+                    rel: 1,
+                    xform: None,
+                },
+                Rule::CollectionRule {
+                    description: Cow::from("T4 :- T1|-1"),
+                    rel: 11,
+                    xform: None,
+                },
+            ],
+            arrangements: Vec::new(),
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T4", &relset4, v, w))),
+        }
+    };
+
+    let relset5: Arc<Mutex<Delta<U64>>> = Arc::new(Mutex::new(BTreeMap::default()));
+    let rel5 = {
+        let relset5 = relset5.clone();
+        Relation {
+            name: Cow::from("T5"),
+            input: false,
+            distinct: false,
+            caching_mode: CachingMode::Stream,
+            key_func: None,
+            id: 5,
+            rules: vec![Rule::CollectionRule {
+                description: Cow::from("T5 :- T1.stream_xform(arrange)."),
+                rel: 1,
+                xform: Some(XFormCollection::StreamXForm {
+                    description: Cow::from("T1.stream_xform"),
+                    xform: Box::new(Some(XFormCollection::Arrange {
+                        description: Cow::from("T1.stream_arrange"),
+                        afun: afun1,
+                        next: Box::new(XFormArrangement::FilterMap {
+                            description: Cow::from("T5 :-"),
+                            fmfun: fmfun1,
+                            next: Box::new(None),
+                        }),
+                    })),
+                    next: Box::new(None),
+                }),
+            }],
+            arrangements: Vec::new(),
+            change_cb: Some(Arc::new(move |_, v, w| set_update("T5", &relset5, v, w))),
+        }
+    };
+    fn afun1(v: DDValue) -> Option<(DDValue, DDValue)> {
+        let v = U64::from_ddvalue(v);
+        Some((v.clone().into_ddvalue(), v.into_ddvalue()))
+    }
+
+    fn fmfun1(v: DDValue) -> Option<DDValue> {
+        Some(v)
+    }
+
+    let prog: Program = Program {
+        nodes: vec![
+            ProgNode::Rel { rel: rel1 },
+            ProgNode::Rel { rel: rel3 },
+            ProgNode::Rel { rel: rel2 },
+            ProgNode::Rel { rel: rel4 },
+            ProgNode::Rel { rel: rel5 },
+        ],
+        delayed_rels: vec![DelayedRelation {
+            id: 11,
+            rel_id: 1,
+            delay: 1,
+        }],
+        init_data: vec![],
+    };
+
+    let mut running = prog.run(nthreads).unwrap();
+
+    for i in 0..TEST_SIZE {
+        println!("Round {}", i);
+        running.transaction_start().unwrap();
+        running.insert(1, U64(i).into_ddvalue()).unwrap();
+        running.transaction_commit().unwrap();
+        // T2 contains all values in T1 delayed by 1 epoch
+        let expected: BTreeMap<_, _> = (0..i).map(|x| (U64(x), 1)).collect();
+        assert_eq!(*relset2.lock().unwrap(), expected);
+        // T4 contains all values in T1 twice, except the last value, which occurs once.
+        let expected: BTreeMap<_, _> = (0..i + 1)
+            .map(|x| (U64(x), if x == i { 1 } else { 2 }))
+            .collect();
+        assert_eq!(*relset4.lock().unwrap(), expected);
+        // T5 contains all values.
+        let expected: BTreeMap<_, _> = (0..i + 1).map(|x| (U64(x), 1)).collect();
+        assert_eq!(*relset5.lock().unwrap(), expected);
+    }
+
+    running.stop().unwrap();
+}
+
+#[test]
+fn test_delayed_1() {
+    test_delayed(1)
+}
+
+#[test]
+fn test_delayed_multi() {
+    test_delayed(16)
 }
 
 /* Recursion
@@ -1492,6 +1679,7 @@ fn test_recursion(nthreads: usize) {
                 rel: common_ancestor,
             },
         ],
+        delayed_rels: vec![],
         init_data: vec![],
     };
 

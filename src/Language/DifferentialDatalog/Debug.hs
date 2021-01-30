@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2020 VMware, Inc.
+Copyright (c) 2020-2021 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -47,7 +47,7 @@ import {-# SOURCE #-} Language.DifferentialDatalog.Type
 addBindingToRHSLiteral :: (RuleRHS, Int) -> RuleRHS
 addBindingToRHSLiteral (r@(RHSLiteral True _), index) =
   let
-    bindingName = "__" ++ (render $ Compile.rnameFlat $ map toLower $ atomRelation $ rhsAtom r) ++ (show index)
+    bindingName = "__" ++ (show index) ++ (render $ Compile.rnameFlat $ map toLower $ atomRelation $ rhsAtom r)
     expr = atomVal $ rhsAtom r
     exprNode = enode expr
     updatedAtomVal = case exprNode of
