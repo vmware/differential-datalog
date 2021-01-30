@@ -390,6 +390,39 @@ ParcelCity(zip, city, weight) :-
     Parcel(zip, weight),
     ZipCodes(zip, city).
 
+output stream ParcelWeight(zip: u32, total_weight: usize)
+
+// Streaming group_by: aggregates parcel weights for each individual transaction.
+ParcelWeight(zip, total_weight) :-
+    Parcel(zip, weight),
+    var total_weight = weight.group_by(zip).sum_with_multiplicities().
+
+function sum_with_multiplicities(g: Group<u32, usize>): usize {
+    var s = 0;
+    for ((v, m) in g) {
+        s = s + v * (m as usize)
+    };
+    s
+}
+
+/* Aggregate the contents of the Parcel stream over time. */
+
+// The ParcelFold relation contains aggregated parcel weights from all earlier
+// transactions and the new Parcel records add by the last transaction.
+relation ParcelFold(zip: u32, weight: usize)
+
+// Add aggregated pacel weight from previous transactions.
+ParcelFold(zip, total_past_weight) :- ParcelWeightAggregated-1(zip, total_past_weight).
+// Add new parcels from the last transaction.
+ParcelFold(zip, weight) :- Parcel'(zip, weight).
+
+// Group and aggregate weights in the ParcelFold relation.
+output relation ParcelWeightAggregated(zip: u32, weight: usize)
+
+ParcelWeightAggregated(zip, total_weight) :-
+    ParcelFold(zip, weight),
+    var total_weight = weight.group_by(zip).sum_with_multiplicities().
+
 
 /*
  * Example: tagged unions

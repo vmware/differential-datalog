@@ -58,6 +58,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   i.e., they ignore weights during iteration.  This means that most existing
   user code is not affected (custom aggregates are not that common).
 
+- The `group_by` operator now works on streams and produces a stream of groups,
+  one for each individual transaction.
+  ([Tutorial section](doc/language_reference/language_reference.md#streaming-aggregation-differentiation-and-delay-operators))
+
+- Two new DDlog operators: **delay** and **differentiation**.  The former refers
+  to the contents of a relation from `N` transactions ago, where `N` is a positive
+  integer constant.  The latter converts a stream into a relation that contains new
+  values added to the stream byt the last transaction.
+  ([Tutorial section](doc/language_reference/language_reference.md#streaming-aggregation-differentiation-and-delay-operators))
+
 ## [0.36.0] - Feb 7, 2021
 
 ### API changes
@@ -65,6 +75,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Support insert_or_update and delete_by_key in flatbuf API, including in Java.
 
 ### Other improvements
+
 - Introduced a benchmarking framework for DDlog (see rust/ddlog_benches/README.md).
 - Print compiler error messages so that emacs can parse the error location.
 

@@ -340,12 +340,14 @@ nodeRels (ApplyNode _ _ _)  = []
 type CompilerMonad = State CompilerState
 
 data CompilerState = CompilerState {
-    cArrangements :: M.Map String [Arrangement]
+    cArrangements :: M.Map String [Arrangement],
+    cDelayedRelIds :: M.Map (String, Delay) Int
 }
 
 emptyCompilerState :: CompilerState
 emptyCompilerState = CompilerState {
-    cArrangements = M.empty
+    cArrangements = M.empty,
+    cDelayedRelIds = M.empty
 }
 
 -- Relations, indexes, relation transformers and Value's are stored in the flat namespace.
@@ -392,11 +394,18 @@ relId :: DatalogProgram -> String -> Doc
 -- relId rel = "Relations::" <> rnameFlat rel <+> "as RelId"
 relId d rel = pp $ M.findIndex rel $ progRelations d
 
+atomRelId :: DatalogProgram -> Atom -> CompilerMonad Doc
+atomRelId d a@Atom{..} | not (atomIsDelayed a) = return $ relId d atomRelation
+                       | otherwise =
+    gets $ \c -> pp $ cDelayedRelIds c M.! (atomRelation, atomDelay)
+
 -- Create a new arrangement for use in a join operator:
 -- * If the arrangement exists, do nothing
 -- * If a semijoin arrangement with the same pattern exists,
 --   promote it to a join arrangement
 -- * Otherwise, add the new arrangement
+--
+-- NOTE: We assume that we are arranging a non-delayed relation.
 addJoinArrangement :: DatalogProgram -> String -> Expr -> Maybe Index -> CompilerMonad ()
 addJoinArrangement d relname pattern midx | -- We use streaming joins for streams, which do not require an
                                             -- arrangement.
@@ -519,8 +528,12 @@ compile d_unoptimized specname modules rs_code dir crate_types = do
     -- dump dependency graph to file
     updateFile (dir </> rustProjectDir </> ?specname <.> "dot")
                (depGraphToDot $ progDependencyGraph d_unoptimized)
-    -- Apply optimizations; make sure the program has at least one relation.
-    let d = addDummyRel $ optimize d_unoptimized
+    -- Apply optimizations; transform the program to a form that this
+    -- compiler can handle; make sure the program has at least one relation.
+    let d = addDummyRel
+            $ simplifyDifferentiation
+            $ simplifyDelayedRels
+            $ optimize d_unoptimized
     when (confDumpDebug ?cfg) $
         writeFile (replaceExtension (confDatalogFile ?cfg) ".opt.ast") (show d)
     let (types, main) = compileLib d rs_code
@@ -569,6 +582,119 @@ compile d_unoptimized specname modules rs_code dir crate_types = do
     updateFile (dir </> rustProjectDir </> "src/lib.rs")       (render main)
     return ()
 
+-- For each delayed relation 'R-n' that occurs in the program,
+-- add a synonym relation 'R_n' defined as 'R_n :- R-n' and replace
+-- all occurrences of 'R-n' with 'R_n'.  This guarantees that
+-- we don't need to arrange delayed relations.
+simplifyDelayedRels :: DatalogProgram -> DatalogProgram
+simplifyDelayedRels d =
+    -- For each 'R-n', add a fresh relation called "__n_R".
+    foldl' (\d_ (rname, delay) ->
+             let rel = getRelation d rname
+                 delayed_rel = Relation {
+                     relPos          = nopos,
+                     relRole         = RelInternal,
+                     relSemantics    = relSemantics rel,
+                     relName         = mk_delayed_rel_name (rname, delay),
+                     relType         = typ rel,
+                     relPrimaryKey   = Nothing
+                 }
+                 delayed_rule = Rule {
+                    rulePos     = nopos,
+                    ruleModule  = nameScope rel,
+                    ruleLHS     = [Atom {
+                         atomPos        = nopos,
+                         atomRelation   = name delayed_rel,
+                         atomDelay      = delayZero,
+                         atomDiff       = False,
+                         atomVal        = eTypedVar "x" $ typ rel
+                     }],
+                     ruleRHS    = [RHSLiteral {
+                         rhsPolarity    = True,
+                         rhsAtom        = Atom {
+                             atomPos        = nopos,
+                             atomRelation   = rname,
+                             atomDelay      = delay,
+                             atomDiff       = False,
+                             atomVal        = eTypedVar "x" $ typ rel
+                         }
+                     }]
+                 }
+             in progAddRules [delayed_rule] $ progAddRel delayed_rel d_)
+           delayed_rels d'
+    where
+    mk_delayed_rel_name :: (String, Delay) -> String
+    mk_delayed_rel_name (rel, del) = "__" ++ show (delayDelay del) ++ "_" ++ rel
+    -- Find all delayed rels in the program, replacing each occurrence
+    -- of 'R-n' with '__n_R'.
+    (delayed_rels, d') = runState
+        (progAtomMapM d
+            $ \a@Atom{..} ->
+               if atomIsDelayed a
+               then do modify $ S.insert (atomRelation, atomDelay)
+                       return a{ atomRelation = mk_delayed_rel_name (atomRelation, atomDelay)
+                               , atomDelay = delayZero}
+               else return a)
+        S.empty
+
+-- For each differentiated relation 'R'' that occurs in the program,
+-- add a synonym relation '__diff_R' defined as '__diff_R :- R'' and replace
+-- all occurrences of 'R'' with '__diff_R'.  This guarantees that
+-- differentiation always applies to the entire body of a rule in the
+-- transformed program.
+-- NOTE: this transformation must be applied after simplifyDelayedRels,
+-- as it doesn't handle differentiated delayed relations.
+simplifyDifferentiation :: DatalogProgram -> DatalogProgram
+simplifyDifferentiation d =
+    -- For each 'R'', add a fresh relation called "__diff_R".
+    foldl' (\d_ rname ->
+             let rel = getRelation d rname
+                 diff_rel = Relation {
+                     relPos          = nopos,
+                     relRole         = RelInternal,
+                     relSemantics    = RelMultiset,
+                     relName         = mk_diff_rel_name rname,
+                     relType         = typ rel,
+                     relPrimaryKey   = Nothing
+                 }
+                 diff_rule = Rule {
+                    rulePos     = nopos,
+                    ruleModule  = nameScope rel,
+                    ruleLHS     = [Atom {
+                         atomPos        = nopos,
+                         atomRelation   = name diff_rel,
+                         atomDelay      = delayZero,
+                         atomDiff       = False,
+                         atomVal        = eTypedVar "x" $ typ rel
+                     }],
+                     ruleRHS    = [RHSLiteral {
+                         rhsPolarity    = True,
+                         rhsAtom        = Atom {
+                             atomPos        = nopos,
+                             atomRelation   = rname,
+                             atomDelay      = delayZero,
+                             atomDiff       = True,
+                             atomVal        = eTypedVar "x" $ typ rel
+                         }
+                     }]
+                 }
+             in progAddRules [diff_rule] $ progAddRel diff_rel d_)
+           diff_rels d'
+    where
+    mk_diff_rel_name :: String -> String
+    mk_diff_rel_name rname = "__diff_" ++ rname
+    -- Find all differentiated rels in the program, replacing each occurrence
+    -- of 'R'' with '__diff_R'.
+    (diff_rels, d') = runState
+        (progAtomMapM d
+            $ \a@Atom{..} ->
+               if atomDiff
+               then do modify $ S.insert atomRelation
+                       return a{ atomRelation = mk_diff_rel_name atomRelation
+                               , atomDiff = False}
+               else return a)
+        S.empty
+
 compileLib :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?modules::M.Map ModuleName DatalogModule) => DatalogProgram -> M.Map ModuleName (Doc, Doc, Doc) -> (M.Map FilePath Doc, Doc)
 compileLib d rs_code =
     (crates, main_lib)
@@ -583,9 +709,11 @@ compileLib d rs_code =
 
 compileRules :: (?cfg::Config, ?specname::String, ?modules::M.Map ModuleName DatalogModule, ?crate_graph::CrateGraph) => DatalogProgram -> Statics -> ([ProgNode], CompilerState)
 compileRules d statics =
-    runState (do -- First pass: compute arrangements
+    runState (do -- First pass: compute arrangements.
                  createArrangements d
-                 -- Second pass: compile relations
+                 -- Second pass: Allocate delayed rel ids.
+                 allocDelayedRelIds d
+                 -- Third pass: compile relations.
                  mapIdxM (\scc i -> compileSCC d statics depgraph i scc) sccs)
              $ emptyCompilerState { cArrangements = arrs }
     where
@@ -807,7 +935,7 @@ compileMainLib d nodes cstate =
     mkIndexesIntoArrId d cstate            $+$
     mkRelEnum d                            $+$ -- 'enum Relations'
     mkIdxEnum d                            $+$ -- 'enum Indexes'
-    mkProg nodes
+    mkProg d cstate nodes
     where
     mod_type_reexports = foldl' (mrAddTypedef d) emptyModuleReexports
                                 (M.elems $ progTypedefs d)
@@ -952,7 +1080,7 @@ addDummyRel d =
               then M.insert "__Null" (Relation nopos RelInternal RelSet "__Null" (tTuple []) Nothing) (progRelations d)
               else progRelations d
     idxs = if M.null $ progIndexes d
-              then M.singleton "__Null_by_none" $ Index nopos "__Null_by_none" [] $ Atom nopos "__Null" $ eTuple []
+              then M.singleton "__Null_by_none" $ Index nopos "__Null_by_none" [] $ Atom nopos "__Null" delayZero False $ eTuple []
               else progIndexes d
 
 mkTypedef :: (?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> TypeDef -> Doc
@@ -1526,6 +1654,24 @@ mkFunc d f@Function{..} | isJust funcDef =
                  []  -> empty
                  tvs -> "<" <> (hcat $ punctuate comma $ map ((<> ": ::ddlog_rt::Val") . pp) tvs) <> ">"
 
+-- Find all delayed relations used in the program and assign each a RelId.
+allocDelayedRelIds :: DatalogProgram -> CompilerMonad ()
+allocDelayedRelIds d = do
+    mapM_ (\Rule{..} ->
+            mapM_ (\case
+                    RHSLiteral{..} | atomIsDelayed rhsAtom -> do
+                        let rel_delay = (atomRelation rhsAtom, atomDelay rhsAtom)
+                        -- Allocate delayed relation indexes after the last
+                        -- non-delayed relation index.
+                        let fst_index = length (progRelations d) + 1
+                        relid <- gets $ (M.lookup rel_delay) . cDelayedRelIds
+                        case relid of
+                             Just _ -> return ()
+                             Nothing -> modify $ \c -> c{ cDelayedRelIds = M.insert rel_delay (fst_index + (M.size $ cDelayedRelIds c))
+                                                                                    $ cDelayedRelIds c }
+                    _ -> return ()) ruleRHS)
+          $ progRules d
+
 -- Precompute the set of arrangements used by the program.  This is done as a separate
 -- compiler pass to maximize arrangement sharing: if a particular key is only used in
 -- semijoin operators, then it is sufficient to create a cheaper 'Arrangement.Set' for it.
@@ -1564,7 +1710,7 @@ createRuleArrangement d rule idx = do
     let ctx = CtxRuleRAtom rule idx
     let rel = getRelation d $ atomRelation $ rhsAtom rhs
     let (arr, _) = normalizeArrangement d ctx $ atomVal $ rhsAtom rhs
-    -- If the literal does not introduce new variables, it's a semijoin
+    -- If the literal does not introduce new variables, it's a semijoin.
     let is_semi = null $ ruleRHSNewVars d rule idx
     case rhs of
          RHSLiteral True _ | is_semi   -> addSemijoinArrangement d (name rel) arr
@@ -1878,6 +2024,7 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                                        mkJoin d conds input_val a rl rhs_idx
                  _ -> error "compileRule: operator requires arranged input"
 
+    let is_stream_xform = rulePrefixIsStream d rl rhs_idx
     -- If: input to the operator is an arranged collection
     -- Then: create Rule::ArrangementRule, pass conditions as input to mkJoin/Antijoin
     -- Else:
@@ -1885,18 +2032,19 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
     --     Then: Generate Rule::CollectionRule;
     --     If: Next operator requires arranged input
     --     Then: Generate Arrange operator;
+    relid <- atomRelId d fstatom
     case input_arrangement_id of
        Just arid -> do
             xform <- mkArrangedOperator conds input_val
             return $ "/*" <+> pp rl <+> "*/"                                                    $$
                      "program::Rule::ArrangementRule {"                                         $$
                      "    description: std::borrow::Cow::from(" <+> pp (show $ render $ rulePPStripped rl) <> ")," $$
-                     "    arr: (" <+> relId d (atomRelation fstatom) <> "," <+> pp arid <> ")," $$
+                     "    arr: (" <+> relid <> "," <+> pp arid <> "),"            $$
                      "    xform:" <+> xform                                                     $$
                      "}"
        Nothing -> do
             xform <- case arrange_input_by of
-                        Just (key_vars, val_vars) | not (rulePrefixIsStream d rl rhs_idx) -> do
+                        Just (key_vars, val_vars) | not (is_stream_xform && rhsIsPositiveLiteral rhs) -> do
                             -- Evaluate arrange_input_by in the context of 'rhs'
                             let key_str = parens $ commaSep $ map (pp . fst) key_vars
                             let akey = mkTupleValue d rl key_vars
@@ -1905,11 +2053,23 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                                        $ prefix $$
                                          "Some((" <> akey <> "," <+> aval <> "))"
                             xform' <- mkArrangedOperator [] False
-                            return $ "XFormCollection::Arrange {"                                                                                    $$
-                                     "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ "arrange" <+> rulePPPrefix rl (last_rhs_idx+1) <+> "by" <+> key_str) <> "),"  $$
-                                     (nest' $ "afun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<(DDValue,DDValue)>" $$ afun $$ "__f},")        $$
-                                     "    next: Box::new(" <> xform' <> ")"                                                                          $$
-                                     "}"
+                            let arranged_xform =
+                                    "XFormCollection::Arrange{"                                                                                                                     $$
+                                    "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ "arrange" <+> rulePPPrefix rl (last_rhs_idx+1) <+> "by" <+> key_str) <> "),"  $$
+                                    (nest' $ "afun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<(DDValue,DDValue)>" $$ afun $$ "__f},")                                         $$
+                                    "    next: Box::new(" <> xform' <> ")"                                                                                                          $$
+                                    "}"
+                            if is_stream_xform
+                            then do let post_conds = takeWhile (rhsIsCondition . (ruleRHS !!)) [rhs_idx + 1 .. length ruleRHS - 1]
+                                    next <- compileRule d rl (rhs_idx + length post_conds) False
+                                    return $ "XFormCollection::StreamXForm{"                                                                                                        $$
+                                             "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ "stream-transform" <+> rulePPPrefix rl (last_rhs_idx+1)) <> "),"     $$
+                                             "    xform: Box::new(Some(" <+> arranged_xform <> ")),"                                                                                $$
+                                             "    next: Box::new(" <> next <> ")"                                                                                                   $$
+                                             "}"
+                            else
+                                return arranged_xform
+
                         _ -> mkCollectionOperator
             return $
                 -- input_val ensures that CollectionRule is only generated once.
@@ -1921,7 +2081,7 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                    then "/*" <+> pp rl <+> "*/"                                         $$
                         "program::Rule::CollectionRule {"                               $$
                         "    description: std::borrow::Cow::from(" <> pp (show $ render $ rulePPStripped rl) <> "),"    $$
-                        "    rel:" <+> relId d (atomRelation fstatom) <> ","            $$
+                        "    rel:" <+> relid <> ","                                     $$
                         "    xform: Some(" <> xform <> ")"                              $$
                         "}"
                    else "Some(" <> xform <> ")"
@@ -2035,13 +2195,17 @@ mkGroupBy d filters input_val rl@Rule{..} idx = do
                   aggregate $$
                   vcat post_filters   $$
                   "Some(" <> result <> ")"
-    next <- compileRule d rl last_idx False
+    -- If this is a streaming group-by, we're generating a `StreamXForm`, and
+    -- only need to compile the group-by operator and subsequent filters.
+    next <- if rulePrefixIsStream d rl idx
+            then return "None"
+            else compileRule d rl last_idx False
     return $
         "XFormArrangement::Aggregate{"                                                                                           $$
         "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <> "),"                     $$
         "    ffun:" <+> ffun <> ","                                                                                              $$
         "    aggfun: {fn __f(" <> kEY_VAR <> ": &DDValue," <+> gROUP_VAR <> ": &[(&DDValue, Weight)]) -> Option<DDValue>" $$ agfun $$ "__f}," $$
-        "    next: Box::new(" <> next <> ")"                                                                                     $$
+        "    next: Box::new(" <> next <> ")"                                                                                    $$
         "}"
 
 -- Generate Rust code to filter records and bring variables into scope.
@@ -2245,6 +2409,7 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
                          vcat filters             $$
                          "Some" <> parens ret
     let descr = "std::borrow::Cow::from(" <> (pp $ show $ show $ rulePPPrefix rl $ join_idx + 1) <> "),"
+    relid <- atomRelId d atom
     return $ case join_kind of
         JoinArngStream ->
             let v2 = (if is_semi then "_" else empty) <> vALUE_VAR2
@@ -2252,7 +2417,7 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
             "XFormArrangement::StreamJoin{"                                                                                    $$
             "    description:" <+> descr                                                                                       $$
             "    ffun:" <+> ffun <> ","                                                                                        $$
-            "    rel: " <> relId d (atomRelation atom) <> ","                                                                  $$
+            "    rel:" <+> relid <> ","                                                                                        $$
             "    kfun: {fn __f(" <> vALUE_VAR <> ": &DDValue) -> Option<DDValue>"                                              $$
             nest' kfun                                                                                                         $$
             "    __f},"                                                                                                        $$
@@ -2264,8 +2429,8 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
         JoinStreamArng | is_semi ->
             "XFormCollection::StreamSemijoin{"                                                                                 $$
             "    description:" <+> descr                                                                                       $$
-            "    arrangement: (" <> relId d (atomRelation atom) <> "," <> pp aid <> "),"                                       $$
-            "    afun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<(DDValue, DDValue)>"                                   $$
+            "    arrangement: (" <> relid <> "," <> pp aid <> "),"                                                             $$
+            "    afun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<(DDValue, DDValue)>"                                    $$
             nest' afun                                                                                                         $$
             "    __f},"                                                                                                        $$
             "    jfun: {fn __f(" <> vALUE_VAR1 <> ": &DDValue) -> Option<DDValue>"                                             $$
@@ -2276,8 +2441,8 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
                        | otherwise ->
             "XFormCollection::StreamJoin{"                                                                                     $$
             "    description:" <+> descr                                                                                       $$
-            "    arrangement: (" <> relId d (atomRelation atom) <> "," <> pp aid <> "),"                                       $$
-            "    afun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<(DDValue, DDValue)>"                                   $$
+            "    arrangement: (" <> relid <> "," <> pp aid <> "),"                                                             $$
+            "    afun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<(DDValue, DDValue)>"                                    $$
             nest' afun                                                                                                         $$
             "    __f},"                                                                                                        $$
             "    jfun: {fn __f(" <> vALUE_VAR1 <> ": &DDValue," <+> vALUE_VAR2 <> ": &DDValue) -> Option<DDValue>"             $$
@@ -2296,7 +2461,7 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
             "XFormArrangement::Semijoin{"                                                                                   $$
             "    description:" <+> descr                                                                                    $$
             "    ffun:" <+> ffun <> ","                                                                                     $$
-            "    arrangement: (" <> relId d (atomRelation atom) <> "," <> pp aid <> "),"                                    $$
+            "    arrangement: (" <> relid <> "," <> pp aid <> "),"                                                          $$
             "    jfun: {fn __f(_: &DDValue," <+> vALUE_VAR1 <> ": &DDValue, _" <> vALUE_VAR2 <> ": &()) -> Option<DDValue>" $$
             nest' jfun                                                                                                      $$
             "    __f},"                                                                                                     $$
@@ -2306,7 +2471,7 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
             "XFormArrangement::Join{"                                                                                       $$
             "    description:" <+> descr                                                                                    $$
             "    ffun:" <+> ffun <> ","                                                                                     $$
-            "    arrangement: (" <> relId d (atomRelation atom) <> "," <> pp aid <> "),"                                    $$
+            "    arrangement: (" <> relid <> "," <> pp aid <> "),"                                                          $$
             "    jfun: {fn __f(_: &DDValue," <+> vALUE_VAR1 <> ": &DDValue," <+> vALUE_VAR2 <> ": &DDValue) -> Option<DDValue>"  $$
             nest' jfun                                                                                                      $$
             "    __f},"                                                                                                     $$
@@ -2315,7 +2480,7 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
 
 -- Compile XForm::Antijoin
 mkAntijoin :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?statics::CrateStatics) => DatalogProgram -> [Int] -> Bool -> Atom -> Rule -> Int -> CompilerMonad Doc
-mkAntijoin d input_filters input_val Atom{..} rl ajoin_idx = do
+mkAntijoin d input_filters input_val atom@Atom{..} rl ajoin_idx = do
     -- create arrangement to anti-join with
     let ctx = CtxRuleRAtom rl ajoin_idx
     let (arr, _) = normalizeArrangement d ctx atomVal
@@ -2323,10 +2488,11 @@ mkAntijoin d input_filters input_val Atom{..} rl ajoin_idx = do
     let ffun = mkFFun d rl input_filters
     aid <- fromJust <$> getAntijoinArrangement atomRelation arr
     next <- compileRule d rl ajoin_idx input_val
+    relid <- atomRelId d atom
     return $ "XFormArrangement::Antijoin {"                                                                   $$
              "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ rulePPPrefix rl $ ajoin_idx + 1) <> "),"    $$
              "    ffun:" <+> ffun <> ","                                                                      $$
-             "    arrangement: (" <> relId d atomRelation <> "," <> pp aid <> "),"                            $$
+             "    arrangement: (" <> relid <> "," <> pp aid <> "),"                                           $$
              "    next: Box::new(" <> next <> ")"                                                             $$
              "}"
 
@@ -2509,14 +2675,24 @@ arrangeInput d fstatom arrange_input_by = do
 -- Compile XForm::FilterMap that generates the head of the rule
 mkHead :: (?cfg::Config, ?specname::String, ?statics::CrateStatics, ?crate_graph::CrateGraph) => DatalogProgram -> Doc -> Rule -> Doc
 mkHead d prefix rl =
-    let v = mkDDValue d (CtxRuleL rl 0) (atomVal $ head $ ruleLHS rl)
-        fmfun = braces' $ prefix $$
-                          "Some" <> parens v
-    in "XFormCollection::FilterMap{"                                                                  $$
-       "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ "head of" <+> rulePPStripped rl) <> ")," $$
-       nest' ("fmfun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<DDValue>" $$ fmfun $$ "__f},")  $$
-       "    next: Box::new(None)"                                                                     $$
-       "}"
+    "XFormCollection::FilterMap{"                                                                               $$
+    "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ "head of" <+> rulePPStripped rl) <> "),"  $$
+    nest' ("fmfun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<DDValue>" $$ fmfun $$ "__f},")               $$
+    "    next: Box::new(" <> next <> ")"                                                                        $$
+    "}"
+    where
+    v = mkDDValue d (CtxRuleL rl 0) (atomVal $ head $ ruleLHS rl)
+    fmfun = braces' $ prefix $$
+                      "Some" <> parens v
+    -- 'simplifyDifferentiation' guarantees that differentiation can only occur
+    -- in a rule of the form '__diff_R[x] :- R'[x]'.
+    next = case last $ ruleRHS rl of
+                RHSLiteral{rhsAtom=Atom{atomDiff = True}} ->
+                    "Some(XFormCollection::Differentiate{"                                                                              $$
+                    "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ "differentiate" <+> rulePPStripped rl) <> "),"    $$
+                    "    next: Box::new(None)"                                                                                          $$
+                    "})"
+                _ -> "None"
 
 -- Variables in the RHS of the rule declared before or in i'th term
 -- and used after the term.
@@ -2533,16 +2709,18 @@ rhsVarsAfter d rl i =
                                                         (concatMap (ruleRHSTermVars d rl) [i+1..length (ruleRHS rl) - 1]))
                                 $ ruleRHSVars d rl (i+1)
 
-mkProg :: (?crate_graph :: CrateGraph, ?specname :: String) => [ProgNode] -> Doc
-mkProg nodes =
+mkProg :: (?crate_graph :: CrateGraph, ?specname :: String) => DatalogProgram -> CompilerState -> [ProgNode] -> Doc
+mkProg d cstate nodes =
     "pub fn prog(__update_cb: std::sync::Arc<dyn program::RelationCallback>) -> program::Program {"
         $$ (nest' relations)
         $$ "    let nodes: std::vec::Vec<program::ProgNode> = vec!["
         $$ (nest' $ nest' program_nodes)
         $$ "    ];"
+        $$ "    let delayed_rels = vec![" <> delayed_rels <> "];"
         $$ "    let init_data: std::vec::Vec<(program::RelId, DDValue)> = vec![" <> facts <> "];"
         $$ "    program::Program {"
         $$ "        nodes,"
+        $$ "        delayed_rels,"
         $$ "        init_data,"
         $$ "    }"
         $$ "}"
@@ -2557,6 +2735,14 @@ mkProg nodes =
         vcommaSep $
             concatMap ((map sel2) . prelFacts) $
                 concatMap nodeRels nodes
+    delayed_rels = vcommaSep
+                   $ map (\((rel, delay), delayed_relid) ->
+                           "program::DelayedRelation {"                                 $$
+                           "    id:" <+> pp delayed_relid <> ","                        $$
+                           "    rel_id:" <+> pp (relId d rel) <> ","                    $$
+                           "    delay:" <+> pp (toInteger $ delayDelay delay) <> ","    $$
+                           "}")
+                   $ M.toList $ cDelayedRelIds cstate
 
 mkNode :: (?crate_graph::CrateGraph, ?specname::String) => ProgNode -> Doc
 mkNode (RelNode ProgRel{..}) =
@@ -2626,7 +2812,7 @@ mkArrangementKey d rel pattern is_ref =
         -- Make sure that the context belongs to 'rel', so that the expression is
         -- generated within the same module.
         pattern_ctx = CtxTyped (ETyped nopos pattern $ relType rel)
-                               (CtxIndex $ Index nopos "" [] $ Atom nopos (name rel) ePHolder)
+                               (CtxIndex $ Index nopos "" [] $ Atom nopos (name rel) delayZero False ePHolder)
         from_ddvalue = if is_ref then "from_ddvalue_ref" else "from_ddvalue"
         mtch = mkMatch (mkPatExpr d pattern_ctx pattern EReference False) res "None"
         in "match" <+> "<" <> relt' <> ">::" <> from_ddvalue <> "(" <> vALUE_VAR <> ") {"    $$

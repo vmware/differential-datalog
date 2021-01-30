@@ -222,15 +222,6 @@ S3(x, z) :- S1(x, y), S2(y, z).
 
 //---
 
-// Aggregate stream.
-
-input stream S1(x: usize, y: usize)
-output stream S2(y: usize, z: usize)
-
-S2(y, z) :- S1(x, y), var z = x.group_by(y).
-
-//---
-
 // Antijoin with stream prefix.
 
 input stream S1(x: usize, y: usize)
@@ -259,4 +250,16 @@ stream S3(x: usize)
 
 S2(x) :- S1(x).
 S3(x) :- S2(x).
+S2(x) :- S3(x).
+
+//---
+
+// Recursive differentiation.
+
+input relation S1(x: usize)
+relation S2(x: usize)
+relation S3(x: usize)
+
+S2(x) :- S1(x).
+S3(x) :- S2'(x).
 S2(x) :- S3(x).

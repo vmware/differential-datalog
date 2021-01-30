@@ -306,7 +306,8 @@ commit dump_changes;
 
 echo Send more parcels!;
 start;
-insert Parcel(94039, 10),
+insert Parcel(94022, 8),
+insert Parcel(94085, 10),
 insert Parcel(94022, 1),
 commit dump_changes;
 

@@ -13,7 +13,9 @@ use crossbeam_channel::{Receiver, Sender, TryRecvError};
 use differential_dataflow::{
     input::{Input, InputSession},
     logging::DifferentialEvent,
-    operators::{arrange::TraceAgent, Consolidate, ThresholdTotal},
+    operators::{
+        arrange::TraceAgent, iterate::Variable as DDVariable, Consolidate, ThresholdTotal,
+    },
     trace::{
         implementations::{ord::OrdValBatch, spine_fueled::Spine},
         BatchReader, Cursor, TraceReader,
@@ -552,6 +554,12 @@ impl<'a> DDlogWorker<'a> {
                     HashMap::with_capacity_and_hasher(program.nodes.len(), FnvBuildHasher::default());
             let mut arrangements = FnvHashMap::default();
 
+            // Create variables for delayed relations.  We will be able to refer to these variables
+            // inside rules and assign them once all rules have been evaluated.
+            let delayed_vars: FnvHashMap<RelId, (RelId, DDVariable<Child<Worker<Allocator>, TS>, DDValue, Weight>)> = program.delayed_rels.iter().map(|drel| {
+                (drel.id, (drel.rel_id, DDVariable::new(outer, drel.delay)))
+            }).collect();
+
             for (nodeid, node) in program.nodes.iter().enumerate() {
                 match node {
                     ProgNode::Rel{rel} => {
@@ -572,11 +580,12 @@ impl<'a> DDlogWorker<'a> {
                             .map(|rule| {
                                 program.mk_rule(
                                     rule,
-                                    |rid| collections.get(&rid),
+                                    |rid| collections.get(&rid).or_else(|| delayed_vars.get(&rid).map(|v| &(*v.1))),
                                     Arrangements {
                                         arrangements1: &arrangements,
                                         arrangements2: &FnvHashMap::default(),
                                     },
+                                    true
                                 )
                             });
 
@@ -707,6 +716,7 @@ impl<'a> DDlogWorker<'a> {
                                             arrangements1: &local_arrangements,
                                             arrangements2: &inner_arrangements,
                                         },
+                                        false
                                     );
 
                                     vars
@@ -761,6 +771,10 @@ impl<'a> DDlogWorker<'a> {
                         }
                     }
                 }
+            };
+
+            for (id, (relid, v)) in delayed_vars.into_iter() {
+                v.set(collections.get(&relid).ok_or_else(|| format!("delayed variable {} refers to unknown base relation {}", id, relid))?);
             };
 
             for (relid, collection) in collections {

@@ -282,7 +282,8 @@ flattenNamespace1 mmap mod@DatalogModule{..} = do
                            , progRelations    = rels'
                            , progIndexes      = idxs' }
     -- flatten relation references
-    prog2 <- progAtomMapM prog1 (\a -> setName a <$> flattenRelName mmap mod (pos a) (name a))
+    prog2 <- progAtomMapM prog1 (\a -> do rname <- flattenRelName mmap mod (pos a) $ atomRelation a
+                                          return $ a { atomRelation = rname })
     applys <- mapM (applyFlattenNames mod mmap) $ progApplys prog2
     let prog2' = prog2 { progApplys = applys }
     -- rename types

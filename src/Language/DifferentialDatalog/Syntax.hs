@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018-2020 VMware, Inc.
+Copyright (c) 2018-2021 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -74,7 +74,10 @@ module Language.DifferentialDatalog.Syntax (
         rhsIsFilterCondition,
         rhsIsAssignment,
         rhsIsGroupBy,
+        Delay(..),
+        delayZero,
         Atom(..),
+        atomIsDelayed,
         Rule(..),
         ClosureExprArg(..),
         ExprNode(..),
@@ -151,6 +154,7 @@ import Prelude hiding((<>))
 import Text.PrettyPrint
 import Data.Maybe
 import Data.List
+import Data.Word
 import qualified Data.Map as M
 
 import Language.DifferentialDatalog.Pos
@@ -582,33 +586,59 @@ instance PP Index where
 instance Show Index where
     show = render . pp
 
+data Delay = Delay { delayPos   :: Pos
+                   , delayDelay :: Word32
+                   }
+
+instance Eq Delay where
+    (==) (Delay _ d1) (Delay _ d2) = d1 == d2
+
+instance Ord Delay where
+    compare (Delay _ d1) (Delay _ d2) = compare d1 d2
+
+instance WithPos Delay where
+    pos = delayPos
+    atPos d p = d {delayPos = p}
+
+instance PP Delay where
+    pp Delay{..} | delayDelay == 0 = empty
+                 | otherwise       = "-" <> pp (toInteger delayDelay)
+
+instance Show Delay where
+    show = render . pp
+
+delayZero :: Delay
+delayZero = Delay nopos 0
+
 data Atom = Atom { atomPos      :: Pos
                  , atomRelation :: String
+                 , atomDelay    :: Delay
+                 , atomDiff     :: Bool
                  , atomVal      :: Expr
                  }
 
-instance WithName Atom where
-    name = atomRelation
-    setName a n = a {atomRelation = n}
-
 instance Eq Atom where
-    (==) (Atom _ r1 v1) (Atom _ r2 v2) = r1 == r2 && v1 == v2
+    (==) (Atom _ r1 d1 df1 v1) (Atom _ r2 d2 df2 v2) = (r1, d1, df1, v1) == (r2, d2, df2, v2)
 
 instance Ord Atom where
-    compare (Atom _ r1 v1) (Atom _ r2 v2) = compare (r1, v1) (r2, v2)
+    compare (Atom _ r1 d1 df1 v1) (Atom _ r2 d2 df2 v2) = compare (r1, d1, df1, v1) (r2, d2, df2, v2)
 
 instance WithPos Atom where
     pos = atomPos
     atPos a p = a{atomPos = p}
 
 instance PP Atom where
-    pp (Atom _ rel (E (EStruct _ cons as))) | rel == cons
-                = pp rel <> (parens $ commaSep $
-                             map (\(n,e) -> (if null (name n) then empty else ("." <> pp n <> "=")) <> pp e) as)
-    pp Atom{..} = pp atomRelation <> "[" <> pp atomVal <> "]"
+    pp (Atom _ rel delay diff (E (EStruct _ cons as))) | rel == cons
+                = pp rel <> pp delay <> (if diff then "'" else empty) <>
+                  (parens $ commaSep $
+                            map (\(n,e) -> (if null (name n) then empty else ("." <> pp n <> "=")) <> pp e) as)
+    pp Atom{..} = pp atomRelation <> pp atomDelay <> (if atomDiff then "'" else empty) <> "[" <> pp atomVal <> "]"
 
 instance Show Atom where
     show = render . pp
+
+atomIsDelayed :: Atom -> Bool
+atomIsDelayed a = atomDelay a /= delayZero
 
 -- The RHS of a rule consists of relational atoms with
 -- positive/negative polarity, Boolean conditions, aggregation,

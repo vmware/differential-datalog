@@ -44,6 +44,7 @@ import Data.List
 import Data.List.Extra (groupSort)
 import Data.Functor.Identity
 import Data.Char
+import Data.Word
 import Numeric
 import GHC.Float
 --import Debug.Trace
@@ -91,6 +92,7 @@ reservedOpNames =
     [ ":", "::", "|", "&", "==", "=", ":-", "%", "*"
     , "/", "+", "-", ".", "->", "=>", "<=", "<=>"
     , ">=", "<", ">", "!=", ">>", "<<", "~", "@", "#"
+    , "'"
     ]
 
 reservedNames = ddlogKeywords ++ rustKeywords
@@ -403,7 +405,7 @@ rule = Rule nopos (ModuleName []) <$>
        (option [] (reservedOp ":-" *> (concat <$> commaSepEnd rulerhs))) <* dot
 
 rulerhs :: ParsecT String () Identity [RuleRHS]
-rulerhs =  (do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ try $ varIdent <* reserved "in") *> (optional $ reservedOp "&") *> relIdent *> (symbol "(" <|> symbol "[")
+rulerhs =  (do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ try $ varIdent <* reserved "in") *> (optional $ reservedOp "&") *> relIdent *> delay *> (optional $ reservedOp "'") *> (symbol "(" <|> symbol "[")
                (\x -> [x]) <$> (RHSLiteral <$> (option True (False <$ reserved "not")) <*> atom False))
           <|> aggregate
           <|> do _ <- try $ lookAhead $ flatmap_pattern *> reservedOp "=" *> reserved "FlatMap"
@@ -475,6 +477,8 @@ atom is_head = withPos $ do
        isref <- option False $ (\_ -> True) <$> reservedOp "&"
        p2' <- getPosition
        rname <- relIdent
+       del <- delay
+       diff <- option False $ (\_ -> True) <$> reservedOp "'"
        val <- brackets expr
               <|>
               (withPos $ (E . EStruct nopos rname) <$> (option [] $ parens $ commaSepEnd (namedarg <|> anonarg)))
@@ -484,7 +488,16 @@ atom is_head = withPos $ do
                      else if isref
                           then E (ERef (p2,p3) val)
                           else val
-       return $ Atom nopos rname $ maybe val' (\b -> E $ EBinding (p1, p2) b val') binding
+       return $ Atom nopos rname del diff $ maybe val' (\b -> E $ EBinding (p1, p2) b val') binding
+
+delay = withPos $ Delay nopos <$> (option 0 $ reservedOp "-" *> delay32)
+
+delay32 :: ParsecT String () Identity Word32
+delay32 = do
+    n <- decimal
+    when (n > toInteger (maxBound::Word32))
+         $ fail $ "Delay cannot exceed " ++ show (maxBound::Word32)
+    return $ fromInteger n
 
 anonarg = ((IdentifierWithPos nopos ""),) <$> expr
 namedarg = (,) <$> (dot *> posVarIdent) <*> (reservedOp "=" *> expr)

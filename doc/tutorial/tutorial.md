@@ -1973,11 +1973,11 @@ DDlog does not output delete records (i.e., records with negative weights) for
 streams.
 
 In general, streams can be used in rules just like normal relations.  They can
-be joined with other relations, filtered, and flat-mapped.  There are also some
+be joined with other relations, filtered, flat-mapped, and grouped.  There are also some
 restrictions on streams.  Most importantly, streams cannot be part of a
-recursive computation.  In addition streams currently cannot be aggregated using
-the `group_by` operator, or used as one of the inputs to an antijoin.  These
-constraints may be removed in future versions of DDlog.
+recursive computation.  In addition streams currently cannot be used as one of
+the inputs to an antijoin.  These constraints may be removed in future versions
+of DDlog.
 
 Consider the following transaction that simultaneously changes the contents of
 the `ZipCode` relation and the `Parcel` stream:
@@ -2004,6 +2004,208 @@ contents of all input relations and streams right before the commit.
 As far as the API is concerned, streams behave as multisets in that one can push
 duplicate records to a stream.  Since the contents of a stream is discarded
 after each transaction, the `clear` command is not defined for streams.
+
+
+### Streaming aggregation; differentiation and delay operators
+
+> ## :heavy_exclamation_mark: Unstable features: this section describes
+> experimental features that are likely to change in future DDlog releases.
+
+Next we would like to extend the parcel example to keep track of the total
+weight of parcels sent to each Zip code.  This sounds like a job for the
+`group_by` operator.  Let's see if it will work for streams:
+
+```
+output stream ParcelWeight(zip: u32, total_weight: usize)
+
+// Streaming group_by: aggregates parcel weights for each individual transaction.
+ParcelWeight(zip, total_weight) :-
+    Parcel(zip, weight),
+    var total_weight = weight.group_by(zip).sum_with_multiplicities().
+
+function sum_with_multiplicities(g: Group<u32, usize>): usize {
+    var s = 0;
+    for ((w, m) in g) {
+        s = s + w * (m as usize)
+    };
+    s
+}
+```
+
+We group records in the `Parcel` stream by `zip`, extract the `weight` field
+from each record and sum up the weights using the `sum_with_multiplicities` function.  This
+function differs from the `group_sum` function from the standard libraries in
+that it takes into account multiplicities of records in the group.  Recall that
+each record in the group has a multiplicity (we use the term "multiplicity"
+instead of "weight" here to avoid confusion with parce weights), which indicates
+how many times the record appears in the input relation or stream.
+Multiplicities are important when dealing with streams, since streams can
+contain multiple identical values.  In our example, multiple parcels with
+identical weights can be sent to the same zip code.  Within the group, the
+weight will appear once with multiplicity equal to the number of
+occurrences of this weight in the stream.  Each iteration of the for-loop over
+the group yields a 2-tuple consisting of parcel weight `w` and
+multiplicity `m`.  We multiply `w` by `m` and aggregate across all elements
+in the group to compute the total weight of parcels in the stream.
+
+This above code compiles, **but the result is not what we intended**:
+
+```
+echo Feeding data to the Parcel stream;
+start;
+insert Parcel(94022, 2),
+insert Parcel(94085, 6),
+commit dump_changes;
+
+# DDlog output:
+#  ParcelWeight:
+#  ParcelWeight{.zip = 94022, .total_weight = 2}: +1
+#  ParcelWeight{.zip = 94085, .total_weight = 6}: +1
+
+echo Send more parcels!;
+start;
+insert Parcel(94022, 8),
+insert Parcel(94085, 10),
+insert Parcel(94022, 1),
+commit dump_changes;
+
+# DDlog output:
+#  ParcelWeight:
+#  ParcelWeight{.zip = 94022, .total_weight = 9}: +1
+#  ParcelWeight{.zip = 94085, .total_weight = 10}: +1
+```
+
+When applied to a stream, the `group_by` operator groups records for each
+individual transaction ignoring all previous inputs.  This shouldn't come as
+a surprise: streams contain ephemeral data that disappears without a trace
+after each transaction.  Note that the output of `group_by` is also a
+stream: it contains a new set of values for each transaction, while old values
+are not explicitly retracted (we don't see events with negative weights
+in the output of DDlog).
+
+Fortunately, DDlog offers a way to aggregate the contents of a stream
+over time.  Moreover it can do so efficiently using bounded CPU and
+memory:
+
+```
+/* Aggregate the contents of the Parcel stream over time. */
+
+// The ParcelFold relation contains aggregated parcel weights from all earlier
+// transactions and the new Parcel records add by the last transaction.
+relation ParcelFold(zip: u32, weight: usize)
+
+// Add aggregated parcel weight from previous transactions.
+ParcelFold(zip, total_past_weight) :- ParcelWeightAggregated-1(zip, total_past_weight).
+// Add new parcels from the last transaction.
+ParcelFold(zip, weight) :- Parcel'(zip, weight).
+
+// Group and aggregate weights in the ParcelFold relation.
+output relation ParcelWeightAggregated(zip: u32, weight: usize)
+
+ParcelWeightAggregated(zip, total_weight) :-
+    ParcelFold(zip, weight),
+    var total_weight = weight.group_by(zip).sum_with_multiplicities().
+```
+
+This code uses two new DDlog language features in order to implement the new
+**stream fold** idiom.  The idea is simple: we would like to aggregate weights
+across all transactions without storing all individual weights.  To this end,
+we replace the entire past history of the `Parcel` stream with a single value
+per Zip code that stores the sum of all weights encountered before the current
+transaction.  Each transaction updates this aggregate with the sum of new
+weights added during the current transaction.  To this end we construct the
+`ParcelFold` relation that consists of the previously aggregated weight and new
+parcels added during the current transaction. 
+
+How do we refer to the previous contents of a relation?  All DDlog constructs
+introduced so far operate on the current snapshot of relations.  We introduce
+a new **delay** operator that refers to the contents of a relation from `N`
+transactions ago, where `N` can be any positive integer constant.  Given a
+relation `R` and a number `N`, `R-N` is a relation that contains the exact same
+records as `R` did `N` transactions ago.  In particular `R-1` is the contents
+of `R` in the end of the previous transaction.
+
+Delayed relations can be used in DDlog rules just like any normal relation names.
+In our example we add the values in `ParcelWeightAggregated` delayed by `1` to
+the `ParcelFold` relation:
+
+```
+// Add aggregated parcel weight from previous transactions.
+ParcelFold(zip, total_past_weight) :- ParcelWeightAggregated-1(zip, total_past_weight)
+```
+
+Next we need to add all new parcels inserted by the current transaction to
+`ParcelFold`.  Our first instinct is to write `ParcelFold(zip, weight) :-
+Parcel(zip, weight)`, which won't work, since `Parcel` is a stream and
+`ParcelFold` is a relation.  Streams are ephemeral while records in
+relations persist until explicitly removed.  Mixing the two can easily lead to
+surprising outcomes; therefore DDlog will refuse to automatically
+convert a stream into a relation.  Instead, it offers the *differentiation*
+operator to do this explicitly.  The differentiation operator takes
+a stream and returns a relation that contains exactly the values added to the
+stream by the last transaction.  Intuitively, if we think about a stream `S`
+as an infinitely growing table, the differentiation operator returns the
+difference between the current and previous snapshots of the stream: 
+`S' = S \ (S-1)`, where the prime (`'`) symbol represent differentiation.
+In our example we use the differentiation operator as follows.
+
+```
+// Add new parcels from the last transaction.
+ParcelFold(zip, weight) :- Parcel'(zip, weight).
+```
+
+Now that we have constructed the `ParcelFold` relation, we are ready to group
+and aggregate it just like any normal relation:
+
+```
+ParcelWeightAggregated(zip, total_weight) :-
+    ParcelFold(zip, weight),
+    var total_weight = weight.group_by(zip).group_sum().
+```
+
+Let's run the new code.  In the following output listing we show the output of
+`ParcelWeightAggregated` and `ParcelWeight` next to each other for comparison.
+The former is a relation that aggregates parcel weights across the entire
+history, while the latter is a stream that aggregates weights in the last
+transaction only:
+
+```
+echo Feeding data to the Parcel stream;
+start;
+insert Parcel(94022, 2),
+insert Parcel(94085, 6),
+commit dump_changes;
+
+# DDlog output:
+#  ParcelWeight:
+#  ParcelWeight{.zip = 94022, .total_weight = 2}: +1
+#  ParcelWeight{.zip = 94085, .total_weight = 6}: +1
+#  ParcelWeightAggregated:
+#  ParcelWeightAggregated{.zip = 94022, .weight = 2}: +1
+#  ParcelWeightAggregated{.zip = 94085, .weight = 6}: +1
+
+echo Send more parcels!;
+start;
+insert Parcel(94022, 8),
+insert Parcel(94085, 10),
+insert Parcel(94022, 1),
+commit dump_changes;
+
+# DDlog output:
+#  ParcelWeight:
+#  ParcelWeight{.zip = 94022, .total_weight = 9}: +1
+#  ParcelWeight{.zip = 94085, .total_weight = 10}: +1
+#  ParcelWeightAggregated:
+#  ParcelWeightAggregated{.zip = 94022, .weight = 2}: -1
+#  ParcelWeightAggregated{.zip = 94022, .weight = 11}: +1
+#  ParcelWeightAggregated{.zip = 94085, .weight = 6}: -1
+#  ParcelWeightAggregated{.zip = 94085, .weight = 16}: +1
+```
+
+After the first transaction, `ParcelWeight` and `ParcelWeightAggregated`
+look the same; however after the second transaction `ParcelWeightAggregated`
+retracts old aggregate values and replaces them with new aggregates
+that sum up weights from both transactions.
 
 ## Advanced types
 

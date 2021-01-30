@@ -116,3 +116,142 @@ output relation KVRelResponse(k: usize, v: string)
 KVRelResponse(k, v) :-
     KVRelQuery(k),
     KVStore(k, v).
+
+// Stream aggregation
+
+input stream StreamToGroup(k: string, v: usize)
+output stream StreamGroups(k: string, vs: Vec<usize>)
+
+StreamGroups(k, vs) :-
+    StreamToGroup(k, v),
+    var vs = v.group_by(k).to_vec().
+
+// Stream fold
+output relation StreamOfSums(k: string, s: usize)
+
+relation StreamFold(k: string, v: usize)
+
+StreamFold(k, v) :- StreamToGroup'(k, v).
+StreamFold(k, s) :- StreamOfSums-1(k, s).
+
+StreamOfSums(k, s) :-
+    StreamFold(k, v),
+    var s = v.group_by(k).group_sum().
+
+// Stream fold with enable/disable control
+
+output relation ControlledStreamOfSums(k: string, s: usize)
+input relation EnableK(k: string)
+
+relation ControlledStreamFold(k: string, v: usize)
+
+ControlledStreamFold(k, v) :- StreamToGroup'(k, v).
+ControlledStreamFold(k, s) :- ControlledStreamOfSums-1(k, s),
+                              EnableK(k). // Test that joins work for delayed relations.
+
+ControlledStreamOfSums(k, s) :-
+    ControlledStreamFold(k, v),
+    var s = v.group_by(k).group_sum(),
+    EnableK(k).
+
+/* Compute sum, average, and unique values aggregates over the same stream. */
+
+// Current time in seconds.
+typedef STime = usize
+
+input relation CurrentTime(t: STime)
+// primary key, so we can `insert_or_update` to overwrite the timestamp.
+primary key (x) ()
+
+output relation TimeWindow(start: STime, end: STime)
+
+// Track current and previous windows
+TimeWindow(start, end) :-
+    CurrentTime(t),
+    var start = t - t % 5,
+    var end = start + 5.
+
+TimeWindow(start, end) :-
+    CurrentTime(t),
+    var start = t - t % 5 - 5,
+    var end = start + 5.
+
+input stream Data(ts: STime, value: usize)
+
+// Sum
+output relation DataSum(window: TimeWindow, sum: usize)
+relation DataSumFold(window: TimeWindow, value: usize)
+
+DataSumFold(window, value) :-
+    Data'(ts, value),
+    window in TimeWindow(start, end),
+    ts >= start,
+    ts < end.
+
+// previous aggregate
+DataSumFold(window, sum) :-
+    DataSum-1(window, sum),
+    TimeWindow[window].
+
+DataSum(window, sum) :-
+    DataSumFold(window, value),
+    var sum = value.group_by(window).wsum().
+
+function wsum(g: Group<'K, usize>): usize {
+    var s = 0;
+    for ((x, w) in g) {
+        s = s + x * (w as usize)
+    };
+    s
+}
+
+// Average
+relation DataAvgInner(window: TimeWindow, avg: (/*sum*/usize, /*count*/usize))
+output relation DataAvg(window: TimeWindow, avg: usize)
+
+DataAvg(window, sum/cnt) :- DataAvgInner(window, (sum, cnt)).
+
+relation DataAvgFold(window: TimeWindow, avg: (usize, usize))
+
+DataAvgFold(window, (value, 1)) :-
+    Data'(ts, value),
+    window in TimeWindow(start, end),
+    ts >= start,
+    ts < end.
+
+DataAvgFold(window, avg) :-
+    DataAvgInner-1(window, avg),
+    TimeWindow[window].
+
+DataAvgInner(window, avg) :-
+    DataAvgFold(window, (sum,cnt)),
+    var grp = (sum, cnt).group_by(window),
+    var avg = {
+        var sum = 0;
+        var cnt = 0;
+        for ((x, w) in grp) {
+            sum = sum + x.0 * (w as usize);
+            cnt = cnt + x.1 * (w as usize);
+        };
+        (sum, cnt)
+    }.
+
+// Unique
+
+output relation DataUnique(window: TimeWindow, unique_vals: Set<usize>)
+
+relation DataUniqueFold(window: TimeWindow, unique_vals: Set<usize>)
+
+DataUniqueFold(window, set_singleton(value)) :-
+    Data'(ts, value),
+    window in TimeWindow(start, end),
+    ts >= start,
+    ts < end.
+
+DataUniqueFold(window, unique) :-
+    DataUnique-1(window, unique),
+    TimeWindow[window].
+
+DataUnique(window, unique) :-
+    DataUniqueFold(window, unique_vals),
+    var unique = unique_vals.group_by(window).group_set_unions().

@@ -1,5 +1,6 @@
 //! Datalog timestamps
 
+use dogsdogsdogs::altneu::AltNeu;
 use std::sync::atomic::AtomicU32;
 use timely::order::Product;
 
@@ -34,5 +35,14 @@ impl ToTupleTS for TS {
 impl ToTupleTS for Product<TS, TSNested> {
     fn to_tuple_ts(&self) -> TupleTS {
         (self.outer, self.inner)
+    }
+}
+
+impl<T> ToTupleTS for AltNeu<T>
+where
+    T: ToTupleTS,
+{
+    fn to_tuple_ts(&self) -> TupleTS {
+        self.time.to_tuple_ts()
     }
 }

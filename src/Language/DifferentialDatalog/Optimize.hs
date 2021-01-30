@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018-2020 VMware, Inc.
+Copyright (c) 2018-2021 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -90,7 +90,7 @@ expandMultiheadRule d rl ruleidx = (Just rel, rule1 : rules)
     -- rule to compute the new relation
     rule1 = Rule { rulePos = nopos
                  , ruleModule = ruleModule rl
-                 , ruleLHS = [Atom nopos relname $ eTuple $ map (\v -> eTypedVar (name v) (varType d v)) lhsvars]
+                 , ruleLHS = [Atom nopos relname delayZero False $ eTuple $ map (\v -> eTypedVar (name v) (varType d v)) lhsvars]
                  , ruleRHS = ruleRHS rl
                  }
     -- rule per head of the original rule
@@ -98,7 +98,7 @@ expandMultiheadRule d rl ruleidx = (Just rel, rule1 : rules)
                                , ruleModule = ruleModule rl
                                , ruleLHS = [atom]
                                , ruleRHS = [RHSLiteral True 
-                                           $ Atom nopos relname 
+                                           $ Atom nopos relname delayZero False
                                            $ eTuple $ map (\v -> eTypedVar (name v) (varType d v)) lhsvars]})
                 $ ruleLHS rl
 
@@ -186,6 +186,8 @@ replacePrefix d (pref, crate_name) = {-trace ("replacePrefix " ++ show pref) $-}
     -- rule
     let atom = Atom { atomPos      = nopos
                     , atomRelation = relname
+                    , atomDelay    = delayZero
+                    , atomDiff     = False
                     , atomVal      = eTuple $ map (\v -> eTypedVar (name v) (varType d v)) vars
                     }
     let rule = Rule { rulePos      = nopos
