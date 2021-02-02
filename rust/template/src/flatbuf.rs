@@ -464,14 +464,34 @@ impl<'a> FromFlatBuffer<fb::__Command<'a>> for DDValueUpdate {
         let val_table = cmd.val().ok_or_else(|| {
             format!("Update::from_flatbuf: invalid buffer: failed to extract value")
         })?;
-        let val = relval_from_flatbuf(relid, val_table)?;
-        match cmd.weight() {
-            1 => Ok(DDValueUpdate(Update::Insert { relid, v: val })),
-            (-1) => Ok(DDValueUpdate(Update::DeleteValue { relid, v: val })),
-            w => Err(format!("Update::from_flatbuf: non-unit weight {}", w)),
+        match cmd.operation() {
+            Operation_InsertOrDelete => {
+                let val = relval_from_flatbuf(relid, val_table)?;
+                match cmd.weight() {
+                    1 => Ok(DDValueUpdate(Update::Insert { relid, v: val })),
+                    (-1) => Ok(DDValueUpdate(Update::DeleteValue { relid, v: val })),
+                    w => Err(format!("Update::from_flatbuf: non-unit weight {}", w)),
+                }
+            },
+            Operation_InsertOrUpdate => {
+                let val = relval_from_flatbuf(relid, val_table)?;
+                Ok(DDValueUpdate(Update::InsertOrUpdate { relid, v: val }))
+            },
+            Operation_DeleteByKey => {
+                let val = relkey_from_flatbuf(relid, val_table)?;
+                Ok(DDValueUpdate(Update::DeleteKey { relid, k: val }))
+            },
+            o => Err(format!("Update::from_flatbuf: unknown operation code {}", o)),
         }
     }
 }
+
+// These should be ideally imported from flatbuf, but
+// I don't know how to do this.  In the meantime keep in sync
+// with Flatbuffer.hs
+const Operation_InsertOrDelete: i8 = 0;
+const Operation_InsertOrUpdate: i8 = 1;
+const Operation_DeleteByKey: i8 = 2;
 
 // Wrapper type, so we can implement traits for it.
 struct FBDDValue<'a>(program::RelId, &'a DDValue, isize);
@@ -484,6 +504,7 @@ impl<'b> ToFlatBuffer<'b> for FBDDValue<'_> {
         fb::__Command::create(
             fbb,
             &fb::__CommandArgs {
+                operation: Operation_InsertOrDelete,
                 weight: self.2 as i64,
                 relid: self.0 as u64,
                 val_type,

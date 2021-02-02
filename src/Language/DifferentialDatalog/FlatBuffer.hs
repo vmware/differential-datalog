@@ -195,8 +195,18 @@ compileFlatBufferSchema d prog_name =
     "    key: __Value;"                                                         $$
     "}"                                                                         $$
     ""                                                                          $$
+    "// enum __Operation : byte {"                                              $$
+    "//   InsertOrDelete = 0,"                                                  $$
+    "//   InsertOrUpdate = 1,"                                                  $$
+    "//   DeleteByKey = 2"                                                      $$
+    "// }"                                                                      $$
+    ""                                                                          $$
     "// DDlog commands"                                                         $$
     "table __Command {"                                                         $$
+    "// encoding of operation to perform."                                      $$
+    "// Ideally this should use the enum __Operation, but"                      $$
+    "// I don't know how to make this visible in Rust."                         $$
+    "   operation: byte;"                                                       $$
     "   weight: int64;"                                                         $$
     "   relid: uint64 =" <+> default_relid <> ";"                               $$
     "   val:  __Value;"                                                         $$
@@ -1084,36 +1094,52 @@ mkJavaUpdateBuilder = ("ddlog" </> ?prog_name </> updateBuilderClass <.> "java",
     mk_command_constructors :: Relation -> Doc
     mk_command_constructors rel =
         mk_command_constructor "Insert" rel $$
-        mk_command_constructor "Delete" rel
+        mk_command_constructor "Delete" rel $$
+        (if isJust $ relPrimaryKey rel
+        then mk_command_constructor "Insert_Or_Update" rel $$
+             mk_command_constructor "Delete_By_Key" rel
+        else "")
 
     mk_command_constructor cmd rel@Relation{..} =
-        let lcmd = pp $ (toLower $ head cmd) : tail cmd in
-        if typeHasUniqueConstructor relType
-           then -- Relation type has a unique constructor (e.g., it's a struct with a
+        let lcmd = pp $ map toLower cmd
+            weight = if cmd == "Insert" then "1"
+                     else if cmd == "Delete" then "-1"
+                     else "0"
+            gentype = if cmd == "Delete_By_Key" then fromJust $ relKeyType ?d rel
+                      else relType
+            -- command ids to be kept in sync with flatbuf.rs
+            fbcommand = if cmd == "Insert" then "0"  -- InsertOrDelete
+                        else if cmd == "Delete" then "0" -- InsertOrDelete again
+                        else if cmd == "Insert_Or_Update" then "1" -- InsertOrUpdate
+                        else "2" -- Delete_By_Key
+        in if typeHasUniqueConstructor gentype
+           then -- gentype has a unique constructor (e.g., it's a struct with a
                 -- unique constructor, a tuple or a primitive type).
-                let args = case typ' ?d $ typeNormalizeForFlatBuf relType of
+                let args = case typ' ?d $ typeNormalizeForFlatBuf gentype of
                                 TStruct{..} -> map (\a -> jConvTypeW a <+> pp (name a)) $ consArgs $ typeCons !! 0
                                 TTuple{..}  -> mapIdx (\a i -> jConvTypeW a <+> "a" <> pp i) typeTupArgs
-                                _           -> [jConvTypeW relType <+> "v"] in
+                                _           -> [jConvTypeW gentype <+> "v"] in
                 "public void" <+> lcmd <> "_" <> mkRelId rel <> "(" <> commaSep args <> ")" $$
                 (braces' $ "int cmd =" <+> jFBCallConstructor "__Command"
-                                           [ if cmd == "Insert" then "1" else "-1"
+                                           [ "(byte)" <> fbcommand
+                                           , weight
                                            , (pp $ relIdentifier ?d rel)
-                                           , jFBPackage <> ".__Value." <> typeTableName relType
-                                           , jConvCreateTable relType Nothing] <> ";"  $$
+                                           , jFBPackage <> ".__Value." <> typeTableName gentype
+                                           , jConvCreateTable gentype Nothing] <> ";"  $$
                            "this.commands.add(Integer.valueOf(cmd));")
-           else -- Relation type is a struct with multiple constructors
+           else -- gentype is a struct with multiple constructors
                 vcat $
                 map (\c@Constructor{..} ->
                      "public void" <+> lcmd <> "_" <> mkRelId rel <> "_" <> (pp $ legalize $ name c) <>
                          "(" <> (commaSep $ map (\a -> jConvTypeW a <+> pp (name a)) consArgs) <> ")" $$
                      (braces' $ "int cmd =" <+> jFBCallConstructor "__Command"
-                                                [ if cmd == "Insert" then "1" else "-1"
+                                                [ "(byte)" <> fbcommand
+                                                , weight
                                                 , (pp $ relIdentifier ?d rel)
-                                                , jFBPackage <> ".__Value." <> typeTableName relType
-                                                , jConvCreateTable relType (Just c)] <> ";"  $$
+                                                , jFBPackage <> ".__Value." <> typeTableName gentype
+                                                , jConvCreateTable gentype (Just c)] <> ";"  $$
                                 "this.commands.add(Integer.valueOf(cmd));"))
-                    $ typeCons $ typ' ?d $ typeNormalizeForFlatBuf relType
+                    $ typeCons $ typ' ?d $ typeNormalizeForFlatBuf gentype
 
 -- Class with methods to query DDlog indexes.
 mkJavaQuery :: (?d::DatalogProgram, ?prog_name::String) => (FilePath, Doc)
@@ -1472,7 +1498,7 @@ jReadField nesting fbctx e t =
 
 rustValueFromFlatbuf :: (?d::DatalogProgram, ?cfg::Config, ?crate_graph::CrateGraph, ?specname::String) => Doc
 rustValueFromFlatbuf =
-    "fn relval_from_flatbuf(relid: program::RelId, v: fbrt::Table) -> Response<DDValue> {"               $$
+    "fn relval_from_flatbuf(relid: program::RelId, v: fbrt::Table) -> Response<DDValue> {"      $$
     "    match relid {"                                                                         $$
     (nest' $ nest' $ vcat rel_enums)                                                            $$
     "        _ => Err(format!(\"DDValue::relval_from_flatbuf: invalid relid {}\", relid))"      $$
@@ -1482,6 +1508,12 @@ rustValueFromFlatbuf =
     "    match idxid {"                                                                         $$
     (nest' $ nest' $ vcat idx_enums)                                                            $$
     "        _ => Err(format!(\"DDValue::idxkey_from_flatbuf: invalid idxid {}\", idxid))"      $$
+    "    }"                                                                                     $$
+    "}"                                                                                         $$
+    "fn relkey_from_flatbuf(relid: program::RelId, v: fbrt::Table) -> Response<DDValue> {"      $$
+    "    match relid {"                                                                         $$
+    (nest' $ nest' $ vcat relkey_enums)                                                         $$
+    "        _ => Err(format!(\"DDValue::rekkey_from_flatbuf: invalid relid {}\", relid))"      $$
     "    }"                                                                                     $$
     "}"                                                                                         $$
     "fn relval_to_flatbuf<'b>(relid: program::RelId, val: &DDValue, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> (fb::__Value, fbrt::WIPOffset<fbrt::UnionWIPOffset>) {" $$
@@ -1511,6 +1543,11 @@ rustValueFromFlatbuf =
                      pp (relIdentifier ?d rel) <+> "=> Ok(" <>
                          "<" <> R.mkType ?d Nothing relType <> ">::from_flatbuf(fb::" <> typeTableName relType <> "::init_from_table(v))?.into_ddvalue()),")
                     progIORelations
+    relkey_enums = map (\rel@Relation{..} ->
+                     let t = fromJust $ relKeyType ?d rel in
+                     pp (relIdentifier ?d rel) <+> "=> Ok(" <>
+                         "<" <> R.mkType ?d Nothing t <> ">::from_flatbuf(fb::" <> typeTableName t <> "::init_from_table(v))?.into_ddvalue()),")
+                    $ filter (isJust . (relKeyType ?d)) progIORelations
     idx_enums = map (\idx@Index{} ->
                      let t = idxKeyType idx in
                      pp (idxIdentifier ?d idx) <+> "=> Ok(" <>

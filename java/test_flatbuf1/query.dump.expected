@@ -57,7 +57,7 @@ Query LI_by_all[true, -1, "something"]:
 (true, 255, "something")
 Query L0I[true]:
 Query L0I[false]:
-L0I{false,254,"else"}
+L0I{false,254,"altogether"}
 Query MI_by_v[true, false, true]:
 MI{[true, false, true]}
 Query NI_by_v[(true,-1,"check"), (false,1,"fails")]:
@@ -258,7 +258,7 @@ Dump LI_by_01:
 Dump LI_by_all:
 (true, 255, "something")
 Dump L0I:
-L0I{false,254,"else"}
+L0I{false,254,"altogether"}
 Dump MI_by_v:
 MI{[true, false, true]}
 Dump NI_by_v:
