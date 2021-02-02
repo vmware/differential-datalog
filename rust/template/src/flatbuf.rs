@@ -483,12 +483,9 @@ impl<'a> FromFlatBuffer<fb::__Command<'a>> for DDValueUpdate {
                 let val = relkey_from_flatbuf(relid, val_table)?;
                 Ok(DDValueUpdate(Update::DeleteKey { relid, k: val }))
             }
-            Some(o) => Err(format!(
-                "Update::from_flatbuf: unknown operation code {}",
-                cmd.operation()
-            )),
             _ => Err(format!(
-                "Update::from_flatbuf: could not convert operation code",
+                "Update::from_flatbuf: could not convert operation code {}",
+                cmd.operation()
             )),
         }
     }
