@@ -422,10 +422,11 @@ progTypesToSerialize =
 -- Types to be included in `union __Value`.
 progValTypes :: (?d::DatalogProgram) => [Type]
 progValTypes =
-    nub $
-    map (typeNormalizeForFlatBuf . relType) progIORelations ++
-    map (typeNormalizeForFlatBuf . idxKeyType) (M.elems $ progIndexes ?d) ++
-    map (typeNormalizeForFlatBuf . relType . idxRelation ?d) (M.elems $ progIndexes ?d)
+    nub $ map typeNormalizeForFlatBuf $
+    map relType progIORelations ++
+    mapMaybe (relKeyType ?d) progIORelations ++
+    map idxKeyType (M.elems $ progIndexes ?d) ++
+    map (relType . idxRelation ?d) (M.elems $ progIndexes ?d)
 
 progIORelations :: (?d::DatalogProgram) => [Relation]
 progIORelations =
@@ -435,11 +436,15 @@ progIORelations =
 -- Types used in relation declaration (possibly, recursively), for which serialization
 -- logic must be generated.
 relTypesToSerialize :: (?d::DatalogProgram) => Relation -> [Type]
-relTypesToSerialize Relation{..} =
-    execState (typeSubtypes [] relType)
-              [typeNormalize ?d relType] -- Relation type must appear in 'union Value'; therefore we
-                                         -- generate a table for it even if it's a primitive
-                                         -- type.
+relTypesToSerialize rel@Relation{..} =
+    nub $ rel_types ++ key_types
+    where
+       rel_types = execState (typeSubtypes [] relType)
+                   [typeNormalize ?d relType] -- Relation type must appear in 'union Value'; therefore we
+                                              -- generate a table for it even if it's a primitive type.
+       key = relKeyType ?d rel
+       key_types = maybe [] (\key_type -> execState (typeSubtypes [] key_type)
+                             [typeNormalize ?d key_type]) key
 
 -- Types used in index declaration (possibly, recursively), for which serialization
 -- logic must be generated.
@@ -1107,8 +1112,8 @@ mkJavaUpdateBuilder = ("ddlog" </> ?prog_name </> updateBuilderClass <.> "java",
                      else "0"
             gentype = if cmd == "Delete_By_Key" then fromJust $ relKeyType ?d rel
                       else relType
-            -- command ids to be kept in sync with flatbuf.rs
-            fbcommand = if cmd == "Insert" then "0"  -- InsertOrDelete
+            -- operation codes to be kept in sync with flatbuf.rs
+            fboperation = if cmd == "Insert" then "0"  -- InsertOrDelete
                         else if cmd == "Delete" then "0" -- InsertOrDelete again
                         else if cmd == "Insert_Or_Update" then "1" -- InsertOrUpdate
                         else "2" -- Delete_By_Key
@@ -1121,7 +1126,7 @@ mkJavaUpdateBuilder = ("ddlog" </> ?prog_name </> updateBuilderClass <.> "java",
                                 _           -> [jConvTypeW gentype <+> "v"] in
                 "public void" <+> lcmd <> "_" <> mkRelId rel <> "(" <> commaSep args <> ")" $$
                 (braces' $ "int cmd =" <+> jFBCallConstructor "__Command"
-                                           [ "(byte)" <> fbcommand
+                                           [ "(byte)" <> fboperation
                                            , weight
                                            , (pp $ relIdentifier ?d rel)
                                            , jFBPackage <> ".__Value." <> typeTableName gentype
@@ -1133,7 +1138,7 @@ mkJavaUpdateBuilder = ("ddlog" </> ?prog_name </> updateBuilderClass <.> "java",
                      "public void" <+> lcmd <> "_" <> mkRelId rel <> "_" <> (pp $ legalize $ name c) <>
                          "(" <> (commaSep $ map (\a -> jConvTypeW a <+> pp (name a)) consArgs) <> ")" $$
                      (braces' $ "int cmd =" <+> jFBCallConstructor "__Command"
-                                                [ "(byte)" <> fbcommand
+                                                [ "(byte)" <> fboperation
                                                 , weight
                                                 , (pp $ relIdentifier ?d rel)
                                                 , jFBPackage <> ".__Value." <> typeTableName gentype
@@ -1513,7 +1518,7 @@ rustValueFromFlatbuf =
     "fn relkey_from_flatbuf(relid: program::RelId, v: fbrt::Table) -> Response<DDValue> {"      $$
     "    match relid {"                                                                         $$
     (nest' $ nest' $ vcat relkey_enums)                                                         $$
-    "        _ => Err(format!(\"DDValue::rekkey_from_flatbuf: invalid relid {}\", relid))"      $$
+    "        _ => Err(format!(\"DDValue::relkey_from_flatbuf: invalid relid {}\", relid))"      $$
     "    }"                                                                                     $$
     "}"                                                                                         $$
     "fn relval_to_flatbuf<'b>(relid: program::RelId, val: &DDValue, fbb: &mut fbrt::FlatBufferBuilder<'b>) -> (fb::__Value, fbrt::WIPOffset<fbrt::UnionWIPOffset>) {" $$
