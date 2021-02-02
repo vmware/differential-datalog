@@ -472,16 +472,19 @@ impl<'a> FromFlatBuffer<fb::__Command<'a>> for DDValueUpdate {
                     (-1) => Ok(DDValueUpdate(Update::DeleteValue { relid, v: val })),
                     w => Err(format!("Update::from_flatbuf: non-unit weight {}", w)),
                 }
-            },
+            }
             Operation_InsertOrUpdate => {
                 let val = relval_from_flatbuf(relid, val_table)?;
                 Ok(DDValueUpdate(Update::InsertOrUpdate { relid, v: val }))
-            },
+            }
             Operation_DeleteByKey => {
                 let val = relkey_from_flatbuf(relid, val_table)?;
                 Ok(DDValueUpdate(Update::DeleteKey { relid, k: val }))
-            },
-            o => Err(format!("Update::from_flatbuf: unknown operation code {}", o)),
+            }
+            o => Err(format!(
+                "Update::from_flatbuf: unknown operation code {}",
+                o
+            )),
         }
     }
 }
