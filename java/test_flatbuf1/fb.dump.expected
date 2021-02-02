@@ -15,7 +15,7 @@ From 23 Insert HI{773153186440202938}
 From 25 Insert II{7}
 From 26 Insert JI{(true, 10, "string")}
 From 27 Insert KI{(false, 9, "text")}
-From 28 Insert L0I{false,254,"else"}
+From 28 Insert L0I{false,254,"altogether"}
 From 29 Insert (true, 255, "something")
 From 30 Insert MI{[true, false, true]}
 From 31 Insert NI{[(true, 255, "check"), (false, 1, "fails")]}

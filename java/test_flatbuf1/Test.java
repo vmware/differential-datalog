@@ -565,7 +565,9 @@ public class Test {
             builder.insert_KI(ki);
         }
         builder.insert_LI(true, (byte)-1, "something");
+        builder.insert_L0I(true, (byte)-1, "or not");
         builder.insert_L0I(false, (byte)-2, "else");
+        builder.insert_or_update_L0I(false, (byte)-2, "altogether");
         {
             Boolean[] v = new Boolean[] {true, false, true};
             builder.insert_MI(Arrays.asList(v));
@@ -758,6 +760,11 @@ public class Test {
             builder.applyUpdates(this.api);
             assert false: "Reusing UpdateBuilder should throw an exception.";
         } catch (IllegalStateException e) {}
+
+        // Test delete.  This fails if the element is not present in the collection.
+        builder = new typesTestUpdateBuilder();
+        builder.delete_by_key_L0I(true);
+        builder.applyUpdates(this.api);
     }
 
     void clear() throws DDlogException {

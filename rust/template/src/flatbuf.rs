@@ -4,7 +4,9 @@ use super::*;
 use differential_datalog::program;
 use differential_datalog::program::{Response, Update};
 use differential_datalog::DeltaMap;
+use enum_primitive_derive::Primitive;
 use flatbuffers as fbrt;
+use num_traits::{FromPrimitive, ToPrimitive};
 
 /// Trait for types that can be de-serialized from FlatBuffer-embedded objects.
 pub trait FromFlatBuffer<T>: Sized {
@@ -464,13 +466,39 @@ impl<'a> FromFlatBuffer<fb::__Command<'a>> for DDValueUpdate {
         let val_table = cmd.val().ok_or_else(|| {
             format!("Update::from_flatbuf: invalid buffer: failed to extract value")
         })?;
-        let val = relval_from_flatbuf(relid, val_table)?;
-        match cmd.weight() {
-            1 => Ok(DDValueUpdate(Update::Insert { relid, v: val })),
-            (-1) => Ok(DDValueUpdate(Update::DeleteValue { relid, v: val })),
-            w => Err(format!("Update::from_flatbuf: non-unit weight {}", w)),
+        match FBOperation::from_i8(cmd.operation()) {
+            Some(FBOperation::InsertOrDelete) => {
+                let val = relval_from_flatbuf(relid, val_table)?;
+                match cmd.weight() {
+                    1 => Ok(DDValueUpdate(Update::Insert { relid, v: val })),
+                    (-1) => Ok(DDValueUpdate(Update::DeleteValue { relid, v: val })),
+                    w => Err(format!("Update::from_flatbuf: non-unit weight {}", w)),
+                }
+            }
+            Some(FBOperation::InsertOrUpdate) => {
+                let val = relval_from_flatbuf(relid, val_table)?;
+                Ok(DDValueUpdate(Update::InsertOrUpdate { relid, v: val }))
+            }
+            Some(FBOperation::DeleteByKey) => {
+                let val = relkey_from_flatbuf(relid, val_table)?;
+                Ok(DDValueUpdate(Update::DeleteKey { relid, k: val }))
+            }
+            _ => Err(format!(
+                "Update::from_flatbuf: could not convert operation code {}",
+                cmd.operation()
+            )),
         }
     }
+}
+
+// These should be ideally imported from flatbuf, but
+// I don't know how to do this.  In the meantime keep in sync
+// with Flatbuffer.hs
+#[derive(Debug, Eq, PartialEq, Primitive)]
+enum FBOperation {
+    InsertOrDelete = 0,
+    InsertOrUpdate = 1,
+    DeleteByKey = 2,
 }
 
 // Wrapper type, so we can implement traits for it.
@@ -484,6 +512,7 @@ impl<'b> ToFlatBuffer<'b> for FBDDValue<'_> {
         fb::__Command::create(
             fbb,
             &fb::__CommandArgs {
+                operation: FBOperation::InsertOrDelete as i8,
                 weight: self.2 as i64,
                 relid: self.0 as u64,
                 val_type,

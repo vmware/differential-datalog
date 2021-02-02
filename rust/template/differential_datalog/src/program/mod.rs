@@ -2039,7 +2039,7 @@ impl RunningProgram {
         match upd {
             Update::Insert { relid, v } => match s.entry(key_func(&v)) {
                 hash_map::Entry::Occupied(_) => Err(format!(
-                    "Insert: duplicate key {:?} in value {:?}",
+                    "Insert: duplicate key '{:?}' in value '{:?}'",
                     key_func(&v),
                     v
                 )),
@@ -2083,7 +2083,7 @@ impl RunningProgram {
             Update::DeleteValue { relid, v } => match s.entry(key_func(&v)) {
                 hash_map::Entry::Occupied(oe) => {
                     if *oe.get() != v {
-                        Err(format!("DeleteValue: key exists with a different value. Value specified: {:?}; existing value: {:?}", v, oe.get()))
+                        Err(format!("DeleteValue: key exists but with a different value. Value specified: '{:?}'; existing value: '{:?}'", v, oe.get()))
                     } else {
                         Self::delta_dec(ds, oe.get());
                         oe.remove_entry();
@@ -2092,7 +2092,7 @@ impl RunningProgram {
                     }
                 }
                 hash_map::Entry::Vacant(_) => {
-                    Err(format!("DeleteValue: key not found {:?}", key_func(&v)))
+                    Err(format!("DeleteValue: key not found '{:?}'", key_func(&v)))
                 }
             },
 
@@ -2104,7 +2104,7 @@ impl RunningProgram {
                     updates.push(Update::DeleteValue { relid, v: old });
                     Ok(())
                 }
-                hash_map::Entry::Vacant(_) => Err(format!("DeleteKey: key not found {:?}", k)),
+                hash_map::Entry::Vacant(_) => Err(format!("DeleteKey: key not found '{:?}'", k)),
             },
 
             Update::Modify { relid, k, m } => match s.entry(k.clone()) {
@@ -2122,7 +2122,7 @@ impl RunningProgram {
 
                     Ok(())
                 }
-                hash_map::Entry::Vacant(_) => Err(format!("Modify: key not found {:?}", k)),
+                hash_map::Entry::Vacant(_) => Err(format!("Modify: key not found '{:?}'", k)),
             },
         }
     }

@@ -26,7 +26,7 @@ compiling and running DDlog programs.
 |                                | `insert Rel2(.x=10, .y=Constructor{.f1="foo", .f2=true});` | type constructor arguments can also be passed by name        |
 | `insert_or_update <record>,`   | same as `insert`, but replaces existing value with the same key, if it exists; only valid for relations with primary key  |
 | `delete <record>,`             | `delete Rel1(1,true,"foo");`                     | delete record from Rel1 (using argument syntax identical to `insert`)  |
-| `delete_key <relation> <key>,` | `delete Rel1 1;`                                 | delete record by key; only valid for relations with primary key        |
+| `delete_key <relation> <key>,` | `delete_key Rel1 1;`                             | delete record by key; only valid for relations with primary key        |
 | `modify <relation> <key> <- <record>,` | `modify Rel1 1 <- Rel1{.f1 = 5};`        | modify record; `<record>` specifies just the fields to be modified; only valid for relations with primary key.  See [below](#modify_command) for more details. |
 | comma-separated updates        | `insert Foo(1), delete Bar("buzz");`             | a sequence of insert and delete commands can be applied in one update  |
 | clear <relation>               | `clear Foo`                                      | remove all records from a relation; must be used within a transaction  |
@@ -57,7 +57,7 @@ The `<record>` argument describes how the value associated with the key must
 change.  Each field in the record represents an **update** to the corresponding
 field of the original record.  Think of it as a **delta** to be applied to the
 existing value.  If you want to overwrite existing value with a new value,
-rather than modify it, use the `insert_or_update` command instead.  
+rather than modify it, use the `insert_or_update` command instead.
 
 The delta only needs to contain fields to be modified:
 
