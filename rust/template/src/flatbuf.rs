@@ -485,8 +485,8 @@ impl<'a> FromFlatBuffer<fb::__Command<'a>> for DDValueUpdate {
             }
             Some(o) => Err(format!(
                 "Update::from_flatbuf: unknown operation code {}",
-                cmd.operation())
-            ),
+                cmd.operation()
+            )),
             _ => Err(format!(
                 "Update::from_flatbuf: could not convert operation code",
             )),
