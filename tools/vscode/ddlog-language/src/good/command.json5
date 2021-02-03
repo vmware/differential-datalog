@@ -1,0 +1,88 @@
+{
+  "repository": {
+        "command": {
+            "patterns": [
+                {
+                    "name": "command.start.dat",
+                    "match": "\\b(start)\\b"
+                },
+                {
+                    "name": "command.commit.dat",
+                    "match": "\\b(commit(\\s+dump_changes)?)\\b"
+                },                
+                {
+                    "name": "command.rollback.dat",
+                    "match": "\\b(rollback)\\b"
+                }, 
+                {
+                    "name": "command.timestamp.dat",
+                    "match": "\\b(timestamp)\\b"
+                }, 
+                {
+                    "name": "command.dump.dat",
+                    "match": "\\b(dump)\\b"
+                }, 
+                {
+                    "name": "command.query_index.dat",
+                    "match": "\\b(query_index)\\b"
+                },
+                {
+                    "name": "command.dump_index.dat",
+                    "match": "\\b(dump_index)\\b"
+                },
+                {
+                    "name": "command.echo.dat",
+                    "match": "\\b(echo)\\b"
+                }, 
+                {
+                    "name": "command.log_level.dat",
+                    "match": "\\b(log_level)\\b"
+                }, 
+                {
+                    "name": "command.insert.dat",
+                    "match": "\\b(insert)\\b"
+                }, 
+                {
+                    "name": "command.insert_or_update.dat",
+                    "match": "\\b(insert_or_update)\\b"
+                }, 
+                {
+                    "name": "command.delete.dat",
+                    "match": "\\b(delete)\\b"
+                }, 
+                {
+                    "name": "command.delete_key.dat",
+                    "match": "\\b(delete_key)\\b"
+                },
+                {
+                    "name": "command.modify.dat",
+                    "match": "\\b(modify)\\b"
+                },  
+                {
+                    "name": "command.clear.dat",
+                    "match": "\\b(clear)\\b"
+                }, 
+                {
+                    "name": "command.profile.dat",
+                    "match": "\\b(profile)\\b"
+                }, 
+                {
+                    "name": "command.profile-cpu-on.dat",
+                    "match": "\\b(profile\\s+cpu\\s+on)\\b"
+                },  
+                {
+                    "name": "command.profile-cpu-off.dat",
+                    "match": "\\b(profile\\s+cpu\\s+off)\\b"
+                }, 
+                {
+                    "name": "command.exit.dat",
+                    "match": "\\b(exit)\\b"
+                }, 
+                {
+                    "name": "command.comment.dat",
+                    "match": "\\b(\\#)\\b"
+                }                                                                                                                                                                                                        
+            ]
+        }
+    }
+}

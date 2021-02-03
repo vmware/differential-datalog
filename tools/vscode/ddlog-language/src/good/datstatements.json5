@@ -1,0 +1,46 @@
+{
+  "repository": {
+        "statements": {
+            "patterns": [
+                {
+                    "match": "(\\b)(?<=dump)(\\s+)([A-Z][a-zA-Z0-9_]*)(\\s*)",
+                    "name": "entity.name.relation.ddlog"
+                }, 
+                {
+                    "match": "(\\b)(?<=delete_key)(\\s+)([A-Z][a-zA-Z0-9_]*)(\\s*)",
+                    "name": "entity.name.relation.ddlog"
+                },   
+                {
+                    "match": "(\\b)(?<=insert)(\\s+)([A-Z][a-zA-Z0-9_]*)(\\s*)",
+                    "name": "entity.name.relation.ddlog"
+                },  
+                {
+                    "match": "(\\b)(?<=insert_or_update)(\\s+)([A-Z][a-zA-Z0-9_]*)(\\s*)",
+                    "name": "entity.name.relation.ddlog"
+                },                 
+                {
+                    "match": "(\\b)(?<=modify)(\\s+)([A-Z][a-zA-Z0-9_]*)(\\s*)",
+                    "name": "entity.name.relation.ddlog"
+                }, 
+                {
+                    "match": "(\\b)(?<=delete)(\\s+)([A-Z][a-zA-Z0-9_]*)(\\s*)",
+                    "name": "entity.name.relation.ddlog"
+                }, 
+                {
+                    "match": "(\\b)(?<=clear)(\\s+)([A-Z][a-zA-Z0-9_]*)(\\s*)",
+                    "name": "entity.name.relation.ddlog"
+                },                                                                                       
+                {
+                    "name": "string.text.dat",
+                    "match": "\\b(?<=echo)(\\s+)(.*)?$"
+                },
+                {
+                    "name": "comment.hash.dat ",
+                    "begin": "#",
+                    "end": "$"
+                }                  
+            ]
+        }
+    }
+}
+
