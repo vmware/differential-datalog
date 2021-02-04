@@ -7,12 +7,10 @@ Integrating C with DDlog
 Prerequisites
 =============
 
-First, you need to obtain `DDlog`_ from the official repository, which contains instructions how to install and set it up.
+First, you need to obtain DDlog_ from the official repository, which contains instructions how to install and set it up.
 There is also an expectation that you are familiar with DDlog syntax and commands, i.e., you have read the tutorial or at least skimmed through it.
 
-__
-.. _DDlog DDlog repository on GitHub:
-    https://github.com/vmware/differential-datalog
+.. _DDlog: https://github.com/vmware/differential-datalog
 
 Introduction
 ============
@@ -94,9 +92,7 @@ Note that DDlog is a `transaction-based`_ programming language.
 Each transaction begins with a :code:`start` command and ends with a :code:`commit` command.
 Let's start DDlog shell again and insert records to recreate the network topology above:
 
-__
-.. _transaction-based Wikipedia page on a transaction processing:
-    https://en.wikipedia.org/wiki/Transaction_processing
+.. _transaction-based: https://en.wikipedia.org/wiki/Transaction_processing
 
 .. code-block::
 
@@ -330,9 +326,7 @@ One of the features of the DDlog is being a `strongly-typed language`_.
 Partially, due to that reason we cannot just pass anything to our DDlog program.
 So we have to convert C objects to the DDlog objects first.
 
-__
-.. _strongly-typed language Wikipedia page on strong and weak typing:
-    https://en.wikipedia.org/wiki/Strong_and_weak_typing
+.. _strongly-typed language: https://en.wikipedia.org/wiki/Strong_and_weak_typing
 
 .. code-block:: c
 
