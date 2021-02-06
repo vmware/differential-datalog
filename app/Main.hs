@@ -192,7 +192,7 @@ parseValidate Config{..} = do
     when confDumpFlat $
         writeFile (replaceExtension confDatalogFile ".flat.ast") (show d''')
     d'''' <- case validate d''' of
-               Left e   -> errorWithoutStackTrace $ "error: " ++ e
+               Left e   -> errorWithoutStackTrace $ "\nerror: " ++ e
                Right d'''' -> return d''''
     when confDumpValid $
         writeFile (replaceExtension confDatalogFile ".valid.ast") (show d'''')
