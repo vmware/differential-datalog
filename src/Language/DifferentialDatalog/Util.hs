@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018-2020 VMware, Inc.
+Copyright (c) 2018-2021 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -36,9 +36,10 @@ import Data.Word
 import Data.Binary.Get
 import qualified Data.Map as M
 import qualified Data.ByteString.Lazy as BL
+import System.Console.ANSI
 import System.Directory
 import System.FilePath
-import System.IO hiding (readFile, writeFile, stdout, stderr)
+import System.IO hiding (readFile, writeFile, stdout)
 import System.Process
 import System.Exit
 
@@ -256,3 +257,12 @@ runCommandReportingErr process_name command args working_dir = do
 -- non-Windows-compatibles 'MissingH' crate.
 replace :: (Eq a) => [a] -> [a] -> [a] -> [a]
 replace old replacement = intercalate replacement . splitOn old
+
+-- | Print compilation error and exit the program.
+compilerError :: String -> IO a
+compilerError e = do
+    hPutStrLn stderr ""
+    hSetSGR stderr [SetColor Foreground Vivid Red]
+    hPutStrLn stderr $ "error: " ++ e
+    hSetSGR stderr []
+    exitWith $ ExitFailure 1

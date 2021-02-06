@@ -141,10 +141,10 @@ compileSchemaFile :: FilePath -> Config -> IO Doc
 compileSchemaFile fname config = do
     content <- readFile fname
     schema <- case parseSchema content fname of
-                   Left  e    -> errorWithoutStackTrace $ "Failed to parse input file: " ++ e
+                   Left  e    -> compilerError $ "failed to parse input file: " ++ e
                    Right prog -> return prog
     case compileSchema schema config of
-         Left e    -> errorWithoutStackTrace e
+         Left e    -> compilerError e
          Right doc -> return doc
 
 compileSchema :: (MonadError String me) => OVSDBSchema -> Config -> me Doc

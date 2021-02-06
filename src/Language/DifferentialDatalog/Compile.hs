@@ -3201,7 +3201,7 @@ mkType' _ _       t@TSigned{..} | typeWidth == 8  = "i8"
                                 | typeWidth == 32 = "i32"
                                 | typeWidth == 64 = "i64"
                                 | typeWidth == 128= "i128"
-                                | otherwise       = errorWithoutStackTrace $ "Only machine widths (8/16/32/64/128) supported: " ++ show t
+                                | otherwise  = errorWithoutStackTrace $ "Only machine widths (8/16/32/64/128) supported: " ++ show t
 mkType' _ _       TDouble{}                  = "::ordered_float::OrderedFloat<f64>"
 mkType' _ _       TFloat{}                   = "::ordered_float::OrderedFloat<f32>"
 mkType' d scope   TTuple{..} | length typeTupArgs == 0
