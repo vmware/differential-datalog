@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018-2020 VMware, Inc.
+Copyright (c) 2018-2021 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -192,7 +192,7 @@ parseValidate Config{..} = do
     when confDumpFlat $
         writeFile (replaceExtension confDatalogFile ".flat.ast") (show d''')
     d'''' <- case validate d''' of
-               Left e   -> errorWithoutStackTrace $ "\nerror: " ++ e
+               Left e   -> compilerError e
                Right d'''' -> return d''''
     when confDumpValid $
         writeFile (replaceExtension confDatalogFile ".valid.ast") (show d'''')
@@ -203,7 +203,7 @@ parseValidate Config{..} = do
         writeFile (replaceExtension confDatalogFile ".debug.ast") (show d')
     when confJava $
         case flatBufferValidate d of
-             Left e  -> errorWithoutStackTrace $ "error: " ++ e
+             Left e  -> compilerError e
              Right{} -> return ()
     return (modules, d', rs_code)
 
