@@ -1,21 +1,21 @@
-error: ./test/datalog_tests/rectype.fail.dl:3:1-5:1: Recursive alias types: t -> t
+error: ./test/datalog_tests/rectype.fail.dl:3.1-5.1: Recursive alias types: t -> t
 typedef t = t
 ^
 
-error: ./test/datalog_tests/rectype.fail.dl:3:1-5:1: Recursive alias types: t -> t
+error: ./test/datalog_tests/rectype.fail.dl:3.1-5.1: Recursive alias types: t -> t
 typedef t = ( t, t )
 ^
 
-error: ./test/datalog_tests/rectype.fail.dl:3:1-4:1: Recursive alias types: t -> t1 -> t
+error: ./test/datalog_tests/rectype.fail.dl:3.1-4.1: Recursive alias types: t -> t1 -> t
 typedef t = t1
 ^
 
-./test/datalog_tests/rectype.fail.dl:3:13-5:1: Unknown type 'undef'
+./test/datalog_tests/rectype.fail.dl:3.13-5.1: Unknown type 'undef'
 
 Failed to parse input file: "./test/datalog_tests/rectype.fail.dl" (line 4, column 13):
 unexpected "{"
 expecting "bit", "signed", "bigint", "double", "float", "string", "bool", "#", constructor name, type name, "'", "function", "|" or "("
 
-error: ./test/datalog_tests/rectype.fail.dl:5:1-6:1: Recursive alias types: TSeq2 -> TSeq2
+error: ./test/datalog_tests/rectype.fail.dl:5.1-6.1: Recursive alias types: TSeq2 -> TSeq2
 typedef TSeq2 = Option<(string, Ref<TSeq2>)>
 ^

@@ -2,22 +2,22 @@ Failed to parse input file: "./test/datalog_tests/rules.fail.dl" (line 3, column
 unexpected ":"
 expecting letter or digit, "_", "::", "(" or "["
 
-./test/datalog_tests/rules.fail.dl:5:1-7:1: Multiple definitions of type R1 at the following locations:
-  ./test/datalog_tests/rules.fail.dl:5:1-7:1
-  ./test/datalog_tests/rules.fail.dl:7:1-9:1
+./test/datalog_tests/rules.fail.dl:5.1-7.1: Multiple definitions of type R1 at the following locations:
+  ./test/datalog_tests/rules.fail.dl:5.1-7.1
+  ./test/datalog_tests/rules.fail.dl:7.1-9.1
 
 
-error: ./test/datalog_tests/rules.fail.dl:10:1-11:1: Relation R3 is mutually recursive with R2 and therefore cannot appear negated in this rule.
+error: ./test/datalog_tests/rules.fail.dl:10.1-11.1: Relation R3 is mutually recursive with R2 and therefore cannot appear negated in this rule.
 Dependency cycle: R3 -> R2 -> R3
 R2(x) :- R1(x), not R3(x, "foo").
 ^
 
-error: ./test/datalog_tests/rules.fail.dl:9:1-11:1: Relation R2 is mutually recursive with R2 and therefore cannot appear negated in this rule.
+error: ./test/datalog_tests/rules.fail.dl:9.1-11.1: Relation R2 is mutually recursive with R2 and therefore cannot appear negated in this rule.
 Dependency cycle: R2 -> R2
 R2(x) :- R1(x), not R2(x).
 ^
 
-error: ./test/datalog_tests/rules.fail.dl:9:28-9:39: Type mismatch:
+error: ./test/datalog_tests/rules.fail.dl:9.28-9.39: Type mismatch:
 expected type: (string,string)
 actual type: string
 in
@@ -31,7 +31,7 @@ expression 'concat_ys'
     var s = Aggregate((x,z), concat_ys(y)).
                            ^^^^^^^^^^^
 
-error: ./test/datalog_tests/rules.fail.dl:9:28-9:39: Type mismatch:
+error: ./test/datalog_tests/rules.fail.dl:9.28-9.39: Type mismatch:
 expected type: string
 actual type: bigint
 in
@@ -48,35 +48,35 @@ expression 'concat_ys'
     var s = Aggregate((x,z), concat_ys(y)).
                            ^^^^^^^^^^^
 
-error: ./test/datalog_tests/rules.fail.dl:9:13-9:18: expression '(1 + 2)' of a numeric type appears in a context where type '()' is expected
+error: ./test/datalog_tests/rules.fail.dl:9.13-9.18: expression '(1 + 2)' of a numeric type appears in a context where type '()' is expected
     Inspect 1 + 2.
             ^^^^^
 
-error: ./test/datalog_tests/rules.fail.dl:10:19-10:28: ?-expressions are only allowed in the body of a function or closure
+error: ./test/datalog_tests/rules.fail.dl:10.19-10.28: ?-expressions are only allowed in the body of a function or closure
           var z = y.nth(5)?.
                   ^^^^^^^^^
 
-error: ./test/datalog_tests/rules.fail.dl:6:18-6:20: Expression is not an l-value
+error: ./test/datalog_tests/rules.fail.dl:6.18-6.20: Expression is not an l-value
 IntClosures(|x| {x = 10; x} ).
                  ^^
 
-./test/datalog_tests/rules.fail.dl:10:13-10:29: The 'group_by' operator must be invoked with two arguments, e.g., 'expr1.group_by(expr2)' or 'group_by(expr1, expr2)', but it is invoked with 3
+./test/datalog_tests/rules.fail.dl:10.13-10.29: The 'group_by' operator must be invoked with two arguments, e.g., 'expr1.group_by(expr2)' or 'group_by(expr1, expr2)', but it is invoked with 3
 
-./test/datalog_tests/rules.fail.dl:10:29-10:43: 'group_by' operator can occur at most once in an expression. Previous occurrence: ("./test/datalog_tests/rules.fail.dl" (line 10, column 16),"./test/datalog_tests/rules.fail.dl" (line 10, column 17))
+./test/datalog_tests/rules.fail.dl:10.29-10.43: 'group_by' operator can occur at most once in an expression. Previous occurrence: ("./test/datalog_tests/rules.fail.dl" (line 10, column 16),"./test/datalog_tests/rules.fail.dl" (line 10, column 17))
 
-./test/datalog_tests/rules.fail.dl:6:6-6:15: Unknown function 'group_by'
+./test/datalog_tests/rules.fail.dl:6.6-6.15: Unknown function 'group_by'
     x.group_by(y)
      ^^^^^^^^^
 
-error: ./test/datalog_tests/rules.fail.dl:10:26-10:31: Group-by expression must be a variable or a tuple of variables, e.g., 'group_by(x)' or 'group_by((x,y))'
+error: ./test/datalog_tests/rules.fail.dl:10.26-10.31: Group-by expression must be a variable or a tuple of variables, e.g., 'group_by(x)' or 'group_by((x,y))'
     var sz = ().group_by(x + y).size().
                          ^^^^^
 
-error: ./test/datalog_tests/rules.fail.dl:10:29-10:34: Group-by expression must be a variable or a tuple of variables, e.g., 'group_by(x)' or 'group_by((x,y))'
+error: ./test/datalog_tests/rules.fail.dl:10.29-10.34: Group-by expression must be a variable or a tuple of variables, e.g., 'group_by(x)' or 'group_by((x,y))'
     var sz = ().group_by((x,x + y)).size().
                             ^^^^^
 
-error: ./test/datalog_tests/rules.fail.dl:10:21-10:22: Type mismatch:
+error: ./test/datalog_tests/rules.fail.dl:10.21-10.22: Type mismatch:
 expected type: bit<64>
 actual type: ddlog_std::Option<ddlog_std::usize<>>
 in
@@ -84,38 +84,38 @@ variable 'x'
     var x = FlatMap(v).
                     ^
 
-error: ./test/datalog_tests/rules.fail.dl:10:5-10:11: Variable y already defined in this scope
+error: ./test/datalog_tests/rules.fail.dl:10.5-10.11: Variable y already defined in this scope
     var y = x.
     ^^^^^^
 
-error: ./test/datalog_tests/rules.fail.dl:10:21-10:22: Variable y already defined in this scope
+error: ./test/datalog_tests/rules.fail.dl:10.21-10.22: Variable y already defined in this scope
     var y = FlatMap(y).
                     ^
 
-error: ./test/datalog_tests/rules.fail.dl:10:23-10:31: Attempt to join stream relation 'S2' and the stream produced by the prefix of the rule before this literal. Stream joins are currently not supported.
+error: ./test/datalog_tests/rules.fail.dl:10.23-10.31: Attempt to join stream relation 'S2' and the stream produced by the prefix of the rule before this literal. Stream joins are currently not supported.
 S3(x, z) :- S1(x, y), S2(y, z).
                       ^^^^^^^^
 
-error: ./test/datalog_tests/rules.fail.dl:10:1-10:10: The body of the rule yields a stream relation, but relation 'S3' in the head of the rule is not declared as a stream.
+error: ./test/datalog_tests/rules.fail.dl:10.1-10.10: The body of the rule yields a stream relation, but relation 'S3' in the head of the rule is not declared as a stream.
 S3(x, z) :- S1(x, y), S2(y, z).
 ^^^^^^^^^
 
-error: ./test/datalog_tests/rules.fail.dl:10:1-10:10: Relation 'S3' in the head of the rule is declared as a stream, but the body of the rule computes a regular non-stream relation.
+error: ./test/datalog_tests/rules.fail.dl:10.1-10.10: Relation 'S3' in the head of the rule is declared as a stream, but the body of the rule computes a regular non-stream relation.
 S3(x, z) :- S1(x, y), S2(y, z).
 ^^^^^^^^^
 
-error: ./test/datalog_tests/rules.fail.dl:8:31-8:32: Illegal 'group_by' over a stream: only non-stream relations can be aggregated.
+error: ./test/datalog_tests/rules.fail.dl:8.31-8.32: Illegal 'group_by' over a stream: only non-stream relations can be aggregated.
 S2(y, z) :- S1(x, y), var z = x.group_by(y).
                               ^
 
-error: ./test/datalog_tests/rules.fail.dl:9:27-9:35: Unsupported antijoin. The prefix of the rule before this literal produces a stream. Antijoins with streams are currently not supported.
+error: ./test/datalog_tests/rules.fail.dl:9.27-9.35: Unsupported antijoin. The prefix of the rule before this literal produces a stream. Antijoins with streams are currently not supported.
 S3(x, y) :- S1(x, y), not S2(y, _).
                           ^^^^^^^^
 
-error: ./test/datalog_tests/rules.fail.dl:9:27-9:35: Attempt to negate a stream relation 'S2'.  This is currently not supported.
+error: ./test/datalog_tests/rules.fail.dl:9.27-9.35: Attempt to negate a stream relation 'S2'.  This is currently not supported.
 S3(x, y) :- S1(x, y), not S2(y, _).
                           ^^^^^^^^
 
-error: ./test/datalog_tests/rules.fail.dl:10:10-10:15: Stream 'S2' occurs inside a recursive fragment consisting of: [S2,S3]
+error: ./test/datalog_tests/rules.fail.dl:10.10-10.15: Stream 'S2' occurs inside a recursive fragment consisting of: [S2,S3]
 S3(x) :- S2(x).
          ^^^^^

@@ -49,13 +49,13 @@ instance WithPos Pos where
 
 spos :: (WithPos a) => a -> String
 spos x = let (s,e) = pos x
-         in sourceName s ++ ":" ++ (show $ sourceLine s) ++ ":" ++ (show $ sourceColumn s) ++ "-"
-                                ++ (show $ sourceLine e) ++ ":" ++ (show $ sourceColumn e)
+         in sourceName s ++ ":" ++ (show $ sourceLine s) ++ "." ++ (show $ sourceColumn s) ++ "-"
+                                ++ (show $ sourceLine e) ++ "." ++ (show $ sourceColumn e)
 
 -- Returns a string describing a program position and a fragment of the
 -- source program around the position (if the position is valid)
 -- Here is an example result:
--- error: ./test/datalog_tests/function.fail.dl:4:5-4:6:Expression is not a struct
+-- error: ./test/datalog_tests/function.fail.dl:4.5-4.6:Expression is not a struct
 --    x.bar
 --    ^
 sposFragment :: (WithPos a) => a -> M.Map String String -> String -> String
