@@ -144,7 +144,7 @@ parseDatalogProgram :: [FilePath] -> Bool -> String -> FilePath -> ExceptT Strin
 parseDatalogProgram roots import_std fdata fname = do
     roots' <- lift $ nub <$> mapM canonicalizePath roots
     -- TODO: parseDatalogProgram should return ExceptT.
-    prog <- lift $ parseDatalogString fdata fname
+    prog <- parseDatalogString fdata fname
     let prog' = if import_std
                    then prog { progImports = stdImports ++ progImports prog }
                    else prog
@@ -226,9 +226,12 @@ parseImport roots mod imp = do
 
     lift $ modify (importModule imp:)
     fname <- findModule roots mod $ importModule imp
-    prog <- lift $ lift $
+    parsed <- lift $ lift $
                 do fdata <- readFile fname
-                   parseDatalogString fdata fname
+                   runExceptT $ parseDatalogString fdata fname
+    prog <- case parsed of
+                 Left e -> throwE e
+                 Right res -> return res
     mapM_ (\imp' -> when (elem (importModule imp') stdLibs && notElem (importModule imp) stdLibs)
                     $ throwE $ "module '" ++ show (importModule imp') ++ "' is part of the DDlog standard library and is imported automatically by all modules")
           $ progImports prog

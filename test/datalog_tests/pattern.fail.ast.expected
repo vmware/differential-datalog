@@ -42,6 +42,6 @@ error: ./test/datalog_tests/pattern.fail.dl:6.12-6.13: Non-exhaustive match patt
     match (s) {
            ^
 
-Failed to parse input file: "./test/datalog_tests/pattern.fail.dl" (line 7, column 14):
+error: failed to parse input file: "./test/datalog_tests/pattern.fail.dl" (line 7, column 14):
 unexpected 'o'
 expecting operator
