@@ -20,7 +20,10 @@ RUN apt-get update &&   \
     time                \
     zookeeper           \
     libgoogle-perftools-dev \
-    maven
+    maven               \
+    openssl             \
+    gnuplot-qt          \
+    pkg-config
 
 ###############################################################################
 ## If you modify this file don't forget to also update install-dependencies.sh
@@ -39,6 +42,7 @@ ENV CLASSPATH=$CLASSPATH:/flatbuffers/java
 RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain 1.47.0 -y
 RUN rustup component add rustfmt
 RUN rustup component add clippy
+RUN cargo install cargo-make
 
 # Install Haskell dependencies to speed up builds
 RUN git clone https://github.com/vmware/differential-datalog.git
