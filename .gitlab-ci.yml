@@ -245,3 +245,11 @@ test-golang:
 test-stream:
     stage: test
     script: ./test.sh stream
+
+# Twitter microbenchmark.
+bench-twitter:
+    extends: .private_runner
+    tags:
+        - ddlog-ci-1
+    stage: test
+    script: ./test.sh twitter_micro

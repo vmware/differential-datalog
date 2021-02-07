@@ -46,7 +46,8 @@ test_groups=("crates:Test DDlog runtime crates."
              "souffle:Tests imported from Souffle Datalog."
              "d3log:Distributed DDlog (D3log) tests."
              "misc:Miscellaneous other tests."
-             "stack:Tests using Haskell stack infrastructure.")
+             "stack:Tests using Haskell stack infrastructure."
+             "bench:DDlog benchmarks.")
 
 # List of tests in each group.  Test name must match the name of a function below.
 
@@ -112,6 +113,8 @@ stack=("modules:Test modules and imports"
        "ovn_mockup:OVN-inspired example"
        "redist:'redist' example"
        "negative:Negative tests that validate compiler error handling")
+
+bench=("twitter_micro:twitter microbenchmark")
 
 # 'crates' test group.
 
@@ -367,6 +370,12 @@ span_uuid() {
 
 path() {
     (cd "${THIS_DIR}/test/datalog_tests" && ./run-test.sh path release)
+}
+
+# 'bench' test group.
+
+twitter_micro() {
+    (export DDLOG_HOME="${THIS_DIR}" && cd "${THIS_DIR}/rust/ddlog_benches" && cargo make bench-twitter-micro)
 }
 
 #==========================================
