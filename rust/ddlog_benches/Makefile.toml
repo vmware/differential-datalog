@@ -32,7 +32,14 @@ args = [
     "--omit-profile",
     "--omit-workspace",
 ]
-dependencies = ["clean-generated"]
+dependencies = ["clean-generated", "install-ddlog"]
+
+# Run `stack install`.
+[tasks.install-ddlog]
+# In CI, DDlog is installed by a separate pipeline stage.
+condition = { env_not_set = ["IS_CI_RUN"] }
+command = "stack"
+args = ["install"]
 
 # Remove the old generated code (prevents OS errors and errors that
 # occur when switching between different versions of ddlog that each
