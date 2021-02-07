@@ -14,8 +14,8 @@ fn record_counts() -> impl Iterator<Item = usize> {
     (50_000..=200_000).step_by(50_000)
 }
 
-fn twitter(c: &mut Criterion) {
-    let mut group = c.benchmark_group("twitter");
+fn twitter_micro(c: &mut Criterion) {
+    let mut group = c.benchmark_group("twitter-micro");
     group.sampling_mode(SamplingMode::Flat);
     group.sample_size(10);
 
@@ -73,5 +73,5 @@ fn twitter_macro(c: &mut Criterion) {
     }
 }
 
-criterion_group!(benches, twitter, twitter_macro);
+criterion_group!(benches, twitter_micro, twitter_macro);
 criterion_main!(benches);

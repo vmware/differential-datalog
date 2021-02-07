@@ -5,13 +5,19 @@ dependencies = ["download-data", "bench-twitter", "bench-livejournal"]
 # Runs the benchmark suite on the citations dataset
 [tasks.bench-livejournal]
 command = "cargo"
-args = ["bench", "LiveJournal"]
+args = ["bench", "LiveJournal", "--bench", "live_journal"]
 dependencies = ["build-ddlog", "download-livejournal"]
 
 # Runs the benchmark suite on the twitter dataset
 [tasks.bench-twitter]
 command = "cargo"
-args = ["bench", "twitter"]
+args = ["bench", "--bench", "twitter"]
+dependencies = ["build-ddlog", "download-twitter"]
+
+# Run twitter microbenchmarks only
+[tasks.bench-twitter-micro]
+command = "cargo"
+args = ["bench", "twitter-micro", "--bench", "twitter"]
 dependencies = ["build-ddlog", "download-twitter"]
 
 # Runs `ddlog` to generate ddlog code
