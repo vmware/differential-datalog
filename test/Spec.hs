@@ -194,7 +194,10 @@ parserTest fname = do
         writeFile astfile (show prog ++ "\n")
         -- parse reference output
         fdata <- readFile astfile
-        prog' <- parseDatalogString fdata astfile
+        parsed <- runExceptT $ parseDatalogString fdata astfile
+        prog' <- case parsed of
+                      Left e    -> errorWithoutStackTrace e
+                      Right res -> return res
         removeFile astfile
         -- expect the same result
         assertEqual "Pretty-printed Datalog differs from original input" (show prog) (show prog')

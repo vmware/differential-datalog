@@ -26,7 +26,7 @@ error: ./test/datalog_tests/function.fail.dl:8.16-8.27: Type constructor in the 
     T{.field = Some{var s}} = x
                ^^^^^^^^^^^
 
-Failed to parse input file: "./test/datalog_tests/function.fail.dl" (line 5, column 1):
+error: failed to parse input file: "./test/datalog_tests/function.fail.dl" (line 5, column 1):
 unexpected "f"
 expecting "=" or "{"
 
@@ -50,7 +50,7 @@ error: ./test/datalog_tests/function.fail.dl:3.35-5.1: Cannot type-cast expressi
 function cast(x: bit<16>): bool = x as bool
                                   ^
 
-Failed to parse input file: "./test/datalog_tests/function.fail.dl" (line 3, column 30):
+error: failed to parse input file: "./test/datalog_tests/function.fail.dl" (line 3, column 30):
 unexpected "3"
 expecting "bit", "signed", "bigint", "double", "float", "string", "bool", "#", constructor name, type name, "'", "function", "|", "(" or ">"
 
@@ -78,7 +78,7 @@ expression 'false'
     return false
            ^
 
-Failed to parse input file: "./test/datalog_tests/function.fail.dl" (line 9, column 1):
+error: failed to parse input file: "./test/datalog_tests/function.fail.dl" (line 9, column 1):
 unexpected end of input
 expecting "," or "."
 

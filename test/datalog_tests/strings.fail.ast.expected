@@ -1,4 +1,4 @@
-Failed to parse input file: "./test/datalog_tests/strings.fail.dl" (line 5, column 28):
+error: failed to parse input file: "./test/datalog_tests/strings.fail.dl" (line 5, column 28):
 unexpected ";"
 expecting literal string
 "./test/datalog_tests/strings.fail.dl" (line 5, column 27):

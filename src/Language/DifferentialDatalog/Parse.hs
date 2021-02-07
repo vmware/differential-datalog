@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018-2020 VMware, Inc.
+Copyright (c) 2018-2021 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -32,6 +32,7 @@ module Language.DifferentialDatalog.Parse (
 
 import Control.Applicative hiding (many,optional,Const)
 import Control.Monad.Except
+import Control.Monad.Trans.Except
 import qualified Control.Monad.State as ST
 import Text.Parsec hiding ((<|>))
 import Text.Parsec.Expr
@@ -57,10 +58,10 @@ import Language.DifferentialDatalog.Error
 import {-# SOURCE #-} Language.DifferentialDatalog.Expr
 
 -- parse a string containing a datalog program and produce the intermediate representation
-parseDatalogString :: String -> String -> IO DatalogProgram
+parseDatalogString :: String -> String -> ExceptT String IO DatalogProgram
 parseDatalogString program file = do
   case parse datalogGrammar file program of
-       Left  e    -> errorWithoutStackTrace $ "Failed to parse input file: " ++ show e
+       Left  e    -> throwE $ "failed to parse input file: " ++ show e
        Right prog -> return prog { progSources = M.singleton file program }
 
 -- The following Rust keywords are declared as Datalog keywords to
