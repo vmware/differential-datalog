@@ -6,13 +6,13 @@ dependencies = ["download-data", "bench-twitter", "bench-livejournal"]
 [tasks.bench-livejournal]
 command = "cargo"
 args = ["bench", "LiveJournal"]
-dependencies = ["build-ddlog"]
+dependencies = ["build-ddlog", "download-livejournal"]
 
 # Runs the benchmark suite on the twitter dataset
 [tasks.bench-twitter]
 command = "cargo"
 args = ["bench", "twitter"]
-dependencies = ["build-ddlog"]
+dependencies = ["build-ddlog", "download-twitter"]
 
 # Runs `ddlog` to generate ddlog code
 [tasks.build-ddlog]
@@ -42,6 +42,14 @@ touch generated/.gitkeep
 """
 private = true
 
+[tasks.download-twitter]
+env = { DATA_URL = "https://snap.stanford.edu/data/twitter-2010-ids.csv.gz", DATA_FILE = "twitter-2010-ids.csv.gz" }
+run_task = "download-data"
+
+[tasks.download-livejournal]
+env = { DATA_URL = "https://snap.stanford.edu/data/soc-LiveJournal1.txt.gz", DATA_FILE = "soc-LiveJournal1.txt.gz" }
+run_task = "download-data"
+
 [tasks.download-data]
 script_runner = "@duckscript"
 script = """
@@ -64,6 +72,5 @@ fn <scope> download_file
     end
 end
 
-download_file twitter-2010-ids.csv.gz https://snap.stanford.edu/data/twitter-2010-ids.csv.gz
-download_file soc-LiveJournal1.txt.gz https://snap.stanford.edu/data/soc-LiveJournal1.txt.gz
+download_file ${DATA_FILE} ${DATA_URL}
 """
