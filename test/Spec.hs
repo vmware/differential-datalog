@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018-2020 VMware, Inc.
+Copyright (c) 2018-2021 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -37,6 +37,7 @@ import Data.Maybe
 import Data.List.Split
 import Data.Tuple.Select
 import Control.Exception
+import Control.Monad.Trans.Except
 import Control.DeepSeq
 import Control.Monad
 import Control.Concurrent
@@ -135,7 +136,10 @@ unitTests dir = do
 
 parseValidate :: FilePath -> Bool -> String -> IO ([DatalogModule], DatalogProgram, M.Map ModuleName (Doc, Doc, Doc))
 parseValidate file java program = do
-    (modules, d, rs_code) <- parseDatalogProgram [takeDirectory file, "lib"] True program file
+    parsed <- runExceptT $ parseDatalogProgram [takeDirectory file, "lib"] True program file
+    (modules, d, rs_code) <- case parsed of
+                                  Left e    -> errorWithoutStackTrace $ "error: " ++ e
+                                  Right res -> return res
     d' <- case validate d of
                Left e   -> errorWithoutStackTrace $ "error: " ++ e
                Right d' -> return d'

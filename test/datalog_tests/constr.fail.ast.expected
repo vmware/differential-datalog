@@ -28,4 +28,4 @@ error: ./test/datalog_tests/constr.fail.dl:4.1-7.1: The following type variables
 typedef Parameterized<'A,'B,'C,'D> = Option1{x: 'A}
 ^
 
-./test/datalog_tests/constr.fail.dl:6.54-7.1: Unknown module vm.  Did you forget to import it?
+error: ./test/datalog_tests/constr.fail.dl:6.54-7.1: Unknown module vm.  Did you forget to import it?

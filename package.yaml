@@ -33,6 +33,7 @@ dependencies:
 #- MissingH
 - raw-strings-qq
 - time
+- transformers
 - tuple
 - file-embed
 - filepath

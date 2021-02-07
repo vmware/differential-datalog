@@ -64,7 +64,7 @@ IntClosures(|x| {x = 10; x} ).
 
 ./test/datalog_tests/rules.fail.dl:10.29-10.43: 'group_by' operator can occur at most once in an expression. Previous occurrence: ("./test/datalog_tests/rules.fail.dl" (line 10, column 16),"./test/datalog_tests/rules.fail.dl" (line 10, column 17))
 
-./test/datalog_tests/rules.fail.dl:6.6-6.15: Unknown function 'group_by'
+error: ./test/datalog_tests/rules.fail.dl:6.6-6.15: Unknown function 'group_by'
     x.group_by(y)
      ^^^^^^^^^
 
