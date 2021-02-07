@@ -29,6 +29,7 @@ import System.FilePath.Posix
 import System.Console.GetOpt
 import System.Console.ANSI
 import Control.Exception
+import Control.Monad.Trans.Except
 import Control.Monad
 import Data.List
 import Data.Time.Clock
@@ -182,18 +183,21 @@ timeAction description action = do
 parseValidate :: Config -> IO ([DatalogModule], DatalogProgram, M.Map ModuleName (Doc, Doc, Doc))
 parseValidate Config{..} = do
     fdata <- readFile confDatalogFile
-    (modules, d, rs_code) <- parseDatalogProgram (takeDirectory confDatalogFile:confLibDirs) True fdata confDatalogFile
-    d'' <- case confOutputInternal of
-         False -> return d
-         True ->  return $ progOutputInternalRelations d
-    d''' <- case confOutputInput of
-         "" -> return d''
-         x  ->  return $ progMirrorInputRelations d'' x
+    parsed <- runExceptT $ parseDatalogProgram (takeDirectory confDatalogFile:confLibDirs) True fdata confDatalogFile
+    (modules, d, rs_code) <- case parsed of
+                                  Left e    -> compilerError e
+                                  Right res -> return res 
+    let d'' = case confOutputInternal of
+                  False -> d
+                  True  -> progOutputInternalRelations d
+    let d''' = case confOutputInput of
+                    "" -> d''
+                    x  -> progMirrorInputRelations d'' x
     when confDumpFlat $
         writeFile (replaceExtension confDatalogFile ".flat.ast") (show d''')
     d'''' <- case validate d''' of
-               Left e   -> compilerError e
-               Right d'''' -> return d''''
+                  Left e      -> compilerError e
+                  Right d'''' -> return d''''
     when confDumpValid $
         writeFile (replaceExtension confDatalogFile ".valid.ast") (show d'''')
     d' <- case confDebugHooks of

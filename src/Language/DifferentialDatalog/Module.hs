@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018-2020 VMware, Inc.
+Copyright (c) 2018-2021 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -46,6 +46,7 @@ module Language.DifferentialDatalog.Module(
 import Prelude hiding((<>), mod, readFile, writeFile)
 import Control.Monad.State.Lazy
 import Control.Monad.Except
+import Control.Monad.Trans.Except
 import qualified Data.Map as M
 import qualified System.FilePath as F
 import System.Directory
@@ -139,20 +140,27 @@ stdImports = map stdImport stdLibs
 --
 -- if 'import_std' is true, imports the standard libraries
 -- to each module.
-parseDatalogProgram :: [FilePath] -> Bool -> String -> FilePath -> IO ([DatalogModule], DatalogProgram, M.Map ModuleName (Doc, Doc, Doc))
+parseDatalogProgram :: [FilePath] -> Bool -> String -> FilePath -> ExceptT String IO ([DatalogModule], DatalogProgram, M.Map ModuleName (Doc, Doc, Doc))
 parseDatalogProgram roots import_std fdata fname = do
-    roots' <- nub <$> mapM canonicalizePath roots
-    prog <- parseDatalogString fdata fname
+    roots' <- lift $ nub <$> mapM canonicalizePath roots
+    -- TODO: parseDatalogProgram should return ExceptT.
+    prog <- lift $ parseDatalogString fdata fname
     let prog' = if import_std
                    then prog { progImports = stdImports ++ progImports prog }
                    else prog
     let main_mod = DatalogModule (ModuleName []) fname prog'
     let ?specname = takeBaseName fname
-    imports <- evalStateT (parseImports roots' main_mod) []
+    imports_res <- lift $ evalStateT (runExceptT $ (parseImports roots' main_mod)) []
+    imports <- case imports_res of
+                    Left e -> throwE e
+                    Right imps -> return imps
     let all_modules = main_mod : imports
-    prog'' <- flattenNamespace all_modules
+    prog'' <- case flattenNamespace all_modules of
+                   Left e -> throwE e
+                   Right p -> return p
     -- Collect '.rs' and '.toml' files associated with each module.
-    rs <- M.fromList <$>
+    rs <- lift $
+          M.fromList <$>
           mapM (\mod -> do
                    let basename = dropExtension $ moduleFile mod
                    let rsfile = addExtension basename "rs"
@@ -200,28 +208,29 @@ mergeModules mods = do
          $ M.elems $ progTypedefs prog
     return prog
 
-parseImports :: (?specname::String) => [FilePath] -> DatalogModule -> StateT [ModuleName] IO [DatalogModule]
+parseImports :: (?specname::String) => [FilePath] -> DatalogModule -> ExceptT String (StateT [ModuleName] IO) [DatalogModule]
 parseImports roots mod = concat <$>
     mapM (\imp@Import{..} -> do
            when (importModule == moduleName mod)
-                $ errorWithoutStackTrace $ "Error: module '" ++ show (moduleName mod) ++ "' imports self"
-           exists <- gets $ elem importModule
+                $ throwE $ "module '" ++ show (moduleName mod) ++ "' imports self"
+           exists <- lift $ gets $ elem importModule
            if exists
               then return []
               else parseImport roots mod imp)
          (progImports $ moduleDefs mod)
 
-parseImport :: (?specname::String) => [FilePath] -> DatalogModule -> Import -> StateT [ModuleName] IO [DatalogModule]
+parseImport :: (?specname::String) => [FilePath] -> DatalogModule -> Import -> ExceptT String (StateT [ModuleName] IO) [DatalogModule]
 parseImport roots mod imp = do
     when (importModule imp == ModuleName [?specname])
-         $ errorWithoutStackTrace $ "Error: module '" ++ show (moduleName mod) ++ "' imports the main module of the program ('" ++ ?specname ++ "')"
+         $ throwE $ "module '" ++ show (moduleName mod) ++ "' imports the main module of the program ('" ++ ?specname ++ "')"
 
-    modify (importModule imp:)
-    fname <- lift $ findModule roots mod $ importModule imp
-    prog <- lift $ do fdata <- readFile fname
-                      parseDatalogString fdata fname
+    lift $ modify (importModule imp:)
+    fname <- findModule roots mod $ importModule imp
+    prog <- lift $ lift $
+                do fdata <- readFile fname
+                   parseDatalogString fdata fname
     mapM_ (\imp' -> when (elem (importModule imp') stdLibs && notElem (importModule imp) stdLibs)
-                    $ errorWithoutStackTrace $ "Module '" ++ show (importModule imp') ++ "' is part of the DDlog standard library and is imported automatically by all modules")
+                    $ throwE $ "module '" ++ show (importModule imp') ++ "' is part of the DDlog standard library and is imported automatically by all modules")
           $ progImports prog
     -- Standard libraries manage their dependencies explicitly.  Do not
     -- automatically import standard libraries into other standard libraries.
@@ -232,31 +241,28 @@ parseImport roots mod imp = do
     imports <- parseImports roots mod'
     return $ mod' : imports
 
-findModule :: [FilePath] -> DatalogModule -> ModuleName -> IO FilePath
+findModule :: [FilePath] -> DatalogModule -> ModuleName -> ExceptT String (StateT [ModuleName] IO) FilePath
 findModule roots mod imp = do
     let fpath = (F.joinPath $ modulePath imp) F.<.> ".dl"
     let candidate_paths = map (F.</> fpath) roots
-    mods <- filterM doesFileExist candidate_paths
+    mods <- lift $ lift $ filterM doesFileExist candidate_paths
     case mods of
          [m]   -> return m
-         []    -> errorWithoutStackTrace $
-                     "Module " ++ show imp ++ " imported by " ++ moduleFile mod ++
+         []    -> throwE $
+                     "module '" ++ show imp ++ "' imported by " ++ moduleFile mod ++
                      " not found. Paths searched:\n" ++
                      (intercalate "\n" candidate_paths)
-         _     -> errorWithoutStackTrace $
-                    "Found multiple candidates for module " ++ show imp ++ " imported by " ++ moduleFile mod ++ ":\n" ++
+         _     -> throwE $
+                    "found multiple candidates for module '" ++ show imp ++ "' imported by " ++ moduleFile mod ++ ":\n" ++
                     (intercalate "\n" mods)
 
 type MMap = M.Map ModuleName DatalogModule
 
-flattenNamespace :: [DatalogModule] -> IO DatalogProgram
+flattenNamespace :: (MonadError String me) => [DatalogModule] -> me DatalogProgram
 flattenNamespace mods = do
     let mmap = M.fromList $ map (\m -> (moduleName m, m)) mods
-    let prog = do mods' <- mapM (flattenNamespace1 mmap) mods
-                  mergeModules (zip (map moduleName mods) mods')
-    case prog of
-         Left e  -> errorWithoutStackTrace e
-         Right p -> return p
+    mods' <- mapM (flattenNamespace1 mmap) mods
+    mergeModules (zip (map moduleName mods) mods')
 
 flattenNamespace1 :: (MonadError String me) => MMap -> DatalogModule -> me DatalogProgram
 flattenNamespace1 mmap mod@DatalogModule{..} = do
