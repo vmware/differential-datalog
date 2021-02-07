@@ -14,8 +14,8 @@ fn record_counts() -> impl Iterator<Item = usize> {
     (50_000..=200_000).step_by(50_000)
 }
 
-fn live_journal(c: &mut Criterion) {
-    let mut group = c.benchmark_group("LiveJournal");
+fn live_journal_micro(c: &mut Criterion) {
+    let mut group = c.benchmark_group("LiveJournal-micro");
     group.sampling_mode(SamplingMode::Flat);
     group.sample_size(10);
 
@@ -73,5 +73,5 @@ fn live_journal_macro(c: &mut Criterion) {
     }
 }
 
-criterion_group!(benches, live_journal, live_journal_macro);
+criterion_group!(benches, live_journal_micro, live_journal_macro);
 criterion_main!(benches);
