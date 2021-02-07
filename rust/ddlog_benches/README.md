@@ -22,8 +22,8 @@ For info on writing benchmarks see the [criterion user guide] and the [criterion
 
 ### Other supported commands
 
-- `cargo make benchmark-twitter`: Only run the Twitter benchmarks
-- `cargo make benchmark-livejournal`: Only run the LiveJournal benchmarks
+- `cargo make bench-twitter`: Only run the Twitter benchmarks
+- `cargo make bench-livejournal`: Only run the LiveJournal benchmarks
 - `cargo make build-ddlog`: Only build the generated ddlog code
 - `cargo make download-data`: Download the datasets required for benchmarking
 
