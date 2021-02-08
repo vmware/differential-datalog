@@ -4,6 +4,7 @@
  * `Set64`, which is a set of values that fit in 64 bits and can be cloned by
  * copying (e.g., 8, 16, 32, or 64-bit integers). */
 
+#[dyn_alloc]
 extern type Set64<'X>
 
 extern function size(s: Set64<'X>): bit<64>

@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018-2020 VMware, Inc.
+Copyright (c) 2018-2021 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -48,7 +48,7 @@ module Language.DifferentialDatalog.Type(
     typDeref',
     typDeref'',
     isBool, isBit, isSigned, isBigInt, isInteger, isFP, isString, isStruct, isTuple, isGroup, isDouble, isFloat,
-    isMap, isTinySet, isSharedRef,
+    isMap, isTinySet, isSharedRef, isDynAlloced,
     isOption, isResult,
     checkTypesMatch,
     typesMatch,
@@ -104,10 +104,6 @@ sET_TYPES = [mOD_STD ++ "::Set", mOD_STD ++ "::Vec", tINYSET_TYPE]
 
 tINYSET_TYPE :: String
 tINYSET_TYPE = "tinyset::Set64"
-
--- Dynamically allocated types.
-dYNAMIC_TYPES :: [String]
-dYNAMIC_TYPES = mAP_TYPE : sET_TYPES
 
 gROUP_TYPE :: String
 gROUP_TYPE = mOD_STD ++ "::Group"
@@ -475,6 +471,12 @@ isSharedRef d a =
          TOpaque _ t _ -> tdefGetSharedRefAttr d $ getType d t
          _             -> False
 
+isDynAlloced :: (WithType a) => DatalogProgram -> a -> Bool
+isDynAlloced d a =
+    case typ' d a of
+         TOpaque _ t _ -> tdefGetDynAllocAttr d $ getType d t
+         _             -> False
+
 isOption :: (WithType a) => DatalogProgram -> a -> Bool
 isOption d a = case typ'' d a of
                     TUser _ t _ | t == oPTION_TYPE -> True
@@ -546,9 +548,9 @@ typeStaticMemberTypes' :: DatalogProgram -> Type -> [String]
 typeStaticMemberTypes' d TStruct{..}   = concatMap (typeStaticMemberTypes d . typ)
                                                    $ concatMap consArgs typeCons
 typeStaticMemberTypes' d TTuple{..}    = concatMap (typeStaticMemberTypes d . typ) typeTupArgs
-typeStaticMemberTypes' d t@TUser{..}   | elem typeName dYNAMIC_TYPES || isSharedRef d t = []
+typeStaticMemberTypes' d t@TUser{..}   | isDynAlloced d t || isSharedRef d t = []
                                        | otherwise = typeName : concatMap (typeStaticMemberTypes d) typeArgs
-typeStaticMemberTypes' d t@TOpaque{..} | elem typeName dYNAMIC_TYPES || isSharedRef d t = []
+typeStaticMemberTypes' d t@TOpaque{..} | isDynAlloced d t || isSharedRef d t = []
                                        | otherwise = concatMap (typeStaticMemberTypes d) typeArgs
 typeStaticMemberTypes' _ _             = []
 
