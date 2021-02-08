@@ -3,9 +3,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [unreleased]
+## [0.36.0] - Feb 7, 2021
+
+### API changes
 
 - Support insert_or_update and delete_by_key in flatbuf API, including in Java.
+
+### Other improvements
+- Introduced a benchmarking framework for DDlog (see rust/ddlog_benches/README.md).
+- Print compiler error messages so that emacs can parse the error location.
 
 ## [0.35.0] - Jan 19, 2021
 
