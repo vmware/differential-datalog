@@ -3011,6 +3011,18 @@ to optimize data structures layout:
 extern type IObj<'A>
 ```
 
+### `#[dyn_alloc]`
+
+This attribute is applicable to `extern type` declarations.  It tells the
+compiler that the type allocates its storage dynamically on the heap.  Rust
+knows the size of the stack-allocated portion of such types statically and
+allows using them as part of recursive typedefs.
+
+```
+#[dyn_alloc]
+extern type Set<'A>
+```
+
 ### `#[custom_serde]`
 
 Tells DDlog not to generate `Serialize` and `Deserialize` implementations for a type.

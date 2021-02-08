@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2020 VMware, Inc.
+Copyright (c) 2021 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -53,6 +53,7 @@ typedefValidateAttrs d tdef@TypeDef{..} = do
     _ <- tdefCheckCustomSerdeAttr d tdef
     _ <- tdefCheckCustomFromRecord d tdef
     _ <- tdefCheckSharedRefAttr d tdef
+    _ <- tdefCheckDynAllocAttr d tdef
     _ <- tdefCheckAliasAttr d tdef
     _ <- checkRustAttrs d tdefAttrs
     maybe (return ()) (typeValidateAttrs d) tdefType
@@ -84,6 +85,9 @@ typedefValidateAttr d TypeDef{..} attr = do
                 $ "'sharef_ref' attribute is only applicable to extern types."
             check d (length tdefArgs == 1) (pos attr)
                 $ "Types annotated with 'shared_ref' must have exactly one type argument, e.g., \"Ref<'T>\"."
+         "dyn_alloc" -> do
+            check d (isNothing tdefType) (pos attr)
+                $ "'dyn_alloc' attribute is only applicable to extern types."
          "alias" -> do
              case tdefType of
                   Just TUser{} -> err d (pos attr) "The 'alias' attribute does not apply to struct types."
@@ -200,6 +204,22 @@ tdefCheckSharedRefAttr d TypeDef{..} =
 tdefGetSharedRefAttr :: DatalogProgram -> TypeDef -> Bool
 tdefGetSharedRefAttr d tdef =
     case tdefCheckSharedRefAttr d tdef of
+         Left e  -> error e
+         Right b -> b
+
+{- 'dyn_alloc' attribute: Tells DDlog that the type is a shared reference in
+ - the style of `Ref` and `Intern`. -}
+tdefCheckDynAllocAttr :: (MonadError String me) => DatalogProgram -> TypeDef -> me Bool
+tdefCheckDynAllocAttr d TypeDef{..} =
+    case find ((== "dyn_alloc") . name) tdefAttrs of
+         Nothing   -> return False
+         Just attr -> do check d (attrVal attr == eTrue) (pos attr)
+                               "The value of 'dyn_alloc' attribute must be 'true' or empty"
+                         return True
+
+tdefGetDynAllocAttr :: DatalogProgram -> TypeDef -> Bool
+tdefGetDynAllocAttr d tdef =
+    case tdefCheckDynAllocAttr d tdef of
          Left e  -> error e
          Right b -> b
 

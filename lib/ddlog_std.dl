@@ -558,6 +558,7 @@ function max(g: Group<'K, 'V>): 'V {
 /*
  * Vec
  */
+#[dyn_alloc]
 extern type Vec<'A>
 
 extern function vec_empty(): Vec<'A>
@@ -667,6 +668,7 @@ function update_nth(v: mut Vec<'X>, idx: usize, value: 'X): bool {
  * Map
  */
 
+#[dyn_alloc]
 extern type Map<'K,'V>
 
 extern function map_empty(): Map<'K, 'V>
@@ -713,6 +715,7 @@ function keys(m: Map<'K, 'V>): Vec<'K> {
  * Set
  */
 
+#[dyn_alloc]
 extern type Set<'A>
 
 extern function set_singleton(x: 'X): Set<'X>
