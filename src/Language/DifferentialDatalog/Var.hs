@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2020 VMware, Inc.
+Copyright (c) 2020-2021 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -40,8 +40,6 @@ import Language.DifferentialDatalog.Expr
 -- Uniquely identifies a variable declaration in a DDlog program.
 data Var = -- Variable declared in an expression ('var v').
            ExprVar {varCtx::ECtx, varExpr::ENode}
-           -- For-loop variable.
-         | ForVar {varCtx::ECtx, varExpr::ENode}
            -- Variable declard in a @-binding.
          | BindingVar {varCtx::ECtx, varExpr::ENode}
            -- Function argument.
@@ -52,8 +50,6 @@ data Var = -- Variable declared in an expression ('var v').
          | KeyVar {varRel::Relation}
            -- Index variable.
          | IdxVar {varIndex::Index, varArgIndex::Int, varName::String}
-           -- Variable returned by FlatMap.
-         | FlatMapVar {varRule::Rule, varRhsIdx::Int}
            -- Variable returned by group_by.
          | GroupVar {varRule::Rule, varRhsIdx::Int}
            -- ddlog_weight
@@ -64,13 +60,11 @@ data Var = -- Variable declared in an expression ('var v').
 
 instance WithPos Var where
     pos (ExprVar _ e)         = pos e
-    pos (ForVar _ e)          = pos e
     pos (BindingVar _ e)      = pos e
     pos (ArgVar f i _)        = pos $ funcArgs f !! i
     pos (ClosureArgVar _ e i) = pos $ exprClosureArgs e !! i
     pos (KeyVar rel)          = pos $ fromJust $ relPrimaryKey rel
     pos (IdxVar idx i _)      = pos $ idxVars idx !! i
-    pos (FlatMapVar rl i)     = pos $ rhsMapExpr $ ruleRHS rl !! i
     pos (GroupVar rl i)       = (fst $ pos $ rhsProject rhs, snd $ pos $ rhsGroupBy rhs)
                                 where rhs = ruleRHS rl !! i
     pos WeightVar             = nopos
@@ -81,15 +75,12 @@ instance WithName Var where
     name (ExprVar _ EVarDecl{..})       = exprVName
     name (ExprVar _ EVar{..})           = exprVar
     name (ExprVar _ e)                  = error $ "ExprVar.name: unexpected expression " ++ show e
-    name (ForVar _ EFor{..})            = exprLoopVar
-    name (ForVar _ e)                   = error $ "ForVar.name: unexpected expression " ++ show e
     name (BindingVar _ EBinding{..})    = exprVar
     name (BindingVar _ e)               = error $ "BindingVar.name: unexpected expression " ++ show e
     name (ArgVar _ _ v)                 = v
     name (ClosureArgVar _ e i)          = name $ exprClosureArgs e !! i
     name (KeyVar rel)                   = keyVar $ fromJust $ relPrimaryKey rel
     name (IdxVar _ _ s)                 = s
-    name (FlatMapVar rule i)            = rhsVar $ ruleRHS rule !! i
     name (GroupVar rule i)              = rhsVar $ ruleRHS rule !! i 
     name WeightVar                      = "ddlog_weight"
     name TSVar{}                        = "ddlog_timestamp"
@@ -108,14 +99,12 @@ data VLocator = VLocator [Int] deriving (Eq, Ord)
 
 varLocator :: Var -> VLocator
 varLocator ExprVar{..}          = VLocator $ 0:(elocatorPath $ ctxToELocator varCtx)
-varLocator ForVar{..}           = VLocator $ 1:(elocatorPath $ ctxToELocator varCtx)
-varLocator BindingVar{..}       = VLocator $ 2:(elocatorPath $ ctxToELocator varCtx)
-varLocator ArgVar{..}           = VLocator  [3,varArgIndex]
-varLocator ClosureArgVar{..}    = VLocator $ 4:(elocatorPath $ ctxToELocator varCtx) ++ [varArgIndex]
-varLocator KeyVar{..}           = VLocator  [5]
-varLocator IdxVar{..}           = VLocator  [6, varArgIndex]
-varLocator FlatMapVar{..}       = VLocator  [7, varRhsIdx]
-varLocator GroupVar{..}         = VLocator  [8, varRhsIdx]
-varLocator WeightVar            = VLocator  [9]
-varLocator TSVar{}              = VLocator  [10]
+varLocator BindingVar{..}       = VLocator $ 1:(elocatorPath $ ctxToELocator varCtx)
+varLocator ArgVar{..}           = VLocator  [2,varArgIndex]
+varLocator ClosureArgVar{..}    = VLocator $ 3:(elocatorPath $ ctxToELocator varCtx) ++ [varArgIndex]
+varLocator KeyVar{..}           = VLocator  [4]
+varLocator IdxVar{..}           = VLocator  [5, varArgIndex]
+varLocator GroupVar{..}         = VLocator  [6, varRhsIdx]
+varLocator WeightVar            = VLocator  [7]
+varLocator TSVar{}              = VLocator  [8]
 

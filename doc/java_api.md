@@ -422,5 +422,5 @@ the same table.
 | Struct: `S<t1,..,tN>`  | `S__t1..__tnWriter`                  | `S__t1..__tnReader`      |
 | `Vec<T>`               | `List<T_w>`                          | `List<T_r>`              |
 | `Set<T>`               | `List<T_w>`                          | `List<T_r>`              |
-| `Map<K,V>`             | `Map<K_w,V_w>`                       | `Map<K_r,V_r>`           |
+| `Map<K,V>`             | `List<Tuple2__K_w__V_w>`             | `Map<Tuple2__K_r__V_r>`  |
 | `Ref<T>`               | `T_w`                                | `T_r`                    |

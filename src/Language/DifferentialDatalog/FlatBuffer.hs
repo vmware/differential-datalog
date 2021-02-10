@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2019-2020 VMware, Inc.
+Copyright (c) 2019-2021 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -92,7 +92,6 @@ import Language.DifferentialDatalog.NS
 import Language.DifferentialDatalog.Relation
 import Language.DifferentialDatalog.Index
 import Language.DifferentialDatalog.Error
-import Language.DifferentialDatalog.Module
 import {-# SOURCE #-} qualified Language.DifferentialDatalog.Compile as R -- "R" for "Rust"
 
 compileFlatBufferBindings :: (?cfg :: Config, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> M.Map ModuleName (Doc, Doc, Doc) -> FilePath -> IO ()
@@ -152,7 +151,7 @@ flatBufferValidate d = do
     let ?d = d
     mapM_ (\case
             t@TOpaque{..} ->
-                check d ((elem typeName $ [mAP_TYPE] ++ sET_TYPES) || isSharedRef d t) (pos t) $
+                check d (typeIsIterable d t || isSharedRef d t) (pos t) $
                     "Cannot generate FlatBuffer schema for extern type " ++ show t
             _ -> return ())
           progTypesToSerialize
@@ -347,10 +346,12 @@ typeIsScalar x =
 typeRequiresBuilder :: (WithType a, ?d::DatalogProgram) => a -> Bool
 typeRequiresBuilder x =
     case typeNormalizeForFlatBuf x of
-         TUser{}     -> True
-         TTuple{}    -> True
-         TOpaque{..} -> any typeRequiresBuilder typeArgs
-         _           -> False
+         TUser{}      -> True
+         TTuple{}     -> True
+         ot@TOpaque{} | typeIsIterable ?d ot 
+                      -> typeRequiresBuilder $ fst $ typeIterType ?d ot
+         TOpaque{..}  -> any typeRequiresBuilder typeArgs
+         _            -> False
 
 -- Table name to the type of 'a'.  Defined even if 'a' is of a type
 -- that is not declared as a table, in which case this is the name of the
@@ -385,22 +386,17 @@ typeTableName x =
                      | otherwise
                        -> "__BigInt"
          TTuple{..}    -> fbTupleName typeTupArgs
-         TUser{..} | typeHasUniqueConstructor x
+         TUser{..}   | typeHasUniqueConstructor x
                        -> fbStructName typeName typeArgs
-                   | otherwise
+                     | otherwise
                        -> "__Table_" <> fbStructName typeName typeArgs
-         TOpaque{typeArgs = [elemType], ..} | elem typeName sET_TYPES
-                       -> "__Table_Vec_" <> mkTypeIdentifier elemType
-         TOpaque{typeArgs = [keyType, valType], ..} | typeName == mAP_TYPE
-                       -> typeTableName $ tOpaque (mOD_STD ++ "::Vec") [tTuple [keyType, valType]]
+         t@TOpaque{} | typeIsIterable ?d t
+                       -> "__Table_Vec_" <> (mkTypeIdentifier $ fst $ typeIterType ?d t)
          t             -> error $ "typeTableName: Unexpected type " ++ show t
 
 -- True if type is serialized into a vector inside FlatBuffer.
 typeIsVector :: (WithType a, ?d::DatalogProgram) => a -> Bool
-typeIsVector x =
-    case typeNormalizeForFlatBuf x of
-         TOpaque{..} -> elem typeName sET_TYPES || typeName == mAP_TYPE
-         _ -> False
+typeIsVector x = typeIsIterable ?d $ typeNormalizeForFlatBuf x
 
 -- Types for which Rust FromFlatBuffer trait must be implemented.
 progRustTypesToSerialize :: (?d::DatalogProgram) => [Type]
@@ -487,14 +483,11 @@ typeSubtypes stack t | elem t stack = -- prevent infinite recursion when process
         TUser{}    -> do addtype t''
                          mapM_ (mapM_ (typeSubtypes (t:stack) . typ) . consArgs)
                                $ typeCons $ typ' ?d t''
-        TOpaque{..}   -> do -- In case we need to nest this.
-                            addtype t''
-                            -- Maps are encoded as arrays of (key,value)
-                            -- tuples; we must therefore generate an
-                            -- appropriate tuple type
-                            when (typeName == mAP_TYPE)
-                                 $ addtype $ tTuple [typeArgs !! 0, typeArgs !! 1]
-                            mapM_ (typeSubtypes (t:stack)) typeArgs
+        ot@TOpaque{..} -> do -- In case we need to nest this.
+                             addtype t''
+                             when (typeIsIterable ?d ot)
+                                  $ typeSubtypes (t:stack) $ fst $ typeIterType ?d ot
+                             mapM_ (typeSubtypes (t:stack)) typeArgs
         _             -> error $ "typeSubtypes: Unexpected type " ++ show t
     where
     -- Prepend 'x' to the list so that dependency declarations are generated before
@@ -588,13 +581,12 @@ fbType x =
          TSigned{}          -> "__BigInt"
          TTuple{..}         -> fbTupleName typeTupArgs
          TUser{..}              -> fbStructName typeName typeArgs
-         TOpaque{typeArgs = [elemType], ..} | elem typeName sET_TYPES
-                             -> -- unions and arrays are not allowed in FlatBuffers arrays
-                               "[" <> (if typeHasUniqueConstructor elemType && not (typeIsVector elemType)
-                                          then fbType elemType
-                                          else typeTableName elemType) <> "]"
-         TOpaque{typeArgs = [keyType,valType],..} | typeName == mAP_TYPE
-                            -> "[" <> fbTupleName [keyType, valType] <> "]"
+         t@TOpaque{} | typeIsIterable ?d t
+                            -> -- unions and arrays are not allowed in FlatBuffers arrays
+                               let itr_type = fst $ typeIterType ?d t in
+                               "[" <> (if typeHasUniqueConstructor itr_type && not (typeIsVector itr_type)
+                                          then fbType itr_type
+                                          else typeTableName itr_type) <> "]"
          t'                 -> error $ "FlatBuffer.fbType: unsupported type " ++ show t'
 
 -- Convert type into a valid FlatBuf identifier.
@@ -713,14 +705,10 @@ jFBWriteType nested x =
         TSigned{}          -> "int"
         TTuple{}           -> "int"
         TUser{}            -> "int"
-        TOpaque{typeArgs = [elemType], ..} | elem typeName sET_TYPES
+        t@TOpaque{} | typeIsIterable ?d t
                            -> if nested
                                  then "int"
-                                 else jFBWriteType True elemType <> "[]"
-        TOpaque{typeArgs = [_,_],..} | typeName == mAP_TYPE
-                           -> if nested
-                                 then "int"
-                                 else "int []"
+                                 else jFBWriteType True (fst $ typeIterType ?d t) <> "[]"
         t'                 -> error $ "FlatBuffer.jFBWriteType: unsupported type " ++ show t'
 
 -- Java types used in the FlafBuffers-generated _de-serialization_ API
@@ -776,10 +764,8 @@ jConvType rw x =
                            -> fbStructName typeName typeArgs <> "Reader"
                    | rw == Write
                            -> fbStructName typeName typeArgs <> "Writer"
-        TOpaque{typeArgs = [elemType], ..} | elem typeName sET_TYPES
-                           -> "java.util.List<" <> jConvObjType True rw elemType <> ">"
-        TOpaque{typeArgs = [keyType,valType],..} | typeName == mAP_TYPE
-                           -> "java.util.Map<" <> jConvObjType False rw keyType <> "," <+> jConvObjType False rw valType <> ">"
+        t@TOpaque{} | typeIsIterable ?d t
+                           -> "java.util.List<" <> jConvObjType True rw (fst $ typeIterType ?d t) <> ">"
         t'                 -> error $ "FlatBuffer.jConvType: unsupported type " ++ show t'
 
 
@@ -824,8 +810,8 @@ jConvObjType in_array_context rw x =
          _                  -> jConvType rw x
 
 
-jConvObjTypeW :: (WithType a, ?d::DatalogProgram) => a -> Doc
-jConvObjTypeW = jConvObjType False Write
+--jConvObjTypeW :: (WithType a, ?d::DatalogProgram) => a -> Doc
+--jConvObjTypeW = jConvObjType False Write
 
 jConvObjTypeR :: (WithType a, ?d::DatalogProgram) => a -> Doc
 jConvObjTypeR = jConvObjType False Read
@@ -879,9 +865,7 @@ jConv2FBType fbctx e t =
                                -> e <> ".offset"
                        | otherwise
                                -> e <> ".type," <+> e <> ".offset"
-            ot@TOpaque{typeArgs = [_]}
-                               -> pp builderClass <> ".create_" <> mkTypeIdentifier ot <> (parens $ "fbbuilder," <+> e)
-            ot@TOpaque{typeArgs = [_,_], ..} | typeName == mAP_TYPE
+            ot@TOpaque{} | typeIsIterable ?d ot
                                -> pp builderClass <> ".create_" <> mkTypeIdentifier ot <> (parens $ "fbbuilder," <+> e)
             t'                 -> error $ "FlatBuffer.jConv2FBType: unsupported type " ++ show t'
     bigint = jFBPackage <> ".__BigInt.create__BigInt(fbbuilder,"
@@ -892,6 +876,7 @@ jConv2FBType fbctx e t =
 
 -- Like jConv2FBType, but assumes that input is a Java object type, not a
 -- primitive.
+{-
 jConvObj2FBType :: (?d::DatalogProgram, ?prog_name::String) => FBCtx -> Doc -> Type -> Doc
 jConvObj2FBType fbctx e t =
     case typeNormalizeForFlatBuf t of
@@ -913,6 +898,7 @@ jConvObj2FBType fbctx e t =
          TSigned{..} | typeWidth <= 64
                             -> e <> ".longValue()"
          _                  -> jConv2FBType fbctx e t
+-}
 
 -- Call FlatBuffers API to create a table instance for the given type.
 jConvCreateTable :: (?d::DatalogProgram, ?prog_name::String) => Type -> Maybe Constructor -> Doc
@@ -1017,35 +1003,17 @@ mkJavaBuilder = ("ddlog" </> ?prog_name </> builderClass <.> "java",
         (braces' $ "return new" <+> jConvTypeW t <> "(" <>
                    (jFBCallConstructor (typeTableName t) $ mapIdx (\a i -> jConv2FBType (FBField (fbType t) ("a" ++ show i)) ("a" <> pp i) a) typeTupArgs) <> ");")
 
-    mk_type_factory t@TOpaque{typeArgs = [elemType], ..} | elem typeName sET_TYPES =
-        -- Generate a protected method to convert vector of 'elemType'
+    mk_type_factory t@TOpaque{} | typeIsIterable ?d t =
+        let itr_type = fst $ typeIterType ?d t in
+        -- Generate a protected method to convert vector of 'itr_type'
         -- into vector of offsets (the method is only used by code generated by
         -- 'jConv2FBType')
         "protected static" <+> jFBWriteType False t <+> "create_" <> mkTypeIdentifier t
                            <> (parens $ "FlatBufferBuilder fbbuilder," <+> jConvTypeW t <+> "v")                    $$
-        (braces' $ jFBWriteType False t <+> "res = new" <+> jFBWriteType True elemType <> "[v.size()];"             $$
+        (braces' $ jFBWriteType False t <+> "res = new" <+> jFBWriteType True itr_type <> "[v.size()];"             $$
                    "for (int __i = 0; __i < v.size(); __i++)"                                                       $$
-                   (braces' $ "res[__i] =" <+> jConv2FBType FBArray "v.get(__i)" elemType <> ";")                   $$
+                   (braces' $ "res[__i] =" <+> jConv2FBType FBArray "v.get(__i)" itr_type <> ";")                   $$
                    "return res;")
-
-    mk_type_factory t@TOpaque{typeArgs = [keyType, valType], ..} | typeName == mAP_TYPE =
-        -- Generate a protected method to Map<keyType,valType> into vector of offsets
-        "protected static" <+> jFBWriteType False t <+> "create_" <> mkTypeIdentifier t
-                            <> (parens $ "FlatBufferBuilder fbbuilder," <+> jConvTypeW t <+> "v")                               $$
-        (braces' $ "int [] res = new int[v.size()];"                                                                            $$
-                   "int __i = 0;"                                                                                               $$
-                   "java.util.Iterator<" <> tentry <> "> it = v.entrySet().iterator();"                                         $$
-                   "while (it.hasNext()) {"                                                                                     $$
-                   "    " <> tentry <+> "pair = (" <> tentry <> ")it.next();"                                                   $$
-                   "    res[__i] =" <+> jFBCallConstructor entry_table [jConvObj2FBType (FBField entry_table "a0") "pair.getKey()" keyType,
-                                                                        jConvObj2FBType (FBField entry_table "a1") "pair.getValue()" valType] <> ";"
-                                                                                                                                $$
-                   "    __i++;"                                                                                                 $$
-                   "}"                                                                                                          $$
-                   "return res;")
-        where
-        tentry = "java.util.Map.Entry<" <> jConvObjTypeW keyType <> "," <+> jConvObjTypeW valType <> ">"
-        entry_table = typeTableName $ tTuple [keyType, valType]
 
     mk_type_factory _ = empty
 
@@ -1453,9 +1421,10 @@ jReadField nesting fbctx e t =
                                          -> "new" <+> jConvTypeR t <> parens e'
                               | otherwise
                                          -> jConvTypeR t <> ".init" <> parens e'
-                      TOpaque{typeArgs = [elemType], ..} | elem typeName sET_TYPES ->
-                          let elem_type = jConvObjTypeR elemType
-                              ltype = "java.util.List<" <> elem_type <> ">"
+                      ot@TOpaque{} | typeIsIterable ?d ot ->
+                          let elem_type = fst $ typeIterType ?d ot
+                              jconv_elem_type = jConvObjTypeR elem_type
+                              ltype = "java.util.List<" <> jconv_elem_type <> ">"
                               -- Add nesting depth to local variables inside lambda so that they don't
                               -- clash with variables from containing scopes.
                               vlen = "len" <> pp nesting
@@ -1465,34 +1434,12 @@ jReadField nesting fbctx e t =
                               vx   = "x"   <> pp nesting in
                           "((java.util.function.Supplier<" <> ltype <> ">) (() ->"                                          $$
                           (braces' $ "int" <+> vlen <+> "=" <+> e' <> "Length();"                                           $$
-                                     ltype <+> vlst <+> "= new java.util.ArrayList<" <> elem_type <> ">(" <> vlen <> ");"   $$
+                                     ltype <+> vlst <+> "= new java.util.ArrayList<" <> jconv_elem_type <> ">(" <> vlen <> ");"   $$
                                      "for (int" <+> vi <+> "= 0;" <+> vi <+> "<" <+> vlen <> ";" <+> vi <> "++)"            $$
                                      (braces' $
-                                        jFBReadType elemType <+> vx <+> "=" <+> e' <> parens vi <> ";" $$
-                                        vlst <> ".add(" <> jReadField (nesting+1) FBArray vx elemType <> ");")  $$
+                                        jFBReadType elem_type <+> vx <+> "=" <+> e' <> parens vi <> ";" $$
+                                        vlst <> ".add(" <> jReadField (nesting+1) FBArray vx elem_type <> ");")  $$
                                      "return" <+> vlst <> ";") <> ")).get()"
-
-                      TOpaque{typeArgs = [keyType,valType], ..} | typeName == mAP_TYPE ->
-                          let ktype = jConvObjTypeR keyType
-                              vtype = jConvObjTypeR valType
-                              mtype = "java.util.Map<" <> ktype <> "," <+> vtype <> ">"
-                              ttable = typeTableName $ tTuple [keyType, valType]
-                              vmap = "map" <> pp nesting
-                              vi   = "i"   <> pp nesting
-                              _vi   = "_i"   <> pp nesting
-                          in
-                          "((java.util.function.Supplier<" <> mtype <> ">) (() -> "         $$
-                          (braces' $ mtype <+> vmap <+> "= new java.util.HashMap<" <> ktype <> "," <+> vtype <> ">();"  $$
-                                     "for (int" <+> vi <+> "= 0;" <+> vi <+> "<" <+> e' <> "Length();" <+> vi <> "++)"  $$
-                                     (braces' $
-                                        -- To prevent Java from complaining that
-                                        -- vi is not final in case it ends up
-                                        -- being used in a lambda.
-                                        "int" <+> _vi <+> "=" <+> vi <> ";" $$
-                                        vmap <> ".put(" <>
-                                        (jReadField (nesting+1) (FBField ttable "a0") (e' <> parens _vi) keyType) <> "," <+>
-                                        (jReadField (nesting+1) (FBField ttable "a1") (e' <> parens _vi) valType) <> ");") $$
-                                     "return" <+> vmap <> ";") <> ")).get()"
                       t'                 -> error $ "FlatBuffer.jReadField: unsupported type " ++ show t'
         where
         bigint = "new java.math.BigInteger(" <> e' <> ".sign() ? 1 : -1," <+>

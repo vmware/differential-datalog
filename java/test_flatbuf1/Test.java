@@ -57,11 +57,11 @@ public class Test {
     }
 
     private String printQI(QIReader v) {
-        Map<Long,String> vs = v.m();
+        List<Tuple2__bit_32___stringReader> vs = v.m();
         ArrayList<String> vs_strs = new ArrayList<String>(vs.size());
-        for (Map.Entry<Long,String> entry : vs.entrySet()) {
-            vs_strs.add(entry.getKey() + "=>\"" + entry.getValue() + "\"");
-        }
+        vs.forEach((t) -> {
+            vs_strs.add(t.a0() + "=>\"" + t.a1() + "\"");
+        });
         return "QI{{" + String.join(", ", vs_strs) + "}}";
     }
 
@@ -117,19 +117,15 @@ public class Test {
         }
     }
 
-    private String printZI5(Map<String, ManyReader> v) {
-        ArrayList<String> strings = new ArrayList<String>(v.size());
-        for (Map.Entry<String, ManyReader> e: v.entrySet()) {
-            strings.add("\"" + e.getKey() + "\"=>" + printMany(e.getValue()));
-        }
+    private String printZI5(List<Tuple2__string__ManyReader> vs) {
+        ArrayList<String> strings = new ArrayList<String>(vs.size());
+        vs.forEach((t) -> strings.add("\"" + t.a0() + "\"=>" + printMany(t.a1())));
         return "{" + String.join(", ", strings) + "}";
     }
 
-    private String printZI11(Map<ManyReader, String> v) {
-        ArrayList<String> strings = new ArrayList<String>(v.size());
-        for (Map.Entry<ManyReader, String> e: v.entrySet()) {
-            strings.add(printMany(e.getKey()) + "=>\"" + e.getValue() + "\"");
-        }
+    private String printZI11(List<Tuple2__Many__stringReader> vs) {
+        ArrayList<String> strings = new ArrayList<String>(vs.size());
+        vs.forEach((t) -> strings.add(printMany(t.a0()) + "=>\"" + t.a1() + "\""));
         return "{" + String.join(", ", strings) + "}";
     }
 
@@ -427,7 +423,7 @@ public class Test {
             }
             // output relation OZI5[Map<string, Many>]
             case typesTestRelation.OZI5: {
-                fb_file.println("From " + relid + " " + command.kind() + " " + printZI5((Map<String, ManyReader>)command.value()));
+                fb_file.println("From " + relid + " " + command.kind() + " " + printZI5((List<Tuple2__string__ManyReader>)command.value()));
                 break;
             }
             // output relation OZI6[Option<string>]
@@ -461,7 +457,7 @@ public class Test {
             }
             // output relation OZI11[Map<Many, string>]
             case typesTestRelation.OZI11: {
-                fb_file.println("From " + relid + " " + command.kind() + " " + printZI11((Map<ManyReader,String>)command.value()));
+                fb_file.println("From " + relid + " " + command.kind() + " " + printZI11((List<Tuple2__Many__stringReader>)command.value()));
                 break;
             }
             // output relation OZI12[(string, bigint, Vec<bigint>, (bit<16>, Many))]
@@ -612,9 +608,9 @@ public class Test {
             builder.insert_PI5(pi);
         }
         {
-            Map<Long, String> map = new HashMap<Long, String>();
-            map.put(Long.valueOf(2), "here");
-            map.put(Long.valueOf(3), "there");
+            ArrayList<Tuple2__bit_32___stringWriter> map = new ArrayList<Tuple2__bit_32___stringWriter>();
+            map.add(builder.create_Tuple2__bit_32___string(2, "here"));
+            map.add(builder.create_Tuple2__bit_32___string(3, "there"));
             builder.insert_QI(map);
         }
         builder.insert_RI(2);
@@ -677,9 +673,9 @@ public class Test {
             builder.insert_ZI4(strings);
         }
         {
-            Map<String, ManyWriter> map = new HashMap<String, ManyWriter>();
-            map.put("key1", builder.create_B(false));
-            map.put("key2", builder.create_A("val2"));
+            ArrayList<Tuple2__string__ManyWriter> map = new ArrayList<Tuple2__string__ManyWriter>();
+            map.add(builder.create_Tuple2__string__Many("key1", builder.create_B(false)));
+            map.add(builder.create_Tuple2__string__Many("key2", builder.create_A("val2")));
             builder.insert_ZI5(map);
         }
         builder.insert_ZI6_ddlog_std_Some("ZI6");
@@ -690,11 +686,11 @@ public class Test {
         builder.insert_ZI9(100);
         builder.insert_ZI10("Ref<IString>");
         {
-            Map<ManyWriter, String> map = new HashMap<ManyWriter, String>();
+            ArrayList<Tuple2__Many__stringWriter> map = new ArrayList<Tuple2__Many__stringWriter>();
             //map.put(builder.create_B(false), "v1");
             // Cannot add more than one record, since the map is printed in
             // non-deterministic order, so the diff fails.
-            map.put(builder.create_A("val2"), "v2");
+            map.add(builder.create_Tuple2__Many__string(builder.create_A("val2"), "v2"));
             builder.insert_ZI11(map);
         }
         {
@@ -1103,12 +1099,16 @@ public class Test {
 
         query_file.println("Query QI_by_m[(2=>\"here\", 3=>\"there\"]:");
         {
-            Map<Long, String> map = new HashMap<Long, String>();
-            map.put(Long.valueOf(2), "here");
-            map.put(Long.valueOf(3), "there");
-            typesTestQuery.queryQI_by_m(this.api, map, v -> {
-                query_file.println(printQI(v));
-            });
+            typesTestQuery.queryQI_by_m(this.api,
+                bldr -> {
+                    ArrayList<Tuple2__bit_32___stringWriter> map = new ArrayList<Tuple2__bit_32___stringWriter>();
+                    map.add(bldr.create_Tuple2__bit_32___string(Long.valueOf(2), "here"));
+                    map.add(bldr.create_Tuple2__bit_32___string(Long.valueOf(3), "there"));
+                    return map;
+                },
+                v -> {
+                    query_file.println(printQI(v));
+                });
         }
 
         query_file.println("Query RI_by_refm[2]:");
@@ -1274,9 +1274,9 @@ public class Test {
         query_file.println("Query ZI5_by_self[...]:");
         typesTestQuery.queryZI5_by_self(this.api,
                 bldr -> {
-                    Map<String, ManyWriter> map = new HashMap<String, ManyWriter>();
-                    map.put("key1", bldr.create_B(false));
-                    map.put("key2", bldr.create_A("val2"));
+                    ArrayList<Tuple2__string__ManyWriter> map = new ArrayList<Tuple2__string__ManyWriter>();
+                    map.add(bldr.create_Tuple2__string__Many("key1", bldr.create_B(false)));
+                    map.add(bldr.create_Tuple2__string__Many("key2", bldr.create_A("val2")));
                     return map;
                 },
                 v -> { query_file.println(printZI5(v)); });
@@ -1322,8 +1322,8 @@ public class Test {
         query_file.println("Query ZI11_by_self[\"val2\"=>\"v2\"]:");
         typesTestQuery.queryZI11_by_self(this.api,
                 bldr -> {
-                    Map<ManyWriter, String> map = new HashMap<ManyWriter, String>();
-                    map.put(bldr.create_A("val2"), "v2");
+                    ArrayList<Tuple2__Many__stringWriter> map = new ArrayList<Tuple2__Many__stringWriter>();
+                    map.add(bldr.create_Tuple2__Many__string(bldr.create_A("val2"), "v2"));
                     return map;
                 },
                 v -> { query_file.println(printZI11(v)); });

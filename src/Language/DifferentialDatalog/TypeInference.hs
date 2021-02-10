@@ -281,7 +281,7 @@ unifyTypes d t1 t2 =
                                emptyGenerator
     in isRight $ solve d constraints False
 
--- Check if to type expressions are compatible (i.e., both can be concretized to the same type).
+-- Check if two type expressions are compatible (i.e., both can be concretized to the same type).
 unifyTExprs :: (?d::DatalogProgram) => TExpr -> TExpr -> Bool
 unifyTExprs te1 te2 =
     isRight $ solve ?d [CPredicate $ PEq te1 te2 $ ExplanationString nopos ""] False
@@ -374,11 +374,21 @@ deIsSharedRef de tv = do
 deIsIterable :: (?d::DatalogProgram) => DDExpr -> TypeVar -> GeneratorMonad Constraint
 deIsIterable de tv = do
     let expand TETVar{} = return Nothing
-        expand (TEExtern n [t'])    | elem n sET_TYPES = return $ Just [tv ==== t']
-        expand (TEExtern n [_, t']) | n == gROUP_TYPE  = return $ Just [tv ==== t']
-        expand (TEExtern n [k,v])   | n == mAP_TYPE    = return $ Just [tv ==== teTuple [k,v]]
+        expand (TEExtern n targs) = do
+            let t = getType ?d n
+            case tdefGetIterableAttr ?d t of
+                 Nothing ->
+                     err ?d (pos de)
+                         $ "expression '" ++ show de ++ "' must be of an iterable type, e.g., 'Set<>', 'Map<>', 'Vec<>', or 'Group<>', " ++
+                           "but its type '" ++ n ++ "' is not iterable"
+                 Just (titer, _) ->
+                     do let tmap = M.fromList $ zip (tdefArgs t) targs
+                        let te_titer = typeToTExpr titer
+                        let titer_concrete = teSubstTypeArgs tmap te_titer
+                        return $ Just [tv ==== titer_concrete]
         expand te = err ?d (pos de)
-                    $ "expression '" ++ show de ++ "' must be of an iterable type, e.g., 'Set<>', 'Map<>', 'Vec<>', or 'Group<>', but its type is " ++ show te
+                    $ "expression '" ++ show de ++ "' must be of an iterable type, e.g., 'Set<>', 'Map<>', 'Vec<>', or 'Group<>', " ++
+                      "but its type '" ++ show te ++ "' is not iterable"
     ce <- teTypeOfExpr de
     return $ CLazy ce expand Nothing de
            $ "expression '" ++ show de ++ "' must be of an iterable type, e.g., 'Set<>', 'Map<>', 'Vec<>', or 'Group<>'"
@@ -583,8 +593,11 @@ contextConstraints (DDExpr CtxRuleRGroupBy{} _) = return ()
 -- When evaluating 'var v = FlatMap(e)'
 -- the following type constraints are added:
 -- |v| = iterator_type(|e|)
-contextConstraints de@(DDExpr (CtxRuleRFlatMap rl i) _) =
-    addConstraint =<< deIsIterable de =<< tvarTypeOfVar (FlatMapVar rl i)
+contextConstraints de@(DDExpr (CtxRuleRFlatMap rl i) _) = do
+    let RHSFlatMap pat _ = ruleRHS rl !! i
+    addConstraint =<< deIsIterable de =<< (tvarTypeOfExpr $ DDExpr (CtxRuleRFlatMapVars rl i) pat)
+
+contextConstraints (DDExpr CtxRuleRFlatMapVars{} _) = return ()
 
 -- When evaluating expression e in an Inspect clause of a rule:
 -- |e| = Tuple0, |var ddlog_weight| = Bit 64, |var ddlog_iter| = ....
@@ -826,11 +839,11 @@ exprConstraints_ de@(DDExpr ctx (E e@EITE{..})) = do
     addConstraint =<< tvarTypeOfExpr (DDExpr (CtxITEThen e ctx) exprThen) <~~~~> teTypeOfExpr (DDExpr (CtxITEElse e ctx) exprElse)
     addConstraint =<< tvarTypeOfExpr de <====> teTypeOfExpr (DDExpr (CtxITEThen e ctx) exprThen)
 
--- 'for (v in e1) {e2}'
+-- 'for (vs in e1) {e2}'
 --
--- 'is_iterable |e1| and |var v|=iterator_type |e1| and |e| = () and |e2| = () '
+-- 'is_iterable |e1| and |vs|=iterator_type |e1| and |e| = () and |e2| = () '
 exprConstraints_ de@(DDExpr ctx (E e@EFor{..})) = do
-    addConstraint =<< deIsIterable (DDExpr (CtxForIter e ctx) exprIter) =<< (tvarTypeOfVar $ ForVar ctx e)
+    addConstraint =<< deIsIterable (DDExpr (CtxForIter e ctx) exprIter) =<< (tvarTypeOfExpr $ DDExpr (CtxForVars e ctx) exprLoopVars)
     addConstraint =<< tvarTypeOfExpr de <==== teTuple []
     addConstraint =<< tvarTypeOfExpr (DDExpr (CtxForBody e ctx) exprBody) <~~~~ teTuple []
 

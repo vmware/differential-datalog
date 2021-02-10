@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2021 VMware, Inc.
+Copyright (c) 2020-2021 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -37,6 +37,8 @@ import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Syntax
 import {-# SOURCE #-} Language.DifferentialDatalog.Type
 import {-# SOURCE #-} Language.DifferentialDatalog.Function
+import {-# SOURCE #-} Language.DifferentialDatalog.Validate
+import Language.DifferentialDatalog.Rust
 import Language.DifferentialDatalog.Error
 
 progValidateAttributes :: (MonadError String me) => DatalogProgram -> me ()
@@ -56,43 +58,50 @@ typedefValidateAttrs d tdef@TypeDef{..} = do
     _ <- tdefCheckDynAllocAttr d tdef
     _ <- tdefCheckAliasAttr d tdef
     _ <- checkRustAttrs d tdefAttrs
+    _ <- tdefCheckIterableAttr d tdef
     maybe (return ()) (typeValidateAttrs d) tdefType
     return ()
 
 typedefValidateAttr :: (MonadError String me) => DatalogProgram -> TypeDef -> Attribute -> me ()
-typedefValidateAttr d TypeDef{..} attr = do
+typedefValidateAttr d tdef@TypeDef{..} attr = do
     case name attr of
          "size" -> do
-            check d (isNothing tdefType) (pos attr)
+            check d (tdefIsExtern tdef) (pos attr)
                 $ "Only extern types can have a 'size' attribute."
          "rust" -> do
-            check d (isJust tdefType) (pos attr)
+            check d (not $ tdefIsExtern tdef) (pos attr)
                 $ "Extern types cannot have a 'rust' attribute."
          "custom_serde" -> do
-            check d (isJust tdefType) (pos attr)
+            check d (not $ tdefIsExtern tdef) (pos attr)
                 $ "Extern types cannot have a 'custom_serde' attribute."
             let t = fromJust tdefType
             check d (isStruct d t) (pos attr)
                 $ "'custom_serde' attribute cannot be applied to type aliases."
          "custom_from_record" -> do
-            check d (isJust tdefType) (pos attr)
+            check d (not $ tdefIsExtern tdef) (pos attr)
                 $ "Extern types cannot have a 'custom_from_record' attribute."
             let t = fromJust tdefType
             check d (isStruct d t) (pos attr)
                 $ "'custom_from_record' attribute cannot be applied to type aliases."
          "shared_ref" -> do
-            check d (isNothing tdefType) (pos attr)
+            check d (tdefIsExtern tdef) (pos attr)
                 $ "'sharef_ref' attribute is only applicable to extern types."
             check d (length tdefArgs == 1) (pos attr)
                 $ "Types annotated with 'shared_ref' must have exactly one type argument, e.g., \"Ref<'T>\"."
          "dyn_alloc" -> do
-            check d (isNothing tdefType) (pos attr)
+            check d (tdefIsExtern tdef) (pos attr)
                 $ "'dyn_alloc' attribute is only applicable to extern types."
          "alias" -> do
              case tdefType of
                   Just TUser{} -> err d (pos attr) "The 'alias' attribute does not apply to struct types."
                   Nothing -> err d (pos attr) "The 'alias' attribute does not apply to extern types."
                   _ -> return ()
+         "iterate_by_ref" -> do
+            check d (tdefIsExtern tdef) (pos attr)
+                $ "Only extern types can have a 'iterate_by_ref' attribute."
+         "iterate_by_val" -> do
+            check d (tdefIsExtern tdef) (pos attr)
+                $ "Only extern types can have a 'iterate_by_val' attribute."
          n -> err d (pos attr) $ "Unknown attribute " ++ n
 
 typeValidateAttrs :: (MonadError String me) => DatalogProgram -> Type -> me ()
@@ -311,3 +320,39 @@ funcGetReturnByRefAttr d f =
     case checkReturnByRefAttr d f of
          Left e -> error e
          Right return_by_ref -> return_by_ref
+
+{- 'iterate_by_val', 'iterate_by_ref' attributes: Tell DDlog that the type can be iterated over and thus
+   can be used in a for-loop or a 'FlatMap' operator.  The first form indicates tha the 'iter()' method
+   returns a by-value iterator, the second form indicates that 'iter()' returns a by-reference iterator. -}
+tdefCheckIterableAttr :: (MonadError String me) => DatalogProgram -> TypeDef -> me (Maybe (Type, EKind))
+tdefCheckIterableAttr d TypeDef{..} = do
+    by_ref <- case find ((== "iterate_by_ref") . name) tdefAttrs of
+                   Nothing   -> return Nothing
+                   Just attr -> case attrVal attr of
+                                     E (ETyped _ (E EVar{..}) t) -> do
+                                         typeValidate d tdefArgs t
+                                         return $ Just t
+                                     _ -> err d (pos $ attrVal attr)
+                                                $ "The 'iterate_by_ref' attribute must have the following syntax: '#[iterate_by_ref=iter:<type>]', " ++
+                                                  "where <type> is the type of each element when iterating over the collection of type '" ++ tdefName ++ "'"
+    by_val <- case find ((== "iterate_by_val") . name) tdefAttrs of
+                   Nothing   -> return Nothing
+                   Just attr -> case attrVal attr of
+                                     E (ETyped _ (E EVar{..}) t) -> do
+                                         check d (isNothing by_ref) (pos attr) $ "Conflicting attributes 'iterate_by_val' and 'iterate_by_ref' specified for type '" ++ tdefName ++ "'"
+                                         typeValidate d tdefArgs t
+                                         return $ Just t
+                                     _ -> err d (pos $ attrVal attr)
+                                                $ "The 'iterate_by_val' attribute must have the following syntax: '#[iterate_by_val=iter:<type>]', " ++
+                                                  "where <type> is the type of each element when iterating over the collection of type '" ++ tdefName ++ "'"
+    case (by_ref, by_val) of
+         (Nothing, Nothing) -> return Nothing
+         (Just t, Nothing)  -> return $ Just (t, EReference)
+         (Nothing, Just t)  -> return $ Just (t, EVal)
+         _                  -> error "tdefCheckIterableAttr: unreachable"
+
+tdefGetIterableAttr :: DatalogProgram -> TypeDef -> Maybe (Type, EKind)
+tdefGetIterableAttr d tdef =
+    case tdefCheckIterableAttr d tdef of
+         Left e  -> error e
+         Right b -> b

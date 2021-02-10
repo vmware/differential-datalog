@@ -471,3 +471,129 @@ FlatGroup(x) :-
     GroupThis(x, y),
     var g = x.group_by(y),
     var x = FlatMap(g).
+
+/*
+ * for-loop patterns
+ */
+
+typedef ForStruct1<'T> = ForStruct1 {
+    f1: 'T,
+    f2: istring
+}
+
+typedef ForStruct2 = ForStruct2 {
+    f1: (bool, double),
+    f2: ForStruct1<(usize, usize)>
+}
+
+function testMap(): Map<(usize, string), ForStruct2> {
+    [ (1, "1") -> ForStruct2{ .f1 = (true, 1.0), .f2 = ForStruct1{ .f1 = (1, 1), .f2 = i"foo"}}
+    , (2, "2") -> ForStruct2{ .f1 = (false, 2.0), .f2 = ForStruct1{ .f1 = (2, 2), .f2 = i"bar"}}
+    , (3, "3") -> ForStruct2{ .f1 = (false, 4.0), .f2 = ForStruct1{ .f1 = (3, 3), .f2 = i"buzz"}}
+    ]
+}
+
+output relation ForTests(id: usize, result: string)
+
+ForTests(1, {
+    var res = "";
+    for ((k, v) in testMap()) {
+        res = res ++ k.1
+    };
+    res
+}).
+
+ForTests(2, {
+    var res = "";
+    for (((_, k), v) in testMap()) {
+        res = res ++ k
+    };
+    res
+}).
+
+ForTests(3, {
+    var res = "";
+    for (((_, _), ForStruct2{.f2 = ForStruct1{_,s}}) in testMap()) {
+        res = "${res} ${s}"
+    };
+    res
+}).
+
+ForTests(4, {
+    var res = "";
+    for (((_, s1), ForStruct2{.f2 = ForStruct1{_,s2}}) in testMap()) {
+        res = "${res} ${s1}:${s2}"
+    };
+    res
+}).
+
+function testSet1(): Set<ForStruct2> {
+    [ ForStruct2{ .f1 = (true, 1.0), .f2 = ForStruct1{ .f1 = (1, 1), .f2 = i"foo"}} ].to_set()
+}
+
+function testSet2(): Set<ForStruct2> {
+    [ ForStruct2{ .f1 = (false, 2.0), .f2 = ForStruct1{ .f1 = (2, 2), .f2 = i"bar"}}
+    , ForStruct2{ .f1 = (false, 4.0), .f2 = ForStruct1{ .f1 = (3, 3), .f2 = i"buzz"}}
+    ].to_set()
+}
+
+function testVec(): Vec<ForStruct1<Set<ForStruct2>>> {
+    [ ForStruct1{ .f1 = testSet1(), .f2 = i"foo"}
+    , ForStruct1{ .f1 = testSet2(), .f2 = i"bar"}
+    , ForStruct1{ .f1 = testSet2(), .f2 = i"buzz"}
+    ]
+}
+
+ForTests(5, {
+    var res = "";
+    for (ForStruct1{_,s2} in testVec()) {
+        res = "${res}${s2}"
+    };
+    res
+}).
+
+ForTests(6, {
+    var res = "";
+    for (ForStruct1{set,f2} in testVec()) {
+        res = "${res} ${f2}";
+        for (ForStruct2{.f2 = ForStruct1{_,s2}} in set) {
+            res = "${res}${s2}"
+        }
+    };
+    res
+}).
+
+/*
+ * FlatMap patterns
+ */
+
+output relation FlatMapTests(id: usize, result: string)
+
+relation FMapMaps(map: Map<(usize, string), ForStruct2>)
+
+FMapMaps(testMap()).
+
+FlatMapTests(1, k.1) :-
+    FMapMaps(map),
+    (var k, var v) = FlatMap(map).
+
+FlatMapTests(2, k) :-
+    FMapMaps(map),
+    ((_, var k), var v) = FlatMap(map).
+
+FlatMapTests(3, s.ival()) :-
+    FMapMaps(map),
+    ((_, _), ForStruct2{.f2 = ForStruct1{_, var s}}) = FlatMap(map).
+
+FlatMapTests(4, "${s1}:${s2}") :-
+    FMapMaps(map),
+    ((_, var s1), ForStruct2{.f2 = ForStruct1{_, var s2}}) = FlatMap(map).
+
+FlatMapTests(5, "${s2}") :-
+    FMapMaps(),
+    ForStruct1{_, var s2} = FlatMap(testVec()).
+
+FlatMapTests(6, "${f2} ${s2}") :-
+    FMapMaps(),
+    ForStruct1{var set, var f2} = FlatMap(testVec()),
+    ForStruct2{.f2 = ForStruct1{_, var s2}} = FlatMap(set).

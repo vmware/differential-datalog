@@ -3,6 +3,50 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Language improvements
+
+- Enable pattern matching in `for` loops and `FlatMap`. One can now write:
+    ```
+    for ((k,v) in map) {}
+    ```
+    instead of
+    ```
+    for ((kv in map) { var k = kv.0}
+    ```
+    and
+    ```
+    (var x, var y) = FlatMap(expr)
+    ```
+    instead of:
+    ```
+    var xy = FlatMap(expr),
+    var x = xy.0
+    ```
+
+- Remove the hardwired knowledge about iterable types from the compiler.
+  Until now the compiler only knew how to iterate over `Vec`, `Set`,
+  `Map`, `Group`, and `TinySet` types.  Instead we now allow the programmer
+  to label any extern type as iterable, meaning that it implements `iter()`
+  and `into_iter()` methods, that return Rust iterators using one of two
+  attributes:
+  ```
+  #[iterate_by_ref=iter:<type>]
+  ```
+  or
+  ```
+  #[iterate_by_val=iter:<type>]
+  ```
+  where `type` is the type yielded by the `next()` method of the iterator
+  The former indicates that the `iter()` method returns a by-reference
+  iterator, the latter indicates that `iter()` returns a by-value
+  iterator.
+
+  As a side effect of this change, the compiler no longer distinguishes
+  maps from other cotnainers that over 2-tuples.  Therefore maps are
+  represented as lists of tuples in the Flatbuf-based Java API.
+
 ## [0.36.0] - Feb 7, 2021
 
 ### API changes

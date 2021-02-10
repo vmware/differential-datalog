@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018-2020 VMware, Inc.
+Copyright (c) 2018-2021 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -81,6 +81,7 @@ import Language.DifferentialDatalog.Rule
 import Language.DifferentialDatalog.FlatBuffer
 import Language.DifferentialDatalog.Attribute
 import Language.DifferentialDatalog.Var
+import Language.DifferentialDatalog.Rust
 
 -- Some OSs think that they run on a typewriter and insert '\r'
 -- at the end of each line.  We eliminate these characters as they confuse
@@ -116,18 +117,19 @@ wEIGHT_VAR = "__weight"
 
 -- Module that 'ctx' belongs to.
 ctxModule :: (?crate_graph::CrateGraph) => ECtx -> ModuleName
-ctxModule CtxTop              = error "Compile.ctxModule CtxTop"
-ctxModule CtxFunc{..}         = nameScope ctxFunc
-ctxModule CtxRuleL{..}        = ruleModule ctxRule
-ctxModule CtxRuleRAtom{..}    = ruleModule ctxRule
-ctxModule CtxRuleRCond{..}    = ruleModule ctxRule
-ctxModule CtxRuleRFlatMap{..} = ruleModule ctxRule
-ctxModule CtxRuleRInspect{..} = ruleModule ctxRule
-ctxModule CtxRuleRProject{..} = ruleModule ctxRule
-ctxModule CtxRuleRGroupBy{..} = ruleModule ctxRule
-ctxModule CtxKey{..}          = nameScope ctxRelation
-ctxModule CtxIndex{..}        = nameScope $ atomRelation $ idxAtom ctxIndex
-ctxModule ctx                 = ctxModule $ ctxParent ctx
+ctxModule CtxTop                    = error "Compile.ctxModule CtxTop"
+ctxModule CtxFunc{..}               = nameScope ctxFunc
+ctxModule CtxRuleL{..}              = ruleModule ctxRule
+ctxModule CtxRuleRAtom{..}          = ruleModule ctxRule
+ctxModule CtxRuleRCond{..}          = ruleModule ctxRule
+ctxModule CtxRuleRFlatMap{..}       = ruleModule ctxRule
+ctxModule CtxRuleRFlatMapVars{..}   = ruleModule ctxRule
+ctxModule CtxRuleRInspect{..}       = ruleModule ctxRule
+ctxModule CtxRuleRProject{..}       = ruleModule ctxRule
+ctxModule CtxRuleRGroupBy{..}       = ruleModule ctxRule
+ctxModule CtxKey{..}                = nameScope ctxRelation
+ctxModule CtxIndex{..}              = nameScope $ atomRelation $ idxAtom ctxIndex
+ctxModule ctx                       = ctxModule $ ctxParent ctx
 
 -- Crate that 'ctx' belongs to.
 ctxCrate :: (?crate_graph::CrateGraph) => ECtx -> Crate
@@ -296,52 +298,6 @@ arngUsedInIndexes ArrangementSet{} = []
 arngIsDistinct :: Arrangement -> Bool
 arngIsDistinct ArrangementMap{} = False
 arngIsDistinct ArrangementSet{arngDistinct} = arngDistinct
-
--- Rust expression kind
-data EKind = EVal         -- normal value
-           | ELVal        -- l-value that can be written to or moved
-           | EReference   -- reference (mutable or immutable)
-           | ENoReturn    -- expression does not return (e.g., break, continue, or return).
-           deriving (Eq, Show)
-
--- convert any expression into reference
-ref :: (Doc, EKind, ENode) -> Doc
-ref (x, EReference, _)  = x
-ref (x, ENoReturn, _)   = x
-ref (x, _, _)           = parens $ "&" <> x
-
--- dereference expression if it is a reference; leave it alone
--- otherwise
-deref :: (Doc, EKind, ENode) -> Doc
-deref (x, EReference, _) = parens $ "*" <> x
-deref (x, _, _)          = x
-
--- convert any expression into mutable reference
-mutref :: (Doc, EKind, ENode) -> Doc
-mutref (x, EReference, _)  = x
-mutref (x, ENoReturn, _)   = x
-mutref (x, _, _)           = parens $ "&mut" <+> x
-
--- convert any expression to EVal by cloning it if necessary
-val :: (Doc, EKind, ENode) -> Doc
-val (x, EVal, _)        = x
-val (x, ENoReturn, _)   = x
-val (x, EReference, _)  = cloneRef x
-val (x, _, _)           = x <> ".clone()"
-
--- convert expression to l-value
-lval :: (Doc, EKind, ENode) -> Doc
-lval (x, ELVal, _)      = x
--- this can only be mutable reference in a valid program
-lval (x, EReference, _) = parens $ "*" <> x
-lval (x, EVal, _)       = error $ "Compile.lval: cannot convert value to l-value: " ++ show x
-lval (x, ENoReturn, _)  = error $ "Compile.lval: cannot convert expression to l-value: " ++ show x
-
--- When calling `clone()` on a reference, Rust occasionally decides to clone
--- the reference instead of the referenced object.  This function makes sure to
--- dereference it first.
-cloneRef :: Doc -> Doc
-cloneRef r = "(*" <> r <> ").clone()"
 
 -- Compiled relation.  This struct is generated during the first pass, and is
 -- used to populate Rust crates during the second pass of the compiler.
@@ -1915,7 +1871,7 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                              = return $ mkHead d prefix rl
                              | otherwise =
             case rhs of
-                 RHSFlatMap v e -> mkFlatMap d prefix rl rhs_idx v e
+                 RHSFlatMap vs e -> mkFlatMap d prefix rl rhs_idx vs e
                  RHSInspect e | not (null filters) || input_val -> mkFilterMap d prefix rl rhs_idx -- filter inputs before inspecting them
                               | otherwise -> mkInspect d prefix rl rhs_idx e input_val -- pass input_val to be future-proof
                  RHSLiteral True a  -> -- Streaming join.
@@ -1992,19 +1948,21 @@ rhsInputArrangement d rl rhs_idx (RHSGroupBy _ _ grpby) =
                rhsVarsAfter d rl (rhs_idx - 1))
 rhsInputArrangement _ _  _       _ = Nothing
 
-mkFlatMap :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?statics::CrateStatics) => DatalogProgram -> Doc -> Rule -> Int -> String -> Expr -> CompilerMonad Doc
-mkFlatMap d prefix rl idx v e = do
+mkFlatMap :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?statics::CrateStatics) => DatalogProgram -> Doc -> Rule -> Int -> Expr -> Expr -> CompilerMonad Doc
+mkFlatMap d prefix rl idx vs e = do
     let vars = mkVarsTupleValue rl $ map (, EVal) $ rhsVarsAfter d rl idx
+    -- New variables introduced by this FlatMap.
+    let newvars = map name $ exprVarDecls d (CtxRuleRFlatMapVars rl idx) vs
     -- Flatten
     let flatten = "let __flattened =" <+> mkExpr d (CtxRuleRFlatMap rl idx) e EVal <> ";"
     -- Clone variables before passing them to the closure.
     let clones = vcat $ map ((\vname -> "let" <+> vname <+> "=" <+> cloneRef vname <> ";") . pp . name)
-                      $ filter ((/= v) . name) $ rhsVarsAfter d rl idx
+                      $ filter (\v -> notElem (name v) newvars) $ rhsVarsAfter d rl idx
     let fmfun = braces'
                 $ prefix  $$
                   flatten $$
                   clones  $$
-                  "Some(Box::new(__flattened.into_iter().map(move |" <> pp v <> "|" <> vars <> ")))"
+                  "Some(Box::new(__flattened.into_iter().map(move |" <> mkIrrefutablePatExpr d EVal (CtxRuleRFlatMapVars rl idx) vs EVal <> "|" <+> vars <> ")))"
     next <- compileRule d rl idx False
     return $
         "XFormCollection::FlatMap{"                                                                                         $$
@@ -2726,7 +2684,7 @@ allocPatVar = do
     return $ "_" <> pp i <> "_"
 
 -- Computes prefix to be attached to variables in pattern, given
--- the kind of relation being matched and the kind we want for the
+-- the kind of expression being matched and the kind we want for the
 -- new variable.
 varprefix :: EKind -> EKind -> Bool -> Doc
 varprefix EReference EReference _     = empty
@@ -2781,6 +2739,20 @@ mkPatExpr' d inkind ctx e               varkind _    = do
     return $ Match (varprefix inkind varkind False <+> vname)
                    (deref (vname, varkind, undefined) <+> "==" <+> mkExpr d ctx (E e) EVal)
                    []
+
+-- Irrefutable patterns are patterns that are guaranteed to match any expression
+-- of compatible type.  Such patterns consist of any combination of variable
+-- declarations, tuples, constructors (for types with unique constructors), and
+-- placeholders.
+--
+-- Irrefutable patterns currently occur in for-loop patterns and in the LHS of
+-- the FlatMap operator.
+-- 'inkind' - the expression being deconstructed is of this kind.
+-- 'varkind' - variables bound by this pattern must be of this kind.
+mkIrrefutablePatExpr :: (?statics::CrateStatics, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> EKind -> ECtx -> Expr -> EKind -> Doc
+mkIrrefutablePatExpr d inkind ctx (E e) varkind = pat
+    where
+    Match pat _ _ = evalState (mkPatExpr' d inkind ctx e varkind False) 0
 
 -- Convert Datalog expression to Rust.
 -- We generate the code so that all variables are references and must
@@ -2986,8 +2958,7 @@ mkExpr' d ctx e@EMatch{..} = (doc, EVal)
                                       cond' = if cond == empty then empty else ("if" <+> cond) in
                                   pat <+> cond' <+> "=>" <+> val v) exprCases
 
--- Variables are mutable references
-mkExpr' _ _ EVarDecl{..} = ("ref mut" <+> pp exprVName, ELVal)
+mkExpr' _  _ EVarDecl{..} = ("ref mut" <+> pp exprVName, ELVal)
 
 mkExpr' _ ctx ESeq{..} | ctxIsSeq2 ctx || ctxIsFunc ctx
                        = (body, EVal)
@@ -3007,12 +2978,10 @@ mkExpr' _ _ EITE{..} = (doc, EVal)
 mkExpr' d ctx e@EFor{..} = (doc, EVal)
     where
     e' = exprMap (E . sel3) e
-    -- If collection iterates by value, convert value into reference.
-    opt_ref = if (snd . typeIterType d) $ exprType d (CtxForIter e' ctx) (E $ sel3 exprIter)
-                 then empty
-                 else "ref"
-    doc = ("for" <+> opt_ref <+> pp exprLoopVar <+> "in" <+> sel1 exprIter <> ".iter() {") $$
-          (nest' $ val exprBody)                                                   $$
+    ikind = snd $ typeIterType d $ exprType d (CtxForIter e' ctx) $ E $ sel3 exprIter
+    pat = mkIrrefutablePatExpr d ikind (CtxForVars e' ctx) (E $ sel3 exprLoopVars) EReference
+    doc = ("for" <+> pat <+> "in" <+> sel1 exprIter <> ".iter() {") $$
+          (nest' $ val exprBody)                                    $$
           "}"
 
 -- Desonctruction expressions in LHS are compiled into let statements, other assignments

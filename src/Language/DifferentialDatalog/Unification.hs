@@ -44,6 +44,7 @@ module Language.DifferentialDatalog.Unification(
     teDeref,
     teIsConstant,
     teExpandAliases,
+    teSubstTypeArgs,
     typeToTExpr,
     Predicate(..),
     solve)
@@ -433,7 +434,7 @@ teSubstTypeArgs _     t                = t
 
 -- Convert type to a type expression, replacing type arguments ('A, 'B, ...)
 -- with type constants 'TETArg "A", TETArg "B", ...'.  For example, when
--- generating type inference in the body of a function, we treat its type
+-- performing type inference in the body of a function, we treat its type
 -- arguments as constants.  Inferred types for variables and expressions inside
 -- the body of the function may depend on these constants.
 typeToTExpr :: (?d::DatalogProgram) => Type -> TExpr

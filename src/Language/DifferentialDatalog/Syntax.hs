@@ -57,6 +57,7 @@ module Language.DifferentialDatalog.Syntax (
         Field(..),
         IdentifierWithPos(..),
         TypeDef(..),
+        tdefIsExtern,
         Constructor(..),
         consType,
         consIsUnique,
@@ -433,6 +434,10 @@ instance Show TypeDef where
 instance Eq TypeDef where
     (==) t1 t2 = (name t1, tdefAttrs t1, tdefAttrs t1, tdefType t1) == (name t2, tdefAttrs t2, tdefAttrs t2, tdefType t2)
 
+-- | 'tdef' if declared as 'extern type'.
+tdefIsExtern :: TypeDef -> Bool
+tdefIsExtern tdef = isNothing $ tdefType tdef
+
 data Constructor = Constructor { consPos   :: Pos
                                , consAttrs :: [Attribute]
                                , consName  :: String
@@ -635,7 +640,7 @@ data RuleRHS = RHSLiteral   {rhsPolarity :: Bool, rhsAtom :: Atom}
                    -- Group-by expression must be a tuple consisting of variable names, e.g., `group_by(q)`, `group_by(p,q,r)`.
                    rhsGroupBy :: Expr
                }
-             | RHSFlatMap   {rhsVar :: String, rhsMapExpr :: Expr}
+             | RHSFlatMap   {rhsVars :: Expr, rhsMapExpr :: Expr}
              | RHSInspect   {rhsInspectExpr :: Expr}
              deriving (Eq, Ord)
 
@@ -644,7 +649,7 @@ instance PP RuleRHS where
     pp (RHSLiteral False a)   = "not" <+> pp a
     pp (RHSCondition c)       = pp c
     pp (RHSGroupBy v p gb)    = "var" <+> pp v <+> "=" <+> pp p <> ".group_by(" <> pp gb <> ")"
-    pp (RHSFlatMap v e)       = "var" <+> pp v <+> "=" <+> "FlatMap" <> (parens $ pp e)
+    pp (RHSFlatMap v e)       = pp v <+> "=" <+> "FlatMap" <> (parens $ pp e)
     pp (RHSInspect e)         = "Inspect" <+> pp e
 
 instance Show RuleRHS where
@@ -724,7 +729,7 @@ data ExprNode e = EVar          {exprPos :: Pos, exprVar :: String}
                 | EVarDecl      {exprPos :: Pos, exprVName :: String}
                 | ESeq          {exprPos :: Pos, exprLeft :: e, exprRight :: e}
                 | EITE          {exprPos :: Pos, exprCond :: e, exprThen :: e, exprElse :: e}
-                | EFor          {exprPos :: Pos, exprLoopVar :: String, exprIter :: e, exprBody :: e}
+                | EFor          {exprPos :: Pos, exprLoopVars :: e, exprIter :: e, exprBody :: e}
                 | ESet          {exprPos :: Pos, exprLVal :: e, exprRVal :: e}
                 | EBreak        {exprPos :: Pos}
                 | EContinue     {exprPos :: Pos}
@@ -1320,8 +1325,10 @@ data ECtx = -- | Top-level context. Serves as the root of the context hierarchy.
           | CtxRuleRAtom      {ctxRule::Rule, ctxAtomIdx::Int}
             -- | Filter or assignment expression the RHS of a rule
           | CtxRuleRCond      {ctxRule::Rule, ctxIdx::Int}
-            -- | FlatMap clause in the RHS of a rule
+            -- | The right-hand side of a FlatMap clause in the RHS of a rule
           | CtxRuleRFlatMap   {ctxRule::Rule, ctxIdx::Int}
+            -- | The left-hand side of a FlatMap clause in the RHS of a rule
+          | CtxRuleRFlatMapVars{ctxRule::Rule, ctxIdx::Int}
             -- | Inspect clause in the RHS of a rule
           | CtxRuleRInspect   {ctxRule::Rule, ctxIdx::Int}
             -- | Projection expression  in an group_by clause in the RHS of a rule
@@ -1362,6 +1369,8 @@ data ECtx = -- | Top-level context. Serves as the root of the context hierarchy.
           | CtxITEThen        {ctxParExpr::ENode, ctxPar::ECtx}
             -- | 'if (cond) ... else X'
           | CtxITEElse        {ctxParExpr::ENode, ctxPar::ECtx}
+            -- | 'for (X in ..)'
+          | CtxForVars        {ctxParExpr::ENode, ctxPar::ECtx}
             -- | 'for (.. in e)'
           | CtxForIter        {ctxParExpr::ENode, ctxPar::ECtx}
             -- | 'for (.. in ..) e'
@@ -1403,59 +1412,62 @@ instance PP ECtx where
         short :: (PP a) => a -> Doc
         short = pp . (\x -> if length x < mlen then x else take (mlen - 3) x ++ "...") . (map (\c -> if c == '\n' then ' ' else c)) . render . pp
         ctx' = case ctx of
-                    CtxRuleL{..}          -> "CtxRuleL          " <+> rule <+> pp ctxAtomIdx
-                    CtxRuleRAtom{..}      -> "CtxRuleRAtom      " <+> rule <+> pp ctxAtomIdx
-                    CtxRuleRCond{..}      -> "CtxRuleRCond      " <+> rule <+> pp ctxIdx
-                    CtxRuleRFlatMap{..}   -> "CtxRuleRFlatMap   " <+> rule <+> pp ctxIdx
-                    CtxRuleRInspect{..}   -> "CtxRuleRInspect   " <+> rule <+> pp ctxIdx
-                    CtxRuleRProject{..}   -> "CtxRuleRProject   " <+> rule <+> pp ctxIdx
-                    CtxRuleRGroupBy{..}   -> "CtxRuleRGroupBy   " <+> rule <+> pp ctxIdx
-                    CtxKey{}              -> "CtxKey            " <+> rel
-                    CtxIndex{..}          -> "CtxIndex          " <+> pp (name ctxIndex)
-                    CtxFunc{..}           -> "CtxFunc           " <+> (pp $ name ctxFunc)
-                    CtxApplyArg{..}       -> "CtxApplyArg       " <+> epar <+> pp ctxIdx
-                    CtxApplyFunc{}        -> "CtxApplyFunc      " <+> epar
-                    CtxField{}            -> "CtxField          " <+> epar
-                    CtxTupField{}         -> "CtxTupField       " <+> epar
-                    CtxStruct{..}         -> "CtxStruct         " <+> epar <+> pp (snd ctxArg)
-                    CtxTuple{..}          -> "CtxTuple          " <+> epar <+> pp ctxIdx
-                    CtxSlice{}            -> "CtxSlice          " <+> epar
-                    CtxMatchExpr{}        -> "CtxMatchExpr      " <+> epar
-                    CtxMatchPat{..}       -> "CtxMatchPat       " <+> epar <+> pp ctxIdx
-                    CtxMatchVal{..}       -> "CtxMatchVal       " <+> epar <+> pp ctxIdx
-                    CtxSeq1{}             -> "CtxSeq1           " <+> epar
-                    CtxSeq2{}             -> "CtxSeq2           " <+> epar
-                    CtxITEIf{}            -> "CtxITEIf          " <+> epar
-                    CtxITEThen{}          -> "CtxITEThen        " <+> epar
-                    CtxITEElse{}          -> "CtxITEElse        " <+> epar
-                    CtxForIter{}          -> "CtxForIter        " <+> epar
-                    CtxForBody{}          -> "CtxForBody        " <+> epar
-                    CtxSetL{}             -> "CtxSetL           " <+> epar
-                    CtxSetR{}             -> "CtxSetR           " <+> epar
-                    CtxReturn{}           -> "CtxReturn         " <+> epar
-                    CtxBinOpL{}           -> "CtxBinOpL         " <+> epar
-                    CtxBinOpR{}           -> "CtxBinOpR         " <+> epar
-                    CtxUnOp{}             -> "CtxUnOp           " <+> epar
-                    CtxBinding{}          -> "CtxBinding        " <+> epar
-                    CtxTyped{}            -> "CtxTyped          " <+> epar
-                    CtxAs{}               -> "CtxAs             " <+> epar
-                    CtxRef{}              -> "CtxRef            " <+> epar
-                    CtxTry{}              -> "CtxTry            " <+> epar
-                    CtxClosure{}          -> "CtxClosure        " <+> epar
-                    CtxTop                -> error "pp CtxTop"
+                    CtxRuleL{..}            -> "CtxRuleL          " <+> rule <+> pp ctxAtomIdx
+                    CtxRuleRAtom{..}        -> "CtxRuleRAtom      " <+> rule <+> pp ctxAtomIdx
+                    CtxRuleRCond{..}        -> "CtxRuleRCond      " <+> rule <+> pp ctxIdx
+                    CtxRuleRFlatMap{..}     -> "CtxRuleRFlatMap   " <+> rule <+> pp ctxIdx
+                    CtxRuleRFlatMapVars{..} -> "CtxRuleRFlatMapVars"<+> rule <+> pp ctxIdx
+                    CtxRuleRInspect{..}     -> "CtxRuleRInspect   " <+> rule <+> pp ctxIdx
+                    CtxRuleRProject{..}     -> "CtxRuleRProject   " <+> rule <+> pp ctxIdx
+                    CtxRuleRGroupBy{..}     -> "CtxRuleRGroupBy   " <+> rule <+> pp ctxIdx
+                    CtxKey{}                -> "CtxKey            " <+> rel
+                    CtxIndex{..}            -> "CtxIndex          " <+> pp (name ctxIndex)
+                    CtxFunc{..}             -> "CtxFunc           " <+> (pp $ name ctxFunc)
+                    CtxApplyArg{..}         -> "CtxApplyArg       " <+> epar <+> pp ctxIdx
+                    CtxApplyFunc{}          -> "CtxApplyFunc      " <+> epar
+                    CtxField{}              -> "CtxField          " <+> epar
+                    CtxTupField{}           -> "CtxTupField       " <+> epar
+                    CtxStruct{..}           -> "CtxStruct         " <+> epar <+> pp (snd ctxArg)
+                    CtxTuple{..}            -> "CtxTuple          " <+> epar <+> pp ctxIdx
+                    CtxSlice{}              -> "CtxSlice          " <+> epar
+                    CtxMatchExpr{}          -> "CtxMatchExpr      " <+> epar
+                    CtxMatchPat{..}         -> "CtxMatchPat       " <+> epar <+> pp ctxIdx
+                    CtxMatchVal{..}         -> "CtxMatchVal       " <+> epar <+> pp ctxIdx
+                    CtxSeq1{}               -> "CtxSeq1           " <+> epar
+                    CtxSeq2{}               -> "CtxSeq2           " <+> epar
+                    CtxITEIf{}              -> "CtxITEIf          " <+> epar
+                    CtxITEThen{}            -> "CtxITEThen        " <+> epar
+                    CtxITEElse{}            -> "CtxITEElse        " <+> epar
+                    CtxForVars{}            -> "CtxForVars        " <+> epar
+                    CtxForIter{}            -> "CtxForIter        " <+> epar
+                    CtxForBody{}            -> "CtxForBody        " <+> epar
+                    CtxSetL{}               -> "CtxSetL           " <+> epar
+                    CtxSetR{}               -> "CtxSetR           " <+> epar
+                    CtxReturn{}             -> "CtxReturn         " <+> epar
+                    CtxBinOpL{}             -> "CtxBinOpL         " <+> epar
+                    CtxBinOpR{}             -> "CtxBinOpR         " <+> epar
+                    CtxUnOp{}               -> "CtxUnOp           " <+> epar
+                    CtxBinding{}            -> "CtxBinding        " <+> epar
+                    CtxTyped{}              -> "CtxTyped          " <+> epar
+                    CtxAs{}                 -> "CtxAs             " <+> epar
+                    CtxRef{}                -> "CtxRef            " <+> epar
+                    CtxTry{}                -> "CtxTry            " <+> epar
+                    CtxClosure{}            -> "CtxClosure        " <+> epar
+                    CtxTop                  -> error "pp CtxTop"
 
 instance Show ECtx where
     show = render . pp
 
 ctxParent :: ECtx -> ECtx
-ctxParent CtxRuleL{}          = CtxTop
-ctxParent CtxRuleRAtom{}      = CtxTop
-ctxParent CtxRuleRCond{}      = CtxTop
-ctxParent CtxRuleRFlatMap{}   = CtxTop
-ctxParent CtxRuleRInspect{}   = CtxTop
-ctxParent CtxRuleRProject{}   = CtxTop
-ctxParent CtxRuleRGroupBy{}   = CtxTop
-ctxParent CtxKey{}            = CtxTop
-ctxParent CtxIndex{}          = CtxTop
-ctxParent CtxFunc{}           = CtxTop
-ctxParent ctx                 = ctxPar ctx
+ctxParent CtxRuleL{}            = CtxTop
+ctxParent CtxRuleRAtom{}        = CtxTop
+ctxParent CtxRuleRCond{}        = CtxTop
+ctxParent CtxRuleRFlatMap{}     = CtxTop
+ctxParent CtxRuleRFlatMapVars{} = CtxTop
+ctxParent CtxRuleRInspect{}     = CtxTop
+ctxParent CtxRuleRProject{}     = CtxTop
+ctxParent CtxRuleRGroupBy{}     = CtxTop
+ctxParent CtxKey{}              = CtxTop
+ctxParent CtxIndex{}            = CtxTop
+ctxParent CtxFunc{}             = CtxTop
+ctxParent ctx                   = ctxPar ctx

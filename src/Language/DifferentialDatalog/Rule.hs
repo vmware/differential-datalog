@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018-2020 VMware, Inc.
+Copyright (c) 2018-2021 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -92,14 +92,14 @@ ruleRHSVars' :: DatalogProgram -> Rule -> Int -> [Var]
 ruleRHSVars' _ _  i | i < 0 = []
 ruleRHSVars' d rl i =
     case ruleRHS rl !! i of
-         RHSLiteral True  a            -> nub $ vs ++ (exprVarDecls d (CtxRuleRAtom rl i) (atomVal a))
+         RHSLiteral True  a            -> nub $ (exprVarDecls d (CtxRuleRAtom rl i) (atomVal a)) ++ vs
          RHSLiteral False _            -> vs
          -- assignment introduces new variables
-         RHSCondition (E e@(ESet _ l _)) -> nub $ vs ++ (exprVarDecls d (CtxSetL e (CtxRuleRCond rl i)) l)
+         RHSCondition (E e@(ESet _ l _)) -> nub $ (exprVarDecls d (CtxSetL e (CtxRuleRCond rl i)) l) ++ vs
          -- condition does not introduce new variables
          RHSCondition _                -> vs
-         -- FlatMap introduces a variable
-         RHSFlatMap _ _                -> FlatMapVar rl i : vs
+         -- FlatMap introduces variables
+         RHSFlatMap pat _              -> nub $ exprVarDecls d (CtxRuleRFlatMapVars rl i) pat ++ vs
          -- Inspect does not introduce new variables
          RHSInspect _                  -> vs
          -- group_by hides all variables except group-by vars
@@ -154,7 +154,7 @@ ruleTypeMapM fun rule@Rule{..} = do
                   RHSLiteral pol (Atom p r v) -> (RHSLiteral pol . Atom p r) <$> exprTypeMapM fun v
                   RHSCondition c              -> RHSCondition <$> exprTypeMapM fun c
                   RHSGroupBy v p g            -> RHSGroupBy v <$> exprTypeMapM fun p <*> exprTypeMapM fun g
-                  RHSFlatMap v e              -> RHSFlatMap v <$> exprTypeMapM fun e
+                  RHSFlatMap vs e             -> RHSFlatMap <$> exprTypeMapM fun vs <*> exprTypeMapM fun e
                   RHSInspect e                -> RHSInspect <$> exprTypeMapM fun e)
                 ruleRHS
     return rule { ruleLHS = lhs, ruleRHS = rhs }

@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018-2020 VMware, Inc.
+Copyright (c) 2018-2021 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,7 +24,8 @@ SOFTWARE.
 {-# LANGUAGE RecordWildCards, FlexibleContexts, LambdaCase, TupleSections #-}
 
 module Language.DifferentialDatalog.Validate (
-    validate) where
+    validate,
+    typeValidate) where
 
 import qualified Data.Map as M
 import Control.Monad.Except
@@ -312,7 +313,8 @@ ruleValidateExpressions d rl = do
                           case rhs of
                                RHSLiteral{..} -> [(CtxRuleRAtom rl i, atomVal rhsAtom)]
                                RHSCondition{..} -> [(CtxRuleRCond rl i, rhsExpr)]
-                               RHSFlatMap{..} -> [(CtxRuleRFlatMap rl i, rhsMapExpr)]
+                               RHSFlatMap{..} -> [ (CtxRuleRFlatMap rl i, rhsMapExpr)
+                                                 , (CtxRuleRFlatMapVars rl i, rhsVars)]
                                RHSGroupBy{..} -> [ (CtxRuleRGroupBy rl i, rhsGroupBy)
                                                  , (CtxRuleRProject rl i, rhsProject)]
                                RHSInspect{..} -> [(CtxRuleRInspect rl i, rhsInspectExpr)])
@@ -324,7 +326,7 @@ ruleValidateExpressions d rl = do
                                 case rhs of
                                      RHSLiteral{..} -> (tail es, rhss ++ [rhs{rhsAtom = rhsAtom {atomVal = head es}}])
                                      RHSCondition{} -> (tail es, rhss ++ [rhs{rhsExpr = head es}])
-                                     RHSFlatMap{}   -> (tail es, rhss ++ [rhs{rhsMapExpr = head es}])
+                                     RHSFlatMap{}   -> (tail $ tail es, rhss ++ [rhs{rhsMapExpr = head es, rhsVars = head $ tail es}])
                                      RHSGroupBy{}   -> (tail $ tail es, rhss ++ [rhs{rhsGroupBy = head es, rhsProject = head $ tail es}])
                                      RHSInspect{}   -> (tail es, rhss ++ [rhs{rhsInspectExpr = head es}]))
                             (es', []) $ ruleRHS rl
@@ -338,7 +340,8 @@ ruleValidateExpressions d rl = do
                            case rhs of
                                 RHSLiteral{..} -> [(CtxRuleRAtom rl' i, atomVal rhsAtom)]
                                 RHSCondition{..} -> [(CtxRuleRCond rl' i, rhsExpr)]
-                                RHSFlatMap{..} -> [(CtxRuleRFlatMap rl' i, rhsMapExpr)]
+                                RHSFlatMap{..} -> [ (CtxRuleRFlatMap rl' i, rhsMapExpr)
+                                                  , (CtxRuleRFlatMapVars rl' i, rhsVars)]
                                 RHSGroupBy{..} -> [ (CtxRuleRGroupBy rl' i, rhsGroupBy)
                                                   , (CtxRuleRProject rl' i, rhsProject)]
                                 RHSInspect{..} -> [(CtxRuleRInspect rl' i, rhsInspectExpr)])
@@ -373,8 +376,9 @@ ruleRHSValidate d rl RHSCondition{..} i = do
     mapM_ (\v -> checkNoVar (pos v) d ctx (name v))
           (exprVarDecls d ctx rhsExpr)
 ruleRHSValidate d rl RHSFlatMap{..} i = do
-    let ctx = CtxRuleRFlatMap rl i
-    checkNoVar (pos rhsMapExpr) d ctx rhsVar
+    let ctx = CtxRuleRFlatMapVars rl i
+    mapM_ (\v -> checkNoVar (pos v) d ctx (name v))
+          (exprVarDecls d ctx rhsVars)
 ruleRHSValidate _ _ RHSInspect{} _ = return ()
 
 ruleRHSValidate d rl RHSGroupBy{} idx = do
@@ -619,21 +623,30 @@ exprValidate1 d _ ctx (EStruct p c _)     = do -- initial validation was perform
     case find ctxIsSetL $ ctxAncestors ctx of
          Nothing -> return ()
          Just ctx' -> when (not $ ctxIsRuleRCond $ ctxParent ctx') $ do
-            check d ((length $ typeCons $ fromJust $ tdefType tdef) == 1) p
+            check d (consIsUnique d c) p
                    $ "Type constructor in the left-hand side of an assignment is only allowed for types with one constructor, \
-                     \ but \"" ++ name tdef ++ "\" has multiple constructors"
+                     \ but '" ++ name tdef ++ "' has multiple constructors"
+    when (ctxInForLoopVars ctx) $ do
+            check d (consIsUnique d c) p
+                   $ "Type constructor in a for-loop pattern is only allowed for types with one constructor, \
+                     \ but '" ++ name tdef ++ "' has multiple constructors"
+    when (ctxInRuleRFlatMapVars ctx) $ do
+            check d (consIsUnique d c) p
+                   $ "Type constructor in a FlatMap pattern is only allowed for types with one constructor, \
+                     \ but '" ++ name tdef ++ "' has multiple constructors"
 exprValidate1 _ _ _   ETuple{}            = return ()
 exprValidate1 d _ _   (ESlice p _ h l)    =
     check d (h >= l) p
           $ "Upper bound of the slice must be greater than lower bound"
 exprValidate1 _ _ _   EMatch{}            = return ()
 exprValidate1 d _ ctx (EVarDecl p _)      = do
-    check d (ctxInSetL ctx || ctxInMatchPat ctx) p "Variable declaration is not allowed in this context"
+    check d (ctxInSetL ctx || ctxInMatchPat ctx || ctxInForLoopVars ctx || ctxInRuleRFlatMapVars ctx) p
+          $ "Variable declaration is not allowed in this context"
     --checkNoVar p d ctx v
 
 exprValidate1 _ _ _   ESeq{}              = return ()
 exprValidate1 _ _ _   EITE{}              = return ()
-exprValidate1 _ _ _   EFor{}              = return () -- checkNoVar exprPos d ctx exprLoopVar
+exprValidate1 _ _ _   EFor{}              = return ()
 exprValidate1 _ _ _   ESet{}              = return ()
 exprValidate1 d _ ctx (EContinue p)       = check d (ctxInForLoopBody ctx) p "\"continue\" outside of a loop"
 exprValidate1 d _ ctx (EBreak p)          = check d (ctxInForLoopBody ctx) p "\"break\" outside of a loop"
@@ -663,23 +676,25 @@ exprValidate1 d _ _   EClosure{..}        = do
 ctxPHolderAllowed :: ECtx -> Bool
 ctxPHolderAllowed ctx =
     case ctx of
-         CtxSetL{}        -> True
-         CtxTyped{}       -> pres
-         CtxRuleRAtom{}   -> True
-         CtxStruct{}      -> pres
-         CtxTuple{}       -> pres
-         CtxMatchPat{}    -> True
-         CtxBinding{}     -> True
-         CtxRef{}         -> True
-         CtxIndex{}       -> True
-         _                -> False
+         CtxSetL{}              -> True
+         CtxForVars{}           -> True
+         CtxTyped{}             -> pres
+         CtxRuleRAtom{}         -> True
+         CtxRuleRFlatMapVars{}  -> True
+         CtxStruct{}            -> pres
+         CtxTuple{}             -> pres
+         CtxMatchPat{}          -> True
+         CtxBinding{}           -> True
+         CtxRef{}               -> True
+         CtxIndex{}             -> True
+         _                      -> False
     where
     par = ctxParent ctx
     pres = ctxPHolderAllowed par
 
 checkNoVar :: (MonadError String me) => Pos -> DatalogProgram -> ECtx -> String -> me ()
 checkNoVar p d ctx v = check d (isNothing $ lookupVar d ctx v) p
-                              $ "Variable " ++ v ++ " already defined in this scope"
+                              $ "Variable '" ++ v ++ "' already defined in this scope"
 
 exprValidate2 :: (MonadError String me) => DatalogProgram -> ECtx -> ExprNode Type -> me ()
 exprValidate2 d _   (ESlice p e h _)    =
@@ -689,13 +704,13 @@ exprValidate2 d _   (ESlice p e h _)    =
         _        -> err d (pos e) $ "Expression is not a bit vector"
 exprValidate2 d _   (EAs p e t)          = do
     check d (not (isBigInt d e && isBit d t)) p
-        $ "Direct casts from bigint to bit<> are not supported; consider going through signed<>" ++ (show $ pos e)
+        $ "Direct casts from 'bigint' to 'bit<>' are not supported; consider going through 'signed<>'" ++ (show $ pos e)
     check d (isInteger d e || isFP d e) p
-        $ "Cannot type-cast expression of type " ++ show e ++ ".  The type-cast operator is only supported for numeric types."
+        $ "Cannot type-cast expression of type '" ++ show e ++ "'.  The type-cast operator is only supported for numeric types."
     check d (isInteger d t || isFP d t) p
         $ "Cannot type-cast expression to " ++ show t ++ ".  Only numeric types can be cast to."
     check d (not (isInteger d t && isFP d e)) p
-        $ "There are no direct casts from floating point to integers; use the library functions int_from_*." ++ show e
+        $ "There are no direct casts from floating point to integers; use the library functions 'int_from_*'." ++ show e
     when ((isBit d t || isSigned d t) && (isBit d e || isSigned d e)) $
         check d (isBit d e == isBit d t || typeWidth e' == typeWidth t') p $
             "Conversion between signed and unsigned bit vectors only supported across types of the same bit width. " ++

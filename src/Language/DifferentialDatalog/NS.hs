@@ -181,6 +181,7 @@ ctxVars' d ctx with_types =
          CtxRuleRAtom rl i        -> ([], ruleRHSVars d rl i)
          CtxRuleRCond rl i        -> ([], ruleRHSVars d rl i)
          CtxRuleRFlatMap rl i     -> ([], ruleRHSVars d rl i)
+         CtxRuleRFlatMapVars rl i -> ([], ruleRHSVars d rl i)
          CtxRuleRInspect rl i     -> let vars = (ruleRHSVars d rl i) ++ [WeightVar] in
                                      ([], TSVar rl : vars)
          CtxRuleRProject rl i     -> ([], ruleRHSVars d rl i)
@@ -215,15 +216,17 @@ ctxVars' d ctx with_types =
          CtxITEIf _ _             -> ([], plvars ++ prvars)
          CtxITEThen _ _           -> (plvars, prvars)
          CtxITEElse _ _           -> (plvars, prvars)
+         CtxForVars _ _           -> ([], [])
          CtxForIter _ _           -> (plvars, prvars)
-         CtxForBody e@EFor{..} pctx -> let loopvar = ForVar pctx e
-                                           prvars' = (filter ((/= name loopvar) . name) prvars)
+         CtxForBody e@EFor{..} pctx -> let loopvars = exprVarDecls d (CtxForVars e pctx) exprLoopVars
+                                           loopvar_names = map name loopvars
+                                           prvars' = filter (\v -> notElem (name v) loopvar_names) prvars
                                            iterVarNames = map name $ exprVars d (CtxForIter e pctx) exprIter
                                            -- variables that occur in the iterator expression cannot
                                            -- be modified inside the loop
-                                           plvars_not_iter = filter (\v -> name v /= (name loopvar) && notElem (name v) iterVarNames) plvars
-                                           plvars_iter = filter (\v -> name v /= (name loopvar) && elem (name v) iterVarNames) plvars
-                                       in (plvars_not_iter, prvars' ++ plvars_iter ++ [loopvar])
+                                           plvars_not_iter = filter (\v -> (notElem (name v) loopvar_names) && notElem (name v) iterVarNames) plvars
+                                           plvars_iter = filter (\v -> (notElem (name v) loopvar_names) && elem (name v) iterVarNames) plvars
+                                       in (plvars_not_iter, prvars' ++ plvars_iter ++ loopvars)
          CtxForBody _ _           -> error $ "NS.ctxMVars: invalid context " ++ show ctx
          CtxSetL _ _              -> (plvars, prvars)
          CtxSetR _ _              -> (plvars, prvars)

@@ -5,6 +5,7 @@
  * copying (e.g., 8, 16, 32, or 64-bit integers). */
 
 #[dyn_alloc]
+#[iterate_by_val=iter:'X]
 extern type Set64<'X>
 
 extern function size(s: Set64<'X>): bit<64>

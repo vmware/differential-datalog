@@ -435,6 +435,7 @@ extern function hash128(x: 'X): bit<128>
  * represents a non-empty list of objects.
  * `'K` is the type of group key, and `'V` is the type of value in the group.
  */
+#[iterate_by_val=iter:'V]
 extern type Group<'K,'V>
 
 /* Extracts group key.
@@ -559,6 +560,7 @@ function max(g: Group<'K, 'V>): 'V {
  * Vec
  */
 #[dyn_alloc]
+#[iterate_by_ref=iter:'A]
 extern type Vec<'A>
 
 extern function vec_empty(): Vec<'A>
@@ -669,6 +671,7 @@ function update_nth(v: mut Vec<'X>, idx: usize, value: 'X): bool {
  */
 
 #[dyn_alloc]
+#[iterate_by_val=iter:('K,'V)]
 extern type Map<'K,'V>
 
 extern function map_empty(): Map<'K, 'V>
@@ -716,6 +719,7 @@ function keys(m: Map<'K, 'V>): Vec<'K> {
  */
 
 #[dyn_alloc]
+#[iterate_by_ref=iter:'A]
 extern type Set<'A>
 
 extern function set_singleton(x: 'X): Set<'X>

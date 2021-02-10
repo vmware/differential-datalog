@@ -76,21 +76,21 @@ error: ./test/datalog_tests/rules.fail.dl:10.29-10.34: Group-by expression must 
     var sz = ().group_by((x,x + y)).size().
                             ^^^^^
 
-error: ./test/datalog_tests/rules.fail.dl:10.21-10.22: Type mismatch:
+error: ./test/datalog_tests/rules.fail.dl:10.5-10.11: Type mismatch:
 expected type: bit<64>
 actual type: ddlog_std::Option<ddlog_std::usize<>>
 in
-variable 'x'
+expression 'var x'
     var x = FlatMap(v).
-                    ^
+    ^^^^^^
 
-error: ./test/datalog_tests/rules.fail.dl:10.5-10.11: Variable y already defined in this scope
+error: ./test/datalog_tests/rules.fail.dl:10.5-10.11: Variable 'y' already defined in this scope
     var y = x.
     ^^^^^^
 
-error: ./test/datalog_tests/rules.fail.dl:10.21-10.22: Variable y already defined in this scope
+error: ./test/datalog_tests/rules.fail.dl:10.5-10.11: Variable 'y' already defined in this scope
     var y = FlatMap(y).
-                    ^
+    ^^^^^^
 
 error: ./test/datalog_tests/rules.fail.dl:10.23-10.31: Attempt to join stream relation 'S2' and the stream produced by the prefix of the rule before this literal. Stream joins are currently not supported.
 S3(x, z) :- S1(x, y), S2(y, z).
