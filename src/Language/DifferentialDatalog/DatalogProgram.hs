@@ -117,7 +117,8 @@ rhsExprMapCtxM fun r rhsidx a@RHSGroupBy{} = do
     return a{rhsGroupBy = g, rhsProject = e}
 rhsExprMapCtxM fun r rhsidx m@RHSFlatMap{}   = do
     e <- exprFoldCtxM fun (CtxRuleRFlatMap r rhsidx) (rhsMapExpr m)
-    return m{rhsMapExpr = e}
+    vs <- exprFoldCtxM fun (CtxRuleRFlatMapVars r rhsidx) (rhsVars m)
+    return m{rhsVars = vs, rhsMapExpr = e}
 rhsExprMapCtxM fun r rhsidx i@RHSInspect{}   = do
     e <- exprFoldCtxM fun (CtxRuleRInspect r rhsidx) (rhsInspectExpr i)
     return i{rhsInspectExpr = e}

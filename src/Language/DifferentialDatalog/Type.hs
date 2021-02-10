@@ -48,7 +48,7 @@ module Language.DifferentialDatalog.Type(
     typDeref',
     typDeref'',
     isBool, isBit, isSigned, isBigInt, isInteger, isFP, isString, isStruct, isTuple, isGroup, isDouble, isFloat,
-    isMap, isTinySet, isSharedRef, isDynAlloced,
+    isMap, isSharedRef, isDynAlloced,
     isOption, isResult,
     checkTypesMatch,
     typesMatch,
@@ -60,9 +60,6 @@ module Language.DifferentialDatalog.Type(
     consTreeAbduct,
     typeMapM,
     typeMap,
-    sET_TYPES,
-    tINYSET_TYPE,
-    mAP_TYPE,
     gROUP_TYPE,
     ePOCH_TYPE,
     iTERATION_TYPE,
@@ -74,7 +71,7 @@ module Language.DifferentialDatalog.Type(
     rESULT_TYPE,
     eRR_CONSTRUCTOR,
     oK_CONSTRUCTOR,
-    checkIterable,
+    typeIsIterable,
     typeIterType,
     varType
 ) where
@@ -98,12 +95,7 @@ import Language.DifferentialDatalog.Error
 import Language.DifferentialDatalog.Var
 import Language.DifferentialDatalog.Module
 import {-# SOURCE #-} Language.DifferentialDatalog.Rule
-
-sET_TYPES :: [String]
-sET_TYPES = [mOD_STD ++ "::Set", mOD_STD ++ "::Vec", tINYSET_TYPE]
-
-tINYSET_TYPE :: String
-tINYSET_TYPE = "tinyset::Set64"
+import Language.DifferentialDatalog.Rust
 
 gROUP_TYPE :: String
 gROUP_TYPE = mOD_STD ++ "::Group"
@@ -460,11 +452,6 @@ isMap d a = case typ' d a of
                  TOpaque _ t _ | t == mAP_TYPE -> True
                  _                             -> False
 
-isTinySet :: (WithType a) => DatalogProgram -> a -> Bool
-isTinySet d a = case typ' d a of
-                 TOpaque _ t _ | t == tINYSET_TYPE -> True
-                 _                                 -> False
-
 isSharedRef :: (WithType a) => DatalogProgram -> a -> Bool
 isSharedRef d a =
     case typ' d a of
@@ -708,34 +695,29 @@ typeMap f t = runIdentity $ typeMapM (return . f) t
 -- sets, vectors, and groups, key-value pair for maps).  The Boolean flag in
 -- the returned tuple indicates whether the collection iterates by reference
 -- (True) or by value (False) in Rust.
-typeIterType :: DatalogProgram -> Type -> (Type, Bool)
+typeIterType :: DatalogProgram -> Type -> (Type, EKind)
 typeIterType d t =
     case typ' d t of
-         TOpaque _ tname [t']  | tname == tINYSET_TYPE -> (t', False)            -- Tinysets iterate by value.
-         TOpaque _ tname [t']  | elem tname sET_TYPES  -> (t', True)             -- Other sets iterate by reference.
-         TOpaque _ tname [k,v] | tname == mAP_TYPE     -> (tTuple [k,v], False)  -- Maps iterate by value.
-         TOpaque _ tname [_,v] | tname == gROUP_TYPE   -> (v, False)             -- Groups iterate by value.
-         _                                             -> error $ "typeIterType " ++ show t
+         TOpaque _ tname targs ->
+             let tdef = getType d tname in
+             case tdefGetIterableAttr d tdef of
+                  Just (itr_type, kind) -> let tmap = M.fromList $ zip (tdefArgs tdef) targs
+                                           in (typeSubstTypeArgs tmap itr_type, kind)
+                  Nothing -> error $ "typeIterType: type does not have an iterable attribute " ++ show t
+         _ -> error $ "typeIterType: not an iterable type " ++ show t
 
-typeIsIterable :: (WithType a) =>  DatalogProgram -> a -> Bool
-typeIsIterable d x =
-    case typ' d x of
-         TOpaque _ tname [_]   | elem tname sET_TYPES -> True
-         TOpaque _ tname [_,_] | tname == mAP_TYPE    -> True
-         TOpaque _ tname _     | tname == gROUP_TYPE  -> True
-         _                                            -> False
-
-checkIterable :: (MonadError String me, WithType a) => String -> Pos -> DatalogProgram -> a -> me ()
-checkIterable prefix p d x =
-    check d (typeIsIterable d x) p $
-          prefix ++ " must have one of these types: " ++ intercalate ", " sET_TYPES ++ ", or " ++ mAP_TYPE ++ " but its type is " ++ show (typ x)
+typeIsIterable :: DatalogProgram -> Type -> Bool
+typeIsIterable d t =
+    case typ' d t of
+         TOpaque _ tname _ ->
+             let tdef = getType d tname
+             in isJust $ tdefGetIterableAttr d tdef
+         _ -> False
 
 varType :: DatalogProgram -> Var -> Type
 varType _ (ExprVar ctx EVarDecl{})         = ctxExpectType ctx
 varType _ (ExprVar ctx EVar{})             = ctxExpectType ctx
 varType _ v@ExprVar{}                      = error $ "varType " ++ show v
-varType d (ForVar ctx e@EFor{..})          = fst $ typeIterType d $ exprType d (CtxForIter e ctx) exprIter
-varType _ v@ForVar{}                       = error $ "varType " ++ show v
 varType d (BindingVar ctx e@EBinding{..})  = exprType d (CtxBinding e ctx) exprPattern
 varType _ v@BindingVar{}                   = error $ "varType " ++ show v
 varType _ ArgVar{..}                       = typ $ fromJust $ find ((== varName) . name) $ funcArgs varFunc
@@ -743,13 +725,6 @@ varType d ClosureArgVar{..}                = let TFunction{..} = exprType' d var
                                              in typ $ typeFuncArgs !! varArgIndex
 varType _ KeyVar{..}                       = typ varRel
 varType _ IdxVar{..}                       = typ $ fromJust $ find ((== varName) . name) $ idxVars varIndex
-varType d (FlatMapVar rl i)                = case typ' d $ exprType d (CtxRuleRFlatMap rl i) (rhsMapExpr $ ruleRHS rl !! i) of
-                                                  TOpaque _ _ [t']     -> t'
-                                                  TOpaque _ tname [kt,vt] | tname == mAP_TYPE
-                                                                       -> tTuple [kt,vt]
-                                                                          | tname == gROUP_TYPE
-                                                                       -> vt
-                                                  _                    -> error $ "varType FlatMapVar " ++ show rl ++ " " ++ show i
 varType d (GroupVar rl i)                  = let ktype = ruleGroupByKeyType d rl i
                                                  vtype = ruleGroupByValType d rl i
                                              in tOpaque gROUP_TYPE [ktype, vtype]

@@ -406,8 +406,8 @@ rulerhs :: ParsecT String () Identity [RuleRHS]
 rulerhs =  (do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ try $ varIdent <* reserved "in") *> (optional $ reservedOp "&") *> relIdent *> (symbol "(" <|> symbol "[")
                (\x -> [x]) <$> (RHSLiteral <$> (option True (False <$ reserved "not")) <*> atom False))
           <|> aggregate
-          <|> do _ <- try $ lookAhead $ reserved "var" *> varIdent *> reservedOp "=" *> reserved "FlatMap"
-                 (\x -> [x]) <$> (RHSFlatMap <$> (reserved "var" *> varIdent) <*>
+          <|> do _ <- try $ lookAhead $ flatmap_pattern *> reservedOp "=" *> reserved "FlatMap"
+                 (\x -> [x]) <$> (RHSFlatMap <$> flatmap_pattern <*>
                                                  (reservedOp "=" *> reserved "FlatMap" *> parens expr))
           <|> (((\x -> [x]) . RHSInspect) <$ reserved "Inspect" <*> expr)
           <|> rhsCondition
@@ -633,6 +633,39 @@ efunc = eFunc <$> globalFuncIdent
 ematch = eMatch <$ reserved "match" <*> parens expr
                <*> (braces $ (commaSepEnd1 $ (,) <$> pattern <* reservedOp "->" <*> expr))
 
+{- FlatMap pattern ('pat = FlatMap(..)')-}
+flatmap_pattern = buildExpressionParser flatmap_etable flatmap_term
+      <?> "pattern expression consisting of tuples, constructors, variable declarations, and '_', for example: '(var x, _) = FlatMap(...)'"
+
+flatmap_etable = [[postf postType]]
+
+flatmap_term = (withPos $
+           eTuple <$> (parens $ commaSepEnd flatmap_pattern)
+       <|> E <$> ((EStruct nopos) <$> consIdent <*> (option [] $ braces $ commaSepEnd $ named_fmpat <|> anon_fmpat))
+       <|> evardcl
+       <|> epholder)
+      <?> "pattern expression consisting of tuples, constructors, variable declarations, and '_', for example: '(var x, _) = FlatMap(...)'"
+
+anon_fmpat = (IdentifierWithPos nopos "",) <$> flatmap_pattern
+named_fmpat = (,) <$> (dot *> posVarIdent) <*> (reservedOp "=" *> flatmap_pattern)
+
+{- for-loop pattern ('for (pat in expr) {...}') -}
+loop_pattern = buildExpressionParser loop_etable loop_term
+      <?> "pattern expression consisting of tuples, constructors, variable names, and '_', for example: 'for ((x, _) in ..) {}'"
+
+loop_etable = [[postf postType]]
+
+loop_term = (withPos $
+           eTuple   <$> (parens $ commaSepEnd loop_pattern)
+       <|> E <$> ((EStruct nopos) <$> consIdent <*> (option [] $ braces $ commaSepEnd (loop_namedpat <|> loop_anonpat)))
+       <|> (E . EVarDecl nopos) <$> varIdent
+       <|> (E . EVarDecl nopos) <$ reserved "var" <*> varIdent
+       <|> epholder)
+      <?> "pattern expression consisting of tuples, constructors, variable names, and '_', for example: 'for ((x, _) in ..) {}'"
+
+loop_anonpat = (IdentifierWithPos nopos "",) <$> loop_pattern
+loop_namedpat = (,) <$> (dot *> posVarIdent) <*> (reservedOp "=" *> loop_pattern)
+
 {- Match pattern -}
 pattern = buildExpressionParser petable pterm
       <?> "match pattern"
@@ -757,7 +790,7 @@ eite = do reserved "if"
           el <- option (E $ ETuple (p,p) []) $ (reserved "else" *> term)
           return $ eITE cond th el
 
-efor    = eFor     <$ (reserved "for" *> symbol "(") <*> (varIdent <* reserved "in") <*> (expr <* symbol ")") <*> term
+efor    = eFor     <$ (reserved "for" *> symbol "(") <*> (loop_pattern <* reserved "in") <*> (expr <* symbol ")") <*> term
 evardcl = (E . EVarDecl nopos) <$ reserved "var" <*> varIdent
 epholder = ePHolder <$ reserved "_"
 

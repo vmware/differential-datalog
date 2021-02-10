@@ -15,6 +15,34 @@ Fib{.x = 3, .f = 2}: +1
 Fib{.x = 4, .f = 3}: +1
 Fib{.x = 10, .f = 55}: +1
 Fib{.x = 20, .f = 6765}: +1
+FlatMapTests:
+FlatMapTests{.id = 1, .result = "1"}: +1
+FlatMapTests{.id = 1, .result = "2"}: +1
+FlatMapTests{.id = 1, .result = "3"}: +1
+FlatMapTests{.id = 2, .result = "1"}: +1
+FlatMapTests{.id = 2, .result = "2"}: +1
+FlatMapTests{.id = 2, .result = "3"}: +1
+FlatMapTests{.id = 3, .result = "bar"}: +1
+FlatMapTests{.id = 3, .result = "buzz"}: +1
+FlatMapTests{.id = 3, .result = "foo"}: +1
+FlatMapTests{.id = 4, .result = "1:foo"}: +1
+FlatMapTests{.id = 4, .result = "2:bar"}: +1
+FlatMapTests{.id = 4, .result = "3:buzz"}: +1
+FlatMapTests{.id = 5, .result = "bar"}: +1
+FlatMapTests{.id = 5, .result = "buzz"}: +1
+FlatMapTests{.id = 5, .result = "foo"}: +1
+FlatMapTests{.id = 6, .result = "bar bar"}: +1
+FlatMapTests{.id = 6, .result = "bar buzz"}: +1
+FlatMapTests{.id = 6, .result = "buzz bar"}: +1
+FlatMapTests{.id = 6, .result = "buzz buzz"}: +1
+FlatMapTests{.id = 6, .result = "foo foo"}: +1
+ForTests:
+ForTests{.id = 1, .result = "123"}: +1
+ForTests{.id = 2, .result = "123"}: +1
+ForTests{.id = 3, .result = " foo bar buzz"}: +1
+ForTests{.id = 4, .result = " 1:foo 2:bar 3:buzz"}: +1
+ForTests{.id = 5, .result = "foobarbuzz"}: +1
+ForTests{.id = 6, .result = " foofoo barbarbuzz buzzbarbuzz"}: +1
 FuncTest:
 FuncTest{.x = "foo"}: +1
 MapOfMaps:

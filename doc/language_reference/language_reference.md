@@ -497,7 +497,7 @@ cons_term    ::= (* positional arguments *)
                             ("," "." field_name "=" expr)* "}"]
 var_term     ::= var_name
 ite_term     ::= "if" term term [ "else" term ]
-for_term     ::= "for" "(" var_name "in" expr ")" term
+for_term     ::= "for" "(" for_pattern "in" expr ")" term
 return_term  ::= "return" [expr]
 vardecl_term ::= "var" var_name
 
@@ -524,6 +524,20 @@ pattern ::= (* tuple pattern *)
           | string_literal  (* matches specified string value *)
           | int_literal     (* matches specified integer or bitvector value *)
           | "_"             (* wildcard, matches any value *)
+```
+
+```EBNF
+(* pattern that binds loop variables in a for-loop *)
+for_pattern ::= (* tuple pattern *)
+                "(" [pattern (,pattern)* ")"
+                (* constructor pattern with positional arguments. The constructor must be the unique constructor for the type.*)
+              | cons_name ["{" [pattern (,pattern)*] "}"]
+                (* constructor pattern with named arguments. The constructor must be the unique constructor for the type. *)
+              | cons_name "{" ["." field_name "=" pattern
+                               ("," "." field_name "=" pattern)*] "}"
+              | vardecl_term    (* binds variable to a field inside the matched value or the entire value. *)
+              | var_term        (* binds variable to a field inside the matched value (shorthand for vardecl_term) *)
+              | "_"             (* wildcard, matches any value *)
 ```
 
 ### Constraints on expressions
@@ -647,9 +661,20 @@ rhs_clause ::= atom                                      (* 1.atom *)
              | "not" atom                                (* 2.negated atom *)
              | expr                                      (* 3.condition *)
              | expr "=" expr                             (* 4.assignment *)
-             | "var" var_name "=" "FlatMap" "(" expr ")" (* 5.flat map *)
+             | flatmap_pattern "=" "FlatMap" "(" expr ")" (* 5.flat map *)
              | "var" var_name = expr "." "group_by"      (* 6.grouping; in general a *)
                                 "(" expr ")"             (*   group_by clause can be any expression containing `expr.group_by(expr)` subexpression. *)
+
+(* pattern that binds variables in the left-hand side of a FlatMap clause *)
+flatmap_pattern ::= (* tuple pattern *)
+                    "(" [pattern (,pattern)* ")"
+                    (* constructor pattern with positional arguments.  The constructor must be the unique constructor for a type. *)
+                  | cons_name ["{" [pattern (,pattern)*] "}"]
+                    (* constructor pattern with named arguments. The constructor must be the unique constructor for the type. *)
+                  | cons_name "{" ["." field_name "=" pattern
+                                  ("," "." field_name "=" pattern)*] "}"
+                  | vardecl_term    (* binds variable to a field inside the matched value or the entire value. *)
+                  | "_"             (* wildcard, matches any value *)
 ```
 
 An atom is a predicate that holds when a given value belongs to a relation.

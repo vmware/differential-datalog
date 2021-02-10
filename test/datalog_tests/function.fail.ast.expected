@@ -18,11 +18,11 @@ error: ./test/datalog_tests/function.fail.dl:6.13-7.1: Access to guarded field '
     var b = a.x
             ^
 
-error: ./test/datalog_tests/function.fail.dl:6.5-6.17: Type constructor in the left-hand side of an assignment is only allowed for types with one constructor,  but "ddlog_std::Option" has multiple constructors
+error: ./test/datalog_tests/function.fail.dl:6.5-6.17: Type constructor in the left-hand side of an assignment is only allowed for types with one constructor,  but 'ddlog_std::Option' has multiple constructors
     Some{var s} = x
     ^^^^^^^^^^^^
 
-error: ./test/datalog_tests/function.fail.dl:8.16-8.27: Type constructor in the left-hand side of an assignment is only allowed for types with one constructor,  but "ddlog_std::Option" has multiple constructors
+error: ./test/datalog_tests/function.fail.dl:8.16-8.27: Type constructor in the left-hand side of an assignment is only allowed for types with one constructor,  but 'ddlog_std::Option' has multiple constructors
     T{.field = Some{var s}} = x
                ^^^^^^^^^^^
 
@@ -42,7 +42,7 @@ error: ./test/datalog_tests/function.fail.dl:3.41-5.1: Conversion between signed
 function cast(x: signed<32>): bit<64> = x as bit<64>
                                         ^
 
-error: ./test/datalog_tests/function.fail.dl:3.37-5.1: Direct casts from bigint to bit<> are not supported; consider going through signed<>("./test/datalog_tests/function.fail.dl" (line 3, column 37),"./test/datalog_tests/function.fail.dl" (line 3, column 39))
+error: ./test/datalog_tests/function.fail.dl:3.37-5.1: Direct casts from 'bigint' to 'bit<>' are not supported; consider going through 'signed<>'("./test/datalog_tests/function.fail.dl" (line 3, column 37),"./test/datalog_tests/function.fail.dl" (line 3, column 39))
 function cast(x: bigint): bit<64> = x as bit<64>
                                     ^
 
@@ -54,11 +54,11 @@ error: failed to parse input file: "./test/datalog_tests/function.fail.dl" (line
 unexpected "3"
 expecting "bit", "signed", "bigint", "double", "float", "string", "bool", "#", constructor name, type name, "'", "function", "|", "(" or ">"
 
-error: ./test/datalog_tests/function.fail.dl:3.37-5.1: There are no direct casts from floating point to integers; use the library functions int_from_*.double
+error: ./test/datalog_tests/function.fail.dl:3.37-5.1: There are no direct casts from floating point to integers; use the library functions 'int_from_*'.double
 function cast(x: double): bit<32> = x as bit<32>
                                     ^
 
-error: ./test/datalog_tests/function.fail.dl:3.34-5.1: Cannot type-cast expression of type string.  The type-cast operator is only supported for numeric types.
+error: ./test/datalog_tests/function.fail.dl:3.34-5.1: Cannot type-cast expression of type 'string'.  The type-cast operator is only supported for numeric types.
 function cast(x: string): bool = x as bool
                                  ^
 

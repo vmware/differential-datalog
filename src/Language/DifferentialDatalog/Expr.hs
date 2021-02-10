@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018-2020 VMware, Inc.
+Copyright (c) 2018-2021 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -123,7 +123,8 @@ exprFoldCtxM' f ctx e@(EITE p i t el)         = f ctx =<< EITE p <$>
                                                           exprFoldCtxM f (CtxITEIf e ctx) i <*>
                                                           exprFoldCtxM f (CtxITEThen e ctx) t <*>
                                                           exprFoldCtxM f (CtxITEElse e ctx) el
-exprFoldCtxM' f ctx e@(EFor p v i b)          = f ctx =<< EFor p v <$>
+exprFoldCtxM' f ctx e@(EFor p v i b)          = f ctx =<< EFor p <$>
+                                                          exprFoldCtxM f (CtxForVars e ctx) v <*>
                                                           exprFoldCtxM f (CtxForIter e ctx) i <*>
                                                           exprFoldCtxM f (CtxForBody e ctx) b
 exprFoldCtxM' f ctx e@(ESet p l r)            = do -- XXX: start with RHS, e.g., in validating an assignment it helps to know RHS type
@@ -172,7 +173,7 @@ exprMapM g e = case e of
                    EVarDecl p v        -> return $ EVarDecl p v
                    ESeq p l r          -> ESeq p <$> g l <*> g r
                    EITE p i t el       -> EITE p <$> g i <*> g t <*> g el
-                   EFor p v i b        -> EFor p v <$> g i <*> g b
+                   EFor p v i b        -> EFor p <$> g v <*> g i <*> g b
                    ESet p l r          -> ESet p <$> g l <*> g r
                    EBreak p            -> return $ EBreak p
                    EContinue p         -> return $ EContinue p
@@ -231,7 +232,7 @@ exprCollectCtxM f op ctx e = exprFoldCtxM g ctx e
                                      EVarDecl _ _          -> x'
                                      ESeq _ l r            -> x' `op` l `op` r
                                      EITE _ i t el         -> x' `op` i `op` t `op` el
-                                     EFor _ _ i b          -> x' `op` i `op` b
+                                     EFor _ v i b          -> x' `op` v `op` i `op` b
                                      ESet _ l r            -> x' `op` l `op` r
                                      EBreak _              -> x'
                                      EContinue _           -> x'
@@ -647,9 +648,11 @@ exprFoldWithLocatorM' f loc@(ELocator path) (EITE p i t el)         =
                          exprFoldWithLocatorM f (ELocator $ 2:path) el
 exprFoldWithLocatorM' f loc@(ELocator path) (EFor p v i b)          =
     -- 0: iterator expression
-    -- 1: loop body
-    f loc =<< EFor p v <$> exprFoldWithLocatorM f (ELocator $ 0:path) i <*>
-                           exprFoldWithLocatorM f (ELocator $ 1:path) b
+    -- 1: loop variables expression
+    -- 2: loop body
+    f loc =<< EFor p <$> exprFoldWithLocatorM f (ELocator $ 1:path) v <*>
+                         exprFoldWithLocatorM f (ELocator $ 0:path) i <*>
+                         exprFoldWithLocatorM f (ELocator $ 2:path) b
 exprFoldWithLocatorM' f loc@(ELocator path) (ESet p l r)            = do
     r' <- exprFoldWithLocatorM f (ELocator $ 0:path) r
     l' <- exprFoldWithLocatorM f (ELocator $ 1:path) l
@@ -695,7 +698,8 @@ ctxToLocator' CtxFunc{}                  = []
 ctxToLocator' (CtxRuleL _ idx)           = [idx, 0]
 ctxToLocator' (CtxRuleRAtom _ idx)       = [idx, 1]
 ctxToLocator' (CtxRuleRCond _ idx)       = [idx, 1]
-ctxToLocator' (CtxRuleRFlatMap _ idx)    = [idx, 1]
+ctxToLocator' (CtxRuleRFlatMap _ idx)    = [0, idx, 1]
+ctxToLocator' (CtxRuleRFlatMapVars _ idx)= [1, idx, 1]
 ctxToLocator' (CtxRuleRInspect _ idx)    = [idx, 1]
 ctxToLocator' (CtxRuleRProject _ idx)    = [0,idx,1]
 ctxToLocator' (CtxRuleRGroupBy _ idx)    = [1,idx,1]
@@ -717,7 +721,8 @@ ctxToLocator' (CtxITEIf _ ctx)           = 0 : ctxToLocator' ctx
 ctxToLocator' (CtxITEThen _ ctx)         = 1 : ctxToLocator' ctx
 ctxToLocator' (CtxITEElse _ ctx)         = 2 : ctxToLocator' ctx
 ctxToLocator' (CtxForIter _ ctx)         = 0 : ctxToLocator' ctx
-ctxToLocator' (CtxForBody _ ctx)         = 1 : ctxToLocator' ctx
+ctxToLocator' (CtxForVars _ ctx)         = 1 : ctxToLocator' ctx
+ctxToLocator' (CtxForBody _ ctx)         = 2 : ctxToLocator' ctx
 ctxToLocator' (CtxSetL _ ctx)            = 1 : ctxToLocator' ctx
 ctxToLocator' (CtxSetR _ ctx)            = 0 : ctxToLocator' ctx
 ctxToLocator' (CtxReturn _ ctx)          = 0 : ctxToLocator' ctx

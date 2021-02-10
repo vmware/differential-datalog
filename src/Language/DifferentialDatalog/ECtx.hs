@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018-2020 VMware, Inc.
+Copyright (c) 2018-2021 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -29,6 +29,7 @@ Description: Helper functions for manipulating expression contexts.
  -}
 module Language.DifferentialDatalog.ECtx(
      ctxAncestors,
+     ctxLocalAncestors,
      ctxIsRuleL,
      ctxInRuleL,
      ctxIsMatchPat,
@@ -44,6 +45,8 @@ module Language.DifferentialDatalog.ECtx(
      ctxIsRuleRCond,
      ctxInRuleRHSPositivePattern,
      ctxInRuleRHSPattern,
+     ctxIsRuleRFlatMapVars,
+     ctxInRuleRFlatMapVars,
      ctxIsIndex,
      ctxInIndex,
      ctxIsFunc,
@@ -54,6 +57,8 @@ module Language.DifferentialDatalog.ECtx(
      ctxInFuncOrClosure,
      ctxIsForLoopBody,
      ctxInForLoopBody,
+     ctxIsForLoopVars,
+     ctxInForLoopVars,
      ctxStripTypeAnnotations)
 where
 
@@ -198,7 +203,25 @@ ctxIsForLoopBody _            = False
 ctxInForLoopBody :: ECtx -> Bool
 ctxInForLoopBody ctx = any ctxIsForLoopBody $ ctxLocalAncestors ctx
 
+ctxIsForLoopVars :: ECtx -> Bool
+ctxIsForLoopVars CtxForVars{} = True
+ctxIsForLoopVars _            = False
+
+-- | The context is located in the for-loop variable pattern.
+ctxInForLoopVars :: ECtx -> Bool
+ctxInForLoopVars ctx = any ctxIsForLoopVars $ ctxLocalAncestors ctx
+
+ctxIsRuleRFlatMapVars :: ECtx -> Bool
+ctxIsRuleRFlatMapVars CtxRuleRFlatMapVars{} = True
+ctxIsRuleRFlatMapVars _                     = False
+
+-- | The context is located in the lhs of a FlatMap operator.
+ctxInRuleRFlatMapVars :: ECtx -> Bool
+ctxInRuleRFlatMapVars ctx = any ctxIsRuleRFlatMapVars $ ctxAncestors ctx
+
 -- | Find the first parent that is not a type annotation.
 ctxStripTypeAnnotations :: ECtx -> ECtx
 ctxStripTypeAnnotations CtxTyped{..} = ctxStripTypeAnnotations ctxPar
 ctxStripTypeAnnotations ctx          = ctx
+
+

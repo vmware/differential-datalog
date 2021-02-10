@@ -338,10 +338,10 @@ function best_vendor_string(g: Group<string, (string, u64)>): string
 {
     var min_vendor = "";
     var min_price = 'hffffffffffffffff;
-    for (vendor_price in g) {
-        if (vendor_price.1 < min_price) {
-            min_vendor = vendor_price.0;
-            min_price = vendor_price.1;
+    for ((vendor, price) in g) {
+        if (price < min_price) {
+            min_vendor = vendor;
+            min_price = price;
         }
     };
     "Best deal for ${group_key(g)}: ${min_vendor}, $${min_price}"

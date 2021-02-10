@@ -1481,11 +1481,11 @@ containing item name, vendor, and price:
 function best_vendor_string(g: Group<string, (string, bit<64>)>): string
 {
     var min_vendor = "";
-    var min_price: bit<64> = 'hffffffffffffffff;
-    for (vendor_price in g) {
-        if (vendor_price.1 < min_price) {
-            min_vendor = vendor_price.0;
-            min_price = vendor_price.1
+    var min_price = 'hffffffffffffffff;
+    for ((vendor, price) in g) {
+        if (price < min_price) {
+            min_vendor = vendor;
+            min_price = price;
         }
     };
     "Best deal for ${group_key(g)}: ${min_vendor}, $${min_price}"
@@ -3058,6 +3058,38 @@ function returns a reference in Rust:
 ```
 #[return_by_ref]
 extern function deref(x: Ref<'A>): 'A
+```
+
+### `#[iterate_by_ref]` and `#[iterate_by_val]`
+
+These attributes apply to extern types only and tell the compiler that the given
+type is **iterable**.  Iterable types can be iterated over in a for-loop and
+flattened by `FlatMap`.  The syntax for these attributes is:
+
+```
+#[iterate_by_ref=iter:<type>]
+```
+
+```
+#[iterate_by_val=iter:<type>]
+```
+
+Both variants tell the DDlog compiler that the Rust type that the extern type
+declaration binds to implements the `iter()` method, which returns a type that
+implements the Rust `Iterator` trait, and that the `next()` method of the
+resulting iterator returns values of type `<type>`.  The first form indicates
+that the iterator returns the contents of the collection by reference, while
+the second form indicates that the iterator returns elements in the collection
+by value.
+
+Here are two examples from `ddlog_std.dl`:
+
+```
+#[iterate_by_ref=iter:'A]
+extern type Vec<'A>
+
+#[iterate_by_val=iter:('K,'V)]
+extern type Map<'K,'V>
 ```
 
 ### `#[deserialize_from_array=func()]`
