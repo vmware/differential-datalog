@@ -47,7 +47,7 @@ module Language.DifferentialDatalog.Type(
     typ', typ'',
     typDeref',
     typDeref'',
-    isBool, isBit, isSigned, isBigInt, isInteger, isFP, isString, isStruct, isTuple, isGroup, isDouble, isFloat,
+    isBool, isBit, isSigned, isBigInt, isInteger, isFP, isString, isStruct, isTuple, isDouble, isFloat,
     isMap, isSharedRef, isDynAlloced,
     isOption, isResult,
     checkTypesMatch,
@@ -441,11 +441,6 @@ isTuple :: (WithType a) => DatalogProgram -> a -> Bool
 isTuple d a = case typ' d a of
                    TTuple _ _ -> True
                    _          -> False
-
-isGroup :: (WithType a) => DatalogProgram -> a -> Bool
-isGroup d a = case typ' d a of
-                   TOpaque _ t _ | t == gROUP_TYPE -> True
-                   _                               -> False
 
 isMap :: (WithType a) => DatalogProgram -> a -> Bool
 isMap d a = case typ' d a of
