@@ -1154,7 +1154,7 @@ impl<K: Default, V: Default> Default for Group<K, V> {
 
 /* We compare two groups by comparing values returned by their `project()`
  * functions, not the underlying DDValue's.  DDValue's are not visible to
- * the DDlog program; hence two groups are iff they have the same
+ * the DDlog program; hence two groups are equal iff they have the same
  * projections. */
 
 impl<K: PartialEq, V: Clone + PartialEq> PartialEq for Group<K, V> {
