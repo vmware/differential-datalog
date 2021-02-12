@@ -13,7 +13,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 "function agg(g: Group<string, Tt1>):TRtmp {\n" +
                 "(var gb) = group_key(g);\n" +
                 "(var count = 64'sd0: signed<64>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(count = agg_count_R(count, 64'sd1))}\n" +
                 ");\n" +
@@ -35,7 +35,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 "function agg(g: Group<string, Tt1>):TRtmp {\n" +
                 "(var gb) = group_key(g);\n" +
                 "(var count = 64'sd0: signed<64>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(count = agg_count_R(count, 64'sd1))}\n" +
                 ");\n" +
@@ -43,7 +43,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 "function agg1(g: Group<string, Tt1>):TRtmp {\n" +
                 "(var gb) = group_key(g);\n" +
                 "(var count = 64'sd0: signed<64>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(count = agg_count_R(count, 64'sd1))}\n" +
                 ");\n" +
@@ -69,7 +69,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 "function agg(g: Group<string, Tt1>):Tagg {\n" +
                 "(var gb) = group_key(g);\n" +
                 "(var count = 64'sd0: signed<64>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(count = agg_count_R(count, 64'sd1))}\n" +
                 ");\n" +
@@ -92,7 +92,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 "(var gb, var gb0) = group_key(g);\n" +
                 "(var count = 64'sd0: signed<64>);\n" +
                 "(var sum = 64'sd0: signed<64>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(count = agg_count_R(count, 64'sd1));\n" +
                 "(var incr = v.column1);\n" +
@@ -117,7 +117,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 "function agg(g: Group<Option<string>, Tt1>):Tagg {\n" +
                 "(var gb) = group_key(g);\n" +
                 "(var count = 64'sd0: signed<64>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(count = agg_count_R(count, 64'sd1))}\n" +
                 ");\n" +
@@ -139,7 +139,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 "function agg(g: Group<string, Tt1>):Tagg {\n" +
                 "(var gb) = group_key(g);\n" +
                 "(var sum = 64'sd0: signed<64>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column1);\n" +
                 "(sum = agg_sum_signed_R(sum, incr))}\n" +
@@ -161,7 +161,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 "function agg(g: Group<Option<string>, Tt1>):Tagg {\n" +
                 "(var gb) = group_key(g);\n" +
                 "(var sum = None{}: Option<signed<64>>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column1);\n" +
                 "(sum = agg_sum_signed_N(sum, incr))}\n" +
@@ -183,7 +183,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 "function agg(g: Group<signed<64>, Tt1>):Tagg {\n" +
                 "(var gb) = group_key(g);\n" +
                 "(var count = 64'sd0: signed<64>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column2);\n" +
                 "(count = agg_count_R(count, incr))}\n" +
@@ -207,7 +207,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 "(var gb) = group_key(g);\n" +
                 "(var count = None{}: Option<signed<64>>);\n" +
                 "(var any = Some{false}: Option<bool>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column2);\n" +
                 "(count = agg_count_N(count, incr));\n" +
@@ -232,7 +232,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 "function agg(g: Group<signed<64>, Tt1>):Tagg {\n" +
                 "(var gb) = group_key(g);\n" +
                 "(var count = 64'sd0: signed<64>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column2);\n" +
                 "(count = agg_count_R(count, incr))}\n" +
@@ -256,7 +256,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 "(var gb) = group_key(g);\n" +
                 "(var sum = 64'sd0: signed<64>);\n" +
                 "(var count = 64'sd0: signed<64>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column1);\n" +
                 "(sum = agg_sum_signed_R(sum, incr));\n" +
@@ -281,7 +281,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 "(var gb) = group_key(g);\n" +
                 "(var sum = 64'sd0: signed<64>);\n" +
                 "(var count_distinct = set_empty(): Set<bool>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column1);\n" +
                 "(sum = agg_sum_signed_R(sum, incr));\n" +
@@ -306,7 +306,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 "function agg(g: Group<string, Tt1>):Tagg {\n" +
                 "(var gb) = group_key(g);\n" +
                 "(var count = 64'sd0: signed<64>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(count = agg_count_R(count, 64'sd1))}\n" +
                 ");\n" +
@@ -327,7 +327,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 "function agg(g: Group<string, Tt1>):TRtmp {\n" +
                 "(var gb) = group_key(g);\n" +
                 "(var count = 64'sd0: signed<64>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(count = agg_count_R(count, 64'sd1))}\n" +
                 ");\n" +

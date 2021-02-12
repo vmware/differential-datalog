@@ -470,7 +470,7 @@ output relation FlatGroup(x: u32)
 FlatGroup(x) :-
     GroupThis(x, y),
     var g = x.group_by(y),
-    var x = FlatMap(g).
+    (var x, _) = FlatMap(g).
 
 /*
  * for-loop patterns

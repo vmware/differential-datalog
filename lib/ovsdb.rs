@@ -16,7 +16,7 @@ pub fn group2vec_remove_sentinel<K>(
     g: &ddlog_std::Group<K, uuid_or_string_t>,
 ) -> ddlog_std::Vec<uuid_or_string_t> {
     let mut res = ddlog_std::Vec::new();
-    for ref v in g.iter() {
+    for ddlog_std::tuple2(ref v, _) in g.iter() {
         match v {
             ddlog_std::Either::Right { r } => {
                 if r.as_str() != "" {
@@ -35,7 +35,7 @@ pub fn group2set_remove_sentinel<K>(
     g: &ddlog_std::Group<K, uuid_or_string_t>,
 ) -> ddlog_std::Set<uuid_or_string_t> {
     let mut res = ddlog_std::Set::new();
-    for ref v in g.iter() {
+    for ddlog_std::tuple2(ref v, _) in g.iter() {
         match v {
             ddlog_std::Either::Right { r } => {
                 if r.as_str() != "" {
@@ -54,7 +54,7 @@ pub fn group2map_remove_sentinel<K1, K2: Ord + Clone>(
     g: &ddlog_std::Group<K1, (K2, uuid_or_string_t)>,
 ) -> ddlog_std::Map<K2, uuid_or_string_t> {
     let mut res = ddlog_std::Map::new();
-    for (ref k, ref v) in g.iter() {
+    for ddlog_std::tuple2((ref k, ref v), _) in g.iter() {
         match v {
             ddlog_std::Either::Right { r } => {
                 if r.as_str() != "" {

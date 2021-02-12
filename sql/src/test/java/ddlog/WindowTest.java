@@ -16,7 +16,7 @@ public class WindowTest extends BaseQueriesTest {
                 "function agg(g: Group<string, TRtmp>):Tagg {\n" +
                 "(var gb4) = group_key(g);\n" +
                 "(var count5 = 64'sd0: signed<64>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v3 = i;\n" +
                 "(var incr = v3.tmp);\n" +
                 "(count5 = agg_count_R(count5, incr))}\n" +
@@ -55,7 +55,7 @@ public class WindowTest extends BaseQueriesTest {
                 "function agg(g: Group<string, TRtmp>):Tagg {\n" +
                 "(var gb4) = group_key(g);\n" +
                 "(var count5 = 64'sd0: signed<64>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v3 = i;\n" +
                 "(var incr = v3.tmp);\n" +
                 "(count5 = agg_count_R(count5, incr))}\n" +
@@ -94,7 +94,7 @@ public class WindowTest extends BaseQueriesTest {
                 "function agg(g: Group<bool, TRtmp>):Tagg {\n" +
                 "(var gb4) = group_key(g);\n" +
                 "(var count5 = 64'sd0: signed<64>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v3 = i;\n" +
                 "(var incr = v3.tmp);\n" +
                 "(count5 = agg_count_R(count5, incr))}\n" +
@@ -138,7 +138,7 @@ public class WindowTest extends BaseQueriesTest {
                 "function agg(g: Group<string, TRtmp>):Tagg {\n" +
                 "(var gb7) = group_key(g);\n" +
                 "(var count8 = 64'sd0: signed<64>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v6 = i;\n" +
                 "(var incr = v6.tmp);\n" +
                 "(count8 = agg_count_R(count8, incr))}\n" +
@@ -149,7 +149,7 @@ public class WindowTest extends BaseQueriesTest {
                 "function agg3(g13: Group<bool, TRtmp>):Tagg3 {\n" +
                 "(var gb12) = group_key(g13);\n" +
                 "(var count16 = 64'sd0: signed<64>);\n" +
-                "(for (i14 in g13) {\n" +
+                "(for ((i14, _) in g13) {\n" +
                 "var v11 = i14;\n" +
                 "(var incr15 = v11.tmp1);\n" +
                 "(count16 = agg_count_R(count16, incr15))}\n" +
@@ -194,7 +194,7 @@ public class WindowTest extends BaseQueriesTest {
                 "(var gb3, var gb4) = group_key(g);\n" +
                 "(var avg = (64'sd0, 64'sd0): (signed<64>, signed<64>));\n" +
                 "(var sum = 64'sd0: signed<64>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v2 = i;\n" +
                 "(var incr = v2.column1);\n" +
                 "(avg = agg_avg_signed_R(avg, incr));\n" +
@@ -207,7 +207,7 @@ public class WindowTest extends BaseQueriesTest {
                 "function agg1(g10: Group<bool, TRtmp>):Tagg1 {\n" +
                 "(var gb9) = group_key(g10);\n" +
                 "(var min13 = (true, 64'sd0): (bool, signed<64>));\n" +
-                "(for (i11 in g10) {\n" +
+                "(for ((i11, _) in g10) {\n" +
                 "var v8 = i11;\n" +
                 "(var incr12 = v8.tmp);\n" +
                 "(min13 = agg_min_R(min13, incr12))}\n" +

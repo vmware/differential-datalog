@@ -11,7 +11,7 @@
 /* Applies closure `f` to each element of the group. */
 function map(g: Group<'K, 'V1>, f: function('V1): 'V2): Vec<'V2> {
     var res = vec_with_capacity(g.count());
-    for (x in g) {
+    for ((x, _) in g) {
         res.push(f(x))
     };
     res
@@ -21,7 +21,7 @@ function map(g: Group<'K, 'V1>, f: function('V1): 'V2): Vec<'V2> {
  * resulting vectors, returning a flat vector. */
 function flatmap(g: Group<'K, 'V1>, f: function('V1): Vec<'V2>): Vec<'V2> {
     var res = vec_empty();
-    for (x in g) {
+    for ((x, _) in g) {
         res.append(f(x))
     };
     res
@@ -32,7 +32,7 @@ function flatmap(g: Group<'K, 'V1>, f: function('V1): Vec<'V2>): Vec<'V2> {
 function arg_min(g: Group<'K, 'V>, f: function('V): 'A): 'V {
     var min_arg = g.first();
     var min_val = f(g.first());
-    for (x in g) {
+    for ((x, _) in g) {
         var v = f(x);
         if (v < min_val) {
             min_val = v;
@@ -47,7 +47,7 @@ function arg_min(g: Group<'K, 'V>, f: function('V): 'A): 'V {
 function arg_max(g: Group<'K, 'V>, f: function('V): 'A): 'V {
     var max_arg = g.first();
     var max_val = f(g.first());
-    for (x in g) {
+    for ((x, _) in g) {
         var v = f(x);
         if (v > max_val) {
             max_val = v;
@@ -60,7 +60,7 @@ function arg_max(g: Group<'K, 'V>, f: function('V): 'A): 'V {
 /* Returns the first element of the group that satisfies predicate `f` or
  * `None` if none of the elements satisfy the predicate. */
 function find(g: Group<'K, 'V>, f: function('V): bool): Option<'V> {
-    for (x in g) {
+    for ((x, _) in g) {
         if (f(x)) {
             return Some{x}
         }
@@ -72,7 +72,7 @@ function find(g: Group<'K, 'V>, f: function('V): bool): Option<'V> {
  * preserving the order of the elements in the original group. */
 function filter(g: Group<'K, 'V>, f: function('V): bool): Vec<'V> {
     var res = vec_empty();
-    for (x in g) {
+    for ((x, _) in g) {
         if (f(x)) {
             res.push(x)
         }
@@ -86,7 +86,7 @@ function filter(g: Group<'K, 'V>, f: function('V): bool): Vec<'V> {
  * `Some{element}`, then that element is returned. */
 function filter_map(g: Group<'K, 'V1>, f: function('V1): Option<'V2>): Vec<'V2> {
     var res = vec_empty();
-    for (x in g) {
+    for ((x, _) in g) {
         match (f(x)) {
             None -> (),
             Some{y} -> res.push(y)
@@ -97,7 +97,7 @@ function filter_map(g: Group<'K, 'V1>, f: function('V1): Option<'V2>): Vec<'V2> 
 
 /* Returns `true` iff all elements of the group satisfy predicate `f`. */
 function all(g: Group<'K, 'V>, f: function('V): bool): bool {
-    for (x in g) {
+    for ((x, _) in g) {
         if (not f(x)) {
             return false
         }
@@ -107,7 +107,7 @@ function all(g: Group<'K, 'V>, f: function('V): bool): bool {
 
 /* Returns `true` iff at least one element of the group satisfies predicate `f`. */
 function any(g: Group<'K, 'V>, f: function('V): bool): bool {
-    for (x in g) {
+    for ((x, _) in g) {
         if (f(x)) {
             return true
         }
@@ -118,7 +118,7 @@ function any(g: Group<'K, 'V>, f: function('V): bool): bool {
 /* Counts the number of elements in `g` that satisfy predicate `f`. */
 function count(g: Group<'K, 'V>, f: function('V): bool): usize {
     var cnt = 0;
-    for (x in g) {
+    for ((x, _) in g) {
         if (f(x)) {
             cnt = cnt + 1
         }
@@ -134,7 +134,7 @@ function count(g: Group<'K, 'V>, f: function('V): bool): usize {
  * `initializer` - initial value of the accumulator. */
 function fold(g: Group<'K,'V>, f: function('B, 'V): 'B, initializer: 'B): 'B {
     var res = initializer;
-    for (x in g) {
+    for ((x, _) in g) {
         res = f(res, x)
     };
     res

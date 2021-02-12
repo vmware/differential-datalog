@@ -740,7 +740,7 @@ Counts1(x, count) :-
 // Count the number of occurrences of `x` in `ys`
 function count_xs(ys: Group<string, string>): u64 {
     var res: u64 = 0;
-    for (y in ys) {
+    for ((y, _) in ys) {
         if (y == group_key(ys)) {
             res = res + 1;
         }
@@ -755,7 +755,7 @@ Symmetric1(x, sym) :-
 
 // Check if `x` occurs in `ys`
 function find_x_in_group(ys: Group<'A, 'A>): bool {
-    for (y in ys) {
+    for ((y, _) in ys) {
         if (y == group_key(ys)) {
             return true;
         }
@@ -810,7 +810,7 @@ Concat(s) :-
 function concat_ys(ys: Group<(string, string),string>): string {
     (var x, var z) = group_key(ys);
     var res = x ++ "-" ++ z ++ ":";
-    for (y in ys) {
+    for ((y, _) in ys) {
         res = res ++ y;
     };
     res
@@ -1302,7 +1302,7 @@ typedef Ttmp0 = Ttmp0{col4:signed<64>}
 function agg1(g1: Group<'K, (Tt1)>):Ttmp0 {
     var first3 = true;
     (var max5 = 64'sd0);
-    (for (i2 in g1) {
+    (for ((i2, _) in g1) {
         var v0 = i2;
         (max5 = if first3 {
             v0.column1

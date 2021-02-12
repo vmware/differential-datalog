@@ -129,39 +129,20 @@ relation NODETAINTSGROUP(node_name:IString, num_taints: bit<64>)
 /**assumption -- because underlying datastructures are sets, values will be unique**/
 output relation NODESTHATHAVETOLERATIONS(node_name:IString)
 
-function sum(g: Group<'K, (signed<64>)>): (signed<64>) =
-{
-    var sum: signed<64> = 0;
-    for (resource in g) {
-        sum = resource + sum
-    };
-    sum
-}
-
-function count_uniq(g: Group<'K, (signed<64>)>): (bit<64>) =
-{
-    var set: Set<signed<64>> = set_empty();
-    for (item in g) {
-        set_insert(set, item)
-    };
-    var count: bit<64> = set_size(set);
-    count
-}
-
 function cast_bit64_to_bigint(x: bit<64>): bigint = { x as bigint }
 function cast_bit64_to_signedbit64(x: bit<64>): signed<64> = { x as signed<64> }
 
 CPUUSEDPERNODE(node_name, cpu) :-
 	POD(.node_name = node_name, .cpu_request = cpu_request),
-	var cpu = Aggregate((node_name), sum(cpu_request)).
-	
+	var cpu = cpu_request.group_by((node_name)).group_sum().
+
 MEMORYUSEDPERNODE(node_name, memory) :-
 	POD(.node_name = node_name, .memory_request = memory_request),
-	var memory = Aggregate((node_name), sum(memory_request)).
+	var memory = memory_request.group_by((node_name)).group_sum().
 
 PODSUSEDPERNODE(node_name, pods):-
 	POD(.node_name = node_name, .pods_request = pods_request),
-	var pods = Aggregate((node_name), sum(pods_request)).
+	var pods = pods_request.group_by((node_name)).group_sum().
 
 SPARECAPACITY(node_name, cpu_remaining, memory_remaining, pods_remaining) :-
 	POD(.node_name = node_name),
@@ -192,7 +173,7 @@ PODNODESELECTORMATCHESEXISTS(pod_name, node_name):-
     (istring_str(label_operator) == "Exists"),
     NODELABELS(.node_name = node_name, .label_key = label_key),
     PODSTOASSIGN(.pod_name = pod_name),
-    var distinct_match_expression = Aggregate((pod_name, node_name, term, label_operator, num_match_expressions), count_uniq(match_expression)),
+    var distinct_match_expression = match_expression.group_by((pod_name, node_name, term, label_operator, num_match_expressions)).group_to_set().size(),
     (num_match_expressions == cast_bit64_to_signedbit64(distinct_match_expression)).
 
 PODNODESELECTORMATCHESIN(pod_name, node_name):-
@@ -200,7 +181,7 @@ PODNODESELECTORMATCHESIN(pod_name, node_name):-
     (istring_str(label_operator) == "In"),
     NODELABELS(.node_name = node_name, .label_key = label_key, .label_value = label_value),
     PODSTOASSIGN(.pod_name = pod_name),
-    var distinct_match_expression = Aggregate((pod_name, node_name, term, label_operator, num_match_expressions), count_uniq(match_expression)),
+    var distinct_match_expression = match_expression.group_by((pod_name, node_name, term, label_operator, num_match_expressions)).group_to_set().size(),
     (num_match_expressions == cast_bit64_to_signedbit64(distinct_match_expression)).
 
 PODNODESELECTORMATCHESNOT(pod_name, node_name):-
@@ -238,15 +219,16 @@ PodLabelSelector(pod_name, expressions) :-
         .label_value = label_value
         ),
     var expressions =
-        Aggregate((pod_name, label_selector),
-                  group2expressions((match_expression, label_operator, label_key, label_value))).
+        (match_expression, label_operator, label_key, label_value)
+            .group_by((pod_name, label_selector))
+            .group2expressions().
 
 /* Convert a group of (match_expression, operator, key, value) tuples into a
  * vector of match expressions. */
 function group2expressions(g: Group<'K, (signed<64>, IString, IString, IString)>): Vec<(IString, IString, Set<IString>)> =
 {
     var expressions: Map<signed<64>, (IString, IString, Set<IString>)> = map_empty();
-    for (e in g) {
+    for ((e, _) in g) {
         match (map_get(expressions, e.0)) {
             None -> {
                 map_insert(expressions, e.0, (e.1, e.2, set_singleton(e.3)))

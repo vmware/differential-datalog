@@ -15,7 +15,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{a:bool}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp {\n" +
                 "var any = false: bool;\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column3);\n" +
                 "(any = agg_any_R(any, incr))}\n" +
@@ -35,7 +35,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{a:Option<bool>}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp {\n" +
                 "var any = Some{false}: Option<bool>;\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column3);\n" +
                 "(any = agg_any_N(any, incr))}\n" +
@@ -55,7 +55,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{a:Option<bool>}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp {\n" +
                 "var any = Some{false}: Option<bool>;\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column3);\n" +
                 "(any = agg_any_N(any, incr))}\n" +
@@ -75,7 +75,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{e:bool}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp {\n" +
                 "var every = true: bool;\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column3);\n" +
                 "(every = agg_every_R(every, incr))}\n" +
@@ -95,7 +95,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{ct:signed<64>}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp {\n" +
                 "var count_distinct = set_empty(): Set<signed<64>>;\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column1);\n" +
                 "(set_insert(count_distinct, incr))}\n" +
@@ -115,7 +115,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{ct:signed<64>}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp {\n" +
                 "var count_distinct = set_empty(): Set<signed<64>>;\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column1);\n" +
                 "(insert_non_null(count_distinct, incr))}\n" +
@@ -135,7 +135,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{sum:signed<64>}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp {\n" +
                 "var sum_distinct = set_empty(): Set<signed<64>>;\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column1);\n" +
                 "(set_insert(sum_distinct, incr))}\n" +
@@ -155,7 +155,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{min:signed<64>}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp {\n" +
                 "var min = (true, 64'sd0): (bool, signed<64>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column1);\n" +
                 "(min = agg_min_R(min, incr))}\n" +
@@ -176,7 +176,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "function agg(g: Group<(), Tt1>):TRtmp {\n" +
                 "var min = (true, 64'sd0): (bool, signed<64>);\n" +
                 "(var max = (true, 64'sd0): (bool, signed<64>));\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column1);\n" +
                 "(min = agg_min_R(min, incr));\n" +
@@ -198,7 +198,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{min:string}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp {\n" +
                 "var min = (true, \"\"): (bool, string);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column2);\n" +
                 "(min = agg_min_R(min, incr))}\n" +
@@ -219,7 +219,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "function agg(g: Group<(), Tt1>):TRtmp {\n" +
                 "var count = 64'sd0: signed<64>;\n" +
                 "(var sum = 64'sd0: signed<64>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column1);\n" +
                 "(count = agg_count_R(count, incr));\n" +
@@ -241,7 +241,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{ct:signed<64>}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp {\n" +
                 "var count = 64'sd0: signed<64>;\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(count = agg_count_R(count, 64'sd1))}\n" +
                 ");\n" +
@@ -261,14 +261,14 @@ public class AggregatesTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{ct:signed<64>}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp {\n" +
                 "var count = 64'sd0: signed<64>;\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(count = agg_count_R(count, 64'sd1))}\n" +
                 ");\n" +
                 "(TRtmp{.ct = count})\n}\n\n" +
                 "function agg1(g: Group<(), Tt1>):TRtmp {\n" +
                 "var count = 64'sd0: signed<64>;\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(count = agg_count_R(count, 64'sd1))}\n" +
                 ");\n" +
@@ -290,7 +290,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{ct0:signed<64>, ct1:signed<64>}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp {\n" +
                 "var count = 64'sd0: signed<64>;\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(count = agg_count_R(count, 64'sd1))}\n" +
                 ");\n" +
@@ -309,7 +309,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{ct:signed<64>}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp {\n" +
                 "var count = 64'sd0: signed<64>;\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column1);\n" +
                 "(count = agg_count_R(count, incr))}\n" +
@@ -329,7 +329,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{ct:Option<signed<64>>}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp {\n" +
                 "var count = None{}: Option<signed<64>>;\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column1);\n" +
                 "(count = agg_count_N(count, incr))}\n" +
@@ -349,7 +349,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{avg:signed<64>}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp {\n" +
                 "var avg = (64'sd0, 64'sd0): (signed<64>, signed<64>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column1);\n" +
                 "(avg = agg_avg_signed_R(avg, incr))}\n" +
@@ -369,7 +369,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{avg:double}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp {\n" +
                 "var avg = (64'f0.0, 64'f0.0): (double, double);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column4);\n" +
                 "(avg = agg_avg_double_R(avg, incr))}\n" +
@@ -389,7 +389,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{avg:Option<signed<64>>}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp {\n" +
                 "var avg = None{}: Option<(signed<64>, signed<64>)>;\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column1);\n" +
                 "(avg = agg_avg_signed_N(avg, incr))}\n" +
@@ -409,7 +409,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{ct:signed<64>}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp {\n" +
                 "var count = 64'sd0: signed<64>;\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(count = agg_count_R(count, 64'sd1))}\n" +
                 ");\n" +
@@ -428,7 +428,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{m:signed<64>}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp {\n" +
                 "var max = (true, 64'sd0): (bool, signed<64>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = if ((v.column2 == \"foo\")) {\n" +
                 "v.column1} else {\n" +
@@ -450,7 +450,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{m:signed<64>}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp {\n" +
                 "var max = (true, 64'sd0): (bool, signed<64>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column1);\n" +
                 "(max = agg_max_R(max, incr))}\n" +
@@ -470,7 +470,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{col0:Vec<string>}\n" +
                 "function agg(g: Group<(), Tt1>):TRtmp {\n" +
                 "var array_agg = vec_empty(): Vec<string>;\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column2);\n" +
                 "(vec_push(array_agg, incr))}\n" +
