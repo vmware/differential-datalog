@@ -435,7 +435,7 @@ extern function hash128(x: 'X): bit<128>
  * represents a non-empty list of objects.
  * `'K` is the type of group key, and `'V` is the type of value in the group.
  */
-#[iterate_by_val=iter:'V]
+#[iterate_by_val=iter:('V, ddlog_std::DDWeight)]
 extern type Group<'K,'V>
 
 /* Extracts group key.
@@ -463,6 +463,13 @@ extern function group_to_set(g: Group<'K, 'V>): Set<'V>
 extern function group_to_vec(g: Group<'K, 'V>): Vec<'V>
 extern function group_to_map(g: Group<'K1, ('K2,'V)>): Map<'K2,'V>
 extern function group_to_setmap(g: Group<'K1, ('K2,'V)>): Map<'K2,Set<'V>>
+
+/* Returns the sum of all values in the group, ignoring weights.
+ *
+ * `V` must satisfy the `Add<Output = V>` Rust type bound.
+ * The DDlog compiler does not currently enforce this constraint,
+ * however the Rust compiler will return an error if it is violated.
+ */
 extern function group_sum(g: Group<'K, 'V>): 'V
 
 extern function group_set_unions(g: Group<'K, Set<'A>>): Set<'A>
@@ -527,7 +534,7 @@ function to_setmap(g: Group<'K1, ('K2,'V)>): Map<'K2,Set<'V>> {
 function group_unzip(g: Group<'K, ('X,'Y)>): (Vec<'X>, Vec<'Y>) = {
     var xs: Vec<'X> = vec_with_capacity(g.size());
     var ys: Vec<'Y> = vec_with_capacity(g.size());
-    for (v in g) {
+    for ((v, _) in g) {
         (var x, var y) = v;
         vec_push(xs, x);
         vec_push(ys, y)
@@ -856,5 +863,5 @@ extern function __builtin_2string(x: 'X): string
  * application code. */
 typedef DDlogGroup<'K, 'V> = DDlogGroup {
     key: 'K,
-    vals: Vec<'V>
+    vals: Vec<('V, DDWeight)>
 }

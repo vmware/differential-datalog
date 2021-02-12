@@ -69,9 +69,9 @@ pub fn debug_split_group<K: Clone, I: 'static + Clone, V: Clone + 'static>(
 ) -> ddlog_std::tuple2<ddlog_std::Vec<I>, ddlog_std::Group<K, V>> {
     let mut inputs = ddlog_std::Vec::with_capacity(ddlog_std::group_count(g) as usize);
     let mut vals = ::std::vec::Vec::with_capacity(ddlog_std::group_count(g) as usize);
-    for ddlog_std::tuple2(i, v) in g.iter() {
+    for ddlog_std::tuple2(ddlog_std::tuple2(i, v), w) in g.iter() {
         inputs.push(i);
-        vals.push(v);
+        vals.push(ddlog_std::tuple2(v, w));
     }
 
     ddlog_std::tuple2(inputs, ddlog_std::Group::new(g.key(), vals))

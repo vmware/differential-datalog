@@ -1482,7 +1482,7 @@ function best_vendor_string(g: Group<string, (string, bit<64>)>): string
 {
     var min_vendor = "";
     var min_price = 'hffffffffffffffff;
-    for ((vendor, price) in g) {
+    for (((vendor, price), w) in g) {
         if (price < min_price) {
             min_vendor = vendor;
             min_price = price;
@@ -1496,6 +1496,26 @@ BestDeal(best) :-
     Price(item, vendor, price),
     var best = (vendor, price).group_by(item).best_vendor_string().
 ```
+
+Similar to vectors, sets, and other container types, groups are iterable
+objects, and can be iterated over in a for-loop of flattened by a `FlatMap`
+operator.  Let us have a closer look at the for-loop in the last code snippet:
+
+```
+for (((vendor, price), w) in g) { .. }
+```
+
+The iterator yields a 2-tuple, where the first component `(vendor, price)` of
+type `(string, bit<64>)` is the value stored in the group, and the second
+component, `w` of type `DDWeight`, is the **weight** associated with this value.
+Internally DDlog tracks the number of times each record has been derived.  For
+example, records in input relations have weight 1.  An intermediate relation can
+contain values with weights greater than 1, e.g., if the same value has been
+derived by multiple rules.  The complete set of rules for computing weights is
+quite complex and is not yet fixed as part of the language semantics.
+Fortunately, in most cases, the aggregate function does not depend on weights,
+and they can be safely ignored, as in this example (`w` is never used in the
+body of the loop, and can be replaced by the `_` placeholder).
 
 #### Debugging and tracing using `Inspect`
 

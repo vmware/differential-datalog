@@ -775,7 +775,8 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         }
 
         assert state.loopBody != null;
-        DDlogEFor forLoop = new DDlogEFor(gby, iter, new DDlogEVar(gby, paramName, paramType), state.loopBody);
+
+        DDlogEFor forLoop = new DDlogEFor(gby, new DDlogETuple(gby, Arrays.asList(new DDlogExpression[]{ new DDlogEVar(gby, iter, tuple), new DDlogEPHolder(gby) })), new DDlogEVar(gby, paramName, paramType), state.loopBody);
         state.addFunctionStatement(forLoop);
         String[] vars = groupByVars.toArray(new String[0]);
         String aggregateVarName = context.freshLocalName("aggResult");

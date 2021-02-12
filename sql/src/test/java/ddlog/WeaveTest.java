@@ -624,7 +624,7 @@ public class WeaveTest extends BaseQueriesTest {
                 "(var any = Some{false}: Option<bool>);\n" +
                 "(var any9 = false: bool);\n" +
                 "(var count_distinct = set_empty(): Set<signed<64>>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i.0;\n" +
                 "(var v0 = i.1);\n" +
                 "(var v2 = i.2);\n" +
@@ -647,7 +647,7 @@ public class WeaveTest extends BaseQueriesTest {
                 "(var any = false: bool);\n" +
                 "(var any13 = false: bool);\n" +
                 "(var count_distinct = set_empty(): Set<signed<64>>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i.0;\n" +
                 "(var v0 = i.1);\n" +
                 "(var v2 = i.2);\n" +
@@ -668,7 +668,7 @@ public class WeaveTest extends BaseQueriesTest {
                 "function agg12(g: Group<string, TRtmp10>):Tagg12 {\n" +
                 "(var gb4) = group_key(g);\n" +
                 "(var count5 = 64'sd0: signed<64>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v3 = i;\n" +
                 "(count5 = agg_count_R(count5, 64'sd1))}\n" +
                 ");\n" +
@@ -680,7 +680,7 @@ public class WeaveTest extends BaseQueriesTest {
                 "(var sum = 0: bigint);\n" +
                 "(var sum6 = 0: bigint);\n" +
                 "(var sum8 = 0: bigint);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i.0;\n" +
                 "(var v0 = i.1);\n" +
                 "(var incr = v0.cpu_request);\n" +
@@ -697,7 +697,7 @@ public class WeaveTest extends BaseQueriesTest {
                 "function agg24(g: Group<string, TRtmp21>):Tagg12 {\n" +
                 "(var gb7) = group_key(g);\n" +
                 "(var count8 = 64'sd0: signed<64>);\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v6 = i;\n" +
                 "(count8 = agg_count_R(count8, 64'sd1))}\n" +
                 ");\n" +
@@ -708,7 +708,7 @@ public class WeaveTest extends BaseQueriesTest {
                 "(TRtmp, Tpod_tolerations, TRtmp26)>):Tagg9 {\n" +
                 "(var gb17, var gb18, var gb19) = group_key(g20);\n" +
                 "(var count22 = 64'sd0: signed<64>);\n" +
-                "(for (i21 in g20) {\n" +
+                "(for ((i21, _) in g20) {\n" +
                 "var v = i21.0;\n" +
                 "(var v0 = i21.1);\n" +
                 "(var v15 = i21.2);\n" +

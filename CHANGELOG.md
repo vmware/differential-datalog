@@ -47,6 +47,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   maps from other cotnainers that over 2-tuples.  Therefore maps are
   represented as lists of tuples in the Flatbuf-based Java API.
 
+- Groups now iterate with weight.  Internally, all DDlog relations are
+  multisets, where each element has a weight associated with it.  We change
+  the semantics of groups to expose these weights during iteration.
+  Specifically, when iterating over a group in a for-loop or flattening it
+  with `FlatMap`, each value in the iterator is a `(v, w)` tuple, where `w`
+  is the weight of element `v`.
+    
+  We keep the semantics of all existing library aggregates unchanged,
+  i.e., they ignore weights during iteration.  This means that most existing
+  user code is not affected (custom aggregates are not that common).
+
 ## [0.36.0] - Feb 7, 2021
 
 ### API changes

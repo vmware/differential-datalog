@@ -273,7 +273,7 @@ pub fn difference<X: u64set::Fits64 + Clone>(s1: &Set64<X>, s2: &Set64<X>) -> Se
 
 pub fn group_to_set<K, V: u64set::Fits64>(g: &ddlog_std::Group<K, V>) -> Set64<V> {
     let mut res = Set64::new();
-    for ref v in g.iter() {
+    for ref v in g.val_iter() {
         insert(&mut res, v);
     }
     res
@@ -283,7 +283,7 @@ pub fn group_set_unions<K, V: u64set::Fits64 + Clone>(
     g: &ddlog_std::Group<K, Set64<V>>,
 ) -> Set64<V> {
     let mut res = u64set::Set64::new();
-    for gr in g.iter() {
+    for gr in g.val_iter() {
         for v in gr.unsorted_iter() {
             res.insert(v.clone());
         }
@@ -304,7 +304,7 @@ pub fn group_setref_unions<K, V: u64set::Fits64 + Ord + Clone>(
         });
         {
             let rres = ddlog_std::Ref::get_mut(&mut res).unwrap();
-            for gr in g.iter() {
+            for gr in g.val_iter() {
                 for v in gr.unsorted_iter() {
                     rres.insert(v.clone());
                 }

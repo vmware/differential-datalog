@@ -11,7 +11,7 @@ public class JoinTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{ct:signed<64>}\n" +
                 "function agg(g: Group<(), (Tt1, Tt2)>):TRtmp {\n" +
                 "var count = 64'sd0: signed<64>;\n" +
-                "(for (i in g) {\n" +
+                "(for ((i, _) in g) {\n" +
                 "var v = i.0;\n" +
                 "(var v0 = i.1);\n" +
                 "(var incr = v.column2);\n" +

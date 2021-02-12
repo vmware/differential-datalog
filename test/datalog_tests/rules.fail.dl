@@ -47,7 +47,7 @@ Concat(s) :-
 // Convert group into a string prefixed by group-by variable names
 function concat_ys(ys: Group<string, string>): string = {
     var res = group_key(ys) ++ ":";
-    for (y in ys) {
+    for ((y, _) in ys) {
         res = res ++ y
     };
     res
@@ -67,7 +67,7 @@ Concat(s) :-
 function concat_ys(ys: Group<(string, bigint), string>): string = {
     (var x, var z) = group_key(ys);
     var res = x ++ ":";
-    for (y in ys) {
+    for ((y, _) in ys) {
         res = res ++ y
     };
     res
