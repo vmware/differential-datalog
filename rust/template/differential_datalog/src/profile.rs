@@ -100,12 +100,14 @@ impl Profile {
     ) -> Result<(), fmt::Error> {
         let mut size_vec: Vec<(usize, isize)> = sizes.clone().into_iter().collect();
         size_vec.sort_by(|a, b| a.1.cmp(&b.1).reverse());
-
-        size_vec.iter().try_for_each(|(operator, size)| {
-            let name = self.names.get(operator).map(AsRef::as_ref).unwrap_or("???");
-            let msg = format!("{} {}", name, operator);
-            writeln!(f, "{}      {}", size, msg)
-        })
+        size_vec
+            .iter()
+            .map(|(operator, size)| {
+                let name = self.names.get(operator).map(AsRef::as_ref).unwrap_or("???");
+                let msg = format!("{} {}", name, operator);
+                writeln!(f, "{}      {}", size, msg)
+            })
+            .collect()
     }
 
     pub fn fmt_durations(

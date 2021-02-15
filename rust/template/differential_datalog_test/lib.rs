@@ -23,6 +23,7 @@
 use std::borrow::Cow;
 use std::collections::btree_map::{BTreeMap, Entry};
 use std::collections::btree_set::BTreeSet;
+use std::iter::FromIterator;
 use std::sync::{Arc, Mutex};
 
 use fnv::FnvHashMap;
@@ -208,7 +209,7 @@ fn test_one_relation(nthreads: usize) {
 
     /* 1. Insertion */
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
-    let set: BTreeMap<_, _> = vals.iter().map(|x| (U64(*x), 1)).collect();
+    let set = BTreeMap::from_iter(vals.iter().map(|x| (U64(*x), 1)));
 
     running.transaction_start().unwrap();
     for x in set.keys() {
@@ -327,7 +328,7 @@ fn test_two_relations(nthreads: usize) {
 
     /* 1. Populate T1 */
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
-    let set: BTreeMap<_, _> = vals.iter().map(|x| (U64(*x), 1)).collect();
+    let set = BTreeMap::from_iter(vals.iter().map(|x| (U64(*x), 1)));
 
     running.transaction_start().unwrap();
     for x in set.keys() {
@@ -394,14 +395,10 @@ fn test_semijoin(nthreads: usize) {
             change_cb: Some(Arc::new(move |_, v, w| set_update("T1", &relset1, v, w))),
         }
     };
-
-    #[allow(clippy::unnecessary_wraps)]
     fn fmfun1(v: DDValue) -> Option<DDValue> {
         let Tuple2(ref v1, ref _v2) = Tuple2::<U64>::from_ddvalue(v);
         Some(v1.clone().into_ddvalue())
     }
-
-    #[allow(clippy::unnecessary_wraps)]
     fn afun1(v: DDValue) -> Option<(DDValue, DDValue)> {
         let Tuple2(ref v1, ref v2) = Tuple2::<U64>::from_ddvalue(v);
         Some((v1.clone().into_ddvalue(), v2.clone().into_ddvalue()))
@@ -425,8 +422,6 @@ fn test_semijoin(nthreads: usize) {
             change_cb: Some(Arc::new(move |_, v, w| set_update("T2", &relset2, v, w))),
         }
     };
-
-    #[allow(clippy::unnecessary_wraps)]
     fn jfun(_key: &DDValue, v1: &DDValue, _v2: &()) -> Option<DDValue> {
         Some(
             Tuple2(
@@ -480,10 +475,10 @@ fn test_semijoin(nthreads: usize) {
     let mut running = prog.run(nthreads).unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
-    let set: BTreeMap<_, _> = vals
-        .iter()
-        .map(|x| (Tuple2(Box::new(U64(*x)), Box::new(U64(*x))), 1))
-        .collect();
+    let set = BTreeMap::from_iter(
+        vals.iter()
+            .map(|x| (Tuple2(Box::new(U64(*x)), Box::new(U64(*x))), 1)),
+    );
 
     running.transaction_start().unwrap();
     for x in set.keys() {
@@ -524,13 +519,10 @@ fn test_join(nthreads: usize) {
             change_cb: Some(Arc::new(move |_, v, w| set_update("T1", &relset1, v, w))),
         }
     };
-
-    #[allow(clippy::unnecessary_wraps)]
     fn afun1(v: DDValue) -> Option<(DDValue, DDValue)> {
         let Tuple2(ref v1, ref v2) = Tuple2::<U64>::from_ddvalue(v);
         Some((v1.clone().into_ddvalue(), v2.clone().into_ddvalue()))
     }
-
     let relset2: Arc<Mutex<Delta<Tuple2<U64>>>> = Arc::new(Mutex::new(BTreeMap::default()));
     let rel2 = {
         Relation {
@@ -549,8 +541,6 @@ fn test_join(nthreads: usize) {
             change_cb: Some(Arc::new(move |_, v, w| set_update("T2", &relset2, v, w))),
         }
     };
-
-    #[allow(clippy::unnecessary_wraps)]
     fn jfun(_key: &DDValue, v1: &DDValue, v2: &DDValue) -> Option<DDValue> {
         Some(
             Tuple2(
@@ -647,10 +637,10 @@ fn test_join(nthreads: usize) {
     let mut running = prog.run(nthreads).unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
-    let set: BTreeMap<_, _> = vals
-        .iter()
-        .map(|x| (Tuple2(Box::new(U64(*x)), Box::new(U64(*x))), 1))
-        .collect();
+    let set = BTreeMap::from_iter(
+        vals.iter()
+            .map(|x| (Tuple2(Box::new(U64(*x)), Box::new(U64(*x))), 1)),
+    );
 
     running.transaction_start().unwrap();
     for x in set.keys() {
@@ -665,7 +655,7 @@ fn test_join(nthreads: usize) {
     let rel2dump = running.dump_arrangement((2, 0)).unwrap();
     assert_eq!(
         rel2dump,
-        vals.iter().map(|x| U64(*x).into_ddvalue()).collect()
+        BTreeSet::from_iter(vals.iter().map(|x| U64(*x).into_ddvalue()))
     );
 
     for key in vals.iter() {
@@ -718,20 +708,16 @@ fn test_streamjoin(nthreads: usize) {
             change_cb: Some(Arc::new(move |_, v, w| set_update("T1", &relset1, v, w))),
         }
     };
-
-    #[allow(clippy::unnecessary_wraps)]
     fn fmfun1(v: DDValue) -> Option<DDValue> {
         let Tuple2(ref v1, ref _v2) = Tuple2::<U64>::from_ddvalue(v);
         Some(v1.clone().into_ddvalue())
     }
 
-    #[allow(clippy::unnecessary_wraps)]
     fn afun1(v: DDValue) -> Option<(DDValue, DDValue)> {
         let Tuple2(ref v1, ref v2) = Tuple2::<U64>::from_ddvalue(v);
         Some((v1.clone().into_ddvalue(), v2.clone().into_ddvalue()))
     }
 
-    #[allow(clippy::unnecessary_wraps)]
     fn safun1(v: DDValue) -> Option<DDValue> {
         let Tuple2(ref v1, ref _v2) = Tuple2::<U64>::from_ddvalue(v);
         Some(v1.clone().into_ddvalue())
@@ -751,8 +737,6 @@ fn test_streamjoin(nthreads: usize) {
             change_cb: Some(Arc::new(move |_, v, w| set_update("T2", &relset2, v, w))),
         }
     };
-
-    #[allow(clippy::unnecessary_wraps)]
     fn jfun(v1: &DDValue, v2: &DDValue) -> Option<DDValue> {
         Some(
             Tuple2(
@@ -763,7 +747,6 @@ fn test_streamjoin(nthreads: usize) {
         )
     }
 
-    #[allow(clippy::unnecessary_wraps)]
     fn sjfun(v1: &DDValue) -> Option<DDValue> {
         Some(
             Tuple2(
@@ -774,7 +757,6 @@ fn test_streamjoin(nthreads: usize) {
         )
     }
 
-    #[allow(clippy::unnecessary_wraps)]
     fn jfun2(v1: &DDValue, v2: &DDValue) -> Option<DDValue> {
         Some(
             Tuple2(
@@ -785,7 +767,6 @@ fn test_streamjoin(nthreads: usize) {
         )
     }
 
-    #[allow(clippy::unnecessary_wraps)]
     fn sjfun2(v1: &DDValue) -> Option<DDValue> {
         Some(
             Tuple2(
@@ -796,7 +777,6 @@ fn test_streamjoin(nthreads: usize) {
         )
     }
 
-    #[allow(clippy::unnecessary_wraps)]
     fn kfun(v: &DDValue) -> Option<DDValue> {
         let Tuple2(ref v1, ref _v2) = Tuple2::<U64>::from_ddvalue_ref(v);
         Some(v1.clone().into_ddvalue())
@@ -932,10 +912,10 @@ fn test_streamjoin(nthreads: usize) {
     let mut running = prog.run(nthreads).unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
-    let set: BTreeMap<_, _> = vals
-        .iter()
-        .map(|x| (Tuple2(Box::new(U64(*x)), Box::new(U64(*x))), 1))
-        .collect();
+    let set = BTreeMap::from_iter(
+        vals.iter()
+            .map(|x| (Tuple2(Box::new(U64(*x)), Box::new(U64(*x))), 1)),
+    );
 
     running.transaction_start().unwrap();
     for x in set.keys() {
@@ -978,8 +958,6 @@ fn test_antijoin(nthreads: usize) {
             change_cb: Some(Arc::new(move |_, v, w| set_update("T1", &relset1, v, w))),
         }
     };
-
-    #[allow(clippy::unnecessary_wraps)]
     fn afun1(v: DDValue) -> Option<(DDValue, DDValue)> {
         let Tuple2(ref v1, _) = Tuple2::<U64>::from_ddvalue_ref(&v);
         Some(((*v1).clone().into_ddvalue(), v.clone()))
@@ -1005,7 +983,6 @@ fn test_antijoin(nthreads: usize) {
         v1.clone().into_ddvalue()
     }
 
-    #[allow(clippy::unnecessary_wraps)]
     fn fmnull_fun(v: DDValue) -> Option<DDValue> {
         Some(v)
     }
@@ -1080,10 +1057,10 @@ fn test_antijoin(nthreads: usize) {
     let mut running = prog.run(nthreads).unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
-    let set: BTreeMap<_, _> = vals
-        .iter()
-        .map(|x| (Tuple2(Box::new(U64(*x)), Box::new(U64(*x))), 1))
-        .collect();
+    let set = BTreeMap::from_iter(
+        vals.iter()
+            .map(|x| (Tuple2(Box::new(U64(*x)), Box::new(U64(*x))), 1)),
+    );
 
     /* 1. T2 and T1 contain identical keys; antijoin is empty */
     running.transaction_start().unwrap();
@@ -1140,22 +1117,18 @@ fn test_map(nthreads: usize) {
         U64(uv.clone() * 2).into_ddvalue()
     }
 
-    #[allow(clippy::unnecessary_wraps)]
     fn gfun3(v: DDValue) -> Option<(DDValue, DDValue)> {
         Some((Empty {}.into_ddvalue(), v))
     }
 
-    #[allow(clippy::unnecessary_wraps)]
     fn agfun3(_key: &DDValue, src: &[(&DDValue, Weight)]) -> Option<DDValue> {
         Some(U64(src.len() as u64).into_ddvalue())
     }
 
-    #[allow(clippy::unnecessary_wraps)]
     fn gfun4(v: DDValue) -> Option<(DDValue, DDValue)> {
         Some((v.clone(), v))
     }
 
-    #[allow(clippy::unnecessary_wraps)]
     fn agfun4(key: &DDValue, _src: &[(&DDValue, Weight)]) -> Option<DDValue> {
         Some(key.clone())
     }
@@ -1296,20 +1269,19 @@ fn test_map(nthreads: usize) {
     let mut running = prog.run(nthreads).unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
-    let set: BTreeMap<_, _> = vals.iter().map(|x| (U64(*x), 1)).collect();
-    let expected2: BTreeMap<_, _> = vals
-        .iter()
-        .map(|x| U64(*x).into_ddvalue())
-        .map(mfun)
-        .filter(ffun)
-        .filter_map(fmfun)
-        .flat_map(|x| match flatmapfun(x) {
-            Some(iter) => iter,
-            None => Box::new(None.into_iter()),
-        })
-        .map(|x| (I64::from_ddvalue(x), 1))
-        .collect();
-
+    let set = BTreeMap::from_iter(vals.iter().map(|x| (U64(*x), 1)));
+    let expected2 = BTreeMap::from_iter(
+        vals.iter()
+            .map(|x| U64(*x).into_ddvalue())
+            .map(mfun)
+            .filter(ffun)
+            .filter_map(fmfun)
+            .flat_map(|x| match flatmapfun(x) {
+                Some(iter) => iter,
+                None => Box::new(None.into_iter()),
+            })
+            .map(|x| (I64::from_ddvalue(x), 1)),
+    );
     let mut expected3 = BTreeMap::default();
     expected3.insert(U64(expected2.len() as u64), 1);
 
@@ -1455,14 +1427,11 @@ fn test_delayed(nthreads: usize) {
             change_cb: Some(Arc::new(move |_, v, w| set_update("T5", &relset5, v, w))),
         }
     };
-
-    #[allow(clippy::unnecessary_wraps)]
     fn afun1(v: DDValue) -> Option<(DDValue, DDValue)> {
         let v = U64::from_ddvalue(v);
         Some((v.clone().into_ddvalue(), v.into_ddvalue()))
     }
 
-    #[allow(clippy::unnecessary_wraps)]
     fn fmfun1(v: DDValue) -> Option<DDValue> {
         Some(v)
     }
@@ -1519,13 +1488,11 @@ fn test_delayed_multi() {
 /* Recursion
 */
 fn test_recursion(nthreads: usize) {
-    #[allow(clippy::unnecessary_wraps)]
     fn arrange_by_fst(v: DDValue) -> Option<(DDValue, DDValue)> {
         let Tuple2(ref fst, ref snd) = Tuple2::<String>::from_ddvalue_ref(&v);
         Some(((*fst).clone().into_ddvalue(), (*snd).clone().into_ddvalue()))
     }
 
-    #[allow(clippy::unnecessary_wraps)]
     fn arrange_by_snd(v: DDValue) -> Option<(DDValue, DDValue)> {
         let Tuple2(ref fst, ref snd) = Tuple2::<String>::from_ddvalue_ref(&v);
         Some((
@@ -1534,12 +1501,10 @@ fn test_recursion(nthreads: usize) {
         ))
     }
 
-    #[allow(clippy::unnecessary_wraps)]
     fn anti_arrange1(v: DDValue) -> Option<(DDValue, DDValue)> {
         Some((v.clone(), v))
     }
 
-    #[allow(clippy::unnecessary_wraps)]
     fn anti_arrange2(v: DDValue) -> Option<(DDValue, DDValue)> {
         let Tuple2(ref fst, ref snd) = Tuple2::<String>::from_ddvalue_ref(&v);
         Some((
@@ -1548,7 +1513,6 @@ fn test_recursion(nthreads: usize) {
         ))
     }
 
-    #[allow(clippy::unnecessary_wraps)]
     fn jfun(_parent: &DDValue, ancestor: &DDValue, child: &DDValue) -> Option<DDValue> {
         Some(
             Tuple2(
@@ -1559,7 +1523,6 @@ fn test_recursion(nthreads: usize) {
         )
     }
 
-    #[allow(clippy::unnecessary_wraps)]
     fn jfun2(_ancestor: &DDValue, descendant1: &DDValue, descendant2: &DDValue) -> Option<DDValue> {
         Some(
             Tuple2(
@@ -1570,7 +1533,6 @@ fn test_recursion(nthreads: usize) {
         )
     }
 
-    #[allow(clippy::unnecessary_wraps)]
     fn fmnull_fun(v: DDValue) -> Option<DDValue> {
         Some(v)
     }
@@ -1748,7 +1710,7 @@ fn test_recursion(nthreads: usize) {
             Box::new(String("E".to_string())),
         ),
     ];
-    let set: BTreeMap<_, _> = vals.iter().map(|x| (x.clone(), 1)).collect();
+    let set = BTreeMap::from_iter(vals.iter().map(|x| (x.clone(), 1)));
 
     let expect_vals = vec![
         Tuple2(
@@ -1777,7 +1739,7 @@ fn test_recursion(nthreads: usize) {
         ),
     ];
 
-    let expect_set: BTreeMap<_, _> = expect_vals.iter().map(|x| (x.clone(), 1)).collect();
+    let expect_set = BTreeMap::from_iter(expect_vals.iter().map(|x| (x.clone(), 1)));
 
     let expect_vals2 = vec![
         Tuple2(
@@ -1813,7 +1775,7 @@ fn test_recursion(nthreads: usize) {
             Box::new(String("E".to_string())),
         ),
     ];
-    let expect_set2: BTreeMap<_, _> = expect_vals2.iter().map(|x| (x.clone(), 1)).collect();
+    let expect_set2 = BTreeMap::from_iter(expect_vals2.iter().map(|x| (x.clone(), 1)));
 
     running.transaction_start().unwrap();
     for x in set.keys() {
@@ -1847,7 +1809,7 @@ fn test_recursion(nthreads: usize) {
             Box::new(String("E".to_string())),
         ),
     ];
-    let expect_set3: BTreeMap<_, _> = expect_vals3.iter().map(|x| (x.clone(), 1)).collect();
+    let expect_set3 = BTreeMap::from_iter(expect_vals3.iter().map(|x| (x.clone(), 1)));
 
     assert_eq!(*ancestorset.lock().unwrap(), expect_set3);
 
@@ -1861,7 +1823,7 @@ fn test_recursion(nthreads: usize) {
             Box::new(String("C".to_string())),
         ),
     ];
-    let expect_set4: BTreeMap<_, _> = expect_vals4.iter().map(|x| (x.clone(), 1)).collect();
+    let expect_set4 = BTreeMap::from_iter(expect_vals4.iter().map(|x| (x.clone(), 1)));
 
     assert_eq!(*common_ancestorset.lock().unwrap(), expect_set4);
 
