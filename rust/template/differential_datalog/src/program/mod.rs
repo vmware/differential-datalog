@@ -1146,7 +1146,7 @@ impl Program {
     }
 
     /* indices of program nodes that use arrangement */
-    fn arrangement_used_by_nodes<'a>(&'a self, arrid: ArrId) -> impl Iterator<Item = usize> + 'a {
+    fn arrangement_used_by_nodes(&self, arrid: ArrId) -> impl Iterator<Item = usize> + '_ {
         self.nodes.iter().enumerate().filter_map(move |(i, n)| {
             if Self::node_uses_arrangement(n, arrid) {
                 Some(i)
@@ -1177,7 +1177,7 @@ impl Program {
     }
 
     /// Returns all input relations of the program
-    fn input_relations<'a>(&'a self) -> impl Iterator<Item = RelId> + 'a {
+    fn input_relations(&self) -> impl Iterator<Item = RelId> + '_ {
         self.nodes.iter().filter_map(|node| match node {
             ProgNode::Rel { rel: r } => {
                 if r.input {
@@ -1276,7 +1276,7 @@ impl Program {
                 ref description,
                 ref next,
             } => {
-                let one = Any::downcast_ref::<T::Summary>(&(1 as TS))
+                let one = Any::downcast_ref::<T::Summary>(&1)
                     .expect("Differentiate operator used in recursive context");
                 let diff = with_prof_context(&description, || {
                     col.concat(
@@ -1949,7 +1949,8 @@ impl RunningProgram {
             return Err("transaction_commit: no transaction in progress".to_string());
         }
 
-        self.flush().and_then(|_| self.delta_cleanup()).map(|_| {
+        self.flush().map(|_| {
+            self.delta_cleanup();
             self.transaction_in_progress = false;
         })
     }
@@ -2057,8 +2058,7 @@ impl RunningProgram {
                 timestamp: self.timestamp,
             })
             .zip(&mut worker_round_robbin)
-            .map(|(update, worker_idx)| self.send(worker_idx, update))
-            .collect::<Response<()>>()?;
+            .try_for_each(|(update, worker_idx)| self.send(worker_idx, update))?;
 
         let next = worker_round_robbin.next().unwrap_or(0);
         self.worker_round_robbin = (0..self.senders.len()).cycle().skip(next);
@@ -2543,12 +2543,10 @@ impl RunningProgram {
     }
 
     /// Clear delta sets of all input relations on transaction commit.
-    fn delta_cleanup(&mut self) -> Response<()> {
+    fn delta_cleanup(&mut self) {
         for rel in self.relations.values_mut() {
             rel.delta_mut().clear();
         }
-
-        Ok(())
     }
 
     fn delta_undo_updates(relid: RelId, ds: &DeltaSet, updates: &mut Vec<Update<DDValue>>) {

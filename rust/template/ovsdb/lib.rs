@@ -67,8 +67,7 @@ fn cmds_from_table_update(
     match updates {
         Value::Object(upds) => upds
             .into_iter()
-            .map(|(uuid, u)| cmd_from_row_update(table.as_str(), uuid, u, cmds))
-            .collect(),
+            .try_for_each(|(uuid, u)| cmd_from_row_update(table.as_str(), uuid, u, cmds)),
         _ => Err(format!("table update is not an object: {}", updates)),
     }
 }
