@@ -30,7 +30,6 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
-    thread::{self, Thread},
     time::Duration,
 };
 use timely::{
@@ -57,9 +56,6 @@ pub struct DDlogWorker<'a> {
     worker: &'a mut Worker<Allocator>,
     /// The program this worker is executing
     program: Arc<Program>,
-    running: &'a AtomicBool,
-    /// Peer workers' thread handles, only used by worker 0.
-    peers: FnvHashMap<usize, Thread>,
     /// Information on which metrics are enabled and a
     /// channel for sending profiling data
     profiling: ProfilingData,
@@ -75,46 +71,15 @@ impl<'a> DDlogWorker<'a> {
     pub(super) fn new(
         worker: &'a mut Worker<Allocator>,
         program: Arc<Program>,
-        running: &'a AtomicBool,
-        num_workers: usize,
         profiling: ProfilingData,
         request_receivers: Arc<[Receiver<Msg>]>,
         reply_senders: Arc<[Sender<Reply>]>,
-        thread_handle_sender: Sender<(usize, Thread)>,
-        thread_handle_receiver: Arc<Receiver<(usize, Thread)>>,
     ) -> Self {
         let worker_index = worker.index();
-
-        // The hashmap that will contain all worker thread handles
-        let mut peers: FnvHashMap<usize, Thread> = HashMap::with_capacity_and_hasher(
-            // Only worker zero will populate this, so all others can create an empty map
-            if worker_index == 0 { num_workers } else { 0 },
-            FnvBuildHasher::default(),
-        );
-
-        // If this is worker zero, receive all other worker's thread handles and
-        // populate the `peers` map with them
-        if worker_index == 0 {
-            for _ in 0..num_workers - 1 {
-                let (worker, thread_handle) = thread_handle_receiver
-                    .recv()
-                    .expect("failed to receive thread handle from timely worker");
-
-                peers.insert(worker, thread_handle);
-            }
-
-        // Send other all worker's thread handles to worker 0.
-        } else {
-            thread_handle_sender
-                .send((worker_index, thread::current()))
-                .expect("failed to send thread handle for a timely worker");
-        }
 
         Self {
             worker,
             program,
-            running,
-            peers,
             profiling,
             request_receiver: request_receivers[worker_index].clone(),
             reply_sender: reply_senders[worker_index].clone(),
@@ -131,13 +96,6 @@ impl<'a> DDlogWorker<'a> {
         self.worker.index()
     }
 
-    /// Unpark every other worker thread
-    fn unpark_peers(&self) {
-        for thread in self.peers.values() {
-            thread.unpark();
-        }
-    }
-
     pub fn run(mut self) -> Result<(), String> {
         // Initialize profiling
         self.init_profiling();
@@ -147,7 +105,13 @@ impl<'a> DDlogWorker<'a> {
 
         self.ingest_initial_data(&mut sessions, &mut traces, &probe)?;
 
-        'worker_loop: while self.running.load(Ordering::Acquire) {
+        // Close session handles for non-input sessions.
+        let mut sessions: FnvHashMap<RelId, InputSession<TS, DDValue, Weight>> = sessions
+            .drain()
+            .filter(|&(relid, _)| self.program.get_relation(relid).input)
+            .collect();
+
+        'worker_loop: loop {
             // Non-blocking receive, so that we can do some garbage collecting
             // when there is no real work to do.
             let messages: Vec<_> = self.request_receiver.try_iter().fuse().collect();
@@ -164,13 +128,9 @@ impl<'a> DDlogWorker<'a> {
                         self.advance(&mut sessions, &mut traces, advance_to);
                         self.flush(&mut sessions, &probe);
 
-                        // Only the leader sends back a flush acknowledgement even though
-                        // all workers receive the flush signal
-                        if self.is_leader() {
-                            self.reply_sender
-                                .send(Reply::FlushAck)
-                                .map_err(|e| format!("failed to send ACK: {}", e))?;
-                        }
+                        self.reply_sender
+                            .send(Reply::FlushAck)
+                            .map_err(|e| format!("failed to send ACK: {}", e))?;
                     }
 
                     // Handle queries
@@ -180,18 +140,16 @@ impl<'a> DDlogWorker<'a> {
                     // the computation
                     Msg::Stop => {
                         // TODO: Log worker #n disconnection
-                        self.stop_all_workers();
                         break 'worker_loop;
                     }
                 }
             }
 
-            // After each command received we step, if there's no timely work to be done
-            // our thread will be parked until it's re-awoken by a command
-            self.worker.step();
+            // After each batch of commands received we step, if there's no timely work to be
+            // done, our thread will be parked until it's re-awoken by a command.
+            self.worker.step_or_park(None);
         }
 
-        self.stop_all_workers();
         Ok(())
     }
 
@@ -266,12 +224,9 @@ impl<'a> DDlogWorker<'a> {
         self.advance(sessions, traces, timestamp);
         self.flush(sessions, probe);
 
-        // Only the leader sends back a flush acknowledgement to the coordinator thread
-        if self.is_leader() {
-            self.reply_sender
-                .send(Reply::FlushAck)
-                .map_err(|e| format!("failed to send ACK: {}", e))?;
-        }
+        self.reply_sender
+            .send(Reply::FlushAck)
+            .map_err(|e| format!("failed to send ACK: {}", e))?;
 
         Ok(())
     }
@@ -310,16 +265,8 @@ impl<'a> DDlogWorker<'a> {
         }
 
         if let Some(session) = sessions.values_mut().next() {
-            self.unpark_peers();
             self.worker.step_while(|| probe.less_than(session.time()));
         }
-    }
-
-    /// Stop all worker threads by setting the frontier timestamp
-    /// to the maximum and unparking all other workers
-    fn stop_all_workers(&self) {
-        self.running.store(false, Ordering::Release);
-        self.unpark_peers();
     }
 
     /// Handle a query

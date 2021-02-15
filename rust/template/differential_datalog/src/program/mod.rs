@@ -37,7 +37,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
     },
-    thread::{self, JoinHandle, Thread},
+    thread::{self, JoinHandle},
 };
 use timestamp::ToTupleTS;
 use worker::{DDlogWorker, ProfilingData};
@@ -930,34 +930,33 @@ impl RelationInstance {
     }
 }
 
-/// Messages sent to timely worker threads.  Most of these messages can be sent
-/// to worker 0 only.
+/// Messages sent to timely worker threads.
 #[derive(Debug, Clone)]
 enum Msg {
-    /// Update input relation
+    /// Update input relation.
     Update {
-        /// The batch of updates
+        /// The batch of updates.
         updates: Vec<Update<DDValue>>,
-        /// The timestamp these updates belong to
+        /// The timestamp these updates belong to.
         timestamp: TS,
     },
-    /// Propagate changes through the pipeline
+    /// Propagate changes through the pipeline.
     Flush {
-        /// The timestamp to advance to
+        /// The timestamp to advance to.
         advance_to: TS,
     },
     /// Query arrangement.  If the second argument is `None`, returns
     /// all values in the collection; otherwise returns values associated
     /// with the specified key.
     Query(ArrId, Option<DDValue>),
-    /// Stop all workers (worker 0 only)
+    /// Stop worker.
     Stop,
 }
 
 /// Reply messages from timely worker threads.
 #[derive(Debug)]
 enum Reply {
-    /// Acknowledge flush completion (sent by worker 0 only).
+    /// Acknowledge flush completion.
     FlushAck,
     /// Result of a query.
     QueryRes(Option<BTreeSet<DDValue>>),
@@ -983,11 +982,6 @@ impl Program {
 
         let (prof_send, prof_recv) = crossbeam_channel::bounded(PROF_MSG_BUF_SIZE);
 
-        // Channel used by workers 1..n to send their thread handles to worker 0.
-        let (thread_handle_send, thread_handle_recv) =
-            crossbeam_channel::bounded::<(usize, Thread)>(0);
-        let thread_handle_recv = Arc::new(thread_handle_recv);
-
         // Profile data structure
         let profile = Arc::new(Mutex::new(Profile::new()));
         let (profile_cpu, profile_timely) = (
@@ -995,12 +989,9 @@ impl Program {
             Arc::new(AtomicBool::new(false)),
         );
 
-        // Thread to collect profiling data
+        // Thread to collect profiling data.
         let cloned_profile = profile.clone();
         let prof_thread = thread::spawn(move || Self::prof_thread_func(prof_recv, cloned_profile));
-
-        // Shared timestamp managed by worker 0 and read by all other workers
-        let running = AtomicBool::new(true);
 
         // Clone the program so that it can be moved into the timely computation
         let program = Arc::new(self.clone());
@@ -1013,13 +1004,9 @@ impl Program {
                 let worker = DDlogWorker::new(
                     worker,
                     program.clone(),
-                    &running,
-                    number_workers,
                     profiling.clone(),
                     Arc::clone(&request_recv),
                     Arc::clone(&reply_send),
-                    thread_handle_send.clone(),
-                    thread_handle_recv.clone(),
                 );
 
                 worker.run()
@@ -1074,12 +1061,7 @@ impl Program {
             }
         }
 
-        // Wait for the initial transaction to complete
-        reply_recv[0]
-            .recv()
-            .map_err(|e| format!("failed to receive ACK: {}", e))?;
-
-        Ok(RunningProgram {
+        let running_program = RunningProgram {
             senders: request_send,
             reply_recv,
             relations: rels,
@@ -1092,7 +1074,11 @@ impl Program {
             prof_thread_handle: Some(prof_thread),
             profile,
             worker_round_robbin: (0..number_workers).cycle().skip(0),
-        })
+        };
+        // Wait for the initial transaction to complete.
+        running_program.await_flush_ack()?;
+
+        Ok(running_program)
     }
 
     /// This thread function is always invoked whether or not profiling is on. If it isn't, the
@@ -2520,7 +2506,7 @@ impl RunningProgram {
     fn send(&self, worker_index: usize, msg: Msg) -> Response<()> {
         match self.senders[worker_index].send(msg) {
             Ok(()) => {
-                // Worker 0 may be blocked in `step_or_park`. Unpark it to ensure
+                // Worker may be blocked in `step_or_park`. Unpark it to ensure
                 // the message is received.
                 self.worker_guards.as_ref().unwrap().guards()[worker_index]
                     .thread()
@@ -2529,7 +2515,10 @@ impl RunningProgram {
                 Ok(())
             }
 
-            Err(_) => Err("failed to communicate with timely dataflow thread".to_string()),
+            Err(_) => Err(format!(
+                "failed to communicate with timely dataflow thread {}",
+                worker_index
+            )),
         }
     }
 
@@ -2608,18 +2597,32 @@ impl RunningProgram {
         .and_then(|()| {
             self.timestamp += 1;
             self.need_to_flush = false;
-
-            match self.reply_recv[0].recv() {
-                Err(_) => Err(
-                    "failed to receive flush ack message from timely dataflow thread".to_string(),
-                ),
-                Ok(Reply::FlushAck) => Ok(()),
-                Ok(msg) => Err(format!(
-                    "received unexpected reply to flush request: {:?}",
-                    msg,
-                )),
-            }
+            self.await_flush_ack()
         })
+    }
+
+    /// Wait for all workers to complete the `Flush` command.  This guarantees
+    /// that all outputs have been produced and we have successfully committed
+    /// the current transaction.
+    fn await_flush_ack(&self) -> Response<()> {
+        for (worker_index, receiver) in self.reply_recv.iter().enumerate() {
+            match receiver.recv() {
+                Err(_) => {
+                    return Err(format!(
+                        "failed to receive flush ack message from worker {}",
+                        worker_index
+                    ))
+                }
+                Ok(Reply::FlushAck) => (),
+                Ok(msg) => {
+                    return Err(format!(
+                        "received unexpected reply to flush request from worker {}: {:?}",
+                        worker_index, msg,
+                    ))
+                }
+            }
+        }
+        Ok(())
     }
 }
 
