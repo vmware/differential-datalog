@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [0.37.0] - Feb 15, 2021
 
 ### Language improvements
 
@@ -53,7 +53,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   Specifically, when iterating over a group in a for-loop or flattening it
   with `FlatMap`, each value in the iterator is a `(v, w)` tuple, where `w`
   is the weight of element `v`.
-    
+
   We keep the semantics of all existing library aggregates unchanged,
   i.e., they ignore weights during iteration.  This means that most existing
   user code is not affected (custom aggregates are not that common).
