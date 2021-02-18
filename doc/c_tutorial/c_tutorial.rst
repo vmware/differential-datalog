@@ -2,6 +2,8 @@
 Integrating C with DDlog
 ************************
 
+**Thank you, @smadaminov, for kindly contributing this tutorial!**
+
 .. contents::
 
 Prerequisites
@@ -15,7 +17,7 @@ There is also an expectation that you are familiar with DDlog syntax and command
 Introduction
 ============
 
-In this set of tutorials we are going to explore various features of DDlog programming language and learn how to integrate DDlog program into C program.
+In this set of tutorials we are going to explore various features of DDlog programming language and learn how to integrate a DDlog program into a C program.
 To do that we are going to build a simple yet functional application as it is more fun to build real programs.
 We will start by writing a simple program with a limited functionality to get familiar with the basics of DDlog.
 Afterwards, over the course of this set of tutorials, we will gradually improve our application by applying more advanced techniques offered by DDlog.
@@ -23,7 +25,7 @@ Afterwards, over the course of this set of tutorials, we will gradually improve 
 Tutorial #1 - Reachability Monitor
 ==================================
 
-In our first tutorial we are going to build a program that will calculate the reachability information in the network.
+In our first tutorial we are going to build a program that will calculate the reachability information in a network composed of nodes connected by links.
 User will update link status between nodes through CLI and our program will calculate the rest.
 The purpose of this program is to provide a simple interface to a network operator and return information regarding which node can reach which.
 Thus, the only concern of network operator is to update link status without having to worry about doing those calculations themself.
@@ -31,12 +33,11 @@ We are going to test our program with the network consisting of four nodes: Menl
 However, nothing prevents us from using the network comprised of hundreds of nodes.
 
 Let's start with defining our program in the DDlog language.
-In our program we need to supply source node, destination node, and a link status between them.
 Now we are ready to define our input relation :code:`Links`.
 Let's create a file called :code:`t1_reachability_monitor.dl` and add there a following line representing input relation for our reachability monitor:
 
 .. code-block::
-    
+
     input relation Links(src: string, dst: string, link_status: bool)
 
 However, for the reachability monitor to be useful it also should provide some output and not just ingest the data.
@@ -58,7 +59,6 @@ First, we say that any two directly connected nodes such that the :code:`link_st
 Furthermore, any two nodes are considered connected if there is path from the source node to the destination node such that all directly connected nodes along the path also have the :code:`link_status` between them to be :code:`true`.
 Take a minute here to realize how easy it is to write such rule in DDlog.
 While these rules may not require much effort in other programming languages, the distinct feature of DDlog is that the computing is done incrementally!
-Isn't is amazing?
 
 With that done, let's compile and start our program.
 We will feed our DDlog code to the DDlog compiler and it will generate a new folder.
@@ -88,7 +88,7 @@ To make our life more interesting (and just slightly more complicated) the links
 
 .. image:: ./images/topology.jpg
 
-Note that DDlog is a `transaction-based`_ programming language.
+Note that DDlog exposes a `transaction-based`_ API.
 Each transaction begins with a :code:`start` command and ends with a :code:`commit` command.
 Let's start DDlog shell again and insert records to recreate the network topology above:
 
@@ -122,8 +122,8 @@ Let's start DDlog shell again and insert records to recreate the network topolog
 In the output we can see all cities with direct links between them are connected.
 Furthermore, as we specified in our DDlog code, if there is a path between two cities then they are also connected, e.g., Menlo Park is connected to Los Angeles.
 However, some nodes are connected to themselves.
-But why this happened?
-If we take a closer look at our rules we can notice that this phenomenon actually make sense.
+How did this happen?
+If we take a closer look at our rules we can notice that this phenomenon actually makes sense.
 For example, Santa Barbara is reachable from Santa Barbara through Los Angeles.
 While it is not necessarily horrible or wrong we may want to avoid it as it clutters the relation and the output.
 More notably, we definitely don't want the network traffic go to Santa Barbara from Santa Barbara through Los Angeles (in the real world this actually may happen but this is a completely different topic).
@@ -395,8 +395,7 @@ We need to provide this function with the table ID of a target relation and a re
 Once we have command ready we can apply it to our DDlog program using :code:`ddlog_apply_updates()` function.
 We need to supply program handle, array of commands to be applied, and the length of this array.
 In our case, we only have a single command to apply.
-However, it is possible to pass multiple commands to a single call to the :code:`ddlog_apply_update()` function.
-It helps avoiding cluttering code if you want to apply multiple commands.
+However, it is possible (and is more efficient) to pass multiple commands to a single call to the :code:`ddlog_apply_update()` function.
 Note, that in the case of multiple commands if some of them fail then some subset of commands may still be applied.
 Please refer to the API description in the :code:`ddlog.h` header file for more details.
 
