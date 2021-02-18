@@ -241,6 +241,11 @@ test-golang:
     stage: test
     script: ./test.sh go
 
+# Test C API
+test-c-tutorial:
+    stage: test
+    script: ./test.sh c_tutorial1
+
 # Test stream relations.
 test-stream:
     stage: test
