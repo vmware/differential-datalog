@@ -265,7 +265,9 @@ impl<'a> DDlogWorker<'a> {
         }
 
         if let Some(session) = sessions.values_mut().next() {
-            self.worker.step_while(|| probe.less_than(session.time()));
+            while probe.less_than(session.time()) {
+                self.worker.step_or_park(None);
+            }
         }
     }
 
