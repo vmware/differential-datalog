@@ -208,7 +208,7 @@ While the benefits of incremental computation ain't noticeable in our small exam
 Now we are finally realdy to start writing some C code!
 We are going to start with something simple yet important.
 Our initial C program will connect to DDlog program, insert one additional record to :code:`Links` relation, and print the content of :code:`ConnectedNodes` relation.
-Let's create :code:`reachability_monitor.c` file next to our DDlog program's code.
+Let's create :code:`t1_reachability_monitor.c` file next to our DDlog program's code.
 The full source code is available in the provided :code:`t1_reachability_monitor.c` file.
 The further discussion will refer to specific lines in that code.
 
@@ -217,7 +217,7 @@ Let's compile the code first and then delve into the discussion of compilation a
 .. code-block::
 
     $ cd ../
-    $ gcc reachability_monitor.c t1_reachability_monitor_ddlog/target/release/libt1_reachability_monitor_ddlog.a -It1_reachability_monitor_ddlog/ -lpthread -ldl -lm
+    $ gcc t1_reachability_monitor.c t1_reachability_monitor_ddlog/target/release/libt1_reachability_monitor_ddlog.a -It1_reachability_monitor_ddlog/ -lpthread -ldl -lm
 
 
 .. tip:: This is a tip on a compilation failure caused by a missing package.
