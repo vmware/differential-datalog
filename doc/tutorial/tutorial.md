@@ -3434,6 +3434,9 @@ that can be linked against your C or C++ application.  The C API to DDlog is def
 `--dynlib` flag to `ddlog` to generate a `.so` (or `.dylib` on a Mac) file,
 along with `--no-staticlib` to disable generation of the static library.
 
+See [C API tutorial](../c_tutorial/c_tutorial.rst) for a detailed description of
+the C API.
+
 1. **Java**
 If you plan to use the library from a Java program, make sure to use
 `--dynlib` and `--no-staticlib` flags to generate a dynamically linked library.
