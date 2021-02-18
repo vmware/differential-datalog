@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Optimizations
+
+- Internal refactoring to improve DDlog's scalability with multiple worker
+  threads.
+
 ## [0.37.0] - Feb 15, 2021
 
 ### Language improvements
