@@ -38,6 +38,7 @@ run_test() {
 test_groups=("crates:Test DDlog runtime crates."
              "basic:Test basic DDlog functionality."
              "perf:Performance tests."
+             "c:Test C API."
              "go:Test Go bindings."
              "java:Test Java bindings."
              "ovn:Test OVN virtual network controller implemented in DDlog."
@@ -71,6 +72,8 @@ basic=("rust_api:Test Rust API to a DDlog program"
 
 perf=("dcm:Declarative Cluster Management benchmark"
       "redist_opt:'redist_opt' benchmark")
+
+c=("c_tutorial1:C API tutorial 1 (graph reachability)")
 
 go=("go_test:Go API test")
 
@@ -203,6 +206,14 @@ dcm() {
 redist_opt() {
     (cd "${THIS_DIR}/test/datalog_tests" && ./test-redist_opt.sh)
 }
+
+
+# 'c' test group
+
+c_tutorial1() {
+    (export DDLOG_HOME="${THIS_DIR}" && "${THIS_DIR}/doc/c_tutorial/test.sh")
+}
+
 
 # 'go' test group
 

@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Internal refactoring to improve DDlog's scalability with multiple worker
   threads.
 
+### Documentation
+
+- [C API tutorial](doc/c_tutorial/c_tutorial.rst), kindly contributed by @smadaminov.
+
 ## [0.37.0] - Feb 15, 2021
 
 ### Language improvements
