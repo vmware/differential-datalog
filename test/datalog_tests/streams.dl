@@ -1,6 +1,7 @@
 /* Test "stream" relations.  They should take no memory.  */
 
 import json
+import hashset
 
 typedef Object = Object {
     field: u128
@@ -255,3 +256,56 @@ DataUniqueFold(window, unique) :-
 DataUnique(window, unique) :-
     DataUniqueFold(window, unique_vals),
     var unique = unique_vals.group_by(window).group_set_unions().
+
+/* Count the number of unique values in a stream using regular sets
+ * and immutable HashSet. */
+
+typedef user_id = u128
+
+/* This relation controls the computation.  Inserting a record in
+ * `EnableAggregation` triggers the output of unique users count.  If the
+ * record is never deleted, the program will continue producing outputs for
+ * all future timestamps and never terminate.  This is a great way to shoot
+ * oneself in the foot, and we should find a better solution. */
+input relation EnableAggregation()
+
+/* Regular sets */
+
+input stream UserSession1(user: user_id)
+
+stream UniqueUsersFold1(users: Set<user_id>)
+UniqueUsersFold1(set_singleton(user)) :-
+    UserSession1(user).
+
+UniqueUsersFold1(old_users) :-
+    UniqueUsers1-1(old_users).
+
+stream UniqueUsers1(users: Set<user_id>)
+
+UniqueUsers1(all_users) :-
+    EnableAggregation(),
+    UniqueUsersFold1(users),
+    var all_users = users.group_by(()).union().
+
+output stream UniqueUserCount1(num_unique: usize)
+UniqueUserCount1(users.size()) :- UniqueUsers1(users).
+
+/* Implementation using immutable sets. */
+input stream UserSession2(user: user_id)
+
+stream UniqueUsersFold2(users: HashSet<user_id>)
+UniqueUsersFold2(hashset_singleton(user)) :-
+    UserSession2(user).
+
+UniqueUsersFold2(old_users) :-
+    UniqueUsers2-1(old_users).
+
+stream UniqueUsers2(users: HashSet<user_id>)
+
+UniqueUsers2(all_users) :-
+    EnableAggregation(),
+    UniqueUsersFold2(users),
+    var all_users = users.group_by(()).union().
+
+output stream UniqueUserCount2(num_unique: usize)
+UniqueUserCount2(users.size()) :- UniqueUsers2(users).

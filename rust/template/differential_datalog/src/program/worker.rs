@@ -648,7 +648,7 @@ impl<'a> DDlogWorker<'a> {
             };
 
             for (id, (relid, v)) in delayed_vars.into_iter() {
-                v.set(collections.get(&relid).ok_or_else(|| format!("delayed variable {} refers to unknown base relation {}", id, relid))?);
+                v.set(&collections.get(&relid).ok_or_else(|| format!("delayed variable {} refers to unknown base relation {}", id, relid))?.consolidate());
             };
 
             for (relid, collection) in collections {
