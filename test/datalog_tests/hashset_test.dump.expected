@@ -1,0 +1,10 @@
+hashset_test::SetTransforms{.description = "all(contains(3))", .s = []}
+hashset_test::SetTransforms{.description = "any(contains(3))", .s = [(2, [4, 5, 6]), (4, [8, 9, 10]), (3, [6, 7, 8]), (1, [2, 3, 4]), (0, [0, 1, 2])]}
+hashset_test::SetTransforms{.description = "arg_max(max)", .s = [(4, [8, 9, 10])]}
+hashset_test::SetTransforms{.description = "arg_min(min)", .s = [(0, [0, 1, 2])]}
+hashset_test::SetTransforms{.description = "filter(contains 2)", .s = [(1, [2, 3, 4]), (0, [0, 1, 2])]}
+hashset_test::SetTransforms{.description = "filter_map(==1, :=100)", .s = [(100, [2, 3, 4])]}
+hashset_test::SetTransforms{.description = "find(contains(3))", .s = [(1, [2, 3, 4])]}
+hashset_test::SetTransforms{.description = "map(push 100)", .s = [(1, [2, 3, 4, 100]), (3, [6, 7, 8, 100]), (2, [4, 5, 6, 100]), (0, [0, 1, 2, 100]), (4, [8, 9, 10, 100])]}
+hashset_test::SetFolds{.description = "fold(+)", .a = 10}
+hashset_test::SetFolds{.description = "fold(fold(+))", .a = 75}

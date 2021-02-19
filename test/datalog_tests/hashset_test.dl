@@ -1,0 +1,82 @@
+import hashset
+import vec
+
+typedef TestSet = HashSet<(s64, Vec<s64>)>
+
+function test_set(): TestSet {
+    [ (0, [0,1,2])
+    , (1, [2,3,4])
+    , (2, [4,5,6])
+    , (3, [6,7,8])
+    , (4, [8,9,10])
+    ].to_hashset()
+}
+
+
+output relation SetTransforms(description: string, s: TestSet)
+
+// map.
+SetTransforms(
+    "map(push 100)",
+    test_set().map(|x| { var y = x; y.1.push(100); y } )).
+
+// filter.
+SetTransforms(
+    "filter(contains 2)",
+    test_set().filter(|x| x.1.any(|y| y == 2))).
+
+// filter_map.
+SetTransforms(
+    "filter_map(==1, :=100)",
+    test_set().filter_map(|x| if (x.0 == 1) {
+        Some{ {var y = x; y.0 = 100; y} }
+    } else {
+        None
+    })).
+
+// arg_min.
+SetTransforms(
+    "arg_min(min)",
+    hashset_singleton(test_set().arg_min(|x| x.1.arg_min(|x|x)).unwrap_or_default())).
+
+// arg_max.
+SetTransforms(
+    "arg_max(max)",
+    hashset_singleton(test_set().arg_max(|x| x.1.arg_max(|x|x)).unwrap_or_default())).
+
+// find.
+SetTransforms(
+    "find(contains(3))",
+    test_set().find(|x| x.1.any(|y|y==3)).to_hashset()).
+
+// any.
+SetTransforms(
+    "any(contains(3))",
+    if (test_set().any(|x| x.1.any(|y|y==3))) {
+        test_set()
+    } else {
+        hashset_empty()
+    }).
+
+// all.
+SetTransforms(
+    "all(contains(3))",
+    if (test_set().all(|x| x.1.any(|y|y==3))) {
+        test_set()
+    } else {
+        hashset_empty()
+    }).
+
+// fold
+output relation SetFolds(description: string, a: s64)
+
+SetFolds(
+    "fold(+)",
+    test_set().fold(|a, x| a + x.0, 0)
+).
+
+SetFolds(
+    "fold(fold(+))",
+    test_set().fold(|a, x| a + x.1.fold(|b,y| b + y, 0), 0)
+).
+

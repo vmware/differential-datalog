@@ -1,0 +1,2 @@
+dump hashset_test::SetTransforms;
+dump hashset_test::SetFolds;

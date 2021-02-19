@@ -359,7 +359,10 @@ ruleValidateExpressions d rl = do
 
 atomValidate :: (MonadError String me) => DatalogProgram -> ECtx -> Atom -> me ()
 atomValidate d ctx atom = do
-    rel <- checkRelation (pos atom) d $ atomRelation atom
+    -- Disabling the following check, as it prevents meaningful use cases where
+    -- we want to use delayed streams.  See, e.g., the `UniqueUsers` example in
+    -- `streams.dl`.
+
     -- This constraint is meant to reduce the risk of divergent programs.
     -- For example, the following program diverges if 'S1', 'S2' are streams
     -- (specifically, it will continue spitting out the same value of 'Sum' for
@@ -372,8 +375,9 @@ atomValidate d ctx atom = do
     -- TODO: It does not however guarantee convergence, e.g., this will diverge
     -- even with relations: 'R1(x) :- R1-1(x)'.  We may need a stronger check
     -- to prevent such situations.
-    when (atomIsDelayed atom)
-        $ check d (relSemantics rel /= RelStream) (pos $ atomDelay atom) "Cannot apply the delay operator to a stream."
+    --rel <- checkRelation (pos atom) d $ atomRelation atom
+    --when (atomIsDelayed atom)
+    --    $ check d (relSemantics rel /= RelStream) (pos $ atomDelay atom) "Cannot apply the delay operator to a stream."
     -- variable cannot be declared and used in the same atom
     uniqNames (Just d) (\v -> "Variable " ++ show v ++ " is both declared and used inside relational atom " ++ show atom)
         $ exprVarDecls d ctx $ atomVal atom

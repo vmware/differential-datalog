@@ -3,6 +3,29 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+## Libraries
+
+- Functional HashSets, aka immutable hashsets (`lib/hashset.dl`).  At the API
+  level functional hashsets behave just like regular hashsets; however their
+  internal implementation supports cloning a in time of O(1), by sharing the 
+  entire internal state between the clone and the original.  Modifying the clone
+  updates only the affected state in a copy-on-write fashion, with the
+  rest of the state still shared with the parent.
+
+  Example use case: computing the set of all unique id's that appear in a
+  stream.  At every iteration, we add all newly observed ids to the set of
+  id's computed so far.  This would normally amount to cloning and modifying a
+  potentially large set in time `O(n)`, where `n` is the size of the set.  With
+  functional sets, the cost if `O(1)`.
+
+  Functional data types are generally a great match for working with immutable
+  collections, e.g., collections stored in DDlog relations.  We therefore plan
+  to introduce more functional data types in the future, possibly even
+  replacing the standard collections (`Set`, `Map`, `Vec`) with functional
+  versions.
+
 ## [0.37.1] - Feb 23, 2021
 
 ### Optimizations
