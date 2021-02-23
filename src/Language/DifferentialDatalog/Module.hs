@@ -143,7 +143,6 @@ stdImports = map stdImport stdLibs
 parseDatalogProgram :: [FilePath] -> Bool -> String -> FilePath -> ExceptT String IO ([DatalogModule], DatalogProgram, M.Map ModuleName (Doc, Doc, Doc))
 parseDatalogProgram roots import_std fdata fname = do
     roots' <- lift $ nub <$> mapM canonicalizePath roots
-    -- TODO: parseDatalogProgram should return ExceptT.
     prog <- parseDatalogString fdata fname
     let prog' = if import_std
                    then prog { progImports = stdImports ++ progImports prog }

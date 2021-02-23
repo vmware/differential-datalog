@@ -624,7 +624,11 @@ simplifyDelayedRels d =
            delayed_rels d'
     where
     mk_delayed_rel_name :: (String, Delay) -> String
-    mk_delayed_rel_name (rel, del) = "__" ++ show (delayDelay del) ++ "_" ++ rel
+    mk_delayed_rel_name (rel, del) = scoped rel_scope $ "__" ++ show (delayDelay del) ++ "_" ++ rel_name
+        where
+        rel_scope = nameScope rel
+        rel_name = nameLocalStr rel
+
     -- Find all delayed rels in the program, replacing each occurrence
     -- of 'R-n' with '__n_R'.
     (delayed_rels, d') = runState
@@ -682,7 +686,10 @@ simplifyDifferentiation d =
            diff_rels d'
     where
     mk_diff_rel_name :: String -> String
-    mk_diff_rel_name rname = "__diff_" ++ rname
+    mk_diff_rel_name rname = scoped rel_scope $ "__diff_" ++ rel_name
+        where
+        rel_scope = nameScope rname
+        rel_name = nameLocalStr rname
     -- Find all differentiated rels in the program, replacing each occurrence
     -- of 'R'' with '__diff_R'.
     (diff_rels, d') = runState
