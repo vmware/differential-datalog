@@ -14,6 +14,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - [C API tutorial](doc/c_tutorial/c_tutorial.rst), kindly contributed by @smadaminov.
 
+### Bug fix
+
+- Compiler crashed when differentiation or delay operators were applied to
+  relations declared outside of the main module of the program.
+
 ## [0.37.0] - Feb 15, 2021
 
 ### Language improvements

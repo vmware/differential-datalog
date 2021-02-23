@@ -58,7 +58,7 @@ import Language.DifferentialDatalog.Ops
 import Language.DifferentialDatalog.Error
 import {-# SOURCE #-} Language.DifferentialDatalog.Expr
 
--- parse a string containing a datalog program and produce the intermediate representation
+-- parse a string containing a DDlog program and produce the intermediate representation.
 parseDatalogString :: String -> String -> ExceptT String IO DatalogProgram
 parseDatalogString program file = do
   case parse datalogGrammar file program of

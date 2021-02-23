@@ -2,7 +2,7 @@
 
 set -e
 
-./run-test.sh stream release
+./run-test.sh streams release
 
 run_test() {
     echo Running mem leak test for $1 iterations.
@@ -13,7 +13,7 @@ run_test() {
         insert Chunk(\"{\\\"fild\\\": $i}\"),
         commit dump_changes;"
     done) |
-        /usr/bin/time -o stream_mem -f "%M" ./stream_ddlog/target/release/stream_cli -w 4 --no-store > stream_mem.dump
+        /usr/bin/time -o stream_mem -f "%M" ./streams_ddlog/target/release/streams_cli -w 4 --no-store > stream_mem.dump
 }
 
 run_memleak_test() {
@@ -50,7 +50,7 @@ run_stream_query_test() {
         done
         echo "commit dump_changes;"
     done) > stream_bench.dat
-    /usr/bin/time ./stream_ddlog/target/release/stream_cli -w $3 --no-store < stream_bench.dat > stream_stream_queries.dump
+    /usr/bin/time ./streams_ddlog/target/release/streams_cli -w $3 --no-store < stream_bench.dat > stream_stream_queries.dump
 
 }
 
@@ -82,7 +82,7 @@ run_rel_query_test() {
         echo "commit dump_changes;"
 
     done) > stream_bench.dat
-    /usr/bin/time ./stream_ddlog/target/release/stream_cli -w $3 --no-store < stream_bench.dat > stream_rel_queries.dump
+    /usr/bin/time ./streams_ddlog/target/release/streams_cli -w $3 --no-store < stream_bench.dat > stream_rel_queries.dump
 
 }
 
