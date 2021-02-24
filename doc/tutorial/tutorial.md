@@ -2008,8 +2008,7 @@ after each transaction, the `clear` command is not defined for streams.
 
 ### Streaming aggregation; differentiation and delay operators
 
-> ## :heavy_exclamation_mark: Unstable features: this section describes
-> experimental features that are likely to change in future DDlog releases.
+> ## :heavy_exclamation_mark: Unstable features: this section describes experimental features that are likely to change in future DDlog releases.
 
 Next we would like to extend the parcel example to keep track of the total
 weight of parcels sent to each Zip code.  This sounds like a job for the
@@ -2034,10 +2033,10 @@ function sum_with_multiplicities(g: Group<u32, usize>): usize {
 
 We group records in the `Parcel` stream by `zip`, extract the `weight` field
 from each record and sum up the weights using the `sum_with_multiplicities` function.  This
-function differs from the `group_sum` function from the standard libraries in
+function differs from the `group_sum` function from the standard library in
 that it takes into account multiplicities of records in the group.  Recall that
 each record in the group has a multiplicity (we use the term "multiplicity"
-instead of "weight" here to avoid confusion with parce weights), which indicates
+instead of "weight" here to avoid confusion with parcel weights), which indicates
 how many times the record appears in the input relation or stream.
 Multiplicities are important when dealing with streams, since streams can
 contain multiple identical values.  In our example, multiple parcels with
