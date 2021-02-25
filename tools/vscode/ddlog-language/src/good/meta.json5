@@ -92,7 +92,7 @@
                         },
                         {
                             "name": "variable.parameter.ddlog",
-                            "match": "(?<![:]\\s*)(?!.*(bigint|bit|bool|signed|double|float|string|Vec|Ref|Set|Map))\\s*([a-z_][a-zA-Z0-9_]*)(\\b)"
+                            "match": "(?<![:]\\s*)(?!.*(\\b)(bigint|bit|bool|signed|double|float|string|Vec|Ref|Set|Map)(\\b))\\s*([a-z_][a-zA-Z0-9_]*)(\\b)"
                         },
                         {
                             "include": "#comment"

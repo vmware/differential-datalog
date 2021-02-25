@@ -22,7 +22,8 @@
                     "ddlog"
                 ],
                 "extensions": [
-                    ".dl"
+                    ".dl",
+                    ".dat"
                 ],
                 "configuration": "./language-configuration.json"
             }

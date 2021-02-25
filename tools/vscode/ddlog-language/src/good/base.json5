@@ -38,7 +38,13 @@
       },
       { 
         "include": "#storage"
-      }
+      },
+      { 
+        "include": "#command"
+      },  
+      { 
+        "include": "#statements"
+      }    
     ], 
 "repository":
     {
