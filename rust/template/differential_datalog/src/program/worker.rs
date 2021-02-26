@@ -13,7 +13,9 @@ use differential_dataflow::{
     input::{Input, InputSession},
     logging::DifferentialEvent,
     operators::{
-        arrange::TraceAgent, iterate::Variable as DDVariable, Consolidate, ThresholdTotal,
+        arrange::{ArrangeBySelf, TraceAgent},
+        iterate::Variable as DDVariable,
+        Consolidate, ThresholdTotal,
     },
     trace::{
         implementations::{ord::OrdValBatch, spine_fueled::Spine},
@@ -21,6 +23,7 @@ use differential_dataflow::{
     },
     Collection,
 };
+use dogsdogsdogs::operators::lookup_map;
 use fnv::{FnvBuildHasher, FnvHashMap};
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap},
@@ -40,15 +43,21 @@ use timely::{
     worker::Worker,
 };
 
-type SessionData = (
-    FnvHashMap<RelId, InputSession<TS, DDValue, Weight>>,
-    BTreeMap<
+// Handles to objects involved in managing the progress of the dataflow.
+struct SessionData {
+    // Input sessions for program relations.
+    sessions: FnvHashMap<RelId, InputSession<TS, DDValue, Weight>>,
+    // Input session for the special `Enabled` relation (see detailed comment in
+    // `session_dataflow()`).
+    enabled_session: InputSession<TS, (), Weight>,
+    // Traces for arrangements used in indexes.
+    traces: BTreeMap<
         ArrId,
         TraceAgent<
             Spine<DDValue, DDValue, u32, i32, Rc<OrdValBatch<DDValue, DDValue, u32, i32, u32>>>,
         >,
     >,
-);
+}
 
 /// A DDlog timely worker
 pub struct DDlogWorker<'a> {
@@ -101,15 +110,19 @@ impl<'a> DDlogWorker<'a> {
         self.init_profiling();
 
         let probe = ProbeHandle::new();
-        let (mut sessions, mut traces) = self.session_dataflow(probe.clone())?;
+        let mut session_data = self.session_dataflow(probe.clone())?;
 
-        self.ingest_initial_data(&mut sessions, &mut traces, &probe)?;
+        self.ingest_initial_data(&mut session_data, &probe)?;
 
         // Close session handles for non-input sessions.
-        let mut sessions: FnvHashMap<RelId, InputSession<TS, DDValue, Weight>> = sessions
+        session_data.sessions = session_data
+            .sessions
             .drain()
             .filter(|&(relid, _)| self.program.get_relation(relid).input)
             .collect();
+
+        // Keeps track of the last timestamp we've seen in a `Flush` message.
+        let mut timestamp = 1;
 
         'worker_loop: loop {
             // Non-blocking receive, so that we can do some garbage collecting
@@ -119,14 +132,15 @@ impl<'a> DDlogWorker<'a> {
                 match message {
                     // Update inputs with the given updates at the given timestamp
                     Msg::Update { updates, timestamp } => {
-                        self.batch_update(&mut sessions, updates, timestamp)?
+                        self.batch_update(&mut session_data.sessions, updates, timestamp)?
                     }
 
                     // The `Flush` message gives us the timestamp to advance to, so advance there
                     // before flushing & compacting all previous timestamp's traces
                     Msg::Flush { advance_to } => {
-                        self.advance(&mut sessions, &mut traces, advance_to);
-                        self.flush(&mut sessions, &probe);
+                        self.advance(&mut session_data, advance_to);
+                        self.flush(&mut session_data, &probe);
+                        timestamp = advance_to;
 
                         self.reply_sender
                             .send(Reply::FlushAck)
@@ -134,11 +148,14 @@ impl<'a> DDlogWorker<'a> {
                     }
 
                     // Handle queries
-                    Msg::Query(arrid, key) => self.handle_query(&mut traces, arrid, key)?,
+                    Msg::Query(arrid, key) => {
+                        self.handle_query(&mut session_data.traces, arrid, key)?
+                    }
 
                     // On either the stop message or a channel disconnection we can shut down
-                    // the computation
+                    // the computation.
                     Msg::Stop => {
+                        self.disable(&mut session_data, timestamp, &probe);
                         // TODO: Log worker #n disconnection
                         break 'worker_loop;
                     }
@@ -195,17 +212,11 @@ impl<'a> DDlogWorker<'a> {
     }
 
     /// Feeds the startup data into the computation
-    fn ingest_initial_data<Trace>(
+    fn ingest_initial_data(
         &mut self,
-        sessions: &mut FnvHashMap<RelId, InputSession<TS, DDValue, Weight>>,
-        traces: &mut BTreeMap<ArrId, Trace>,
+        session_data: &mut SessionData,
         probe: &ProbeHandle<TS>,
-    ) -> Result<(), String>
-    where
-        Trace: TraceReader<Key = DDValue, Val = DDValue, Time = TS, R = Weight>,
-        Trace::Batch: BatchReader<DDValue, DDValue, TS, Weight>,
-        Trace::Cursor: Cursor<DDValue, DDValue, TS, Weight>,
-    {
+    ) -> Result<(), String> {
         // We immediately advance to a timestamp of 1, since timestamp 0 will contain
         // our initial data
         let timestamp = 1;
@@ -213,16 +224,19 @@ impl<'a> DDlogWorker<'a> {
         // Only the leader introduces data into the input sessions
         if self.is_leader() {
             for (relid, v) in self.program.init_data.iter() {
-                sessions
+                session_data
+                    .sessions
                     .get_mut(relid)
                     .ok_or_else(|| format!("no session found for relation ID {}", relid))?
                     .update_at(v.clone(), timestamp - 1, 1);
             }
+            // Insert a record in the Enabled relation.
+            session_data.enabled_session.update_at((), timestamp - 1, 1);
         }
 
         // All workers advance to timestamp 1 and flush their inputs
-        self.advance(sessions, traces, timestamp);
-        self.flush(sessions, probe);
+        self.advance(session_data, timestamp);
+        self.flush(session_data, probe);
 
         self.reply_sender
             .send(Reply::FlushAck)
@@ -231,22 +245,25 @@ impl<'a> DDlogWorker<'a> {
         Ok(())
     }
 
-    /// Advance the epoch on all input sessions
-    fn advance<Trace>(
-        &self,
-        sessions: &mut FnvHashMap<RelId, InputSession<TS, DDValue, Weight>>,
-        traces: &mut BTreeMap<ArrId, Trace>,
-        timestamp: TS,
-    ) where
-        Trace: TraceReader<Key = DDValue, Val = DDValue, Time = TS, R = Weight>,
-        Trace::Batch: BatchReader<DDValue, DDValue, TS, Weight>,
-        Trace::Cursor: Cursor<DDValue, DDValue, TS, Weight>,
-    {
-        for session_input in sessions.values_mut() {
-            session_input.advance_to(timestamp);
+    /// Empty the Enabled relation to help the dataflow terminate.
+    fn disable(&mut self, session_data: &mut SessionData, timestamp: TS, probe: &ProbeHandle<TS>) {
+        if self.is_leader() {
+            // Delete the sole record from the Enabled relation.
+            session_data.enabled_session.update_at((), timestamp, -1);
         }
 
-        for trace in traces.values_mut() {
+        self.advance(session_data, timestamp + 1);
+        self.flush(session_data, probe);
+    }
+
+    /// Advance the epoch on all input sessions
+    fn advance(&self, session_data: &mut SessionData, timestamp: TS) {
+        for session_input in session_data.sessions.values_mut() {
+            session_input.advance_to(timestamp);
+        }
+        session_data.enabled_session.advance_to(timestamp);
+
+        for trace in session_data.traces.values_mut() {
             let e = [timestamp];
             let ac = AntichainRef::new(&e);
             trace.distinguish_since(ac);
@@ -255,16 +272,13 @@ impl<'a> DDlogWorker<'a> {
     }
 
     /// Propagate all changes through the pipeline
-    fn flush(
-        &mut self,
-        sessions: &mut FnvHashMap<RelId, InputSession<TS, DDValue, Weight>>,
-        probe: &ProbeHandle<TS>,
-    ) {
-        for relation_input in sessions.values_mut() {
+    fn flush(&mut self, session_data: &mut SessionData, probe: &ProbeHandle<TS>) {
+        for relation_input in session_data.sessions.values_mut() {
             relation_input.flush();
         }
+        session_data.enabled_session.flush();
 
-        if let Some(session) = sessions.values_mut().next() {
+        if let Some(session) = session_data.sessions.values_mut().next() {
             while probe.less_than(session.time()) {
                 self.worker.step_or_park(None);
             }
@@ -428,10 +442,34 @@ impl<'a> DDlogWorker<'a> {
                     HashMap::with_capacity_and_hasher(program.nodes.len(), FnvBuildHasher::default());
             let mut arrangements = FnvHashMap::default();
 
+            // Create an `Enabled` relation used to enforce the dataflow termination in the
+            // presence of delayed relations.  A delayed relation can potentially generate an
+            // infinite sequence of outputs for all future timestamps, preventing the
+            // differential dataflow from terminating.  DD can only terminate cleanly when there
+            // is no data in flight, and will keep spinning forever if new records keep getting
+            // injected in the dataflow.  To prevent this scenario, we join all delayed relations
+            // with `Enabled`.  `Enabled` contains a single record (an empty tuple) as long as
+            // the program is running.  We retract this record on shutdown, hopefully enforcing
+            // quiescing the dataflow.
+            let (enabled_session, enabled_collection) = outer.new_collection::<(),Weight>();
+            let enabled_arrangement = enabled_collection.arrange_by_self();
+
             // Create variables for delayed relations.  We will be able to refer to these variables
             // inside rules and assign them once all rules have been evaluated.
-            let delayed_vars: FnvHashMap<RelId, (RelId, DDVariable<Child<Worker<Allocator>, TS>, DDValue, Weight>)> = program.delayed_rels.iter().map(|drel| {
-                (drel.id, (drel.rel_id, DDVariable::new(outer, drel.delay)))
+            let delayed_vars: FnvHashMap<RelId, (RelId, DDVariable<Child<Worker<Allocator>, TS>, DDValue, Weight>, Collection<Child<Worker<Allocator>, TS>, DDValue, Weight>)> = program.delayed_rels.iter().map(|drel| {
+                let v = DDVariable::new(outer, drel.delay);
+
+                let vcol = lookup_map(
+                    &v,
+                    enabled_arrangement.clone(),
+                    |_: &DDValue, key| *key = (),
+                    move |x, w, _, _| (x.clone(), *w),
+                    (),
+                    (),
+                    (),
+                );
+
+                (drel.id, (drel.rel_id, v, vcol))
             }).collect();
 
             for (nodeid, node) in program.nodes.iter().enumerate() {
@@ -454,7 +492,7 @@ impl<'a> DDlogWorker<'a> {
                             .map(|rule| {
                                 program.mk_rule(
                                     rule,
-                                    |rid| collections.get(&rid).or_else(|| delayed_vars.get(&rid).map(|v| &(*v.1))),
+                                    |rid| collections.get(&rid).or_else(|| delayed_vars.get(&rid).map(|v| &v.2)),
                                     Arrangements {
                                         arrangements1: &arrangements,
                                         arrangements2: &FnvHashMap::default(),
@@ -647,7 +685,7 @@ impl<'a> DDlogWorker<'a> {
                 }
             };
 
-            for (id, (relid, v)) in delayed_vars.into_iter() {
+            for (id, (relid, v, _)) in delayed_vars.into_iter() {
                 v.set(&collections.get(&relid).ok_or_else(|| format!("delayed variable {} refers to unknown base relation {}", id, relid))?.consolidate());
             };
 
@@ -689,7 +727,11 @@ impl<'a> DDlogWorker<'a> {
                 }
             }
 
-            Ok((sessions, traces))
+            Ok(SessionData{
+                sessions,
+                enabled_session,
+                traces
+            })
         })
     }
 }

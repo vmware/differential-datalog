@@ -5,12 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-## Libraries
+### Libraries
 
 - Functional HashSets, aka immutable hashsets (`lib/hashset.dl`).  At the API
   level functional hashsets behave just like regular hashsets; however their
-  internal implementation supports cloning a in time of O(1), by sharing the 
-  entire internal state between the clone and the original.  Modifying the clone
+  internal implementation supports cloning a hashset in time O(1) by sharing the
+  entire internal state between the clone and the parent.  Modifying the clone
   updates only the affected state in a copy-on-write fashion, with the
   rest of the state still shared with the parent.
 

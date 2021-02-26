@@ -92,9 +92,6 @@ run_count_unique_test() {
     echo Running unique user count test $1 for $2 batches of $3 events;
 
     (
-    echo "start;"
-    echo "insert EnableAggregation(),"
-    echo "commit;"
     for (( i=1; i<=$2; i++ ))
     do
         echo "echo Transaction $i;"
@@ -106,9 +103,6 @@ run_count_unique_test() {
         done
         echo "commit dump_changes;"
     done
-    echo "start;"
-    echo "delete EnableAggregation(),"
-    echo "commit;"
     ) > unique_bench$1.dat
     /usr/bin/time ./streams_ddlog/target/release/streams_cli -w 1 --no-store < unique_bench$1.dat > unique_bench$1.dump
     diff -q unique_bench$1.dump unique_bench$1.dump.expected
