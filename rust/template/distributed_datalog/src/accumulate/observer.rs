@@ -4,7 +4,6 @@ use std::collections::HashSet;
 use std::collections::LinkedList;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::iter::FromIterator;
 
 use log::trace;
 use uid::Id;
@@ -156,7 +155,7 @@ where
                             .and_modify(|set| {
                                 let _ = set.insert(v.clone());
                             })
-                            .or_insert_with(|| HashSet::from_iter(vec![v.clone()].into_iter()));
+                            .or_insert_with(|| vec![v.clone()].into_iter().collect());
                     }
                     Update::DeleteValue { relid, v } => {
                         let _ = self.data.entry(relid).and_modify(|set| {

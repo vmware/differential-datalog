@@ -111,15 +111,11 @@ fn deduce_sinks_or_sources(node_cfg: &NodeCfg, sinks: bool) -> BTreeMap<&Path, B
         .fold(BTreeMap::new(), |map, (relid, rel_cfgs)| {
             rel_cfgs.iter().fold(map, |mut map, rel_cfg| {
                 match rel_cfg {
-                    RelCfg::Sink(sink) if sinks => {
-                        if let Sink::File(path) = sink {
-                            let _ = map.entry(path).or_default().insert(*relid);
-                        }
+                    RelCfg::Sink(Sink::File(path)) if sinks => {
+                        let _ = map.entry(path).or_default().insert(*relid);
                     }
-                    RelCfg::Source(source) if !sinks => {
-                        if let Source::File(path) = source {
-                            let _ = map.entry(path).or_default().insert(*relid);
-                        }
+                    RelCfg::Source(Source::File(path)) if !sinks => {
+                        let _ = map.entry(path).or_default().insert(*relid);
                     }
                     _ => (),
                 };

@@ -10,6 +10,7 @@
     non_camel_case_types,
     non_upper_case_globals,
     dead_code,
+    clippy::unknown_clippy_lints,
     clippy::blocks_in_if_conditions,
     clippy::type_complexity,
     clippy::clone_on_copy,
@@ -17,7 +18,9 @@
     clippy::cmp_owned,
     clippy::nonminimal_bool,
     clippy::toplevel_ref_arg,
-    clippy::trivially_copy_pass_by_ref
+    clippy::trivially_copy_pass_by_ref,
+    clippy::unnecessary_wraps,
+    clippy::from_iter_instead_of_collect
 )]
 
 use std::borrow::Cow;
@@ -209,7 +212,7 @@ fn test_one_relation(nthreads: usize) {
 
     /* 1. Insertion */
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
-    let set = BTreeMap::from_iter(vals.iter().map(|x| (U64(*x), 1)));
+    let set: BTreeMap<_, _> = vals.iter().map(|x| (U64(*x), 1)).collect();
 
     running.transaction_start().unwrap();
     for x in set.keys() {
@@ -328,7 +331,7 @@ fn test_two_relations(nthreads: usize) {
 
     /* 1. Populate T1 */
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
-    let set = BTreeMap::from_iter(vals.iter().map(|x| (U64(*x), 1)));
+    let set: BTreeMap<_, _> = vals.iter().map(|x| (U64(*x), 1)).collect();
 
     running.transaction_start().unwrap();
     for x in set.keys() {
