@@ -262,13 +262,6 @@ DataUnique(window, unique) :-
 
 typedef user_id = u128
 
-/* This relation controls the computation.  Inserting a record in
- * `EnableAggregation` triggers the output of unique users count.  If the
- * record is never deleted, the program will continue producing outputs for
- * all future timestamps and never terminate.  This is a great way to shoot
- * oneself in the foot, and we should find a better solution. */
-input relation EnableAggregation()
-
 /* Regular sets */
 
 input stream UserSession1(user: user_id)
@@ -283,7 +276,6 @@ UniqueUsersFold1(old_users) :-
 stream UniqueUsers1(users: Set<user_id>)
 
 UniqueUsers1(all_users) :-
-    EnableAggregation(),
     UniqueUsersFold1(users),
     var all_users = users.group_by(()).union().
 
@@ -303,7 +295,6 @@ UniqueUsersFold2(old_users) :-
 stream UniqueUsers2(users: HashSet<user_id>)
 
 UniqueUsers2(all_users) :-
-    EnableAggregation(),
     UniqueUsersFold2(users),
     var all_users = users.group_by(()).union().
 
