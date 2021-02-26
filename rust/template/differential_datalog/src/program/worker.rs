@@ -459,16 +459,18 @@ impl<'a> DDlogWorker<'a> {
             let delayed_vars: FnvHashMap<RelId, (RelId, DDVariable<Child<Worker<Allocator>, TS>, DDValue, Weight>, Collection<Child<Worker<Allocator>, TS>, DDValue, Weight>)> = program.delayed_rels.iter().map(|drel| {
                 let v = DDVariable::new(outer, drel.delay);
 
-                let vcol = lookup_map(
-                    &v,
-                    enabled_arrangement.clone(),
-                    |_: &DDValue, key| *key = (),
-                    move |x, w, _, _| (x.clone(), *w),
-                    (),
-                    (),
-                    (),
-                );
-
+                let vcol = with_prof_context(
+                            &format!("join {} with 'Enabled' relation", drel.id),
+                            || lookup_map(
+                                &v,
+                                enabled_arrangement.clone(),
+                                |_: &DDValue, key| *key = (),
+                                move |x, w, _, _| (x.clone(), *w),
+                                (),
+                                (),
+                                (),
+                                )
+                            );
                 (drel.id, (drel.rel_id, v, vcol))
             }).collect();
 
