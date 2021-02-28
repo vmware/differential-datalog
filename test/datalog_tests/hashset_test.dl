@@ -80,3 +80,9 @@ SetFolds(
     test_set().fold(|a, x| a + x.1.fold(|b,y| b + y, 0), 0)
 ).
 
+input relation TestSetMutateI(k: usize, v: HashSet<usize>)
+primary key (x) x.k
+
+output relation TestSetMutateO(k: usize, v: HashSet<usize>)
+
+TestSetMutateO(k, v) :- TestSetMutateI(k, v).

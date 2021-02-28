@@ -28,7 +28,8 @@ where
     let mut buf: Vec<u8> = Vec::new();
 
     let istty = unsafe {
-        libc::isatty(/*libc::STDIN_FILENO*/ 0)
+        // libc::STDIN_FILENO
+        libc::isatty(0)
     } != 0;
     let mut input = if istty {
         let mut rl = Editor::<()>::new();

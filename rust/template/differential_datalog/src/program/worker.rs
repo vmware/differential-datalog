@@ -451,6 +451,8 @@ impl<'a> DDlogWorker<'a> {
             // with `Enabled`.  `Enabled` contains a single record (an empty tuple) as long as
             // the program is running.  We retract this record on shutdown, hopefully enforcing
             // quiescing the dataflow.
+            // Note: this trick won't be needed once DD supports proactive termination:
+            // https://github.com/TimelyDataflow/timely-dataflow/issues/306
             let (enabled_session, enabled_collection) = outer.new_collection::<(),Weight>();
             let enabled_arrangement = enabled_collection.arrange_by_self();
 
@@ -469,7 +471,7 @@ impl<'a> DDlogWorker<'a> {
                                 (),
                                 (),
                                 (),
-                                )
+                            )
                             );
                 (drel.id, (drel.rel_id, v, vcol))
             }).collect();

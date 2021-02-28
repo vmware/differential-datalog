@@ -121,7 +121,7 @@ function find(s: HashSet<'A>, f: function('A): bool): Option<'A> {
     None
 }
 
-/* Returns a vector containing only those elements in `s` that satisfy predicate
+/* Returns a set containing only those elements in `s` that satisfy predicate
  * `f`. */
 function filter(s: HashSet<'A>, f: function('A): bool): HashSet<'A> {
     var res = hashset_empty();
