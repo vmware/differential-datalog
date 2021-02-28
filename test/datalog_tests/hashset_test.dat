@@ -1,2 +1,22 @@
 dump hashset_test::SetTransforms;
 dump hashset_test::SetFolds;
+
+start;
+
+insert hashset_test::TestSetMutateI(1, [1,2,3,4,5]),
+insert hashset_test::TestSetMutateI(2, [1,2,3,4,5]),
+insert hashset_test::TestSetMutateI(3, [1,2,3,4,5]),
+insert hashset_test::TestSetMutateI(4, [1,2,3,4,5]),
+insert hashset_test::TestSetMutateI(5, [1,2,3,4,5]),
+
+commit dump_changes;
+
+start;
+
+modify hashset_test::TestSetMutateI 1 <- hashset_test::TestSetMutateI{1, [1,2,3,4,5]},
+modify hashset_test::TestSetMutateI 2 <- hashset_test::TestSetMutateI{2, [6,7,8,9,10]},
+modify hashset_test::TestSetMutateI 3 <- hashset_test::TestSetMutateI{3, [1,2,3]},
+modify hashset_test::TestSetMutateI 4 <- hashset_test::TestSetMutateI{4, [1,3,5,7,9]},
+modify hashset_test::TestSetMutateI 5 <- hashset_test::TestSetMutateI{5, []},
+
+commit dump_changes;

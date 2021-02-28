@@ -194,9 +194,11 @@ impl<T: Hash + Eq + Clone> HashSet<T> {
         set.insert(x);
         HashSet::from(set)
     }
+
     pub fn insert(&mut self, x: T) -> Option<T> {
         self.set.insert(x)
     }
+
     pub fn remove<BT: ?Sized>(&mut self, x: &BT) -> Option<T>
     where
         BT: Hash + Eq,
@@ -204,12 +206,15 @@ impl<T: Hash + Eq + Clone> HashSet<T> {
     {
         self.set.remove(x)
     }
+
     pub fn without(&self, x: &T) -> Self {
         HashSet::from(self.set.without(x))
     }
+
     pub fn update(&self, x: T) -> Self {
         HashSet::from(self.set.update(x))
     }
+
     pub fn union(self, other: Self) -> Self {
         // `im::HashSet` implements union by adding elements from `other` to
         // `self`.  This is inefficient when `other` is much
@@ -289,11 +294,7 @@ impl<T: IntoRecord + Hash + Eq + Clone + Ord> IntoRecord for HashSet<T> {
 impl<T: FromRecord + Hash + Eq + Clone + Ord> Mutator<HashSet<T>> for Record {
     fn mutate(&self, set: &mut HashSet<T>) -> StdResult<(), String> {
         let upd = <HashSet<T>>::from_record(self)?;
-        for v in upd.into_iter() {
-            if set.remove(&v).is_none() {
-                set.insert(v);
-            }
-        }
+        *set = HashSet::from(set.set.clone().symmetric_difference(upd.set));
         Ok(())
     }
 }
