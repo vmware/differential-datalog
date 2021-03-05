@@ -33,6 +33,8 @@
 \newcommand{\id}{\ensuremath{\mathit{id}}} % identity function
 \newcommand{\isset}{\mbox{isset}}
 \newcommand{\ispositive}{\mbox{ispositive}}
+\newcommand{\defn}{\stackrel{\textrm{\scriptsize def}}{=}}
+\newcommand{\map}{\mbox{map}}
 
 \title{Streaming Differential Datalog}
 
@@ -72,6 +74,9 @@ monoid has the property that $a + b = b + a$ for all $a, b \in M$.  A
 group is a monoid where every element $a \in M$ has a complement $-a
 \in M$ such that $a + (-a) = 0$.
 
+$\id$ is the identity function on any set $\id: T \rightarrow T$,
+defined by $\id(x) \defn x$.
+
 \subsection{Multisets}
 
 Given a monoid (group) $B$, the set of functions between $A$ and $B$
@@ -88,50 +93,50 @@ $B$.
 In particular, \emph{multisets} with elements of type $A$ are the
 functions $\Z[A]$.  Multiset union is just addition in the $\Z[A]$
 monoid.  Note that multisets elements can have negative weights.
-Multisets form a commutative group, since $\Z$ with addition is a
-group.  The zero is the empty multiset $\{\} = \phi$.  Given a
-multiset $m \in \Z[A]$ and a value $v \in A$, we overload the array
-index notation $m[v]$ to denote the \emph{weight} of the element $v$
-in $m$.
+Multisets form a vector space, since $\Z$ with addition is a group.
+The zero is the empty multiset $\{\} = \phi$.  Given a multiset $m \in
+\Z[A]$ and a value $v \in A$, we overload the array index notation
+$m[v]$ to denote the \emph{weight} of the element $v$ in $m$.  When $c
+\in \Z$, and $v \in A$ we also write $c \cdot v$ for the multiset $\{
+v \mapsto c \}$.  We say that $x \in m$ iff $m[x] > 0$.
 
 The ``distinct'' function $\distinct: \Z[D] \rightarrow \Z[D]$
 projects a multiset into an underlying set (but \emph{the result is
-  still as a multiset}).  The definition of distinct is given by
-$\distinct(m) = \{ x \mapsto 1, m[x] > 0 \} \in \Z[D]$.  The distinct
+  still a multiset}).  The definition of distinct is given by
+$\distinct(m) \defn \{ x \mapsto 1 \;|\; m[x] > 0 \} = \{ x \mapsto 1
+\;|\; x \in m \} = \sum_{x \in m} 1 \cdot x$.  The distinct
 function is idempotent: $\distinct = \distinct \circ \distinct$.
+Since our algebraic operations are cleaner over a vector space, we
+prefer to work with multisets and project them down to sets when
+necessary rather than working with sets.
 
 We say that a multiset is also a ``set'' if the weight of every
 element is either zero or one: $\isset : \Z[D] \rightarrow \B$,
-given by
-
-$$\isset(s) = \left\{
-\begin{array}{ll}
-  \mbox{true} & \mbox{ if } s[x] \in \{ 0, 1 \}, \forall x \in D \\
-  \mbox{false} & \mbox{ otherwise}
-\end{array}
-\right.$$
-
-Node that $\isset(s) \iff s = \distinct(s)$.
+given by $\isset(s) \defn (s = \distinct(s))$
 
 We say that a multiset is positive if the weight of every element is
 positive: $\ispositive : \Z[D] \rightarrow \B$, given by
 
-$$\ispositive(s) = \left\{
+$$\ispositive(s) \defn \left\{
 \begin{array}{ll}
   \mbox{true} & \mbox{ if } s[x] \geq 0, \forall x \in D \\
   \mbox{false} & \mbox{ otherwise}
 \end{array}
 \right.$$
 
-Note that for any $m \in \Z[D]$ we have: $\isset(\distinct(m))$
-and $\ispositive(\distinct(m))$.  We also write $m \geq 0$ when
-$m$ is positive.  We also say that $m \geq n$ for $m, n \in \Z[D]$ if
-$m - n \geq 0$.
+Note that for any $m \in \Z[D]$ we have: $\isset(\distinct(m))$ and
+$\ispositive(\distinct(m))$.  We also write $m \geq 0$ when $m$ is
+positive.  We also say that $m \supseteq n$ or $m \geq n$ for $m, n
+\in \Z[D]$ iff $m - n \geq 0$.
 
 We call a function (query) between multisets ``linear'' if it commutes
 with addition: $\q: \Z[I] \rightarrow \Z[O]$ has the property that
 $\q(a +_{\Z[I]} b) = \q(a) +_{\Z[O]} \q(b)$ for any $a, b \in \Z[I]$.
 This implies that for a linear query $\q(0_{\Z[I]}) = 0_{\Z[O]}$.
+
+We call a function $f : \Z[D] \rightarrow \Z[T]$ ``positive'' if
+$\forall x \in \Z[T], x \geq 0 \rightarrow f(x) \geq 0$.  We use the
+same notation as for multisets: $\ispositive{f}$.
 
 \subsection{Streams}
 
@@ -194,13 +199,13 @@ $$
 We write $z^{-k}$ for $\underbrace{\zm \circ \ldots \circ \zm}_{k
   \mbox{ times}}$ .
 
-We call a function over streams \textbf{memoryless} if it has the
+We call a function $f$ over streams \textbf{memoryless} if it has the
 property: $f \circ \zm = \zm \circ f$.
 
 \begin{definition}
 Given a monoid $M$, \textbf{integration} is an operation from streams to
 streams, $\I : \stream{M} \rightarrow \stream{M}$.  The integral of a
-stream $S$ is defined using an equation: $\I(s) = \zm(\I(s)) + s$.
+stream $S$ is defined using an equation: $\I(s) \defn \zm(\I(s)) + s$.
 (Using the notation used for digital filters this equation can be also
 written as $\I(s) = s / (1 - \zm)$).  The element of $\I(s)$ at time
 $t$ is the (prefix) sum of all elements of $s$ at times up to $t$:
@@ -223,7 +228,7 @@ the following figure:
 \begin{definition}
 Given a group $M$, \textbf{differentiation} is an operation from
 streams to streams $\D : \stream{M} \rightarrow \stream{M}$, defined
-as $\D(s) = s - \zm(s)$ (we need $M$ to be group in order to have
+as $\D(s) \defn s - \zm(s)$ (we need $M$ to be group in order to have
 subtraction).  An element of $\D(s)$ (at time $t$) is the difference
 between the previous element (time $t-1$) of $s$ and the current (time
 $t$) element of $S$.  Using the notation for digital filters $\D(s) =
@@ -242,12 +247,12 @@ s(1 - \zm)$.
 \end{definition}
 
 \begin{lemma}
-For a stream $s$ over a commutative group we have $D(I(s)) = s$.
+For a stream $s$ over a commutative group we have $\D(\I(s)) = s$.
 \end{lemma}
 \begin{proof}
-$\D(\I(s)) = \I(s) - \zm(\I(s)) = (\zm(\I(s)) + s) - \zm(\I(s)) = s$, by
-  substituting the definitions of $\D$ and $\I$ and using the
-  commutativity of the group.
+  We can prove this algebraically: $\D(\I(s)) = \I(s) - \zm(\I(s)) =
+  (\zm(\I(s)) + s) - \zm(\I(s)) = s$, by substituting the definitions
+  of $\D$ and $\I$ and using the commutativity of the group.
 \end{proof}
 
 If $I$ and $O$ are monoids, we call an operator $f: \stream{I}
@@ -295,7 +300,7 @@ $$
 \end{lemma}
 \begin{proof}
   $\D$ is the composition of three linear and memoryless operators.
-  For $\zm$ the proof is trivial.
+  For $\zm$ the proof is trivial.  Let us prove the statement for $\I$.
   $$
 \begin{aligned}
   \zm(\I(i))[t] &= \zm(\sum_{k \leq t} i[k]) & \mbox{ definition of }\I \\
@@ -309,16 +314,25 @@ $$
 $$
 \end{proof}
 
+Two streams can be combined into a single stream of pairs: $\times:
+\Z[I] \times \Z[J] \rightarrow \Z[I \times J]$, defined by $(a \times
+b)[t] = (a[t], b[t])$.  The inverse operation can project a stream of
+pairs into two separate streams.  This enables us to treat programs
+that handle multiple input streams as a program with a single input
+stream.
+
 \subsection{Loops as streams}
 
-We introduce two new operators that can create streams and convert a
-stream to a scalar value.
+We introduce two new operators: one that can create a new stream from
+a scalar value, and one to convert a stream to a scalar value.  This
+is a translation of the schema proposed in~\cite{abadi-fossacs15} into
+the language of streams.
 
 The Kroneker delta function $\delta_0 : T \rightarrow \stream{T}$
 produces a stream from a scalar value.  The stream is
 defined:
 
-$$\delta_0(v)[t] = \left\{
+$$\delta_0(v)[t] \defn \left\{
 \begin{array}{ll}
   v & \mbox{if } t = 0 \\
   0_T & \mbox{ otherwise}
@@ -340,26 +354,41 @@ the input is a scalar value.
 Let us denote with $\streamf{T}$ streams that are almost everywhere
 (a.e.)  $0_T$ (only a finite number of values in the stream have a
 non-zero value).  We define a function $\int : \streamf{T} \rightarrow
-T$ as $\int(s) = \sum_{t \geq 0} s[t]$.
+T$ as $\int(s) \defn \sum_{t \geq 0} s[t]$.
 
 We can also extend the set $T$ with an ``infinite'' value $\top$:
-$\overline{T} = T \cup \{ \top \}$, and define $\int{s} = \top$ for
-streams $s \in \stream{T} \setminus \streamf{T}$.
+$\overline{T} \defn T \cup \{ \top \}$, and define $\int{s} \defn
+\top$ for streams $s \in \stream{T} \setminus \streamf{T}$.
 
 \begin{tikzpicture}[auto,node distance=1cm,>=latex]
     \node [] (input) {$i$};
     \node [block, right of=input] (S) {$\int$};
     \node [right of=delta] (output) {$o$};
-    \draw [->] (input) -- node {$do$} (S);
+    \draw [->] (input) -- (S);
     \draw [->, dotted] (S) -- (output);
 \end{tikzpicture}
+
+\subsection{Clock domains}
+
+So far we had the tacit assumption that ``time'' is common for all
+streams in a program.  For example, when we perform an operation
+between two streams, we assume that they use the same ``clock''.
+However, the $\delta_0$ operator creates streams with a ``new'' clock,
+so a computation can have multiple clock domains.  To be precise we
+should label all stream operators with the clock domain they belong
+to, and we should make sure only that streams within the same clock
+domain are combined.  We will use a superscript $\cdot^t$ to indicate
+a clock domain.  The $\delta_0^t$ operator creates a new clock domain.
+If not clear from the context, operators such as $\zm, \D, \I,
+\delta_0, \int$ should be labeled with the clock domain they operate
+on: $\zm_t, \D^t, \I^t, \delta_0^t, \int^t$.
 
 \subsection{Streams over multisets}
 
 In the rest of this text we consider only streams over multisets
-$\stream{\Z[T]}$, for some type of element $T$: at each time moment the
-value of the stream is a multiset.  Since multisets form a commutative
-group, addition and subtraction on streams over multisets of the same
+$\stream{\Z[T]}$, for some type of element $T$: at each time moment
+the value of the stream is a multiset.  Since multisets form a vector
+space, addition and subtraction on streams over multisets of the same
 type are well-defined.
 
 \begin{definition}
@@ -387,15 +416,129 @@ $\D(s)$ are positive.
 
 \section{A semantics of Datalog in terms of streams}
 
+\subsection{Datalog operator implementations}
+
+We show how various Datalog operators can be implemented using these
+primitives.  We follow e.g.,~\cite{green-pods07}.
+
+\paragraph{Union} $\cup: \Z[I] \times \Z[I] \rightarrow \Z[I]$.  $i_1
+\cup i_2 \defn \sum_{x \in i_1 \cup i_2} (i_1[x] + i_2[x]) \cdot x$.
+In the following diagram we use dotted lines to indicate scalar
+values.
+
+\begin{tikzpicture}[auto,node distance=.5cm,>=latex]
+  \node [] (input1) {$i_1$};
+  \node [below of=input1] (midway) {};
+  \node [below of=midway] (input2) {$i_2$};
+  \node [block, shape=circle, right of=midway, inner sep=0in, node distance=1cm] (plus) {$+$};
+  \node [block, right of=plus, node distance=1.5cm] (distinct) {$\distinct$};
+  \node [right of=distinct, node distance=1.5cm] (output) {$o$};
+  \draw [->,dotted] (input1) -| (plus);
+  \draw [->,dotted] (input2) -| (plus);
+  \draw [->,dotted] (plus) -- (distinct);
+  \draw [->,dotted] (distinct) -- (output);
+\end{tikzpicture}
+
+The $\distinct$ node is necessary to provide the set semantics of
+Datalog.  We have $\isset(i_1) \land \isset(i_2) \Rightarrow
+\isset(i_1 \cup i_2)$ and $\ispositive(i_1) \land \ispositive(i_2)
+\Rightarrow \ispositive(i_1 \cup i_2)$.
+
+\paragraph{Projection} In this case the inputs and outputs have some
+additional structure: $I = \Z[A_0 \times A_1]$, $O = \Z[A_0]$.  The
+projection on $A_0$ is defined as: $\pi_{A_0}(i) = \distinct(\sum_{x
+  \in A_0} (\sum_{x' \in i, x'|_0 = x} i[t]) \cdot x)$, where $x'|_0$
+is defined as the first component of $x'$.  Note that the inner
+sum is defined over weights, so it is a value in $\Z$, while the outer
+sum is defined over tuples, so it is in $\Z[A_0]$.
+
+\begin{tikzpicture}[auto,>=latex]
+  \node [] (input) {$i$};
+  \node [block, right of=input, node distance=1cm] (pi) {$\pi$};
+  \node [block, right of=pi, node distance=1.5cm] (distinct) {$\distinct$};
+  \node [right of=distinct, node distance=1.5cm] (output) {$o$};
+  \draw [->] (input) -- (pi);
+  \draw [->] (pi) -- (distinct);
+  \draw [->] (distinct) -- (output);
+\end{tikzpicture}
+
+We have $\isset(i) \Rightarrow \isset(\pi_A(i))$ and $\ispositive(\pi_A)$.
+
+\paragraph{Filtering} Let us assume that we have a predicate $P: I
+\rightarrow \B$; we identify ``false'' with 0 and ``true'' with 1.
+The filtering a collection $i$ with predicate $P$ is implemented as:
+$\sigma_P(i) = \sum_{x \in i} P(x) i[x] \cdot x$.
+
+\begin{tikzpicture}[auto,node distance=1cm,>=latex]
+  \node [] (input) {$i$};
+  \node [block, right of=input] (P) {$\sigma_P$};
+  \node [right of=P] (output) {$o$};
+  \draw [->] (input) -- (P);
+  \draw [->] (P) -- (output);
+\end{tikzpicture}
+
+We have $\isset(i) \Rightarrow \isset(\sigma_P(i))$ and
+$\ispositive(\sigma_P)$.
+
+\paragraph{Mapping}
+
+Given a function $f : T \rightarrow S$, the map operator lifts the
+function to operate on multisets $\map(f) : \Z[T] \rightarrow \Z[S]$,
+defined as $(\map(f))(i) \defn \sum_{x \in i} i[x] \cdot f(x)$.  When
+unambiguous, we omit the ``map'' and instead of $map(f)$ we write just
+$f$ denote the lifted function.
+
+It turns out that mapping is a model for 4 Datalog operations: maps,
+flatmaps, and group-bys, and aggregations.  Note that $\ispositive(f)
+\Rightarrow \ispositive(\map(f))$.  From the point of view of
+Differential Datalog all these boxes are just positive
+transformations.
+
+\code{Flatmap} is transformation that consumes a (multi)set where each
+element is a multiset. Given a function $f : T \rightarrow \Z[S]$, we
+define $\mbox{flatmap}(f)(i) \defn \sum_{x \in i} i[x] \cdot f(x)$.
+The DDlog \code{Flatmap} operator is defines as $\mbox{flatmap}(\id)$.
+Note that $\ispositive(\code{Flatmap})$.
+
+\code{group-by} is a transformation that consumes a multiset and
+produces collection of groups, where each group is (roughly) a
+multiset.  More precisely, consider an arbitrary type of keys $K$, and
+a function that computes a key for a value $k: I \rightarrow K$.  Then
+we can define $\mbox{groupby}(k): \Z[I] \rightarrow \Z[I][K]$, as
+$\mbox{groupby}(k)(i) = \sum_{x \in i} \{ k(x) \mapsto 1 \cdot i \}$.
+Note that $\ispositive(\mbox{groupby}(k))$.
+
+Finally, aggregation in DDlog is nothing but a function that
+transforms a group into a scalar value.  (In fact, it does not even
+have a special notation.)  Formally, given a function $a: \Z[I]
+\rightarrow O$, aggregation is $\map(a)$.  Group-by combined with
+aggregation is defined as $\mbox{group-by-aggregate}(k, a) = \map(a)
+\circ \map(\mbox{groupby}(k))$ (assuming suitable functions $k$ and
+$a$ with types defined as above).
+
+\paragraph{Negation} Datalog negation is defined as set difference:
+$\setminus: \Z[I] \times \Z[I] \rightarrow \Z[I]$, where $i_1
+\setminus i_2 = \distinct(i_1 - i_2)$.  Note that we have $\forall
+i_1, i_2, \ispositive(i_1 \setminus i_2)$ due to the application of
+the $\distinct$ operator.  A Datalog antijoin is defined as a pair of
+projections (that bring valuations to the same schema) followed by a
+negation.
+
+\subsection{Fixed points}
+
+This is the essential part of this formalism.
+
 Let us consider a language that consists of the relational algebra
 together with stratified negation and recursive definitions.  Let us
 consider a query $\q$ in this language.  Let us assume that the query
-defines a function $\q : I \rightarrow O$, where $I$ and $O$ are
-multisets with elements from a fixed universe.  We can naturally
-``lift'' the semantics of $q$ to compute on $\stream{I} \rightarrow
-\stream{O}$ pointwise: $q(i)[t] = q(i[t]), \forall t \geq 0, \mbox {
-  for } i \in \stream{I}$.  Note that the semantics of Datalog
-promises that once an input is a set, the output is also a set.
+defines a function $\q : I \rightarrow O$, where $I$ and $O$ are sets
+with elements from a fixed universe.  We can naturally ``lift'' the
+semantics of $\q$ to compute on $\stream{I} \rightarrow \stream{O}$
+pointwise: $q(i)[t] = q(i[t]), \forall t \geq 0, \mbox { for } i \in
+\stream{I}$.  Since we only support streams of multisets, we need to
+treat $I$ and $O$ as multisets in the stream computation.  Note that
+the semantics of Datalog promises that once an input is a set, the
+output is also a set.
 
 \begin{theorem}
 Consider a recursive datalog query of the form: $o = i \cup \q(o)$,
@@ -424,7 +567,8 @@ Datalog set semantics of $o$:
 \end{tikzpicture}
 \end{theorem}
 \begin{proof}
-  TODO
+  TODO: this proof should relate some of the standard semantics of
+  fixed-point computations to the stream semantics.
 \end{proof}
 
 Since $\q$ is a relational query, we have that $i \geq 0 \Rightarrow
@@ -448,8 +592,15 @@ $I$ and $O$ are multiset types.  When this program is considered as a
 Differential Datalog program it's semantics is a function $\q:
 \stream{I} \rightarrow \stream{O}$, defined by the following diagram:
 $\D \circ \q \circ \I$.
-\end{definition}  Notice that, while the original program computes on
-multisets, the DDlog program computes on streams of multisets.
+\end{definition}
+
+Notice that, while the original program computes on multisets, the
+DDlog program computes on streams of multisets.
+
+We have to add one important restriction, however: since the $\q$
+program computes on sets, we must require that output of the $\I$
+operator to always be a set!  Since the inputs to the program are
+arbitrary streams, this constraint is not automatically satisfied.
 
 \begin{tikzpicture}[auto,node distance=1cm,>=latex]
     \node [] (input) {$i$};
@@ -475,14 +626,14 @@ stream with a double arrow.  Then the previous query $o = i \cup
 \begin{tikzpicture}[auto,>=latex]
   \node [] (input) {$i$};
   \node [block, right of=input] (I) {$\I$};
-  \node [block, right of=I] (delta) {$\delta(i)$};
-  \node [block, shape=circle, right of=I, node distance=2cm, inner sep=0in] (plus) {$+$};
-  \node [block, right of=plus, node distance=1.5cm] (distinct) {$\distinct$};
-  \node [block, right of=distinct,node distance=2cm] (D) {$\D$};
-  \node [block, right of=D] (S) {$\int$};
-  \node [right of=S] (D2) {$\D$};
+  \node [block, right of=I] (delta) {$\delta^t(i)$};
+  \node [block, shape=circle, right of=I, node distance=2cm, inner sep=0in] (plus) {$+^t$};
+  \node [block, right of=plus, node distance=1.5cm] (distinct) {$\distinct^t$};
+  \node [block, right of=distinct,node distance=2cm] (D) {$\D^t$};
+  \node [block, right of=D] (S) {$\int^t$};
+  \node [block, right of=S] (D2) {$\D$};
   \node [right of=D2] (output)  {$o$};
-  \node [block, below of=plus, node distance=1cm] (f) {$\q$};
+  \node [block, below of=plus, node distance=1cm] (f) {$\q^t$};
   \draw [->] (input) -- (I);
   \draw [->] (I) -- (delta);
   \draw [->, double] (delta) -- (plus);
@@ -491,16 +642,57 @@ stream with a double arrow.  Then the previous query $o = i \cup
   \draw [->, double] (D) -- (S);
   \draw [->] (S) -- (D2);
   \draw [->] (D2) -- (output);
-  \node [block, below of=o, node distance=1.1cm] (z) {$\zm$};
+  \node [block, below of=o, node distance=1.1cm] (z) {$\zm_t$};
   \draw [->, double] (o) -- (z);
   \draw [->, double] (z) -- (f);
   \draw [->, double] (f) -- (plus);
 \end{tikzpicture}
 
+Note that we have annotated the inner loop with a superscript ${}^t$
+(used as a subscript for $\zm_t$) to indicate the clock domain of
+these stream operators.
+
 \section{Term-rewriting transformations}
 
 To implement efficiently a DDlog program the compiler makes use of a
 series of term-rewriting transformations.  We list here some of them.
+
+\subsection{A compilation strategy}
+
+DDlog programs can be expressed in general as a composition of a
+sequence of \emph{fold operators over streams}.  The general scheme
+of a fold over a stream is given by the following diagram:
+
+\begin{tikzpicture}[auto,node distance=1cm,>=latex]
+    \node [] (input) {$i$};
+    \node [block, right of=input] (f) {$f$};
+    \node [right of=I] (output) {$o$};
+    \node [block, below of=f] (z) {$\zm$};
+    \draw [->] (input) -- (f);
+    \draw [->] (f) -- (output);
+    \draw [<-] (z.east) -- ++(.3,0) |- node[below right]{$S$} ([yshift=1mm]f.south east);
+    \draw [->] (z.west) -- ++(-.3,0) |- ([yshift=1mm]f.south west);
+\end{tikzpicture}
+
+$f$ is a function $f: I \times S \rightarrow O \times S$.  $S$ is the
+\emph{state} maintained (incrementally) to compute $f$.  $i$ is an
+incremental input change to $f$.  $o$ is a change in the output, a
+function of the current input and the previous version of the state
+accumulated so far $S$.  The next state $S$ is a function of the
+previous state and the current input.  Assuming $S$ is a monoid, the
+initial value of the state is $0_S$.
+
+In an implementation we want the following properties for such a
+diagram:
+\begin{itemize}
+  \item The cost of computing $f(i, s)$ is proportional to the size of
+    $i$, but weakly dependent on the size of $s$ (for the most common
+    case both $i$ and $s$ are multisets, and the size of $m$ can be
+    defined as the number of elements with non-zero weight; ``weakly
+    dependent'' could be an e.g. logarithmic cost).
+  \item $S$ does not grow ``too large'' (e.g., the size of $S$ should
+    not be a function of the time elapsed $t$).
+\end{itemize}
 
 \subsection{Linear queries}
 
@@ -538,11 +730,11 @@ following property:
   If $\q$ is a bi-linear query, we have:
   $$
   \begin{aligned}
-    \q(\I(a), \I(b)) &= \zm(\q(\I(a)), \I(b)) + & \mbox{ ``previous''
+    \q(\I(a), \I(b)) &= \zm(\q(\I(a)), \I(b))& \mbox{ ``previous''
       version of }\q \\
-    &= \q(\I(\zm(a)), b) +& \mbox{ uses previous version of left input}\\
-    &= \q(a, \I(\zm(b))) + & \mbox{ uses previous version of right input} \\
-    &= \q(a, b) & \mbox{ only based on latest changes}.
+    &+ \q(\I(\zm(a)), b)& \mbox{ uses previous version of left input}\\
+    &+ \q(a, \I(\zm(b)))& \mbox{ uses previous version of right input} \\
+    &+ \q(a, b) & \mbox{ only based on latest changes}.
   \end{aligned}
 $$
 \end{theorem}
@@ -550,6 +742,43 @@ $$
   The proof is based on algebraic manipulations starting from the
   definition of $\I(a) = \zm(\I(a)) + a$ using the memoryless properties.
 \end{proof}
+
+\begin{tikzpicture}[auto,>=latex]
+  \node [] (input1) {$i_1$};
+  \node [below of=input1, node distance=2cm] (input2) {$i_2$};
+  \node [block, right of=input1] (I1) {$\I$};
+  \node [block, circle, below of=I1, inner sep=0cm] (ab) {$\times$};
+  \node [block, right of=input2] (I2) {$\I$};
+  \draw [->] (input1) -- node[name=i1tap] {} (I1);
+  \draw [->] (input2) -- node[name=i2tap,below] {} (I2);
+  \draw [<-] (ab.west) -- ++(0,.05) -| (i1tap);
+  \draw [<-] (ab.west) -- ++(0,-.05) -| (i2tap);
+  \node [block, right of=I1] (ZI1) {$\zm$};
+  \node [block, right of=I2] (ZI2) {$\zm$};
+  \draw [->] (I1) -- (ZI1);
+  \draw [->] (I2) -- (ZI2);
+  \node [block, right of=ZI1, circle, inner sep=0cm] (DI1) {$\times$};
+  \node [block, right of=ZI2, circle, inner sep=0cm] (DI2) {$\times$};
+  \draw [->] (ZI1) -- (DI1);
+  \draw [->] (ZI2) -- (DI2);
+  \node [block, circle, right of=ab, inner sep=0cm, node distance=2cm] (sum) {$+$};
+  \draw [->] (ab) -- (sum);
+  \node [block, circle, right of=sum, inner sep=0cm, node
+    distance=2cm] (final) {$+$};
+  \draw [->] (DI1) -- (sum);
+  \draw [->] (DI2) -- (sum);
+  \draw [->] (sum) -- node[name=mid] {} (final);
+  \node [block, below of=mid] (zz) {$\zm$};
+  \node [right of=final] (output) {$o$};
+  \draw [->] (final) -- (output);
+  \draw [->] (final) |- (zz);
+  \draw [->] (zz) -- (mid);
+  \draw [->] (i1tap) -- (DI2);
+  \draw [->] (i2tap) -- (DI1);
+\end{tikzpicture}
+
+In the DDlog Rust implementation the collection $\I(\zm(a))$ is
+usually represented as an arrangement.
 
 \subsection{Recursion}
 
@@ -700,5 +929,8 @@ A Datalog rule is a term of the form:
   &|& \code{var } name = \code{FlatMap}( expr ) \\
   &|& \code{var } name = expr \code{.groupby}( expr ) \\
 \end{eqnarray*}
+
+\bibliographystyle{plain}
+\bibliography{model}
 
 \end{document}
