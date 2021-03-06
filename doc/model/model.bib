@@ -1,0 +1,155 @@
+@string{PODS=   "Symposium on Principles of Database Systems (PODS)"},
+@string{SOSP=   "ACM Symposium on Operating Systems Principles (SOSP)"},
+
+@article{green-tcs11,
+  title =	 {Reconcilable differences},
+  author =	 {Green, Todd J and Ives, Zachary G and Tannen, Val},
+  journal =	 {Theory of Computing Systems},
+  volume =	 49,
+  number =	 2,
+  pages =	 {460--488},
+  year =	 2011,
+  publisher =	 {Springer},
+  url =
+                  {https://web.cs.ucdavis.edu/~green/papers/tocs11_differences.pdf},
+  abstract =	 {In this paper we study a problem motivated by the
+                  management of changes in databases. It turns out
+                  that several such change scenarios, e.g., the
+                  separately studied problems of view maintenance
+                  (propagation of data changes) and view adaptation
+                  (propagation of view definition changes) can be
+                  unified as instances of query reformulation using
+                  views provided that support for the relational
+                  difference operator exists in the context of query
+                  reformulation. Exact query reformulation using views
+                  in positive relational languages is well understood,
+                  and has a variety of applications in query
+                  optimization and data sharing. Unfortunately, most
+                  questions about queries become undecidable in the
+                  presence of difference (or negation), whether we use
+                  the foundational set semantics or the more practical
+                  bag semantics.  We present a new way of managing
+                  this difficulty by defining a novel semantics,
+                  Z-relations, where tuples are annotated with
+                  positive or negative integers. Z-relations
+                  conveniently represent data, insertions, and
+                  deletions in a uniform way, and can apply deletions
+                  with the union operator (deletions are tuples with
+                  negative counts). We show that under Z-semantics
+                  relational algebra (RA) queries have a normal form
+                  consisting of a single difference of positive
+                  queries, and this leads to the decidability of their
+                  equivalence. We provide a sound and complete
+                  algorithm for reformulating RA queries, including
+                  queries with difference, over
+                  Z-relations. Additionally, we show how to support
+                  standard view maintenance and view adaptation over
+                  set or bag semantics, through an excursion into the
+                  Z-semantics setting. Our algorithm turns out to be
+                  sound and complete also for bag semantics, albeit
+                  necessarily only for a subclass of RA. This subclass
+                  turns out to be quite large and covers generously
+                  the applications of interest to us. We also show a
+                  subclass of RA where reformulation and evaluation
+                  under Z-semantics can be combined with duplicate
+                  elimination to obtain the answer under set
+                  semantics. We investigate related complexity
+                  questions, and we also extend our results to queries
+                  with built-in predicates.},
+  comments =	 {Develops an algebra of multisets using Z and proves
+                  some interesting completeness theorems.  Lemma 6.3 is
+		  crucial for DDlog.  Proposition 6.13 is about distinct.}
+}
+
+@inproceedings{green-pods07,
+  author =	 {Green, Todd J. and Karvounarakis, Grigoris and
+                  Tannen, Val},
+  title =	 {Provenance Semirings},
+  year =	 2007,
+  publisher =	 {Association for Computing Machinery},
+  address =	 {New York, NY, USA},
+  url =		 {https://doi.org/10.1145/1265530.1265535},
+  abstract =	 {We show that relational algebra calculations for
+                  incomplete databases, probabilistic databases, bag
+                  semantics and why-provenance are particular cases of
+                  the same general algorithms involving
+                  semirings. This further suggests a comprehensive
+                  provenance representation that uses semirings of
+                  polynomials. We extend these considerations to
+                  datalog and semirings of formal power series. We
+                  give algorithms for datalog provenance calculation
+                  as well as datalog evaluation for incomplete and
+                  probabilistic databases. Finally, we show that for
+                  some semirings containment of conjunctive queries is
+                  the same as for standard set semantics.},
+  booktitle =	 PODS,
+  pages =	 {31–40},
+  numpages =	 10,
+  keywords =	 {incomplete databases, probabilistic databases,
+                  datalog, formal power series, data lineage,
+                  semirings, data provenance},
+  location =	 {Beijing, China},
+  series =	 {PODS '07}
+}
+
+@InProceedings{abadi-fossacs15,
+  author =	 {Martín Abadi and Frank McSherry and Gordon Plotkin},
+  title =	 {Foundations of Differential Dataflow},
+  booktitle =	 {Foundations of Software Science and Computation
+                  Structures (FoSSaCS)},
+  year =	 2015,
+  url =          {http://homepages.inf.ed.ac.uk/gdp/publications/differentialweb.pdf},
+  abstract =	 {Differential dataflow is a recent approach to
+                  incremental computation that relies on a partially
+                  ordered set of differences. In the present paper, we
+                  aim to develop its foundations. We define a small
+                  programming language whose types are abelian groups
+                  equipped with linear inverses, and provide both a
+                  standard and a differential denotational
+                  semantics. The two semantics coincide in that the
+                  differential semantics is the differential of the
+                  standard one. M\"{o}bius inversion, a well-known
+                  idea from combinatorics, permits a systematic
+                  treatment of various operators and constructs.},
+  comments =	 {A formal justification of the implementation of
+                  Differential Dataflow}
+}
+
+@inproceedings{murray-sosp13,
+  author =       {Murray, Derek G. and McSherry, Frank and Isaacs,
+                  Rebecca and Isard, Michael and Barham, Paul and
+                  Abadi, Mart\'{\i}n},
+  title =        {{Naiad}: A Timely Dataflow System},
+  year =         2013,
+  url =          {https://doi.org/10.1145/2517349.2522738},
+  doi =          {10.1145/2517349.2522738},
+  abstract =     {Naiad is a distributed system for executing data
+                  parallel, cyclic dataflow programs. It offers the
+                  high throughput of batch processors, the low latency
+                  of stream processors, and the ability to perform
+                  iterative and incremental computations. Although
+                  existing systems offer some of these features,
+                  applications that require all three have relied on
+                  multiple platforms, at the expense of efficiency,
+                  maintainability, and simplicity. Naiad resolves the
+                  complexities of combining these features in one
+                  framework.A new computational model, timely
+                  dataflow, underlies Naiad and captures opportunities
+                  for parallelism across a wide class of
+                  algorithms. This model enriches dataflow computation
+                  with timestamps that represent logical points in the
+                  computation and provide the basis for an efficient,
+                  lightweight coordination mechanism.We show that many
+                  powerful high-level programming models can be built
+                  on Naiad's low-level primitives, enabling such
+                  diverse tasks as streaming data analysis, iterative
+                  machine learning, and interactive graph
+                  mining. Naiad outperforms specialized systems in
+                  their target application domains, and its unique
+                  features enable the development of new
+                  high-performance applications.},
+  booktitle =    SOSP,
+  pages =        {439–455},
+  numpages =     17,
+  location =     {Farminton, Pennsylvania},
+}
