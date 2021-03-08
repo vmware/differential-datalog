@@ -5,7 +5,7 @@ use crate::{
         arrange::{ArrangedCollection, Arrangements},
         ArrId, Dep, Msg, ProgNode, Program, Reply, Update, TS,
     },
-    program::{RelId, Weight},
+    program::{RecursiveRelation, RelId, Relation, TKeyAgent, TValAgent, Weight},
     variable::Variable,
 };
 use crossbeam_channel::{Receiver, Sender};
@@ -58,6 +58,15 @@ struct SessionData {
         >,
     >,
 }
+
+type DelayedVarMap<S> = FnvHashMap<
+    RelId,
+    (
+        RelId,
+        DDVariable<S, DDValue, Weight>,
+        Collection<S, DDValue, Weight>,
+    ),
+>;
 
 /// A DDlog timely worker
 pub struct DDlogWorker<'a> {
@@ -435,308 +444,399 @@ impl<'a> DDlogWorker<'a> {
     fn session_dataflow(&mut self, mut probe: ProbeHandle<TS>) -> Result<SessionData, String> {
         let program = self.program.clone();
 
-        self.worker.dataflow::<TS, _, _>(|outer: &mut Child<Worker<Allocator>, TS>| -> Result<_, String> {
-            let mut sessions: FnvHashMap<RelId, InputSession<TS, DDValue, Weight>> = FnvHashMap::default();
-            let mut collections: FnvHashMap<RelId, Collection<Child<Worker<Allocator>, TS>, DDValue, Weight>> =
-                    HashMap::with_capacity_and_hasher(program.nodes.len(), FnvBuildHasher::default());
-            let mut arrangements = FnvHashMap::default();
+        self.worker.dataflow::<TS, _, _>(
+            |outer: &mut Child<Worker<Allocator>, TS>| -> Result<_, String> {
+                let mut sessions: FnvHashMap<RelId, InputSession<TS, DDValue, Weight>> =
+                    FnvHashMap::default();
+                let mut collections: FnvHashMap<
+                    RelId,
+                    Collection<Child<Worker<Allocator>, TS>, DDValue, Weight>,
+                > = HashMap::with_capacity_and_hasher(
+                    program.nodes.len(),
+                    FnvBuildHasher::default(),
+                );
+                let mut arrangements = FnvHashMap::default();
 
-            // Create an `Enabled` relation used to enforce the dataflow termination in the
-            // presence of delayed relations.  A delayed relation can potentially generate an
-            // infinite sequence of outputs for all future timestamps, preventing the
-            // differential dataflow from terminating.  DD can only terminate cleanly when there
-            // is no data in flight, and will keep spinning forever if new records keep getting
-            // injected in the dataflow.  To prevent this scenario, we join all delayed relations
-            // with `Enabled`.  `Enabled` contains a single record (an empty tuple) as long as
-            // the program is running.  We retract this record on shutdown, hopefully enforcing
-            // quiescing the dataflow.
-            // Note: this trick won't be needed once DD supports proactive termination:
-            // https://github.com/TimelyDataflow/timely-dataflow/issues/306
-            let (enabled_session, enabled_collection) = outer.new_collection::<(),Weight>();
-            let enabled_arrangement = enabled_collection.arrange_by_self();
+                // Create an `Enabled` relation used to enforce the dataflow termination in the
+                // presence of delayed relations.  A delayed relation can potentially generate an
+                // infinite sequence of outputs for all future timestamps, preventing the
+                // differential dataflow from terminating.  DD can only terminate cleanly when there
+                // is no data in flight, and will keep spinning forever if new records keep getting
+                // injected in the dataflow.  To prevent this scenario, we join all delayed relations
+                // with `Enabled`.  `Enabled` contains a single record (an empty tuple) as long as
+                // the program is running.  We retract this record on shutdown, hopefully enforcing
+                // quiescing the dataflow.
+                // Note: this trick won't be needed once DD supports proactive termination:
+                // https://github.com/TimelyDataflow/timely-dataflow/issues/306
+                let (enabled_session, enabled_collection) = outer.new_collection::<(), Weight>();
+                let enabled_arrangement = enabled_collection.arrange_by_self();
 
-            // Create variables for delayed relations.  We will be able to refer to these variables
-            // inside rules and assign them once all rules have been evaluated.
-            let delayed_vars: FnvHashMap<RelId, (RelId, DDVariable<Child<Worker<Allocator>, TS>, DDValue, Weight>, Collection<Child<Worker<Allocator>, TS>, DDValue, Weight>)> = program.delayed_rels.iter().map(|drel| {
-                let v = DDVariable::new(outer, drel.delay);
+                // Create variables for delayed relations.  We will be able to refer to these variables
+                // inside rules and assign them once all rules have been evaluated.
+                let delayed_vars: DelayedVarMap<_> = program
+                    .delayed_rels
+                    .iter()
+                    .map(|drel| {
+                        let v = DDVariable::new(outer, drel.delay);
 
-                let vcol = with_prof_context(
+                        let vcol = with_prof_context(
                             &format!("join {} with 'Enabled' relation", drel.id),
-                            || lookup_map(
-                                &v,
-                                enabled_arrangement.clone(),
-                                |_: &DDValue, key| *key = (),
-                                move |x, w, _, _| (x.clone(), *w),
-                                (),
-                                (),
-                                (),
-                            )
-                            );
-                (drel.id, (drel.rel_id, v, vcol))
-            }).collect();
-
-            for (nodeid, node) in program.nodes.iter().enumerate() {
-                match node {
-                    ProgNode::Rel{rel} => {
-                        // Relation may already be in the map if it was created by an `Apply` node
-                        let mut collection = collections
-                            .remove(&rel.id)
-                            .unwrap_or_else(|| {
-                                let (session, collection) = outer.new_collection::<DDValue, Weight>();
-                                sessions.insert(rel.id, session);
-
-                                collection
-                            });
-
-                        // apply rules
-                        let rule_collections = rel
-                            .rules
-                            .iter()
-                            .map(|rule| {
-                                program.mk_rule(
-                                    rule,
-                                    |rid| collections.get(&rid).or_else(|| delayed_vars.get(&rid).map(|v| &v.2)),
-                                    Arrangements {
-                                        arrangements1: &arrangements,
-                                        arrangements2: &FnvHashMap::default(),
-                                    },
-                                    true
+                            || {
+                                lookup_map(
+                                    &v,
+                                    enabled_arrangement.clone(),
+                                    |_: &DDValue, key| *key = (),
+                                    move |x, w, _, _| (x.clone(), *w),
+                                    (),
+                                    (),
+                                    (),
                                 )
+                            },
+                        );
+                        (drel.id, (drel.rel_id, v, vcol))
+                    })
+                    .collect();
+
+                for (node_id, node) in program.nodes.iter().enumerate() {
+                    match node {
+                        ProgNode::Rel { rel } => render_relation(
+                            rel,
+                            outer,
+                            &*program,
+                            &mut sessions,
+                            &mut collections,
+                            &mut arrangements,
+                            &delayed_vars,
+                        ),
+
+                        &ProgNode::Apply { tfun } => {
+                            // TODO: Add a description field for relation transformers
+                            tfun()(&mut collections);
+                        }
+
+                        ProgNode::SCC { rels } => render_scc(
+                            rels,
+                            node_id,
+                            outer,
+                            &*program,
+                            &mut sessions,
+                            &mut collections,
+                            &mut arrangements,
+                        )?,
+                    }
+                }
+
+                for (id, (relid, variable, _)) in delayed_vars.into_iter() {
+                    variable.set(
+                        &collections
+                            .get(&relid)
+                            .ok_or_else(|| {
+                                format!(
+                                    "delayed variable {} refers to unknown base relation {}",
+                                    id, relid
+                                )
+                            })?
+                            .consolidate(),
+                    );
+                }
+
+                for (relid, collection) in collections {
+                    // notify client about changes
+                    if let Some(relation_callback) = &program.get_relation(relid).change_cb {
+                        let relation_callback = relation_callback.clone();
+
+                        let consolidated =
+                            with_prof_context(&format!("consolidate {}", relid), || {
+                                collection.consolidate()
                             });
 
-                        collection = with_prof_context(
-                            &format!("concatenate rules for {}", rel.name),
-                            || collection.concatenate(rule_collections),
-                        );
+                        let inspected = with_prof_context(&format!("inspect {}", relid), || {
+                            consolidated.inspect(move |x| {
+                                // assert!(x.2 == 1 || x.2 == -1, "x: {:?}", x);
+                                (relation_callback)(relid, &x.0, x.2)
+                            })
+                        });
 
-                        // don't distinct input collections, as this is already done by the set_update logic
-                        if !rel.input && rel.distinct {
-                            collection = with_prof_context(
-                                &format!("{}.threshold_total", rel.name),
-                                || collection.threshold_total(|_, c| if *c == 0 { 0 } else { 1 }),
-                            );
+                        with_prof_context(&format!("probe {}", relid), || {
+                            inspected.probe_with(&mut probe)
+                        });
+                    }
+                }
+
+                // Attach probes to index arrangements, so we know when all updates
+                // for a given epoch have been added to the arrangement, and return
+                // arrangement trace.
+                let mut traces: BTreeMap<ArrId, _> = BTreeMap::new();
+                for ((relid, arrid), arr) in arrangements.into_iter() {
+                    if let ArrangedCollection::Map(arranged) = arr {
+                        if program.get_relation(relid).arrangements[arrid].queryable() {
+                            arranged
+                                .as_collection(|k, _| k.clone())
+                                .probe_with(&mut probe);
+                            traces.insert((relid, arrid), arranged.trace.clone());
                         }
+                    }
+                }
 
-                        // create arrangements
-                        for (i,arr) in rel.arrangements.iter().enumerate() {
-                            with_prof_context(
-                                arr.name(),
-                                || arrangements.insert(
-                                    (rel.id, i),
-                                    arr.build_arrangement_root(&collection),
-                                ),
-                            );
-                        }
+                Ok(SessionData {
+                    sessions,
+                    enabled_session,
+                    traces,
+                })
+            },
+        )
+    }
+}
 
-                        collections.insert(rel.id, collection);
+fn render_relation<'a>(
+    relation: &Relation,
+    // TODO: Shift to generic representations for ddflow-related structs
+    scope: &mut Child<'a, Worker<Allocator>, TS>,
+    program: &Program,
+    sessions: &mut FnvHashMap<RelId, InputSession<TS, DDValue, Weight>>,
+    collections: &mut FnvHashMap<
+        RelId,
+        Collection<Child<'a, Worker<Allocator>, TS>, DDValue, Weight>,
+    >,
+    arrangements: &mut FnvHashMap<
+        ArrId,
+        ArrangedCollection<
+            Child<'a, Worker<Allocator>, TS>,
+            TValAgent<Child<'a, Worker<Allocator>, TS>>,
+            TKeyAgent<Child<'a, Worker<Allocator>, TS>>,
+        >,
+    >,
+    delayed_vars: &DelayedVarMap<Child<'a, Worker<Allocator>, TS>>,
+) {
+    // Relation may already be in the map if it was created by an `Apply` node
+    let mut collection = collections.remove(&relation.id).unwrap_or_else(|| {
+        let (session, collection) = scope.new_collection::<DDValue, Weight>();
+        sessions.insert(relation.id, session);
+
+        collection
+    });
+
+    // apply rules
+    let rule_collections = relation.rules.iter().map(|rule| {
+        program.mk_rule(
+            rule,
+            |rid| {
+                collections
+                    .get(&rid)
+                    .or_else(|| delayed_vars.get(&rid).map(|v| &v.2))
+            },
+            Arrangements {
+                arrangements1: &arrangements,
+                arrangements2: &FnvHashMap::default(),
+            },
+            true,
+        )
+    });
+
+    if rule_collections.len() > 1 {
+        collection = with_prof_context(&format!("concatenate rules for {}", relation.name), || {
+            collection.concatenate(rule_collections)
+        });
+    }
+
+    // don't distinct input collections, as this is already done by the set_update logic
+    if !relation.input && relation.distinct {
+        collection = with_prof_context(&format!("{}.threshold_total", relation.name), || {
+            collection.threshold_total(|_, c| if *c == 0 { 0 } else { 1 })
+        });
+    }
+
+    // create arrangements
+    for (i, arr) in relation.arrangements.iter().enumerate() {
+        with_prof_context(arr.name(), || {
+            arrangements.insert((relation.id, i), arr.build_arrangement_root(&collection))
+        });
+    }
+
+    collections.insert(relation.id, collection);
+}
+
+fn render_scc<'a>(
+    rels: &[RecursiveRelation],
+    node_id: RelId,
+    // TODO: Shift to generic representations for ddflow-related structs
+    scope: &mut Child<'a, Worker<Allocator>, TS>,
+    program: &Program,
+    sessions: &mut FnvHashMap<RelId, InputSession<TS, DDValue, Weight>>,
+    collections: &mut FnvHashMap<
+        RelId,
+        Collection<Child<'a, Worker<Allocator>, TS>, DDValue, Weight>,
+    >,
+    arrangements: &mut FnvHashMap<
+        ArrId,
+        ArrangedCollection<
+            Child<'a, Worker<Allocator>, TS>,
+            TValAgent<Child<'a, Worker<Allocator>, TS>>,
+            TKeyAgent<Child<'a, Worker<Allocator>, TS>>,
+        >,
+    >,
+) -> Result<(), String> {
+    // Preallocate the memory required to store the new relations
+    sessions.reserve(rels.len());
+    collections.reserve(rels.len());
+
+    // create collections; add them to map; we will overwrite them with
+    // updated collections returned from the inner scope.
+    for r in rels.iter() {
+        let (session, collection) = scope.new_collection::<DDValue, Weight>();
+        //assert!(!r.rel.input, "input relation in nested scope: {}", r.rel.name);
+        if r.rel.input {
+            return Err(format!("input relation in nested scope: {}", r.rel.name));
+        }
+
+        sessions.insert(r.rel.id, session);
+        collections.insert(r.rel.id, collection);
+    }
+
+    // create a nested scope for mutually recursive relations
+    let new_collections = scope.scoped("recursive component", |inner| -> Result<_, String> {
+        // create variables for relations defined in the SCC.
+        let mut vars = HashMap::with_capacity_and_hasher(rels.len(), FnvBuildHasher::default());
+        // arrangements created inside the nested scope
+        let mut local_arrangements = FnvHashMap::default();
+        // arrangements entered from global scope
+        let mut inner_arrangements = FnvHashMap::default();
+
+        for r in rels.iter() {
+            let var = Variable::from(
+                &collections
+                    .get(&r.rel.id)
+                    .ok_or_else(|| {
+                        format!("failed to find collection with relation ID {}", r.rel.id)
+                    })?
+                    .enter(inner),
+                r.distinct,
+                &r.rel.name,
+            );
+
+            vars.insert(r.rel.id, var);
+        }
+
+        // create arrangements
+        for rel in rels {
+            for (i, arr) in rel.rel.arrangements.iter().enumerate() {
+                // check if arrangement is actually used inside this node
+                if program
+                    .arrangement_used_by_nodes((rel.rel.id, i))
+                    .any(|n| n == node_id)
+                {
+                    with_prof_context(&format!("local {}", arr.name()), || {
+                        local_arrangements.insert(
+                            (rel.rel.id, i),
+                            arr.build_arrangement(&*vars.get(&rel.rel.id)?),
+                        )
+                    });
+                }
+            }
+        }
+
+        let dependencies = Program::dependencies(rels.iter().map(|relation| &relation.rel));
+
+        // collections entered from global scope
+        let mut inner_collections =
+            HashMap::with_capacity_and_hasher(dependencies.len(), FnvBuildHasher::default());
+
+        for dep in dependencies {
+            match dep {
+                Dep::Rel(relid) => {
+                    assert!(!vars.contains_key(&relid));
+                    let collection = collections
+                        .get(&relid)
+                        .ok_or_else(|| {
+                            format!("failed to find collection with relation ID {}", relid)
+                        })?
+                        .enter(inner);
+
+                    inner_collections.insert(relid, collection);
+                }
+                Dep::Arr(arrid) => {
+                    let arrangement = arrangements
+                        .get(&arrid)
+                        .ok_or_else(|| format!("Arr: unknown arrangement {:?}", arrid))?
+                        .enter(inner);
+
+                    inner_arrangements.insert(arrid, arrangement);
+                }
+            }
+        }
+
+        // apply rules to variables
+        for rel in rels {
+            for rule in &rel.rel.rules {
+                let c = program.mk_rule(
+                    rule,
+                    |rid| {
+                        vars.get(&rid)
+                            .map(|v| &(**v))
+                            .or_else(|| inner_collections.get(&rid))
                     },
-                    &ProgNode::Apply { tfun } => {
-                        tfun()(&mut collections);
+                    Arrangements {
+                        arrangements1: &local_arrangements,
+                        arrangements2: &inner_arrangements,
                     },
-                    ProgNode::SCC { rels } => {
-                        // Preallocate the memory required to store the new relations
-                        sessions.reserve(rels.len());
-                        collections.reserve(rels.len());
+                    false,
+                );
 
-                        // create collections; add them to map; we will overwrite them with
-                        // updated collections returned from the inner scope.
-                        for r in rels.iter() {
-                            let (session, collection) = outer.new_collection::<DDValue,Weight>();
-                            //assert!(!r.rel.input, "input relation in nested scope: {}", r.rel.name);
-                            if r.rel.input {
-                                return Err(format!("input relation in nested scope: {}", r.rel.name));
-                            }
+                vars.get_mut(&rel.rel.id)
+                    .ok_or_else(|| format!("no variable found for relation ID {}", rel.rel.id))?
+                    .add(&c);
+            }
+        }
 
-                            sessions.insert(r.rel.id, session);
-                            collections.insert(r.rel.id, collection);
-                        }
+        // bring new relations back to the outer scope
+        let mut new_collections =
+            HashMap::with_capacity_and_hasher(rels.len(), FnvBuildHasher::default());
+        for rel in rels {
+            let var = vars
+                .get(&rel.rel.id)
+                .ok_or_else(|| format!("no variable found for relation ID {}", rel.rel.id))?;
 
-                        // create a nested scope for mutually recursive relations
-                        let new_collections = outer.scoped("recursive component", |inner| -> Result<_, String> {
-                            // create variables for relations defined in the SCC.
-                            let mut vars = HashMap::with_capacity_and_hasher(rels.len(), FnvBuildHasher::default());
-                            // arrangements created inside the nested scope
-                            let mut local_arrangements = FnvHashMap::default();
-                            // arrangements entered from global scope
-                            let mut inner_arrangements = FnvHashMap::default();
+            let mut collection = var.leave();
+            // var.distinct() will be called automatically by var.drop() if var has `distinct` flag set
+            if rel.rel.distinct && !rel.distinct {
+                collection = with_prof_context(&format!("{}.distinct_total", rel.rel.name), || {
+                    collection.threshold_total(|_, c| if *c == 0 { 0 } else { 1 })
+                });
+            }
 
-                            for r in rels.iter() {
-                                let var = Variable::from(
-                                    &collections
-                                        .get(&r.rel.id)
-                                        .ok_or_else(|| format!("failed to find collection with relation ID {}", r.rel.id))?
-                                        .enter(inner),
-                                    r.distinct,
-                                    &r.rel.name,
-                                );
+            new_collections.insert(rel.rel.id, collection);
+        }
 
-                                vars.insert(r.rel.id, var);
-                            }
+        Ok(new_collections)
+    })?;
 
-                            // create arrangements
-                            for rel in rels {
-                                for (i, arr) in rel.rel.arrangements.iter().enumerate() {
-                                    // check if arrangement is actually used inside this node
-                                    if program.arrangement_used_by_nodes((rel.rel.id, i)).any(|n| n == nodeid) {
-                                        with_prof_context(
-                                            &format!("local {}", arr.name()),
-                                            || local_arrangements.insert(
-                                                (rel.rel.id, i),
-                                                arr.build_arrangement(&*vars.get(&rel.rel.id)?),
-                                            ),
-                                        );
-                                    }
-                                }
-                            }
+    // add new collections to the map
+    collections.extend(new_collections);
 
-                            let dependencies = Program::dependencies(rels.iter().map(|relation| &relation.rel));
-
-                            // collections entered from global scope
-                            let mut inner_collections = HashMap::with_capacity_and_hasher(dependencies.len(), FnvBuildHasher::default());
-
-                            for dep in dependencies {
-                                match dep {
-                                    Dep::Rel(relid) => {
-                                        assert!(!vars.contains_key(&relid));
-                                        let collection = collections
-                                            .get(&relid)
-                                            .ok_or_else(|| format!("failed to find collection with relation ID {}", relid))?
-                                            .enter(inner);
-
-                                        inner_collections.insert(relid, collection);
-                                    },
-                                    Dep::Arr(arrid) => {
-                                        let arrangement = arrangements
-                                            .get(&arrid)
-                                            .ok_or_else(|| format!("Arr: unknown arrangement {:?}", arrid))?
-                                            .enter(inner);
-
-                                        inner_arrangements.insert(arrid, arrangement);
-                                    }
-                                }
-                            }
-
-                            // apply rules to variables
-                            for rel in rels {
-                                for rule in &rel.rel.rules {
-                                    let c = program.mk_rule(
-                                        rule,
-                                        |rid| {
-                                            vars
-                                                .get(&rid)
-                                                .map(|v| &(**v))
-                                                .or_else(|| inner_collections.get(&rid))
-                                        },
-                                        Arrangements {
-                                            arrangements1: &local_arrangements,
-                                            arrangements2: &inner_arrangements,
-                                        },
-                                        false
-                                    );
-
-                                    vars
-                                        .get_mut(&rel.rel.id)
-                                        .ok_or_else(|| format!("no variable found for relation ID {}", rel.rel.id))?
-                                        .add(&c);
-                                }
-                            }
-
-                            // bring new relations back to the outer scope
-                            let mut new_collections = HashMap::with_capacity_and_hasher(rels.len(), FnvBuildHasher::default());
-                            for rel in rels {
-                                let var = vars
-                                    .get(&rel.rel.id)
-                                    .ok_or_else(|| format!("no variable found for relation ID {}", rel.rel.id))?;
-
-                                let mut collection = var.leave();
-                                // var.distinct() will be called automatically by var.drop() if var has `distinct` flag set
-                                if rel.rel.distinct && !rel.distinct {
-                                    collection = with_prof_context(
-                                        &format!("{}.distinct_total", rel.rel.name),
-                                        || collection.threshold_total(|_,c| if *c == 0 { 0 } else { 1 }),
-                                    );
-                                }
-
-                                new_collections.insert(rel.rel.id, collection);
-                            }
-
-                            Ok(new_collections)
+    // create arrangements
+    for rel in rels {
+        for (i, arr) in rel.rel.arrangements.iter().enumerate() {
+            // only if the arrangement is used outside of this node
+            if arr.queryable()
+                || program
+                    .arrangement_used_by_nodes((rel.rel.id, i))
+                    .any(|n| n != node_id)
+            {
+                with_prof_context(
+                    &format!("global {}", arr.name()),
+                    || -> Result<_, String> {
+                        let collection = collections.get(&rel.rel.id).ok_or_else(|| {
+                            format!("no collection found for relation ID {}", rel.rel.id)
                         })?;
 
-                        // add new collections to the map
-                        collections.extend(new_collections);
-
-                        // create arrangements
-                        for rel in rels {
-                            for (i, arr) in rel.rel.arrangements.iter().enumerate() {
-                                // only if the arrangement is used outside of this node
-                                if arr.queryable() || program.arrangement_used_by_nodes((rel.rel.id, i)).any(|n| n != nodeid) {
-                                    with_prof_context(
-                                        &format!("global {}", arr.name()),
-                                        || -> Result<_, String> {
-                                            let collection = collections
-                                                .get(&rel.rel.id)
-                                                .ok_or_else(|| format!("no collection found for relation ID {}", rel.rel.id))?;
-
-                                            Ok(arrangements.insert((rel.rel.id, i), arr.build_arrangement(collection)))
-                                        }
-                                    )?;
-                                }
-                            }
-                        }
-                    }
-                }
-            };
-
-            for (id, (relid, v, _)) in delayed_vars.into_iter() {
-                v.set(&collections.get(&relid).ok_or_else(|| format!("delayed variable {} refers to unknown base relation {}", id, relid))?.consolidate());
-            };
-
-            for (relid, collection) in collections {
-                // notify client about changes
-                if let Some(relation_callback) = &program.get_relation(relid).change_cb {
-                    let relation_callback = relation_callback.clone();
-
-                    let consolidated = with_prof_context(
-                        &format!("consolidate {}", relid),
-                        || collection.consolidate(),
-                    );
-
-                    let inspected = with_prof_context(
-                        &format!("inspect {}", relid),
-                        || consolidated.inspect(move |x| {
-                            // assert!(x.2 == 1 || x.2 == -1, "x: {:?}", x);
-                            (relation_callback)(relid, &x.0, x.2)
-                        }),
-                    );
-
-                    with_prof_context(
-                        &format!("probe {}", relid),
-                        || inspected.probe_with(&mut probe),
-                    );
-                }
+                        Ok(arrangements.insert((rel.rel.id, i), arr.build_arrangement(collection)))
+                    },
+                )?;
             }
-
-            // Attach probes to index arrangements, so we know when all updates
-            // for a given epoch have been added to the arrangement, and return
-            // arrangement trace.
-            let mut traces: BTreeMap<ArrId, _> = BTreeMap::new();
-            for ((relid, arrid), arr) in arrangements.into_iter() {
-                if let ArrangedCollection::Map(arranged) = arr {
-                    if program.get_relation(relid).arrangements[arrid].queryable() {
-                        arranged.as_collection(|k,_| k.clone()).probe_with(&mut probe);
-                        traces.insert((relid, arrid), arranged.trace.clone());
-                    }
-                }
-            }
-
-            Ok(SessionData{
-                sessions,
-                enabled_session,
-                traces
-            })
-        })
+        }
     }
+
+    Ok(())
 }
 
 #[derive(Clone)]

@@ -83,14 +83,17 @@ const PROF_MSG_BUF_SIZE: usize = 10_000;
 pub type Response<X> = Result<X, String>;
 
 /// Unique identifier of a DDlog relation.
+// TODO: Newtype this for type-safety
 pub type RelId = usize;
 
 /// Unique identifier of an index.
+// TODO: Newtype this for type-safety
 pub type IdxId = usize;
 
 /// Unique identifier of an arranged relation.
 /// The first element of the tuple identifies relation; the second is the index
 /// of arrangement for the given relation.
+// TODO: Newtype this for type-safety
 pub type ArrId = (RelId, usize);
 
 /// Function type used to map the content of a relation
