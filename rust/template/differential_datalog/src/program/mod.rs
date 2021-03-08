@@ -261,6 +261,12 @@ pub struct Relation {
     pub change_cb: Option<Arc<dyn RelationCallback + 'static>>,
 }
 
+impl Relation {
+    pub fn name(&self) -> &str {
+        &*self.name
+    }
+}
+
 /// `DelayedRelation` refers to the contents of a given base relation from
 /// `delay` epochs ago.
 ///
@@ -1216,7 +1222,7 @@ impl Program {
         P::Timestamp: Lattice,
         T: Refines<P::Timestamp> + Lattice + Timestamp + Ord,
         T: ToTupleTS,
-        LC: Fn(RelId) -> Option<&'b Collection<Child<'a, P, T>, DDValue, Weight>>,
+        LC: Fn(RelId) -> Option<Collection<Child<'a, P, T>, DDValue, Weight>>,
     {
         match xform {
             None => col,
@@ -1242,7 +1248,7 @@ impl Program {
         P::Timestamp: Lattice,
         T: Refines<P::Timestamp> + Lattice + Timestamp + Ord,
         T: ToTupleTS,
-        LC: Fn(RelId) -> Option<&'b Collection<Child<'a, P, T>, DDValue, Weight>>,
+        LC: Fn(RelId) -> Option<Collection<Child<'a, P, T>, DDValue, Weight>>,
     {
         match *xform {
             XFormCollection::Arrange {
@@ -1458,9 +1464,9 @@ impl Program {
                         );
                         let arrangements1 = FnvHashMap::default();
                         let arrangements2 = FnvHashMap::default();
-                        fn dummy_lookup_collection<'c, S: Scope>(
+                        fn dummy_lookup_collection<S: Scope>(
                             _: RelId,
-                        ) -> Option<&'c Collection<S, DDValue, Weight>> {
+                        ) -> Option<Collection<S, DDValue, Weight>> {
                             None
                         }
                         let xformed = Self::xform_collection(
@@ -1508,7 +1514,7 @@ impl Program {
         TR: TraceReader<Key = DDValue, Val = DDValue, Time = T, R = Weight> + Clone + 'static,
         TR::Batch: BatchReader<DDValue, DDValue, T, Weight>,
         TR::Cursor: Cursor<DDValue, DDValue, T, Weight>,
-        LC: Fn(RelId) -> Option<&'b Collection<Child<'a, P, T>, DDValue, Weight>>,
+        LC: Fn(RelId) -> Option<Collection<Child<'a, P, T>, DDValue, Weight>>,
     {
         match *xform {
             XFormArrangement::FlatMap {
@@ -1831,7 +1837,7 @@ impl Program {
         P::Timestamp: Lattice,
         T: Refines<P::Timestamp> + Lattice + Timestamp + Ord,
         T: ToTupleTS,
-        F: Fn(RelId) -> Option<&'b Collection<Child<'a, P, T>, DDValue, Weight>>,
+        F: Fn(RelId) -> Option<Collection<Child<'a, P, T>, DDValue, Weight>>,
         'a: 'b,
     {
         match rule {
@@ -1852,7 +1858,7 @@ impl Program {
                 xform: Some(x),
                 ..
             } => Self::xform_collection_ref(
-                lookup_collection(*rel)
+                &lookup_collection(*rel)
                     .unwrap_or_else(|| panic!("mk_rule: unknown relation {:?}", rel)),
                 x,
                 &arrangements,
