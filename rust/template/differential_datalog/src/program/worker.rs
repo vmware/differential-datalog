@@ -28,6 +28,7 @@ use fnv::{FnvBuildHasher, FnvHashMap};
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap},
     mem,
+    ops::Deref,
     rc::Rc,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -608,54 +609,79 @@ fn render_relation<'a>(
     >,
     delayed_vars: &DelayedVarMap<Child<'a, Worker<Allocator>, TS>>,
 ) {
-    // Relation may already be in the map if it was created by an `Apply` node
-    let mut collection = collections.remove(&relation.id).unwrap_or_else(|| {
-        let (session, collection) = scope.new_collection::<DDValue, Weight>();
-        sessions.insert(relation.id, session);
+    scope.clone().region_named(relation.name(), |region| {
+        // Relation may already be in the map if it was created by an `Apply` node
+        let mut collection = if let Some(collection) = collections.remove(&relation.id) {
+            collection.enter_region(region)
+        } else {
+            let (session, collection) = scope.new_collection::<DDValue, Weight>();
+            sessions.insert(relation.id, session);
 
-        collection
+            // TODO: Find a way to make the collection within the nested region
+            collection.enter_region(region)
+        };
+
+        let entered_arrangements: FnvHashMap<_, _> = arrangements
+            .iter()
+            .map(|(&arr_id, arr)| (arr_id, arr.enter_region(region)))
+            .collect();
+
+        // apply rules
+        // TODO: Regions for rules
+        let rule_collections = relation.rules.iter().map(|rule| {
+            let get_rule_collection = |rule_id| {
+                if let Some(collection) = collections.get(&rule_id) {
+                    Some(collection.enter_region(region))
+                } else {
+                    delayed_vars
+                        .get(&rule_id)
+                        .map(|(_, _, collection)| collection.enter_region(region))
+                }
+            };
+
+            program.mk_rule(
+                rule,
+                get_rule_collection,
+                Arrangements {
+                    arrangements1: &entered_arrangements,
+                    arrangements2: &FnvHashMap::default(),
+                },
+                true,
+            )
+        });
+
+        if rule_collections.len() > 1 {
+            collection =
+                with_prof_context(&format!("concatenate rules for {}", relation.name), || {
+                    collection.concatenate(rule_collections)
+                });
+        }
+
+        // don't distinct input collections, as this is already done by the set_update logic
+        if !relation.input && relation.distinct {
+            collection = with_prof_context(&format!("{}.threshold_total", relation.name), || {
+                collection.threshold_total(|_, c| if *c == 0 { 0 } else { 1 })
+            });
+        }
+
+        // create arrangements
+        // TODO: Arrangements have their own shebang, region them off too
+        for (arr_id, arrangement) in relation.arrangements.iter().enumerate() {
+            with_prof_context(arrangement.name(), || {
+                arrangements.insert(
+                    (relation.id, arr_id),
+                    arrangement
+                        .build_arrangement_root(&collection)
+                        .leave_region(),
+                )
+            });
+        }
+
+        collections.insert(relation.id, collection.leave_region());
     });
-
-    // apply rules
-    let rule_collections = relation.rules.iter().map(|rule| {
-        program.mk_rule(
-            rule,
-            |rid| {
-                collections
-                    .get(&rid)
-                    .or_else(|| delayed_vars.get(&rid).map(|v| &v.2))
-            },
-            Arrangements {
-                arrangements1: &arrangements,
-                arrangements2: &FnvHashMap::default(),
-            },
-            true,
-        )
-    });
-
-    if rule_collections.len() > 1 {
-        collection = with_prof_context(&format!("concatenate rules for {}", relation.name), || {
-            collection.concatenate(rule_collections)
-        });
-    }
-
-    // don't distinct input collections, as this is already done by the set_update logic
-    if !relation.input && relation.distinct {
-        collection = with_prof_context(&format!("{}.threshold_total", relation.name), || {
-            collection.threshold_total(|_, c| if *c == 0 { 0 } else { 1 })
-        });
-    }
-
-    // create arrangements
-    for (i, arr) in relation.arrangements.iter().enumerate() {
-        with_prof_context(arr.name(), || {
-            arrangements.insert((relation.id, i), arr.build_arrangement_root(&collection))
-        });
-    }
-
-    collections.insert(relation.id, collection);
 }
 
+// TODO: Regions for SCCs
 fn render_scc<'a>(
     rels: &[RecursiveRelation],
     node_id: RelId,
@@ -772,8 +798,9 @@ fn render_scc<'a>(
                     rule,
                     |rid| {
                         vars.get(&rid)
-                            .map(|v| &(**v))
+                            .map(|v| v.deref())
                             .or_else(|| inner_collections.get(&rid))
+                            .cloned()
                     },
                     Arrangements {
                         arrangements1: &local_arrangements,
