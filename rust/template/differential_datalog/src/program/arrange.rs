@@ -53,8 +53,31 @@ where
         TKeyEnter<S, Product<S::Timestamp, TSNested>>,
     > {
         match self {
-            ArrangedCollection::Map(arr) => ArrangedCollection::Map(arr.enter(inner)),
-            ArrangedCollection::Set(arr) => ArrangedCollection::Set(arr.enter(inner)),
+            Self::Map(arr) => ArrangedCollection::Map(arr.enter(inner)),
+            Self::Set(arr) => ArrangedCollection::Set(arr.enter(inner)),
+        }
+    }
+
+    pub fn enter_region<'a>(
+        &self,
+        region: &Child<'a, S, S::Timestamp>,
+    ) -> ArrangedCollection<Child<'a, S, S::Timestamp>, TValAgent<S>, TKeyAgent<S>> {
+        match self {
+            Self::Map(arr) => ArrangedCollection::Map(arr.enter_region(region)),
+            Self::Set(arr) => ArrangedCollection::Set(arr.enter_region(region)),
+        }
+    }
+}
+
+impl<'a, S> ArrangedCollection<Child<'a, S, S::Timestamp>, TValAgent<S>, TKeyAgent<S>>
+where
+    S: Scope,
+    S::Timestamp: Lattice + Ord,
+{
+    pub fn leave_region(&self) -> ArrangedCollection<S, TValAgent<S>, TKeyAgent<S>> {
+        match self {
+            Self::Map(arr) => ArrangedCollection::Map(arr.leave_region()),
+            Self::Set(arr) => ArrangedCollection::Set(arr.leave_region()),
         }
     }
 }
