@@ -21,8 +21,13 @@ pub use arrange::diff_distinct;
 pub use timestamp::{TSNested, TupleTS, TS};
 pub use update::Update;
 
-use crate::{ddval::*, profile::*, record::Mutator};
-use arrange::{antijoin_arranged, ArrangedCollection, Arrangements, A};
+use crate::{
+    ddval::*,
+    profile::*,
+    record::Mutator,
+    render::arrange_by::{ArrangeBy, ArrangementKind},
+};
+use arrange::{antijoin_arranged, Arrangement as DataflowArrangement, Arrangements, A};
 use crossbeam_channel::{Receiver, Sender};
 use fnv::{FnvHashMap, FnvHashSet};
 use std::{
@@ -42,7 +47,6 @@ use std::{
 use timestamp::ToTupleTS;
 use worker::{DDlogWorker, ProfilingData};
 
-use differential_dataflow::difference::Semigroup;
 use differential_dataflow::lattice::Lattice;
 use differential_dataflow::operators::arrange::arrangement::Arranged;
 use differential_dataflow::operators::arrange::*;
@@ -768,57 +772,66 @@ impl Arrangement {
     fn build_arrangement_root<S>(
         &self,
         collection: &Collection<S, DDValue, Weight>,
-    ) -> ArrangedCollection<S, TValAgent<S>, TKeyAgent<S>>
+    ) -> DataflowArrangement<S, Weight, TValAgent<S>, TKeyAgent<S>>
     where
         S: Scope,
         Collection<S, DDValue, Weight>: ThresholdTotal<S, DDValue, Weight>,
         S::Timestamp: Lattice + Ord + TotalOrder,
     {
-        match *self {
-            Arrangement::Map { afun, .. } => {
-                ArrangedCollection::Map(collection.flat_map(afun).arrange())
-            }
+        let kind = match *self {
+            Arrangement::Map { afun, .. } => ArrangementKind::Map {
+                value_function: afun,
+            },
             Arrangement::Set {
                 fmfun, distinct, ..
             } => {
-                let filtered = collection.flat_map(fmfun);
-                if distinct {
-                    ArrangedCollection::Set(
-                        filtered
-                            .threshold_total(|_, c| if c.is_zero() { 0 } else { 1 })
-                            .map(|k| (k, ()))
-                            .arrange(), /* arrange_by_self() */
-                    )
-                } else {
-                    ArrangedCollection::Set(filtered.map(|k| (k, ())).arrange())
+                // TODO: We don't currently produce a `None` as the key extraction
+                //       function, but doing so will simplify the dataflow graph
+                //       in instances where a function isn't needed
+                ArrangementKind::Set {
+                    key_function: Some(fmfun),
+                    distinct,
                 }
             }
+        };
+
+        ArrangeBy {
+            kind,
+            target_relation: self.name().into(),
         }
+        .render_root(collection)
     }
 
     fn build_arrangement<S>(
         &self,
         collection: &Collection<S, DDValue, Weight>,
-    ) -> ArrangedCollection<S, TValAgent<S>, TKeyAgent<S>>
+    ) -> DataflowArrangement<S, Weight, TValAgent<S>, TKeyAgent<S>>
     where
         S: Scope,
         S::Timestamp: Lattice + Ord,
     {
-        match *self {
-            Arrangement::Map { afun, .. } => {
-                ArrangedCollection::Map(collection.flat_map(afun).arrange())
-            }
+        let kind = match *self {
+            Arrangement::Map { afun, .. } => ArrangementKind::Map {
+                value_function: afun,
+            },
             Arrangement::Set {
                 fmfun, distinct, ..
             } => {
-                let filtered = collection.flat_map(fmfun);
-                if distinct {
-                    ArrangedCollection::Set(diff_distinct(&filtered).map(|k| (k, ())).arrange())
-                } else {
-                    ArrangedCollection::Set(filtered.map(|k| (k, ())).arrange())
+                // TODO: We don't currently produce a `None` as the key extraction
+                //       function, but doing so will simplify the dataflow graph
+                //       in instances where a function isn't needed
+                ArrangementKind::Set {
+                    key_function: Some(fmfun),
+                    distinct,
                 }
             }
+        };
+
+        ArrangeBy {
+            kind,
+            target_relation: self.name().into(),
         }
+        .render(collection)
     }
 }
 
@@ -1369,8 +1382,8 @@ impl Program {
                     // arrange input collection
                     let collection_with_keys = col.flat_map(afun);
                     let arr = match arrangements.lookup_arr(arrangement) {
-                        A::Arrangement1(ArrangedCollection::Map(arranged)) => arranged.clone(),
-                        A::Arrangement1(ArrangedCollection::Set(_)) => {
+                        A::Arrangement1(DataflowArrangement::Map(arranged)) => arranged.clone(),
+                        A::Arrangement1(DataflowArrangement::Set(_)) => {
                             panic!("StreamJoin: not a map arrangement {:?}", arrangement)
                         }
                         _ => panic!("StreamJoin in nested scope: {}", description),
@@ -1408,8 +1421,8 @@ impl Program {
                     // arrange input collection
                     let collection_with_keys = col.flat_map(afun);
                     let arr = match arrangements.lookup_arr(arrangement) {
-                        A::Arrangement1(ArrangedCollection::Set(arranged)) => arranged.clone(),
-                        A::Arrangement1(ArrangedCollection::Map(_)) => {
+                        A::Arrangement1(DataflowArrangement::Set(arranged)) => arranged.clone(),
+                        A::Arrangement1(DataflowArrangement::Map(_)) => {
                             panic!("StreamSemijoin: not a set arrangement {:?}", arrangement)
                         }
                         _ => panic!("StreamSemijoin in nested scope: {}", description),
@@ -1588,7 +1601,7 @@ impl Program {
                 jfun,
                 ref next,
             } => match arrangements.lookup_arr(arrangement) {
-                A::Arrangement1(ArrangedCollection::Map(arranged)) => {
+                A::Arrangement1(DataflowArrangement::Map(arranged)) => {
                     let col = with_prof_context(&description, || {
                         ffun.map_or_else(
                             || arr.join_core(arranged, jfun),
@@ -1603,7 +1616,7 @@ impl Program {
                         is_top_level_scope,
                     )
                 }
-                A::Arrangement2(ArrangedCollection::Map(arranged)) => {
+                A::Arrangement2(DataflowArrangement::Map(arranged)) => {
                     let col = with_prof_context(&description, || {
                         ffun.map_or_else(
                             || arr.join_core(arranged, jfun),
@@ -1628,7 +1641,7 @@ impl Program {
                 jfun,
                 ref next,
             } => match arrangements.lookup_arr(arrangement) {
-                A::Arrangement1(ArrangedCollection::Set(arranged)) => {
+                A::Arrangement1(DataflowArrangement::Set(arranged)) => {
                     let col = with_prof_context(&description, || {
                         ffun.map_or_else(
                             || arr.join_core(arranged, jfun),
@@ -1643,7 +1656,7 @@ impl Program {
                         is_top_level_scope,
                     )
                 }
-                A::Arrangement2(ArrangedCollection::Set(arranged)) => {
+                A::Arrangement2(DataflowArrangement::Set(arranged)) => {
                     let col = with_prof_context(&description, || {
                         ffun.map_or_else(
                             || arr.join_core(arranged, jfun),
@@ -1666,7 +1679,7 @@ impl Program {
                 arrangement,
                 ref next,
             } => match arrangements.lookup_arr(arrangement) {
-                A::Arrangement1(ArrangedCollection::Set(arranged)) => {
+                A::Arrangement1(DataflowArrangement::Set(arranged)) => {
                     let col = with_prof_context(&description, || {
                         ffun.map_or_else(
                             || antijoin_arranged(&arr, arranged).map(|(_, v)| v),
@@ -1684,7 +1697,7 @@ impl Program {
                         is_top_level_scope,
                     )
                 }
-                A::Arrangement2(ArrangedCollection::Set(arranged)) => {
+                A::Arrangement2(DataflowArrangement::Set(arranged)) => {
                     let col = with_prof_context(&description, || {
                         ffun.map_or_else(
                             || antijoin_arranged(&arr, arranged).map(|(_, v)| v),
@@ -1866,14 +1879,14 @@ impl Program {
                 is_top_level_scope,
             ),
             Rule::ArrangementRule { arr, xform, .. } => match arrangements.lookup_arr(*arr) {
-                A::Arrangement1(ArrangedCollection::Map(arranged)) => Self::xform_arrangement(
+                A::Arrangement1(DataflowArrangement::Map(arranged)) => Self::xform_arrangement(
                     arranged,
                     xform,
                     &arrangements,
                     &lookup_collection,
                     is_top_level_scope,
                 ),
-                A::Arrangement2(ArrangedCollection::Map(arranged)) => Self::xform_arrangement(
+                A::Arrangement2(DataflowArrangement::Map(arranged)) => Self::xform_arrangement(
                     arranged,
                     xform,
                     &arrangements,
