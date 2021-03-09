@@ -2,7 +2,7 @@
 
 use crate::{
     ddval::DDValue,
-    program::{ArrId, TKeyAgent, TKeyEnter, TSNested, TValAgent, TValEnter, Weight},
+    program::{ArrId, TKeyAgent, TKeyEnter, TValAgent, TValEnter, Weight},
 };
 use differential_dataflow::{
     difference::{Diff, Monoid},
@@ -12,72 +12,85 @@ use differential_dataflow::{
         arrange::arrangement::{ArrangeBySelf, Arranged},
         Consolidate, JoinCore, Reduce,
     },
-    trace::{BatchReader, Cursor, TraceReader},
+    trace::{wrappers::enter::TraceEnter, BatchReader, Cursor, TraceReader},
     Collection, Data, ExchangeData,
 };
 use fnv::FnvHashMap;
-use num::One;
 use std::ops::{Add, Mul, Neg};
 use timely::{
     dataflow::scopes::{Child, Scope, ScopeParent},
-    order::Product,
     progress::{timestamp::Refines, Timestamp},
 };
 
-pub(super) enum ArrangedCollection<S, T1, T2>
+pub enum Arrangement<S, R, Map, Set>
 where
     S: Scope,
-    S::Timestamp: Lattice + Ord,
-    T1: TraceReader<Key = DDValue, Val = DDValue, Time = S::Timestamp, R = Weight> + Clone,
-    T1::Batch: BatchReader<DDValue, DDValue, S::Timestamp, Weight>,
-    T1::Cursor: Cursor<DDValue, DDValue, S::Timestamp, Weight>,
-    T2: TraceReader<Key = DDValue, Val = (), Time = S::Timestamp, R = Weight> + Clone,
-    T2::Batch: BatchReader<DDValue, (), S::Timestamp, Weight>,
-    T2::Cursor: Cursor<DDValue, (), S::Timestamp, Weight>,
+    S::Timestamp: Lattice,
+    Map: TraceReader<Key = DDValue, Val = DDValue, Time = S::Timestamp, R = R> + Clone + 'static,
+    Map::Batch: BatchReader<Map::Key, Map::Val, Map::Time, Map::R> + Clone + 'static,
+    Map::Cursor: Cursor<Map::Key, Map::Val, Map::Time, Map::R>,
+    Set: TraceReader<Key = DDValue, Val = (), Time = S::Timestamp, R = R> + Clone + 'static,
+    Set::Batch: BatchReader<Set::Key, Set::Val, Set::Time, Set::R> + Clone + 'static,
+    Set::Cursor: Cursor<Set::Key, Set::Val, Set::Time, Set::R>,
 {
-    Map(Arranged<S, T1>),
-    Set(Arranged<S, T2>),
+    Map(Arranged<S, Map>),
+    Set(Arranged<S, Set>),
 }
 
-impl<S> ArrangedCollection<S, TValAgent<S>, TKeyAgent<S>>
+impl<S, R, Map, Set> Arrangement<S, R, Map, Set>
 where
     S: Scope,
     S::Timestamp: Lattice + Ord,
+    Map: TraceReader<Key = DDValue, Val = DDValue, Time = S::Timestamp, R = R> + Clone + 'static,
+    Map::Batch: BatchReader<Map::Key, Map::Val, Map::Time, Map::R> + Clone + 'static,
+    Map::Cursor: Cursor<Map::Key, Map::Val, Map::Time, Map::R>,
+    Set: TraceReader<Key = DDValue, Val = (), Time = S::Timestamp, R = R> + Clone + 'static,
+    Set::Batch: BatchReader<Set::Key, Set::Val, Set::Time, Set::R> + Clone + 'static,
+    Set::Cursor: Cursor<Set::Key, Set::Val, Set::Time, Set::R>,
 {
-    pub(super) fn enter<'a>(
+    pub(super) fn enter<'a, TInner>(
         &self,
-        inner: &Child<'a, S, Product<S::Timestamp, TSNested>>,
-    ) -> ArrangedCollection<
-        Child<'a, S, Product<S::Timestamp, TSNested>>,
-        TValEnter<S, Product<S::Timestamp, TSNested>>,
-        TKeyEnter<S, Product<S::Timestamp, TSNested>>,
-    > {
+        inner: &Child<'a, S, TInner>,
+    ) -> Arrangement<Child<'a, S, TInner>, R, TraceEnter<Map, TInner>, TraceEnter<Set, TInner>>
+    where
+        R: 'static,
+        TInner: Refines<S::Timestamp> + Lattice + Timestamp + Clone + 'static,
+    {
         match self {
-            Self::Map(arr) => ArrangedCollection::Map(arr.enter(inner)),
-            Self::Set(arr) => ArrangedCollection::Set(arr.enter(inner)),
+            Self::Map(arr) => Arrangement::Map(arr.enter(inner)),
+            Self::Set(arr) => Arrangement::Set(arr.enter(inner)),
         }
     }
 
     pub fn enter_region<'a>(
         &self,
         region: &Child<'a, S, S::Timestamp>,
-    ) -> ArrangedCollection<Child<'a, S, S::Timestamp>, TValAgent<S>, TKeyAgent<S>> {
+    ) -> Arrangement<Child<'a, S, S::Timestamp>, R, Map, Set>
+    where
+        R: 'static,
+    {
         match self {
-            Self::Map(arr) => ArrangedCollection::Map(arr.enter_region(region)),
-            Self::Set(arr) => ArrangedCollection::Set(arr.enter_region(region)),
+            Self::Map(arr) => Arrangement::Map(arr.enter_region(region)),
+            Self::Set(arr) => Arrangement::Set(arr.enter_region(region)),
         }
     }
 }
 
-impl<'a, S> ArrangedCollection<Child<'a, S, S::Timestamp>, TValAgent<S>, TKeyAgent<S>>
+impl<'a, S, R, Map, Set> Arrangement<Child<'a, S, S::Timestamp>, R, Map, Set>
 where
     S: Scope,
     S::Timestamp: Lattice + Ord,
+    Map: TraceReader<Key = DDValue, Val = DDValue, Time = S::Timestamp, R = R> + Clone + 'static,
+    Map::Batch: BatchReader<Map::Key, Map::Val, Map::Time, Map::R> + Clone + 'static,
+    Map::Cursor: Cursor<Map::Key, Map::Val, Map::Time, Map::R>,
+    Set: TraceReader<Key = DDValue, Val = (), Time = S::Timestamp, R = R> + Clone + 'static,
+    Set::Batch: BatchReader<Set::Key, Set::Val, Set::Time, Set::R> + Clone + 'static,
+    Set::Cursor: Cursor<Set::Key, Set::Val, Set::Time, Set::R>,
 {
-    pub fn leave_region(&self) -> ArrangedCollection<S, TValAgent<S>, TKeyAgent<S>> {
+    pub fn leave_region(&self) -> Arrangement<S, R, Map, Set> {
         match self {
-            Self::Map(arr) => ArrangedCollection::Map(arr.leave_region()),
-            Self::Set(arr) => ArrangedCollection::Set(arr.leave_region()),
+            Self::Map(arr) => Arrangement::Map(arr.leave_region()),
+            Self::Set(arr) => Arrangement::Set(arr.leave_region()),
         }
     }
 }
@@ -93,13 +106,16 @@ where
     'a: 'b,
 {
     Arrangement1(
-        &'b ArrangedCollection<
+        &'b Arrangement<
             Child<'a, P, T>,
+            Weight,
             TValAgent<Child<'a, P, T>>,
             TKeyAgent<Child<'a, P, T>>,
         >,
     ),
-    Arrangement2(&'b ArrangedCollection<Child<'a, P, T>, TValEnter<'a, P, T>, TKeyEnter<'a, P, T>>),
+    Arrangement2(
+        &'b Arrangement<Child<'a, P, T>, Weight, TValEnter<'a, P, T>, TKeyEnter<'a, P, T>>,
+    ),
 }
 
 pub(super) struct Arrangements<'a, 'b, P, T>
@@ -111,11 +127,16 @@ where
 {
     pub(super) arrangements1: &'b FnvHashMap<
         ArrId,
-        ArrangedCollection<Child<'a, P, T>, TValAgent<Child<'a, P, T>>, TKeyAgent<Child<'a, P, T>>>,
+        Arrangement<
+            Child<'a, P, T>,
+            Weight,
+            TValAgent<Child<'a, P, T>>,
+            TKeyAgent<Child<'a, P, T>>,
+        >,
     >,
     pub(super) arrangements2: &'b FnvHashMap<
         ArrId,
-        ArrangedCollection<Child<'a, P, T>, TValEnter<'a, P, T>, TKeyEnter<'a, P, T>>,
+        Arrangement<Child<'a, P, T>, Weight, TValEnter<'a, P, T>, TKeyEnter<'a, P, T>>,
     >,
 }
 
@@ -199,7 +220,7 @@ where
     G: Scope,
     G::Timestamp: Lattice,
     D: ExchangeData + Hashable,
-    R: Monoid + ExchangeData + One + Neg<Output = R> + Add<R, Output = R>,
+    R: Monoid + ExchangeData + Neg<Output = R> + Add<R, Output = R> + From<i8>,
 {
     collection
         .concat(
@@ -209,8 +230,8 @@ where
                 .arrange_by_self()
                 .reduce(|_, src, dst| {
                     // If the input weight is 1, don't produce a surplus record.
-                    if !src[0].1.is_one() {
-                        dst.push(((), <R>::one() + src[0].1.clone().neg()))
+                    if src[0].1 != R::from(1) {
+                        dst.push(((), R::from(1) + src[0].1.clone().neg()))
                     }
                 })
                 .map(|x| x.0),

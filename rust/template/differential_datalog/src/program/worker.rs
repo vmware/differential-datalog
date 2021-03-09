@@ -2,7 +2,7 @@ use crate::{
     ddval::DDValue,
     profile::{get_prof_context, with_prof_context, ProfMsg},
     program::{
-        arrange::{ArrangedCollection, Arrangements},
+        arrange::{Arrangement, Arrangements},
         ArrId, Dep, Msg, ProgNode, Program, Reply, Update, TS,
     },
     program::{RecursiveRelation, RelId, Relation, TKeyAgent, TValAgent, Weight},
@@ -569,7 +569,7 @@ impl<'a> DDlogWorker<'a> {
                 // arrangement trace.
                 let mut traces: BTreeMap<ArrId, _> = BTreeMap::new();
                 for ((relid, arrid), arr) in arrangements.into_iter() {
-                    if let ArrangedCollection::Map(arranged) = arr {
+                    if let Arrangement::Map(arranged) = arr {
                         if program.get_relation(relid).arrangements[arrid].queryable() {
                             arranged
                                 .as_collection(|k, _| k.clone())
@@ -601,8 +601,9 @@ fn render_relation<'a>(
     >,
     arrangements: &mut FnvHashMap<
         ArrId,
-        ArrangedCollection<
+        Arrangement<
             Child<'a, Worker<Allocator>, TS>,
+            Weight,
             TValAgent<Child<'a, Worker<Allocator>, TS>>,
             TKeyAgent<Child<'a, Worker<Allocator>, TS>>,
         >,
@@ -650,7 +651,7 @@ fn render_relation<'a>(
             )
         });
 
-        if rule_collections.len() > 1 {
+        if rule_collections.len() > 0 {
             collection =
                 with_prof_context(&format!("concatenate rules for {}", relation.name), || {
                     collection.concatenate(rule_collections)
@@ -695,8 +696,9 @@ fn render_scc<'a>(
     >,
     arrangements: &mut FnvHashMap<
         ArrId,
-        ArrangedCollection<
+        Arrangement<
             Child<'a, Worker<Allocator>, TS>,
+            Weight,
             TValAgent<Child<'a, Worker<Allocator>, TS>>,
             TKeyAgent<Child<'a, Worker<Allocator>, TS>>,
         >,

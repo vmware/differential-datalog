@@ -6,9 +6,11 @@
 )]
 
 mod callback;
+mod dataflow;
 mod ddlog;
 mod profile;
 mod profile_statistics;
+mod render;
 pub mod replay;
 mod valmap;
 mod variable;
