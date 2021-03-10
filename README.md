@@ -129,9 +129,13 @@ You are now ready to [start coding in DDlog](doc/tutorial/tutorial.md).
   cd ..
   ```
 - Static versions of the following libraries: `libpthread.a`, `libc.a`, `libm.a`, `librt.a`, `libutil.a`,
-  `libdl.a`, `libgmp.a` can be installed from distro-specific packages.  On Ubuntu:
+  `libdl.a`, `libgmp.a`, and `libstdc++.a` can be installed from distro-specific packages.  On Ubuntu:
   ```
   apt install libc6-dev libgmp-dev
+  ```
+  On Fedora:
+  ```
+  dnf install glibc-static gmp-static libstdc++-static
   ```
 
 #### Building
