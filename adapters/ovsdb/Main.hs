@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018-2020 VMware, Inc.
+Copyright (c) 2018-2021 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -40,6 +40,7 @@ import Language.DifferentialDatalog.OVSDB.Compile
 import Language.DifferentialDatalog.Version
 
 data TOption = OVSFile         String
+             | InternTable     String
              | OutputTable     String
              | OutputOnlyTable String
              | ROColumn        String
@@ -57,6 +58,7 @@ options :: [OptDescr TOption]
 options = [ Option ['v'] ["version"]            (NoArg Version)                     "Display DDlog version."
           , Option ['f'] ["schema-file"]        (ReqArg OVSFile     "FILE")         "OVSDB schema file."
           , Option ['c'] ["input-config"]       (ReqArg ConfigJsonI "FILE.json")    "Read options from Json configuration file (preceding options are ignored)."
+          , Option []    ["intern-table"]       (ReqArg InternTable "TABLE")        "Wrap records in TABLE in the 'Intern<>' type.  Interned values are copied and compared by reference."
           , Option ['O'] ["output-config"]      (ReqArg ConfigJsonO "FILE.json")    "Write preceding options to Json configuration file."
           , Option ['o'] ["output-table"]       (ReqArg OutputTable "TABLE")        "Mark TABLE as output."
           , Option []    ["output-only-table"]  (ReqArg OutputOnlyTable "TABLE")    "Mark TABLE as output-only.  DDlog will send updates to this table directly to OVSDB without comparing it with current OVSDB state."
@@ -73,6 +75,8 @@ addOption (a, config) (OVSFile f) = do
 addOption (a, config) (OutputFile f) = do
     when (isJust $ outputFile config) $ errorWithoutStackTrace "Multiple output files specified"
     return (a, config {outputFile = Just f})
+addOption (a, config) (InternTable t) = do
+    return (a, config{ internedTables = nub (t : internedTables config)})
 addOption (a, config) (OutputTable t) = do
     when (elem t $ outputOnlyTables config)
          $ errorWithoutStackTrace $ "Conflicting options --output-table and --output-only-table specified for table '" ++ t ++ "'"

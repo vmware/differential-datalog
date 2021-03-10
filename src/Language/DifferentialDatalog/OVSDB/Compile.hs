@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018-2020 VMware, Inc.
+Copyright (c) 2018-2021 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -106,6 +106,7 @@ data Config = Config { ovsSchemaFile    :: FilePath
                      , outputFile       :: Maybe FilePath
                      , outputTables     :: [OutputRelConfig]
                      , outputOnlyTables :: [String]
+                     , internedTables   :: [String]
                      }
               deriving (Eq, Show, Generic)
 
@@ -117,6 +118,7 @@ defaultConfig = Config { ovsSchemaFile    = ""
                        , outputFile       = Nothing
                        , outputTables     = []
                        , outputOnlyTables = []
+                       , internedTables   = []
                        }
 
 -- | Output relation configuration:
@@ -150,10 +152,12 @@ compileSchemaFile fname config = do
 compileSchema :: (MonadError String me) => OVSDBSchema -> Config -> me Doc
 compileSchema schema config = do
     let tables = schemaTables schema
+    mapM_ (\i -> do let t = find ((==i) . name) tables
+                    when (isNothing t) $ throwError $ "Table '" ++ i ++ "' not found") $ internedTables config
     mapM_ (\(o, _) -> do let t = find ((==o) . name) tables
-                         when (isNothing t) $ throwError $ "Table " ++ o ++ " not found") $ outputTables config
+                         when (isNothing t) $ throwError $ "Table '" ++ o ++ "' not found") $ outputTables config
     mapM_ (\o -> do let t = find ((==o) . name) tables
-                    when (isNothing t) $ throwError $ "Table " ++ o ++ " not found") $ outputOnlyTables config
+                    when (isNothing t) $ throwError $ "Table '" ++ o ++ "' not found") $ outputOnlyTables config
     uniqNames Nothing ("Multiple declarations of table " ++ ) tables
     let ?schema = schema
     let ?config = config
@@ -225,35 +229,48 @@ mkTable' tkind t@Table{..} = do
     let key = if tkind == TableInput
                  then "primary key (x) x._uuid"
                  else empty
-    return $ prefix <+> "relation" <+> pp tname <+> "("    $$
-             (nest' $ vcommaSep columns)                   $$
-             ")"                                           $$
-             key
+    if tableIsInterned t && tkind == TableInput
+    then return $ "typedef" <+> pp tname <+> "=" <+> pp tname <+> "{"                   $$
+                  (nest' $ vcommaSep columns)                                           $$
+                  "}"                                                                   $$
+                  prefix <+> "relation" <+> pp tname <+> "[Intern<" <> pp tname <> ">]" $$
+                  key
+    else return $ prefix <+> "relation" <+> pp tname <+> "("    $$
+                  (nest' $ vcommaSep columns)                   $$
+                  ")"                                           $$
+                  key
+
+tableIsInterned :: (?config::Config) => Table -> Bool
+tableIsInterned t = elem (name t) $ internedTables ?config
 
 mkDeltaPlusRules :: (?schema::OVSDBSchema, ?config::Config) => Table -> Doc
 mkDeltaPlusRules t =
     (mkTableName t TableDeltaPlus) <> "(" <> commaSep cols <> ") :-"        $$
     (nest' $ mkTableName t TableOutput <> "(" <> commaSep cols <> "),")     $$
-    (nest' $ "not" <+> mkTableName t TableInput <> "(._uuid = _uuid).")
+    (nest' $ "not " <> deref <> mkTableName t TableInput <> "(._uuid = _uuid).")
     where
+    deref = if tableIsInterned t then "&" else empty
     nonro_cols = tableGetNonROCols t
     cols = map (\c -> "." <> mkColName c <+> "=" <+> mkColName c) nonro_cols
 
 -- DeltaMinus(uuid) :- Input(uuid, key, _), not Output(_, key, _).
 mkDeltaMinusRules :: (?schema::OVSDBSchema, ?config::Config) => Table ->  Doc
 mkDeltaMinusRules t =
-    (mkTableName t TableDeltaMinus) <> "(uuid) :-"                         $$
-    (nest' $ mkTableName t TableInput <> "(._uuid = uuid),")   $$
+    (mkTableName t TableDeltaMinus) <> "(uuid) :-"                          $$
+    (nest' $ deref <> mkTableName t TableInput <> "(._uuid = uuid),")       $$
     (nest' $ "not" <+> mkTableName t TableOutput <> "(._uuid = uuid).")
+    where
+    deref = if tableIsInterned t then "&" else empty
 
 -- DeltaUpdate(uuid, new) :- Output(uuid, new), Input(uuid, old), old != new.
 mkDeltaUpdateRules :: (?schema::OVSDBSchema, ?config::Config) => Table -> Doc
 mkDeltaUpdateRules t =
     (mkTableName t TableDeltaUpdate) <> "(" <> commaSep outcols <> ") :-"               $$
     (nest' $ mkTableName t TableOutput <> "(" <> commaSep outcols <> "),")              $$
-    (nest' $ mkTableName t TableInput <> "(" <> commaSep realcols <> "),")              $$
+    (nest' $ deref <> mkTableName t TableInput <> "(" <> commaSep realcols <> "),")              $$
     (nest' $ (parens $ commaSep old_vars) <+> "!=" <+> (parens $ commaSep new_vars) <> ".")
     where
+    deref = if tableIsInterned t then "&" else empty
     nonro_cols = tableGetNonROCols t
     outcols = map (\c -> let n = mkColName c in
                          "." <> n <+> "=" <+> (if n == "_uuid" then n else "__new_" <> n))
