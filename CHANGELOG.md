@@ -26,6 +26,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   replacing the standard collections (`Set`, `Map`, `Vec`) with functional
   versions.
 
+### ovsdb2ddlog compiler
+
+- Added `--intern-table` flag to the compiler to declare input tables coming from
+  OVSDB as `Intern<...>`.  This is useful for tables whose records are copied
+  around as a whole and can therefore benefit from interning performance- and
+  memory-wise.  In the past we had to create a separate table and copy records
+  from the original input table to it while wrapping them in `Intern<>`.  With
+  this change, we avoid the extra copy and intern records as we ingest them
+  for selected tables.
+
+
 ## [0.37.1] - Feb 23, 2021
 
 ### Optimizations
