@@ -8,7 +8,7 @@ use std::ops::Deref;
 use std::string::ToString;
 use std::sync::Mutex;
 
-use crate::ddlog::{DDlogDump, DDlogInventory, DDlogProfiling, DDlogTyped, DDlogUntyped};
+use crate::ddlog::{DDlog, DDlogDump, DDlogDynamic, DDlogInventory, DDlogProfiling};
 use crate::ddval::DDValue;
 use crate::program::IdxId;
 use crate::program::RelId;
@@ -133,7 +133,7 @@ where
         let mut writer = self.writer.lock().unwrap();
         let inventory = &*self.inventory;
         Peeking::new(updates)
-            .map(move |(upd, last)| {
+            .try_for_each(move |(upd, last)| {
                 record(inventory, &mut writer, &upd).and_then(|_| {
                     if !last {
                         writeln!(&mut writer, ",")
@@ -142,7 +142,6 @@ where
                     }
                 })
             })
-            .collect::<Result<_, _>>()
             .map_err(|e| e.to_string())
     }
 
@@ -218,7 +217,7 @@ where
     }
 }
 
-impl<W, I> DDlogUntyped for CommandRecorder<W, I>
+impl<W, I> DDlogDynamic for CommandRecorder<W, I>
 where
     W: Write,
     I: Deref<Target = dyn DDlogInventory + Send + Sync>,
@@ -233,7 +232,7 @@ where
         writeln!(&mut writer, "commit;").map_err(|e| e.to_string())
     }
 
-    fn transaction_commit_dump_changes_untyped(
+    fn transaction_commit_dump_changes_dynamic(
         &self,
     ) -> Result<BTreeMap<RelId, Vec<(Record, isize)>>, String> {
         let mut writer = self.writer.lock().unwrap();
@@ -247,7 +246,7 @@ where
         writeln!(&mut writer, "rollback;").map_err(|e| e.to_string())
     }
 
-    fn apply_updates_untyped(&self, upds: &mut dyn Iterator<Item = UpdCmd>) -> Result<(), String> {
+    fn apply_updates_dynamic(&self, upds: &mut dyn Iterator<Item = UpdCmd>) -> Result<(), String> {
         self.do_record_updates(upds, |i, w, u| Self::record_upd_cmd(i, w, &u))
     }
 
@@ -261,7 +260,7 @@ where
         .map_err(|e| e.to_string())
     }
 
-    fn query_index_untyped(&self, iid: IdxId, key: &Record) -> Result<Vec<Record>, String> {
+    fn query_index_dynamic(&self, iid: IdxId, key: &Record) -> Result<Vec<Record>, String> {
         let mut writer = self.writer.lock().unwrap();
         writeln!(
             &mut writer,
@@ -273,7 +272,7 @@ where
         .map_err(|e| e.to_string())
     }
 
-    fn dump_index_untyped(&self, iid: IdxId) -> Result<Vec<Record>, String> {
+    fn dump_index_dynamic(&self, iid: IdxId) -> Result<Vec<Record>, String> {
         let mut writer = self.writer.lock().unwrap();
         writeln!(
             &mut writer,
@@ -289,7 +288,7 @@ where
     }
 }
 
-impl<W, I> DDlogTyped for CommandRecorder<W, I>
+impl<W, I> DDlog for CommandRecorder<W, I>
 where
     W: Write,
     I: Deref<Target = dyn DDlogInventory + Send + Sync>,
@@ -386,10 +385,29 @@ where
     }
 }
 
-/*
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    struct DummyIntentory;
+
+    impl DDlogInventory for DummyIntentory {
+        fn get_table_id(&self, _tname: &str) -> Result<RelId, String> {
+            unimplemented!()
+        }
+
+        fn get_table_name(&self, _tid: RelId) -> Result<&'static str, String> {
+            unimplemented!()
+        }
+
+        fn get_index_id(&self, _iname: &str) -> Result<IdxId, String> {
+            unimplemented!()
+        }
+
+        fn get_index_name(&self, _iid: IdxId) -> Result<&'static str, String> {
+            unimplemented!()
+        }
+    }
 
     /// Test recording of "updates" using `record_updates`.
     #[test]
@@ -397,14 +415,14 @@ mod tests {
         fn test(updates: Vec<u64>, expected: &str) {
             let mut buf = Vec::new();
             let iter = updates.iter();
-            let error = |e| panic!("{}", e);
 
-            let recorder = CommandRecorder::new(&mut buf);
-            recorder.do_record_updates(
-                iter,
-                |w, r| write!(w, "update {}", r),
-            )
-            .for_each(|_| ());
+            let recorder = CommandRecorder::new(
+                &mut buf,
+                Box::new(DummyIntentory) as Box<dyn DDlogInventory + Send + Sync>,
+            );
+            recorder
+                .do_record_updates(iter, |_, w, r| write!(w, "update {}", r))
+                .unwrap();
 
             assert_eq!(buf.as_slice(), expected.as_bytes());
         }
@@ -423,4 +441,3 @@ update 10;
         test(updates, expected);
     }
 }
-*/

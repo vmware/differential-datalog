@@ -13,7 +13,7 @@ use differential_datalog::ddval::*;
 use differential_datalog::program::*;
 use differential_datalog::record::{IntoRecord, Record, UpdCmd};
 use differential_datalog::DeltaMap;
-use differential_datalog::{DDlogTyped, DDlogUntyped};
+use differential_datalog::{DDlog, DDlogDynamic};
 
 use crate::api::{updcmd2upd, HDDlog};
 use crate::DDlogConverter;

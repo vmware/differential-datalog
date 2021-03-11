@@ -274,8 +274,8 @@ We need to supply four arguments to this function:
 .. code-block:: c
 
     // Get table IDs for `Links` and `ConnectedNodes` relations
-    table_id LinksTableID = ddlog_get_table_id("Links");
-    table_id ConnectedNodesTableID = ddlog_get_table_id("ConnectedNodes");
+    table_id LinksTableID = ddlog_get_table_id(ddlog, "Links");
+    table_id ConnectedNodesTableID = ddlog_get_table_id(ddlog, "ConnectedNodes");
 
 DDlog stores relations in tables.
 Thus, to work with those tables we will need their IDs.

@@ -1,8 +1,8 @@
-use benchmarks_ddlog::{api::HDDlog as DDlog, typedefs::live_journal::Edge, Relations};
+use benchmarks_ddlog::{api::HDDlog, typedefs::live_journal::Edge, Relations};
 use benchmarks_differential_datalog::{
+    DDlog, DDlogDynamic,
     ddval::{DDValConvert, DDValue},
     program::{RelId, Update},
-    DDlog as _,
 };
 use flate2::bufread::GzDecoder;
 use std::{
@@ -45,17 +45,17 @@ pub fn dataset(samples: Option<usize>) -> Vec<Update<DDValue>> {
     edges
 }
 
-pub fn init(workers: usize) -> DDlog {
-    let (ddlog, _) = DDlog::run(workers, false).expect("failed to create DDlog instance");
+pub fn init(workers: usize) -> HDDlog {
+    let (ddlog, _) = HDDlog::run(workers, false).expect("failed to create DDlog instance");
     ddlog
 }
 
-pub fn run(ddlog: DDlog, dataset: Vec<Update<DDValue>>) -> DDlog {
+pub fn run(ddlog: HDDlog, dataset: Vec<Update<DDValue>>) -> HDDlog {
     ddlog
         .transaction_start()
         .expect("failed to start transaction");
     ddlog
-        .apply_valupdates(dataset.into_iter())
+        .apply_updates(&mut dataset.into_iter())
         .expect("failed to give transaction input");
     ddlog
         .transaction_commit()

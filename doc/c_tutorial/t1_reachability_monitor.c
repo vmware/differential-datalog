@@ -32,8 +32,8 @@ int main(int args, char **argv)
     };
 
     // Get table IDs for `Links` and `ConnectedNodes` relations
-    table_id LinksTableID = ddlog_get_table_id("Links");
-    table_id ConnectedNodesTableID = ddlog_get_table_id("ConnectedNodes");
+    table_id LinksTableID = ddlog_get_table_id(prog, "Links");
+    table_id ConnectedNodesTableID = ddlog_get_table_id(prog, "ConnectedNodes");
     printf("Links table ID: %lu\n", LinksTableID);
     printf("ConnectedNodes table ID: %lu\n", ConnectedNodesTableID);
 

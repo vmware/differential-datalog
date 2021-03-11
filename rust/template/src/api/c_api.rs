@@ -10,7 +10,7 @@ use differential_datalog::{
     ddval::DDValue,
     program::{IdxId, RelId},
     record::IntoRecord,
-    DDlogDump, DDlogInventory, DDlogProfiling, DDlogTyped, DDlogUntyped, DeltaMap,
+    DDlog, DDlogDump, DDlogDynamic, DDlogInventory, DDlogProfiling, DeltaMap,
 };
 use std::{
     collections::BTreeMap,
@@ -530,7 +530,7 @@ pub unsafe extern "C" fn ddlog_query_index(
     }
     let prog = &*prog;
 
-    prog.query_index_untyped(idxid as IdxId, &*key)
+    prog.query_index_dynamic(idxid as IdxId, &*key)
         .map(|set| {
             if let Some(f) = cb {
                 for val in set.iter() {
@@ -649,7 +649,7 @@ pub unsafe extern "C" fn ddlog_apply_updates(
     }
     let prog = &*prog;
 
-    prog.apply_updates_untyped(&mut (0..n).map(|i| *Box::from_raw(*upds.add(i))))
+    prog.apply_updates_dynamic(&mut (0..n).map(|i| *Box::from_raw(*upds.add(i))))
         .map(|_| 0)
         .unwrap_or_else(|e| {
             prog.eprintln(&format!("ddlog_apply_updates(): error: {}", e));
@@ -770,7 +770,7 @@ pub unsafe extern "C" fn ddlog_enable_timely_profiling(
     prog.enable_timely_profiling(enable)
         .map(|_| 0)
         .unwrap_or_else(|e| {
-            prog.eprintln(&format!("ddlog_enable_cpu_profiling(): error: {}", e));
+            prog.eprintln(&format!("ddlog_enable_timely_profiling(): error: {}", e));
             -1
         })
 }
