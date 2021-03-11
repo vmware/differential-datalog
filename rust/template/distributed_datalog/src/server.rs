@@ -9,7 +9,7 @@ use uid::Id;
 use differential_datalog::ddval::DDValue;
 use differential_datalog::program::RelId;
 use differential_datalog::program::Update;
-use differential_datalog::DDlogTyped;
+use differential_datalog::DDlog;
 
 use crate::observe::Observer;
 use crate::observe::ObserverBox;
@@ -29,7 +29,7 @@ pub struct Outlet {
 #[derive(Debug)]
 pub struct DDlogServer<P>
 where
-    P: DDlogTyped,
+    P: DDlog,
 {
     id: usize,
     created: Instant,
@@ -40,7 +40,7 @@ where
 
 impl<P> DDlogServer<P>
 where
-    P: DDlogTyped,
+    P: DDlog,
 {
     /// Create a new server with no outlets.
     pub fn new(prog: Option<Arc<P>>, redirect: HashMap<RelId, RelId>) -> Self {
@@ -99,7 +99,7 @@ where
 
 impl<P> Observer<Update<DDValue>, String> for DDlogServer<P>
 where
-    P: Debug + Send + Sync + DDlogTyped,
+    P: Debug + Send + Sync + DDlog,
 {
     /// Start a transaction when deltas start coming in.
     fn on_start(&mut self) -> Result<(), String> {
@@ -197,7 +197,7 @@ where
 
 impl<P> Drop for DDlogServer<P>
 where
-    P: DDlogTyped,
+    P: DDlog,
 {
     /// Shutdown the DDlog program and notify listeners of completion.
     fn drop(&mut self) {

@@ -26,7 +26,7 @@ use differential_datalog::replay;
 use differential_datalog::Callback;
 use differential_datalog::CommandRecorder;
 use differential_datalog::DeltaMap;
-use differential_datalog::{DDlogDump, DDlogInventory, DDlogProfiling, DDlogTyped, DDlogUntyped};
+use differential_datalog::{DDlog, DDlogDump, DDlogDynamic, DDlogInventory, DDlogProfiling};
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 
@@ -247,7 +247,7 @@ impl DDlogProfiling for HDDlog {
     }
 }
 
-impl DDlogUntyped for HDDlog {
+impl DDlogDynamic for HDDlog {
     fn transaction_start(&self) -> Result<(), String> {
         self.record_command(|r| r.transaction_start());
         self.prog.lock().unwrap().transaction_start()
@@ -269,19 +269,19 @@ impl DDlogUntyped for HDDlog {
         }
     }
 
-    fn transaction_commit_dump_changes_untyped(
+    fn transaction_commit_dump_changes_dynamic(
         &self,
     ) -> Result<BTreeMap<RelId, Vec<(Record, isize)>>, String> {
-        self.record_command(|r| r.transaction_commit_dump_changes_untyped());
+        self.record_command(|r| r.transaction_commit_dump_changes_dynamic());
         Ok(self
             .transaction_commit_dump_changes()?
             .into_iter()
             .map(|(relid, delta_typed)| {
-                let delta_untyped: Vec<(Record, isize)> = delta_typed
+                let delta_dynamic: Vec<(Record, isize)> = delta_typed
                     .into_iter()
                     .map(|(v, w)| (v.into_record(), w))
                     .collect();
-                (relid, delta_untyped)
+                (relid, delta_dynamic)
             })
             .collect())
     }
@@ -296,7 +296,7 @@ impl DDlogUntyped for HDDlog {
         self.prog.lock().unwrap().clear_relation(table)
     }
 
-    fn apply_updates_untyped(&self, upds: &mut dyn Iterator<Item = UpdCmd>) -> Result<(), String> {
+    fn apply_updates_dynamic(&self, upds: &mut dyn Iterator<Item = UpdCmd>) -> Result<(), String> {
         let mut conversion_err = false;
         let mut msg: Option<String> = None;
 
@@ -321,7 +321,7 @@ impl DDlogUntyped for HDDlog {
 
         let res = if self.command_recorder.is_some() {
             let update_vec: Vec<_> = upds.collect();
-            self.record_command(|r| r.apply_updates_untyped(&mut update_vec.iter().cloned()));
+            self.record_command(|r| r.apply_updates_dynamic(&mut update_vec.iter().cloned()));
 
             self.apply_updates(&mut update_vec.into_iter().flat_map(convert)
                 as &mut dyn Iterator<Item = Update<DDValue>>)
@@ -337,8 +337,8 @@ impl DDlogUntyped for HDDlog {
         }
     }
 
-    fn query_index_untyped(&self, index: IdxId, key: &Record) -> Result<Vec<Record>, String> {
-        self.record_command(|r| r.query_index_untyped(index, key));
+    fn query_index_dynamic(&self, index: IdxId, key: &Record) -> Result<Vec<Record>, String> {
+        self.record_command(|r| r.query_index_dynamic(index, key));
         let idx = Indexes::try_from(index).map_err(|()| format!("unknown index {}", index))?;
         let k = idxkey_from_record(idx, key)?;
         Ok(self
@@ -348,8 +348,8 @@ impl DDlogUntyped for HDDlog {
             .collect())
     }
 
-    fn dump_index_untyped(&self, index: IdxId) -> Result<Vec<Record>, String> {
-        self.record_command(|r| r.dump_index_untyped(index));
+    fn dump_index_dynamic(&self, index: IdxId) -> Result<Vec<Record>, String> {
+        self.record_command(|r| r.dump_index_dynamic(index));
         Ok(self
             .dump_index(index)?
             .into_iter()
@@ -362,7 +362,7 @@ impl DDlogUntyped for HDDlog {
     }
 }
 
-impl DDlogTyped for HDDlog {
+impl DDlog for HDDlog {
     fn transaction_commit_dump_changes(&self) -> Result<DeltaMap<DDValue>, String> {
         self.record_command(|r| r.transaction_commit_dump_changes());
         *self.deltadb.lock().unwrap() = Some(DeltaMap::new());

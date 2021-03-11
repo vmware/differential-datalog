@@ -17,7 +17,7 @@ use std::time::Instant;
 use differential_datalog::ddval::DDValue;
 use differential_datalog::program::RelId;
 use differential_datalog::program::Update;
-use differential_datalog::{DDlogConvert, DDlogInventory, DDlogTyped};
+use differential_datalog::{DDlog, DDlogConvert, DDlogInventory};
 
 use crate::accumulate::Accumulator;
 use crate::accumulate::DistributingAccumulator;
@@ -92,13 +92,13 @@ fn deduce_redirects(config: &NodeCfg) -> HashMap<RelId, RelId> {
 }
 
 /// Create a `DDlogServer` as per the given node configuration.
-fn create_server<P>(node_cfg: &NodeCfg, program: Arc<P>) -> Result<DDlogServer<P>, String>
+fn create_server<P>(node_cfg: &NodeCfg, program: Arc<P>) -> DDlogServer<P>
 where
-    P: Send + DDlogTyped,
+    P: Send + DDlog,
 {
     let redirects = deduce_redirects(node_cfg);
 
-    Ok(DDlogServer::new(Some(program), redirects))
+    DDlogServer::new(Some(program), redirects)
 }
 
 /// Deduce a mapping from file sink to a list of relation IDs for the
@@ -130,7 +130,7 @@ fn realize<P, C, D>(
     program: Arc<P>,
 ) -> Result<Realization<C, D>, String>
 where
-    P: Send + Sync + DDlogTyped + DDlogInventory + Debug + 'static,
+    P: Send + Sync + DDlog + DDlogInventory + Debug + 'static,
     C: Send + DDlogConvert + Debug,
     D: Serialize
         + DeserializeOwned
@@ -143,7 +143,7 @@ where
     let inventory = program.clone() as Arc<dyn DDlogInventory + Send + Sync>;
     let now = Instant::now();
     let mut realization = Realization::new();
-    let mut server = create_server(&node_cfg, program)?;
+    let mut server = create_server(&node_cfg, program);
 
     realization.add_tcp_senders(node_cfg, &mut server, assignment, inventory.clone())?;
     realization.add_file_sinks(node_cfg, &mut server, inventory.clone())?;
@@ -247,7 +247,7 @@ where
     /// Subscribe the `TxnMux` of the existing realization to the given server.
     pub fn subscribe_txnmux<P>(&mut self, server: DDlogServer<P>) -> Result<(), &str>
     where
-        P: Send + Sync + DDlogTyped + Debug + 'static,
+        P: Send + Sync + DDlog + Debug + 'static,
     {
         self._txnmux
             .subscribe(Box::new(server))
@@ -354,7 +354,7 @@ where
         inventory: Arc<dyn DDlogInventory + Send + Sync>,
     ) -> Result<(), String>
     where
-        P: Send + Sync + DDlogTyped + Debug + 'static,
+        P: Send + Sync + DDlog + Debug + 'static,
     {
         // Add the accumulator to the realization if needed.
         self.add_sink_accumulator(rel_ids.clone(), server)?;
@@ -417,7 +417,7 @@ where
         server: &mut DDlogServer<P>,
     ) -> Result<(), String>
     where
-        P: Send + DDlogTyped + Debug + 'static,
+        P: Send + DDlog + Debug + 'static,
     {
         if let Some(entry) = self._sinks.remove(&rel_ids) {
             let (_, mut stream, sink_map) = entry;
@@ -445,7 +445,7 @@ where
         server: &mut DDlogServer<P>,
     ) -> Result<(), String>
     where
-        P: Send + DDlogTyped + Debug + 'static,
+        P: Send + DDlog + Debug + 'static,
     {
         if !self._sinks.contains_key(&rel_ids) {
             let accumulator = Arc::new(Mutex::new(DistributingAccumulator::new()));
@@ -519,7 +519,7 @@ where
         inventory: Arc<dyn DDlogInventory + Send + Sync>,
     ) -> Result<(), String>
     where
-        P: Send + Sync + DDlogTyped + Debug + 'static,
+        P: Send + Sync + DDlog + Debug + 'static,
     {
         deduce_sinks_or_sources(node_cfg, true)
             .iter()
@@ -540,7 +540,7 @@ where
         inventory: Arc<dyn DDlogInventory + Send + Sync>,
     ) -> Result<(), String>
     where
-        P: Send + Sync + DDlogTyped + Debug + 'static,
+        P: Send + Sync + DDlog + Debug + 'static,
     {
         deduce_outputs(node_cfg, assignment)?
             .into_iter()
@@ -560,7 +560,7 @@ pub fn instantiate<P, C, D>(
     program: P,
 ) -> Result<Vec<Realization<C, D>>, String>
 where
-    P: Send + Sync + DDlogTyped + DDlogInventory + Debug + 'static,
+    P: Send + Sync + DDlog + DDlogInventory + Debug + 'static,
     C: Send + DDlogConvert + Debug,
     D: Serialize
         + DeserializeOwned

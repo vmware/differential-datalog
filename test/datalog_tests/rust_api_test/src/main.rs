@@ -19,7 +19,7 @@ use tutorial_ddlog::typedefs::*;
                                   // The differential_datalog crate contains the DDlog runtime that is
 // the same for all DDlog programs and simply gets copied to each generated
 // DDlog workspace unmodified (this will change in future releases).
-use differential_datalog::{DDlogInventory, DDlogUntyped, DDlogTyped}; // Trait that must be implemented by an instance of a DDlog program.
+use differential_datalog::{DDlog, DDlogInventory, DDlogDynamic}; // Trait that must be implemented by an instance of a DDlog program.
 use differential_datalog::DeltaMap; // Type that represents a set of changes to DDlog relations.
                                     // Returned by `DDlog::transaction_commit_dump_changes()`.
 use differential_datalog::ddval::DDValue; // Generic type that wraps all DDlog value.
@@ -143,11 +143,11 @@ fn main() -> Result<(), String> {
         ),
     )];
 
-    // Use `apply_updates_untyped` instead of `apply_updates` for dynamically
+    // Use `apply_updates_dynamic` instead of `apply_updates` for dynamically
     // typed commands.
     // This will fail if the records in `commands` don't match the DDlog type
     // declarations (e.g., missing constructor arguments, string instead of integer, etc.)
-    hddlog.apply_updates_untyped(&mut commands.into_iter())?;
+    hddlog.apply_updates_dynamic(&mut commands.into_iter())?;
 
     let delta = hddlog.transaction_commit_dump_changes()?;
 

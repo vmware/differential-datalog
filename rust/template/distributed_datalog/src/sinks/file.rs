@@ -1,6 +1,6 @@
 use differential_datalog::ddval::DDValue;
 use differential_datalog::program::Update;
-use differential_datalog::{CommandRecorder, DDlogInventory, DDlogTyped, DDlogUntyped};
+use differential_datalog::{CommandRecorder, DDlog, DDlogDynamic, DDlogInventory};
 use log::trace;
 use std::fs::File as FsFile;
 use std::sync::Arc;

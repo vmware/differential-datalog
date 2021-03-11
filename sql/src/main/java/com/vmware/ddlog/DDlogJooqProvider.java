@@ -206,17 +206,21 @@ public final class DDlogJooqProvider implements MockDataProvider {
 
         @Override
         public MockResult visit(final SqlCall call) {
-            switch (call.getKind()) {
-                case SELECT:
-                    return visitSelect((SqlSelect) call);
-                case INSERT:
-                    return visitInsert((SqlInsert) call);
-                case DELETE:
-                    return visitDelete((SqlDelete) call);
-                case UPDATE:
-                    return visitUpdate((SqlUpdate) call);
-                default:
-                    return exception(call.toString());
+            try {
+                switch (call.getKind()) {
+                    case SELECT:
+                        return visitSelect((SqlSelect) call);
+                    case INSERT:
+                        return visitInsert((SqlInsert) call);
+                    case DELETE:
+                        return visitDelete((SqlDelete) call);
+                    case UPDATE:
+                        return visitUpdate((SqlUpdate) call);
+                    default:
+                        return exception(call.toString());
+                }
+            } catch (final DDlogException e) {
+                return exception(e);
             }
         }
 
@@ -232,7 +236,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
             return new MockResult(1, result);
         }
 
-        private MockResult visitInsert(final SqlInsert insert) {
+        private MockResult visitInsert(final SqlInsert insert) throws DDlogException {
             // The assertions below, and in the ParseWhereClauseForDeletes visitor encode assumption A2
             // (see javadoc for the DDlogJooqProvider class)
             if (insert.getSource().getKind() != SqlKind.VALUES || !(insert.getTargetTable() instanceof SqlIdentifier)) {
@@ -278,7 +282,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
             return new MockResult(values.length, result);
         }
 
-        private MockResult visitDelete(final SqlDelete delete) {
+        private MockResult visitDelete(final SqlDelete delete) throws DDlogException {
             // The assertions below, and in the ParseWhereClauseForDeletes visitor encode assumption A3
             // (see javadoc for the DDlogJooqProvider class)
             if (delete.getCondition() == null || !(delete.getTargetTable() instanceof SqlIdentifier)) {
@@ -302,7 +306,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
             return new MockResult(1, result);
         }
 
-        private MockResult visitUpdate(final SqlUpdate update) {
+        private MockResult visitUpdate(final SqlUpdate update) throws DDlogException {
             // The assertions below, and in the ParseWhereClauseForDeletes visitor encode assumption A4
             // (see javadoc for the DDlogJooqProvider class)
             if (update.getCondition() == null || !(update.getTargetTable() instanceof SqlIdentifier)) {

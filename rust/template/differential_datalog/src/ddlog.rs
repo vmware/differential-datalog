@@ -74,13 +74,13 @@ pub trait DDlogDump {
 }
 /// A trait capturing the handling of transactions using the dynamically typed
 /// representation of DDlog values as `enum Record`.
-pub trait DDlogUntyped {
+pub trait DDlogDynamic {
     /// Start a transaction.
     fn transaction_start(&self) -> Result<(), String>;
 
     /// Commit a transaction previously started using
     /// `transaction_start`, producing a map of deltas.
-    fn transaction_commit_dump_changes_untyped(
+    fn transaction_commit_dump_changes_dynamic(
         &self,
     ) -> Result<BTreeMap<RelId, Vec<(Record, isize)>>, String>;
 
@@ -93,23 +93,23 @@ pub trait DDlogUntyped {
     fn transaction_rollback(&self) -> Result<(), String>;
 
     /// Apply a set of updates.
-    fn apply_updates_untyped(&self, upds: &mut dyn Iterator<Item = UpdCmd>) -> Result<(), String>;
+    fn apply_updates_dynamic(&self, upds: &mut dyn Iterator<Item = UpdCmd>) -> Result<(), String>;
 
     fn clear_relation(&self, table: RelId) -> Result<(), String>;
 
     /// Query index passing key as a record.  Returns all values associated with the given key in the index.
-    fn query_index_untyped(&self, index: IdxId, key: &Record) -> Result<Vec<Record>, String>;
+    fn query_index_dynamic(&self, index: IdxId, key: &Record) -> Result<Vec<Record>, String>;
 
     /// Dump all values in an index.
-    fn dump_index_untyped(&self, index: IdxId) -> Result<Vec<Record>, String>;
+    fn dump_index_dynamic(&self, index: IdxId) -> Result<Vec<Record>, String>;
 
     /// Stop the program.
     fn stop(&self) -> Result<(), String>;
 }
 
-/// Extend `trait DDlog` with methods that offer a strongly typed interface
+/// Extend `trait DDlogDynamic` with methods that offer a strongly typed interface
 /// to relations and indexes using `DDValue`.
-pub trait DDlogTyped: DDlogUntyped {
+pub trait DDlog: DDlogDynamic {
     /// Commit a transaction previously started using
     /// `transaction_start`, producing a map of deltas.
     fn transaction_commit_dump_changes(&self) -> Result<DeltaMap<DDValue>, String>;
