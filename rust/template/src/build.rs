@@ -12,6 +12,11 @@ fn libtool() {
     let topdir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let fbufpath = format!("{}/src/flatbuf.rs", topdir);
 
+    /* When `build.rs` is present, Cargo triggers recompilation whenever any
+     * file in the Rust project directory changes, including auto-generated
+     * Java files.  As a workaround, the following commands tell cargo to
+     * only recompile when one of the listed files changes. */
+
     /* Only include flatbuf files as dependencies if the project was
      * compiled with flatbuf support.
      */
@@ -19,10 +24,11 @@ fn libtool() {
         println!("cargo:rerun-if-changed=src/flatbuf.rs");
         println!("cargo:rerun-if-changed=src/flatbuf_generated.rs");
     }
-    println!("cargo:rerun-if-changed=src/api.rs");
     println!("cargo:rerun-if-changed=src/lib.rs");
     println!("cargo:rerun-if-changed=src/main.rs");
-    println!("cargo:rerun-if-changed=src/ovsdb.rs");
+    println!("cargo:rerun-if-changed=src/api/mod.rs");
+    println!("cargo:rerun-if-changed=src/api/c_api.rs");
+    println!("cargo:rerun-if-changed=src/ovsdb_api.rs");
     println!("cargo:rerun-if-changed=src/update_handler.rs");
 
     let lib = "libdatalog_example_ddlog";
