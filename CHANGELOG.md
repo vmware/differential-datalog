@@ -5,6 +5,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### API changes
+
+There are some breaking API changes in this release:
+
+- Rust API:
+  - Factored the Rust API into several traits declared in the
+    `differential_datalog` crate:
+      - `trait DDlogDynamic` - works with data represented as records.
+      - `trait DDlog` - extends `DDlogDynamic` to work with strongly typed
+         values wrapped in `DDValue`.
+      - `trait DDlogProfiling` - profiling API.
+      - `trait DDlogDump` - dump tables and indexes.
+      - `DDlogInventory` - convert between relation/index names and numeric ids.
+  - Renamed `apply_valupdates` -> `apply_updates`,
+            `apply_updates` -> `apply_updates_dynamic`.
+  - Changed method signatures to eliminate any generics.  This way we will
+    be able to implement dynamic dispatch for the DDlog API (i.e., pass
+    references to a DDlog program as `&dyn DDlogXXX`) in the future.
+
+- C, Java, Go API.  `ddlog_get_table_id`, `ddlog_get_index_id` methods now
+  require a DDlog instance, e.g., old signature:
+  ```
+  extern table_id ddlog_get_table_id(const char* tname);
+  ```
+  new signature:
+  ```
+  extern table_id ddlog_get_table_id(ddlog_prog hprog, const char* tname);
+  ```
+
 ### Libraries
 
 - Functional HashSets, aka immutable hashsets (`lib/hashset.dl`).  At the API
