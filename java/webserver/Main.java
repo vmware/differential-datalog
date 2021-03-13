@@ -150,7 +150,7 @@ public class Main {
         reachUpdateBuilder builder;
 
         public DDlog() throws DDlogException {
-            this.api = new DDlogAPI(1, null, false);
+            this.api = new DDlogAPI(1, false);
         }
 
         void start() throws DDlogException {
@@ -175,7 +175,7 @@ public class Main {
         }
 
         // True if this table is the "Canonical" table.
-        public boolean isCanonical(int tableId) {
+        public boolean isCanonical(int tableId) throws DDlogException {
             return this.api.getTableId("Canonical") == tableId;
         }
     }
