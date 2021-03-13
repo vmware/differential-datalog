@@ -50,7 +50,6 @@ import Data.Bits hiding (isSigned)
 import Data.List.Split
 import Data.FileEmbed
 import System.FilePath
-import System.Directory
 import qualified Data.ByteString.Char8 as BS
 import Numeric
 import qualified Data.Set as S
@@ -181,88 +180,86 @@ rustProjectDir = ?specname ++ "_ddlog"
 templateFiles :: (?specname::String) => [(String, String)]
 templateFiles =
     map (mapSnd (unpackFixNewline)) $
-        [ (dir </> "src/build.rs"               , $(embedFile "rust/template/src/build.rs"))
-        , (dir </> "src/main.rs"                , $(embedFile "rust/template/src/main.rs"))
-        , (dir </> "src/api/mod.rs"             , $(embedFile "rust/template/src/api/mod.rs"))
-        , (dir </> "src/api/c_api.rs"           , $(embedFile "rust/template/src/api/c_api.rs"))
-        , (dir </> "src/ovsdb_api.rs"           , $(embedFile "rust/template/src/ovsdb_api.rs"))
-        , (dir </> "src/update_handler.rs"      , $(embedFile "rust/template/src/update_handler.rs"))
-        , (dir </> "ddlog.h"                    , $(embedFile "rust/template/ddlog.h"))
-        , (dir </> "ddlog_ovsdb_test.c"         , $(embedFile "rust/template/ddlog_ovsdb_test.c"))
+        [ ("src/build.rs"               , $(embedFile "rust/template/src/build.rs"))
+        , ("src/main.rs"                , $(embedFile "rust/template/src/main.rs"))
+        , ("src/api/mod.rs"             , $(embedFile "rust/template/src/api/mod.rs"))
+        , ("src/api/c_api.rs"           , $(embedFile "rust/template/src/api/c_api.rs"))
+        , ("src/ovsdb_api.rs"           , $(embedFile "rust/template/src/ovsdb_api.rs"))
+        , ("src/update_handler.rs"      , $(embedFile "rust/template/src/update_handler.rs"))
+        , ("ddlog.h"                    , $(embedFile "rust/template/ddlog.h"))
+        , ("ddlog_ovsdb_test.c"         , $(embedFile "rust/template/ddlog_ovsdb_test.c"))
         ]
-    where dir = rustProjectDir
 
 -- Rust differential_datalog library
 rustLibFiles :: (?specname::String) => [(String, String)]
 rustLibFiles =
     map (mapSnd (unpackFixNewline)) $
-        [ (dir </> "differential_datalog/Cargo.toml"                      , $(embedFile "rust/template/differential_datalog/Cargo.toml"))
-        , (dir </> "differential_datalog/src/callback.rs"                 , $(embedFile "rust/template/differential_datalog/src/callback.rs"))
-        , (dir </> "differential_datalog/src/ddlog.rs"                    , $(embedFile "rust/template/differential_datalog/src/ddlog.rs"))
-        , (dir </> "differential_datalog/src/ddval/mod.rs"                , $(embedFile "rust/template/differential_datalog/src/ddval/mod.rs"))
-        , (dir </> "differential_datalog/src/ddval/ddvalue.rs"            , $(embedFile "rust/template/differential_datalog/src/ddval/ddvalue.rs"))
-        , (dir </> "differential_datalog/src/ddval/ddval_convert.rs"      , $(embedFile "rust/template/differential_datalog/src/ddval/ddval_convert.rs"))
-        , (dir </> "differential_datalog/src/lib.rs"                      , $(embedFile "rust/template/differential_datalog/src/lib.rs"))
-        , (dir </> "differential_datalog/src/profile.rs"                  , $(embedFile "rust/template/differential_datalog/src/profile.rs"))
-        , (dir </> "differential_datalog/src/profile_statistics.rs"       , $(embedFile "rust/template/differential_datalog/src/profile_statistics.rs"))
-        , (dir </> "differential_datalog/src/program/mod.rs"              , $(embedFile "rust/template/differential_datalog/src/program/mod.rs"))
-        , (dir </> "differential_datalog/src/program/update.rs"           , $(embedFile "rust/template/differential_datalog/src/program/update.rs"))
-        , (dir </> "differential_datalog/src/program/arrange.rs"          , $(embedFile "rust/template/differential_datalog/src/program/arrange.rs"))
-        , (dir </> "differential_datalog/src/program/timestamp.rs"        , $(embedFile "rust/template/differential_datalog/src/program/timestamp.rs"))
-        , (dir </> "differential_datalog/src/program/worker.rs"           , $(embedFile "rust/template/differential_datalog/src/program/worker.rs"))
-        , (dir </> "differential_datalog/src/record/mod.rs"               , $(embedFile "rust/template/differential_datalog/src/record/mod.rs"))
-        , (dir </> "differential_datalog/src/record/tuples.rs"            , $(embedFile "rust/template/differential_datalog/src/record/tuples.rs"))
-        , (dir </> "differential_datalog/src/record/arrays.rs"            , $(embedFile "rust/template/differential_datalog/src/record/arrays.rs"))
-        , (dir </> "differential_datalog/src/replay.rs"                   , $(embedFile "rust/template/differential_datalog/src/replay.rs"))
-        , (dir </> "differential_datalog/src/test_record.rs"              , $(embedFile "rust/template/differential_datalog/src/test_record.rs"))
-        , (dir </> "differential_datalog/src/valmap.rs"                   , $(embedFile "rust/template/differential_datalog/src/valmap.rs"))
-        , (dir </> "differential_datalog/src/variable.rs"                 , $(embedFile "rust/template/differential_datalog/src/variable.rs"))
-        , (dir </> "differential_datalog_test/Cargo.toml"                 , $(embedFile "rust/template/differential_datalog_test/Cargo.toml"))
-        , (dir </> "differential_datalog_test/lib.rs"                     , $(embedFile "rust/template/differential_datalog_test/lib.rs"))
-        , (dir </> "differential_datalog_test/test_value.rs"              , $(embedFile "rust/template/differential_datalog_test/test_value.rs"))
-        , (dir </> "ddlog_derive/Cargo.toml"                              , $(embedFile "rust/template/ddlog_derive/Cargo.toml"))
-        , (dir </> "ddlog_derive/src/lib.rs"                              , $(embedFile "rust/template/ddlog_derive/src/lib.rs"))
-        , (dir </> "ddlog_derive/src/from_record.rs"                      , $(embedFile "rust/template/ddlog_derive/src/from_record.rs"))
-        , (dir </> "ddlog_derive/src/into_record.rs"                      , $(embedFile "rust/template/ddlog_derive/src/into_record.rs"))
-        , (dir </> "ddlog_derive/src/mutator.rs"                          , $(embedFile "rust/template/ddlog_derive/src/mutator.rs"))
-        , (dir </> "cmd_parser/Cargo.toml"                                , $(embedFile "rust/template/cmd_parser/Cargo.toml"))
-        , (dir </> "cmd_parser/lib.rs"                                    , $(embedFile "rust/template/cmd_parser/lib.rs"))
-        , (dir </> "cmd_parser/parse.rs"                                  , $(embedFile "rust/template/cmd_parser/parse.rs"))
-        , (dir </> "distributed_datalog/Cargo.toml"                       , $(embedFile "rust/template/distributed_datalog/Cargo.toml"))
-        , (dir </> "distributed_datalog/src/assign.rs"                    , $(embedFile "rust/template/distributed_datalog/src/assign.rs"))
-        , (dir </> "distributed_datalog/src/accumulate/mod.rs"            , $(embedFile "rust/template/distributed_datalog/src/accumulate/mod.rs"))
-        , (dir </> "distributed_datalog/src/accumulate/accumulator.rs"    , $(embedFile "rust/template/distributed_datalog/src/accumulate/accumulator.rs"))
-        , (dir </> "distributed_datalog/src/accumulate/observer.rs"       , $(embedFile "rust/template/distributed_datalog/src/accumulate/observer.rs"))
-        , (dir </> "distributed_datalog/src/accumulate/test.rs"           , $(embedFile "rust/template/distributed_datalog/src/accumulate/test.rs"))
-        , (dir </> "distributed_datalog/src/accumulate/txndistributor.rs" , $(embedFile "rust/template/distributed_datalog/src/accumulate/txndistributor.rs"))
-        , (dir </> "distributed_datalog/src/instantiate.rs"               , $(embedFile "rust/template/distributed_datalog/src/instantiate.rs"))
-        , (dir </> "distributed_datalog/src/lib.rs"                       , $(embedFile "rust/template/distributed_datalog/src/lib.rs"))
-        , (dir </> "distributed_datalog/src/observe/mod.rs"               , $(embedFile "rust/template/distributed_datalog/src/observe/mod.rs"))
-        , (dir </> "distributed_datalog/src/observe/observable.rs"        , $(embedFile "rust/template/distributed_datalog/src/observe/observable.rs"))
-        , (dir </> "distributed_datalog/src/observe/observer.rs"          , $(embedFile "rust/template/distributed_datalog/src/observe/observer.rs"))
-        , (dir </> "distributed_datalog/src/observe/test.rs"              , $(embedFile "rust/template/distributed_datalog/src/observe/test.rs"))
-        , (dir </> "distributed_datalog/src/read_config.rs"               , $(embedFile "rust/template/distributed_datalog/src/read_config.rs"))
-        , (dir </> "distributed_datalog/src/schema.rs"                    , $(embedFile "rust/template/distributed_datalog/src/schema.rs"))
-        , (dir </> "distributed_datalog/src/server.rs"                    , $(embedFile "rust/template/distributed_datalog/src/server.rs"))
-        , (dir </> "distributed_datalog/src/sinks/file.rs"                , $(embedFile "rust/template/distributed_datalog/src/sinks/file.rs"))
-        , (dir </> "distributed_datalog/src/sinks/mod.rs"                 , $(embedFile "rust/template/distributed_datalog/src/sinks/mod.rs"))
-        , (dir </> "distributed_datalog/src/sources/file.rs"              , $(embedFile "rust/template/distributed_datalog/src/sources/file.rs"))
-        , (dir </> "distributed_datalog/src/sources/mod.rs"               , $(embedFile "rust/template/distributed_datalog/src/sources/mod.rs"))
-        , (dir </> "distributed_datalog/src/tcp_channel/message.rs"       , $(embedFile "rust/template/distributed_datalog/src/tcp_channel/message.rs"))
-        , (dir </> "distributed_datalog/src/tcp_channel/mod.rs"           , $(embedFile "rust/template/distributed_datalog/src/tcp_channel/mod.rs"))
-        , (dir </> "distributed_datalog/src/tcp_channel/receiver.rs"      , $(embedFile "rust/template/distributed_datalog/src/tcp_channel/receiver.rs"))
-        , (dir </> "distributed_datalog/src/tcp_channel/sender.rs"        , $(embedFile "rust/template/distributed_datalog/src/tcp_channel/sender.rs"))
-        , (dir </> "distributed_datalog/src/tcp_channel/socket.rs"        , $(embedFile "rust/template/distributed_datalog/src/tcp_channel/socket.rs"))
-        , (dir </> "distributed_datalog/src/tcp_channel/txnbuf.rs"        , $(embedFile "rust/template/distributed_datalog/src/tcp_channel/txnbuf.rs"))
-        , (dir </> "distributed_datalog/src/test.rs"                      , $(embedFile "rust/template/distributed_datalog/src/test.rs"))
-        , (dir </> "distributed_datalog/src/txnmux.rs"                    , $(embedFile "rust/template/distributed_datalog/src/txnmux.rs"))
-        , (dir </> "distributed_datalog/src/zookeeper.rs"                 , $(embedFile "rust/template/distributed_datalog/src/zookeeper.rs"))
-        , (dir </> "ovsdb/Cargo.toml"                                     , $(embedFile "rust/template/ovsdb/Cargo.toml"))
-        , (dir </> "ovsdb/lib.rs"                                         , $(embedFile "rust/template/ovsdb/lib.rs"))
-        , (dir </> "ovsdb/test.rs"                                        , $(embedFile "rust/template/ovsdb/test.rs"))
-        , (dir </> ".cargo/config.toml"                                   , $(embedFile "rust/template/.cargo/config.toml"))
+        [ ("differential_datalog/Cargo.toml"                      , $(embedFile "rust/template/differential_datalog/Cargo.toml"))
+        , ("differential_datalog/src/callback.rs"                 , $(embedFile "rust/template/differential_datalog/src/callback.rs"))
+        , ("differential_datalog/src/ddlog.rs"                    , $(embedFile "rust/template/differential_datalog/src/ddlog.rs"))
+        , ("differential_datalog/src/ddval/mod.rs"                , $(embedFile "rust/template/differential_datalog/src/ddval/mod.rs"))
+        , ("differential_datalog/src/ddval/ddvalue.rs"            , $(embedFile "rust/template/differential_datalog/src/ddval/ddvalue.rs"))
+        , ("differential_datalog/src/ddval/ddval_convert.rs"      , $(embedFile "rust/template/differential_datalog/src/ddval/ddval_convert.rs"))
+        , ("differential_datalog/src/lib.rs"                      , $(embedFile "rust/template/differential_datalog/src/lib.rs"))
+        , ("differential_datalog/src/profile.rs"                  , $(embedFile "rust/template/differential_datalog/src/profile.rs"))
+        , ("differential_datalog/src/profile_statistics.rs"       , $(embedFile "rust/template/differential_datalog/src/profile_statistics.rs"))
+        , ("differential_datalog/src/program/mod.rs"              , $(embedFile "rust/template/differential_datalog/src/program/mod.rs"))
+        , ("differential_datalog/src/program/update.rs"           , $(embedFile "rust/template/differential_datalog/src/program/update.rs"))
+        , ("differential_datalog/src/program/arrange.rs"          , $(embedFile "rust/template/differential_datalog/src/program/arrange.rs"))
+        , ("differential_datalog/src/program/timestamp.rs"        , $(embedFile "rust/template/differential_datalog/src/program/timestamp.rs"))
+        , ("differential_datalog/src/program/worker.rs"           , $(embedFile "rust/template/differential_datalog/src/program/worker.rs"))
+        , ("differential_datalog/src/record/mod.rs"               , $(embedFile "rust/template/differential_datalog/src/record/mod.rs"))
+        , ("differential_datalog/src/record/tuples.rs"            , $(embedFile "rust/template/differential_datalog/src/record/tuples.rs"))
+        , ("differential_datalog/src/record/arrays.rs"            , $(embedFile "rust/template/differential_datalog/src/record/arrays.rs"))
+        , ("differential_datalog/src/replay.rs"                   , $(embedFile "rust/template/differential_datalog/src/replay.rs"))
+        , ("differential_datalog/src/test_record.rs"              , $(embedFile "rust/template/differential_datalog/src/test_record.rs"))
+        , ("differential_datalog/src/valmap.rs"                   , $(embedFile "rust/template/differential_datalog/src/valmap.rs"))
+        , ("differential_datalog/src/variable.rs"                 , $(embedFile "rust/template/differential_datalog/src/variable.rs"))
+        , ("differential_datalog_test/Cargo.toml"                 , $(embedFile "rust/template/differential_datalog_test/Cargo.toml"))
+        , ("differential_datalog_test/lib.rs"                     , $(embedFile "rust/template/differential_datalog_test/lib.rs"))
+        , ("differential_datalog_test/test_value.rs"              , $(embedFile "rust/template/differential_datalog_test/test_value.rs"))
+        , ("ddlog_derive/Cargo.toml"                              , $(embedFile "rust/template/ddlog_derive/Cargo.toml"))
+        , ("ddlog_derive/src/lib.rs"                              , $(embedFile "rust/template/ddlog_derive/src/lib.rs"))
+        , ("ddlog_derive/src/from_record.rs"                      , $(embedFile "rust/template/ddlog_derive/src/from_record.rs"))
+        , ("ddlog_derive/src/into_record.rs"                      , $(embedFile "rust/template/ddlog_derive/src/into_record.rs"))
+        , ("ddlog_derive/src/mutator.rs"                          , $(embedFile "rust/template/ddlog_derive/src/mutator.rs"))
+        , ("cmd_parser/Cargo.toml"                                , $(embedFile "rust/template/cmd_parser/Cargo.toml"))
+        , ("cmd_parser/lib.rs"                                    , $(embedFile "rust/template/cmd_parser/lib.rs"))
+        , ("cmd_parser/parse.rs"                                  , $(embedFile "rust/template/cmd_parser/parse.rs"))
+        , ("distributed_datalog/Cargo.toml"                       , $(embedFile "rust/template/distributed_datalog/Cargo.toml"))
+        , ("distributed_datalog/src/assign.rs"                    , $(embedFile "rust/template/distributed_datalog/src/assign.rs"))
+        , ("distributed_datalog/src/accumulate/mod.rs"            , $(embedFile "rust/template/distributed_datalog/src/accumulate/mod.rs"))
+        , ("distributed_datalog/src/accumulate/accumulator.rs"    , $(embedFile "rust/template/distributed_datalog/src/accumulate/accumulator.rs"))
+        , ("distributed_datalog/src/accumulate/observer.rs"       , $(embedFile "rust/template/distributed_datalog/src/accumulate/observer.rs"))
+        , ("distributed_datalog/src/accumulate/test.rs"           , $(embedFile "rust/template/distributed_datalog/src/accumulate/test.rs"))
+        , ("distributed_datalog/src/accumulate/txndistributor.rs" , $(embedFile "rust/template/distributed_datalog/src/accumulate/txndistributor.rs"))
+        , ("distributed_datalog/src/instantiate.rs"               , $(embedFile "rust/template/distributed_datalog/src/instantiate.rs"))
+        , ("distributed_datalog/src/lib.rs"                       , $(embedFile "rust/template/distributed_datalog/src/lib.rs"))
+        , ("distributed_datalog/src/observe/mod.rs"               , $(embedFile "rust/template/distributed_datalog/src/observe/mod.rs"))
+        , ("distributed_datalog/src/observe/observable.rs"        , $(embedFile "rust/template/distributed_datalog/src/observe/observable.rs"))
+        , ("distributed_datalog/src/observe/observer.rs"          , $(embedFile "rust/template/distributed_datalog/src/observe/observer.rs"))
+        , ("distributed_datalog/src/observe/test.rs"              , $(embedFile "rust/template/distributed_datalog/src/observe/test.rs"))
+        , ("distributed_datalog/src/read_config.rs"               , $(embedFile "rust/template/distributed_datalog/src/read_config.rs"))
+        , ("distributed_datalog/src/schema.rs"                    , $(embedFile "rust/template/distributed_datalog/src/schema.rs"))
+        , ("distributed_datalog/src/server.rs"                    , $(embedFile "rust/template/distributed_datalog/src/server.rs"))
+        , ("distributed_datalog/src/sinks/file.rs"                , $(embedFile "rust/template/distributed_datalog/src/sinks/file.rs"))
+        , ("distributed_datalog/src/sinks/mod.rs"                 , $(embedFile "rust/template/distributed_datalog/src/sinks/mod.rs"))
+        , ("distributed_datalog/src/sources/file.rs"              , $(embedFile "rust/template/distributed_datalog/src/sources/file.rs"))
+        , ("distributed_datalog/src/sources/mod.rs"               , $(embedFile "rust/template/distributed_datalog/src/sources/mod.rs"))
+        , ("distributed_datalog/src/tcp_channel/message.rs"       , $(embedFile "rust/template/distributed_datalog/src/tcp_channel/message.rs"))
+        , ("distributed_datalog/src/tcp_channel/mod.rs"           , $(embedFile "rust/template/distributed_datalog/src/tcp_channel/mod.rs"))
+        , ("distributed_datalog/src/tcp_channel/receiver.rs"      , $(embedFile "rust/template/distributed_datalog/src/tcp_channel/receiver.rs"))
+        , ("distributed_datalog/src/tcp_channel/sender.rs"        , $(embedFile "rust/template/distributed_datalog/src/tcp_channel/sender.rs"))
+        , ("distributed_datalog/src/tcp_channel/socket.rs"        , $(embedFile "rust/template/distributed_datalog/src/tcp_channel/socket.rs"))
+        , ("distributed_datalog/src/tcp_channel/txnbuf.rs"        , $(embedFile "rust/template/distributed_datalog/src/tcp_channel/txnbuf.rs"))
+        , ("distributed_datalog/src/test.rs"                      , $(embedFile "rust/template/distributed_datalog/src/test.rs"))
+        , ("distributed_datalog/src/txnmux.rs"                    , $(embedFile "rust/template/distributed_datalog/src/txnmux.rs"))
+        , ("distributed_datalog/src/zookeeper.rs"                 , $(embedFile "rust/template/distributed_datalog/src/zookeeper.rs"))
+        , ("ovsdb/Cargo.toml"                                     , $(embedFile "rust/template/ovsdb/Cargo.toml"))
+        , ("ovsdb/lib.rs"                                         , $(embedFile "rust/template/ovsdb/lib.rs"))
+        , ("ovsdb/test.rs"                                        , $(embedFile "rust/template/ovsdb/test.rs"))
+        , (".cargo/config.toml"                                   , $(embedFile "rust/template/.cargo/config.toml"))
         ]
-    where dir = rustProjectDir
 
 {- The following types model corresponding entities in program.rs -}
 
@@ -523,11 +520,8 @@ compile d_unoptimized specname modules rs_code dir crate_types = do
     let ?specname = specname
     let -- Partition modules into crates.
         ?crate_graph = partitionIntoCrates ?modules
-    -- Create dir if it does not exist.
-    createDirectoryIfMissing True (dir </> rustProjectDir)
     -- dump dependency graph to file
-    updateFile (dir </> rustProjectDir </> ?specname <.> "dot")
-               (depGraphToDot $ progDependencyGraph d_unoptimized)
+    let dot_file = (?specname <.> "dot", depGraphToDot $ progDependencyGraph d_unoptimized)
     -- Apply optimizations; transform the program to a form that this
     -- compiler can handle; make sure the program has at least one relation.
     let d = addDummyRel
@@ -540,18 +534,11 @@ compile d_unoptimized specname modules rs_code dir crate_types = do
     -- Produce flatbuffer bindings if either the java or rust bindings are enabled
     compileFlatBufferBindings d rs_code (dir </> rustProjectDir)
     -- Substitute specname in template files; write files if changed.
-    mapM_ (\(path, content) -> do
-            let path' = dir </> path
-                content' = replace "datalog_example" ?specname content
-            updateFile path' content')
-          $ templateFiles
-    -- Update rustLibFiles if they changed.
-    mapM_ (\(path, content) -> do
-            let path' = dir </> path
-            updateFile path' content)
-          rustLibFiles
+    let template_files = map (\(path, content) ->
+                               (path, replace "datalog_example" ?specname content))
+                         templateFiles
     -- Generate lib files if changed.
-    updateDirectory (dir </> rustProjectDir </> "types") $ M.map render types
+    let type_files = M.toList $ M.mapKeys ("types" </>) $ M.map render types
     let toml_footer =
             ( if (confOmitProfile ?cfg)
                 then ""
@@ -578,8 +565,10 @@ compile d_unoptimized specname modules rs_code dir crate_types = do
                         ++ "    \"ovsdb\",\n"
                         ++ "]\n"
                 )
-    updateFile (dir </> rustProjectDir </> "Cargo.toml")       (render $ mainCargo crate_types toml_footer)
-    updateFile (dir </> rustProjectDir </> "src/lib.rs")       (render main)
+    let toml_file = ("Cargo.toml", render $ mainCargo crate_types toml_footer)
+    let lib_file = ("src/lib.rs", render main)
+    updateDirectory (dir </> rustProjectDir) ["flatbuf", "src/flatbuf_generated.rs", "src/flatbuf.rs"]
+                    $ dot_file : toml_file : lib_file : (type_files ++ rustLibFiles ++ template_files)
     return ()
 
 -- For each delayed relation 'R-n' that occurs in the program,
