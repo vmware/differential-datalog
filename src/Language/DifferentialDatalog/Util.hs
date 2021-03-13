@@ -35,6 +35,7 @@ import Data.Bits
 import Data.Word
 import Data.Binary.Get
 import qualified Data.Map as M
+import qualified Data.Set as S
 import qualified Data.ByteString.Lazy as BL
 import System.Console.ANSI
 import System.Directory
@@ -185,32 +186,38 @@ updateFile path content = do
 -- | Update an entire directory tree, updating files whose contents has changed,
 -- creating new files and deleting files not in `files` list, but keeping
 -- files that haven't changed unmodified.
-updateDirectory :: FilePath -> M.Map FilePath String -> IO ()
-updateDirectory dir files = do
+-- Ignores files and directories in the 'exclusions' list.
+updateDirectory :: FilePath -> [FilePath] -> [(FilePath, String)] -> IO ()
+updateDirectory dir exclusions files = do
     -- Prepend directory path to all file names.
-    let files' = M.mapKeys (dir </>) files
+    let files' = M.fromList $ map (\(p, x) -> (dir </> p, x)) files
+    let exclusions' = map (dir </>) exclusions
+    let is_exclusion f = any (\exc -> isPrefixOf exc f) exclusions'
     -- Current directory contents.
     exists <- doesDirectoryExist dir
     existing_files <- if exists
-                      then traverseDir dir
+                      then traverseDir dir (S.fromList exclusions')
                       else return []
     -- Files not in the tree.
     let to_delete = filter (\f -> M.notMember f files') existing_files
     mapM_ removeFile to_delete
     -- Update or create files in the tree.
-    mapM_ (\(mpath, mtext) -> updateFile mpath mtext)
+    mapM_ (\(mpath, mtext) -> when (not $ is_exclusion mpath) $ updateFile mpath mtext)
           $ M.toList files'
 
 -- | Traverse directory tree, returning the list of files in it.
-traverseDir :: FilePath -> IO [FilePath]
-traverseDir top = do
+traverseDir :: FilePath -> S.Set FilePath -> IO [FilePath]
+traverseDir top exclusions = do
   ds <- listDirectory top
   paths <- forM ds $ \d -> do
     let path = top </> d
-    is_dir <- doesDirectoryExist path
-    if is_dir
-       then traverseDir path
-       else return [path]
+    if (S.member path exclusions) 
+    then return []
+    else do
+        is_dir <- doesDirectoryExist path
+        if is_dir
+           then traverseDir path exclusions
+           else return [path]
   return (concat paths)
 
 -- | Runs a command, exiting with an error for users if it fails
