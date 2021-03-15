@@ -43,8 +43,8 @@ multiple updates that are known at the same time.
 
 ## Name scoping
 
-Relations and constructors declared in the top-level module are referred by their local name;
-all other relation and constructor must be referred by their fully qualified DDlog name,
+Relations and constructors declared in the top-level module are referred by their local names;
+all other relations and constructors must be referred by their fully qualified DDlog names,
 including module name:
 
 ```
