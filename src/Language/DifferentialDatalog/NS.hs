@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2018-2020 VMware, Inc.
+Copyright (c) 2018-2021 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -177,7 +177,8 @@ ctxVars' d ctx with_types =
     case ctx of
          CtxTop                   -> ([], [])
          CtxFunc f                -> (map (arg2v f) $ funcMutArgs f, map (arg2v f) $ funcImmutArgs f)
-         CtxRuleL rl _            -> ([], ruleVars d rl)
+         CtxRuleLAtom rl _        -> ([], ruleVars d rl)
+         CtxRuleLLocation rl _    -> ([], ruleVars d rl)
          CtxRuleRAtom rl i        -> ([], ruleRHSVars d rl i)
          CtxRuleRCond rl i        -> ([], ruleRHSVars d rl i)
          CtxRuleRFlatMap rl i     -> ([], ruleRHSVars d rl i)

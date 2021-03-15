@@ -21,7 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 -}
 
-{-# LANGUAGE RecordWildCards, FlexibleContexts, LambdaCase, TupleSections #-}
+{-# LANGUAGE RecordWildCards, FlexibleContexts, LambdaCase, TupleSections, ImplicitParams #-}
 
 module Language.DifferentialDatalog.Validate (
     validate,
@@ -49,9 +49,10 @@ import Language.DifferentialDatalog.Relation
 import Language.DifferentialDatalog.Rule
 import Language.DifferentialDatalog.Attribute
 import Language.DifferentialDatalog.Error
+import Language.DifferentialDatalog.Config
 
 -- | Validate Datalog program
-validate :: (MonadError String me) => DatalogProgram -> me DatalogProgram
+validate :: (MonadError String me, ?cfg::Config) => DatalogProgram -> me DatalogProgram
 validate d = do
     uniqNames (Just d) ("Multiple definitions of constructor " ++)
               $ progConstructors d
@@ -301,7 +302,7 @@ indexValidate d idx = do
             (show $ idx_vars \\ atom_vars)
     return idx'
 
-ruleValidate :: (MonadError String me) => DatalogProgram -> Rule -> me Rule
+ruleValidate :: (MonadError String me, ?cfg::Config) => DatalogProgram -> Rule -> me Rule
 ruleValidate d rl@Rule{..} = do
     when (not $ null ruleRHS) $ do
         case head ruleRHS of
@@ -326,7 +327,10 @@ ruleValidateExpressions d rl = do
                                                  , (CtxRuleRProject rl i, rhsProject)]
                                RHSInspect{..} -> [(CtxRuleRInspect rl i, rhsInspectExpr)])
                         $ ruleRHS rl
-    let lhs_es = mapIdx (\lhs i -> (CtxRuleL rl i, atomVal lhs)) $ ruleLHS rl
+    let lhs_es = concat
+                 $ mapIdx (\RuleLHS{..} i -> (CtxRuleLAtom rl i, atomVal lhsAtom) :
+                                             (maybe [] (\l -> [(CtxRuleLLocation rl i, l)]) lhsLocation))
+                 $ ruleLHS rl
     es' <- exprsTypeCheck d [] (rhs_es++lhs_es)
     -- Put type-annotated expressions back into the rule.
     let (es'', rhss') = foldl' (\(es, rhss) rhs ->
@@ -337,7 +341,10 @@ ruleValidateExpressions d rl = do
                                      RHSGroupBy{}   -> (tail $ tail es, rhss ++ [rhs{rhsGroupBy = head es, rhsProject = head $ tail es}])
                                      RHSInspect{}   -> (tail es, rhss ++ [rhs{rhsInspectExpr = head es}]))
                             (es', []) $ ruleRHS rl
-    let ([], lhss') = foldl' (\(es, lhss) lhs -> (tail es, lhss ++ [lhs{atomVal = head es}]))
+    let ([], lhss') = foldl' (\(es, lhss) lhs ->
+                               case lhsLocation lhs of
+                               Nothing -> (tail es       , lhss ++ [lhs{lhsAtom = (lhsAtom lhs){atomVal = head es}}])
+                               Just{}  -> (tail $ tail es, lhss ++ [lhs{lhsAtom = (lhsAtom lhs){atomVal = head es}, lhsLocation  = Just $ head $ tail es}]))
                             (es'', []) $ ruleLHS rl
     let rl' = rl{ruleLHS = lhss', ruleRHS = rhss'}
 
@@ -353,7 +360,10 @@ ruleValidateExpressions d rl = do
                                                   , (CtxRuleRProject rl' i, rhsProject)]
                                 RHSInspect{..} -> [(CtxRuleRInspect rl' i, rhsInspectExpr)])
                          $ ruleRHS rl'
-    let lhs_es' = mapIdx (\lhs i -> (CtxRuleL rl' i, atomVal lhs)) $ ruleLHS rl'
+    let lhs_es' = concat
+                  $ mapIdx (\RuleLHS{..} i -> (CtxRuleLAtom rl' i, atomVal lhsAtom) :
+                                            (maybe [] (\l -> [(CtxRuleLLocation rl' i, l)]) lhsLocation))
+                  $ ruleLHS rl'
     exprsPostCheck d (rhs_es'++lhs_es')
     return rl'
 
@@ -419,19 +429,25 @@ ruleRHSValidate d rl RHSGroupBy{} idx = do
          _ -> err d (pos group_by) "Group-by expression must be a variable or a tuple of variables, e.g., 'group_by(x)' or 'group_by((x,y))'"
     return ()
 
-ruleLHSValidate :: (MonadError String me) => DatalogProgram -> Rule -> Atom -> me ()
-ruleLHSValidate d rl a@Atom{..} = do
+ruleLHSValidate :: (MonadError String me, ?cfg::Config) => DatalogProgram -> Rule -> RuleLHS -> me ()
+ruleLHSValidate d rl RuleLHS{lhsAtom = a@Atom{..}, ..} = do
     rel <- checkRelation atomPos d atomRelation
+    check d (isNothing lhsLocation || confD3log ?cfg) (pos $ fromJust $ lhsLocation)
+         $ "location annotations are only allowed in distributed DDlog mode (use '--d3log' switch)"
+    check d (isNothing lhsLocation || relRole rel /= RelInput) (pos $ fromJust $ lhsLocation)
+         $ "invalid location annotation on input relation '" ++ name rel ++ "' (location annotations are only allowed on internal relations)"
+    check d (isNothing lhsLocation || relRole rel /= RelOutput) (pos $ fromJust $ lhsLocation)
+         $ "invalid location annotation on output relation '" ++ name rel ++ "' (location annotations are only allowed on internal relations)"
     check d (not $ atomIsDelayed a) (pos atomDelay)
-         $ "Delayed relations are not allowed in the head of a rule."
+         $ "delayed relations are not allowed in the head of a rule."
     check d (not atomDiff) (pos a)
-         $ "Differentiation (') is not allowed in the head of a rule."
+         $ "differentiation (') is not allowed in the head of a rule."
     when (relRole rel == RelInput) $ check d (null $ ruleRHS rl) (pos a)
-         $ "Input relation '" ++ name rel ++ "' cannot appear in the head of a rule."
+         $ "input relation '" ++ name rel ++ "' cannot appear in the head of a rule."
     when (relSemantics rel == RelStream) $ check d (ruleBodyIsStream d rl) (pos a)
-         $ "Relation '" ++ name rel ++ "' in the head of the rule is declared as a stream, but the body of the rule computes a regular non-stream relation."
+         $ "relation '" ++ name rel ++ "' in the head of the rule is declared as a stream, but the body of the rule computes a regular non-stream relation."
     when (relSemantics rel /= RelStream) $ check d (not $ ruleBodyIsStream d rl) (pos a)
-         $ "The body of the rule yields a stream relation, but relation '" ++ name rel ++ "' in the head of the rule is not declared as a stream."
+         $ "the body of the rule yields a stream relation, but relation '" ++ name rel ++ "' in the head of the rule is not declared as a stream."
 
 -- | Validate relation transformer
 -- * input and output argument names must be unique
@@ -554,22 +570,23 @@ depGraphValidate d@DatalogProgram{..} = do
     -- * Apply nodes may not occur in recursive loops, as they are assumed to always introduce
     --   negative loops
     mapM_ (\rl@Rule{..} ->
-            mapM_ (\a ->
-                    do let lscc = sccmap M.! (atomRelation a)
+            mapM_ (\RuleLHS{..} ->
+                    do let rname = atomRelation lhsAtom
+                       let lscc = sccmap M.! rname
                        mapM_ (\rhs -> let rhs_node = fst $ fromJust $ find ((== DepNodeRel (atomRelation (rhsAtom rhs))) . snd) $ G.labNodes g
-                                          a_node = fst $ fromJust $ find ((== DepNodeRel (atomRelation a)) . snd) $ G.labNodes g
-                                          -- Path from rhs to a.
+                                          a_node = fst $ fromJust $ find ((== DepNodeRel rname) . snd) $ G.labNodes g
+                                          -- Path from 'rhs' to 'rname'.
                                           rhs_to_a = G.esp rhs_node a_node g
-                                          -- Path from a to rhs.
+                                          -- Path from 'rname' to 'rhs'.
                                           a_to_rhs = G.esp a_node rhs_node g
-                                          -- If this is not a self-loop, make sure that 'a' does not appear twice in it.
+                                          -- If this is not rname self-loop, make sure that 'rname' does not appear twice in it.
                                           a_to_rhs' = if length a_to_rhs > 1 then tail a_to_rhs else a_to_rhs
                                           -- Dependency cycle.
                                           dep_cycle = intercalate " -> " $ (map (show . fromJust . G.lab g) rhs_to_a) ++
                                                                            (map (show . fromJust . G.lab g) a_to_rhs')
                                       in err d (pos rl) $
-                                             "Relation '" ++ (atomRelation $ rhsAtom rhs) ++ "' is mutually recursive with " ++ atomRelation a ++
-                                             " and therefore cannot appear negated in this rule.\n" ++
+                                             "Relation '" ++ (atomRelation $ rhsAtom rhs) ++ "' is mutually recursive with '" ++ rname ++
+                                             "' and therefore cannot appear negated in this rule.\n" ++
                                              "Dependency cycle: " ++ dep_cycle)
                              $ filter ((== lscc) . (sccmap M.!) . atomRelation . rhsAtom)
                              $ filter (not . atomIsDelayed . rhsAtom)
@@ -578,8 +595,9 @@ depGraphValidate d@DatalogProgram{..} = do
                   ruleLHS)
           progRules
     mapM_ (\Rule{..} ->
-            mapM_ (\a ->
-                    do let lscc = sccmap M.! (atomRelation a)
+            mapM_ (\RuleLHS{..} ->
+                    do let rname = atomRelation lhsAtom
+                       let lscc = sccmap M.! rname
                        mapM_ (\rhs -> err d (pos $ rhsAtom rhs)
                                       $ "Stream '" ++ (atomRelation $ rhsAtom rhs) ++ "' occurs inside a recursive fragment consisting of: " ++ show (sccs !! lscc))
                              $ filter ((== RelStream) . relSemantics . getRelation d . atomRelation . rhsAtom)
@@ -589,8 +607,8 @@ depGraphValidate d@DatalogProgram{..} = do
                   ruleLHS)
           progRules
     mapM_ (\Rule{..} ->
-            mapM_ (\a ->
-                    do let lscc = sccmap M.! (atomRelation a)
+            mapM_ (\RuleLHS{..} ->
+                    do let lscc = sccmap M.! (atomRelation lhsAtom)
                        mapM_ (\rhs -> err d (pos $ rhsAtom rhs)
                                       $ "Differentiation operator (') appears in a recursive fragment consisting of: " ++ show (sccs !! lscc))
                              $ filter ((== lscc) . (sccmap M.!) . atomRelation . rhsAtom)

@@ -95,7 +95,9 @@ relExprMapCtxM fun rel = do
 
 ruleExprMapCtxM :: (Monad m) => (ECtx -> ENode -> m Expr) -> Rule -> m Rule
 ruleExprMapCtxM fun r = do
-    lhs <- mapIdxM (\a i -> atomExprMapCtxM fun (CtxRuleL r i) a) $ ruleLHS r
+    lhs <- mapIdxM (\(RuleLHS p a l) i -> RuleLHS p <$> atomExprMapCtxM fun (CtxRuleLAtom r i) a
+                                                    <*> mapM (exprFoldCtxM fun (CtxRuleLLocation r i)) l)
+                   $ ruleLHS r
     rhs <- mapIdxM (\x i -> rhsExprMapCtxM fun r i x) $ ruleRHS r
     return r{ruleLHS = lhs, ruleRHS = rhs}
 
@@ -183,11 +185,14 @@ progRHSMap d fun = runIdentity $ progRHSMapM d (return . fun)
 progAtomMapM :: (Monad m) => DatalogProgram -> (Atom -> m Atom) -> m DatalogProgram
 progAtomMapM d fun = do
     rs <- mapM (\r -> do
-                 lhs <- mapM fun $ ruleLHS r
+                 lhs <- mapM (\lhs -> do a <- fun $ lhsAtom lhs
+                                         return $ lhs{ lhsAtom = a })
+                        $ ruleLHS r
                  rhs <- mapM (\case
                                lit@RHSLiteral{} -> do a <- fun $ rhsAtom lit
                                                       return lit { rhsAtom = a }
-                               rhs              -> return rhs) $ ruleRHS r
+                               rhs              -> return rhs)
+                        $ ruleRHS r
                  return r { ruleLHS = lhs, ruleRHS = rhs })
                $ progRules d
     is <- mapM (\i -> do a <- fun $ idxAtom i
@@ -268,9 +273,9 @@ progDependencyGraph DatalogProgram{..} = G.insEdges (edges ++ apply_edges) g1
     g1 = G.insNodes (map (mapSnd DepNodeApply) indexed_applys) g0
     relidx rel = M.findIndex rel progRelations
     edges = concatMap (\Rule{..} ->
-                        concatMap (\a ->
+                        concatMap (\RuleLHS{..} ->
                                     mapMaybe (\case
-                                               RHSLiteral pol a' | not (atomIsDelayed a') -> Just (relidx $ atomRelation a', relidx $ atomRelation a, pol)
+                                               RHSLiteral pol a' | not (atomIsDelayed a') -> Just (relidx $ atomRelation a', relidx $ atomRelation lhsAtom, pol)
                                                _ -> Nothing)
                                              ruleRHS)
                                   ruleLHS)
@@ -309,12 +314,16 @@ progMirrorInputRelations d prefix =
                                                })) $ inputRels
     makeRule relName relation = Rule { rulePos = relPos relation,
                                        ruleModule = nameScope relName,
-                                       ruleLHS = [Atom { atomPos = relPos relation,
-                                                         atomRelation = output_relname relName,
-                                                         atomDelay = delayZero,
-                                                         atomDiff = False,
-                                                         atomVal = eVar "x"
-                                                       }],
+                                       ruleLHS = [RuleLHS {
+                                                    lhsPos = relPos relation,
+                                                    lhsAtom = Atom { atomPos = relPos relation,
+                                                                     atomRelation = output_relname relName,
+                                                                     atomDelay = delayZero,
+                                                                     atomDiff = False,
+                                                                     atomVal = eVar "x"
+                                                                   },
+                                                    lhsLocation = Nothing
+                                                  }],
                                        ruleRHS = [RHSLiteral { rhsPolarity = True,
                                                                rhsAtom = Atom { atomPos = relPos relation,
                                                                                 atomRelation = relName,

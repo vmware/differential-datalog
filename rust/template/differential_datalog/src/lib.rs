@@ -25,6 +25,8 @@ mod test_record;
 
 pub use callback::Callback;
 pub use ddlog::DDlogConvert;
-pub use ddlog::{DDlog, DDlogDump, DDlogDynamic, DDlogInventory, DDlogProfiling};
+pub use ddlog::{
+    D3log, D3logLocationId, DDlog, DDlogDump, DDlogDynamic, DDlogInventory, DDlogProfiling,
+};
 pub use replay::CommandRecorder;
 pub use valmap::DeltaMap;

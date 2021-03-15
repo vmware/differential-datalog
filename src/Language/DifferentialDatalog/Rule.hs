@@ -143,13 +143,18 @@ ruleLHSVars :: DatalogProgram -> Rule -> [Var]
 ruleLHSVars d rl =
     nub
     $ concat
-    $ mapIdx (\a i -> exprFreeVars d (CtxRuleL rl i) $ atomVal a)
+    $ mapIdx (\RuleLHS{..} i -> (exprFreeVars d (CtxRuleLAtom rl i) $ atomVal lhsAtom) ++
+                                (maybe [] (exprFreeVars d (CtxRuleLLocation rl i)) lhsLocation))
     $ ruleLHS rl
 
 -- | Map function over all types in a rule
 ruleTypeMapM :: (Monad m) => (Type -> m Type) -> Rule -> m Rule
 ruleTypeMapM fun rule@Rule{..} = do
-    lhs <- mapM (\(Atom p r del diff v) -> Atom p r del diff <$> exprTypeMapM fun v) ruleLHS
+    lhs <- mapM (\lhs@RuleLHS{..} -> do
+                    ea <- exprTypeMapM fun $ atomVal lhsAtom
+                    el <- mapM (exprTypeMapM fun) lhsLocation
+                    return $ lhs { lhsAtom = lhsAtom { atomVal = ea }
+                                 , lhsLocation = el}) ruleLHS
     rhs <- mapM (\rhs -> case rhs of
                   RHSLiteral pol (Atom p r del diff v) -> (RHSLiteral pol . Atom p r del diff) <$> exprTypeMapM fun v
                   RHSCondition c                       -> RHSCondition <$> exprTypeMapM fun c
@@ -169,10 +174,11 @@ ruleHasJoins rule =
 
 -- | Checks if a rule (more precisely, the given head of the rule) yields a
 -- relation with distinct elements.
+-- D3log annotations must be flattened before calling this function.
 ruleIsDistinctByConstruction :: DatalogProgram -> Rule -> Int -> Bool
 ruleIsDistinctByConstruction d rl@Rule{..} head_idx = f True 0
     where
-    head_atom = ruleLHS !! head_idx
+    head_atom = lhsAtom $ ruleLHS !! head_idx
     headrel = atomRelation head_atom
     -- Relation is distinct wrt 'headrel'.
     relIsDistinct' :: String -> Bool
@@ -192,7 +198,7 @@ ruleIsDistinctByConstruction d rl@Rule{..} head_idx = f True 0
     f False i | i == length ruleRHS         = False
     f True  i | i == length ruleRHS         =
         -- The head of the rule is an injective function of all the variables in its body
-        exprIsInjective d (CtxRuleL rl head_idx) (S.fromList $ ruleVars d rl) (atomVal head_atom)
+        exprIsInjective d (CtxRuleLAtom rl head_idx) (S.fromList $ ruleVars d rl) (atomVal head_atom)
     f True i | rhsIsCondition (ruleRHS !! i)
                                             = f True (i + 1)
     -- group-by operator returns a distinct collection over group-by and group
@@ -215,7 +221,7 @@ ruleIsDistinctByConstruction d rl@Rule{..} head_idx = f True 0
 -- recursive fragment of the program.
 ruleHeadIsRecursive :: DatalogProgram -> Rule -> Int -> Bool
 ruleHeadIsRecursive d Rule{..} head_idx =
-    let head_atom = ruleLHS !! head_idx in
+    let head_atom = lhsAtom $ ruleLHS !! head_idx in
     any (relsAreMutuallyRecursive d (atomRelation head_atom))
         $ map (atomRelation . rhsAtom)
         $ filter (not . atomIsDelayed . rhsAtom)

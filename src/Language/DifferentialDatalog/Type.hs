@@ -66,8 +66,11 @@ module Language.DifferentialDatalog.Type(
     nESTED_TS_TYPE,
     wEIGHT_TYPE,
     oPTION_TYPE,
+    lOCATION_TYPE,
     sOME_CONSTRUCTOR,
     nONE_CONSTRUCTOR,
+    eSome,
+    eNone,
     rESULT_TYPE,
     eRR_CONSTRUCTOR,
     oK_CONSTRUCTOR,
@@ -119,11 +122,22 @@ wEIGHT_TYPE = mOD_STD ++ "::DDWeight"
 oPTION_TYPE :: String
 oPTION_TYPE = mOD_STD ++ "::Option"
 
+lOCATION_TYPE :: String
+lOCATION_TYPE = mOD_STD ++ "::D3logLocationId"
+
 sOME_CONSTRUCTOR :: String
 sOME_CONSTRUCTOR = mOD_STD ++ "::Some"
 
 nONE_CONSTRUCTOR :: String
 nONE_CONSTRUCTOR = mOD_STD ++ "::None"
+
+-- Some{e}: Option<t>
+eSome :: Expr -> Type -> Expr
+eSome e t = eStruct sOME_CONSTRUCTOR [(IdentifierWithPos nopos "x", e)] $ tUser oPTION_TYPE [t]
+
+-- None: Option<t>
+eNone :: Type -> Expr
+eNone t =  eStruct nONE_CONSTRUCTOR [] $ tUser oPTION_TYPE [t]
 
 rESULT_TYPE :: String
 rESULT_TYPE = mOD_STD ++ "::Result"

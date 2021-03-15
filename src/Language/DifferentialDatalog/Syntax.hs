@@ -66,6 +66,7 @@ module Language.DifferentialDatalog.Syntax (
         RelationSemantics(..),
         Relation(..),
         Index(..),
+        RuleLHS(..),
         RuleRHS(..),
         rhsIsLiteral,
         rhsIsPositiveLiteral,
@@ -640,6 +641,29 @@ instance Show Atom where
 atomIsDelayed :: Atom -> Bool
 atomIsDelayed a = atomDelay a /= delayZero
 
+data RuleLHS = RuleLHS { lhsPos         :: Pos
+                       , lhsAtom        :: Atom
+                         -- D3log only: location to send the output record to.
+                       , lhsLocation    :: Maybe Expr
+                       }
+
+instance Eq RuleLHS where
+    (==) (RuleLHS _ a1 l1) (RuleLHS _ a2 l2) = (a1, l1) == (a2, l2)
+
+instance Ord RuleLHS where
+    compare (RuleLHS _ a1 l1) (RuleLHS _ a2 l2) = compare (a1, l1) (a2, l2)
+
+instance WithPos RuleLHS where
+    pos = lhsPos
+    atPos l p = l{lhsPos = p}
+
+instance PP RuleLHS where
+    pp (RuleLHS _ a Nothing)  = pp a
+    pp (RuleLHS _ a (Just l)) = pp a <+> "@" <> pp l
+
+instance Show RuleLHS where
+    show = render . pp
+
 -- The RHS of a rule consists of relational atoms with
 -- positive/negative polarity, Boolean conditions, aggregation,
 -- disaggregation (flatmap), inspect operations.
@@ -715,7 +739,7 @@ rhsIsAssignment rhs = rhsIsCondition rhs && not (rhsIsFilterCondition rhs)
 
 data Rule = Rule { rulePos      :: Pos
                  , ruleModule   :: ModuleName
-                 , ruleLHS      :: [Atom]
+                 , ruleLHS      :: [RuleLHS]
                  , ruleRHS      :: [RuleRHS]
                  }
 
@@ -1341,16 +1365,14 @@ data ECtx = -- | Top-level context. Serves as the root of the context hierarchy.
             -- | Function definition: 'function f(...) = {X}'
           | CtxFunc           {ctxFunc::Function}
             -- | Argument to an atom in the left-hand side of a rule:
-            -- 'Rel1(.f1=X,.f2=y,.f3=x) :- ...'.
-            --           ^
-            --           \- context points here
+            -- 'Rel1[X] :- ...'.
+            --       ^
+            --       \- context points here
             -- 'ctxAtomIdx' is the index of the LHS atom where the
             -- expression appears
-            --
-            -- 'ctxField' is the field within the atom.
-            -- Note: preprocessing ensures that field names are always
-            -- present.
-          | CtxRuleL          {ctxRule::Rule, ctxAtomIdx::Int}
+          | CtxRuleLAtom          {ctxRule::Rule, ctxHeadIdx::Int}
+            -- Location component of a rule head 'Rel1() @X :- ...'.
+          | CtxRuleLLocation      {ctxRule::Rule, ctxHeadIdx::Int}
             -- | Argument to a right-hand-side atom
           | CtxRuleRAtom      {ctxRule::Rule, ctxAtomIdx::Int}
             -- | Filter or assignment expression the RHS of a rule
@@ -1442,7 +1464,8 @@ instance PP ECtx where
         short :: (PP a) => a -> Doc
         short = pp . (\x -> if length x < mlen then x else take (mlen - 3) x ++ "...") . (map (\c -> if c == '\n' then ' ' else c)) . render . pp
         ctx' = case ctx of
-                    CtxRuleL{..}            -> "CtxRuleL          " <+> rule <+> pp ctxAtomIdx
+                    CtxRuleLAtom{..}        -> "CtxRuleLAtom      " <+> rule <+> pp ctxHeadIdx
+                    CtxRuleLLocation{..}    -> "CtxRuleLLocation  " <+> rule <+> pp ctxHeadIdx
                     CtxRuleRAtom{..}        -> "CtxRuleRAtom      " <+> rule <+> pp ctxAtomIdx
                     CtxRuleRCond{..}        -> "CtxRuleRCond      " <+> rule <+> pp ctxIdx
                     CtxRuleRFlatMap{..}     -> "CtxRuleRFlatMap   " <+> rule <+> pp ctxIdx
@@ -1489,7 +1512,8 @@ instance Show ECtx where
     show = render . pp
 
 ctxParent :: ECtx -> ECtx
-ctxParent CtxRuleL{}            = CtxTop
+ctxParent CtxRuleLAtom{}        = CtxTop
+ctxParent CtxRuleLLocation{}    = CtxTop
 ctxParent CtxRuleRAtom{}        = CtxTop
 ctxParent CtxRuleRCond{}        = CtxTop
 ctxParent CtxRuleRFlatMap{}     = CtxTop

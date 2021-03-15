@@ -90,16 +90,16 @@ expandMultiheadRule d rl ruleidx = (Just rel, rule1 : rules)
     -- rule to compute the new relation
     rule1 = Rule { rulePos = nopos
                  , ruleModule = ruleModule rl
-                 , ruleLHS = [Atom nopos relname delayZero False $ eTuple $ map (\v -> eTypedVar (name v) (varType d v)) lhsvars]
+                 , ruleLHS = [RuleLHS nopos (Atom nopos relname delayZero False $ eTuple $ map (\v -> eTypedVar (name v) (varType d v)) lhsvars) Nothing]
                  , ruleRHS = ruleRHS rl
                  }
     -- rule per head of the original rule
-    rules = map (\atom -> Rule { rulePos = pos rl
-                               , ruleModule = ruleModule rl
-                               , ruleLHS = [atom]
-                               , ruleRHS = [RHSLiteral True 
-                                           $ Atom nopos relname delayZero False
-                                           $ eTuple $ map (\v -> eTypedVar (name v) (varType d v)) lhsvars]})
+    rules = map (\lhs -> Rule { rulePos = pos rl
+                              , ruleModule = ruleModule rl
+                              , ruleLHS = [lhs]
+                              , ruleRHS = [RHSLiteral True 
+                                          $ Atom nopos relname delayZero False
+                                          $ eTuple $ map (\v -> eTypedVar (name v) (varType d v)) lhsvars]})
                 $ ruleLHS rl
 
 -- | Common prefix elimination.
@@ -192,7 +192,7 @@ replacePrefix d (pref, crate_name) = {-trace ("replacePrefix " ++ show pref) $-}
                     }
     let rule = Rule { rulePos      = nopos
                     , ruleModule   = mname
-                    , ruleLHS      = [atom]
+                    , ruleLHS      = [RuleLHS nopos atom Nothing]
                     , ruleRHS      = pref
                     }
     -- replace prefix in all rules

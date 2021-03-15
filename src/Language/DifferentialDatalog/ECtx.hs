@@ -30,8 +30,8 @@ Description: Helper functions for manipulating expression contexts.
 module Language.DifferentialDatalog.ECtx(
      ctxAncestors,
      ctxLocalAncestors,
-     ctxIsRuleL,
-     ctxInRuleL,
+     ctxIsRuleLAtom,
+     ctxInRuleLAtom,
      ctxIsMatchPat,
      ctxInMatchPat,
      ctxIsSetL,
@@ -81,12 +81,12 @@ ctxLocalAncestors CtxTop            = [CtxTop]
 ctxLocalAncestors ctx@CtxClosure{}  = [ctx]
 ctxLocalAncestors ctx               = ctx : (ctxLocalAncestors $ ctxParent ctx)
 
-ctxIsRuleL :: ECtx -> Bool
-ctxIsRuleL CtxRuleL{} = True
-ctxIsRuleL _          = False
+ctxIsRuleLAtom :: ECtx -> Bool
+ctxIsRuleLAtom CtxRuleLAtom{} = True
+ctxIsRuleLAtom _          = False
 
-ctxInRuleL :: ECtx -> Bool
-ctxInRuleL ctx = any ctxIsRuleL $ ctxAncestors ctx
+ctxInRuleLAtom :: ECtx -> Bool
+ctxInRuleLAtom ctx = any ctxIsRuleLAtom $ ctxAncestors ctx
 
 ctxIsMatchPat :: ECtx -> Bool
 ctxIsMatchPat CtxMatchPat{} = True

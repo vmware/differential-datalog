@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2020 VMware, Inc.
+Copyright (c) 2020-2021 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -568,9 +568,12 @@ contextConstraints de@(DDExpr (CtxRuleRAtom rl i) _) =
     addConstraint =<< tvarTypeOfExpr de <~~~~ typeToTExpr (typ $ getRelation ?d $ atomRelation a)
     where a = rhsAtom $ ruleRHS rl !! i
 
-contextConstraints de@(DDExpr (CtxRuleL rl i) _) =
+contextConstraints de@(DDExpr (CtxRuleLAtom rl i) _) =
     addConstraint =<< tvarTypeOfExpr de <~~~~ typeToTExpr (typ $ getRelation ?d $ atomRelation a)
-    where a = ruleLHS rl !! i
+    where a = lhsAtom $ ruleLHS rl !! i
+
+contextConstraints de@(DDExpr (CtxRuleLLocation _ _) _) =
+    addConstraint =<< tvarTypeOfExpr de <~~~~ typeToTExpr (tUser lOCATION_TYPE [])
 
 -- When evaluating expression e in a filter clause of a rule: |e|=Bool.
 contextConstraints de@(DDExpr (CtxRuleRCond rl i) _) | rhsIsFilterCondition $ ruleRHS rl !! i =
