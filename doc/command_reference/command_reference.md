@@ -41,6 +41,27 @@ once the full list of updates has been read (end of list is indicated by a semic
 significantly more efficient and should always be the preferred option when the client wants to apply
 multiple updates that are known at the same time.
 
+## Name scoping
+
+Relations and constructors declared in the top-level module are referred by their local name;
+all other relation and constructor must be referred by their fully qualified DDlog name,
+including module name:
+
+```
+// `Foo` is declared in the top-level module.
+insert Foo(1),
+
+// `Bar` is declared in a module called `modname`.
+insert modname::Bar(1),
+```
+
+This is also the case for types declared inside the standard library:
+
+```
+// `Option` type is declared in `ddlog_std`.
+insert R(.field1 = ddlog_std::Some{1}),
+```
+
 ## `modify` command
 
 The `modify` command
