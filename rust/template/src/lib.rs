@@ -42,6 +42,7 @@ use differential_datalog::record::FromRecord;
 use differential_datalog::record::IntoRecord;
 use differential_datalog::record::RelIdentifier;
 use differential_datalog::record::UpdCmd;
+use differential_datalog::D3logLocationId;
 use differential_datalog::DDlogConvert;
 use num_traits::cast::FromPrimitive;
 use num_traits::identities::One;
@@ -198,6 +199,38 @@ impl TryFrom<&RelIdentifier> for Relations {
     }
 }
 
+// Macro used to implement `trait D3log`.  Invoked from generated code.
+#[macro_export]
+macro_rules! impl_trait_d3log {
+    () => {
+        fn d3log_localize_val(_relid: program::RelId, val: DDValue) -> Result<(Option<D3logLocationId>, program::RelId, DDValue), DDValue> {
+            Err(val)
+        }
+    };
+    ( $(($out_rel:expr, $in_rel:expr, $typ:ty)),+ ) => {
+        pub static D3LOG_CONVERTER_MAP : ::once_cell::sync::Lazy<::std::collections::HashMap<program::RelId, fn(DDValue)->Result<(Option<D3logLocationId>, program::RelId, DDValue), DDValue>>> = ::once_cell::sync::Lazy::new(|| {
+            let mut m = ::std::collections::HashMap::new();
+            $(
+                m.insert($out_rel, { fn __f(val: DDValue) -> Result<(Option<D3logLocationId>, program::RelId, DDValue), DDValue> {
+                    if let Some(::ddlog_std::tuple2(loc_id, inner_val)) = <::ddlog_std::tuple2<ddlog_std::Option<D3logLocationId>, $typ>>::try_from_ddvalue_ref(&val) {
+                        Ok((::ddlog_std::std2option(*loc_id), $in_rel, (*inner_val).clone().into_ddvalue()))
+                    } else {
+                        Err(val)
+                    }
+                } __f as fn(DDValue)->Result<(Option<D3logLocationId>, program::RelId, DDValue), DDValue>});
+            )*
+            m
+        });
+        fn d3log_localize_val(relid: program::RelId, val: DDValue) -> Result<(Option<D3logLocationId>, program::RelId, DDValue), DDValue> {
+            if let Some(f) = D3LOG_CONVERTER_MAP.get(&relid) {
+                f(val)
+            } else {
+                Err(val)
+            }
+        }
+    };
+}
+
 /*- !!!!!!!!!!!!!!!!!!!! -*/
 // Don't edit this line
 // Code below this point is needed to test-compile template
@@ -325,3 +358,5 @@ pub fn indexes2arrid(idx: Indexes) -> program::ArrId {
 }
 
 pub static IDXIDMAP: Lazy<FnvHashMap<Indexes, &'static str>> = Lazy::new(FnvHashMap::default);
+
+impl_trait_d3log!();

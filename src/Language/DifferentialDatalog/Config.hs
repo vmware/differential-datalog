@@ -1,5 +1,5 @@
 {-
-Copyright (c) 2020 VMware, Inc.
+Copyright (c) 2020-2021 VMware, Inc.
 SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -56,6 +56,7 @@ data Config = Config { confDatalogFile     :: FilePath
                      , confRunRustfmt      :: Bool
                      , confRustFlatBuffers :: Bool
                      , confNestedTS32      :: Bool
+                     , confD3log           :: Bool
                      }
 
 defaultConfig :: Config
@@ -79,4 +80,5 @@ defaultConfig = Config { confDatalogFile     = ""
                        , confRunRustfmt      = False
                        , confRustFlatBuffers = False
                        , confNestedTS32      = False
+                       , confD3log           = False
                        }

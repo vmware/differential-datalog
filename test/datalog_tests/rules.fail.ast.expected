@@ -7,12 +7,12 @@ expecting letter or digit, "_", "::", "(" or "["
   ./test/datalog_tests/rules.fail.dl:7.1-9.1
 
 
-error: ./test/datalog_tests/rules.fail.dl:10.1-11.1: Relation 'R3' is mutually recursive with R2 and therefore cannot appear negated in this rule.
+error: ./test/datalog_tests/rules.fail.dl:10.1-11.1: Relation 'R3' is mutually recursive with 'R2' and therefore cannot appear negated in this rule.
 Dependency cycle: R3 -> R2 -> R3
 R2(x) :- R1(x), not R3(x, "foo").
 ^
 
-error: ./test/datalog_tests/rules.fail.dl:9.1-11.1: Relation 'R2' is mutually recursive with R2 and therefore cannot appear negated in this rule.
+error: ./test/datalog_tests/rules.fail.dl:9.1-11.1: Relation 'R2' is mutually recursive with 'R2' and therefore cannot appear negated in this rule.
 Dependency cycle: R2 -> R2
 R2(x) :- R1(x), not R2(x).
 ^
@@ -96,11 +96,11 @@ error: ./test/datalog_tests/rules.fail.dl:10.23-10.31: Attempt to join stream re
 S3(x, z) :- S1(x, y), S2(y, z).
                       ^^^^^^^^
 
-error: ./test/datalog_tests/rules.fail.dl:10.1-10.10: The body of the rule yields a stream relation, but relation 'S3' in the head of the rule is not declared as a stream.
+error: ./test/datalog_tests/rules.fail.dl:10.1-10.10: the body of the rule yields a stream relation, but relation 'S3' in the head of the rule is not declared as a stream.
 S3(x, z) :- S1(x, y), S2(y, z).
 ^^^^^^^^^
 
-error: ./test/datalog_tests/rules.fail.dl:10.1-10.10: Relation 'S3' in the head of the rule is declared as a stream, but the body of the rule computes a regular non-stream relation.
+error: ./test/datalog_tests/rules.fail.dl:10.1-10.10: relation 'S3' in the head of the rule is declared as a stream, but the body of the rule computes a regular non-stream relation.
 S3(x, z) :- S1(x, y), S2(y, z).
 ^^^^^^^^^
 

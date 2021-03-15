@@ -38,6 +38,36 @@ pub trait DDlogInventory {
     fn get_index_cname(&self, iid: IdxId) -> Result<&'static CStr, String>;
 }
 
+/// Location id in a D3log system.
+/// This declaration must match the `D3logLocationId` type in `ddlog_std.dl`.
+pub type D3logLocationId = u128;
+
+/// TODO: feature-gate the D3log runtime.
+pub trait D3log {
+    /*
+        /// Map from output relation id's that correspond to distributed relations
+        /// to matching input relations.
+        fn d3log_relation_map(&self) -> &HashMap<RelId, RelId>;
+    */
+    /// Parses a value output by DDlog for a distributed relation.
+    /// A distributed relation `R[T]` is a relation whose values can be
+    /// produced and consumed on different nodes.  The compiler splits such
+    /// relations into an input/output relation pair, where the former has the
+    /// same name and record type as `R`, while the latter has an opaque type
+    /// that internally contains a value of type `T` and location id of the
+    /// node where the value must be sent.
+    /// This method extracts this information from an output value and returns
+    /// location id, _input_ relation id, and the inner value.
+    ///
+    /// Returns `Err(val)` if `relid` is not a distributed relation id or `val`
+    /// is not a value that belongs to this relation, returns `Err(val)`.
+    fn d3log_localize_val(
+        &self,
+        relid: RelId,
+        val: DDValue,
+    ) -> Result<(Option<D3logLocationId>, RelId, DDValue), DDValue>;
+}
+
 /// Convert to and from values/objects of a DDlog program.
 /// FIXME: This trait is redundant and will be removed in the next refactoring.
 pub trait DDlogConvert {

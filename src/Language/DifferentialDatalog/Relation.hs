@@ -56,7 +56,7 @@ import Language.DifferentialDatalog.NS
 
 -- | Rules that contain given relation in their heads.
 relRules :: DatalogProgram -> String -> [Rule]
-relRules d rname = filter ((== rname) . atomRelation . head . ruleLHS)
+relRules d rname = filter (any ((== rname) . atomRelation . lhsAtom) . ruleLHS)
                    $ progRules d
 
 -- | Transformer applications that contain given relation in their heads.
@@ -95,7 +95,7 @@ relIsDistinctByConstruction d rel
     where
     rules = relRules d $ name rel
     [rule] = rules
-    heads = filter (\(lhs,_) -> atomRelation lhs == name rel) $ mapIdx (,) $ ruleLHS rule
+    heads = filter (\(lhs,_) -> atomRelation (lhsAtom lhs) == name rel) $ mapIdx (,) $ ruleLHS rule
     [(_,head_atom)] = heads
 relIsDistinctByConstruction _ _ = False
 
@@ -111,7 +111,7 @@ relIsBounded :: DatalogProgram -> String -> Bool
 relIsBounded d rel =
     all (\rule@Rule{..} -> all (\(_,i) -> ruleIsDistinctByConstruction d rule i)
                            $ filter (\(_,i) -> ruleHeadIsRecursive d rule i)
-                           $ filter (\(lhs,_) -> atomRelation lhs == rel)
+                           $ filter (\(lhs,_) -> atomRelation (lhsAtom lhs) == rel)
                            $ mapIdx (,) ruleLHS)
         $ relRules d rel
 

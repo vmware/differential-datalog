@@ -393,7 +393,7 @@ parseAssignStatement = do e <- try $ do e <- expr
                           s <- statement
                           return $ AssignStatement nopos e s
 
-parseInsertStatement = InsertStatement nopos (ModuleName []) <$> try (atom True)
+parseInsertStatement = InsertStatement nopos (ModuleName []) <$> try rulelhs
 
 apply = Apply nopos (ModuleName [])
               <$  reserved "apply" <*> transIdent
@@ -401,8 +401,13 @@ apply = Apply nopos (ModuleName [])
               <*> (reservedOp "->" *> (parens $ commaSepEnd relIdent))
 
 rule = Rule nopos (ModuleName []) <$>
-       (commaSepEnd1 $ atom True) <*>
+       (commaSepEnd1 rulelhs) <*>
        (option [] (reservedOp ":-" *> (concat <$> commaSepEnd rulerhs))) <* dot
+
+-- Location to which to send the output (D3log only).
+location = reservedOp "@" *> expr
+
+rulelhs = withPos $ RuleLHS nopos <$> atom True <*> optionMaybe location
 
 rulerhs :: ParsecT String () Identity [RuleRHS]
 rulerhs =  (do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ try $ varIdent <* reserved "in") *> (optional $ reservedOp "&") *> relIdent *> delay *> (optional $ reservedOp "'") *> (symbol "(" <|> symbol "[")

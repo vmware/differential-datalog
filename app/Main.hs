@@ -71,6 +71,7 @@ data TOption = Help
              | RunRustfmt
              | RustFlatBuffers
              | NestedTS32
+             | D3log
 
 options :: [OptDescr TOption]
 options = [ Option ['h'] ["help"]             (NoArg Help)                      "Display help message."
@@ -97,6 +98,7 @@ options = [ Option ['h'] ["help"]             (NoArg Help)                      
           , Option []    ["run-rustfmt"]      (NoArg RunRustfmt)                "Run rustfmt on the generated code"
           , Option []    ["rust-flatbuffers"] (NoArg RustFlatBuffers)           "Build flatbuffers bindings for Rust"
           , Option []    ["nested-ts-32"]     (NoArg NestedTS32)                "Use 32-bit instead of 16-bit nested timestamps. Supports recursive programs that may perform >65,536 iterations. Slightly increases the memory footprint of the program."
+          , Option []    ["d3log"]            (NoArg D3log)                     "Compile the input program to execute in the distributed DDlog (D3log) environment."
           ]
 
 addOption :: Config -> TOption -> IO Config
@@ -128,6 +130,7 @@ addOption config OmitWorkspace    = return config { confOmitWorkspace = True }
 addOption config RunRustfmt       = return config { confRunRustfmt = True }
 addOption config RustFlatBuffers  = return config { confRustFlatBuffers = True }
 addOption config NestedTS32       = return config { confNestedTS32 = True }
+addOption config D3log            = return config { confD3log = True }
 
 validateConfig :: Config -> IO ()
 validateConfig Config {..} = do
@@ -153,6 +156,7 @@ main = do
     config' <- case home of
         Just (p) -> addOption config (LibDir $ p ++ "/lib")
         _ -> return config
+    let ?cfg = config'
     case confAction config' of
         ActionHelp -> putStrLn $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
         ActionVersion -> do
@@ -160,11 +164,11 @@ main = do
             putStrLn $ "Copyright (c) 2019-2020 VMware, Inc. (MIT License)"
         ActionValidate -> do
             timeAction ("validating " ++ show (confDatalogFile config)) $ do
-                _ <- parseValidate config'
+                _ <- parseValidate
                 return ()
         ActionCompile -> do
             timeAction ("compiling " ++ show (confDatalogFile config)) $ do
-                compileProg config'
+                compileProg
                 -- Run rustfmt on the generated code if it's enabled
                 when (confRunRustfmt config') $
                     runCommandReportingErr "rustfmt" "cargo" ["fmt", "--all"] $ Just (confOutputDir config')
@@ -180,8 +184,9 @@ timeAction description action = do
     setSGR []
     putStrLn $ " in " ++ (formatTime defaultTimeLocale "%-2Ess" $ diffUTCTime end_time start_time)
 
-parseValidate :: Config -> IO ([DatalogModule], DatalogProgram, M.Map ModuleName (Doc, Doc, Doc))
-parseValidate Config{..} = do
+parseValidate :: (?cfg::Config) => IO ([DatalogModule], DatalogProgram, M.Map ModuleName (Doc, Doc, Doc))
+parseValidate = do
+    let Config{..} = ?cfg
     fdata <- readFile confDatalogFile
     parsed <- runExceptT $ parseDatalogProgram (takeDirectory confDatalogFile:confLibDirs) True fdata confDatalogFile
     (modules, d, rs_code) <- case parsed of
@@ -211,13 +216,13 @@ parseValidate Config{..} = do
              Right{} -> return ()
     return (modules, d', rs_code)
 
-compileProg :: Config -> IO ()
-compileProg conf@Config{..} = do
+compileProg :: (?cfg::Config) => IO ()
+compileProg = do
+    let Config{..} = ?cfg
     let specname = takeBaseName confDatalogFile
-    (modules, prog, rs_code) <- parseValidate conf
+    (modules, prog, rs_code) <- parseValidate
     -- generate Rust project
     let dir = if confOutputDir == "" then takeDirectory confDatalogFile else confOutputDir
     let crate_types = (if confStaticLib then ["staticlib"] else []) ++
                       (if confDynamicLib then ["cdylib"] else [])
-    let ?cfg = conf
     compile prog specname modules rs_code dir crate_types

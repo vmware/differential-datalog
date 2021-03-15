@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+## D3log
+
+- Experimental compiler support for D3log (wip).
+
 ## [0.38.0] - Mar 11, 2021
 
 ### API changes

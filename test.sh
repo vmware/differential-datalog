@@ -105,7 +105,8 @@ souffle=("static_analysis:Souffle static analysis test."
          "souffle_tests7:Souffle tests part7")
 
 d3log=("tcp_channel:TCP channel test"
-       "server_api:Test D3log server API")
+       "server_api:Test D3log server API"
+       "lb:Mock load balancer")
 
 misc=("span_string"
       "span_uuid"
@@ -349,6 +350,10 @@ server_api() {
     # unnecessarily in CI.
     #rm -rf test/datalog_tests/server_api_ddlog
     (export DDLOG_HOME="${THIS_DIR}" && "${THIS_DIR}/test/datalog_tests/test-server_api.sh")
+}
+
+lb() {
+    ${THIS_DIR}/test/datalog_tests/lb_test/test.sh
 }
 
 # 'stack' test group.

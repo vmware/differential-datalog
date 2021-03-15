@@ -81,6 +81,7 @@ import Language.DifferentialDatalog.FlatBuffer
 import Language.DifferentialDatalog.Attribute
 import Language.DifferentialDatalog.Var
 import Language.DifferentialDatalog.Rust
+import Language.DifferentialDatalog.D3log
 
 -- Some OSs think that they run on a typewriter and insert '\r'
 -- at the end of each line.  We eliminate these characters as they confuse
@@ -118,7 +119,8 @@ wEIGHT_VAR = "__weight"
 ctxModule :: (?crate_graph::CrateGraph) => ECtx -> ModuleName
 ctxModule CtxTop                    = error "Compile.ctxModule CtxTop"
 ctxModule CtxFunc{..}               = nameScope ctxFunc
-ctxModule CtxRuleL{..}              = ruleModule ctxRule
+ctxModule CtxRuleLAtom{..}          = ruleModule ctxRule
+ctxModule CtxRuleLLocation{..}      = ruleModule ctxRule
 ctxModule CtxRuleRAtom{..}          = ruleModule ctxRule
 ctxModule CtxRuleRCond{..}          = ruleModule ctxRule
 ctxModule CtxRuleRFlatMap{..}       = ruleModule ctxRule
@@ -524,13 +526,15 @@ compile d_unoptimized specname modules rs_code dir crate_types = do
     let dot_file = (?specname <.> "dot", depGraphToDot $ progDependencyGraph d_unoptimized)
     -- Apply optimizations; transform the program to a form that this
     -- compiler can handle; make sure the program has at least one relation.
-    let d = addDummyRel
-            $ simplifyDifferentiation
-            $ simplifyDelayedRels
-            $ optimize d_unoptimized
+    let d_optimized = addDummyRel
+                      $ simplifyDifferentiation
+                      $ simplifyDelayedRels
+                      $ optimize d_unoptimized
+    -- Compile away D3log location annotations.
+    let (d, d3log_rel_map) = processD3logAnnotations d_optimized
     when (confDumpDebug ?cfg) $
         writeFile (replaceExtension (confDatalogFile ?cfg) ".opt.ast") (show d)
-    let (types, main) = compileLib d rs_code
+    let (types, main) = compileLib d d3log_rel_map rs_code
     -- Produce flatbuffer bindings if either the java or rust bindings are enabled
     compileFlatBufferBindings d rs_code (dir </> rustProjectDir)
     -- Substitute specname in template files; write files if changed.
@@ -592,12 +596,16 @@ simplifyDelayedRels d =
                  delayed_rule = Rule {
                     rulePos     = nopos,
                     ruleModule  = nameScope rel,
-                    ruleLHS     = [Atom {
-                         atomPos        = nopos,
-                         atomRelation   = name delayed_rel,
-                         atomDelay      = delayZero,
-                         atomDiff       = False,
-                         atomVal        = eTypedVar "x" $ typ rel
+                    ruleLHS     = [RuleLHS {
+                        lhsPos = nopos,
+                        lhsAtom = Atom {
+                            atomPos        = nopos,
+                            atomRelation   = name delayed_rel,
+                            atomDelay      = delayZero,
+                            atomDiff       = False,
+                            atomVal        = eTypedVar "x" $ typ rel
+                        },
+                        lhsLocation = Nothing
                      }],
                      ruleRHS    = [RHSLiteral {
                          rhsPolarity    = True,
@@ -654,12 +662,16 @@ simplifyDifferentiation d =
                  diff_rule = Rule {
                     rulePos     = nopos,
                     ruleModule  = nameScope rel,
-                    ruleLHS     = [Atom {
-                         atomPos        = nopos,
-                         atomRelation   = name diff_rel,
-                         atomDelay      = delayZero,
-                         atomDiff       = False,
-                         atomVal        = eTypedVar "x" $ typ rel
+                    ruleLHS     = [RuleLHS {
+                        lhsPos = nopos,
+                        lhsAtom = Atom {
+                            atomPos        = nopos,
+                            atomRelation   = name diff_rel,
+                            atomDelay      = delayZero,
+                            atomDiff       = False,
+                            atomVal        = eTypedVar "x" $ typ rel
+                        },
+                        lhsLocation = Nothing
                      }],
                      ruleRHS    = [RHSLiteral {
                          rhsPolarity    = True,
@@ -692,8 +704,9 @@ simplifyDifferentiation d =
                else return a)
         S.empty
 
-compileLib :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?modules::M.Map ModuleName DatalogModule) => DatalogProgram -> M.Map ModuleName (Doc, Doc, Doc) -> (M.Map FilePath Doc, Doc)
-compileLib d rs_code =
+compileLib :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?modules::M.Map ModuleName DatalogModule) 
+    => DatalogProgram -> M.Map String String -> M.Map ModuleName (Doc, Doc, Doc) -> (M.Map FilePath Doc, Doc)
+compileLib d d3log_rel_map rs_code =
     (crates, main_lib)
     where
     statics = collectStatics d
@@ -702,7 +715,7 @@ compileLib d rs_code =
     -- Second pass: Populate Rust crates with compiled code in `nodes`.
     crates = M.unions $ mapIdx (compileCrate d statics nodes rs_code) $ cgCrates ?crate_graph
     -- Generate the main library file.
-    main_lib = compileMainLib d nodes cstate
+    main_lib = compileMainLib d d3log_rel_map nodes cstate
 
 compileRules :: (?cfg::Config, ?specname::String, ?modules::M.Map ModuleName DatalogModule, ?crate_graph::CrateGraph) => DatalogProgram -> Statics -> ([ProgNode], CompilerState)
 compileRules d statics =
@@ -923,8 +936,8 @@ compileModule d statics nodes rs_code crate mod_name =
            transformers
 
 -- | Compile DDlog rules into Rust.
-compileMainLib :: (?cfg::Config, ?specname::String, ?modules::M.Map ModuleName DatalogModule, ?crate_graph::CrateGraph) => DatalogProgram -> [ProgNode] -> CompilerState -> Doc
-compileMainLib d nodes cstate =
+compileMainLib :: (?cfg::Config, ?specname::String, ?modules::M.Map ModuleName DatalogModule, ?crate_graph::CrateGraph) => DatalogProgram -> M.Map String String -> [ProgNode] -> CompilerState -> Doc
+compileMainLib d d3log_rel_map nodes cstate =
     mainHeader                             $+$
     reexports                              $+$
     mkUpdateDeserializer d                 $+$
@@ -932,6 +945,7 @@ compileMainLib d nodes cstate =
     mkIndexesIntoArrId d cstate            $+$
     mkRelEnum d                            $+$ -- 'enum Relations'
     mkIdxEnum d                            $+$ -- 'enum Indexes'
+    mkD3logImpl d d3log_rel_map            $+$
     mkProg d cstate nodes
     where
     mod_type_reexports = foldl' (mrAddTypedef d) emptyModuleReexports
@@ -946,6 +960,17 @@ data ModuleReexports = ModuleReexports {
     mrLocalFuncs    :: [Function],
     mrSubmodules    :: ReexportTree
 }
+
+mkD3logImpl :: (?cfg::Config, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> M.Map String String -> Doc
+mkD3logImpl d d3log_rel_map =
+    "impl_trait_d3log!(" <> commaSep rels <> ");"
+    where
+    rels = map (\(rout_name, rin_name) ->
+                 let rout = getRelation d rout_name
+                     rin  = getRelation d rin_name
+                     t = mkType d Nothing rin
+                 in "(" <> pp (relIdentifier d rout) <> "," <> pp (relIdentifier d rin) <> "," <> t <> ")")
+           $ M.toList d3log_rel_map
 
 type ReexportTree = M.Map String ModuleReexports
 
@@ -1928,8 +1953,8 @@ compileKey d rel@Relation{..} KeyExpr{..} =
 {- Generate Rust representation of a ground fact -}
 compileFact :: (?cfg::Config, ?specname::String, ?statics::CrateStatics, ?crate_graph::CrateGraph) => DatalogProgram -> Rule -> Doc
 compileFact d rl@Rule{..} =
-    let rel = atomRelation $ head ruleLHS
-        v = mkDDValue d (CtxRuleL rl 0) $ atomVal $ head ruleLHS
+    let rel = atomRelation $ lhsAtom $ head ruleLHS
+        v = mkDDValue d (CtxRuleLAtom rl 0) $ atomVal $ lhsAtom $ head ruleLHS
     in "(" <> relId d rel <> "," <+> v <> ") /*" <> pp rl <> "*/"
 
 -- If the rule contains a join, antijoin, or aggregation operator then its first literal
@@ -2398,7 +2423,7 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
     -- If we're at the end of the rule, generate head atom; otherwise
     -- return all live variables in a tuple
     (ret, next) <- if last_idx == length ruleRHS - 1
-        then return (mkDDValue d (CtxRuleL rl 0) (atomVal $ head $ ruleLHS), "None")
+        then return (mkDDValue d (CtxRuleLAtom rl 0) (atomVal $ lhsAtom $ head $ ruleLHS), "None")
         else do let ret = mkVarsTupleValue rl $ map (, EReference) $ rhsVarsAfter d rl last_idx
                 next <- compileRule d rl last_idx False
                 return (ret, next)
@@ -2678,7 +2703,7 @@ mkHead d prefix rl =
     "    next: Box::new(" <> next <> ")"                                                                        $$
     "}"
     where
-    v = mkDDValue d (CtxRuleL rl 0) (atomVal $ head $ ruleLHS rl)
+    v = mkDDValue d (CtxRuleLAtom rl 0) (atomVal $ lhsAtom $ head $ ruleLHS rl)
     fmfun = braces' $ prefix $$
                       "Some" <> parens v
     -- 'simplifyDifferentiation' guarantees that differentiation can only occur
@@ -3512,7 +3537,7 @@ mkInt v | v <= (toInteger (maxBound::Word128)) && v >= (toInteger (minBound::Wor
 recordAfterPrefix :: DatalogProgram -> Rule -> Int -> [Expr]
 recordAfterPrefix d rl i =
   if i == length (ruleRHS rl) - 1
-     then  map atomVal $ ruleLHS rl
+     then  map (atomVal . lhsAtom) $ ruleLHS rl
      else if i == 0
              then [eVar $ exprVar $ enode $ atomVal $ rhsAtom $ head $ ruleRHS rl ]
              else [eTuple $ map (eVar . name) (rhsVarsAfter d rl i) ]

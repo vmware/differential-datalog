@@ -865,3 +865,6 @@ typedef DDlogGroup<'K, 'V> = DDlogGroup {
     key: 'K,
     vals: Vec<('V, DDWeight)>
 }
+
+/* Unique ID of a node or a sink in a distributed DDlog system. */
+typedef D3logLocationId = u128

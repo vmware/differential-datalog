@@ -134,7 +134,7 @@ unitTests dir = do
     testGroup "unit tests" $
           [ testCase (takeBaseName dir) $ unitTest dir ]
 
-parseValidate :: FilePath -> Bool -> String -> IO ([DatalogModule], DatalogProgram, M.Map ModuleName (Doc, Doc, Doc))
+parseValidate :: (?cfg::Config) => FilePath -> Bool -> String -> IO ([DatalogModule], DatalogProgram, M.Map ModuleName (Doc, Doc, Doc))
 parseValidate file java program = do
     parsed <- runExceptT $ parseDatalogProgram [takeDirectory file, "lib"] True program file
     (modules, d, rs_code) <- case parsed of
@@ -150,7 +150,7 @@ parseValidate file java program = do
     return (modules, d', rs_code)
 
 -- compile a program that is supposed to fail compilation
-compileFailingProgram :: String -> String -> IO String
+compileFailingProgram :: (?cfg::Config) => String -> String -> IO String
 compileFailingProgram file program = do
    (do prog <- sel2 <$> parseValidate file False program
        fail $ "Compilation should have failed, instead the following program was generated:\n" ++ show prog) `catch`
@@ -169,6 +169,7 @@ parserTest fname = do
     -- that is supposed to fail during compilation.
     body <- readFile fname
     let astfile  = replaceExtension fname "ast"
+    let ?cfg = defaultConfig
     if shouldFail fname
       then do
         -- To allow multiple negative tests in a single dl file
@@ -264,10 +265,10 @@ generateDDLogRust java file crate_types = do
     fname <- makeAbsolute file
     body <- readFile fname
     let specname = takeBaseName fname
+    let ?cfg = defaultConfig { confDatalogFile = fname, confJava = java, confOmitWorkspace = True }
     (modules, prog, rs_code) <- parseValidate fname java body
     -- generate Rust project
     let dir = takeDirectory fname
-    let ?cfg = defaultConfig { confDatalogFile = fname, confJava = java, confOmitWorkspace = True }
     compile prog specname modules rs_code dir crate_types
 
 -- Feed test data via pipe if a .dat file exists

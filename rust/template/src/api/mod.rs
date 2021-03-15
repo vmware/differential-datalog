@@ -26,7 +26,9 @@ use differential_datalog::replay;
 use differential_datalog::Callback;
 use differential_datalog::CommandRecorder;
 use differential_datalog::DeltaMap;
-use differential_datalog::{DDlog, DDlogDump, DDlogDynamic, DDlogInventory, DDlogProfiling};
+use differential_datalog::{
+    D3log, D3logLocationId, DDlog, DDlogDump, DDlogDynamic, DDlogInventory, DDlogProfiling,
+};
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 
@@ -425,6 +427,16 @@ impl DDlog for HDDlog {
         let idx = Indexes::try_from(index).map_err(|()| format!("unknown index {}", index))?;
         let arrid = indexes2arrid(idx);
         self.prog.lock().unwrap().dump_arrangement(arrid)
+    }
+}
+
+impl D3log for HDDlog {
+    fn d3log_localize_val(
+        &self,
+        relid: RelId,
+        val: DDValue,
+    ) -> Result<(Option<D3logLocationId>, RelId, DDValue), DDValue> {
+        d3log_localize_val(relid, val)
     }
 }
 
