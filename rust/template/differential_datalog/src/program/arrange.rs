@@ -18,10 +18,22 @@ use differential_dataflow::{
 use fnv::FnvHashMap;
 use std::ops::{Add, Mul, Neg};
 use timely::{
-    dataflow::scopes::{Child, Scope, ScopeParent},
+    dataflow::scopes::{Child, Scope},
     progress::{timestamp::Refines, Timestamp},
 };
 
+#[derive(Clone)]
+pub enum ArrangementFlavor<S, T>
+where
+    S: Scope,
+    S::Timestamp: Lattice + Refines<T>,
+    T: Lattice + Timestamp,
+{
+    Local(Arrangement<S, Weight, TValAgent<S::Timestamp>, TKeyAgent<S::Timestamp>>),
+    Foreign(Arrangement<S, Weight, TValEnter<T, S::Timestamp>, TKeyEnter<T, S::Timestamp>>),
+}
+
+#[derive(Clone)]
 pub enum Arrangement<S, R, Map, Set>
 where
     S: Scope,
@@ -95,68 +107,26 @@ where
     }
 }
 
-/// Helper type that represents an arranged collection of one of two
-/// types (e.g., an arrangement created in a local scope or entered from
-/// the parent scope)
-pub(super) enum A<'a, 'b, P, T>
+pub(super) struct Arrangements<'a, S, T>
 where
-    P: ScopeParent,
-    P::Timestamp: Lattice + Ord,
-    T: Refines<P::Timestamp> + Lattice + Timestamp + Ord,
-    'a: 'b,
+    S: Scope,
+    S::Timestamp: Lattice + Refines<T>,
+    T: Lattice + Timestamp,
 {
-    Arrangement1(
-        &'b Arrangement<
-            Child<'a, P, T>,
-            Weight,
-            TValAgent<Child<'a, P, T>>,
-            TKeyAgent<Child<'a, P, T>>,
-        >,
-    ),
-    Arrangement2(
-        &'b Arrangement<Child<'a, P, T>, Weight, TValEnter<'a, P, T>, TKeyEnter<'a, P, T>>,
-    ),
+    pub(super) arrangements: &'a FnvHashMap<ArrId, ArrangementFlavor<S, T>>,
 }
 
-pub(super) struct Arrangements<'a, 'b, P, T>
+impl<'a, S, T> Arrangements<'a, S, T>
 where
-    P: ScopeParent,
-    P::Timestamp: Lattice + Ord,
-    T: Refines<P::Timestamp> + Lattice + Timestamp + Ord,
-    'a: 'b,
+    S: Scope,
+    S::Timestamp: Lattice + Refines<T>,
+    T: Lattice + Timestamp,
 {
-    pub(super) arrangements1: &'b FnvHashMap<
-        ArrId,
-        Arrangement<
-            Child<'a, P, T>,
-            Weight,
-            TValAgent<Child<'a, P, T>>,
-            TKeyAgent<Child<'a, P, T>>,
-        >,
-    >,
-    pub(super) arrangements2: &'b FnvHashMap<
-        ArrId,
-        Arrangement<Child<'a, P, T>, Weight, TValEnter<'a, P, T>, TKeyEnter<'a, P, T>>,
-    >,
-}
-
-impl<'a, 'b, P, T> Arrangements<'a, 'b, P, T>
-where
-    P: ScopeParent,
-    P::Timestamp: Lattice + Ord,
-    T: Refines<P::Timestamp> + Lattice + Timestamp + Ord,
-    'a: 'b,
-{
-    pub(super) fn lookup_arr(&self, arrid: ArrId) -> A<'a, 'b, P, T> {
-        self.arrangements1.get(&arrid).map_or_else(
-            || {
-                self.arrangements2
-                    .get(&arrid)
-                    .map(|arr| A::Arrangement2(arr))
-                    .unwrap_or_else(|| panic!("mk_rule: unknown arrangement {:?}", arrid))
-            },
-            |arr| A::Arrangement1(arr),
-        )
+    pub(super) fn lookup_arr(&self, arrid: ArrId) -> ArrangementFlavor<S, T> {
+        self.arrangements
+            .get(&arrid)
+            .cloned()
+            .unwrap_or_else(|| panic!("mk_rule: unknown arrangement {:?}", arrid))
     }
 }
 

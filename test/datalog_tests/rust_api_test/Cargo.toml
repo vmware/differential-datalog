@@ -7,7 +7,7 @@ edition = "2018"
 
 # The generated Rust project contains several crates that must be imported
 # by the client program.
-differential_datalog = {path = "../tutorial_ddlog/differential_datalog"}
-tutorial = {path = "../tutorial_ddlog"}
-ddlog_rt = {path = "../tutorial_ddlog/types/ddlog_rt"}
-types = {path = "../tutorial_ddlog/types"}
+differential_datalog = { path = "../tutorial_ddlog/differential_datalog" }
+tutorial = { path = "../tutorial_ddlog" }
+ddlog_rt = { path = "../tutorial_ddlog/types/ddlog_rt" }
+types = { path = "../tutorial_ddlog/types" }

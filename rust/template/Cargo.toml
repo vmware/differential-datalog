@@ -14,20 +14,6 @@ command-line = ["cmd_parser", "rustop"]
 nested_ts_32 = ["differential_datalog/nested_ts_32"]
 c_api = ["differential_datalog/c_api"]
 
-[target.'cfg(not(windows))'.build-dependencies]
-libtool = "0.1"
-
-[dependencies.differential_datalog]
-path = "./differential_datalog"
-
-[dependencies.cmd_parser]
-path = "./cmd_parser"
-optional = true
-
-[dependencies.ddlog_ovsdb_adapter]
-path = "./ovsdb"
-optional = true
-
 [dependencies]
 abomonation = "0.7"
 time = { version = "0.2", features = ["serde"] }
@@ -52,6 +38,20 @@ enum-primitive-derive = "0.2.1"
 # flatbuffers crate version must be in sync with the flatc compiler and Java
 # libraries: flatbuffers "0.6" <-> FlatBuffers "1.11.0".
 flatbuffers = { version = "0.6", optional = true }
+
+[dependencies.differential_datalog]
+path = "./differential_datalog"
+
+[dependencies.cmd_parser]
+path = "./cmd_parser"
+optional = true
+
+[dependencies.ddlog_ovsdb_adapter]
+path = "./ovsdb"
+optional = true
+
+[target.'cfg(not(windows))'.build-dependencies]
+libtool = "0.1"
 
 [[bin]]
 name = "datalog_example_cli"
