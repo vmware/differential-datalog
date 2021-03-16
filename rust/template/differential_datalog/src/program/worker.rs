@@ -2,10 +2,13 @@ use crate::{
     ddval::DDValue,
     profile::{get_prof_context, with_prof_context, ProfMsg},
     program::{
+        arrange::ArrangementFlavor, RecursiveRelation, RelId, Relation, TKeyAgent, TValAgent,
+        Weight,
+    },
+    program::{
         arrange::{Arrangement, Arrangements},
         ArrId, Dep, Msg, ProgNode, Program, Reply, Update, TS,
     },
-    program::{RecursiveRelation, RelId, Relation, TKeyAgent, TValAgent, Weight},
     variable::Variable,
 };
 use crossbeam_channel::{Receiver, Sender};
@@ -601,12 +604,7 @@ fn render_relation<'a>(
     >,
     arrangements: &mut FnvHashMap<
         ArrId,
-        Arrangement<
-            Child<'a, Worker<Allocator>, TS>,
-            Weight,
-            TValAgent<Child<'a, Worker<Allocator>, TS>>,
-            TKeyAgent<Child<'a, Worker<Allocator>, TS>>,
-        >,
+        Arrangement<Child<'a, Worker<Allocator>, TS>, Weight, TValAgent<TS>, TKeyAgent<TS>>,
     >,
     delayed_vars: &DelayedVarMap<Child<'a, Worker<Allocator>, TS>>,
 ) {
@@ -622,9 +620,9 @@ fn render_relation<'a>(
             collection.enter_region(region)
         };
 
-        let entered_arrangements: FnvHashMap<_, _> = arrangements
+        let entered_arrangements: FnvHashMap<_, ArrangementFlavor<_, TS>> = arrangements
             .iter()
-            .map(|(&arr_id, arr)| (arr_id, arr.enter_region(region)))
+            .map(|(&arr_id, arr)| (arr_id, ArrangementFlavor::Local(arr.enter_region(region))))
             .collect();
 
         // apply rules
@@ -644,8 +642,7 @@ fn render_relation<'a>(
                 rule,
                 get_rule_collection,
                 Arrangements {
-                    arrangements1: &entered_arrangements,
-                    arrangements2: &FnvHashMap::default(),
+                    arrangements: &entered_arrangements,
                 },
                 true,
             )
@@ -696,12 +693,7 @@ fn render_scc<'a>(
     >,
     arrangements: &mut FnvHashMap<
         ArrId,
-        Arrangement<
-            Child<'a, Worker<Allocator>, TS>,
-            Weight,
-            TValAgent<Child<'a, Worker<Allocator>, TS>>,
-            TKeyAgent<Child<'a, Worker<Allocator>, TS>>,
-        >,
+        Arrangement<Child<'a, Worker<Allocator>, TS>, Weight, TValAgent<TS>, TKeyAgent<TS>>,
     >,
 ) -> Result<(), String> {
     // Preallocate the memory required to store the new relations
@@ -793,6 +785,16 @@ fn render_scc<'a>(
             }
         }
 
+        let arrangements = local_arrangements
+            .into_iter()
+            .map(|(id, arr)| (id, ArrangementFlavor::Local(arr)))
+            .chain(
+                inner_arrangements
+                    .into_iter()
+                    .map(|(id, arr)| (id, ArrangementFlavor::Foreign(arr))),
+            )
+            .collect();
+
         // apply rules to variables
         for rel in rels {
             for rule in &rel.rel.rules {
@@ -805,8 +807,7 @@ fn render_scc<'a>(
                             .cloned()
                     },
                     Arrangements {
-                        arrangements1: &local_arrangements,
-                        arrangements2: &inner_arrangements,
+                        arrangements: &arrangements,
                     },
                     false,
                 );

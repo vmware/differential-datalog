@@ -16,16 +16,16 @@ use tutorial_ddlog::relid2name;
 // Type and function definitions.
 use tutorial_ddlog::typedefs::*;
 
-                                  // The differential_datalog crate contains the DDlog runtime that is
+// The differential_datalog crate contains the DDlog runtime that is
 // the same for all DDlog programs and simply gets copied to each generated
 // DDlog workspace unmodified (this will change in future releases).
-use differential_datalog::{DDlog, DDlogInventory, DDlogDynamic}; // Trait that must be implemented by an instance of a DDlog program.
-use differential_datalog::DeltaMap; // Type that represents a set of changes to DDlog relations.
-                                    // Returned by `DDlog::transaction_commit_dump_changes()`.
-use differential_datalog::ddval::DDValue; // Generic type that wraps all DDlog value.
-use differential_datalog::ddval::DDValConvert; // Trait to convert Rust types to/from DDValue.
-                                               // All types used in input and output relations, indexes, and
-                                               // primary keys implement this trait.
+use differential_datalog::DeltaMap;
+use differential_datalog::{DDlog, DDlogDynamic, DDlogInventory}; // Trait that must be implemented by an instance of a DDlog program. // Type that represents a set of changes to DDlog relations.
+                                                                 // Returned by `DDlog::transaction_commit_dump_changes()`.
+use differential_datalog::ddval::DDValConvert;
+use differential_datalog::ddval::DDValue; // Generic type that wraps all DDlog value. // Trait to convert Rust types to/from DDValue.
+                                          // All types used in input and output relations, indexes, and
+                                          // primary keys implement this trait.
 use differential_datalog::program::RelId; // Numeric relations id.
 use differential_datalog::program::Update; // Type-safe representation of a DDlog command (insert/delete_val/delete_key/...)
 
@@ -34,9 +34,7 @@ use differential_datalog::record::Record; // Dynamically typed representation of
 use differential_datalog::record::RelIdentifier; // Relation identifier: either `RelId` or `Cow<str>`g.
 use differential_datalog::record::UpdCmd; // Dynamically typed representation of DDlog command.
 
-
 fn main() -> Result<(), String> {
-
     // Instantiate a DDlog program.
     // Returns a handle to the program and initial contents of output relations.
     // Arguments
@@ -45,7 +43,7 @@ fn main() -> Result<(), String> {
     //   of output relations.  Should only be used for debugging in order to dump
     //   the contents of output tables using `HDDlog::dump_table()`.  Otherwise,
     //   indexes are the preferred way to achieve this.
-    let (mut hddlog, init_state) = HDDlog::run(1, false)?;
+    let (hddlog, init_state) = HDDlog::run(1, false)?;
 
     println!("Initial state");
     dump_delta(&init_state);
@@ -73,7 +71,8 @@ fn main() -> Result<(), String> {
     // multiple updates.  An update inserts, deletes or modifies a record in a DDlog
     // relation.
     let updates = vec![
-        Update::Insert { // We are going to insert..
+        Update::Insert {
+            // We are going to insert..
             relid: Relations::Word1 as RelId, // .. into relation with this Id.
             // `Word1` type, declared in the `types` crate has the same fields as
             // the corresponding DDlog type.
@@ -111,12 +110,9 @@ fn main() -> Result<(), String> {
         // weight = 1 - insert.
         // weight = -1 - delete.
         assert_eq!(*weight, 1);
-        // `val` has type `DDValue`; converting it to a concrete Rust
-        // type is an unsafe operation: specifying the wrong Rust type
-        // will lead to undefined behavior.
-        let phrase: &Phrases = unsafe { Phrases::from_ddvalue_ref(val) };
+        let phrase: &Phrases = Phrases::from_ddvalue_ref(val);
         println!("New phrase: {}", phrase.phrase);
-    };
+    }
 
     hddlog.transaction_start()?;
 
@@ -129,11 +125,12 @@ fn main() -> Result<(), String> {
     // DDlog values.
     let commands = vec![UpdCmd::Insert(
         RelIdentifier::RelId(relid_word1),
-        Record::PosStruct( // Positional struct consists of constructor name
-                           // and a vector of arguments whose number and
-                           // types must match those of the DDlog constructor.
-                           // The alternative is `NamedStruct` where arguments
-                           // are represented as (name, value) pairs.
+        Record::PosStruct(
+            // Positional struct consists of constructor name
+            // and a vector of arguments whose number and
+            // types must match those of the DDlog constructor.
+            // The alternative is `NamedStruct` where arguments
+            // are represented as (name, value) pairs.
             Cow::from("Word1"), // Constructor name.
             // Constructor arguments.
             vec![

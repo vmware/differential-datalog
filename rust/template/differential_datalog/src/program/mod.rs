@@ -27,7 +27,9 @@ use crate::{
     record::Mutator,
     render::arrange_by::{ArrangeBy, ArrangementKind},
 };
-use arrange::{antijoin_arranged, Arrangement as DataflowArrangement, Arrangements, A};
+use arrange::{
+    antijoin_arranged, Arrangement as DataflowArrangement, ArrangementFlavor, Arrangements,
+};
 use crossbeam_channel::{Receiver, Sender};
 use fnv::{FnvHashMap, FnvHashSet};
 use std::{
@@ -71,14 +73,14 @@ use timely::{
     execute::Config as TimelyConfig,
 };
 
-type ValTrace<S> = DefaultValTrace<DDValue, DDValue, <S as ScopeParent>::Timestamp, Weight, u32>;
-type KeyTrace<S> = DefaultKeyTrace<DDValue, <S as ScopeParent>::Timestamp, Weight, u32>;
+type ValTrace<S> = DefaultValTrace<DDValue, DDValue, S, Weight, u32>;
+type KeyTrace<S> = DefaultKeyTrace<DDValue, S, Weight, u32>;
 
 type TValAgent<S> = TraceAgent<ValTrace<S>>;
 type TKeyAgent<S> = TraceAgent<KeyTrace<S>>;
 
-type TValEnter<'a, P, T> = TraceEnter<TValAgent<P>, T>;
-type TKeyEnter<'a, P, T> = TraceEnter<TKeyAgent<P>, T>;
+type TValEnter<P, T> = TraceEnter<TValAgent<P>, T>;
+type TKeyEnter<P, T> = TraceEnter<TKeyAgent<P>, T>;
 
 /// Diff associated with records in differential dataflow
 pub type Weight = i32;
@@ -775,7 +777,7 @@ impl Arrangement {
     fn build_arrangement_root<S>(
         &self,
         collection: &Collection<S, DDValue, Weight>,
-    ) -> DataflowArrangement<S, Weight, TValAgent<S>, TKeyAgent<S>>
+    ) -> DataflowArrangement<S, Weight, TValAgent<S::Timestamp>, TKeyAgent<S::Timestamp>>
     where
         S: Scope,
         Collection<S, DDValue, Weight>: ThresholdTotal<S, DDValue, Weight>,
@@ -808,7 +810,7 @@ impl Arrangement {
     fn build_arrangement<S>(
         &self,
         collection: &Collection<S, DDValue, Weight>,
-    ) -> DataflowArrangement<S, Weight, TValAgent<S>, TKeyAgent<S>>
+    ) -> DataflowArrangement<S, Weight, TValAgent<S::Timestamp>, TKeyAgent<S::Timestamp>>
     where
         S: Scope,
         S::Timestamp: Lattice + Ord,
@@ -1020,7 +1022,7 @@ impl Program {
         let program = Arc::new(self.clone());
         let profiling = ProfilingData::new(profile_cpu.clone(), profile_timely.clone(), prof_send);
 
-        let mut config = Config::process(number_workers);
+        let mut config = TimelyConfig::process(number_workers);
 
         // Allow configuring the merge behavior of ddflow
         // FIXME: Expose the merge behavior to all apis and deprecate the env var
@@ -1248,19 +1250,21 @@ impl Program {
 
     /// TODO: Allow this to return an error, so we can replace `expect`'s below
     /// with proper error handling.
-    fn xform_collection<'a, 'b, P, T, LC>(
-        col: Collection<Child<'a, P, T>, DDValue, Weight>,
+    // TODO: Much of this logic would be vastly simplified if we used a
+    //       combination of traits and `Vec<XFormCollection>`s (as opposed to
+    //       what we do now with a linked list of them)
+    fn xform_collection<'a, S, T, Lookup>(
+        col: Collection<S, DDValue, Weight>,
         xform: &Option<XFormCollection>,
-        arrangements: &Arrangements<'a, 'b, P, T>,
-        lookup_collection: &LC,
+        arrangements: &Arrangements<'a, S, T>,
+        lookup_collection: Lookup,
         is_top_level_scope: bool,
-    ) -> Collection<Child<'a, P, T>, DDValue, Weight>
+    ) -> Collection<S, DDValue, Weight>
     where
-        P: ScopeParent,
-        P::Timestamp: Lattice,
-        T: Refines<P::Timestamp> + Lattice + Timestamp + Ord,
-        T: ToTupleTS,
-        LC: Fn(RelId) -> Option<Collection<Child<'a, P, T>, DDValue, Weight>>,
+        S: Scope,
+        S::Timestamp: Lattice + Refines<T> + ToTupleTS,
+        T: Lattice + Timestamp,
+        Lookup: Fn(RelId) -> Option<Collection<S, DDValue, Weight>>,
     {
         match xform {
             None => col,
@@ -1274,19 +1278,118 @@ impl Program {
         }
     }
 
-    fn xform_collection_ref<'a, 'b, P, T, LC>(
-        col: &Collection<Child<'a, P, T>, DDValue, Weight>,
+    fn xform_collection_ref<'a, S, T, Lookup>(
+        col: &Collection<S, DDValue, Weight>,
         xform: &XFormCollection,
-        arrangements: &Arrangements<'a, 'b, P, T>,
-        lookup_collection: &LC,
+        arrangements: &Arrangements<'a, S, T>,
+        lookup_collection: Lookup,
         is_top_level_scope: bool,
-    ) -> Collection<Child<'a, P, T>, DDValue, Weight>
+    ) -> Collection<S, DDValue, Weight>
     where
-        P: ScopeParent,
-        P::Timestamp: Lattice,
-        T: Refines<P::Timestamp> + Lattice + Timestamp + Ord,
-        T: ToTupleTS,
-        LC: Fn(RelId) -> Option<Collection<Child<'a, P, T>, DDValue, Weight>>,
+        S: Scope,
+        S::Timestamp: Lattice + Refines<T> + ToTupleTS,
+        T: Lattice + Timestamp,
+        Lookup: Fn(RelId) -> Option<Collection<S, DDValue, Weight>>,
+    {
+        if let XFormCollection::StreamXForm {
+            description,
+            xform,
+            next,
+        } = xform
+        {
+            let xformed = col
+                .scope()
+                .scoped::<AltNeu<S::Timestamp>, _, _>(description, |inner| {
+                    let d_col = with_prof_context(
+                        format!("differentiate stream before: {}", description).as_ref(),
+                        || col.differentiate(inner),
+                    );
+
+                    fn dummy_lookup_collection<S: Scope>(
+                        _: RelId,
+                    ) -> Option<Collection<S, DDValue, Weight>> {
+                        None
+                    }
+
+                    // We must call the streamless variant within the nested scope
+                    // otherwise we force rustc to instantiate an infinitely long type
+                    // since the function calls itself (a potentially infinite number of times),
+                    // each requiring further nesting of the scopes (and their types)
+                    let xformed = Self::streamless_xform_collection::<
+                        Child<S, AltNeu<S::Timestamp>>,
+                        S::Timestamp,
+                        _,
+                    >(
+                        d_col,
+                        &*xform,
+                        &Arrangements {
+                            arrangements: &FnvHashMap::default(),
+                        },
+                        dummy_lookup_collection,
+                        false,
+                    );
+
+                    with_prof_context(
+                        format!("integrate stream after: {}", description).as_ref(),
+                        || xformed.integrate(),
+                    )
+                });
+
+            Self::xform_collection(
+                xformed.clone(),
+                &*next,
+                arrangements,
+                lookup_collection,
+                is_top_level_scope,
+            )
+        } else {
+            Self::streamless_xform_collection_ref(
+                col,
+                xform,
+                arrangements,
+                lookup_collection,
+                is_top_level_scope,
+            )
+        }
+    }
+
+    fn streamless_xform_collection<'a, S, T, Lookup>(
+        col: Collection<S, DDValue, Weight>,
+        xform: &Option<XFormCollection>,
+        arrangements: &Arrangements<'a, S, T>,
+        lookup_collection: Lookup,
+        is_top_level_scope: bool,
+    ) -> Collection<S, DDValue, Weight>
+    where
+        S: Scope,
+        S::Timestamp: Lattice + Refines<T> + ToTupleTS,
+        T: Lattice + Timestamp,
+        Lookup: Fn(RelId) -> Option<Collection<S, DDValue, Weight>>,
+    {
+        match xform {
+            None => col,
+            Some(ref x) => Self::streamless_xform_collection_ref(
+                &col,
+                x,
+                arrangements,
+                lookup_collection,
+                is_top_level_scope,
+            ),
+        }
+    }
+
+    fn streamless_xform_collection_ref<'a, S, T, Lookup>(
+        col: &Collection<S, DDValue, Weight>,
+        xform: &XFormCollection,
+        arrangements: &Arrangements<'a, S, T>,
+        lookup_collection: Lookup,
+        is_top_level_scope: bool,
+    ) -> Collection<S, DDValue, Weight>
+    where
+        S: Scope,
+        S::Timestamp: Lattice + Refines<T> + ToTupleTS,
+        T: Lattice + Timestamp,
+        Lookup: Fn(RelId) -> Option<Collection<S, DDValue, Weight>>,
     {
         match *xform {
             XFormCollection::Arrange {
@@ -1308,13 +1411,15 @@ impl Program {
                 ref next,
             } => {
                 #[allow(clippy::unnecessary_cast)]
-                let one = Any::downcast_ref::<T::Summary>(&(1 as TS))
+                let one = Any::downcast_ref::<<S::Timestamp as Timestamp>::Summary>(&(1 as TS))
                     .expect("Differentiate operator used in recursive context");
+
                 let diff = with_prof_context(&description, || {
                     col.concat(
                         &col.delay(move |t| one.results_in(t).expect("Integer overflow in Differentiate: maximal number of transactions exceeded")).negate())
                 });
-                Self::xform_collection(
+
+                Self::streamless_xform_collection(
                     diff,
                     &*next,
                     arrangements,
@@ -1328,7 +1433,7 @@ impl Program {
                 ref next,
             } => {
                 let mapped = with_prof_context(&description, || col.map(mfun));
-                Self::xform_collection(
+                Self::streamless_xform_collection(
                     mapped,
                     &*next,
                     arrangements,
@@ -1344,7 +1449,7 @@ impl Program {
                 let flattened = with_prof_context(&description, || {
                     col.flat_map(move |x| fmfun(x).into_iter().flatten())
                 });
-                Self::xform_collection(
+                Self::streamless_xform_collection(
                     flattened,
                     &*next,
                     arrangements,
@@ -1358,7 +1463,7 @@ impl Program {
                 ref next,
             } => {
                 let filtered = with_prof_context(&description, || col.filter(ffun));
-                Self::xform_collection(
+                Self::streamless_xform_collection(
                     filtered,
                     &*next,
                     arrangements,
@@ -1372,7 +1477,7 @@ impl Program {
                 ref next,
             } => {
                 let flattened = with_prof_context(&description, || col.flat_map(fmfun));
-                Self::xform_collection(
+                Self::streamless_xform_collection(
                     flattened,
                     &*next,
                     arrangements,
@@ -1388,7 +1493,7 @@ impl Program {
                 let inspect = with_prof_context(&description, || {
                     col.inspect(move |(v, ts, w)| ifun(v, ts.to_tuple_ts(), *w))
                 });
-                Self::xform_collection(
+                Self::streamless_xform_collection(
                     inspect,
                     &*next,
                     arrangements,
@@ -1407,8 +1512,10 @@ impl Program {
                     // arrange input collection
                     let collection_with_keys = col.flat_map(afun);
                     let arr = match arrangements.lookup_arr(arrangement) {
-                        A::Arrangement1(DataflowArrangement::Map(arranged)) => arranged.clone(),
-                        A::Arrangement1(DataflowArrangement::Set(_)) => {
+                        ArrangementFlavor::Local(DataflowArrangement::Map(arranged)) => {
+                            arranged.clone()
+                        }
+                        ArrangementFlavor::Local(DataflowArrangement::Set(_)) => {
                             panic!("StreamJoin: not a map arrangement {:?}", arrangement)
                         }
                         _ => panic!("StreamJoin in nested scope: {}", description),
@@ -1427,7 +1534,7 @@ impl Program {
                     // to return `Option`.
                     .flat_map(|v| v)
                 });
-                Self::xform_collection(
+                Self::streamless_xform_collection(
                     join,
                     &*next,
                     arrangements,
@@ -1446,8 +1553,10 @@ impl Program {
                     // arrange input collection
                     let collection_with_keys = col.flat_map(afun);
                     let arr = match arrangements.lookup_arr(arrangement) {
-                        A::Arrangement1(DataflowArrangement::Set(arranged)) => arranged.clone(),
-                        A::Arrangement1(DataflowArrangement::Map(_)) => {
+                        ArrangementFlavor::Local(DataflowArrangement::Set(arranged)) => {
+                            arranged.clone()
+                        }
+                        ArrangementFlavor::Local(DataflowArrangement::Map(_)) => {
                             panic!("StreamSemijoin: not a set arrangement {:?}", arrangement)
                         }
                         _ => panic!("StreamSemijoin in nested scope: {}", description),
@@ -1466,7 +1575,7 @@ impl Program {
                     // to return `Option`.
                     .flat_map(|v| v)
                 });
-                Self::xform_collection(
+                Self::streamless_xform_collection(
                     join,
                     &*next,
                     arrangements,
@@ -1474,85 +1583,32 @@ impl Program {
                     is_top_level_scope,
                 )
             }
+
             XFormCollection::StreamXForm {
                 ref description, ..
-            } if !is_top_level_scope => {
-                panic!("StreamXForm in nested scope: {}", description);
-            }
-            XFormCollection::StreamXForm {
-                ref description,
-                ref xform,
-                ref next,
             } => {
-                // `StreamXForm` can in principle be applied in any scope, but it causes `rustc`
-                // to go into an infinite recursion instantiating infinitely nested `AltNeu`
-                // scopes and eventually crashing.  In practice, we only need to apply
-                // `StreamXForm` in the top-level scope (and possibly its children in the
-                // future).  So we brutally transmute the scope to the top-level scope.
-                let col = unsafe {
-                    &*(col as *const Collection<Child<P, T>, DDValue, Weight>
-                        as *const Collection<Child<Worker<Allocator>, TS>, DDValue, Weight>)
-                };
-                let xformed = col
-                    .scope()
-                    .scoped::<AltNeu<TS>, _, _>(description, |inner| {
-                        let d_col = with_prof_context(
-                            format!("differentiate stream before: {}", description).as_ref(),
-                            || col.differentiate(inner),
-                        );
-                        let arrangements1 = FnvHashMap::default();
-                        let arrangements2 = FnvHashMap::default();
-                        fn dummy_lookup_collection<S: Scope>(
-                            _: RelId,
-                        ) -> Option<Collection<S, DDValue, Weight>> {
-                            None
-                        }
-                        let xformed = Self::xform_collection(
-                            d_col,
-                            &*xform,
-                            &Arrangements {
-                                arrangements1: &arrangements1,
-                                arrangements2: &arrangements2,
-                            },
-                            &dummy_lookup_collection,
-                            false,
-                        );
-                        with_prof_context(
-                            format!("integrate stream after: {}", description).as_ref(),
-                            || xformed.integrate(),
-                        )
-                    });
-                let xformed = unsafe {
-                    &*(&xformed as *const Collection<Child<Worker<Allocator>, TS>, DDValue, Weight>
-                        as *const Collection<Child<P, T>, DDValue, Weight>)
-                };
-                Self::xform_collection(
-                    xformed.clone(),
-                    &*next,
-                    arrangements,
-                    lookup_collection,
-                    is_top_level_scope,
-                )
+                panic!("StreamXForm in nested scope: {}", description);
             }
         }
     }
 
-    fn xform_arrangement<'a, 'b, P, T, TR, LC>(
-        arr: &Arranged<Child<'a, P, T>, TR>,
+    fn xform_arrangement<'a, S, T, TR, LC>(
+        arr: &Arranged<S, TR>,
         xform: &XFormArrangement,
-        arrangements: &Arrangements<'a, 'b, P, T>,
-        lookup_collection: &LC,
+        arrangements: &Arrangements<'a, S, T>,
+        lookup_collection: LC,
         is_top_level_scope: bool,
-    ) -> Collection<Child<'a, P, T>, DDValue, Weight>
+    ) -> Collection<S, DDValue, Weight>
     where
-        P: ScopeParent,
-        P::Timestamp: Lattice,
-        T: Refines<P::Timestamp> + Lattice + Timestamp + Ord,
-        T: ToTupleTS,
-        TR: TraceReader<Key = DDValue, Val = DDValue, Time = T, R = Weight> + Clone + 'static,
-        TR::Batch: BatchReader<DDValue, DDValue, T, Weight>,
-        TR::Cursor: Cursor<DDValue, DDValue, T, Weight>,
-        LC: Fn(RelId) -> Option<Collection<Child<'a, P, T>, DDValue, Weight>>,
+        S: Scope,
+        S::Timestamp: Lattice + Refines<T> + ToTupleTS,
+        T: Lattice + Timestamp,
+        TR: TraceReader<Key = DDValue, Val = DDValue, Time = S::Timestamp, R = Weight>
+            + Clone
+            + 'static,
+        TR::Batch: BatchReader<DDValue, DDValue, S::Timestamp, Weight>,
+        TR::Cursor: Cursor<DDValue, DDValue, S::Timestamp, Weight>,
+        LC: Fn(RelId) -> Option<Collection<S, DDValue, Weight>>,
     {
         match *xform {
             XFormArrangement::FlatMap {
@@ -1560,7 +1616,7 @@ impl Program {
                 fmfun,
                 ref next,
             } => with_prof_context(&description, || {
-                Self::xform_collection(
+                Self::streamless_xform_collection(
                     arr.flat_map_ref(move |_, v| match fmfun(v.clone()) {
                         Some(iter) => iter,
                         None => Box::new(None.into_iter()),
@@ -1576,7 +1632,7 @@ impl Program {
                 fmfun,
                 ref next,
             } => with_prof_context(&description, || {
-                Self::xform_collection(
+                Self::streamless_xform_collection(
                     arr.flat_map_ref(move |_, v| fmfun(v.clone())),
                     &*next,
                     arrangements,
@@ -1611,7 +1667,7 @@ impl Program {
                         },
                     )
                 });
-                Self::xform_collection(
+                Self::streamless_xform_collection(
                     col,
                     &*next,
                     arrangements,
@@ -1626,14 +1682,14 @@ impl Program {
                 jfun,
                 ref next,
             } => match arrangements.lookup_arr(arrangement) {
-                A::Arrangement1(DataflowArrangement::Map(arranged)) => {
+                ArrangementFlavor::Local(DataflowArrangement::Map(arranged)) => {
                     let col = with_prof_context(&description, || {
                         ffun.map_or_else(
-                            || arr.join_core(arranged, jfun),
-                            |f| arr.filter(move |_, v| f(v)).join_core(arranged, jfun),
+                            || arr.join_core(&arranged, jfun),
+                            |f| arr.filter(move |_, v| f(v)).join_core(&arranged, jfun),
                         )
                     });
-                    Self::xform_collection(
+                    Self::streamless_xform_collection(
                         col,
                         &*next,
                         arrangements,
@@ -1641,14 +1697,14 @@ impl Program {
                         is_top_level_scope,
                     )
                 }
-                A::Arrangement2(DataflowArrangement::Map(arranged)) => {
+                ArrangementFlavor::Foreign(DataflowArrangement::Map(arranged)) => {
                     let col = with_prof_context(&description, || {
                         ffun.map_or_else(
-                            || arr.join_core(arranged, jfun),
-                            |f| arr.filter(move |_, v| f(v)).join_core(arranged, jfun),
+                            || arr.join_core(&arranged, jfun),
+                            |f| arr.filter(move |_, v| f(v)).join_core(&arranged, jfun),
                         )
                     });
-                    Self::xform_collection(
+                    Self::streamless_xform_collection(
                         col,
                         &*next,
                         arrangements,
@@ -1666,14 +1722,14 @@ impl Program {
                 jfun,
                 ref next,
             } => match arrangements.lookup_arr(arrangement) {
-                A::Arrangement1(DataflowArrangement::Set(arranged)) => {
+                ArrangementFlavor::Local(DataflowArrangement::Set(arranged)) => {
                     let col = with_prof_context(&description, || {
                         ffun.map_or_else(
-                            || arr.join_core(arranged, jfun),
-                            |f| arr.filter(move |_, v| f(v)).join_core(arranged, jfun),
+                            || arr.join_core(&arranged, jfun),
+                            |f| arr.filter(move |_, v| f(v)).join_core(&arranged, jfun),
                         )
                     });
-                    Self::xform_collection(
+                    Self::streamless_xform_collection(
                         col,
                         &*next,
                         arrangements,
@@ -1681,14 +1737,14 @@ impl Program {
                         is_top_level_scope,
                     )
                 }
-                A::Arrangement2(DataflowArrangement::Set(arranged)) => {
+                ArrangementFlavor::Foreign(DataflowArrangement::Set(arranged)) => {
                     let col = with_prof_context(&description, || {
                         ffun.map_or_else(
-                            || arr.join_core(arranged, jfun),
-                            |f| arr.filter(move |_, v| f(v)).join_core(arranged, jfun),
+                            || arr.join_core(&arranged, jfun),
+                            |f| arr.filter(move |_, v| f(v)).join_core(&arranged, jfun),
                         )
                     });
-                    Self::xform_collection(
+                    Self::streamless_xform_collection(
                         col,
                         &*next,
                         arrangements,
@@ -1704,17 +1760,17 @@ impl Program {
                 arrangement,
                 ref next,
             } => match arrangements.lookup_arr(arrangement) {
-                A::Arrangement1(DataflowArrangement::Set(arranged)) => {
+                ArrangementFlavor::Local(DataflowArrangement::Set(arranged)) => {
                     let col = with_prof_context(&description, || {
                         ffun.map_or_else(
-                            || antijoin_arranged(&arr, arranged).map(|(_, v)| v),
+                            || antijoin_arranged(&arr, &arranged).map(|(_, v)| v),
                             |f| {
-                                antijoin_arranged(&arr.filter(move |_, v| f(v)), arranged)
+                                antijoin_arranged(&arr.filter(move |_, v| f(v)), &arranged)
                                     .map(|(_, v)| v)
                             },
                         )
                     });
-                    Self::xform_collection(
+                    Self::streamless_xform_collection(
                         col,
                         &*next,
                         arrangements,
@@ -1722,17 +1778,17 @@ impl Program {
                         is_top_level_scope,
                     )
                 }
-                A::Arrangement2(DataflowArrangement::Set(arranged)) => {
+                ArrangementFlavor::Foreign(DataflowArrangement::Set(arranged)) => {
                     let col = with_prof_context(&description, || {
                         ffun.map_or_else(
-                            || antijoin_arranged(&arr, arranged).map(|(_, v)| v),
+                            || antijoin_arranged(&arr, &arranged).map(|(_, v)| v),
                             |f| {
-                                antijoin_arranged(&arr.filter(move |_, v| f(v)), arranged)
+                                antijoin_arranged(&arr.filter(move |_, v| f(v)), &arranged)
                                     .map(|(_, v)| v)
                             },
                         )
                     });
-                    Self::xform_collection(
+                    Self::streamless_xform_collection(
                         col,
                         &*next,
                         arrangements,
@@ -1792,7 +1848,7 @@ impl Program {
                     // to return `Option`.
                     join.flat_map(|v| v)
                 });
-                Self::xform_collection(
+                Self::streamless_xform_collection(
                     col,
                     &*next,
                     arrangements,
@@ -1849,7 +1905,7 @@ impl Program {
                     // to return `Option`.
                     join.flat_map(|v| v)
                 });
-                Self::xform_collection(
+                Self::streamless_xform_collection(
                     col,
                     &*next,
                     arrangements,
@@ -1863,20 +1919,18 @@ impl Program {
     /// Compile right-hand-side of a rule to a collection
     ///
     /// * `is_top_level_scope` - `true` when evaluating a rule in the top-level scope.
-    fn mk_rule<'a, 'b, P, T, F>(
+    fn mk_rule<'a, S, T, F>(
         &self,
         rule: &Rule,
         lookup_collection: F,
-        arrangements: Arrangements<'a, 'b, P, T>,
+        arrangements: Arrangements<'a, S, T>,
         is_top_level_scope: bool,
-    ) -> Collection<Child<'a, P, T>, DDValue, Weight>
+    ) -> Collection<S, DDValue, Weight>
     where
-        P: ScopeParent + 'a,
-        P::Timestamp: Lattice,
-        T: Refines<P::Timestamp> + Lattice + Timestamp + Ord,
-        T: ToTupleTS,
-        F: Fn(RelId) -> Option<Collection<Child<'a, P, T>, DDValue, Weight>>,
-        'a: 'b,
+        S: Scope,
+        S::Timestamp: Lattice + Refines<T> + ToTupleTS,
+        T: Lattice + Timestamp,
+        F: Fn(RelId) -> Option<Collection<S, DDValue, Weight>>,
     {
         match rule {
             Rule::CollectionRule {
@@ -1904,20 +1958,24 @@ impl Program {
                 is_top_level_scope,
             ),
             Rule::ArrangementRule { arr, xform, .. } => match arrangements.lookup_arr(*arr) {
-                A::Arrangement1(DataflowArrangement::Map(arranged)) => Self::xform_arrangement(
-                    arranged,
-                    xform,
-                    &arrangements,
-                    &lookup_collection,
-                    is_top_level_scope,
-                ),
-                A::Arrangement2(DataflowArrangement::Map(arranged)) => Self::xform_arrangement(
-                    arranged,
-                    xform,
-                    &arrangements,
-                    &lookup_collection,
-                    is_top_level_scope,
-                ),
+                ArrangementFlavor::Local(DataflowArrangement::Map(arranged)) => {
+                    Self::xform_arrangement(
+                        &arranged,
+                        xform,
+                        &arrangements,
+                        &lookup_collection,
+                        is_top_level_scope,
+                    )
+                }
+                ArrangementFlavor::Foreign(DataflowArrangement::Map(arranged)) => {
+                    Self::xform_arrangement(
+                        &arranged,
+                        xform,
+                        &arrangements,
+                        &lookup_collection,
+                        is_top_level_scope,
+                    )
+                }
                 _ => panic!("Rule starts with a set arrangement {:?}", *arr),
             },
         }

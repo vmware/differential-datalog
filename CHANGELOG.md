@@ -1,4 +1,5 @@
 # Changelog
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
@@ -8,6 +9,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Changes
 
 - Upgraded to timely dataflow and differential dataflow dependencies to v0.12.
+- Worked on improving the debuggability of ddlog dataflow graphs
+
+### Bug Fixes
+
+- Fixed crashes due to misused unsafe code
 
 ## [0.39.0] - April 11, 2021
 
