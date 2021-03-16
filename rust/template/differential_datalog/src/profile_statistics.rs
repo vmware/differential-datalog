@@ -189,26 +189,6 @@ impl CSVLogEvent {
         }
     }
 
-    fn progress_entry(
-        worker_id: usize,
-        source_worker: usize,
-        operator_addr: &[usize],
-        sequence_number: usize,
-        is_send: bool,
-        channel_id: usize,
-    ) -> CSVLogEvent {
-        CSVLogEvent {
-            worker_id,
-            source_worker: Some(source_worker),
-            event_type: CSVEventType::Progress,
-            operator_addr: Some(CSVLogEvent::vec_to_csv_string(operator_addr)),
-            sequence_number: Some(sequence_number),
-            is_send: Some(is_send),
-            channel: Some(channel_id),
-            ..CSVLogEvent::default()
-        }
-    }
-
     fn push_progress(worker_id: usize, operator_id: usize) -> CSVLogEvent {
         CSVLogEvent {
             worker_id,
@@ -336,19 +316,6 @@ impl Statistics {
                         }
                     }
                 }
-            }
-            TimelyEvent::Progress(p) => {
-                let e = CSVLogEvent::progress_entry(
-                    worker_index,
-                    p.source,
-                    &p.addr,
-                    p.seq_no,
-                    p.is_send,
-                    p.channel,
-                );
-                self.csv_writer
-                    .serialize(e)
-                    .expect("unable to serialize record");
             }
             TimelyEvent::PushProgress(p) => {
                 self.csv_writer

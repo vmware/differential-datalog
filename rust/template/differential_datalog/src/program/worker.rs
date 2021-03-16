@@ -266,8 +266,8 @@ impl<'a> DDlogWorker<'a> {
         for trace in session_data.traces.values_mut() {
             let e = [timestamp];
             let ac = AntichainRef::new(&e);
-            trace.distinguish_since(ac);
-            trace.advance_by(ac);
+            trace.set_physical_compaction(ac);
+            trace.set_logical_compaction(ac);
         }
     }
 
@@ -398,7 +398,6 @@ impl<'a> DDlogWorker<'a> {
                             TimelyEvent::GuardedMessage(_)
                             | TimelyEvent::Messages(_)
                             | TimelyEvent::Park(_)
-                            | TimelyEvent::Progress(_)
                             | TimelyEvent::PushProgress(_) => profile_timely,
 
                             _ => false,
