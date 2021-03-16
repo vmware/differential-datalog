@@ -35,6 +35,7 @@ use std::{
     borrow::Cow,
     cmp,
     collections::{hash_map, BTreeSet},
+    env,
     fmt::{self, Debug, Formatter},
     iter::{self, Cycle, Skip},
     ops::Range,
@@ -55,7 +56,7 @@ use differential_dataflow::trace::implementations::ord::OrdKeySpine as DefaultKe
 use differential_dataflow::trace::implementations::ord::OrdValSpine as DefaultValTrace;
 use differential_dataflow::trace::wrappers::enter::TraceEnter;
 use differential_dataflow::trace::{BatchReader, Cursor, TraceReader};
-use differential_dataflow::Collection;
+use differential_dataflow::{Collection, Config as DDFlowConfig};
 use dogsdogsdogs::{
     altneu::AltNeu,
     calculus::{Differentiate, Integrate},
@@ -1019,9 +1020,31 @@ impl Program {
         let program = Arc::new(self.clone());
         let profiling = ProfilingData::new(profile_cpu.clone(), profile_timely.clone(), prof_send);
 
+        let mut config = Config::process(number_workers);
+
+        // Allow configuring the merge behavior of ddflow
+        // FIXME: Expose the merge behavior to all apis and deprecate the env var
+        if let Ok(value) = env::var("DIFFERENTIAL_EAGER_MERGE") {
+            let idle_merge_effort = if value.is_empty() {
+                None
+            } else {
+                let merge_effort: isize = value.parse().map_err(|_| {
+                    "the `DIFFERENTIAL_EAGER_MERGE` variable must be set to an integer value"
+                        .to_owned()
+                })?;
+
+                Some(merge_effort)
+            };
+
+            differential_dataflow::configure(
+                &mut config.worker,
+                &DDFlowConfig { idle_merge_effort },
+            );
+        }
+
         // Start up timely computation.
         let worker_guards = timely::execute(
-            TimelyConfig::process(number_workers),
+            config,
             move |worker: &mut Worker<Allocator>| -> Result<_, String> {
                 let worker = DDlogWorker::new(
                     worker,
