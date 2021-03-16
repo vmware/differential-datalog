@@ -57,11 +57,9 @@ use dogsdogsdogs::{
     calculus::{Differentiate, Integrate},
     operators::lookup_map,
 };
-use timely::communication::{
-    initialize::{Configuration, WorkerGuards},
-    Allocator,
-};
+use timely::communication::{initialize::WorkerGuards, Allocator};
 use timely::dataflow::scopes::*;
+use timely::execute::Config as TimelyConfig;
 use timely::order::TotalOrder;
 use timely::progress::{timestamp::Refines, PathSummary, Timestamp};
 use timely::worker::Worker;
@@ -999,7 +997,7 @@ impl Program {
 
         // Start up timely computation.
         let worker_guards = timely::execute(
-            Configuration::Process(number_workers),
+            TimelyConfig::process(number_workers),
             move |worker: &mut Worker<Allocator>| -> Result<_, String> {
                 let worker = DDlogWorker::new(
                     worker,
