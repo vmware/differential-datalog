@@ -61,12 +61,14 @@ use dogsdogsdogs::{
     calculus::{Differentiate, Integrate},
     operators::lookup_map,
 };
-use timely::communication::{initialize::WorkerGuards, Allocator};
 use timely::dataflow::scopes::*;
-use timely::execute::Config as TimelyConfig;
 use timely::order::TotalOrder;
 use timely::progress::{timestamp::Refines, PathSummary, Timestamp};
 use timely::worker::Worker;
+use timely::{
+    communication::{initialize::WorkerGuards, Allocator},
+    execute::Config as TimelyConfig,
+};
 
 type ValTrace<S> = DefaultValTrace<DDValue, DDValue, <S as ScopeParent>::Timestamp, Weight, u32>;
 type KeyTrace<S> = DefaultKeyTrace<DDValue, <S as ScopeParent>::Timestamp, Weight, u32>;
