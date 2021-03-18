@@ -124,7 +124,7 @@ fn main() -> Result<(), String> {
 
     let relid_word1 = hddlog.get_table_id("Word1").unwrap() as RelId;
 
-    // `UpdCmd` is a dynamically typed representaion of a DDlog command.
+    // `UpdCmd` is a dynamically typed representation of a DDlog command.
     // It takes a vector or `Record`'s, which represent dynamically typed
     // DDlog values.
     let commands = vec![UpdCmd::Insert(
