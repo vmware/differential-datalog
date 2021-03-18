@@ -832,7 +832,6 @@ pub unsafe extern "C" fn ddlog_delta_enumerate(
     if let Some(f) = cb {
         for (table_id, table_data) in (&*delta).as_ref().iter() {
             for (val, weight) in table_data.iter() {
-                assert!(*weight == 1 || *weight == -1);
                 f(
                     cb_arg,
                     *table_id as libc::size_t,
