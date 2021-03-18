@@ -1741,7 +1741,7 @@ for details).  These commands are only applicable to input relations declared wi
 A primary key typically consists of one or more columns, but in general in can be
 be an arbitrary function of the record.  In the following example, we define the
 primary key as a tuple consisting of `author` and `title` columns.  We specify
-is as a closure that takes a record `x` and returns the `(author, title)`
+it as a closure that takes a record `x` and returns the `(author, title)`
 pair:
 
 ```
