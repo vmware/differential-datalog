@@ -134,9 +134,10 @@ modify MyRelation 2 <- MyRelation{.attr3 = [(3, "c"), (4, "dd"), (5, "e"), (6, "
 
 Extern types implement their own custom update semantics.  The programmer defines
 this semantics by implementing the `Mutator` trait declared in
-[`record.rs`](../../rust/template/differential_datalog/record.rs).  See,
+[`record.rs`](../../rust/template/differential_datalog/src/record/mod.rs).  See
 [`tinyset.rs`](../../lib/tinyset.rs) for an example implementation of `trait Mutator` for
-`Set64<>`.
+`Set64<>`.  For many types, the trait can be auto-derived using procedural macros in
+[`mutator.rs`](../../rust/template/ddlog_derive/src/mutator.rs).
 
 ## String literals
 
