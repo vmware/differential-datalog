@@ -139,8 +139,8 @@ dump First5;
 
 start;
 
-insert Blacklisted("170.187.204.221:80"),
-insert Blacklisted("170.187.204.221:20");
+insert Blocklisted("170.187.204.221:80"),
+insert Blocklisted("170.187.204.221:20");
 
 commit;
 
