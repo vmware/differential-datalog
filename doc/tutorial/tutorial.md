@@ -2736,6 +2736,48 @@ TopScore(school, top_score) :-
     var top_score = Aggregate((school), group_max(student.sat_score)).
 ```
 
+### Performance pitfalls with pattern matching references
+
+`&` can pattern match a value stored by reference, so it is tempting
+to use it to extract the value of a `Ref<>` column.  For example, we
+could replace `student` by `&student` in the `StudentInfo` clause just
+above, like this:
+
+```
+TopScore(school, top_score) :-
+    StudentInfo(&student, &School{.name = school}),
+    var top_score = Aggregate((school), group_max(student.sat_score)).
+```
+
+This produces the same output as the former rule.  It does not depend
+on automatic dereferencing behavior; instead, the `StudentInfo` clause
+binds `student` to a copy of the dereferenced value rather than to the
+reference itself.
+
+However, this is a performance anti-pattern.  DDlog copies by value
+any types not wrapped in `Ref<>` (or in `Intern<>`, described later),
+so this copies the whole `Student` record every time it executes.
+This is a waste of memory and CPU and it does not happen in the former
+version of the rule.
+
+`&` is still useful and does not incur any overhead when used to
+deconstruct an object wrapped in a reference and refer to its fields,
+as in `&School{.name = school}` in the second part of the
+`StudentInfo` clause above.
+
+On top of this, the `@` operator can be used to simultaneously bind
+the entire value stored in a column and its individual fields.  For
+example, one could write:
+
+```
+    StudentInfo(stu @ &Student{.sat_score = sat},
+                sch @ &School{.name = school}),
+```
+
+The `&`s in this rule deconstruct the value inside the reference;
+however, since the binding operator `@` precedes `&`, we bind `stu`
+and `sch` to the references themselves, not the values that they wrap.
+
 ## Interned values (`Intern<>`, `istring`)
 
 Interned values offer another way to save memory when working with large data
