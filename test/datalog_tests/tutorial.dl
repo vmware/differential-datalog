@@ -204,13 +204,13 @@ function test_vector_transformers(): u64 {
 /*
  * Example: assignment clauses and antijoins
  */
-input relation Blacklisted(ep: string)
+input relation Blocklisted(ep: string)
 output relation SanitizedEndpoint(ep: string)
 
 SanitizedEndpoint(endpoint) :-
     Endpoint(ip, proto, preferred_port),
     var endpoint = addr_port(ip, proto, preferred_port),
-    not Blacklisted(endpoint).
+    not Blocklisted(endpoint).
 
 /*
  * Example: @-bindings.

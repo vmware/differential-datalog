@@ -1221,21 +1221,46 @@ vec.filter(|v| v.len() > 1)   // [[1,2,3], [4,5,6]]
 #### Negations and antijoins
 
 Let's assume we want to compute a relation `SanitizedEndpoint`
-containing the endpoints that do not appear in a `Blacklisted`
+containing the endpoints that do not appear in a `Blocklisted`
 relation:
 
 ```
-input relation Blacklisted(ep: string)
+input relation Blocklisted(ep: string)
 output relation SanitizedEndpoint(ep: string)
 
 SanitizedEndpoint(endpoint) :-
     EndpointString(endpoint),
-    not Blacklisted(endpoint).
+    not Blocklisted(endpoint).
 ```
 
 The `not` operator in the last line eliminates all endpoint values
-that appear in `Blacklisted`.  In database terminology this is known
+that appear in `Blocklisted`.  In database terminology this is known
 as *antijoin*.
+
+#### Left join
+
+A *left join* includes all of the records in one relation plus fields
+from matching records from a second relation.  In DDlog, we can build
+left joins using negation.  For example, we can extend the previous
+example with a new relation `EndpointSanitization` that includes every
+endpoint plus whether it is sanitized:
+
+```
+output relation EndpointSanitization(ep: string, sanitized: bool)
+EndpointSanitization(endpoint, false) :- Blocklisted(endpoint).
+EndpointSanitization(endpoint, true) :- SanitizedEndpoint(endpoint).
+```
+
+However, nothing above prevents `Blocklisted`, and therefore
+`EndpointSanitization`, from containing endpoints that do not appear
+in `EndpointString`.  If that is undesirable, we can replace the first
+rule above by:
+
+```
+EndpointSanitization(endpoint, false) :-
+    EndpointString(endpoint),
+    Blocklisted(endpoint).
+```
 
 #### Assignments in rules
 
@@ -1245,7 +1270,7 @@ We can directly use assignments in rules:
 SanitizedEndpoint(endpoint) :-
     Endpoint(ip, proto, preferred_port),
     var endpoint = addr_port(ip, proto, preferred_port),
-    not Blacklisted(endpoint).
+    not Blocklisted(endpoint).
 ```
 
 #### Binding variables to rows
@@ -1257,7 +1282,7 @@ The following binds the `ep` variable to a row of the `Endpoint` relation.
 SanitizedEndpoint(endpoint) :-
     ep in Endpoint(),
     var endpoint = addr_port(ep.ip, ep.proto, ep.preferred_port),
-    not Blacklisted(endpoint).
+    not Blocklisted(endpoint).
 ```
 
 Here we filter the `Endpoint` relation to select HTTP endpoints only
@@ -1267,7 +1292,7 @@ and bind resulting rows to `ep`:
 SanitizedHTTPEndpoint(endpoint) :-
     ep in Endpoint(.proto = "HTTP"),
     var endpoint = addr_port(ep.ip, ep.proto, ep.preferred_port),
-    not Blacklisted(endpoint).
+    not Blocklisted(endpoint).
 ```
 
 #### `@`-bindings

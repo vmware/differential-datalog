@@ -833,14 +833,14 @@ Innocent(name) :- Suspect(name), not Gangster(_, name).
 
 typedef ip_addr_t = IPAddr{b3: bit<8>, b2: bit<8>, b1: bit<8>, b0: bit<8>}
 
-input relation Blacklist(addr: ip_addr_t)
+input relation Blocklist(addr: ip_addr_t)
 input relation Address(addr: ip_addr_t)
 
 output relation ValidDestination(addr: ip_addr_t)
 ValidDestination(addr) :-
     Address(addr),
     IPAddr{var b3, var b2, _, _} = addr,
-    not Blacklist(IPAddr{b3, b2, _, _}).
+    not Blocklist(IPAddr{b3, b2, _, _}).
 
 // FlatMap test
 input relation HostAddresses(host: bit<64>, addrs: Set<string>)
