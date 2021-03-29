@@ -1241,7 +1241,9 @@ as *antijoin*.
 
 A *left join* includes all of the records in one relation plus fields
 from matching records from a second relation.  In DDlog, we can build
-left joins using negation.  For example:
+left joins using negation.  For example, we can extend the previous
+example with a new relation `EndpointSanitization` that includes every
+endpoint plus whether it is sanitized:
 
 ```
 output relation EndpointSanitization(ep: string, sanitized: bool)
