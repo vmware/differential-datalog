@@ -1,10 +1,11 @@
 [workspace]
 members = [
     "rust/template",
+    "rust/dyn-ddlog",
     "rust/template/ovsdb",
     "rust/template/cmd_parser",
     "rust/template/ddlog_derive",
-    "rust/template/distributed_datalog",
+    # "rust/template/distributed_datalog",
     "rust/template/differential_datalog",
     "rust/template/differential_datalog_test",
 ]

@@ -1,0 +1,133 @@
+// args: build -Z dump-ast
+// TODO: Make a better ast debugging format
+// expected stdout:
+// [
+//     Declaration {
+//         attributes: [],
+//         kind: Relation(
+//             Relation {
+//                 kind: Internal,
+//                 name: Ident {
+//                     ident: "InternalRelation",
+//                     kind: Uppercase,
+//                 },
+//                 args: [],
+//             },
+//         ),
+//     },
+//     Declaration {
+//         attributes: [],
+//         kind: Relation(
+//             Relation {
+//                 kind: Input,
+//                 name: Ident {
+//                     ident: "InputRelation",
+//                     kind: Uppercase,
+//                 },
+//                 args: [],
+//             },
+//         ),
+//     },
+//     Declaration {
+//         attributes: [],
+//         kind: Relation(
+//             Relation {
+//                 kind: Output,
+//                 name: Ident {
+//                     ident: "OutputRelation",
+//                     kind: Uppercase,
+//                 },
+//                 args: [],
+//             },
+//         ),
+//     },
+//     Declaration {
+//         attributes: [],
+//         kind: Relation(
+//             Relation {
+//                 kind: Internal,
+//                 name: Ident {
+//                     ident: "Test",
+//                     kind: Uppercase,
+//                 },
+//                 args: [
+//                     (
+//                         Ident {
+//                             ident: "foo",
+//                             kind: Lowercase,
+//                         },
+//                         Bool,
+//                     ),
+//                 ],
+//             },
+//         ),
+//     },
+//     Declaration {
+//         attributes: [],
+//         kind: Relation(
+//             Relation {
+//                 kind: Output,
+//                 name: Ident {
+//                     ident: "Test",
+//                     kind: Uppercase,
+//                 },
+//                 args: [
+//                     (
+//                         Ident {
+//                             ident: "foo",
+//                             kind: Lowercase,
+//                         },
+//                         String,
+//                     ),
+//                     (
+//                         Ident {
+//                             ident: "_bar",
+//                             kind: Lowercase,
+//                         },
+//                         Bool,
+//                     ),
+//                 ],
+//             },
+//         ),
+//     },
+//     Declaration {
+//         attributes: [],
+//         kind: Relation(
+//             Relation {
+//                 kind: Output,
+//                 name: Ident {
+//                     ident: "Test",
+//                     kind: Uppercase,
+//                 },
+//                 args: [
+//                     (
+//                         Ident {
+//                             ident: "foo",
+//                             kind: Lowercase,
+//                         },
+//                         String,
+//                     ),
+//                     (
+//                         Ident {
+//                             ident: "_bar",
+//                             kind: Lowercase,
+//                         },
+//                         Bool,
+//                     ),
+//                 ],
+//             },
+//         ),
+//     },
+// ]
+
+relation InternalRelation()
+
+input relation InputRelation()
+
+output relation OutputRelation()
+
+relation Test(foo: bool)
+
+output relation Test(foo: string, _bar: bool)
+
+output relation Test(foo: string, _bar: bool,)

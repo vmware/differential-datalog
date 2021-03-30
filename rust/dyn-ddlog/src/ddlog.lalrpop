@@ -1,0 +1,84 @@
+// TODO: String & node interning
+// TODO: It could be worth it to eventually use a custom lexer
+//       with lalrpop, probably logos
+//       https://lalrpop.github.io/lalrpop/lexer_tutorial/002_writing_custom_lexer.html#writing-a-custom-lexer
+//       https://crates.io/crates/logos
+
+use crate::{
+    ast::{
+        Attribute, Declaration, DeclarationKind, Expr, Ident, Relation, RelationKind,
+        Type,
+    },
+    grammar::concat_tail,
+};
+
+grammar;
+
+match {
+    // The default whitespace skipping is disabled when an `ignore pattern` is specified,
+    // so we re-enable it
+    r"\s*" => { },
+    // Skip single line comments a la `// comments`
+    r"//[^\n\r]*[\n\r]*" => { },
+    // Skip multi line comments a la `/* comments */`
+    r"/\*([^\*]*\*+[^\*/])*([^\*]*\*+|[^\*])*\*/" => { },
+} else {
+    // We can safely ignore non-whitespace and non-comment
+    // tokens and let them pass onto the rest of the parser
+    _
+}
+
+pub Datalog = Decl*;
+
+Decl: Declaration = <attrs: Attr*> <decl: DeclKind> =>
+    Declaration::new(attrs.into_iter().flatten().collect(), decl);
+
+DeclKind: DeclarationKind = Relation => DeclarationKind::Relation(<>);
+
+Relation: Relation =
+    <kind: RelationKind?> "relation" <ident: UppercaseIdent> "(" <args: RelationArgs?> ")" => {
+        let kind = kind.unwrap_or(RelationKind::Internal);
+        let args = args.unwrap_or_default();
+
+        Relation::new(kind, ident, args)
+    };
+
+RelationArgs: Vec<(Ident, Type)> =
+    <head: (<LowercaseIdent> ":" <Type>)> <tail: ("," <LowercaseIdent> ":" <Type>)*> ","? =>
+        concat_tail(head, tail);
+
+RelationKind: RelationKind = {
+    "input" => RelationKind::Input,
+    "output" => RelationKind::Output,
+};
+
+Attr: Vec<Attribute> = "#[" <head: AttrInner> <tail: ("," <AttrInner>)*> ","? "]" =>
+    Attribute::from_many(concat_tail(head, tail));
+
+AttrInner = <Ident> "=" <Expr>;
+
+Type: Type = {
+    "bigint" => Type::BigInt,
+    "bool" => Type::Bool,
+    "string" => Type::String,
+};
+
+Expr: Expr = {
+    Term,
+    <lhs: Expr> "and" <rhs: Term> => Expr::and(lhs, rhs),
+    "-" <Term> => Expr::neg(<>),
+    "~" <Term> => Expr::bit_neg(<>),
+    "not" <Term> => Expr::not(<>),
+    <lhs: Expr> "*" <rhs: Term> => Expr::mul(lhs, rhs),
+};
+
+Term: Expr = {
+    "_" => Expr::wildcard(),
+    "(" <Expr> ")" => Expr::parens(<>),
+    "{" <Expr> "}" => Expr::parens(<>),
+};
+
+Ident = { UppercaseIdent, LowercaseIdent };
+
+LowercaseIdent: Ident = r"[a-z_][a-zA-Z0-9_]*" => Ident::lowercase(<>.to_owned());
+UppercaseIdent: Ident = r"[A-Z][a-zA-Z0-9_]*" => Ident::uppercase(<>.to_owned());

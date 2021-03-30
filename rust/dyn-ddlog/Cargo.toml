@@ -1,0 +1,22 @@
+[package]
+name = "dyn-ddlog"
+version = "0.1.0"
+authors = ["Chase Wilson <me@chasewilson.dev>"]
+edition = "2018"
+build = "build.rs"
+default-run = "ddlog"
+
+[[bin]]
+name = "ddlog"
+required-features = ["structopt"]
+
+[dependencies]
+regex = "1.4.5"
+lalrpop-util = "0.19.5"
+structopt = { version = "0.3.21", optional = true }
+
+[dev-dependencies]
+goldentests = "0.3.7"
+
+[build-dependencies]
+lalrpop = "0.19.5"

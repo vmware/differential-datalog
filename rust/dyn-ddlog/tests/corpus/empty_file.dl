@@ -1,0 +1,3 @@
+// args: build -Z dump-ast
+// expected stdout:
+// []
