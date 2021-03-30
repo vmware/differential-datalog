@@ -4,6 +4,9 @@
 
 set -eux
 
+THIS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+
 retry() {
   cmd=$*
   $cmd || (sleep 2 && $cmd) || (sleep 10 && $cmd)
@@ -26,10 +29,18 @@ fetch_stack_windows() {
 mkdir -p ~/.local/bin
 if [ "$(uname)" = "Darwin" ]; then
   retry fetch_stack_osx
+  retry stack --no-terminal setup
 elif [ "$(uname)" = "Linux" ]; then
   retry fetch_stack_linux
+  retry stack --no-terminal setup
 else
   retry fetch_stack_windows
+  if [ -z "${TRAVIS}" ]; then
+      retry stack --no-terminal setup
+  else
+      # Travis Windows VM lacks root CA certificate to validate
+      # download.haskell.org
+      SSL_CERT_FILE=${THIS_DIR}/ca-certificates.crt retry stack --no-terminal setup
+  fi
 fi
 
-retry stack --no-terminal setup
