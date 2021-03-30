@@ -1,0 +1,5 @@
+/* Unit
+ *
+ * Dummy relation with one empty row, useful for antijoins. */
+relation Unit()
+Unit().

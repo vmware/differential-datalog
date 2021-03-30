@@ -1262,6 +1262,48 @@ EndpointSanitization(endpoint, false) :-
     Blocklisted(endpoint).
 ```
 
+#### Unit
+
+The first clause in a rule must be positive, meaning that `not` may
+only appear as the second or later clause.  Occasionally, this is
+restrictive.  For example, suppose we want to create a relation
+`AnyBlocked` with a single row that is `true` if the `Blocklisted`
+relation defined above contains at least one row and `false` if it is
+empty.  The `true` case is easy:
+
+```
+relation AnyBlocked[bool]
+AnyBlocked[true] :- Blocklisted[_].
+```
+
+It is tempting to add the following to implement the `false` case, but
+the DDlog compiler will reject it with `Rule must start with a
+positive literal`:
+
+```
+AnyBlocked[false] :- not Blocklisted[_].    // This will not compile
+```
+
+To avoid the problem, we can start the rule with an artificial
+relation that has a single row.  Although we could define our own, the
+DDlog library has `Unit` in `util.dl` that is defined this way:
+
+```
+relation Unit()
+Unit().
+```
+
+We can use `Unit` to finish the definition of `AnyBlocked`.  The final
+definition looks like this:
+
+```
+import unit
+
+relation AnyBlocked[bool]
+AnyBlocked[true] :- Blocklisted[_].
+AnyBlocked[false] :- Unit(), not Blocklisted[_].
+```
+
 #### Assignments in rules
 
 We can directly use assignments in rules:
