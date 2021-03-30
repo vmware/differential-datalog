@@ -389,9 +389,9 @@ where
 mod tests {
     use super::*;
 
-    struct DummyIntentory;
+    struct DummyInventory;
 
-    impl DDlogInventory for DummyIntentory {
+    impl DDlogInventory for DummyInventory {
         fn get_table_id(&self, _tname: &str) -> Result<RelId, String> {
             unimplemented!()
         }
@@ -407,6 +407,16 @@ mod tests {
         fn get_index_name(&self, _iid: IdxId) -> Result<&'static str, String> {
             unimplemented!()
         }
+
+        #[cfg(feature = "c_api")]
+        fn get_table_cname(&self, _tid: RelId) -> Result<&'static std::ffi::CStr, String> {
+            unimplemented!()
+        }
+
+        #[cfg(feature = "c_api")]
+        fn get_index_cname(&self, _iid: IdxId) -> Result<&'static std::ffi::CStr, String> {
+            unimplemented!()
+        }
     }
 
     /// Test recording of "updates" using `record_updates`.
@@ -418,7 +428,7 @@ mod tests {
 
             let recorder = CommandRecorder::new(
                 &mut buf,
-                Box::new(DummyIntentory) as Box<dyn DDlogInventory + Send + Sync>,
+                Box::new(DummyInventory) as Box<dyn DDlogInventory + Send + Sync>,
             );
             recorder
                 .do_record_updates(iter, |_, w, r| write!(w, "update {}", r))
