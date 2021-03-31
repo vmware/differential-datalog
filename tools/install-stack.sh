@@ -18,6 +18,7 @@ fetch_stack_linux() {
 }
 
 fetch_stack_windows() {
+  curl -L downloads.haskell.org >/dev/null
   curl -L https://www.stackage.org/stack/windows-x86_64 > stack.exe && unzip stack.exe -d ~/.local/bin
 }
 
