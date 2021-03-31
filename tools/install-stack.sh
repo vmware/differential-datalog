@@ -18,7 +18,6 @@ fetch_stack_linux() {
 }
 
 fetch_stack_windows() {
-  start msedge --headless downloads.haskell.org
   curl -L https://www.stackage.org/stack/windows-x86_64 > stack.exe && unzip stack.exe -d ~/.local/bin
 }
 
@@ -31,6 +30,11 @@ elif [ "$(uname)" = "Linux" ]; then
   retry fetch_stack_linux
 else
   retry fetch_stack_windows
+  # This certificate file was downloaded by hand using a web browser
+  # In the absence of this certificate the stack setup command below fails on Windows
+  # This file may need to be renewed when the certificate expires or is revoked.
+  # The certificate is for downloads.haskell.org
+  certutil -addstore -f "Root" haskell-org.pem
 fi
 
 retry stack --no-terminal setup
