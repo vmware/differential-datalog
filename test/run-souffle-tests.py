@@ -29,7 +29,7 @@ xfail = [
     "souffle_tests_ddlog", # auto-generated
     "souffle7",  # issue 202 - recursive type
     "aggregates2", # aggregation used in head
-    "aggregates5", # Rule must start with a positive literal
+    "aggregates5", # 198
     "aggregates7", # pow32 issue
     "aggregates_complex", # cannot be evaluated bottom-up; issue 293
     "aggregates_non_materialised", # 198

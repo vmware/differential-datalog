@@ -577,7 +577,6 @@ class SouffleConverter(object):
     all_variables: Set[str]  # all variable names that appear in the program
     converting_tail: bool  # True if we are converting a tail clause
     aggregates: str  # Relations created by evaluating aggregates
-    dummyRelation: Union[str, None]  # Relation used to convert clauses starting with negative term
     currentType: Union[str, None]  # Used to guess types for variables, from context. May be incorrect.
     components: Dict[str, Component]  # Indexed by name
     overriden: Set[str]  # set of relation names that are overridden and should not be emitted
@@ -598,7 +597,6 @@ class SouffleConverter(object):
         self.all_variables = set()
         self.converting_tail = False
         self.aggregates = ""
-        self.dummyRelation = None
         self.opdict = {  # Translation of some Souffle operators
             "band": "&",
             "bor": "|",
@@ -1407,26 +1405,13 @@ class SouffleConverter(object):
                 convertedDisjunctions += [self.convert_terms(x)]
             body: List[List[str]] = []
             for convertedDisjunction in convertedDisjunctions:
-                dis: List[str] = []
-                if len(convertedDisjunction) > 0 and \
-                        SouffleConverter.term_cannot_be_first(convertedDisjunction[0][1]):
-                    dis.append(self.dummyRelation + "(0)")
-                dis += map(lambda c: c[0], convertedDisjunction)
+                dis: List[str] = map(lambda c: c[0], convertedDisjunction)
                 body.append(dis)
             self.converting_tail = False
             for d in body:
                 self.files.output(",\n\t".join(heads) + " :- " + ", ".join(d) + ".")
             self.files.output(self.aggregates)
             self.aggregates = ""
-
-    @staticmethod
-    def term_cannot_be_first(term: parglare.NodeNonTerm) -> bool:
-        """True if this term cannot be used first in a DDlog rule"""
-        not_term = getOptField(term, "Term")
-        if not_term is not None:
-            return True
-        lit = getField(term, "Literal")
-        return SouffleConverter.literal_cannot_be_first(lit)
 
     @staticmethod
     def literal_cannot_be_first(lit: parglare.NodeNonTerm) -> bool:
@@ -1674,12 +1659,6 @@ def convert(inputName: str, outputPrefix: str, options: ConversionOptions, debug
     converter = SouffleConverter(files, options)
     converter.preprocessing = True
     converter.process(tree)
-
-    # Create a dummy relation with one variable.  This is used
-    # to handle rules that have only negated terms
-    converter.dummyRelation = converter.fresh_variable("Dummy")
-    files.output("relation " + converter.dummyRelation + "(x: Tnumber)")
-    files.output(converter.dummyRelation + "(0).")
 
     # print("=================== finished preprocessing")
     converter.preprocessing = False
