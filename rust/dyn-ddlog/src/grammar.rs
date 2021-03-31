@@ -4,12 +4,6 @@ use lalrpop_util::lalrpop_mod;
 
 lalrpop_mod!(ddlog);
 
-fn concat_tail<T>(head: T, mut tail: Vec<T>) -> Vec<T> {
-    tail.reserve(1);
-    tail.insert(0, head);
-    tail
-}
-
 // TODO: Use file tests for this
 #[cfg(test)]
 mod tests {

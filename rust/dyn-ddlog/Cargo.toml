@@ -11,6 +11,7 @@ name = "ddlog"
 required-features = ["structopt"]
 
 [dependencies]
+egg = "0.6.0"
 regex = "1.4.5"
 lalrpop-util = "0.19.5"
 structopt = { version = "0.3.21", optional = true }

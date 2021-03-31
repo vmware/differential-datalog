@@ -13,6 +13,7 @@ impl Declaration {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum DeclarationKind {
     Relation(Relation),
+    Rule(Rule),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -36,6 +37,55 @@ pub enum RelationKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Rule {
+    pub head: Vec<RuleHead>,
+    pub clauses: Vec<RuleClause>,
+}
+
+impl Rule {
+    pub const fn new(head: Vec<RuleHead>, clauses: Vec<RuleClause>) -> Self {
+        Self { head, clauses }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct RuleHead {
+    pub relation: Ident,
+    pub fields: Vec<Expr>,
+}
+
+impl RuleHead {
+    pub const fn new(relation: Ident, fields: Vec<Expr>) -> Self {
+        Self { relation, fields }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum RuleClause {
+    Relation {
+        binding: Option<Ident>,
+        relation: Ident,
+        fields: Vec<Expr>,
+    },
+    Negated(Box<Self>),
+    Expr(Expr),
+}
+
+impl RuleClause {
+    pub fn relation(binding: Option<Ident>, relation: Ident, fields: Vec<Expr>) -> Self {
+        Self::Relation {
+            binding,
+            relation,
+            fields,
+        }
+    }
+
+    pub fn negated(clause: Self) -> Self {
+        Self::Negated(Box::new(clause))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Type {
     BigInt,
     Bool,
@@ -51,19 +101,12 @@ pub enum Type {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Attribute {
     pub ident: Ident,
-    pub value: Expr,
+    pub value: Option<Expr>,
 }
 
 impl Attribute {
-    pub const fn new(ident: Ident, value: Expr) -> Self {
+    pub const fn new(ident: Ident, value: Option<Expr>) -> Self {
         Self { ident, value }
-    }
-
-    pub fn from_many(attributes: Vec<(Ident, Expr)>) -> Vec<Self> {
-        attributes
-            .into_iter()
-            .map(|(ident, value)| Self::new(ident, value))
-            .collect()
     }
 }
 
@@ -151,6 +194,18 @@ impl Expr {
             kind: ExprKind::Mul(Box::new(lhs), Box::new(rhs)),
         }
     }
+
+    pub fn literal(literal: Literal) -> Self {
+        Self {
+            kind: ExprKind::Literal(literal),
+        }
+    }
+
+    pub fn ident(ident: Ident) -> Self {
+        Self {
+            kind: ExprKind::Ident(ident),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -162,4 +217,12 @@ pub enum ExprKind {
     BitNeg(Box<Expr>),
     Not(Box<Expr>),
     Mul(Box<Expr>, Box<Expr>),
+    Literal(Literal),
+    Ident(Ident),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Literal {
+    Int(i64),
+    Bool(bool),
 }

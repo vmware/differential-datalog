@@ -118,6 +118,99 @@
 //             },
 //         ),
 //     },
+//     Declaration {
+//         attributes: [
+//             Attribute {
+//                 ident: Ident {
+//                     ident: "something",
+//                     kind: Lowercase,
+//                 },
+//                 value: Some(
+//                     Expr {
+//                         kind: Literal(
+//                             Int(
+//                                 10,
+//                             ),
+//                         ),
+//                     },
+//                 ),
+//             },
+//             Attribute {
+//                 ident: Ident {
+//                     ident: "something_else",
+//                     kind: Lowercase,
+//                 },
+//                 value: None,
+//             },
+//         ],
+//         kind: Relation(
+//             Relation {
+//                 kind: Internal,
+//                 name: Ident {
+//                     ident: "RelationWithAttributes",
+//                     kind: Uppercase,
+//                 },
+//                 args: [],
+//             },
+//         ),
+//     },
+//     Declaration {
+//         attributes: [],
+//         kind: Relation(
+//             Relation {
+//                 kind: Internal,
+//                 name: Ident {
+//                     ident: "ClausedRelation",
+//                     kind: Uppercase,
+//                 },
+//                 args: [
+//                     (
+//                         Ident {
+//                             ident: "boolean",
+//                             kind: Lowercase,
+//                         },
+//                         Bool,
+//                     ),
+//                 ],
+//             },
+//         ),
+//     },
+//     Declaration {
+//         attributes: [],
+//         kind: Rule(
+//             Rule {
+//                 head: [
+//                     RuleHead {
+//                         relation: Ident {
+//                             ident: "ClausedRelation",
+//                             kind: Uppercase,
+//                         },
+//                         fields: [
+//                             Expr {
+//                                 kind: Ident(
+//                                     Ident {
+//                                         ident: "boolean",
+//                                         kind: Lowercase,
+//                                     },
+//                                 ),
+//                             },
+//                         ],
+//                     },
+//                 ],
+//                 clauses: [
+//                     Expr(
+//                         Expr {
+//                             kind: Literal(
+//                                 Bool(
+//                                     true,
+//                                 ),
+//                             ),
+//                         },
+//                     ),
+//                 ],
+//             },
+//         ),
+//     },
 // ]
 
 relation InternalRelation()
@@ -131,3 +224,10 @@ relation Test(foo: bool)
 output relation Test(foo: string, _bar: bool)
 
 output relation Test(foo: string, _bar: bool,)
+
+#[something = 10]
+#[something_else]
+relation RelationWithAttributes()
+
+relation ClausedRelation(boolean: bool)
+ClausedRelation(boolean) :- true.
