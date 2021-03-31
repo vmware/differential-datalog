@@ -9,6 +9,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - Experimental compiler support for D3log (wip).
 
+### New features
+
+- We now support rules that don't start with a positive literal, e.g.,
+  ```
+  R() :- not R2(...).
+  R() :- var x = 5.
+  ```
+
 ## [0.38.0] - Mar 11, 2021
 
 ### API changes

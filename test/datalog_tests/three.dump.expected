@@ -1,6 +1,11 @@
+ddlog_std::Singleton:
+ddlog_std::Singleton{}: +1
 M:
 M{.x = 10}
 
 O:
 O{.x = 10}
+
+ddlog_std::Singleton:
+ddlog_std::Singleton{}
 
