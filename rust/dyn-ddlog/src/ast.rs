@@ -14,6 +14,7 @@ impl Declaration {
 pub enum DeclarationKind {
     Relation(Relation),
     Rule(Rule),
+    Function(Function),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -86,6 +87,25 @@ impl RuleClause {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Function {
+    pub name: IdentPath,
+    pub args: Vec<(Ident, Type)>,
+    pub ret: Type,
+    pub body: Expr,
+}
+
+impl Function {
+    pub fn new(name: IdentPath, args: Vec<(Ident, Type)>, ret: Type, body: Expr) -> Self {
+        Self {
+            name,
+            args,
+            ret,
+            body,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Type {
     BigInt,
     Bool,
@@ -96,6 +116,7 @@ pub enum Type {
     Float,
     Tuple(Vec<Type>),
     Named(Ident),
+    Unit,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -107,6 +128,17 @@ pub struct Attribute {
 impl Attribute {
     pub const fn new(ident: Ident, value: Option<Expr>) -> Self {
         Self { ident, value }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct IdentPath {
+    pub path: Vec<Ident>,
+}
+
+impl IdentPath {
+    pub const fn new(path: Vec<Ident>) -> Self {
+        Self { path }
     }
 }
 
@@ -165,9 +197,15 @@ impl Expr {
         }
     }
 
-    pub fn parens(expr: Expr) -> Self {
+    pub fn nested(expr: Expr) -> Self {
         Self {
-            kind: ExprKind::Parens(Box::new(expr)),
+            kind: ExprKind::Nested(Box::new(expr)),
+        }
+    }
+
+    pub fn block(exprs: Vec<Expr>) -> Self {
+        Self {
+            kind: ExprKind::Block(exprs),
         }
     }
 
@@ -177,9 +215,9 @@ impl Expr {
         }
     }
 
-    pub fn bit_neg(expr: Expr) -> Self {
+    pub fn bit_not(expr: Expr) -> Self {
         Self {
-            kind: ExprKind::BitNeg(Box::new(expr)),
+            kind: ExprKind::BitNot(Box::new(expr)),
         }
     }
 
@@ -192,6 +230,18 @@ impl Expr {
     pub fn mul(lhs: Expr, rhs: Expr) -> Self {
         Self {
             kind: ExprKind::Mul(Box::new(lhs), Box::new(rhs)),
+        }
+    }
+
+    pub fn div(lhs: Expr, rhs: Expr) -> Self {
+        Self {
+            kind: ExprKind::Div(Box::new(lhs), Box::new(rhs)),
+        }
+    }
+
+    pub fn add(lhs: Expr, rhs: Expr) -> Self {
+        Self {
+            kind: ExprKind::Add(Box::new(lhs), Box::new(rhs)),
         }
     }
 
@@ -212,11 +262,14 @@ impl Expr {
 pub enum ExprKind {
     Wildcard,
     And(Box<Expr>, Box<Expr>),
-    Parens(Box<Expr>),
+    Nested(Box<Expr>),
+    Block(Vec<Expr>),
     Neg(Box<Expr>),
-    BitNeg(Box<Expr>),
+    BitNot(Box<Expr>),
     Not(Box<Expr>),
     Mul(Box<Expr>, Box<Expr>),
+    Div(Box<Expr>, Box<Expr>),
+    Add(Box<Expr>, Box<Expr>),
     Literal(Literal),
     Ident(Ident),
 }

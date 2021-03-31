@@ -8,7 +8,7 @@
 
 use crate::ast::{
     Attribute, Declaration, DeclarationKind, Expr, Ident, Literal, Relation, RelationKind, Rule,
-    RuleClause, RuleHead, Type,
+    RuleClause, RuleHead, Type, Function, IdentPath,
 };
 // TODO: Use custom error type
 use lalrpop_util::ParseError;
@@ -26,6 +26,7 @@ Attributes: Vec<Attribute> = "#[" <attrs: Comma<(VariableIdent ("=" <Expr>)?)>> 
 DeclKind: DeclarationKind = {
     Relation => DeclarationKind::Relation(<>),
     Rule => DeclarationKind::Rule(<>),
+    Function => DeclarationKind::Function(<>),
 };
 
 Relation: Relation =
@@ -58,26 +59,35 @@ RelationBinding: RuleClause =
     <binding: (<VariableIdent> "in")?> <relation: RelationIdent> "(" <fields: Comma<Expr>> ")"
         => RuleClause::relation(binding, relation, fields);
 
+Function: Function =
+    "function" <name: FuncPath> "(" <args: Comma<(<VariableIdent> ":" <Type>)>> ")" <ret: (":" <Type>)?> "{"
+        <body: Semicolon<Expr>>
+    "}"
+    => Function::new(name, args, ret.unwrap_or(Type::Unit), Expr::block(body));
+
 Type: Type = {
     "bigint" => Type::BigInt,
     "bool" => Type::Bool,
     "string" => Type::String,
+    "(" ")" => Type::Unit,
 };
 
 Expr: Expr = {
     Term,
     <lhs: Expr> "and" <rhs: Term> => Expr::and(lhs, rhs),
     "-" <Term> => Expr::neg(<>),
-    "~" <Term> => Expr::bit_neg(<>),
+    "~" <Term> => Expr::bit_not(<>),
     "not" <Term> => Expr::not(<>),
     <lhs: Expr> "*" <rhs: Term> => Expr::mul(lhs, rhs),
+    <lhs: Expr> "/" <rhs: Term> => Expr::div(lhs, rhs),
+    <lhs: Expr> "+" <rhs: Term> => Expr::add(lhs, rhs),
 };
 
 // Expression terminals
 Term: Expr = {
     "_" => Expr::wildcard(),
-    "(" <Expr> ")" => Expr::parens(<>),
-    "{" <Expr> "}" => Expr::parens(<>),
+    "(" <Expr> ")" => Expr::nested(<>),
+    "{" <Semicolon<Expr>> "}" => Expr::block(<>),
     VariableIdent => Expr::ident(<>),
     Literal => Expr::literal(<>),
 };
@@ -96,8 +106,10 @@ Literal: Literal = {
     "false" => Literal::Bool(false),
 };
 
-Ident = { UppercaseIdent, LowercaseIdent };
+FuncPath = LowercasePath;
+LowercasePath: IdentPath = Path<LowercaseIdent> => IdentPath::new(<>);
 
+Ident = { UppercaseIdent, LowercaseIdent };
 VariableIdent = LowercaseIdent;
 RelationIdent = UppercaseIdent;
 
@@ -108,6 +120,32 @@ UppercaseIdent: Ident = r"[A-Z][a-zA-Z0-9_]*" => Ident::uppercase(<>.to_owned())
 /// allowing trailing commas or zero elements
 Comma<T>: Vec<T> = {
     <head: (<T> ",")*> <tail: T?> => match tail {
+        None => head,
+        Some(tail) => {
+            let mut head = head;
+            head.reserve(1);
+            head.push(tail);
+
+            head
+        }
+    }
+};
+
+/// Parse a `::` separated list of items into a vec
+Path<T>: Vec<T> = {
+    <head: (<T> "::")*> <tail: T> => {
+        let mut head = head;
+        head.reserve(1);
+        head.push(tail);
+
+        head
+    }
+}
+
+/// Parse a semicolon separated list of items into a vec,
+/// allowing trailing semicolons or zero elements
+Semicolon<T>: Vec<T> = {
+    <head: (<T> ";")*> <tail: T?> => match tail {
         None => head,
         Some(tail) => {
             let mut head = head;
@@ -142,6 +180,10 @@ match {
     "bigint" => "bigint",
     "true" => "true",
     "false"=> "false",
+    "function" => "function",
+    "extern" => "extern",
+
+    "::" => "::",
 } else {
     // We can safely ignore non-whitespace and non-comment
     // tokens and let them pass onto the rest of the parser

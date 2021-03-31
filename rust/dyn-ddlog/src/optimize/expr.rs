@@ -2,14 +2,14 @@
 //!
 //! [`egg`]: https://egraphs-good.github.io/
 
-use egg::{rewrite, Analysis, Id, Subst};
-use std::collections::HashSet;
+use crate::ast::{Expr as AstExpr, ExprKind, Literal};
+use egg::{rewrite, Analysis, Id, Language, Subst};
 
-type EGraph = egg::EGraph<DDlogExpr, DDlogExprAnalysis>;
-pub type Rewrite = egg::Rewrite<DDlogExpr, ConstantFold>;
+type EGraph = egg::EGraph<Expr, ExprAnalysis>;
+type Rewrite = egg::Rewrite<Expr, ExprAnalysis>;
 
 egg::define_language! {
-    pub enum DDlogExpr {
+    pub enum Expr {
         "-"   = Neg(Id),
 
         "*"   = Mul([Id; 2]),
@@ -22,8 +22,8 @@ egg::define_language! {
 
         "++"  = Concat([Id; 2]),
 
-        "=="  = Eq([Id; 2]),
-        "!="  = Neq([Id; 2]),
+        "eq"  = Eq([Id; 2]),
+        "neq"  = Neq([Id; 2]),
         ">"   = Greater([Id; 2]),
         "<"   = Less([Id; 2]),
         ">="  = GreaterEq([Id; 2]),
@@ -33,23 +33,25 @@ egg::define_language! {
         "&"   = BitAnd([Id; 2]),
         "|"   = BitOr([Id; 2]),
 
-        "not" = LogNot(Id),
-        "and" = LogAnd([Id; 2]),
-        "or"  = LogOr([Id; 2]),
+        "not" = Not(Id),
+        "and" = And([Id; 2]),
+        "or"  = Or([Id; 2]),
 
         "if"  = If([Id; 3]),
 
         "pow" = Pow([Id; 2]),
 
+        "block" = Block(Vec<Id>),
+
         Bool(bool),
-        Int(i64),
+        Int(u128),
         String(String),
-        Symbol(egg::Symbol),
+        Ident(egg::Symbol),
     }
 }
 
-impl DDlogExpr {
-    fn int(&self) -> Option<i64> {
+impl Expr {
+    fn int(&self) -> Option<u128> {
         match *self {
             Self::Int(int) => Some(int),
             _ => None,
@@ -57,49 +59,195 @@ impl DDlogExpr {
     }
 }
 
-#[derive(Debug, Default)]
-struct DDlogExprAnalysis;
+pub fn build_egraph(expr: &AstExpr) -> (EGraph, Id) {
+    let mut egraph = EGraph::default();
+    let root = translate_expr(&mut egraph, expr);
 
-#[derive(Debug)]
-struct ExprData {
-    free: HashSet<Id>,
-    constant: Option<DDlogExpr>,
+    (egraph, root)
 }
 
-fn eval(egraph: &EGraph, enode: &DDlogExpr) -> Option<DDlogExpr> {
+// TODO: Use iteration instead of recursion
+fn translate_expr(egraph: &mut EGraph, expr: &AstExpr) -> Id {
+    match &expr.kind {
+        ExprKind::Wildcard => todo!(),
+
+        ExprKind::Nested(expr) => translate_expr(egraph, &**expr),
+
+        ExprKind::Block(exprs) => {
+            let ids = exprs
+                .iter()
+                .map(|expr| translate_expr(egraph, expr))
+                .collect();
+
+            egraph.add(Expr::Block(ids))
+        }
+
+        ExprKind::Mul(lhs, rhs) => {
+            let (lhs, rhs) = (
+                translate_expr(egraph, &**lhs),
+                translate_expr(egraph, &**rhs),
+            );
+
+            egraph.add(Expr::Mul([lhs, rhs]))
+        }
+
+        ExprKind::Div(lhs, rhs) => {
+            let (lhs, rhs) = (
+                translate_expr(egraph, &**lhs),
+                translate_expr(egraph, &**rhs),
+            );
+
+            egraph.add(Expr::Div([lhs, rhs]))
+        }
+
+        ExprKind::Add(lhs, rhs) => {
+            let (lhs, rhs) = (
+                translate_expr(egraph, &**lhs),
+                translate_expr(egraph, &**rhs),
+            );
+
+            egraph.add(Expr::Add([lhs, rhs]))
+        }
+
+        ExprKind::Neg(expr) => {
+            let expr = translate_expr(egraph, &**expr);
+            egraph.add(Expr::Neg(expr))
+        }
+
+        ExprKind::And(lhs, rhs) => {
+            let (lhs, rhs) = (
+                translate_expr(egraph, &**lhs),
+                translate_expr(egraph, &**rhs),
+            );
+
+            egraph.add(Expr::And([lhs, rhs]))
+        }
+
+        ExprKind::Not(expr) => {
+            let expr = translate_expr(egraph, &**expr);
+            egraph.add(Expr::Not(expr))
+        }
+
+        ExprKind::BitNot(expr) => {
+            let expr = translate_expr(egraph, &**expr);
+            egraph.add(Expr::BitNot(expr))
+        }
+
+        ExprKind::Literal(literal) => egraph.add(match *literal {
+            Literal::Int(int) => Expr::Int(int),
+            Literal::Bool(boolean) => Expr::Bool(boolean),
+        }),
+
+        ExprKind::Ident(ident) => egraph.add(Expr::Ident(egg::Symbol::from(&ident.ident))),
+    }
+}
+
+#[test]
+fn test_translate() {
+    use crate::{ast::DeclarationKind, DatalogParser};
+    use egg::{AstSize, Extractor, Runner};
+
+    let function = DatalogParser::new()
+        .parse(
+            "
+            function foo() {
+                (10 + 10) / 11 + (100 * 0)
+            }
+            ",
+        )
+        .unwrap()[0]
+        .clone();
+
+    if let DeclarationKind::Function(func) = function.kind {
+        let rules = rules();
+        let (egraph, root) = build_egraph(&func.body);
+
+        let runner = Runner::default().with_egraph(egraph).run(&rules);
+
+        let mut extractor = Extractor::new(&runner.egraph, AstSize);
+        let (best_cost, best) = extractor.find_best(root);
+
+        println!("Best Cost: {}\nRewrite: {}", best_cost, best,);
+    } else {
+        unreachable!()
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct ExprAnalysis;
+
+#[derive(Debug, Clone)]
+pub struct ExprData {
+    constant: Option<Expr>,
+}
+
+fn eval(egraph: &EGraph, enode: &Expr) -> Option<Expr> {
     let x = |i: &Id| egraph[*i].data.constant.clone();
 
     match enode {
-        DDlogExpr::Int(_) | DDlogExpr::Bool(_) => Some(enode.clone()),
-        DDlogExpr::Add([a, b]) => Some(DDlogExpr::Int(x(a)?.int()? + x(b)?.int()?)),
-        DDlogExpr::Eq([a, b]) => Some(DDlogExpr::Bool(x(a)? == x(b)?)),
+        Expr::Int(_) | Expr::Bool(_) => Some(enode.clone()),
+        Expr::Add([a, b]) => Some(Expr::Int(x(a)?.int()? + x(b)?.int()?)),
+        Expr::Sub([a, b]) => Some(Expr::Int(x(a)?.int()? - x(b)?.int()?)),
+        Expr::Mul([a, b]) => Some(Expr::Int(x(a)?.int()? * x(b)?.int()?)),
+        Expr::Div([a, b]) if x(b).and_then(|e| e.int()) != Some(0) => {
+            Some(Expr::Int(x(a)?.int()? / x(b)?.int()?))
+        }
+        Expr::Eq([a, b]) => Some(Expr::Bool(x(a)? == x(b)?)),
         _ => None,
     }
 }
 
-impl Analysis<DDlogExpr> for DDlogExprAnalysis {
+impl Analysis<Expr> for ExprAnalysis {
     type Data = ExprData;
 
-    fn make(egraph: &egg::EGraph<DDlogExpr, Self>, enode: &DDlogExpr) -> Self::Data {
-        todo!()
+    fn make(egraph: &egg::EGraph<Expr, Self>, enode: &Expr) -> Self::Data {
+        ExprData {
+            constant: eval(egraph, enode),
+        }
     }
 
     fn merge(&self, to: &mut Self::Data, from: Self::Data) -> bool {
-        todo!()
+        if to.constant.is_none() && from.constant.is_some() {
+            to.constant = from.constant;
+            true
+        } else {
+            false
+        }
+    }
+
+    fn modify(egraph: &mut EGraph, id: Id) {
+        let class = &mut egraph[id];
+
+        if let Some(c) = class.data.constant.clone() {
+            let added = egraph.add(c);
+            let (id, _did_something) = egraph.union(id, added);
+
+            // to not prune, comment this out
+            egraph[id].nodes.retain(|n| n.is_leaf());
+
+            assert!(
+                !egraph[id].nodes.is_empty(),
+                "empty eclass! {:#?}",
+                egraph[id],
+            );
+
+            #[cfg(debug_assertions)]
+            egraph[id].assert_unique_leaves();
+        }
     }
 }
 
 fn is_not_zero(var: &str) -> impl Fn(&mut EGraph, Id, &Subst) -> bool {
     let var = var.parse().unwrap();
-    let zero = DDlogExpr::Int(0.into());
+    let zero = Expr::Int(0);
 
     move |egraph, _, subst| !egraph[subst[var]].nodes.contains(&zero)
 }
 
-pub fn rules() -> Vec<Rewrite> {
+fn rules() -> Vec<Rewrite> {
     let mut rules = vec![
-        rewrite!("comm-eq"; "(= ?a ?b)" => "(= ?b ?a)"),
-        rewrite!("comm-neq"; "(!= ?a ?b)" => "(!= ?b ?a)"),
+        rewrite!("comm-eq"; "(eq ?a ?b)" => "(eq ?b ?a)"),
+        rewrite!("comm-neq"; "(neq ?a ?b)" => "(neq ?b ?a)"),
         rewrite!("sub-canon"; "(- ?a ?b)" => "(+ ?a (* -1 ?b))"),
         rewrite!("div-canon"; "(/ ?a ?b)" => "(* ?a (pow ?b -1))" if is_not_zero("?b")),
         rewrite!("distribute"; "(* ?a (+ ?b ?c))" => "(+ (* ?a ?b) (* ?a ?c))"),
@@ -186,7 +334,9 @@ pub fn rules() -> Vec<Rewrite> {
             "(pow 1 ?x)" => "1"
         ),
     ]);
-    // (x × y)ⁿ = xⁿ * yⁿ
+    // x² = x × x
+    rules.extend(rewrite!("pow2"; "(pow ?x 2)" <=> "(* ?x ?x)"));
+    // (x × y)ⁿ = xⁿ × yⁿ
     rules.extend(rewrite!(
         "commutative-pow-mul";
         "(pow (* ?x ?y) ?z)" <=> "(* (pow ?x ?z) (pow ?y ?z))"
@@ -212,12 +362,6 @@ pub fn rules() -> Vec<Rewrite> {
     rules.extend(rewrite!(
         "exponentiation-identity-sub";
         "(pow ?x (- ?y ?z))" <=> "(/ (pow ?x ?y) (pow ?x ?z))"
-            if is_not_zero("?x")
-    ));
-    // (x × y)ⁿ = xⁿ × yⁿ
-    rules.extend(rewrite!(
-        "exponentiation-identity-add";
-        "(pow (* ?x ?y) ?z)" <=> "(* (pow ?x ?z) (pow ?y ?z))"
             if is_not_zero("?x")
     ));
 
@@ -326,19 +470,13 @@ pub fn rules() -> Vec<Rewrite> {
         "(or (not ?x) (not ?y))" <=> "(not (and ?x ?y))"
     ));
 
-    rules.extend(rewrite!("pow2"; "(pow ?x 2)" <=> "(* ?x ?x)"));
-    rules.extend(rewrite!("pow-mul"; "(* (pow ?a ?b) (pow ?a ?c))" <=> "(pow ?a (+ ?b ?c))"));
-    rules.extend(rewrite!("zero-add"; "(+ ?a 0)" <=> "?a"));
-    rules.extend(rewrite!("one-mul"; "(* ?a 1)" <=> "?a"));
-    rules.extend(rewrite!("add-zero"; "?a" <=> "(+ ?a 0)"));
-    rules.extend(rewrite!("pow-recip"; "(pow ?x -1)" <=> "(/ 1 ?x)" if is_not_zero("?x")));
     rules.extend(rewrite!(
         "simplify-greater-than";
-        "(>= ?x ?y)" <=> "(or (> ?x ?y) (= ?x ?y))"
+        "(>= ?x ?y)" <=> "(or (> ?x ?y) (eq ?x ?y))"
     ));
     rules.extend(rewrite!(
         "simplify-less-than";
-        "(<= ?x ?y)" <=> "(or (< ?x ?y) (= ?x ?y))"
+        "(<= ?x ?y)" <=> "(or (< ?x ?y) (eq ?x ?y))"
     ));
 
     rules
