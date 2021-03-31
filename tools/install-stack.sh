@@ -30,11 +30,11 @@ elif [ "$(uname)" = "Linux" ]; then
   retry fetch_stack_linux
 else
   retry fetch_stack_windows
-  # This certificate file was downloaded by hand using a web browser
+  # This certificate file was downloaded by hand using a web browser, by navigating
+  # to downloads.haskell.org and clicking the "lock" icon.
   # In the absence of this certificate the stack setup command below fails on Windows
   # This file may need to be renewed when the certificate expires or is revoked.
-  # The certificate is for downloads.haskell.org
-  certutil -addstore -f "Root" haskell-org.pem
+  certutil -addstore -f "Root" ~/tools/haskell-org.pem
 fi
 
 retry stack --no-terminal setup
