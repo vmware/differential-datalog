@@ -1393,7 +1393,7 @@ mkRelationsTryFromRelId d =
 mkRelId2Name :: DatalogProgram -> Doc
 mkRelId2Name d =
     -- TODO: Documentation on the generated function
-    "pub fn relid2name(rid: program::RelId) -> Option<&'static str> {" $$
+    "pub fn relid2name(rid: program::RelId) -> ::std::option::Option<&'static str> {" $$
     "   match rid {"                                          $$
     (nest' $ nest' $ vcat $ entries)                          $$
     "       _  => None"                                       $$
@@ -1408,7 +1408,7 @@ mkRelId2NameC :: Doc
 mkRelId2NameC =
     -- TODO: Documentation on the generated function
     "#[cfg(feature = \"c_api\")]"
-    $$ "pub fn relid2cname(rid: program::RelId) -> Option<&'static ::std::ffi::CStr> {"
+    $$ "pub fn relid2cname(rid: program::RelId) -> ::std::option::Option<&'static ::std::ffi::CStr> {"
     $$ "    RELIDMAPC.get(&rid).copied()"
     $$ "}"
 
@@ -1541,7 +1541,7 @@ mkIndexesTryFromIdxId d =
 mkIdxId2Name :: DatalogProgram -> Doc
 mkIdxId2Name d =
     -- TODO: Documentation on the generated function
-    "pub fn indexid2name(iid: program::IdxId) -> Option<&'static str> {" $$
+    "pub fn indexid2name(iid: program::IdxId) -> ::std::option::Option<&'static str> {" $$
     "   match iid {"                                            $$
     (nest' $ nest' $ vcat $ entries)                            $$
     "       _  => None"                                         $$
@@ -1556,7 +1556,7 @@ mkIdxId2NameC :: Doc
 mkIdxId2NameC =
     -- TODO: Documentation on the generated function
     "#[cfg(feature = \"c_api\")]"
-    $$ "pub fn indexid2cname(iid: program::IdxId) -> Option<&'static ::std::ffi::CStr> {"
+    $$ "pub fn indexid2cname(iid: program::IdxId) -> ::std::option::Option<&'static ::std::ffi::CStr> {"
     $$ "    IDXIDMAPC.get(&iid).copied()"
     $$ "}"
 
@@ -2078,7 +2078,7 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                             let arranged_xform =
                                     "XFormCollection::Arrange{"                                                                                                                     $$
                                     "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ "arrange" <+> rulePPPrefix rl (last_rhs_idx+1) <+> "by" <+> key_str) <> "),"  $$
-                                    (nest' $ "afun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<(DDValue,DDValue)>" $$ afun $$ "__f},")                                         $$
+                                    (nest' $ "afun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> ::std::option::Option<(DDValue,DDValue)>" $$ afun $$ "__f},")                                         $$
                                     "    next: Box::new(" <> xform' <> ")"                                                                                                          $$
                                     "}"
                             if is_stream_xform
@@ -2149,7 +2149,7 @@ mkFlatMap d prefix rl idx vs e = do
     return $
         "XFormCollection::FlatMap{"                                                                                         $$
         "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <> "),"                $$
-        (nest' $ "fmfun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<Box<dyn Iterator<Item=DDValue>>>" $$ fmfun $$ "__f},")$$
+        (nest' $ "fmfun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> ::std::option::Option<Box<dyn Iterator<Item=DDValue>>>" $$ fmfun $$ "__f},")$$
         "    next: Box::new(" <> next <> ")"                                                                                $$
         "}"
 
@@ -2162,7 +2162,7 @@ mkFilterMap d prefix rl idx = do
     return $
         "XFormCollection::FilterMap{"                                                                                       $$
         "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <> "),"                $$
-        nest' ("fmfun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<DDValue>" $$ fmfun $$ "__f},")                       $$
+        nest' ("fmfun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> ::std::option::Option<DDValue>" $$ fmfun $$ "__f},")        $$
         "    next: Box::new(" <> next <> ")"                                                                                $$
         "}"
 
@@ -2226,7 +2226,7 @@ mkGroupBy d filters input_val rl@Rule{..} idx = do
         "XFormArrangement::Aggregate{"                                                                                           $$
         "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <> "),"                     $$
         "    ffun:" <+> ffun <> ","                                                                                              $$
-        "    aggfun: {fn __f(" <> kEY_VAR <> ": &DDValue," <+> gROUP_VAR <> ": &[(&DDValue, Weight)]) -> Option<DDValue>" $$ agfun $$ "__f}," $$
+        "    aggfun: {fn __f(" <> kEY_VAR <> ": &DDValue," <+> gROUP_VAR <> ": &[(&DDValue, Weight)]) -> ::std::option::Option<DDValue>" $$ agfun $$ "__f}," $$
         "    next: Box::new(" <> next <> ")"                                                                                    $$
         "}"
 
@@ -2440,10 +2440,10 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
             "    description:" <+> descr                                                                                       $$
             "    ffun:" <+> ffun <> ","                                                                                        $$
             "    rel:" <+> relid <> ","                                                                                        $$
-            "    kfun: {fn __f(" <> vALUE_VAR <> ": &DDValue) -> Option<DDValue>"                                              $$
+            "    kfun: {fn __f(" <> vALUE_VAR <> ": &DDValue) -> ::std::option::Option<DDValue>"                               $$
             nest' kfun                                                                                                         $$
             "    __f},"                                                                                                        $$
-            "    jfun: {fn __f(" <> vALUE_VAR1 <> ": &DDValue," <> v2 <> ": &DDValue) -> Option<DDValue>"                      $$
+            "    jfun: {fn __f(" <> vALUE_VAR1 <> ": &DDValue," <> v2 <> ": &DDValue) -> ::std::option::Option<DDValue>"       $$
             nest' jfun                                                                                                         $$
             "    __f},"                                                                                                        $$
             "    next: Box::new(" <> next <> ")"                                                                               $$
@@ -2452,10 +2452,10 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
             "XFormCollection::StreamSemijoin{"                                                                                 $$
             "    description:" <+> descr                                                                                       $$
             "    arrangement: (" <> relid <> "," <> pp aid <> "),"                                                             $$
-            "    afun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<(DDValue, DDValue)>"                                    $$
+            "    afun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> ::std::option::Option<(DDValue, DDValue)>"                     $$
             nest' afun                                                                                                         $$
             "    __f},"                                                                                                        $$
-            "    jfun: {fn __f(" <> vALUE_VAR1 <> ": &DDValue) -> Option<DDValue>"                                             $$
+            "    jfun: {fn __f(" <> vALUE_VAR1 <> ": &DDValue) -> ::std::option::Option<DDValue>"                              $$
             nest' jfun                                                                                                         $$
             "    __f},"                                                                                                        $$
             "    next: Box::new(" <> next <> ")"                                                                               $$
@@ -2464,10 +2464,10 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
             "XFormCollection::StreamJoin{"                                                                                     $$
             "    description:" <+> descr                                                                                       $$
             "    arrangement: (" <> relid <> "," <> pp aid <> "),"                                                             $$
-            "    afun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<(DDValue, DDValue)>"                                    $$
+            "    afun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> ::std::option::Option<(DDValue, DDValue)>"                     $$
             nest' afun                                                                                                         $$
             "    __f},"                                                                                                        $$
-            "    jfun: {fn __f(" <> vALUE_VAR1 <> ": &DDValue," <+> vALUE_VAR2 <> ": &DDValue) -> Option<DDValue>"             $$
+            "    jfun: {fn __f(" <> vALUE_VAR1 <> ": &DDValue," <+> vALUE_VAR2 <> ": &DDValue) -> ::std::option::Option<DDValue>" $$
             nest' jfun                                                                                                         $$
             "    __f},"                                                                                                        $$
             "    next: Box::new(" <> next <> ")"                                                                               $$
@@ -2484,7 +2484,7 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
             "    description:" <+> descr                                                                                    $$
             "    ffun:" <+> ffun <> ","                                                                                     $$
             "    arrangement: (" <> relid <> "," <> pp aid <> "),"                                                          $$
-            "    jfun: {fn __f(_: &DDValue," <+> vALUE_VAR1 <> ": &DDValue, _" <> vALUE_VAR2 <> ": &()) -> Option<DDValue>" $$
+            "    jfun: {fn __f(_: &DDValue," <+> vALUE_VAR1 <> ": &DDValue, _" <> vALUE_VAR2 <> ": &()) -> ::std::option::Option<DDValue>" $$
             nest' jfun                                                                                                      $$
             "    __f},"                                                                                                     $$
             "    next: Box::new(" <> next  <> ")"                                                                           $$
@@ -2494,7 +2494,7 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
             "    description:" <+> descr                                                                                    $$
             "    ffun:" <+> ffun <> ","                                                                                     $$
             "    arrangement: (" <> relid <> "," <> pp aid <> "),"                                                          $$
-            "    jfun: {fn __f(_: &DDValue," <+> vALUE_VAR1 <> ": &DDValue," <+> vALUE_VAR2 <> ": &DDValue) -> Option<DDValue>"  $$
+            "    jfun: {fn __f(_: &DDValue," <+> vALUE_VAR1 <> ": &DDValue," <+> vALUE_VAR2 <> ": &DDValue) -> ::std::option::Option<DDValue>"  $$
             nest' jfun                                                                                                      $$
             "    __f},"                                                                                                     $$
             "    next: Box::new(" <> next <> ")"                                                                            $$
@@ -2699,7 +2699,7 @@ mkHead :: (?cfg::Config, ?specname::String, ?statics::CrateStatics, ?crate_graph
 mkHead d prefix rl =
     "XFormCollection::FilterMap{"                                                                               $$
     "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ "head of" <+> rulePPStripped rl) <> "),"  $$
-    nest' ("fmfun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<DDValue>" $$ fmfun $$ "__f},")               $$
+    nest' ("fmfun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> ::std::option::Option<DDValue>" $$ fmfun $$ "__f},")$$
     "    next: Box::new(" <> next <> ")"                                                                        $$
     "}"
     where
@@ -2785,7 +2785,7 @@ mkArrangement d rel ArrangementMap{..} =
                filter_key <> ".map(|x|(x,__cloned))"
     in "program::Arrangement::Map{"                                                                              $$
        "   name: std::borrow::Cow::from(r###\"" <> pp arngPattern <> " /*join*/\"###),"                          $$
-       (nest' $ "afun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<(DDValue,DDValue)>" $$ afun $$ "__f},")  $$
+       (nest' $ "afun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> ::std::option::Option<(DDValue,DDValue)>" $$ afun $$ "__f},")  $$
        "    queryable:" <+> (if null arngIndexes then "false" else "true")                                       $$
        "}"
 
@@ -2799,7 +2799,7 @@ mkArrangement d rel ArrangementSet{..} =
         distinct_by_construction = relIsDistinct d rel && (not $ exprContainsPHolders arngPattern)
     in "program::Arrangement::Set{"                                                                                                 $$
        "    name: std::borrow::Cow::from(r###\"" <> pp arngPattern <> " /*" <> (if arngDistinct then "antijoin" else "semijoin") <> "*/\"###)," $$
-       (nest' $ "fmfun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> Option<DDValue>" $$ fmfun $$ "__f},")                             $$
+       (nest' $ "fmfun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> ::std::option::Option<DDValue>" $$ fmfun $$ "__f},")                             $$
        "    distinct:" <+> (if arngDistinct && not distinct_by_construction then "true" else "false")                               $$
        "}"
 
