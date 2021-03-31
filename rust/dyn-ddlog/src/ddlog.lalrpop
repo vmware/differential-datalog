@@ -4,18 +4,21 @@
 //       https://lalrpop.github.io/lalrpop/lexer_tutorial/002_writing_custom_lexer.html#writing-a-custom-lexer
 //       https://crates.io/crates/logos
 // TODO: Error tolerant parsing so we can output multiple errors to the user
+// TODO: Write the .dat parser here so it can share code
 
 use crate::ast::{
     Attribute, Declaration, DeclarationKind, Expr, Ident, Literal, Relation, RelationKind, Rule,
     RuleClause, RuleHead, Type,
 };
+// TODO: Use custom error type
+use lalrpop_util::ParseError;
 
 grammar;
 
 pub Datalog = Decl*;
 
-Decl: Declaration = <attrs: Attributes*> <decl: DeclKind> =>
-    Declaration::new(attrs.into_iter().flatten().collect(), decl);
+Decl: Declaration = <attrs: Attributes*> <decl: DeclKind>
+    => Declaration::new(attrs.into_iter().flatten().collect(), decl);
 
 Attributes: Vec<Attribute> = "#[" <attrs: Comma<(VariableIdent ("=" <Expr>)?)>> "]"
     => attrs.into_iter().map(|(ident, value)| Attribute::new(ident, value)).collect();
@@ -80,7 +83,15 @@ Term: Expr = {
 };
 
 Literal: Literal = {
-    r"[0-9][0-9_]*" => Literal::Int(<>.parse().unwrap()),
+    r"[0-9][0-9_]*" =>? {
+        <>.parse::<u128>()
+            // TODO: Better error message
+            .map_err(|_| ParseError::User {
+                error: "number is too big",
+            })
+            .map(Literal::Int)
+    },
+
     "true" => Literal::Bool(true),
     "false" => Literal::Bool(false),
 };

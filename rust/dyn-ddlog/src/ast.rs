@@ -223,6 +223,6 @@ pub enum ExprKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Literal {
-    Int(i64),
+    Int(u128),
     Bool(bool),
 }
