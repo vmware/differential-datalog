@@ -18,7 +18,7 @@ fetch_stack_linux() {
 }
 
 fetch_stack_windows() {
-  start msedge downloads.haskell.org
+  start msedge --headless downloads.haskell.org
   curl -L https://www.stackage.org/stack/windows-x86_64 > stack.exe && unzip stack.exe -d ~/.local/bin
 }
 
