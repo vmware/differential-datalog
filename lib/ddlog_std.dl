@@ -868,3 +868,6 @@ typedef DDlogGroup<'K, 'V> = DDlogGroup {
 
 /* Unique ID of a node or a sink in a distributed DDlog system. */
 typedef D3logLocationId = u128
+
+relation Singleton()
+Singleton().

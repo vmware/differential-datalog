@@ -109,3 +109,9 @@ insert GroupThis(2, "2"),
 insert GroupThis(222, "2"),
 
 commit dump_changes;
+
+start;
+
+insert DataForSingletonTest(100),
+
+commit dump_changes;

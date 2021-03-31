@@ -51,6 +51,9 @@ import Language.DifferentialDatalog.Attribute
 import Language.DifferentialDatalog.Error
 import Language.DifferentialDatalog.Config
 
+sINGLETON_RELATION :: String
+sINGLETON_RELATION = "ddlog_std::Singleton"
+
 -- | Validate Datalog program
 validate :: (MonadError String me, ?cfg::Config) => DatalogProgram -> me DatalogProgram
 validate d = do
@@ -303,15 +306,21 @@ indexValidate d idx = do
     return idx'
 
 ruleValidate :: (MonadError String me, ?cfg::Config) => DatalogProgram -> Rule -> me Rule
-ruleValidate d rl@Rule{..} = do
-    when (not $ null ruleRHS) $ do
-        case head ruleRHS of
-             RHSLiteral True _ -> return ()
-             _                 -> err d (pos rl) "Rule must start with a positive literal"
-    mapIdxM_ (ruleRHSValidate d rl) ruleRHS
-    mapM_ (ruleLHSValidate d rl) ruleLHS
+ruleValidate d rl = do
+    -- Make sure that all rules start with a positive literal by injecting a
+    -- singleton literal in the RHS of rules that don't start with a positive
+    -- literal.
+    let singleton_literal = RHSLiteral True
+                            $ Atom nopos sINGLETON_RELATION delayZero False (E $ EStruct nopos sINGLETON_RELATION [])
+    let rl' = if (not $ null $ ruleRHS rl)
+              then case head $ ruleRHS rl of
+                        RHSLiteral True _ -> rl
+                        _                 -> rl {ruleRHS = singleton_literal:(ruleRHS rl)}
+              else rl
+    mapIdxM_ (ruleRHSValidate d rl') $ ruleRHS rl'
+    mapM_ (ruleLHSValidate d rl') $ ruleLHS rl'
     -- It is now safe to perform type inference
-    ruleValidateExpressions d rl
+    ruleValidateExpressions d rl'
 
 -- We must perform type inference on all parts of the rule at the same time.
 ruleValidateExpressions :: (MonadError String me) => DatalogProgram -> Rule -> me Rule

@@ -597,3 +597,14 @@ FlatMapTests(6, "${f2} ${s2}") :-
     FMapMaps(),
     ForStruct1{var set, var f2} = FlatMap(testVec()),
     ForStruct2{.f2 = ForStruct1{_, var s2}} = FlatMap(set).
+
+/*
+ * Rules that don't start with a positive literal.
+ */
+
+input relation DataForSingletonTest(x: usize)
+
+output relation SingletonTest(s: string)
+
+SingletonTest("DataForSingletonTest is empty") :- not DataForSingletonTest().
+SingletonTest("${v}") :- var v = 5.

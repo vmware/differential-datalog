@@ -125,6 +125,9 @@ Rque{.x = 65596}: +1
 Rque{.x = 65597}: +1
 Rque{.x = 65598}: +1
 Rque{.x = 65599}: +1
+SingletonTest:
+SingletonTest{.s = "5"}: +1
+SingletonTest{.s = "DataForSingletonTest is empty"}: +1
 StringMaps:
 StringMaps{.m = [("bar", (2, false)), ("foo", (1, true)), ("foobar", (3, false))]}: +1
 Strings:
@@ -199,3 +202,5 @@ FlatGroup{.x = 2}: +1
 FlatGroup{.x = 11}: +1
 FlatGroup{.x = 111}: +1
 FlatGroup{.x = 222}: +1
+SingletonTest:
+SingletonTest{.s = "DataForSingletonTest is empty"}: -1
