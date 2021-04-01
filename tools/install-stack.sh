@@ -23,6 +23,7 @@ fetch_stack_windows() {
 
 # We need stack to generate cabal files with precise bounds, even for cabal
 # builds.
+pwd
 mkdir -p ~/.local/bin
 if [ "$(uname)" = "Darwin" ]; then
   retry fetch_stack_osx
@@ -34,7 +35,7 @@ else
   # to downloads.haskell.org and clicking the "lock" icon.
   # In the absence of this certificate the stack setup command below fails on Windows
   # This file may need to be renewed when the certificate expires or is revoked.
-  certutil -f -addstore "CA" ~/tools/haskell-org.pem
+  certutil -f -addstore "CA" ./tools/haskell-org.pem
 fi
 
 retry stack --no-terminal setup
