@@ -34,7 +34,7 @@ else
   # to downloads.haskell.org and clicking the "lock" icon.
   # In the absence of this certificate the stack setup command below fails on Windows
   # This file may need to be renewed when the certificate expires or is revoked.
-  certutil -addstore -f "CA" ~/tools/haskell-org.pem
+  certutil -f -addstore "CA" ~/tools/haskell-org.pem
 fi
 
 retry stack --no-terminal setup
