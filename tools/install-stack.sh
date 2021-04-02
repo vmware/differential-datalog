@@ -33,7 +33,7 @@ else
   retry fetch_stack_windows
   # On Travis windows stack setup below fails with an error about
   # certificates missing.  So we install ghc manually.
-  if [[ -v $TRAVIS ]]; then
+  if [ -v ${TRAVIS} ]; then
       choco install haskell-dev
   fi
 fi
