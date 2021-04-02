@@ -31,7 +31,11 @@ elif [ "$(uname)" = "Linux" ]; then
   retry fetch_stack_linux
 else
   retry fetch_stack_windows
-  choco install haskell-dev
+  # On Travis windows stack setup below fails with an error about
+  # certificates missing.  So we install ghc manually.
+  if [[ -v $TRAVIS ]]; then
+      choco install haskell-dev
+  fi
 fi
 
 retry stack --no-terminal setup
