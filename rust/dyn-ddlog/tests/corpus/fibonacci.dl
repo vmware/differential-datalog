@@ -1,0 +1,653 @@
+// args: build -Z dump-ast
+// expected stdout:
+// [
+//     Declaration {
+//         attributes: [],
+//         kind: Relation(
+//             Relation {
+//                 kind: Input,
+//                 name: Ident {
+//                     ident: "FibonacciFor",
+//                     kind: Uppercase,
+//                 },
+//                 args: [
+//                     (
+//                         Ident {
+//                             ident: "n",
+//                             kind: Lowercase,
+//                         },
+//                         Named {
+//                             path: IdentPath {
+//                                 path: [
+//                                     Ident {
+//                                         ident: "usize",
+//                                         kind: Lowercase,
+//                                     },
+//                                 ],
+//                             },
+//                             generics: [],
+//                         },
+//                     ),
+//                 ],
+//             },
+//         ),
+//     },
+//     Declaration {
+//         attributes: [],
+//         kind: Relation(
+//             Relation {
+//                 kind: Internal,
+//                 name: Ident {
+//                     ident: "NeedsFibonacci",
+//                     kind: Uppercase,
+//                 },
+//                 args: [
+//                     (
+//                         Ident {
+//                             ident: "n",
+//                             kind: Lowercase,
+//                         },
+//                         Named {
+//                             path: IdentPath {
+//                                 path: [
+//                                     Ident {
+//                                         ident: "usize",
+//                                         kind: Lowercase,
+//                                     },
+//                                 ],
+//                             },
+//                             generics: [],
+//                         },
+//                     ),
+//                 ],
+//             },
+//         ),
+//     },
+//     Declaration {
+//         attributes: [],
+//         kind: Rule(
+//             Rule {
+//                 head: [
+//                     RuleHead {
+//                         relation: Ident {
+//                             ident: "NeedsFibonacci",
+//                             kind: Uppercase,
+//                         },
+//                         fields: [
+//                             Expr {
+//                                 kind: Ident(
+//                                     Ident {
+//                                         ident: "n",
+//                                         kind: Lowercase,
+//                                     },
+//                                 ),
+//                             },
+//                         ],
+//                     },
+//                 ],
+//                 clauses: [
+//                     Relation {
+//                         binding: None,
+//                         relation: Ident {
+//                             ident: "FibonacciFor",
+//                             kind: Uppercase,
+//                         },
+//                         fields: [
+//                             Expr {
+//                                 kind: Ident(
+//                                     Ident {
+//                                         ident: "n",
+//                                         kind: Lowercase,
+//                                     },
+//                                 ),
+//                             },
+//                         ],
+//                     },
+//                 ],
+//             },
+//         ),
+//     },
+//     Declaration {
+//         attributes: [],
+//         kind: Rule(
+//             Rule {
+//                 head: [
+//                     RuleHead {
+//                         relation: Ident {
+//                             ident: "NeedsFibonacci",
+//                             kind: Uppercase,
+//                         },
+//                         fields: [
+//                             Expr {
+//                                 kind: Sub(
+//                                     Expr {
+//                                         kind: Ident(
+//                                             Ident {
+//                                                 ident: "n",
+//                                                 kind: Lowercase,
+//                                             },
+//                                         ),
+//                                     },
+//                                     Expr {
+//                                         kind: Literal(
+//                                             Int(
+//                                                 1,
+//                                             ),
+//                                         ),
+//                                     },
+//                                 ),
+//                             },
+//                         ],
+//                     },
+//                 ],
+//                 clauses: [
+//                     Relation {
+//                         binding: None,
+//                         relation: Ident {
+//                             ident: "NeedsFibonacci",
+//                             kind: Uppercase,
+//                         },
+//                         fields: [
+//                             Expr {
+//                                 kind: Ident(
+//                                     Ident {
+//                                         ident: "n",
+//                                         kind: Lowercase,
+//                                     },
+//                                 ),
+//                             },
+//                         ],
+//                     },
+//                     Expr(
+//                         Expr {
+//                             kind: GreaterEq(
+//                                 Expr {
+//                                     kind: Ident(
+//                                         Ident {
+//                                             ident: "n",
+//                                             kind: Lowercase,
+//                                         },
+//                                     ),
+//                                 },
+//                                 Expr {
+//                                     kind: Literal(
+//                                         Int(
+//                                             1,
+//                                         ),
+//                                     ),
+//                                 },
+//                             ),
+//                         },
+//                     ),
+//                 ],
+//             },
+//         ),
+//     },
+//     Declaration {
+//         attributes: [],
+//         kind: Rule(
+//             Rule {
+//                 head: [
+//                     RuleHead {
+//                         relation: Ident {
+//                             ident: "NeedsFibonacci",
+//                             kind: Uppercase,
+//                         },
+//                         fields: [
+//                             Expr {
+//                                 kind: Sub(
+//                                     Expr {
+//                                         kind: Ident(
+//                                             Ident {
+//                                                 ident: "n",
+//                                                 kind: Lowercase,
+//                                             },
+//                                         ),
+//                                     },
+//                                     Expr {
+//                                         kind: Literal(
+//                                             Int(
+//                                                 2,
+//                                             ),
+//                                         ),
+//                                     },
+//                                 ),
+//                             },
+//                         ],
+//                     },
+//                 ],
+//                 clauses: [
+//                     Relation {
+//                         binding: None,
+//                         relation: Ident {
+//                             ident: "NeedsFibonacci",
+//                             kind: Uppercase,
+//                         },
+//                         fields: [
+//                             Expr {
+//                                 kind: Ident(
+//                                     Ident {
+//                                         ident: "n",
+//                                         kind: Lowercase,
+//                                     },
+//                                 ),
+//                             },
+//                         ],
+//                     },
+//                     Expr(
+//                         Expr {
+//                             kind: GreaterEq(
+//                                 Expr {
+//                                     kind: Ident(
+//                                         Ident {
+//                                             ident: "n",
+//                                             kind: Lowercase,
+//                                         },
+//                                     ),
+//                                 },
+//                                 Expr {
+//                                     kind: Literal(
+//                                         Int(
+//                                             2,
+//                                         ),
+//                                     ),
+//                                 },
+//                             ),
+//                         },
+//                     ),
+//                 ],
+//             },
+//         ),
+//     },
+//     Declaration {
+//         attributes: [],
+//         kind: Relation(
+//             Relation {
+//                 kind: Internal,
+//                 name: Ident {
+//                     ident: "FibonacciLoop",
+//                     kind: Uppercase,
+//                 },
+//                 args: [
+//                     (
+//                         Ident {
+//                             ident: "n",
+//                             kind: Lowercase,
+//                         },
+//                         Named {
+//                             path: IdentPath {
+//                                 path: [
+//                                     Ident {
+//                                         ident: "usize",
+//                                         kind: Lowercase,
+//                                     },
+//                                 ],
+//                             },
+//                             generics: [],
+//                         },
+//                     ),
+//                     (
+//                         Ident {
+//                             ident: "fibonacci",
+//                             kind: Lowercase,
+//                         },
+//                         Named {
+//                             path: IdentPath {
+//                                 path: [
+//                                     Ident {
+//                                         ident: "usize",
+//                                         kind: Lowercase,
+//                                     },
+//                                 ],
+//                             },
+//                             generics: [],
+//                         },
+//                     ),
+//                 ],
+//             },
+//         ),
+//     },
+//     Declaration {
+//         attributes: [],
+//         kind: Fact(
+//             Fact {
+//                 head: [
+//                     RuleHead {
+//                         relation: Ident {
+//                             ident: "FibonacciLoop",
+//                             kind: Uppercase,
+//                         },
+//                         fields: [
+//                             Expr {
+//                                 kind: Literal(
+//                                     Int(
+//                                         0,
+//                                     ),
+//                                 ),
+//                             },
+//                             Expr {
+//                                 kind: Literal(
+//                                     Int(
+//                                         0,
+//                                     ),
+//                                 ),
+//                             },
+//                         ],
+//                     },
+//                 ],
+//             },
+//         ),
+//     },
+//     Declaration {
+//         attributes: [],
+//         kind: Fact(
+//             Fact {
+//                 head: [
+//                     RuleHead {
+//                         relation: Ident {
+//                             ident: "FibonacciLoop",
+//                             kind: Uppercase,
+//                         },
+//                         fields: [
+//                             Expr {
+//                                 kind: Literal(
+//                                     Int(
+//                                         1,
+//                                     ),
+//                                 ),
+//                             },
+//                             Expr {
+//                                 kind: Literal(
+//                                     Int(
+//                                         1,
+//                                     ),
+//                                 ),
+//                             },
+//                         ],
+//                     },
+//                 ],
+//             },
+//         ),
+//     },
+//     Declaration {
+//         attributes: [],
+//         kind: Rule(
+//             Rule {
+//                 head: [
+//                     RuleHead {
+//                         relation: Ident {
+//                             ident: "FibonacciLoop",
+//                             kind: Uppercase,
+//                         },
+//                         fields: [
+//                             Expr {
+//                                 kind: Ident(
+//                                     Ident {
+//                                         ident: "n",
+//                                         kind: Lowercase,
+//                                     },
+//                                 ),
+//                             },
+//                             Expr {
+//                                 kind: Add(
+//                                     Expr {
+//                                         kind: Ident(
+//                                             Ident {
+//                                                 ident: "fib1",
+//                                                 kind: Lowercase,
+//                                             },
+//                                         ),
+//                                     },
+//                                     Expr {
+//                                         kind: Ident(
+//                                             Ident {
+//                                                 ident: "fib2",
+//                                                 kind: Lowercase,
+//                                             },
+//                                         ),
+//                                     },
+//                                 ),
+//                             },
+//                         ],
+//                     },
+//                 ],
+//                 clauses: [
+//                     Relation {
+//                         binding: None,
+//                         relation: Ident {
+//                             ident: "NeedsFibonacci",
+//                             kind: Uppercase,
+//                         },
+//                         fields: [
+//                             Expr {
+//                                 kind: Ident(
+//                                     Ident {
+//                                         ident: "n",
+//                                         kind: Lowercase,
+//                                     },
+//                                 ),
+//                             },
+//                         ],
+//                     },
+//                     Relation {
+//                         binding: None,
+//                         relation: Ident {
+//                             ident: "FibonacciLoop",
+//                             kind: Uppercase,
+//                         },
+//                         fields: [
+//                             Expr {
+//                                 kind: Sub(
+//                                     Expr {
+//                                         kind: Ident(
+//                                             Ident {
+//                                                 ident: "n",
+//                                                 kind: Lowercase,
+//                                             },
+//                                         ),
+//                                     },
+//                                     Expr {
+//                                         kind: Literal(
+//                                             Int(
+//                                                 1,
+//                                             ),
+//                                         ),
+//                                     },
+//                                 ),
+//                             },
+//                             Expr {
+//                                 kind: Ident(
+//                                     Ident {
+//                                         ident: "fib1",
+//                                         kind: Lowercase,
+//                                     },
+//                                 ),
+//                             },
+//                         ],
+//                     },
+//                     Relation {
+//                         binding: None,
+//                         relation: Ident {
+//                             ident: "FibonacciLoop",
+//                             kind: Uppercase,
+//                         },
+//                         fields: [
+//                             Expr {
+//                                 kind: Sub(
+//                                     Expr {
+//                                         kind: Ident(
+//                                             Ident {
+//                                                 ident: "n",
+//                                                 kind: Lowercase,
+//                                             },
+//                                         ),
+//                                     },
+//                                     Expr {
+//                                         kind: Literal(
+//                                             Int(
+//                                                 2,
+//                                             ),
+//                                         ),
+//                                     },
+//                                 ),
+//                             },
+//                             Expr {
+//                                 kind: Ident(
+//                                     Ident {
+//                                         ident: "fib2",
+//                                         kind: Lowercase,
+//                                     },
+//                                 ),
+//                             },
+//                         ],
+//                     },
+//                 ],
+//             },
+//         ),
+//     },
+//     Declaration {
+//         attributes: [],
+//         kind: Relation(
+//             Relation {
+//                 kind: Output,
+//                 name: Ident {
+//                     ident: "Fibonacci",
+//                     kind: Uppercase,
+//                 },
+//                 args: [
+//                     (
+//                         Ident {
+//                             ident: "n",
+//                             kind: Lowercase,
+//                         },
+//                         Named {
+//                             path: IdentPath {
+//                                 path: [
+//                                     Ident {
+//                                         ident: "usize",
+//                                         kind: Lowercase,
+//                                     },
+//                                 ],
+//                             },
+//                             generics: [],
+//                         },
+//                     ),
+//                     (
+//                         Ident {
+//                             ident: "fibonacci",
+//                             kind: Lowercase,
+//                         },
+//                         Named {
+//                             path: IdentPath {
+//                                 path: [
+//                                     Ident {
+//                                         ident: "usize",
+//                                         kind: Lowercase,
+//                                     },
+//                                 ],
+//                             },
+//                             generics: [],
+//                         },
+//                     ),
+//                 ],
+//             },
+//         ),
+//     },
+//     Declaration {
+//         attributes: [],
+//         kind: Rule(
+//             Rule {
+//                 head: [
+//                     RuleHead {
+//                         relation: Ident {
+//                             ident: "Fibonacci",
+//                             kind: Uppercase,
+//                         },
+//                         fields: [
+//                             Expr {
+//                                 kind: Ident(
+//                                     Ident {
+//                                         ident: "n",
+//                                         kind: Lowercase,
+//                                     },
+//                                 ),
+//                             },
+//                             Expr {
+//                                 kind: Ident(
+//                                     Ident {
+//                                         ident: "fib",
+//                                         kind: Lowercase,
+//                                     },
+//                                 ),
+//                             },
+//                         ],
+//                     },
+//                 ],
+//                 clauses: [
+//                     Relation {
+//                         binding: None,
+//                         relation: Ident {
+//                             ident: "FibonacciLoop",
+//                             kind: Uppercase,
+//                         },
+//                         fields: [
+//                             Expr {
+//                                 kind: Ident(
+//                                     Ident {
+//                                         ident: "n",
+//                                         kind: Lowercase,
+//                                     },
+//                                 ),
+//                             },
+//                             Expr {
+//                                 kind: Ident(
+//                                     Ident {
+//                                         ident: "fib",
+//                                         kind: Lowercase,
+//                                     },
+//                                 ),
+//                             },
+//                         ],
+//                     },
+//                     Relation {
+//                         binding: None,
+//                         relation: Ident {
+//                             ident: "FibonacciFor",
+//                             kind: Uppercase,
+//                         },
+//                         fields: [
+//                             Expr {
+//                                 kind: Ident(
+//                                     Ident {
+//                                         ident: "n",
+//                                         kind: Lowercase,
+//                                     },
+//                                 ),
+//                             },
+//                         ],
+//                     },
+//                 ],
+//             },
+//         ),
+//     },
+// ]
+
+input relation FibonacciFor(n: usize)
+
+relation NeedsFibonacci(n: usize)
+NeedsFibonacci(n) :- FibonacciFor(n).
+NeedsFibonacci(n - 1) :- NeedsFibonacci(n), n >= 1.
+NeedsFibonacci(n - 2) :- NeedsFibonacci(n), n >= 2.
+
+relation FibonacciLoop(n: usize, fibonacci: usize)
+FibonacciLoop(0, 0).
+FibonacciLoop(1, 1).
+FibonacciLoop(n, fib1 + fib2) :-
+    NeedsFibonacci(n),
+    FibonacciLoop(n - 1, fib1),
+    FibonacciLoop(n - 2, fib2).
+
+output relation Fibonacci(n: usize, fibonacci: usize)
+Fibonacci(n, fib) :-
+    FibonacciLoop(n, fib),
+    FibonacciFor(n).

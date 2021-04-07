@@ -1,3 +1,5 @@
+// TODO: Source locations
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Declaration {
     pub attributes: Vec<Attribute>,
@@ -14,6 +16,7 @@ impl Declaration {
 pub enum DeclarationKind {
     Relation(Relation),
     Rule(Rule),
+    Fact(Fact),
     Function(Function),
 }
 
@@ -87,6 +90,17 @@ impl RuleClause {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Fact {
+    pub head: Vec<RuleHead>,
+}
+
+impl Fact {
+    pub fn new(head: Vec<RuleHead>) -> Self {
+        Self { head }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Function {
     pub name: IdentPath,
     pub args: Vec<(Ident, Type)>,
@@ -115,7 +129,10 @@ pub enum Type {
     Double,
     Float,
     Tuple(Vec<Type>),
-    Named(Ident),
+    Named {
+        path: IdentPath,
+        generics: Vec<Type>,
+    },
     Unit,
 }
 
@@ -191,12 +208,6 @@ impl Expr {
         }
     }
 
-    pub fn and(lhs: Expr, rhs: Expr) -> Self {
-        Self {
-            kind: ExprKind::And(Box::new(lhs), Box::new(rhs)),
-        }
-    }
-
     pub fn nested(expr: Expr) -> Self {
         Self {
             kind: ExprKind::Nested(Box::new(expr)),
@@ -206,6 +217,18 @@ impl Expr {
     pub fn block(exprs: Vec<Expr>) -> Self {
         Self {
             kind: ExprKind::Block(exprs),
+        }
+    }
+
+    pub fn literal(literal: Literal) -> Self {
+        Self {
+            kind: ExprKind::Literal(literal),
+        }
+    }
+
+    pub fn ident(ident: Ident) -> Self {
+        Self {
+            kind: ExprKind::Ident(ident),
         }
     }
 
@@ -245,15 +268,117 @@ impl Expr {
         }
     }
 
-    pub fn literal(literal: Literal) -> Self {
+    pub fn sub(lhs: Expr, rhs: Expr) -> Self {
         Self {
-            kind: ExprKind::Literal(literal),
+            kind: ExprKind::Sub(Box::new(lhs), Box::new(rhs)),
         }
     }
 
-    pub fn ident(ident: Ident) -> Self {
+    pub fn equal(lhs: Expr, rhs: Expr) -> Self {
         Self {
-            kind: ExprKind::Ident(ident),
+            kind: ExprKind::Eq(Box::new(lhs), Box::new(rhs)),
+        }
+    }
+
+    pub fn not_equal(lhs: Expr, rhs: Expr) -> Self {
+        Self {
+            kind: ExprKind::Neq(Box::new(lhs), Box::new(rhs)),
+        }
+    }
+
+    pub fn greater(lhs: Expr, rhs: Expr) -> Self {
+        Self {
+            kind: ExprKind::Greater(Box::new(lhs), Box::new(rhs)),
+        }
+    }
+
+    pub fn less(lhs: Expr, rhs: Expr) -> Self {
+        Self {
+            kind: ExprKind::Less(Box::new(lhs), Box::new(rhs)),
+        }
+    }
+
+    pub fn greater_equal(lhs: Expr, rhs: Expr) -> Self {
+        Self {
+            kind: ExprKind::GreaterEq(Box::new(lhs), Box::new(rhs)),
+        }
+    }
+
+    pub fn less_equal(lhs: Expr, rhs: Expr) -> Self {
+        Self {
+            kind: ExprKind::LessEq(Box::new(lhs), Box::new(rhs)),
+        }
+    }
+
+    pub fn and(lhs: Expr, rhs: Expr) -> Self {
+        Self {
+            kind: ExprKind::And(Box::new(lhs), Box::new(rhs)),
+        }
+    }
+
+    pub fn or(lhs: Expr, rhs: Expr) -> Self {
+        Self {
+            kind: ExprKind::Or(Box::new(lhs), Box::new(rhs)),
+        }
+    }
+
+    pub fn ret(ret: Option<Expr>) -> Self {
+        Self {
+            kind: ExprKind::Return(ret.map(Box::new)),
+        }
+    }
+
+    pub fn brk(brk: Option<Expr>) -> Self {
+        Self {
+            kind: ExprKind::Break(brk.map(Box::new)),
+        }
+    }
+
+    pub fn cont(cont: Option<Expr>) -> Self {
+        Self {
+            kind: ExprKind::Continue(cont.map(Box::new)),
+        }
+    }
+
+    pub fn shr(lhs: Expr, rhs: Expr) -> Self {
+        Self {
+            kind: ExprKind::Shr(Box::new(lhs), Box::new(rhs)),
+        }
+    }
+
+    pub fn shl(lhs: Expr, rhs: Expr) -> Self {
+        Self {
+            kind: ExprKind::Shl(Box::new(lhs), Box::new(rhs)),
+        }
+    }
+
+    pub fn concat(lhs: Expr, rhs: Expr) -> Self {
+        Self {
+            kind: ExprKind::Concat(Box::new(lhs), Box::new(rhs)),
+        }
+    }
+
+    pub fn bit_or(lhs: Expr, rhs: Expr) -> Self {
+        Self {
+            kind: ExprKind::BitOr(Box::new(lhs), Box::new(rhs)),
+        }
+    }
+
+    pub fn bit_and(lhs: Expr, rhs: Expr) -> Self {
+        Self {
+            kind: ExprKind::Concat(Box::new(lhs), Box::new(rhs)),
+        }
+    }
+
+    pub fn rem(lhs: Expr, rhs: Expr) -> Self {
+        Self {
+            kind: ExprKind::Rem(Box::new(lhs), Box::new(rhs)),
+        }
+    }
+
+    pub fn if_(cond: Expr, then: Expr, else_: Expr) -> Self {
+        Self {
+            kind: ExprKind::If(Box::new(cond), Box::new(then), Box::new(else_)),
         }
     }
 }
@@ -261,17 +386,47 @@ impl Expr {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ExprKind {
     Wildcard,
-    And(Box<Expr>, Box<Expr>),
+
     Nested(Box<Expr>),
     Block(Vec<Expr>),
+
+    Literal(Literal),
+    Ident(Ident),
+
     Neg(Box<Expr>),
-    BitNot(Box<Expr>),
     Not(Box<Expr>),
+    BitNot(Box<Expr>),
+    BitOr(Box<Expr>, Box<Expr>),
+    BitAnd(Box<Expr>, Box<Expr>),
+
     Mul(Box<Expr>, Box<Expr>),
     Div(Box<Expr>, Box<Expr>),
     Add(Box<Expr>, Box<Expr>),
-    Literal(Literal),
-    Ident(Ident),
+    Sub(Box<Expr>, Box<Expr>),
+
+    Rem(Box<Expr>, Box<Expr>),
+
+    Shr(Box<Expr>, Box<Expr>),
+    Shl(Box<Expr>, Box<Expr>),
+
+    Concat(Box<Expr>, Box<Expr>),
+
+    Eq(Box<Expr>, Box<Expr>),
+    Neq(Box<Expr>, Box<Expr>),
+
+    Greater(Box<Expr>, Box<Expr>),
+    Less(Box<Expr>, Box<Expr>),
+    GreaterEq(Box<Expr>, Box<Expr>),
+    LessEq(Box<Expr>, Box<Expr>),
+
+    And(Box<Expr>, Box<Expr>),
+    Or(Box<Expr>, Box<Expr>),
+
+    Return(Option<Box<Expr>>),
+    Break(Option<Box<Expr>>),
+    Continue(Option<Box<Expr>>),
+
+    If(Box<Expr>, Box<Expr>, Box<Expr>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

@@ -16,7 +16,19 @@ fn main() {
             let ast = parser.parse(&source).unwrap();
 
             if unstable_args.iter().any(|arg| arg == "dump-ast") {
+                // #[cfg(not(feature = "debug-printing"))]
                 println!("{:#?}", ast);
+
+                // #[cfg(feature = "debug-printing")]
+                // {
+                //     use dyn_ddlog::DebugAst;
+                //
+                //     let stdout = std::io::stdout();
+                //     let mut stdout = stdout.lock();
+                //
+                //     ast.debug_ast_into(&mut stdout)
+                //         .expect("failed to debug ast");
+                // }
             }
         }
     }

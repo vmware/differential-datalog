@@ -6,6 +6,10 @@ edition = "2018"
 build = "build.rs"
 default-run = "ddlog"
 
+[features]
+default = ["debug-printing"]
+debug-printing = ["pretty"]
+
 [[bin]]
 name = "ddlog"
 required-features = ["structopt"]
@@ -15,6 +19,7 @@ egg = "0.6.0"
 regex = "1.4.5"
 lalrpop-util = "0.19.5"
 structopt = { version = "0.3.21", optional = true }
+pretty = { version = "0.10.0", optional = true }
 
 [dev-dependencies]
 goldentests = "0.3.7"

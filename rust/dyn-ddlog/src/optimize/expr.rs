@@ -69,8 +69,6 @@ pub fn build_egraph(expr: &AstExpr) -> (EGraph, Id) {
 // TODO: Use iteration instead of recursion
 fn translate_expr(egraph: &mut EGraph, expr: &AstExpr) -> Id {
     match &expr.kind {
-        ExprKind::Wildcard => todo!(),
-
         ExprKind::Nested(expr) => translate_expr(egraph, &**expr),
 
         ExprKind::Block(exprs) => {
@@ -139,6 +137,8 @@ fn translate_expr(egraph: &mut EGraph, expr: &AstExpr) -> Id {
         }),
 
         ExprKind::Ident(ident) => egraph.add(Expr::Ident(egg::Symbol::from(&ident.ident))),
+
+        _ => todo!(),
     }
 }
 

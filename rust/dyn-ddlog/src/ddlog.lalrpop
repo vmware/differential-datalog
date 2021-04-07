@@ -7,8 +7,8 @@
 // TODO: Write the .dat parser here so it can share code
 
 use crate::ast::{
-    Attribute, Declaration, DeclarationKind, Expr, Ident, Literal, Relation, RelationKind, Rule,
-    RuleClause, RuleHead, Type, Function, IdentPath,
+    Attribute, Declaration, DeclarationKind, Expr, Fact, Function, Ident, IdentPath, Literal,
+    Relation, RelationKind, Rule, RuleClause, RuleHead, Type,
 };
 // TODO: Use custom error type
 use lalrpop_util::ParseError;
@@ -17,17 +17,20 @@ grammar;
 
 pub Datalog = Decl*;
 
+
 Decl: Declaration = <attrs: Attributes*> <decl: DeclKind>
     => Declaration::new(attrs.into_iter().flatten().collect(), decl);
-
-Attributes: Vec<Attribute> = "#[" <attrs: Comma<(VariableIdent ("=" <Expr>)?)>> "]"
-    => attrs.into_iter().map(|(ident, value)| Attribute::new(ident, value)).collect();
 
 DeclKind: DeclarationKind = {
     Relation => DeclarationKind::Relation(<>),
     Rule => DeclarationKind::Rule(<>),
+    Fact => DeclarationKind::Fact(<>),
     Function => DeclarationKind::Function(<>),
 };
+
+Attributes: Vec<Attribute> = "#[" <attrs: Comma<(VariableIdent ("=" <Expr>)?)>> "]"
+    => attrs.into_iter().map(|(ident, value)| Attribute::new(ident, value)).collect();
+
 
 Relation: Relation =
     <kind: RelationKind?> "relation" <ident: RelationIdent> "(" <args: RelationArgs> ")" => {
@@ -42,6 +45,7 @@ RelationKind: RelationKind = {
     "input" => RelationKind::Input,
     "output" => RelationKind::Output,
 };
+
 
 Rule: Rule = <head: Comma<RuleHead>> ":-" <clauses: Comma<RuleAtom>> "."
     => Rule::new(head, clauses);
@@ -59,37 +63,112 @@ RelationBinding: RuleClause =
     <binding: (<VariableIdent> "in")?> <relation: RelationIdent> "(" <fields: Comma<Expr>> ")"
         => RuleClause::relation(binding, relation, fields);
 
+
+Fact: Fact = <head: Comma<RuleHead>> "."
+    => Fact::new(head);
+
+
 Function: Function =
     "function" <name: FuncPath> "(" <args: Comma<(<VariableIdent> ":" <Type>)>> ")" <ret: (":" <Type>)?> "{"
         <body: Semicolon<Expr>>
     "}"
     => Function::new(name, args, ret.unwrap_or(Type::Unit), Expr::block(body));
 
+
 Type: Type = {
-    "bigint" => Type::BigInt,
     "bool" => Type::Bool,
     "string" => Type::String,
-    "(" ")" => Type::Unit,
+    "bigint" => Type::BigInt,
+    "double" => Type::Double,
+    "float" => Type::Float,
+
+    "bit" "<" <width: r"[0-9][0-9_]*"> ">" =>? {
+        width.parse::<u16>()
+            // TODO: Better error message
+            .map_err(|_| ParseError::User {
+                error: "number is too big",
+            })
+            .map(Type::BitVec)
+    },
+
+    "signed" "<" <width: r"[0-9][0-9_]*"> ">" =>? {
+        width.parse::<u16>()
+            // TODO: Better error message
+            .map_err(|_| ParseError::User {
+                error: "number is too big",
+            })
+            .map(Type::Signed)
+    },
+
+    "(" <elems:  Comma<Type>> ")" => {
+        if elems.is_empty() {
+            Type::Unit
+        } else {
+            Type::Tuple(elems)
+        }
+    },
+
+    <path: TypePath> <generics: ("<" <Comma<Type>> ">")?> => Type::Named {
+        path,
+        generics: generics.unwrap_or_default(),
+    },
 };
+
 
 Expr: Expr = {
     Term,
-    <lhs: Expr> "and" <rhs: Term> => Expr::and(lhs, rhs),
+
     "-" <Term> => Expr::neg(<>),
-    "~" <Term> => Expr::bit_not(<>),
     "not" <Term> => Expr::not(<>),
+
+    "~" <Term> => Expr::bit_not(<>),
+    <lhs: Expr> "|" <rhs: Term> => Expr::bit_or(lhs, rhs),
+    <lhs: Expr> "&" <rhs: Term> => Expr::bit_and(lhs, rhs),
+
     <lhs: Expr> "*" <rhs: Term> => Expr::mul(lhs, rhs),
     <lhs: Expr> "/" <rhs: Term> => Expr::div(lhs, rhs),
     <lhs: Expr> "+" <rhs: Term> => Expr::add(lhs, rhs),
+    <lhs: Expr> "-" <rhs: Term> => Expr::sub(lhs, rhs),
+
+    <lhs: Expr> "%" <rhs: Term> => Expr::rem(lhs, rhs),
+
+    <lhs: Expr> ">>" <rhs: Term> => Expr::shr(lhs, rhs),
+    <lhs: Expr> "<<" <rhs: Term> => Expr::shl(lhs, rhs),
+
+    <lhs: Expr> "++" <rhs: Term> => Expr::concat(lhs, rhs),
+
+    <lhs: Expr> "and" <rhs: Term> => Expr::and(lhs, rhs),
+    <lhs: Expr> "or" <rhs: Term> => Expr::or(lhs, rhs),
+
+    <lhs: Expr> "==" <rhs: Term> => Expr::equal(lhs, rhs),
+    <lhs: Expr> "!=" <rhs: Term> => Expr::not_equal(lhs, rhs),
+
+    <lhs: Expr> ">" <rhs: Term> => Expr::greater(lhs, rhs),
+    <lhs: Expr> "<" <rhs: Term> => Expr::less(lhs, rhs),
+    <lhs: Expr> ">=" <rhs: Term> => Expr::greater_equal(lhs, rhs),
+    <lhs: Expr> "<=" <rhs: Term> => Expr::less_equal(lhs, rhs),
+
+    "return" <ret: Term> => Expr::ret(Some(ret)),
+    "break" <brk: Term> => Expr::brk(Some(brk)),
+    "continue" <cont: Term> => Expr::cont(Some(cont)),
 };
 
 // Expression terminals
 Term: Expr = {
     "_" => Expr::wildcard(),
+
     "(" <Expr> ")" => Expr::nested(<>),
     "{" <Semicolon<Expr>> "}" => Expr::block(<>),
+
     VariableIdent => Expr::ident(<>),
     Literal => Expr::literal(<>),
+
+    "return" => Expr::ret(None),
+    "break" => Expr::brk(None),
+    "continue" => Expr::cont(None),
+
+    "if" "(" <cond: Expr> ")" "{" <then: Semicolon<Expr>> "}" <else_: ("else" "{" <Semicolon<Expr>> "}")?>
+        => Expr::if_(cond, Expr::block(then), Expr::block(else_.unwrap_or_default())),
 };
 
 Literal: Literal = {
@@ -106,7 +185,9 @@ Literal: Literal = {
     "false" => Literal::Bool(false),
 };
 
+
 FuncPath = LowercasePath;
+TypePath: IdentPath = Path<Ident> => IdentPath::new(<>);
 LowercasePath: IdentPath = Path<LowercaseIdent> => IdentPath::new(<>);
 
 Ident = { UppercaseIdent, LowercaseIdent };
@@ -115,6 +196,7 @@ RelationIdent = UppercaseIdent;
 
 LowercaseIdent: Ident = r"[a-z_][a-zA-Z0-9_]*" => Ident::lowercase(<>.to_owned());
 UppercaseIdent: Ident = r"[A-Z][a-zA-Z0-9_]*" => Ident::uppercase(<>.to_owned());
+
 
 /// Parse a comma separated list of items into a vec,
 /// allowing trailing commas or zero elements
@@ -157,6 +239,7 @@ Semicolon<T>: Vec<T> = {
     }
 };
 
+
 match {
     // The default whitespace skipping is disabled when an `ignore pattern` is specified,
     // so we re-enable it
@@ -182,6 +265,7 @@ match {
     "false"=> "false",
     "function" => "function",
     "extern" => "extern",
+    "return" => "return",
 
     "::" => "::",
 } else {

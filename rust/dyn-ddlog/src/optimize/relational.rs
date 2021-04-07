@@ -1,7 +1,7 @@
 // TODO: The expression and relation optimization languages may
 //       have to be unified
 
-use egg::{rewrite, Analysis, Id, Language};
+use egg::{rewrite, Analysis, Id};
 
 type EGraph = egg::EGraph<Relation, RelationAnalysis>;
 type Rewrite = egg::Rewrite<Relation, RelationAnalysis>;

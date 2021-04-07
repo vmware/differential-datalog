@@ -1,0 +1,14 @@
+// args: build -Z dump-ast
+// expected stdout:
+
+function foo() {
+    if (x >= 6) {
+        x + (6 / (not (100 & 7)))
+    } else {
+        return 5;
+        break 1000;
+        continue {
+            x == (((y)))
+        }
+    }
+}
