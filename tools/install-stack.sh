@@ -23,6 +23,7 @@ fetch_stack_windows() {
 
 # We need stack to generate cabal files with precise bounds, even for cabal
 # builds.
+pwd
 mkdir -p ~/.local/bin
 if [ "$(uname)" = "Darwin" ]; then
   retry fetch_stack_osx
@@ -30,6 +31,11 @@ elif [ "$(uname)" = "Linux" ]; then
   retry fetch_stack_linux
 else
   retry fetch_stack_windows
+  # On Travis windows stack setup below fails with an error about
+  # certificates missing.  So we install ghc manually.
+  if [ "x${TRAVIS}" = "xtrue" ]; then
+      choco install haskell-dev
+  fi
 fi
 
 retry stack --no-terminal setup
