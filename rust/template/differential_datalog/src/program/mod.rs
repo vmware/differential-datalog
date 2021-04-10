@@ -1336,7 +1336,7 @@ impl Program {
                 });
 
             Self::xform_collection(
-                xformed.clone(),
+                xformed,
                 &*next,
                 arrangements,
                 lookup_collection,
@@ -1512,9 +1512,7 @@ impl Program {
                     // arrange input collection
                     let collection_with_keys = col.flat_map(afun);
                     let arr = match arrangements.lookup_arr(arrangement) {
-                        ArrangementFlavor::Local(DataflowArrangement::Map(arranged)) => {
-                            arranged.clone()
-                        }
+                        ArrangementFlavor::Local(DataflowArrangement::Map(arranged)) => arranged,
                         ArrangementFlavor::Local(DataflowArrangement::Set(_)) => {
                             panic!("StreamJoin: not a map arrangement {:?}", arrangement)
                         }
@@ -1553,9 +1551,7 @@ impl Program {
                     // arrange input collection
                     let collection_with_keys = col.flat_map(afun);
                     let arr = match arrangements.lookup_arr(arrangement) {
-                        ArrangementFlavor::Local(DataflowArrangement::Set(arranged)) => {
-                            arranged.clone()
-                        }
+                        ArrangementFlavor::Local(DataflowArrangement::Set(arranged)) => arranged,
                         ArrangementFlavor::Local(DataflowArrangement::Map(_)) => {
                             panic!("StreamSemijoin: not a set arrangement {:?}", arrangement)
                         }

@@ -52,53 +52,34 @@ impl<V> Update<V> {
 
     /// Returns `true` if the the current update is an Insert.
     pub fn is_insert(&self) -> bool {
-        match self {
-            Update::Insert { .. } => true,
-            _ => false,
-        }
+        matches!(self, Update::Insert { .. })
     }
 
     /// Returns `true` if the the current update is an InsertOrUpdate.
     pub fn is_insert_or_update(&self) -> bool {
-        match self {
-            Update::InsertOrUpdate { .. } => true,
-            _ => false,
-        }
+        matches!(self, Update::InsertOrUpdate { .. })
     }
 
     /// Returns `true` if the the current update is a DeleteValue.
     pub fn is_delete_value(&self) -> bool {
-        match self {
-            Update::DeleteValue { .. } => true,
-            _ => false,
-        }
+        matches!(self, Update::DeleteValue { .. })
     }
 
     /// Returns `true` if the the current update is a DeleteKey.
     pub fn is_delete_key(&self) -> bool {
-        match self {
-            Update::DeleteKey { .. } => true,
-            _ => false,
-        }
+        matches!(self, Update::DeleteKey { .. })
     }
 
     /// Returns `true` if the the current update is a Modify.
     pub fn is_modify(&self) -> bool {
-        match self {
-            Update::Modify { .. } => true,
-            _ => false,
-        }
+        matches!(self, Update::Modify { .. })
     }
 
     /// Returns whether the current update has a key of some sort
     ///
     /// Returns `true` if the update is a `DeleteKey` or a `Modify`
     pub fn has_key(&self) -> bool {
-        match self {
-            Update::DeleteKey { .. } => true,
-            Update::Modify { .. } => true,
-            _ => false,
-        }
+        matches!(self, Update::DeleteKey { .. } | Update::Modify { .. })
     }
 
     /// Attempts to get the key of the current update
