@@ -67,28 +67,40 @@ pub enum Record {
 }
 
 impl Record {
-    pub fn is_bool(&self) -> bool {
+    pub const fn is_bool(&self) -> bool {
         matches!(self, Self::Bool(_))
     }
 
-    pub fn is_int(&self) -> bool {
+    pub const fn is_int(&self) -> bool {
         matches!(self, Self::Int(_))
     }
 
-    pub fn is_float(&self) -> bool {
+    pub const fn is_float(&self) -> bool {
         matches!(self, Self::Float(_))
     }
 
-    pub fn is_double(&self) -> bool {
+    pub const fn is_double(&self) -> bool {
         matches!(self, Self::Double(_))
     }
 
-    pub fn is_struct(&self) -> bool {
+    pub const fn is_struct(&self) -> bool {
         matches!(self, Self::PosStruct(_, _) | Self::NamedStruct(_, _))
     }
 
-    pub fn is_named_struct(&self) -> bool {
+    pub const fn is_named_struct(&self) -> bool {
         matches!(self, Self::NamedStruct(_, _))
+    }
+
+    pub const fn is_vector(&self) -> bool {
+        matches!(self, Self::Array(CollectionKind::Vector, _))
+    }
+
+    pub const fn is_map(&self) -> bool {
+        matches!(self, Self::Array(CollectionKind::Map, _))
+    }
+
+    pub const fn is_string(&self) -> bool {
+        matches!(self, Self::String(_))
     }
 
     pub fn as_int(&self) -> Option<&BigInt> {
@@ -1076,11 +1088,8 @@ pub unsafe extern "C" fn ddlog_string_with_length(
 
 #[no_mangle]
 #[cfg(feature = "c_api")]
-pub unsafe extern "C" fn ddlog_is_string(rec: *const Record) -> bool {
-    match rec.as_ref() {
-        Some(Record::String(_)) => true,
-        _ => false,
-    }
+pub unsafe extern "C" fn ddlog_is_string(record: *const Record) -> bool {
+    record.as_ref().map(Record::is_string).unwrap_or_default()
 }
 
 #[cfg(feature = "c_api")]
@@ -1237,11 +1246,8 @@ pub unsafe extern "C" fn ddlog_vector(
 
 #[cfg(feature = "c_api")]
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_is_vector(rec: *const Record) -> bool {
-    match rec.as_ref() {
-        Some(Record::Array(CollectionKind::Vector, _)) => true,
-        _ => false,
-    }
+pub unsafe extern "C" fn ddlog_is_vector(record: *const Record) -> bool {
+    record.as_ref().map(Record::is_vector).unwrap_or_default()
 }
 
 #[cfg(feature = "c_api")]
@@ -1336,11 +1342,8 @@ pub unsafe extern "C" fn ddlog_map(fields: *const *mut Record, len: libc::size_t
 
 #[cfg(feature = "c_api")]
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_is_map(rec: *const Record) -> bool {
-    match rec.as_ref() {
-        Some(Record::Array(CollectionKind::Map, _)) => true,
-        _ => false,
-    }
+pub unsafe extern "C" fn ddlog_is_map(record: *const Record) -> bool {
+    record.as_ref().map(Record::is_map).unwrap_or_default()
 }
 
 #[cfg(feature = "c_api")]
