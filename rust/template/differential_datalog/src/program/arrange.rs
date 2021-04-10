@@ -22,6 +22,7 @@ use timely::{
     progress::{timestamp::Refines, Timestamp},
 };
 
+/// An arrangement originating either in the current scope or a higher one
 #[derive(Clone)]
 pub enum ArrangementFlavor<S, T>
 where
@@ -29,10 +30,15 @@ where
     S::Timestamp: Lattice + Refines<T>,
     T: Lattice + Timestamp,
 {
+    /// An arrangement created within the current scope, usually created by
+    /// [`Arrangement::enter_region()`] or made directly from the output of
+    /// [`ArrangeBySelf::arrange_by_self()`] or similar methods
     Local(Arrangement<S, Weight, TValAgent<S::Timestamp>, TKeyAgent<S::Timestamp>>),
+    /// An arrangement imported from a higher scope, usually created by [`Arrangement::enter()`]
     Foreign(Arrangement<S, Weight, TValEnter<T, S::Timestamp>, TKeyEnter<T, S::Timestamp>>),
 }
 
+/// A single [arrangement](Arranged), either arranged as a map of keys to values or as a set of keys
 #[derive(Clone)]
 pub enum Arrangement<S, R, Map, Set>
 where
@@ -45,7 +51,9 @@ where
     Set::Batch: BatchReader<Set::Key, Set::Val, Set::Time, Set::R> + Clone + 'static,
     Set::Cursor: Cursor<Set::Key, Set::Val, Set::Time, Set::R>,
 {
+    /// An [arrangement](Arranged) of keys to associated values
     Map(Arranged<S, Map>),
+    /// An [arrangement](Arranged) of keys
     Set(Arranged<S, Set>),
 }
 
@@ -60,7 +68,8 @@ where
     Set::Batch: BatchReader<Set::Key, Set::Val, Set::Time, Set::R> + Clone + 'static,
     Set::Cursor: Cursor<Set::Key, Set::Val, Set::Time, Set::R>,
 {
-    pub(super) fn enter<'a, TInner>(
+    /// Brings an arranged collection out of a nested scope, see [`Arranged::enter()`]
+    pub fn enter<'a, TInner>(
         &self,
         inner: &Child<'a, S, TInner>,
     ) -> Arrangement<Child<'a, S, TInner>, R, TraceEnter<Map, TInner>, TraceEnter<Set, TInner>>
@@ -74,6 +83,7 @@ where
         }
     }
 
+    /// Brings an arranged collection into a nested region, see [`Arranged::enter_region()`]
     pub fn enter_region<'a>(
         &self,
         region: &Child<'a, S, S::Timestamp>,
@@ -99,6 +109,7 @@ where
     Set::Batch: BatchReader<Set::Key, Set::Val, Set::Time, Set::R> + Clone + 'static,
     Set::Cursor: Cursor<Set::Key, Set::Val, Set::Time, Set::R>,
 {
+    /// Brings an arranged collection out of a nested region, see [`Arranged::leave_region()`]
     pub fn leave_region(&self) -> Arrangement<S, R, Map, Set> {
         match self {
             Self::Map(arr) => Arrangement::Map(arr.leave_region()),
