@@ -12,10 +12,10 @@ c_api = []
 
 [dependencies]
 #differential-dataflow = "0.11.0"
-differential-dataflow = { git = "https://github.com/ddlog-dev/differential-dataflow", branch = "ddlog-3" }
-dogsdogsdogs = { git = "https://github.com/ddlog-dev/differential-dataflow", branch = "ddlog-3" }
+differential-dataflow = { git = "https://github.com/ddlog-dev/differential-dataflow", branch = "ddlog-4" }
+dogsdogsdogs = { git = "https://github.com/ddlog-dev/differential-dataflow", branch = "ddlog-4" }
 #timely = "0.11"
-timely = { git = "https://github.com/ddlog-dev/timely-dataflow", branch = "ddlog-3", default-features = false }
+timely = { git = "https://github.com/ddlog-dev/timely-dataflow", branch = "ddlog-4", default-features = false }
 
 abomonation = "0.7"
 ordered-float = { version = "2.0.0", features = ["serde"] }
