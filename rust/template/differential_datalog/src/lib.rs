@@ -1,8 +1,7 @@
 #![allow(
     clippy::get_unwrap,
     clippy::missing_safety_doc,
-    clippy::type_complexity,
-    clippy::upper_case_acronyms
+    clippy::type_complexity
 )]
 
 mod callback;
