@@ -2,7 +2,7 @@
     clippy::get_unwrap,
     clippy::missing_safety_doc,
     clippy::type_complexity,
-    clippy::match_like_matches_macro
+    clippy::upper_case_acronyms
 )]
 
 mod callback;
