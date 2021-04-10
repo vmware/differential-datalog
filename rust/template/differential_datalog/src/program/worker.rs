@@ -628,12 +628,12 @@ fn render_relation<'a>(
         // apply rules
         // TODO: Regions for rules
         let rule_collections = relation.rules.iter().map(|rule| {
-            let get_rule_collection = |rule_id| {
-                if let Some(collection) = collections.get(&rule_id) {
+            let get_rule_collection = |relation_id| {
+                if let Some(collection) = collections.get(&relation_id) {
                     Some(collection.enter_region(region))
                 } else {
                     delayed_vars
-                        .get(&rule_id)
+                        .get(&relation_id)
                         .map(|(_, _, collection)| collection.enter_region(region))
                 }
             };
@@ -644,7 +644,6 @@ fn render_relation<'a>(
                 Arrangements {
                     arrangements: &entered_arrangements,
                 },
-                true,
             )
         });
 
@@ -809,7 +808,6 @@ fn render_scc<'a>(
                     Arrangements {
                         arrangements: &arrangements,
                     },
-                    false,
                 );
 
                 vars.get_mut(&rel.rel.id)

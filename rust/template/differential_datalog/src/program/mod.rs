@@ -1258,7 +1258,6 @@ impl Program {
         xform: &Option<XFormCollection>,
         arrangements: &Arrangements<'a, S, T>,
         lookup_collection: Lookup,
-        is_top_level_scope: bool,
     ) -> Collection<S, DDValue, Weight>
     where
         S: Scope,
@@ -1268,13 +1267,7 @@ impl Program {
     {
         match xform {
             None => col,
-            Some(ref x) => Self::xform_collection_ref(
-                &col,
-                x,
-                arrangements,
-                lookup_collection,
-                is_top_level_scope,
-            ),
+            Some(ref x) => Self::xform_collection_ref(&col, x, arrangements, lookup_collection),
         }
     }
 
@@ -1283,7 +1276,6 @@ impl Program {
         xform: &XFormCollection,
         arrangements: &Arrangements<'a, S, T>,
         lookup_collection: Lookup,
-        is_top_level_scope: bool,
     ) -> Collection<S, DDValue, Weight>
     where
         S: Scope,
@@ -1326,7 +1318,6 @@ impl Program {
                             arrangements: &FnvHashMap::default(),
                         },
                         dummy_lookup_collection,
-                        false,
                     );
 
                     with_prof_context(
@@ -1335,21 +1326,9 @@ impl Program {
                     )
                 });
 
-            Self::xform_collection(
-                xformed,
-                &*next,
-                arrangements,
-                lookup_collection,
-                is_top_level_scope,
-            )
+            Self::xform_collection(xformed, &*next, arrangements, lookup_collection)
         } else {
-            Self::streamless_xform_collection_ref(
-                col,
-                xform,
-                arrangements,
-                lookup_collection,
-                is_top_level_scope,
-            )
+            Self::streamless_xform_collection_ref(col, xform, arrangements, lookup_collection)
         }
     }
 
@@ -1358,7 +1337,6 @@ impl Program {
         xform: &Option<XFormCollection>,
         arrangements: &Arrangements<'a, S, T>,
         lookup_collection: Lookup,
-        is_top_level_scope: bool,
     ) -> Collection<S, DDValue, Weight>
     where
         S: Scope,
@@ -1368,13 +1346,9 @@ impl Program {
     {
         match xform {
             None => col,
-            Some(ref x) => Self::streamless_xform_collection_ref(
-                &col,
-                x,
-                arrangements,
-                lookup_collection,
-                is_top_level_scope,
-            ),
+            Some(ref x) => {
+                Self::streamless_xform_collection_ref(&col, x, arrangements, lookup_collection)
+            }
         }
     }
 
@@ -1383,7 +1357,6 @@ impl Program {
         xform: &XFormCollection,
         arrangements: &Arrangements<'a, S, T>,
         lookup_collection: Lookup,
-        is_top_level_scope: bool,
     ) -> Collection<S, DDValue, Weight>
     where
         S: Scope,
@@ -1398,13 +1371,7 @@ impl Program {
                 ref next,
             } => {
                 let arr = with_prof_context(&description, || col.flat_map(afun).arrange_by_key());
-                Self::xform_arrangement(
-                    &arr,
-                    &*next,
-                    arrangements,
-                    lookup_collection,
-                    is_top_level_scope,
-                )
+                Self::xform_arrangement(&arr, &*next, arrangements, lookup_collection)
             }
             XFormCollection::Differentiate {
                 ref description,
@@ -1419,13 +1386,7 @@ impl Program {
                         &col.delay(move |t| one.results_in(t).expect("Integer overflow in Differentiate: maximal number of transactions exceeded")).negate())
                 });
 
-                Self::streamless_xform_collection(
-                    diff,
-                    &*next,
-                    arrangements,
-                    lookup_collection,
-                    is_top_level_scope,
-                )
+                Self::streamless_xform_collection(diff, &*next, arrangements, lookup_collection)
             }
             XFormCollection::Map {
                 ref description,
@@ -1433,13 +1394,7 @@ impl Program {
                 ref next,
             } => {
                 let mapped = with_prof_context(&description, || col.map(mfun));
-                Self::streamless_xform_collection(
-                    mapped,
-                    &*next,
-                    arrangements,
-                    lookup_collection,
-                    is_top_level_scope,
-                )
+                Self::streamless_xform_collection(mapped, &*next, arrangements, lookup_collection)
             }
             XFormCollection::FlatMap {
                 ref description,
@@ -1454,7 +1409,6 @@ impl Program {
                     &*next,
                     arrangements,
                     lookup_collection,
-                    is_top_level_scope,
                 )
             }
             XFormCollection::Filter {
@@ -1463,13 +1417,7 @@ impl Program {
                 ref next,
             } => {
                 let filtered = with_prof_context(&description, || col.filter(ffun));
-                Self::streamless_xform_collection(
-                    filtered,
-                    &*next,
-                    arrangements,
-                    lookup_collection,
-                    is_top_level_scope,
-                )
+                Self::streamless_xform_collection(filtered, &*next, arrangements, lookup_collection)
             }
             XFormCollection::FilterMap {
                 ref description,
@@ -1482,7 +1430,6 @@ impl Program {
                     &*next,
                     arrangements,
                     lookup_collection,
-                    is_top_level_scope,
                 )
             }
             XFormCollection::Inspect {
@@ -1493,13 +1440,7 @@ impl Program {
                 let inspect = with_prof_context(&description, || {
                     col.inspect(move |(v, ts, w)| ifun(v, ts.to_tuple_ts(), *w))
                 });
-                Self::streamless_xform_collection(
-                    inspect,
-                    &*next,
-                    arrangements,
-                    lookup_collection,
-                    is_top_level_scope,
-                )
+                Self::streamless_xform_collection(inspect, &*next, arrangements, lookup_collection)
             }
             XFormCollection::StreamJoin {
                 ref description,
@@ -1532,13 +1473,7 @@ impl Program {
                     // to return `Option`.
                     .flat_map(|v| v)
                 });
-                Self::streamless_xform_collection(
-                    join,
-                    &*next,
-                    arrangements,
-                    lookup_collection,
-                    is_top_level_scope,
-                )
+                Self::streamless_xform_collection(join, &*next, arrangements, lookup_collection)
             }
             XFormCollection::StreamSemijoin {
                 ref description,
@@ -1571,13 +1506,7 @@ impl Program {
                     // to return `Option`.
                     .flat_map(|v| v)
                 });
-                Self::streamless_xform_collection(
-                    join,
-                    &*next,
-                    arrangements,
-                    lookup_collection,
-                    is_top_level_scope,
-                )
+                Self::streamless_xform_collection(join, &*next, arrangements, lookup_collection)
             }
 
             XFormCollection::StreamXForm {
@@ -1593,7 +1522,6 @@ impl Program {
         xform: &XFormArrangement,
         arrangements: &Arrangements<'a, S, T>,
         lookup_collection: LC,
-        is_top_level_scope: bool,
     ) -> Collection<S, DDValue, Weight>
     where
         S: Scope,
@@ -1620,7 +1548,6 @@ impl Program {
                     &*next,
                     arrangements,
                     lookup_collection,
-                    is_top_level_scope,
                 )
             }),
             XFormArrangement::FilterMap {
@@ -1633,7 +1560,6 @@ impl Program {
                     &*next,
                     arrangements,
                     lookup_collection,
-                    is_top_level_scope,
                 )
             }),
             XFormArrangement::Aggregate {
@@ -1663,13 +1589,7 @@ impl Program {
                         },
                     )
                 });
-                Self::streamless_xform_collection(
-                    col,
-                    &*next,
-                    arrangements,
-                    lookup_collection,
-                    is_top_level_scope,
-                )
+                Self::streamless_xform_collection(col, &*next, arrangements, lookup_collection)
             }
             XFormArrangement::Join {
                 ref description,
@@ -1685,13 +1605,7 @@ impl Program {
                             |f| arr.filter(move |_, v| f(v)).join_core(&arranged, jfun),
                         )
                     });
-                    Self::streamless_xform_collection(
-                        col,
-                        &*next,
-                        arrangements,
-                        lookup_collection,
-                        is_top_level_scope,
-                    )
+                    Self::streamless_xform_collection(col, &*next, arrangements, lookup_collection)
                 }
                 ArrangementFlavor::Foreign(DataflowArrangement::Map(arranged)) => {
                     let col = with_prof_context(&description, || {
@@ -1700,13 +1614,7 @@ impl Program {
                             |f| arr.filter(move |_, v| f(v)).join_core(&arranged, jfun),
                         )
                     });
-                    Self::streamless_xform_collection(
-                        col,
-                        &*next,
-                        arrangements,
-                        lookup_collection,
-                        is_top_level_scope,
-                    )
+                    Self::streamless_xform_collection(col, &*next, arrangements, lookup_collection)
                 }
 
                 _ => panic!("Join: not a map arrangement {:?}", arrangement),
@@ -1725,13 +1633,7 @@ impl Program {
                             |f| arr.filter(move |_, v| f(v)).join_core(&arranged, jfun),
                         )
                     });
-                    Self::streamless_xform_collection(
-                        col,
-                        &*next,
-                        arrangements,
-                        lookup_collection,
-                        is_top_level_scope,
-                    )
+                    Self::streamless_xform_collection(col, &*next, arrangements, lookup_collection)
                 }
                 ArrangementFlavor::Foreign(DataflowArrangement::Set(arranged)) => {
                     let col = with_prof_context(&description, || {
@@ -1740,13 +1642,7 @@ impl Program {
                             |f| arr.filter(move |_, v| f(v)).join_core(&arranged, jfun),
                         )
                     });
-                    Self::streamless_xform_collection(
-                        col,
-                        &*next,
-                        arrangements,
-                        lookup_collection,
-                        is_top_level_scope,
-                    )
+                    Self::streamless_xform_collection(col, &*next, arrangements, lookup_collection)
                 }
                 _ => panic!("Semijoin: not a set arrangement {:?}", arrangement),
             },
@@ -1766,13 +1662,7 @@ impl Program {
                             },
                         )
                     });
-                    Self::streamless_xform_collection(
-                        col,
-                        &*next,
-                        arrangements,
-                        lookup_collection,
-                        is_top_level_scope,
-                    )
+                    Self::streamless_xform_collection(col, &*next, arrangements, lookup_collection)
                 }
                 ArrangementFlavor::Foreign(DataflowArrangement::Set(arranged)) => {
                     let col = with_prof_context(&description, || {
@@ -1784,13 +1674,7 @@ impl Program {
                             },
                         )
                     });
-                    Self::streamless_xform_collection(
-                        col,
-                        &*next,
-                        arrangements,
-                        lookup_collection,
-                        is_top_level_scope,
-                    )
+                    Self::streamless_xform_collection(col, &*next, arrangements, lookup_collection)
                 }
                 _ => panic!("Antijoin: not a set arrangement {:?}", arrangement),
             },
@@ -1844,13 +1728,7 @@ impl Program {
                     // to return `Option`.
                     join.flat_map(|v| v)
                 });
-                Self::streamless_xform_collection(
-                    col,
-                    &*next,
-                    arrangements,
-                    lookup_collection,
-                    is_top_level_scope,
-                )
+                Self::streamless_xform_collection(col, &*next, arrangements, lookup_collection)
             }
             XFormArrangement::StreamSemijoin {
                 ref description,
@@ -1901,26 +1779,17 @@ impl Program {
                     // to return `Option`.
                     join.flat_map(|v| v)
                 });
-                Self::streamless_xform_collection(
-                    col,
-                    &*next,
-                    arrangements,
-                    lookup_collection,
-                    is_top_level_scope,
-                )
+                Self::streamless_xform_collection(col, &*next, arrangements, lookup_collection)
             }
         }
     }
 
     /// Compile right-hand-side of a rule to a collection
-    ///
-    /// * `is_top_level_scope` - `true` when evaluating a rule in the top-level scope.
     fn mk_rule<'a, S, T, F>(
         &self,
         rule: &Rule,
         lookup_collection: F,
         arrangements: Arrangements<'a, S, T>,
-        is_top_level_scope: bool,
     ) -> Collection<S, DDValue, Weight>
     where
         S: Scope,
@@ -1951,26 +1820,13 @@ impl Program {
                 x,
                 &arrangements,
                 &lookup_collection,
-                is_top_level_scope,
             ),
             Rule::ArrangementRule { arr, xform, .. } => match arrangements.lookup_arr(*arr) {
                 ArrangementFlavor::Local(DataflowArrangement::Map(arranged)) => {
-                    Self::xform_arrangement(
-                        &arranged,
-                        xform,
-                        &arrangements,
-                        &lookup_collection,
-                        is_top_level_scope,
-                    )
+                    Self::xform_arrangement(&arranged, xform, &arrangements, &lookup_collection)
                 }
                 ArrangementFlavor::Foreign(DataflowArrangement::Map(arranged)) => {
-                    Self::xform_arrangement(
-                        &arranged,
-                        xform,
-                        &arrangements,
-                        &lookup_collection,
-                        is_top_level_scope,
-                    )
+                    Self::xform_arrangement(&arranged, xform, &arrangements, &lookup_collection)
                 }
                 _ => panic!("Rule starts with a set arrangement {:?}", *arr),
             },
