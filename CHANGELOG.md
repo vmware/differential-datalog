@@ -3,9 +3,9 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [0.39.0] - April 11, 2021
 
-## D3log
+### D3log
 
 - Experimental compiler support for D3log (wip).
 
@@ -16,6 +16,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   R() :- not R2(...).
   R() :- var x = 5.
   ```
+
+### Bug fix
+
+- Delete old Rust files in the generated project.  This prevents compilation
+  errors when upgrading to a new version of DDlog.
 
 ## [0.38.0] - Mar 11, 2021
 
