@@ -119,7 +119,7 @@
 //                         },
 //                         fields: [
 //                             Expr {
-//                                 kind: Sub(
+//                                 kind: BinOp(
 //                                     Expr {
 //                                         kind: Ident(
 //                                             Ident {
@@ -128,6 +128,7 @@
 //                                             },
 //                                         ),
 //                                     },
+//                                     Sub,
 //                                     Expr {
 //                                         kind: Literal(
 //                                             Int(
@@ -160,7 +161,7 @@
 //                     },
 //                     Expr(
 //                         Expr {
-//                             kind: GreaterEq(
+//                             kind: Cmp(
 //                                 Expr {
 //                                     kind: Ident(
 //                                         Ident {
@@ -169,6 +170,7 @@
 //                                         },
 //                                     ),
 //                                 },
+//                                 GreaterEq,
 //                                 Expr {
 //                                     kind: Literal(
 //                                         Int(
@@ -195,7 +197,7 @@
 //                         },
 //                         fields: [
 //                             Expr {
-//                                 kind: Sub(
+//                                 kind: BinOp(
 //                                     Expr {
 //                                         kind: Ident(
 //                                             Ident {
@@ -204,6 +206,7 @@
 //                                             },
 //                                         ),
 //                                     },
+//                                     Sub,
 //                                     Expr {
 //                                         kind: Literal(
 //                                             Int(
@@ -236,7 +239,7 @@
 //                     },
 //                     Expr(
 //                         Expr {
-//                             kind: GreaterEq(
+//                             kind: Cmp(
 //                                 Expr {
 //                                     kind: Ident(
 //                                         Ident {
@@ -245,6 +248,7 @@
 //                                         },
 //                                     ),
 //                                 },
+//                                 GreaterEq,
 //                                 Expr {
 //                                     kind: Literal(
 //                                         Int(
@@ -389,7 +393,7 @@
 //                                 ),
 //                             },
 //                             Expr {
-//                                 kind: Add(
+//                                 kind: BinOp(
 //                                     Expr {
 //                                         kind: Ident(
 //                                             Ident {
@@ -398,6 +402,7 @@
 //                                             },
 //                                         ),
 //                                     },
+//                                     Add,
 //                                     Expr {
 //                                         kind: Ident(
 //                                             Ident {
@@ -437,7 +442,7 @@
 //                         },
 //                         fields: [
 //                             Expr {
-//                                 kind: Sub(
+//                                 kind: BinOp(
 //                                     Expr {
 //                                         kind: Ident(
 //                                             Ident {
@@ -446,6 +451,7 @@
 //                                             },
 //                                         ),
 //                                     },
+//                                     Sub,
 //                                     Expr {
 //                                         kind: Literal(
 //                                             Int(
@@ -473,7 +479,7 @@
 //                         },
 //                         fields: [
 //                             Expr {
-//                                 kind: Sub(
+//                                 kind: BinOp(
 //                                     Expr {
 //                                         kind: Ident(
 //                                             Ident {
@@ -482,6 +488,7 @@
 //                                             },
 //                                         ),
 //                                     },
+//                                     Sub,
 //                                     Expr {
 //                                         kind: Literal(
 //                                             Int(

@@ -116,64 +116,93 @@ Type: Type = {
 
 
 Expr: Expr = {
-    Term,
-
-    "-" <Term> => Expr::neg(<>),
-    "not" <Term> => Expr::not(<>),
-
-    "~" <Term> => Expr::bit_not(<>),
-    <lhs: Expr> "|" <rhs: Term> => Expr::bit_or(lhs, rhs),
-    <lhs: Expr> "&" <rhs: Term> => Expr::bit_and(lhs, rhs),
-
-    <lhs: Expr> "*" <rhs: Term> => Expr::mul(lhs, rhs),
-    <lhs: Expr> "/" <rhs: Term> => Expr::div(lhs, rhs),
-    <lhs: Expr> "+" <rhs: Term> => Expr::add(lhs, rhs),
-    <lhs: Expr> "-" <rhs: Term> => Expr::sub(lhs, rhs),
-
-    <lhs: Expr> "%" <rhs: Term> => Expr::rem(lhs, rhs),
-
-    <lhs: Expr> ">>" <rhs: Term> => Expr::shr(lhs, rhs),
-    <lhs: Expr> "<<" <rhs: Term> => Expr::shl(lhs, rhs),
-
-    <lhs: Expr> "++" <rhs: Term> => Expr::concat(lhs, rhs),
-
-    <lhs: Expr> "and" <rhs: Term> => Expr::and(lhs, rhs),
-    <lhs: Expr> "or" <rhs: Term> => Expr::or(lhs, rhs),
-
-    <lhs: Expr> "==" <rhs: Term> => Expr::equal(lhs, rhs),
-    <lhs: Expr> "!=" <rhs: Term> => Expr::not_equal(lhs, rhs),
-
-    <lhs: Expr> ">" <rhs: Term> => Expr::greater(lhs, rhs),
-    <lhs: Expr> "<" <rhs: Term> => Expr::less(lhs, rhs),
-    <lhs: Expr> ">=" <rhs: Term> => Expr::greater_equal(lhs, rhs),
-    <lhs: Expr> "<=" <rhs: Term> => Expr::less_equal(lhs, rhs),
-
-    "return" <ret: Term> => Expr::ret(Some(ret)),
-    "break" <brk: Term> => Expr::brk(Some(brk)),
-    "continue" <cont: Term> => Expr::cont(Some(cont)),
-};
-
-// Expression terminals
-Term: Expr = {
+    #[precedence(level = "0")]
+    // TODO: This really shouldn't be an expression,
+    //       it can trivially be an `.is_wildcard()`
+    //       method on idents
     "_" => Expr::wildcard(),
 
-    "(" <Expr> ")" => Expr::nested(<>),
-    "{" <Semicolon<Expr>> "}" => Expr::block(<>),
+    "(" <ExprReset> ")" => Expr::nested(<>).simplify_nesting(),
+    "{" <Semicolon<ExprReset>> "}" => Expr::block(<>).simplify_blocks(),
 
     VariableIdent => Expr::ident(<>),
     Literal => Expr::literal(<>),
 
+    "if" "(" <cond: ExprReset> ")" "{" <then: Semicolon<ExprReset>> "}" <else_: ("else" "{" <Semicolon<ExprReset>> "}")?>
+        => Expr::if_(cond, Expr::block(then), Expr::block(else_.unwrap_or_default())),
+
+    #[precedence(level = "1")]
+    #[assoc(side = "right")]
+    "-" <Expr> => Expr::neg(<>),
+    "not" <Expr> => Expr::not(<>),
+    "~" <Expr> => Expr::bit_not(<>),
+
+    "return" <Expr> => Expr::ret(Some(<>)),
+    "break" <Expr> => Expr::brk(Some(<>)),
+    "continue" <Expr> => Expr::cont(Some(<>)),
+
+    #[precedence(level = "2")]
+    #[assoc(side = "left")]
+    <lhs: Expr> "*" <rhs: Expr> => Expr::mul(lhs, rhs),
+    <lhs: Expr> "/" <rhs: Expr> => Expr::div(lhs, rhs),
+    <lhs: Expr> "%" <rhs: Expr> => Expr::rem(lhs, rhs),
+
+    #[precedence(level = "3")]
+    #[assoc(side = "left")]
+    <lhs: Expr> "+" <rhs: Expr> => Expr::add(lhs, rhs),
+    <lhs: Expr> "-" <rhs: Expr> => Expr::sub(lhs, rhs),
+
+    #[precedence(level = "4")]
+    #[assoc(side = "left")]
+    <lhs: Expr> ">>" <rhs: Expr> => Expr::shr(lhs, rhs),
+    <lhs: Expr> "<<" <rhs: Expr> => Expr::shl(lhs, rhs),
+
+    #[precedence(level = "5")]
+    #[assoc(side = "left")]
+    <lhs: Expr> ">" <rhs: Expr> => Expr::greater(lhs, rhs),
+    <lhs: Expr> "<" <rhs: Expr> => Expr::less(lhs, rhs),
+    <lhs: Expr> ">=" <rhs: Expr> => Expr::greater_equal(lhs, rhs),
+    <lhs: Expr> "<=" <rhs: Expr> => Expr::less_equal(lhs, rhs),
+
+    #[precedence(level = "6")]
+    #[assoc(side = "left")]
+    <lhs: Expr> "==" <rhs: Expr> => Expr::equal(lhs, rhs),
+    <lhs: Expr> "!=" <rhs: Expr> => Expr::not_equal(lhs, rhs),
+
+    #[precedence(level = "7")]
+    #[assoc(side = "left")]
+    <lhs: Expr> "&" <rhs: Expr> => Expr::bit_and(lhs, rhs),
+
+    #[precedence(level = "8")]
+    #[assoc(side = "left")]
+    <lhs: Expr> "|" <rhs: Expr> => Expr::bit_or(lhs, rhs),
+
+    #[precedence(level = "9")]
+    #[assoc(side = "left")]
+    <lhs: Expr> "and" <rhs: Expr> => Expr::and(lhs, rhs),
+
+    #[precedence(level = "10")]
+    #[assoc(side = "left")]
+    <lhs: Expr> "or" <rhs: Expr> => Expr::or(lhs, rhs),
+
+    #[precedence(level = "11")]
+    #[assoc(side = "left")]
+    <lhs: Expr> "++" <rhs: Expr> => Expr::concat(lhs, rhs),
+
+    #[precedence(level = "12")]
     "return" => Expr::ret(None),
     "break" => Expr::brk(None),
     "continue" => Expr::cont(None),
-
-    "if" "(" <cond: Expr> ")" "{" <then: Semicolon<Expr>> "}" <else_: ("else" "{" <Semicolon<Expr>> "}")?>
-        => Expr::if_(cond, Expr::block(then), Expr::block(else_.unwrap_or_default())),
 };
+
+// FIXME: Lalrpop dosen't reset precedence levels for nested stuff
+//        so we have to do it manually.
+//        See https://github.com/lalrpop/lalrpop/issues/596
+ExprReset = <Expr>;
 
 Literal: Literal = {
     r"[0-9][0-9_]*" =>? {
-        <>.parse::<u128>()
+        <>.parse::<u64>()
             // TODO: Better error message
             .map_err(|_| ParseError::User {
                 error: "number is too big",

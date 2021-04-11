@@ -1,5 +1,183 @@
 // args: build -Z dump-ast
 // expected stdout:
+// [
+//     Declaration {
+//         attributes: [],
+//         kind: Function(
+//             Function {
+//                 name: IdentPath {
+//                     path: [
+//                         Ident {
+//                             ident: "foo",
+//                             kind: Lowercase,
+//                         },
+//                     ],
+//                 },
+//                 args: [],
+//                 ret: Unit,
+//                 body: Expr {
+//                     kind: Block(
+//                         [
+//                             Expr {
+//                                 kind: If(
+//                                     Expr {
+//                                         kind: Cmp(
+//                                             Expr {
+//                                                 kind: Ident(
+//                                                     Ident {
+//                                                         ident: "x",
+//                                                         kind: Lowercase,
+//                                                     },
+//                                                 ),
+//                                             },
+//                                             GreaterEq,
+//                                             Expr {
+//                                                 kind: Literal(
+//                                                     Int(
+//                                                         6,
+//                                                     ),
+//                                                 ),
+//                                             },
+//                                         ),
+//                                     },
+//                                     Expr {
+//                                         kind: Block(
+//                                             [
+//                                                 Expr {
+//                                                     kind: BinOp(
+//                                                         Expr {
+//                                                             kind: Ident(
+//                                                                 Ident {
+//                                                                     ident: "x",
+//                                                                     kind: Lowercase,
+//                                                                 },
+//                                                             ),
+//                                                         },
+//                                                         Add,
+//                                                         Expr {
+//                                                             kind: Nested(
+//                                                                 Expr {
+//                                                                     kind: BinOp(
+//                                                                         Expr {
+//                                                                             kind: Literal(
+//                                                                                 Int(
+//                                                                                     6,
+//                                                                                 ),
+//                                                                             ),
+//                                                                         },
+//                                                                         Div,
+//                                                                         Expr {
+//                                                                             kind: Nested(
+//                                                                                 Expr {
+//                                                                                     kind: Not(
+//                                                                                         Expr {
+//                                                                                             kind: Nested(
+//                                                                                                 Expr {
+//                                                                                                     kind: BinOp(
+//                                                                                                         Expr {
+//                                                                                                             kind: Literal(
+//                                                                                                                 Int(
+//                                                                                                                     100,
+//                                                                                                                 ),
+//                                                                                                             ),
+//                                                                                                         },
+//                                                                                                         BitAnd,
+//                                                                                                         Expr {
+//                                                                                                             kind: Literal(
+//                                                                                                                 Int(
+//                                                                                                                     7,
+//                                                                                                                 ),
+//                                                                                                             ),
+//                                                                                                         },
+//                                                                                                     ),
+//                                                                                                 },
+//                                                                                             ),
+//                                                                                         },
+//                                                                                     ),
+//                                                                                 },
+//                                                                             ),
+//                                                                         },
+//                                                                     ),
+//                                                                 },
+//                                                             ),
+//                                                         },
+//                                                     ),
+//                                                 },
+//                                             ],
+//                                         ),
+//                                     },
+//                                     Expr {
+//                                         kind: Block(
+//                                             [
+//                                                 Expr {
+//                                                     kind: Return(
+//                                                         Some(
+//                                                             Expr {
+//                                                                 kind: Literal(
+//                                                                     Int(
+//                                                                         5,
+//                                                                     ),
+//                                                                 ),
+//                                                             },
+//                                                         ),
+//                                                     ),
+//                                                 },
+//                                                 Expr {
+//                                                     kind: Break(
+//                                                         Some(
+//                                                             Expr {
+//                                                                 kind: Literal(
+//                                                                     Int(
+//                                                                         1000,
+//                                                                     ),
+//                                                                 ),
+//                                                             },
+//                                                         ),
+//                                                     ),
+//                                                 },
+//                                                 Expr {
+//                                                     kind: Continue(
+//                                                         Some(
+//                                                             Expr {
+//                                                                 kind: Cmp(
+//                                                                     Expr {
+//                                                                         kind: Ident(
+//                                                                             Ident {
+//                                                                                 ident: "x",
+//                                                                                 kind: Lowercase,
+//                                                                             },
+//                                                                         ),
+//                                                                     },
+//                                                                     Eq,
+//                                                                     Expr {
+//                                                                         kind: Nested(
+//                                                                             Expr {
+//                                                                                 kind: Ident(
+//                                                                                     Ident {
+//                                                                                         ident: "y",
+//                                                                                         kind: Lowercase,
+//                                                                                     },
+//                                                                                 ),
+//                                                                             },
+//                                                                         ),
+//                                                                     },
+//                                                                 ),
+//                                                             },
+//                                                         ),
+//                                                     ),
+//                                                 },
+//                                             ],
+//                                         ),
+//                                     },
+//                                 ),
+//                             },
+//                         ],
+//                     ),
+//                 },
+//             },
+//         ),
+//     },
+// ]
 
 function foo() {
     if (x >= 6) {

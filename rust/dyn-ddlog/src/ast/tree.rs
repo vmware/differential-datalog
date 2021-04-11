@@ -1,3 +1,5 @@
+use std::mem;
+
 // TODO: Source locations
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -200,6 +202,7 @@ pub struct Expr {
     pub kind: ExprKind,
 }
 
+// TODO: Macro this
 #[allow(clippy::should_implement_trait)]
 impl Expr {
     pub const fn wildcard() -> Self {
@@ -252,61 +255,61 @@ impl Expr {
 
     pub fn mul(lhs: Expr, rhs: Expr) -> Self {
         Self {
-            kind: ExprKind::Mul(Box::new(lhs), Box::new(rhs)),
+            kind: ExprKind::BinOp(Box::new(lhs), BinaryOperand::Mul, Box::new(rhs)),
         }
     }
 
     pub fn div(lhs: Expr, rhs: Expr) -> Self {
         Self {
-            kind: ExprKind::Div(Box::new(lhs), Box::new(rhs)),
+            kind: ExprKind::BinOp(Box::new(lhs), BinaryOperand::Div, Box::new(rhs)),
         }
     }
 
     pub fn add(lhs: Expr, rhs: Expr) -> Self {
         Self {
-            kind: ExprKind::Add(Box::new(lhs), Box::new(rhs)),
+            kind: ExprKind::BinOp(Box::new(lhs), BinaryOperand::Add, Box::new(rhs)),
         }
     }
 
     pub fn sub(lhs: Expr, rhs: Expr) -> Self {
         Self {
-            kind: ExprKind::Sub(Box::new(lhs), Box::new(rhs)),
+            kind: ExprKind::BinOp(Box::new(lhs), BinaryOperand::Sub, Box::new(rhs)),
         }
     }
 
     pub fn equal(lhs: Expr, rhs: Expr) -> Self {
         Self {
-            kind: ExprKind::Eq(Box::new(lhs), Box::new(rhs)),
+            kind: ExprKind::Cmp(Box::new(lhs), CmpKind::Eq, Box::new(rhs)),
         }
     }
 
     pub fn not_equal(lhs: Expr, rhs: Expr) -> Self {
         Self {
-            kind: ExprKind::Neq(Box::new(lhs), Box::new(rhs)),
+            kind: ExprKind::Cmp(Box::new(lhs), CmpKind::Neq, Box::new(rhs)),
         }
     }
 
     pub fn greater(lhs: Expr, rhs: Expr) -> Self {
         Self {
-            kind: ExprKind::Greater(Box::new(lhs), Box::new(rhs)),
+            kind: ExprKind::Cmp(Box::new(lhs), CmpKind::Greater, Box::new(rhs)),
         }
     }
 
     pub fn less(lhs: Expr, rhs: Expr) -> Self {
         Self {
-            kind: ExprKind::Less(Box::new(lhs), Box::new(rhs)),
+            kind: ExprKind::Cmp(Box::new(lhs), CmpKind::Less, Box::new(rhs)),
         }
     }
 
     pub fn greater_equal(lhs: Expr, rhs: Expr) -> Self {
         Self {
-            kind: ExprKind::GreaterEq(Box::new(lhs), Box::new(rhs)),
+            kind: ExprKind::Cmp(Box::new(lhs), CmpKind::GreaterEq, Box::new(rhs)),
         }
     }
 
     pub fn less_equal(lhs: Expr, rhs: Expr) -> Self {
         Self {
-            kind: ExprKind::LessEq(Box::new(lhs), Box::new(rhs)),
+            kind: ExprKind::Cmp(Box::new(lhs), CmpKind::LessEq, Box::new(rhs)),
         }
     }
 
@@ -342,37 +345,37 @@ impl Expr {
 
     pub fn shr(lhs: Expr, rhs: Expr) -> Self {
         Self {
-            kind: ExprKind::Shr(Box::new(lhs), Box::new(rhs)),
+            kind: ExprKind::BinOp(Box::new(lhs), BinaryOperand::Shr, Box::new(rhs)),
         }
     }
 
     pub fn shl(lhs: Expr, rhs: Expr) -> Self {
         Self {
-            kind: ExprKind::Shl(Box::new(lhs), Box::new(rhs)),
+            kind: ExprKind::BinOp(Box::new(lhs), BinaryOperand::Shl, Box::new(rhs)),
         }
     }
 
     pub fn concat(lhs: Expr, rhs: Expr) -> Self {
         Self {
-            kind: ExprKind::Concat(Box::new(lhs), Box::new(rhs)),
+            kind: ExprKind::BinOp(Box::new(lhs), BinaryOperand::Concat, Box::new(rhs)),
         }
     }
 
     pub fn bit_or(lhs: Expr, rhs: Expr) -> Self {
         Self {
-            kind: ExprKind::BitOr(Box::new(lhs), Box::new(rhs)),
+            kind: ExprKind::BinOp(Box::new(lhs), BinaryOperand::BitOr, Box::new(rhs)),
         }
     }
 
     pub fn bit_and(lhs: Expr, rhs: Expr) -> Self {
         Self {
-            kind: ExprKind::Concat(Box::new(lhs), Box::new(rhs)),
+            kind: ExprKind::BinOp(Box::new(lhs), BinaryOperand::BitAnd, Box::new(rhs)),
         }
     }
 
     pub fn rem(lhs: Expr, rhs: Expr) -> Self {
         Self {
-            kind: ExprKind::Rem(Box::new(lhs), Box::new(rhs)),
+            kind: ExprKind::BinOp(Box::new(lhs), BinaryOperand::Rem, Box::new(rhs)),
         }
     }
 
@@ -381,11 +384,109 @@ impl Expr {
             kind: ExprKind::If(Box::new(cond), Box::new(then), Box::new(else_)),
         }
     }
+
+    pub const fn is_nested(&self) -> bool {
+        matches!(self.kind, ExprKind::Nested(_))
+    }
+
+    pub const fn is_empty(&self) -> bool {
+        matches!(self.kind, ExprKind::Empty)
+    }
+
+    pub fn simplify_nesting(self) -> Self {
+        struct NestingSimplifier;
+
+        // TODO: Make sure to collapse spans whenever those are implemented
+        impl Rewriter for NestingSimplifier {
+            /// Collapse nested nestings, e.g. ((1)) => 1
+            fn rewrite_nested(&mut self, mut nested: Expr) -> Expr {
+                if let ExprKind::Nested(mut inner) = nested.kind {
+                    let rewritten = self.rewrite(mem::take(&mut *inner));
+
+                    if let ExprKind::Nested(inner) = rewritten.kind {
+                        nested = *inner;
+
+                    // Nesting around nothing does nothing
+                    // TODO: This could interact badly with unit literals
+                    } else if rewritten.is_empty() {
+                        nested.kind = ExprKind::Empty;
+                    } else {
+                        nested.kind = ExprKind::Nested(Box::new(rewritten));
+                    }
+                }
+
+                nested
+            }
+
+            /// Remove instances of nesting from within blocks, e.g.
+            /// { (1) } => { 1 }
+            fn rewrite_block(&mut self, mut block: Expr) -> Expr {
+                if let ExprKind::Block(block) = &mut block.kind {
+                    for expr in block {
+                        let rewritten = self.rewrite(mem::take(expr));
+
+                        // Nesting within block expressions is redundant
+                        if let ExprKind::Nested(inner) = rewritten.kind {
+                            *expr = *inner;
+                        } else {
+                            *expr = rewritten;
+                        }
+                    }
+                }
+
+                block
+            }
+        }
+
+        NestingSimplifier.rewrite(self)
+    }
+
+    pub fn simplify_blocks(self) -> Self {
+        struct BlockSimplifier;
+
+        // TODO: Make sure to collapse spans whenever those are implemented
+        impl Rewriter for BlockSimplifier {
+            /// Collapse redundant blocks, e.g. { 1 } => 1
+            fn rewrite_block(&mut self, mut block: Expr) -> Expr {
+                if let ExprKind::Block(block_exprs) = &mut block.kind {
+                    let mut idx = 0;
+                    while let Some(expr) = block_exprs.get_mut(idx) {
+                        *expr = self.rewrite(mem::take(expr));
+
+                        if expr.is_empty() {
+                            block_exprs.remove(idx);
+                        } else {
+                            idx += 1;
+                        }
+                    }
+
+                    if block_exprs.is_empty() {
+                        block.kind = ExprKind::Empty;
+                    } else if block_exprs.len() == 1 {
+                        block = block_exprs.remove(0);
+                    }
+                }
+
+                block
+            }
+        }
+
+        BlockSimplifier.rewrite(self)
+    }
+}
+
+impl Default for Expr {
+    fn default() -> Self {
+        Self {
+            kind: ExprKind::Empty,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ExprKind {
     Wildcard,
+    Empty,
 
     Nested(Box<Expr>),
     Block(Vec<Expr>),
@@ -396,28 +497,10 @@ pub enum ExprKind {
     Neg(Box<Expr>),
     Not(Box<Expr>),
     BitNot(Box<Expr>),
-    BitOr(Box<Expr>, Box<Expr>),
-    BitAnd(Box<Expr>, Box<Expr>),
 
-    Mul(Box<Expr>, Box<Expr>),
-    Div(Box<Expr>, Box<Expr>),
-    Add(Box<Expr>, Box<Expr>),
-    Sub(Box<Expr>, Box<Expr>),
+    BinOp(Box<Expr>, BinaryOperand, Box<Expr>),
 
-    Rem(Box<Expr>, Box<Expr>),
-
-    Shr(Box<Expr>, Box<Expr>),
-    Shl(Box<Expr>, Box<Expr>),
-
-    Concat(Box<Expr>, Box<Expr>),
-
-    Eq(Box<Expr>, Box<Expr>),
-    Neq(Box<Expr>, Box<Expr>),
-
-    Greater(Box<Expr>, Box<Expr>),
-    Less(Box<Expr>, Box<Expr>),
-    GreaterEq(Box<Expr>, Box<Expr>),
-    LessEq(Box<Expr>, Box<Expr>),
+    Cmp(Box<Expr>, CmpKind, Box<Expr>),
 
     And(Box<Expr>, Box<Expr>),
     Or(Box<Expr>, Box<Expr>),
@@ -429,8 +512,182 @@ pub enum ExprKind {
     If(Box<Expr>, Box<Expr>, Box<Expr>),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BinaryOperand {
+    Mul,
+    Div,
+    Add,
+    Sub,
+    Rem,
+    Shr,
+    Shl,
+    BitOr,
+    BitAnd,
+    Concat,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CmpKind {
+    Eq,
+    Neq,
+    Greater,
+    Less,
+    GreaterEq,
+    LessEq,
+}
+
+macro_rules! noop_rewrite {
+    ($($rewrite:ident),* $(,)?) => {
+        $(
+            fn $rewrite(&mut self, expr: Expr) -> Expr {
+                expr
+            }
+        )*
+    };
+}
+
+macro_rules! unary_rewrite {
+    ($kind:ident => $rewrite:ident $(, $($rest:tt)*)?) => {
+        fn $rewrite(&mut self, mut expr: Expr) -> Expr {
+            if let ExprKind::$kind(inner) = expr.kind {
+                // FIXME: Avoid the alloc
+                expr.kind = ExprKind::$kind(Box::new(self.rewrite(*inner)));
+            }
+
+            expr
+        }
+
+        $(unary_rewrite!($($rest)*);)?
+    };
+
+    ($kind:ident opt => $rewrite:ident $(, $($rest:tt)*)?) => {
+        fn $rewrite(&mut self, mut expr: Expr) -> Expr {
+            if let ExprKind::$kind(Some(inner)) = expr.kind {
+                // FIXME: Avoid the alloc
+                expr.kind = ExprKind::$kind(Some(Box::new(self.rewrite(*inner))));
+            }
+
+            expr
+        }
+
+        $(unary_rewrite!($($rest)*);)?
+    };
+
+    () => { };
+}
+
+macro_rules! binary_rewrite {
+    ($kind:ident => $rewrite:ident $(, $($rest:tt)*)?) => {
+        fn $rewrite(&mut self, mut expr: Expr) -> Expr {
+            if let ExprKind::$kind(lhs, rhs) = expr.kind {
+                // FIXME: Avoid the allocs
+                expr.kind = ExprKind::$kind(
+                    Box::new(self.rewrite(*lhs)),
+                    Box::new(self.rewrite(*rhs)),
+                );
+            }
+
+            expr
+        }
+
+        $(binary_rewrite!($($rest)*);)?
+    };
+
+    ($kind:ident middle => $rewrite:ident $(, $($rest:tt)*)?) => {
+        fn $rewrite(&mut self, mut expr: Expr) -> Expr {
+            if let ExprKind::$kind(lhs, middle, rhs) = expr.kind {
+                // FIXME: Avoid the allocs
+                expr.kind = ExprKind::$kind(
+                    Box::new(self.rewrite(*lhs)),
+                    middle,
+                    Box::new(self.rewrite(*rhs)),
+                );
+            }
+
+            expr
+        }
+
+        $(binary_rewrite!($($rest)*);)?
+    };
+
+    () => { };
+}
+
+pub trait Rewriter {
+    fn rewrite(&mut self, expr: Expr) -> Expr {
+        let apply = match expr.kind {
+            ExprKind::Wildcard => Self::rewrite_wildcard,
+            ExprKind::Empty => Self::rewrite_empty,
+            ExprKind::Nested(_) => Self::rewrite_nested,
+            ExprKind::Block(_) => Self::rewrite_block,
+            ExprKind::Literal(_) => Self::rewrite_literal,
+            ExprKind::Ident(_) => Self::rewrite_ident,
+            ExprKind::Neg(_) => Self::rewrite_neg,
+            ExprKind::Not(_) => Self::rewrite_not,
+            ExprKind::BitNot(_) => Self::rewrite_bitnot,
+            ExprKind::BinOp(_, _, _) => Self::rewrite_binop,
+            ExprKind::Cmp(_, _, _) => Self::rewrite_cmp,
+            ExprKind::And(_, _) => Self::rewrite_and,
+            ExprKind::Or(_, _) => Self::rewrite_or,
+            ExprKind::Return(_) => Self::rewrite_ret,
+            ExprKind::Break(_) => Self::rewrite_brk,
+            ExprKind::Continue(_) => Self::rewrite_cont,
+            ExprKind::If(_, _, _) => Self::rewrite_if,
+        };
+
+        apply(self, expr)
+    }
+
+    noop_rewrite! {
+        rewrite_wildcard,
+        rewrite_empty,
+        rewrite_literal,
+        rewrite_ident,
+    }
+
+    unary_rewrite! {
+        Nested => rewrite_nested,
+        Neg => rewrite_neg,
+        Not => rewrite_not,
+        BitNot => rewrite_bitnot,
+        Return opt => rewrite_ret,
+        Break opt => rewrite_brk,
+        Continue opt => rewrite_cont,
+    }
+
+    binary_rewrite! {
+        BinOp middle => rewrite_binop,
+        Cmp middle => rewrite_cmp,
+        And => rewrite_and,
+        Or => rewrite_or,
+    }
+
+    fn rewrite_block(&mut self, mut block: Expr) -> Expr {
+        if let ExprKind::Block(block) = &mut block.kind {
+            for expr in block {
+                *expr = self.rewrite(mem::take(expr));
+            }
+        }
+
+        block
+    }
+
+    fn rewrite_if(&mut self, mut if_: Expr) -> Expr {
+        if let ExprKind::If(cond, then, else_) = if_.kind {
+            // FIXME: Avoid the allocs
+            if_.kind = ExprKind::If(
+                Box::new(self.rewrite(*cond)),
+                Box::new(self.rewrite(*then)),
+                Box::new(self.rewrite(*else_)),
+            );
+        }
+
+        if_
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Literal {
-    Int(u128),
+    Int(u64),
     Bool(bool),
 }

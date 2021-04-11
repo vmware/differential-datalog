@@ -18,8 +18,8 @@ required-features = ["structopt"]
 egg = "0.6.0"
 regex = "1.4.5"
 lalrpop-util = "0.19.5"
-structopt = { version = "0.3.21", optional = true }
 pretty = { version = "0.10.0", optional = true }
+structopt = { version = "0.3.21", optional = true }
 
 [dev-dependencies]
 goldentests = "0.3.7"

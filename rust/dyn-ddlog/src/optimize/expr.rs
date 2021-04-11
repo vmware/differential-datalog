@@ -2,7 +2,7 @@
 //!
 //! [`egg`]: https://egraphs-good.github.io/
 
-use crate::ast::{Expr as AstExpr, ExprKind, Literal};
+use crate::ast::{BinaryOperand, Expr as AstExpr, ExprKind, Literal};
 use egg::{rewrite, Analysis, Id, Language, Subst};
 
 type EGraph = egg::EGraph<Expr, ExprAnalysis>;
@@ -44,14 +44,14 @@ egg::define_language! {
         "block" = Block(Vec<Id>),
 
         Bool(bool),
-        Int(u128),
+        Int(u64),
         String(String),
         Ident(egg::Symbol),
     }
 }
 
 impl Expr {
-    fn int(&self) -> Option<u128> {
+    fn int(&self) -> Option<u64> {
         match *self {
             Self::Int(int) => Some(int),
             _ => None,
@@ -80,7 +80,7 @@ fn translate_expr(egraph: &mut EGraph, expr: &AstExpr) -> Id {
             egraph.add(Expr::Block(ids))
         }
 
-        ExprKind::Mul(lhs, rhs) => {
+        ExprKind::BinOp(lhs, BinaryOperand::Mul, rhs) => {
             let (lhs, rhs) = (
                 translate_expr(egraph, &**lhs),
                 translate_expr(egraph, &**rhs),
@@ -89,7 +89,7 @@ fn translate_expr(egraph: &mut EGraph, expr: &AstExpr) -> Id {
             egraph.add(Expr::Mul([lhs, rhs]))
         }
 
-        ExprKind::Div(lhs, rhs) => {
+        ExprKind::BinOp(lhs, BinaryOperand::Div, rhs) => {
             let (lhs, rhs) = (
                 translate_expr(egraph, &**lhs),
                 translate_expr(egraph, &**rhs),
@@ -98,13 +98,22 @@ fn translate_expr(egraph: &mut EGraph, expr: &AstExpr) -> Id {
             egraph.add(Expr::Div([lhs, rhs]))
         }
 
-        ExprKind::Add(lhs, rhs) => {
+        ExprKind::BinOp(lhs, BinaryOperand::Add, rhs) => {
             let (lhs, rhs) = (
                 translate_expr(egraph, &**lhs),
                 translate_expr(egraph, &**rhs),
             );
 
             egraph.add(Expr::Add([lhs, rhs]))
+        }
+
+        ExprKind::BinOp(lhs, BinaryOperand::Sub, rhs) => {
+            let (lhs, rhs) = (
+                translate_expr(egraph, &**lhs),
+                translate_expr(egraph, &**rhs),
+            );
+
+            egraph.add(Expr::Sub([lhs, rhs]))
         }
 
         ExprKind::Neg(expr) => {
@@ -138,7 +147,7 @@ fn translate_expr(egraph: &mut EGraph, expr: &AstExpr) -> Id {
 
         ExprKind::Ident(ident) => egraph.add(Expr::Ident(egg::Symbol::from(&ident.ident))),
 
-        _ => todo!(),
+        expr => todo!("unimplemented expression: {:?}", expr),
     }
 }
 
@@ -151,7 +160,7 @@ fn test_translate() {
         .parse(
             "
             function foo() {
-                (10 + 10) / 11 + (100 * 0)
+                (10 + 10) / 11 - (100 * 0)
             }
             ",
         )
@@ -167,7 +176,7 @@ fn test_translate() {
         let mut extractor = Extractor::new(&runner.egraph, AstSize);
         let (best_cost, best) = extractor.find_best(root);
 
-        println!("Best Cost: {}\nRewrite: {}", best_cost, best,);
+        println!("Best Cost: {}\nRewrite: {}", best_cost, best);
     } else {
         unreachable!()
     }
