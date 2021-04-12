@@ -7,7 +7,7 @@
 // TODO: Write the .dat parser here so it can share code
 
 use crate::ast::{
-    Attribute, Declaration, DeclarationKind, Expr, Fact, Function, Ident, IdentPath, Literal,
+    Attribute, Declaration, DeclarationKind, Expr, Fact, Function, Ident, Path, Literal,
     Relation, RelationKind, Rule, RuleClause, RuleHead, Type,
 };
 // TODO: Use custom error type
@@ -18,28 +18,28 @@ grammar;
 pub Datalog = Decl*;
 
 
-Decl: Declaration = <attrs: Attributes*> <decl: DeclKind>
+Decl: Declaration<Ident> = <attrs: Attributes*> <decl: DeclKind>
     => Declaration::new(attrs.into_iter().flatten().collect(), decl);
 
-DeclKind: DeclarationKind = {
+DeclKind: DeclarationKind<Ident> = {
     Relation => DeclarationKind::Relation(<>),
     Rule => DeclarationKind::Rule(<>),
     Fact => DeclarationKind::Fact(<>),
     Function => DeclarationKind::Function(<>),
 };
 
-Attributes: Vec<Attribute> = "#[" <attrs: Comma<(VariableIdent ("=" <Expr>)?)>> "]"
+Attributes: Vec<Attribute<Ident>> = "#[" <attrs: Comma<(VariableIdent ("=" <Expr>)?)>> "]"
     => attrs.into_iter().map(|(ident, value)| Attribute::new(ident, value)).collect();
 
 
-Relation: Relation =
+Relation: Relation<Ident> =
     <kind: RelationKind?> "relation" <ident: RelationIdent> "(" <args: RelationArgs> ")" => {
         let kind = kind.unwrap_or(RelationKind::Internal);
 
         Relation::new(kind, ident, args)
     };
 
-RelationArgs: Vec<(Ident, Type)> = Comma<(<LowercaseIdent> ":" <Type>)>;
+RelationArgs: Vec<(Ident, Type<Ident>)> = Comma<(<LowercaseIdent> ":" <Type>)>;
 
 RelationKind: RelationKind = {
     "input" => RelationKind::Input,
@@ -47,35 +47,37 @@ RelationKind: RelationKind = {
 };
 
 
-Rule: Rule = <head: Comma<RuleHead>> ":-" <clauses: Comma<RuleAtom>> "."
-    => Rule::new(head, clauses);
+Rule: Rule<Ident> =
+    <head: Comma<RuleHead>> ":-" <clauses: Comma<RuleAtom>> "."
+        => Rule::new(head, clauses);
 
-RuleHead: RuleHead = <name: RelationIdent> "(" <fields: Comma<Expr>> ")"
-    => RuleHead::new(name, fields);
+RuleHead: RuleHead<Ident> =
+    <name: RelationIdent> "(" <fields: Comma<Expr>> ")"
+        => RuleHead::new(name, fields);
 
-RuleAtom: RuleClause = {
+RuleAtom: RuleClause<Ident> = {
     RelationBinding,
     "not" <RelationBinding> => RuleClause::negated(<>),
     Expr => RuleClause::Expr(<>),
 };
 
-RelationBinding: RuleClause =
+RelationBinding: RuleClause<Ident> =
     <binding: (<VariableIdent> "in")?> <relation: RelationIdent> "(" <fields: Comma<Expr>> ")"
         => RuleClause::relation(binding, relation, fields);
 
 
-Fact: Fact = <head: Comma<RuleHead>> "."
+Fact: Fact<Ident> = <head: Comma<RuleHead>> "."
     => Fact::new(head);
 
 
-Function: Function =
+Function: Function<Ident> =
     "function" <name: FuncPath> "(" <args: Comma<(<VariableIdent> ":" <Type>)>> ")" <ret: (":" <Type>)?> "{"
         <body: Semicolon<Expr>>
     "}"
     => Function::new(name, args, ret.unwrap_or(Type::Unit), Expr::block(body));
 
 
-Type: Type = {
+Type: Type<Ident> = {
     "bool" => Type::Bool,
     "string" => Type::String,
     "bigint" => Type::BigInt,
@@ -115,7 +117,7 @@ Type: Type = {
 };
 
 
-Expr: Expr = {
+Expr: Expr<Ident> = {
     #[precedence(level = "0")]
     // TODO: This really shouldn't be an expression,
     //       it can trivially be an `.is_wildcard()`
@@ -216,8 +218,8 @@ Literal: Literal = {
 
 
 FuncPath = LowercasePath;
-TypePath: IdentPath = Path<Ident> => IdentPath::new(<>);
-LowercasePath: IdentPath = Path<LowercaseIdent> => IdentPath::new(<>);
+TypePath: Path<Ident> = Path<Ident> => Path::new(<>);
+LowercasePath: Path<Ident> = Path<LowercaseIdent> => Path::new(<>);
 
 Ident = { UppercaseIdent, LowercaseIdent };
 VariableIdent = LowercaseIdent;

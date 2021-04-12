@@ -6,27 +6,13 @@
 //         kind: Relation(
 //             Relation {
 //                 kind: Input,
-//                 name: Ident {
-//                     ident: "FibonacciFor",
-//                     kind: Uppercase,
-//                 },
+//                 name: Ident("FibonacciFor"),
 //                 args: [
 //                     (
-//                         Ident {
-//                             ident: "n",
-//                             kind: Lowercase,
-//                         },
-//                         Named {
-//                             path: IdentPath {
-//                                 path: [
-//                                     Ident {
-//                                         ident: "usize",
-//                                         kind: Lowercase,
-//                                     },
-//                                 ],
-//                             },
-//                             generics: [],
-//                         },
+//                         Ident("n"),
+//                         BitVec(
+//                             32,
+//                         ),
 //                     ),
 //                 ],
 //             },
@@ -37,27 +23,13 @@
 //         kind: Relation(
 //             Relation {
 //                 kind: Internal,
-//                 name: Ident {
-//                     ident: "NeedsFibonacci",
-//                     kind: Uppercase,
-//                 },
+//                 name: Ident("NeedsFibonacci"),
 //                 args: [
 //                     (
-//                         Ident {
-//                             ident: "n",
-//                             kind: Lowercase,
-//                         },
-//                         Named {
-//                             path: IdentPath {
-//                                 path: [
-//                                     Ident {
-//                                         ident: "usize",
-//                                         kind: Lowercase,
-//                                     },
-//                                 ],
-//                             },
-//                             generics: [],
-//                         },
+//                         Ident("n"),
+//                         BitVec(
+//                             32,
+//                         ),
 //                     ),
 //                 ],
 //             },
@@ -67,20 +39,12 @@
 //         attributes: [],
 //         kind: Rule(
 //             Rule {
-//                 head: [
+//                 heads: [
 //                     RuleHead {
-//                         relation: Ident {
-//                             ident: "NeedsFibonacci",
-//                             kind: Uppercase,
-//                         },
+//                         relation: Ident("NeedsFibonacci"),
 //                         fields: [
 //                             Expr {
-//                                 kind: Ident(
-//                                     Ident {
-//                                         ident: "n",
-//                                         kind: Lowercase,
-//                                     },
-//                                 ),
+//                                 kind: Ident("n"),
 //                             },
 //                         ],
 //                     },
@@ -88,18 +52,10 @@
 //                 clauses: [
 //                     Relation {
 //                         binding: None,
-//                         relation: Ident {
-//                             ident: "FibonacciFor",
-//                             kind: Uppercase,
-//                         },
+//                         relation: Ident("FibonacciFor"),
 //                         fields: [
 //                             Expr {
-//                                 kind: Ident(
-//                                     Ident {
-//                                         ident: "n",
-//                                         kind: Lowercase,
-//                                     },
-//                                 ),
+//                                 kind: Ident("n"),
 //                             },
 //                         ],
 //                     },
@@ -111,30 +67,18 @@
 //         attributes: [],
 //         kind: Rule(
 //             Rule {
-//                 head: [
+//                 heads: [
 //                     RuleHead {
-//                         relation: Ident {
-//                             ident: "NeedsFibonacci",
-//                             kind: Uppercase,
-//                         },
+//                         relation: Ident("NeedsFibonacci"),
 //                         fields: [
 //                             Expr {
 //                                 kind: BinOp(
 //                                     Expr {
-//                                         kind: Ident(
-//                                             Ident {
-//                                                 ident: "n",
-//                                                 kind: Lowercase,
-//                                             },
-//                                         ),
+//                                         kind: Ident("n"),
 //                                     },
 //                                     Sub,
 //                                     Expr {
-//                                         kind: Literal(
-//                                             Int(
-//                                                 1,
-//                                             ),
-//                                         ),
+//                                         kind: Int(1),
 //                                     },
 //                                 ),
 //                             },
@@ -144,18 +88,10 @@
 //                 clauses: [
 //                     Relation {
 //                         binding: None,
-//                         relation: Ident {
-//                             ident: "NeedsFibonacci",
-//                             kind: Uppercase,
-//                         },
+//                         relation: Ident("NeedsFibonacci"),
 //                         fields: [
 //                             Expr {
-//                                 kind: Ident(
-//                                     Ident {
-//                                         ident: "n",
-//                                         kind: Lowercase,
-//                                     },
-//                                 ),
+//                                 kind: Ident("n"),
 //                             },
 //                         ],
 //                     },
@@ -163,20 +99,11 @@
 //                         Expr {
 //                             kind: Cmp(
 //                                 Expr {
-//                                     kind: Ident(
-//                                         Ident {
-//                                             ident: "n",
-//                                             kind: Lowercase,
-//                                         },
-//                                     ),
+//                                     kind: Ident("n"),
 //                                 },
 //                                 GreaterEq,
 //                                 Expr {
-//                                     kind: Literal(
-//                                         Int(
-//                                             1,
-//                                         ),
-//                                     ),
+//                                     kind: Int(1),
 //                                 },
 //                             ),
 //                         },
@@ -189,30 +116,18 @@
 //         attributes: [],
 //         kind: Rule(
 //             Rule {
-//                 head: [
+//                 heads: [
 //                     RuleHead {
-//                         relation: Ident {
-//                             ident: "NeedsFibonacci",
-//                             kind: Uppercase,
-//                         },
+//                         relation: Ident("NeedsFibonacci"),
 //                         fields: [
 //                             Expr {
 //                                 kind: BinOp(
 //                                     Expr {
-//                                         kind: Ident(
-//                                             Ident {
-//                                                 ident: "n",
-//                                                 kind: Lowercase,
-//                                             },
-//                                         ),
+//                                         kind: Ident("n"),
 //                                     },
 //                                     Sub,
 //                                     Expr {
-//                                         kind: Literal(
-//                                             Int(
-//                                                 2,
-//                                             ),
-//                                         ),
+//                                         kind: Int(2),
 //                                     },
 //                                 ),
 //                             },
@@ -222,18 +137,10 @@
 //                 clauses: [
 //                     Relation {
 //                         binding: None,
-//                         relation: Ident {
-//                             ident: "NeedsFibonacci",
-//                             kind: Uppercase,
-//                         },
+//                         relation: Ident("NeedsFibonacci"),
 //                         fields: [
 //                             Expr {
-//                                 kind: Ident(
-//                                     Ident {
-//                                         ident: "n",
-//                                         kind: Lowercase,
-//                                     },
-//                                 ),
+//                                 kind: Ident("n"),
 //                             },
 //                         ],
 //                     },
@@ -241,20 +148,11 @@
 //                         Expr {
 //                             kind: Cmp(
 //                                 Expr {
-//                                     kind: Ident(
-//                                         Ident {
-//                                             ident: "n",
-//                                             kind: Lowercase,
-//                                         },
-//                                     ),
+//                                     kind: Ident("n"),
 //                                 },
 //                                 GreaterEq,
 //                                 Expr {
-//                                     kind: Literal(
-//                                         Int(
-//                                             2,
-//                                         ),
-//                                     ),
+//                                     kind: Int(2),
 //                                 },
 //                             ),
 //                         },
@@ -268,44 +166,19 @@
 //         kind: Relation(
 //             Relation {
 //                 kind: Internal,
-//                 name: Ident {
-//                     ident: "FibonacciLoop",
-//                     kind: Uppercase,
-//                 },
+//                 name: Ident("FibonacciLoop"),
 //                 args: [
 //                     (
-//                         Ident {
-//                             ident: "n",
-//                             kind: Lowercase,
-//                         },
-//                         Named {
-//                             path: IdentPath {
-//                                 path: [
-//                                     Ident {
-//                                         ident: "usize",
-//                                         kind: Lowercase,
-//                                     },
-//                                 ],
-//                             },
-//                             generics: [],
-//                         },
+//                         Ident("n"),
+//                         BitVec(
+//                             32,
+//                         ),
 //                     ),
 //                     (
-//                         Ident {
-//                             ident: "fibonacci",
-//                             kind: Lowercase,
-//                         },
-//                         Named {
-//                             path: IdentPath {
-//                                 path: [
-//                                     Ident {
-//                                         ident: "usize",
-//                                         kind: Lowercase,
-//                                     },
-//                                 ],
-//                             },
-//                             generics: [],
-//                         },
+//                         Ident("fibonacci"),
+//                         BitVec(
+//                             32,
+//                         ),
 //                     ),
 //                 ],
 //             },
@@ -315,26 +188,15 @@
 //         attributes: [],
 //         kind: Fact(
 //             Fact {
-//                 head: [
+//                 heads: [
 //                     RuleHead {
-//                         relation: Ident {
-//                             ident: "FibonacciLoop",
-//                             kind: Uppercase,
-//                         },
+//                         relation: Ident("FibonacciLoop"),
 //                         fields: [
 //                             Expr {
-//                                 kind: Literal(
-//                                     Int(
-//                                         0,
-//                                     ),
-//                                 ),
+//                                 kind: Int(0),
 //                             },
 //                             Expr {
-//                                 kind: Literal(
-//                                     Int(
-//                                         0,
-//                                     ),
-//                                 ),
+//                                 kind: Int(0),
 //                             },
 //                         ],
 //                     },
@@ -346,26 +208,15 @@
 //         attributes: [],
 //         kind: Fact(
 //             Fact {
-//                 head: [
+//                 heads: [
 //                     RuleHead {
-//                         relation: Ident {
-//                             ident: "FibonacciLoop",
-//                             kind: Uppercase,
-//                         },
+//                         relation: Ident("FibonacciLoop"),
 //                         fields: [
 //                             Expr {
-//                                 kind: Literal(
-//                                     Int(
-//                                         1,
-//                                     ),
-//                                 ),
+//                                 kind: Int(1),
 //                             },
 //                             Expr {
-//                                 kind: Literal(
-//                                     Int(
-//                                         1,
-//                                     ),
-//                                 ),
+//                                 kind: Int(1),
 //                             },
 //                         ],
 //                     },
@@ -377,39 +228,21 @@
 //         attributes: [],
 //         kind: Rule(
 //             Rule {
-//                 head: [
+//                 heads: [
 //                     RuleHead {
-//                         relation: Ident {
-//                             ident: "FibonacciLoop",
-//                             kind: Uppercase,
-//                         },
+//                         relation: Ident("FibonacciLoop"),
 //                         fields: [
 //                             Expr {
-//                                 kind: Ident(
-//                                     Ident {
-//                                         ident: "n",
-//                                         kind: Lowercase,
-//                                     },
-//                                 ),
+//                                 kind: Ident("n"),
 //                             },
 //                             Expr {
 //                                 kind: BinOp(
 //                                     Expr {
-//                                         kind: Ident(
-//                                             Ident {
-//                                                 ident: "fib1",
-//                                                 kind: Lowercase,
-//                                             },
-//                                         ),
+//                                         kind: Ident("fib1"),
 //                                     },
 //                                     Add,
 //                                     Expr {
-//                                         kind: Ident(
-//                                             Ident {
-//                                                 ident: "fib2",
-//                                                 kind: Lowercase,
-//                                             },
-//                                         ),
+//                                         kind: Ident("fib2"),
 //                                     },
 //                                 ),
 //                             },
@@ -419,92 +252,50 @@
 //                 clauses: [
 //                     Relation {
 //                         binding: None,
-//                         relation: Ident {
-//                             ident: "NeedsFibonacci",
-//                             kind: Uppercase,
-//                         },
+//                         relation: Ident("NeedsFibonacci"),
 //                         fields: [
 //                             Expr {
-//                                 kind: Ident(
-//                                     Ident {
-//                                         ident: "n",
-//                                         kind: Lowercase,
-//                                     },
-//                                 ),
+//                                 kind: Ident("n"),
 //                             },
 //                         ],
 //                     },
 //                     Relation {
 //                         binding: None,
-//                         relation: Ident {
-//                             ident: "FibonacciLoop",
-//                             kind: Uppercase,
-//                         },
+//                         relation: Ident("FibonacciLoop"),
 //                         fields: [
 //                             Expr {
 //                                 kind: BinOp(
 //                                     Expr {
-//                                         kind: Ident(
-//                                             Ident {
-//                                                 ident: "n",
-//                                                 kind: Lowercase,
-//                                             },
-//                                         ),
+//                                         kind: Ident("n"),
 //                                     },
 //                                     Sub,
 //                                     Expr {
-//                                         kind: Literal(
-//                                             Int(
-//                                                 1,
-//                                             ),
-//                                         ),
+//                                         kind: Int(1),
 //                                     },
 //                                 ),
 //                             },
 //                             Expr {
-//                                 kind: Ident(
-//                                     Ident {
-//                                         ident: "fib1",
-//                                         kind: Lowercase,
-//                                     },
-//                                 ),
+//                                 kind: Ident("fib1"),
 //                             },
 //                         ],
 //                     },
 //                     Relation {
 //                         binding: None,
-//                         relation: Ident {
-//                             ident: "FibonacciLoop",
-//                             kind: Uppercase,
-//                         },
+//                         relation: Ident("FibonacciLoop"),
 //                         fields: [
 //                             Expr {
 //                                 kind: BinOp(
 //                                     Expr {
-//                                         kind: Ident(
-//                                             Ident {
-//                                                 ident: "n",
-//                                                 kind: Lowercase,
-//                                             },
-//                                         ),
+//                                         kind: Ident("n"),
 //                                     },
 //                                     Sub,
 //                                     Expr {
-//                                         kind: Literal(
-//                                             Int(
-//                                                 2,
-//                                             ),
-//                                         ),
+//                                         kind: Int(2),
 //                                     },
 //                                 ),
 //                             },
 //                             Expr {
-//                                 kind: Ident(
-//                                     Ident {
-//                                         ident: "fib2",
-//                                         kind: Lowercase,
-//                                     },
-//                                 ),
+//                                 kind: Ident("fib2"),
 //                             },
 //                         ],
 //                     },
@@ -517,44 +308,19 @@
 //         kind: Relation(
 //             Relation {
 //                 kind: Output,
-//                 name: Ident {
-//                     ident: "Fibonacci",
-//                     kind: Uppercase,
-//                 },
+//                 name: Ident("Fibonacci"),
 //                 args: [
 //                     (
-//                         Ident {
-//                             ident: "n",
-//                             kind: Lowercase,
-//                         },
-//                         Named {
-//                             path: IdentPath {
-//                                 path: [
-//                                     Ident {
-//                                         ident: "usize",
-//                                         kind: Lowercase,
-//                                     },
-//                                 ],
-//                             },
-//                             generics: [],
-//                         },
+//                         Ident("n"),
+//                         BitVec(
+//                             32,
+//                         ),
 //                     ),
 //                     (
-//                         Ident {
-//                             ident: "fibonacci",
-//                             kind: Lowercase,
-//                         },
-//                         Named {
-//                             path: IdentPath {
-//                                 path: [
-//                                     Ident {
-//                                         ident: "usize",
-//                                         kind: Lowercase,
-//                                     },
-//                                 ],
-//                             },
-//                             generics: [],
-//                         },
+//                         Ident("fibonacci"),
+//                         BitVec(
+//                             32,
+//                         ),
 //                     ),
 //                 ],
 //             },
@@ -564,28 +330,15 @@
 //         attributes: [],
 //         kind: Rule(
 //             Rule {
-//                 head: [
+//                 heads: [
 //                     RuleHead {
-//                         relation: Ident {
-//                             ident: "Fibonacci",
-//                             kind: Uppercase,
-//                         },
+//                         relation: Ident("Fibonacci"),
 //                         fields: [
 //                             Expr {
-//                                 kind: Ident(
-//                                     Ident {
-//                                         ident: "n",
-//                                         kind: Lowercase,
-//                                     },
-//                                 ),
+//                                 kind: Ident("n"),
 //                             },
 //                             Expr {
-//                                 kind: Ident(
-//                                     Ident {
-//                                         ident: "fib",
-//                                         kind: Lowercase,
-//                                     },
-//                                 ),
+//                                 kind: Ident("fib"),
 //                             },
 //                         ],
 //                     },
@@ -593,43 +346,22 @@
 //                 clauses: [
 //                     Relation {
 //                         binding: None,
-//                         relation: Ident {
-//                             ident: "FibonacciLoop",
-//                             kind: Uppercase,
-//                         },
+//                         relation: Ident("FibonacciLoop"),
 //                         fields: [
 //                             Expr {
-//                                 kind: Ident(
-//                                     Ident {
-//                                         ident: "n",
-//                                         kind: Lowercase,
-//                                     },
-//                                 ),
+//                                 kind: Ident("n"),
 //                             },
 //                             Expr {
-//                                 kind: Ident(
-//                                     Ident {
-//                                         ident: "fib",
-//                                         kind: Lowercase,
-//                                     },
-//                                 ),
+//                                 kind: Ident("fib"),
 //                             },
 //                         ],
 //                     },
 //                     Relation {
 //                         binding: None,
-//                         relation: Ident {
-//                             ident: "FibonacciFor",
-//                             kind: Uppercase,
-//                         },
+//                         relation: Ident("FibonacciFor"),
 //                         fields: [
 //                             Expr {
-//                                 kind: Ident(
-//                                     Ident {
-//                                         ident: "n",
-//                                         kind: Lowercase,
-//                                     },
-//                                 ),
+//                                 kind: Ident("n"),
 //                             },
 //                         ],
 //                     },
@@ -639,14 +371,14 @@
 //     },
 // ]
 
-input relation FibonacciFor(n: usize)
+input relation FibonacciFor(n: bit<32>)
 
-relation NeedsFibonacci(n: usize)
+relation NeedsFibonacci(n: bit<32>)
 NeedsFibonacci(n) :- FibonacciFor(n).
 NeedsFibonacci(n - 1) :- NeedsFibonacci(n), n >= 1.
 NeedsFibonacci(n - 2) :- NeedsFibonacci(n), n >= 2.
 
-relation FibonacciLoop(n: usize, fibonacci: usize)
+relation FibonacciLoop(n: bit<32>, fibonacci: bit<32>)
 FibonacciLoop(0, 0).
 FibonacciLoop(1, 1).
 FibonacciLoop(n, fib1 + fib2) :-
@@ -654,7 +386,7 @@ FibonacciLoop(n, fib1 + fib2) :-
     FibonacciLoop(n - 1, fib1),
     FibonacciLoop(n - 2, fib2).
 
-output relation Fibonacci(n: usize, fibonacci: usize)
+output relation Fibonacci(n: bit<32>, fibonacci: bit<32>)
 Fibonacci(n, fib) :-
     FibonacciLoop(n, fib),
     FibonacciFor(n).

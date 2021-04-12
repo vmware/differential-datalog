@@ -4,7 +4,7 @@ use std::mem;
 macro_rules! noop_rewrite {
     ($($rewrite:ident),* $(,)?) => {
         $(
-            fn $rewrite(&mut self, expr: Expr) -> Expr {
+            fn $rewrite(&mut self, expr: Expr<I>) -> Expr<I> {
                 expr
             }
         )*
@@ -13,7 +13,7 @@ macro_rules! noop_rewrite {
 
 macro_rules! unary_rewrite {
     ($kind:ident => $rewrite:ident $(, $($rest:tt)*)?) => {
-        fn $rewrite(&mut self, mut expr: Expr) -> Expr {
+        fn $rewrite(&mut self, mut expr: Expr<I>) -> Expr<I> {
             if let ExprKind::$kind(inner) = expr.kind {
                 // FIXME: Avoid the alloc
                 expr.kind = ExprKind::$kind(Box::new(self.rewrite(*inner)));
@@ -25,8 +25,8 @@ macro_rules! unary_rewrite {
         $(unary_rewrite!($($rest)*);)?
     };
 
-    ($kind:ident opt => $rewrite:ident $(, $($rest:tt)*)?) => {
-        fn $rewrite(&mut self, mut expr: Expr) -> Expr {
+    ($kind:ident ? => $rewrite:ident $(, $($rest:tt)*)?) => {
+        fn $rewrite(&mut self, mut expr: Expr<I>) -> Expr<I> {
             if let ExprKind::$kind(Some(inner)) = expr.kind {
                 // FIXME: Avoid the alloc
                 expr.kind = ExprKind::$kind(Some(Box::new(self.rewrite(*inner))));
@@ -43,7 +43,7 @@ macro_rules! unary_rewrite {
 
 macro_rules! binary_rewrite {
     ($kind:ident => $rewrite:ident $(, $($rest:tt)*)?) => {
-        fn $rewrite(&mut self, mut expr: Expr) -> Expr {
+        fn $rewrite(&mut self, mut expr: Expr<I>) -> Expr<I> {
             if let ExprKind::$kind(lhs, rhs) = expr.kind {
                 // FIXME: Avoid the allocs
                 expr.kind = ExprKind::$kind(
@@ -59,7 +59,7 @@ macro_rules! binary_rewrite {
     };
 
     ($kind:ident middle => $rewrite:ident $(, $($rest:tt)*)?) => {
-        fn $rewrite(&mut self, mut expr: Expr) -> Expr {
+        fn $rewrite(&mut self, mut expr: Expr<I>) -> Expr<I> {
             if let ExprKind::$kind(lhs, middle, rhs) = expr.kind {
                 // FIXME: Avoid the allocs
                 expr.kind = ExprKind::$kind(
@@ -78,8 +78,8 @@ macro_rules! binary_rewrite {
     () => { };
 }
 
-pub trait ExpressionRewriter {
-    fn rewrite(&mut self, expr: Expr) -> Expr {
+pub trait ExpressionRewriter<I> {
+    fn rewrite(&mut self, expr: Expr<I>) -> Expr<I> {
         let apply = match expr.kind {
             ExprKind::Wildcard => Self::rewrite_wildcard,
             ExprKind::Empty => Self::rewrite_empty,
@@ -115,9 +115,9 @@ pub trait ExpressionRewriter {
         Neg => rewrite_neg,
         Not => rewrite_not,
         BitNot => rewrite_bitnot,
-        Return opt => rewrite_ret,
-        Break opt => rewrite_brk,
-        Continue opt => rewrite_cont,
+        Return? => rewrite_ret,
+        Break? => rewrite_brk,
+        Continue? => rewrite_cont,
     }
 
     binary_rewrite! {
@@ -127,7 +127,7 @@ pub trait ExpressionRewriter {
         Or => rewrite_or,
     }
 
-    fn rewrite_block(&mut self, mut block: Expr) -> Expr {
+    fn rewrite_block(&mut self, mut block: Expr<I>) -> Expr<I> {
         if let ExprKind::Block(block) = &mut block.kind {
             for expr in block {
                 *expr = self.rewrite(mem::take(expr));
@@ -137,7 +137,7 @@ pub trait ExpressionRewriter {
         block
     }
 
-    fn rewrite_if(&mut self, mut if_: Expr) -> Expr {
+    fn rewrite_if(&mut self, mut if_: Expr<I>) -> Expr<I> {
         if let ExprKind::If(cond, then, else_) = if_.kind {
             // FIXME: Avoid the allocs
             if_.kind = ExprKind::If(
@@ -160,9 +160,9 @@ impl BlockSimplifier {
 }
 
 // TODO: Make sure to collapse spans whenever those are implemented
-impl ExpressionRewriter for BlockSimplifier {
+impl<I> ExpressionRewriter<I> for BlockSimplifier {
     /// Collapse redundant blocks, e.g. { 1 } => 1
-    fn rewrite_block(&mut self, mut block: Expr) -> Expr {
+    fn rewrite_block(&mut self, mut block: Expr<I>) -> Expr<I> {
         if let ExprKind::Block(block_exprs) = &mut block.kind {
             let mut idx = 0;
             while let Some(expr) = block_exprs.get_mut(idx) {
@@ -201,9 +201,9 @@ impl NestingSimplifier {
 }
 
 // TODO: Make sure to collapse spans whenever those are implemented
-impl ExpressionRewriter for NestingSimplifier {
+impl<I> ExpressionRewriter<I> for NestingSimplifier {
     /// Collapse nested nestings, e.g. ((1)) => 1
-    fn rewrite_nested(&mut self, mut nested: Expr) -> Expr {
+    fn rewrite_nested(&mut self, mut nested: Expr<I>) -> Expr<I> {
         if let ExprKind::Nested(mut inner) = nested.kind {
             let rewritten = self.rewrite(mem::take(&mut *inner));
 
@@ -224,7 +224,7 @@ impl ExpressionRewriter for NestingSimplifier {
 
     /// Remove instances of nesting from within blocks, e.g.
     /// { (1) } => { 1 }
-    fn rewrite_block(&mut self, mut block: Expr) -> Expr {
+    fn rewrite_block(&mut self, mut block: Expr<I>) -> Expr<I> {
         if let ExprKind::Block(block) = &mut block.kind {
             for expr in block {
                 let rewritten = self.rewrite(mem::take(expr));

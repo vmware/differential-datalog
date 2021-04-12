@@ -1,4 +1,4 @@
-use dyn_ddlog::DatalogParser;
+use dyn_ddlog::{DatalogParser, Resolver};
 use std::{fs, path::PathBuf};
 use structopt::StructOpt;
 
@@ -18,6 +18,25 @@ fn main() {
             if unstable_args.iter().any(|arg| arg == "dump-ast") {
                 // #[cfg(not(feature = "debug-printing"))]
                 println!("{:#?}", ast);
+
+                // #[cfg(feature = "debug-printing")]
+                // {
+                //     use dyn_ddlog::DebugAst;
+                //
+                //     let stdout = std::io::stdout();
+                //     let mut stdout = stdout.lock();
+                //
+                //     ast.debug_ast_into(&mut stdout)
+                //         .expect("failed to debug ast");
+                // }
+            }
+
+            let mut resolver = Resolver::new();
+            let resolved_ast = resolver.resolve_declarations(&ast);
+
+            if unstable_args.iter().any(|arg| arg == "dump-resolved-ast") {
+                // #[cfg(not(feature = "debug-printing"))]
+                println!("{:#?}", resolved_ast);
 
                 // #[cfg(feature = "debug-printing")]
                 // {

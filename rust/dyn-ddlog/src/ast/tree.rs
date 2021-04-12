@@ -1,36 +1,38 @@
-use crate::ast::rewrites::{BlockSimplifier, ExpressionRewriter, NestingSimplifier};
+use std::fmt::{self, Debug, Write};
+
+use crate::ast::rewrite::{BlockSimplifier, ExpressionRewriter, NestingSimplifier};
 
 // TODO: Source locations
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Declaration {
-    pub attributes: Vec<Attribute>,
-    pub kind: DeclarationKind,
+pub struct Declaration<I> {
+    pub attributes: Vec<Attribute<I>>,
+    pub kind: DeclarationKind<I>,
 }
 
-impl Declaration {
-    pub const fn new(attributes: Vec<Attribute>, kind: DeclarationKind) -> Self {
+impl<I> Declaration<I> {
+    pub const fn new(attributes: Vec<Attribute<I>>, kind: DeclarationKind<I>) -> Self {
         Self { attributes, kind }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum DeclarationKind {
-    Relation(Relation),
-    Rule(Rule),
-    Fact(Fact),
-    Function(Function),
+pub enum DeclarationKind<I> {
+    Relation(Relation<I>),
+    Rule(Rule<I>),
+    Fact(Fact<I>),
+    Function(Function<I>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Relation {
+pub struct Relation<I> {
     pub kind: RelationKind,
-    pub name: Ident,
-    pub args: Vec<(Ident, Type)>,
+    pub name: I,
+    pub args: Vec<(I, Type<I>)>,
 }
 
-impl Relation {
-    pub const fn new(kind: RelationKind, name: Ident, args: Vec<(Ident, Type)>) -> Self {
+impl<I> Relation<I> {
+    pub const fn new(kind: RelationKind, name: I, args: Vec<(I, Type<I>)>) -> Self {
         Self { kind, name, args }
     }
 }
@@ -43,42 +45,42 @@ pub enum RelationKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Rule {
-    pub head: Vec<RuleHead>,
-    pub clauses: Vec<RuleClause>,
+pub struct Rule<I> {
+    pub heads: Vec<RuleHead<I>>,
+    pub clauses: Vec<RuleClause<I>>,
 }
 
-impl Rule {
-    pub const fn new(head: Vec<RuleHead>, clauses: Vec<RuleClause>) -> Self {
-        Self { head, clauses }
+impl<I> Rule<I> {
+    pub const fn new(heads: Vec<RuleHead<I>>, clauses: Vec<RuleClause<I>>) -> Self {
+        Self { heads, clauses }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RuleHead {
-    pub relation: Ident,
-    pub fields: Vec<Expr>,
+pub struct RuleHead<I> {
+    pub relation: I,
+    pub fields: Vec<Expr<I>>,
 }
 
-impl RuleHead {
-    pub const fn new(relation: Ident, fields: Vec<Expr>) -> Self {
+impl<I> RuleHead<I> {
+    pub const fn new(relation: I, fields: Vec<Expr<I>>) -> Self {
         Self { relation, fields }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum RuleClause {
+pub enum RuleClause<I> {
     Relation {
-        binding: Option<Ident>,
-        relation: Ident,
-        fields: Vec<Expr>,
+        binding: Option<I>,
+        relation: I,
+        fields: Vec<Expr<I>>,
     },
     Negated(Box<Self>),
-    Expr(Expr),
+    Expr(Expr<I>),
 }
 
-impl RuleClause {
-    pub fn relation(binding: Option<Ident>, relation: Ident, fields: Vec<Expr>) -> Self {
+impl<I> RuleClause<I> {
+    pub fn relation(binding: Option<I>, relation: I, fields: Vec<Expr<I>>) -> Self {
         Self::Relation {
             binding,
             relation,
@@ -92,26 +94,26 @@ impl RuleClause {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Fact {
-    pub head: Vec<RuleHead>,
+pub struct Fact<I> {
+    pub heads: Vec<RuleHead<I>>,
 }
 
-impl Fact {
-    pub fn new(head: Vec<RuleHead>) -> Self {
-        Self { head }
+impl<I> Fact<I> {
+    pub fn new(heads: Vec<RuleHead<I>>) -> Self {
+        Self { heads }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Function {
-    pub name: IdentPath,
-    pub args: Vec<(Ident, Type)>,
-    pub ret: Type,
-    pub body: Expr,
+pub struct Function<I> {
+    pub name: Path<I>,
+    pub args: Vec<(I, Type<I>)>,
+    pub ret: Type<I>,
+    pub body: Expr<I>,
 }
 
-impl Function {
-    pub fn new(name: IdentPath, args: Vec<(Ident, Type)>, ret: Type, body: Expr) -> Self {
+impl<I> Function<I> {
+    pub fn new(name: Path<I>, args: Vec<(I, Type<I>)>, ret: Type<I>, body: Expr<I>) -> Self {
         Self {
             name,
             args,
@@ -121,8 +123,10 @@ impl Function {
     }
 }
 
+// TODO: Custom debug for types
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Type {
+pub enum Type<I> {
+    Unit,
     BigInt,
     Bool,
     String,
@@ -130,38 +134,47 @@ pub enum Type {
     Signed(u16),
     Double,
     Float,
-    Tuple(Vec<Type>),
+    Tuple(Vec<Type<I>>),
     Named {
-        path: IdentPath,
-        generics: Vec<Type>,
+        path: Path<I>,
+        generics: Vec<Type<I>>,
     },
-    Unit,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Attribute {
+pub struct Attribute<I> {
     pub ident: Ident,
-    pub value: Option<Expr>,
+    pub value: Option<Expr<I>>,
 }
 
-impl Attribute {
-    pub const fn new(ident: Ident, value: Option<Expr>) -> Self {
+impl<I> Attribute<I> {
+    pub const fn new(ident: Ident, value: Option<Expr<I>>) -> Self {
         Self { ident, value }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct IdentPath {
-    pub path: Vec<Ident>,
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct Path<I> {
+    pub path: Vec<I>,
 }
 
-impl IdentPath {
-    pub const fn new(path: Vec<Ident>) -> Self {
+impl<I> Path<I> {
+    pub const fn new(path: Vec<I>) -> Self {
         Self { path }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+// Custom debug implementations to help with the readability of asts
+impl<I> Debug for Path<I>
+where
+    I: Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list().entries(&self.path).finish()
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Ident {
     pub ident: String,
     pub kind: IdentKind,
@@ -191,33 +204,46 @@ impl Ident {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+// A custom debug implementation to help with the readability of asts
+impl Debug for Ident {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Ident({:?})", &self.ident)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum IdentKind {
     Uppercase,
     Lowercase,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Expr {
-    pub kind: ExprKind,
+pub struct Expr<I> {
+    pub kind: ExprKind<I>,
 }
 
 // TODO: Macro this
 #[allow(clippy::should_implement_trait)]
-impl Expr {
+impl<I> Expr<I> {
     pub const fn wildcard() -> Self {
         Self {
             kind: ExprKind::Wildcard,
         }
     }
 
-    pub fn nested(expr: Expr) -> Self {
+    pub const fn empty() -> Self {
+        Self {
+            kind: ExprKind::Empty,
+        }
+    }
+
+    pub fn nested(expr: Expr<I>) -> Self {
         Self {
             kind: ExprKind::Nested(Box::new(expr)),
         }
     }
 
-    pub fn block(exprs: Vec<Expr>) -> Self {
+    pub fn block(exprs: Vec<Expr<I>>) -> Self {
         Self {
             kind: ExprKind::Block(exprs),
         }
@@ -229,159 +255,139 @@ impl Expr {
         }
     }
 
-    pub fn ident(ident: Ident) -> Self {
+    pub fn ident(ident: I) -> Self {
         Self {
             kind: ExprKind::Ident(ident),
         }
     }
 
-    pub fn neg(expr: Expr) -> Self {
+    pub fn neg(expr: Expr<I>) -> Self {
         Self {
             kind: ExprKind::Neg(Box::new(expr)),
         }
     }
 
-    pub fn bit_not(expr: Expr) -> Self {
+    pub fn bit_not(expr: Expr<I>) -> Self {
         Self {
             kind: ExprKind::BitNot(Box::new(expr)),
         }
     }
 
-    pub fn not(expr: Expr) -> Self {
+    pub fn not(expr: Expr<I>) -> Self {
         Self {
             kind: ExprKind::Not(Box::new(expr)),
         }
     }
 
-    pub fn mul(lhs: Expr, rhs: Expr) -> Self {
+    pub fn mul(lhs: Expr<I>, rhs: Expr<I>) -> Self {
+        Self::bin_op(lhs, BinaryOperand::Mul, rhs)
+    }
+
+    pub fn div(lhs: Expr<I>, rhs: Expr<I>) -> Self {
+        Self::bin_op(lhs, BinaryOperand::Div, rhs)
+    }
+
+    pub fn add(lhs: Expr<I>, rhs: Expr<I>) -> Self {
+        Self::bin_op(lhs, BinaryOperand::Add, rhs)
+    }
+
+    pub fn sub(lhs: Expr<I>, rhs: Expr<I>) -> Self {
+        Self::bin_op(lhs, BinaryOperand::Sub, rhs)
+    }
+
+    pub fn equal(lhs: Expr<I>, rhs: Expr<I>) -> Self {
+        Self::cmp(lhs, CmpKind::Eq, rhs)
+    }
+
+    pub fn not_equal(lhs: Expr<I>, rhs: Expr<I>) -> Self {
+        Self::cmp(lhs, CmpKind::Neq, rhs)
+    }
+
+    pub fn greater(lhs: Expr<I>, rhs: Expr<I>) -> Self {
+        Self::cmp(lhs, CmpKind::Greater, rhs)
+    }
+
+    pub fn less(lhs: Expr<I>, rhs: Expr<I>) -> Self {
+        Self::cmp(lhs, CmpKind::Less, rhs)
+    }
+
+    pub fn greater_equal(lhs: Expr<I>, rhs: Expr<I>) -> Self {
+        Self::cmp(lhs, CmpKind::GreaterEq, rhs)
+    }
+
+    pub fn less_equal(lhs: Expr<I>, rhs: Expr<I>) -> Self {
+        Self::cmp(lhs, CmpKind::LessEq, rhs)
+    }
+
+    pub fn cmp(lhs: Expr<I>, kind: CmpKind, rhs: Expr<I>) -> Self {
         Self {
-            kind: ExprKind::BinOp(Box::new(lhs), BinaryOperand::Mul, Box::new(rhs)),
+            kind: ExprKind::Cmp(Box::new(lhs), kind, Box::new(rhs)),
         }
     }
 
-    pub fn div(lhs: Expr, rhs: Expr) -> Self {
-        Self {
-            kind: ExprKind::BinOp(Box::new(lhs), BinaryOperand::Div, Box::new(rhs)),
-        }
-    }
-
-    pub fn add(lhs: Expr, rhs: Expr) -> Self {
-        Self {
-            kind: ExprKind::BinOp(Box::new(lhs), BinaryOperand::Add, Box::new(rhs)),
-        }
-    }
-
-    pub fn sub(lhs: Expr, rhs: Expr) -> Self {
-        Self {
-            kind: ExprKind::BinOp(Box::new(lhs), BinaryOperand::Sub, Box::new(rhs)),
-        }
-    }
-
-    pub fn equal(lhs: Expr, rhs: Expr) -> Self {
-        Self {
-            kind: ExprKind::Cmp(Box::new(lhs), CmpKind::Eq, Box::new(rhs)),
-        }
-    }
-
-    pub fn not_equal(lhs: Expr, rhs: Expr) -> Self {
-        Self {
-            kind: ExprKind::Cmp(Box::new(lhs), CmpKind::Neq, Box::new(rhs)),
-        }
-    }
-
-    pub fn greater(lhs: Expr, rhs: Expr) -> Self {
-        Self {
-            kind: ExprKind::Cmp(Box::new(lhs), CmpKind::Greater, Box::new(rhs)),
-        }
-    }
-
-    pub fn less(lhs: Expr, rhs: Expr) -> Self {
-        Self {
-            kind: ExprKind::Cmp(Box::new(lhs), CmpKind::Less, Box::new(rhs)),
-        }
-    }
-
-    pub fn greater_equal(lhs: Expr, rhs: Expr) -> Self {
-        Self {
-            kind: ExprKind::Cmp(Box::new(lhs), CmpKind::GreaterEq, Box::new(rhs)),
-        }
-    }
-
-    pub fn less_equal(lhs: Expr, rhs: Expr) -> Self {
-        Self {
-            kind: ExprKind::Cmp(Box::new(lhs), CmpKind::LessEq, Box::new(rhs)),
-        }
-    }
-
-    pub fn and(lhs: Expr, rhs: Expr) -> Self {
+    pub fn and(lhs: Expr<I>, rhs: Expr<I>) -> Self {
         Self {
             kind: ExprKind::And(Box::new(lhs), Box::new(rhs)),
         }
     }
 
-    pub fn or(lhs: Expr, rhs: Expr) -> Self {
+    pub fn or(lhs: Expr<I>, rhs: Expr<I>) -> Self {
         Self {
             kind: ExprKind::Or(Box::new(lhs), Box::new(rhs)),
         }
     }
 
-    pub fn ret(ret: Option<Expr>) -> Self {
+    pub fn ret(ret: Option<Expr<I>>) -> Self {
         Self {
             kind: ExprKind::Return(ret.map(Box::new)),
         }
     }
 
-    pub fn brk(brk: Option<Expr>) -> Self {
+    pub fn brk(brk: Option<Expr<I>>) -> Self {
         Self {
             kind: ExprKind::Break(brk.map(Box::new)),
         }
     }
 
-    pub fn cont(cont: Option<Expr>) -> Self {
+    pub fn cont(cont: Option<Expr<I>>) -> Self {
         Self {
             kind: ExprKind::Continue(cont.map(Box::new)),
         }
     }
 
-    pub fn shr(lhs: Expr, rhs: Expr) -> Self {
-        Self {
-            kind: ExprKind::BinOp(Box::new(lhs), BinaryOperand::Shr, Box::new(rhs)),
-        }
+    pub fn shr(lhs: Expr<I>, rhs: Expr<I>) -> Self {
+        Self::bin_op(lhs, BinaryOperand::Shr, rhs)
     }
 
-    pub fn shl(lhs: Expr, rhs: Expr) -> Self {
-        Self {
-            kind: ExprKind::BinOp(Box::new(lhs), BinaryOperand::Shl, Box::new(rhs)),
-        }
+    pub fn shl(lhs: Expr<I>, rhs: Expr<I>) -> Self {
+        Self::bin_op(lhs, BinaryOperand::Shl, rhs)
     }
 
-    pub fn concat(lhs: Expr, rhs: Expr) -> Self {
-        Self {
-            kind: ExprKind::BinOp(Box::new(lhs), BinaryOperand::Concat, Box::new(rhs)),
-        }
+    pub fn concat(lhs: Expr<I>, rhs: Expr<I>) -> Self {
+        Self::bin_op(lhs, BinaryOperand::Concat, rhs)
     }
 
-    pub fn bit_or(lhs: Expr, rhs: Expr) -> Self {
-        Self {
-            kind: ExprKind::BinOp(Box::new(lhs), BinaryOperand::BitOr, Box::new(rhs)),
-        }
+    pub fn bit_or(lhs: Expr<I>, rhs: Expr<I>) -> Self {
+        Self::bin_op(lhs, BinaryOperand::BitOr, rhs)
     }
 
-    pub fn bit_and(lhs: Expr, rhs: Expr) -> Self {
-        Self {
-            kind: ExprKind::BinOp(Box::new(lhs), BinaryOperand::BitAnd, Box::new(rhs)),
-        }
+    pub fn bit_and(lhs: Expr<I>, rhs: Expr<I>) -> Self {
+        Self::bin_op(lhs, BinaryOperand::BitAnd, rhs)
     }
 
-    pub fn rem(lhs: Expr, rhs: Expr) -> Self {
-        Self {
-            kind: ExprKind::BinOp(Box::new(lhs), BinaryOperand::Rem, Box::new(rhs)),
-        }
+    pub fn rem(lhs: Expr<I>, rhs: Expr<I>) -> Self {
+        Self::bin_op(lhs, BinaryOperand::Rem, rhs)
     }
 
-    pub fn if_(cond: Expr, then: Expr, else_: Expr) -> Self {
+    pub fn if_(cond: Expr<I>, then: Expr<I>, else_: Expr<I>) -> Self {
         Self {
             kind: ExprKind::If(Box::new(cond), Box::new(then), Box::new(else_)),
+        }
+    }
+
+    pub fn bin_op(lhs: Expr<I>, op: BinaryOperand, rhs: Expr<I>) -> Self {
+        Self {
+            kind: ExprKind::BinOp(Box::new(lhs), op, Box::new(rhs)),
         }
     }
 
@@ -402,7 +408,7 @@ impl Expr {
     }
 }
 
-impl Default for Expr {
+impl<I> Default for Expr<I> {
     fn default() -> Self {
         Self {
             kind: ExprKind::Empty,
@@ -410,33 +416,114 @@ impl Default for Expr {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ExprKind {
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub enum ExprKind<I> {
     Wildcard,
     Empty,
 
-    Nested(Box<Expr>),
-    Block(Vec<Expr>),
+    Nested(Box<Expr<I>>),
+    Block(Vec<Expr<I>>),
 
     Literal(Literal),
-    Ident(Ident),
+    Ident(I),
 
-    Neg(Box<Expr>),
-    Not(Box<Expr>),
-    BitNot(Box<Expr>),
+    Neg(Box<Expr<I>>),
+    Not(Box<Expr<I>>),
+    BitNot(Box<Expr<I>>),
 
-    BinOp(Box<Expr>, BinaryOperand, Box<Expr>),
+    BinOp(Box<Expr<I>>, BinaryOperand, Box<Expr<I>>),
 
-    Cmp(Box<Expr>, CmpKind, Box<Expr>),
+    Cmp(Box<Expr<I>>, CmpKind, Box<Expr<I>>),
 
-    And(Box<Expr>, Box<Expr>),
-    Or(Box<Expr>, Box<Expr>),
+    And(Box<Expr<I>>, Box<Expr<I>>),
+    Or(Box<Expr<I>>, Box<Expr<I>>),
 
-    Return(Option<Box<Expr>>),
-    Break(Option<Box<Expr>>),
-    Continue(Option<Box<Expr>>),
+    Return(Option<Box<Expr<I>>>),
+    Break(Option<Box<Expr<I>>>),
+    Continue(Option<Box<Expr<I>>>),
 
-    If(Box<Expr>, Box<Expr>, Box<Expr>),
+    If(Box<Expr<I>>, Box<Expr<I>>, Box<Expr<I>>),
+}
+
+// A custom debug implementation to help with the readability of asts
+impl<I> Debug for ExprKind<I>
+where
+    I: Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ExprKind::Wildcard => f.write_str("Wildcard"),
+            ExprKind::Empty => f.write_str("Empty"),
+            ExprKind::Nested(inner) => {
+                f.write_str("Nested(")?;
+                Debug::fmt(&**inner, f)?;
+                f.write_char(')')
+            }
+            ExprKind::Block(inner) => {
+                f.write_str("Block(")?;
+                Debug::fmt(&**inner, f)?;
+                f.write_char(')')
+            }
+            ExprKind::Literal(literal) => Debug::fmt(literal, f),
+            ExprKind::Ident(ident) => Debug::fmt(ident, f),
+            ExprKind::Neg(negated) => {
+                f.write_str("Neg(")?;
+                Debug::fmt(&**negated, f)?;
+                f.write_char(')')
+            }
+            ExprKind::Not(negated) => {
+                f.write_str("Not(")?;
+                Debug::fmt(&**negated, f)?;
+                f.write_char(')')
+            }
+            ExprKind::BitNot(negated) => {
+                f.write_str("BitNot(")?;
+                Debug::fmt(&**negated, f)?;
+                f.write_char(')')
+            }
+
+            ExprKind::BinOp(lhs, op, rhs) => f
+                .debug_tuple("BinOp")
+                .field(&**lhs)
+                .field(op)
+                .field(&**rhs)
+                .finish(),
+
+            ExprKind::Cmp(lhs, kind, rhs) => f
+                .debug_tuple("Cmp")
+                .field(&**lhs)
+                .field(kind)
+                .field(&**rhs)
+                .finish(),
+
+            ExprKind::And(lhs, rhs) => f.debug_tuple("And").field(&**lhs).field(&**rhs).finish(),
+
+            ExprKind::Or(lhs, rhs) => f.debug_tuple("Or").field(&**lhs).field(&**rhs).finish(),
+
+            ExprKind::Return(ret) => {
+                f.write_str("Return(")?;
+                Debug::fmt(&ret.as_deref(), f)?;
+                f.write_char(')')
+            }
+            ExprKind::Break(brk) => {
+                f.write_str("Break(")?;
+                Debug::fmt(&brk.as_deref(), f)?;
+                f.write_char(')')
+            }
+            ExprKind::Continue(cont) => {
+                f.write_str("Continue(")?;
+                Debug::fmt(&cont.as_deref(), f)?;
+                f.write_char(')')
+            }
+
+            ExprKind::If(cond, then, else_) => f
+                .debug_tuple("If")
+                .field(&**cond)
+                .field(&**then)
+                .field(&**else_)
+                .finish(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -463,8 +550,18 @@ pub enum CmpKind {
     LessEq,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Literal {
     Int(u64),
     Bool(bool),
+}
+
+// A custom debug implementation to help with the readability of asts
+impl Debug for Literal {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Int(int) => write!(f, "Int({})", int),
+            Self::Bool(boolean) => write!(f, "Bool({})", boolean),
+        }
+    }
 }

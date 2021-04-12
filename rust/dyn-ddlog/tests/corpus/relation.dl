@@ -7,10 +7,7 @@
 //         kind: Relation(
 //             Relation {
 //                 kind: Internal,
-//                 name: Ident {
-//                     ident: "InternalRelation",
-//                     kind: Uppercase,
-//                 },
+//                 name: Ident("InternalRelation"),
 //                 args: [],
 //             },
 //         ),
@@ -20,10 +17,7 @@
 //         kind: Relation(
 //             Relation {
 //                 kind: Input,
-//                 name: Ident {
-//                     ident: "InputRelation",
-//                     kind: Uppercase,
-//                 },
+//                 name: Ident("InputRelation"),
 //                 args: [],
 //             },
 //         ),
@@ -33,10 +27,7 @@
 //         kind: Relation(
 //             Relation {
 //                 kind: Output,
-//                 name: Ident {
-//                     ident: "OutputRelation",
-//                     kind: Uppercase,
-//                 },
+//                 name: Ident("OutputRelation"),
 //                 args: [],
 //             },
 //         ),
@@ -46,16 +37,10 @@
 //         kind: Relation(
 //             Relation {
 //                 kind: Internal,
-//                 name: Ident {
-//                     ident: "Test",
-//                     kind: Uppercase,
-//                 },
+//                 name: Ident("Test"),
 //                 args: [
 //                     (
-//                         Ident {
-//                             ident: "foo",
-//                             kind: Lowercase,
-//                         },
+//                         Ident("foo"),
 //                         Bool,
 //                     ),
 //                 ],
@@ -67,23 +52,14 @@
 //         kind: Relation(
 //             Relation {
 //                 kind: Output,
-//                 name: Ident {
-//                     ident: "Test",
-//                     kind: Uppercase,
-//                 },
+//                 name: Ident("Test2"),
 //                 args: [
 //                     (
-//                         Ident {
-//                             ident: "foo",
-//                             kind: Lowercase,
-//                         },
+//                         Ident("foo"),
 //                         String,
 //                     ),
 //                     (
-//                         Ident {
-//                             ident: "_bar",
-//                             kind: Lowercase,
-//                         },
+//                         Ident("_bar"),
 //                         Bool,
 //                     ),
 //                 ],
@@ -95,23 +71,14 @@
 //         kind: Relation(
 //             Relation {
 //                 kind: Output,
-//                 name: Ident {
-//                     ident: "Test",
-//                     kind: Uppercase,
-//                 },
+//                 name: Ident("Test3"),
 //                 args: [
 //                     (
-//                         Ident {
-//                             ident: "foo",
-//                             kind: Lowercase,
-//                         },
+//                         Ident("foo"),
 //                         String,
 //                     ),
 //                     (
-//                         Ident {
-//                             ident: "_bar",
-//                             kind: Lowercase,
-//                         },
+//                         Ident("_bar"),
 //                         Bool,
 //                     ),
 //                 ],
@@ -121,35 +88,22 @@
 //     Declaration {
 //         attributes: [
 //             Attribute {
-//                 ident: Ident {
-//                     ident: "something",
-//                     kind: Lowercase,
-//                 },
+//                 ident: Ident("something"),
 //                 value: Some(
 //                     Expr {
-//                         kind: Literal(
-//                             Int(
-//                                 10,
-//                             ),
-//                         ),
+//                         kind: Int(10),
 //                     },
 //                 ),
 //             },
 //             Attribute {
-//                 ident: Ident {
-//                     ident: "something_else",
-//                     kind: Lowercase,
-//                 },
+//                 ident: Ident("something_else"),
 //                 value: None,
 //             },
 //         ],
 //         kind: Relation(
 //             Relation {
 //                 kind: Internal,
-//                 name: Ident {
-//                     ident: "RelationWithAttributes",
-//                     kind: Uppercase,
-//                 },
+//                 name: Ident("RelationWithAttributes"),
 //                 args: [],
 //             },
 //         ),
@@ -159,16 +113,10 @@
 //         kind: Relation(
 //             Relation {
 //                 kind: Internal,
-//                 name: Ident {
-//                     ident: "ClausedRelation",
-//                     kind: Uppercase,
-//                 },
+//                 name: Ident("ClausedRelation"),
 //                 args: [
 //                     (
-//                         Ident {
-//                             ident: "boolean",
-//                             kind: Lowercase,
-//                         },
+//                         Ident("boolean"),
 //                         Bool,
 //                     ),
 //                 ],
@@ -179,34 +127,26 @@
 //         attributes: [],
 //         kind: Rule(
 //             Rule {
-//                 head: [
+//                 heads: [
 //                     RuleHead {
-//                         relation: Ident {
-//                             ident: "ClausedRelation",
-//                             kind: Uppercase,
-//                         },
+//                         relation: Ident("ClausedRelation"),
 //                         fields: [
 //                             Expr {
-//                                 kind: Ident(
-//                                     Ident {
-//                                         ident: "boolean",
-//                                         kind: Lowercase,
-//                                     },
-//                                 ),
+//                                 kind: Ident("boolean"),
 //                             },
 //                         ],
 //                     },
 //                 ],
 //                 clauses: [
-//                     Expr(
-//                         Expr {
-//                             kind: Literal(
-//                                 Bool(
-//                                     true,
-//                                 ),
-//                             ),
-//                         },
-//                     ),
+//                     Relation {
+//                         binding: None,
+//                         relation: Ident("ClausedRelation"),
+//                         fields: [
+//                             Expr {
+//                                 kind: Ident("boolean"),
+//                             },
+//                         ],
+//                     },
 //                 ],
 //             },
 //         ),
@@ -221,13 +161,13 @@ output relation OutputRelation()
 
 relation Test(foo: bool)
 
-output relation Test(foo: string, _bar: bool)
+output relation Test2(foo: string, _bar: bool)
 
-output relation Test(foo: string, _bar: bool,)
+output relation Test3(foo: string, _bar: bool,)
 
 #[something = 10]
 #[something_else]
 relation RelationWithAttributes()
 
 relation ClausedRelation(boolean: bool)
-ClausedRelation(boolean) :- true.
+ClausedRelation(boolean) :- ClausedRelation(boolean).

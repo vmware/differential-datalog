@@ -32,7 +32,10 @@ pub trait DebugAst {
         A: Clone;
 }
 
-impl DebugAst for Declaration {
+impl<I> DebugAst for Declaration<I>
+where
+    I: DebugAst,
+{
     fn debug_ast_raw<'b, D, A>(&self, alloc: &'b D) -> DocBuilder<'b, D, A>
     where
         D: DocAllocator<'b, A>,
@@ -60,7 +63,10 @@ impl DebugAst for Declaration {
     }
 }
 
-impl DebugAst for Vec<Declaration> {
+impl<I> DebugAst for Vec<Declaration<I>>
+where
+    I: DebugAst,
+{
     fn debug_ast_raw<'b, D, A>(&self, alloc: &'b D) -> DocBuilder<'b, D, A>
     where
         D: DocAllocator<'b, A>,
@@ -74,7 +80,7 @@ impl DebugAst for Vec<Declaration> {
     }
 }
 
-impl DebugAst for Attribute {
+impl<I> DebugAst for Attribute<I> {
     fn debug_ast_raw<'b, D, A>(&self, alloc: &'b D) -> DocBuilder<'b, D, A>
     where
         D: DocAllocator<'b, A>,
@@ -99,7 +105,10 @@ impl DebugAst for Attribute {
     }
 }
 
-impl DebugAst for DeclarationKind {
+impl<I> DebugAst for DeclarationKind<I>
+where
+    I: DebugAst,
+{
     fn debug_ast_raw<'b, D, A>(&self, alloc: &'b D) -> DocBuilder<'b, D, A>
     where
         D: DocAllocator<'b, A>,
@@ -115,7 +124,10 @@ impl DebugAst for DeclarationKind {
     }
 }
 
-impl DebugAst for Relation {
+impl<I> DebugAst for Relation<I>
+where
+    I: DebugAst,
+{
     fn debug_ast_raw<'b, D, A>(&self, alloc: &'b D) -> DocBuilder<'b, D, A>
     where
         D: DocAllocator<'b, A>,
@@ -136,7 +148,10 @@ impl DebugAst for Relation {
     }
 }
 
-impl DebugAst for Rule {
+impl<I> DebugAst for Rule<I>
+where
+    I: DebugAst,
+{
     fn debug_ast_raw<'b, D, A>(&self, alloc: &'b D) -> DocBuilder<'b, D, A>
     where
         D: DocAllocator<'b, A>,
@@ -147,7 +162,7 @@ impl DebugAst for Rule {
             .text("RULE")
             .append(alloc.hardline())
             .append(alloc.intersperse(
-                self.head.iter().map(|head| head.debug_ast_raw(alloc)),
+                self.heads.iter().map(|head| head.debug_ast_raw(alloc)),
                 alloc.hardline(),
             ))
             .append(alloc.hardline())
@@ -166,7 +181,10 @@ impl DebugAst for Rule {
     }
 }
 
-impl DebugAst for Fact {
+impl<I> DebugAst for Fact<I>
+where
+    I: DebugAst,
+{
     fn debug_ast_raw<'b, D, A>(&self, alloc: &'b D) -> DocBuilder<'b, D, A>
     where
         D: DocAllocator<'b, A>,
@@ -177,14 +195,17 @@ impl DebugAst for Fact {
             .text("FACT")
             .append(alloc.hardline())
             .append(alloc.intersperse(
-                self.head.iter().map(|head| head.debug_ast_raw(alloc)),
+                self.heads.iter().map(|head| head.debug_ast_raw(alloc)),
                 alloc.hardline(),
             ))
             .nest(2)
     }
 }
 
-impl DebugAst for RuleHead {
+impl<I> DebugAst for RuleHead<I>
+where
+    I: DebugAst,
+{
     fn debug_ast_raw<'b, D, A>(&self, alloc: &'b D) -> DocBuilder<'b, D, A>
     where
         D: DocAllocator<'b, A>,
@@ -201,7 +222,7 @@ impl DebugAst for RuleHead {
     }
 }
 
-impl DebugAst for RuleClause {
+impl<I> DebugAst for RuleClause<I> {
     fn debug_ast_raw<'b, D, A>(&self, alloc: &'b D) -> DocBuilder<'b, D, A>
     where
         D: DocAllocator<'b, A>,
@@ -226,7 +247,7 @@ impl DebugAst for RuleClause {
     }
 }
 
-impl DebugAst for Function {
+impl<I> DebugAst for Function<I> {
     fn debug_ast_raw<'b, D, A>(&self, alloc: &'b D) -> DocBuilder<'b, D, A>
     where
         D: DocAllocator<'b, A>,
@@ -237,7 +258,7 @@ impl DebugAst for Function {
     }
 }
 
-impl DebugAst for Expr {
+impl<I> DebugAst for Expr<I> {
     fn debug_ast_raw<'b, D, A>(&self, alloc: &'b D) -> DocBuilder<'b, D, A>
     where
         D: DocAllocator<'b, A>,

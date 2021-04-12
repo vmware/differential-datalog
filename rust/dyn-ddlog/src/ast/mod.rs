@@ -1,5 +1,6 @@
 mod debug_printing;
-pub mod rewrites;
+pub mod rewrite;
+pub mod transform;
 mod tree;
 
 #[cfg(feature = "debug-printing")]

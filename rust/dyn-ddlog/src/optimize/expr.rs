@@ -2,7 +2,7 @@
 //!
 //! [`egg`]: https://egraphs-good.github.io/
 
-use crate::ast::{BinaryOperand, Expr as AstExpr, ExprKind, Literal};
+use crate::ast::{BinaryOperand, Expr as AstExpr, ExprKind, Ident, Literal};
 use egg::{rewrite, Analysis, Id, Language, Subst};
 
 type EGraph = egg::EGraph<Expr, ExprAnalysis>;
@@ -59,7 +59,7 @@ impl Expr {
     }
 }
 
-pub fn build_egraph(expr: &AstExpr) -> (EGraph, Id) {
+pub fn build_egraph(expr: &AstExpr<Ident>) -> (EGraph, Id) {
     let mut egraph = EGraph::default();
     let root = translate_expr(&mut egraph, expr);
 
@@ -67,7 +67,8 @@ pub fn build_egraph(expr: &AstExpr) -> (EGraph, Id) {
 }
 
 // TODO: Use iteration instead of recursion
-fn translate_expr(egraph: &mut EGraph, expr: &AstExpr) -> Id {
+// TODO: Make this use canonical ids
+fn translate_expr(egraph: &mut EGraph, expr: &AstExpr<Ident>) -> Id {
     match &expr.kind {
         ExprKind::Nested(expr) => translate_expr(egraph, &**expr),
 
