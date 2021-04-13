@@ -244,7 +244,12 @@ impl DDlogProfiling for HDDlog {
     fn profile(&self) -> Result<String, String> {
         self.record_command(|r| r.profile());
         let rprog = self.prog.lock().unwrap();
-        let profile: String = rprog.profile.lock().unwrap().to_string();
+        let profile: String = rprog
+            .profile
+            .as_ref()
+            .map(|profile| profile.lock().unwrap().to_string())
+            .unwrap_or_else(String::new);
+
         Ok(profile)
     }
 }

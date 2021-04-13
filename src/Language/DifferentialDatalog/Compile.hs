@@ -210,6 +210,7 @@ rustLibFiles =
         , ("differential_datalog/src/program/arrange.rs"          , $(embedFile "rust/template/differential_datalog/src/program/arrange.rs"))
         , ("differential_datalog/src/program/timestamp.rs"        , $(embedFile "rust/template/differential_datalog/src/program/timestamp.rs"))
         , ("differential_datalog/src/program/worker.rs"           , $(embedFile "rust/template/differential_datalog/src/program/worker.rs"))
+        , ("differential_datalog/src/program/config.rs"           , $(embedFile "rust/template/differential_datalog/src/program/config.rs"))
         , ("differential_datalog/src/record/mod.rs"               , $(embedFile "rust/template/differential_datalog/src/record/mod.rs"))
         , ("differential_datalog/src/record/tuples.rs"            , $(embedFile "rust/template/differential_datalog/src/record/tuples.rs"))
         , ("differential_datalog/src/record/arrays.rs"            , $(embedFile "rust/template/differential_datalog/src/record/arrays.rs"))

@@ -7,8 +7,10 @@ use crate::{
     },
     program::{
         arrange::{Arrangement, Arrangements},
+        config::{Config, ProfilingKind},
         ArrId, Dep, Msg, ProgNode, Program, Reply, Update, TS,
     },
+    render::RenderContext,
     variable::Variable,
 };
 use crossbeam_channel::{Receiver, Sender};
@@ -31,6 +33,7 @@ use fnv::{FnvBuildHasher, FnvHashMap};
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap},
     mem,
+    net::TcpStream,
     ops::Deref,
     rc::Rc,
     sync::{
@@ -76,11 +79,13 @@ type DelayedVarMap<S> = FnvHashMap<
 pub struct DDlogWorker<'a> {
     /// The timely worker instance
     worker: &'a mut Worker<Allocator>,
+    /// The DDlog program's configuration settings
+    config: Config,
     /// The program this worker is executing
     program: Arc<Program>,
     /// Information on which metrics are enabled and a
     /// channel for sending profiling data
-    profiling: ProfilingData,
+    profiling: Option<ProfilingData>,
     /// The current worker's receiver for receiving messages
     request_receiver: Receiver<Msg>,
     /// The current worker's sender for sending messages
@@ -92,8 +97,9 @@ impl<'a> DDlogWorker<'a> {
     #[allow(clippy::too_many_arguments)]
     pub(super) fn new(
         worker: &'a mut Worker<Allocator>,
+        config: Config,
         program: Arc<Program>,
-        profiling: ProfilingData,
+        profiling: Option<ProfilingData>,
         request_receivers: Arc<[Receiver<Msg>]>,
         reply_senders: Arc<[Sender<Reply>]>,
     ) -> Self {
@@ -101,6 +107,7 @@ impl<'a> DDlogWorker<'a> {
 
         Self {
             worker,
+            config,
             program,
             profiling,
             request_receiver: request_receivers[worker_index].clone(),
@@ -387,66 +394,89 @@ impl<'a> DDlogWorker<'a> {
     }
 
     /// Initialize timely and differential profiling logging hooks
-    fn init_profiling(&self) {
-        let profiling = self.profiling.clone();
-        self.worker
-            .log_register()
-            .insert::<TimelyEvent, _>("timely", move |_time, data| {
-                let profile_cpu = profiling.is_cpu_enabled();
-                let profile_timely = profiling.is_timely_enabled();
+    fn init_profiling(&mut self) {
+        if let Some(profiling) = self.profiling.clone() {
+            let timely_profiling = profiling.clone();
+            self.worker
+                .log_register()
+                .insert::<TimelyEvent, _>("timely", move |_time, data| {
+                    let profile_cpu = timely_profiling.is_cpu_enabled();
+                    let profile_timely = timely_profiling.is_timely_enabled();
 
-                // Filter out events we don't care about to avoid the overhead of sending
-                // the event around just to drop it eventually.
-                let filtered: Vec<((Duration, usize, TimelyEvent), Option<String>)> = data
-                    .drain(..)
-                    .filter(|event| {
-                        match event.2 {
-                            // Always send Operates events as they're used for always-on memory profiling.
-                            TimelyEvent::Operates(_) => true,
+                    // Filter out events we don't care about to avoid the overhead of sending
+                    // the event around just to drop it eventually.
+                    let filtered: Vec<((Duration, usize, TimelyEvent), Option<String>)> = data
+                        .drain(..)
+                        .filter(|event| {
+                            match event.2 {
+                                // Always send Operates events as they're used for always-on memory profiling.
+                                TimelyEvent::Operates(_) => true,
 
-                            // Send scheduling events if profiling is enabled
-                            TimelyEvent::Schedule(_) => profile_cpu || profile_timely,
+                                // Send scheduling events if profiling is enabled
+                                TimelyEvent::Schedule(_) => profile_cpu || profile_timely,
 
-                            // Send timely events if timely profiling is enabled
-                            TimelyEvent::GuardedMessage(_)
-                            | TimelyEvent::Messages(_)
-                            | TimelyEvent::Park(_)
-                            | TimelyEvent::PushProgress(_) => profile_timely,
+                                // Send timely events if timely profiling is enabled
+                                TimelyEvent::GuardedMessage(_)
+                                | TimelyEvent::Messages(_)
+                                | TimelyEvent::Park(_)
+                                | TimelyEvent::PushProgress(_) => profile_timely,
 
-                            _ => false,
+                                _ => false,
+                            }
+                        })
+                        .map(|(d, s, e)| match e {
+                            // Only Operate events care about the context string.
+                            TimelyEvent::Operates(_) => ((d, s, e), Some(get_prof_context())),
+                            _ => ((d, s, e), None),
+                        })
+                        .collect();
+
+                    // If there are any profiling events, record them
+                    if !filtered.is_empty() {
+                        timely_profiling.record(ProfMsg::TimelyMessage(
+                            filtered,
+                            profile_cpu,
+                            profile_timely,
+                        ));
+                    }
+                });
+
+            self.worker.log_register().insert::<DifferentialEvent, _>(
+                "differential/arrange",
+                move |_time, data| {
+                    // If there are events, send them through the profiling channel
+                    if !data.is_empty() {
+                        profiling.record(ProfMsg::DifferentialMessage(mem::take(data)));
+                    }
+                },
+            );
+        } else if let ProfilingKind::TimelyProfiling {
+            differential_dataflow,
+        } = self.config.profiling_kind
+        {
+            if differential_dataflow {
+                if let Ok(addr) = ::std::env::var("DIFFERENTIAL_LOG_ADDR") {
+                    if !addr.is_empty() {
+                        if let Ok(stream) = TcpStream::connect(&addr) {
+                            differential_dataflow::logging::enable(self.worker, stream);
+                            // TODO: Use tracing to log that logging connected successfully
+                        } else {
+                            panic!("Could not connect to differential log address: {:?}", addr);
                         }
-                    })
-                    .map(|(d, s, e)| match e {
-                        // Only Operate events care about the context string.
-                        TimelyEvent::Operates(_) => ((d, s, e), Some(get_prof_context())),
-                        _ => ((d, s, e), None),
-                    })
-                    .collect();
-
-                // If there are any profiling events, record them
-                if !filtered.is_empty() {
-                    profiling.record(ProfMsg::TimelyMessage(
-                        filtered,
-                        profile_cpu,
-                        profile_timely,
-                    ));
+                    }
                 }
-            });
+            }
 
-        let profiling = self.profiling.clone();
-        self.worker.log_register().insert::<DifferentialEvent, _>(
-            "differential/arrange",
-            move |_time, data| {
-                // If there are events, send them through the profiling channel
-                if !data.is_empty() {
-                    profiling.record(ProfMsg::DifferentialMessage(mem::take(data)));
-                }
-            },
-        );
+            // Timely already has its logging hooks set by default
+        } else if self.config.profiling_kind.is_none() {
+            self.worker.log_register().remove("timely");
+            self.worker.log_register().remove("differential/arrange");
+        }
     }
 
     fn session_dataflow(&mut self, mut probe: ProbeHandle<TS>) -> Result<SessionData, String> {
         let program = self.program.clone();
+        let render_context = RenderContext::new(self.config);
 
         self.worker.dataflow::<TS, _, _>(
             |outer: &mut Child<Worker<Allocator>, TS>| -> Result<_, String> {
@@ -459,7 +489,10 @@ impl<'a> DDlogWorker<'a> {
                     program.nodes.len(),
                     FnvBuildHasher::default(),
                 );
-                let mut arrangements = FnvHashMap::default();
+                let mut arrangements: FnvHashMap<
+                    ArrId,
+                    Arrangement<_, Weight, TValAgent<TS>, TKeyAgent<TS>>,
+                > = FnvHashMap::default();
 
                 // Create an `Enabled` relation used to enforce the dataflow termination in the
                 // presence of delayed relations.  A delayed relation can potentially generate an
@@ -507,6 +540,7 @@ impl<'a> DDlogWorker<'a> {
                             rel,
                             outer,
                             &*program,
+                            &render_context,
                             &mut sessions,
                             &mut collections,
                             &mut arrangements,
@@ -523,6 +557,7 @@ impl<'a> DDlogWorker<'a> {
                             node_id,
                             outer,
                             &*program,
+                            &render_context,
                             &mut sessions,
                             &mut collections,
                             &mut arrangements,
@@ -592,90 +627,83 @@ impl<'a> DDlogWorker<'a> {
     }
 }
 
-fn render_relation<'a>(
+// TODO: Add back regions for relations
+fn render_relation<'a, S>(
     relation: &Relation,
     // TODO: Shift to generic representations for ddflow-related structs
-    scope: &mut Child<'a, Worker<Allocator>, TS>,
+    scope: &mut S,
     program: &Program,
+    render_context: &RenderContext,
     sessions: &mut FnvHashMap<RelId, InputSession<TS, DDValue, Weight>>,
-    collections: &mut FnvHashMap<
-        RelId,
-        Collection<Child<'a, Worker<Allocator>, TS>, DDValue, Weight>,
-    >,
-    arrangements: &mut FnvHashMap<
-        ArrId,
-        Arrangement<Child<'a, Worker<Allocator>, TS>, Weight, TValAgent<TS>, TKeyAgent<TS>>,
-    >,
-    delayed_vars: &DelayedVarMap<Child<'a, Worker<Allocator>, TS>>,
-) {
-    scope.clone().region_named(relation.name(), |region| {
-        // Relation may already be in the map if it was created by an `Apply` node
-        let mut collection = if let Some(collection) = collections.remove(&relation.id) {
-            collection.enter_region(region)
-        } else {
-            let (session, collection) = scope.new_collection::<DDValue, Weight>();
-            sessions.insert(relation.id, session);
+    collections: &mut FnvHashMap<RelId, Collection<S, DDValue, Weight>>,
+    arrangements: &mut FnvHashMap<ArrId, Arrangement<S, Weight, TValAgent<TS>, TKeyAgent<TS>>>,
+    delayed_vars: &DelayedVarMap<S>,
+) where
+    S: Scope<Timestamp = TS>,
+{
+    // Relation may already be in the map if it was created by an `Apply` node
+    let mut collection = if let Some(collection) = collections.remove(&relation.id) {
+        collection
+    } else {
+        let (session, collection) = scope.new_collection::<DDValue, Weight>();
+        sessions.insert(relation.id, session);
 
-            // TODO: Find a way to make the collection within the nested region
-            collection.enter_region(region)
+        // TODO: Find a way to make the collection within the nested region
+        collection
+    };
+
+    let entered_arrangements: FnvHashMap<_, ArrangementFlavor<_, TS>> = arrangements
+        .iter()
+        .map(|(&arr_id, arr)| (arr_id, ArrangementFlavor::Local(arr.clone())))
+        .collect();
+
+    // apply rules
+    // TODO: Regions for rules
+    let rule_collections = relation.rules.iter().map(|rule| {
+        let get_rule_collection = |relation_id| {
+            if let Some(collection) = collections.get(&relation_id) {
+                Some(collection.clone())
+            } else {
+                delayed_vars
+                    .get(&relation_id)
+                    .map(|(_, _, collection)| collection.clone())
+            }
         };
 
-        let entered_arrangements: FnvHashMap<_, ArrangementFlavor<_, TS>> = arrangements
-            .iter()
-            .map(|(&arr_id, arr)| (arr_id, ArrangementFlavor::Local(arr.enter_region(region))))
-            .collect();
+        program.mk_rule(
+            rule,
+            get_rule_collection,
+            Arrangements {
+                arrangements: &entered_arrangements,
+            },
+        )
+    });
 
-        // apply rules
-        // TODO: Regions for rules
-        let rule_collections = relation.rules.iter().map(|rule| {
-            let get_rule_collection = |relation_id| {
-                if let Some(collection) = collections.get(&relation_id) {
-                    Some(collection.enter_region(region))
-                } else {
-                    delayed_vars
-                        .get(&relation_id)
-                        .map(|(_, _, collection)| collection.enter_region(region))
-                }
-            };
+    if rule_collections.len() > 0 {
+        collection = with_prof_context(&format!("concatenate rules for {}", relation.name), || {
+            collection.concatenate(rule_collections)
+        });
+    }
 
-            program.mk_rule(
-                rule,
-                get_rule_collection,
-                Arrangements {
-                    arrangements: &entered_arrangements,
-                },
+    // don't distinct input collections, as this is already done by the set_update logic
+    if !relation.input && relation.distinct {
+        collection = with_prof_context(&format!("{}.threshold_total", relation.name), || {
+            collection.threshold_total(|_, c| if *c == 0 { 0 } else { 1 })
+        });
+    }
+
+    // create arrangements
+    // TODO: Arrangements have their own shebang, region them off too
+    for (arr_id, arrangement) in relation.arrangements.iter().enumerate() {
+        with_prof_context(arrangement.name(), || {
+            arrangements.insert(
+                (relation.id, arr_id),
+                arrangement.build_arrangement_root(&render_context, &collection),
             )
         });
+    }
 
-        if rule_collections.len() > 0 {
-            collection =
-                with_prof_context(&format!("concatenate rules for {}", relation.name), || {
-                    collection.concatenate(rule_collections)
-                });
-        }
-
-        // don't distinct input collections, as this is already done by the set_update logic
-        if !relation.input && relation.distinct {
-            collection = with_prof_context(&format!("{}.threshold_total", relation.name), || {
-                collection.threshold_total(|_, c| if *c == 0 { 0 } else { 1 })
-            });
-        }
-
-        // create arrangements
-        // TODO: Arrangements have their own shebang, region them off too
-        for (arr_id, arrangement) in relation.arrangements.iter().enumerate() {
-            with_prof_context(arrangement.name(), || {
-                arrangements.insert(
-                    (relation.id, arr_id),
-                    arrangement
-                        .build_arrangement_root(&collection)
-                        .leave_region(),
-                )
-            });
-        }
-
-        collections.insert(relation.id, collection.leave_region());
-    });
+    collections.insert(relation.id, collection);
 }
 
 // TODO: Regions for SCCs
@@ -685,6 +713,7 @@ fn render_scc<'a>(
     // TODO: Shift to generic representations for ddflow-related structs
     scope: &mut Child<'a, Worker<Allocator>, TS>,
     program: &Program,
+    render_context: &RenderContext,
     sessions: &mut FnvHashMap<RelId, InputSession<TS, DDValue, Weight>>,
     collections: &mut FnvHashMap<
         RelId,
@@ -747,7 +776,7 @@ fn render_scc<'a>(
                     with_prof_context(&format!("local {}", arr.name()), || {
                         local_arrangements.insert(
                             (rel.rel.id, i),
-                            arr.build_arrangement(&*vars.get(&rel.rel.id)?),
+                            arr.build_arrangement(render_context, &*vars.get(&rel.rel.id)?),
                         )
                     });
                 }
@@ -857,7 +886,10 @@ fn render_scc<'a>(
                             format!("no collection found for relation ID {}", rel.rel.id)
                         })?;
 
-                        Ok(arrangements.insert((rel.rel.id, i), arr.build_arrangement(collection)))
+                        Ok(arrangements.insert(
+                            (rel.rel.id, i),
+                            arr.build_arrangement(render_context, collection),
+                        ))
                     },
                 )?;
             }
@@ -867,7 +899,7 @@ fn render_scc<'a>(
     Ok(())
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct ProfilingData {
     /// Whether CPU profiling is enabled
     cpu_enabled: Arc<AtomicBool>,
