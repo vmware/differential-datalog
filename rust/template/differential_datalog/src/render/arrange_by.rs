@@ -2,7 +2,7 @@ use crate::{
     dataflow::{diff_distinct, FilterMap, MapExt},
     ddval::DDValue,
     program::arrange::Arrangement,
-    render::{Offset, Str, TraceKey, TraceValue},
+    render::{Offset, RenderContext, Str, TraceKey, TraceValue},
 };
 use differential_dataflow::{
     difference::Abelian,
@@ -52,7 +52,11 @@ type Arranged<S, R> =
     Arrangement<S, R, TraceAgent<TraceValue<S, R, Offset>>, TraceAgent<TraceKey<S, R, Offset>>>;
 
 impl<'a> ArrangeBy<'a> {
-    pub fn render<S, R>(&self, collection: &Collection<S, DDValue, R>) -> Arranged<S, R>
+    pub fn render<S, R>(
+        &self,
+        _context: &RenderContext,
+        collection: &Collection<S, DDValue, R>,
+    ) -> Arranged<S, R>
     where
         S: Scope,
         S::Timestamp: Lattice,
@@ -108,6 +112,7 @@ impl<'a> ArrangeBy<'a> {
 
     pub fn render_root<S, R>(
         &self,
+        _context: &RenderContext,
         collection: &Collection<S, DDValue, R>,
     ) -> Arrangement<S, R, TraceAgent<TraceValue<S, R, Offset>>, TraceAgent<TraceKey<S, R, Offset>>>
     where

@@ -13,6 +13,7 @@
 // TODO: single input relation
 
 pub mod arrange;
+pub mod config;
 mod timestamp;
 mod update;
 mod worker;
@@ -25,11 +26,15 @@ use crate::{
     ddval::*,
     profile::*,
     record::Mutator,
-    render::arrange_by::{ArrangeBy, ArrangementKind},
+    render::{
+        arrange_by::{ArrangeBy, ArrangementKind},
+        RenderContext,
+    },
 };
 use arrange::{
     antijoin_arranged, Arrangement as DataflowArrangement, ArrangementFlavor, Arrangements,
 };
+use config::{Config, SelfProfilingRig};
 use crossbeam_channel::{Receiver, Sender};
 use fnv::{FnvHashMap, FnvHashSet};
 use std::{
@@ -37,7 +42,6 @@ use std::{
     borrow::Cow,
     cmp,
     collections::{hash_map, BTreeSet},
-    env,
     fmt::{self, Debug, Formatter},
     iter::{self, Cycle, Skip},
     ops::Range,
@@ -45,10 +49,10 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
     },
-    thread::{self, JoinHandle},
+    thread::JoinHandle,
 };
 use timestamp::ToTupleTS;
-use worker::{DDlogWorker, ProfilingData};
+use worker::DDlogWorker;
 
 use differential_dataflow::lattice::Lattice;
 use differential_dataflow::operators::arrange::arrangement::Arranged;
@@ -58,20 +62,17 @@ use differential_dataflow::trace::implementations::ord::OrdKeySpine as DefaultKe
 use differential_dataflow::trace::implementations::ord::OrdValSpine as DefaultValTrace;
 use differential_dataflow::trace::wrappers::enter::TraceEnter;
 use differential_dataflow::trace::{BatchReader, Cursor, TraceReader};
-use differential_dataflow::{Collection, Config as DDFlowConfig};
+use differential_dataflow::Collection;
 use dogsdogsdogs::{
     altneu::AltNeu,
     calculus::{Differentiate, Integrate},
     operators::lookup_map,
 };
+use timely::communication::{initialize::WorkerGuards, Allocator};
 use timely::dataflow::scopes::*;
 use timely::order::TotalOrder;
 use timely::progress::{timestamp::Refines, PathSummary, Timestamp};
 use timely::worker::Worker;
-use timely::{
-    communication::{initialize::WorkerGuards, Allocator},
-    execute::Config as TimelyConfig,
-};
 
 type ValTrace<S> = DefaultValTrace<DDValue, DDValue, S, Weight, u32>;
 type KeyTrace<S> = DefaultKeyTrace<DDValue, S, Weight, u32>;
@@ -776,6 +777,7 @@ impl Arrangement {
 
     fn build_arrangement_root<S>(
         &self,
+        render_context: &RenderContext,
         collection: &Collection<S, DDValue, Weight>,
     ) -> DataflowArrangement<S, Weight, TValAgent<S::Timestamp>, TKeyAgent<S::Timestamp>>
     where
@@ -804,11 +806,12 @@ impl Arrangement {
             kind,
             target_relation: self.name().into(),
         }
-        .render_root(collection)
+        .render_root(render_context, collection)
     }
 
     fn build_arrangement<S>(
         &self,
+        render_context: &RenderContext,
         collection: &Collection<S, DDValue, Weight>,
     ) -> DataflowArrangement<S, Weight, TValAgent<S::Timestamp>, TKeyAgent<S::Timestamp>>
     where
@@ -836,7 +839,7 @@ impl Arrangement {
             kind,
             target_relation: self.name().into(),
         }
-        .render(collection)
+        .render(render_context, collection)
     }
 }
 
@@ -873,13 +876,13 @@ pub struct RunningProgram {
     need_to_flush: bool,
     timestamp: TS,
     /// CPU profiling enabled (can be expensive).
-    profile_cpu: Arc<AtomicBool>,
+    profile_cpu: Option<Arc<AtomicBool>>,
     /// Consume timely_events and output them to CSV file. Can be expensive.
-    profile_timely: Arc<AtomicBool>,
+    profile_timely: Option<Arc<AtomicBool>>,
     /// Profiling thread.
     prof_thread_handle: Option<JoinHandle<()>>,
     /// Profiling statistics.
-    pub profile: Arc<Mutex<Profile>>,
+    pub profile: Option<Arc<Mutex<Profile>>>,
     worker_round_robbin: Skip<Cycle<Range<usize>>>,
 }
 
@@ -988,70 +991,49 @@ enum Reply {
 }
 
 impl Program {
-    /// Instantiate the program with `nworkers` timely threads.
+    /// Instantiate the program with `number_workers` timely threads.
     pub fn run(&self, number_workers: usize) -> Result<RunningProgram, String> {
+        let config = Config {
+            num_timely_workers: number_workers,
+            ..Default::default()
+        };
+
+        self.run_with_config(config)
+    }
+
+    /// Initialize the program with the given configuration
+    pub fn run_with_config(&self, config: Config) -> Result<RunningProgram, String> {
         // Setup channels to communicate with the dataflow.
         // We use async channels to avoid deadlocks when workers are parked in
         // `step_or_park`.  This has the downside of introducing an unbounded buffer
         // that is only guaranteed to be fully flushed when the transaction commits.
-        let (request_send, request_recv): (Vec<_>, Vec<_>) = (0..number_workers)
+        let (request_send, request_recv): (Vec<_>, Vec<_>) = (0..config.num_timely_workers)
             .map(|_| crossbeam_channel::unbounded::<Msg>())
             .unzip();
         let request_recv = Arc::from(request_recv);
 
         // Channels for responses from worker threads.
-        let (reply_send, reply_recv): (Vec<_>, Vec<_>) = (0..number_workers)
+        let (reply_send, reply_recv): (Vec<_>, Vec<_>) = (0..config.num_timely_workers)
             .map(|_| crossbeam_channel::unbounded::<Reply>())
             .unzip();
         let reply_send = Arc::from(reply_send);
 
-        let (prof_send, prof_recv) = crossbeam_channel::bounded(PROF_MSG_BUF_SIZE);
-
-        // Profile data structure
-        let profile = Arc::new(Mutex::new(Profile::new()));
-        let (profile_cpu, profile_timely) = (
-            Arc::new(AtomicBool::new(false)),
-            Arc::new(AtomicBool::new(false)),
-        );
-
-        // Thread to collect profiling data.
-        let cloned_profile = profile.clone();
-        let prof_thread = thread::spawn(move || Self::prof_thread_func(prof_recv, cloned_profile));
+        let profiling_rig = SelfProfilingRig::new(&config);
 
         // Clone the program so that it can be moved into the timely computation
         let program = Arc::new(self.clone());
-        let profiling = ProfilingData::new(profile_cpu.clone(), profile_timely.clone(), prof_send);
-
-        let mut config = TimelyConfig::process(number_workers);
-
-        // Allow configuring the merge behavior of ddflow
-        // FIXME: Expose the merge behavior to all apis and deprecate the env var
-        if let Ok(value) = env::var("DIFFERENTIAL_EAGER_MERGE") {
-            let idle_merge_effort = if value.is_empty() {
-                None
-            } else {
-                let merge_effort: isize = value.parse().map_err(|_| {
-                    "the `DIFFERENTIAL_EAGER_MERGE` variable must be set to an integer value"
-                        .to_owned()
-                })?;
-
-                Some(merge_effort)
-            };
-
-            differential_dataflow::configure(
-                &mut config.worker,
-                &DDFlowConfig { idle_merge_effort },
-            );
-        }
+        let timely_config = config.timely_config()?;
+        let (worker_config, profiling_data) = (config, profiling_rig.profiling_data.clone());
 
         // Start up timely computation.
         let worker_guards = timely::execute(
-            config,
+            timely_config,
             move |worker: &mut Worker<Allocator>| -> Result<_, String> {
                 let worker = DDlogWorker::new(
                     worker,
+                    worker_config,
                     program.clone(),
-                    profiling.clone(),
+                    profiling_data.clone(),
                     Arc::clone(&request_recv),
                     Arc::clone(&reply_send),
                 );
@@ -1116,11 +1098,11 @@ impl Program {
             transaction_in_progress: false,
             need_to_flush: false,
             timestamp: 1,
-            profile_cpu,
-            profile_timely,
-            prof_thread_handle: Some(prof_thread),
-            profile,
-            worker_round_robbin: (0..number_workers).cycle().skip(0),
+            profile_cpu: profiling_rig.profile_cpu,
+            profile_timely: profiling_rig.profile_timely,
+            prof_thread_handle: profiling_rig.profile_thread,
+            profile: profiling_rig.profile,
+            worker_round_robbin: (0..config.num_timely_workers).cycle().skip(0),
         };
         // Wait for the initial transaction to complete.
         running_program.await_flush_ack()?;
@@ -1977,11 +1959,17 @@ impl RunningProgram {
     /// `enable = true`  - enables forwarding. This can be expensive in large dataflows.
     /// `enable = false` - disables forwarding.
     pub fn enable_cpu_profiling(&self, enable: bool) {
-        self.profile_cpu.store(enable, Ordering::SeqCst);
+        if let Some(profile_cpu) = self.profile_cpu.as_ref() {
+            profile_cpu.store(enable, Ordering::SeqCst);
+        }
+        // TODO: Log warning if self profiling is disabled
     }
 
     pub fn enable_timely_profiling(&self, enable: bool) {
-        self.profile_timely.store(enable, Ordering::SeqCst);
+        if let Some(profile_timely) = self.profile_timely.as_ref() {
+            profile_timely.store(enable, Ordering::SeqCst);
+        }
+        // TODO: Log warning if self profiling is disabled
     }
 
     /// Terminate program, killing all worker threads.
