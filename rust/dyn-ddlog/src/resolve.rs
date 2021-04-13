@@ -1,6 +1,6 @@
 use crate::ast::{
-    transform::ExpressionTransformer, Attribute, Declaration, DeclarationKind, Expr, ExprKind,
-    Fact, Function, Ident, Path, Relation, Rule, RuleClause, RuleHead, Type,
+    transform::ExpressionTransformer, Attribute, Block, Declaration, DeclarationKind, Expr,
+    ExprKind, Fact, Function, Ident, Path, Relation, Rule, RuleClause, RuleHead, Type,
 };
 use std::{
     collections::{hash_map::Entry, HashMap},
@@ -578,7 +578,7 @@ impl ExpressionTransformer<Ident> for Resolver {
                 resolved_block.push(self.transform(expr));
             }
 
-            Expr::block(resolved_block)
+            Expr::block(Block::new(resolved_block, block.semicolon_terminated))
         } else {
             unreachable!()
         }

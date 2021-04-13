@@ -7,7 +7,7 @@
 // TODO: Write the .dat parser here so it can share code
 
 use crate::ast::{
-    Attribute, Declaration, DeclarationKind, Expr, Fact, Function, Ident, Path, Literal,
+    Attribute, Block, Declaration, DeclarationKind, Expr, Fact, Function, Ident, Literal, Path,
     Relation, RelationKind, Rule, RuleClause, RuleHead, Type,
 };
 // TODO: Use custom error type
@@ -257,15 +257,15 @@ Path<T>: Vec<T> = {
 
 /// Parse a semicolon separated list of items into a vec,
 /// allowing trailing semicolons or zero elements
-Semicolon<T>: Vec<T> = {
+Semicolon<T>: Block<Ident> = {
     <head: (<T> ";")*> <tail: T?> => match tail {
-        None => head,
+        None => Block::new(head, true),
         Some(tail) => {
             let mut head = head;
             head.reserve(1);
             head.push(tail);
 
-            head
+            Block::new(head, false)
         }
     }
 };

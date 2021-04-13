@@ -1,6 +1,10 @@
-use std::fmt::{self, Debug, Write};
+use crate::ast::rewrites::{BlockSimplifier, ExpressionRewriter, NestingSimplifier};
+use std::{
+    fmt::{self, Debug, Write},
+    slice, vec,
+};
 
-use crate::ast::rewrite::{BlockSimplifier, ExpressionRewriter, NestingSimplifier};
+pub use crate::resolve::Symbol;
 
 // TODO: Source locations
 
@@ -243,9 +247,9 @@ impl<I> Expr<I> {
         }
     }
 
-    pub fn block(exprs: Vec<Expr<I>>) -> Self {
+    pub fn block(block: Block<I>) -> Self {
         Self {
-            kind: ExprKind::Block(exprs),
+            kind: ExprKind::Block(block),
         }
     }
 
@@ -399,6 +403,10 @@ impl<I> Expr<I> {
         matches!(self.kind, ExprKind::Empty)
     }
 
+    pub const fn is_literal(&self) -> bool {
+        matches!(self.kind, ExprKind::Literal(_))
+    }
+
     pub fn simplify_nesting(self) -> Self {
         NestingSimplifier::new().rewrite(self)
     }
@@ -422,7 +430,7 @@ pub enum ExprKind<I> {
     Empty,
 
     Nested(Box<Expr<I>>),
-    Block(Vec<Expr<I>>),
+    Block(Block<I>),
 
     Literal(Literal),
     Ident(I),
@@ -459,9 +467,9 @@ where
                 Debug::fmt(&**inner, f)?;
                 f.write_char(')')
             }
-            ExprKind::Block(inner) => {
+            ExprKind::Block(block) => {
                 f.write_str("Block(")?;
-                Debug::fmt(&**inner, f)?;
+                Debug::fmt(block, f)?;
                 f.write_char(')')
             }
             ExprKind::Literal(literal) => Debug::fmt(literal, f),
@@ -523,6 +531,82 @@ where
                 .field(&**else_)
                 .finish(),
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Block<I> {
+    pub exprs: Vec<Expr<I>>,
+    pub semicolon_terminated: bool,
+}
+
+impl<I> Block<I> {
+    pub fn new(exprs: Vec<Expr<I>>, semicolon_terminated: bool) -> Self {
+        Self {
+            exprs,
+            semicolon_terminated,
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.exprs.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.exprs.is_empty()
+    }
+
+    pub fn remove(&mut self, idx: usize) -> Expr<I> {
+        self.exprs.remove(idx)
+    }
+
+    pub fn get(&self, idx: usize) -> Option<&Expr<I>> {
+        self.exprs.get(idx)
+    }
+
+    pub fn get_mut(&mut self, idx: usize) -> Option<&mut Expr<I>> {
+        self.exprs.get_mut(idx)
+    }
+
+    pub fn iter(&self) -> slice::Iter<'_, Expr<I>> {
+        self.exprs.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> slice::IterMut<'_, Expr<I>> {
+        self.exprs.iter_mut()
+    }
+}
+
+impl<I> Default for Block<I> {
+    fn default() -> Self {
+        Self::new(Vec::new(), false)
+    }
+}
+
+impl<I> IntoIterator for Block<I> {
+    type IntoIter = vec::IntoIter<Expr<I>>;
+    type Item = Expr<I>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.exprs.into_iter()
+    }
+}
+
+impl<'a, I> IntoIterator for &'a Block<I> {
+    type IntoIter = slice::Iter<'a, Expr<I>>;
+    type Item = &'a Expr<I>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.exprs.iter()
+    }
+}
+
+impl<'a, I> IntoIterator for &'a mut Block<I> {
+    type IntoIter = slice::IterMut<'a, Expr<I>>;
+    type Item = &'a mut Expr<I>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.exprs.iter_mut()
     }
 }
 

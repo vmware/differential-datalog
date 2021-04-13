@@ -1,5 +1,93 @@
-use crate::ast::{Expr, ExprKind};
+mod block_simplifier;
+mod nesting_eliminator;
+mod nesting_simplifier;
+
+pub use block_simplifier::BlockSimplifier;
+pub use nesting_eliminator::NestingEliminator;
+pub use nesting_simplifier::NestingSimplifier;
+
+use crate::ast::{Declaration, DeclarationKind, Expr, ExprKind, Ident, RuleClause};
 use std::mem;
+
+pub fn default_ast_rewrites() -> Vec<Box<dyn ExpressionRewriter<Ident>>> {
+    vec![
+        Box::new(NestingEliminator::new()),
+        Box::new(BlockSimplifier::new()),
+        // TODO: Fixpoint optimization
+    ]
+}
+
+pub fn rewrite_declarations(
+    rewrite: &mut dyn ExpressionRewriter<Ident>,
+    declarations: &mut Vec<Declaration<Ident>>,
+) {
+    for declaration in declarations {
+        // Rewrite all attribute expressions
+        if rewrite.valid_for(ExprLocation::Attribute) {
+            for attr in declaration.attributes.iter_mut() {
+                if let Some(value) = attr.value.as_mut() {
+                    *value = rewrite.rewrite(mem::take(value));
+                }
+            }
+        }
+
+        match &mut declaration.kind {
+            DeclarationKind::Relation(_relation) => {}
+
+            DeclarationKind::Rule(rule) => {
+                // Rewrite rule heads
+                if rewrite.valid_for(ExprLocation::RuleHead) {
+                    for head in rule.heads.iter_mut() {
+                        for field in head.fields.iter_mut() {
+                            *field = rewrite.rewrite(mem::take(field));
+                        }
+                    }
+                }
+
+                // Rewrite rule clauses
+                if rewrite.valid_for(ExprLocation::RuleClause) {
+                    for clause in rule.clauses.iter_mut() {
+                        rewrite_clause(rewrite, clause);
+                    }
+                }
+            }
+
+            DeclarationKind::Fact(fact) => {
+                // Rewrite the heads of facts
+                if rewrite.valid_for(ExprLocation::FactHead) {
+                    for head in fact.heads.iter_mut() {
+                        for field in head.fields.iter_mut() {
+                            *field = rewrite.rewrite(mem::take(field));
+                        }
+                    }
+                }
+            }
+
+            // Rewrite function bodies
+            DeclarationKind::Function(function) if rewrite.valid_for(ExprLocation::Function) => {
+                function.body = rewrite.rewrite(mem::take(&mut function.body));
+            }
+
+            _ => {}
+        }
+    }
+}
+
+fn rewrite_clause(rewrite: &mut dyn ExpressionRewriter<Ident>, clause: &mut RuleClause<Ident>) {
+    match clause {
+        RuleClause::Relation { fields, .. } => {
+            for field in fields {
+                *field = rewrite.rewrite(mem::take(field));
+            }
+        }
+
+        RuleClause::Negated(negated) => rewrite_clause(rewrite, negated),
+
+        RuleClause::Expr(expr) => {
+            *expr = rewrite.rewrite(mem::take(expr));
+        }
+    }
+}
 
 macro_rules! noop_rewrite {
     ($($rewrite:ident),* $(,)?) => {
@@ -78,7 +166,20 @@ macro_rules! binary_rewrite {
     () => { };
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ExprLocation {
+    Attribute,
+    Function,
+    RuleHead,
+    RuleClause,
+    FactHead,
+}
+
 pub trait ExpressionRewriter<I> {
+    fn valid_for(&self, _location: ExprLocation) -> bool {
+        true
+    }
+
     fn rewrite(&mut self, expr: Expr<I>) -> Expr<I> {
         let apply = match expr.kind {
             ExprKind::Wildcard => Self::rewrite_wildcard,
@@ -148,102 +249,5 @@ pub trait ExpressionRewriter<I> {
         }
 
         if_
-    }
-}
-
-pub struct BlockSimplifier;
-
-impl BlockSimplifier {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-// TODO: Make sure to collapse spans whenever those are implemented
-impl<I> ExpressionRewriter<I> for BlockSimplifier {
-    /// Collapse redundant blocks, e.g. { 1 } => 1
-    fn rewrite_block(&mut self, mut block: Expr<I>) -> Expr<I> {
-        if let ExprKind::Block(block_exprs) = &mut block.kind {
-            let mut idx = 0;
-            while let Some(expr) = block_exprs.get_mut(idx) {
-                *expr = self.rewrite(mem::take(expr));
-
-                if expr.is_empty() {
-                    block_exprs.remove(idx);
-                } else {
-                    idx += 1;
-                }
-            }
-
-            if block_exprs.is_empty() {
-                block.kind = ExprKind::Empty;
-            } else if block_exprs.len() == 1 {
-                block = block_exprs.remove(0);
-            }
-        }
-
-        block
-    }
-}
-
-impl Default for BlockSimplifier {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-pub struct NestingSimplifier;
-
-impl NestingSimplifier {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-// TODO: Make sure to collapse spans whenever those are implemented
-impl<I> ExpressionRewriter<I> for NestingSimplifier {
-    /// Collapse nested nestings, e.g. ((1)) => 1
-    fn rewrite_nested(&mut self, mut nested: Expr<I>) -> Expr<I> {
-        if let ExprKind::Nested(mut inner) = nested.kind {
-            let rewritten = self.rewrite(mem::take(&mut *inner));
-
-            if let ExprKind::Nested(inner) = rewritten.kind {
-                nested = *inner;
-
-            // Nesting around nothing does nothing
-            // TODO: This could interact badly with unit literals
-            } else if rewritten.is_empty() {
-                nested.kind = ExprKind::Empty;
-            } else {
-                nested.kind = ExprKind::Nested(Box::new(rewritten));
-            }
-        }
-
-        nested
-    }
-
-    /// Remove instances of nesting from within blocks, e.g.
-    /// { (1) } => { 1 }
-    fn rewrite_block(&mut self, mut block: Expr<I>) -> Expr<I> {
-        if let ExprKind::Block(block) = &mut block.kind {
-            for expr in block {
-                let rewritten = self.rewrite(mem::take(expr));
-
-                // Nesting within block expressions is redundant
-                if let ExprKind::Nested(inner) = rewritten.kind {
-                    *expr = *inner;
-                } else {
-                    *expr = rewritten;
-                }
-            }
-        }
-
-        block
-    }
-}
-
-impl Default for NestingSimplifier {
-    fn default() -> Self {
-        Self::new()
     }
 }
