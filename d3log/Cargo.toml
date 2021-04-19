@@ -1,0 +1,22 @@
+[package]
+name = "mm3"
+version = "0.1.0"
+authors = ["ehoffman"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies.differential_datalog]
+path = "mm_ddlog/differential_datalog"
+
+[dependencies]
+tokio = {version = "1.4.0", features =["net", "macros", "rt-multi-thread", "io-util", "rt"]}
+tokio-fd = {version = "0.3.0"}
+rustop = { version = "1.0.2"}
+nix = { version = "0.20.0"}
+serde_json = "1.0.60"
+phf = {version="0.8", features = ["macros"]}
+#async-trait = "0.1.48"
+async-std = "1.9.0"
+mm = {version = "0.1.0", path = "mm_ddlog"}
+serde = { version = "1.0", features = ["derive"] }

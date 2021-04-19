@@ -1,0 +1,17 @@
+import matrix
+
+// we kind of really wanted to leave this open to the application,
+// but since its kind of a contract between the application and
+// the execution environment, we define this here. 
+
+input relation Workers(x:D3logLocationId)
+
+// matrix or its batch wants to be higher order
+// but anyways, this isn't really how we're going to boot
+
+// Matrix(i, j, k) :- iMatrix(i, j, k).
+//   args("n", n), 
+//   string_to_int(ni, n),
+//   count(Workers).
+
+   
