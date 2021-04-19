@@ -107,10 +107,11 @@ impl Display for Batch {
     }
 }
 
+// this is not send because box<!Sized> is not send
 pub struct BatchIterator {
     relid:RelId,
-    rels:Box<dyn Iterator<Item = (RelId, BTreeMap<DDValue, isize>)>>,
-    items:Box<dyn Iterator<Item = (DDValue, isize)>>,
+    rels:Box<dyn Iterator<Item = (RelId, BTreeMap<DDValue, isize>)> + Send>,
+    items:Box<dyn Iterator<Item = (DDValue, isize)> +Send>,
 }
 
 impl Iterator for BatchIterator {
