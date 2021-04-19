@@ -25,6 +25,7 @@ pub use update::Update;
 use crate::{
     ddval::*,
     profile::*,
+    program::config::ProfilingKind,
     record::Mutator,
     render::{
         arrange_by::{ArrangeBy, ArrangementKind},
@@ -995,6 +996,7 @@ impl Program {
     pub fn run(&self, number_workers: usize) -> Result<RunningProgram, String> {
         let config = Config {
             num_timely_workers: number_workers,
+            profiling_kind: ProfilingKind::SelfProfiling,
             ..Default::default()
         };
 
