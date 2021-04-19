@@ -22,7 +22,7 @@ pub struct Config {
     /// These extra regions *significantly* help with the readability
     /// of the generated dataflows at the cost of a minor performance
     /// penalty. Best used with [`ProfilingKind::TimelyProfiling`]
-    /// in order to see the
+    /// in order to visualize the dataflow graph
     pub enable_debug_regions: bool,
     /// The kind of profiling to enable
     pub profiling_kind: ProfilingKind,
