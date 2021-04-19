@@ -458,8 +458,8 @@ impl<'a> DDlogWorker<'a> {
                 if let Ok(addr) = ::std::env::var("DIFFERENTIAL_LOG_ADDR") {
                     if !addr.is_empty() {
                         if let Ok(stream) = TcpStream::connect(&addr) {
-                            differential_dataflow::logging::enable(self.worker, stream);
                             // TODO: Use tracing to log that logging connected successfully
+                            differential_dataflow::logging::enable(self.worker, stream);
                         } else {
                             panic!("Could not connect to differential log address: {:?}", addr);
                         }
@@ -467,7 +467,7 @@ impl<'a> DDlogWorker<'a> {
                 }
             }
 
-            // Timely already has its logging hooks set by default
+        // Timely already has its logging hooks set by default
         } else if self.config.profiling_kind.is_none() {
             self.worker.log_register().remove("timely");
             self.worker.log_register().remove("differential/arrange");
@@ -628,7 +628,8 @@ impl<'a> DDlogWorker<'a> {
 }
 
 // TODO: Add back regions for relations
-fn render_relation<'a, S>(
+#[allow(clippy::clippy::too_many_arguments)]
+fn render_relation<S>(
     relation: &Relation,
     // TODO: Shift to generic representations for ddflow-related structs
     scope: &mut S,
@@ -707,6 +708,7 @@ fn render_relation<'a, S>(
 }
 
 // TODO: Regions for SCCs
+#[allow(clippy::clippy::too_many_arguments)]
 fn render_scc<'a>(
     rels: &[RecursiveRelation],
     node_id: RelId,
