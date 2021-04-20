@@ -74,16 +74,27 @@ impl TcpNetwork {
     pub fn new () -> TcpNetwork {
         TcpNetwork{peers:Arc::new(Mutex::new(HashMap::new()))}
     }
+}
 
+#[derive(Clone)]
+pub struct ArcTcpNetwork {
+    n : Arc::<Mutex::<TcpNetwork>>
+}
+
+impl ArcTcpNetwork {
+    pub fn new () -> ArcTcpNetwork{
+        ArcTcpNetwork{n:Arc::new(Mutex::new(TcpNetwork::new()))}
+    }
+    
     pub fn send(&self, nid:Node, _b:Arc::<Mutex::<Batch>>) ->
         Result<Pin<Box<dyn Future<Output=Result<(),std::io::Error>> + Send + Sync + '_>>,
                std::io::Error> {
             println!("send {}", nid);
             Ok(Box::pin(async move {
-                let p = &mut (*self.peers).lock().await;
+                let p = &mut (*self.lock().peers).lock().await;
                 let encoded = Vec::<u8>::new();
                 // actually this creates a connection, so...kinda yeah
-                let c = self.soft_intern(nid).await.expect("cant fail");
+                let c = self.lock().soft_intern(nid).await.expect("cant fail");
                 let mut cl = c.lock().await;
                 cl.write_all(&encoded).await
             }))

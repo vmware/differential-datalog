@@ -1,7 +1,6 @@
 use std::time::{SystemTime,UNIX_EPOCH};
 use std::collections::HashMap;
-use crate::{tcp_network::TcpNetwork,
-            batch::Batch,
+use crate::{batch::Batch,
             Node};
 use mm_ddlog::api::HDDlog;
 use std::sync::Arc;
@@ -9,6 +8,7 @@ use std::sync::Arc;
 use async_std::sync::Mutex;
 use tokio::task;
 use differential_datalog::{DeltaMap, D3log, program::Update, DDlog, DDlogDynamic};
+use crate::tcp_network::ArcTcpNetwork;
 
 pub type Timestamp = u64;
 
@@ -18,7 +18,7 @@ pub struct TransactionManager {
     progress : Vec<Timestamp>,
     
     // would like tcp network to be a trait object
-    n : TcpNetwork,
+    n : ArcTcpNetwork,
     
     // need access to some hddlog to call d3log_localize_val
     h : HDDlog,
@@ -46,7 +46,7 @@ impl TransactionManager {
         match HDDlog::run(1, false) {
             Ok((hddlog, _init_output)) => {
                 TransactionManager{
-                    n:TcpNetwork::new(),
+                    n:ArcTcpNetwork::new(),
                     h:hddlog, // arc?
                     progress:Vec::new(),
                 }
@@ -63,7 +63,7 @@ impl TransactionManager {
 // no asynch trait
 // maybe this belongs in network?
 
-pub async fn forward(tm : Arc::<Mutex::<TransactionManager>>,  input: Batch)  -> Result<(), std::io::Error> {
+pub async fn forward(tm: Arc::<Mutex::<TransactionManager>>,   input: Batch)  -> Result<(), std::io::Error> {
     let mut output = HashMap::<Node, Arc::<Mutex::<Batch>>>::new();
     for (rel, v, weight) in input {
         let tma = &*tm.lock().await;
@@ -89,22 +89,22 @@ pub async fn forward(tm : Arc::<Mutex::<TransactionManager>>,  input: Batch)  ->
         }
     }
 
-
-
     let mut tasks = Vec::new();
     // xxx - rust has issues getting a mut reference through this tuple unification..    
     for (nid, _) in &output {
         let upd = output.get(&nid);// get_mut?
-        // at minimum we should fork/join here
         let b = upd.expect("cant happen");
-        // xxx - lock held across blocking operation?
-        // we should let these sends complete async - needs some sort of collection bucket that
-        // calls poll?
-        let n = {&(&(*tm.lock().await)).n};
-        let t = match n.send(*nid,b.clone()) {
-            Ok(x) => x, Err(x) => return Err(x)
-        };
-        tasks.push(task::spawn(t));
+        {
+            let n = {
+                let k = &tm.clone();
+                // omg rust...now we're cool about tm, but the x (nee n) is still held too long 
+                let x = k.lock().await.n.clone() ; x
+            };
+            match n.send(*nid, b.clone()) {
+                Ok(x) => tasks.push(task::spawn(x)),
+                Err(x) => return Err(x)
+            };
+        }
     }
     Ok(())
 }
