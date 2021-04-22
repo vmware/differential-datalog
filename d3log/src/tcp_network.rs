@@ -15,7 +15,7 @@ use crate::child::output_json;
 use crate::batch::singleton;
 
 
-async fn process_socket(_n:&TcpNetwork, mut s: TcpStream) -> Result<(), std::io::Error> {
+async fn process_socket(_n:&TcpNetwork<'static>, mut s: TcpStream) -> Result<(), std::io::Error> {
     let mut jf = JsonFramer::new();
     let mut buffer = [0; 64];
     let k = s.read(&mut buffer).await?;
@@ -45,8 +45,8 @@ pub fn nid_to_socketaddr(n:Node) -> SocketAddr {
     SocketAddr::new(IpAddr::V4(Ipv4Addr::new(b[0], b[1], b[2], b[3])), u16::from_be_bytes([b[4], b[5]]))
 }
 
-pub struct TcpNetwork {
-    peers : Arc::<Mutex::<HashMap<Node, Arc::<Mutex::<TcpStream>>>>>
+pub struct TcpNetwork<'a> {
+    peers : &'a Arc::<Mutex::<HashMap<Node, Arc::<Mutex::<TcpStream>>>>>
 }
 
 
@@ -57,7 +57,7 @@ pub struct TcpNetwork {
 // MutexGuard does not implement Send. So its unclear how to let such
 // a trait function mutate. punting.
 
-impl TcpNetwork {
+impl TcpNetwork<'_> {
     pub async fn soft_intern(&self, nid:Node) -> Result<Arc::<Mutex::<TcpStream>>, std::io::Error> {
         let p = &mut (*self.peers).lock().await;
         
@@ -71,30 +71,30 @@ impl TcpNetwork {
         }
     }
         
-    pub fn new () -> TcpNetwork {
-        TcpNetwork{peers:Arc::new(Mutex::new(HashMap::new()))}
+    pub fn new () -> TcpNetwork<'static> {
+        TcpNetwork{peers: &Arc::new(Mutex::new(HashMap::new()))}
     }
 }
 
 #[derive(Clone)]
-pub struct ArcTcpNetwork {
-    n : Arc::<Mutex::<TcpNetwork>>
+pub struct ArcTcpNetwork<'a> {
+    n : Arc::<Mutex::<TcpNetwork<'a>>>
 }
 
-impl ArcTcpNetwork {
-    pub fn new () -> ArcTcpNetwork{
+impl ArcTcpNetwork<'_> {
+    pub fn new () -> ArcTcpNetwork<'static>{
         ArcTcpNetwork{n:Arc::new(Mutex::new(TcpNetwork::new()))}
     }
     
-    pub fn send(&self, nid:Node, _b:Arc::<Mutex::<Batch>>) ->
+    pub fn send(&'static self, nid:Node, _b:Arc::<Mutex::<Batch>>) ->
         Result<Pin<Box<dyn Future<Output=Result<(),std::io::Error>> + Send + Sync + '_>>,
                std::io::Error> {
             println!("send {}", nid);
             Ok(Box::pin(async move {
-                let p = &mut (*self.lock().peers).lock().await;
+                let p = &mut (*self.n.lock().await.peers).lock().await;
                 let encoded = Vec::<u8>::new();
                 // actually this creates a connection, so...kinda yeah
-                let c = self.lock().soft_intern(nid).await.expect("cant fail");
+                let c = self.n.lock().await.soft_intern(nid).await.expect("cant fail");
                 let mut cl = c.lock().await;
                 cl.write_all(&encoded).await
             }))
@@ -103,7 +103,7 @@ impl ArcTcpNetwork {
 
 use mm_ddlog::typedefs::d3::Workers;
 
-pub async fn bind(n:&TcpNetwork, _t:Arc<Mutex<TransactionManager>>) -> Result<(), std::io::Error> {
+pub async fn bind(n:TcpNetwork<'static>, _t:Arc<Mutex<TransactionManager<'static>>>) -> Result<(), std::io::Error> {
     let listener = TcpListener::bind("127.0.0.1:0").await?;
     
     // there is likely a more direct translation not through strings - reevalute nid
@@ -118,7 +118,7 @@ pub async fn bind(n:&TcpNetwork, _t:Arc<Mutex<TransactionManager>>) -> Result<()
         let (socket, a) = listener.accept().await?;
         output_json(&(singleton("Connection", &(address_to_nid(a) as u64).ddvalue())?)).await?;
         // xxx - socket errors shouldn't stop the listener
-        process_socket(n, socket).await?;
+        process_socket(&n, socket).await?;
     }    
 }
 

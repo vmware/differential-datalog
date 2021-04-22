@@ -37,7 +37,7 @@ pub async fn output_json(k:&Batch)  -> Result<(), std::io::Error>  {
 // batch to arrive is assumed to contain everything needed.  so once
 // we get that from everyone, we kick off evaluation
 
-async fn read_output(t: Arc::<Mutex::<TransactionManager>>, f:Box::<Fd>) -> Result<(), std::io::Error> {
+async fn read_output(t: &'static Arc::<Mutex::<TransactionManager<'static>>>, f:Box::<Fd>) -> Result<(), std::io::Error> {
     let mut jf = JsonFramer::new();    
     let mut pin = AsyncFd::try_from(*f)?;
     let mut buffer = [0; 64];
@@ -51,7 +51,7 @@ async fn read_output(t: Arc::<Mutex::<TransactionManager>>, f:Box::<Fd>) -> Resu
                 Ok(b) => {
                     // println!("eval completez {}", b);
                     // shouldn't exit on eval error
-                    forward(t.clone(), b).await?; // not really dude
+                    forward(&t, b).await?; // not really dude
                 }
                 
                 Err(x) =>  {
@@ -71,13 +71,13 @@ pub fn start_node(f:Vec::<Fd>) {
     
     rt.block_on(async move {
         for i in f {
-            let tc= t.clone();
-            spawn(async move {match read_output(tc, Box::new(i)).await {
+//            let tc= t.clone();
+            spawn(async move {match read_output(&t, Box::new(i)).await {
                 Ok(_)=>(),
                 Err(x)=> {println!("err {}", x); ()} // process exit
             }});
         }
-        match bind(&n, t).await {
+        match bind(n, t).await {
             Ok(_) => (),
             Err(x) => {print!("bind failure {}", x);
                        return}

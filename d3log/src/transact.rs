@@ -13,12 +13,13 @@ use crate::tcp_network::ArcTcpNetwork;
 pub type Timestamp = u64;
 
 
-pub struct TransactionManager {
+pub struct TransactionManager<'a> {
     // svcc needs the membership, so we are going to assign nids
     progress : Vec<Timestamp>,
     
-    // would like tcp network to be a trait object
-    n : ArcTcpNetwork,
+    // would like network to be a trait object - since sync returns
+    // a future this is now 
+    n : ArcTcpNetwork<'a>,
     
     // need access to some hddlog to call d3log_localize_val
     h : HDDlog,
@@ -37,12 +38,12 @@ fn current_time() ->Timestamp {
     return ms as u64;
 }
 
-impl TransactionManager {
+impl TransactionManager<'_> {
     fn start(){
     }
     
     // pass network
-    pub fn new() -> TransactionManager {
+    pub fn new() -> TransactionManager<'static> {
         match HDDlog::run(1, false) {
             Ok((hddlog, _init_output)) => {
                 TransactionManager{
@@ -63,7 +64,7 @@ impl TransactionManager {
 // no asynch trait
 // maybe this belongs in network?
 
-pub async fn forward(tm: Arc::<Mutex::<TransactionManager>>,   input: Batch)  -> Result<(), std::io::Error> {
+pub async fn forward(tm: &'static Arc::<Mutex::<TransactionManager<'static>>>,   input: Batch)  -> Result<(), std::io::Error> {
     let mut output = HashMap::<Node, Arc::<Mutex::<Batch>>>::new();
     for (rel, v, weight) in input {
         let tma = &*tm.lock().await;
@@ -95,12 +96,7 @@ pub async fn forward(tm: Arc::<Mutex::<TransactionManager>>,   input: Batch)  ->
         let upd = output.get(&nid);// get_mut?
         let b = upd.expect("cant happen");
         {
-            let n = {
-                let k = &tm.clone();
-                // omg rust...now we're cool about tm, but the x (nee n) is still held too long 
-                let x = k.lock().await.n.clone() ; x
-            };
-            match n.send(*nid, b.clone()) {
+            match tm.lock().await.n.send(*nid, b.clone()) {
                 Ok(x) => tasks.push(task::spawn(x)),
                 Err(x) => return Err(x)
             };
@@ -110,7 +106,7 @@ pub async fn forward(tm: Arc::<Mutex::<TransactionManager>>,   input: Batch)  ->
 }
 
 
-pub async fn eval(t : Arc::<Mutex::<TransactionManager>>, input: Batch) -> Result<Batch, String> {
+pub async fn eval(t : Arc::<Mutex::<TransactionManager<'static>>>, input: Batch) -> Result<Batch, String> {
     let tm = t.lock().await;
     let h = &tm.h;
 
