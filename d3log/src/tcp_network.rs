@@ -97,11 +97,19 @@ impl ArcTcpNetwork {
             // this is racy because we keep having to drop this lock across
             // await. if we lose, there will be a once used but after idle
             // connection
-            match p.lock().await.entry(nid).or_insert(
-                    match TcpStream::connect(nid_to_socketaddr(nid)).await {
-                        Ok(x) => Arc::new(Mutex::new(x)),
-                        Err(_x) => panic!("x"),
-                    }).lock().await.write_all(&encoded).await {
+            match p
+                .lock()
+                .await
+                .entry(nid)
+                .or_insert(match TcpStream::connect(nid_to_socketaddr(nid)).await {
+                    Ok(x) => Arc::new(Mutex::new(x)),
+                    Err(_x) => panic!("x"),
+                })
+                .lock()
+                .await
+                .write_all(&encoded)
+                .await
+            {
                 Ok(_) => Ok(()),
                 // these need to get directed to a retry machine and an async reporting relation
                 Err(_x) => panic!("send error"),
