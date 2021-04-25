@@ -12,7 +12,7 @@ pub type Timestamp = u64;
 
 pub struct TransactionManager {
     // svcc needs the membership, so we are going to assign nids
-    progress: Vec<Timestamp>,
+    // progress: Vec<Timestamp>,
 
     // would like network to be a trait object - since sync returns
     // a future this is now
@@ -32,7 +32,7 @@ fn current_time() -> Timestamp {
         // fix this with a little sequence number
         .expect("Monotonicity violation");
     let ms = delta.subsec_millis();
-    return ms as u64;
+    ms as u64
 }
 
 #[derive(Clone)]

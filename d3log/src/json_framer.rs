@@ -57,13 +57,10 @@ impl JsonFramer {
                     Some(x) => self.w.push(*x),
                     None => {
                         // dont allow atoms at the top level
-                        if self.w.is_empty() {
-                            if !WHITESPACE.contains(c) {
-                                return Err(Error::new(
-                                    ErrorKind::Other,
-                                    format!("extraneaous character {}", c),
-                                ));
-                            }
+                        if self.w.is_empty() && !WHITESPACE.contains(c) {
+                            return Err(Error::new(
+                                ErrorKind::Other,
+                                format!("extraneaous character {}", std::str::from_utf8(body).expect(""))));
                         }
                     }
                 }

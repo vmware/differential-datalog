@@ -15,6 +15,7 @@ use std::io::{Error, ErrorKind};
 type Fd = std::os::unix::io::RawFd;
 use nix::unistd::*;
 
+// xxx - this should follow trait Network
 pub async fn output_json(k: &Batch) -> Result<(), std::io::Error> {
     //    println!("{}", serde_json::to_string(&k)?);
     let js = match serde_json::to_string(&k) {
@@ -80,8 +81,7 @@ pub fn start_node(f: Vec<Fd>) {
         match bind(n, t).await {
             Ok(_) => (),
             Err(x) => {
-                print!("bind failure {}", x);
-                return;
+                panic!("bind failure {}", x);
             }
         };
     });

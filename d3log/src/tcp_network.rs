@@ -38,7 +38,8 @@ pub fn address_to_nid(peer: SocketAddr) -> Node {
 }
 
 pub fn nid_to_socketaddr(n: Node) -> SocketAddr {
-    let b = n.to_be_bytes();
+    let b = n.to_le_bytes();
+    println!("ip {:x?}", b);
     SocketAddr::new(
         IpAddr::V4(Ipv4Addr::new(b[0], b[1], b[2], b[3])),
         u16::from_be_bytes([b[4], b[5]]),
@@ -103,7 +104,7 @@ impl ArcTcpNetwork {
                 .entry(nid)
                 .or_insert(match TcpStream::connect(nid_to_socketaddr(nid)).await {
                     Ok(x) => Arc::new(Mutex::new(x)),
-                    Err(_x) => panic!("x"),
+                    Err(_x) => panic!("connection failure {}", nid_to_socketaddr(nid)),
                 })
                 .lock()
                 .await
@@ -122,15 +123,12 @@ impl ArcTcpNetwork {
 
 use mm_ddlog::typedefs::d3::Workers;
 
+// xxx - caller should get the address and send the address fact, not us
 pub async fn bind(n: TcpNetwork, _t: ArcTransactionManager) -> Result<(), std::io::Error> {
     let listener = TcpListener::bind("127.0.0.1:0").await?;
 
-    // there is likely a more direct translation not through strings - reevalute nid
     let a = listener.local_addr().unwrap();
     let nid = address_to_nid(a);
-    // should be a better contract about the name(s) of the membership relations, or more broadly
-    // system defined relations
-
     let w = Workers { x: nid }.into_ddvalue();
     output_json(&(singleton("d3::Workers", &w)?)).await?;
     loop {

@@ -64,7 +64,7 @@ impl<'de> Visitor<'de> for BatchVisitor {
         let t: Option<u64> = e.next_element()?;
         match t {
             Some(t) => b.timestamp = t,
-            None => return Err(de::Error::custom(format!("expected integer timestamp"))),
+            None => return Err(de::Error::custom("expected integer timestamp")),
         }
 
         let k: Option<Vec<UpdateSerializer>> = e.next_element()?;
@@ -74,11 +74,11 @@ impl<'de> Visitor<'de> for BatchVisitor {
                     let u = Update::<DDValue>::from(i);
                     match u {
                         Update::Insert { relid, v } => b.b.update(relid, &v, 1),
-                        _ => return Err(de::Error::custom(format!("invalid value"))),
+                        _ => return Err(de::Error::custom("invalid value")),
                     }
                 }
             }
-            None => return Err(de::Error::custom(format!("unable to parse update set"))),
+            None => return Err(de::Error::custom("unable to parse update set")),
         }
 
         Ok(b)
@@ -102,7 +102,7 @@ impl Display for Batch {
             f.write_str(&format!("({}", relid))?; // name
             let mut m = 0;
             for (_v, _) in vees {
-                m = m + 1;
+                m += 1;
             }
             f.write_str(&format!(" {})", m))?;
         }
@@ -174,7 +174,7 @@ pub fn singleton(
 ) -> Result<Batch, std::io::Error> {
     let mrel = match Relations::try_from(rel) {
         Ok(x) => x as usize,
-        Err(_x) => return Err(Error::new(ErrorKind::Other, "bad relation")),
+        Err(_x) => return Err(Error::new(ErrorKind::Other, format!("bad relation {}", rel))),
     };
 
     let mut d = Batch::new(DeltaMap::<differential_datalog::ddval::DDValue>::new());
