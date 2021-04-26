@@ -138,7 +138,11 @@ impl ArcTcpNetwork {
                     match sclone.lock().await.read(&mut buffer).await {
                         Ok(bytes_input) =>
                             for i in jf.append(&buffer[0..bytes_input]).expect("json coding error") {
-                                println!("{}", i);
+                                let v: Batch = match serde_json::from_str(&i) {
+                                    Ok(x) => x,
+                                    Err(x) => panic!(x)
+                                };
+                                println!("{}", v);
                             },
                         Err(x) => panic!("read error {}", x)
                     }

@@ -62,10 +62,15 @@ impl ArcTransactionManager {
             // prog. we certainly dont need a lock on tm
             match tma.h.d3log_localize_val(rel, v.clone()) {
                 // xxx - match none on locid?
-                Ok((loc_id, in_rel, inner_val)) => output
-                    .entry(loc_id.unwrap())
-                    .or_insert(Box::new(Batch::new(DeltaMap::new())))
-                    .insert(in_rel, inner_val, weight as u32),
+                Ok((loc_id, in_rel, inner_val)) => {
+                    // if loc_id is null, we aren't to forward
+                    if let Some(loc) = loc_id {
+                        output
+                            .entry(loc)
+                            .or_insert(Box::new(Batch::new(DeltaMap::new())))
+                            .insert(in_rel, inner_val, weight as u32)
+                    }
+                },
                 Err(val) => println!("{} {:+}", val, weight),
             }
         }
