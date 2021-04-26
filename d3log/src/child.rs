@@ -1,8 +1,7 @@
 use crate::{
     json_framer::JsonFramer,
-    tcp_network::bind,
-    tcp_network::TcpNetwork,
-    transact::{eval, forward, ArcTransactionManager},
+    tcp_network::ArcTcpNetwork,
+    transact::{ArcTransactionManager},
     Batch,
 };
 
@@ -15,15 +14,20 @@ use std::io::{Error, ErrorKind};
 type Fd = std::os::unix::io::RawFd;
 use nix::unistd::*;
 
+const CHILD_INPUT_FD: i32 = 3;
+const CHILD_OUTPUT_FD: i32 = 4;
+
 // xxx - this should follow trait Network
 // really we probably want to have a forwarding table
+// xxx child read input
+
 pub async fn output_json(k: &Batch) -> Result<(), std::io::Error> {
     //    println!("{}", serde_json::to_string(&k)?);
     let js = match serde_json::to_string(&k) {
         Ok(x) => x,
         Err(_x) => return Err(Error::new(ErrorKind::Other, "oh no!")),
     };
-    let mut pin = AsyncFd::try_from(1)?;
+    let mut pin = AsyncFd::try_from(CHILD_OUTPUT_FD)?;
     // write_all??
     pin.write(js.as_bytes()).await?;
     Ok(())
@@ -44,11 +48,11 @@ async fn read_output(t: ArcTransactionManager, f: Box<Fd>) -> Result<(), std::io
         for i in jf.append(&buffer[0..res])? {
             let v: Batch = serde_json::from_str(&i)?;
             println!("eval{}", v);
-            match eval(t.clone(), v).await {
+            match t.clone().eval(v).await {
                 Ok(b) => {
                     // println!("eval completez {}", b);
                     // shouldn't exit on eval error
-                    forward(&t, b).await?; // not really dude
+                    t.forward(b).await?; // not really dude
                 }
 
                 Err(x) => {
@@ -62,16 +66,15 @@ async fn read_output(t: ArcTransactionManager, f: Box<Fd>) -> Result<(), std::io
 
 pub fn start_node(f: Vec<Fd>) {
     let t = ArcTransactionManager::new();
-    let n = TcpNetwork::new();
+    let n = ArcTcpNetwork::new();
     let rt = Runtime::new().unwrap();
     let _eg = rt.enter();
 
     rt.block_on(async move {
         for i in f {
-            let tn = t.clone();
-            //            let tc= t.clone();
+            let tclone = t.clone();
             spawn(async move {
-                match read_output(tn, Box::new(i)).await {
+                match read_output(tclone, Box::new(i)).await {
                     Ok(_) => (),
                     Err(x) => {
                         println!("err {}", x);
@@ -79,7 +82,7 @@ pub fn start_node(f: Vec<Fd>) {
                 }
             });
         }
-        match bind(n, t).await {
+        match n.bind(t).await {
             Ok(_) => (),
             Err(x) => {
                 panic!("bind failure {}", x);
@@ -101,9 +104,8 @@ pub fn make_child() -> Result<(Fd, Fd), nix::Error> {
         // file descriptors so we can use stdout for ad-hoc debugging
         // without confusing the json parser
         ForkResult::Child => {
-            dup2(out_w, 2)?;
-            dup2(out_w, 1)?;
-            dup2(in_r, 0)?;
+            dup2(out_w, CHILD_OUTPUT_FD)?;
+            dup2(in_r, CHILD_INPUT_FD)?;
             start_node(vec![0]);
             Ok((in_w, out_r))
         }

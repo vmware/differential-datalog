@@ -3,6 +3,9 @@ use tokio::{
     task::JoinHandle,
 };
 
+use mm_ddlog::typedefs::d3::{Connection, Workers};
+
+
 use crate::batch::singleton;
 use crate::child::output_json;
 use crate::{json_framer::JsonFramer, transact::ArcTransactionManager, Batch, Node};
@@ -13,18 +16,6 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 use std::sync::Mutex as SyncMutex;
 
-async fn process_socket(_n: &TcpNetwork, mut s: TcpStream) -> Result<(), std::io::Error> {
-    let mut jf = JsonFramer::new();
-    let mut buffer = [0; 64];
-    print!("reading");
-    let k = s.read(&mut buffer).await?;
-    print!("read {}", k);
-
-    for i in jf.append(&buffer[0..k])? {
-        println!("{}", i);
-    }
-    Ok(())
-}
 
 pub fn address_to_nid(peer: SocketAddr) -> Node {
     let i = match peer.ip() {
@@ -48,8 +39,7 @@ pub fn nid_to_socketaddr(n: Node) -> SocketAddr {
     )
 }
 
-//    Pin<Box<dyn Future<Output = Result<Result<(), std::io::Error>, JoinError>> + Send + Sync + 'a>>;
-
+#[derive(Clone)]
 pub struct TcpNetwork {
     peers: Arc<Mutex<HashMap<Node, Arc<Mutex<TcpStream>>>>>,
     sends: Arc<SyncMutex<Vec<JoinHandle<Result<(), std::io::Error>>>>>, // ;JoinHandle<()>>>>,
@@ -61,7 +51,6 @@ pub struct TcpNetwork {
 // there is an async_trait macro that promises to do this, but unsurprisingly
 // MutexGuard does not implement Send. So its unclear how to let such
 // a trait function mutate. punting.
-
 impl TcpNetwork {
     pub fn new() -> TcpNetwork {
         TcpNetwork {
@@ -86,7 +75,6 @@ impl ArcTcpNetwork {
     // nee  Result<Pin<Box<dyn Future<Output=Result<(),std::io::Error>> + Send + Sync + '_>>,
 
     pub fn send(self, nid: Node, b: Batch) -> Result<(), std::io::Error> {
-        println!("send {}", nid);
         let p = {
             let x = &mut (*self.n.lock().expect("lock")).peers;
             x.clone()
@@ -96,6 +84,7 @@ impl ArcTcpNetwork {
             // says its ok. otherwise this gets pretty hard. it does steal a tokio thread
             // for the duration of the wait
             let encoded = serde_json::to_string(&b).expect("tcp network send json encoding error");
+            println!("send {} {} {}", nid, b, encoded.chars().count());
 
             // this is racy because we keep having to drop this lock across
             // await. if we lose, there will be a once used but after idle
@@ -105,7 +94,8 @@ impl ArcTcpNetwork {
                 .await
                 .entry(nid)
                 .or_insert(match TcpStream::connect(nid_to_socketaddr(nid)).await {
-                    Ok(x) => Arc::new(Mutex::new(x)),
+                    // xxx - need a reader 
+                    Ok(x) => {println!("newconn {} {}", nid, nid_to_socketaddr(nid)); Arc::new(Mutex::new(x))},
                     Err(_x) => panic!("connection failure {}", nid_to_socketaddr(nid)),
                 })
                 .lock()
@@ -121,26 +111,40 @@ impl ArcTcpNetwork {
         (*self.n.lock().expect("lock").sends.lock().expect("lock")).push(completion);
         Ok(())
     }
-}
 
-use mm_ddlog::typedefs::d3::{Connection, Workers};
-
-// xxx - caller should get the address and send the address fact, not us
-pub async fn bind(n: TcpNetwork, _t: ArcTransactionManager) -> Result<(), std::io::Error> {
-    let listener = TcpListener::bind("127.0.0.1:0").await?;
-
-    let a = listener.local_addr().unwrap();
-    let nid = address_to_nid(a);
-    let w = Workers { x: nid }.into_ddvalue();
-    output_json(&(singleton("d3::Workers", &w)?)).await?;
-    loop {
-        let (socket, a) = listener.accept().await?;
-        let c = Connection {
-            x: address_to_nid(a),
+    // xxx - caller should get the address and send the address fact, not us
+    pub async fn bind(&self, _t: ArcTransactionManager) -> Result<(), std::io::Error> {
+        let listener = TcpListener::bind("127.0.0.1:0").await?;
+        
+        let a = listener.local_addr().unwrap();
+        let nid = address_to_nid(a);
+        let w = Workers { x: nid }.into_ddvalue();
+        output_json(&(singleton("d3::Workers", &w)?)).await?;
+        loop {
+            let (socket, a) = listener.accept().await?;
+            
+            let c = Connection {x: address_to_nid(a)}.into_ddvalue();
+            output_json(&(singleton("d3::Connection", &c)?)).await?;
+            
+            // well, this is a huge .. something. if i just use the socket
+            // in the async move block, it actually gets dropped. what
+            // happened to ultimate safety?
+            let sclone = Arc::new(Mutex::new(socket));
+            tokio::spawn(async move {
+                let mut jf = JsonFramer::new();
+                let mut buffer = [0; 64];
+                loop { 
+                    // xxx - remove socket from peer table on error and post notification
+                    match sclone.lock().await.read(&mut buffer).await {
+                        Ok(bytes_input) =>
+                            for i in jf.append(&buffer[0..bytes_input]).expect("json coding error") {
+                                println!("{}", i);
+                            },
+                        Err(x) => panic!("read error {}", x)
+                    }
+                }
+            });
         }
-        .into_ddvalue();
-        output_json(&(singleton("d3::Connection", &c)?)).await?;
-        // xxx - socket errors shouldn't stop the listener
-        process_socket(&n, socket).await?;
     }
 }
+
