@@ -122,8 +122,8 @@ You are now ready to [start coding in DDlog](doc/tutorial/tutorial.md).
   that the `flatc` tool is in your `$PATH`.  Additionally, make sure that FlatBuffers
   Java classes are in your `$CLASSPATH`:
   ```
-  ./tools/install-flatbuf.sh
   cd flatbuffers
+  make install
   export CLASSPATH=`pwd`"/java":$CLASSPATH
   export PATH=`pwd`:$PATH
   cd ..
