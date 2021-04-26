@@ -122,7 +122,7 @@ pub unsafe extern "C" fn ddlog_run(
         Ok((hddlog, init)) => {
             if !init_state.is_null() {
                 *init_state = Box::into_raw(Box::new(init));
-            };
+            }
             Arc::into_raw(Arc::new(hddlog))
         }
         Err(err) => {

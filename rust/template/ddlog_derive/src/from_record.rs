@@ -266,7 +266,7 @@ fn from_record_enum(
     Ok(quote! {
         #[automatically_derived]
         impl #impl_generics differential_datalog::record::FromRecord for #enum_ident #type_generics #where_clause {
-            fn from_record(record: &differential_datalog::record::Record) -> std::result::Result<Self, String> {
+            fn from_record(record: &differential_datalog::record::Record) -> std::result::Result<Self, std::string::String> {
                 match record {
                     differential_datalog::record::Record::PosStruct(constructor, args) => {
                         match constructor.as_ref() {
