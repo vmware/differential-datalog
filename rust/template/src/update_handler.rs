@@ -233,7 +233,7 @@ pub struct ValMapUpdateHandler {
     /// `after_commit()`.  This has to be unsafe, because Rust does
     /// not let us express a borrow from a field of the same struct in a
     /// safe way.
-    locked: Arc<Cell<*mut libc::c_void>>,
+    locked: Arc<Cell<*mut ()>>,
 }
 
 impl Drop for ValMapUpdateHandler {
@@ -241,6 +241,7 @@ impl Drop for ValMapUpdateHandler {
     fn drop<'a>(&'a mut self) {
         let guard_ptr =
             self.locked.replace(ptr::null_mut()) as *mut MutexGuard<'a, DeltaMap<DDValue>>;
+
         if !guard_ptr.is_null() {
             let _guard: Box<MutexGuard<'_, DeltaMap<DDValue>>> =
                 unsafe { Box::from_raw(guard_ptr) };
@@ -273,7 +274,7 @@ impl UpdateHandler for ValMapUpdateHandler {
         })
     }
     fn before_commit(&self) {
-        let guard = Box::into_raw(Box::new(self.db.lock().unwrap())) as *mut libc::c_void;
+        let guard = Box::into_raw(Box::new(self.db.lock().unwrap())) as *mut ();
         let old = self.locked.replace(guard);
         assert_eq!(old, ptr::null_mut());
     }
@@ -291,7 +292,7 @@ impl UpdateHandler for ValMapUpdateHandler {
 pub struct DeltaUpdateHandler {
     /// Setting the `DeltaMap` to `None` disables recording.
     db: Arc<Mutex<Option<DeltaMap<DDValue>>>>,
-    locked: Arc<Cell<*mut libc::c_void>>,
+    locked: Arc<Cell<*mut ()>>,
 }
 
 impl Drop for DeltaUpdateHandler {
@@ -299,6 +300,7 @@ impl Drop for DeltaUpdateHandler {
     fn drop<'a>(&'a mut self) {
         let guard_ptr =
             self.locked.replace(ptr::null_mut()) as *mut MutexGuard<'a, DeltaMap<DDValue>>;
+
         if !guard_ptr.is_null() {
             let _guard: Box<MutexGuard<'_, DeltaMap<DDValue>>> =
                 unsafe { Box::from_raw(guard_ptr) };
@@ -324,19 +326,23 @@ impl UpdateHandler for DeltaUpdateHandler {
                 let mut guard: Box<MutexGuard<'_, Option<DeltaMap<DDValue>>>> = unsafe {
                     Box::from_raw(guard_ptr as *mut MutexGuard<'_, Option<DeltaMap<DDValue>>>)
                 };
+
                 if let Some(db) = (*guard).as_mut() {
-                    db.update(relid, v, w)
-                };
+                    db.update(relid, v, w);
+                }
+
                 // make sure that guard does not get dropped
                 Box::into_raw(guard);
             }
         })
     }
+
     fn before_commit(&self) {
-        let guard = Box::into_raw(Box::new(self.db.lock().unwrap())) as *mut libc::c_void;
+        let guard = Box::into_raw(Box::new(self.db.lock().unwrap())) as *mut ();
         let old = self.locked.replace(guard);
         assert_eq!(old, ptr::null_mut());
     }
+
     fn after_commit(&self, _success: bool) {
         let guard_ptr = self.locked.replace(ptr::null_mut());
         assert_ne!(guard_ptr, ptr::null_mut());

@@ -90,9 +90,9 @@ where
 #[test]
 fn test_multiple_stops() {
     let prog: Program = Program {
-        nodes: vec![],
-        delayed_rels: vec![],
-        init_data: vec![],
+        nodes: Vec::new(),
+        delayed_rels: Vec::new(),
+        init_data: Vec::new(),
     };
 
     let mut running = prog.run(2).unwrap();

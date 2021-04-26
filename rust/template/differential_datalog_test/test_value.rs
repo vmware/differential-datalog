@@ -1,4 +1,3 @@
-use abomonation::Abomonation;
 use abomonation_derive::Abomonation;
 use datalog_example_ddlog::ddlog_bigint;
 use ddlog_derive::{FromRecord, IntoRecord, Mutator};

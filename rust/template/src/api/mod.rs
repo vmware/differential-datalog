@@ -502,7 +502,7 @@ impl HDDlog {
         ))
     }
 
-    fn db_dump_table<F>(db: &mut DeltaMap<DDValue>, table: libc::size_t, cb: Option<F>)
+    fn db_dump_table<F>(db: &mut DeltaMap<DDValue>, table: usize, cb: Option<F>)
     where
         F: Fn(&record::Record, isize) -> bool,
     {
