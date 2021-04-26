@@ -1,5 +1,8 @@
 use differential_datalog::{ddval::DDValue, program::RelId, program::Update, DeltaMap};
+
+// not really, we aren't going to be compiling against the user program
 use mm_ddlog::*;
+
 use serde::{
     de, de::SeqAccess, de::Visitor, ser::SerializeTuple, Deserialize, Deserializer, Serialize,
     Serializer,
@@ -99,7 +102,7 @@ impl Display for Batch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&format!("<{}", self.timestamp))?;
         for (relid, vees) in self.b.clone() {
-            f.write_str(&format!("({}", relid))?; // name
+            f.write_str(&format!("({}", relid2name(relid).expect("relation")))?; // name
             let mut m = 0;
             for (_v, _) in vees {
                 m += 1;
@@ -114,26 +117,29 @@ impl Display for Batch {
 // this is not send because box<!Sized> is not send
 pub struct BatchIterator {
     relid: RelId,
-    rels: Box<dyn Iterator<Item = (RelId, BTreeMap<DDValue, isize>)> + Send>,
-    items: Box<dyn Iterator<Item = (DDValue, isize)> + Send>,
+    relations: Box<dyn Iterator<Item = (RelId, BTreeMap<DDValue, isize>)> + Send>,
+    items: Option<Box<dyn Iterator<Item = (DDValue, isize)> + Send>>,
 }
 
 impl Iterator for BatchIterator {
     type Item = (RelId, DDValue, isize);
 
     fn next(&mut self) -> Option<(RelId, DDValue, isize)> {
-        // really relationid, value, weight
-        match match self.items.next() {
-            Some((v, w)) => return Some((self.relid, v, w)),
-            None => self.rels.next(),
-        } {
-            Some(x) => {
-                let (relid, items) = x; // destructuring assignment unstable
+        match &mut self.items {
+            Some(x) => match x.next() {
+                Some((v, w)) => Some((self.relid, v, w)),
+                None => {
+                    self.items = None;
+                    self.next()
+                }
+            },
+            None => {
+                // what about the empty batch?
+                let (relid, items) = self.relations.next()?;
                 self.relid = relid;
-                self.items = Box::new(items.into_iter());
+                self.items = Some(Box::new(items.into_iter()));
                 self.next()
             }
-            None => None,
         }
     }
 }
@@ -143,13 +149,10 @@ impl IntoIterator for Batch {
     type IntoIter = BatchIterator;
 
     fn into_iter(self) -> BatchIterator {
-        let mut rels = self.b.into_iter();
-        // what about the empty batch?
-        let (relid, items) = rels.next().expect("empty batch!");
         BatchIterator {
-            relid,
-            rels: Box::new(rels),
-            items: Box::new(items.into_iter()),
+            relid: 0,
+            relations: Box::new(self.b.into_iter()),
+            items: None,
         }
     }
 }
@@ -174,7 +177,12 @@ pub fn singleton(
 ) -> Result<Batch, std::io::Error> {
     let mrel = match Relations::try_from(rel) {
         Ok(x) => x as usize,
-        Err(_x) => return Err(Error::new(ErrorKind::Other, format!("bad relation {}", rel))),
+        Err(_x) => {
+            return Err(Error::new(
+                ErrorKind::Other,
+                format!("bad relation {}", rel),
+            ))
+        }
     };
 
     let mut d = Batch::new(DeltaMap::<differential_datalog::ddval::DDValue>::new());

@@ -1,17 +1,11 @@
-import matrix
 
-// we kind of really wanted to leave this open to the application,
-// but since its kind of a contract between the application and
-// the execution environment, we define this here. 
-
+// this is really everyone we ever hear from. importantly - is this
+// a global relation, or a local one (myself, other)
 input relation Workers(x:D3logLocationId)
 
-// matrix or its batch wants to be higher order
-// but anyways, this isn't really how we're going to boot
+// should include the source address, port, and timestamp
+// we dont actually know the nid w/o negotiation
+input relation Connection(x:D3logLocationId)
 
-// Matrix(i, j, k) :- iMatrix(i, j, k).
-//   args("n", n), 
-//   string_to_int(ni, n),
-//   count(Workers).
-
-   
+// we should have address types here
+input relation TcpAddress(x:D3logLocationId, ip:u32, port:u16)

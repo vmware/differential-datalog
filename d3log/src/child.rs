@@ -16,6 +16,7 @@ type Fd = std::os::unix::io::RawFd;
 use nix::unistd::*;
 
 // xxx - this should follow trait Network
+// really we probably want to have a forwarding table
 pub async fn output_json(k: &Batch) -> Result<(), std::io::Error> {
     //    println!("{}", serde_json::to_string(&k)?);
     let js = match serde_json::to_string(&k) {

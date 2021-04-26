@@ -6,6 +6,7 @@ use tokio::{
 use crate::batch::singleton;
 use crate::child::output_json;
 use crate::{json_framer::JsonFramer, transact::ArcTransactionManager, Batch, Node};
+
 use differential_datalog::ddval::DDValConvert;
 use std::collections::HashMap; //, HashSet};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -15,7 +16,9 @@ use std::sync::Mutex as SyncMutex;
 async fn process_socket(_n: &TcpNetwork, mut s: TcpStream) -> Result<(), std::io::Error> {
     let mut jf = JsonFramer::new();
     let mut buffer = [0; 64];
+    print!("reading");
     let k = s.read(&mut buffer).await?;
+    print!("read {}", k);
 
     for i in jf.append(&buffer[0..k])? {
         println!("{}", i);
@@ -39,7 +42,6 @@ pub fn address_to_nid(peer: SocketAddr) -> Node {
 
 pub fn nid_to_socketaddr(n: Node) -> SocketAddr {
     let b = n.to_le_bytes();
-    println!("ip {:x?}", b);
     SocketAddr::new(
         IpAddr::V4(Ipv4Addr::new(b[0], b[1], b[2], b[3])),
         u16::from_be_bytes([b[4], b[5]]),
@@ -83,7 +85,7 @@ impl ArcTcpNetwork {
 
     // nee  Result<Pin<Box<dyn Future<Output=Result<(),std::io::Error>> + Send + Sync + '_>>,
 
-    pub fn send(self, nid: Node, _b: &Batch) -> Result<(), std::io::Error> {
+    pub fn send(self, nid: Node, b: Batch) -> Result<(), std::io::Error> {
         println!("send {}", nid);
         let p = {
             let x = &mut (*self.n.lock().expect("lock")).peers;
@@ -93,7 +95,7 @@ impl ArcTcpNetwork {
             // sync lock in async context? - https://tokio.rs/tokio/tutorial/shared-state
             // says its ok. otherwise this gets pretty hard. it does steal a tokio thread
             // for the duration of the wait
-            let encoded = Vec::<u8>::new();
+            let encoded = serde_json::to_string(&b).expect("tcp network send json encoding error");
 
             // this is racy because we keep having to drop this lock across
             // await. if we lose, there will be a once used but after idle
@@ -108,12 +110,12 @@ impl ArcTcpNetwork {
                 })
                 .lock()
                 .await
-                .write_all(&encoded)
+                .write_all(&encoded.as_bytes())
                 .await
             {
                 Ok(_) => Ok(()),
                 // these need to get directed to a retry machine and an async reporting relation
-                Err(_x) => panic!("send error"),
+                Err(x) => panic!("send error {}", x),
             }
         });
         (*self.n.lock().expect("lock").sends.lock().expect("lock")).push(completion);
@@ -121,7 +123,7 @@ impl ArcTcpNetwork {
     }
 }
 
-use mm_ddlog::typedefs::d3::Workers;
+use mm_ddlog::typedefs::d3::{Connection, Workers};
 
 // xxx - caller should get the address and send the address fact, not us
 pub async fn bind(n: TcpNetwork, _t: ArcTransactionManager) -> Result<(), std::io::Error> {
@@ -133,7 +135,11 @@ pub async fn bind(n: TcpNetwork, _t: ArcTransactionManager) -> Result<(), std::i
     output_json(&(singleton("d3::Workers", &w)?)).await?;
     loop {
         let (socket, a) = listener.accept().await?;
-        output_json(&(singleton("Connection", &(address_to_nid(a)).ddvalue())?)).await?;
+        let c = Connection {
+            x: address_to_nid(a),
+        }
+        .into_ddvalue();
+        output_json(&(singleton("d3::Connection", &c)?)).await?;
         // xxx - socket errors shouldn't stop the listener
         process_socket(&n, socket).await?;
     }

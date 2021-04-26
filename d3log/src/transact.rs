@@ -51,20 +51,13 @@ impl ArcTransactionManager {
 impl TransactionManager {
     fn start() {}
 
-    // pass network
+    // pass network dyn. build a router network.
     pub fn new() -> TransactionManager {
-        match HDDlog::run(1, false) {
-            Ok((hddlog, _init_output)) => {
-                TransactionManager {
-                    n: ArcTcpNetwork::new(),
-                    h: hddlog, // arc?
-                    progress: Vec::new(),
-                }
-            }
-            Err(err) => {
-                // this is supposed to be management protocol
-                panic!("Failed to run differential datalog: {}", err);
-            }
+        let (hddlog, _init_output) = HDDlog::run(1, false)
+            .unwrap_or_else(|err| panic!("Failed to run differential datalog: {}", err));
+        TransactionManager {
+            n: ArcTcpNetwork::new(),
+            h: hddlog, // arc?
         }
     }
 }
@@ -89,7 +82,7 @@ pub async fn forward<'a>(tm: &ArcTransactionManager, input: Batch) -> Result<(),
 
     // xxx - rust has issues getting a mut reference through this tuple unification..
     for (nid, b) in output.drain() {
-        tm.t.lock().expect("lock").n.clone().send(nid, &b)?
+        tm.t.lock().expect("lock").n.clone().send(nid, *b)?
     }
     Ok(())
 }

@@ -60,7 +60,11 @@ impl JsonFramer {
                         if self.w.is_empty() && !WHITESPACE.contains(c) {
                             return Err(Error::new(
                                 ErrorKind::Other,
-                                format!("extraneaous character {}", std::str::from_utf8(body).expect(""))));
+                                format!(
+                                    "extraneaous character {}",
+                                    std::str::from_utf8(body).expect("")
+                                ),
+                            ));
                         }
                     }
                 }
@@ -75,11 +79,11 @@ impl JsonFramer {
                             return Err(Error::new(ErrorKind::Other, "mismatched grouping"));
                         }
                         if self.w.is_empty() {
-                            let p = match std::str::from_utf8(&self.reassembly[..]) {
-                                Ok(x) => x.to_string(),
-                                Err(_x) => return Err(Error::new(ErrorKind::Other, "utf8 error")),
-                            };
-                            n.push(p);
+                            n.push(
+                                std::str::from_utf8(&self.reassembly[..])
+                                    .map_err(|_| Error::new(ErrorKind::Other, "utf8 error"))?
+                                    .to_owned(),
+                            );
                             self.reassembly.truncate(0);
                         }
                     }
