@@ -1,3 +1,13 @@
+// provide a tcp implementation of Transport
+// depends on a relational table in d3.tl - TcpAddress(x: D3logLocationId, destination: string)
+// to provide location id to tcp address mapping
+//
+// do not currently attempt to use a single duplex connection between two nodes, instead
+// running one in each direction
+//
+// there is a likely race when a second send comes in before the connection attempt started
+// by the first has completed, resulting in a dead connection
+
 use tokio::{
     io::AsyncReadExt, io::AsyncWriteExt, net::TcpListener, net::TcpStream, sync::Mutex,
     task::JoinHandle,
@@ -7,7 +17,7 @@ use mm_ddlog::typedefs::d3::{Connection, Workers};
 
 use crate::batch::singleton;
 use crate::child::output_json;
-use crate::{json_framer::JsonFramer, transact::ArcTransactionManager, Batch, Node};
+use crate::{json_framer::JsonFramer, transact::ArcTransactionManager, Batch, Node, Transport};
 
 use differential_datalog::ddval::DDValConvert;
 use std::collections::HashMap; //, HashSet};
@@ -15,6 +25,8 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 use std::sync::Mutex as SyncMutex;
 
+
+// to be destroyed
 pub fn address_to_nid(peer: SocketAddr) -> Node {
     let i = match peer.ip() {
         IpAddr::V4(x) => x.octets(),
@@ -70,49 +82,6 @@ impl ArcTcpNetwork {
         }
     }
 
-    // nee  Result<Pin<Box<dyn Future<Output=Result<(),std::io::Error>> + Send + Sync + '_>>,
-
-    pub fn send(self, nid: Node, b: Batch) -> Result<(), std::io::Error> {
-        let p = {
-            let x = &mut (*self.n.lock().expect("lock")).peers;
-            x.clone()
-        };
-        let completion = tokio::spawn(async move {
-            // sync lock in async context? - https://tokio.rs/tokio/tutorial/shared-state
-            // says its ok. otherwise this gets pretty hard. it does steal a tokio thread
-            // for the duration of the wait
-            let encoded = serde_json::to_string(&b).expect("tcp network send json encoding error");
-            println!("send {} {} {}", nid, b, encoded.chars().count());
-
-            // this is racy because we keep having to drop this lock across
-            // await. if we lose, there will be a once used but after idle
-            // connection
-            match p
-                .lock()
-                .await
-                .entry(nid)
-                .or_insert(match TcpStream::connect(nid_to_socketaddr(nid)).await {
-                    // xxx - need a reader
-                    Ok(x) => {
-                        println!("newconn {} {}", nid, nid_to_socketaddr(nid));
-                        Arc::new(Mutex::new(x))
-                    }
-                    Err(_x) => panic!("connection failure {}", nid_to_socketaddr(nid)),
-                })
-                .lock()
-                .await
-                .write_all(&encoded.as_bytes())
-                .await
-            {
-                Ok(_) => Ok(()),
-                // these need to get directed to a retry machine and an async reporting relation
-                Err(x) => panic!("send error {}", x),
-            }
-        });
-        (*self.n.lock().expect("lock").sends.lock().expect("lock")).push(completion);
-        Ok(())
-    }
-
     // xxx - caller should get the address and send the address fact, not us
     pub async fn bind(&self, _t: ArcTransactionManager) -> Result<(), std::io::Error> {
         let listener = TcpListener::bind("127.0.0.1:0").await?;
@@ -157,5 +126,48 @@ impl ArcTcpNetwork {
                 }
             });
         }
+    }
+}
+
+// should this be one instance per transport type, or one per peer - seems
+// like the latter really
+impl Transport for ArcTcpNetwork {
+    fn send(&self, nid: Node, b: Batch) -> Result<(), std::io::Error> {
+        let p = {
+            let x = &mut (*self.n.lock().expect("lock")).peers;
+            x.clone()
+        };
+        let completion = tokio::spawn(async move {
+            // sync lock in async context? - https://tokio.rs/tokio/tutorial/shared-state
+            // says its ok. otherwise this gets pretty hard. it does steal a tokio thread
+            // for the duration of the wait
+            let encoded = serde_json::to_string(&b).expect("tcp network send json encoding error");
+            println!("send {} {} {}", nid, b, encoded.chars().count());
+
+            // this is racy because we keep having to drop this lock across
+            // await. if we lose, there will be a once used but after idle
+            // connection
+            match p
+                .lock()
+                .await
+                .entry(nid)
+                .or_insert(match TcpStream::connect(nid_to_socketaddr(nid)).await {
+                    Ok(x) => {
+                        Arc::new(Mutex::new(x))
+                    }
+                    Err(_x) => panic!("connection failure {}", nid_to_socketaddr(nid)),
+                })
+                .lock()
+                .await
+                .write_all(&encoded.as_bytes())
+                .await
+            {
+                Ok(_) => Ok(()),
+                // these need to get directed to a retry machine and an async reporting relation
+                Err(x) => panic!("send error {}", x),
+            }
+        });
+        (*self.n.lock().expect("lock").sends.lock().expect("lock")).push(completion);
+        Ok(())
     }
 }

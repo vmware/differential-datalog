@@ -1,11 +1,13 @@
+// this file intented to specify the 'syscall interface' for the
+// d3log supervisor
 
 // this is really everyone we ever hear from. importantly - is this
 // a global relation, or a local one (myself, other)
-input relation Workers(x:D3logLocationId)
+input relation Workers(x: D3logLocationId)
 
 // should include the source address, port, and timestamp
 // we dont actually know the nid w/o negotiation
-input relation Connection(x:D3logLocationId)
+input relation Connection(x: D3logLocationId)
 
 // we should have address types here
-input relation TcpAddress(x:D3logLocationId, ip:u32, port:u16)
+input relation TcpAddress(x: D3logLocationId, destination: string)

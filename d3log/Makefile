@@ -2,7 +2,7 @@
 EXEC = target/debug/mm3
 all: out
 
-mm_ddlog/types/mm.rs: mm.dl
+mm_ddlog/types/mm.rs: mm.dl d3.dl
 	ddlog --action compile -L/Users/ehoffman/ddev/lib --d3log -i mm.dl
 
 $(EXEC): mm_ddlog/types/mm.rs src/*.rs 

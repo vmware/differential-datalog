@@ -16,11 +16,8 @@ use std::io::{Error, ErrorKind};
 // the other choice here would be a Vec<Update>?
 // #[derive(Serialize, Deserialize)] - deltamap isn't serialize
 pub struct Batch {
-    // one might consider augmenting the values w/ t - kind of a
-    // performance problem for multisets
     timestamp: u64,
     pub b: DeltaMap<differential_datalog::ddval::DDValue>,
-    // timestamp
 }
 
 impl Serialize for Batch {

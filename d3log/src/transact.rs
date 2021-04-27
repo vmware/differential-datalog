@@ -1,5 +1,5 @@
 use crate::tcp_network::ArcTcpNetwork;
-use crate::{batch::Batch, Node};
+use crate::{batch::Batch, Node, Transport};
 //use async_std::sync::Mutex;
 use differential_datalog::{program::Update, D3log, DDlog, DDlogDynamic, DeltaMap};
 use mm_ddlog::api::HDDlog;
@@ -13,11 +13,8 @@ pub type Timestamp = u64;
 pub struct TransactionManager {
     // svcc needs the membership, so we are going to assign nids
     // progress: Vec<Timestamp>,
-
-    // would like network to be a trait object - since sync returns
-    // a future this is now
-    n: ArcTcpNetwork,
-
+    n: Box<(dyn Transport + Send + Sync)>,
+    
     // need access to some hddlog to call d3log_localize_val
     h: HDDlog,
 
@@ -55,9 +52,10 @@ impl ArcTransactionManager {
 
     pub async fn forward<'a>(&self, input: Batch) -> Result<(), std::io::Error> {
         let mut output = HashMap::<Node, Box<Batch>>::new();
-        for (rel, v, weight) in input {
-            let tma = &*self.t.lock().expect("lock");
 
+        
+        for (rel, v, weight) in input {
+            let tma = &*self.t.lock().expect("lock");            
             // we dont really need an instance here, do we? - i guess the state comes from
             // prog. we certainly dont need a lock on tm
             match tma.h.d3log_localize_val(rel, v.clone()) {
@@ -75,7 +73,8 @@ impl ArcTransactionManager {
         }
 
         for (nid, b) in output.drain() {
-            self.t.lock().expect("lock").n.clone().send(nid, *b)?
+            let tma = &*self.t.lock().expect("lock");            
+            tma.n.send(nid, *b)?
         }
         Ok(())
     }
@@ -108,7 +107,7 @@ impl TransactionManager {
         let (hddlog, _init_output) = HDDlog::run(1, false)
             .unwrap_or_else(|err| panic!("Failed to run differential datalog: {}", err));
         TransactionManager {
-            n: ArcTcpNetwork::new(),
+            n: Box::new(ArcTcpNetwork::new()),
             h: hddlog, // arc?
             me: 0,
         }
