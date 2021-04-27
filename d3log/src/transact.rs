@@ -48,20 +48,19 @@ impl ArcTransactionManager {
             t: Arc::new(SyncMutex::new(TransactionManager::new())),
         }
     }
-    
+
     pub fn myself(&self) -> Node {
         (*self.t.lock().expect("lock")).me
     }
-    
+
     pub async fn forward<'a>(&self, input: Batch) -> Result<(), std::io::Error> {
         let mut output = HashMap::<Node, Box<Batch>>::new();
         for (rel, v, weight) in input {
             let tma = &*self.t.lock().expect("lock");
-            
+
             // we dont really need an instance here, do we? - i guess the state comes from
             // prog. we certainly dont need a lock on tm
             match tma.h.d3log_localize_val(rel, v.clone()) {
-                // xxx - match none on locid?
                 Ok((loc_id, in_rel, inner_val)) => {
                     // if loc_id is null, we aren't to forward
                     if let Some(loc) = loc_id {
@@ -70,23 +69,21 @@ impl ArcTransactionManager {
                             .or_insert(Box::new(Batch::new(DeltaMap::new())))
                             .insert(in_rel, inner_val, weight as u32)
                     }
-                },
+                }
                 Err(val) => println!("{} {:+}", val, weight),
             }
         }
-        
-        // xxx - rust has issues getting a mut reference through this tuple unification..
+
         for (nid, b) in output.drain() {
             self.t.lock().expect("lock").n.clone().send(nid, *b)?
         }
         Ok(())
     }
 
-    
     pub async fn eval(self, input: Batch) -> Result<Batch, String> {
         let tm = self.t.lock().expect("lock");
         let h = &(*tm).h;
-        
+
         // kinda harsh that we feed ddlog updates and get out a deltamap
         let mut upd = Vec::new();
         for (relid, v, _) in input {
@@ -103,7 +100,6 @@ impl ArcTransactionManager {
     }
 }
 
-
 impl TransactionManager {
     fn start() {}
 
@@ -114,8 +110,7 @@ impl TransactionManager {
         TransactionManager {
             n: ArcTcpNetwork::new(),
             h: hddlog, // arc?
-            me: 0
+            me: 0,
         }
     }
-    
 }
