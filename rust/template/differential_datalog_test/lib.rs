@@ -582,11 +582,10 @@ fn test_join(nthreads: usize) {
         }
     };
 
-    fn join_transformer() -> Box<
-        dyn for<'a> Fn(
-            &mut FnvHashMap<RelId, Collection<Child<'a, Worker<Allocator>, TS>, DDValue, Weight>>,
-        ),
-    > {
+    type CollectionMap<'a> =
+        FnvHashMap<RelId, Collection<Child<'a, Worker<Allocator>, TS>, DDValue, Weight>>;
+
+    fn join_transformer() -> Box<dyn for<'a> Fn(&mut CollectionMap<'a>)> {
         Box::new(|collections| {
             let rel4 = {
                 let rel1 = collections.get(&1).unwrap();
@@ -1098,8 +1097,8 @@ fn test_map(nthreads: usize) {
     };
 
     fn mfun(v: DDValue) -> DDValue {
-        let U64(ref uv) = U64::from_ddvalue_ref(&v);
-        U64(uv.clone() * 2).into_ddvalue()
+        let &U64(uv) = U64::from_ddvalue_ref(&v);
+        U64(uv * 2).into_ddvalue()
     }
 
     fn gfun3(v: DDValue) -> Option<(DDValue, DDValue)> {
@@ -1124,21 +1123,21 @@ fn test_map(nthreads: usize) {
     }
 
     fn fmfun(v: DDValue) -> Option<DDValue> {
-        let U64(uv) = U64::from_ddvalue_ref(&v);
-        if *uv > 12 {
-            Some(U64(uv.clone() * 2).into_ddvalue())
+        let &U64(uv) = U64::from_ddvalue_ref(&v);
+        if uv > 12 {
+            Some(U64(uv * 2).into_ddvalue())
         } else {
             None
         }
     }
 
     fn flatmapfun(v: DDValue) -> Option<Box<dyn Iterator<Item = DDValue>>> {
-        let U64(i) = U64::from_ddvalue_ref(&v);
-        if *i > 12 {
+        let &U64(i) = U64::from_ddvalue_ref(&v);
+        if i > 12 {
             Some(Box::new(
                 vec![
-                    I64(-(*i as i64)).into_ddvalue(),
-                    I64(-(2 * (*i as i64))).into_ddvalue(),
+                    I64(-(i as i64)).into_ddvalue(),
+                    I64(-(2 * (i as i64))).into_ddvalue(),
                 ]
                 .into_iter(),
             ))
