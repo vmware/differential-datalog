@@ -4,7 +4,7 @@
 //! These tests live in a separate crate, as they depend on the `types` crate that defines the
 //! `DDValConvert` trait.  Since `types` itself depends on `differential_datalog`, tests had to be
 //! factored in a separate crate.
-#![cfg(test)]
+#![cfg_attr(not(test), allow(dead_code))]
 
 use std::borrow::Cow;
 use std::collections::btree_map::{BTreeMap, Entry};
@@ -693,10 +693,6 @@ fn test_streamjoin(nthreads: usize) {
             change_cb: Some(Arc::new(move |_, v, w| set_update("T1", &relset1, v, w))),
         }
     };
-    fn fmfun1(v: DDValue) -> Option<DDValue> {
-        let Tuple2(ref v1, ref _v2) = Tuple2::<U64>::from_ddvalue(v);
-        Some(v1.clone().into_ddvalue())
-    }
 
     fn afun1(v: DDValue) -> Option<(DDValue, DDValue)> {
         let Tuple2(ref v1, ref v2) = Tuple2::<U64>::from_ddvalue(v);
