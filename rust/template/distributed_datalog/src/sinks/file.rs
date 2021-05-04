@@ -69,6 +69,7 @@ impl Observer<Update<DDValue>, String> for File {
 mod tests {
     use super::*;
 
+    #[cfg(feature = "c_api")]
     use std::ffi::CStr;
     use std::io::Read;
     use tempfile::NamedTempFile;
@@ -85,21 +86,28 @@ mod tests {
         fn get_table_id(&self, _tname: &str) -> Result<RelId, std::string::String> {
             Err("not implemented".to_string())
         }
+
         fn get_table_name(&self, tid: RelId) -> Result<&'static str, std::string::String> {
             match tid {
                 1 => Ok("test_rel"),
                 _ => panic!("unexpected RelId {}", tid),
             }
         }
+
+        #[cfg(feature = "c_api")]
         fn get_table_cname(&self, _tid: RelId) -> Result<&'static CStr, std::string::String> {
             Err("not implemented".to_string())
         }
+
         fn get_index_id(&self, _iname: &str) -> Result<IdxId, std::string::String> {
             Err("not implemented".to_string())
         }
+
         fn get_index_name(&self, _iid: IdxId) -> Result<&'static str, std::string::String> {
             Err("not implemented".to_string())
         }
+
+        #[cfg(feature = "c_api")]
         fn get_index_cname(&self, _iid: IdxId) -> Result<&'static CStr, std::string::String> {
             Err("not implemented".to_string())
         }
