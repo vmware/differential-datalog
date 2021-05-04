@@ -2363,7 +2363,7 @@ mkFFun :: (?cfg::Config, ?specname::String, ?statics::CrateStatics, ?crate_graph
 mkFFun _ Rule{} [] = "None"
 mkFFun d rl@Rule{..} input_filters =
    let open = openAtom d vALUE_VAR rl 0 (rhsAtom $ ruleRHS !! 0) ("return false")
-       checks = hsep $ punctuate " &&"
+       checks = parens $ vcat $ punctuate " &&"
                 $ map (\i -> mkExpr d (CtxRuleRCond rl i) (rhsExpr $ ruleRHS !! i) EVal) input_filters
    in "Some({fn __f(" <> vALUE_VAR <> ": &DDValue) -> bool" $$
       (braces' $ open $$ checks)                             $$
