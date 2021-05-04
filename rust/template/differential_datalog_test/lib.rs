@@ -4,6 +4,7 @@
 //! These tests live in a separate crate, as they depend on the `types` crate that defines the
 //! `DDValConvert` trait.  Since `types` itself depends on `differential_datalog`, tests had to be
 //! factored in a separate crate.
+#![cfg(test)]
 
 use std::borrow::Cow;
 use std::collections::btree_map::{BTreeMap, Entry};
