@@ -20,6 +20,7 @@ use std::{
     option::Option as StdOption,
     result::Result as StdResult,
     slice,
+    str,
     sync::Arc,
     vec::{self, Vec as StdVec},
 };
@@ -1003,6 +1004,18 @@ pub fn string_split(string: &String, sep: &String) -> Vec<String> {
 
 pub fn string_contains(s1: &String, s2: &String) -> bool {
     s1.contains(s2.as_str())
+}
+
+pub fn from_utf8(v: &[u8]) -> Result<String, String> {
+    res2std(str::from_utf8(v).map(|s| s.to_string()))
+}
+
+pub fn encode_utf16(s: &String) -> Vec<u16> {
+     s.encode_utf16().collect()
+}
+
+pub fn from_utf16(v: &[u16]) -> Result<String, String> {
+    res2std(String::from_utf16(v).map(|s| s.to_string()))
 }
 
 pub fn string_substr(s: &String, start: &std_usize, end: &std_usize) -> String {

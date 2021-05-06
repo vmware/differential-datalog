@@ -220,6 +220,8 @@ UMinus_s32:
 UMinus_s32{.description = "-(-32'sd100)", .n = 100}: +1
 UMinus_s32{.description = "-32'sd100", .n = -100}: +1
 UMinus_s32{.description = "-32768", .n = -32768}: +1
+Utf_test:
+Utf_test{.s = "Some string", .t = "Some string"}: +1
 VecTest:
 VecTest{.x = []}: +1
 VecTest{.x = ["Hello,"]}: +1
@@ -552,6 +554,9 @@ UMinus_s32:
 UMinus_s32{.description = "-(-32'sd100)", .n = 100}
 UMinus_s32{.description = "-32'sd100", .n = -100}
 UMinus_s32{.description = "-32768", .n = -32768}
+
+Utf_test:
+Utf_test{.s = "Some string", .t = "Some string"}
 
 VecTest:
 VecTest{.x = []}
@@ -897,6 +902,9 @@ UMinus_s32:
 UMinus_s32{.description = "-(-32'sd100)", .n = 100}
 UMinus_s32{.description = "-32'sd100", .n = -100}
 UMinus_s32{.description = "-32768", .n = -32768}
+
+Utf_test:
+Utf_test{.s = "Some string", .t = "Some string"}
 
 VecTest:
 VecTest{.x = []}
