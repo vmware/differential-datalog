@@ -19,8 +19,7 @@ use std::{
     ops::{self, Add, DerefMut},
     option::Option as StdOption,
     result::Result as StdResult,
-    slice,
-    str,
+    slice, str,
     sync::Arc,
     vec::{self, Vec as StdVec},
 };
@@ -1011,7 +1010,7 @@ pub fn from_utf8(v: &[u8]) -> Result<String, String> {
 }
 
 pub fn encode_utf16(s: &String) -> Vec<u16> {
-     s.encode_utf16().collect()
+    s.encode_utf16().collect()
 }
 
 pub fn from_utf16(v: &[u16]) -> Result<String, String> {
