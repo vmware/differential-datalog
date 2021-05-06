@@ -1,5 +1,6 @@
 import allocate
 import fp
+import print
 
 /* Test types */
 
@@ -1472,6 +1473,10 @@ output relation TrailingOutputRelation(
     a: u32,
     b: u32,
 )
+
+output relation Utf_test(s: string, t: string)
+Utf_test("Some string".to_bytes().from_utf8().unwrap_or_default(), "Some string").
+Utf_test("Some string".encode_utf16().from_utf16().unwrap_or_default(), "Some string").
 
 // Trailing commas in match arms
 function trailing_commas_in_matches(maybe: Option<u32>): u32 {

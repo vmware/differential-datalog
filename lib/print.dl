@@ -1,0 +1,12 @@
+// These functions are useful for debugging.
+// print can be inserted in imperative code,
+// while printTrue can be inserted on the RHS of rules
+// e.g. O(x) :- I(v), printTrue(v), x = v + 1.
+
+#[has_side_effects]
+extern function print(msg: string): ()
+
+function printTrue(msg: string): bool {
+   print(msg);
+   true
+}

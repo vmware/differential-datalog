@@ -387,6 +387,13 @@ function ends_with(s: string, suffix: string): bool {
     string_ends_with(s, suffix)
 }
 
+// Convert a byte array into a string, returning Err if v contains any invalid data.
+extern function from_utf8(buffer: Vec<u8>): Result<string, string>
+// Returns Vec<u16> of the string encoded as UTF-16.
+extern function encode_utf16(s: string): Vec<u16>
+// Decode a UTF-16–encoded vector v into a String, returning Err if v contains any invalid data.
+extern function from_utf16(buffer: Vec<u16>): Result<string, string>
+
 /* Substring of `s` that begins at `start` and continues up to, but not
  * including, `end`.*/
 function substr(s: string, start: usize, end: usize): string {
