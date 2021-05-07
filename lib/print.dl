@@ -6,6 +6,9 @@
 #[has_side_effects]
 extern function print(msg: string): ()
 
+#[has_side_effects]
+extern function debug(value: 'T): ()
+
 function printTrue(msg: string): bool {
    print(msg);
    true

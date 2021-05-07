@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Not released
+
+- More string conversions from utf-8 and utf-16
+- print/debug functions
+
 ## [0.40.0] - April 29, 2021
 
 ### Changes

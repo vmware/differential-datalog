@@ -400,6 +400,7 @@ function substr(s: string, start: usize, end: usize): string {
     string_substr(s, start, end)
 }
 
+// bytes comprising the utf-8 representation of the string
 function to_bytes(s: string): Vec<u8> {
     string_to_bytes(s)
 }
@@ -817,6 +818,7 @@ extern function string_split(s: string, sep: string): Vec<string>
 extern function string_starts_with(s: string, prefix: string): bool
 extern function string_ends_with(s: string, suffix: string): bool
 extern function string_substr(s: string, start: usize, end: usize): string
+// bytes comprising the utf-8 representation of the string
 extern function string_to_bytes(s: string): Vec<u8>
 extern function string_trim(s: string): string
 extern function string_to_uppercase(s: string): string
