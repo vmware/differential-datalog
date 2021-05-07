@@ -4,10 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## Not released
+## [0.40.1] - May 7, 2021
 
-- More string conversions from utf-8 and utf-16
-- print/debug functions
+### Libraries
+
+- `ddlog_std:dl`: More string conversions from utf-8 and utf-16.
+- `print.dl`: print/debug functions.
+
+### Bug fix
+
+- Rust compilation error due to missing parens in generated code.
 
 ## [0.40.0] - April 29, 2021
 
