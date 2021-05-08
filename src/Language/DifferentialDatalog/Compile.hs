@@ -713,7 +713,7 @@ simplifyDifferentiation d =
                else return a)
         S.empty
 
-compileLib :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?modules::M.Map ModuleName DatalogModule) 
+compileLib :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?modules::M.Map ModuleName DatalogModule)
     => DatalogProgram -> M.Map String String -> M.Map ModuleName (Doc, Doc, Doc) -> (M.Map FilePath Doc, Doc)
 compileLib d d3log_rel_map rs_code =
     (crates, main_lib)
@@ -778,6 +778,7 @@ mkCargoToml rs_code crate crate_id =
            "once_cell = \"1.4.1\""                                                         $$
            "libc = \"0.2\""                                                                $$
            "time = { version = \"0.2\", features = [\"serde\"] }"                          $$
+           "chrono = { version = \"0.4\", features = [\"serde\"] }"                        $$
            "serde_json = \"1.0\""                                                          $$
            "serde = { version = \"1.0\", features = [\"derive\"] }"                        $$
            "num = \"0.3\""                                                                 $$
