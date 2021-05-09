@@ -1,6 +1,6 @@
+use chrono::{Timelike, Datelike, TimeZone, NaiveDateTime, FixedOffset};
 use differential_datalog::record;
 use std::fmt::Display;
-use chrono::{Timelike, Datelike, TimeZone, NaiveDateTime, FixedOffset};
 
 //////////////////////////// Time //////////////////////////////////
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
@@ -16,33 +16,39 @@ impl Default for TimeWrapper {
     }
 }
 
-pub fn time_option_to_result(
-    r: Option<::chrono::NaiveTime>,
-) -> ddlog_std::Result<Time, String> {
+pub fn time_option_to_result(r: Option<::chrono::NaiveTime>) -> ddlog_std::Result<Time, String> {
     match (r) {
-        Some(res) => {
-            ddlog_std::Result::Ok { res: TimeWrapper { val: res } }
+        Some(res) => ddlog_std::Result::Ok {
+            res: TimeWrapper { val: res }
         },
         None => ddlog_std::Result::Err {
-            err: "illegal time value".to_string()
+            err: "illegal time value".to_string(),
         },
     }
 }
 
 pub fn try_from_hms(h: &u8, m: &u8, s: &u8) -> ddlog_std::Result<Time, String> {
-    time_option_to_result(::chrono::NaiveTime::from_hms_opt(*h as u32, *m as u32, *s as u32))
+    time_option_to_result(::chrono::NaiveTime::from_hms_opt(
+        *h as u32, *m as u32, *s as u32,
+    ))
 }
 
 pub fn try_from_hms_milli(h: &u8, m: &u8, s: &u8, ms: &u16) -> ddlog_std::Result<Time, String> {
-    time_option_to_result(::chrono::NaiveTime::from_hms_milli_opt(*h as u32, *m as u32, *s as u32, *ms as u32))
+    time_option_to_result(::chrono::NaiveTime::from_hms_milli_opt(
+        *h as u32, *m as u32, *s as u32, *ms as u32,
+    ))
 }
 
 pub fn try_from_hms_micro(h: &u8, m: &u8, s: &u8, mc: &u32) -> ddlog_std::Result<Time, String> {
-    time_option_to_result(::chrono::NaiveTime::from_hms_micro_opt(*h as u32, *m as u32, *s as u32, *mc as u32))
+    time_option_to_result(::chrono::NaiveTime::from_hms_micro_opt(
+        *h as u32, *m as u32, *s as u32, *mc as u32,
+    ))
 }
 
 pub fn try_from_hms_nano(h: &u8, m: &u8, s: &u8, mc: &u32) -> ddlog_std::Result<Time, String> {
-    time_option_to_result(::chrono::NaiveTime::from_hms_nano_opt(*h as u32, *m as u32, *s as u32, *mc as u32))
+    time_option_to_result(::chrono::NaiveTime::from_hms_nano_opt(
+        *h as u32, *m as u32, *s as u32, *mc as u32,
+    ))
 }
 
 pub fn hour(t: &Time) -> u8 {
@@ -79,9 +85,11 @@ pub fn midnight() -> Time {
 
 pub fn time_parse(s: &String, format: &String) -> ddlog_std::Result<Time, String> {
     match (::chrono::NaiveTime::parse_from_str(s, format)) {
-        Ok(t) => ddlog_std::Result::Ok { res: TimeWrapper { val: t }},
+        Ok(t) => ddlog_std::Result::Ok {
+            res: TimeWrapper { val: t }
+        },
         Err(e) => ddlog_std::Result::Err {
-            err: format!("{}", e)
+            err: format!("{}", e),
         },
     }
 }
@@ -101,10 +109,12 @@ pub fn string2time(s: &String) -> ddlog_std::Result<Time, String> {
 impl FromRecord for Time {
     fn from_record(val: &record::Record) -> ::std::result::Result<Self, String> {
         match (val) {
-            record::Record::String(s) => match (::chrono::NaiveTime::parse_from_str(s, &default_time_format.to_string())) {
-                Ok(t) => Ok(TimeWrapper { val: t }),
-                Err(e) => Err(format!("{}", e)),
-            },
+            record::Record::String(s) => {
+                match (::chrono::NaiveTime::parse_from_str(s, &default_time_format.to_string())) {
+                    Ok(t) => Ok(TimeWrapper { val: t }),
+                    Err(e) => Err(format!("{}", e)),
+                }
+            }
             _ => Err(String::from("Unexpected type")),
         }
     }
@@ -138,12 +148,10 @@ impl Default for DateWrapper {
     }
 }
 
-pub fn date_option_to_result(
-    r: Option<::chrono::NaiveDate>,
-) -> ddlog_std::Result<Date, String> {
+pub fn date_option_to_result(r: Option<::chrono::NaiveDate>) -> ddlog_std::Result<Date, String> {
     match (r) {
-        Some(d) => {
-            ddlog_std::Result::Ok { res: DateWrapper { val: d }}
+        Some(d) => ddlog_std::Result::Ok {
+            res: DateWrapper { val: d },
         },
         None => ddlog_std::Result::Err {
             err: "Invalid date".to_string(),
@@ -241,7 +249,7 @@ pub fn previous_day(date: &Date) -> Date {
 
 pub fn from_julian_day(julian_day: &i64) -> Date {
     DateWrapper {
-        val: timedate_to_naivedate(::time::Date::from_julian_day(*julian_day))
+        val: timedate_to_naivedate(::time::Date::from_julian_day(*julian_day)),
     }
 }
 
@@ -254,10 +262,12 @@ const default_date_format: &str = "%Y-%m-%d";
 impl FromRecord for Date {
     fn from_record(val: &record::Record) -> ::std::result::Result<Self, String> {
         match (val) {
-            record::Record::String(s) => match (::chrono::NaiveDate::parse_from_str(s, default_date_format)) {
-                Ok(d) => Ok(DateWrapper { val: d }),
-                Err(e) => Err(format!("{}", e)),
-            },
+            record::Record::String(s) => {
+                match (::chrono::NaiveDate::parse_from_str(s, default_date_format)) {
+                    Ok(d) => Ok(DateWrapper { val: d }),
+                    Err(e) => Err(format!("{}", e)),
+                }
+            }
             _ => Err(String::from("Unexpected type")),
         }
     }
@@ -274,10 +284,10 @@ pub fn date2string(t: &Date) -> String {
 pub fn date_parse(s: &String, format: &String) -> ddlog_std::Result<Date, String> {
     match (::chrono::NaiveDate::parse_from_str(s, &default_date_format.to_string())) {
         Ok(d) => ddlog_std::Result::Ok {
-            res: DateWrapper { val: d }
+            res: DateWrapper { val: d },
         },
         Err(e) => ddlog_std::Result::Err {
-            err: format!("{}", e)
+            err: format!("{}", e),
         },
     }
 }
@@ -358,5 +368,7 @@ pub struct TzDateTime {
 }
 
 pub fn utc_timezone(dt: DateTime) -> TzDateTime {
-    TzDateTime { val: utc().from_utc_datetime(&datetime_to_naivedatetime(dt)) }
+    TzDateTime {
+        val: utc().from_utc_datetime(&datetime_to_naivedatetime(dt)),
+    }
 }
