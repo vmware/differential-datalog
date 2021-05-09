@@ -87,6 +87,13 @@ function someDateTimeFormat(): string {
 input relation DTITest(d: DateTime)
 output relation DTTest(s: string, t: Result<DateTime, string>)
 
+function get_datetime(r: Result<TzDateTime, string>): Result<DateTime, string> {
+     match (r) {
+         Ok{dt} -> Ok{utc_datetime(dt)},
+         Err{e} -> Err{e}
+     }
+}
+
 DTTest(to_string(d), Ok{d}) :- DTITest(d).
 DTTest("string2datetime(\"2020-10-10T10:20:30\")", string2datetime("2020-10-10T10:20:30")).
 DTTest("string2datetime(to_string(${someDateTime()}))",
@@ -98,5 +105,36 @@ DTTest("datetime_parse(\"2020/10/10T10:20:30\", \"%Y-%m-%dT%H:%M:%S\")",
 DTTest("datetime_parse(datetime_format(${someDateTime()}, ${someDateTimeFormat()}), ${someDateTimeFormat()})",
         datetime_parse(datetime_format(someDateTime(), someDateTimeFormat()), someDateTimeFormat())).
 DTTest("datetime_from_unix_timestamp(10000000)", Ok{datetime_from_unix_timestamp(10000000)}).
+DTTest("datetime_parse(\"Wed Mar 05 07:45:30 MST 2025\", \"%a %b %d %H:%M:%S %Z %Y\")",
+        datetime_parse("Wed Mar 05 07:45:30 MST 2025", "%a %b %d %H:%M:%S %Z %Y")).
+DTTest("get_datetime(tz_datetime_parse_from_rfc2822(\"Tue, 1 Jul 2003 10:52:37 GMT\"))",
+        get_datetime(tz_datetime_parse_from_rfc2822("Tue, 1 Jul 2003 10:52:37 GMT"))).
 
 //////////////////////////////////////////////////
+
+input relation DTZITest(d: TzDateTime)
+output relation DTZTest(s: string, t: Result<TzDateTime, string>)
+
+function utc(r: Result<DateTime, string>): Result<TzDateTime, string> {
+     match (r) {
+         Ok{dt} -> Ok{utc_timezone(dt)},
+         Err{e} -> Err{e}
+     }
+}
+
+DTZTest(to_string(d), Ok{d}) :- DTZITest(d).
+DTZTest("utc(string2datetime(\"2020-10-10T10:20:30\"))", utc(string2datetime("2020-10-10T10:20:30"))).
+DTZTest("tz_datetime_parse(\"2020-10-10T10:20:30 +02:00\", \"%Y-%m-%dT%H:%M:%S %z\")",
+        tz_datetime_parse("2020-10-10T10:20:30 +02:00", "%Y-%m-%dT%H:%M:%S %z")).
+DTZTest("tz_datetime_parse(\"2020/10/10T10:20:30 -02:00\", \"%Y/%m/%dT%H:%M:%S %z\")",
+        tz_datetime_parse("2020/10/10T10:20:30 -03:00", "%Y/%m/%dT%H:%M:%S %z")).
+DTZTest("tz_datetime_parse_from_rfc3339(\"2020-10-10T10:20:30-03:00\")",
+        tz_datetime_parse_from_rfc3339("2020-10-10T10:20:30-03:00")).
+DTZTest("tz_datetime_parse_from_rfc2822(\"Tue, 1 Jul 2003 10:52:37 +0200\")",
+        tz_datetime_parse_from_rfc2822("Tue, 1 Jul 2003 10:52:37 +0200")).
+DTZTest("tz_datetime_parse_from_rfc2822(\"Tue, 1 Jul 2003 10:52:37 GMT\")",
+        tz_datetime_parse_from_rfc2822("Tue, 1 Jul 2003 10:52:37 GMT")).
+// The following actually gives an error, since the %Z format cannot infer a timezone reliably
+// So this cannot extract a date with a timezone, only a DateTime
+DTZTest("tz_datetime_parse(\"Wed Mar 05 07:45:30 MST 2025\", \"%a %b %d %H:%M:%S %Z %Y\")",
+         tz_datetime_parse("Wed Mar 05 07:45:30 MST 2025", "%a %b %d %H:%M:%S %Z %Y")).

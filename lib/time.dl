@@ -1,3 +1,26 @@
+/*
+Copyright (c) 2021 VMware, Inc.
+SPDX-License-Identifier: MIT
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
 /// Library supporting dates, times, and date-times
 /// Based on the chrono crate
 /// https://github.com/chronotope/chrono
@@ -147,6 +170,9 @@ function to_time(s: string): Result<Time, string> {
 
 /// Format the Time using the provided string.
 extern function time_format(t: Time, format: string): string
+function format(t: Time, format: string): string {
+    time_format(t, format)
+}
 
 /// Attempt to parse a Time using the provided format string.
 extern function time_parse(s: string, format: string): Result<Time, string>
@@ -202,6 +228,9 @@ extern function date_parse(s: string, format: string): Result<Date, string>
 
 /// format the Date using the specified format string
 extern function date_format(date: Date, format: string): string
+function format(date: Date, format: string): string {
+    date_format(date, format)
+}
 
 /// Convert the date to a string using a default format.
 extern function date2string(t: Date): string
@@ -243,6 +272,9 @@ function to_datetime(s: string): Result<DateTime, string> {
 
 /// format the DateTime using the specified format string
 extern function datetime_format(d: DateTime, format: string): string
+function format(d: DateTime, format: string): string {
+    datetime_format(d, format)
+}
 
 /// Create a DateTime from a given unix timestamp
 extern function datetime_from_unix_timestamp(timestamp: signed<64>): DateTime
@@ -255,3 +287,33 @@ extern type TzDateTime
 
 /// Convert a DateTime to a TzDateTime in the UTC timezone
 extern function utc_timezone(dt: DateTime): TzDateTime
+
+/// Convert a DateTime to a TzDateTime in a timezone with a specified
+/// offset in seconds to the east from UTC.
+extern function offset_timezone(eastOffsetInSeconds: signed<32>, dt: DateTime): TzDateTime
+/// Changes the associated time zone. This does not change the actual DateTime (but will change the string representation).
+extern function change_offset(eastOffsetInSeconds: signed<32>, dt: TzDateTime): TzDateTime
+/// Get the DateTime without a timezone in the UTC timezone
+extern function utc_datetime(dt: TzDateTime): DateTime
+
+extern function tz_datetime_format(td: TzDateTime, format: string): string
+function format(td: TzDateTime, format: string): string {
+   tz_datetime_format(td, format)
+}
+extern function tzDateTime2string(td: TzDateTime): string
+/// Returns an RFC 2822 date and time string such as Tue, 1 Jul 2003 10:52:37 +0200.
+extern function to_rfc2822(td: TzDateTime): string
+/// Returns an RFC 3339 and ISO 8601 date and time string such as 1996-12-19T16:39:57-08:00.
+extern function to_rfc3339(td: TzDateTime): string
+
+/// Parse a TzDateTime using the specified string format
+extern function tz_datetime_parse(s: string, format: string): Result<TzDateTime, string>
+/// Parses an RFC 3339 and ISO 8601 date and time string such as 1996-12-19T16:39:57-08:00
+extern function tz_datetime_parse_from_rfc3339(s: string): Result<TzDateTime, string>
+/// Parses an RFC 2822 date and time string such as Tue, 1 Jul 2003 10:52:37 +0200
+extern function tz_datetime_parse_from_rfc2822(s: string): Result<TzDateTime, string>
+extern function time(dt: TzDateTime): Time
+
+function to_string(dt: TzDateTime): string {
+    tzDateTime2string(dt)
+}
