@@ -1,4 +1,4 @@
-use chrono::{Timelike, Datelike, TimeZone, NaiveDateTime, FixedOffset};
+use chrono::{Datelike, FixedOffset, NaiveDateTime, TimeZone, Timelike};
 use differential_datalog::record;
 use std::fmt::Display;
 
@@ -19,7 +19,7 @@ impl Default for TimeWrapper {
 pub fn time_option_to_result(r: Option<::chrono::NaiveTime>) -> ddlog_std::Result<Time, String> {
     match (r) {
         Some(res) => ddlog_std::Result::Ok {
-            res: TimeWrapper { val: res }
+            res: TimeWrapper { val: res },
         },
         None => ddlog_std::Result::Err {
             err: "illegal time value".to_string(),
@@ -160,7 +160,11 @@ pub fn date_option_to_result(r: Option<::chrono::NaiveDate>) -> ddlog_std::Resul
 }
 
 pub fn try_from_ymd(year: &i32, month: &u8, day: &u8) -> ddlog_std::Result<Date, String> {
-    date_option_to_result(::chrono::NaiveDate::from_ymd_opt(*year, *month as u32, *day as u32))
+    date_option_to_result(::chrono::NaiveDate::from_ymd_opt(
+        *year,
+        *month as u32,
+        *day as u32,
+    ))
 }
 
 pub fn try_from_yo(year: &i32, ordinal: &u16) -> ddlog_std::Result<Date, String> {
