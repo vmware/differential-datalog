@@ -1,3 +1,26 @@
+/*
+Copyright (c) 2021 VMware, Inc.
+SPDX-License-Identifier: MIT
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
 use chrono::{Datelike, FixedOffset, NaiveDateTime, TimeZone, Timelike};
 use differential_datalog::record;
 use std::fmt::Display;
@@ -86,7 +109,7 @@ pub fn midnight() -> Time {
 pub fn time_parse(s: &String, format: &String) -> ddlog_std::Result<Time, String> {
     match (::chrono::NaiveTime::parse_from_str(s, format)) {
         Ok(t) => ddlog_std::Result::Ok {
-            res: TimeWrapper { val: t }
+            res: TimeWrapper { val: t },
         },
         Err(e) => ddlog_std::Result::Err {
             err: format!("{}", e),
@@ -357,12 +380,23 @@ pub fn datetime_from_unix_timestamp(timestamp: &i64) -> DateTime {
 
 //////////////////////////////////////////// Timezone ////////////////////////////////////
 
-pub fn datetime_to_naivedatetime(dt: DateTime) -> NaiveDateTime {
+pub fn datetime_to_naivedatetime(dt: &DateTime) -> NaiveDateTime {
     NaiveDateTime::new(dt.date.val, dt.time.val)
 }
 
+pub fn naivedatetime_to_datetime(dt: &NaiveDateTime) -> DateTime {
+    DateTime {
+        date: DateWrapper { val: dt.date() },
+        time: TimeWrapper { val: dt.time() },
+    }
+}
+
+pub fn eastOffset(offset: &i32) -> FixedOffset {
+    FixedOffset::east(*offset)
+}
+
 pub fn utc() -> FixedOffset {
-    FixedOffset::east(0)
+    eastOffset(&0)
 }
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
@@ -371,8 +405,109 @@ pub struct TzDateTime {
     val: ::chrono::DateTime<::chrono::FixedOffset>,
 }
 
-pub fn utc_timezone(dt: DateTime) -> TzDateTime {
+pub fn utc_timezone(dt: &DateTime) -> TzDateTime {
     TzDateTime {
         val: utc().from_utc_datetime(&datetime_to_naivedatetime(dt)),
     }
+}
+
+pub fn offset_timezone(eastOffsetInSeconds: &i32, dt: &DateTime) -> TzDateTime {
+    TzDateTime {
+        val: eastOffset(eastOffsetInSeconds).from_utc_datetime(&datetime_to_naivedatetime(dt)),
+    }
+}
+
+pub fn to_rfc3339(dt: &TzDateTime) -> String {
+    dt.val.to_rfc3339()
+}
+
+pub fn to_rfc2822(dt: &TzDateTime) -> String {
+    dt.val.to_rfc2822()
+}
+
+pub fn tzDateTime2string(dt: &TzDateTime) -> String {
+    to_rfc3339(dt)
+}
+
+pub fn tz_datetime_format(dt: &TzDateTime, format: &String) -> String {
+    dt.val.format(format).to_string()
+}
+
+pub fn tz_datetime_parse(s: &String, format: &String) -> ddlog_std::Result<TzDateTime, String> {
+    match (::chrono::DateTime::parse_from_str(s, format)) {
+        Ok(dt) => ddlog_std::Result::Ok {
+            res: TzDateTime { val: dt },
+        },
+        Err(e) => ddlog_std::Result::Err {
+            err: format!("{}", e),
+        },
+    }
+}
+
+pub fn tz_datetime_parse_from_rfc3339(s: &String) -> ddlog_std::Result<TzDateTime, String> {
+    match (::chrono::DateTime::parse_from_rfc3339(s)) {
+        Ok(dt) => ddlog_std::Result::Ok {
+            res: TzDateTime { val: dt },
+        },
+        Err(e) => ddlog_std::Result::Err {
+            err: format!("{}", e),
+        },
+    }
+}
+
+pub fn tz_datetime_parse_from_rfc2822(s: &String) -> ddlog_std::Result<TzDateTime, String> {
+    match (::chrono::DateTime::parse_from_rfc2822(s)) {
+        Ok(dt) => ddlog_std::Result::Ok {
+            res: TzDateTime { val: dt },
+        },
+        Err(e) => ddlog_std::Result::Err {
+            err: format!("{}", e),
+        },
+    }
+}
+
+impl FromRecord for TzDateTime {
+    fn from_record(val: &record::Record) -> ::std::result::Result<Self, String> {
+        match (val) {
+            record::Record::String(s) => match (::chrono::DateTime::parse_from_rfc3339(s)) {
+                Ok(dt) => Ok(TzDateTime { val: dt }),
+                Err(e) => Err(format!("{}", e)),
+            },
+            _ => Err(String::from("Unexpected type")),
+        }
+    }
+}
+
+impl IntoRecord for TzDateTime {
+    fn into_record(self) -> record::Record {
+        record::Record::String(to_rfc3339(&self))
+    }
+}
+
+impl Default for TzDateTime {
+    fn default() -> Self {
+        let defdt: DateTime = DateTime::default();
+        utc_timezone(&defdt)
+    }
+}
+
+impl record::Mutator<TzDateTime> for record::Record {
+    fn mutate(&self, t: &mut TzDateTime) -> ::std::result::Result<(), String> {
+        *t = TzDateTime::from_record(self)?;
+        Ok(())
+    }
+}
+
+pub fn time(td: &TzDateTime) -> Time {
+    TimeWrapper { val: td.val.time() }
+}
+
+pub fn change_offset(eastOffsetInSeconds: &i32, dt: &TzDateTime) -> TzDateTime {
+    TzDateTime {
+        val: dt.val.with_timezone(&eastOffset(eastOffsetInSeconds)),
+    }
+}
+
+pub fn utc_datetime(dt: &TzDateTime) -> DateTime {
+    naivedatetime_to_datetime(&dt.val.naive_utc())
 }
