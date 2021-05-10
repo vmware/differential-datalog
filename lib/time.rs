@@ -21,9 +21,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+use std::panic;
 use chrono::{Datelike, FixedOffset, NaiveDateTime, TimeZone, Timelike};
 use differential_datalog::record;
-use std::fmt::Display;
+use std::fmt::Write;
 
 //////////////////////////// Time //////////////////////////////////
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
@@ -117,12 +118,25 @@ pub fn time_parse(s: &String, format: &String) -> ddlog_std::Result<Time, String
     }
 }
 
-pub fn time_format(t: &Time, format: &String) -> String {
-    t.val.format(format).to_string()
+pub fn result_from_delayed_format<'a>(d: chrono::format::DelayedFormat<chrono::format::strftime::StrftimeItems<'a>>, format: &String) -> ddlog_std::Result<String, String> {
+    let mut buffer = String::new();
+    match write!(&mut buffer, "{}", d) {
+        Ok(t) => ddlog_std::Result::Ok {
+            res: buffer,
+        },
+        Err(_) => ddlog_std::Result::Err {
+            err: format!("Error in format string '{}'", format),
+        },
+    }
+}
+
+pub fn time_format(t: &Time, format: &String) -> ddlog_std::Result<String, String> {
+    result_from_delayed_format(t.val.format(format), format)
 }
 
 pub fn time2string(t: &Time) -> String {
-    time_format(t, &default_time_format.to_string())
+    // This should not panic since we know the format string is correct
+    t.val.format(&default_time_format.to_string()).to_string()
 }
 
 pub fn string2time(s: &String) -> ddlog_std::Result<Time, String> {
@@ -300,16 +314,17 @@ impl FromRecord for Date {
     }
 }
 
-pub fn date_format(d: &Date, format: &String) -> String {
-    d.val.format(format).to_string()
+pub fn date_format(d: &Date, format: &String) -> ddlog_std::Result<String, String> {
+    result_from_delayed_format(d.val.format(format), format)
 }
 
-pub fn date2string(t: &Date) -> String {
-    date_format(t, &default_date_format.to_string())
+pub fn date2string(d: &Date) -> String {
+    // This should not panic since we know the format string is correct
+    d.val.format(&default_date_format.to_string()).to_string()
 }
 
 pub fn date_parse(s: &String, format: &String) -> ddlog_std::Result<Date, String> {
-    match (::chrono::NaiveDate::parse_from_str(s, &default_date_format.to_string())) {
+    match (::chrono::NaiveDate::parse_from_str(s, format)) {
         Ok(d) => ddlog_std::Result::Ok {
             res: DateWrapper { val: d },
         },
@@ -358,6 +373,7 @@ pub fn datetime_parse(s: &String, format: &String) -> ddlog_std::Result<DateTime
 
 pub fn dateTime2string(d: &DateTime) -> String {
     let prim = ::chrono::NaiveDateTime::new((*d).date.val, (*d).time.val);
+    // This should not panic since we know the format string is correct
     prim.format(defaultDateTimeFormat).to_string()
 }
 
@@ -365,9 +381,9 @@ pub fn string2datetime(s: &String) -> ddlog_std::Result<DateTime, String> {
     datetime_parse(s, &String::from(defaultDateTimeFormat))
 }
 
-pub fn datetime_format(d: &DateTime, format: &String) -> String {
+pub fn datetime_format(d: &DateTime, format: &String) -> ddlog_std::Result<String, String> {
     let dt = ::chrono::NaiveDateTime::new((*d).date.val, (*d).time.val);
-    dt.format(format).to_string()
+    result_from_delayed_format(dt.format(format), format)
 }
 
 pub fn datetime_from_unix_timestamp(timestamp: &i64) -> DateTime {
@@ -411,7 +427,7 @@ pub fn utc_timezone(dt: &DateTime) -> TzDateTime {
     }
 }
 
-pub fn offset_timezone(eastOffsetInSeconds: &i32, dt: &DateTime) -> TzDateTime {
+pub fn offset_timezone(dt: &DateTime, eastOffsetInSeconds: &i32) -> TzDateTime {
     TzDateTime {
         val: eastOffset(eastOffsetInSeconds).from_utc_datetime(&datetime_to_naivedatetime(dt)),
     }
@@ -429,8 +445,8 @@ pub fn tzDateTime2string(dt: &TzDateTime) -> String {
     to_rfc3339(dt)
 }
 
-pub fn tz_datetime_format(dt: &TzDateTime, format: &String) -> String {
-    dt.val.format(format).to_string()
+pub fn tz_datetime_format(dt: &TzDateTime, format: &String) -> ddlog_std::Result<String, String> {
+    result_from_delayed_format(dt.val.format(format), format)
 }
 
 pub fn tz_datetime_parse(s: &String, format: &String) -> ddlog_std::Result<TzDateTime, String> {
@@ -502,7 +518,7 @@ pub fn time(td: &TzDateTime) -> Time {
     TimeWrapper { val: td.val.time() }
 }
 
-pub fn change_offset(eastOffsetInSeconds: &i32, dt: &TzDateTime) -> TzDateTime {
+pub fn change_offset(dt: &TzDateTime, eastOffsetInSeconds: &i32) -> TzDateTime {
     TzDateTime {
         val: dt.val.with_timezone(&eastOffset(eastOffsetInSeconds)),
     }

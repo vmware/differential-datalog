@@ -3,6 +3,13 @@ import time
 input relation TITest(t: Time)
 output relation TTest(s: string, t: Result<Time, string>)
 
+function result_or_error(r: Result<string, string>): string {
+    match (r) {
+        Ok{s} -> s,
+        Err{e} -> e
+    }
+}
+
 TTest(t.to_string(), Ok{t}) :- TITest(t).
 TTest("try_from_hms(8'd10, 8'd10, 8'd10)", try_from_hms(8'd10, 8'd10, 8'd10)).
 TTest("try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10)", try_from_hms_milli(8'd10, 8'd10, 8'd10, 16'd10)).
@@ -23,8 +30,15 @@ TTest("string2time(to_string(result_unwrap_or_default(try_from_hms_micro(8'd10, 
        string2time(to_string(result_unwrap_or_default(try_from_hms_micro(8'd10, 8'd10, 8'd10, 32'd10))))).
 TTest("string2time(to_string(result_unwrap_or_default(try_from_hms_nano(8'd10, 8'd10, 8'd10, 32'd10))))",
        string2time(to_string(result_unwrap_or_default(try_from_hms_nano(8'd10, 8'd10, 8'd10, 32'd10))))).
-TTest("time_parse(time_format(${someTime()}, ${someTimeFormat()}), ${someTimeFormat()})",
-       time_parse(time_format(someTime(), someTimeFormat()), someTimeFormat())).
+TTest("time_parse(time_format(${someTime()}, ${someTimeFormat()}).unwrap_or_default(), ${someTimeFormat()})",
+       time_parse(time_format(someTime(), someTimeFormat()).unwrap_or_default(), someTimeFormat())).
+// Check that default value is ok
+TTest("try_from_hms(100, 0, 0).unwrap_or_default()", Ok{try_from_hms(100, 0, 0).unwrap_or_default()}).
+// This test checks that an incorrect format does not cause a panic
+TTest(time_format(someTime(), "%incorrectformat").result_or_error(), Ok{someTime()}).
+// Test to_string
+TTest("${someTime()}", Ok{someTime()}).
+TTest("SomeTime: ${someTzDateTime().time()}", Ok{someTzDateTime().time()}).
 
 function someTime(): Time {
    result_unwrap_or_default( try_from_hms_nano(10, 11, 12, 103104105) )
@@ -66,8 +80,14 @@ DTest("string2date(to_string(someDate()))",
 DTest("Ok{next_day(${someDate()})}", Ok{next_day(someDate())}).
 DTest("Ok{previous_day(${someDate()})}", Ok{previous_day(someDate())}).
 DTest("Ok{from_julian_day(2000000)}", Ok{from_julian_day(2000000)}).
-DTest("date_parse(date_format(${someDate()}, ${someDateFormat()}), ${someDateFormat()})",
-       date_parse(date_format(someDate(), someDateFormat()), someDateFormat())).
+DTest("date_parse(date_format(${someDate()}, ${someDateFormat()}).result_or_error(), ${someDateFormat()})",
+       date_parse(date_format(someDate(), someDateFormat()).result_or_error(), someDateFormat())).
+// Check that default value is ok
+DTest("try_from_yd(0, 0, 0).unwrap_or_default()", Ok{try_from_ymd(0, 0, 0).unwrap_or_default()}).
+// This test checks that an incorrect format does not cause a panic
+DTest(date_format(someDate(), "%incorrectformat").result_or_error(), Ok{someDate()}).
+// Test to_string
+DTest("${someDate()}", Ok{someDate()}).
 
 Extract("year(${someDate()})", year(someDate()) as bit<32>).
 Extract("month(${someDate()})", month(someDate()) as bit<32>).
@@ -102,13 +122,21 @@ DTTest("datetime_parse(\"2020-10-10T10:20:30\", \"%Y-%m-%dT%H:%M:%S\")",
         datetime_parse("2020-10-10T10:20:30", "%Y-%m-%dT%H:%M:%S")).
 DTTest("datetime_parse(\"2020/10/10T10:20:30\", \"%Y-%m-%dT%H:%M:%S\")",
         datetime_parse("2020/10/10T10:20:30", "%Y-%m-%dT%H:%M:%S")).
-DTTest("datetime_parse(datetime_format(${someDateTime()}, ${someDateTimeFormat()}), ${someDateTimeFormat()})",
-        datetime_parse(datetime_format(someDateTime(), someDateTimeFormat()), someDateTimeFormat())).
+DTTest("datetime_parse(datetime_format(${someDateTime()}, ${someDateTimeFormat()}).result_or_error(), ${someDateTimeFormat()})",
+        datetime_parse(datetime_format(someDateTime(), someDateTimeFormat()).result_or_error(), someDateTimeFormat())).
 DTTest("datetime_from_unix_timestamp(10000000)", Ok{datetime_from_unix_timestamp(10000000)}).
 DTTest("datetime_parse(\"Wed Mar 05 07:45:30 MST 2025\", \"%a %b %d %H:%M:%S %Z %Y\")",
         datetime_parse("Wed Mar 05 07:45:30 MST 2025", "%a %b %d %H:%M:%S %Z %Y")).
 DTTest("get_datetime(tz_datetime_parse_from_rfc2822(\"Tue, 1 Jul 2003 10:52:37 GMT\"))",
         get_datetime(tz_datetime_parse_from_rfc2822("Tue, 1 Jul 2003 10:52:37 GMT"))).
+// Check that default value is ok
+DTTest("\"\".string2datetime().unwrap_or_default()", Ok{"".string2datetime().unwrap_or_default()}).
+// This test checks that an incorrect format does not cause a panic
+DTTest(datetime_format(someDateTime(), "%incorrectformat").result_or_error(), Ok{someDateTime()}).
+// Test to_string
+DTTest("${someDateTime()}", Ok{someDateTime()}).
+DTTest("Extract date ${someTzDateTime().utc_datetime()}", Ok{someTzDateTime().utc_datetime()}).
+DTTest("Extract shifted ${someTzDateTime().change_offset(-1000).utc_datetime()}", Ok{someTzDateTime().change_offset(-1000).utc_datetime()}).
 
 //////////////////////////////////////////////////
 
@@ -122,8 +150,12 @@ function utc(r: Result<DateTime, string>): Result<TzDateTime, string> {
      }
 }
 
+function someTzDateTime(): TzDateTime {
+     someDateTime().utc_timezone()
+}
+
 DTZTest(to_string(d), Ok{d}) :- DTZITest(d).
-DTZTest("utc(string2datetime(\"2020-10-10T10:20:30\"))", utc(string2datetime("2020-10-10T10:20:30"))).
+DTZTest("string2datetime(\"2020-10-10T10:20:30\").utc()", string2datetime("2020-10-10T10:20:30").utc()).
 DTZTest("tz_datetime_parse(\"2020-10-10T10:20:30 +02:00\", \"%Y-%m-%dT%H:%M:%S %z\")",
         tz_datetime_parse("2020-10-10T10:20:30 +02:00", "%Y-%m-%dT%H:%M:%S %z")).
 DTZTest("tz_datetime_parse(\"2020/10/10T10:20:30 -02:00\", \"%Y/%m/%dT%H:%M:%S %z\")",
@@ -138,3 +170,11 @@ DTZTest("tz_datetime_parse_from_rfc2822(\"Tue, 1 Jul 2003 10:52:37 GMT\")",
 // So this cannot extract a date with a timezone, only a DateTime
 DTZTest("tz_datetime_parse(\"Wed Mar 05 07:45:30 MST 2025\", \"%a %b %d %H:%M:%S %Z %Y\")",
          tz_datetime_parse("Wed Mar 05 07:45:30 MST 2025", "%a %b %d %H:%M:%S %Z %Y")).
+// This test checks that an incorrect format does not cause a panic
+DTZTest(tz_datetime_format(someTzDateTime(), "%incorrectformat").result_or_error(), Ok{someTzDateTime()}).
+// Test to_string
+DTZTest("${someTzDateTime()}", Ok{someTzDateTime()}).
+// Check that default value is ok
+DTZTest("\"\".tz_datetime_parse_from_rfc2822().unwrap_or_default()", Ok{"".tz_datetime_parse_from_rfc2822().unwrap_or_default()}).
+DTZTest("RFC 2822: ${someTzDateTime().to_rfc2822()}", Ok{someTzDateTime()}).
+DTZTest("RFC 3339: ${someTzDateTime().to_rfc3339()}", Ok{someTzDateTime()}).

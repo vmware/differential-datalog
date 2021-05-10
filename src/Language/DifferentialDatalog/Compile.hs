@@ -778,7 +778,6 @@ mkCargoToml rs_code crate crate_id =
            "once_cell = \"1.4.1\""                                                         $$
            "libc = \"0.2\""                                                                $$
            "time = { version = \"0.2\", features = [\"serde\"] }"                          $$
-           "chrono = { version = \"0.4\", features = [\"serde\"] }"                        $$
            "serde_json = \"1.0\""                                                          $$
            "serde = { version = \"1.0\", features = [\"derive\"] }"                        $$
            "num = \"0.3\""                                                                 $$
