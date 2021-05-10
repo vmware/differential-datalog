@@ -21,7 +21,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-use std::panic;
 use chrono::{Datelike, FixedOffset, NaiveDateTime, TimeZone, Timelike};
 use differential_datalog::record;
 use std::fmt::Write;
