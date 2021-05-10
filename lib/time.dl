@@ -155,9 +155,7 @@ Modifier	Description
 %0?	        Uses zeroes as a padding. (e.g. %e =  9, %0e = 09)
 */
 
-/// Convert the time to a string using a default format.
 extern function time2string(t: Time): string
-
 function to_string(t: Time): string {
     time2string(t)
 }
@@ -169,8 +167,9 @@ function to_time(s: string): Result<Time, string> {
 }
 
 /// Format the Time using the provided string.
-extern function time_format(t: Time, format: string): string
-function format(t: Time, format: string): string {
+/// Conversion can fail when the format string is incorrect
+extern function time_format(t: Time, format: string): Result<string, string>
+function format(t: Time, format: string): Result<string, string> {
     time_format(t, format)
 }
 
@@ -227,8 +226,9 @@ extern function from_julian_day(julian_day: signed<64>): Date
 extern function date_parse(s: string, format: string): Result<Date, string>
 
 /// format the Date using the specified format string
-extern function date_format(date: Date, format: string): string
-function format(date: Date, format: string): string {
+/// Formatting can fail if the format string is incorrect.
+extern function date_format(date: Date, format: string): Result<string, string>
+function format(date: Date, format: string): Result<string, string> {
     date_format(date, format)
 }
 
@@ -271,8 +271,9 @@ function to_datetime(s: string): Result<DateTime, string> {
 }
 
 /// format the DateTime using the specified format string
-extern function datetime_format(d: DateTime, format: string): string
-function format(d: DateTime, format: string): string {
+/// Formatting can fail if the format string is incorrect.
+extern function datetime_format(d: DateTime, format: string): Result<string, string>
+function format(d: DateTime, format: string): Result<string, string> {
     datetime_format(d, format)
 }
 
@@ -281,6 +282,9 @@ extern function datetime_from_unix_timestamp(timestamp: signed<64>): DateTime
 
 ///////////////////////////////////////////////////
 // Timezone handling, based on chrono
+// Chrono has a separate Timezone trait, but we do not
+// expose it, since it is never really useful without
+// a DateTime.
 
 /// An object representing a datetime with a timezone
 extern type TzDateTime
@@ -290,14 +294,14 @@ extern function utc_timezone(dt: DateTime): TzDateTime
 
 /// Convert a DateTime to a TzDateTime in a timezone with a specified
 /// offset in seconds to the east from UTC.
-extern function offset_timezone(eastOffsetInSeconds: signed<32>, dt: DateTime): TzDateTime
+extern function offset_timezone(dt: DateTime, eastOffsetInSeconds: signed<32>): TzDateTime
 /// Changes the associated time zone. This does not change the actual DateTime (but will change the string representation).
-extern function change_offset(eastOffsetInSeconds: signed<32>, dt: TzDateTime): TzDateTime
+extern function change_offset(dt: TzDateTime, eastOffsetInSeconds: signed<32>): TzDateTime
 /// Get the DateTime without a timezone in the UTC timezone
 extern function utc_datetime(dt: TzDateTime): DateTime
 
-extern function tz_datetime_format(td: TzDateTime, format: string): string
-function format(td: TzDateTime, format: string): string {
+extern function tz_datetime_format(td: TzDateTime, format: string): Result<string, string>
+function format(td: TzDateTime, format: string): Result<string, string> {
    tz_datetime_format(td, format)
 }
 extern function tzDateTime2string(td: TzDateTime): string
