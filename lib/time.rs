@@ -118,12 +118,13 @@ pub fn time_parse(s: &String, format: &String) -> ddlog_std::Result<Time, String
     }
 }
 
-pub fn result_from_delayed_format<'a>(d: chrono::format::DelayedFormat<chrono::format::strftime::StrftimeItems<'a>>, format: &String) -> ddlog_std::Result<String, String> {
+pub fn result_from_delayed_format<'a>(
+    d: chrono::format::DelayedFormat<chrono::format::strftime::StrftimeItems<'a>>,
+    format: &String,
+) -> ddlog_std::Result<String, String> {
     let mut buffer = String::new();
     match write!(&mut buffer, "{}", d) {
-        Ok(t) => ddlog_std::Result::Ok {
-            res: buffer,
-        },
+        Ok(t) => ddlog_std::Result::Ok { res: buffer },
         Err(_) => ddlog_std::Result::Err {
             err: format!("Error in format string '{}'", format),
         },
