@@ -4,20 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-
-## [Unreleased]
-
-### Bug fix
-
-- Segfault in the Java API in `transactionCommitDumpChanges`.
-
-## [0.40.2] - May 10, 2021
+## [0.40.2] - May 11, 2021
 
 ### Libraries
 
 - `time.dl`: Improved support for times and dates.  The library now uses the
   `chrono` crate (instead of `time`) internally, which in particular supports
   timezones.
+
+### Bug fix
+
+- Segfault in the Java API in `transactionCommitDumpChanges`.
+
 
 ## [0.40.1] - May 7, 2021
 

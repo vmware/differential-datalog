@@ -17,7 +17,6 @@ c_api = ["differential_datalog/c_api"]
 [dependencies]
 abomonation = "0.7"
 time = { version = "0.2", features = ["serde"] }
-chrono = { version = "0.4", features = ["serde"] }
 ordered-float = { version = "2.0.0", features = ["serde"] }
 cpuprofiler = { version = "0.0", optional = true }
 #differential-dataflow = "0.11.0"
