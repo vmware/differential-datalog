@@ -299,7 +299,9 @@ JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1commit_1dump_1
 
     ddlog_delta *delta = ddlog_transaction_commit_dump_changes((ddlog_prog)handle);
     if (delta == NULL) {
+        free(cbinfo);
         throwDDlogException(env, NULL);
+        return;
     };
     ddlog_delta_enumerate(delta, commit_dump_callback, (uintptr_t)cbinfo);
     ddlog_free_delta(delta);
