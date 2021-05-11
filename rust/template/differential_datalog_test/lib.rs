@@ -9,7 +9,6 @@
 use std::borrow::Cow;
 use std::collections::btree_map::{BTreeMap, Entry};
 use std::collections::btree_set::BTreeSet;
-use std::iter::FromIterator;
 use std::sync::{Arc, Mutex};
 
 use fnv::FnvHashMap;
@@ -461,10 +460,10 @@ fn test_semijoin(nthreads: usize) {
     let mut running = prog.run(nthreads).unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
-    let set = BTreeMap::from_iter(
-        vals.iter()
-            .map(|x| (Tuple2(Box::new(U64(*x)), Box::new(U64(*x))), 1)),
-    );
+    let set: BTreeMap<_, _> = vals
+        .iter()
+        .map(|x| (Tuple2(Box::new(U64(*x)), Box::new(U64(*x))), 1))
+        .collect();
 
     running.transaction_start().unwrap();
     for x in set.keys() {
@@ -622,10 +621,10 @@ fn test_join(nthreads: usize) {
     let mut running = prog.run(nthreads).unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
-    let set = BTreeMap::from_iter(
-        vals.iter()
-            .map(|x| (Tuple2(Box::new(U64(*x)), Box::new(U64(*x))), 1)),
-    );
+    let set: BTreeMap<_, _> = vals
+        .iter()
+        .map(|x| (Tuple2(Box::new(U64(*x)), Box::new(U64(*x))), 1))
+        .collect();
 
     running.transaction_start().unwrap();
     for x in set.keys() {
@@ -640,7 +639,7 @@ fn test_join(nthreads: usize) {
     let rel2dump = running.dump_arrangement((2, 0)).unwrap();
     assert_eq!(
         rel2dump,
-        BTreeSet::from_iter(vals.iter().map(|x| U64(*x).into_ddvalue()))
+        vals.iter().map(|x| U64(*x).into_ddvalue()).collect()
     );
 
     for key in vals.iter() {
@@ -893,10 +892,10 @@ fn test_streamjoin(nthreads: usize) {
     let mut running = prog.run(nthreads).unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
-    let set = BTreeMap::from_iter(
-        vals.iter()
-            .map(|x| (Tuple2(Box::new(U64(*x)), Box::new(U64(*x))), 1)),
-    );
+    let set: BTreeMap<_, _> = vals
+        .iter()
+        .map(|x| (Tuple2(Box::new(U64(*x)), Box::new(U64(*x))), 1))
+        .collect();
 
     running.transaction_start().unwrap();
     for x in set.keys() {
@@ -1038,10 +1037,10 @@ fn test_antijoin(nthreads: usize) {
     let mut running = prog.run(nthreads).unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
-    let set = BTreeMap::from_iter(
-        vals.iter()
-            .map(|x| (Tuple2(Box::new(U64(*x)), Box::new(U64(*x))), 1)),
-    );
+    let set: BTreeMap<_, _> = vals
+        .iter()
+        .map(|x| (Tuple2(Box::new(U64(*x)), Box::new(U64(*x))), 1))
+        .collect();
 
     /* 1. T2 and T1 contain identical keys; antijoin is empty */
     running.transaction_start().unwrap();
@@ -1250,19 +1249,19 @@ fn test_map(nthreads: usize) {
     let mut running = prog.run(nthreads).unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
-    let set = BTreeMap::from_iter(vals.iter().map(|x| (U64(*x), 1)));
-    let expected2 = BTreeMap::from_iter(
-        vals.iter()
-            .map(|x| U64(*x).into_ddvalue())
-            .map(mfun)
-            .filter(ffun)
-            .filter_map(fmfun)
-            .flat_map(|x| match flatmapfun(x) {
-                Some(iter) => iter,
-                None => Box::new(None.into_iter()),
-            })
-            .map(|x| (I64::from_ddvalue(x), 1)),
-    );
+    let set: BTreeMap<_, _> = vals.iter().map(|x| (U64(*x), 1)).collect();
+    let expected2: BTreeMap<_, _> = vals
+        .iter()
+        .map(|x| U64(*x).into_ddvalue())
+        .map(mfun)
+        .filter(ffun)
+        .filter_map(fmfun)
+        .flat_map(|x| match flatmapfun(x) {
+            Some(iter) => iter,
+            None => Box::new(None.into_iter()),
+        })
+        .map(|x| (I64::from_ddvalue(x), 1))
+        .collect();
     let mut expected3 = BTreeMap::default();
     expected3.insert(U64(expected2.len() as u64), 1);
 
@@ -1679,7 +1678,7 @@ fn test_recursion(nthreads: usize) {
         Tuple2::new(String("B".to_string()), String("D".to_string())),
         Tuple2::new(String("A".to_string()), String("E".to_string())),
     ];
-    let set = BTreeMap::from_iter(vals.iter().map(|x| (x.clone(), 1)));
+    let set: BTreeMap<_, _> = vals.iter().map(|x| (x.clone(), 1)).collect();
 
     let expect_vals = vec![
         Tuple2::new(String("A".to_string()), String("B".to_string())),
@@ -1690,7 +1689,7 @@ fn test_recursion(nthreads: usize) {
         Tuple2::new(String("A".to_string()), String("C".to_string())),
     ];
 
-    let expect_set = BTreeMap::from_iter(expect_vals.iter().map(|x| (x.clone(), 1)));
+    let expect_set: BTreeMap<_, _> = expect_vals.iter().map(|x| (x.clone(), 1)).collect();
 
     let expect_vals2 = vec![
         Tuple2::new(String("C".to_string()), String("D".to_string())),
@@ -1702,7 +1701,7 @@ fn test_recursion(nthreads: usize) {
         Tuple2::new(String("E".to_string()), String("B".to_string())),
         Tuple2::new(String("B".to_string()), String("E".to_string())),
     ];
-    let expect_set2 = BTreeMap::from_iter(expect_vals2.iter().map(|x| (x.clone(), 1)));
+    let expect_set2: BTreeMap<_, _> = expect_vals2.iter().map(|x| (x.clone(), 1)).collect();
 
     running.transaction_start().unwrap();
     for x in set.keys() {
@@ -1727,7 +1726,7 @@ fn test_recursion(nthreads: usize) {
         Tuple2::new(String("B".to_string()), String("D".to_string())),
         Tuple2::new(String("A".to_string()), String("E".to_string())),
     ];
-    let expect_set3 = BTreeMap::from_iter(expect_vals3.iter().map(|x| (x.clone(), 1)));
+    let expect_set3: BTreeMap<_, _> = expect_vals3.iter().map(|x| (x.clone(), 1)).collect();
 
     assert_eq!(*ancestorset.lock().unwrap(), expect_set3);
 
@@ -1735,7 +1734,7 @@ fn test_recursion(nthreads: usize) {
         Tuple2::new(String("C".to_string()), String("D".to_string())),
         Tuple2::new(String("D".to_string()), String("C".to_string())),
     ];
-    let expect_set4 = BTreeMap::from_iter(expect_vals4.iter().map(|x| (x.clone(), 1)));
+    let expect_set4: BTreeMap<_, _> = expect_vals4.iter().map(|x| (x.clone(), 1)).collect();
 
     assert_eq!(*common_ancestorset.lock().unwrap(), expect_set4);
 
