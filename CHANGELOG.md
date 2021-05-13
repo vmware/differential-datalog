@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Changes
+
+- Made all reference counting (internal and through `ddlog_std::Ref`) use reference counters without weak counts
+  in an effort to reduce memory usage
+
 ## [0.40.2] - May 11, 2021
 
 ### Libraries
@@ -15,7 +22,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Bug fix
 
 - Segfault in the Java API in `transactionCommitDumpChanges`.
-
 
 ## [0.40.1] - May 7, 2021
 

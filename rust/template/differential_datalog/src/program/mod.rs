@@ -53,6 +53,7 @@ use std::{
     thread::JoinHandle,
 };
 use timestamp::ToTupleTS;
+use triomphe::Arc as ThinArc;
 use worker::DDlogWorker;
 
 use differential_dataflow::lattice::Lattice;
@@ -877,13 +878,13 @@ pub struct RunningProgram {
     need_to_flush: bool,
     timestamp: TS,
     /// CPU profiling enabled (can be expensive).
-    profile_cpu: Option<Arc<AtomicBool>>,
+    profile_cpu: Option<ThinArc<AtomicBool>>,
     /// Consume timely_events and output them to CSV file. Can be expensive.
-    profile_timely: Option<Arc<AtomicBool>>,
+    profile_timely: Option<ThinArc<AtomicBool>>,
     /// Profiling thread.
     prof_thread_handle: Option<JoinHandle<()>>,
     /// Profiling statistics.
-    pub profile: Option<Arc<Mutex<Profile>>>,
+    pub profile: Option<ThinArc<Mutex<Profile>>>,
     worker_round_robbin: Skip<Cycle<Range<usize>>>,
 }
 
@@ -1114,7 +1115,7 @@ impl Program {
 
     /// This thread function is always invoked whether or not profiling is on. If it isn't, the
     /// thread will blocks on the channel read as no message will ever arrive.
-    fn prof_thread_func(channel: Receiver<ProfMsg>, profile: Arc<Mutex<Profile>>) {
+    fn prof_thread_func(channel: Receiver<ProfMsg>, profile: ThinArc<Mutex<Profile>>) {
         loop {
             match channel.recv() {
                 Ok(message) => {
@@ -1281,8 +1282,9 @@ impl Program {
                 ref next,
             } => {
                 #[allow(clippy::unnecessary_cast)]
-                let one = Any::downcast_ref::<<S::Timestamp as Timestamp>::Summary>(&(1 as TS))
-                    .expect("Differentiate operator used in recursive context");
+                let one =
+                    <dyn Any>::downcast_ref::<<S::Timestamp as Timestamp>::Summary>(&(1 as TS))
+                        .expect("Differentiate operator used in recursive context");
 
                 let diff = with_prof_context(&description, || {
                     col.concat(

@@ -49,6 +49,7 @@ use timely::{
     progress::frontier::AntichainRef,
     worker::Worker,
 };
+use triomphe::Arc as ThinArc;
 
 // Handles to objects involved in managing the progress of the dataflow.
 struct SessionData {
@@ -904,9 +905,9 @@ fn render_scc<'a>(
 #[derive(Debug, Clone)]
 pub struct ProfilingData {
     /// Whether CPU profiling is enabled
-    cpu_enabled: Arc<AtomicBool>,
+    cpu_enabled: ThinArc<AtomicBool>,
     /// Whether timely profiling is enabled
-    timely_enabled: Arc<AtomicBool>,
+    timely_enabled: ThinArc<AtomicBool>,
     /// The channel used to send profiling data to the profiling thread
     data_channel: Sender<ProfMsg>,
 }
@@ -914,8 +915,8 @@ pub struct ProfilingData {
 impl ProfilingData {
     /// Create a new profiling instance
     pub const fn new(
-        cpu_enabled: Arc<AtomicBool>,
-        timely_enabled: Arc<AtomicBool>,
+        cpu_enabled: ThinArc<AtomicBool>,
+        timely_enabled: ThinArc<AtomicBool>,
         data_channel: Sender<ProfMsg>,
     ) -> Self {
         Self {
