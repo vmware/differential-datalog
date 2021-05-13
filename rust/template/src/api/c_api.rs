@@ -19,8 +19,9 @@ use std::{
     mem::ManuallyDrop,
     os::raw,
     ptr,
-    sync::{Arc, Mutex},
+    sync::Mutex,
 };
+use triomphe::Arc;
 
 #[cfg(feature = "flatbuf")]
 use std::{mem, slice};
@@ -244,29 +245,27 @@ pub unsafe extern "C" fn ddlog_stop(prog: *const HDDlog) -> raw::c_int {
     ddlog_record_commands(prog, -1);
 
     let prog = Arc::from_raw(prog);
-    match Arc::try_unwrap(prog) {
-        Ok(HDDlog {
-            prog, print_err, ..
-        }) => prog
-            .into_inner()
-            .map(|mut p| {
-                p.stop().map(|_| 0).unwrap_or_else(|e| {
-                    HDDlog::print_err(print_err, &format!("ddlog_stop(): error: {}", e));
-                    -1
-                })
-            })
-            .unwrap_or_else(|e| {
-                HDDlog::print_err(
-                    print_err,
-                    &format!("ddlog_stop(): error acquiring lock: {}", e),
-                );
+
+    let &HDDlog {
+        ref prog,
+        print_err,
+        ..
+    } = &*prog;
+
+    prog.lock()
+        .map(|mut program| {
+            program.stop().map(|_| 0).unwrap_or_else(|e| {
+                HDDlog::print_err(print_err, &format!("ddlog_stop(): error: {}", e));
                 -1
-            }),
-        Err(pref) => {
-            pref.eprintln("ddlog_stop(): cannot extract value from Arc");
+            })
+        })
+        .unwrap_or_else(|e| {
+            HDDlog::print_err(
+                print_err,
+                &format!("ddlog_stop(): error acquiring lock: {}", e),
+            );
             -1
-        }
-    }
+        })
 }
 
 #[no_mangle]

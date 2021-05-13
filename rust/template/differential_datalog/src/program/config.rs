@@ -7,10 +7,11 @@ use crate::{
 use differential_dataflow::Config as DDFlowConfig;
 use std::{
     env,
-    sync::{atomic::AtomicBool, Arc, Mutex},
+    sync::{atomic::AtomicBool, Mutex},
     thread::{self, JoinHandle},
 };
 use timely::Config as TimelyConfig;
+use triomphe::Arc;
 
 /// The configuration for a DDlog program
 #[derive(Debug, Clone, Copy)]

@@ -8,8 +8,8 @@ use std::{
     fmt::{self, Debug, Display, Formatter},
     hash::{Hash, Hasher},
     mem::{self, align_of, size_of, ManuallyDrop},
-    sync::Arc,
 };
+use triomphe::Arc;
 
 /// Trait to convert `DDVal` into concrete value type and back.
 pub trait DDValConvert: Sized {
@@ -149,7 +149,10 @@ where
             <*const usize>::cast::<Self>(&value.v).read()
         } else {
             let arc = Arc::from_raw(value.v as *const Self);
-            Arc::try_unwrap(arc).unwrap_or_else(|a| (*a).clone())
+
+            // If the `Arc` is uniquely held then simply take the inner value,
+            // otherwise clone it out
+            Arc::try_unwrap(arc).unwrap_or_else(|arc| Self::clone(&*arc))
         }
     }
 

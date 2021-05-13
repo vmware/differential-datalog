@@ -297,7 +297,7 @@ impl<Args: 'static + Clone, Output: 'static + Clone + Default> Default
             f: {
                 fn __f<A, O: Default>(args: A, captured: &()) -> O {
                     O::default()
-                };
+                }
                 __f
             },
         })
@@ -401,7 +401,8 @@ mod tests {
                                 )
                             })
                             .collect()
-                    };
+                    }
+
                     __f
                 },
             };
@@ -417,7 +418,8 @@ mod tests {
                         unsafe { &*args.0 },
                         unsafe { &*args.1 }
                     )]
-                };
+                }
+
                 __f
             },
         };

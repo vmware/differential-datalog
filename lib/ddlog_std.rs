@@ -43,9 +43,10 @@ use std::{
     option::Option as StdOption,
     result::Result as StdResult,
     slice, str,
-    sync::Arc,
+    sync::Arc as StdArc,
     vec::{self, Vec as StdVec},
 };
+use triomphe::Arc;
 
 const XX_SEED1: u64 = 0x23b691a751d0e108;
 const XX_SEED2: u64 = 0x20b09801dce5ff84;
@@ -1107,7 +1108,7 @@ pub fn hash128<T: Hash>(x: &T) -> u128 {
     ((w1 as u128) << 64) | (w2 as u128)
 }
 
-pub type ProjectFunc<X> = Arc<dyn Fn(&DDValue) -> X + Send + Sync>;
+pub type ProjectFunc<X> = StdArc<dyn Fn(&DDValue) -> X + Send + Sync>;
 
 /*
  * Group type (returned by the `group_by` operator).
