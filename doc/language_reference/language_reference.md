@@ -404,10 +404,10 @@ backslashes; `\n` is newline, and `\t` is tab.  Unicode character with
 code 100 can be written as `\u{100}`.
 
 Interpolated strings are string literals, that contain expressions
-inside curly brackets preceeded by a dollar sign (`${}`), whose values
+inside curly brackets preceded by a dollar sign (`${}`), whose values
 are substituted at runtime.  Quoted strings are interpolated by
 default, e.g., `"x: ${x}, y: ${y}, f(x): ${f(x)}"` is equivalent to
-the following string expressoin: `"x: " ++ x ++ ", y: " ++ y ++ ",
+the following string expression: `"x: " ++ x ++ ", y: " ++ y ++ ",
 f(x): " ++ f(x)`.
 
 ```EBNF
@@ -424,7 +424,7 @@ cannot appear nested inside the string).  In raw strings all
 characters, including backslash and line breaks are interpreted as-is.
 Raw strings do not perform interpolation.
 
-Raw interpolated strings, which are preceeded by a dollar sign, will
+Raw interpolated strings, which are preceded by a dollar sign, will
 perform interpolation: `$[|x: ${x}, y: ${y}, f(x): ${f(x)}|]` produces
 the same string as above.
 

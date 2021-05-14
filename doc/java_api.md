@@ -378,7 +378,7 @@ input relation Rel(m: Option<bit<32>>)
 index Rel_by_m(m: Option<bit<32>>) on Rel(m)
 ```
 
-Here, the index has a comlpex key type (`Option<bit<32>>`).  Serializing this
+Here, the index has a complex key type (`Option<bit<32>>`).  Serializing this
 type into a flatbuffer requires a FlatBuffer builder; therefore the generated
 query method has a more complex signature:
 
