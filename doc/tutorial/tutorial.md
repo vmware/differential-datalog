@@ -2975,6 +2975,158 @@ These 5 kinds of statements (`for`, `if`, `match`, `var`, blocks enclosed in bra
 in arbitrary ways.  When using this syntax semicolons must be used as separators between statements.
 The DDlog compiler translates such programs into regular DDlog programs.
 
+## Avoiding weight overflow
+
+Each DDlog record has an associated weight, a 32-bit signed integer
+that counts the number of times the record occurs.  In a multiset, the
+count's value is significant.  In a relation, DDlog hides the count,
+acting as if there is only a single copy of any given record, but it
+still maintains it internally.
+
+Most of the time, a DDlog developer may ignore record weights.  In
+unusual circumstances, though, weights can overflow the 32-bit range.
+If this happens, the program malfunctions, so it's important for DDlog
+developers to understand when overflow is likely to occur so that they
+can avoid the problem.
+
+Joining records with weights `x` and `y` yields a record with weight
+`x*y`.  When the records being joined both have weight 1, which is the
+most common case, the result also has weight 1 and no problem can
+result.  However, a series of joins of input records with weights
+greater than 1 can quickly overflow: with weight 1000, it only takes 4
+joins to overflow, and even with weight 2, it still takes only 31.
+
+The question, then, is what leads to weights greater than 1?  One
+common cause is projection, that is, using only some of the data in a
+record.  When the fields that are used have duplicates, the result is
+a record weighted with the duplicate count.  For example, if we want a
+relation that contains the nationality of each Person, we can declare
+it and populate it as follows.  The weight of each record in
+Nationality is the number of Person records with that given
+nationality.  We can similarly define Occupation:
+
+```
+relation Nationality[string]
+Nationality[nationality] :- Person(.nationality = nationality).
+
+relation Occupation[string].
+Occupation[occupation] :- Person(.occupation = occupation).
+```
+
+If we joined `Nationality` and `Occupation` in a rule, then the output
+record's weight would be the product of the input records' weights.
+In a pathological case where all `N` Persons had a single nationality
+and occupation, the output record would have weight `N^2`.
+
+Consider the following additional example, which is abstracted from an
+actual bug in a system built with DDlog.  Suppose that a networking
+system has a collection of switches, each of which may have ports with
+different types and names, as well as access control lists (ACLs) and
+load balancers.  The management system might provide the configuration
+through a set of input relations, like this:
+
+```
+input relation Switch(name: string, description: string)
+primary key (x) (x.name)
+
+input relation Port(sw: string, port: string, ptype: string)
+primary key (x) ((x.sw, x.port))
+
+input relation ACL(sw: string, is_stateful: bool, details: string)
+
+input relation LoadBalancer(sw: string, name: string)
+```
+
+As part of the implementation, the system might derive an
+`AnnotatedSwitch` relation that associates each switch's configuration
+with information about whether the switch has any ACLs (stateful or
+stateless), load balancers, and router ports, like this:
+
+```
+relation AnnotatedSwitch(
+    name: string,
+    details: string,
+    has_acl: bool,
+    has_stateful_acl: bool,
+    has_load_balancer: bool,
+    has_router_port: bool)
+```
+
+We can calculate the `has_acl` column using a projection, as shown
+below.  The `SwitchHasACL` relation associates each switch's name with
+`true` if at least one ACL is defined for the switch, projecting away
+everything but the switch name.  This means that, if a switch has `N`
+ACLs, then its record in `SwitchHasACL` has weight `N`:
+
+```
+relation SwitchHasACL(sw: string, has_acl: bool)
+SwitchHasACL(sw, true) :- ACL(sw, _, _).
+SwitchHasACL(sw, false) :- Switch(sw, _), not ACL(sw, _, _).
+```
+
+We can define the other properties similarly:
+
+```
+relation SwitchHasStatefulACL(sw: string, has_stateful_acl: bool)
+SwitchHasStatefulACL(sw, true) :- ACL(sw, true, _).
+SwitchHasStatefulACL(sw, false) :- Switch(sw, _), not ACL(sw, true, _).
+
+relation SwitchHasLoadBalancer(sw: string, has_load_balancer: bool)
+SwitchHasLoadBalancer(sw, true) :- LoadBalancer(sw, _).
+SwitchHasLoadBalancer(sw, false) :- Switch(sw, _), not LoadBalancer(sw, _).
+
+relation SwitchHasRouterPort(sw: string, has_router_port: bool)
+SwitchHasRouterPort(sw, true) :- Port(sw, _, "router").
+SwitchHasRouterPort(sw, false) :- Switch(sw, _), not Port(sw, _, "router").
+```
+
+To populate `AnnotatedSwitch`, we join all of these relations, like this:
+
+```
+AnnotatedSwitch(sw, details, has_acl, has_stateful_acl, has_load_balancer, has_router_port) :-
+    Switch(sw, details),
+    SwitchHasACL(sw, has_acl),
+    SwitchHasStatefulACL(sw, has_stateful_acl),
+    SwitchHasLoadBalancer(sw, has_load_balancer),
+    SwitchHasRouterPort(sw, has_router_port).
+```
+
+Since joins multiply weights, if a given switch has 100 ACLs, 50 of
+which are stateful, 15 load balancers, and 10 router ports, then its
+`AnnotatedSwitch` record will have weight 750,000.  In the real case
+this example is based on, overflow in fact occurred with only 8 ACLs
+because of additional multiplicative factors and layers.
+
+This issue is arguably a bug in DDlog (see [Issue
+#878](https://github.com/vmware/differential-datalog/issues/878)).  If,
+for example, DDlog used `bigint` weights, then it would avoid the
+problem entirely.  Future versions of DDlog might adopt this or
+another strategy to avoid weight overflow, or at least to report
+overflow when it occurs.
+
+Until then, DDlog provides a workaround.  Relations marked as `output`
+pass through a Differential Datalog `distinct` operator, which reduces
+every positive weight to 1.  Thus, if we change `relation` to `output
+relation` in each `SwitchHas<x>` declaration above, all of the records
+in `AnnotatedSwitch` will have weight 1.  This has some runtime cost,
+but it is reasonable to use this approach for all the projective
+relations in a DDlog program.
+
+For finding this kind of problem in a program, one can use the
+`Inspect` operator to report weights.  For example, one might use it
+in our example by adding `import print` to the `.dl` file and
+appending the following clause to the `AnnotatedSwitch` rule:
+
+```
+    Inspect print("AnnotatedSwitch ${sw} weight=${ddlog_weight}").
+```
+
+If mysterious issues make one wonder whether weight overflow could be
+the issue, another approach is to invoke `ddlog` with
+`--output-internal-relations`.  This option transforms every internal
+relation into an output relation, fixing all ordinary weight overflow
+problems.
+
 ## Modules
 
 Modules make it easy to write DDlog programs that span multiple files.  DDlog supports a simple
