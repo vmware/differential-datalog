@@ -160,7 +160,7 @@ values are represented in the command file in the following format:
 (currently the only supported value is `json`), and `<string_literal>` is the
 string containing serialized representation of the value in this encoding.
 For instance, the following command inserts a record to relation `Rel`, initializing
-its field `x` from a JSON string string stored in file `filename.json`
+its field `x` from a JSON string stored in file `filename.json`
 
 ```
 insert Rel(.x = @json%"filename.json"),

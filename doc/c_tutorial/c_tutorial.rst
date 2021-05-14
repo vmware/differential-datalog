@@ -63,7 +63,7 @@ While these rules may not require much effort in other programming languages, th
 With that done, let's compile and start our program.
 We will feed our DDlog code to the DDlog compiler and it will generate a new folder.
 This folder contains CLI so we can run our program as well as a library that we will need later for our C program.
-Note, that on the first run it will take a while, but will be signifanctly faster afterwards.
+Note, that on the first run it will take a while, but will be significantly faster afterwards.
 After the code is compiled let's start a command-line so we can start playing with our program.
 
 .. code-block::
@@ -171,7 +171,7 @@ As we have changed the DDlog program we need to recompile it.
 
 Perfect!
 Now it looks exactly as we expected!
-Rigth before we jump to what this tutorial promised let's look at one more example that demonstrates incremental nature of DDlog.
+Right before we jump to what this tutorial promised let's look at one more example that demonstrates incremental nature of DDlog.
 
 .. code-block::
 
@@ -205,7 +205,7 @@ DDlog incrementally computed only changes that happened and printed them.
 The "minus one" here is called :code:`weight` and indicates that the respective record was deleted.
 While the benefits of incremental computation ain't noticeable in our small example, they manifest themselves on a large scale and can make a substantial difference.
 
-Now we are finally realdy to start writing some C code!
+Now we are finally ready to start writing some C code!
 We are going to start with something simple yet important.
 Our initial C program will connect to DDlog program, insert one additional record to :code:`Links` relation, and print the content of :code:`ConnectedNodes` relation.
 Let's create :code:`t1_reachability_monitor.c` file next to our DDlog program's code.
@@ -344,7 +344,7 @@ It takes three arguments:
 
 #. Name of the relation, which this record belongs to.
 #. A pointer to an array of :code:`ddlog_record`'s.
-#. Length of the aformentioned array.
+#. Length of the aforementioned array.
 
 You don't have to dynamically allocate memory for the :code:`struct_args` in this example.
 As we know exactly how many elements this array contains we can simply put it on the stack.
@@ -422,7 +422,7 @@ We need to provide the following four arguments:
 #. DDlog program handle.
 #. Table ID of the target relation.
 #. A callback function that will be invoked for records returned by the :code:`ddlog_dump_table()`. We are going to discuss this function in more details further in the text.
-#. A pointer, which will be passed as an argument to each invokation of the callback function. In our case, we don't need any so we set it to :code:`NULL`.
+#. A pointer, which will be passed as an argument to each invocation of the callback function. In our case, we don't need any so we set it to :code:`NULL`.
 
 .. code-block:: c
 
@@ -446,7 +446,7 @@ It will be invoked for every record.
 The body of the callback function can be anything as long as it returns either :code:`true` or :code:`false`.
 Whenever the callback function returns :code:`true` it asks DDlog to continue enumeration of the records.
 In other words, it will be invoked again if there are more records available.
-However, if for some some reason you want to stop enumeration or an invokation of the callback function, then you can implement a condition in the function such that it will return :code:`false`.
+However, if for some reason you want to stop enumeration or an invocation of the callback function, then you can implement a condition in the function such that it will return :code:`false`.
 
 You can notice that there is one argument in the callback function that we have mentioned previously.
 The value of the :code:`weight` arguments indicates whether the record was inserted or deleted.
