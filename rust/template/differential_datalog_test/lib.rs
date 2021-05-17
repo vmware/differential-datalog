@@ -520,7 +520,8 @@ fn test_join(nthreads: usize) {
             rules: Vec::new(),
             arrangements: vec![Arrangement::Map {
                 name: Cow::from("arrange2.0"),
-                afun: afun1 as ArrangeFunc,
+                // afun: afun1 as ArrangeFunc,
+                afun: Arc::new(afun1),
                 queryable: true,
             }],
             change_cb: Some(Arc::new(move |_, v, w| set_update("T2", &relset2, v, w))),
@@ -556,7 +557,7 @@ fn test_join(nthreads: usize) {
                         description: Cow::from("1.semijoin (2,0)"),
                         ffun: None,
                         arrangement: (2, 0),
-                        jfun: jfun as JoinFunc,
+                        jfun: Arc::new(jfun),
                         next: Box::new(None),
                     }),
                 }),
@@ -680,7 +681,8 @@ fn test_streamjoin(nthreads: usize) {
             arrangements: vec![
                 Arrangement::Map {
                     name: Cow::from("arrange1.0"),
-                    afun: afun1 as ArrangeFunc,
+                    // afun: afun1 as ArrangeFunc,
+                    afun: Arc::new(afun1),
                     queryable: false,
                 },
                 Arrangement::Set {
@@ -981,7 +983,7 @@ fn test_antijoin(nthreads: usize) {
                 rel: 2,
                 xform: Some(XFormCollection::Map {
                     description: Cow::from("map by .0"),
-                    mfun: mfun as MapFunc,
+                    mfun: Arc::new(mfun),
                     next: Box::new(None),
                 }),
             }],
@@ -1157,7 +1159,7 @@ fn test_map(nthreads: usize) {
                 rel: 1,
                 xform: Some(XFormCollection::Map {
                     description: Cow::from("map x2"),
-                    mfun: mfun as MapFunc,
+                    mfun: Arc::new(mfun),
                     next: Box::new(Some(XFormCollection::Filter {
                         description: Cow::from("filter >10"),
                         ffun: ffun as FilterFunc,
@@ -1530,7 +1532,8 @@ fn test_recursion(nthreads: usize) {
             rules: Vec::new(),
             arrangements: vec![Arrangement::Map {
                 name: Cow::from("arrange_by_parent"),
-                afun: arrange_by_fst as ArrangeFunc,
+                // afun: arrange_by_fst as ArrangeFunc,
+                afun: Arc::new(arrange_by_fst),
                 queryable: false,
             }],
             change_cb: Some(Arc::new(move |_, v, w| {
@@ -1562,7 +1565,7 @@ fn test_recursion(nthreads: usize) {
                         description: Cow::from("(2,2).join (1,0)"),
                         ffun: None,
                         arrangement: (1, 0),
-                        jfun: jfun as JoinFunc,
+                        jfun: Arc::new(jfun),
                         next: Box::new(None),
                     },
                 },
@@ -1570,7 +1573,8 @@ fn test_recursion(nthreads: usize) {
             arrangements: vec![
                 Arrangement::Map {
                     name: Cow::from("arrange_by_ancestor"),
-                    afun: arrange_by_fst as ArrangeFunc,
+                    // afun: arrange_by_fst as ArrangeFunc,
+                    afun: Arc::new(arrange_by_fst),
                     queryable: false,
                 },
                 Arrangement::Set {
@@ -1580,7 +1584,8 @@ fn test_recursion(nthreads: usize) {
                 },
                 Arrangement::Map {
                     name: Cow::from("arrange_by_snd"),
-                    afun: arrange_by_snd as ArrangeFunc,
+                    // afun: arrange_by_snd as ArrangeFunc,
+                    afun: Arc::new(arrange_by_snd),
                     queryable: false,
                 },
             ],
@@ -1613,7 +1618,7 @@ fn test_recursion(nthreads: usize) {
                     description: Cow::from("(2,0).join (2,0)"),
                     ffun: None,
                     arrangement: (2, 0),
-                    jfun: jfun2 as JoinFunc,
+                    jfun: Arc::new(jfun2),
                     next: Box::new(Some(XFormCollection::Arrange {
                         description: Cow::from("arrange by self"),
                         afun: anti_arrange1 as ArrangeFunc,

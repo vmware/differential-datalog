@@ -110,49 +110,62 @@ pub type ArrId = (RelId, usize);
 /// Function type used to map the content of a relation
 /// (see `XFormCollection::Map`).
 pub type MapFunc = fn(DDValue) -> DDValue;
+pub type MapDynFunc = Arc<dyn Fn(DDValue) -> DDValue + Sync + Send>;
 
 /// Function type used to extract join key from a relation
 /// (see `XFormCollection::StreamJoin`).
 pub type KeyFunc = fn(&DDValue) -> Option<DDValue>;
+pub type KeyDynFunc = Arc<dyn Fn(&DDValue) -> Option<DDValue> + Sync + Send>;
 
 /// (see `XFormCollection::FlatMap`).
 pub type FlatMapFunc = fn(DDValue) -> Option<Box<dyn Iterator<Item = DDValue>>>;
+pub type FlatMapDynFunc = Arc<dyn Fn(DDValue) -> Option<Box<dyn Iterator<Item = DDValue>>> + Sync + Send>;
 
 /// Function type used to filter a relation
 /// (see `XForm*::Filter`).
 pub type FilterFunc = fn(&DDValue) -> bool;
+pub type FilterDynFunc = Arc<dyn Fn(&DDValue) -> bool + Sync + Send>;
 
 /// Function type used to simultaneously filter and map a relation
 /// (see `XFormCollection::FilterMap`).
 pub type FilterMapFunc = fn(DDValue) -> Option<DDValue>;
+pub type FilterMapDynFunc = Arc<dyn Fn(DDValue) -> Option<DDValue> + Sync + Send>;
 
 /// Function type used to inspect a relation
 /// (see `XFormCollection::InspectFunc`)
 pub type InspectFunc = fn(&DDValue, TupleTS, Weight) -> ();
+pub type InspectDynFunc = Arc<dyn Fn(&DDValue, TupleTS, Weight) -> () + Sync + Send>;
 
 /// Function type used to arrange a relation into key-value pairs
 /// (see `XFormArrangement::Join`, `XFormArrangement::Antijoin`).
 pub type ArrangeFunc = fn(DDValue) -> Option<(DDValue, DDValue)>;
+pub type ArrangeDynFunc = Arc<dyn Fn(DDValue) -> Option<(DDValue, DDValue)> + Sync + Send>;
+// pub type ArrangeFunc = Arc<fn(DDValue) -> Option<(DDValue, DDValue)>>;
 
 /// Function type used to assemble the result of a join into a value.
 /// Takes join key and a pair of values from the two joined relations
 /// (see `XFormArrangement::Join`).
 pub type JoinFunc = fn(&DDValue, &DDValue, &DDValue) -> Option<DDValue>;
+pub type JoinDynFunc = Arc<dyn Fn(&DDValue, &DDValue, &DDValue) -> Option<DDValue> + Sync + Send>;
 
 /// Similar to JoinFunc, but only takes values from the two joined
 /// relations, and not the key (`XFormArrangement::StreamJoin`).
 pub type ValJoinFunc = fn(&DDValue, &DDValue) -> Option<DDValue>;
+pub type ValJoinDynFunc = Arc<dyn Fn(&DDValue, &DDValue) -> Option<DDValue> + Sync + Send>;
 
 /// Function type used to assemble the result of a semijoin into a value.
 /// Takes join key and value (see `XFormArrangement::Semijoin`).
 pub type SemijoinFunc = fn(&DDValue, &DDValue, &()) -> Option<DDValue>;
+pub type SemijoinDynFunc = Arc<dyn Fn(&DDValue, &DDValue, &()) -> Option<DDValue> + Sync + Send>;
 
 /// Similar to SemijoinFunc, but only takes one value.
 /// (see `XFormCollection::StreamSemijoin`).
 pub type StreamSemijoinFunc = fn(&DDValue) -> Option<DDValue>;
+pub type StreamSemijoinDynFunc = Arc<dyn Fn(&DDValue) -> Option<DDValue> + Sync + Send>;
 
 /// Aggregation function: aggregates multiple values into a single value.
 pub type AggFunc = fn(&DDValue, &[(&DDValue, Weight)]) -> Option<DDValue>;
+pub type AggDynFunc = Arc<dyn Fn(&DDValue, &[(&DDValue, Weight)]) -> Option<DDValue> + Sync + Send>;
 
 // TODO: add validating constructor for Program:
 // - relation id's are unique
@@ -372,7 +385,7 @@ pub enum XFormArrangement {
         /// Arrangement to join with.
         arrangement: ArrId,
         /// Function used to put together ouput value.
-        jfun: JoinFunc,
+        jfun: JoinDynFunc,
         /// Join returns a collection: apply `next` transformation to it.
         next: Box<Option<XFormCollection>>,
     },
@@ -530,7 +543,7 @@ pub enum XFormCollection {
     /// Apply `mfun` to each element in the collection
     Map {
         description: Cow<'static, str>,
-        mfun: MapFunc,
+        mfun: MapDynFunc,
         next: Box<Option<XFormCollection>>,
     },
     /// FlatMap
@@ -744,7 +757,7 @@ pub enum Arrangement {
         /// Arrangement name; does not have to be unique
         name: Cow<'static, str>,
         /// Function used to produce arrangement.
-        afun: ArrangeFunc,
+        afun: ArrangeDynFunc,
         /// The arrangement can be queried using `RunningProgram::query_arrangement`
         /// and `RunningProgram::dump_arrangement`.
         queryable: bool,
@@ -787,8 +800,8 @@ impl Arrangement {
         S::Timestamp: Lattice + Ord + TotalOrder,
     {
         let kind = match *self {
-            Arrangement::Map { afun, .. } => ArrangementKind::Map {
-                value_function: afun,
+            Arrangement::Map { ref afun, .. } => ArrangementKind::Map {
+                value_function: afun.clone(),
             },
             Arrangement::Set {
                 fmfun, distinct, ..
@@ -820,8 +833,8 @@ impl Arrangement {
         S::Timestamp: Lattice + Ord,
     {
         let kind = match *self {
-            Arrangement::Map { afun, .. } => ArrangementKind::Map {
-                value_function: afun,
+            Arrangement::Map { ref afun, .. } => ArrangementKind::Map {
+                value_function: afun.clone(),
             },
             Arrangement::Set {
                 fmfun, distinct, ..
@@ -1293,10 +1306,12 @@ impl Program {
             }
             XFormCollection::Map {
                 ref description,
-                mfun,
+                ref mfun,
                 ref next,
             } => {
-                let mapped = with_prof_context(&description, || col.map(mfun));
+                let mfn = mfun.clone();
+                let mfn_closure = move |v: DDValue| { mfn.as_ref()(v) };
+                let mapped = with_prof_context(&description, move || col.map(mfn_closure));
                 Self::xform_collection(mapped, &*next, arrangements, lookup_collection)
             }
             XFormCollection::FlatMap {
@@ -1508,10 +1523,12 @@ impl Program {
             }
             XFormCollection::Map {
                 ref description,
-                mfun,
+                ref mfun,
                 ref next,
             } => {
-                let mapped = with_prof_context(&description, || col.map(mfun));
+                let mfn = mfun.clone();
+                let mfn_closure = move |v: DDValue| { mfn.as_ref()(v) };
+                let mapped = with_prof_context(&description, move || col.map(mfn_closure));
                 Self::streamless_xform_collection(mapped, &*next, arrangements, lookup_collection)
             }
             XFormCollection::FlatMap {
@@ -1713,23 +1730,31 @@ impl Program {
                 ref description,
                 ffun,
                 arrangement,
-                jfun,
+                ref jfun,
                 ref next,
             } => match arrangements.lookup_arr(arrangement) {
                 ArrangementFlavor::Local(DataflowArrangement::Map(arranged)) => {
+                    let jfn = jfun.clone();
+                    let jfn_closure = move |k: &DDValue, v1: &DDValue, v2: &DDValue| {
+                        jfn.as_ref()(k, v1, v2)
+                    };
                     let col = with_prof_context(&description, || {
                         ffun.map_or_else(
-                            || arr.join_core(&arranged, jfun),
-                            |f| arr.filter(move |_, v| f(v)).join_core(&arranged, jfun),
+                            || arr.join_core(&arranged, jfn_closure.clone()),
+                            |f| arr.filter(move |_, v| f(v)).join_core(&arranged, jfn_closure.clone()),
                         )
                     });
                     Self::streamless_xform_collection(col, &*next, arrangements, lookup_collection)
                 }
                 ArrangementFlavor::Foreign(DataflowArrangement::Map(arranged)) => {
+                    let jfn = jfun.clone();
+                    let jfn_closure = move |k: &DDValue, v1: &DDValue, v2: &DDValue| {
+                        jfn.as_ref()(k, v1, v2)
+                    };
                     let col = with_prof_context(&description, || {
                         ffun.map_or_else(
-                            || arr.join_core(&arranged, jfun),
-                            |f| arr.filter(move |_, v| f(v)).join_core(&arranged, jfun),
+                            || arr.join_core(&arranged, jfn_closure.clone()),
+                            |f| arr.filter(move |_, v| f(v)).join_core(&arranged, jfn_closure.clone()),
                         )
                     });
                     Self::streamless_xform_collection(col, &*next, arrangements, lookup_collection)

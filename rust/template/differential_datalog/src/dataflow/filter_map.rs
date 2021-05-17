@@ -4,19 +4,23 @@ use timely::{
     Data,
 };
 
+pub type FilterMapFunc<D, D2> = std::sync::Arc<dyn Fn(D) -> Option<D2>>;
+
 pub trait FilterMap<D, D2> {
     type Output;
 
-    fn filter_map<L>(&self, logic: L) -> Self::Output
-    where
-        L: FnMut(D) -> Option<D2> + 'static,
+    // fn filter_map<L>(&self, logic: L) -> Self::Output
+    // where
+    //     L: FnMut(D) -> Option<D2> + 'static,
+    fn filter_map(&self, logic: FilterMapFunc<D, D2>) -> Self::Output
     {
         self.filter_map_named("FilterMap", logic)
     }
 
-    fn filter_map_named<L>(&self, name: &str, logic: L) -> Self::Output
-    where
-        L: FnMut(D) -> Option<D2> + 'static;
+    // fn filter_map_named<L>(&self, name: &str, logic: L) -> Self::Output
+    // where
+    //     L: FnMut(D) -> Option<D2> + 'static;
+    fn filter_map_named(&self, name: &str, logic: FilterMapFunc<D, D2>) -> Self::Output;
 }
 
 impl<S, D, D2> FilterMap<D, D2> for Stream<S, D>
@@ -27,9 +31,10 @@ where
 {
     type Output = Stream<S, D2>;
 
-    fn filter_map_named<L>(&self, name: &str, mut logic: L) -> Self::Output
-    where
-        L: FnMut(D) -> Option<D2> + 'static,
+    // fn filter_map_named<L>(&self, name: &str, mut logic: L) -> Self::Output
+    // where
+    //     L: FnMut(D) -> Option<D2> + 'static,
+    fn filter_map_named(&self, name: &str, logic: FilterMapFunc<D, D2>) -> Self::Output
     {
         let mut buffer = Vec::new();
 
@@ -56,14 +61,17 @@ where
 {
     type Output = Collection<S, D2, R>;
 
-    fn filter_map_named<L>(&self, name: &str, mut logic: L) -> Self::Output
-    where
-        L: FnMut(D) -> Option<D2> + 'static,
+    // fn filter_map_named<L>(&self, name: &str, mut logic: L) -> Self::Output
+    // where
+    //     L: FnMut(D) -> Option<D2> + 'static,
+    fn filter_map_named(&self, name: &str, logic: FilterMapFunc<D, D2>) -> Self::Output
     {
         self.inner
-            .filter_map_named(name, move |(data, time, diff)| {
-                logic(data).map(|data| (data, time, diff))
-            })
+            .filter_map_named(name, 
+                std::sync::Arc::new(move |(data, time, diff)| {
+                    logic(data).map(|data| (data, time, diff))
+                })
+            )
             .as_collection()
     }
 }

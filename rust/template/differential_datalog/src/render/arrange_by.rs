@@ -15,11 +15,15 @@ use differential_dataflow::{
     Collection, ExchangeData,
 };
 use std::ops::Add;
+use std::sync::Arc;
 use timely::{dataflow::Scope, order::TotalOrder};
 
 // TODO: Allow dynamic functions
 pub type KeyFunc = fn(DDValue) -> Option<DDValue>;
+pub type KeyDynFunc = Arc<dyn Fn(DDValue) -> Option<DDValue>>;
+
 pub type ValueFunc = fn(DDValue) -> Option<(DDValue, DDValue)>;
+pub type ValueDynFunc = Arc<dyn Fn(DDValue) -> Option<(DDValue, DDValue)>>;
 
 #[derive(Clone)]
 pub struct ArrangeBy<'a> {
@@ -38,7 +42,7 @@ pub enum ArrangementKind {
         distinct: bool,
     },
     Map {
-        value_function: ValueFunc,
+        value_function: ValueDynFunc,
     },
 }
 
@@ -102,10 +106,9 @@ impl<'a> ArrangeBy<'a> {
                     let mapped_name = format!("Map: Map to key for {}", self.target_relation);
                     arrange_set(&keyed.map_named(&mapped_name, |key| (key, ())))
                 }
-            }
-
-            ArrangementKind::Map { value_function } => {
-                self.render_map(&collection, value_function, &arrangement_name)
+            },
+            ArrangementKind::Map { ref value_function } => {
+                self.render_map(&collection, value_function.clone(), &arrangement_name)
             }
         }
     }
@@ -184,8 +187,8 @@ impl<'a> ArrangeBy<'a> {
                 arrange_set(&keyed.map_named(&mapped_name, |key| (key, ())))
             }
 
-            ArrangementKind::Map { value_function } => {
-                self.render_map(&collection, value_function, &arrangement_name)
+            ArrangementKind::Map { ref value_function } => {
+                self.render_map(&collection, value_function.clone(), &arrangement_name)
             }
         }
     }
@@ -193,7 +196,7 @@ impl<'a> ArrangeBy<'a> {
     fn render_map<S, R>(
         &self,
         collection: &Collection<S, DDValue, R>,
-        value_function: ValueFunc,
+        value_function: ValueDynFunc,
         arrangement_name: &str,
     ) -> Arranged<S, R>
     where
@@ -232,14 +235,17 @@ impl<'a> ArrangeBy<'a> {
             let keyed_name = format!("FilterMap: Extract key for {}", self.target_relation);
 
             if distinct {
-                Ok(collection.filter_map_named(&keyed_name, key_function))
+                Ok(collection.filter_map_named(&keyed_name, Arc::new(key_function)))
 
             // If our set is filtered and is not distinct we can skip a redundant map
             // operation by mapping into a `(key, ())` within the filter itself
             } else {
-                let keyed = collection.filter_map_named(&keyed_name, move |value| {
-                    key_function(value).map(|key| (key, ()))
-                });
+                let keyed = collection.filter_map_named(
+                    &keyed_name, 
+                    Arc::new(move |value| {
+                        key_function(value).map(|key| (key, ()))
+                    })
+                );
 
                 let arranged =
                     keyed.arrange_named::<OrdKeySpine<_, _, _, Offset>>(&arrangement_name);
