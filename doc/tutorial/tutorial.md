@@ -210,26 +210,25 @@ Then we insert some records:
 >> insert Word2("world!", CategoryOther);
 ```
 
-And finally we complete the transaction with `commit`:
+And finally we complete the transaction with `commit dump_changes`:
 
 ```
->> commit;
-insert 30 Word1(Word1{"Hello,",Category::CategoryOther{}})
-insert 31 Word2(Word2{"world!",Category::CategoryOther{}})
-insert 21 Phrases(Phrases{"Hello, world!"})
+>> commit dump_changes;
+Phrases:
+Phrases{.phrase = "Hello, world!"}: +1
 ```
 
 The CLI has executed all the operations that we have requested.  It
 has inserted records in relations `Word1` and `Word2`, and the rule
 for `Phrases` has inferred that a new record should be added to
 this relation.  When committing a transaction DDlog reports all
-*changes* to all (input and derived) relations.
+*changes* to derived relations.
 
 We can now again inspect the contents of `Phrases`:
 
 ```
 >> dump Phrases;
-Phrases{"Hello, world!"}
+Phrases{.phrase = "Hello, world!"}
 >>
 ```
 
@@ -297,14 +296,14 @@ In this example, it will produce the following output:
 
 ```
 Phrases:
-Phrases{"Goodbye, Ruby Tuesday"}
-Phrases{"Goodbye, World"}
-Phrases{"Hello, Ruby Tuesday"}
-Phrases{"Hello, World"}
-Phrases{"Help me, Obi-Wan Kenobi"}
-Phrases{"Help me, father"}
-Phrases{"I am your Obi-Wan Kenobi"}
-Phrases{"I am your father"}
+Phrases{.phrase = "Goodbye, Ruby Tuesday"}
+Phrases{.phrase = "Goodbye, World"}
+Phrases{.phrase = "Hello, Ruby Tuesday"}
+Phrases{.phrase = "Hello, World"}
+Phrases{.phrase = "Help me, Obi-Wan Kenobi"}
+Phrases{.phrase = "Help me, father"}
+Phrases{.phrase = "I am your Obi-Wan Kenobi"}
+Phrases{.phrase = "I am your father"}
 ```
 
 > ## :heavy_exclamation_mark: Pro tip: automating your DDlog workflow
@@ -572,8 +571,8 @@ dump NetHostString;
 You should obtain the following output:
 
 ```
-NetHostString{1,"Host: IP=170.187.204.221, MAC=11:22:33:44:55:66"}
-NetHostString{2,"Host: IP=160.176.192.208, MAC=10:20:30:40:50:60"}
+NetHostString{.id = 1, .s = "Host: IP=170.187.204.221, MAC=11:22:33:44:55:66"}
+NetHostString{.id = 2, .s = "Host: IP=160.176.192.208, MAC=10:20:30:40:50:60"}
 ```
 
 ### Bit vectors and integers
