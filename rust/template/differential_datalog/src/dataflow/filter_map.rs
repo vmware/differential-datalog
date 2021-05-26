@@ -12,7 +12,6 @@ pub trait FilterMap<D, D2> {
     fn filter_map<L>(&self, logic: L) -> Self::Output
     where
         L: FnMut(D) -> Option<D2> + 'static,
-    // fn filter_map(&self, logic: FilterMapFunc<D, D2>) -> Self::Output
     {
         self.filter_map_named("FilterMap", logic)
     }
@@ -20,7 +19,6 @@ pub trait FilterMap<D, D2> {
     fn filter_map_named<L>(&self, name: &str, logic: L) -> Self::Output
     where
         L: FnMut(D) -> Option<D2> + 'static;
-    // fn filter_map_named(&self, name: &str, logic: FilterMapFunc<D, D2>) -> Self::Output;
 }
 
 impl<S, D, D2> FilterMap<D, D2> for Stream<S, D>
@@ -34,7 +32,6 @@ where
     fn filter_map_named<L>(&self, name: &str, mut logic: L) -> Self::Output
     where
         L: FnMut(D) -> Option<D2> + 'static,
-    // fn filter_map_named(&self, name: &str, logic: FilterMapFunc<D, D2>) -> Self::Output
     {
         let mut buffer = Vec::new();
 
@@ -64,7 +61,6 @@ where
     fn filter_map_named<L>(&self, name: &str, mut logic: L) -> Self::Output
     where
         L: FnMut(D) -> Option<D2> + 'static,
-    // fn filter_map_named(&self, name: &str, logic: FilterMapFunc<D, D2>) -> Self::Output
     {
         self.inner
             .filter_map_named(name, move |(data, time, diff)| {
