@@ -20,10 +20,10 @@ use timely::{dataflow::Scope, order::TotalOrder};
 
 // TODO: Allow dynamic functions
 pub type KeyFunc = fn(DDValue) -> Option<DDValue>;
-pub type KeyDynFunc = Arc<dyn Fn(DDValue) -> Option<DDValue>>;
+pub type KeyDynFunc = Arc<dyn Fn(DDValue) -> Option<DDValue> + Send + Sync>;
 
 pub type ValueFunc = fn(DDValue) -> Option<(DDValue, DDValue)>;
-pub type ValueDynFunc = Arc<dyn Fn(DDValue) -> Option<(DDValue, DDValue)>>;
+pub type ValueDynFunc = Arc<dyn Fn(DDValue) -> Option<(DDValue, DDValue)> + Send + Sync>;
 
 #[derive(Clone)]
 pub struct ArrangeBy<'a> {
@@ -205,13 +205,14 @@ impl<'a> ArrangeBy<'a> {
         R: Abelian + ExchangeData + Add<Output = R> + From<i8>,
     {
         // Extract the relation's key and value tuple before arranging it
+        let vfun = move |v: DDValue| { value_function.as_ref()(v) };
         let arranged = collection
             .filter_map_named(
                 &format!(
                     "FilterMap: Extract key and value for {}",
                     self.target_relation,
                 ),
-                value_function,
+                vfun,
             )
             .arrange_named(arrangement_name);
 
@@ -235,16 +236,16 @@ impl<'a> ArrangeBy<'a> {
             let keyed_name = format!("FilterMap: Extract key for {}", self.target_relation);
 
             if distinct {
-                Ok(collection.filter_map_named(&keyed_name, Arc::new(key_function)))
+                Ok(collection.filter_map_named(&keyed_name, key_function))
 
             // If our set is filtered and is not distinct we can skip a redundant map
             // operation by mapping into a `(key, ())` within the filter itself
             } else {
                 let keyed = collection.filter_map_named(
                     &keyed_name, 
-                    Arc::new(move |value| {
+                    move |value| {
                         key_function(value).map(|key| (key, ()))
-                    })
+                    }
                 );
 
                 let arranged =
