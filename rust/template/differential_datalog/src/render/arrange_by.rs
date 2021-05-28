@@ -15,15 +15,19 @@ use differential_dataflow::{
     Collection, ExchangeData,
 };
 use std::ops::Add;
-use std::sync::Arc;
+use dyn_clone::*;
 use timely::{dataflow::Scope, order::TotalOrder};
 
 // TODO: Allow dynamic functions
-pub type KeyFunc = fn(DDValue) -> Option<DDValue>;
-pub type KeyDynFunc = Arc<dyn Fn(DDValue) -> Option<DDValue> + Send + Sync>;
+pub trait KeyFuncTrait: Fn(DDValue) -> Option<DDValue> + DynClone + Sync + Send {}
+impl<T> KeyFuncTrait for T where T: Fn(DDValue) -> Option<DDValue> + Clone + Sync + Send {}
+clone_trait_object!(KeyFuncTrait);
+pub type KeyDynFunc = Box<dyn KeyFuncTrait>;
 
-pub type ValueFunc = fn(DDValue) -> Option<(DDValue, DDValue)>;
-pub type ValueDynFunc = Arc<dyn Fn(DDValue) -> Option<(DDValue, DDValue)> + Send + Sync>;
+pub trait ValueFuncTrait: Fn(DDValue) -> Option<(DDValue, DDValue)> + DynClone + Sync + Send {}
+impl<T> ValueFuncTrait for T where T: Fn(DDValue) -> Option<(DDValue, DDValue)> + Clone + Sync + Send {}
+clone_trait_object!(ValueFuncTrait);
+pub type ValueDynFunc = Box<dyn ValueFuncTrait>;
 
 #[derive(Clone)]
 pub struct ArrangeBy<'a> {
@@ -37,7 +41,7 @@ pub enum ArrangementKind {
     Set {
         /// The function for extracting the relation's key value,
         /// can be `None` if the value is already the key
-        key_function: Option<KeyFunc>,
+        key_function: Option<KeyDynFunc>,
         /// Whether or not the set should be distinct
         distinct: bool,
     },
@@ -75,7 +79,7 @@ impl<'a> ArrangeBy<'a> {
 
         match self.kind {
             ArrangementKind::Set {
-                key_function,
+                ref key_function,
                 distinct,
             } => {
                 // Arranges a collection by its key
@@ -89,7 +93,7 @@ impl<'a> ArrangeBy<'a> {
                 // The keyed relation
                 let keyed = match self.key_collection(
                     collection,
-                    key_function,
+                    key_function.clone(),
                     distinct,
                     &arrangement_name,
                 ) {
@@ -134,7 +138,7 @@ impl<'a> ArrangeBy<'a> {
 
         match self.kind {
             ArrangementKind::Set {
-                key_function,
+                ref key_function,
                 distinct,
             } => {
                 // Arranges a collection by its key
@@ -148,7 +152,7 @@ impl<'a> ArrangeBy<'a> {
                 // The keyed relation
                 let mut keyed = match self.key_collection(
                     collection,
-                    key_function,
+                    key_function.clone(),
                     distinct,
                     &arrangement_name,
                 ) {
@@ -222,7 +226,7 @@ impl<'a> ArrangeBy<'a> {
     fn key_collection<S, R>(
         &self,
         collection: &Collection<S, DDValue, R>,
-        key_function: Option<KeyFunc>,
+        key_function: Option<KeyDynFunc>,
         distinct: bool,
         arrangement_name: &str,
     ) -> Result<Collection<S, DDValue, R>, Arranged<S, R>>

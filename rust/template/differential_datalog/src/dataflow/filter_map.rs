@@ -4,8 +4,6 @@ use timely::{
     Data,
 };
 
-pub type FilterMapFunc<D, D2> = std::sync::Arc<dyn Fn(D) -> Option<D2>>;
-
 pub trait FilterMap<D, D2> {
     type Output;
 
