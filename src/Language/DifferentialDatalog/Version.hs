@@ -29,10 +29,19 @@ module Language.DifferentialDatalog.Version (
 where
 
 import GitHash
+import Data.List
 
 -- Keep this in sync with the binary release version on github
 dDLOG_VERSION :: String
 dDLOG_VERSION = "v0.40.2"
 
+gitInfoCwdTry :: Either String GitInfo
+gitInfoCwdTry = $$tGitInfoCwdTry
+
 gitHash :: String
-gitHash = giHash $$tGitInfoCwd
+gitHash =
+    case gitInfoCwdTry of
+        Left err -> case isInfixOf "GHEGitRunFailed" err of
+            True -> "built from sources"
+            False -> error "gitHash error - failed to obtain GitInfo"
+        Right gitInfo -> giHash gitInfo
