@@ -55,6 +55,24 @@ pub unsafe extern "C" fn ddlog_get_table_id(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn ddlog_get_table_original_name(
+    prog: *const HDDlog,
+    tname: *const raw::c_char,
+) -> *const raw::c_char {
+    if prog.is_null() || tname.is_null() {
+        return ptr::null();
+    }
+
+    let prog = &*prog;
+
+    let table_str = CStr::from_ptr(tname).to_str().unwrap();
+    match prog.get_table_original_cname(table_str) {
+        Ok(name) => name.as_ptr(),
+        Err(_) => ptr::null(),
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn ddlog_get_table_name(
     prog: *const HDDlog,
     tid: libc::size_t,

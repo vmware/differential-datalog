@@ -530,6 +530,7 @@ instance Show RelationSemantics where
     show = render . pp
 
 data Relation = Relation { relPos        :: Pos
+                         , relAttrs      :: [Attribute]
                          , relRole       :: RelationRole
                          , relSemantics  :: RelationSemantics
                          , relName       :: String
@@ -538,11 +539,11 @@ data Relation = Relation { relPos        :: Pos
                          }
 
 instance Eq Relation where
-    (==) (Relation _ r1 m1 n1 t1 k1) (Relation _ r2 m2 n2 t2 k2) = (r1, m1, n1, t1, k1) == (r2, m2, n2, t2, k2)
+    (==) (Relation _ a1 r1 m1 n1 t1 k1) (Relation _ a2 r2 m2 n2 t2 k2) = (a1, r1, m1, n1, t1, k1) == (a2, r2, m2, n2, t2, k2)
 
 instance Ord Relation where
-    compare (Relation _ r1 m1 n1 t1 k1) (Relation _ r2 m2 n2 t2 k2) =
-        compare (r1, m1, n1, t1, k1) (r2, m2, n2, t2, k2)
+    compare (Relation _ a1 r1 m1 n1 t1 k1) (Relation _ a2 r2 m2 n2 t2 k2) =
+        compare (a1, r1, m1, n1, t1, k1) (a2, r2, m2, n2, t2, k2)
 
 instance WithPos Relation where
     pos = relPos
@@ -553,7 +554,8 @@ instance WithName Relation where
     setName r n = r{relName = n}
 
 instance PP Relation where
-    pp Relation{..} = pp relRole <+>
+    pp Relation{..} = (ppAttributes relAttrs) $$
+                      pp relRole <+>
                       pp relSemantics <+> pp relName <+> "[" <> pp relType <> "]" <+> pkey
         where pkey = maybe empty (("primary key" <+>) . pp) relPrimaryKey
 

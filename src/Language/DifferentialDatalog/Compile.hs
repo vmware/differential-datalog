@@ -596,6 +596,7 @@ simplifyDelayedRels d =
              let rel = getRelation d rname
                  delayed_rel = Relation {
                      relPos          = nopos,
+                     relAttrs        = relAttrs rel,
                      relRole         = RelInternal,
                      relSemantics    = relSemantics rel,
                      relName         = mk_delayed_rel_name (rname, delay),
@@ -662,6 +663,7 @@ simplifyDifferentiation d =
              let rel = getRelation d rname
                  diff_rel = Relation {
                      relPos          = nopos,
+                     relAttrs        = relAttrs rel,
                      relRole         = RelInternal,
                      relSemantics    = RelMultiset,
                      relName         = mk_diff_rel_name rname,
@@ -1108,7 +1110,7 @@ addDummyRel d =
     d {progRelations = rels, progIndexes = idxs}
     where
     rels = if (M.null $ progRelations d) || (M.null $ progIndexes d)
-              then M.insert "__Null" (Relation nopos RelInternal RelSet "__Null" (tTuple []) Nothing) (progRelations d)
+              then M.insert "__Null" (Relation nopos [] RelInternal RelSet "__Null" (tTuple []) Nothing) (progRelations d)
               else progRelations d
     idxs = if M.null $ progIndexes d
               then M.singleton "__Null_by_none" $ Index nopos "__Null_by_none" [] $ Atom nopos "__Null" delayZero False $ eTuple []
@@ -1271,6 +1273,9 @@ mkDDValueFromRecord d@DatalogProgram{..} =
     mkRelationsTryFromRelId d                                                                       $$
     mkRelId2Name d                                                                                  $$
     mkRelId2NameC                                                                                   $$
+    mkRelName2OrigName d                                                                            $$
+    mkRelName2OrigNameC d                                                                           $$
+    mkOrigRelName2Name d                                                                            $$
     mkRelIdMap d                                                                                    $$
     mkRelIdMapC d                                                                                   $$
     mkInputRelIdMap d                                                                               $$
@@ -1413,7 +1418,7 @@ mkRelId2Name d =
     where
     entries = map mkrel $ M.elems $ progRelations d
     mkrel :: Relation -> Doc
-    mkrel rel = pp (relIdentifier d rel) <+> "=> Some(&\"" <> pp (name rel) <> "\"),"
+    mkrel rel = pp (relIdentifier d rel) <+> "=> ::core::option::Option::Some(\"" <> pp (name rel) <> "\"),"
 
 mkRelId2NameC :: Doc
 mkRelId2NameC =
@@ -1422,6 +1427,66 @@ mkRelId2NameC =
     $$ "pub fn relid2cname(rid: program::RelId) -> ::std::option::Option<&'static ::std::ffi::CStr> {"
     $$ "    RELIDMAPC.get(&rid).copied()"
     $$ "}"
+
+-- The original relation name is retrieved from the 'original="name"' attribute
+-- if present.  Validation ensures that at most one such attribute exists and
+-- that is has a string argument.
+-- If no attribute exists the relation name is returned
+origRelName :: Relation -> Doc
+origRelName rel = let attrs = map attrVal $ filter ((== "original") . name) $ relAttrs rel in
+                  case attrs of
+                      [E (EString _ str)] -> pp $ str
+                      -- The only remaining case should be an empty list
+                      _                   -> pp $ relName rel
+
+-- Generates a function that converts relation names into the original relation names
+-- (obtained via the 'original' attribute)
+mkRelName2OrigName :: DatalogProgram -> Doc
+mkRelName2OrigName d =
+    "pub fn rel_name2orig_name(rname: &str) -> ::std::option::Option<&'static str> {" $$
+    "   match rname {"                                        $$
+    (nest' $ nest' $ vcat $ entries)                          $$
+    "       _  => None"                                       $$
+    "   }"                                                    $$
+    "}"
+    where
+    entries = map mkrel $ M.elems $ progRelations d
+    mkrel :: Relation -> Doc
+    mkrel rel = (doubleQuotes $ pp $ name rel) <+> "=> ::core::option::Option::Some(\"" <> pp (origRelName rel) <> "\"),"
+
+-- Generates a function that converts relation names into the original relation names
+-- (obtained via the 'original' attribute)
+mkRelName2OrigNameC :: DatalogProgram -> Doc
+mkRelName2OrigNameC d =
+    "#[cfg(feature = \"c_api\")]"                                                                   $$
+    "pub fn rel_name2orig_cname(rname: &str) -> ::std::option::Option<&'static ::std::ffi::CStr> {" $$
+    "   match rname {"                                        $$
+    (nest' $ nest' $ vcat $ entries)                          $$
+    "       _  => None"                                       $$
+    "   }"                                                    $$
+    "}"
+    where
+    entries = map mkrel $ M.elems $ progRelations d
+    mkrel :: Relation -> Doc
+    mkrel rel = (doubleQuotes $ pp $ origRelName rel) <+> "=>" <+>
+            "Some(::std::ffi::CStr::from_bytes_with_nul(b\"" <> pp (name rel) <> "\\0\")" <+>
+            ".expect(\"Unreachable: A null byte was specifically inserted\")),"
+
+-- Generates a function that converts original relation names into relation names
+-- Original names are obtained via the 'original' attribute
+-- (The generated code is currently not exposed in any API)
+mkOrigRelName2Name :: DatalogProgram -> Doc
+mkOrigRelName2Name d =
+    "pub fn orig_rel_name2name(rname: &str) -> ::std::option::Option<&'static str> {" $$
+    "   match rname {"                                        $$
+    (nest' $ nest' $ vcat $ entries)                          $$
+    "       _  => None"                                       $$
+    "   }"                                                    $$
+    "}"
+    where
+    entries = map mkrel $ M.elems $ progRelations d
+    mkrel :: Relation -> Doc
+    mkrel rel = (doubleQuotes $ pp $ origRelName rel) <+> "=> ::core::option::Option::Some(\"" <> pp (name rel) <> "\"),"
 
 mkRelIdMap :: DatalogProgram -> Doc
 mkRelIdMap prog =
@@ -1561,7 +1626,7 @@ mkIdxId2Name d =
     where
     entries = map mkidx $ M.elems $ progIndexes d
     mkidx :: Index -> Doc
-    mkidx idx = pp (idxIdentifier d idx) <+> "=> Some(&\"" <> pp (name idx) <> "\"),"
+    mkidx idx = pp (idxIdentifier d idx) <+> "=> ::core::option::Option::Some(\"" <> pp (name idx) <> "\"),"
 
 mkIdxId2NameC :: Doc
 mkIdxId2NameC =
@@ -2367,7 +2432,7 @@ mkFFun d rl@Rule{..} input_filters =
    let open = openAtom d vALUE_VAR rl 0 (rhsAtom $ ruleRHS !! 0) ("return false")
        checks = parens $ vcat $ punctuate " &&"
                 $ map (\i -> mkExpr d (CtxRuleRCond rl i) (rhsExpr $ ruleRHS !! i) EVal) input_filters
-   in "Some({fn __f(" <> vALUE_VAR <> ": &DDValue) -> bool" $$
+   in "Some({fn __f(" <> vALUE_VAR <> ": &DDValue) -> bool"  $$
       (braces' $ open $$ checks)                             $$
       "    __f"                                              $$
       "})"

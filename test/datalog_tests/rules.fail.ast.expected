@@ -119,3 +119,7 @@ S3(x) :- S2(x).
 error: ./test/datalog_tests/rules.fail.dl:10.10-10.16: Differentiation operator (') appears in a recursive fragment consisting of: [S2,S3]
 S3(x) :- S2'(x).
          ^^^^^^
+
+error: ./test/datalog_tests/rules.fail.dl:5.3-5.22: The value of the 'original' attribute cannot contain a 0 character
+#[original="foo\0bar"]
+  ^^^^^^^^^^^^^^^^^^^

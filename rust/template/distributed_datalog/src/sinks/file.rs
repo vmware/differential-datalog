@@ -94,6 +94,13 @@ mod tests {
             }
         }
 
+        fn get_table_original_name(
+            &self,
+            _tname: &str,
+        ) -> Result<&'static str, std::string::String> {
+            Err("not implemented".to_string())
+        }
+
         #[cfg(feature = "c_api")]
         fn get_table_cname(&self, _tid: RelId) -> Result<&'static CStr, std::string::String> {
             Err("not implemented".to_string())

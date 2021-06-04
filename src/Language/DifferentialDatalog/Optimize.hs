@@ -23,13 +23,13 @@ SOFTWARE.
 
 {-# LANGUAGE TupleSections, LambdaCase, RecordWildCards, ImplicitParams #-}
 
-{- | 
+{- |
 Module     : Optimize
 Description: Compiler optimization passes
 -}
 module Language.DifferentialDatalog.Optimize (
     optimize
-) 
+)
 where
 
 import Data.List
@@ -49,7 +49,7 @@ import Language.DifferentialDatalog.Rule
 import Language.DifferentialDatalog.Validate
 
 optimize :: (?cfg::Config, ?crate_graph::CrateGraph) => DatalogProgram -> DatalogProgram
-optimize d = 
+optimize d =
     let d' = optEliminateCommonPrefixes $ optExpandMultiheadRules d
     in if confReValidate ?cfg
        then case validate d' of
@@ -81,6 +81,7 @@ expandMultiheadRule d rl ruleidx = (Just rel, rule1 : rules)
     -- generate relation
     relname = "__MultiHead_" ++ show ruleidx
     rel = Relation { relPos        = nopos
+                   , relAttrs      = []
                    , relRole       = RelInternal
                    , relSemantics  = RelSet
                    , relName       = relname
@@ -97,7 +98,7 @@ expandMultiheadRule d rl ruleidx = (Just rel, rule1 : rules)
     rules = map (\lhs -> Rule { rulePos = pos rl
                               , ruleModule = ruleModule rl
                               , ruleLHS = [lhs]
-                              , ruleRHS = [RHSLiteral True 
+                              , ruleRHS = [RHSLiteral True
                                           $ Atom nopos relname delayZero False
                                           $ eTuple $ map (\v -> eTypedVar (name v) (varType d v)) lhsvars]})
                 $ ruleLHS rl
@@ -133,7 +134,7 @@ optEliminateCommonPrefixes' d = do
        else do d' <- replacePrefix d $ head ordered_prefixes
                optEliminateCommonPrefixes' d'
 
--- Collect all prefixes in the program, only including prefixes of length >1 
+-- Collect all prefixes in the program, only including prefixes of length >1
 -- (to avoid infinite recursion replacing prefix of length 1)
 -- counting the number of occurrences of each prefix in each crate.
 -- We group prefixes per crate, as we currently don't have a way to generate
@@ -172,11 +173,12 @@ replacePrefix d (pref, crate_name) = {-trace ("replacePrefix " ++ show pref) $-}
     idx <- get
     put $ idx + 1
     let relname = scoped mname $ "__Prefix_" ++ show idx
-    -- variables visible in the rest of the rule 
+    -- variables visible in the rest of the rule
     -- (manufacture a bogus rule consisting only of the prefix to call ruleRHSVars on it)
     let vars = ruleRHSVars d (Rule nopos mname [] pref) pref_len
     -- relation
     let rel = Relation { relPos        = nopos
+                       , relAttrs      = []
                        , relRole       = RelInternal
                        , relSemantics  = RelSet
                        , relName       = relname

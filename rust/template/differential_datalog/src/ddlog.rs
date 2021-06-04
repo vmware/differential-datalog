@@ -23,6 +23,15 @@ pub trait DDlogInventory {
     /// Convert a `RelId` into its symbolic name.
     fn get_table_name(&self, tid: RelId) -> Result<&'static str, String>;
 
+    /// Given a table name, returns the original name (from the 'original' DDlog
+    /// relation annotation), if present, or the table name itself otherwise.
+    /// If 'tname' is not a legal table name return an Error.
+    fn get_table_original_name(&self, tname: &str) -> Result<&'static str, String>;
+
+    /// Get the table original name (see above) but as a C string.
+    #[cfg(feature = "c_api")]
+    fn get_table_original_cname(&self, tname: &str) -> Result<&'static CStr, String>;
+
     /// Convert a `RelId` into its symbolic name represented as C string.
     #[cfg(feature = "c_api")]
     fn get_table_cname(&self, tid: RelId) -> Result<&'static CStr, String>;

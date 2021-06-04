@@ -20,6 +20,7 @@ public class DDlogAPI {
     native long ddlog_run(boolean storeData, int workers) throws DDlogException;
     static native int ddlog_get_table_id(long hprog, String table);
     static native String ddlog_get_table_name(long hprog,int id) throws DDlogException;
+    static native String ddlog_get_table_original_name(long hprog, String table) throws DDlogException;
     static native int ddlog_get_index_id(long hprog, String index);
     static native String ddlog_get_index_name(long hprog, int id) throws DDlogException;
     static native int ddlog_record_commands(long hprog, String filename, boolean append) throws DDlogException, IOException;
@@ -201,6 +202,17 @@ public class DDlogAPI {
     public String getTableName(int id) throws DDlogException {
         this.checkHandle();
         return ddlog_get_table_name(this.hprog, id);
+    }
+
+    /**
+     * Given a table name, returns the original name (from the 'original' DDlog
+     * relation annotation), if present, or the table name itself otherwise.
+     *
+     * See <code>ddlog.h: ddlog_get_table_original_name()</code>
+     */
+    public String getTableOriginalName(String table) throws DDlogException {
+        this.checkHandle();
+        return ddlog_get_table_original_name(this.hprog, table);
     }
 
     /**

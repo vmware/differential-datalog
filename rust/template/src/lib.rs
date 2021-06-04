@@ -335,8 +335,16 @@ pub fn relid2name(_rid: program::RelId) -> Option<&'static str> {
     panic!("relid2name not implemented")
 }
 
+pub fn rel_name2orig_name(_tname: &str) -> Option<&'static str> {
+    panic!("get_table_original_name not implemented")
+}
+
 pub fn relid2cname(_rid: program::RelId) -> Option<&'static ::std::ffi::CStr> {
     panic!("relid2cname not implemented")
+}
+
+pub fn rel_name2orig_cname(_tname: &str) -> Option<&'static ::std::ffi::CStr> {
+    panic!("rel_name2orig_cname not implemented")
 }
 
 pub static RELIDMAP: Lazy<FnvHashMap<Relations, &'static str>> = Lazy::new(FnvHashMap::default);

@@ -608,3 +608,9 @@ output relation SingletonTest(s: string)
 
 SingletonTest("DataForSingletonTest is empty") :- not DataForSingletonTest().
 SingletonTest("${v}") :- var v = 5.
+
+/*
+ * Relation with `original` annotation.
+ */
+#[original="original_name"]
+input relation Renamed()
