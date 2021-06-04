@@ -1,6 +1,8 @@
 #!/bin/bash
 # Run one datalog test
 
+# If the following is set to 1 we skip the DDlog compilation
+SKIP_DDLOG=0
 PROFILE=0
 # If flatbuf is not set, set it to 1.  If 1 we test flatbuf too
 FLATBUF=${FLATBUF:-1}
@@ -57,7 +59,7 @@ else
 fi
 
 # When running in CI, the DDlog compiler should be preinstalled by the build stage.
-if [ -z "${IS_CI_RUN}" ]; then
+if [ -z "${IS_CI_RUN}" -a ${SKIP_DDLOG} == "0" ]; then
     if [ "x${PROFILE}" == "x1" ]; then
         stack install --profile
         export GHCRTS="-xc"
@@ -68,27 +70,28 @@ fi
 
 CLASSPATH=$(pwd)/${base}_ddlog/flatbuf/java:$(pwd)/../../java/ddlogapi.jar:$CLASSPATH
 # Run DDlog compiler
-ddlog -i ${base}.dl -L../../lib ${DDLOGFLAGS}
+if [ ${SKIP_DDLOG} == "0" ]; then
+   ddlog -i ${base}.dl -L../../lib ${DDLOGFLAGS}
 
-# Validate intermediate representations.
-if [ -f ${base}.flat.ast.expected ]; then
-    diff -q ${base}.flat.ast ${base}.flat.ast.expected
+   # Validate intermediate representations.
+   if [ -f ${base}.flat.ast.expected ]; then
+       diff -q ${base}.flat.ast ${base}.flat.ast.expected
+   fi
+
+   if [ -f ${base}.valid.ast.expected ]; then
+       diff -q ${base}.valid.ast ${base}.valid.ast.expected
+   fi
+
+   if [[ " ${DDLOGFLAGS[@]} " =~ " -g " ]]; then
+       if [ -f ${base}.debug.ast.expected ]; then
+           diff -q ${base}.debug.ast ${base}.debug.ast.expected
+       fi
+   fi
+
+   if [ -f ${base}.opt.ast.expected ]; then
+       diff -q ${base}.opt.ast ${base}.opt.ast.expected
+   fi
 fi
-
-if [ -f ${base}.valid.ast.expected ]; then
-    diff -q ${base}.valid.ast ${base}.valid.ast.expected
-fi
-
-if [[ " ${DDLOGFLAGS[@]} " =~ " -g " ]]; then
-    if [ -f ${base}.debug.ast.expected ]; then
-        diff -q ${base}.debug.ast ${base}.debug.ast.expected
-    fi
-fi
-
-if [ -f ${base}.opt.ast.expected ]; then
-    diff -q ${base}.opt.ast ${base}.opt.ast.expected
-fi
-
 
 # Compile produced Rust files
 cd ${base}_ddlog
