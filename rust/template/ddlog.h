@@ -172,6 +172,14 @@ extern table_id ddlog_get_table_id(ddlog_prog hprog, const char* tname);
 extern const char* ddlog_get_table_name(ddlog_prog hprog, table_id id);
 
 /*
+ * Given a table name, returns the original name (from the 'original' DDlog
+ * relation annotation), if present, or the table name itself otherwise.
+ *
+ * Returns a null-terminated UTF8 string on success or NULL on error.
+ */
+extern const char* ddlog_get_table_original_name(ddlog_prog hprog, const char* tname);
+
+/*
  * Get DDlog index id by name.  The index name is a null-terminated UTF8
  * string.
  *

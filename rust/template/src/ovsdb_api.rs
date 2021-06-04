@@ -13,7 +13,7 @@ use differential_datalog::ddval::*;
 use differential_datalog::program::*;
 use differential_datalog::record::{IntoRecord, Record, UpdCmd};
 use differential_datalog::DeltaMap;
-use differential_datalog::{DDlog, DDlogDynamic};
+use differential_datalog::{DDlog, DDlogDynamic, DDlogInventory};
 
 use crate::api::{updcmd2upd, HDDlog};
 use crate::DDlogConverter;
@@ -88,7 +88,7 @@ pub unsafe extern "C" fn ddlog_dump_ovsdb_delta_tables(
         return -1;
     };
     let prog = sync::Arc::from_raw(prog);
-    let res = match dump_delta(&*delta, module, table) {
+    let res = match dump_delta(&prog, &*delta, module, table) {
         Ok(json_string) => {
             *json = json_string.into_raw();
             0
@@ -102,20 +102,35 @@ pub unsafe extern "C" fn ddlog_dump_ovsdb_delta_tables(
     res
 }
 
-fn dump_delta(
+unsafe fn dump_delta(
+    prog: &HDDlog,
     delta: &DeltaMap<DDValue>,
     module: *const c_char,
     table: *const c_char,
 ) -> Result<CString, String> {
-    let table_str: &str = unsafe { CStr::from_ptr(table) }
+    let table_str: &str = CStr::from_ptr(table)
         .to_str()
         .map_err(|e| format!("{}", e))?;
-    let module_str: &str = unsafe { CStr::from_ptr(module) }
+    let module_str: &str = CStr::from_ptr(module)
         .to_str()
         .map_err(|e| format!("{}", e))?;
+
+    let table_name = format!("{}::{}", module_str, table_str);
     let plus_table_name = format!("{}::DeltaPlus_{}", module_str, table_str);
     let minus_table_name = format!("{}::DeltaMinus_{}", module_str, table_str);
     let upd_table_name = format!("{}::Update_{}", module_str, table_str);
+    // Namespace fun: We would like to obtain the OVSDB table name, which is
+    // either the local name of the relation (`table_str`) if the relation does
+    // not have an `original` attribute, or the value of `original` otherwise.
+    // Since there is no direct way to check if the relation has this attribute,
+    // we check if `get_table_original_name()` is different from the fully
+    // qualified table name.
+    let original_table_name = prog.get_table_original_name(&table_name)?;
+    let ovsdb_table_name = if original_table_name == &table_name {
+        table_str
+    } else {
+        original_table_name
+    };
 
     /* DeltaPlus */
     let plus_cmds: Result<Vec<String>, String> = {
@@ -128,7 +143,7 @@ fn dump_delta(
                 rel.iter()
                     .map(|(v, w)| {
                         assert!(*w == 1);
-                        record_into_insert_str(v.clone().into_record(), table_str)
+                        record_into_insert_str(v.clone().into_record(), ovsdb_table_name)
                     })
                     .collect()
             },
@@ -145,7 +160,7 @@ fn dump_delta(
                     rel.iter()
                         .map(|(v, w)| {
                             assert!(*w == 1);
-                            record_into_delete_str(v.clone().into_record(), table_str)
+                            record_into_delete_str(v.clone().into_record(), ovsdb_table_name)
                         })
                         .collect()
                 },
@@ -164,7 +179,7 @@ fn dump_delta(
                     rel.iter()
                         .map(|(v, w)| {
                             assert!(*w == 1);
-                            record_into_update_str(v.clone().into_record(), table_str)
+                            record_into_update_str(v.clone().into_record(), ovsdb_table_name)
                         })
                         .collect()
                 },
@@ -177,7 +192,7 @@ fn dump_delta(
     let mut cmds = plus_cmds;
     cmds.append(&mut minus_cmds);
     cmds.append(&mut upd_cmds);
-    Ok(unsafe { CString::from_vec_unchecked(cmds.join(",").into_bytes()) })
+    Ok(CString::from_vec_unchecked(cmds.join(",").into_bytes()))
 }
 
 #[no_mangle]
@@ -195,7 +210,7 @@ pub unsafe extern "C" fn ddlog_into_ovsdb_insert_str(
         _ => return -1,
     };
     let prog = sync::Arc::from_raw(prog);
-    let res = match into_insert_str(table, rec) {
+    let res = match into_insert_str(&prog, table, rec) {
         Ok(json_string) => {
             *json = json_string.into_raw();
             0
@@ -209,7 +224,7 @@ pub unsafe extern "C" fn ddlog_into_ovsdb_insert_str(
     res
 }
 
-fn into_insert_str(table: *const c_char, rec: &Record) -> Result<CString, String> {
+fn into_insert_str(prog: &HDDlog, table: *const c_char, rec: &Record) -> Result<CString, String> {
     let table_str: &str = unsafe { CStr::from_ptr(table) }
         .to_str()
         .map_err(|e| format!("{}", e))?;
@@ -232,7 +247,7 @@ pub unsafe extern "C" fn ddlog_into_osvdb_delete_str(
         _ => return -1,
     };
     let prog = sync::Arc::from_raw(prog);
-    let res = match into_delete_str(table, rec) {
+    let res = match into_delete_str(&prog, table, rec) {
         Ok(json_string) => {
             *json = json_string.into_raw();
             0
@@ -246,12 +261,16 @@ pub unsafe extern "C" fn ddlog_into_osvdb_delete_str(
     res
 }
 
-fn into_delete_str(table: *const c_char, rec: &Record) -> Result<CString, String> {
-    let table_str: &str = unsafe { CStr::from_ptr(table) }
+unsafe fn into_delete_str(
+    prog: &HDDlog,
+    table: *const c_char,
+    rec: &Record,
+) -> Result<CString, String> {
+    let table_str: &str = CStr::from_ptr(table)
         .to_str()
         .map_err(|e| format!("{}", e))?;
     record_into_delete_str(rec.clone(), table_str)
-        .map(|s| unsafe { CString::from_vec_unchecked(s.into_bytes()) })
+        .map(|s| CString::from_vec_unchecked(s.into_bytes()))
 }
 
 #[no_mangle]
@@ -269,7 +288,7 @@ pub unsafe extern "C" fn ddlog_into_ovsdb_update_str(
         _ => return -1,
     };
     let prog = sync::Arc::from_raw(prog);
-    let res = match into_update_str(table, rec) {
+    let res = match into_update_str(&prog, table, rec) {
         Ok(json_string) => {
             *json = json_string.into_raw();
             0
@@ -283,7 +302,7 @@ pub unsafe extern "C" fn ddlog_into_ovsdb_update_str(
     res
 }
 
-fn into_update_str(table: *const c_char, rec: &Record) -> Result<CString, String> {
+fn into_update_str(prog: &HDDlog, table: *const c_char, rec: &Record) -> Result<CString, String> {
     let table_str: &str = unsafe { CStr::from_ptr(table) }
         .to_str()
         .map_err(|e| format!("{}", e))?;
@@ -303,7 +322,7 @@ pub unsafe extern "C" fn ddlog_dump_ovsdb_output_table(
         return -1;
     };
     let prog = sync::Arc::from_raw(prog);
-    let res = match dump_output(&*delta, module, table) {
+    let res = match dump_output(&prog, &*delta, module, table) {
         Ok(json_string) => {
             *json = json_string.into_raw();
             0
@@ -317,18 +336,26 @@ pub unsafe extern "C" fn ddlog_dump_ovsdb_output_table(
     res
 }
 
-fn dump_output(
+unsafe fn dump_output(
+    prog: &HDDlog,
     delta: &DeltaMap<DDValue>,
     module: *const c_char,
     table: *const c_char,
 ) -> Result<CString, String> {
-    let table_str: &str = unsafe { CStr::from_ptr(table) }
+    let table_str: &str = CStr::from_ptr(table)
         .to_str()
         .map_err(|e| format!("{}", e))?;
-    let module_str: &str = unsafe { CStr::from_ptr(module) }
+    let module_str: &str = CStr::from_ptr(module)
         .to_str()
         .map_err(|e| format!("{}", e))?;
     let table_name = format!("{}::Out_{}", module_str, table_str);
+
+    let original_table_name = prog.get_table_original_name(&table_name)?;
+    let ovsdb_table_name = if original_table_name == &table_name {
+        table_str
+    } else {
+        original_table_name
+    };
 
     /* DeltaPlus */
     let cmds: Result<Vec<String>, String> = {
@@ -341,10 +368,12 @@ fn dump_output(
                 rel.iter()
                     .map(|(v, w)| {
                         assert!(*w == 1 || *w == -1);
+                        let record = v.clone().into_record();
+                        let get_table_name = |table| prog.get_table_original_name(table);
                         if (*w == 1) {
-                            record_into_insert_str(v.clone().into_record(), table_str)
+                            record_into_insert_str(record, ovsdb_table_name)
                         } else {
-                            record_into_delete_str(v.clone().into_record(), table_str)
+                            record_into_delete_str(record, ovsdb_table_name)
                         }
                     })
                     .collect()
@@ -353,7 +382,7 @@ fn dump_output(
     };
     let cmds = cmds?;
 
-    Ok(unsafe { CString::from_vec_unchecked(cmds.join(",").into_bytes()) })
+    Ok(CString::from_vec_unchecked(cmds.join(",").into_bytes()))
 }
 
 /// Deallocates strings returned by other functions in this API.

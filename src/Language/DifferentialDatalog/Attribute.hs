@@ -46,6 +46,7 @@ progValidateAttributes d = do
     mapM_ (typedefValidateAttrs d) $ progTypedefs d
     mapM_ (indexValidateAttrs d) $ progIndexes d
     mapM_ (mapM_ (funcValidateAttrs d)) $ progFunctions d
+    mapM_ (relValidateAttrs d) $ progRelations d
 
 typedefValidateAttrs :: (MonadError String me) => DatalogProgram -> TypeDef -> me ()
 typedefValidateAttrs d tdef@TypeDef{..} = do
@@ -140,6 +141,22 @@ fieldValidateAttr d attr = do
          "deserialize_from_array" -> return ()
          n -> err d (pos attr) $ "Unknown attribute " ++ n
 
+relValidateAttr :: (MonadError String me) => DatalogProgram -> Attribute -> me ()
+relValidateAttr d attr = do
+    case name attr of
+         "original" -> case attrVal attr of
+              E (EString _ str) -> if elem '\0' str
+                                   then err d (pos attr) $ "The value of the 'original' attribute cannot contain a 0 character"
+                                   else return ()
+              _ -> err d (pos attr) $ "The value of the 'original' attribute should be a string, e.g., #[original = \"Foo\"]"
+         n -> err d (pos attr) $ "Attribute " ++ n ++ " not supported for relations"
+
+relValidateAttrs :: (MonadError String me) => DatalogProgram -> Relation -> me ()
+relValidateAttrs d r = do
+    uniqNames (Just d) ("Multiple definitions of attribute " ++) $ relAttrs r
+    mapM_ (relValidateAttr d) $ relAttrs r
+    return ()
+
 funcValidateAttrs :: (MonadError String me) => DatalogProgram -> Function -> me ()
 funcValidateAttrs d f@Function{..} = do
     uniqNames (Just d) ("Multiple definitions of attribute " ++) funcAttrs
@@ -178,7 +195,7 @@ tdefCheckCustomSerdeAttr d TypeDef{..} =
                          return True
 
 tdefGetCustomSerdeAttr :: DatalogProgram -> TypeDef -> Bool
-tdefGetCustomSerdeAttr d tdef = 
+tdefGetCustomSerdeAttr d tdef =
     case tdefCheckCustomSerdeAttr d tdef of
          Left e  -> error e
          Right b -> b
@@ -195,7 +212,7 @@ tdefCheckCustomFromRecord d TypeDef{..} =
                          return True
 
 tdefGetCustomFromRecord :: DatalogProgram -> TypeDef -> Bool
-tdefGetCustomFromRecord d tdef = 
+tdefGetCustomFromRecord d tdef =
     case tdefCheckCustomFromRecord d tdef of
          Left e  -> error e
          Right b -> b
@@ -235,7 +252,7 @@ tdefGetDynAllocAttr d tdef =
 {- 'alias' attribute: Tells DDlog not to generate Rust declaration for the type
  - and instead replace all occurrences of the type with its definition. -}
 tdefCheckAliasAttr :: (MonadError String me) => DatalogProgram -> TypeDef -> me Bool
-tdefCheckAliasAttr d TypeDef{..} =        
+tdefCheckAliasAttr d TypeDef{..} =
     case find ((== "alias") . name) tdefAttrs of
          Nothing   -> return False
          Just attr -> do

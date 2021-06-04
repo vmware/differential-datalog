@@ -118,6 +118,15 @@ impl DDlogInventory for Inventory {
         relid2name(tid).ok_or_else(|| format!("unknown relation {}", tid))
     }
 
+    fn get_table_original_name(&self, tname: &str) -> Result<&'static str, String> {
+        rel_name2orig_name(tname).ok_or_else(|| format!("unknown relation {}", tname))
+    }
+
+    #[cfg(feature = "c_api")]
+    fn get_table_original_cname(&self, tname: &str) -> Result<&'static ffi::CStr, String> {
+        rel_name2orig_cname(tname).ok_or_else(|| format!("unknown relation {}", tname))
+    }
+
     #[cfg(feature = "c_api")]
     fn get_table_cname(&self, tid: RelId) -> Result<&'static ffi::CStr, String> {
         relid2cname(tid).ok_or_else(|| format!("unknown relation {}", tid))
@@ -148,9 +157,18 @@ impl DDlogInventory for HDDlog {
         Inventory.get_table_name(tid)
     }
 
+    fn get_table_original_name(&self, tname: &str) -> Result<&'static str, String> {
+        Inventory.get_table_original_name(tname)
+    }
+
     #[cfg(feature = "c_api")]
     fn get_table_cname(&self, tid: RelId) -> Result<&'static ffi::CStr, String> {
         Inventory.get_table_cname(tid)
+    }
+
+    #[cfg(feature = "c_api")]
+    fn get_table_original_cname(&self, tname: &str) -> Result<&'static ffi::CStr, String> {
+        Inventory.get_table_original_cname(tname)
     }
 
     fn get_index_id(&self, iname: &str) -> Result<IdxId, String> {

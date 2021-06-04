@@ -68,6 +68,16 @@ fn cmds_from_table_update(
     }
 }
 
+// Stolen from https://stackoverflow.com/questions/38406793/why-is-capitalizing-the-first-letter-of-a-string-so-convoluted-in-rust
+// That is a very good issue name.
+fn uppercase_first_letter(s: &str) -> String {
+    let mut c = s.chars();
+    match c.next() {
+        None => String::new(),
+        Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+    }
+}
+
 /* Convert `<row-update>` JSON object to one or more `UpdCmd`'s.  The object can have one of two
  * formats. The old ("update-1") format has the following members:
  *
@@ -87,6 +97,8 @@ fn cmd_from_row_update(
     cmds: &mut Vec<UpdCmd>,
 ) -> Result<(), String> {
     let uuid = Record::Int(parse_uuid(uuid.as_ref())?);
+    // We know that the ovsdb->ddlog compiler did this to the table name.
+    let table = uppercase_first_letter(table);
     match update {
         Value::Object(mut m) => {
             /* Handle update-2 format */
@@ -95,7 +107,7 @@ fn cmd_from_row_update(
                 insert.push((Cow::from("_uuid"), uuid));
                 cmds.push(UpdCmd::Insert(
                     RelIdentifier::RelName(Cow::from(table.to_owned())),
-                    Record::NamedStruct(Cow::from(table.to_owned()), insert),
+                    Record::NamedStruct(Cow::from(table), insert),
                 ));
                 return Ok(());
             };
@@ -105,14 +117,14 @@ fn cmd_from_row_update(
                 cmds.push(UpdCmd::Modify(
                     RelIdentifier::RelName(Cow::from(table.to_owned())),
                     uuid,
-                    Record::NamedStruct(Cow::from(table.to_owned()), insert),
+                    Record::NamedStruct(Cow::from(table), insert),
                 ));
                 return Ok(());
             };
 
             if m.contains_key("delete") {
                 cmds.push(UpdCmd::DeleteKey(
-                    RelIdentifier::RelName(Cow::from(table.to_owned())),
+                    RelIdentifier::RelName(Cow::from(table)),
                     uuid,
                 ));
                 return Ok(());
@@ -140,7 +152,7 @@ fn cmd_from_row_update(
                 // insert
                 cmds.push(UpdCmd::Insert(
                     RelIdentifier::RelName(Cow::from(table.to_owned())),
-                    Record::NamedStruct(Cow::from(table.to_owned()), fields),
+                    Record::NamedStruct(Cow::from(table), fields),
                 ))
             };
             Ok(())

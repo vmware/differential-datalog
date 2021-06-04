@@ -2153,7 +2153,7 @@ per Zip code that stores the sum of all weights encountered before the current
 transaction.  Each transaction updates this aggregate with the sum of new
 weights added during the current transaction.  To this end we construct the
 `ParcelFold` relation that consists of the previously aggregated weight and new
-parcels added during the current transaction. 
+parcels added during the current transaction.
 
 How do we refer to the previous contents of a relation?  All DDlog constructs
 introduced so far operate on the current snapshot of relations.  We introduce
@@ -2183,7 +2183,7 @@ operator to do this explicitly.  The differentiation operator takes
 a stream and returns a relation that contains exactly the values added to the
 stream by the last transaction.  Intuitively, if we think about a stream `S`
 as an infinitely growing table, the differentiation operator returns the
-difference between the current and previous snapshots of the stream: 
+difference between the current and previous snapshots of the stream:
 `S' = S \ (S-1)`, where the prime (`'`) symbol represent differentiation.
 In our example we use the differentiation operator as follows.
 
@@ -3466,6 +3466,14 @@ to optimize data structures layout:
 #[size=4]
 extern type IObj<'A>
 ```
+
+### `#[original="name"]`
+
+This attribute is applicable to relation declarations.  Some tools
+generate DDlog code from other programming languages, and they may
+need to synthesize relation names.  This annotation contains a string
+holding the original name of the entity which caused the relation to
+be generated.
 
 ### `#[dyn_alloc]`
 

@@ -85,6 +85,16 @@ func (p *Program) GetTableName(tableID TableID) string {
 	return C.GoString(cs)
 }
 
+// GetTableOriginalName gets the table's original name, if the relation
+// had an 'original=\"name\"' annotation.  Otherwise it returns
+// the table name itself (if it is a legal table name).
+func (p *Program) GetTableOriginalName(name string) string {
+	cs := C.CString(name)
+	defer C.free(unsafe.Pointer(cs))
+	csorig := C.ddlog_get_table_original_name(p.ptr, cs)
+	return C.GoString(csorig)
+}
+
 // ErrMsgPrinter is the function type for the user-provided printer which will be invoked every time
 // DDlog generates an error.
 type ErrMsgPrinter func(msg string)

@@ -129,15 +129,27 @@ builtins :: String
 builtins = [r|import ovsdb
 |]
 
+-- generate a legal DDlog relation name from a table name
+relationName :: Table -> Doc
+relationName t = let (c:rest) = name t in
+                 pp $ (toUpper c) : rest
+
+-- generate annotations necessary for a table declaration
+tableAnnotation :: Table -> Doc
+tableAnnotation t = if relationName t == (pp $ name t)
+                    then empty else text $ "#[original = \"" ++ name t ++ "\"]"
+
+-- generate the relation name used for a specific table
 mkTableName :: (?schema::OVSDBSchema, ?config::Config) => Table -> TableKind -> Doc
 mkTableName t tkind =
+    let rn = relationName t in
     case tkind of
-         TableInput       -> pp $ name t
-         TableOutput      -> "Out_" <> (pp $ name t)
-         TableDirectOutput-> "Out_" <> (pp $ name t)
-         TableDeltaPlus   -> "DeltaPlus_" <> (pp $ name t)
-         TableDeltaMinus  -> "DeltaMinus_" <> (pp $ name t)
-         TableDeltaUpdate -> "Update_" <> (pp $ name t)
+         TableInput       -> rn
+         TableOutput      -> "Out_" <> rn
+         TableDirectOutput-> "Out_" <> rn
+         TableDeltaPlus   -> "DeltaPlus_" <> rn
+         TableDeltaMinus  -> "DeltaMinus_" <> rn
+         TableDeltaUpdate -> "Update_" <> rn
 
 compileSchemaFile :: FilePath -> Config -> IO Doc
 compileSchemaFile fname config = do
@@ -229,13 +241,16 @@ mkTable' tkind t@Table{..} = do
     let key = if tkind == TableInput
                  then "primary key (x) x._uuid"
                  else empty
+    let annotation = tableAnnotation t
     if tableIsInterned t && tkind == TableInput
     then return $ "typedef" <+> pp tname <+> "=" <+> pp tname <+> "{"                   $$
                   (nest' $ vcommaSep columns)                                           $$
                   "}"                                                                   $$
+                  annotation                                                            $$
                   prefix <+> "relation" <+> pp tname <+> "[Intern<" <> pp tname <> ">]" $$
                   key
-    else return $ prefix <+> "relation" <+> pp tname <+> "("    $$
+    else return $ annotation                                    $$
+                  prefix <+> "relation" <+> pp tname <+> "("    $$
                   (nest' $ vcommaSep columns)                   $$
                   ")"                                           $$
                   key

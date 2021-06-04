@@ -279,8 +279,10 @@ decl =  do attrs <- attributes
            case items of
                 [SpType t] -> return [SpType t{tdefAttrs = attrs}]
                 [SpFunc f] -> return [SpFunc f{funcAttrs = attrs}]
+                [SpRelation r] -> return [SpRelation r{relAttrs = attrs}]
+                [t, SpRelation r] -> return [t, SpRelation r{relAttrs = attrs}]
                 _          -> do
-                    when (not $ null attrs) $ fail "#-attributes are currently only supported for type and function declarations"
+                    when (not $ null attrs) $ fail "#-attributes are currently only supported for type, function, and relation declarations"
                     return items
 
 imprt = Import nopos <$ reserved "import" <*> modname <*> (option (ModuleName []) $ reserved "as" *> modname)
@@ -347,11 +349,11 @@ relation = do
          let t = if isref
                     then TUser p "Ref" [TUser p relName []]
                     else TUser p relName []
-         let rel = Relation nopos role mult relName t pkey
+         let rel = Relation nopos [] role mult relName t pkey
          return [SpType tdef, SpRelation rel])
       <|>
        (do rel <- (\tspec p2 -> let t = if isref then TUser (p1,p2) "Ref" [tspec] else tspec
-                                in Relation nopos role mult relName t)
+                                in Relation nopos [] role mult relName t)
                   <$> (brackets typeSpecSimple) <*> getPosition <*>
                       (optionMaybe $ symbol "primary" *> symbol "key" *> key_expr)
            return [SpRelation rel]))

@@ -531,6 +531,18 @@ JNIEXPORT jstring JNICALL Java_ddlogapi_DDlogAPI_ddlog_1get_1table_1name(
     return result;
 }
 
+JNIEXPORT jstring JNICALL Java_ddlogapi_DDlogAPI_ddlog_1get_1table_original1_1name(
+    JNIEnv *env, jobject obj, jlong progHandle, jstring table) {
+    const char* tbl = (*env)->GetStringUTFChars(env, table, NULL);
+    const char* result = ddlog_get_table_original_name((ddlog_prog)progHandle, tbl);
+    (*env)->ReleaseStringUTFChars(env, table, tbl);
+    if (result == NULL) {
+        throwDDlogException(env, "Unknown table name");
+        return NULL;
+    };
+    return (*env)->NewStringUTF(env, result);
+}
+
 JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1get_1index_1id(
     JNIEnv *env, jobject obj, jlong progHandle, jstring index) {
     const char* tbl = (*env)->GetStringUTFChars(env, index, NULL);

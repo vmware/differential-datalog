@@ -402,6 +402,10 @@ mod tests {
             unimplemented!()
         }
 
+        fn get_table_original_name(&self, _tname: &str) -> Result<&'static str, String> {
+            unimplemented!()
+        }
+
         fn get_index_id(&self, _iname: &str) -> Result<IdxId, String> {
             unimplemented!()
         }

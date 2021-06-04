@@ -263,3 +263,10 @@ relation S3(x: usize)
 S2(x) :- S1(x).
 S3(x) :- S2'(x).
 S2(x) :- S3(x).
+
+//---
+
+// Invalid 'original' attribute
+
+#[original="foo\0bar"]
+input relation Original(x: u32)
