@@ -34,6 +34,8 @@ if [ "x`flatbuffers/flatc --version`" != "xflatc version ${FLATBUF_VERSION}" ]; 
 fi
 
 mkdir -p ~/.local/bin/
+export PATH=~/.local/bin:$PATH
+
 if ( [ "$(uname)" = "Darwin" ] || [ "$(uname)" = "Linux" ] ); then
     ln -f -s `pwd`/flatbuffers/flatc ~/.local/bin/flatc
 else
