@@ -25,6 +25,8 @@ fetch_stack_windows() {
 # builds.
 pwd
 mkdir -p ~/.local/bin
+export PATH=~/.local/bin:$PATH
+
 if [ "$(uname)" = "Darwin" ]; then
   retry fetch_stack_osx
 elif [ "$(uname)" = "Linux" ]; then
