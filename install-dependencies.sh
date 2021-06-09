@@ -27,6 +27,8 @@ rustup component add clippy
 
 pip3 install parglare==0.12.0
 
+sudo apt install default-jdk
+
 ./tools/install-flatbuf.sh
 cd flatbuffers
 export CLASSPATH=`pwd`"/java":$CLASSPATH
