@@ -303,7 +303,7 @@ func (p *Program) CommitTransaction() error {
 	// argument (C code is not supposed to store a Go pointer). We therefore use the trick
 	// described in the Go wiki (https://github.com/golang/go/wiki/cgo#function-variables) and
 	// we use a thread-safe registry for Program instances.
-	rc := C.ddlogTransactionCommitDumpChanges(p.ptr, C.uint64_t(p.progIdx))
+	rc := C.ddlogTransactionCommitDumpChanges(p.ptr, C.uintptr_t(p.progIdx))
 	if rc != 0 {
 		return fmt.Errorf("ddlog_transaction_commit returned error code %d", rc)
 	}
@@ -316,7 +316,7 @@ func (p *Program) CommitTransaction() error {
 // record, but will return an array of output records (with weight). Note that we still generate
 // one OutRecordHandler callback for each output record.
 func (p *Program) CommitTransactionChangesAsArray() error {
-	rc := C.ddlogTransactionCommitDumpChangesAsArray(p.ptr, C.uint64_t(p.progIdx))
+	rc := C.ddlogTransactionCommitDumpChangesAsArray(p.ptr, C.uintptr_t(p.progIdx))
 	if rc != 0 {
 		return fmt.Errorf("ddlog_transaction_commit_as_array returned error code %d", rc)
 	}
