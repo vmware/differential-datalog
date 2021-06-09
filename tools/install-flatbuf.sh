@@ -24,7 +24,7 @@ if [ "x`flatbuffers/flatc --version`" != "xflatc version ${FLATBUF_VERSION}" ]; 
         retry fetch_flatbuf_unix
         cd flatbuffers
         cmake -G "Unix Makefiles"
-        make
+        make -j $(nproc)
         cd ..
     else
         retry fetch_flatbuf_unix
