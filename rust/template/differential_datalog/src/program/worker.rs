@@ -7,13 +7,17 @@ use crate::{
     },
     program::{
         arrange::{Arrangement, Arrangements},
-        config::{Config, ProfilingKind},
+        config::{Config, LoggingDestination, ProfilingConfig},
         ArrId, Dep, Msg, ProgNode, Program, Reply, Update, TS,
     },
     render::RenderContext,
     variable::Variable,
 };
 use crossbeam_channel::{Receiver, Sender};
+use ddshow_sink::{
+    enable_differential_logging, enable_timely_logging, save_differential_logs_to_disk,
+    save_timely_logs_to_disk,
+};
 use differential_dataflow::{
     input::{Input, InputSession},
     logging::DifferentialEvent,
@@ -132,7 +136,7 @@ impl<'a> DDlogWorker<'a> {
 
     pub fn run(mut self) -> Result<(), String> {
         // Initialize profiling
-        self.init_profiling();
+        self.init_profiling()?;
 
         let probe = ProbeHandle::new();
         let mut session_data = self.session_dataflow(probe.clone())?;
@@ -418,7 +422,7 @@ impl<'a> DDlogWorker<'a> {
     }
 
     /// Initialize timely and differential profiling logging hooks
-    fn init_profiling(&mut self) {
+    fn init_profiling(&mut self) -> Result<(), String> {
         if let Some(profiling) = self.profiling.clone() {
             let timely_profiling = profiling.clone();
             self.worker
@@ -474,33 +478,82 @@ impl<'a> DDlogWorker<'a> {
                     }
                 },
             );
-        } else if let ProfilingKind::TimelyProfiling {
-            differential_dataflow,
-        } = self.config.profiling_kind
+        } else if let ProfilingConfig::TimelyProfiling {
+            timely_destination,
+            differential_destination,
+            ..
+        } = &self.config.profiling_config
         {
-            if differential_dataflow {
-                if let Ok(addr) = ::std::env::var("DIFFERENTIAL_LOG_ADDR") {
-                    if !addr.is_empty() {
-                        if let Ok(stream) = TcpStream::connect(&addr) {
-                            // TODO: Use tracing to log that logging connected successfully
-                            differential_dataflow::logging::enable(self.worker, stream);
-                        } else {
-                            panic!("Could not connect to differential log address: {:?}", addr);
-                        }
-                    }
+            // Enable timely logging.
+            match timely_destination {
+                LoggingDestination::Disk { directory } => {
+                    save_timely_logs_to_disk(self.worker, directory)
+                        .map_err(|e| format!("{}", e))?;
                 }
+                LoggingDestination::Socket { sockaddr } => {
+                    let stream = TcpStream::connect(&sockaddr).map_err(|e| {
+                        format!(
+                            "Failed to connect to timely profiler socket {}: {}",
+                            sockaddr, e
+                        )
+                    })?;
+                    enable_timely_logging(self.worker, stream);
+                }
+                LoggingDestination::Writer { factory } => {
+                    enable_timely_logging(self.worker, factory());
+                }
+            };
+            // TODO: this is not yet fully implmented in ddshow-sink.
+            /*
+            // Enable timely progress logging.
+            if let Some(progress_destination) = timely_progress_destination {
+                match progress_destination {
+                    LoggingDestination::Disk{directory} => {
+                        save_timely_progress_logs_to_disk(&mut self.worker, directory)?;
+                    },
+                    LoggingDestination::Socket{sockaddr} => {
+                        let stream = TcpStream::connect(&sockaddr)?;
+                        enable_timely_progress_logging(&mut self.worker, stream);
+                    },
+                    LoggingDestination::Writer{writer} => {
+                        enable_timely_progress_logging(&mut self.worker, writer);
+                    }
+                };
+            }
+            */
+            // Enable differential logging.
+            if let Some(ddflow_destination) = differential_destination {
+                match ddflow_destination {
+                    LoggingDestination::Disk { directory } => {
+                        save_differential_logs_to_disk(&mut self.worker, directory)
+                            .map_err(|e| format!("{}", e))?;
+                    }
+                    LoggingDestination::Socket { sockaddr } => {
+                        let stream = TcpStream::connect(&sockaddr).map_err(|e| {
+                            format!(
+                                "Failed to connect to differential profiler socket {}: {}",
+                                sockaddr, e
+                            )
+                        })?;
+                        enable_differential_logging(&mut self.worker, stream);
+                    }
+                    LoggingDestination::Writer { factory } => {
+                        enable_differential_logging(&mut self.worker, factory());
+                    }
+                };
             }
 
         // Timely already has its logging hooks set by default
-        } else if self.config.profiling_kind.is_none() {
+        } else if self.config.profiling_config.is_none() {
             self.worker.log_register().remove("timely");
             self.worker.log_register().remove("differential/arrange");
-        }
+        };
+        Ok(())
     }
 
     fn session_dataflow(&mut self, mut probe: ProbeHandle<TS>) -> Result<SessionData, String> {
         let program = self.program.clone();
-        let render_context = RenderContext::new(self.config);
+        let render_context = RenderContext::new(self.config.clone());
 
         self.worker.dataflow::<TS, _, _>(
             |outer: &mut Child<Worker<Allocator>, TS>| -> Result<_, String> {
