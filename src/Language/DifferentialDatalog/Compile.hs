@@ -1118,11 +1118,11 @@ mkTypedef :: (?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> 
 -- Don't generate definitions of types annotated with the 'alias' attribute.
 mkTypedef d tdef | tdefGetAliasAttr d tdef = empty
 mkTypedef d tdef@TypeDef{..} =
-    vcat (map (\attr -> "#[" <> pp attr <> "]") rustAttrs) $$
     case tdefType of
          Just TStruct{..} | length typeCons == 1
                           -> let (fields, extras) = unzip $ map (mkField tdefName True) $ consArgs $ head typeCons in
                              derive_struct                                                             $$
+                             rust_attrs                                                                $$
                              "#[ddlog(rename = \"" <> pp (name $ head typeCons) <> "\")]"              $$
                              "pub struct" <+> nameLocal tdefName <> targs <+> "{"                      $$
                              (nest' $ vcat $ punctuate comma fields)                                   $$
@@ -1133,6 +1133,7 @@ mkTypedef d tdef@TypeDef{..} =
                           | otherwise
                           -> let (constructors, extras) = unzip $ map mkConstructor typeCons in
                              derive_enum                                                               $$
+                             rust_attrs                                                                $$
                              "#[ddlog(rename = \"" <> pp tdefName <> "\")]"                            $$
                              "pub enum" <+> nameLocal tdefName <> targs <+> "{"                        $$
                              (nest' $ vcat $ punctuate comma constructors)                             $$
@@ -1141,10 +1142,11 @@ mkTypedef d tdef@TypeDef{..} =
                              display                                                                   $$
                              default_enum                                                              $$
                              vcat extras
-         Just t           -> "pub type" <+> nameLocal tdefName <+> targs <+> "=" <+> mkType d scope t <> ";"
+         Just t           -> rust_attrs                                                                $$
+                             "pub type" <+> nameLocal tdefName <+> targs <+> "=" <+> mkType d scope t <> ";"
          Nothing          -> empty -- The user must provide definitions of opaque types
     where
-    rustAttrs = getRustAttrs d tdefAttrs
+    rust_attrs = vcat $ map (\attr -> "#[" <> pp attr <> "]") $ getRustAttrs d tdefAttrs
     derive_serialize = if tdefGetCustomSerdeAttr d tdef then empty else ", Serialize, Deserialize"
     derive_fromrec = if tdefGetCustomFromRecord d tdef then empty else ", FromRecord"
     derive_struct = "#[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, IntoRecord, Mutator, Default" <> derive_serialize <> derive_fromrec <> ")]"
