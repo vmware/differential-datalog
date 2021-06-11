@@ -19,7 +19,7 @@ mod update;
 mod worker;
 
 pub use arrange::diff_distinct;
-pub use config::{Config, ProfilingKind};
+pub use config::{Config, ProfilingConfig};
 pub use timestamp::{TSNested, TupleTS, TS};
 pub use update::Update;
 
@@ -1015,17 +1015,31 @@ impl Program {
         // Clone the program so that it can be moved into the timely computation
         let program = Arc::new(self.clone());
         let timely_config = config.timely_config()?;
-        let (worker_config, profiling_data) = (config, profiling_rig.profiling_data.clone());
+        let worker_config = config.clone();
+        let profiling_data = profiling_rig.profiling_data.clone();
+
+        let (builders, others) = timely_config
+            .communication
+            .try_build()
+            .map_err(|err| format!("failed to build timely communication config: {}", err))?;
 
         // Start up timely computation.
-        let worker_guards = timely::execute(
-            timely_config,
+        // Note: We use `execute_from()` instead of `timely::execute()` because
+        //       `execute()` automatically sets log hooks that connect to
+        //       `TIMELY_WORKER_LOG_ADDR`, meaning that no matter what we do
+        //       our dataflow will always attempt to connect to that address
+        //       if it's present in the env, causing things like ddshow/#7.
+        //       See https://github.com/Kixiron/ddshow/issues/7
+        let worker_guards = timely::execute::execute_from(
+            builders,
+            others,
+            timely_config.worker,
             move |worker: &mut Worker<Allocator>| -> Result<_, String> {
                 let logger = worker.log_register().get("timely");
 
                 let worker = DDlogWorker::new(
                     worker,
-                    worker_config,
+                    worker_config.clone(),
                     program.clone(),
                     profiling_data.clone(),
                     Arc::clone(&request_recv),
@@ -1033,7 +1047,10 @@ impl Program {
                     logger,
                 );
 
-                worker.run()
+                worker.run().map_err(|e| {
+                    eprintln!("Worker thread failed: {}", e);
+                    e
+                })
             },
         )
         .map_err(|err| format!("Failed to start timely computation: {:?}", err))?;

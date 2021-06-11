@@ -29,7 +29,6 @@ use num::bigint::BigInt;
 use std::convert::TryFrom;
 use std::hash::Hash;
 use std::ops::Deref;
-use std::ptr;
 use std::result;
 use std::{any::TypeId, sync};
 
@@ -338,27 +337,33 @@ pub fn run(
 
 #[no_mangle]
 #[cfg(feature = "c_api")]
-pub unsafe extern "C" fn ddlog_run(
-    workers: ::libc::c_uint,
-    do_store: ::core::primitive::bool,
-    print_err: ::core::option::Option<extern "C" fn(msg: *const ::libc::c_char)>,
-    init_state: *mut *mut ::differential_datalog::DeltaMap<::differential_datalog::ddval::DDValue>,
+pub unsafe extern "C" fn ddlog_run_with_config(
+    config: *const ::differential_datalog::api::ddlog_config,
+    do_store: bool,
+    print_err: Option<extern "C" fn(msg: *const ::std::os::raw::c_char)>,
+    init_state: *mut *mut ::differential_datalog::DeltaMap<DDValue>,
 ) -> *const ::differential_datalog::api::HDDlog {
     use ::core::{
-        primitive::usize,
         ptr,
         result::Result::{Err, Ok},
     };
-    use ::differential_datalog::{
-        api::HDDlog,
-        program::config::{Config, ProfilingKind},
-    };
+    use ::differential_datalog::api::HDDlog;
     use ::std::{boxed::Box, format};
     use ::triomphe::Arc;
 
-    let config = Config::new()
-        .with_timely_workers(workers as usize)
-        .with_profiling_kind(ProfilingKind::SelfProfiling);
+    let config = match config.as_ref() {
+        None => Default::default(),
+        Some(config) => match config.to_rust_api() {
+            Ok(cfg) => cfg,
+            Err(err) => {
+                HDDlog::print_err(
+                    print_err,
+                    &format!("ddlog_run_with_config(): invalid config: {}", err),
+                );
+                return ptr::null();
+            }
+        },
+    };
 
     #[cfg(feature = "flatbuf")]
     let flatbuf_converter = Box::new(crate::flatbuf::DDlogFlatbufConverter);
@@ -380,16 +385,29 @@ pub unsafe extern "C" fn ddlog_run(
             if !init_state.is_null() {
                 *init_state = Box::into_raw(Box::new(init));
             }
-
             // Note: This is `triomphe::Arc`, *not* `std::sync::Arc`
             Arc::into_raw(Arc::new(hddlog))
         }
-
         Err(err) => {
-            HDDlog::print_err(print_err, &format!("ddlog_run() failed: {}", err));
+            HDDlog::print_err(print_err, &format!("HDDlog::new() failed: {}", err));
             ptr::null()
         }
     }
+}
+
+#[no_mangle]
+#[cfg(feature = "c_api")]
+pub unsafe extern "C" fn ddlog_run(
+    workers: ::std::os::raw::c_uint,
+    do_store: bool,
+    print_err: Option<extern "C" fn(msg: *const ::std::os::raw::c_char)>,
+    init_state: *mut *mut ::differential_datalog::DeltaMap<DDValue>,
+) -> *const ::differential_datalog::api::HDDlog {
+    let config = ::differential_datalog::api::ddlog_config {
+        num_timely_workers: workers,
+        ..Default::default()
+    };
+    ddlog_run_with_config(&config, do_store, print_err, init_state)
 }
 
 /*- !!!!!!!!!!!!!!!!!!!! -*/

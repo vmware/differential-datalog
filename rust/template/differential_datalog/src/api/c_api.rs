@@ -1,20 +1,26 @@
 //! C Bindings
 #![cfg(feature = "c_api")]
+#![allow(non_camel_case_types)]
 
 use crate::{
     api::{update_handler::ExternCCallback, HDDlog},
     ddval::DDValue,
-    program::{IdxId, RelId},
+    program::{
+        config::{Config, LoggingDestination, ProfilingConfig},
+        IdxId, RelId,
+    },
     record::{IntoRecord, Record, UpdCmd},
-    DDlog, DDlogDump, DDlogDynamic, DDlogProfiling, DeltaMap,
+    DDlog, DDlogDump, DDlogDynamic, DDlogInventory, DDlogProfiling, DeltaMap,
 };
 use std::{
     collections::BTreeMap,
     ffi::{CStr, CString},
     fs::File,
     mem::ManuallyDrop,
+    net::SocketAddr,
     os::raw,
     ptr, slice,
+    str::FromStr,
 };
 use triomphe::Arc;
 
@@ -24,6 +30,141 @@ use std::os::unix::io::{FromRawFd, IntoRawFd, RawFd};
 use std::os::windows::io::{FromRawHandle, IntoRawHandle, RawHandle};
 
 // FIXME: Unwinding across the FFI boundary is UB, catch all panics and return errors
+
+/// IMPORTANT: The followint typedefs must be kept in sync with equivalent declarations in ddlog.h.
+
+#[repr(C)]
+pub enum ddlog_profiling_mode {
+    ddlog_disable_profiling = 0,
+    ddlog_self_profiling = 1,
+    ddlog_timely_profiling = 2,
+}
+
+#[repr(C)]
+pub enum ddlog_log_mode {
+    ddlog_log_disabled = 0,
+    ddlog_log_to_socket = 1,
+    ddlog_log_to_disk = 2,
+}
+
+#[repr(C)]
+pub struct ddlog_log_destination {
+    pub mode: ddlog_log_mode,
+    pub address_str: *const raw::c_char,
+}
+
+impl Default for ddlog_log_destination {
+    fn default() -> Self {
+        ddlog_log_destination {
+            mode: ddlog_log_mode::ddlog_log_disabled,
+            address_str: ptr::null_mut(),
+        }
+    }
+}
+
+impl ddlog_log_destination {
+    pub unsafe fn to_rust_api(&self) -> Result<Option<LoggingDestination>, String> {
+        let address = if self.address_str.is_null() {
+            None
+        } else {
+            Some(
+                CStr::from_ptr(self.address_str)
+                    .to_str()
+                    .map_err(|e| format!("invalid address string: {}", e))?
+                    .to_string(),
+            )
+        };
+        Ok(match self.mode {
+            ddlog_log_mode::ddlog_log_disabled => None,
+            ddlog_log_mode::ddlog_log_to_socket => Some(LoggingDestination::Socket {
+                sockaddr: SocketAddr::from_str(&address.as_ref().ok_or_else(|| {
+                    "ddlog_log_to_socket requires socket address in address_str".to_string()
+                })?)
+                .map_err(|e| {
+                    format!("invalid socket address string {}: {}", address.unwrap(), e)
+                })?,
+            }),
+            ddlog_log_mode::ddlog_log_to_disk => Some(LoggingDestination::Disk {
+                directory: address.ok_or_else(|| {
+                    "ddlog_log_to_disk requires target directory name in addres_str".to_string()
+                })?,
+            }),
+        })
+    }
+}
+
+#[repr(C)]
+pub struct ddlog_profiling_config {
+    pub mode: ddlog_profiling_mode,
+    pub timely_destination: ddlog_log_destination,
+    pub timely_progress_destination: ddlog_log_destination,
+    pub differential_destination: ddlog_log_destination,
+}
+
+impl ddlog_profiling_config {
+    pub unsafe fn to_rust_api(&self) -> Result<ProfilingConfig, String> {
+        Ok(match self.mode {
+            ddlog_profiling_mode::ddlog_disable_profiling => ProfilingConfig::None,
+            ddlog_profiling_mode::ddlog_self_profiling => ProfilingConfig::SelfProfiling,
+            ddlog_profiling_mode::ddlog_timely_profiling => {
+                ProfilingConfig::TimelyProfiling {
+                    timely_destination: self.timely_destination.to_rust_api()?
+                        .ok_or_else(|| "ddlog_timely_profiling requires socket address or directory path in timely_destination".to_string())?,
+                    timely_progress_destination: self.timely_destination.to_rust_api()?,
+                    differential_destination: self.timely_destination.to_rust_api()?
+                }
+            }
+        })
+    }
+}
+
+impl Default for ddlog_profiling_config {
+    fn default() -> Self {
+        ddlog_profiling_config {
+            mode: ddlog_profiling_mode::ddlog_disable_profiling,
+            timely_destination: ddlog_log_destination::default(),
+            timely_progress_destination: ddlog_log_destination::default(),
+            differential_destination: ddlog_log_destination::default(),
+        }
+    }
+}
+
+#[repr(C)]
+pub struct ddlog_config {
+    pub num_timely_workers: raw::c_uint,
+    pub enable_debug_regions: bool,
+    pub profiling_config: ddlog_profiling_config,
+    pub differential_idle_merge_effort: libc::ssize_t,
+}
+
+impl Default for ddlog_config {
+    fn default() -> Self {
+        let default_rust_cfg = Config::default();
+        ddlog_config {
+            num_timely_workers: default_rust_cfg.num_timely_workers as raw::c_uint,
+            enable_debug_regions: default_rust_cfg.enable_debug_regions,
+            profiling_config: ddlog_profiling_config::default(),
+            differential_idle_merge_effort: default_rust_cfg
+                .differential_idle_merge_effort
+                .unwrap_or(0),
+        }
+    }
+}
+
+impl ddlog_config {
+    pub unsafe fn to_rust_api(&self) -> Result<Config, String> {
+        Ok(Config {
+            num_timely_workers: self.num_timely_workers as usize,
+            enable_debug_regions: self.enable_debug_regions,
+            profiling_config: self.profiling_config.to_rust_api()?,
+            differential_idle_merge_effort: if self.differential_idle_merge_effort == 0 {
+                None
+            } else {
+                Some(self.differential_idle_merge_effort)
+            },
+        })
+    }
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_get_table_id(
@@ -115,6 +256,11 @@ pub unsafe extern "C" fn ddlog_get_index_name(
         Ok(name) => name.as_ptr(),
         Err(_) => ptr::null(),
     }
+}
+
+#[no_mangle]
+pub extern "C" fn ddlog_default_config() -> ddlog_config {
+    Default::default()
 }
 
 #[no_mangle]

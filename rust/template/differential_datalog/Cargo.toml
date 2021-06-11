@@ -16,7 +16,7 @@ differential-dataflow = { git = "https://github.com/ddlog-dev/differential-dataf
 dogsdogsdogs = { git = "https://github.com/ddlog-dev/differential-dataflow", branch = "ddlog-4" }
 #timely = "0.11"
 timely = { git = "https://github.com/ddlog-dev/timely-dataflow", branch = "ddlog-4", default-features = false }
-
+ddshow-sink =  { git = "https://github.com/ddlog-dev/ddshow", branch = "ddlog-4" }
 abomonation = "0.7"
 ordered-float = { version = "2.0.0", features = ["serde"] }
 fnv = "1.0.2"
