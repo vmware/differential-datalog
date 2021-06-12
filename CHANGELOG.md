@@ -4,12 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [0.40.3] - Jun 12, 2021
 
-### Changes
+### Optimization
 
 - Made all reference counting (internal and through `ddlog_std::Ref`) use reference counters without weak counts
   in an effort to reduce memory usage
+
+### Bug fixes
+
+- Fixed compilation error in Go bindings [#993]
+- Support building ddlog from a source tarball outside of a git repo [#986]
+- ovsdb2ddlog: Support negative values in OVS schemas [#985]
+
 
 ## [0.40.2] - May 11, 2021
 
