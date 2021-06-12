@@ -85,10 +85,9 @@ where
 
     fn unsubscribe(&mut self, subscription: &Self::Subscription) -> Option<ObserverBox<T, E>> {
         trace!("TxnDistributor({})::unsubscribe({})", self.id, subscription);
-        match self.observers.remove(subscription) {
-            Some(observer) => Some(Box::new(observer)),
-            None => None,
-        }
+        self.observers
+            .remove(subscription)
+            .map(|observer| Box::new(observer) as ObserverBox<T, E>)
     }
 }
 
