@@ -1498,8 +1498,9 @@ impl Program {
                 ref next,
             } => {
                 #[allow(clippy::unnecessary_cast)]
-                let one = <dyn Any>::downcast_ref::<<S::Timestamp as Timestamp>::Summary>(&(1 as TS))
-                    .expect("Differentiate operator used in recursive context");
+                let one =
+                    <dyn Any>::downcast_ref::<<S::Timestamp as Timestamp>::Summary>(&(1 as TS))
+                        .expect("Differentiate operator used in recursive context");
 
                 let diff = with_prof_context(&description, || {
                     col.concat(
