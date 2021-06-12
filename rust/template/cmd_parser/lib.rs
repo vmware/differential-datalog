@@ -16,7 +16,7 @@ const HISTORY_FILE: &str = "cmd_parser_history.txt";
 
 // We handle stdin differently depending on whether it is a user terminal or a pipe.
 enum Input {
-    TTY(Editor<()>),
+    Tty(Editor<()>),
     Pipe(BufReader<io::Stdin>),
 }
 
@@ -34,14 +34,14 @@ where
     let mut input = if istty {
         let mut rl = Editor::<()>::new();
         let _ = rl.load_history(HISTORY_FILE);
-        Input::TTY(rl)
+        Input::Tty(rl)
     } else {
         Input::Pipe(BufReader::new(io::stdin()))
     };
 
     loop {
         let line = match &mut input {
-            Input::TTY(rl) => {
+            Input::Tty(rl) => {
                 let readline = rl.readline(">> ");
                 match readline {
                     Ok(mut line) => {

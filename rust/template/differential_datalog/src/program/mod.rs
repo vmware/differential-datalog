@@ -192,7 +192,7 @@ pub type TransformerFunc = fn() -> TransformerFuncRes;
 pub enum ProgNode {
     Rel { rel: Relation },
     Apply { tfun: TransformerFunc },
-    SCC { rels: Vec<RecursiveRelation> },
+    Scc { rels: Vec<RecursiveRelation> },
 }
 
 /// Relation computed in a nested scope as a fixed point.
@@ -1150,7 +1150,7 @@ impl Program {
                     }
                 }
                 ProgNode::Apply { .. } => {}
-                ProgNode::SCC { rels: rs } => {
+                ProgNode::Scc { rels: rs } => {
                     for r in rs {
                         if r.rel.id == relid {
                             return &r.rel;
@@ -1178,7 +1178,7 @@ impl Program {
         match n {
             ProgNode::Rel { rel } => Self::rel_uses_arrangement(rel, arrid),
             ProgNode::Apply { .. } => false,
-            ProgNode::SCC { rels } => rels
+            ProgNode::Scc { rels } => rels
                 .iter()
                 .any(|rel| Self::rel_uses_arrangement(&rel.rel, arrid)),
         }
@@ -1205,9 +1205,9 @@ impl Program {
                 }
             }
             ProgNode::Apply { .. } => None,
-            ProgNode::SCC { rels: rs } => {
+            ProgNode::Scc { rels: rs } => {
                 for r in rs {
-                    assert!(!r.rel.input, "input relation ({}) in SCC", r.rel.name);
+                    assert!(!r.rel.input, "input relation ({}) in Scc", r.rel.name);
                 }
 
                 None

@@ -1783,7 +1783,7 @@ the example below:
 
 DDlog declaration:
 
-extern transformer SCC(Edges:   relation['E],
+extern transformer Scc(Edges:   relation['E],
                        from:    function(e: 'E): 'N,
                        to:      function(e: 'E): 'N)
     -> (SCCLabels: relation [('N, 'N)])
@@ -2781,7 +2781,7 @@ mkNode :: (?crate_graph::CrateGraph, ?specname::String) => ProgNode -> Doc
 mkNode (RelNode ProgRel{..}) =
     "program::ProgNode::Rel{rel:" <+> rnameFlat prelName <> "}"
 mkNode (SCCNode rels) =
-    "program::ProgNode::SCC{rels: vec![" <>
+    "program::ProgNode::Scc{rels: vec![" <>
     (commaSep $ map (\RecProgRel{..} ->
                       "program::RecursiveRelation{rel: " <> (rnameFlat $ prelName rprelRel) <>
                       ", distinct: " <> (if rprelDistinct then "true" else "false") <> "}") rels) <> "]}"

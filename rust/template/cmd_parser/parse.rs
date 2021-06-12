@@ -11,7 +11,7 @@ use std::borrow::Cow;
 
 #[derive(Copy, Debug, PartialEq, Eq, Clone)]
 pub enum ProfileCmd {
-    CPU(bool),
+    Cpu(bool),
     Timely(bool),
 }
 
@@ -59,7 +59,7 @@ named!(pub profile_cmd<&[u8], ProfileCmd>,
        do_parse!(apply!(sym,"cpu") >>
                  enable: alt!(do_parse!(apply!(sym,"on") >> (true)) |
                               do_parse!(apply!(sym,"off") >> (false))) >>
-                 (ProfileCmd::CPU(enable)))
+                 (ProfileCmd::Cpu(enable)))
 );
 
 named!(pub profile_timely_cmd<&[u8], ProfileCmd>,
@@ -153,11 +153,11 @@ fn test_command() {
     );
     assert_eq!(
         parse_command(br"profile cpu on;"),
-        Ok((&br""[..], Command::Profile(Some(ProfileCmd::CPU(true)))))
+        Ok((&br""[..], Command::Profile(Some(ProfileCmd::Cpu(true)))))
     );
     assert_eq!(
         parse_command(br"profile cpu off;"),
-        Ok((&br""[..], Command::Profile(Some(ProfileCmd::CPU(false)))))
+        Ok((&br""[..], Command::Profile(Some(ProfileCmd::Cpu(false)))))
     );
     assert_eq!(
         parse_command(br"profile;"),
