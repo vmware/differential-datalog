@@ -121,7 +121,7 @@ fn test_insert_non_existent_relation() {
 }
 
 #[test]
-#[should_panic(expected = "input relation (ancestor) in SCC")]
+#[should_panic(expected = "input relation (ancestor) in Scc")]
 fn test_input_relation_nested() {
     let parent = {
         Relation {
@@ -150,7 +150,7 @@ fn test_input_relation_nested() {
     let prog: Program = Program {
         nodes: vec![
             ProgNode::Rel { rel: parent },
-            ProgNode::SCC {
+            ProgNode::Scc {
                 rels: vec![RecursiveRelation {
                     rel: ancestor,
                     distinct: true,
@@ -1649,7 +1649,7 @@ fn test_recursion(nthreads: usize) {
     let prog: Program = Program {
         nodes: vec![
             ProgNode::Rel { rel: parent },
-            ProgNode::SCC {
+            ProgNode::Scc {
                 rels: vec![RecursiveRelation {
                     rel: ancestor,
                     distinct: true,

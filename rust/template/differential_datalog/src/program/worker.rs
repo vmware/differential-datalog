@@ -553,7 +553,7 @@ impl<'a> DDlogWorker<'a> {
                             tfun()(&mut collections);
                         }
 
-                        ProgNode::SCC { rels } => render_scc(
+                        ProgNode::Scc { rels } => render_scc(
                             rels,
                             node_id,
                             outer,
@@ -746,7 +746,7 @@ fn render_scc<'a>(
 
     // create a nested scope for mutually recursive relations
     let new_collections = scope.scoped("recursive component", |inner| -> Result<_, String> {
-        // create variables for relations defined in the SCC.
+        // create variables for relations defined in the Scc.
         let mut vars = HashMap::with_capacity_and_hasher(rels.len(), FnvBuildHasher::default());
         // arrangements created inside the nested scope
         let mut local_arrangements = FnvHashMap::default();

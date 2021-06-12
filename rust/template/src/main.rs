@@ -91,7 +91,7 @@ fn handle_cmd(
         Command::Profile(None) => hddlog
             .profile()
             .map(|profile| println!("Profile:\n{}", profile)),
-        Command::Profile(Some(ProfileCmd::CPU(enable))) => hddlog.enable_cpu_profiling(enable),
+        Command::Profile(Some(ProfileCmd::Cpu(enable))) => hddlog.enable_cpu_profiling(enable),
         Command::Profile(Some(ProfileCmd::Timely(enable))) => {
             hddlog.enable_timely_profiling(enable)
         }
