@@ -268,7 +268,7 @@ where
             self.inventory.get_index_name(iid).unwrap_or(&"???"),
             key
         )
-        .map(|_| vec![])
+        .and(Ok(vec![]))
         .map_err(|e| e.to_string())
     }
 
@@ -279,7 +279,7 @@ where
             "dump_index {};",
             self.inventory.get_index_name(iid).unwrap_or(&"???")
         )
-        .map(|_| vec![])
+        .and(Ok(vec![]))
         .map_err(|e| e.to_string())
     }
 
