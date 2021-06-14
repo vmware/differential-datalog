@@ -58,7 +58,9 @@ cp Cargo.lock "$DIST_DIR/"
 # First copy Java sources only, then build and copy the .jar.
 cp -r java "$DIST_DIR/"
 cd java
-CLASSPATH=. make
+# Run `make clean` first in case the directory contains class files created by a
+# different version of Java.
+CLASSPATH=. make clean all
 cd ..
 cp java/ddlogapi.jar "$DIST_DIR/java/"
 cp java/ddlogapi_DDlogAPI.h "$DIST_DIR/java/"
