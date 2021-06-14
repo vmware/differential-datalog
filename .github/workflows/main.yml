@@ -1,0 +1,85 @@
+name: CI
+
+# Controls when the action will run. 
+on:
+  # Triggers the workflow on push to any branch
+  push:
+  # Triggers the workflow on pull request events but only for the master branch
+  pull_request:
+    branches: [ master ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+  release:
+    types: [ published ]
+
+defaults:
+    run:
+        shell: bash
+
+# TODO: split this job into a build/test/deploy pipeline.
+jobs:
+  build_and_test:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    env:
+        DDLOG_TEST_PROGRESS: 1
+        CLASSPATH: ${{ github.workspace }}/flatbuffers/java
+
+    steps:
+      - run: echo "Build triggered by GitHub event ${GITHUB_EVENT_NAME}"
+      - uses: actions/checkout@v2 
+      - run: echo "${LOCALAPPDATA}"
+        # Never managed to get this to work on Windows.
+        # - name: Cache Haskell stack outputs
+        # uses: actions/cache@v2
+        # # Stack root on Windows is in %LocalAppData%
+        # with:
+        #   path: |
+        #       .stack-work
+        #       ~/.stack
+        #      %LocalAppData%\Programs\stack
+        #   key: ${{ runner.os }}-stack
+        #   
+
+        # Workaround for `https://github.com/rust-lang/cargo/issues/8443`:
+        # `cargo vendor` fails on the differential-dataflow crate when `~/.cargo`
+        # is a symlink.
+      - if: ${{ runner.os == 'Linux' }}
+        run: (rm "${HOME}/.cargo" && mv /usr/share/rust/.cargo "${HOME}/")
+        # flatc gets installed to '${HOME}/.local/bin'.
+      - run: echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
+      - run: echo "${HOME}/.cargo/bin" >> "${GITHUB_PATH}"
+      - run: echo "${PATH}"
+      - run: echo "DIST_NAME=ddlog-${GITHUB_REF#refs/tags/}-$(date +'%Y%m%d%H%M%S')-${{ runner.os }}" >> $GITHUB_ENV
+      - name: Install FlatBufs
+        run: ./tools/install-flatbuf.sh
+      # Probably not a good idea as we want to test a clean build.
+      #- name: Cache tutorial_ddlog
+      #uses: actions/cache@v2
+      #with:
+      #  path: test/datalog_tests/tutorial_ddlog
+      #  key: ${{ runner.os }}-tutorial
+      - name: Run tutorial test
+        run: stack --no-terminal test --ta '-p tutorial'
+      - name: Install ddlog executables
+        run: stack --no-terminal install
+        # build_distro.sh uses 'ghead' on MacOS
+      - name: Install coreutils on MacOS
+        if: ${{ github.event_name == 'release'  &&  runner.os == 'macOS' }}
+        run: brew install coreutils
+      - name: Build distro
+        if: ${{ github.event_name == 'release' }}
+        run: ./build_distro.sh
+      - name: Upload distro
+        if: ${{ github.event_name == 'release' }}
+        uses: alexellis/upload-assets@0.3.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          asset_paths: '["./${{ env.DIST_NAME }}.tar.gz"]'
