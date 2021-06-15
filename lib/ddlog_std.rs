@@ -24,6 +24,7 @@ SOFTWARE.
 use abomonation::Abomonation;
 /// Rust implementation of DDlog standard library functions and types.
 use differential_datalog::record::{arg_extract, Record};
+use differential_datalog::triomphe::Arc;
 use fnv::FnvHasher;
 use num::Zero;
 use serde::{
@@ -46,7 +47,6 @@ use std::{
     sync::Arc as StdArc,
     vec::{self, Vec as StdVec},
 };
-use triomphe::Arc;
 
 const XX_SEED1: u64 = 0x23b691a751d0e108;
 const XX_SEED2: u64 = 0x20b09801dce5ff84;
