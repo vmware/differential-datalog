@@ -30,4 +30,5 @@ pub use ddlog::{
     D3log, D3logLocationId, DDlog, DDlogDump, DDlogDynamic, DDlogInventory, DDlogProfiling,
 };
 pub use replay::CommandRecorder;
+pub use triomphe;
 pub use valmap::DeltaMap;
