@@ -42,11 +42,13 @@ module Language.DifferentialDatalog.Rule (
     ruleBodyIsStream
 ) where
 
+import Prelude hiding ((<>))
 import qualified Data.Set as S
 import Data.List
 import Data.Functor.Identity
 --import Debug.Trace
 import Text.PrettyPrint
+import Text.Parsec (sourceName, sourceLine, sourceColumn)
 
 import Language.DifferentialDatalog.PP
 import Language.DifferentialDatalog.Syntax
@@ -73,7 +75,12 @@ rulePPPrefix rl len = commaSep $ map pp $ take len $ ruleRHS $ ruleStripTypeAnno
 
 -- | Pretty-print rule without type annotations.
 rulePPStripped :: Rule -> Doc
-rulePPStripped rl = pp $ ruleStripTypeAnnotations rl
+rulePPStripped rule = pp (ruleStripTypeAnnotations rule) <+> char '@' <+> file <> char ':' <> line <> char ':' <> column
+    where
+        (position, _) = rulePos rule
+        file = text (sourceName position)
+        line = int (sourceLine position)
+        column = int (sourceColumn position)
 
 -- | New variables declared in the 'i'th conjunct in the right-hand
 -- side of a rule.
@@ -92,10 +99,10 @@ ruleRHSVars' :: DatalogProgram -> Rule -> Int -> [Var]
 ruleRHSVars' _ _  i | i < 0 = []
 ruleRHSVars' d rl i =
     case ruleRHS rl !! i of
-         RHSLiteral True  a            -> nub $ (exprVarDecls d (CtxRuleRAtom rl i) (atomVal a)) ++ vs
+         RHSLiteral True  a            -> nub $ exprVarDecls d (CtxRuleRAtom rl i) (atomVal a) ++ vs ++ vs
          RHSLiteral False _            -> vs
          -- assignment introduces new variables
-         RHSCondition (E e@(ESet _ l _)) -> nub $ (exprVarDecls d (CtxSetL e (CtxRuleRCond rl i)) l) ++ vs
+         RHSCondition (E e@(ESet _ l _)) -> nub $ exprVarDecls d (CtxSetL e (CtxRuleRCond rl i)) l ++ vs ++ vs
          -- condition does not introduce new variables
          RHSCondition _                -> vs
          -- FlatMap introduces variables
