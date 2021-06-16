@@ -117,6 +117,20 @@ A comma in a rule is read as "and".  Rules end with a mandatory dot.
 In database terminology the above rule computes an inner join of
 the `Word1` and `Word2` relations on the `cat` field.
 
+### Computation
+In DDlog, the two main compute constructs are
+[rules](../language_reference/language_reference.md#rules) and
+[functions](../language_reference/language_reference.md#functions).
+
+Rules describe how to compute an output relation from its input relations.
+The available computations expressable in rules are similar to common queries
+in traditional relational databases,
+including select, join, filter, map, and groupby.
+
+Functions in DDlog are similar to user-defined functions in relational languages
+and enable imperative expression of computation via traditional constructs
+such as control flow and complex data types.
+
 ### Capitalization rules
 
 1. Identifiers start with letters or underscore `_`, and may contain digits.
