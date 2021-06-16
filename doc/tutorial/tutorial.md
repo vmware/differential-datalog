@@ -125,11 +125,12 @@ In DDlog, the two main compute constructs are
 Rules describe how to compute an output relation from its input relations.
 The available computations expressable in rules are similar to common queries
 in traditional relational databases,
-including select, join, filter, map, and groupby.
+including select, join, filter, map, groupby, and aggregates.
 
 Functions in DDlog are similar to user-defined functions in relational languages
 and enable imperative expression of computation via traditional constructs
-such as control flow and complex data types.
+such as control flow and complex data types. As with rules, functions are designed
+to operate on values that come from some relation.
 
 ### Capitalization rules
 
