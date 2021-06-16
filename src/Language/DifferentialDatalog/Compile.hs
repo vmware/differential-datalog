@@ -56,6 +56,7 @@ import qualified Data.Set as S
 import qualified Data.Map as M
 import qualified Data.Graph.Inductive as G
 import Data.WideWord
+import Text.Parsec (sourceName, sourceLine, sourceColumn)
 --import Debug.Trace
 
 import Language.DifferentialDatalog.Config
@@ -1286,43 +1287,48 @@ mkDDValueFromRecord d@DatalogProgram{..} =
     mkIdxId2NameC                                                                                   $$
     mkIdxIdMap d                                                                                    $$
     mkIdxIdMapC d                                                                                   $$
-    "pub fn relval_from_record(rel: Relations, _rec: &differential_datalog::record::Record) -> ::std::result::Result<DDValue, String> {" $$
-    "    match rel {"                                                                               $$
+    "pub fn relval_from_record(relation: Relations, record: &::differential_datalog::record::Record) -> ::std::result::Result<DDValue, ::std::string::String> {" $$
+    "    match relation {"                                                                          $$
     (nest' $ nest' $ vcommaSep entries)                                                             $$
     "    }"                                                                                         $$
     "}"                                                                                             $$
-    "pub fn relkey_from_record(rel: Relations, _rec: &differential_datalog::record::Record) -> ::std::result::Result<DDValue, String> {" $$
-    "    match rel {"                                                                               $$
+    "pub fn relkey_from_record(relation: Relations, record: &::differential_datalog::record::Record) -> ::std::result::Result<DDValue, ::std::string::String> {" $$
+    "    match relation {"                                                                          $$
     (nest' $ nest' $ vcommaSep key_entries)                                                         $$
-    "        _ => Err(format!(\"relation {:?} does not have a primary key\", rel))"                 $$
+    "        _ => Err(format!(\"relation {:?} does not have a primary key\", relation)),"           $$
     "    }"                                                                                         $$
     "}"                                                                                             $$
-    "pub fn idxkey_from_record(idx: Indexes, _rec: &differential_datalog::record::Record) -> ::std::result::Result<DDValue, String> {"   $$
+    "pub fn idxkey_from_record(idx: Indexes, record: &::differential_datalog::record::Record) -> ::std::result::Result<DDValue, ::std::string::String> {" $$
     "    match idx {"                                                                               $$
     (nest' $ nest' $ vcommaSep idx_entries)                                                         $$
     "    }"                                                                                         $$
     "}"
     where
     entries = map mkrelval $ M.elems progRelations
+
     mkrelval :: Relation ->  Doc
     mkrelval rel@Relation{..} =
-        "Relations::" <> rnameFlat (name rel) <+> "=> {"                            $$
-        "    Ok(<" <> mkType d Nothing t <> ">::from_record(_rec)?.into_ddvalue())"   $$
-        "}"
+        "Relations::" <> rnameFlat (name rel) <+> "=> {"
+        $$ "    Ok(<" <> mkType d Nothing t <+> "as ::differential_datalog::record::FromRecord>::from_record(record)?.into_ddvalue())"
+        $$ "}"
         where t = typeNormalize d relType
+
     key_entries = map mkrelkey $ filter (isJust . relPrimaryKey) $ M.elems progRelations
+
     mkrelkey :: Relation ->  Doc
     mkrelkey rel =
-        "Relations::" <> rnameFlat (name rel) <+> "=> {"                            $$
-        "    Ok(<" <> mkType d Nothing t <> ">::from_record(_rec)?.into_ddvalue())"   $$
-        "}"
+        "Relations::" <> rnameFlat (name rel) <+> "=> {"
+        $$ "    Ok(<" <> mkType d Nothing t <+> "as ::differential_datalog::record::FromRecord>::from_record(record)?.into_ddvalue())"
+        $$ "}"
         where t = typeNormalize d $ fromJust $ relKeyType d rel
+
     idx_entries = map mkidxkey $ M.elems progIndexes
+
     mkidxkey :: Index ->  Doc
     mkidxkey idx =
-        "Indexes::" <> rnameFlat (name idx) <+> "=> {"                              $$
-        "    Ok(<" <> mkType d Nothing t <> ">::from_record(_rec)?.into_ddvalue())"   $$
-        "}"
+        "Indexes::" <> rnameFlat (name idx) <+> "=> {"
+        $$ "    Ok(<" <> mkType d Nothing t <+> "as ::differential_datalog::record::FromRecord>::from_record(record)?.into_ddvalue())"
+        $$ "}"
         where t = typeNormalize d $ idxKeyType idx
 
 -- Convert string to `enum Relations`
@@ -1333,7 +1339,7 @@ mkRelationsTryFromStr d =
     "    fn try_from(rname: &str) -> ::std::result::Result<Self, ()> {"   $$
     "         match rname {"                                              $$
                   (nest' $ nest' $ vcat $ entries)                        $$
-    "             _  => Err(())"                                          $$
+    "             _  => Err(()),"                                         $$
     "         }"                                                          $$
     "    }"                                                               $$
     "}"
@@ -1966,48 +1972,51 @@ compileRelation d statics rn = do
     rules' <- mapIdxM (\rl i -> do
                         rl' <- let ?statics = moduleStatics statics (ruleModule rl)
                                in compileRule d rl 0 True
-                        return (ruleModule rl, "pub static" <+> rule_name i <+> ": ::once_cell::sync::Lazy<program::Rule> = ::once_cell::sync::Lazy::new(||" <+> rl' <> ");")) rules
+                        return (ruleModule rl, "pub static" <+> rule_name i <+> ": ::once_cell::sync::Lazy<program::Rule> = ::once_cell::sync::Lazy::new(|| {" $$ rl' $$ "});")) rules
     let facts' = mapIdx (\fact i ->
                           let fact' = let ?statics = moduleStatics statics (ruleModule fact)
                                       in compileFact d fact
                           in (ruleModule fact,
                               ridentScoped Nothing (ruleModule fact) (render $ fact_name i) <> ".clone()",
-                              "pub static" <+> fact_name i <+> ": ::once_cell::sync::Lazy<(program::RelId, DDValue)> = ::once_cell::sync::Lazy::new(||" <+> fact' <> ");")) facts
-    let (key_func, key_code) = maybe ("None", Nothing)
+                              "pub static" <+> fact_name i <+> ": ::once_cell::sync::Lazy<(program::RelId, DDValue)> = ::once_cell::sync::Lazy::new(|| {" $$ fact' $$ "});")) facts
+    let (key_func, key_code) = maybe ("::core::option::Option::None", Nothing)
                                (\k -> let ?statics = moduleStatics statics (nameScope rel) in
                                       let (func_name, code) = compileKey d rel k in
-                                      ( "Some(" <> ridentScoped Nothing (nameScope rel) (render func_name) <> ")"
+                                      ( "::core::option::Option::Some(" <> ridentScoped Nothing (nameScope rel) (render func_name) <> ")"
                                       , Just code))
                                relPrimaryKey
     let cb = if relRole == RelOutput
-                then "change_cb:    Some(std::sync::Arc::clone(&__update_cb))"
-                else "change_cb:    None"
+                then "change_cb: ::core::option::Option::Some(::std::sync::Arc::clone(&__update_cb)),"
+                else "change_cb: ::core::option::Option::None,"
     arrangements <- gets $ (M.! rn) . cArrangements
     let compiled_arrangements = mapIdx (\arng i ->
                                          let ?statics = moduleStatics statics (nameScope rel) in
                                          let arng' = mkArrangement d rel arng in
-                                         "pub static" <+> arng_name i <+> ": ::once_cell::sync::Lazy<program::Arrangement> = ::once_cell::sync::Lazy::new(||" <+> arng' <> ");") arrangements
+                                         "pub static" <+> arng_name i <+> ": ::once_cell::sync::Lazy<program::Arrangement> = ::once_cell::sync::Lazy::new(|| {" $$ arng' $$ "});") arrangements
+
+    let (position, _) = relPos
+    let location = text (replace "\\" "\\\\" $ sourceName position) <> ":" <> int (sourceLine position) <> ":" <> int (sourceColumn position)
     let code =
-            "program::Relation {"                                                                               $$
-            "    name:         std::borrow::Cow::from(\"" <> pp rn <> "\"),"                                    $$
-            "    input:        " <> (if relRole == RelInput then "true" else "false") <> ","                    $$
-            "    distinct:     " <> (if relRole == RelOutput && relSemantics == RelSet && not (relIsDistinctByConstruction d rel)
-                                        then "true"
-                                        else "false") <> ","  $$
-            "    caching_mode: " <> (case relSemantics of
-                                          RelMultiset -> "program::CachingMode::Multiset"
-                                          RelSet -> "program::CachingMode::Set"
-                                          RelStream -> "program::CachingMode::Stream") <> ","                                   $$
-            "    key_func:     " <> key_func <> ","                                                                             $$
-            "    id:           " <> relId d rn <> ","                                                                           $$
-            "    rules:        vec!["                                                                                           $$
-            (nest' $ nest' $ vcommaSep $ mapIdx (\rule i -> ridentScoped Nothing (ruleModule rule) (render $ rule_name i) <> ".clone()") rules) $$
-            "    ],"                                                                                                            $$
-            "    arrangements: vec!["                                                                                           $$
-            (nest' $ nest' $ vcommaSep $ mapIdx (\_ i -> (pp $ ridentScoped Nothing (nameScope rel) (render $ arng_name i)) <> ".clone()") arrangements) $$
-            "    ],"  $$
-            (nest' cb)                                                                                                          $$
-            "}"
+            "let" <+> rnameFlat rn <+> "=" <+> "::differential_datalog::program::Relation {"
+            $$ "    name: ::std::borrow::Cow::from(\"" <> pp rn <+> "@" <+> location <> "\"),"
+            $$ "    input:" <+> (if relRole == RelInput then "true" else "false") <> ","
+            $$ "    distinct:" <+> (if relRole == RelOutput && relSemantics == RelSet && not (relIsDistinctByConstruction d rel)
+                                           then "true"
+                                           else "false") <> ","
+            $$ "    caching_mode:" <+> "::differential_datalog::program::CachingMode::" <> (case relSemantics of
+                                           RelMultiset -> "Multiset"
+                                           RelSet -> "Set"
+                                           RelStream -> "Stream") <> ","
+            $$ "    key_func:" <+> key_func <> ","
+            $$ "    id:" <+> relId d rn <> ","
+            $$ "    rules: vec!["
+            $$ (nest' $ nest' $ vcat $ mapIdx (\rule i -> ridentScoped Nothing (ruleModule rule) (render $ rule_name i) <> ".clone(),") rules)
+            $$ "    ],"
+            $$ "    arrangements: vec!["
+            $$ (nest' $ nest' $ vcat $ mapIdx (\_ i -> (pp $ ridentScoped Nothing (nameScope rel) (render $ arng_name i)) <> ".clone(),") arrangements)
+            $$ "    ],"
+            $$ (nest' cb)
+            $$ "};"
     return ProgRel{ prelName            = rn
                   , prelCode            = code
                   , prelRules           = rules'
@@ -2099,7 +2108,7 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                                else return Nothing
     -- Open up input constructor; bring Datalog variables into scope
     let open = if input_val
-               then openAtom  d ("&" <> vALUE_VAR) rl 0 (rhsAtom $ head ruleRHS) "return None"
+               then openAtom  d ("&" <> vALUE_VAR) rl 0 (rhsAtom $ head ruleRHS) "return ::core::option::Option::None"
                else openTuple d rl ("&" <> vALUE_VAR) $ rhsVarsAfter d rl last_rhs_idx
     -- Apply filters and assignments between last_rhs_idx and rhs_idx
     let filters = mkFilters d rl last_rhs_idx
@@ -2134,12 +2143,12 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
     case input_arrangement_id of
        Just arid -> do
             xform <- mkArrangedOperator conds input_val
-            return $ "/*" <+> pp rl <+> "*/"                                                    $$
-                     "program::Rule::ArrangementRule {"                                         $$
-                     "    description: std::borrow::Cow::from(" <+> pp (show $ render $ rulePPStripped rl) <> ")," $$
-                     "    arr: (" <+> relid <> "," <+> pp arid <> "),"            $$
-                     "    xform:" <+> xform                                                     $$
-                     "}"
+            return $ "/*" <+> pp rl <+> "*/"
+                $$ "::differential_datalog::program::Rule::ArrangementRule {"
+                $$ "    description: ::std::borrow::Cow::Borrowed(" <> pp (show $ render $ rulePPStripped rl) <> "),"
+                $$ "    arr: (" <> relid <> "," <+> pp arid <> "),"
+                $$ "    xform:" <+> xform <> ","
+                $$ "}"
        Nothing -> do
             xform <- case arrange_input_by of
                         Just (key_vars, val_vars) | not (is_stream_xform && rhsIsPositiveLiteral rhs) -> do
@@ -2147,24 +2156,27 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                             let key_str = parens $ commaSep $ map (pp . fst) key_vars
                             let akey = mkTupleValue d rl key_vars
                             let aval = mkVarsTupleValue rl $ map (, EReference) val_vars
-                            let afun = braces'
-                                       $ prefix $$
-                                         "Some((" <> akey <> "," <+> aval <> "))"
+                            let afun = braces' $ prefix $$ "::core::option::Option::Some((" <> akey <> "," <+> aval <> "))"
                             xform' <- mkArrangedOperator [] False
                             let arranged_xform =
-                                    "XFormCollection::Arrange{"                                                                                                                     $$
-                                    "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ "arrange" <+> rulePPPrefix rl (last_rhs_idx+1) <+> "by" <+> key_str) <> "),"  $$
-                                    (nest' $ "afun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> ::std::option::Option<(DDValue,DDValue)>" $$ afun $$ "__f},")                                         $$
-                                    "    next: Box::new(" <> xform' <> ")"                                                                                                          $$
-                                    "}"
+                                    "::differential_datalog::program::XFormCollection::Arrange {"
+                                    $$ "    description: ::std::borrow::Cow::Borrowed(" <> (pp $ show $ show $ "arrange" <+> rulePPPrefix rl (last_rhs_idx + 1) <+> "by" <+> key_str) <> "),"
+                                    $$ "    afun: {"
+                                    $$ "        fn __ddlog_generated_arrangement_function(" <> vALUE_VAR <> ": ::differential_datalog::ddval::DDValue) ->"
+                                    $$ "            ::core::option::Option<(::differential_datalog::ddval::DDValue, ::differential_datalog::ddval::DDValue)>"
+                                    $$ (nest' $ nest' afun)
+                                    $$ "        __ddlog_generated_arrangement_function"
+                                    $$ "    },"
+                                    $$ "    next: ::std::boxed::Box::new(" <> xform' <> "),"
+                                    $$ "}"
                             if is_stream_xform
                             then do let post_conds = takeWhile (rhsIsCondition . (ruleRHS !!)) [rhs_idx + 1 .. length ruleRHS - 1]
                                     next <- compileRule d rl (rhs_idx + length post_conds) False
-                                    return $ "XFormCollection::StreamXForm{"                                                                                                        $$
-                                             "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ "stream-transform" <+> rulePPPrefix rl (last_rhs_idx+1)) <> "),"     $$
-                                             "    xform: Box::new(Some(" <+> arranged_xform <> ")),"                                                                                $$
-                                             "    next: Box::new(" <> next <> ")"                                                                                                   $$
-                                             "}"
+                                    return $ "::differential_datalog::program::XFormCollection::StreamXForm {"
+                                        $$ "    description: ::std::borrow::Cow::Borrowed(" <> (pp $ show $ show $ "stream-transform" <+> rulePPPrefix rl (last_rhs_idx + 1)) <> "),"
+                                        $$ "    xform: ::std::boxed::Box::new(::core::option::Option::Some(" <> arranged_xform <> ")),"
+                                        $$ "    next: ::std::boxed::Box::new(" <> next <> "),"
+                                        $$ "}"
                             else
                                 return arranged_xform
 
@@ -2177,12 +2189,12 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                 -- to generate Inspect rust code does not need another CollectionRule.
                 if last_rhs_idx == 0 && input_val
                    then "/*" <+> pp rl <+> "*/"                                         $$
-                        "program::Rule::CollectionRule {"                               $$
-                        "    description: std::borrow::Cow::from(" <> pp (show $ render $ rulePPStripped rl) <> "),"    $$
+                        "::differential_datalog::program::Rule::CollectionRule {"                               $$
+                        "    description: ::std::borrow::Cow::from(" <> pp (show $ render $ rulePPStripped rl) <> "),"    $$
                         "    rel:" <+> relid <> ","                                     $$
-                        "    xform: Some(" <> xform <> ")"                              $$
+                        "    xform: ::core::option::Option::Some(" <> xform <> "),"                              $$
                         "}"
-                   else "Some(" <> xform <> ")"
+                   else "::core::option::Option::Some(" <> xform <> ")"
 
 
 -- 'Join', 'Antijoin', 'Semijoin', and 'GroupBy' operators take arranged collection
@@ -2825,7 +2837,7 @@ mkProg d cstate nodes =
   where
     relations =
         vcat $
-            map (\ProgRel{..} -> "let" <+> rnameFlat prelName <+> "=" <+> prelCode <> ";") $
+            map (\ProgRel{..} -> prelCode) $
                 concatMap nodeRels nodes
 
     program_nodes = nest' $ vcommaSep $ map mkNode nodes

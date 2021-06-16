@@ -40,6 +40,7 @@
     where_clauses_object_safety,
     while_true
 )]
+#![cfg(unix)]
 
 //! Distributed computing for differential-datalog.
 
