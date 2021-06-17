@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.41.0] - Jun 17, 2021
+
+- Addressed some warnings from rustc 1.52+.
+- New release process: we now use GitHub actions instead of Travis to create
+  binary DDlog releases.  This should not have any effect on users.
+
+
 ## [0.40.3] - Jun 12, 2021
 
 ### Optimization
