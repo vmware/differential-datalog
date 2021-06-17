@@ -32,6 +32,7 @@ compiling and running DDlog programs.
 | clear <relation>               | `clear Foo`                                      | remove all records from a relation; must be used within a transaction  |
 | `profile`                      |                                                  | print CPU and memory profile of the DDlog program                      |
 | `profile cpu "on"/"off"`       |                                                  | controls the recording of differential operator runtimes; set to "on" to enable the construction of the programs CPU profile (default: "off") |
+| `mssleep <ms>;`                | `mssleep 2000;`                                  | sleep for `ms` milliseconds                                            |
 | `exit;`                        |                                                  | terminates execution                                                   |
 | `#`                            | `# comment ending at the end of line`            | comment that ends at the end of the line                               |
 
