@@ -1032,6 +1032,8 @@ impl Program {
         let worker_guards = timely::execute(
             timely_config,
             move |worker: &mut Worker<Allocator>| -> Result<_, String> {
+                let logger = worker.log_register().get("timely");
+
                 let worker = DDlogWorker::new(
                     worker,
                     worker_config,
@@ -1039,6 +1041,7 @@ impl Program {
                     profiling_data.clone(),
                     Arc::clone(&request_recv),
                     Arc::clone(&reply_send),
+                    logger,
                 );
 
                 worker.run()

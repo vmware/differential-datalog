@@ -2336,7 +2336,7 @@ openAtom d var rl idx Atom{..} on_error =
         var_clones = tuple $ map cloneRef varnames
         vars = tuple $ map ("ref" <+>) varnames
         mtch = mkMatch (mkPatExpr d (CtxRuleRAtom rl idx) atomVal EReference False) var_clones on_error
-    in "let" <+> vars <+> "= match unsafe { *<" <> t' <> ">::from_ddvalue_ref_unchecked(" <> var <> ") } {" $$
+    in "let" <+> vars <+> "= match *unsafe { <" <> t' <> ">::from_ddvalue_ref_unchecked(" <> var <> ") } {" $$
        (nest' mtch)                                                                    $$
        "};"
 
