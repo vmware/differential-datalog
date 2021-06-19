@@ -45,7 +45,7 @@ use std::{
 use timely::{
     communication::Allocator,
     dataflow::{operators::probe::Handle as ProbeHandle, scopes::Child, Scope},
-    logging::TimelyEvent,
+    logging::{InputEvent, StartStop, TimelyEvent, TimelyLogger},
     progress::frontier::AntichainRef,
     worker::Worker,
 };
@@ -91,6 +91,8 @@ pub struct DDlogWorker<'a> {
     request_receiver: Receiver<Msg>,
     /// The current worker's sender for sending messages
     reply_sender: Sender<Reply>,
+    /// The logger for timely events
+    logger: Option<TimelyLogger>,
 }
 
 impl<'a> DDlogWorker<'a> {
@@ -103,6 +105,7 @@ impl<'a> DDlogWorker<'a> {
         profiling: Option<ProfilingData>,
         request_receivers: Arc<[Receiver<Msg>]>,
         reply_senders: Arc<[Sender<Reply>]>,
+        logger: Option<TimelyLogger>,
     ) -> Self {
         let worker_index = worker.index();
 
@@ -113,6 +116,7 @@ impl<'a> DDlogWorker<'a> {
             profiling,
             request_receiver: request_receivers[worker_index].clone(),
             reply_sender: reply_senders[worker_index].clone(),
+            logger,
         }
     }
 
@@ -149,6 +153,10 @@ impl<'a> DDlogWorker<'a> {
             // Non-blocking receive, so that we can do some garbage collecting
             // when there is no real work to do.
             let messages: Vec<_> = self.request_receiver.try_iter().fuse().collect();
+
+            // Log the start of an input span
+            self.input_event(StartStop::Start);
+
             for message in messages {
                 match message {
                     // Update inputs with the given updates at the given timestamp
@@ -177,11 +185,16 @@ impl<'a> DDlogWorker<'a> {
                     // the computation.
                     Msg::Stop => {
                         self.disable(&mut session_data, timestamp, &probe);
+                        self.input_event(StartStop::Stop);
+
                         // TODO: Log worker #n disconnection
                         break 'worker_loop;
                     }
                 }
             }
+
+            // Log the end of an input span
+            self.input_event(StartStop::Stop);
 
             // After each batch of commands received we step, if there's no timely work to be
             // done, our thread will be parked until it's re-awoken by a command.
@@ -238,6 +251,8 @@ impl<'a> DDlogWorker<'a> {
         session_data: &mut SessionData,
         probe: &ProbeHandle<TS>,
     ) -> Result<(), String> {
+        self.input_event(StartStop::Start);
+
         // We immediately advance to a timestamp of 1, since timestamp 0 will contain
         // our initial data
         let timestamp = 1;
@@ -263,7 +278,15 @@ impl<'a> DDlogWorker<'a> {
             .send(Reply::FlushAck)
             .map_err(|e| format!("failed to send ACK: {}", e))?;
 
+        self.input_event(StartStop::Stop);
+
         Ok(())
+    }
+
+    fn input_event(&self, status: StartStop) {
+        if let Some(logger) = self.logger.as_ref() {
+            logger.log(TimelyEvent::Input(InputEvent { start_stop: status }));
+        }
     }
 
     /// Empty the Enabled relation to help the dataflow terminate.
