@@ -28,6 +28,7 @@ module Language.DifferentialDatalog.Util where
 import Prelude hiding(readFile, writeFile)
 import Data.Graph.Inductive
 import Control.Monad.Except
+import Control.Exception
 import Data.List
 import Data.List.Split
 import Data.Maybe
@@ -41,6 +42,7 @@ import System.Console.ANSI
 import System.Directory
 import System.FilePath
 import System.IO hiding (readFile, writeFile, stdout)
+import System.IO.Error
 import System.Process
 import System.Exit
 
@@ -180,8 +182,16 @@ updateFile path content = do
             oldcontent <- readFile path
             when (oldcontent /= content) $ do
                 writeFile tmppath content
+                removeIfExists path
                 renameFile tmppath path
        else writeFile path content
+
+-- Remove a file if it exists
+removeIfExists :: FilePath -> IO ()
+removeIfExists fileName = removeFile fileName `catch` handleExists
+    where handleExists e
+            | isDoesNotExistError e = return ()
+            | otherwise = throwIO e
 
 -- | Update an entire directory tree, updating files whose contents has changed,
 -- creating new files and deleting files not in `files` list, but keeping

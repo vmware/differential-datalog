@@ -7,11 +7,13 @@ use std::{
     cmp::Ordering,
     fmt::{self, Debug, Display, Formatter},
     hash::{Hash, Hasher},
+    hint::unreachable_unchecked,
     mem::{self, align_of, size_of, ManuallyDrop},
 };
 use triomphe::Arc;
 
 /// Trait to convert `DDVal` into concrete value type and back.
+#[allow(clippy::clippy::upper_case_acronyms)]
 pub trait DDValConvert: Sized {
     /// Extract reference to concrete type from `&DDVal`.
     ///
@@ -55,6 +57,24 @@ pub trait DDValConvert: Sized {
             .expect("attempted to convert a DDValue into the incorrect type")
     }
 
+    /// Converts a [`DDValue`] into a reference of the given type without
+    /// checking that the type given and the [`DDValue`]'s internal types
+    /// are the same
+    ///
+    /// # Safety
+    ///
+    /// The type given must be the same as the [`DDValue`]'s internal type
+    ///
+    unsafe fn from_ddvalue_ref_unchecked(value: &DDValue) -> &Self
+    where
+        Self: 'static,
+    {
+        let value_type = (value.vtable.type_id)(&value.val);
+        debug_assert_eq!(value_type, TypeId::of::<Self>());
+
+        Self::try_from_ddvalue_ref(value).unwrap_or_else(|| unreachable_unchecked())
+    }
+
     /// Extracts concrete value contained in `value`.
     ///
     /// # Safety
@@ -95,6 +115,23 @@ pub trait DDValConvert: Sized {
     {
         Self::try_from_ddvalue(value)
             .expect("attempted to convert a DDValue into the incorrect type")
+    }
+
+    /// Converts a [`DDValue`] into the given type without checking that the
+    /// type given and the [`DDValue`]'s internal types are the same
+    ///
+    /// # Safety
+    ///
+    /// The type given must be the same as the [`DDValue`]'s internal type
+    ///
+    unsafe fn from_ddvalue_unchecked(value: DDValue) -> Self
+    where
+        Self: 'static,
+    {
+        let value_type = (value.vtable.type_id)(&value.val);
+        debug_assert_eq!(value_type, TypeId::of::<Self>());
+
+        Self::try_from_ddvalue(value).unwrap_or_else(|| unreachable_unchecked())
     }
 
     /// Convert a value to a `DDVal`, erasing its original type.

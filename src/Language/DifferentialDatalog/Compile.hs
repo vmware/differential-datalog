@@ -1843,7 +1843,7 @@ compileApplyNode d Apply{..} idx =
     update_collections = map (\o -> "collections.insert(" <> relId d o <> "," <+> rnameFlat o <> ");") applyOutputs
     extractValue :: Type -> Doc
     extractValue t = parens $
-            "|" <> vALUE_VAR <> ": DDValue| {<" <> mkType d (Just applyModule) t <> ">::from_ddvalue(" <> vALUE_VAR <> ") }"
+            "|" <> vALUE_VAR <> ": DDValue| unsafe {<" <> mkType d (Just applyModule) t <> ">::from_ddvalue_unchecked(" <> vALUE_VAR <> ") }"
 
 compileSCCNode :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph) => DatalogProgram -> Statics -> [String] -> CompilerMonad ProgNode
 compileSCCNode d statics relnames = do
@@ -1966,7 +1966,7 @@ compileKey d rel@Relation{..} KeyExpr{..} =
         func_name = "__Key_" <> rnameFlat (name rel)
     in ( func_name
        , "pub fn" <+> func_name <> "(" <> kEY_VAR <> ": &DDValue) -> DDValue {"                                                         $$
-         "    let ref" <+> pp keyVar <+> "= *{<" <> mkType d (Just $ nameScope rel) rel <> ">::from_ddvalue_ref(" <> kEY_VAR <> ") };"  $$
+         "    let ref" <+> pp keyVar <+> "= *unsafe {<" <> mkType d (Just $ nameScope rel) rel <> ">::from_ddvalue_ref_unchecked(" <> kEY_VAR <> ") };"  $$
          "    " <> v                                                                                                                    $$
          "}")
 
@@ -2271,7 +2271,7 @@ openAtom d var rl idx Atom{..} on_error =
         var_clones = tuple $ map cloneRef varnames
         vars = tuple $ map ("ref" <+>) varnames
         mtch = mkMatch (mkPatExpr d (CtxRuleRAtom rl idx) atomVal EReference False) var_clones on_error
-    in "let" <+> vars <+> "= match *<" <> t' <> ">::from_ddvalue_ref(" <> var <> ") {" $$
+    in "let" <+> vars <+> "= match unsafe { *<" <> t' <> ">::from_ddvalue_ref_unchecked(" <> var <> ") } {" $$
        (nest' mtch)                                                                    $$
        "};"
 
@@ -2281,7 +2281,7 @@ openTuple d rl var vs =
     let t = tTuple $ map (varType d) vs
         t' = mkRelType d (ruleModule rl) t
         pattern = tupleStruct (Just $ ruleModule rl) $ map (("ref" <+>) . pp . name) vs
-    in "let" <+> pattern <+> "= *<" <> t' <> ">::from_ddvalue_ref(" <+> var <+> ");"
+    in "let" <+> pattern <+> "= unsafe { *<" <> t' <> ">::from_ddvalue_ref_unchecked(" <+> var <+> ") };"
 
 -- Type 'typ x' is used as the value type of a relation.
 -- Returns compiled representation of the type.
@@ -2858,11 +2858,12 @@ mkArrangementKey d rel pattern is_ref =
         -- generated within the same module.
         pattern_ctx = CtxTyped (ETyped nopos pattern $ relType rel)
                                (CtxIndex $ Index nopos "" [] $ Atom nopos (name rel) delayZero False ePHolder)
-        from_ddvalue = if is_ref then "from_ddvalue_ref" else "from_ddvalue"
+        from_ddvalue = if is_ref then "from_ddvalue_ref_unchecked" else "from_ddvalue_unchecked"
         mtch = mkMatch (mkPatExpr d pattern_ctx pattern EReference False) res "None"
-        in "match" <+> "<" <> relt' <> ">::" <> from_ddvalue <> "(" <> vALUE_VAR <> ") {"    $$
-           nest' mtch                                                                        $$
-           "}"
+        in
+            "match unsafe {" <+> "<" <> relt' <> ">::" <> from_ddvalue <> "(" <> vALUE_VAR <> ") } {"
+            $$ nest' mtch
+            $$ "}"
 
 -- Encodes Rust match pattern.
 --
