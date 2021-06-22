@@ -8,9 +8,9 @@
 
 let
 
-  ghc = args.ghc or pkgs.haskell.compiler.ghc865;
+  ghc = args.ghc or pkgs.haskell.compiler.ghc865Binary;
   java = pkgs.adoptopenjdk-bin;
-  rust-toolchain = "1.47";
+  rust-toolchain = "1.52.1";
   lib = pkgs.lib;
 
   flatbuffers-java = pkgs.runCommand "flatbuffers-java" {
