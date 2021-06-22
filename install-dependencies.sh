@@ -10,7 +10,7 @@ case "$OSTYPE" in
     "*") echo "Unhandled operating system $OSTYPE"; exit 1;;
 esac
 
-RUST_VERSION="1.47"
+RUST_VERSION="1.52.1"
 
 echo "Installing Haskell"
 ./tools/install-stack.sh
