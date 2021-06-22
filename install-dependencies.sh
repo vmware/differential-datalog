@@ -36,5 +36,15 @@ export PATH=`pwd`:$PATH
 cd ..
 
 GITDIR=$(git rev-parse --git-dir)
+
+# handle if invoked from worktrees
+if [ $(git rev-parse --is-inside-work-tree) == "true" ];then
+	if [ ! -d ${GITDIR}/hooks ]; then
+		echo "Worktree = true"
+		echo "Creating hooks directory under ${GITDIR}"
+		mkdir ${GITDIR}/hooks
+	fi
+fi
+
 # Link to pre-commit script
 ln -sf $(pwd)/tools/prepush.sh ${GITDIR}/hooks/pre-push
