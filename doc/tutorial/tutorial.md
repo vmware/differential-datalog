@@ -777,13 +777,13 @@ discards the value of the last expressions and produces an empty tuple.  For
 instance, expressions `{ var x: u32 = y + 1; x }` and
 `{ var x: u32 = y + 1; x; }` have different meaning.  The former returns the
 32-bit value of variable `x`, whereas the latter is equivalent to
-`{ var x: u32 = y + 1; x; () }`, which produces an empty tuple `()`,
+`{ var x: u32 = y + 1; x; () }`, which produces an empty tuple `()` as
 described [below](#tuples).
 
-If the `else` clause of an `if-else` expression is missing the value `()`
-is used for the `else` branch.  In `match` expressions the patterns must cover
-all possible cases (for instance, the match expression above would not be
-correct without the last "catch-all" (`_`) case).
+If the `else` clause of an `if-else` expression is missing, the value `()`
+is used for the `else` branch.  In DDlog, `match` expressions are exhaustive -
+i.e., the patterns must cover all possible cases (for instance, the match
+expression above would not be correct without the last "catch-all" (`_`) case).
 
 DDlog variables must always be initialized when declared.  In this
 example, the `port` variable is assigned the result of the `match`
@@ -950,7 +950,7 @@ gives some additional details on writing DDlog functions.
 #### Polymorphic functions
 
 DDlog supports two forms of polymorphism: parametric and ad hoc polymorphism.
-The following declarations from `ddlog_std.dl` illustrate both:
+The following declarations from [`ddlog_std.dl`](../../lib/ddlog_std.dl) illustrate both:
 
 ```
 function size(s: Set<'X>): usize {...}
@@ -1059,7 +1059,7 @@ are pure (side-effect-free) computations.  It is however possible to declare
 extern functions with side effects.  The DDlog compiler needs to know about these
 side effects, as they may interfere with its optimizations.  The programmer is
 responsible for labeling such functions with the `#[has_side_effects]` attribute,
-e.g., the following function is defined in the `log.dl` library:
+e.g., the following function is defined in the [`log.dl`](../../lib/log.dl) library:
 
 ```
 #[has_side_effects]
@@ -1074,8 +1074,8 @@ be annotated.
 
 DDlog allows functions to take other functions as arguments.  This is
 particularly useful when working with containers like vectors and maps.
-Consider, for example, the `map` function from the `vec.dl` library that applies
-a user-defined transformation to each element of a vector:
+Consider, for example, the `map` function from the [`vec.dl`](../../lib/vec.dl)
+library that applies a user-defined transformation to each element of a vector:
 
 ```
 // Apply `f` to all elements of `v`.
@@ -1089,7 +1089,7 @@ function map(v: Vec<'A>, f: function('A): 'B): Vec<'B> {
 ```
 
 The second argument of this function has type `function('A): 'B`, i.e., it is
-itself a function that takes an argument of type `'A` and returns a value of
+a function that takes an argument of type `'A` and returns a value of
 type `'B`.  How do we create a value of this type?  One option is to use
 a function whose signature matches the type of `f`, e.g.:
 
@@ -1107,7 +1107,7 @@ function vector_times2(v: Vec<s64>): Vec<s64> {
 ```
 
 This works well when a suitable transformer function exists, but it is sometimes
-convenient of even necessary to create one on the fly.  Consider the following
+convenient or even necessary to create one on the fly.  Consider the following
 function that multiplies each element of an input vector by a number that is
 also provided as an argument:
 
@@ -1192,7 +1192,8 @@ Note, however, that closures cannot currently modify captured variables.
 
 Among other applications, higher-order functions enable the creation of
 reusable primitives for working with container types.  DDlog provides
-some of these as part of `vec.dl`, `set.dl` and `map.dl` libraries,
+some of these as part of [`vec.dl`](../../lib/vec.dl), [`set.dl`](../../lib/set.dl)
+and [`map.dl`](../../lib/map.dl) libraries,
 including functions for mapping, filtering, searching, and reducing
 collections.  Here are a few examples:
 
@@ -1453,7 +1454,7 @@ Under100(item) :-
 ```
 
 `min()` is one of several standard reduction functions defined in
-`lib/ddlog_std.dl`.  Below we list few of the others:
+[`lib/ddlog_std.dl`](../../lib/ddlog_std.dl).  Below we list few of the others:
 
 ```
 /**/
@@ -1509,7 +1510,7 @@ BestVendor(item, best_vendor, best_price) :-
 ```
 
 `arg_min`, along with other useful higher-order functions over groups,
-is defined in `lib/group.dl`.
+is defined in [`lib/group.dl`](../../lib/group.dl).
 
 You will occasionally find that you want to write a custom reduction that is
 not found in one of standard libraries.  The following custom reduction
@@ -1585,10 +1586,10 @@ associates with each record: **timestamp** and **weight**.  The timestamp,
 stored in the `ddlog_timestamp` special variable, represents the logical time
 when the record was created.  For non-recursive rules, the timestamp consists of
 a global epoch, i.e., the serial number of the transaction that created the
-record (see `DDEpoch` type declared in `lib/ddlog_std.dl`).  For recursive rules, the
-timestamp additionally includes iteration number of the inner fixed point
-computation when the record was produced (see `DDNestedTS` type in
-`lib/ddlog_std.dl`).
+record (see `DDEpoch` type declared in [`lib/ddlog_std.dl`](../../lib/ddlog_std.dl)).
+For recursive rules, the timestamp additionally includes iteration number of the inner
+fixed point computation when the record was produced (see `DDNestedTS` type in
+[`lib/ddlog_std.dl`](../../lib/ddlog_std.dl)).
 
 The `ddlog_weight` variable stores the weight of a record, i.e., the number of
 times the record has been derived at the current logical timestamp.  Newly
@@ -1619,7 +1620,7 @@ ts:19, w:1: best("B")="Best deal for B: Overpriced Inc, $123"
 ```
 
 The inspect operator is typically used in conjunction with a logging library, such
-as the one in `lib/log.dl`.
+as the one in [`lib/log.dl`](../../lib/log.dl).
 
 #### Relation transformers
 
@@ -1658,13 +1659,14 @@ extern transformer SCC(Edges:   relation['E],
     -> (SCCLabels: relation [('N, 'N)])
 ```
 
-Only extern transformers are supported at the moment. Non-extern transformers, i.e.,
+Only extern transformers are supported at the moment. Native/non-extern transformers, i.e.,
 transformers implemented in DDlog, may be introduced in the future as a form of
 code reuse (a transformer can be used to create a computation that can be instantiated
 multiple times for different input/output relations).
 
-Several useful graph transformers are declared in `lib/graph.dl` and implemented in
-`lib/graph.rs`
+Several useful graph transformers are declared in
+[`lib/graph.dl`](../../lib/graph.dl) and implemented in
+[`lib/graph.rs`](../../lib/graph.rs)
 
 ### Variable mutability
 
@@ -2582,7 +2584,7 @@ function unwrap_or_default(res: Result<'V,'E>): 'V
 values of structs and tuples are constructed recursively out of default values
 of their fields.
 
-Here is a version of `get_price_in_cents()` that uses the `upwrap_` functions
+Here is a version of `get_price_in_cents()` that uses the `unwrap_` functions
 to handle errors by replacing missing or invalid values with `0`:
 
 ```
@@ -2627,8 +2629,10 @@ for various combinations of expression type and function return type.
 Similar to extern functions, extern types are types implemented outside of
 DDlog, in Rust, that are accessible to DDlog programs.  We already encountered
 examples of extern types like `Ref<>` and `Intern<>`.  Their implementation
-can be found in `ddlog_std.dl` & `ddlog_std.rs` and `internment.dl` & `internment.rs`
-respectively.
+can be found in [`ddlog_std.dl`](../../lib/ddlog_std.dl) &
+[`ddlog_std.rs`](../../lib/ddlog_std.rs) and
+[`internment.dl`](../../lib/internment.dl) &
+[`internment.rs`](../../lib/internment.rs) respectively.
 
 All extern types are required to implement a number of generic and DDlog-specific
 traits: `Default`, `Eq`, `PartialEq`, `Clone`, `Hash`, `PartialOrd`, `Ord`,
@@ -2931,7 +2935,7 @@ want to check out if you are working with interned values.
 
 Some people dislike Datalog because the evaluation order of rules is not always obvious.  DDlog
 provides an alternative syntax for writing rules which resembles more traditional imperative
-languages.  For example, the previous program can be written as follows:
+languages.  For example, the [previous program](#explicit-relation-types) can be written as follows:
 
 ```
 for (person in Person if is_target_audience(person))
@@ -2988,7 +2992,7 @@ for (person in Person)
 ```
 
 These 5 kinds of statements (`for`, `if`, `match`, `var`, blocks enclosed in braces) can be nested
-in arbitrary ways.  When using this syntax semicolons must be used as separators between statements.
+in arbitrary ways.  When using this syntax, semicolons must be used as separators between statements.
 The DDlog compiler translates such programs into regular DDlog programs.
 
 ## Avoiding weight overflow
@@ -3272,7 +3276,7 @@ declarations from a DDlog module `mod2/submod1.dl` are placed in
 module of the program are placed in `types/lib.rs`.  If `submod1.dl` contains
 extern function or type declarations, corresponding Rust declarations must be
 placed in `mod2/submod1.rs`.  This file is picked up by the DDlog compiler
-and its contents is appended verbatim to the generated
+and its contents are appended verbatim to the generated
 `prog_ddlog/types/mod1/submod1.rs` module.
 
 Extern type and function declarations must follow these rules:
@@ -3301,9 +3305,9 @@ Extern type and function declarations must follow these rules:
   Such dependencies must be added to the generated `types/Cargo.toml` file.
   To this end, create a file with the same name and location as the DDlog module
   and `.toml` extension, containing dependency clauses in `Cargo.toml` format.
-  As an example, the `lib/regex.dl` library that implements DDlog bindings to the
-  regular expressions crate `regex` has an accompanying `lib/regex.toml` file
-  with the following contents:
+  As an example, the [`lib/regex.dl`](../../lib/regex.dl) library that
+  implements DDlog bindings to the regular expressions crate `regex` has an
+  accompanying `lib/regex.toml` file with the following contents:
 
   ```
   [dependencies.regex]
@@ -3323,8 +3327,8 @@ Extern type and function declarations must follow these rules:
 The module system enables the creation of reusable DDlog libraries.  Some of
 these libraries are distributed with DDlog in the `lib` directory.  A
 particularly important one is the standard library
-[`ddlog_std.dl`](../../lib/ddlog_std.dl), that defines types like `Vec`, `Set`,
-`Map`, `Option`, `Result`, `Ref`, and others.  This library is imported
+[`ddlog_std.dl`](../../lib/ddlog_std.dl), that defines types like `Vec`,
+`Set`, `Map`, `Option`, `Result`, `Ref`, and others.  This library is imported
 automatically into every DDlog program.
 
 ## Indexes
