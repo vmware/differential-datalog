@@ -1972,13 +1972,13 @@ compileRelation d statics rn = do
     rules' <- mapIdxM (\rl i -> do
                         rl' <- let ?statics = moduleStatics statics (ruleModule rl)
                                in compileRule d rl 0 True
-                        return (ruleModule rl, "pub static" <+> rule_name i <+> ": ::once_cell::sync::Lazy<program::Rule> = ::once_cell::sync::Lazy::new(|| {" $$ rl' $$ "});")) rules
+                        return (ruleModule rl, "pub static" <+> rule_name i <+> ": ::once_cell::sync::Lazy<program::Rule> = ::once_cell::sync::Lazy::new(|| {" $$ nest' rl' $$ "});")) rules
     let facts' = mapIdx (\fact i ->
                           let fact' = let ?statics = moduleStatics statics (ruleModule fact)
                                       in compileFact d fact
                           in (ruleModule fact,
                               ridentScoped Nothing (ruleModule fact) (render $ fact_name i) <> ".clone()",
-                              "pub static" <+> fact_name i <+> ": ::once_cell::sync::Lazy<(program::RelId, DDValue)> = ::once_cell::sync::Lazy::new(|| {" $$ fact' $$ "});")) facts
+                              "pub static" <+> fact_name i <+> ": ::once_cell::sync::Lazy<(program::RelId, DDValue)> = ::once_cell::sync::Lazy::new(|| {" $$ nest' fact' $$ "});")) facts
     let (key_func, key_code) = maybe ("::core::option::Option::None", Nothing)
                                (\k -> let ?statics = moduleStatics statics (nameScope rel) in
                                       let (func_name, code) = compileKey d rel k in
@@ -1992,7 +1992,7 @@ compileRelation d statics rn = do
     let compiled_arrangements = mapIdx (\arng i ->
                                          let ?statics = moduleStatics statics (nameScope rel) in
                                          let arng' = mkArrangement d rel arng in
-                                         "pub static" <+> arng_name i <+> ": ::once_cell::sync::Lazy<program::Arrangement> = ::once_cell::sync::Lazy::new(|| {" $$ arng' $$ "});") arrangements
+                                         "pub static" <+> arng_name i <+> ": ::once_cell::sync::Lazy<program::Arrangement> = ::once_cell::sync::Lazy::new(|| {" $$ nest' arng' $$ "});") arrangements
 
     let (position, _) = relPos
     let location = text (replace "\\" "\\\\" $ sourceName position) <> ":" <> int (sourceLine position) <> ":" <> int (sourceColumn position)
@@ -2346,7 +2346,7 @@ openTuple d rl var vs =
     let t = tTuple $ map (varType d) vs
         t' = mkRelType d (ruleModule rl) t
         pattern = tupleStruct (Just $ ruleModule rl) $ map (("ref" <+>) . pp . name) vs
-    in "let" <+> pattern <+> "= unsafe { *<" <> t' <> ">::from_ddvalue_ref_unchecked(" <+> var <+> ") };"
+    in "let" <+> pattern <+> "= *unsafe { <" <> t' <> ">::from_ddvalue_ref_unchecked(" <+> var <+> ") };"
 
 -- Type 'typ x' is used as the value type of a relation.
 -- Returns compiled representation of the type.
