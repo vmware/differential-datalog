@@ -82,12 +82,24 @@ executables:
   ovsdb2ddlog:
     main:                Main.hs
     source-dirs:         adapters/ovsdb
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    - -Wall
-    - -Werror
+
+    when:
+    - condition: os(linux)
+      then:
+          ghc-options:
+              - -threaded
+              - -rtsopts
+              - -with-rtsopts=-N
+              - -optl-static
+              - -Wall
+              - -Werror
+      else:
+          ghc-options:
+              - -threaded
+              - -rtsopts
+              - -with-rtsopts=-N
+              - -Wall
+              - -Werror
     dependencies:
     - differential-datalog
     - filepath
