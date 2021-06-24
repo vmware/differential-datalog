@@ -1249,7 +1249,7 @@ mkTypedef d tdef@TypeDef{..} =
 -- reserved names.
 ddlog_rename :: (WithName a) => a -> Doc
 ddlog_rename x = if isPrefixOf "__" (name x) && elem short reservedNames
-                 then "#[ddlog(rename=\"" <> pp short <> "\")]"
+                 then "#[ddlog(rename = \"" <> pp short <> "\")]"
                  else empty
     where short = drop 2 $ name x
 
@@ -2578,7 +2578,7 @@ renderArrangedStreamJoin program relation arrangement is_semi join_func filter_f
     let v2 = (if is_semi then "_" else empty) <> vALUE_VAR2
         key_func = braces' $ mkArrangementKey program relation arrangement True
             in
-                "::differential_datalog::program::XFormArrangement::StreamJoin{"
+                "::differential_datalog::program::XFormArrangement::StreamJoin {"
                 $$ "    description:" <+> description
                 $$ "    ffun:" <+> filter_func <> ","
                 $$ "    rel:" <+> relid <> ","
