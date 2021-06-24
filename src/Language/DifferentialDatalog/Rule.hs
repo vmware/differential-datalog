@@ -150,8 +150,8 @@ ruleLHSVars :: DatalogProgram -> Rule -> [Var]
 ruleLHSVars d rl =
     nub
     $ concat
-    $ mapIdx (\RuleLHS{..} i -> (exprFreeVars d (CtxRuleLAtom rl i) $ atomVal lhsAtom) ++
-                                (maybe [] (exprFreeVars d (CtxRuleLLocation rl i)) lhsLocation))
+    $ mapIdx (\RuleLHS{..} i -> exprFreeVars d (CtxRuleLAtom rl i) (atomVal lhsAtom) ++
+                                maybe [] (exprFreeVars d (CtxRuleLLocation rl i)) lhsLocation)
     $ ruleLHS rl
 
 -- | Map function over all types in a rule
@@ -162,8 +162,8 @@ ruleTypeMapM fun rule@Rule{..} = do
                     el <- mapM (exprTypeMapM fun) lhsLocation
                     return $ lhs { lhsAtom = lhsAtom { atomVal = ea }
                                  , lhsLocation = el}) ruleLHS
-    rhs <- mapM (\rhs -> case rhs of
-                  RHSLiteral pol (Atom p r del diff v) -> (RHSLiteral pol . Atom p r del diff) <$> exprTypeMapM fun v
+    rhs <- mapM (\case
+                  RHSLiteral pol (Atom p r del diff v) -> RHSLiteral pol . Atom p r del diff <$> exprTypeMapM fun v
                   RHSCondition c                       -> RHSCondition <$> exprTypeMapM fun c
                   RHSGroupBy v p g                     -> RHSGroupBy v <$> exprTypeMapM fun p <*> exprTypeMapM fun g
                   RHSFlatMap vs e                      -> RHSFlatMap <$> exprTypeMapM fun vs <*> exprTypeMapM fun e
@@ -216,7 +216,7 @@ ruleIsDistinctByConstruction d rl@Rule{..} head_idx = f True 0
         let a = rhsAtom $ ruleRHS !! i in
         -- 'a' is a distinct relation and does not contain wildcards or
         -- differentiation.
-        if relIsDistinct' (atomRelation a) && (not $ exprContainsPHolders $ atomVal a) && (not $ atomDiff a)
+        if relIsDistinct' (atomRelation a) && not (exprContainsPHolders $ atomVal a) && not (atomDiff a)
            then f True (i+1)
            else f False (i+1)
     -- Antijoins preserve distinctness
@@ -229,8 +229,7 @@ ruleIsDistinctByConstruction d rl@Rule{..} head_idx = f True 0
 ruleHeadIsRecursive :: DatalogProgram -> Rule -> Int -> Bool
 ruleHeadIsRecursive d Rule{..} head_idx =
     let head_atom = lhsAtom $ ruleLHS !! head_idx in
-    any (relsAreMutuallyRecursive d (atomRelation head_atom))
-        $ map (atomRelation . rhsAtom)
+    any (relsAreMutuallyRecursive d (atomRelation head_atom) . atomRelation . rhsAtom)
         $ filter (not . atomIsDelayed . rhsAtom)
         $ filter rhsIsLiteral ruleRHS
 
@@ -244,10 +243,10 @@ ruleIsRecursive d rl@Rule{..} =
 rulePrefixIsStream :: DatalogProgram -> Rule -> Int -> Bool
 rulePrefixIsStream d rl n =
     any (\rhs -> rhsIsLiteral rhs &&
-                 (relIsStream $ getRelation d $ atomRelation (rhsAtom rhs)) &&
+                 relIsStream (getRelation d $ atomRelation (rhsAtom rhs)) &&
                  -- Differentiating a stream yields a relation that contains
                  -- the latest delta in the stream.
-                 (not $ atomDiff $ rhsAtom rhs))
+                 not (atomDiff $ rhsAtom rhs))
         $ take n $ ruleRHS rl
 
 -- | True iff the body of the rule yields a stream.
