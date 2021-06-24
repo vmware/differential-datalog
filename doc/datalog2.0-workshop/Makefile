@@ -1,6 +1,6 @@
 PDFLATEX = pdflatex -interaction=nonstopmode
 
-PAPER = top
+PAPER = paper
 
 ${PAPER}.pdf: *.tex ${PAPER}.bib
 	$(PDFLATEX) ${PAPER}
