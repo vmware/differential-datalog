@@ -813,7 +813,7 @@ mkCargoToml rs_code crate crate_id =
     fb_features = commaSep $ map (\dep -> "\"" <> pp (crateName dep) <> "/flatbuf\"") deps
     capi_features = commaSep $ map (\dep -> "\"" <> pp (crateName dep) <> "/c_api\"") deps
     -- Add 'toml' code from 'rs_code'.
-    extra_toml_code = vcat $ map (sel3 . snd) $ filter ((`S.member` crate) . fst) $ M.toList rs_code
+    extra_toml_code = vcat $ map (sel3 . snd) $ filter ((\mname -> S.member mname crate) . fst) $ M.toList rs_code
 
 -- Recursive version of 'crateDependencies'.
 crateDependenciesRec :: (?crate_graph::CrateGraph, ?modules::M.Map ModuleName DatalogModule) => Int -> [Int]
@@ -1767,7 +1767,7 @@ allocDelayedRelIds d = do
                         -- Allocate delayed relation indexes after the last
                         -- non-delayed relation index.
                         let fst_index = length (progRelations d) + 1
-                        relid <- gets $ M.lookup rel_delay . cDelayedRelIds
+                        relid <- gets $ (M.lookup rel_delay) . cDelayedRelIds
                         case relid of
                              Just _ -> return ()
                              Nothing -> modify $ \c -> c{ cDelayedRelIds = M.insert rel_delay (fst_index + M.size (cDelayedRelIds c))
