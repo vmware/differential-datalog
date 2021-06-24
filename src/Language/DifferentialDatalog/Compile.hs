@@ -149,11 +149,11 @@ header template =
 
 -- Header to prepend to each each generated module in the 'types' crate.
 typesModuleHeader :: (?specname::String) => Doc
-typesModuleHeader = header (unpackFixNewline $ $(embedFile "rust/template/types/lib.rs"))
+typesModuleHeader = header (unpackFixNewline $(embedFile "rust/template/types/lib.rs"))
 
 -- Main crate containing compiled program rules.
 mainHeader :: (?specname::String) => Doc
-mainHeader = header (unpackFixNewline $ $(embedFile "rust/template/src/lib.rs"))
+mainHeader = header (unpackFixNewline $(embedFile "rust/template/src/lib.rs"))
 
 -- Top-level 'Cargo.toml'.
 mainCargo :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph) => [String] -> String -> Doc
@@ -182,7 +182,7 @@ rustProjectDir = ?specname ++ "_ddlog"
 -- IMPORTANT: KEEP THIS IN SYNC WITH FILE LIST IN 'build.rs'.
 templateFiles :: (?specname::String) => [(String, String)]
 templateFiles =
-    map (mapSnd (unpackFixNewline)) $
+    map (mapSnd unpackFixNewline)
         [ ("src/build.rs"               , $(embedFile "rust/template/src/build.rs"))
         , ("src/main.rs"                , $(embedFile "rust/template/src/main.rs"))
         , ("src/api/mod.rs"             , $(embedFile "rust/template/src/api/mod.rs"))
@@ -196,7 +196,7 @@ templateFiles =
 -- Rust differential_datalog library
 rustLibFiles :: (?specname::String) => [(String, String)]
 rustLibFiles =
-    map (mapSnd (unpackFixNewline)) $
+    map (mapSnd unpackFixNewline)
         [ ("differential_datalog/Cargo.toml"                      , $(embedFile "rust/template/differential_datalog/Cargo.toml"))
         , ("differential_datalog/src/callback.rs"                 , $(embedFile "rust/template/differential_datalog/src/callback.rs"))
         , ("differential_datalog/src/ddlog.rs"                    , $(embedFile "rust/template/differential_datalog/src/ddlog.rs"))
@@ -416,14 +416,14 @@ atomRelId d a@Atom{..} | not (atomIsDelayed a) = return $ relId d atomRelation
 --
 -- NOTE: We assume that we are arranging a non-delayed relation.
 addJoinArrangement :: DatalogProgram -> String -> Expr -> Maybe Index -> CompilerMonad ()
-addJoinArrangement d relname pattern midx | -- We use streaming joins for streams, which do not require an
+addJoinArrangement d relname pat midx | -- We use streaming joins for streams, which do not require an
                                             -- arrangement.
                                             relIsStream (getRelation d relname) = return ()
                                           | otherwise = do
     arrs <- gets $ (M.! relname) . cArrangements
-    let existing_idx = findIndex (\a -> (arngPattern a == pattern) && (arngIsDistinct a == False)) arrs
+    let existing_idx = findIndex (\a -> (arngPattern a == pat) && (arngIsDistinct a == False)) arrs
     let idxs = nub $ maybeToList midx ++ maybe [] (arngUsedInIndexes . (arrs !!)) existing_idx
-    let join_arr = ArrangementMap pattern idxs
+    let join_arr = ArrangementMap pat idxs
     let arrs' = maybe (arrs ++ [join_arr])
                       (\idx -> take idx arrs ++ [join_arr] ++ drop (idx+1) arrs)
                       existing_idx
@@ -433,12 +433,12 @@ addJoinArrangement d relname pattern midx | -- We use streaming joins for stream
 -- * If a semijoin, antijoin or join arrangement with the same pattern exists, do nothing
 -- * Otherwise, add the new arrangement
 addSemijoinArrangement :: DatalogProgram -> String -> Expr -> CompilerMonad ()
-addSemijoinArrangement d relname pattern | relIsStream (getRelation d relname) = return ()
+addSemijoinArrangement d relname pat | relIsStream (getRelation d relname) = return ()
                                          | otherwise = do
     arrs <- gets $ (M.! relname) . cArrangements
-    let arrs' = if isJust $ find ((==pattern) . arngPattern) arrs
+    let arrs' = if isJust $ find ((== pat) . arngPattern) arrs
                    then arrs
-                   else arrs ++ [ArrangementSet pattern False]
+                   else arrs ++ [ArrangementSet pat False]
     modify $ \s -> s{cArrangements = M.insert relname arrs' $ cArrangements s}
 
 -- Create a new arrangement for use in a antijoin operator:
@@ -447,11 +447,11 @@ addSemijoinArrangement d relname pattern | relIsStream (getRelation d relname) =
 --   an antijoin by setting 'distinct' to true
 -- * Otherwise, add the new arrangement
 addAntijoinArrangement :: DatalogProgram -> String -> Expr -> CompilerMonad ()
-addAntijoinArrangement d relname pattern | relIsStream (getRelation d relname) = return ()
+addAntijoinArrangement d relname pat | relIsStream (getRelation d relname) = return ()
                                          | otherwise = do
     arrs <- gets $ (M.! relname) . cArrangements
-    let antijoin_arr = ArrangementSet pattern True
-    let semijoin_idx = elemIndex (ArrangementSet pattern False) arrs
+    let antijoin_arr = ArrangementSet pat True
+    let semijoin_idx = elemIndex (ArrangementSet pat False) arrs
     let arrs' = if elem antijoin_arr arrs
                    then arrs
                    else maybe (arrs ++ [antijoin_arr])
@@ -461,26 +461,26 @@ addAntijoinArrangement d relname pattern | relIsStream (getRelation d relname) =
 
 -- Find an arrangement of the form 'ArrangementSet pattern _'
 getSemijoinArrangement :: String -> Expr -> CompilerMonad (Maybe Int)
-getSemijoinArrangement relname pattern = do
+getSemijoinArrangement relname pat = do
     arrs <- gets $ (M.! relname) . cArrangements
     return $ findIndex (\case
-                         ArrangementSet pattern' _ -> pattern' == pattern
+                         ArrangementSet pattern' _ -> pattern' == pat
                          _                         -> False)
                        arrs
 
 -- Find an arrangement of the form 'ArrangementMap pattern _'
 getJoinArrangement :: String -> Expr -> CompilerMonad (Maybe Int)
-getJoinArrangement relname pattern = do
+getJoinArrangement relname pat = do
     arrs <- gets $ (M.! relname) . cArrangements
     return $ findIndex (\case
-                         ArrangementMap{arngPattern} -> arngPattern == pattern
+                         ArrangementMap{arngPattern} -> arngPattern == pat
                          _ -> False) arrs
 
 -- Find an arrangement of the form 'ArrangementSet pattern True'
 getAntijoinArrangement :: String -> Expr -> CompilerMonad (Maybe Int)
-getAntijoinArrangement relname pattern = do
+getAntijoinArrangement relname pat = do
     arrs <- gets $ (M.! relname) . cArrangements
-    return $ elemIndex (ArrangementSet pattern True) arrs
+    return $ elemIndex (ArrangementSet pat True) arrs
 
 -- Rust does not like parenthesis around singleton tuples
 tuple :: [Doc] -> Doc
@@ -493,7 +493,7 @@ tupleTypeName local_module xs =
 
 tupleStruct :: (?crate_graph::CrateGraph, ?specname::String) => Maybe ModuleName -> [Doc] -> Doc
 tupleStruct _            [x]                  = x
-tupleStruct local_module xs  | length xs == 0 = tuple xs
+tupleStruct local_module xs  | null xs = tuple xs
                              | otherwise      = tupleTypeName local_module xs <> tuple xs
 
 -- Structs with a single constructor are compiled into Rust structs;
@@ -554,7 +554,7 @@ compile d_unoptimized specname modules rs_code dir crate_types = do
     -- Generate lib files if changed.
     let type_files = M.toList $ M.mapKeys ("types" </>) $ M.map render types
     let toml_footer =
-            ( if (confOmitProfile ?cfg)
+            ( if confOmitProfile ?cfg
                 then ""
                 else
                 "[profile.release]\n"
@@ -568,10 +568,10 @@ compile d_unoptimized specname modules rs_code dir crate_types = do
                     "lto = false\n"
                     ++ "debug-assertions = false\n"
             )
-            ++ ( if (confOmitWorkspace ?cfg)
+            ++ ( if confOmitWorkspace ?cfg
                     then ""
                     else
-                    (if (confOmitProfile ?cfg) then "" else "\n")
+                    (if confOmitProfile ?cfg then "" else "\n")
                         ++ "[workspace]\n"
                         ++ "members = [\n"
                         ++ "    \"cmd_parser\",\n"
@@ -808,18 +808,17 @@ mkCargoToml rs_code crate crate_id =
     -- direct dependencies of 'crate'.
     deps = map (cgCrates ?crate_graph !!) $ crateDependenciesRec crate_id
     dependencies = vcat
-                   $ map (\dep -> pp (crateName dep) <+> "= { path = \"" <> pp (crateDirPathFrom crate dep) <> "\" }" )
-                   $ deps
+                   $ map (\dep -> pp (crateName dep) <+> "= { path = \"" <> pp (crateDirPathFrom crate dep) <> "\" }" ) deps
     -- Enable 'flatbuf' and 'capi' features in all dependencies.
     fb_features = commaSep $ map (\dep -> "\"" <> pp (crateName dep) <> "/flatbuf\"") deps
     capi_features = commaSep $ map (\dep -> "\"" <> pp (crateName dep) <> "/c_api\"") deps
     -- Add 'toml' code from 'rs_code'.
-    extra_toml_code = vcat $ map (sel3 . snd) $ filter ((\mname -> S.member mname crate) . fst) $ M.toList rs_code
+    extra_toml_code = vcat $ map (sel3 . snd) $ filter ((`S.member` crate) . fst) $ M.toList rs_code
 
 -- Recursive version of 'crateDependencies'.
 crateDependenciesRec :: (?crate_graph::CrateGraph, ?modules::M.Map ModuleName DatalogModule) => Int -> [Int]
 crateDependenciesRec crate_id =
-    nub $ deps ++ (concatMap crateDependenciesRec deps)
+    nub $ deps ++ concatMap crateDependenciesRec deps
     where
     deps = cgCrateDependencies ?crate_graph M.! crate_id
 
@@ -1073,7 +1072,7 @@ collectStatics :: (?crate_graph::CrateGraph) => DatalogProgram -> Statics
 collectStatics d =
     execState (progExprMapCtxM d checkStaticExpr) M.empty
     where
-    checkStaticExpr :: ECtx -> ENode -> State (Statics) Expr
+    checkStaticExpr :: ECtx -> ENode -> State Statics Expr
     checkStaticExpr ctx e = do
         when (exprIsStatic d ctx (E e)) $ modify (addStatic d (E e) ctx)
         return $ E e
@@ -1768,10 +1767,10 @@ allocDelayedRelIds d = do
                         -- Allocate delayed relation indexes after the last
                         -- non-delayed relation index.
                         let fst_index = length (progRelations d) + 1
-                        relid <- gets $ (M.lookup rel_delay) . cDelayedRelIds
+                        relid <- gets $ M.lookup rel_delay . cDelayedRelIds
                         case relid of
                              Just _ -> return ()
-                             Nothing -> modify $ \c -> c{ cDelayedRelIds = M.insert rel_delay (fst_index + (M.size $ cDelayedRelIds c))
+                             Nothing -> modify $ \c -> c{ cDelayedRelIds = M.insert rel_delay (fst_index + M.size (cDelayedRelIds c))
                                                                                     $ cDelayedRelIds c }
                     _ -> return ()) ruleRHS)
           $ progRules d
@@ -2345,8 +2344,8 @@ openTuple :: (?cfg::Config, ?crate_graph::CrateGraph, ?specname::String) => Data
 openTuple d rl var vs =
     let t = tTuple $ map (varType d) vs
         t' = mkRelType d (ruleModule rl) t
-        pattern = tupleStruct (Just $ ruleModule rl) $ map (("ref" <+>) . pp . name) vs
-    in "let" <+> pattern <+> "= *unsafe { <" <> t' <> ">::from_ddvalue_ref_unchecked(" <+> var <+> ") };"
+        pat = tupleStruct (Just $ ruleModule rl) $ map (("ref" <+>) . pp . name) vs
+    in "let" <+> pat <+> "= *unsafe { <" <> t' <> ">::from_ddvalue_ref_unchecked(" <+> var <+> ") };"
 
 -- Type 'typ x' is used as the value type of a relation.
 -- Returns compiled representation of the type.
@@ -2894,7 +2893,7 @@ mkArrangement d rel ArrangementSet{..} =
 -- Generate part of the arrangement computation that filters inputs and computes the key part of the
 -- arrangement.
 mkArrangementKey :: (?cfg::Config, ?statics::CrateStatics, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> Relation -> Expr -> Bool -> Doc
-mkArrangementKey d rel pattern is_ref =
+mkArrangementKey d rel pat is_ref =
     -- extract variables with types from pattern.
     let getvars :: Type -> Expr -> [Field]
         getvars t (E EStruct{..}) =
@@ -2915,16 +2914,16 @@ mkArrangementKey d rel pattern is_ref =
         -- Order variables by their integer value: '_0', '_1', ...
         patvars = mkFieldTupleValue (nameScope rel)
                   $ sortBy (\f1 f2 -> compare ((read $ tail $ name f1)::Int) (read $ tail $ name f2))
-                  $ getvars relt pattern
+                  $ getvars relt pat
         relt' = mkRelType d (nameScope rel) relt
         res = "Some(" <> patvars <> ")"
         -- Manufacture fake context to make sure 'pattern' has a known type in 'mkPatExpr'.
         -- Make sure that the context belongs to 'rel', so that the expression is
         -- generated within the same module.
-        pattern_ctx = CtxTyped (ETyped nopos pattern $ relType rel)
+        pattern_ctx = CtxTyped (ETyped nopos pat $ relType rel)
                                (CtxIndex $ Index nopos "" [] $ Atom nopos (name rel) delayZero False ePHolder)
         from_ddvalue = if is_ref then "from_ddvalue_ref_unchecked" else "from_ddvalue_unchecked"
-        mtch = mkMatch (mkPatExpr d pattern_ctx pattern EReference False) res "None"
+        mtch = mkMatch (mkPatExpr d pattern_ctx pat EReference False) res "None"
         in
             "match unsafe {" <+> "<" <> relt' <> ">::" <> from_ddvalue <> "(" <> vALUE_VAR <> ") } {"
             $$ nest' mtch
