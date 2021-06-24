@@ -2484,7 +2484,7 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
     let Just (key_vars, post_join_vars) = rhsInputArrangement d rl join_idx $ ruleRHS !! join_idx
     -- Open input Value or tuple.
     let open_input v = if input_val
-                       then openAtom d v rl 0 (rhsAtom $ ruleRHS !! 0) "return None"
+                       then openAtom d v rl 0 (rhsAtom $ ruleRHS !! 0) "return ::std::option::Option::None"
                        else openTuple d rl v post_join_vars
     -- Filter inputs using 'input_filters'
     let ffun = mkFFun d rl input_filters
@@ -2504,37 +2504,23 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
                if is_semi
                then input
                else input $$
-                    openAtom d vALUE_VAR2 rl join_idx (atom{atomVal = simplify $ atomVal atom}) "return None"
+                    openAtom d vALUE_VAR2 rl join_idx (atom{atomVal = simplify $ atomVal atom}) "return ::std::option::Option::None"
     let filters = mkFilters d rl join_idx
         last_idx = join_idx + length filters
     -- If we're at the end of the rule, generate head atom; otherwise
     -- return all live variables in a tuple
     (ret, next) <- if last_idx == length ruleRHS - 1
-        then return (mkDDValue d (CtxRuleLAtom rl 0) (atomVal $ lhsAtom $ head $ ruleLHS), "None")
+        then return (mkDDValue d (CtxRuleLAtom rl 0) (atomVal $ lhsAtom $ head $ ruleLHS), "::std::option::Option::None")
         else do let ret = mkVarsTupleValue rl $ map (, EReference) $ rhsVarsAfter d rl last_idx
                 next <- compileRule d rl last_idx False
                 return (ret, next)
     let jfun = braces' $ open                     $$
                          vcat filters             $$
-                         "Some" <> parens ret
-    let descr = "std::borrow::Cow::from(" <> (pp $ show $ show $ rulePPPrefix rl $ join_idx + 1) <> "),"
+                         "::std::option::Option::Some" <> parens ret
+    let descr = "::std::borrow::Cow::Borrowed(" <> pp (show $ show $ rulePPPrefix rl $ join_idx + 1) <> "),"
     relid <- atomRelId d atom
     return $ case join_kind of
-        JoinArngStream ->
-            let v2 = (if is_semi then "_" else empty) <> vALUE_VAR2
-                kfun = braces' $ mkArrangementKey d rel arr True in
-            "XFormArrangement::StreamJoin{"                                                                                    $$
-            "    description:" <+> descr                                                                                       $$
-            "    ffun:" <+> ffun <> ","                                                                                        $$
-            "    rel:" <+> relid <> ","                                                                                        $$
-            "    kfun: {fn __f(" <> vALUE_VAR <> ": &DDValue) -> ::std::option::Option<DDValue>"                               $$
-            nest' kfun                                                                                                         $$
-            "    __f},"                                                                                                        $$
-            "    jfun: {fn __f(" <> vALUE_VAR1 <> ": &DDValue," <> v2 <> ": &DDValue) -> ::std::option::Option<DDValue>"       $$
-            nest' jfun                                                                                                         $$
-            "    __f},"                                                                                                        $$
-            "    next: Box::new(" <> next <> ")"                                                                               $$
-            "}"
+        JoinArngStream -> renderArrangedStreamJoin d rel arr is_semi jfun ffun relid descr next
         JoinStreamArng | is_semi ->
             "XFormCollection::StreamSemijoin{"                                                                                 $$
             "    description:" <+> descr                                                                                       $$
@@ -2567,7 +2553,7 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
                        (vcat $ map (\i -> mkFilter d (CtxRuleRCond rl i) $ rhsExpr $ ruleRHS !! i) input_filters)   $$
                        "Some((" <> akey <> "," <+> aval <> "))"
         JoinArngArng | is_semi ->
-            "XFormArrangement::Semijoin{"                                                                                   $$
+            "XFormArrangement::Semijoin {"                                                                                   $$
             "    description:" <+> descr                                                                                    $$
             "    ffun:" <+> ffun <> ","                                                                                     $$
             "    arrangement: (" <> relid <> "," <> pp aid <> "),"                                                          $$
@@ -2577,7 +2563,7 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
             "    next: Box::new(" <> next  <> ")"                                                                           $$
             "}"
                     | otherwise ->
-            "XFormArrangement::Join{"                                                                                       $$
+            "XFormArrangement::Join {"                                                                                       $$
             "    description:" <+> descr                                                                                    $$
             "    ffun:" <+> ffun <> ","                                                                                     $$
             "    arrangement: (" <> relid <> "," <> pp aid <> "),"                                                          $$
@@ -2586,6 +2572,30 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
             "    __f},"                                                                                                     $$
             "    next: Box::new(" <> next <> ")"                                                                            $$
             "}"
+
+renderArrangedStreamJoin :: (?cfg::Config, ?crate_graph::CrateGraph, ?specname::String, ?statics::CrateStatics) => DatalogProgram -> Relation -> Expr -> Bool -> Doc -> Doc -> Doc -> Doc -> Doc -> Doc
+renderArrangedStreamJoin program relation arrangement is_semi join_func filter_func relid description next =
+    let v2 = (if is_semi then "_" else empty) <> vALUE_VAR2
+        key_func = braces' $ mkArrangementKey program relation arrangement True
+            in
+                "::differential_datalog::program::XFormArrangement::StreamJoin{"
+                $$ "    description:" <+> description
+                $$ "    ffun:" <+> filter_func <> ","
+                $$ "    rel:" <+> relid <> ","
+                $$ "    kfun: {"
+                $$ "        fn __ddlog_generated_stream_join_key_function(" <> vALUE_VAR <> ": &::differential_datalog::ddval::DDValue)"
+                $$ "            -> ::std::option::Option<::differential_datalog::ddval::DDValue>"
+                $$ nest' (nest' key_func)
+                $$ "        __ddlog_generated_stream_join_key_function"
+                $$ "    },"
+                $$ "    jfun: {"
+                $$ "        fn __ddlog_generated_stream_join_function(" <> vALUE_VAR1 <> ": &::differential_datalog::ddval::DDValue," <+> v2 <> ": &::differential_datalog::ddval::DDValue)"
+                $$ "            -> ::std::option::Option<::differential_datalog::ddval::DDValue>"
+                $$ nest' (nest' join_func)
+                $$ "        __ddlog_generated_stream_join_function"
+                $$ "    },"
+                $$ "    next: ::std::boxed::Box::new(" <> next <> ")"
+                $$ "}"
 
 -- Compile XForm::Antijoin
 mkAntijoin :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?statics::CrateStatics) => DatalogProgram -> [Int] -> Bool -> Atom -> Rule -> Int -> CompilerMonad Doc
