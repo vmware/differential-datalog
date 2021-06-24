@@ -66,16 +66,19 @@ import Language.DifferentialDatalog.DatalogProgram
 -- resulting rule may no longer type check and should not be used for
 -- anything other then pretty-printing).
 ruleStripTypeAnnotations :: Rule -> Rule
-ruleStripTypeAnnotations rl@Rule{..} =
-    runIdentity $ ruleExprMapCtxM (\ctx e -> return $ exprStripTypeAnnotationsRec (E e) ctx) rl
+ruleStripTypeAnnotations rule@Rule{..} =
+    runIdentity $ ruleExprMapCtxM (\ctx e -> return $ exprStripTypeAnnotationsRec (E e) ctx) rule
 
 -- | Pretty-print the first 'len' literals of a rule. 
 rulePPPrefix :: Rule -> Int -> Doc
-rulePPPrefix rl len = commaSep $ map pp $ take len $ ruleRHS $ ruleStripTypeAnnotations rl
+rulePPPrefix rule len = commaSep (map pp $ take len $ ruleRHS $ ruleStripTypeAnnotations rule) <+> location rule
 
 -- | Pretty-print rule without type annotations.
 rulePPStripped :: Rule -> Doc
-rulePPStripped rule = pp (ruleStripTypeAnnotations rule) <+> char '@' <+> file <> char ':' <> line <> char ':' <> column
+rulePPStripped rule = pp (ruleStripTypeAnnotations rule) <+> location rule
+
+location :: Rule -> Doc
+location rule = char '@' <+> file <> char ':' <> line <> char ':' <> column
     where
         (position, _) = rulePos rule
         file = text (sourceName position)
