@@ -315,9 +315,7 @@ exprVarDecls d ctx e =
                         -- implicitly.
                         EVar _ v | ctxInRuleRHSPositivePattern ctx'
                                          -> let var = ExprVar ctx' e_ in
-                                            if isNothing (lookupVar d ctx' v)   
-                                            then [var]
-                                            else []   
+                                            ([var | isNothing (lookupVar d ctx' v)])
                         ESet _ l _       -> snd l
                         EBinding _ _ e'' -> BindingVar ctx' e_ : snd e''
                         ETyped _ e'' _   -> snd e''
