@@ -35,7 +35,7 @@ example, we attempt to share indexes between multiple collections and
 operators.  We use reference counting for large values, but
 stack-based implementations for small values.  The non-linear
 operators (like \texttt{distinct}) can be very expensive, so we try to
-minimize their usage.  The compiler attempts reuse common prefixes of
+minimize their usage.  The compiler attempts to reuse common prefixes of
 disjoint rules.
 
 \begin{figure}
