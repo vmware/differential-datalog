@@ -2598,12 +2598,12 @@ mkAntijoin d input_filters input_val atom@Atom{..} rl ajoin_idx = do
     aid <- fromJust <$> getAntijoinArrangement atomRelation arr
     next <- compileRule d rl ajoin_idx input_val
     relid <- atomRelId d atom
-    return $ "XFormArrangement::Antijoin {"                                                                   $$
-             "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ rulePPPrefix rl $ ajoin_idx + 1) <> "),"    $$
-             "    ffun:" <+> ffun <> ","                                                                      $$
-             "    arrangement: (" <> relid <> "," <> pp aid <> "),"                                           $$
-             "    next: Box::new(" <> next <> ")"                                                             $$
-             "}"
+    return $ "::differential_datalog::program::XFormArrangement::Antijoin {"
+        $$ "    description: ::std::borrow::Cow::Borrowed(" <> pp (show $ show $ rulePPPrefix rl $ ajoin_idx + 1) <> "),"
+        $$ "    ffun:" <+> ffun <> ","
+        $$ "    arrangement: (" <> relid <> "," <+> pp aid <> "),"
+        $$ "    next: ::std::boxed::Box::new(" <> next <> ")"
+        $$ "}"
 
 -- Normalized representation of an arrangement.  In general, an arrangement is characterized
 -- by its key function 'key: Value->Option<Value>' that filters the input collection and computes
