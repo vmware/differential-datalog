@@ -1,31 +1,38 @@
 use std::borrow::Cow;
 
-// The main auto-generated crate `<progname>_ddlog` (`tutorial_ddlog`
-// in this case) declares `HDDlog` type that serves as a reference to a
-// running DDlog program.
-// `HDDlog` implements `trait differential_datalog::DDlog` (see below).
-use tutorial_ddlog::api::HDDlog;
-
-// `enum Relations` enumerates program relations
+// The `Relations` enum enumerates program relations
 use tutorial_ddlog::Relations;
 
-// The crate contains several functions that convert between numeric
-// relation id's and symbolic names.
-use tutorial_ddlog::relid2name;
-
-// Type and function definitions.
+// Type and function definitions generated for each ddlog program
 use tutorial_ddlog::typedefs::*;
 
 // The differential_datalog crate contains the DDlog runtime that is
 // the same for all DDlog programs and simply gets copied to each generated
 // DDlog workspace unmodified (this will change in future releases).
+
+// The `differential_datalog` crate declares the `HDDlog` type that
+// serves as a reference to a running DDlog program.
+use differential_datalog::api::HDDlog;
+
+// HDDlog implementa several traits:
+use differential_datalog::{DDlog, DDlogDynamic, DDlogInventory};
+
+// The `differential_datalog::program::config` module declares datatypes
+// used to configure DDlog program on startup.
+use differential_datalog::program::config::{Config, ProfilingKind};
+
+// Type that represents a set of changes to DDlog relations.
+// Returned by `DDlog::transaction_commit_dump_changes()`.
 use differential_datalog::DeltaMap;
-use differential_datalog::{DDlog, DDlogDynamic, DDlogInventory}; // Trait that must be implemented by an instance of a DDlog program. // Type that represents a set of changes to DDlog relations.
-                                                                 // Returned by `DDlog::transaction_commit_dump_changes()`.
+
+// Trait to convert Rust types to/from DDValue.
+// All types used in input and output relations, indexes, and
+// primary keys implement this trait.
 use differential_datalog::ddval::DDValConvert;
-use differential_datalog::ddval::DDValue; // Generic type that wraps all DDlog value. // Trait to convert Rust types to/from DDValue.
-                                          // All types used in input and output relations, indexes, and
-                                          // primary keys implement this trait.
+
+// Generic type that wraps all DDlog values.
+use differential_datalog::ddval::DDValue;
+
 use differential_datalog::program::RelId; // Numeric relations id.
 use differential_datalog::program::Update; // Type-safe representation of a DDlog command (insert/delete_val/delete_key/...)
 
@@ -35,18 +42,26 @@ use differential_datalog::record::RelIdentifier; // Relation identifier: either 
 use differential_datalog::record::UpdCmd; // Dynamically typed representation of DDlog command.
 
 fn main() -> Result<(), String> {
-    // Instantiate a DDlog program.
-    // Returns a handle to the program and initial contents of output relations.
-    // Arguments
-    // - number of worker threads (you typically want 1 or 2).
-    // - Boolean flag that indicates whether DDlog will track the complete snapshot
-    //   of output relations.  Should only be used for debugging in order to dump
-    //   the contents of output tables using `HDDlog::dump_table()`.  Otherwise,
-    //   indexes are the preferred way to achieve this.
-    let (hddlog, init_state) = HDDlog::run(1, false)?;
+    // Create a DDlog configuration with 1 worker thread and with the self-profiling feature
+    // enabled.
+    let config = Config::new()
+        .with_timely_workers(1)
+        .with_profiling_kind(ProfilingKind::SelfProfiling);
+    // Instantiate the DDlog program with this configuration.
+    // The second argument of `run_with_config` is a Boolean flag that indicates
+    // whether DDlog will track the complete snapshot of output relations.  It
+    // should only be set for debugging in order to dump the contents of output
+    // tables using `HDDlog::dump_table()`.  Otherwise, indexes are the preferred
+    // way to achieve this.
+    let (hddlog, init_state) = tutorial_ddlog::run_with_config(config, false)?;
+
+    // Alternatively, use `tutorial_ddlog::run` to instantiate the program with default
+    // configuration.  The first argument specifies the number of workers.
+
+    // let (hddlog, init_state) = tutorial_ddlog::run(1, false)?;
 
     println!("Initial state");
-    dump_delta(&init_state);
+    dump_delta(&hddlog, &init_state);
 
     /*
      * We perform two transactions that insert in the following two DDlog relations
@@ -99,7 +114,7 @@ fn main() -> Result<(), String> {
     //assert_eq!(delta, delta_expected);
 
     println!("\nState after transaction 1");
-    dump_delta(&delta);
+    dump_delta(&hddlog, &delta);
 
     // This shows how to extract values from `DeltaMap`.
     println!("\nEnumerating new phrases");
@@ -118,7 +133,7 @@ fn main() -> Result<(), String> {
 
     // `Record` type
 
-    let relid_word1 = hddlog.get_table_id("Word1").unwrap() as RelId;
+    let relid_word1 = hddlog.inventory.get_table_id("Word1").unwrap() as RelId;
 
     // `UpdCmd` is a dynamically typed representation of a DDlog command.
     // It takes a vector or `Record`'s, which represent dynamically typed
@@ -149,15 +164,15 @@ fn main() -> Result<(), String> {
     let delta = hddlog.transaction_commit_dump_changes()?;
 
     println!("\nState after transaction 2");
-    dump_delta(&delta);
+    dump_delta(&hddlog, &delta);
 
     hddlog.stop().unwrap();
     Ok(())
 }
 
-fn dump_delta(delta: &DeltaMap<DDValue>) {
+fn dump_delta(ddlog: &HDDlog, delta: &DeltaMap<DDValue>) {
     for (rel, changes) in delta.iter() {
-        println!("Changes to relation {}", relid2name(*rel).unwrap());
+        println!("Changes to relation {}", ddlog.inventory.get_table_name(*rel).unwrap());
         for (val, weight) in changes.iter() {
             println!("{} {:+}", val, weight);
         }

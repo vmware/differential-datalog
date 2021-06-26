@@ -20,7 +20,6 @@
     renamed_and_removed_lints,
     rust_2018_compatibility,
     rust_2018_idioms,
-    safe_packed_borrows,
     stable_features,
     trivial_bounds,
     trivial_numeric_casts,
@@ -40,7 +39,7 @@
     where_clauses_object_safety,
     while_true
 )]
-#![cfg(unix)]
+// #![cfg(unix)]
 
 //! Distributed computing for differential-datalog.
 

@@ -3,9 +3,12 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread::spawn;
 
-use differential_datalog::ddval::{DDValue, DDValConvert};
-use differential_datalog::program::Update;
-use differential_datalog::record::{Record, RelIdentifier, UpdCmd};
+use differential_datalog::{
+    api::HDDlog,
+    ddval::{DDValConvert, DDValue},
+    program::Update,
+    record::{Record, RelIdentifier, UpdCmd},
+};
 use distributed_datalog::accumulate::{Accumulator, DistributingAccumulator};
 use distributed_datalog::await_expected;
 use distributed_datalog::DDlogServer as DDlogServerT;
@@ -17,9 +20,6 @@ use distributed_datalog::TcpSender;
 use distributed_datalog::TxnMux;
 use distributed_datalog::UpdatesObservable as UpdatesObservableT;
 
-use server_api_ddlog::UpdateSerializer;
-use server_api_ddlog::api::updcmd2upd;
-use server_api_ddlog::api::HDDlog;
 use server_api_ddlog::Relations::server_api_1_P1In;
 use server_api_ddlog::Relations::server_api_1_P1Out;
 use server_api_ddlog::Relations::server_api_2_P2In;
@@ -27,6 +27,7 @@ use server_api_ddlog::Relations::server_api_2_P2Out;
 use server_api_ddlog::Relations::server_api_3_P1Out;
 use server_api_ddlog::Relations::server_api_3_P2Out;
 use server_api_ddlog::Relations::server_api_3_P3Out;
+use server_api_ddlog::{Inventory, UpdateSerializer};
 
 use maplit::btreeset;
 use maplit::hashmap;
@@ -41,10 +42,10 @@ fn single_delta_test<F>(setup: F) -> Result<(), String>
 where
     F: FnOnce(&mut UpdatesObservable, SharedObserver<DDlogServer>) -> Result<Box<dyn Any>, String>,
 {
-    let (program1, _) = HDDlog::run(1, false).unwrap();
+    let (program1, _) = server_api_ddlog::run(1, false).unwrap();
     let mut server1 = DDlogServer::new(Some(Arc::new(program1)), hashmap! {});
 
-    let (program2, _) = HDDlog::run(1, false).unwrap();
+    let (program2, _) = server_api_ddlog::run(1, false).unwrap();
     let mut server2 = DDlogServer::new(
         Some(Arc::new(program2)),
         hashmap! {
@@ -66,13 +67,15 @@ where
 
     server1.on_start()?;
     server1.on_updates(Box::new(
-        updates.into_iter().map(|cmd| updcmd2upd(cmd).unwrap()),
+        updates
+            .into_iter()
+            .map(|cmd| cmd.to_update(&Inventory).unwrap()),
     ))?;
     server1.on_commit()?;
 
     await_expected(|| {
         let state = (*acc.lock().unwrap()).get_current_state();
-        let expected = hashmap!{server_api_2_P2Out as usize => hashset!{"delta-me-now".to_string().into_ddvalue()}};
+        let expected = hashmap! {server_api_2_P2Out as usize => hashset!{"delta-me-now".to_string().into_ddvalue()}};
         assert_eq!(state, expected);
     });
     Ok(())
@@ -101,7 +104,8 @@ fn single_delta_tcp() -> Result<(), String> {
         observable: &mut UpdatesObservable,
         observer: SharedObserver<DDlogServer>,
     ) -> Result<Box<dyn Any>, String> {
-        let mut recv = TcpReceiver::<Update<DDValue>, UpdateSerializer>::new("127.0.0.1:0").unwrap();
+        let mut recv =
+            TcpReceiver::<Update<DDValue>, UpdateSerializer>::new("127.0.0.1:0").unwrap();
         let send = TcpSender::<UpdateSerializer>::new(*recv.addr()).unwrap();
 
         let _ = recv.subscribe(Box::new(observer)).unwrap();
@@ -127,13 +131,13 @@ where
     //        /        \
     //     P1[s1]     P2[s2]
     //
-    let (program1, _) = HDDlog::run(1, false).unwrap();
+    let (program1, _) = server_api_ddlog::run(1, false).unwrap();
     let mut server1 = DDlogServer::new(Some(Arc::new(program1)), hashmap! {});
 
-    let (program2, _) = HDDlog::run(1, false).unwrap();
+    let (program2, _) = server_api_ddlog::run(1, false).unwrap();
     let mut server2 = DDlogServer::new(Some(Arc::new(program2)), hashmap! {});
 
-    let (program3, _) = HDDlog::run(1, false).unwrap();
+    let (program3, _) = server_api_ddlog::run(1, false).unwrap();
     let redirect = hashmap! {
         server_api_1_P1Out as usize => server_api_3_P1Out as usize,
         server_api_2_P2Out as usize => server_api_3_P2Out as usize,
@@ -159,7 +163,9 @@ where
         server1.on_start().unwrap();
         server1
             .on_updates(Box::new(
-                updates1.into_iter().map(|cmd| updcmd2upd(cmd).unwrap()),
+                updates1
+                    .into_iter()
+                    .map(|cmd| cmd.to_update(&Inventory).unwrap()),
             ))
             .unwrap();
         server1.on_commit().unwrap();
@@ -174,7 +180,9 @@ where
         server2.on_start().unwrap();
         server2
             .on_updates(Box::new(
-                updates2.into_iter().map(|cmd| updcmd2upd(cmd).unwrap()),
+                updates2
+                    .into_iter()
+                    .map(|cmd| cmd.to_update(&Inventory).unwrap()),
             ))
             .unwrap();
         server2.on_commit().unwrap();
@@ -182,7 +190,7 @@ where
 
     await_expected(|| {
         let state = (*acc.lock().unwrap()).get_current_state();
-        let expected = hashmap!{server_api_3_P3Out as usize => hashset!{"p1-entryp2-entry".to_string().into_ddvalue()}};
+        let expected = hashmap! {server_api_3_P3Out as usize => hashset!{"p1-entryp2-entry".to_string().into_ddvalue()}};
         assert_eq!(state, expected);
     });
 

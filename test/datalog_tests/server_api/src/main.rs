@@ -1,13 +1,13 @@
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::thread::park;
 
 use env_logger::init;
-use once_cell::sync::Lazy;
 use log::debug;
 use log::info;
 use log::log_enabled;
 use log::Level::Info;
+use once_cell::sync::Lazy;
 use serde_json::to_string as to_json;
 use structopt::StructOpt;
 
@@ -24,8 +24,8 @@ use distributed_datalog::ReadConfig;
 use distributed_datalog::ReadMembers;
 use distributed_datalog::Realization;
 
-use server_api_ddlog::api::HDDlog;
-use server_api_ddlog::{DDlogConverter, UpdateSerializer};
+use differential_datalog::{api::HDDlog, flatbuf::UnimplementedFlatbufConverter, program::Config};
+use server_api_ddlog::{prog, D3logInventory, Inventory, UpdateSerializer};
 use server_api_test::config;
 
 #[derive(StructOpt, Debug)]
@@ -107,21 +107,54 @@ fn manual(
 
     let assignment = simple_assign(sys_cfg.keys(), members.iter())
         .ok_or_else(|| format!("failed to find an node:member assignment"))?;
-    let _realization = instantiate::<HDDlog, DDlogConverter, UpdateSerializer>(sys_cfg.clone(), &member, &assignment, HDDlog::run(1, false).unwrap().0)?;
+    let _realization = instantiate::<Inventory, HDDlog, UpdateSerializer>(
+        sys_cfg.clone(),
+        &member,
+        &assignment,
+        HDDlog::new(
+            Config::default(),
+            false,
+            None,
+            prog,
+            Box::new(Inventory),
+            Box::new(D3logInventory),
+            Box::new(UnimplementedFlatbufConverter),
+        )?
+        .0,
+        Inventory,
+    )?;
 
     println!("Configuration is running. Stop with Ctrl-C.");
     park();
     Ok(())
 }
 
-fn reconfigure(member: &Addr, zookeeper: &ZooKeeper) -> Result<Vec<Realization<DDlogConverter, UpdateSerializer>>, String> {
+fn reconfigure(
+    member: &Addr,
+    zookeeper: &ZooKeeper,
+) -> Result<Vec<Realization<Arc<Inventory>, UpdateSerializer>>, String> {
     let members = zookeeper.members()?;
     let sys_cfg = zookeeper.config()?;
 
     let assignment = simple_assign(sys_cfg.keys(), members.iter())
         .ok_or_else(|| format!("failed to find an node:member assignment"))?;
 
-    let realization = instantiate::<HDDlog, DDlogConverter, UpdateSerializer>(sys_cfg, member, &assignment, HDDlog::run(1, false).unwrap().0)?;
+    let realization = instantiate::<Inventory, HDDlog, UpdateSerializer>(
+        sys_cfg,
+        member,
+        &assignment,
+        HDDlog::new(
+            Config::default(),
+            false,
+            None,
+            prog,
+            Box::new(Inventory),
+            Box::new(D3logInventory),
+            Box::new(UnimplementedFlatbufConverter),
+        )?
+        .0,
+        Inventory,
+    )?;
     Ok(realization)
 }
 
@@ -152,7 +185,7 @@ fn reconfig_state(member: &Addr, state: &Mutex<State>) -> Result<(), String> {
 #[derive(Default)]
 struct State {
     zookeeper: Option<ZooKeeper>,
-    realization: Option<Vec<Realization<DDlogConverter, UpdateSerializer>>>,
+    realization: Option<Vec<Realization<Arc<Inventory>, UpdateSerializer>>>,
 }
 
 impl State {

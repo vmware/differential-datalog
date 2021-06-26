@@ -20,6 +20,11 @@
     clippy::redundant_clone
 )]
 
+mod inventory;
+pub mod ovsdb_api;
+
+pub use inventory::{D3logInventory, Inventory};
+
 use num::bigint::BigInt;
 use std::convert::TryFrom;
 use std::hash::Hash;
@@ -43,18 +48,11 @@ use differential_datalog::record::IntoRecord;
 use differential_datalog::record::RelIdentifier;
 use differential_datalog::record::UpdCmd;
 use differential_datalog::D3logLocationId;
-use differential_datalog::DDlogConvert;
 use num_traits::cast::FromPrimitive;
 use num_traits::identities::One;
 use once_cell::sync::Lazy;
 
-use fnv::FnvHashMap;
-
-pub mod api;
-pub mod ovsdb_api;
-pub mod update_handler;
-
-use crate::api::updcmd2upd;
+use fnv::{FnvBuildHasher, FnvHashMap};
 
 use serde::ser::SerializeTuple;
 use serde::Deserialize;
@@ -67,17 +65,9 @@ use serde::Serializer;
 #[doc(hidden)]
 #[cfg(feature = "c_api")]
 pub use ddlog_log as hidden_ddlog_log;
-
-/// A default implementation of `DDlogConvert` that just forwards calls
-/// to generated functions of equal name.
-#[derive(Debug)]
-pub struct DDlogConverter {}
-
-impl DDlogConvert for DDlogConverter {
-    fn updcmd2upd(upd_cmd: &UpdCmd) -> ::std::result::Result<program::Update<DDValue>, String> {
-        updcmd2upd(upd_cmd)
-    }
-}
+#[doc(hidden)]
+#[cfg(feature = "c_api")]
+pub use differential_datalog::api as hidden_ddlog_api;
 
 /* Wrapper around `Update<DDValue>` type that implements `Serialize` and `Deserialize`
  * traits.  It is currently only used by the distributed_ddlog crate in order to
@@ -118,7 +108,7 @@ impl From<UpdateSerializer> for program::Update<DDValue> {
     }
 }
 
-impl Serialize for UpdateSerializer {
+impl ::serde::Serialize for UpdateSerializer {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut tup = serializer.serialize_tuple(3)?;
         match &self.0 {
@@ -143,7 +133,6 @@ macro_rules! decl_update_deserializer {
     ( $n:ty, $(($rel:expr, $typ:ty)),* ) => {
         impl<'de> ::serde::Deserialize<'de> for $n {
             fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> ::std::result::Result<Self, D::Error> {
-
                 struct UpdateVisitor;
 
                 impl<'de> ::serde::de::Visitor<'de> for UpdateVisitor {
@@ -154,17 +143,19 @@ macro_rules! decl_update_deserializer {
                     }
 
                     fn visit_seq<A>(self, mut seq: A) -> ::std::result::Result<Self::Value, A::Error>
-                    where A: ::serde::de::SeqAccess<'de> {
+                    where
+                        A: ::serde::de::SeqAccess<'de>,
+                    {
                         let polarity = seq.next_element::<bool>()?.ok_or_else(|| <A::Error as ::serde::de::Error>::custom("Missing polarity"))?;
-                        let relid = seq.next_element::<program::RelId>()?.ok_or_else(|| <A::Error as ::serde::de::Error>::custom("Missing relation id"))?;
+                        let relid = seq.next_element::<::differential_datalog::program::RelId>()?.ok_or_else(|| <A::Error as ::serde::de::Error>::custom("Missing relation id"))?;
                         match relid {
                             $(
                                 $rel => {
                                     let v = seq.next_element::<$typ>()?.ok_or_else(|| <A::Error as ::serde::de::Error>::custom("Missing value"))?.into_ddvalue();
                                     if polarity {
-                                        Ok(UpdateSerializer(program::Update::Insert{relid, v}))
+                                        Ok(UpdateSerializer(::differential_datalog::program::Update::Insert { relid, v }))
                                     } else {
-                                        Ok(UpdateSerializer(program::Update::DeleteValue{relid, v}))
+                                        Ok(UpdateSerializer(::differential_datalog::program::Update::DeleteValue { relid, v }))
                                     }
                                 },
                             )*
@@ -199,16 +190,27 @@ impl TryFrom<&RelIdentifier> for Relations {
     }
 }
 
-// Macro used to implement `trait D3log`.  Invoked from generated code.
+// Macro used to implement `trait D3log`. Invoked from generated code.
 #[macro_export]
 macro_rules! impl_trait_d3log {
     () => {
-        fn d3log_localize_val(_relid: program::RelId, val: DDValue) -> Result<(Option<D3logLocationId>, program::RelId, DDValue), DDValue> {
-            Err(val)
+        fn d3log_localize_val(
+            _relid: ::differential_datalog::program::RelId,
+            value: ::differential_datalog::ddval::DDValue,
+        ) -> ::core::result::Result<
+            (
+                ::core::option::Option<::differential_datalog::D3logLocationId>,
+                ::differential_datalog::program::RelId,
+                ::differential_datalog::ddval::DDValue,
+            ),
+            ::differential_datalog::ddval::DDValue,
+        > {
+            ::core::result::Result::Err(value)
         }
     };
+
     ( $(($out_rel:expr, $in_rel:expr, $typ:ty)),+ ) => {
-        pub static D3LOG_CONVERTER_MAP : ::once_cell::sync::Lazy<::std::collections::HashMap<program::RelId, fn(DDValue)->Result<(Option<D3logLocationId>, program::RelId, DDValue), DDValue>>> = ::once_cell::sync::Lazy::new(|| {
+        pub static D3LOG_CONVERTER_MAP: ::once_cell::sync::Lazy<::std::collections::HashMap<program::RelId, fn(DDValue)->Result<(Option<D3logLocationId>, program::RelId, DDValue), DDValue>>> = ::once_cell::sync::Lazy::new(|| {
             let mut m = ::std::collections::HashMap::new();
             $(
                 m.insert($out_rel, { fn __f(val: DDValue) -> Result<(Option<D3logLocationId>, program::RelId, DDValue), DDValue> {
@@ -231,6 +233,165 @@ macro_rules! impl_trait_d3log {
     };
 }
 
+static RAW_RELATION_ID_MAP: ::once_cell::sync::Lazy<
+    ::fnv::FnvHashMap<::differential_datalog::program::RelId, &'static ::core::primitive::str>,
+> = ::once_cell::sync::Lazy::new(|| {
+    let mut map = ::fnv::FnvHashMap::with_capacity_and_hasher(
+        crate::RELIDMAP.len(),
+        ::fnv::FnvBuildHasher::default(),
+    );
+
+    for (&relation, &name) in crate::RELIDMAP.iter() {
+        map.insert(relation as ::differential_datalog::program::RelId, name);
+    }
+
+    map
+});
+
+static RAW_INPUT_RELATION_ID_MAP: ::once_cell::sync::Lazy<
+    ::fnv::FnvHashMap<::differential_datalog::program::RelId, &'static ::core::primitive::str>,
+> = ::once_cell::sync::Lazy::new(|| {
+    let mut map = ::fnv::FnvHashMap::with_capacity_and_hasher(
+        crate::INPUT_RELIDMAP.len(),
+        ::fnv::FnvBuildHasher::default(),
+    );
+
+    for (&relation, &name) in crate::INPUT_RELIDMAP.iter() {
+        map.insert(relation as ::differential_datalog::program::RelId, name);
+    }
+
+    map
+});
+
+/// Create an instance of the DDlog program.
+///
+/// `config` - program configuration.
+/// `do_store` - indicates whether DDlog will track the complete snapshot
+///   of output relations.  Should only be used for debugging in order to dump
+///   the contents of output tables using `HDDlog::dump_table()`.  Otherwise,
+///   indexes are the preferred way to achieve this.
+///
+/// Returns a handle to the program and initial contents of output relations.
+pub fn run_with_config(
+    config: ::differential_datalog::program::config::Config,
+    do_store: bool,
+) -> Result<
+    (
+        ::differential_datalog::api::HDDlog,
+        ::differential_datalog::DeltaMap<DDValue>,
+    ),
+    String,
+> {
+    #[cfg(feature = "flatbuf")]
+    let flatbuf_converter = Box::new(crate::flatbuf::DDlogFlatbufConverter);
+    #[cfg(not(feature = "flatbuf"))]
+    let flatbuf_converter = Box::new(differential_datalog::flatbuf::UnimplementedFlatbufConverter);
+
+    ::differential_datalog::api::HDDlog::new(
+        config,
+        do_store,
+        None,
+        crate::prog,
+        Box::new(crate::Inventory),
+        Box::new(crate::D3logInventory),
+        flatbuf_converter,
+    )
+}
+
+/// Create an instance of the DDlog program with default configuration.
+///
+/// `workers` - number of worker threads (typical values are in the range from 1 to 4).
+/// `do_store` - indicates whether DDlog will track the complete snapshot
+///   of output relations.  Should only be used for debugging in order to dump
+///   the contents of output tables using `HDDlog::dump_table()`.  Otherwise,
+///   indexes are the preferred way to achieve this.
+///
+/// Returns a handle to the program and initial contents of output relations.
+pub fn run(
+    workers: usize,
+    do_store: bool,
+) -> Result<
+    (
+        ::differential_datalog::api::HDDlog,
+        ::differential_datalog::DeltaMap<DDValue>,
+    ),
+    String,
+> {
+    let config =
+        ::differential_datalog::program::config::Config::new().with_timely_workers(workers);
+
+    #[cfg(feature = "flatbuf")]
+    let flatbuf_converter = Box::new(crate::flatbuf::DDlogFlatbufConverter);
+    #[cfg(not(feature = "flatbuf"))]
+    let flatbuf_converter = Box::new(differential_datalog::flatbuf::UnimplementedFlatbufConverter);
+
+    ::differential_datalog::api::HDDlog::new(
+        config,
+        do_store,
+        None,
+        crate::prog,
+        Box::new(crate::Inventory),
+        Box::new(crate::D3logInventory),
+        flatbuf_converter,
+    )
+}
+
+#[no_mangle]
+#[cfg(feature = "c_api")]
+pub unsafe extern "C" fn ddlog_run(
+    workers: ::libc::c_uint,
+    do_store: ::core::primitive::bool,
+    print_err: ::core::option::Option<extern "C" fn(msg: *const ::libc::c_char)>,
+    init_state: *mut *mut ::differential_datalog::DeltaMap<::differential_datalog::ddval::DDValue>,
+) -> *const ::differential_datalog::api::HDDlog {
+    use ::core::{
+        primitive::usize,
+        ptr,
+        result::Result::{Err, Ok},
+    };
+    use ::differential_datalog::{
+        api::HDDlog,
+        program::config::{Config, ProfilingKind},
+    };
+    use ::std::{boxed::Box, format};
+    use ::triomphe::Arc;
+
+    let config = Config::new()
+        .with_timely_workers(workers as usize)
+        .with_profiling_kind(ProfilingKind::SelfProfiling);
+
+    #[cfg(feature = "flatbuf")]
+    let flatbuf_converter = Box::new(crate::flatbuf::DDlogFlatbufConverter);
+    #[cfg(not(feature = "flatbuf"))]
+    let flatbuf_converter = Box::new(differential_datalog::flatbuf::UnimplementedFlatbufConverter);
+
+    let result = HDDlog::new(
+        config,
+        do_store,
+        print_err,
+        crate::prog,
+        Box::new(crate::Inventory),
+        Box::new(crate::D3logInventory),
+        flatbuf_converter,
+    );
+
+    match result {
+        Ok((hddlog, init)) => {
+            if !init_state.is_null() {
+                *init_state = Box::into_raw(Box::new(init));
+            }
+
+            // Note: This is `triomphe::Arc`, *not* `std::sync::Arc`
+            Arc::into_raw(Arc::new(hddlog))
+        }
+
+        Err(err) => {
+            HDDlog::print_err(print_err, &format!("ddlog_run() failed: {}", err));
+            ptr::null()
+        }
+    }
+}
+
 /*- !!!!!!!!!!!!!!!!!!!! -*/
 // Don't edit this line
 // Code below this point is needed to test-compile template
@@ -243,13 +404,17 @@ pub mod ddlog_bigint;
 #[path = "../../../lib/ddlog_log.rs"]
 pub mod ddlog_log;
 
-pub fn prog(__update_cb: std::sync::Arc<dyn program::RelationCallback>) -> program::Program {
-    panic!("prog not implemented")
+pub fn prog(
+    __update_cb: ::std::sync::Arc<dyn ::differential_datalog::program::RelationCallback>,
+) -> ::differential_datalog::program::Program {
+    ::std::panic!("prog not implemented")
 }
 
-impl<'de> Deserialize<'de> for UpdateSerializer {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        panic!("Not implemented: UpdateSerializer::deserialize")
+impl<'de> ::serde::Deserialize<'de> for crate::UpdateSerializer {
+    fn deserialize<D: ::serde::de::Deserializer<'de>>(
+        deserializer: D,
+    ) -> ::std::result::Result<Self, D::Error> {
+        ::std::panic!("Not implemented: UpdateSerializer::deserialize")
     }
 }
 
@@ -261,31 +426,31 @@ pub enum Relations {
 #[allow(clippy::trivially_copy_pass_by_ref)]
 impl Relations {
     pub fn is_input(&self) -> bool {
-        panic!("Relations::is_input not implemented")
+        ::std::panic!("Relations::is_input not implemented")
     }
 
     pub fn is_output(&self) -> bool {
-        panic!("Relations::is_output not implemented")
+        ::std::panic!("Relations::is_output not implemented")
     }
 
     pub fn type_id(&self) -> TypeId {
-        panic!("Relations::type_id not implemented")
+        ::std::panic!("Relations::type_id not implemented")
     }
 }
 
-impl TryFrom<&str> for Relations {
+impl ::std::convert::TryFrom<&str> for crate::Relations {
     type Error = ();
 
     fn try_from(rname: &str) -> ::std::result::Result<Self, ()> {
-        panic!("Relations::try_from::<&str> not implemented")
+        ::std::panic!("Relations::try_from::<&str> not implemented")
     }
 }
 
-impl TryFrom<program::RelId> for Relations {
+impl ::std::convert::TryFrom<program::RelId> for crate::Relations {
     type Error = ();
 
-    fn try_from(rid: program::RelId) -> ::std::result::Result<Self, ()> {
-        panic!("Relations::try_from::<RelId> not implemented")
+    fn try_from(rid: ::differential_datalog::program::RelId) -> ::std::result::Result<Self, ()> {
+        ::std::panic!("Relations::try_from::<RelId> not implemented")
     }
 }
 
@@ -294,57 +459,57 @@ pub enum Indexes {
     X = 0,
 }
 
-impl TryFrom<&str> for Indexes {
+impl ::std::convert::TryFrom<&str> for crate::Indexes {
     type Error = ();
 
     fn try_from(_iname: &str) -> ::std::result::Result<Self, ()> {
-        panic!("Indexes::try_from::<&str> not implemented")
+        ::std::panic!("Indexes::try_from::<&str> not implemented")
     }
 }
 
-impl TryFrom<program::IdxId> for Indexes {
+impl ::std::convert::TryFrom<::differential_datalog::program::IdxId> for crate::Indexes {
     type Error = ();
 
-    fn try_from(_iid: program::IdxId) -> ::std::result::Result<Self, ()> {
-        panic!("Indexes::try_from::<program::IdxId> not implemented")
+    fn try_from(_iid: ::differential_datalog::program::IdxId) -> ::std::result::Result<Self, ()> {
+        ::std::panic!("Indexes::try_from::<program::IdxId> not implemented")
     }
 }
 
 pub fn relval_from_record(
-    _rel: Relations,
-    _rec: &record::Record,
-) -> ::std::result::Result<DDValue, String> {
-    panic!("relval_from_record not implemented")
+    _rel: crate::Relations,
+    _rec: &::differential_datalog::record::Record,
+) -> ::std::result::Result<::differential_datalog::ddval::DDValue, ::std::string::String> {
+    ::std::panic!("relval_from_record not implemented")
 }
 
 pub fn relkey_from_record(
-    _rel: Relations,
-    _rec: &record::Record,
+    _rel: crate::Relations,
+    _rec: &::differential_datalog::record::Record,
 ) -> ::std::result::Result<DDValue, String> {
-    panic!("relkey_from_record not implemented")
+    ::std::panic!("relkey_from_record not implemented")
 }
 
 pub fn idxkey_from_record(
-    idx: Indexes,
-    _rec: &record::Record,
-) -> ::std::result::Result<DDValue, String> {
-    panic!("idxkey_from_record not implemented")
+    idx: crate::Indexes,
+    _rec: &::differential_datalog::record::Record,
+) -> ::std::result::Result<::differential_datalog::ddval::DDValue, ::std::string::String> {
+    ::std::panic!("idxkey_from_record not implemented")
 }
 
-pub fn relid2name(_rid: program::RelId) -> Option<&'static str> {
-    panic!("relid2name not implemented")
+pub fn relid2name(_rid: ::differential_datalog::program::RelId) -> Option<&'static str> {
+    ::std::panic!("relid2name not implemented")
 }
 
 pub fn rel_name2orig_name(_tname: &str) -> Option<&'static str> {
-    panic!("get_table_original_name not implemented")
+    ::std::panic!("get_table_original_name not implemented")
 }
 
 pub fn relid2cname(_rid: program::RelId) -> Option<&'static ::std::ffi::CStr> {
-    panic!("relid2cname not implemented")
+    ::std::panic!("relid2cname not implemented")
 }
 
 pub fn rel_name2orig_cname(_tname: &str) -> Option<&'static ::std::ffi::CStr> {
-    panic!("rel_name2orig_cname not implemented")
+    ::std::panic!("rel_name2orig_cname not implemented")
 }
 
 pub static RELIDMAP: Lazy<FnvHashMap<Relations, &'static str>> = Lazy::new(FnvHashMap::default);
@@ -354,15 +519,15 @@ pub static OUTPUT_RELIDMAP: Lazy<FnvHashMap<Relations, &'static str>> =
     Lazy::new(FnvHashMap::default);
 
 pub fn indexid2name(_iid: program::IdxId) -> Option<&'static str> {
-    panic!("indexid2name not implemented")
+    ::std::panic!("indexid2name not implemented")
 }
 
 pub fn indexid2cname(_iid: program::IdxId) -> Option<&'static ::std::ffi::CStr> {
-    panic!("indexid2cname not implemented")
+    ::std::panic!("indexid2cname not implemented")
 }
 
 pub fn indexes2arrid(idx: Indexes) -> program::ArrId {
-    panic!("indexes2arrid not implemented")
+    ::std::panic!("indexes2arrid not implemented")
 }
 
 pub static IDXIDMAP: Lazy<FnvHashMap<Indexes, &'static str>> = Lazy::new(FnvHashMap::default);

@@ -35,8 +35,8 @@ fn twitter_micro(c: &mut Criterion) {
                 &dataset,
                 |b, dataset| {
                     b.iter_batched(
-                        || (twitter::init(thread_count), dataset.to_owned()),
-                        |(ddlog, dataset)| twitter::run(black_box(ddlog), black_box(dataset)),
+                        || (ddlog_benches::init(thread_count), dataset.to_owned()),
+                        |(ddlog, dataset)| ddlog_benches::run(black_box(ddlog), black_box(dataset)),
                         BatchSize::PerIteration,
                     )
                 },
@@ -64,8 +64,8 @@ fn twitter_macro(c: &mut Criterion) {
             &dataset,
             |b, dataset| {
                 b.iter_batched(
-                    || (twitter::init(thread_count), dataset.clone()),
-                    |(ddlog, data)| twitter::run(ddlog, data),
+                    || (ddlog_benches::init(thread_count), dataset.clone()),
+                    |(ddlog, data)| ddlog_benches::run(ddlog, data),
                     BatchSize::PerIteration,
                 )
             },

@@ -4,7 +4,6 @@ use std::fs::File as FsFile;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::iter::once;
-use std::marker::PhantomData;
 use std::os::unix::io::AsRawFd;
 use std::os::unix::io::IntoRawFd;
 use std::path::Path;
@@ -13,6 +12,7 @@ use std::sync::Arc;
 use std::thread::spawn;
 use std::thread::JoinHandle;
 
+use differential_datalog::DDlogInventory;
 use libc::c_uint;
 use log::error;
 use log::info;
@@ -25,7 +25,6 @@ use cmd_parser::parse_command;
 use cmd_parser::Command;
 use differential_datalog::ddval::DDValue;
 use differential_datalog::program::Update;
-use differential_datalog::DDlogConvert;
 
 use crate::tcp_channel::Fd;
 use crate::Observable;
@@ -36,13 +35,14 @@ use crate::ObserverBox;
 ///
 /// `updates` acts as an inter-procedural cache of updates that we will
 /// push into the observer eventually.
-fn handle<C>(
+fn handle<I>(
     id: usize,
     command: Command,
     updates: &mut Vec<Update<DDValue>>,
     observer: &mut dyn Observer<Update<DDValue>, String>,
+    inventory: &I,
 ) where
-    C: DDlogConvert,
+    I: DDlogInventory,
 {
     trace!("File({})::handle: {:?}", id, command);
 
@@ -57,7 +57,7 @@ fn handle<C>(
                 .on_commit()
                 .map_err(|e| error!("observer failed on_commit: {:?}", e));
         }
-        Command::Update(upd_cmd, last) => match C::updcmd2upd(&upd_cmd) {
+        Command::Update(upd_cmd, last) => match upd_cmd.to_update(inventory) {
             Ok(upd) => {
                 if last {
                     let updates = updates.drain(..).chain(once(upd));
@@ -81,14 +81,15 @@ fn handle<C>(
     }
 }
 
-fn process<C>(
+fn process<I>(
     id: usize,
     file: FsFile,
     fd: Arc<Fd>,
     mut observer: ObserverBox<Update<DDValue>, String>,
+    inventory: &I,
 ) -> ObserverBox<Update<DDValue>, String>
 where
-    C: DDlogConvert,
+    I: DDlogInventory,
 {
     // TODO: The logic here somewhat resembles that in
     //       `cmd_parser/lib.rs`. We may want to deduplicate at some
@@ -110,7 +111,7 @@ where
                         // TODO: Remove unnecessary allocation. (Replace
                         //       with Vec::splice perhaps?)
                         buffer = rest.to_owned();
-                        handle::<C>(id, command, &mut updates, &mut observer);
+                        handle(id, command, &mut updates, &mut observer, inventory);
                     }
                     Err(Err::Incomplete(_)) => (),
                     Err(e) => {
@@ -144,9 +145,9 @@ struct State {
 
 /// An object adapting a file to the `Observable` interface.
 #[derive(Debug)]
-pub struct File<C>
+pub struct File<I>
 where
-    C: DDlogConvert + Debug,
+    I: DDlogInventory + Clone + Debug + Send + 'static,
 {
     /// The file source's unique ID.
     id: usize,
@@ -154,17 +155,16 @@ where
     path: PathBuf,
     /// The state we maintain.
     state: Option<State>,
-    /// Unused phantom data.
-    _unused: PhantomData<C>,
+    inventory: I,
 }
 
-impl<C> File<C>
+impl<I> File<I>
 where
-    C: DDlogConvert + Debug,
+    I: DDlogInventory + Clone + Debug + Send + 'static,
 {
     /// Create a new adapter streaming data from the file at the given
     /// `path`.
-    pub fn new<P>(path: P) -> Self
+    pub fn new<P>(path: P, inventory: I) -> Self
     where
         P: Into<PathBuf>,
     {
@@ -172,7 +172,7 @@ where
             id: Id::<()>::new().get(),
             path: path.into(),
             state: None,
-            _unused: Default::default(),
+            inventory,
         }
     }
 
@@ -180,6 +180,7 @@ where
         id: usize,
         path: &Path,
         observer: ObserverBox<Update<DDValue>, String>,
+        inventory: I,
     ) -> Result<State, ObserverBox<Update<DDValue>, String>> {
         let file = match FsFile::open(path) {
             Ok(file) => file,
@@ -192,16 +193,16 @@ where
         let fd = Arc::new(Fd::new(fd));
         let state = State {
             fd: fd.clone(),
-            thread: spawn(move || process::<C>(id, file, fd, observer)),
+            thread: spawn(move || process(id, file, fd, observer, &inventory)),
         };
 
         Ok(state)
     }
 }
 
-impl<C> Drop for File<C>
+impl<I> Drop for File<I>
 where
-    C: DDlogConvert + Debug,
+    I: DDlogInventory + Clone + Debug + Send + 'static,
 {
     fn drop(&mut self) {
         let _ = self.unsubscribe(&());
@@ -217,9 +218,9 @@ where
     }
 }
 
-impl<C> Observable<Update<DDValue>, String> for File<C>
+impl<I> Observable<Update<DDValue>, String> for File<I>
 where
-    C: DDlogConvert + Debug,
+    I: DDlogInventory + Clone + Debug + Send + 'static,
 {
     type Subscription = ();
 
@@ -232,7 +233,7 @@ where
         if self.state.is_some() {
             Err(observer)
         } else {
-            let state = Self::start(self.id, &self.path, observer)?;
+            let state = Self::start(self.id, &self.path, observer, self.inventory.clone())?;
             let _ = self.state.replace(state);
             Ok(())
         }
@@ -269,17 +270,20 @@ where
 mod tests {
     use super::*;
 
+    use std::any::TypeId;
+    #[cfg(feature = "c_api")]
+    use std::ffi::CStr;
     use std::io::Write;
     use std::sync::Mutex;
     use std::thread::sleep;
     use std::time::Duration;
 
+    use differential_datalog::program::{ArrId, IdxId, RelId};
+    use differential_datalog::record::{Record, RelIdentifier};
+    use differential_datalog_test::test_value::*;
+    use fnv::FnvHashMap;
     use tempfile::NamedTempFile;
     use test_env_log::test;
-
-    use differential_datalog::ddval::DDValConvert;
-    use differential_datalog::record::UpdCmd;
-    use differential_datalog_test::test_value::*;
 
     use crate::await_expected;
     use crate::MockObserver;
@@ -287,24 +291,92 @@ mod tests {
 
     const TRANSACTION_DUMP: &[u8] = include_bytes!("file_test.dat");
 
-    #[derive(Debug)]
-    struct DummyConverter;
+    #[derive(Debug, Clone)]
+    struct DummyInventory;
 
-    impl DDlogConvert for DummyConverter {
-        fn updcmd2upd(_upd_cmd: &UpdCmd) -> Result<Update<DDValue>, std::string::String> {
-            // Exact details do not matter in this context, so just fake
-            // some data.
-            Ok(Update::Insert {
-                relid: 0,
-                v: Empty {}.into_ddvalue(),
-            })
+    impl DDlogInventory for DummyInventory {
+        fn get_table_id(&self, tname: &str) -> Result<RelId, std::string::String> {
+            todo!()
+        }
+
+        fn get_table_name(&self, tid: RelId) -> Result<&'static str, std::string::String> {
+            todo!()
+        }
+
+        fn get_table_original_name(
+            &self,
+            tname: &str,
+        ) -> Result<&'static str, std::string::String> {
+            todo!()
+        }
+
+        #[cfg(feature = "c_api")]
+        fn get_table_original_cname(
+            &self,
+            tname: &str,
+        ) -> Result<&'static CStr, std::string::String> {
+            todo!()
+        }
+
+        #[cfg(feature = "c_api")]
+        fn get_table_cname(&self, tid: RelId) -> Result<&'static CStr, std::string::String> {
+            todo!()
+        }
+
+        fn get_index_id(&self, iname: &str) -> Result<IdxId, std::string::String> {
+            todo!()
+        }
+
+        fn get_index_name(&self, iid: IdxId) -> Result<&'static str, std::string::String> {
+            todo!()
+        }
+
+        #[cfg(feature = "c_api")]
+        fn get_index_cname(&self, iid: IdxId) -> Result<&'static CStr, std::string::String> {
+            todo!()
+        }
+
+        fn input_relation_ids(&self) -> &'static FnvHashMap<RelId, &'static str> {
+            todo!()
+        }
+
+        fn index_from_record(
+            &self,
+            index: IdxId,
+            key: &Record,
+        ) -> Result<DDValue, std::string::String> {
+            todo!()
+        }
+
+        fn relation_type_id(&self, relation: RelId) -> Option<TypeId> {
+            todo!()
+        }
+
+        fn relation_value_from_record(
+            &self,
+            relation: &RelIdentifier,
+            value: &Record,
+        ) -> Result<(RelId, DDValue), std::string::String> {
+            todo!()
+        }
+
+        fn relation_key_from_record(
+            &self,
+            relation: &RelIdentifier,
+            key: &Record,
+        ) -> Result<(RelId, DDValue), std::string::String> {
+            todo!()
+        }
+
+        fn index_to_arrangement_id(&self, index: IdxId) -> Option<ArrId> {
+            todo!()
         }
     }
 
     #[test]
     fn non_existent_file() {
         let mock = SharedObserver::new(Mutex::new(MockObserver::new()));
-        let mut adapter = File::<DummyConverter>::new("i-dont-actually-exist");
+        let mut adapter = File::new("i-dont-actually-exist", DummyInventory);
         let result = adapter.subscribe(Box::new(mock.clone()));
 
         assert!(result.is_err(), result);
@@ -317,7 +389,7 @@ mod tests {
         file.flush().unwrap();
 
         let mock = SharedObserver::new(Mutex::new(MockObserver::new()));
-        let mut adapter = File::<DummyConverter>::new(file.path());
+        let mut adapter = File::new(file.path(), DummyInventory);
         let _ = adapter.subscribe(Box::new(mock.clone())).unwrap();
 
         await_expected(|| {

@@ -7,6 +7,7 @@ use crate::{
 use differential_dataflow::Config as DDFlowConfig;
 use std::{
     env,
+    num::NonZeroUsize,
     sync::{atomic::AtomicBool, Mutex},
     thread::{self, JoinHandle},
 };
@@ -16,7 +17,7 @@ use triomphe::Arc;
 /// The configuration for a DDlog program
 #[derive(Debug, Clone, Copy)]
 pub struct Config {
-    /// The number of timely
+    /// The number of timely workers
     pub num_timely_workers: usize,
     /// Whether extra regions should be added to the dataflow
     ///
@@ -41,6 +42,20 @@ impl Config {
             enable_debug_regions: false,
             profiling_kind: ProfilingKind::default(),
             differential_idle_merge_effort: None,
+        }
+    }
+
+    pub fn with_timely_workers(self, workers: usize) -> Self {
+        Self {
+            num_timely_workers: NonZeroUsize::new(workers).map_or(1, NonZeroUsize::get),
+            ..self
+        }
+    }
+
+    pub fn with_profiling_kind(self, profiling_kind: ProfilingKind) -> Self {
+        Self {
+            profiling_kind,
+            ..self
         }
     }
 

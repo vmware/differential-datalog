@@ -4,6 +4,7 @@
 
 #![allow(dead_code, non_snake_case, clippy::match_like_matches_macro)]
 
+use differential_datalog::program::config::Config;
 use std::convert::TryFrom;
 use std::io::stdout;
 use std::io::Write;
@@ -12,10 +13,10 @@ use std::sync::Mutex;
 use std::thread::sleep;
 use time::Instant;
 
-use api::{updcmd2upd, HDDlog};
 use cmd_parser::*;
 use datalog_example_ddlog::*;
 use ddlog_log::log_set_default_callback;
+use differential_datalog::api::HDDlog;
 use differential_datalog::ddval::*;
 use differential_datalog::program::*;
 use differential_datalog::record::*;
@@ -100,7 +101,8 @@ fn handle_cmd(
             let _ = hddlog
                 .db
                 .as_ref()
-                .map(|db| db.lock().unwrap().format_as_sets(&mut stdout(), hddlog));
+                .map(|db| db.lock().unwrap().format_as_sets(&mut stdout(), &Inventory));
+
             Ok(())
         }
         Command::Dump(Some(rname)) => {
@@ -144,17 +146,19 @@ fn handle_cmd(
             sleep(std::time::Duration::from_millis(ms.to_u64().unwrap()));
             Ok(())
         }
-        Command::Update(upd, last) => {
-            match updcmd2upd(&upd) {
-                Ok(u) => upds.push(u),
-                Err(e) => {
+        Command::Update(update, last) => {
+            match hddlog.convert_update_command(&update) {
+                Ok(update) => upds.push(update),
+                Err(err) => {
                     upds.clear();
                     if interactive {
-                        eprintln!("Error: {}", e);
+                        eprintln!("Error: {}", err);
                     }
-                    return (Err(e), interactive);
+
+                    return (Err(err), interactive);
                 }
-            };
+            }
+
             if last {
                 apply_updates(hddlog, upds)
             } else {
@@ -262,7 +266,22 @@ fn main() -> Result<(), String> {
     }
     fn no_op(_table: usize, _rec: &Record, _w: isize) {}
 
-    match HDDlog::run(args.workers, args.store) {
+    #[cfg(feature = "flatbuf")]
+    let flatbuf_converter = Box::new(crate::flatbuf::DDlogFlatbufConverter);
+    #[cfg(not(feature = "flatbuf"))]
+    let flatbuf_converter = Box::new(differential_datalog::flatbuf::UnimplementedFlatbufConverter);
+
+    let ddlog_instance = HDDlog::new(
+        Config::default().with_timely_workers(args.workers),
+        args.store,
+        None,
+        prog,
+        Box::new(Inventory),
+        Box::new(D3logInventory),
+        flatbuf_converter,
+    );
+
+    match ddlog_instance {
         Ok((hddlog, init_output)) => {
             if args.init_snapshot {
                 dump_delta(&init_output);

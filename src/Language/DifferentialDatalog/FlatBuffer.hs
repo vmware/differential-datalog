@@ -226,7 +226,7 @@ compileFlatBufferRustBindings d prog_name rs_code dir = do
     let template = replace "datalog_example" prog_name $ R.unpackFixNewline $(embedFile "rust/template/src/flatbuf.rs")
     updateFile (dir </> "src/flatbuf.rs") $ render $
         (pp template)                                                       $$
-        "pub use flatbuf_generated::ddlog::" <> rustFBModule <+> " as fb;"  $$
+        "pub use crate::flatbuf_generated::ddlog::" <> rustFBModule <+> " as fb;"  $$
         (vcat $ map sel2 $ M.elems rs_code)                                 $$
         (vcat $ map rustTypeFromFlatbuf
               -- One FromFlatBuffer implementation per Rust type

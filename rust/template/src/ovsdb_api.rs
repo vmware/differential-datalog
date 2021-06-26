@@ -9,14 +9,13 @@ use std::ptr;
 use std::sync;
 
 use ddlog_ovsdb_adapter::*;
+use differential_datalog::api::HDDlog;
 use differential_datalog::ddval::*;
 use differential_datalog::program::*;
 use differential_datalog::record::{IntoRecord, Record, UpdCmd};
 use differential_datalog::DeltaMap;
 use differential_datalog::{DDlog, DDlogDynamic, DDlogInventory};
 
-use crate::api::{updcmd2upd, HDDlog};
-use crate::DDlogConverter;
 use crate::Relations;
 
 /// Parse OVSDB JSON <table-updates> value into DDlog commands; apply commands to a DDlog program.
@@ -64,8 +63,10 @@ fn apply_updates(
         .map_err(|e| format!("invalid UTF8 string in prefix: {}", e))?;
     let commands = cmds_from_table_updates_str(prefix, updates_str)?;
 
-    let updates: Result<Vec<Update<DDValue>>, String> =
-        commands.iter().map(|c| updcmd2upd(c)).collect();
+    let updates: Result<Vec<Update<DDValue>>, String> = commands
+        .iter()
+        .map(|c| prog.convert_update_command(c))
+        .collect();
     prog.apply_updates(&mut updates?.into_iter())
 }
 
@@ -125,7 +126,7 @@ unsafe fn dump_delta(
     // Since there is no direct way to check if the relation has this attribute,
     // we check if `get_table_original_name()` is different from the fully
     // qualified table name.
-    let original_table_name = prog.get_table_original_name(&table_name)?;
+    let original_table_name = prog.inventory.get_table_original_name(&table_name)?;
     let ovsdb_table_name = if original_table_name == &table_name {
         table_str
     } else {
@@ -350,7 +351,7 @@ unsafe fn dump_output(
         .map_err(|e| format!("{}", e))?;
     let table_name = format!("{}::Out_{}", module_str, table_str);
 
-    let original_table_name = prog.get_table_original_name(&table_name)?;
+    let original_table_name = prog.inventory.get_table_original_name(&table_name)?;
     let ovsdb_table_name = if original_table_name == &table_name {
         table_str
     } else {
@@ -369,7 +370,7 @@ unsafe fn dump_output(
                     .map(|(v, w)| {
                         assert!(*w == 1 || *w == -1);
                         let record = v.clone().into_record();
-                        let get_table_name = |table| prog.get_table_original_name(table);
+                        let get_table_name = |table| prog.inventory.get_table_original_name(table);
                         if (*w == 1) {
                             record_into_insert_str(record, ovsdb_table_name)
                         } else {

@@ -69,22 +69,27 @@ impl Observer<Update<DDValue>, String> for File {
 mod tests {
     use super::*;
 
+    use fnv::FnvHashMap;
+    use std::any::TypeId;
     #[cfg(feature = "c_api")]
     use std::ffi::CStr;
     use std::io::Read;
+    use std::unimplemented;
     use tempfile::NamedTempFile;
 
     use differential_datalog::ddval::DDValConvert;
+    use differential_datalog::program::ArrId;
     use differential_datalog::program::IdxId;
     use differential_datalog::program::RelId;
+    use differential_datalog::record::{Record, RelIdentifier};
     use differential_datalog_test::test_value::*;
 
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     struct DummyConverter;
 
     impl DDlogInventory for DummyConverter {
         fn get_table_id(&self, _tname: &str) -> Result<RelId, std::string::String> {
-            Err("not implemented".to_string())
+            unimplemented!();
         }
 
         fn get_table_name(&self, tid: RelId) -> Result<&'static str, std::string::String> {
@@ -98,25 +103,59 @@ mod tests {
             &self,
             _tname: &str,
         ) -> Result<&'static str, std::string::String> {
-            Err("not implemented".to_string())
+            unimplemented!();
         }
 
         #[cfg(feature = "c_api")]
         fn get_table_cname(&self, _tid: RelId) -> Result<&'static CStr, std::string::String> {
-            Err("not implemented".to_string())
+            unimplemented!();
         }
 
         fn get_index_id(&self, _iname: &str) -> Result<IdxId, std::string::String> {
-            Err("not implemented".to_string())
+            unimplemented!();
         }
 
         fn get_index_name(&self, _iid: IdxId) -> Result<&'static str, std::string::String> {
-            Err("not implemented".to_string())
+            unimplemented!();
         }
 
         #[cfg(feature = "c_api")]
         fn get_index_cname(&self, _iid: IdxId) -> Result<&'static CStr, std::string::String> {
-            Err("not implemented".to_string())
+            unimplemented!();
+        }
+
+        fn input_relation_ids(&self) -> &'static FnvHashMap<RelId, &'static str> {
+            unimplemented!();
+        }
+
+        fn index_from_record(
+            &self,
+            _index_id: IdxId,
+            _key: &Record,
+        ) -> Result<DDValue, std::string::String> {
+            unimplemented!();
+        }
+        fn relation_type_id(&self, _relation: RelId) -> Option<TypeId> {
+            unimplemented!();
+        }
+        fn relation_value_from_record(
+            &self,
+            _relation: &RelIdentifier,
+            _record: &Record,
+        ) -> Result<(RelId, DDValue), std::string::String> {
+            unimplemented!();
+        }
+
+        fn relation_key_from_record(
+            &self,
+            _relation: &RelIdentifier,
+            _record: &Record,
+        ) -> Result<(RelId, DDValue), std::string::String> {
+            unimplemented!();
+        }
+
+        fn index_to_arrangement_id(&self, _index: IdxId) -> Option<ArrId> {
+            unimplemented!();
         }
     }
 

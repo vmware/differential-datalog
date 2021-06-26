@@ -1,50 +1,297 @@
 //! Traits that encapsulate a running DDlog program.
 
+use dyn_clone::DynClone;
+use fnv::FnvHashMap;
+use std::any::TypeId;
 use std::collections::btree_set::BTreeSet;
 use std::collections::BTreeMap;
 #[cfg(feature = "c_api")]
 use std::ffi::CStr;
 use std::io;
 use std::iter::Iterator;
+use std::ops::Deref;
+use std::sync::Arc as StdArc;
+use triomphe::Arc;
 
 use crate::ddval::DDValue;
-use crate::program::IdxId;
 use crate::program::RelId;
 use crate::program::Update;
-use crate::record::Record;
+use crate::program::{ArrId, IdxId};
 use crate::record::UpdCmd;
+use crate::record::{Record, RelIdentifier};
 use crate::valmap::DeltaMap;
 
 /// Convert relation and index names to and from numeric id's.
-pub trait DDlogInventory {
+pub trait DDlogInventory: DynClone {
     /// Convert table name to `RelId`.
-    fn get_table_id(&self, tname: &str) -> Result<RelId, String>;
+    fn get_table_id(&self, table_name: &str) -> Result<RelId, String>;
 
     /// Convert a `RelId` into its symbolic name.
-    fn get_table_name(&self, tid: RelId) -> Result<&'static str, String>;
+    fn get_table_name(&self, table_id: RelId) -> Result<&'static str, String>;
 
     /// Given a table name, returns the original name (from the 'original' DDlog
     /// relation annotation), if present, or the table name itself otherwise.
     /// If 'tname' is not a legal table name return an Error.
-    fn get_table_original_name(&self, tname: &str) -> Result<&'static str, String>;
+    fn get_table_original_name(&self, table_name: &str) -> Result<&'static str, String>;
 
     /// Get the table original name (see above) but as a C string.
     #[cfg(feature = "c_api")]
-    fn get_table_original_cname(&self, tname: &str) -> Result<&'static CStr, String>;
+    fn get_table_original_cname(&self, table_name: &str) -> Result<&'static CStr, String>;
 
     /// Convert a `RelId` into its symbolic name represented as C string.
     #[cfg(feature = "c_api")]
-    fn get_table_cname(&self, tid: RelId) -> Result<&'static CStr, String>;
+    fn get_table_cname(&self, table_id: RelId) -> Result<&'static CStr, String>;
 
     /// Convert index name to `IdxId`.
-    fn get_index_id(&self, iname: &str) -> Result<IdxId, String>;
+    fn get_index_id(&self, index_name: &str) -> Result<IdxId, String>;
 
     /// Convert a `IdxId` into its symbolic name.
-    fn get_index_name(&self, iid: IdxId) -> Result<&'static str, String>;
+    fn get_index_name(&self, index_id: IdxId) -> Result<&'static str, String>;
 
     /// Convert a `IdxId` into its symbolic name represented as C string.
     #[cfg(feature = "c_api")]
-    fn get_index_cname(&self, iid: IdxId) -> Result<&'static CStr, String>;
+    fn get_index_cname(&self, index_id: IdxId) -> Result<&'static CStr, String>;
+
+    fn input_relation_ids(&self) -> &'static FnvHashMap<RelId, &'static str>;
+
+    fn index_from_record(&self, index: IdxId, key: &Record) -> Result<DDValue, String>;
+
+    fn relation_type_id(&self, relation: RelId) -> Option<TypeId>;
+
+    fn relation_value_from_record(
+        &self,
+        relation: &RelIdentifier,
+        value: &Record,
+    ) -> Result<(RelId, DDValue), String>;
+
+    fn relation_key_from_record(
+        &self,
+        relation: &RelIdentifier,
+        key: &Record,
+    ) -> Result<(RelId, DDValue), String>;
+
+    fn index_to_arrangement_id(&self, index: IdxId) -> Option<ArrId>;
+}
+
+dyn_clone::clone_trait_object!(DDlogInventory);
+
+impl<T> DDlogInventory for Box<T>
+where
+    T: DDlogInventory + ?Sized,
+    Box<T>: Clone,
+{
+    fn get_table_id(&self, table_name: &str) -> Result<RelId, String> {
+        self.deref().get_table_id(table_name)
+    }
+
+    fn get_table_name(&self, table_id: RelId) -> Result<&'static str, String> {
+        self.deref().get_table_name(table_id)
+    }
+
+    fn get_table_original_name(&self, table_name: &str) -> Result<&'static str, String> {
+        self.deref().get_table_original_name(table_name)
+    }
+
+    #[cfg(feature = "c_api")]
+    fn get_table_original_cname(&self, table_name: &str) -> Result<&'static CStr, String> {
+        self.deref().get_table_original_cname(table_name)
+    }
+
+    #[cfg(feature = "c_api")]
+    fn get_table_cname(&self, table_id: RelId) -> Result<&'static CStr, String> {
+        self.deref().get_table_cname(table_id)
+    }
+
+    fn get_index_id(&self, index_name: &str) -> Result<IdxId, String> {
+        self.deref().get_index_id(index_name)
+    }
+
+    fn get_index_name(&self, index_id: IdxId) -> Result<&'static str, String> {
+        self.deref().get_index_name(index_id)
+    }
+
+    #[cfg(feature = "c_api")]
+    fn get_index_cname(&self, index_id: IdxId) -> Result<&'static CStr, String> {
+        self.deref().get_index_cname(index_id)
+    }
+
+    fn input_relation_ids(&self) -> &'static FnvHashMap<RelId, &'static str> {
+        self.deref().input_relation_ids()
+    }
+
+    fn index_from_record(&self, index: IdxId, key: &Record) -> Result<DDValue, String> {
+        self.deref().index_from_record(index, key)
+    }
+
+    fn relation_type_id(&self, relation: RelId) -> Option<TypeId> {
+        self.deref().relation_type_id(relation)
+    }
+
+    fn relation_value_from_record(
+        &self,
+        relation: &RelIdentifier,
+        value: &Record,
+    ) -> Result<(RelId, DDValue), String> {
+        self.deref().relation_value_from_record(relation, value)
+    }
+
+    fn relation_key_from_record(
+        &self,
+        relation: &RelIdentifier,
+        key: &Record,
+    ) -> Result<(RelId, DDValue), String> {
+        self.deref().relation_key_from_record(relation, key)
+    }
+
+    fn index_to_arrangement_id(&self, index: IdxId) -> Option<ArrId> {
+        self.deref().index_to_arrangement_id(index)
+    }
+}
+
+impl<T> DDlogInventory for StdArc<T>
+where
+    T: DDlogInventory + ?Sized,
+    StdArc<T>: Clone,
+{
+    fn get_table_id(&self, table_name: &str) -> Result<RelId, String> {
+        self.deref().get_table_id(table_name)
+    }
+
+    fn get_table_name(&self, table_id: RelId) -> Result<&'static str, String> {
+        self.deref().get_table_name(table_id)
+    }
+
+    fn get_table_original_name(&self, table_name: &str) -> Result<&'static str, String> {
+        self.deref().get_table_original_name(table_name)
+    }
+
+    #[cfg(feature = "c_api")]
+    fn get_table_original_cname(&self, table_name: &str) -> Result<&'static CStr, String> {
+        self.deref().get_table_original_cname(table_name)
+    }
+
+    #[cfg(feature = "c_api")]
+    fn get_table_cname(&self, table_id: RelId) -> Result<&'static CStr, String> {
+        self.deref().get_table_cname(table_id)
+    }
+
+    fn get_index_id(&self, index_name: &str) -> Result<IdxId, String> {
+        self.deref().get_index_id(index_name)
+    }
+
+    fn get_index_name(&self, index_id: IdxId) -> Result<&'static str, String> {
+        self.deref().get_index_name(index_id)
+    }
+
+    #[cfg(feature = "c_api")]
+    fn get_index_cname(&self, index_id: IdxId) -> Result<&'static CStr, String> {
+        self.deref().get_index_cname(index_id)
+    }
+
+    fn input_relation_ids(&self) -> &'static FnvHashMap<RelId, &'static str> {
+        self.deref().input_relation_ids()
+    }
+
+    fn index_from_record(&self, index: IdxId, key: &Record) -> Result<DDValue, String> {
+        self.deref().index_from_record(index, key)
+    }
+
+    fn relation_type_id(&self, relation: RelId) -> Option<TypeId> {
+        self.deref().relation_type_id(relation)
+    }
+
+    fn relation_value_from_record(
+        &self,
+        relation: &RelIdentifier,
+        value: &Record,
+    ) -> Result<(RelId, DDValue), String> {
+        self.deref().relation_value_from_record(relation, value)
+    }
+
+    fn relation_key_from_record(
+        &self,
+        relation: &RelIdentifier,
+        key: &Record,
+    ) -> Result<(RelId, DDValue), String> {
+        self.deref().relation_key_from_record(relation, key)
+    }
+
+    fn index_to_arrangement_id(&self, index: IdxId) -> Option<ArrId> {
+        self.deref().index_to_arrangement_id(index)
+    }
+}
+
+impl<T> DDlogInventory for Arc<T>
+where
+    T: DDlogInventory + ?Sized,
+    Arc<T>: Clone,
+{
+    fn get_table_id(&self, table_name: &str) -> Result<RelId, String> {
+        self.deref().get_table_id(table_name)
+    }
+
+    fn get_table_name(&self, table_id: RelId) -> Result<&'static str, String> {
+        self.deref().get_table_name(table_id)
+    }
+
+    fn get_table_original_name(&self, table_name: &str) -> Result<&'static str, String> {
+        self.deref().get_table_original_name(table_name)
+    }
+
+    #[cfg(feature = "c_api")]
+    fn get_table_original_cname(&self, table_name: &str) -> Result<&'static CStr, String> {
+        self.deref().get_table_original_cname(table_name)
+    }
+
+    #[cfg(feature = "c_api")]
+    fn get_table_cname(&self, table_id: RelId) -> Result<&'static CStr, String> {
+        self.deref().get_table_cname(table_id)
+    }
+
+    fn get_index_id(&self, index_name: &str) -> Result<IdxId, String> {
+        self.deref().get_index_id(index_name)
+    }
+
+    fn get_index_name(&self, index_id: IdxId) -> Result<&'static str, String> {
+        self.deref().get_index_name(index_id)
+    }
+
+    #[cfg(feature = "c_api")]
+    fn get_index_cname(&self, index_id: IdxId) -> Result<&'static CStr, String> {
+        self.deref().get_index_cname(index_id)
+    }
+
+    fn input_relation_ids(&self) -> &'static FnvHashMap<RelId, &'static str> {
+        self.deref().input_relation_ids()
+    }
+
+    fn index_from_record(&self, index: IdxId, key: &Record) -> Result<DDValue, String> {
+        self.deref().index_from_record(index, key)
+    }
+
+    fn relation_type_id(&self, relation: RelId) -> Option<TypeId> {
+        self.deref().relation_type_id(relation)
+    }
+
+    fn relation_value_from_record(
+        &self,
+        relation: &RelIdentifier,
+        value: &Record,
+    ) -> Result<(RelId, DDValue), String> {
+        self.deref().relation_value_from_record(relation, value)
+    }
+
+    fn relation_key_from_record(
+        &self,
+        relation: &RelIdentifier,
+        key: &Record,
+    ) -> Result<(RelId, DDValue), String> {
+        self.deref().relation_key_from_record(relation, key)
+    }
+
+    fn index_to_arrangement_id(&self, index: IdxId) -> Option<ArrId> {
+        self.deref().index_to_arrangement_id(index)
+    }
 }
 
 /// Location id in a D3log system.
@@ -77,12 +324,15 @@ pub trait D3log {
     ) -> Result<(Option<D3logLocationId>, RelId, DDValue), DDValue>;
 }
 
-/// Convert to and from values/objects of a DDlog program.
-/// FIXME: This trait is redundant and will be removed in the next refactoring.
-pub trait DDlogConvert {
-    /// Convert an `UpdCmd` into an `Update`.
-    fn updcmd2upd(upd_cmd: &UpdCmd) -> Result<Update<DDValue>, String>;
+pub trait D3logLocalizer: DynClone {
+    fn localize_value(
+        &self,
+        relation: RelId,
+        value: DDValue,
+    ) -> Result<(Option<D3logLocationId>, RelId, DDValue), DDValue>;
 }
+
+dyn_clone::clone_trait_object!(D3logLocalizer);
 
 /// Interface to DDlog's profiling capabilities.
 pub trait DDlogProfiling {
