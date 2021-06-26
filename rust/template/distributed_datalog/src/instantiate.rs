@@ -17,7 +17,7 @@ use std::time::Instant;
 use differential_datalog::ddval::DDValue;
 use differential_datalog::program::RelId;
 use differential_datalog::program::Update;
-use differential_datalog::{DDlog, DDlogConvert, DDlogInventory};
+use differential_datalog::{DDlog, DDlogInventory};
 
 use crate::accumulate::Accumulator;
 use crate::accumulate::DistributingAccumulator;
@@ -123,15 +123,16 @@ fn deduce_sinks_or_sources(node_cfg: &NodeCfg, sinks: bool) -> BTreeMap<&Path, B
 }
 
 /// Realize the given configuration locally.
-fn realize<P, C, D>(
+fn realize<I, P, D>(
     addr: &Addr,
     node_cfg: &NodeCfg,
     assignment: &Assignment,
     program: Arc<P>,
-) -> Result<Realization<C, D>, String>
+    inventory: Arc<I>,
+) -> Result<Realization<Arc<I>, D>, String>
 where
-    P: Send + Sync + DDlog + DDlogInventory + Debug + 'static,
-    C: Send + DDlogConvert + Debug,
+    P: Send + Sync + DDlog + Debug + 'static,
+    I: DDlogInventory + Clone + Debug + Send + Sync + 'static,
     D: Serialize
         + DeserializeOwned
         + Debug
@@ -140,13 +141,12 @@ where
         + Send
         + 'static,
 {
-    let inventory = program.clone() as Arc<dyn DDlogInventory + Send + Sync>;
     let now = Instant::now();
-    let mut realization = Realization::new();
+    let mut realization = Realization::new(inventory.clone());
     let mut server = create_server(&node_cfg, program);
 
     realization.add_tcp_senders(node_cfg, &mut server, assignment, inventory.clone())?;
-    realization.add_file_sinks(node_cfg, &mut server, inventory.clone())?;
+    realization.add_file_sinks(node_cfg, &mut server, inventory)?;
     realization.subscribe_txnmux(server)?;
     match addr {
         Addr::Ip(addr) => realization.add_tcp_receiver(addr)?,
@@ -163,12 +163,12 @@ where
 
 /// All possible sources of a Realization
 #[derive(Debug)]
-enum SourceRealization<C, D>
+enum SourceRealization<I, D>
 where
-    C: DDlogConvert + Debug,
+    I: DDlogInventory + Clone + Debug + Send + 'static,
     D: DeserializeOwned + Debug + Into<Update<DDValue>> + Send,
 {
-    File(Arc<Mutex<FileSource<C>>>),
+    File(Arc<Mutex<FileSource<I>>>),
     Node(Arc<Mutex<TcpReceiver<Update<DDValue>, D>>>),
 }
 
@@ -187,24 +187,24 @@ where
 /// Right now all that clients can do with an object of this type is
 /// dropping it to tear everything down.
 #[derive(Debug)]
-pub struct Realization<C, D>
+pub struct Realization<I, D>
 where
-    C: Send + DDlogConvert + Debug,
+    I: DDlogInventory + Clone + Debug + Send + 'static,
     D: Serialize + DeserializeOwned + Debug + Into<Update<DDValue>> + Send + 'static,
 {
     /// All sources of this realization and the subscription the node has to them
-    _sources: HashMap<
+    sources: HashMap<
         Source,
         (
-            Option<SourceRealization<C, D>>,
+            Option<SourceRealization<I, D>>,
             SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>,
             usize,
         ),
     >,
     /// The transaction multiplexer as input to the DDLogServer
-    _txnmux: TxnMux<Update<DDValue>, String>,
+    txnmux: TxnMux<Update<DDValue>, String>,
     /// All sinks of this realization with their subscription
-    _sinks: HashMap<
+    sinks: HashMap<
         BTreeSet<RelId>,
         (
             SharedObserver<DistributingAccumulator<Update<DDValue>, DDValue, String>>,
@@ -212,25 +212,27 @@ where
             HashMap<Sink, (SinkRealization<D>, usize)>,
         ),
     >,
+    inventory: I,
 }
 
-impl<C, D> Default for Realization<C, D>
+impl<I, D> Default for Realization<I, D>
 where
-    C: Send + DDlogConvert + Debug,
+    I: DDlogInventory + Default + Clone + Debug + Send + 'static,
     D: Serialize + DeserializeOwned + Debug + Into<Update<DDValue>> + Send + 'static,
 {
     fn default() -> Self {
         Realization {
-            _sinks: HashMap::new(),
-            _sources: HashMap::new(),
-            _txnmux: TxnMux::new(),
+            sinks: HashMap::new(),
+            sources: HashMap::new(),
+            txnmux: TxnMux::new(),
+            inventory: I::default(),
         }
     }
 }
 
-impl<C, D> Realization<C, D>
+impl<I, D> Realization<I, D>
 where
-    C: Send + DDlogConvert + Debug,
+    I: DDlogInventory + Clone + Debug + Send + 'static,
     D: Serialize
         + DeserializeOwned
         + Debug
@@ -240,8 +242,13 @@ where
         + 'static,
 {
     /// Instantiates a new, default Realization.
-    pub fn new() -> Realization<C, D> {
-        Default::default()
+    pub fn new(inventory: I) -> Self {
+        Realization {
+            sinks: HashMap::new(),
+            sources: HashMap::new(),
+            txnmux: TxnMux::new(),
+            inventory,
+        }
     }
 
     /// Subscribe the `TxnMux` of the existing realization to the given server.
@@ -249,7 +256,7 @@ where
     where
         P: Send + Sync + DDlog + Debug + 'static,
     {
-        self._txnmux
+        self.txnmux
             .subscribe(Box::new(server))
             .map_err(|_| "failed to subscribe DDlogServer to TxnMux")
     }
@@ -259,13 +266,13 @@ where
     /// from the TxnMux.
     pub fn remove_source(&mut self, src: &Source) -> Result<(), &str> {
         // Remove entry.
-        let (_, accumulator, id) = self._sources.remove(src).unwrap();
+        let (_, accumulator, id) = self.sources.remove(src).unwrap();
         let mut accum_observ = accumulator.lock().unwrap();
 
         // Clear accumulator.
         if accum_observ.clear().is_ok() {
             // Disconnect from TxnMux.
-            self._txnmux.remove_observable(id);
+            self.txnmux.remove_observable(id);
             Ok(())
         } else {
             Err("Cannot remove source, transaction in progress")
@@ -282,9 +289,9 @@ where
         // the receiver.
         let accumulator = Arc::new(Mutex::new(DistributingAccumulator::new()));
 
-        match self._txnmux.add_observable(Box::new(receiver.clone())) {
+        match self.txnmux.add_observable(Box::new(receiver.clone())) {
             Ok(id) => {
-                let _ = self._sources.insert(
+                let _ = self.sources.insert(
                     Source::TcpReceiver,
                     (Some(SourceRealization::Node(receiver)), accumulator, id),
                 );
@@ -296,11 +303,11 @@ where
 
     /// Add a file source to an existing realization.
     pub fn add_file_source(&mut self, path: &Path) -> Result<(), String> {
-        let mut source = Arc::new(Mutex::new(FileSource::<C>::new(path)));
+        let mut source = Arc::new(Mutex::new(FileSource::new(path, self.inventory.clone())));
 
         let accumulator = Arc::new(Mutex::new(DistributingAccumulator::new()));
 
-        match self._txnmux.add_observable(Box::new(accumulator.clone())) {
+        match self.txnmux.add_observable(Box::new(accumulator.clone())) {
             Ok(id) => {
                 source
                     .subscribe(Box::new(accumulator.clone()))
@@ -312,7 +319,7 @@ where
                     })?;
 
                 let pathbuf = PathBuf::from(path);
-                let _ = self._sources.insert(
+                let _ = self.sources.insert(
                     Source::File(pathbuf),
                     (Some(SourceRealization::File(source)), accumulator, id),
                 );
@@ -328,7 +335,7 @@ where
     /// Unsubscribe the accumulator from the sink.
     /// Return an error if unable to find a sink map containing the sink.
     pub fn remove_sink(&mut self, sink: &Sink) -> Result<(), String> {
-        for (accumulator, _, sink_map) in self._sinks.values_mut() {
+        for (accumulator, _, sink_map) in self.sinks.values_mut() {
             if sink_map.contains_key(sink) {
                 let (_, subscription) = sink_map.remove(sink).unwrap();
                 let _ = accumulator.unsubscribe(&subscription);
@@ -358,7 +365,7 @@ where
     {
         // Add the accumulator to the realization if needed.
         self.add_sink_accumulator(rel_ids.clone(), server)?;
-        let (accumulator, _, sink_map) = self._sinks.get_mut(&rel_ids).unwrap();
+        let (accumulator, _, sink_map) = self.sinks.get_mut(&rel_ids).unwrap();
 
         match sink {
             Sink::File(path) => {
@@ -419,7 +426,7 @@ where
     where
         P: Send + DDlog + Debug + 'static,
     {
-        if let Some(entry) = self._sinks.remove(&rel_ids) {
+        if let Some(entry) = self.sinks.remove(&rel_ids) {
             let (_, mut stream, sink_map) = entry;
             if sink_map.is_empty() {
                 // Disconnect accumulator from server.
@@ -447,7 +454,7 @@ where
     where
         P: Send + DDlog + Debug + 'static,
     {
-        if !self._sinks.contains_key(&rel_ids) {
+        if !self.sinks.contains_key(&rel_ids) {
             let accumulator = Arc::new(Mutex::new(DistributingAccumulator::new()));
             let mut update_observ = server.add_stream(rel_ids.clone());
             update_observ
@@ -455,7 +462,7 @@ where
                 .map_err(|_| "failed to subscribe accumulator to DDlogServer".to_string())?;
 
             let _ = self
-                ._sinks
+                .sinks
                 .insert(rel_ids, (accumulator, update_observ, HashMap::new()));
         }
         Ok(())
@@ -464,26 +471,26 @@ where
     /// Checks that the given file source exists in the Realization.
     /// Used for testing.
     pub fn contains_file_source(&self, path: PathBuf) -> bool {
-        self._sources.contains_key(&Source::File(path))
+        self.sources.contains_key(&Source::File(path))
     }
 
     /// Checks that a tcp receiver exists in the Realization.
     /// Used for testing.
     pub fn contains_tcp_receiver(&self) -> bool {
-        self._sources.contains_key(&Source::TcpReceiver)
+        self.sources.contains_key(&Source::TcpReceiver)
     }
 
     /// Retrieves the id for the source (generated by the TxnMux).
     /// Used for testing.
     pub fn get_source_id(&self, path: PathBuf) -> usize {
-        let (_, _, id) = self._sources.get(&Source::File(path)).unwrap();
+        let (_, _, id) = self.sources.get(&Source::File(path)).unwrap();
         *id
     }
 
     /// Retrieves the id for the TcpReceiver in the Realization.
     /// Used for testing.
     pub fn get_tcp_receiver_id(&self) -> usize {
-        let (_, _, id) = self._sources.get(&Source::TcpReceiver).unwrap();
+        let (_, _, id) = self.sources.get(&Source::TcpReceiver).unwrap();
         *id
     }
 
@@ -491,14 +498,14 @@ where
     /// in the TxnMux's subscriptions.
     /// Used for testing.
     pub fn txn_subscription_exists(&self, id: usize) -> bool {
-        self._txnmux.subscription_exists(id)
+        self.txnmux.subscription_exists(id)
     }
 
     /// Checks that the given sink both has an associated accumulator and
     /// that said accumulator is subscribed to the sink.
     /// Used for testing.
     pub fn accumulator_is_subscribed_to_sink(&self, rel_ids: BTreeSet<RelId>, sink: &Sink) -> bool {
-        let (_, _, sink_map) = self._sinks.get(&rel_ids).unwrap();
+        let (_, _, sink_map) = self.sinks.get(&rel_ids).unwrap();
         sink_map.contains_key(sink)
     }
 
@@ -553,15 +560,16 @@ where
 
 /// Instantiate a configuration on a particular node under the given
 /// assignment.
-pub fn instantiate<P, C, D>(
+pub fn instantiate<I, P, D>(
     sys_cfg: SysCfg,
     addr: &Addr,
     assignment: &Assignment,
     program: P,
-) -> Result<Vec<Realization<C, D>>, String>
+    inventory: I,
+) -> Result<Vec<Realization<Arc<I>, D>>, String>
 where
-    P: Send + Sync + DDlog + DDlogInventory + Debug + 'static,
-    C: Send + DDlogConvert + Debug,
+    P: Send + Sync + DDlog + Debug + 'static,
+    I: DDlogInventory + Clone + Debug + Send + Sync + 'static,
     D: Serialize
         + DeserializeOwned
         + Debug
@@ -571,6 +579,8 @@ where
         + 'static,
 {
     let prog_arc = Arc::new(program);
+    let inventory = Arc::new(inventory);
+
     assignment
         .iter()
         .filter_map(|(uuid, assigned_addr)| {
@@ -581,7 +591,14 @@ where
             }
         })
         .try_fold(Vec::new(), |mut accumulator, node_cfg| {
-            realize::<P, C, D>(addr, node_cfg, assignment, prog_arc.clone()).map(|realization| {
+            realize::<I, P, D>(
+                addr,
+                node_cfg,
+                assignment,
+                prog_arc.clone(),
+                inventory.clone(),
+            )
+            .map(|realization| {
                 accumulator.push(realization);
                 accumulator
             })

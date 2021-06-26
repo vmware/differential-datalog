@@ -2,15 +2,11 @@
 #![cfg(feature = "c_api")]
 
 use crate::{
-    api::HDDlog,
-    record::{Record, UpdCmd},
-    update_handler::{ExternCCallback, ExternCUpdateHandler, NullUpdateHandler},
-};
-use differential_datalog::{
+    api::{update_handler::ExternCCallback, HDDlog},
     ddval::DDValue,
     program::{IdxId, RelId},
-    record::IntoRecord,
-    DDlog, DDlogDump, DDlogDynamic, DDlogInventory, DDlogProfiling, DeltaMap,
+    record::{IntoRecord, Record, UpdCmd},
+    DDlog, DDlogDump, DDlogDynamic, DDlogProfiling, DeltaMap,
 };
 use std::{
     collections::BTreeMap,
@@ -18,23 +14,16 @@ use std::{
     fs::File,
     mem::ManuallyDrop,
     os::raw,
-    ptr,
-    sync::Mutex,
+    ptr, slice,
 };
 use triomphe::Arc;
-
-#[cfg(feature = "flatbuf")]
-use std::{mem, slice};
-
-#[cfg(feature = "flatbuf")]
-use super::flatbuf;
-#[cfg(feature = "flatbuf")]
-use super::flatbuf::FromFlatBuffer;
 
 #[cfg(unix)]
 use std::os::unix::io::{FromRawFd, IntoRawFd, RawFd};
 #[cfg(windows)]
 use std::os::windows::io::{FromRawHandle, IntoRawHandle, RawHandle};
+
+// FIXME: Unwinding across the FFI boundary is UB, catch all panics and return errors
 
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_get_table_id(
@@ -48,7 +37,7 @@ pub unsafe extern "C" fn ddlog_get_table_id(
     let prog = &*prog;
 
     let table_str = CStr::from_ptr(tname).to_str().unwrap();
-    match prog.get_table_id(table_str) {
+    match prog.inventory.get_table_id(table_str) {
         Ok(relid) => relid as libc::size_t,
         Err(_) => libc::size_t::max_value(),
     }
@@ -66,7 +55,7 @@ pub unsafe extern "C" fn ddlog_get_table_original_name(
     let prog = &*prog;
 
     let table_str = CStr::from_ptr(tname).to_str().unwrap();
-    match prog.get_table_original_cname(table_str) {
+    match prog.inventory.get_table_original_cname(table_str) {
         Ok(name) => name.as_ptr(),
         Err(_) => ptr::null(),
     }
@@ -83,7 +72,7 @@ pub unsafe extern "C" fn ddlog_get_table_name(
 
     let prog = &*prog;
 
-    match prog.get_table_cname(tid) {
+    match prog.inventory.get_table_cname(tid) {
         Ok(name) => name.as_ptr(),
         Err(_) => ptr::null(),
     }
@@ -105,7 +94,7 @@ pub unsafe extern "C" fn ddlog_get_index_id(
     }
 
     let index_str = CStr::from_ptr(iname).to_str().unwrap();
-    match prog.get_index_id(index_str) {
+    match prog.inventory.get_index_id(index_str) {
         Ok(idxid) => idxid as libc::size_t,
         Err(_) => libc::size_t::max_value(),
     }
@@ -122,32 +111,9 @@ pub unsafe extern "C" fn ddlog_get_index_name(
 
     let prog = &*prog;
 
-    match prog.get_index_cname(iid) {
+    match prog.inventory.get_index_cname(iid) {
         Ok(name) => name.as_ptr(),
         Err(_) => ptr::null(),
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ddlog_run(
-    workers: raw::c_uint,
-    do_store: bool,
-    print_err: Option<extern "C" fn(msg: *const raw::c_char)>,
-    init_state: *mut *mut DeltaMap<DDValue>,
-) -> *const HDDlog {
-    let result = HDDlog::do_run(workers as usize, do_store, print_err);
-
-    match result {
-        Ok((hddlog, init)) => {
-            if !init_state.is_null() {
-                *init_state = Box::into_raw(Box::new(init));
-            }
-            Arc::into_raw(Arc::new(hddlog))
-        }
-        Err(err) => {
-            HDDlog::print_err(print_err, &format!("ddlog_run() failed: {}", err));
-            ptr::null()
-        }
     }
 }
 
@@ -387,11 +353,10 @@ pub unsafe extern "C" fn ddlog_free_record_updates(
     let changes_vec: Vec<ddlog_record_update> =
         Vec::from_raw_parts(changes, num_changes as usize, num_changes as usize);
     for upd in changes_vec.into_iter() {
-        let upd: Box<Record> = Box::from_raw(upd.rec);
+        let _update = Box::from_raw(upd.rec);
     }
 }
 
-#[cfg(feature = "flatbuf")]
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_transaction_commit_dump_changes_to_flatbuf(
     prog: *const HDDlog,
@@ -406,14 +371,17 @@ pub unsafe extern "C" fn ddlog_transaction_commit_dump_changes_to_flatbuf(
     let prog = &*prog;
 
     prog.transaction_commit_dump_changes()
-        .map(|changes| {
-            let (fbvec, fboffset) = flatbuf::updates_to_flatbuf(&changes);
-            *buf = fbvec.as_ptr();
-            *buf_size = fbvec.len() as libc::size_t;
-            *buf_capacity = fbvec.capacity() as libc::size_t;
-            *buf_offset = fboffset as libc::size_t;
-            mem::forget(fbvec);
-            0
+        .and_then(|changes| {
+            let (flatbuf_vec, flatbuf_offset) =
+                prog.flatbuf_converter.updates_to_buffer(&changes)?;
+            let flatbuf_vec = ManuallyDrop::new(flatbuf_vec);
+
+            *buf = flatbuf_vec.as_ptr();
+            *buf_size = flatbuf_vec.len() as libc::size_t;
+            *buf_capacity = flatbuf_vec.capacity() as libc::size_t;
+            *buf_offset = flatbuf_offset as libc::size_t;
+
+            Ok(0)
         })
         .unwrap_or_else(|e| {
             prog.eprintln(&format!(
@@ -424,26 +392,6 @@ pub unsafe extern "C" fn ddlog_transaction_commit_dump_changes_to_flatbuf(
         })
 }
 
-#[cfg(not(feature = "flatbuf"))]
-#[no_mangle]
-pub unsafe extern "C" fn ddlog_transaction_commit_dump_changes_to_flatbuf(
-    prog: *const HDDlog,
-    _buf: *mut *const u8,
-    _buf_size: *mut libc::size_t,
-    _buf_capacity: *mut libc::size_t,
-    _buf_offset: *mut libc::size_t,
-) -> raw::c_int {
-    if prog.is_null() {
-        return -1;
-    }
-
-    let prog = &*prog;
-    prog.eprintln("ddlog_transaction_commit_dump_changes_to_flatbuf(): error: DDlog was compiled without FlatBuffers support");
-
-    -1
-}
-
-#[cfg(feature = "flatbuf")]
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_query_index_from_flatbuf(
     prog: *const HDDlog,
@@ -466,45 +414,29 @@ pub unsafe extern "C" fn ddlog_query_index_from_flatbuf(
 
     let prog = &*prog;
 
-    flatbuf::query_from_flatbuf(slice::from_raw_parts(buf, n))
-        .and_then(|(idxid, key)| {
-            prog.query_index(idxid, key).map(|res| {
-                let (fbvec, fboffset) = flatbuf::idx_values_to_flatbuf(idxid, res.iter());
-                *resbuf = fbvec.as_ptr();
-                *resbuf_size = fbvec.len() as libc::size_t;
-                *resbuf_capacity = fbvec.capacity() as libc::size_t;
-                *resbuf_offset = fboffset as libc::size_t;
-                mem::forget(fbvec);
-                0
-            })
+    prog.flatbuf_converter
+        .query_index_from_buffer(slice::from_raw_parts(buf, n))
+        .and_then(|(index_id, key)| {
+            prog.query_index(index_id, key)
+                .map(|contents| (index_id, contents))
+        })
+        .and_then(|(index_id, contents)| {
+            let (flatbuf_vec, flatbuf_offset) = prog
+                .flatbuf_converter
+                .index_values_to_buffer(index_id, &contents)?;
+            let flatbuf_vec = ManuallyDrop::new(flatbuf_vec);
+
+            *resbuf = flatbuf_vec.as_ptr();
+            *resbuf_size = flatbuf_vec.len() as libc::size_t;
+            *resbuf_capacity = flatbuf_vec.capacity() as libc::size_t;
+            *resbuf_offset = flatbuf_offset as libc::size_t;
+
+            Ok(0)
         })
         .unwrap_or_else(|e| {
             prog.eprintln(&format!("ddlog_query_index_from_flatbuf(): error: {}", e));
             -1
         })
-}
-
-#[cfg(not(feature = "flatbuf"))]
-#[no_mangle]
-pub unsafe extern "C" fn ddlog_query_index_from_flatbuf(
-    prog: *const HDDlog,
-    _buf: *const u8,
-    _n: libc::size_t,
-    _resbuf: *mut *const u8,
-    _resbuf_size: *mut libc::size_t,
-    _resbuf_capacity: *mut libc::size_t,
-    _resbuf_offset: *mut libc::size_t,
-) -> raw::c_int {
-    if prog.is_null() {
-        return -1;
-    }
-
-    let prog = &*prog;
-    prog.eprintln(
-        "ddlog_query_index_from_flatbuf(): error: DDlog was compiled without FlatBuffers support",
-    );
-
-    -1
 }
 
 #[no_mangle]
@@ -562,7 +494,6 @@ pub unsafe extern "C" fn ddlog_query_index(
         })
 }
 
-#[cfg(feature = "flatbuf")]
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_dump_index_to_flatbuf(
     prog: *const HDDlog,
@@ -583,41 +514,23 @@ pub unsafe extern "C" fn ddlog_dump_index_to_flatbuf(
     let prog = &*prog;
 
     prog.dump_index(idxid as IdxId)
-        .map(|res| {
-            let (fbvec, fboffset) = flatbuf::idx_values_to_flatbuf(idxid, res.iter());
-            *resbuf = fbvec.as_ptr();
-            *resbuf_size = fbvec.len() as libc::size_t;
-            *resbuf_capacity = fbvec.capacity() as libc::size_t;
-            *resbuf_offset = fboffset as libc::size_t;
-            mem::forget(fbvec);
-            0
+        .and_then(|contents| {
+            let (flatbuf_vec, flatbuf_offset) = prog
+                .flatbuf_converter
+                .index_values_to_buffer(idxid, &contents)?;
+            let flatbuf_vec = ManuallyDrop::new(flatbuf_vec);
+
+            *resbuf = flatbuf_vec.as_ptr();
+            *resbuf_size = flatbuf_vec.len() as libc::size_t;
+            *resbuf_capacity = flatbuf_vec.capacity() as libc::size_t;
+            *resbuf_offset = flatbuf_offset as libc::size_t;
+
+            Ok(0)
         })
         .unwrap_or_else(|e| {
             prog.eprintln(&format!("ddlog_dump_index_to_flatbuf(): error: {}", e));
             -1
         })
-}
-
-#[cfg(not(feature = "flatbuf"))]
-#[no_mangle]
-pub unsafe extern "C" fn ddlog_dump_index_to_flatbuf(
-    prog: *const HDDlog,
-    _idxid: libc::size_t,
-    _resbuf: *mut *const u8,
-    _resbuf_size: *mut libc::size_t,
-    _resbuf_capacity: *mut libc::size_t,
-    _resbuf_offset: *mut libc::size_t,
-) -> raw::c_int {
-    if prog.is_null() {
-        return -1;
-    }
-
-    let prog = &*prog;
-    prog.eprintln(
-        "ddlog_dump_index_to_flatbuf(): error: DDlog was compiled without FlatBuffers support",
-    );
-
-    -1
 }
 
 #[no_mangle]
@@ -674,7 +587,6 @@ pub unsafe extern "C" fn ddlog_apply_updates(
         })
 }
 
-#[cfg(feature = "flatbuf")]
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_apply_updates_from_flatbuf(
     prog: *const HDDlog,
@@ -687,28 +599,13 @@ pub unsafe extern "C" fn ddlog_apply_updates_from_flatbuf(
     let prog = &*prog;
 
     prog.apply_updates_from_flatbuf(slice::from_raw_parts(buf, n))
-        .map(|_| 0)
-        .unwrap_or_else(|e| {
-            prog.eprintln(&format!("ddlog_apply_updates_from_flatbuf(): error: {}", e));
-            -1
-        })
-}
-
-#[cfg(not(feature = "flatbuf"))]
-#[no_mangle]
-pub unsafe extern "C" fn ddlog_apply_updates_from_flatbuf(
-    prog: *const HDDlog,
-    _buf: *const u8,
-    _n: libc::size_t,
-) -> raw::c_int {
-    if prog.is_null() {
-        return -1;
-    }
-
-    let prog = &*prog;
-    prog.eprintln(&"ddlog_apply_updates_from_flatbuf(): error: DDlog was compiled without FlatBuffers support");
-
-    -1
+        .map_or_else(
+            |e| {
+                prog.eprintln(&format!("ddlog_apply_updates_from_flatbuf(): error: {}", e));
+                -1
+            },
+            |_| 0,
+        )
 }
 
 #[no_mangle]
@@ -865,7 +762,9 @@ pub unsafe extern "C" fn ddlog_delta_clear_table(
     delta: *mut DeltaMap<DDValue>,
     table: libc::size_t,
 ) {
-    (&mut *delta).clear_rel(table as RelId);
+    if !delta.is_null() {
+        (&mut *delta).clear_rel(table as RelId);
+    }
 }
 
 #[no_mangle]
@@ -873,15 +772,21 @@ pub unsafe extern "C" fn ddlog_delta_remove_table(
     delta: *mut DeltaMap<DDValue>,
     table: libc::size_t,
 ) -> *mut DeltaMap<DDValue> {
-    Box::into_raw(Box::new(DeltaMap::singleton(
-        table,
-        (&mut *delta).clear_rel(table as RelId),
-    )))
+    if !delta.is_null() {
+        Box::into_raw(Box::new(DeltaMap::singleton(
+            table,
+            (&mut *delta).clear_rel(table as RelId),
+        )))
+    } else {
+        ptr::null_mut()
+    }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_delta_clear(delta: *mut DeltaMap<DDValue>) {
-    (&mut *delta).as_mut().clear();
+    if !delta.is_null() {
+        (&mut *delta).as_mut().clear();
+    }
 }
 
 #[no_mangle]
@@ -889,9 +794,11 @@ pub unsafe extern "C" fn ddlog_delta_union(
     delta: *mut DeltaMap<DDValue>,
     new_delta: *const DeltaMap<DDValue>,
 ) {
-    for (table_id, table_data) in (&*new_delta).as_ref().iter() {
-        for (val, weight) in table_data.iter() {
-            (&mut *delta).update(*table_id, val, *weight);
+    if !delta.is_null() && !new_delta.is_null() {
+        for (table_id, table_data) in (&*new_delta).as_ref().iter() {
+            for (val, weight) in table_data.iter() {
+                (&mut *delta).update(*table_id, val, *weight);
+            }
         }
     }
 }

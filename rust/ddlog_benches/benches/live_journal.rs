@@ -35,8 +35,8 @@ fn live_journal_micro(c: &mut Criterion) {
                 &dataset,
                 |b, dataset| {
                     b.iter_batched(
-                        || (live_journal::init(thread_count), dataset.to_owned()),
-                        |(ddlog, dataset)| live_journal::run(black_box(ddlog), black_box(dataset)),
+                        || (ddlog_benches::init(thread_count), dataset.to_owned()),
+                        |(ddlog, dataset)| ddlog_benches::run(black_box(ddlog), black_box(dataset)),
                         BatchSize::PerIteration,
                     )
                 },
@@ -64,8 +64,8 @@ fn live_journal_macro(c: &mut Criterion) {
             &dataset,
             |b, dataset| {
                 b.iter_batched(
-                    || (live_journal::init(thread_count), dataset.clone()),
-                    |(ddlog, data)| live_journal::run(ddlog, data),
+                    || (ddlog_benches::init(thread_count), dataset.clone()),
+                    |(ddlog, data)| ddlog_benches::run(ddlog, data),
                     BatchSize::PerIteration,
                 )
             },

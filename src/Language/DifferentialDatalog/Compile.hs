@@ -185,10 +185,8 @@ templateFiles =
     map (mapSnd unpackFixNewline)
         [ ("src/build.rs"               , $(embedFile "rust/template/src/build.rs"))
         , ("src/main.rs"                , $(embedFile "rust/template/src/main.rs"))
-        , ("src/api/mod.rs"             , $(embedFile "rust/template/src/api/mod.rs"))
-        , ("src/api/c_api.rs"           , $(embedFile "rust/template/src/api/c_api.rs"))
+        , ("src/inventory.rs"           , $(embedFile "rust/template/src/inventory.rs"))
         , ("src/ovsdb_api.rs"           , $(embedFile "rust/template/src/ovsdb_api.rs"))
-        , ("src/update_handler.rs"      , $(embedFile "rust/template/src/update_handler.rs"))
         , ("ddlog.h"                    , $(embedFile "rust/template/ddlog.h"))
         , ("ddlog_ovsdb_test.c"         , $(embedFile "rust/template/ddlog_ovsdb_test.c"))
         ]
@@ -226,6 +224,10 @@ rustLibFiles =
         , ("differential_datalog/src/dataflow/consolidate.rs"     , $(embedFile "rust/template/differential_datalog/src/dataflow/consolidate.rs"))
         , ("differential_datalog/src/dataflow/distinct.rs"        , $(embedFile "rust/template/differential_datalog/src/dataflow/distinct.rs"))
         , ("differential_datalog/src/dataflow/filter_map.rs"      , $(embedFile "rust/template/differential_datalog/src/dataflow/filter_map.rs"))
+        , ("differential_datalog/src/api/mod.rs"                  , $(embedFile "rust/template/differential_datalog/src/api/mod.rs"))
+        , ("differential_datalog/src/api/c_api.rs"                , $(embedFile "rust/template/differential_datalog/src/api/c_api.rs"))
+        , ("differential_datalog/src/api/update_handler.rs"       , $(embedFile "rust/template/differential_datalog/src/api/update_handler.rs"))
+        , ("differential_datalog/src/flatbuf/mod.rs"              , $(embedFile "rust/template/differential_datalog/src/flatbuf/mod.rs"))
         , ("differential_datalog/src/dataflow/map.rs"             , $(embedFile "rust/template/differential_datalog/src/dataflow/map.rs"))
         , ("differential_datalog_test/Cargo.toml"                 , $(embedFile "rust/template/differential_datalog_test/Cargo.toml"))
         , ("differential_datalog_test/lib.rs"                     , $(embedFile "rust/template/differential_datalog_test/lib.rs"))
@@ -1732,7 +1734,7 @@ createLazyStatic lazy_static =
         map_len = length (staticEntries lazy_static)
         entries = map (hashMapIndex "map") (staticEntries lazy_static)
         static_name = text $ staticName lazy_static
-        doc_comment = maybe empty (\doc -> nest' $ "///" <+> text doc) $ staticDoc lazy_static
+        doc_comment = maybe empty (\doc -> "///" <+> text doc) $ staticDoc lazy_static
         key_type = text $ keyType lazy_static
         value_type = text $ valueType lazy_static
 

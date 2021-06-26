@@ -13,7 +13,7 @@ use std::{
 use triomphe::Arc;
 
 /// Trait to convert `DDVal` into concrete value type and back.
-#[allow(clippy::clippy::upper_case_acronyms)]
+#[allow(clippy::upper_case_acronyms)]
 pub trait DDValConvert: Sized {
     /// Extract reference to concrete type from `&DDVal`.
     ///

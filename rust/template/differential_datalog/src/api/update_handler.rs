@@ -13,36 +13,40 @@
 //!   the update
 //! - all of the above, but processed by a pool of worker threads
 
-use super::*;
-use crossbeam_channel::{Receiver, Sender};
-use differential_datalog::{
+#[cfg(feature = "c_api")]
+use crate::record::Record;
+use crate::{
+    ddval::DDValue,
     program::{RelId, RelationCallback},
+    record::IntoRecord,
     Callback, DeltaMap,
 };
+use crossbeam_channel::Sender;
 use std::{
     cell::Cell,
     fmt::{self, Debug, Formatter},
+    ptr,
     sync::{Arc, Barrier, Mutex, MutexGuard},
     thread,
 };
 
 /// Single-threaded (non-thread-safe callback)
-pub trait ST_RelationCallback: Fn(RelId, &DDValue, isize) {
-    fn clone_boxed(&self) -> Box<dyn ST_RelationCallback>;
+pub trait SingleThreadedRelationCallback: Fn(RelId, &DDValue, isize) {
+    fn clone_boxed(&self) -> Box<dyn SingleThreadedRelationCallback>;
 }
 
-impl<T> ST_RelationCallback for T
+impl<T> SingleThreadedRelationCallback for T
 where
     T: 'static + Clone + Fn(RelId, &DDValue, isize),
 {
-    fn clone_boxed(&self) -> Box<dyn ST_RelationCallback> {
+    fn clone_boxed(&self) -> Box<dyn SingleThreadedRelationCallback> {
         Box::new((&*self).clone())
     }
 }
 
 pub trait UpdateHandler: Debug {
     /// Returns a handler to be invoked on each output relation update.
-    fn update_cb(&self) -> Arc<dyn ST_RelationCallback>;
+    fn update_cb(&self) -> Arc<dyn SingleThreadedRelationCallback>;
 
     /// Notifies the handler that a transaction_commit method is about to be
     /// called. The handler has an opportunity to prepare to handle
@@ -87,7 +91,7 @@ impl NullUpdateHandler {
 }
 
 impl UpdateHandler for NullUpdateHandler {
-    fn update_cb(&self) -> Arc<dyn ST_RelationCallback> {
+    fn update_cb(&self) -> Arc<dyn SingleThreadedRelationCallback> {
         Arc::new(|_, _, _| {})
     }
     fn before_commit(&self) {}
@@ -121,7 +125,7 @@ impl<F: Callback> Debug for CallbackUpdateHandler<F> {
 }
 
 impl<F: Callback> UpdateHandler for CallbackUpdateHandler<F> {
-    fn update_cb(&self) -> Arc<dyn ST_RelationCallback> {
+    fn update_cb(&self) -> Arc<dyn SingleThreadedRelationCallback> {
         let cb = self.cb.clone();
         Arc::new(move |relid, v, w| cb(relid, &v.clone().into_record(), w))
     }
@@ -140,7 +144,7 @@ impl<F: Callback> MTUpdateHandler for CallbackUpdateHandler<F> {
 pub type ExternCCallback = extern "C" fn(
     arg: libc::uintptr_t,
     table: libc::size_t,
-    rec: *const record::Record,
+    rec: *const Record,
     weight: libc::ssize_t,
 );
 
@@ -161,19 +165,18 @@ impl ExternCUpdateHandler {
 
 #[cfg(feature = "c_api")]
 impl UpdateHandler for ExternCUpdateHandler {
-    fn update_cb(&self) -> Arc<dyn ST_RelationCallback> {
+    fn update_cb(&self) -> Arc<dyn SingleThreadedRelationCallback> {
         let cb = self.cb;
         let cb_arg = self.cb_arg;
+
         Arc::new(move |relid, v, w| {
-            cb(
-                cb_arg,
-                relid,
-                &v.clone().into_record() as *const record::Record,
-                w,
-            )
+            let value = v.clone().into_record();
+            cb(cb_arg, relid, &value as *const Record, w);
         })
     }
+
     fn before_commit(&self) {}
+
     fn after_commit(&self, _success: bool) {}
 }
 
@@ -182,13 +185,10 @@ impl MTUpdateHandler for ExternCUpdateHandler {
     fn mt_update_cb(&self) -> Arc<dyn RelationCallback> {
         let cb = self.cb;
         let cb_arg = self.cb_arg;
+
         Arc::new(move |relid, v, w| {
-            cb(
-                cb_arg,
-                relid,
-                &v.clone().into_record() as *const record::Record,
-                w as isize,
-            )
+            let value = v.clone().into_record();
+            cb(cb_arg, relid, &value as *const Record, w as isize);
         })
     }
 }
@@ -207,7 +207,7 @@ impl MTValMapUpdateHandler {
 }
 
 impl UpdateHandler for MTValMapUpdateHandler {
-    fn update_cb(&self) -> Arc<dyn ST_RelationCallback> {
+    fn update_cb(&self) -> Arc<dyn SingleThreadedRelationCallback> {
         let db = self.db.clone();
         Arc::new(move |relid, v, w| db.lock().unwrap().update(relid, v, w))
     }
@@ -259,7 +259,7 @@ impl ValMapUpdateHandler {
 }
 
 impl UpdateHandler for ValMapUpdateHandler {
-    fn update_cb(&self) -> Arc<dyn ST_RelationCallback> {
+    fn update_cb(&self) -> Arc<dyn SingleThreadedRelationCallback> {
         let handler = self.clone();
         Arc::new(move |relid, v, w| {
             let guard_ptr = handler.locked.get();
@@ -318,7 +318,7 @@ impl DeltaUpdateHandler {
 }
 
 impl UpdateHandler for DeltaUpdateHandler {
-    fn update_cb(&self) -> Arc<dyn ST_RelationCallback> {
+    fn update_cb(&self) -> Arc<dyn SingleThreadedRelationCallback> {
         let handler = self.clone();
         Arc::new(move |relid, v, w| {
             let guard_ptr = handler.locked.get();
@@ -346,6 +346,7 @@ impl UpdateHandler for DeltaUpdateHandler {
     fn after_commit(&self, _success: bool) {
         let guard_ptr = self.locked.replace(ptr::null_mut());
         assert_ne!(guard_ptr, ptr::null_mut());
+
         let _guard = unsafe { Box::from_raw(guard_ptr as *mut MutexGuard<'_, DeltaMap<DDValue>>) };
         // Lock will be released when `_guard` goes out of scope.
     }
@@ -365,8 +366,8 @@ impl ChainedUpdateHandler {
 }
 
 impl UpdateHandler for ChainedUpdateHandler {
-    fn update_cb(&self) -> Arc<dyn ST_RelationCallback> {
-        let cbs: Vec<Arc<dyn ST_RelationCallback>> =
+    fn update_cb(&self) -> Arc<dyn SingleThreadedRelationCallback> {
+        let cbs: Vec<Arc<dyn SingleThreadedRelationCallback>> =
             self.handlers.iter().map(|h| h.update_cb()).collect();
 
         Arc::new(move |relid, v, w| {
@@ -402,8 +403,8 @@ impl MTChainedUpdateHandler {
 }
 
 impl UpdateHandler for MTChainedUpdateHandler {
-    fn update_cb(&self) -> Arc<dyn ST_RelationCallback> {
-        let cbs: Vec<Arc<dyn ST_RelationCallback>> =
+    fn update_cb(&self) -> Arc<dyn SingleThreadedRelationCallback> {
+        let cbs: Vec<Arc<dyn SingleThreadedRelationCallback>> =
             self.handlers.iter().map(|h| h.update_cb()).collect();
 
         Arc::new(move |relid, v, w| {
@@ -512,7 +513,7 @@ impl Drop for ThreadUpdateHandler {
 }
 
 impl UpdateHandler for ThreadUpdateHandler {
-    fn update_cb(&self) -> Arc<dyn ST_RelationCallback> {
+    fn update_cb(&self) -> Arc<dyn SingleThreadedRelationCallback> {
         let channel = self.msg_channel.clone();
 
         Arc::new(move |relid, v, w| {

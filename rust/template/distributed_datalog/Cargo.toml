@@ -35,3 +35,4 @@ test-env-log = "0.1"
 waitfor = "0.1"
 # Import `test_value.rs`.
 differential_datalog_test = { path = "../differential_datalog_test" }
+fnv = "1.0.7"

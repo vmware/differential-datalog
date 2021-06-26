@@ -81,7 +81,7 @@ fn from_env() -> Result<ZooKeeper, String> {
         .into_string()
         .map_err(|e| format!("{} does not contain a valid string: {:?}", ENDPOINTS_ENV, e))?;
 
-    fn watcher(_: WatchedEvent) {};
+    fn watcher(_: WatchedEvent) {}
 
     connect(endpoints.split(','), watcher)
 }

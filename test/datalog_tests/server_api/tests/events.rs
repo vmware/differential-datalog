@@ -1,6 +1,7 @@
 use std::any::Any;
 use std::sync::{Arc, Mutex};
 
+use differential_datalog::api::HDDlog;
 use differential_datalog::ddval::DDValue;
 use differential_datalog::program::Update;
 use differential_datalog::record::Record;
@@ -16,10 +17,8 @@ use distributed_datalog::TcpReceiver;
 use distributed_datalog::TcpSender;
 use distributed_datalog::UpdatesObservable as UpdatesObservableT;
 
-use server_api_ddlog::api::updcmd2upd;
-use server_api_ddlog::api::HDDlog;
-use server_api_ddlog::UpdateSerializer;
 use server_api_ddlog::Relations::*;
+use server_api_ddlog::{Inventory, UpdateSerializer};
 
 use maplit::btreeset;
 use maplit::hashmap;
@@ -94,7 +93,9 @@ fn start_commit_with_updates(
 
     server.on_start()?;
     server.on_updates(Box::new(
-        updates.into_iter().map(|cmd| updcmd2upd(cmd).unwrap()),
+        updates
+            .into_iter()
+            .map(|cmd| cmd.to_update(&Inventory).unwrap()),
     ))?;
     server.on_commit()?;
     server.on_completed()?;
@@ -129,7 +130,7 @@ fn unsubscribe(
             Record::String("test1".to_string()),
         )]
         .iter()
-        .map(|cmd| updcmd2upd(cmd).unwrap()),
+        .map(|cmd| cmd.to_update(&Inventory).unwrap()),
     ))?;
     server.on_commit()?;
 
@@ -143,7 +144,7 @@ fn unsubscribe(
             Record::String("test2".to_string()),
         )]
         .iter()
-        .map(|cmd| updcmd2upd(cmd).unwrap()),
+        .map(|cmd| cmd.to_update(&Inventory).unwrap()),
     ))?;
     server.on_commit()?;
 
@@ -183,7 +184,9 @@ fn multiple_mergable_updates(
 
     server.on_start()?;
     server.on_updates(Box::new(
-        updates.into_iter().map(|cmd| updcmd2upd(cmd).unwrap()),
+        updates
+            .into_iter()
+            .map(|cmd| cmd.to_update(&Inventory).unwrap()),
     ))?;
     server.on_commit()?;
     server.on_completed()?;
@@ -225,7 +228,9 @@ fn multiple_transactions(
 
     server.on_start()?;
     server.on_updates(Box::new(
-        updates.into_iter().map(|cmd| updcmd2upd(cmd).unwrap()),
+        updates
+            .into_iter()
+            .map(|cmd| cmd.to_update(&Inventory).unwrap()),
     ))?;
     server.on_commit()?;
 
@@ -251,7 +256,9 @@ fn multiple_transactions(
 
     server.on_start()?;
     server.on_updates(Box::new(
-        updates.into_iter().map(|cmd| updcmd2upd(cmd).unwrap()),
+        updates
+            .into_iter()
+            .map(|cmd| cmd.to_update(&Inventory).unwrap()),
     ))?;
     server.on_commit()?;
 
@@ -275,7 +282,7 @@ fn multiple_transactions(
 }
 
 fn setup() -> (DDlogServer, UpdatesObservable, MockObserver) {
-    let (program, _) = HDDlog::run(1, false).unwrap();
+    let (program, _) = server_api_ddlog::run(1, false).unwrap();
     let mut server = DDlogServer::new(Some(Arc::new(program)), hashmap! {});
 
     let observer = SharedObserver::new(Mutex::new(Mock::new()));
@@ -286,7 +293,7 @@ fn setup() -> (DDlogServer, UpdatesObservable, MockObserver) {
 }
 
 fn setup_tcp() -> (DDlogServer, UpdatesObservable, MockObserver, Box<dyn Any>) {
-    let (program, _) = HDDlog::run(1, false).unwrap();
+    let (program, _) = server_api_ddlog::run(1, false).unwrap();
     let mut server = DDlogServer::new(Some(Arc::new(program)), hashmap! {});
 
     let observer = SharedObserver::new(Mutex::new(Mock::new()));

@@ -1,6 +1,5 @@
-use benchmarks_ddlog::{api::HDDlog, typedefs::live_journal::Edge, Relations};
-use benchmarks_differential_datalog::{
-    DDlog, DDlogDynamic,
+use benchmarks_ddlog::{typedefs::live_journal::Edge, Relations};
+use differential_datalog::{
     ddval::{DDValConvert, DDValue},
     program::{RelId, Update},
 };
@@ -43,23 +42,4 @@ pub fn dataset(samples: Option<usize>) -> Vec<Update<DDValue>> {
     }
 
     edges
-}
-
-pub fn init(workers: usize) -> HDDlog {
-    let (ddlog, _) = HDDlog::run(workers, false).expect("failed to create DDlog instance");
-    ddlog
-}
-
-pub fn run(ddlog: HDDlog, dataset: Vec<Update<DDValue>>) -> HDDlog {
-    ddlog
-        .transaction_start()
-        .expect("failed to start transaction");
-    ddlog
-        .apply_updates(&mut dataset.into_iter())
-        .expect("failed to give transaction input");
-    ddlog
-        .transaction_commit()
-        .expect("failed to commit transaction");
-
-    ddlog
 }

@@ -19,13 +19,13 @@ mod update;
 mod worker;
 
 pub use arrange::diff_distinct;
+pub use config::{Config, ProfilingKind};
 pub use timestamp::{TSNested, TupleTS, TS};
 pub use update::Update;
 
 use crate::{
     ddval::*,
     profile::*,
-    program::config::ProfilingKind,
     record::Mutator,
     render::{
         arrange_by::{ArrangeBy, ArrangementKind},
@@ -35,7 +35,7 @@ use crate::{
 use arrange::{
     antijoin_arranged, Arrangement as DataflowArrangement, ArrangementFlavor, Arrangements,
 };
-use config::{Config, SelfProfilingRig};
+use config::SelfProfilingRig;
 use crossbeam_channel::{Receiver, Sender};
 use fnv::{FnvHashMap, FnvHashSet};
 use std::{
@@ -993,19 +993,8 @@ enum Reply {
 }
 
 impl Program {
-    /// Instantiate the program with `number_workers` timely threads.
-    pub fn run(&self, number_workers: usize) -> Result<RunningProgram, String> {
-        let config = Config {
-            num_timely_workers: number_workers,
-            profiling_kind: ProfilingKind::SelfProfiling,
-            ..Default::default()
-        };
-
-        self.run_with_config(config)
-    }
-
     /// Initialize the program with the given configuration
-    pub fn run_with_config(&self, config: Config) -> Result<RunningProgram, String> {
+    pub fn run(&self, config: Config) -> Result<RunningProgram, String> {
         // Setup channels to communicate with the dataflow.
         // We use async channels to avoid deadlocks when workers are parked in
         // `step_or_park`.  This has the downside of introducing an unbounded buffer

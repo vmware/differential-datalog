@@ -652,7 +652,7 @@ impl<'a> DDlogWorker<'a> {
 }
 
 // TODO: Add back regions for relations
-#[allow(clippy::clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)]
 fn render_relation<S>(
     relation: &Relation,
     // TODO: Shift to generic representations for ddflow-related structs
@@ -732,7 +732,7 @@ fn render_relation<S>(
 }
 
 // TODO: Regions for SCCs
-#[allow(clippy::clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)]
 fn render_scc<'a>(
     rels: &[RecursiveRelation],
     node_id: RelId,

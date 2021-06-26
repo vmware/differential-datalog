@@ -3,6 +3,7 @@
 mod arrays;
 mod tuples;
 
+use crate::{ddval::DDValue, program::Update, DDlogInventory};
 use num::{BigInt, BigUint, ToPrimitive};
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
@@ -306,6 +307,67 @@ pub enum UpdCmd {
     Delete(RelIdentifier, Record),
     DeleteKey(RelIdentifier, Record),
     Modify(RelIdentifier, Record, Record),
+}
+
+impl UpdCmd {
+    pub fn to_update<I>(&self, inventory: &I) -> Result<Update<DDValue>, String>
+    where
+        I: DDlogInventory,
+    {
+        let update = match self {
+            Self::Insert(relation_ident, record) => {
+                let (relation_id, value) =
+                    inventory.relation_value_from_record(relation_ident, record)?;
+
+                Update::Insert {
+                    relid: relation_id,
+                    v: value,
+                }
+            }
+
+            Self::InsertOrUpdate(relation_ident, record) => {
+                let (relation_id, value) =
+                    inventory.relation_value_from_record(relation_ident, record)?;
+
+                Update::InsertOrUpdate {
+                    relid: relation_id,
+                    v: value,
+                }
+            }
+
+            Self::Delete(relation_ident, record) => {
+                let (relation_id, value) =
+                    inventory.relation_value_from_record(relation_ident, record)?;
+
+                Update::DeleteValue {
+                    relid: relation_id,
+                    v: value,
+                }
+            }
+
+            Self::DeleteKey(relation_ident, record) => {
+                let (relation_id, key) =
+                    inventory.relation_key_from_record(relation_ident, record)?;
+
+                Update::DeleteKey {
+                    relid: relation_id,
+                    k: key,
+                }
+            }
+
+            Self::Modify(relation_ident, key, record) => {
+                let (relation_id, key) = inventory.relation_key_from_record(relation_ident, key)?;
+
+                Update::Modify {
+                    relid: relation_id,
+                    k: key,
+                    m: StdArc::new(record.clone()),
+                }
+            }
+        };
+
+        Ok(update)
+    }
 }
 
 /*
