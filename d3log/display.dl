@@ -1,0 +1,13 @@
+
+// kinds ? dont want to have a typecase of shapes?
+
+relation Position(u:u128, x:u32, y:u32)
+relation Color(u:u128, c:string)
+relation Text(u:u128, c:string)
+
+// define clock
+input relation Browser(loc:D3logLocationId, t:u64)
+
+Position(1, 100, 100)@n :- Browser(n, _).
+Color(1, "blue")@n :- Browser(n, _).
+Text(1, "a nose")@n :- Browser(n, _).

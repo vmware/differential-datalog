@@ -1,0 +1,38 @@
+
+// the syscall interface from the supervisor perspective, as well
+// and some internal items of interest that should get broken out
+
+// is this a ddlog_timestamp? no?
+typedef Time = u64
+
+// this is really everyone we ever hear from. importantly - is this
+// a global relation, or a local one (myself, other). is the
+// supervisor 
+output relation Worker(location: D3logLocationId)
+
+// should include the source address, port, and timestamp
+// we dont actually know the nid w/o negotiation
+output relation ConnectionStatus(time: Time, me: D3logLocationId, them:D3logLocationId)
+
+// we should have address types here
+input relation TcpAddress(location: D3logLocationId, destination: string)
+index TcpAddress_by_location(from: D3logLocationId) on TcpAddress(from, _)
+
+// it might be handier if we allow people to use a url pointer
+// i guess we're going to make executable a uuid style object
+// so it can have properties and support multiple sources
+
+input relation Process(id: u128,
+                       executable: u128,
+                       arguments: Vec<string>,                         
+                       management: bool)
+
+output relation ProcessStatus(time: Time,
+      id: u128,                    
+      memory_bytes:u64,            
+      threads:u64,
+      cpu_seconds:u64,                       
+      exit_code:Option<u32>)       
+
+// a set of local processes is a global job
+input relation Jobs(job:u128, process:u128) 
