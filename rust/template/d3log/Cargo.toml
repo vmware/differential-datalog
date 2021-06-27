@@ -6,6 +6,12 @@ edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[dependencies.differential_datalog]
+path = "../differential_datalog"
+
+[dependencies.cmd_parser]
+path = "../cmd_parser"
+
 [dependencies]
 tokio = {version = "1.4.0", features =["net", "macros", "rt-multi-thread", "io-util", "rt", "sync", "fs"]}
 serde = { version = "1.0", features = ["derive"] }
@@ -13,6 +19,7 @@ tokio-fd = {version = "0.3.0"}
 rustop = { version = "1.0.2"}
 nix = { version = "0.20.0"}
 serde_json = "1.0.60"
+
 
 num-bigint = "0.4.0"
 buffer = "0.1.9"

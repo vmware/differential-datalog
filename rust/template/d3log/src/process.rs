@@ -11,12 +11,11 @@
 
 use crate::{
     async_error,
-    d3::Evaluator,
     error::Error,
     fact,
     json_framer::JsonFramer,
     record_batch::{record_deserialize_batch, record_serialize_batch, RecordBatch},
-    Batch, Port, Transport,
+    Batch, Evaluator, Port, Transport,
 };
 use differential_datalog::record::*;
 use nix::unistd::*;
