@@ -14,18 +14,21 @@ use time::Instant;
 
 use api::{updcmd2upd, HDDlog};
 use cmd_parser::*;
-use datalog_example_ddlog::*;
 use ddlog_log::log_set_default_callback;
 use differential_datalog::ddval::*;
 use differential_datalog::program::*;
 use differential_datalog::record::*;
 use differential_datalog::DeltaMap;
 use differential_datalog::{DDlog, DDlogDynamic, DDlogProfiling};
+use gather_ddlog::*;
 use num_traits::cast::ToPrimitive;
 use rustop::opts;
 
 #[cfg(feature = "profile")]
 use cpuprofiler::PROFILER;
+
+#[cfg(feature = "distributed")]
+mod d3main;
 
 #[allow(clippy::let_and_return)]
 fn handle_cmd(

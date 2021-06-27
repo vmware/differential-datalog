@@ -1,14 +1,9 @@
-use crate::{
-    d3::{Batch, Evaluator, EvaluatorTrait, Node},
-    ddvalue_batch::DDValueBatch,
-    error::Error,
-    Port, Transport,
-};
+use d3::{Batch, DDValueBatch, Error, Evaluator, EvaluatorTrait, Node, Port, Transport};
 
+use crate::{api::HDDlog, relid2name, relval_from_record, Relations, UpdateSerializer};
 use differential_datalog::{
     ddval::DDValue, program::Update, record::IntoRecord, record::Record, D3log, DDlog, DDlogDynamic,
 };
-use rules_ddlog::{api::HDDlog, relid2name, relval_from_record, Relations, UpdateSerializer};
 use serde::{de, de::SeqAccess, de::Visitor, Deserialize, Deserializer};
 use serde::{ser::SerializeTuple, Serialize, Serializer};
 use std::convert::TryFrom;

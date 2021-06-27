@@ -20,15 +20,8 @@ use tokio::{
 };
 
 use crate::{
-    async_error,
-    d3::{Batch, Evaluator, Node, Port, Transport},
-    ddvalue_batch::DDValueBatch,
-    dispatch::Dispatch,
-    error::Error,
-    fact,
-    forwarder::Forwarder,
-    json_framer::JsonFramer,
-    record_batch::RecordBatch,
+    async_error, fact, Batch, DDValueBatch, Dispatch, Error, Evaluator, Forwarder, JsonFramer,
+    Node, Port, RecordBatch, Transport,
 };
 
 use differential_datalog::record::*;

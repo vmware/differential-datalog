@@ -185,6 +185,7 @@ templateFiles =
     map (mapSnd unpackFixNewline)
         [ ("src/build.rs"               , $(embedFile "rust/template/src/build.rs"))
         , ("src/main.rs"                , $(embedFile "rust/template/src/main.rs"))
+        , ("src/d3main.rs"              , $(embedFile "rust/template/src/d3main.rs"))        
         , ("src/api/mod.rs"             , $(embedFile "rust/template/src/api/mod.rs"))
         , ("src/api/c_api.rs"           , $(embedFile "rust/template/src/api/c_api.rs"))
         , ("src/ovsdb_api.rs"           , $(embedFile "rust/template/src/ovsdb_api.rs"))

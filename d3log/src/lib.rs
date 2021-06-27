@@ -1,3 +1,15 @@
+mod broadcast;
+mod datfile;
+mod ddvalue_batch;
+mod dispatch;
+mod display;
+mod error;
+mod forwarder;
+mod json_framer;
+mod process;
+mod record_batch;
+mod tcp_network;
+
 use core::fmt;
 use core::fmt::Display as CoreDisplay;
 use std::sync::Arc;

@@ -34,5 +34,16 @@ input relation ProcessStatus(time: Time,
       threads:u64,
       exit_code:Option<u32>)
 
-// a set of local processes is a global job
-input relation Jobs(job:u128, process:u128) 
+// a set of local processes is a global job...do we care?
+input relation Jobs(job:u128, process:u128)
+
+
+output relation Instance(id: u128)
+
+// maybe this is instance generic - probably - it would suck to have to change
+// your code to use a different instance type
+input relation InstanceStatus(time: Time,
+      id: u128,
+      memory_bytes:u64,
+      threads:u64)
+

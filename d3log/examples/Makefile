@@ -1,16 +1,10 @@
+# how do the other test drivers access the executable?
+ROOT = ../..
+DDLOG = $(ROOT)/ddlog/bin/ddlog
+all: com
 
-EXEC = target/debug/mm3
-all: out
-DIST = ../..
+go:
+	$(DDLOG) --no-staticlib --dynlib --action compile -L$(ROOT)/lib -L.. --d3log -i gather.dl
 
-mm_ddlog/types/mm.rs: mm.dl ../d3_application.dl
-	ddlog --no-staticlib --dynlib --action compile -L$(DIST)/lib -L.. --d3log -i mm.dl
-
-$(EXEC): mm_ddlog/types/mm.rs src/*.rs 
-	cargo build
-
-out: $(EXEC)
-	$(EXEC) -n 3
-
-clean:
-	rm -rf mm_ddlog
+com: go
+	(cd gather_ddlog ; cargo build --features distributed)

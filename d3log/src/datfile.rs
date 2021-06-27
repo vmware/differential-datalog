@@ -1,7 +1,9 @@
-use crate::{d3::Evaluator, error::Error, record_batch::RecordBatch, Batch};
+use crate::{Batch, Error, Evaluator, RecordBatch};
 use cmd_parser::{err_str, parse_command, Command};
-use differential_datalog::record::RelIdentifier::{RelId, RelName};
-use differential_datalog::record::UpdCmd;
+use differential_datalog::{
+    record::RelIdentifier::{RelId, RelName},
+    record::UpdCmd,
+};
 use tokio::io::AsyncBufReadExt;
 use tokio::io::BufReader;
 

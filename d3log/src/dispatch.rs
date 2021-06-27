@@ -3,11 +3,8 @@
 // the relation id and the envelope. This would replace Transact.forward, which seems
 // correct
 
-use crate::{
-    d3::{Batch, Evaluator, Port, Transport},
-    error::Error,
-    record_batch::RecordBatch,
-};
+use crate::{Batch, Error, Evaluator, Port, RecordBatch, Transport};
+
 //use differential_datalog::program::RelId;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};

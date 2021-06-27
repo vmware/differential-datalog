@@ -1,7 +1,4 @@
-use crate::{
-    async_error, d3::Evaluator, fact, forwarder::Forwarder, record_batch::RecordBatch, Batch, Port,
-    Transport,
-};
+use crate::{async_error, fact, Batch, Evaluator, Forwarder, Port, RecordBatch, Transport};
 use differential_datalog::record::{IntoRecord, Record};
 use futures_util::stream::StreamExt;
 use futures_util::SinkExt;

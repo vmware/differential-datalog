@@ -2,7 +2,7 @@
 // over them, in particular general serde support. This currently sits on top
 // of DeltaMap, but that might change
 
-use crate::{d3::Evaluator, error::Error, Batch};
+use crate::{Batch, Error, Evaluator};
 use differential_datalog::{ddval::DDValue, program::RelId, DeltaMap};
 use std::collections::BTreeMap;
 use std::fmt;

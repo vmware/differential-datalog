@@ -1,4 +1,4 @@
-use crate::{d3::Evaluator, d3::Node, d3::Port, d3::Transport, ddvalue_batch::DDValueBatch, Batch};
+use crate::{Batch, DDValueBatch, Evaluator, Node, Port, Transport};
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::sync::{Arc, Mutex};
