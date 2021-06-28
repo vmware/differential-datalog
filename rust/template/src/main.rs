@@ -12,7 +12,7 @@ use std::sync::Mutex;
 use std::thread::sleep;
 use time::Instant;
 
-use api::{updcmd2upd, HDDlog};
+use api::*;
 use cmd_parser::*;
 use ddlog_log::log_set_default_callback;
 use differential_datalog::ddval::*;
