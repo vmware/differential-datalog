@@ -27,7 +27,7 @@ use rustop::opts;
 #[cfg(feature = "profile")]
 use cpuprofiler::PROFILER;
 
-#[cfg(feature = "distributed")]
+#[cfg(feature = "distribution")]
 mod d3main;
 
 #[allow(clippy::let_and_return)]
@@ -264,7 +264,13 @@ fn main() -> Result<(), String> {
         );
     }
     fn no_op(_table: usize, _rec: &Record, _w: isize) {}
+    #[cfg(feature = "distribution")]
+    {
+        d3main::start_d3log();
+        Ok(())
+    }
 
+    #[cfg(not(feature = "distribution"))]
     match HDDlog::run(args.workers, args.store) {
         Ok((hddlog, init_output)) => {
             if args.init_snapshot {

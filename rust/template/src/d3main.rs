@@ -205,3 +205,64 @@ impl EvaluatorTrait for D3 {
         Ok(v)
     }
 }
+
+#[cfg(distributed)]
+fn start_d3log() {
+    let management = Arc::new(Print(Arc::new(Null {})));
+
+    let (_management_port, uuid) = if let Some(f) = std::env::var_os("uuid") {
+        if let Some(f2) = f.to_str() {
+            let m = FileDescriptorPort {
+                management: management.clone(),
+                fd: MANAGEMENT_OUTPUT_FD,
+            };
+            let uuid = f2.parse::<u128>().unwrap();
+            (Arc::new(m) as Port, uuid)
+        } else {
+            panic!("bad uuid");
+        }
+    } else {
+        // use uuid crate
+        (
+            Arc::new(Broadcast::new()) as Port,
+            u128::from_be_bytes(rand::thread_rng().gen::<[u8; 16]>()),
+        )
+    };
+
+    start_instance(
+        D3::new(uuid, management.clone()).expect("D3"),
+        uuid,
+        management.clone(),
+    )
+    .expect("instance");
+}
+
+fn start_d3log() {
+    let management = Arc::new(Print(Arc::new(Null {})));
+
+    let (_management_port, uuid) = if let Some(f) = std::env::var_os("uuid") {
+        if let Some(f2) = f.to_str() {
+            let m = FileDescriptorPort {
+                management: management.clone(),
+                fd: MANAGEMENT_OUTPUT_FD,
+            };
+            let uuid = f2.parse::<u128>().unwrap();
+            (Arc::new(m) as Port, uuid)
+        } else {
+            panic!("bad uuid");
+        }
+    } else {
+        // use uuid crate
+        (
+            Arc::new(Broadcast::new()) as Port,
+            u128::from_be_bytes(rand::thread_rng().gen::<[u8; 16]>()),
+        )
+    };
+
+    start_instance(
+        D3::new(uuid, management.clone()).expect("D3"),
+        uuid,
+        management.clone(),
+    )
+    .expect("instance");
+}
