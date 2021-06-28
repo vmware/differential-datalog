@@ -1,12 +1,12 @@
-mod broadcast;
+pub mod broadcast;
 mod datfile;
-mod ddvalue_batch;
+pub mod ddvalue_batch;
 mod dispatch;
 mod display;
-mod error;
+pub mod error;
 mod forwarder;
 mod json_framer;
-mod process;
+pub mod process;
 mod record_batch;
 mod tcp_network;
 
@@ -17,7 +17,6 @@ use tokio::runtime::Runtime;
 
 use differential_datalog::{ddval::DDValue, record::Record, D3logLocationId};
 
-// this is I guess lib.rs
 use crate::{
     ddvalue_batch::DDValueBatch, dispatch::Dispatch, display::Display, error::Error,
     forwarder::Forwarder, process::ProcessManager, record_batch::RecordBatch,

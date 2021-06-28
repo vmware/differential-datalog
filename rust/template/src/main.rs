@@ -20,7 +20,6 @@ use differential_datalog::program::*;
 use differential_datalog::record::*;
 use differential_datalog::DeltaMap;
 use differential_datalog::{DDlog, DDlogDynamic, DDlogProfiling};
-use gather_ddlog::*;
 use num_traits::cast::ToPrimitive;
 use rustop::opts;
 

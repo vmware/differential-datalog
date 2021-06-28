@@ -25,7 +25,6 @@ num-bigint = "0.4.0"
 buffer = "0.1.9"
 # check - i think this was just for a test
 phf = {version="0.8", features = ["macros"]}
-rand = "0.8.3"
 # feature display
 hyper = {version = "0.14.7", features = ["http1", "server", "tcp"]}
 websocket-codec = "0.5.0"

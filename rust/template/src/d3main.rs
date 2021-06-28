@@ -1,15 +1,24 @@
-use d3::{Batch, DDValueBatch, Error, Evaluator, EvaluatorTrait, Node, Port, Transport};
+use d3log::{
+    broadcast::Broadcast,
+    ddvalue_batch::DDValueBatch,
+    error::Error,
+    process::{FileDescriptorPort, MANAGEMENT_OUTPUT_FD},
+    start_instance, Batch, Evaluator, EvaluatorTrait, Node, Port, Transport,
+};
 
 use crate::{api::HDDlog, relid2name, relval_from_record, Relations, UpdateSerializer};
 use differential_datalog::{
     ddval::DDValue, program::Update, record::IntoRecord, record::Record, D3log, DDlog, DDlogDynamic,
 };
+use rand;
 use serde::{de, de::SeqAccess, de::Visitor, Deserialize, Deserializer};
 use serde::{ser::SerializeTuple, Serialize, Serializer};
 use std::convert::TryFrom;
 use std::fmt;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+use serde_json;
 
 pub struct Null {}
 impl Transport for Null {
@@ -206,38 +215,7 @@ impl EvaluatorTrait for D3 {
     }
 }
 
-#[cfg(distributed)]
-fn start_d3log() {
-    let management = Arc::new(Print(Arc::new(Null {})));
-
-    let (_management_port, uuid) = if let Some(f) = std::env::var_os("uuid") {
-        if let Some(f2) = f.to_str() {
-            let m = FileDescriptorPort {
-                management: management.clone(),
-                fd: MANAGEMENT_OUTPUT_FD,
-            };
-            let uuid = f2.parse::<u128>().unwrap();
-            (Arc::new(m) as Port, uuid)
-        } else {
-            panic!("bad uuid");
-        }
-    } else {
-        // use uuid crate
-        (
-            Arc::new(Broadcast::new()) as Port,
-            u128::from_be_bytes(rand::thread_rng().gen::<[u8; 16]>()),
-        )
-    };
-
-    start_instance(
-        D3::new(uuid, management.clone()).expect("D3"),
-        uuid,
-        management.clone(),
-    )
-    .expect("instance");
-}
-
-fn start_d3log() {
+pub fn start_d3log() {
     let management = Arc::new(Print(Arc::new(Null {})));
 
     let (_management_port, uuid) = if let Some(f) = std::env::var_os("uuid") {

@@ -251,7 +251,6 @@ rustLibFiles =
         , ("d3log/src/ddvalue_batch.rs"                           , $(embedFile "rust/template/d3log/src/ddvalue_batch.rs"))
         , ("d3log/src/json_framer.rs"                             , $(embedFile "rust/template/d3log/src/json_framer.rs"))
         , ("d3log/src/broadcast.rs"                               , $(embedFile "rust/template/d3log/src/broadcast.rs"))
-        , ("d3log/src/main.rs"                                    , $(embedFile "rust/template/d3log/src/main.rs"))
         , ("d3log/src/process.rs"                                 , $(embedFile "rust/template/d3log/src/process.rs"))
         , ("d3log/src/tcp_network.rs"                             , $(embedFile "rust/template/d3log/src/tcp_network.rs"))
         , ("ovsdb/Cargo.toml"                                     , $(embedFile "rust/template/ovsdb/Cargo.toml"))
