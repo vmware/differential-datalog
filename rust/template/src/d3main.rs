@@ -10,7 +10,7 @@ use crate::{api::HDDlog, relid2name, relval_from_record, Relations, UpdateSerial
 use differential_datalog::{
     ddval::DDValue, program::Update, record::IntoRecord, record::Record, D3log, DDlog, DDlogDynamic,
 };
-use rand;
+use rand::Rng;
 use serde::{de, de::SeqAccess, de::Visitor, Deserialize, Deserializer};
 use serde::{ser::SerializeTuple, Serialize, Serializer};
 use std::convert::TryFrom;
