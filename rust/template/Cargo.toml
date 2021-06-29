@@ -13,7 +13,7 @@ ovsdb = ["ddlog_ovsdb_adapter"]
 command-line = ["cmd_parser", "rustop"]
 nested_ts_32 = ["differential_datalog/nested_ts_32"]
 c_api = ["differential_datalog/c_api"]
-distribution = ["d3log", "serde_json"]
+distribution = ["d3log", "serde_json", "rand"]
 
 [dependencies.d3log]
 path = "./d3log"
@@ -21,6 +21,10 @@ optional = true
 
 [dependencies.serde_json]
 serde_json = "1.0.60"
+optional = true
+
+[dependencies.rand]
+rand = "0.8.4"
 optional = true
 
 [dependencies]
