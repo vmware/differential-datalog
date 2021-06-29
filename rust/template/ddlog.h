@@ -158,7 +158,7 @@ extern ddlog_prog ddlog_run(
  *
  * NOTE: for tables declared outside of the main DDlog module, fully qualified
  * module names must be used, e.g., the fully qualified name of a table named
- * "Pod" declared inside the "k8spolicy" module is "k8spolicy.Pod".
+ * "Pod" declared inside the "k8spolicy" module is "k8spolicy::Pod".
  *
  * On error, returns -1.
  */
