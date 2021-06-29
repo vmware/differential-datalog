@@ -85,13 +85,13 @@ impl<'de> Visitor<'de> for BatchVisitor {
     }
 }
 
-impl<'de> Deserialize<'de> for DDValueBatch {
+impl<'de> Deserialize<'de> for SerializeBatchWrapper {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
         let b: DDValueBatch = deserializer.deserialize_any(BatchVisitor {})?;
-        Ok(b)
+        Ok(SerializeBatchWrapper { b })
     }
 }
 
@@ -210,8 +210,8 @@ impl EvaluatorTrait for D3 {
 
     fn deserialize_batch(&self, s: Vec<u8>) -> Result<DDValueBatch, Error> {
         let s = std::str::from_utf8(&s)?;
-        let v: DDValueBatch = serde_json::from_str(&s)?;
-        Ok(v)
+        let v: SerializeBatchWrapper = serde_json::from_str(&s)?;
+        Ok(v.b)
     }
 }
 
