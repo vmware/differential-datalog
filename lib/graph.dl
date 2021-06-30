@@ -35,7 +35,8 @@ SOFTWARE.
  * - `to`    - extracts the destination node of an edge
  *
  * Output:
- * - `Labels` - partitions a subset of graph nodes into strongly
+ * - `Labels` - (node, scc_id) tuples
+ *    These tuples partition a subset of graph nodes into strongly
  *    connected components represented by labeling these nodes
  *    with SCC ids.  An SCC id is id of the smallest node in the SCC.
  *    A node not covered by the partitioning belongs to an SCC
@@ -59,8 +60,9 @@ extern transformer SCC(Edges:   relation['E],
  * - `to`     - extracts the destination node of an edge
  *
  * Output:
- * - `Labels` - Final labeling of node `n` with the smallest node
- *    id `l` such that `n` is reachable from `l`.
+ * - `Labels` - (n,l) tuples with final labeling of node `n`
+ *    with the smallest node id `l` such that `n` is reachable
+ *    from `l`.
  */
 extern transformer ConnectedComponents(Edges:   relation['E],
                                        from:    function(e: 'E): 'N,
