@@ -119,11 +119,12 @@ impl Serialize for SerializeBatchWrapper {
 }
 
 impl D3 {
-    pub fn new(_uuid: Node, _management: Port) -> Result<Evaluator, Error> {
-        // we could stash the init output someplace. we still have issues around whether this is the
-        // right thing to do. shouldn't start_instance run a hddlog ?
-        let (h, _init_output) = HDDlog::run(1, false)?;
-        Ok(Arc::new(D3 { h }))
+    pub fn new(_uuid: Node, _management: Port) -> Result<(Evaluator, Batch), Error> {
+        let (h, init_output) = HDDlog::run(1, false)?;
+        Ok((
+            Arc::new(D3 { h }),
+            DDValueBatch::from_delta_map(init_output),
+        ))
     }
 }
 
@@ -215,7 +216,7 @@ impl EvaluatorTrait for D3 {
     }
 }
 
-pub fn start_d3log() {
+pub fn start_d3log() -> Result<(), Error> {
     let management = Arc::new(Print(Arc::new(Null {})));
 
     let (_management_port, uuid) = if let Some(f) = std::env::var_os("uuid") {
@@ -237,10 +238,9 @@ pub fn start_d3log() {
         )
     };
 
-    start_instance(
-        D3::new(uuid, management.clone()).expect("D3"),
-        uuid,
-        management.clone(),
-    )
-    .expect("instance");
+    // this is wrong
+    let (d, init_batch) = D3::new(uuid, management.clone()).expect("D3");
+    let port = start_instance(d, uuid, management.clone()).expect("instance");
+    port.send(init_batch);
+    Ok(())
 }

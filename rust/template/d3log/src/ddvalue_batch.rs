@@ -23,8 +23,8 @@ impl Display for DDValueBatch {
         f.write_str(&"<")?;
         let b = self.0.lock().unwrap();
         for (relid, vees) in b.deltas.clone() {
-            // name..but we need a context nad it doesn't seem right
-            // to add it to all the batches
+            // I would really prefer a readable name..but we need an Evaluator and it doesn't seem right
+            // to add it to all the batches or globalize it
             f.write_str(&format!("({}", relid))?;
 
             let mut m = 0;

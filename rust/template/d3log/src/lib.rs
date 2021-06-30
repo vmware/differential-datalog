@@ -67,8 +67,7 @@ impl CoreDisplay for Batch {
     }
 }
 
-// input optional string is temporary demo plumbing
-pub fn start_instance(e: Evaluator, uuid: u128, management: Port) -> Result<(), Error> {
+pub fn start_instance(e: Evaluator, uuid: u128, management: Port) -> Result<Port, Error> {
     let rt = Runtime::new().unwrap();
 
     // pass rt?
@@ -102,5 +101,5 @@ pub fn start_instance(e: Evaluator, uuid: u128, management: Port) -> Result<(), 
             .await
             .expect("bind")
     });
-    Ok(())
+    Ok(Arc::new(d)) // not really? a bootstrapping issue with the init batch
 }
