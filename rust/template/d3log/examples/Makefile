@@ -13,7 +13,7 @@ compile:
 	(cd gather_ddlog ; cargo build --features distribution)
 
 start: 
-	./gather_ddlog/target/debug/deps/gather_cli
+	./gather_ddlog/target/debug/gather_cli
 
 inc: compile start
 run: compiler program compile start	
