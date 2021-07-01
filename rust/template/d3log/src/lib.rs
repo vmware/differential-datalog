@@ -13,7 +13,9 @@ mod tcp_network;
 use core::fmt;
 use core::fmt::Display as CoreDisplay;
 use std::sync::Arc;
+use std::thread;
 use tokio::runtime::Runtime;
+use tokio::task::JoinHandle;
 
 use differential_datalog::{ddval::DDValue, record::Record, D3logLocationId};
 
@@ -67,39 +69,62 @@ impl CoreDisplay for Batch {
     }
 }
 
-pub fn start_instance(e: Evaluator, uuid: u128, management: Port) -> Result<Port, Error> {
-    let rt = Runtime::new().unwrap();
+pub fn start_instance(
+    eval: Evaluator,
+    uuid: u128,
+    management: Port,
+) -> Result<(Port, std::thread::JoinHandle<()>), Error> {
+    let dispatch = Dispatch::new(eval.clone());
+    let dispatch = dispatch.clone();
+    //race between registration and new data.
 
-    // pass rt?
-    let _eg = rt.enter();
-
-    let d = Dispatch::new(e.clone());
-    let f = Forwarder::new(e.clone());
+    let forwarder = Forwarder::new(eval.clone());
 
     // pass d to process manager
-    d.clone().register(
-        "d3_application::Process",
-        Arc::new(ProcessManager::new(e.clone(), management.clone())),
-    )?;
+    dispatch
+        .clone()
+        .register(
+            "d3_application::Process",
+            Arc::new(ProcessManager::new(eval.clone(), management.clone())),
+        )
+        .expect("registration failed");
 
-    // conditionalize - fact configuration
-    let f2 = f.clone();
-    let e2 = e.clone();
-    let d2 = d.clone();
-    let m2 = management.clone();
+    let forwarder_clone = forwarder.clone();
+    let eval_clone = eval.clone();
+    let dispatch_clone = dispatch.clone();
+    let management_clone = management.clone();
 
-    tokio::spawn(async move {
-        Display::new(8080, e2.clone(), m2.clone(), f2.clone(), m2.clone()).await;
-    });
+    let handle = thread::spawn(move || {
+        let rt = Runtime::new().expect("tokio runtime creation");
 
-    // I _think_ that dropping rt is going to hold this thread until
-    // the scheduler is empty, based on documentation. apparently not.
-    let m2 = management.clone();
-    let f2 = f.clone();
-    rt.block_on(async move {
-        tcp_bind(d2, uuid, f2, m2.clone(), e.clone(), m2.clone())
+        rt.spawn(async move {
+            Display::new(
+                8080,
+                eval_clone.clone(),
+                management_clone.clone(),
+                forwarder_clone.clone(),
+                management_clone.clone(),
+            )
+            .await;
+        });
+
+        let management_clone = management.clone();
+        let forwarder_clone = forwarder.clone();
+        let eval_clone = eval.clone();
+
+        rt.block_on(rt.spawn(async move {
+            tcp_bind(
+                dispatch.clone(),
+                uuid,
+                forwarder_clone.clone(),
+                management_clone.clone(),
+                eval_clone.clone(),
+                management_clone.clone(),
+            )
             .await
-            .expect("bind")
+            .expect("bind");
+        }));
     });
-    Ok(Arc::new(d)) // not really? a bootstrapping issue with the init batch
+
+    Ok((Arc::new(dispatch_clone), handle)) // not really? a bootstrapping issue with the init batch, we can serialize after i guess
 }

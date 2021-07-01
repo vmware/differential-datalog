@@ -240,7 +240,9 @@ pub fn start_d3log() -> Result<(), Error> {
 
     // this is wrong
     let (d, init_batch) = D3::new(uuid, management.clone()).expect("D3");
-    let port = start_instance(d, uuid, management.clone()).expect("instance");
+    let (port, jh) = start_instance(d, uuid, management.clone()).expect("instance");
+    println!("init {}", init_batch);
     port.send(init_batch);
+    jh.join();
     Ok(())
 }
