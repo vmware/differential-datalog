@@ -30,12 +30,14 @@ use cpuprofiler::PROFILER;
 #[allow(clippy::let_and_return)]
 fn handle_cmd(
     start_time: Instant,
-    hddlog: &HDDlog,
+    hddlog: Arc<Mutex<HDDlog>>,
     print_deltas: bool,
     interactive: bool,
     upds: &mut Vec<Update<DDValue>>,
     cmd: Command,
 ) -> (Result<(), String>, bool) {
+    let hddlog = hddlog.lock().unwrap();
+    let hddlog = &*hddlog;
     let resp = (if !is_upd_cmd(&cmd) {
         apply_updates(hddlog, upds)
     } else {
@@ -217,25 +219,27 @@ fn is_upd_cmd(c: &Command) -> bool {
     }
 }
 
-fn run(hddlog: HDDlog, print_deltas: bool) -> Result<(), String> {
+async fn run(hddlog: Arc<Mutex<HDDlog>>, print_deltas: bool) -> Result<(), String> {
     let upds = Arc::new(Mutex::new(Vec::new()));
     let start_time = Instant::now();
-    interact(|cmd, interactive| {
+    interact(move |cmd, interactive| {
+        let hddlog = Arc::clone(&hddlog);
         handle_cmd(
             start_time,
-            &hddlog,
+            hddlog,
             print_deltas,
             interactive,
             &mut upds.lock().unwrap(),
             cmd,
         )
-    })?;
+    }).await?;
 
-    hddlog.stop()
+    Ok(())
 }
 
+#[tokio::main]
 #[allow(clippy::redundant_closure)]
-fn main() -> Result<(), String> {
+async fn main() -> Result<(), String> {
     let parser = opts! {
         synopsis "DDlog CLI interface.";
         auto_shorts false;
@@ -267,7 +271,12 @@ fn main() -> Result<(), String> {
             if args.init_snapshot {
                 dump_delta(&init_output);
             }
-            run(hddlog, args.delta)
+            let hddlog = Arc::new(Mutex::new(hddlog));
+            let hddlog_cloned = Arc::clone(&hddlog);
+            if let Err(why) = run(hddlog, args.delta).await {
+                return Err(why);
+            }
+            let result = hddlog_cloned.lock().unwrap().stop(); result
         }
         Err(err) => Err(format!("Failed to run differential datalog: {}", err)),
     }
