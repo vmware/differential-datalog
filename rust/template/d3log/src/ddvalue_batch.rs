@@ -93,7 +93,7 @@ impl DDValueBatch {
             deltas,
             timestamp: 0,
         }));
-        Batch::DDValue(DDValueBatch(n))
+        Batch::Value(DDValueBatch(n))
     }
 
     pub fn new() -> DDValueBatch {
@@ -122,8 +122,8 @@ impl DDValueBatch {
 
     pub fn from(e: Evaluator, b: Batch) -> Result<DDValueBatch, Error> {
         match b {
-            Batch::DDValue(x) => Ok(x),
-            Batch::Record(rb) => {
+            Batch::Value(x) => Ok(x),
+            Batch::Rec(rb) => {
                 let mut b = DDValueBatch::new();
                 let e2 = e.clone();
                 for (r, v, w) in &rb {

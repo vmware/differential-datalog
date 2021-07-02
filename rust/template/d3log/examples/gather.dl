@@ -3,9 +3,9 @@ import d3_application
 // it seems like we should be able to build these range structures? flatmap?
 // shouldn't encourage people to use small ints for uuids
 // seems like we should deal with the executable format elephant (admittedly there are quite a few in the room)
-Process(0, "/Users/ehoffman/ddev/rust/template/d3log/examples/gather_ddlog/target/debug/deps/gather_cli", true).
-Process(1,  "/Users/ehoffman/ddev/rust/template/d3log/examples/gather_ddlog/target/debug/deps/gather_cli", true).
-Process(2,  "/Users/ehoffman/ddev/rust/template/d3log/examples/gather_ddlog/target/debug/deps/gather_cli", true).        
+Process(0, "/opt/differential-datalog/rust/template/d3log/examples/gather_ddlog/target/debug/gather_cli", true).
+Process(1, "/opt/differential-datalog/rust/template/d3log/examples/gather_ddlog/target/debug/gather_cli", true).
+Process(2, "/opt/differential-datalog/rust/template/d3log/examples/gather_ddlog/target/debug/gather_cli", true).        
 
 input relation Fact(x:u64)
 
@@ -20,4 +20,3 @@ relation Fact2(x:u64)
 
 relation LocalizedFact(x:u64)
 LocalizedFact(x)@((x%3) as u128) :- Fact(x).
-                      

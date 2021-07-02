@@ -79,6 +79,7 @@ impl Transport for ProcessManager {
             if w == -1 {
                 // kill if we can find the uuid..i guess and if the total weight is 1
             }
+            println!("Forking ..");
             if w == 1 {
                 self.make_child(self.e.clone(), p, self.management.clone())
                     .expect("fork failure");
@@ -213,6 +214,7 @@ impl ProcessManager {
                 //unsafe {
                 if let Some(e) = process.get_struct_field("executable") {
                     if let Some(id) = process.get_struct_field("id") {
+                        println!("executable name {}", e);
                         let path =
                             CString::new(e.clone().to_string()).expect("CString::new failed");
                         let arg0 =

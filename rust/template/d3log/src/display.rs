@@ -80,7 +80,7 @@ async fn on_client(d: Display, stream_mut: AsyncClient) {
                     println!("browser data {}", s.clone());
                     let v: RecordBatch =
                         serde_json::from_str(s.clone()).expect("display json parse error");
-                    d.data.clone().send(Batch::Record(v));
+                    d.data.clone().send(Batch::Rec(v));
                 }
                 Opcode::Ping => {
                     async_error!(m2.clone(), tx.send(Message::pong(msg.into_data())).await);

@@ -7,6 +7,9 @@ use d3log::{
 };
 
 use crate::{api::HDDlog, relid2name, relval_from_record, Relations, UpdateSerializer};
+
+use d3log::record_batch::RecordBatch;
+
 use differential_datalog::{
     ddval::DDValue, program::Update, record::IntoRecord, record::Record, D3log, DDlog, DDlogDynamic,
 };
@@ -19,6 +22,7 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json;
+use tokio::runtime::Runtime;
 
 pub struct Null {}
 impl Transport for Null {
@@ -141,7 +145,7 @@ impl EvaluatorTrait for D3 {
         // would like to implicitly convert batch to ddvalue_batch, but i cant, because i need an
         // evaluator, and its been deconstructed before we get here...
         match input {
-            Batch::DDValue(b) => {
+            Batch::Value(b) => {
                 let mut upd = Vec::new();
                 for (relid, v, _) in &b {
                     upd.push(Update::Insert { relid, v });
@@ -219,14 +223,14 @@ impl EvaluatorTrait for D3 {
 pub fn start_d3log() -> Result<(), Error> {
     let management = Arc::new(Print(Arc::new(Null {})));
 
-    let (_management_port, uuid) = if let Some(f) = std::env::var_os("uuid") {
+    let (_management_port, uuid, is_parent) = if let Some(f) = std::env::var_os("uuid") {
         if let Some(f2) = f.to_str() {
             let m = FileDescriptorPort {
                 management: management.clone(),
                 fd: MANAGEMENT_OUTPUT_FD,
             };
             let uuid = f2.parse::<u128>().unwrap();
-            (Arc::new(m) as Port, uuid)
+            (Arc::new(m) as Port, uuid, false)
         } else {
             panic!("bad uuid");
         }
@@ -235,14 +239,26 @@ pub fn start_d3log() -> Result<(), Error> {
         (
             Arc::new(Broadcast::new()) as Port,
             u128::from_be_bytes(rand::thread_rng().gen::<[u8; 16]>()),
+            true,
         )
     };
 
     // this is wrong
     let (d, init_batch) = D3::new(uuid, management.clone()).expect("D3");
+    let d1 = d.clone();
     let (port, jh) = start_instance(d, uuid, management.clone()).expect("instance");
-    println!("init {}", init_batch);
-    port.send(init_batch);
+    let init_batch_print = init_batch.clone();
+    println!("init {}", RecordBatch::from(d1.clone(), init_batch_print));
+
+    // dispatcher port
+    // XXX: leonid batch (fork bomb) issue.
+    // FIXME: Still not sure if the fork is failing because of the tokio runtime
+    if is_parent {
+        let rt = Runtime::new().expect("tokio runtime creation");
+        rt.spawn(async move {
+            port.send(init_batch);
+        });
+    }
     jh.join();
     Ok(())
 }

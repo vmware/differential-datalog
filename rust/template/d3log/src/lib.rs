@@ -7,11 +7,11 @@ pub mod error;
 mod forwarder;
 mod json_framer;
 pub mod process;
-mod record_batch;
+pub mod record_batch;
 mod tcp_network;
 
 use core::fmt;
-use core::fmt::Display as CoreDisplay;
+use std::fmt::Display;
 use std::sync::Arc;
 use std::thread;
 use tokio::runtime::Runtime;
@@ -20,9 +20,8 @@ use tokio::task::JoinHandle;
 use differential_datalog::{ddval::DDValue, record::Record, D3logLocationId};
 
 use crate::{
-    ddvalue_batch::DDValueBatch, dispatch::Dispatch, display::Display, error::Error,
-    forwarder::Forwarder, process::ProcessManager, record_batch::RecordBatch,
-    tcp_network::tcp_bind,
+    ddvalue_batch::DDValueBatch, dispatch::Dispatch, error::Error, forwarder::Forwarder,
+    process::ProcessManager, record_batch::RecordBatch, tcp_network::tcp_bind,
 };
 
 pub type Node = D3logLocationId;
@@ -45,10 +44,20 @@ pub type Evaluator = Arc<(dyn EvaluatorTrait + Send + Sync)>;
 
 #[derive(Clone)]
 pub enum Batch {
-    DDValue(DDValueBatch),
-    Record(RecordBatch),
+    Value(DDValueBatch),
+    Rec(RecordBatch),
 }
 
+impl Display for Batch {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Batch [\n");
+        match self {
+            Batch::Value(b) => b.fmt(f),
+            Batch::Rec(b) => b.fmt(f),
+        };
+        write!(f, "\n]\n\n")
+    }
+}
 pub trait Transport {
     // since most of these errors are async, we're adopting a general
     // policy for the moment of making all errors async and reported out
@@ -60,14 +69,14 @@ pub trait Transport {
 
 pub type Port = Arc<(dyn Transport + Send + Sync)>;
 
-impl CoreDisplay for Batch {
+/*impl CoreDisplay for Batch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Batch::Record(r) => r.fmt(f),
-            Batch::DDValue(d) => d.fmt(f),
+            Batch::Rec(r) => r.fmt(f),
+            Batch::Value(d) => d.fmt(f),
         }
     }
-}
+}*/
 
 pub fn start_instance(
     eval: Evaluator,
@@ -78,6 +87,9 @@ pub fn start_instance(
     let dispatch = dispatch.clone();
     //race between registration and new data.
 
+    println!("Start instance");
+    // TODO: Create an Instance manager and register with the dispatcher.
+    // Instance manager's send will create new instances
     let forwarder = Forwarder::new(eval.clone());
 
     // pass d to process manager
@@ -97,6 +109,7 @@ pub fn start_instance(
     let handle = thread::spawn(move || {
         let rt = Runtime::new().expect("tokio runtime creation");
 
+        /* XXX: kill display for now
         rt.spawn(async move {
             Display::new(
                 8080,
@@ -106,12 +119,15 @@ pub fn start_instance(
                 management_clone.clone(),
             )
             .await;
-        });
+        });*/
 
         let management_clone = management.clone();
         let forwarder_clone = forwarder.clone();
         let eval_clone = eval.clone();
 
+        // TODO: rt.block_on never returns. The idea is to spawn a thread and return the thread handle
+        // for that to the main thread. The main thread just waits on this thread join handle as long
+        // as the thread is running.
         rt.block_on(rt.spawn(async move {
             tcp_bind(
                 dispatch.clone(),

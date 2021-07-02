@@ -49,7 +49,7 @@ impl Transport for Forwarder {
         for (nid, b) in output.drain() {
             // there is a short version of this like expect?
             match self.fib.lock().expect("lock").get(&nid) {
-                Some(x) => x.send(Batch::DDValue(b.deref().clone())),
+                Some(x) => x.send(Batch::Value(b.deref().clone())),
                 None => {
                     panic!("missing nid");
                 }

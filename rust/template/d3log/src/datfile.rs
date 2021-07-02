@@ -17,6 +17,7 @@ where
     let mut lines = reader.lines();
 
     while let Some(line) = lines.next_line().await? {
+        println!("lines {}", line);
         match parse_command(line.as_bytes()) {
             Ok((_, cmd)) => cb(cmd)?,
             Err(e) => {
@@ -54,7 +55,7 @@ where
             },
             Command::Commit(_bool) => {
                 // shouldn't need to clone here, i'm passing the torch to you cb
-                cb(Batch::Record(b.clone()));
+                cb(Batch::Rec(b.clone()));
                 b = RecordBatch::new();
                 Ok(())
             }

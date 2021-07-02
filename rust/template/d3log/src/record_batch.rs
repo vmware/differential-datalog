@@ -27,7 +27,7 @@ pub struct RecordBatch {
 #[macro_export]
 macro_rules! fact {
     ( $rel:path,  $($n:ident => $v:expr),* ) => {
-        Batch::Record(RecordBatch::singleton(
+        Batch::Rec(RecordBatch::singleton(
             Record::NamedStruct(
                 Cow::from(stringify!($rel).to_string()),
                 vec![$((Cow::from(stringify!($n)), $v),)*])))
@@ -39,6 +39,18 @@ impl Display for RecordBatch {
         let mut m = HashMap::new();
         for (r, _w) in self.records.clone() {
             match r {
+                Record::Bool(b) => println!("bool"),
+                Record::Int(i) => println!("int"),
+                Record::Float(f) => println!("float"),
+                Record::Double(dbl) => println!("double"),
+                Record::String(string_name) => println!("{}", string_name),
+                Record::Serialized(name, s) => println!("serialized {}", name),
+                Record::Tuple(t) => {
+                    println!("tuple {:?}", t);
+                }
+                Record::Array(_, record_vec) => println!("array"),
+                Record::PosStruct(name, record_vec) => println!("{}", name),
+
                 Record::NamedStruct(r, _attributes) => *m.entry(r).or_insert(0) += 1,
                 _ => panic!("weird stuff in record batch"),
             }
@@ -222,16 +234,22 @@ impl RecordBatch {
     // why no err?
     pub fn from(e: Evaluator, b: Batch) -> RecordBatch {
         match b {
-            Batch::DDValue(x) => {
+            Batch::Value(x) => {
                 let mut rb = RecordBatch::new();
                 for (r, v, w) in &x {
                     let r = e.clone().relation_name_from_id(r).unwrap();
-                    let v = e.clone().record_from_ddvalue(v).unwrap();
+                    let _record: Record = e.clone().record_from_ddvalue(v).unwrap();
+                    let v = match _record {
+                        // [ weight, actual_record ]
+                        Record::Tuple(t) => t[1].clone(),
+                        Record::NamedStruct(name, rec) => Record::NamedStruct(name, rec),
+                        _ => panic!("unknown type!"),
+                    };
                     rb.insert(r, v, w);
                 }
                 rb
             }
-            Batch::Record(x) => x,
+            Batch::Rec(x) => x,
         }
     }
 }
@@ -273,5 +291,5 @@ pub fn record_serialize_batch(_b: Batch) -> Result<Vec<u8>, Error> {
 
 // we need an e to get out of ddvalue? do we?
 pub fn record_deserialize_batch(_v: Vec<u8>) -> Result<Batch, Error> {
-    Ok(Batch::Record(RecordBatch::new()))
+    Ok(Batch::Rec(RecordBatch::new()))
 }

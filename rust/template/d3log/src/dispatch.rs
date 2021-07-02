@@ -40,7 +40,7 @@ impl Transport for Dispatch {
             }
         }
         for (_, (p, b)) in output {
-            p.send(Batch::Record(b));
+            p.send(Batch::Rec(b));
         }
     }
 }
