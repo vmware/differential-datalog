@@ -11,6 +11,7 @@ pub mod record_batch;
 mod tcp_network;
 
 use core::fmt;
+use core::future::Future;
 use std::fmt::Display;
 use std::sync::Arc;
 use std::thread;
@@ -79,12 +80,12 @@ pub type Port = Arc<(dyn Transport + Send + Sync)>;
 }*/
 
 pub fn start_instance(
+    rt: &Runtime,
     eval: Evaluator,
     uuid: u128,
     management: Port,
-) -> Result<(Port, std::thread::JoinHandle<()>), Error> {
+) -> Result<(Port, tokio::task::JoinHandle<()>), Error> {
     let dispatch = Dispatch::new(eval.clone());
-    let dispatch = dispatch.clone();
     //race between registration and new data.
 
     println!("Start instance");
@@ -101,46 +102,24 @@ pub fn start_instance(
         )
         .expect("registration failed");
 
+    let management_clone = management.clone();
     let forwarder_clone = forwarder.clone();
     let eval_clone = eval.clone();
     let dispatch_clone = dispatch.clone();
-    let management_clone = management.clone();
 
-    let handle = thread::spawn(move || {
-        let rt = Runtime::new().expect("tokio runtime creation");
-
-        /* XXX: kill display for now
-        rt.spawn(async move {
-            Display::new(
-                8080,
-                eval_clone.clone(),
-                management_clone.clone(),
-                forwarder_clone.clone(),
-                management_clone.clone(),
-            )
-            .await;
-        });*/
-
-        let management_clone = management.clone();
-        let forwarder_clone = forwarder.clone();
-        let eval_clone = eval.clone();
-
-        // TODO: rt.block_on never returns. The idea is to spawn a thread and return the thread handle
-        // for that to the main thread. The main thread just waits on this thread join handle as long
-        // as the thread is running.
-        rt.block_on(rt.spawn(async move {
-            tcp_bind(
-                dispatch.clone(),
-                uuid,
-                forwarder_clone.clone(),
-                management_clone.clone(),
-                eval_clone.clone(),
-                management_clone.clone(),
-            )
-            .await
-            .expect("bind");
-        }));
+    // TODO: rt.block_on never returns. The idea is to spawn a thread and return the thread handle
+    // for that to the main thread. The main thread just waits on this thread join handle as long
+    // as the thread is running.
+    let handle = rt.spawn(async move {
+        tcp_bind(
+            dispatch_clone,
+            uuid,
+            forwarder_clone.clone(),
+            management_clone.clone(),
+            eval_clone.clone(),
+            management_clone.clone(),
+        )
+        .await;
     });
-
-    Ok((Arc::new(dispatch_clone), handle)) // not really? a bootstrapping issue with the init batch, we can serialize after i guess
+    Ok((Arc::new(dispatch), handle))
 }

@@ -74,6 +74,7 @@ impl Transport for ProcessManager {
     fn send(self: &Self, b: Batch) {
         // we think the dispatcher has given only facts from our relation
         // this should be from, is that not so?
+        println!("process batch {}", b);
         for (_, p, w) in &RecordBatch::from(self.e.clone(), b) {
             // what about other values of w?
             if w == -1 {
@@ -203,6 +204,7 @@ impl ProcessManager {
             ForkResult::Child => {
                 // plumb stdin and stdout regardless
 
+                println!("about to dup2");
                 if !process.get_struct_field("executable").is_none() {
                     dup2(management_out_w, MANAGEMENT_OUTPUT_FD)?;
                     dup2(management_in_r, MANAGEMENT_INPUT_FD)?;

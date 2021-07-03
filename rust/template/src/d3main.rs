@@ -243,10 +243,13 @@ pub fn start_d3log() -> Result<(), Error> {
         )
     };
 
+    println!("d3main");
     // this is wrong
     let (d, init_batch) = D3::new(uuid, management.clone()).expect("D3");
     let d1 = d.clone();
-    let (port, jh) = start_instance(d, uuid, management.clone()).expect("instance");
+    let rt = Runtime::new().expect("tokio runtime creation");
+    let (port, instance_future) =
+        start_instance(&rt, d, uuid, management.clone()).expect("instance");
     let init_batch_print = init_batch.clone();
     println!("init {}", RecordBatch::from(d1.clone(), init_batch_print));
 
@@ -254,11 +257,14 @@ pub fn start_d3log() -> Result<(), Error> {
     // XXX: leonid batch (fork bomb) issue.
     // FIXME: Still not sure if the fork is failing because of the tokio runtime
     if is_parent {
-        let rt = Runtime::new().expect("tokio runtime creation");
         rt.spawn(async move {
             port.send(init_batch);
         });
     }
-    jh.join();
+    // we hope that tokio is going to block on queue occupancy w/ drop...no we hope that await will
+    println!("block on!");
+    rt.block_on(instance_future);
+    println!("block complete!");
+
     Ok(())
 }
