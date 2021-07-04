@@ -221,6 +221,7 @@ impl EvaluatorTrait for D3 {
 }
 
 pub fn start_d3log() -> Result<(), Error> {
+    println!("new instance!");
     let management = Arc::new(Print(Arc::new(Null {})));
 
     let (_management_port, uuid, is_parent) = if let Some(f) = std::env::var_os("uuid") {
@@ -244,6 +245,7 @@ pub fn start_d3log() -> Result<(), Error> {
     };
 
     println!("d3main");
+    println!("uuid {} parent {}", uuid, is_parent);
     // this is wrong
     let (d, init_batch) = D3::new(uuid, management.clone()).expect("D3");
     let d1 = d.clone();

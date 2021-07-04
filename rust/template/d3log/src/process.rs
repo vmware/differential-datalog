@@ -144,8 +144,9 @@ impl ProcessManager {
 
         let id = process.get_struct_field("id").unwrap();
 
-        match unsafe { fork()? } {
-            ForkResult::Parent { child } => {
+        match unsafe { fork() } {
+            Ok(ForkResult::Parent { child }) => {
+                println!("-> parent child pid {}", child);
                 // move above so we dont have to try to undo the fork on error
                 let c = Arc::new(Mutex::new(Child {
                     eval: e,
@@ -201,7 +202,7 @@ impl ProcessManager {
                 Ok(())
             }
 
-            ForkResult::Child => {
+            Ok(ForkResult::Child) => {
                 // plumb stdin and stdout regardless
 
                 println!("about to dup2");
@@ -209,19 +210,21 @@ impl ProcessManager {
                     dup2(management_out_w, MANAGEMENT_OUTPUT_FD)?;
                     dup2(management_in_r, MANAGEMENT_INPUT_FD)?;
                 }
+
                 dup2(standard_in_r, 0)?;
                 dup2(standard_out_w, 1)?;
                 dup2(standard_err_w, 2)?;
 
                 //unsafe {
                 if let Some(e) = process.get_struct_field("executable") {
+                    // FIXME: Temporary fix. this should be fixed ddlog-wide
+                    let e = e.to_string().replace("\"", "");
                     if let Some(id) = process.get_struct_field("id") {
                         println!("executable name {}", e);
                         let path =
                             CString::new(e.clone().to_string()).expect("CString::new failed");
                         let arg0 =
                             CString::new(e.clone().to_string()).expect("CString::new failed");
-
                         // assign the child uuid here and pass in environment, just to avoid
                         // having to deal with getting it from the child asynchronously
                         // take a real map and figure out how to get a &[Cstring]
@@ -234,6 +237,9 @@ impl ProcessManager {
                 }
                 Ok(())
                 // misformed process record?
+            }
+            Err(e) => {
+                panic!("Fork failed!");
             }
         }
     }
