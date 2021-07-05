@@ -19,7 +19,10 @@ pub fn into_record_inner(input: DeriveInput) -> Result<TokenStream> {
     // Add the required trait bounds
     let generics = add_trait_bounds(
         input.generics,
-        vec![parse_quote!(differential_datalog::record::IntoRecord)],
+        vec![
+            parse_quote!(::differential_datalog::record::IntoRecord),
+            parse_quote!(::core::clone::Clone),
+        ],
     );
     let generics = generics.split_for_impl();
 
@@ -84,8 +87,8 @@ fn into_record_struct(
 
     Ok(quote! {
         #[automatically_derived]
-        impl #impl_generics differential_datalog::record::IntoRecord for #struct_ident #type_generics #where_clause {
-            fn into_record(self) -> differential_datalog::record::Record {
+        impl #impl_generics ::differential_datalog::record::IntoRecord for #struct_ident #type_generics #where_clause {
+            fn into_record(self) -> ::differential_datalog::record::Record {
                 #guard
                 #generated_record
             }
@@ -149,8 +152,8 @@ fn into_record_enum(
 
     Ok(quote! {
         #[automatically_derived]
-        impl #impl_generics differential_datalog::record::IntoRecord for #enum_ident #type_generics #where_clause {
-            fn into_record(self) -> differential_datalog::record::Record {
+        impl #impl_generics ::differential_datalog::record::IntoRecord for #enum_ident #type_generics #where_clause {
+            fn into_record(self) -> ::differential_datalog::record::Record {
                 match self {
                     #generated_variants
                 }
@@ -181,8 +184,8 @@ fn named_struct_record<'a>(
 
         Ok(quote! {
             (
-                std::borrow::Cow::Borrowed(#element_record_name),
-                <#element_type as differential_datalog::record::IntoRecord>::into_record(#element_ident),
+                ::std::borrow::Cow::Borrowed(#element_record_name),
+                <#element_type as ::differential_datalog::record::IntoRecord>::into_record(#element_ident),
             ),
         })
     })
@@ -190,7 +193,7 @@ fn named_struct_record<'a>(
 
     let record = quote! {
         differential_datalog::record::Record::NamedStruct(
-            std::borrow::Cow::Borrowed(#record_name),
+            ::std::borrow::Cow::Borrowed(#record_name),
             vec![#elements],
         )
     };
@@ -230,13 +233,13 @@ fn tuple_struct_record<'a>(
         let element_type = &element.ty;
 
         quote! {
-            <#element_type as differential_datalog::record::IntoRecord>::into_record(#index),
+            <#element_type as ::differential_datalog::record::IntoRecord>::into_record(#index),
         }
     });
 
     let record = quote! {
-        differential_datalog::record::Record::PosStruct(
-            std::borrow::Cow::Borrowed(#record_name),
+        ::differential_datalog::record::Record::PosStruct(
+            ::std::borrow::Cow::Borrowed(#record_name),
             vec![#( #element_records )*],
         )
     };
@@ -246,9 +249,9 @@ fn tuple_struct_record<'a>(
 
 fn unit_struct_record(record_name: &str) -> TokenStream {
     quote! {
-        differential_datalog::record::Record::NamedStruct(
-            std::borrow::Cow::Borrowed(#record_name),
-            std::vec::Vec::new(),
+        ::differential_datalog::record::Record::NamedStruct(
+            ::std::borrow::Cow::Borrowed(#record_name),
+            ::std::vec::Vec::new(),
         )
     }
 }
