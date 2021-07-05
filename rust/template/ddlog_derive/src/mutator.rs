@@ -24,7 +24,7 @@ pub fn mutator_inner(mut input: DeriveInput) -> Result<TokenStream> {
             .make_where_clause()
             .predicates
             .push(parse_quote! {
-                differential_datalog::record::Record: differential_datalog::record::Mutator<#generic>
+                ::differential_datalog::record::Record: ::differential_datalog::record::Mutator<#generic>
             });
     }
 
@@ -32,9 +32,10 @@ pub fn mutator_inner(mut input: DeriveInput) -> Result<TokenStream> {
     let generics = add_trait_bounds(
         input.generics,
         vec![
-            parse_quote!(differential_datalog::record::FromRecord),
-            parse_quote!(Sized),
-            parse_quote!(std::default::Default),
+            parse_quote!(::differential_datalog::record::FromRecord),
+            parse_quote!(::core::marker::Sized),
+            parse_quote!(::core::default::Default),
+            parse_quote!(::core::clone::Clone),
             parse_quote!(serde::de::DeserializeOwned),
         ],
     );
@@ -73,25 +74,25 @@ pub fn mutator_inner(mut input: DeriveInput) -> Result<TokenStream> {
 fn unit_struct_mutator(args: &Ident, error: &Ident) -> TokenStream {
     quote! {
         match self {
-            differential_datalog::record::Record::PosStruct(_, #args) if #args.is_empty() => {},
-            differential_datalog::record::Record::NamedStruct(_, #args) if #args.is_empty() => {},
+            ::differential_datalog::record::Record::PosStruct(_, #args) if #args.is_empty() => {},
+            ::differential_datalog::record::Record::NamedStruct(_, #args) if #args.is_empty() => {},
 
-            differential_datalog::record::Record::PosStruct(_, #args) => {
-                return std::result::Result::Err(std::format!(
+            ::differential_datalog::record::Record::PosStruct(_, #args) => {
+                return ::core::result::Result::Err(::std::format!(
                     "incompatible struct, expected a struct with 0 fields and got a struct with {} fields",
                     #args.len(),
                 ));
             },
 
-            differential_datalog::record::Record::NamedStruct(_, #args) => {
-                return std::result::Result::Err(std::format!(
+            ::differential_datalog::record::Record::NamedStruct(_, #args) => {
+                return ::core::result::Result::Err(::std::format!(
                     "incompatible struct, expected a struct with 0 fields and got a struct with {} fields",
                     #args.len(),
                 ));
             },
 
             #error => {
-                return std::result::Result::Err(std::format!("not a unit struct {:?}", #error));
+                return ::core::result::Result::Err(::std::format!("not a unit struct {:?}", #error));
             },
         }
     }
@@ -122,33 +123,33 @@ fn tuple_struct_mutator<'a>(
             let field_ty = &field.ty;
 
             quote! {
-                <dyn differential_datalog::record::Mutator<#field_ty>>::mutate(&#args[#idx], #index)?;
+                <dyn ::differential_datalog::record::Mutator<#field_ty>>::mutate(&#args[#idx], #index)?;
             }
         });
 
     let mutator = quote! {
         match self {
-            differential_datalog::record::Record::PosStruct(_, #args)
+            ::differential_datalog::record::Record::PosStruct(_, #args)
                 if #args.len() == #num_fields => {
                     #( #field_mutations )*
                 },
 
-            differential_datalog::record::Record::PosStruct(_, #args) => {
-                return std::result::Result::Err(std::format!(
+            ::differential_datalog::record::Record::PosStruct(_, #args) => {
+                return ::core::result::Result::Err(::std::format!(
                     "incompatible struct, expected a positional struct with {} fields and got a positional struct with {} fields",
                     #num_fields, #args.len(),
                 ));
             },
 
-            differential_datalog::record::Record::NamedStruct(_, _) => {
-                return std::result::Result::Err(std::format!(
+            ::differential_datalog::record::Record::NamedStruct(_, _) => {
+                return ::core::result::Result::Err(::std::format!(
                     "incompatible struct, expected a positional struct with {} fields and got a named struct",
                     #num_fields,
                 ));
             },
 
             #error => {
-                return std::result::Result::Err(std::format!("not a tuple struct {:?}", #error));
+                return ::core::result::Result::Err(::std::format!("not a tuple struct {:?}", #error));
             },
         }
     };
@@ -169,8 +170,8 @@ fn named_struct_mutator<'a>(
             .unwrap_or_else(|| field_ident.to_string());
 
         Ok(quote! {
-            if let Some(r#__ddlog_generated__field_record) = differential_datalog::record::arg_find(#args, #field_record_name) {
-                <dyn differential_datalog::record::Mutator<#field_ty>>::mutate(r#__ddlog_generated__field_record, #field_ident)?;
+            if let ::core::option::Option::Some(r#__ddlog_generated__field_record) = ::differential_datalog::record::arg_find(#args, #field_record_name) {
+                <dyn ::differential_datalog::record::Mutator<#field_ty>>::mutate(r#__ddlog_generated__field_record, #field_ident)?;
             }
         })
     })
@@ -180,7 +181,7 @@ fn named_struct_mutator<'a>(
         let field_ty = &field.ty;
         let field_ident = field.ident.as_ref().expect("named structs have field names");
         quote! {
-            <dyn differential_datalog::record::Mutator<#field_ty>>::mutate(&#args[#index], #field_ident)?;
+            <dyn ::differential_datalog::record::Mutator<#field_ty>>::mutate(&#args[#index], #field_ident)?;
         }
     })
     .collect::<TokenStream>();
@@ -188,17 +189,17 @@ fn named_struct_mutator<'a>(
     let num_fields = named_struct.named.len();
     let mutator = quote! {
         match self {
-            differential_datalog::record::Record::NamedStruct(_, #args) => {
+            ::differential_datalog::record::Record::NamedStruct(_, #args) => {
                 #field_mutations
             },
 
-            differential_datalog::record::Record::PosStruct(_, #args)
+            ::differential_datalog::record::Record::PosStruct(_, #args)
                 if #args.len() == #num_fields => {
                     #positional_mutations
                 },
 
             #error => {
-                return std::result::Result::Err(std::format!("not a named struct {:?}", #error));
+                return ::core::result::Result::Err(::std::format!("not a named struct {:?}", #error));
             },
         }
     };
@@ -245,11 +246,11 @@ fn mutator_struct(
 
     Ok(quote! {
         #[automatically_derived]
-        impl #impl_generics differential_datalog::record::Mutator<#struct_ident #type_generics> for differential_datalog::record::Record #where_clause {
-            fn mutate(&self, #mutated: &mut #struct_ident #type_generics) -> std::result::Result<(), std::string::String> {
+        impl #impl_generics ::differential_datalog::record::Mutator<#struct_ident #type_generics> for ::differential_datalog::record::Record #where_clause {
+            fn mutate(&self, #mutated: &mut #struct_ident #type_generics) -> ::core::result::Result<(), ::std::string::String> {
                 #generated_mutator
 
-                std::result::Result::Ok(())
+                ::core::result::Result::Ok(())
             }
         }
     })
@@ -302,12 +303,12 @@ fn mutator_enum(
     Ok(quote! {
         #[automatically_derived]
         impl #impl_generics differential_datalog::record::Mutator<#enum_ident #type_generics> for differential_datalog::record::Record #where_clause {
-            fn mutate(&self, #mutated: &mut #enum_ident #type_generics) -> std::result::Result<(), std::string::String> {
+            fn mutate(&self, #mutated: &mut #enum_ident #type_generics) -> ::core::result::Result<(), ::std::string::String> {
                 match #mutated {
                     #generated_mutators
                 }
 
-                std::result::Result::Ok(())
+                ::core::result::Result::Ok(())
             }
         }
     })
