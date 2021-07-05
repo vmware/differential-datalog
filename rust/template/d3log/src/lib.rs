@@ -2,7 +2,6 @@ pub mod broadcast;
 mod datfile;
 pub mod ddvalue_batch;
 mod dispatch;
-mod display;
 pub mod error;
 mod forwarder;
 mod json_framer;
@@ -11,14 +10,11 @@ pub mod record_batch;
 mod tcp_network;
 
 use core::fmt;
-use core::future::Future;
+use differential_datalog::{ddval::DDValue, record::*, D3logLocationId};
+use std::borrow::Cow;
 use std::fmt::Display;
 use std::sync::Arc;
-use std::thread;
 use tokio::runtime::Runtime;
-use tokio::task::JoinHandle;
-
-use differential_datalog::{ddval::DDValue, record::Record, D3logLocationId};
 
 use crate::{
     ddvalue_batch::DDValueBatch, dispatch::Dispatch, error::Error, forwarder::Forwarder,
@@ -88,7 +84,6 @@ pub fn start_instance(
     let dispatch = Dispatch::new(eval.clone());
     //race between registration and new data.
 
-    println!("Start instance");
     // TODO: Create an Instance manager and register with the dispatcher.
     // Instance manager's send will create new instances
     let forwarder = Forwarder::new(eval.clone());
@@ -111,15 +106,18 @@ pub fn start_instance(
     // for that to the main thread. The main thread just waits on this thread join handle as long
     // as the thread is running.
     let handle = rt.spawn(async move {
-        tcp_bind(
-            dispatch_clone,
-            uuid,
-            forwarder_clone.clone(),
+        async_error!(
             management_clone.clone(),
-            eval_clone.clone(),
-            management_clone.clone(),
-        )
-        .await;
+            tcp_bind(
+                dispatch_clone,
+                uuid,
+                forwarder_clone.clone(),
+                management_clone.clone(),
+                eval_clone.clone(),
+                management_clone.clone(),
+            )
+            .await
+        );
     });
     Ok((Arc::new(dispatch), handle))
 }

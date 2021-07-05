@@ -2,7 +2,9 @@
 
 use core::fmt;
 use core::fmt::Display;
+use std::ffi::NulError;
 use std::str::Utf8Error;
+use tokio::task::JoinError;
 
 #[derive(Debug)]
 pub struct Error(String);
@@ -32,6 +34,12 @@ impl From<std::io::Error> for Error {
     }
 }
 
+impl From<NulError> for Error {
+    fn from(err: NulError) -> Self {
+        Error::new(err.to_string())
+    }
+}
+
 impl From<String> for Error {
     fn from(err: String) -> Self {
         Error::new(err)
@@ -40,6 +48,12 @@ impl From<String> for Error {
 
 impl From<serde_json::Error> for Error {
     fn from(err: serde_json::Error) -> Self {
+        Error::new(err.to_string())
+    }
+}
+
+impl From<JoinError> for Error {
+    fn from(err: JoinError) -> Self {
         Error::new(err.to_string())
     }
 }

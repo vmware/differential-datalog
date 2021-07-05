@@ -266,8 +266,10 @@ fn main() -> Result<(), String> {
     fn no_op(_table: usize, _rec: &Record, _w: isize) {}
     #[cfg(feature = "distribution")]
     {
-        d3main::start_d3log();
-        Ok(())
+        match d3main::start_d3log() {
+            Ok(x) => Ok(x),
+            Err(x) => Err(x.to_string()),
+        }
     }
 
     #[cfg(not(feature = "distribution"))]

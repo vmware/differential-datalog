@@ -39,20 +39,19 @@ impl Display for RecordBatch {
         let mut m = HashMap::new();
         for (r, _w) in self.records.clone() {
             match r {
-                Record::Bool(b) => println!("bool"),
-                Record::Int(i) => println!("int"),
-                Record::Float(f) => println!("float"),
-                Record::Double(dbl) => println!("double"),
+                Record::Bool(_b) => println!("bad record type bool"),
+                Record::Int(_i) => println!("bad record type int"),
+                Record::Float(_f) => println!("bad record type float"),
+                Record::Double(_dbl) => println!("bad record type double"),
                 Record::String(string_name) => println!("{}", string_name),
                 Record::Serialized(name, s) => println!("serialized {}", name),
                 Record::Tuple(t) => {
                     println!("tuple {:?}", t);
                 }
-                Record::Array(_, record_vec) => println!("array"),
+                Record::Array(_, _record_vec) => println!("bad record type array"),
                 Record::PosStruct(name, record_vec) => println!("{}", name),
 
                 Record::NamedStruct(r, _attributes) => *m.entry(r).or_insert(0) += 1,
-                _ => panic!("weird stuff in record batch"),
             }
         }
 

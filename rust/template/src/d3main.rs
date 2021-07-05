@@ -221,7 +221,6 @@ impl EvaluatorTrait for D3 {
 }
 
 pub fn start_d3log() -> Result<(), Error> {
-    println!("new instance!");
     let management = Arc::new(Print(Arc::new(Null {})));
 
     let (_management_port, uuid, is_parent) = if let Some(f) = std::env::var_os("uuid") {
@@ -244,16 +243,11 @@ pub fn start_d3log() -> Result<(), Error> {
         )
     };
 
-    println!("d3main");
-    println!("uuid {} parent {}", uuid, is_parent);
     // this is wrong
     let (d, init_batch) = D3::new(uuid, management.clone()).expect("D3");
-    let d1 = d.clone();
     let rt = Runtime::new().expect("tokio runtime creation");
     let (port, instance_future) =
         start_instance(&rt, d, uuid, management.clone()).expect("instance");
-    let init_batch_print = init_batch.clone();
-    println!("init {}", RecordBatch::from(d1.clone(), init_batch_print));
 
     // dispatcher port
     // XXX: leonid batch (fork bomb) issue.
@@ -264,9 +258,7 @@ pub fn start_d3log() -> Result<(), Error> {
         });
     }
     // we hope that tokio is going to block on queue occupancy w/ drop...no we hope that await will
-    println!("block on!");
-    rt.block_on(instance_future);
-    println!("block complete!");
+    rt.block_on(instance_future)?;
 
     Ok(())
 }
