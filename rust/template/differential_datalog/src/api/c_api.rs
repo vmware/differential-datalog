@@ -110,8 +110,8 @@ impl ddlog_profiling_config {
                 ProfilingConfig::TimelyProfiling {
                     timely_destination: self.timely_destination.to_rust_api()?
                         .ok_or_else(|| "ddlog_timely_profiling requires socket address or directory path in timely_destination".to_string())?,
-                    timely_progress_destination: self.timely_destination.to_rust_api()?,
-                    differential_destination: self.timely_destination.to_rust_api()?
+                    timely_progress_destination: self.timely_progress_destination.to_rust_api()?,
+                    differential_destination: self.differential_destination.to_rust_api()?
                 }
             }
         })

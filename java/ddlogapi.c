@@ -192,6 +192,96 @@ JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1run(
     return handle;
 }
 
+ddlog_log_destination log_config(JNIEnv *env, jint mode, jstring addr_str) {
+    switch (mode) {
+        // socket
+        case ddlog_log_to_socket: {
+               return (ddlog_log_destination) {
+                   .mode = ddlog_log_to_socket,
+                   .address_str = (*env)->GetStringUTFChars(env, addr_str, NULL)
+               };
+           };
+        // disk
+        case ddlog_log_to_disk: {
+               return (ddlog_log_destination) {
+                   .mode = ddlog_log_to_disk,
+                   .address_str = (*env)->GetStringUTFChars(env, addr_str, NULL)
+               };
+           };
+        // disable
+        default: {
+               return (ddlog_log_destination) {
+                   .mode = ddlog_log_disabled
+               };
+           };
+
+    }
+}
+
+JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1run_1with_1config(
+    JNIEnv *env, jobject obj, jboolean storeData, jint workers, jboolean enableDebugRegions,
+    jlong differentialIdleMergeEffort, jint profilingMode,
+    jint timelyLogMode, jstring timelyLogAddr,
+    jint timelyProgressLogMode, jstring timelyProgressLogAddr,
+    jint differentialLogMode, jstring differentialLogAddr) {
+
+    jlong handle = 0;
+
+    if (workers <= 0)
+        workers = 1;
+
+    ddlog_profiling_config profiling_config;
+
+    switch (profilingMode) {
+        // self-profiling
+        case ddlog_self_profiling: {
+                    profiling_config = (ddlog_profiling_config) {
+                        .mode = ddlog_self_profiling
+                    };
+                    break;
+                };
+        // timely profiling
+        case ddlog_timely_profiling: {
+                    profiling_config = (ddlog_profiling_config) {
+                        .mode = ddlog_timely_profiling,
+                        .timely_destination = log_config(env, timelyLogMode, timelyLogAddr),
+                        .timely_progress_destination = log_config(env, timelyProgressLogMode, timelyProgressLogAddr),
+                        .differential_destination = log_config(env, differentialLogMode, differentialLogAddr)
+                    };
+                    break;
+                };
+        // disabled
+        default: {
+                    profiling_config = (ddlog_profiling_config) {
+                        .mode = ddlog_disable_profiling
+                    };
+                    break;
+                };
+    }
+
+    ddlog_config config = (ddlog_config) {
+        .num_timely_workers = (unsigned)workers,
+        .enable_debug_regions = enableDebugRegions,
+        .profiling_config = profiling_config,
+        .differential_idle_merge_effort = (ssize_t)differentialIdleMergeEffort
+    };
+
+    handle = (jlong)ddlog_run_with_config(&config, storeData, eprintln, NULL);
+    if (profiling_config.timely_destination.address_str) {
+        (*env)->ReleaseStringUTFChars(env, timelyLogAddr, profiling_config.timely_destination.address_str);
+    }
+    if (profiling_config.timely_progress_destination.address_str) {
+        (*env)->ReleaseStringUTFChars(env, timelyProgressLogAddr, profiling_config.timely_progress_destination.address_str);
+    }
+    if (profiling_config.differential_destination.address_str) {
+        (*env)->ReleaseStringUTFChars(env, differentialLogAddr, profiling_config.differential_destination.address_str);
+    }
+    if (handle == 0) {
+        throwDDlogException(env, NULL);
+    }
+    return handle;
+}
+
 JNIEXPORT jint JNICALL Java_ddlogapi_DDlogAPI_ddlog_1record_1commands(
     JNIEnv *env, jobject obj, jlong handle, jstring filename, jboolean append) {
     int ret;
