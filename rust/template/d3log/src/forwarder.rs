@@ -10,14 +10,14 @@ pub struct Forwarder {
 }
 
 impl Forwarder {
-    pub fn new(e: Evaluator) -> Forwarder {
+    pub fn new(eval: Evaluator) -> Forwarder {
         // ok - we dont really want to start another hddlog here, but it helps
         // quite a bit in reducing the amount of sharing going on through TM.
         // ideally we could ask this question without access to the whole machine?
         // or share better with the other guy
 
         Forwarder {
-            eval: e,
+            eval,
             fib: Arc::new(Mutex::new(HashMap::new())),
         }
     }

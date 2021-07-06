@@ -31,7 +31,7 @@ where
 
 pub async fn read_batches_from_file<F>(
     filename: String,
-    e: Evaluator,
+    eval: Evaluator,
     mut cb: F,
 ) -> Result<(), Error>
 where
@@ -46,7 +46,7 @@ where
                     let rname = match rel {
                         RelName(name) => name.to_string(),
                         // do we..even want this?
-                        RelId(id) => e.relation_name_from_id(id)?.to_string(),
+                        RelId(id) => eval.relation_name_from_id(id)?.to_string(),
                     };
                     b.insert(rname.to_string(), record, 1);
                     Ok(())

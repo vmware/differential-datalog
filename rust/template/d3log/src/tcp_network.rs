@@ -31,31 +31,31 @@ use std::sync::Arc;
 //use tokio::task::JoinHandle;
 
 struct AddressListener {
-    e: Evaluator,
-    f: Arc<Forwarder>,
+    eval: Evaluator,
+    fwder: Arc<Forwarder>,
     management: Port,
 }
 
 impl Transport for AddressListener {
     fn send(self: &Self, b: Batch) {
-        for (_r, v, _w) in &RecordBatch::from(self.e.clone(), b) {
+        for (_r, v, _w) in &RecordBatch::from(self.eval.clone(), b) {
             // macro deconstructor - error
             if let Some(destination) = v.get_struct_field("destination") {
                 if let Some(location) = v.get_struct_field("location") {
                     match destination {
                         // what are the unused fields?
-                        Record::String(s) => {
-                            let address = s.parse() ;
+                        Record::String(string) => {
+                            let address = string.parse() ;
                             let loc: u128 = async_error!(self.management, FromRecord::from_record(&location));
                             // we add an entry to forward this nid to this tcp address
-                            self.f.register(
+                            self.fwder.register(
                                 loc,
                                 Arc::new(TcpPeer {
                                     management: self.management.clone(),
-                                    t: Arc::new(Mutex::new(TcpPeerInternal {
-                                        e:self.e.clone(),
+                                    tcp_inner: Arc::new(Mutex::new(TcpPeerInternal {
+                                        eval:self.eval.clone(),
                                         management: self.management.clone(),
-                                        s: None,
+                                        stream: None,
                                         address:address.unwrap(),//async error 
                                         // sends: Vec::new(),
                                     })),
@@ -81,30 +81,30 @@ impl Transport for AddressListener {
 }
 
 pub async fn tcp_bind(
-    d: Dispatch,
+    dispatch: Dispatch,
     me: Node,
-    f: Forwarder,
+    fwder: Forwarder,
     data: Port,
     eval: Evaluator, // evaluator is a data port, or a management port?
     management: Port,
 ) -> Result<(), Error> {
-    d.register(
+    dispatch.register(
         "d3_application::TcpAddress",
         Arc::new(AddressListener {
-            e: eval.clone(),
-            f: Arc::new(f),
+            eval: eval.clone(),
+            fwder: Arc::new(fwder),
             management: management.clone(),
         }),
     )?;
 
     // xxx get external  ip address
     let listener = TcpListener::bind("127.0.0.1:0").await?;
-    let a = listener.local_addr().unwrap();
+    let addr = listener.local_addr().unwrap();
 
     management.send(fact!(
         d3_application::TcpAddress,
         location => me.into_record(),
-        destination => a.to_string().into_record()));
+        destination => addr.to_string().into_record()));
 
     let eclone = eval.clone();
     loop {
@@ -150,16 +150,16 @@ pub async fn tcp_bind(
 
 struct TcpPeerInternal {
     address: SocketAddr,
-    s: Option<Arc<Mutex<TcpStream>>>,
+    stream: Option<Arc<Mutex<TcpStream>>>,
     // sends: Vec<JoinHandle<Result<(), std::io::Error>>>, // these need to be waited on for memory?
     management: Port,
-    e: Evaluator,
+    eval: Evaluator,
 }
 
 // do we have anonymous structs?
 #[derive(Clone)]
 struct TcpPeer {
-    t: Arc<Mutex<TcpPeerInternal>>,
+    tcp_inner: Arc<Mutex<TcpPeerInternal>>,
     management: Port,
 }
 
@@ -167,27 +167,37 @@ impl Transport for TcpPeer {
     fn send(self: &Self, b: Batch) {
         // we should be saving this return value in a vector of completions so
         // we can swoop back later and collect errors
-        let t = self.t.clone();
-        let m = self.management.clone();
+        let tcp_inner_clone = self.tcp_inner.clone();
+        let mgmt_clone = self.management.clone();
 
         tokio::spawn(async move {
-            let mut sc = t.lock().await;
+            let mut tcp_peer = tcp_inner_clone.lock().await;
 
-            if sc.s.is_none() {
-                sc.s = match TcpStream::connect(sc.address).await {
+            if tcp_peer.stream.is_none() {
+                tcp_peer.stream = match TcpStream::connect(tcp_peer.address).await {
                     Ok(x) => Some(Arc::new(Mutex::new(x))),
                     // xxx async error channel - self.management
-                    Err(_x) => panic!("connection failure {}", sc.address),
+                    Err(_x) => panic!("connection failure {}", tcp_peer.address),
                 };
             };
 
-            let e = sc.e.clone();
-            let d = async_error!(m.clone(), DDValueBatch::from(e.clone(), b));
-            let bytes = async_error!(m.clone(), e.clone().serialize_batch(d));
+            let eval = tcp_peer.eval.clone();
+            let ddval_batch = async_error!(mgmt_clone.clone(), DDValueBatch::from(eval.clone(), b));
+            let bytes = async_error!(
+                mgmt_clone.clone(),
+                eval.clone().serialize_batch(ddval_batch)
+            );
             // async error this, right?
             async_error!(
-                sc.management.clone(),
-                sc.s.as_ref().unwrap().lock().await.write_all(&bytes).await
+                tcp_peer.management.clone(),
+                tcp_peer
+                    .stream
+                    .as_ref()
+                    .unwrap()
+                    .lock()
+                    .await
+                    .write_all(&bytes)
+                    .await
             );
         });
     }

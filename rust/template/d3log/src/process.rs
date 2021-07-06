@@ -38,7 +38,7 @@ pub const MANAGEMENT_OUTPUT_FD: Fd = 4;
 #[derive(Clone)]
 pub struct FileDescriptorPort {
     pub fd: Fd,
-    //    e: Evaluator,
+    //    eval: Evaluator,
     pub management: Port,
 }
 
@@ -50,11 +50,11 @@ impl Transport for FileDescriptorPort {
     }
 }
 
-async fn read_output<F>(f: Fd, mut callback: F) -> Result<(), Error>
+async fn read_output<F>(fd: Fd, mut callback: F) -> Result<(), Error>
 where
     F: FnMut(&[u8]),
 {
-    let mut pin = AsyncFd::try_from(f)?;
+    let mut pin = AsyncFd::try_from(fd)?;
     let mut buffer = [0; 1024];
     loop {
         let res = pin.read(&mut buffer).await?;
@@ -64,7 +64,7 @@ where
 
 #[derive(Clone)]
 pub struct ProcessManager {
-    e: Evaluator,
+    eval: Evaluator,
     processes: Arc<Mutex<HashMap<Pid, Arc<Mutex<Child>>>>>,
     management: Port,
     //    tm: ArcTransactionManager, // maybe we just need a port here
@@ -74,13 +74,13 @@ impl Transport for ProcessManager {
     fn send(self: &Self, b: Batch) {
         // we think the dispatcher has given only facts from our relation
         // this should be from, is that not so?
-        for (_, p, w) in &RecordBatch::from(self.e.clone(), b) {
-            // what about other values of w?
-            if w == -1 {
+        for (_, p, weight) in &RecordBatch::from(self.eval.clone(), b) {
+            // what about other values of weight?
+            if weight == -1 {
                 // kill if we can find the uuid..i guess and if the total weight is 1
             }
-            if w == 1 {
-                self.make_child(self.e.clone(), p, self.management.clone())
+            if weight == 1 {
+                self.make_child(self.eval.clone(), p, self.management.clone())
                     .expect("fork failure");
                 //                self.processes.lock().expect("lock").insert(v.id, pid);
             }
@@ -102,16 +102,16 @@ impl Child {
             d3_application::ProcessStatus,
             id => self.uuid.into_record(),
             memory_bytes => 0.into_record(),
-            threadds => 0.into_record(),
+            threads => 0.into_record(),
             time => self.eval.now().into_record()));
     }
 }
 
 impl ProcessManager {
-    pub fn new(e: Evaluator, management: Port) -> ProcessManager {
+    pub fn new(eval: Evaluator, management: Port) -> ProcessManager {
         // allocate wait thread
         let p = ProcessManager {
-            e,
+            eval,
             processes: Arc::new(Mutex::new(HashMap::new())),
             management,
         };
@@ -129,7 +129,12 @@ impl ProcessManager {
     // started.
 
     // since this is really an async error maybe deliver it here
-    pub fn make_child(&self, e: Evaluator, process: Record, management: Port) -> Result<(), Error> {
+    pub fn make_child(
+        &self,
+        eval: Evaluator,
+        process: Record,
+        management: Port,
+    ) -> Result<(), Error> {
         // ideally we wouldn't allocate the management pair
         // unless we were actually going to use it..
 
@@ -145,8 +150,8 @@ impl ProcessManager {
         match unsafe { fork() } {
             Ok(ForkResult::Parent { child }) => {
                 // move above so we dont have to try to undo the fork on error
-                let c = Arc::new(Mutex::new(Child {
-                    eval: e,
+                let child_obj = Arc::new(Mutex::new(Child {
+                    eval,
                     uuid: u128::from_record(id)?,
                     //pid: child,
                     management: management.clone(),
@@ -157,7 +162,7 @@ impl ProcessManager {
                 }));
 
                 if let Some(_) = process.get_struct_field("management") {
-                    let c2 = c.clone();
+                    let child_clone = child_obj.clone();
                     spawn(async move {
                         let mut jf = JsonFramer::new();
                         read_output(management_out_r, move |b: &[u8]| {
@@ -165,10 +170,10 @@ impl ProcessManager {
                                 for i in jf.append(b)? {
                                     let v = record_deserialize_batch(i)?;
                                     // let v: RecordBatch = serde_json::from_str(&i)?;
-                                    c2.clone().lock().expect("lock").management.send(v);
+                                    child_clone.clone().lock().expect("lock").management.send(v);
                                     // we shouldn't be doing this on every input - demo hack
                                     // i guess we just limit it to one
-                                    c2.clone().lock().expect("lock").report_status();
+                                    child_clone.clone().lock().expect("lock").report_status();
                                 }
                                 Ok(())
                             })()
@@ -195,7 +200,10 @@ impl ProcessManager {
                     })
                     .await
                 });
-                self.processes.lock().expect("lock").insert(child, c);
+                self.processes
+                    .lock()
+                    .expect("lock")
+                    .insert(child, child_obj);
                 Ok(())
             }
 
@@ -212,14 +220,14 @@ impl ProcessManager {
                 dup2(standard_err_w, 2)?;
 
                 //unsafe {
-                if let Some(e) = process.get_struct_field("executable") {
+                if let Some(exec) = process.get_struct_field("executable") {
                     // FIXME: Temporary fix. this should be fixed ddlog-wide
-                    let e = e.to_string().replace("\"", "");
+                    let exec = exec.to_string().replace("\"", "");
                     if let Some(id) = process.get_struct_field("id") {
                         let path =
-                            CString::new(e.clone().to_string()).expect("CString::new failed");
+                            CString::new(exec.clone().to_string()).expect("CString::new failed");
                         let arg0 =
-                            CString::new(e.clone().to_string()).expect("CString::new failed");
+                            CString::new(exec.clone().to_string()).expect("CString::new failed");
                         // assign the child uuid here and pass in environment, just to avoid
                         // having to deal with getting it from the child asynchronously
                         // take a real map and figure out how to get a &[Cstring]

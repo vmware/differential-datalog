@@ -47,12 +47,12 @@ pub enum Batch {
 
 impl Display for Batch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Batch [\n");
+        writeln!(f, "Batch [");
         match self {
             Batch::Value(b) => b.fmt(f),
             Batch::Rec(b) => b.fmt(f),
         };
-        write!(f, "\n]\n\n")
+        writeln!(f, "\n]\n")
     }
 }
 pub trait Transport {
@@ -65,15 +65,6 @@ pub trait Transport {
 }
 
 pub type Port = Arc<(dyn Transport + Send + Sync)>;
-
-/*impl CoreDisplay for Batch {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Batch::Rec(r) => r.fmt(f),
-            Batch::Value(d) => d.fmt(f),
-        }
-    }
-}*/
 
 pub fn start_instance(
     rt: &Runtime,

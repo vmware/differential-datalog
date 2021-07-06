@@ -231,20 +231,20 @@ impl RecordBatch {
 
     // tried to use impl From<Batch> for RecordBatch, but no error path, other type issues
     // why no err?
-    pub fn from(e: Evaluator, b: Batch) -> RecordBatch {
-        match b {
+    pub fn from(eval: Evaluator, batch: Batch) -> RecordBatch {
+        match batch {
             Batch::Value(x) => {
                 let mut rb = RecordBatch::new();
-                for (r, v, w) in &x {
-                    let r = e.clone().relation_name_from_id(r).unwrap();
-                    let _record: Record = e.clone().record_from_ddvalue(v).unwrap();
-                    let v = match _record {
+                for (record, val, weight) in &x {
+                    let rel_name = eval.clone().relation_name_from_id(record).unwrap();
+                    let _record: Record = eval.clone().record_from_ddvalue(val).unwrap();
+                    let val = match _record {
                         // [ weight, actual_record ]
                         Record::Tuple(t) => t[1].clone(),
                         Record::NamedStruct(name, rec) => Record::NamedStruct(name, rec),
                         _ => panic!("unknown type!"),
                     };
-                    rb.insert(r, v, w);
+                    rb.insert(rel_name, val, weight);
                 }
                 rb
             }
