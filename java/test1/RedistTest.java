@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.lang.RuntimeException;
 
 import ddlogapi.DDlogAPI;
+import ddlogapi.DDlogConfig;
 import ddlogapi.DDlogCommand;
 import ddlogapi.DDlogRecord;
 import ddlogapi.DDlogRecCommand;
@@ -247,7 +248,16 @@ public class RedistTest {
         private DeltaSpan currentDelta;
 
         SpanParser() throws DDlogException {
-            this.api = new DDlogAPI(2, true);
+            DDlogConfig config = new DDlogConfig(2);
+            config.setProfilingConfig(
+                    DDlogConfig.timelyProfiling(
+                        DDlogConfig.logToDisk("timely_trace"),
+                        DDlogConfig.logDisabled(),
+                        DDlogConfig.logDisabled())
+                    );
+            this.api = new DDlogAPI(config, true);
+
+
             this.spanTableId = this.api.getTableId("Span");
             this.command = null;
             this.terminator = "";

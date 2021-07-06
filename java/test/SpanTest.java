@@ -13,6 +13,7 @@ import java.lang.RuntimeException;
 import java.math.BigInteger;
 
 import ddlogapi.DDlogAPI;
+import ddlogapi.DDlogConfig;
 import ddlogapi.DDlogCommand;
 import ddlogapi.DDlogRecord;  // only needed if not using the reflection-based APIs
 import ddlogapi.DDlogRecCommand;
@@ -140,7 +141,14 @@ public class SpanTest {
             DDlogAPI.logSetDefaultCallback(
                     (msg, level) -> logStream.println("Log msg (" + level + "): " + msg),
                     2147483647/*log4j.ALL*/);
-            this.api = new DDlogAPI(1, true);
+            DDlogConfig config = new DDlogConfig(1);
+            config.setProfilingConfig(
+                    DDlogConfig.timelyProfiling(
+                        DDlogConfig.logToDisk("timely_trace"),
+                        DDlogConfig.logDisabled(),
+                        DDlogConfig.logToDisk("timely_trace"))
+                    );
+            this.api = new DDlogAPI(config, true);
             this.command = null;
             this.terminator = "";
             this.commands = new ArrayList<DDlogRecCommand>();

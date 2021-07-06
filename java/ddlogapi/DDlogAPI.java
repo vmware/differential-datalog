@@ -18,6 +18,19 @@ public class DDlogAPI {
      * The C ddlog API
      */
     native long ddlog_run(boolean storeData, int workers) throws DDlogException;
+    native long ddlog_run_with_config(
+            boolean storeData,
+            int nworkers,
+            boolean enableDebugRegions,
+            long differentialIdleMergeEffort,
+            int profilingMode,
+            int timelyLogMode,
+            String timelyLogAddr,
+            int timelyProgressLogMode,
+            String timelyProgressLogAddr,
+            int differentialLogMode,
+            String differentialLogAddr) throws DDlogException;
+
     static native int ddlog_get_table_id(long hprog, String table);
     static native String ddlog_get_table_name(long hprog,int id) throws DDlogException;
     static native String ddlog_get_table_original_name(long hprog, String table) throws DDlogException;
@@ -159,6 +172,42 @@ public class DDlogAPI {
         ensureDllLoaded(library);
         this.tableId = new HashMap<String, Integer>();
         this.hprog = this.ddlog_run(storeData, workers);
+    }
+
+    /**
+     * Create an API to access the DDlog program.
+     * @param config    DDlog program configuration.
+     * @param storeData If true the DDlog background program will store a copy
+     *                  of all tables, which can be obtained with "dump".
+     */
+    public DDlogAPI(DDlogConfig config, boolean storeData)
+            throws DDlogException {
+            this(ddlogLibrary, config, storeData);
+    }
+
+    /**
+     * Create an API to access the DDlog program.
+     * @param library   Name of the dynamic library to load.
+     * @param config    DDlog program configuration.
+     * @param storeData If true the DDlog background program will store a copy
+     *                  of all tables, which can be obtained with "dump".
+     */
+    public DDlogAPI(String library, DDlogConfig config, boolean storeData)
+            throws DDlogException {
+        ensureDllLoaded(library);
+        this.tableId = new HashMap<String, Integer>();
+        this.hprog = this.ddlog_run_with_config(
+                storeData,
+                config.getNumTimelyWorkers(),
+                config.getEnableDebugRegions(),
+                config.getDifferentialIdleMergeEffort(),
+                config.getProfilingConfig().getMode().ordinal(),
+                config.getProfilingConfig().getTimelyDestination().getMode().ordinal(),
+                config.getProfilingConfig().getTimelyDestination().getAddressStr(),
+                config.getProfilingConfig().getTimelyProgressDestination().getMode().ordinal(),
+                config.getProfilingConfig().getTimelyProgressDestination().getAddressStr(),
+                config.getProfilingConfig().getDifferentialDestination().getMode().ordinal(),
+                config.getProfilingConfig().getDifferentialDestination().getAddressStr());
     }
 
     static void ensureDllLoaded(String libname) {
