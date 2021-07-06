@@ -204,3 +204,5 @@ FlatGroup{.x = 111}: +1
 FlatGroup{.x = 222}: +1
 SingletonTest:
 SingletonTest{.s = "DataForSingletonTest is empty"}: -1
+OutList:
+OutList{.l = Lst{.node = "1", .nxt = ListNxt{.nxt = Lst{.node = "2", .nxt = ListNxt{.nxt = Lst{.node = "3", .nxt = ListNxt{.nxt = EMPTY{}}}}}}}}: +1
