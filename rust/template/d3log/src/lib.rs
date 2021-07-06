@@ -47,11 +47,12 @@ pub enum Batch {
 
 impl Display for Batch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "Batch [");
+        writeln!(f, "Batch [").unwrap();
         match self {
             Batch::Value(b) => b.fmt(f),
             Batch::Rec(b) => b.fmt(f),
-        };
+        }
+        .unwrap();
         writeln!(f, "\n]\n")
     }
 }
@@ -89,7 +90,7 @@ pub fn start_instance(
         .expect("registration failed");
 
     let management_clone = management.clone();
-    let forwarder_clone = forwarder.clone();
+    let forwarder_clone = forwarder;
     let eval_clone = eval.clone();
     let dispatch_clone = dispatch.clone();
 
@@ -102,7 +103,7 @@ pub fn start_instance(
             tcp_bind(
                 dispatch_clone,
                 uuid,
-                forwarder_clone.clone(),
+                forwarder_clone,
                 management_clone.clone(),
                 eval_clone.clone(),
                 management_clone.clone(),

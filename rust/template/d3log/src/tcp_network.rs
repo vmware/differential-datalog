@@ -37,7 +37,7 @@ struct AddressListener {
 }
 
 impl Transport for AddressListener {
-    fn send(self: &Self, b: Batch) {
+    fn send(&self, b: Batch) {
         for (_r, v, _w) in &RecordBatch::from(self.eval.clone(), b) {
             // macro deconstructor - error
             if let Some(destination) = v.get_struct_field("destination") {
@@ -74,7 +74,7 @@ impl Transport for AddressListener {
             // make a general error-fact wrapper
             self.management.send(fact!(
                 Error,
-                text => Record::String(format!("ill formed process"))
+                text => Record::String("ill formed process".to_string())
             ));
         }
     }
@@ -164,7 +164,7 @@ struct TcpPeer {
 }
 
 impl Transport for TcpPeer {
-    fn send(self: &Self, b: Batch) {
+    fn send(&self, b: Batch) {
         // we should be saving this return value in a vector of completions so
         // we can swoop back later and collect errors
         let tcp_inner_clone = self.tcp_inner.clone();

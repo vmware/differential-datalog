@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 // use crate::ddvalue_batch::DDValueBatch;
 use crate::{error::Error, Batch, Evaluator};
 use differential_datalog::record::{CollectionKind, Record};
@@ -16,7 +17,7 @@ use serde::{
 
 use serde_json::{Value, Value::*};
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct RecordBatch {
     pub timestamp: u64,
     pub records: Vec<(Record, isize)>,
@@ -44,12 +45,12 @@ impl Display for RecordBatch {
                 Record::Float(_f) => println!("bad record type float"),
                 Record::Double(_dbl) => println!("bad record type double"),
                 Record::String(string_name) => println!("{}", string_name),
-                Record::Serialized(name, s) => println!("serialized {}", name),
+                Record::Serialized(name, _s) => println!("serialized {}", name),
                 Record::Tuple(t) => {
                     println!("tuple {:?}", t);
                 }
                 Record::Array(_, _record_vec) => println!("bad record type array"),
-                Record::PosStruct(name, record_vec) => println!("{}", name),
+                Record::PosStruct(name, _record_vec) => println!("{}", name),
 
                 Record::NamedStruct(r, _attributes) => *m.entry(r).or_insert(0) += 1,
             }
@@ -158,7 +159,7 @@ impl<'de> Visitor<'de> for RecordBatchVisitor {
                     bn.records = records;
                 }
                 // can't figure out how to return an error here.
-                None => panic!("bad record batch syntax".to_string()),
+                None => panic!("bad record batch syntax"),
             }
             Ok(bn)
         }
@@ -191,7 +192,7 @@ impl Serialize for RecordBatch {
         for (v, _w) in &self.records {
             match v {
                 Record::NamedStruct(relname, v) => {
-                    m.entry(relname.to_string()).or_insert(Vec::new()).push({
+                    m.entry(relname.to_string()).or_insert_with(Vec::new).push({
                         // wanted to use map...but some trait bound something something
                         let mut out = HashMap::<String, Record>::new();
                         for (k, v) in v {
@@ -274,7 +275,7 @@ impl<'a> IntoIterator for &'a RecordBatch {
     type Item = (String, Record, isize);
     type IntoIter = RecordBatchIterator<'a>;
 
-    fn into_iter(self: Self) -> RecordBatchIterator<'a> {
+    fn into_iter(self) -> RecordBatchIterator<'a> {
         RecordBatchIterator {
             items: Box::new(self.records.clone().into_iter()),
         }

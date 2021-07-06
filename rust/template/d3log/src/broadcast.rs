@@ -5,6 +5,7 @@
 
 use crate::{Batch, Port, Transport};
 
+#[derive(Default)]
 pub struct Broadcast {
     ports: Vec<Port>,
 }

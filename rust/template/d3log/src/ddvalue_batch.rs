@@ -71,7 +71,7 @@ impl<'a> IntoIterator for &'a DDValueBatch {
     type Item = (RelId, DDValue, isize);
     type IntoIter = BatchIterator<'a>;
 
-    fn into_iter(self: Self) -> BatchIterator<'a> {
+    fn into_iter(self) -> BatchIterator<'a> {
         BatchIterator {
             relid: 0,
             relations: Box::new(self.clone().0.lock().unwrap().deltas.clone().into_iter()),

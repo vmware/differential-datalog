@@ -35,14 +35,13 @@ impl Transport for Forwarder {
 
         for (rel, v, weight) in &DDValueBatch::from(self.eval.clone(), b).expect("iterator") {
             // xxx - through an api
-            match self.eval.localize(rel, v.clone()) {
+            if let Some((loc_id, in_rel, inner_val)) = self.eval.localize(rel, v.clone()) {
                 // not sure I agree with inner_val .. guess so?
-                Some((loc_id, in_rel, inner_val)) => output
+                output
                     .entry(loc_id)
                     .or_insert_with(|| Box::new(DDValueBatch::new()))
                     .deref_mut()
-                    .insert(in_rel, inner_val, weight),
-                None => (),
+                    .insert(in_rel, inner_val, weight);
             }
         }
 

@@ -71,7 +71,7 @@ pub struct ProcessManager {
 }
 
 impl Transport for ProcessManager {
-    fn send(self: &Self, b: Batch) {
+    fn send(&self, b: Batch) {
         // we think the dispatcher has given only facts from our relation
         // this should be from, is that not so?
         for (_, p, weight) in &RecordBatch::from(self.eval.clone(), b) {
@@ -110,12 +110,11 @@ impl Child {
 impl ProcessManager {
     pub fn new(eval: Evaluator, management: Port) -> ProcessManager {
         // allocate wait thread
-        let p = ProcessManager {
+        ProcessManager {
             eval,
             processes: Arc::new(Mutex::new(HashMap::new())),
             management,
-        };
-        p
+        }
     }
 
     // arrange to listen to management channels if they exist
@@ -161,7 +160,7 @@ impl ProcessManager {
                     //                    }),
                 }));
 
-                if let Some(_) = process.get_struct_field("management") {
+                if process.get_struct_field("management").is_some() {
                     let child_clone = child_obj.clone();
                     spawn(async move {
                         let mut jf = JsonFramer::new();
@@ -210,7 +209,7 @@ impl ProcessManager {
             Ok(ForkResult::Child) => {
                 // plumb stdin and stdout regardless
 
-                if !process.get_struct_field("executable").is_none() {
+                if process.get_struct_field("executable").is_some() {
                     dup2(management_out_w, MANAGEMENT_OUTPUT_FD)?;
                     dup2(management_in_r, MANAGEMENT_INPUT_FD)?;
                 }
@@ -224,10 +223,8 @@ impl ProcessManager {
                     // FIXME: Temporary fix. this should be fixed ddlog-wide
                     let exec = exec.to_string().replace("\"", "");
                     if let Some(id) = process.get_struct_field("id") {
-                        let path =
-                            CString::new(exec.clone().to_string()).expect("CString::new failed");
-                        let arg0 =
-                            CString::new(exec.clone().to_string()).expect("CString::new failed");
+                        let path = CString::new(exec.clone()).expect("CString::new failed");
+                        let arg0 = CString::new(exec).expect("CString::new failed");
                         // assign the child uuid here and pass in environment, just to avoid
                         // having to deal with getting it from the child asynchronously
                         // take a real map and figure out how to get a &[Cstring]
@@ -241,7 +238,7 @@ impl ProcessManager {
                 Ok(())
                 // misformed process record?
             }
-            Err(e) => {
+            Err(_e) => {
                 panic!("Fork failed!");
             }
         }
