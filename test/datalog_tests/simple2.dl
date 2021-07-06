@@ -614,3 +614,26 @@ SingletonTest("${v}") :- var v = 5.
  */
 #[original="original_name"]
 input relation Renamed()
+
+
+/*
+ * Test IntoRecord/FromRecord implementations for `Ref<'T>`, where
+ * 'T is a type argument (see issue #1017).
+ */
+
+typedef LinkedList<'N> = Lst { node: 'N, nxt: ListNxt<'N> } | EMPTY
+typedef ListNxt<'N> = ListNxt { nxt: Ref<LinkedList<'N>> }
+
+function map(l: LinkedList<'T1>, f: (function ('T1) : 'T2)): LinkedList<'T2> {
+    match (l) {
+        EMPTY -> EMPTY,
+        Lst{n, ListNxt{nxt}} -> Lst{f(n), ListNxt{ref_new(nxt.deref().map(f))}}
+    }
+}
+
+input relation InList(l: LinkedList<usize>)
+output relation OutList(l: LinkedList<string>)
+
+OutList(out_list) :-
+    InList(in_list),
+    var out_list = in_list.map(|x| "${x}").

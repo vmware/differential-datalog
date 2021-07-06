@@ -115,3 +115,11 @@ start;
 insert DataForSingletonTest(100),
 
 commit dump_changes;
+
+start;
+
+insert InList(        Lst{1,
+              ListNxt{Lst{2,
+              ListNxt{Lst{3,
+              ListNxt{EMPTY}}}}}});
+commit dump_changes;
