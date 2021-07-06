@@ -12,7 +12,7 @@ TEST_DIR="${THIS_DIR}/server_api"
     i=0 &&
     true &&
     #while [ $? -eq 0 -a $i -lt 100 ]; do
-    while [ $? -eq 0 -a $i -lt 10 ]; do
+    while [ $? -eq 0 -a $i -lt 1 ]; do
         i=$((i+1));
         #CARGO_LOG=cargo::core::compiler::fingerprint=trace RUST_LOG=trace cargo test
         RUST_LOG=trace cargo test
