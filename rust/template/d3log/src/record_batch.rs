@@ -281,14 +281,14 @@ impl<'a> IntoIterator for &'a RecordBatch {
     }
 }
 
-// we need an e to get out of ddvalue? do we?
 // idk why i dont want to make these associated...i guess holding on to the idea
-// that the external representation doesn't need to be tied to the internal
-pub fn record_serialize_batch(_b: Batch) -> Result<Vec<u8>, Error> {
-    Ok(Vec::new())
+// that the external representation doesn't need to be tied to the internal. so
+// quaint
+pub fn record_serialize_batch(r: RecordBatch) -> Result<Vec<u8>, Error> {
+    let encoded = serde_json::to_string(&r)?;
+    Ok(encoded.as_bytes().to_vec())
 }
 
-// we need an e to get out of ddvalue? do we?
-pub fn record_deserialize_batch(_v: Vec<u8>) -> Result<Batch, Error> {
+pub fn deserialize_record_batch(_v: Vec<u8>) -> Result<Batch, Error> {
     Ok(Batch::Rec(RecordBatch::new()))
 }

@@ -71,7 +71,9 @@ macro_rules! async_error {
     ($p:expr, $r:expr) => {
         match $r {
             Err(x) => {
-                $p.send(fact!(d3::Error, text => x.to_string().into_record()));
+                let s = x.to_string();
+                println!("async error: {}", s);
+                $p.send(fact!(d3::Error, text => s.into_record()));
                 return;
             }
             Ok(x) => x,

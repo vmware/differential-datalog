@@ -76,7 +76,7 @@ pub type Port = Arc<(dyn Transport + Send + Sync)>;
 }*/
 
 pub fn start_instance(
-    rt: &Runtime,
+    rt: Arc<Runtime>,
     eval: Evaluator,
     uuid: u128,
     management: Port,
@@ -88,12 +88,16 @@ pub fn start_instance(
     // Instance manager's send will create new instances
     let forwarder = Forwarder::new(eval.clone());
 
-    // pass d to process manager
+    // pass d to process manager for it to register itself
     dispatch
         .clone()
         .register(
             "d3_application::Process",
-            Arc::new(ProcessManager::new(eval.clone(), management.clone())),
+            Arc::new(ProcessManager::new(
+                eval.clone(),
+                rt.clone(),
+                management.clone(),
+            )),
         )
         .expect("registration failed");
 

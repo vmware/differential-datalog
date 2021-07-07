@@ -14,7 +14,7 @@ use crate::{
     error::Error,
     fact,
     json_framer::JsonFramer,
-    record_batch::{record_deserialize_batch, record_serialize_batch, RecordBatch},
+    record_batch::{deserialize_record_batch, record_serialize_batch, RecordBatch},
     Batch, Evaluator, Port, Transport,
 };
 use differential_datalog::record::*;
@@ -22,6 +22,7 @@ use nix::unistd::*;
 use std::borrow::Cow;
 use std::sync::{Arc, Mutex};
 use std::{collections::HashMap, convert::TryFrom, ffi::CString};
+use tokio::runtime::Runtime;
 use tokio::{io::AsyncReadExt, io::AsyncWriteExt, spawn};
 use tokio_fd::AsyncFd;
 
@@ -38,14 +39,19 @@ pub const MANAGEMENT_OUTPUT_FD: Fd = 4;
 #[derive(Clone)]
 pub struct FileDescriptorPort {
     pub fd: Fd,
-    //    e: Evaluator,
+    pub eval: Evaluator,
     pub management: Port,
 }
 
 impl Transport for FileDescriptorPort {
     fn send(&self, b: Batch) {
-        let js = async_error!(self.management, record_serialize_batch(b));
-        let mut pin = AsyncFd::try_from(self.fd).expect("asynch");
+        let js = async_error!(
+            self.management,
+            record_serialize_batch(RecordBatch::from(self.eval.clone(), b))
+        );
+        println!("fdsend {}", std::str::from_utf8(&js).expect("wtF"));
+        // keep this around, would you?
+        let mut pin = async_error!(self.management, AsyncFd::try_from(self.fd));
         spawn(async move { pin.write_all(&js).await });
     }
 }
@@ -57,14 +63,18 @@ where
     let mut pin = AsyncFd::try_from(f)?;
     let mut buffer = [0; 1024];
     loop {
+        println!("tyr read a thing");
         let res = pin.read(&mut buffer).await?;
+        println!("read a thing {}", res);
         callback(&buffer[0..res]);
+        println!("callback returned");
     }
 }
 
 #[derive(Clone)]
 pub struct ProcessManager {
     e: Evaluator,
+    rt: Arc<tokio::runtime::Runtime>,
     processes: Arc<Mutex<HashMap<Pid, Arc<Mutex<Child>>>>>,
     management: Port,
     //    tm: ArcTransactionManager, // maybe we just need a port here
@@ -91,9 +101,9 @@ impl Transport for ProcessManager {
 struct Child {
     uuid: u128,
     eval: Evaluator,
-    //pid: Pid,
+    pid: Pid,
     management: Port,
-    //    management_to_child: Port, // xxx - hook up to broadcast
+    management_to_child: Port,
 }
 
 impl Child {
@@ -108,10 +118,11 @@ impl Child {
 }
 
 impl ProcessManager {
-    pub fn new(e: Evaluator, management: Port) -> ProcessManager {
+    pub fn new(e: Evaluator, rt: Arc<tokio::runtime::Runtime>, management: Port) -> ProcessManager {
         // allocate wait thread
         let p = ProcessManager {
             e,
+            rt,
             processes: Arc::new(Mutex::new(HashMap::new())),
             management,
         };
@@ -133,7 +144,7 @@ impl ProcessManager {
         // ideally we wouldn't allocate the management pair
         // unless we were actually going to use it..
 
-        let (management_in_r, _management_in_w) = pipe().unwrap();
+        let (management_in_r, management_in_w) = pipe().unwrap();
         let (management_out_r, management_out_w) = pipe().unwrap();
 
         let (standard_in_r, _standard_in_w) = pipe().unwrap();
@@ -146,40 +157,51 @@ impl ProcessManager {
             Ok(ForkResult::Parent { child }) => {
                 // move above so we dont have to try to undo the fork on error
                 let c = Arc::new(Mutex::new(Child {
-                    eval: e,
+                    eval: e.clone(),
                     uuid: u128::from_record(id)?,
-                    //pid: child,
+                    pid: child,
                     management: management.clone(),
-                    // management_to_child: Arc::new(FileDescriptorPort {
-                    //                        management: management.clone(),
-                    //                        fd: management_in_w,
-                    //                    }),
+                    management_to_child: Arc::new(FileDescriptorPort {
+                        eval: e.clone(),
+                        management: management.clone(),
+                        fd: management_in_w,
+                    }),
                 }));
 
                 if let Some(_) = process.get_struct_field("management") {
                     let c2 = c.clone();
-                    spawn(async move {
+                    let management_clone = management.clone();
+                    self.rt.spawn(async move {
                         let mut jf = JsonFramer::new();
-                        read_output(management_out_r, move |b: &[u8]| {
-                            (|| -> Result<(), Error> {
-                                for i in jf.append(b)? {
-                                    let v = record_deserialize_batch(i)?;
-                                    // let v: RecordBatch = serde_json::from_str(&i)?;
+                        let mut first = false;
+                        let management_clone = management_clone.clone();
+                        println!("reading mangement");
+                        async_error!(
+                            management_clone.clone(),
+                            read_output(management_out_r, move |b: &[u8]| {
+                                println!("actually read");
+                                for i in async_error!(management, jf.append(b)) {
+                                    let v = async_error!(
+                                        management.clone(),
+                                        deserialize_record_batch(i)
+                                    );
+                                    println!("you'll figure it out {}", v);
                                     c2.clone().lock().expect("lock").management.send(v);
-                                    // we shouldn't be doing this on every input - demo hack
-                                    // i guess we just limit it to one
-                                    c2.clone().lock().expect("lock").report_status();
+                                    // assume the child needs to announce something before we recognize it
+                                    // as started. assume its tcp address information so we dont need to
+                                    // implement the join
+                                    if first {
+                                        c2.clone().lock().expect("lock").report_status();
+                                        first = false;
+                                    }
                                 }
-                                Ok(())
-                            })()
-                            .expect("mangement forward");
-                        })
-                        .await
-                        .expect("json read");
+                            })
+                            .await
+                        );
                     });
                 }
 
-                spawn(async move {
+                self.rt.spawn(async move {
                     read_output(standard_out_r, |b: &[u8]| {
                         // utf8 framing issues?
                         print!("child {} {}", child, std::str::from_utf8(b).expect(""));
@@ -188,7 +210,7 @@ impl ProcessManager {
                     .await
                 });
 
-                spawn(async move {
+                self.rt.spawn(async move {
                     read_output(standard_err_r, |b: &[u8]| {
                         println!("child error {}", std::str::from_utf8(b).expect(""));
                         // assert
@@ -233,7 +255,7 @@ impl ProcessManager {
                 Ok(())
                 // misformed process record?
             }
-            Err(e) => {
+            Err(_) => {
                 panic!("Fork failed!");
             }
         }

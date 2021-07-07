@@ -8,8 +8,6 @@ use d3log::{
 
 use crate::{api::HDDlog, relid2name, relval_from_record, Relations, UpdateSerializer};
 
-use d3log::record_batch::RecordBatch;
-
 use differential_datalog::{
     ddval::DDValue, program::Update, record::IntoRecord, record::Record, D3log, DDlog, DDlogDynamic,
 };
@@ -123,7 +121,7 @@ impl Serialize for SerializeBatchWrapper {
 }
 
 impl D3 {
-    pub fn new(_uuid: Node, _management: Port) -> Result<(Evaluator, Batch), Error> {
+    pub fn new(_uuid: Node) -> Result<(Evaluator, Batch), Error> {
         let (h, init_output) = HDDlog::run(1, false)?;
         Ok((
             Arc::new(D3 { h }),
@@ -221,44 +219,45 @@ impl EvaluatorTrait for D3 {
 }
 
 pub fn start_d3log() -> Result<(), Error> {
-    let management = Arc::new(Print(Arc::new(Null {})));
-
-    let (_management_port, uuid, is_parent) = if let Some(f) = std::env::var_os("uuid") {
-        if let Some(f2) = f.to_str() {
-            let m = FileDescriptorPort {
-                management: management.clone(),
-                fd: MANAGEMENT_OUTPUT_FD,
-            };
-            let uuid = f2.parse::<u128>().unwrap();
-            (Arc::new(m) as Port, uuid, false)
+    let management_management = Arc::new(Print(Arc::new(Null {})));
+    let (uuid, is_parent) = if let Some(uuid) = std::env::var_os("uuid") {
+        if let Some(uuid) = uuid.to_str() {
+            println!("shut up old man");
+            let uuid = uuid.parse::<u128>().unwrap();
+            (uuid, false)
         } else {
             panic!("bad uuid");
         }
     } else {
         // use uuid crate
         (
-            Arc::new(Broadcast::new()) as Port,
             u128::from_be_bytes(rand::thread_rng().gen::<[u8; 16]>()),
             true,
         )
     };
 
-    // this is wrong
-    let (d, init_batch) = D3::new(uuid, management.clone()).expect("D3");
-    let rt = Runtime::new().expect("tokio runtime creation");
-    let (port, instance_future) =
-        start_instance(&rt, d, uuid, management.clone()).expect("instance");
+    let (d, init_batch) = D3::new(uuid)?;
+    let m = if is_parent {
+        Arc::new(Broadcast::new()) as Port
+    } else {
+        let m = FileDescriptorPort {
+            management: management_management.clone(),
+            eval: d.clone(),
+            fd: MANAGEMENT_OUTPUT_FD,
+        };
+        Arc::new(m) as Port
+    };
 
-    // dispatcher port
-    // XXX: leonid batch (fork bomb) issue.
-    // FIXME: Still not sure if the fork is failing because of the tokio runtime
+    let rt = Arc::new(Runtime::new()?);
+    let (port, instance_future) = start_instance(rt.clone(), d.clone(), uuid, m.clone())?;
+
+    // XXX: we really kind of want the initial evaluation to happen at one ingress node
+    // find the ddlog ticket against and reference
     if is_parent {
         rt.spawn(async move {
             port.send(init_batch);
         });
     }
-    // we hope that tokio is going to block on queue occupancy w/ drop...no we hope that await will
     rt.block_on(instance_future)?;
-
     Ok(())
 }
