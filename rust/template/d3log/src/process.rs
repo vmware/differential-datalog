@@ -56,11 +56,11 @@ impl Transport for FileDescriptorPort {
     }
 }
 
-async fn read_output<F>(f: Fd, mut callback: F) -> Result<(), Error>
+async fn read_output<F>(fd: Fd, mut callback: F) -> Result<(), Error>
 where
     F: FnMut(&[u8]),
 {
-    let mut pin = AsyncFd::try_from(f)?;
+    let mut pin = AsyncFd::try_from(fd)?;
     let mut buffer = [0; 1024];
     loop {
         let res = pin.read(&mut buffer).await?;
@@ -70,7 +70,7 @@ where
 
 #[derive(Clone)]
 pub struct ProcessManager {
-    e: Evaluator,
+    eval: Evaluator,
     rt: Arc<tokio::runtime::Runtime>,
     processes: Arc<Mutex<HashMap<Pid, Arc<Mutex<Child>>>>>,
     management: Port,
@@ -79,16 +79,16 @@ pub struct ProcessManager {
 }
 
 impl Transport for ProcessManager {
-    fn send(self: &Self, b: Batch) {
+    fn send(&self, b: Batch) {
         // we think the dispatcher has given only facts from our relation
         // this should be from, is that not so?
-        for (_, p, w) in &RecordBatch::from(self.e.clone(), b) {
-            // what about other values of w?
-            if w == -1 {
+        for (_, p, weight) in &RecordBatch::from(self.eval.clone(), b) {
+            // what about other values of weight?
+            if weight == -1 {
                 // kill if we can find the uuid..i guess and if the total weight is 1
             }
-            if w == 1 {
-                self.make_child(self.e.clone(), p).expect("fork failure");
+            if weight == 1 {
+                self.make_child(self.eval.clone(), p).expect("fork failure");
                 //                self.processes.lock().expect("lock").insert(v.id, pid);
             }
         }
@@ -116,19 +116,18 @@ impl Child {
 
 impl ProcessManager {
     pub fn new(
-        e: Evaluator,
+        eval: Evaluator,
         rt: Arc<tokio::runtime::Runtime>,
         b: Arc<Broadcast>,
     ) -> ProcessManager {
         // allocate wait thread
-        let p = ProcessManager {
-            e,
+        ProcessManager {
+            eval,
             rt,
             processes: Arc::new(Mutex::new(HashMap::new())),
             management: b.clone(),
             b: b.clone(),
-        };
-        p
+        }
     }
 
     // arrange to listen to management channels if they exist
@@ -136,7 +135,7 @@ impl ProcessManager {
     // potnetially addressed with a uuid or a url
 
     // since this is really an async error maybe deliver it here
-    pub fn make_child(&self, e: Evaluator, process: Record) -> Result<(), Error> {
+    pub fn make_child(&self, eval: Evaluator, process: Record) -> Result<(), Error> {
         // ideally we wouldn't allocate the management pair
         // unless we were actually going to use it..
 
@@ -152,7 +151,7 @@ impl ProcessManager {
         match unsafe { fork() } {
             Ok(ForkResult::Parent { child }) => {
                 // move above so we dont have to try to undo the fork on error
-                let c = Arc::new(Mutex::new(Child {
+                let child_obj = Arc::new(Mutex::new(Child {
                     eval: e.clone(),
                     uuid: u128::from_record(id)?,
                     pid: child,
@@ -225,14 +224,17 @@ impl ProcessManager {
                     })
                     .await
                 });
-                self.processes.lock().expect("lock").insert(child, c);
+                self.processes
+                    .lock()
+                    .expect("lock")
+                    .insert(child, child_obj);
                 Ok(())
             }
 
             Ok(ForkResult::Child) => {
                 // plumb stdin and stdout regardless
 
-                if !process.get_struct_field("executable").is_none() {
+                if process.get_struct_field("executable").is_some() {
                     dup2(management_out_w, MANAGEMENT_OUTPUT_FD)?;
                     dup2(management_in_r, MANAGEMENT_INPUT_FD)?;
                 }
@@ -242,14 +244,12 @@ impl ProcessManager {
                 dup2(standard_err_w, 2)?;
 
                 //unsafe {
-                if let Some(e) = process.get_struct_field("executable") {
+                if let Some(exec) = process.get_struct_field("executable") {
                     // FIXME: Temporary fix. this should be fixed ddlog-wide
-                    let e = e.to_string().replace("\"", "");
+                    let exec = exec.to_string().replace("\"", "");
                     if let Some(id) = process.get_struct_field("id") {
-                        let path =
-                            CString::new(e.clone().to_string()).expect("CString::new failed");
-                        let arg0 =
-                            CString::new(e.clone().to_string()).expect("CString::new failed");
+                        let path = CString::new(exec.clone()).expect("CString::new failed");
+                        let arg0 = CString::new(exec).expect("CString::new failed");
                         // assign the child uuid here and pass in environment, just to avoid
                         // having to deal with getting it from the child asynchronously
                         // take a real map and figure out how to get a &[Cstring]

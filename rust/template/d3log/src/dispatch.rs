@@ -10,11 +10,13 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
+type DispatchMap = HashMap<String, Vec<(u64, Port)>>;
+
 #[derive(Clone)]
 pub struct Dispatch {
     eval: Evaluator, // to be removed
     count: Arc<AtomicUsize>,
-    handlers: Arc<Mutex<HashMap<String, Vec<(u64, Port)>>>>,
+    handlers: Arc<Mutex<DispatchMap>>,
 }
 
 impl Transport for Dispatch {
@@ -62,7 +64,7 @@ impl Dispatch {
             .lock()
             .expect("lock")
             .entry(relation_name.to_string())
-            .or_insert_with(|| Vec::new())
+            .or_insert_with(Vec::new)
             .push((id as u64, p));
         Ok(())
     }

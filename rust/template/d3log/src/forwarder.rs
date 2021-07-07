@@ -10,14 +10,14 @@ pub struct Forwarder {
 }
 
 impl Forwarder {
-    pub fn new(e: Evaluator) -> Forwarder {
+    pub fn new(eval: Evaluator) -> Forwarder {
         // ok - we dont really want to start another hddlog here, but it helps
         // quite a bit in reducing the amount of sharing going on through TM.
         // ideally we could ask this question without access to the whole machine?
         // or share better with the other guy
 
         Forwarder {
-            eval: e,
+            eval,
             fib: Arc::new(Mutex::new(HashMap::new())),
         }
     }
@@ -35,14 +35,13 @@ impl Transport for Forwarder {
 
         for (rel, v, weight) in &DDValueBatch::from(self.eval.clone(), b).expect("iterator") {
             // xxx - through an api
-            match self.eval.localize(rel, v.clone()) {
+            if let Some((loc_id, in_rel, inner_val)) = self.eval.localize(rel, v.clone()) {
                 // not sure I agree with inner_val .. guess so?
-                Some((loc_id, in_rel, inner_val)) => output
+                output
                     .entry(loc_id)
                     .or_insert_with(|| Box::new(DDValueBatch::new()))
                     .deref_mut()
-                    .insert(in_rel, inner_val, weight),
-                None => (),
+                    .insert(in_rel, inner_val, weight);
             }
         }
 

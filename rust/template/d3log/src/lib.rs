@@ -48,12 +48,13 @@ pub enum Batch {
 
 impl Display for Batch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Batch [\n");
+        writeln!(f, "Batch [").unwrap();
         match self {
             Batch::Value(b) => b.fmt(f),
             Batch::Rec(b) => b.fmt(f),
-        };
-        write!(f, "\n]\n\n")
+        }
+        .unwrap();
+        writeln!(f, "\n]\n")
     }
 }
 pub trait Transport {
@@ -66,15 +67,6 @@ pub trait Transport {
 }
 
 pub type Port = Arc<(dyn Transport + Send + Sync)>;
-
-/*impl CoreDisplay for Batch {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Batch::Rec(r) => r.fmt(f),
-            Batch::Value(d) => d.fmt(f),
-        }
-    }
-}*/
 
 pub fn start_instance(
     rt: Arc<Runtime>,
@@ -100,6 +92,7 @@ pub fn start_instance(
 
     let management_clone = b.clone();
     let forwarder_clone = forwarder.clone();
+
     let eval_clone = eval.clone();
     let dispatch_clone = dispatch.clone();
 
@@ -112,7 +105,7 @@ pub fn start_instance(
             tcp_bind(
                 dispatch_clone,
                 uuid,
-                forwarder_clone.clone(),
+                forwarder_clone,
                 management_clone.clone(),
                 eval_clone.clone(),
                 management_clone.clone(),

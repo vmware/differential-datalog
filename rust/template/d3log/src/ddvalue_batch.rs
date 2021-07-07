@@ -21,8 +21,8 @@ pub struct DDValueBatch(pub Arc<Mutex<BatchInternal>>);
 impl Display for DDValueBatch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&"<")?;
-        let b = self.0.lock().unwrap();
-        for (relid, vees) in b.deltas.clone() {
+        let batch_inner = self.0.lock().unwrap();
+        for (relid, vees) in batch_inner.deltas.clone() {
             // I would really prefer a readable name..but we need an Evaluator and it doesn't seem right
             // to add it to all the batches or globalize it
             f.write_str(&format!("({}", relid))?;
@@ -71,7 +71,7 @@ impl<'a> IntoIterator for &'a DDValueBatch {
     type Item = (RelId, DDValue, isize);
     type IntoIter = BatchIterator<'a>;
 
-    fn into_iter(self: Self) -> BatchIterator<'a> {
+    fn into_iter(self) -> BatchIterator<'a> {
         BatchIterator {
             relid: 0,
             relations: Box::new(self.clone().0.lock().unwrap().deltas.clone().into_iter()),
@@ -124,13 +124,13 @@ impl DDValueBatch {
         match b {
             Batch::Value(x) => Ok(x),
             Batch::Rec(rb) => {
-                let mut b = DDValueBatch::new();
+                let mut ddval_batch = DDValueBatch::new();
                 let e2 = e.clone();
                 for (r, v, w) in &rb {
                     let rid = e2.id_from_relation_name(r)?;
-                    b.insert(rid, e.ddvalue_from_record(rid, v)?, w);
+                    ddval_batch.insert(rid, e.ddvalue_from_record(rid, v)?, w);
                 }
-                Ok(b)
+                Ok(ddval_batch)
             }
         }
     }

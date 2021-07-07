@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::{Batch, Error, Evaluator, RecordBatch};
 use cmd_parser::{err_str, parse_command, Command};
 use differential_datalog::{
@@ -31,7 +33,7 @@ where
 
 pub async fn read_batches_from_file<F>(
     filename: String,
-    e: Evaluator,
+    eval: Evaluator,
     mut cb: F,
 ) -> Result<(), Error>
 where
@@ -46,12 +48,12 @@ where
                     let rname = match rel {
                         RelName(name) => name.to_string(),
                         // do we..even want this?
-                        RelId(id) => e.relation_name_from_id(id)?.to_string(),
+                        RelId(id) => eval.relation_name_from_id(id)?,
                     };
-                    b.insert(rname.to_string(), record, 1);
+                    b.insert(rname, record, 1);
                     Ok(())
                 }
-                _ => return Err(Error::new(format!("update type unknown"))),
+                _ => Err(Error::new("update type unknown".to_string())),
             },
             Command::Commit(_bool) => {
                 // shouldn't need to clone here, i'm passing the torch to you cb

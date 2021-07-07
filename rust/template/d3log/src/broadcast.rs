@@ -13,7 +13,7 @@ pub struct Ingress {
     broadcast: Arc<Broadcast>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Broadcast {
     count: Arc<AtomicUsize>,
     ports: Vec<(Port, usize)>,

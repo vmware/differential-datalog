@@ -104,9 +104,9 @@ souffle=("static_analysis:Souffle static analysis test."
          "souffle_tests6:Souffle tests part6"
          "souffle_tests7:Souffle tests part7")
 
-d3log=("tcp_channel:TCP channel test"
-       "server_api:Test D3log server API"
-       "lb:Mock load balancer")
+d3log=("foo:test foo"
+       "bar:test bar"
+       "baz:test baz")
 
 misc=("span_string"
       "span_uuid"
@@ -325,36 +325,7 @@ souffle_tests7() {
 
 # 'd3log' test group.
 
-tcp_channel() {
-    #ZOOKEEPER_ENDPOINTS="127.0.0.1:2181"
-    #/usr/share/zookeeper/bin/zkServer.sh start &&
-    (cd "${THIS_DIR}/rust/template/distributed_datalog" && cargo fmt -- --check) &&
-    (cd "${THIS_DIR}/rust/template/distributed_datalog" && cargo clippy -- -D warnings) &&
-    #for i in $(seq 100); do
-    #    /usr/share/zookeeper/bin/zkServer.sh status && break;
-    #    sleep 1
-    #done &&
-    (cd "${THIS_DIR}/rust/template/distributed_datalog" && (
-        i=0;
-        true;
-        while [ $? -eq 0 -a $i -lt 100 ]; do
-          i=$((i+1));
-          cargo test -- tcp_channel::;
-        done
-        )
-    )
-}
 
-server_api() {
-    # It seems that stale files cause cargo to rebuild the project
-    # unnecessarily in CI.
-    #rm -rf test/datalog_tests/server_api_ddlog
-    (export DDLOG_HOME="${THIS_DIR}" && "${THIS_DIR}/test/datalog_tests/test-server_api.sh")
-}
-
-lb() {
-    ${THIS_DIR}/test/datalog_tests/lb_test/test.sh
-}
 
 # 'stack' test group.
 
