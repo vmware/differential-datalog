@@ -49,7 +49,6 @@ impl Transport for FileDescriptorPort {
             self.management,
             record_serialize_batch(RecordBatch::from(self.eval.clone(), b))
         );
-        println!("fdsend {}", std::str::from_utf8(&js).expect("wtF"));
         // keep this around, would you?
         let mut pin = async_error!(self.management, AsyncFd::try_from(self.fd));
         spawn(async move { pin.write_all(&js).await });
@@ -63,11 +62,8 @@ where
     let mut pin = AsyncFd::try_from(f)?;
     let mut buffer = [0; 1024];
     loop {
-        println!("tyr read a thing");
         let res = pin.read(&mut buffer).await?;
-        println!("read a thing {}", res);
         callback(&buffer[0..res]);
-        println!("callback returned");
     }
 }
 
@@ -175,17 +171,16 @@ impl ProcessManager {
                         let mut jf = JsonFramer::new();
                         let mut first = false;
                         let management_clone = management_clone.clone();
-                        println!("reading mangement");
                         async_error!(
                             management_clone.clone(),
                             read_output(management_out_r, move |b: &[u8]| {
-                                println!("actually read");
+                                println!("in {}", std::str::from_utf8(b).expect("utf8"));
                                 for i in async_error!(management, jf.append(b)) {
                                     let v = async_error!(
                                         management.clone(),
                                         deserialize_record_batch(i)
                                     );
-                                    println!("you'll figure it out {}", v);
+                                    println!("child managemnet input {}", v);
                                     c2.clone().lock().expect("lock").management.send(v);
                                     // assume the child needs to announce something before we recognize it
                                     // as started. assume its tcp address information so we dont need to

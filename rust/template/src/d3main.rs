@@ -222,7 +222,6 @@ pub fn start_d3log() -> Result<(), Error> {
     let management_management = Arc::new(Print(Arc::new(Null {})));
     let (uuid, is_parent) = if let Some(uuid) = std::env::var_os("uuid") {
         if let Some(uuid) = uuid.to_str() {
-            println!("shut up old man");
             let uuid = uuid.parse::<u128>().unwrap();
             (uuid, false)
         } else {

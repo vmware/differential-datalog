@@ -195,7 +195,6 @@ impl Serialize for RecordBatch {
                         // wanted to use map...but some trait bound something something
                         let mut out = HashMap::<String, Record>::new();
                         for (k, v) in v {
-                            println!("encoding {}", k);
                             out.insert(k.to_string(), v.clone());
                         }
                         out
@@ -289,6 +288,8 @@ pub fn record_serialize_batch(r: RecordBatch) -> Result<Vec<u8>, Error> {
     Ok(encoded.as_bytes().to_vec())
 }
 
-pub fn deserialize_record_batch(_v: Vec<u8>) -> Result<Batch, Error> {
-    Ok(Batch::Rec(RecordBatch::new()))
+pub fn deserialize_record_batch(v: Vec<u8>) -> Result<Batch, Error> {
+    let s = std::str::from_utf8(&v)?;
+    let v: RecordBatch = serde_json::from_str(&s)?;
+    Ok(Batch::Rec(v))
 }
