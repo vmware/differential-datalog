@@ -9,9 +9,15 @@ use differential_datalog::{
     DDlog, DDlogDynamic,
 };
 
-pub fn init(workers: usize) -> HDDlog {
-    let (ddlog, _) = benchmarks_ddlog::run(workers, false).expect("failed to start ddlog instance");
+pub fn init_config(config: Config) -> HDDlog {
+    let (ddlog, _) =
+        benchmarks_ddlog::run_with_config(config, false).expect("failed to create DDlog instance");
+    ddlog
+}
 
+pub fn init(workers: usize) -> HDDlog {
+    let (ddlog, _) =
+        benchmarks_ddlog::run(workers, false).expect("failed to create DDlog instance");
     ddlog
 }
 

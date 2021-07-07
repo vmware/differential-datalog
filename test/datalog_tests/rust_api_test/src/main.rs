@@ -19,7 +19,7 @@ use differential_datalog::{DDlog, DDlogDynamic, DDlogInventory};
 
 // The `differential_datalog::program::config` module declares datatypes
 // used to configure DDlog program on startup.
-use differential_datalog::program::config::{Config, ProfilingKind};
+use differential_datalog::program::config::{Config, ProfilingConfig};
 
 // Type that represents a set of changes to DDlog relations.
 // Returned by `DDlog::transaction_commit_dump_changes()`.
@@ -46,7 +46,7 @@ fn main() -> Result<(), String> {
     // enabled.
     let config = Config::new()
         .with_timely_workers(1)
-        .with_profiling_kind(ProfilingKind::SelfProfiling);
+        .with_profiling_config(ProfilingConfig::SelfProfiling);
     // Instantiate the DDlog program with this configuration.
     // The second argument of `run_with_config` is a Boolean flag that indicates
     // whether DDlog will track the complete snapshot of output relations.  It
