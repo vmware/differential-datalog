@@ -236,7 +236,7 @@ pub fn start_d3log() -> Result<(), Error> {
     };
 
     let (d, init_batch) = D3::new(uuid)?;
-    let m = Arc::new(Broadcast::new());
+    let m = Broadcast::new();
     let rt = Arc::new(Runtime::new()?);
     let (port, instance_future) = start_instance(rt.clone(), d.clone(), uuid, m.clone())?;
 

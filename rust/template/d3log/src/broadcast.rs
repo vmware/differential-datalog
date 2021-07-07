@@ -6,7 +6,7 @@
 use crate::{Batch, Port, Transport};
 
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 pub struct Ingress {
     index: usize,
@@ -16,15 +16,15 @@ pub struct Ingress {
 #[derive(Clone, Default)]
 pub struct Broadcast {
     count: Arc<AtomicUsize>,
-    ports: Vec<(Port, usize)>,
+    ports: Arc<Mutex<Vec<(Port, usize)>>>,
 }
 
 impl Broadcast {
-    pub fn new() -> Broadcast {
-        Broadcast {
+    pub fn new() -> Arc<Broadcast> {
+        Arc::new(Broadcast {
             count: Arc::new(AtomicUsize::new(0)),
-            ports: Vec::new(),
-        }
+            ports: Arc::new(Mutex::new(Vec::new())),
+        })
     }
 }
 
@@ -36,12 +36,12 @@ pub trait Adder {
 }
 
 impl Adder for Arc<Broadcast> {
-    fn add(mut self, p: Port) -> Port {
+    fn add(self, p: Port) -> Port {
         let index = self.count.fetch_add(1, Ordering::Acquire);
-        let b = Arc::get_mut(&mut self).unwrap();
-        b.ports.push((p, index));
+        let mut ports = self.ports.lock().expect("lock ports");
+        ports.push((p, index));
         Arc::new(Ingress {
-            broadcast: self,
+            broadcast: self.clone(),
             index,
         })
     }
@@ -53,7 +53,7 @@ impl Ingress {
 
 impl Transport for Ingress {
     fn send(&self, b: Batch) {
-        for i in &self.broadcast.ports {
+        for i in &*self.broadcast.ports.lock().expect("lock") {
             if i.1 != self.index {
                 i.0.send(b.clone())
             }
@@ -63,7 +63,7 @@ impl Transport for Ingress {
 
 impl Transport for Broadcast {
     fn send(&self, b: Batch) {
-        for i in &self.ports {
+        for i in &*self.ports.lock().expect("lock") {
             i.0.send(b.clone())
         }
     }
