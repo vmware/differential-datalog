@@ -152,19 +152,19 @@ impl ProcessManager {
             Ok(ForkResult::Parent { child }) => {
                 // move above so we dont have to try to undo the fork on error
                 let child_obj = Arc::new(Mutex::new(Child {
-                    eval: e.clone(),
+                    eval: eval.clone(),
                     uuid: u128::from_record(id)?,
                     pid: child,
                     management: self.b.clone(),
                     management_to_child: Arc::new(FileDescriptorPort {
-                        eval: e.clone(),
+                        eval: eval.clone(),
                         management: self.b.clone(),
                         fd: management_in_w,
                     }),
                 }));
 
                 if let Some(_) = process.get_struct_field("management") {
-                    let c2 = c.clone();
+                    let c2 = child_obj.clone();
                     let management_clone = self.b.clone();
                     let rt = self.rt.clone();
                     rt.spawn(async move {
@@ -175,7 +175,7 @@ impl ProcessManager {
                         let sh_management =
                             management_clone.clone().add(Arc::new(FileDescriptorPort {
                                 management: management_clone.clone(),
-                                eval: e.clone(),
+                                eval: eval.clone(),
                                 fd: MANAGEMENT_OUTPUT_FD,
                             }));
 
