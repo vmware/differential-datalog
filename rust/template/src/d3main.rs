@@ -1,5 +1,5 @@
 use d3log::{
-    broadcast::Broadcast,
+    broadcast::{Adder, Broadcast},
     ddvalue_batch::DDValueBatch,
     error::Error,
     process::{FileDescriptorPort, MANAGEMENT_OUTPUT_FD},
@@ -121,13 +121,19 @@ impl Serialize for SerializeBatchWrapper {
 }
 
 impl D3 {
-    pub fn new(_uuid: Node) -> Result<(Evaluator, Batch), Error> {
+    pub fn new(_uuid: Node) -> Result<(Evaluator, Port, Batch), Error> {
         let (h, init_output) = HDDlog::run(1, false)?;
+        let ad = Arc::new(D3 { h });
         Ok((
-            Arc::new(D3 { h }),
+            ad.clone(),
+            ad.clone(),
             DDValueBatch::from_delta_map(init_output),
         ))
     }
+}
+
+impl Transport for D3 {
+    fn send(&self, b: Batch) {}
 }
 
 impl EvaluatorTrait for D3 {
@@ -219,10 +225,11 @@ impl EvaluatorTrait for D3 {
 }
 
 pub fn start_d3log() -> Result<(), Error> {
-    let management_management = Arc::new(Print(Arc::new(Null {})));
+    let broadcast = Broadcast::new();
     let (uuid, is_parent) = if let Some(uuid) = std::env::var_os("uuid") {
         if let Some(uuid) = uuid.to_str() {
             let uuid = uuid.parse::<u128>().unwrap();
+
             (uuid, false)
         } else {
             panic!("bad uuid");
@@ -235,10 +242,21 @@ pub fn start_d3log() -> Result<(), Error> {
         )
     };
 
-    let (d, init_batch) = D3::new(uuid)?;
-    let m = Broadcast::new();
+    let (d, dp, init_batch) = D3::new(uuid)?;
+
+    if !is_parent {
+        // does this really belong here?
+        broadcast.clone().add(Arc::new(FileDescriptorPort {
+            management: broadcast.clone() as Port,
+            eval: d.clone(),
+            fd: MANAGEMENT_OUTPUT_FD,
+        }));
+    }
+
     let rt = Arc::new(Runtime::new()?);
-    let (port, instance_future) = start_instance(rt.clone(), d.clone(), uuid, m.clone())?;
+    let (port, instance_future) = start_instance(rt.clone(), d.clone(), uuid, broadcast.clone())?;
+    // xxx - do we ever need to use ingress here?
+    broadcast.add(dp);
 
     // XXX: we really kind of want the initial evaluation to happen at one ingress node
     // find the ddlog ticket against and reference

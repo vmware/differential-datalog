@@ -17,8 +17,13 @@ use std::sync::Arc;
 use tokio::runtime::Runtime;
 
 use crate::{
-    broadcast::Broadcast, ddvalue_batch::DDValueBatch, dispatch::Dispatch, error::Error,
-    forwarder::Forwarder, process::ProcessManager, record_batch::RecordBatch,
+    broadcast::{Adder, Broadcast},
+    ddvalue_batch::DDValueBatch,
+    dispatch::Dispatch,
+    error::Error,
+    forwarder::Forwarder,
+    process::ProcessManager,
+    record_batch::RecordBatch,
     tcp_network::tcp_bind,
 };
 

@@ -176,7 +176,7 @@ impl ProcessManager {
                             management_clone.clone().add(Arc::new(FileDescriptorPort {
                                 management: management_clone.clone(),
                                 eval: eval.clone(),
-                                fd: MANAGEMENT_OUTPUT_FD,
+                                fd: management_out_r,
                             }));
 
                         let a = management_clone.clone();
