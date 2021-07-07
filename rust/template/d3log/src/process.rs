@@ -129,12 +129,6 @@ impl ProcessManager {
     // this should manage a filesystem resident cache of executable images,
     // potnetially addressed with a uuid or a url
 
-    // in the earlier model, we deliberately refrained from
-    // starting the multithreaded tokio runtime until after
-    // we'd forked all the children. lets see if we can
-    // can fork this executable w/o running exec if tokio has been
-    // started.
-
     // since this is really an async error maybe deliver it here
     pub fn make_child(&self, e: Evaluator, process: Record, management: Port) -> Result<(), Error> {
         // ideally we wouldn't allocate the management pair
@@ -169,7 +163,7 @@ impl ProcessManager {
                     let management_clone = management.clone();
                     self.rt.spawn(async move {
                         let mut jf = JsonFramer::new();
-                        let mut first = false;
+                        let mut first = true;
                         let management_clone = management_clone.clone();
                         async_error!(
                             management_clone.clone(),
