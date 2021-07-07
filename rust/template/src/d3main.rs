@@ -236,17 +236,7 @@ pub fn start_d3log() -> Result<(), Error> {
     };
 
     let (d, init_batch) = D3::new(uuid)?;
-    let m = if is_parent {
-        Arc::new(Broadcast::new()) as Port
-    } else {
-        let m = FileDescriptorPort {
-            management: management_management.clone(),
-            eval: d.clone(),
-            fd: MANAGEMENT_OUTPUT_FD,
-        };
-        Arc::new(m) as Port
-    };
-
+    let m = Arc::new(Broadcast::new());
     let rt = Arc::new(Runtime::new()?);
     let (port, instance_future) = start_instance(rt.clone(), d.clone(), uuid, m.clone())?;
 

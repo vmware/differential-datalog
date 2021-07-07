@@ -17,8 +17,9 @@ use std::sync::Arc;
 use tokio::runtime::Runtime;
 
 use crate::{
-    ddvalue_batch::DDValueBatch, dispatch::Dispatch, error::Error, forwarder::Forwarder,
-    process::ProcessManager, record_batch::RecordBatch, tcp_network::tcp_bind,
+    broadcast::Broadcast, ddvalue_batch::DDValueBatch, dispatch::Dispatch, error::Error,
+    forwarder::Forwarder, process::ProcessManager, record_batch::RecordBatch,
+    tcp_network::tcp_bind,
 };
 
 pub type Node = D3logLocationId;
@@ -79,7 +80,7 @@ pub fn start_instance(
     rt: Arc<Runtime>,
     eval: Evaluator,
     uuid: u128,
-    management: Port,
+    b: Arc<Broadcast>,
 ) -> Result<(Port, tokio::task::JoinHandle<()>), Error> {
     let dispatch = Dispatch::new(eval.clone());
     //race between registration and new data.
@@ -93,15 +94,11 @@ pub fn start_instance(
         .clone()
         .register(
             "d3_application::Process",
-            Arc::new(ProcessManager::new(
-                eval.clone(),
-                rt.clone(),
-                management.clone(),
-            )),
+            Arc::new(ProcessManager::new(eval.clone(), rt.clone(), b.clone())),
         )
         .expect("registration failed");
 
-    let management_clone = management.clone();
+    let management_clone = b.clone();
     let forwarder_clone = forwarder.clone();
     let eval_clone = eval.clone();
     let dispatch_clone = dispatch.clone();

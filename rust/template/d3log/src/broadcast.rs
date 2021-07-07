@@ -13,15 +13,16 @@ pub struct Ingress {
     broadcast: Arc<Broadcast>,
 }
 
+#[derive(Clone)]
 pub struct Broadcast {
-    count: AtomicUsize,
+    count: Arc<AtomicUsize>,
     ports: Vec<(Port, usize)>,
 }
 
 impl Broadcast {
     pub fn new() -> Broadcast {
         Broadcast {
-            count: AtomicUsize::new(0),
+            count: Arc::new(AtomicUsize::new(0)),
             ports: Vec::new(),
         }
     }

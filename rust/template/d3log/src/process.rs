@@ -11,6 +11,7 @@
 
 use crate::{
     async_error,
+    broadcast::{Adder, Broadcast},
     error::Error,
     fact,
     json_framer::JsonFramer,
@@ -73,6 +74,7 @@ pub struct ProcessManager {
     rt: Arc<tokio::runtime::Runtime>,
     processes: Arc<Mutex<HashMap<Pid, Arc<Mutex<Child>>>>>,
     management: Port,
+    b: Arc<Broadcast>,
     //    tm: ArcTransactionManager, // maybe we just need a port here
 }
 
@@ -86,8 +88,7 @@ impl Transport for ProcessManager {
                 // kill if we can find the uuid..i guess and if the total weight is 1
             }
             if w == 1 {
-                self.make_child(self.e.clone(), p, self.management.clone())
-                    .expect("fork failure");
+                self.make_child(self.e.clone(), p).expect("fork failure");
                 //                self.processes.lock().expect("lock").insert(v.id, pid);
             }
         }
@@ -108,19 +109,24 @@ impl Child {
             d3_application::ProcessStatus,
             id => self.uuid.into_record(),
             memory_bytes => 0.into_record(),
-            threadds => 0.into_record(),
+            threads => 0.into_record(),
             time => self.eval.now().into_record()));
     }
 }
 
 impl ProcessManager {
-    pub fn new(e: Evaluator, rt: Arc<tokio::runtime::Runtime>, management: Port) -> ProcessManager {
+    pub fn new(
+        e: Evaluator,
+        rt: Arc<tokio::runtime::Runtime>,
+        b: Arc<Broadcast>,
+    ) -> ProcessManager {
         // allocate wait thread
         let p = ProcessManager {
             e,
             rt,
             processes: Arc::new(Mutex::new(HashMap::new())),
-            management,
+            management: b.clone(),
+            b: b.clone(),
         };
         p
     }
@@ -130,7 +136,7 @@ impl ProcessManager {
     // potnetially addressed with a uuid or a url
 
     // since this is really an async error maybe deliver it here
-    pub fn make_child(&self, e: Evaluator, process: Record, management: Port) -> Result<(), Error> {
+    pub fn make_child(&self, e: Evaluator, process: Record) -> Result<(), Error> {
         // ideally we wouldn't allocate the management pair
         // unless we were actually going to use it..
 
@@ -150,32 +156,45 @@ impl ProcessManager {
                     eval: e.clone(),
                     uuid: u128::from_record(id)?,
                     pid: child,
-                    management: management.clone(),
+                    management: self.b.clone(),
                     management_to_child: Arc::new(FileDescriptorPort {
                         eval: e.clone(),
-                        management: management.clone(),
+                        management: self.b.clone(),
                         fd: management_in_w,
                     }),
                 }));
 
                 if let Some(_) = process.get_struct_field("management") {
                     let c2 = c.clone();
-                    let management_clone = management.clone();
-                    self.rt.spawn(async move {
+                    let management_clone = self.b.clone();
+                    let rt = self.rt.clone();
+                    rt.spawn(async move {
                         let mut jf = JsonFramer::new();
                         let mut first = true;
                         let management_clone = management_clone.clone();
+
+                        let sh_management =
+                            management_clone.clone().add(Arc::new(FileDescriptorPort {
+                                management: management_clone.clone(),
+                                eval: e.clone(),
+                                fd: MANAGEMENT_OUTPUT_FD,
+                            }));
+
+                        let a = management_clone.clone();
                         async_error!(
-                            management_clone.clone(),
+                            a,
                             read_output(management_out_r, move |b: &[u8]| {
                                 println!("in {}", std::str::from_utf8(b).expect("utf8"));
-                                for i in async_error!(management, jf.append(b)) {
+                                let management_clone = management_clone.clone();
+                                for i in async_error!(management_clone.clone(), jf.append(b)) {
                                     let v = async_error!(
-                                        management.clone(),
+                                        management_clone.clone(),
                                         deserialize_record_batch(i)
                                     );
                                     println!("child managemnet input {}", v);
-                                    c2.clone().lock().expect("lock").management.send(v);
+
+                                    sh_management.clone().send(v);
+
                                     // assume the child needs to announce something before we recognize it
                                     // as started. assume its tcp address information so we dont need to
                                     // implement the join
