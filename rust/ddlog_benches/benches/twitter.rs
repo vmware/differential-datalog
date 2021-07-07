@@ -4,6 +4,8 @@ use criterion::{
 use ddlog_benches::twitter;
 use std::ops::RangeInclusive;
 
+use differential_datalog::program::config::{Config, LoggingDestination, ProfilingConfig};
+
 /// Benchmark all targets using 1, 2, 3, and 4 threads
 const DDLOG_WORKERS: RangeInclusive<usize> = 1..=4;
 
@@ -45,6 +47,54 @@ fn twitter_micro(c: &mut Criterion) {
     }
 }
 
+fn twitter_micro_with_profiler(c: &mut Criterion) {
+    let mut group = c.benchmark_group("twitter-micro-with-profiler");
+    group.sampling_mode(SamplingMode::Flat);
+    group.sample_size(10);
+
+    for record_count in record_counts() {
+        let dataset = twitter::dataset(Some(record_count));
+
+        for thread_count in DDLOG_WORKERS.rev() {
+            group.bench_with_input(
+                BenchmarkId::new(
+                    format!(
+                        "{} thread{}",
+                        thread_count,
+                        if thread_count == 1 { "" } else { "s" },
+                    ),
+                    format!("{} records", record_count),
+                ),
+                &dataset,
+                |b, dataset| {
+                    b.iter_batched(
+                        || {
+                            (
+                                ddlog_benches::init_config(Config {
+                                    num_timely_workers: thread_count,
+                                    profiling_config: ProfilingConfig::TimelyProfiling {
+                                        timely_destination: LoggingDestination::Disk {
+                                            directory: "timely_trace".to_string(),
+                                        },
+                                        timely_progress_destination: None,
+                                        differential_destination: Some(LoggingDestination::Disk {
+                                            directory: "timely_trace".to_string(),
+                                        }),
+                                    },
+                                    ..Default::default()
+                                }),
+                                dataset.to_owned(),
+                            )
+                        },
+                        |(ddlog, dataset)| ddlog_benches::run(black_box(ddlog), black_box(dataset)),
+                        BatchSize::PerIteration,
+                    )
+                },
+            );
+        }
+    }
+}
+
 fn twitter_macro(c: &mut Criterion) {
     let mut group = c.benchmark_group("twitter-macro");
     group.sampling_mode(SamplingMode::Flat);
@@ -73,5 +123,10 @@ fn twitter_macro(c: &mut Criterion) {
     }
 }
 
-criterion_group!(benches, twitter_micro, twitter_macro);
+criterion_group!(
+    benches,
+    twitter_micro,
+    twitter_micro_with_profiler,
+    twitter_macro
+);
 criterion_main!(benches);
