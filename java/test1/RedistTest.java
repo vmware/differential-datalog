@@ -249,12 +249,7 @@ public class RedistTest {
 
         SpanParser() throws DDlogException {
             DDlogConfig config = new DDlogConfig(2);
-            config.setProfilingConfig(
-                    DDlogConfig.timelyProfiling(
-                        DDlogConfig.logToDisk("timely_trace"),
-                        DDlogConfig.logDisabled(),
-                        DDlogConfig.logDisabled())
-                    );
+            config.setProfilingConfig(DDlogConfig.selfProfiling());
             this.api = new DDlogAPI(config, true);
 
 
