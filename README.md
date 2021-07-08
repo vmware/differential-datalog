@@ -78,7 +78,8 @@ but somewhat limits the flexibility, as changes to the relational schema or rule
 - [How to](doc/java_api.md) use DDlog from Java.
 - [How to](doc/c_tutorial/c_tutorial.rst) use DDlog from C.
 - [How to](go/README.md) use DDlog from Go and [Go API documentation](https://pkg.go.dev/github.com/vmware/differential-datalog/go/pkg/ddlog).
-- [How to](test/datalog_tests/rust_api_test) using DDlog from Rust (by example)
+- [How to](test/datalog_tests/rust_api_test) use DDlog from Rust (by example)
+- [Tutorial](doc/profiling.md) on profiling DDlog programs
 - [DDlog overview paper](doc/datalog2.0-workshop/paper.pdf), Datalog 2.0 workshop, 2019.
 
 ## Installation

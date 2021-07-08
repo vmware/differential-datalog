@@ -3703,45 +3703,9 @@ supported by the CLI tool.
 
 ## Profiling
 
-DDlog's profiling features are designed to help the programmer to understand
-what parts of the DDlog program use the most CPU and memory.  DDlog supports two
-commands related to profiling (also available through Rust, C, and Java APIs):
-
-1. `profile cpu on/off;` - enables/disables recording of CPU usage info in
-addition to memory profiling.  CPU profiling is not enabled by default, as
-it can slow down the program somewhat, especially for large programs
-that handle many small updates.
-
-1. `profile;` - returns information about program's CPU and memory usage.  CPU
-usage is expressed as the total amount of time DDlog spent evaluating each operator,
-assuming CPU profiling was enabled.  For example the following CPU profile
-record:
-```
-CPU profile
-    ...
-       0s005281us (        112calls)     Join: DdlogDependency(.parent=parent, .child=child), LabeledNode(.node=parent, .scc=parentscc), LabeledNode(.node=child, .scc=childscc) 165
-    ...
-```
-indicates that the program spent `5,281` microseconds in 112 activations of the
-join operator that joins the prefix of the rule (`DdlogDependency(.parent=parent, .child=child), LabeledNode(.node=parent, .scc=parentscc)`)
-with the `LabeledNode(.node=child, .scc=childscc)` literal.
-
-  Memory profile reports current (at the time when the profile is being generated)
-  and peak (since the start of the program) number of records in each DDlog
-  *arrangement*.  An arrangement is similar to an indexed representation of a
-  relation in databases.  Arrangements are responsible for the majority of memory
-  consumption of a DDlog program.  For example, the following memory profile
-  fragment:
-  ```
-  Arrangement peak sizes
-  ...
-  451529      Arrange: LabeledNode{.node=_, .scc=_0} 136
-  372446      Arrange: LabeledNode{.node=_0, .scc=_} 132
-  ```
-  indicates that the program contains two different arrangements of the `LabeledNode`
-  relation, indexed by the second and first fields, whose peak size is
-  451,529 and 372,446 records respectively (the numbered variables, e.g., `_0`)
-  indicate one or more fields used to index the relation by.
+DDlog's profiling features are designed to help the programmer identify
+parts of the program that use the most CPU and memory.
+See [Profiling tutorial](../profiling.md) for details.
 
 ## Replay debugging
 
