@@ -183,14 +183,12 @@ impl ProcessManager {
                         async_error!(
                             a,
                             read_output(management_out_r, move |b: &[u8]| {
-                                println!("in {}", std::str::from_utf8(b).expect("utf8"));
                                 let management_clone = management_clone.clone();
                                 for i in async_error!(management_clone.clone(), jf.append(b)) {
                                     let v = async_error!(
                                         management_clone.clone(),
                                         deserialize_record_batch(i)
                                     );
-                                    println!("child managemnet input {}", v);
 
                                     sh_management.clone().send(v);
 

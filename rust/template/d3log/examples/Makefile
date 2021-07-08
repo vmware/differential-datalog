@@ -10,13 +10,13 @@ compiler:
 	(cd $(ROOT) ;  stack build && stack install)
 
 program: 
-	$(DDLOG) --no-staticlib --dynlib --action compile -L$(ROOT)/lib -L.. --d3log -i gather.dl
+	$(DDLOG) --no-staticlib --dynlib --action compile -L$(ROOT)/lib -L.. --d3log -i mini_skyline.dl
 
 compile: 
-	(cd gather_ddlog ; cargo build --features distribution)
+	(cd mini_skyline_ddlog ; cargo build --features distribution)
 
 start: 
-	./gather_ddlog/target/debug/gather_cli
+	./mini_skyline_ddlog/target/debug/mini_skyline_cli
 
 inc: compile start
 run: compiler program compile start	

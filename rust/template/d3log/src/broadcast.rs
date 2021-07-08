@@ -62,7 +62,6 @@ impl Transport for Ingress {
                 i.0.send(b.clone())
             }
         }
-        println!("ingress send complete");
     }
 }
 
@@ -72,6 +71,5 @@ impl Transport for Broadcast {
         for i in &*self.ports.lock().expect("lock") {
             i.0.send(b.clone())
         }
-        println!("sh send complete");
     }
 }

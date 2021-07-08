@@ -1,0 +1,25 @@
+import d3_application
+
+// the path here should actually be an executable, or I suppose a url to one.
+// but here we may be able to use the value of argv[0] to make it
+// slightly less broken
+Process(loc, "/users/ehoffman/ddev/rust/template/d3log/examples/mini_skyline_ddlog/target/debug/mini_skyline_cli", true) :-  Fact(_, loc).
+
+// multi-init
+input relation Fact(x:u64, k:u128)
+Fact(1, 0).
+Fact(2, 1).
+Fact(3, 2).
+Fact(4, 0).
+Fact(5, 1).
+Fact(6, 2).
+
+output relation Fact2(x:u64)
+relation LocalizedFact(x:u64)
+
+LocalizedFact(x)@(k as u128) :-
+      Fact(x, k),
+      ProcessStatus(_, k, _, _, None).
+
+Fact2(x) :- LocalizedFact(x).
+
