@@ -38,6 +38,8 @@ impl Transport for Print {
 
 pub struct D3 {
     h: HDDlog,
+    dispatch: d,
+    forwarder: Port,
 }
 
 struct SerializeBatchWrapper {
@@ -130,10 +132,6 @@ impl D3 {
             DDValueBatch::from_delta_map(init_output),
         ))
     }
-}
-
-impl Transport for D3 {
-    fn send(&self, b: Batch) {}
 }
 
 impl EvaluatorTrait for D3 {
@@ -242,7 +240,7 @@ pub fn start_d3log() -> Result<(), Error> {
         )
     };
 
-    let (d, dp, init_batch) = D3::new(uuid)?;
+    let (d, init_batch) = D3::new(uuid)?;
 
     if !is_parent {
         // does this really belong here?
@@ -255,13 +253,12 @@ pub fn start_d3log() -> Result<(), Error> {
 
     let rt = Arc::new(Runtime::new()?);
     let (port, instance_future) = start_instance(rt.clone(), d.clone(), uuid, broadcast.clone())?;
-    // xxx - do we ever need to use ingress here?
-    broadcast.add(dp);
 
     // XXX: we really kind of want the initial evaluation to happen at one ingress node
     // find the ddlog ticket against and reference
     if is_parent {
         rt.spawn(async move {
+            println!("init batch {}", init_batch);
             port.send(init_batch);
         });
     }

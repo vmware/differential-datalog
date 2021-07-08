@@ -81,9 +81,9 @@ impl Transport for AddressListener {
 }
 
 pub async fn tcp_bind(
-    dispatch: Dispatch,
+    dispatch: Arc<Dispatch>,
     me: Node,
-    fwder: Forwarder,
+    forwarder: Arc<Forwarder>,
     data: Port,
     eval: Evaluator, // evaluator is a data port, or a management port?
     management: Port,
@@ -92,7 +92,7 @@ pub async fn tcp_bind(
         "d3_application::TcpAddress",
         Arc::new(AddressListener {
             eval: eval.clone(),
-            fwder: Arc::new(fwder),
+            forwarder,
             management: management.clone(),
         }),
     )?;

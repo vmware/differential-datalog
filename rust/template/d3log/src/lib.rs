@@ -73,33 +73,59 @@ pub trait Transport {
 
 pub type Port = Arc<(dyn Transport + Send + Sync)>;
 
+struct EvalPort {
+    eval: Evaluator,
+    forwarder: Port,
+    management: Port,
+    dispatch: Port,
+}
+
+impl Transport for EvalPort {
+    fn send(&self, b: Batch) {
+        let out = async_error!(self.management.clone(), self.eval.eval(b));
+        self.dispatch.send(out);
+        self.forwarder.send(out);
+    }
+}
+
 pub fn start_instance(
     rt: Arc<Runtime>,
     eval: Evaluator,
     uuid: u128,
-    b: Arc<Broadcast>,
+    broadcast: Arc<Broadcast>,
 ) -> Result<(Port, tokio::task::JoinHandle<()>), Error> {
-    let dispatch = Dispatch::new(eval.clone());
+    let dispatch = Arc::new(Dispatch::new(eval.clone()));
     //race between registration and new data.
 
     // TODO: Create an Instance manager and register with the dispatcher.
     // Instance manager's send will create new instances
-    let forwarder = Forwarder::new(eval.clone());
+    let forwarder = Arc::new(Forwarder::new(eval.clone()));
 
     // pass d to process manager for it to register itself
     dispatch
         .clone()
         .register(
             "d3_application::Process",
-            Arc::new(ProcessManager::new(eval.clone(), rt.clone(), b.clone())),
+            Arc::new(ProcessManager::new(
+                eval.clone(),
+                rt.clone(),
+                broadcast.clone(),
+            )),
         )
         .expect("registration failed");
 
-    let management_clone = b.clone();
+    let management_clone = broadcast.clone();
     let forwarder_clone = forwarder.clone();
 
     let eval_clone = eval.clone();
     let dispatch_clone = dispatch.clone();
+
+    broadcast.add(Arc::new(EvalPort {
+        forwarder: forwarder.clone(),
+        management: management_clone.clone(),
+        dispatch: dispatch.clone(),
+        eval,
+    }));
 
     // TODO: rt.block_on never returns. The idea is to spawn a thread and return the thread handle
     // for that to the main thread. The main thread just waits on this thread join handle as long
@@ -118,5 +144,5 @@ pub fn start_instance(
             .await
         );
     });
-    Ok((Arc::new(dispatch), handle))
+    Ok((dispatch, handle))
 }
