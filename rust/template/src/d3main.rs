@@ -140,9 +140,9 @@ impl EvaluatorTrait for D3 {
     fn eval(&self, input: Batch) -> Result<Batch, Error> {
         // would like to implicitly convert batch to ddvalue_batch, but i cant, because i need an
         // evaluator, and its been deconstructed before we get here...
-
         let mut upd = Vec::new();
         let b = DDValueBatch::from(self, input)?;
+
         for (relid, v, _) in &b {
             upd.push(Update::Insert { relid, v });
         }
