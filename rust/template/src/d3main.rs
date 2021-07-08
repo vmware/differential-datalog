@@ -38,8 +38,6 @@ impl Transport for Print {
 
 pub struct D3 {
     h: HDDlog,
-    dispatch: d,
-    forwarder: Port,
 }
 
 struct SerializeBatchWrapper {
@@ -123,14 +121,10 @@ impl Serialize for SerializeBatchWrapper {
 }
 
 impl D3 {
-    pub fn new(_uuid: Node) -> Result<(Evaluator, Port, Batch), Error> {
+    pub fn new(_uuid: Node) -> Result<(Evaluator, Batch), Error> {
         let (h, init_output) = HDDlog::run(1, false)?;
         let ad = Arc::new(D3 { h });
-        Ok((
-            ad.clone(),
-            ad.clone(),
-            DDValueBatch::from_delta_map(init_output),
-        ))
+        Ok((ad, DDValueBatch::from_delta_map(init_output)))
     }
 }
 
@@ -146,29 +140,19 @@ impl EvaluatorTrait for D3 {
     fn eval(&self, input: Batch) -> Result<Batch, Error> {
         // would like to implicitly convert batch to ddvalue_batch, but i cant, because i need an
         // evaluator, and its been deconstructed before we get here...
-        match input {
-            Batch::Value(b) => {
-                let mut upd = Vec::new();
-                for (relid, v, _) in &b {
-                    upd.push(Update::Insert { relid, v });
-                }
 
-                // wrapper to translate hddlog's string error to our standard-by-default std::io::Error
-                match (|| -> Result<Batch, String> {
-                    self.h.transaction_start()?;
-                    self.h.apply_updates(&mut upd.clone().drain(..))?;
-                    Ok(Batch::from(DDValueBatch::from_delta_map(
-                        self.h.transaction_commit_dump_changes()?,
-                    )))
-                })() {
-                    Ok(x) => Ok(x),
-                    Err(e) => Err(Error::new(
-                        format!("Failed to update differential datalog: {}", e).to_string(),
-                    )),
-                }
-            }
-            _ => panic!("bad batch"),
+        let mut upd = Vec::new();
+        let b = DDValueBatch::from(self, input)?;
+        for (relid, v, _) in &b {
+            upd.push(Update::Insert { relid, v });
         }
+
+        // wrapper to translate hddlog's string error to our standard-by-default std::io::Error
+        self.h.transaction_start()?;
+        self.h.apply_updates(&mut upd.clone().drain(..))?;
+        Ok(Batch::from(DDValueBatch::from_delta_map(
+            self.h.transaction_commit_dump_changes()?,
+        )))
     }
 
     fn id_from_relation_name(&self, s: String) -> Result<usize, Error> {

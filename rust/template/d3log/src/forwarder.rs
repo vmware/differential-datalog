@@ -33,7 +33,7 @@ impl Transport for Forwarder {
     fn send(&self, b: Batch) {
         let mut output = HashMap::<Node, Box<DDValueBatch>>::new();
 
-        for (rel, v, weight) in &DDValueBatch::from(self.eval.clone(), b).expect("iterator") {
+        for (rel, v, weight) in &DDValueBatch::from(&(*self.eval), b).expect("iterator") {
             // xxx - through an api
             if let Some((loc_id, in_rel, inner_val)) = self.eval.localize(rel, v.clone()) {
                 // not sure I agree with inner_val .. guess so?

@@ -32,7 +32,7 @@ use std::sync::Arc;
 
 struct AddressListener {
     eval: Evaluator,
-    fwder: Arc<Forwarder>,
+    forwarder: Arc<Forwarder>,
     management: Port,
 }
 
@@ -48,7 +48,7 @@ impl Transport for AddressListener {
                             let address = string.parse() ;
                             let loc: u128 = async_error!(self.management, FromRecord::from_record(&location));
                             // we add an entry to forward this nid to this tcp address
-                            self.fwder.register(
+                            self.forwarder.register(
                                 loc,
                                 Arc::new(TcpPeer {
                                     management: self.management.clone(),
@@ -182,7 +182,7 @@ impl Transport for TcpPeer {
             };
 
             let eval = tcp_peer.eval.clone();
-            let ddval_batch = async_error!(mgmt_clone.clone(), DDValueBatch::from(eval.clone(), b));
+            let ddval_batch = async_error!(mgmt_clone.clone(), DDValueBatch::from(&(*eval), b));
             let bytes = async_error!(
                 mgmt_clone.clone(),
                 eval.clone().serialize_batch(ddval_batch)

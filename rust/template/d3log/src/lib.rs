@@ -83,8 +83,8 @@ struct EvalPort {
 impl Transport for EvalPort {
     fn send(&self, b: Batch) {
         let out = async_error!(self.management.clone(), self.eval.eval(b));
-        self.dispatch.send(out);
-        self.forwarder.send(out);
+        self.dispatch.send(out.clone());
+        self.forwarder.send(out.clone());
     }
 }
 

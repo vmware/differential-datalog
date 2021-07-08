@@ -57,7 +57,7 @@ impl Dispatch {
     }
 
     // deregstration? return a handle?
-    pub fn register(self, relation_name: &str, p: Port) -> Result<(), Error> {
+    pub fn register(&self, relation_name: &str, p: Port) -> Result<(), Error> {
         let id = self.count.fetch_add(1, Ordering::SeqCst);
 
         self.handlers
