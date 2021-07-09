@@ -7,11 +7,11 @@ Process(loc, "/users/ehoffman/ddev/rust/template/d3log/examples/mini_skyline_ddl
 
 // multi-init
 input relation Fact(x:u64, k:u128)
-Fact(1, 0).
-Fact(2, 1).
-Fact(3, 2).
-Fact(4, 0).
-Fact(5, 1).
+Fact(1, 1).
+Fact(2, 3).
+Fact(3, 3).
+Fact(4, 1).
+Fact(5, 3).
 Fact(6, 2).
 
 output relation Fact2(x:u64)

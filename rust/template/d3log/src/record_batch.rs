@@ -84,11 +84,21 @@ fn value_to_record(v: Value) -> Result<Record, Error> {
             Ok(Record::Array(CollectionKind::Vector, values))
         }
         Value::Object(m) => {
-            let mut properties = Vec::new();
+            println!("object {:?}", m);
+
+            // there has to be another, more official, implementation of these
             for (k, v) in m {
-                properties.push((Cow::from(k), value_to_record(v)?));
+                match k.as_str() {
+                    "Int" => {
+                        // v should be "1234"
+                        // create Record::Int
+                        println!("int value {:?}", v);
+                    }
+                    "String" => return Ok(Record::String(v.to_string())),
+                    _ => println!("non int value"),
+                };
             }
-            Ok(Record::NamedStruct(Cow::from(""), properties))
+            Err(Error::new("bad record json".to_string()))
         }
     }
 }
@@ -176,6 +186,12 @@ impl<'de> Deserialize<'de> for RecordBatch {
     }
 }
 
+impl Serialize for BitIntAsString {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        // {"Int", self}
+    }
+}
+
 impl Serialize for RecordBatch {
     // i would _like_ to expose an interface that used the names for relations
     // so that external users dont have to be privy to the compiler id assignment
@@ -196,7 +212,13 @@ impl Serialize for RecordBatch {
                         // wanted to use map...but some trait bound something something
                         let mut out = HashMap::<String, Record>::new();
                         for (k, v) in v {
-                            out.insert(k.to_string(), v.clone());
+                            out.insert(
+                                k.to_string(),
+                                match v {
+                                    Record::Int(x) => panic!("doing record"),
+                                    _ => v.clone(),
+                                },
+                            )
                         }
                         out
                     })
@@ -284,7 +306,7 @@ impl<'a> IntoIterator for &'a RecordBatch {
 // idk why i dont want to make these associated...i guess holding on to the idea
 // that the external representation doesn't need to be tied to the internal. so
 // quaint
-pub fn record_serialize_batch(r: RecordBatch) -> Result<Vec<u8>, Error> {
+pub fn serialize_record_batch(r: RecordBatch) -> Result<Vec<u8>, Error> {
     let encoded = serde_json::to_string(&r)?;
     Ok(encoded.as_bytes().to_vec())
 }
