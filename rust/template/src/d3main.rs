@@ -132,7 +132,9 @@ impl EvaluatorTrait for D3 {
     fn ddvalue_from_record(&self, id: usize, r: Record) -> Result<DDValue, Error> {
         //  as Relations
         let rel = Relations::try_from(id).map_err(|_| Error::new("bad relation id".to_string()))?;
-        relval_from_record(rel, &r).map_err(|_| Error::new("bad record conversion".to_string()))
+        println!("{:?}", r);
+        relval_from_record(rel, &r)
+            .map_err(|x| Error::new("bad record conversion: ".to_string() + &x.to_string()))
     }
 
     //  can demux on record batch and call the record interface instead of translating - is that

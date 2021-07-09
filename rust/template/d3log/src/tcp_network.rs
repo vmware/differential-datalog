@@ -45,37 +45,40 @@ impl Transport for AddressListener {
                     match destination {
                         // what are the unused fields?
                         Record::String(string) => {
-                            let address = string.parse() ;
-                            let loc: u128 = async_error!(self.management, FromRecord::from_record(&location));
+                            let address = string.parse();
+                            let loc: u128 =
+                                async_error!(self.management, FromRecord::from_record(&location));
                             // we add an entry to forward this nid to this tcp address
                             self.forwarder.register(
                                 loc,
                                 Arc::new(TcpPeer {
                                     management: self.management.clone(),
                                     tcp_inner: Arc::new(Mutex::new(TcpPeerInternal {
-                                        eval:self.eval.clone(),
+                                        eval: self.eval.clone(),
                                         management: self.management.clone(),
                                         stream: None,
-                                        address:address.unwrap(),//async error 
-                                        // sends: Vec::new(),
+                                        address: address.unwrap(), //async error
+                                                                   // sends: Vec::new(),
                                     })),
                                 }),
                             );
                             return;
                         }
-                        _ => self.management.send(fact!(
-                            Error,
-                            text => Record::String(format!("bad tcp address {}", destination.to_string()))
-                        )),
+                        _ => async_error!(
+                            self.management.clone(),
+                            Err(Error::new(format!(
+                                "bad tcp address {}",
+                                destination.to_string()
+                            )))
+                        ),
                     }
                 }
             }
 
-            // make a general error-fact wrapper
-            self.management.send(fact!(
-                Error,
-                text => Record::String("ill formed process".to_string())
-            ));
+            async_error!(
+                self.management.clone(),
+                Err(Error::new("ill formed process".to_string()))
+            );
         }
     }
 }
