@@ -1,4 +1,5 @@
-// nested errors!
+// this file follows the apparently established pattern of defining a local error type and defining From
+// so as to implicity coerce all the errors thrown by '?'
 
 use core::fmt;
 use core::fmt::Display;
@@ -8,6 +9,13 @@ use tokio::task::JoinError;
 
 #[derive(Debug)]
 pub struct Error(String);
+
+//TODOs:
+//  write a macro for the common to_string case below
+//  write a user macro to enforce option be Some
+//  refactor(?) async_error so it doesn't require its users pull in a bunch of dependencies
+//  consider adding support for nesting
+//  consider adding support for source location if thats possible
 
 impl Error {
     pub fn new(s: String) -> Error {
@@ -64,12 +72,8 @@ impl From<nix::Error> for Error {
     }
 }
 
-// wanted to try to wrap this up in a macro so that the enclosed block
+// wanted to try to wrap this up in a lambda so that the enclosed expr
 // could just use ? syntax, but that turns out to be really hard here
-//
-// this forces all of its users to import Cow and into_record..can we split this
-// up somehow?
-
 #[macro_export]
 macro_rules! async_error {
     ($p:expr, $r:expr) => {

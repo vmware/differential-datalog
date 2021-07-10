@@ -93,6 +93,7 @@ fn value_to_record(v: Value) -> Result<Record, Error> {
                         if let Value::Array(x) = &v {
                             if let Value::String(x) = &x[1] {
                                 if let Some(x) = BigInt::parse_bytes(x.as_bytes(), 10) {
+                                    println!("extracted: {}", x);
                                     return Ok(Record::Int(x));
                                 }
                             }
