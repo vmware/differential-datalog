@@ -2,7 +2,7 @@
 // over them, in particular general serde support. This currently sits on top
 // of DeltaMap, but that might change
 
-use crate::{Batch, Error, Evaluator, EvaluatorTrait};
+use crate::{Batch, Error, EvaluatorTrait};
 use differential_datalog::{ddval::DDValue, program::RelId, DeltaMap};
 use std::collections::BTreeMap;
 use std::fmt;
@@ -127,7 +127,6 @@ impl DDValueBatch {
                 let mut ddval_batch = DDValueBatch::new();
                 let e2 = e.clone();
                 for (r, v, w) in &rb {
-                    println!("v! {}", v);
                     let rid = e2.id_from_relation_name(r)?;
                     ddval_batch.insert(rid, e.ddvalue_from_record(rid, v)?, w);
                 }

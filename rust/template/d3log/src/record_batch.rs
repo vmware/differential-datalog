@@ -3,7 +3,6 @@
 use crate::{error::Error, Batch, Evaluator};
 use differential_datalog::record::{CollectionKind, Record};
 use num::bigint::ToBigInt;
-use num::BigInt;
 use num::ToPrimitive;
 use std::borrow::Cow;
 use std::collections::HashMap;

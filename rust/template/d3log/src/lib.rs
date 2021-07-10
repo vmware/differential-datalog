@@ -99,7 +99,7 @@ pub fn start_instance(
 
     // TODO: Create an Instance manager and register with the dispatcher.
     // Instance manager's send will create new instances
-    let forwarder = Arc::new(Forwarder::new(eval.clone()));
+    let forwarder = Arc::new(Forwarder::new(eval.clone(), broadcast.clone()));
 
     // pass d to process manager for it to register itself
     dispatch

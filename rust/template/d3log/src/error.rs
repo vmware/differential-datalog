@@ -66,6 +66,10 @@ impl From<nix::Error> for Error {
 
 // wanted to try to wrap this up in a macro so that the enclosed block
 // could just use ? syntax, but that turns out to be really hard here
+//
+// this forces all of its users to import Cow and into_record..can we split this
+// up somehow?
+
 #[macro_export]
 macro_rules! async_error {
     ($p:expr, $r:expr) => {

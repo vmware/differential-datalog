@@ -97,8 +97,10 @@ impl Transport for ProcessManager {
 struct Child {
     uuid: u128,
     eval: Evaluator,
+    #[allow(dead_code)]
     pid: Pid,
     management: Port,
+    #[allow(dead_code)]
     management_to_child: Port,
 }
 

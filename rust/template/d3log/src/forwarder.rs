@@ -1,4 +1,8 @@
-use crate::{Batch, DDValueBatch, Evaluator, Node, Port, Transport};
+use crate::{
+    async_error, fact, Batch, DDValueBatch, Error, Evaluator, Node, Port, RecordBatch, Transport,
+};
+use differential_datalog::record::*;
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::sync::{Arc, Mutex};
@@ -6,11 +10,12 @@ use std::sync::{Arc, Mutex};
 #[derive(Clone)]
 pub struct Forwarder {
     eval: Evaluator,
+    management: Port,
     fib: Arc<Mutex<HashMap<Node, Port>>>,
 }
 
 impl Forwarder {
-    pub fn new(eval: Evaluator) -> Forwarder {
+    pub fn new(eval: Evaluator, management: Port) -> Forwarder {
         // ok - we dont really want to start another hddlog here, but it helps
         // quite a bit in reducing the amount of sharing going on through TM.
         // ideally we could ask this question without access to the whole machine?
@@ -18,6 +23,7 @@ impl Forwarder {
 
         Forwarder {
             eval,
+            management,
             fib: Arc::new(Mutex::new(HashMap::new())),
         }
     }
@@ -49,9 +55,10 @@ impl Transport for Forwarder {
             // there is a short version of this like expect?
             match self.fib.lock().expect("lock").get(&nid) {
                 Some(x) => x.send(Batch::Value(b.deref().clone())),
-                None => {
-                    panic!("missing nid");
-                }
+                None => async_error!(
+                    self.management.clone(),
+                    Err(Error::new("missing nid".to_string()))
+                ),
             }
         }
     }
