@@ -15,7 +15,7 @@ use crate::{
     error::Error,
     fact,
     json_framer::JsonFramer,
-    record_batch::{deserialize_record_batch, record_serialize_batch, RecordBatch},
+    record_batch::{deserialize_record_batch, serialize_record_batch, RecordBatch},
     Batch, Evaluator, Port, Transport,
 };
 use differential_datalog::record::*;
@@ -47,7 +47,7 @@ impl Transport for FileDescriptorPort {
     fn send(&self, b: Batch) {
         let js = async_error!(
             self.management,
-            record_serialize_batch(RecordBatch::from(self.eval.clone(), b))
+            serialize_record_batch(RecordBatch::from(self.eval.clone(), b))
         );
         // keep this around, would you?
         let mut pin = async_error!(self.management, AsyncFd::try_from(self.fd));

@@ -3,6 +3,7 @@
 use crate::{error::Error, Batch, Evaluator};
 use differential_datalog::record::{CollectionKind, Record};
 use num::bigint::ToBigInt;
+use num::BigInt;
 use num::ToPrimitive;
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -84,15 +85,12 @@ fn value_to_record(v: Value) -> Result<Record, Error> {
             Ok(Record::Array(CollectionKind::Vector, values))
         }
         Value::Object(m) => {
-            println!("object {:?}", m);
-
             // there has to be another, more official, implementation of these
             for (k, v) in m {
                 match k.as_str() {
-                    "Int" => {
-                        // v should be "1234"
-                        // create Record::Int
+                    "Serialized" => {
                         println!("int value {:?}", v);
+                        return Ok(Record::Int(3.to_bigint().unwrap()));
                     }
                     "String" => return Ok(Record::String(v.to_string())),
                     _ => println!("non int value"),
@@ -186,12 +184,6 @@ impl<'de> Deserialize<'de> for RecordBatch {
     }
 }
 
-impl Serialize for BitIntAsString {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        // {"Int", self}
-    }
-}
-
 impl Serialize for RecordBatch {
     // i would _like_ to expose an interface that used the names for relations
     // so that external users dont have to be privy to the compiler id assignment
@@ -215,10 +207,12 @@ impl Serialize for RecordBatch {
                             out.insert(
                                 k.to_string(),
                                 match v {
-                                    Record::Int(x) => panic!("doing record"),
+                                    Record::Int(x) => {
+                                        Record::Serialized(Cow::from("Bigint"), x.to_string())
+                                    }
                                     _ => v.clone(),
                                 },
-                            )
+                            );
                         }
                         out
                     })
