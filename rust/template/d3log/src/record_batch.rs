@@ -3,6 +3,7 @@
 use crate::{error::Error, Batch, Evaluator};
 use differential_datalog::record::{CollectionKind, Record};
 use num::bigint::ToBigInt;
+use num::BigInt;
 use num::ToPrimitive;
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -89,7 +90,14 @@ fn value_to_record(v: Value) -> Result<Record, Error> {
                 match k.as_str() {
                     "Serialized" => {
                         println!("int value {:?}", v);
-                        return Ok(Record::Int(3.to_bigint().unwrap()));
+                        if let Value::Array(x) = &v {
+                            if let Value::String(x) = &x[1] {
+                                if let Some(x) = BigInt::parse_bytes(x.as_bytes(), 10) {
+                                    return Ok(Record::Int(x));
+                                }
+                            }
+                        }
+                        return Err(Error::new("unhandled serialized format".to_string()));
                     }
                     "String" => return Ok(Record::String(v.to_string())),
                     _ => println!("non int value"),
