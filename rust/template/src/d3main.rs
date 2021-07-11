@@ -243,7 +243,6 @@ pub fn start_d3log() -> Result<(), Error> {
     // find the ddlog ticket against and reference
     if is_parent {
         rt.spawn(async move {
-            println!("init batch {}", init_batch);
             port.send(init_batch);
         });
     }

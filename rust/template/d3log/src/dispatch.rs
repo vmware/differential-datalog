@@ -21,11 +21,6 @@ impl Transport for Dispatch {
     fn send(&self, b: Batch) {
         let mut output = HashMap::<u64, (Port, RecordBatch)>::new();
 
-        println!(
-            "dispatch: {}",
-            RecordBatch::from(self.eval.clone(), b.clone())
-        );
-
         for (rel, v, weight) in &RecordBatch::from(self.eval.clone(), b.clone()) {
             if let Some(ports) = self.handlers.lock().expect("lock").get(&rel) {
                 for (i, p) in ports {
