@@ -1,5 +1,7 @@
+// functions to allow a set of Records, a dynamically typed alternative to DDValue, to act as
+// Batch for interchange between different ddlog programs
+
 #![allow(dead_code)]
-// use crate::ddvalue_batch::DDValueBatch;
 use crate::{error::Error, Batch, Evaluator};
 use differential_datalog::record::{CollectionKind, Record};
 use num::bigint::ToBigInt;
@@ -24,8 +26,6 @@ pub struct RecordBatch {
     pub records: Vec<(Record, isize)>,
 }
 
-// xx - factor out the Cow so we dont need to use it everywhere. guess that means a copy
-// maybe $crate can help?
 #[macro_export]
 macro_rules! fact {
     ( $rel:path,  $($n:ident => $v:expr),* ) => {
@@ -58,7 +58,6 @@ impl Display for RecordBatch {
         }
 
         f.write_str(&"<")?;
-        // group by!
         for (r, c) in m {
             f.write_str(&format!("({} {})", r, c))?;
         }
@@ -72,7 +71,7 @@ fn value_to_record(v: Value) -> Result<Record, Error> {
         Null => panic!("we dont null here"),
         Value::Bool(b) => Ok(Record::Bool(b)),
         // going to have to deal with floats and i guess maybe bignums ?
-        // serde wants a u64 or a float here...fix
+        // serde wants a u64 or a float here...does this even get generated?
         Value::Number(n) => Ok(Record::Int(n.as_u64().unwrap().to_bigint().unwrap())),
         Value::String(s) => Ok(Record::String(s)),
         Value::Array(a) => {
@@ -80,20 +79,15 @@ fn value_to_record(v: Value) -> Result<Record, Error> {
             for v in a {
                 values.push(value_to_record(v)?);
             }
-            // ok, well this is a problem..oh wait, this is {vector, set,map}, not the
-            // domain over which it collects. idk why that isn't just the tag
             Ok(Record::Array(CollectionKind::Vector, values))
         }
         Value::Object(m) => {
-            // there has to be another, more official, implementation of these
             for (k, v) in m {
                 match k.as_str() {
                     "Serialized" => {
-                        println!("int value {:?}", v);
                         if let Value::Array(x) = &v {
                             if let Value::String(x) = &x[1] {
                                 if let Some(x) = BigInt::parse_bytes(x.as_bytes(), 10) {
-                                    println!("extracted: {}", x);
                                     return Ok(Record::Int(x));
                                 }
                             }
@@ -134,7 +128,6 @@ struct RecordBatchVisitor {}
 impl<'de> Visitor<'de> for RecordBatchVisitor {
     type Value = RecordBatch;
 
-    // this just formats an error message..in advance?
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "batch")
     }
@@ -151,9 +144,6 @@ impl<'de> Visitor<'de> for RecordBatchVisitor {
                 None => return Err(de::Error::custom("expected integer timestamp")),
             }
 
-            // can we do this directly into Record? doesn't seem like we can address
-            // NamedStruct directly here. Can parse into Vec<Record>, but .. i think
-            // the relation name is in the wrong spot?
             let records: Option<HashMap<String, Vec<HashMap<String, Value>>>> = e.next_element()?;
             match records {
                 Some(r) => {
@@ -174,7 +164,7 @@ impl<'de> Visitor<'de> for RecordBatchVisitor {
                     }
                     bn.records = records;
                 }
-                // can't figure out how to return an error here.
+                // can't figure out how to throw an error here Err(Error::new("bad record batch syntax".to_string())),
                 None => panic!("bad record batch syntax"),
             }
             Ok(bn)
@@ -256,7 +246,7 @@ impl RecordBatch {
     // tried to use impl From<Batch> for RecordBatch, but no error path, other type issues
     // why no err?
     pub fn from(eval: Evaluator, batch: Batch) -> RecordBatch {
-        match batch {
+        match batch.clone() {
             Batch::Value(x) => {
                 let mut rb = RecordBatch::new();
                 for (record, val, weight) in &x {

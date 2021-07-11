@@ -1,13 +1,9 @@
-// functions for managing forked children.
-// - start_node(), which is the general d3log runtime start, and probably doesn't belong here
-// - implementation of Port over pipes
+// functions for managing forked children and ports on pipes
 //
-// this needs to get broken apart or shifted a little since the children in the future
-// will be other ddlog executables
-
-// this is all quite rendundant with the various existing wrappers, especially tokio::process
-// however, we need to be inside the child fork before exec to add the management
-// descriptors, otherwise most of this could go
+// this is all quite rendundant with the various existing rust process
+// wrappers, especially tokio::process however, we need to be inside
+// the child fork before exec to add the management descriptors,
+// otherwise most of this could go
 
 use crate::{
     async_error,
@@ -28,13 +24,8 @@ use tokio_fd::AsyncFd;
 
 type Fd = std::os::unix::io::RawFd;
 
-// these could be allocated dynamically and passed in env
 pub const MANAGEMENT_INPUT_FD: Fd = 3;
 pub const MANAGEMENT_OUTPUT_FD: Fd = 4;
-
-// xxx - this should follow trait Network
-// really we probably want to have a forwarding table
-// xxx child read input
 
 #[derive(Clone)]
 pub struct FileDescriptorPort {
@@ -74,7 +65,6 @@ pub struct ProcessManager {
     processes: Arc<Mutex<HashMap<Pid, Arc<Mutex<Child>>>>>,
     management: Port,
     b: Arc<Broadcast>,
-    //    tm: ArcTransactionManager, // maybe we just need a port here
 }
 
 impl Transport for ProcessManager {
@@ -138,7 +128,8 @@ impl ProcessManager {
     // since this is really an async error maybe deliver it here
     pub fn make_child(&self, eval: Evaluator, process: Record) -> Result<(), Error> {
         // ideally we wouldn't allocate the management pair
-        // unless we were actually going to use it..
+        // unless we were actually going to use it..really we should have
+        // two input relations, one for d3log programs and one for other things
 
         let (management_in_r, management_in_w) = pipe().unwrap();
         let (management_out_r, management_out_w) = pipe().unwrap();
@@ -151,7 +142,6 @@ impl ProcessManager {
 
         match unsafe { fork() } {
             Ok(ForkResult::Parent { child }) => {
-                // move above so we dont have to try to undo the fork on error
                 let child_obj = Arc::new(Mutex::new(Child {
                     eval: eval.clone(),
                     uuid: u128::from_record(id)?,
@@ -193,7 +183,7 @@ impl ProcessManager {
 
                                     sh_management.clone().send(v);
 
-                                    // assume the child needs to announce something before we recognize it
+                                    // XXX assume the child needs to announce something before we recognize it
                                     // as started. assume its tcp address information so we dont need to
                                     // implement the join
                                     if first {
@@ -209,9 +199,8 @@ impl ProcessManager {
 
                 self.rt.spawn(async move {
                     read_output(standard_out_r, |b: &[u8]| {
-                        // utf8 framing issues?
+                        // utf8 framing issues! - feed this into a relation
                         print!("child {} {}", child, std::str::from_utf8(b).expect(""));
-                        // assert
                     })
                     .await
                 });
@@ -219,7 +208,6 @@ impl ProcessManager {
                 self.rt.spawn(async move {
                     read_output(standard_err_r, |b: &[u8]| {
                         println!("child error {}", std::str::from_utf8(b).expect(""));
-                        // assert
                     })
                     .await
                 });
@@ -231,9 +219,8 @@ impl ProcessManager {
             }
 
             Ok(ForkResult::Child) => {
-                // plumb stdin and stdout regardless
-
-                if process.get_struct_field("executable").is_some() {
+                // xxx - should be if true..but if some process has some junk fds it doesn't really notice
+                if process.get_struct_field("management").is_some() {
                     dup2(management_out_w, MANAGEMENT_OUTPUT_FD)?;
                     dup2(management_in_r, MANAGEMENT_INPUT_FD)?;
                 }
@@ -242,25 +229,21 @@ impl ProcessManager {
                 dup2(standard_out_w, 1)?;
                 dup2(standard_err_w, 2)?;
 
-                //unsafe {
                 if let Some(exec) = process.get_struct_field("executable") {
                     // FIXME: Temporary fix. this should be fixed ddlog-wide
                     let exec = exec.to_string().replace("\"", "");
                     if let Some(id) = process.get_struct_field("id") {
                         let path = CString::new(exec.clone()).expect("CString::new failed");
                         let arg0 = CString::new(exec).expect("CString::new failed");
-                        // assign the child uuid here and pass in environment, just to avoid
-                        // having to deal with getting it from the child asynchronously
-                        // take a real map and figure out how to get a &[Cstring]
                         let u = format!("uuid={}", id);
                         let env1 = CString::new(u).expect("CString::new failed");
-
-                        // ideally error would be wired up. execve returns Infallible
                         execve(&path, &[arg0], &[env1])?;
                     }
+                } else {
+                    return Err(Error::new("malformed process record".to_string()));
                 }
+
                 Ok(())
-                // misformed process record?
             }
             Err(_) => {
                 panic!("Fork failed!");

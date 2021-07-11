@@ -1,11 +1,9 @@
-// a temporary shim to direct updates to functions as a placeholder for sinks. route
-// sub-batches to ports. ideally this would be some kind of general query which includes
-// the relation id and the envelope. This would replace Transact.forward, which seems
-// correct
+// dispatch is an external placeholder for a timely sink. It allows ports to be registered against
+// relations, and like forwarder, groups up sub-batches based on relation id and routes them
+// out the correct port. Used to hang management relation update ports off the broadcast tree
 
 use crate::{Batch, Error, Evaluator, Port, RecordBatch, Transport};
 
-//use differential_datalog::program::RelId;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
@@ -20,14 +18,15 @@ pub struct Dispatch {
 }
 
 impl Transport for Dispatch {
-    // having send() take a nid makes this a bit strange for internal plumbing. if we close
-    // the nid under Port - then need to expose it in the evelope. we're going to assign
-    // a number to each otuput.. why does that seem wrong
-
     fn send(&self, b: Batch) {
         let mut output = HashMap::<u64, (Port, RecordBatch)>::new();
 
-        for (rel, v, weight) in &RecordBatch::from(self.eval.clone(), b) {
+        println!(
+            "dispatch: {}",
+            RecordBatch::from(self.eval.clone(), b.clone())
+        );
+
+        for (rel, v, weight) in &RecordBatch::from(self.eval.clone(), b.clone()) {
             if let Some(ports) = self.handlers.lock().expect("lock").get(&rel) {
                 for (i, p) in ports {
                     // we can probably do this databatch to recordbatch translation elsewhere and

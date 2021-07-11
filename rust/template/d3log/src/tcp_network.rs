@@ -39,7 +39,7 @@ struct AddressListener {
 impl Transport for AddressListener {
     fn send(&self, b: Batch) {
         for (_r, v, _w) in &RecordBatch::from(self.eval.clone(), b) {
-            // macro deconstructor - error
+            println!("address listener");
             if let Some(destination) = v.get_struct_field("destination") {
                 if let Some(location) = v.get_struct_field("location") {
                     match destination {

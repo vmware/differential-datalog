@@ -95,6 +95,7 @@ pub fn start_instance(
     broadcast: Arc<Broadcast>,
 ) -> Result<(Port, tokio::task::JoinHandle<()>), Error> {
     let dispatch = Arc::new(Dispatch::new(eval.clone()));
+    broadcast.clone().add(dispatch.clone());
     //race between registration and new data.
 
     // TODO: Create an Instance manager and register with the dispatcher.
