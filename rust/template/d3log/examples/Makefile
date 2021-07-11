@@ -19,7 +19,7 @@ start:
 	./mini_skyline_ddlog/target/debug/mini_skyline_cli
 
 inc: compile start
-run: compiler program compile start	
+run: program compile start	
 
 clean:
 	rm -rf *_ddlog
