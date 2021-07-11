@@ -1,3 +1,7 @@
+// fowarder takes a batch and uses the hddlog interface to extract those facts with
+// locality annotations, groups them by destination, and calls the registered send
+// method for that destination
+
 use crate::{
     async_error, fact, Batch, DDValueBatch, Error, Evaluator, Node, Port, RecordBatch, Transport,
 };

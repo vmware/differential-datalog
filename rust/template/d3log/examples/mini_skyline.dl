@@ -19,7 +19,7 @@ relation LocalizedFact(x:u64)
 
 LocalizedFact(x)@(k as u128) :-
       Fact(x, k),
-      ProcessStatus(_, k, _, _, None).
+      InstanceStatus(_, k, _, _, None).
 
 Fact2(x) :- LocalizedFact(x).
 

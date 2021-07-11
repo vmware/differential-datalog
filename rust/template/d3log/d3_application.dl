@@ -1,14 +1,7 @@
 
-// is this a ddlog_timestamp? no?
 typedef Time = u64
 
-// this file intented to specify the 'syscall interface' for the
-// d3log supervisor. it seems like it needs to have related
-// but not identical definitions?
-
-// this is really everyone we ever hear from. importantly - is this
-// a global relation, or a local one (myself, other)
-input relation Worker(location: D3logLocationId)
+input relation Myself(me: D3logLocationId)
 
 // should include the source address, port, and timestamp
 // we dont actually know the nid w/o negotiation
@@ -17,33 +10,22 @@ input relation ConnectionStatus(time: Time, me: D3logLocationId, them:D3logLocat
 // we should have address types here. also this should just be in the supervisor view?
 input relation TcpAddress(location: D3logLocationId, destination: string)
 
-// this isn't part of the 'syscall interface', but something we use internally
+// this isn't part of the 'syscall interface', but something we use internally. hide it
+// someplace else
 index TcpAddress_by_location(from: D3logLocationId) on TcpAddress(from, _)
 
-// it might be handier if we allow people to use a url pointer
-// i guess we're going to make executable a uuid style object
-// so it can have properties and support multiple sources
-
+// xxx we need to have a better definition of executable
 output relation Process(id: u128,
-                       executable: string,   // this should be an object
-                       management: bool)
+                        executable: string,   // this should be an object
+                        management: bool)
 
-input relation ProcessStatus(time: Time,
+output relation ThreadInstance(id: u128)
+
+// this really shouldn't have exit code, but it doesn't make sense to
+// have a status relation for each instance type
+input relation InstanceStatus(time: Time,
       id: u128,
       memory_bytes:u64,
       threads:u64,
       exit_code:Option<u32>)
-
-// a set of local processes is a global job...do we care?
-input relation Jobs(job:u128, process:u128)
-
-
-output relation Instance(id: u128)
-
-// maybe this is instance generic - probably - it would suck to have to change
-// your code to use a different instance type
-input relation InstanceStatus(time: Time,
-      id: u128,
-      memory_bytes:u64,
-      threads:u64)
 

@@ -97,7 +97,7 @@ struct Child {
 impl Child {
     pub fn report_status(&self) {
         self.management.send(fact!(
-            d3_application::ProcessStatus,
+            d3_application::InstanceStatus,
             id => self.uuid.into_record(),
             memory_bytes => 0.into_record(),
             threads => 0.into_record(),
