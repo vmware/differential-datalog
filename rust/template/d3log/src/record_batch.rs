@@ -94,7 +94,8 @@ fn value_to_record(v: Value) -> Result<Record, Error> {
                         }
                         return Err(Error::new("unhandled serialized format".to_string()));
                     }
-                    "String" => return Ok(Record::String(v.to_string())),
+                    // there should be a way to extract Some and error otherwise
+                    "String" => return Ok(Record::String(v.as_str().unwrap().to_string())),
                     _ => println!("non int value"),
                 };
             }
