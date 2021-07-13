@@ -2,7 +2,6 @@ use d3log::{
     broadcast::{Adder, Broadcast},
     ddvalue_batch::DDValueBatch,
     error::Error,
-    process::{FileDescriptorPort, MANAGEMENT_OUTPUT_FD},
     start_instance, Batch, Evaluator, EvaluatorTrait, Node, Port, Transport,
 };
 
@@ -121,7 +120,7 @@ impl Serialize for SerializeBatchWrapper {
 }
 
 impl D3 {
-    pub fn new(_uuid: Node) -> Result<(Evaluator, Batch), Error> {
+    pub fn new() -> Result<(Evaluator, Batch), Error> {
         let (h, init_output) = HDDlog::run(1, false)?;
         let ad = Arc::new(D3 { h });
         Ok((ad, DDValueBatch::from_delta_map(init_output)))
@@ -208,7 +207,6 @@ impl EvaluatorTrait for D3 {
 }
 
 pub fn start_d3log() -> Result<(), Error> {
-    let broadcast = Broadcast::new();
     let (uuid, is_parent) = if let Some(uuid) = std::env::var_os("uuid") {
         if let Some(uuid) = uuid.to_str() {
             let uuid = uuid.parse::<u128>().unwrap();
@@ -225,27 +223,18 @@ pub fn start_d3log() -> Result<(), Error> {
         )
     };
 
-    let (d, init_batch) = D3::new(uuid)?;
-
-    if !is_parent {
-        // does this really belong here?
-        broadcast.clone().add(Arc::new(FileDescriptorPort {
-            management: broadcast.clone() as Port,
-            eval: d.clone(),
-            fd: MANAGEMENT_OUTPUT_FD,
-        }));
-    }
+    let d = || -> Result<(Evaluator, Batch), Error> { D3::new() };
 
     let rt = Arc::new(Runtime::new()?);
-    let (port, instance_future) = start_instance(rt.clone(), d.clone(), uuid, broadcast.clone())?;
+    let (management, eval_port, instance_future) = start_instance(rt.clone(), d, uuid)?;
 
     // XXX: we really kind of want the initial evaluation to happen at one ingress node
     // find the ddlog ticket against and reference
-    if is_parent {
-        rt.spawn(async move {
-            port.send(init_batch);
-        });
-    }
+    //    if is_parent {
+    //        rt.spawn(async move {
+    //            eval_port.clone().send(init_batch);
+    //        });
+    //    }
     rt.block_on(instance_future)?;
     Ok(())
 }

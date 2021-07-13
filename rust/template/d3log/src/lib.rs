@@ -1,11 +1,9 @@
 pub mod broadcast;
-mod datfile;
 pub mod ddvalue_batch;
 mod dispatch;
 pub mod error;
 mod forwarder;
 mod json_framer;
-pub mod process;
 pub mod record_batch;
 mod tcp_network;
 
@@ -22,7 +20,6 @@ use crate::{
     dispatch::Dispatch,
     error::Error,
     forwarder::Forwarder,
-    process::ProcessManager,
     record_batch::RecordBatch,
     tcp_network::tcp_bind,
 };
@@ -88,49 +85,78 @@ impl Transport for EvalPort {
     }
 }
 
+struct ThreadInstance {
+    rt: Arc<tokio::runtime::Runtime>,
+    management: Port,
+    eval: Evaluator,
+    new_evaluator: fn() -> Result<(Evaluator, Batch), Error>,
+    forwarder: Arc<Forwarder>,
+    broadcast: Arc<Broadcast>,
+}
+
+// we're just throwing this into the same runtime - do we want/need scheduling isolation?
+// xxx handle deletes
+impl Transport for ThreadInstance {
+    fn send(&self, b: Batch) {
+        for (_, p, _weight) in &RecordBatch::from(self.eval.clone(), b) {
+            // async_error variant for Some
+            let uuid_record = p.get_struct_field("id").unwrap();
+            let uuid = async_error!(self.management, u128::from_record(uuid_record));
+
+            let (p, ep, _jh) = async_error!(
+                self.management,
+                start_instance(self.rt.clone(), self.new_evaluator, uuid)
+            );
+            self.broadcast.clone().add(p);
+            self.forwarder.register(uuid, ep);
+        }
+    }
+}
+
 pub fn start_instance(
     rt: Arc<Runtime>,
-    eval: Evaluator,
+    new_evaluator: fn() -> Result<(Evaluator, Batch), Error>,
     uuid: u128,
-    broadcast: Arc<Broadcast>,
-) -> Result<(Port, tokio::task::JoinHandle<()>), Error> {
+) -> Result<(Port, Port, tokio::task::JoinHandle<()>), Error> {
+    let (eval, _b) = new_evaluator()?;
     let dispatch = Arc::new(Dispatch::new(eval.clone()));
-    broadcast.clone().add(dispatch.clone());
-    //race between registration and new data.
+    let broadcast = Broadcast::new();
 
-    // TODO: Create an Instance manager and register with the dispatcher.
-    // Instance manager's send will create new instances
+    broadcast.clone().add(dispatch.clone());
+
+    println!("zig!");
     let forwarder = Arc::new(Forwarder::new(eval.clone(), broadcast.clone()));
 
-    // pass d to process manager for it to register itself
     dispatch
         .clone()
         .register(
-            "d3_application::Process",
-            Arc::new(ProcessManager::new(
-                eval.clone(),
-                rt.clone(),
-                broadcast.clone(),
-            )),
+            "d3_application::ThreadInstance",
+            Arc::new(ThreadInstance {
+                rt: rt.clone(),
+                eval: eval.clone(),
+                forwarder: forwarder.clone(),
+                new_evaluator,
+                management: broadcast.clone(),
+                broadcast: broadcast.clone(),
+            }),
         )
         .expect("registration failed");
 
+    // shouldn't evaluator just implement Transport?
+    let eval_port = Arc::new(EvalPort {
+        forwarder: forwarder.clone(),
+        management: broadcast.clone(),
+        dispatch: dispatch.clone(),
+        eval: eval.clone(),
+    });
+    broadcast.clone().add(eval_port.clone());
+    eval_port.send(fact!(d3_application::Myself, me => uuid.into_record()));
+
     let management_clone = broadcast.clone();
     let forwarder_clone = forwarder.clone();
-
     let eval_clone = eval.clone();
     let dispatch_clone = dispatch.clone();
 
-    broadcast.add(Arc::new(EvalPort {
-        forwarder: forwarder.clone(),
-        management: management_clone.clone(),
-        dispatch: dispatch.clone(),
-        eval,
-    }));
-
-    // TODO: rt.block_on never returns. The idea is to spawn a thread and return the thread handle
-    // for that to the main thread. The main thread just waits on this thread join handle as long
-    // as the thread is running.
     let handle = rt.spawn(async move {
         async_error!(
             management_clone.clone(),
@@ -145,5 +171,5 @@ pub fn start_instance(
             .await
         );
     });
-    Ok((dispatch, handle))
+    Ok((dispatch, eval_port, handle))
 }

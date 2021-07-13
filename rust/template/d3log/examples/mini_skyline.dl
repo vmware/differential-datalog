@@ -3,7 +3,7 @@ import d3_application
 // the path here should actually be an executable, or I suppose a url to one.
 // but here we may be able to use the value of argv[0] to make it
 // slightly less broken
-Process(loc, "/users/ehoffman/ddev/rust/template/d3log/examples/mini_skyline_ddlog/target/debug/mini_skyline_cli", true) :-  Fact(_, loc).
+ThreadInstance(loc) :-  Fact(_, loc).
 
 // multi-init
 input relation Fact(x:u64, k:u128)
@@ -14,12 +14,15 @@ Fact(4, 1).
 Fact(5, 3).
 Fact(6, 2).
 
-output relation Fact2(x:u64)
+output relation MSResult(x:u64, me:D3logLocationId)
 relation LocalizedFact(x:u64)
 
 LocalizedFact(x)@(k as u128) :-
       Fact(x, k),
       InstanceStatus(_, k, _, _, None).
 
-Fact2(x) :- LocalizedFact(x).
+MSResult(x, y) :- LocalizedFact(x),
+                Myself(y).
+
+
 

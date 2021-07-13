@@ -14,11 +14,8 @@ input relation TcpAddress(location: D3logLocationId, destination: string)
 // someplace else
 index TcpAddress_by_location(from: D3logLocationId) on TcpAddress(from, _)
 
-// xxx we need to have a better definition of executable
-output relation Process(id: u128,
-                        executable: string,   // this should be an object
-                        management: bool)
-
+// because of globals we cant run instances with different base programs as a separate
+// thread - look into the .so format
 output relation ThreadInstance(id: u128)
 
 // this really shouldn't have exit code, but it doesn't make sense to
