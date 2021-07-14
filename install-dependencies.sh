@@ -5,9 +5,9 @@ echo "Installing dependencies for DDlog"
 echo "This script should be invoked with '. ./install-dependencies.sh' to set up the environment properly"
 
 case "$OSTYPE" in
-    "linux*") sudo apt install libgoogle-perftools-dev ;;
-    "osx*") ;;
-    "*") echo "Unhandled operating system $OSTYPE"; exit 1;;
+    linux*) sudo apt install libgoogle-perftools-dev ;;
+    darwin*) ;;
+    *) echo "Unhandled operating system $OSTYPE"; exit 1;;
 esac
 
 RUST_VERSION="1.52.1"
@@ -27,7 +27,9 @@ rustup component add clippy
 
 pip3 install parglare==0.12.0
 
-sudo apt install default-jdk
+if [[ "${OSTYPE}" =~ "linux" ]]; then
+  sudo apt install default-jdk
+fi
 
 ./tools/install-flatbuf.sh
 cd flatbuffers
