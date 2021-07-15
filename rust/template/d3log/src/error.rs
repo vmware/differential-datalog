@@ -1,6 +1,7 @@
 // this file follows the apparently established pattern of defining a local error type and defining From
 // so as to implicity coerce all the errors thrown by '?'
 
+use core::convert::Infallible;
 use core::fmt;
 use core::fmt::Display;
 use std::ffi::NulError;
@@ -69,6 +70,12 @@ impl From<std::io::Error> for Error {
 impl From<NulError> for Error {
     fn from(err: NulError) -> Self {
         Error::new(err.to_string())
+    }
+}
+
+impl From<Infallible> for Error {
+    fn from(_err: Infallible) -> Self {
+        panic!("can't happen");
     }
 }
 

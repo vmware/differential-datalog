@@ -6,11 +6,13 @@ use d3log::{
 use crate::{api::HDDlog, relid2name, relval_from_record, Relations, UpdateSerializer};
 
 use differential_datalog::{
-    ddval::DDValue, program::Update, record::IntoRecord, record::Record, D3log, DDlog, DDlogDynamic,
+    ddval::DDValue, program::Update, record::IntoRecord, record::Record, record::RelIdentifier,
+    D3log, DDlog, DDlogDynamic,
 };
 use rand::Rng;
 use serde::{de, de::SeqAccess, de::Visitor, Deserialize, Deserializer};
 use serde::{ser::SerializeTuple, Serialize, Serializer};
+use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::fmt;
 use std::sync::Arc;
@@ -126,9 +128,13 @@ impl D3 {
 }
 
 impl EvaluatorTrait for D3 {
-    fn ddvalue_from_record(&self, id: usize, r: Record) -> Result<DDValue, Error> {
+    fn ddvalue_from_record(&self, name: String, r: Record) -> Result<DDValue, Error> {
         //  as Relations
-        let rel = Relations::try_from(id).map_err(|_| Error::new("bad relation id".to_string()))?;
+        let id = self.id_from_relation_name(name.clone())?;
+        println!("ddvalue from record:{} {}", name, id);
+        //        let t: &str = &id;
+        let t: RelIdentifier = RelIdentifier::RelId(id);
+        let rel = Relations::try_from(&t).expect("huh");
         relval_from_record(rel, &r)
             .map_err(|x| Error::new("bad record conversion: ".to_string() + &x.to_string()))
     }
@@ -237,6 +243,7 @@ pub fn start_d3log() -> Result<(), Error> {
     // hoist?
     if is_parent {
         rt.spawn(async move {
+            println!("sending init batch");
             eval_port.clone().send(init_batch);
         });
     }

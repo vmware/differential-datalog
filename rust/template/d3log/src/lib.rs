@@ -27,7 +27,7 @@ use crate::{
 pub type Node = D3logLocationId;
 
 pub trait EvaluatorTrait {
-    fn ddvalue_from_record(&self, id: usize, r: Record) -> Result<DDValue, Error>;
+    fn ddvalue_from_record(&self, id: String, r: Record) -> Result<DDValue, Error>;
     fn eval(&self, input: Batch) -> Result<Batch, Error>;
     fn id_from_relation_name(&self, s: String) -> Result<usize, Error>;
     fn localize(&self, rel: usize, v: DDValue) -> Option<(Node, usize, DDValue)>;
@@ -79,6 +79,10 @@ struct EvalPort {
 
 impl Transport for EvalPort {
     fn send(&self, b: Batch) {
+        println!("dispacho {}", b.clone());
+        for (r, f, w) in &RecordBatch::from(self.eval.clone(), b.clone()) {
+            println!("{} {} {}", r, f, w);
+        }
         let out = async_error!(self.management.clone(), self.eval.eval(b));
         self.dispatch.send(out.clone());
         self.forwarder.send(out.clone());
@@ -99,6 +103,7 @@ struct ThreadInstance {
 // xxx handle deletes
 impl Transport for ThreadInstance {
     fn send(&self, b: Batch) {
+        println!("thread instance");
         for (_, p, _weight) in &RecordBatch::from(self.eval.clone(), b) {
             // async_error variant for Some
             let uuid_record = p.get_struct_field("id").unwrap();
@@ -120,7 +125,7 @@ struct DebugPort {
 
 impl Transport for DebugPort {
     fn send(&self, b: Batch) {
-        for (r, f, w) in RecordBatch::from(self.eval.clone(), b) {
+        for (r, f, w) in &RecordBatch::from(self.eval.clone(), b) {
             println!("{} {} {}", r, f, w);
         }
     }
@@ -137,13 +142,10 @@ pub fn start_instance(
     let broadcast = Broadcast::new();
 
     broadcast.clone().add(dispatch.clone());
-
+    broadcast
+        .clone()
+        .add(Arc::new(DebugPort { eval: eval.clone() }));
     let forwarder = Arc::new(Forwarder::new(eval.clone(), broadcast.clone()));
-
-    dispatch.clone().register(
-        "d3_application::ThreadInstance",
-        Arc::new(DebugPort { eval }),
-    )?;
 
     dispatch.clone().register(
         "d3_application::ThreadInstance",
@@ -187,6 +189,9 @@ pub fn start_instance(
             .await
         );
     });
-    println!("init batch");
+    println!(
+        "init batch {}",
+        RecordBatch::from(eval.clone(), init_batch.clone())
+    );
     Ok((dispatch, init_batch, eval_port, handle))
 }
