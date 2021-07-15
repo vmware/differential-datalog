@@ -29,8 +29,8 @@ SOFTWARE.
 /* Applies closure `f` to each value in the map. */
 function map(m: Map<'K,'V1>, f: function('V1): 'V2): Map<'K,'V2> {
     var res = map_empty();
-    for (kv in m) {
-        res.insert(kv.0, f(kv.1))
+    for ((k, v) in m) {
+        res.insert(k, f(v))
     };
     res
 }
@@ -38,8 +38,8 @@ function map(m: Map<'K,'V1>, f: function('V1): 'V2): Map<'K,'V2> {
 /* Applies closure `f` to each key/value pair in the map. */
 function map(m: Map<'K,'V1>, f: function('K, 'V1): 'V2): Map<'K, 'V2> {
     var res = map_empty();
-    for (kv in m) {
-        res.insert(kv.0, f(kv.0, kv.1))
+    for ((k, v) in m) {
+        res.insert(k, f(k, v))
     };
     res
 }
@@ -56,10 +56,32 @@ function map_in_place(m: mut Map<'K,'V>, f: function('K, mut 'V)) {
  * keys is retained. */
 function map_keys(m: Map<'K1,'V>, f: function('K1): 'K2): Map<'K2, 'V> {
     var res = map_empty();
-    for (kv in m) {
-        res.insert(f(kv.0), kv.1)
+    for ((k,v) in m) {
+        res.insert(f(k), v)
     };
     res
+}
+
+
+/* Returns the first element of the map that satisfies predicate `f` or
+ * `None` if none of the elements satisfy the predicate. */
+function find(m: Map<'K, 'V>, f: function('V): bool): Option<'V> {
+    for ((_,v) in m) {
+        if (f(v)) {
+            return Some{v}
+        }
+    };
+    None
+}
+
+/* Returnds `true` iff at least one value in the map satisfies predicate `f`. */
+function any(m: Map<'K, 'V>, f: function('V): bool): bool {
+    for ((_, v) in m) {
+        if (f(v)) {
+            return true
+        }
+    };
+    false
 }
 
 /* Returns a map containing only values that satisfy the predicate. */
@@ -76,9 +98,9 @@ function filter(m: Map<'K, 'V>, f: function('V): bool): Map<'K, 'V> {
 /* Returns a map containing only key/value pairs that satisfy the predicate. */
 function filter(m: Map<'K, 'V>, f: function('K, 'V): bool): Map<'K, 'V> {
     var res = map_empty();
-    for (kv in m) {
-        if (f(kv.0, kv.1)) {
-            res.insert(kv.0, kv.1)
+    for ((k, v) in m) {
+        if (f(k, v)) {
+            res.insert(k, v)
         }
     };
     res
@@ -87,11 +109,11 @@ function filter(m: Map<'K, 'V>, f: function('K, 'V): bool): Map<'K, 'V> {
 /* Map values and collect the `Some{}` results. */
 function filter_map(m: Map<'K,'V1>, f: function('V1): Option<'V2>): Map<'K,'V2> {
     var res = map_empty();
-    for (kv in m) {
-        match (f(kv.1)) {
+    for ((k, v) in m) {
+        match (f(v)) {
             None -> (),
             Some{v} -> {
-                res.insert(kv.0, v)
+                res.insert(k, v)
             }
         }
     };
@@ -101,11 +123,11 @@ function filter_map(m: Map<'K,'V1>, f: function('V1): Option<'V2>): Map<'K,'V2> 
 /* Map key/value pairs and collect the `Some{}` results. */
 function filter_map(m: Map<'K,'V1>, f: function('K, 'V1): Option<'V2>): Map<'K,'V2> {
     var res = map_empty();
-    for (kv in m) {
-        match (f(kv.0, kv.1)) {
+    for ((k, v) in m) {
+        match (f(k, v)) {
             None -> (),
             Some{v} -> {
-                res.insert(kv.0, v)
+                res.insert(k, v)
             }
         }
     };
@@ -149,8 +171,8 @@ function retain(m: mut Map<'K,'V>, f: function('K, 'V): bool) {
  * `initializer` - initial value of the accumulator. */
 function fold(m: Map<'K,'V>, f: function('A, 'V): 'A, initializer: 'A): 'A {
     var res = initializer;
-    for (kv in m) {
-        res = f(res, kv.1)
+    for ((_, v) in m) {
+        res = f(res, v)
     };
     res
 }
@@ -164,8 +186,8 @@ function fold(m: Map<'K,'V>, f: function('A, 'V): 'A, initializer: 'A): 'A {
  * `initializer` - initial value of the accumulator. */
 function fold(m: Map<'K,'V>, f: function('A, 'K, 'V): 'A, initializer: 'A): 'A {
     var res = initializer;
-    for (kv in m) {
-        res = f(res, kv.0, kv.1)
+    for ((k, v) in m) {
+        res = f(res, k, v)
     };
     res
 }

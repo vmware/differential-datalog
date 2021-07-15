@@ -11,7 +11,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - `ddlog_std.dl`:
     ```
     function values(m: Map<'K, 'V>): Vec<'V>
-    function nth(m: Map<'K, 'V>, n: usize): Option<'V>
+    function nth_value(m: Map<'K, 'V>, n: usize): Option<'V>
+    function nth_key(m: Map<'K, 'V>, n: usize): Option<'K>
     ```
 
   - `map.dl`:
