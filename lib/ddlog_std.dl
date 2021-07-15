@@ -752,6 +752,18 @@ function keys(m: Map<'K, 'V>): Vec<'K> {
     map_keys(m)
 }
 
+function values(m: Map<'K, 'V>): Vec<'V> {
+    map_values(m)
+}
+
+function nth_key(m: Map<'K, 'V>, n: usize): Option<'K> {
+    map_nth_key(m, n)
+}
+
+function nth_value(m: Map<'K, 'V>, n: usize): Option<'V> {
+    map_nth_value(m, n)
+}
+
 /*
  * Set
  */
@@ -871,8 +883,11 @@ extern function map_insert_imm(m: Map<'K,'V>, k: 'K, v: 'V): Map<'K,'V>
 extern function map_get(m: Map<'K,'V>, k:'K): Option<'V>
 extern function map_contains_key(m: Map<'K,'V>, k: 'K): bool
 extern function map_is_empty(m: Map<'K,'V>): bool
+extern function map_nth_key(m: Map<'K, 'V>, n: usize): Option<'K>
+extern function map_nth_value(m: Map<'K, 'V>, n: usize): Option<'V>
 extern function map_union(m1: Map<'K, 'V>, m2: Map<'K,'V>): Map<'K, 'V>
 extern function map_keys(m: Map<'K, 'V>): Vec<'K>
+extern function map_values(m: Map<'K, 'V>): Vec<'V>
 
 extern function set_size(s: Set<'X>): usize
 extern function set_insert(s: mut Set<'X>, v: 'X)

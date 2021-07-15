@@ -1,2 +1,4 @@
 dump map_test::MapTransforms;
 dump map_test::MapFolds;
+dump map_test::MapFind;
+dump map_test::MapAny;

@@ -66,6 +66,16 @@ output relation MapSizes(m: Map<u64, string>, size: usize)
 
 MapSizes(m, m.size()) :- Maps(m).
 
+output relation MapValues(vals: Vec<string>)
+
+MapValues(m.values()) :- Maps(m).
+
+output relation MapNth(n: usize, k: Option<u64>, v: Option<string>)
+
+MapNth(0, m.nth_key(0), m.nth_value(0)),
+MapNth(3, m.nth_key(3), m.nth_value(3)),
+MapNth(100, m.nth_key(100), m.nth_value(100)) :- Maps(m).
+
 output relation Pow(descr: string, val: string)
 
 Pow("pow32(2: u32, 32)", "${pow32(2: u32, 32)}").

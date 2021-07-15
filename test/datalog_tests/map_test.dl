@@ -109,3 +109,15 @@ MapFolds("concatenate values",
 // fold with key.
 MapFolds("concatenate key-value pairs",
          test_map().fold(|a, k, v| "${a} ${k.0}:${v.x}", "")).
+
+
+output relation MapFind(x: Option<Foo>)
+
+MapFind(test_map().find(|foo| foo.x == 1)).
+MapFind(test_map().find(|foo| foo.x == 100)).
+
+output relation MapAny(condition: string, found: bool)
+
+MapAny("1",   test_map().any(|foo| foo.x == 1)).
+MapAny("100", test_map().any(|foo| foo.x == 100)).
+
