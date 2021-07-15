@@ -215,9 +215,22 @@ impl Profile {
         self.op_address.insert(*id, addr.clone());
 
         self.short_names.insert(*id, name.clone());
+
+        /* Timely operators that support named versions (`<operator>_named`) will contain a (slightly
+         * modified) copy of the context string in their names.  Avoid printing the string twice in
+         * the profile by using the presence of a space in as an indicator that the operator is named.
+         *
+         * XXX: This is a temporary hack that won't be necessary once all operators are named and
+         * there's no longer need for the additional `context` string. */
+        let long_name = if name.contains(' ') {
+            name.clone()
+        } else {
+            name.clone() + ": " + &context.replace('\n', " ")
+        };
+
         self.names.insert(*id, {
             /* Remove redundant spaces. */
-            let frags: Vec<String> = (name.clone() + ": " + &context.replace('\n', " "))
+            let frags: Vec<String> = long_name
                 .split_whitespace()
                 .map(|x| x.to_string())
                 .collect();

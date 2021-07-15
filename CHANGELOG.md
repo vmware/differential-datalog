@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+- New library functions:
+
+  - `ddlog_std.dl`:
+    ```
+    function values(m: Map<'K, 'V>): Vec<'V>
+    function nth(m: Map<'K, 'V>, n: usize): Option<'V>
+    ```
+
+  - `map.dl`:
+    ```
+    function find(m: Map<'K, 'V>, f: function('V): bool): Option<'V>
+    function any(m: Map<'K, 'V>, f: function('V): bool): bool
+    ```
+
+- Bug fixes:
+
+  - Fixed scrambled self-profiler output.
+
 ## [0.42.0] - Jul 9, 2021
 
 ### DDShow integration
