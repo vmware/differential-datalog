@@ -161,7 +161,7 @@ main = do
         ActionHelp -> putStrLn $ usageInfo ("Usage: " ++ prog ++ " [OPTION...]") options
         ActionVersion -> do
             putStrLn $ "DDlog " ++ dDLOG_VERSION ++ " (" ++ gitHash ++ ")"
-            putStrLn $ "Copyright (c) 2019-2020 VMware, Inc. (MIT License)"
+            putStrLn $ "Copyright (c) 2019-2021 VMware, Inc. (MIT License)"
         ActionValidate -> do
             timeAction ("validating " ++ show (confDatalogFile config)) $ do
                 _ <- parseValidate
