@@ -3,6 +3,8 @@ typedef Time = u64
 
 input relation Myself(me: D3logLocationId)
 
+input relation Stdout(target: D3logLocationId)
+
 // should include the source address, port, and timestamp
 // we dont actually know the nid w/o negotiation
 input relation ConnectionStatus(time: Time, me: D3logLocationId, them:D3logLocationId)
@@ -17,6 +19,8 @@ index TcpAddress_by_location(from: D3logLocationId) on TcpAddress(from, _)
 // because of globals we cant run instances with different base programs as a separate
 // thread - look into the .so format
 output relation ThreadInstance(id: u128)
+
+output relation Error(text: string, line:u64, filename:string, functionname:string)
 
 // this really shouldn't have exit code, but it doesn't make sense to
 // have a status relation for each instance type

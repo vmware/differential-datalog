@@ -1,8 +1,6 @@
 use d3log::{
-    broadcast::{Adder, Broadcast},
-    ddvalue_batch::DDValueBatch,
-    error::Error,
-    start_instance, Batch, Evaluator, EvaluatorTrait, Node, Port, Transport,
+    ddvalue_batch::DDValueBatch, error::Error, start_instance, Batch, Evaluator, EvaluatorTrait,
+    Node, Port, Transport,
 };
 
 use crate::{api::HDDlog, relid2name, relval_from_record, Relations, UpdateSerializer};
@@ -209,9 +207,8 @@ impl EvaluatorTrait for D3 {
 pub fn start_d3log() -> Result<(), Error> {
     let (uuid, is_parent) = if let Some(uuid) = std::env::var_os("uuid") {
         if let Some(uuid) = uuid.to_str() {
-            let uuid = uuid.parse::<u128>().unwrap();
-
-            (uuid, false)
+            let my_uuid = uuid.parse::<u128>().unwrap();
+            (my_uuid, false)
         } else {
             panic!("bad uuid");
         }
@@ -225,16 +222,25 @@ pub fn start_d3log() -> Result<(), Error> {
 
     let d = || -> Result<(Evaluator, Batch), Error> { D3::new() };
 
+    let debugport = if let Some(uuid) = std::env::var_os("debug") {
+        uuid.to_str().unwrap().parse::<u128>().unwrap()
+    } else {
+        u128::from_be_bytes(rand::thread_rng().gen::<[u8; 16]>())
+    };
+
     let rt = Arc::new(Runtime::new()?);
-    let (management, eval_port, instance_future) = start_instance(rt.clone(), d, uuid)?;
+    let (_management, init_batch, eval_port, instance_future) =
+        start_instance(rt.clone(), d, uuid, debugport)?;
 
     // XXX: we really kind of want the initial evaluation to happen at one ingress node
-    // find the ddlog ticket against and reference
-    //    if is_parent {
-    //        rt.spawn(async move {
-    //            eval_port.clone().send(init_batch);
-    //        });
-    //    }
+    // find the ddlog ticket against and reference here
+    // hoist?
+    if is_parent {
+        rt.spawn(async move {
+            eval_port.clone().send(init_batch);
+        });
+    }
+
     rt.block_on(instance_future)?;
     Ok(())
 }

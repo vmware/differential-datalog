@@ -3,7 +3,8 @@
 // method for that destination
 
 use crate::{
-    async_error, fact, Batch, DDValueBatch, Error, Evaluator, Node, Port, RecordBatch, Transport,
+    async_error, fact, function, Batch, DDValueBatch, Error, Evaluator, Node, Port, RecordBatch,
+    Transport,
 };
 use differential_datalog::record::*;
 use std::borrow::Cow;

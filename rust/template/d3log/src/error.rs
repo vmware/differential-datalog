@@ -8,7 +8,25 @@ use std::str::Utf8Error;
 use tokio::task::JoinError;
 
 #[derive(Debug)]
-pub struct Error(String);
+pub struct Error {
+    contents: String,
+    line: Option<u64>,
+    functionname: Option<String>,
+    filename: Option<String>,
+    parent: Box<Option<Error>>,
+}
+
+#[macro_export]
+macro_rules! function {
+    () => {{
+        fn f() {}
+        fn type_name_of<T>(_: T) -> &'static str {
+            std::any::type_name::<T>()
+        }
+        let name = type_name_of(f);
+        &name[..name.len() - 3]
+    }};
+}
 
 //TODOs:
 //  write a macro for the common to_string case below
@@ -19,13 +37,19 @@ pub struct Error(String);
 
 impl Error {
     pub fn new(s: String) -> Error {
-        Error(s)
+        Error {
+            contents: s,
+            line: None,
+            functionname: None,
+            filename: None,
+            parent: Box::new(None),
+        }
     }
 }
 
 impl Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.0)
+        f.write_str(&self.contents)
     }
 }
 
@@ -80,11 +104,14 @@ macro_rules! async_error {
         match $r {
             Err(x) => {
                 let s = x.to_string();
-                println!("async error: {}", s);
-                $p.send(fact!(d3::Error, text => s.into_record()));
+                $p.send(fact!(d3::Error,
+                              text => s.into_record(),
+                              line => std::line!().into_record(),
+                              filename => std::file!().into_record(),
+                              functionname => function!().into_record()));
                 return;
             }
             Ok(x) => x,
         }
-    }
+    };
 }

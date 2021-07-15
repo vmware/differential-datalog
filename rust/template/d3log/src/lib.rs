@@ -88,6 +88,7 @@ impl Transport for EvalPort {
 struct ThreadInstance {
     rt: Arc<tokio::runtime::Runtime>,
     management: Port,
+    debug_uuid: u128,
     eval: Evaluator,
     new_evaluator: fn() -> Result<(Evaluator, Batch), Error>,
     forwarder: Arc<Forwarder>,
@@ -103,12 +104,24 @@ impl Transport for ThreadInstance {
             let uuid_record = p.get_struct_field("id").unwrap();
             let uuid = async_error!(self.management, u128::from_record(uuid_record));
 
-            let (p, ep, _jh) = async_error!(
+            let (p, _init_batch, ep, _jh) = async_error!(
                 self.management,
-                start_instance(self.rt.clone(), self.new_evaluator, uuid)
+                start_instance(self.rt.clone(), self.new_evaluator, uuid, self.debug_uuid)
             );
             self.broadcast.clone().add(p);
             self.forwarder.register(uuid, ep);
+        }
+    }
+}
+
+struct DebugPort {
+    eval: Evaluator,
+}
+
+impl Transport for DebugPort {
+    fn send(&self, b: Batch) {
+        for (r, f, w) in RecordBatch::from(self.eval.clone(), b) {
+            println!("{} {} {}", r, f, w);
         }
     }
 }
@@ -117,30 +130,33 @@ pub fn start_instance(
     rt: Arc<Runtime>,
     new_evaluator: fn() -> Result<(Evaluator, Batch), Error>,
     uuid: u128,
-) -> Result<(Port, Port, tokio::task::JoinHandle<()>), Error> {
-    let (eval, _b) = new_evaluator()?;
+    debug_uuid: u128,
+) -> Result<(Port, Batch, Port, tokio::task::JoinHandle<()>), Error> {
+    let (eval, init_batch) = new_evaluator()?;
     let dispatch = Arc::new(Dispatch::new(eval.clone()));
     let broadcast = Broadcast::new();
 
     broadcast.clone().add(dispatch.clone());
 
-    println!("zig!");
     let forwarder = Arc::new(Forwarder::new(eval.clone(), broadcast.clone()));
 
-    dispatch
-        .clone()
-        .register(
-            "d3_application::ThreadInstance",
-            Arc::new(ThreadInstance {
-                rt: rt.clone(),
-                eval: eval.clone(),
-                forwarder: forwarder.clone(),
-                new_evaluator,
-                management: broadcast.clone(),
-                broadcast: broadcast.clone(),
-            }),
-        )
-        .expect("registration failed");
+    dispatch.clone().register(
+        "d3_application::ThreadInstance",
+        Arc::new(DebugPort { eval }),
+    )?;
+
+    dispatch.clone().register(
+        "d3_application::ThreadInstance",
+        Arc::new(ThreadInstance {
+            rt: rt.clone(),
+            debug_uuid,
+            eval: eval.clone(),
+            forwarder: forwarder.clone(),
+            new_evaluator,
+            management: broadcast.clone(),
+            broadcast: broadcast.clone(),
+        }),
+    )?;
 
     // shouldn't evaluator just implement Transport?
     let eval_port = Arc::new(EvalPort {
@@ -171,5 +187,6 @@ pub fn start_instance(
             .await
         );
     });
-    Ok((dispatch, eval_port, handle))
+    println!("init batch");
+    Ok((dispatch, init_batch, eval_port, handle))
 }
