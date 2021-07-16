@@ -235,7 +235,7 @@ pub fn start_d3log() -> Result<(), Error> {
     };
 
     let rt = Arc::new(Runtime::new()?);
-    let (_management, init_batch, eval_port, instance_future) =
+    let (management, init_batch, eval_port, instance_future) =
         start_instance(rt.clone(), d, uuid, debugport)?;
 
     // XXX: we really kind of want the initial evaluation to happen at one ingress node
@@ -244,7 +244,7 @@ pub fn start_d3log() -> Result<(), Error> {
     if is_parent {
         rt.spawn(async move {
             println!("sending init batch");
-            eval_port.clone().send(init_batch);
+            management.clone().send(init_batch);
         });
     }
 
