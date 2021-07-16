@@ -43,6 +43,7 @@ data TOption = OVSFile         String
              | InternTable     String
              | OutputTable     String
              | OutputOnlyTable String
+             | MultisetTable   String
              | ROColumn        String
              | RWColumn        String
              | ConfigJsonI     String
@@ -62,6 +63,7 @@ options = [ Option ['v'] ["version"]            (NoArg Version)                 
           , Option ['O'] ["output-config"]      (ReqArg ConfigJsonO "FILE.json")    "Write preceding options to Json configuration file."
           , Option ['o'] ["output-table"]       (ReqArg OutputTable "TABLE")        "Mark TABLE as output."
           , Option []    ["output-only-table"]  (ReqArg OutputOnlyTable "TABLE")    "Mark TABLE as output-only.  DDlog will send updates to this table directly to OVSDB without comparing it with current OVSDB state."
+          , Option []    ["multiset-table"]     (ReqArg MultisetTable "TABLE")      "Mark output-only TABLE as a multiset.  DDlog will not enforce uniqueness of records in the table."
           , Option []    ["ro"]                 (ReqArg ROColumn    "TABLE.COLUMN") "Mark COLUMN as read-only.  If this option is specified for at least one column of TABLE, all TABLE columns that are not labeled read-only are presumed writable."
           , Option []    ["rw"]                 (ReqArg RWColumn    "TABLE.COLUMN") "Mark COLUMN as read-write.  If this option is specified for at least one column of TABLE, all TABLE columns that are not labeled read-write are presumed read-only.  This option is mutually exclusive with '--ro': at most one of the two options can be used for each TABLE."
           , Option []    ["output-file"]        (ReqArg OutputFile  "FILE.dl")      "Write output to FILE.dl. If this option is not specified, output will be written to stdout."
@@ -85,6 +87,8 @@ addOption (a, config) (OutputOnlyTable t) = do
     when (isJust $ lookup t $ outputTables config)
          $ errorWithoutStackTrace $ "Conflicting options --output-table and --output-only-table specified for table '" ++ t ++ "'"
     return (a, config{ outputOnlyTables = nub (t : outputOnlyTables config)})
+addOption (a, config) (MultisetTable t) = do
+    return (a, config{ multisetTables = nub (t : multisetTables config)})
 addOption (a, config) (ROColumn c) = do
     case splitOn "." c of
          [table, col] -> do
@@ -129,6 +133,8 @@ addOption (a, config) (ConfigJsonO c) = do
 validateConfig :: (Action, Config) -> IO ()
 validateConfig (action, Config{..}) = do
     when (ovsSchemaFile == "" && action == ActionCompile) $ errorWithoutStackTrace "Input file not specified"
+    mapM_ (\t -> when (notElem t outputOnlyTables)
+                      $ errorWithoutStackTrace $ "Unknown output-only table " ++ t) multisetTables
 
 main :: IO ()
 main = do

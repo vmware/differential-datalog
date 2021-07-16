@@ -106,6 +106,7 @@ data Config = Config { ovsSchemaFile    :: FilePath
                      , outputFile       :: Maybe FilePath
                      , outputTables     :: [OutputRelConfig]
                      , outputOnlyTables :: [String]
+                     , multisetTables   :: [String]
                      , internedTables   :: [String]
                      }
               deriving (Eq, Show, Generic)
@@ -118,6 +119,7 @@ defaultConfig = Config { ovsSchemaFile    = ""
                        , outputFile       = Nothing
                        , outputTables     = []
                        , outputOnlyTables = []
+                       , multisetTables   = []
                        , internedTables   = []
                        }
 
@@ -237,6 +239,10 @@ mkTable' tkind t@Table{..} = do
                     TableDeltaUpdate  -> writable_cols
                     TableOutput       -> writable_cols
                     TableDirectOutput -> writable_cols
+    let tflavor = case tkind of
+                       TableDirectOutput | elem (name t) (multisetTables ?config) 
+                                         -> "multiset"
+                       _                 -> "relation"
     columns <- mapM (mkCol tkind tableName) cols
     let key = if tkind == TableInput
                  then "primary key (x) x._uuid"
@@ -247,10 +253,10 @@ mkTable' tkind t@Table{..} = do
                   (nest' $ vcommaSep columns)                                           $$
                   "}"                                                                   $$
                   annotation                                                            $$
-                  prefix <+> "relation" <+> pp tname <+> "[Intern<" <> pp tname <> ">]" $$
+                  prefix <+> tflavor <+> pp tname <+> "[Intern<" <> pp tname <> ">]" $$
                   key
     else return $ annotation                                    $$
-                  prefix <+> "relation" <+> pp tname <+> "("    $$
+                  prefix <+> tflavor <+> pp tname <+> "("       $$
                   (nest' $ vcommaSep columns)                   $$
                   ")"                                           $$
                   key
