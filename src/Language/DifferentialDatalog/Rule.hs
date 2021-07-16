@@ -102,10 +102,10 @@ ruleRHSVars' :: DatalogProgram -> Rule -> Int -> [Var]
 ruleRHSVars' _ _  i | i < 0 = []
 ruleRHSVars' d rl i =
     case ruleRHS rl !! i of
-         RHSLiteral True  a            -> nub $ exprVarDecls d (CtxRuleRAtom rl i) (atomVal a) ++ vs ++ vs
+         RHSLiteral True  a            -> nub $ exprVarDecls d (CtxRuleRAtom rl i) (atomVal a) ++ vs
          RHSLiteral False _            -> vs
          -- assignment introduces new variables
-         RHSCondition (E e@(ESet _ l _)) -> nub $ exprVarDecls d (CtxSetL e (CtxRuleRCond rl i)) l ++ vs ++ vs
+         RHSCondition (E e@(ESet _ l _)) -> nub $ exprVarDecls d (CtxSetL e (CtxRuleRCond rl i)) l ++ vs
          -- condition does not introduce new variables
          RHSCondition _                -> vs
          -- FlatMap introduces variables
