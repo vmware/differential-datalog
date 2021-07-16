@@ -59,6 +59,7 @@ impl Display for Batch {
         writeln!(f, "\n]\n")
     }
 }
+
 pub trait Transport {
     // since most of these errors are async, we're adopting a general
     // policy for the moment of making all errors async and reported out
@@ -79,10 +80,6 @@ struct EvalPort {
 
 impl Transport for EvalPort {
     fn send(&self, b: Batch) {
-        println!("dispacho {}", b.clone());
-        for (r, f, w) in &RecordBatch::from(self.eval.clone(), b.clone()) {
-            println!("{} {} {}", r, f, w);
-        }
         let out = async_error!(self.management.clone(), self.eval.eval(b));
         self.dispatch.send(out.clone());
         self.forwarder.send(out.clone());
@@ -115,6 +112,14 @@ impl Transport for ThreadInstance {
             );
             self.broadcast.clone().add(p);
             self.forwarder.register(uuid, ep);
+            let threads: u64 = 1;
+            let bytes: u64 = 1;
+            self.broadcast.send(fact!(d3_application::InstanceStatus,
+                                      time => self.eval.clone().now().into_record(),
+                                      id => uuid.into_record(),
+                                      memory_bytes => bytes.into_record(),
+                                      threads => threads.into_record()));
+            // encoding none ? we should have a better termination report.
         }
     }
 }
@@ -189,9 +194,5 @@ pub fn start_instance(
             .await
         );
     });
-    println!(
-        "init batch {}",
-        RecordBatch::from(eval.clone(), init_batch.clone())
-    );
     Ok((dispatch, init_batch, eval_port, handle))
 }

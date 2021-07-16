@@ -12,7 +12,6 @@ use differential_datalog::{
 use rand::Rng;
 use serde::{de, de::SeqAccess, de::Visitor, Deserialize, Deserializer};
 use serde::{ser::SerializeTuple, Serialize, Serializer};
-use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::fmt;
 use std::sync::Arc;
@@ -131,7 +130,6 @@ impl EvaluatorTrait for D3 {
     fn ddvalue_from_record(&self, name: String, r: Record) -> Result<DDValue, Error> {
         //  as Relations
         let id = self.id_from_relation_name(name.clone())?;
-        println!("ddvalue from record:{} {}", name, id);
         //        let t: &str = &id;
         let t: RelIdentifier = RelIdentifier::RelId(id);
         let rel = Relations::try_from(&t).expect("huh");
@@ -154,9 +152,9 @@ impl EvaluatorTrait for D3 {
         // wrapper to translate hddlog's string error to our standard-by-default std::io::Error
         self.h.transaction_start()?;
         self.h.apply_updates(&mut upd.clone().drain(..))?;
-        Ok(Batch::from(DDValueBatch::from_delta_map(
+        Ok(DDValueBatch::from_delta_map(
             self.h.transaction_commit_dump_changes()?,
-        )))
+        ))
     }
 
     fn id_from_relation_name(&self, s: String) -> Result<usize, Error> {
@@ -235,7 +233,7 @@ pub fn start_d3log() -> Result<(), Error> {
     };
 
     let rt = Arc::new(Runtime::new()?);
-    let (management, init_batch, eval_port, instance_future) =
+    let (management, init_batch, _eval_port, instance_future) =
         start_instance(rt.clone(), d, uuid, debugport)?;
 
     // XXX: we really kind of want the initial evaluation to happen at one ingress node
@@ -243,7 +241,6 @@ pub fn start_d3log() -> Result<(), Error> {
     // hoist?
     if is_parent {
         rt.spawn(async move {
-            println!("sending init batch");
             management.clone().send(init_batch);
         });
     }

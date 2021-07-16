@@ -127,7 +127,6 @@ impl DDValueBatch {
                 let mut ddval_batch = DDValueBatch::new();
                 let e2 = e.clone();
                 for (r, v, w) in &rb {
-                    println!("recordo: {}", r);
                     let rid = e2.id_from_relation_name(r.clone())?;
                     ddval_batch.insert(rid, e.ddvalue_from_record(r, v)?, w);
                 }

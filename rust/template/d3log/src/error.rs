@@ -111,11 +111,13 @@ macro_rules! async_error {
         match $r {
             Err(x) => {
                 let s = x.to_string();
-                $p.send(fact!(d3::Error,
+                let f = fact!(d3::Error,
                               text => s.into_record(),
                               line => std::line!().into_record(),
                               filename => std::file!().into_record(),
-                              functionname => function!().into_record()));
+                              functionname => function!().into_record());
+                println!("base error:  {}", f);
+                $p.send(f);
                 return;
             }
             Ok(x) => x,
