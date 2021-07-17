@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [0.42.1] - Jul 16, 2021
 
 - New library functions:
 
@@ -24,6 +24,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Bug fixes:
 
   - Fixed scrambled self-profiler output.
+  - Fixed compilation speed regression introduced in 0.42.0.
+
+- New feature in OVSDB-to-DDlog compiler:
+
+  - `multiset-table` option to force an output-only table to be declared as a
+    `multiset`.
 
 ## [0.42.0] - Jul 9, 2021
 
