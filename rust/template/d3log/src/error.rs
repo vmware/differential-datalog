@@ -116,7 +116,6 @@ macro_rules! async_error {
                               line => std::line!().into_record(),
                               filename => std::file!().into_record(),
                               functionname => function!().into_record());
-                println!("base error:  {}", f);
                 $p.send(f);
                 return;
             }

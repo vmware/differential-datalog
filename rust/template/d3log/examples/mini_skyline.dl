@@ -14,7 +14,9 @@ Fact(4, 1).
 Fact(5, 3).
 Fact(6, 2).
 
-output relation MSResult(x:u64, me:D3logLocationId)
+output relation Anchor(x:u64)
+relation PrintMSResult(x:u64, me:D3logLocationId)
+relation MSResult(x:u64, me:D3logLocationId)
 relation LocalizedFact(x:u64)
 
 LocalizedFact(x)@(k as u128) :-
@@ -22,7 +24,14 @@ LocalizedFact(x)@(k as u128) :-
       InstanceStatus(_, k, _, _, None).
 
 MSResult(x, y) :- LocalizedFact(x),
-                Myself(y).
+                  Myself(y).
+
+PrintMSResult(x, y)@n :-
+                    Myself(n),
+//                   Stdout(n),
+                   MSResult(x, y).
+
+Anchor(x) :- PrintMSResult(x, _).
 
 
 

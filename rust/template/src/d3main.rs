@@ -1,6 +1,6 @@
 use d3log::{
-    ddvalue_batch::DDValueBatch, error::Error, start_instance, Batch, Evaluator, EvaluatorTrait,
-    Node, Port, Transport,
+    ddvalue_batch::DDValueBatch, error::Error, fact, record_batch::RecordBatch, start_instance,
+    Batch, Evaluator, EvaluatorTrait, Node, Port, Transport,
 };
 
 use crate::{api::HDDlog, relid2name, relval_from_record, Relations, UpdateSerializer};
@@ -12,6 +12,7 @@ use differential_datalog::{
 use rand::Rng;
 use serde::{de, de::SeqAccess, de::Visitor, Deserialize, Deserializer};
 use serde::{ser::SerializeTuple, Serialize, Serializer};
+use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::fmt;
 use std::sync::Arc;
@@ -226,15 +227,16 @@ pub fn start_d3log() -> Result<(), Error> {
 
     let d = || -> Result<(Evaluator, Batch), Error> { D3::new() };
 
-    let debugport = if let Some(uuid) = std::env::var_os("debug") {
-        uuid.to_str().unwrap().parse::<u128>().unwrap()
-    } else {
-        u128::from_be_bytes(rand::thread_rng().gen::<[u8; 16]>())
-    };
-
     let rt = Arc::new(Runtime::new()?);
-    let (management, init_batch, _eval_port, instance_future) =
-        start_instance(rt.clone(), d, uuid, debugport)?;
+    let (management, init_batch, eval_port, instance_future) = start_instance(rt.clone(), d, uuid)?;
+
+    if is_parent {
+        let debug_uuid = u128::from_be_bytes(rand::thread_rng().gen::<[u8; 16]>());
+
+        eval_port
+            .clone()
+            .send(fact!(d3_application::Stdout, target=>debug_uuid.into_record()));
+    }
 
     // XXX: we really kind of want the initial evaluation to happen at one ingress node
     // find the ddlog ticket against and reference here

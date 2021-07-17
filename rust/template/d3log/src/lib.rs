@@ -11,7 +11,7 @@ use core::fmt;
 use differential_datalog::{ddval::DDValue, record::*, D3logLocationId};
 use std::borrow::Cow;
 use std::fmt::Display;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tokio::runtime::Runtime;
 
 use crate::{
@@ -71,6 +71,19 @@ pub trait Transport {
 
 pub type Port = Arc<(dyn Transport + Send + Sync)>;
 
+struct AccumulatePort {
+    eval: Evaluator,
+    b: Arc<Mutex<DDValueBatch>>,
+}
+
+impl Transport for AccumulatePort {
+    fn send(&self, b: Batch) {
+        for (r, f, w) in &DDValueBatch::from(&(*self.eval), b).expect("iterator") {
+            self.b.lock().expect("lock").insert(r, f, w);
+        }
+    }
+}
+
 struct EvalPort {
     eval: Evaluator,
     forwarder: Port,
@@ -81,6 +94,7 @@ struct EvalPort {
 impl Transport for EvalPort {
     fn send(&self, b: Batch) {
         let out = async_error!(self.management.clone(), self.eval.eval(b));
+        println!("out {}", out);
         self.dispatch.send(out.clone());
         self.forwarder.send(out.clone());
     }
@@ -89,18 +103,18 @@ impl Transport for EvalPort {
 struct ThreadInstance {
     rt: Arc<tokio::runtime::Runtime>,
     management: Port,
-    debug_uuid: u128,
     eval: Evaluator,
     new_evaluator: fn() -> Result<(Evaluator, Batch), Error>,
     forwarder: Arc<Forwarder>,
     broadcast: Arc<Broadcast>,
+    // process needs this too
+    accumulator: Arc<Mutex<DDValueBatch>>,
 }
 
 // we're just throwing this into the same runtime - do we want/need scheduling isolation?
 // xxx handle deletes
 impl Transport for ThreadInstance {
     fn send(&self, b: Batch) {
-        println!("thread instance");
         for (_, p, _weight) in &RecordBatch::from(self.eval.clone(), b) {
             // async_error variant for Some
             let uuid_record = p.get_struct_field("id").unwrap();
@@ -108,12 +122,16 @@ impl Transport for ThreadInstance {
 
             let (p, _init_batch, ep, _jh) = async_error!(
                 self.management,
-                start_instance(self.rt.clone(), self.new_evaluator, uuid, self.debug_uuid)
+                start_instance(self.rt.clone(), self.new_evaluator, uuid)
             );
+
+            ep.send(Batch::Value(self.accumulator.lock().expect("lock").clone()));
+
             self.broadcast.clone().add(p);
             self.forwarder.register(uuid, ep);
             let threads: u64 = 1;
             let bytes: u64 = 1;
+
             self.broadcast.send(fact!(d3_application::InstanceStatus,
                                       time => self.eval.clone().now().into_record(),
                                       id => uuid.into_record(),
@@ -140,7 +158,6 @@ pub fn start_instance(
     rt: Arc<Runtime>,
     new_evaluator: fn() -> Result<(Evaluator, Batch), Error>,
     uuid: u128,
-    debug_uuid: u128,
 ) -> Result<(Port, Batch, Port, tokio::task::JoinHandle<()>), Error> {
     let (eval, init_batch) = new_evaluator()?;
     let dispatch = Arc::new(Dispatch::new(eval.clone()));
@@ -151,12 +168,13 @@ pub fn start_instance(
         .clone()
         .add(Arc::new(DebugPort { eval: eval.clone() }));
     let forwarder = Arc::new(Forwarder::new(eval.clone(), broadcast.clone()));
+    let accu_batch = Arc::new(Mutex::new(DDValueBatch::new()));
 
     dispatch.clone().register(
         "d3_application::ThreadInstance",
         Arc::new(ThreadInstance {
             rt: rt.clone(),
-            debug_uuid,
+            accumulator: accu_batch.clone(),
             eval: eval.clone(),
             forwarder: forwarder.clone(),
             new_evaluator,
@@ -173,6 +191,10 @@ pub fn start_instance(
         eval: eval.clone(),
     });
     broadcast.clone().add(eval_port.clone());
+    broadcast.clone().add(Arc::new(AccumulatePort {
+        eval: eval.clone(),
+        b: accu_batch.clone(),
+    }));
     eval_port.send(fact!(d3_application::Myself, me => uuid.into_record()));
 
     let management_clone = broadcast.clone();
