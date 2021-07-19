@@ -1,6 +1,0 @@
-
-input relation Subsidiaries(owner: string, subsidiary: string)
-output relation Ownership(owner: string, subsidiary: string)
-
-Ownership(a, b) :- Subsidiaries(a, b).
-Ownership(a, c) :- Ownership(a, b), Subsidiaries(b, c).
