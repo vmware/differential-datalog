@@ -32,6 +32,8 @@ pub trait EvaluatorTrait {
     fn id_from_relation_name(&self, s: String) -> Result<usize, Error>;
     fn localize(&self, rel: usize, v: DDValue) -> Option<(Node, usize, DDValue)>;
     fn now(&self) -> u64;
+    fn myself(&self) -> Node;
+    fn error(&self, text: String, line: Record, filename: Record, functionname: Record);
     fn record_from_ddvalue(&self, d: DDValue) -> Result<Record, Error>;
     fn relation_name_from_id(&self, id: usize) -> Result<String, Error>;
 
@@ -90,7 +92,6 @@ use std::collections::VecDeque;
 struct EvalPort {
     eval: Evaluator,
     forwarder: Port,
-    management: Port,
     dispatch: Port,
     queue: Arc<Mutex<VecDeque<Batch>>>,
 }
@@ -102,7 +103,7 @@ impl Transport for EvalPort {
         }
         self.queue.lock().expect("lock").push_back(b);
         while let Some(b) = self.queue.lock().expect("lock").pop_front() {
-            let out = async_error!(self.management.clone(), self.eval.eval(b));
+            let out = async_error!(self.eval.clone(), self.eval.eval(b));
             println!("out {}", out);
             self.dispatch.send(out.clone());
             self.forwarder.send(out.clone());
@@ -112,9 +113,8 @@ impl Transport for EvalPort {
 
 struct ThreadInstance {
     rt: Arc<tokio::runtime::Runtime>,
-    management: Port,
     eval: Evaluator,
-    new_evaluator: fn() -> Result<(Evaluator, Batch), Error>,
+    new_evaluator: Arc<dyn Fn() -> Result<(Evaluator, Batch), Error>>,
     forwarder: Arc<Forwarder>,
     broadcast: Arc<Broadcast>,
     // process needs this too
@@ -128,10 +128,10 @@ impl Transport for ThreadInstance {
         for (_, p, _weight) in &RecordBatch::from(self.eval.clone(), b) {
             // async_error variant for Some
             let uuid_record = p.get_struct_field("id").unwrap();
-            let uuid = async_error!(self.management, u128::from_record(uuid_record));
+            let uuid = async_error!(self.eval.clone(), u128::from_record(uuid_record));
 
             let (_p, _init_batch, ep, _jh) = async_error!(
-                self.management,
+                self.eval,
                 start_instance(self.rt.clone(), self.new_evaluator, uuid)
             );
 
@@ -166,7 +166,7 @@ impl Transport for DebugPort {
 
 pub fn start_instance(
     rt: Arc<Runtime>,
-    new_evaluator: fn() -> Result<(Evaluator, Batch), Error>,
+    new_evaluator: Arc<dyn Fn() -> Result<(Evaluator, Batch), Error>>,
     uuid: u128,
 ) -> Result<(Port, Batch, Port, tokio::task::JoinHandle<()>), Error> {
     let (eval, init_batch) = new_evaluator()?;
@@ -187,8 +187,7 @@ pub fn start_instance(
             accumulator: accu_batch.clone(),
             eval: eval.clone(),
             forwarder: forwarder.clone(),
-            new_evaluator,
-            management: broadcast.clone(),
+            new_evaluator: new_evaluator.clone(),
             broadcast: broadcast.clone(),
         }),
     )?;
@@ -196,7 +195,6 @@ pub fn start_instance(
     // shouldn't evaluator just implement Transport?
     let eval_port = Arc::new(EvalPort {
         forwarder: forwarder.clone(),
-        management: broadcast.clone(),
         dispatch: dispatch.clone(),
         eval: eval.clone(),
         queue: Arc::new(Mutex::new(VecDeque::new())),
@@ -215,7 +213,7 @@ pub fn start_instance(
 
     let handle = rt.spawn(async move {
         async_error!(
-            management_clone.clone(),
+            eval.clone(),
             tcp_bind(
                 dispatch_clone,
                 uuid,

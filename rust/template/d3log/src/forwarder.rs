@@ -2,12 +2,8 @@
 // locality annotations, groups them by destination, and calls the registered send
 // method for that destination
 
-use crate::{
-    async_error, fact, function, Batch, DDValueBatch, Error, Evaluator, Node, Port, RecordBatch,
-    Transport,
-};
+use crate::{async_error, function, Batch, DDValueBatch, Error, Evaluator, Node, Port, Transport};
 use differential_datalog::record::*;
-use std::borrow::Cow;
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::sync::{Arc, Mutex};
@@ -53,7 +49,7 @@ impl Transport for Forwarder {
             match self.fib.lock().expect("lock").get(&nid) {
                 Some(x) => x.send(Batch::Value(b.deref().clone())),
                 None => async_error!(
-                    self.management.clone(),
+                    self.eval.clone(),
                     Err(Error::new(format!("missing nid {}", nid)))
                 ),
             }

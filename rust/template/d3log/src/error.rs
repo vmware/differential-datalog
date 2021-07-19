@@ -107,16 +107,15 @@ impl From<nix::Error> for Error {
 // could just use ? syntax, but that turns out to be really hard here
 #[macro_export]
 macro_rules! async_error {
-    ($p:expr, $r:expr) => {
+    ($e:expr, $r:expr) => {
         match $r {
             Err(x) => {
-                let s = x.to_string();
-                let f = fact!(d3_application::Error,
-                              text => s.into_record(),
-                              line => std::line!().into_record(),
-                              filename => std::file!().into_record(),
-                              functionname => function!().into_record());
-                $p.send(f);
+                $e.error(
+                    x.to_string(),
+                    std::line!().into_record(),
+                    std::file!().into_record(),
+                    function!().into_record(),
+                );
                 return;
             }
             Ok(x) => x,

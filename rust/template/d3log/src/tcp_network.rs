@@ -46,15 +46,15 @@ impl Transport for AddressListener {
                         Record::String(string) => {
                             let address = string.parse();
                             let loc: u128 =
-                                async_error!(self.management, FromRecord::from_record(&location));
+                                async_error!(self.eval.clone(), FromRecord::from_record(&location));
                             // we add an entry to forward this nid to this tcp address
                             self.forwarder.register(
                                 loc,
                                 Arc::new(TcpPeer {
                                     management: self.management.clone(),
+                                    eval: self.eval.clone(),
                                     tcp_inner: Arc::new(Mutex::new(TcpPeerInternal {
                                         eval: self.eval.clone(),
-                                        management: self.management.clone(),
                                         stream: None,
                                         address: address.unwrap(), //async error
                                                                    // sends: Vec::new(),
@@ -64,7 +64,7 @@ impl Transport for AddressListener {
                             return;
                         }
                         _ => async_error!(
-                            self.management.clone(),
+                            self.eval.clone(),
                             Err(Error::new(format!(
                                 "bad tcp address {}",
                                 destination.to_string()
@@ -75,7 +75,7 @@ impl Transport for AddressListener {
             }
 
             async_error!(
-                self.management.clone(),
+                self.eval.clone(),
                 Err(Error::new("ill formed process".to_string()))
             );
         }
@@ -123,7 +123,6 @@ pub async fn tcp_bind(
         // in the async move block, it actually gets dropped
         let sclone = Arc::new(Mutex::new(socket));
         let dclone = data.clone();
-        let mclone = management.clone();
         let eclone = eval.clone();
 
         tokio::spawn(async move {
@@ -138,7 +137,7 @@ pub async fn tcp_bind(
                             .expect("json coding error")
                         {
                             dclone.send(Batch::Value(async_error!(
-                                mclone.clone(),
+                                eclone.clone(),
                                 eclone.clone().deserialize_batch(i)
                             )));
                         }
@@ -154,7 +153,6 @@ struct TcpPeerInternal {
     address: SocketAddr,
     stream: Option<Arc<Mutex<TcpStream>>>,
     // sends: Vec<JoinHandle<Result<(), std::io::Error>>>, // these need to be waited on for memory?
-    management: Port,
     eval: Evaluator,
 }
 
@@ -162,6 +160,7 @@ struct TcpPeerInternal {
 #[derive(Clone)]
 struct TcpPeer {
     tcp_inner: Arc<Mutex<TcpPeerInternal>>,
+    eval: Evaluator,
     management: Port,
 }
 
@@ -170,7 +169,6 @@ impl Transport for TcpPeer {
         // we should be saving this return value in a vector of completions so
         // we can swoop back later and collect errors
         let tcp_inner_clone = self.tcp_inner.clone();
-        let mgmt_clone = self.management.clone();
 
         tokio::spawn(async move {
             let mut tcp_peer = tcp_inner_clone.lock().await;
@@ -184,14 +182,11 @@ impl Transport for TcpPeer {
             };
 
             let eval = tcp_peer.eval.clone();
-            let ddval_batch = async_error!(mgmt_clone.clone(), DDValueBatch::from(&(*eval), b));
-            let bytes = async_error!(
-                mgmt_clone.clone(),
-                eval.clone().serialize_batch(ddval_batch)
-            );
+            let ddval_batch = async_error!(eval.clone(), DDValueBatch::from(&(*eval), b));
+            let bytes = async_error!(eval.clone(), eval.clone().serialize_batch(ddval_batch));
             // async error this, right?
             async_error!(
-                tcp_peer.management.clone(),
+                eval.clone(),
                 tcp_peer
                     .stream
                     .as_ref()
