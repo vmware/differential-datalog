@@ -735,11 +735,13 @@ exprConstraints_ de@(DDExpr ctx (E e@EField{..})) = do
     let expand t' = case teDeref t' of
                          -- Type has not been sufficiently expanded yet.
                          TETVar{} -> return Nothing
-                         te@(TEUser n _) | elem n (map name candidates) -> do
-                            let t'' = fromJust $ tdefType $ getType ?d n
+                         TEUser n targs | elem n (map name candidates) -> do
+                            let tdef = getType ?d n
+                            let t'' = fromJust $ tdefType tdef
+                            let tmap = M.fromList $ zip (tdefArgs tdef) targs
                             let guarded = structFieldGuarded t'' exprField
                             check ?d (not guarded) (pos e) $ "Access to guarded field \'" ++ exprField ++ "\' (not all constructors of type '" ++ n ++ "' have this field)."
-                            let fld_type = typeToTExpr $ typ $ fromJust $ find ((==exprField) . name) $ structFields $ typ' ?d $ teToType te
+                            let fld_type = teSubstTypeArgs tmap $ typeToTExpr $ typ $ fromJust $ structLookupField t'' exprField
                             return $ Just [dv ==== fld_type]
                          _ -> err ?d (pos estruct)
                                   $ "expression '" ++ show estruct ++ "' must have a field named '" ++ exprField ++ "', but its type '" ++ show t' ++ "' doesn't"
