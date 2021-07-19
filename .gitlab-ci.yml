@@ -43,7 +43,6 @@ test-rust:
         - ddlog-ci-1
     script:
         - ./test.sh crates
-        - ./test.sh tcp_channel
 
 test-modules:
     stage: test
@@ -90,10 +89,6 @@ test-libs:
     tags:
         - ddlog-ci-1
     script: ./test.sh libs
-
-test-server_api:
-    stage: test
-    script: ./test.sh server_api
 
 test-simple:
     extends: .private_runner
