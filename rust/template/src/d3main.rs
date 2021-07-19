@@ -228,12 +228,12 @@ pub fn start_d3log() -> Result<(), Error> {
     let d = || -> Result<(Evaluator, Batch), Error> { D3::new() };
 
     let rt = Arc::new(Runtime::new()?);
-    let (management, init_batch, eval_port, instance_future) = start_instance(rt.clone(), d, uuid)?;
+    let (management, init_batch, _eval_port, instance_future) =
+        start_instance(rt.clone(), d, uuid)?;
 
     if is_parent {
         let debug_uuid = u128::from_be_bytes(rand::thread_rng().gen::<[u8; 16]>());
-
-        eval_port
+        management
             .clone()
             .send(fact!(d3_application::Stdout, target=>debug_uuid.into_record()));
     }
