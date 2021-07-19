@@ -85,11 +85,14 @@ impl Transport for AccumulatePort {
     }
 }
 
+use std::collections::VecDeque;
+
 struct EvalPort {
     eval: Evaluator,
     forwarder: Port,
     management: Port,
     dispatch: Port,
+    queue: Arc<Mutex<VecDeque<Batch>>>,
 }
 
 impl Transport for EvalPort {
@@ -97,11 +100,13 @@ impl Transport for EvalPort {
         for (r, f, w) in &RecordBatch::from(self.eval.clone(), b.clone()) {
             println!("in: {} {} {}", r, f, w);
         }
-
-        let out = async_error!(self.management.clone(), self.eval.eval(b));
-        println!("out {}", out);
-        self.dispatch.send(out.clone());
-        self.forwarder.send(out.clone());
+        self.queue.lock().expect("lock").push_back(b);
+        while let Some(b) = self.queue.lock().expect("lock").pop_front() {
+            let out = async_error!(self.management.clone(), self.eval.eval(b));
+            println!("out {}", out);
+            self.dispatch.send(out.clone());
+            self.forwarder.send(out.clone());
+        }
     }
 }
 
@@ -125,25 +130,18 @@ impl Transport for ThreadInstance {
             let uuid_record = p.get_struct_field("id").unwrap();
             let uuid = async_error!(self.management, u128::from_record(uuid_record));
 
-            println!("starting thread");
-            let (p, _init_batch, ep, _jh) = async_error!(
+            let (_p, _init_batch, ep, _jh) = async_error!(
                 self.management,
                 start_instance(self.rt.clone(), self.new_evaluator, uuid)
             );
 
-            println!("sending metadata history");
             ep.send(Batch::Value(self.accumulator.lock().expect("lock").clone()));
-            println!("wth");
 
             // deadlock
-            self.broadcast.clone().add(p);
-            println!("wth2");
             self.forwarder.register(uuid, ep);
-            println!("wthd3");
             let threads: u64 = 1;
             let bytes: u64 = 1;
 
-            println!("Sending instance status");
             self.broadcast.send(fact!(d3_application::InstanceStatus,
                                       time => self.eval.clone().now().into_record(),
                                       id => uuid.into_record(),
@@ -201,6 +199,7 @@ pub fn start_instance(
         management: broadcast.clone(),
         dispatch: dispatch.clone(),
         eval: eval.clone(),
+        queue: Arc::new(Mutex::new(VecDeque::new())),
     });
     broadcast.clone().add(eval_port.clone());
     broadcast.clone().add(Arc::new(AccumulatePort {

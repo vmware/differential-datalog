@@ -111,7 +111,7 @@ macro_rules! async_error {
         match $r {
             Err(x) => {
                 let s = x.to_string();
-                let f = fact!(d3::Error,
+                let f = fact!(d3_application::Error,
                               text => s.into_record(),
                               line => std::line!().into_record(),
                               filename => std::file!().into_record(),

@@ -20,7 +20,7 @@ index TcpAddress_by_location(from: D3logLocationId) on TcpAddress(from, _)
 // thread - look into the .so format
 output relation ThreadInstance(id: u128)
 
-output relation Error(text: string, line:u64, filename:string, functionname:string)
+input relation Error(text: string, line:u64, filename:string, functionname:string)
 
 // this really shouldn't have exit code, but it doesn't make sense to
 // have a status relation for each instance type
