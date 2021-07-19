@@ -15,7 +15,7 @@ use std::sync::{Arc, Mutex};
 use tokio::runtime::Runtime;
 
 use crate::{
-    broadcast::{Adder, Broadcast},
+    broadcast::{Broadcast, PubSub},
     ddvalue_batch::DDValueBatch,
     dispatch::Dispatch,
     error::Error,
@@ -173,10 +173,10 @@ pub fn start_instance(
     let dispatch = Arc::new(Dispatch::new(eval.clone()));
     let broadcast = Broadcast::new();
 
-    broadcast.clone().add(dispatch.clone());
+    broadcast.clone().subscribe(dispatch.clone());
     broadcast
         .clone()
-        .add(Arc::new(DebugPort { eval: eval.clone() }));
+        .subscribe(Arc::new(DebugPort { eval: eval.clone() }));
     let forwarder = Arc::new(Forwarder::new(eval.clone(), broadcast.clone()));
     let accu_batch = Arc::new(Mutex::new(DDValueBatch::new()));
 
@@ -201,8 +201,8 @@ pub fn start_instance(
         eval: eval.clone(),
         queue: Arc::new(Mutex::new(VecDeque::new())),
     });
-    broadcast.clone().add(eval_port.clone());
-    broadcast.clone().add(Arc::new(AccumulatePort {
+    broadcast.clone().subscribe(eval_port.clone());
+    broadcast.clone().subscribe(Arc::new(AccumulatePort {
         eval: eval.clone(),
         b: accu_batch.clone(),
     }));
