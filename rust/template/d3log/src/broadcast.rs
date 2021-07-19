@@ -53,10 +53,10 @@ impl Ingress {
 
 impl Transport for Ingress {
     fn send(&self, b: Batch) {
-        let ports = self.broadcast.ports.lock().expect("lock").clone();
-        for i in ports {
-            if i.1 != self.index {
-                i.0.send(b.clone())
+        let ports = &*self.broadcast.ports.lock().expect("lock");
+        for (port, index) in ports {
+            if *index != self.index {
+                port.send(b.clone())
             }
         }
     }
@@ -66,9 +66,9 @@ impl Transport for Broadcast {
     fn send(&self, b: Batch) {
         println!("broadcast {}", b);
 
-        let ports = self.ports.lock().expect("lock").clone();
-        for i in ports {
-            i.0.send(b.clone())
+        let ports = &*self.ports.lock().expect("lock");
+        for (port, _) in ports {
+            port.send(b.clone())
         }
     }
 }
