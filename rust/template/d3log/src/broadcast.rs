@@ -31,12 +31,12 @@ impl Broadcast {
 // this is kind of ridiculous. i have to define this trait because it _needs_ to take
 // an Arc(alpha), but we .. cant extend arc, except we can add a trait.
 
-pub trait Adder {
-    fn add(self, p: Port) -> Port;
+pub trait PubSub {
+    fn subscribe(self, p: Port) -> Port;
 }
 
-impl Adder for Arc<Broadcast> {
-    fn add(self, p: Port) -> Port {
+impl PubSub for Arc<Broadcast> {
+    fn subscribe(self, p: Port) -> Port {
         let index = self.count.fetch_add(1, Ordering::Acquire);
         let mut ports = self.ports.lock().expect("lock ports");
         ports.push((p, index));
@@ -53,10 +53,10 @@ impl Ingress {
 
 impl Transport for Ingress {
     fn send(&self, b: Batch) {
-        let ports = self.broadcast.ports.lock().expect("lock").clone();
-        for i in ports {
-            if i.1 != self.index {
-                i.0.send(b.clone())
+        let ports = &*self.broadcast.ports.lock().expect("lock");
+        for (port, index) in ports {
+            if *index != self.index {
+                port.send(b.clone())
             }
         }
     }
@@ -66,9 +66,9 @@ impl Transport for Broadcast {
     fn send(&self, b: Batch) {
         println!("broadcast {}", b);
 
-        let ports = self.ports.lock().expect("lock").clone();
-        for i in ports {
-            i.0.send(b.clone())
+        let ports = &*self.ports.lock().expect("lock");
+        for (port, _) in ports {
+            port.send(b.clone())
         }
     }
 }
