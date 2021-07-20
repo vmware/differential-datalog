@@ -179,7 +179,7 @@ typedef struct {
 /*
  * Default DDlog configuration.
  */
-extern ddlog_config ddlog_default_config();
+extern ddlog_config ddlog_default_config(void);
 
 /*
  * Create an instance of DDlog program.
