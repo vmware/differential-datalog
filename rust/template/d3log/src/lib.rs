@@ -114,6 +114,7 @@ impl Transport for EvalPort {
 struct ThreadInstance {
     rt: Arc<tokio::runtime::Runtime>,
     eval: Evaluator,
+
     new_evaluator: Arc<dyn Fn(Port) -> Result<(Evaluator, Batch), Error> + Send + Sync>,
     forwarder: Arc<Forwarder>,
     broadcast: Arc<Broadcast>,
