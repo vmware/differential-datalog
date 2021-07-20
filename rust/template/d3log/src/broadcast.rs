@@ -64,9 +64,7 @@ impl Transport for Ingress {
 
 impl Transport for Broadcast {
     fn send(&self, b: Batch) {
-        println!("broadcast {}", b);
-
-        let ports = &*self.ports.lock().expect("lock");
+        let ports = &*self.ports.lock().expect("lock").clone();
         for (port, _) in ports {
             port.send(b.clone())
         }

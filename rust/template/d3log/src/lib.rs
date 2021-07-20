@@ -80,7 +80,6 @@ struct AccumulatePort {
 
 impl Transport for AccumulatePort {
     fn send(&self, b: Batch) {
-        println!("{}", b);
         for (r, f, w) in &DDValueBatch::from(&(*self.eval), b).expect("iterator") {
             self.b.lock().expect("lock").insert(r, f, w);
         }
@@ -98,13 +97,9 @@ struct EvalPort {
 
 impl Transport for EvalPort {
     fn send(&self, b: Batch) {
-        for (r, f, w) in &RecordBatch::from(self.eval.clone(), b.clone()) {
-            println!("in: {} {} {}", r, f, w);
-        }
         self.queue.lock().expect("lock").push_back(b);
         while let Some(b) = self.queue.lock().expect("lock").pop_front() {
             let out = async_error!(self.eval.clone(), self.eval.eval(b));
-            println!("out {}", out);
             self.dispatch.send(out.clone());
             self.forwarder.send(out.clone());
         }
@@ -114,7 +109,6 @@ impl Transport for EvalPort {
 struct ThreadInstance {
     rt: Arc<tokio::runtime::Runtime>,
     eval: Evaluator,
-
     new_evaluator: Arc<dyn Fn(Port) -> Result<(Evaluator, Batch), Error> + Send + Sync>,
     forwarder: Arc<Forwarder>,
     broadcast: Arc<Broadcast>,
@@ -138,17 +132,16 @@ impl Transport for ThreadInstance {
 
             ep.send(Batch::Value(self.accumulator.lock().expect("lock").clone()));
 
-            // deadlock
-            self.forwarder.register(uuid, ep);
+            self.forwarder.register(uuid, ep.clone());
             let threads: u64 = 1;
             let bytes: u64 = 1;
 
+            // encoding none ? we should have a better termination report.
             self.broadcast.send(fact!(d3_application::InstanceStatus,
                                       time => self.eval.clone().now().into_record(),
                                       id => uuid.into_record(),
                                       memory_bytes => bytes.into_record(),
                                       threads => threads.into_record()));
-            // encoding none ? we should have a better termination report.
         }
     }
 }
@@ -200,6 +193,7 @@ pub fn start_instance(
         eval: eval.clone(),
         queue: Arc::new(Mutex::new(VecDeque::new())),
     });
+
     broadcast.clone().subscribe(eval_port.clone());
     broadcast.clone().subscribe(Arc::new(AccumulatePort {
         eval: eval.clone(),

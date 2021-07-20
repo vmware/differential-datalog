@@ -148,6 +148,7 @@ impl EvaluatorTrait for D3 {
         let f = fact!(d3_application::Error,
                       text => text,
                       line => line,
+                      instance => self.uuid.clone().into_record(),
                       filename => filename,
                       functionname => functionname);
         self.error.clone().send(f);

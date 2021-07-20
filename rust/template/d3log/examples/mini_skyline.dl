@@ -27,8 +27,7 @@ MSResult(x, y) :- LocalizedFact(x),
                   Myself(y).
 
 PrintMSResult(x, y)@n :-
-                    Myself(n),
-//                   Stdout(n),
+                   Stdout(n),
                    MSResult(x, y).
 
 Anchor(x) :- PrintMSResult(x, _).
