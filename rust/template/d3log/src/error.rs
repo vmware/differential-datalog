@@ -111,7 +111,7 @@ macro_rules! async_error {
         match $r {
             Err(x) => {
                 $e.error(
-                    x.to_string(),
+                    x.to_string().into_record(),
                     std::line!().into_record(),
                     std::file!().into_record(),
                     function!().into_record(),

@@ -37,6 +37,7 @@ impl Transport for Print {
 
 pub struct D3 {
     uuid: u128,
+    error: Port,
     h: HDDlog,
 }
 
@@ -121,9 +122,9 @@ impl Serialize for SerializeBatchWrapper {
 }
 
 impl D3 {
-    pub fn new(uuid: u128) -> Result<(Evaluator, Batch), Error> {
+    pub fn new(uuid: u128, error: Port) -> Result<(Evaluator, Batch), Error> {
         let (h, init_output) = HDDlog::run(1, false)?;
-        let ad = Arc::new(D3 { h, uuid });
+        let ad = Arc::new(D3 { h, uuid, error });
         Ok((ad, DDValueBatch::from_delta_map(init_output)))
     }
 }
@@ -143,7 +144,14 @@ impl EvaluatorTrait for D3 {
         self.uuid
     }
 
-    fn error(&self, text: String, line: Record, filename: Record, functionname: Record) {}
+    fn error(&self, text: Record, line: Record, filename: Record, functionname: Record) {
+        let f = fact!(d3_application::Error,
+                      text => text,
+                      line => line,
+                      filename => filename,
+                      functionname => functionname);
+        self.error.clone().send(f);
+    }
 
     //  can demux on record batch and call the record interface instead of translating - is that
     // desirable in some way? record in record out?
@@ -232,7 +240,8 @@ pub fn start_d3log() -> Result<(), Error> {
         )
     };
 
-    let d = || -> Result<(Evaluator, Batch), Error> { D3::new(uuid) };
+    let uc = uuid.clone();
+    let d = move |error: Port| -> Result<(Evaluator, Batch), Error> { D3::new(uc.clone(), error) };
 
     let rt = Arc::new(Runtime::new()?);
     let (management, init_batch, _eval_port, instance_future) =

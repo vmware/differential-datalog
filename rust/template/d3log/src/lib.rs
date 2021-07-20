@@ -33,7 +33,7 @@ pub trait EvaluatorTrait {
     fn localize(&self, rel: usize, v: DDValue) -> Option<(Node, usize, DDValue)>;
     fn now(&self) -> u64;
     fn myself(&self) -> Node;
-    fn error(&self, text: String, line: Record, filename: Record, functionname: Record);
+    fn error(&self, text: Record, line: Record, filename: Record, functionname: Record);
     fn record_from_ddvalue(&self, d: DDValue) -> Result<Record, Error>;
     fn relation_name_from_id(&self, id: usize) -> Result<String, Error>;
 
@@ -114,7 +114,7 @@ impl Transport for EvalPort {
 struct ThreadInstance {
     rt: Arc<tokio::runtime::Runtime>,
     eval: Evaluator,
-    new_evaluator: Arc<dyn Fn() -> Result<(Evaluator, Batch), Error>>,
+    new_evaluator: Arc<dyn Fn(Port) -> Result<(Evaluator, Batch), Error> + Send + Sync>,
     forwarder: Arc<Forwarder>,
     broadcast: Arc<Broadcast>,
     // process needs this too
@@ -132,7 +132,7 @@ impl Transport for ThreadInstance {
 
             let (_p, _init_batch, ep, _jh) = async_error!(
                 self.eval,
-                start_instance(self.rt.clone(), self.new_evaluator, uuid)
+                start_instance(self.rt.clone(), self.new_evaluator.clone(), uuid)
             );
 
             ep.send(Batch::Value(self.accumulator.lock().expect("lock").clone()));
@@ -166,12 +166,12 @@ impl Transport for DebugPort {
 
 pub fn start_instance(
     rt: Arc<Runtime>,
-    new_evaluator: Arc<dyn Fn() -> Result<(Evaluator, Batch), Error>>,
+    new_evaluator: Arc<dyn Fn(Port) -> Result<(Evaluator, Batch), Error> + Send + Sync>,
     uuid: u128,
 ) -> Result<(Port, Batch, Port, tokio::task::JoinHandle<()>), Error> {
-    let (eval, init_batch) = new_evaluator()?;
-    let dispatch = Arc::new(Dispatch::new(eval.clone()));
     let broadcast = Broadcast::new();
+    let (eval, init_batch) = new_evaluator(broadcast.clone())?;
+    let dispatch = Arc::new(Dispatch::new(eval.clone()));
 
     broadcast.clone().subscribe(dispatch.clone());
     broadcast
