@@ -184,10 +184,6 @@ impl<'de> Deserialize<'de> for RecordBatch {
 }
 
 impl Serialize for RecordBatch {
-    // i would _like_ to expose an interface that used the names for relations
-    // so that external users dont have to be privy to the compiler id assignment
-    // schema across the top for each relation
-
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -297,8 +293,7 @@ impl<'a> IntoIterator for &'a RecordBatch {
 }
 
 // idk why i dont want to make these associated...i guess holding on to the idea
-// that the external representation doesn't need to be tied to the internal. so
-// quaint
+// that the external representation doesn't need to be tied to the internal.
 pub fn serialize_record_batch(r: RecordBatch) -> Result<Vec<u8>, Error> {
     let encoded = serde_json::to_string(&r)?;
     Ok(encoded.as_bytes().to_vec())

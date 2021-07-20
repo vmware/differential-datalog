@@ -2,11 +2,39 @@
 // locality annotations, groups them by destination, and calls the registered send
 // method for that destination
 
-use crate::{async_error, function, Batch, DDValueBatch, Error, Evaluator, Node, Port, Transport};
+use crate::{
+    async_error, function, Batch, DDValueBatch, Dispatch, Error, Evaluator, Node, Port,
+    RecordBatch, Transport,
+};
 use differential_datalog::record::*;
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::sync::{Arc, Mutex};
+
+struct ForwardingEntryHandler {
+    eval: Evaluator,
+    forwarder: Arc<Forwarder>,
+}
+
+impl Transport for ForwardingEntryHandler {
+    fn send(&self, b: Batch) {
+        // reconc
+        for (_r, f, _w) in &RecordBatch::from(self.eval.clone(), b) {
+            let target = async_error!(
+                self.eval,
+                u128::from_record(f.get_struct_field("target").expect("target"))
+            );
+            let z = f.get_struct_field("intermediate").expect("intermediate");
+            let intermediate = async_error!(self.eval, u128::from_record(z));
+            // what about ordering wrt the assertion of the intermediate and transitive forwarding
+            // what about the source port
+            match self.forwarder.fib.lock().expect("lock").get(&intermediate) {
+                Some(p) => self.forwarder.register(target, p.clone()),
+                None => panic!("nested forwarder error should be asynch"),
+            }
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct Forwarder {
@@ -16,12 +44,26 @@ pub struct Forwarder {
 }
 
 impl Forwarder {
-    pub fn new(eval: Evaluator, management: Port) -> Forwarder {
-        Forwarder {
-            eval,
-            management,
+    pub fn new(eval: Evaluator, dispatch: Arc<Dispatch>, management: Port) -> Arc<Forwarder> {
+        let f = Arc::new(Forwarder {
+            eval: eval.clone(),
+            management: management.clone(),
             fib: Arc::new(Mutex::new(HashMap::new())),
-        }
+        });
+
+        dispatch
+            .clone()
+            .register(
+                "d3_application::Forwarder",
+                Arc::new(ForwardingEntryHandler {
+                    eval: eval.clone(),
+                    forwarder: f.clone(),
+                    management: management.clone(),
+                }),
+            )
+            .expect("register");
+
+        f
     }
 
     pub fn register(&self, n: Node, p: Port) {

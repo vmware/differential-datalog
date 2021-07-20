@@ -112,7 +112,8 @@ struct ThreadInstance {
     new_evaluator: Arc<dyn Fn(Port) -> Result<(Evaluator, Batch), Error> + Send + Sync>,
     forwarder: Arc<Forwarder>,
     broadcast: Arc<Broadcast>,
-    // process needs this too
+    // since all kinds of children will need a copy of the management state,
+    // consider generalizing
     accumulator: Arc<Mutex<DDValueBatch>>,
 }
 
@@ -121,7 +122,6 @@ struct ThreadInstance {
 impl Transport for ThreadInstance {
     fn send(&self, b: Batch) {
         for (_, p, _weight) in &RecordBatch::from(self.eval.clone(), b) {
-            // async_error variant for Some
             let uuid_record = p.get_struct_field("id").unwrap();
             let uuid = async_error!(self.eval.clone(), u128::from_record(uuid_record));
 
@@ -136,7 +136,6 @@ impl Transport for ThreadInstance {
             let threads: u64 = 1;
             let bytes: u64 = 1;
 
-            // encoding none ? we should have a better termination report.
             self.broadcast.send(fact!(d3_application::InstanceStatus,
                                       time => self.eval.clone().now().into_record(),
                                       id => uuid.into_record(),
@@ -171,7 +170,7 @@ pub fn start_instance(
     broadcast
         .clone()
         .subscribe(Arc::new(DebugPort { eval: eval.clone() }));
-    let forwarder = Arc::new(Forwarder::new(eval.clone(), broadcast.clone()));
+    let forwarder = Forwarder::new(eval.clone(), dispatch.clone(), broadcast.clone());
     let accu_batch = Arc::new(Mutex::new(DDValueBatch::new()));
 
     dispatch.clone().register(

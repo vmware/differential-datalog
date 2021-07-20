@@ -1,5 +1,11 @@
 // this file follows the apparently established pattern of defining a local error type and defining From
 // so as to implicity coerce all the errors thrown by '?'
+//TODOs:
+//  write a macro for the common to_string case below
+//  refactor(?) async_error so it doesn't require its users pull in a bunch of dependencies
+//  consider adding support for nesting
+//  macro for record field extraction case
+//  consider adding support for source location if thats possible
 
 use core::convert::Infallible;
 use core::fmt;
@@ -28,13 +34,6 @@ macro_rules! function {
         &name[..name.len() - 3]
     }};
 }
-
-//TODOs:
-//  write a macro for the common to_string case below
-//  write a user macro to enforce option be Some
-//  refactor(?) async_error so it doesn't require its users pull in a bunch of dependencies
-//  consider adding support for nesting
-//  consider adding support for source location if thats possible
 
 impl Error {
     pub fn new(s: String) -> Error {
@@ -119,6 +118,25 @@ macro_rules! async_error {
                 return;
             }
             Ok(x) => x,
+        }
+    };
+}
+
+// consider specialized error text
+#[macro_export]
+macro_rules! async_expect_some {
+    ($e:expr, $r:expr) => {
+        match $r {
+            None => {
+                $e.error(
+                    "expected value".into_record(),
+                    std::line!().into_record(),
+                    std::file!().into_record(),
+                    function!().into_record(),
+                );
+                return;
+            }
+            Some(x) => x,
         }
     };
 }

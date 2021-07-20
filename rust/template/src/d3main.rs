@@ -99,9 +99,6 @@ impl<'de> Deserialize<'de> for SerializeBatchWrapper {
 }
 
 impl Serialize for SerializeBatchWrapper {
-    // i would _like_ to expose an interface that used the names for relations
-    // so that external users dont have to be privy to the compiler id assignemnt
-
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -131,9 +128,7 @@ impl D3 {
 
 impl EvaluatorTrait for D3 {
     fn ddvalue_from_record(&self, name: String, r: Record) -> Result<DDValue, Error> {
-        //  as Relations
         let id = self.id_from_relation_name(name.clone())?;
-        //        let t: &str = &id;
         let t: RelIdentifier = RelIdentifier::RelId(id);
         let rel = Relations::try_from(&t).expect("huh");
         relval_from_record(rel, &r)
@@ -154,8 +149,7 @@ impl EvaluatorTrait for D3 {
         self.error.clone().send(f);
     }
 
-    //  can demux on record batch and call the record interface instead of translating - is that
-    // desirable in some way? record in record out?
+    // does it make sense to try to use the HDDLog record evaluation?
     fn eval(&self, input: Batch) -> Result<Batch, Error> {
         // would like to implicitly convert batch to ddvalue_batch, but i cant, because i need an
         // evaluator, and its been deconstructed before we get here...
@@ -166,7 +160,6 @@ impl EvaluatorTrait for D3 {
             upd.push(Update::Insert { relid, v });
         }
 
-        // wrapper to translate hddlog's string error to our standard-by-default std::io::Error
         self.h.transaction_start()?;
         self.h.apply_updates(&mut upd.clone().drain(..))?;
         Ok(DDValueBatch::from_delta_map(
@@ -250,14 +243,17 @@ pub fn start_d3log() -> Result<(), Error> {
 
     if is_parent {
         let debug_uuid = u128::from_be_bytes(rand::thread_rng().gen::<[u8; 16]>());
+        // batch union?
         management
             .clone()
             .send(fact!(d3_application::Stdout, target=>debug_uuid.into_record()));
+        management.clone().send(
+            fact!(d3_application::Forward, target=>debug_uuid.into_record(), intermediate => uuid.into_record()),
+        );
     }
 
     // XXX: we really kind of want the initial evaluation to happen at one ingress node
     // find the ddlog ticket against and reference here
-    // hoist?
     if is_parent {
         rt.spawn(async move {
             management.clone().send(init_batch);
