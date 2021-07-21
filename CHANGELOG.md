@@ -6,9 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-- Bug fixes
+### Bug fixes
   - Fixed a bug in type inference: #1022.
 
+### New library functions
+
+- New `ddlog_std` library functions:
+
+    ```
+    /* Convert any DDlog type into a string in a programmer-facing,
+     * debugging context.  Implemented by calling the `Debug::fmt()`
+     * method of the underlying Rust type. */
+    extern function to_string_debug(x: 'T): string
+
+    function reverse(v: mut Vec<'X>)
+    function reverse_imm(v: Vec<'X>): Vec<'X>
+    ```
 
 ## [0.42.1] - Jul 16, 2021
 

@@ -632,6 +632,10 @@ pub fn vec_zip<X: Clone, Y: Clone>(v1: &Vec<X>, v2: &Vec<Y>) -> Vec<tuple2<X, Y>
     }
 }
 
+pub fn vec_reverse<X: Clone>(v: &mut Vec<X>) {
+    v.reverse();
+}
+
 // Set
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd, Default)]
@@ -1012,6 +1016,10 @@ pub fn map_nth_key<K: Ord + Clone, V>(m: &Map<K, V>, n: &std_usize) -> Option<K>
 }
 
 // strings
+
+pub fn to_string_debug<T: Debug>(x: &T) -> String {
+    format!("{:?}", *x)
+}
 
 pub fn __builtin_2string<T: Display>(x: &T) -> String {
     format!("{}", *x)
