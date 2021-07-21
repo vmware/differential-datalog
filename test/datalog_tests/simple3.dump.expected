@@ -1,0 +1,6 @@
+NonNullListTest:
+NonNullListTest{.description = "from_nonnull_vec([1,2,3,4,5]): ddlog_std::Some{NonNullList{1,NonNullNxt{NonNullList{2,NonNullNxt{NonNullList{3,NonNullNxt{NonNullList{4,NonNullNxt{NonNullList{5,NULL{}}}}}}}}}}}"}: +1
+NonNullListTest{.description = "into_nonnull_vec(test_non_null_list()): [1, 2, 3]"}: +1
+NonNullListTest{.description = "nonnull_list_append(test_non_null_list(), 4): NonNullList{1,NonNullNxt{NonNullList{2,NonNullNxt{NonNullList{3,NonNullNxt{NonNullList{4,NULL{}}}}}}}}"}: +1
+NonNullListTest{.description = "nonnull_list_map(test_non_null_list(), +1): NonNullList{2,NonNullNxt{NonNullList{3,NonNullNxt{NonNullList{4,NULL{}}}}}}"}: +1
+NonNullListTest{.description = "test_non_null_list(): NonNullList{1,NonNullNxt{NonNullList{2,NonNullNxt{NonNullList{3,NULL{}}}}}}"}: +1

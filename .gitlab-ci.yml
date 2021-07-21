@@ -101,6 +101,10 @@ test-simple2:
     stage: test
     script: ./test.sh simple2
 
+test-simple3:
+    stage: test
+    script: ./test.sh simple3
+
 test-span_string:
     stage: test
     script:

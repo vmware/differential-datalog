@@ -64,10 +64,10 @@ basic=("rust_api:Test Rust API to a DDlog program"
        "tutorial:Examples from the DDlog tutorial"
        "simple:Unit tests for various DDlog constructs"
        "simple2:Unit tests for various DDlog constructs, part 2"
+       "simple3:Unit tests for various DDlog constructs, part 3"
        "libs:Tests for libraries in the 'lib' directory"
        "output_internal:Test '--output-internal-relations' switch"
        "stream:Test stream relations")
-
 
 perf=("dcm:Declarative Cluster Management benchmark"
       "redist_opt:'redist_opt' benchmark")
@@ -182,6 +182,11 @@ simple() {
 simple2() {
     (cd "${THIS_DIR}/test/datalog_tests" && DDLOGFLAGS="-g --nested-ts-32" ./run-test.sh simple2 release)
 }
+
+simple3() {
+    (cd "${THIS_DIR}/test/datalog_tests" && ./run-test.sh simple3 release)
+}
+
 
 negative() {
     (cd "${THIS_DIR}" && stack --no-terminal test --ta "-p fail")
