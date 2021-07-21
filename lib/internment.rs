@@ -23,6 +23,7 @@ SOFTWARE.
 
 use ddlog_std::Vec as DDlogVec;
 use differential_datalog::record::{self, Record};
+use fnv::FnvHasher;
 use internment::ArcIntern;
 use serde::{de::Deserializer, ser::Serializer};
 use std::{
@@ -31,19 +32,16 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-/// An atomically reference counted handle to an interned value
-///
-/// The `PartialOrd` and `Ord` implementations for this type do not
-/// compare the underlying values but instead compare the pointers
-/// to them. Do not rely on the `PartialOrd` and `Ord` implementations
-/// for persistent storage, determinism or for the ordering of the
-/// underlying values, as pointers will change from run to run.
+/// An atomically reference counted handle to an interned value.
+/// In addition to memory deduplication, this type is optimized for fast comparison.
+/// To this end, we store a 32-bit hash along with the interned value and use this hash for
+/// comparison, only falling back to by-value comparison in case of a hash collision.
 #[derive(Default, Eq, PartialEq, Clone)]
 pub struct Intern<A>
 where
     A: Eq + Send + Sync + Hash + 'static,
 {
-    interned: ArcIntern<A>,
+    interned: ArcIntern<(u32, A)>,
 }
 
 impl<T: Hash + Eq + Send + Sync + 'static> Hash for Intern<T> {
@@ -59,10 +57,17 @@ impl<T> Intern<T>
 where
     T: Eq + Hash + Send + Sync + 'static,
 {
-    /// Create a new interned value
+    /// Create a new interned value.
     pub fn new(value: T) -> Self {
+        // Hash the value.  Note: this is technically redundant,
+        // as `ArcIntern` hashes the value internally, but we
+        // cannot easily access that hash value.
+        let mut hasher = FnvHasher::with_key(0x787a33bc5b82ef3e);
+        value.hash(&mut hasher);
+        let hash = hasher.finish();
+
         Intern {
-            interned: ArcIntern::new(value),
+            interned: ArcIntern::new((hash as u32, value)),
         }
     }
 
@@ -72,23 +77,35 @@ where
     }
 }
 
-/// Order the interned values by their pointers
-impl<T> PartialOrd for Intern<T>
+/// Order the interned values:
+/// - Start with comparing pointers.  The two values are the same if and only if the pointers are
+/// the same.
+/// - Otherwise, compare their 32-bit hashes and order them based on hash values.
+/// - In the extremely rare case where a hash collision occurs, compare the actual values.
+impl<T> Ord for Intern<T>
 where
-    T: Eq + Send + Sync + Hash + 'static,
+    T: Eq + Ord + Send + Sync + Hash + 'static,
 {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.as_usize().partial_cmp(&other.as_usize())
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self.as_usize() == other.as_usize() {
+            return Ordering::Equal
+        } else {
+            match self.interned.as_ref().0.cmp(&other.interned.as_ref().0) {
+                Ordering::Equal => {
+                    self.as_ref().cmp(other.as_ref())
+                },
+                ord => ord
+            }
+        }
     }
 }
 
-/// Order the interned values by their pointers
-impl<T> Ord for Intern<T>
+impl<T> PartialOrd for Intern<T>
 where
-    T: Eq + Send + Sync + Hash + 'static,
+    T: Eq + Ord + Send + Sync + Hash + 'static,
 {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.as_usize().cmp(&other.as_usize())
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
@@ -99,7 +116,7 @@ where
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        self.interned.deref()
+        &self.interned.deref().1
     }
 }
 
@@ -108,7 +125,7 @@ where
     T: Eq + Hash + Send + Sync + 'static,
 {
     fn as_ref(&self) -> &T {
-        self.interned.as_ref()
+        &self.interned.as_ref().1
     }
 }
 
@@ -223,7 +240,7 @@ pub fn ival<T>(value: &Intern<T>) -> &T
 where
     T: Eq + Hash + Send + Sync + Clone,
 {
-    value.interned.as_ref()
+    value.as_ref()
 }
 
 /// Join interned strings with a separator
