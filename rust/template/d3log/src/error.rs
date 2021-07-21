@@ -102,6 +102,18 @@ impl From<nix::Error> for Error {
     }
 }
 
+#[macro_export]
+macro_rules! send_error {
+    ($e:expr, $t:expr) => {
+        $e.error(
+            $t.to_string().into_record(),
+            std::line!().into_record(),
+            std::file!().into_record(),
+            function!().into_record(),
+        );
+    };
+}
+
 // wanted to try to wrap this up in a lambda so that the enclosed expr
 // could just use ? syntax, but that turns out to be really hard here
 #[macro_export]
@@ -109,12 +121,7 @@ macro_rules! async_error {
     ($e:expr, $r:expr) => {
         match $r {
             Err(x) => {
-                $e.error(
-                    x.to_string().into_record(),
-                    std::line!().into_record(),
-                    std::file!().into_record(),
-                    function!().into_record(),
-                );
+                send_error!($e, x);
                 return;
             }
             Ok(x) => x,
@@ -128,12 +135,7 @@ macro_rules! async_expect_some {
     ($e:expr, $r:expr) => {
         match $r {
             None => {
-                $e.error(
-                    "expected value".into_record(),
-                    std::line!().into_record(),
-                    std::file!().into_record(),
-                    function!().into_record(),
-                );
+                send_error!($e, "expected value");
                 return;
             }
             Some(x) => x,

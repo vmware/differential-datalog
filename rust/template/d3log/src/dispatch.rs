@@ -51,6 +51,7 @@ impl Dispatch {
     }
 
     // deregstration? return a handle?
+    // we should validate the relation_name? incl dynamic schema
     pub fn register(&self, relation_name: &str, p: Port) -> Result<(), Error> {
         let id = self.count.fetch_add(1, Ordering::SeqCst);
 
