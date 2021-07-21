@@ -28,7 +28,7 @@ use serde::{de::Deserializer, ser::Serializer};
 use std::{
     cmp::{self, Ordering},
     fmt::{Debug, Display, Formatter, Result as FmtResult},
-    hash::Hash,
+    hash::{Hash, Hasher},
 };
 
 /// An atomically reference counted handle to an interned value
@@ -38,12 +38,21 @@ use std::{
 /// to them. Do not rely on the `PartialOrd` and `Ord` implementations
 /// for persistent storage, determinism or for the ordering of the
 /// underlying values, as pointers will change from run to run.
-#[derive(Default, Eq, PartialEq, Clone, Hash)]
+#[derive(Default, Eq, PartialEq, Clone)]
 pub struct Intern<A>
 where
     A: Eq + Send + Sync + Hash + 'static,
 {
     interned: ArcIntern<A>,
+}
+
+impl<T: Hash + Eq + Send + Sync + 'static> Hash for Intern<T> {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
+        self.as_ref().hash(state)
+    }
 }
 
 impl<T> Intern<T>
