@@ -3,7 +3,7 @@
 // method for that destination
 
 use crate::{
-    async_error, function, send_error, Batch, DDValueBatch, Dispatch, Error, Evaluator, Node, Port,
+    async_error, function, send_error, Batch, DDValueBatch, Dispatch, Evaluator, Node, Port,
     RecordBatch, Transport,
 };
 use differential_datalog::record::*;

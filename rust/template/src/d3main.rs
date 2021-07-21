@@ -234,8 +234,8 @@ pub fn start_d3log() -> Result<(), Error> {
         )
     };
 
-    let uc = uuid.clone();
-    let d = move |error: Port| -> Result<(Evaluator, Batch), Error> { D3::new(uc.clone(), error) };
+    let d =
+        move |id: u128, error: Port| -> Result<(Evaluator, Batch), Error> { D3::new(id, error) };
 
     let rt = Arc::new(Runtime::new()?);
     let (management, init_batch, _eval_port, instance_future) =

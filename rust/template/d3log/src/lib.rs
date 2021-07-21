@@ -109,7 +109,7 @@ impl Transport for EvalPort {
 struct ThreadInstance {
     rt: Arc<tokio::runtime::Runtime>,
     eval: Evaluator,
-    new_evaluator: Arc<dyn Fn(Port) -> Result<(Evaluator, Batch), Error> + Send + Sync>,
+    new_evaluator: Arc<dyn Fn(Node, Port) -> Result<(Evaluator, Batch), Error> + Send + Sync>,
     forwarder: Arc<Forwarder>,
     broadcast: Arc<Broadcast>,
     // since all kinds of children will need a copy of the management state,
@@ -151,19 +151,19 @@ struct DebugPort {
 
 impl Transport for DebugPort {
     fn send(&self, b: Batch) {
-        for (r, f, w) in &RecordBatch::from(self.eval.clone(), b) {
-            println!("{} {} {}", r, f, w);
+        for (_r, f, w) in &RecordBatch::from(self.eval.clone(), b) {
+            println!("{} {}", f, w);
         }
     }
 }
 
 pub fn start_instance(
     rt: Arc<Runtime>,
-    new_evaluator: Arc<dyn Fn(Port) -> Result<(Evaluator, Batch), Error> + Send + Sync>,
+    new_evaluator: Arc<dyn Fn(Node, Port) -> Result<(Evaluator, Batch), Error> + Send + Sync>,
     uuid: u128,
 ) -> Result<(Port, Batch, Port, tokio::task::JoinHandle<()>), Error> {
     let broadcast = Broadcast::new();
-    let (eval, init_batch) = new_evaluator(broadcast.clone())?;
+    let (eval, init_batch) = new_evaluator(uuid, broadcast.clone())?;
     let dispatch = Arc::new(Dispatch::new(eval.clone()));
 
     broadcast.clone().subscribe(dispatch.clone());
