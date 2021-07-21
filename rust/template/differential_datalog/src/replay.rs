@@ -421,6 +421,11 @@ mod tests {
         }
 
         #[cfg(feature = "c_api")]
+        fn get_table_original_cname(&self, _tname: &str) -> Result<&'static CStr, String> {
+            unimplemented!()
+        }
+
+        #[cfg(feature = "c_api")]
         fn get_table_cname(&self, _tid: RelId) -> Result<&'static CStr, String> {
             unimplemented!()
         }

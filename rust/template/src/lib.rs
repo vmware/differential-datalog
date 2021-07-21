@@ -519,7 +519,7 @@ pub fn relid2name(_rid: ::differential_datalog::program::RelId) -> Option<&'stat
 }
 
 pub fn rel_name2orig_name(_tname: &str) -> Option<&'static str> {
-    ::std::panic!("get_table_original_name not implemented")
+    ::std::panic!("rel_name2orig_name not implemented")
 }
 
 pub fn relid2cname(_rid: program::RelId) -> Option<&'static ::std::ffi::CStr> {
