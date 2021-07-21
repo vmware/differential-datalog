@@ -8,6 +8,7 @@ use crate::{
 };
 use differential_datalog::record::*;
 use std::collections::HashMap;
+use std::collections::VecDeque;
 use std::ops::Deref;
 use std::sync::{Arc, Mutex};
 
@@ -20,29 +21,35 @@ impl Transport for ForwardingEntryHandler {
     fn send(&self, b: Batch) {
         // reconcile
         for (_r, f, _w) in &RecordBatch::from(self.eval.clone(), b) {
+            println!("forward entry handler: {}", self.eval.clone().myself());
             let target = async_error!(
                 self.eval,
                 u128::from_record(f.get_struct_field("target").expect("target"))
             );
             let z = f.get_struct_field("intermediate").expect("intermediate");
             let intermediate = async_error!(self.eval, u128::from_record(z));
-            // what about ordering wrt the assertion of the intermediate and transitive forwarding
-            // what about the source port
-            let x = if let Some(p) = self.forwarder.fib.lock().expect("lock").get(&intermediate) {
-                p.clone()
-            } else {
-                panic!("nested forwarder error should be asynch");
-            };
-            self.forwarder.register(target, x.clone());
+            let e = self.forwarder.lookup(intermediate);
+
+            let mut e2 = e.lock().expect("lock");
+            match &e2.port {
+                Some(p) => self.forwarder.register(target, p.clone()),
+                None => e2.registrations.push_back(target),
+            }
         }
     }
 }
 
 #[derive(Clone)]
+struct Entry {
+    port: Option<Port>,
+    batches: VecDeque<Batch>,
+    registrations: VecDeque<Node>,
+}
+
 pub struct Forwarder {
     eval: Evaluator,
     management: Port,
-    fib: Arc<Mutex<HashMap<Node, Port>>>,
+    fib: Arc<Mutex<HashMap<Node, Arc<Mutex<Entry>>>>>,
 }
 
 impl Forwarder {
@@ -65,8 +72,32 @@ impl Forwarder {
         f
     }
 
+    fn lookup(&self, n: Node) -> Arc<Mutex<Entry>> {
+        self.fib
+            .lock()
+            .expect("lock")
+            .entry(n)
+            .or_insert_with(|| {
+                Arc::new(Mutex::new(Entry {
+                    port: None,
+                    batches: VecDeque::new(),
+                    registrations: VecDeque::new(),
+                }))
+            })
+            .clone()
+    }
+
     pub fn register(&self, n: Node, p: Port) {
-        self.fib.lock().expect("lock").insert(n, p);
+        // overwrite warning?
+        let entry = self.lookup(n);
+        entry.lock().expect("lock").port = Some(p.clone());
+        while let Some(b) = entry.lock().expect("lock").batches.pop_front() {
+            p.clone().send(b);
+        }
+        while let Some(r) = entry.lock().expect("lock").registrations.pop_front() {
+            // deadlock;
+            self.register(r, p.clone());
+        }
     }
 }
 
@@ -86,15 +117,19 @@ impl Transport for Forwarder {
         }
 
         for (nid, b) in output.drain() {
-            let x = {
-                if let Some(x) = self.fib.lock().expect("lock").get(&nid) {
-                    x.clone()
-                } else {
-                    send_error!(self.eval.clone(), format!("missing nid {}", nid));
-                    return;
+            let p = {
+                match self.lookup(nid).lock() {
+                    Ok(mut x) => match &x.port {
+                        Some(x) => x.clone(),
+                        None => {
+                            x.batches.push_front(Batch::Value(*b));
+                            break;
+                        }
+                    },
+                    Err(_) => panic!("lock"),
                 }
             };
-            x.send(Batch::Value(b.deref().clone()));
+            p.send(Batch::Value(b.deref().clone()))
         }
     }
 }
