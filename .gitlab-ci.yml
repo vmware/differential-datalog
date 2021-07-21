@@ -45,7 +45,10 @@ test-rust:
         - ./test.sh crates
 
 test-modules:
+    extends: .private_runner
     stage: test
+    tags:
+        - ddlog-ci-2
     script: ./test.sh modules
 
 test-ovn-ftl:
@@ -78,7 +81,10 @@ test-tutorial:
     script: ./test.sh tutorial
 
 test-rust-api:
+    extends: .private_runner
     stage: test
+    tags:
+        - ddlog-ci-2
     script: ./test.sh rust_api
 
 # Test individual libraries
@@ -106,7 +112,10 @@ test-simple3:
     script: ./test.sh simple3
 
 test-span_string:
+    extends: .private_runner
     stage: test
+    tags:
+        - ddlog-ci-1
     script:
         - ./test.sh span_string
         - ./test.sh java3
@@ -134,13 +143,19 @@ test-output-internal:
 
 # All other Java tests.
 test-span_uuid:
+    extends: .private_runner
     stage: test
+    tags:
+        - ddlog-ci-2
     script:
         - ./test.sh span_uuid
         - ./test.sh java0
 
 test-java1:
+    extends: .private_runner
     stage: test
+    tags:
+        - ddlog-ci-1
     script:
         - ./test.sh java2
         - ./test.sh java4
