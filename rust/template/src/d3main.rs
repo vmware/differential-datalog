@@ -254,10 +254,8 @@ pub fn start_d3log() -> Result<(), Error> {
 
     // XXX: we really kind of want the initial evaluation to happen at one ingress node
     // find the ddlog ticket against and reference here
-    println!("is parent!");
     if is_parent {
         rt.spawn(async move {
-            println!("sending parent init batch to dispatch");
             dispatch.clone().send(init_batch);
         });
     }
