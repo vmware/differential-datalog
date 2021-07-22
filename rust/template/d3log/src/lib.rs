@@ -3,9 +3,7 @@ pub mod ddvalue_batch;
 mod dispatch;
 pub mod error;
 mod forwarder;
-mod json_framer;
 pub mod record_batch;
-mod tcp_network;
 
 use core::fmt;
 use differential_datalog::{ddval::DDValue, record::*, D3logLocationId};
@@ -21,7 +19,6 @@ use crate::{
     error::Error,
     forwarder::Forwarder,
     record_batch::RecordBatch,
-    tcp_network::tcp_bind,
 };
 
 pub type Node = D3logLocationId;
@@ -143,7 +140,7 @@ impl Transport for ThreadInstance {
             let uuid_record = p.get_struct_field("id").unwrap();
             let uuid = async_error!(self.eval.clone(), u128::from_record(uuid_record));
 
-            let (_p, _init_batch, ep, _jh, _dispatch, forwarder) = async_error!(
+            let (_p, _init_batch, ep, _dispatch, forwarder) = async_error!(
                 self.eval,
                 start_instance(self.rt.clone(), self.new_evaluator.clone(), uuid)
             );
@@ -183,17 +180,7 @@ pub fn start_instance(
     rt: Arc<Runtime>,
     new_evaluator: Arc<dyn Fn(Node, Port) -> Result<(Evaluator, Batch), Error> + Send + Sync>,
     uuid: u128,
-) -> Result<
-    (
-        Port,
-        Batch,
-        Port,
-        tokio::task::JoinHandle<()>,
-        Port,
-        Arc<Forwarder>,
-    ),
-    Error,
-> {
+) -> Result<(Port, Batch, Port, Port, Arc<Forwarder>), Error> {
     let broadcast = Broadcast::new();
     let (eval, init_batch) = new_evaluator(uuid, broadcast.clone())?;
     let dispatch = Arc::new(Dispatch::new(eval.clone()));
@@ -232,27 +219,5 @@ pub fn start_instance(
         b: accu_batch.clone(),
     }));
     eval_port.send(fact!(d3_application::Myself, me => uuid.into_record()));
-
-    let management_clone = broadcast.clone();
-    let forwarder_clone = forwarder.clone();
-    let eval_clone = eval.clone();
-    let dispatch_clone = dispatch.clone();
-
-    let handle = rt.spawn(async move {
-        async_error!(
-            eval.clone(),
-            tcp_bind(
-                dispatch_clone,
-                uuid,
-                forwarder_clone,
-                management_clone.clone(),
-                eval_clone.clone(),
-                management_clone.clone(),
-            )
-            .await
-        );
-    });
-    Ok((
-        broadcast, init_batch, eval_port, handle, dispatch, forwarder,
-    ))
+    Ok((broadcast, init_batch, eval_port, dispatch, forwarder))
 }

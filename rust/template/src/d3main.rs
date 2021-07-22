@@ -238,7 +238,7 @@ pub fn start_d3log() -> Result<(), Error> {
         move |id: u128, error: Port| -> Result<(Evaluator, Batch), Error> { D3::new(id, error) };
 
     let rt = Arc::new(Runtime::new()?);
-    let (management, init_batch, _eval_port, instance_future, dispatch, _forwarder) =
+    let (management, init_batch, _eval_port, dispatch, _forwarder) =
         start_instance(rt.clone(), Arc::new(d), uuid)?;
 
     if is_parent {
@@ -260,6 +260,6 @@ pub fn start_d3log() -> Result<(), Error> {
         });
     }
 
-    rt.block_on(instance_future)?;
+    //rt.block_on(instance_future)?;
     Ok(())
 }
