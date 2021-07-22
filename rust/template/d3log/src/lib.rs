@@ -97,12 +97,6 @@ struct EvalPort {
 
 impl Transport for EvalPort {
     fn send(&self, b: Batch) {
-        // ?
-        println!(
-            "eval port {} {}",
-            self.eval.clone().myself(),
-            RecordBatch::from(self.eval.clone(), b.clone())
-        );
         self.dispatch.send(b.clone());
 
         {
@@ -123,7 +117,6 @@ impl Transport for EvalPort {
                     }
                 }
             };
-
             let out = async_error!(self.eval.clone(), self.eval.eval(b.clone()));
             self.forwarder.send(out.clone());
         }
