@@ -21,9 +21,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-use ddlog_std::Vec as DDlogVec;
+use ddlog_std::{hash32, Vec as DDlogVec};
 use differential_datalog::record::{self, Record};
-use fnv::FnvHasher;
 use internment::ArcIntern;
 use serde::{de::Deserializer, ser::Serializer};
 use std::{
@@ -62,10 +61,7 @@ where
         // Hash the value.  Note: this is technically redundant,
         // as `ArcIntern` hashes the value internally, but we
         // cannot easily access that hash value.
-        let mut hasher = FnvHasher::with_key(0x787a33bc5b82ef3e);
-        value.hash(&mut hasher);
-        let hash = hasher.finish();
-
+        let hash = hash32(&value);
         Intern {
             interned: ArcIntern::new((hash as u32, value)),
         }
@@ -88,13 +84,11 @@ where
 {
     fn cmp(&self, other: &Self) -> Ordering {
         if self.as_usize() == other.as_usize() {
-            return Ordering::Equal
+            return Ordering::Equal;
         } else {
             match self.interned.as_ref().0.cmp(&other.interned.as_ref().0) {
-                Ordering::Equal => {
-                    self.as_ref().cmp(other.as_ref())
-                },
-                ord => ord
+                Ordering::Equal => self.as_ref().cmp(other.as_ref()),
+                ord => ord,
             }
         }
     }
