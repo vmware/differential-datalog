@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Bug fixes
   - Fixed a bug in type inference: #1022.
+  - Fixed non-deterministic behavior in `internment.dl`: e0be732061e2556b0bbbfaceb0ab04a76f573ec8
 
 ### New library functions
 
