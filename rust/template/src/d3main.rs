@@ -238,7 +238,7 @@ pub fn start_d3log() -> Result<(), Error> {
         move |id: u128, error: Port| -> Result<(Evaluator, Batch), Error> { D3::new(id, error) };
 
     let rt = Arc::new(Runtime::new()?);
-    let (management, init_batch, eval_port, instance_future, dispatch) =
+    let (management, init_batch, _eval_port, instance_future, dispatch, _forwarder) =
         start_instance(rt.clone(), Arc::new(d), uuid)?;
 
     if is_parent {
@@ -254,8 +254,10 @@ pub fn start_d3log() -> Result<(), Error> {
 
     // XXX: we really kind of want the initial evaluation to happen at one ingress node
     // find the ddlog ticket against and reference here
+    println!("is parent!");
     if is_parent {
         rt.spawn(async move {
+            println!("sending parent init batch to dispatch");
             dispatch.clone().send(init_batch);
         });
     }

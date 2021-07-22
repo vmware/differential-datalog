@@ -22,7 +22,7 @@ impl Transport for Dispatch {
         let mut output = HashMap::<u64, (Port, RecordBatch)>::new();
 
         for (rel, v, weight) in &RecordBatch::from(self.eval.clone(), b.clone()) {
-            if let Some(ports) = self.handlers.lock().expect("lock").get(&rel) {
+            if let Some(ports) = { self.handlers.lock().expect("lock").get(&rel) } {
                 for (i, p) in ports {
                     // we can probably do this databatch to recordbatch translation elsewhere and
                     // not pull in evaluator. oh, we also have translation port!

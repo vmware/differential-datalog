@@ -53,7 +53,7 @@ impl Ingress {
 
 impl Transport for Ingress {
     fn send(&self, b: Batch) {
-        let ports = &*self.broadcast.ports.lock().expect("lock").clone();
+        let ports = { &*self.broadcast.ports.lock().expect("lock").clone() };
         for (port, index) in ports {
             if *index != self.index {
                 port.send(b.clone())
@@ -66,7 +66,7 @@ impl Transport for Broadcast {
     fn send(&self, b: Batch) {
         // We clone this map to have a read-only copy, else, we'd open up the possiblity of a
         // deadlock, if this `send` forms a cycle.
-        let ports = &*self.ports.lock().expect("lock").clone();
+        let ports = { &*self.ports.lock().expect("lock").clone() };
         for (port, _) in ports {
             port.send(b.clone())
         }

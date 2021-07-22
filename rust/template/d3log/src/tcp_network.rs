@@ -1,5 +1,5 @@
 // provide a tcp implementation of Transport
-// depends on a relational table in d3.tl - TcpAddress(x: D3logLocationId, destination: string)
+// depends on a relational table in d3_application.dl - TcpAddress(x: D3logLocationId, destination: string)
 // to provide location id to tcp address mapping
 //
 // do not currently attempt to use a single duplex connection between two nodes, instead
@@ -10,14 +10,7 @@
 //
 // put a queue on the TcpPeer to allow for misordering wrt TcpAddress and to cover setup
 
-use tokio::{
-    io::AsyncReadExt,
-    io::AsyncWriteExt,
-    net::TcpListener,
-    net::TcpStream,
-    sync::Mutex,
-    //    task::JoinHandle,
-};
+use tokio::{io::AsyncReadExt, io::AsyncWriteExt, net::TcpListener, net::TcpStream, sync::Mutex};
 
 use crate::{
     async_error, fact, function, json_framer::JsonFramer, send_error, Batch, DDValueBatch,
@@ -28,7 +21,6 @@ use differential_datalog::record::*;
 use std::borrow::Cow;
 use std::net::SocketAddr;
 use std::sync::Arc;
-//use tokio::task::JoinHandle;
 
 struct AddressListener {
     eval: Evaluator,
@@ -152,11 +144,9 @@ pub async fn tcp_bind(
 struct TcpPeerInternal {
     address: SocketAddr,
     stream: Option<Arc<Mutex<TcpStream>>>,
-    // sends: Vec<JoinHandle<Result<(), std::io::Error>>>, // these need to be waited on for memory?
     eval: Evaluator,
 }
 
-// do we have anonymous structs?
 #[derive(Clone)]
 struct TcpPeer {
     tcp_inner: Arc<Mutex<TcpPeerInternal>>,
@@ -166,17 +156,17 @@ struct TcpPeer {
 
 impl Transport for TcpPeer {
     fn send(&self, b: Batch) {
-        // we should be saving this return value in a vector of completions so
-        // we can swoop back later and collect errors
         let tcp_inner_clone = self.tcp_inner.clone();
 
+        // xxx - do these join handles need to be collected and waited upon for
+        // resource recovery?
         tokio::spawn(async move {
             let mut tcp_peer = tcp_inner_clone.lock().await;
 
             if tcp_peer.stream.is_none() {
+                // xxx use async_error
                 tcp_peer.stream = match TcpStream::connect(tcp_peer.address).await {
                     Ok(x) => Some(Arc::new(Mutex::new(x))),
-                    // xxx async error channel - self.management
                     Err(_x) => panic!("connection failure {}", tcp_peer.address),
                 };
             };
@@ -184,7 +174,7 @@ impl Transport for TcpPeer {
             let eval = tcp_peer.eval.clone();
             let ddval_batch = async_error!(eval.clone(), DDValueBatch::from(&(*eval), b));
             let bytes = async_error!(eval.clone(), eval.clone().serialize_batch(ddval_batch));
-            // async error this, right?
+
             async_error!(
                 eval.clone(),
                 tcp_peer

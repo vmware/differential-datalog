@@ -28,11 +28,12 @@ impl Transport for ForwardingEntryHandler {
             let z = f.get_struct_field("intermediate").expect("intermediate");
             let intermediate = async_error!(self.eval, u128::from_record(z));
             let e = self.forwarder.lookup(intermediate);
-
-            let mut e2 = e.lock().expect("lock");
+            let mut e2 = { e.lock().expect("lock") };
             match &e2.port {
                 Some(p) => self.forwarder.register(target, p.clone()),
-                None => e2.registrations.push_back(target),
+                None => {
+                    e2.registrations.push_back(target);
+                }
             }
         }
     }
@@ -47,15 +48,13 @@ struct Entry {
 
 pub struct Forwarder {
     eval: Evaluator,
-    management: Port,
     fib: Arc<Mutex<HashMap<Node, Arc<Mutex<Entry>>>>>,
 }
 
 impl Forwarder {
-    pub fn new(eval: Evaluator, dispatch: Arc<Dispatch>, management: Port) -> Arc<Forwarder> {
+    pub fn new(eval: Evaluator, dispatch: Arc<Dispatch>, _management: Port) -> Arc<Forwarder> {
         let f = Arc::new(Forwarder {
             eval: eval.clone(),
-            management: management.clone(),
             fib: Arc::new(Mutex::new(HashMap::new())),
         });
         dispatch
@@ -89,11 +88,14 @@ impl Forwarder {
     pub fn register(&self, n: Node, p: Port) {
         // overwrite warning?
         let entry = self.lookup(n);
-        entry.lock().expect("lock").port = Some(p.clone());
-        while let Some(b) = entry.lock().expect("lock").batches.pop_front() {
+        {
+            entry.lock().expect("lock").port = Some(p.clone());
+        }
+
+        while let Some(b) = { entry.lock().expect("lock").batches.pop_front() } {
             p.clone().send(b);
         }
-        while let Some(r) = entry.lock().expect("lock").registrations.pop_front() {
+        while let Some(r) = { entry.lock().expect("lock").registrations.pop_front() } {
             self.register(r, p.clone());
         }
     }
