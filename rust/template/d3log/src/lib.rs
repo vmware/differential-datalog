@@ -125,7 +125,7 @@ impl Transport for ThreadInstance {
             let uuid_record = p.get_struct_field("id").unwrap();
             let uuid = async_error!(self.eval.clone(), u128::from_record(uuid_record));
 
-            let (_p, _init_batch, ep, _jh) = async_error!(
+            let (_p, _init_batch, ep, _jh, _dispatch) = async_error!(
                 self.eval,
                 start_instance(self.rt.clone(), self.new_evaluator.clone(), uuid)
             );
@@ -161,7 +161,7 @@ pub fn start_instance(
     rt: Arc<Runtime>,
     new_evaluator: Arc<dyn Fn(Node, Port) -> Result<(Evaluator, Batch), Error> + Send + Sync>,
     uuid: u128,
-) -> Result<(Port, Batch, Port, tokio::task::JoinHandle<()>), Error> {
+) -> Result<(Port, Batch, Port, tokio::task::JoinHandle<()>, Port), Error> {
     let broadcast = Broadcast::new();
     let (eval, init_batch) = new_evaluator(uuid, broadcast.clone())?;
     let dispatch = Arc::new(Dispatch::new(eval.clone()));
@@ -219,5 +219,5 @@ pub fn start_instance(
             .await
         );
     });
-    Ok((broadcast, init_batch, eval_port, handle))
+    Ok((broadcast, init_batch, eval_port, handle, dispatch))
 }

@@ -21,7 +21,6 @@ impl Transport for ForwardingEntryHandler {
     fn send(&self, b: Batch) {
         // reconcile
         for (_r, f, _w) in &RecordBatch::from(self.eval.clone(), b) {
-            println!("forward entry handler: {}", self.eval.clone().myself());
             let target = async_error!(
                 self.eval,
                 u128::from_record(f.get_struct_field("target").expect("target"))
@@ -95,7 +94,6 @@ impl Forwarder {
             p.clone().send(b);
         }
         while let Some(r) = entry.lock().expect("lock").registrations.pop_front() {
-            // deadlock;
             self.register(r, p.clone());
         }
     }
