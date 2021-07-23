@@ -394,6 +394,12 @@ pub trait IntoRecord {
  * Trait implementations for built-in types.
  */
 
+impl FromRecord for Record {
+    fn from_record(val: &Record) -> Result<Self, String> {
+        Ok(val.clone())
+    }
+}
+
 impl FromRecord for u8 {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
@@ -839,23 +845,37 @@ impl<K: IntoRecord + Ord, V: IntoRecord> IntoRecord for BTreeMap<K, V> {
 }
 
 /// Map update semantics is that the update contains keys that are in one of the maps but not the
-/// other, plus keys that are in both maps but with different values.
-impl<K: FromRecord + Ord, V: FromRecord + PartialEq> Mutator<BTreeMap<K, V>> for Record {
+/// other, plus keys that are in both maps but with different values.  Specifically, there are
+/// three cases:
+/// - Update contains key that is not in the map -> insert a new value.
+/// - Update contains key that's already in the map with an empty tuple record as a value -> delete key from map.
+/// - Update contains key that's already in the map and the associated record is not an empty tuple -> use the
+///   record to modify the value associated with the key in the map.
+///
+/// There's a slight problem when the map contains empty tuples as values (`Map<K, ()>`), i.e.,
+/// it's really a set, in which case mutating an existing key will always delete it.
+impl<K, V> Mutator<BTreeMap<K, V>> for Record
+    where
+        K: FromRecord + Ord,
+        V: FromRecord + PartialEq,
+        Record: Mutator<V>
+{
     fn mutate(&self, map: &mut BTreeMap<K, V>) -> Result<(), String> {
-        let upd = <BTreeMap<K, V>>::from_record(self)?;
+        let upd = <BTreeMap<K, Record>>::from_record(self)?;
         for (k, v) in upd.into_iter() {
             match map.entry(k) {
                 btree_map::Entry::Vacant(ve) => {
                     /* key not in map -- insert */
-                    ve.insert(v);
+                    ve.insert(V::from_record(&v)?);
                 }
                 btree_map::Entry::Occupied(mut oe) => {
-                    if *oe.get() == v {
-                        /* key in map with the same value -- delete */
-                        oe.remove_entry();
-                    } else {
-                        /* key in map, different value -- set new value */
-                        oe.insert(v);
+                    match v {
+                        Record::Tuple(vals) if vals.len() == 0 => {
+                            oe.remove_entry();
+                        },
+                        _ => {
+                            v.mutate(oe.get_mut())?;
+                        }
                     }
                 }
             }
