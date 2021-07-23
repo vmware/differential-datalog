@@ -3,11 +3,11 @@ use d3log::{
     Batch, Evaluator, EvaluatorTrait, Node, Port, Transport,
 };
 
-use crate::{api::HDDlog, relid2name, relval_from_record, Relations, UpdateSerializer};
+use crate::{relid2name, relval_from_record, Relations, UpdateSerializer};
 
 use differential_datalog::{
-    ddval::DDValue, program::Update, record::IntoRecord, record::Record, record::RelIdentifier,
-    D3log, DDlog, DDlogDynamic,
+    api::HDDlog, ddval::DDValue, program::Update, record::IntoRecord, record::Record,
+    record::RelIdentifier, D3log, DDlog, DDlogDynamic,
 };
 use rand::Rng;
 use serde::{de, de::SeqAccess, de::Visitor, Deserialize, Deserializer};
