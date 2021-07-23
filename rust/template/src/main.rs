@@ -415,6 +415,12 @@ fn main() -> Result<(), String> {
         None
     };
 
+    // this will block - do we want this to be a command line flag? it doesn't really
+    // make sense to run a d3log program w/o the runtime
+    // xxx - pass config through
+    #[cfg(feature = "distribution")]
+    d3main::start_d3log().expect("d3log");
+
     let ddlog_res = match crate::run_with_config(config, args.store) {
         Ok((hddlog, init_output)) => {
             if args.init_snapshot {
@@ -445,14 +451,6 @@ fn main() -> Result<(), String> {
             }
         }
     };
-
-    //    #[cfg(feature = "distribution")]
-    //    {
-    //        match d3main::start_d3log() {
-    //            Ok(x) => Ok(x),
-    //            Err(x) => Err(x.to_string()),
-    //        }
-    //    }
 
     ddlog_res
 }
