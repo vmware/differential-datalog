@@ -103,13 +103,8 @@ souffle=("static_analysis:Souffle static analysis test."
          "souffle_tests6:Souffle tests part6"
          "souffle_tests7:Souffle tests part7")
 
-<<<<<<< HEAD
-d3log=("foo:test foo"
-       "bar:test bar"
-       "baz:test baz")
-=======
+
 d3log=()
->>>>>>> d83d5f260138e1b3cdb9c41bda53452b6b8dc3d8
 
 misc=("span_string"
       "span_uuid"
@@ -333,10 +328,6 @@ souffle_tests7() {
 
 # 'd3log' test group.
 
-<<<<<<< HEAD
-
-=======
->>>>>>> d83d5f260138e1b3cdb9c41bda53452b6b8dc3d8
 
 # 'stack' test group.
 

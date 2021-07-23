@@ -25,7 +25,6 @@ use abomonation::Abomonation;
 /// Rust implementation of DDlog standard library functions and types.
 use differential_datalog::record::{arg_extract, Record};
 use differential_datalog::triomphe::Arc;
-use fnv::FnvHasher;
 use num::Zero;
 use serde::{
     de::{DeserializeOwned, Deserializer},
@@ -47,6 +46,7 @@ use std::{
     sync::Arc as StdArc,
     vec::{self, Vec as StdVec},
 };
+use twox_hash::{XxHash32, XxHash64};
 
 const XX_SEED1: u64 = 0x23b691a751d0e108;
 const XX_SEED2: u64 = 0x20b09801dce5ff84;
@@ -1112,18 +1112,24 @@ pub fn string_reverse(s: &String) -> String {
 
 // Hashing
 
+pub fn hash32<T: Hash>(x: &T) -> u32 {
+    let mut hasher = XxHash32::with_seed(XX_SEED1 as u32);
+    x.hash(&mut hasher);
+    hasher.finish() as u32
+}
+
 pub fn hash64<T: Hash>(x: &T) -> u64 {
-    let mut hasher = FnvHasher::with_key(XX_SEED1);
+    let mut hasher = XxHash64::with_seed(XX_SEED1);
     x.hash(&mut hasher);
     hasher.finish()
 }
 
 pub fn hash128<T: Hash>(x: &T) -> u128 {
-    let mut hasher = FnvHasher::with_key(XX_SEED1);
+    let mut hasher = XxHash64::with_seed(XX_SEED1);
     x.hash(&mut hasher);
     let w1 = hasher.finish();
 
-    let mut hasher = FnvHasher::with_key(XX_SEED2);
+    let mut hasher = XxHash64::with_seed(XX_SEED2);
     x.hash(&mut hasher);
     let w2 = hasher.finish();
 

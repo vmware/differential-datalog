@@ -760,6 +760,7 @@ mkCargoToml rs_code crate crate_id =
            "abomonation = \"0.7\""                                                         $$
            "ordered-float = { version = \"2.0.0\", features = [\"serde\"] }"               $$
            "fnv = \"1.0.2\""                                                               $$
+           "twox-hash = \"1.6.0\""                                                         $$
            "once_cell = \"1.4.1\""                                                         $$
            "libc = \"0.2\""                                                                $$
            "time = { version = \"0.2\", features = [\"serde\"] }"                          $$

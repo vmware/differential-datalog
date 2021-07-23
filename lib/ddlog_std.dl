@@ -464,6 +464,7 @@ function reverse(s: string): string {
 /*
  * hashing
  */
+extern function hash32(x: 'X): bit<32>
 extern function hash64(x: 'X): bit<64>
 extern function hash128(x: 'X): bit<128>
 
