@@ -1,9 +1,9 @@
+use crate::{relid2name, relval_from_record, Relations, UpdateSerializer};
 use d3log::{
     ddvalue_batch::DDValueBatch, error::Error, fact, record_batch::RecordBatch, start_instance,
     Batch, Evaluator, EvaluatorTrait, Node, Port, Transport,
 };
-
-use crate::{relid2name, relval_from_record, Relations, UpdateSerializer};
+use differential_datalog::program::config::{Config, ProfilingConfig};
 
 use differential_datalog::{
     api::HDDlog, ddval::DDValue, program::Update, record::IntoRecord, record::Record,
@@ -120,7 +120,10 @@ impl Serialize for SerializeBatchWrapper {
 
 impl D3 {
     pub fn new(uuid: u128, error: Port) -> Result<(Evaluator, Batch), Error> {
-        let (h, init_output) = HDDlog::run(1, false)?;
+        let config = Config::new()
+            .with_timely_workers(1)
+            .with_profiling_config(ProfilingConfig::SelfProfiling);
+        let (h, init_output) = crate::run_with_config(config, false)?;
         let ad = Arc::new(D3 { h, uuid, error });
         Ok((ad, DDValueBatch::from_delta_map(init_output)))
     }
