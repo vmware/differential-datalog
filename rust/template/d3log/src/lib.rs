@@ -94,6 +94,11 @@ struct EvalPort {
 
 impl Transport for EvalPort {
     fn send(&self, b: Batch) {
+        println!(
+            "ep {} {}",
+            self.eval.clone().myself(),
+            RecordBatch::from(self.eval.clone(), b.clone())
+        );
         self.dispatch.send(b.clone());
 
         {
