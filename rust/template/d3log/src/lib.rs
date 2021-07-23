@@ -120,6 +120,7 @@ impl Transport for EvalPort {
                 }
             };
             let out = async_error!(self.eval.clone(), self.eval.eval(b.clone()));
+            self.dispatch.send(out.clone());
             self.forwarder.send(out.clone());
         }
     }
