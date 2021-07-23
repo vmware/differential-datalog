@@ -434,7 +434,7 @@ fn test_map() {
         vec![
             Record::Tuple(vec![
                 Record::Int(BigInt::from(0)),
-                Record::Int(BigInt::from(10)),
+                Record::Tuple(vec![]),
             ]),
             Record::Tuple(vec![
                 Record::Int(BigInt::from(1)),
@@ -444,7 +444,7 @@ fn test_map() {
     )
     .mutate(&mut v)
     .unwrap();
-    assert_eq!(v, BTreeMap::from_iter(vec![]));
+    assert_eq!(v, BTreeMap::from_iter(vec![(1, 10)]));
 
     v = <BTreeMap<u32, u32>>::from_record(&Record::Array(
         CollectionKind::Unknown,
@@ -500,7 +500,7 @@ fn test_map() {
             ]),
             Record::Tuple(vec![
                 Record::Int(BigInt::from(1)),
-                Record::Int(BigInt::from(10)),
+                Record::Tuple(vec![]),
             ]),
         ],
     )
