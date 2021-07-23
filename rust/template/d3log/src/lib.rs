@@ -191,7 +191,6 @@ pub fn start_instance(
     let (eval, init_batch) = new_evaluator(uuid, broadcast.clone())?;
     let dispatch = Arc::new(Dispatch::new(eval.clone()));
 
-    broadcast.clone().subscribe(dispatch.clone());
     broadcast
         .clone()
         .subscribe(Arc::new(DebugPort { eval: eval.clone() }));
