@@ -10,6 +10,7 @@ if [ ! -f fastutil-8.3.0.jar ]; then
 fi
 CLASSPATH=$CLASSPATH:fastutil-8.3.0.jar
 compile ../../test/datalog_tests/redist.dl RedistTest.java release
+echo classpath: $CLASSPATH
 java -Djava.library.path=. RedistTest ../../test/datalog_tests/redist.dat > redist.java.dump
 gzip -f redist.java.dump
 zdiff -q redist.java.dump.gz ../../test/datalog_tests/redist.dump.expected.gz

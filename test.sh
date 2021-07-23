@@ -45,7 +45,6 @@ test_groups=("crates:Test DDlog runtime crates."
              "sql:Test SQL-to-DDlog compiler."
              "antrea:Test Antrea controller implemented in DDlog"
              "souffle:Tests imported from Souffle Datalog."
-             "d3log:Distributed DDlog (D3log) tests."
              "misc:Miscellaneous other tests."
              "stack:Tests using Haskell stack infrastructure."
              "bench:DDlog benchmarks.")
@@ -65,10 +64,10 @@ basic=("rust_api:Test Rust API to a DDlog program"
        "tutorial:Examples from the DDlog tutorial"
        "simple:Unit tests for various DDlog constructs"
        "simple2:Unit tests for various DDlog constructs, part 2"
+       "simple3:Unit tests for various DDlog constructs, part 3"
        "libs:Tests for libraries in the 'lib' directory"
        "output_internal:Test '--output-internal-relations' switch"
        "stream:Test stream relations")
-
 
 perf=("dcm:Declarative Cluster Management benchmark"
       "redist_opt:'redist_opt' benchmark")
@@ -104,9 +103,13 @@ souffle=("static_analysis:Souffle static analysis test."
          "souffle_tests6:Souffle tests part6"
          "souffle_tests7:Souffle tests part7")
 
+<<<<<<< HEAD
 d3log=("foo:test foo"
        "bar:test bar"
        "baz:test baz")
+=======
+d3log=()
+>>>>>>> d83d5f260138e1b3cdb9c41bda53452b6b8dc3d8
 
 misc=("span_string"
       "span_uuid"
@@ -185,6 +188,11 @@ simple() {
 simple2() {
     (cd "${THIS_DIR}/test/datalog_tests" && DDLOGFLAGS="-g --nested-ts-32" ./run-test.sh simple2 release)
 }
+
+simple3() {
+    (cd "${THIS_DIR}/test/datalog_tests" && ./run-test.sh simple3 release)
+}
+
 
 negative() {
     (cd "${THIS_DIR}" && stack --no-terminal test --ta "-p fail")
@@ -325,7 +333,10 @@ souffle_tests7() {
 
 # 'd3log' test group.
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> d83d5f260138e1b3cdb9c41bda53452b6b8dc3d8
 
 # 'stack' test group.
 

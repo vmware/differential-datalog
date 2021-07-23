@@ -1,5 +1,5 @@
 name:                differential-datalog
-version:             0.41.0
+version:             0.42.1
 github:              "vmware/differential-datalog"
 license:             MIT
 author:              "Leonid Ryzhyk"

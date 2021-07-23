@@ -1,6 +1,0 @@
-input relation P1Out[string]
-input relation P2Out[string]
-
-output relation P3Out[string]
-
-P3Out[s1 ++ s2] :- P1Out[s1], P2Out[s2].

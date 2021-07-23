@@ -7,6 +7,10 @@ use crate::{
 use differential_dataflow::Config as DDFlowConfig;
 use std::{
     env,
+    fmt::{Debug, Error as FmtError, Formatter},
+    io::Write,
+    net::SocketAddr,
+    num::NonZeroUsize,
     sync::{atomic::AtomicBool, Mutex},
     thread::{self, JoinHandle},
 };
@@ -14,19 +18,19 @@ use timely::Config as TimelyConfig;
 use triomphe::Arc;
 
 /// The configuration for a DDlog program
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Debug)]
 pub struct Config {
-    /// The number of timely
+    /// The number of timely worker threads
     pub num_timely_workers: usize,
     /// Whether extra regions should be added to the dataflow
     ///
     /// These extra regions *significantly* help with the readability
     /// of the generated dataflows at the cost of a minor performance
-    /// penalty. Best used with [`ProfilingKind::TimelyProfiling`]
+    /// penalty. Best used with [`ProfilingConfig::TimelyProfiling`]
     /// in order to visualize the dataflow graph
     pub enable_debug_regions: bool,
     /// The kind of profiling to enable
-    pub profiling_kind: ProfilingKind,
+    pub profiling_config: ProfilingConfig,
     /// An amount of arrangement effort to spend each scheduling quantum
     ///
     /// See [`differential_dataflow::Config`]
@@ -39,8 +43,22 @@ impl Config {
         Self {
             num_timely_workers: 1,
             enable_debug_regions: false,
-            profiling_kind: ProfilingKind::default(),
+            profiling_config: ProfilingConfig::default(),
             differential_idle_merge_effort: None,
+        }
+    }
+
+    pub fn with_timely_workers(self, workers: usize) -> Self {
+        Self {
+            num_timely_workers: NonZeroUsize::new(workers).map_or(1, NonZeroUsize::get),
+            ..self
+        }
+    }
+
+    pub fn with_profiling_config(self, profiling_config: ProfilingConfig) -> Self {
+        Self {
+            profiling_config,
+            ..self
         }
     }
 
@@ -80,43 +98,78 @@ impl Default for Config {
     }
 }
 
+/// Location to send a timely or differential log stream.
+#[derive(Clone)]
+pub enum LoggingDestination {
+    /// Log to a directory in the file system.
+    Disk { directory: String },
+    /// Send log stream to socket.
+    Socket { sockaddr: SocketAddr },
+    /// Log to a user-supplied writer.
+    Writer {
+        factory: Arc<dyn (Fn() -> Box<dyn Write>) + Send + Sync>,
+    },
+}
+
+impl Debug for LoggingDestination {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), FmtError> {
+        match self {
+            LoggingDestination::Disk { directory } => f
+                .debug_struct("LoggingDestination::Disk")
+                .field("directory", &directory)
+                .finish(),
+            LoggingDestination::Socket { sockaddr } => f
+                .debug_struct("LoggingDestination::Socket")
+                .field("sockaddr", &sockaddr)
+                .finish(),
+            LoggingDestination::Writer { .. } => {
+                f.debug_struct("LoggingDestination::Writer").finish()
+            }
+        }
+    }
+}
+
 /// The kind of profiling to be enabled for DDlog
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ProfilingKind {
-    /// Disable all profiling
+#[derive(Clone, Debug)]
+pub enum ProfilingConfig {
+    /// Disable all profiling.
     None,
-    /// Enable self-profiling
+    /// Enable self-profiling.
     ///
     /// Note: This spawns an additional thread and can have a
     /// performance impact on the target program and also disables
     /// general-purpose Timely Dataflow and Differential Dataflow
-    /// profiling
+    /// profiling.
     SelfProfiling,
-    /// Enable profiling for Timely Dataflow
+    /// Enable profiling for Timely Dataflow.
     TimelyProfiling {
-        /// Enable profiling for Differential Dataflow as well as Timely
-        differential_dataflow: bool,
+        /// Destination for the timely log stream.
+        timely_destination: LoggingDestination,
+        /// Enable timely progress logging.
+        timely_progress_destination: Option<LoggingDestination>,
+        /// Enable profiling for Differential Dataflow as well as Timely.
+        differential_destination: Option<LoggingDestination>,
     },
 }
 
-impl ProfilingKind {
-    /// Returns `true` if the profiling_kind is [`None`]
+impl ProfilingConfig {
+    /// Returns `true` if the profiling_config is [`None`]
     pub const fn is_none(&self) -> bool {
         matches!(self, Self::None)
     }
 
-    /// Returns `true` if the profiling_kind is [`SelfProfiling`]
+    /// Returns `true` if the profiling_config is [`SelfProfiling`]
     pub const fn is_self_profiling(&self) -> bool {
         matches!(self, Self::SelfProfiling)
     }
 
-    /// Returns `true` if the profiling_kind is [`TimelyProfiling`]
+    /// Returns `true` if the profiling_config is [`TimelyProfiling`]
     pub const fn is_timely_profiling(&self) -> bool {
         matches!(self, Self::TimelyProfiling { .. })
     }
 }
 
-impl Default for ProfilingKind {
+impl Default for ProfilingConfig {
     fn default() -> Self {
         Self::None
     }
@@ -136,7 +189,7 @@ impl SelfProfilingRig {
     ///
     /// Note: Spawns a worker thread to process profiling messages
     pub(super) fn new(config: &Config) -> Self {
-        if config.profiling_kind.is_self_profiling() {
+        if config.profiling_config.is_self_profiling() {
             let (profile_send, profile_recv) = crossbeam_channel::bounded(PROF_MSG_BUF_SIZE);
 
             // Profiling data structure

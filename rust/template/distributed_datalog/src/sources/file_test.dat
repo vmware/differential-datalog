@@ -1,9 +1,0 @@
-start;
-insert Word("test1"),
-insert Word("test2"),
-insert Word("test3");
-commit;
-start;
-insert Word("test4");
-insert Word("test5");
-commit;

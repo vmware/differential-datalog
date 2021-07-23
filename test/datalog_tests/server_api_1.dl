@@ -1,4 +1,0 @@
-input relation P1In[string]
-output relation P1Out[string]
-
-P1Out[s] :- P1In[s].

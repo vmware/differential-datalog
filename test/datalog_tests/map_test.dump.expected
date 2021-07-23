@@ -10,3 +10,7 @@ map_test::MapTransforms{.description = "retain(!=1)", .v = [((0, "0"), map_test:
 map_test::MapTransforms{.description = "retain_with_key(!=1)", .v = [((0, "0"), map_test::Foo{.x = 0}), ((2, "2"), map_test::Foo{.x = 2})]}
 map_test::MapFolds{.description = "concatenate key-value pairs", .a = " 0:0 1:1 2:2"}
 map_test::MapFolds{.description = "concatenate values", .a = " 0 1 2"}
+map_test::MapFind{.x = ddlog_std::None{}}
+map_test::MapFind{.x = ddlog_std::Some{.x = map_test::Foo{.x = 1}}}
+map_test::MapAny{.condition = "1", .found = true}
+map_test::MapAny{.condition = "100", .found = false}

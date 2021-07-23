@@ -113,13 +113,96 @@ typedef struct {
     ssize_t weight;
 } ddlog_record_update;
 
+/* DDlog profiling modes. */
+typedef enum {
+    // Profiling disabled.
+    ddlog_disable_profiling = 0,
+    // Enable DDlog self-profiler.
+    ddlog_self_profiling    = 1,
+    // Send profiling events to an external profiler.
+    ddlog_timely_profiling  = 2
+} ddlog_profiling_mode; 
+
+/* Timely/differential logging mode. */
+typedef enum {
+    // Disable log stream.
+    ddlog_log_disabled  = 0,
+    // Send profiling events to socket.
+    ddlog_log_to_socket = 1,
+    // Write profiling events to disk.
+    ddlog_log_to_disk   = 2
+} ddlog_log_mode;
+
+/* Location to send a timely or differential profiling event stream. */
+typedef struct {
+    // Logging mode.
+    ddlog_log_mode mode;
+    // NULL, if mode == ddlog_log_disabled,
+    // Socket address, e.g., "127.0.0.1:51317", if mode == ddlog_log_to_socket,
+    // Directory path, e.g., "./timely_trace", if mode == ddlog_log_to_disk.
+    const char *address_str;
+} ddlog_log_destination;
+
+/* Profiling configuration. */
+typedef struct {
+    ddlog_profiling_mode mode;
+
+    /* The following fields are only used if (mode == ddlog_timely_profiling) */
+
+    // Destination for the timely log stream.
+    ddlog_log_destination timely_destination;
+    // Destination for timely progress logging.
+    ddlog_log_destination timely_progress_destination;
+    // Differential for Differential Dataflow events.
+    ddlog_log_destination differential_destination;
+} ddlog_profiling_config;
+
+/* The configuration for a DDlog program. */
+typedef struct {
+    // The number of timely worker threads.
+    // If set to 0, the default number of threads is created (currently, 1).
+    unsigned int num_timely_workers;
+    // Whether extra regions should be added to the dataflow
+    //
+    // These extra regions *significantly* help with the readability
+    // of the generated dataflows at the cost of a minor performance
+    // penalty.
+    bool enable_debug_regions;
+    // Profiling configuration.
+    ddlog_profiling_config profiling_config;
+    // An amount of arrangement effort to spend each scheduling quantum
+    //
+    // See [`differential_dataflow::Config`]
+    ssize_t differential_idle_merge_effort;
+} ddlog_config;
+
+/*
+ * Default DDlog configuration.
+ */
+extern ddlog_config ddlog_default_config(void);
+
 /*
  * Create an instance of DDlog program.
  *
- * `workers` is the number of DDlog worker threads that will be
- * allocated to run the program.  While any positive integer value is
- * valid, values larger than the number of cores in the system are
- * likely to hurt the performance.
+ * This function is a shortcut for:
+ *
+ * ```
+ * ddlog_config config = ddlog_default_config();
+ * config.num_timely_workers = workers;
+ * ddlog_run_with_config(&config, do_store, print_err_msg, init_state);
+ * ```
+ */
+extern ddlog_prog ddlog_run(
+        unsigned int workers,
+        bool do_store,
+        void (*print_err_msg)(const char *msg),
+        ddlog_delta **init_state);
+
+/*
+ * Create an instance of DDlog program.
+ *
+ * `config` - DDlog engine configuration for the program.  Passing `NULL` in this
+ * argument enables default configuration.
  *
  * `do_store` - set to true to store the copy of output tables inside DDlog.
  * When set, the client can use the following APIs to retrieve the contents of
@@ -146,8 +229,8 @@ typedef struct {
  * `ddlog_transaction_start()`,
  * `ddlog_transaction_commit()`, etc., or NULL in case of error.
  */
-extern ddlog_prog ddlog_run(
-        unsigned int workers,
+extern ddlog_prog ddlog_run_with_config(
+        const ddlog_config *config,
         bool do_store,
         void (*print_err_msg)(const char *msg),
         ddlog_delta **init_state);
@@ -158,7 +241,7 @@ extern ddlog_prog ddlog_run(
  *
  * NOTE: for tables declared outside of the main DDlog module, fully qualified
  * module names must be used, e.g., the fully qualified name of a table named
- * "Pod" declared inside the "k8spolicy" module is "k8spolicy.Pod".
+ * "Pod" declared inside the "k8spolicy" module is "k8spolicy::Pod".
  *
  * On error, returns -1.
  */

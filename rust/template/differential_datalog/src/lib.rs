@@ -4,9 +4,11 @@
     clippy::type_complexity
 )]
 
+pub mod api;
 mod callback;
 mod dataflow;
 mod ddlog;
+pub mod flatbuf;
 mod profile;
 mod profile_statistics;
 mod render;
@@ -25,9 +27,9 @@ pub mod record;
 mod test_record;
 
 pub use callback::Callback;
-pub use ddlog::DDlogConvert;
 pub use ddlog::{
-    D3log, D3logLocationId, DDlog, DDlogDump, DDlogDynamic, DDlogInventory, DDlogProfiling,
+    D3log, D3logLocalizer, D3logLocationId, DDlog, DDlogDump, DDlogDynamic, DDlogInventory,
+    DDlogProfiling,
 };
 pub use replay::CommandRecorder;
 pub use triomphe;

@@ -19,13 +19,13 @@ mod update;
 mod worker;
 
 pub use arrange::diff_distinct;
+pub use config::{Config, ProfilingConfig};
 pub use timestamp::{TSNested, TupleTS, TS};
 pub use update::Update;
 
 use crate::{
     ddval::*,
     profile::*,
-    program::config::ProfilingKind,
     record::Mutator,
     render::{
         arrange_by::{ArrangeBy, ArrangementKind},
@@ -35,7 +35,7 @@ use crate::{
 use arrange::{
     antijoin_arranged, Arrangement as DataflowArrangement, ArrangementFlavor, Arrangements,
 };
-use config::{Config, SelfProfilingRig};
+use config::SelfProfilingRig;
 use crossbeam_channel::{Receiver, Sender};
 use fnv::{FnvHashMap, FnvHashSet};
 use std::{
@@ -993,19 +993,8 @@ enum Reply {
 }
 
 impl Program {
-    /// Instantiate the program with `number_workers` timely threads.
-    pub fn run(&self, number_workers: usize) -> Result<RunningProgram, String> {
-        let config = Config {
-            num_timely_workers: number_workers,
-            profiling_kind: ProfilingKind::SelfProfiling,
-            ..Default::default()
-        };
-
-        self.run_with_config(config)
-    }
-
     /// Initialize the program with the given configuration
-    pub fn run_with_config(&self, config: Config) -> Result<RunningProgram, String> {
+    pub fn run(&self, config: Config) -> Result<RunningProgram, String> {
         // Setup channels to communicate with the dataflow.
         // We use async channels to avoid deadlocks when workers are parked in
         // `step_or_park`.  This has the downside of introducing an unbounded buffer
@@ -1026,17 +1015,31 @@ impl Program {
         // Clone the program so that it can be moved into the timely computation
         let program = Arc::new(self.clone());
         let timely_config = config.timely_config()?;
-        let (worker_config, profiling_data) = (config, profiling_rig.profiling_data.clone());
+        let worker_config = config.clone();
+        let profiling_data = profiling_rig.profiling_data.clone();
+
+        let (builders, others) = timely_config
+            .communication
+            .try_build()
+            .map_err(|err| format!("failed to build timely communication config: {}", err))?;
 
         // Start up timely computation.
-        let worker_guards = timely::execute(
-            timely_config,
+        // Note: We use `execute_from()` instead of `timely::execute()` because
+        //       `execute()` automatically sets log hooks that connect to
+        //       `TIMELY_WORKER_LOG_ADDR`, meaning that no matter what we do
+        //       our dataflow will always attempt to connect to that address
+        //       if it's present in the env, causing things like ddshow/#7.
+        //       See https://github.com/Kixiron/ddshow/issues/7
+        let worker_guards = timely::execute::execute_from(
+            builders,
+            others,
+            timely_config.worker,
             move |worker: &mut Worker<Allocator>| -> Result<_, String> {
                 let logger = worker.log_register().get("timely");
 
                 let worker = DDlogWorker::new(
                     worker,
-                    worker_config,
+                    worker_config.clone(),
                     program.clone(),
                     profiling_data.clone(),
                     Arc::clone(&request_recv),
@@ -1044,7 +1047,10 @@ impl Program {
                     logger,
                 );
 
-                worker.run()
+                worker.run().map_err(|e| {
+                    eprintln!("Worker thread failed: {}", e);
+                    e
+                })
             },
         )
         .map_err(|err| format!("Failed to start timely computation: {:?}", err))?;

@@ -21,9 +21,9 @@ pub fn from_record_inner(input: DeriveInput) -> Result<TokenStream> {
     let generics = add_trait_bounds(
         input.generics,
         vec![
-            parse_quote!(differential_datalog::record::FromRecord),
-            parse_quote!(Sized),
-            parse_quote!(std::default::Default),
+            parse_quote!(::differential_datalog::record::FromRecord),
+            parse_quote!(::core::marker::Sized),
+            parse_quote!(::core::default::Default),
             parse_quote!(serde::de::DeserializeOwned),
         ],
     );
@@ -78,7 +78,7 @@ fn from_record_struct(
 
             // Call `FromRecord::from_record()` directly on each field
             quote! {
-                #field_ident: <#field_type as differential_datalog::record::FromRecord>::from_record(&args[#idx])?,
+                #field_ident: <#field_type as ::differential_datalog::record::FromRecord>::from_record(&args[#idx])?,
             }
         })
         .collect();
@@ -104,7 +104,7 @@ fn from_record_struct(
 
             // Call `FromRecord::from_record()` directly on each field
             Ok(quote! {
-                #field_ident: differential_datalog::record::arg_extract::<#field_type>(args, #field_record_name)?,
+                #field_ident: ::differential_datalog::record::arg_extract::<#field_type>(args, #field_record_name)?,
             })
         })
         .collect::<Result<TokenStream>>()?;
@@ -114,14 +114,14 @@ fn from_record_struct(
         impl #impl_generics differential_datalog::record::FromRecord for #struct_ident #type_generics #where_clause {
             fn from_record(record: &differential_datalog::record::Record) -> std::result::Result<Self, std::string::String> {
                 match record {
-                    differential_datalog::record::Record::PosStruct(constructor, args) => {
+                    ::differential_datalog::record::Record::PosStruct(constructor, args) => {
                         match constructor.as_ref() {
                             #struct_record_name if args.len() == #num_fields => {
-                                std::result::Result::Ok(Self { #positional_fields })
+                                ::core::result::Result::Ok(Self { #positional_fields })
                             },
 
                             error => {
-                                std::result::Result::Err(std::format!(
+                                ::core::result::Result::Err(::std::format!(
                                     "unknown constructor {} of type '{}' in {:?}",
                                     error, #struct_record_name, *record,
                                 ))
@@ -132,11 +132,11 @@ fn from_record_struct(
                     differential_datalog::record::Record::NamedStruct(constructor, args) => {
                         match constructor.as_ref() {
                             #struct_record_name => {
-                                std::result::Result::Ok(Self { #named_fields })
+                                ::core::result::Result::Ok(Self { #named_fields })
                             },
 
                             error => {
-                                std::result::Result::Err(std::format!(
+                                ::core::result::Result::Err(::std::format!(
                                     "unknown constructor {} of type '{}' in {:?}",
                                     error, #struct_record_name, *record,
                                 ))
@@ -148,12 +148,12 @@ fn from_record_struct(
                         if format == "json" {
                             serde_json::from_str(serialized.as_str()).map_err(|error| format!("{}", error))
                         } else {
-                            std::result::Result::Err(std::format!("unsupported serialization format '{}'", format))
+                            ::core::result::Result::Err(::std::format!("unsupported serialization format '{}'", format))
                         }
                     },
 
                     error => {
-                        std::result::Result::Err(std::format!("not a struct {:?}", *error))
+                        ::core::result::Result::Err(::std::format!("not a struct {:?}", *error))
                     },
                 }
             }
@@ -202,7 +202,7 @@ fn from_record_enum(
 
                     // Call `FromRecord::from_record()` directly on each field
                     quote! {
-                        #field_ident: <#field_type as differential_datalog::record::FromRecord>::from_record(&args[#idx])?,
+                        #field_ident: <#field_type as ::differential_datalog::record::FromRecord>::from_record(&args[#idx])?,
                     }
                 })
                 .collect();
@@ -210,7 +210,7 @@ fn from_record_enum(
             // Generate the code for each match arm individually
             Ok(quote! {
                 #variant_record_name if args.len() == #num_fields => {
-                    std::result::Result::Ok(Self::#variant_ident { #positional_fields })
+                    ::core::result::Result::Ok(Self::#variant_ident { #positional_fields })
                 },
             })
         })
@@ -249,7 +249,7 @@ fn from_record_enum(
 
                     // Call `FromRecord::from_record()` directly on each field
                     Ok(quote! {
-                        #field_ident: differential_datalog::record::arg_extract::<#field_type>(args, #field_record_name)?,
+                        #field_ident: ::differential_datalog::record::arg_extract::<#field_type>(args, #field_record_name)?,
                     })
                 })
                 .collect::<Result<TokenStream>>()?;
@@ -257,7 +257,7 @@ fn from_record_enum(
             // Generate the code for each match arm individually
             Ok(quote! {
                 #variant_record_name if args.len() == #num_fields => {
-                    std::result::Result::Ok(Self::#variant_ident { #named_fields })
+                    ::core::result::Result::Ok(Self::#variant_ident { #named_fields })
                 },
             })
         })
@@ -265,15 +265,15 @@ fn from_record_enum(
 
     Ok(quote! {
         #[automatically_derived]
-        impl #impl_generics differential_datalog::record::FromRecord for #enum_ident #type_generics #where_clause {
-            fn from_record(record: &differential_datalog::record::Record) -> std::result::Result<Self, std::string::String> {
+        impl #impl_generics ::differential_datalog::record::FromRecord for #enum_ident #type_generics #where_clause {
+            fn from_record(record: &::differential_datalog::record::Record) -> ::core::result::Result<Self, ::std::string::String> {
                 match record {
-                    differential_datalog::record::Record::PosStruct(constructor, args) => {
+                    ::differential_datalog::record::Record::PosStruct(constructor, args) => {
                         match constructor.as_ref() {
                             #positional_variants
 
                             error => {
-                                std::result::Result::Err(std::format!(
+                                ::core::result::Result::Err(::std::format!(
                                     "unknown constructor {} of type '{}' in {:?}",
                                     error, #enum_record_name, *record,
                                 ))
@@ -281,12 +281,12 @@ fn from_record_enum(
                         }
                     },
 
-                    differential_datalog::record::Record::NamedStruct(constructor, args) => {
+                    ::differential_datalog::record::Record::NamedStruct(constructor, args) => {
                         match constructor.as_ref() {
                             #named_variants
 
                             error => {
-                                std::result::Result::Err(std::format!(
+                                ::core::result::Result::Err(::std::format!(
                                     "unknown constructor {} of type '{}' in {:?}",
                                     error, #enum_record_name, *record,
                                 ))
@@ -294,16 +294,16 @@ fn from_record_enum(
                         }
                     },
 
-                    differential_datalog::record::Record::Serialized(format, serialized) => {
+                    ::differential_datalog::record::Record::Serialized(format, serialized) => {
                         if format == "json" {
                             serde_json::from_str(serialized.as_str()).map_err(|error| format!("{}", error))
                         } else {
-                            std::result::Result::Err(std::format!("unsupported serialization format '{}'", format))
+                            ::core::result::Result::Err(::std::format!("unsupported serialization format '{}'", format))
                         }
                     },
 
                     error => {
-                        std::result::Result::Err(std::format!("not a struct {:?}", *error))
+                        ::core::result::Result::Err(::std::format!("not a struct {:?}", *error))
                     }
                 }
             }

@@ -6,7 +6,8 @@ CLASS = ddlogapi/DDlogAPI.class \
 		ddlogapi/DDlogCommand.class \
 		ddlogapi/DDlogRecord.class \
 		ddlogapi/DDlogRecCommand.class \
-		ddlogapi/DDlogException.class
+		ddlogapi/DDlogException.class \
+		ddlogapi/DDlogConfig.class
 
 HEADERS = ddlogapi_DDlogAPI.h ddlogapi_DDlogAPI_DDlogCommandVector.h
 

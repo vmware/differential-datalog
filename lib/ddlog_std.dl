@@ -321,6 +321,11 @@ function map_err(res: Result<'V, 'E1>, f: function('E1): 'E2): Result<'V, 'E2> {
  */
 extern function range_vec(from: 'A, to: 'A, step: 'A): Vec<'A>
 
+/* Convert any DDlog type into a string in a programmer-facing,
+ * debugging context.  Implemented by calling the `Debug::fmt()`
+ * method of the underlying Rust type. */
+extern function to_string_debug(x: 'T): string
+
 /*
  * String conversion
  */
@@ -664,6 +669,19 @@ function unzip(v: Vec<('X, 'Y)>): (Vec<'X>, Vec<'Y>) {
     (v1, v2)
 }
 
+/* Reverse vector in-place. */
+function reverse(v: mut Vec<'X>) {
+    vec_reverse(v)
+}
+
+/* Reverse `v`.  Return reversed vector, leaving the input vector unmodified. */
+function reverse_imm(v: Vec<'X>): Vec<'X> {
+    var res = v;
+    res.reverse();
+    res
+}
+
+
 /* Convert vector of tuple into a map.  Key-value pairs are added in the
  * order they occur in the input vector; hence the resulting map will
  * contain the last value associated with each key. */
@@ -750,6 +768,18 @@ function union(m1: Map<'K, 'V>, m2: Map<'K,'V>): Map<'K, 'V> {
 
 function keys(m: Map<'K, 'V>): Vec<'K> {
     map_keys(m)
+}
+
+function values(m: Map<'K, 'V>): Vec<'V> {
+    map_values(m)
+}
+
+function nth_key(m: Map<'K, 'V>, n: usize): Option<'K> {
+    map_nth_key(m, n)
+}
+
+function nth_value(m: Map<'K, 'V>, n: usize): Option<'V> {
+    map_nth_value(m, n)
 }
 
 /*
@@ -863,6 +893,7 @@ extern function vec_truncate(v: mut Vec<'X>, len: usize)
 extern function vec_swap_nth(v: mut Vec<'X>, idx: usize, value: mut 'X): bool
 extern function vec_update_nth(v: mut Vec<'X>, idx: usize, value: 'X): bool
 extern function vec_zip(v1: Vec<'X>, v2: Vec<'Y>): Vec<('X, 'Y)>
+extern function vec_reverse(v: mut Vec<'X>)
 
 extern function map_size(m: Map<'K, 'V>): usize
 extern function map_insert(m: mut Map<'K,'V>, k: 'K, v: 'V)
@@ -871,8 +902,11 @@ extern function map_insert_imm(m: Map<'K,'V>, k: 'K, v: 'V): Map<'K,'V>
 extern function map_get(m: Map<'K,'V>, k:'K): Option<'V>
 extern function map_contains_key(m: Map<'K,'V>, k: 'K): bool
 extern function map_is_empty(m: Map<'K,'V>): bool
+extern function map_nth_key(m: Map<'K, 'V>, n: usize): Option<'K>
+extern function map_nth_value(m: Map<'K, 'V>, n: usize): Option<'V>
 extern function map_union(m1: Map<'K, 'V>, m2: Map<'K,'V>): Map<'K, 'V>
 extern function map_keys(m: Map<'K, 'V>): Vec<'K>
+extern function map_values(m: Map<'K, 'V>): Vec<'V>
 
 extern function set_size(s: Set<'X>): usize
 extern function set_insert(s: mut Set<'X>, v: 'X)

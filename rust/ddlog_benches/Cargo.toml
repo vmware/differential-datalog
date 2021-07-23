@@ -17,8 +17,7 @@ package = "benchmarks"
 path = "generated/benchmarks_ddlog"
 default-features = false
 
-[dependencies.benchmarks_differential_datalog]
-package = "differential_datalog"
+[dependencies.differential_datalog]
 path = "generated/benchmarks_ddlog/differential_datalog"
 
 [dev-dependencies]

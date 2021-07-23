@@ -3,21 +3,27 @@
 mod arrays;
 mod tuples;
 
+use crate::{ddval::DDValue, program::Update, DDlogInventory};
 use num::{BigInt, BigUint, ToPrimitive};
 use ordered_float::OrderedFloat;
 use serde::{Deserialize, Serialize};
 use std::{
     borrow::Cow,
+    cell::{Cell, RefCell},
     collections::{btree_map, BTreeMap, BTreeSet},
     fmt::{self, Write},
     iter::FromIterator,
-    str, vec,
+    rc::Rc,
+    str,
+    sync::Arc as StdArc,
+    vec,
 };
 #[cfg(feature = "c_api")]
 use std::{
     ffi::{CStr, CString},
     ptr, slice,
 };
+use triomphe::Arc;
 
 pub type Name = Cow<'static, str>;
 
@@ -301,6 +307,67 @@ pub enum UpdCmd {
     Delete(RelIdentifier, Record),
     DeleteKey(RelIdentifier, Record),
     Modify(RelIdentifier, Record, Record),
+}
+
+impl UpdCmd {
+    pub fn to_update<I>(&self, inventory: &I) -> Result<Update<DDValue>, String>
+    where
+        I: DDlogInventory,
+    {
+        let update = match self {
+            Self::Insert(relation_ident, record) => {
+                let (relation_id, value) =
+                    inventory.relation_value_from_record(relation_ident, record)?;
+
+                Update::Insert {
+                    relid: relation_id,
+                    v: value,
+                }
+            }
+
+            Self::InsertOrUpdate(relation_ident, record) => {
+                let (relation_id, value) =
+                    inventory.relation_value_from_record(relation_ident, record)?;
+
+                Update::InsertOrUpdate {
+                    relid: relation_id,
+                    v: value,
+                }
+            }
+
+            Self::Delete(relation_ident, record) => {
+                let (relation_id, value) =
+                    inventory.relation_value_from_record(relation_ident, record)?;
+
+                Update::DeleteValue {
+                    relid: relation_id,
+                    v: value,
+                }
+            }
+
+            Self::DeleteKey(relation_ident, record) => {
+                let (relation_id, key) =
+                    inventory.relation_key_from_record(relation_ident, record)?;
+
+                Update::DeleteKey {
+                    relid: relation_id,
+                    k: key,
+                }
+            }
+
+            Self::Modify(relation_ident, key, record) => {
+                let (relation_id, key) = inventory.relation_key_from_record(relation_ident, key)?;
+
+                Update::Modify {
+                    relid: relation_id,
+                    k: key,
+                    m: StdArc::new(record.clone()),
+                }
+            }
+        };
+
+        Ok(update)
+    }
 }
 
 /*
@@ -731,7 +798,7 @@ impl Mutator<String> for Record {
 impl<T: FromRecord> FromRecord for vec::Vec<T> {
     fn from_record(val: &Record) -> Result<Self, String> {
         match val {
-            Record::Array(_, args) => Result::from_iter(args.iter().map(|x| T::from_record(x))),
+            Record::Array(_, args) => args.iter().map(T::from_record).collect(),
             v => {
                 T::from_record(v).map(|x| vec![x])
                 //Err(format!("not an array {:?}", *v))
@@ -822,6 +889,170 @@ impl<T: FromRecord + Ord> Mutator<BTreeSet<T>> for Record {
                 set.insert(v);
             }
         }
+        Ok(())
+    }
+}
+
+impl<T> FromRecord for Arc<T>
+where
+    T: FromRecord,
+{
+    fn from_record(val: &Record) -> Result<Self, String> {
+        T::from_record(val).map(Arc::new)
+    }
+}
+
+impl<T> FromRecord for StdArc<T>
+where
+    T: FromRecord,
+{
+    fn from_record(val: &Record) -> Result<Self, String> {
+        T::from_record(val).map(StdArc::new)
+    }
+}
+
+impl<T> FromRecord for Rc<T>
+where
+    T: FromRecord,
+{
+    fn from_record(val: &Record) -> Result<Self, String> {
+        T::from_record(val).map(Rc::new)
+    }
+}
+
+impl<T> FromRecord for Cell<T>
+where
+    T: FromRecord,
+{
+    fn from_record(val: &Record) -> Result<Self, String> {
+        T::from_record(val).map(Cell::new)
+    }
+}
+
+impl<T> FromRecord for RefCell<T>
+where
+    T: FromRecord,
+{
+    fn from_record(val: &Record) -> Result<Self, String> {
+        T::from_record(val).map(RefCell::new)
+    }
+}
+
+impl<T> IntoRecord for Arc<T>
+where
+    T: IntoRecord + Clone,
+{
+    fn into_record(self) -> Record {
+        Arc::try_unwrap(self)
+            .unwrap_or_else(|this| T::clone(&*this))
+            .into_record()
+    }
+}
+
+impl<T> IntoRecord for StdArc<T>
+where
+    T: IntoRecord + Clone,
+{
+    fn into_record(self) -> Record {
+        StdArc::try_unwrap(self)
+            .unwrap_or_else(|this| T::clone(&*this))
+            .into_record()
+    }
+}
+
+impl<T> IntoRecord for Rc<T>
+where
+    T: IntoRecord + Clone,
+{
+    fn into_record(self) -> Record {
+        Rc::try_unwrap(self)
+            .unwrap_or_else(|this| T::clone(&*this))
+            .into_record()
+    }
+}
+
+impl<T> IntoRecord for Cell<T>
+where
+    T: IntoRecord,
+{
+    fn into_record(self) -> Record {
+        Cell::into_inner(self).into_record()
+    }
+}
+
+impl<T> IntoRecord for RefCell<T>
+where
+    T: IntoRecord,
+{
+    fn into_record(self) -> Record {
+        RefCell::into_inner(self).into_record()
+    }
+}
+
+impl<T> Mutator<Arc<T>> for Record
+where
+    T: Clone,
+    Record: Mutator<T>,
+{
+    fn mutate(&self, this: &mut Arc<T>) -> Result<(), String> {
+        let mut value = Arc::try_unwrap(this.clone()).unwrap_or_else(|this| T::clone(&*this));
+        self.mutate(&mut value)?;
+        *this = Arc::new(value);
+
+        Ok(())
+    }
+}
+
+impl<T> Mutator<StdArc<T>> for Record
+where
+    T: Clone,
+    Record: Mutator<T>,
+{
+    fn mutate(&self, this: &mut StdArc<T>) -> Result<(), String> {
+        let mut value = StdArc::try_unwrap(this.clone()).unwrap_or_else(|this| T::clone(&*this));
+        self.mutate(&mut value)?;
+        *this = StdArc::new(value);
+
+        Ok(())
+    }
+}
+
+impl<T> Mutator<Rc<T>> for Record
+where
+    T: Clone,
+    Record: Mutator<T>,
+{
+    fn mutate(&self, this: &mut Rc<T>) -> Result<(), String> {
+        let mut value = Rc::try_unwrap(this.clone()).unwrap_or_else(|this| T::clone(&*this));
+        self.mutate(&mut value)?;
+        *this = Rc::new(value);
+
+        Ok(())
+    }
+}
+
+impl<T> Mutator<Cell<T>> for Record
+where
+    T: Copy,
+    Record: Mutator<T>,
+{
+    fn mutate(&self, cell: &mut Cell<T>) -> Result<(), String> {
+        let mut value = cell.get();
+        self.mutate(&mut value)?;
+        cell.set(value);
+
+        Ok(())
+    }
+}
+
+impl<T> Mutator<RefCell<T>> for Record
+where
+    Record: Mutator<T>,
+{
+    fn mutate(&self, cell: &mut RefCell<T>) -> Result<(), String> {
+        let mut value = cell.borrow_mut();
+        self.mutate(&mut value)?;
+
         Ok(())
     }
 }

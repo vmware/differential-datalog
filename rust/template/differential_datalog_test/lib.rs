@@ -11,6 +11,7 @@ use std::collections::btree_map::{BTreeMap, Entry};
 use std::collections::btree_set::BTreeSet;
 use std::sync::{Arc, Mutex};
 
+use differential_datalog::program::config::Config;
 use fnv::FnvHashMap;
 use timely::communication::Allocator;
 use timely::dataflow::scopes::*;
@@ -95,7 +96,7 @@ fn test_multiple_stops() {
         init_data: Vec::new(),
     };
 
-    let mut running = prog.run(2).unwrap();
+    let mut running = prog.run(Config::default().with_timely_workers(2)).unwrap();
     running.stop().unwrap();
     running.stop().unwrap();
 }
@@ -110,7 +111,7 @@ fn test_insert_non_existent_relation() {
         init_data: vec![],
     };
 
-    let mut running = prog.run(3).unwrap();
+    let mut running = prog.run(Config::default().with_timely_workers(3)).unwrap();
     running.transaction_start().unwrap();
     let result = running.insert(1, U64(42).into_ddvalue());
     assert_eq!(
@@ -162,7 +163,9 @@ fn test_input_relation_nested() {
     };
 
     // This call is expected to panic.
-    let _err = prog.run(3).unwrap_err();
+    let _err = prog
+        .run(Config::default().with_timely_workers(3))
+        .unwrap_err();
 }
 
 /* Test insertion/deletion into a database with a single table and no rules
@@ -190,7 +193,9 @@ fn test_one_relation(nthreads: usize) {
         init_data: vec![],
     };
 
-    let mut running = prog.run(nthreads).unwrap();
+    let mut running = prog
+        .run(Config::default().with_timely_workers(nthreads))
+        .unwrap();
 
     /* 1. Insertion */
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
@@ -309,7 +314,9 @@ fn test_two_relations(nthreads: usize) {
         init_data: vec![],
     };
 
-    let mut running = prog.run(nthreads).unwrap();
+    let mut running = prog
+        .run(Config::default().with_timely_workers(nthreads))
+        .unwrap();
 
     /* 1. Populate T1 */
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
@@ -457,7 +464,9 @@ fn test_semijoin(nthreads: usize) {
         init_data: vec![],
     };
 
-    let mut running = prog.run(nthreads).unwrap();
+    let mut running = prog
+        .run(Config::default().with_timely_workers(nthreads))
+        .unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
     let set: BTreeMap<_, _> = vals
@@ -618,7 +627,9 @@ fn test_join(nthreads: usize) {
         init_data: vec![],
     };
 
-    let mut running = prog.run(nthreads).unwrap();
+    let mut running = prog
+        .run(Config::default().with_timely_workers(nthreads))
+        .unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
     let set: BTreeMap<_, _> = vals
@@ -889,7 +900,9 @@ fn test_streamjoin(nthreads: usize) {
         init_data: vec![],
     };
 
-    let mut running = prog.run(nthreads).unwrap();
+    let mut running = prog
+        .run(Config::default().with_timely_workers(nthreads))
+        .unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
     let set: BTreeMap<_, _> = vals
@@ -1034,7 +1047,9 @@ fn test_antijoin(nthreads: usize) {
         init_data: vec![],
     };
 
-    let mut running = prog.run(nthreads).unwrap();
+    let mut running = prog
+        .run(Config::default().with_timely_workers(nthreads))
+        .unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
     let set: BTreeMap<_, _> = vals
@@ -1246,7 +1261,9 @@ fn test_map(nthreads: usize) {
         init_data: vec![],
     };
 
-    let mut running = prog.run(nthreads).unwrap();
+    let mut running = prog
+        .run(Config::default().with_timely_workers(nthreads))
+        .unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
     let set: BTreeMap<_, _> = vals.iter().map(|x| (U64(*x), 1)).collect();
@@ -1432,7 +1449,9 @@ fn test_delayed(nthreads: usize) {
         init_data: vec![],
     };
 
-    let mut running = prog.run(nthreads).unwrap();
+    let mut running = prog
+        .run(Config::default().with_timely_workers(nthreads))
+        .unwrap();
 
     for i in 0..TEST_SIZE {
         println!("Round {}", i);
@@ -1663,7 +1682,9 @@ fn test_recursion(nthreads: usize) {
         init_data: vec![],
     };
 
-    let mut running = prog.run(nthreads).unwrap();
+    let mut running = prog
+        .run(Config::default().with_timely_workers(nthreads))
+        .unwrap();
 
     /* 1. Populate parent relation */
     /*

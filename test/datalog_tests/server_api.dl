@@ -1,6 +1,0 @@
-// A simple test for multiple DDlog programs communicating
-// with each other.
-
-import server_api_1 as p1
-import server_api_2 as p2
-import server_api_3 as p3

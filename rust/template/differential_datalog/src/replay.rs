@@ -387,10 +387,16 @@ where
 
 #[cfg(test)]
 mod tests {
+    use fnv::FnvHashMap;
+
+    use crate::program::ArrId;
+
     use super::*;
+    use std::any::TypeId;
     #[cfg(feature = "c_api")]
     use std::ffi::CStr;
 
+    #[derive(Clone)]
     struct DummyInventory;
 
     impl DDlogInventory for DummyInventory {
@@ -415,12 +421,54 @@ mod tests {
         }
 
         #[cfg(feature = "c_api")]
+        fn get_table_original_cname(&self, _tname: &str) -> Result<&'static CStr, String> {
+            unimplemented!()
+        }
+
+        #[cfg(feature = "c_api")]
         fn get_table_cname(&self, _tid: RelId) -> Result<&'static CStr, String> {
             unimplemented!()
         }
 
         #[cfg(feature = "c_api")]
         fn get_index_cname(&self, _iid: IdxId) -> Result<&'static CStr, String> {
+            unimplemented!()
+        }
+
+        #[cfg(feature = "c_api")]
+        fn get_table_original_cname(&self, _tname: &str) -> Result<&'static CStr, String> {
+            unimplemented!()
+        }
+
+        fn input_relation_ids(&self) -> &'static FnvHashMap<RelId, &'static str> {
+            unimplemented!()
+        }
+
+        fn index_from_record(&self, _index: IdxId, _key: &Record) -> Result<DDValue, String> {
+            unimplemented!()
+        }
+
+        fn relation_type_id(&self, _relation: RelId) -> Option<TypeId> {
+            unimplemented!()
+        }
+
+        fn relation_value_from_record(
+            &self,
+            _relation: &RelIdentifier,
+            _value: &Record,
+        ) -> Result<(RelId, DDValue), String> {
+            unimplemented!()
+        }
+
+        fn relation_key_from_record(
+            &self,
+            _relation: &RelIdentifier,
+            _key: &Record,
+        ) -> Result<(RelId, DDValue), String> {
+            unimplemented!()
+        }
+
+        fn index_to_arrangement_id(&self, _index: IdxId) -> Option<ArrId> {
             unimplemented!()
         }
     }
