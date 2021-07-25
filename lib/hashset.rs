@@ -294,8 +294,8 @@ impl<T: Hash + Eq + Clone> HashSet<T> {
 //     }
 // }
 
-impl<T: FromRecord + Hash + Eq + Clone + Ord> FromRecord for HashSet<T> {
-    fn from_record(val: &Record) -> StdResult<Self, String> {
+impl<T: FromRecord + Hash + Eq + Clone + Ord> FromRecordInner for HashSet<T> {
+    fn from_record_inner(val: &Record) -> StdResult<Self, String> {
         match val {
             Record::Array(_, args) => StdResult::from_iter(args.iter().map(T::from_record)),
             v => T::from_record(v).map(Self::unit),
@@ -314,8 +314,10 @@ impl<T: IntoRecord + Hash + Eq + Clone + Ord> IntoRecord for HashSet<T> {
 
 // Set update semantics: update contains values that are in one of the sets
 // but not the other.
-impl<T: FromRecord + Hash + Eq + Clone + Ord> Mutator<HashSet<T>> for Record {
-    fn mutate(&self, set: &mut HashSet<T>) -> StdResult<(), String> {
+impl<T: FromRecord + ::serde::de::DeserializeOwned + Hash + Eq + Clone + Ord>
+    MutatorInner<HashSet<T>> for Record
+{
+    fn mutate_inner(&self, set: &mut HashSet<T>) -> StdResult<(), String> {
         let upd = <HashSet<T>>::from_record(self)?;
         *set = HashSet::from(set.set.clone().symmetric_difference(upd.set));
         Ok(())

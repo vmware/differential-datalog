@@ -2,3 +2,29 @@ dump map_test::MapTransforms;
 dump map_test::MapFolds;
 dump map_test::MapFind;
 dump map_test::MapAny;
+
+start;
+
+insert map_test::NestedMap(1, [
+    (1, [("1", "a"), ("2", "b")]),
+    (2, [("3", "c"), ("4", "d")])
+]);
+
+commit dump_changes;
+
+start;
+
+modify map_test::NestedMap 1 <- map_test::NestedMap{1, [
+    (0, [("0", "0")]), 
+    (1, [("1", "b"), ("2", ()), ("30", "30")])
+]};
+
+commit dump_changes;
+
+start;
+
+modify map_test::NestedMap 1 <- map_test::NestedMap{1, [
+    (1, @json"{ \"a\": \"b\", \"c\": \"d\" }")
+]};
+
+commit dump_changes;

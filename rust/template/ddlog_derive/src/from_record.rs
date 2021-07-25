@@ -111,8 +111,8 @@ fn from_record_struct(
 
     Ok(quote! {
         #[automatically_derived]
-        impl #impl_generics differential_datalog::record::FromRecord for #struct_ident #type_generics #where_clause {
-            fn from_record(record: &differential_datalog::record::Record) -> std::result::Result<Self, std::string::String> {
+        impl #impl_generics differential_datalog::record::FromRecordInner for #struct_ident #type_generics #where_clause {
+            fn from_record_inner(record: &differential_datalog::record::Record) -> std::result::Result<Self, std::string::String> {
                 match record {
                     ::differential_datalog::record::Record::PosStruct(constructor, args) => {
                         match constructor.as_ref() {
@@ -141,14 +141,6 @@ fn from_record_struct(
                                     error, #struct_record_name, *record,
                                 ))
                             }
-                        }
-                    },
-
-                    differential_datalog::record::Record::Serialized(format, serialized) => {
-                        if format == "json" {
-                            serde_json::from_str(serialized.as_str()).map_err(|error| format!("{}", error))
-                        } else {
-                            ::core::result::Result::Err(::std::format!("unsupported serialization format '{}'", format))
                         }
                     },
 
@@ -265,8 +257,8 @@ fn from_record_enum(
 
     Ok(quote! {
         #[automatically_derived]
-        impl #impl_generics ::differential_datalog::record::FromRecord for #enum_ident #type_generics #where_clause {
-            fn from_record(record: &::differential_datalog::record::Record) -> ::core::result::Result<Self, ::std::string::String> {
+        impl #impl_generics ::differential_datalog::record::FromRecordInner for #enum_ident #type_generics #where_clause {
+            fn from_record_inner(record: &::differential_datalog::record::Record) -> ::core::result::Result<Self, ::std::string::String> {
                 match record {
                     ::differential_datalog::record::Record::PosStruct(constructor, args) => {
                         match constructor.as_ref() {
@@ -291,14 +283,6 @@ fn from_record_enum(
                                     error, #enum_record_name, *record,
                                 ))
                             }
-                        }
-                    },
-
-                    ::differential_datalog::record::Record::Serialized(format, serialized) => {
-                        if format == "json" {
-                            serde_json::from_str(serialized.as_str()).map_err(|error| format!("{}", error))
-                        } else {
-                            ::core::result::Result::Err(::std::format!("unsupported serialization format '{}'", format))
                         }
                     },
 

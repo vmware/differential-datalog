@@ -119,8 +119,8 @@ impl IntoRecord for Regex {
     }
 }
 
-impl FromRecord for Regex {
-    fn from_record(record: &Record) -> Result<Self, String> {
+impl FromRecordInner for Regex {
+    fn from_record_inner(record: &Record) -> Result<Self, String> {
         match record {
             Record::String(regex) => Self::new(regex).map_err(|err| err.to_string()),
             error => Err(format!("not a valid regex: {:?}", error)),
@@ -128,8 +128,8 @@ impl FromRecord for Regex {
     }
 }
 
-impl Mutator<Regex> for Record {
-    fn mutate(&self, regex: &mut Regex) -> Result<(), String> {
+impl MutatorInner<Regex> for Record {
+    fn mutate_inner(&self, regex: &mut Regex) -> Result<(), String> {
         *regex = Regex::from_record(self)?;
         Ok(())
     }
@@ -257,8 +257,8 @@ impl IntoRecord for RegexSet {
     }
 }
 
-impl FromRecord for RegexSet {
-    fn from_record(record: &Record) -> Result<Self, String> {
+impl FromRecordInner for RegexSet {
+    fn from_record_inner(record: &Record) -> Result<Self, String> {
         match record {
             Record::Array(CollectionKind::Vector, patterns) => Self::new(
                 patterns
@@ -273,8 +273,8 @@ impl FromRecord for RegexSet {
     }
 }
 
-impl Mutator<RegexSet> for Record {
-    fn mutate(&self, regex: &mut RegexSet) -> Result<(), String> {
+impl MutatorInner<RegexSet> for Record {
+    fn mutate_inner(&self, regex: &mut RegexSet) -> Result<(), String> {
         *regex = RegexSet::from_record(self)?;
         Ok(())
     }

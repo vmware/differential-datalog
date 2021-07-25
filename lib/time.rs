@@ -143,8 +143,8 @@ pub fn string2time(s: &String) -> ddlog_std::Result<Time, String> {
     time_parse(s, &default_time_format.to_string())
 }
 
-impl FromRecord for Time {
-    fn from_record(val: &record::Record) -> ::std::result::Result<Self, String> {
+impl FromRecordInner for Time {
+    fn from_record_inner(val: &record::Record) -> ::std::result::Result<Self, String> {
         match (val) {
             record::Record::String(s) => {
                 match (::chrono::NaiveTime::parse_from_str(s, &default_time_format.to_string())) {
@@ -300,8 +300,8 @@ pub fn julian_day(date: &Date) -> i64 {
 
 const default_date_format: &str = "%Y-%m-%d";
 
-impl FromRecord for Date {
-    fn from_record(val: &record::Record) -> ::std::result::Result<Self, String> {
+impl FromRecordInner for Date {
+    fn from_record_inner(val: &record::Record) -> ::std::result::Result<Self, String> {
         match (val) {
             record::Record::String(s) => {
                 match (::chrono::NaiveDate::parse_from_str(s, default_date_format)) {
@@ -482,8 +482,8 @@ pub fn tz_datetime_parse_from_rfc2822(s: &String) -> ddlog_std::Result<TzDateTim
     }
 }
 
-impl FromRecord for TzDateTime {
-    fn from_record(val: &record::Record) -> ::std::result::Result<Self, String> {
+impl FromRecordInner for TzDateTime {
+    fn from_record_inner(val: &record::Record) -> ::std::result::Result<Self, String> {
         match (val) {
             record::Record::String(s) => match (::chrono::DateTime::parse_from_rfc3339(s)) {
                 Ok(dt) => Ok(TzDateTime { val: dt }),

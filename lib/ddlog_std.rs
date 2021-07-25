@@ -253,11 +253,11 @@ impl<T> From<Option<T>> for StdOption<T> {
     }
 }
 
-impl<T> FromRecord for Option<T>
+impl<T> FromRecordInner for Option<T>
 where
     T: FromRecord + DeserializeOwned + Default,
 {
-    fn from_record(val: &Record) -> StdResult<Self, String> {
+    fn from_record_inner(val: &Record) -> StdResult<Self, String> {
         match val {
             Record::PosStruct(constr, args) => match constr.as_ref() {
                 "ddlog_std::None" if args.len() == 0 => Ok(Option::None {}),
@@ -293,14 +293,6 @@ where
                     n
                 )),
             },
-
-            Record::Serialized(format, s) => {
-                if format == "json" {
-                    serde_json::from_str(&*s).map_err(|e| format!("{}", e))
-                } else {
-                    StdResult::Err(format!("unsupported serialization format '{}'", format))
-                }
-            }
 
             v => {
                 // Finally, assume that the record contains the inner value of a `Some`.
@@ -459,7 +451,7 @@ impl<'de, T: Deserialize<'de>> Deserialize<'de> for Vec<T> {
     }
 }
 
-impl<T: FromRecord> FromRecord for Vec<T> {
+impl<T: FromRecord + DeserializeOwned> FromRecord for Vec<T> {
     fn from_record(val: &Record) -> StdResult<Self, String> {
         StdVec::from_record(val).map(|vec| Vec { vec })
     }
@@ -471,7 +463,7 @@ impl<T: IntoRecord> IntoRecord for Vec<T> {
     }
 }
 
-impl<T: FromRecord> Mutator<Vec<T>> for Record {
+impl<T: FromRecord + DeserializeOwned> Mutator<Vec<T>> for Record {
     fn mutate(&self, vec: &mut Vec<T>) -> StdResult<(), String> {
         self.mutate(&mut vec.vec)
     }
@@ -704,7 +696,7 @@ impl<T: Ord> Set<T> {
     }
 }
 
-impl<T: FromRecord + Ord> FromRecord for Set<T> {
+impl<T: FromRecord + DeserializeOwned + Ord> FromRecord for Set<T> {
     fn from_record(val: &Record) -> StdResult<Self, String> {
         BTreeSet::from_record(val).map(|x| Set { x })
     }
@@ -716,7 +708,7 @@ impl<T: IntoRecord + Ord> IntoRecord for Set<T> {
     }
 }
 
-impl<T: FromRecord + Ord> Mutator<Set<T>> for Record {
+impl<T: FromRecord + DeserializeOwned + Ord> Mutator<Set<T>> for Record {
     fn mutate(&self, set: &mut Set<T>) -> StdResult<(), String> {
         self.mutate(&mut set.x)
     }
@@ -881,7 +873,9 @@ impl<K: Ord, V> Map<K, V> {
     }
 }
 
-impl<K: FromRecord + Ord, V: FromRecord> FromRecord for Map<K, V> {
+impl<K: FromRecord + DeserializeOwned + Ord, V: FromRecord + DeserializeOwned> FromRecord
+    for Map<K, V>
+{
     fn from_record(val: &Record) -> StdResult<Self, String> {
         BTreeMap::from_record(val).map(|x| Map { x })
     }
@@ -893,7 +887,12 @@ impl<K: IntoRecord + Ord, V: IntoRecord> IntoRecord for Map<K, V> {
     }
 }
 
-impl<K: FromRecord + Ord, V: FromRecord + PartialEq> Mutator<Map<K, V>> for Record {
+impl<K, V> Mutator<Map<K, V>> for Record
+where
+    K: FromRecord + DeserializeOwned + Ord,
+    V: FromRecord + DeserializeOwned + PartialEq,
+    Record: Mutator<BTreeMap<K, V>>,
+{
     fn mutate(&self, map: &mut Map<K, V>) -> StdResult<(), String> {
         self.mutate(&mut map.x)
     }

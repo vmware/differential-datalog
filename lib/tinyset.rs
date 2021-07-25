@@ -143,8 +143,8 @@ impl<T: u64set::Fits64> Set64<T> {
     }
 }
 
-impl<T: FromRecord + u64set::Fits64> FromRecord for Set64<T> {
-    fn from_record(val: &Record) -> Result<Self, String> {
+impl<T: FromRecord + ::serde::de::DeserializeOwned + u64set::Fits64> FromRecordInner for Set64<T> {
+    fn from_record_inner(val: &Record) -> Result<Self, String> {
         vec::Vec::from_record(val).map(|v| Set64 {
             x: u64set::Set64::from_iter(v),
         })
@@ -160,7 +160,9 @@ impl<T: IntoRecord + u64set::Fits64 + Ord> IntoRecord for Set64<T> {
     }
 }
 
-impl<T: FromRecord + u64set::Fits64 + Ord> Mutator<Set64<T>> for Record {
+impl<T: FromRecord + ::serde::de::DeserializeOwned + u64set::Fits64 + Ord> Mutator<Set64<T>>
+    for Record
+{
     fn mutate(&self, set: &mut Set64<T>) -> Result<(), String> {
         let upd = <Set64<T>>::from_record(self)?;
         for v in upd.into_iter() {

@@ -36,8 +36,8 @@ impl Default for Url {
     }
 }
 
-impl FromRecord for Url {
-    fn from_record(val: &record::Record) -> ::std::result::Result<Self, String> {
+impl FromRecordInner for Url {
+    fn from_record_inner(val: &record::Record) -> ::std::result::Result<Self, String> {
         match (val) {
             record::Record::String(s) => match (::url::Url::parse(&s)) {
                 Ok(url) => Ok(Url { url }),
