@@ -9,7 +9,7 @@ use std::result::Result;
 macro_rules! ddlog_array_traits {
     ($($length:literal),* $(,)?) => {
         $(
-            impl<T: FromRecord + Default> FromRecord for [T; $length] {
+            impl<T: FromRecord + ::serde::de::DeserializeOwned + Default> FromRecord for [T; $length] {
                 fn from_record(val: &Record) -> Result<Self, String> {
                     let vec = Vec::from_record(val)?;
                     let mut arr = <[T; $length]>::default();
@@ -43,7 +43,7 @@ macro_rules! ddlog_array_traits {
                 }
             }
 
-            impl<T: FromRecord + Default> Mutator<[T; $length]> for Record {
+            impl<T: FromRecord + ::serde::de::DeserializeOwned + Default> Mutator<[T; $length]> for Record {
                 fn mutate(&self, array: &mut [T; $length]) -> Result<(), String> {
                     *array = <[T; $length]>::from_record(self)?;
                     Ok(())

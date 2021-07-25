@@ -432,10 +432,7 @@ fn test_map() {
     Record::Array(
         CollectionKind::Unknown,
         vec![
-            Record::Tuple(vec![
-                Record::Int(BigInt::from(0)),
-                Record::Tuple(vec![]),
-            ]),
+            Record::Tuple(vec![Record::Int(BigInt::from(0)), Record::Tuple(vec![])]),
             Record::Tuple(vec![
                 Record::Int(BigInt::from(1)),
                 Record::Int(BigInt::from(10)),
@@ -498,10 +495,7 @@ fn test_map() {
                 Record::Int(BigInt::from(0)),
                 Record::Int(BigInt::from(10)),
             ]),
-            Record::Tuple(vec![
-                Record::Int(BigInt::from(1)),
-                Record::Tuple(vec![]),
-            ]),
+            Record::Tuple(vec![Record::Int(BigInt::from(1)), Record::Tuple(vec![])]),
         ],
     )
     .mutate(&mut v)

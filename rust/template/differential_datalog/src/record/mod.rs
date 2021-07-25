@@ -6,7 +6,7 @@ mod tuples;
 use crate::{ddval::DDValue, program::Update, DDlogInventory};
 use num::{BigInt, BigUint, ToPrimitive};
 use ordered_float::OrderedFloat;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     borrow::Cow,
     cell::{Cell, RefCell},
@@ -381,9 +381,65 @@ pub trait Mutator<V>: fmt::Display {
     fn mutate(&self, v: &mut V) -> Result<(), String>;
 }
 
-/// `FromRecord` trait.  For types that can be converted from cmd_parser::Record type
+/// `MutatorInner` trait: Similar to `Mutator`, except that implementations of
+/// this trait do not need to handle the `Record::Serialized` case.  Automatic
+/// implementation of `Mutator` handles this case by deserializing the entire
+/// record into `v` without attempting fine grained mutations.
+pub trait MutatorInner<V> {
+    /// Consumes a value and returns an updated value.
+    fn mutate_inner(&self, v: &mut V) -> Result<(), String>;
+}
+
+// Implement `Mutator` for types that implement `Deserialize` and `MutatorInner`.
+// For `Record::Serialized` records, deserializes the entire record into `v`,
+// without attempting fine grained mutations; otherwise forwards the call to
+// `MutatorInner`.
+impl<T: DeserializeOwned> Mutator<T> for Record
+where
+    Record: MutatorInner<T>,
+{
+    fn mutate(&self, v: &mut T) -> Result<(), String> {
+        match self {
+            Record::Serialized(format, serialized) => {
+                if format == "json" {
+                    *v = serde_json::from_str(serialized).map_err(|e| e.to_string())?;
+                    Ok(())
+                } else {
+                    Err(format!("unsupported serialization format '{}'", format))
+                }
+            }
+            _ => self.mutate_inner(v),
+        }
+    }
+}
+
+/// `FromRecord` trait.  For types that can be converted from cmd_parser::Record type.
+/// Types that implement `Deserialize` do not need to implement this trait directly;
+/// instead they should only implement `FromRecordInner`.
 pub trait FromRecord: Sized {
     fn from_record(val: &Record) -> Result<Self, String>;
+}
+
+/// `FromRecordInner` trait: Similar to `FromRecord`, except that implementations of
+/// this trait do not need to handle the `Record::Serialized` case.
+pub trait FromRecordInner: Sized {
+    fn from_record_inner(val: &Record) -> Result<Self, String>;
+}
+
+// Implement `FromRecord` for types that implement `Deserialize` and `FromRecordInner`.
+impl<T: FromRecordInner + DeserializeOwned> FromRecord for T {
+    fn from_record(val: &Record) -> Result<Self, String> {
+        match val {
+            Record::Serialized(format, serialized) => {
+                if format == "json" {
+                    serde_json::from_str(serialized.as_str()).map_err(|error| format!("{}", error))
+                } else {
+                    Err(format!("unsupported serialization format '{}'", format))
+                }
+            }
+            _ => Self::from_record_inner(val),
+        }
+    }
 }
 
 pub trait IntoRecord {
@@ -400,8 +456,8 @@ impl FromRecord for Record {
     }
 }
 
-impl FromRecord for u8 {
-    fn from_record(val: &Record) -> Result<Self, String> {
+impl FromRecordInner for u8 {
+    fn from_record_inner(val: &Record) -> Result<Self, String> {
         match val {
             Record::Int(i) => match i.to_u8() {
                 Some(x) => Ok(x),
@@ -425,8 +481,8 @@ impl IntoRecord for u8 {
     }
 }
 
-impl FromRecord for u16 {
-    fn from_record(val: &Record) -> Result<Self, String> {
+impl FromRecordInner for u16 {
+    fn from_record_inner(val: &Record) -> Result<Self, String> {
         match val {
             Record::Int(i) => match i.to_u16() {
                 Some(x) => Ok(x),
@@ -450,8 +506,8 @@ impl Mutator<u16> for Record {
     }
 }
 
-impl FromRecord for u32 {
-    fn from_record(val: &Record) -> Result<Self, String> {
+impl FromRecordInner for u32 {
+    fn from_record_inner(val: &Record) -> Result<Self, String> {
         match val {
             Record::Int(i) => match i.to_u32() {
                 Some(x) => Ok(x),
@@ -475,8 +531,8 @@ impl Mutator<u32> for Record {
     }
 }
 
-impl FromRecord for u64 {
-    fn from_record(val: &Record) -> Result<Self, String> {
+impl FromRecordInner for u64 {
+    fn from_record_inner(val: &Record) -> Result<Self, String> {
         match val {
             Record::Int(i) => match i.to_u64() {
                 Some(x) => Ok(x),
@@ -500,8 +556,8 @@ impl Mutator<u64> for Record {
     }
 }
 
-impl FromRecord for OrderedFloat<f32> {
-    fn from_record(val: &Record) -> Result<Self, String> {
+impl FromRecordInner for OrderedFloat<f32> {
+    fn from_record_inner(val: &Record) -> Result<Self, String> {
         match val {
             Record::Float(i) => Ok(*i),
             // Floating point values parsed from a command file are always stored as doubles.
@@ -528,8 +584,8 @@ impl Mutator<OrderedFloat<f32>> for Record {
     }
 }
 
-impl FromRecord for OrderedFloat<f64> {
-    fn from_record(val: &Record) -> Result<Self, String> {
+impl FromRecordInner for OrderedFloat<f64> {
+    fn from_record_inner(val: &Record) -> Result<Self, String> {
         match val {
             Record::Double(i) => Ok(*i),
             Record::Int(i) => i
@@ -554,8 +610,8 @@ impl Mutator<OrderedFloat<f64>> for Record {
     }
 }
 
-impl FromRecord for u128 {
-    fn from_record(val: &Record) -> Result<Self, String> {
+impl FromRecordInner for u128 {
+    fn from_record_inner(val: &Record) -> Result<Self, String> {
         match val {
             Record::Int(i) => match i.to_u128() {
                 Some(x) => Ok(x),
@@ -579,8 +635,8 @@ impl Mutator<u128> for Record {
     }
 }
 
-impl FromRecord for i8 {
-    fn from_record(val: &Record) -> Result<Self, String> {
+impl FromRecordInner for i8 {
+    fn from_record_inner(val: &Record) -> Result<Self, String> {
         match val {
             Record::Int(i) => match i.to_i8() {
                 Some(x) => Ok(x),
@@ -604,8 +660,8 @@ impl IntoRecord for i8 {
     }
 }
 
-impl FromRecord for i16 {
-    fn from_record(val: &Record) -> Result<Self, String> {
+impl FromRecordInner for i16 {
+    fn from_record_inner(val: &Record) -> Result<Self, String> {
         match val {
             Record::Int(i) => match i.to_i16() {
                 Some(x) => Ok(x),
@@ -629,8 +685,8 @@ impl Mutator<i16> for Record {
     }
 }
 
-impl FromRecord for i32 {
-    fn from_record(val: &Record) -> Result<Self, String> {
+impl FromRecordInner for i32 {
+    fn from_record_inner(val: &Record) -> Result<Self, String> {
         match val {
             Record::Int(i) => match i.to_i32() {
                 Some(x) => Ok(x),
@@ -654,8 +710,8 @@ impl Mutator<i32> for Record {
     }
 }
 
-impl FromRecord for i64 {
-    fn from_record(val: &Record) -> Result<Self, String> {
+impl FromRecordInner for i64 {
+    fn from_record_inner(val: &Record) -> Result<Self, String> {
         match val {
             Record::Int(i) => match i.to_i64() {
                 Some(x) => Ok(x),
@@ -679,8 +735,8 @@ impl Mutator<i64> for Record {
     }
 }
 
-impl FromRecord for i128 {
-    fn from_record(val: &Record) -> Result<Self, String> {
+impl FromRecordInner for i128 {
+    fn from_record_inner(val: &Record) -> Result<Self, String> {
         match val {
             Record::Int(i) => match i.to_i128() {
                 Some(x) => Ok(x),
@@ -704,8 +760,8 @@ impl Mutator<i128> for Record {
     }
 }
 
-impl FromRecord for BigInt {
-    fn from_record(val: &Record) -> Result<Self, String> {
+impl FromRecordInner for BigInt {
+    fn from_record_inner(val: &Record) -> Result<Self, String> {
         match val {
             Record::Int(i) => Ok(i.clone()),
             v => Err(format!("not an int {:?}", *v)),
@@ -726,8 +782,8 @@ impl Mutator<BigInt> for Record {
     }
 }
 
-impl FromRecord for BigUint {
-    fn from_record(val: &Record) -> Result<Self, String> {
+impl FromRecordInner for BigUint {
+    fn from_record_inner(val: &Record) -> Result<Self, String> {
         match val {
             Record::Int(i) => match i.to_biguint() {
                 Some(x) => Ok(x),
@@ -751,8 +807,8 @@ impl Mutator<BigUint> for Record {
     }
 }
 
-impl FromRecord for bool {
-    fn from_record(val: &Record) -> Result<Self, String> {
+impl FromRecordInner for bool {
+    fn from_record_inner(val: &Record) -> Result<Self, String> {
         match val {
             Record::Bool(b) => Ok(*b),
             v => Err(format!("not a bool {:?}", *v)),
@@ -773,8 +829,8 @@ impl Mutator<bool> for Record {
     }
 }
 
-impl FromRecord for String {
-    fn from_record(val: &Record) -> Result<Self, String> {
+impl FromRecordInner for String {
+    fn from_record_inner(val: &Record) -> Result<Self, String> {
         match val {
             Record::String(s) => Ok(s.clone()),
             v => Err(format!("not a string {:?}", *v)),
@@ -801,8 +857,8 @@ impl Mutator<String> for Record {
     }
 }
 
-impl<T: FromRecord> FromRecord for vec::Vec<T> {
-    fn from_record(val: &Record) -> Result<Self, String> {
+impl<T: FromRecord + DeserializeOwned> FromRecordInner for vec::Vec<T> {
+    fn from_record_inner(val: &Record) -> Result<Self, String> {
         match val {
             Record::Array(_, args) => args.iter().map(T::from_record).collect(),
             v => {
@@ -822,15 +878,17 @@ impl<T: IntoRecord> IntoRecord for vec::Vec<T> {
     }
 }
 
-impl<T: FromRecord> Mutator<vec::Vec<T>> for Record {
+impl<T: FromRecord + DeserializeOwned> Mutator<vec::Vec<T>> for Record {
     fn mutate(&self, v: &mut vec::Vec<T>) -> Result<(), String> {
         *v = <vec::Vec<T>>::from_record(self)?;
         Ok(())
     }
 }
 
-impl<K: FromRecord + Ord, V: FromRecord> FromRecord for BTreeMap<K, V> {
-    fn from_record(val: &Record) -> Result<Self, String> {
+impl<K: FromRecord + DeserializeOwned + Ord, V: FromRecord + DeserializeOwned> FromRecordInner
+    for BTreeMap<K, V>
+{
+    fn from_record_inner(val: &Record) -> Result<Self, String> {
         vec::Vec::from_record(val).map(BTreeMap::from_iter)
     }
 }
@@ -854,13 +912,13 @@ impl<K: IntoRecord + Ord, V: IntoRecord> IntoRecord for BTreeMap<K, V> {
 ///
 /// There's a slight problem when the map contains empty tuples as values (`Map<K, ()>`), i.e.,
 /// it's really a set, in which case mutating an existing key will always delete it.
-impl<K, V> Mutator<BTreeMap<K, V>> for Record
-    where
-        K: FromRecord + Ord,
-        V: FromRecord + PartialEq,
-        Record: Mutator<V>
+impl<K, V> MutatorInner<BTreeMap<K, V>> for Record
+where
+    K: FromRecord + DeserializeOwned + Ord,
+    V: FromRecord + PartialEq,
+    Record: Mutator<V>,
 {
-    fn mutate(&self, map: &mut BTreeMap<K, V>) -> Result<(), String> {
+    fn mutate_inner(&self, map: &mut BTreeMap<K, V>) -> Result<(), String> {
         let upd = <BTreeMap<K, Record>>::from_record(self)?;
         for (k, v) in upd.into_iter() {
             match map.entry(k) {
@@ -868,23 +926,21 @@ impl<K, V> Mutator<BTreeMap<K, V>> for Record
                     /* key not in map -- insert */
                     ve.insert(V::from_record(&v)?);
                 }
-                btree_map::Entry::Occupied(mut oe) => {
-                    match v {
-                        Record::Tuple(vals) if vals.len() == 0 => {
-                            oe.remove_entry();
-                        },
-                        _ => {
-                            v.mutate(oe.get_mut())?;
-                        }
+                btree_map::Entry::Occupied(mut oe) => match v {
+                    Record::Tuple(vals) if vals.is_empty() => {
+                        oe.remove_entry();
                     }
-                }
+                    _ => {
+                        v.mutate(oe.get_mut())?;
+                    }
+                },
             }
         }
         Ok(())
     }
 }
 
-impl<T: FromRecord + Ord> FromRecord for BTreeSet<T> {
+impl<T: FromRecord + DeserializeOwned + Ord> FromRecord for BTreeSet<T> {
     fn from_record(val: &Record) -> Result<Self, String> {
         vec::Vec::from_record(val).map(BTreeSet::from_iter)
     }
@@ -901,7 +957,7 @@ impl<T: IntoRecord + Ord> IntoRecord for BTreeSet<T> {
 
 /* Set update semantics: update contains values that are in one of the sets but not the
  * other. */
-impl<T: FromRecord + Ord> Mutator<BTreeSet<T>> for Record {
+impl<T: FromRecord + DeserializeOwned + Ord> Mutator<BTreeSet<T>> for Record {
     fn mutate(&self, set: &mut BTreeSet<T>) -> Result<(), String> {
         let upd = <BTreeSet<T>>::from_record(self)?;
         for v in upd.into_iter() {

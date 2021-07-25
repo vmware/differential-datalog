@@ -121,3 +121,11 @@ output relation MapAny(condition: string, found: bool)
 MapAny("1",   test_map().any(|foo| foo.x == 1)).
 MapAny("100", test_map().any(|foo| foo.x == 100)).
 
+
+// Test map mutations
+
+input relation NestedMap(key: usize, m: Map<usize, Map<string, string>>)
+primary key (m) m.key
+
+output relation ONestedMap[NestedMap]
+ONestedMap[m] :- NestedMap[m].

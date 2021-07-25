@@ -246,8 +246,8 @@ fn mutator_struct(
 
     Ok(quote! {
         #[automatically_derived]
-        impl #impl_generics ::differential_datalog::record::Mutator<#struct_ident #type_generics> for ::differential_datalog::record::Record #where_clause {
-            fn mutate(&self, #mutated: &mut #struct_ident #type_generics) -> ::core::result::Result<(), ::std::string::String> {
+        impl #impl_generics ::differential_datalog::record::MutatorInner<#struct_ident #type_generics> for ::differential_datalog::record::Record #where_clause {
+            fn mutate_inner(&self, #mutated: &mut #struct_ident #type_generics) -> ::core::result::Result<(), ::std::string::String> {
                 #generated_mutator
 
                 ::core::result::Result::Ok(())
@@ -302,8 +302,8 @@ fn mutator_enum(
 
     Ok(quote! {
         #[automatically_derived]
-        impl #impl_generics differential_datalog::record::Mutator<#enum_ident #type_generics> for differential_datalog::record::Record #where_clause {
-            fn mutate(&self, #mutated: &mut #enum_ident #type_generics) -> ::core::result::Result<(), ::std::string::String> {
+        impl #impl_generics differential_datalog::record::MutatorInner<#enum_ident #type_generics> for differential_datalog::record::Record #where_clause {
+            fn mutate_inner(&self, #mutated: &mut #enum_ident #type_generics) -> ::core::result::Result<(), ::std::string::String> {
                 match #mutated {
                     #generated_mutators
                 }

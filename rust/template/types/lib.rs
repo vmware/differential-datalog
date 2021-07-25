@@ -49,8 +49,10 @@ use ::differential_datalog::program::XFormArrangement;
 use ::differential_datalog::program::XFormCollection;
 use ::differential_datalog::program::Weight;
 use ::differential_datalog::record::FromRecord;
+use ::differential_datalog::record::FromRecordInner;
 use ::differential_datalog::record::IntoRecord;
 use ::differential_datalog::record::Mutator;
+use ::differential_datalog::record::MutatorInner;
 use ::serde::Deserialize;
 use ::serde::Serialize;
 

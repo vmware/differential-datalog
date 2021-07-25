@@ -14,6 +14,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Bug fixes
 
 - Bug fixes in the SQL-to-DDlog compiler
+- Bug in `#[derive(Mutator)]` macro: mutations that change the constructor of a
+  type failed (#1041).
+
+### Improvements
+
+- Improved infrastructure for implementing `FromRecord` and `Mutator` traits
+  (#1029):
+  - Automatically handle `Record::Serialized()` in `FromRecord` and `Mutator`
+    implementations.
+  - Allow modifying, and not just overwriting `Map` values.
 
 ## [0.43.0] - Jul 25, 2021
 

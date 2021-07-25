@@ -14,3 +14,11 @@ map_test::MapFind{.x = ddlog_std::None{}}
 map_test::MapFind{.x = ddlog_std::Some{.x = map_test::Foo{.x = 1}}}
 map_test::MapAny{.condition = "1", .found = true}
 map_test::MapAny{.condition = "100", .found = false}
+map_test::ONestedMap:
+map_test::NestedMap{.key = 1, .m = [(1, [("1", "a"), ("2", "b")]), (2, [("3", "c"), ("4", "d")])]}: +1
+map_test::ONestedMap:
+map_test::NestedMap{.key = 1, .m = [(0, [("0", "0")]), (1, [("1", "b"), ("30", "30")]), (2, [("3", "c"), ("4", "d")])]}: +1
+map_test::NestedMap{.key = 1, .m = [(1, [("1", "a"), ("2", "b")]), (2, [("3", "c"), ("4", "d")])]}: -1
+map_test::ONestedMap:
+map_test::NestedMap{.key = 1, .m = [(0, [("0", "0")]), (1, [("1", "b"), ("30", "30")]), (2, [("3", "c"), ("4", "d")])]}: -1
+map_test::NestedMap{.key = 1, .m = [(0, [("0", "0")]), (1, [("a", "b"), ("c", "d")]), (2, [("3", "c"), ("4", "d")])]}: +1
