@@ -13,6 +13,7 @@ import org.jooq.DSLContext;
 import org.jooq.Field;
 import org.jooq.Record;
 import org.jooq.Result;
+import org.jooq.exception.DataAccessException;
 import org.jooq.impl.DSL;
 import org.jooq.tools.jdbc.MockConnection;
 import org.junit.Before;
@@ -259,6 +260,72 @@ public class JooqProviderTest {
         final Result<Record> results = create.selectFrom(table("hostsv")).fetch();
         assertEquals(results.get(0).get(1), 11);
     }
+
+    /*
+     * Test a select query to a view that does not exist
+     */
+    @Test
+    public void testNonExistentViewsSelect() {
+        try {
+            create.selectFrom(table("s1")).fetch();
+            fail();
+        } catch (final DataAccessException e) {
+            assertTrue(e.getMessage().contains("Table S1 does not exist"));
+        }
+    }
+
+    /*
+     * Test an insert to a base table that does not exist
+     */
+    @Test
+    public void testNonExistentViewsInsert() {
+        try {
+            create.execute("insert into s1 values ('n1', 10, true)");
+            fail();
+        } catch (final DataAccessException e) {
+            assertTrue(e.getMessage().contains("Table S1 does not exist"));
+        }
+    }
+
+    /*
+     * Test a delete to a base table that does not exist
+     */
+    @Test
+    public void testNonExistentViewsDelete() {
+        try {
+            create.execute("delete from S1 where id = '5'");
+            fail();
+        } catch (final DataAccessException e) {
+            assertTrue(e.getMessage().contains("Table S1 does not exist"));
+        }
+    }
+    /*
+     * Test an update to a base table that does not exist
+     */
+    @Test
+    public void testNonExistentViewsUpdate() {
+        try {
+            create.execute("update S1 set capacity = 11 where id = 'n1'");
+            fail();
+        } catch (final DataAccessException e) {
+            assertTrue(e.getMessage().contains("Table S1 does not exist"));
+        }
+    }
+
+
+    /*
+     * Test an insert with a wrong value type: column 1 is of type varchar, but we insert an int instead
+     */
+    @Test
+    public void testWrongTypeInsert() {
+        try {
+            create.execute("insert into hosts values (5, 10, true)");
+            fail();
+        } catch (final DataAccessException e) {
+            assertTrue(e.getMessage().contains("not a string"));
+        }
+    }
+
 
     public static void compileAndLoad(final List<String> ddl) throws IOException, DDlogException {
         final Translator t = new Translator(null);
