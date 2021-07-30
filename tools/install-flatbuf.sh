@@ -24,7 +24,15 @@ if [ "x`flatbuffers/flatc --version`" != "xflatc version ${FLATBUF_VERSION}" ]; 
         retry fetch_flatbuf_unix
         cd flatbuffers
         cmake -G "Unix Makefiles"
-        make -j $(nproc)
+
+        ncores=1
+        if ( [ "$(uname)" = "Linux" ] ); then
+            ncores=$(nproc)
+        elif ( [ "$(uname)" = "Darwin" ] ); then
+            ncores=$(sysctl -n hw.logicalcpu)
+        fi
+        make -j ${ncores}
+
         cd ..
     else
         retry fetch_flatbuf_unix
