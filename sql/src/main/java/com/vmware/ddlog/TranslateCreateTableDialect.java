@@ -13,6 +13,8 @@ import com.facebook.presto.sql.tree.TableElement;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 class TranslateCreateTableDialect extends AstVisitor<String, String> {
     @Override
@@ -22,6 +24,15 @@ class TranslateCreateTableDialect extends AstVisitor<String, String> {
         for (final TableElement element : node.getElements()) {
             if (element instanceof ColumnDefinition) {
                 final ColumnDefinition cd = (ColumnDefinition) element;
+                String h2Type = cd.getType();
+
+                // We need to strip the array subtype for H2
+                final Pattern arrayType = Pattern.compile("ARRAY\\((.+)\\)");
+                Matcher m = arrayType.matcher(cd.getType());
+                if (m.find()) {
+                    h2Type = "array";
+                }
+
                 if (cd.getProperties().size() == 1) {
                     final String propertyName = cd.getProperties().get(0).getName().getValue();
                     final String propertyValue = cd.getProperties().get(0).getValue().toString();
@@ -36,7 +47,7 @@ class TranslateCreateTableDialect extends AstVisitor<String, String> {
                     throw new RuntimeException(String.format("Unsupported properties %s in sql: %s",
                             cd.getProperties(), sql));
                 }
-                columnsToCreate.add(String.format("%s %s", cd.getName().getValue(), cd.getType()));
+                columnsToCreate.add(String.format("%s %s", cd.getName().getValue(), h2Type));
             }
         }
 

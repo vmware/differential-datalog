@@ -67,10 +67,13 @@ public class JooqProviderTest {
         String s1 = "create table hosts (id varchar(36) with (primary_key = true), capacity integer, up boolean)";
         String v2 = "create view hostsv as select distinct * from hosts";
         String v1 = "create view good_hosts as select distinct * from hosts where capacity < 10";
+        String checkArrayParse = "create table junk (testCol integer array)";
+
         List<String> ddl = new ArrayList<>();
         ddl.add(s1);
         ddl.add(v2);
         ddl.add(v1);
+        ddl.add(checkArrayParse);
         compileAndLoad(ddl);
         final DDlogAPI dDlogAPI = new DDlogAPI(1, false);
 
