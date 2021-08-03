@@ -28,7 +28,7 @@ class TranslateCreateTableDialect extends AstVisitor<String, String> {
 
                 // We need to strip the array subtype for H2
                 final Pattern arrayType = Pattern.compile("ARRAY\\((.+)\\)");
-                Matcher m = arrayType.matcher(cd.getType());
+                Matcher m = arrayType.matcher(h2Type);
                 if (m.find()) {
                     h2Type = "array";
                 }
