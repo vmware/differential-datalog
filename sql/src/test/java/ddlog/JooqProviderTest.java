@@ -68,12 +68,15 @@ public class JooqProviderTest {
         String v2 = "create view hostsv as select distinct * from hosts";
         String v1 = "create view good_hosts as select distinct * from hosts where capacity < 10";
         String checkArrayParse = "create table junk (testCol integer array)";
+        String checkNotNullColumns = "create table not_null (test_col1 integer not null, test_col2 varchar(36) not null)";
 
         List<String> ddl = new ArrayList<>();
         ddl.add(s1);
         ddl.add(v2);
         ddl.add(v1);
         ddl.add(checkArrayParse);
+        ddl.add(checkNotNullColumns);
+
         compileAndLoad(ddl);
         final DDlogAPI dDlogAPI = new DDlogAPI(1, false);
 
@@ -329,6 +332,19 @@ public class JooqProviderTest {
         }
     }
 
+    /*
+     * Test we can insert into columns with `not null` annotations.
+     */
+    @Test
+    public void testNotNullColumns() {
+        // Without bindings
+        create.execute("insert into not_null values (5, 'test_string')");
+
+        // With bindings
+        create.insertInto(table("not_null"))
+                .values(1, "herp")
+                .execute();
+    }
 
     public static void compileAndLoad(final List<String> ddl) throws IOException, DDlogException {
         final Translator t = new Translator(null);

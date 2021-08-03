@@ -47,7 +47,7 @@ class TranslateCreateTableDialect extends AstVisitor<String, String> {
                     throw new RuntimeException(String.format("Unsupported properties %s in sql: %s",
                             cd.getProperties(), sql));
                 }
-                columnsToCreate.add(String.format("%s %s", cd.getName().getValue(), h2Type));
+                columnsToCreate.add(String.format("%s %s %s", cd.getName().getValue(), h2Type, cd.isNullable() ? "" : "not null"));
             }
         }
 
