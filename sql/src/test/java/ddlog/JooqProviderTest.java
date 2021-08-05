@@ -132,6 +132,14 @@ public class JooqProviderTest {
         assertFalse(goodHostsResultsAfterDelete.contains(test3));
     }
 
+    @Test
+    public void testInsertNull() {
+        // Issue 1036
+        create.insertInto(table("hosts"))
+                .values("n1", 10, null)
+                .execute();
+    }
+
     /*
      * Test with SQL statements that supply parameters using bindings
      */
