@@ -467,11 +467,13 @@ public final class DDlogJooqProvider implements MockDataProvider {
 
     /*
      * The SQL -> DDlog compiler represents nullable fields as ddlog Option<> types. We therefore
-     * wrap DDlogRecords if needed.
+     * wrap DDlogRecords if needed.  Returns None for a nullptr record, or Some{record} otherwise.
      */
     private static DDlogRecord maybeOption(final Boolean isNullable, final DDlogRecord record) {
         if (isNullable) {
             try {
+                if (record == null)
+                    return DDlogRecord.none();
                 return DDlogRecord.makeStruct(DDLOG_SOME, record);
             } catch (final DDlogException e) {
                 throw new DDlogJooqProviderException(e);
@@ -497,7 +499,14 @@ public final class DDlogJooqProvider implements MockDataProvider {
         setValue(field, record, jooqRecord);
     }
 
+    /** Convert the value 'in' into a DDlogRecord.
+     * @param field  Struct field that is being converted.
+     * @param in  Value to convert.  May be null.
+     * @return    DDlog record representing the value.  Will be null for a null in.
+     */
     private static DDlogRecord toValue(final Field<?> field, final Object in) {
+        if (in == null)
+            return null;
         final DataType<?> dataType = field.getDataType();
         switch (dataType.getSQLType()) {
             case Types.BOOLEAN:
