@@ -536,6 +536,7 @@ exprIsStatic d ctx e@(E EApply{}) =
     null (exprFreeVars d ctx e) &&
     (not $ exprIsPolymorphic d ctx e) &&
     exprIsPure d ctx e
+exprIsStatic _ _ (E EString{}) = True
 exprIsStatic _ _ _ = False
 
 -- | Transform types referenced in the expression
