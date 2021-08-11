@@ -271,6 +271,8 @@ fn mutator_enum(
         .iter()
         .map(|variant| {
             let variant_ident = &variant.ident;
+            let variant_record_name = get_rename("Mutator", "mutate", variant.attrs.iter())?
+                .unwrap_or_else(|| format!("{}::{}", enum_ident, variant_ident));
 
             let (guard, mutator) = match &variant.fields {
                 Fields::Named(named_struct) => {
@@ -295,7 +297,7 @@ fn mutator_enum(
             };
 
             Ok(quote! {
-                #guard => #mutator,
+                #guard if self.struct_constructor_str().unwrap_or(#variant_record_name) == #variant_record_name => #mutator,
             })
         })
         .collect::<Result<TokenStream>>()?;
@@ -306,6 +308,7 @@ fn mutator_enum(
             fn mutate_inner(&self, #mutated: &mut #enum_ident #type_generics) -> ::core::result::Result<(), ::std::string::String> {
                 match #mutated {
                     #generated_mutators
+                    _ => { *#mutated = <#enum_ident #type_generics as ::differential_datalog::record::FromRecord>::from_record(self)?; },
                 }
 
                 ::core::result::Result::Ok(())
