@@ -14,7 +14,6 @@ import org.apache.calcite.sql.util.SqlBasicVisitor;
  * Translates literals into corresponding DDlogRecord instances
  */
 class ParseLiterals extends SqlBasicVisitor<DDlogRecord> {
-
     @Override
     public DDlogRecord visit(final SqlLiteral sqlLiteral) {
         switch (sqlLiteral.getTypeName()) {
@@ -27,6 +26,8 @@ class ParseLiterals extends SqlBasicVisitor<DDlogRecord> {
                     return new DDlogRecord(sqlLiteral.toValue());
                 } catch (final DDlogException ignored) {
                 }
+            case NULL:
+                return null;
             default:
                 throw new UnsupportedOperationException(sqlLiteral.toValue());
         }

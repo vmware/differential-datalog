@@ -34,6 +34,7 @@ import static junit.framework.TestCase.assertTrue;
 import static junit.framework.TestCase.fail;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.table;
+import static org.junit.Assert.assertNull;
 
 public class JooqProviderTest {
 
@@ -90,6 +91,7 @@ public class JooqProviderTest {
 
     @Before
     public void cleanup() {
+        assert(create != null);
         final Result<Record> records = create.fetch("select * from hostsv");
         records.forEach(
             r -> create.execute(String.format("delete from hosts where id = '%s'", r.get(0)))
@@ -103,6 +105,7 @@ public class JooqProviderTest {
     @Test
     public void testSqlOpsNoBindings() {
         // Insert statements.
+        assert(create != null);
         create.execute("insert into \nhosts values ('n1', 10, true)");
         create.batch("insert into hosts values ('n54', 18, false)",
                      "insert into hosts values ('n9', 2, true)").execute();
@@ -135,9 +138,104 @@ public class JooqProviderTest {
     @Test
     public void testInsertNull() {
         // Issue 1036
+        assert(create != null);
         create.insertInto(table("hosts"))
                 .values("n1", 10, null)
                 .execute();
+        // Make sure selects read out the same content inserted above
+        Record t1 = create.newRecord(field1, field2, field3);
+        t1.setValue(field1, "n1");
+        t1.setValue(field2, 10);
+        t1.setValue(field3, null);
+
+        final Result<Record> hostsvResults = create.fetch("select * from hostsv");
+        assertTrue(hostsvResults.contains(t1));
+    }
+
+    @Test
+    public void testDeleteNull() {
+        assert(create != null);
+        create.insertInto(table("hosts"))
+                .values("n1", 10, null)
+                .execute();
+        create.deleteFrom(table("hosts")).where(field("id").eq("n1"))
+                .execute();
+        final Result<Record> hostsvResults = create.fetch("select * from hostsv");
+        assertEquals(0, hostsvResults.size());
+    }
+
+    @Test
+    public void testWhereNull() {
+        assert(create != null);
+        create.insertInto(table("hosts"))
+                .values("n1", 10, null)
+                .execute();
+        Record t1 = create.newRecord(field1, field2, field3);
+        t1.setValue(field1, "n1");
+        t1.setValue(field2, 10);
+        t1.setValue(field3, null);
+        final Result<Record> hostsvResults = create.fetch("select * from hostsv");
+        assertTrue(hostsvResults.contains(t1));
+    }
+
+    @Test
+    public void testUpdateBool() {
+        assert(create != null);
+        create.insertInto(table("hosts"))
+                .values("n1", 10, true)
+                .execute();
+        create.execute("update hosts set up = false where id = 'n1'");
+        final Result<Record> hostsvResults = create.fetch("select * from hostsv");
+        Record t1 = create.newRecord(field1, field2, field3);
+        t1.setValue(field1, "n1");
+        t1.setValue(field2, 10);
+        t1.setValue(field3, false);
+        assertTrue(hostsvResults.contains(t1));
+    }
+
+    @Test
+    public void testUpdateNull1() {
+        assert(create != null);
+        create.execute("insert into hosts values ('n1', 10, null)");
+        final Result<Record> results = create.selectFrom(table("hostsv")).fetch();
+        assertNull(results.get(0).get(2));
+    }
+
+    @Test
+    public void testUpdateNull2() {
+        assert(create != null);
+        create.execute("insert into hosts values ('n1', 10, null)");
+        create.update(table("hosts")).set(field3, true).where(field1.eq("n1")).execute();
+        final Result<Record> results = create.selectFrom(table("hostsv")).fetch();
+        assertEquals(0, results.size());
+    }
+
+    @Test
+    public void testUpdateUnknownColumn() {
+        try {
+            assert(create != null);
+            create.insertInto(table("hosts"))
+                    .values("n1", 10, null)
+                    .execute();
+            create.execute("update hosts set upp = 0 where id = 'n1'");
+            fail();
+        } catch  (final DataAccessException ex) {
+            assertTrue(ex.getMessage().contains("Unknown column"));
+        }
+    }
+
+    @Test
+    public void testUpdateWrongType() {
+        try {
+            assert(create != null);
+            create.insertInto(table("hosts"))
+                    .values("n1", 10, null)
+                    .execute();
+            create.execute("update hosts set capacity = true where id = 'n1'");
+            fail();
+        } catch (final DataAccessException ex) {
+            assertTrue(ex.getMessage().contains("not an int"));
+        }
     }
 
     /*
@@ -146,6 +244,7 @@ public class JooqProviderTest {
     @Test
     public void testSqlOpsWithBindings() {
         // Insert statements.
+        assert(create != null);
         create.insertInto(table("hosts"))
               .values("n1", 10, true)
               .execute();
@@ -183,6 +282,7 @@ public class JooqProviderTest {
      */
     @Test
     public void testDeletesAndInsertsInTheSameBatchNoBindings() {
+        assert(create != null);
         create.execute("insert into hosts values ('n1', 10, true)");
         create.batch("delete from hosts where id = 'n1'",
                      "insert into hosts values ('n2', 15, false)").execute();
@@ -198,6 +298,7 @@ public class JooqProviderTest {
      */
     @Test
     public void testDeletesAndInsertsInTheSameBatchWithBindings() {
+        assert(create != null);
         create.execute("insert into hosts values ('n1', 10, true)");
         create.batch(create.deleteFrom(table("hosts")).where(field("id").eq("n1")),
                      create.insertInto(table("hosts")).values("n2", 15, false))
@@ -214,6 +315,7 @@ public class JooqProviderTest {
      */
     @Test
     public void testMultiRowInsertsNoBindings() {
+        assert(create != null);
         create.execute("insert into hosts values ('n1', 10, true), ('n54', 18, false), ('n9', 2, true)");
         final Result<Record> results = create.selectFrom(table("hostsv")).fetch();
         assertEquals(3, results.size());
@@ -227,6 +329,7 @@ public class JooqProviderTest {
      */
     @Test
     public void testMultiRowInsertsWithBindings() {
+        assert(create != null);
         create.insertInto(table("hosts"))
               .values("n1", 10, true)
               .values("n54", 18, false)
@@ -245,6 +348,7 @@ public class JooqProviderTest {
     @Test
     public void testPartialInserts() {
         try {
+            assert(create != null);
             create.insertInto(table("hosts"), field1, field2)
                     .values("n1", 10)
                     .execute();
@@ -258,6 +362,7 @@ public class JooqProviderTest {
      */
     @Test
     public void testUpdates() {
+        assert(create != null);
         create.execute("insert into hosts values ('n1', 10, true)");
         create.execute("update hosts set capacity = 11 where id = 'n1'");
         final Result<Record> results = create.selectFrom(table("hostsv")).fetch();
@@ -269,6 +374,7 @@ public class JooqProviderTest {
      */
     @Test
     public void testUpdatesWithBindings() {
+        assert(create != null);
         create.execute("insert into hosts values ('n1', 10, true)");
         create.update(table("hosts")).set(field2, 11).where(field1.eq("n1")).execute();
         final Result<Record> results = create.selectFrom(table("hostsv")).fetch();
@@ -281,6 +387,7 @@ public class JooqProviderTest {
     @Test
     public void testNonExistentViewsSelect() {
         try {
+            assert(create != null);
             create.selectFrom(table("s1")).fetch();
             fail();
         } catch (final DataAccessException e) {
@@ -294,6 +401,7 @@ public class JooqProviderTest {
     @Test
     public void testNonExistentViewsInsert() {
         try {
+            assert(create != null);
             create.execute("insert into s1 values ('n1', 10, true)");
             fail();
         } catch (final DataAccessException e) {
@@ -307,6 +415,7 @@ public class JooqProviderTest {
     @Test
     public void testNonExistentViewsDelete() {
         try {
+            assert(create != null);
             create.execute("delete from S1 where id = '5'");
             fail();
         } catch (final DataAccessException e) {
@@ -319,6 +428,7 @@ public class JooqProviderTest {
     @Test
     public void testNonExistentViewsUpdate() {
         try {
+            assert(create != null);
             create.execute("update S1 set capacity = 11 where id = 'n1'");
             fail();
         } catch (final DataAccessException e) {
@@ -333,6 +443,7 @@ public class JooqProviderTest {
     @Test
     public void testWrongTypeInsert() {
         try {
+            assert(create != null);
             create.execute("insert into hosts values (5, 10, true)");
             fail();
         } catch (final DataAccessException e) {

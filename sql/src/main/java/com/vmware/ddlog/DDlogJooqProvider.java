@@ -91,7 +91,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
     private final DDlogAPI dDlogAPI;
     private final DSLContext dslContext;
     private final Field<Integer> updateCountField;
-    private final Map<String, Table<?>> tablesToJooqTable = new HashMap<>();
+    //private final Map<String, Table<?>> tablesToJooqTable = new HashMap<>();
     private final Map<String, List<Field<?>>> tablesToFields = new HashMap<>();
     private final Map<String, Map<String, Field<?>>> tablesToFieldMap = new HashMap<>();
     private final Map<String, List<? extends Field<?>>> tablesToPrimaryKeys = new HashMap<>();
@@ -120,7 +120,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
                                 .put(field.getUnqualifiedName().last().toUpperCase(), field)
                 );
                 tablesToFields.put(table.getName(), Arrays.asList(table.fields()));
-                tablesToJooqTable.put(table.getName(), table);
+                //tablesToJooqTable.put(table.getName(), table);
                 if (table.getPrimaryKey() != null) {
                     tablesToPrimaryKeys.put(table.getName(), table.getPrimaryKey().getFields());
                 }
@@ -226,9 +226,14 @@ public final class DDlogJooqProvider implements MockDataProvider {
 
         private MockResult visitSelect(final SqlSelect select) {
             // The checks below encode assumption A1 (see javadoc for the DDlogJooqProvider class)
+            if (select.hasWhere() || select.hasOrderBy() || select.isDistinct() || select.getHaving() != null
+                || select.getGroup() != null) {
+                return exception("Statement not supported: " + context.sql());
+            }
             if (!(select.getSelectList().size() == 1
                     && select.getSelectList().get(0).toString().equals("*")
-                    && select.getFrom() instanceof SqlIdentifier)) {
+                    && select.getFrom() instanceof SqlIdentifier)
+            ) {
                 return exception("Statement not supported: " + context.sql());
             }
             final String tableName = ((SqlIdentifier) select.getFrom()).getSimple();
@@ -289,7 +294,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
             return new MockResult(values.length, result);
         }
 
-        private MockResult visitDelete(final SqlDelete delete) throws DDlogException {
+        private MockResult visitDelete(final SqlDelete delete) {
             // The assertions below, and in the ParseWhereClauseForDeletes visitor encode assumption A3
             // (see javadoc for the DDlogJooqProvider class)
             if (delete.getCondition() == null || !(delete.getTargetTable() instanceof SqlIdentifier)) {
@@ -316,7 +321,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
             return new MockResult(1, result);
         }
 
-        private MockResult visitUpdate(final SqlUpdate update) throws DDlogException {
+        private MockResult visitUpdate(final SqlUpdate update) {
             // The assertions below, and in the ParseWhereClauseForDeletes visitor encode assumption A4
             // (see javadoc for the DDlogJooqProvider class)
             if (update.getCondition() == null || !(update.getTargetTable() instanceof SqlIdentifier)) {
@@ -336,6 +341,8 @@ public final class DDlogJooqProvider implements MockDataProvider {
                     final String columnName = ((SqlIdentifier) targetColumnList.get(i)).getSimple()
                                                                                        .toLowerCase();
                     final Field<?> field = allFields.get(columnName.toUpperCase());
+                    if (field == null)
+                        return exception("Unknown column: " + columnName);
                     final boolean isNullableField = field.getDataType().nullable();
                     final DDlogRecord valueToUpdateTo = context.hasBinding()
                             ? toValue(field, context.nextBinding())
@@ -390,7 +397,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
             switch (expr.getOperator().getKind()) {
                 case AND:
                     return super.visit(call);
-                case EQUALS:
+                case EQUALS: {
                     final SqlNode left = expr.getOperands()[0];
                     final SqlNode right = expr.getOperands()[1];
                     if (context.hasBinding()) {
@@ -407,6 +414,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
                         }
                     }
                     throw new DDlogJooqProviderException("Unexpected comparison expression: " + call);
+                }
                 default:
                     throw new DDlogJooqProviderException("Unsupported expression in where clause "+ call);
             }
@@ -483,7 +491,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
         }
     }
 
-    private static void structToValue(final Field<?> field, final DDlogRecord record, final Record jooqRecord) throws DDlogException {
+    private static void structToValue(final Field<?> field, final DDlogRecord record, final Record jooqRecord) {
         final boolean isStruct = record.isStruct();
         if (isStruct) {
             final String structName = record.getStructName();
@@ -571,7 +579,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
         }
     }
 
-    private static DDlogRecord getStructField(final DDlogRecord record, final int fieldIndex) {
+    private static DDlogRecord getStructField(final DDlogRecord record, @SuppressWarnings("SameParameterValue") final int fieldIndex) {
         try {
             return record.getStructField(fieldIndex);
         } catch (final DDlogException e) {
