@@ -472,7 +472,7 @@ impl FromRecordInner for u8 {
                 Some(x) => Ok(x),
                 None => Err(format!("cannot convert {} to u8", i)),
             },
-            v => Err(format!("not an int {:?}", *v)),
+            v => Err(format!("value is not an int: {:?}", *v)),
         }
     }
 }
@@ -497,7 +497,7 @@ impl FromRecordInner for u16 {
                 Some(x) => Ok(x),
                 None => Err(format!("cannot convert {} to u16", i)),
             },
-            v => Err(format!("not an int {:?}", *v)),
+            v => Err(format!("value is not an int: {:?}", *v)),
         }
     }
 }
@@ -522,7 +522,7 @@ impl FromRecordInner for u32 {
                 Some(x) => Ok(x),
                 None => Err(format!("cannot convert {} to u32", i)),
             },
-            v => Err(format!("not an int {:?}", *v)),
+            v => Err(format!("value is not an int: {:?}", *v)),
         }
     }
 }
@@ -547,7 +547,7 @@ impl FromRecordInner for u64 {
                 Some(x) => Ok(x),
                 None => Err(format!("cannot convert {} to u64", i)),
             },
-            v => Err(format!("not an int {:?}", *v)),
+            v => Err(format!("value is not an int: {:?}", *v)),
         }
     }
 }
@@ -626,7 +626,7 @@ impl FromRecordInner for u128 {
                 Some(x) => Ok(x),
                 None => Err(format!("cannot convert {} to u128", i)),
             },
-            v => Err(format!("not an int {:?}", *v)),
+            v => Err(format!("value is not an int: {:?}", *v)),
         }
     }
 }
@@ -651,7 +651,7 @@ impl FromRecordInner for i8 {
                 Some(x) => Ok(x),
                 None => Err(format!("cannot convert {} to i8", i)),
             },
-            v => Err(format!("not an int {:?}", *v)),
+            v => Err(format!("value is not an int: {:?}", *v)),
         }
     }
 }
@@ -676,7 +676,7 @@ impl FromRecordInner for i16 {
                 Some(x) => Ok(x),
                 None => Err(format!("cannot convert {} to i16", i)),
             },
-            v => Err(format!("not an int {:?}", *v)),
+            v => Err(format!("value is not an int: {:?}", *v)),
         }
     }
 }
@@ -701,7 +701,7 @@ impl FromRecordInner for i32 {
                 Some(x) => Ok(x),
                 None => Err(format!("cannot convert {} to i32", i)),
             },
-            v => Err(format!("not an int {:?}", *v)),
+            v => Err(format!("value is not an int: {:?}", *v)),
         }
     }
 }
@@ -726,7 +726,7 @@ impl FromRecordInner for i64 {
                 Some(x) => Ok(x),
                 None => Err(format!("cannot convert {} to i64", i)),
             },
-            v => Err(format!("not an int {:?}", *v)),
+            v => Err(format!("value is not an int: {:?}", *v)),
         }
     }
 }
@@ -751,7 +751,7 @@ impl FromRecordInner for i128 {
                 Some(x) => Ok(x),
                 None => Err(format!("cannot convert {} to i128", i)),
             },
-            v => Err(format!("not an int {:?}", *v)),
+            v => Err(format!("value is not an int: {:?}", *v)),
         }
     }
 }
@@ -773,7 +773,7 @@ impl FromRecordInner for BigInt {
     fn from_record_inner(val: &Record) -> Result<Self, String> {
         match val {
             Record::Int(i) => Ok(i.clone()),
-            v => Err(format!("not an int {:?}", *v)),
+            v => Err(format!("value is not an int: {:?}", *v)),
         }
     }
 }
@@ -798,7 +798,7 @@ impl FromRecordInner for BigUint {
                 Some(x) => Ok(x),
                 None => Err(format!("cannot convert {} to BigUint", i)),
             },
-            v => Err(format!("not an int {:?}", *v)),
+            v => Err(format!("value is not an int: {:?}", *v)),
         }
     }
 }
