@@ -207,3 +207,10 @@ function list_map(list: List<'N>, f: function('N): 'M): List<'M> {
 
 
 /*************************************************/
+
+// Issue #1041
+
+typedef Thosts = Thosts{id:Option<string>, capacity:Option<signed<64>>, up:Option<bool>}
+input relation Rhosts[Thosts] primary key (row) (row.id)
+output relation Rhostsv[Thosts]
+Rhostsv[v0] :- Rhosts[v],var v0 = v.

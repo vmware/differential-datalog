@@ -206,6 +206,15 @@ impl Record {
             _ => None,
         }
     }
+
+    pub fn struct_constructor_str(&self) -> Option<&str> {
+        match self {
+            Self::PosStruct(constructor, _) | Self::NamedStruct(constructor, _) => {
+                Some(constructor.as_ref())
+            }
+            _ => None,
+        }
+    }
 }
 
 impl fmt::Display for Record {

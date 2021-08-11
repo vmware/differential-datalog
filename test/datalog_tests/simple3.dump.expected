@@ -4,3 +4,14 @@ NonNullListTest{.description = "into_nonnull_vec(test_non_null_list()): [1, 2, 3
 NonNullListTest{.description = "nonnull_list_append(test_non_null_list(), 4): NonNullList{1,NonNullNxt{NonNullList{2,NonNullNxt{NonNullList{3,NonNullNxt{NonNullList{4,NULL{}}}}}}}}"}: +1
 NonNullListTest{.description = "nonnull_list_map(test_non_null_list(), +1): NonNullList{2,NonNullNxt{NonNullList{3,NonNullNxt{NonNullList{4,NULL{}}}}}}"}: +1
 NonNullListTest{.description = "test_non_null_list(): NonNullList{1,NonNullNxt{NonNullList{2,NonNullNxt{NonNullList{3,NULL{}}}}}}"}: +1
+Rhostsv:
+Thosts{.id = ddlog_std::Some{.x = "n1"}, .capacity = ddlog_std::Some{.x = 11}, .up = ddlog_std::None{}}: +1
+Rhostsv:
+Thosts{.id = ddlog_std::Some{.x = "n1"}, .capacity = ddlog_std::Some{.x = 10}, .up = ddlog_std::None{}}: +1
+Thosts{.id = ddlog_std::Some{.x = "n1"}, .capacity = ddlog_std::Some{.x = 11}, .up = ddlog_std::None{}}: -1
+Rhostsv:
+Thosts{.id = ddlog_std::Some{.x = "n1"}, .capacity = ddlog_std::Some{.x = 10}, .up = ddlog_std::None{}}: -1
+Thosts{.id = ddlog_std::Some{.x = "n1"}, .capacity = ddlog_std::Some{.x = 10}, .up = ddlog_std::Some{.x = true}}: +1
+Rhostsv:
+Thosts{.id = ddlog_std::Some{.x = "n1"}, .capacity = ddlog_std::Some{.x = 10}, .up = ddlog_std::None{}}: +1
+Thosts{.id = ddlog_std::Some{.x = "n1"}, .capacity = ddlog_std::Some{.x = 10}, .up = ddlog_std::Some{.x = true}}: -1
