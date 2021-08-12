@@ -96,6 +96,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
     private final Map<String, Map<String, Field<?>>> tablesToFieldMap = new HashMap<>();
     private final Map<String, List<? extends Field<?>>> tablesToPrimaryKeys = new HashMap<>();
     private final Map<String, Set<Record>> materializedViews = new ConcurrentHashMap<>();
+    public static boolean trace = false;
 
     public DDlogJooqProvider(final DDlogAPI dDlogAPI, final List<String> sqlStatements) {
         this.dDlogAPI = dDlogAPI;
@@ -135,19 +136,34 @@ public final class DDlogJooqProvider implements MockDataProvider {
     public MockResult[] execute(final MockExecuteContext ctx) {
         final String[] batchSql = ctx.batchSQL();
         final MockResult[] mock = new MockResult[batchSql.length];
+        int commandIndex = 0;
         try {
+            if (trace)
+                System.out.println("Staring transaction: " + ctx.sql());
             dDlogAPI.transactionStart();
+            if (trace)
+                System.out.println("Transaction started");
             final Object[][] bindings = ctx.batchBindings();
-            for (int i = 0; i < batchSql.length; i++) {
-                final Object[] binding = bindings != null && bindings.length > i ? bindings[i] : DEFAULT_BINDING;
-                final QueryContext context = new QueryContext(batchSql[i], binding);
-                final SqlParser parser = SqlParser.create(batchSql[i]);
+            for (commandIndex = 0; commandIndex < batchSql.length; commandIndex++) {
+                final Object[] binding = bindings != null && bindings.length > commandIndex ? bindings[commandIndex] : DEFAULT_BINDING;
+                final QueryContext context = new QueryContext(batchSql[commandIndex], binding);
+                final SqlParser parser = SqlParser.create(batchSql[commandIndex]);
                 final SqlNode sqlNode = parser.parseStmt();
-                mock[i] = sqlNode.accept(new QueryVisitor(context));
+                mock[commandIndex] = sqlNode.accept(new QueryVisitor(context));
             }
             dDlogAPI.transactionCommitDumpChanges(this::onChange);
-        } catch (final DDlogException | SqlParseException e) {
+            if (trace)
+                System.out.println("Transaction committed");
+        } catch (final Exception e) {
+            // We really have to catch all exceptions here to rollback, otherwise
+            // we could be left with a started and unterminated transaction.
+            if (trace)
+                System.out.println("Exception: " + e.getMessage());
             rollback();
+            // Not clear that this is the result for all remaining commands,
+            // but we cannot leave these null either.
+            for (; commandIndex < batchSql.length; commandIndex++)
+                mock[commandIndex] = exception(e);
         }
         return mock;
     }
@@ -164,14 +180,22 @@ public final class DDlogJooqProvider implements MockDataProvider {
 
     private void rollback() {
         try {
+            if (trace)
+                System.out.println("Rolling back transaction");
             dDlogAPI.transactionRollback();
+            if (trace)
+                System.out.println("Transaction rolled back");
         } catch (final DDlogException e) {
+            if (trace)
+                System.out.println("Failed to rollback transaction: " + e.getMessage());
             throw new DDlogJooqProviderException(e);
         }
     }
 
     private void onChange(final DDlogCommand<DDlogRecord> command) {
         try {
+            if (trace)
+                System.out.println("Result: " + command);
             final int relationId = command.relid();
             final String relationName = dDlogAPI.getTableName(relationId);
             final String tableName = relationNameToTableName(relationName);
@@ -193,6 +217,8 @@ public final class DDlogJooqProvider implements MockDataProvider {
                     break;
             }
         } catch (DDlogException ex) {
+            if (trace)
+                System.out.println("Exception: " + ex);
             throw new RuntimeException(ex);
         }
     }
@@ -267,16 +293,18 @@ public final class DDlogJooqProvider implements MockDataProvider {
                 if (context.hasBinding()) {
                     // Is a statement with bound variables
                     for (int i = 0; i < rowElements.length; i++) {
-                        final boolean isNullableField = fields.get(i).getDataType().nullable();
-                        final DDlogRecord record = toValue(fields.get(i), context.nextBinding());
-                        recordsArray[i] = maybeOption(isNullableField, record);
+                        Field<?> fi = fields.get(i);
+                        final boolean isNullableField = fi.getDataType().nullable();
+                        final DDlogRecord record = toValue(fi, context.nextBinding());
+                        recordsArray[i] = maybeOption(isNullableField, record, fi.getName());
                     }
                 } else {
                     // need to parse literals into DDLogRecords
                     for (int i = 0; i < rowElements.length; i++) {
-                        final boolean isNullableField = fields.get(i).getDataType().nullable();
+                        Field<?> fi = fields.get(i);
+                        final boolean isNullableField = fi.getDataType().nullable();
                         final DDlogRecord result = rowElements[i].accept(PARSE_LITERALS);
-                        recordsArray[i] = maybeOption(isNullableField, result);
+                        recordsArray[i] = maybeOption(isNullableField, result, fi.getName());
                     }
                 }
                 try {
@@ -347,7 +375,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
                     final DDlogRecord valueToUpdateTo = context.hasBinding()
                             ? toValue(field, context.nextBinding())
                             : update.getSourceExpressionList().accept(PARSE_LITERALS);
-                    final DDlogRecord maybeWrapped = maybeOption(isNullableField, valueToUpdateTo);
+                    final DDlogRecord maybeWrapped = maybeOption(isNullableField, valueToUpdateTo, columnName);
                     updatedValues[i] = maybeWrapped;
                     columnsToUpdate[i] = columnName;
                 }
@@ -428,7 +456,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
             for (int i = 0; i < pkFields.size(); i++) {
                 if (pkFields.get(i).getUnqualifiedName().last().equalsIgnoreCase(identifier.getSimple())) {
                     final boolean isNullable = pkFields.get(i).getDataType().nullable();
-                    matchExpressions[i] = maybeOption(isNullable, literal.accept(PARSE_LITERALS));
+                    matchExpressions[i] = maybeOption(isNullable, literal.accept(PARSE_LITERALS), pkFields.get(i).getName());
                     return matchExpressions;
                 }
             }
@@ -476,8 +504,9 @@ public final class DDlogJooqProvider implements MockDataProvider {
     /*
      * The SQL -> DDlog compiler represents nullable fields as ddlog Option<> types. We therefore
      * wrap DDlogRecords if needed.  Returns None for a nullptr record, or Some{record} otherwise.
+     * @param field name of field that will store the value
      */
-    private static DDlogRecord maybeOption(final Boolean isNullable, final DDlogRecord record) {
+    private static DDlogRecord maybeOption(final Boolean isNullable, final DDlogRecord record, String field) {
         if (isNullable) {
             try {
                 if (record == null)
@@ -487,6 +516,8 @@ public final class DDlogJooqProvider implements MockDataProvider {
                 throw new DDlogJooqProviderException(e);
             }
         } else {
+            if (record == null)
+                throw new DDlogJooqProviderException("NULL value for non-null column " + field);
             return record;
         }
     }
