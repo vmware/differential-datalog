@@ -16,9 +16,10 @@ import org.jooq.Result;
 import org.jooq.exception.DataAccessException;
 import org.jooq.impl.DSL;
 import org.jooq.tools.jdbc.MockConnection;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
+import org.junit.rules.TestRule;
+import org.junit.rules.TestWatcher;
+import org.junit.runner.Description;
 
 import javax.annotation.Nullable;
 import java.io.BufferedWriter;
@@ -98,6 +99,14 @@ public class JooqProviderTest {
         );
         assertEquals(0, create.fetch("select * from hostsv").size());
     }
+
+    // This traces the test being executed for debugging
+    // @Rule
+    public TestRule watcher = new TestWatcher() {
+        protected void starting(Description description) {
+            System.out.println("Starting test: " + description.getMethodName());
+        }
+    };
 
     /*
      * Test with SQL statements that are raw strings and do not use bindings
@@ -206,8 +215,12 @@ public class JooqProviderTest {
         assert(create != null);
         create.execute("insert into hosts values ('n1', 10, null)");
         create.update(table("hosts")).set(field3, true).where(field1.eq("n1")).execute();
-        final Result<Record> results = create.selectFrom(table("hostsv")).fetch();
-        assertEquals(0, results.size());
+        final Result<Record> hostsvResults = create.selectFrom(table("hostsv")).fetch();
+        Record t1 = create.newRecord(field1, field2, field3);
+        t1.setValue(field1, "n1");
+        t1.setValue(field2, 10);
+        t1.setValue(field3, true);
+        assertTrue(hostsvResults.contains(t1));
     }
 
     @Test
@@ -457,12 +470,41 @@ public class JooqProviderTest {
     @Test
     public void testNotNullColumns() {
         // Without bindings
+        Assert.assertNotNull(create);
         create.execute("insert into not_null values (5, 'test_string')");
-
         // With bindings
         create.insertInto(table("not_null"))
                 .values(1, "herp")
                 .execute();
+    }
+
+    /*
+     * Inserting null into not-null column fails at runtime.
+     */
+    @Test
+    public void testInsertNullFails() {
+        // Without bindings
+        try {
+            Assert.assertNotNull(create);
+            create.execute("insert into not_null values (5, null)");
+            fail();
+        } catch (Exception ex) {
+            Assert.assertTrue(ex.getMessage().contains("NULL value for non-null column"));
+        }
+    }
+
+    @Test
+    public void testInsertNullFails1() {
+        try {
+            // With bindings
+            Assert.assertNotNull(create);
+            create.insertInto(table("not_null"))
+                    .values(null, "herp")
+                    .execute();
+            fail();
+        } catch (Exception ex) {
+            Assert.assertTrue(ex.getMessage().contains("NULL value for non-null column"));
+        }
     }
 
     public static void compileAndLoad(final List<String> ddl) throws IOException, DDlogException {
