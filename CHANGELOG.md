@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Optimizations
+
+- Introduce [`#[by_val]`](https://github.com/vmware/differential-datalog/blob/master/doc/tutorial/tutorial.md#by_val)
+  attribute to pass function arguments by value.
+- Use the new attribute to optimize a bunch of library functions.  This should
+  not break any existing DDlog code, but it will affect Rust code that calls
+  DDlog libraries directly.
+
 ## [0.44.0] - Aug 12, 2021
 
 ### Optimizations

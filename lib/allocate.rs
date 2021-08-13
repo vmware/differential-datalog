@@ -25,9 +25,9 @@ use std::cmp;
 use std::collections::BTreeSet;
 use std::ops;
 
-pub fn allocate<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Copy>(
+pub fn allocate<B: Ord, N: num::Num + ops::Add + cmp::Ord + Copy>(
     allocated: &ddlog_std::Set<N>,
-    toallocate: &ddlog_std::Vec<B>,
+    toallocate: ddlog_std::Vec<B>,
     min_val: &N,
     max_val: &N,
 ) -> ddlog_std::Vec<ddlog_std::tuple2<B, N>> {
@@ -42,7 +42,7 @@ pub fn allocate<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Copy>(
     };
     let mut offset = N::zero();
     let mut res = ddlog_std::Vec::new();
-    for b in toallocate.iter() {
+    for b in toallocate.into_iter() {
         loop {
             next = if next == *max_val {
                 *min_val
@@ -57,7 +57,7 @@ pub fn allocate<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Copy>(
                 offset = offset + N::one();
                 continue;
             } else {
-                res.push(ddlog_std::tuple2((*b).clone(), next));
+                res.push(ddlog_std::tuple2(b, next));
                 if offset == range {
                     return res;
                 };
@@ -69,9 +69,9 @@ pub fn allocate<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Copy>(
     return res;
 }
 
-pub fn allocate_with_hint<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Copy>(
+pub fn allocate_with_hint<B: Ord, N: num::Num + ops::Add + cmp::Ord + Copy>(
     allocated: &ddlog_std::Set<N>,
-    toallocate: &ddlog_std::Vec<ddlog_std::tuple2<B, ddlog_std::Option<N>>>,
+    toallocate: ddlog_std::Vec<ddlog_std::tuple2<B, ddlog_std::Option<N>>>,
     min_val: &N,
     max_val: &N,
 ) -> ddlog_std::Vec<ddlog_std::tuple2<B, N>> {
@@ -86,11 +86,11 @@ pub fn allocate_with_hint<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Co
         next = *min_val;
     };
     let mut res = ddlog_std::Vec::new();
-    for ddlog_std::tuple2(b, hint) in toallocate.iter() {
+    for ddlog_std::tuple2(b, hint) in toallocate.into_iter() {
         let mut offset = N::zero();
         next = match hint {
             ddlog_std::Option::None => next,
-            ddlog_std::Option::Some { x: h } => *h,
+            ddlog_std::Option::Some { x: h } => h,
         };
         loop {
             if allocated.x.contains(&next) || new_allocations.contains(&next) {
@@ -105,7 +105,7 @@ pub fn allocate_with_hint<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Co
                 };
                 continue;
             } else {
-                res.push(ddlog_std::tuple2((*b).clone(), next));
+                res.push(ddlog_std::tuple2(b, next));
                 new_allocations.insert(next);
                 if offset == range {
                     return res;
@@ -122,9 +122,9 @@ pub fn allocate_with_hint<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Co
     return res;
 }
 
-pub fn allocate_opt<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Copy>(
+pub fn allocate_opt<B: Ord, N: num::Num + ops::Add + cmp::Ord + Copy>(
     allocated: &ddlog_std::Set<N>,
-    toallocate: &ddlog_std::Vec<B>,
+    toallocate: ddlog_std::Vec<B>,
     min_val: &N,
     max_val: &N,
 ) -> ddlog_std::Vec<ddlog_std::tuple2<B, ddlog_std::Option<N>>> {
@@ -142,10 +142,10 @@ pub fn allocate_opt<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Copy>(
     // Signal that address space has been exhausted, but iteration must continue to
     // assign `None` to all remaining items.
     let mut exhausted = false;
-    for b in toallocate.iter() {
+    for b in toallocate.into_iter() {
         loop {
             if exhausted {
-                res.push(ddlog_std::tuple2((*b).clone(), ddlog_std::Option::None));
+                res.push(ddlog_std::tuple2(b, ddlog_std::Option::None));
                 break;
             };
             if offset == range {
@@ -161,10 +161,7 @@ pub fn allocate_opt<B: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Copy>(
             if allocated.x.contains(&next) {
                 continue;
             } else {
-                res.push(ddlog_std::tuple2(
-                    (*b).clone(),
-                    ddlog_std::Option::Some { x: next },
-                ));
+                res.push(ddlog_std::tuple2(b, ddlog_std::Option::Some { x: next }));
                 break;
             }
         }

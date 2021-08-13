@@ -43,7 +43,7 @@ typedef istring = Intern<string>
 
 /* Intern a value.
  */
-extern function intern(s: 'A): Intern<'A>
+extern function intern(#[by_val] s: 'A): Intern<'A>
 
 /* Extract an interned value.
  */

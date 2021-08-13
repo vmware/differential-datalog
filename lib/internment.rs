@@ -215,18 +215,18 @@ where
     fn mutate(&self, value: &mut Intern<T>) -> Result<(), String> {
         let mut mutated = ival(value).clone();
         self.mutate(&mut mutated)?;
-        *value = intern(&mutated);
+        *value = intern(mutated);
 
         Ok(())
     }
 }
 
 /// Create a new interned value
-pub fn intern<T>(value: &T) -> Intern<T>
+pub fn intern<T>(value: T) -> Intern<T>
 where
-    T: Eq + Hash + Send + Sync + Clone + 'static,
+    T: Eq + Hash + Send + Sync + 'static,
 {
-    Intern::new(value.clone())
+    Intern::new(value)
 }
 
 /// Get the inner value of an interned value

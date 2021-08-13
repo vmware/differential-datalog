@@ -163,6 +163,7 @@ funcValidateAttrs d f@Function{..} = do
     mapM_ (funcValidateAttr d) funcAttrs
     _ <- checkSideEffectAttr d f
     _ <- checkReturnByRefAttr d f
+    mapM_ (argValidateAttrs d) funcArgs
     return ()
 
 funcValidateAttr :: (MonadError String me) => DatalogProgram -> Attribute -> me ()
@@ -171,6 +172,37 @@ funcValidateAttr d attr = do
          "has_side_effects" -> return ()
          "return_by_ref" -> return ()
          n -> err d (pos attr) $ "Unknown attribute " ++ n
+
+argValidateAttrs :: (MonadError String me) => DatalogProgram -> FuncArg -> me ()
+argValidateAttrs d arg@FuncArg{..} = do
+    uniqNames (Just d) ("Multiple definitions of attribute " ++) argAttrs
+    mapM_ (argValidateAttr d arg) argAttrs
+    _ <- argCheckByValAttr d arg
+    return ()
+
+argValidateAttr :: (MonadError String me) => DatalogProgram -> FuncArg -> Attribute -> me ()
+argValidateAttr d arg attr = do
+    case name attr of
+         "by_val" -> do
+            check d (not $ argMut arg) (pos attr)
+                 "'by_val' cannot be applied to 'mut' arguments"
+         n -> err d (pos attr) $ "Unknown attribute " ++ n
+
+{- 'by_val' attribute on an extern function argument indicates the the argument
+   should be passed by value rather than by reference (which is the default). -}
+argCheckByValAttr :: (MonadError String me) => DatalogProgram -> FuncArg -> me Bool
+argCheckByValAttr d FuncArg{..} = do
+    case find ((== "by_val") . name) argAttrs of
+         Nothing -> return False
+         Just attr -> do check d (attrVal attr == eTrue) (pos attr)
+                               "The value of 'by_val' attribute must be 'true' or empty"
+                         return True
+
+argGetByValAttr :: DatalogProgram -> FuncArg -> Bool
+argGetByValAttr d a = do
+    case argCheckByValAttr d a of
+         Left e  -> error e
+         Right b -> b
 
 {- 'size' attribute: Gives DDlog a hint about the size of an extern data type in bytes. -}
 

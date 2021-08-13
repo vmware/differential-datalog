@@ -67,9 +67,9 @@ pub fn res2std<T, E: Display>(res: StdResult<T, E>) -> Result<T, String> {
     }
 }
 
-pub fn result_unwrap_or_default<T: Default + Clone, E>(res: &Result<T, E>) -> T {
+pub fn result_unwrap_or_default<T: Default + Clone, E>(res: Result<T, E>) -> T {
     match res {
-        Result::Ok { res } => res.clone(),
+        Result::Ok { res } => res,
         Result::Err { err } => T::default(),
     }
 }
@@ -180,8 +180,8 @@ where
     }
 }
 
-pub fn ref_new<A: Clone>(x: &A) -> Ref<A> {
-    Ref::from(x.clone())
+pub fn ref_new<A: Clone>(x: A) -> Ref<A> {
+    Ref::from(x)
 }
 
 pub fn deref<A: Clone>(x: &Ref<A>) -> &A {
@@ -306,9 +306,9 @@ where
     }
 }
 
-pub fn option_unwrap_or_default<T: Default + Clone>(opt: &Option<T>) -> T {
+pub fn option_unwrap_or_default<T: Default + Clone>(opt: Option<T>) -> T {
     match opt {
-        Option::Some { x } => x.clone(),
+        Option::Some { x } => x,
         Option::None => T::default(),
     }
 }
@@ -532,26 +532,24 @@ pub fn vec_with_capacity<T>(len: &std_usize) -> Vec<T> {
 }
 
 /// Create a new vec with a single element
-pub fn vec_singleton<T: Clone>(value: &T) -> Vec<T> {
-    Vec {
-        vec: vec![value.clone()],
-    }
+pub fn vec_singleton<T>(value: T) -> Vec<T> {
+    Vec { vec: vec![value] }
 }
 
 pub fn vec_append<T: Clone>(vec: &mut Vec<T>, other: &Vec<T>) {
     vec.extend_from_slice(other.as_slice());
 }
 
-pub fn vec_push<T: Clone>(vec: &mut Vec<T>, elem: &T) {
-    vec.push(elem.clone());
+pub fn vec_push<T>(vec: &mut Vec<T>, elem: T) {
+    vec.push(elem);
 }
 
 /// Pushes to a vector immutably by creating an entirely new vector and pushing the new
 /// element to it
-pub fn vec_push_imm<T: Clone>(immutable_vec: &Vec<T>, x: &T) -> Vec<T> {
+pub fn vec_push_imm<T: Clone>(immutable_vec: &Vec<T>, x: T) -> Vec<T> {
     let mut mutable_vec = Vec::with_capacity(immutable_vec.len());
     mutable_vec.extend_from_slice(immutable_vec.as_slice());
-    mutable_vec.push(x.clone());
+    mutable_vec.push(x);
 
     mutable_vec
 }
@@ -572,9 +570,9 @@ pub fn vec_nth<T: Clone>(vec: &Vec<T>, nth: &std_usize) -> Option<T> {
     vec.get(*nth as usize).cloned().into()
 }
 
-pub fn vec_to_set<T: Ord + Clone>(vec: &Vec<T>) -> Set<T> {
+pub fn vec_to_set<T: Ord>(vec: Vec<T>) -> Set<T> {
     Set {
-        x: vec.vec.iter().cloned().collect(),
+        x: vec.vec.into_iter().collect(),
     }
 }
 
@@ -582,10 +580,9 @@ pub fn vec_sort<T: Ord>(vec: &mut Vec<T>) {
     vec.as_mut_slice().sort();
 }
 
-pub fn vec_sort_imm<T: Ord + Clone>(vec: &Vec<T>) -> Vec<T> {
-    let mut res = (*vec).clone();
-    res.vec.sort();
-    res
+pub fn vec_sort_imm<T: Ord>(mut vec: Vec<T>) -> Vec<T> {
+    vec.vec.sort();
+    vec
 }
 
 pub fn vec_resize<T: Clone>(vec: &mut Vec<T>, new_len: &std_usize, value: &T) {
@@ -605,23 +602,33 @@ pub fn vec_swap_nth<T: Clone>(vec: &mut Vec<T>, idx: &std_usize, value: &mut T) 
     }
 }
 
-pub fn vec_update_nth<T: Clone>(vec: &mut Vec<T>, idx: &std_usize, value: &T) -> bool {
+pub fn vec_update_nth<T>(vec: &mut Vec<T>, idx: &std_usize, value: T) -> bool {
     if (*idx as usize) < vec.len() {
-        vec[*idx as usize] = value.clone();
+        vec[*idx as usize] = value;
         true
     } else {
         false
     }
 }
 
-pub fn vec_zip<X: Clone, Y: Clone>(v1: &Vec<X>, v2: &Vec<Y>) -> Vec<tuple2<X, Y>> {
+pub fn vec_zip<X, Y>(v1: Vec<X>, v2: Vec<Y>) -> Vec<tuple2<X, Y>> {
     Vec {
         vec: v1
-            .iter()
-            .zip(v2.iter())
-            .map(|(x, y)| tuple2(x.clone(), y.clone()))
+            .into_iter()
+            .zip(v2.into_iter())
+            .map(|(x, y)| tuple2(x, y))
             .collect(),
     }
+}
+
+pub fn vec_unzip<X, Y>(v: Vec<tuple2<X, Y>>) -> tuple2<Vec<X>, Vec<Y>> {
+    let mut v1 = Vec::with_capacity(v.len());
+    let mut v2 = Vec::with_capacity(v.len());
+    for tuple2(x, y) in v.into_iter() {
+        v1.push(x);
+        v2.push(y);
+    }
+    tuple2(v1, v2)
 }
 
 pub fn vec_reverse<X: Clone>(v: &mut Vec<X>) {
@@ -686,6 +693,40 @@ impl<'a, T: Ord> Set<T> {
     }
 }
 
+/* Interator that consumes the set.
+ */
+pub struct SetIntoIter<X> {
+    iter: btree_set::IntoIter<X>,
+}
+
+impl<T> SetIntoIter<T> {
+    pub fn new(set: Set<T>) -> Self
+    where
+        T: Ord,
+    {
+        SetIntoIter {
+            iter: set.x.into_iter(),
+        }
+    }
+}
+
+impl<X> Iterator for SetIntoIter<X> {
+    type Item = X;
+
+    fn next(&mut self) -> StdOption<Self::Item> {
+        self.iter.next()
+    }
+
+    fn size_hint(&self) -> (usize, StdOption<usize>) {
+        self.iter.size_hint()
+    }
+}
+
+impl<'a, T: Ord> Set<T> {
+    pub fn into_iter(self) -> SetIntoIter<T> {
+        SetIntoIter::new(self)
+    }
+}
 impl<T: Ord> Set<T> {
     pub fn new() -> Self {
         Set { x: BTreeSet::new() }
@@ -748,20 +789,19 @@ pub fn set_empty<X: Clone + Ord>() -> Set<X> {
     Set::new()
 }
 
-pub fn set_singleton<X: Ord + Clone>(v: &X) -> Set<X> {
+pub fn set_singleton<X: Ord>(v: X) -> Set<X> {
     let mut s = Set::new();
-    s.insert(v.clone());
+    s.insert(v);
     s
 }
 
-pub fn set_insert<X: Ord + Clone>(s: &mut Set<X>, v: &X) {
-    s.x.insert((*v).clone());
+pub fn set_insert<X: Ord>(s: &mut Set<X>, v: X) {
+    s.x.insert(v);
 }
 
-pub fn set_insert_imm<X: Ord + Clone>(s: &Set<X>, v: &X) -> Set<X> {
-    let mut s2 = s.clone();
-    s2.insert((*v).clone());
-    s2
+pub fn set_insert_imm<X: Ord>(mut s: Set<X>, v: X) -> Set<X> {
+    s.insert(v);
+    s
 }
 
 pub fn set_contains<X: Ord>(s: &Set<X>, v: &X) -> bool {
@@ -776,22 +816,21 @@ pub fn set_nth<X: Ord + Clone>(s: &Set<X>, n: &std_usize) -> Option<X> {
     option2std(s.x.iter().nth(*n as usize).cloned())
 }
 
-pub fn set_to_vec<X: Ord + Clone>(set: &Set<X>) -> Vec<X> {
+pub fn set_to_vec<X: Ord>(set: Set<X>) -> Vec<X> {
     Vec {
-        vec: set.x.iter().cloned().collect(),
+        vec: set.x.into_iter().collect(),
     }
 }
 
-pub fn set_union<X: Ord + Clone>(s1: &Set<X>, s2: &Set<X>) -> Set<X> {
-    let mut s = s1.clone();
-    s.x.append(&mut s2.x.clone());
-    s
+pub fn set_union<X: Ord + Clone>(mut s1: Set<X>, mut s2: Set<X>) -> Set<X> {
+    s1.x.append(&mut s2.x);
+    s1
 }
 
-pub fn set_unions<X: Ord + Clone>(sets: &Vec<Set<X>>) -> Set<X> {
+pub fn set_unions<X: Ord + Clone>(sets: Vec<Set<X>>) -> Set<X> {
     let mut s = BTreeSet::new();
-    for set in sets.iter() {
-        s.append(&mut set.x.clone());
+    for mut set in sets.into_iter() {
+        s.append(&mut set.x);
     }
 
     Set { x: s }
@@ -956,24 +995,23 @@ pub fn map_empty<K: Ord + Clone, V: Clone>() -> Map<K, V> {
     Map::new()
 }
 
-pub fn map_singleton<K: Ord + Clone, V: Clone>(k: &K, v: &V) -> Map<K, V> {
+pub fn map_singleton<K: Ord, V>(k: K, v: V) -> Map<K, V> {
     let mut m = Map::new();
-    m.insert(k.clone(), v.clone());
+    m.insert(k, v);
     m
 }
 
-pub fn map_insert<K: Ord + Clone, V: Clone>(m: &mut Map<K, V>, k: &K, v: &V) {
-    m.x.insert((*k).clone(), (*v).clone());
+pub fn map_insert<K: Ord, V>(m: &mut Map<K, V>, k: K, v: V) {
+    m.x.insert(k, v);
 }
 
 pub fn map_remove<K: Ord + Clone, V: Clone>(m: &mut Map<K, V>, k: &K) -> Option<V> {
     option2std(m.x.remove(k))
 }
 
-pub fn map_insert_imm<K: Ord + Clone, V: Clone>(m: &Map<K, V>, k: &K, v: &V) -> Map<K, V> {
-    let mut m2 = m.clone();
-    m2.insert((*k).clone(), (*v).clone());
-    m2
+pub fn map_insert_imm<K: Ord, V>(mut m: Map<K, V>, k: K, v: V) -> Map<K, V> {
+    m.insert(k, v);
+    m
 }
 
 pub fn map_get<K: Ord, V: Clone>(m: &Map<K, V>, k: &K) -> Option<V> {
@@ -988,10 +1026,9 @@ pub fn map_is_empty<K: Ord, V: Clone>(m: &Map<K, V>) -> bool {
     m.x.is_empty()
 }
 
-pub fn map_union<K: Ord + Clone, V: Clone>(m1: &Map<K, V>, m2: &Map<K, V>) -> Map<K, V> {
-    let mut m = m1.clone();
-    m.x.append(&mut m2.x.clone());
-    m
+pub fn map_union<K: Ord + Clone, V: Clone>(mut m1: Map<K, V>, mut m2: Map<K, V>) -> Map<K, V> {
+    m1.x.append(&mut m2.x);
+    m1
 }
 
 pub fn map_keys<K: Ord + Clone, V>(map: &Map<K, V>) -> Vec<K> {
@@ -1602,7 +1639,7 @@ pub fn group_nth<K, V: Clone>(g: &Group<K, V>, n: &std_usize) -> Option<V> {
 pub fn group_to_set<K, V: Ord + Clone>(g: &Group<K, V>) -> Set<V> {
     let mut res = Set::new();
     for v in g.val_iter() {
-        set_insert(&mut res, &v);
+        set_insert(&mut res, v);
     }
     res
 }
@@ -1610,7 +1647,7 @@ pub fn group_to_set<K, V: Ord + Clone>(g: &Group<K, V>) -> Set<V> {
 pub fn group_set_unions<K, V: Ord + Clone>(g: &Group<K, Set<V>>) -> Set<V> {
     let mut res = Set::new();
     for gr in g.val_iter() {
-        for v in gr.iter() {
+        for v in gr.into_iter() {
             set_insert(&mut res, v);
         }
     }
@@ -1621,12 +1658,12 @@ pub fn group_setref_unions<K, V: Ord + Clone>(g: &Group<K, Ref<Set<V>>>) -> Ref<
     if g.size() == 1 {
         g.first()
     } else {
-        let mut res: Ref<Set<V>> = ref_new(&Set::new());
+        let mut res: Ref<Set<V>> = ref_new(Set::new());
         {
             let mut rres = Ref::get_mut(&mut res).unwrap();
             for gr in g.val_iter() {
                 for v in gr.iter() {
-                    set_insert(&mut rres, &v);
+                    set_insert(&mut rres, v.clone());
                 }
             }
         }
@@ -1638,7 +1675,7 @@ pub fn group_setref_unions<K, V: Ord + Clone>(g: &Group<K, Ref<Set<V>>>) -> Ref<
 pub fn group_to_vec<K, V: Ord + Clone>(g: &Group<K, V>) -> Vec<V> {
     let mut res = Vec::with_capacity(g.size() as usize);
     for v in g.val_iter() {
-        vec_push(&mut res, &v);
+        vec_push(&mut res, v);
     }
     res
 }
@@ -1646,7 +1683,7 @@ pub fn group_to_vec<K, V: Ord + Clone>(g: &Group<K, V>) -> Vec<V> {
 pub fn group_to_map<K1, K2: Ord + Clone, V: Clone>(g: &Group<K1, tuple2<K2, V>>) -> Map<K2, V> {
     let mut res = Map::new();
     for tuple2(k, v) in g.val_iter() {
-        map_insert(&mut res, &k, &v);
+        map_insert(&mut res, k, v);
     }
     res
 }
@@ -1658,7 +1695,7 @@ pub fn group_to_setmap<K1, K2: Ord + Clone, V: Clone + Ord>(
     for tuple2(k, v) in g.val_iter() {
         match res.x.entry(k) {
             btree_map::Entry::Vacant(ve) => {
-                ve.insert(set_singleton(&v));
+                ve.insert(set_singleton(v));
             }
             btree_map::Entry::Occupied(mut oe) => {
                 oe.get_mut().insert(v);
