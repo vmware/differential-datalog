@@ -126,6 +126,7 @@ module Language.DifferentialDatalog.Syntax (
         FuncArg(..),
         argMut,
         Function(..),
+        funcIsExtern,
         funcMutArgs,
         funcImmutArgs,
         funcShowProto,
@@ -1060,16 +1061,17 @@ eTry e              = E $ ETry      nopos e
 eClosure ts r e     = E $ EClosure  nopos ts r e
 eFunc f             = E $ EFunc     nopos [f]
 
-data FuncArg = FuncArg { argPos  :: Pos
-                       , argName :: String
-                       , argType :: ArgType
+data FuncArg = FuncArg { argPos   :: Pos
+                       , argAttrs :: [Attribute]
+                       , argName  :: String
+                       , argType  :: ArgType
                        }
 
 instance Eq FuncArg where
-    (==) (FuncArg _ n1 t1) (FuncArg _ n2 t2) = (n1, t1) == (n2, t2)
+    (==) (FuncArg _ a1 n1 t1) (FuncArg _ a2 n2 t2) = (a1, n1, t1) == (a2, n2, t2)
 
 instance Ord FuncArg where
-    compare (FuncArg _ n1 t1) (FuncArg _ n2 t2) = compare (n1, t1) (n2, t2)
+    compare (FuncArg _ a1 n1 t1) (FuncArg _ a2 n2 t2) = compare (a1, n1, t1) (a2, n2, t2)
 
 instance WithPos FuncArg where
     pos = argPos
@@ -1080,7 +1082,7 @@ instance WithName FuncArg where
     setName a n = a { argName = n }
 
 instance PP FuncArg where
-    pp FuncArg{..} = pp argName <> ":" <+> pp argType
+    pp FuncArg{..} = ppAttributes argAttrs <+> pp argName <> ":" <+> pp argType
 
 argMut :: FuncArg -> Bool
 argMut = atypeMut . argType
@@ -1092,6 +1094,9 @@ data Function = Function { funcPos   :: Pos
                          , funcType  :: Type
                          , funcDef   :: Maybe Expr
                          }
+
+funcIsExtern :: Function -> Bool
+funcIsExtern f = isNothing $ funcDef f
 
 funcMutArgs :: Function -> [FuncArg]
 funcMutArgs f = filter argMut $ funcArgs f

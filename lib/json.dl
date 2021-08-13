@@ -51,17 +51,17 @@ extern function to_json_string(x: 'T): Result<string, string>
  * structure expected by 'T, for example if 'T is a struct type but the input
  * contains something other than a JSON map.
  */
-function from_json_value(json_val: JsonValue): Result<'T, string> {
+function from_json_value(#[by_val] json_val: JsonValue): Result<'T, string> {
     _from_json_value(json_val)
 }
 
-extern function _from_json_value(json_val: JsonValue): Result<'T, string>
+extern function _from_json_value(#[by_val] json_val: JsonValue): Result<'T, string>
 
 /* Serialize the given data structure as a JsonValue.
  *
  * Serialization can fail if 'T contains a map with non-string keys.
  */
-extern function to_json_value(x: 'T): Result<JsonValue, string>
+extern function to_json_value(#[by_val] x: 'T): Result<JsonValue, string>
 
 /* Represents any valid JSON value.
  */

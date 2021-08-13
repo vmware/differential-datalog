@@ -25,7 +25,8 @@ SOFTWARE.
 module Language.DifferentialDatalog.Var(
     Var(..),
     VLocator,
-    varLocator)
+    varLocator,
+    varKind)
 where
 
 import Data.Maybe
@@ -34,8 +35,10 @@ import Text.PrettyPrint
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.PP
+import Language.DifferentialDatalog.Attribute
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Expr
+import Language.DifferentialDatalog.Rust
 
 -- Uniquely identifies a variable declaration in a DDlog program.
 data Var = -- Variable declared in an expression ('var v').
@@ -108,3 +111,9 @@ varLocator GroupVar{..}         = VLocator  [6, varRhsIdx]
 varLocator WeightVar            = VLocator  [7]
 varLocator TSVar{}              = VLocator  [8]
 
+-- Generally, DDlog variables are compiled to Rust references.  An exception are
+-- function arguments annotated with '#[by_val]'.
+varKind :: DatalogProgram -> Var -> EKind
+varKind d ArgVar{..} | argGetByValAttr d (funcArgs varFunc !! varArgIndex)
+                     = EVal
+varKind _ _          = EReference

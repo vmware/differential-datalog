@@ -37,14 +37,12 @@ pub fn to_json_string<T: serde::Serialize>(x: &T) -> ddlog_std::Result<String, S
     res2std(serde_json::to_string(x))
 }
 
-pub fn _from_json_value<T: DeserializeOwned>(val: &JsonValue) -> ddlog_std::Result<T, String> {
-    res2std(serde_json::from_value(serde_json::value::Value::from(
-        val.clone(),
-    )))
+pub fn _from_json_value<T: DeserializeOwned>(val: JsonValue) -> ddlog_std::Result<T, String> {
+    res2std(serde_json::from_value(serde_json::value::Value::from(val)))
 }
 
-pub fn to_json_value<T: serde::Serialize>(x: &T) -> ddlog_std::Result<JsonValue, String> {
-    res2std(serde_json::to_value(x.clone()).map(JsonValue::from))
+pub fn to_json_value<T: serde::Serialize>(x: T) -> ddlog_std::Result<JsonValue, String> {
+    res2std(serde_json::to_value(x).map(JsonValue::from))
 }
 
 pub struct ValueWrapper(serde_json::value::Value);
@@ -103,7 +101,7 @@ impl From<serde_json::value::Value> for JsonValue {
                 n: JsonNum::from(n),
             },
             serde_json::value::Value::String(s) => JsonValue::JsonString {
-                s: internment::intern(&s),
+                s: internment::intern(s),
             },
             serde_json::value::Value::Array(a) => {
                 let v: Vec<JsonValue> = a.into_iter().map(|v| JsonValue::from(v)).collect();
@@ -113,7 +111,7 @@ impl From<serde_json::value::Value> for JsonValue {
             }
             serde_json::value::Value::Object(o) => JsonValue::JsonObject {
                 o: o.into_iter()
-                    .map(|(k, v)| (internment::intern(&k), JsonValue::from(v)))
+                    .map(|(k, v)| (internment::intern(k), JsonValue::from(v)))
                     .collect(),
             },
         }

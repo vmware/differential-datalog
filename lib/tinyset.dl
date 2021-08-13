@@ -35,11 +35,11 @@ extern function size(s: Set64<'X>): bit<64>
 extern function empty(): Set64<'X>
 extern function singleton(x: 'X): Set64<'X>
 extern function insert(s: mut Set64<'X>, v: 'X): ()
-extern function insert_imm(s: Set64<'X>, v: 'X): Set64<'X>
+extern function insert_imm(#[by_val] s: Set64<'X>, #[by_val] v: 'X): Set64<'X>
 extern function contains(s: Set64<'X>, v: 'X): bool
 extern function is_empty(s: Set64<'X>): bool
 extern function nth(s: Set64<'X>, n: bit<64>): Option<bit<64>>
-extern function union(s1: Set64<'X>, s2: Set64<'X>): Set64<'X>
+extern function union(#[by_val] s1: Set64<'X>, s2: Set64<'X>): Set64<'X>
 extern function unions(sets: Vec<Set64<'X>>): Set64<'X>
 extern function intersection(s1: Set64<'X>, s2: Set64<'X>): Set64<'X>
 extern function difference(s1: Set64<'X>, s2: Set64<'X>): Set64<'X>

@@ -88,7 +88,7 @@ function to_string(ts: DDNestedTS): string {
 #[shared_ref]
 extern type Ref<'A>
 
-extern function ref_new(x: 'A): Ref<'A>
+extern function ref_new(#[by_val] x: 'A): Ref<'A>
 
 #[return_by_ref]
 extern function deref(x: Ref<'A>): 'A
@@ -197,7 +197,7 @@ function unwrap_or(x: Option<'A>, def: 'A): 'A = {
 /* Returns the default value for the given type if `opt` is
  * `None`.
  */
-function unwrap_or_default(opt: Option<'A>): 'A {
+function unwrap_or_default(#[by_val] opt: Option<'A>): 'A {
     option_unwrap_or_default(opt)
 }
 
@@ -281,7 +281,7 @@ function unwrap_or(res: Result<'V,'E>, def: 'V): 'V = {
 /* Returns the default value for the given type if `res` is
  * an error.
  */
-function unwrap_or_default(res: Result<'V,'E>): 'V {
+function unwrap_or_default(#[by_val] res: Result<'V,'E>): 'V {
     result_unwrap_or_default(res)
 }
 
@@ -610,13 +610,13 @@ extern type Vec<'A>
 extern function vec_empty(): Vec<'A>
 extern function vec_with_length(len: usize, x: 'A): Vec<'A>
 extern function vec_with_capacity(len: usize): Vec<'A>
-extern function vec_singleton(x: 'X): Vec<'X>
+extern function vec_singleton(#[by_val] x: 'X): Vec<'X>
 
 function len(v: Vec<'X>): usize {
     vec_len(v)
 }
 
-function push(v: mut Vec<'X>, x: 'X) {
+function push(v: mut Vec<'X>, #[by_val] x: 'X) {
     vec_push(v, x)
 }
 
@@ -628,7 +628,7 @@ function append(v: mut Vec<'X>, other: Vec<'X>) {
     vec_append(v, other)
 }
 
-function push_imm(v: Vec<'X>, x: 'X): Vec<'X> {
+function push_imm(v: Vec<'X>, #[by_val] x: 'X): Vec<'X> {
     vec_push_imm(v, x)
 }
 
@@ -644,7 +644,7 @@ function nth(v: Vec<'X>, n: usize): Option<'X> {
     vec_nth(v, n)
 }
 
-function to_set(s: Vec<'A>): Set<'A> {
+function to_set(#[by_val] s: Vec<'A>): Set<'A> {
     vec_to_set(s)
 }
 
@@ -652,22 +652,16 @@ function sort(v: mut Vec<'X>) {
     vec_sort(v)
 }
 
-function sort_imm(v: Vec<'X>): Vec<'X> {
+function sort_imm(#[by_val] v: Vec<'X>): Vec<'X> {
     vec_sort_imm(v)
 }
 
-function zip(v1: Vec<'X>, v2: Vec<'Y>): Vec<('X, 'Y)> {
+function zip(#[by_val] v1: Vec<'X>, #[by_val] v2: Vec<'Y>): Vec<('X, 'Y)> {
     vec_zip(v1, v2)
 }
 
-function unzip(v: Vec<('X, 'Y)>): (Vec<'X>, Vec<'Y>) {
-    var v1 = vec_with_capacity(v.len());
-    var v2 = vec_with_capacity(v.len());
-    for (val in v) {
-        v1.push(val.0);
-        v2.push(val.1);
-    };
-    (v1, v2)
+function unzip(#[by_val] v: Vec<('X, 'Y)>): (Vec<'X>, Vec<'Y>) {
+    vec_unzip(v)
 }
 
 /* Reverse vector in-place. */
@@ -719,7 +713,7 @@ function swap_nth(v: mut Vec<'X>, idx: usize, value: mut 'X): bool {
 /* Set value at index `idx` to `value`.
  * If `idx` exceeds the size of the vector (in which case the vector remains unmodified).
  * Returns true if update happened and false otherwise. */
-function update_nth(v: mut Vec<'X>, idx: usize, value: 'X): bool {
+function update_nth(v: mut Vec<'X>, idx: usize, #[by_val] value: 'X): bool {
     vec_update_nth(v, idx, value)
 }
 
@@ -732,13 +726,13 @@ function update_nth(v: mut Vec<'X>, idx: usize, value: 'X): bool {
 extern type Map<'K,'V>
 
 extern function map_empty(): Map<'K, 'V>
-extern function map_singleton(k: 'K, v: 'V): Map<'K, 'V>
+extern function map_singleton(#[by_val] k: 'K, #[by_val] v: 'V): Map<'K, 'V>
 
 function size(m: Map<'K, 'V>): usize {
     map_size(m)
 }
 
-function insert(m: mut Map<'K,'V>, k: 'K, v: 'V) {
+function insert(m: mut Map<'K,'V>, #[by_val] k: 'K, #[by_val] v: 'V) {
     map_insert(m, k, v)
 }
 
@@ -746,7 +740,7 @@ function remove(m: mut Map<'K,'V>, k: 'K): Option<'V> {
     map_remove(m, k)
 }
 
-function insert_imm(m: Map<'K,'V>, k: 'K, v: 'V): Map<'K,'V> {
+function insert_imm(#[by_val] m: Map<'K,'V>, #[by_val] k: 'K, #[by_val] v: 'V): Map<'K,'V> {
     map_insert_imm(m, k, v)
 }
 
@@ -763,7 +757,7 @@ function is_empty(m: Map<'K,'V>): bool {
 }
 
 /// If a key is present in both maps keep the one from m2
-function union(m1: Map<'K, 'V>, m2: Map<'K,'V>): Map<'K, 'V> {
+function union(#[by_val] m1: Map<'K, 'V>, #[by_val] m2: Map<'K,'V>): Map<'K, 'V> {
     map_union(m1, m2)
 }
 
@@ -791,18 +785,18 @@ function nth_value(m: Map<'K, 'V>, n: usize): Option<'V> {
 #[iterate_by_ref=iter:'A]
 extern type Set<'A>
 
-extern function set_singleton(x: 'X): Set<'X>
+extern function set_singleton(#[by_val] x: 'X): Set<'X>
 extern function set_empty(): Set<'X>
 
 function size(s: Set<'X>): usize {
     set_size(s)
 }
 
-function insert(s: mut Set<'X>, v: 'X) {
+function insert(s: mut Set<'X>, #[by_val] v: 'X) {
     set_insert(s, v)
 }
 
-function insert_imm(s: Set<'X>, v: 'X): Set<'X> {
+function insert_imm(#[by_val] s: Set<'X>, #[by_val] v: 'X): Set<'X> {
     set_insert_imm(s, v)
 }
 
@@ -859,8 +853,8 @@ extern function htons(x: bit<16>): bit<16>
  * these functions outside of this module is discouraged.
  */
 
-extern function option_unwrap_or_default(opt: Option<'A>): 'A
-extern function result_unwrap_or_default(res: Result<'V,'E>): 'V
+extern function option_unwrap_or_default(#[by_val] opt: Option<'A>): 'A
+extern function result_unwrap_or_default(#[by_val] res: Result<'V,'E>): 'V
 
 extern function string_contains(s1: string, s2: string): bool
 extern function string_join(strings: Vec<string>, sep: string): string
@@ -879,45 +873,46 @@ extern function string_to_uppercase(s: string): string
 extern function string_reverse(s: string): string
 
 extern function vec_len(v: Vec<'X>): usize
-extern function vec_push(v: mut Vec<'X>, x: 'X)
+extern function vec_push(v: mut Vec<'X>, #[by_val] x: 'X)
 extern function vec_pop(v: mut Vec<'X>): Option<'X>
 extern function vec_append(v: mut Vec<'X>, other: Vec<'X>)
-extern function vec_push_imm(v: Vec<'X>, x: 'X): Vec<'X>
+extern function vec_push_imm(v: Vec<'X>, #[by_val] x: 'X): Vec<'X>
 extern function vec_contains(v: Vec<'X>, x: 'X): bool
 extern function vec_is_empty(v: Vec<'X>): bool
 extern function vec_nth(v: Vec<'X>, n: usize): Option<'X>
-extern function vec_to_set(s: Vec<'A>): Set<'A>
+extern function vec_to_set(#[by_val] s: Vec<'A>): Set<'A>
 extern function vec_sort(v: mut Vec<'X>)
-extern function vec_sort_imm(v: Vec<'X>): Vec<'X>
+extern function vec_sort_imm(#[by_val] v: Vec<'X>): Vec<'X>
 extern function vec_resize(v: mut Vec<'X>, new_len: usize, value: 'X)
 extern function vec_truncate(v: mut Vec<'X>, len: usize)
 extern function vec_swap_nth(v: mut Vec<'X>, idx: usize, value: mut 'X): bool
-extern function vec_update_nth(v: mut Vec<'X>, idx: usize, value: 'X): bool
-extern function vec_zip(v1: Vec<'X>, v2: Vec<'Y>): Vec<('X, 'Y)>
+extern function vec_update_nth(v: mut Vec<'X>, idx: usize, #[by_val] value: 'X): bool
+extern function vec_zip(#[by_val] v1: Vec<'X>, #[by_val] v2: Vec<'Y>): Vec<('X, 'Y)>
+extern function vec_unzip(#[by_val] v: Vec<('X, 'Y)>): (Vec<'X>, Vec<'Y>)
 extern function vec_reverse(v: mut Vec<'X>)
 
 extern function map_size(m: Map<'K, 'V>): usize
-extern function map_insert(m: mut Map<'K,'V>, k: 'K, v: 'V)
+extern function map_insert(m: mut Map<'K,'V>, #[by_val] k: 'K, #[by_val] v: 'V)
 extern function map_remove(m: mut Map<'K,'V>, k: 'K): Option<'V>
-extern function map_insert_imm(m: Map<'K,'V>, k: 'K, v: 'V): Map<'K,'V>
+extern function map_insert_imm(#[by_val] m: Map<'K,'V>, #[by_val] k: 'K, #[by_val] v: 'V): Map<'K,'V>
 extern function map_get(m: Map<'K,'V>, k:'K): Option<'V>
 extern function map_contains_key(m: Map<'K,'V>, k: 'K): bool
 extern function map_is_empty(m: Map<'K,'V>): bool
 extern function map_nth_key(m: Map<'K, 'V>, n: usize): Option<'K>
 extern function map_nth_value(m: Map<'K, 'V>, n: usize): Option<'V>
-extern function map_union(m1: Map<'K, 'V>, m2: Map<'K,'V>): Map<'K, 'V>
+extern function map_union(#[by_val] m1: Map<'K, 'V>, #[by_val] m2: Map<'K,'V>): Map<'K, 'V>
 extern function map_keys(m: Map<'K, 'V>): Vec<'K>
 extern function map_values(m: Map<'K, 'V>): Vec<'V>
 
 extern function set_size(s: Set<'X>): usize
-extern function set_insert(s: mut Set<'X>, v: 'X)
-extern function set_insert_imm(s: Set<'X>, v: 'X): Set<'X>
+extern function set_insert(s: mut Set<'X>, #[by_val] v: 'X)
+extern function set_insert_imm(#[by_val] s: Set<'X>, #[by_val] v: 'X): Set<'X>
 extern function set_contains(s: Set<'X>, v: 'X): bool
 extern function set_is_empty(s: Set<'X>): bool
 extern function set_nth(s: Set<'X>, n: usize): Option<'X>
-extern function set_to_vec(s: Set<'A>): Vec<'A>
-extern function set_union(s1: Set<'X>, s2: Set<'X>): Set<'X>
-extern function set_unions(sets: Vec<Set<'X>>): Set<'X>
+extern function set_to_vec(#[by_val] s: Set<'A>): Vec<'A>
+extern function set_union(#[by_val] s1: Set<'X>, #[by_val] s2: Set<'X>): Set<'X>
+extern function set_unions(#[by_val] sets: Vec<Set<'X>>): Set<'X>
 extern function set_intersection(s1: Set<'X>, s2: Set<'X>): Set<'X>
 extern function set_difference(s1: Set<'X>, s2: Set<'X>): Set<'X>
 

@@ -3514,6 +3514,55 @@ functions labeled with `#[has_side_effects]`.
 extern function log(module: module_t, level: log_level_t, msg: string): bool
 ```
 
+### `#[by_val]`
+
+This attribute is intended for library developers building DDlog wrappers
+around native Rust libraries.
+
+The `#[by_val]` attribute applies to function arguments.  Normally, DDlog passes
+arguments by reference.  If the function requires an owned copy of the argument,
+it must clone it, which introduces unnecessary overhead if the caller has an
+owned copy that can be consumed by the function.  The `#[by_val]` attribute
+changes this behavior telling DDlog to pass the argument by value.
+
+Example:
+
+The `internment::intern()` function requires an owned copy of its argument.  We
+therefore declare it with `#[by_val]`:
+
+```
+extern function intern(#[by_val] s: 'A): Intern<'A>
+```
+
+Here is the Rust implementation:
+
+```
+pub fn intern<T>(value: T) -> Intern<T>
+where
+    T: Eq + Hash + Send + Sync + 'static,
+{
+    Intern::new(value)
+}
+```
+
+Note that the argument has type `T`, not `&T`, so we don't need to clone
+it in the body of the function.
+
+The `#[by_val]` attribute is also applicable to non-extern functions; however it
+can break things, since the DDlog compiler does not currently have the
+infrastructure to precisely track the ownership of values in Rust.
+In practice, this attribute should only be used in polymorphic functions that are
+one-line wrappers around non-polymorphic extern functions:
+
+```
+// Pass arguments by value all the way to Rust.
+function insert(m: mut Map<'K,'V>, #[by_val] k: 'K, #[by_val] v: 'V) {
+    map_insert(m, k, v)
+}
+
+extern function map_insert(m: mut Map<'K,'V>, #[by_val] k: 'K, #[by_val] v: 'V)
+```
+
 ### `#[return_by_ref]`
 
 Labels functions that return values by reference.  DDlog functions are compiled

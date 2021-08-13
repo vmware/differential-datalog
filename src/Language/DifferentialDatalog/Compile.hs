@@ -1726,7 +1726,8 @@ mkFunc d f@Function{..} | isJust funcDef =
     where
     scope = Just $ nameScope f
     mkArg :: FuncArg -> Doc
-    mkArg a = pp (name a) <> ":" <+> "&" <> (if argMut a then "mut" else empty) <+> mkType d scope a
+    mkArg a = pp (name a) <> ":" <+> borrow <> (if argMut a then "mut" else empty) <+> mkType d scope a
+              where borrow = if argGetByValAttr d a then empty else "&"
     tvars = case funcTypeVars f of
                  []  -> empty
                  tvs -> "<" <> (hcat $ punctuate comma $ map ((<> ": ::ddlog_rt::Val") . pp) tvs) <> ">"
@@ -3063,8 +3064,7 @@ mkExpr' d ctx e | isJust static_idx = (parens $ "&*crate::__STATIC_" <> pp (from
     e' = exprMap (E . sel3) e
     static_idx = lookupStatic d (E e') ctx ?statics
 
--- All variables are references
-mkExpr' _ _ EVar{..}    = (pp exprVar, EReference)
+mkExpr' d ctx EVar{..}    = (pp exprVar, varKind d $ getVar d ctx exprVar)
 
 -- Special case of a function call expression where function name is specified
 -- without type annotation.  This should only be the case if the function name
@@ -3078,8 +3078,14 @@ mkExpr' d ctx EApply{exprFunc = (_, _, EFunc{exprFuncName}), exprArgs} =
      -- execute that code.
      mkFuncName d (Just $ ctxModule ctx) func
      <> (parens $ commaSep
-                $ map (\(a, mut) -> if mut then mutref a else ref a)
-                $ zip exprArgs (map argMut funcArgs)), kind)
+                $ map (\(a, arg) -> let mut = argMut arg
+                                        byval = argGetByValAttr d arg
+                                    in if mut
+                                       then mutref a
+                                       else if byval
+                                            then val a
+                                            else ref a)
+                $ zip exprArgs funcArgs), kind)
     where
     [fname] = exprFuncName
     [func@Function{..}] = getFuncs d fname $ Just $ length exprArgs
@@ -3095,27 +3101,39 @@ mkExpr' d ctx e@(EApply{..}) =
                      $ zip exprArgs (map atypeMut arg_types)), kind)
     else (sel1 exprFunc
           <> (parens $ commaSep
-                     $ map (\(a, mut) -> if mut then mutref a else ref a)
-                     $ zip exprArgs (map atypeMut arg_types)), kind)
+                     $ map (\(a, mut, byval) -> if mut
+                                                then mutref a
+                                                else if byval
+                                                     then val a
+                                                     else ref a)
+                     $ zip3 exprArgs (map atypeMut arg_types) byvals), kind)
     where
     e' = exprMap (E . sel3) e
     efunc = E $ sel3 exprFunc
     efunc_ctx = CtxApplyFunc e' ctx
     TFunction _ arg_types _ = exprType' d efunc_ctx efunc
-    (kind, is_closure) =
+    (byvals, kind, is_closure) =
         case exprStripTypeAnnotations efunc efunc_ctx of
              (E efunc'@EFunc{}, ctx'') -> let (f, _) = funcExprGetFunc d ctx'' efunc'
-                                          in (if funcGetReturnByRefAttr d f then EReference else EVal, False)
+                                          in ( map (argGetByValAttr d) $ funcArgs f
+                                             , if funcGetReturnByRefAttr d f then EReference else EVal
+                                             , False)
+             -- Closure arguments are always passed by reference.
              -- TODO: support return_by_ref attribute on closures?
-             _ -> (EVal, True)
+             _ -> (repeat False, EVal, True)
 
 -- If the function is referenced inside a function invocation, simply return the
 -- name of the function; otherwise wrap the function in a closure.
 mkExpr' d ctx e@EFunc{} =
     (res, EVal)
     where
-    arg_deref :: FuncArg -> Doc
-    arg_deref a = if argMut a then "&mut *" else "&*"
+    arg_deref :: FuncArg -> Doc -> Doc
+    arg_deref a arg_expr =
+        if argMut a
+           then "&mut *" <> arg_expr
+           else if argGetByValAttr d a
+                then (parens $ "*" <> arg_expr) <> ".clone()"
+                else "&*" <> arg_expr
     -- Clone return value if function returns by-reference.
     clone_ref = if funcGetReturnByRefAttr d f then ".clone()" else empty
     res = case parctx ctx of
@@ -3125,8 +3143,8 @@ mkExpr' d ctx e@EFunc{} =
                     "    captured: (),"                                                                                 $$
                     "    f:" <+> (braces' $ "fn __f(__args:" <> (tuple $ map mkarg funcArgs) <> ", __captured: &()) ->" <+> ret_type_code       $$
                                             (if length funcArgs == 1
-                                             then "{unsafe{" <> fname <> "(" <> arg_deref (funcArgs !! 0) <> "__args)}" <> clone_ref <> "}"
-                                             else "{unsafe{" <> fname <> "(" <> commaSep (mapIdx (\a i -> arg_deref a <> "__args." <> pp i) funcArgs) <> ")}" <> clone_ref <> "}") $$
+                                             then "{unsafe{" <> fname <> "(" <> (arg_deref (funcArgs !! 0) "__args") <> ")}" <> clone_ref <> "}"
+                                             else "{unsafe{" <> fname <> "(" <> commaSep (mapIdx (\a i -> arg_deref a ("__args." <> pp i)) funcArgs) <> ")}" <> clone_ref <> "}") $$
                                             "__f")                                                                      $$
                     "}) as Box<dyn ::ddlog_rt::Closure<(" <> commaSep (map mkarg funcArgs) <> ")," <+> ret_type_code <> ">>)"
     local_module = Just $ ctxModule ctx

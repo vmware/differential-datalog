@@ -241,10 +241,9 @@ pub fn insert<X: u64set::Fits64 + Clone>(s: &mut Set64<X>, v: &X) {
     s.x.insert((*v).clone());
 }
 
-pub fn insert_imm<X: u64set::Fits64 + Clone>(s: &Set64<X>, v: &X) -> Set64<X> {
-    let mut s2 = s.clone();
-    s2.insert((*v).clone());
-    s2
+pub fn insert_imm<X: u64set::Fits64>(mut s: Set64<X>, v: X) -> Set64<X> {
+    s.insert(v);
+    s
 }
 
 pub fn contains<X: u64set::Fits64>(s: &Set64<X>, v: &X) -> bool {
@@ -265,9 +264,10 @@ pub fn set2vec<X: u64set::Fits64 + Ord + Clone>(s: &Set64<X>) -> ddlog_std::Vec<
     ddlog_std::Vec::from(v)
 }
 
-pub fn union<X: u64set::Fits64 + Clone>(s1: &Set64<X>, s2: &Set64<X>) -> Set64<X> {
-    let s = s1.x.clone();
-    Set64 { x: s.bitor(&s2.x) }
+pub fn union<X: u64set::Fits64>(mut s1: Set64<X>, s2: &Set64<X>) -> Set64<X> {
+    Set64 {
+        x: s1.x.bitor(&s2.x),
+    }
 }
 
 pub fn unions<X: u64set::Fits64 + Clone>(sets: &ddlog_std::Vec<Set64<X>>) -> Set64<X> {
@@ -324,7 +324,7 @@ pub fn group_setref_unions<K, V: u64set::Fits64 + Ord + Clone>(
     if ddlog_std::group_count(g) == 1 {
         ddlog_std::group_first(g)
     } else {
-        let mut res = ddlog_std::ref_new(&Set64 {
+        let mut res = ddlog_std::ref_new(Set64 {
             x: u64set::Set64::new(),
         });
         {
