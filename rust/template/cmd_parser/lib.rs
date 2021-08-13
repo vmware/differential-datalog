@@ -1,11 +1,13 @@
 #![warn(missing_debug_implementations)]
 
 mod parse;
+mod remote_listener;
 
 use std::fs::{ self, File };
 use std::io::{ self, BufRead, BufReader };
 
 pub use parse::*;
+pub use remote_listener::*;
 
 use nom::*;
 use rustyline::error::ReadlineError;
@@ -24,7 +26,7 @@ enum Input {
 }
 
 #[derive(Debug)]
-struct CliCmdReq {
+pub struct CliCmdReq {
     cli_cmd: Vec<u8>,
     resp: Option<oneshot::Sender<Result<bool, String>>>,
 }
@@ -64,6 +66,8 @@ where
     };
 
     let (tx, mut rx) = mpsc::channel(32);
+    let tx_cloned = tx.clone();
+
     let input_thr_handler = tokio::spawn(async move {
         let current_ns: String = String::from("");
         let namespace_stack: Vec<String> = Vec::new();
@@ -337,6 +341,8 @@ where
 
     let input_out = input_thr_handler.await.unwrap();
     let parser_out = parser_thr_handler.await.unwrap();
+
+    let _ = remote_listen(tx_cloned).await.unwrap();
 
     if let Err(why) = parser_out {
         return Err(why);
