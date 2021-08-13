@@ -1,0 +1,9 @@
+[package]
+name = "remote_cli"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+ordered-float = { version = "2.0.0", features = ["serde"] }
+rustyline = "1.0.0"
+tokio = { version = "1", features = ["full"] }

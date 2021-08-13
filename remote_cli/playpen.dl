@@ -1,0 +1,4 @@
+input relation Creatures(name: string, creature_type: string)
+output relation Birds(name: string)
+
+Birds(name) :- Creatures(name, "bird").

@@ -1,0 +1,4 @@
+insert Creatures("jack", "cat");
+
+insert Creatures("bob", "bird");
+

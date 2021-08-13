@@ -1,0 +1,10 @@
+echo "dumping...";
+dump Birds;
+start;
+insert Creatures("birdy", "bird");
+commit;
+echo "dumping...";
+dump Birds;
+echo "exiting...";
+exit;
+echo "definitely exiting...";
