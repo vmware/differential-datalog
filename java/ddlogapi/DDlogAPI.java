@@ -920,9 +920,10 @@ public class DDlogAPI {
      * @return The API that can be used to interact with this library.
      */
     public static DDlogAPI loadDDlog() throws DDlogException {
-        if (loaded)
-            throw new RuntimeException("Attempt to load a secon dddlog library. "
-                    + " Only one library can be loaded safely.");
+        if (loaded) {
+            return new ddlogapi.DDlogAPI(1, false);
+        }
+
         loaded = true;
         final Path libraryPath = Paths.get(libName(ddlogLibrary)).toAbsolutePath();
         System.load(libraryPath.toString());

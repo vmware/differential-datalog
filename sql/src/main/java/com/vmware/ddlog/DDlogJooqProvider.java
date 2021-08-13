@@ -25,33 +25,16 @@ package com.vmware.ddlog;
 
 import com.facebook.presto.sql.parser.ParsingOptions;
 import com.facebook.presto.sql.tree.Statement;
-import ddlogapi.DDlogAPI;
-import ddlogapi.DDlogCommand;
-import ddlogapi.DDlogException;
-import ddlogapi.DDlogRecCommand;
-import ddlogapi.DDlogRecord;
-import org.apache.calcite.sql.SqlBasicCall;
-import org.apache.calcite.sql.SqlCall;
-import org.apache.calcite.sql.SqlDelete;
-import org.apache.calcite.sql.SqlDynamicParam;
-import org.apache.calcite.sql.SqlIdentifier;
-import org.apache.calcite.sql.SqlInsert;
-import org.apache.calcite.sql.SqlKind;
-import org.apache.calcite.sql.SqlLiteral;
-import org.apache.calcite.sql.SqlNode;
-import org.apache.calcite.sql.SqlNodeList;
-import org.apache.calcite.sql.SqlSelect;
-import org.apache.calcite.sql.SqlUpdate;
-import org.apache.calcite.sql.parser.SqlParseException;
+import com.vmware.ddlog.util.sql.CalciteToH2;
+import com.vmware.ddlog.util.sql.PrestoToH2;
+import com.vmware.ddlog.util.sql.SqlInputDialect;
+import ddlogapi.*;
+import org.apache.calcite.sql.*;
+import org.apache.calcite.sql.ddl.SqlCreateView;
+import org.apache.calcite.sql.parser.SqlAbstractParserImpl;
 import org.apache.calcite.sql.parser.SqlParser;
 import org.apache.calcite.sql.util.SqlBasicVisitor;
-import org.jooq.DSLContext;
-import org.jooq.DataType;
-import org.jooq.Field;
-import org.jooq.Record;
-import org.jooq.Record1;
-import org.jooq.Result;
-import org.jooq.Table;
+import org.jooq.*;
 import org.jooq.impl.DSL;
 import org.jooq.tools.jdbc.MockDataProvider;
 import org.jooq.tools.jdbc.MockExecuteContext;
@@ -59,16 +42,11 @@ import org.jooq.tools.jdbc.MockResult;
 
 import java.sql.SQLException;
 import java.sql.Types;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static com.vmware.ddlog.util.sql.CalciteUtils.createCalciteParser;
 import static org.jooq.impl.DSL.field;
-
 
 /**
  * This class provides a restricted mechanism to make a DDlog program appear like an SQL database that can be
@@ -116,23 +94,54 @@ public final class DDlogJooqProvider implements MockDataProvider {
     private final Map<String, List<? extends Field<?>>> tablesToPrimaryKeys = new HashMap<>();
     private final Map<String, Set<Record>> materializedViews = new ConcurrentHashMap<>();
     public static boolean trace = false;
+    private final SqlInputDialect dialect;
 
-    public DDlogJooqProvider(final DDlogAPI dDlogAPI, final List<String> sqlStatements) {
+    public DDlogJooqProvider(final DDlogAPI dDlogAPI, final List<String> sqlStatements, final SqlInputDialect dialect) {
         this.dDlogAPI = dDlogAPI;
         this.dslContext = DSL.using("jdbc:h2:mem:");
         this.updateCountField = field("UPDATE_COUNT", Integer.class);
+        this.dialect = dialect;
 
-        // We translate DDL statements from the Presto dialect to H2.
-        // We then execute these statements in a temporary database so that JOOQ can extract useful metadata
+        // We execute H2 statements in a temporary database so that JOOQ can extract useful metadata
         // that we will use later (for example, the record types for views).
-        final com.facebook.presto.sql.parser.SqlParser parser = new com.facebook.presto.sql.parser.SqlParser();
-        final ParsingOptions options = ParsingOptions.builder().build();
-        final TranslateCreateTableDialect translateCreateTableDialect = new TranslateCreateTableDialect();
-        for (final String sql : sqlStatements) {
-            final Statement statement = parser.createStatement(sql, options);
-            final String statementInH2Dialect = translateCreateTableDialect.process(statement, sql);
-            dslContext.execute(statementInH2Dialect);
+        //
+        // Based on the dialect of this Provider, we may need to translate DDL statements to H2.
+        switch (this.dialect) {
+            case CALCITE: {
+                // Unfortunately, Calcite and H2 aren't completely compliant. For example, H2 arrays do not
+                // accept subtypes, so we need to strip them.
+                for (final String sql : sqlStatements) {
+                    SqlAbstractParserImpl calciteParser = createCalciteParser(sql);
+                    String statementInH2 = sql;
+                    try {
+                        org.apache.calcite.sql.SqlNodeList parseTree = calciteParser.parseSqlStmtList();
+                        // Pass `create view` straight through
+                        if (!(parseTree.get(0) instanceof SqlCreateView)) {
+                            CalciteToH2 h2Translator = new CalciteToH2();
+                            statementInH2 = parseTree.accept(h2Translator);
+                        }
+                    } catch (Exception e) {
+                        System.out.println("Calcite to H2 translator exception: " + e.getMessage());
+                    }
+
+                    dslContext.execute(statementInH2);
+                }
+                break;
+            }
+            case PRESTO: {
+                // Translate DDL statements from Presto to H2.
+                final com.facebook.presto.sql.parser.SqlParser parser = new com.facebook.presto.sql.parser.SqlParser();
+                final ParsingOptions options = ParsingOptions.builder().build();
+                final PrestoToH2 prestoToH2 = new PrestoToH2();
+                for (final String sql : sqlStatements) {
+                    final Statement statement = parser.createStatement(sql, options);
+                    final String statementInH2Dialect = prestoToH2.process(statement, sql);
+                    dslContext.execute(statementInH2Dialect);
+                }
+                break;
+            }
         }
+
         for (final Table<?> table: dslContext.meta().getTables()) {
             if (table.getSchema().getName().equals("PUBLIC")) { // H2-specific assumption
                 Arrays.stream(table.fields()).forEach(

@@ -30,6 +30,7 @@ import com.facebook.presto.sql.parser.SqlParser;
 import com.facebook.presto.sql.tree.Statement;
 import com.vmware.ddlog.ir.DDlogIRNode;
 import com.vmware.ddlog.translator.Translator;
+import com.vmware.ddlog.util.sql.SqlInputDialect;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -60,7 +61,7 @@ public class ExpressionsTest {
 
     @Test
     public void testExpression() {
-        Translator t = new Translator(null);
+        Translator t = new Translator(null, SqlInputDialect.PRESTO);
         DDlogIRNode node = t.translateExpression("true");
         String s = node.toString();
         Assert.assertEquals("true", s);

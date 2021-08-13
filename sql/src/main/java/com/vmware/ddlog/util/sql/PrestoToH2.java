@@ -22,7 +22,7 @@
  *
  */
 
-package com.vmware.ddlog;
+package com.vmware.ddlog.util.sql;
 
 import com.facebook.presto.sql.tree.AstVisitor;
 import com.facebook.presto.sql.tree.ColumnDefinition;
@@ -35,7 +35,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-class TranslateCreateTableDialect extends AstVisitor<String, String> {
+public class PrestoToH2 extends AstVisitor<String, String> {
     @Override
     protected String visitCreateTable(final CreateTable node, final String sql) {
         final List<String> primaryKeyColumns = new ArrayList<>();

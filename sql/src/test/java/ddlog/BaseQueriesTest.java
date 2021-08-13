@@ -34,6 +34,7 @@ import com.vmware.ddlog.ir.DDlogIRNode;
 import com.vmware.ddlog.ir.DDlogProgram;
 import com.vmware.ddlog.translator.Translator;
 
+import com.vmware.ddlog.util.sql.SqlInputDialect;
 import ddlogapi.DDlogAPI;
 import ddlogapi.DDlogException;
 import org.h2.store.fs.FileUtils;
@@ -46,7 +47,7 @@ public class BaseQueriesTest {
     // TODO: this should only be done once, but it is not clear how this can be achieved.
     @BeforeClass
     public static void createLibrary() throws FileNotFoundException {
-        Translator t = new Translator(null);
+        Translator t = new Translator(null, SqlInputDialect.PRESTO);
         DDlogProgram lib = t.generateSqlLibrary();
         // System.out.println("Current directory " + System.getProperty("user.dir"));
         lib.toFile("lib/sqlop.dl");
@@ -96,7 +97,7 @@ public class BaseQueriesTest {
                 " column2 varchar(36) " + nulls + ",\n" +
                 " column3 boolean " + nulls + ",\n" +
                 " column4 real " + nulls + ")";
-        Translator t = new Translator(null);
+        Translator t = new Translator(null, SqlInputDialect.PRESTO);
         DDlogIRNode create = t.translateSqlStatement(createStatement);
         Assert.assertNotNull(create);
         String s = create.toString();
@@ -215,7 +216,7 @@ public class BaseQueriesTest {
         final InputStream resourceAsStream = DynamicTest.class.getResourceAsStream(file);
         try (final BufferedReader tables = new BufferedReader(new InputStreamReader(resourceAsStream,
                 StandardCharsets.UTF_8))) {
-            final Translator t = new Translator(null);
+            final Translator t = new Translator(null, SqlInputDialect.PRESTO);
             final String schemaAsString = tables.lines()
                     .filter(line -> !line.startsWith("--")) // remove SQL comments
                     .collect(Collectors.joining("\n"));

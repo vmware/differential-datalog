@@ -26,6 +26,7 @@ package ddlog;
 import com.vmware.ddlog.DDlogJooqProvider;
 import com.vmware.ddlog.ir.DDlogProgram;
 import com.vmware.ddlog.translator.Translator;
+import com.vmware.ddlog.util.sql.SqlInputDialect;
 import ddlogapi.DDlogAPI;
 import ddlogapi.DDlogException;
 import org.jooq.DSLContext;
@@ -56,11 +57,18 @@ import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.table;
 import static org.junit.Assert.assertNull;
 
-public class JooqProviderTest {
+/*
+ * This is the base class for all JooqProviderTest* test classes. Each new dialect of SQL that DDlog can accept can be
+ * tested by extending this class and writing a new setup function. The new setup function will use SQL DDL statements
+ * written in that dialect and call ddlog-sql classes with the proper dialect enum. See JooqProviderTestCalcite for
+ * an example.
+ */
+public class JooqProviderTestPresto {
 
     @Nullable
-    private static DSLContext create;
-    private static DDlogJooqProvider provider;
+    protected static DDlogAPI ddlogAPI;
+    protected static DSLContext create;
+    protected static DDlogJooqProvider provider;
     private final Field<String> field1 = field("id", String.class);
     private final Field<Integer> field2 = field("capacity", Integer.class);
     private final Field<Boolean> field3 = field("up", Boolean.class);
@@ -68,7 +76,7 @@ public class JooqProviderTest {
     private final Record test2 = create.newRecord(field1, field2, field3);
     private final Record test3 = create.newRecord(field1, field2, field3);
 
-    public JooqProviderTest() {
+    public JooqProviderTestPresto() {
         test1.setValue(field1, "n1");
         test1.setValue(field2, 10);
         test1.setValue(field3, true);
@@ -98,11 +106,10 @@ public class JooqProviderTest {
         ddl.add(checkArrayParse);
         ddl.add(checkNotNullColumns);
 
-        compileAndLoad(ddl);
-        final DDlogAPI dDlogAPI = new DDlogAPI(1, false);
+        ddlogAPI = compileAndLoad(ddl, SqlInputDialect.PRESTO);
 
         // Initialise the data provider
-        provider = new DDlogJooqProvider(dDlogAPI, ddl);
+        provider = new DDlogJooqProvider(ddlogAPI, ddl, SqlInputDialect.PRESTO);
         MockConnection connection = new MockConnection(provider);
 
         // Pass the mock connection to a jOOQ DSLContext
@@ -117,6 +124,11 @@ public class JooqProviderTest {
             r -> create.execute(String.format("delete from hosts where id = '%s'", r.get(0)))
         );
         assertEquals(0, create.fetch("select * from hostsv").size());
+    }
+
+    @AfterClass
+    public static void teardown() throws DDlogException{
+        ddlogAPI.stop();
     }
 
     // This traces the test being executed for debugging
@@ -526,8 +538,8 @@ public class JooqProviderTest {
         }
     }
 
-    public static void compileAndLoad(final List<String> ddl) throws IOException, DDlogException {
-        final Translator t = new Translator(null);
+    public static DDlogAPI compileAndLoad(final List<String> ddl, SqlInputDialect dialect) throws IOException, DDlogException {
+        final Translator t = new Translator(null, dialect);
         ddl.forEach(t::translateSqlStatement);
         final DDlogProgram dDlogProgram = t.getDDlogProgram();
         final String fileName = "/tmp/program.dl";
@@ -539,6 +551,6 @@ public class JooqProviderTest {
         DDlogAPI.compileDDlogProgram(fileName, result, "../lib", "./lib");
         if (!result.isSuccess())
             throw new RuntimeException("Failed to compile ddlog program");
-        DDlogAPI.loadDDlog();
+        return DDlogAPI.loadDDlog();
     }
 }
