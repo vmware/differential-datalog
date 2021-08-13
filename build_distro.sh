@@ -46,7 +46,9 @@ if [ `uname -s` = Darwin ]; then ghead -n -1 config.tmp > config; else head -n -
 
 # Use relative path instead.
 echo "directory = \"vendor\"" >> config
-cp -r vendor "../../$DIST_DIR/"
+# Move instead of copying, as we are running out of space
+# in the Github actions container.
+mv vendor "../../$DIST_DIR/"
 mkdir "../../$DIST_DIR/.cargo"
 cp config "../../$DIST_DIR/.cargo/"
 
