@@ -41,6 +41,7 @@ import Language.DifferentialDatalog.Version
 
 data TOption = OVSFile         String
              | InternTable     String
+             | InternStrings
              | OutputTable     String
              | OutputOnlyTable String
              | MultisetTable   String
@@ -60,6 +61,7 @@ options = [ Option ['v'] ["version"]            (NoArg Version)                 
           , Option ['f'] ["schema-file"]        (ReqArg OVSFile     "FILE")         "OVSDB schema file."
           , Option ['c'] ["input-config"]       (ReqArg ConfigJsonI "FILE.json")    "Read options from Json configuration file (preceding options are ignored)."
           , Option []    ["intern-table"]       (ReqArg InternTable "TABLE")        "Wrap records in TABLE in the 'Intern<>' type.  Interned values are copied and compared by reference."
+          , Option []    ["intern-strings"]     (NoArg InternStrings)               "Use 'Intern<String>' aka 'istring' for strings in tables, rather than plain 'string'."
           , Option ['O'] ["output-config"]      (ReqArg ConfigJsonO "FILE.json")    "Write preceding options to Json configuration file."
           , Option ['o'] ["output-table"]       (ReqArg OutputTable "TABLE")        "Mark TABLE as output."
           , Option []    ["output-only-table"]  (ReqArg OutputOnlyTable "TABLE")    "Mark TABLE as output-only.  DDlog will send updates to this table directly to OVSDB without comparing it with current OVSDB state."
@@ -79,6 +81,8 @@ addOption (a, config) (OutputFile f) = do
     return (a, config {outputFile = Just f})
 addOption (a, config) (InternTable t) = do
     return (a, config{ internedTables = nub (t : internedTables config)})
+addOption (a, config) InternStrings = do
+    return (a, config{ internStrings = True})
 addOption (a, config) (OutputTable t) = do
     when (elem t $ outputOnlyTables config)
          $ errorWithoutStackTrace $ "Conflicting options --output-table and --output-only-table specified for table '" ++ t ++ "'"
