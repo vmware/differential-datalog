@@ -108,6 +108,7 @@ data Config = Config { ovsSchemaFile    :: FilePath
                      , outputOnlyTables :: [String]
                      , multisetTables   :: [String]
                      , internedTables   :: [String]
+                     , internStrings    :: Bool
                      }
               deriving (Eq, Show, Generic)
 
@@ -121,6 +122,7 @@ defaultConfig = Config { ovsSchemaFile    = ""
                        , outputOnlyTables = []
                        , multisetTables   = []
                        , internedTables   = []
+                       , internStrings    = False
                        }
 
 -- | Output relation configuration:
@@ -329,11 +331,14 @@ mkColName' c =
     where x = map toLower c
 
 
-mkAtomicType :: (MonadError String me) => AtomicType -> me Doc
+mkAtomicType :: (?config::Config, MonadError String me) => AtomicType -> me Doc
 mkAtomicType IntegerType{}          = return "integer"
 mkAtomicType RealType{}             = return "double"
 mkAtomicType BooleanType{}          = return "bool"
-mkAtomicType StringType{}           = return "string"
+mkAtomicType StringType{}           =
+  case internStrings ?config of
+       False -> return "string"
+       True  -> return "istring"
 mkAtomicType UUIDType{}             = return "uuid"
 mkAtomicType UndefinedAtomicType{}  = error "OVSDB.Compile.mkAtomicType: undefined atomic type"
 
