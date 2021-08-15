@@ -27,14 +27,14 @@ package ddlog;
 import com.vmware.ddlog.ir.DDlogIRNode;
 import com.vmware.ddlog.ir.DDlogProgram;
 import com.vmware.ddlog.translator.Translator;
-import com.vmware.ddlog.util.sql.SqlInputDialect;
+import com.vmware.ddlog.util.sql.ToPrestoTranslator;
 import org.junit.Assert;
 import org.junit.Test;
 
 public class WeaveTest extends BaseQueriesTest {
     @Test
     public void testWeave() {
-        Translator t = new Translator(null, SqlInputDialect.PRESTO);
+        Translator t = new Translator(null, ToPrestoTranslator.noopTranslator());
         String node_info = "create table node_info\n" +
                 "(\n" +
                 "  name varchar(36) not null with (primary_key = true),\n" +

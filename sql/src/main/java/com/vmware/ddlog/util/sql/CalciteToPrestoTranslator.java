@@ -1,8 +1,3 @@
-/*
- * Copyright 2018-2020 VMware, Inc. All Rights Reserved.
- * SPDX-License-Identifier: BSD-2
- */
-
 package com.vmware.ddlog.util.sql;
 
 import org.apache.calcite.schema.ColumnStrategy;
@@ -11,13 +6,42 @@ import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.SqlNodeList;
 import org.apache.calcite.sql.ddl.SqlColumnDeclaration;
 import org.apache.calcite.sql.ddl.SqlCreateTable;
+import org.apache.calcite.sql.ddl.SqlCreateView;
 import org.apache.calcite.sql.ddl.SqlKeyConstraint;
+import org.apache.calcite.sql.parser.SqlAbstractParserImpl;
 import org.apache.calcite.sql.util.SqlBasicVisitor;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class CalciteToPresto extends SqlBasicVisitor<String> {
+import static com.vmware.ddlog.util.sql.CalciteUtils.createCalciteParser;
+
+/**
+ * Translate some subset of SQL DDL statements from Calcite to Presto.
+ */
+public class CalciteToPrestoTranslator extends ToPrestoTranslator {
+
+    @Override
+    public String toPresto(String sql) {
+        SqlAbstractParserImpl calciteParser = createCalciteParser(sql);
+        try {
+            org.apache.calcite.sql.SqlNodeList parseTree = calciteParser.parseSqlStmtList();
+            if (parseTree.get(0) instanceof SqlCreateView) {
+                return sql;
+            }
+            CalciteToPresto h2Translator = new CalciteToPresto();
+            return parseTree.accept(h2Translator);
+        } catch (Exception e) {
+            System.out.println("Calcite to Presto translator encountered exception: " + e.getMessage());
+        }
+        return new String();
+    }
+}
+
+/**
+ * Translates Calcite to Presto by implementing a Calcite parse node visitor.
+ */
+class CalciteToPresto extends SqlBasicVisitor<String> {
     @Override
     public String visit(SqlNodeList nodeList) {
         for (SqlNode statement : nodeList) {

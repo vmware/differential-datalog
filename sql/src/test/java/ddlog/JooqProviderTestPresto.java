@@ -26,7 +26,8 @@ package ddlog;
 import com.vmware.ddlog.DDlogJooqProvider;
 import com.vmware.ddlog.ir.DDlogProgram;
 import com.vmware.ddlog.translator.Translator;
-import com.vmware.ddlog.util.sql.SqlInputDialect;
+import com.vmware.ddlog.util.sql.PrestoToH2Translator;
+import com.vmware.ddlog.util.sql.ToPrestoTranslator;
 import ddlogapi.DDlogAPI;
 import ddlogapi.DDlogException;
 import org.jooq.DSLContext;
@@ -106,10 +107,10 @@ public class JooqProviderTestPresto {
         ddl.add(checkArrayParse);
         ddl.add(checkNotNullColumns);
 
-        ddlogAPI = compileAndLoad(ddl, SqlInputDialect.PRESTO);
+        ddlogAPI = compileAndLoad(ddl, ToPrestoTranslator.noopTranslator());
 
         // Initialise the data provider
-        provider = new DDlogJooqProvider(ddlogAPI, ddl, SqlInputDialect.PRESTO);
+        provider = new DDlogJooqProvider(ddlogAPI, ddl, new PrestoToH2Translator());
         MockConnection connection = new MockConnection(provider);
 
         // Pass the mock connection to a jOOQ DSLContext
@@ -538,8 +539,8 @@ public class JooqProviderTestPresto {
         }
     }
 
-    public static DDlogAPI compileAndLoad(final List<String> ddl, SqlInputDialect dialect) throws IOException, DDlogException {
-        final Translator t = new Translator(null, dialect);
+    public static DDlogAPI compileAndLoad(final List<String> ddl, ToPrestoTranslator translator) throws IOException, DDlogException {
+        final Translator t = new Translator(null, translator);
         ddl.forEach(t::translateSqlStatement);
         final DDlogProgram dDlogProgram = t.getDDlogProgram();
         final String fileName = "/tmp/program.dl";

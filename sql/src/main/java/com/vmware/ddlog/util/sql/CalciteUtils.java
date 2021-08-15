@@ -6,6 +6,9 @@ import org.apache.calcite.sql.parser.ddl.SqlDdlParserImpl;
 
 import java.io.StringReader;
 
+/**
+ * Some utility methods regarding the Apache Calcite tooling environment.
+ */
 public class CalciteUtils {
 
     /**

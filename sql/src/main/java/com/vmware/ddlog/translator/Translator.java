@@ -28,14 +28,9 @@ import com.facebook.presto.sql.parser.ParsingOptions;
 import com.facebook.presto.sql.parser.SqlParser;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.Statement;
-
-// If these are missing you have not run the sql/install-ddlog-jar.sh script
 import com.vmware.ddlog.ir.DDlogIRNode;
 import com.vmware.ddlog.ir.DDlogProgram;
-import com.vmware.ddlog.util.sql.CalciteToPresto;
-import com.vmware.ddlog.util.sql.SqlInputDialect;
-import org.apache.calcite.sql.ddl.SqlCreateView;
-import org.apache.calcite.sql.parser.SqlAbstractParserImpl;
+import com.vmware.ddlog.util.sql.ToPrestoTranslator;
 import org.jooq.DSLContext;
 import org.jooq.Field;
 
@@ -44,8 +39,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static com.vmware.ddlog.util.sql.CalciteUtils.createCalciteParser;
 
 
 /**
@@ -62,14 +55,14 @@ public class Translator {
     private final TranslationContext translationContext;
     private final TranslationVisitor visitor;
     private final ParsingOptions options = ParsingOptions.builder().build();
-    private final SqlInputDialect dialect;
+    private final ToPrestoTranslator translator;
 
-    public Translator(@Nullable final DSLContext dynamicContext, SqlInputDialect dialect) {
+    public Translator(@Nullable final DSLContext dynamicContext, ToPrestoTranslator translator) {
         this.parser = new SqlParser();
         this.dynamicContext = dynamicContext;
         this.translationContext = new TranslationContext();
         this.visitor = new TranslationVisitor();
-        this.dialect = dialect;
+        this.translator = translator;
     }
 
     public final DDlogProgram getDDlogProgram() {
@@ -81,29 +74,7 @@ public class Translator {
      * @param sql  Statement to translate.
      */
     public DDlogIRNode translateSqlStatement(final String sql) {
-        String statementForDDlog = sql;
-
-        switch (this.dialect) {
-            case CALCITE: {
-                // Translate Calcite to Presto
-                SqlAbstractParserImpl calciteParser = createCalciteParser(sql);
-                try {
-                    org.apache.calcite.sql.SqlNodeList parseTree = calciteParser.parseSqlStmtList();
-                    if (parseTree.get(0) instanceof SqlCreateView) {
-                        break;
-                    }
-                    CalciteToPresto h2Translator = new CalciteToPresto();
-                    statementForDDlog = parseTree.accept(h2Translator);
-                } catch (Exception e) {
-                    System.out.println("Calcite to Presto translator encountered exception: " + e.getMessage());
-                }
-                break;
-            }
-            case PRESTO: {
-                // Don't need to translate if it's already in Presto
-                break;
-            }
-        }
+        String statementForDDlog = translator.toPresto(sql);
 
         this.translationContext.beginTranslation();
         Statement statement = this.parser.createStatement(statementForDDlog, this.options);

@@ -5,8 +5,8 @@
 package ddlog;
 
 import com.vmware.ddlog.DDlogJooqProvider;
-import com.vmware.ddlog.util.sql.SqlInputDialect;
-import ddlogapi.DDlogAPI;
+import com.vmware.ddlog.util.sql.CalciteToH2Translator;
+import com.vmware.ddlog.util.sql.CalciteToPrestoTranslator;
 import ddlogapi.DDlogException;
 import org.jooq.impl.DSL;
 import org.jooq.tools.jdbc.MockConnection;
@@ -38,10 +38,10 @@ public class JooqProviderTestCalcite extends JooqProviderTestPresto {
         ddl.add(checkArrayParse);
         ddl.add(checkNotNullColumns);
 
-        ddlogAPI = compileAndLoad(ddl, SqlInputDialect.CALCITE);
+        ddlogAPI = compileAndLoad(ddl, new CalciteToPrestoTranslator());
 
         // Initialise the data provider
-        provider = new DDlogJooqProvider(ddlogAPI, ddl, SqlInputDialect.CALCITE);
+        provider = new DDlogJooqProvider(ddlogAPI, ddl, new CalciteToH2Translator());
         MockConnection connection = new MockConnection(provider);
 
         // Pass the mock connection to a jOOQ DSLContext
