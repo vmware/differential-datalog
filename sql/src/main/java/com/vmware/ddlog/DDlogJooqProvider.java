@@ -21,6 +21,7 @@
  * SOFTWARE.
  *
  */
+
 package com.vmware.ddlog;
 
 import com.vmware.ddlog.util.sql.ToH2Translator;
