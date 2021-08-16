@@ -264,7 +264,7 @@ pub fn set2vec<X: u64set::Fits64 + Ord + Clone>(s: &Set64<X>) -> ddlog_std::Vec<
     ddlog_std::Vec::from(v)
 }
 
-pub fn union<X: u64set::Fits64>(mut s1: Set64<X>, s2: &Set64<X>) -> Set64<X> {
+pub fn union<X: u64set::Fits64>(s1: Set64<X>, s2: &Set64<X>) -> Set64<X> {
     Set64 {
         x: s1.x.bitor(&s2.x),
     }
