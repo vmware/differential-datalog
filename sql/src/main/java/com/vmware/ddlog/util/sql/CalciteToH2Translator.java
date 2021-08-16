@@ -24,17 +24,17 @@
 package com.vmware.ddlog.util.sql;
 
 import org.apache.calcite.schema.ColumnStrategy;
-import org.apache.calcite.sql.SqlKind;
-import org.apache.calcite.sql.SqlNode;
-import org.apache.calcite.sql.SqlNodeList;
+import org.apache.calcite.sql.*;
 import org.apache.calcite.sql.ddl.SqlColumnDeclaration;
 import org.apache.calcite.sql.ddl.SqlCreateTable;
 import org.apache.calcite.sql.ddl.SqlCreateView;
+import org.apache.calcite.sql.ddl.SqlKeyConstraint;
 import org.apache.calcite.sql.parser.SqlAbstractParserImpl;
 import org.apache.calcite.sql.util.SqlBasicVisitor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.vmware.ddlog.util.sql.CalciteUtils.createCalciteParser;
 
@@ -44,79 +44,74 @@ import static com.vmware.ddlog.util.sql.CalciteUtils.createCalciteParser;
 public class CalciteToH2Translator extends ToH2Translator {
 
     /**
-     * Translate Calcite SQL statement to H2. Unfortunately, Calcite and H2 aren't completely equivalent,
-     * so this method isn't just a noop. For example, H2 arrays do not accept subtypes, so we need to strip them.
+     * Translate Calcite SQL statement to H2.
      * @param sql
      * @return
      */
     @Override
     public String toH2(String sql) {
         SqlAbstractParserImpl calciteParser = createCalciteParser(sql);
-        String ret = sql;
         try {
             org.apache.calcite.sql.SqlNodeList parseTree = calciteParser.parseSqlStmtList();
-            // Pass `create view` straight through
-            if (!(parseTree.get(0) instanceof SqlCreateView)) {
-                CalciteToH2 h2Translator = new CalciteToH2();
-                ret = parseTree.accept(h2Translator);
+            // Don't need to modify `create view`
+            if (parseTree.get(0) instanceof SqlCreateView) {
+                return sql;
             }
+            CalciteToH2 h2Translator = new CalciteToH2();
+            return parseTree.accept(h2Translator);
         } catch (Exception e) {
-            System.out.println("Calcite to H2 translator exception: " + e.getMessage());
+            throw new CalciteTranslationException(e.getMessage());
         }
-        return ret;
     }
 }
 
 /**
  * Translates Calcite to H2 by implementing a Calcite parse node visitor.
+ * Unfortunately, Calcite and H2 aren't completely equivalent, so this method isn't just a noop.
+ * For example, H2 arrays do not accept subtypes, so we need to strip them, but this also means the Visitor needs to
+ * walk the entire parse tree and translate it into a string.
  */
-class CalciteToH2 extends SqlBasicVisitor<String> {
+class CalciteToH2 extends CalciteDDLVisitorBase {
+
     @Override
-    public String visit(SqlNodeList nodeList) {
-        // We just need to strip out the subtype for the array, which H2 doesn't like.
-        // Unfortunately this means we need to walk all columns in the parse tree.
-        for (SqlNode statement : nodeList) {
-            if (statement.getKind() == SqlKind.CREATE_TABLE && statement instanceof SqlCreateTable) {
-                SqlCreateTable createStatement = (SqlCreateTable) statement;
+    public String visit(SqlCall call) {
+        if (call instanceof SqlColumnDeclaration) {
+            SqlColumnDeclaration castColumn = (SqlColumnDeclaration) call;
+            String type = castColumn.dataType.toString();
 
-                List<SqlNode> operands = createStatement.getOperandList();
-                // For the SqlCreateTable class, getOperandList returns [name, columnList, query]
+            if (castColumn.dataType.getCollectionsTypeName() != null &&
+                    castColumn.dataType.getCollectionsTypeName().toString().equals("ARRAY")) {
+                type = "array";
+            }
 
-                List<String> prestoColumns = new ArrayList();
-                if (operands.get(1) instanceof SqlNodeList) {
-                    SqlNodeList columns = (SqlNodeList) operands.get(1);
-                    for (SqlNode column : columns) {
-                        if (column instanceof SqlColumnDeclaration) {
-                            SqlColumnDeclaration castColumn = (SqlColumnDeclaration) column;
-                            String type = castColumn.dataType.toString();
+            String nullOperand = (castColumn.strategy == ColumnStrategy.NULLABLE) ? "null" : "not null";
+            if (castColumn.expression != null) {
+                throw new UnsupportedOperationException(
+                        "Don't know how to translate Calcite column expressions yet");
+            }
 
-                            if (castColumn.dataType.getCollectionsTypeName().toString().equals("ARRAY")) {
-                                type = "array";
-                            }
+            String transcribed = String.format("%s %s %s",
+                    castColumn.name.toString(),
+                    type,
+                    nullOperand);
+            translatedColumns.add(transcribed);
+            return transcribed;
+        }
+        if (call instanceof SqlKeyConstraint) {
+            SqlKeyConstraint castColumn = (SqlKeyConstraint) call;
+            List<SqlNode> constraintOperands = castColumn.getOperandList();
+            if (constraintOperands.get(1) instanceof SqlNodeList) {
+                SqlNodeList constraintColumns = (SqlNodeList) constraintOperands.get(1);
 
-                            String nullOperand = (castColumn.strategy == ColumnStrategy.NULLABLE) ? "null" : "not null";
-                            if (castColumn.expression != null) {
-                                throw new UnsupportedOperationException(
-                                        "Don't know how to translate Calcite column expressions yet");
-                            }
+                String constraintColumnsString = String.join(",",
+                        constraintColumns.getList().stream().map(SqlNode::toString).collect(Collectors.toList()));
 
-                            String transcribed = String.format("%s %s %s",
-                                    castColumn.name.toString(),
-                                    type,
-                                    nullOperand);
-                            prestoColumns.add(transcribed);
-                        }
-                    }
-                }
-                String columnsString = String.join(", ", prestoColumns);
-                return String.format("%s %s (%s)",
-                        createStatement.getOperator(),
-                        operands.get(0),
-                        columnsString).toLowerCase();
+                String transcribed = String.format("%s (%s)", castColumn.getOperator(), constraintColumnsString);
+                translatedColumns.add(transcribed);
+                return transcribed;
             }
         }
-
-        return new String();
+        throw new UnsupportedOperationException("Cannot translate SqlCall's of kind " + call.getKind());
     }
 }
 

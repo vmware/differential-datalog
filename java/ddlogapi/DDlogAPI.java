@@ -916,7 +916,8 @@ public class DDlogAPI {
     static boolean loaded = false;
 
     /**
-     * Load the the ddlogLibrary in the current process.
+     * Load the ddlogLibrary in the current process.
+     * If ddlogLibrary has already been loaded, simply return a new API.
      * @return The API that can be used to interact with this library.
      */
     public static DDlogAPI loadDDlog() throws DDlogException {
