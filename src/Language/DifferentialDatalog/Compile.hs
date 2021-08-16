@@ -3316,9 +3316,15 @@ mkExpr' d ctx e@EBinOp{..} = (v', EVal)
     t2 = exprType' d (CtxBinOpR e' ctx) (E $ sel3 exprRight)
     v = case exprBOp of
              Concat | t == tString
-                    -> case sel3 exprRight of
-                            EString _ s -> "::ddlog_rt::string_append_str(" <> e1 <> ", r###\"" <> pp s <> "\"###)"
-                            _           -> "::ddlog_rt::string_append(" <> e1 <> "," <+> ref exprRight <> ")"
+                    -> -- The parser scans expressions like '"${x}"' as '"" ++ x.to_string()'.
+                       -- The empty string operand helps type inference figure
+                       -- out that this is string concatenation, so we cannot
+                       -- eliminate it in the parser.  Drop it here instead.
+                       if E (sel3 exprLeft) == eString ""
+                       then val exprRight
+                       else case sel3 exprRight of
+                                 EString _ s -> "::ddlog_rt::string_append_str(" <> e1 <> ", r###\"" <> pp s <> "\"###)"
+                                 _           -> "::ddlog_rt::string_append(" <> e1 <> "," <+> ref exprRight <> ")"
              op     -> mkBinOp d op (e1, t1) (e2, t2)
 
     -- Truncate bitvector result in case the type used to represent it
