@@ -3,10 +3,10 @@ json_test::JsonTest{.description = "-100", .value = "{\"Ok\":{\"res\":-100}}"}
 json_test::JsonTest{.description = "100", .value = "{\"Ok\":{\"res\":100}}"}
 json_test::JsonTest{.description = "2.99792458e8", .value = "{\"Ok\":{\"res\":299792458.0}}"}
 json_test::JsonTest{.description = "[{\"b\":true}, {\"b\":false}, {\"b\":true}, {\"b\":false}]", .value = "{\"Ok\":{\"res\":[{\"b\":true},{\"b\":false},{\"b\":true},{\"b\":false}]}}"}
-json_test::JsonTest{.description = "get_by_ptr([])", .value = "{\"id\":\"1001001001\",\"nested\":{\"x\":{\"b\":true,\"foo\":\"bar\"},\"y\":{\"b\":true,\"foo\":\"bar\"},\"z\":[{\"@type\":\"t.V1\",\"b\":true},{\"@type\":\"t.V2\",\"b\":{\"f\":[{\"key\":100,\"payload\":\"foo\"}]}},null,null,null,null,null,null,null,{\"q\":{\"f\":[{\"key\":100,\"payload\":\"foo\"}]}},{\"b\":{\"f\":[{\"key\":100,\"payload\":\"foo\"}]}}]},\"t\":\"foo\"}"}
-json_test::JsonTest{.description = "get_by_ptr(nested/z/10/b)", .value = "{\"f\":[{\"key\":100,\"payload\":\"foo\"}]}"}
+json_test::JsonTest{.description = "get_by_ptr([])", .value = "{\"t\":\"foo\",\"nested\":{\"z\":[{\"@type\":\"t.V1\",\"b\":true},{\"@type\":\"t.V2\",\"b\":{\"f\":[{\"payload\":\"foo\",\"key\":100}]}},null,null,null,null,null,null,null,{\"q\":{\"f\":[{\"payload\":\"foo\",\"key\":100}]}},{\"b\":{\"f\":[{\"payload\":\"foo\",\"key\":100}]}}],\"x\":{\"foo\":\"bar\",\"b\":true},\"y\":{\"foo\":\"bar\",\"b\":true}},\"id\":\"1001001001\"}"}
+json_test::JsonTest{.description = "get_by_ptr(nested/z/10/b)", .value = "{\"f\":[{\"payload\":\"foo\",\"key\":100}]}"}
 json_test::JsonTest{.description = "get_by_ptr(nested/z/10/c)", .value = "null"}
-json_test::JsonTest{.description = "set_by_ptr test", .value = "{\"id\":\"1001001001\",\"nested\":{\"x\":{\"b\":true,\"foo\":\"bar\"},\"y\":{\"b\":true,\"foo\":\"bar\"},\"z\":[{\"@type\":\"t.V1\",\"b\":true},{\"@type\":\"t.V2\",\"b\":{\"f\":[{\"key\":100,\"payload\":\"foo\"}]}},null,null,null,null,null,null,null,{\"q\":{\"f\":[{\"key\":100,\"payload\":\"foo\"}]}},{\"b\":{\"f\":[{\"key\":100,\"payload\":\"foo\"}]}}]},\"t\":\"foo\"}"}
+json_test::JsonTest{.description = "set_by_ptr test", .value = "{\"t\":\"foo\",\"nested\":{\"z\":[{\"@type\":\"t.V1\",\"b\":true},{\"@type\":\"t.V2\",\"b\":{\"f\":[{\"payload\":\"foo\",\"key\":100}]}},null,null,null,null,null,null,null,{\"q\":{\"f\":[{\"payload\":\"foo\",\"key\":100}]}},{\"b\":{\"f\":[{\"payload\":\"foo\",\"key\":100}]}}],\"x\":{\"foo\":\"bar\",\"b\":true},\"y\":{\"foo\":\"bar\",\"b\":true}},\"id\":\"1001001001\"}"}
 json_test::JsonTest{.description = "true", .value = "{\"Ok\":{\"res\":true}}"}
 json_test::JsonTest{.description = "wrapped {\"@type\": \"t.V1\", \"b\": true}", .value = "{\"Ok\":{\"res\":{\"@type\":\"t.V1\",\"b\":true}}}"}
 json_test::JsonTest{.description = "wrapped {\"@type\": \"t.V2\", \"b\": false}", .value = "{\"Err\":{\"err\":\"missing field `u`\"}}"}
@@ -33,5 +33,5 @@ json_test::JsonTest{.description = "{\"x\": \"x\", \"y\": \"100000\"}", .value =
 json_test::JsonTest{.description = "{}", .value = "{\"Ok\":{\"res\":{\"s\":null,\"i\":null,\"v\":null}}}"}
 json_test::JsonTestValue{.description = "wrapped {\"@type\": \"t.V1\", \"b\": true}", .value = "{\"Ok\":{\"res\":{\"@type\":\"t.V1\",\"b\":true}}}"}
 json_test::JsonTestValue{.description = "wrapped {\"@type\": \"t.V2\", \"b\": false}", .value = "{\"Err\":{\"err\":\"missing field `u`\"}}"}
-json_test::JsonTestValue{.description = "wrapped {\"@type\": \"t.V2\", \"u\": 100}", .value = "{\"Ok\":{\"res\":{\"@type\":\"t.V2\",\"u\":100}}}"}
+json_test::JsonTestValue{.description = "wrapped {\"@type\": \"t.V2\", \"u\": 100}", .value = "{\"Ok\":{\"res\":{\"u\":100,\"@type\":\"t.V2\"}}}"}
 json_test::TVariant1{.b = true}

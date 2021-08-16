@@ -907,6 +907,10 @@ impl<K: Ord, V> Map<K, V> {
         Map { x: BTreeMap::new() }
     }
 
+    pub fn len(&self) -> usize {
+        self.x.len()
+    }
+
     pub fn insert(&mut self, k: K, v: V) {
         self.x.insert(k, v);
     }
@@ -988,7 +992,7 @@ impl<K: Debug + Ord, V: Debug> Debug for Map<K, V> {
 }
 
 pub fn map_size<K: Ord, V>(m: &Map<K, V>) -> std_usize {
-    m.x.len() as std_usize
+    m.len() as std_usize
 }
 
 pub fn map_empty<K: Ord + Clone, V: Clone>() -> Map<K, V> {

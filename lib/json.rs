@@ -45,50 +45,52 @@ pub fn to_json_value<T: serde::Serialize>(x: T) -> ddlog_std::Result<JsonValue, 
     res2std(serde_json::to_value(x).map(JsonValue::from))
 }
 
-pub struct ValueWrapper(serde_json::value::Value);
-
-impl serde::Serialize for ValueWrapper {
+impl serde::Serialize for JsonValue {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
         if serializer.is_human_readable() {
-            self.0.serialize(serializer)
+            match self {
+                JsonValue::JsonNull => serializer.serialize_unit(),
+                JsonValue::JsonBool { b } => serializer.serialize_bool(*b),
+                JsonValue::JsonNumber { ref n } => val_from_num(n.clone()).serialize(serializer),
+                JsonValue::JsonString { ref s } => serializer.serialize_str(s),
+                JsonValue::JsonArray { ref a } => a.serialize(serializer),
+                JsonValue::JsonObject { ref o } => {
+                    use serde::ser::SerializeMap;
+                    let mut map = serializer.serialize_map(Some(o.len()))?;
+                    for ddlog_std::tuple2(k, v) in o.iter() {
+                        map.serialize_entry(&k, &v)?;
+                    }
+                    map.end()
+                }
+            }
         } else {
-            serde_json::to_string(&self.0)
+            serde_json::to_string(self)
                 .map_err(|e| serde::ser::Error::custom(e))?
                 .serialize(serializer)
         }
     }
 }
 
-impl<'de> Deserialize<'de> for ValueWrapper {
+impl<'de> Deserialize<'de> for JsonValue {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
         if deserializer.is_human_readable() {
-            Ok(ValueWrapper(serde_json::Value::deserialize(deserializer)?))
+            Ok(JsonValue::from(serde_json::Value::deserialize(
+                deserializer,
+            )?))
         } else {
-            Ok(ValueWrapper(
+            Ok(JsonValue::from(
                 serde_json::from_str::<serde_json::Value>(
                     String::deserialize(deserializer)?.as_ref(),
                 )
                 .map_err(|e| serde::de::Error::custom(e))?,
             ))
         }
-    }
-}
-
-impl From<ValueWrapper> for JsonValue {
-    fn from(x: ValueWrapper) -> Self {
-        JsonValue::from(x.0)
-    }
-}
-
-impl From<JsonValue> for ValueWrapper {
-    fn from(x: JsonValue) -> Self {
-        ValueWrapper(serde_json::Value::from(x))
     }
 }
 

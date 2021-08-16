@@ -65,7 +65,7 @@ extern function to_json_value(#[by_val] x: 'T): Result<JsonValue, string>
 
 /* Represents any valid JSON value.
  */
-#[rust="serde(from = \"ValueWrapper\", into = \"ValueWrapper\")"]
+#[custom_serde]
 typedef JsonValue = // Represents a JSON null value.
                     JsonNull
                   | // Represents a JSON boolean.
