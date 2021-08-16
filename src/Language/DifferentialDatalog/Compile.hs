@@ -3238,8 +3238,7 @@ mkExpr' d ctx e@ESlice{..} = (mkSlice d (val exprOp, w) exprH exprL, EVal)
     e' = exprMap (E . sel3) e
     TBit _ w = exprType' d (CtxSlice e' ctx) $ E $ sel3 exprOp
 
--- Match expression is a reference
-mkExpr' d ctx e@EMatch{..} = (doc, EVal)
+mkExpr' d ctx e@EMatch{..} = (doc, if all_refs && not all_returns then EReference else EVal)
     where
     e' = exprMap (E . sel3) e
     m = deref exprMatchExpr
@@ -3252,9 +3251,17 @@ mkExpr' d ctx e@EMatch{..} = (doc, EVal)
           (nest' $ vcat $ punctuate comma cases)
           $$
           "}"
+    -- Optimization: if all match clauses return references, the match
+    -- expression also produces the result by reference, so we don't need to
+    -- clone the result.
+    all_returns = all ((== ENoReturn) . sel2 . snd) exprCases
+    all_refs = -- Make sure we don't leak any owned values from either match expression or match cases.
+               sel2 exprMatchExpr == EReference &&
+               all ((\kind -> kind == EReference || kind == ENoReturn) . sel2 . snd) exprCases
+    output v = if all_refs then sel1 v else val v
     cases = mapIdx (\(c,v) idx -> let Match pat cond [] = mkPatExpr d (CtxMatchPat e' ctx idx) (E $ sel3 c) EReference mut
                                       cond' = if cond == empty then empty else ("if" <+> cond) in
-                                  pat <+> cond' <+> "=>" <+> val v) exprCases
+                                  pat <+> cond' <+> "=>" <+> output v) exprCases
 
 mkExpr' _  _ EVarDecl{..} = ("ref mut" <+> pp exprVName, ELVal)
 

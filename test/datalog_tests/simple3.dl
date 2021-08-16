@@ -214,3 +214,79 @@ typedef Thosts = Thosts{id:Option<string>, capacity:Option<signed<64>>, up:Optio
 input relation Rhosts[Thosts] primary key (row) (row.id)
 output relation Rhostsv[Thosts]
 Rhostsv[v0] :- Rhosts[v],var v0 = v.
+
+
+/**********************************************************/
+
+// Test code generation for `match` expressions.
+
+function test_match0() {
+    var x = Ok{Some{"foo"}};
+    var y = match (x) {
+        Err{e: string} -> e,
+        Ok{Some{s}} -> {
+            s // returned by reference.
+        },
+        _ -> return
+    }
+}
+
+
+function test_match1() {
+    var x = Ok{Some{"foo"}};
+    var y = match (x) {
+        Err{e: string} -> e,
+        Ok{Some{s}} -> {
+            var ss = s++s;
+            match (ss) {
+                "foofoo" -> ss, // returned by reference
+                _        -> s
+            } // returned by-value
+        },
+        _ -> return
+    }
+}
+
+function test_match2() {
+    var v: Result<string, string> = Ok{"100"};
+    var y = match (v) {
+        Ok{s} -> {
+            match (parse_dec_u64(s)) {
+                Some{x} -> x, // returned by-value, because match expression produces an owned value that cannot be leaked.
+                _ -> return
+            }
+        },
+        _ -> return
+    }
+}
+
+
+function test_match3() {
+    var x = Ok{Some{"foo"}};
+    var y = match (x) {
+        Err{e: string} -> e,
+        Ok{Some{s}} -> {
+            var ss = s++s;
+            match (ref_new(ss++ss).deref()) {
+                "foofoo" -> ss, // returned by reference
+                x        -> x
+            } // returned by-value
+        },
+        _ -> return
+    }
+}
+
+function test_match4() {
+    var x = Ok{Some{"foo"}};
+    var y = match (x) {
+        Err{e: string} -> e,
+        Ok{Some{s}} -> {
+            var ss = s++s;
+            match ((ss++ss).intern().ival()) {
+                "foofoo" -> ss, // returned by reference
+                x        -> x
+            } // returned by-value
+        },
+        _ -> return
+    }
+}
