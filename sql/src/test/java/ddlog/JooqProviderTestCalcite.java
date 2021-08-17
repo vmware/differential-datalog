@@ -16,7 +16,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class JooqProviderTestCalcite extends JooqProviderTestPresto {
+public class JooqProviderTestCalcite extends JooqProviderTestBase {
 
     public JooqProviderTestCalcite() {
         super();
