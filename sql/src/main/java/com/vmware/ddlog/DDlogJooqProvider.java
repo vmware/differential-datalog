@@ -24,7 +24,7 @@
 
 package com.vmware.ddlog;
 
-import com.vmware.ddlog.util.sql.ToH2Translator;
+import com.vmware.ddlog.util.sql.H2SqlStatement;
 import ddlogapi.*;
 import org.apache.calcite.sql.*;
 import org.apache.calcite.sql.parser.SqlParser;
@@ -89,17 +89,15 @@ public final class DDlogJooqProvider implements MockDataProvider {
     private final Map<String, Set<Record>> materializedViews = new ConcurrentHashMap<>();
     public static boolean trace = false;
 
-    public DDlogJooqProvider(final DDlogAPI dDlogAPI, final List<String> sqlStatements, final ToH2Translator translator) {
+    public DDlogJooqProvider(final DDlogAPI dDlogAPI, final List<H2SqlStatement> sqlStatements) {
         this.dDlogAPI = dDlogAPI;
         this.dslContext = DSL.using("jdbc:h2:mem:");
         this.updateCountField = field("UPDATE_COUNT", Integer.class);
 
         // We execute H2 statements in a temporary database so that JOOQ can extract useful metadata
         // that we will use later (for example, the record types for views).
-        //
-        // The call must provider a translator that translates an SQL statements to the H2 dialect.
-        for (final String sql : sqlStatements) {
-            dslContext.execute(translator.toH2(sql));
+        for (final H2SqlStatement sql : sqlStatements) {
+            dslContext.execute(sql.getStatement());
         }
 
         for (final Table<?> table: dslContext.meta().getTables()) {

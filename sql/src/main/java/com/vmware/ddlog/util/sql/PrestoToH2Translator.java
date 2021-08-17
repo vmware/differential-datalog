@@ -35,15 +35,15 @@ import java.util.regex.Pattern;
 /**
  * Translate some subset of SQL DDL statements from Presto to H2.
  */
-public class PrestoToH2Translator implements ToH2Translator {
+public class PrestoToH2Translator implements ToH2Translator<PrestoSqlStatement> {
 
     @Override
-    public String toH2(String sql) {
+    public H2SqlStatement toH2(PrestoSqlStatement sql) {
         final com.facebook.presto.sql.parser.SqlParser parser = new com.facebook.presto.sql.parser.SqlParser();
         final ParsingOptions options = ParsingOptions.builder().build();
         final PrestoToH2 prestoToH2 = new PrestoToH2();
-        final Statement statement = parser.createStatement(sql, options);
-        return prestoToH2.process(statement, sql);
+        final Statement statement = parser.createStatement(sql.getStatement(), options);
+        return new H2SqlStatement(prestoToH2.process(statement, sql.getStatement()));
     }
 }
 

@@ -41,18 +41,18 @@ import static com.vmware.ddlog.util.sql.CalciteUtils.createCalciteParser;
 /**
  * Translate some subset of SQL DDL statements from Calcite to Presto.
  */
-public class CalciteToPrestoTranslator implements ToPrestoTranslator {
+public class CalciteToPrestoTranslator implements ToPrestoTranslator<CalciteSqlStatement> {
 
     @Override
-    public String toPresto(String sql) {
+    public PrestoSqlStatement toPresto(CalciteSqlStatement sql) {
         SqlAbstractParserImpl calciteParser = createCalciteParser(sql);
         try {
             org.apache.calcite.sql.SqlNodeList parseTree = calciteParser.parseSqlStmtList();
             if (parseTree.get(0) instanceof SqlCreateView) {
-                return sql;
+                return new PrestoSqlStatement(sql.getStatement());
             }
             CalciteToPresto h2Translator = new CalciteToPresto();
-            return parseTree.accept(h2Translator);
+            return new PrestoSqlStatement(parseTree.accept(h2Translator));
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage());
         }

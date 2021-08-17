@@ -24,13 +24,10 @@
 package com.vmware.ddlog.util.sql;
 
 /**
- * Interface for translating DDL statements from a SQL dialect to the H2 dialect,
- * which is used in DDlogJooqProvider.
+ * Wrapper around a SQL string written in the H2 dialect.
  */
-public interface ToH2Translator<R extends SqlStatement> {
-    /**
-     * Translates given SQL statement in given dialect to H2 dialect.
-     * @return
-     */
-    H2SqlStatement toH2(R sql);
+public class H2SqlStatement extends SqlStatement {
+    public H2SqlStatement (String sql) {
+        super(sql);
+    }
 }

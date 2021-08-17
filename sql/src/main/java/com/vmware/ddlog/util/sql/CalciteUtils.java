@@ -38,8 +38,8 @@ public class CalciteUtils {
      * Initialize and return a Calcite DDL Parser.
      * @param sql  Statement to initialize parser with.
      */
-    public static SqlAbstractParserImpl createCalciteParser(String sql) {
-        SqlAbstractParserImpl ret = SqlDdlParserImpl.FACTORY.getParser(new StringReader(sql));
+    public static SqlAbstractParserImpl createCalciteParser(CalciteSqlStatement sql) {
+        SqlAbstractParserImpl ret = SqlDdlParserImpl.FACTORY.getParser(new StringReader(sql.getStatement()));
 
         /*
          * Currently, SqlDdlParserImpl doesn't have a constructor that accepts config parameters,

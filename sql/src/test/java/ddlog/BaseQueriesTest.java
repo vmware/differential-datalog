@@ -24,22 +24,21 @@
 
 package ddlog;
 
-import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.stream.Collectors;
-
 import com.google.common.base.Splitter;
 import com.vmware.ddlog.ir.DDlogIRNode;
 import com.vmware.ddlog.ir.DDlogProgram;
 import com.vmware.ddlog.translator.Translator;
-
-import com.vmware.ddlog.util.sql.ToPrestoTranslator;
+import com.vmware.ddlog.util.sql.PrestoSqlStatement;
 import ddlogapi.DDlogAPI;
 import ddlogapi.DDlogException;
 import org.h2.store.fs.FileUtils;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class BaseQueriesTest {
     protected static boolean runSlowTests = false;
@@ -47,7 +46,7 @@ public class BaseQueriesTest {
     // TODO: this should only be done once, but it is not clear how this can be achieved.
     @BeforeClass
     public static void createLibrary() throws FileNotFoundException {
-        Translator t = new Translator(null, ToPrestoTranslator.noopTranslator());
+        Translator t = new Translator(null);
         DDlogProgram lib = t.generateSqlLibrary();
         // System.out.println("Current directory " + System.getProperty("user.dir"));
         lib.toFile("lib/sqlop.dl");
@@ -97,15 +96,15 @@ public class BaseQueriesTest {
                 " column2 varchar(36) " + nulls + ",\n" +
                 " column3 boolean " + nulls + ",\n" +
                 " column4 real " + nulls + ")";
-        Translator t = new Translator(null, ToPrestoTranslator.noopTranslator());
-        DDlogIRNode create = t.translateSqlStatement(createStatement);
+        Translator t = new Translator(null);
+        DDlogIRNode create = t.translateSqlStatement(new PrestoSqlStatement(createStatement));
         Assert.assertNotNull(create);
         String s = create.toString();
         Assert.assertNotNull(s);
         Assert.assertEquals("input relation Rt1[Tt1]", s);
 
         createStatement = "create table t2(column1 integer " + nulls + ")";
-        create = t.translateSqlStatement(createStatement);
+        create = t.translateSqlStatement(new PrestoSqlStatement(createStatement));
         Assert.assertNotNull(create);
         s = create.toString();
         Assert.assertNotNull(s);
@@ -114,7 +113,7 @@ public class BaseQueriesTest {
         createStatement = "create table t3(d date " + nulls + ",\n" +
                 " t time " + nulls + ",\n" +
                 " dt datetime " + nulls + ")";
-        create = t.translateSqlStatement(createStatement);
+        create = t.translateSqlStatement(new PrestoSqlStatement(createStatement));
         Assert.assertNotNull(create);
         s = create.toString();
         Assert.assertNotNull(s);
@@ -122,7 +121,7 @@ public class BaseQueriesTest {
 
         // Table t4 always has nullable columns
         createStatement = "create table t4(column1 integer, column2 varchar(36))";
-        create = t.translateSqlStatement(createStatement);
+        create = t.translateSqlStatement(new PrestoSqlStatement(createStatement));
         Assert.assertNotNull(create);
         s = create.toString();
         Assert.assertNotNull(s);
@@ -166,7 +165,7 @@ public class BaseQueriesTest {
 
     protected void testTranslation(String query, String program, boolean withNulls) {
         Translator t = this.createInputTables(withNulls);
-        DDlogIRNode view = t.translateSqlStatement(query);
+        DDlogIRNode view = t.translateSqlStatement(new PrestoSqlStatement(query));
         Assert.assertNotNull(view);
         String s = view.toString();
         Assert.assertNotNull(s);
@@ -182,7 +181,7 @@ public class BaseQueriesTest {
     protected void testTranslation(List<String> queries, String program, boolean withNulls) {
         Translator t = this.createInputTables(withNulls);
         for (String query: queries) {
-            DDlogIRNode view = t.translateSqlStatement(query);
+            DDlogIRNode view = t.translateSqlStatement(new PrestoSqlStatement(query));
             Assert.assertNotNull(view);
             String s = view.toString();
             Assert.assertNotNull(s);
@@ -216,7 +215,7 @@ public class BaseQueriesTest {
         final InputStream resourceAsStream = DynamicTest.class.getResourceAsStream(file);
         try (final BufferedReader tables = new BufferedReader(new InputStreamReader(resourceAsStream,
                 StandardCharsets.UTF_8))) {
-            final Translator t = new Translator(null, ToPrestoTranslator.noopTranslator());
+            final Translator t = new Translator(null);
             final String schemaAsString = tables.lines()
                     .filter(line -> !line.startsWith("--")) // remove SQL comments
                     .collect(Collectors.joining("\n"));
@@ -225,7 +224,7 @@ public class BaseQueriesTest {
                     .omitEmptyStrings()
                     .splitToList(schemaAsString);
             semiColonSeparated // remove SQL comments
-                    .forEach(t::translateSqlStatement);
+                    .forEach(x -> t.translateSqlStatement(new PrestoSqlStatement(x)));
             final DDlogProgram dDlogProgram = t.getDDlogProgram();
             final String ddlogProgramAsString = dDlogProgram.toString();
             File tmp = this.writeProgramToFile(ddlogProgramAsString);

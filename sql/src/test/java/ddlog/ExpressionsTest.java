@@ -61,7 +61,7 @@ public class ExpressionsTest {
 
     @Test
     public void testExpression() {
-        Translator t = new Translator(null, ToPrestoTranslator.noopTranslator());
+        Translator t = new Translator(null);
         DDlogIRNode node = t.translateExpression("true");
         String s = node.toString();
         Assert.assertEquals("true", s);

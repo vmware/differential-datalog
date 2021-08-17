@@ -27,14 +27,14 @@ package ddlog;
 import com.vmware.ddlog.ir.DDlogIRNode;
 import com.vmware.ddlog.ir.DDlogProgram;
 import com.vmware.ddlog.translator.Translator;
-import com.vmware.ddlog.util.sql.ToPrestoTranslator;
+import com.vmware.ddlog.util.sql.PrestoSqlStatement;
 import org.junit.Assert;
 import org.junit.Test;
 
 public class WeaveTest extends BaseQueriesTest {
     @Test
     public void testWeave() {
-        Translator t = new Translator(null, ToPrestoTranslator.noopTranslator());
+        Translator t = new Translator(null);
         String node_info = "create table node_info\n" +
                 "(\n" +
                 "  name varchar(36) not null with (primary_key = true),\n" +
@@ -54,7 +54,7 @@ public class WeaveTest extends BaseQueriesTest {
                 "  ephemeral_storage_allocatable bigint not null,\n" +
                 "  pods_allocatable bigint not null\n" +
                 ")";
-        DDlogIRNode create = t.translateSqlStatement(node_info);
+        DDlogIRNode create = t.translateSqlStatement(new PrestoSqlStatement(node_info));
         Assert.assertNotNull(create);
 
         String pod_info =
@@ -75,7 +75,7 @@ public class WeaveTest extends BaseQueriesTest {
                         "  has_node_selector_labels boolean not null,\n" +
                         "  has_pod_affinity_requirements boolean not null\n" +
                         ")";
-        create = t.translateSqlStatement(pod_info);
+        create = t.translateSqlStatement(new PrestoSqlStatement(pod_info));
         Assert.assertNotNull(create);
 
         String  pod_ports_request =
@@ -89,7 +89,7 @@ public class WeaveTest extends BaseQueriesTest {
                         "  host_protocol varchar(10) not null\n" +
                         "  /*,foreign key(pod_name) references pod_info(pod_name) on delete cascade\n*/" +
                         ")";
-        create = t.translateSqlStatement(pod_ports_request);
+        create = t.translateSqlStatement(new PrestoSqlStatement(pod_ports_request));
         Assert.assertNotNull(create);
 
         String container_host_ports =
@@ -105,7 +105,7 @@ public class WeaveTest extends BaseQueriesTest {
                         "  foreign key(pod_name) references pod_info(pod_name) on delete cascade,\n" +
                         "  foreign key(node_name) references node_info(name) on delete cascade\n*/" +
                         ")";
-        create = t.translateSqlStatement(container_host_ports);
+        create = t.translateSqlStatement(new PrestoSqlStatement(container_host_ports));
         Assert.assertNotNull(create);
 
         String pod_node_selector_labels =
@@ -121,7 +121,7 @@ public class WeaveTest extends BaseQueriesTest {
                         "  label_value varchar(36) /*null*/\n" +
                         "  /*, foreign key(pod_name) references pod_info(pod_name) on delete cascade\n */" +
                         ")";
-        create = t.translateSqlStatement(pod_node_selector_labels);
+        create = t.translateSqlStatement(new PrestoSqlStatement(pod_node_selector_labels));
         Assert.assertNotNull(create);
 
         String pod_affinity_match_expressions =
@@ -138,7 +138,7 @@ public class WeaveTest extends BaseQueriesTest {
                         "  topology_key varchar(100) not null\n" +
                         "  /*, foreign key(pod_name) references pod_info(pod_name) on delete cascade\n */" +
                         ")";
-        create = t.translateSqlStatement(pod_affinity_match_expressions);
+        create = t.translateSqlStatement(new PrestoSqlStatement(pod_affinity_match_expressions));
         Assert.assertNotNull(create);
 
         String pod_anti_affinity_match_expressions =
@@ -152,7 +152,7 @@ public class WeaveTest extends BaseQueriesTest {
                         "  topology_key varchar(100) not null/*,\n" +
                         "  foreign key(pod_name) references pod_info(pod_name) on delete cascade\n*/" +
                         ")";
-        create = t.translateSqlStatement(pod_anti_affinity_match_expressions);
+        create = t.translateSqlStatement(new PrestoSqlStatement(pod_anti_affinity_match_expressions));
         Assert.assertNotNull(create);
 
         String pod_labels =
@@ -165,7 +165,7 @@ public class WeaveTest extends BaseQueriesTest {
                         "  label_value varchar(36) not null/*,\n" +
                         "  foreign key(pod_name) references pod_info(pod_name) on delete cascade\n*/" +
                         ")";
-        create = t.translateSqlStatement(pod_labels);
+        create = t.translateSqlStatement(new PrestoSqlStatement(pod_labels));
         Assert.assertNotNull(create);
 
         String node_labels =
@@ -177,7 +177,7 @@ public class WeaveTest extends BaseQueriesTest {
                         "  label_value varchar(36) not null/*,\n" +
                         "  foreign key(node_name) references node_info(name) on delete cascade\n*/" +
                         ")";
-        create = t.translateSqlStatement(node_labels);
+        create = t.translateSqlStatement(new PrestoSqlStatement(node_labels));
         Assert.assertNotNull(create);
 
         String volume_labels =
@@ -190,7 +190,7 @@ public class WeaveTest extends BaseQueriesTest {
                         "  label_value varchar(36) not null/*,\n" +
                         "  foreign key(pod_name) references pod_info(pod_name) on delete cascade\n*/" +
                         ")";
-        create = t.translateSqlStatement(volume_labels);
+        create = t.translateSqlStatement(new PrestoSqlStatement(volume_labels));
         Assert.assertNotNull(create);
 
         String pod_by_service =
@@ -201,7 +201,7 @@ public class WeaveTest extends BaseQueriesTest {
                         "  service_name varchar(100) not null/*,\n" +
                         "  foreign key(pod_name) references pod_info(pod_name) on delete cascade\n*/" +
                         ")";
-        create = t.translateSqlStatement(pod_by_service);
+        create = t.translateSqlStatement(new PrestoSqlStatement(pod_by_service));
         Assert.assertNotNull(create);
 
         String service_affinity_labels =
@@ -210,7 +210,7 @@ public class WeaveTest extends BaseQueriesTest {
                         "(\n" +
                         "  label_key varchar(100) not null\n" +
                         ")";
-        create = t.translateSqlStatement(service_affinity_labels);
+        create = t.translateSqlStatement(new PrestoSqlStatement(service_affinity_labels));
         Assert.assertNotNull(create);
 
         String labels_to_check_for_presence =
@@ -220,7 +220,7 @@ public class WeaveTest extends BaseQueriesTest {
                         "  label_key varchar(100) not null,\n" +
                         "  present boolean not null\n" +
                         ")";
-        create = t.translateSqlStatement(labels_to_check_for_presence);
+        create = t.translateSqlStatement(new PrestoSqlStatement(labels_to_check_for_presence));
         Assert.assertNotNull(create);
 
         String node_taints =
@@ -233,7 +233,7 @@ public class WeaveTest extends BaseQueriesTest {
                         "  taint_effect varchar(100) not null/*,\n" +
                         "  foreign key(node_name) references node_info(name) on delete cascade\n*/" +
                         ")";
-        create = t.translateSqlStatement(node_taints);
+        create = t.translateSqlStatement(new PrestoSqlStatement(node_taints));
         Assert.assertNotNull(create);
 
         String pod_taints =
@@ -247,7 +247,7 @@ public class WeaveTest extends BaseQueriesTest {
                         "  tolerations_operator varchar(100)/*,\n" +
                         "  foreign key(pod_name) references pod_info(pod_name) on delete cascade\n*/" +
                         ")";
-        create = t.translateSqlStatement(pod_taints);
+        create = t.translateSqlStatement(new PrestoSqlStatement(pod_taints));
         Assert.assertNotNull(create);
 
         String node_images =
@@ -260,7 +260,7 @@ public class WeaveTest extends BaseQueriesTest {
                         "  image_size bigint not null/*,\n" +
                         "  foreign key(node_name) references node_info(name) on delete cascade\n*/" +
                         ")";
-        create = t.translateSqlStatement(node_images);
+        create = t.translateSqlStatement(new PrestoSqlStatement(node_images));
         Assert.assertNotNull(create);
 
         String pod_images =
@@ -271,7 +271,7 @@ public class WeaveTest extends BaseQueriesTest {
                         "  image_name varchar(200) not null/*,\n" +
                         "  foreign key(pod_name) references pod_info(pod_name) on delete cascade\n*/" +
                         ")";
-        create = t.translateSqlStatement(pod_images);
+        create = t.translateSqlStatement(new PrestoSqlStatement(pod_images));
         Assert.assertNotNull(create);
 
         String pods_to_assign_no_limit =
@@ -297,7 +297,7 @@ public class WeaveTest extends BaseQueriesTest {
                         "from pod_info\n" +
                         "where status = 'Pending' and node_name is null and schedulerName = 'dcm-scheduler'\n" +
                         "-- order by creation_timestamp\n";
-        create = t.translateSqlStatement(pods_to_assign_no_limit);
+        create = t.translateSqlStatement(new PrestoSqlStatement(pods_to_assign_no_limit));
         Assert.assertNotNull(create);
 
         String batch_size =
@@ -309,13 +309,13 @@ public class WeaveTest extends BaseQueriesTest {
                         "(\n" +
                         "  pendingPodsLimit integer not null with (primary_key = true)\n" +
                         ")";
-        create = t.translateSqlStatement(batch_size);
+        create = t.translateSqlStatement(new PrestoSqlStatement(batch_size));
         Assert.assertNotNull(create);
 
         String pods_to_assign =
                 "create view pods_to_assign as\n" +
                         "select DISTINCT * from pods_to_assign_no_limit -- limit 100\n";
-        create = t.translateSqlStatement(pods_to_assign);
+        create = t.translateSqlStatement(new PrestoSqlStatement(pods_to_assign));
         Assert.assertNotNull(create);
 
         String pods_with_port_request =
@@ -328,7 +328,7 @@ public class WeaveTest extends BaseQueriesTest {
                         "from pods_to_assign\n" +
                         "join pod_ports_request\n" +
                         "     on pod_ports_request.pod_name = pods_to_assign.pod_name";
-        create = t.translateSqlStatement(pods_with_port_request);
+        create = t.translateSqlStatement(new PrestoSqlStatement(pods_with_port_request));
         Assert.assertNotNull(create);
 
         String pod_node_selectors =
@@ -358,7 +358,7 @@ public class WeaveTest extends BaseQueriesTest {
                 "                 then not(any(pod_node_selector_labels.label_key = node_labels.label_key))\n" +
                 "            else count(distinct match_expression) = pod_node_selector_labels.num_match_expressions\n" +
                 "       end";
-        create = t.translateSqlStatement(pod_node_selectors);
+        create = t.translateSqlStatement(new PrestoSqlStatement(pod_node_selectors));
         Assert.assertNotNull(create);
 
         /*
@@ -403,13 +403,13 @@ public class WeaveTest extends BaseQueriesTest {
                 "                  then not(any(pod_affinity_match_expressions.label_key = pod_labels.label_key))\n" +
                 "             else count(distinct match_expression) = pod_affinity_match_expressions.num_match_expressions\n" +
                 "       end";
-        create = t.translateSqlStatement(inter_pod_affinity);
+        create = t.translateSqlStatement(new PrestoSqlStatement(inter_pod_affinity));
         Assert.assertNotNull(create);
 
         String inter_pod_affinity_matches =
                 "create view inter_pod_affinity_matches as\n" +
                 "select distinct *, count(*) over (partition by pod_name) as num_matches from inter_pod_affinity_matches_inner";
-        create = t.translateSqlStatement(inter_pod_affinity_matches);
+        create = t.translateSqlStatement(new PrestoSqlStatement(inter_pod_affinity_matches));
         Assert.assertNotNull(create);
 
         String spare_capacity =
@@ -424,13 +424,13 @@ public class WeaveTest extends BaseQueriesTest {
                 "     on pod_info.node_name = node_info.name and pod_info.node_name != 'null'\n" +
                 "group by node_info.name, node_info.cpu_allocatable,\n" +
                 "         node_info.memory_allocatable, node_info.pods_allocatable";
-        create = t.translateSqlStatement(spare_capacity);
+        create = t.translateSqlStatement(new PrestoSqlStatement(spare_capacity));
         Assert.assertNotNull(create);
 
         String nodes_that_have_tollerations =
                 "create view nodes_that_have_tolerations as\n" +
                         "select distinct node_name from node_taints";
-        create = t.translateSqlStatement(nodes_that_have_tollerations);
+        create = t.translateSqlStatement(new PrestoSqlStatement(nodes_that_have_tollerations));
         Assert.assertNotNull(create);
 
         String view_pods_that_tolerate_node_taints =
@@ -449,7 +449,7 @@ public class WeaveTest extends BaseQueriesTest {
                         "          or pod_tolerations.tolerations_value = A.taint_value)\n" +
                         "group by pod_tolerations.pod_name, A.node_name, A.num_taints\n" +
                         "having count(*) = A.num_taints";
-        create = t.translateSqlStatement(view_pods_that_tolerate_node_taints);
+        create = t.translateSqlStatement(new PrestoSqlStatement(view_pods_that_tolerate_node_taints));
         Assert.assertNotNull(create);
 
         String assigned_pods = "create view assigned_pods as\n" +
@@ -468,7 +468,7 @@ public class WeaveTest extends BaseQueriesTest {
                 "  has_pod_affinity_requirements\n" +
                 "from pod_info\n" +
                 "where node_name is not null\n";
-        create = t.translateSqlStatement(assigned_pods);
+        create = t.translateSqlStatement(new PrestoSqlStatement(assigned_pods));
         Assert.assertNotNull(create);
 
         DDlogProgram program = t.getDDlogProgram();

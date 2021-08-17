@@ -26,6 +26,7 @@ package ddlog;
 import com.vmware.ddlog.DDlogJooqProvider;
 import com.vmware.ddlog.ir.DDlogProgram;
 import com.vmware.ddlog.translator.Translator;
+import com.vmware.ddlog.util.sql.SqlStatement;
 import com.vmware.ddlog.util.sql.ToPrestoTranslator;
 import ddlogapi.DDlogAPI;
 import ddlogapi.DDlogException;
@@ -531,9 +532,9 @@ public abstract class JooqProviderTestBase {
         }
     }
 
-    public static DDlogAPI compileAndLoad(final List<String> ddl, ToPrestoTranslator translator) throws IOException, DDlogException {
-        final Translator t = new Translator(null, translator);
-        ddl.forEach(t::translateSqlStatement);
+    public static <R extends SqlStatement> DDlogAPI compileAndLoad(final List<R> ddl, ToPrestoTranslator<R> translator) throws IOException, DDlogException {
+        final Translator t = new Translator(null);
+        ddl.forEach(x -> t.translateSqlStatement(translator.toPresto(x)));
         final DDlogProgram dDlogProgram = t.getDDlogProgram();
         final String fileName = "/tmp/program.dl";
         File tmp = new File(fileName);

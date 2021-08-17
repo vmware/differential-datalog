@@ -40,7 +40,7 @@ import static com.vmware.ddlog.util.sql.CalciteUtils.createCalciteParser;
 /**
  * Translate some subset of SQL DDL statements from Calcite to H2.
  */
-public class CalciteToH2Translator implements ToH2Translator {
+public class CalciteToH2Translator implements ToH2Translator<CalciteSqlStatement> {
 
     /**
      * Translate Calcite SQL statement to H2.
@@ -48,16 +48,16 @@ public class CalciteToH2Translator implements ToH2Translator {
      * @return
      */
     @Override
-    public String toH2(String sql) {
+    public H2SqlStatement toH2(CalciteSqlStatement sql) {
         SqlAbstractParserImpl calciteParser = createCalciteParser(sql);
         try {
             org.apache.calcite.sql.SqlNodeList parseTree = calciteParser.parseSqlStmtList();
             // Don't need to modify `create view`
             if (parseTree.get(0) instanceof SqlCreateView) {
-                return sql;
+                return new H2SqlStatement(sql.getStatement());
             }
             CalciteToH2 h2Translator = new CalciteToH2();
-            return parseTree.accept(h2Translator);
+            return new H2SqlStatement(parseTree.accept(h2Translator));
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage());
         }

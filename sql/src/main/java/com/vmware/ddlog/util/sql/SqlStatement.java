@@ -24,13 +24,14 @@
 package com.vmware.ddlog.util.sql;
 
 /**
- * Interface for translating DDL statements from a SQL dialect to the H2 dialect,
- * which is used in DDlogJooqProvider.
+ * Base class for SQL strings. To type-check for a specific dialect, create a new class that extends this class.
  */
-public interface ToH2Translator<R extends SqlStatement> {
-    /**
-     * Translates given SQL statement in given dialect to H2 dialect.
-     * @return
-     */
-    H2SqlStatement toH2(R sql);
+public class SqlStatement {
+    private String statement;
+
+    public SqlStatement(String sql) {
+        statement = sql;
+    }
+
+    public String getStatement() {return statement;}
 }

@@ -24,7 +24,9 @@
 package ddlog;
 
 import com.vmware.ddlog.DDlogJooqProvider;
+import com.vmware.ddlog.util.sql.PrestoSqlStatement;
 import com.vmware.ddlog.util.sql.PrestoToH2Translator;
+import com.vmware.ddlog.util.sql.ToH2Translator;
 import com.vmware.ddlog.util.sql.ToPrestoTranslator;
 import ddlogapi.DDlogException;
 import org.jooq.impl.DSL;
@@ -34,6 +36,7 @@ import org.junit.BeforeClass;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class JooqProviderTestPresto extends JooqProviderTestBase {
 
@@ -56,10 +59,14 @@ public class JooqProviderTestPresto extends JooqProviderTestBase {
         ddl.add(checkArrayParse);
         ddl.add(checkNotNullColumns);
 
-        ddlogAPI = compileAndLoad(ddl, ToPrestoTranslator.noopTranslator());
+        ddlogAPI = compileAndLoad(
+                ddl.stream().map(PrestoSqlStatement::new).collect(Collectors.toList()),
+                ToPrestoTranslator.noopTranslator());
 
+        ToH2Translator<PrestoSqlStatement> translator = new PrestoToH2Translator();
         // Initialise the data provider
-        provider = new DDlogJooqProvider(ddlogAPI, ddl, new PrestoToH2Translator());
+        provider = new DDlogJooqProvider(ddlogAPI,
+                ddl.stream().map(x -> translator.toH2(new PrestoSqlStatement(x))).collect(Collectors.toList()));
         MockConnection connection = new MockConnection(provider);
 
         // Pass the mock connection to a jOOQ DSLContext
