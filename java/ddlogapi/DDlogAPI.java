@@ -918,6 +918,9 @@ public class DDlogAPI {
     /**
      * Load the ddlogLibrary in the current process.
      * If ddlogLibrary has already been loaded, simply return a new API.
+     * Because this is just a wrapper around the native ddlog_run function,
+     * different invocations of this function will return separate, independent
+     * DDlog instances.
      * @return The API that can be used to interact with this library.
      */
     public static DDlogAPI loadDDlog() throws DDlogException {

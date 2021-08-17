@@ -35,7 +35,7 @@ import java.util.regex.Pattern;
 /**
  * Translate some subset of SQL DDL statements from Presto to H2.
  */
-public class PrestoToH2Translator extends ToH2Translator {
+public class PrestoToH2Translator implements ToH2Translator {
 
     @Override
     public String toH2(String sql) {

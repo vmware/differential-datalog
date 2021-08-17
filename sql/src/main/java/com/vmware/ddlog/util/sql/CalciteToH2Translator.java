@@ -24,15 +24,14 @@
 package com.vmware.ddlog.util.sql;
 
 import org.apache.calcite.schema.ColumnStrategy;
-import org.apache.calcite.sql.*;
+import org.apache.calcite.sql.SqlCall;
+import org.apache.calcite.sql.SqlNode;
+import org.apache.calcite.sql.SqlNodeList;
 import org.apache.calcite.sql.ddl.SqlColumnDeclaration;
-import org.apache.calcite.sql.ddl.SqlCreateTable;
 import org.apache.calcite.sql.ddl.SqlCreateView;
 import org.apache.calcite.sql.ddl.SqlKeyConstraint;
 import org.apache.calcite.sql.parser.SqlAbstractParserImpl;
-import org.apache.calcite.sql.util.SqlBasicVisitor;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -41,7 +40,7 @@ import static com.vmware.ddlog.util.sql.CalciteUtils.createCalciteParser;
 /**
  * Translate some subset of SQL DDL statements from Calcite to H2.
  */
-public class CalciteToH2Translator extends ToH2Translator {
+public class CalciteToH2Translator implements ToH2Translator {
 
     /**
      * Translate Calcite SQL statement to H2.
@@ -60,7 +59,7 @@ public class CalciteToH2Translator extends ToH2Translator {
             CalciteToH2 h2Translator = new CalciteToH2();
             return parseTree.accept(h2Translator);
         } catch (Exception e) {
-            throw new CalciteTranslationException(e.getMessage());
+            throw new RuntimeException(e.getMessage());
         }
     }
 }

@@ -29,11 +29,9 @@ import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.SqlNodeList;
 import org.apache.calcite.sql.ddl.SqlColumnDeclaration;
-import org.apache.calcite.sql.ddl.SqlCreateTable;
 import org.apache.calcite.sql.ddl.SqlCreateView;
 import org.apache.calcite.sql.ddl.SqlKeyConstraint;
 import org.apache.calcite.sql.parser.SqlAbstractParserImpl;
-import org.apache.calcite.sql.util.SqlBasicVisitor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,7 +41,7 @@ import static com.vmware.ddlog.util.sql.CalciteUtils.createCalciteParser;
 /**
  * Translate some subset of SQL DDL statements from Calcite to Presto.
  */
-public class CalciteToPrestoTranslator extends ToPrestoTranslator {
+public class CalciteToPrestoTranslator implements ToPrestoTranslator {
 
     @Override
     public String toPresto(String sql) {
@@ -56,7 +54,7 @@ public class CalciteToPrestoTranslator extends ToPrestoTranslator {
             CalciteToPresto h2Translator = new CalciteToPresto();
             return parseTree.accept(h2Translator);
         } catch (Exception e) {
-            throw new CalciteTranslationException(e.getMessage());
+            throw new RuntimeException(e.getMessage());
         }
     }
 }
