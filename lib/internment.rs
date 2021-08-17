@@ -21,7 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-use ddlog_std::{hash32, Vec as DDlogVec};
+use ddlog_std::{hash64, Vec as DDlogVec};
 use differential_datalog::record::{self, Record};
 use internment::ArcIntern;
 use serde::{de::Deserializer, ser::Serializer};
@@ -33,14 +33,14 @@ use std::{
 
 /// An atomically reference counted handle to an interned value.
 /// In addition to memory deduplication, this type is optimized for fast comparison.
-/// To this end, we store a 32-bit hash along with the interned value and use this hash for
+/// To this end, we store a 64-bit hash along with the interned value and use this hash for
 /// comparison, only falling back to by-value comparison in case of a hash collision.
 #[derive(Default, Eq, PartialEq, Clone)]
 pub struct Intern<A>
 where
     A: Eq + Send + Sync + Hash + 'static,
 {
-    interned: ArcIntern<(u32, A)>,
+    interned: ArcIntern<(u64, A)>,
 }
 
 impl<T: Hash + Eq + Send + Sync + 'static> Hash for Intern<T> {
@@ -48,7 +48,7 @@ impl<T: Hash + Eq + Send + Sync + 'static> Hash for Intern<T> {
     where
         H: Hasher,
     {
-        self.as_ref().hash(state)
+        self.interned.as_ref().0.hash(state)
     }
 }
 
@@ -61,9 +61,9 @@ where
         // Hash the value.  Note: this is technically redundant,
         // as `ArcIntern` hashes the value internally, but we
         // cannot easily access that hash value.
-        let hash = hash32(&value);
+        let hash = hash64(&value);
         Intern {
-            interned: ArcIntern::new((hash as u32, value)),
+            interned: ArcIntern::new((hash, value)),
         }
     }
 
@@ -76,7 +76,7 @@ where
 /// Order the interned values:
 /// - Start with comparing pointers.  The two values are the same if and only if the pointers are
 /// the same.
-/// - Otherwise, compare their 32-bit hashes and order them based on hash values.
+/// - Otherwise, compare their 64-bit hashes and order them based on hash values.
 /// - In the extremely rare case where a hash collision occurs, compare the actual values.
 impl<T> Ord for Intern<T>
 where
