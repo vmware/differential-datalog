@@ -30,6 +30,7 @@ import org.apache.calcite.sql.*;
 import org.apache.calcite.sql.parser.SqlParser;
 import org.apache.calcite.sql.util.SqlBasicVisitor;
 import org.jooq.*;
+import org.jooq.Record;
 import org.jooq.impl.DSL;
 import org.jooq.tools.jdbc.MockDataProvider;
 import org.jooq.tools.jdbc.MockExecuteContext;
