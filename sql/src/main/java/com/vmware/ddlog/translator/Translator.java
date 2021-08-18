@@ -28,15 +28,16 @@ import com.facebook.presto.sql.parser.ParsingOptions;
 import com.facebook.presto.sql.parser.SqlParser;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.Statement;
-
-// If these are missing you have not run the sql/install-ddlog-jar.sh script
 import com.vmware.ddlog.ir.DDlogIRNode;
 import com.vmware.ddlog.ir.DDlogProgram;
+import com.vmware.ddlog.util.sql.PrestoSqlStatement;
 import org.jooq.DSLContext;
 import org.jooq.Field;
 
 import javax.annotation.Nullable;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 
@@ -67,12 +68,12 @@ public class Translator {
     }
 
     /**
-     * Translate one SQL statement; add the result to the DDlogProgram.
+     * Translate one SQL statement in the Presto dialect; add the result to the DDlogProgram.
      * @param sql  Statement to translate.
      */
-    public DDlogIRNode translateSqlStatement(final String sql) {
+    public DDlogIRNode translateSqlStatement(final PrestoSqlStatement sql) {
         this.translationContext.beginTranslation();
-        Statement statement = this.parser.createStatement(sql, this.options);
+        Statement statement = this.parser.createStatement(sql.getStatement(), this.options);
         //System.out.println("Translating: " + statement.toString());
         DDlogIRNode result = this.visitor.process(statement, this.translationContext);
         this.translationContext.endTranslation();
@@ -88,7 +89,7 @@ public class Translator {
         final List<org.jooq.Table<?>> tables = conn.meta().getTables();
         final Map<org.jooq.Table<?>, List<Field<?>>> tablesToFields = new HashMap<>();
         tables.forEach(
-            t -> tablesToFields.put(t, t.fieldStream().collect(Collectors.toList()))
+                t -> tablesToFields.put(t, t.fieldStream().collect(Collectors.toList()))
         );
         return tablesToFields;
     }

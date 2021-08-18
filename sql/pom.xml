@@ -24,6 +24,12 @@
       <artifactId>calcite-core</artifactId>
       <version>1.26.0</version>
     </dependency>
+    <!-- Need this for Calcite DDL parsing -->
+    <dependency>
+      <groupId>org.apache.calcite</groupId>
+      <artifactId>calcite-server</artifactId>
+      <version>1.26.0</version>
+    </dependency>
     <!-- dynamically query db for schemas -->
     <dependency>
       <groupId>com.h2database</groupId>

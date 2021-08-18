@@ -916,13 +916,18 @@ public class DDlogAPI {
     static boolean loaded = false;
 
     /**
-     * Load the the ddlogLibrary in the current process.
+     * Load the ddlogLibrary in the current process.
+     * If ddlogLibrary has already been loaded, simply return a new API.
+     * Because this is just a wrapper around the native ddlog_run function,
+     * different invocations of this function will return separate, independent
+     * DDlog instances.
      * @return The API that can be used to interact with this library.
      */
     public static DDlogAPI loadDDlog() throws DDlogException {
-        if (loaded)
-            throw new RuntimeException("Attempt to load a secon dddlog library. "
-                    + " Only one library can be loaded safely.");
+        if (loaded) {
+            return new ddlogapi.DDlogAPI(1, false);
+        }
+
         loaded = true;
         final Path libraryPath = Paths.get(libName(ddlogLibrary)).toAbsolutePath();
         System.load(libraryPath.toString());

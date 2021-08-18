@@ -26,6 +26,8 @@ package ddlog;
 import com.vmware.ddlog.DDlogJooqProvider;
 import com.vmware.ddlog.ir.DDlogProgram;
 import com.vmware.ddlog.translator.Translator;
+import com.vmware.ddlog.util.sql.SqlStatement;
+import com.vmware.ddlog.util.sql.ToPrestoTranslator;
 import ddlogapi.DDlogAPI;
 import ddlogapi.DDlogException;
 import org.jooq.DSLContext;
@@ -33,8 +35,6 @@ import org.jooq.Field;
 import org.jooq.Record;
 import org.jooq.Result;
 import org.jooq.exception.DataAccessException;
-import org.jooq.impl.DSL;
-import org.jooq.tools.jdbc.MockConnection;
 import org.junit.*;
 import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
@@ -45,22 +45,25 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertFalse;
-import static junit.framework.TestCase.assertTrue;
-import static junit.framework.TestCase.fail;
+import static junit.framework.TestCase.*;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.table;
 import static org.junit.Assert.assertNull;
 
-public class JooqProviderTest {
+/*
+ * This is the base class for all JooqProviderTest* test classes. Each new dialect of SQL that DDlog can accept can be
+ * tested by extending this class and writing a new setup function. The new setup function will use SQL DDL statements
+ * written in that dialect and call ddlog-sql classes with the proper dialect enum. See JooqProviderTestCalcite for
+ * an example.
+ */
+public abstract class JooqProviderTestBase {
 
     @Nullable
-    private static DSLContext create;
-    private static DDlogJooqProvider provider;
+    protected static DDlogAPI ddlogAPI;
+    protected static DSLContext create;
+    protected static DDlogJooqProvider provider;
     private final Field<String> field1 = field("id", String.class);
     private final Field<Integer> field2 = field("capacity", Integer.class);
     private final Field<Boolean> field3 = field("up", Boolean.class);
@@ -68,7 +71,7 @@ public class JooqProviderTest {
     private final Record test2 = create.newRecord(field1, field2, field3);
     private final Record test3 = create.newRecord(field1, field2, field3);
 
-    public JooqProviderTest() {
+    public JooqProviderTestBase() {
         test1.setValue(field1, "n1");
         test1.setValue(field2, 10);
         test1.setValue(field3, true);
@@ -82,33 +85,6 @@ public class JooqProviderTest {
         test3.setValue(field3, true);
     }
 
-
-    @BeforeClass
-    public static void setup() throws IOException, DDlogException {
-        String s1 = "create table hosts (id varchar(36) with (primary_key = true), capacity integer, up boolean)";
-        String v2 = "create view hostsv as select distinct * from hosts";
-        String v1 = "create view good_hosts as select distinct * from hosts where capacity < 10";
-        String checkArrayParse = "create table junk (testCol integer array)";
-        String checkNotNullColumns = "create table not_null (test_col1 integer not null, test_col2 varchar(36) not null)";
-
-        List<String> ddl = new ArrayList<>();
-        ddl.add(s1);
-        ddl.add(v2);
-        ddl.add(v1);
-        ddl.add(checkArrayParse);
-        ddl.add(checkNotNullColumns);
-
-        compileAndLoad(ddl);
-        final DDlogAPI dDlogAPI = new DDlogAPI(1, false);
-
-        // Initialise the data provider
-        provider = new DDlogJooqProvider(dDlogAPI, ddl);
-        MockConnection connection = new MockConnection(provider);
-
-        // Pass the mock connection to a jOOQ DSLContext
-        create = DSL.using(connection);
-    }
-
     @Before
     public void cleanup() {
         assert(create != null);
@@ -117,6 +93,18 @@ public class JooqProviderTest {
             r -> create.execute(String.format("delete from hosts where id = '%s'", r.get(0)))
         );
         assertEquals(0, create.fetch("select * from hostsv").size());
+    }
+
+    @AfterClass
+    public static void teardown() throws DDlogException{
+        ddlogAPI.stop();
+    }
+
+    /**
+     * Skip text execution in the Base class, as this Base class just serves as an aggregation of all test cases.
+     */
+    private void skipIfTestBase() {
+        Assume.assumeTrue(this.getClass() != JooqProviderTestBase.class);
     }
 
     // This traces the test being executed for debugging
@@ -132,6 +120,7 @@ public class JooqProviderTest {
      */
     @Test
     public void testSqlOpsNoBindings() {
+        skipIfTestBase();
         // Insert statements.
         assert(create != null);
         create.execute("insert into \nhosts values ('n1', 10, true)");
@@ -165,6 +154,7 @@ public class JooqProviderTest {
 
     @Test
     public void testInsertNull() {
+        skipIfTestBase();
         // Issue 1036
         assert(create != null);
         create.insertInto(table("hosts"))
@@ -182,6 +172,7 @@ public class JooqProviderTest {
 
     @Test
     public void testDeleteNull() {
+        skipIfTestBase();
         assert(create != null);
         create.insertInto(table("hosts"))
                 .values("n1", 10, null)
@@ -194,6 +185,7 @@ public class JooqProviderTest {
 
     @Test
     public void testWhereNull() {
+        skipIfTestBase();
         assert(create != null);
         create.insertInto(table("hosts"))
                 .values("n1", 10, null)
@@ -208,6 +200,7 @@ public class JooqProviderTest {
 
     @Test
     public void testUpdateBool() {
+        skipIfTestBase();
         assert(create != null);
         create.insertInto(table("hosts"))
                 .values("n1", 10, true)
@@ -223,6 +216,7 @@ public class JooqProviderTest {
 
     @Test
     public void testUpdateNull1() {
+        skipIfTestBase();
         assert(create != null);
         create.execute("insert into hosts values ('n1', 10, null)");
         final Result<Record> results = create.selectFrom(table("hostsv")).fetch();
@@ -231,6 +225,7 @@ public class JooqProviderTest {
 
     @Test
     public void testUpdateNull2() {
+        skipIfTestBase();
         assert(create != null);
         create.execute("insert into hosts values ('n1', 10, null)");
         create.update(table("hosts")).set(field3, true).where(field1.eq("n1")).execute();
@@ -244,6 +239,7 @@ public class JooqProviderTest {
 
     @Test
     public void testUpdateUnknownColumn() {
+        skipIfTestBase();
         try {
             assert(create != null);
             create.insertInto(table("hosts"))
@@ -258,6 +254,7 @@ public class JooqProviderTest {
 
     @Test
     public void testUpdateWrongType() {
+        skipIfTestBase();
         try {
             assert(create != null);
             create.insertInto(table("hosts"))
@@ -275,6 +272,7 @@ public class JooqProviderTest {
      */
     @Test
     public void testSqlOpsWithBindings() {
+        skipIfTestBase();
         // Insert statements.
         assert(create != null);
         create.insertInto(table("hosts"))
@@ -314,6 +312,7 @@ public class JooqProviderTest {
      */
     @Test
     public void testDeletesAndInsertsInTheSameBatchNoBindings() {
+        skipIfTestBase();
         assert(create != null);
         create.execute("insert into hosts values ('n1', 10, true)");
         create.batch("delete from hosts where id = 'n1'",
@@ -330,6 +329,7 @@ public class JooqProviderTest {
      */
     @Test
     public void testDeletesAndInsertsInTheSameBatchWithBindings() {
+        skipIfTestBase();
         assert(create != null);
         create.execute("insert into hosts values ('n1', 10, true)");
         create.batch(create.deleteFrom(table("hosts")).where(field("id").eq("n1")),
@@ -347,6 +347,7 @@ public class JooqProviderTest {
      */
     @Test
     public void testMultiRowInsertsNoBindings() {
+        skipIfTestBase();
         assert(create != null);
         create.execute("insert into hosts values ('n1', 10, true), ('n54', 18, false), ('n9', 2, true)");
         final Result<Record> results = create.selectFrom(table("hostsv")).fetch();
@@ -361,6 +362,7 @@ public class JooqProviderTest {
      */
     @Test
     public void testMultiRowInsertsWithBindings() {
+        skipIfTestBase();
         assert(create != null);
         create.insertInto(table("hosts"))
               .values("n1", 10, true)
@@ -379,6 +381,7 @@ public class JooqProviderTest {
      */
     @Test
     public void testPartialInserts() {
+        skipIfTestBase();
         try {
             assert(create != null);
             create.insertInto(table("hosts"), field1, field2)
@@ -394,6 +397,7 @@ public class JooqProviderTest {
      */
     @Test
     public void testUpdates() {
+        skipIfTestBase();
         assert(create != null);
         create.execute("insert into hosts values ('n1', 10, true)");
         create.execute("update hosts set capacity = 11 where id = 'n1'");
@@ -406,6 +410,7 @@ public class JooqProviderTest {
      */
     @Test
     public void testUpdatesWithBindings() {
+        skipIfTestBase();
         assert(create != null);
         create.execute("insert into hosts values ('n1', 10, true)");
         create.update(table("hosts")).set(field2, 11).where(field1.eq("n1")).execute();
@@ -418,6 +423,7 @@ public class JooqProviderTest {
      */
     @Test
     public void testNonExistentViewsSelect() {
+        skipIfTestBase();
         try {
             assert(create != null);
             create.selectFrom(table("s1")).fetch();
@@ -432,6 +438,7 @@ public class JooqProviderTest {
      */
     @Test
     public void testNonExistentViewsInsert() {
+        skipIfTestBase();
         try {
             assert(create != null);
             create.execute("insert into s1 values ('n1', 10, true)");
@@ -446,6 +453,7 @@ public class JooqProviderTest {
      */
     @Test
     public void testNonExistentViewsDelete() {
+        skipIfTestBase();
         try {
             assert(create != null);
             create.execute("delete from S1 where id = '5'");
@@ -459,6 +467,7 @@ public class JooqProviderTest {
      */
     @Test
     public void testNonExistentViewsUpdate() {
+        skipIfTestBase();
         try {
             assert(create != null);
             create.execute("update S1 set capacity = 11 where id = 'n1'");
@@ -474,6 +483,7 @@ public class JooqProviderTest {
      */
     @Test
     public void testWrongTypeInsert() {
+        skipIfTestBase();
         try {
             assert(create != null);
             create.execute("insert into hosts values (5, 10, true)");
@@ -488,6 +498,7 @@ public class JooqProviderTest {
      */
     @Test
     public void testNotNullColumns() {
+        skipIfTestBase();
         // Without bindings
         Assert.assertNotNull(create);
         create.execute("insert into not_null values (5, 'test_string')");
@@ -502,6 +513,7 @@ public class JooqProviderTest {
      */
     @Test
     public void testInsertNullFails() {
+        skipIfTestBase();
         // Without bindings
         try {
             Assert.assertNotNull(create);
@@ -514,6 +526,7 @@ public class JooqProviderTest {
 
     @Test
     public void testInsertNullFails1() {
+        skipIfTestBase();
         try {
             // With bindings
             Assert.assertNotNull(create);
@@ -526,9 +539,9 @@ public class JooqProviderTest {
         }
     }
 
-    public static void compileAndLoad(final List<String> ddl) throws IOException, DDlogException {
+    public static <R extends SqlStatement> DDlogAPI compileAndLoad(final List<R> ddl, ToPrestoTranslator<R> translator) throws IOException, DDlogException {
         final Translator t = new Translator(null);
-        ddl.forEach(t::translateSqlStatement);
+        ddl.forEach(x -> t.translateSqlStatement(translator.toPresto(x)));
         final DDlogProgram dDlogProgram = t.getDDlogProgram();
         final String fileName = "/tmp/program.dl";
         File tmp = new File(fileName);
@@ -539,6 +552,6 @@ public class JooqProviderTest {
         DDlogAPI.compileDDlogProgram(fileName, result, "../lib", "./lib");
         if (!result.isSuccess())
             throw new RuntimeException("Failed to compile ddlog program");
-        DDlogAPI.loadDDlog();
+        return DDlogAPI.loadDDlog();
     }
 }

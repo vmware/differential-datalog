@@ -21,37 +21,16 @@
  * SOFTWARE.
  *
  */
+
 package com.vmware.ddlog;
 
-import com.facebook.presto.sql.parser.ParsingOptions;
-import com.facebook.presto.sql.tree.Statement;
-import ddlogapi.DDlogAPI;
-import ddlogapi.DDlogCommand;
-import ddlogapi.DDlogException;
-import ddlogapi.DDlogRecCommand;
-import ddlogapi.DDlogRecord;
-import org.apache.calcite.sql.SqlBasicCall;
-import org.apache.calcite.sql.SqlCall;
-import org.apache.calcite.sql.SqlDelete;
-import org.apache.calcite.sql.SqlDynamicParam;
-import org.apache.calcite.sql.SqlIdentifier;
-import org.apache.calcite.sql.SqlInsert;
-import org.apache.calcite.sql.SqlKind;
-import org.apache.calcite.sql.SqlLiteral;
-import org.apache.calcite.sql.SqlNode;
-import org.apache.calcite.sql.SqlNodeList;
-import org.apache.calcite.sql.SqlSelect;
-import org.apache.calcite.sql.SqlUpdate;
-import org.apache.calcite.sql.parser.SqlParseException;
+import com.vmware.ddlog.util.sql.H2SqlStatement;
+import ddlogapi.*;
+import org.apache.calcite.sql.*;
 import org.apache.calcite.sql.parser.SqlParser;
 import org.apache.calcite.sql.util.SqlBasicVisitor;
-import org.jooq.DSLContext;
-import org.jooq.DataType;
-import org.jooq.Field;
+import org.jooq.*;
 import org.jooq.Record;
-import org.jooq.Record1;
-import org.jooq.Result;
-import org.jooq.Table;
 import org.jooq.impl.DSL;
 import org.jooq.tools.jdbc.MockDataProvider;
 import org.jooq.tools.jdbc.MockExecuteContext;
@@ -59,20 +38,15 @@ import org.jooq.tools.jdbc.MockResult;
 
 import java.sql.SQLException;
 import java.sql.Types;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.jooq.impl.DSL.field;
 
-
 /**
  * This class provides a restricted mechanism to make a DDlog program appear like an SQL database that can be
- * queried over a JDBC connection. To initialize, it requires a set of "create table" and "create view" statements
+ * queried over a JDBC connection, which only takes SQL statements in the H2 dialect.
+ * To initialize, it requires a set of "create table" and "create view" statements
  * to be supplied during initialization. For example:
  *
  *         final DDlogAPI dDlogAPI = new DDlogAPI(1, null, true);
@@ -117,22 +91,17 @@ public final class DDlogJooqProvider implements MockDataProvider {
     private final Map<String, Set<Record>> materializedViews = new ConcurrentHashMap<>();
     public static boolean trace = false;
 
-    public DDlogJooqProvider(final DDlogAPI dDlogAPI, final List<String> sqlStatements) {
+    public DDlogJooqProvider(final DDlogAPI dDlogAPI, final List<H2SqlStatement> sqlStatements) {
         this.dDlogAPI = dDlogAPI;
         this.dslContext = DSL.using("jdbc:h2:mem:");
         this.updateCountField = field("UPDATE_COUNT", Integer.class);
 
-        // We translate DDL statements from the Presto dialect to H2.
-        // We then execute these statements in a temporary database so that JOOQ can extract useful metadata
+        // We execute H2 statements in a temporary database so that JOOQ can extract useful metadata
         // that we will use later (for example, the record types for views).
-        final com.facebook.presto.sql.parser.SqlParser parser = new com.facebook.presto.sql.parser.SqlParser();
-        final ParsingOptions options = ParsingOptions.builder().build();
-        final TranslateCreateTableDialect translateCreateTableDialect = new TranslateCreateTableDialect();
-        for (final String sql : sqlStatements) {
-            final Statement statement = parser.createStatement(sql, options);
-            final String statementInH2Dialect = translateCreateTableDialect.process(statement, sql);
-            dslContext.execute(statementInH2Dialect);
+        for (final H2SqlStatement sql : sqlStatements) {
+            dslContext.execute(sql.getStatement());
         }
+
         for (final Table<?> table: dslContext.meta().getTables()) {
             if (table.getSchema().getName().equals("PUBLIC")) { // H2-specific assumption
                 Arrays.stream(table.fields()).forEach(

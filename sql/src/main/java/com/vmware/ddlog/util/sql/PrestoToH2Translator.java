@@ -22,20 +22,35 @@
  *
  */
 
-package com.vmware.ddlog;
+package com.vmware.ddlog.util.sql;
 
-import com.facebook.presto.sql.tree.AstVisitor;
-import com.facebook.presto.sql.tree.ColumnDefinition;
-import com.facebook.presto.sql.tree.CreateTable;
-import com.facebook.presto.sql.tree.CreateView;
-import com.facebook.presto.sql.tree.TableElement;
+import com.facebook.presto.sql.parser.ParsingOptions;
+import com.facebook.presto.sql.tree.*;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-class TranslateCreateTableDialect extends AstVisitor<String, String> {
+/**
+ * Translate some subset of SQL DDL statements from Presto to H2.
+ */
+public class PrestoToH2Translator implements ToH2Translator<PrestoSqlStatement> {
+
+    @Override
+    public H2SqlStatement toH2(PrestoSqlStatement sql) {
+        final com.facebook.presto.sql.parser.SqlParser parser = new com.facebook.presto.sql.parser.SqlParser();
+        final ParsingOptions options = ParsingOptions.builder().build();
+        final PrestoToH2 prestoToH2 = new PrestoToH2();
+        final Statement statement = parser.createStatement(sql.getStatement(), options);
+        return new H2SqlStatement(prestoToH2.process(statement, sql.getStatement()));
+    }
+}
+
+/**
+ * Translates Presto to H2 by implementing a Presto parse node visitor.
+ */
+class PrestoToH2 extends AstVisitor<String, String> {
     @Override
     protected String visitCreateTable(final CreateTable node, final String sql) {
         final List<String> primaryKeyColumns = new ArrayList<>();
@@ -85,3 +100,4 @@ class TranslateCreateTableDialect extends AstVisitor<String, String> {
         return sql;
     }
 }
+
