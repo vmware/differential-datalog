@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.46.0] - Aug 18, 2021
+
+### Optimizations
+
+- Speedup hashing of interned objects (fixes performance regression in 0.43.0,
+  see #1053 for details).
+- Speedup serialization of the `json::JsonValue` type (see #1052)
+
+### Initial Calcite SQL support
+
+- Added partial support for the Calcite dialiect of SQL (see #1044) to the
+  SQL-to-DDlog translator.
+
+
 ## [0.45.1] - Aug 16, 2021
 
 ### Optimizations
