@@ -63,8 +63,8 @@ public class CalciteToPrestoTranslator implements ToPrestoTranslator<CalciteSqlS
  * Translates Calcite to Presto by implementing a Calcite parse node visitor.
  */
 class CalciteToPresto extends CalciteDDLVisitorBase {
-    // We need these two lists so we can add primary key to the right column
-    // These two lists cannot be a Map because we need to preserve the same order of columns as in the
+    // We need this list we can add primary key to the right column
+    // This list cannot be a map because we need to preserve the same order of columns as in the
     // original SQL statement.
     private List<String> prestoColumnsId = new ArrayList();
 

@@ -68,7 +68,7 @@ public class Translator {
     }
 
     /**
-     * Translate one SQL statement; add the result to the DDlogProgram.
+     * Translate one SQL statement in the Presto dialect; add the result to the DDlogProgram.
      * @param sql  Statement to translate.
      */
     public DDlogIRNode translateSqlStatement(final PrestoSqlStatement sql) {

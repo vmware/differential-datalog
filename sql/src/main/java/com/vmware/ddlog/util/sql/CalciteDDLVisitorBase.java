@@ -33,16 +33,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * To translate DDL statements in Calcite SQL, the Calcite visitor should visit each node of the DDL statement.
- * However, any DDL statements that we are interested in are of type SqlNodeList, so this part can be shared
- * across any Calcite-to-\<dialect\> translator.
- *
- * Any subclass of CalciteDDLVisitorBase should override visit(SqlCall call) and add the result to translatedColumns.
+ * Base class for translating DDL statements to Calcite SQL.
  */
-public class CalciteDDLVisitorBase extends SqlBasicVisitor<String> {
-    // Holds the return values from visit(SqlCall call);
+public abstract class CalciteDDLVisitorBase extends SqlBasicVisitor<String> {
+    /**
+     * Holds the return values from visit(SqlCall call);
+     * Any subclass of CalciteDDLVisitorBase should override visit(SqlCall call) and add the result to translatedColumns.
+     */
     protected List<String> translatedColumns = new ArrayList();
 
+    /**
+     *  Many DDL statements are of type SqlNodeList, so this part can be shared
+     *  across any Calcite-to-\<dialect\> translator.
+     */
     @Override
     public String visit(SqlNodeList nodeList) {
         for (SqlNode statement : nodeList) {
@@ -60,7 +63,8 @@ public class CalciteDDLVisitorBase extends SqlBasicVisitor<String> {
                             // the result to translatedColumns
                             visit((SqlCall) column);
                         } else {
-                            throw new UnsupportedOperationException("Cannot visit SqlNodes that aren't SqlCall type");
+                            throw new UnsupportedOperationException(
+                                    "CalciteDDLVisitorBase found unsupported nodes while parsing `create table`");
                         }
                     }
                 }

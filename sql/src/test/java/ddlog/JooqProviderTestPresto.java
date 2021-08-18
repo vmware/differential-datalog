@@ -40,10 +40,6 @@ import java.util.stream.Collectors;
 
 public class JooqProviderTestPresto extends JooqProviderTestBase {
 
-    public JooqProviderTestPresto() {
-        super();
-    }
-
     @BeforeClass
     public static void setup() throws IOException, DDlogException {
         String s1 = "create table hosts (id varchar(36) with (primary_key = true), capacity integer, up boolean)";
@@ -61,7 +57,7 @@ public class JooqProviderTestPresto extends JooqProviderTestBase {
 
         ddlogAPI = compileAndLoad(
                 ddl.stream().map(PrestoSqlStatement::new).collect(Collectors.toList()),
-                ToPrestoTranslator.noopTranslator());
+                sql -> sql);
 
         ToH2Translator<PrestoSqlStatement> translator = new PrestoToH2Translator();
         // Initialise the data provider

@@ -100,6 +100,13 @@ public abstract class JooqProviderTestBase {
         ddlogAPI.stop();
     }
 
+    /**
+     * Skip text execution in the Base class, as this Base class just serves as an aggregation of all test cases.
+     */
+    private void skipIfTestBase() {
+        Assume.assumeTrue(this.getClass() != JooqProviderTestBase.class);
+    }
+
     // This traces the test being executed for debugging
     // @Rule
     public TestRule watcher = new TestWatcher() {
@@ -113,7 +120,7 @@ public abstract class JooqProviderTestBase {
      */
     @Test
     public void testSqlOpsNoBindings() {
-        Assume.assumeTrue(this.getClass() != JooqProviderTestBase.class);
+        skipIfTestBase();
         // Insert statements.
         assert(create != null);
         create.execute("insert into \nhosts values ('n1', 10, true)");
@@ -147,7 +154,7 @@ public abstract class JooqProviderTestBase {
 
     @Test
     public void testInsertNull() {
-        Assume.assumeTrue(this.getClass() != JooqProviderTestBase.class);
+        skipIfTestBase();
         // Issue 1036
         assert(create != null);
         create.insertInto(table("hosts"))
@@ -165,7 +172,7 @@ public abstract class JooqProviderTestBase {
 
     @Test
     public void testDeleteNull() {
-        Assume.assumeTrue(this.getClass() != JooqProviderTestBase.class);
+        skipIfTestBase();
         assert(create != null);
         create.insertInto(table("hosts"))
                 .values("n1", 10, null)
@@ -178,7 +185,7 @@ public abstract class JooqProviderTestBase {
 
     @Test
     public void testWhereNull() {
-        Assume.assumeTrue(this.getClass() != JooqProviderTestBase.class);
+        skipIfTestBase();
         assert(create != null);
         create.insertInto(table("hosts"))
                 .values("n1", 10, null)
@@ -193,7 +200,7 @@ public abstract class JooqProviderTestBase {
 
     @Test
     public void testUpdateBool() {
-        Assume.assumeTrue(this.getClass() != JooqProviderTestBase.class);
+        skipIfTestBase();
         assert(create != null);
         create.insertInto(table("hosts"))
                 .values("n1", 10, true)
@@ -209,7 +216,7 @@ public abstract class JooqProviderTestBase {
 
     @Test
     public void testUpdateNull1() {
-        Assume.assumeTrue(this.getClass() != JooqProviderTestBase.class);
+        skipIfTestBase();
         assert(create != null);
         create.execute("insert into hosts values ('n1', 10, null)");
         final Result<Record> results = create.selectFrom(table("hostsv")).fetch();
@@ -218,7 +225,7 @@ public abstract class JooqProviderTestBase {
 
     @Test
     public void testUpdateNull2() {
-        Assume.assumeTrue(this.getClass() != JooqProviderTestBase.class);
+        skipIfTestBase();
         assert(create != null);
         create.execute("insert into hosts values ('n1', 10, null)");
         create.update(table("hosts")).set(field3, true).where(field1.eq("n1")).execute();
@@ -232,7 +239,7 @@ public abstract class JooqProviderTestBase {
 
     @Test
     public void testUpdateUnknownColumn() {
-        Assume.assumeTrue(this.getClass() != JooqProviderTestBase.class);
+        skipIfTestBase();
         try {
             assert(create != null);
             create.insertInto(table("hosts"))
@@ -247,7 +254,7 @@ public abstract class JooqProviderTestBase {
 
     @Test
     public void testUpdateWrongType() {
-        Assume.assumeTrue(this.getClass() != JooqProviderTestBase.class);
+        skipIfTestBase();
         try {
             assert(create != null);
             create.insertInto(table("hosts"))
@@ -265,7 +272,7 @@ public abstract class JooqProviderTestBase {
      */
     @Test
     public void testSqlOpsWithBindings() {
-        Assume.assumeTrue(this.getClass() != JooqProviderTestBase.class);
+        skipIfTestBase();
         // Insert statements.
         assert(create != null);
         create.insertInto(table("hosts"))
@@ -305,7 +312,7 @@ public abstract class JooqProviderTestBase {
      */
     @Test
     public void testDeletesAndInsertsInTheSameBatchNoBindings() {
-        Assume.assumeTrue(this.getClass() != JooqProviderTestBase.class);
+        skipIfTestBase();
         assert(create != null);
         create.execute("insert into hosts values ('n1', 10, true)");
         create.batch("delete from hosts where id = 'n1'",
@@ -322,7 +329,7 @@ public abstract class JooqProviderTestBase {
      */
     @Test
     public void testDeletesAndInsertsInTheSameBatchWithBindings() {
-        Assume.assumeTrue(this.getClass() != JooqProviderTestBase.class);
+        skipIfTestBase();
         assert(create != null);
         create.execute("insert into hosts values ('n1', 10, true)");
         create.batch(create.deleteFrom(table("hosts")).where(field("id").eq("n1")),
@@ -340,7 +347,7 @@ public abstract class JooqProviderTestBase {
      */
     @Test
     public void testMultiRowInsertsNoBindings() {
-        Assume.assumeTrue(this.getClass() != JooqProviderTestBase.class);
+        skipIfTestBase();
         assert(create != null);
         create.execute("insert into hosts values ('n1', 10, true), ('n54', 18, false), ('n9', 2, true)");
         final Result<Record> results = create.selectFrom(table("hostsv")).fetch();
@@ -355,7 +362,7 @@ public abstract class JooqProviderTestBase {
      */
     @Test
     public void testMultiRowInsertsWithBindings() {
-        Assume.assumeTrue(this.getClass() != JooqProviderTestBase.class);
+        skipIfTestBase();
         assert(create != null);
         create.insertInto(table("hosts"))
               .values("n1", 10, true)
@@ -374,7 +381,7 @@ public abstract class JooqProviderTestBase {
      */
     @Test
     public void testPartialInserts() {
-        Assume.assumeTrue(this.getClass() != JooqProviderTestBase.class);
+        skipIfTestBase();
         try {
             assert(create != null);
             create.insertInto(table("hosts"), field1, field2)
@@ -390,7 +397,7 @@ public abstract class JooqProviderTestBase {
      */
     @Test
     public void testUpdates() {
-        Assume.assumeTrue(this.getClass() != JooqProviderTestBase.class);
+        skipIfTestBase();
         assert(create != null);
         create.execute("insert into hosts values ('n1', 10, true)");
         create.execute("update hosts set capacity = 11 where id = 'n1'");
@@ -403,7 +410,7 @@ public abstract class JooqProviderTestBase {
      */
     @Test
     public void testUpdatesWithBindings() {
-        Assume.assumeTrue(this.getClass() != JooqProviderTestBase.class);
+        skipIfTestBase();
         assert(create != null);
         create.execute("insert into hosts values ('n1', 10, true)");
         create.update(table("hosts")).set(field2, 11).where(field1.eq("n1")).execute();
@@ -416,7 +423,7 @@ public abstract class JooqProviderTestBase {
      */
     @Test
     public void testNonExistentViewsSelect() {
-        Assume.assumeTrue(this.getClass() != JooqProviderTestBase.class);
+        skipIfTestBase();
         try {
             assert(create != null);
             create.selectFrom(table("s1")).fetch();
@@ -431,7 +438,7 @@ public abstract class JooqProviderTestBase {
      */
     @Test
     public void testNonExistentViewsInsert() {
-        Assume.assumeTrue(this.getClass() != JooqProviderTestBase.class);
+        skipIfTestBase();
         try {
             assert(create != null);
             create.execute("insert into s1 values ('n1', 10, true)");
@@ -446,7 +453,7 @@ public abstract class JooqProviderTestBase {
      */
     @Test
     public void testNonExistentViewsDelete() {
-        Assume.assumeTrue(this.getClass() != JooqProviderTestBase.class);
+        skipIfTestBase();
         try {
             assert(create != null);
             create.execute("delete from S1 where id = '5'");
@@ -460,7 +467,7 @@ public abstract class JooqProviderTestBase {
      */
     @Test
     public void testNonExistentViewsUpdate() {
-        Assume.assumeTrue(this.getClass() != JooqProviderTestBase.class);
+        skipIfTestBase();
         try {
             assert(create != null);
             create.execute("update S1 set capacity = 11 where id = 'n1'");
@@ -476,7 +483,7 @@ public abstract class JooqProviderTestBase {
      */
     @Test
     public void testWrongTypeInsert() {
-        Assume.assumeTrue(this.getClass() != JooqProviderTestBase.class);
+        skipIfTestBase();
         try {
             assert(create != null);
             create.execute("insert into hosts values (5, 10, true)");
@@ -491,7 +498,7 @@ public abstract class JooqProviderTestBase {
      */
     @Test
     public void testNotNullColumns() {
-        Assume.assumeTrue(this.getClass() != JooqProviderTestBase.class);
+        skipIfTestBase();
         // Without bindings
         Assert.assertNotNull(create);
         create.execute("insert into not_null values (5, 'test_string')");
@@ -506,7 +513,7 @@ public abstract class JooqProviderTestBase {
      */
     @Test
     public void testInsertNullFails() {
-        Assume.assumeTrue(this.getClass() != JooqProviderTestBase.class);
+        skipIfTestBase();
         // Without bindings
         try {
             Assert.assertNotNull(create);
@@ -519,7 +526,7 @@ public abstract class JooqProviderTestBase {
 
     @Test
     public void testInsertNullFails1() {
-        Assume.assumeTrue(this.getClass() != JooqProviderTestBase.class);
+        skipIfTestBase();
         try {
             // With bindings
             Assert.assertNotNull(create);

@@ -24,11 +24,10 @@
 package com.vmware.ddlog.util.sql;
 
 /**
- * Wrapper around a SQL string written in the Presto dialect.
+ * Represents a SQL statement written in the Presto dialect.
  */
 public class PrestoSqlStatement extends SqlStatement {
     public PrestoSqlStatement(String sql) {
         super(sql);
     }
-
 }

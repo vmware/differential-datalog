@@ -24,10 +24,9 @@
 package com.vmware.ddlog.util.sql;
 
 /**
- * Wrapper around a SQL string written in the Calcite dialect.
+ * Represents a SQL statement written in the Calcite dialect.
  */
-public class CalciteSqlStatement extends SqlStatement{
-
+public class CalciteSqlStatement extends SqlStatement {
     public CalciteSqlStatement(String sql) {
         super(sql);
     }

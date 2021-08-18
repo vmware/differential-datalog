@@ -44,7 +44,8 @@ import static org.jooq.impl.DSL.field;
 
 /**
  * This class provides a restricted mechanism to make a DDlog program appear like an SQL database that can be
- * queried over a JDBC connection. To initialize, it requires a set of "create table" and "create view" statements
+ * queried over a JDBC connection, which only takes SQL statements in the H2 dialect.
+ * To initialize, it requires a set of "create table" and "create view" statements
  * to be supplied during initialization. For example:
  *
  *         final DDlogAPI dDlogAPI = new DDlogAPI(1, null, true);

@@ -18,10 +18,6 @@ import java.util.stream.Collectors;
 
 public class JooqProviderTestCalcite extends JooqProviderTestBase {
 
-    public JooqProviderTestCalcite() {
-        super();
-    }
-
     @BeforeClass
     public static void setup() throws IOException, DDlogException {
         // SQL statements written in the Calcite dialect.

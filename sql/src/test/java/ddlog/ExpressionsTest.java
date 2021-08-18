@@ -30,7 +30,6 @@ import com.facebook.presto.sql.parser.SqlParser;
 import com.facebook.presto.sql.tree.Statement;
 import com.vmware.ddlog.ir.DDlogIRNode;
 import com.vmware.ddlog.translator.Translator;
-import com.vmware.ddlog.util.sql.ToPrestoTranslator;
 import org.junit.Assert;
 import org.junit.Test;
 

@@ -44,8 +44,6 @@ public class CalciteToH2Translator implements ToH2Translator<CalciteSqlStatement
 
     /**
      * Translate Calcite SQL statement to H2.
-     * @param sql
-     * @return
      */
     @Override
     public H2SqlStatement toH2(CalciteSqlStatement sql) {
@@ -66,15 +64,16 @@ public class CalciteToH2Translator implements ToH2Translator<CalciteSqlStatement
 
 /**
  * Translates Calcite to H2 by implementing a Calcite parse node visitor.
- * Unfortunately, Calcite and H2 aren't completely equivalent, so this method isn't just a noop.
- * For example, H2 arrays do not accept subtypes, so we need to strip them, but this also means the Visitor needs to
- * walk the entire parse tree and translate it into a string.
  */
 class CalciteToH2 extends CalciteDDLVisitorBase {
 
+    // Unfortunately, Calcite and H2 aren't completely equivalent, so this method isn't just a noop.
+    // For example, H2 arrays do not accept subtypes, so we need to strip them, but this also means the Visitor needs to
+    // walk the entire parse tree and translate it into a string.
     @Override
     public String visit(SqlCall call) {
         if (call instanceof SqlColumnDeclaration) {
+
             SqlColumnDeclaration castColumn = (SqlColumnDeclaration) call;
             String type = castColumn.dataType.toString();
 
@@ -110,7 +109,7 @@ class CalciteToH2 extends CalciteDDLVisitorBase {
                 return transcribed;
             }
         }
-        throw new UnsupportedOperationException("Cannot translate SqlCall's of kind " + call.getKind());
+        throw new UnsupportedOperationException("CalciteToH2 cannot translate SqlCall's of kind " + call.getKind());
     }
 }
 

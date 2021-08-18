@@ -29,16 +29,6 @@ package com.vmware.ddlog.util.sql;
 public interface ToPrestoTranslator<R extends SqlStatement> {
     /**
      * Translates given SQL statement in a given dialect to Presto dialect.
-     * @return
      */
     PrestoSqlStatement toPresto(R sql);
-
-    /**
-     * Return what is equivalent to a PrestoToPrestoTranslator, which simply returns the SQL statement.
-     * This method can be used to fetch a translator used when the user already passes SQL in the Presto dialect.
-     * @return
-     */
-    static ToPrestoTranslator<PrestoSqlStatement> noopTranslator() {
-        return sql -> sql;
-    }
 }

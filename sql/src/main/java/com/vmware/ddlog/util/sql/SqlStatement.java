@@ -24,14 +24,16 @@
 package com.vmware.ddlog.util.sql;
 
 /**
- * Base class for SQL strings. To type-check for a specific dialect, create a new class that extends this class.
+ * Base class for SQL statements.
  */
-public class SqlStatement {
+public abstract class SqlStatement {
     private String statement;
 
-    public SqlStatement(String sql) {
+    protected SqlStatement(String sql) {
         statement = sql;
     }
 
-    public String getStatement() {return statement;}
+    public String getStatement() { return statement; }
+
+    public String toString() { return statement; }
 }
