@@ -108,6 +108,10 @@ class CalciteToPresto extends CalciteDDLVisitorBase {
                 }
             }
         }
-        throw new UnsupportedOperationException("Cannot translate SqlCall's of kind " + call.getKind());
+        // Anything else, we silently ignore because the given SQL statement is parseable SQL,
+        // Presto just can't support these particular expressions.
+        System.out.println("CalciteToPrestoTranslator could not translate expressions of kind " + call.getKind() +
+                " , removing from final statement");
+        return "";
     }
 }
