@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.47.0] - Aug 19, 2021
+
+### OVSDB-to-DDlog compiler update
+
+- Added `--intern-strings` option that causes all strings in generated OVSDB tables
+  to be emitted as 'istring'.  This reduces memory use and can aid performance in programs
+  that use strings heavily.  See PR #1056.
+
 ## [0.46.0] - Aug 18, 2021
 
 ### Optimizations
