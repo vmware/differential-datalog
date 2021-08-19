@@ -21,37 +21,43 @@
  * SOFTWARE.
  */
 
-package org.dbsp.formal;
+package org.dbsp.algebraic;
 
-import org.dbsp.algebraic.TimeFactory;
-import org.dbsp.types.IStream;
-import org.dbsp.types.StreamType;
-import org.dbsp.types.Type;
-
-import java.util.function.Function;
+import javafx.util.Pair;
+import org.dbsp.algebraic.Group;
 
 /**
- * An operator that works on streams.  It delays the input stream by 1 clock.
- * @param <T> Concrete implementation of elements of the input and output stream.
+ * A pair group combines two groups to create a group that operates pointwise on a pair's values.
+ * @param <T>   Type of left value.
+ * @param <S>   Type of right value.
  */
-public class DelayOperator<T, F extends TimeFactory> extends
-        UniformUnaryOperator<IStream<T>> {
-    final Type<T> elementType;
+public class PairGroup<T, S> implements Group<Pair<T, S>> {
+    final Group<T> gt;
+    final Group<S> gs;
 
-    public DelayOperator(Type<T> type, F factory) {
-        super(new StreamType<T>(type, factory));
-        this.elementType = type;
-        if (!type.isStream())
-            throw new RuntimeException("Delay must be applied to a stream type, not to " + type);
+    /**
+     * Creates a pair group from a pair of groups.
+     * @param gt  Group operating on values in the left of the pair.
+     * @param gs  Group operating on values in the right of the pair.
+     */
+    public PairGroup(Group<T> gt, Group<S> gs) {
+        this.gt = gt;
+        this.gs = gs;
     }
 
     @Override
-    public Function<IStream<T>, IStream<T>> getComputation() {
-        return (IStream<T> s) -> s.delay(this.elementType.getGroup());
+    public Pair<T, S> minus(Pair<T, S> data) {
+        return new Pair<T, S>(this.gt.minus(data.getKey()), this.gs.minus(data.getValue()));
     }
 
     @Override
-    public String toString() {
-        return "z";
+    public Pair<T, S> add(Pair<T, S> left, Pair<T, S> right) {
+        return new Pair<T, S>(this.gt.add(left.getKey(), right.getKey()),
+                this.gs.add(left.getValue(), right.getValue()));
+    }
+
+    @Override
+    public Pair<T, S> zero() {
+        return new Pair<T, S>(this.gt.zero(), this.gs.zero());
     }
 }
