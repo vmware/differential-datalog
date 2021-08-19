@@ -1,0 +1,1 @@
+This package contains Java classes that represent various generic algebraic structures.
