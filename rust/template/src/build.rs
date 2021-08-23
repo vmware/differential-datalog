@@ -26,10 +26,7 @@ fn libtool() {
     }
     println!("cargo:rerun-if-changed=src/lib.rs");
     println!("cargo:rerun-if-changed=src/main.rs");
-    println!("cargo:rerun-if-changed=src/api/mod.rs");
-    println!("cargo:rerun-if-changed=src/api/c_api.rs");
     println!("cargo:rerun-if-changed=src/ovsdb_api.rs");
-    println!("cargo:rerun-if-changed=src/update_handler.rs");
 
     let lib = "libdatalog_example_ddlog";
 
