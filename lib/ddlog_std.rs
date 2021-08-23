@@ -22,6 +22,7 @@ SOFTWARE.
 */
 
 use abomonation::Abomonation;
+pub use differential_datalog::ddval::{Any, DDValue};
 /// Rust implementation of DDlog standard library functions and types.
 use differential_datalog::record::{arg_extract, Record};
 use differential_datalog::triomphe::Arc;
@@ -53,6 +54,16 @@ const XX_SEED2: u64 = 0x20b09801dce5ff84;
 
 pub fn default<T: Default>() -> T {
     T::default()
+}
+
+// Any
+
+pub fn to_any<T: DDValConvert>(x: T) -> Any {
+    Any::new(x.into_ddvalue())
+}
+
+pub fn from_any<T: 'static + DDValConvert>(value: Any) -> Option<T> {
+    <Option<T>>::from(T::try_from_ddvalue(DDValue::from(value)))
 }
 
 // Result

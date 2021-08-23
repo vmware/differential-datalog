@@ -1,0 +1,8 @@
+ddvalue_test::DDValTest1Output:
+ddvalue_test::DDValTest1{.x = "foo", .y = 1, .z = ["bar", "buzz"]}: +1
+ddvalue_test::DDValTestOutput:
+ddvalue_test::DDValTestOutput{.relname = "DDValTest1", .ddval = ddvalue_test::DDValTest1{.x = "foo", .y = 1, .z = ["bar", "buzz"]}}: +1
+ddvalue_test::DDValTest2Output:
+ddvalue_test::DDValTest2{.a = [(1, "foo"), (2, "bar")], .b = (true, [1, 2, 3, 4, 5])}: +1
+ddvalue_test::DDValTestOutput:
+ddvalue_test::DDValTestOutput{.relname = "DDValTest2", .ddval = ddvalue_test::DDValTest2{.a = [(1, "foo"), (2, "bar")], .b = (true, [1, 2, 3, 4, 5])}}: +1

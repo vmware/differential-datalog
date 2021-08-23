@@ -308,3 +308,9 @@ where
         }
     };
 }
+
+impl Default for DDValue {
+    fn default() -> Self {
+        ().into_ddvalue()
+    }
+}

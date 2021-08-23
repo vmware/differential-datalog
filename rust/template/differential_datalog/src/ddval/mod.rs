@@ -53,8 +53,10 @@
 
 #[macro_use]
 mod ddval_convert;
+mod any;
 mod ddvalue;
 
+pub use any::{Any, AnyDeserializeSeed};
 pub use ddval_convert::DDValConvert;
 pub use ddvalue::DDValue;
 

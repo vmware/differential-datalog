@@ -1,9 +1,9 @@
 use crate::{
     ddval::{DDVal, DDValMethods},
-    record::{IntoRecord, Mutator, Record},
+    record::{FromRecord, IntoRecord, Mutator, Record},
 };
 use abomonation::Abomonation;
-use serde::ser::{Serialize, Serializer};
+use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     any::TypeId,
     cmp::Ordering,
@@ -39,6 +39,18 @@ impl DDValue {
     pub fn type_id(&self) -> TypeId {
         (self.vtable.type_id)(&self.val)
     }
+
+    pub fn safe_cmp(&self, other: &DDValue) -> Ordering {
+        match (self.vtable.type_id)(&self.val).cmp(&(other.vtable.type_id)(&other.val)) {
+            Ordering::Equal => unsafe { (self.vtable.cmp)(&self.val, &other.val) },
+            ord => ord,
+        }
+    }
+
+    pub fn safe_eq(&self, other: &DDValue) -> bool {
+        ((self.vtable.type_id)(&self.val) == (other.vtable.type_id)(&other.val))
+            && (unsafe { (self.vtable.eq)(&self.val, &other.val) })
+    }
 }
 
 impl Mutator<DDValue> for Record {
@@ -53,33 +65,46 @@ impl IntoRecord for DDValue {
     }
 }
 
+impl FromRecord for DDValue {
+    fn from_record(_val: &Record) -> Result<Self, String> {
+        Err("'DDValue::from_record': not implemented".to_string())
+    }
+}
+
 impl Abomonation for DDValue {
     unsafe fn entomb<W: std::io::Write>(&self, _write: &mut W) -> std::io::Result<()> {
-        panic!("DDValue::entomb: not implemented")
+        panic!("'DDValue::entomb': not implemented")
     }
 
     unsafe fn exhume<'a, 'b>(&'a mut self, _bytes: &'b mut [u8]) -> Option<&'b mut [u8]> {
-        panic!("DDValue::exhume: not implemented")
+        panic!("'DDValue::exhume': not implemented")
     }
 
     fn extent(&self) -> usize {
-        panic!("DDValue::extent: not implemented")
+        panic!("'DDValue::extent': not implemented")
     }
 }
 
 /// `Serialize` implementation simply forwards the `serialize` operation to the
 /// inner object.
-/// Note: we cannot provide a generic `Deserialize` implementation for `DDValue`,
-/// as there is no object to forward `deserialize` to.  Instead, we are going
-/// generate a `Deserialize` implementation for `Update<DDValue>` in the DDlog
-/// compiler. This implementation will use relation id inside `Update` to figure
-/// out which type to deserialize.  See `src/lib.rs` for more details.
 impl Serialize for DDValue {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         erased_serde::serialize((self.vtable.ddval_serialize)(&self.val), serializer)
+    }
+}
+
+/// Bogus `Deserialize` implementation, necessary to use `DDValue` type in DDlog
+/// programs.  We cannot provide a proper `Deserialize` implementation for `DDValue`,
+/// as there is no object to forward `deserialize` to.
+impl<'de> Deserialize<'de> for DDValue {
+    fn deserialize<D>(_deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Err(D::Error::custom("cannot deserialize 'DDValue' type"))
     }
 }
 

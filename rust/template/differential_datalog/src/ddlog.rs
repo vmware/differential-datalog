@@ -13,7 +13,7 @@ use std::ops::Deref;
 use std::sync::Arc as StdArc;
 use triomphe::Arc;
 
-use crate::ddval::DDValue;
+use crate::ddval::{Any, DDValue};
 use crate::program::RelId;
 use crate::program::Update;
 use crate::program::{ArrId, IdxId};
@@ -411,4 +411,13 @@ pub trait DDlog: DDlogDynamic {
 
     /// Dump all values in an index.
     fn dump_index(&self, index: IdxId) -> Result<BTreeSet<DDValue>, String>;
+}
+
+pub type AnyDeserializeFunc =
+    fn(&mut dyn erased_serde::Deserializer) -> Result<Any, erased_serde::Error>;
+
+/// Given an input relation id, returns a function that deserializes the record
+/// type of this relation.
+pub trait AnyDeserialize {
+    fn get_deserialize(&self, relid: RelId) -> Option<AnyDeserializeFunc>;
 }

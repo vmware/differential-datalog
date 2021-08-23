@@ -166,6 +166,8 @@ fn main() -> Result<(), String> {
     println!("\nState after transaction 2");
     dump_delta(&hddlog, &delta);
 
+    ddval_deserialize_test(&hddlog);
+
     hddlog.stop().unwrap();
     Ok(())
 }
@@ -177,4 +179,26 @@ fn dump_delta(ddlog: &HDDlog, delta: &DeltaMap<DDValue>) {
             println!("{} {:+}", val, weight);
         }
     }
+}
+
+// Test AnyDeserializeSeed API, which allows deserializing a DDlog record
+// without knowing its type.
+fn ddval_deserialize_test(ddlog: &HDDlog) {
+
+    use differential_datalog::ddval::{Any, AnyDeserializeSeed};
+    use serde::de::DeserializeSeed;
+
+    // Serialize a record to JSON string.
+    let val = Any::from(Word1 {
+        word: "foo-".to_string(),
+        cat: Category::CategoryOther,
+    }.into_ddvalue());
+
+    let json_string = serde_json::to_string(&val).unwrap();
+
+    // Deserialize using AnyDeserializeSeed.
+    let seed = AnyDeserializeSeed::from_relid(&*ddlog.any_deserialize, Relations::Word1 as RelId).unwrap();
+    let val_deserialized = seed.deserialize(&mut serde_json::Deserializer::from_str(json_string.as_str())).unwrap();
+
+    assert_eq!(val, val_deserialized);
 }

@@ -1,0 +1,10 @@
+# Add one record per transaction to guarantee deterministic output order
+# (the ordering of `Any` may vary across Rust compiler releases).
+
+start;
+insert ddvalue_test::DDValTest1("foo", 1, ["bar", "buzz"]),
+commit dump_changes;
+
+start;
+insert ddvalue_test::DDValTest2([(1, "foo"), (2, "bar")], (true, [5,4,3,2,1])),
+commit dump_changes;

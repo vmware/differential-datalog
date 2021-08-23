@@ -82,6 +82,28 @@ function to_string(ts: DDNestedTS): string {
 }
 
 /*
+ * Type-erased representation of any DDlog value.  Allows storing
+ * instances of different types, unknown at compile time, in the same
+ * relation.
+ *
+ * Any value can be converted to `Any`.  Conversely A `Any` can be
+ * converted back to the strongly typed representation.
+ *
+ * Note: `Any` relies on Rust's TypeId mechanism to order instances
+ * with different underlying types.  As a result, the ordering may
+ * differ across Rust compiler releases.
+ */
+extern type Any
+
+/* Convert arbitrary DDlog type to Any. */
+extern function to_any(#[by_val] x: 'T): Any
+
+/* Convert `Any` back to an instance of type `'T`.
+ * Returns `None` if `value` stores an instance of a
+ * different type. */
+extern function from_any(#[by_val] value: Any): Option<'T>
+
+/*
  * Ref
  */
 #[size=8]
