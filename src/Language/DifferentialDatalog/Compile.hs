@@ -1260,18 +1260,18 @@ mkDDValueFromRecord d@DatalogProgram{..} =
     mkIdxId2NameC                                                                                   $$
     mkIdxIdMap d                                                                                    $$
     mkIdxIdMapC d                                                                                   $$
-    "pub fn relval_from_record(relation: Relations, record: &::differential_datalog::record::Record) -> ::std::result::Result<DDValue, ::std::string::String> {" $$
+    "pub fn relval_from_record(relation: Relations, record: &::differential_datalog::record::Record) -> ::std::result::Result<::differential_datalog::ddval::DDValue, ::std::string::String> {" $$
     "    match relation {"                                                                          $$
     (nest' $ nest' $ vcommaSep entries)                                                             $$
     "    }"                                                                                         $$
     "}"                                                                                             $$
-    "pub fn relkey_from_record(relation: Relations, record: &::differential_datalog::record::Record) -> ::std::result::Result<DDValue, ::std::string::String> {" $$
+    "pub fn relkey_from_record(relation: Relations, record: &::differential_datalog::record::Record) -> ::std::result::Result<::differential_datalog::ddval::DDValue, ::std::string::String> {" $$
     "    match relation {"                                                                          $$
     (nest' $ nest' $ vcommaSep key_entries)                                                         $$
     "        _ => Err(format!(\"relation {:?} does not have a primary key\", relation)),"           $$
     "    }"                                                                                         $$
     "}"                                                                                             $$
-    "pub fn idxkey_from_record(idx: Indexes, record: &::differential_datalog::record::Record) -> ::std::result::Result<DDValue, ::std::string::String> {" $$
+    "pub fn idxkey_from_record(idx: Indexes, record: &::differential_datalog::record::Record) -> ::std::result::Result<::differential_datalog::ddval::DDValue, ::std::string::String> {" $$
     "    match idx {"                                                                               $$
     (nest' $ nest' $ vcommaSep idx_entries)                                                         $$
     "    }"                                                                                         $$
@@ -1856,8 +1856,8 @@ compileApplyNode d Apply{..} idx =
             $$ "            program::RelId,"
             $$ "            collection::Collection<"
             $$ "            scopes::Child<'a, worker::Worker<communication::Allocator>, program::TS>,"
-            $$ "                DDValue,"
-            $$ "                Weight,"
+            $$ "                ::differential_datalog::ddval::DDValue,"
+            $$ "                ::differential_datalog::program::Weight,"
             $$ "            >,"
             $$ "        >,"
             $$ "    ),"
@@ -1882,7 +1882,7 @@ compileApplyNode d Apply{..} idx =
     update_collections = map (\o -> "collections.insert(" <> relId d o <> "," <+> rnameFlat o <> ");") applyOutputs
     extractValue :: Type -> Doc
     extractValue t = parens $
-            "|" <> vALUE_VAR <> ": DDValue| unsafe {<" <> mkType d (Just applyModule) t <> ">::from_ddvalue_unchecked(" <> vALUE_VAR <> ") }"
+            "|" <> vALUE_VAR <> ": ::differential_datalog::ddval::DDValue| unsafe {<" <> mkType d (Just applyModule) t <> ">::from_ddvalue_unchecked(" <> vALUE_VAR <> ") }"
 
 compileSCCNode :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph) => DatalogProgram -> Statics -> [String] -> CompilerMonad ProgNode
 compileSCCNode d statics relnames = do
@@ -1952,7 +1952,7 @@ compileRelation d statics rn = do
                                       in compileFact d fact
                           in (ruleModule fact,
                               ridentScoped Nothing (ruleModule fact) (render $ fact_name i) <> ".clone()",
-                              "pub static" <+> fact_name i <+> ": ::once_cell::sync::Lazy<(program::RelId, DDValue)> = ::once_cell::sync::Lazy::new(|| {" $$ nest' fact' $$ "});")) facts
+                              "pub static" <+> fact_name i <+> ": ::once_cell::sync::Lazy<(program::RelId, ::differential_datalog::ddval::DDValue)> = ::once_cell::sync::Lazy::new(|| {" $$ nest' fact' $$ "});")) facts
     let (key_func, key_code) = maybe ("::core::option::Option::None", Nothing)
                                (\k -> let ?statics = moduleStatics statics (nameScope rel) in
                                       let (func_name, code) = compileKey d rel k in
@@ -2004,7 +2004,7 @@ compileKey d rel@Relation{..} KeyExpr{..} =
     let v = mkDDValue d (CtxKey rel) keyExpr
         func_name = "__Key_" <> rnameFlat (name rel)
     in ( func_name
-       , "pub fn" <+> func_name <> "(" <> kEY_VAR <> ": &DDValue) -> DDValue {"                                                         $$
+       , "pub fn" <+> func_name <> "(" <> kEY_VAR <> ": &::differential_datalog::ddval::DDValue) -> ::differential_datalog::ddval::DDValue {"                                                         $$
          "    let ref" <+> pp keyVar <+> "= *unsafe {<" <> mkType d (Just $ nameScope rel) rel <> ">::from_ddvalue_ref_unchecked(" <> kEY_VAR <> ") };"  $$
          "    " <> v                                                                                                                    $$
          "}")
@@ -2211,7 +2211,7 @@ mkFlatMap d prefix rl idx vs e = do
     return $
         "XFormCollection::FlatMap{"                                                                                         $$
         "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <> "),"                $$
-        (nest' $ "fmfun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> ::std::option::Option<Box<dyn Iterator<Item=DDValue>>>" $$ fmfun $$ "__f},")$$
+        (nest' $ "fmfun: {fn __f(" <> vALUE_VAR <> ": ::differential_datalog::ddval::DDValue) -> ::std::option::Option<Box<dyn Iterator<Item=::differential_datalog::ddval::DDValue>>>" $$ fmfun $$ "__f},")$$
         "    next: Box::new(" <> next <> ")"                                                                                $$
         "}"
 
@@ -2224,7 +2224,7 @@ mkFilterMap d prefix rl idx = do
     return $
         "XFormCollection::FilterMap{"                                                                                       $$
         "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <> "),"                $$
-        nest' ("fmfun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> ::std::option::Option<DDValue>" $$ fmfun $$ "__f},")        $$
+        nest' ("fmfun: {fn __f(" <> vALUE_VAR <> ": ::differential_datalog::ddval::DDValue) -> ::std::option::Option<::differential_datalog::ddval::DDValue>" $$ fmfun $$ "__f},")        $$
         "    next: Box::new(" <> next <> ")"                                                                                $$
         "}"
 
@@ -2245,7 +2245,7 @@ mkInspect d prefix rl idx e input_val = do
     return $
         "XFormCollection::Inspect{"                                                                                         $$
         "    description: std::borrow::Cow::from(" <+> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <> "),"               $$
-        (nest' $ "ifun: {fn __f(" <> vALUE_VAR <> ": &DDValue, " <> tIMESTAMP_VAR <> ": TupleTS, " <> wEIGHT_VAR <> ": Weight) -> ()" $$ ifun $$ "__f},")$$
+        (nest' $ "ifun: {fn __f(" <> vALUE_VAR <> ": &::differential_datalog::ddval::DDValue, " <> tIMESTAMP_VAR <> ": TupleTS, " <> wEIGHT_VAR <> ": ::differential_datalog::program::Weight) -> ()" $$ ifun $$ "__f},")$$
         "    next: Box::new(" <> next <> ")"                                                                                $$
         "}"
 
@@ -2261,7 +2261,7 @@ mkGroupBy d filters input_val rl@Rule{..} idx = do
     let open = if input_val
                then openAtom d vALUE_VAR rl 0 (rhsAtom $ head ruleRHS) "unreachable!()"
                else openTuple d rl vALUE_VAR group_vars
-    let project = "{fn __f(" <> vALUE_VAR <> ": &DDValue) -> " <+> mkType d (Just ruleModule) (exprType d ctx rhsProject) $$
+    let project = "{fn __f(" <> vALUE_VAR <> ": &::differential_datalog::ddval::DDValue) -> " <+> mkType d (Just ruleModule) (exprType d ctx rhsProject) $$
                   (braces' $ open $$ mkExpr d ctx rhsProject EVal)                                            $$
                   "::std::sync::Arc::new(__f)}"
     -- * Create 'struct Group'
@@ -2288,7 +2288,7 @@ mkGroupBy d filters input_val rl@Rule{..} idx = do
         "XFormArrangement::Aggregate{"                                                                                           $$
         "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <> "),"                     $$
         "    ffun:" <+> ffun <> ","                                                                                              $$
-        "    aggfun: {fn __f(" <> kEY_VAR <> ": &DDValue," <+> gROUP_VAR <> ": &[(&DDValue, Weight)]) -> ::std::option::Option<DDValue>" $$ agfun $$ "__f}," $$
+        "    aggfun: {fn __f(" <> kEY_VAR <> ": &::differential_datalog::ddval::DDValue," <+> gROUP_VAR <> ": &[(&::differential_datalog::ddval::DDValue, ::differential_datalog::program::Weight)]) -> ::std::option::Option<::differential_datalog::ddval::DDValue>" $$ agfun $$ "__f}," $$
         "    next: Box::new(" <> next <> ")"                                                                                    $$
         "}"
 
@@ -2418,7 +2418,7 @@ mkFFun d rl@Rule{..} input_filters =
    let open = openAtom d vALUE_VAR rl 0 (rhsAtom $ ruleRHS !! 0) ("return false")
        checks = parens $ vcat $ punctuate " &&"
                 $ map (\i -> mkExpr d (CtxRuleRCond rl i) (rhsExpr $ ruleRHS !! i) EVal) input_filters
-   in "Some({fn __f(" <> vALUE_VAR <> ": &DDValue) -> bool"  $$
+   in "Some({fn __f(" <> vALUE_VAR <> ": &::differential_datalog::ddval::DDValue) -> bool"  $$
       (braces' $ open $$ checks)                             $$
       "    __f"                                              $$
       "})"
@@ -2500,10 +2500,10 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
             "XFormCollection::StreamSemijoin{"                                                                                 $$
             "    description:" <+> descr                                                                                       $$
             "    arrangement: (" <> relid <> "," <> pp aid <> "),"                                                             $$
-            "    afun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> ::std::option::Option<(DDValue, DDValue)>"                     $$
+            "    afun: {fn __f(" <> vALUE_VAR <> ": ::differential_datalog::ddval::DDValue) -> ::std::option::Option<(::differential_datalog::ddval::DDValue, ::differential_datalog::ddval::DDValue)>"                     $$
             nest' afun                                                                                                         $$
             "    __f},"                                                                                                        $$
-            "    jfun: {fn __f(" <> vALUE_VAR1 <> ": &DDValue) -> ::std::option::Option<DDValue>"                              $$
+            "    jfun: {fn __f(" <> vALUE_VAR1 <> ": &::differential_datalog::ddval::DDValue) -> ::std::option::Option<::differential_datalog::ddval::DDValue>"                              $$
             nest' jfun                                                                                                         $$
             "    __f},"                                                                                                        $$
             "    next: Box::new(" <> next <> ")"                                                                               $$
@@ -2512,10 +2512,10 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
             "XFormCollection::StreamJoin{"                                                                                     $$
             "    description:" <+> descr                                                                                       $$
             "    arrangement: (" <> relid <> "," <> pp aid <> "),"                                                             $$
-            "    afun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> ::std::option::Option<(DDValue, DDValue)>"                     $$
+            "    afun: {fn __f(" <> vALUE_VAR <> ": ::differential_datalog::ddval::DDValue) -> ::std::option::Option<(::differential_datalog::ddval::DDValue, ::differential_datalog::ddval::DDValue)>"                     $$
             nest' afun                                                                                                         $$
             "    __f},"                                                                                                        $$
-            "    jfun: {fn __f(" <> vALUE_VAR1 <> ": &DDValue," <+> vALUE_VAR2 <> ": &DDValue) -> ::std::option::Option<DDValue>" $$
+            "    jfun: {fn __f(" <> vALUE_VAR1 <> ": &::differential_datalog::ddval::DDValue," <+> vALUE_VAR2 <> ": &::differential_datalog::ddval::DDValue) -> ::std::option::Option<::differential_datalog::ddval::DDValue>" $$
             nest' jfun                                                                                                         $$
             "    __f},"                                                                                                        $$
             "    next: Box::new(" <> next <> ")"                                                                               $$
@@ -2532,7 +2532,7 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
             "    description:" <+> descr                                                                                    $$
             "    ffun:" <+> ffun <> ","                                                                                     $$
             "    arrangement: (" <> relid <> "," <> pp aid <> "),"                                                          $$
-            "    jfun: {fn __f(_: &DDValue," <+> vALUE_VAR1 <> ": &DDValue, _" <> vALUE_VAR2 <> ": &()) -> ::std::option::Option<DDValue>" $$
+            "    jfun: {fn __f(_: &::differential_datalog::ddval::DDValue," <+> vALUE_VAR1 <> ": &::differential_datalog::ddval::DDValue, _" <> vALUE_VAR2 <> ": &()) -> ::std::option::Option<::differential_datalog::ddval::DDValue>" $$
             nest' jfun                                                                                                      $$
             "    __f},"                                                                                                     $$
             "    next: Box::new(" <> next  <> ")"                                                                           $$
@@ -2542,7 +2542,7 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
             "    description:" <+> descr                                                                                    $$
             "    ffun:" <+> ffun <> ","                                                                                     $$
             "    arrangement: (" <> relid <> "," <> pp aid <> "),"                                                          $$
-            "    jfun: {fn __f(_: &DDValue," <+> vALUE_VAR1 <> ": &DDValue," <+> vALUE_VAR2 <> ": &DDValue) -> ::std::option::Option<DDValue>"  $$
+            "    jfun: {fn __f(_: &::differential_datalog::ddval::DDValue," <+> vALUE_VAR1 <> ": &::differential_datalog::ddval::DDValue," <+> vALUE_VAR2 <> ": &::differential_datalog::ddval::DDValue) -> ::std::option::Option<::differential_datalog::ddval::DDValue>"  $$
             nest' jfun                                                                                                      $$
             "    __f},"                                                                                                     $$
             "    next: Box::new(" <> next <> ")"                                                                            $$
@@ -2771,7 +2771,7 @@ mkHead :: (?cfg::Config, ?specname::String, ?statics::CrateStatics, ?crate_graph
 mkHead d prefix rl =
     "XFormCollection::FilterMap{"                                                                               $$
     "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ "head of" <+> rulePPStripped rl) <> "),"  $$
-    nest' ("fmfun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> ::std::option::Option<DDValue>" $$ fmfun $$ "__f},")$$
+    nest' ("fmfun: {fn __f(" <> vALUE_VAR <> ": ::differential_datalog::ddval::DDValue) -> ::std::option::Option<::differential_datalog::ddval::DDValue>" $$ fmfun $$ "__f},")$$
     "    next: Box::new(" <> next <> ")"                                                                        $$
     "}"
     where
@@ -2811,7 +2811,7 @@ mkProg d cstate nodes =
         $$ (nest' $ nest' program_nodes)
         $$ "    ];"
         $$ "    let delayed_rels = vec![" <> delayed_rels <> "];"
-        $$ "    let init_data: std::vec::Vec<(program::RelId, DDValue)> = vec![" <> facts <> "];"
+        $$ "    let init_data: std::vec::Vec<(program::RelId, ::differential_datalog::ddval::DDValue)> = vec![" <> facts <> "];"
         $$ "    program::Program {"
         $$ "        nodes,"
         $$ "        delayed_rels,"
@@ -2857,7 +2857,7 @@ mkArrangement d rel ArrangementMap{..} =
                filter_key <> ".map(|x|(x,__cloned))"
     in "program::Arrangement::Map{"                                                                              $$
        "   name: std::borrow::Cow::from(r###\"" <> pp arngPattern <> " /*join*/\"###),"                          $$
-       (nest' $ "afun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> ::std::option::Option<(DDValue,DDValue)>" $$ afun $$ "__f},")  $$
+       (nest' $ "afun: {fn __f(" <> vALUE_VAR <> ": ::differential_datalog::ddval::DDValue) -> ::std::option::Option<(::differential_datalog::ddval::DDValue,::differential_datalog::ddval::DDValue)>" $$ afun $$ "__f},")  $$
        "    queryable:" <+> (if null arngIndexes then "false" else "true")                                       $$
        "}"
 
@@ -2871,7 +2871,7 @@ mkArrangement d rel ArrangementSet{..} =
         distinct_by_construction = relIsDistinct d rel && (not $ exprContainsPHolders arngPattern)
     in "program::Arrangement::Set{"                                                                                                 $$
        "    name: std::borrow::Cow::from(r###\"" <> pp arngPattern <> " /*" <> (if arngDistinct then "antijoin" else "semijoin") <> "*/\"###)," $$
-       (nest' $ "fmfun: {fn __f(" <> vALUE_VAR <> ": DDValue) -> ::std::option::Option<DDValue>" $$ fmfun $$ "__f},")                             $$
+       (nest' $ "fmfun: {fn __f(" <> vALUE_VAR <> ": ::differential_datalog::ddval::DDValue) -> ::std::option::Option<::differential_datalog::ddval::DDValue>" $$ fmfun $$ "__f},")                             $$
        "    distinct:" <+> (if arngDistinct && not distinct_by_construction then "true" else "false")                               $$
        "}"
 
