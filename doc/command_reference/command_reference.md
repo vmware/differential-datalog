@@ -49,17 +49,17 @@ all other relations and constructors must be referred by their fully qualified D
 including module name:
 
 ```
-// `Foo` is declared in the top-level module.
+# `Foo` is declared in the top-level module.
 insert Foo(1),
 
-// `Bar` is declared in a module called `modname`.
+# `Bar` is declared in a module called `modname`.
 insert modname::Bar(1),
 ```
 
 This is also the case for types declared inside the standard library:
 
 ```
-// `Option` type is declared in `ddlog_std`.
+# `Option` type is declared in `ddlog_std`.
 insert R(.field1 = ddlog_std::Some{1}),
 ```
 
