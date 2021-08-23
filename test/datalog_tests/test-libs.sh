@@ -29,5 +29,16 @@ test_lib hashset_test
 test_lib group_test
 test_lib base64_test
 
-# No flatbuf support for Time, Date, etc yet
-FLATBUF=0 ./run-test.sh time_test.dl release
+# Tests for libraries that do not support flatbuf serialization.
+FLATBUF=0 ./run-test.sh lib_test_no_flatbuf.dl release
+
+# $1 - test name
+test_nofb_lib() {
+    echo Running $1 test
+    RUST_BACKTRACE=full /usr/bin/time ./lib_test_no_flatbuf_ddlog/target/release/lib_test_no_flatbuf_cli --no-init-snapshot < $1.dat > $1.dump
+    diff $1.dump.expected $1.dump
+}
+
+
+test_nofb_lib time_test
+test_nofb_lib ddvalue_test

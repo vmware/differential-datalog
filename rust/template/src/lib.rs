@@ -52,6 +52,7 @@ use num_traits::identities::One;
 use once_cell::sync::Lazy;
 
 use fnv::{FnvBuildHasher, FnvHashMap};
+use phf::phf_map;
 
 use serde::ser::SerializeTuple;
 use serde::Deserialize;
@@ -68,104 +69,25 @@ pub use ddlog_log as hidden_ddlog_log;
 #[cfg(feature = "c_api")]
 pub use differential_datalog::api as hidden_ddlog_api;
 
-/* Wrapper around `Update<DDValue>` type that implements `Serialize` and `Deserialize`
- * traits.  It is currently only used by the distributed_ddlog crate in order to
- * serialize updates before sending them over the network and deserializing them on the
- * way back.  In other scenarios, the user either creates a `Update<DDValue>` type
- * themselves (when using the strongly typed DDlog API) or deserializes `Update<DDValue>`
- * from `Record` using `DDlogConvert::updcmd2upd()`.
- *
- * Why use a wrapper instead of implementing the traits for `Update<DDValue>` directly?
- * `Update<>` and `DDValue` types are both declared in the `differential_datalog` crate,
- * whereas the `Deserialize` implementation is program-specific and must be in one of the
- * generated crates, so we need a wrapper to avoid creating an orphan `impl`.
- *
- * Serialized representation: we currently only serialize `Insert` and `DeleteValue`
- * commands, represented in serialized form as (polarity, relid, value) tuple.  This way
- * the deserializer first reads relid and uses it to decide which value to deserialize
- * next.
- *
- * `impl Serialize` - serializes the value by forwarding `serialize` call to the `DDValue`
- * object (in fact, it is generic and could be in the `differential_datalog` crate, but we
- * keep it here to make it easier to keep it in sync with `Deserialize`).
- *
- * `impl Deserialize` - gets generated in `Compile.hs` using the macro below.  The macro
- * takes a list of `(relid, type)` and generates a match statement that uses type-specific
- * `Deserialize` for each `relid`.
- */
-#[derive(Debug)]
-pub struct UpdateSerializer(program::Update<DDValue>);
-
-impl From<program::Update<DDValue>> for UpdateSerializer {
-    fn from(u: program::Update<DDValue>) -> Self {
-        UpdateSerializer(u)
-    }
-}
-impl From<UpdateSerializer> for program::Update<DDValue> {
-    fn from(u: UpdateSerializer) -> Self {
-        u.0
-    }
-}
-
-impl ::serde::Serialize for UpdateSerializer {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut tup = serializer.serialize_tuple(3)?;
-        match &self.0 {
-            program::Update::Insert { relid, v } => {
-                tup.serialize_element(&true)?;
-                tup.serialize_element(relid)?;
-                tup.serialize_element(v)?;
-            }
-            program::Update::DeleteValue { relid, v } => {
-                tup.serialize_element(&false)?;
-                tup.serialize_element(relid)?;
-                tup.serialize_element(v)?;
-            }
-            _ => panic!("Cannot serialize InsertOrUpdate/Modify/DeleteKey update"),
-        };
-        tup.end()
-    }
-}
+pub struct RelValDeserialize;
 
 #[macro_export]
-macro_rules! decl_update_deserializer {
-    ( $n:ty, $(($rel:expr, $typ:ty)),* ) => {
-        impl<'de> ::serde::Deserialize<'de> for $n {
-            fn deserialize<D: ::serde::Deserializer<'de>>(deserializer: D) -> ::std::result::Result<Self, D::Error> {
-                struct UpdateVisitor;
-
-                impl<'de> ::serde::de::Visitor<'de> for UpdateVisitor {
-                    type Value = $n;
-
-                    fn expecting(&self, formatter: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                        formatter.write_str("(polarity, relid, value) tuple")
+macro_rules! decl_any_deserialize {
+    ( $(($rel:expr, $typ:ty)),* ) => {
+        static DDANY_DESERIALIZE_FUNC_MAP: phf::Map<u64, ::differential_datalog::AnyDeserializeFunc> = phf_map! {
+            $(
+                $rel => {
+                    fn deserialize(deserializer: &mut dyn ::erased_serde::Deserializer) -> Result<::differential_datalog::ddval::Any, ::erased_serde::Error> {
+                        <$typ>::deserialize(deserializer).map(|x| ::differential_datalog::ddval::Any::from(x.into_ddvalue()))
                     }
+                    deserialize
+                },
+            )*
+        };
 
-                    fn visit_seq<A>(self, mut seq: A) -> ::std::result::Result<Self::Value, A::Error>
-                    where
-                        A: ::serde::de::SeqAccess<'de>,
-                    {
-                        let polarity = seq.next_element::<bool>()?.ok_or_else(|| <A::Error as ::serde::de::Error>::custom("Missing polarity"))?;
-                        let relid = seq.next_element::<::differential_datalog::program::RelId>()?.ok_or_else(|| <A::Error as ::serde::de::Error>::custom("Missing relation id"))?;
-                        match relid {
-                            $(
-                                $rel => {
-                                    let v = seq.next_element::<$typ>()?.ok_or_else(|| <A::Error as ::serde::de::Error>::custom("Missing value"))?.into_ddvalue();
-                                    if polarity {
-                                        Ok(UpdateSerializer(::differential_datalog::program::Update::Insert { relid, v }))
-                                    } else {
-                                        Ok(UpdateSerializer(::differential_datalog::program::Update::DeleteValue { relid, v }))
-                                    }
-                                },
-                            )*
-                            _ => {
-                                ::std::result::Result::Err(<A::Error as ::serde::de::Error>::custom(format!("Unknown input relation id {}", relid)))
-                            }
-                        }
-                    }
-                }
-
-                deserializer.deserialize_tuple(3, UpdateVisitor)
+        impl ::differential_datalog::AnyDeserialize for RelValDeserialize {
+            fn get_deserialize(&self, relid: ::differential_datalog::program::RelId) -> ::std::option::Option<::differential_datalog::AnyDeserializeFunc> {
+                DDANY_DESERIALIZE_FUNC_MAP.get(&(relid as u64)).cloned()
             }
         }
     };
@@ -292,6 +214,7 @@ pub fn run_with_config(
         None,
         crate::prog,
         Box::new(crate::Inventory),
+        Box::new(RelValDeserialize),
         Box::new(crate::D3logInventory),
         flatbuf_converter,
     )
@@ -330,6 +253,7 @@ pub fn run(
         None,
         crate::prog,
         Box::new(crate::Inventory),
+        Box::new(RelValDeserialize),
         Box::new(crate::D3logInventory),
         flatbuf_converter,
     )
@@ -376,6 +300,7 @@ pub unsafe extern "C" fn ddlog_run_with_config(
         print_err,
         crate::prog,
         Box::new(crate::Inventory),
+        Box::new(RelValDeserialize),
         Box::new(crate::D3logInventory),
         flatbuf_converter,
     );
@@ -426,14 +351,6 @@ pub fn prog(
     __update_cb: ::std::sync::Arc<dyn ::differential_datalog::program::RelationCallback>,
 ) -> ::differential_datalog::program::Program {
     ::std::panic!("prog not implemented")
-}
-
-impl<'de> ::serde::Deserialize<'de> for crate::UpdateSerializer {
-    fn deserialize<D: ::serde::de::Deserializer<'de>>(
-        deserializer: D,
-    ) -> ::std::result::Result<Self, D::Error> {
-        ::std::panic!("Not implemented: UpdateSerializer::deserialize")
-    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -490,6 +407,15 @@ impl ::std::convert::TryFrom<::differential_datalog::program::IdxId> for crate::
 
     fn try_from(_iid: ::differential_datalog::program::IdxId) -> ::std::result::Result<Self, ()> {
         ::std::panic!("Indexes::try_from::<program::IdxId> not implemented")
+    }
+}
+
+impl ::differential_datalog::AnyDeserialize for RelValDeserialize {
+    fn get_deserialize(
+        &self,
+        relid: ::differential_datalog::program::RelId,
+    ) -> ::std::option::Option<::differential_datalog::AnyDeserializeFunc> {
+        ::std::option::Option::None
     }
 }
 

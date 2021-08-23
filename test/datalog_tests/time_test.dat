@@ -1,10 +1,10 @@
 start;
-insert TITest[TITest{.t = "10:11:12.000000000"}],
-insert DITest[DITest{.d = "2010-10-15"}],
-insert DTITest[DTITest{.d = time::DateTime{.date = "2010-10-15", .time = "10:11:12.000000000" }}],
+insert time_test::TITest(.t = "10:11:12.000000000"),
+insert time_test::DITest(.d = "2010-10-15"),
+insert time_test::DTITest(.d = time::DateTime{.date = "2010-10-15", .time = "10:11:12.000000000" }),
 commit;
-dump TTest;
-dump Extract;
-dump DTest;
-dump DTTest;
+dump time_test::TTest;
+dump time_test::Extract;
+dump time_test::DTest;
+dump time_test::DTTest;
 exit

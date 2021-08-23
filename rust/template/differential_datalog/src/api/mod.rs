@@ -14,8 +14,8 @@ use crate::{
     ddval::DDValue,
     program::{config::Config, IdxId, Program, RelId, RelationCallback, RunningProgram, Update},
     record::{IntoRecord, Record, UpdCmd},
-    replay, CommandRecorder, D3log, D3logLocationId, DDlog, DDlogDump, DDlogDynamic,
-    DDlogInventory, DDlogProfiling, DeltaMap,
+    replay, AnyDeserialize, CommandRecorder, D3log, D3logLocationId, DDlog, DDlogDump,
+    DDlogDynamic, DDlogInventory, DDlogProfiling, DeltaMap,
 };
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -31,6 +31,7 @@ use std::{
 type BoxedInventory = Box<dyn DDlogInventory + Send + Sync + 'static>;
 type BoxedLocalizer = Box<dyn D3logLocalizer + Send + Sync + 'static>;
 type BoxedFlatbufConverter = Box<dyn FlatbufConverter + Send + Sync + 'static>;
+type BoxedDeserialize = Box<dyn AnyDeserialize + Send + Sync + 'static>;
 
 // TODO: Move HDDlog into the differential_datalog crate.
 pub struct HDDlog {
@@ -41,6 +42,7 @@ pub struct HDDlog {
     pub print_err: Option<extern "C" fn(msg: *const c_char)>,
     pub inventory: BoxedInventory,
     pub d3log_localizer: BoxedLocalizer,
+    pub any_deserialize: BoxedDeserialize,
     pub flatbuf_converter: BoxedFlatbufConverter,
     /// When set, all commands sent to the program are recorded in
     /// the specified `.dat` file so that they can be replayed later.
@@ -49,12 +51,14 @@ pub struct HDDlog {
 
 /* Internals */
 impl HDDlog {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         config: Config,
         do_store: bool,
         print_err: Option<extern "C" fn(msg: *const c_char)>,
         init_ddlog: fn(Arc<dyn RelationCallback>) -> Program,
         inventory: BoxedInventory,
+        any_deserialize: BoxedDeserialize,
         d3log_localizer: BoxedLocalizer,
         flatbuf_converter: BoxedFlatbufConverter,
     ) -> Result<(Self, DeltaMap<DDValue>), String> {
@@ -102,6 +106,7 @@ impl HDDlog {
             print_err,
             inventory,
             d3log_localizer,
+            any_deserialize,
             flatbuf_converter,
             command_recorder: None,
         };

@@ -41,7 +41,6 @@ use ::timely::dataflow::scopes;
 use ::timely::worker;
 
 use ::ddlog_derive::{FromRecord, IntoRecord, Mutator};
-use ::differential_datalog::ddval::DDValue;
 use ::differential_datalog::ddval::DDValConvert;
 use ::differential_datalog::program;
 use ::differential_datalog::program::TupleTS;

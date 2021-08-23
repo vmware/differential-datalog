@@ -1,0 +1,15 @@
+/* Test `Any` API. */
+
+input relation DDValTest1(x: string, y: usize, z: Vec<istring>)
+input relation DDValTest2(a: Map<usize, string>, b: (bool, Set<u128>))
+
+output relation DDValTestOutput(relname: string, ddval: Any)
+
+DDValTestOutput("DDValTest1", x.to_any()) :- DDValTest1[x].
+DDValTestOutput("DDValTest2", x.to_any()) :- DDValTest2[x].
+
+output relation DDValTest1Output[DDValTest1]
+output relation DDValTest2Output[DDValTest2]
+
+DDValTest1Output[from_any(x).unwrap_or_default()] :- DDValTestOutput("DDValTest1", x).
+DDValTest2Output[from_any(x).unwrap_or_default()] :- DDValTestOutput("DDValTest2", x).

@@ -200,6 +200,7 @@ rustLibFiles =
         , ("differential_datalog/src/ddlog.rs"                    , $(embedFile "rust/template/differential_datalog/src/ddlog.rs"))
         , ("differential_datalog/src/ddval/mod.rs"                , $(embedFile "rust/template/differential_datalog/src/ddval/mod.rs"))
         , ("differential_datalog/src/ddval/ddvalue.rs"            , $(embedFile "rust/template/differential_datalog/src/ddval/ddvalue.rs"))
+        , ("differential_datalog/src/ddval/any.rs"                , $(embedFile "rust/template/differential_datalog/src/ddval/any.rs"))
         , ("differential_datalog/src/ddval/ddval_convert.rs"      , $(embedFile "rust/template/differential_datalog/src/ddval/ddval_convert.rs"))
         , ("differential_datalog/src/lib.rs"                      , $(embedFile "rust/template/differential_datalog/src/lib.rs"))
         , ("differential_datalog/src/profile.rs"                  , $(embedFile "rust/template/differential_datalog/src/profile.rs"))
@@ -925,7 +926,7 @@ compileMainLib :: (?cfg::Config, ?specname::String, ?modules::M.Map ModuleName D
 compileMainLib d d3log_rel_map nodes cstate =
     mainHeader                             $+$
     reexports                              $+$
-    mkUpdateDeserializer d                 $+$
+    mkAnyDeserialize d                     $+$
     mkDDValueFromRecord d                  $+$ -- Function to convert cmd_parser::Record to Value
     mkIndexesIntoArrId d cstate            $+$
     mkRelEnum d                            $+$ -- 'enum Relations'
@@ -1002,11 +1003,11 @@ ppModuleReexports d ModuleReexports{..} =
 
 
 -- Generate Deserialize implementation for UpdateSerializer wrapper.
-mkUpdateDeserializer :: (?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> Doc
-mkUpdateDeserializer d =
-    "decl_update_deserializer!(UpdateSerializer," <> commaSep rels <> ");"
+mkAnyDeserialize :: (?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> Doc
+mkAnyDeserialize d =
+    "decl_any_deserialize!(" <> commaSep rels <> ");"
     where
-    rels = map (\rel -> "(" <> pp (relIdentifier d rel) <> "," <+> mkType d Nothing rel <> ")" )
+    rels = map (\rel -> "(" <> pp (relIdentifier d rel) <> "u64 ," <+> mkType d Nothing rel <> ")" )
            $ filter (\rel -> elem (relRole rel) [RelInput, RelOutput])
            $ M.elems $ progRelations d
 
