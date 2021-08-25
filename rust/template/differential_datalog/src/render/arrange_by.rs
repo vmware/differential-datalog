@@ -105,7 +105,7 @@ impl<'a> ArrangeBy<'a> {
             }
 
             ArrangementKind::Map { value_function } => {
-                self.render_map(&collection, value_function, &arrangement_name)
+                self.render_map(collection, value_function, &arrangement_name)
             }
         }
     }
@@ -185,7 +185,7 @@ impl<'a> ArrangeBy<'a> {
             }
 
             ArrangementKind::Map { value_function } => {
-                self.render_map(&collection, value_function, &arrangement_name)
+                self.render_map(collection, value_function, &arrangement_name)
             }
         }
     }
@@ -242,7 +242,7 @@ impl<'a> ArrangeBy<'a> {
                 });
 
                 let arranged =
-                    keyed.arrange_named::<OrdKeySpine<_, _, _, Offset>>(&arrangement_name);
+                    keyed.arrange_named::<OrdKeySpine<_, _, _, Offset>>(arrangement_name);
 
                 Err(Arrangement::Set(arranged))
             }

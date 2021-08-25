@@ -58,11 +58,11 @@ where
                     }
                     Err(ReadlineError::Eof) => {
                         println!("CTRL-D");
-                        save_history(&rl);
+                        save_history(rl);
                         return Ok(());
                     }
                     Err(err) => {
-                        save_history(&rl);
+                        save_history(rl);
                         return Err(format!("Readline failure: {}", err));
                     }
                 }

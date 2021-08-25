@@ -57,7 +57,7 @@ static LOG_CONFIG: Lazy<sync::RwLock<LogConfig>> =
 #[allow(clippy::ptr_arg, clippy::trivially_copy_pass_by_ref)]
 pub fn log(module: &i32, level: &i32, msg: &String) {
     let cfg = LOG_CONFIG.read().unwrap();
-    if let Some((cb, current_level)) = cfg.mod_callbacks.get(&module) {
+    if let Some((cb, current_level)) = cfg.mod_callbacks.get(module) {
         if *level <= *current_level {
             cb(*level, msg.as_str());
         }

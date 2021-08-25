@@ -776,7 +776,7 @@ fn render_relation<S>(
         with_prof_context(arrangement.name(), || {
             arrangements.insert(
                 (relation.id, arr_id),
-                arrangement.build_arrangement_root(&render_context, &collection),
+                arrangement.build_arrangement_root(render_context, &collection),
             )
         });
     }

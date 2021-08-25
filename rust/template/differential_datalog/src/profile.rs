@@ -179,7 +179,7 @@ impl Profile {
                             let context = context.as_ref().expect(
                                 "Operates events should always have valid context attached",
                             );
-                            self.handle_operates(&o, context);
+                            self.handle_operates(o, context);
                         }
                         event => {
                             if *profile_timely {
@@ -189,7 +189,7 @@ impl Profile {
                                     stats.handle_event(
                                         *duration,
                                         *id,
-                                        &event,
+                                        event,
                                         &self.op_address,
                                         &self.short_names,
                                     );
