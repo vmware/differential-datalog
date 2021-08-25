@@ -1129,7 +1129,7 @@ fn test_map(nthreads: usize) {
     }
 
     fn ffun(v: &DDValue) -> bool {
-        let U64(ref uv) = U64::from_ddvalue_ref(&v);
+        let U64(ref uv) = U64::from_ddvalue_ref(v);
         *uv > 10
     }
 
@@ -1610,7 +1610,7 @@ fn test_recursion(nthreads: usize) {
     };
 
     fn ffun(v: &DDValue) -> bool {
-        let Tuple2(ref fst, ref snd) = Tuple2::<String>::from_ddvalue_ref(&v);
+        let Tuple2(ref fst, ref snd) = Tuple2::<String>::from_ddvalue_ref(v);
         *fst != *snd
     }
 

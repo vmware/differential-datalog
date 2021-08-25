@@ -77,7 +77,7 @@ impl ddlog_log_destination {
         Ok(match self.mode {
             ddlog_log_mode::ddlog_log_disabled => None,
             ddlog_log_mode::ddlog_log_to_socket => Some(LoggingDestination::Socket {
-                sockaddr: SocketAddr::from_str(&address.as_ref().ok_or_else(|| {
+                sockaddr: SocketAddr::from_str(address.as_ref().ok_or_else(|| {
                     "ddlog_log_to_socket requires socket address in address_str".to_string()
                 })?)
                 .map_err(|e| {

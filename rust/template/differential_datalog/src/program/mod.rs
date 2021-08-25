@@ -436,14 +436,14 @@ pub enum XFormArrangement {
 impl XFormArrangement {
     pub fn description(&self) -> &str {
         match self {
-            XFormArrangement::FlatMap { description, .. } => &description,
-            XFormArrangement::FilterMap { description, .. } => &description,
-            XFormArrangement::Aggregate { description, .. } => &description,
-            XFormArrangement::Join { description, .. } => &description,
-            XFormArrangement::Semijoin { description, .. } => &description,
-            XFormArrangement::Antijoin { description, .. } => &description,
-            XFormArrangement::StreamJoin { description, .. } => &description,
-            XFormArrangement::StreamSemijoin { description, .. } => &description,
+            XFormArrangement::FlatMap { description, .. } => description,
+            XFormArrangement::FilterMap { description, .. } => description,
+            XFormArrangement::Aggregate { description, .. } => description,
+            XFormArrangement::Join { description, .. } => description,
+            XFormArrangement::Semijoin { description, .. } => description,
+            XFormArrangement::Antijoin { description, .. } => description,
+            XFormArrangement::StreamJoin { description, .. } => description,
+            XFormArrangement::StreamSemijoin { description, .. } => description,
         }
     }
 
@@ -618,16 +618,16 @@ pub enum XFormCollection {
 impl XFormCollection {
     pub fn description(&self) -> &str {
         match self {
-            XFormCollection::Arrange { description, .. } => &description,
-            XFormCollection::Differentiate { description, .. } => &description,
-            XFormCollection::Map { description, .. } => &description,
-            XFormCollection::FlatMap { description, .. } => &description,
-            XFormCollection::Filter { description, .. } => &description,
-            XFormCollection::FilterMap { description, .. } => &description,
-            XFormCollection::Inspect { description, .. } => &description,
-            XFormCollection::StreamJoin { description, .. } => &description,
-            XFormCollection::StreamSemijoin { description, .. } => &description,
-            XFormCollection::StreamXForm { description, .. } => &description,
+            XFormCollection::Arrange { description, .. } => description,
+            XFormCollection::Differentiate { description, .. } => description,
+            XFormCollection::Map { description, .. } => description,
+            XFormCollection::FlatMap { description, .. } => description,
+            XFormCollection::Filter { description, .. } => description,
+            XFormCollection::FilterMap { description, .. } => description,
+            XFormCollection::Inspect { description, .. } => description,
+            XFormCollection::StreamJoin { description, .. } => description,
+            XFormCollection::StreamSemijoin { description, .. } => description,
+            XFormCollection::StreamXForm { description, .. } => description,
         }
     }
 
@@ -1138,7 +1138,7 @@ impl Program {
     fn get_delayed_relation(&self, relid: RelId) -> Option<&DelayedRelation> {
         for drel in &self.delayed_rels {
             if drel.id == relid {
-                return Some(&drel);
+                return Some(drel);
             }
         }
         None
@@ -1283,7 +1283,7 @@ impl Program {
                 afun,
                 ref next,
             } => {
-                let arr = with_prof_context(&description, || col.flat_map(afun).arrange_by_key());
+                let arr = with_prof_context(description, || col.flat_map(afun).arrange_by_key());
                 Self::xform_arrangement(&arr, &*next, arrangements, lookup_collection)
             }
             XFormCollection::Differentiate {
@@ -1295,7 +1295,7 @@ impl Program {
                     <dyn Any>::downcast_ref::<<S::Timestamp as Timestamp>::Summary>(&(1 as TS))
                         .expect("Differentiate operator used in recursive context");
 
-                let diff = with_prof_context(&description, || {
+                let diff = with_prof_context(description, || {
                     col.concat(
                         &col.delay(move |t| one.results_in(t).expect("Integer overflow in Differentiate: maximal number of transactions exceeded")).negate())
                 });
@@ -1307,7 +1307,7 @@ impl Program {
                 mfun,
                 ref next,
             } => {
-                let mapped = with_prof_context(&description, || col.map(mfun));
+                let mapped = with_prof_context(description, || col.map(mfun));
                 Self::xform_collection(mapped, &*next, arrangements, lookup_collection)
             }
             XFormCollection::FlatMap {
@@ -1315,7 +1315,7 @@ impl Program {
                 fmfun,
                 ref next,
             } => {
-                let flattened = with_prof_context(&description, || {
+                let flattened = with_prof_context(description, || {
                     col.flat_map(move |x| fmfun(x).into_iter().flatten())
                 });
                 Self::xform_collection(flattened, &*next, arrangements, lookup_collection)
@@ -1325,7 +1325,7 @@ impl Program {
                 ffun,
                 ref next,
             } => {
-                let filtered = with_prof_context(&description, || col.filter(ffun));
+                let filtered = with_prof_context(description, || col.filter(ffun));
                 Self::xform_collection(filtered, &*next, arrangements, lookup_collection)
             }
             XFormCollection::FilterMap {
@@ -1333,7 +1333,7 @@ impl Program {
                 fmfun,
                 ref next,
             } => {
-                let flattened = with_prof_context(&description, || col.flat_map(fmfun));
+                let flattened = with_prof_context(description, || col.flat_map(fmfun));
                 Self::xform_collection(flattened, &*next, arrangements, lookup_collection)
             }
             XFormCollection::Inspect {
@@ -1341,7 +1341,7 @@ impl Program {
                 ifun,
                 ref next,
             } => {
-                let inspect = with_prof_context(&description, || {
+                let inspect = with_prof_context(description, || {
                     col.inspect(move |(v, ts, w)| ifun(v, ts.to_tuple_ts(), *w))
                 });
                 Self::xform_collection(inspect, &*next, arrangements, lookup_collection)
@@ -1353,7 +1353,7 @@ impl Program {
                 jfun,
                 ref next,
             } => {
-                let join = with_prof_context(&description, || {
+                let join = with_prof_context(description, || {
                     // arrange input collection
                     let collection_with_keys = col.flat_map(afun);
                     let arr = match arrangements.lookup_arr(arrangement) {
@@ -1386,7 +1386,7 @@ impl Program {
                 jfun,
                 ref next,
             } => {
-                let join = with_prof_context(&description, || {
+                let join = with_prof_context(description, || {
                     // arrange input collection
                     let collection_with_keys = col.flat_map(afun);
                     let arr = match arrangements.lookup_arr(arrangement) {
@@ -1499,7 +1499,7 @@ impl Program {
                 afun,
                 ref next,
             } => {
-                let arr = with_prof_context(&description, || col.flat_map(afun).arrange_by_key());
+                let arr = with_prof_context(description, || col.flat_map(afun).arrange_by_key());
                 Self::xform_arrangement(&arr, &*next, arrangements, lookup_collection)
             }
             XFormCollection::Differentiate {
@@ -1511,7 +1511,7 @@ impl Program {
                     <dyn Any>::downcast_ref::<<S::Timestamp as Timestamp>::Summary>(&(1 as TS))
                         .expect("Differentiate operator used in recursive context");
 
-                let diff = with_prof_context(&description, || {
+                let diff = with_prof_context(description, || {
                     col.concat(
                         &col.delay(move |t| one.results_in(t).expect("Integer overflow in Differentiate: maximal number of transactions exceeded")).negate())
                 });
@@ -1523,7 +1523,7 @@ impl Program {
                 mfun,
                 ref next,
             } => {
-                let mapped = with_prof_context(&description, || col.map(mfun));
+                let mapped = with_prof_context(description, || col.map(mfun));
                 Self::streamless_xform_collection(mapped, &*next, arrangements, lookup_collection)
             }
             XFormCollection::FlatMap {
@@ -1531,7 +1531,7 @@ impl Program {
                 fmfun,
                 ref next,
             } => {
-                let flattened = with_prof_context(&description, || {
+                let flattened = with_prof_context(description, || {
                     col.flat_map(move |x| fmfun(x).into_iter().flatten())
                 });
                 Self::streamless_xform_collection(
@@ -1546,7 +1546,7 @@ impl Program {
                 ffun,
                 ref next,
             } => {
-                let filtered = with_prof_context(&description, || col.filter(ffun));
+                let filtered = with_prof_context(description, || col.filter(ffun));
                 Self::streamless_xform_collection(filtered, &*next, arrangements, lookup_collection)
             }
             XFormCollection::FilterMap {
@@ -1554,7 +1554,7 @@ impl Program {
                 fmfun,
                 ref next,
             } => {
-                let flattened = with_prof_context(&description, || col.flat_map(fmfun));
+                let flattened = with_prof_context(description, || col.flat_map(fmfun));
                 Self::streamless_xform_collection(
                     flattened,
                     &*next,
@@ -1567,7 +1567,7 @@ impl Program {
                 ifun,
                 ref next,
             } => {
-                let inspect = with_prof_context(&description, || {
+                let inspect = with_prof_context(description, || {
                     col.inspect(move |(v, ts, w)| ifun(v, ts.to_tuple_ts(), *w))
                 });
                 Self::streamless_xform_collection(inspect, &*next, arrangements, lookup_collection)
@@ -1579,7 +1579,7 @@ impl Program {
                 jfun,
                 ref next,
             } => {
-                let join = with_prof_context(&description, || {
+                let join = with_prof_context(description, || {
                     // arrange input collection
                     let collection_with_keys = col.flat_map(afun);
                     let arr = match arrangements.lookup_arr(arrangement) {
@@ -1612,7 +1612,7 @@ impl Program {
                 jfun,
                 ref next,
             } => {
-                let join = with_prof_context(&description, || {
+                let join = with_prof_context(description, || {
                     // arrange input collection
                     let collection_with_keys = col.flat_map(afun);
                     let arr = match arrangements.lookup_arr(arrangement) {
@@ -1669,7 +1669,7 @@ impl Program {
                 ref description,
                 fmfun,
                 ref next,
-            } => with_prof_context(&description, || {
+            } => with_prof_context(description, || {
                 Self::streamless_xform_collection(
                     arr.flat_map_ref(move |_, v| match fmfun(v.clone()) {
                         Some(iter) => iter,
@@ -1684,7 +1684,7 @@ impl Program {
                 ref description,
                 fmfun,
                 ref next,
-            } => with_prof_context(&description, || {
+            } => with_prof_context(description, || {
                 Self::streamless_xform_collection(
                     arr.flat_map_ref(move |_, v| fmfun(v.clone())),
                     &*next,
@@ -1698,7 +1698,7 @@ impl Program {
                 aggfun,
                 ref next,
             } => {
-                let col = with_prof_context(&description, || {
+                let col = with_prof_context(description, || {
                     ffun.map_or_else(
                         || {
                             arr.reduce(move |key, src, dst| {
@@ -1729,7 +1729,7 @@ impl Program {
                 ref next,
             } => match arrangements.lookup_arr(arrangement) {
                 ArrangementFlavor::Local(DataflowArrangement::Map(arranged)) => {
-                    let col = with_prof_context(&description, || {
+                    let col = with_prof_context(description, || {
                         ffun.map_or_else(
                             || arr.join_core(&arranged, jfun),
                             |f| arr.filter(move |_, v| f(v)).join_core(&arranged, jfun),
@@ -1738,7 +1738,7 @@ impl Program {
                     Self::streamless_xform_collection(col, &*next, arrangements, lookup_collection)
                 }
                 ArrangementFlavor::Foreign(DataflowArrangement::Map(arranged)) => {
-                    let col = with_prof_context(&description, || {
+                    let col = with_prof_context(description, || {
                         ffun.map_or_else(
                             || arr.join_core(&arranged, jfun),
                             |f| arr.filter(move |_, v| f(v)).join_core(&arranged, jfun),
@@ -1757,7 +1757,7 @@ impl Program {
                 ref next,
             } => match arrangements.lookup_arr(arrangement) {
                 ArrangementFlavor::Local(DataflowArrangement::Set(arranged)) => {
-                    let col = with_prof_context(&description, || {
+                    let col = with_prof_context(description, || {
                         ffun.map_or_else(
                             || arr.join_core(&arranged, jfun),
                             |f| arr.filter(move |_, v| f(v)).join_core(&arranged, jfun),
@@ -1766,7 +1766,7 @@ impl Program {
                     Self::streamless_xform_collection(col, &*next, arrangements, lookup_collection)
                 }
                 ArrangementFlavor::Foreign(DataflowArrangement::Set(arranged)) => {
-                    let col = with_prof_context(&description, || {
+                    let col = with_prof_context(description, || {
                         ffun.map_or_else(
                             || arr.join_core(&arranged, jfun),
                             |f| arr.filter(move |_, v| f(v)).join_core(&arranged, jfun),
@@ -1783,9 +1783,9 @@ impl Program {
                 ref next,
             } => match arrangements.lookup_arr(arrangement) {
                 ArrangementFlavor::Local(DataflowArrangement::Set(arranged)) => {
-                    let col = with_prof_context(&description, || {
+                    let col = with_prof_context(description, || {
                         ffun.map_or_else(
-                            || antijoin_arranged(&arr, &arranged).map(|(_, v)| v),
+                            || antijoin_arranged(arr, &arranged).map(|(_, v)| v),
                             |f| {
                                 antijoin_arranged(&arr.filter(move |_, v| f(v)), &arranged)
                                     .map(|(_, v)| v)
@@ -1795,9 +1795,9 @@ impl Program {
                     Self::streamless_xform_collection(col, &*next, arrangements, lookup_collection)
                 }
                 ArrangementFlavor::Foreign(DataflowArrangement::Set(arranged)) => {
-                    let col = with_prof_context(&description, || {
+                    let col = with_prof_context(description, || {
                         ffun.map_or_else(
-                            || antijoin_arranged(&arr, &arranged).map(|(_, v)| v),
+                            || antijoin_arranged(arr, &arranged).map(|(_, v)| v),
                             |f| {
                                 antijoin_arranged(&arr.filter(move |_, v| f(v)), &arranged)
                                     .map(|(_, v)| v)
@@ -1816,7 +1816,7 @@ impl Program {
                 jfun,
                 ref next,
             } => {
-                let col = with_prof_context(&description, || {
+                let col = with_prof_context(description, || {
                     // Map `rel` into `(key, value)` pairs, filtering out
                     // records where `kfun` returns `None`.
                     // FIXME: The key will need to be cloned below.  To avoid
@@ -1868,7 +1868,7 @@ impl Program {
                 jfun,
                 ref next,
             } => {
-                let col = with_prof_context(&description, || {
+                let col = with_prof_context(description, || {
                     // Extract join key from `rel`, filtering out
                     // FIXME: The key will need to be cloned below.  To avoid
                     // this overhead, we need a version of `lookup_map` that
@@ -2401,7 +2401,7 @@ impl RunningProgram {
                 new
             }
             Update::DeleteValue { v, .. } => {
-                let present = s.remove(&v);
+                let present = s.remove(v);
                 if present {
                     Self::delta_dec(ds, v);
                 }
@@ -2532,7 +2532,7 @@ impl RunningProgram {
                     m.mutate(new)?;
                     Self::delta_dec(ds, &old);
                     updates.push(Update::DeleteValue { relid, v: old });
-                    Self::delta_inc(ds, &new);
+                    Self::delta_inc(ds, new);
                     updates.push(Update::Insert {
                         relid,
                         v: new.clone(),

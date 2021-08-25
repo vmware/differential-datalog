@@ -154,25 +154,25 @@ where
         match upd {
             UpdCmd::Insert(rel, record) => record_insert(
                 writer,
-                Self::relident2name(inventory, rel).unwrap_or(&"???"),
+                Self::relident2name(inventory, rel).unwrap_or("???"),
                 record,
             ),
             UpdCmd::InsertOrUpdate(rel, record) => record_insert_or_update(
                 writer,
-                Self::relident2name(inventory, rel).unwrap_or(&"???"),
+                Self::relident2name(inventory, rel).unwrap_or("???"),
                 record,
             ),
             UpdCmd::Delete(rel, record) => record_delete(
                 writer,
-                Self::relident2name(inventory, rel).unwrap_or(&"???"),
+                Self::relident2name(inventory, rel).unwrap_or("???"),
                 record,
             ),
             UpdCmd::DeleteKey(rel, record) => {
-                let rname = Self::relident2name(inventory, rel).unwrap_or(&"???");
+                let rname = Self::relident2name(inventory, rel).unwrap_or("???");
                 write!(writer, "delete_key {} {}", rname, record,)
             }
             UpdCmd::Modify(rel, key, mutator) => {
-                let rname = Self::relident2name(inventory, rel).unwrap_or(&"???");
+                let rname = Self::relident2name(inventory, rel).unwrap_or("???");
                 write!(writer, "modify {} {} <- {}", rname, key, mutator,)
             }
         }
@@ -185,31 +185,27 @@ where
         upd: &Update<DDValue>,
     ) -> IOResult<()> {
         match upd {
-            Update::Insert { relid, v } => record_insert(
-                writer,
-                inventory.get_table_name(*relid).unwrap_or(&"???"),
-                v,
-            ),
+            Update::Insert { relid, v } => {
+                record_insert(writer, inventory.get_table_name(*relid).unwrap_or("???"), v)
+            }
             Update::InsertOrUpdate { relid, v } => record_insert_or_update(
                 writer,
-                inventory.get_table_name(*relid).unwrap_or(&"???"),
+                inventory.get_table_name(*relid).unwrap_or("???"),
                 v,
             ),
-            Update::DeleteValue { relid, v } => record_delete(
-                writer,
-                inventory.get_table_name(*relid).unwrap_or(&"???"),
-                v,
-            ),
+            Update::DeleteValue { relid, v } => {
+                record_delete(writer, inventory.get_table_name(*relid).unwrap_or("???"), v)
+            }
             Update::DeleteKey { relid, k } => write!(
                 writer,
                 "delete_key {} {}",
-                inventory.get_table_name(*relid).unwrap_or(&"???"),
+                inventory.get_table_name(*relid).unwrap_or("???"),
                 k,
             ),
             Update::Modify { relid, k, m } => write!(
                 writer,
                 "modify {} {} <- {}",
-                inventory.get_table_name(*relid).unwrap_or(&"???"),
+                inventory.get_table_name(*relid).unwrap_or("???"),
                 k,
                 m,
             ),
@@ -247,7 +243,7 @@ where
     }
 
     fn apply_updates_dynamic(&self, upds: &mut dyn Iterator<Item = UpdCmd>) -> Result<(), String> {
-        self.do_record_updates(upds, |i, w, u| Self::record_upd_cmd(i, w, &u))
+        self.do_record_updates(upds, |i, w, u| Self::record_upd_cmd(i, w, u))
     }
 
     fn clear_relation(&self, rid: RelId) -> Result<(), String> {
@@ -255,7 +251,7 @@ where
         writeln!(
             &mut writer,
             "clear {};",
-            self.inventory.get_table_name(rid).unwrap_or(&"???")
+            self.inventory.get_table_name(rid).unwrap_or("???")
         )
         .map_err(|e| e.to_string())
     }
@@ -265,7 +261,7 @@ where
         writeln!(
             &mut writer,
             "query_index {}({});",
-            self.inventory.get_index_name(iid).unwrap_or(&"???"),
+            self.inventory.get_index_name(iid).unwrap_or("???"),
             key
         )
         .and(Ok(vec![]))
@@ -277,7 +273,7 @@ where
         writeln!(
             &mut writer,
             "dump_index {};",
-            self.inventory.get_index_name(iid).unwrap_or(&"???")
+            self.inventory.get_index_name(iid).unwrap_or("???")
         )
         .and(Ok(vec![]))
         .map_err(|e| e.to_string())
@@ -301,7 +297,7 @@ where
     }
 
     fn apply_updates(&self, upds: &mut dyn Iterator<Item = Update<DDValue>>) -> Result<(), String> {
-        self.do_record_updates(upds, |i, w, u| Self::record_val_upd(i, w, &u))
+        self.do_record_updates(upds, |i, w, u| Self::record_val_upd(i, w, u))
     }
 
     fn query_index(&self, iid: IdxId, key: DDValue) -> Result<BTreeSet<DDValue>, String> {
@@ -309,7 +305,7 @@ where
         writeln!(
             &mut writer,
             "query_index {}({});",
-            self.inventory.get_index_name(iid).unwrap_or(&"???"),
+            self.inventory.get_index_name(iid).unwrap_or("???"),
             key
         )
         .map(|_| BTreeSet::new())
@@ -321,7 +317,7 @@ where
         writeln!(
             &mut writer,
             "dump_index {};",
-            self.inventory.get_index_name(iid).unwrap_or(&"???")
+            self.inventory.get_index_name(iid).unwrap_or("???")
         )
         .map(|_| BTreeSet::new())
         .map_err(|e| e.to_string())
@@ -342,7 +338,7 @@ where
         writeln!(
             &mut writer,
             "dump {};",
-            self.inventory.get_table_name(rid).unwrap_or(&"???")
+            self.inventory.get_table_name(rid).unwrap_or("???")
         )
         .map_err(|e| e.to_string())
     }
