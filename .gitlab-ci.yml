@@ -74,6 +74,14 @@ test-path:
         - ./test.sh negative
         - ./test.sh path
 
+test-lb:
+    extends: .private_runner
+    stage: test
+    tags:
+        - ddlog-ci-1
+    script:
+        - ./test.sh lb
+
 # Run individual stack-based tests, when possible combining them with Java tests
 # that depend on the same DDlog program.
 test-tutorial:

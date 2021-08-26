@@ -103,7 +103,7 @@ souffle=("static_analysis:Souffle static analysis test."
          "souffle_tests6:Souffle tests part6"
          "souffle_tests7:Souffle tests part7")
 
-d3log=()
+d3log=("lb:Mock load balancer")
 
 misc=("span_string"
       "span_uuid"
@@ -326,7 +326,9 @@ souffle_tests7() {
 }
 
 # 'd3log' test group.
-
+lb() {
+    ${THIS_DIR}/test/datalog_tests/lb_test/test.sh
+}
 
 # 'stack' test group.
 
