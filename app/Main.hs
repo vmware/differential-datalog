@@ -72,6 +72,7 @@ data TOption = Help
              | RustFlatBuffers
              | NestedTS32
              | D3log
+             | D3logDev
 
 options :: [OptDescr TOption]
 options = [ Option ['h'] ["help"]             (NoArg Help)                      "Display help message."
@@ -99,6 +100,7 @@ options = [ Option ['h'] ["help"]             (NoArg Help)                      
           , Option []    ["rust-flatbuffers"] (NoArg RustFlatBuffers)           "Build flatbuffers bindings for Rust"
           , Option []    ["nested-ts-32"]     (NoArg NestedTS32)                "Use 32-bit instead of 16-bit nested timestamps. Supports recursive programs that may perform >65,536 iterations. Slightly increases the memory footprint of the program."
           , Option []    ["d3log"]            (NoArg D3log)                     "Compile the input program to execute in the distributed DDlog (D3log) environment."
+          , Option []    ["d3log-dev"]        (NoArg D3logDev)                  "Compile the input program to execute in the D3log environment with experimental reflective features enabled."
           ]
 
 addOption :: Config -> TOption -> IO Config
@@ -131,6 +133,7 @@ addOption config RunRustfmt       = return config { confRunRustfmt = True }
 addOption config RustFlatBuffers  = return config { confRustFlatBuffers = True }
 addOption config NestedTS32       = return config { confNestedTS32 = True }
 addOption config D3log            = return config { confD3log = True }
+addOption config D3logDev         = return config { confD3log = True, confD3logDev = True }
 
 validateConfig :: Config -> IO ()
 validateConfig Config {..} = do

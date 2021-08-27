@@ -948,8 +948,8 @@ data ModuleReexports = ModuleReexports {
 }
 
 mkD3logImpl :: (?cfg::Config, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> M.Map String String -> Doc
-mkD3logImpl d d3log_rel_map =
-    "impl_trait_d3log!(" <> commaSep rels <> ");"
+mkD3logImpl d d3log_rel_map | confD3logDev ?cfg = "impl_trait_d3log!();"
+                            | otherwise = "impl_trait_d3log!(" <> commaSep rels <> ");"
     where
     rels = map (\(rout_name, rin_name) ->
                  let rout = getRelation d rout_name

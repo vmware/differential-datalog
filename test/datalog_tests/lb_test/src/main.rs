@@ -1,11 +1,9 @@
-use lb_ddlog::api::HDDlog;
 
 use lb_ddlog::Relations;
-
 use lb_ddlog::relid2name;
-
 use lb_ddlog::typedefs::*;
 
+use differential_datalog::api::HDDlog;
 use differential_datalog::{D3log, DDlog, DDlogDynamic};
 use differential_datalog::DeltaMap;
 use differential_datalog::ddval::DDValue;
@@ -15,7 +13,7 @@ use differential_datalog::program::Update;
 
 fn main() -> Result<(), String> {
 
-    let (hddlog, _) = HDDlog::run(1, false)?;
+    let (hddlog, _) = lb_ddlog::run(1, false)?;
 
     hddlog.transaction_start()?;
 

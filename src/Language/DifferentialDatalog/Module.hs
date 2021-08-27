@@ -57,6 +57,7 @@ import Data.Maybe
 -- import Debug.Trace
 import Text.PrettyPrint
 
+import Language.DifferentialDatalog.Config
 import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.PP
 import Language.DifferentialDatalog.Util
@@ -128,9 +129,21 @@ stdLibs = [ ModuleName [mOD_RT]
 stdImport :: ModuleName -> Import
 stdImport lib = Import nopos lib (ModuleName [])
 
--- Import library imports.
+-- Standard library imports.
 stdImports :: [Import]
 stdImports = map stdImport stdLibs
+
+-- Builtins are modules that are compiled into the program but
+-- not automatically imported in the namespace of any module.
+builtinLibs :: (?cfg::Config) => [ModuleName]
+builtinLibs | confD3logDev ?cfg = [ ModuleName ["d3log", "reflect"] ]
+            | otherwise         = []
+
+builtinImport :: ModuleName -> Import
+builtinImport lib = Import nopos lib lib
+
+builtinImports :: (?cfg::Config) => [Import]
+builtinImports = map builtinImport builtinLibs
 
 -- | Parse a datalog program along with all its imports; returns a "flat"
 -- program without imports.  In addition, returns `.rs` and `.toml` code
@@ -140,12 +153,12 @@ stdImports = map stdImport stdLibs
 --
 -- if 'import_std' is true, imports the standard libraries
 -- to each module.
-parseDatalogProgram :: [FilePath] -> Bool -> String -> FilePath -> ExceptT String IO ([DatalogModule], DatalogProgram, M.Map ModuleName (Doc, Doc, Doc))
+parseDatalogProgram :: (?cfg::Config) => [FilePath] -> Bool -> String -> FilePath -> ExceptT String IO ([DatalogModule], DatalogProgram, M.Map ModuleName (Doc, Doc, Doc))
 parseDatalogProgram roots import_std fdata fname = do
     roots' <- lift $ nub <$> mapM canonicalizePath roots
     prog <- parseDatalogString fdata fname
     let prog' = if import_std
-                   then prog { progImports = stdImports ++ progImports prog }
+                   then prog { progImports = stdImports ++ builtinImports ++ progImports prog }
                    else prog
     let main_mod = DatalogModule (ModuleName []) fname prog'
     let ?specname = takeBaseName fname
@@ -207,7 +220,7 @@ mergeModules mods = do
          $ M.elems $ progTypedefs prog
     return prog
 
-parseImports :: (?specname::String) => [FilePath] -> DatalogModule -> ExceptT String (StateT [ModuleName] IO) [DatalogModule]
+parseImports :: (?specname::String, ?cfg::Config) => [FilePath] -> DatalogModule -> ExceptT String (StateT [ModuleName] IO) [DatalogModule]
 parseImports roots mod = concat <$>
     mapM (\imp@Import{..} -> do
            when (importModule == moduleName mod)
@@ -218,7 +231,7 @@ parseImports roots mod = concat <$>
               else parseImport roots mod imp)
          (progImports $ moduleDefs mod)
 
-parseImport :: (?specname::String) => [FilePath] -> DatalogModule -> Import -> ExceptT String (StateT [ModuleName] IO) [DatalogModule]
+parseImport :: (?specname::String, ?cfg::Config) => [FilePath] -> DatalogModule -> Import -> ExceptT String (StateT [ModuleName] IO) [DatalogModule]
 parseImport roots mod imp = do
     when (importModule imp == ModuleName [?specname])
          $ throwE $ "module '" ++ show (moduleName mod) ++ "' imports the main module of the program ('" ++ ?specname ++ "')"
@@ -231,14 +244,14 @@ parseImport roots mod imp = do
     prog <- case parsed of
                  Left e -> throwE e
                  Right res -> return res
-    mapM_ (\imp' -> when (elem (importModule imp') stdLibs && notElem (importModule imp) stdLibs)
+    mapM_ (\imp' -> when (elem (importModule imp') stdLibs && notElem (importModule imp) (stdLibs ++ builtinLibs))
                     $ throwE $ "module '" ++ show (importModule imp') ++ "' is part of the DDlog standard library and is imported automatically by all modules")
           $ progImports prog
     -- Standard libraries manage their dependencies explicitly.  Do not
     -- automatically import standard libraries into other standard libraries.
-    let prog_imports = if elem (importModule imp) stdLibs
+    let prog_imports = if elem (importModule imp) $ stdLibs ++ builtinLibs
                        then progImports prog
-                       else stdImports ++ progImports prog
+                       else stdImports ++ builtinImports ++progImports prog
     let mod' = DatalogModule (importModule imp) fname $ prog { progImports = prog_imports }
     imports <- parseImports roots mod'
     return $ mod' : imports
