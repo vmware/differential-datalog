@@ -65,7 +65,11 @@ jobs:
       #with:
       #  path: test/datalog_tests/tutorial_ddlog
       #  key: ${{ runner.os }}-tutorial
-      - name: Run tutorial test
+      - if: ${{ runner.os == 'Windows' }}
+        name: Run path test
+        run: stack --no-terminal test --ta '-p path'
+      - if: ${{ runner.os != 'Windows' }}
+        name: Run tutorial test
         run: stack --no-terminal test --ta '-p tutorial'
       - name: Install ddlog executables
         run: stack --no-terminal install
