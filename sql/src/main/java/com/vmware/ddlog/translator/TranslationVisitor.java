@@ -615,7 +615,11 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             return;
 
         AggregateVisitor aggv = new AggregateVisitor(state.groupBy, true);
-        aggv.process(expression, context);
+        Ternary aggTern = aggv.process(expression, context);
+        if (aggTern == null) {
+            throw new TranslationException("Unhandled node type in AggregateVisitor", expression);
+        }
+
         AggregateVisitor.Decomposition decomposition = aggv.decomposition;
 
         // For each aggregation function in the decomposition we generate a temporary

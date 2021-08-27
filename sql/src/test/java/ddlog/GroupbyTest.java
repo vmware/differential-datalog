@@ -198,6 +198,146 @@ public class GroupbyTest extends BaseQueriesTest {
         this.testTranslation(query, program, true);
     }
 
+    // Check compiler correctly handles IN predicates in the HAVING clause
+    @Test
+    public void testHavingIn() {
+        String query = "create view v0 as SELECT COUNT(column2) AS c\n" +
+                "    FROM t1\n" +
+                "   JOIN t2 ON (t1.column1 = t2.column1)\n" +
+                "GROUP BY t1.column1\n" +
+                "HAVING (t1.column1 IN (t1.column1))";
+        String program = this.header(false) +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, column10:signed<64>}\n" +
+                "typedef TRtmp = TRtmp{c:signed<64>}\n" +
+                "typedef Tagg = Tagg{c:signed<64>, col:bool}\n" +
+                "function agg(g: Group<signed<64>, (Tt1, Tt2)>):Tagg {\n" +
+                "(var gb) = group_key(g);\n" +
+                "(var count = 64'sd0: signed<64>);\n" +
+                "(for ((i, _) in g) {\n" +
+                "var v = i.0;\n" +
+                "(var v0 = i.1);\n" +
+                "(var incr = v.column2);\n" +
+                "(count = agg_count_R(count, incr))}\n" +
+                ");\n" +
+                "(Tagg{.c = count,.col = vec_contains(vec_push_imm(vec_empty(), gb), gb)})\n" +
+                "}\n" +
+                "\n" +
+                "input relation Rt1[Tt1]\n" +
+                "input relation Rt2[Tt2]\n" +
+                "input relation Rt3[Tt3]\n" +
+                "input relation Rt4[Tt4]\n" +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v3] :- Rt1[v],Rt2[v0],(v.column1 == v0.column1),true,var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4,.column10 = v0.column1},var gb = v.column1,var aggResult = Aggregate((gb), agg((v, v0))),var v2 = TRtmp{.c = aggResult.c},aggResult.col,var v3 = v2.";
+
+        this.testTranslation(query, program);
+    }
+
+    // Check compiler correctly handles NOT IN predicates in the HAVING clause
+    @Test
+    public void testHavingNotIn() {
+        String query = "create view v0 as SELECT COUNT(column2) AS c\n" +
+                "    FROM t1\n" +
+                "   JOIN t2 ON (t1.column1 = t2.column1)\n" +
+                "GROUP BY t1.column1\n" +
+                "HAVING (t1.column1 NOT IN (t1.column1))";
+        String program = this.header(false) +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, column10:signed<64>}\n" +
+                "typedef TRtmp = TRtmp{c:signed<64>}\n" +
+                "typedef Tagg = Tagg{c:signed<64>, col:bool}\n" +
+                "function agg(g: Group<signed<64>, (Tt1, Tt2)>):Tagg {\n" +
+                "(var gb) = group_key(g);\n" +
+                "(var count = 64'sd0: signed<64>);\n" +
+                "(for ((i, _) in g) {\n" +
+                "var v = i.0;\n" +
+                "(var v0 = i.1);\n" +
+                "(var incr = v.column2);\n" +
+                "(count = agg_count_R(count, incr))}\n" +
+                ");\n" +
+                "(Tagg{.c = count,.col = (not vec_contains(vec_push_imm(vec_empty(), gb), gb))})\n" +
+                "}\n" +
+                "\n" +
+                "input relation Rt1[Tt1]\n" +
+                "input relation Rt2[Tt2]\n" +
+                "input relation Rt3[Tt3]\n" +
+                "input relation Rt4[Tt4]\n" +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v3] :- Rt1[v],Rt2[v0],(v.column1 == v0.column1),true,var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4,.column10 = v0.column1},var gb = v.column1,var aggResult = Aggregate((gb), agg((v, v0))),var v2 = TRtmp{.c = aggResult.c},aggResult.col,var v3 = v2.";
+
+        this.testTranslation(query, program);
+    }
+
+    // Check compiler correctly handles LogicalBinary predicates with IN in the HAVING clause
+    @Test
+    public void testHavingNotIn2() {
+        String query = "create view v0 as SELECT COUNT(column2) AS c\n" +
+                "    FROM t1\n" +
+                "   JOIN t2 ON (t1.column1 = t2.column1)\n" +
+                "GROUP BY t1.column1\n" +
+                "HAVING ((t1.column1 NOT IN (t1.column1)) AND (COUNT(column2) > 3))";
+        String program = this.header(false) +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, column10:signed<64>}\n" +
+                "typedef TRtmp = TRtmp{c:signed<64>}\n" +
+                "typedef Tagg = Tagg{c:signed<64>, col:bool}\n" +
+                "function agg(g: Group<signed<64>, (Tt1, Tt2)>):Tagg {\n" +
+                "(var gb) = group_key(g);\n" +
+                "(var count = 64'sd0: signed<64>);\n" +
+                "(for ((i, _) in g) {\n" +
+                "var v = i.0;\n" +
+                "(var v0 = i.1);\n" +
+                "(var incr = v.column2);\n" +
+                "(count = agg_count_R(count, incr))}\n" +
+                ");\n" +
+                "(Tagg{.c = count,.col = ((not vec_contains(vec_push_imm(vec_empty(), gb), gb)) and (count > 64'sd3))})\n" +
+                "}\n" +
+                "\n" +
+                "input relation Rt1[Tt1]\n" +
+                "input relation Rt2[Tt2]\n" +
+                "input relation Rt3[Tt3]\n" +
+                "input relation Rt4[Tt4]\n" +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v3] :- Rt1[v],Rt2[v0],(v.column1 == v0.column1),true,var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4,.column10 = v0.column1},var gb = v.column1,var aggResult = Aggregate((gb), agg((v, v0))),var v2 = TRtmp{.c = aggResult.c},aggResult.col,var v3 = v2.";
+
+        this.testTranslation(query, program);
+    }
+
+    // Check compiler correctly handles IN predicates in the HAVING clause that references multiple GROUP BY columns
+    @Test
+    public void testHavingNotIn3() {
+        String query = "create view v0 as SELECT COUNT(column2) AS c\n" +
+                "    FROM t1\n" +
+                "   JOIN t2 ON (t1.column1 = t2.column1)\n" +
+                "GROUP BY t1.column1, t1.column3\n" +
+                "HAVING ((t1.column1 > 3) NOT IN (t1.column3))";
+        String program = this.header(false) +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, column10:signed<64>}\n" +
+                "typedef TRtmp = TRtmp{c:signed<64>}\n" +
+                "typedef Tagg = Tagg{c:signed<64>, col:bool}\n" +
+                "function agg(g: Group<(signed<64>, bool), (Tt1, Tt2)>):Tagg {\n" +
+                "(var gb, var gb2) = group_key(g);\n" +
+                "(var count = 64'sd0: signed<64>);\n" +
+                "(for ((i, _) in g) {\n" +
+                "var v = i.0;\n" +
+                "(var v0 = i.1);\n" +
+                "(var incr = v.column2);\n" +
+                "(count = agg_count_R(count, incr))}\n" +
+                ");\n" +
+                "(Tagg{.c = count,.col = (not vec_contains(vec_push_imm(vec_empty(), gb2), (gb > 64'sd3)))})\n" +
+                "}\n" +
+                "\n" +
+                "input relation Rt1[Tt1]\n" +
+                "input relation Rt2[Tt2]\n" +
+                "input relation Rt3[Tt3]\n" +
+                "input relation Rt4[Tt4]\n" +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v4] :- Rt1[v],Rt2[v0],(v.column1 == v0.column1),true,var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4,.column10 = v0.column1},var gb = v.column1,var gb2 = v.column3,var aggResult = Aggregate((gb, gb2), agg((v, v0))),var v3 = TRtmp{.c = aggResult.c},aggResult.col,var v4 = v3.";
+
+        this.testTranslation(query, program);
+    }
+
     @Test
     public void testHaving() {
         String query = "create view v0 as SELECT COUNT(column2) AS c FROM t1 GROUP BY column1 HAVING COUNT(column2) > 2";
