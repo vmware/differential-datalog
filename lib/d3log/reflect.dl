@@ -1,0 +1,31 @@
+/* Reflect the contents of all distributed relations and streams
+ * back to DDlog, so that the D3log runtime can manipulate it
+ * (buffer, route, forward, etc).
+ *
+ * Relations declared here are populated by compiler-generated rules
+ * when the compiler is run with `--d3log-dev` flag. */
+
+import ddlog_std
+import internment
+
+// Rows from distributed relations.
+//
+// `relname`     - relation name
+// `fact`        - row in the relation
+// `destination` - destination specified via @-annotation, if any
+relation DistributedRelFacts(
+    relname: istring,
+    fact: Any,
+    destination: Option<D3logLocationId>
+)
+
+// Rows from distributed streams.
+//
+// `relname`     - stream name
+// `fact`        - record in the stream
+// `destination` - destination specified via @-annotation, if any
+stream DistributedStreamFacts(
+    relname: istring,
+    fact: Any,
+    destination: Option<D3logLocationId>
+)

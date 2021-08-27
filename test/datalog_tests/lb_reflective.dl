@@ -1,0 +1,15 @@
+import lb
+import d3log::reflect
+
+output relation OutputRelFacts(
+    relname: istring,
+    fact: Any,
+    destination: Option<D3logLocationId>)
+
+output stream OutputStreamFacts(
+    relname: istring,
+    fact: Any,
+    destination: Option<D3logLocationId>)
+
+OutputRelFacts(relname, fact, destination) :- DistributedRelFacts(relname, fact, destination).
+OutputStreamFacts(relname, fact, destination) :- DistributedStreamFacts(relname, fact, destination).

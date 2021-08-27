@@ -49,6 +49,7 @@ module Language.DifferentialDatalog.Syntax (
         tUser,
         tVar,
         tOpaque,
+        tIntern,
         tFunction,
         structFields,
         structLookupField,
@@ -56,6 +57,7 @@ module Language.DifferentialDatalog.Syntax (
         structFieldGuarded,
         Field(..),
         IdentifierWithPos(..),
+        identifierWithPos,
         TypeDef(..),
         tdefIsExtern,
         Constructor(..),
@@ -257,6 +259,8 @@ instance WithName IdentifierWithPos where
     name = idName
     setName i n = i{idName = n}
 
+identifierWithPos n = IdentifierWithPos nopos n
+
 data Type = TBool     {typePos :: Pos}
           | TInt      {typePos :: Pos}
           | TString   {typePos :: Pos}
@@ -285,6 +289,7 @@ tUser           = TUser     nopos
 tVar            = TVar      nopos
 tOpaque         = TOpaque   nopos
 tFunction as t  = TFunction nopos as t
+tIntern t       = tOpaque "internment::Intern" [t]
 
 structGetField :: Type -> String -> Field
 structGetField t f = fromJust $ structLookupField t f

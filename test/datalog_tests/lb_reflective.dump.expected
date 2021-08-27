@@ -1,0 +1,9 @@
+OutputRelFacts:
+OutputRelFacts{.relname = "lb::BalancedData", .fact = lb::BalancedData{.dat = 100}, .destination = ddlog_std::Some{.x = 1}}: +1
+OutputRelFacts{.relname = "lb::BalancedData", .fact = lb::BalancedData{.dat = 200}, .destination = ddlog_std::Some{.x = 1}}: +1
+OutputRelFacts{.relname = "lb::BalancedData", .fact = lb::BalancedData{.dat = 300}, .destination = ddlog_std::Some{.x = 1}}: +1
+OutputRelFacts:
+OutputRelFacts{.relname = "lb::BalancedData", .fact = lb::BalancedData{.dat = 100}, .destination = ddlog_std::Some{.x = 1}}: -1
+OutputRelFacts{.relname = "lb::BalancedData", .fact = lb::BalancedData{.dat = 100}, .destination = ddlog_std::Some{.x = 2}}: +1
+OutputRelFacts{.relname = "lb::BalancedData", .fact = lb::BalancedData{.dat = 200}, .destination = ddlog_std::Some{.x = 1}}: -1
+OutputRelFacts{.relname = "lb::BalancedData", .fact = lb::BalancedData{.dat = 200}, .destination = ddlog_std::Some{.x = 2}}: +1

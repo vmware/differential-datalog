@@ -1,0 +1,14 @@
+start;
+
+insert lb::Data(100),
+insert lb::Data(200),
+insert lb::Data(300),
+insert lb::Workers(1),
+
+commit dump_changes;
+
+start;
+
+insert lb::Workers(2),
+
+commit dump_changes;
