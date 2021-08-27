@@ -150,4 +150,26 @@ public abstract class AggregationVisitorBase extends AstVisitor<Ternary, Transla
         }
         return c;
     }
+
+    @Override
+    protected Ternary visitInPredicate(InPredicate node, TranslationContext context) {
+        Ternary value = this.process(node.getValue(), context);
+        Ternary list = this.process(node.getValueList(), context);
+        if (list == null) {
+            throw new TranslationException("Unhandled node type in AggregateVisitor", node);
+        }
+        if (list == Ternary.No) {
+            throw new TranslationException("RHS of an IN expression must only contain aggregates", node);
+        }
+        return value;
+    }
+
+    @Override
+    protected Ternary visitInListExpression(InListExpression node, TranslationContext context) {
+        Ternary result = Ternary.Maybe;
+        for (Expression e : node.getValues()) {
+            result = this.combine(e, result, this.process(e, context));
+        }
+        return result;
+    }
 }
