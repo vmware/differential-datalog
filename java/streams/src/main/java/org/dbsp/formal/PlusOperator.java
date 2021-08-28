@@ -31,14 +31,14 @@ import java.util.function.BiFunction;
  * An operator that adds its inputs.
  * @param <T>  Concrete type of inputs.
  */
-public class PlusOperator<T> extends BinaryOperator<T, T> {
+public class PlusOperator<T> extends BinaryOperator<T, T, T> {
     public PlusOperator(Type<T> type) {
-        super(type, type);
+        super(type, type, type);
     }
 
     @Override
     public BiFunction<T, T, T> getComputation() {
-        return (left, right) -> PlusOperator.this.inputType.getGroup().add(left, right);
+        return (left, right) -> PlusOperator.this.input0Type.getGroup().add(left, right);
     }
 
     public String toString() {

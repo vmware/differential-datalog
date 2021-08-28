@@ -21,32 +21,48 @@
  * SOFTWARE.
  */
 
-package org.dbsp.types;
+package org.dbsp.algebraic;
 
-import org.dbsp.algebraic.Group;
-
-import javax.annotation.Nullable;
+import java.math.BigInteger;
 
 /**
- * Base class for all types.
- * @param <T> concrete Java T implementing this type.
+ * The group of infinite-precision integer values.
+ * This implementation uses BigInt Java integers.
  */
-public interface Type<T> {
-    /**
-     * @return The group that knows how to perform operations on values of this type.
-     */
-    Group<T> getGroup();
+public class InfIntRing implements ZRing<BigInteger> {
+    static BigInteger zero = BigInteger.valueOf(0);
+    static BigInteger one = BigInteger.valueOf(1);
 
-    /**
-     * @return True if this is a stream type.
-     */
-    boolean isStream();
+    private InfIntRing() {}
 
-    /**
-     * If Type is a StreamType, return the StreamType, else return null.
-     */
-    @Nullable
-    default <U> StreamType<U> asStreamType() {
-        return null;
+    public static final InfIntRing instance = new InfIntRing();
+
+    @Override
+    public BigInteger minus(BigInteger data) {
+        return data.negate();
+    }
+
+    @Override
+    public BigInteger add(BigInteger left, BigInteger right) {
+        return left.add(right);
+    }
+
+    @Override
+    public BigInteger zero() {
+        return zero;
+    }
+
+    @Override
+    public BigInteger times(BigInteger left, BigInteger right) {
+        return left.multiply(right);
+    }
+
+    @Override
+    public BigInteger one() {
+        return one;
+    }
+
+    public boolean isPositive(BigInteger value) {
+        return value.compareTo(zero) >= 0;
     }
 }

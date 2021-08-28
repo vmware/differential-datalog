@@ -58,4 +58,9 @@ public class StreamType<T> implements Type<IStream<T>> {
     public String toString() {
         return "S<" + baseType + ">";
     }
+
+    @Override
+    public StreamType<T> asStreamType() {
+        return this;
+    }
 }

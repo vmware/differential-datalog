@@ -21,36 +21,14 @@
  * SOFTWARE.
  */
 
-package org.dbsp.compute;
+package org.dbsp.algebraic;
 
-import org.dbsp.algebraic.Time;
-import org.dbsp.types.IStream;
+import java.util.function.Function;
 
 /**
- * A stream where each element is a stream itself.
- * @param <T>  Type of elements in the bottom stream structure.
+ * A finite function.
+ * @param <D>  Values in the domain of the function.
+ * @param <T>  Co-domain of the function.
  */
-public class Stream2D<T> extends IStream<IStream<T>> {
-    private final IStream<IStream<T>> data;
-
-    public Stream2D(IStream<IStream<T>> data) {
-        super(data.getTimeFactory());
-        this.data = data;
-    }
-
-    @Override
-    public IStream<T> get(Time index) {
-        return this.data.get(index);
-    }
-
-    String toString(int limit0, int limit1) {
-        StringBuilder builder = new StringBuilder();
-        for (int i = 0; i < limit0; i++) {
-            IStream<T> s = this.get(i);
-            String str = s.toString(limit1);
-            builder.append(str);
-            builder.append("\n");
-        }
-        return builder.toString();
-    }
+public abstract class FiniteFunction<D, T> implements Function<D, T> {
 }

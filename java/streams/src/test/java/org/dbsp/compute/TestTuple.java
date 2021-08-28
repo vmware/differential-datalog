@@ -21,32 +21,29 @@
  * SOFTWARE.
  */
 
-package org.dbsp.types;
-
-import org.dbsp.algebraic.Group;
-
-import javax.annotation.Nullable;
+package org.dbsp.compute;
 
 /**
- * Base class for all types.
- * @param <T> concrete Java T implementing this type.
+ * A simple tuple used for testing.  Two fields.
  */
-public interface Type<T> {
-    /**
-     * @return The group that knows how to perform operations on values of this type.
-     */
-    Group<T> getGroup();
+class TestTuple implements Comparable<TestTuple> {
+    final String s;
+    final Integer v;
 
-    /**
-     * @return True if this is a stream type.
-     */
-    boolean isStream();
+    TestTuple(String s, Integer v) {
+        this.s = s;
+        this.v = v;
+    }
 
-    /**
-     * If Type is a StreamType, return the StreamType, else return null.
-     */
-    @Nullable
-    default <U> StreamType<U> asStreamType() {
-        return null;
+    public String toString() {
+        return "<" + this.s.toString() + "," + v.toString() + ">";
+    }
+
+    @Override
+    public int compareTo(TestTuple o) {
+        int c = this.s.compareTo(o.s);
+        if (c != 0)
+            return c;
+        return this.v.compareTo(o.v);
     }
 }

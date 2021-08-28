@@ -38,11 +38,11 @@ public class DelayOperator<T, F extends TimeFactory> extends
         UniformUnaryOperator<IStream<T>> {
     final Type<T> elementType;
 
-    public DelayOperator(Type<T> type, F factory) {
-        super(new StreamType<T>(type, factory));
-        this.elementType = type;
-        if (!type.isStream())
-            throw new RuntimeException("Delay must be applied to a stream type, not to " + type);
+    public DelayOperator(Type<T> elementType, F factory) {
+        super(new StreamType<T>(elementType, factory));
+        this.elementType = elementType;
+        if (!this.getInputType().isStream())
+            throw new RuntimeException("Delay must be applied to a stream type, not to " + elementType);
     }
 
     @Override

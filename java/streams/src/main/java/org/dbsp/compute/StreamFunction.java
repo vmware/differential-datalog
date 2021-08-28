@@ -54,4 +54,20 @@ public interface StreamFunction<T, S> extends Function<IStream<T>, IStream<S>> {
     default StreamFunction<T, S> inc(Group<T> groupT, Group<S> groupS) {
         return (IStream<T> t) -> this.apply(t.integrate(groupT)).differentiate(groupS);
     }
+
+    static <U> StreamFunction<U, U> delay(Group<U> group) {
+        return s -> s.delay(group);
+    }
+
+    static <U> StreamFunction<U, U> integrate(Group<U> group) {
+        return s -> s.integrate(group);
+    }
+
+    static <U> StreamFunction<U, U> differentiate(Group<U> group) {
+        return s -> s.differentiate(group);
+    }
+
+    static <U, V> StreamFunction<U, V> fromFunction(Function<IStream<U>, IStream<V>> func) {
+        return func::apply;
+    }
 }

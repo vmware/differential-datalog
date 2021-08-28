@@ -23,7 +23,13 @@
 
 package org.dbsp.formal;
 
+import org.dbsp.algebraic.Time;
+import org.dbsp.algebraic.TimeFactory;
+import org.dbsp.types.IStream;
+import org.dbsp.types.StreamType;
 import org.dbsp.types.Type;
+
+import java.util.function.Function;
 
 /**
  * A Unary operator that has the same input and output types.
@@ -32,5 +38,34 @@ import org.dbsp.types.Type;
 public abstract class UniformUnaryOperator<T> extends UnaryOperator<T, T> {
     protected UniformUnaryOperator(Type<T> inputType) {
         super(inputType, inputType);
+    }
+
+    /**
+     * Given a uniform unary operator {@code op} on a scalar values of type {@code T},
+     * build a uniform unary operator that uses feedback and whose function is defined as:
+     * \lambda i . fix o . ^op(i + z^{-1}(o)).
+     * @return     An operator that uses op within a feedback loop.
+     */
+    public UniformUnaryOperator<IStream<T>> feedback(TimeFactory factory) {
+        return new UniformUnaryOperator<IStream<T>>(new StreamType<T>(UniformUnaryOperator.this.inputType, factory)) {
+            @Override
+            public Function<IStream<T>, IStream<T>> getComputation() {
+                return new Function<IStream<T>, IStream<T>>() {
+                    @Override
+                    public IStream<T> apply(IStream<T> s) {
+                        return new IStream<T>(factory) {
+                            @Override
+                            public T get(Time index) {
+                                T currentS = s.get(index);
+                                if (index.isZero())
+                                    return UniformUnaryOperator.this.getComputation().apply(currentS);
+                                T prevOut = this.get(index.previous());
+                                return UniformUnaryOperator.this.inputType.getGroup().add(currentS, prevOut);
+                            }
+                        };
+                    }
+                };
+            }
+        };
     }
 }

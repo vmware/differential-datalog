@@ -21,32 +21,31 @@
  * SOFTWARE.
  */
 
-package org.dbsp.types;
-
-import org.dbsp.algebraic.Group;
-
-import javax.annotation.Nullable;
+package org.dbsp.algebraic;
 
 /**
- * Base class for all types.
- * @param <T> concrete Java T implementing this type.
+ * An algebtraic structure of a ring.
+ * @param <T>  Type of elements in the ring.
  */
-public interface Type<T> {
+public interface Ring<T> extends Group<T> {
     /**
-     * @return The group that knows how to perform operations on values of this type.
+     * Multiplication in the ring.
+     * @param left   Left value to multiply.
+     * @param right  Right value to multiply.
+     * @return       The result of the multiplication.  This operation better be associative.
      */
-    Group<T> getGroup();
+    T times(T left, T right);
 
     /**
-     * @return True if this is a stream type.
+     * The neutral element for multiplication.
      */
-    boolean isStream();
+    T one();
 
     /**
-     * If Type is a StreamType, return the StreamType, else return null.
+     * Add one to a value.
+     * @param value  Value to increment.
      */
-    @Nullable
-    default <U> StreamType<U> asStreamType() {
-        return null;
+    default T increment(T value) {
+        return this.add(value, this.one());
     }
 }
