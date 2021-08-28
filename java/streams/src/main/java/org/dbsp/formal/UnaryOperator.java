@@ -29,6 +29,7 @@ import org.dbsp.compute.LiftedFunction;
 import org.dbsp.types.StreamType;
 import org.dbsp.types.Type;
 
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 /**
@@ -55,7 +56,7 @@ public abstract class UnaryOperator<T, S> {
     /**
      * The type of the input.
      */
-    public Type<T> getInputType(int input) {
+    public Type<T> getInputType() {
         return this.inputType;
     }
 
@@ -96,5 +97,48 @@ public abstract class UnaryOperator<T, S> {
                 return other.getComputation().compose(UnaryOperator.this.getComputation());
             }
         };
+    }
+
+    /**
+     * Apply this operator before the left input of the binary operator.
+     * @param other  Operator to apply after this one.
+     * @param <U>    Second input type of other.
+     * @param <V>    Output type of other.
+     * @return       A binary operator.
+     */
+    public <U, V> BinaryOperator<T, U, V> composeAsFirst(BinaryOperator<S, U, V> other) {
+        return new BinaryOperator<T, U, V>(this.inputType, other.input1Type, other.outputType) {
+            @Override
+            public BiFunction<T, U, V> getComputation() {
+                return (t, u) -> {
+                    S intermediate = UnaryOperator.this.getComputation().apply(t);
+                    return other.getComputation().apply(intermediate, u);
+                };
+            }
+        };
+    }
+
+    /**
+     * Apply this operator before the right input of the binary operator.
+     * @param other  Operator to apply after this one.
+     * @param <U>    First input type of other.
+     * @param <V>    Output type of other.
+     * @return       A binary operator.
+     */
+    public <U, V> BinaryOperator<U, T, V> composeAsSecond(BinaryOperator<U, S, V> other) {
+        return new BinaryOperator<U, T, V>(other.input0Type, this.inputType, other.outputType) {
+            @Override
+            public BiFunction<U, T, V> getComputation() {
+                return (u, t) -> {
+                    S intermediate = UnaryOperator.this.getComputation().apply(t);
+                    return other.getComputation().apply(u, intermediate);
+                };
+            }
+        };
+    }
+
+    public UniformUnaryOperator<T> asUniformOperator() {
+        assert this.inputType.equals(this.outputType);
+        return (UniformUnaryOperator<T>)this;
     }
 }

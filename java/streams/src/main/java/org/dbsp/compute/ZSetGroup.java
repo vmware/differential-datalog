@@ -23,25 +23,40 @@
 
 package org.dbsp.compute;
 
+import org.dbsp.algebraic.FiniteFunctionGroup;
 import org.dbsp.algebraic.Group;
+import org.dbsp.algebraic.ZRing;
 
 /**
- * The group structure that operates on Z-relations with elements of type T.
- * @param <T>  Type of elements in the Z-relations.
+ * The group structure that operates on Z-sets with elements of type T
+ * and weights W
+ * @param <T>  Type of elements in the Z-sets.
+ * @param <W>  Type of weights.
  */
-public class ZRelationGroup<T> implements Group<ZRelation<T>> {
+public class ZSetGroup<T extends Comparable<T>, W>
+        // extends FiniteFunctionGroup<T, W> //  -- unfortunately Java does not allow this.
+        implements Group<ZSet<T, W>>
+{
+    final FiniteFunctionGroup<T, W> ffg;
+    final ZRing<W> ring;
+
+    public ZSetGroup(ZRing<W> ring) {
+        this.ring = ring;
+        this.ffg = new FiniteFunctionGroup<T, W>(ring);
+    }
+
     @Override
-    public ZRelation<T> minus(ZRelation<T> data) {
+    public ZSet<T, W> minus(ZSet<T, W> data) {
         return data.minus();
     }
 
     @Override
-    public ZRelation<T> add(ZRelation<T> left, ZRelation<T> right) {
+    public ZSet<T, W> add(ZSet<T, W> left, ZSet<T, W> right) {
         return left.plus(right);
     }
 
     @Override
-    public ZRelation<T> zero() {
-        return new ZRelation<T>();
+    public ZSet<T, W> zero() {
+        return new ZSet<T, W>(this.ring);
     }
 }

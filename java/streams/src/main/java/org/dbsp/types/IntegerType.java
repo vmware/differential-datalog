@@ -24,15 +24,18 @@
 package org.dbsp.types;
 
 import org.dbsp.algebraic.Group;
-import org.dbsp.algebraic.IntegerGroup;
+import org.dbsp.algebraic.IntegerRing;
 
 /**
  * Represents a type that stores Java Integers.
  */
 public class IntegerType extends ScalarType<Integer> {
+    private IntegerType() {}
+    public static IntegerType instance = new IntegerType();
+
     @Override
     public Group<Integer> getGroup() {
-        return IntegerGroup.instance;
+        return IntegerRing.instance;
     }
 
     public String toString() {

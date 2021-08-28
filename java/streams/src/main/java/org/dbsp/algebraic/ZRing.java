@@ -21,32 +21,16 @@
  * SOFTWARE.
  */
 
-package org.dbsp.types;
-
-import org.dbsp.algebraic.Group;
-
-import javax.annotation.Nullable;
+package org.dbsp.algebraic;
 
 /**
- * Base class for all types.
- * @param <T> concrete Java T implementing this type.
+ * A ring similar to Z, where we can talk about values being positive or negative.
+ * @param <W>  Type of values in the ring.
  */
-public interface Type<T> {
+public interface ZRing<W> extends Ring<W> {
     /**
-     * @return The group that knows how to perform operations on values of this type.
+     * True if the value is positive.
+     * @param value  Value to compare with zero
      */
-    Group<T> getGroup();
-
-    /**
-     * @return True if this is a stream type.
-     */
-    boolean isStream();
-
-    /**
-     * If Type is a StreamType, return the StreamType, else return null.
-     */
-    @Nullable
-    default <U> StreamType<U> asStreamType() {
-        return null;
-    }
+    boolean isPositive(W value);
 }

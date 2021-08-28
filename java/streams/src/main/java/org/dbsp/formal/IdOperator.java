@@ -21,32 +21,23 @@
  * SOFTWARE.
  */
 
-package org.dbsp.types;
+package org.dbsp.formal;
 
-import org.dbsp.algebraic.Group;
+import org.dbsp.types.Type;
 
-import javax.annotation.Nullable;
+import java.util.function.Function;
 
 /**
- * Base class for all types.
- * @param <T> concrete Java T implementing this type.
+ * A unary operator implementing the identity function on type T.
+ * @param <T>  Input data type.
  */
-public interface Type<T> {
-    /**
-     * @return The group that knows how to perform operations on values of this type.
-     */
-    Group<T> getGroup();
+public class IdOperator<T> extends UniformUnaryOperator<T> {
+    public IdOperator(Type<T> inputType) {
+        super(inputType);
+    }
 
-    /**
-     * @return True if this is a stream type.
-     */
-    boolean isStream();
-
-    /**
-     * If Type is a StreamType, return the StreamType, else return null.
-     */
-    @Nullable
-    default <U> StreamType<U> asStreamType() {
-        return null;
+    @Override
+    public Function<T, T> getComputation() {
+        return t -> t;
     }
 }

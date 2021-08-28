@@ -23,27 +23,25 @@
 
 package org.dbsp.algebraic;
 
+import java.util.function.Function;
+
 /**
- * The group of integer values.
- * This implementation uses finite Java integers.
+ * Standard Y combinator from lambda calculus to create recursive lambdas.
+ * Example usage:
+ * <pre>
+ * {@code
+ * Function<Integer,Integer> fac = Y(f -> n ->
+ *       (n <= 1)
+ *         ? 1
+ *         : (n * f.apply(n - 1))
+ *     );
+ * }
+ * </pre>
  */
-public class IntegerGroup implements Group<Integer> {
-    private IntegerGroup() {}
-
-    public static final IntegerGroup instance = new IntegerGroup();
-
-    @Override
-    public Integer minus(Integer data) {
-        return -data;
-    }
-
-    @Override
-    public Integer add(Integer left, Integer right) {
-        return left + right;
-    }
-
-    @Override
-    public Integer zero() {
-        return 0;
+public interface YCombinator {
+    interface RecursiveFunction<F> extends Function<RecursiveFunction<F>, F> { }
+    static <A,B> Function<A,B> Y(Function<Function<A,B>, Function<A,B>> f) {
+        RecursiveFunction<Function<A,B>> r = w -> f.apply(x -> w.apply(w).apply(x));
+        return r.apply(r);
     }
 }

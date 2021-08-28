@@ -41,4 +41,8 @@ public interface Monoid<T> {
      * The zero element of the monoid.
      */
     T zero();
+
+    default boolean isZero(T value) {
+        return value.equals(this.zero());
+    }
 }

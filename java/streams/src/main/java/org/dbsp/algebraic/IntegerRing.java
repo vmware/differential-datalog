@@ -21,32 +21,44 @@
  * SOFTWARE.
  */
 
-package org.dbsp.types;
-
-import org.dbsp.algebraic.Group;
-
-import javax.annotation.Nullable;
+package org.dbsp.algebraic;
 
 /**
- * Base class for all types.
- * @param <T> concrete Java T implementing this type.
+ * The group of finite integer values.
+ * This will throw on overflow.
+ * This implementation uses finite Java integers.
  */
-public interface Type<T> {
-    /**
-     * @return The group that knows how to perform operations on values of this type.
-     */
-    Group<T> getGroup();
+public class IntegerRing implements ZRing<Integer> {
+    private IntegerRing() {}
 
-    /**
-     * @return True if this is a stream type.
-     */
-    boolean isStream();
+    public static final IntegerRing instance = new IntegerRing();
 
-    /**
-     * If Type is a StreamType, return the StreamType, else return null.
-     */
-    @Nullable
-    default <U> StreamType<U> asStreamType() {
-        return null;
+    @Override
+    public Integer minus(Integer data) {
+        return Math.negateExact(data);
+    }
+
+    @Override
+    public Integer add(Integer left, Integer right) {
+        return Math.addExact(left, right);
+    }
+
+    @Override
+    public Integer zero() {
+        return 0;
+    }
+
+    @Override
+    public Integer times(Integer left, Integer right) {
+        return Math.multiplyExact(left, right);
+    }
+
+    @Override
+    public Integer one() {
+        return 1;
+    }
+
+    public boolean isPositive(Integer value) {
+        return value >= 0;
     }
 }

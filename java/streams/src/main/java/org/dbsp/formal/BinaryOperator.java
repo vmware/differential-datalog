@@ -32,16 +32,20 @@ import org.dbsp.types.Type;
 import java.util.function.BiFunction;
 
 /**
- * An operator that has a two inputs of the same type.
- * @param <T> Concrete Java implementation of input type.
+ * An operator that has a two inputs.
+ * @param <T0> Concrete Java implementation of first input type.
+ * @param <T1> Concrete Java implementation of second input type.
  * @param <S> Concrete Java implementation of output type.
  */
-public abstract class BinaryOperator<T, S> {
-    public final Type<T> inputType;
+public abstract class BinaryOperator<T0, T1, S> {
+    public final Type<T0> input0Type;
+    public final Type<T1> input1Type;
     public final Type<S> outputType;
 
-    protected BinaryOperator(Type<T> inputType, Type<S> outputType) {
-        this.inputType = inputType;
+    protected BinaryOperator(Type<T0> input0Type, Type<T1> input1Type,
+                             Type<S> outputType) {
+        this.input0Type = input0Type;
+        this.input1Type = input1Type;
         this.outputType = outputType;
     }
 
@@ -49,25 +53,22 @@ public abstract class BinaryOperator<T, S> {
         return this.outputType;
     }
 
-    public Type<T> getInputType(int input) {
-        return this.inputType;
-    }
-
     /**
      * The code that performs the computation of this operator.
      */
-    public abstract BiFunction<T, T, S> getComputation();
+    public abstract BiFunction<T0, T1, S> getComputation();
 
     /**
      * @return A lifted version of this operator.
      */
-    public <F extends TimeFactory> BinaryOperator<IStream<T>, IStream<S>> lift(F factory) {
-        return new BinaryOperator<IStream<T>, IStream<S>>(
-                new StreamType<T>(this.inputType, factory),
+    public <F extends TimeFactory> BinaryOperator<IStream<T0>, IStream<T1>, IStream<S>> lift(F factory) {
+        return new BinaryOperator<IStream<T0>, IStream<T1>, IStream<S>>(
+                new StreamType<T0>(this.input0Type, factory),
+                new StreamType<T1>(this.input1Type, factory),
                 new StreamType<S>(this.outputType, factory)) {
             @Override
-            public BiFunction<IStream<T>, IStream<T>, IStream<S>> getComputation() {
-                return new LiftedBifunction<T, T, S>(BinaryOperator.this.getComputation());
+            public BiFunction<IStream<T0>, IStream<T1>, IStream<S>> getComputation() {
+                return new LiftedBifunction<T0, T1, S>(BinaryOperator.this.getComputation());
             }
 
             @Override
