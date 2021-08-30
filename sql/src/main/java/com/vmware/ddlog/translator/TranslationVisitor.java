@@ -798,8 +798,6 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         String[] vars = groupByVars.toArray(new String[0]);
         String aggregateVarName = context.freshLocalName("aggResult");
         String gbVarName = context.freshLocalName("groupResult");
-        //DDlogRHSAggregate aggregate = new DDlogRHSAggregate(select, aggregateVarName, agg, callArg, vars);
-        //result.addDefinition(aggregate);
         DDlogRHSGroupby gb = new DDlogRHSGroupby(gby, gbVarName, callArg, vars);
         result.addDefinition(gb);
 
