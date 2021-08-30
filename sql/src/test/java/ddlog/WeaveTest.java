@@ -845,7 +845,7 @@ public class WeaveTest extends BaseQueriesTest {
                 ".label_operator = v1.label_operator,.label_value = v1.label_value,.node_name = v2.node_name," +
                 ".label_key0 = v2.label_key,.label_value0 = v2.label_value},var gb = v.pod_name,var gb4 = v2.node_name" +
                 ",var gb5 = v0.term,var gb6 = v0.label_operator,var gb7 = v0.num_match_expressions," +
-                "var aggResult = Aggregate((gb, gb4, gb5, gb6, gb7), agg((v, v0, v2)))," +
+                "var groupResult = (v, v0, v2).group_by((gb, gb4, gb5, gb6, gb7)),var aggResult = agg(groupResult)," +
                 "var v11 = TRtmp4{.pod_name = gb,.node_name = gb4},unwrapBool(aggResult.col),var v12 = v11.\n" +
 
                 "Rinter_pod_affinity_matches_inner[v16] :- Rpods_to_assign[v],Rpod_affinity_match_expressions[v0]," +
@@ -895,12 +895,12 @@ public class WeaveTest extends BaseQueriesTest {
                 ".has_pod_affinity_requirements0 = v4.has_pod_affinity_requirements}," +
                 "var gb = v.pod_name,var gb6 = v2.pod_name,var gb7 = v0.label_selector,var gb8 = v0.topology_key," +
                 "var gb9 = v0.label_operator,var gb10 = v0.num_match_expressions,var gb11 = v4.node_name," +
-                "var aggResult = Aggregate((gb, gb6, gb7, gb8, gb9, gb10, gb11), agg9((v, v0, v2, v4)))," +
+                "var groupResult = (v, v0, v2, v4).group_by((gb, gb6, gb7, gb8, gb9, gb10, gb11)),var aggResult = agg9(groupResult)," +
                 "var v15 = TRtmp8{.pod_name = gb,.matches = gb6,.node_name = gb11},aggResult.col,var v16 = v15.\n" +
 
                 "Roverinput[v2] :- Rinter_pod_affinity_matches_inner[v0],var v1 = TRtmp10{.gb = v0.pod_name," +
                 ".pod_name = v0.pod_name,.matches = v0.matches,.node_name = v0.node_name},var v2 = v1.\n" +
-                "Rover[v7] :- Roverinput[v3],var gb4 = v3.gb,var aggResult = Aggregate((gb4), agg12((v3)))," +
+                "Rover[v7] :- Roverinput[v3],var gb4 = v3.gb,var groupResult = (v3).group_by((gb4)),var aggResult = agg12(groupResult)," +
                 "var v6 = TRtmp11{.gb = gb4,.count = aggResult.count},var v7 = v6.\n" +
                 "Rinter_pod_affinity_matches[v12] :- Roverinput[v8],Rover[v9],(true and (v8.gb == v9.gb))," +
                 "var v10 = Ttmp13{.gb = v8.gb,.pod_name = v8.pod_name,.matches = v8.matches,.node_name = v8.node_name," +
@@ -921,7 +921,7 @@ public class WeaveTest extends BaseQueriesTest {
                 ".priority = v0.priority,.schedulerName = v0.schedulerName,.has_node_selector_labels = v0.has_node_selector_labels," +
                 ".has_pod_affinity_requirements = v0.has_pod_affinity_requirements}," +
                 "var gb = v.name,var gb2 = v.cpu_allocatable,var gb3 = v.memory_allocatable,var gb4 = v.pods_allocatable," +
-                "var aggResult = Aggregate((gb, gb2, gb3, gb4), agg17((v, v0)))," +
+                "var groupResult = (v, v0).group_by((gb, gb2, gb3, gb4)),var aggResult = agg17(groupResult)," +
                 "var v9 = TRtmp16{.name = gb,.cpu_remaining = aggResult.cpu_remaining,.memory_remaining = aggResult.memory_remaining," +
                 ".pods_remaining = aggResult.pods_remaining},var v10 = v9.\n" +
                 "Rnodes_that_have_tolerations[v1] :- Rnode_taints[v],var v0 = TRtmp18{.node_name = v.node_name},var v1 = v0.\n" +
@@ -929,7 +929,7 @@ public class WeaveTest extends BaseQueriesTest {
                 "Roverinput20[v5] :- Rnode_taints[v3],var v4 = TRtmp21{.gb = v3.node_name," +
                 ".node_name = v3.node_name,.taint_key = v3.taint_key,.taint_value = v3.taint_value," +
                 ".taint_effect = v3.taint_effect},var v5 = v4.\n" +
-                "Rover22[v10] :- Roverinput20[v6],var gb7 = v6.gb,var aggResult = Aggregate((gb7), agg24((v6)))," +
+                "Rover22[v10] :- Roverinput20[v6],var gb7 = v6.gb,var groupResult = (v6).group_by((gb7)),var aggResult = agg24(groupResult)," +
                 "var v9 = TRtmp11{.gb = gb7,.count = aggResult.count},var v10 = v9.\n" +
                 "Rtmp27[v15] :- Roverinput20[v11],Rover22[v12],(true and (v11.gb == v12.gb))," +
                 "var v13 = Ttmp25{.gb = v11.gb,.node_name = v11.node_name,.taint_key = v11.taint_key," +
@@ -937,7 +937,7 @@ public class WeaveTest extends BaseQueriesTest {
                 "var v14 = TRtmp26{.node_name = v11.node_name,.taint_key = v11.taint_key," +
                 ".taint_value = v11.taint_value,.taint_effect = v11.taint_effect,.num_taints = v12.count}," +
                 "var v15 = v14.\n" +
-                "Rpods_that_tolerate_node_taints[v25] :- Rpods_to_assign[v],Rpod_tolerations[v0]," +
+                "Rpods_that_tolerate_node_taints[v26] :- Rpods_to_assign[v],Rpod_tolerations[v0]," +
                 "(v.pod_name == v0.pod_name),true,var v1 = Ttmp19{.pod_name = v.pod_name,.status = v.status," +
                 ".controllable__node_name = v.controllable__node_name,.namespace = v.namespace," +
                 ".cpu_request = v.cpu_request,.memory_request = v.memory_request," +
@@ -961,9 +961,9 @@ public class WeaveTest extends BaseQueriesTest {
                 ".tolerations_effect = v1.tolerations_effect,.tolerations_operator = v1.tolerations_operator," +
                 ".node_name = v15.node_name,.taint_key = v15.taint_key,.taint_value = v15.taint_value," +
                 ".taint_effect = v15.taint_effect,.num_taints = v15.num_taints},var gb17 = v0.pod_name," +
-                "var gb18 = v15.node_name,var gb19 = v15.num_taints,var aggResult24 = Aggregate((gb17, gb18, gb19), " +
-                "agg30((v, v0, v15))),var v23 = TRtmp4{.pod_name = gb17,.node_name = gb18}," +
-                "aggResult24.col,var v25 = v23.\n" +
+                "var gb18 = v15.node_name,var gb19 = v15.num_taints,var groupResult25 = (v, v0, v15).group_by((gb17, gb18, gb19))," +
+                "var aggResult24 = agg30(groupResult25),var v23 = TRtmp4{.pod_name = gb17,.node_name = gb18}," +
+                "aggResult24.col,var v26 = v23.\n" +
                 "Rassigned_pods[v1] :- Rpod_info[v],(not is_null(v.node_name))," +
                 "var v0 = TRtmp31{.pod_name = v.pod_name,.status = v.status,.node_name = v.node_name," +
                 ".namespace = v.namespace,.cpu_request = v.cpu_request,.memory_request = v.memory_request," +

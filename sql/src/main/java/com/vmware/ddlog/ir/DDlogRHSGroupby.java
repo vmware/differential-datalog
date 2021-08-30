@@ -28,31 +28,38 @@ import com.facebook.presto.sql.tree.Node;
 
 import javax.annotation.Nullable;
 
-public class DDlogEVar extends DDlogExpression {
-    public final String var;
+public class DDlogRHSGroupby extends DDlogRuleRHS {
+    final String var;
+    final DDlogExpression rhsProject;
+    final String[] rhsGroupByVars;
 
-    public DDlogEVar(@Nullable Node node, String var, DDlogType type) {
-        super(node, type);
+    public DDlogRHSGroupby(@Nullable Node node, String var, DDlogExpression rhsProject, String... rhsGroupByVars) {
+        super(node);
         this.var = var;
-    }
-
-    @Override
-    public boolean compare(DDlogExpression val, IComparePolicy policy) {
-        if (!super.compare(val, policy))
-            return false;
-        if (!val.is(DDlogEVar.class))
-            return false;
-        DDlogEVar other = val.to(DDlogEVar.class);
-        return policy.compareIdentifier(var, other.var);
-    }
-
-    public DDlogEVarDecl createDeclaration() {
-        assert this.type != null;
-        return new DDlogEVarDecl(this.node, this.var, this.type);
+        this.rhsProject = rhsProject;
+        this.rhsGroupByVars = rhsGroupByVars;
     }
 
     @Override
     public String toString() {
-        return this.var;
+        return "var " + this.var + " = " + this.rhsProject.toString() +
+                ".group_by((" + String.join(", ", this.rhsGroupByVars) + "))";
+    }
+
+    @Override
+    public boolean compare(DDlogRuleRHS val, IComparePolicy policy) {
+        if (!val.is(DDlogRHSGroupby.class))
+            return false;
+        DDlogRHSGroupby other = val.to(DDlogRHSGroupby.class);
+        if (!policy.compareLocal(this.var, other.var))
+            return false;
+        if (!this.rhsProject.compare(other.rhsProject, policy))
+            return false;
+        if (this.rhsGroupByVars.length != other.rhsGroupByVars.length)
+            return false;
+        for (int i = 0; i < this.rhsGroupByVars.length; i++)
+            if (!policy.compareIdentifier(this.rhsGroupByVars[i], other.rhsGroupByVars[i]))
+                return false;
+        return true;
     }
 }

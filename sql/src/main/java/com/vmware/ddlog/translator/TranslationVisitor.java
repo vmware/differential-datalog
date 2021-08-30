@@ -793,11 +793,20 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
 
         assert state.loopBody != null;
 
-        DDlogEFor forLoop = new DDlogEFor(gby, new DDlogETuple(gby, Arrays.asList(new DDlogExpression[]{ new DDlogEVar(gby, iter, tuple), new DDlogEPHolder(gby) })), new DDlogEVar(gby, paramName, paramType), state.loopBody);
+        DDlogEFor forLoop = new DDlogEFor(gby, new DDlogETuple(gby, Arrays.asList(new DDlogEVar(gby, iter, tuple), new DDlogEPHolder(gby))), new DDlogEVar(gby, paramName, paramType), state.loopBody);
         state.addFunctionStatement(forLoop);
         String[] vars = groupByVars.toArray(new String[0]);
         String aggregateVarName = context.freshLocalName("aggResult");
-        DDlogRHSAggregate aggregate = new DDlogRHSAggregate(select, aggregateVarName, agg, callArg, vars);
+        String gbVarName = context.freshLocalName("groupResult");
+        //DDlogRHSAggregate aggregate = new DDlogRHSAggregate(select, aggregateVarName, agg, callArg, vars);
+        //result.addDefinition(aggregate);
+        DDlogRHSGroupby gb = new DDlogRHSGroupby(gby, gbVarName, callArg, vars);
+        result.addDefinition(gb);
+
+        DDlogType gtype = new DDlogTGroup(gby, forLoop.getType(), tUserFunction);
+        DDlogExpression aggregate = new DDlogESet(select,
+                new DDlogEVarDecl(select, aggregateVarName, tUserFunction),
+                new DDlogEApply(select, agg, tUserFunction, new DDlogEVar(select, gbVarName, gtype)));
         result.addDefinition(aggregate);
         DDlogEStruct project = new DDlogEStruct(select, tUserFunction.name, tUserResult, state.functionResultFields);
         state.addFunctionStatement(project);

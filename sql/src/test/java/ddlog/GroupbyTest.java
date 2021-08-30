@@ -45,7 +45,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v1] :- Rt1[v],var gb = v.column2,var aggResult = Aggregate((gb), agg((v)))," +
+                "Rv0[v1] :- Rt1[v],var gb = v.column2,var groupResult = (v).group_by((gb)),var aggResult = agg(groupResult)," +
                 "var v0 = TRtmp{.c = aggResult.c},var v1 = v0.";
         this.testTranslation(query, program);
     }
@@ -77,9 +77,9 @@ public class GroupbyTest extends BaseQueriesTest {
                 "output relation Rv0[TRtmp]\n" +
                 "relation Rtmp0[TRtmp]\n" +
                 "output relation Rv1[TRtmp]\n" +
-                "Rv0[v1] :- Rt1[v],var gb = v.column2,var aggResult = Aggregate((gb), agg((v)))," +
+                "Rv0[v1] :- Rt1[v],var gb = v.column2,var groupResult = (v).group_by((gb)),var aggResult = agg(groupResult)," +
                 "var v0 = TRtmp{.c = aggResult.c},var v1 = v0.\n" +
-                "Rv1[v1] :- Rt1[v],var gb = v.column2,var aggResult = Aggregate((gb), agg1((v)))," +
+                "Rv1[v1] :- Rt1[v],var gb = v.column2,var groupResult = (v).group_by((gb)),var aggResult = agg1(groupResult)," +
                 "var v0 = TRtmp{.c = aggResult.c},var v1 = v0.";
         this.testTranslation(Arrays.asList(query0, query1), program, false);
     }
@@ -101,7 +101,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v1] :- Rt1[v],var gb = v.column2,var aggResult = Aggregate((gb), agg((v)))," +
+                "Rv0[v1] :- Rt1[v],var gb = v.column2,var groupResult = (v).group_by((gb)),var aggResult = agg(groupResult)," +
                 "var v0 = TRtmp{.column2 = gb,.c = aggResult.c},var v1 = v0.";
         this.testTranslation(query, program);
     }
@@ -127,7 +127,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v2] :- Rt1[v],var gb = v.column2,var gb0 = v.column3," +
-                "var aggResult = Aggregate((gb, gb0), agg((v)))," +
+                "var groupResult = (v).group_by((gb, gb0)),var aggResult = agg(groupResult)," +
                 "var v1 = TRtmp{.column2 = gb,.column3 = gb0,.c = aggResult.c,.s = aggResult.s},var v2 = v1.";
         this.testTranslation(query, program);
     }
@@ -149,7 +149,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 this.relations(true) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v1] :- Rt1[v],var gb = v.column2,var aggResult = Aggregate((gb), agg((v)))," +
+                "Rv0[v1] :- Rt1[v],var gb = v.column2,var groupResult = (v).group_by((gb)),var aggResult = agg(groupResult)," +
                 "var v0 = TRtmp{.column2 = gb,.c = aggResult.c},var v1 = v0.";
         this.testTranslation(query, program, true);
     }
@@ -172,7 +172,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v1] :- Rt1[v],var gb = v.column2,var aggResult = Aggregate((gb), agg((v))),var v0 = TRtmp{.column2 = gb,.s = aggResult.s},var v1 = v0.";
+                "Rv0[v1] :- Rt1[v],var gb = v.column2,var groupResult = (v).group_by((gb)),var aggResult = agg(groupResult),var v0 = TRtmp{.column2 = gb,.s = aggResult.s},var v1 = v0.";
         this.testTranslation(query, program);
     }
 
@@ -194,7 +194,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 this.relations(true) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v1] :- Rt1[v],var gb = v.column2,var aggResult = Aggregate((gb), agg((v))),var v0 = TRtmp{.column2 = gb,.s = aggResult.s},var v1 = v0.";
+                "Rv0[v1] :- Rt1[v],var gb = v.column2,var groupResult = (v).group_by((gb)),var aggResult = agg(groupResult),var v0 = TRtmp{.column2 = gb,.s = aggResult.s},var v1 = v0.";
         this.testTranslation(query, program, true);
     }
 
@@ -228,8 +228,8 @@ public class GroupbyTest extends BaseQueriesTest {
                 "input relation Rt4[Tt4]\n" +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v3] :- Rt1[v],Rt2[v0],(v.column1 == v0.column1),true,var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4,.column10 = v0.column1},var gb = v.column1,var aggResult = Aggregate((gb), agg((v, v0))),var v2 = TRtmp{.c = aggResult.c},aggResult.col,var v3 = v2.";
-
+                "Rv0[v3] :- Rt1[v],Rt2[v0],(v.column1 == v0.column1),true,var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4,.column10 = v0.column1}," +
+                "var gb = v.column1,var groupResult = (v, v0).group_by((gb)),var aggResult = agg(groupResult),var v2 = TRtmp{.c = aggResult.c},aggResult.col,var v3 = v2.";
         this.testTranslation(query, program);
     }
 
@@ -263,7 +263,8 @@ public class GroupbyTest extends BaseQueriesTest {
                 "input relation Rt4[Tt4]\n" +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v3] :- Rt1[v],Rt2[v0],(v.column1 == v0.column1),true,var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4,.column10 = v0.column1},var gb = v.column1,var aggResult = Aggregate((gb), agg((v, v0))),var v2 = TRtmp{.c = aggResult.c},aggResult.col,var v3 = v2.";
+                "Rv0[v3] :- Rt1[v],Rt2[v0],(v.column1 == v0.column1),true,var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4,.column10 = v0.column1}," +
+                "var gb = v.column1,var groupResult = (v, v0).group_by((gb)),var aggResult = agg(groupResult),var v2 = TRtmp{.c = aggResult.c},aggResult.col,var v3 = v2.";
 
         this.testTranslation(query, program);
     }
@@ -298,8 +299,8 @@ public class GroupbyTest extends BaseQueriesTest {
                 "input relation Rt4[Tt4]\n" +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v3] :- Rt1[v],Rt2[v0],(v.column1 == v0.column1),true,var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4,.column10 = v0.column1},var gb = v.column1,var aggResult = Aggregate((gb), agg((v, v0))),var v2 = TRtmp{.c = aggResult.c},aggResult.col,var v3 = v2.";
-
+                "Rv0[v3] :- Rt1[v],Rt2[v0],(v.column1 == v0.column1),true,var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4,.column10 = v0.column1}," +
+                "var gb = v.column1,var groupResult = (v, v0).group_by((gb)),var aggResult = agg(groupResult),var v2 = TRtmp{.c = aggResult.c},aggResult.col,var v3 = v2.";
         this.testTranslation(query, program);
     }
 
@@ -333,8 +334,8 @@ public class GroupbyTest extends BaseQueriesTest {
                 "input relation Rt4[Tt4]\n" +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v4] :- Rt1[v],Rt2[v0],(v.column1 == v0.column1),true,var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4,.column10 = v0.column1},var gb = v.column1,var gb2 = v.column3,var aggResult = Aggregate((gb, gb2), agg((v, v0))),var v3 = TRtmp{.c = aggResult.c},aggResult.col,var v4 = v3.";
-
+                "Rv0[v4] :- Rt1[v],Rt2[v0],(v.column1 == v0.column1),true,var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3,.column4 = v.column4,.column10 = v0.column1}," +
+                "var gb = v.column1,var gb2 = v.column3,var groupResult = (v, v0).group_by((gb, gb2)),var aggResult = agg(groupResult),var v3 = TRtmp{.c = aggResult.c},aggResult.col,var v4 = v3.";
         this.testTranslation(query, program);
     }
 
@@ -356,7 +357,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v1] :- Rt1[v],var gb = v.column1,var aggResult = Aggregate((gb), agg((v)))," +
+                "Rv0[v1] :- Rt1[v],var gb = v.column1,var groupResult = (v).group_by((gb)),var aggResult = agg(groupResult)," +
                 "var v0 = TRtmp{.c = aggResult.c},aggResult.col,var v1 = v0.";
         this.testTranslation(query, program);
     }
@@ -382,7 +383,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 this.relations(true) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v2] :- Rt1[v],var gb = v.column1,var aggResult = Aggregate((gb), agg((v)))," +
+                "Rv0[v2] :- Rt1[v],var gb = v.column1,var groupResult = (v).group_by((gb)),var aggResult = agg(groupResult)," +
                 "var v1 = TRtmp{.c = aggResult.c},unwrapBool(aggResult.col),var v2 = v1.";
         this.testTranslation(query, program, true);
     }
@@ -405,7 +406,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v1] :- Rt1[v],var gb = v.column1,var aggResult = Aggregate((gb), agg((v)))," +
+                "Rv0[v1] :- Rt1[v],var gb = v.column1,var groupResult = (v).group_by((gb)),var aggResult = agg(groupResult)," +
                 "var v0 = TRtmp{.c = aggResult.c},aggResult.col,var v1 = v0.";
         this.testTranslation(query, program);
     }
@@ -430,7 +431,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v1] :- Rt1[v],var gb = v.column2,var aggResult = Aggregate((gb), agg((v)))," +
+                "Rv0[v1] :- Rt1[v],var gb = v.column2,var groupResult = (v).group_by((gb)),var aggResult = agg(groupResult)," +
                 "var v0 = TRtmp{.s = aggResult.s},aggResult.col,var v1 = v0.";
         this.testTranslation(query, program);
     }
@@ -456,7 +457,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v2] :- Rt1[v],var gb = v.column2,var aggResult = Aggregate((gb), agg((v)))," +
+                "Rv0[v2] :- Rt1[v],var gb = v.column2,var groupResult = (v).group_by((gb)),var aggResult = agg(groupResult)," +
                 "var v1 = TRtmp{.column2 = gb,.s = aggResult.s},aggResult.col,var v2 = v1.";
         this.testTranslation(query, program);
     }
@@ -479,7 +480,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var gb = sql_substr(v.column2, 64'sd0, 64'sd1)," +
-                "var aggResult = Aggregate((gb), agg((v))),var v0 = TRtmp{.s = gb,.c = aggResult.c},var v1 = v0.";
+                "var groupResult = (v).group_by((gb)),var aggResult = agg(groupResult),var v0 = TRtmp{.s = gb,.c = aggResult.c},var v1 = v0.";
         this.testTranslation(query, program);
     }
 
@@ -500,7 +501,7 @@ public class GroupbyTest extends BaseQueriesTest {
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var gb = v.column2," +
-                "var aggResult = Aggregate((gb), agg((v))),var v0 = TRtmp{.s = aggResult.s,.c = aggResult.c},var v1 = v0.";
+                "var groupResult = (v).group_by((gb)),var aggResult = agg(groupResult),var v0 = TRtmp{.s = aggResult.s,.c = aggResult.c},var v1 = v0.";
         this.testTranslation(query, program);
     }
 
