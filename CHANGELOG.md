@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## Unreleased
 
 - Bug fixes and improvements in tutorial and SQL to DDlog compiler.
+- Enable SQL-to-DDlog compiler to translate `array_length` function calls, which appear in SQL dialects such as H2 and Postgres.
 
 ## [0.47.0] - Aug 19, 2021
 
