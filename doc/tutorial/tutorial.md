@@ -1575,7 +1575,7 @@ output relation BestDeal(best: string)
 BestDeal(best) :-
     Price(item, vendor, price),
     Inspect log::log("../tutorial.log", "ts:${ddlog_timestamp}, w:${ddlog_weight}: Price(item=\"${item}\", vendor=\"${vendor}\", price=${price})"),
-    var best = Aggregate((item), best_vendor_string((vendor, price))),
+    var best = (vendor, price).group_by(item).best_vendor_string(),
     Inspect log::log("../tutorial.log", "ts:${ddlog_timestamp}, w:${ddlog_weight}: best(\"${item}\")=\"${best}\"").
 ```
 
@@ -2763,7 +2763,7 @@ output relation TopScore(school: string, top_score: bit<16>)
 
 TopScore(school, top_score) :-
     StudentInfo(&Student{.sat_score = sat}, &School{.name = school}),
-    var top_score = Aggregate((school), group_max(sat)).
+    var top_score = (sat).group_by(school).max().
 ```
 
 We again use `&` to pattern match values stored by reference.
@@ -2776,7 +2776,7 @@ The following rule is equivalent to the one above, but instead of opening up the
 ```
 TopScore(school, top_score) :-
     StudentInfo(student, &School{.name = school}),
-    var top_score = Aggregate((school), group_max(student.sat_score)).
+    var top_score = student.sat_score.group_by(school).max().
 ```
 
 ### Performance pitfalls with pattern matching references
@@ -2789,7 +2789,7 @@ above, like this:
 ```
 TopScore(school, top_score) :-
     StudentInfo(&student, &School{.name = school}),
-    var top_score = Aggregate((school), group_max(student.sat_score)).
+    var top_score = student.sat_score.group_by(school).max().
 ```
 
 This produces the same output as the former rule.  It does not depend
@@ -2835,7 +2835,7 @@ output relation ItemInOrders(item: string, orders: Vec<u64>)
 
 ItemInOrders(item, orders) :-
     OnlineOrder(order, item),
-    var orders = Aggregate((item), group2vec(order)).
+    var orders = order.group_by(item).to_vec().
 ```
 
 Popular items like milk will occur in many orders, causing the string `"milk"`

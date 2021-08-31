@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+- Bug fixes and improvements in tutorial and SQL to DDlog compiler.
+
 ## [0.47.0] - Aug 19, 2021
 
 ### OVSDB-to-DDlog compiler update

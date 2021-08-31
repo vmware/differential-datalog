@@ -325,6 +325,19 @@ public class SimpleQueriesTest extends BaseQueriesTest {
                 "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.i = sql_abs_N(v.column1)},var v1 = v0.";
         this.testTranslation(query, program, true);
     }
+
+    @Test
+    public void duplicatedColumnTest() {
+        String query = "CREATE VIEW v AS SELECT DISTINCT column3 tmp, column2 gb1, column2 column2 FROM t1";
+        String translation = this.header(false) +
+                "typedef TRtmp = TRtmp{tmp:bool, gb1:string, column2:string}\n" +
+                this.relations(false) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv[TRtmp]\n" +
+                "Rv[v1] :- Rt1[v],var v0 = TRtmp{.tmp = v.column3,.gb1 = v.column2,.column2 = v.column2},var v1 = v0.";
+        this.testTranslation(query, translation);
+    }
+
     @Test
     public void testBetween() {
         String query = "create view v0 as SELECT DISTINCT column1, column2 FROM t1 WHERE column1 BETWEEN -1 and 10";

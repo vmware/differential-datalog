@@ -48,7 +48,7 @@ public class JoinTest extends BaseQueriesTest {
                 "Rv0[v3] :- Rt1[v],Rt2[v0],(v.column1 == v0.column1),true," +
                 "var v1 = Ttmp{.column1 = v.column1,.column2 = v.column2,.column3 = v.column3," +
                 ".column4 = v.column4,.column10 = v0.column1}," +
-                "var aggResult = Aggregate((), agg((v, v0))),var v2 = aggResult,var v3 = v2.";
+                "var groupResult = (v, v0).group_by(()),var aggResult = agg(groupResult),var v2 = aggResult,var v3 = v2.";
         this.testTranslation(query, program);
     }
 

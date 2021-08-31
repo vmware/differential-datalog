@@ -52,14 +52,17 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
          * Variable name created for aggregation function.
          */
         public String varName;
-        @Nullable
-        public String fieldName;
+        /*
+         * Each field that we group on could be used multiple times.
+         * Consider SELECT column2 as a, column2 as b FROM t GROUP BY column2
+         */
+        public List<String> fieldNames;
 
         public GroupByInfo(Expression e, DDlogExpression translation, String varName) {
             this.groupBy = e;
             this.translation = translation;
             this.varName = varName;
-            this.fieldName = null;
+            this.fieldNames = new ArrayList<String>();
         }
 
         public DDlogExpression getVariable() {
@@ -606,9 +609,9 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         for (GroupByInfo a: state.groupBy) {
             if (expression.equals(a.groupBy)) {
                 state.resultTypeFields.add(new DDlogField(a.groupBy, name, a.translation.getType()));
-                a.fieldName = name;
+                a.fieldNames.add(name);
                 found = true;
-                break;
+                // continue scanning, each field could be used multiple times.
             }
         }
         if (found)
@@ -680,7 +683,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         /*
             General structure of an aggregation in DDlog is:
 
-            R[v1] :- R[v], ..., var gb1 = ..., var aggResult = Aggregate( (gb1, gb2, ...), agg(v)), var v1 = v.
+            R[v1] :- R[v], ..., var gb1 = ..., var groupByResult = (gb1, gb2, ...).group_by((v)), var aggResult = agg(groupByResult), var v1 = v.
 
             where
 
@@ -745,7 +748,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             state.addLoopStatement(set);
         }
 
-        DDlogTUser paramType = new DDlogTUser(gby, "Group", false, keyType, tuple);
+        DDlogTUser paramType = new DDlogTGroup(gby, keyType, tuple);
         DDlogFuncArg param = new DDlogFuncArg(gby, paramName, false, paramType);
         DDlogETuple callArg = new DDlogETuple(select, tupleVars.toArray(new DDlogExpression[0]));
 
@@ -793,16 +796,25 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
 
         assert state.loopBody != null;
 
-        DDlogEFor forLoop = new DDlogEFor(gby, new DDlogETuple(gby, Arrays.asList(new DDlogExpression[]{ new DDlogEVar(gby, iter, tuple), new DDlogEPHolder(gby) })), new DDlogEVar(gby, paramName, paramType), state.loopBody);
+        DDlogEFor forLoop = new DDlogEFor(gby, new DDlogETuple(gby, Arrays.asList(new DDlogEVar(gby, iter, tuple), new DDlogEPHolder(gby))), new DDlogEVar(gby, paramName, paramType), state.loopBody);
         state.addFunctionStatement(forLoop);
         String[] vars = groupByVars.toArray(new String[0]);
         String aggregateVarName = context.freshLocalName("aggResult");
-        DDlogRHSAggregate aggregate = new DDlogRHSAggregate(select, aggregateVarName, agg, callArg, vars);
-        result.addDefinition(aggregate);
+        String gbVarName = context.freshLocalName("groupResult");
+        DDlogRHSGroupby gb = new DDlogRHSGroupby(gby, gbVarName, callArg, vars);
+        result.addDefinition(gb);
+
+        DDlogType gtype = new DDlogTGroup(gby, forLoop.getType(), tUserFunction);
         DDlogEStruct project = new DDlogEStruct(select, tUserFunction.name, tUserResult, state.functionResultFields);
-        state.addFunctionStatement(project);
-        DDlogFunction func = new DDlogFunction(select, agg, tUserFunction, state.functionBody, param);
-        context.getProgram().functions.add(func);
+        if (!state.functionResultTypeFields.isEmpty()) {
+            DDlogExpression aggregate = new DDlogESet(select,
+                    new DDlogEVarDecl(select, aggregateVarName, tUserFunction),
+                    new DDlogEApply(select, agg, tUserFunction, new DDlogEVar(select, gbVarName, gtype)));
+            result.addDefinition(aggregate);
+            state.addFunctionStatement(project);
+            DDlogFunction func = new DDlogFunction(select, agg, tUserFunction, state.functionBody, param);
+            context.getProgram().functions.add(func);
+        }
 
         DDlogRelationDeclaration outRel = new DDlogRelationDeclaration(select, DDlogRelationDeclaration.Role.Internal, outRelName, tUserResult);
         context.add(outRel);
@@ -812,9 +824,10 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             // Copy into the final tuple the groupBy fields necessary...
             List<DDlogEStruct.FieldValue> fields = new ArrayList<DDlogEStruct.FieldValue>();
             for (GroupByInfo gr : groupBy) {
-                if (gr.fieldName != null)
-                    fields.add(new DDlogEStruct.FieldValue(gr.fieldName,
+                for (String fieldName: gr.fieldNames) {
+                    fields.add(new DDlogEStruct.FieldValue(fieldName,
                             new DDlogEVar(gr.groupBy, gr.varName, gr.translation.getType())));
+                }
             }
 
             // ... and the other fields computed by the aggregation function

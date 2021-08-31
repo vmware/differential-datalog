@@ -34,18 +34,31 @@ import java.util.List;
 public class DDlogEApply extends DDlogExpression {
     private final String func;
     private final List<DDlogExpression> args;
+    // If true the suffix notation with dot is preferred.
+    private boolean suffix;
 
-    public DDlogEApply(@Nullable Node node, String func, DDlogType type, DDlogExpression... args) {
+    public DDlogEApply(@Nullable Node node, String func, DDlogType type, boolean suffix, DDlogExpression... args) {
         super(node, type);
         this.func = func;
+        this.suffix = suffix;
         this.args = Arrays.asList(args);
+    }
+
+    public DDlogEApply(@Nullable Node node, String func, DDlogType type, DDlogExpression... args) {
+        this(node, func, type, false, args);
     }
 
     @Override
     public String toString() {
-        return this.func + "(" +
-                String.join(", ",
-                        Linq.map(this.args, DDlogExpression::toString)) + ")";
+        if (this.suffix && this.args.size() > 0) {
+            List<DDlogExpression> tail = this.args.subList(1, this.args.size());
+            return this.args.get(0).toString() + "." + this.func + "(" +
+                    String.join(", ", Linq.map(tail, DDlogExpression::toString)) + ")";
+        } else {
+            return this.func + "(" +
+                    String.join(", ",
+                            Linq.map(this.args, DDlogExpression::toString)) + ")";
+        }
     }
 
     @Override

@@ -46,7 +46,7 @@ public class WindowVisitor
 
         This can be executed as multiple queries:
         - Prepare the input for the windowed computation.
-          (This query could even involve WHERE/GROUP BY/AGGREGAT/HAVING if the original
+          (This query could even involve WHERE/GROUP BY/AGGREGATE/HAVING if the original
            query contained them).
 
           CREATE VIEW OverInput AS

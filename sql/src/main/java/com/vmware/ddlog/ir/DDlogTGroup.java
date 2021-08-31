@@ -28,31 +28,11 @@ import com.facebook.presto.sql.tree.Node;
 
 import javax.annotation.Nullable;
 
-public class DDlogEVar extends DDlogExpression {
-    public final String var;
-
-    public DDlogEVar(@Nullable Node node, String var, DDlogType type) {
-        super(node, type);
-        this.var = var;
-    }
-
-    @Override
-    public boolean compare(DDlogExpression val, IComparePolicy policy) {
-        if (!super.compare(val, policy))
-            return false;
-        if (!val.is(DDlogEVar.class))
-            return false;
-        DDlogEVar other = val.to(DDlogEVar.class);
-        return policy.compareIdentifier(var, other.var);
-    }
-
-    public DDlogEVarDecl createDeclaration() {
-        assert this.type != null;
-        return new DDlogEVarDecl(this.node, this.var, this.type);
-    }
-
-    @Override
-    public String toString() {
-        return this.var;
+/**
+ * Model Group[K,V] as a user-defined type with 2 arguments.
+ */
+public class DDlogTGroup extends DDlogTUser {
+    public DDlogTGroup(@Nullable Node node, DDlogType tkey, DDlogType tvalue) {
+        super(node, "Group", false, tkey, tvalue);
     }
 }
