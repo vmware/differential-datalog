@@ -256,23 +256,16 @@ public class WindowTest extends BaseQueriesTest {
         this.testTranslation(query, translation);
     }
 
-    //@Test
+    @Test
     public void windowGroupByTest2() {
-        String query = "create view v0 as select DISTINCT column2, count(column3) over (partition by column2) from t1 group by column2,column3";
-        String translation = this.header(false) + "typedef TRtmp = TRtmp{tmp:bool, gb1:string, column2:string}\n" +
+        String query = "CREATE VIEW v0 as SELECT DISTINCT column2, COUNT(column3) OVER (PARTITION BY column2) from t1 GROUP BY column2,column3";
+        String translation = this.header(false) +
+                "typedef TRtmp = TRtmp{tmp:bool, gb1:string, column2:string}\n" +
                 "typedef Tagg = Tagg{}\n" +
                 "typedef TRtmp0 = TRtmp0{gb1:string, count:signed<64>}\n" +
                 "typedef Tagg1 = Tagg1{count:signed<64>}\n" +
                 "typedef Ttmp = Ttmp{tmp:bool, gb1:string, column2:string, count:signed<64>}\n" +
                 "typedef TRtmp2 = TRtmp2{column2:string, count:signed<64>}\n" +
-                "function agg(g: Group<(string, bool), Tt1>):Tagg {\n" +
-                "(var gb3, var gb4) = group_key(g);\n" +
-                "(for ((i, _) in g) {\n" +
-                "var v2 = i}\n" +
-                ");\n" +
-                "(Tagg{})\n" +
-                "}\n" +
-                "\n" +
                 "function agg1(g9: Group<string, TRtmp>):Tagg1 {\n" +
                 "(var gb8) = group_key(g9);\n" +
                 "(var count11 = 64'sd0: signed<64>);\n" +
@@ -291,13 +284,58 @@ public class WindowTest extends BaseQueriesTest {
                 "relation Rtmp2[TRtmp2]\n" +
                 "output relation Rv0[TRtmp2]\n" +
                 "Roverinput[v6] :- Rt1[v2],var gb3 = v2.column2,var gb4 = v2.column3," +
-                "var groupResult = (v2).group_by((gb3, gb4)),var aggResult = agg(groupResult)," +
-                "var v5 = TRtmp{.column2 = gb3,.tmp = gb4},var v6 = v5.\n" +
+                "var groupResult = (v2).group_by((gb3, gb4))," +
+                "var v5 = TRtmp{.gb1 = gb3,.column2 = gb3,.tmp = gb4},var v6 = v5.\n" +
                 "Rover[v15] :- Roverinput[v7],var gb8 = v7.gb1,var groupResult14 = (v7).group_by((gb8))," +
                 "var aggResult13 = agg1(groupResult14),var v12 = TRtmp0{.gb1 = gb8,.count = aggResult13.count},var v15 = v12.\n" +
                 "Rv0[v20] :- Roverinput[v16],Rover[v17],(true and (v16.gb1 == v17.gb1))," +
                 "var v18 = Ttmp{.tmp = v16.tmp,.gb1 = v16.gb1,.column2 = v16.column2,.count = v17.count}," +
                 "var v19 = TRtmp2{.column2 = v16.column2,.count = v17.count},var v20 = v19.";
+        this.testTranslation(query, translation);
+    }
+
+    @Test
+    public void nestedAggTest() {
+        String query = "SELECT column2, SUM(column1), SUM(SUM(column1)) OVER (PARTITION BY column3) FROM t1 GROUP BY column2, column3";
+        String translation = this.header(false) +
+                "typedef TRtmp = TRtmp{tmp:signed<64>, gb1:bool, column2:string, col:signed<64>}\n" +
+                "typedef Tagg = Tagg{tmp:signed<64>, col:signed<64>}\n" +
+                "typedef TRtmp0 = TRtmp0{gb1:bool, sum:signed<64>}\n" +
+                "typedef Tagg1 = Tagg1{sum:signed<64>}\n" +
+                "typedef Ttmp = Ttmp{tmp:signed<64>, gb1:bool, column2:string, col:signed<64>, sum:signed<64>}\n" +
+                "typedef TRtmp2 = TRtmp2{column2:string, col:signed<64>, sum:signed<64>}\n" +
+                "function agg(g: Group<(string, bool), Tt1>):Tagg {\n" +
+                "(var gb3, var gb4) = group_key(g);\n" +
+                "(var sum5 = 64'sd0: signed<64>);\n" +
+                "(for ((i, _) in g) {\n" +
+                "var v2 = i;\n" +
+                "(var incr = v2.column1);\n" +
+                "(sum5 = agg_sum_signed_R(sum5, incr))}\n" +
+                ");\n" +
+                "(Tagg{.tmp = sum5,.col = sum5})\n" +
+                "}\n" +
+                "\n" +
+                "function agg1(g10: Group<bool, TRtmp>):Tagg1 {\n" +
+                "(var gb9) = group_key(g10);\n" +
+                "(var sum13 = 64'sd0: signed<64>);\n" +
+                "(for ((i11, _) in g10) {\n" +
+                "var v8 = i11;\n" +
+                "(var incr12 = v8.tmp);\n" +
+                "(sum13 = agg_sum_signed_R(sum13, incr12))}\n" +
+                ");\n" +
+                "(Tagg1{.sum = sum13})\n" +
+                "}\n" +
+                this.relations(false) +
+                "relation Rtmp[TRtmp]\n" +
+                "relation Roverinput[TRtmp]\n" +
+                "relation Rtmp0[TRtmp0]\n" +
+                "relation Rover[TRtmp0]\n" +
+                "relation Rtmp2[TRtmp2]\n" +
+                "Roverinput[v7] :- Rt1[v2],var gb3 = v2.column2,var gb4 = v2.column3,var groupResult = (v2).group_by((gb3, gb4))," +
+                "var aggResult = agg(groupResult),var v6 = TRtmp{.column2 = gb3,.gb1 = gb4,.tmp = aggResult.tmp,.col = aggResult.col}," +
+                "var v7 = v6.\n" +
+                "Rover[v17] :- Roverinput[v8],var gb9 = v8.gb1,var groupResult16 = (v8).group_by((gb9))," +
+                "var aggResult15 = agg1(groupResult16),var v14 = TRtmp0{.gb1 = gb9,.sum = aggResult15.sum},var v17 = v14.";
         this.testTranslation(query, translation);
     }
 }

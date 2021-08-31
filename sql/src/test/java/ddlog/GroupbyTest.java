@@ -505,4 +505,18 @@ public class GroupbyTest extends BaseQueriesTest {
         this.testTranslation(query, program);
     }
 
+
+    @Test
+    public void duplicatedGroupColumnTest() {
+        String query = "CREATE VIEW v AS SELECT DISTINCT column3 tmp, column2 gb1, column2 column2 FROM t1 GROUP BY column2, column3";
+        String translation = this.header(false) +
+                "typedef TRtmp = TRtmp{tmp:bool, gb1:string, column2:string}\n" +
+                "typedef Tagg = Tagg{}\n" +
+                this.relations(false) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv[TRtmp]\n" +
+                "Rv[v2] :- Rt1[v],var gb = v.column2,var gb0 = v.column3,var groupResult = (v).group_by((gb, gb0))," +
+                "var v1 = TRtmp{.gb1 = gb,.column2 = gb,.tmp = gb0},var v2 = v1.";
+        this.testTranslation(query, translation);
+    }
 }
