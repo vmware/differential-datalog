@@ -801,6 +801,21 @@ extern void ddlog_free_json(char *json);
 extern int ddlog_enable_cpu_profiling(ddlog_prog prog, bool enable);
 
 /*
+ * Controls recording of the number of insertions and deletions per
+ * arrangement.  Unlike the arrangement size profile, which tracks the
+ * number of records in each arrangment, this feature tracks the amount
+ * of churn.  For example adding one record and deleting one record will
+ * show up as two changes in the change profile (but will cancel out in
+ * the size profile).
+ *
+ * When change profiling is disabled, the recording stops, but the
+ * previously accumulated profile is preserved.  By selectively enabling
+ * change profiling for a subset of transactions, the user can focus
+ * the analysis on specific parts of the program.
+ */
+extern int ddlog_enable_change_profiling(ddlog_prog prog, bool enable);
+
+/*
  * Returns DDlog program runtime profile as a C string.
  *
  * The returned string must be deallocated using `ddlog_string_free()`.

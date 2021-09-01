@@ -182,6 +182,7 @@ pub(super) struct SelfProfilingRig {
     pub(super) profiling_data: Option<ProfilingData>,
     pub(super) profile_cpu: Option<Arc<AtomicBool>>,
     pub(super) profile_timely: Option<Arc<AtomicBool>>,
+    pub(super) profile_change: Option<Arc<AtomicBool>>,
 }
 
 impl SelfProfilingRig {
@@ -195,7 +196,8 @@ impl SelfProfilingRig {
             // Profiling data structure
             let profile = Arc::new(Mutex::new(Profile::new()));
 
-            let (profile_cpu, profile_timely) = (
+            let (profile_cpu, profile_timely, profile_change) = (
+                Arc::new(AtomicBool::new(false)),
                 Arc::new(AtomicBool::new(false)),
                 Arc::new(AtomicBool::new(false)),
             );
@@ -205,8 +207,12 @@ impl SelfProfilingRig {
             let profile_thread =
                 thread::spawn(move || Program::prof_thread_func(profile_recv, cloned_profile));
 
-            let profiling_data =
-                ProfilingData::new(profile_cpu.clone(), profile_timely.clone(), profile_send);
+            let profiling_data = ProfilingData::new(
+                profile_cpu.clone(),
+                profile_timely.clone(),
+                profile_change.clone(),
+                profile_send,
+            );
 
             Self {
                 profile: Some(profile),
@@ -214,6 +220,7 @@ impl SelfProfilingRig {
                 profiling_data: Some(profiling_data),
                 profile_cpu: Some(profile_cpu),
                 profile_timely: Some(profile_timely),
+                profile_change: Some(profile_change),
             }
         } else {
             Self {
@@ -222,6 +229,7 @@ impl SelfProfilingRig {
                 profiling_data: None,
                 profile_cpu: None,
                 profile_timely: None,
+                profile_change: None,
             }
         }
     }

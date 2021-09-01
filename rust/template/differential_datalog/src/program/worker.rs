@@ -472,9 +472,13 @@ impl<'a> DDlogWorker<'a> {
             self.worker.log_register().insert::<DifferentialEvent, _>(
                 "differential/arrange",
                 move |_time, data| {
+                    let profile_change = profiling.is_change_enabled();
                     // If there are events, send them through the profiling channel
                     if !data.is_empty() {
-                        profiling.record(ProfMsg::DifferentialMessage(mem::take(data)));
+                        profiling.record(ProfMsg::DifferentialMessage(
+                            mem::take(data),
+                            profile_change,
+                        ));
                     }
                 },
             );
@@ -984,6 +988,8 @@ pub struct ProfilingData {
     cpu_enabled: ThinArc<AtomicBool>,
     /// Whether timely profiling is enabled
     timely_enabled: ThinArc<AtomicBool>,
+    /// Arrangement change profiling is enabled
+    change_enabled: ThinArc<AtomicBool>,
     /// The channel used to send profiling data to the profiling thread
     data_channel: Sender<ProfMsg>,
 }
@@ -993,11 +999,13 @@ impl ProfilingData {
     pub const fn new(
         cpu_enabled: ThinArc<AtomicBool>,
         timely_enabled: ThinArc<AtomicBool>,
+        change_enabled: ThinArc<AtomicBool>,
         data_channel: Sender<ProfMsg>,
     ) -> Self {
         Self {
             cpu_enabled,
             timely_enabled,
+            change_enabled,
             data_channel,
         }
     }
@@ -1010,6 +1018,11 @@ impl ProfilingData {
     /// Whether timely profiling is enabled
     pub fn is_timely_enabled(&self) -> bool {
         self.timely_enabled.load(Ordering::Relaxed)
+    }
+
+    /// Whether arrangement change profiling is enabled
+    pub fn is_change_enabled(&self) -> bool {
+        self.change_enabled.load(Ordering::Relaxed)
     }
 
     /// Record a profiling message

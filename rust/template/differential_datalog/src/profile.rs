@@ -39,7 +39,8 @@ pub enum ProfMsg {
         bool,
         bool,
     ),
-    DifferentialMessage(Vec<(Duration, usize, DifferentialEvent)>),
+    /// Message batch + change_profiling_enabled flag.
+    DifferentialMessage(Vec<(Duration, usize, DifferentialEvent)>, bool),
 }
 
 #[derive(Debug)]
@@ -52,6 +53,7 @@ pub struct Profile {
     short_names: FnvHashMap<usize, String>,
     sizes: FnvHashMap<usize, isize>,
     peak_sizes: FnvHashMap<usize, isize>,
+    changes: FnvHashMap<usize, usize>,
     starts: FnvHashMap<(usize, usize), Duration>,
     durations: FnvHashMap<usize, (Duration, usize)>,
     // Initialization creates a file
@@ -70,6 +72,14 @@ impl fmt::Display for Profile {
         write!(f, "\nArrangement peak sizes\n")?;
         self.fmt_sizes(&self.peak_sizes, f)?;
 
+        if !self.changes.is_empty() {
+            write!(
+                f,
+                "\nCounts of changes (insertions+deletions) to arrangements\n"
+            )?;
+            self.fmt_changes(&self.changes, f)?;
+        }
+
         write!(f, "\nCPU profile\n")?;
         self.fmt_durations(0, &self.addresses, f)?;
 
@@ -86,6 +96,7 @@ impl Profile {
             short_names: FnvHashMap::default(),
             sizes: FnvHashMap::default(),
             peak_sizes: FnvHashMap::default(),
+            changes: FnvHashMap::default(),
             starts: FnvHashMap::default(),
             durations: FnvHashMap::default(),
             timely_stats: None,
@@ -100,6 +111,20 @@ impl Profile {
     ) -> Result<(), fmt::Error> {
         let mut size_vec: Vec<(usize, isize)> = sizes.clone().into_iter().collect();
         size_vec.sort_by(|a, b| a.1.cmp(&b.1).reverse());
+        size_vec.iter().try_for_each(|(operator, size)| {
+            let name = self.names.get(operator).map(AsRef::as_ref).unwrap_or("???");
+            let msg = format!("{} {}", name, operator);
+            writeln!(f, "{}      {}", size, msg)
+        })
+    }
+
+    pub fn fmt_changes(
+        &self,
+        sizes: &FnvHashMap<usize, usize>,
+        f: &mut fmt::Formatter,
+    ) -> Result<(), fmt::Error> {
+        let mut size_vec: Vec<(usize, usize)> = sizes.clone().into_iter().collect();
+        size_vec.sort_by(|(_, sz1), (_, sz2)| sz1.cmp(sz2).reverse());
         size_vec.iter().try_for_each(|(operator, size)| {
             let name = self.names.get(operator).map(AsRef::as_ref).unwrap_or("???");
             let msg = format!("{} {}", name, operator);
@@ -203,7 +228,9 @@ impl Profile {
                 }
             }
 
-            ProfMsg::DifferentialMessage(msg) => self.handle_differential(msg),
+            ProfMsg::DifferentialMessage(msg, profile_change) => {
+                self.handle_differential(msg, *profile_change)
+            }
         }
     }
 
@@ -269,7 +296,11 @@ impl Profile {
         }
     }
 
-    fn handle_differential(&mut self, msg: &[(Duration, usize, DifferentialEvent)]) {
+    fn handle_differential(
+        &mut self,
+        msg: &[(Duration, usize, DifferentialEvent)],
+        profile_change: bool,
+    ) {
         //eprintln!("profiling message: {:?}", msg);
         for (_, _, event) in msg.iter() {
             match event {
@@ -278,6 +309,10 @@ impl Profile {
                     *size += x.length as isize;
                     let peak = self.peak_sizes.entry(x.operator).or_insert(0);
                     *peak = max(*peak, *size);
+                    if profile_change {
+                        let changes = self.changes.entry(x.operator).or_insert(0);
+                        *changes += x.length;
+                    }
                 }
                 DifferentialEvent::Merge(m) => {
                     if let Some(complete) = m.complete {

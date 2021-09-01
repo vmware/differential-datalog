@@ -706,6 +706,13 @@ JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1enable_1cpu_1profiling(
     }
 }
 
+JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1enable_1change_1profiling(
+    JNIEnv *env, jobject obj, jlong progHandle, jboolean enable) {
+    if (ddlog_enable_change_profiling((ddlog_prog)progHandle, enable) < 0) {
+        throwDDlogException(env, NULL);
+    }
+}
+
 void log_callback(uintptr_t callbackInfo, int level, const char *msg) {
     struct CallbackInfo* cbi = (struct CallbackInfo*)callbackInfo;
     JNIEnv* env;

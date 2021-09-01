@@ -363,6 +363,16 @@ where
         .map_err(|e| e.to_string())
     }
 
+    fn enable_change_profiling(&self, enable: bool) -> Result<(), String> {
+        let mut writer = self.writer.lock().unwrap();
+        writeln!(
+            &mut writer,
+            "profile change {};",
+            if enable { "on" } else { "off" }
+        )
+        .map_err(|e| e.to_string())
+    }
+
     fn enable_timely_profiling(&self, enable: bool) -> Result<(), String> {
         let mut writer = self.writer.lock().unwrap();
         writeln!(

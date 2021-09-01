@@ -268,6 +268,12 @@ impl DDlogProfiling for HDDlog {
         Ok(())
     }
 
+    fn enable_change_profiling(&self, enable: bool) -> Result<(), String> {
+        self.record_command(|r| r.enable_change_profiling(enable));
+        self.prog.lock().unwrap().enable_change_profiling(enable);
+        Ok(())
+    }
+
     fn enable_timely_profiling(&self, enable: bool) -> Result<(), String> {
         self.record_command(|r| r.enable_timely_profiling(enable));
         self.prog.lock().unwrap().enable_timely_profiling(enable);
