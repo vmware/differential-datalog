@@ -90,8 +90,8 @@ pub fn debug_event_join<
 pub fn debug_split_group<K: Clone, I: 'static + Clone, V: Clone + 'static>(
     g: &ddlog_std::Group<K, ddlog_std::tuple2<I, V>>,
 ) -> ddlog_std::tuple2<ddlog_std::Vec<I>, ddlog_std::Group<K, V>> {
-    let mut inputs = ddlog_std::Vec::with_capacity(ddlog_std::group_count(g) as usize);
-    let mut vals = ::std::vec::Vec::with_capacity(ddlog_std::group_count(g) as usize);
+    let mut inputs = ddlog_std::Vec::with_capacity(ddlog_std::group_count_distinct(g) as usize);
+    let mut vals = ::std::vec::Vec::with_capacity(ddlog_std::group_count_distinct(g) as usize);
     for ddlog_std::tuple2(ddlog_std::tuple2(i, v), w) in g.iter() {
         inputs.push(i);
         vals.push(ddlog_std::tuple2(v, w));

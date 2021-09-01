@@ -441,7 +441,7 @@ PodMatchesPositiveRequirements(sel_uid, pod) :-
     var expected_matches = vec_len(positive_requirements),
     var req = FlatMap(positive_requirements),
     PodSatisfiesRequirement(pod@&k8s::Pod{.namespace = namespace}, req),
-    var num_matches = Aggregate((sel_uid, pod, expected_matches), group_count(())),
+    var num_matches = Aggregate((sel_uid, pod, expected_matches), group_count_distinct(())),
     num_matches == expected_matches.
 
 // `PodViolatesNegativeRequirements`: For each selector in `PodSelector`,

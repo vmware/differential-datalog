@@ -505,9 +505,9 @@ extern function group_key(g: Group<'K, 'V>): 'K
  * Standard aggregates
  */
 
-/* Returns the number of elements in the group, which is guaranteed
+/* Returns the number of distinct elements in the group, which is guaranteed
  * to be >0. */
-extern function group_count(g: Group<'K, 'V>): usize
+extern function group_count_distinct(g: Group<'K, 'V>): usize
 
 /* Returns the first element of the group.
  * It always exists, as aggregation cannot return an empty group. */
@@ -523,14 +523,6 @@ extern function group_to_vec(g: Group<'K, 'V>): Vec<'V>
 extern function group_to_map(g: Group<'K1, ('K2,'V)>): Map<'K2,'V>
 extern function group_to_setmap(g: Group<'K1, ('K2,'V)>): Map<'K2,Set<'V>>
 
-/* Returns the sum of all values in the group, ignoring weights.
- *
- * `V` must satisfy the `Add<Output = V>` Rust type bound.
- * The DDlog compiler does not currently enforce this constraint,
- * however the Rust compiler will return an error if it is violated.
- */
-extern function group_sum(g: Group<'K, 'V>): 'V
-
 extern function group_set_unions(g: Group<'K, Set<'A>>): Set<'A>
 
 /* Optimized version of group_set_unions that, when the group consits of
@@ -545,13 +537,8 @@ function key(g: Group<'K, 'V>): 'K {
     group_key(g)
 }
 
-function count(g: Group<'K, 'V>): usize {
-    group_count(g)
-}
-
-/* The number of elements in the group.  The result is always greater than 0. */
-function size(g: Group<'K, 'V>): usize {
-    group_count(g)
+function count_distinct(g: Group<'K, 'V>): usize {
+    group_count_distinct(g)
 }
 
 /* The first element of the group.  This operation is well defined,
@@ -591,8 +578,8 @@ function to_setmap(g: Group<'K1, ('K2,'V)>): Map<'K2,Set<'V>> {
 }
 
 function group_unzip(g: Group<'K, ('X,'Y)>): (Vec<'X>, Vec<'Y>) = {
-    var xs: Vec<'X> = vec_with_capacity(g.size());
-    var ys: Vec<'Y> = vec_with_capacity(g.size());
+    var xs: Vec<'X> = vec_with_capacity(g.count_distinct());
+    var ys: Vec<'Y> = vec_with_capacity(g.count_distinct());
     for ((v, _) in g) {
         (var x, var y) = v;
         vec_push(xs, x);

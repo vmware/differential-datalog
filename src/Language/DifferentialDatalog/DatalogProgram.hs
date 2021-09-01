@@ -170,16 +170,16 @@ progTypeMap :: DatalogProgram -> (Type -> Type) -> DatalogProgram
 progTypeMap d fun = runIdentity $ progTypeMapM d (return . fun)
 
 -- | Apply function to all rule RHS terms in the program
-progRHSMapM :: (Monad m) => DatalogProgram -> (RuleRHS -> m RuleRHS) -> m DatalogProgram
+progRHSMapM :: (Monad m) => DatalogProgram -> (Rule -> Int -> RuleRHS -> m [RuleRHS]) -> m DatalogProgram
 progRHSMapM d fun = do
     rs <- mapM (\r -> do
-                 rhs <- mapM fun $ ruleRHS r
+                 rhs <- concat <$> (mapIdxM (\rhs rhs_idx -> fun r rhs_idx rhs) $ ruleRHS r)
                  return r { ruleRHS = rhs })
                $ progRules d
     return d { progRules = rs }
 
-progRHSMap :: DatalogProgram -> (RuleRHS -> RuleRHS) -> DatalogProgram
-progRHSMap d fun = runIdentity $ progRHSMapM d (return . fun)
+progRHSMap :: DatalogProgram -> (Rule -> Int -> RuleRHS -> [RuleRHS]) -> DatalogProgram
+progRHSMap d fun = runIdentity $ progRHSMapM d (\rl rhs_idx rhs -> return $ fun rl rhs_idx rhs)
 
 -- | Apply function to all atoms in the program
 progAtomMapM :: (Monad m) => DatalogProgram -> (Atom -> m Atom) -> m DatalogProgram

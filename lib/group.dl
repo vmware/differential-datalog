@@ -33,7 +33,7 @@ SOFTWARE.
 
 /* Applies closure `f` to each element of the group. */
 function map(g: Group<'K, 'V1>, f: function('V1): 'V2): Vec<'V2> {
-    var res = vec_with_capacity(g.count());
+    var res = vec_with_capacity(g.count_distinct());
     for ((x, _) in g) {
         res.push(f(x))
     };
@@ -162,3 +162,9 @@ function fold(g: Group<'K,'V>, f: function('B, 'V): 'B, initializer: 'B): 'B {
     };
     res
 }
+
+/* Apply `f` to each distinct value in the group and sum up the results.
+ *
+ * `'N` must be a numeric type.
+ */
+extern function sum_of(g: Group<'K, 'V>, f: function('V): 'N): 'N

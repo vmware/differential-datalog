@@ -1,6 +1,7 @@
 import allocate
 import fp
 import print
+import group
 
 /* Test types */
 
@@ -765,16 +766,16 @@ function find_x_in_group(ys: Group<'A, 'A>): bool {
 }
 
 output relation Aggregate1(x: string, cnt: bit<64>)
-Aggregate1(x, cnt) :- AggregateMe1(x,y), var cnt = y.group_by(x).count().
+Aggregate1(x, cnt) :- AggregateMe1(x,y), var cnt = y.group_by(x).count_distinct().
 
 output relation AggregateCnt(cnt: bit<64>)
-AggregateCnt(cnt) :- AggregateMe1(x,y), var cnt = ().group_by(()).count().
+AggregateCnt(cnt) :- AggregateMe1(x,y), var cnt = ().group_by(()).count_distinct().
 
 output relation AggregateCnt2(cnt: bit<64>)
-AggregateCnt2(cnt) :- AggregateMe1(x,y), var cnt = 1.group_by(()).group_sum().
+AggregateCnt2(cnt) :- AggregateMe1(x,y), var cnt = (x, y).group_by(()).sum_of(|xy| 1).
 
 output relation AggregateCnt3(cnt: bit<64>)
-AggregateCnt3(cnt) :- AggregateMe1(x,y), y != "1", var cnt = 1.group_by(()).group_sum().
+AggregateCnt3(cnt) :- AggregateMe1(x,y), y != "1", var cnt = (x,y).group_by(()).count_distinct().
 
 output relation Aggregate2(x: string, set: Set<string>)
 Aggregate2(x, set) :- AggregateMe1(x,y), var set = y.group_by(x).to_set().
@@ -791,7 +792,7 @@ Disaggregate(x,y) :- AggregateMe1(x,y), var set = y.group_by(x).to_set(), var y 
 input relation AggregateMeInts(x: string, y: bit<32>)
 
 output relation Sum(x: string, sum: bit<32>)
-Sum(x, sum) :- AggregateMeInts(x, y), var sum = y.group_by(x).group_sum().
+Sum(x, sum) :- AggregateMeInts(x, y), var sum = y.group_by(x).sum_of(|y| y).
 
 input relation AggregateMe3(x: string, y: string, z: string)
 
@@ -799,7 +800,7 @@ output relation AggregateByX(x: string, cnt: bit<64>)
 
 // Old syntax for group_by.
 AggregateByX(x, cnt) :- AggregateMe3(x,y,z), AggregateMe1(x,y),
-                        var cnt = Aggregate((x), group_count(())).
+                        var cnt = Aggregate((x), group_count_distinct((y,z))).
 
 output relation Concat(s: string)
 // Old syntax for group_by.

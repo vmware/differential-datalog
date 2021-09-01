@@ -2,6 +2,7 @@
 
 import json
 import hashset
+import group
 
 typedef Object = Object {
     field: u128
@@ -137,7 +138,7 @@ StreamFold(k, s) :- StreamOfSums-1(k, s).
 
 StreamOfSums(k, s) :-
     StreamFold(k, v),
-    var s = v.group_by(k).group_sum().
+    var s = v.group_by(k).sum_of(|v| v).
 
 // Stream fold with enable/disable control
 
@@ -152,7 +153,7 @@ ControlledStreamFold(k, s) :- ControlledStreamOfSums-1(k, s),
 
 ControlledStreamOfSums(k, s) :-
     ControlledStreamFold(k, v),
-    var s = v.group_by(k).group_sum(),
+    var s = v.group_by(k).sum_of(|v| v),
     EnableK(k).
 
 /* Compute sum, average, and unique values aggregates over the same stream. */
