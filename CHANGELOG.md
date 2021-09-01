@@ -6,8 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
-- Bug fixes and improvements in tutorial and SQL to DDlog compiler.
+### SQL-to-DDlog compiler
+
+- Bug fixes and improvements in SQL-to-DDlog compiler.
 - Enable SQL-to-DDlog compiler to translate `array_length` function calls, which appear in SQL dialects such as H2 and Postgres.
+
+### New features
+
+- Added change profiling support to the DDlog self-profiler.  Unlike arrangement size
+  profiling, which tracks the number of records in each arrangment, the change profile
+  shows the amount of churn.  For example adding one record and deleting one record will
+  show up as two changes in the change profile, but will cancel out in the size profile.
+  The self-profiler now support the `profile change on/off` commands (also available
+  through the API), which enables change profiling for selected transactions.
+  When change profiling is disabled, the recording stops, but the previously accumulated
+  profile is preserved.  By selectively enabling change profiling for a subset of transactions,
+  the user can focus their analysis on specific parts of the program.
+
+- Limited support for dynamic typing.  We introduce a new type `Any` to the standard
+  library, which can represent any DDlog value, along with two library functions
+  `to_any()` and `from_any()` that convert values to and from this type.  This
+  feature can be used to, e.g., store a mix of values of different types in a
+  set or map.
+
+- Experimental features to support implementing parts of D3log runtime in DDlog.
+  See #1065 for details.
 
 ## [0.47.0] - Aug 19, 2021
 
