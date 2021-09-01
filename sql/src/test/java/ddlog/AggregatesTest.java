@@ -507,4 +507,31 @@ public class AggregatesTest extends BaseQueriesTest {
                 "Rv1[v2] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v1 = aggResult,var v2 = v1.";
         this.testTranslation(query, program);
     }
+
+    @Test
+    public void arrayLengthTest() {
+        String query = "create view v1 as select array_length(array_agg(column2)) from t1";
+        String program = this.header(false) +
+                "typedef TRtmp = TRtmp{col0:signed<64>}\n" +
+                "function agg(g: Group<(), Tt1>):TRtmp {\n" +
+                "var array_agg = vec_empty(): Vec<string>;\n" +
+                "(for ((i, _) in g) {\n" +
+                "var v = i;\n" +
+                "(var incr = v.column2);\n" +
+                "(vec_push(array_agg, incr))}\n" +
+                ");\n" +
+                "(TRtmp{.col0 = sql_array_length(array_agg)})\n" +
+                "}\n" +
+                "\n" +
+                "input relation Rt1[Tt1]\n" +
+                "input relation Rt2[Tt2]\n" +
+                "input relation Rt3[Tt3]\n" +
+                "input relation Rt4[Tt4]\n" +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv1[TRtmp]\n" +
+                "Rv1[v2] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v1 = aggResult,var v2 = v1.";
+        
+        this.testTranslation(query, program);
+
+    }
 }

@@ -505,7 +505,6 @@ public class GroupbyTest extends BaseQueriesTest {
         this.testTranslation(query, program);
     }
 
-
     @Test
     public void duplicatedGroupColumnTest() {
         String query = "CREATE VIEW v AS SELECT DISTINCT column3 tmp, column2 gb1, column2 column2 FROM t1 GROUP BY column2, column3";
@@ -518,5 +517,73 @@ public class GroupbyTest extends BaseQueriesTest {
                 "Rv[v2] :- Rt1[v],var gb = v.column2,var gb0 = v.column3,var groupResult = (v).group_by((gb, gb0))," +
                 "var v1 = TRtmp{.gb1 = gb,.column2 = gb,.tmp = gb0},var v2 = v1.";
         this.testTranslation(query, translation);
+    }
+
+    @Test
+    public void testHavingArrayLength1() {
+        String query = "create view v0 as SELECT COUNT(column2) \n" +
+                "    FROM t1\n" +
+                "GROUP BY column1\n" +
+                "HAVING (array_length(array_agg(t1.column1)) = COUNT(column2))";
+        String program = this.header(false) +
+                "typedef TRtmp = TRtmp{col0:signed<64>}\n" +
+                "typedef Tagg = Tagg{col0:signed<64>, col1:bool}\n" +
+                "function agg(g: Group<signed<64>, Tt1>):Tagg {\n" +
+                "(var gb) = group_key(g);\n" +
+                "(var count = 64'sd0: signed<64>);\n" +
+                "(var array_agg = vec_empty(): Vec<signed<64>>);\n" +
+                "(for ((i, _) in g) {\n" +
+                "var v = i;\n" +
+                "(var incr = v.column2);\n" +
+                "(count = agg_count_R(count, incr));\n" +
+                "(var incr2 = gb);\n" +
+                "(vec_push(array_agg, incr2))}\n" +
+                ");\n" +
+                "(Tagg{.col0 = count,.col1 = (sql_array_length(array_agg) == count)})\n" +
+                "}\n" +
+                "\n" +
+                "input relation Rt1[Tt1]\n" +
+                "input relation Rt2[Tt2]\n" +
+                "input relation Rt3[Tt3]\n" +
+                "input relation Rt4[Tt4]\n" +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v4] :- Rt1[v],var gb = v.column1,var groupResult = (v).group_by((gb)),var aggResult = agg(groupResult),var v3 = TRtmp{.col0 = aggResult.col0},aggResult.col1,var v4 = v3.";
+
+        this.testTranslation(query, program);
+    }
+
+    @Test
+    public void testHavingArrayLength2() {
+        String query = "create view v0 as SELECT COUNT(column2) \n" +
+                "    FROM t1\n" +
+                "GROUP BY column1\n" +
+                "HAVING (array_length(array_agg(t1.column1)) < 2)";
+        String program = this.header(false) +
+                "typedef TRtmp = TRtmp{col0:signed<64>}\n" +
+                "typedef Tagg = Tagg{col0:signed<64>, col1:bool}\n" +
+                "function agg(g: Group<signed<64>, Tt1>):Tagg {\n" +
+                "(var gb) = group_key(g);\n" +
+                "(var count = 64'sd0: signed<64>);\n" +
+                "(var array_agg = vec_empty(): Vec<signed<64>>);\n" +
+                "(for ((i, _) in g) {\n" +
+                "var v = i;\n" +
+                "(var incr = v.column2);\n" +
+                "(count = agg_count_R(count, incr));\n" +
+                "(var incr2 = gb);\n" +
+                "(vec_push(array_agg, incr2))}\n" +
+                ");\n" +
+                "(Tagg{.col0 = count,.col1 = (sql_array_length(array_agg) < 64'sd2)})\n" +
+                "}\n" +
+                "\n" +
+                "input relation Rt1[Tt1]\n" +
+                "input relation Rt2[Tt2]\n" +
+                "input relation Rt3[Tt3]\n" +
+                "input relation Rt4[Tt4]\n" +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv0[TRtmp]\n" +
+                "Rv0[v4] :- Rt1[v],var gb = v.column1,var groupResult = (v).group_by((gb)),var aggResult = agg(groupResult),var v3 = TRtmp{.col0 = aggResult.col0},aggResult.col1,var v4 = v3.";
+
+        this.testTranslation(query, program);
     }
 }

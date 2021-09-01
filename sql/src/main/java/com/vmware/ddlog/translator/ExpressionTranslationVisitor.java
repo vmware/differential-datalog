@@ -469,6 +469,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
                 return args.get(0).getType();
             case "count":
             case "count_distinct":
+            case "array_length":
                 if (args.size() == 0)
                     return DDlogTSigned.signed64;
                 return DDlogTSigned.signed64.setMayBeNull(args.get(0).getType().mayBeNull);
