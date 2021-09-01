@@ -1187,7 +1187,7 @@ pub fn hash128<T: Hash>(x: &T) -> u128 {
     ((w1 as u128) << 64) | (w2 as u128)
 }
 
-pub type ProjectFunc<X> = StdArc<dyn Fn(&DDValue) -> X + Send + Sync>;
+pub type ProjectFunc<X> = StdArc<dyn Fn(&DDValue) -> &X + Send + Sync>;
 
 /*
  * Group type (returned by the `group_by` operator).
@@ -1200,7 +1200,7 @@ pub type ProjectFunc<X> = StdArc<dyn Fn(&DDValue) -> X + Send + Sync>;
  * on both reference-backed and value-backed groups, we represent groups as
  * an enum and provide uniform API over both variants.
  *
- * There is a problem of managing the lifetime of a group.  Since one of the
+ * There is a problem in managing the lifetime of a group.  Since one of the
  * two variants contains references, the group type is parameterized by the
  * lifetime of these refs.  However, in order to be able to freely store and
  * pass groups to and from functions, we want `'static` lifetime.  Because
@@ -1250,7 +1250,7 @@ impl<K: Clone, V: Clone> Clone for Group<K, V> {
                 key: key.clone(),
                 group: group
                     .iter()
-                    .map(|(v, w)| tuple2(project(v), *w as DDWeight))
+                    .map(|(v, w)| tuple2(project(v).clone(), *w as DDWeight))
                     .collect(),
             },
             GroupEnum::ByVal { key, group } => GroupEnum::ByVal {
@@ -1412,13 +1412,16 @@ impl<'a, V> GroupIter<'a, V> {
 }
 
 impl<'a, V: Clone> Iterator for GroupIter<'a, V> {
+    // TODO: This should really be `tuple2<&V, Weight>` to avoid cloning the value,
+    // but we currently don't have a way to tell DDlog about this type using either
+    // `iterate_by_val` or `iterate_by_ref`.
     type Item = tuple2<V, DDWeight>;
 
     fn next(&mut self) -> StdOption<Self::Item> {
         match self {
             GroupIter::ByRef { iter, project } => match iter.next() {
                 None => None,
-                Some((x, w)) => Some(tuple2(project(x), *w as DDWeight)),
+                Some((x, w)) => Some(tuple2(project(x).clone(), *w as DDWeight)),
             },
             GroupIter::ByVal { iter } => match iter.next() {
                 None => None,
@@ -1459,7 +1462,7 @@ impl<'a, V> GroupValIter<'a, V> {
 }
 
 impl<'a, V: Clone> Iterator for GroupValIter<'a, V> {
-    type Item = V;
+    type Item = &'a V;
 
     fn next(&mut self) -> StdOption<Self::Item> {
         match self {
@@ -1469,7 +1472,7 @@ impl<'a, V: Clone> Iterator for GroupValIter<'a, V> {
             },
             GroupValIter::ByVal { iter } => match iter.next() {
                 None => None,
-                Some(x) => Some(x.0.clone()),
+                Some(x) => Some(&x.0),
             },
         }
     }
@@ -1514,7 +1517,7 @@ impl<V: Clone> Iterator for GroupIntoIter<V> {
         match self {
             GroupIntoIter::ByRef { iter, project } => match iter.next() {
                 None => None,
-                Some((x, w)) => Some(tuple2(project(x), *w as DDWeight)),
+                Some((x, w)) => Some(tuple2(project(x).clone(), *w as DDWeight)),
             },
             GroupIntoIter::ByVal { iter } => match iter.next() {
                 None => None,
@@ -1577,14 +1580,14 @@ impl<K: Clone, V> Group<K, V> {
 impl<K, V: Clone> Group<K, V> {
     fn first(&self) -> V {
         match self {
-            GroupEnum::ByRef { group, project, .. } => project(group[0].0),
+            GroupEnum::ByRef { group, project, .. } => project(group[0].0).clone(),
             GroupEnum::ByVal { group, .. } => group[0].0.clone(),
         }
     }
 
     fn nth_unchecked(&self, n: std_usize) -> V {
         match self {
-            GroupEnum::ByRef { group, project, .. } => project(group[n as usize].0),
+            GroupEnum::ByRef { group, project, .. } => project(group[n as usize].0).clone(),
             GroupEnum::ByVal { group, .. } => group[n as usize].0.clone(),
         }
     }
@@ -1602,7 +1605,7 @@ impl<K, V: Clone> Group<K, V> {
             GroupEnum::ByRef { group, project, .. } => {
                 if self.size() > n {
                     Option::Some {
-                        x: project(group[n as usize].0),
+                        x: project(group[n as usize].0).clone(),
                     }
                 } else {
                     Option::None
@@ -1639,7 +1642,7 @@ pub fn group_key<K: Clone, V>(g: &Group<K, V>) -> K {
 }
 
 /* Standard aggregation functions. */
-pub fn group_count<K, V>(g: &Group<K, V>) -> std_usize {
+pub fn group_count_distinct<K, V>(g: &Group<K, V>) -> std_usize {
     g.size()
 }
 
@@ -1654,7 +1657,7 @@ pub fn group_nth<K, V: Clone>(g: &Group<K, V>, n: &std_usize) -> Option<V> {
 pub fn group_to_set<K, V: Ord + Clone>(g: &Group<K, V>) -> Set<V> {
     let mut res = Set::new();
     for v in g.val_iter() {
-        set_insert(&mut res, v);
+        set_insert(&mut res, v.clone());
     }
     res
 }
@@ -1662,8 +1665,8 @@ pub fn group_to_set<K, V: Ord + Clone>(g: &Group<K, V>) -> Set<V> {
 pub fn group_set_unions<K, V: Ord + Clone>(g: &Group<K, Set<V>>) -> Set<V> {
     let mut res = Set::new();
     for gr in g.val_iter() {
-        for v in gr.into_iter() {
-            set_insert(&mut res, v);
+        for v in gr.iter() {
+            set_insert(&mut res, v.clone());
         }
     }
     res
@@ -1690,7 +1693,7 @@ pub fn group_setref_unions<K, V: Ord + Clone>(g: &Group<K, Ref<Set<V>>>) -> Ref<
 pub fn group_to_vec<K, V: Ord + Clone>(g: &Group<K, V>) -> Vec<V> {
     let mut res = Vec::with_capacity(g.size() as usize);
     for v in g.val_iter() {
-        vec_push(&mut res, v);
+        vec_push(&mut res, v.clone());
     }
     res
 }
@@ -1698,7 +1701,7 @@ pub fn group_to_vec<K, V: Ord + Clone>(g: &Group<K, V>) -> Vec<V> {
 pub fn group_to_map<K1, K2: Ord + Clone, V: Clone>(g: &Group<K1, tuple2<K2, V>>) -> Map<K2, V> {
     let mut res = Map::new();
     for tuple2(k, v) in g.val_iter() {
-        map_insert(&mut res, k, v);
+        map_insert(&mut res, k.clone(), v.clone());
     }
     res
 }
@@ -1708,12 +1711,12 @@ pub fn group_to_setmap<K1, K2: Ord + Clone, V: Clone + Ord>(
 ) -> Map<K2, Set<V>> {
     let mut res = Map::new();
     for tuple2(k, v) in g.val_iter() {
-        match res.x.entry(k) {
+        match res.x.entry(k.clone()) {
             btree_map::Entry::Vacant(ve) => {
-                ve.insert(set_singleton(v));
+                ve.insert(set_singleton(v.clone()));
             }
             btree_map::Entry::Occupied(mut oe) => {
-                oe.get_mut().insert(v);
+                oe.get_mut().insert(v.clone());
             }
         }
     }
@@ -1722,20 +1725,11 @@ pub fn group_to_setmap<K1, K2: Ord + Clone, V: Clone + Ord>(
 }
 
 pub fn group_min<K, V: Clone + Ord>(g: &Group<K, V>) -> V {
-    g.val_iter().min().unwrap()
+    g.val_iter().min().unwrap().clone()
 }
 
 pub fn group_max<K, V: Clone + Ord>(g: &Group<K, V>) -> V {
-    g.val_iter().max().unwrap()
-}
-
-pub fn group_sum<K, V: Clone + ops::Add<Output = V>>(g: &Group<K, V>) -> V {
-    let mut res = group_first(g);
-    for v in g.val_iter().skip(1) {
-        res = res + v;
-    }
-
-    res
+    g.val_iter().max().unwrap().clone()
 }
 
 /* Tuples */

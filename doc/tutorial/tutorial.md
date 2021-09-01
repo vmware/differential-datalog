@@ -1378,8 +1378,8 @@ describes constraints on the recursive programs accepted by DDlog.
 
 The `group_by` operator groups records that share common values of a subset of
 variables (group-by variables).
-The following program groups the `Price` relation by `item` and selects the minimal
-price for each item:
+The following program groups the `price` column of the `Price` relation by
+`item` and selects the minimal price for each item:
 
 ```
 input relation Price(item: string, vendor: string, price: u64)
@@ -1391,22 +1391,58 @@ BestPrice(item, best_price) :-
     var best_price = group.min().
 ```
 
-The `group_by` operator first selects the `price` variable from each record and
-then groups the resulting table of prices such that all records in a group share the
-same value of the `item` variable.  It yields a new table with one record per group.
-The contents of the group is bound to a variable of type `Group<string,u64>`,
-where `string` is the type of group key, i.e., the variable(s) that we group by
-(in this case, `item`), and `u64` is the type of values in the group.
-
 In general, the `group_by` operator has the following syntax:
 
 ```
-<select clause>.group_by(<group-by vars>)
+<map_expr>.group_by(<group-by vars>)
 ```
+where `<map_expr>` is an arbitrary expression and `<group-by vars>` is a single
+variable or a tuple of variables to be used as the key to group by.
 
-where `<select clause>` is an arbitrary expression that projects records
-from the input relation into values to be grouped. `<group-by vars>` is a single
-variable or a tuple of variables to be used as the key to group by:
+The semantics of `group_by` can be given as a sequence of three transformations of
+the input relation:
+
+1. **Map:**  given a valuation of all variables visible before the
+   `group_by` operator, compute the value of `<map_expr>`, in this case `price`.
+   Assuming we start with the following set of tuples:
+  ```
+  ("item1", "vendor1", 100)
+  ("item1", "vendor2", 110)
+  ("item1", "vendor3", 100)
+  ("item2", "vendor1", 200)
+  ("item2", "vendor2", 200)
+  ```
+  we obtain the following tuples after this step, which include the values
+  of the group-by variables and the value of `<map_expr>`:
+  ```
+  ("item1", 100)
+  ("item1", 110)
+  ("item1", 100)
+  ("item2", 200)
+  ("item2", 200)
+  ```
+
+1. **Combine distinct records:**
+  Notice that the first step above can produce duplicate tuples. The second
+  step merges the duplicates:
+  ```
+  ("item1", 100)
+  ("item1", 110)
+  ("item2", 200)
+  ```
+
+1. **Group:**
+  Finally, we group records that share the same values of the `<group-by vars>`:
+  ```
+  Group 1: ("item1", {100, 110})
+  Group 2: ("item2", {200})
+  ```
+
+The contents of the group is bound to a variable of type `Group<string,u64>`,
+where `string` is the type of group key (in this case, `item`), and `u64` is
+the type of values in the group (`price`).
+
+Here are some more examples of the use of the `group_by` operator:
 
 ```
 /* Group by an empty tuple: aggregates the entire relation into a single group. */
@@ -1457,11 +1493,11 @@ Under100(item) :-
 [`lib/ddlog_std.dl`](../../lib/ddlog_std.dl).  Below we list few of the others:
 
 ```
-/**/
+/* Returns group key. */
 function key(g: Group<'K, 'V>): 'K
 
-/* The number of elements in the group.  The result is always greater than 0. */
-function size(g: Group<'K, 'V>): usize
+/* The number of unique values in the group.  The result is always greater than 0. */
+function count_distinct(g: Group<'K, 'V>): usize
 
 /* The first element of the group.  This operation is well defined,
  * as a group returned by `group-by` cannot be empty. */
@@ -1546,16 +1582,16 @@ for (((vendor, price), w) in g) { .. }
 ```
 
 The iterator yields a 2-tuple, where the first component `(vendor, price)` of
-type `(string, bit<64>)` is the value stored in the group, and the second
+type `(string, bit<64>)` is the value of the `<map_expr>`, and the second
 component, `w` of type `DDWeight`, is the **weight** associated with this value.
 Internally DDlog tracks the number of times each record has been derived.  For
 example, records in input relations have weight 1.  An intermediate relation can
 contain values with weights greater than 1, e.g., if the same value has been
 derived by multiple rules.  The complete set of rules for computing weights is
 quite complex and is not yet fixed as part of the language semantics.
-Fortunately, in most cases, the aggregate function does not depend on weights,
-and they can be safely ignored, as in this example (`w` is never used in the
-body of the loop, and can be replaced by the `_` placeholder).
+Unless you know what you are doing, your aggregate function should simply ignore
+the weight, as in this example, where `w` is never used in the
+body of the loop, and can be replaced by the `_` placeholder.
 
 #### Debugging and tracing using `Inspect`
 

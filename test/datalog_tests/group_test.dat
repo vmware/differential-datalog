@@ -21,3 +21,4 @@ dump group_test::All1;
 dump group_test::Any1;
 dump group_test::Count1;
 dump group_test::Fold1;
+dump group_test::SumUp1;

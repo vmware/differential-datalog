@@ -1,5 +1,6 @@
 import fp
 import inspect_log as log
+import group
 
 /* Test `arrangeInput` logic in Compile.hs */
 
@@ -115,7 +116,7 @@ input relation InputTuples(x: bit<32>, y: bit<32>)
 
 InspectSimpleSum(x, total) :-
     InputTuples(x, y),
-    var total = y.group_by(x).group_sum(),
+    var total = y.group_by(x).sum_of(|y| y),
     Inspect {
         var z = 1 + 2;
         var w = ddlog_weight;
@@ -389,7 +390,7 @@ MapOfVecs([ (100, 100) -> [0.1, -100, 0, 1000000],
 output relation VecOfMaps(m: Vec<Map<(u32, bigint), double>>)
 VecOfMaps([ [(100, 100) -> 0.1],
             [(100, 100) -> 0.1, (1000, -100) -> -0.1],
-            [(100, 100) -> 0.1, (1000, -100) -> -0.1, (1000, -10000000000000000000000000000000000000) -> -0]
+            [(100, 100) -> 0.1, (1000, -100) -> -0.1, (1000, -10000000000000000000000000000000000000) -> 0]
           ]).
 
 /* Variable shadowing (now legal). */

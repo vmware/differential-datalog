@@ -116,6 +116,9 @@ tIMESTAMP_VAR = "__timestamp"
 wEIGHT_VAR :: Doc
 wEIGHT_VAR = "__weight"
 
+pROJECTION_VAR :: String
+pROJECTION_VAR = "__projection"
+
 -- Module that 'ctx' belongs to.
 ctxModule :: (?crate_graph::CrateGraph) => ECtx -> ModuleName
 ctxModule CtxTop                    = error "Compile.ctxModule CtxTop"
@@ -510,7 +513,8 @@ compile d_unoptimized specname modules rs_code dir crate_types = do
     let dot_file = (?specname <.> "dot", depGraphToDot $ progDependencyGraph d_unoptimized)
     -- Apply optimizations; transform the program to a form that this
     -- compiler can handle; make sure the program has at least one relation.
-    let d_optimized = addDummyRel
+    let d_optimized = addProjections
+                      $ addDummyRel
                       $ simplifyDifferentiation
                       $ simplifyDelayedRels
                       $ optimize d_unoptimized
@@ -559,6 +563,17 @@ compile d_unoptimized specname modules rs_code dir crate_types = do
                     ["flatbuf", "src" </> "flatbuf_generated.rs", "src" </> "flatbuf.rs", "target", "Cargo.lock"]
                     (dot_file : toml_file : lib_file : (type_files ++ rustLibFiles ++ template_files))
     return ()
+
+-- Preprocess group_by operators introducing projection variable.
+-- Rewrites '<proj_expr>.group_by(<group_by_vars>)' as
+-- 'var __projection = <proj_expr>, __projection.group_by(<group_by_vars>)'.
+addProjections :: DatalogProgram -> DatalogProgram
+addProjections d = progRHSMap d addProjection
+    where
+    addProjection rl rhs_idx rhs@RHSGroupBy{..} =
+        [ RHSCondition $ E $ ESet (pos rhsProject) (eVarDecl pROJECTION_VAR $ (exprType d (CtxRuleRProject rl rhs_idx) rhsProject)) rhsProject
+        , rhs{rhsProject = eVar pROJECTION_VAR}]
+    addProjection _ _        rhs = [rhs]
 
 -- For each delayed relation 'R-n' that occurs in the program,
 -- add a synonym relation 'R_n' defined as 'R_n :- R-n' and replace
@@ -2093,7 +2108,7 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
             case rhs of
                  RHSLiteral True a  -> mkJoin d conditions inpval a rl rhs_idx
                  RHSLiteral False a -> mkAntijoin d conditions inpval a rl rhs_idx
-                 RHSGroupBy{}       -> mkGroupBy d conditions inpval rl rhs_idx
+                 RHSGroupBy{}       -> mkGroupBy d conditions rl rhs_idx
                  _                  -> error $ "compileRule: operator " ++ show rhs ++ " does not expect arranged input"
     let mkCollectionOperator | rhs_idx == length ruleRHS
                              = return $ mkHead d prefix rl
@@ -2186,11 +2201,12 @@ rhsInputArrangement d rl rhs_idx (RHSLiteral _ atom) =
     in Just $ (map (\(_,e,c) -> (e,c)) vmap,
                -- variables visible before join that are still in use after it
                (rhsVarsAfter d rl (rhs_idx - 1)) `intersect` (rhsVarsAfter d rl rhs_idx))
-rhsInputArrangement d rl rhs_idx (RHSGroupBy _ _ grpby) =
-    let ctx = CtxRuleRGroupBy rl rhs_idx
-    in Just $ (map (\(v, ctx') -> (eVar v, ctx')) $ exprVarOccurrences ctx grpby,
-               -- all visible variables to preserve multiset semantics
-               rhsVarsAfter d rl (rhs_idx - 1))
+rhsInputArrangement d rl rhs_idx (RHSGroupBy _ projection grpby) =
+    let grp_ctx = CtxRuleRGroupBy rl rhs_idx
+        proj_ctx = CtxRuleRProject rl rhs_idx
+    in Just $ (map (\(v, ctx') -> (eVar v, ctx')) $ exprVarOccurrences grp_ctx grpby,
+               -- variables in the projection expression.
+               exprFreeVars d proj_ctx projection)
 rhsInputArrangement _ _  _       _ = Nothing
 
 mkFlatMap :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?statics::CrateStatics) => DatalogProgram -> Doc -> Rule -> Int -> Expr -> Expr -> CompilerMonad Doc
@@ -2250,20 +2266,19 @@ mkInspect d prefix rl idx e input_val = do
         "    next: Box::new(" <> next <> ")"                                                                                $$
         "}"
 
-mkGroupBy :: (?cfg::Config, ?statics::CrateStatics, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> [Int] -> Bool -> Rule -> Int -> CompilerMonad Doc
-mkGroupBy d filters input_val rl@Rule{..} idx = do
-    let rhs@RHSGroupBy{..} = ruleRHS !! idx
+mkGroupBy :: (?cfg::Config, ?statics::CrateStatics, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> [Int] -> Rule -> Int -> CompilerMonad Doc
+mkGroupBy d filters rl@Rule{..} idx = do
+    let RHSGroupBy{..} = ruleRHS !! idx
     let ctx = CtxRuleRProject rl idx
     let gctx = CtxRuleRGroupBy rl idx
-    let Just (_, group_vars) = rhsInputArrangement d rl idx rhs
     -- Filter inputs before grouping
     let ffun = mkFFun d rl filters
-    -- Compute projection.
-    let open = if input_val
-               then openAtom d vALUE_VAR rl 0 (rhsAtom $ head ruleRHS) "unreachable!()"
-               else openTuple d rl vALUE_VAR group_vars
-    let project = "{fn __f(" <> vALUE_VAR <> ": &::differential_datalog::ddval::DDValue) -> " <+> mkType d (Just ruleModule) (exprType d ctx rhsProject) $$
-                  (braces' $ open $$ mkExpr d ctx rhsProject EVal)                                            $$
+    let proj_type = mkType d (Just ruleModule) (exprType d ctx rhsProject)
+    -- 'addProjections' rewrites rules so that 'rhsProject' is always a single
+    -- variable (i.e., projection is performed before grouping), so we simply
+    -- extract this variable from 'DDValue':
+    let project = "{fn __f(" <> vALUE_VAR <> ": &::differential_datalog::ddval::DDValue) -> &" <> proj_type         $$
+                  (braces' $ "unsafe { <" <> proj_type <> ">::from_ddvalue_ref_unchecked(" <> vALUE_VAR <> ") }")         $$
                   "::std::sync::Arc::new(__f)}"
     -- * Create 'struct Group'
     -- * Apply filters following group_by.
@@ -2796,12 +2811,8 @@ rhsVarsAfter d rl i =
     case ruleRHS rl !! i of
          -- Inspect operators cannot change the collection it inspects. No variables are dropped.
          RHSInspect _ -> rhsVarsAfter d rl (i-1)
-         _            -> filter (\f -> -- If an grouping occurs in the remaining part of the rule,
-                                       -- keep all variables to preserve multiset semantics
-                                       if any rhsIsGroupBy $ drop (i+1) (ruleRHS rl)
-                                          then True
-                                          else elem f $ (ruleLHSVars d rl) `union`
-                                                        (concatMap (ruleRHSTermVars d rl) [i+1..length (ruleRHS rl) - 1]))
+         _            -> filter (\f -> (elem f $ (ruleLHSVars d rl)) ||
+                                       (any (elem f) $ map (ruleRHSTermVars d rl) [i+1..length (ruleRHS rl) - 1]))
                                 $ ruleRHSVars d rl (i+1)
 
 mkProg :: (?crate_graph :: CrateGraph, ?specname :: String) => DatalogProgram -> CompilerState -> [ProgNode] -> Doc
