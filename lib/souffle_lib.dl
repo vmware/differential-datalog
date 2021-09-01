@@ -91,7 +91,7 @@ function lnot(l: Tunsigned): Tunsigned {
     if (l != 0) 0 else 1
 }
 function group_count32(g: Group<'K, 'V>): Tnumber {
-    castTo32(group_count(g))
+    castTo32(group_count_unique(g))
 }
 function ftoi(l: double): signed<32> {
     match (int_from_d(l)) {
@@ -162,13 +162,13 @@ function exp(l: signed<32>): signed<32> {
 }
 function group_mean(g: Group<'K, signed<32>>): signed<32> {
     var sum = group_sum(g);
-    var count = group_count(g);
+    var count = group_count_unique(g);
     // count can never be 0
     sum / (count as signed<64> as signed<32>)
 }
 function group_mean_d(g: Group<'K, double>): double {
     var sum = group_sum(g);
-    var count = group_count(g);
+    var count = group_count_unique(g);
     // count can never be 0
     sum / (count as double)
 }

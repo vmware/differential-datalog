@@ -32,6 +32,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Experimental features to support implementing parts of D3log runtime in DDlog.
   See #1065 for details.
 
+### Language and standard library changes
+
+- The semantics of the `group_by` operator changed in a subtle way.  A group
+  now contain exactly one occurrence of each value. See #1070 for details.
+
+- Removed `ddlog_std::count(Group)` and `ddlog_std::group_count(Group)` methods
+  to avoid changing their behavior in a non-backwards-compatible way.  Added
+  `count_unique(Group)` instead, which returns the count of unique values in
+  the group.
+
 ## [0.47.0] - Aug 19, 2021
 
 ### OVSDB-to-DDlog compiler update

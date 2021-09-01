@@ -33,7 +33,7 @@ SOFTWARE.
 
 /* Applies closure `f` to each element of the group. */
 function map(g: Group<'K, 'V1>, f: function('V1): 'V2): Vec<'V2> {
-    var res = vec_with_capacity(g.count());
+    var res = vec_with_capacity(g.count_unique());
     for ((x, _) in g) {
         res.push(f(x))
     };

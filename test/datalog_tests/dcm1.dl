@@ -307,7 +307,7 @@ function pod_matches_expression(
 
 INTERPODAFFINITYMATCHESGROUPBY(pod_name, num_matches):-
     INTERPODAFFINITYMATCHESINNER(pod_name, matches, node_name),
-    var num_matches = Aggregate((pod_name), group_count(())).
+    var num_matches = Aggregate((pod_name), group_count_unique((matches, node_name))).
 
 INTERPODAFFINITYMATCHES(pod_name, matches, node_name, num_matches):-
     INTERPODAFFINITYMATCHESGROUPBY(pod_name, num_matches),
@@ -315,7 +315,7 @@ INTERPODAFFINITYMATCHES(pod_name, matches, node_name, num_matches):-
 
 NODETAINTSGROUP(node_name, num_taints):-
     NODETAINTS(node_name, taint_key, taint_value, taint_effect),
-    var num_taints =  Aggregate((node_name), group_count(())).
+    var num_taints =  Aggregate((node_name), group_count_unique((taint_key, taint_value, taint_effect))).
 
 PODSTHATTOLERATENODETAINTS(pod_name, node_name):-
         PODSTOASSIGN(.pod_name = pod_name),
@@ -323,7 +323,7 @@ PODSTHATTOLERATENODETAINTS(pod_name, node_name):-
         NODETAINTSGROUP(node_name, num_taints),
         PODTOLERATIONS(.pod_name = pod_name, .tolerations_key = taint_key, .tolerations_value = tolerations_value, .tolerations_effect = tolerations_effect, .tolerations_operator = tolerations_operator),
         ((istring_str(tolerations_effect) == "null" or tolerations_effect == taint_effect) and (istring_str(tolerations_operator) == "Exists" or tolerations_value == taint_value)),
-        var groupsize = Aggregate((pod_name, node_name, num_taints), group_count(())),
+        var groupsize = Aggregate((pod_name, node_name, num_taints), group_count_unique((taint_key, taint_value, taint_effect, tolerations_value, tolerations_effect, tolerations_operator))),
         (groupsize == num_taints).
 
 NODESTHATHAVETOLERATIONS(node_name):-

@@ -102,7 +102,7 @@ output relation Count1(x: usize, count: usize)
 
 Count1(x, count) :-
     Data(x,y,z,q),
-    var count = ().group_by(x).count().
+    var count = ().group_by(x).count_unique().
 
 // fold
 output relation Fold1(x: usize, sum: bigint)

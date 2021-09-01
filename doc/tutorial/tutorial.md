@@ -1378,8 +1378,8 @@ describes constraints on the recursive programs accepted by DDlog.
 
 The `group_by` operator groups records that share common values of a subset of
 variables (group-by variables).
-The following program groups the `Price` relation by `item` and selects the minimal
-price for each item:
+The following program groups the `price` column of the `Price` relation by
+`item` and selects the minimal price for each item:
 
 ```
 input relation Price(item: string, vendor: string, price: u64)
@@ -1392,19 +1392,20 @@ BestPrice(item, best_price) :-
 ```
 
 The `group_by` operator first selects the `price` variable from each record and
-then groups the resulting table of prices such that all records in a group share the
+then groups the resulting values such that all prices in a group share the
 same value of the `item` variable.  It yields a new table with one record per group.
 The contents of the group is bound to a variable of type `Group<string,u64>`,
 where `string` is the type of group key, i.e., the variable(s) that we group by
-(in this case, `item`), and `u64` is the type of values in the group.
+(in this case, `item`), and `u64` is the type of values in the group (`price`
+in this example).
 
 In general, the `group_by` operator has the following syntax:
 
 ```
-<select clause>.group_by(<group-by vars>)
+<project clause>.group_by(<group-by vars>)
 ```
 
-where `<select clause>` is an arbitrary expression that projects records
+where `<project clause>` is an arbitrary expression that projects records
 from the input relation into values to be grouped. `<group-by vars>` is a single
 variable or a tuple of variables to be used as the key to group by:
 
@@ -1457,11 +1458,11 @@ Under100(item) :-
 [`lib/ddlog_std.dl`](../../lib/ddlog_std.dl).  Below we list few of the others:
 
 ```
-/**/
+/* Returns group key. */
 function key(g: Group<'K, 'V>): 'K
 
-/* The number of elements in the group.  The result is always greater than 0. */
-function size(g: Group<'K, 'V>): usize
+/* The number of unique values in the group.  The result is always greater than 0. */
+function count_unique(g: Group<'K, 'V>): usize
 
 /* The first element of the group.  This operation is well defined,
  * as a group returned by `group-by` cannot be empty. */

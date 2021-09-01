@@ -1187,7 +1187,7 @@ pub fn hash128<T: Hash>(x: &T) -> u128 {
     ((w1 as u128) << 64) | (w2 as u128)
 }
 
-pub type ProjectFunc<X> = StdArc<dyn Fn(&DDValue) -> X + Send + Sync>;
+pub type ProjectFunc<X> = StdArc<dyn Fn(&DDValue) -> &X + Send + Sync>;
 
 /*
  * Group type (returned by the `group_by` operator).
@@ -1200,7 +1200,7 @@ pub type ProjectFunc<X> = StdArc<dyn Fn(&DDValue) -> X + Send + Sync>;
  * on both reference-backed and value-backed groups, we represent groups as
  * an enum and provide uniform API over both variants.
  *
- * There is a problem of managing the lifetime of a group.  Since one of the
+ * There is a problem in managing the lifetime of a group.  Since one of the
  * two variants contains references, the group type is parameterized by the
  * lifetime of these refs.  However, in order to be able to freely store and
  * pass groups to and from functions, we want `'static` lifetime.  Because
@@ -1250,7 +1250,7 @@ impl<K: Clone, V: Clone> Clone for Group<K, V> {
                 key: key.clone(),
                 group: group
                     .iter()
-                    .map(|(v, w)| tuple2(project(v), *w as DDWeight))
+                    .map(|(v, w)| tuple2(project(v).clone(), *w as DDWeight))
                     .collect(),
             },
             GroupEnum::ByVal { key, group } => GroupEnum::ByVal {
@@ -1418,7 +1418,7 @@ impl<'a, V: Clone> Iterator for GroupIter<'a, V> {
         match self {
             GroupIter::ByRef { iter, project } => match iter.next() {
                 None => None,
-                Some((x, w)) => Some(tuple2(project(x), *w as DDWeight)),
+                Some((x, w)) => Some(tuple2(project(x).clone(), *w as DDWeight)),
             },
             GroupIter::ByVal { iter } => match iter.next() {
                 None => None,
@@ -1465,7 +1465,7 @@ impl<'a, V: Clone> Iterator for GroupValIter<'a, V> {
         match self {
             GroupValIter::ByRef { iter, project } => match iter.next() {
                 None => None,
-                Some((x, _)) => Some(project(x)),
+                Some((x, _)) => Some(project(x).clone()),
             },
             GroupValIter::ByVal { iter } => match iter.next() {
                 None => None,
@@ -1514,7 +1514,7 @@ impl<V: Clone> Iterator for GroupIntoIter<V> {
         match self {
             GroupIntoIter::ByRef { iter, project } => match iter.next() {
                 None => None,
-                Some((x, w)) => Some(tuple2(project(x), *w as DDWeight)),
+                Some((x, w)) => Some(tuple2(project(x).clone(), *w as DDWeight)),
             },
             GroupIntoIter::ByVal { iter } => match iter.next() {
                 None => None,
@@ -1577,14 +1577,14 @@ impl<K: Clone, V> Group<K, V> {
 impl<K, V: Clone> Group<K, V> {
     fn first(&self) -> V {
         match self {
-            GroupEnum::ByRef { group, project, .. } => project(group[0].0),
+            GroupEnum::ByRef { group, project, .. } => project(group[0].0).clone(),
             GroupEnum::ByVal { group, .. } => group[0].0.clone(),
         }
     }
 
     fn nth_unchecked(&self, n: std_usize) -> V {
         match self {
-            GroupEnum::ByRef { group, project, .. } => project(group[n as usize].0),
+            GroupEnum::ByRef { group, project, .. } => project(group[n as usize].0).clone(),
             GroupEnum::ByVal { group, .. } => group[n as usize].0.clone(),
         }
     }
@@ -1602,7 +1602,7 @@ impl<K, V: Clone> Group<K, V> {
             GroupEnum::ByRef { group, project, .. } => {
                 if self.size() > n {
                     Option::Some {
-                        x: project(group[n as usize].0),
+                        x: project(group[n as usize].0).clone(),
                     }
                 } else {
                     Option::None
@@ -1639,7 +1639,7 @@ pub fn group_key<K: Clone, V>(g: &Group<K, V>) -> K {
 }
 
 /* Standard aggregation functions. */
-pub fn group_count<K, V>(g: &Group<K, V>) -> std_usize {
+pub fn group_count_unique<K, V>(g: &Group<K, V>) -> std_usize {
     g.size()
 }
 

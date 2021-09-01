@@ -321,7 +321,7 @@ pub fn group_set_unions<K, V: u64set::Fits64 + Clone>(
 pub fn group_setref_unions<K, V: u64set::Fits64 + Ord + Clone>(
     g: &ddlog_std::Group<K, ddlog_std::Ref<Set64<V>>>,
 ) -> ddlog_std::Ref<Set64<V>> {
-    if ddlog_std::group_count(g) == 1 {
+    if ddlog_std::group_count_unique(g) == 1 {
         ddlog_std::group_first(g)
     } else {
         let mut res = ddlog_std::ref_new(Set64 {

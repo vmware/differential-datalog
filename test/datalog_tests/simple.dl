@@ -765,16 +765,16 @@ function find_x_in_group(ys: Group<'A, 'A>): bool {
 }
 
 output relation Aggregate1(x: string, cnt: bit<64>)
-Aggregate1(x, cnt) :- AggregateMe1(x,y), var cnt = y.group_by(x).count().
+Aggregate1(x, cnt) :- AggregateMe1(x,y), var cnt = y.group_by(x).count_unique().
 
 output relation AggregateCnt(cnt: bit<64>)
-AggregateCnt(cnt) :- AggregateMe1(x,y), var cnt = ().group_by(()).count().
+AggregateCnt(cnt) :- AggregateMe1(x,y), var cnt = ().group_by(()).count_unique().
 
 output relation AggregateCnt2(cnt: bit<64>)
 AggregateCnt2(cnt) :- AggregateMe1(x,y), var cnt = 1.group_by(()).group_sum().
 
 output relation AggregateCnt3(cnt: bit<64>)
-AggregateCnt3(cnt) :- AggregateMe1(x,y), y != "1", var cnt = 1.group_by(()).group_sum().
+AggregateCnt3(cnt) :- AggregateMe1(x,y), y != "1", var cnt = (x,y).group_by(()).count_unique().
 
 output relation Aggregate2(x: string, set: Set<string>)
 Aggregate2(x, set) :- AggregateMe1(x,y), var set = y.group_by(x).to_set().
@@ -799,7 +799,7 @@ output relation AggregateByX(x: string, cnt: bit<64>)
 
 // Old syntax for group_by.
 AggregateByX(x, cnt) :- AggregateMe3(x,y,z), AggregateMe1(x,y),
-                        var cnt = Aggregate((x), group_count(())).
+                        var cnt = Aggregate((x), group_count_unique((y,z))).
 
 output relation Concat(s: string)
 // Old syntax for group_by.

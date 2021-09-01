@@ -505,9 +505,9 @@ extern function group_key(g: Group<'K, 'V>): 'K
  * Standard aggregates
  */
 
-/* Returns the number of elements in the group, which is guaranteed
+/* Returns the number of unique elements in the group, which is guaranteed
  * to be >0. */
-extern function group_count(g: Group<'K, 'V>): usize
+extern function group_count_unique(g: Group<'K, 'V>): usize
 
 /* Returns the first element of the group.
  * It always exists, as aggregation cannot return an empty group. */
@@ -545,13 +545,8 @@ function key(g: Group<'K, 'V>): 'K {
     group_key(g)
 }
 
-function count(g: Group<'K, 'V>): usize {
-    group_count(g)
-}
-
-/* The number of elements in the group.  The result is always greater than 0. */
-function size(g: Group<'K, 'V>): usize {
-    group_count(g)
+function count_unique(g: Group<'K, 'V>): usize {
+    group_count_unique(g)
 }
 
 /* The first element of the group.  This operation is well defined,
@@ -591,8 +586,8 @@ function to_setmap(g: Group<'K1, ('K2,'V)>): Map<'K2,Set<'V>> {
 }
 
 function group_unzip(g: Group<'K, ('X,'Y)>): (Vec<'X>, Vec<'Y>) = {
-    var xs: Vec<'X> = vec_with_capacity(g.size());
-    var ys: Vec<'Y> = vec_with_capacity(g.size());
+    var xs: Vec<'X> = vec_with_capacity(g.count_unique());
+    var ys: Vec<'Y> = vec_with_capacity(g.count_unique());
     for ((v, _) in g) {
         (var x, var y) = v;
         vec_push(xs, x);
