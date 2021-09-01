@@ -55,6 +55,7 @@ public class DDlogAPI {
     static native int ddlog_clear_relation(long hprog, int relid);
     static native String ddlog_profile(long hprog);
     static native void ddlog_enable_cpu_profiling(long hprog, boolean enable) throws DDlogException;
+    static native void ddlog_enable_change_profiling(long hprog, boolean enable) throws DDlogException;
     static native long ddlog_log_replace_callback(int module, long old_cbinfo, ObjIntConsumer<String> cb, int max_level);
     static native long ddlog_log_replace_default_callback(long old_cbinfo, ObjIntConsumer<String> cb, int max_level);
 
@@ -645,6 +646,16 @@ public class DDlogAPI {
     public void enableCpuProfiling(boolean enable) throws DDlogException {
         this.checkHandle();
         DDlogAPI.ddlog_enable_cpu_profiling(this.hprog, enable);
+    }
+
+    /**
+     * Controls recording of the number of insertions and deletions per arrangement.
+     *
+     * See <code>ddlog.h: ddlog_enable_change_profiling()</code>
+     */
+    public void enableChangeProfiling(boolean enable) throws DDlogException {
+        this.checkHandle();
+        DDlogAPI.ddlog_enable_change_profiling(this.hprog, enable);
     }
 
     /**

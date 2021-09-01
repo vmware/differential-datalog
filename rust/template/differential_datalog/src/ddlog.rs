@@ -345,6 +345,19 @@ pub trait DDlogProfiling {
     /// therefore disabled by default.
     fn enable_cpu_profiling(&self, enable: bool) -> Result<(), String>;
 
+    /// Controls recording of the number of insertions and deletions per
+    /// arrangement.  Unlike the arrangement size profile, which tracks the
+    /// number of records in each arrangment, this feature tracks the amount
+    /// of churn.  For example adding one record and deleting one record will
+    /// show up as two changes in the change profile (but will cancel out in
+    /// the size profile).
+    ///
+    /// When change profiling is disabled, the recording stops, but the
+    /// previously accumulated profile is preserved.  By selectively enabling
+    /// change profiling for a subset of transactions, the user can focus
+    /// the analysis on specific parts of the program.
+    fn enable_change_profiling(&self, enable: bool) -> Result<(), String>;
+
     fn enable_timely_profiling(&self, enable: bool) -> Result<(), String>;
 
     /// returns DDlog program runtime profile

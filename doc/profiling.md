@@ -63,6 +63,10 @@ addition to memory profiling.  CPU profiling is not enabled by default, as
 it can slow down the program somewhat, especially for large programs
 that handle many small updates.
 
+1. `profile change on/off;` - enables/disables recording of the number of
+insertions and deletions per arrangement, used to construct arrangement
+change profile (see below).
+
 1. `profile;` - returns information about program's CPU and memory usage.  CPU
 usage is expressed as the total amount of time DDlog spent evaluating each operator,
 assuming CPU profiling was enabled.  For example the following CPU profile
@@ -94,6 +98,31 @@ with the `LabeledNode(.node=child, .scc=childscc)` literal.
   451,529 and 372,446 records respectively (the numbered variables, e.g., `_0`)
   indicate one or more fields used to index the relation by.
 
+  In addition, if change profiling was enabled for some parts of the execution,
+  the self-profiler also outputs the "Counts of changes" profile:
+  ```
+  Counts of changes (insertions+deletions) to arrangements
+  ...
+  451529      Arrange: LabeledNode{.node=_, .scc=_0} 136
+  372446      Arrange: LabeledNode{.node=_0, .scc=_} 132
+  ```
+  Unlike the arrangement size profile, which tracks the number of records in
+  each arrangment, this profile shows the amount of churn.  For example adding one
+  record and deleting one record will show up as two changes in the change
+  profile, but will cancel out in the size profile.  Identifying relations that
+  see the most churn helps to understand the performance of the program, as such
+  relations are responsible for most recomputation performed by DDlog.  In a
+  typical profiling session, the user identifies expensive operators in the CPU
+  profile and looks up the relations that are inputs to this operator in the
+  change profile to identify the ones with high churn.
+
+  When change profiling is disabled, the recording stops, but the previously
+  accumulated profile is preserved.  By selectively enabling change profiling for
+  a subset of transactions, the user can focus their analysis on specific parts of
+  the program, for example they may not be interested in the number of changes
+  during initial population of input relations, but may want to make sure that
+  subsequent small incremental input updates do not cause excessive churn in
+  derived relations.
 
 ## DDShow-based profiling
 

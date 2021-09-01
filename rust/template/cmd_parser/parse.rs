@@ -12,6 +12,7 @@ use std::borrow::Cow;
 #[derive(Copy, Debug, PartialEq, Eq, Clone)]
 pub enum ProfileCmd {
     Cpu(bool),
+    Change(bool),
     Timely(bool),
 }
 
@@ -62,6 +63,13 @@ named!(pub profile_cmd<&[u8], ProfileCmd>,
                  (ProfileCmd::Cpu(enable)))
 );
 
+named!(pub profile_change_cmd<&[u8], ProfileCmd>,
+       do_parse!(apply!(sym,"change") >>
+                 enable: alt!(do_parse!(apply!(sym,"on") >> (true)) |
+                              do_parse!(apply!(sym,"off") >> (false))) >>
+                 (ProfileCmd::Change(enable)))
+);
+
 named!(pub profile_timely_cmd<&[u8], ProfileCmd>,
        do_parse!(apply!(sym,"timely") >>
                  enable: alt!(do_parse!(apply!(sym,"on") >> (true)) |
@@ -84,6 +92,10 @@ named!(pub parse_command<&[u8], Command>,
                             (Command::Comment))                                                 |
                   do_parse!(apply!(sym,"profile")   >>
                             cmd: opt!(profile_cmd)  >>
+                            apply!(sym,";")         >>
+                            (Command::Profile(cmd)))                                            |
+                  do_parse!(apply!(sym,"profile")   >>
+                            cmd: opt!(profile_change_cmd)  >>
                             apply!(sym,";")         >>
                             (Command::Profile(cmd)))                                            |
                   do_parse!(apply!(sym,"profile")   >>
@@ -158,6 +170,14 @@ fn test_command() {
     assert_eq!(
         parse_command(br"profile cpu off;"),
         Ok((&br""[..], Command::Profile(Some(ProfileCmd::Cpu(false)))))
+    );
+    assert_eq!(
+        parse_command(br"profile change on;"),
+        Ok((&br""[..], Command::Profile(Some(ProfileCmd::Change(true)))))
+    );
+    assert_eq!(
+        parse_command(br"profile change off;"),
+        Ok((&br""[..], Command::Profile(Some(ProfileCmd::Change(false)))))
     );
     assert_eq!(
         parse_command(br"profile;"),

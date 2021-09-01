@@ -818,6 +818,24 @@ pub unsafe extern "C" fn ddlog_enable_cpu_profiling(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn ddlog_enable_change_profiling(
+    prog: *const HDDlog,
+    enable: bool,
+) -> raw::c_int {
+    if prog.is_null() {
+        return -1;
+    }
+    let prog = &*prog;
+
+    prog.enable_change_profiling(enable)
+        .map(|_| 0)
+        .unwrap_or_else(|e| {
+            prog.eprintln(&format!("ddlog_enable_change_profiling(): error: {}", e));
+            -1
+        })
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn ddlog_enable_timely_profiling(
     prog: *const HDDlog,
     enable: bool,

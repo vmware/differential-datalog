@@ -881,6 +881,8 @@ pub struct RunningProgram {
     profile_cpu: Option<ThinArc<AtomicBool>>,
     /// Consume timely_events and output them to CSV file. Can be expensive.
     profile_timely: Option<ThinArc<AtomicBool>>,
+    /// Change profiling enabled.
+    profile_change: Option<ThinArc<AtomicBool>>,
     /// Profiling thread.
     prof_thread_handle: Option<JoinHandle<()>>,
     /// Profiling statistics.
@@ -904,6 +906,7 @@ impl Debug for RunningProgram {
             .field("need_to_flush", &self.need_to_flush)
             .field("profile_cpu", &self.profile_cpu)
             .field("profile_timely", &self.profile_timely)
+            .field("profile_change", &self.profile_change)
             .field("prof_thread_handle", &self.prof_thread_handle)
             .field("profile", &self.profile)
             .finish()
@@ -1112,6 +1115,7 @@ impl Program {
             timestamp: 1,
             profile_cpu: profiling_rig.profile_cpu,
             profile_timely: profiling_rig.profile_timely,
+            profile_change: profiling_rig.profile_change,
             prof_thread_handle: profiling_rig.profile_thread,
             profile: profiling_rig.profile,
             worker_round_robbin: (0..config.num_timely_workers).cycle().skip(0),
@@ -1122,8 +1126,6 @@ impl Program {
         Ok(running_program)
     }
 
-    /// This thread function is always invoked whether or not profiling is on. If it isn't, the
-    /// thread will blocks on the channel read as no message will ever arrive.
     fn prof_thread_func(channel: Receiver<ProfMsg>, profile: ThinArc<Mutex<Profile>>) {
         loop {
             match channel.recv() {
@@ -1982,6 +1984,13 @@ impl RunningProgram {
     pub fn enable_timely_profiling(&self, enable: bool) {
         if let Some(profile_timely) = self.profile_timely.as_ref() {
             profile_timely.store(enable, Ordering::SeqCst);
+        }
+        // TODO: Log warning if self profiling is disabled
+    }
+
+    pub fn enable_change_profiling(&self, enable: bool) {
+        if let Some(profile_change) = self.profile_change.as_ref() {
+            profile_change.store(enable, Ordering::SeqCst);
         }
         // TODO: Log warning if self profiling is disabled
     }
