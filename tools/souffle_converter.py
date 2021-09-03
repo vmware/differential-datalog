@@ -1036,14 +1036,26 @@ class SouffleConverter(object):
         self.context_types.update(self.bound_variables)
         self.bound_variables.clear()
 
+        # All variables available in the environment.
+        # Souffle group-by semantics is to group the set of all
+        # the variables in the current valuation.
+        valuation_vars = []
         body = getField(agg, "AggregateBody")
         atom = getOptField(body, "Atom")
         if atom is not None:
-            result = self.convert_atom(atom) + ", "
+            tplvar = self.fresh_variable("tpl")
+            valuation_vars.append(tplvar)
+            result = tplvar + " in " + self.convert_atom(atom) + ", "
         elif body is not None:
             termsAst = getListField(body, "Term", "Conjunction")
             terms = self.convert_terms(termsAst)
-            result = ", ".join(map(lambda x: x[0], terms)) + ", "
+            result = ""
+            for term in terms:
+                if self.term_has_relation(term[1]):
+                    tplvar = self.fresh_variable("tpl")
+                    valuation_vars.append(tplvar)
+                    result += tplvar + " in "
+                result += term[0] + ", "
         else:
             raise Exception("Unhandled aggregate " + agg.tree_str())
         bodyBoundVariables = self.bound_variables.copy()
@@ -1051,10 +1063,12 @@ class SouffleConverter(object):
         self.context_types.update(self.bound_variables)
         self.bound_variables.clear()
         arg = getOptField(agg, "Arg")
-        call = "()"  # used when there is no argument to aggregate, e.g., count
+        call = "(" + ",".join(valuation_vars) + ")"
+        # used when there is no argument to aggregate, e.g., count
         argType = "Tnumber"
         if arg is not None:
-            call = self.convert_arg(arg)
+            additional = self.convert_arg(arg)
+            call = call + ", " + additional
             argType = self.currentType
         argVariables = self.bound_variables.copy()
 
@@ -1070,7 +1084,9 @@ class SouffleConverter(object):
             func = "count32"
         if func == "mean" and argType == "Tfloat":
             func += "_d"
-        result += ".group_" + func + "()"
+        if func == "sum" and argType == "Tunsigned":
+            func += "_u"
+        result += ".souffle_group_" + func + "()"
 
         # Restore the bound variables
         self.bound_variables = save.copy()
