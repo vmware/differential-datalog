@@ -24,7 +24,9 @@
 package org.dbsp.compute;
 
 import org.dbsp.algebraic.Group;
-import org.dbsp.types.IStream;
+import org.dbsp.algebraic.IStream;
+import org.dbsp.algebraic.Time;
+import org.dbsp.algebraic.TimeFactory;
 
 import java.util.function.Function;
 
@@ -69,5 +71,40 @@ public interface StreamFunction<T, S> extends Function<IStream<T>, IStream<S>> {
 
     static <U, V> StreamFunction<U, V> fromFunction(Function<IStream<U>, IStream<V>> func) {
         return func::apply;
+    }
+
+    static <T, S> StreamFunction<T, S> lift(Function<T, S> function, TimeFactory fac) {
+        return t -> new IStream<S>(fac) {
+            @Override
+            public S get(Time index) {
+                T tval = t.get(index);
+                return function.apply(tval);
+            }
+        };
+    }
+
+    /**
+     * Given an operator op: t -> r, this builds the stream operator
+     * \lambda t \fix r . op(t + z(r))
+     * @param op      Unary function to use for feedback.
+     * @param group   Group that knows how to add values of type R
+     * @param <T>     Input type.
+     * @return        A StreamFunction that computes the feedback of op.
+     */
+    static <T> StreamFunction<T, T> feedback(Function<T, T> op, Group<T> group) {
+        return new StreamFunction<T, T>() {
+            @Override
+            public IStream<T> apply(IStream<T> s) {
+                return new IStream<T>(s.getTimeFactory()) {
+                    @Override
+                    public T get(Time index) {
+                        if (index.isZero())
+                            return op.apply(s.get(index));
+                        T prevOut = this.get(index.previous());
+                        return op.apply(group.add(prevOut, s.get(index)));
+                    }
+                };
+            }
+        };
     }
 }

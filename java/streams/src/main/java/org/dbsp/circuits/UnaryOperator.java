@@ -21,34 +21,23 @@
  * SOFTWARE.
  */
 
-package org.dbsp.compute;
+package org.dbsp.circuits;
 
-import org.dbsp.algebraic.Time;
-import org.dbsp.algebraic.IStream;
+import org.dbsp.circuits.types.Type;
 
-import java.util.function.BiFunction;
+import java.util.function.Function;
 
 /**
- * A lifted binary function lifts a binary function from T,S to U to
- * operate on streams of corresponding types.
- * @param <T>  Type of left input.
- * @param <S>  Type of right input.
- * @param <U>  Type of result.
+ * An operator that has a single input.
  */
-public class LiftedBifunction<T, S, U> implements StreamBiFunction<T, S, U> {
-    final BiFunction<T, S, U> function;
-
-    public LiftedBifunction(BiFunction<T, S, U> function) {
-        this.function = function;
+public abstract class UnaryOperator extends Operator {
+    protected UnaryOperator(Type inputType, Type outputType) {
+        super(makeArray(inputType), outputType);
     }
 
-    @Override
-    public IStream<U> apply(IStream<T> left, IStream<S> right) {
-        return new IStream<U>(left.getTimeFactory()) {
-            @Override
-            public U get(Time index) {
-                return LiftedBifunction.this.function.apply(left.get(index), right.get(index));
-            }
-        };
+    public abstract Value evaluate(Value input);
+
+    public Value evaluate(Function<Integer, Value> inputProvider) {
+        return this.evaluate(inputProvider.apply(0));
     }
 }

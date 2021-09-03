@@ -21,77 +21,76 @@
  * SOFTWARE.
  */
 
-package org.dbsp.algebraic;
+package org.dbsp.compute.policies;
 
-import java.math.BigInteger;
+import org.dbsp.algebraic.Time;
+import org.dbsp.algebraic.TimeFactory;
 
 /**
- * Representation for time using unbounded integers.
+ * Time represented as a Java integer, which can overflow.
  */
-public class BigTime implements Time {
-    public final BigInteger value;
-    static final BigInteger zero = BigInteger.valueOf(0);
-    static final BigTime zeroTime = new BigTime(zero);
-    static final BigInteger one = BigInteger.valueOf(1);
+public class IntegerTime implements Time {
+    final int value;
 
-    public BigTime(BigInteger value) {
+    public IntegerTime(int value) {
         this.value = value;
     }
 
-    public BigTime(int value) {
-        this.value = BigInteger.valueOf(value);
-    }
-
-    public BigTime() {
+    public IntegerTime() {
         this(0);
     }
 
-    public Time zero() {
-        return BigTime.zeroTime;
-    }
-
+    @Override
     public boolean isZero() {
-        return this.value.equals(zero);
-    }
-
-    public Time previous() {
-        if (this.isZero())
-            throw new RuntimeException("Previous of time 0");
-        return new BigTime(this.value.subtract(one));
-    }
-
-    public Time next() {
-        return new BigTime(this.value.add(one));
+        return this.value == 0;
     }
 
     @Override
-    public int compareTo(Time other) {
-        return this.value.compareTo(((BigTime)other).value);
+    public Time previous() {
+        if (this.value == 0)
+            throw new RuntimeException("Previous of zero time");
+        return new IntegerTime(this.value - 1);
+    }
+
+    @Override
+    public Time next() {
+        if (this.value == Integer.MAX_VALUE)
+            throw new RuntimeException("Next of max time value");
+        return new IntegerTime(this.value + 1);
+    }
+
+    @Override
+    public int compareTo(Time time) {
+        return Integer.compare(this.value, ((IntegerTime)time).value);
     }
 
     @Override
     public int asInteger() {
-        return this.value.intValueExact();
+        return this.value;
     }
 
     @Override
     public String toString() {
-        return this.value.toString();
+        return Integer.toString(this.value);
+    }
+
+    public Integer value() {
+        return this.value;
     }
 
     public static class Factory implements TimeFactory {
         private Factory() {}
 
-        public static Factory instance = new Factory();
+        public static final Factory instance = new Factory();
 
         @Override
         public Time zero() {
-            return new BigTime();
+            return new IntegerTime();
         }
 
         @Override
         public Time fromInteger(int value) {
-            return new BigTime(BigInteger.valueOf(value));
+            return new IntegerTime(value);
         }
     }
 }

@@ -45,4 +45,12 @@ public interface Monoid<T> {
     default boolean isZero(T value) {
         return value.equals(this.zero());
     }
+
+    /**
+     * Check if two monoid elements are equal.
+     * @param w0  First value.
+     * @param w1  Second value.
+     * @return    True if the values are equal.
+     */
+    boolean equal(T w0, T w1);
 }

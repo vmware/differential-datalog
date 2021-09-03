@@ -21,44 +21,23 @@
  * SOFTWARE.
  */
 
-package org.dbsp.algebraic;
+package org.dbsp.compute;
+
+import org.dbsp.compute.policies.IntegerTime;
+import org.dbsp.algebraic.Time;
+import org.dbsp.algebraic.TimeFactory;
+import org.dbsp.algebraic.IStream;
 
 /**
- * The group of finite integer values.
- * This will throw on overflow.
- * This implementation uses finite Java integers.
+ * The "identity stream" of integers, returning the values 0,1,2,...
  */
-public class IntegerRing implements ZRing<Integer> {
-    private IntegerRing() {}
-
-    public static final IntegerRing instance = new IntegerRing();
-
-    @Override
-    public Integer minus(Integer data) {
-        return Math.negateExact(data);
+public class IdStream extends IStream<Integer> {
+    public IdStream(TimeFactory timeFactory) {
+        super(timeFactory);
     }
 
     @Override
-    public Integer add(Integer left, Integer right) {
-        return Math.addExact(left, right);
-    }
-
-    @Override
-    public Integer zero() {
-        return 0;
-    }
-
-    @Override
-    public Integer times(Integer left, Integer right) {
-        return Math.multiplyExact(left, right);
-    }
-
-    @Override
-    public Integer one() {
-        return 1;
-    }
-
-    public boolean isPositive(Integer value) {
-        return value >= 0;
+    public Integer get(Time index) {
+        return ((IntegerTime)index).value();
     }
 }

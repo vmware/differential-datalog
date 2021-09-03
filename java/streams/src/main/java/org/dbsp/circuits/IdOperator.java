@@ -21,23 +21,25 @@
  * SOFTWARE.
  */
 
-package org.dbsp.compute;
+package org.dbsp.circuits;
 
-import org.dbsp.algebraic.IntegerTime;
-import org.dbsp.algebraic.Time;
-import org.dbsp.algebraic.TimeFactory;
-import org.dbsp.types.IStream;
+import org.dbsp.circuits.types.Type;
 
 /**
- * The "identity stream" of integers, returning the values 0,1,2,...
+ * An operator that works on streams.  It delays the input stream by 1 clock.
  */
-public class IdStream extends IStream<Integer> {
-    public IdStream(TimeFactory timeFactory) {
-        super(timeFactory);
+public class IdOperator extends UnaryOperator {
+    public IdOperator(Type elementType) {
+        super(elementType, elementType);
     }
 
     @Override
-    public Integer get(Time index) {
-        return ((IntegerTime)index).value();
+    public String toString() {
+        return "id";
+    }
+
+    @Override
+    public Value evaluate(Value input) {
+        return input;
     }
 }

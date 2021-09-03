@@ -21,7 +21,7 @@
  * SOFTWARE.
  */
 
-package org.dbsp.compute;
+package org.dbsp.compute.relational;
 
 import org.dbsp.algebraic.ZRing;
 
@@ -37,7 +37,7 @@ public class Grouping<K extends Comparable<K>, V extends Comparable<V>, W> imple
     /**
      * The key common to all elements of the group.
      */
-    final K key;
+    public final K key;
     /**
      * All values that map to the same key.  This is a ZSet,
      * since an element could show up multiple times.
@@ -95,10 +95,10 @@ public class Grouping<K extends Comparable<K>, V extends Comparable<V>, W> imple
      */
     public W count() {
         BiFunction<K, ZSet<V, W>, W> count = (k, s) -> {
-            W result = this.values.ring.zero();
+            W result = this.values.weightRing.zero();
             for (V v: s.support()) {
                 W w = s.weight(v);
-                result = this.values.ring.add(result, w);
+                result = this.values.weightRing.add(result, w);
             }
             return result;
         };
@@ -110,9 +110,9 @@ public class Grouping<K extends Comparable<K>, V extends Comparable<V>, W> imple
      */
     public W distinctCount() {
         BiFunction<K, ZSet<V, W>, W> count = (k, s) -> {
-            W result = this.values.ring.zero();
-            for (V v: s.support()) {
-                result = this.values.ring.increment(result);
+            W result = this.values.weightRing.zero();
+            for (V ignored : s.support()) {
+                result = this.values.weightRing.increment(result);
             }
             return result;
         };

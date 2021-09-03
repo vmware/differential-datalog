@@ -21,37 +21,21 @@
  * SOFTWARE.
  */
 
-package org.dbsp.formal;
+package org.dbsp.circuits;
 
-import org.dbsp.algebraic.TimeFactory;
-import org.dbsp.types.IStream;
-import org.dbsp.types.StreamType;
-import org.dbsp.types.Type;
+import org.dbsp.algebraic.Group;
+import org.dbsp.circuits.types.Type;
 
-import java.util.function.Function;
+public class PlusOperator extends BinaryOperator {
+    private final Group<Value> adder;
 
-/**
- * An operator that works on streams.  It delays the input stream by 1 clock.
- * @param <T> Concrete implementation of elements of the input and output stream.
- */
-public class DelayOperator<T, F extends TimeFactory> extends
-        UniformUnaryOperator<IStream<T>> {
-    final Type<T> elementType;
-
-    public DelayOperator(Type<T> elementType, F factory) {
-        super(new StreamType<T>(elementType, factory));
-        this.elementType = elementType;
-        if (!this.getInputType().isStream())
-            throw new RuntimeException("Delay must be applied to a stream type, not to " + elementType);
+    public PlusOperator(Type valueType, Group<Value> adder) {
+        super(valueType);
+        this.adder = adder;
     }
 
     @Override
-    public Function<IStream<T>, IStream<T>> getComputation() {
-        return (IStream<T> s) -> s.delay(this.elementType.getGroup());
-    }
-
-    @Override
-    public String toString() {
-        return "z";
+    public Value evaluate(Value left, Value right) {
+        return this.adder.add(left, right);
     }
 }

@@ -21,28 +21,51 @@
  * SOFTWARE.
  */
 
-package org.dbsp.formal;
+package org.dbsp.compute.policies;
 
-import org.dbsp.types.Type;
-
-import java.util.function.Function;
+import org.dbsp.algebraic.ZRing;
 
 /**
- * An operator that negates its input.
- * @param <T>  Type of input.
+ * The group of finite integer values.
+ * This will throw on overflow.
+ * This implementation uses finite Java integers.
  */
-public class MinusOperator<T> extends UniformUnaryOperator<T> {
-    protected MinusOperator(Type<T> type) {
-        super(type);
+public class IntegerRing implements ZRing<Integer> {
+    private IntegerRing() {}
+
+    public static final IntegerRing instance = new IntegerRing();
+
+    @Override
+    public Integer minus(Integer data) {
+        return Math.negateExact(data);
     }
 
     @Override
-    public Function<T, T> getComputation() {
-        return value -> inputType.getGroup().minus(value);
+    public Integer add(Integer left, Integer right) {
+        return Math.addExact(left, right);
     }
 
     @Override
-    public String toString() {
-        return "-";
+    public Integer zero() {
+        return 0;
+    }
+
+    @Override
+    public Integer times(Integer left, Integer right) {
+        return Math.multiplyExact(left, right);
+    }
+
+    @Override
+    public Integer one() {
+        return 1;
+    }
+
+    @Override
+    public boolean equal(Integer w0, Integer w1) {
+        return w0.equals(w1);
+    }
+
+    public boolean isPositive(Integer value) {
+        return value >= 0;
     }
 }

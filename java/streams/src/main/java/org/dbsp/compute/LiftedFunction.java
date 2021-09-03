@@ -24,7 +24,7 @@
 package org.dbsp.compute;
 
 import org.dbsp.algebraic.Time;
-import org.dbsp.types.IStream;
+import org.dbsp.algebraic.IStream;
 
 import java.util.function.Function;
 

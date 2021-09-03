@@ -21,32 +21,16 @@
  * SOFTWARE.
  */
 
-package org.dbsp.types;
-
-import org.dbsp.algebraic.Group;
-
-import javax.annotation.Nullable;
-
 /**
- * Base class for all types.
- * @param <T> concrete Java T implementing this type.
+ * Package that doesn't allow null values as method parameters.
  */
-public interface Type<T> {
-    /**
-     * @return The group that knows how to perform operations on values of this type.
-     */
-    Group<T> getGroup();
 
-    /**
-     * @return True if this is a stream type.
-     */
-    boolean isStream();
+@ParametersAreNonnullByDefault
+@FieldsAreNonnullByDefault
+@MethodsAreNonnullByDefault
+package org.dbsp.compute.relational;
 
-    /**
-     * If Type is a StreamType, return the StreamType, else return null.
-     */
-    @Nullable
-    default <U> StreamType<U> asStreamType() {
-        return null;
-    }
-}
+import org.dbsp.FieldsAreNonnullByDefault;
+import org.dbsp.MethodsAreNonnullByDefault;
+
+import javax.annotation.ParametersAreNonnullByDefault;

@@ -21,23 +21,27 @@
  * SOFTWARE.
  */
 
-package org.dbsp.formal;
+package org.dbsp.operators;
 
-import org.dbsp.types.Type;
+import org.dbsp.algebraic.TimeFactory;
+import org.dbsp.algebraic.IStream;
+import org.dbsp.circuits.types.StreamType;
+import org.dbsp.circuits.types.Type;
 
 import java.util.function.Function;
 
 /**
- * A unary operator implementing the identity function on type T.
- * @param <T>  Input data type.
+ * An operator that consumes a stream and produces a scalar.
+ * The operator sums up all values in the stream up to the first 0.
+ * @param <T>  Type of scalar produced.
  */
-public class IdOperator<T> extends UniformUnaryOperator<T> {
-    public IdOperator(Type<T> inputType) {
-        super(inputType);
+public class IntOperator<T, F extends TimeFactory> extends UnaryOperator<IStream<T>, T> {
+    protected IntOperator(Type<T> outputType, F factory) {
+        super(new StreamType<T>(outputType, factory), outputType);
     }
 
     @Override
-    public Function<T, T> getComputation() {
-        return t -> t;
+    public Function<IStream<T>, T> getComputation() {
+        return s -> s.sumToZero(this.outputType.getGroup());
     }
 }

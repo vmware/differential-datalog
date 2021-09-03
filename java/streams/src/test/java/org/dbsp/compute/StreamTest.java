@@ -24,11 +24,11 @@
 package org.dbsp.compute;
 
 import javafx.util.Pair;
-import org.dbsp.algebraic.IntegerRing;
-import org.dbsp.algebraic.IntegerTime;
+import org.dbsp.compute.policies.IntegerRing;
+import org.dbsp.compute.policies.IntegerTime;
 import org.dbsp.algebraic.StreamGroup;
 import org.dbsp.algebraic.Time;
-import org.dbsp.types.IStream;
+import org.dbsp.algebraic.IStream;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -36,9 +36,9 @@ public class StreamTest {
     final IntegerTime.Factory factory = IntegerTime.Factory.instance;
     public final StreamGroup<Integer> sg = new StreamGroup<Integer>(
             IntegerRing.instance, factory);
-    private final boolean verbose = true;
+    private static final boolean verbose = true;
 
-    private <T> void show(String prefix, IStream<T> value) {
+    public static <T> void show(String prefix, IStream<T> value) {
         if (!verbose)
             return;
         String s = value.toString(4);
@@ -65,21 +65,21 @@ public class StreamTest {
     @Test
     public void testId() {
         IdStream id = new IdStream(factory);
-        this.show("id", id);
+        show("id", id);
         Assert.assertEquals((Integer)3, id.get(3));
         IStream<Integer> iid = id.integrate(IntegerRing.instance);
-        this.show("I(id)", iid);
+        show("I(id)", iid);
         Assert.assertEquals((Integer)6, iid.get(3));
         IStream<Integer> did = id.differentiate(IntegerRing.instance);
-        this.show("D(id)", did);
+        show("D(id)", did);
         IStream<Pair<Integer, Integer>> pid = id.pair(id);
-        this.show("<id,id>", pid);
+        show("<id,id>", pid);
         IStream<Integer> delay = id.delay(IntegerRing.instance);
-        this.show("z(id)", delay);
+        show("z(id)", delay);
         IStream<Integer> cut = id.cut(id.getTimeFactory().fromInteger(3), IntegerRing.instance);
-        this.show("cut3(id)", cut);
+        show("cut3(id)", cut);
         IStream<Integer> delta = new Delta0<>(5, IntegerRing.instance, factory);
-        this.show("delta(5)", delta);
+        show("delta(5)", delta);
     }
 
     public IStream<IStream<Integer>> get2dStream() {

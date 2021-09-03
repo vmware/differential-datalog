@@ -21,48 +21,16 @@
  * SOFTWARE.
  */
 
-package org.dbsp.algebraic;
-
-import java.math.BigInteger;
-
 /**
- * The group of infinite-precision integer values.
- * This implementation uses BigInt Java integers.
+ * Package that doesn't allow null values as method parameters.
  */
-public class InfIntRing implements ZRing<BigInteger> {
-    static BigInteger zero = BigInteger.valueOf(0);
-    static BigInteger one = BigInteger.valueOf(1);
 
-    private InfIntRing() {}
+@ParametersAreNonnullByDefault
+@FieldsAreNonnullByDefault
+@MethodsAreNonnullByDefault
+package org.dbsp.circuits.types;
 
-    public static final InfIntRing instance = new InfIntRing();
+import org.dbsp.FieldsAreNonnullByDefault;
+import org.dbsp.MethodsAreNonnullByDefault;
 
-    @Override
-    public BigInteger minus(BigInteger data) {
-        return data.negate();
-    }
-
-    @Override
-    public BigInteger add(BigInteger left, BigInteger right) {
-        return left.add(right);
-    }
-
-    @Override
-    public BigInteger zero() {
-        return zero;
-    }
-
-    @Override
-    public BigInteger times(BigInteger left, BigInteger right) {
-        return left.multiply(right);
-    }
-
-    @Override
-    public BigInteger one() {
-        return one;
-    }
-
-    public boolean isPositive(BigInteger value) {
-        return value.compareTo(zero) >= 0;
-    }
-}
+import javax.annotation.ParametersAreNonnullByDefault;

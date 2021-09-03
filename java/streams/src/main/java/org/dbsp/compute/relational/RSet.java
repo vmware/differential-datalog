@@ -21,45 +21,55 @@
  * SOFTWARE.
  */
 
-package org.dbsp.compute;
+package org.dbsp.compute.relational;
 
-import java.util.Objects;
+import org.dbsp.algebraic.ZRing;
+
+import java.util.*;
 
 /**
- * A simple tuple used for testing.  Two fields.
+ * Simple sets.  Inputs and outputs of computations are usually sets.
+ * @param <T>  Type of elements in the sets.
  */
-class TestTuple implements Comparable<TestTuple> {
-    final String s;
-    final Integer v;
+public class RSet<T extends Comparable<T>> {
+    public final Set<T> data;
 
-    TestTuple(String s, Integer v) {
-        this.s = s;
-        this.v = v;
-    }
-
-    public String toString() {
-        return "<" + this.s + "," + v.toString() + ">";
-    }
-
-    @Override
-    public int compareTo(TestTuple o) {
-        int c = this.s.compareTo(o.s);
-        if (c != 0)
-            return c;
-        return this.v.compareTo(o.v);
+    public RSet(Collection<T> data) {
+        this.data = new HashSet<T>(data);
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        TestTuple testTuple = (TestTuple) o;
-        return s.equals(testTuple.s) &&
-                v.equals(testTuple.v);
+        RSet<?> set = (RSet<?>) o;
+        return this.data.equals(set.data);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(s, v);
+        return this.data.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        List<T> sorted = new ArrayList<T>(this.data);
+        sorted.sort(Comparator.naturalOrder());
+        StringBuilder builder = new StringBuilder();
+        builder.append("{");
+        boolean first = true;
+        for (T value: sorted) {
+            if (!first)
+                builder.append(",");
+            else
+                first = false;
+            builder.append(value);
+        }
+        builder.append("}");
+        return builder.toString();
+    }
+
+    public <W> ZSet<T, W> toZSet(ZRing<W> ring) {
+        return new ZSet<T, W>(ring, this.data);
     }
 }

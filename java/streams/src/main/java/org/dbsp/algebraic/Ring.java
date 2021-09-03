@@ -24,7 +24,7 @@
 package org.dbsp.algebraic;
 
 /**
- * An algebtraic structure of a ring.
+ * An algebraic structure of a ring.
  * @param <T>  Type of elements in the ring.
  */
 public interface Ring<T> extends Group<T> {
@@ -48,4 +48,11 @@ public interface Ring<T> extends Group<T> {
     default T increment(T value) {
         return this.add(value, this.one());
     }
+
+    /**
+     * Check if a value is one.
+     * @param value  Value to compare.
+     * @return       True if the value is the ring one element.
+     */
+    default boolean isOne(T value) { return this.one().equals(value); }
 }

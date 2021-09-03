@@ -24,7 +24,9 @@
 package org.dbsp.compute;
 
 import org.dbsp.algebraic.Group;
-import org.dbsp.types.IStream;
+import org.dbsp.algebraic.IStream;
+import org.dbsp.algebraic.Time;
+import org.dbsp.algebraic.TimeFactory;
 
 import java.util.function.BiFunction;
 
@@ -46,5 +48,43 @@ public interface StreamBiFunction<T, S, R> extends BiFunction<IStream<T>, IStrea
     default StreamBiFunction<T, S, R> inc(Group<T> groupT, Group<S> groupS, Group<R> groupR) {
         return (IStream<T> t, IStream<S> s) -> this.apply(t.integrate(groupT), s.integrate(groupS))
                 .differentiate(groupR);
+    }
+
+    /**
+     * Given an operator op: (t,s) -> r, this builds the stream operator
+     * \lambda (t,s) \fix r . op(t, s + z(r))
+     * @param op      Binary function to use for feedback.
+     * @param group   Group that knows how to add values of type R
+     * @param <T>     Left input type.
+     * @param <R>     Right input type.
+     * @return        A StreamBiFunction that computes the feedback of op.
+     */
+    static <T, R> StreamBiFunction<T, R, R> feedback(BiFunction<T, R, R> op, Group<R> group) {
+        return new StreamBiFunction<T, R, R>() {
+            @Override
+            public IStream<R> apply(IStream<T> s, IStream<R> t) {
+                return new IStream<R>(s.getTimeFactory()) {
+                    @Override
+                    public R get(Time index) {
+                        T si = s.get(index);
+                        if (index.isZero())
+                            return op.apply(si, t.get(index));
+                        R prevOut = this.get(index.previous());
+                        return op.apply(si, group.add(prevOut, t.get(index)));
+                    }
+                };
+            }
+        };
+    }
+
+    public static <T, S, R> StreamBiFunction<T, S, R> lift(BiFunction<T, S, R> function, TimeFactory fac) {
+        return (t, s) -> new IStream<R>(fac) {
+            @Override
+            public R get(Time index) {
+                T tval = t.get(index);
+                S sval = s.get(index);
+                return function.apply(tval, sval);
+            }
+        };
     }
 }

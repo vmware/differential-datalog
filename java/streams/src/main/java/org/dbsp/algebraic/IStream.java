@@ -21,13 +21,14 @@
  * SOFTWARE.
  */
 
-package org.dbsp.types;
+package org.dbsp.algebraic;
 
 import javafx.util.Pair;
-import org.dbsp.algebraic.Group;
-import org.dbsp.algebraic.Time;
-import org.dbsp.algebraic.TimeFactory;
+import org.dbsp.compute.StreamBiFunction;
 import org.dbsp.compute.StreamFunction;
+
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 /**
  * Generic stream API containing values of type V.
@@ -120,6 +121,27 @@ public abstract class IStream<V> {
         };
     }
 
+    /**
+     * Compare the prefixes of two streams.
+     * @param other      Stream to compare against.
+     * @param time       Time to compare to.
+     * @return           True if the two stream prefixes are equal..
+     */
+    public boolean comparePrefix(IStream<V> other, Time time) {
+        for (Time t = this.timeFactory.zero(); !t.equals(time); t = t.next()) {
+            V v0 = this.get(t);
+            V v1 = other.get(t);
+            boolean compare = v0.equals(v1);
+            if (!compare)
+                return false;
+        }
+        return true;
+    }
+
+    public boolean comparePrefix(IStream<V> other, int value) {
+        return this.comparePrefix(other, this.timeFactory.fromInteger(value));
+    }
+
     public IStream<V> integrate(Group<V> group) {
         return new IStream<V>(this.timeFactory) {
             // Invariant is that accumulated is the integral of the input stream
@@ -130,7 +152,7 @@ public abstract class IStream<V> {
             @Override
             public V get(Time index) {
                 // hopefully we are called with the lastIndex+1 value
-                if (index.compareTo(lastIndex) > 0) {
+                if (index.compareTo(lastIndex) < 0) {
                     this.lastIndex = this.timeFactory.zero();
                     this.accumulated = group.zero();
                 }
@@ -148,7 +170,8 @@ public abstract class IStream<V> {
         for (Time i = this.timeFactory.zero(); i.compareTo(limit) < 0; i = i.next()) {
             if (!i.isZero())
                 builder.append(",");
-            builder.append(this.get(i).toString());
+            V value = this.get(i);
+            builder.append(value.toString());
         }
         builder.append(",...");
         builder.append("]");
@@ -186,5 +209,10 @@ public abstract class IStream<V> {
 
     public TimeFactory getTimeFactory() {
         return this.timeFactory;
+    }
+
+    @Override
+    public String toString() {
+        return this.toString(4);
     }
 }

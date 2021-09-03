@@ -21,34 +21,55 @@
  * SOFTWARE.
  */
 
-package org.dbsp.formal;
+package org.dbsp.compute.policies;
 
-import org.dbsp.algebraic.TimeFactory;
-import org.dbsp.types.IStream;
-import org.dbsp.types.StreamType;
-import org.dbsp.types.Type;
+import org.dbsp.algebraic.ZRing;
 
-import java.util.function.Function;
+import java.math.BigInteger;
 
 /**
- * An operator that produces a stream from a value.
- * @param <T> Type of input value.
+ * The group of infinite-precision integer values.
+ * This implementation uses BigInt Java integers.
  */
-public class Delta0<T> extends UnaryOperator<T, IStream<T>> {
-    protected final TimeFactory factory;
+public class InfIntRing implements ZRing<BigInteger> {
+    static final BigInteger zero = BigInteger.valueOf(0);
+    static final BigInteger one = BigInteger.valueOf(1);
 
-    public Delta0(Type<T> inputType, TimeFactory factory) {
-        super(inputType, new StreamType<T>(inputType, factory));
-        this.factory = factory;
+    private InfIntRing() {}
+
+    public static final InfIntRing instance = new InfIntRing();
+
+    @Override
+    public BigInteger minus(BigInteger data) {
+        return data.negate();
     }
 
     @Override
-    public Function<T, IStream<T>> getComputation() {
-        return value -> new org.dbsp.compute.Delta0<T>(value, this.inputType.getGroup(), this.factory);
+    public BigInteger add(BigInteger left, BigInteger right) {
+        return left.add(right);
     }
 
     @Override
-    public String toString() {
-        return "Delta0";
+    public BigInteger zero() {
+        return zero;
+    }
+
+    @Override
+    public BigInteger times(BigInteger left, BigInteger right) {
+        return left.multiply(right);
+    }
+
+    @Override
+    public BigInteger one() {
+        return one;
+    }
+
+    @Override
+    public boolean equal(BigInteger w0, BigInteger w1) {
+        return w0.equals(w1);
+    }
+
+    public boolean isPositive(BigInteger value) {
+        return value.compareTo(zero) >= 0;
     }
 }
