@@ -23,28 +23,72 @@
 
 package org.dbsp.circuits;
 
+import org.dbsp.circuits.types.Type;
+
+import java.util.function.Function;
+
 public abstract class Operator {
+    static int crtid = 0;
+
     final Wire output;
     final Wire[] inputs;
     final int inputsPresent;
+    final int id;
+    final Type[] inputTypes;
+    final Type outputType;
 
-    public Operator(int arity) {
-        this.output = new Wire();
-        this.inputs = new Wire[arity];
+    public Operator(Type[] inputTypes, Type outputType) {
+        this.output = new Wire(outputType);
+        // Input wires are not connected.
+        this.inputs = new Wire[inputTypes.length];
         this.inputsPresent = 0;
+        this.id = crtid++;
+        this.inputTypes = inputTypes;
+        this.outputType = outputType;
     }
+
+    /**
+     * A new computation cycle has started, reset the internal state.
+     * Most operators do nothing.
+     */
+    public void reset() {}
 
     public int arity() {
         return this.inputs.length;
     }
 
-    /**
-     * Return a consumer that represents the index-th input
-     * of this operator.
-     * @param index  Index of the input that consumes data.
-     * @return  A consumer.
-     */
-    public Consumer getInputWire(int index) {
-        return this.inputs[index];
+    public void connectInput(int index, Wire wire) {
+        if (this.inputs[index] != null)
+            throw new RuntimeException("Input " + index + " already connected");
+        this.inputs[index] = wire;
+        if (!this.inputTypes[index].equals(wire.getType()))
+            throw new RuntimeException("Type mismatch: operator input " + index + " expects " +
+                    this.inputTypes[index] + " but was provided with " + wire.getType());
+    }
+
+    boolean checked = false;
+    private void checkConnected() {
+        if (this.checked)
+            return;
+        for (Wire w: this.inputs) {
+            if (w == null)
+                throw new RuntimeException("Input not connected");
+        }
+        checked = true;
+    }
+
+    public abstract Value evaluate(Function<Integer, Value> inputProvider);
+
+    // Extract values from the input wires, compute the
+    // result.
+    public void compute() {
+        this.checkConnected();
+        Value result = this.evaluate(index -> this.inputs[index].getValue());
+        this.output.setValue(result);
+    }
+
+    @SafeVarargs
+    static <T> T[] makeArray(T... data) {
+        return data;
     }
 }

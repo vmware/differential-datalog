@@ -21,16 +21,27 @@
  * SOFTWARE.
  */
 
-/**
- * Package that doesn't allow null values as method parameters.
- */
+package org.dbsp.circuits.types;
 
-@ParametersAreNonnullByDefault
-@FieldsAreNonnullByDefault
-@MethodsAreNonnullByDefault
-package org.dbsp.formal;
+import java.util.Objects;
 
-import org.dbsp.FieldsAreNonnullByDefault;
-import org.dbsp.MethodsAreNonnullByDefault;
+public class ZSetType implements Type {
+    final Type elementType;
 
-import javax.annotation.ParametersAreNonnullByDefault;
+    public ZSetType(Type elementType) {
+        this.elementType = elementType;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ZSetType zSetType = (ZSetType) o;
+        return elementType.equals(zSetType.elementType);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(elementType);
+    }
+}

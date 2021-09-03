@@ -21,13 +21,13 @@
  * SOFTWARE.
  */
 
-package org.dbsp.compute;
+package org.dbsp.compute.relational;
 
 import org.dbsp.algebraic.FiniteFunction;
 import org.dbsp.algebraic.FiniteFunctionGroup;
 import org.dbsp.algebraic.ZRing;
+import org.dbsp.circuits.Value;
 
-import javax.annotation.Nullable;
 import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -38,51 +38,72 @@ import java.util.function.Predicate;
  * @param <T>  Type of data in relation.
  * @param <W>  Type of weight.
  */
-public class ZSet<T extends Comparable<T>, W> extends FiniteFunction<T, W> {
+public class ZSet<T extends Comparable<T>, W>
+        extends FiniteFunction<T, W>
+        implements Comparable<ZSet<T, W>>, Value {
+    /**
+     * Data in the set: each value of type type is mapped to a weight.
+     */
     final HashMap<T, W> data;
-    final ZRing<W> ring;
+    /**
+     * Ring that knows how to compute on weights.
+     */
+    final ZRing<W> weightRing;
     // Used for sanity checking.
     final FiniteFunctionGroup<T, W> functionGroup;
     static boolean safetyChecks = true;
 
     /**
      * Create an empty Z-relation.
-     * @param ring  Ring that computes on weights.
+     * @param weightRing  Ring that computes on weights.
      */
-    protected ZSet(ZRing<W> ring) {
-        this(ring, 0);
+    public ZSet(ZRing<W> weightRing) {
+        this(weightRing, 0);
     }
 
     /**
      * Create a Z-relation with the data in the specified map.
      * @param map  Map containing the tuples each with its own weight.
      */
-    public ZSet(ZRing<W> ring, Map<T, W> map) {
-        this(ring, map.size());
+    public ZSet(ZRing<W> weightRing, Map<T, W> map) {
+        this(weightRing, map.size());
         for (T t: map.keySet()) {
             W w = map.get(t);
-            if (!this.ring.isZero(w))
+            if (!this.weightRing.isZero(w))
                 this.add(t, w);
         }
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ZSet<?, ?> zSet = (ZSet<?, ?>) o;
+        return this.data.equals(zSet.data);
+    }
+
+    @Override
+    public int hashCode() {
+        return this.data.hashCode();
+    }
+
     /**
-     * Create a Z-relation with all the elements in the list each with weight 1.
+     * Create a Z-relation with all the elements in the supplied iterable, each with weight 1.
      * @param data  Data to add to relation.
      */
-    public ZSet(ZRing<W> ring, List<T> data) {
-        this(ring, data.size());
+    public ZSet(ZRing<W> weightRing, Iterable<T> data) {
+        this(weightRing);
         for (T t: data)
-            this.add(t, this.ring.one());
+            this.add(t, this.weightRing.one());
     }
 
     /**
      * Create an empty Z-relation and reserve space for the specified number of elements.
      * @param size  Number of elements in Z-relation.
      */
-    public ZSet(ZRing<W> ring, int size) {
-        this.ring = ring;
-        this.functionGroup = new FiniteFunctionGroup<>(ring);
+    public ZSet(ZRing<W> weightRing, int size) {
+        this.weightRing = weightRing;
+        this.functionGroup = new FiniteFunctionGroup<>(weightRing);
         this.data = new HashMap<T, W>(size);
     }
 
@@ -91,9 +112,9 @@ public class ZSet<T extends Comparable<T>, W> extends FiniteFunction<T, W> {
      * @param value  Element to insert.
      * @param weight Weight of the element.
      */
-    public ZSet(ZRing<W> ring, T value, W weight) {
-        this(ring, 1);
-        if (ring.isZero(weight))
+    public ZSet(ZRing<W> weightRing, T value, W weight) {
+        this(weightRing, 1);
+        if (weightRing.isZero(weight))
             return;
         this.data.put(value, weight);
     }
@@ -102,8 +123,8 @@ public class ZSet<T extends Comparable<T>, W> extends FiniteFunction<T, W> {
      * Create a Z-relation with a single element with weight 1.
      * @param value  Element to add.
      */
-    public ZSet(ZRing<W> ring, T value) {
-        this(ring, value, ring.one());
+    public ZSet(ZRing<W> weightRing, T value) {
+        this(weightRing, value, weightRing.one());
     }
 
     /**
@@ -123,10 +144,10 @@ public class ZSet<T extends Comparable<T>, W> extends FiniteFunction<T, W> {
      * @param coefficient  Coefficient to multiply each weight with.
      */
     public void add(ZSet<T, W> other, W coefficient) {
-        if (coefficient.equals(ring.zero()))
+        if (weightRing.isZero(coefficient))
             return;
         for (T key: other.data.keySet()) {
-            W value = this.ring.times(coefficient, other.data.get(key));
+            W value = this.weightRing.times(coefficient, other.data.get(key));
             this.add(key, value);
         }
     }
@@ -138,8 +159,8 @@ public class ZSet<T extends Comparable<T>, W> extends FiniteFunction<T, W> {
      */
     public void add(T value, W weight) {
         if (this.data.containsKey(value)) {
-            weight = this.ring.add(weight, this.data.get(value));
-            if (this.ring.isZero(weight))
+            weight = this.weightRing.add(weight, this.data.get(value));
+            if (this.weightRing.isZero(weight))
                 this.data.remove(value);
             else
                 this.data.put(value, weight);
@@ -152,7 +173,7 @@ public class ZSet<T extends Comparable<T>, W> extends FiniteFunction<T, W> {
         for (T key: this.support()) {
             W thisW = this.weight(key);
             W otherW = function.apply(key);
-            assert thisW.equals(otherW);
+            assert this.weightRing.equal(thisW, otherW);
         }
     }
 
@@ -162,9 +183,9 @@ public class ZSet<T extends Comparable<T>, W> extends FiniteFunction<T, W> {
      * @return       A fresh relation.
      */
     public ZSet<T, W> plus(ZSet<T, W> other) {
-        ZSet<T, W> result = new ZSet<T, W>(this.ring);
-        result.add(this, this.ring.one());
-        result.add(other, this.ring.one());
+        ZSet<T, W> result = new ZSet<T, W>(this.weightRing);
+        result.add(this, this.weightRing.one());
+        result.add(other, this.weightRing.one());
         if (safetyChecks) {
             FiniteFunction<T, W> tmp = this.functionGroup.add(this, other);
             result.assertSameOnSupport(tmp);
@@ -177,9 +198,9 @@ public class ZSet<T extends Comparable<T>, W> extends FiniteFunction<T, W> {
      * @return  A fresh relation.
      */
     public ZSet<T, W> minus() {
-        ZSet<T, W> result = new ZSet<T, W>(this.ring, this.size());
+        ZSet<T, W> result = new ZSet<T, W>(this.weightRing, this.size());
         for (T key: this.data.keySet()) {
-            result.data.put(key, this.ring.minus(this.data.get(key)));
+            result.data.put(key, this.weightRing.minus(this.data.get(key)));
         }
         if (safetyChecks) {
             FiniteFunction<T, W> tmp = this.functionGroup.minus(this);
@@ -195,7 +216,7 @@ public class ZSet<T extends Comparable<T>, W> extends FiniteFunction<T, W> {
      * @return     The union of all Z-relations produced.
      */
     public <S extends Comparable<S>> ZSet<S, W> flatMap(Function<T, ZSet<S, W>> map) {
-        ZSet<S, W> result = new ZSet<S, W>(this.ring, this.size());
+        ZSet<S, W> result = new ZSet<S, W>(this.weightRing, this.size());
         for (T key: this.support()) {
             W weight = this.data.get(key);
             ZSet<S, W> mr = map.apply(key);
@@ -228,7 +249,7 @@ public class ZSet<T extends Comparable<T>, W> extends FiniteFunction<T, W> {
      * @return  A fresh relation.
      */
     public ZSet<T, W> filter(Predicate<T> predicate) {
-        ZSet<T, W> result = new ZSet<T, W>(this.ring, this.size());
+        ZSet<T, W> result = new ZSet<T, W>(this.weightRing, this.size());
         for (T key: this.support()) {
             if (predicate.test(key)) {
                 W weight = this.data.get(key);
@@ -252,7 +273,7 @@ public class ZSet<T extends Comparable<T>, W> extends FiniteFunction<T, W> {
      * @return     A fresh relation containing all results.
      */
     public <S extends Comparable<S>> ZSet<S, W> map(Function<T, S> map) {
-        Function<T, ZSet<S, W>> fm = t -> new ZSet<S, W>(this.ring, map.apply(t), this.ring.one());
+        Function<T, ZSet<S, W>> fm = t -> new ZSet<S, W>(this.weightRing, map.apply(t), this.weightRing.one());
         return this.flatMap(fm);
     }
 
@@ -270,16 +291,12 @@ public class ZSet<T extends Comparable<T>, W> extends FiniteFunction<T, W> {
     public <S extends Comparable<S>, K, R extends Comparable<R>> ZSet<R, W> join(
             ZSet<S, W> other, Function<T, K> thisKey,
             Function<S, K> otherKey, BiFunction<T, S, R> combiner) {
-        ZSet<R, W> result = new ZSet<R, W>(this.ring);
+        ZSet<R, W> result = new ZSet<R, W>(this.weightRing);
         HashMap<K, List<T>> leftIndex = new HashMap<K, List<T>>();
         for (T key: this.support()) {
             K k = thisKey.apply(key);
-            List<T> list = leftIndex.get(k);
-            if (list == null) {
-                list = new ArrayList<>(1);
-                list.add(key);
-                leftIndex.put(k, list);
-            }
+            List<T> list = leftIndex.computeIfAbsent(k, k1 -> new ArrayList<>(1));
+            list.add(key);
         }
         for (S okey: other.support()) {
             K k = otherKey.apply(okey);
@@ -290,7 +307,7 @@ public class ZSet<T extends Comparable<T>, W> extends FiniteFunction<T, W> {
             for (T t: list) {
                 W weight = this.data.get(t);
                 R join = combiner.apply(t, okey);
-                result.add(join, this.ring.times(weight, oweight));
+                result.add(join, this.weightRing.times(weight, oweight));
             }
         }
         return result;
@@ -300,9 +317,8 @@ public class ZSet<T extends Comparable<T>, W> extends FiniteFunction<T, W> {
      * @return 'true' if all weights of elements in the support are exactly 1.
      */
     public boolean isSet() {
-        W one = this.ring.one();
         for (T t: this.support()) {
-            if (!this.apply(t).equals(one))
+            if (!this.weightRing.isOne(this.apply(t)))
                 return false;
         }
         return true;
@@ -326,12 +342,21 @@ public class ZSet<T extends Comparable<T>, W> extends FiniteFunction<T, W> {
      * @return  A fresh Z-relation.
      */
     public ZSet<T, W> distinct() {
-        ZSet<T, W> result = new ZSet<T, W>(this.ring);
+        ZSet<T, W> result = new ZSet<T, W>(this.weightRing);
         for (T t: this.support()) {
-            if (this.ring.isPositive(this.data.get(t)))
-                result.add(t, this.ring.one());
+            if (this.weightRing.isPositive(this.data.get(t)))
+                result.add(t, this.weightRing.one());
         }
         return result;
+    }
+
+    /**
+     * The data in the support of this set as a set.
+     * If this is not applied to something that is a set it throws.
+     */
+    public RSet<T> asSet() {
+        assert this.isSet();
+        return new RSet<T>(this.data.keySet());
     }
 
     public <K extends Comparable<K>> ZSet<Grouping<K, T, W>, W> groupBy(Function<T, K> key) {
@@ -341,15 +366,15 @@ public class ZSet<T extends Comparable<T>, W> extends FiniteFunction<T, W> {
             W w = this.apply(t);
             Grouping<K, T, W> set = perKey.get(k);
             if (set == null) {
-                set = new Grouping<K, T, W>(k, this.ring);
+                set = new Grouping<K, T, W>(k, this.weightRing);
                 perKey.put(k, set);
             }
             set.add(t, w);
         }
-        ZSet<Grouping<K, T, W>, W> result = new ZSet<Grouping<K, T, W>, W>(this.ring);
+        ZSet<Grouping<K, T, W>, W> result = new ZSet<Grouping<K, T, W>, W>(this.weightRing);
         for (K k: perKey.keySet()) {
             Grouping<K, T, W> v = perKey.get(k);
-            result.add(v, this.ring.one());
+            result.add(v, this.weightRing.one());
         }
         return result;
     }
@@ -357,7 +382,7 @@ public class ZSet<T extends Comparable<T>, W> extends FiniteFunction<T, W> {
     @Override
     public W apply(T key) {
         if (!this.contains(key))
-            return this.ring.zero();
+            return this.weightRing.zero();
         return this.data.get(key);
     }
 
@@ -368,9 +393,6 @@ public class ZSet<T extends Comparable<T>, W> extends FiniteFunction<T, W> {
         return sorted;
     }
 
-    /**
-     * String representation of a ZSet.
-     */
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
@@ -393,7 +415,6 @@ public class ZSet<T extends Comparable<T>, W> extends FiniteFunction<T, W> {
     /**
      * Given a ZSet which is actually a set, return it as a string.
      * This omits all the weights, which are 1.
-     * @param comparator  Comparator that establishes the element order.
      */
     public String asSetString() {
         assert this.isSet();
@@ -410,5 +431,10 @@ public class ZSet<T extends Comparable<T>, W> extends FiniteFunction<T, W> {
         }
         builder.append("}");
         return builder.toString();
+    }
+
+    @Override
+    public int compareTo(ZSet<T, W> o) {
+        return 0;
     }
 }

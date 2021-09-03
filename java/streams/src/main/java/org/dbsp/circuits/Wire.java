@@ -23,42 +23,73 @@
 
 package org.dbsp.circuits;
 
+import org.dbsp.circuits.types.Type;
+
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * A wire connects an operator output to one or more operator inputs.
+ * The wire maintains a state machine to ensure that values are not
+ * overwritten before they have been consumed by everyone.
  */
-public class Wire implements Consumer {
-    private final List<Consumer> consumers = new ArrayList<>();
-
+public class Wire {
+    private final List<Operator> consumers = new ArrayList<>();
+    /**
+     * State-machine: number of consumers who have not consumed the
+     * value yet.
+     */
+    private int toConsume;
+    private final Type valueType;
     /**
      * Current value on the wire.  If 'null' the wire has no value.
      */
     @Nullable
-    public Object value;
+    Value value;
+
+    public Wire(Type valueType) {
+        this.valueType = valueType;
+        this.toConsume = 0;
+    }
 
     /**
-     * Receive a value and sent it to all consumers.
-     * @param val  Value to receive.
+     * A consumer of this wire wants to know the value.
+     * @return  The value on the wire.
      */
-    @Override
-    public void receive(Object val) {
-        if (this.value != null)
-            throw new RuntimeException("Wire already has a value:" + this.value + " when receiving " + val);
-        this.value = val;
-        for (Consumer o: this.consumers)
-            o.receive(value);
-        this.value = null;
+    public Value getValue() {
+        if (this.value == null)
+            throw new RuntimeException("Wire has no value");
+        if (this.toConsume == 0)
+            throw new RuntimeException("Too many consumers");
+        this.toConsume--;
+        Value result = this.value;
+        if (this.toConsume == 0)
+            this.value = null;
+        return result;
+    }
+
+    /**
+     * The source of this wire has produced a value.
+     * @param value  Value to set to wire.
+     */
+    public void setValue(Value value) {
+        if (this.value != null || this.toConsume != 0)
+            throw new RuntimeException("Value not yet consumed");
+        this.value = value;
+        this.toConsume = this.consumers.size();
     }
 
     /**
      * Invoked at circuit construction time.  Add an operator
      * that receives the data from this wire.
-     * @param consumer  Operator that consumes the produced values.
+     * @param consumer  Operator that consumes the wire value.
      */
-    public void addConsumer(Consumer consumer) {
+    public void addConsumer(Operator consumer) {
         this.consumers.add(consumer);
+    }
+
+    public Type getType() {
+        return this.valueType;
     }
 }

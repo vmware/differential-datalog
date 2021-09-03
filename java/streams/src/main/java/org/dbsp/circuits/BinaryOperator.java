@@ -21,46 +21,30 @@
  * SOFTWARE.
  */
 
-package org.dbsp.types;
+package org.dbsp.circuits;
 
-import org.dbsp.algebraic.Group;
-import org.dbsp.algebraic.TimeFactory;
-import org.dbsp.algebraic.StreamGroup;
+import org.dbsp.circuits.types.Type;
+
+import java.util.function.Function;
 
 /**
- * Type representing a stream of values of type T
- * @param <T> Concrete Java type implementing T.
+ * An operator that adds its inputs.
  */
-public class StreamType<T> implements Type<IStream<T>> {
-    public final Type<T> baseType;
-    protected final StreamGroup<T> group;
-
-    /**
-     * Create a StreamType having baseType as the element type.
-     * @param baseType: type of elements in stream.
-     */
-    public StreamType(Type<T> baseType, TimeFactory factory) {
-        this.baseType = baseType;
-        this.group = new StreamGroup<T>(baseType.getGroup(), factory);
+public abstract class BinaryOperator extends Operator {
+    public BinaryOperator(Type type) {
+        super(makeArray(type, type), type);
     }
 
-    @Override
-    public Group<IStream<T>> getGroup() {
-        return this.group;
-    }
-
-    @Override
-    public boolean isStream() {
-        return true;
-    }
-
-    @Override
     public String toString() {
-        return "S<" + baseType + ">";
+        return "+";
     }
 
+    public abstract Value evaluate(Value left, Value right);
+
     @Override
-    public StreamType<T> asStreamType() {
-        return this;
+    public Value evaluate(Function<Integer, Value> inputProvider) {
+        Value v0 = inputProvider.apply(0);
+        Value v1 = inputProvider.apply(1);
+        return this.evaluate(v0, v1);
     }
 }

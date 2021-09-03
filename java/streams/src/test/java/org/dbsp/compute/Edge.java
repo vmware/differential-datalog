@@ -23,32 +23,43 @@
 
 package org.dbsp.compute;
 
-import org.dbsp.algebraic.Time;
-import org.dbsp.algebraic.IStream;
-
-import java.util.function.BiFunction;
+import java.util.Objects;
 
 /**
- * A lifted binary function lifts a binary function from T,S to U to
- * operate on streams of corresponding types.
- * @param <T>  Type of left input.
- * @param <S>  Type of right input.
- * @param <U>  Type of result.
+ * Simple graph edge data structure.
  */
-public class LiftedBifunction<T, S, U> implements StreamBiFunction<T, S, U> {
-    final BiFunction<T, S, U> function;
+public class Edge implements Comparable<Edge> {
+    final int head;
+    final int tail;
 
-    public LiftedBifunction(BiFunction<T, S, U> function) {
-        this.function = function;
+    Edge(int head, int tail) {
+        this.head = head;
+        this.tail = tail;
+    }
+
+    public String toString() {
+        return "<" + this.head + "," + this.tail + ">";
     }
 
     @Override
-    public IStream<U> apply(IStream<T> left, IStream<S> right) {
-        return new IStream<U>(left.getTimeFactory()) {
-            @Override
-            public U get(Time index) {
-                return LiftedBifunction.this.function.apply(left.get(index), right.get(index));
-            }
-        };
+    public int compareTo(Edge o) {
+        int c = Integer.compare(this.head, o.head);
+        if (c != 0)
+            return c;
+        return Integer.compare(this.tail, o.tail);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Edge e = (Edge) o;
+        return this.head == e.head &&
+                this.tail == e.tail;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(head, tail);
     }
 }

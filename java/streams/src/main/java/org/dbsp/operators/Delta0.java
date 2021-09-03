@@ -21,34 +21,34 @@
  * SOFTWARE.
  */
 
-package org.dbsp.compute;
+package org.dbsp.operators;
 
-import org.dbsp.algebraic.Time;
+import org.dbsp.algebraic.TimeFactory;
 import org.dbsp.algebraic.IStream;
+import org.dbsp.circuits.types.StreamType;
+import org.dbsp.circuits.types.Type;
 
-import java.util.function.BiFunction;
+import java.util.function.Function;
 
 /**
- * A lifted binary function lifts a binary function from T,S to U to
- * operate on streams of corresponding types.
- * @param <T>  Type of left input.
- * @param <S>  Type of right input.
- * @param <U>  Type of result.
+ * An operator that produces a stream from a value.
+ * @param <T> Type of input value.
  */
-public class LiftedBifunction<T, S, U> implements StreamBiFunction<T, S, U> {
-    final BiFunction<T, S, U> function;
+public class Delta0<T> extends UnaryOperator<T, IStream<T>> {
+    protected final TimeFactory factory;
 
-    public LiftedBifunction(BiFunction<T, S, U> function) {
-        this.function = function;
+    public Delta0(Type<T> inputType, TimeFactory factory) {
+        super(inputType, new StreamType<T>(inputType, factory));
+        this.factory = factory;
     }
 
     @Override
-    public IStream<U> apply(IStream<T> left, IStream<S> right) {
-        return new IStream<U>(left.getTimeFactory()) {
-            @Override
-            public U get(Time index) {
-                return LiftedBifunction.this.function.apply(left.get(index), right.get(index));
-            }
-        };
+    public Function<T, IStream<T>> getComputation() {
+        return value -> new org.dbsp.compute.Delta0<T>(value, this.inputType.getGroup(), this.factory);
+    }
+
+    @Override
+    public String toString() {
+        return "Delta0";
     }
 }

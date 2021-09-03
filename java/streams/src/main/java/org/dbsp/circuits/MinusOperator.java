@@ -23,10 +23,27 @@
 
 package org.dbsp.circuits;
 
+import org.dbsp.algebraic.Group;
+import org.dbsp.circuits.types.Type;
+
 /**
- * A consumer expects values.
- * Unfortunately we can't make this type-safe.
+ * An operator that negates its input.
  */
-public interface Consumer {
-    void receive(Object value);
+public class MinusOperator extends UnaryOperator {
+    private final Group<Value> group;
+
+    protected MinusOperator(Type type, Group<Value> group) {
+        super(type, type);
+        this.group = group;
+    }
+
+    @Override
+    public String toString() {
+        return "-";
+    }
+
+    @Override
+    public Value evaluate(Value input) {
+        return this.group.minus(input);
+    }
 }

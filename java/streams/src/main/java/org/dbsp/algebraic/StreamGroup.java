@@ -23,10 +23,6 @@
 
 package org.dbsp.algebraic;
 
-import org.dbsp.algebraic.Group;
-import org.dbsp.algebraic.TimeFactory;
-import org.dbsp.types.IStream;
-
 /**
  * The group structure induced by a stream where values belong to a group.
  * @param <T>  Values in the stream.
@@ -57,6 +53,11 @@ public class StreamGroup<T> implements Group<IStream<T>> {
 
     @Override
     public IStream<T> zero() {
-        return this.group.zeroStream(this.timeFactory);
+        return new IStream<T>(this.timeFactory) {
+            @Override
+            public T get(Time index) {
+                return StreamGroup.this.group.zero();
+            }
+        };
     }
 }

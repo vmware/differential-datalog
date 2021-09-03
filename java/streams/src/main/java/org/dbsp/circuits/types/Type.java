@@ -21,42 +21,10 @@
  * SOFTWARE.
  */
 
-package org.dbsp.compute;
-
-import org.dbsp.algebraic.FiniteFunctionGroup;
-import org.dbsp.algebraic.Group;
-import org.dbsp.algebraic.ZRing;
+package org.dbsp.circuits.types;
 
 /**
- * The group structure that operates on Z-sets with elements of type T
- * and weights W
- * @param <T>  Type of elements in the Z-sets.
- * @param <W>  Type of weights.
+ * Represents type information.
  */
-public class ZSetGroup<T extends Comparable<T>, W>
-        // extends FiniteFunctionGroup<T, W> //  -- unfortunately Java does not allow this.
-        implements Group<ZSet<T, W>>
-{
-    final FiniteFunctionGroup<T, W> ffg;
-    final ZRing<W> ring;
+public interface Type {}
 
-    public ZSetGroup(ZRing<W> ring) {
-        this.ring = ring;
-        this.ffg = new FiniteFunctionGroup<T, W>(ring);
-    }
-
-    @Override
-    public ZSet<T, W> minus(ZSet<T, W> data) {
-        return data.minus();
-    }
-
-    @Override
-    public ZSet<T, W> add(ZSet<T, W> left, ZSet<T, W> right) {
-        return left.plus(right);
-    }
-
-    @Override
-    public ZSet<T, W> zero() {
-        return new ZSet<T, W>(this.ring);
-    }
-}

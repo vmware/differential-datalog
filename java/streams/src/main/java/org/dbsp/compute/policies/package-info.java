@@ -28,7 +28,7 @@
 @ParametersAreNonnullByDefault
 @FieldsAreNonnullByDefault
 @MethodsAreNonnullByDefault
-package org.dbsp.types;
+package org.dbsp.compute.policies;
 
 import org.dbsp.FieldsAreNonnullByDefault;
 import org.dbsp.MethodsAreNonnullByDefault;

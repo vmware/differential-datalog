@@ -23,13 +23,13 @@
 
 package org.dbsp.compute;
 
-import org.dbsp.algebraic.IntegerRing;
+import org.dbsp.compute.policies.IntegerRing;
+import org.dbsp.compute.relational.Grouping;
+import org.dbsp.compute.relational.ZSet;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
 
 public class ZSetTest {
 
@@ -125,7 +125,7 @@ public class ZSetTest {
         TestTuple t1 = new TestTuple("You", 8);
         rel.add(t1, 1);
         ZSet<String, Integer> map = rel.map(t -> t.s + t.v.toString());
-        Assert.assertEquals(2, (int)map.size());
+        Assert.assertEquals(2, map.size());
         Assert.assertEquals("{Me10->2,You8->1}", map.toString());
     }
 
@@ -137,7 +137,7 @@ public class ZSetTest {
         ZSet<TestTuple, Integer> r1 = new ZSet<TestTuple, Integer>(IntegerRing.instance, t1, 3);
         r1.add(new TestTuple("You", 5), 1);
         ZSet<Integer, Integer> result = r0.join(r1, t -> t.s, t -> t.s, (tt0, tt1) -> tt0.v + tt1.v);
-        Assert.assertEquals(1, (int)result.size());
+        Assert.assertEquals(1, result.size());
         Assert.assertEquals(6, (int)result.weight(15)); // 10 + 5 has weight 2 * 3
         Assert.assertEquals("{15->6}", result.toString());
     }

@@ -21,27 +21,38 @@
  * SOFTWARE.
  */
 
-package org.dbsp.formal;
+package org.dbsp.circuits;
 
-import org.dbsp.types.Type;
-
-import java.util.function.BiFunction;
+import org.dbsp.algebraic.Group;
+import org.dbsp.circuits.types.Type;
 
 /**
- * An operator that adds its inputs.
- * @param <T>  Concrete type of inputs.
+ * An operator that works on streams.  It delays the input stream by 1 clock.
  */
-public class PlusOperator<T> extends BinaryOperator<T, T, T> {
-    public PlusOperator(Type<T> type) {
-        super(type, type, type);
+public class DelayOperator extends UnaryOperator {
+    Value previous;
+    final Group<Value> group;
+
+    public DelayOperator(Type elementType, Group<Value> group) {
+        super(elementType, elementType);
+        this.group = group;
+        this.previous = group.zero();
     }
 
     @Override
-    public BiFunction<T, T, T> getComputation() {
-        return (left, right) -> PlusOperator.this.input0Type.getGroup().add(left, right);
+    public String toString() {
+        return "z";
     }
 
-    public String toString() {
-        return "+";
+    @Override
+    public void reset() {
+        this.previous = this.group.zero();
+    }
+
+    @Override
+    public Value evaluate(Value input) {
+        Value result = this.previous;
+        this.previous = input;
+        return result;
     }
 }

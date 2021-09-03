@@ -21,24 +21,23 @@
  * SOFTWARE.
  */
 
-package org.dbsp.types;
+package org.dbsp.operators;
 
-import org.dbsp.algebraic.Group;
-import org.dbsp.algebraic.IntegerRing;
+import org.dbsp.circuits.types.Type;
+
+import java.util.function.Function;
 
 /**
- * Represents a type that stores Java Integers.
+ * A unary operator implementing the identity function on type T.
+ * @param <T>  Input data type.
  */
-public class IntegerType extends ScalarType<Integer> {
-    private IntegerType() {}
-    public static IntegerType instance = new IntegerType();
-
-    @Override
-    public Group<Integer> getGroup() {
-        return IntegerRing.instance;
+public class IdOperator<T> extends UniformUnaryOperator<T> {
+    public IdOperator(Type<T> inputType) {
+        super(inputType);
     }
 
-    public String toString() {
-        return "Integer";
+    @Override
+    public Function<T, T> getComputation() {
+        return t -> t;
     }
 }
