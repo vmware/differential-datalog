@@ -90,9 +90,6 @@ function lor(l: Tunsigned, r: Tunsigned): Tunsigned {
 function lnot(l: Tunsigned): Tunsigned {
     if (l != 0) 0 else 1
 }
-function group_count32(g: Group<'K, 'V>): Tnumber {
-    castTo32(group_count_distinct(g))
-}
 function ftoi(l: double): signed<32> {
     match (int_from_d(l)) {
         None -> 0,
@@ -160,15 +157,69 @@ function log(l: signed<32>): signed<32> {
 function exp(l: signed<32>): signed<32> {
     ftoi(exp_d(l as double))
 }
-function group_mean(g: Group<'K, signed<32>>): signed<32> {
-    var sum = group_sum(g);
+function souffle_group_count32(g: Group<'K, 'V>): Tnumber {
+    castTo32(group_count_distinct(g))
+}
+
+/*
+ In all the group functions below, the group has structure Group<'K, ('V, X)>
+ where is the X we want to aggregate.  'K is the group key.
+ 'V is the type of all tuples that are in context, and it really is ignored
+
+ Moreover, the group iterators have the structure:
+    for (((_, n), _) in g)
+ This is because for a Group<'K, 'A> the iterator iterates over
+ values of type ('A, weight), and the weight is only interesting
+ for streams, and thus it is ignored here.  In the triple
+ ((_, n), _) n is really the value we want to aggregate.
+ The first dash is the tuple, which we ignore, and the last dash is
+ the weight.
+*/
+
+function souffle_group_max(g: Group<'K, ('V, 'N)>): 'N {
+    var result = g.first().1;
+    for (((_, n), _) in g) {
+        result = max(n, result);
+    };
+    result
+}
+function souffle_group_min(g: Group<'K, ('V, 'N)>): 'N {
+    var result = g.first().1;
+    for (((_, n), _) in g) {
+        result = min(n, result);
+    };
+    result
+}
+function souffle_group_mean(g: Group<'K, ('V, signed<32>)>): signed<32> {
+    var sum = souffle_group_sum(g);
     var count = group_count_distinct(g);
     // count can never be 0
     sum / (count as signed<64> as signed<32>)
 }
-function group_mean_d(g: Group<'K, double>): double {
-    var sum = group_sum(g);
+function souffle_group_mean_d(g: Group<'K, ('V, double)>): double {
+    var sum = souffle_group_sum_d(g);
     var count = group_count_distinct(g);
     // count can never be 0
     sum / (count as double)
+}
+function souffle_group_sum(g: Group<'K, ('V, Tnumber)>): Tnumber {
+    var sum = 0;
+    for (((_, n), _) in g) {
+        sum = sum + n;
+    };
+    sum
+}
+function souffle_group_sum_u(g: Group<'K, ('V, Tunsigned)>): Tunsigned {
+    var sum = 0;
+    for (((_, n), _) in g) {
+        sum = sum + n;
+    };
+    sum
+}
+function souffle_group_sum_d(g: Group<'K, ('V, double)>): double {
+    var sum = 0.0;
+    for (((_, n), _) in g) {
+        sum = sum + n;
+    };
+    sum
 }
