@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [0.48.1] - Sep 7, 2021
 
 - Fixed compilation speed regression in v0.48.0.
 
