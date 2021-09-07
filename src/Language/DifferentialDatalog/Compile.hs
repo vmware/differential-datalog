@@ -2811,9 +2811,10 @@ rhsVarsAfter d rl i =
     case ruleRHS rl !! i of
          -- Inspect operators cannot change the collection it inspects. No variables are dropped.
          RHSInspect _ -> rhsVarsAfter d rl (i-1)
-         _            -> filter (\f -> (elem f $ (ruleLHSVars d rl)) ||
-                                       (any (elem f) $ map (ruleRHSTermVars d rl) [i+1..length (ruleRHS rl) - 1]))
+         _            -> filter (\f -> (elem f $ (ruleLHSVars d rl)) || (any (elem f) vars_after))
                                 $ ruleRHSVars d rl (i+1)
+    where
+    vars_after = map (ruleRHSTermVars d rl) [i+1..length (ruleRHS rl) - 1]
 
 mkProg :: (?crate_graph :: CrateGraph, ?specname :: String) => DatalogProgram -> CompilerState -> [ProgNode] -> Doc
 mkProg d cstate nodes =
