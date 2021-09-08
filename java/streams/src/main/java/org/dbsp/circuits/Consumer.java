@@ -23,9 +23,9 @@
 
 package org.dbsp.circuits;
 
-import org.dbsp.circuits.types.Type;
-
-/**
- * Interface implemented by values that can be sent on the wire.
- */
-public interface Value {}
+public interface Consumer {
+    void compute();
+    default void log(String string) {
+        System.out.println(string);
+    }
+}

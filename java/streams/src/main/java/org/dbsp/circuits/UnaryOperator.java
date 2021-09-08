@@ -35,9 +35,9 @@ public abstract class UnaryOperator extends Operator {
         super(makeArray(inputType), outputType);
     }
 
-    public abstract Value evaluate(Value input);
+    public abstract Object evaluate(Object input);
 
-    public Value evaluate(Function<Integer, Value> inputProvider) {
+    public Object evaluate(Function<Integer, Object> inputProvider) {
         return this.evaluate(inputProvider.apply(0));
     }
 }

@@ -26,7 +26,6 @@ package org.dbsp.compute.relational;
 import org.dbsp.algebraic.FiniteFunction;
 import org.dbsp.algebraic.FiniteFunctionGroup;
 import org.dbsp.algebraic.ZRing;
-import org.dbsp.circuits.Value;
 
 import java.util.*;
 import java.util.function.BiFunction;
@@ -40,7 +39,7 @@ import java.util.function.Predicate;
  */
 public class ZSet<T extends Comparable<T>, W>
         extends FiniteFunction<T, W>
-        implements Comparable<ZSet<T, W>>, Value {
+        implements Comparable<ZSet<T, W>> {
     /**
      * Data in the set: each value of type type is mapped to a weight.
      */

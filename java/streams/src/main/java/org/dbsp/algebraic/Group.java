@@ -38,4 +38,33 @@ public interface Group<T> extends Monoid<T> {
     default boolean equal(T left, T right) {
         return this.isZero(this.add(this.minus(left), right));
     }
+
+    /**
+     * Convert this group into a group that operates on Object values.
+     * Needed for the dynamically-typed version of computations.
+     */
+    @SuppressWarnings("unchecked")
+    default Group<Object> asUntyped() {
+        return new Group<Object>() {
+            @Override
+            public Object add(Object left, Object right) {
+                return Group.this.add((T)left, (T)right);
+            }
+
+            @Override
+            public Object zero() {
+                return Group.this.zero();
+            }
+
+            @Override
+            public Object minus(Object data) {
+                return Group.this.minus((T)data);
+            }
+
+            @Override
+            public Group<Object> asUntyped() {
+                return this;
+            }
+        };
+    }
 }

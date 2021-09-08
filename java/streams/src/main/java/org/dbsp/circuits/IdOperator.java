@@ -39,7 +39,7 @@ public class IdOperator extends UnaryOperator {
     }
 
     @Override
-    public Value evaluate(Value input) {
+    public Object evaluate(Object input) {
         return input;
     }
 }

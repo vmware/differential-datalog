@@ -27,15 +27,15 @@ import org.dbsp.algebraic.Group;
 import org.dbsp.circuits.types.Type;
 
 public class PlusOperator extends BinaryOperator {
-    private final Group<Value> adder;
+    private final Group<Object> adder;
 
-    public PlusOperator(Type valueType, Group<Value> adder) {
+    public PlusOperator(Type valueType, Group<Object> adder) {
         super(valueType);
         this.adder = adder;
     }
 
     @Override
-    public Value evaluate(Value left, Value right) {
+    public Object evaluate(Object left, Object right) {
         return this.adder.add(left, right);
     }
 }

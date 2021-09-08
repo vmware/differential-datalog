@@ -30,9 +30,9 @@ import org.dbsp.circuits.types.Type;
  * An operator that negates its input.
  */
 public class MinusOperator extends UnaryOperator {
-    private final Group<Value> group;
+    private final Group<Object> group;
 
-    protected MinusOperator(Type type, Group<Value> group) {
+    protected MinusOperator(Type type, Group<Object> group) {
         super(type, type);
         this.group = group;
     }
@@ -43,7 +43,7 @@ public class MinusOperator extends UnaryOperator {
     }
 
     @Override
-    public Value evaluate(Value input) {
+    public Object evaluate(Object input) {
         return this.group.minus(input);
     }
 }

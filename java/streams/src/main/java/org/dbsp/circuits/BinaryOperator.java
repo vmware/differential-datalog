@@ -39,12 +39,12 @@ public abstract class BinaryOperator extends Operator {
         return "+";
     }
 
-    public abstract Value evaluate(Value left, Value right);
+    public abstract Object evaluate(Object left, Object right);
 
     @Override
-    public Value evaluate(Function<Integer, Value> inputProvider) {
-        Value v0 = inputProvider.apply(0);
-        Value v1 = inputProvider.apply(1);
+    public Object evaluate(Function<Integer, Object> inputProvider) {
+        Object v0 = inputProvider.apply(0);
+        Object v1 = inputProvider.apply(1);
         return this.evaluate(v0, v1);
     }
 }
