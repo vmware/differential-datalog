@@ -25,9 +25,17 @@ package org.dbsp.circuits;
 
 import org.dbsp.circuits.types.Type;
 
+import javax.annotation.Nullable;
 import java.util.function.Function;
 
-public abstract class Operator {
+/**
+ * Abstract class representing an operator.
+ * An operator has one or more input wires, and one output wire.
+ * The output wire "belongs" to this operator; the inputs are
+ * references to the outputs of other operators.
+ * An operator also has types for all inputs and for its output.
+ */
+public abstract class Operator implements Consumer {
     static int crtid = 0;
 
     final Wire output;
@@ -36,6 +44,8 @@ public abstract class Operator {
     final int id;
     final Type[] inputTypes;
     final Type outputType;
+    @Nullable
+    Circuit parent;
 
     public Operator(Type[] inputTypes, Type outputType) {
         this.output = new Wire(outputType);
@@ -45,6 +55,7 @@ public abstract class Operator {
         this.id = crtid++;
         this.inputTypes = inputTypes;
         this.outputType = outputType;
+        this.parent = null;
     }
 
     /**
@@ -57,13 +68,29 @@ public abstract class Operator {
         return this.inputs.length;
     }
 
-    public void connectInput(int index, Wire wire) {
+    void connectInput(int index, Wire wire) {
         if (this.inputs[index] != null)
             throw new RuntimeException("Input " + index + " already connected");
+        wire.addConsumer(this);
         this.inputs[index] = wire;
         if (!this.inputTypes[index].equals(wire.getType()))
             throw new RuntimeException("Type mismatch: operator input " + index + " expects " +
                     this.inputTypes[index] + " but was provided with " + wire.getType());
+    }
+
+    public void connectTo(Operator to, int input) {
+        to.connectInput(input, this.output);
+    }
+
+    public void setParent(Circuit circuit) {
+        if (this.parent != null)
+            throw new RuntimeException("Operator already has a parent: " + this.parent);
+        this.parent = circuit;
+    }
+
+    @Nullable
+    public Circuit getParent() {
+        return this.parent;
     }
 
     boolean checked = false;
@@ -77,14 +104,16 @@ public abstract class Operator {
         checked = true;
     }
 
-    public abstract Value evaluate(Function<Integer, Value> inputProvider);
+    public abstract Object evaluate(Function<Integer, Object> inputProvider);
 
     // Extract values from the input wires, compute the
     // result.
     public void compute() {
         this.checkConnected();
-        Value result = this.evaluate(index -> this.inputs[index].getValue());
+        Object result = this.evaluate(index -> this.inputs[index].getValue());
+        this.log(this + " computed " + result);
         this.output.setValue(result);
+        this.output.push();
     }
 
     @SafeVarargs

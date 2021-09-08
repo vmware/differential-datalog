@@ -23,11 +23,53 @@
 
 package org.dbsp.compute;
 
-import org.dbsp.circuits.IdOperator;
+import org.dbsp.algebraic.Group;
+import org.dbsp.circuits.*;
+import org.dbsp.circuits.types.IntegerType;
+import org.dbsp.compute.policies.IntegerRing;
+import org.junit.Assert;
 import org.junit.Test;
 
 public class OperatorTest {
     @Test
     public void simpleOperatorTest() {
+        Circuit circuit = new Circuit("Simple");
+        Operator delay = new DelayOperator(IntegerType.instance, IntegerRing.instance.asUntyped());
+        circuit.addOperator(delay);
+        Wire w = circuit.addInputWire(delay, 0);
+        circuit.seal();
+        Wire o = circuit.addOutputWire(delay);
+        // Let's run
+        circuit.reset();
+        w.setValue(1);
+        circuit.step();
+        Object out = o.getValue();
+        Assert.assertEquals(0, out);
+        w.setValue(2);
+        circuit.step();
+        out = o.getValue();
+        Assert.assertEquals(1, out);
+    }
+
+    @Test
+    public void chainedDelayTest() {
+        Circuit circuit = new Circuit("Simple");
+        Operator delay0 = new DelayOperator(IntegerType.instance, IntegerRing.instance.asUntyped());
+        Operator delay1 = new DelayOperator(IntegerType.instance, IntegerRing.instance.asUntyped());
+        circuit.addOperator(delay0);
+        circuit.addOperator(delay1);
+        Wire w = circuit.addInputWire(delay0, 0);
+        delay0.connectTo(delay1, 0);
+        circuit.seal();
+        Wire o = circuit.addOutputWire(delay1);
+        // Let's run
+        circuit.reset();
+        for (int i = 0; i < 10; i++) {
+            w.setValue(i);
+            circuit.step();
+            Object out = o.getValue();
+            int expected = i > 1 ? i - 2 : 0;
+            Assert.assertEquals(expected, out);
+        }
     }
 }

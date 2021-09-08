@@ -35,7 +35,7 @@ import java.util.List;
  * overwritten before they have been consumed by everyone.
  */
 public class Wire {
-    private final List<Operator> consumers = new ArrayList<>();
+    private final List<Consumer> consumers = new ArrayList<>();
     /**
      * State-machine: number of consumers who have not consumed the
      * value yet.
@@ -44,9 +44,11 @@ public class Wire {
     private final Type valueType;
     /**
      * Current value on the wire.  If 'null' the wire has no value.
+     * Would be nice to have an interface for this, but then we cannot
+     * use standard java types like Integer.
      */
     @Nullable
-    Value value;
+    Object value;
 
     public Wire(Type valueType) {
         this.valueType = valueType;
@@ -57,13 +59,13 @@ public class Wire {
      * A consumer of this wire wants to know the value.
      * @return  The value on the wire.
      */
-    public Value getValue() {
+    public Object getValue() {
         if (this.value == null)
             throw new RuntimeException("Wire has no value");
         if (this.toConsume == 0)
             throw new RuntimeException("Too many consumers");
         this.toConsume--;
-        Value result = this.value;
+        Object result = this.value;
         if (this.toConsume == 0)
             this.value = null;
         return result;
@@ -73,7 +75,7 @@ public class Wire {
      * The source of this wire has produced a value.
      * @param value  Value to set to wire.
      */
-    public void setValue(Value value) {
+    public void setValue(Object value) {
         if (this.value != null || this.toConsume != 0)
             throw new RuntimeException("Value not yet consumed");
         this.value = value;
@@ -85,11 +87,24 @@ public class Wire {
      * that receives the data from this wire.
      * @param consumer  Operator that consumes the wire value.
      */
-    public void addConsumer(Operator consumer) {
+    public void addConsumer(Consumer consumer) {
         this.consumers.add(consumer);
     }
 
     public Type getType() {
         return this.valueType;
+    }
+
+    public boolean hasConsumers() {
+        return this.consumers.size() > 0;
+    }
+
+    public void push() {
+        for (Consumer op: this.consumers)
+            op.compute();
+    }
+
+    public void log() {
+        System.out.println("Wire set to " + this.value);
     }
 }

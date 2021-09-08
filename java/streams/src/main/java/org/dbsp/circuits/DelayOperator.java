@@ -30,10 +30,10 @@ import org.dbsp.circuits.types.Type;
  * An operator that works on streams.  It delays the input stream by 1 clock.
  */
 public class DelayOperator extends UnaryOperator {
-    Value previous;
-    final Group<Value> group;
+    Object previous;
+    final Group<Object> group;
 
-    public DelayOperator(Type elementType, Group<Value> group) {
+    public DelayOperator(Type elementType, Group<Object> group) {
         super(elementType, elementType);
         this.group = group;
         this.previous = group.zero();
@@ -50,8 +50,8 @@ public class DelayOperator extends UnaryOperator {
     }
 
     @Override
-    public Value evaluate(Value input) {
-        Value result = this.previous;
+    public Object evaluate(Object input) {
+        Object result = this.previous;
         this.previous = input;
         return result;
     }
