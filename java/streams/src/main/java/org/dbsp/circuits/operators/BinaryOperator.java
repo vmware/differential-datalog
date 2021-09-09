@@ -21,9 +21,10 @@
  * SOFTWARE.
  */
 
-package org.dbsp.circuits;
+package org.dbsp.circuits.operators;
 
 import org.dbsp.circuits.types.Type;
+import org.dbsp.lib.Linq;
 
 import java.util.function.Function;
 
@@ -32,7 +33,7 @@ import java.util.function.Function;
  */
 public abstract class BinaryOperator extends Operator {
     public BinaryOperator(Type type) {
-        super(makeArray(type, type), type);
+        super(Linq.list(type, type), type);
     }
 
     public String toString() {

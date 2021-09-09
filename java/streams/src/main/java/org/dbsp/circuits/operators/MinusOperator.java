@@ -21,11 +21,31 @@
  * SOFTWARE.
  */
 
-package org.dbsp.circuits;
+package org.dbsp.circuits.operators;
 
-public interface Consumer {
-    void compute();
-    default void log(String string) {
-        System.out.println(string);
+import org.dbsp.algebraic.Group;
+import org.dbsp.circuits.types.Type;
+
+import java.util.Objects;
+
+/**
+ * An operator that negates its input.
+ */
+public class MinusOperator extends UnaryOperator {
+    private final Group<Object> group;
+
+    protected MinusOperator(Type type) {
+        super(type, type);
+        this.group = Objects.requireNonNull(type.getGroup());
+    }
+
+    @Override
+    public String toString() {
+        return "-";
+    }
+
+    @Override
+    public Object evaluate(Object input) {
+        return this.group.minus(input);
     }
 }

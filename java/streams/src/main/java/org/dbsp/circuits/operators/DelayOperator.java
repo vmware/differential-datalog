@@ -21,21 +21,51 @@
  * SOFTWARE.
  */
 
-package org.dbsp.circuits;
+package org.dbsp.circuits.operators;
 
 import org.dbsp.algebraic.Group;
 import org.dbsp.circuits.types.Type;
 
-public class PlusOperator extends BinaryOperator {
-    private final Group<Object> adder;
+import java.util.Objects;
 
-    public PlusOperator(Type valueType, Group<Object> adder) {
-        super(valueType);
-        this.adder = adder;
+/**
+ * An operator that works on streams.  It delays the input stream by 1 clock.
+ */
+public class DelayOperator extends UnaryOperator {
+    Object previous;
+    final Group<Object> group;
+
+    public DelayOperator(Type elementType) {
+        super(elementType, elementType);
+        this.group = Objects.requireNonNull(elementType.getGroup());
+        this.previous = this.group.zero();
     }
 
     @Override
-    public Object evaluate(Object left, Object right) {
-        return this.adder.add(left, right);
+    public String toString() {
+        return "z";
+    }
+
+    @Override
+    public void reset() {
+        this.previous = this.group.zero();
+    }
+
+    @Override
+    public void latch() {
+        this.output.setValue(this.previous);
+    }
+
+    @Override
+    public void emitOutput(Object result) {
+        // delays do not emit their output at the normal time,
+        // they emit it when asked to latch it.
+    }
+
+    @Override
+    public Object evaluate(Object input) {
+        Object result = this.previous;
+        this.previous = input;
+        return result;
     }
 }

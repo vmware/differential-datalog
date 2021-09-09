@@ -21,23 +21,16 @@
  * SOFTWARE.
  */
 
-package org.dbsp.operators;
-
-import org.dbsp.circuits.types.Type;
-
-import java.util.function.Function;
-
 /**
- * A unary operator implementing the identity function on type T.
- * @param <T>  Input data type.
+ * Package that doesn't allow null values as method parameters.
  */
-public class IdOperator<T> extends UniformUnaryOperator<T> {
-    public IdOperator(Type<T> inputType) {
-        super(inputType);
-    }
 
-    @Override
-    public Function<T, T> getComputation() {
-        return t -> t;
-    }
-}
+@ParametersAreNonnullByDefault
+@FieldsAreNonnullByDefault
+@MethodsAreNonnullByDefault
+package org.dbsp.lib;
+
+import org.dbsp.FieldsAreNonnullByDefault;
+import org.dbsp.MethodsAreNonnullByDefault;
+
+import javax.annotation.ParametersAreNonnullByDefault;

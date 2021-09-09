@@ -21,28 +21,22 @@
  * SOFTWARE.
  */
 
-package org.dbsp.circuits.types;
-
-import org.dbsp.algebraic.Group;
-import org.dbsp.compute.policies.IntegerRing;
-
-import javax.annotation.Nullable;
+package org.dbsp.circuits.operators;
 
 /**
- * Represents a type that stores Java Integers.
+ * A consumer is an object that waits for a value to show up.
  */
-public final class IntegerType implements Type {
-    private IntegerType() {}
-    public static final IntegerType instance = new IntegerType();
-
-    public String toString() {
-        return "Integer";
+public interface Consumer {
+    /**
+     * Notify the consumer that an input has arrived.
+     */
+    void notifyInput();
+    default void log(String string) {
+        System.out.println(string);
     }
 
-    @SuppressWarnings("ConstantConditions")
-    @Nullable
-    @Override
-    public Group<Object> getGroup() {
-        return IntegerRing.instance.asUntyped();
-    }
+    /**
+     * An id that is used in the generated graphviz representation.
+     */
+    String graphvizId();
 }
