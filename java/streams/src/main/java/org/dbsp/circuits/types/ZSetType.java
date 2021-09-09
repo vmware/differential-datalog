@@ -23,13 +23,22 @@
 
 package org.dbsp.circuits.types;
 
+import org.dbsp.algebraic.Group;
+import org.dbsp.compute.policies.IntegerRing;
+import org.dbsp.compute.relational.ZSetGroup;
+
+import javax.annotation.Nullable;
 import java.util.Objects;
 
 public class ZSetType implements Type {
     final Type elementType;
+    final Group<Object> zsetGroup;
+
+    interface ComparableObject extends Comparable<ComparableObject> { }
 
     public ZSetType(Type elementType) {
         this.elementType = elementType;
+        this.zsetGroup = new ZSetGroup<ComparableObject, Integer>(IntegerRing.instance).asUntyped();
     }
 
     @Override
@@ -43,5 +52,11 @@ public class ZSetType implements Type {
     @Override
     public int hashCode() {
         return Objects.hash(elementType);
+    }
+
+    @Nullable
+    @Override
+    public Group<Object> getGroup() {
+        return this.zsetGroup;
     }
 }

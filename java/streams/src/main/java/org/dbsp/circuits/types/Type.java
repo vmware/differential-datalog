@@ -23,8 +23,20 @@
 
 package org.dbsp.circuits.types;
 
+import org.dbsp.algebraic.Group;
+
+import javax.annotation.Nullable;
+
 /**
- * Represents type information.
+ * Represents a type that is computed on.
  */
-public interface Type {}
+public interface Type {
+    /**
+     * If the type is from a group, this returns the group
+     * that at runtime can compute on values of this type.
+     * Otherwise this returns null.
+     */
+    @Nullable
+    Group<Object> getGroup();
+}
 

@@ -21,23 +21,16 @@
  * SOFTWARE.
  */
 
-package org.dbsp.circuits;
-
-import org.dbsp.circuits.types.Type;
-
-import java.util.function.Function;
-
 /**
- * An operator that has a single input.
+ * Package that doesn't allow null values as method parameters.
  */
-public abstract class UnaryOperator extends Operator {
-    protected UnaryOperator(Type inputType, Type outputType) {
-        super(makeArray(inputType), outputType);
-    }
 
-    public abstract Object evaluate(Object input);
+@ParametersAreNonnullByDefault
+@FieldsAreNonnullByDefault
+@MethodsAreNonnullByDefault
+package org.dbsp.circuits.operators;
 
-    public Object evaluate(Function<Integer, Object> inputProvider) {
-        return this.evaluate(inputProvider.apply(0));
-    }
-}
+import org.dbsp.FieldsAreNonnullByDefault;
+import org.dbsp.MethodsAreNonnullByDefault;
+
+import javax.annotation.ParametersAreNonnullByDefault;

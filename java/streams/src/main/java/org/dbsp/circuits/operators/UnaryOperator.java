@@ -21,38 +21,24 @@
  * SOFTWARE.
  */
 
-package org.dbsp.circuits;
+package org.dbsp.circuits.operators;
 
-import org.dbsp.algebraic.Group;
 import org.dbsp.circuits.types.Type;
+import org.dbsp.lib.Linq;
+
+import java.util.function.Function;
 
 /**
- * An operator that works on streams.  It delays the input stream by 1 clock.
+ * An operator that has a single input.
  */
-public class DelayOperator extends UnaryOperator {
-    Object previous;
-    final Group<Object> group;
-
-    public DelayOperator(Type elementType, Group<Object> group) {
-        super(elementType, elementType);
-        this.group = group;
-        this.previous = group.zero();
+public abstract class UnaryOperator extends Operator {
+    protected UnaryOperator(Type inputType, Type outputType) {
+        super(Linq.list(inputType), outputType);
     }
 
-    @Override
-    public String toString() {
-        return "z";
-    }
+    public abstract Object evaluate(Object input);
 
-    @Override
-    public void reset() {
-        this.previous = this.group.zero();
-    }
-
-    @Override
-    public Object evaluate(Object input) {
-        Object result = this.previous;
-        this.previous = input;
-        return result;
+    public Object evaluate(Function<Integer, Object> inputProvider) {
+        return this.evaluate(inputProvider.apply(0));
     }
 }

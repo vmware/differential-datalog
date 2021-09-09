@@ -21,7 +21,7 @@
  * SOFTWARE.
  */
 
-package org.dbsp.circuits;
+package org.dbsp.circuits.operators;
 
 import org.dbsp.circuits.types.Type;
 

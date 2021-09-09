@@ -21,7 +21,7 @@
  * SOFTWARE.
  */
 
-package org.dbsp.circuits;
+package org.dbsp.circuits.operators;
 
 import org.dbsp.circuits.types.Type;
 
@@ -42,6 +42,10 @@ public class Wire {
      */
     private int toConsume;
     private final Type valueType;
+    @Nullable
+    private Operator source;
+    static int crtid = 0;
+    private final int id;
     /**
      * Current value on the wire.  If 'null' the wire has no value.
      * Would be nice to have an interface for this, but then we cannot
@@ -53,6 +57,12 @@ public class Wire {
     public Wire(Type valueType) {
         this.valueType = valueType;
         this.toConsume = 0;
+        this.source = null;
+        this.id = crtid++;
+    }
+
+    public void setSource(Operator op) {
+        this.source = op;
     }
 
     /**
@@ -61,13 +71,15 @@ public class Wire {
      */
     public Object getValue() {
         if (this.value == null)
-            throw new RuntimeException("Wire has no value");
+            throw new RuntimeException("Wire has no value: " + this);
         if (this.toConsume == 0)
-            throw new RuntimeException("Too many consumers");
+            throw new RuntimeException("Too many consumers for wire " + this);
         this.toConsume--;
         Object result = this.value;
-        if (this.toConsume == 0)
+        if (this.toConsume == 0) {
             this.value = null;
+            this.log();
+        }
         return result;
     }
 
@@ -77,8 +89,10 @@ public class Wire {
      */
     public void setValue(Object value) {
         if (this.value != null || this.toConsume != 0)
-            throw new RuntimeException("Value not yet consumed");
+            throw new RuntimeException("Setting wire " + this + " to value " + value +
+                    " but prior value not yet consumed");
         this.value = value;
+        this.log();
         this.toConsume = this.consumers.size();
     }
 
@@ -101,10 +115,26 @@ public class Wire {
 
     public void push() {
         for (Consumer op: this.consumers)
-            op.compute();
+            op.notifyInput();
     }
 
     public void log() {
-        System.out.println("Wire set to " + this.value);
+        System.out.println("Wire " + this.id + " set to " + this.value);
+    }
+
+    @Override
+    public String toString() {
+        return "Wire " + this.id + " " + ((this.value == null) ? "no value" : "value " + this.value);
+    }
+
+    public void toGraphviz(int indent, StringBuilder builder) {
+        String src = "(none)";
+        if (this.source != null)
+            src = this.source.graphvizId();
+        for (int i = 0; i < indent; i++)
+            builder.append(" ");
+        for (Consumer c: this.consumers)
+            builder.append(src).append(" -> ").append(c.graphvizId())
+                    .append(" [label=\"id=").append(this.id).append("\"]").append("\n");
     }
 }

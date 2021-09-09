@@ -21,29 +21,23 @@
  * SOFTWARE.
  */
 
-package org.dbsp.circuits;
+package org.dbsp.circuits.operators;
 
 import org.dbsp.algebraic.Group;
 import org.dbsp.circuits.types.Type;
 
-/**
- * An operator that negates its input.
- */
-public class MinusOperator extends UnaryOperator {
-    private final Group<Object> group;
+import java.util.Objects;
 
-    protected MinusOperator(Type type, Group<Object> group) {
-        super(type, type);
-        this.group = group;
+public class PlusOperator extends BinaryOperator {
+    private final Group<Object> adder;
+
+    public PlusOperator(Type valueType) {
+        super(valueType);
+        this.adder = Objects.requireNonNull(valueType.getGroup());
     }
 
     @Override
-    public String toString() {
-        return "-";
-    }
-
-    @Override
-    public Object evaluate(Object input) {
-        return this.group.minus(input);
+    public Object evaluate(Object left, Object right) {
+        return this.adder.add(left, right);
     }
 }

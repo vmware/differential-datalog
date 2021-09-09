@@ -23,10 +23,12 @@
 
 package org.dbsp.compute;
 
-import org.dbsp.algebraic.Group;
 import org.dbsp.circuits.*;
+import org.dbsp.circuits.operators.CircuitOperator;
+import org.dbsp.circuits.operators.DelayOperator;
+import org.dbsp.circuits.operators.Operator;
+import org.dbsp.circuits.operators.Wire;
 import org.dbsp.circuits.types.IntegerType;
-import org.dbsp.compute.policies.IntegerRing;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -34,18 +36,20 @@ public class OperatorTest {
     @Test
     public void simpleOperatorTest() {
         Circuit circuit = new Circuit("Simple");
-        Operator delay = new DelayOperator(IntegerType.instance, IntegerRing.instance.asUntyped());
+        Operator delay = new DelayOperator(IntegerType.instance);
         circuit.addOperator(delay);
-        Wire w = circuit.addInputWire(delay, 0);
+        Wire input = new Wire(IntegerType.instance);
+        delay.connectInput(0, input);
+        circuit.addInputWire(input);
         circuit.seal();
         Wire o = circuit.addOutputWire(delay);
         // Let's run
         circuit.reset();
-        w.setValue(1);
+        input.setValue(1);
         circuit.step();
         Object out = o.getValue();
         Assert.assertEquals(0, out);
-        w.setValue(2);
+        input.setValue(2);
         circuit.step();
         out = o.getValue();
         Assert.assertEquals(1, out);
@@ -54,21 +58,41 @@ public class OperatorTest {
     @Test
     public void chainedDelayTest() {
         Circuit circuit = new Circuit("Simple");
-        Operator delay0 = new DelayOperator(IntegerType.instance, IntegerRing.instance.asUntyped());
-        Operator delay1 = new DelayOperator(IntegerType.instance, IntegerRing.instance.asUntyped());
+        Operator delay0 = new DelayOperator(IntegerType.instance);
+        Operator delay1 = new DelayOperator(IntegerType.instance);
         circuit.addOperator(delay0);
         circuit.addOperator(delay1);
-        Wire w = circuit.addInputWire(delay0, 0);
+        Wire input = new Wire(IntegerType.instance);
+        delay0.connectInput(0, input);
+        circuit.addInputWire(input);
         delay0.connectTo(delay1, 0);
         circuit.seal();
+        System.out.println(circuit.toGraphvizWrapped());
         Wire o = circuit.addOutputWire(delay1);
         // Let's run
         circuit.reset();
         for (int i = 0; i < 10; i++) {
-            w.setValue(i);
+            input.setValue(i);
             circuit.step();
             Object out = o.getValue();
             int expected = i > 1 ? i - 2 : 0;
+            Assert.assertEquals(expected, out);
+        }
+    }
+
+    @Test
+    public void integrateTest() {
+        CircuitOperator op = CircuitOperator.integrationOperator(IntegerType.instance);
+        Circuit circuit = op.circuit;
+        // Let's run
+        circuit.reset();
+        for (int i = 0; i < 10; i++) {
+            circuit.getInputWires().get(0).setValue(i);
+            circuit.step();
+            Object out = circuit.getOutputWires().get(0).getValue();
+            int expected = 0;
+            for (int j = 0; j < i; j++)
+                expected += j;
             Assert.assertEquals(expected, out);
         }
     }
