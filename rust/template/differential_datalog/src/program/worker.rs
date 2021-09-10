@@ -56,6 +56,8 @@ use timely::{
 };
 use triomphe::Arc as ThinArc;
 
+#[allow(clippy::useless_conversion)]
+
 // Handles to objects involved in managing the progress of the dataflow.
 struct SessionData {
     // Input sessions for program relations.

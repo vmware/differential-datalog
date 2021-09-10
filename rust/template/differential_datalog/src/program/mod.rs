@@ -144,7 +144,7 @@ impl Neg for CheckedWeight {
     fn neg(self) -> Self::Output {
         // intentional panic on overflow
         CheckedWeight {
-            value: (0 as i32).checked_sub(self.value).expect("Weight overflow"),
+            value: 0_i32.checked_sub(self.value).expect("Weight overflow"),
         }
     }
 }

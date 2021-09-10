@@ -13,6 +13,8 @@
 //!   the update
 //! - all of the above, but processed by a pool of worker threads
 
+#[allow(clippy::useless_conversion)]
+
 #[cfg(feature = "c_api")]
 use crate::record::Record;
 use crate::{
