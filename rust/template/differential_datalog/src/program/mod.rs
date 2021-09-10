@@ -32,14 +32,15 @@ use crate::{
         RenderContext,
     },
 };
-use num::{One, Zero};
+use abomonation_derive::Abomonation;
 use arrange::{
     antijoin_arranged, Arrangement as DataflowArrangement, ArrangementFlavor, Arrangements,
 };
-use abomonation_derive::Abomonation;
 use config::SelfProfilingRig;
 use crossbeam_channel::{Receiver, Sender};
 use fnv::{FnvHashMap, FnvHashSet};
+use num::{One, Zero};
+use serde::{Deserialize, Serialize};
 use std::{
     any::Any,
     borrow::Cow,
@@ -47,7 +48,7 @@ use std::{
     collections::{hash_map, BTreeSet},
     fmt::{self, Debug, Formatter},
     iter::{self, Cycle, Skip},
-    ops::{Range, AddAssign, Neg, Mul, Add},
+    ops::{Add, AddAssign, Mul, Neg, Range},
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
@@ -57,8 +58,8 @@ use std::{
 use timestamp::ToTupleTS;
 use triomphe::Arc as ThinArc;
 use worker::DDlogWorker;
-use serde::{Deserialize, Serialize};
 
+use differential_dataflow::difference::*;
 use differential_dataflow::lattice::Lattice;
 use differential_dataflow::operators::arrange::arrangement::Arranged;
 use differential_dataflow::operators::arrange::*;
@@ -68,7 +69,6 @@ use differential_dataflow::trace::implementations::ord::OrdValSpine as DefaultVa
 use differential_dataflow::trace::wrappers::enter::TraceEnter;
 use differential_dataflow::trace::{BatchReader, Cursor, TraceReader};
 use differential_dataflow::Collection;
-use differential_dataflow::difference::*;
 use dogsdogsdogs::{
     altneu::AltNeu,
     calculus::{Differentiate, Integrate},
@@ -89,7 +89,9 @@ type TKeyAgent<S> = TraceAgent<KeyTrace<S>>;
 type TValEnter<P, T> = TraceEnter<TValAgent<P>, T>;
 type TKeyEnter<P, T> = TraceEnter<TKeyAgent<P>, T>;
 
-#[derive(Abomonation, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Clone, Serialize, Deserialize)]
+#[derive(
+    Abomonation, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Clone, Serialize, Deserialize,
+)]
 pub struct CheckedWeight {
     pub value: i32,
 }
@@ -105,7 +107,10 @@ impl Semigroup for CheckedWeight {
 impl<'a> AddAssign<&'a Self> for CheckedWeight {
     fn add_assign(&mut self, other: &'a Self) {
         // intentional panic on overflow
-        self.value = self.value.checked_add(other.value).expect("Weight overflow");
+        self.value = self
+            .value
+            .checked_add(other.value)
+            .expect("Weight overflow");
     }
 }
 
@@ -114,7 +119,12 @@ impl Add for CheckedWeight {
 
     fn add(self, other: Self) -> Self {
         // intentional panic on overflow
-        CheckedWeight { value: self.value.checked_add(other.value).expect("Weight overflow") }
+        CheckedWeight {
+            value: self
+                .value
+                .checked_add(other.value)
+                .expect("Weight overflow"),
+        }
     }
 }
 
@@ -122,7 +132,9 @@ impl Mul for CheckedWeight {
     type Output = Self;
     fn mul(self, rhs: Self) -> Self::Output {
         // intentional panic on overflow
-        CheckedWeight { value: self.value.checked_mul(rhs.value).expect("Weight overflow") }
+        CheckedWeight {
+            value: self.value.checked_mul(rhs.value).expect("Weight overflow"),
+        }
     }
 }
 
@@ -131,7 +143,9 @@ impl Neg for CheckedWeight {
 
     fn neg(self) -> Self::Output {
         // intentional panic on overflow
-        CheckedWeight { value: (0 as i32).checked_sub(self.value).expect("Weight overflow") }
+        CheckedWeight {
+            value: 0_i32.checked_sub(self.value).expect("Weight overflow"),
+        }
     }
 }
 
