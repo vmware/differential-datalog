@@ -1250,7 +1250,7 @@ impl<K: Clone, V: Clone> Clone for Group<K, V> {
                 key: key.clone(),
                 group: group
                     .iter()
-                    .map(|(v, w)| tuple2(project(v).clone(), *w as DDWeight))
+                    .map(|(v, w)| tuple2(project(v).clone(), i32::from(*w) as DDWeight))
                     .collect(),
             },
             GroupEnum::ByVal { key, group } => GroupEnum::ByVal {
@@ -1421,7 +1421,7 @@ impl<'a, V: Clone> Iterator for GroupIter<'a, V> {
         match self {
             GroupIter::ByRef { iter, project } => match iter.next() {
                 None => None,
-                Some((x, w)) => Some(tuple2(project(x).clone(), *w as DDWeight)),
+                Some((x, w)) => Some(tuple2(project(x).clone(), i32::from(*w) as DDWeight)),
             },
             GroupIter::ByVal { iter } => match iter.next() {
                 None => None,
@@ -1517,7 +1517,7 @@ impl<V: Clone> Iterator for GroupIntoIter<V> {
         match self {
             GroupIntoIter::ByRef { iter, project } => match iter.next() {
                 None => None,
-                Some((x, w)) => Some(tuple2(project(x).clone(), *w as DDWeight)),
+                Some((x, w)) => Some(tuple2(project(x).clone(), i32::from(*w) as DDWeight)),
             },
             GroupIntoIter::ByVal { iter } => match iter.next() {
                 None => None,

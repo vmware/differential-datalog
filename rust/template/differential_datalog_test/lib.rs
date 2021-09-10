@@ -79,7 +79,7 @@ where
             if *occupied.get() == -w {
                 occupied.remove();
             } else {
-                *occupied.get_mut() += w;
+                *occupied.get_mut() += &w;
             }
         }
     };
@@ -199,7 +199,7 @@ fn test_one_relation(nthreads: usize) {
 
     /* 1. Insertion */
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
-    let set: BTreeMap<_, _> = vals.iter().map(|x| (U64(*x), 1)).collect();
+    let set: BTreeMap<_, _> = vals.iter().map(|x| (U64(*x), Weight::One())).collect();
 
     running.transaction_start().unwrap();
     for x in set.keys() {
@@ -320,7 +320,7 @@ fn test_two_relations(nthreads: usize) {
 
     /* 1. Populate T1 */
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
-    let set: BTreeMap<_, _> = vals.iter().map(|x| (U64(*x), 1)).collect();
+    let set: BTreeMap<_, _> = vals.iter().map(|x| (U64(*x), Weight::One())).collect();
 
     running.transaction_start().unwrap();
     for x in set.keys() {
@@ -471,7 +471,7 @@ fn test_semijoin(nthreads: usize) {
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
     let set: BTreeMap<_, _> = vals
         .iter()
-        .map(|x| (Tuple2(Box::new(U64(*x)), Box::new(U64(*x))), 1))
+        .map(|x| (Tuple2(Box::new(U64(*x)), Box::new(U64(*x))), Weight::One()))
         .collect();
 
     running.transaction_start().unwrap();
@@ -634,7 +634,7 @@ fn test_join(nthreads: usize) {
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
     let set: BTreeMap<_, _> = vals
         .iter()
-        .map(|x| (Tuple2(Box::new(U64(*x)), Box::new(U64(*x))), 1))
+        .map(|x| (Tuple2(Box::new(U64(*x)), Box::new(U64(*x))), Weight::One()))
         .collect();
 
     running.transaction_start().unwrap();
