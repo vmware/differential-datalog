@@ -66,9 +66,8 @@ public class OperatorTest {
         delay0.connectInput(0, input);
         circuit.addInputWire(input);
         delay0.connectTo(delay1, 0);
-        circuit.seal();
-        System.out.println(circuit.toGraphvizWrapped());
         Wire o = circuit.addOutputWire(delay1);
+        circuit.seal();
         // Let's run
         circuit.reset();
         for (int i = 0; i < 10; i++) {

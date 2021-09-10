@@ -54,6 +54,7 @@ public class DelayOperator extends UnaryOperator {
     @Override
     public void latch() {
         this.output.setValue(this.previous);
+        this.output.push();
     }
 
     @Override

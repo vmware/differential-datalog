@@ -25,6 +25,7 @@ package org.dbsp.circuits.operators;
 
 import org.dbsp.circuits.Circuit;
 import org.dbsp.circuits.types.Type;
+import org.dbsp.lib.Linq;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -124,7 +125,7 @@ public abstract class Operator implements Consumer {
 
         // All inputs are present, we can compute.
         Object result = this.evaluate(index -> this.inputs.get(index).getValue());
-        this.log(this + " computed " + result);
+        this.log(this + " (" + this.id + ") computed " + result);
         this.emitOutput(result);
     }
 
@@ -151,8 +152,7 @@ public abstract class Operator implements Consumer {
      * Generate a graphviz representation of the node in the specified builder.
      */
     public void toGraphviz(int indent, StringBuilder builder) {
-        for (int i = 0; i < indent; i++)
-            builder.append(" ");
+        Linq.indent(indent, builder);
         builder.append(this.graphvizId())
                .append(" [label=\"").append(this.toString())
                .append(" id=").append(this.id).append("\"]\n");

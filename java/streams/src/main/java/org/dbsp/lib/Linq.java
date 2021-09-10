@@ -38,6 +38,11 @@ import java.util.function.Predicate;
  * Some utility classes inspired by C# Linq.
  */
 public class Linq {
+    public static void indent(int amount, StringBuilder builder) {
+        for (int i = 0; i < amount; i++)
+            builder.append(" ");
+    }
+
     static class MapIterator<T, S> implements Iterator<S> {
         final Iterator<T> data;
         final Function<T, S> map;
