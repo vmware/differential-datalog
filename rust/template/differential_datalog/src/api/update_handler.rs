@@ -136,7 +136,7 @@ impl<F: Callback> UpdateHandler for CallbackUpdateHandler<F> {
 impl<F: Callback> MTUpdateHandler for CallbackUpdateHandler<F> {
     fn mt_update_cb(&self) -> Arc<dyn RelationCallback> {
         let cb = self.cb.clone();
-        Arc::new(move |relid, v, w| cb(relid, &v.clone().into_record(), w as isize))
+        Arc::new(move |relid, v, w| cb(relid, &v.clone().into_record(), i32::from(w) as isize))
     }
 }
 
@@ -188,7 +188,7 @@ impl MTUpdateHandler for ExternCUpdateHandler {
 
         Arc::new(move |relid, v, w| {
             let value = v.clone().into_record();
-            cb(cb_arg, relid, &value as *const Record, w as isize);
+            cb(cb_arg, relid, &value as *const Record, i32::from(w) as isize);
         })
     }
 }
@@ -218,7 +218,7 @@ impl UpdateHandler for MTValMapUpdateHandler {
 impl MTUpdateHandler for MTValMapUpdateHandler {
     fn mt_update_cb(&self) -> Arc<dyn RelationCallback> {
         let db = self.db.clone();
-        Arc::new(move |relid, v, w| db.lock().unwrap().update(relid, v, w as isize))
+        Arc::new(move |relid, v, w| db.lock().unwrap().update(relid, v, i32::from(w) as isize))
     }
 }
 
@@ -547,7 +547,7 @@ impl MTUpdateHandler for ThreadUpdateHandler {
                 .send(Msg::Update {
                     relid,
                     v: v.clone(),
-                    w: w as isize,
+                    w: i32::from(w) as isize,
                 })
                 .unwrap();
         })

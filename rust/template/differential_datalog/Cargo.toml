@@ -9,6 +9,8 @@ flatbuf = []
 # Use 32-bit instead of 16-bit nested timestamps.
 nested_ts_32 = []
 c_api = []
+# panic on weight overflow
+checked_weights = []
 
 [dependencies]
 #differential-dataflow = "0.11.0"
@@ -18,6 +20,7 @@ dogsdogsdogs = { git = "https://github.com/ddlog-dev/differential-dataflow", bra
 timely = { git = "https://github.com/ddlog-dev/timely-dataflow", branch = "ddlog-4", default-features = false }
 ddshow-sink =  { git = "https://github.com/ddlog-dev/ddshow", branch = "ddlog-4" }
 abomonation = "0.7"
+abomonation_derive = "0.5.0"
 ordered-float = { version = "2.0.0", features = ["serde"] }
 fnv = "1.0.2"
 libc = "0.2"

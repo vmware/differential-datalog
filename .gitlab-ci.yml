@@ -280,3 +280,8 @@ bench-twitter:
         - ddlog-ci-1
     stage: test
     script: ./test.sh twitter_micro
+
+# Test weight overflow feature
+test-overflow:
+     stage: test
+     script: ./test.sh overflow
