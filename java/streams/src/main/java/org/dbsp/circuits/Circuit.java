@@ -26,6 +26,7 @@ package org.dbsp.circuits;
 import org.dbsp.circuits.operators.Consumer;
 import org.dbsp.circuits.operators.Operator;
 import org.dbsp.circuits.operators.Wire;
+import org.dbsp.lib.Linq;
 
 import java.util.*;
 
@@ -91,6 +92,8 @@ public class Circuit implements Consumer {
      * Add an input wire to the circuit.
      */
     public void addInputWire(Wire wire) {
+        if (this.sealed)
+            throw new RuntimeException("Circuit " + this + " is sealed");
         this.inputWires.add(wire);
     }
 
@@ -98,6 +101,8 @@ public class Circuit implements Consumer {
      * The wire of the specified operator is an output wire of the circuit.
      */
     public Wire addOutputWire(Operator op) {
+        if (this.sealed)
+            throw new RuntimeException("Circuit " + this + " is sealed");
         this.outputWires.add(op.outputWire());
         op.outputWire().addConsumer(this);
         return op.outputWire();
@@ -147,11 +152,19 @@ public class Circuit implements Consumer {
     }
 
     public void toGraphviz(int indent, StringBuilder builder) {
-        for (Operator op: this.operators) {
-            op.toGraphviz(indent + 2, builder);
+        indent += 2;
+        for (Wire in: this.inputWires) {
+            Linq.indent(indent, builder);
+            // create a 'fake' node for the input
+            String fakeNodeName = "wire" + in.id + "source";
+            builder.append(fakeNodeName).append(" [label=\"o\"]\n");
+            in.toGraphviz(indent, builder, fakeNodeName);
         }
         for (Operator op: this.operators) {
-            op.outputWire().toGraphviz(indent + 2, builder);
+            op.toGraphviz(indent, builder);
+        }
+        for (Operator op: this.operators) {
+            op.outputWire().toGraphviz(indent, builder, "");
         }
     }
 

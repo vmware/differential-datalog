@@ -24,6 +24,7 @@
 package org.dbsp.circuits.operators;
 
 import org.dbsp.circuits.types.Type;
+import org.dbsp.lib.Linq;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -43,9 +44,9 @@ public class Wire {
     private int toConsume;
     private final Type valueType;
     @Nullable
-    private Operator source;
+    public Operator source;
     static int crtid = 0;
-    private final int id;
+    public final int id;
     /**
      * Current value on the wire.  If 'null' the wire has no value.
      * Would be nice to have an interface for this, but then we cannot
@@ -127,14 +128,14 @@ public class Wire {
         return "Wire " + this.id + " " + ((this.value == null) ? "no value" : "value " + this.value);
     }
 
-    public void toGraphviz(int indent, StringBuilder builder) {
-        String src = "(none)";
+    public void toGraphviz(int indent, StringBuilder builder, String sourceIfMissing) {
+        String src = sourceIfMissing;
         if (this.source != null)
             src = this.source.graphvizId();
-        for (int i = 0; i < indent; i++)
-            builder.append(" ");
-        for (Consumer c: this.consumers)
+        for (Consumer c: this.consumers) {
+            Linq.indent(indent, builder);
             builder.append(src).append(" -> ").append(c.graphvizId())
                     .append(" [label=\"id=").append(this.id).append("\"]").append("\n");
+        }
     }
 }
