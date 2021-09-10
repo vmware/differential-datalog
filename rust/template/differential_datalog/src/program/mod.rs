@@ -32,12 +32,14 @@ use crate::{
         RenderContext,
     },
 };
+use abomonation_derive::Abomonation;
 use arrange::{
     antijoin_arranged, Arrangement as DataflowArrangement, ArrangementFlavor, Arrangements,
 };
 use config::SelfProfilingRig;
 use crossbeam_channel::{Receiver, Sender};
 use fnv::{FnvHashMap, FnvHashSet};
+use num::{One, Zero};
 use std::{
     any::Any,
     borrow::Cow,
@@ -45,7 +47,7 @@ use std::{
     collections::{hash_map, BTreeSet},
     fmt::{self, Debug, Formatter},
     iter::{self, Cycle, Skip},
-    ops::Range,
+    ops::{Add, AddAssign, Mul, Neg, Range},
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
@@ -56,6 +58,7 @@ use timestamp::ToTupleTS;
 use triomphe::Arc as ThinArc;
 use worker::DDlogWorker;
 
+use differential_dataflow::difference::*;
 use differential_dataflow::lattice::Lattice;
 use differential_dataflow::operators::arrange::arrangement::Arranged;
 use differential_dataflow::operators::arrange::*;
@@ -85,7 +88,102 @@ type TKeyAgent<S> = TraceAgent<KeyTrace<S>>;
 type TValEnter<P, T> = TraceEnter<TValAgent<P>, T>;
 type TKeyEnter<P, T> = TraceEnter<TKeyAgent<P>, T>;
 
-/// Diff associated with records in differential dataflow
+#[derive(Abomonation, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Clone)]
+#[repr(transparent)]
+pub struct CheckedWeight {
+    pub value: i32,
+}
+
+impl Semigroup for CheckedWeight {
+    fn is_zero(&self) -> bool {
+        self.value == 0
+    }
+}
+
+impl<'a> AddAssign<&'a Self> for CheckedWeight {
+    fn add_assign(&mut self, other: &'a Self) {
+        // intentional panic on overflow
+        self.value = self
+            .value
+            .checked_add(other.value)
+            .expect("Weight overflow");
+    }
+}
+
+impl Add for CheckedWeight {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        // intentional panic on overflow
+        Self {
+            value: self
+                .value
+                .checked_add(other.value)
+                .expect("Weight overflow"),
+        }
+    }
+}
+
+impl Mul for CheckedWeight {
+    type Output = Self;
+    fn mul(self, rhs: Self) -> Self::Output {
+        // intentional panic on overflow
+        Self {
+            value: self.value.checked_mul(rhs.value).expect("Weight overflow"),
+        }
+    }
+}
+
+impl Neg for CheckedWeight {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        // intentional panic on overflow
+        Self {
+            value: self.value.checked_neg().expect("Weight overflow"),
+        }
+    }
+}
+
+impl Monoid for CheckedWeight {
+    fn zero() -> Self {
+        Self { value: 0 }
+    }
+}
+
+impl One for CheckedWeight {
+    fn one() -> Self {
+        Self { value: 1 }
+    }
+}
+
+impl Zero for CheckedWeight {
+    fn zero() -> Self {
+        Self { value: 0 }
+    }
+    fn is_zero(&self) -> bool {
+        self.value == 0
+    }
+}
+
+impl From<i32> for CheckedWeight {
+    fn from(item: i32) -> Self {
+        Self { value: item }
+    }
+}
+
+impl From<CheckedWeight> for i64 {
+    fn from(item: CheckedWeight) -> Self {
+        item.value as i64
+    }
+}
+
+/// Weight is a diff associated with records in differential dataflow
+#[cfg(feature = "checked_weights")]
+pub type Weight = CheckedWeight;
+
+/// Weight is a diff associated with records in differential dataflow
+#[cfg(not(feature = "checked_weights"))]
 pub type Weight = i32;
 
 /// Message buffer for profiling messages
@@ -1369,7 +1467,7 @@ impl Program {
                         &collection_with_keys,
                         arr,
                         |(k, _), key| *key = k.clone(),
-                        move |v1, w1, v2, w2| (jfun(&v1.1, v2), w1 * w2),
+                        move |v1, &w1, v2, &w2| (jfun(&v1.1, v2), w1 * w2),
                         ().into_ddvalue(),
                         ().into_ddvalue(),
                         ().into_ddvalue(),
@@ -1402,7 +1500,7 @@ impl Program {
                         &collection_with_keys,
                         arr,
                         |(k, _), key| *key = k.clone(),
-                        move |v1, w1, _, w2| (jfun(&v1.1), w1 * w2),
+                        move |v1, &w1, _, &w2| (jfun(&v1.1), w1 * w2),
                         ().into_ddvalue(),
                         ().into_ddvalue(),
                         ().into_ddvalue(),
@@ -1595,7 +1693,7 @@ impl Program {
                         &collection_with_keys,
                         arr,
                         |(k, _), key| *key = k.clone(),
-                        move |v1, w1, v2, w2| (jfun(&v1.1, v2), w1 * w2),
+                        move |v1, &w1, v2, &w2| (jfun(&v1.1, v2), w1 * w2),
                         ().into_ddvalue(),
                         ().into_ddvalue(),
                         ().into_ddvalue(),
@@ -1628,7 +1726,7 @@ impl Program {
                         &collection_with_keys,
                         arr,
                         |(k, _), key| *key = k.clone(),
-                        move |v1, w1, _, w2| (jfun(&v1.1), w1 * w2),
+                        move |v1, &w1, _, &w2| (jfun(&v1.1), w1 * w2),
                         ().into_ddvalue(),
                         ().into_ddvalue(),
                         ().into_ddvalue(),
@@ -1705,7 +1803,7 @@ impl Program {
                         || {
                             arr.reduce(move |key, src, dst| {
                                 if let Some(x) = aggfun(key, src) {
-                                    dst.push((x, 1));
+                                    dst.push((x, Weight::one()));
                                 };
                             })
                             .map(|(_, v)| v)
@@ -1714,7 +1812,7 @@ impl Program {
                             arr.filter(move |_, v| f(v))
                                 .reduce(move |key, src, dst| {
                                     if let Some(x) = aggfun(key, src) {
-                                        dst.push((x, 1));
+                                        dst.push((x, Weight::one()));
                                     };
                                 })
                                 .map(|(_, v)| v)
@@ -1836,7 +1934,7 @@ impl Program {
                                 &collection_with_keys,
                                 arr.clone(),
                                 |(k, _), key| *key = k.clone(),
-                                move |v1, w1, v2, w2| (jfun(v2, &v1.1), w1 * w2),
+                                move |v1, &w1, v2, &w2| (jfun(v2, &v1.1), w1 * w2),
                                 ().into_ddvalue(),
                                 ().into_ddvalue(),
                                 ().into_ddvalue(),
@@ -1847,7 +1945,7 @@ impl Program {
                                 &collection_with_keys,
                                 arr.filter(move |_, v| f(v)),
                                 |(k, _), key| *key = k.clone(),
-                                move |v1, w1, v2, w2| (jfun(v2, &v1.1), w1 * w2),
+                                move |v1, &w1, v2, &w2| (jfun(v2, &v1.1), w1 * w2),
                                 ().into_ddvalue(),
                                 ().into_ddvalue(),
                                 ().into_ddvalue(),
@@ -1887,7 +1985,7 @@ impl Program {
                                 &collection_keys,
                                 arr.clone(),
                                 |k, key| *key = k.clone(),
-                                move |_, w1, v2, w2| (jfun(v2), w1 * w2),
+                                move |_, &w1, v2, &w2| (jfun(v2), w1 * w2),
                                 ().into_ddvalue(),
                                 ().into_ddvalue(),
                                 ().into_ddvalue(),
@@ -1898,7 +1996,7 @@ impl Program {
                                 &collection_keys,
                                 arr.filter(move |_, v| f(v)),
                                 |k, key| *key = k.clone(),
-                                move |_, w1, v2, w2| (jfun(v2), w1 * w2),
+                                move |_, &w1, v2, &w2| (jfun(v2), w1 * w2),
                                 ().into_ddvalue(),
                                 ().into_ddvalue(),
                                 ().into_ddvalue(),

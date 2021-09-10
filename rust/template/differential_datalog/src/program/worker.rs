@@ -34,11 +34,12 @@ use differential_dataflow::{
 };
 use dogsdogsdogs::operators::lookup_map;
 use fnv::{FnvBuildHasher, FnvHashMap};
+use num::{one, zero, One, Zero};
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap},
     mem,
     net::TcpStream,
-    ops::Deref,
+    ops::{Deref, Neg},
     rc::Rc,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -66,7 +67,13 @@ struct SessionData {
     traces: BTreeMap<
         ArrId,
         TraceAgent<
-            Spine<DDValue, DDValue, u32, i32, Rc<OrdValBatch<DDValue, DDValue, u32, i32, u32>>>,
+            Spine<
+                DDValue,
+                DDValue,
+                u32,
+                Weight,
+                Rc<OrdValBatch<DDValue, DDValue, u32, Weight, u32>>,
+            >,
         >,
     >,
 }
@@ -221,14 +228,14 @@ impl<'a> DDlogWorker<'a> {
                     sessions
                         .get_mut(&relid)
                         .ok_or_else(|| format!("no session found for relation ID {}", relid))?
-                        .update_at(v, timestamp, 1);
+                        .update_at(v, timestamp, one());
                 }
 
                 Update::DeleteValue { relid, v } => {
                     sessions
                         .get_mut(&relid)
                         .ok_or_else(|| format!("no session found for relation ID {}", relid))?
-                        .update_at(v, timestamp, -1);
+                        .update_at(v, timestamp, Weight::one().neg());
                 }
 
                 Update::InsertOrUpdate { .. } => {
@@ -268,10 +275,12 @@ impl<'a> DDlogWorker<'a> {
                     .sessions
                     .get_mut(relid)
                     .ok_or_else(|| format!("no session found for relation ID {}", relid))?
-                    .update_at(v.clone(), timestamp - 1, 1);
+                    .update_at(v.clone(), timestamp - 1, one());
             }
             // Insert a record in the Enabled relation.
-            session_data.enabled_session.update_at((), timestamp - 1, 1);
+            session_data
+                .enabled_session
+                .update_at((), timestamp - 1, one());
         }
 
         // All workers advance to timestamp 1 and flush their inputs
@@ -297,7 +306,9 @@ impl<'a> DDlogWorker<'a> {
     fn disable(&mut self, session_data: &mut SessionData, timestamp: TS, probe: &ProbeHandle<TS>) {
         if self.is_leader() {
             // Delete the sole record from the Enabled relation.
-            session_data.enabled_session.update_at((), timestamp, -1);
+            session_data
+                .enabled_session
+                .update_at((), timestamp, Weight::one().neg());
         }
 
         self.advance(session_data, timestamp + 1);
@@ -365,6 +376,7 @@ impl<'a> DDlogWorker<'a> {
         cursor.rewind_keys(&storage);
         cursor.rewind_vals(&storage);
 
+        #[allow(clippy::useless_conversion)]
         let values = match key {
             Some(k) => {
                 cursor.seek_key(&storage, &k);
@@ -373,15 +385,15 @@ impl<'a> DDlogWorker<'a> {
                 } else {
                     let mut values = BTreeSet::new();
                     while cursor.val_valid(&storage) && *cursor.key(&storage) == k {
-                        let mut weight = 0;
-                        cursor.map_times(&storage, |_, &diff| weight += diff);
+                        let mut weight = Weight::zero();
+                        cursor.map_times(&storage, |_, &diff| weight += &Weight::from(diff));
 
                         //assert!(weight >= 0);
                         // FIXME: this will add the value to the set even if `weight < 0`,
                         // i.e., positive and negative weights are treated the same way.
                         // A negative wait should only be possible if there are values with
                         // negative weights in one of the input multisets.
-                        if weight != 0 {
+                        if !weight.is_zero() {
                             values.insert(cursor.val(&storage).clone());
                         }
 
@@ -396,11 +408,11 @@ impl<'a> DDlogWorker<'a> {
                 let mut values = BTreeSet::new();
                 while cursor.key_valid(&storage) {
                     while cursor.val_valid(&storage) {
-                        let mut weight = 0;
-                        cursor.map_times(&storage, |_, &diff| weight += diff);
+                        let mut weight = Weight::zero();
+                        cursor.map_times(&storage, |_, &diff| weight += &diff);
 
                         //assert!(weight >= 0);
-                        if weight != 0 {
+                        if !weight.is_zero() {
                             values.insert(cursor.val(&storage).clone());
                         }
 
@@ -770,7 +782,7 @@ fn render_relation<S>(
     // don't distinct input collections, as this is already done by the set_update logic
     if !relation.input && relation.distinct {
         collection = with_prof_context(&format!("{}.threshold_total", relation.name), || {
-            collection.threshold_total(|_, c| if *c == 0 { 0 } else { 1 })
+            collection.threshold_total(|_, c| if (*c).is_zero() { zero() } else { one() })
         });
     }
 
@@ -940,7 +952,7 @@ fn render_scc<'a>(
             // var.distinct() will be called automatically by var.drop() if var has `distinct` flag set
             if rel.rel.distinct && !rel.distinct {
                 collection = with_prof_context(&format!("{}.distinct_total", rel.rel.name), || {
-                    collection.threshold_total(|_, c| if *c == 0 { 0 } else { 1 })
+                    collection.threshold_total(|_, c| if (*c).is_zero() { zero() } else { one() })
                 });
             }
 

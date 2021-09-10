@@ -15,6 +15,7 @@ function usage {
     echo "The following environment variables control this script:"
     echo "- DDLOGFLAGS controls the ddlog compilation process"
     echo "- RUSTFLAGS controls the Rust compiler flags"
+    echo "- RUSTFEATURES controls the Rust compilation features enabled"
     echo "- CARGOFLAGS controls the cargo (Rust package system) compilation flags"
     exit 1
 }
@@ -40,13 +41,19 @@ fi
 # bugs.
 DDLOGFLAGS="${DDLOGFLAGS} --pp-flat --pp-validated --pp-opt --re-validate"
 
+if [[ -z ${RUSTFEATURES} ]]; then
+    RUSTFEATURES="command-line,ovsdb"
+else
+    RUSTFEATURES="command-line,ovsdb,${RUSTFEATURES}"
+fi
+
 if [[ " ${DDLOGFLAGS[@]} " =~ " -g " ]]; then
     echo "Adding debugging hooks"
     DDLOGFLAGS="${DDLOGFLAGS} --pp-debug"
 fi
 
 if [ "x${FLATBUF}" == "x1" ]; then
-    CARGOFLAGS+=" --features=flatbuf"
+    RUSTFEATURES="$RUSTFEATURES,flatbuf"
     DDLOGFLAGS="${DDLOGFLAGS} -j"
 fi
 
@@ -95,7 +102,7 @@ fi
 
 # Compile produced Rust files
 cd ${base}_ddlog
-cargo build ${CARGOFLAGS} --features command-line,ovsdb
+cargo build ${CARGOFLAGS} --features ${RUSTFEATURES}
 cd ..
 
 if [ "x${FLATBUF}" == "x1" ]; then

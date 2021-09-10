@@ -1,6 +1,8 @@
 #!/bin/bash
 # This script is configured to be run by git pre-push
 
+echo "Checking Rust rules prior to push.  To run this check by hand invoke 'tools/prepush.sh'"
+
 set -e
 
 (cd rust/template/ &&
