@@ -92,11 +92,10 @@ type TKeyEnter<P, T> = TraceEnter<TKeyAgent<P>, T>;
 #[derive(
     Abomonation, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Clone, Serialize, Deserialize,
 )]
+#[repr(transparent)]
 pub struct CheckedWeight {
     pub value: i32,
 }
-
-/// CheckedWeight trait implementations
 
 impl Semigroup for CheckedWeight {
     fn is_zero(&self) -> bool {
@@ -119,7 +118,7 @@ impl Add for CheckedWeight {
 
     fn add(self, other: Self) -> Self {
         // intentional panic on overflow
-        CheckedWeight {
+        Self {
             value: self
                 .value
                 .checked_add(other.value)
@@ -143,7 +142,7 @@ impl Neg for CheckedWeight {
 
     fn neg(self) -> Self::Output {
         // intentional panic on overflow
-        CheckedWeight {
+        Self {
             value: 0_i32.checked_sub(self.value).expect("Weight overflow"),
         }
     }
@@ -151,13 +150,13 @@ impl Neg for CheckedWeight {
 
 impl Monoid for CheckedWeight {
     fn zero() -> Self {
-        CheckedWeight { value: 0 }
+        Self { value: 0 }
     }
 }
 
 impl One for CheckedWeight {
     fn one() -> Self {
-        CheckedWeight { value: 1 }
+        Self { value: 1 }
     }
 }
 
@@ -1477,7 +1476,7 @@ impl Program {
                         &collection_with_keys,
                         arr,
                         |(k, _), key| *key = k.clone(),
-                        move |v1, w1, v2, w2| (jfun(&v1.1, v2), (*w1) * (*w2)),
+                        move |v1, &w1, v2, &w2| (jfun(&v1.1, v2), w1 * w2),
                         ().into_ddvalue(),
                         ().into_ddvalue(),
                         ().into_ddvalue(),
@@ -1510,7 +1509,7 @@ impl Program {
                         &collection_with_keys,
                         arr,
                         |(k, _), key| *key = k.clone(),
-                        move |v1, w1, _, w2| (jfun(&v1.1), (*w1) * (*w2)),
+                        move |v1, &w1, _, &w2| (jfun(&v1.1), w1 * w2),
                         ().into_ddvalue(),
                         ().into_ddvalue(),
                         ().into_ddvalue(),
@@ -1703,7 +1702,7 @@ impl Program {
                         &collection_with_keys,
                         arr,
                         |(k, _), key| *key = k.clone(),
-                        move |v1, w1, v2, w2| (jfun(&v1.1, v2), (*w1) * (*w2)),
+                        move |v1, &w1, v2, &w2| (jfun(&v1.1, v2), w1 * w2),
                         ().into_ddvalue(),
                         ().into_ddvalue(),
                         ().into_ddvalue(),
@@ -1736,7 +1735,7 @@ impl Program {
                         &collection_with_keys,
                         arr,
                         |(k, _), key| *key = k.clone(),
-                        move |v1, w1, _, w2| (jfun(&v1.1), (*w1) * (*w2)),
+                        move |v1, &w1, _, &w2| (jfun(&v1.1), w1 * w2),
                         ().into_ddvalue(),
                         ().into_ddvalue(),
                         ().into_ddvalue(),
@@ -1944,7 +1943,7 @@ impl Program {
                                 &collection_with_keys,
                                 arr.clone(),
                                 |(k, _), key| *key = k.clone(),
-                                move |v1, w1, v2, w2| (jfun(v2, &v1.1), (*w1) * (*w2)),
+                                move |v1, &w1, v2, &w2| (jfun(v2, &v1.1), w1 * w2),
                                 ().into_ddvalue(),
                                 ().into_ddvalue(),
                                 ().into_ddvalue(),
@@ -1955,7 +1954,7 @@ impl Program {
                                 &collection_with_keys,
                                 arr.filter(move |_, v| f(v)),
                                 |(k, _), key| *key = k.clone(),
-                                move |v1, w1, v2, w2| (jfun(v2, &v1.1), (*w1) * (*w2)),
+                                move |v1, &w1, v2, &w2| (jfun(v2, &v1.1), w1 * w2),
                                 ().into_ddvalue(),
                                 ().into_ddvalue(),
                                 ().into_ddvalue(),
@@ -1995,7 +1994,7 @@ impl Program {
                                 &collection_keys,
                                 arr.clone(),
                                 |k, key| *key = k.clone(),
-                                move |_, w1, v2, w2| (jfun(v2), (*w1) * (*w2)),
+                                move |_, &w1, v2, &w2| (jfun(v2), w1 * w2),
                                 ().into_ddvalue(),
                                 ().into_ddvalue(),
                                 ().into_ddvalue(),
@@ -2006,7 +2005,7 @@ impl Program {
                                 &collection_keys,
                                 arr.filter(move |_, v| f(v)),
                                 |k, key| *key = k.clone(),
-                                move |_, w1, v2, w2| (jfun(v2), (*w1) * (*w2)),
+                                move |_, &w1, v2, &w2| (jfun(v2), w1 * w2),
                                 ().into_ddvalue(),
                                 ().into_ddvalue(),
                                 ().into_ddvalue(),
