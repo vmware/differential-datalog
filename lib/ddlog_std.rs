@@ -85,6 +85,13 @@ pub fn result_unwrap_or_default<T: Default + Clone, E>(res: Result<T, E>) -> T {
     }
 }
 
+pub fn result_unwrap_or<T, E>(res: Result<T, E>, def: T) -> T {
+    match res {
+        Result::Ok { res } => res,
+        Result::Err { .. } => def,
+    }
+}
+
 // Ref
 
 /// An atomically reference counted reference
@@ -321,6 +328,13 @@ pub fn option_unwrap_or_default<T: Default + Clone>(opt: Option<T>) -> T {
     match opt {
         Option::Some { x } => x,
         Option::None => T::default(),
+    }
+}
+
+pub fn option_unwrap_or<T>(opt: Option<T>, def: T) -> T {
+    match opt {
+        Option::Some { x } => x,
+        Option::None => def,
     }
 }
 
