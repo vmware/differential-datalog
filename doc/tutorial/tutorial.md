@@ -3786,6 +3786,23 @@ flexibility as the API-based interfaces.
     See [CLI documentation](../command_reference/command_reference.md) for a complete list of commands
 supported by the CLI tool.
 
+## Runtime checks for execution
+
+To make evaluation more efficient the DDlog runtime internally uses
+weighted relations instead of sets for representing relations; in a
+weighted relation each element has an attached integer weight.  The
+default weights are 32-bit integers.  Certain DDlog programs can
+generate arithmetic on weights that can lead to weight overflow.
+Weight overflow in turns leads to silent wrong results at runtime [bug
+878](https://github.com/vmware/differential-datalog/issues/878).
+
+To mitigate this problem, the generated Rust code can be compiled with
+the a feature named `checked_weights`.  This causes programs that
+overflow the weights to crash with a Rust `panic` at runtime instead
+of producing incorrect results.  This can be done e.g., by compiling
+the result produced by the ddlog compiler with a command line like
+`cargo build --release --features=checked_weights`.
+
 ## Profiling
 
 DDlog's profiling features are designed to help the programmer identify

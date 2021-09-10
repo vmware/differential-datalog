@@ -1,0 +1,10 @@
+input relation Z(a:string)
+relation PQRI(a:string)
+relation PLEY(a:string)
+relation NFUV(a:string)
+output relation OUT(a:string)
+
+PQRI(v) :- Z(v), Z(nbj).
+PLEY(o) :- PQRI(x), Z(o), Z(x), PQRI(z), PQRI(x). // modified rule
+NFUV(q) :- Z(fym), PLEY(q).
+OUT(t) :- NFUV(ssz), PLEY(arv), PLEY(t).

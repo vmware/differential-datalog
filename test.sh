@@ -39,6 +39,7 @@ test_groups=("crates:Test DDlog runtime crates."
              "basic:Test basic DDlog functionality."
              "perf:Performance tests."
              "c:Test C API."
+             "overflow:Test weight overflow feature."
              "go:Test Go bindings."
              "java:Test Java bindings."
              "ovn:Test OVN virtual network controller implemented in DDlog."
@@ -73,6 +74,8 @@ perf=("dcm:Declarative Cluster Management benchmark"
       "redist_opt:'redist_opt' benchmark")
 
 c=("c_tutorial1:C API tutorial 1 (graph reachability)")
+
+overflow=("overflow:Test weight overflow")
 
 go=("go_test:Go API test")
 
@@ -198,6 +201,10 @@ output_internal() {
 
 stream() {
     (cd "${THIS_DIR}/test/datalog_tests" && ./test-stream.sh)
+}
+
+overflow() {
+    (cd "${THIS_DIR}/test/datalog_tests" && ./test-overflow.sh)
 }
 
 # 'perf' test group.
