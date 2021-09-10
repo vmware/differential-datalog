@@ -13,7 +13,7 @@ use std::sync::{Arc, Mutex};
 
 use differential_datalog::program::config::Config;
 use fnv::FnvHashMap;
-use num::{One, Zero};
+use std::num::{One};
 use timely::communication::Allocator;
 use timely::dataflow::scopes::*;
 use timely::worker::Worker;
