@@ -209,11 +209,8 @@ extern function default(): 'T
 
 /* Returns the contained `Some` value or a provided default.
  */
-function unwrap_or(x: Option<'A>, def: 'A): 'A = {
-    match (x) {
-        Some{v} -> v,
-        None -> def
-    }
+function unwrap_or(#[by_val] x: Option<'A>, #[by_val] def: 'A): 'A = {
+    option_unwrap_or(x, def)
 }
 
 /* Returns the default value for the given type if `opt` is
@@ -293,11 +290,8 @@ function is_err(res: Result<'V,'E>): bool = {
 
 /* Returns the contained Ok value or a provided default.
  */
-function unwrap_or(res: Result<'V,'E>, def: 'V): 'V = {
-    match (res) {
-        Ok{v} -> v,
-        Err{} -> def
-    }
+function unwrap_or(#[by_val] res: Result<'V,'E>, #[by_val] def: 'V): 'V = {
+    result_unwrap_or(res, def)
 }
 
 /* Returns the default value for the given type if `res` is
@@ -863,7 +857,9 @@ extern function htons(x: bit<16>): bit<16>
  */
 
 extern function option_unwrap_or_default(#[by_val] opt: Option<'A>): 'A
+extern function option_unwrap_or(#[by_val] opt: Option<'A>, #[by_val] def: 'A): 'A
 extern function result_unwrap_or_default(#[by_val] res: Result<'V,'E>): 'V
+extern function result_unwrap_or(#[by_val] res: Result<'V,'E>, #[by_val] def: 'V): 'V
 
 extern function string_contains(s1: string, s2: string): bool
 extern function string_join(strings: Vec<string>, sep: string): string
