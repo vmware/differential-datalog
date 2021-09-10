@@ -188,7 +188,12 @@ impl MTUpdateHandler for ExternCUpdateHandler {
 
         Arc::new(move |relid, v, w| {
             let value = v.clone().into_record();
-            cb(cb_arg, relid, &value as *const Record, i32::from(w) as isize);
+            cb(
+                cb_arg,
+                relid,
+                &value as *const Record,
+                i32::from(w) as isize,
+            );
         })
     }
 }

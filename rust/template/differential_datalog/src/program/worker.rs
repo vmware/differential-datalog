@@ -18,7 +18,6 @@ use ddshow_sink::{
     enable_differential_logging, enable_timely_logging, save_differential_logs_to_disk,
     save_timely_logs_to_disk,
 };
-use num::{one, zero, Zero, One};
 use differential_dataflow::{
     input::{Input, InputSession},
     logging::DifferentialEvent,
@@ -35,6 +34,7 @@ use differential_dataflow::{
 };
 use dogsdogsdogs::operators::lookup_map;
 use fnv::{FnvBuildHasher, FnvHashMap};
+use num::{one, zero, Zero, One};
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap},
     mem,
@@ -67,7 +67,13 @@ struct SessionData {
     traces: BTreeMap<
         ArrId,
         TraceAgent<
-            Spine<DDValue, DDValue, u32, Weight, Rc<OrdValBatch<DDValue, DDValue, u32, Weight, u32>>>,
+            Spine<
+                DDValue,
+                DDValue,
+                u32,
+                Weight,
+                Rc<OrdValBatch<DDValue, DDValue, u32, Weight, u32>>,
+            >,
         >,
     >,
 }
@@ -272,7 +278,9 @@ impl<'a> DDlogWorker<'a> {
                     .update_at(v.clone(), timestamp - 1, one());
             }
             // Insert a record in the Enabled relation.
-            session_data.enabled_session.update_at((), timestamp - 1, one());
+            session_data
+                .enabled_session
+                .update_at((), timestamp - 1, one());
         }
 
         // All workers advance to timestamp 1 and flush their inputs
@@ -298,7 +306,9 @@ impl<'a> DDlogWorker<'a> {
     fn disable(&mut self, session_data: &mut SessionData, timestamp: TS, probe: &ProbeHandle<TS>) {
         if self.is_leader() {
             // Delete the sole record from the Enabled relation.
-            session_data.enabled_session.update_at((), timestamp, Weight::one().neg());
+            session_data
+                .enabled_session
+                .update_at((), timestamp, Weight::one().neg());
         }
 
         self.advance(session_data, timestamp + 1);
