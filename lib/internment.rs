@@ -35,7 +35,7 @@ use std::{
 /// In addition to memory deduplication, this type is optimized for fast comparison.
 /// To this end, we store a 64-bit hash along with the interned value and use this hash for
 /// comparison, only falling back to by-value comparison in case of a hash collision.
-#[derive(Default, Eq, PartialEq, Clone)]
+#[derive(Eq, PartialEq, Clone)]
 pub struct Intern<A>
 where
     A: Eq + Send + Sync + Hash + 'static,
@@ -49,6 +49,12 @@ impl<T: Hash + Eq + Send + Sync + 'static> Hash for Intern<T> {
         H: Hasher,
     {
         self.interned.as_ref().0.hash(state)
+    }
+}
+
+impl<T: Default + Eq + Send + Sync + Hash + 'static> Default for Intern<T> {
+    fn default() -> Self {
+        Self::new(T::default())
     }
 }
 
