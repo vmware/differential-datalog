@@ -30,6 +30,7 @@ test/datalog_tests/*.err
 test/datalog_tests/*.dump
 test/datalog_tests/*.c
 test/datalog_tests/*_ddlog
+test/datalog_tests/debug.log
 test/evaluation/
 test/examples/
 test/example/
