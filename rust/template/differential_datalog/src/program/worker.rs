@@ -34,7 +34,7 @@ use differential_dataflow::{
 };
 use dogsdogsdogs::operators::lookup_map;
 use fnv::{FnvBuildHasher, FnvHashMap};
-use num::{one, zero, Zero, One};
+use num::{one, zero, One, Zero};
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap},
     mem,

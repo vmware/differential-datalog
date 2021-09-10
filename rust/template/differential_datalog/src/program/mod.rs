@@ -90,7 +90,7 @@ type TValEnter<P, T> = TraceEnter<TValAgent<P>, T>;
 type TKeyEnter<P, T> = TraceEnter<TKeyAgent<P>, T>;
 
 #[derive(
-    Abomonation, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Clone, Serialize, Deserialize
+    Abomonation, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Clone, Serialize, Deserialize,
 )]
 pub struct CheckedWeight {
     pub value: i32,
