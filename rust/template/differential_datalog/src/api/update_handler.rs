@@ -13,7 +13,6 @@
 //!   the update
 //! - all of the above, but processed by a pool of worker threads
 
-#[allow(clippy::useless_conversion)]
 #[cfg(feature = "c_api")]
 use crate::record::Record;
 use crate::{
@@ -135,6 +134,7 @@ impl<F: Callback> UpdateHandler for CallbackUpdateHandler<F> {
 }
 
 impl<F: Callback> MTUpdateHandler for CallbackUpdateHandler<F> {
+    #[allow(clippy::useless_conversion)]
     fn mt_update_cb(&self) -> Arc<dyn RelationCallback> {
         let cb = self.cb.clone();
         Arc::new(move |relid, v, w| cb(relid, &v.clone().into_record(), i32::from(w) as isize))
@@ -183,6 +183,7 @@ impl UpdateHandler for ExternCUpdateHandler {
 
 #[cfg(feature = "c_api")]
 impl MTUpdateHandler for ExternCUpdateHandler {
+    #[allow(clippy::useless_conversion)]
     fn mt_update_cb(&self) -> Arc<dyn RelationCallback> {
         let cb = self.cb;
         let cb_arg = self.cb_arg;
@@ -222,6 +223,7 @@ impl UpdateHandler for MTValMapUpdateHandler {
 }
 
 impl MTUpdateHandler for MTValMapUpdateHandler {
+    #[allow(clippy::useless_conversion)]
     fn mt_update_cb(&self) -> Arc<dyn RelationCallback> {
         let db = self.db.clone();
         Arc::new(move |relid, v, w| db.lock().unwrap().update(relid, v, i32::from(w) as isize))
@@ -546,6 +548,7 @@ impl UpdateHandler for ThreadUpdateHandler {
 }
 
 impl MTUpdateHandler for ThreadUpdateHandler {
+    #[allow(clippy::useless_conversion)]
     fn mt_update_cb(&self) -> Arc<dyn RelationCallback> {
         let channel = self.msg_channel.clone();
         Arc::new(move |relid, v, w| {

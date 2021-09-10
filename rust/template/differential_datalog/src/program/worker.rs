@@ -56,8 +56,6 @@ use timely::{
 };
 use triomphe::Arc as ThinArc;
 
-#[allow(clippy::useless_conversion)]
-
 // Handles to objects involved in managing the progress of the dataflow.
 struct SessionData {
     // Input sessions for program relations.
@@ -378,6 +376,7 @@ impl<'a> DDlogWorker<'a> {
         cursor.rewind_keys(&storage);
         cursor.rewind_vals(&storage);
 
+        #[allow(clippy::useless_conversion)]
         let values = match key {
             Some(k) => {
                 cursor.seek_key(&storage, &k);
