@@ -1,6 +1,6 @@
 # Runs all ddlog benchmarks
 [tasks.benchmarks]
-dependencies = ["download-data", "bench-twitter", "bench-livejournal"]
+dependencies = ["bench-twitter", "bench-livejournal"]
 
 # Runs the benchmark suite on the citations dataset
 [tasks.bench-livejournal]
