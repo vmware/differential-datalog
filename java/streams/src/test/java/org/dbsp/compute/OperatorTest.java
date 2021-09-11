@@ -24,56 +24,60 @@
 package org.dbsp.compute;
 
 import org.dbsp.circuits.*;
-import org.dbsp.circuits.operators.CircuitOperator;
-import org.dbsp.circuits.operators.DelayOperator;
-import org.dbsp.circuits.operators.Operator;
-import org.dbsp.circuits.operators.Wire;
+import org.dbsp.circuits.operators.*;
 import org.dbsp.circuits.types.IntegerType;
+import org.dbsp.circuits.types.Type;
+import org.dbsp.lib.Linq;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.List;
+
 public class OperatorTest {
+    static final Type IT = IntegerType.instance;
+    static final List<Type> ITL = Linq.list(IT);
+
     @Test
     public void simpleOperatorTest() {
-        Circuit circuit = new Circuit("Simple");
-        Operator delay = new DelayOperator(IntegerType.instance);
+        Circuit circuit = new Circuit("Simple", ITL, ITL);
+        Operator delay = new DelayOperator(IT);
         circuit.addOperator(delay);
-        Wire input = new Wire(IntegerType.instance);
-        delay.connectInput(0, input);
-        circuit.addInputWire(input);
+        Port port = circuit.getInputPort(0);
+        port.connectTo(delay, 0);
+        Wire o = circuit.addOutputWireFromOperator(delay);
         circuit.seal();
-        Wire o = circuit.addOutputWire(delay);
         // Let's run
+        System.out.println(circuit.toGraphvizTop());
         circuit.reset();
-        input.setValue(1);
-        circuit.step();
-        Object out = o.getValue();
-        Assert.assertEquals(0, out);
-        input.setValue(2);
-        circuit.step();
-        out = o.getValue();
-        Assert.assertEquals(1, out);
+        for (int i = 0; i < 10; i++) {
+            port.setValue(i);
+            circuit.step();
+            Object out = o.getValue(false);
+            int expected = i > 0 ? i - 1 : 0;
+            Assert.assertEquals(expected, out);
+        }
     }
 
     @Test
     public void chainedDelayTest() {
-        Circuit circuit = new Circuit("Simple");
-        Operator delay0 = new DelayOperator(IntegerType.instance);
-        Operator delay1 = new DelayOperator(IntegerType.instance);
+        Circuit circuit = new Circuit("Simple", ITL, ITL);
+        Operator delay0 = new DelayOperator(IT);
+        Operator delay1 = new DelayOperator(IT);
         circuit.addOperator(delay0);
         circuit.addOperator(delay1);
-        Wire input = new Wire(IntegerType.instance);
-        delay0.connectInput(0, input);
-        circuit.addInputWire(input);
+        Port port = circuit.getInputPort(0);
+        port.connectTo(delay0, 0);
         delay0.connectTo(delay1, 0);
-        Wire o = circuit.addOutputWire(delay1);
+        Wire o = circuit.addOutputWireFromOperator(delay1);
         circuit.seal();
+        System.out.println(circuit.toGraphvizTop());
         // Let's run
         circuit.reset();
         for (int i = 0; i < 10; i++) {
-            input.setValue(i);
+            System.out.println("===========");
+            port.setValue(i);
             circuit.step();
-            Object out = o.getValue();
+            Object out = o.getValue(false);
             int expected = i > 1 ? i - 2 : 0;
             Assert.assertEquals(expected, out);
         }
@@ -81,18 +85,60 @@ public class OperatorTest {
 
     @Test
     public void integrateTest() {
-        CircuitOperator op = CircuitOperator.integrationOperator(IntegerType.instance);
+        CircuitOperator op = CircuitOperator.integrationOperator(IT);
         Circuit circuit = op.circuit;
+        Port port = circuit.getInputPort(0);
+        System.out.println(circuit.toGraphvizTop());
         // Let's run
         circuit.reset();
         for (int i = 0; i < 10; i++) {
-            circuit.getInputWires().get(0).setValue(i);
+            port.setValue(i);
             circuit.step();
-            Object out = circuit.getOutputWires().get(0).getValue();
+            Object out = circuit.getOutputWires().get(0).getValue(false);
             int expected = 0;
             for (int j = 0; j < i; j++)
                 expected += j;
             Assert.assertEquals(expected, out);
+        }
+    }
+
+    @Test
+    public void derivativeTest() {
+        CircuitOperator op = CircuitOperator.derivativeOperator(IT);
+        Circuit circuit = op.circuit;
+        // Let's run
+        System.out.println(circuit.toGraphvizTop());
+        circuit.reset();
+        Port port = circuit.getInputPort(0);
+        for (int i = 0; i < 10; i++) {
+            port.setValue(i);
+            circuit.step();
+            Object out = circuit.getOutputWires().get(0).getValue(false);
+            int expected = i > 0 ? 1 : 0;
+            Assert.assertEquals(expected, out);
+        }
+    }
+
+    @Test
+    public void chainIDTest() {
+        Circuit c = new Circuit("top", ITL, ITL);
+        Port input = c.getInputPort(0);
+        CircuitOperator i = CircuitOperator.integrationOperator(IT);
+        c.addOperator(i);
+        CircuitOperator d = CircuitOperator.derivativeOperator(IT);
+        c.addOperator(d);
+        i.connectTo(d, 0);
+        Wire output = c.addOutputWireFromOperator(d);
+        input.connectTo(i, 0);
+        c.seal();
+
+        System.out.println(c.toGraphvizTop());
+        c.reset();
+        for (int iv = 0; iv < 10; iv++) {
+            input.setValue(iv);
+            c.step();
+            Object out = output.getValue(false);
+            Assert.assertEquals(iv, out);
         }
     }
 }

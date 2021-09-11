@@ -23,28 +23,13 @@
 
 package org.dbsp.circuits.operators;
 
-import org.dbsp.circuits.types.Type;
-
-/**
- * A consumer is an object that waits for a value to show up.
- */
-public interface Consumer {
+public interface Latch {
     /**
-     * Notify the consumer that an input has arrived.
+     * Compute the outputs.
      */
-    void notifyInput();
-
+    void latch();
     /**
-     * A human-friendly name to identify this Consumer.
+     * Announce the consumers.
      */
-    String getName();
-
-    default void log(String message) {
-        System.out.println(this.getName() + ": " + message);
-    }
-
-    /**
-     * An id that is used in the generated graphviz representation.
-     */
-    String graphvizId();
+    void push();
 }

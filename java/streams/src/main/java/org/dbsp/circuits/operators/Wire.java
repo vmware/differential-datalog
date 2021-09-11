@@ -24,6 +24,7 @@
 package org.dbsp.circuits.operators;
 
 import org.dbsp.circuits.types.Type;
+import org.dbsp.lib.HasId;
 import org.dbsp.lib.Linq;
 
 import javax.annotation.Nullable;
@@ -34,8 +35,10 @@ import java.util.List;
  * A wire connects an operator output to one or more operator inputs.
  * The wire maintains a state machine to ensure that values are not
  * overwritten before they have been consumed by everyone.
+ * Each wire has a source operator.  However, a wire may have zero
+ * consumers if it is an output wire.
  */
-public class Wire {
+public class Wire extends HasId {
     private final List<Consumer> consumers = new ArrayList<>();
     /**
      * State-machine: number of consumers who have not consumed the
@@ -43,10 +46,7 @@ public class Wire {
      */
     private int toConsume;
     private final Type valueType;
-    @Nullable
     public Operator source;
-    static int crtid = 0;
-    public final int id;
     /**
      * Current value on the wire.  If 'null' the wire has no value.
      * Would be nice to have an interface for this, but then we cannot
@@ -55,27 +55,26 @@ public class Wire {
     @Nullable
     Object value;
 
-    public Wire(Type valueType) {
+    public Wire(Type valueType, Operator source) {
         this.valueType = valueType;
         this.toConsume = 0;
-        this.source = null;
-        this.id = crtid++;
-    }
-
-    public void setSource(Operator op) {
-        this.source = op;
+        this.source = source;
     }
 
     /**
      * A consumer of this wire wants to know the value.
+     * If 'consume' is true the value's refcount is decreased.
+     * On output wires, which have no real consumers, this is false.
      * @return  The value on the wire.
      */
-    public Object getValue() {
+    public Object getValue(boolean consume) {
         if (this.value == null)
             throw new RuntimeException("Wire has no value: " + this);
-        if (this.toConsume == 0)
-            throw new RuntimeException("Too many consumers for wire " + this);
-        this.toConsume--;
+        if (consume) {
+            if (this.toConsume == 0)
+                throw new RuntimeException("Too many consumers for " + this);
+            this.toConsume--;
+        }
         Object result = this.value;
         if (this.toConsume == 0) {
             this.value = null;
@@ -114,7 +113,7 @@ public class Wire {
         return this.consumers.size() > 0;
     }
 
-    public void push() {
+    public void notifyConsumers() {
         for (Consumer op: this.consumers)
             op.notifyInput();
     }
@@ -128,14 +127,12 @@ public class Wire {
         return "Wire " + this.id + " " + ((this.value == null) ? "no value" : "value " + this.value);
     }
 
-    public void toGraphviz(int indent, StringBuilder builder, String sourceIfMissing) {
-        String src = sourceIfMissing;
-        if (this.source != null)
-            src = this.source.graphvizId();
+    public void toGraphviz(int indent, StringBuilder builder) {
+        String src = this.source.graphvizId();
         for (Consumer c: this.consumers) {
             Linq.indent(indent, builder);
             builder.append(src).append(" -> ").append(c.graphvizId())
-                    .append(" [label=\"id=").append(this.id).append("\"]").append("\n");
+                    .append(" [label=\"(").append(this.id).append(")\"]").append("\n");
         }
     }
 }

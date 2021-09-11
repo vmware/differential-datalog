@@ -23,44 +23,48 @@
 
 package org.dbsp.circuits;
 
-import org.dbsp.circuits.operators.Consumer;
-import org.dbsp.circuits.operators.Operator;
-import org.dbsp.circuits.operators.Wire;
+import org.dbsp.circuits.operators.*;
+import org.dbsp.circuits.types.Type;
 import org.dbsp.lib.Linq;
 
 import java.util.*;
 
 /**
  * A circuit contains multiple operators interconnected.
- * It also exposes wires that are not yet connected.
+ * It also exposes output wires.
+ * The input wires have to be connected manually.
+ * For each expected input wire the circuit has an input "port".
  */
-public class Circuit implements Consumer {
+public class Circuit extends ComputationalElement implements Latch {
     /*
      * All operators in this circuit.
      */
     final List<Operator> operators;
-    final List<Wire> inputWires;
+    final List<Port> inputPorts;
     final List<Wire> outputWires;
+    final List<Latch> latches;
     final String name;
     boolean sealed;
     int time;
 
-    public Circuit(String name) {
+    public Circuit(String name, List<Type> inputTypes, List<Type> outputTypes) {
+        super(inputTypes, outputTypes);
         this.name = name;
         this.operators = new ArrayList<>();
-        this.inputWires = new ArrayList<Wire>();
-        this.outputWires = new ArrayList<Wire>();
+        this.inputPorts = new ArrayList<Port>(inputTypes.size());
+        for (Type t: inputTypes) {
+            Port port = new Port(t);
+            this.inputPorts.add(port);
+            this.operators.add(port);
+        }
+        this.outputWires = new ArrayList<Wire>(outputTypes.size());
+        this.latches = new ArrayList<>();
         this.sealed = false;
         this.time = 0;
     }
 
-    /**
-     * The list of input wires: operator wires that are not connected to a source.
-     */
-    public List<Wire> getInputWires() {
-        if (!this.sealed)
-            throw new RuntimeException("Circuit " + this + " is not sealed");
-        return this.inputWires;
+    public Port getInputPort(int index) {
+        return this.inputPorts.get(index);
     }
 
     public List<Wire> getOutputWires() {
@@ -76,36 +80,36 @@ public class Circuit implements Consumer {
         if (this.sealed)
             throw new RuntimeException("Circuit " + this + " is sealed");
         this.sealed = true;
+        this.checkConnected();
+        return this;
+    }
+
+    public void checkConnected() {
         for (Operator op: this.operators)
             op.checkConnected();
-        return this;
     }
 
     public void addOperator(Operator op) {
         if (this.sealed)
             throw new RuntimeException("Circuit " + this + " is sealed");
         this.operators.add(op);
+        if (op instanceof Latch)
+            this.latches.add((Latch)op);
         op.setParent(this);
-    }
-
-    /**
-     * Add an input wire to the circuit.
-     */
-    public void addInputWire(Wire wire) {
-        if (this.sealed)
-            throw new RuntimeException("Circuit " + this + " is sealed");
-        this.inputWires.add(wire);
     }
 
     /**
      * The wire of the specified operator is an output wire of the circuit.
      */
-    public Wire addOutputWire(Operator op) {
+    public Wire addOutputWireFromOperator(Operator op) {
         if (this.sealed)
             throw new RuntimeException("Circuit " + this + " is sealed");
         this.outputWires.add(op.outputWire());
-        op.outputWire().addConsumer(this);
         return op.outputWire();
+    }
+
+    public void setInput(int index, Wire source) {
+        this.inputPorts.get(index).setInput(0, source);
     }
 
     /**
@@ -116,11 +120,9 @@ public class Circuit implements Consumer {
      * - get the values from all output wires using getValue
      */
     public void step() {
-        this.latch();
         this.log("Time step " + this.time);
-        for (Wire w: this.inputWires) {
-            w.push();
-        }
+        this.latch();
+        this.push();
         this.time++;
     }
 
@@ -129,8 +131,15 @@ public class Circuit implements Consumer {
      */
     public void latch() {
         this.log("Latching circuit " + this);
-        for (Operator op: this.operators) {
+        for (Latch op: this.latches) {
             op.latch();
+        }
+    }
+
+    @Override
+    public void push() {
+        for (Latch op: this.latches) {
+            op.push();
         }
     }
 
@@ -147,31 +156,52 @@ public class Circuit implements Consumer {
     }
 
     @Override
+    public String getName() {
+        return "Circuit " + this.toString();
+    }
+
+    @Override
     public String toString() {
         return this.name;
     }
 
-    public void toGraphviz(int indent, StringBuilder builder) {
+    @Override
+    public void toGraphvizNodes(int indent, StringBuilder builder) {
+        Linq.indent(indent, builder);
+        builder.append("subgraph cluster_").append(this.graphvizId()).append(" {\n");
         indent += 2;
-        for (Wire in: this.inputWires) {
-            Linq.indent(indent, builder);
-            // create a 'fake' node for the input
-            String fakeNodeName = "wire" + in.id + "source";
-            builder.append(fakeNodeName).append(" [label=\"o\"]\n");
-            in.toGraphviz(indent, builder, fakeNodeName);
-        }
+        Linq.indent(indent, builder);
+        builder.append("label=\"").append(this.graphvizId()).append("\"\n");
         for (Operator op: this.operators) {
-            op.toGraphviz(indent, builder);
+            op.toGraphvizNodes(indent, builder);
         }
+        indent -= 2;
+        Linq.indent(indent, builder);
+        builder.append("}\n");
+    }
+
+    @Override
+    public void toGraphvizWires(int indent, StringBuilder builder) {
         for (Operator op: this.operators) {
-            op.outputWire().toGraphviz(indent, builder, "");
+            op.toGraphvizWires(indent, builder);
         }
     }
 
-    public String toGraphvizWrapped() {
+    public String toGraphvizTop() {
         StringBuilder builder = new StringBuilder();
         builder.append("digraph ").append(this.name).append(" {\n");
-        this.toGraphviz(0, builder);
+        this.toGraphvizNodes(2, builder);
+        this.toGraphvizWires(2, builder);
+
+        for (Wire w: this.outputWires) {
+            String fakeOutput = "wire" + this.id + "dest";
+            Linq.indent(2, builder);
+            builder.append(fakeOutput).append(" [label=\".\"]\n");
+            Linq.indent(2, builder);
+            builder.append(w.source.graphvizId()).append(" -> ").append(fakeOutput)
+                    .append(" [label=\"(").append(w.id).append(")\"]\n");
+        }
+
         builder.append("}\n");
         return builder.toString();
     }

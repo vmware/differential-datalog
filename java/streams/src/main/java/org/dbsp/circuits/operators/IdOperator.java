@@ -29,6 +29,7 @@ import org.dbsp.circuits.types.Type;
  * An operator that works on streams.  It delays the input stream by 1 clock.
  */
 public class IdOperator extends UnaryOperator {
+
     public IdOperator(Type elementType) {
         super(elementType, elementType);
     }

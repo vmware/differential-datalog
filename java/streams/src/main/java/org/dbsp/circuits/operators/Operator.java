@@ -23,11 +23,10 @@
 
 package org.dbsp.circuits.operators;
 
-import org.dbsp.circuits.Circuit;
+import org.dbsp.circuits.ComputationalElement;
 import org.dbsp.circuits.types.Type;
 import org.dbsp.lib.Linq;
 
-import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -39,31 +38,24 @@ import java.util.function.Function;
  * references to the outputs of other operators.
  * An operator also has types for all inputs and for its output.
  */
-public abstract class Operator implements Consumer {
-    static int crtid = 0;
-
-    final Wire output;
+public abstract class Operator extends ComputationalElement {
+    /* final */ Wire output;
     final List<Wire> inputs;
-    // Inputs received in the current computation cycle.
+    // Number of inputs received in the current computation cycle.
     int inputsPresent;
-    final int id;
-    final List<Type> inputTypes;
-    final Type outputType;
-    @Nullable
-    Circuit parent;
 
     public Operator(List<Type> inputTypes, Type outputType) {
-        this.output = new Wire(outputType);
-        this.output.setSource(this);
+        super(inputTypes, Linq.list(outputType));
+        this.output = new Wire(outputType, this);
         // Input wires are not connected.
         this.inputs = new ArrayList<Wire>(inputTypes.size());
         for (int i = 0; i < inputTypes.size(); i++)
             this.inputs.add(null);
         this.inputsPresent = 0;
-        this.id = crtid++;
-        this.inputTypes = inputTypes;
-        this.outputType = outputType;
-        this.parent = null;
+    }
+
+    public void setInput(int index, Wire source) {
+        this.inputs.set(index, source);
     }
 
     /**
@@ -72,76 +64,67 @@ public abstract class Operator implements Consumer {
      */
     public void reset() {}
 
-    public int arity() {
-        return this.inputs.size();
-    }
-
-    public void connectInput(int index, Wire wire) {
-        if (this.inputs.get(index) != null)
-            throw new RuntimeException("Input " + index + " already connected");
-        wire.addConsumer(this);
-        this.inputs.set(index, wire);
-        if (!this.inputTypes.get(index).equals(wire.getType()))
-            throw new RuntimeException("Type mismatch: operator input " + index + " expects " +
-                    this.inputTypes.get(index) + " but was provided with " + wire.getType());
-    }
-
     public void connectTo(Operator to, int input) {
-        to.connectInput(input, this.output);
+        if (to.getInputWires().get(input) != null)
+            throw new RuntimeException(to.getName() + ": input " + input + " already connected");
+        Operator actual = to.getActualConsumer(to, input);
+        this.output.addConsumer(actual);
+        actual.setInput(input, this.output);
+        if (!to.inputTypes.get(input).equals(this.output.getType()))
+            throw new RuntimeException("Type mismatch: operator input " + input + " expects " +
+                    to.inputTypes.get(input) + " but was provided with " + this.output.getType());
     }
 
-    public void setParent(Circuit circuit) {
-        if (this.parent != null)
-            throw new RuntimeException("Operator already has a parent: " + this.parent);
-        this.parent = circuit;
+    /**
+     * The actual node that will receive the input for the specified input of the operator.
+     * @param to     Operator we connect to.
+     * @param input  Input we connect to.
+     * @return       The actual operator that this connection is made to.
+     */
+    protected Operator getActualConsumer(Operator to, int input) {
+        return to;
     }
 
-    @Nullable
-    public Circuit getParent() {
-        return this.parent;
-    }
-
-    boolean checked = false;
     public void checkConnected() {
-        if (this.checked)
-            return;
-        for (Wire w: this.inputs) {
+        for (int i = 0; i < this.inputs.size(); i++) {
+            Wire w = this.inputs.get(i);
             if (w == null)
-                throw new RuntimeException("Input not connected");
+                throw new RuntimeException(this.getName() + ": input " + i + " not connected");
         }
-        checked = true;
     }
 
     public abstract Object evaluate(Function<Integer, Object> inputProvider);
+
+    @Override
+    public String getName() {
+        return this.toString() + " (" + this.id + ")";
+    }
 
     // Default behavior of an operator on an input notification:
     // Extract values from the input wires, compute the
     // result, notify consumers.
     public void notifyInput() {
         this.inputsPresent++;
-        if (this.inputsPresent != this.arity())
+        if (this.inputsPresent != this.inputCount())
             return;
         this.inputsPresent = 0;
 
         // All inputs are present, we can compute.
-        Object result = this.evaluate(index -> this.inputs.get(index).getValue());
-        this.log(this + " (" + this.id + ") computed " + result);
+        Object result = this.evaluate(index -> this.inputs.get(index).getValue(true));
+        this.log("computed " + result);
         this.emitOutput(result);
     }
 
     public void emitOutput(Object result) {
         this.output.setValue(result);
-        this.output.push();
+        this.output.notifyConsumers();
     }
 
     public Wire outputWire() {
         return this.output;
     }
 
-    /**
-     * Method called at the end of a computation cycle.
-     */
-    public void latch() {}
+    public List<Wire> getInputWires() { return this.inputs; }
 
     @Override
     public String graphvizId() {
@@ -151,10 +134,16 @@ public abstract class Operator implements Consumer {
     /**
      * Generate a graphviz representation of the node in the specified builder.
      */
-    public void toGraphviz(int indent, StringBuilder builder) {
+    @Override
+    public void toGraphvizNodes(int indent, StringBuilder builder) {
         Linq.indent(indent, builder);
         builder.append(this.graphvizId())
                .append(" [label=\"").append(this.toString())
-               .append(" id=").append(this.id).append("\"]\n");
+               .append(" (").append(this.id).append(")\"]\n");
+    }
+
+    @Override
+    public void toGraphvizWires(int indent, StringBuilder builder) {
+        this.outputWire().toGraphviz(indent, builder);
     }
 }

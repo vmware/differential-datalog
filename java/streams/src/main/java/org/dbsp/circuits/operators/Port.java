@@ -23,57 +23,28 @@
 
 package org.dbsp.circuits.operators;
 
-import org.dbsp.algebraic.Group;
 import org.dbsp.circuits.types.Type;
 
-import java.util.Objects;
-
 /**
- * An operator that works on streams.  It delays the input stream by 1 clock.
+ * A port may not have input wires if it is an external circuit port.
+ * Otherwise it behaves like an IdOperator.
  */
-public class DelayOperator extends UnaryOperator implements Latch {
-    Object previous;
-    final Group<Object> group;
+public class Port extends IdOperator {
+    public Port(Type elementType) {
+        super(elementType);
+    }
 
-    public DelayOperator(Type elementType) {
-        super(elementType, elementType);
-        this.group = Objects.requireNonNull(elementType.getGroup());
-        this.previous = this.group.zero();
+    public void setValue(Object value) {
+        this.outputWire().setValue(value);
+        this.outputWire().notifyConsumers();
+    }
+
+    public void checkConnected() {
+        // ok not to have an input
     }
 
     @Override
     public String toString() {
-        return "z";
-    }
-
-    @Override
-    public void reset() {
-        this.previous = this.group.zero();
-    }
-
-    @Override
-    public void latch() {
-        this.log("Latching output " + this.previous);
-        this.output.setValue(this.previous);
-    }
-
-    @Override
-    public void push() {
-        this.log("Pushing output " + this.previous);
-        this.output.notifyConsumers();
-    }
-
-    @Override
-    public void emitOutput(Object result) {
-        // delays do not emit their output at the normal time,
-        // they emit it when asked to latch it.
-    }
-
-    @Override
-    public Object evaluate(Object input) {
-        this.log("Saving input " + input + " result is " + this.previous);
-        Object result = this.previous;
-        this.previous = input;
-        return result;
+        return ".";
     }
 }

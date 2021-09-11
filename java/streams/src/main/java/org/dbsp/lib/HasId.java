@@ -21,30 +21,19 @@
  * SOFTWARE.
  */
 
-package org.dbsp.circuits.operators;
-
-import org.dbsp.circuits.types.Type;
+package org.dbsp.lib;
 
 /**
- * A consumer is an object that waits for a value to show up.
+ * An object that has a unique id.
  */
-public interface Consumer {
+public class HasId {
+    static int crtid = 0;
     /**
-     * Notify the consumer that an input has arrived.
+     * Unique immutable object id.
      */
-    void notifyInput();
+    public final int id;
 
-    /**
-     * A human-friendly name to identify this Consumer.
-     */
-    String getName();
-
-    default void log(String message) {
-        System.out.println(this.getName() + ": " + message);
+    public HasId() {
+        this.id = crtid++;
     }
-
-    /**
-     * An id that is used in the generated graphviz representation.
-     */
-    String graphvizId();
 }
