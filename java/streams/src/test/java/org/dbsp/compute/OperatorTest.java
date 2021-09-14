@@ -46,13 +46,14 @@ public class OperatorTest {
         port.connectTo(delay, 0);
         Wire o = circuit.addOutputWireFromOperator(delay);
         circuit.seal();
+        Sink sink = o.addSink();
         // Let's run
         System.out.println(circuit.toGraphvizTop());
         circuit.reset();
         for (int i = 0; i < 10; i++) {
             port.setValue(i);
             circuit.step();
-            Object out = o.getValue(false);
+            Object out = sink.getValue();
             int expected = i > 0 ? i - 1 : 0;
             Assert.assertEquals(expected, out);
         }
@@ -69,6 +70,7 @@ public class OperatorTest {
         port.connectTo(delay0, 0);
         delay0.connectTo(delay1, 0);
         Wire o = circuit.addOutputWireFromOperator(delay1);
+        Sink sink = o.addSink();
         circuit.seal();
         System.out.println(circuit.toGraphvizTop());
         // Let's run
@@ -77,7 +79,7 @@ public class OperatorTest {
             System.out.println("===========");
             port.setValue(i);
             circuit.step();
-            Object out = o.getValue(false);
+            Object out = sink.getValue();
             int expected = i > 1 ? i - 2 : 0;
             Assert.assertEquals(expected, out);
         }
@@ -88,13 +90,14 @@ public class OperatorTest {
         CircuitOperator op = CircuitOperator.integrationOperator(IT);
         Circuit circuit = op.circuit;
         Port port = circuit.getInputPort(0);
+        Sink sink = circuit.getOutputWires().get(0).addSink();
         System.out.println(circuit.toGraphvizTop());
         // Let's run
         circuit.reset();
         for (int i = 0; i < 10; i++) {
             port.setValue(i);
             circuit.step();
-            Object out = circuit.getOutputWires().get(0).getValue(false);
+            Object out = sink.getValue();
             int expected = 0;
             for (int j = 0; j < i; j++)
                 expected += j;
@@ -106,6 +109,7 @@ public class OperatorTest {
     public void derivativeTest() {
         CircuitOperator op = CircuitOperator.derivativeOperator(IT);
         Circuit circuit = op.circuit;
+        Sink sink = circuit.getOutputWires().get(0).addSink();
         // Let's run
         System.out.println(circuit.toGraphvizTop());
         circuit.reset();
@@ -113,7 +117,7 @@ public class OperatorTest {
         for (int i = 0; i < 10; i++) {
             port.setValue(i);
             circuit.step();
-            Object out = circuit.getOutputWires().get(0).getValue(false);
+            Object out = sink.getValue();
             int expected = i > 0 ? 1 : 0;
             Assert.assertEquals(expected, out);
         }
@@ -131,13 +135,14 @@ public class OperatorTest {
         Wire output = c.addOutputWireFromOperator(d);
         input.connectTo(i, 0);
         c.seal();
+        Sink sink = output.addSink();
 
         System.out.println(c.toGraphvizTop());
         c.reset();
         for (int iv = 0; iv < 10; iv++) {
             input.setValue(iv);
             c.step();
-            Object out = output.getValue(false);
+            Object out = sink.getValue();
             Assert.assertEquals(iv, out);
         }
     }

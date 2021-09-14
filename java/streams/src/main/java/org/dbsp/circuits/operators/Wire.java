@@ -39,7 +39,7 @@ import java.util.List;
  * consumers if it is an output wire.
  */
 public class Wire extends HasId {
-    private final List<Consumer> consumers = new ArrayList<>();
+    public final List<Consumer> consumers = new ArrayList<>();
     /**
      * State-machine: number of consumers who have not consumed the
      * value yet.
@@ -63,18 +63,14 @@ public class Wire extends HasId {
 
     /**
      * A consumer of this wire wants to know the value.
-     * If 'consume' is true the value's refcount is decreased.
-     * On output wires, which have no real consumers, this is false.
      * @return  The value on the wire.
      */
-    public Object getValue(boolean consume) {
+    public Object getValue() {
         if (this.value == null)
             throw new RuntimeException("Wire has no value: " + this);
-        if (consume) {
-            if (this.toConsume == 0)
-                throw new RuntimeException("Too many consumers for " + this);
-            this.toConsume--;
-        }
+        if (this.toConsume == 0)
+            throw new RuntimeException("Too many consumers for " + this);
+        this.toConsume--;
         Object result = this.value;
         if (this.toConsume == 0) {
             this.value = null;
@@ -134,5 +130,11 @@ public class Wire extends HasId {
             builder.append(src).append(" -> ").append(c.graphvizId())
                     .append(" [label=\"(").append(this.id).append(")\"]").append("\n");
         }
+    }
+
+    public Sink addSink() {
+        Sink sink = new Sink(this);
+        this.addConsumer(sink);
+        return sink;
     }
 }

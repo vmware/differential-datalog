@@ -51,7 +51,7 @@ public class CircuitOperator extends Operator implements Latch {
             this.circuit.getInputPort(i).setValue(ii);
         }
         this.circuit.step();
-        return this.outputWire().getValue(true);
+        return this.outputWire().getValue();
     }
 
     @Override

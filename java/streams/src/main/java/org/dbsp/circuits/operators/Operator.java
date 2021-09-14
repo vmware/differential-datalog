@@ -110,7 +110,7 @@ public abstract class Operator extends ComputationalElement {
         this.inputsPresent = 0;
 
         // All inputs are present, we can compute.
-        Object result = this.evaluate(index -> this.inputs.get(index).getValue(true));
+        Object result = this.evaluate(index -> this.inputs.get(index).getValue());
         this.log("computed " + result);
         this.emitOutput(result);
     }

@@ -138,6 +138,10 @@ public class Circuit extends ComputationalElement implements Latch {
 
     @Override
     public void push() {
+        for (Port port: this.inputPorts) {
+            if (port.hasNoInputWire())
+                port.evaluate();
+        }
         for (Latch op: this.latches) {
             op.push();
         }
@@ -190,17 +194,20 @@ public class Circuit extends ComputationalElement implements Latch {
     public String toGraphvizTop() {
         StringBuilder builder = new StringBuilder();
         builder.append("digraph ").append(this.name).append(" {\n");
-        this.toGraphvizNodes(2, builder);
-        this.toGraphvizWires(2, builder);
-
+        int indent = 2;
+        this.toGraphvizNodes(indent, builder);
+        // Generate the sinks nodes before they are used in wires.
         for (Wire w: this.outputWires) {
-            String fakeOutput = "wire" + this.id + "dest";
-            Linq.indent(2, builder);
-            builder.append(fakeOutput).append(" [label=\".\"]\n");
-            Linq.indent(2, builder);
-            builder.append(w.source.graphvizId()).append(" -> ").append(fakeOutput)
-                    .append(" [label=\"(").append(w.id).append(")\"]\n");
+            for (Consumer c: w.consumers) {
+                if (!(c instanceof Sink))
+                    continue;
+                Sink sink = (Sink)c;
+                sink.toGraphvizNodes(indent, builder);
+            }
         }
+
+
+        this.toGraphvizWires(indent, builder);
 
         builder.append("}\n");
         return builder.toString();

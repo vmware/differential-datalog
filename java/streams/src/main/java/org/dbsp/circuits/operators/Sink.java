@@ -23,42 +23,55 @@
 
 package org.dbsp.circuits.operators;
 
-import org.dbsp.circuits.types.Type;
+import org.dbsp.circuits.ComputationalElement;
+import org.dbsp.lib.Linq;
 
-import javax.annotation.Nullable;
-import java.util.Objects;
+public class Sink extends ComputationalElement {
+    final String name;
+    final Wire wire;
 
-/**
- * A port may not have input wires if it is an external circuit port.
- * In all other respects it behaves like an IdOperator.
- */
-public class Port extends IdOperator {
-    @Nullable
-    Object value;
-
-    public Port(Type elementType) {
-        super(elementType);
+    Sink(Wire input) {
+        super(Linq.list(input.getType()), Linq.list());
+        this.name = "sink";
+        this.wire = input;
     }
 
-    public void setValue(Object value) {
-        this.value = value;
+    @Override
+    public void checkConnected() {    }
+
+    public Object getValue() {
+        return this.wire.getValue();
     }
 
-    public void evaluate() {
-        this.outputWire().setValue(Objects.requireNonNull(this.value));
-        this.outputWire().notifyConsumers();
+    @Override
+    public void notifyInput() {}
+
+    @Override
+    public String getName() {
+        return this.name;
     }
 
-    public void checkConnected() {
-        // ok not to have an input
+    public void setInput(int index, Wire source) {
+        throw new RuntimeException(this + ": Input already set");
+    }
+
+    @Override
+    public String graphvizId() {
+        return "sink" + this.id;
     }
 
     @Override
     public String toString() {
-        return ".";
+        return "_";
     }
 
-    public boolean hasNoInputWire() {
-        return this.inputs.get(0) == null;
+    public void toGraphvizNodes(int indent, StringBuilder builder) {
+        Linq.indent(indent, builder);
+        builder.append(this.graphvizId())
+                .append(" [label=\"").append(this.toString())
+                .append(" (").append(this.id).append(")\"]\n");
     }
+
+    @Override
+    public void toGraphvizWires(int indent, StringBuilder builder) {}
 }
