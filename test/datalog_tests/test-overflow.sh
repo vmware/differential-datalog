@@ -8,3 +8,9 @@ if [ $? -eq 0 ]; then
     echo "Test should have failed"
     false
 fi
+
+RUSTFEATURES="unbounded_weights" ./run-test.sh overflow release
+if [ $? -ne 0 ]; then
+    echo "Test should have passed"
+    false
+fi

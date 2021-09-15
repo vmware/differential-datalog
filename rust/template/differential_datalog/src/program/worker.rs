@@ -386,7 +386,7 @@ impl<'a> DDlogWorker<'a> {
                     let mut values = BTreeSet::new();
                     while cursor.val_valid(&storage) && *cursor.key(&storage) == k {
                         let mut weight = Weight::zero();
-                        cursor.map_times(&storage, |_, &diff| weight += &Weight::from(diff));
+                        cursor.map_times(&storage, |_, diff| weight += diff);
 
                         //assert!(weight >= 0);
                         // FIXME: this will add the value to the set even if `weight < 0`,
@@ -409,7 +409,7 @@ impl<'a> DDlogWorker<'a> {
                 while cursor.key_valid(&storage) {
                     while cursor.val_valid(&storage) {
                         let mut weight = Weight::zero();
-                        cursor.map_times(&storage, |_, &diff| weight += &diff);
+                        cursor.map_times(&storage, |_, diff| weight += diff);
 
                         //assert!(weight >= 0);
                         if !weight.is_zero() {
@@ -612,11 +612,13 @@ impl<'a> DDlogWorker<'a> {
                         let vcol = with_prof_context(
                             &format!("join {} with 'Enabled' relation", drel.id),
                             || {
+                                // not all weight implementations support copy
+                                #[allow(clippy::clone_on_copy)]
                                 lookup_map(
                                     &v,
                                     enabled_arrangement.clone(),
                                     |_: &DDValue, key| *key = (),
-                                    move |x, w, _, _| (x.clone(), *w),
+                                    move |x, w: &Weight, _, _| (x.clone(), w.clone()),
                                     (),
                                     (),
                                     (),
@@ -681,11 +683,12 @@ impl<'a> DDlogWorker<'a> {
                             with_prof_context(&format!("consolidate {}", relid), || {
                                 collection.consolidate()
                             });
-
+                        // not all weight implementations support copy
+                        #[allow(clippy::clone_on_copy)]
                         let inspected = with_prof_context(&format!("inspect {}", relid), || {
                             consolidated.inspect(move |x| {
                                 // assert!(x.2 == 1 || x.2 == -1, "x: {:?}", x);
-                                (relation_callback)(relid, &x.0, x.2)
+                                (relation_callback)(relid, &x.0, x.2.clone())
                             })
                         });
 

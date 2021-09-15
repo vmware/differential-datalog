@@ -32,14 +32,17 @@ use crate::{
         RenderContext,
     },
 };
+use abomonation::Abomonation;
 use abomonation_derive::Abomonation;
 use arrange::{
     antijoin_arranged, Arrangement as DataflowArrangement, ArrangementFlavor, Arrangements,
 };
 use config::SelfProfilingRig;
 use crossbeam_channel::{Receiver, Sender};
+use either::Either;
+use either::Either::{Left, Right};
 use fnv::{FnvHashMap, FnvHashSet};
-use num::{One, Zero};
+use num::{BigInt, FromPrimitive, One, ToPrimitive, Zero};
 use std::{
     any::Any,
     borrow::Cow,
@@ -88,6 +91,8 @@ type TKeyAgent<S> = TraceAgent<KeyTrace<S>>;
 type TValEnter<P, T> = TraceEnter<TValAgent<P>, T>;
 type TKeyEnter<P, T> = TraceEnter<TKeyAgent<P>, T>;
 
+// Checked weights are integers whose arithmetic is checked for overflow
+// and causes a panic on overflow.
 #[derive(Abomonation, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Clone)]
 #[repr(transparent)]
 pub struct CheckedWeight {
@@ -134,6 +139,16 @@ impl Mul for CheckedWeight {
     }
 }
 
+impl<'a, 'b> Mul<&'b CheckedWeight> for &'a CheckedWeight {
+    type Output = CheckedWeight;
+    fn mul(self, rhs: &'b CheckedWeight) -> CheckedWeight {
+        // intentional panic on overflow
+        CheckedWeight {
+            value: self.value.checked_mul(rhs.value).expect("Weight overflow"),
+        }
+    }
+}
+
 impl Neg for CheckedWeight {
     type Output = Self;
 
@@ -172,18 +187,258 @@ impl From<i32> for CheckedWeight {
     }
 }
 
+impl From<i8> for CheckedWeight {
+    fn from(item: i8) -> Self {
+        Self { value: item as i32 }
+    }
+}
+
 impl From<CheckedWeight> for i64 {
     fn from(item: CheckedWeight) -> Self {
         item.value as i64
     }
 }
 
+impl From<&CheckedWeight> for i64 {
+    fn from(item: &CheckedWeight) -> Self {
+        item.value as i64
+    }
+}
+
+// Unbounded weights store essentially an unbounded integer, but are
+// optimized for small weights.
+#[derive(Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Clone)]
+pub struct UnboundedWeight {
+    pub value: Either<i32, BigInt>,
+}
+
+impl Semigroup for UnboundedWeight {
+    fn is_zero(&self) -> bool {
+        match &self.value {
+            Left(v) => *v == 0,
+            Right(v) => v.is_zero(),
+        }
+    }
+}
+
+fn to_unbounded_weight(v: BigInt) -> UnboundedWeight {
+    // The invariant is that if the value
+    // fits into an i32 it is stored in the i32, else a BigInt is used.
+    let i = v.to_i32();
+    match i {
+        None => UnboundedWeight { value: Right(v) },
+        Some(r) => UnboundedWeight { value: Left(r) },
+    }
+}
+
+fn to_bigint(v: &i32) -> BigInt {
+    // why would this unwrap fail?
+    // I don't know, but this is the API in num.
+    BigInt::from_i32(*v).unwrap()
+}
+
+impl<'a> AddAssign<&'a Self> for UnboundedWeight {
+    fn add_assign(&mut self, other: &'a Self) {
+        match (&self.value, &other.value) {
+            (Left(v1), Left(v2)) => {
+                let res = v1.checked_add(*v2);
+                match res {
+                    Some(v) => self.value = Left(v),
+                    None => self.value = Right((to_bigint(v1)).add(to_bigint(v2))),
+                };
+            }
+            (Right(v1), Left(v2)) => {
+                let res = v1.add(to_bigint(v2));
+                self.value = to_unbounded_weight(res).value;
+            }
+            (Left(v1), Right(v2)) => {
+                let res = to_bigint(v1).add(v2);
+                self.value = to_unbounded_weight(res).value;
+            }
+            (Right(v1), Right(v2)) => {
+                let res = v1.add(v2);
+                self.value = to_unbounded_weight(res).value;
+            }
+        }
+    }
+}
+
+impl Add for UnboundedWeight {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        match (&self.value, &other.value) {
+            (Left(v1), Left(v2)) => {
+                let res = v1.checked_add(*v2);
+                match res {
+                    Some(v) => UnboundedWeight { value: Left(v) },
+                    None => UnboundedWeight {
+                        value: Right(to_bigint(v1).add(to_bigint(v2))),
+                    },
+                }
+            }
+            (Right(v1), Left(v2)) => {
+                let res = v1.add(to_bigint(v2));
+                to_unbounded_weight(res)
+            }
+            (Left(v1), Right(v2)) => {
+                let res = to_bigint(v1).add(v2);
+                to_unbounded_weight(res)
+            }
+            (Right(v1), Right(v2)) => {
+                let res = v1.add(v2);
+                to_unbounded_weight(res)
+            }
+        }
+    }
+}
+
+impl Mul<UnboundedWeight> for UnboundedWeight {
+    type Output = Self;
+    fn mul(self, other: UnboundedWeight) -> Self::Output {
+        match (&self.value, &other.value) {
+            (Left(v1), Left(v2)) => {
+                let res = v1.checked_mul(*v2);
+                match res {
+                    Some(v) => UnboundedWeight { value: Left(v) },
+                    None => UnboundedWeight {
+                        value: Right((to_bigint(v1)).mul(to_bigint(v2))),
+                    },
+                }
+            }
+            (Right(v1), Left(v2)) => {
+                let res = v1.mul(to_bigint(v2));
+                to_unbounded_weight(res)
+            }
+            (Left(v1), Right(v2)) => {
+                let res = to_bigint(v1).mul(v2);
+                to_unbounded_weight(res)
+            }
+            (Right(v1), Right(v2)) => {
+                let res = v1.mul(v2);
+                to_unbounded_weight(res)
+            }
+        }
+    }
+}
+
+impl<'a, 'b> Mul<&'b UnboundedWeight> for &'a UnboundedWeight {
+    type Output = UnboundedWeight;
+    fn mul(self, other: &'b UnboundedWeight) -> UnboundedWeight {
+        match (&self.value, &other.value) {
+            (Left(v1), Left(v2)) => {
+                let res = v1.checked_mul(*v2);
+                match res {
+                    Some(v) => UnboundedWeight { value: Left(v) },
+                    None => UnboundedWeight {
+                        value: Right((to_bigint(v1)).mul(to_bigint(v2))),
+                    },
+                }
+            }
+            (Right(v1), Left(v2)) => {
+                let res = v1.mul(to_bigint(v2));
+                to_unbounded_weight(res)
+            }
+            (Left(v1), Right(v2)) => {
+                let res = to_bigint(v1).mul(v2);
+                to_unbounded_weight(res)
+            }
+            (Right(v1), Right(v2)) => {
+                let res = v1.mul(v2);
+                to_unbounded_weight(res)
+            }
+        }
+    }
+}
+
+impl Monoid for UnboundedWeight {
+    fn zero() -> Self {
+        Self { value: Left(0) }
+    }
+}
+
+impl One for UnboundedWeight {
+    fn one() -> Self {
+        UnboundedWeight { value: Left(1) }
+    }
+}
+
+impl Zero for UnboundedWeight {
+    fn zero() -> Self {
+        UnboundedWeight { value: Left(0) }
+    }
+    fn is_zero(&self) -> bool {
+        matches!(self.value, Left(0))
+    }
+}
+
+impl From<i32> for UnboundedWeight {
+    fn from(item: i32) -> Self {
+        Self { value: Left(item) }
+    }
+}
+
+impl From<i8> for UnboundedWeight {
+    fn from(item: i8) -> Self {
+        Self {
+            value: Left(item as i32),
+        }
+    }
+}
+
+impl Neg for UnboundedWeight {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        match &self.value {
+            Left(v1) => {
+                let res = v1.checked_neg();
+                match res {
+                    Some(v) => UnboundedWeight { value: Left(v) },
+                    None => UnboundedWeight {
+                        value: Right(to_bigint(v1).neg()),
+                    },
+                }
+            }
+            Right(v1) => {
+                let res = v1.neg();
+                to_unbounded_weight(res)
+            }
+        }
+    }
+}
+
+impl From<UnboundedWeight> for i64 {
+    fn from(item: UnboundedWeight) -> Self {
+        match item.value {
+            Left(v1) => v1 as i64,
+            Right(v2) => v2.to_i64().expect("Weight too large for 64 bits"),
+        }
+    }
+}
+
+impl From<&UnboundedWeight> for i64 {
+    fn from(item: &UnboundedWeight) -> Self {
+        match &item.value {
+            Left(v1) => *v1 as i64,
+            Right(v2) => v2.to_i64().expect("Weight too large for 64 bits"),
+        }
+    }
+}
+
+// Abomonation is not really used, but it is required.
+impl Abomonation for UnboundedWeight {}
+
 /// Weight is a diff associated with records in differential dataflow
 #[cfg(feature = "checked_weights")]
 pub type Weight = CheckedWeight;
 
 /// Weight is a diff associated with records in differential dataflow
-#[cfg(not(feature = "checked_weights"))]
+#[cfg(feature = "unbounded_weights")]
+pub type Weight = UnboundedWeight;
+
+/// Weight is a diff associated with records in differential dataflow
+#[cfg(all(not(feature = "checked_weights"), not(feature = "unbounded_weights")))]
 pub type Weight = i32;
 
 /// Message buffer for profiling messages
@@ -1441,8 +1696,10 @@ impl Program {
                 ifun,
                 ref next,
             } => {
+                // not all weight implementations support copy
+                #[allow(clippy::clone_on_copy)]
                 let inspect = with_prof_context(description, || {
-                    col.inspect(move |(v, ts, w)| ifun(v, ts.to_tuple_ts(), *w))
+                    col.inspect(move |(v, ts, w)| ifun(v, ts.to_tuple_ts(), w.clone()))
                 });
                 Self::xform_collection(inspect, &*next, arrangements, lookup_collection)
             }
@@ -1467,7 +1724,7 @@ impl Program {
                         &collection_with_keys,
                         arr,
                         |(k, _), key| *key = k.clone(),
-                        move |v1, &w1, v2, &w2| (jfun(&v1.1, v2), w1 * w2),
+                        move |v1, w1, v2, w2| (jfun(&v1.1, v2), w1 * w2),
                         ().into_ddvalue(),
                         ().into_ddvalue(),
                         ().into_ddvalue(),
@@ -1500,7 +1757,7 @@ impl Program {
                         &collection_with_keys,
                         arr,
                         |(k, _), key| *key = k.clone(),
-                        move |v1, &w1, _, &w2| (jfun(&v1.1), w1 * w2),
+                        move |v1, w1, _, w2| (jfun(&v1.1), w1 * w2),
                         ().into_ddvalue(),
                         ().into_ddvalue(),
                         ().into_ddvalue(),
@@ -1667,8 +1924,10 @@ impl Program {
                 ifun,
                 ref next,
             } => {
+                // not all weight implementations support copy
+                #[allow(clippy::clone_on_copy)]
                 let inspect = with_prof_context(description, || {
-                    col.inspect(move |(v, ts, w)| ifun(v, ts.to_tuple_ts(), *w))
+                    col.inspect(move |(v, ts, w)| ifun(v, ts.to_tuple_ts(), w.clone()))
                 });
                 Self::streamless_xform_collection(inspect, &*next, arrangements, lookup_collection)
             }
@@ -1693,7 +1952,7 @@ impl Program {
                         &collection_with_keys,
                         arr,
                         |(k, _), key| *key = k.clone(),
-                        move |v1, &w1, v2, &w2| (jfun(&v1.1, v2), w1 * w2),
+                        move |v1, w1, v2, w2| (jfun(&v1.1, v2), w1 * w2),
                         ().into_ddvalue(),
                         ().into_ddvalue(),
                         ().into_ddvalue(),
@@ -1726,7 +1985,7 @@ impl Program {
                         &collection_with_keys,
                         arr,
                         |(k, _), key| *key = k.clone(),
-                        move |v1, &w1, _, &w2| (jfun(&v1.1), w1 * w2),
+                        move |v1, w1, _, w2| (jfun(&v1.1), w1 * w2),
                         ().into_ddvalue(),
                         ().into_ddvalue(),
                         ().into_ddvalue(),
@@ -1934,7 +2193,7 @@ impl Program {
                                 &collection_with_keys,
                                 arr.clone(),
                                 |(k, _), key| *key = k.clone(),
-                                move |v1, &w1, v2, &w2| (jfun(v2, &v1.1), w1 * w2),
+                                move |v1, w1, v2, w2| (jfun(v2, &v1.1), w1 * w2),
                                 ().into_ddvalue(),
                                 ().into_ddvalue(),
                                 ().into_ddvalue(),
@@ -1945,7 +2204,7 @@ impl Program {
                                 &collection_with_keys,
                                 arr.filter(move |_, v| f(v)),
                                 |(k, _), key| *key = k.clone(),
-                                move |v1, &w1, v2, &w2| (jfun(v2, &v1.1), w1 * w2),
+                                move |v1, w1, v2, w2| (jfun(v2, &v1.1), w1 * w2),
                                 ().into_ddvalue(),
                                 ().into_ddvalue(),
                                 ().into_ddvalue(),
@@ -1985,7 +2244,7 @@ impl Program {
                                 &collection_keys,
                                 arr.clone(),
                                 |k, key| *key = k.clone(),
-                                move |_, &w1, v2, &w2| (jfun(v2), w1 * w2),
+                                move |_, w1, v2, w2| (jfun(v2), w1 * w2),
                                 ().into_ddvalue(),
                                 ().into_ddvalue(),
                                 ().into_ddvalue(),
@@ -1996,7 +2255,7 @@ impl Program {
                                 &collection_keys,
                                 arr.filter(move |_, v| f(v)),
                                 |k, key| *key = k.clone(),
-                                move |_, &w1, v2, &w2| (jfun(v2), w1 * w2),
+                                move |_, w1, v2, w2| (jfun(v2), w1 * w2),
                                 ().into_ddvalue(),
                                 ().into_ddvalue(),
                                 ().into_ddvalue(),

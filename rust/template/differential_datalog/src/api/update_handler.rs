@@ -440,8 +440,10 @@ impl MTUpdateHandler for MTChainedUpdateHandler {
             self.handlers.iter().map(|h| h.mt_update_cb()).collect();
 
         Arc::new(move |relid, v, w| {
+            // not all weight implementations support copy
+            #[allow(clippy::clone_on_copy)]
             for cb in cbs.iter() {
-                cb(relid, v, w);
+                cb(relid, v, w.clone());
             }
         })
     }
