@@ -23,10 +23,14 @@
 
 package org.dbsp.compute;
 
+import org.dbsp.algebraic.ZRing;
 import org.dbsp.circuits.*;
 import org.dbsp.circuits.operators.*;
 import org.dbsp.circuits.types.IntegerType;
 import org.dbsp.circuits.types.Type;
+import org.dbsp.circuits.types.ZSetType;
+import org.dbsp.compute.policies.IntegerRing;
+import org.dbsp.compute.relational.ZSet;
 import org.dbsp.lib.Linq;
 import org.junit.Assert;
 import org.junit.Test;
@@ -36,6 +40,8 @@ import java.util.List;
 public class OperatorTest {
     static final Type IT = IntegerType.instance;
     static final List<Type> ITL = Linq.list(IT);
+    static final Type ZT = new ZSetType(IT);
+    static final List<Type> ZTL = Linq.list(ZT);
 
     @Test
     public void simpleOperatorTest() {
@@ -99,7 +105,7 @@ public class OperatorTest {
             circuit.step();
             Object out = sink.getValue();
             int expected = 0;
-            for (int j = 0; j < i; j++)
+            for (int j = 0; j <= i; j++)
                 expected += j;
             Assert.assertEquals(expected, out);
         }
@@ -126,13 +132,13 @@ public class OperatorTest {
     @Test
     public void chainIDTest() {
         Circuit c = new Circuit("top", ITL, ITL);
-        Port input = c.getInputPort(0);
         CircuitOperator i = CircuitOperator.integrationOperator(IT);
         c.addOperator(i);
         CircuitOperator d = CircuitOperator.derivativeOperator(IT);
         c.addOperator(d);
         i.connectTo(d, 0);
         Wire output = c.addOutputWireFromOperator(d);
+        Port input = c.getInputPort(0);
         input.connectTo(i, 0);
         c.seal();
         Sink sink = output.addSink();
@@ -144,6 +150,55 @@ public class OperatorTest {
             c.step();
             Object out = sink.getValue();
             Assert.assertEquals(iv, out);
+        }
+    }
+
+    @Test
+    public void feedbackTest() {
+        Circuit c = new Circuit("top", ITL, ITL);
+        Operator plus = c.addOperator(new PlusOperator(IT));
+        Port input = c.getInputPort(0);
+        input.connectTo(plus, 0);
+        Operator delay = c.addOperator(new DelayOperator(IT));
+        delay.connectTo(plus, 1);
+        Operator map = c.addOperator(new FunctionOperator("inc", IT, IT, i -> (Integer)i + 1));
+        plus.connectTo(map, 0);
+        map.connectTo(delay, 0);
+        Wire output = c.addOutputWireFromOperator(map);
+        c.seal();
+
+        Sink sink = output.addSink();
+
+        System.out.println(c.toGraphvizTop());
+        c.reset();
+        for (int iv = 0; iv < 10; iv++) {
+            input.setValue(iv);
+            c.step();
+            Object out = sink.getValue();
+            int expected = 0;
+            for (int i = 0; i <= iv; i++)
+                expected += i+1;
+            Assert.assertEquals(expected, out);
+        }
+    }
+
+    @Test
+    public void relationIdTest() {
+        Circuit c = new Circuit("top", ZTL ,ZTL);
+        Operator id = c.addOperator(new IdOperator(ZT));
+        Port input = c.getInputPort(0);
+        input.connectTo(id, 0);
+        Wire output = c.addOutputWireFromOperator(id);
+        c.seal();
+        Sink sink = output.addSink();
+        c.reset();
+        ZSet<Integer, Integer> zs = new ZSet<Integer, Integer>(IntegerRing.instance);
+        for (int iv = 0; iv < 10; iv++) {
+            zs.add(10, 1);
+            input.setValue(zs);
+            c.step();
+            Object out = sink.getValue();
+            Assert.assertEquals(zs, out);
         }
     }
 }

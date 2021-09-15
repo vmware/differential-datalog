@@ -89,13 +89,14 @@ public class Circuit extends ComputationalElement implements Latch {
             op.checkConnected();
     }
 
-    public void addOperator(Operator op) {
+    public Operator addOperator(Operator op) {
         if (this.sealed)
             throw new RuntimeException("Circuit " + this + " is sealed");
         this.operators.add(op);
         if (op instanceof Latch)
             this.latches.add((Latch)op);
         op.setParent(this);
+        return op;
     }
 
     /**
@@ -154,6 +155,8 @@ public class Circuit extends ComputationalElement implements Latch {
     public void notifyInput() {}
 
     public void reset() {
+        if (!this.sealed)
+            throw new RuntimeException("Circuit not sealed");
         this.time = 0;
         for (Operator op: this.operators)
             op.reset();

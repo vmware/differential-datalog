@@ -115,7 +115,10 @@ public class Wire extends HasId {
     }
 
     public void log() {
-        System.out.println("Wire " + this.id + " set to " + this.value);
+        if (this.value == null)
+            System.out.println("Wire " + this.id + " consumed");
+        else
+            System.out.println("Wire " + this.id + " set to " + this.value);
     }
 
     @Override

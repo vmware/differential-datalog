@@ -100,7 +100,7 @@ public class CircuitOperator extends Operator implements Latch {
         circuit.addOperator(delay);
         plus.connectTo(delay, 0);
         delay.connectTo(plus, 1);
-        circuit.addOutputWireFromOperator(delay);
+        circuit.addOutputWireFromOperator(plus);
         Operator input = circuit.getInputPort(0);
         input.connectTo(plus, 0);
         return new CircuitOperator(circuit.seal());
