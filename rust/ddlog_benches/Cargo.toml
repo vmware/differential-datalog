@@ -8,7 +8,6 @@ license = "MIT"
 # Use the following to run with checked_weights:
 # panic on weight overflow.
 #default = ["benchmarks_ddlog/checked_weights"]
-default = []
 # Use the following to run with unbounded_weights:
 # always correct results, but perhaps slower
 #default = ["benchmarks_ddlog/unbounded_weights"]
