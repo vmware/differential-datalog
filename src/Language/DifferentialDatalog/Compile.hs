@@ -3154,11 +3154,10 @@ mkExpr' d ctx e@EFunc{} =
                _ -> "(Box::new(::ddlog_rt::ClosureImpl{"                                                 $$
                     "    description: \"" <> fname <> "\","                                                             $$
                     "    captured: (),"                                                                                 $$
-                    "    f:" <+> (braces' $ "fn __f(__args:" <> (tuple $ map mkarg funcArgs) <> ", __captured: &()) ->" <+> ret_type_code       $$
+                    "    f:" <+> (braces' $ "|__args:" <> (tuple $ map mkarg funcArgs) <> ", __captured: &()| ->" <+> ret_type_code       $$
                                             (if length funcArgs == 1
                                              then "{unsafe{" <> fname <> "(" <> (arg_deref (funcArgs !! 0) "__args") <> ")}" <> clone_ref <> "}"
-                                             else "{unsafe{" <> fname <> "(" <> commaSep (mapIdx (\a i -> arg_deref a ("__args." <> pp i)) funcArgs) <> ")}" <> clone_ref <> "}") $$
-                                            "__f")                                                                      $$
+                                             else "{unsafe{" <> fname <> "(" <> commaSep (mapIdx (\a i -> arg_deref a ("__args." <> pp i)) funcArgs) <> ")}" <> clone_ref <> "}")) $$
                     "}) as Box<dyn ::ddlog_rt::Closure<(" <> commaSep (map mkarg funcArgs) <> ")," <+> ret_type_code <> ">>)"
     local_module = Just $ ctxModule ctx
 
@@ -3186,12 +3185,11 @@ mkExpr' d ctx e@EClosure{..} =
                -- Strip type annotations for readability.
                "    description:" <+> (pp $ show $ show $ pp $ exprStripTypeAnnotationsRec (E e') ctx) <> ","              $$
                "    captured:" <+> (tuple $ map (\v -> pp (name v) <> ".clone()") captured_vars) <> ","                    $$
-               "    f:" <+> braces' ("fn __f(__args:" <> tuple arg_type_docs <> "," <+>
-                                            "__captured: &" <> (tuple $ map (mkType d local_module . varType d) captured_vars) <> ") ->" <+> ret_type_code    $$
+               "    f:" <+> braces' ("|__args:" <> tuple arg_type_docs <> "," <+>
+                                            "__captured: &" <> (tuple $ map (mkType d local_module . varType d) captured_vars) <> "| ->" <+> ret_type_code    $$
                                      (braces' $ vcat ref_captured_vars $$
                                                 vcat ref_args          $$
-                                                val exprExpr)          $$
-                                     "__f") $$
+                                                val exprExpr)) $$
                "}) as Box<dyn ::ddlog_rt::Closure<(" <> commaSep arg_type_docs <> ")," <+> ret_type_code <> ">>)"
     , EVal)
     where

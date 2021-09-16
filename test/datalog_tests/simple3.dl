@@ -1,3 +1,5 @@
+import group
+
 /******************************************
  * Linked list library.
  * Based on @qishen's implementation.
@@ -24,7 +26,7 @@ function from_nonnull_vec(vector: Vec<'N>): Option<NonNullList<'N>> {
             Some{list} -> {
                 res = Some{NonNullList{v, NonNullNxt{ref_new(list)}}}
             }
-        }        
+        }
     };
     res
 }
@@ -289,4 +291,10 @@ function test_match4() {
         },
         _ -> return
     }
+}
+
+// issue #1072
+
+function souffle_group_max(g: Group<'K, ('V, 'A)>): 'A {
+    g.arg_max(|x| x.1).1
 }
