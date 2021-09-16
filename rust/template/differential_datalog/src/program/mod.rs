@@ -39,10 +39,8 @@ use arrange::{
 };
 use config::SelfProfilingRig;
 use crossbeam_channel::{Receiver, Sender};
-use either::Either;
-use either::Either::{Left, Right};
 use fnv::{FnvHashMap, FnvHashSet};
-use num::{BigInt, FromPrimitive, One, ToPrimitive, Zero};
+use num::{BigInt, One, ToPrimitive, Zero};
 use std::{
     any::Any,
     borrow::Cow,
@@ -50,6 +48,7 @@ use std::{
     collections::{hash_map, BTreeSet},
     fmt::{self, Debug, Formatter},
     iter::{self, Cycle, Skip},
+    mem::size_of,
     ops::{Add, AddAssign, Mul, Neg, Range},
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -139,9 +138,9 @@ impl Mul for CheckedWeight {
     }
 }
 
-impl<'a, 'b> Mul<&'b CheckedWeight> for &'a CheckedWeight {
+impl Mul<&CheckedWeight> for &CheckedWeight {
     type Output = CheckedWeight;
-    fn mul(self, rhs: &'b CheckedWeight) -> CheckedWeight {
+    fn mul(self, rhs: &CheckedWeight) -> CheckedWeight {
         // intentional panic on overflow
         CheckedWeight {
             value: self.value.checked_mul(rhs.value).expect("Weight overflow"),
@@ -205,59 +204,68 @@ impl From<&CheckedWeight> for i64 {
     }
 }
 
+// The type used to represent small weights.
+type SmallType = i64;
+
+/// Convert a BigInt into a value of type SmallType
+fn big_to_small(b: &BigInt) -> Option<SmallType> {
+    // Change this method if you modify SmallType above
+    b.to_i64()
+}
+
 // Unbounded weights store essentially an unbounded integer, but are
 // optimized for small weights.
 #[derive(Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Clone)]
-pub struct UnboundedWeight {
-    pub value: Either<i32, BigInt>,
+pub enum UnboundedWeight {
+    Small(SmallType),
+    Big(BigInt),
 }
 
 impl Semigroup for UnboundedWeight {
     fn is_zero(&self) -> bool {
-        match &self.value {
-            Left(v) => *v == 0,
-            Right(v) => v.is_zero(),
+        match &self {
+            UnboundedWeight::Small(v) => *v == 0,
+            UnboundedWeight::Big(v) => v.is_zero(),
         }
     }
 }
 
 fn to_unbounded_weight(v: BigInt) -> UnboundedWeight {
-    // The invariant is that if the value
-    // fits into an i32 it is stored in the i32, else a BigInt is used.
-    let i = v.to_i32();
+    // The invariant of this representation is:
+    // - if the value fits into SmallType it is stored as a Small,
+    // - else a Big(BigInt) is used.
+    let i = big_to_small(&v);
     match i {
-        None => UnboundedWeight { value: Right(v) },
-        Some(r) => UnboundedWeight { value: Left(r) },
+        None => UnboundedWeight::Big(v),
+        Some(r) => UnboundedWeight::Small(r),
     }
 }
 
-fn to_bigint(v: &i32) -> BigInt {
-    // why would this unwrap fail?
-    // I don't know, but this is the API in num.
-    BigInt::from_i32(*v).unwrap()
+fn to_bigint(v: &SmallType) -> BigInt {
+    BigInt::from(*v)
 }
 
 impl<'a> AddAssign<&'a Self> for UnboundedWeight {
     fn add_assign(&mut self, other: &'a Self) {
-        match (&self.value, &other.value) {
-            (Left(v1), Left(v2)) => {
+        match (&self, &other) {
+            (UnboundedWeight::Small(v1), UnboundedWeight::Small(v2)) => {
                 let res = v1.checked_add(*v2);
                 match res {
-                    Some(v) => self.value = Left(v),
-                    None => self.value = Right((to_bigint(v1)).add(to_bigint(v2))),
+                    Some(v) => *self = UnboundedWeight::Small(v),
+                    None => *self = UnboundedWeight::Big((to_bigint(v1)).add(to_bigint(v2))),
                 };
             }
-            (Right(v1), Left(v2)) => {
+            (UnboundedWeight::Big(v1), UnboundedWeight::Small(v2)) => {
                 let res = v1.add(to_bigint(v2));
-                self.value = to_unbounded_weight(res).value;
+                *self = to_unbounded_weight(res);
             }
-            (Left(v1), Right(v2)) => {
+            (UnboundedWeight::Small(v1), UnboundedWeight::Big(v2)) => {
                 let res = to_bigint(v1).add(v2);
-                self.value = to_unbounded_weight(res).value;
+                *self = to_unbounded_weight(res);
             }
-            (Right(v1), Right(v2)) => {
+            (UnboundedWeight::Big(v1), UnboundedWeight::Big(v2)) => {
                 let res = v1.add(v2);
-                self.value = to_unbounded_weight(res).value;
+                *self = to_unbounded_weight(res);
             }
         }
     }
@@ -267,25 +275,23 @@ impl Add for UnboundedWeight {
     type Output = Self;
 
     fn add(self, other: Self) -> Self {
-        match (&self.value, &other.value) {
-            (Left(v1), Left(v2)) => {
+        match (&self, &other) {
+            (UnboundedWeight::Small(v1), UnboundedWeight::Small(v2)) => {
                 let res = v1.checked_add(*v2);
                 match res {
-                    Some(v) => UnboundedWeight { value: Left(v) },
-                    None => UnboundedWeight {
-                        value: Right(to_bigint(v1).add(to_bigint(v2))),
-                    },
+                    Some(v) => UnboundedWeight::Small(v),
+                    None => UnboundedWeight::Big(to_bigint(v1).add(to_bigint(v2))),
                 }
             }
-            (Right(v1), Left(v2)) => {
+            (UnboundedWeight::Big(v1), UnboundedWeight::Small(v2)) => {
                 let res = v1.add(to_bigint(v2));
                 to_unbounded_weight(res)
             }
-            (Left(v1), Right(v2)) => {
+            (UnboundedWeight::Small(v1), UnboundedWeight::Big(v2)) => {
                 let res = to_bigint(v1).add(v2);
                 to_unbounded_weight(res)
             }
-            (Right(v1), Right(v2)) => {
+            (UnboundedWeight::Big(v1), UnboundedWeight::Big(v2)) => {
                 let res = v1.add(v2);
                 to_unbounded_weight(res)
             }
@@ -295,26 +301,24 @@ impl Add for UnboundedWeight {
 
 impl Mul<UnboundedWeight> for UnboundedWeight {
     type Output = Self;
-    fn mul(self, other: UnboundedWeight) -> Self::Output {
-        match (&self.value, &other.value) {
-            (Left(v1), Left(v2)) => {
+    fn mul(self, other: Self) -> Self::Output {
+        match (&self, &other) {
+            (UnboundedWeight::Small(v1), UnboundedWeight::Small(v2)) => {
                 let res = v1.checked_mul(*v2);
                 match res {
-                    Some(v) => UnboundedWeight { value: Left(v) },
-                    None => UnboundedWeight {
-                        value: Right((to_bigint(v1)).mul(to_bigint(v2))),
-                    },
+                    Some(v) => UnboundedWeight::Small(v),
+                    None => UnboundedWeight::Big((to_bigint(v1)).mul(to_bigint(v2))),
                 }
             }
-            (Right(v1), Left(v2)) => {
+            (UnboundedWeight::Big(v1), UnboundedWeight::Small(v2)) => {
                 let res = v1.mul(to_bigint(v2));
                 to_unbounded_weight(res)
             }
-            (Left(v1), Right(v2)) => {
+            (UnboundedWeight::Small(v1), UnboundedWeight::Big(v2)) => {
                 let res = to_bigint(v1).mul(v2);
                 to_unbounded_weight(res)
             }
-            (Right(v1), Right(v2)) => {
+            (UnboundedWeight::Big(v1), UnboundedWeight::Big(v2)) => {
                 let res = v1.mul(v2);
                 to_unbounded_weight(res)
             }
@@ -322,28 +326,26 @@ impl Mul<UnboundedWeight> for UnboundedWeight {
     }
 }
 
-impl<'a, 'b> Mul<&'b UnboundedWeight> for &'a UnboundedWeight {
+impl Mul<&UnboundedWeight> for &UnboundedWeight {
     type Output = UnboundedWeight;
-    fn mul(self, other: &'b UnboundedWeight) -> UnboundedWeight {
-        match (&self.value, &other.value) {
-            (Left(v1), Left(v2)) => {
+    fn mul(self, other: &UnboundedWeight) -> Self::Output {
+        match (&self, &other) {
+            (UnboundedWeight::Small(v1), UnboundedWeight::Small(v2)) => {
                 let res = v1.checked_mul(*v2);
                 match res {
-                    Some(v) => UnboundedWeight { value: Left(v) },
-                    None => UnboundedWeight {
-                        value: Right((to_bigint(v1)).mul(to_bigint(v2))),
-                    },
+                    Some(v) => UnboundedWeight::Small(v),
+                    None => UnboundedWeight::Big((to_bigint(v1)).mul(to_bigint(v2))),
                 }
             }
-            (Right(v1), Left(v2)) => {
+            (UnboundedWeight::Big(v1), UnboundedWeight::Small(v2)) => {
                 let res = v1.mul(to_bigint(v2));
                 to_unbounded_weight(res)
             }
-            (Left(v1), Right(v2)) => {
+            (UnboundedWeight::Small(v1), UnboundedWeight::Big(v2)) => {
                 let res = to_bigint(v1).mul(v2);
                 to_unbounded_weight(res)
             }
-            (Right(v1), Right(v2)) => {
+            (UnboundedWeight::Big(v1), UnboundedWeight::Big(v2)) => {
                 let res = v1.mul(v2);
                 to_unbounded_weight(res)
             }
@@ -353,36 +355,34 @@ impl<'a, 'b> Mul<&'b UnboundedWeight> for &'a UnboundedWeight {
 
 impl Monoid for UnboundedWeight {
     fn zero() -> Self {
-        Self { value: Left(0) }
+        Self::Small(0)
     }
 }
 
 impl One for UnboundedWeight {
     fn one() -> Self {
-        UnboundedWeight { value: Left(1) }
+        UnboundedWeight::Small(1)
     }
 }
 
 impl Zero for UnboundedWeight {
     fn zero() -> Self {
-        UnboundedWeight { value: Left(0) }
+        UnboundedWeight::Small(0)
     }
     fn is_zero(&self) -> bool {
-        matches!(self.value, Left(0))
+        matches!(self, UnboundedWeight::Small(0))
     }
 }
 
-impl From<i32> for UnboundedWeight {
-    fn from(item: i32) -> Self {
-        Self { value: Left(item) }
+impl From<SmallType> for UnboundedWeight {
+    fn from(item: SmallType) -> Self {
+        Self::Small(item)
     }
 }
 
 impl From<i8> for UnboundedWeight {
     fn from(item: i8) -> Self {
-        Self {
-            value: Left(item as i32),
-        }
+        UnboundedWeight::Small(item as SmallType)
     }
 }
 
@@ -390,17 +390,15 @@ impl Neg for UnboundedWeight {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
-        match &self.value {
-            Left(v1) => {
+        match &self {
+            UnboundedWeight::Small(v1) => {
                 let res = v1.checked_neg();
                 match res {
-                    Some(v) => UnboundedWeight { value: Left(v) },
-                    None => UnboundedWeight {
-                        value: Right(to_bigint(v1).neg()),
-                    },
+                    Some(v) => UnboundedWeight::Small(v),
+                    None => UnboundedWeight::Big(to_bigint(v1).neg()),
                 }
             }
-            Right(v1) => {
+            UnboundedWeight::Big(v1) => {
                 let res = v1.neg();
                 to_unbounded_weight(res)
             }
@@ -410,18 +408,26 @@ impl Neg for UnboundedWeight {
 
 impl From<UnboundedWeight> for i64 {
     fn from(item: UnboundedWeight) -> Self {
-        match item.value {
-            Left(v1) => v1 as i64,
-            Right(v2) => v2.to_i64().expect("Weight too large for 64 bits"),
+        match item {
+            UnboundedWeight::Small(v1) => {
+                // If this is not true this may need to panic as well
+                assert!(size_of::<SmallType>() <= size_of::<i64>());
+                v1 as i64
+            }
+            UnboundedWeight::Big(v2) => v2.to_i64().expect("Weight too large for 64 bits"),
         }
     }
 }
 
 impl From<&UnboundedWeight> for i64 {
     fn from(item: &UnboundedWeight) -> Self {
-        match &item.value {
-            Left(v1) => *v1 as i64,
-            Right(v2) => v2.to_i64().expect("Weight too large for 64 bits"),
+        match &item {
+            UnboundedWeight::Small(v1) => {
+                // If this is not true this may need to panic as well
+                assert!(size_of::<SmallType>() <= size_of::<i64>());
+                *v1 as i64
+            }
+            UnboundedWeight::Big(v2) => v2.to_i64().expect("Weight too large for 64 bits"),
         }
     }
 }

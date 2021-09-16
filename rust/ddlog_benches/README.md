@@ -30,3 +30,19 @@ For info on writing benchmarks see the [criterion user guide] and the [criterion
 [`cargo-make`]: https://github.com/sagiegurari/cargo-make
 [criterion user guide]: https://bheisler.github.io/criterion.rs/book/index.html
 [criterion docs]: https://docs.rs/criterion
+
+### Supported features
+
+The benchmarks can be run using checked_weights, which will cause a
+Rust panic on weight overflow.  This can be done by running:
+
+```sh
+cargo make benchmarks --features checked_weights
+```
+
+The benchmarks can be run using unbounded_weights, which will always
+produce correct results, but may run slower.  This can be done by running:
+
+```sh
+cargo make benchmarks --features unbounded_weights
+```
