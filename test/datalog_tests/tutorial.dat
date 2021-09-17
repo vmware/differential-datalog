@@ -181,9 +181,9 @@ echo Evens:;
 dump Evens;
 
 start;
-insert Vector(["a", "--", "b"], "--"),
-insert Vector(["--", "a", "b"], "--"),
-insert Vector(["a", "b", "--"], "--"),
+insert Vect(["a", "--", "b"], "--"),
+insert Vect(["--", "a", "b"], "--"),
+insert Vect(["a", "b", "--"], "--"),
 commit;
 
 echo Prefix:;

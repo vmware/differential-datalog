@@ -292,10 +292,10 @@ function prefixBefore(vec: Vec<'A>, v: 'A): Vec<'A> {
     res
 }
 
-input relation Vector(vec: Vec<string>, sep: string)
+input relation Vect(vec: Vec<string>, sep: string)
 output relation Prefix(vec: Vec<string>)
 
-Prefix(prefixBefore(vec, sep)) :- Vector(vec, sep).
+Prefix(prefixBefore(vec, sep)) :- Vect(vec, sep).
 
 /*
  * Example: Multiple heads
@@ -689,8 +689,8 @@ input relation Load_Balancer (
     name:         string
 )
 
-typedef stage = LS_IN_PRE_LB
-              | LS_OUT_PRE_LB
+typedef stage_t = LS_IN_PRE_LB
+                | LS_OUT_PRE_LB
 
 input relation Logical_Switch (
     ls:  bigint
@@ -698,7 +698,7 @@ input relation Logical_Switch (
 
 // Relation that represents OVS flows.
 output relation Flow(lr: bigint,
-                     stage: stage,
+                     stage: stage_t,
                      prio: bigint,
                      matchStr: string,
                      actionStr: string)
@@ -735,7 +735,7 @@ Flow(.lr=ls,
 
 // Introduce another Flow relation, so that we can compare the results of the two encodings.
 output relation Flow1(lr: bigint,
-                      stage: stage,
+                      stage: stage_t,
                       prio: bigint,
                       matchStr: string,
                       actionStr: string)
