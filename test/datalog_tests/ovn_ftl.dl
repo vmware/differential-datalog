@@ -5,7 +5,7 @@
 // -Flow: the output table
 // -Logical_Switch
 
-typedef stage = LS_IN_ACL
+typedef stage_t = LS_IN_ACL
               | LS_OUT_ACL
               | LR_IN_ADMISSION
               | LR_IN_IP_INPUT
@@ -36,7 +36,7 @@ typedef stage = LS_IN_ACL
               | LS_OUT_PORT_SEC_IP
               | LS_OUT_PORT_SEC_L2
 
-output relation Flow(lr: bigint, stage: stage, prio: bigint, matchStr: string, actionStr: string)
+output relation Flow(lr: bigint, stage: stage_t, prio: bigint, matchStr: string, actionStr: string)
 input relation Logical_Router(lr: bigint)
 input relation Logical_Router_Port(name: string, lr: bigint, mac: string, enabled: bool)
 
