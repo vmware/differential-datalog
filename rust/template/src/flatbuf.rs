@@ -10,7 +10,7 @@ use enum_primitive_derive::Primitive;
 use flatbuffers::{self as fbrt, FlatBufferBuilder, Follow, Push, Vector, WIPOffset};
 use num_traits::FromPrimitive;
 use ordered_float::OrderedFloat;
-use std::{collections::BTreeSet, hash::Hash};
+use std::{collections::BTreeSet, fmt::Debug, hash::Hash};
 
 /// Trait for types that can be de-serialized from FlatBuffer-embedded objects.
 pub trait FromFlatBuffer<T>: Sized {
@@ -306,12 +306,18 @@ impl<'a> ToFlatBufferVectorElement<'a> for String {
 
 /// Iterator based on `fbrt::Vector`
 #[derive(Debug)]
-pub struct FBIter<'a, F> {
+pub struct FBIter<'a, F: flatbuffers::Follow<'a> + 'a>
+where
+    <F as flatbuffers::Follow<'a>>::Inner: Debug,
+{
     vec: Vector<'a, F>,
     off: usize,
 }
 
-impl<'a, F: 'a> FBIter<'a, F> {
+impl<'a, F: flatbuffers::Follow<'a> + 'a> FBIter<'a, F>
+where
+    <F as flatbuffers::Follow<'a>>::Inner: Debug,
+{
     pub fn from_vector(vec: Vector<'a, F>) -> FBIter<'a, F> {
         FBIter { vec, off: 0 }
     }
@@ -320,6 +326,7 @@ impl<'a, F: 'a> FBIter<'a, F> {
 impl<'a, F> Iterator for FBIter<'a, F>
 where
     F: flatbuffers::Follow<'a> + 'a,
+    <F as flatbuffers::Follow<'a>>::Inner: Debug,
 {
     type Item = F::Inner;
 
@@ -543,7 +550,7 @@ impl FlatbufConverter for DDlogFlatbufConverter {
     }
 
     fn query_index_from_buffer(&self, buffer: &[u8]) -> Result<(IdxId, DDValue), String> {
-        let q = flatbuffers::get_root::<fb::__Query<'_>>(buffer);
+        let q = unsafe { flatbuffers::root_unchecked::<fb::__Query<'_>>(buffer) };
 
         if let Some(key) = q.key() {
             Ok((
@@ -563,7 +570,7 @@ impl FlatbufConverter for DDlogFlatbufConverter {
         }
 
         // Each record takes at least 8 bytes of FlatBuffer space.
-        let mut fbb = fbrt::FlatBufferBuilder::new_with_capacity(8 * delta_size);
+        let mut fbb = fbrt::FlatBufferBuilder::with_capacity(8 * delta_size);
         let mut cmds = Vec::with_capacity(delta_size);
 
         for (relid, rel) in delta.iter() {
@@ -597,7 +604,7 @@ impl FlatbufConverter for DDlogFlatbufConverter {
 pub fn updates_from_flatbuf<'a>(
     buf: &'a [u8],
 ) -> Response<FBIter<'a, fbrt::ForwardsUOffset<fb::__Command<'a>>>> {
-    if let Some(cmds) = fb::get_root_as___commands(buf).commands() {
+    if let Some(cmds) = unsafe { fb::root_as___commands_unchecked(buf) }.commands() {
         Ok(FBIter::from_vector(cmds))
     } else {
         Err("Invalid buffer: failed to extract commands".to_string())
@@ -611,7 +618,7 @@ where
     let size = vals.size_hint().0;
 
     /* Each value takes at least 4 bytes of FlatBuffer space. */
-    let mut fbb = fbrt::FlatBufferBuilder::new_with_capacity(4 * size);
+    let mut fbb = fbrt::FlatBufferBuilder::with_capacity(4 * size);
     let mut val_tables = Vec::with_capacity(size);
 
     for val in vals {

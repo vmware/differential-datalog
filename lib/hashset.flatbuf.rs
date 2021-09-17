@@ -25,6 +25,7 @@ impl<'a, T, F> FromFlatBuffer<fbrt::Vector<'a, F>> for crate::typedefs::hashset:
 where
     T: ::core::hash::Hash + ::core::cmp::Eq + ::core::clone::Clone + FromFlatBuffer<F::Inner>,
     F: fbrt::Follow<'a> + 'a,
+    <F as fbrt::Follow<'a>>::Inner: Debug,
 {
     fn from_flatbuf(
         fb: fbrt::Vector<'a, F>,
