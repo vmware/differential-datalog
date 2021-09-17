@@ -27,6 +27,7 @@ impl<'a, T, F> FromFlatBuffer<fbrt::Vector<'a, F>> for Set64<T>
 where
     T: Ord + FromFlatBuffer<F::Inner> + u64set::Fits64,
     F: fbrt::Follow<'a> + 'a,
+    <F as fbrt::Follow<'a>>::Inner: Debug,
 {
     fn from_flatbuf(fb: fbrt::Vector<'a, F>) -> Result<Self, String> {
         let mut set = Set64::new();

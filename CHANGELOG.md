@@ -17,6 +17,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - Closures that depend on generic types generate invalid Rust (#1072).
 
+### FlatBuffers
+
+- Upgrade to FlatBuffers v2.0.0.  The previous version of FlatBuffers used in
+  DDlog is not compatible with recent OS X releases.
+  
+
 ## [0.48.2] - Sep 13, 2021
 
 ### Bug fixes

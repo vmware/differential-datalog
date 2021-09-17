@@ -70,6 +70,7 @@ impl<'a, T, F> FromFlatBuffer<fbrt::Vector<'a, F>> for ddlog_std::Vec<T>
 where
     T: Ord + FromFlatBuffer<F::Inner>,
     F: fbrt::Follow<'a> + 'a,
+    <F as fbrt::Follow<'a>>::Inner: Debug,
 {
     fn from_flatbuf(fb: fbrt::Vector<'a, F>) -> ::std::result::Result<Self, String> {
         let mut vec = ddlog_std::Vec::with_capacity(fb.len());
@@ -110,6 +111,7 @@ impl<'a, T, F> FromFlatBuffer<fbrt::Vector<'a, F>> for ddlog_std::Set<T>
 where
     T: Ord + FromFlatBuffer<F::Inner>,
     F: fbrt::Follow<'a> + 'a,
+    <F as fbrt::Follow<'a>>::Inner: Debug,
 {
     fn from_flatbuf(fb: fbrt::Vector<'a, F>) -> ::std::result::Result<Self, String> {
         let mut set = ddlog_std::Set::new();
@@ -152,6 +154,7 @@ where
 impl<'a, K, V, F> FromFlatBuffer<fbrt::Vector<'a, F>> for ddlog_std::Map<K, V>
 where
     F: fbrt::Follow<'a> + 'a,
+    <F as fbrt::Follow<'a>>::Inner: Debug,
     K: Ord,
     ddlog_std::tuple2<K, V>: FromFlatBuffer<F::Inner>,
 {

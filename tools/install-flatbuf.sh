@@ -1,6 +1,6 @@
 #!/bin/sh
 
-FLATBUF_VERSION="1.11.0"
+FLATBUF_VERSION="2.0.0"
 set -ex
 
 retry() {
@@ -9,13 +9,11 @@ retry() {
 }
 
 fetch_flatbuf_unix() {
-    rm -rf flatbuffers
-    mkdir flatbuffers
-    curl -L https://github.com/google/flatbuffers/archive/v${FLATBUF_VERSION}.tar.gz | tar -zx -C flatbuffers --strip-components 1
+    git clone https://github.com/google/flatbuffers.git --branch v${FLATBUF_VERSION}
 }
 
 fetch_flatbuf_windows() {
-    curl -L https://github.com/google/flatbuffers/releases/download/v${FLATBUF_VERSION}/flatc_windows_exe.zip > fb.zip && unzip fb.zip
+    curl -L https://github.com/google/flatbuffers/releases/download/v${FLATBUF_VERSION}/Windows.flatc.binary.zip > fb.zip && unzip fb.zip
 }
 
 echo "Installing Flatbuf"
@@ -36,7 +34,7 @@ if [ "x`flatbuffers/flatc --version`" != "xflatc version ${FLATBUF_VERSION}" ]; 
         cd ..
     else
         retry fetch_flatbuf_unix
-        # On Windows, fetch pre-build executable instead of compiling from source.
+        # On Windows, fetch pre-built executable instead of compiling from source.
         retry fetch_flatbuf_windows
     fi
 fi
