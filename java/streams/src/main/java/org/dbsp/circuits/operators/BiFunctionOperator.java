@@ -21,27 +21,41 @@
  * SOFTWARE.
  */
 
-package org.dbsp.operators;
+package org.dbsp.circuits.operators;
 
-import org.dbsp.algebraic.TimeFactory;
-import org.dbsp.algebraic.IStream;
-import org.dbsp.circuits.types.StreamType;
 import org.dbsp.circuits.types.Type;
 
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 /**
- * An operator that consumes a stream and produces a scalar.
- * The operator sums up all values in the stream up to the first 0.
- * @param <T>  Type of scalar produced.
+ * A unary operator that applies a specified function to its input.
  */
-public class IntOperator<T, F extends TimeFactory> extends UnaryOperator<IStream<T>, T> {
-    protected IntOperator(Type<T> outputType, F factory) {
-        super(new StreamType<T>(outputType, factory), outputType);
+public class BiFunctionOperator extends BinaryOperator {
+    private final BiFunction<Object, Object, Object> computation;
+    final String name;
+
+    /**
+     * Create a unary operator that computes by applying a function to its input.
+     * @param name           Operator name.
+     * @param input0Type     Left input type.
+     * @param input1Type     Right input type.
+     * @param outputType     Output type.
+     * @param computation    Function that is applied to input to produce the output.
+     */
+    public BiFunctionOperator(String name, Type input0Type, Type input1Type,
+                              Type outputType, BiFunction<Object, Object, Object> computation) {
+        super(input0Type, input1Type, outputType);
+        this.computation = computation;
+        this.name = name;
     }
 
     @Override
-    public Function<IStream<T>, T> getComputation() {
-        return s -> s.sumToZero(this.outputType.getGroup());
+    public Object evaluate(Object left, Object right) {
+        return this.computation.apply(left, right);
+    }
+
+    public String toString() {
+        return this.name;
     }
 }

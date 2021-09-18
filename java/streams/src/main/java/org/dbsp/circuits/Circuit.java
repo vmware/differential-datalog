@@ -152,7 +152,7 @@ public class Circuit extends ComputationalElement implements Latch {
      * Nothing to do for circuits.
      */
     @Override
-    public void notifyInput() {}
+    public void notifyInputIsAvailable() {}
 
     public void reset() {
         if (!this.sealed)
@@ -194,6 +194,8 @@ public class Circuit extends ComputationalElement implements Latch {
         }
     }
 
+
+
     public String toGraphvizTop() {
         StringBuilder builder = new StringBuilder();
         builder.append("digraph ").append(this.name).append(" {\n");
@@ -209,15 +211,13 @@ public class Circuit extends ComputationalElement implements Latch {
             }
         }
 
-
         this.toGraphvizWires(indent, builder);
-
         builder.append("}\n");
         return builder.toString();
     }
 
     @Override
     public String graphvizId() {
-        return this.name;
+        return this.name.replaceAll("[^a-zA-Z0-9]", "_");
     }
 }

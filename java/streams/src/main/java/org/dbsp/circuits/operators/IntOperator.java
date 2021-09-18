@@ -26,26 +26,55 @@ package org.dbsp.circuits.operators;
 import org.dbsp.algebraic.Group;
 import org.dbsp.circuits.types.Type;
 
+import javax.annotation.Nullable;
 import java.util.Objects;
 
-/**
- * An operator that adds its inputs.
- */
-public class PlusOperator extends BinaryOperator {
-    private final Group<Object> adder;
+public class IntOperator extends UnaryOperator {
+    @Nullable
+    private Object value = null;
+    final Group<Object> group;
+    private final Operator body;
+    // Int operators are always associated with a Delta
+    final DeltaOperator delta;
 
-    public PlusOperator(Type valueType) {
-        super(valueType, valueType, valueType);
-        this.adder = Objects.requireNonNull(valueType.getGroup());
+    protected IntOperator(Type type, DeltaOperator delta, Operator body) {
+        super(type, type);
+        this.delta = delta;
+        this.group = Objects.requireNonNull(type.getGroup());
+        this.body = body;
     }
 
     @Override
-    public Object evaluate(Object left, Object right) {
-        return this.adder.add(left, right);
+    public Object evaluate(Object input) {
+        if (this.value == null)
+            this.value = input;
+        else
+            this.value = this.group.add(this.value, input);
+        return input;
+    }
+
+    @Override
+    public void reset() {
+        this.log("reset");
+        this.value = null;
+        this.body.reset();
+        this.delta.reset();
+    }
+
+    @Override
+    public void emitOutput(Object result) {
+        // int does not emit an output when expected, only when it is actually zero
+        if (this.group.isZero(Objects.requireNonNull(result))) {
+            this.output.setValue(Objects.requireNonNull(this.value));
+            this.output.notifyConsumers();
+            this.reset();
+        } else {
+            this.delta.repeat();
+        }
     }
 
     @Override
     public String toString() {
-        return "+";
+        return "Int";
     }
 }

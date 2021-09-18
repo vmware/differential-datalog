@@ -27,11 +27,20 @@ import org.dbsp.circuits.types.Type;
 
 import java.util.function.Function;
 
+/**
+ * A unary operator that applies a specified function to its input.
+ */
 public class FunctionOperator extends UnaryOperator {
     private final Function<Object, Object> computation;
-
     final String name;
 
+    /**
+     * Create a unary operator that computes by applying a function to its input.
+     * @param name           Operator name.
+     * @param inputType      Input type.
+     * @param outputType     Output type.
+     * @param computation    Function that is applied to input to produce the output.
+     */
     public FunctionOperator(String name, Type inputType, Type outputType, Function<Object, Object> computation) {
         super(inputType, outputType);
         this.computation = computation;

@@ -24,6 +24,7 @@
 package org.dbsp.circuits.operators;
 
 import org.dbsp.circuits.ComputationalElement;
+import org.dbsp.circuits.Wire;
 import org.dbsp.circuits.types.Type;
 import org.dbsp.lib.Linq;
 
@@ -103,7 +104,7 @@ public abstract class Operator extends ComputationalElement {
     // Default behavior of an operator on an input notification:
     // Extract values from the input wires, compute the
     // result, notify consumers.
-    public void notifyInput() {
+    public void notifyInputIsAvailable() {
         this.inputsPresent++;
         if (this.inputsPresent != this.inputCount())
             return;
@@ -113,6 +114,10 @@ public abstract class Operator extends ComputationalElement {
         Object result = this.evaluate(index -> this.inputs.get(index).getValue());
         this.log("computed " + result);
         this.emitOutput(result);
+    }
+
+    public Type getOutputType() {
+        return this.outputTypes.get(0);
     }
 
     public void emitOutput(Object result) {

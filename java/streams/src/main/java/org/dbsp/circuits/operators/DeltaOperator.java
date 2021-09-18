@@ -21,34 +21,37 @@
  * SOFTWARE.
  */
 
-package org.dbsp.operators;
+package org.dbsp.circuits.operators;
 
-import org.dbsp.algebraic.TimeFactory;
-import org.dbsp.algebraic.IStream;
-import org.dbsp.circuits.types.StreamType;
 import org.dbsp.circuits.types.Type;
 
-import java.util.function.Function;
+import java.util.Objects;
 
 /**
- * An operator that produces a stream from a value.
- * @param <T> Type of input value.
+ * The DeltaOperator has a scalar input but produces a stream output.
  */
-public class Delta0<T> extends UnaryOperator<T, IStream<T>> {
-    protected final TimeFactory factory;
+public class DeltaOperator extends UnaryOperator {
+    private final Object zero;
 
-    public Delta0(Type<T> inputType, TimeFactory factory) {
-        super(inputType, new StreamType<T>(inputType, factory));
-        this.factory = factory;
+    protected DeltaOperator(Type type) {
+        super(type, type);
+        this.zero = Objects.requireNonNull(type.getGroup()).zero();
     }
 
     @Override
-    public Function<T, IStream<T>> getComputation() {
-        return value -> new org.dbsp.compute.Delta0<T>(value, this.inputType.getGroup(), this.factory);
+    public Object evaluate(Object input) {
+        return input;
     }
 
     @Override
     public String toString() {
-        return "Delta0";
+        return "Delta";
+    }
+
+    /**
+     * Method called by the IntOperator to indicate that a new cycle should be executed.
+     */
+    public void repeat() {
+        this.emitOutput(this.zero);
     }
 }

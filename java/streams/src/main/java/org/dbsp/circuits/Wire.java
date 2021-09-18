@@ -21,8 +21,11 @@
  * SOFTWARE.
  */
 
-package org.dbsp.circuits.operators;
+package org.dbsp.circuits;
 
+import org.dbsp.circuits.operators.Consumer;
+import org.dbsp.circuits.operators.Operator;
+import org.dbsp.circuits.operators.Sink;
 import org.dbsp.circuits.types.Type;
 import org.dbsp.lib.HasId;
 import org.dbsp.lib.Linq;
@@ -111,7 +114,7 @@ public class Wire extends HasId {
 
     public void notifyConsumers() {
         for (Consumer op: this.consumers)
-            op.notifyInput();
+            op.notifyInputIsAvailable();
     }
 
     public void log() {

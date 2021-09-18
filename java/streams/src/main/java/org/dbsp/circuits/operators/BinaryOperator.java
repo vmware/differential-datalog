@@ -29,15 +29,11 @@ import org.dbsp.lib.Linq;
 import java.util.function.Function;
 
 /**
- * An operator that adds its inputs.
+ * Base class for all binary operators.
  */
 public abstract class BinaryOperator extends Operator {
-    public BinaryOperator(Type type) {
-        super(Linq.list(type, type), type);
-    }
-
-    public String toString() {
-        return "+";
+    public BinaryOperator(Type input0type, Type input1Type, Type outputType) {
+        super(Linq.list(input0type, input1Type), outputType);
     }
 
     public abstract Object evaluate(Object left, Object right);

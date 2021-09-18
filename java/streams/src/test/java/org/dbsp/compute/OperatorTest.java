@@ -23,7 +23,6 @@
 
 package org.dbsp.compute;
 
-import org.dbsp.algebraic.ZRing;
 import org.dbsp.circuits.*;
 import org.dbsp.circuits.operators.*;
 import org.dbsp.circuits.types.IntegerType;
@@ -168,7 +167,6 @@ public class OperatorTest {
         c.seal();
 
         Sink sink = output.addSink();
-
         System.out.println(c.toGraphvizTop());
         c.reset();
         for (int iv = 0; iv < 10; iv++) {
@@ -179,6 +177,28 @@ public class OperatorTest {
             for (int i = 0; i <= iv; i++)
                 expected += i+1;
             Assert.assertEquals(expected, out);
+        }
+    }
+
+    @Test
+    public void bracketTest() {
+        UnaryOperator id = new IdOperator(IT);
+        Operator op = id.bracket();
+        Circuit c = new Circuit("top", ITL, ITL);
+        c.addOperator(op);
+        Port input = c.getInputPort(0);
+        input.connectTo(op, 0);
+        Wire output = c.addOutputWireFromOperator(op);
+        c.seal();
+
+        Sink sink = output.addSink();
+        System.out.println(c.toGraphvizTop());
+        c.reset();
+        for (int iv = 0; iv < 10; iv++) {
+            input.setValue(iv);
+            c.step();
+            Object out = sink.getValue();
+            Assert.assertEquals(iv, out);
         }
     }
 

@@ -24,13 +24,14 @@
 package org.dbsp.circuits.operators;
 
 import org.dbsp.circuits.ComputationalElement;
+import org.dbsp.circuits.Wire;
 import org.dbsp.lib.Linq;
 
 public class Sink extends ComputationalElement {
     final String name;
     final Wire wire;
 
-    Sink(Wire input) {
+    public Sink(Wire input) {
         super(Linq.list(input.getType()), Linq.list());
         this.name = "sink";
         this.wire = input;
@@ -44,7 +45,7 @@ public class Sink extends ComputationalElement {
     }
 
     @Override
-    public void notifyInput() {}
+    public void notifyInputIsAvailable() {}
 
     @Override
     public String getName() {

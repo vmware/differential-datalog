@@ -23,6 +23,7 @@
 
 package org.dbsp.circuits.operators;
 
+import org.dbsp.circuits.Circuit;
 import org.dbsp.circuits.types.Type;
 import org.dbsp.lib.Linq;
 
@@ -36,9 +37,30 @@ public abstract class UnaryOperator extends Operator {
         super(Linq.list(inputType), outputType);
     }
 
+    public Type getInputType() {
+        return this.inputTypes.get(0);
+    }
+
     public abstract Object evaluate(Object input);
 
     public Object evaluate(Function<Integer, Object> inputProvider) {
         return this.evaluate(inputProvider.apply(0));
+    }
+
+    /**
+     * Creates a bracketed operator by putting a delta in front and an int at the back of this operator.
+     */
+    public Operator bracket() {
+        Circuit circuit = new Circuit("[" + this + "]",
+                Linq.list(this.getInputType()), Linq.list(this.getOutputType()));
+        DeltaOperator delta = new DeltaOperator(this.getInputType());
+        circuit.addOperator(delta);
+        circuit.getInputPort(0).connectTo(delta, 0);
+        circuit.addOperator(this);
+        delta.connectTo(this, 0);
+        Operator intOp = circuit.addOperator(new IntOperator(this.getOutputType(), delta, this));
+        this.connectTo(intOp, 0);
+        circuit.addOutputWireFromOperator(intOp);
+        return new CircuitOperator(circuit.seal());
     }
 }

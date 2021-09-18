@@ -32,7 +32,7 @@ public interface Consumer {
     /**
      * Notify the consumer that an input has arrived.
      */
-    void notifyInput();
+    void notifyInputIsAvailable();
 
     /**
      * A human-friendly name to identify this Consumer.

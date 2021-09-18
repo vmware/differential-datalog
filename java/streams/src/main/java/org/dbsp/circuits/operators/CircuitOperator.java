@@ -24,6 +24,7 @@
 package org.dbsp.circuits.operators;
 
 import org.dbsp.circuits.Circuit;
+import org.dbsp.circuits.Wire;
 import org.dbsp.circuits.types.Type;
 import org.dbsp.lib.Linq;
 
@@ -38,7 +39,7 @@ public class CircuitOperator extends Operator implements Latch {
     public CircuitOperator(Circuit circuit) {
         super(circuit.getInputTypes(), circuit.getOutputTypes().get(0));
         this.circuit = circuit;
-        if (this.circuit.getOutputWires().size() != 1)
+        if (this.circuit.getOutputTypes().size() != 1)
             throw new RuntimeException("Operators must have only 1 output wire, not " +
                     this.circuit.getOutputWires().size() + ": " + circuit);
         this.output = circuit.getOutputWires().get(0);

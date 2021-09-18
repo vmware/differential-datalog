@@ -24,13 +24,15 @@
 package org.dbsp.circuits;
 
 import org.dbsp.circuits.operators.Consumer;
-import org.dbsp.circuits.operators.Wire;
 import org.dbsp.circuits.types.Type;
 import org.dbsp.lib.HasId;
 
 import javax.annotation.Nullable;
 import java.util.List;
 
+/**
+ * A base class for various operators and circuits.
+ */
 public abstract class ComputationalElement extends HasId implements Consumer {
     protected final List<Type> inputTypes;
     protected final List<Type> outputTypes;
@@ -64,7 +66,7 @@ public abstract class ComputationalElement extends HasId implements Consumer {
     /**
      * Number of outputs produced.
      */
-    int outputCount() {
+    public int outputCount() {
         return this.outputTypes.size();
     }
 
@@ -72,7 +74,7 @@ public abstract class ComputationalElement extends HasId implements Consumer {
      * Type of an input.
      * @param index Input index.
      */
-    Type getInputType(int index) {
+    public Type getInputType(int index) {
         return this.inputTypes.get(index);
     }
 
@@ -80,7 +82,7 @@ public abstract class ComputationalElement extends HasId implements Consumer {
      * Type of an output.
      * @param index Output index.
      */
-    Type getOutputType(int index) {
+    public Type getOutputType(int index) {
         return this.outputTypes.get(index);
     }
 
