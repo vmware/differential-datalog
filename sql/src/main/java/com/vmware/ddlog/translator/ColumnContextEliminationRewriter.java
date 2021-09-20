@@ -24,52 +24,19 @@
 
 package com.vmware.ddlog.translator;
 
+import com.facebook.presto.sql.tree.DereferenceExpression;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.ExpressionRewriter;
 import com.facebook.presto.sql.tree.ExpressionTreeRewriter;
 
-import javax.annotation.Nullable;
-import java.util.HashMap;
-import java.util.Map;
-
 /**
- * This rewriter will replace expressions as indicated by the SubtitutionMap.
- * Any key in the map is replaced with the corresponding value.
+ * This rewriter drops the context from a column name.
+ * For example, t1.column2 becomes just column2.
  */
-public class SubstitutionRewriter extends
+public class ColumnContextEliminationRewriter extends
         ExpressionRewriter<Void> {
-    private final SubstitutionRewriter.SubstitutionMap map;
-
-    public SubstitutionRewriter(SubstitutionRewriter.SubstitutionMap map) {
-        super();
-        this.map = map;
-    }
-
-    static class SubstitutionMap {
-        private final Map<Expression, Expression> substitution;
-
-        public SubstitutionMap() {
-            substitution = new HashMap<Expression, Expression>();
-        }
-
-        public void add(Expression from, Expression to) {
-            this.substitution.put(from, to);
-        }
-
-        @Nullable
-        Expression get(Expression from) {
-            if (this.substitution.containsKey(from))
-                return this.substitution.get(from);
-            return null;
-        }
-    }
-
     @Override
-    public Expression rewriteExpression(Expression node, Void context, ExpressionTreeRewriter<Void> treeRewriter)
-    {
-        Expression result = this.map.get(node);
-        if (result == null)
-            return treeRewriter.defaultRewrite(node, context);
-        return result;
+    public Expression rewriteDereferenceExpression(DereferenceExpression node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+        return node.getField();
     }
 }
