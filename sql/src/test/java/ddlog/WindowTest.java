@@ -296,7 +296,7 @@ public class WindowTest extends BaseQueriesTest {
 
     @Test
     public void nestedAggTest() {
-        String query = "SELECT column2, SUM(column1), SUM(SUM(column1)) OVER (PARTITION BY column3) FROM t1 GROUP BY column2, column3";
+        String query = "CREATE VIEW v0 as SELECT column2, SUM(column1), SUM(SUM(column1)) OVER (PARTITION BY column3) FROM t1 GROUP BY column2, column3";
         String translation = this.header(false) +
                 "typedef TRtmp = TRtmp{tmp:signed<64>, gb1:bool, column2:string, col:signed<64>}\n" +
                 "typedef Tagg = Tagg{tmp:signed<64>, col:signed<64>}\n" +
@@ -331,17 +331,21 @@ public class WindowTest extends BaseQueriesTest {
                 "relation Rtmp0[TRtmp0]\n" +
                 "relation Rover[TRtmp0]\n" +
                 "relation Rtmp2[TRtmp2]\n" +
+                "output relation Rv0[TRtmp2]\n" +
                 "Roverinput[v7] :- Rt1[v2],var gb3 = v2.column2,var gb4 = v2.column3,var groupResult = (v2).group_by((gb3, gb4))," +
                 "var aggResult = agg(groupResult),var v6 = TRtmp{.column2 = gb3,.gb1 = gb4,.tmp = aggResult.tmp,.col = aggResult.col}," +
                 "var v7 = v6.\n" +
                 "Rover[v17] :- Roverinput[v8],var gb9 = v8.gb1,var groupResult16 = (v8).group_by((gb9))," +
-                "var aggResult15 = agg1(groupResult16),var v14 = TRtmp0{.gb1 = gb9,.sum = aggResult15.sum},var v17 = v14.";
+                "var aggResult15 = agg1(groupResult16),var v14 = TRtmp0{.gb1 = gb9,.sum = aggResult15.sum},var v17 = v14.\n" +
+                "Rv0[v22] :- Roverinput[v18],Rover[v19],(true and (v18.gb1 == v19.gb1))," + "" +
+                "var v20 = Ttmp{.tmp = v18.tmp,.gb1 = v18.gb1,.column2 = v18.column2,.col = v18.col,.sum = v19.sum}," +
+                "var v21 = TRtmp2{.column2 = v18.column2,.col = v18.col,.sum = v19.sum},var v22 = v21.";
         this.testTranslation(query, translation);
     }
 
     @Test
     public void joinWindowTest() {
-        String query = "SELECT DISTINCT t1.column2, AVG(t2.column1) OVER (PARTITION by t1.column3) AS avg\n" +
+        String query = "CREATE VIEW v0 as SELECT DISTINCT t1.column2, AVG(t2.column1) OVER (PARTITION by t1.column3) AS avg\n" +
                 "         FROM t1 JOIN t2 ON t1.column1 = t2.column1\n";
         String translation = this.header(false) +
                 "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, column10:signed<64>}\n" +
@@ -366,11 +370,15 @@ public class WindowTest extends BaseQueriesTest {
                 "relation Rtmp0[TRtmp0]\n" +
                 "relation Rover[TRtmp0]\n" +
                 "relation Rtmp2[TRtmp2]\n" +
+                "output relation Rv0[TRtmp2]\n" +
                 "Roverinput[v6] :- Rt1[v2],Rt2[v3],(v2.column1 == v3.column1),true," +
                 "var v4 = Ttmp{.column1 = v2.column1,.column2 = v2.column2,.column3 = v2.column3,.column4 = v2.column4,.column10 = v3.column1}" +
                 ",var v5 = TRtmp{.tmp = v3.column1,.gb = v2.column3,.column2 = v2.column2},var v6 = v5.\n" +
                 "Rover[v11] :- Roverinput[v7],var gb8 = v7.gb,var groupResult = (v7).group_by((gb8))," +
-                "var aggResult = agg(groupResult),var v10 = TRtmp0{.gb = gb8,.avg = aggResult.avg},var v11 = v10.";
+                "var aggResult = agg(groupResult),var v10 = TRtmp0{.gb = gb8,.avg = aggResult.avg},var v11 = v10.\n" +
+                "Rv0[v16] :- Roverinput[v12],Rover[v13],(true and (v12.gb == v13.gb))," +
+                "var v14 = Ttmp1{.tmp = v12.tmp,.gb = v12.gb,.column2 = v12.column2,.avg = v13.avg}," +
+                "var v15 = TRtmp2{.column2 = v12.column2,.avg = v13.avg},var v16 = v15.";
         this.testTranslation(query, translation);
     }
 }
