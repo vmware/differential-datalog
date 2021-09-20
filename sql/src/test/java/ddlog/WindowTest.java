@@ -338,4 +338,39 @@ public class WindowTest extends BaseQueriesTest {
                 "var aggResult15 = agg1(groupResult16),var v14 = TRtmp0{.gb1 = gb9,.sum = aggResult15.sum},var v17 = v14.";
         this.testTranslation(query, translation);
     }
+
+    @Test
+    public void joinWindowTest() {
+        String query = "SELECT DISTINCT t1.column2, AVG(t2.column1) OVER (PARTITION by t1.column3) AS avg\n" +
+                "         FROM t1 JOIN t2 ON t1.column1 = t2.column1\n";
+        String translation = this.header(false) +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, column10:signed<64>}\n" +
+                "typedef TRtmp = TRtmp{tmp:signed<64>, gb:bool, column2:string}\n" +
+                "typedef TRtmp0 = TRtmp0{gb:bool, avg:signed<64>}\n" +
+                "typedef Tagg = Tagg{avg:signed<64>}\n" +
+                "typedef Ttmp1 = Ttmp1{tmp:signed<64>, gb:bool, column2:string, avg:signed<64>}\n" +
+                "typedef TRtmp2 = TRtmp2{column2:string, avg:signed<64>}\n" +
+                "function agg(g: Group<bool, TRtmp>):Tagg {\n" +
+                "(var gb8) = group_key(g);\n" +
+                "(var avg9 = (64'sd0, 64'sd0): (signed<64>, signed<64>));\n" +
+                "(for ((i, _) in g) {\n" +
+                "var v7 = i;\n" +
+                "(var incr = v7.tmp);\n" +
+                "(avg9 = agg_avg_signed_R(avg9, incr))}\n" +
+                ");\n" +
+                "(Tagg{.avg = avg_signed_R(avg9)})\n" +
+                "}\n" +
+                this.relations(false) +
+                "relation Rtmp[TRtmp]\n" +
+                "relation Roverinput[TRtmp]\n" +
+                "relation Rtmp0[TRtmp0]\n" +
+                "relation Rover[TRtmp0]\n" +
+                "relation Rtmp2[TRtmp2]\n" +
+                "Roverinput[v6] :- Rt1[v2],Rt2[v3],(v2.column1 == v3.column1),true," +
+                "var v4 = Ttmp{.column1 = v2.column1,.column2 = v2.column2,.column3 = v2.column3,.column4 = v2.column4,.column10 = v3.column1}" +
+                ",var v5 = TRtmp{.tmp = v3.column1,.gb = v2.column3,.column2 = v2.column2},var v6 = v5.\n" +
+                "Rover[v11] :- Roverinput[v7],var gb8 = v7.gb,var groupResult = (v7).group_by((gb8))," +
+                "var aggResult = agg(groupResult),var v10 = TRtmp0{.gb = gb8,.avg = aggResult.avg},var v11 = v10.";
+        this.testTranslation(query, translation);
+    }
 }

@@ -37,7 +37,7 @@ import java.util.*;
 import static com.facebook.presto.sql.tree.Join.Type.LEFT;
 
 class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
-    static final boolean debug = false;
+    static final boolean debug = true;
 
     static class GroupByInfo {
         /**
@@ -1038,10 +1038,12 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         List<SelectItem> finalItems = new ArrayList<SelectItem>();
         SubstitutionRewriter rewriter = new SubstitutionRewriter(windowVisitor.substitutions);
         ExpressionTreeRewriter<Void> subst = new ExpressionTreeRewriter<Void>(rewriter);
+        ExpressionTreeRewriter<Void> dropTable = new ExpressionTreeRewriter<Void>(new ColumnContextEliminationRewriter());
 
         for (SingleColumn sc: Utilities.concatenate(aggregateItems, nonAggregateItems, windowItems)) {
             Expression repl = subst.rewrite(sc.getExpression(), null);
-            finalItems.add(new SingleColumn(repl, sc.getAlias()));
+            Expression repl1 = dropTable.rewrite(repl, null);
+            finalItems.add(new SingleColumn(repl1, sc.getAlias()));
         }
         Select selectFinal = new Select(true, finalItems);
         QuerySpecification joins = new QuerySpecification(
