@@ -37,7 +37,7 @@ import java.util.*;
 import static com.facebook.presto.sql.tree.Join.Type.LEFT;
 
 class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
-    static final boolean debug = true;
+    static final boolean debug = false;
 
     static class GroupByInfo {
         /**
