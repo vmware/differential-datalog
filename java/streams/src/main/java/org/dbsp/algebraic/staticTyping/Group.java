@@ -21,49 +21,51 @@
  * SOFTWARE.
  */
 
-package org.dbsp.algebraic;
+package org.dbsp.algebraic.staticTyping;
+
+import org.dbsp.algebraic.dynamicTyping.DynamicGroup;
 
 /**
- * Finite functions that map values into a group G also form a group themselves.
- * This is the implementation of that group.
- * @param <D>   Domain of the finite functions.
- * @param <T>   Codomain of finite functions.
+ * Abstract interface implemented by a Group: a monoid where each element has an inverse.
+ * @param <T>  Type that is used to represent the values in the group.
  */
-public class FiniteFunctionGroup<D, T> implements Group<FiniteFunction<D, T>> {
-    final Group<T> group;
+public interface Group<T> extends Monoid<T> {
+    /**
+     * The inverse of value data in the group.
+     * @param data  A value from the group.
+     * @return  The inverse.
+     */
+    T minus(T data);
 
-    public FiniteFunctionGroup(Group<T> group) {
-        this.group = group;
+    default boolean equal(T left, T right) {
+        return this.isZero(this.add(this.minus(left), right));
     }
 
-    @Override
-    public FiniteFunction<D, T> minus(FiniteFunction<D, T> data) {
-        return new FiniteFunction<D, T>() {
+    /**
+     * Convert this group into a group that operates on Object values.
+     * Needed for the dynamically-typed version of computations.
+     */
+    @SuppressWarnings("unchecked")
+    default DynamicGroup asUntyped() {
+        return new DynamicGroup() {
             @Override
-            public T apply(D d) {
-                return FiniteFunctionGroup.this.group.minus(data.apply(d));
+            public Object add(Object left, Object right) {
+                return Group.this.add((T)left, (T)right);
             }
-        };
-    }
 
-    @Override
-    public FiniteFunction<D, T> add(FiniteFunction<D, T> left, FiniteFunction<D, T> right) {
-        return new FiniteFunction<D, T>() {
             @Override
-            public T apply(D d) {
-                T first = left.apply(d);
-                T second = right.apply(d);
-                return FiniteFunctionGroup.this.group.add(first, second);
+            public Object zero() {
+                return Group.this.zero();
             }
-        };
-    }
 
-    @Override
-    public FiniteFunction<D, T> zero() {
-        return new FiniteFunction<D, T>() {
             @Override
-            public T apply(D d) {
-                return FiniteFunctionGroup.this.group.zero();
+            public Object minus(Object data) {
+                return Group.this.minus((T)data);
+            }
+
+            @Override
+            public DynamicGroup asUntyped() {
+                return this;
             }
         };
     }

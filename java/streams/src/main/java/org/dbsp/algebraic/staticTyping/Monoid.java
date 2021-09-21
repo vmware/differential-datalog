@@ -21,31 +21,36 @@
  * SOFTWARE.
  */
 
-package org.dbsp.circuits.operators;
-
-import org.dbsp.algebraic.staticTyping.Group;
-import org.dbsp.algebraic.dynamicTyping.types.Type;
-
-import java.util.Objects;
+package org.dbsp.algebraic.staticTyping;
 
 /**
- * An operator that adds its inputs.
+ * A monoid is an algebraic structure with an associative operation and a
+ * neutral element called zero.  All our monoids are commutative too.
+ * @param <T>  Java representation of the Monoid values.
  */
-public class PlusOperator extends BinaryOperator {
-    private final Group<Object> adder;
+public interface Monoid<T> {
+    /**
+     * Associative function that adds two values in the monoid.
+     * @param left   Left value to add.
+     * @param right  Right value to add.
+     * @return       The sum of left and right.
+     */
+    T add(T left, T right);
 
-    public PlusOperator(Type valueType) {
-        super(valueType, valueType, valueType);
-        this.adder = Objects.requireNonNull(valueType.getGroup());
+    /**
+     * The zero element of the monoid.
+     */
+    T zero();
+
+    default boolean isZero(T value) {
+        return value.equals(this.zero());
     }
 
-    @Override
-    public Object evaluate(Object left, Object right) {
-        return this.adder.add(left, right);
-    }
-
-    @Override
-    public String toString() {
-        return "+";
-    }
+    /**
+     * Check if two monoid elements are equal.
+     * @param w0  First value.
+     * @param w1  Second value.
+     * @return    True if the values are equal.
+     */
+    boolean equal(T w0, T w1);
 }

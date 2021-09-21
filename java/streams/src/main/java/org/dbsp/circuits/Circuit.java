@@ -24,7 +24,7 @@
 package org.dbsp.circuits;
 
 import org.dbsp.circuits.operators.*;
-import org.dbsp.circuits.types.Type;
+import org.dbsp.algebraic.dynamicTyping.types.Type;
 import org.dbsp.lib.Linq;
 
 import java.util.*;

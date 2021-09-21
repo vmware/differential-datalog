@@ -23,8 +23,6 @@
 
 package org.dbsp.circuits.operators;
 
-import org.dbsp.circuits.types.Type;
-
 /**
  * A consumer is an object that waits for a value to show up.
  */

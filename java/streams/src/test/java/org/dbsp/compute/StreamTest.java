@@ -26,9 +26,9 @@ package org.dbsp.compute;
 import javafx.util.Pair;
 import org.dbsp.compute.policies.IntegerRing;
 import org.dbsp.compute.policies.IntegerTime;
-import org.dbsp.algebraic.StreamGroup;
+import org.dbsp.algebraic.staticTyping.StreamGroup;
 import org.dbsp.algebraic.Time;
-import org.dbsp.algebraic.IStream;
+import org.dbsp.algebraic.staticTyping.IStream;
 import org.junit.Assert;
 import org.junit.Test;
 

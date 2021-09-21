@@ -24,6 +24,8 @@
 package org.dbsp.compute;
 
 import org.dbsp.algebraic.*;
+import org.dbsp.algebraic.staticTyping.Group;
+import org.dbsp.algebraic.staticTyping.IStream;
 import org.dbsp.compute.policies.IntegerRing;
 import org.dbsp.compute.policies.IntegerTime;
 import org.dbsp.compute.relational.ZSet;

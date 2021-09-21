@@ -26,7 +26,7 @@ package org.dbsp.compute;
 import org.dbsp.compute.policies.IntegerTime;
 import org.dbsp.algebraic.Time;
 import org.dbsp.algebraic.TimeFactory;
-import org.dbsp.algebraic.IStream;
+import org.dbsp.algebraic.staticTyping.IStream;
 
 /**
  * The "identity stream" of integers, returning the values 0,1,2,...

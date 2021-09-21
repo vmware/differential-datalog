@@ -23,9 +23,9 @@
 
 package org.dbsp.compute.relational;
 
-import org.dbsp.algebraic.FiniteFunction;
-import org.dbsp.algebraic.FiniteFunctionGroup;
-import org.dbsp.algebraic.ZRing;
+import org.dbsp.algebraic.staticTyping.FiniteFunction;
+import org.dbsp.algebraic.staticTyping.FiniteFunctionGroup;
+import org.dbsp.algebraic.staticTyping.ZRing;
 
 import java.util.*;
 import java.util.function.BiFunction;
@@ -41,7 +41,7 @@ public class ZSet<T extends Comparable<T>, W>
         extends FiniteFunction<T, W>
         implements Comparable<ZSet<T, W>> {
     /**
-     * Data in the set: each value of type type is mapped to a weight.
+     * Data in the set: each value of type T is mapped to a weight.
      */
     final HashMap<T, W> data;
     /**

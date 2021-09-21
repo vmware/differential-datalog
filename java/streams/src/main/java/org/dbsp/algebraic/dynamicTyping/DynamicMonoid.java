@@ -21,31 +21,8 @@
  * SOFTWARE.
  */
 
-package org.dbsp.circuits.operators;
+package org.dbsp.algebraic.dynamicTyping;
 
-import org.dbsp.algebraic.staticTyping.Group;
-import org.dbsp.algebraic.dynamicTyping.types.Type;
+import org.dbsp.algebraic.staticTyping.Monoid;
 
-import java.util.Objects;
-
-/**
- * An operator that adds its inputs.
- */
-public class PlusOperator extends BinaryOperator {
-    private final Group<Object> adder;
-
-    public PlusOperator(Type valueType) {
-        super(valueType, valueType, valueType);
-        this.adder = Objects.requireNonNull(valueType.getGroup());
-    }
-
-    @Override
-    public Object evaluate(Object left, Object right) {
-        return this.adder.add(left, right);
-    }
-
-    @Override
-    public String toString() {
-        return "+";
-    }
-}
+public interface DynamicMonoid extends Monoid<Object> { }

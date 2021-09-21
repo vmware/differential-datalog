@@ -21,31 +21,26 @@
  * SOFTWARE.
  */
 
-package org.dbsp.circuits.operators;
+package org.dbsp.algebraic.dynamicTyping.types;
 
-import org.dbsp.algebraic.staticTyping.Group;
-import org.dbsp.algebraic.dynamicTyping.types.Type;
+import org.dbsp.algebraic.dynamicTyping.DynamicGroup;
+import org.dbsp.compute.policies.IntegerRing;
 
-import java.util.Objects;
+import javax.annotation.Nullable;
 
 /**
- * An operator that adds its inputs.
+ * Represents a type that stores Java Integers.
  */
-public class PlusOperator extends BinaryOperator {
-    private final Group<Object> adder;
+public final class IntegerType implements Type {
+    private IntegerType() {}
+    public static final IntegerType instance = new IntegerType();
 
-    public PlusOperator(Type valueType) {
-        super(valueType, valueType, valueType);
-        this.adder = Objects.requireNonNull(valueType.getGroup());
-    }
-
-    @Override
-    public Object evaluate(Object left, Object right) {
-        return this.adder.add(left, right);
-    }
-
-    @Override
     public String toString() {
-        return "+";
+        return "Integer";
+    }
+
+    @Override
+    public DynamicGroup getGroup() {
+        return IntegerRing.instance.asUntyped();
     }
 }

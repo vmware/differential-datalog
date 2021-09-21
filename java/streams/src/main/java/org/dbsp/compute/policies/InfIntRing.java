@@ -23,7 +23,7 @@
 
 package org.dbsp.compute.policies;
 
-import org.dbsp.algebraic.ZRing;
+import org.dbsp.algebraic.staticTyping.ZRing;
 
 import java.math.BigInteger;
 

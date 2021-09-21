@@ -21,28 +21,14 @@
  * SOFTWARE.
  */
 
-package org.dbsp.circuits.types;
+package org.dbsp.lib;
 
-import org.dbsp.algebraic.Group;
-import org.dbsp.compute.policies.IntegerRing;
+public class Pair<T, S> {
+    public final T first;
+    public final S second;
 
-import javax.annotation.Nullable;
-
-/**
- * Represents a type that stores Java Integers.
- */
-public final class IntegerType implements Type {
-    private IntegerType() {}
-    public static final IntegerType instance = new IntegerType();
-
-    public String toString() {
-        return "Integer";
-    }
-
-    @SuppressWarnings("ConstantConditions")
-    @Nullable
-    @Override
-    public Group<Object> getGroup() {
-        return IntegerRing.instance.asUntyped();
+    public Pair(T first, S second) {
+        this.first = first;
+        this.second = second;
     }
 }

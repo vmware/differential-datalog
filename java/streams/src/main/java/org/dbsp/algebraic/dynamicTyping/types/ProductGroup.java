@@ -21,31 +21,45 @@
  * SOFTWARE.
  */
 
-package org.dbsp.circuits.operators;
+package org.dbsp.algebraic.dynamicTyping.types;
 
-import org.dbsp.algebraic.staticTyping.Group;
-import org.dbsp.algebraic.dynamicTyping.types.Type;
+import org.dbsp.algebraic.dynamicTyping.DynamicGroup;
+import org.dbsp.algebraic.staticTyping.Monoid;
+import org.dbsp.lib.Linq;
+import org.dbsp.lib.LinqIterator;
 
-import java.util.Objects;
+import java.util.List;
 
 /**
- * An operator that adds its inputs.
+ * A product group is a product of several groups, operating pointwise.
  */
-public class PlusOperator extends BinaryOperator {
-    private final Group<Object> adder;
+public class ProductGroup implements DynamicGroup {
+    final List<DynamicGroup> components;
 
-    public PlusOperator(Type valueType) {
-        super(valueType, valueType, valueType);
-        this.adder = Objects.requireNonNull(valueType.getGroup());
+    public ProductGroup(List<DynamicGroup> components) {
+        this.components = components;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public Object minus(Object data) {
+        List<Object> list = (List<Object>)data;
+        return LinqIterator.fromList(this.components).zip(list).map(p -> p.first.minus(p.second));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public Object add(Object left, Object right) {
+        List<Object> llist = (List<Object>)left;
+        List<Object> rlist = (List<Object>)right;
+        return LinqIterator.fromList(this.components)
+                .zip3(llist, rlist)
+                .map(p -> p.first.add(p.second, p.third))
+                .toList();
     }
 
     @Override
-    public Object evaluate(Object left, Object right) {
-        return this.adder.add(left, right);
-    }
-
-    @Override
-    public String toString() {
-        return "+";
+    public Object zero() {
+        return Linq.map(this.components, Monoid::zero);
     }
 }

@@ -25,7 +25,7 @@ package org.dbsp.circuits.operators;
 
 import org.dbsp.circuits.ComputationalElement;
 import org.dbsp.circuits.Wire;
-import org.dbsp.circuits.types.Type;
+import org.dbsp.algebraic.dynamicTyping.types.Type;
 import org.dbsp.lib.Linq;
 
 import java.util.ArrayList;

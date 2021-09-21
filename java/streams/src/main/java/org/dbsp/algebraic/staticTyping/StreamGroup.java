@@ -21,49 +21,45 @@
  * SOFTWARE.
  */
 
-package org.dbsp.algebraic;
+package org.dbsp.algebraic.staticTyping;
+
+import org.dbsp.algebraic.Time;
+import org.dbsp.algebraic.TimeFactory;
 
 /**
- * Abstract interface implemented by a Group: a monoid where each element has an inverse.
- * @param <T>  Type that is used to represent the values in the group.
+ * The group structure induced by a stream where values belong to a group.
+ * @param <T>  Values in the stream.
  */
-public interface Group<T> extends Monoid<T> {
-    /**
-     * The inverse of value data in the group.
-     * @param data  A value from the group.
-     * @return  The inverse.
-     */
-    T minus(T data);
+public class StreamGroup<T> implements Group<IStream<T>> {
+    final Group<T> group;
+    final TimeFactory timeFactory;
 
-    default boolean equal(T left, T right) {
-        return this.isZero(this.add(this.minus(left), right));
+    /**
+     * Create a stream group from a group and a time factory.
+     * @param group        Group that stream elements belong to.
+     * @param timeFactory  Factory that knows how to create time indexes for stream.
+     */
+    public StreamGroup(Group<T> group, TimeFactory timeFactory) {
+        this.group = group;
+        this.timeFactory = timeFactory;
     }
 
-    /**
-     * Convert this group into a group that operates on Object values.
-     * Needed for the dynamically-typed version of computations.
-     */
-    @SuppressWarnings("unchecked")
-    default Group<Object> asUntyped() {
-        return new Group<Object>() {
-            @Override
-            public Object add(Object left, Object right) {
-                return Group.this.add((T)left, (T)right);
-            }
+    @Override
+    public IStream<T> minus(IStream<T> data) {
+        return data.negate(group);
+    }
 
-            @Override
-            public Object zero() {
-                return Group.this.zero();
-            }
+    @Override
+    public IStream<T> add(IStream<T> left, IStream<T> right) {
+        return left.add(right, group);
+    }
 
+    @Override
+    public IStream<T> zero() {
+        return new IStream<T>(this.timeFactory) {
             @Override
-            public Object minus(Object data) {
-                return Group.this.minus((T)data);
-            }
-
-            @Override
-            public Group<Object> asUntyped() {
-                return this;
+            public T get(Time index) {
+                return StreamGroup.this.group.zero();
             }
         };
     }

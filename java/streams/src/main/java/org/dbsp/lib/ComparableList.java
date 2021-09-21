@@ -21,42 +21,34 @@
  * SOFTWARE.
  */
 
-package org.dbsp.circuits.types;
+package org.dbsp.lib;
 
-import org.dbsp.algebraic.Group;
-import org.dbsp.compute.policies.IntegerRing;
-import org.dbsp.compute.relational.ZSetGroup;
+import java.util.ArrayList;
+import java.util.Arrays;
 
-import javax.annotation.Nullable;
-import java.util.Objects;
+/**
+ * Lists that are compared elementwise.
+ */
+public class ComparableList<T extends Comparable<T>>
+        extends ArrayList<T>
+        implements Comparable<ComparableList<T>> {
+    public ComparableList(int capacity) {
+        super(capacity);
+    }
 
-public class ZSetType implements Type {
-    final Type elementType;
-    final Group<Object> zsetGroup;
-
-    interface ComparableObject extends Comparable<ComparableObject> { }
-
-    public ZSetType(Type elementType) {
-        this.elementType = elementType;
-        this.zsetGroup = new ZSetGroup<ComparableObject, Integer>(IntegerRing.instance).asUntyped();
+    @SafeVarargs
+    public ComparableList(T... o) {
+        super(o.length);
+        this.addAll(Arrays.asList(o));
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        ZSetType zSetType = (ZSetType) o;
-        return elementType.equals(zSetType.elementType);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(elementType);
-    }
-
-    @Nullable
-    @Override
-    public Group<Object> getGroup() {
-        return this.zsetGroup;
+    public int compareTo(ComparableList<T> o) {
+        for (int i = 0; i < this.size() && i < o.size(); i++) {
+            int compare = this.get(i).compareTo(o.get(i));
+            if (compare != 0)
+                return compare;
+        }
+        return Integer.compare(this.size(), o.size());
     }
 }

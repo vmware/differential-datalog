@@ -21,55 +21,57 @@
  * SOFTWARE.
  */
 
-package org.dbsp.compute.relational;
+package org.dbsp.algebraic.dynamicTyping.types;
 
-import org.dbsp.algebraic.staticTyping.ZRing;
+import org.dbsp.algebraic.dynamicTyping.DynamicGroup;
+import org.dbsp.lib.LinqIterator;
 
-import java.util.*;
+import javax.annotation.Nullable;
+import java.util.List;
+import java.util.Objects;
 
 /**
- * Simple sets.  Inputs and outputs of computations are usually sets.
- * @param <T>  Type of elements in the sets.
+ * ListType is the type of objects that are tuples.
+ * Values of this type are java lists (List) that contain values of the corresponding types.
  */
-public class RSet<T extends Comparable<T>> {
-    public final Set<T> data;
+public class TupleType implements Type {
+    /**
+     * Types of the tuple components.
+     */
+    final List<Type> components;
+    /**
+     * Group that operates on tuples.
+     */
+    @Nullable
+    final DynamicGroup group;
 
-    public RSet(Collection<T> data) {
-        this.data = new HashSet<T>(data);
+    public TupleType(List<Type> components) {
+        this.components = components;
+        boolean nogroup = LinqIterator.fromList(components)
+                .map(Type::getGroup)
+                .any(Objects::isNull);
+        this.group = nogroup ? null :
+                new ProductGroup(LinqIterator.fromList(components)
+                .map(Type::getGroup)
+                .toList());
+    }
+
+    @Nullable
+    @Override
+    public DynamicGroup getGroup() {
+        return this.group;
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        RSet<?> set = (RSet<?>) o;
-        return this.data.equals(set.data);
+        TupleType tupleType = (TupleType) o;
+        return components.equals(tupleType.components);
     }
 
     @Override
     public int hashCode() {
-        return this.data.hashCode();
-    }
-
-    @Override
-    public String toString() {
-        List<T> sorted = new ArrayList<T>(this.data);
-        sorted.sort(Comparator.naturalOrder());
-        StringBuilder builder = new StringBuilder();
-        builder.append("{");
-        boolean first = true;
-        for (T value: sorted) {
-            if (!first)
-                builder.append(",");
-            else
-                first = false;
-            builder.append(value);
-        }
-        builder.append("}");
-        return builder.toString();
-    }
-
-    public <W> ZSet<T, W> toZSet(ZRing<W> ring) {
-        return new ZSet<T, W>(ring, this.data);
+        return Objects.hash(components);
     }
 }

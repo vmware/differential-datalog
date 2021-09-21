@@ -21,31 +21,10 @@
  * SOFTWARE.
  */
 
-package org.dbsp.circuits.operators;
-
-import org.dbsp.algebraic.staticTyping.Group;
-import org.dbsp.algebraic.dynamicTyping.types.Type;
-
-import java.util.Objects;
+package org.dbsp.lib;
 
 /**
- * An operator that adds its inputs.
+ * Objects that can be compared to each other.
+ * Elements in a ZSet need to be comparable.
  */
-public class PlusOperator extends BinaryOperator {
-    private final Group<Object> adder;
-
-    public PlusOperator(Type valueType) {
-        super(valueType, valueType, valueType);
-        this.adder = Objects.requireNonNull(valueType.getGroup());
-    }
-
-    @Override
-    public Object evaluate(Object left, Object right) {
-        return this.adder.add(left, right);
-    }
-
-    @Override
-    public String toString() {
-        return "+";
-    }
-}
+public interface ComparableObject extends Comparable<ComparableObject> { }

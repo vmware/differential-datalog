@@ -23,9 +23,9 @@
 
 package org.dbsp.compute.relational;
 
-import org.dbsp.algebraic.FiniteFunctionGroup;
-import org.dbsp.algebraic.Group;
-import org.dbsp.algebraic.ZRing;
+import org.dbsp.algebraic.staticTyping.FiniteFunctionGroup;
+import org.dbsp.algebraic.staticTyping.Group;
+import org.dbsp.algebraic.staticTyping.ZRing;
 
 /**
  * The group structure that operates on Z-sets with elements of type T

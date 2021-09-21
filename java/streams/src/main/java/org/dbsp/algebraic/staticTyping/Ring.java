@@ -21,16 +21,38 @@
  * SOFTWARE.
  */
 
-package org.dbsp.algebraic;
+package org.dbsp.algebraic.staticTyping;
 
 /**
- * A ring similar to Z, where we can talk about values being positive or negative.
- * @param <W>  Type of values in the ring.
+ * An algebraic structure of a ring.
+ * @param <T>  Type of elements in the ring.
  */
-public interface ZRing<W> extends Ring<W> {
+public interface Ring<T> extends Group<T> {
     /**
-     * True if the value is positive.
-     * @param value  Value to compare with zero
+     * Multiplication in the ring.
+     * @param left   Left value to multiply.
+     * @param right  Right value to multiply.
+     * @return       The result of the multiplication.  This operation better be associative.
      */
-    boolean isPositive(W value);
+    T times(T left, T right);
+
+    /**
+     * The neutral element for multiplication.
+     */
+    T one();
+
+    /**
+     * Add one to a value.
+     * @param value  Value to increment.
+     */
+    default T increment(T value) {
+        return this.add(value, this.one());
+    }
+
+    /**
+     * Check if a value is one.
+     * @param value  Value to compare.
+     * @return       True if the value is the ring one element.
+     */
+    default boolean isOne(T value) { return this.one().equals(value); }
 }

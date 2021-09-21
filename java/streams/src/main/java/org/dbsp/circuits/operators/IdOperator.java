@@ -23,7 +23,7 @@
 
 package org.dbsp.circuits.operators;
 
-import org.dbsp.circuits.types.Type;
+import org.dbsp.algebraic.dynamicTyping.types.Type;
 
 /**
  * An operator that works on streams.  It delays the input stream by 1 clock.

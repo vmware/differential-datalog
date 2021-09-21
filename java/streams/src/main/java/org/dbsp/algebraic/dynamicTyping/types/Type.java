@@ -21,31 +21,22 @@
  * SOFTWARE.
  */
 
-package org.dbsp.circuits.operators;
+package org.dbsp.algebraic.dynamicTyping.types;
 
+import org.dbsp.algebraic.dynamicTyping.DynamicGroup;
 import org.dbsp.algebraic.staticTyping.Group;
-import org.dbsp.algebraic.dynamicTyping.types.Type;
 
-import java.util.Objects;
+import javax.annotation.Nullable;
 
 /**
- * An operator that adds its inputs.
+ * Represents a type that is computed on.
  */
-public class PlusOperator extends BinaryOperator {
-    private final Group<Object> adder;
-
-    public PlusOperator(Type valueType) {
-        super(valueType, valueType, valueType);
-        this.adder = Objects.requireNonNull(valueType.getGroup());
-    }
-
-    @Override
-    public Object evaluate(Object left, Object right) {
-        return this.adder.add(left, right);
-    }
-
-    @Override
-    public String toString() {
-        return "+";
-    }
+public interface Type {
+    /**
+     * Returns the group that at runtime can compute on values of this type.
+     * Some types may not be part of a group; then this function returns 'null'.
+     */
+    @Nullable
+    DynamicGroup getGroup();
 }
+

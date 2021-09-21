@@ -21,31 +21,39 @@
  * SOFTWARE.
  */
 
-package org.dbsp.circuits.operators;
+package org.dbsp.algebraic.dynamicTyping.types;
 
-import org.dbsp.algebraic.staticTyping.Group;
-import org.dbsp.algebraic.dynamicTyping.types.Type;
+import org.dbsp.algebraic.dynamicTyping.DynamicGroup;
+import org.dbsp.compute.policies.IntegerRing;
+import org.dbsp.compute.relational.ZSetGroup;
+import org.dbsp.lib.ComparableObject;
 
 import java.util.Objects;
 
-/**
- * An operator that adds its inputs.
- */
-public class PlusOperator extends BinaryOperator {
-    private final Group<Object> adder;
+public class ZSetType implements Type {
+    final Type elementType;
+    final DynamicGroup zsetGroup;
 
-    public PlusOperator(Type valueType) {
-        super(valueType, valueType, valueType);
-        this.adder = Objects.requireNonNull(valueType.getGroup());
+    public ZSetType(Type elementType) {
+        this.elementType = elementType;
+        this.zsetGroup = new ZSetGroup<ComparableObject, Integer>(IntegerRing.instance).asUntyped();
     }
 
     @Override
-    public Object evaluate(Object left, Object right) {
-        return this.adder.add(left, right);
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ZSetType zSetType = (ZSetType) o;
+        return elementType.equals(zSetType.elementType);
     }
 
     @Override
-    public String toString() {
-        return "+";
+    public int hashCode() {
+        return Objects.hash(elementType);
+    }
+
+    @Override
+    public DynamicGroup getGroup() {
+        return this.zsetGroup;
     }
 }

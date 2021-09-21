@@ -21,22 +21,28 @@
  * SOFTWARE.
  */
 
-package org.dbsp.circuits.types;
+package org.dbsp.algebraic.dynamicTyping.types;
 
-import org.dbsp.algebraic.Group;
+import org.dbsp.algebraic.dynamicTyping.DynamicGroup;
 
 import javax.annotation.Nullable;
 
 /**
- * Represents a type that is computed on.
+ * The values of this type are Java Strings.
+ * Strings do not form a group.
  */
-public interface Type {
-    /**
-     * If the type is from a group, this returns the group
-     * that at runtime can compute on values of this type.
-     * Otherwise this returns null.
-     */
+public class StringType implements Type {
     @Nullable
-    Group<Object> getGroup();
-}
+    @Override
+    public DynamicGroup getGroup() {
+        return null;
+    }
 
+    private StringType() {}
+    public static final StringType instance = new StringType();
+
+    public String toString() {
+        return "String";
+    }
+
+}

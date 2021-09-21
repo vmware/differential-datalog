@@ -21,31 +21,17 @@
  * SOFTWARE.
  */
 
-package org.dbsp.circuits.operators;
-
-import org.dbsp.algebraic.staticTyping.Group;
-import org.dbsp.algebraic.dynamicTyping.types.Type;
-
-import java.util.Objects;
-
 /**
- * An operator that adds its inputs.
+ * Package that doesn't allow null values as method parameters.
  */
-public class PlusOperator extends BinaryOperator {
-    private final Group<Object> adder;
 
-    public PlusOperator(Type valueType) {
-        super(valueType, valueType, valueType);
-        this.adder = Objects.requireNonNull(valueType.getGroup());
-    }
+@ParametersAreNonnullByDefault
+@FieldsAreNonnullByDefault
+@MethodsAreNonnullByDefault
+package org.dbsp.algebraic.staticTyping;
 
-    @Override
-    public Object evaluate(Object left, Object right) {
-        return this.adder.add(left, right);
-    }
+import org.dbsp.FieldsAreNonnullByDefault;
+import org.dbsp.MethodsAreNonnullByDefault;
 
-    @Override
-    public String toString() {
-        return "+";
-    }
-}
+import javax.annotation.ParametersAreNonnullByDefault;
+

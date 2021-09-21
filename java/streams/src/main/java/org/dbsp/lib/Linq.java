@@ -24,7 +24,7 @@
 
 package org.dbsp.lib;
 
-import org.dbsp.circuits.types.Type;
+import javafx.util.Pair;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
@@ -88,6 +88,15 @@ public class Linq {
         List<S> result = new ArrayList<S>(data.size());
         for (T aData : data)
             result.add(function.apply(aData));
+        return result;
+    }
+
+    public static <T, S> List<Pair<T, S>> zip(List<T> left, List<S> right) {
+        if (left.size() != right.size())
+            throw new RuntimeException("Zipping unequal lists");
+        List<Pair<T, S>> result = new ArrayList<Pair<T, S>>(left.size());
+        for (int i = 0; i < left.size(); i++)
+            result.add(new Pair<T, S>(left.get(i), right.get(i)));
         return result;
     }
 

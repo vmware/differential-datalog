@@ -21,43 +21,14 @@
  * SOFTWARE.
  */
 
-package org.dbsp.algebraic;
+package org.dbsp.algebraic.staticTyping;
+
+import java.util.function.Function;
 
 /**
- * The group structure induced by a stream where values belong to a group.
- * @param <T>  Values in the stream.
+ * A finite function.
+ * @param <D>  Values in the domain of the function.
+ * @param <T>  Co-domain of the function.
  */
-public class StreamGroup<T> implements Group<IStream<T>> {
-    final Group<T> group;
-    final TimeFactory timeFactory;
-
-    /**
-     * Create a stream group from a group and a time factory.
-     * @param group        Group that stream elements belong to.
-     * @param timeFactory  Factory that knows how to create time indexes for stream.
-     */
-    public StreamGroup(Group<T> group, TimeFactory timeFactory) {
-        this.group = group;
-        this.timeFactory = timeFactory;
-    }
-
-    @Override
-    public IStream<T> minus(IStream<T> data) {
-        return data.negate(group);
-    }
-
-    @Override
-    public IStream<T> add(IStream<T> left, IStream<T> right) {
-        return left.add(right, group);
-    }
-
-    @Override
-    public IStream<T> zero() {
-        return new IStream<T>(this.timeFactory) {
-            @Override
-            public T get(Time index) {
-                return StreamGroup.this.group.zero();
-            }
-        };
-    }
+public abstract class FiniteFunction<D, T> implements Function<D, T> {
 }

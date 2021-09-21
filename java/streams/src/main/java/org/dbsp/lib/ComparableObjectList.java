@@ -21,31 +21,33 @@
  * SOFTWARE.
  */
 
-package org.dbsp.circuits.operators;
+package org.dbsp.lib;
 
-import org.dbsp.algebraic.staticTyping.Group;
-import org.dbsp.algebraic.dynamicTyping.types.Type;
-
-import java.util.Objects;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 /**
- * An operator that adds its inputs.
+ * A dynamically typed version of ComparableList.
  */
-public class PlusOperator extends BinaryOperator {
-    private final Group<Object> adder;
-
-    public PlusOperator(Type valueType) {
-        super(valueType, valueType, valueType);
-        this.adder = Objects.requireNonNull(valueType.getGroup());
+public class ComparableObjectList
+    extends ArrayList<Object>
+        implements Comparable<ComparableObjectList>
+        // implements ComparableObject
+{
+    public ComparableObjectList(Object... o) {
+        super(o.length);
+        this.addAll(Arrays.asList(o));
     }
 
     @Override
-    public Object evaluate(Object left, Object right) {
-        return this.adder.add(left, right);
-    }
-
-    @Override
-    public String toString() {
-        return "+";
+    public int compareTo(ComparableObjectList o) {
+        for (int i = 0; i < this.size() && i < o.size(); i++) {
+            // The following may not implement ComparableObject, but they may actually have a compareTo method.
+            // We cannot retrofit this interface to existing classes like Integer or String.
+            int compare = ((ComparableObject)this.get(i)).compareTo((ComparableObject)o.get(i));
+            if (compare != 0)
+                return compare;
+        }
+        return Integer.compare(this.size(), o.size());
     }
 }

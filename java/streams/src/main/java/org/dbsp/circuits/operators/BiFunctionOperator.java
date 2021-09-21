@@ -23,10 +23,9 @@
 
 package org.dbsp.circuits.operators;
 
-import org.dbsp.circuits.types.Type;
+import org.dbsp.algebraic.dynamicTyping.types.Type;
 
 import java.util.function.BiFunction;
-import java.util.function.Function;
 
 /**
  * A unary operator that applies a specified function to its input.

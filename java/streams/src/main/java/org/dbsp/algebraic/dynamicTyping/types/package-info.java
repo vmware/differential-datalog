@@ -28,7 +28,7 @@
 @ParametersAreNonnullByDefault
 @FieldsAreNonnullByDefault
 @MethodsAreNonnullByDefault
-package org.dbsp.circuits.types;
+package org.dbsp.algebraic.dynamicTyping.types;
 
 import org.dbsp.FieldsAreNonnullByDefault;
 import org.dbsp.MethodsAreNonnullByDefault;

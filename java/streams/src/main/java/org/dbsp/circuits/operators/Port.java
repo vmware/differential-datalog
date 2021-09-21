@@ -23,7 +23,7 @@
 
 package org.dbsp.circuits.operators;
 
-import org.dbsp.circuits.types.Type;
+import org.dbsp.algebraic.dynamicTyping.types.Type;
 
 import javax.annotation.Nullable;
 import java.util.Objects;

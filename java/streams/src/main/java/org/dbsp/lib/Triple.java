@@ -21,36 +21,16 @@
  * SOFTWARE.
  */
 
-package org.dbsp.algebraic;
+package org.dbsp.lib;
 
-/**
- * A monoid is an algebraic structure with an associative operation and a
- * neutral element called zero.  All our monoids are commutative too.
- * @param <T>  Java representation of the Monoid values.
- */
-public interface Monoid<T> {
-    /**
-     * Associative function that adds two values in the monoid.
-     * @param left   Left value to add.
-     * @param right  Right value to add.
-     * @return       The sum of left and right.
-     */
-    T add(T left, T right);
+public class Triple<T, S, U> {
+    public final T first;
+    public final S second;
+    public final U third;
 
-    /**
-     * The zero element of the monoid.
-     */
-    T zero();
-
-    default boolean isZero(T value) {
-        return value.equals(this.zero());
+    public Triple(T first, S second, U third) {
+        this.first = first;
+        this.second = second;
+        this.third = third;
     }
-
-    /**
-     * Check if two monoid elements are equal.
-     * @param w0  First value.
-     * @param w1  Second value.
-     * @return    True if the values are equal.
-     */
-    boolean equal(T w0, T w1);
 }

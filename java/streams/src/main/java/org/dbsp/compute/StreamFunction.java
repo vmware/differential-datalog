@@ -23,8 +23,8 @@
 
 package org.dbsp.compute;
 
-import org.dbsp.algebraic.Group;
-import org.dbsp.algebraic.IStream;
+import org.dbsp.algebraic.staticTyping.Group;
+import org.dbsp.algebraic.staticTyping.IStream;
 import org.dbsp.algebraic.Time;
 import org.dbsp.algebraic.TimeFactory;
 

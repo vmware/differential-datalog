@@ -21,14 +21,12 @@
  * SOFTWARE.
  */
 
-package org.dbsp.algebraic;
+package org.dbsp.algebraic.staticTyping;
 
 import javafx.util.Pair;
-import org.dbsp.compute.StreamBiFunction;
+import org.dbsp.algebraic.Time;
+import org.dbsp.algebraic.TimeFactory;
 import org.dbsp.compute.StreamFunction;
-
-import java.util.function.BiFunction;
-import java.util.function.Function;
 
 /**
  * Generic stream API containing values of type V.

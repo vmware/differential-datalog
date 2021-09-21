@@ -26,10 +26,9 @@ package org.dbsp.compute;
 import org.dbsp.compute.policies.IntegerRing;
 import org.dbsp.compute.relational.Grouping;
 import org.dbsp.compute.relational.ZSet;
+import org.dbsp.lib.ComparableList;
 import org.junit.Assert;
 import org.junit.Test;
-
-import java.util.ArrayList;
 
 public class ZSetTest {
 
@@ -86,22 +85,6 @@ public class ZSetTest {
         Assert.assertEquals(1, distinct.size());
         Assert.assertEquals(0, (int)distinct.weight(t1));
         Assert.assertEquals(1, (int)distinct.weight(t));
-    }
-
-    static class ComparableList<T extends Comparable<T>> extends ArrayList<T> implements Comparable<ComparableList<T>> {
-        public ComparableList(int i) {
-            super(i);
-        }
-
-        @Override
-        public int compareTo(ComparableList<T> o) {
-            for (int i = 0; i < this.size() && i < o.size(); i++) {
-                int compare = this.get(i).compareTo(o.get(i));
-                if (compare != 0)
-                    return compare;
-            }
-            return Integer.compare(this.size(), o.size());
-        }
     }
 
     @Test

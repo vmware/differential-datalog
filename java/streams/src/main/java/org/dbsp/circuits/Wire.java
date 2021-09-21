@@ -26,7 +26,7 @@ package org.dbsp.circuits;
 import org.dbsp.circuits.operators.Consumer;
 import org.dbsp.circuits.operators.Operator;
 import org.dbsp.circuits.operators.Sink;
-import org.dbsp.circuits.types.Type;
+import org.dbsp.algebraic.dynamicTyping.types.Type;
 import org.dbsp.lib.HasId;
 import org.dbsp.lib.Linq;
 

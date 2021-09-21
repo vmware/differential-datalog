@@ -25,11 +25,8 @@ package org.dbsp.compute;
 
 import org.dbsp.circuits.*;
 import org.dbsp.circuits.operators.*;
-import org.dbsp.circuits.types.IntegerType;
-import org.dbsp.circuits.types.Type;
-import org.dbsp.circuits.types.ZSetType;
-import org.dbsp.compute.policies.IntegerRing;
-import org.dbsp.compute.relational.ZSet;
+import org.dbsp.algebraic.dynamicTyping.types.IntegerType;
+import org.dbsp.algebraic.dynamicTyping.types.Type;
 import org.dbsp.lib.Linq;
 import org.junit.Assert;
 import org.junit.Test;
@@ -39,8 +36,10 @@ import java.util.List;
 public class OperatorTest {
     static final Type IT = IntegerType.instance;
     static final List<Type> ITL = Linq.list(IT);
-    static final Type ZT = new ZSetType(IT);
-    static final List<Type> ZTL = Linq.list(ZT);
+
+    void show(Circuit c) {
+        System.out.println(c.toGraphvizTop());
+    }
 
     @Test
     public void simpleOperatorTest() {
@@ -53,7 +52,7 @@ public class OperatorTest {
         circuit.seal();
         Sink sink = o.addSink();
         // Let's run
-        System.out.println(circuit.toGraphvizTop());
+        this.show(circuit);
         circuit.reset();
         for (int i = 0; i < 10; i++) {
             port.setValue(i);
@@ -77,7 +76,7 @@ public class OperatorTest {
         Wire o = circuit.addOutputWireFromOperator(delay1);
         Sink sink = o.addSink();
         circuit.seal();
-        System.out.println(circuit.toGraphvizTop());
+        this.show(circuit);
         // Let's run
         circuit.reset();
         for (int i = 0; i < 10; i++) {
@@ -96,7 +95,7 @@ public class OperatorTest {
         Circuit circuit = op.circuit;
         Port port = circuit.getInputPort(0);
         Sink sink = circuit.getOutputWires().get(0).addSink();
-        System.out.println(circuit.toGraphvizTop());
+        this.show(circuit);
         // Let's run
         circuit.reset();
         for (int i = 0; i < 10; i++) {
@@ -116,7 +115,7 @@ public class OperatorTest {
         Circuit circuit = op.circuit;
         Sink sink = circuit.getOutputWires().get(0).addSink();
         // Let's run
-        System.out.println(circuit.toGraphvizTop());
+        this.show(circuit);
         circuit.reset();
         Port port = circuit.getInputPort(0);
         for (int i = 0; i < 10; i++) {
@@ -142,7 +141,7 @@ public class OperatorTest {
         c.seal();
         Sink sink = output.addSink();
 
-        System.out.println(c.toGraphvizTop());
+        this.show(c);
         c.reset();
         for (int iv = 0; iv < 10; iv++) {
             input.setValue(iv);
@@ -167,7 +166,7 @@ public class OperatorTest {
         c.seal();
 
         Sink sink = output.addSink();
-        System.out.println(c.toGraphvizTop());
+        this.show(c);
         c.reset();
         for (int iv = 0; iv < 10; iv++) {
             input.setValue(iv);
@@ -192,33 +191,13 @@ public class OperatorTest {
         c.seal();
 
         Sink sink = output.addSink();
-        System.out.println(c.toGraphvizTop());
+        this.show(c);
         c.reset();
         for (int iv = 0; iv < 10; iv++) {
             input.setValue(iv);
             c.step();
             Object out = sink.getValue();
             Assert.assertEquals(iv, out);
-        }
-    }
-
-    @Test
-    public void relationIdTest() {
-        Circuit c = new Circuit("top", ZTL ,ZTL);
-        Operator id = c.addOperator(new IdOperator(ZT));
-        Port input = c.getInputPort(0);
-        input.connectTo(id, 0);
-        Wire output = c.addOutputWireFromOperator(id);
-        c.seal();
-        Sink sink = output.addSink();
-        c.reset();
-        ZSet<Integer, Integer> zs = new ZSet<Integer, Integer>(IntegerRing.instance);
-        for (int iv = 0; iv < 10; iv++) {
-            zs.add(10, 1);
-            input.setValue(zs);
-            c.step();
-            Object out = sink.getValue();
-            Assert.assertEquals(zs, out);
         }
     }
 }
