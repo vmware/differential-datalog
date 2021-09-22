@@ -117,6 +117,10 @@ public final class DDlogJooqProvider implements MockDataProvider {
         }
     }
 
+    public DSLContext getDslContext() {
+        return dslContext;
+    }
+
     /*
      * All executed SQL queries against a JOOQ connection are received here
      */
@@ -266,6 +270,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
                 return exception(insert.toString());
             }
             final SqlNode[] values = ((SqlBasicCall) insert.getSource()).getOperands();
+
             final String tableName = ((SqlIdentifier) insert.getTargetTable()).getSimple();
             final List<Field<?>> fields = tablesToFields.get(tableName.toUpperCase());
             if (fields == null) {
