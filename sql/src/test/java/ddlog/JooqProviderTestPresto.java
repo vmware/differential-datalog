@@ -47,6 +47,8 @@ public class JooqProviderTestPresto extends JooqProviderTestBase {
         String v1 = "create view good_hosts as select distinct * from hosts where capacity < 10";
         String checkArrayParse = "create table junk (testCol integer array)";
         String checkNotNullColumns = "create table not_null (test_col1 integer not null, test_col2 varchar(36) not null)";
+        String checkArrayType = "create view check_array_type as select distinct id, ARRAY_AGG(capacity) over (partition by id) as agg " +
+                "from hosts";
 
         List<String> ddl = new ArrayList<>();
         ddl.add(s1);
@@ -54,6 +56,7 @@ public class JooqProviderTestPresto extends JooqProviderTestBase {
         ddl.add(v1);
         ddl.add(checkArrayParse);
         ddl.add(checkNotNullColumns);
+        ddl.add(checkArrayType);
 
         ddlogAPI = compileAndLoad(
                 ddl.stream().map(PrestoSqlStatement::new).collect(Collectors.toList()),

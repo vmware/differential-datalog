@@ -539,6 +539,34 @@ public abstract class JooqProviderTestBase {
         }
     }
 
+    @Test
+    public void testArrayAggTypes() {
+        assert(create != null);
+        create.execute("insert into \nhosts values ('n1', 10, true)");
+        create.batch("insert into hosts values ('n54', 18, false)",
+                "insert into hosts values ('n9', 2, true)").execute();
+
+        final Field<String> field1 = field("id", String.class);
+        final Field<Object> field2 = field("agg", Object.class);
+
+        final Record arrayAgg1 = create.newRecord(field1, field2);
+        final Record arrayAgg2 = create.newRecord(field1, field2);
+        final Record arrayAgg3 = create.newRecord(field1, field2);
+
+        arrayAgg1.setValue(field1, "n1");
+        arrayAgg1.setValue(field2, new Integer[] {10});
+        arrayAgg2.setValue(field1, "n54");
+        arrayAgg2.setValue(field2, new Integer[] {18});
+        arrayAgg3.setValue(field1, "n9");
+        arrayAgg3.setValue(field2, new Integer[] {2});
+
+        // Make sure selects read out the same content inserted above
+        final Result<Record> aggResults = create.fetch("select * from check_array_type");
+        assertTrue(aggResults.contains(arrayAgg1));
+        assertTrue(aggResults.contains(arrayAgg2));
+        assertTrue(aggResults.contains(arrayAgg3));
+    }
+
     public static <R extends SqlStatement> DDlogAPI compileAndLoad(final List<R> ddl, ToPrestoTranslator<R> translator) throws IOException, DDlogException {
         final Translator t = new Translator(null);
         ddl.forEach(x -> t.translateSqlStatement(translator.toPresto(x)));

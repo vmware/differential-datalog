@@ -387,6 +387,30 @@ public class DDlogRecord {
         return DDlogAPI.ddlog_get_double(this.handle);
     }
 
+    public boolean isVector() {
+        return DDlogAPI.ddlog_is_vector(this.checkHandle());
+    }
+    
+    public boolean isBool() {
+        return DDlogAPI.ddlog_is_bool(this.checkHandle());
+    }
+
+    public boolean isInt() {
+        return DDlogAPI.ddlog_is_int(this.checkHandle());
+    }
+
+    public boolean isFloat() {
+        return DDlogAPI.ddlog_is_float(this.checkHandle());
+    }
+
+    public boolean isDouble() {
+        return DDlogAPI.ddlog_is_double(this.checkHandle());
+    }
+
+    public boolean isString() {
+        return DDlogAPI.ddlog_is_string(this.checkHandle());
+    }
+
     public boolean isStruct() {
         return DDlogAPI.ddlog_is_struct(this.checkHandle());
     }
