@@ -25,5 +25,8 @@ package org.dbsp.algebraic.dynamicTyping;
 
 import org.dbsp.algebraic.staticTyping.Group;
 
+/**
+ * A dynamically-typed version of Group.
+ */
 public interface DynamicGroup extends Group<Object> {
 }

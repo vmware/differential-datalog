@@ -21,24 +21,27 @@
  * SOFTWARE.
  */
 
-package org.dbsp.algebraic.dynamicTyping.types;
+package org.dbsp.circuits.operators.relational;
 
-import org.dbsp.algebraic.dynamicTyping.DynamicGroup;
-import org.dbsp.compute.policies.IntegerRing;
+import org.dbsp.algebraic.dynamicTyping.types.Type;
+import org.dbsp.circuits.operators.FunctionOperator;
+import org.dbsp.lib.ComparableObjectList;
+
+import java.util.function.Predicate;
 
 /**
- * Represents a type that stores Java Integers.
+ * An operator that filters DynamicZSet values.
+ * @param <W>  Type of weights used by ZSet.
  */
-public final class IntegerType implements Type {
-    private IntegerType() {}
-    public static final IntegerType instance = new IntegerType();
-
-    public String toString() {
-        return "Integer";
-    }
-
-    @Override
-    public DynamicGroup getGroup() {
-        return IntegerRing.instance.asUntyped();
+public class DynamicZSetFilterOperator<W> extends FunctionOperator {
+    /**
+     * Create an operator that filters values from a ZSet.
+     * @param name    Operator name.
+     * @param type    Operator type.
+     * @param filter  If this predicate returns 'true' for a tuple, it is kept in the ZSet.
+     */
+    public DynamicZSetFilterOperator(String name, Type type, Predicate<ComparableObjectList> filter) {
+        //noinspection unchecked
+        super(name, type, type, e -> ((DynamicZSet<W>)e).filter(filter));
     }
 }

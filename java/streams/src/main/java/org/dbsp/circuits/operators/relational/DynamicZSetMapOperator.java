@@ -21,24 +21,29 @@
  * SOFTWARE.
  */
 
-package org.dbsp.algebraic.dynamicTyping.types;
+package org.dbsp.circuits.operators.relational;
 
-import org.dbsp.algebraic.dynamicTyping.DynamicGroup;
-import org.dbsp.compute.policies.IntegerRing;
+import org.dbsp.algebraic.dynamicTyping.types.Type;
+import org.dbsp.circuits.operators.FunctionOperator;
+import org.dbsp.lib.ComparableObjectList;
+
+import java.util.function.Function;
 
 /**
- * Represents a type that stores Java Integers.
+ * An operator that transforms DynamicZSet values by applying a function to each element.
+ * @param <W>  Type of weights used by ZSet.
  */
-public final class IntegerType implements Type {
-    private IntegerType() {}
-    public static final IntegerType instance = new IntegerType();
-
-    public String toString() {
-        return "Integer";
-    }
-
-    @Override
-    public DynamicGroup getGroup() {
-        return IntegerRing.instance.asUntyped();
+public class DynamicZSetMapOperator<W> extends FunctionOperator {
+    /**
+     * Create an operator that applies a map function to each element of a ZSet.
+     * @param name    Operator name.
+     * @param inputType    Input type.
+     * @param outputType   Output type.
+     * @param map     Apply this function to each element of the ZSet.
+     */
+    public DynamicZSetMapOperator(String name, Type inputType, Type outputType,
+                                  Function<ComparableObjectList, ComparableObjectList> map) {
+        //noinspection unchecked
+        super(name, inputType, outputType, e -> ((DynamicZSet<W>)e).map(map));
     }
 }

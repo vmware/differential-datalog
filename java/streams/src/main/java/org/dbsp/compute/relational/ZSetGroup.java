@@ -37,12 +37,10 @@ public class ZSetGroup<T extends Comparable<T>, W>
         // extends FiniteFunctionGroup<T, W> //  -- unfortunately Java does not allow this.
         implements Group<ZSet<T, W>>
 {
-    final FiniteFunctionGroup<T, W> ffg;
     final ZRing<W> ring;
 
     public ZSetGroup(ZRing<W> ring) {
         this.ring = ring;
-        this.ffg = new FiniteFunctionGroup<T, W>(ring);
     }
 
     @Override

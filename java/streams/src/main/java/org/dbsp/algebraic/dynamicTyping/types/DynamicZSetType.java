@@ -24,21 +24,38 @@
 package org.dbsp.algebraic.dynamicTyping.types;
 
 import org.dbsp.algebraic.dynamicTyping.DynamicGroup;
+import org.dbsp.circuits.operators.relational.DynamicZSetGroup;
 import org.dbsp.compute.policies.IntegerRing;
 
-/**
- * Represents a type that stores Java Integers.
- */
-public final class IntegerType implements Type {
-    private IntegerType() {}
-    public static final IntegerType instance = new IntegerType();
+import java.util.Objects;
 
-    public String toString() {
-        return "Integer";
+/**
+ * The type of DynmamicZSet objects.
+ */
+public class DynamicZSetType implements Type {
+    final Type elementType;
+    final DynamicGroup zsetGroup;
+
+    public DynamicZSetType(Type elementType) {
+        this.elementType = elementType;
+        this.zsetGroup = new DynamicZSetGroup<Integer>(IntegerRing.instance).asUntyped();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        DynamicZSetType that = (DynamicZSetType) o;
+        return this.elementType.equals(that.elementType);
+    }
+
+    @Override
+    public int hashCode() {
+        return this.elementType.hashCode();
     }
 
     @Override
     public DynamicGroup getGroup() {
-        return IntegerRing.instance.asUntyped();
+        return this.zsetGroup;
     }
 }

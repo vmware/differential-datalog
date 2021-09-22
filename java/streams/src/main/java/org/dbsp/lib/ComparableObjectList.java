@@ -39,12 +39,13 @@ public class ComparableObjectList
         this.addAll(Arrays.asList(o));
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public int compareTo(ComparableObjectList o) {
         for (int i = 0; i < this.size() && i < o.size(); i++) {
             // The following may not implement ComparableObject, but they may actually have a compareTo method.
             // We cannot retrofit this interface to existing classes like Integer or String.
-            int compare = ((ComparableObject)this.get(i)).compareTo((ComparableObject)o.get(i));
+            int compare = ((Comparable<Object>)this.get(i)).compareTo((Comparable<Object>)o.get(i));
             if (compare != 0)
                 return compare;
         }
