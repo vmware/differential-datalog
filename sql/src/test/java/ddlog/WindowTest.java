@@ -381,4 +381,93 @@ public class WindowTest extends BaseQueriesTest {
                 "var v15 = TRtmp2{.column2 = v12.column2,.avg = v13.avg},var v16 = v15.";
         this.testTranslation(query, translation);
     }
+
+    @Test
+    public void joinWindowWithAliasTest() {
+        String query = "CREATE VIEW v0 as SELECT DISTINCT t1.column2 as test_alias, AVG(t2.column1) OVER (PARTITION by t1.column3) AS avg\n" +
+                "         FROM t1 JOIN t2 ON t1.column1 = t2.column1\n";
+        String translation = this.header(false) +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, column10:signed<64>}\n" +
+                "typedef TRtmp = TRtmp{tmp:signed<64>, gb:bool, test_alias:string}\n" +
+                "typedef TRtmp0 = TRtmp0{gb:bool, avg:signed<64>}\n" +
+                "typedef Tagg = Tagg{avg:signed<64>}\n" +
+                "typedef Ttmp1 = Ttmp1{tmp:signed<64>, gb:bool, test_alias:string, avg:signed<64>}\n" +
+                "typedef TRtmp2 = TRtmp2{test_alias:string, avg:signed<64>}\n" +
+                "function agg(g: Group<bool, TRtmp>):Tagg {\n" +
+                "(var gb8) = group_key(g);\n" +
+                "(var avg9 = (64'sd0, 64'sd0): (signed<64>, signed<64>));\n" +
+                "(for ((i, _) in g) {\n" +
+                "var v7 = i;\n" +
+                "(var incr = v7.tmp);\n" +
+                "(avg9 = agg_avg_signed_R(avg9, incr))}\n" +
+                ");\n" +
+                "(Tagg{.avg = avg_signed_R(avg9)})\n" +
+                "}\n" +
+                "\n" +
+                "input relation Rt1[Tt1]\n" +
+                "input relation Rt2[Tt2]\n" +
+                "input relation Rt3[Tt3]\n" +
+                "input relation Rt4[Tt4]\n" +
+                "relation Rtmp[TRtmp]\n" +
+                "relation Roverinput[TRtmp]\n" +
+                "relation Rtmp0[TRtmp0]\n" +
+                "relation Rover[TRtmp0]\n" +
+                "relation Rtmp2[TRtmp2]\n" +
+                "output relation Rv0[TRtmp2]\n" +
+                "Roverinput[v6] :- Rt1[v2],Rt2[v3],(v2.column1 == v3.column1),true," +
+                "var v4 = Ttmp{.column1 = v2.column1,.column2 = v2.column2,.column3 = v2.column3,.column4 = v2.column4,.column10 = v3.column1}," +
+                "var v5 = TRtmp{.tmp = v3.column1,.gb = v2.column3,.test_alias = v2.column2},var v6 = v5.\n" +
+                "Rover[v11] :- Roverinput[v7],var gb8 = v7.gb,var groupResult = (v7).group_by((gb8))," +
+                "var aggResult = agg(groupResult),var v10 = TRtmp0{.gb = gb8,.avg = aggResult.avg},var v11 = v10.\n" +
+                "Rv0[v16] :- Roverinput[v12],Rover[v13],(true and (v12.gb == v13.gb))," +
+                "var v14 = Ttmp1{.tmp = v12.tmp,.gb = v12.gb,.test_alias = v12.test_alias,.avg = v13.avg}," +
+                "var v15 = TRtmp2{.test_alias = v12.test_alias,.avg = v13.avg}," +
+                "var v16 = v15.";
+        this.testTranslation(query, translation);
+    }
+
+    @Test
+    public void joinWindowWithAliasOrderTest() {
+        String query = "CREATE VIEW v0 as SELECT DISTINCT AVG(t2.column1) OVER (PARTITION by t1.column3) AS avg, t1.column2 as test_alias\n" +
+                "         FROM t1 JOIN t2 ON t1.column1 = t2.column1\n";
+        String translation = this.header(false) +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, column10:signed<64>}\n" +
+                "typedef TRtmp = TRtmp{tmp:signed<64>, gb:bool, test_alias:string}\n" +
+                "typedef TRtmp0 = TRtmp0{gb:bool, avg:signed<64>}\n" +
+                "typedef Tagg = Tagg{avg:signed<64>}\n" +
+                "typedef Ttmp1 = Ttmp1{tmp:signed<64>, gb:bool, test_alias:string, avg:signed<64>}\n" +
+                "typedef TRtmp2 = TRtmp2{avg:signed<64>, test_alias:string}\n" +
+                "function agg(g: Group<bool, TRtmp>):Tagg {\n" +
+                "(var gb8) = group_key(g);\n" +
+                "(var avg9 = (64'sd0, 64'sd0): (signed<64>, signed<64>));\n" +
+                "(for ((i, _) in g) {\n" +
+                "var v7 = i;\n" +
+                "(var incr = v7.tmp);\n" +
+                "(avg9 = agg_avg_signed_R(avg9, incr))}\n" +
+                ");\n" +
+                "(Tagg{.avg = avg_signed_R(avg9)})\n" +
+                "}\n" +
+                "\n" +
+                "input relation Rt1[Tt1]\n" +
+                "input relation Rt2[Tt2]\n" +
+                "input relation Rt3[Tt3]\n" +
+                "input relation Rt4[Tt4]\n" +
+                "relation Rtmp[TRtmp]\n" +
+                "relation Roverinput[TRtmp]\n" +
+                "relation Rtmp0[TRtmp0]\n" +
+                "relation Rover[TRtmp0]\n" +
+                "relation Rtmp2[TRtmp2]\n" +
+                "output relation Rv0[TRtmp2]\n" +
+                "Roverinput[v6] :- Rt1[v2],Rt2[v3],(v2.column1 == v3.column1),true," +
+                "var v4 = Ttmp{.column1 = v2.column1,.column2 = v2.column2,.column3 = v2.column3,.column4 = v2.column4,.column10 = v3.column1}," +
+                "var v5 = TRtmp{.tmp = v3.column1,.gb = v2.column3,.test_alias = v2.column2},var v6 = v5.\n" +
+                "Rover[v11] :- Roverinput[v7],var gb8 = v7.gb,var groupResult = (v7).group_by((gb8))," +
+                "var aggResult = agg(groupResult),var v10 = TRtmp0{.gb = gb8,.avg = aggResult.avg},var v11 = v10.\n" +
+                "Rv0[v16] :- Roverinput[v12],Rover[v13],(true and (v12.gb == v13.gb))," +
+                "var v14 = Ttmp1{.tmp = v12.tmp,.gb = v12.gb,.test_alias = v12.test_alias,.avg = v13.avg}," +
+                "var v15 = TRtmp2{.avg = v13.avg,.test_alias = v12.test_alias}," +
+                "var v16 = v15.";
+
+        this.testTranslation(query, translation);
+    }
 }
