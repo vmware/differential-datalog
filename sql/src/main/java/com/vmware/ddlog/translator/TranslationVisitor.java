@@ -1038,13 +1038,52 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         List<SelectItem> finalItems = new ArrayList<SelectItem>();
         SubstitutionRewriter rewriter = new SubstitutionRewriter(windowVisitor.substitutions);
         ExpressionTreeRewriter<Void> subst = new ExpressionTreeRewriter<Void>(rewriter);
-        ExpressionTreeRewriter<Void> dropTable = new ExpressionTreeRewriter<Void>(new ColumnContextEliminationRewriter());
+        ExpressionTreeRewriter<Void> dropTableExprRewriter = new ExpressionTreeRewriter<Void>(new ColumnContextEliminationRewriter());
 
-        for (SingleColumn sc: Utilities.concatenate(aggregateItems, nonAggregateItems, windowItems)) {
-            Expression repl = subst.rewrite(sc.getExpression(), null);
-            Expression repl1 = dropTable.rewrite(repl, null);
-            finalItems.add(new SingleColumn(repl1, sc.getAlias()));
+        // Add columns to finalItems in the order that they appear in the original table.
+        for (SelectItem originalColumn : query.getSelect().getSelectItems()) {
+            if (originalColumn instanceof AllColumns) {
+                Table r = (Table) query.getFrom().get();
+                String rn = DDlogRelationDeclaration.relationName(r.getName().toString());
+                DDlogType tableType = context.resolveType(context.getRelation(rn)
+                        .getType());
+                DDlogTStruct struct = tableType.to(DDlogTStruct.class);
+                for (DDlogField f: struct.getFields()) {
+                    Identifier id = new Identifier(f.getName());
+                    finalItems.add(new SingleColumn(id, id));
+                }
+            } else if (originalColumn instanceof SingleColumn) {
+                SingleColumn scOrigCol = (SingleColumn) originalColumn;
+                boolean found = false;
+                for (SingleColumn sc: Utilities.concatenate(aggregateItems, windowItems)) {
+                    // Aggregate or window items should be referenced by their name in the OverInput or Over tables
+                    // created by this Visitor.
+                    if (scOrigCol.getExpression().equals(sc.getExpression())) {
+                        Expression repl = subst.rewrite(sc.getExpression(), null);
+                        Expression repl1 = dropTableExprRewriter.rewrite(repl, null);
+                        finalItems.add(new SingleColumn(repl1, sc.getAlias()));
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    for (SingleColumn sc: nonAggregateItems) {
+                        // Due to the OverInput / Over intermediate tables created by this Visitor, these
+                        // nonaggregated columns now must be referenced by their aliases, if present.
+                        if (scOrigCol.getExpression().equals(sc.getExpression())) {
+                            Expression repl = subst.rewrite(sc.getExpression(), null);
+                            Expression repl1 = dropTableExprRewriter.rewrite(repl, null);
+                            finalItems.add(new SingleColumn(
+                                    sc.getAlias().isPresent()? sc.getAlias().get() : repl1, sc.getAlias()));
+                        }
+                    }
+
+                }
+            } else {
+                throw new RuntimeException("Select items aren't of type SingleColumn or AllColumns");
+            }
         }
+
         Select selectFinal = new Select(true, finalItems);
         QuerySpecification joins = new QuerySpecification(
                 selectFinal,
