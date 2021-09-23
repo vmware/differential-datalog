@@ -1038,7 +1038,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         List<SelectItem> finalItems = new ArrayList<SelectItem>();
         SubstitutionRewriter rewriter = new SubstitutionRewriter(windowVisitor.substitutions);
         ExpressionTreeRewriter<Void> subst = new ExpressionTreeRewriter<Void>(rewriter);
-        ExpressionTreeRewriter<Void> dropTable = new ExpressionTreeRewriter<Void>(new ColumnContextEliminationRewriter());
+        ExpressionTreeRewriter<Void> dropTableExprRewriter = new ExpressionTreeRewriter<Void>(new ColumnContextEliminationRewriter());
 
         // Add columns to finalItems in the order that they appear in the original table.
         for (SelectItem originalColumn : query.getSelect().getSelectItems()) {
@@ -1060,7 +1060,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                     // created by this Visitor.
                     if (scOrigCol.getExpression().equals(sc.getExpression())) {
                         Expression repl = subst.rewrite(sc.getExpression(), null);
-                        Expression repl1 = dropTable.rewrite(repl, null);
+                        Expression repl1 = dropTableExprRewriter.rewrite(repl, null);
                         finalItems.add(new SingleColumn(repl1, sc.getAlias()));
                         found = true;
                         break;
@@ -1072,7 +1072,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                         // nonaggregated columns now must be referenced by their aliases, if present.
                         if (scOrigCol.getExpression().equals(sc.getExpression())) {
                             Expression repl = subst.rewrite(sc.getExpression(), null);
-                            Expression repl1 = dropTable.rewrite(repl, null);
+                            Expression repl1 = dropTableExprRewriter.rewrite(repl, null);
                             finalItems.add(new SingleColumn(
                                     sc.getAlias().isPresent()? sc.getAlias().get() : repl1, sc.getAlias()));
                         }

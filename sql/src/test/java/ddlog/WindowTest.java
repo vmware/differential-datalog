@@ -403,11 +403,7 @@ public class WindowTest extends BaseQueriesTest {
                 ");\n" +
                 "(Tagg{.avg = avg_signed_R(avg9)})\n" +
                 "}\n" +
-                "\n" +
-                "input relation Rt1[Tt1]\n" +
-                "input relation Rt2[Tt2]\n" +
-                "input relation Rt3[Tt3]\n" +
-                "input relation Rt4[Tt4]\n" +
+                this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "relation Roverinput[TRtmp]\n" +
                 "relation Rtmp0[TRtmp0]\n" +
@@ -447,11 +443,7 @@ public class WindowTest extends BaseQueriesTest {
                 ");\n" +
                 "(Tagg{.avg = avg_signed_R(avg9)})\n" +
                 "}\n" +
-                "\n" +
-                "input relation Rt1[Tt1]\n" +
-                "input relation Rt2[Tt2]\n" +
-                "input relation Rt3[Tt3]\n" +
-                "input relation Rt4[Tt4]\n" +
+                this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "relation Roverinput[TRtmp]\n" +
                 "relation Rtmp0[TRtmp0]\n" +
