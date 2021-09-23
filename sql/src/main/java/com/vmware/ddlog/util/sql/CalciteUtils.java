@@ -26,6 +26,7 @@ package com.vmware.ddlog.util.sql;
 import org.apache.calcite.avatica.util.Casing;
 import org.apache.calcite.sql.parser.SqlAbstractParserImpl;
 import org.apache.calcite.sql.parser.ddl.SqlDdlParserImpl;
+import org.apache.calcite.sql.validate.SqlConformanceEnum;
 
 import java.io.StringReader;
 
@@ -48,6 +49,7 @@ public class CalciteUtils {
         ret.setUnquotedCasing(Casing.TO_LOWER);
         ret.setQuotedCasing(Casing.TO_LOWER);
         ret.setIdentifierMaxLength(100);
+        ret.setConformance(SqlConformanceEnum.PRESTO);
 
         return ret;
     }
