@@ -47,7 +47,7 @@ package org.dbsp.algebraic.dynamicTyping.types;
  */
 
 import org.dbsp.algebraic.dynamicTyping.DynamicGroup;
-import org.dbsp.compute.policies.IntegerRing;
+import org.dbsp.compute.time.IntegerRing;
 import org.dbsp.compute.relational.ZSetGroup;
 import org.dbsp.lib.ComparableObject;
 
@@ -78,5 +78,10 @@ public class ZSetType implements Type {
     @Override
     public DynamicGroup getGroup() {
         return this.zsetGroup;
+    }
+
+    @Override
+    public String toString() {
+        return "ZSetType<" + this.elementType.toString() + ">";
     }
 }

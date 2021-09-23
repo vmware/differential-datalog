@@ -24,6 +24,7 @@
 package org.dbsp.circuits.operators;
 
 import org.dbsp.algebraic.dynamicTyping.types.Type;
+import org.dbsp.circuits.Scheduler;
 
 import javax.annotation.Nullable;
 import java.util.Objects;
@@ -44,9 +45,9 @@ public class Port extends IdOperator {
         this.value = value;
     }
 
-    public void evaluate() {
+    public void setOutput(Scheduler scheduler) {
         this.outputWire().setValue(Objects.requireNonNull(this.value));
-        this.outputWire().notifyConsumers();
+        this.outputWire().notifyConsumers(scheduler);
     }
 
     public void checkConnected() {

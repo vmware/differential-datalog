@@ -28,7 +28,7 @@
 @ParametersAreNonnullByDefault
 @FieldsAreNonnullByDefault
 @MethodsAreNonnullByDefault
-package org.dbsp.compute.policies;
+package org.dbsp.compute.time;
 
 import org.dbsp.FieldsAreNonnullByDefault;
 import org.dbsp.MethodsAreNonnullByDefault;

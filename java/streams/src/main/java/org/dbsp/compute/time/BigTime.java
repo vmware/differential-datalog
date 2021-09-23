@@ -21,7 +21,7 @@
  * SOFTWARE.
  */
 
-package org.dbsp.compute.policies;
+package org.dbsp.compute.time;
 
 import org.dbsp.algebraic.Time;
 import org.dbsp.algebraic.TimeFactory;

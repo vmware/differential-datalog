@@ -23,7 +23,7 @@
 
 package org.dbsp.compute;
 
-import org.dbsp.compute.policies.IntegerRing;
+import org.dbsp.compute.time.IntegerRing;
 import org.dbsp.compute.relational.Grouping;
 import org.dbsp.compute.relational.ZSet;
 import org.dbsp.lib.ComparableList;

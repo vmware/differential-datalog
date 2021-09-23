@@ -34,7 +34,7 @@ public class DynamicZSetGroup<W> implements Group<DynamicZSet<W>> {
     }
 
     @Override
-    public DynamicZSet<W> minus(DynamicZSet<W> data) {
+    public DynamicZSet<W> negate(DynamicZSet<W> data) {
         return new DynamicZSet<W>(this.ring, data.data.minus());
     }
 

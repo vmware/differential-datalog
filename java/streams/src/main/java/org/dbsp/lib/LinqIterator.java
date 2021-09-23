@@ -35,13 +35,13 @@ import java.util.function.Predicate;
  * These iterators cannot be reset.
  * @param <T>  Value returned.
  */
-public interface LinqIterator<T> extends Iterator<T> {
+public abstract class LinqIterator<T> implements Iterator<T> {
     /**
      * An iterator over values of type S.
      * @param map  Function that converts each value of type T to a value of type S.
      * @param <S>  Value produced by function.
      */
-    default <S> LinqIterator<S> map(Function<T, S> map) {
+    public <S> LinqIterator<S> map(Function<T, S> map) {
         return new LinqIterator<S>() {
             @Override
             public boolean hasNext() {
@@ -56,7 +56,7 @@ public interface LinqIterator<T> extends Iterator<T> {
         };
     }
 
-    default LinqIterator<T> filter(Predicate<T> predicate) {
+    public LinqIterator<T> filter(Predicate<T> predicate) {
         return new LinqIterator<T>() {
             @Nullable
             T next = null;
@@ -100,7 +100,7 @@ public interface LinqIterator<T> extends Iterator<T> {
         };
     }
 
-    default <S> LinqIterator<Pair<T, S>> zip(LinqIterator<S> other) {
+    public <S> LinqIterator<Pair<T, S>> zip(LinqIterator<S> other) {
         return new LinqIterator<Pair<T, S>>() {
             @Override
             public boolean hasNext() {
@@ -114,7 +114,7 @@ public interface LinqIterator<T> extends Iterator<T> {
         };
     }
 
-    default <S, U> LinqIterator<Triple<T, S, U>> zip3(LinqIterator<S> left, LinqIterator<U> right) {
+    public <S, U> LinqIterator<Triple<T, S, U>> zip3(LinqIterator<S> left, LinqIterator<U> right) {
         return new LinqIterator<Triple<T, S, U>>() {
             @Override
             public boolean hasNext() {
@@ -128,15 +128,22 @@ public interface LinqIterator<T> extends Iterator<T> {
         };
     }
 
-    default <S> LinqIterator<Pair<T, S>> zip(List<S> other) {
-        return this.zip(LinqIterator.fromList(other));
+    /**
+     * Zip two itrators; returns an itrator of pairs with elements from both iterators.
+     * Stops when the first iterator terminates.
+     * @param other  List to zip with.
+     * @param <S>    Type of elements in the other list.
+     * @return       A list with the length the shorter of this and other.
+     */
+    public <S> LinqIterator<Pair<T, S>> zip(List<S> other) {
+        return this.zip(LinqIterator.create(other));
     }
 
-    default <S, U> LinqIterator<Triple<T, S, U>> zip3(List<S> left, List<U> right) {
-        return this.zip3(LinqIterator.fromList(left), LinqIterator.fromList(right));
+    public <S, U> LinqIterator<Triple<T, S, U>> zip3(List<S> left, List<U> right) {
+        return this.zip3(LinqIterator.create(left), LinqIterator.create(right));
     }
 
-    default List<T> toList() {
+    public List<T> toList() {
         ArrayList<T> result = new ArrayList<T>();
         while (this.hasNext()) {
             result.add(this.next());
@@ -144,25 +151,11 @@ public interface LinqIterator<T> extends Iterator<T> {
         return result;
     }
 
-    static <T> LinqIterator<T> fromList(List<T> list) {
-        return fromIterator(list.iterator());
+    public static <T> LinqIterator<T> create(List<T> list) {
+        return create(list.iterator());
     }
 
-    static <T> LinqIterator<T> fromIterator(Iterator<T> data) {
-        return new LinqIterator<T>() {
-            @Override
-            public boolean hasNext() {
-                return data.hasNext();
-            }
-
-            @Override
-            public T next() {
-                return data.next();
-            }
-        };
-    }
-
-    static <T> LinqIterator<T> fromArray(T[] data) {
+    public static <T> LinqIterator<T> create(T[] data) {
         return new LinqIterator<T>() {
             int index = 0;
 
@@ -178,7 +171,21 @@ public interface LinqIterator<T> extends Iterator<T> {
         };
     }
 
-    default boolean any(Predicate<T> p) {
+    public static <T> LinqIterator<T> create(Iterator<T> data) {
+        return new LinqIterator<T>() {
+            @Override
+            public boolean hasNext() {
+                return data.hasNext();
+            }
+
+            @Override
+            public T next() {
+                return data.next();
+            }
+        };
+    }
+
+    public boolean any(Predicate<T> p) {
         return this.filter(p).hasNext();
     }
 }

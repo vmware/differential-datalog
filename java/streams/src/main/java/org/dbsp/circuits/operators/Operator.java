@@ -24,9 +24,10 @@
 package org.dbsp.circuits.operators;
 
 import org.dbsp.circuits.ComputationalElement;
+import org.dbsp.circuits.Scheduler;
 import org.dbsp.circuits.Wire;
 import org.dbsp.algebraic.dynamicTyping.types.Type;
-import org.dbsp.lib.Linq;
+import org.dbsp.lib.Utilities;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,7 +47,7 @@ public abstract class Operator extends ComputationalElement {
     int inputsPresent;
 
     public Operator(List<Type> inputTypes, Type outputType) {
-        super(inputTypes, Linq.list(outputType));
+        super(inputTypes, Utilities.list(outputType));
         this.output = new Wire(outputType, this);
         // Input wires are not connected.
         this.inputs = new ArrayList<Wire>(inputTypes.size());
@@ -60,20 +61,30 @@ public abstract class Operator extends ComputationalElement {
     }
 
     /**
-     * A new computation cycle has started, reset the internal state.
-     * Most operators do nothing.
+     * Connect the output of this operator to the specified input of the specified operator.
+     * @param to  Operator to connect to.
+     * @param input  Input to connect to.
      */
-    public void reset() {}
-
     public void connectTo(Operator to, int input) {
         if (to.getInputWires().get(input) != null)
             throw new RuntimeException(to.getName() + ": input " + input + " already connected");
         Operator actual = to.getActualConsumer(to, input);
-        this.output.addConsumer(actual);
+        this.output.addConsumer(actual, to);
         actual.setInput(input, this.output);
         if (!to.inputTypes.get(input).equals(this.output.getType()))
             throw new RuntimeException("Type mismatch: operator input " + input + " expects " +
                     to.inputTypes.get(input) + " but was provided with " + this.output.getType());
+    }
+
+    /**
+     * Connect the output of this operator to the single input of the
+     * specified operator.
+     * @param to  Operator to connect to.
+     */
+    public void connectTo(Operator to) {
+        if (to.inputs.size() != 1)
+            throw new RuntimeException("Operator has " + to.inputs.size() + " inputs");
+        this.connectTo(to, 0);
     }
 
     /**
@@ -94,35 +105,8 @@ public abstract class Operator extends ComputationalElement {
         }
     }
 
-    public abstract Object evaluate(Function<Integer, Object> inputProvider);
-
-    @Override
-    public String getName() {
-        return this.toString() + " (" + this.id + ")";
-    }
-
-    // Default behavior of an operator on an input notification:
-    // Extract values from the input wires, compute the
-    // result, notify consumers.
-    public void notifyInputIsAvailable() {
-        this.inputsPresent++;
-        if (this.inputsPresent != this.inputCount())
-            return;
-        this.inputsPresent = 0;
-
-        // All inputs are present, we can compute.
-        Object result = this.evaluate(index -> this.inputs.get(index).getValue());
-        this.log("computed " + result);
-        this.emitOutput(result);
-    }
-
     public Type getOutputType() {
         return this.outputTypes.get(0);
-    }
-
-    public void emitOutput(Object result) {
-        this.output.setValue(result);
-        this.output.notifyConsumers();
     }
 
     public Wire outputWire() {
@@ -130,6 +114,48 @@ public abstract class Operator extends ComputationalElement {
     }
 
     public List<Wire> getInputWires() { return this.inputs; }
+
+    /////////////////////////////////////////////////
+    // Runtime API
+
+    /**
+     * A new computation cycle has started, reset the internal state.
+     * Most operators do nothing.
+     */
+    public void reset(Scheduler scheduler) {}
+
+    public abstract Object evaluate(Scheduler scheduler);
+
+    // Default behavior of an operator on an input notification:
+    // Extract values from the input wires, compute the
+    // result, notify consumers.
+    public void notifyInputIsAvailable(Scheduler scheduler) {
+        this.inputsPresent++;
+        if (this.inputsPresent != this.inputCount())
+            return;
+        scheduler.addReadyNode(this);
+    }
+
+    public void run(Scheduler scheduler) {
+        this.inputsPresent = 0;
+        // All inputs are present, we can compute.
+        Object result = this.evaluate(scheduler);
+        this.log("computed " + result);
+        this.emitOutput(result, scheduler);
+    }
+
+    public void emitOutput(Object result, Scheduler scheduler) {
+        this.output.setValue(result);
+        this.output.notifyConsumers(scheduler);
+    }
+
+    //////////////////////////
+    // Displaying API
+
+    @Override
+    public String getName() {
+        return this.toString() + " (" + this.id + ")";
+    }
 
     @Override
     public String graphvizId() {
@@ -140,15 +166,20 @@ public abstract class Operator extends ComputationalElement {
      * Generate a graphviz representation of the node in the specified builder.
      */
     @Override
-    public void toGraphvizNodes(int indent, StringBuilder builder) {
-        Linq.indent(indent, builder);
+    public void toGraphvizNodes(boolean deep, int indent, StringBuilder builder) {
+        Utilities.indent(indent, builder);
         builder.append(this.graphvizId())
                .append(" [label=\"").append(this.toString())
                .append(" (").append(this.id).append(")\"]\n");
     }
 
     @Override
-    public void toGraphvizWires(int indent, StringBuilder builder) {
-        this.outputWire().toGraphviz(indent, builder);
+    public void toGraphvizWires(boolean deep, int indent, StringBuilder builder) {
+        this.outputWire().toGraphviz(null, deep, indent, builder);
+    }
+
+    @Override
+    public String toString() {
+        return "op" + this.id;
     }
 }

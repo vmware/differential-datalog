@@ -24,9 +24,10 @@
 package org.dbsp.circuits.operators;
 
 import org.dbsp.circuits.Circuit;
+import org.dbsp.circuits.Scheduler;
 import org.dbsp.circuits.Wire;
 import org.dbsp.algebraic.dynamicTyping.types.Type;
-import org.dbsp.lib.Linq;
+import org.dbsp.lib.Utilities;
 
 import java.util.function.Function;
 
@@ -35,45 +36,68 @@ import java.util.function.Function;
  */
 public class CircuitOperator extends Operator implements Latch {
     public final Circuit circuit;
+    /**
+     * If true we usually don't want to see inside the circuit.
+     */
+    public final boolean basic;
 
-    public CircuitOperator(Circuit circuit) {
+    public CircuitOperator(Circuit circuit, boolean basic) {
         super(circuit.getInputTypes(), circuit.getOutputTypes().get(0));
+        this.basic = basic;
         this.circuit = circuit;
         if (this.circuit.getOutputTypes().size() != 1)
             throw new RuntimeException("Operators must have only 1 output wire, not " +
                     this.circuit.getOutputWires().size() + ": " + circuit);
+        if (circuit.getOutputWires().size() < 1)
+            throw new RuntimeException("Circuit " + this + " does not have an output wire");
         this.output = circuit.getOutputWires().get(0);
     }
 
+    public CircuitOperator(Circuit circuit) {
+        this(circuit, false);
+    }
+
     @Override
-    public Object evaluate(Function<Integer, Object> inputProvider) {
+    public Object evaluate(Scheduler scheduler) {
         for (int i = 0; i < this.inputCount(); i++) {
-            Object ii = inputProvider.apply(i);
+            Wire w = this.inputs.get(i);
+            Object ii = w.getValue();
             this.circuit.getInputPort(i).setValue(ii);
         }
-        this.circuit.step();
+        this.circuit.step(scheduler);
         return this.outputWire().getValue();
     }
 
     @Override
-    public void reset() {
-        this.circuit.reset();
+    public void reset(Scheduler scheduler) {
+        this.circuit.reset(scheduler);
     }
 
     @Override
-    public void latch() { this.circuit.latch(); }
+    public void latch(Scheduler scheduler) { this.circuit.latch(scheduler); }
 
     @Override
-    public void push() { this.circuit.push(); }
+    public void push(Scheduler scheduler) { this.circuit.push(scheduler); }
 
     @Override
-    public void toGraphvizNodes(int indent, StringBuilder builder) {
-        this.circuit.toGraphvizNodes(indent, builder);
+    public void toGraphvizNodes(boolean deep, int indent, StringBuilder builder) {
+        if (deep || !this.basic)
+            this.circuit.toGraphvizNodes(deep, indent, builder);
+        else {
+            Utilities.indent(indent, builder);
+            builder.append(this.graphvizId())
+                    .append(" [label=\"").append(this.circuit.toString())
+                    .append(" (").append(this.id).append(")\"]\n");
+        }
     }
 
     @Override
-    public void toGraphvizWires(int indent, StringBuilder builder) {
-        this.circuit.toGraphvizWires(indent, builder);
+    public void toGraphvizWires(boolean deep, int indent, StringBuilder builder) {
+        if (deep || !this.basic)
+            this.circuit.toGraphvizWires(deep, indent, builder);
+        else {
+            this.outputWire().toGraphviz(this, deep, indent, builder);
+        }
     }
 
     public void setInput(int index, Wire source) {
@@ -94,7 +118,7 @@ public class CircuitOperator extends Operator implements Latch {
      */
     public static CircuitOperator integrationOperator(Type type) {
         Circuit circuit = new Circuit("I",
-                Linq.list(type), Linq.list(type));
+                Utilities.list(type), Utilities.list(type));
         PlusOperator plus = new PlusOperator(type);
         circuit.addOperator(plus);
         DelayOperator delay = new DelayOperator(type);
@@ -104,7 +128,7 @@ public class CircuitOperator extends Operator implements Latch {
         circuit.addOutputWireFromOperator(plus);
         Operator input = circuit.getInputPort(0);
         input.connectTo(plus, 0);
-        return new CircuitOperator(circuit.seal());
+        return new CircuitOperator(circuit.seal(), true);
     }
 
     /**
@@ -113,12 +137,12 @@ public class CircuitOperator extends Operator implements Latch {
      */
     public static CircuitOperator derivativeOperator(Type type) {
         Circuit circuit = new Circuit("D",
-                Linq.list(type), Linq.list(type));
+                Utilities.list(type), Utilities.list(type));
         PlusOperator plus = new PlusOperator(type);
         circuit.addOperator(plus);
         DelayOperator delay = new DelayOperator(type);
         circuit.addOperator(delay);
-        MinusOperator minus = new MinusOperator(type);
+        NegateOperator minus = new NegateOperator(type);
         circuit.addOperator(minus);
         Operator port = circuit.getInputPort(0);
         port.connectTo(plus, 0);
@@ -126,7 +150,7 @@ public class CircuitOperator extends Operator implements Latch {
         delay.connectTo(minus, 0);
         minus.connectTo(plus, 1);
         circuit.addOutputWireFromOperator(plus);
-        return new CircuitOperator(circuit.seal());
+        return new CircuitOperator(circuit.seal(), true);
     }
 
     @Override
@@ -136,4 +160,27 @@ public class CircuitOperator extends Operator implements Latch {
 
     @Override
     public String getName() { return "Op:" + this.circuit.getName(); }
+
+    @Override
+    public String toString() { return super.toString() + "{" + this.circuit.toString() + "}"; }
+
+    /**
+     * Creates a bracketed operator by putting a delta in front and an int at the back of this operator.
+     * The operator must be unary.
+     */
+    public CircuitOperator bracket() {
+        if (this.inputCount() != 1)
+            throw new RuntimeException("Only unary operators can be bracketed");
+        Circuit circuit = new Circuit("[" + this + "]",
+                Utilities.list(this.getInputType(0)), Utilities.list(this.getOutputType()));
+        DeltaOperator delta = new DeltaOperator(this.getInputType(0));
+        circuit.addOperator(delta);
+        circuit.getInputPort(0).connectTo(delta, 0);
+        circuit.addOperator(this);
+        delta.connectTo(this, 0);
+        Operator intOp = circuit.addOperator(new IntOperator(this.getOutputType(), delta, this));
+        this.connectTo(intOp, 0);
+        circuit.addOutputWireFromOperator(intOp);
+        return new CircuitOperator(circuit.seal());
+    }
 }

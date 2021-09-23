@@ -23,9 +23,9 @@
 
 package org.dbsp.circuits.operators;
 
-import org.dbsp.circuits.Circuit;
 import org.dbsp.algebraic.dynamicTyping.types.Type;
-import org.dbsp.lib.Linq;
+import org.dbsp.circuits.Scheduler;
+import org.dbsp.lib.Utilities;
 
 import java.util.function.Function;
 
@@ -34,33 +34,17 @@ import java.util.function.Function;
  */
 public abstract class UnaryOperator extends Operator {
     protected UnaryOperator(Type inputType, Type outputType) {
-        super(Linq.list(inputType), outputType);
+        super(Utilities.list(inputType), outputType);
     }
 
     public Type getInputType() {
         return this.inputTypes.get(0);
     }
 
-    public abstract Object evaluate(Object input);
+    public abstract Object evaluate(Object input, Scheduler scheduler);
 
-    public Object evaluate(Function<Integer, Object> inputProvider) {
-        return this.evaluate(inputProvider.apply(0));
-    }
-
-    /**
-     * Creates a bracketed operator by putting a delta in front and an int at the back of this operator.
-     */
-    public Operator bracket() {
-        Circuit circuit = new Circuit("[" + this + "]",
-                Linq.list(this.getInputType()), Linq.list(this.getOutputType()));
-        DeltaOperator delta = new DeltaOperator(this.getInputType());
-        circuit.addOperator(delta);
-        circuit.getInputPort(0).connectTo(delta, 0);
-        circuit.addOperator(this);
-        delta.connectTo(this, 0);
-        Operator intOp = circuit.addOperator(new IntOperator(this.getOutputType(), delta, this));
-        this.connectTo(intOp, 0);
-        circuit.addOutputWireFromOperator(intOp);
-        return new CircuitOperator(circuit.seal());
+    @Override
+    public Object evaluate(Scheduler scheduler) {
+        return this.evaluate(this.inputs.get(0).getValue(), scheduler);
     }
 }

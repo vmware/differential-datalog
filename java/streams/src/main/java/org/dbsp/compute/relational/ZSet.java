@@ -53,7 +53,7 @@ public class ZSet<T extends Comparable<T>, W>
     static boolean safetyChecks = true;
 
     /**
-     * Create an empty Z-relation.
+     * Create an empty Z-set.
      * @param weightRing  Ring that computes on weights.
      */
     public ZSet(ZRing<W> weightRing) {
@@ -61,7 +61,7 @@ public class ZSet<T extends Comparable<T>, W>
     }
 
     /**
-     * Create a Z-relation with the data in the specified map.
+     * Create a Z-set with the data in the specified map.
      * @param map  Map containing the tuples each with its own weight.
      */
     public ZSet(ZRing<W> weightRing, Map<T, W> map) {
@@ -87,8 +87,8 @@ public class ZSet<T extends Comparable<T>, W>
     }
 
     /**
-     * Create a Z-relation with all the elements in the supplied iterable, each with weight 1.
-     * @param data  Data to add to relation.
+     * Create a Z-set with all the elements in the supplied iterable, each with weight 1.
+     * @param data  Data to add to set.
      */
     public ZSet(ZRing<W> weightRing, Iterable<T> data) {
         this(weightRing);
@@ -97,8 +97,8 @@ public class ZSet<T extends Comparable<T>, W>
     }
 
     /**
-     * Create an empty Z-relation and reserve space for the specified number of elements.
-     * @param size  Number of elements in Z-relation.
+     * Create an empty Z-set and reserve space for the specified number of elements.
+     * @param size  Number of elements in Z-set.
      */
     public ZSet(ZRing<W> weightRing, int size) {
         this.weightRing = weightRing;
@@ -107,7 +107,7 @@ public class ZSet<T extends Comparable<T>, W>
     }
 
     /**
-     * Create a Z-relation containing a single element with the specified weight.
+     * Create a Z-set containing a single element with the specified weight.
      * @param value  Element to insert.
      * @param weight Weight of the element.
      */
@@ -119,7 +119,7 @@ public class ZSet<T extends Comparable<T>, W>
     }
 
     /**
-     * Create a Z-relation with a single element with weight 1.
+     * Create a Z-set with a single element with weight 1.
      * @param value  Element to add.
      */
     public ZSet(ZRing<W> weightRing, T value) {
@@ -127,7 +127,7 @@ public class ZSet<T extends Comparable<T>, W>
     }
 
     /**
-     * @return Number of distinct elements in the relation with non-zero weights.
+     * @return Number of distinct elements in the set with non-zero weights.
      */
     public int size() {
         return this.data.size();
@@ -138,8 +138,9 @@ public class ZSet<T extends Comparable<T>, W>
     }
 
     /**
-     * Add to this relation other * coefficient.
-     * @param other   Elements from other relation to add.
+     * Add to this set other * coefficient.
+     * Mutates set.
+     * @param other   Elements from other set to add.
      * @param coefficient  Coefficient to multiply each weight with.
      */
     public void add(ZSet<T, W> other, W coefficient) {
@@ -152,7 +153,8 @@ public class ZSet<T extends Comparable<T>, W>
     }
 
     /**
-     * Add a tuple to this relation with the specified weight.
+     * Add a tuple to this set with the specified weight.
+     * Mutates set.
      * @param value   Element to add.
      * @param weight  Weight of the element.
      */
@@ -168,6 +170,23 @@ public class ZSet<T extends Comparable<T>, W>
         }
     }
 
+    /**
+     * Add a tuple to this set with weight 1.
+     * Mutates set.
+     * @param value  Tuple to add to the set.
+     */
+    public void add(T value) {
+        this.add(value, this.weightRing.one());
+    }
+
+    /**
+     * Removes all elements from this set.
+     * Mutates set.
+     */
+    public void clear() {
+        this.data.clear();
+    }
+
     public void assertSameOnSupport(FiniteFunction<T, W> function) {
         for (T key: this.support()) {
             W thisW = this.weight(key);
@@ -177,9 +196,9 @@ public class ZSet<T extends Comparable<T>, W>
     }
 
     /**
-     * Create a Z-relation that contains all elements in this and other.
-     * @param other  Relation to add to this.
-     * @return       A fresh relation.
+     * Create a Z-set that contains all elements in this and other.
+     * @param other  set to add to this.
+     * @return       A fresh set.
      */
     public ZSet<T, W> plus(ZSet<T, W> other) {
         ZSet<T, W> result = new ZSet<T, W>(this.weightRing);
@@ -193,26 +212,26 @@ public class ZSet<T extends Comparable<T>, W>
     }
 
     /**
-     * Create a Z-relation that has all elements of this with weights negated.
-     * @return  A fresh relation.
+     * Create a Z-set that has all elements of this with weights negated.
+     * @return  A fresh set.
      */
     public ZSet<T, W> minus() {
         ZSet<T, W> result = new ZSet<T, W>(this.weightRing, this.size());
         for (T key: this.data.keySet()) {
-            result.data.put(key, this.weightRing.minus(this.data.get(key)));
+            result.data.put(key, this.weightRing.negate(this.data.get(key)));
         }
         if (safetyChecks) {
-            FiniteFunction<T, W> tmp = this.functionGroup.minus(this);
+            FiniteFunction<T, W> tmp = this.functionGroup.negate(this);
             result.assertSameOnSupport(tmp);
         }
         return result;
     }
 
     /**
-     * Apply a function to each element (producing a Z-relation) in this relation.
+     * Apply a function to each element (producing a Z-set) in this set.
      * @param map  Map to apply to each element.
      * @param <S>  Type of elements produced.
-     * @return     The union of all Z-relations produced.
+     * @return     The union of all Z-sets produced.
      */
     public <S extends Comparable<S>> ZSet<S, W> flatMap(Function<T, ZSet<S, W>> map) {
         ZSet<S, W> result = new ZSet<S, W>(this.weightRing, this.size());
@@ -225,8 +244,8 @@ public class ZSet<T extends Comparable<T>, W>
     }
 
     /**
-     * @param value  Value to look for in relation.
-     * @return  True if this Z-relation contains the specified value.
+     * @param value  Value to look for in set.
+     * @return  True if this Z-set contains the specified value.
      */
     public boolean contains(T value) {
         return this.data.containsKey(value);
@@ -242,10 +261,10 @@ public class ZSet<T extends Comparable<T>, W>
     }
 
     /**
-     * Produce a new relation that contains all elements that
+     * Produce a new set that contains all elements that
      * satisfy the specified predicate.
      * @param predicate  A predicate on elements.
-     * @return  A fresh relation.
+     * @return  A fresh set.
      */
     public ZSet<T, W> filter(Predicate<T> predicate) {
         ZSet<T, W> result = new ZSet<T, W>(this.weightRing, this.size());
@@ -266,10 +285,10 @@ public class ZSet<T extends Comparable<T>, W>
     }
 
     /**
-     * Apply a function to each element of this relation.
+     * Apply a function to each element of this set.
      * @param map  Function to apply.
      * @param <S>  Type of result produced by function.
-     * @return     A fresh relation containing all results.
+     * @return     A fresh set containing all results.
      */
     public <S extends Comparable<S>> ZSet<S, W> map(Function<T, S> map) {
         Function<T, ZSet<S, W>> fm = t -> new ZSet<S, W>(this.weightRing, map.apply(t), this.weightRing.one());
@@ -277,15 +296,15 @@ public class ZSet<T extends Comparable<T>, W>
     }
 
     /**
-     * Join this relation with the other relation.
-     * @param other     Relation to join with.
-     * @param thisKey   Function that computes the join key for this relation.
-     * @param otherKey  Function that computes the join key for the other relation.
+     * Join this set with the other set.
+     * @param other     set to join with.
+     * @param thisKey   Function that computes the join key for this set.
+     * @param otherKey  Function that computes the join key for the other set.
      * @param combiner  Function that produces a result element from a pair of elements.
-     * @param <S>       Type of data in the other relation.
+     * @param <S>       Type of data in the other set.
      * @param <K>       Type of key we join on.
      * @param <R>       Type of result produced.
-     * @return          A fresh relation.
+     * @return          A fresh set.
      */
     public <S extends Comparable<S>, K, R extends Comparable<R>> ZSet<R, W> join(
             ZSet<S, W> other, Function<T, K> thisKey,
@@ -324,12 +343,12 @@ public class ZSet<T extends Comparable<T>, W>
     }
 
     /**
-     * Compute the cartesian product between this relation and other.
-     * @param other     Relation to multiply with.
+     * Compute the cartesian product between this set and other.
+     * @param other     set to multiply with.
      * @param combiner  Function that produces a result element from a pair of values.
-     * @param <S>       Type of data in the other relation.
+     * @param <S>       Type of data in the other set.
      * @param <R>       Type of data in result.
-     * @return          A fresh relation.
+     * @return          A fresh set.
      */
     public <S extends Comparable<S>, R extends Comparable<R>> ZSet<R, W> product(
             ZSet<S, W> other, BiFunction<T, S, R> combiner) {
@@ -337,8 +356,8 @@ public class ZSet<T extends Comparable<T>, W>
     }
 
     /**
-     * Apply the distinct operator to this Z-relation.
-     * @return  A fresh Z-relation.
+     * Apply the distinct operator to this Z-set.
+     * @return  A fresh Z-set.
      */
     public ZSet<T, W> distinct() {
         ZSet<T, W> result = new ZSet<T, W>(this.weightRing);

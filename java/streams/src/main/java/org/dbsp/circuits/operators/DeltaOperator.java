@@ -24,6 +24,7 @@
 package org.dbsp.circuits.operators;
 
 import org.dbsp.algebraic.dynamicTyping.types.Type;
+import org.dbsp.circuits.Scheduler;
 
 import java.util.Objects;
 
@@ -33,13 +34,13 @@ import java.util.Objects;
 public class DeltaOperator extends UnaryOperator {
     private final Object zero;
 
-    protected DeltaOperator(Type type) {
+    public DeltaOperator(Type type) {
         super(type, type);
         this.zero = Objects.requireNonNull(type.getGroup()).zero();
     }
 
     @Override
-    public Object evaluate(Object input) {
+    public Object evaluate(Object input, Scheduler scheduler) {
         return input;
     }
 
@@ -51,7 +52,7 @@ public class DeltaOperator extends UnaryOperator {
     /**
      * Method called by the IntOperator to indicate that a new cycle should be executed.
      */
-    public void repeat() {
-        this.emitOutput(this.zero);
+    public void repeat(Scheduler scheduler) {
+        this.emitOutput(this.zero, scheduler);
     }
 }

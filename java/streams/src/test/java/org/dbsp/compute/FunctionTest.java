@@ -23,8 +23,8 @@
 
 package org.dbsp.compute;
 
-import org.dbsp.compute.policies.IntegerRing;
-import org.dbsp.compute.policies.IntegerTime;
+import org.dbsp.compute.time.IntegerRing;
+import org.dbsp.compute.time.IntegerTime;
 import org.dbsp.algebraic.Time;
 import org.dbsp.algebraic.staticTyping.IStream;
 import org.junit.Assert;

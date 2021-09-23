@@ -26,8 +26,8 @@ package org.dbsp.compute;
 import org.dbsp.algebraic.*;
 import org.dbsp.algebraic.staticTyping.Group;
 import org.dbsp.algebraic.staticTyping.IStream;
-import org.dbsp.compute.policies.IntegerRing;
-import org.dbsp.compute.policies.IntegerTime;
+import org.dbsp.compute.time.IntegerRing;
+import org.dbsp.compute.time.IntegerTime;
 import org.dbsp.compute.relational.ZSet;
 import org.dbsp.compute.relational.ZSetGroup;
 import org.junit.Assert;
@@ -104,7 +104,7 @@ public class RelationalStreamTests {
         public static final ZSGroup instance = new ZSGroup();
 
         @Override
-        public ZS minus(ZS data) {
+        public ZS negate(ZS data) {
             return new ZS(data.zs.minus());
         }
 
@@ -247,21 +247,5 @@ public class RelationalStreamTests {
         show("fin", fin);
         boolean compare = incjoin.comparePrefix(fin, 4);
         Assert.assertTrue(compare);
-    }
-
-    @Test
-    public void closureTest() {
-        IStream<ZSet<Edge, Integer>> edges = new IStream<ZSet<Edge, Integer>>(tf) {
-            @Override
-            public ZSet<Edge, Integer> get(Time index) {
-                ZSet<Edge, Integer> r = new ZSet<Edge, Integer>(IntegerRing.instance);
-                if (index.isZero()) {
-                    r.add(new Edge(1, 2), 1);
-                } else if (index.previous().isZero()) {
-                    r.add(new Edge(2, 3), 1);
-                }
-                return r;
-            }
-        };
     }
 }

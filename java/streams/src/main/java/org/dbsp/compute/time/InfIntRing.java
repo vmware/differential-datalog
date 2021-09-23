@@ -21,45 +21,55 @@
  * SOFTWARE.
  */
 
-package org.dbsp.compute;
+package org.dbsp.compute.time;
 
-import java.util.Objects;
+import org.dbsp.algebraic.staticTyping.ZRing;
+
+import java.math.BigInteger;
 
 /**
- * Simple graph edge data structure.
+ * The group of infinite-precision integer values.
+ * This implementation uses BigInt Java integers.
  */
-public class Edge implements Comparable<Edge> {
-    final int head;
-    final int tail;
+public class InfIntRing implements ZRing<BigInteger> {
+    static final BigInteger zero = BigInteger.valueOf(0);
+    static final BigInteger one = BigInteger.valueOf(1);
 
-    Edge(int head, int tail) {
-        this.head = head;
-        this.tail = tail;
-    }
+    private InfIntRing() {}
 
-    public String toString() {
-        return "<" + this.head + "," + this.tail + ">";
+    public static final InfIntRing instance = new InfIntRing();
+
+    @Override
+    public BigInteger negate(BigInteger data) {
+        return data.negate();
     }
 
     @Override
-    public int compareTo(Edge o) {
-        int c = Integer.compare(this.head, o.head);
-        if (c != 0)
-            return c;
-        return Integer.compare(this.tail, o.tail);
+    public BigInteger add(BigInteger left, BigInteger right) {
+        return left.add(right);
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Edge e = (Edge) o;
-        return this.head == e.head &&
-                this.tail == e.tail;
+    public BigInteger zero() {
+        return zero;
     }
 
     @Override
-    public int hashCode() {
-        return Objects.hash(head, tail);
+    public BigInteger times(BigInteger left, BigInteger right) {
+        return left.multiply(right);
+    }
+
+    @Override
+    public BigInteger one() {
+        return one;
+    }
+
+    @Override
+    public boolean equal(BigInteger w0, BigInteger w1) {
+        return w0.equals(w1);
+    }
+
+    public boolean isPositive(BigInteger value) {
+        return value.compareTo(zero) >= 0;
     }
 }

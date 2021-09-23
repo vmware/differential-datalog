@@ -25,7 +25,6 @@ package org.dbsp.algebraic.dynamicTyping.types;
 
 import org.dbsp.algebraic.dynamicTyping.DynamicGroup;
 import org.dbsp.algebraic.staticTyping.Monoid;
-import org.dbsp.lib.Linq;
 import org.dbsp.lib.LinqIterator;
 
 import java.util.List;
@@ -42,9 +41,9 @@ public class ProductGroup implements DynamicGroup {
 
     @SuppressWarnings("unchecked")
     @Override
-    public Object minus(Object data) {
+    public Object negate(Object data) {
         List<Object> list = (List<Object>)data;
-        return LinqIterator.fromList(this.components).zip(list).map(p -> p.first.minus(p.second));
+        return LinqIterator.create(this.components).zip(list).map(p -> p.first.negate(p.second));
     }
 
     @SuppressWarnings("unchecked")
@@ -52,7 +51,7 @@ public class ProductGroup implements DynamicGroup {
     public Object add(Object left, Object right) {
         List<Object> llist = (List<Object>)left;
         List<Object> rlist = (List<Object>)right;
-        return LinqIterator.fromList(this.components)
+        return LinqIterator.create(this.components)
                 .zip3(llist, rlist)
                 .map(p -> p.first.add(p.second, p.third))
                 .toList();
@@ -60,6 +59,21 @@ public class ProductGroup implements DynamicGroup {
 
     @Override
     public Object zero() {
-        return Linq.map(this.components, Monoid::zero);
+        return LinqIterator.create(this.components).map(Monoid::zero).toList();
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("Group<");
+        boolean first = true;
+        for (DynamicGroup t: this.components) {
+            if (!first)
+                builder.append(", ");
+            first = false;
+            builder.append(t.toString());
+        }
+        builder.append(">");
+        return builder.toString();
     }
 }

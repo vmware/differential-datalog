@@ -23,13 +23,15 @@
 
 package org.dbsp.circuits.operators;
 
+import org.dbsp.circuits.Scheduler;
+
 public interface Latch {
     /**
      * Compute the outputs.
      */
-    void latch();
+    void latch(Scheduler scheduler);
     /**
      * Announce the consumers.
      */
-    void push();
+    void push(Scheduler scheduler);
 }

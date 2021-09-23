@@ -45,7 +45,7 @@ public class StreamGroup<T> implements Group<IStream<T>> {
     }
 
     @Override
-    public IStream<T> minus(IStream<T> data) {
+    public IStream<T> negate(IStream<T> data) {
         return data.negate(group);
     }
 

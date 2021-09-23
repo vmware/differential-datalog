@@ -25,16 +25,14 @@ package org.dbsp.compute;
 
 import org.dbsp.algebraic.dynamicTyping.types.*;
 import org.dbsp.circuits.Circuit;
+import org.dbsp.circuits.Scheduler;
 import org.dbsp.circuits.Wire;
 import org.dbsp.circuits.operators.*;
-import org.dbsp.circuits.operators.relational.DynamicZSet;
-import org.dbsp.circuits.operators.relational.DynamicZSetFilterOperator;
-import org.dbsp.circuits.operators.relational.DynamicZSetJoinOperator;
-import org.dbsp.circuits.operators.relational.DynamicZSetMapOperator;
-import org.dbsp.compute.policies.IntegerRing;
+import org.dbsp.circuits.operators.relational.*;
+import org.dbsp.compute.time.IntegerRing;
 import org.dbsp.compute.relational.ZSet;
 import org.dbsp.lib.ComparableObjectList;
-import org.dbsp.lib.Linq;
+import org.dbsp.lib.Utilities;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -48,14 +46,18 @@ import java.util.function.Predicate;
 public class RelationalOperatorTest {
     static final Type IT = IntegerType.instance;
     static final Type ZT = new ZSetType(IT);
-    static final List<Type> ZTL = Linq.list(ZT);
+    static final List<Type> ZTL = Utilities.list(ZT);
 
-    static final Type TT = new TupleType(Linq.list(StringType.instance, IntegerType.instance));
+    static final Type TT = new TupleType(Utilities.list(StringType.instance, IntegerType.instance));
     static final Type ZTT = new DynamicZSetType(TT);
-    static final List<Type> ZTTL = Linq.list(ZTT);
+    static final List<Type> ZTTL = Utilities.list(ZTT);
+
+    void show(Circuit c, boolean deep) {
+        System.out.println(c.toGraphvizTop(deep));
+    }
 
     void show(Circuit c) {
-        System.out.println(c.toGraphvizTop());
+        this.show(c, true);
     }
 
     @Test
@@ -63,18 +65,19 @@ public class RelationalOperatorTest {
         Circuit c = new Circuit("top", ZTL ,ZTL);
         Operator id = c.addOperator(new IdOperator(ZT));
         Port input = c.getInputPort(0);
-        input.connectTo(id, 0);
+        input.connectTo(id);
         Wire output = c.addOutputWireFromOperator(id);
         c.seal();
         Sink sink = output.addSink();
         this.show(c);
 
-        c.reset();
+        Scheduler scheduler = new Scheduler();
+        c.reset(scheduler);
         ZSet<Integer, Integer> zs = new ZSet<Integer, Integer>(IntegerRing.instance);
         for (int iv = 0; iv < 10; iv++) {
-            zs.add(10, 1);
+            zs.add(10);
             input.setValue(zs);
-            c.step();
+            c.step(scheduler);
             Object out = sink.getValue();
             Assert.assertEquals(zs, out);
         }
@@ -86,21 +89,22 @@ public class RelationalOperatorTest {
         Operator id = c.addOperator(new IdOperator(ZT));
         Operator i = c.addOperator(CircuitOperator.integrationOperator(ZT));
         Operator d = c.addOperator(CircuitOperator.derivativeOperator(ZT));
-        i.connectTo(id, 0);
-        id.connectTo(d, 0);
+        i.connectTo(id);
+        id.connectTo(d);
         Port input = c.getInputPort(0);
-        input.connectTo(i, 0);
+        input.connectTo(i);
         Wire output = c.addOutputWireFromOperator(d);
         Sink sink = output.addSink();
         c.seal();
         this.show(c);
 
-        c.reset();
+        Scheduler scheduler = new Scheduler();
+        c.reset(scheduler);
         ZSet<Integer, Integer> zs = new ZSet<Integer, Integer>(IntegerRing.instance);
         for (int iv = 0; iv < 10; iv++) {
-            zs.add(10, 1);
+            zs.add(10);
             input.setValue(zs);
-            c.step();
+            c.step(scheduler);
             Object out = sink.getValue();
             Assert.assertEquals(zs, out);
         }
@@ -112,21 +116,22 @@ public class RelationalOperatorTest {
         Operator id = c.addOperator(new IdOperator(ZTT));
         Operator i = c.addOperator(CircuitOperator.integrationOperator(ZTT));
         Operator d = c.addOperator(CircuitOperator.derivativeOperator(ZTT));
-        i.connectTo(id, 0);
-        id.connectTo(d, 0);
+        i.connectTo(id);
+        id.connectTo(d);
         Port input = c.getInputPort(0);
-        input.connectTo(i, 0);
+        input.connectTo(i);
         Wire output = c.addOutputWireFromOperator(d);
         Sink sink = output.addSink();
         c.seal();
         this.show(c);
 
-        c.reset();
+        Scheduler scheduler = new Scheduler();
+        c.reset(scheduler);
         DynamicZSet<Integer> zs = new DynamicZSet<Integer>(IntegerRing.instance);
         for (int iv = 0; iv < 10; iv++) {
             zs.add(new ComparableObjectList(iv, "String"), iv);
             input.setValue(zs);
-            c.step();
+            c.step(scheduler);
             Object out = sink.getValue();
             Assert.assertEquals(zs, out);
         }
@@ -140,21 +145,22 @@ public class RelationalOperatorTest {
                 "filter", ZTT, filter));
         Operator i = c.addOperator(CircuitOperator.integrationOperator(ZTT));
         Operator d = c.addOperator(CircuitOperator.derivativeOperator(ZTT));
-        i.connectTo(id, 0);
-        id.connectTo(d, 0);
+        i.connectTo(id);
+        id.connectTo(d);
         Port input = c.getInputPort(0);
-        input.connectTo(i, 0);
+        input.connectTo(i);
         Wire output = c.addOutputWireFromOperator(d);
         Sink sink = output.addSink();
         c.seal();
         this.show(c);
 
-        c.reset();
+        Scheduler scheduler = new Scheduler();
+        c.reset(scheduler);
         DynamicZSet<Integer> zs = new DynamicZSet<Integer>(IntegerRing.instance);
         for (int iv = 0; iv < 10; iv++) {
             zs.add(new ComparableObjectList(iv, "String"), iv);
             input.setValue(zs);
-            c.step();
+            c.step(scheduler);
             Object out = sink.getValue();
             Assert.assertEquals(zs.filter(e -> (Integer)e.get(0) % 2 == 0), out);
         }
@@ -169,22 +175,23 @@ public class RelationalOperatorTest {
                 "map", ZTT, ZTT, m));
         Operator i = c.addOperator(CircuitOperator.integrationOperator(ZTT));
         Operator d = c.addOperator(CircuitOperator.derivativeOperator(ZTT));
-        i.connectTo(map, 0);
-        map.connectTo(d, 0);
+        i.connectTo(map);
+        map.connectTo(d);
         Port input = c.getInputPort(0);
-        input.connectTo(i, 0);
+        input.connectTo(i);
         Wire output = c.addOutputWireFromOperator(d);
         Sink sink = output.addSink();
         c.seal();
         this.show(c);
 
-        c.reset();
+        Scheduler scheduler = new Scheduler();
+        c.reset(scheduler);
         DynamicZSet<Integer> zs =
                 new DynamicZSet<Integer>(IntegerRing.instance);
         for (int iv = 0; iv < 10; iv++) {
             zs.add(new ComparableObjectList(iv, "String"), iv);
             input.setValue(zs);
-            c.step();
+            c.step(scheduler);
             Object out = sink.getValue();
             Assert.assertEquals(zs.map(e -> new ComparableObjectList(0, e.get(1))), out);
         }
@@ -195,38 +202,95 @@ public class RelationalOperatorTest {
         Circuit c = new Circuit("top", ZTTL ,ZTTL);
         Operator join = c.addOperator(new DynamicZSetJoinOperator<Integer>(
                 "join", ZTT, ZTT, ZTT, e -> e.get(0), f -> (Integer)f.get(0) + 1,
-                (e, f) -> new ComparableObjectList(e.get(0), e.get(1), f.get(0), f.get(1))));
-        Operator i = c.addOperator(CircuitOperator.integrationOperator(ZTT));
-        Operator d = c.addOperator(CircuitOperator.derivativeOperator(ZTT));
-        i.connectTo(join, 0);
-        i.connectTo(join, 1);
-        join.connectTo(d, 0);
+                (e, f) -> new ComparableObjectList(e.get(0), f.get(0))));
         Port input = c.getInputPort(0);
-        input.connectTo(i, 0);
-        Wire output = c.addOutputWireFromOperator(d);
+        input.connectTo(join, 0);
+        input.connectTo(join, 1);
+        Wire output = c.addOutputWireFromOperator(join);
         Sink sink = output.addSink();
         c.seal();
         this.show(c);
 
-        c.reset();
+        Scheduler scheduler = new Scheduler();
+        c.reset(scheduler);
         DynamicZSet<Integer> zs =
                 new DynamicZSet<Integer>(IntegerRing.instance);
         for (int iv = 0; iv < 10; iv++) {
             zs.add(new ComparableObjectList(iv, "String"), iv);
             input.setValue(zs);
-            c.step();
+            c.step(scheduler);
             Object out = sink.getValue();
             DynamicZSet<Integer> j = zs.join(zs, e -> e.get(0), f -> (Integer) f.get(0) + 1,
-                    (e, f) -> new ComparableObjectList(e.get(0), e.get(1), f.get(0), f.get(1)));
+                    (e, f) -> new ComparableObjectList(e.get(0), f.get(0)));
             Assert.assertEquals(j, out);
         }
     }
 
     @Test
     public void transitiveClosureTest() {
-        Circuit inner = new Circuit("inner", ZTL, ZTL);
-        Operator i = inner.addOperator(CircuitOperator.integrationOperator(ZT));
-        Operator plus = inner.addOperator(new PlusOperator(ZT));
+        final Type EdgeType = new TupleType(Utilities.list(IntegerType.instance, IntegerType.instance));
+        final Type ZEdgeSetType = new DynamicZSetType(EdgeType);
+        final List<Type> ZEdgeSetTypeSingletonList = Utilities.list(ZEdgeSetType);
+
+        Circuit inner = new Circuit("inner", ZEdgeSetTypeSingletonList, ZEdgeSetTypeSingletonList);
+        Operator i = inner.addOperator(CircuitOperator.integrationOperator(ZEdgeSetType));
+        inner.getInputPort().connectTo(i);
+        Operator plus = inner.addOperator(new PlusOperator(ZEdgeSetType));
         i.connectTo(plus, 0);
+        Operator join = inner.addOperator(new DynamicZSetJoinOperator<Integer>(
+                "join", ZEdgeSetType, ZEdgeSetType, ZEdgeSetType, e -> e.get(1), f -> f.get(0), (e, f) ->
+                new ComparableObjectList(e.get(0), f.get(1))));
+        i.connectTo(join, 0);
+        plus.connectTo(join, 1);
+        Operator plus1 = inner.addOperator(new PlusOperator(ZEdgeSetType));
+        i.connectTo(plus1, 0);
+        join.connectTo(plus1, 1);
+
+        Operator delay = inner.addOperator(new DelayOperator(ZEdgeSetType));
+        delay.connectTo(plus, 1);
+        Operator distinct = inner.addOperator(new DynamicDistinctZSetOperator<Integer>("distinct", ZEdgeSetType));
+        plus1.connectTo(distinct);
+        distinct.connectTo(delay);
+        Operator d = inner.addOperator(CircuitOperator.derivativeOperator(ZEdgeSetType));
+        distinct.connectTo(d);
+        inner.addOutputWireFromOperator(d);
+        CircuitOperator loopbody = new CircuitOperator(inner.seal());
+        Circuit top = new Circuit("top", ZEdgeSetTypeSingletonList, ZEdgeSetTypeSingletonList);
+        Operator loop = top.addOperator(loopbody.bracket());
+        Port input = top.getInputPort();
+        input.connectTo(loop);
+        Wire w = top.addOutputWireFromOperator(loop);
+        top.seal();
+
+        Sink sink = w.addSink();
+        //this.show(top, true);
+        Scheduler scheduler = new Scheduler();
+        top.reset(scheduler);
+        DynamicZSet<Integer> zs = new DynamicZSet<Integer>(IntegerRing.instance);
+        zs.add(new ComparableObjectList(1, 2));
+        zs.add(new ComparableObjectList(2, 3));
+        /*
+        input.setValue(zs);
+        top.step(scheduler);
+        Object out = sink.getValue();
+        DynamicZSet<Integer> expected =
+                new DynamicZSet<Integer>(IntegerRing.instance);
+        expected.add(new ComparableObjectList(1, 3));
+        expected = expected.plus(zs);
+        Assert.assertEquals(expected, out);
+        */
+        // Second computation step, non-incremental
+        System.out.println("=========================");
+        top.reset(scheduler);
+        zs.add(new ComparableObjectList(3, 4));
+        input.setValue(zs);
+        try {
+            top.step(scheduler);
+        } catch (Exception ex) {
+            System.out.println(top.toGraphvizTop(true));
+            throw ex;
+        }
+        Object out = sink.getValue();
+        System.out.println(out);
     }
 }

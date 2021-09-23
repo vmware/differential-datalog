@@ -23,10 +23,10 @@
 
 package org.dbsp.algebraic.staticTyping;
 
-import javafx.util.Pair;
 import org.dbsp.algebraic.Time;
 import org.dbsp.algebraic.TimeFactory;
 import org.dbsp.compute.StreamFunction;
+import org.dbsp.lib.Pair;
 
 /**
  * Generic stream API containing values of type V.
@@ -71,7 +71,7 @@ public abstract class IStream<V> {
             @Override
             public V get(Time index) {
                 V left = IStream.this.get(index);
-                return group.minus(left);
+                return group.negate(left);
             }
         };
     }

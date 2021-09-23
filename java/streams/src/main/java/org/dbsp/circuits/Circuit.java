@@ -25,7 +25,8 @@ package org.dbsp.circuits;
 
 import org.dbsp.circuits.operators.*;
 import org.dbsp.algebraic.dynamicTyping.types.Type;
-import org.dbsp.lib.Linq;
+import org.dbsp.lib.Pair;
+import org.dbsp.lib.Utilities;
 
 import java.util.*;
 
@@ -55,7 +56,7 @@ public class Circuit extends ComputationalElement implements Latch {
         for (Type t: inputTypes) {
             Port port = new Port(t);
             this.inputPorts.add(port);
-            this.operators.add(port);
+            this.addOperator(port);
         }
         this.outputWires = new ArrayList<Wire>(outputTypes.size());
         this.latches = new ArrayList<>();
@@ -65,6 +66,12 @@ public class Circuit extends ComputationalElement implements Latch {
 
     public Port getInputPort(int index) {
         return this.inputPorts.get(index);
+    }
+
+    public Port getInputPort() {
+        if (this.inputCount() != 1)
+            throw new RuntimeException("Circuit has more than 1 input port");
+        return this.getInputPort(0);
     }
 
     public List<Wire> getOutputWires() {
@@ -120,31 +127,30 @@ public class Circuit extends ComputationalElement implements Latch {
      * - step
      * - get the values from all output wires using getValue
      */
-    public void step() {
-        this.log("Time step " + this.time);
-        this.latch();
-        this.push();
-        this.time++;
+    public void step(Scheduler scheduler) {
+        this.log("Time step " + this.time++);
+        this.latch(scheduler);
+        this.push(scheduler);
     }
 
     /**
      * Tell all latches to emit their stored output.
      */
-    public void latch() {
+    public void latch(Scheduler scheduler) {
         this.log("Latching circuit " + this);
         for (Latch op: this.latches) {
-            op.latch();
+            op.latch(scheduler);
         }
     }
 
     @Override
-    public void push() {
+    public void push(Scheduler scheduler) {
         for (Port port: this.inputPorts) {
             if (port.hasNoInputWire())
-                port.evaluate();
+                port.setOutput(scheduler);
         }
         for (Latch op: this.latches) {
-            op.push();
+            op.push(scheduler);
         }
     }
 
@@ -152,14 +158,14 @@ public class Circuit extends ComputationalElement implements Latch {
      * Nothing to do for circuits.
      */
     @Override
-    public void notifyInputIsAvailable() {}
+    public void notifyInputIsAvailable(Scheduler scheduler) {}
 
-    public void reset() {
+    public void reset(Scheduler scheduler) {
         if (!this.sealed)
             throw new RuntimeException("Circuit not sealed");
         this.time = 0;
         for (Operator op: this.operators)
-            op.reset();
+            op.reset(scheduler);
     }
 
     @Override
@@ -173,51 +179,55 @@ public class Circuit extends ComputationalElement implements Latch {
     }
 
     @Override
-    public void toGraphvizNodes(int indent, StringBuilder builder) {
-        Linq.indent(indent, builder);
+    public void toGraphvizNodes(boolean deep, int indent, StringBuilder builder) {
+        Utilities.indent(indent, builder);
         builder.append("subgraph cluster_").append(this.graphvizId()).append(" {\n");
         indent += 2;
-        Linq.indent(indent, builder);
-        builder.append("label=\"").append(this.graphvizId()).append("\"\n");
+        Utilities.indent(indent, builder);
+        builder.append("label=\"").append(this.toString()).append("\"\n");
         for (Operator op: this.operators) {
-            op.toGraphvizNodes(indent, builder);
+            op.toGraphvizNodes(deep, indent, builder);
         }
         indent -= 2;
-        Linq.indent(indent, builder);
+        Utilities.indent(indent, builder);
         builder.append("}\n");
     }
 
     @Override
-    public void toGraphvizWires(int indent, StringBuilder builder) {
+    public void toGraphvizWires(boolean deep, int indent, StringBuilder builder) {
         for (Operator op: this.operators) {
-            op.toGraphvizWires(indent, builder);
+            op.toGraphvizWires(deep, indent, builder);
         }
     }
 
-
-
-    public String toGraphvizTop() {
+    /**
+     * Generate a graphviz representation of this circuit
+     * @param deep If true always recurse down to individual operators.  Otherwise
+     *             show some building blocks as mega-nodes.
+     */
+    public String toGraphvizTop(boolean deep) {
         StringBuilder builder = new StringBuilder();
         builder.append("digraph ").append(this.name).append(" {\n");
         int indent = 2;
-        this.toGraphvizNodes(indent, builder);
+        this.toGraphvizNodes(deep, indent, builder);
         // Generate the sinks nodes before they are used in wires.
         for (Wire w: this.outputWires) {
-            for (Consumer c: w.consumers) {
-                if (!(c instanceof Sink))
+            for (Pair<ComputationalElement, ComputationalElement> c: w.consumers) {
+                ComputationalElement cf = c.first;
+                if (!(cf instanceof Sink))
                     continue;
-                Sink sink = (Sink)c;
-                sink.toGraphvizNodes(indent, builder);
+                Sink sink = (Sink)cf;
+                sink.toGraphvizNodes(deep, indent, builder);
             }
         }
 
-        this.toGraphvizWires(indent, builder);
+        this.toGraphvizWires(deep, indent, builder);
         builder.append("}\n");
         return builder.toString();
     }
 
     @Override
     public String graphvizId() {
-        return this.name.replaceAll("[^a-zA-Z0-9]", "_");
+        return Utilities.identifierFromString(this.name);
     }
 }

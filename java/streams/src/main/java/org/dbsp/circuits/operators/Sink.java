@@ -24,15 +24,16 @@
 package org.dbsp.circuits.operators;
 
 import org.dbsp.circuits.ComputationalElement;
+import org.dbsp.circuits.Scheduler;
 import org.dbsp.circuits.Wire;
-import org.dbsp.lib.Linq;
+import org.dbsp.lib.Utilities;
 
 public class Sink extends ComputationalElement {
     final String name;
     final Wire wire;
 
     public Sink(Wire input) {
-        super(Linq.list(input.getType()), Linq.list());
+        super(Utilities.list(input.getType()), Utilities.list());
         this.name = "sink";
         this.wire = input;
     }
@@ -45,7 +46,7 @@ public class Sink extends ComputationalElement {
     }
 
     @Override
-    public void notifyInputIsAvailable() {}
+    public void notifyInputIsAvailable(Scheduler scheduler) {}
 
     @Override
     public String getName() {
@@ -66,13 +67,14 @@ public class Sink extends ComputationalElement {
         return "_";
     }
 
-    public void toGraphvizNodes(int indent, StringBuilder builder) {
-        Linq.indent(indent, builder);
+    @Override
+    public void toGraphvizNodes(boolean deep, int indent, StringBuilder builder) {
+        Utilities.indent(indent, builder);
         builder.append(this.graphvizId())
                 .append(" [label=\"").append(this.toString())
                 .append(" (").append(this.id).append(")\"]\n");
     }
 
     @Override
-    public void toGraphvizWires(int indent, StringBuilder builder) {}
+    public void toGraphvizWires(boolean deep, int indent, StringBuilder builder) {}
 }

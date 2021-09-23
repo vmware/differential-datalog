@@ -23,12 +23,11 @@
 
 package org.dbsp.circuits;
 
-import org.dbsp.circuits.operators.Consumer;
-import org.dbsp.circuits.operators.Operator;
-import org.dbsp.circuits.operators.Sink;
+import org.dbsp.circuits.operators.*;
 import org.dbsp.algebraic.dynamicTyping.types.Type;
 import org.dbsp.lib.HasId;
-import org.dbsp.lib.Linq;
+import org.dbsp.lib.Pair;
+import org.dbsp.lib.Utilities;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -42,7 +41,9 @@ import java.util.List;
  * consumers if it is an output wire.
  */
 public class Wire extends HasId {
-    public final List<Consumer> consumers = new ArrayList<>();
+    // For each consumer a node that it represents.  For example,
+    // some ports represent the circuit they belong to.
+    public final List<Pair<ComputationalElement, ComputationalElement>> consumers = new ArrayList<>();
     /**
      * State-machine: number of consumers who have not consumed the
      * value yet.
@@ -100,21 +101,18 @@ public class Wire extends HasId {
      * that receives the data from this wire.
      * @param consumer  Operator that consumes the wire value.
      */
-    public void addConsumer(Consumer consumer) {
-        this.consumers.add(consumer);
+    public void addConsumer(ComputationalElement consumer, ComputationalElement representative) {
+        this.consumers.add(
+                new Pair<ComputationalElement, ComputationalElement>(consumer, representative));
     }
 
     public Type getType() {
         return this.valueType;
     }
 
-    public boolean hasConsumers() {
-        return this.consumers.size() > 0;
-    }
-
-    public void notifyConsumers() {
-        for (Consumer op: this.consumers)
-            op.notifyInputIsAvailable();
+    public void notifyConsumers(Scheduler scheduler) {
+        for (Pair<ComputationalElement, ComputationalElement> op: this.consumers)
+            op.first.notifyInputIsAvailable(scheduler);
     }
 
     public void log() {
@@ -126,21 +124,47 @@ public class Wire extends HasId {
 
     @Override
     public String toString() {
-        return "Wire " + this.id + " " + ((this.value == null) ? "no value" : "value " + this.value);
+        return "Wire " + this.id + " " + this.valueAsString();
     }
 
-    public void toGraphviz(int indent, StringBuilder builder) {
-        String src = this.source.graphvizId();
-        for (Consumer c: this.consumers) {
-            Linq.indent(indent, builder);
-            builder.append(src).append(" -> ").append(c.graphvizId())
-                    .append(" [label=\"(").append(this.id).append(")\"]").append("\n");
+    public String valueAsString() {
+        return (this.value == null) ? "-" : ": " + this.value;
+    }
+
+    /**
+     * Write a wire as a graphviz string.
+     * @param sourceToShow  Node to show as wire source.  May not be actual source
+     *                      when we want to collapse a circuit in the drawing.
+     * @param deep          If true recurse deeply into all circuits.
+     * @param indent        Indentation level in graphviz file.
+     * @param builder       Write result here.
+     */
+    public void toGraphviz(
+            @Nullable
+            CircuitOperator sourceToShow, boolean deep, int indent, StringBuilder builder) {
+        String src = sourceToShow != null ? sourceToShow.graphvizId() : this.source.graphvizId();
+        for (Pair<ComputationalElement, ComputationalElement> cp: this.consumers) {
+            Utilities.indent(indent, builder);
+            ComputationalElement toShow = cp.first;
+            if (sourceToShow != null && toShow.parent == sourceToShow.circuit)
+                // The destination is a member of the circuit element which is the source,
+                // skip it.
+                continue;
+            if (cp.second instanceof CircuitOperator) {
+                CircuitOperator co = (CircuitOperator)cp.second;
+                if (!deep && co.basic)
+                    toShow = co;
+            }
+            builder.append(src).append(" -> ").append(toShow.graphvizId())
+                    .append(" [label=\"(").append(this.id)
+                    .append(") ").append(this.valueAsString())
+                    .append("\"]").append("\n");
         }
     }
 
     public Sink addSink() {
         Sink sink = new Sink(this);
-        this.addConsumer(sink);
+        this.addConsumer(sink, sink);
         return sink;
     }
 }

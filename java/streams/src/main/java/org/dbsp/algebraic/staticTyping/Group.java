@@ -35,10 +35,10 @@ public interface Group<T> extends Monoid<T> {
      * @param data  A value from the group.
      * @return  The inverse.
      */
-    T minus(T data);
+    T negate(T data);
 
     default boolean equal(T left, T right) {
-        return this.isZero(this.add(this.minus(left), right));
+        return this.isZero(this.add(this.negate(left), right));
     }
 
     /**
@@ -59,8 +59,8 @@ public interface Group<T> extends Monoid<T> {
             }
 
             @Override
-            public Object minus(Object data) {
-                return Group.this.minus((T)data);
+            public Object negate(Object data) {
+                return Group.this.negate((T)data);
             }
 
             @Override

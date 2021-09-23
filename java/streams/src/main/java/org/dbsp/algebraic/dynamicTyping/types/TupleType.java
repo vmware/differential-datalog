@@ -47,11 +47,11 @@ public class TupleType implements Type {
 
     public TupleType(List<Type> components) {
         this.components = components;
-        boolean nogroup = LinqIterator.fromList(components)
+        boolean nogroup = LinqIterator.create(components)
                 .map(Type::getGroup)
                 .any(Objects::isNull);
         this.group = nogroup ? null :
-                new ProductGroup(LinqIterator.fromList(components)
+                new ProductGroup(LinqIterator.create(components)
                 .map(Type::getGroup)
                 .toList());
     }
@@ -73,5 +73,20 @@ public class TupleType implements Type {
     @Override
     public int hashCode() {
         return Objects.hash(components);
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("tuple<");
+        boolean first = true;
+        for (Type t: this.components) {
+            if (!first)
+                builder.append(", ");
+            first = false;
+            builder.append(t.toString());
+        }
+        builder.append(">");
+        return builder.toString();
     }
 }

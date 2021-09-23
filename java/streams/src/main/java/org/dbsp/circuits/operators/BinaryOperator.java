@@ -24,7 +24,8 @@
 package org.dbsp.circuits.operators;
 
 import org.dbsp.algebraic.dynamicTyping.types.Type;
-import org.dbsp.lib.Linq;
+import org.dbsp.circuits.Scheduler;
+import org.dbsp.lib.Utilities;
 
 import java.util.function.Function;
 
@@ -33,15 +34,15 @@ import java.util.function.Function;
  */
 public abstract class BinaryOperator extends Operator {
     public BinaryOperator(Type input0type, Type input1Type, Type outputType) {
-        super(Linq.list(input0type, input1Type), outputType);
+        super(Utilities.list(input0type, input1Type), outputType);
     }
 
     public abstract Object evaluate(Object left, Object right);
 
     @Override
-    public Object evaluate(Function<Integer, Object> inputProvider) {
-        Object v0 = inputProvider.apply(0);
-        Object v1 = inputProvider.apply(1);
+    public Object evaluate(Scheduler scheduler) {
+        Object v0 = this.inputs.get(0).getValue();
+        Object v1 = this.inputs.get(1).getValue();
         return this.evaluate(v0, v1);
     }
 }

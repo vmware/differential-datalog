@@ -37,11 +37,11 @@ public class FiniteFunctionGroup<D, T> implements Group<FiniteFunction<D, T>> {
     }
 
     @Override
-    public FiniteFunction<D, T> minus(FiniteFunction<D, T> data) {
+    public FiniteFunction<D, T> negate(FiniteFunction<D, T> data) {
         return new FiniteFunction<D, T>() {
             @Override
             public T apply(D d) {
-                return FiniteFunctionGroup.this.group.minus(data.apply(d));
+                return FiniteFunctionGroup.this.group.negate(data.apply(d));
             }
         };
     }

@@ -21,55 +21,26 @@
  * SOFTWARE.
  */
 
-package org.dbsp.compute.policies;
+package org.dbsp.circuits.operators.relational;
 
-import org.dbsp.algebraic.staticTyping.ZRing;
+import org.dbsp.algebraic.dynamicTyping.types.Type;
+import org.dbsp.circuits.operators.FunctionOperator;
 
-import java.math.BigInteger;
+import java.util.function.Function;
 
 /**
- * The group of infinite-precision integer values.
- * This implementation uses BigInt Java integers.
+ * An operator that applies "distinct" to a ZSet.
+ * @param <W> type of weights used by ZSet.
  */
-public class InfIntRing implements ZRing<BigInteger> {
-    static final BigInteger zero = BigInteger.valueOf(0);
-    static final BigInteger one = BigInteger.valueOf(1);
-
-    private InfIntRing() {}
-
-    public static final InfIntRing instance = new InfIntRing();
-
-    @Override
-    public BigInteger minus(BigInteger data) {
-        return data.negate();
-    }
-
-    @Override
-    public BigInteger add(BigInteger left, BigInteger right) {
-        return left.add(right);
-    }
-
-    @Override
-    public BigInteger zero() {
-        return zero;
-    }
-
-    @Override
-    public BigInteger times(BigInteger left, BigInteger right) {
-        return left.multiply(right);
-    }
-
-    @Override
-    public BigInteger one() {
-        return one;
-    }
-
-    @Override
-    public boolean equal(BigInteger w0, BigInteger w1) {
-        return w0.equals(w1);
-    }
-
-    public boolean isPositive(BigInteger value) {
-        return value.compareTo(zero) >= 0;
+public class DynamicDistinctZSetOperator<W> extends FunctionOperator {
+    /**
+     * Create a unary operator that computes by applying a function to its input.
+     *
+     * @param name        Operator name.
+     * @param type        Input and output type.
+     */
+    public DynamicDistinctZSetOperator(String name, Type type) {
+        //noinspection unchecked
+        super(name, type, type, e -> ((DynamicZSet<W>)e).distinct());
     }
 }

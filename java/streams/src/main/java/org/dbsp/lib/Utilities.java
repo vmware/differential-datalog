@@ -21,28 +21,23 @@
  * SOFTWARE.
  */
 
-package org.dbsp.circuits.operators;
+package org.dbsp.lib;
 
-/**
- * A consumer is an object that waits for a value to show up.
- */
-public interface Consumer {
-    /**
-     * Notify the consumer that an input has arrived.
-     */
-    void notifyInputIsAvailable();
+import java.util.Arrays;
+import java.util.List;
 
-    /**
-     * A human-friendly name to identify this Consumer.
-     */
-    String getName();
-
-    default void log(String message) {
-        System.out.println(this.getName() + ": " + message);
+public class Utilities {
+    public static void indent(int amount, StringBuilder builder) {
+        for (int i = 0; i < amount; i++)
+            builder.append(" ");
     }
 
-    /**
-     * An id that is used in the generated graphviz representation.
-     */
-    String graphvizId();
+    @SafeVarargs
+    public static <T> List<T> list(T... data) {
+        return Arrays.asList(data);
+    }
+
+    public static String identifierFromString(String str) {
+        return str.replaceAll("[^a-zA-Z0-9]", "_");
+    }
 }

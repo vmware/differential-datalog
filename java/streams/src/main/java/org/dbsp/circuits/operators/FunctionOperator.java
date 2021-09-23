@@ -24,6 +24,7 @@
 package org.dbsp.circuits.operators;
 
 import org.dbsp.algebraic.dynamicTyping.types.Type;
+import org.dbsp.circuits.Scheduler;
 
 import java.util.function.Function;
 
@@ -48,7 +49,7 @@ public class FunctionOperator extends UnaryOperator {
     }
 
     @Override
-    public Object evaluate(Object input) {
+    public Object evaluate(Object input, Scheduler scheduler) {
         return this.computation.apply(input);
     }
 

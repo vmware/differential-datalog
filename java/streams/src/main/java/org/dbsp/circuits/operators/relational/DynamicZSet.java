@@ -24,7 +24,7 @@
 package org.dbsp.circuits.operators.relational;
 
 import org.dbsp.algebraic.staticTyping.ZRing;
-import org.dbsp.compute.policies.IntegerRing;
+import org.dbsp.circuits.ComputationalElement;
 import org.dbsp.compute.relational.ZSet;
 import org.dbsp.lib.ComparableObjectList;
 
@@ -69,6 +69,10 @@ public class DynamicZSet<W>  {
         return new DynamicZSet<W>(this.weightRing, this.data.map(map));
     }
 
+    public DynamicZSet<W> plus(DynamicZSet<W> other) {
+        return new DynamicZSet<W>(this.weightRing, this.data.plus(other.data));
+    }
+
     public DynamicZSet<W> join(DynamicZSet<W> with,
                                Function<ComparableObjectList, Object> leftKey,
                                Function<ComparableObjectList, Object> rightKey,
@@ -79,6 +83,10 @@ public class DynamicZSet<W>  {
 
     public void add(ComparableObjectList data, W weight) {
         this.data.add(data, weight);
+    }
+
+    public void add(ComparableObjectList data) {
+        this.data.add(data);
     }
 
     @Override
@@ -97,5 +105,13 @@ public class DynamicZSet<W>  {
     @Override
     public int hashCode() {
         return Objects.hash(data);
+    }
+
+    public DynamicZSet<W> distinct() {
+        return new DynamicZSet<W>(this.weightRing, this.data.distinct());
+    }
+
+    public void clear() {
+        this.data.clear();
     }
 }

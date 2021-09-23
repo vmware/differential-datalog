@@ -25,6 +25,7 @@ package org.dbsp.circuits.operators;
 
 import org.dbsp.algebraic.staticTyping.Group;
 import org.dbsp.algebraic.dynamicTyping.types.Type;
+import org.dbsp.circuits.Scheduler;
 
 import java.util.Objects;
 
@@ -47,30 +48,30 @@ public class DelayOperator extends UnaryOperator implements Latch {
     }
 
     @Override
-    public void reset() {
+    public void reset(Scheduler scheduler) {
         this.previous = this.group.zero();
     }
 
     @Override
-    public void latch() {
+    public void latch(Scheduler scheduler) {
         this.log("Latching output " + this.previous);
         this.output.setValue(this.previous);
     }
 
     @Override
-    public void push() {
+    public void push(Scheduler scheduler) {
         this.log("Pushing output " + this.previous);
-        this.output.notifyConsumers();
+        this.output.notifyConsumers(scheduler);
     }
 
     @Override
-    public void emitOutput(Object result) {
+    public void emitOutput(Object result, Scheduler scheduler) {
         // delays do not emit their output at the normal time,
         // they emit it when asked to latch it.
     }
 
     @Override
-    public Object evaluate(Object input) {
+    public Object evaluate(Object input, Scheduler scheduler) {
         this.log("Saving input " + input + " result is " + this.previous);
         Object result = this.previous;
         this.previous = input;

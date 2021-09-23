@@ -23,12 +23,12 @@
 
 package org.dbsp.compute;
 
-import javafx.util.Pair;
-import org.dbsp.compute.policies.IntegerRing;
-import org.dbsp.compute.policies.IntegerTime;
+import org.dbsp.compute.time.IntegerRing;
+import org.dbsp.compute.time.IntegerTime;
 import org.dbsp.algebraic.staticTyping.StreamGroup;
 import org.dbsp.algebraic.Time;
 import org.dbsp.algebraic.staticTyping.IStream;
+import org.dbsp.lib.Pair;
 import org.junit.Assert;
 import org.junit.Test;
 

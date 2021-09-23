@@ -25,9 +25,7 @@ package org.dbsp.algebraic.dynamicTyping.types;
 
 import org.dbsp.algebraic.dynamicTyping.DynamicGroup;
 import org.dbsp.circuits.operators.relational.DynamicZSetGroup;
-import org.dbsp.compute.policies.IntegerRing;
-
-import java.util.Objects;
+import org.dbsp.compute.time.IntegerRing;
 
 /**
  * The type of DynmamicZSet objects.
@@ -57,5 +55,10 @@ public class DynamicZSetType implements Type {
     @Override
     public DynamicGroup getGroup() {
         return this.zsetGroup;
+    }
+
+    @Override
+    public String toString() {
+        return "DynamicZSetType<" + this.elementType.toString() + ">";
     }
 }

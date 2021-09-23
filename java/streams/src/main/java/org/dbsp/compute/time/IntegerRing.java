@@ -21,42 +21,51 @@
  * SOFTWARE.
  */
 
-package org.dbsp.algebraic.staticTyping;
+package org.dbsp.compute.time;
 
-import javafx.util.Pair;
+import org.dbsp.algebraic.staticTyping.ZRing;
 
 /**
- * A pair group combines two groups to create a group that operates pointwise on a pair's values.
- * @param <T>   Type of left value.
- * @param <S>   Type of right value.
+ * The group of finite integer values.
+ * This will throw on overflow.
+ * This implementation uses finite Java integers.
  */
-public class PairGroup<T, S> implements Group<Pair<T, S>> {
-    final Group<T> gt;
-    final Group<S> gs;
+public class IntegerRing implements ZRing<Integer> {
+    private IntegerRing() {}
 
-    /**
-     * Creates a pair group from a pair of groups.
-     * @param gt  Group operating on values in the left of the pair.
-     * @param gs  Group operating on values in the right of the pair.
-     */
-    public PairGroup(Group<T> gt, Group<S> gs) {
-        this.gt = gt;
-        this.gs = gs;
+    public static final IntegerRing instance = new IntegerRing();
+
+    @Override
+    public Integer negate(Integer data) {
+        return Math.negateExact(data);
     }
 
     @Override
-    public Pair<T, S> minus(Pair<T, S> data) {
-        return new Pair<T, S>(this.gt.minus(data.getKey()), this.gs.minus(data.getValue()));
+    public Integer add(Integer left, Integer right) {
+        return Math.addExact(left, right);
     }
 
     @Override
-    public Pair<T, S> add(Pair<T, S> left, Pair<T, S> right) {
-        return new Pair<T, S>(this.gt.add(left.getKey(), right.getKey()),
-                this.gs.add(left.getValue(), right.getValue()));
+    public Integer zero() {
+        return 0;
     }
 
     @Override
-    public Pair<T, S> zero() {
-        return new Pair<T, S>(this.gt.zero(), this.gs.zero());
+    public Integer times(Integer left, Integer right) {
+        return Math.multiplyExact(left, right);
+    }
+
+    @Override
+    public Integer one() {
+        return 1;
+    }
+
+    @Override
+    public boolean equal(Integer w0, Integer w1) {
+        return w0.equals(w1);
+    }
+
+    public boolean isPositive(Integer value) {
+        return value >= 0;
     }
 }

@@ -21,51 +21,41 @@
  * SOFTWARE.
  */
 
-package org.dbsp.compute.policies;
+package org.dbsp.circuits;
 
-import org.dbsp.algebraic.staticTyping.ZRing;
+import org.dbsp.circuits.operators.Operator;
+
+import java.util.ArrayList;
 
 /**
- * The group of finite integer values.
- * This will throw on overflow.
- * This implementation uses finite Java integers.
+ * A scheduler keeps track of the nodes that are
+ * ready to run and invokes them in a FIFO order.
+ * The order is important for fairness and to avoid races.
  */
-public class IntegerRing implements ZRing<Integer> {
-    private IntegerRing() {}
+public class Scheduler {
+    final ArrayList<Operator> readyNodes;
 
-    public static final IntegerRing instance = new IntegerRing();
-
-    @Override
-    public Integer minus(Integer data) {
-        return Math.negateExact(data);
+    public Scheduler() {
+        this.readyNodes = new ArrayList<Operator>();
     }
 
-    @Override
-    public Integer add(Integer left, Integer right) {
-        return Math.addExact(left, right);
+    void log(String s) {
+        System.out.println(s);
     }
 
-    @Override
-    public Integer zero() {
-        return 0;
+    /**
+     * Run all ready nodes.  Returns when the list of ready nodes is empty.
+     */
+    public void run() {
+        while (readyNodes.size() > 0) {
+            Operator first = readyNodes.remove(0);
+            this.log("Running node " + first);
+            first.run(this);
+        }
     }
 
-    @Override
-    public Integer times(Integer left, Integer right) {
-        return Math.multiplyExact(left, right);
-    }
-
-    @Override
-    public Integer one() {
-        return 1;
-    }
-
-    @Override
-    public boolean equal(Integer w0, Integer w1) {
-        return w0.equals(w1);
-    }
-
-    public boolean isPositive(Integer value) {
-        return value >= 0;
+    public void addReadyNode(Operator operator) {
+        this.log("Node " + operator + " is ready");
+        this.readyNodes.add(operator);
     }
 }

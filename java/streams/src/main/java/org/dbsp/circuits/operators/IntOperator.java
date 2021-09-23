@@ -25,6 +25,7 @@ package org.dbsp.circuits.operators;
 
 import org.dbsp.algebraic.staticTyping.Group;
 import org.dbsp.algebraic.dynamicTyping.types.Type;
+import org.dbsp.circuits.Scheduler;
 
 import javax.annotation.Nullable;
 import java.util.Objects;
@@ -33,11 +34,11 @@ public class IntOperator extends UnaryOperator {
     @Nullable
     private Object value = null;
     final Group<Object> group;
-    private final Operator body;
+    private final CircuitOperator body;
     // Int operators are always associated with a Delta
     final DeltaOperator delta;
 
-    protected IntOperator(Type type, DeltaOperator delta, Operator body) {
+    protected IntOperator(Type type, DeltaOperator delta, CircuitOperator body) {
         super(type, type);
         this.delta = delta;
         this.group = Objects.requireNonNull(type.getGroup());
@@ -45,7 +46,7 @@ public class IntOperator extends UnaryOperator {
     }
 
     @Override
-    public Object evaluate(Object input) {
+    public Object evaluate(Object input, Scheduler scheduler) {
         if (this.value == null)
             this.value = input;
         else
@@ -54,22 +55,23 @@ public class IntOperator extends UnaryOperator {
     }
 
     @Override
-    public void reset() {
+    public void reset(Scheduler scheduler) {
         this.log("reset");
         this.value = null;
-        this.body.reset();
-        this.delta.reset();
+        this.body.reset(scheduler);
+        this.delta.reset(scheduler);
     }
 
     @Override
-    public void emitOutput(Object result) {
+    public void emitOutput(Object result, Scheduler scheduler) {
         // int does not emit an output when expected, only when it is actually zero
         if (this.group.isZero(Objects.requireNonNull(result))) {
             this.output.setValue(Objects.requireNonNull(this.value));
-            this.output.notifyConsumers();
-            this.reset();
+            this.output.notifyConsumers(scheduler);
+            this.reset(scheduler);
         } else {
-            this.delta.repeat();
+            this.body.circuit.step(scheduler);
+            this.delta.repeat(scheduler);
         }
     }
 

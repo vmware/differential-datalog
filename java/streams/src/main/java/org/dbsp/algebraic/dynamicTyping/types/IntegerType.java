@@ -24,7 +24,7 @@
 package org.dbsp.algebraic.dynamicTyping.types;
 
 import org.dbsp.algebraic.dynamicTyping.DynamicGroup;
-import org.dbsp.compute.policies.IntegerRing;
+import org.dbsp.compute.time.IntegerRing;
 
 /**
  * Represents a type that stores Java Integers.

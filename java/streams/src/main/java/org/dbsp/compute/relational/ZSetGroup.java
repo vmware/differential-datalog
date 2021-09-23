@@ -44,7 +44,7 @@ public class ZSetGroup<T extends Comparable<T>, W>
     }
 
     @Override
-    public ZSet<T, W> minus(ZSet<T, W> data) {
+    public ZSet<T, W> negate(ZSet<T, W> data) {
         return data.minus();
     }
 

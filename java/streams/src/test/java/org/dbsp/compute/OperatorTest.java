@@ -27,7 +27,7 @@ import org.dbsp.circuits.*;
 import org.dbsp.circuits.operators.*;
 import org.dbsp.algebraic.dynamicTyping.types.IntegerType;
 import org.dbsp.algebraic.dynamicTyping.types.Type;
-import org.dbsp.lib.Linq;
+import org.dbsp.lib.Utilities;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -35,10 +35,10 @@ import java.util.List;
 
 public class OperatorTest {
     static final Type IT = IntegerType.instance;
-    static final List<Type> ITL = Linq.list(IT);
+    static final List<Type> ITL = Utilities.list(IT);
 
     void show(Circuit c) {
-        System.out.println(c.toGraphvizTop());
+        System.out.println(c.toGraphvizTop(false));
     }
 
     @Test
@@ -53,10 +53,12 @@ public class OperatorTest {
         Sink sink = o.addSink();
         // Let's run
         this.show(circuit);
-        circuit.reset();
+        
+        Scheduler scheduler = new Scheduler();
+        circuit.reset(scheduler);
         for (int i = 0; i < 10; i++) {
             port.setValue(i);
-            circuit.step();
+            circuit.step(scheduler);
             Object out = sink.getValue();
             int expected = i > 0 ? i - 1 : 0;
             Assert.assertEquals(expected, out);
@@ -78,11 +80,12 @@ public class OperatorTest {
         circuit.seal();
         this.show(circuit);
         // Let's run
-        circuit.reset();
+        Scheduler scheduler = new Scheduler();
+        circuit.reset(scheduler);
         for (int i = 0; i < 10; i++) {
             System.out.println("===========");
             port.setValue(i);
-            circuit.step();
+            circuit.step(scheduler);
             Object out = sink.getValue();
             int expected = i > 1 ? i - 2 : 0;
             Assert.assertEquals(expected, out);
@@ -97,10 +100,11 @@ public class OperatorTest {
         Sink sink = circuit.getOutputWires().get(0).addSink();
         this.show(circuit);
         // Let's run
-        circuit.reset();
+        Scheduler scheduler = new Scheduler();
+        circuit.reset(scheduler);
         for (int i = 0; i < 10; i++) {
             port.setValue(i);
-            circuit.step();
+            circuit.step(scheduler);
             Object out = sink.getValue();
             int expected = 0;
             for (int j = 0; j <= i; j++)
@@ -116,11 +120,12 @@ public class OperatorTest {
         Sink sink = circuit.getOutputWires().get(0).addSink();
         // Let's run
         this.show(circuit);
-        circuit.reset();
+        Scheduler scheduler = new Scheduler();
+        circuit.reset(scheduler);
         Port port = circuit.getInputPort(0);
         for (int i = 0; i < 10; i++) {
             port.setValue(i);
-            circuit.step();
+            circuit.step(scheduler);
             Object out = sink.getValue();
             int expected = i > 0 ? 1 : 0;
             Assert.assertEquals(expected, out);
@@ -142,10 +147,11 @@ public class OperatorTest {
         Sink sink = output.addSink();
 
         this.show(c);
-        c.reset();
+        Scheduler scheduler = new Scheduler();
+        c.reset(scheduler);
         for (int iv = 0; iv < 10; iv++) {
             input.setValue(iv);
-            c.step();
+            c.step(scheduler);
             Object out = sink.getValue();
             Assert.assertEquals(iv, out);
         }
@@ -167,10 +173,11 @@ public class OperatorTest {
 
         Sink sink = output.addSink();
         this.show(c);
-        c.reset();
+        Scheduler scheduler = new Scheduler();
+        c.reset(scheduler);
         for (int iv = 0; iv < 10; iv++) {
             input.setValue(iv);
-            c.step();
+            c.step(scheduler);
             Object out = sink.getValue();
             int expected = 0;
             for (int i = 0; i <= iv; i++)
@@ -182,20 +189,27 @@ public class OperatorTest {
     @Test
     public void bracketTest() {
         UnaryOperator id = new IdOperator(IT);
-        Operator op = id.bracket();
-        Circuit c = new Circuit("top", ITL, ITL);
-        c.addOperator(op);
-        Port input = c.getInputPort(0);
-        input.connectTo(op, 0);
-        Wire output = c.addOutputWireFromOperator(op);
-        c.seal();
+        Circuit c = new Circuit("wrapper", ITL, ITL);
+        c.addOperator(id);
+        c.getInputPort().connectTo(id);
+        c.addOutputWireFromOperator(id);
+        CircuitOperator cop = new CircuitOperator(c.seal());
+        CircuitOperator body = cop.bracket();
 
+        Circuit top = new Circuit("top", ITL, ITL);
+        top.addOperator(body);
+        Port input = top.getInputPort();
+        input.connectTo(body);
+        Wire output = top.addOutputWireFromOperator(body);
+        top.seal();
         Sink sink = output.addSink();
-        this.show(c);
-        c.reset();
+        this.show(top);
+
+        Scheduler scheduler = new Scheduler();
+        top.reset(scheduler);
         for (int iv = 0; iv < 10; iv++) {
             input.setValue(iv);
-            c.step();
+            top.step(scheduler);
             Object out = sink.getValue();
             Assert.assertEquals(iv, out);
         }

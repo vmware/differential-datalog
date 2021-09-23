@@ -25,16 +25,17 @@ package org.dbsp.circuits.operators;
 
 import org.dbsp.algebraic.staticTyping.Group;
 import org.dbsp.algebraic.dynamicTyping.types.Type;
+import org.dbsp.circuits.Scheduler;
 
 import java.util.Objects;
 
 /**
  * An operator that negates its input.
  */
-public class MinusOperator extends UnaryOperator {
+public class NegateOperator extends UnaryOperator {
     private final Group<Object> group;
 
-    protected MinusOperator(Type type) {
+    protected NegateOperator(Type type) {
         super(type, type);
         this.group = Objects.requireNonNull(type.getGroup());
     }
@@ -45,7 +46,7 @@ public class MinusOperator extends UnaryOperator {
     }
 
     @Override
-    public Object evaluate(Object input) {
-        return this.group.minus(input);
+    public Object evaluate(Object input, Scheduler scheduler) {
+        return this.group.negate(input);
     }
 }

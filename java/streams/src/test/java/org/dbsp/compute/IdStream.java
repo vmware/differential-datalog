@@ -23,7 +23,7 @@
 
 package org.dbsp.compute;
 
-import org.dbsp.compute.policies.IntegerTime;
+import org.dbsp.compute.time.IntegerTime;
 import org.dbsp.algebraic.Time;
 import org.dbsp.algebraic.TimeFactory;
 import org.dbsp.algebraic.staticTyping.IStream;
