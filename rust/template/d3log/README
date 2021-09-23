@@ -1,0 +1,101 @@
+D3log - distribution extension to DDlog
+
+Using D3log:
+----------------
+
+ Instances:
+ ----------------
+ D3log adds an additional primitive type -D3LogLocationID - to represent an
+ instance in the system. Each instance is a separate DDlog evaluator, and we
+ provide an extension to allow instances to exchange relational data.
+
+ Instances can be passed in from external systems as facts in a user defined
+ relation. A DDlog instance embedded in some other clustered system would
+ discover the addressable instances through explicit updates from its
+ membership.  External facts could also be used to define instance identifiers
+ associated with other streaming data sinks such as a Kafka queue. 
+
+ Instances can also be created relationally from inside ddlog programs
+ themselves.  We provide management relations to interface with external
+ provisioning systems to dynamically create new instances. This can be easily
+ wired up through relational logic to scale based on any critera such as
+ performance metrics. New nodes could also be created to support new customers with
+ isolation requirements, or as automatic replacements for failed nodes. 
+
+ The current code supports unix process based instance creation. We are actively
+ looking at targetting dynamic container or VM instances.
+ 
+ Localization:
+ ----------------
+
+ D3log allows relations to be annotated to constrain an evaluation to occur on a set of instances.
+ [this denotation kind of argues for putting localization in with the rest of the formals]. 
+ 
+ Localized relations can be viewed as relations which contain an implicit
+ additional term, which is the instance currently performing the evaluation.
+
+       Example:
+        If Cluster(x:D3logLocationId) contains the dynamic set of instances of concern, we
+        can gather up the union of a realtion at each of those nodes by a two-stage
+        distribution.
+
+        Union(x:u64, cluster:D3logLocationId) :-
+        UnionInternal(x:u64)@n :-
+
+        [show an example of how the differential machinery updates the distribution]
+
+
+ Compiling D3log programs:
+ ----------------
+
+ to compile a ddlog program with the d3log localization extension, use the ddlog flag -d3log
+
+ to compile the generated rust program, 'cargo build --features distribution' in the generated directory.
+
+ [I promisd to look at cargo build for the examples, but I failed]
+
+ Management Interfaces
+ ----------------
+
+ ddlog programs using provided management relations should
+ 
+       import d3_application
+
+ in order to get the schema defintions:
+
+ Myself
+ Process
+ Thread
+ InstanceStatus
+ TcpAddress
+ Connection
+
+ [my executable?]
+
+Issues:
+-----------
+  don't know yet how to get an hddlog without processing the initial
+  input. right now we call Hddlog::run on all instances, and throw away
+  the initialization on each instance but the first. that's not the
+  correct approach
+
+  json_framer is a terrible idea. however, i'd like to do async i/o on
+  streams of self-framing json objects. serde supports self framed
+  objects (StreamDeserializer), but since it isn't in async land, it
+  doesn't look possible to implement io:Read without burning a thread to
+  block.
+
+  is it important that we implement all the methods in
+  differential_datalog/src/program/update.rs (DeleteKey, etc)?
+
+  we are assuming that each scc is evaluated in a given node, but
+  there isn't anything that stopping us from using a @ within a function
+  cycle.
+
+D3log JSON Protocol
+--------------------
+
+D3log Source
+--------------------
+ d3main in the generated tree acts as a proxy to the enclosed metadata
+ and evaluation interfaces of the DDlog program. 

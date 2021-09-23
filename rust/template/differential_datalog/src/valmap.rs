@@ -14,7 +14,7 @@ use crate::program::RelId;
 
 /* Stores a set of changes to output tables.
  */
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct DeltaMap<V> {
     map: BTreeMap<RelId, BTreeMap<V, isize>>,
 }

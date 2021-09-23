@@ -15,6 +15,25 @@ nested_ts_32 = ["differential_datalog/nested_ts_32"]
 c_api = ["differential_datalog/c_api"]
 checked_weights = ["differential_datalog/checked_weights"]
 
+distribution = ["d3log", "serde_json", "rand", "tokio"]
+
+[dependencies.d3log]
+path = "./d3log"
+optional = true
+
+[dependencies.serde_json]
+version="1.0.60"
+optional = true
+
+[dependencies.rand]
+version = "0.8.4"
+optional = true
+
+[dependencies.tokio]
+version = "1.4.0"
+features =["net", "macros", "rt-multi-thread", "io-util", "rt", "sync", "fs"]
+optional = true
+
 [dependencies]
 abomonation = "0.7"
 ordered-float = { version = "2.0.0", features = ["serde"] }

@@ -1,0 +1,36 @@
+[package]
+name = "d3log"
+version = "0.1.0"
+authors = ["ehoffman"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies.differential_datalog]
+path = "../differential_datalog"
+
+[dependencies.cmd_parser]
+path = "../cmd_parser"
+
+[dependencies]
+tokio = {version = "1.4.0", features =["net", "macros", "rt-multi-thread", "io-util", "rt", "sync", "fs"]}
+serde = { version = "1.0", features = ["derive"] }
+tokio-fd = {version = "0.3.0"}
+rustop = { version = "1.0.2"}
+nix = { version = "0.20.0"}
+serde_json = "1.0.60"
+rand = "0.8.4"
+
+num-bigint = "0.4.0"
+buffer = "0.1.9"
+# check - i think this was just for a test
+phf = {version="0.8", features = ["macros"]}
+# feature display
+hyper = {version = "0.14.7", features = ["http1", "server", "tcp"]}
+websocket-codec = "0.5.0"
+websocket-lite = "0.5.0"
+hyper-websocket-lite = "0.5.0"
+tokio-util="0.6.7"
+futures-util="0.3.15"
+# num = "0.4.0" - compatible w/ the generated ddlog crate
+num = { version = "0.3", features = ["serde"] }

@@ -1,0 +1,23 @@
+import d3_application
+
+ThreadInstance(loc,) :-  Fact(_, loc).
+input relation Fact(x:u64, k:u128)
+relation PrintMSResult(x:u64, me:D3logLocationId)
+relation MSResult(x:u64, me:D3logLocationId)
+relation LocalizedFact(x:u64)
+relation Anchor(x:u64)
+
+LocalizedFact(x)@(n as u128) :-
+      Fact(x, n),
+      InstanceStatus(_, n, _, _, None).
+
+MSResult(x, y) :- LocalizedFact(x),
+                  Myself(y).
+
+PrintMSResult(x, y)@n :-
+                   Stdout(n),
+                   MSResult(x, y).
+
+// we need an additoinal output to root the dependency tree, and localized relations
+// cannot currently be output
+Anchor(x) :- PrintMSResult(x, _).
