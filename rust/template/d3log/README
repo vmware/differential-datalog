@@ -5,15 +5,15 @@ Using D3log:
 
  Instances:
  ----------------
- D3log adds an additional primitive type -D3LogLocationID - to represent an
+ D3log adds an additional primitive type - D3LogLocationID - to represent an
  instance in the system. Each instance is a separate DDlog evaluator, and we
  provide an extension to allow instances to exchange relational data.
 
- Instances can be passed in from external systems as facts in a user defined
- relation. A DDlog instance embedded in some other clustered system would
- discover the addressable instances through explicit updates from its
- membership.  External facts could also be used to define instance identifiers
- associated with other streaming data sinks such as a Kafka queue. 
+ Instances store information about other instances, including their
+ network endpoint addresses, in special metadata relations.  These
+ relations can be populated by external systems, such as a cluster
+ membership service.
+
 
  Instances can also be created relationally from inside ddlog programs
  themselves.  We provide management relations to interface with external
@@ -48,7 +48,7 @@ Using D3log:
  Compiling D3log programs:
  ----------------
 
- to compile a ddlog program with the d3log localization extension, use the ddlog flag -d3log
+ to compile a ddlog program with the d3log localization extension, use the ddlog flag --d3log
 
  to compile the generated rust program, 'cargo build --features distribution' in the generated directory.
 
@@ -84,9 +84,6 @@ Issues:
   objects (StreamDeserializer), but since it isn't in async land, it
   doesn't look possible to implement io:Read without burning a thread to
   block.
-
-  is it important that we implement all the methods in
-  differential_datalog/src/program/update.rs (DeleteKey, etc)?
 
   we are assuming that each scc is evaluated in a given node, but
   there isn't anything that stopping us from using a @ within a function

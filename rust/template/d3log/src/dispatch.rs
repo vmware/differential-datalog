@@ -6,7 +6,7 @@ use crate::{Batch, BatchBody, Error, Evaluator, Port, RecordSet, Transport};
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 
 type DispatchMap = HashMap<String, Vec<(u64, Port)>>;
 
@@ -14,7 +14,7 @@ type DispatchMap = HashMap<String, Vec<(u64, Port)>>;
 pub struct Dispatch {
     eval: Evaluator, // to be removed
     count: Arc<AtomicUsize>,
-    handlers: Arc<Mutex<DispatchMap>>,
+    handlers: Arc<RwLock<DispatchMap>>,
 }
 
 impl Transport for Dispatch {
@@ -22,7 +22,7 @@ impl Transport for Dispatch {
         let mut output = HashMap::<u64, (Port, RecordSet)>::new();
 
         for (rel, v, weight) in &RecordSet::from(b.clone()).expect("batch") {
-            if let Some(ports) = { self.handlers.lock().expect("lock").get(&rel) } {
+            if let Some(ports) = { self.handlers.read().expect("lock").get(&rel) } {
                 for (i, p) in ports {
                     // we can probably do this databatch to recordbatch translation elsewhere and
                     // not pull in evaluator. oh, we also have translation port!
@@ -48,7 +48,7 @@ impl Dispatch {
     pub fn new(eval: Evaluator) -> Dispatch {
         Dispatch {
             eval,
-            handlers: Arc::new(Mutex::new(HashMap::new())),
+            handlers: Arc::new(RwLock::new(HashMap::new())),
             count: Arc::new(AtomicUsize::new(0)),
         }
     }
@@ -59,7 +59,7 @@ impl Dispatch {
         let id = self.count.fetch_add(1, Ordering::SeqCst);
 
         self.handlers
-            .lock()
+            .write()
             .expect("lock")
             .entry(relation_name.to_string())
             .or_insert_with(Vec::new)
