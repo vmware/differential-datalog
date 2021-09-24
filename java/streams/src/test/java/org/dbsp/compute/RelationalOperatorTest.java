@@ -269,7 +269,6 @@ public class RelationalOperatorTest {
         DynamicZSet<Integer> zs = new DynamicZSet<Integer>(IntegerRing.instance);
         zs.add(new ComparableObjectList(1, 2));
         zs.add(new ComparableObjectList(2, 3));
-        /*
         input.setValue(zs);
         top.step(scheduler);
         Object out = sink.getValue();
@@ -278,19 +277,96 @@ public class RelationalOperatorTest {
         expected.add(new ComparableObjectList(1, 3));
         expected = expected.plus(zs);
         Assert.assertEquals(expected, out);
-        */
         // Second computation step, non-incremental
         System.out.println("=========================");
-        top.reset(scheduler);
         zs.add(new ComparableObjectList(3, 4));
         input.setValue(zs);
-        try {
-            top.step(scheduler);
-        } catch (Exception ex) {
-            System.out.println(top.toGraphvizTop(true));
-            throw ex;
-        }
+        top.step(scheduler);
+        out = sink.getValue();
+        expected.add(new ComparableObjectList(1, 4));
+        expected.add(new ComparableObjectList(2, 4));
+        expected.add(new ComparableObjectList(3, 4));
+        Assert.assertEquals(expected, out);
+    }
+
+    @Test
+    public void incrementalTransitiveClosureTest() {
+        final Type EdgeType = new TupleType(Utilities.list(IntegerType.instance, IntegerType.instance));
+        final Type ZEdgeSetType = new DynamicZSetType(EdgeType);
+        final List<Type> ZEdgeSetTypeSingletonList = Utilities.list(ZEdgeSetType);
+
+        Circuit inner = new Circuit("inner", ZEdgeSetTypeSingletonList, ZEdgeSetTypeSingletonList);
+        
+        Operator i = inner.addOperator(CircuitOperator.integrationOperator(ZEdgeSetType));
+        inner.getInputPort().connectTo(i);
+        Operator plus = inner.addOperator(new PlusOperator(ZEdgeSetType));
+        i.connectTo(plus, 0);
+        Operator join = inner.addOperator(new DynamicZSetJoinOperator<Integer>(
+                "join", ZEdgeSetType, ZEdgeSetType, ZEdgeSetType, e -> e.get(1), f -> f.get(0), (e, f) ->
+                new ComparableObjectList(e.get(0), f.get(1))));
+        i.connectTo(join, 0);
+        plus.connectTo(join, 1);
+        Operator plus1 = inner.addOperator(new PlusOperator(ZEdgeSetType));
+        i.connectTo(plus1, 0);
+        join.connectTo(plus1, 1);
+
+        Operator delay = inner.addOperator(new DelayOperator(ZEdgeSetType));
+        delay.connectTo(plus, 1);
+        Operator distinct = inner.addOperator(new DynamicDistinctZSetOperator<Integer>("distinct", ZEdgeSetType));
+        plus1.connectTo(distinct);
+        distinct.connectTo(delay);
+        Operator d = inner.addOperator(CircuitOperator.derivativeOperator(ZEdgeSetType));
+        distinct.connectTo(d);
+        inner.addOutputWireFromOperator(d);
+        CircuitOperator loopbody = new CircuitOperator(inner.seal());
+        Circuit top = new Circuit("top", ZEdgeSetTypeSingletonList, ZEdgeSetTypeSingletonList);
+        Operator loop = top.addOperator(loopbody.bracket());
+        Operator itop = top.addOperator(CircuitOperator.integrationOperator(ZEdgeSetType));
+        itop.connectTo(loop);
+        Port input = top.getInputPort();
+        input.connectTo(itop);
+        Operator dtop = top.addOperator(CircuitOperator.derivativeOperator(ZEdgeSetType));
+        loop.connectTo(dtop);
+        Wire w = top.addOutputWireFromOperator(dtop);
+        top.seal();
+
+        Sink sink = w.addSink();
+        this.show(top, true);
+        Scheduler scheduler = new Scheduler();
+        top.reset(scheduler);
+        DynamicZSet<Integer> zs = new DynamicZSet<Integer>(IntegerRing.instance);
+        zs.add(new ComparableObjectList(1, 2));
+        zs.add(new ComparableObjectList(2, 3));
+        input.setValue(zs);
+        top.step(scheduler);
         Object out = sink.getValue();
-        System.out.println(out);
+        DynamicZSet<Integer> expected =
+                new DynamicZSet<Integer>(IntegerRing.instance);
+        expected.add(new ComparableObjectList(1, 3));
+        expected = expected.plus(zs);
+        Assert.assertEquals(expected, out);
+        // Add one edge
+        System.out.println("=========================");
+        zs.clear();
+        zs.add(new ComparableObjectList(3, 4));
+        input.setValue(zs);
+        top.step(scheduler);
+        out = sink.getValue();
+        expected.clear();
+        expected.add(new ComparableObjectList(1, 4));
+        expected.add(new ComparableObjectList(2, 4));
+        expected.add(new ComparableObjectList(3, 4));
+        Assert.assertEquals(expected, out);
+        // Remove another edge
+        zs.clear();
+        zs.add(new ComparableObjectList(1, 2), -1);
+        input.setValue(zs);
+        top.step(scheduler);
+        out = sink.getValue();
+        expected.clear();
+        expected.add(new ComparableObjectList(1, 4), -1);
+        expected.add(new ComparableObjectList(1, 2), -1);
+        expected.add(new ComparableObjectList(1, 3), -1);
+        Assert.assertEquals(expected, out);
     }
 }

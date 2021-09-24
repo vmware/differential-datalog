@@ -131,6 +131,7 @@ public class Circuit extends ComputationalElement implements Latch {
         this.log("Time step " + this.time++);
         this.latch(scheduler);
         this.push(scheduler);
+        scheduler.run();
     }
 
     /**
