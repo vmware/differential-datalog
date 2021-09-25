@@ -121,8 +121,8 @@ public abstract class ComputationalElement extends HasId {
      */
     public abstract String getName();
 
-    public void log(String message) {
-        System.out.println(this.getName() + ": " + message);
+    public void log(Scheduler scheduler, String message, Object... arguments) {
+        scheduler.log(this.getName() + ": " + message, arguments);
     }
 
     /**

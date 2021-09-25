@@ -21,28 +21,17 @@
  * SOFTWARE.
  */
 
-package org.dbsp.circuits.operators;
+package org.dbsp.compute;
 
-import org.dbsp.algebraic.dynamicTyping.types.Type;
-import org.dbsp.circuits.Scheduler;
-import org.dbsp.lib.Utilities;
+public class TestUtil {
+    static boolean verbose = false;
 
-import java.util.function.Function;
-
-/**
- * Base class for all binary operators.
- */
-public abstract class BinaryOperator extends Operator {
-    public BinaryOperator(Type input0type, Type input1Type, Type outputType) {
-        super(Utilities.list(input0type, input1Type), outputType);
+    static void show(String string) {
+        if (verbose)
+            System.out.println(string);
     }
 
-    public abstract Object evaluate(Object left, Object right);
-
-    @Override
-    public Object evaluate(Scheduler scheduler) {
-        Object v0 = this.inputs.get(0).getValue(scheduler);
-        Object v1 = this.inputs.get(1).getValue(scheduler);
-        return this.evaluate(v0, v1);
+    static void setVerbose(boolean verb) {
+        verbose = verb;
     }
 }

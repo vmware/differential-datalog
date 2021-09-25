@@ -56,7 +56,7 @@ public class IntOperator extends UnaryOperator {
 
     @Override
     public void reset(Scheduler scheduler) {
-        this.log("reset");
+        this.log(scheduler, "reset");
         this.value = null;
         this.body.reset(scheduler);
         this.delta.reset(scheduler);
@@ -66,7 +66,7 @@ public class IntOperator extends UnaryOperator {
     public void emitOutput(Object result, Scheduler scheduler) {
         // int does not emit an output when expected, only when it is actually zero
         if (this.group.isZero(Objects.requireNonNull(result))) {
-            this.output.setValue(Objects.requireNonNull(this.value));
+            this.output.setValue(Objects.requireNonNull(this.value), scheduler);
             this.output.notifyConsumers(scheduler);
             this.reset(scheduler);
         } else {

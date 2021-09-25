@@ -61,11 +61,11 @@ public class CircuitOperator extends Operator implements Latch {
     public Object evaluate(Scheduler scheduler) {
         for (int i = 0; i < this.inputCount(); i++) {
             Wire w = this.inputs.get(i);
-            Object ii = w.getValue();
+            Object ii = w.getValue(scheduler);
             this.circuit.getInputPort(i).setValue(ii);
         }
         this.circuit.step(scheduler);
-        return this.outputWire().getValue();
+        return this.outputWire().getValue(scheduler);
     }
 
     @Override

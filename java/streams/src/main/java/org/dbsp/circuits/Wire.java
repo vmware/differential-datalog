@@ -69,7 +69,7 @@ public class Wire extends HasId {
      * A consumer of this wire wants to know the value.
      * @return  The value on the wire.
      */
-    public Object getValue() {
+    public Object getValue(Scheduler scheduler) {
         if (this.value == null)
             throw new RuntimeException("Wire has no value: " + this);
         if (this.toConsume == 0)
@@ -78,7 +78,7 @@ public class Wire extends HasId {
         Object result = this.value;
         if (this.toConsume == 0) {
             this.value = null;
-            this.log();
+            this.log(scheduler);
         }
         return result;
     }
@@ -87,12 +87,12 @@ public class Wire extends HasId {
      * The source of this wire has produced a value.
      * @param value  Value to set to wire.
      */
-    public void setValue(Object value) {
+    public void setValue(Object value, Scheduler scheduler) {
         if (this.value != null || this.toConsume != 0)
             throw new RuntimeException("Setting wire " + this + " to value " + value +
                     " but prior value not yet consumed");
         this.value = value;
-        this.log();
+        this.log(scheduler);
         this.toConsume = this.consumers.size();
     }
 
@@ -115,11 +115,11 @@ public class Wire extends HasId {
             op.first.notifyInputIsAvailable(scheduler);
     }
 
-    public void log() {
+    public void log(Scheduler scheduler) {
         if (this.value == null)
-            System.out.println("Wire " + this.id + " consumed");
+            scheduler.log("Wire " + this.id + " consumed");
         else
-            System.out.println("Wire " + this.id + " set to " + this.value);
+            scheduler.log("Wire " + this.id + " set to", this.value);
     }
 
     @Override

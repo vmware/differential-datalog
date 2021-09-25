@@ -128,7 +128,7 @@ public class Circuit extends ComputationalElement implements Latch {
      * - get the values from all output wires using getValue
      */
     public void step(Scheduler scheduler) {
-        this.log("Time step " + this.time++);
+        this.log(scheduler, "Time step ", this.time++);
         this.latch(scheduler);
         this.push(scheduler);
         scheduler.run();
@@ -138,7 +138,7 @@ public class Circuit extends ComputationalElement implements Latch {
      * Tell all latches to emit their stored output.
      */
     public void latch(Scheduler scheduler) {
-        this.log("Latching circuit " + this);
+        this.log(scheduler, "Latching circuit ", this);
         for (Latch op: this.latches) {
             op.latch(scheduler);
         }

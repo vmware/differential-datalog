@@ -31,7 +31,6 @@ import org.dbsp.lib.Utilities;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
 
 /**
  * Abstract class representing an operator.
@@ -133,19 +132,19 @@ public abstract class Operator extends ComputationalElement {
         this.inputsPresent++;
         if (this.inputsPresent != this.inputCount())
             return;
-        scheduler.addReadyNode(this);
+        scheduler.addReady(this);
     }
 
     public void run(Scheduler scheduler) {
         this.inputsPresent = 0;
         // All inputs are present, we can compute.
         Object result = this.evaluate(scheduler);
-        this.log("computed " + result);
+        this.log(scheduler, "computed", result);
         this.emitOutput(result, scheduler);
     }
 
     public void emitOutput(Object result, Scheduler scheduler) {
-        this.output.setValue(result);
+        this.output.setValue(result, scheduler);
         this.output.notifyConsumers(scheduler);
     }
 

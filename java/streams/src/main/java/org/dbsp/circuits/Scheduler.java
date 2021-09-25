@@ -34,13 +34,25 @@ import java.util.ArrayList;
  */
 public class Scheduler {
     final ArrayList<Operator> readyNodes;
+    private boolean verbose = false;
 
     public Scheduler() {
         this.readyNodes = new ArrayList<Operator>();
     }
 
-    void log(String s) {
-        System.out.println(s);
+    public void log(String s, Object... arguments) {
+        if (verbose) {
+            System.out.print(s);
+            for (Object o: arguments) {
+                System.out.print(" ");
+                System.out.print(o);
+            }
+            System.out.println();
+        }
+    }
+
+    public void setVerbosity(boolean verbose) {
+        this.verbose = verbose;
     }
 
     /**
@@ -49,13 +61,13 @@ public class Scheduler {
     public void run() {
         while (readyNodes.size() > 0) {
             Operator first = readyNodes.remove(0);
-            this.log("Running node " + first);
+            this.log("Running node ", first);
             first.run(this);
         }
     }
 
-    public void addReadyNode(Operator operator) {
-        this.log("Node " + operator + " is ready");
+    public void addReady(Operator operator) {
+        this.log("Operator is ready:", operator);
         this.readyNodes.add(operator);
     }
 }

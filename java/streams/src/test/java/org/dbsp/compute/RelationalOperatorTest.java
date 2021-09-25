@@ -52,12 +52,12 @@ public class RelationalOperatorTest {
     static final Type ZTT = new DynamicZSetType(TT);
     static final List<Type> ZTTL = Utilities.list(ZTT);
 
-    void show(Circuit c, boolean deep) {
-        System.out.println(c.toGraphvizTop(deep));
+    static void show(Circuit c, boolean deep) {
+        TestUtil.show(c.toGraphvizTop(deep));
     }
 
-    void show(Circuit c) {
-        this.show(c, true);
+    static void show(Circuit c) {
+        show(c, true);
     }
 
     @Test
@@ -69,7 +69,7 @@ public class RelationalOperatorTest {
         Wire output = c.addOutputWireFromOperator(id);
         c.seal();
         Sink sink = output.addSink();
-        this.show(c);
+        show(c);
 
         Scheduler scheduler = new Scheduler();
         c.reset(scheduler);
@@ -78,7 +78,7 @@ public class RelationalOperatorTest {
             zs.add(10);
             input.setValue(zs);
             c.step(scheduler);
-            Object out = sink.getValue();
+            Object out = sink.getValue(scheduler);
             Assert.assertEquals(zs, out);
         }
     }
@@ -96,7 +96,7 @@ public class RelationalOperatorTest {
         Wire output = c.addOutputWireFromOperator(d);
         Sink sink = output.addSink();
         c.seal();
-        this.show(c);
+        show(c);
 
         Scheduler scheduler = new Scheduler();
         c.reset(scheduler);
@@ -105,7 +105,7 @@ public class RelationalOperatorTest {
             zs.add(10);
             input.setValue(zs);
             c.step(scheduler);
-            Object out = sink.getValue();
+            Object out = sink.getValue(scheduler);
             Assert.assertEquals(zs, out);
         }
     }
@@ -123,7 +123,7 @@ public class RelationalOperatorTest {
         Wire output = c.addOutputWireFromOperator(d);
         Sink sink = output.addSink();
         c.seal();
-        this.show(c);
+        show(c);
 
         Scheduler scheduler = new Scheduler();
         c.reset(scheduler);
@@ -132,7 +132,7 @@ public class RelationalOperatorTest {
             zs.add(new ComparableObjectList(iv, "String"), iv);
             input.setValue(zs);
             c.step(scheduler);
-            Object out = sink.getValue();
+            Object out = sink.getValue(scheduler);
             Assert.assertEquals(zs, out);
         }
     }
@@ -152,7 +152,7 @@ public class RelationalOperatorTest {
         Wire output = c.addOutputWireFromOperator(d);
         Sink sink = output.addSink();
         c.seal();
-        this.show(c);
+        show(c);
 
         Scheduler scheduler = new Scheduler();
         c.reset(scheduler);
@@ -161,7 +161,7 @@ public class RelationalOperatorTest {
             zs.add(new ComparableObjectList(iv, "String"), iv);
             input.setValue(zs);
             c.step(scheduler);
-            Object out = sink.getValue();
+            Object out = sink.getValue(scheduler);
             Assert.assertEquals(zs.filter(e -> (Integer)e.get(0) % 2 == 0), out);
         }
     }
@@ -182,7 +182,7 @@ public class RelationalOperatorTest {
         Wire output = c.addOutputWireFromOperator(d);
         Sink sink = output.addSink();
         c.seal();
-        this.show(c);
+        show(c);
 
         Scheduler scheduler = new Scheduler();
         c.reset(scheduler);
@@ -192,7 +192,7 @@ public class RelationalOperatorTest {
             zs.add(new ComparableObjectList(iv, "String"), iv);
             input.setValue(zs);
             c.step(scheduler);
-            Object out = sink.getValue();
+            Object out = sink.getValue(scheduler);
             Assert.assertEquals(zs.map(e -> new ComparableObjectList(0, e.get(1))), out);
         }
     }
@@ -209,7 +209,7 @@ public class RelationalOperatorTest {
         Wire output = c.addOutputWireFromOperator(join);
         Sink sink = output.addSink();
         c.seal();
-        this.show(c);
+        show(c);
 
         Scheduler scheduler = new Scheduler();
         c.reset(scheduler);
@@ -219,7 +219,7 @@ public class RelationalOperatorTest {
             zs.add(new ComparableObjectList(iv, "String"), iv);
             input.setValue(zs);
             c.step(scheduler);
-            Object out = sink.getValue();
+            Object out = sink.getValue(scheduler);
             DynamicZSet<Integer> j = zs.join(zs, e -> e.get(0), f -> (Integer) f.get(0) + 1,
                     (e, f) -> new ComparableObjectList(e.get(0), f.get(0)));
             Assert.assertEquals(j, out);
@@ -263,29 +263,25 @@ public class RelationalOperatorTest {
         top.seal();
 
         Sink sink = w.addSink();
-        //this.show(top, true);
+        //TestUtil.show(top, true);
         Scheduler scheduler = new Scheduler();
         top.reset(scheduler);
         DynamicZSet<Integer> zs = new DynamicZSet<Integer>(IntegerRing.instance);
-        zs.add(new ComparableObjectList(1, 2));
-        zs.add(new ComparableObjectList(2, 3));
+        zs.add(1, 2).add(2, 3);
         input.setValue(zs);
         top.step(scheduler);
-        Object out = sink.getValue();
+        Object out = sink.getValue(scheduler);
         DynamicZSet<Integer> expected =
                 new DynamicZSet<Integer>(IntegerRing.instance);
-        expected.add(new ComparableObjectList(1, 3));
+        expected.add(1, 3);
         expected = expected.plus(zs);
         Assert.assertEquals(expected, out);
         // Second computation step, non-incremental
-        System.out.println("=========================");
-        zs.add(new ComparableObjectList(3, 4));
+        zs.add(3, 4);
         input.setValue(zs);
         top.step(scheduler);
-        out = sink.getValue();
-        expected.add(new ComparableObjectList(1, 4));
-        expected.add(new ComparableObjectList(2, 4));
-        expected.add(new ComparableObjectList(3, 4));
+        out = sink.getValue(scheduler);
+        expected.add(1, 4).add(2, 4).add(3, 4);
         Assert.assertEquals(expected, out);
     }
 
@@ -296,7 +292,7 @@ public class RelationalOperatorTest {
         final List<Type> ZEdgeSetTypeSingletonList = Utilities.list(ZEdgeSetType);
 
         Circuit inner = new Circuit("inner", ZEdgeSetTypeSingletonList, ZEdgeSetTypeSingletonList);
-        
+
         Operator i = inner.addOperator(CircuitOperator.integrationOperator(ZEdgeSetType));
         inner.getInputPort().connectTo(i);
         Operator plus = inner.addOperator(new PlusOperator(ZEdgeSetType));
@@ -331,42 +327,40 @@ public class RelationalOperatorTest {
         top.seal();
 
         Sink sink = w.addSink();
-        this.show(top, true);
+        show(top, false);
         Scheduler scheduler = new Scheduler();
         top.reset(scheduler);
         DynamicZSet<Integer> zs = new DynamicZSet<Integer>(IntegerRing.instance);
-        zs.add(new ComparableObjectList(1, 2));
-        zs.add(new ComparableObjectList(2, 3));
+        zs.add(1, 2).add(2, 3);
         input.setValue(zs);
         top.step(scheduler);
-        Object out = sink.getValue();
+        Object out = sink.getValue(scheduler);
         DynamicZSet<Integer> expected =
                 new DynamicZSet<Integer>(IntegerRing.instance);
-        expected.add(new ComparableObjectList(1, 3));
+        expected.add(1, 3);
         expected = expected.plus(zs);
         Assert.assertEquals(expected, out);
         // Add one edge
-        System.out.println("=========================");
-        zs.clear();
-        zs.add(new ComparableObjectList(3, 4));
+        zs.clear().add(3, 4);
         input.setValue(zs);
         top.step(scheduler);
-        out = sink.getValue();
-        expected.clear();
-        expected.add(new ComparableObjectList(1, 4));
-        expected.add(new ComparableObjectList(2, 4));
-        expected.add(new ComparableObjectList(3, 4));
+        out = sink.getValue(scheduler);
+        expected.clear().add(1, 4).add(2, 4).add(3, 4);
         Assert.assertEquals(expected, out);
         // Remove another edge
-        zs.clear();
-        zs.add(new ComparableObjectList(1, 2), -1);
+        zs.clear().remove(1, 2);
         input.setValue(zs);
         top.step(scheduler);
-        out = sink.getValue();
-        expected.clear();
-        expected.add(new ComparableObjectList(1, 4), -1);
-        expected.add(new ComparableObjectList(1, 2), -1);
-        expected.add(new ComparableObjectList(1, 3), -1);
+        out = sink.getValue(scheduler);
+        expected.clear().remove(1, 4).remove(1, 2).remove(1, 3);
+        Assert.assertEquals(expected, out);
+        // Create a cycle
+        zs.clear();
+        zs.add(4, 2);
+        input.setValue(zs);
+        top.step(scheduler);
+        out = sink.getValue(scheduler);
+        expected.clear().add(2, 2).add(3, 2).add(3, 3).add(4, 2).add(4, 3).add(4, 4);
         Assert.assertEquals(expected, out);
     }
 }

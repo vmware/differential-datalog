@@ -179,6 +179,10 @@ public class ZSet<T extends Comparable<T>, W>
         this.add(value, this.weightRing.one());
     }
 
+    public void remove(T value) {
+        this.add(value, this.weightRing.negate(this.weightRing.one()));
+    }
+
     /**
      * Removes all elements from this set.
      * Mutates set.

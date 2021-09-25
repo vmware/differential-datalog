@@ -37,6 +37,10 @@ public class ComparableObjectList
     public ComparableObjectList(Object... o) {
         super(o.length);
         this.addAll(Arrays.asList(o));
+        // The following is technically legit, but it is probably a bug
+        for (Object obj: o)
+            if (obj instanceof ComparableObjectList)
+                throw new RuntimeException("Nested list?");
     }
 
     @SuppressWarnings("unchecked")
@@ -45,7 +49,9 @@ public class ComparableObjectList
         for (int i = 0; i < this.size() && i < o.size(); i++) {
             // The following may not implement ComparableObject, but they may actually have a compareTo method.
             // We cannot retrofit this interface to existing classes like Integer or String.
-            int compare = ((Comparable<Object>)this.get(i)).compareTo((Comparable<Object>)o.get(i));
+            Object ti = this.get(i);
+            Object oi = o.get(i);
+            int compare = ((Comparable<Object>)ti).compareTo(oi);
             if (compare != 0)
                 return compare;
         }

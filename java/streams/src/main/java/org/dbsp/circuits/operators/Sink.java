@@ -41,8 +41,8 @@ public class Sink extends ComputationalElement {
     @Override
     public void checkConnected() {    }
 
-    public Object getValue() {
-        return this.wire.getValue();
+    public Object getValue(Scheduler scheduler) {
+        return this.wire.getValue(scheduler);
     }
 
     @Override

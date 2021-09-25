@@ -36,13 +36,10 @@ public class StreamTest {
     final IntegerTime.Factory factory = IntegerTime.Factory.instance;
     public final StreamGroup<Integer> sg = new StreamGroup<Integer>(
             IntegerRing.instance, factory);
-    private static final boolean verbose = true;
 
     public static <T> void show(String prefix, IStream<T> value) {
-        if (!verbose)
-            return;
         String s = value.toString(4);
-        System.out.println(prefix + " = " + s);
+        TestUtil.show(prefix + " = " + s);
     }
 
     <T> String toString(IStream<IStream<T>> ss, int limit0, int limit1) {
@@ -57,9 +54,7 @@ public class StreamTest {
     }
 
     private <T> void show2d(String prefix, IStream<IStream<T>> value) {
-        if (!verbose)
-            return;
-        System.out.println(prefix + " = " + toString(value, 4, 4));
+        TestUtil.show(prefix + " = " + toString(value, 4, 4));
     }
 
     @Test

@@ -38,7 +38,7 @@ public class OperatorTest {
     static final List<Type> ITL = Utilities.list(IT);
 
     void show(Circuit c) {
-        System.out.println(c.toGraphvizTop(false));
+        TestUtil.show(c.toGraphvizTop(false));
     }
 
     @Test
@@ -59,7 +59,7 @@ public class OperatorTest {
         for (int i = 0; i < 10; i++) {
             port.setValue(i);
             circuit.step(scheduler);
-            Object out = sink.getValue();
+            Object out = sink.getValue(scheduler);
             int expected = i > 0 ? i - 1 : 0;
             Assert.assertEquals(expected, out);
         }
@@ -83,10 +83,9 @@ public class OperatorTest {
         Scheduler scheduler = new Scheduler();
         circuit.reset(scheduler);
         for (int i = 0; i < 10; i++) {
-            System.out.println("===========");
             port.setValue(i);
             circuit.step(scheduler);
-            Object out = sink.getValue();
+            Object out = sink.getValue(scheduler);
             int expected = i > 1 ? i - 2 : 0;
             Assert.assertEquals(expected, out);
         }
@@ -105,7 +104,7 @@ public class OperatorTest {
         for (int i = 0; i < 10; i++) {
             port.setValue(i);
             circuit.step(scheduler);
-            Object out = sink.getValue();
+            Object out = sink.getValue(scheduler);
             int expected = 0;
             for (int j = 0; j <= i; j++)
                 expected += j;
@@ -126,7 +125,7 @@ public class OperatorTest {
         for (int i = 0; i < 10; i++) {
             port.setValue(i);
             circuit.step(scheduler);
-            Object out = sink.getValue();
+            Object out = sink.getValue(scheduler);
             int expected = i > 0 ? 1 : 0;
             Assert.assertEquals(expected, out);
         }
@@ -152,7 +151,7 @@ public class OperatorTest {
         for (int iv = 0; iv < 10; iv++) {
             input.setValue(iv);
             c.step(scheduler);
-            Object out = sink.getValue();
+            Object out = sink.getValue(scheduler);
             Assert.assertEquals(iv, out);
         }
     }
@@ -178,7 +177,7 @@ public class OperatorTest {
         for (int iv = 0; iv < 10; iv++) {
             input.setValue(iv);
             c.step(scheduler);
-            Object out = sink.getValue();
+            Object out = sink.getValue(scheduler);
             int expected = 0;
             for (int i = 0; i <= iv; i++)
                 expected += i+1;
@@ -210,7 +209,7 @@ public class OperatorTest {
         for (int iv = 0; iv < 10; iv++) {
             input.setValue(iv);
             top.step(scheduler);
-            Object out = sink.getValue();
+            Object out = sink.getValue(scheduler);
             Assert.assertEquals(iv, out);
         }
     }

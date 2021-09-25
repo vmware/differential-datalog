@@ -45,6 +45,6 @@ public abstract class UnaryOperator extends Operator {
 
     @Override
     public Object evaluate(Scheduler scheduler) {
-        return this.evaluate(this.inputs.get(0).getValue(), scheduler);
+        return this.evaluate(this.inputs.get(0).getValue(scheduler), scheduler);
     }
 }

@@ -81,12 +81,24 @@ public class DynamicZSet<W>  {
         return new DynamicZSet<W>(this.weightRing, join);
     }
 
-    public void add(ComparableObjectList data, W weight) {
+    public DynamicZSet<W> add(ComparableObjectList data, W weight) {
         this.data.add(data, weight);
+        return this;
     }
 
-    public void add(ComparableObjectList data) {
+    public DynamicZSet<W> add(Object... data) {
+        this.data.add(new ComparableObjectList(data));
+        return this;
+    }
+
+    public DynamicZSet<W> remove(Object... data) {
+        this.data.remove(new ComparableObjectList(data));
+        return this;
+    }
+
+    public DynamicZSet<W> add(ComparableObjectList data) {
         this.data.add(data);
+        return this;
     }
 
     @Override
@@ -111,7 +123,8 @@ public class DynamicZSet<W>  {
         return new DynamicZSet<W>(this.weightRing, this.data.distinct());
     }
 
-    public void clear() {
+    public DynamicZSet<W> clear() {
         this.data.clear();
+        return this;
     }
 }

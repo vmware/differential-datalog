@@ -46,7 +46,7 @@ public class Port extends IdOperator {
     }
 
     public void setOutput(Scheduler scheduler) {
-        this.outputWire().setValue(Objects.requireNonNull(this.value));
+        this.outputWire().setValue(Objects.requireNonNull(this.value), scheduler);
         this.outputWire().notifyConsumers(scheduler);
     }
 

@@ -54,13 +54,13 @@ public class DelayOperator extends UnaryOperator implements Latch {
 
     @Override
     public void latch(Scheduler scheduler) {
-        this.log("Latching output " + this.previous);
-        this.output.setValue(this.previous);
+        this.log(scheduler, "Latching output", this.previous);
+        this.output.setValue(this.previous, scheduler);
     }
 
     @Override
     public void push(Scheduler scheduler) {
-        this.log("Pushing output " + this.previous);
+        this.log(scheduler, "Pushing output", this.previous);
         this.output.notifyConsumers(scheduler);
     }
 
@@ -72,7 +72,8 @@ public class DelayOperator extends UnaryOperator implements Latch {
 
     @Override
     public Object evaluate(Object input, Scheduler scheduler) {
-        this.log("Saving input " + input + " result is " + this.previous);
+        this.log(scheduler, "Saving input", input);
+        this.log(scheduler, "Result is", this.previous);
         Object result = this.previous;
         this.previous = input;
         return result;
