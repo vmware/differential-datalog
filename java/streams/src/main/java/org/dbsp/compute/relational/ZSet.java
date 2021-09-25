@@ -50,6 +50,7 @@ public class ZSet<T extends Comparable<T>, W>
     final ZRing<W> weightRing;
     // Used for sanity checking.
     final FiniteFunctionGroup<T, W> functionGroup;
+    @SuppressWarnings("CanBeFinal")
     static boolean safetyChecks = true;
 
     /**
@@ -320,16 +321,16 @@ public class ZSet<T extends Comparable<T>, W>
             List<T> list = leftIndex.computeIfAbsent(k, k1 -> new ArrayList<>(1));
             list.add(key);
         }
-        for (S okey: other.support()) {
-            K k = otherKey.apply(okey);
+        for (S oKey: other.support()) {
+            K k = otherKey.apply(oKey);
             if (!leftIndex.containsKey(k))
                 continue;
-            W oweight = other.data.get(okey);
+            W oWeight = other.data.get(oKey);
             List<T> list = leftIndex.get(k);
             for (T t: list) {
                 W weight = this.data.get(t);
-                R join = combiner.apply(t, okey);
-                result.add(join, this.weightRing.times(weight, oweight));
+                R join = combiner.apply(t, oKey);
+                result.add(join, this.weightRing.times(weight, oWeight));
             }
         }
         return result;

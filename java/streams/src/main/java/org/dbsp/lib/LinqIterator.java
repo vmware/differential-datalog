@@ -27,6 +27,7 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -129,7 +130,7 @@ public abstract class LinqIterator<T> implements Iterator<T> {
     }
 
     /**
-     * Zip two itrators; returns an itrator of pairs with elements from both iterators.
+     * Zip two iterators; returns an iterator of pairs with elements from both iterators.
      * Stops when the first iterator terminates.
      * @param other  List to zip with.
      * @param <S>    Type of elements in the other list.
@@ -155,7 +156,8 @@ public abstract class LinqIterator<T> implements Iterator<T> {
         return create(list.iterator());
     }
 
-    public static <T> LinqIterator<T> create(T[] data) {
+    @SafeVarargs
+    public static <T> LinqIterator<T> create(T... data) {
         return new LinqIterator<T>() {
             int index = 0;
 
@@ -187,5 +189,68 @@ public abstract class LinqIterator<T> implements Iterator<T> {
 
     public boolean any(Predicate<T> p) {
         return this.filter(p).hasNext();
+    }
+
+    /**
+     * Return true if both iterators return the same
+     * sequence of elements.
+     * @param other  Iterator to compare against.
+     */
+    public boolean same(LinqIterator<T> other) {
+        while (this.hasNext()) {
+            if (!other.hasNext())
+                return false;
+            T item = this.next();
+            T oItem = other.next();
+            if (!item.equals(oItem))
+                return false;
+        }
+        return !other.hasNext();
+    }
+
+    @SafeVarargs
+    public final boolean same(T... data) {
+        return this.same(LinqIterator.create(data));
+    }
+
+    /**
+     * Returns first all elements from this iterator, then all
+     * elements in the next iterator.
+     * @param next  Iterator whose elements are concatenated.
+     */
+    public LinqIterator<T> concat(LinqIterator<T> next) {
+        return new LinqIterator<T>() {
+            boolean inFirst = true;
+
+            @Override
+            public boolean hasNext() {
+                if (inFirst) {
+                    if (LinqIterator.this.hasNext())
+                        return true;
+                    inFirst = false;
+                }
+                return next.hasNext();
+            }
+
+            @Override
+            public T next() {
+                if (inFirst)
+                    return LinqIterator.this.next();
+                return next.next();
+            }
+        };
+    }
+
+    /**
+     * Apply a function from left to right to all elements in this iterator.
+     * @param function  Function to apply.
+     * @param seed      Result returned if the list is empty.
+     * @param <S>       Type of result.
+     */
+    public <S> S foldLeft(BiFunction<S, T, S> function, S seed) {
+        S result = seed;
+        while (this.hasNext())
+            result = function.apply(result, this.next());
+        return result;
     }
 }

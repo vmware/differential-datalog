@@ -47,10 +47,10 @@ public class TupleType implements Type {
 
     public TupleType(List<Type> components) {
         this.components = components;
-        boolean nogroup = LinqIterator.create(components)
+        boolean noGroup = LinqIterator.create(components)
                 .map(Type::getGroup)
                 .any(Objects::isNull);
-        this.group = nogroup ? null :
+        this.group = noGroup ? null :
                 new ProductGroup(LinqIterator.create(components)
                 .map(Type::getGroup)
                 .toList());

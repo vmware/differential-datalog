@@ -28,7 +28,7 @@ import org.dbsp.circuits.operators.relational.DynamicZSetGroup;
 import org.dbsp.compute.time.IntegerRing;
 
 /**
- * The type of DynmamicZSet objects.
+ * The type of DynamicZSet objects.
  */
 public class DynamicZSetType implements Type {
     final Type elementType;

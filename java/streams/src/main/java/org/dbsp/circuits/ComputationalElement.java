@@ -104,7 +104,7 @@ public abstract class ComputationalElement extends HasId {
      */
     public abstract void toGraphvizNodes(boolean deep, int indent, StringBuilder builder);
     /**
-     * Write the graphviz representation of the wires in the circuit into the stringbuilder.
+     * Write the graphviz representation of the wires in the circuit into the stringBuilder.
      * @param deep     If true recurse all the way to the lowermost nodes.
      * @param indent   Indentation level.
      * @param builder  Write result here.

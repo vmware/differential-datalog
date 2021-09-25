@@ -24,7 +24,6 @@
 package org.dbsp.algebraic.dynamicTyping.types;
 
 import org.dbsp.algebraic.dynamicTyping.DynamicGroup;
-import org.dbsp.algebraic.staticTyping.Group;
 
 import javax.annotation.Nullable;
 

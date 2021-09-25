@@ -49,10 +49,10 @@ public class ProductGroup implements DynamicGroup {
     @SuppressWarnings("unchecked")
     @Override
     public Object add(Object left, Object right) {
-        List<Object> llist = (List<Object>)left;
-        List<Object> rlist = (List<Object>)right;
+        List<Object> lList = (List<Object>)left;
+        List<Object> rList = (List<Object>)right;
         return LinqIterator.create(this.components)
-                .zip3(llist, rlist)
+                .zip3(lList, rList)
                 .map(p -> p.first.add(p.second, p.third))
                 .toList();
     }

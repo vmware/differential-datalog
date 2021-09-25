@@ -29,8 +29,6 @@ import org.dbsp.circuits.Wire;
 import org.dbsp.algebraic.dynamicTyping.types.Type;
 import org.dbsp.lib.Utilities;
 
-import java.util.function.Function;
-
 /**
  * An operator that contains inside a circuit with a single output.
  */
@@ -91,6 +89,7 @@ public class CircuitOperator extends Operator implements Latch {
         }
     }
 
+    @SuppressWarnings("ConstantConditions")
     @Override
     public void toGraphvizWires(boolean deep, int indent, StringBuilder builder) {
         if (deep || !this.basic)

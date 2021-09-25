@@ -28,7 +28,7 @@
 @ParametersAreNonnullByDefault
 @FieldsAreNonnullByDefault
 @MethodsAreNonnullByDefault
-package org.dbsp.algebraic;
+package org.dbsp.circuits.operators.relational;
 
 import org.dbsp.FieldsAreNonnullByDefault;
 import org.dbsp.MethodsAreNonnullByDefault;

@@ -24,7 +24,6 @@
 package org.dbsp.circuits.operators.relational;
 
 import org.dbsp.algebraic.staticTyping.ZRing;
-import org.dbsp.circuits.ComputationalElement;
 import org.dbsp.compute.relational.ZSet;
 import org.dbsp.lib.ComparableObjectList;
 
@@ -81,6 +80,7 @@ public class DynamicZSet<W>  {
         return new DynamicZSet<W>(this.weightRing, join);
     }
 
+    @SuppressWarnings("UnusedReturnValue")
     public DynamicZSet<W> add(ComparableObjectList data, W weight) {
         this.data.add(data, weight);
         return this;

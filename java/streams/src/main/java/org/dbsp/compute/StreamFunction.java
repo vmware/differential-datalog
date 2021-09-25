@@ -26,7 +26,6 @@ package org.dbsp.compute;
 import org.dbsp.algebraic.staticTyping.Group;
 import org.dbsp.algebraic.staticTyping.IStream;
 import org.dbsp.algebraic.Time;
-import org.dbsp.algebraic.TimeFactory;
 
 import java.util.function.Function;
 
@@ -73,12 +72,12 @@ public interface StreamFunction<T, S> extends Function<IStream<T>, IStream<S>> {
         return func::apply;
     }
 
-    static <T, S> StreamFunction<T, S> lift(Function<T, S> function, TimeFactory fac) {
-        return t -> new IStream<S>(fac) {
+    static <T, S> StreamFunction<T, S> lift(Function<T, S> function) {
+        return t -> new IStream<S>(t.getTimeFactory()) {
             @Override
             public S get(Time index) {
-                T tval = t.get(index);
-                return function.apply(tval);
+                T tVal = t.get(index);
+                return function.apply(tVal);
             }
         };
     }

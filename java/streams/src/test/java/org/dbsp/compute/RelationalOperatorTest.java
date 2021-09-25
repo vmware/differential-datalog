@@ -254,9 +254,9 @@ public class RelationalOperatorTest {
         Operator d = inner.addOperator(CircuitOperator.derivativeOperator(ZEdgeSetType));
         distinct.connectTo(d);
         inner.addOutputWireFromOperator(d);
-        CircuitOperator loopbody = new CircuitOperator(inner.seal());
+        CircuitOperator loopBody = new CircuitOperator(inner.seal());
         Circuit top = new Circuit("top", ZEdgeSetTypeSingletonList, ZEdgeSetTypeSingletonList);
-        Operator loop = top.addOperator(loopbody.bracket());
+        Operator loop = top.addOperator(loopBody.bracket());
         Port input = top.getInputPort();
         input.connectTo(loop);
         Wire w = top.addOutputWireFromOperator(loop);
@@ -314,16 +314,16 @@ public class RelationalOperatorTest {
         Operator d = inner.addOperator(CircuitOperator.derivativeOperator(ZEdgeSetType));
         distinct.connectTo(d);
         inner.addOutputWireFromOperator(d);
-        CircuitOperator loopbody = new CircuitOperator(inner.seal());
+        CircuitOperator loopBody = new CircuitOperator(inner.seal());
         Circuit top = new Circuit("top", ZEdgeSetTypeSingletonList, ZEdgeSetTypeSingletonList);
-        Operator loop = top.addOperator(loopbody.bracket());
-        Operator itop = top.addOperator(CircuitOperator.integrationOperator(ZEdgeSetType));
-        itop.connectTo(loop);
+        Operator loop = top.addOperator(loopBody.bracket());
+        Operator iTop = top.addOperator(CircuitOperator.integrationOperator(ZEdgeSetType));
+        iTop.connectTo(loop);
         Port input = top.getInputPort();
-        input.connectTo(itop);
-        Operator dtop = top.addOperator(CircuitOperator.derivativeOperator(ZEdgeSetType));
-        loop.connectTo(dtop);
-        Wire w = top.addOutputWireFromOperator(dtop);
+        input.connectTo(iTop);
+        Operator dTop = top.addOperator(CircuitOperator.derivativeOperator(ZEdgeSetType));
+        loop.connectTo(dTop);
+        Wire w = top.addOutputWireFromOperator(dTop);
         top.seal();
 
         Sink sink = w.addSink();

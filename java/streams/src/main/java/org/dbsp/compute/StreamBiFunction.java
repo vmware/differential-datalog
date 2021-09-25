@@ -77,13 +77,13 @@ public interface StreamBiFunction<T, S, R> extends BiFunction<IStream<T>, IStrea
         };
     }
 
-    public static <T, S, R> StreamBiFunction<T, S, R> lift(BiFunction<T, S, R> function, TimeFactory fac) {
+    static <T, S, R> StreamBiFunction<T, S, R> lift(BiFunction<T, S, R> function, TimeFactory fac) {
         return (t, s) -> new IStream<R>(fac) {
             @Override
             public R get(Time index) {
-                T tval = t.get(index);
-                S sval = s.get(index);
-                return function.apply(tval, sval);
+                T tVal = t.get(index);
+                S sVal = s.get(index);
+                return function.apply(tVal, sVal);
             }
         };
     }

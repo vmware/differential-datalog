@@ -40,14 +40,14 @@ public class FunctionTest {
         int result = func.apply(6);
         Assert.assertEquals(6, result);
 
-        StreamFunction<Integer, Integer> idlift = StreamFunction.lift(func, IntegerTime.Factory.instance);
+        StreamFunction<Integer, Integer> idLift = StreamFunction.lift(func);
         IStream<Integer> input = new IStream<Integer>(IntegerTime.Factory.instance) {
             @Override
             public Integer get(Time index) {
                 return 2 * index.asInteger();
             }
         };
-        IStream<Integer> output = idlift.apply(input);
+        IStream<Integer> output = idLift.apply(input);
         int elem5 = output.get(5);
         Assert.assertEquals(10, elem5);
     }
@@ -58,10 +58,10 @@ public class FunctionTest {
         int result = plus.apply(3, 5);
         Assert.assertEquals(8, result);
 
-        StreamBiFunction<Integer, Integer, Integer> plift =
+        StreamBiFunction<Integer, Integer, Integer> pLift =
                 StreamBiFunction.lift(plus, IntegerTime.Factory.instance);
         IdStream id = new IdStream(IntegerTime.Factory.instance);
-        IStream<Integer> output = plift.apply(id, id);
+        IStream<Integer> output = pLift.apply(id, id);
         int elem5 = output.get(5);
         Assert.assertEquals(10, elem5);
     }
@@ -73,8 +73,8 @@ public class FunctionTest {
         int result = twice.apply(5);
         Assert.assertEquals(7, result);
 
-        StreamFunction<Integer, Integer> liftinc = StreamFunction.lift(inc, IntegerTime.Factory.instance);
-        StreamFunction<Integer, Integer> compose = liftinc.composeStream(liftinc);
+        StreamFunction<Integer, Integer> liftInc = StreamFunction.lift(inc);
+        StreamFunction<Integer, Integer> compose = liftInc.composeStream(liftInc);
         IdStream input = new IdStream(IntegerTime.Factory.instance);
         IStream<Integer> output = compose.apply(input);
         int elem5 = output.get(5);
@@ -95,8 +95,8 @@ public class FunctionTest {
         StreamBiFunction<Integer, Integer, Integer> plusLifted = StreamBiFunction.lift(plus, IntegerTime.Factory.instance);
 
         IdStream input = new IdStream(IntegerTime.Factory.instance);
-        IStream<Integer> delinput = input.delay(IntegerRing.instance);
-        IStream<Integer> output = plusLifted.apply(input, delinput);
+        IStream<Integer> delInput = input.delay(IntegerRing.instance);
+        IStream<Integer> output = plusLifted.apply(input, delInput);
         int elem5 = output.get(5);
         Assert.assertEquals(9, elem5);
     }

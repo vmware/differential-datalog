@@ -139,7 +139,7 @@ public class RelationalStreamTests {
     public void testFilter() {
         Predicate<TestTuple> predicate = t -> t.v >= 5;
         Function<ZS, ZS> filter = s -> s.filter(predicate);
-        StreamFunction<ZS, ZS> streamFilter = StreamFunction.lift(filter, IntegerTime.Factory.instance);
+        StreamFunction<ZS, ZS> streamFilter = StreamFunction.lift(filter);
         IStream<ZS> input = this.getInput();
 
         IStream<ZS> result = streamFilter.apply(input);
@@ -164,17 +164,17 @@ public class RelationalStreamTests {
         show("differentiate(input)", diff);
         Assert.assertEquals("[{<Me,10>->2},{<Me,5>->1,<Me,10>->-2},{<Me,5>->-1,<You,2>->1},{<You,2>->-1},...]", diff.toString());
 
-        IStream<ZS> difint = integ.differentiate(ZSGroup.instance);
-        Assert.assertEquals("[{<Me,10>->2},{<Me,5>->1},{<You,2>->1},{},...]", difint.toString());
-        show("differentiate(integrate(input))", difint);
-        Assert.assertTrue(difint.comparePrefix(input, 4));
+        IStream<ZS> difInt = integ.differentiate(ZSGroup.instance);
+        Assert.assertEquals("[{<Me,10>->2},{<Me,5>->1},{<You,2>->1},{},...]", difInt.toString());
+        show("differentiate(integrate(input))", difInt);
+        Assert.assertTrue(difInt.comparePrefix(input, 4));
 
         IStream<ZS> filtered = streamFilter.apply(integ);
         show("filter(t -> t.v >= 5)(integrate(input))", filtered);
         Assert.assertEquals("[{<Me,10>->2},{<Me,5>->1,<Me,10>->2},{<Me,5>->1,<Me,10>->2},{<Me,5>->1,<Me,10>->2},...]", filtered.toString());
 
-        StreamFunction<ZS, ZS> incfunc = streamFilter.inc(ZSGroup.instance, ZSGroup.instance);
-        IStream<ZS> result1 = incfunc.apply(input);
+        StreamFunction<ZS, ZS> incFunc = streamFilter.inc(ZSGroup.instance, ZSGroup.instance);
+        IStream<ZS> result1 = incFunc.apply(input);
         show("differentiate(filter(integrate(input)))", result1);
         boolean compare = result.comparePrefix(result1, 4);
         Assert.assertTrue(compare);
@@ -184,7 +184,7 @@ public class RelationalStreamTests {
     public void testMap() {
         Function<TestTuple, TestTuple> func = testTuple -> new TestTuple(testTuple.s, testTuple.v + 1);
         Function<ZS, ZS> map = zs -> zs.map(func);
-        StreamFunction<ZS, ZS> sf = StreamFunction.lift(map, IntegerTime.Factory.instance);
+        StreamFunction<ZS, ZS> sf = StreamFunction.lift(map);
         IStream<ZS> input = this.getInput();
         show("input", input);
         IStream<ZS> mapped = sf.apply(input);
@@ -201,7 +201,7 @@ public class RelationalStreamTests {
     @Test
     public void testJoin() {
         BiFunction<ZS, ZS, ZS> join = (zs, zs2) -> zs.join(zs2, t -> t.s, t1 -> t1.s, (t, t1) -> new TestTuple(t.s, t.v + t1.v));
-        StreamBiFunction<ZS, ZS, ZS> sjfunc = StreamBiFunction.lift(join, IntegerTime.Factory.instance);
+        StreamBiFunction<ZS, ZS, ZS> sjFunc = StreamBiFunction.lift(join, IntegerTime.Factory.instance);
         IStream<ZS> left = this.getInput();
         IStream<ZS> right = new IStream<ZS>(tf) {
             @Override
@@ -216,36 +216,36 @@ public class RelationalStreamTests {
         };
         // Stream join
         Assert.assertEquals("[{<Me,2>->2},{<You,3>->3},{},{},...]", right.toString());
-        IStream<ZS> joined = sjfunc.apply(left, right);
+        IStream<ZS> joined = sjFunc.apply(left, right);
         Assert.assertEquals("[{<Me,12>->4},{},{},{},...]", joined.toString());
 
         show("left", left);
         show("right", right);
         // Incremental streaming join
-        IStream<ZS> intleft = left.integrate(ZSGroup.instance);
-        show("integrate(left)", intleft);
-        IStream<ZS> intright = right.integrate(ZSGroup.instance);
-        show("integrate(right)", intright);
-        IStream<ZS> intjoin = sjfunc.apply(intleft, intright);
-        show("join(integrate(left), integrate(right))", intjoin);
+        IStream<ZS> intLeft = left.integrate(ZSGroup.instance);
+        show("integrate(left)", intLeft);
+        IStream<ZS> intRight = right.integrate(ZSGroup.instance);
+        show("integrate(right)", intRight);
+        IStream<ZS> intJoin = sjFunc.apply(intLeft, intRight);
+        show("join(integrate(left), integrate(right))", intJoin);
 
-        IStream<ZS> incjoin = intjoin.differentiate(ZSGroup.instance);
-        show("differentiate(join(integrate(left), integrate(right)))", incjoin);
-        Assert.assertEquals("[{<Me,12>->4},{<Me,7>->2},{<You,5>->3},{},...]", incjoin.toString());
+        IStream<ZS> incJoin = intJoin.differentiate(ZSGroup.instance);
+        show("differentiate(join(integrate(left), integrate(right)))", incJoin);
+        Assert.assertEquals("[{<Me,12>->4},{<Me,7>->2},{<You,5>->3},{},...]", incJoin.toString());
         // Join identity for bilinear operators
-        IStream<ZS> intleftdelayed = intleft.delay(ZSGroup.instance);
-        show("ileftdel", intleftdelayed);
-        IStream<ZS> intrightdelayed = intright.delay(ZSGroup.instance);
-        show("irightdel", intrightdelayed);
-        IStream<ZS> lj = sjfunc.apply(intleftdelayed, right);
+        IStream<ZS> intLeftDelayed = intLeft.delay(ZSGroup.instance);
+        show("ileftdel", intLeftDelayed);
+        IStream<ZS> intRightDelayed = intRight.delay(ZSGroup.instance);
+        show("irightdel", intRightDelayed);
+        IStream<ZS> lj = sjFunc.apply(intLeftDelayed, right);
         show("lj", lj);
-        IStream<ZS> rj = sjfunc.apply(left, intrightdelayed);
+        IStream<ZS> rj = sjFunc.apply(left, intRightDelayed);
         show("rj", rj);
-        IStream<ZS> inc = sjfunc.apply(left, right);
+        IStream<ZS> inc = sjFunc.apply(left, right);
         show("inc", inc);
         IStream<ZS> fin = lj.add(rj, ZSGroup.instance).add(inc, ZSGroup.instance);
         show("fin", fin);
-        boolean compare = incjoin.comparePrefix(fin, 4);
+        boolean compare = incJoin.comparePrefix(fin, 4);
         Assert.assertTrue(compare);
     }
 }

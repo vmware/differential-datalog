@@ -27,8 +27,6 @@ import org.dbsp.algebraic.dynamicTyping.types.Type;
 import org.dbsp.circuits.Scheduler;
 import org.dbsp.lib.Utilities;
 
-import java.util.function.Function;
-
 /**
  * Base class for all binary operators.
  */

@@ -50,7 +50,7 @@ public class Wire extends HasId {
      */
     private int toConsume;
     private final Type valueType;
-    public Operator source;
+    public final Operator source;
     /**
      * Current value on the wire.  If 'null' the wire has no value.
      * Would be nice to have an interface for this, but then we cannot

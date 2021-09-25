@@ -97,10 +97,9 @@ public class StreamTest {
         this.show2d("i", i);
         Assert.assertEquals((Integer)9, i.get(3).get(3));
 
-        LiftedFunction<Integer, Integer> mod = new LiftedFunction<>(x -> x % 2);
-        LiftedFunction<IStream<Integer>, IStream<Integer>> liftmod =
-                new LiftedFunction<>(mod);
-        IStream<IStream<Integer>> lm = liftmod.apply(i);
+        StreamFunction<Integer, Integer> mod = StreamFunction.lift(x -> x % 2);
+        StreamFunction<IStream<Integer>, IStream<Integer>> liftMod = StreamFunction.lift(mod);
+        IStream<IStream<Integer>> lm = liftMod.apply(i);
         this.show2d("^^mod(i)", lm);
         Assert.assertEquals((Integer)1, lm.get(3).get(3));
 
@@ -112,35 +111,34 @@ public class StreamTest {
         this.show2d("D(i)", di);
         Assert.assertEquals((Integer)2, di.get(3).get(3));
 
-        LiftedFunction<IStream<Integer>, IStream<Integer>> lifti =
-           new LiftedFunction<IStream<Integer>, IStream<Integer>>(
+        StreamFunction<IStream<Integer>, IStream<Integer>> liftI =
+           StreamFunction.lift(
                    s -> s.integrate(IntegerRing.instance));
-        IStream<IStream<Integer>> ui = lifti.apply(i);
+        IStream<IStream<Integer>> ui = liftI.apply(i);
         this.show2d("^I(i)", ui);
         Assert.assertEquals((Integer)30, ui.get(3).get(3));
 
-        LiftedFunction<IStream<Integer>, IStream<Integer>> liftd =
-                new LiftedFunction<IStream<Integer>, IStream<Integer>>(
-                        s -> s.differentiate(IntegerRing.instance));
-        IStream<IStream<Integer>> ud = liftd.apply(i);
+        StreamFunction<IStream<Integer>, IStream<Integer>> liftD =
+                StreamFunction.lift(s -> s.differentiate(IntegerRing.instance));
+        IStream<IStream<Integer>> ud = liftD.apply(i);
         this.show2d("^D(i)", ud);
 
-        IStream<IStream<Integer>> idd = liftd.apply(i.differentiate(sg));
+        IStream<IStream<Integer>> idd = liftD.apply(i.differentiate(sg));
         this.show2d("^D(D(i))", idd);
-        idd = liftd.apply(i).differentiate(sg);
+        idd = liftD.apply(i).differentiate(sg);
         this.show2d("D(^D(i))", idd);
 
-        IStream<IStream<Integer>> iii = lifti.apply(i.integrate(sg));
+        IStream<IStream<Integer>> iii = liftI.apply(i.integrate(sg));
         this.show2d("^I(I(i))", iii);
-        iii = lifti.apply(i).integrate(sg);
+        iii = liftI.apply(i).integrate(sg);
         this.show2d("I(^I(i))", iii);
 
         IStream<IStream<Integer>> zi = i.delay(sg);
         this.show2d("z(i)", zi);
 
-        LiftedFunction<IStream<Integer>, IStream<Integer>> liftz =
-                new LiftedFunction<>(s -> s.delay(IntegerRing.instance));
-        IStream<IStream<Integer>> lzi = i.apply(liftz);
+        StreamFunction<IStream<Integer>, IStream<Integer>> liftZ =
+                StreamFunction.lift(s -> s.delay(IntegerRing.instance));
+        IStream<IStream<Integer>> lzi = i.apply(liftZ);
         this.show2d("^z(i)", lzi);
     }
 }

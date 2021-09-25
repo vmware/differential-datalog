@@ -27,13 +27,13 @@ package org.dbsp.lib;
  * An object that has a unique id.
  */
 public class HasId {
-    static int crtid = 0;
+    static int crtId = 0;
     /**
      * Unique immutable object id.
      */
     public final int id;
 
     public HasId() {
-        this.id = crtid++;
+        this.id = crtId++;
     }
 }

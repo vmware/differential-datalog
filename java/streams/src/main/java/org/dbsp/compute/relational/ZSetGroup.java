@@ -23,7 +23,6 @@
 
 package org.dbsp.compute.relational;
 
-import org.dbsp.algebraic.staticTyping.FiniteFunctionGroup;
 import org.dbsp.algebraic.staticTyping.Group;
 import org.dbsp.algebraic.staticTyping.ZRing;
 

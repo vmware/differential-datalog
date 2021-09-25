@@ -26,8 +26,6 @@ package org.dbsp.circuits.operators.relational;
 import org.dbsp.algebraic.dynamicTyping.types.Type;
 import org.dbsp.circuits.operators.FunctionOperator;
 
-import java.util.function.Function;
-
 /**
  * An operator that applies "distinct" to a ZSet.
  * @param <W> type of weights used by ZSet.
