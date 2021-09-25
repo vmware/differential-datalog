@@ -21,34 +21,16 @@
  * SOFTWARE.
  */
 
-package org.dbsp.compute;
-
-import org.dbsp.algebraic.Time;
-import org.dbsp.algebraic.staticTyping.IStream;
-
-import java.util.function.BiFunction;
-
 /**
- * A lifted binary function lifts a binary function from T,S to U to
- * operate on streams of corresponding types.
- * @param <T>  Type of left input.
- * @param <S>  Type of right input.
- * @param <U>  Type of result.
+ * Package that doesn't allow null values as method parameters.
  */
-public class LiftedBifunction<T, S, U> implements StreamBiFunction<T, S, U> {
-    final BiFunction<T, S, U> function;
 
-    public LiftedBifunction(BiFunction<T, S, U> function) {
-        this.function = function;
-    }
+@ParametersAreNonnullByDefault
+@FieldsAreNonnullByDefault
+@MethodsAreNonnullByDefault
+package org.dbsp.algebraic;
 
-    @Override
-    public IStream<U> apply(IStream<T> left, IStream<S> right) {
-        return new IStream<U>(left.getTimeFactory()) {
-            @Override
-            public U get(Time index) {
-                return LiftedBifunction.this.function.apply(left.get(index), right.get(index));
-            }
-        };
-    }
-}
+import org.dbsp.FieldsAreNonnullByDefault;
+import org.dbsp.MethodsAreNonnullByDefault;
+
+import javax.annotation.ParametersAreNonnullByDefault;
