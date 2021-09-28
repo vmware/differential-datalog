@@ -539,6 +539,41 @@ public abstract class JooqProviderTestBase {
         }
     }
 
+    @Test
+    public void testArrayAggTypes() {
+        assert(create != null);
+        create.execute("insert into base_array_table values ('n1', 10, 10)");
+        create.batch("insert into base_array_table values ('n54', 18, 18)",
+                "insert into base_array_table values ('n9', 1, 3)",
+                "insert into base_array_table values ('n10', 2, 3)",
+                "insert into base_array_table values ('n11', 3, 3)"
+                ).execute();
+
+        create.insertInto(table("base_array_table"))
+                .values("n3", null, 18)
+                .execute();
+
+        final Field<Integer> field1 = field("col3", Integer.class);
+        final Field<Object> field2 = field("agg", Object.class);
+
+        final Record arrayAgg1 = create.newRecord(field1, field2);
+        final Record arrayAgg2 = create.newRecord(field1, field2);
+        final Record arrayAgg3 = create.newRecord(field1, field2);
+
+        arrayAgg1.setValue(field1, 10);
+        arrayAgg1.setValue(field2, new Integer[] {10});
+        arrayAgg2.setValue(field1, 18);
+        arrayAgg2.setValue(field2, new Integer[] {null, 18});
+        arrayAgg3.setValue(field1, 3);
+        arrayAgg3.setValue(field2, new Integer[] {1,2,3});
+
+        // Make sure selects read out the same content inserted above
+        final Result<Record> aggResults = create.fetch("select * from check_array_type");
+        assertTrue(aggResults.contains(arrayAgg1));
+        assertTrue(aggResults.contains(arrayAgg2));
+        assertTrue(aggResults.contains(arrayAgg3));
+    }
+
     public static <R extends SqlStatement> DDlogAPI compileAndLoad(final List<R> ddl, ToPrestoTranslator<R> translator) throws IOException, DDlogException {
         final Translator t = new Translator(null);
         ddl.forEach(x -> t.translateSqlStatement(translator.toPresto(x)));

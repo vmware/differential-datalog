@@ -48,12 +48,19 @@ public class JooqProviderTestPresto extends JooqProviderTestBase {
         String checkArrayParse = "create table junk (testCol integer array)";
         String checkNotNullColumns = "create table not_null (test_col1 integer not null, test_col2 varchar(36) not null)";
 
+        String arrayTable = "create table base_array_table (id varchar(36), capacity integer, col3 integer)";
+        String checkArrayType = "create view check_array_type as select distinct col3, " +
+                "ARRAY_AGG(capacity) over (partition by col3) as agg " +
+                "from base_array_table";
+
         List<String> ddl = new ArrayList<>();
         ddl.add(s1);
         ddl.add(v2);
         ddl.add(v1);
         ddl.add(checkArrayParse);
         ddl.add(checkNotNullColumns);
+        ddl.add(arrayTable);
+        ddl.add(checkArrayType);
 
         ddlogAPI = compileAndLoad(
                 ddl.stream().map(PrestoSqlStatement::new).collect(Collectors.toList()),

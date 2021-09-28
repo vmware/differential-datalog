@@ -77,6 +77,8 @@ import static org.jooq.impl.DSL.field;
  *                                          be any column in T.
  */
 public final class DDlogJooqProvider implements MockDataProvider {
+    static final boolean debug = false;
+
     private static final String DDLOG_SOME = "ddlog_std::Some";
     private static final String DDLOG_NONE = "ddlog_std::None";
     private static final Object[] DEFAULT_BINDING = new Object[0];
@@ -195,7 +197,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
             final DDlogRecord record = command.value();
             final Record jooqRecord = dslContext.newRecord(fields);
             for (int i = 0; i < fields.size(); i++) {
-                structToValue(fields.get(i), record.getStructField(i), jooqRecord);
+                setValue(fields.get(i), record.getStructField(i), jooqRecord);
             }
             final Set<Record> materializedView = materializedViews.computeIfAbsent(tableName, (k) -> new LinkedHashSet<>());
             switch (command.kind()) {
@@ -515,22 +517,6 @@ public final class DDlogJooqProvider implements MockDataProvider {
         }
     }
 
-    private static void structToValue(final Field<?> field, final DDlogRecord record, final Record jooqRecord) {
-        final boolean isStruct = record.isStruct();
-        if (isStruct) {
-            final String structName = record.getStructName();
-            if (structName.equals(DDLOG_NONE)) {
-                jooqRecord.setValue(field, null);
-                return;
-            }
-            if (structName.equals(DDLOG_SOME)) {
-                setValue(field, getStructField(record, 0), jooqRecord);
-                return;
-            }
-        }
-        setValue(field, record, jooqRecord);
-    }
-
     /** Convert the value 'in' into a DDlogRecord.
      * @param field  Struct field that is being converted.
      * @param in  Value to convert.  May be null.
@@ -558,24 +544,64 @@ public final class DDlogJooqProvider implements MockDataProvider {
         }
     }
 
-    private static void setValue(final Field<?> field, final DDlogRecord in, final Record out) {
-        final DataType<?> dataType = field.getDataType();
-        switch (dataType.getSQLType()) {
-            case Types.BOOLEAN:
-                out.setValue((Field<Boolean>) field, in.getBoolean());
-                return;
-            case Types.INTEGER:
-                out.setValue((Field<Integer>) field, in.getInt().intValue());
-                return;
-            case Types.BIGINT:
-                out.setValue((Field<Long>) field, in.getInt().longValue());
-                return;
-            case Types.VARCHAR:
-                out.setValue((Field<String>) field, in.getString());
-                return;
-            default:
-                throw new DDlogJooqProviderException("Unknown datatype " + field);
+    // Return a value based on the DDlog type of the record
+    private static Object ddlogRecordToObject(final Field<?> field, final DDlogRecord in) {
+        if (in.isBool()) {
+            if (debug) {
+                assert(field.getDataType().getSQLDataType().equals(Types.BOOLEAN));
+            }
+            return in.getBoolean();
+        } else if (in.isInt()) {
+            if (field.getDataType().getSQLType() == Types.BIGINT) {
+                return in.getInt().longValue();
+            } else {
+                if (debug) {
+                    assert(field.getDataType().getSQLDataType().equals(Types.INTEGER));
+                }
+                return in.getInt().intValue();
+            }
+        } else if (in.isDouble()) {
+            if (debug) {
+                assert(field.getDataType().getSQLDataType().equals(Types.DOUBLE));
+            }
+            return in.getDouble();
+        } else if (in.isFloat()) {
+            if (debug) {
+                assert(field.getDataType().getSQLDataType().equals(Types.FLOAT));
+            }
+            return in.getFloat();
+        } else if (in.isString()) {
+            if (debug) {
+                assert(field.getDataType().getSQLDataType().equals(Types.VARCHAR));
+            }
+            return in.getString();
+        } else if (in.isStruct()) {
+            if (in.getStructName().equals(DDLOG_NONE)) {
+                return null;
+            } else if (in.getStructName().equals(DDLOG_SOME)) {
+                try {
+                    return ddlogRecordToObject(field, in.getStructField(0));
+                } catch (Exception e) {
+                    throw new DDlogJooqProviderException(e);
+                }
+            } else {
+                throw new DDlogJooqProviderException("Can't parse this DDlog field of unknown Struct type");
+            }
+        } else if (in.isVector()) {
+            int size = in.getVectorSize();
+            List<Object> tmp = new ArrayList(size);
+            for (int i = 0; i < size; i++) {
+                DDlogRecord r = in.getVectorField(i);
+                tmp.add(ddlogRecordToObject(field, r));
+            }
+            return tmp.toArray();
+        } else {
+            throw new DDlogJooqProviderException("Unknown datatype " + field);
         }
+    }
+
+    private static void setValue(final Field<?> field, final DDlogRecord in, final Record out) {
+        out.setValue((Field<Object>) field, ddlogRecordToObject(field, in));
     }
 
     private static final class QueryContext {
