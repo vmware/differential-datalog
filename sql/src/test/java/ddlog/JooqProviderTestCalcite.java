@@ -31,6 +31,10 @@ public class JooqProviderTestCalcite extends JooqProviderTestBase {
         String checkArrayType = "create view check_array_type as select distinct col3, " +
                 "ARRAY_AGG(capacity) over (partition by col3) as agg " +
                 "from base_array_table";
+
+        String identityViewName = DDlogJooqProvider.toIdentityViewName("hosts");
+        String hostidentityView = String.format("create view %s as select distinct * from hosts", identityViewName);
+
         List<String> ddl = new ArrayList<>();
         ddl.add(s1);
         ddl.add(v2);
@@ -39,6 +43,7 @@ public class JooqProviderTestCalcite extends JooqProviderTestBase {
         ddl.add(checkNotNullColumns);
         ddl.add(arrayTable);
         ddl.add(checkArrayType);
+        ddl.add(hostidentityView);
 
         ddlogAPI = compileAndLoad(
                 ddl.stream().map(CalciteSqlStatement::new).collect(Collectors.toList()),
