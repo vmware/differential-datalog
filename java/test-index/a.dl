@@ -1,0 +1,7 @@
+input relation AI(a: bit<32>, b: bit<32>)
+index AII() on AI(_, _)
+index AIII(x: bit<32>) on AI(x, _)
+index AIIII(x: bit<32>, y: bit<32>) on AI(x, y)
+
+output relation BO(a: bit<32>, b: bit<32>)
+BO(a, b) :- AI(a, b).
