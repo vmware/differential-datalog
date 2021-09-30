@@ -1,0 +1,4 @@
+BO{0,1}
+dump: AI{0,1}
+query 0: AI{0,1}
+query (0,1): AI{0,1}

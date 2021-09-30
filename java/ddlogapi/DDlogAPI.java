@@ -41,6 +41,7 @@ public class DDlogAPI {
     static native void ddlog_dump_input_snapshot(long hprog, String filename, boolean append) throws DDlogException, IOException;
     native void dump_table(long hprog, int table, String callbackMethod) throws DDlogException;
     native void dump_index(long hprog, int index, String callbackMethod) throws DDlogException;
+    native void query_index(long hprog, int index, long handle, String callbackMethod) throws DDlogException;
     static native void ddlog_stop(long hprog, long callbackHandle) throws DDlogException;
     static native void ddlog_transaction_start(long hprog) throws DDlogException;
     static native void ddlog_transaction_commit(long hprog) throws DDlogException;
@@ -626,6 +627,25 @@ public class DDlogAPI {
         String onDump = callback == null ? null : "dumpIndexCallback";
         this.dumpIndexCallback = callback;
         this.dump_index(this.hprog, id, onDump);
+    }
+
+    /**
+     * Query data in the specified index.
+     * @param index     DDlog index name
+     * @param data      Record to use as key in the index.
+     * @param callback  Callback invoked with each record inserted or deleted from the index.
+     * Note: this method is not thread-safe: once invoked it should not
+     * be invoked again until the previous invocation has returned.
+     * The user should deallocate the key after all callbacks have been executed.
+     */
+    public void queryIndex(String index, DDlogRecord key, Consumer<DDlogRecord> callback) throws DDlogException {
+        this.checkHandle();
+        int id = this.getIndexId(index);
+        if (id == -1)
+            throw new RuntimeException("Unknown index " + index);
+        String onDump = callback == null ? null : "dumpIndexCallback";
+        this.dumpIndexCallback = callback;
+        this.query_index(this.hprog, id, key.checkHandle(), onDump);
     }
 
     /**

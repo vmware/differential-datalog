@@ -1,5 +1,0 @@
-input relation AI(a: bit<32>)
-index AII() on AI(_)
-
-output relation BO(a: bit<32>)
-BO(a) :- AI(a).

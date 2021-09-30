@@ -262,7 +262,7 @@ java6() {
 }
 
 java7() {
-    (cd "${THIS_DIR}/java/test7" && ./run.sh)
+    (cd "${THIS_DIR}/java/test-index" && ./run.sh)
 }
 
 java8() {

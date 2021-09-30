@@ -51,7 +51,14 @@ public class DDlogRecord {
         this.shared = false;
     }
 
-    private long checkHandle() {
+    /**
+     * Same as 'release', for symmetry with the DDlogCommandVector API.
+     */
+    public void dispose() {
+        this.release();
+    }
+
+    long checkHandle() {
         if (this.handle == 0)
             throw new RuntimeException("Accessing invalid handle.");
         return this.handle;
@@ -390,7 +397,7 @@ public class DDlogRecord {
     public boolean isVector() {
         return DDlogAPI.ddlog_is_vector(this.checkHandle());
     }
-    
+
     public boolean isBool() {
         return DDlogAPI.ddlog_is_bool(this.checkHandle());
     }

@@ -444,6 +444,11 @@ JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_00024DDlogCommandVector_ddlog_1bat
     ddlog_free_record_updates((ddlog_record*)handle, size);
 }
 
+JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1free(
+    JNIEnv * env, jclass cls, jlong handle) {
+    ddlog_free((ddlog_record*)handle);
+}
+
 JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1transaction_1commit_1dump_1changes_1to_1flatbuf(
     JNIEnv * env, jobject obj, jlong handle, jobject fbdescr) {
     unsigned char *buf_addr = NULL;
@@ -686,6 +691,19 @@ JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_dump_1index(
         return;
     cbinfo->env = env;  // the dump_callback will be called on the same thread
     if (ddlog_dump_index((ddlog_prog)progHandle, index, dump_index_callback, (uintptr_t)cbinfo) < 0) {
+        throwDDlogException(env, NULL);
+    }
+    free(cbinfo);
+}
+
+JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_query_1index(
+    JNIEnv *env, jobject obj, jlong progHandle, jint index, jlong recordHandle, jstring callback) {
+    struct CallbackInfo* cbinfo = createCallback(env, obj, callback, "(J)V");
+    if (cbinfo == NULL)
+        return;
+    cbinfo->env = env;  // the dump_callback will be called on the same thread
+    if (ddlog_query_index((ddlog_prog)progHandle, index, (ddlog_record*)recordHandle,
+                          dump_index_callback, (uintptr_t)cbinfo) < 0) {
         throwDDlogException(env, NULL);
     }
     free(cbinfo);
