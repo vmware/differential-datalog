@@ -23,19 +23,19 @@ use tokio::runtime::Runtime;
 pub struct D3 {
     uuid: u128,
     error: Port,
-    h: HDDlog,
-    e: Arc<Mutex<Option<Evaluator>>>, // a reference to myself to use with other apis
+    hddlog: HDDlog,
+    eval: Arc<Mutex<Option<Evaluator>>>, // a reference to myself to use with other apis
 }
 
 pub fn read_json_file(
-    e: Evaluator,
+    eval: Evaluator,
     filename: String,
     cb: &mut dyn FnMut(Batch),
 ) -> Result<(), Error> {
     let body = fs::read_to_string(filename)?;
     let mut jf = JsonFramer::new();
     for i in jf.append(body.as_bytes())?.into_iter() {
-        let rs = Batch::deserialize(i, e.clone())?;
+        let rs = Batch::deserialize(i, eval.clone())?;
         cb(rs);
     }
     Ok(())
@@ -46,14 +46,14 @@ impl D3 {
         // xxx - looks like the 'run' variant is no longer really accessible because
         // of namespace collisions?
         let config = Config::new().with_timely_workers(1);
-        let (h, init_output) = run_with_config(config, false)?;
+        let (hddlog, init_output) = run_with_config(config, false)?;
         let ad = Arc::new(D3 {
-            h,
+            hddlog,
             uuid,
             error,
-            e: Arc::new(Mutex::new(None)),
+            eval: Arc::new(Mutex::new(None)),
         });
-        *ad.e.lock().expect("lock") = Some(ad.clone());
+        *ad.eval.lock().expect("lock") = Some(ad.clone());
         Ok((
             ad.clone(),
             ValueSet::from_delta_map(ad.clone(), init_output),
@@ -88,7 +88,7 @@ impl EvaluatorTrait for D3 {
 
     // input shouldn't be a value batch with a different evaluator?
     fn eval(&self, input: Batch) -> Result<Batch, Error> {
-        let eval = (*self.e.lock().expect("lock")).clone().unwrap().clone();
+        let eval = (*self.eval.lock().expect("lock")).clone().unwrap().clone();
         let vb = ValueSet::from(eval.clone(), input)?;
         let mut upd = Vec::new();
 
@@ -105,11 +105,11 @@ impl EvaluatorTrait for D3 {
             upd.push(Update::Insert { relid, v });
         }
 
-        self.h.transaction_start()?;
-        self.h.apply_updates(&mut upd.clone().drain(..))?;
+        self.hddlog.transaction_start()?;
+        self.hddlog.apply_updates(&mut upd.clone().drain(..))?;
         Ok(ValueSet::from_delta_map(
             eval.clone(),
-            self.h.transaction_commit_dump_changes()?,
+            self.hddlog.transaction_commit_dump_changes()?,
         ))
     }
 
@@ -122,7 +122,7 @@ impl EvaluatorTrait for D3 {
     }
 
     fn localize(&self, rel: usize, v: DDValue) -> Option<(Node, usize, DDValue)> {
-        match self.h.d3log_localize_val(rel, v.clone()) {
+        match self.hddlog.d3log_localize_val(rel, v.clone()) {
             Ok((Some(n), r, v)) => Some((n, r, v)),
             Ok((None, _, _)) => None,
             Err(_) => None,
@@ -144,12 +144,12 @@ impl EvaluatorTrait for D3 {
     }
 
     fn relation_name_from_id(&self, id: usize) -> Result<String, Error> {
-        Ok(self.h.inventory.get_table_name(id)?.to_string())
+        Ok(self.hddlog.inventory.get_table_name(id)?.to_string())
     }
 
     fn relation_deserializer(&self, id: usize) -> Result<AnyDeserializeSeed, Error> {
         if let Some(x) = self
-            .h
+            .hddlog
             .any_deserialize
             .get_deserialize(id)
             .map(AnyDeserializeSeed::new)
@@ -235,17 +235,16 @@ pub fn start_d3log(debug_broadcast: bool, inputfile: Option<String>) -> Result<(
     }
 
     if let Some(f) = inputfile {
-        match read_json_file(instance.eval.clone(), f, &mut |b: Batch| {
+        if let Err(x) = read_json_file(instance.eval.clone(), f, &mut |b: Batch| {
             instance.eval_port.send(b.clone());
         }) {
-            Err(x) => {
-                println!("json err {}", x);
-                panic!("json");
-            }
-            _ => (),
+            println!("json err {}", x);
+            panic!("json");
         }
     }
 
+    // this function doesn't return, because the way its called in main.rs it would re-run the
+    // instance outside d3 and exit
     loop {
         std::thread::park();
     }

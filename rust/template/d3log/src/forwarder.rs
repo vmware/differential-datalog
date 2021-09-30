@@ -27,12 +27,10 @@ impl Transport for ForwardingEntryHandler {
             let z = f.get_struct_field("intermediate").expect("intermediate");
             let intermediate = async_error!(self.eval, u128::from_record(z));
             let e = self.forwarder.lookup(intermediate);
-            let mut e2 = { e.lock().expect("lock") };
+            let mut e2 = e.lock().expect("lock");
             match &e2.port {
                 Some(p) => self.forwarder.register(target, p.clone()),
-                None => {
-                    e2.registrations.push_back(target);
-                }
+                None => e2.registrations.push_back(target),
             }
         }
     }
@@ -91,10 +89,10 @@ impl Forwarder {
             entry.lock().expect("lock").port = Some(p.clone());
         }
 
-        while let Some(b) = { entry.lock().expect("lock").batches.pop_front() } {
+        while let Some(b) = entry.lock().expect("lock").batches.pop_front() {
             p.clone().send(b);
         }
-        while let Some(r) = { entry.lock().expect("lock").registrations.pop_front() } {
+        while let Some(r) = entry.lock().expect("lock").registrations.pop_front() {
             self.register(r, p.clone());
         }
     }

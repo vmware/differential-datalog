@@ -31,19 +31,9 @@ impl Display for RecordSet {
         let mut m = HashMap::new();
         for (r, _w) in self.records.clone() {
             match r {
-                Record::Bool(_b) => println!("unprintable record type bool"),
-                Record::Int(_i) => println!("unprintable record type int"),
-                Record::Float(_f) => println!("unprintable record type float"),
-                Record::Double(_dbl) => println!("unprintable record type double"),
-                Record::String(string_name) => println!("{}", string_name),
-                Record::Serialized(name, _s) => println!("serialized {}", name),
-                Record::Tuple(t) => {
-                    println!("tuple {:?}", t);
-                }
-                Record::Array(_, _record_vec) => println!("unprintable record type array"),
                 Record::PosStruct(name, _record_vec) => println!("{}", name),
-
                 Record::NamedStruct(r, _attributes) => *m.entry(r).or_insert(0) += 1,
+                _ => panic!("unhandled DD Record type in Display"),
             }
         }
 

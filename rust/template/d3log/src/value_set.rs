@@ -15,7 +15,7 @@ pub struct ValueSet {
 
 impl Display for ValueSet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&"<")?;
+        f.write_str("<")?;
         let iter = self.clone();
         let mut m: usize = 0;
         for (relid, _v, _w) in iter.into_iter() {
@@ -25,7 +25,7 @@ impl Display for ValueSet {
             m += 1;
             f.write_str(&format!(" {})", m))?;
         }
-        f.write_str(&">")?;
+        f.write_str(">")?;
         Ok(())
     }
 }

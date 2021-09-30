@@ -32,11 +32,10 @@ pub enum BatchBody {
 impl Display for Batch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "Batch [").unwrap();
-        match self.body.clone() {
-            BatchBody::Value(b) => b.fmt(f),
-            BatchBody::Record(b) => b.fmt(f),
-        }
-        .unwrap();
+        match &self.body {
+            BatchBody::Value(v) => Display::fmt(&v, f),
+            BatchBody::Record(r) => Display::fmt(&r, f),
+        }?;
         writeln!(f, "\n]\n")
     }
 }
@@ -102,7 +101,6 @@ impl<'de, 'a> DeserializeSeed<'de> for ExtendValues {
     where
         D: Deserializer<'de>,
     {
-        // i can double up on this, right?
         struct ExtendValuesVisitor {
             eval: Evaluator,
             relid: usize,

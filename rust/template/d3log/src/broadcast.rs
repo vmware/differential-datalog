@@ -82,7 +82,6 @@ impl Broadcast {
             metadata: HashMap::new(),
             // we're assuming that there is no way to get a batch before the register_eval()
             // call - it needs to preceed any subscriptions or sends.
-            // is this clone not a copy?
             body: BatchBody::Value(batch),
         });
         Ok(())
@@ -144,7 +143,7 @@ impl Ingress {
 
 impl Transport for Ingress {
     fn send(&self, b: Batch) {
-        let ports = { &*self.broadcast.ports.read().expect("lock").clone() };
+        let ports = &*self.broadcast.ports.read().expect("lock").clone();
         for (port, index) in ports {
             if *index != self.index {
                 port.send(b.clone())
