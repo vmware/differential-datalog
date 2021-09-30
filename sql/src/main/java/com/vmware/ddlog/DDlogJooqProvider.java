@@ -79,6 +79,7 @@ import static org.jooq.impl.DSL.field;
 public final class DDlogJooqProvider implements MockDataProvider {
     static final boolean debug = false;
 
+    private static final String IDENTITY_VIEW_SUFFIX = "_view";
     private static final String DDLOG_SOME = "ddlog_std::Some";
     private static final String DDLOG_NONE = "ddlog_std::None";
     private static final Object[] DEFAULT_BINDING = new Object[0];
@@ -91,6 +92,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
     private final Map<String, Map<String, Field<?>>> tablesToFieldMap = new HashMap<>();
     private final Map<String, List<? extends Field<?>>> tablesToPrimaryKeys = new HashMap<>();
     private final Map<String, Set<Record>> materializedViews = new ConcurrentHashMap<>();
+    private final Set<String> inputTableNames = new HashSet<>();
     public static boolean trace = false;
 
     public DDlogJooqProvider(final DDlogAPI dDlogAPI, final List<H2SqlStatement> sqlStatements) {
@@ -115,8 +117,15 @@ public final class DDlogJooqProvider implements MockDataProvider {
                 if (table.getPrimaryKey() != null) {
                     tablesToPrimaryKeys.put(table.getName(), table.getPrimaryKey().getFields());
                 }
+                if (table.getType().equals(TableOptions.TableType.TABLE)) {
+                    inputTableNames.add(table.getName());
+                }
             }
         }
+    }
+
+    public static String toIdentityViewName(String inputTableName) {
+        return String.format("%s_%s", inputTableName, IDENTITY_VIEW_SUFFIX);
     }
 
     public DSLContext getDslContext() {
@@ -256,7 +265,13 @@ public final class DDlogJooqProvider implements MockDataProvider {
             ) {
                 return exception("Statement not supported: " + context.sql());
             }
-            final String tableName = ((SqlIdentifier) select.getFrom()).getSimple();
+
+            // If the select is on an input table, redirect it to the corresponding view / output relation, if it exists
+            // The user of this JooqProvider is responsible for creating these identity views
+            String tableName = ((SqlIdentifier) select.getFrom()).getSimple();
+            if (inputTableNames.contains(tableName)) {
+                tableName = DDlogJooqProvider.toIdentityViewName(tableName);
+            }
             try {
                 final Result<Record> result = fetchTable(tableName);
                 return new MockResult(1, result);

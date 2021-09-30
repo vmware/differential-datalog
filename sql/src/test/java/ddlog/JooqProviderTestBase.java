@@ -574,6 +574,18 @@ public abstract class JooqProviderTestBase {
         assertTrue(aggResults.contains(arrayAgg3));
     }
 
+    @Test
+    public void testIdentityViews() {
+        create.execute("insert into hosts values ('n1', 10, true)");
+        create.batch("insert into hosts values ('n54', 18, false)",
+                "insert into hosts values ('n9', 2, true)").execute();
+
+        final Result<Record> readFromInput = create.fetch("select * from hosts");
+        assertTrue(readFromInput.contains(test1));
+        assertTrue(readFromInput.contains(test2));
+        assertTrue(readFromInput.contains(test3));
+    }
+
     public static <R extends SqlStatement> DDlogAPI compileAndLoad(final List<R> ddl, ToPrestoTranslator<R> translator) throws IOException, DDlogException {
         final Translator t = new Translator(null);
         ddl.forEach(x -> t.translateSqlStatement(translator.toPresto(x)));
