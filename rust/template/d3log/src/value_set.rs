@@ -1,12 +1,12 @@
 // module to wrap the general encoding type DDValue for rust compiled ddlog
 
-use crate::{Batch, BatchBody, Error, Evaluator};
+use crate::{Batch, BatchBody, Error, Evaluator, Properties};
 use differential_datalog::{
     ddval::DDValue,
     program::{RelId, Weight},
     DeltaMap,
 };
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::fmt;
 use std::fmt::Display;
 use std::sync::{Arc, Mutex};
@@ -87,7 +87,7 @@ impl ValueSet {
             deltas: Arc::new(Mutex::new(deltas)),
         };
         Batch {
-            metadata: HashMap::new(),
+            metadata: Properties::new(),
             body: BatchBody::Value(n),
         }
     }

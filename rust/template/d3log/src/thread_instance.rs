@@ -1,7 +1,8 @@
 use crate::{
-    async_error, fact, function, send_error, Batch, BatchBody, Broadcast, Error, EvalFactory,
-    Instance, RecordSet, Transport,
+    async_error, batch, fact, function, send_error, Batch, BatchBody, Broadcast, Error,
+    EvalFactory, Instance, RecordSet, Transport,
 };
+
 use differential_datalog::record::FromRecord;
 use differential_datalog::record::{IntoRecord, Record};
 use std::sync::{Arc, Mutex};

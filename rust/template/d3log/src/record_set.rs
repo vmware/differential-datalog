@@ -20,7 +20,7 @@ macro_rules! fact {
             Record::NamedStruct(
                 std::borrow::Cow::from(stringify!($rel).to_string()),
                 vec![$((std::borrow::Cow::from(stringify!($n)), $v),)*]))),
-              metadata: std::collections::HashMap::new(),
+              metadata: batch::Properties::new(),
         }
     }
 }

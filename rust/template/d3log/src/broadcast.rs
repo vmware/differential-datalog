@@ -3,8 +3,7 @@
 // order to maintain a consistent spanning tree (and a strategy for avoiding storms for temporariliy
 // inconsistent topologies
 
-use crate::{Batch, BatchBody, Error, Evaluator, Node, Port, Transport, ValueSet};
-use std::collections::HashMap;
+use crate::{Batch, BatchBody, Error, Evaluator, Node, Port, Properties, Transport, ValueSet};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, RwLock};
 
@@ -85,7 +84,7 @@ impl Broadcast {
 
         pab.send(Batch {
             // may as well express the source here..and i suppose all the contributions?
-            metadata: HashMap::new(),
+            metadata: Properties::new(),
             // we're assuming that there is no way to get a batch before the register_eval()
             // call - it needs to preceed any subscriptions or sends.
             body: BatchBody::Value(batch),
@@ -114,7 +113,7 @@ impl PubSub for Arc<Broadcast> {
             .clone();
 
         p.clone().send(Batch {
-            metadata: HashMap::new(),
+            metadata: Properties::new(),
             body: BatchBody::Value(batch),
         });
 

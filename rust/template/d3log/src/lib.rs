@@ -19,7 +19,7 @@ use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::{
-    batch::{Batch, BatchBody},
+    batch::{Batch, BatchBody, Properties},
     broadcast::{Broadcast, PubSub},
     dispatch::Dispatch,
     error::Error,
@@ -38,12 +38,14 @@ pub trait EvaluatorTrait {
     fn eval(&self, input: Batch) -> Result<Batch, Error>;
     fn id_from_relation_name(&self, s: String) -> Result<RelId, Error>;
     fn localize(&self, rel: RelId, v: DDValue) -> Option<(Node, RelId, DDValue)>;
-    fn now(&self) -> u64;
-    fn myself(&self) -> Node;
-    fn error(&self, text: Record, line: Record, filename: Record, functionname: Record);
     fn record_from_ddvalue(&self, d: DDValue) -> Result<Record, Error>;
     fn relation_name_from_id(&self, id: RelId) -> Result<String, Error>;
     fn relation_deserializer(&self, id: RelId) -> Result<AnyDeserializeSeed, Error>;
+
+    // these methods probably belong in instance?
+    fn now(&self) -> u64;
+    fn myself(&self) -> Node;
+    fn error(&self, text: Record, line: Record, filename: Record, functionname: Record);
 }
 
 pub type Evaluator = Arc<(dyn EvaluatorTrait + Send + Sync)>;
@@ -63,7 +65,7 @@ pub struct Instance {
 impl Instance {
     pub fn new(
         rt: Arc<Runtime>,
-        new_evaluator: Arc<dyn Fn(Node, Port) -> Result<(Evaluator, Batch), Error> + Send + Sync>,
+        new_evaluator: EvalFactory,
         uuid: u128,
     ) -> Result<Arc<Instance>, Error> {
         let broadcast = Broadcast::new(uuid);

@@ -1,9 +1,15 @@
 use crate::{relval_from_record, run_with_config, Relations};
 
 use d3log::{
-    batch::Batch, batch::BatchBody, broadcast::PubSub, error::Error, fact, json_framer::JsonFramer,
-    record_set::RecordSet, value_set::ValueSet, Evaluator, EvaluatorTrait, Instance, Node, Port,
-    Transport,
+    batch,
+    batch::{Batch, BatchBody, Properties},
+    broadcast::PubSub,
+    error::Error,
+    fact,
+    json_framer::JsonFramer,
+    record_set::RecordSet,
+    value_set::ValueSet,
+    Evaluator, EvaluatorTrait, Instance, Node, Port, Transport,
 };
 use differential_datalog::{
     api::*,
@@ -17,7 +23,6 @@ use differential_datalog::{
 };
 
 use rand::Rng;
-use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::fs;
 use std::sync::{Arc, Mutex};
@@ -98,7 +103,7 @@ impl EvaluatorTrait for D3 {
         let mut upd = Vec::new();
 
         let bv = Batch {
-            metadata: HashMap::new(),
+            metadata: Properties::new(),
             body: BatchBody::Value(vb.clone()),
         }
         .serialize()
@@ -184,7 +189,7 @@ pub struct JsonDebugPort {
 impl Transport for JsonDebugPort {
     fn send(&self, b: Batch) {
         let vb = Batch {
-            metadata: HashMap::new(),
+            metadata: Properties::new(),
             body: BatchBody::Value(
                 ValueSet::from(self.eval.clone(), b.clone()).expect("value batch"),
             ),

@@ -4,7 +4,7 @@
 
 use crate::{
     async_error, function, send_error, Batch, BatchBody, Dispatch, Evaluator, Node, Port,
-    RecordSet, Transport, ValueSet,
+    Properties, RecordSet, Transport, ValueSet,
 };
 use differential_datalog::record::*;
 use std::collections::HashMap;
@@ -129,7 +129,7 @@ impl Transport for Forwarder {
                 }
             };
             port.send(Batch {
-                metadata: HashMap::new(),
+                metadata: Properties::new(),
                 body: BatchBody::Value(localized_batch.clone()),
             })
         }

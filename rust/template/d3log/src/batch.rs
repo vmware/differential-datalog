@@ -12,13 +12,26 @@ use serde::{
     ser::{Error as SeError, SerializeMap},
     Deserializer, Serialize, Serializer,
 };
-//use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::string::String;
 
+// string -> ?
+#[derive(Clone)]
+pub struct Properties {
+    properties: HashMap<String, String>,
+}
+
+impl Properties {
+    pub fn new() -> Properties {
+        Properties {
+            properties: HashMap::new(),
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct Batch {
-    pub metadata: HashMap<String, String>, // string -> ?
+    pub metadata: Properties,
     pub body: BatchBody,
 }
 
@@ -224,7 +237,7 @@ impl Batch {
         let mut de = serde_json::Deserializer::from_str(s);
         let b: ValueSet = seed.deserialize(&mut de)?;
         Ok(Batch {
-            metadata: HashMap::new(),
+            metadata: Properties::new(),
             body: BatchBody::Value(b),
         })
     }
