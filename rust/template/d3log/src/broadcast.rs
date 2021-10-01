@@ -8,17 +8,23 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, RwLock};
 
+type PortId = usize;
 #[derive(Clone, Default)]
 pub struct Broadcast {
-    // the first arc/rwlock to allow Some() to be written in register_eval, and the
-    // next is over the batch itself
+    // uuid is only used for debugging
     uuid: Node,
+    // accumulator is copy of the broadcast log for use in catching up new subscribers
+    // the first arc/rwlock to allow Some() to be written in register_eval, and the next is over the batch itself
     accumulator: Arc<RwLock<Option<Arc<RwLock<ValueSet>>>>>,
+    // count is effectively an allocator we use to label ports (rather than use the address of the underlying object)
+    // so we can perform trivial forwarding cycle checks
     count: Arc<AtomicUsize>,
-    pub ports: Arc<RwLock<Vec<(Port, usize)>>>,
+    // the set of ports to distribute facts to
+    pub ports: Arc<RwLock<Vec<(Port, PortId)>>>,
 }
 
 struct AccumulatePort {
+    // evaluator is only used for ValueSet::from - we could define a narrower trait
     eval: Evaluator,
     b: Arc<RwLock<ValueSet>>,
 }
@@ -41,8 +47,8 @@ impl Broadcast {
         })
     }
 
-    fn push(&self, p: Port, index: usize) {
-        self.ports.write().expect("lock").push((p, index));
+    fn push(&self, p: Port, id: PortId) {
+        self.ports.write().expect("lock").push((p, id));
     }
 
     // not pretty - this is an issue with initialization order
@@ -62,13 +68,13 @@ impl Broadcast {
 
     // couple is a specialized version of subscribe to connect two broadcast instances together
     pub fn couple(a: Arc<Broadcast>, b: Arc<Broadcast>) -> Result<(), Error> {
-        let index = a.count.fetch_add(1, Ordering::Acquire);
+        let id = a.count.fetch_add(1, Ordering::Acquire);
         let pba = Arc::new(Ingress {
             broadcast: a.clone(),
-            index,
+            id,
         });
         let pab = b.clone().subscribe(pba.clone(), b.clone().uuid);
-        a.push(pab.clone(), index);
+        a.push(pab.clone(), id);
 
         let batch = (*a.accumulator.clone().read().unwrap())
             .clone()
@@ -94,8 +100,8 @@ pub trait PubSub {
 
 impl PubSub for Arc<Broadcast> {
     fn subscribe(self, p: Port, _uuid: Node) -> Port {
-        let index = self.clone().count.fetch_add(1, Ordering::Acquire);
-        self.clone().push(p.clone(), index);
+        let id = self.clone().count.fetch_add(1, Ordering::Acquire);
+        self.clone().push(p.clone(), id);
 
         // are we racing against future insertions into the accumulator?
         // or is this a proper copy?
@@ -114,7 +120,7 @@ impl PubSub for Arc<Broadcast> {
 
         Arc::new(Ingress {
             broadcast: self.clone(),
-            index,
+            id,
         })
     }
 }
@@ -133,7 +139,7 @@ impl Transport for Broadcast {
 // an Ingress port couples an output with an input, to avoid redistributing
 // facts back to the source. proper cycle detection will require spanning tree
 pub struct Ingress {
-    index: usize,
+    id: PortId,
     broadcast: Arc<Broadcast>,
 }
 
@@ -144,8 +150,8 @@ impl Ingress {
 impl Transport for Ingress {
     fn send(&self, b: Batch) {
         let ports = &*self.broadcast.ports.read().expect("lock").clone();
-        for (port, index) in ports {
-            if *index != self.index {
+        for (port, id) in ports {
+            if *id != self.id {
                 port.send(b.clone())
             }
         }

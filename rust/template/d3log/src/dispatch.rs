@@ -31,7 +31,7 @@ impl Transport for Dispatch {
                         .entry(*i)
                         .or_insert_with(|| (p.clone(), RecordSet::new()))
                         .1
-                        .insert(rel.clone(), v.clone(), weight);
+                        .insert(v.clone(), weight);
                 }
             }
         }

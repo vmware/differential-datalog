@@ -6,12 +6,17 @@ use d3log::{
     Transport,
 };
 use differential_datalog::{
-    api::*, ddval::AnyDeserializeSeed, ddval::DDValue, program::config::Config, program::Update,
-    record::IntoRecord, record::Record, record::RelIdentifier, D3log, DDlog, DDlogDynamic,
+    api::*,
+    ddval::AnyDeserializeSeed,
+    ddval::DDValue,
+    program::{config::Config, RelId, Update},
+    record::IntoRecord,
+    record::Record,
+    record::RelIdentifier,
+    D3log, DDlog, DDlogDynamic,
 };
 
 use rand::Rng;
-use std::borrow::Cow;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::fs;
@@ -113,15 +118,15 @@ impl EvaluatorTrait for D3 {
         ))
     }
 
-    fn id_from_relation_name(&self, s: String) -> Result<usize, Error> {
+    fn id_from_relation_name(&self, s: String) -> Result<RelId, Error> {
         let s: &str = &s;
         match Relations::try_from(s) {
-            Ok(r) => Ok(r as usize),
+            Ok(r) => Ok(r as RelId),
             Err(_) => Err(Error::new(format!("bad relation {}", s))),
         }
     }
 
-    fn localize(&self, rel: usize, v: DDValue) -> Option<(Node, usize, DDValue)> {
+    fn localize(&self, rel: usize, v: DDValue) -> Option<(Node, RelId, DDValue)> {
         match self.hddlog.d3log_localize_val(rel, v.clone()) {
             Ok((Some(n), r, v)) => Some((n, r, v)),
             Ok((None, _, _)) => None,
@@ -143,11 +148,11 @@ impl EvaluatorTrait for D3 {
         Ok(d.into_record())
     }
 
-    fn relation_name_from_id(&self, id: usize) -> Result<String, Error> {
+    fn relation_name_from_id(&self, id: RelId) -> Result<String, Error> {
         Ok(self.hddlog.inventory.get_table_name(id)?.to_string())
     }
 
-    fn relation_deserializer(&self, id: usize) -> Result<AnyDeserializeSeed, Error> {
+    fn relation_deserializer(&self, id: RelId) -> Result<AnyDeserializeSeed, Error> {
         if let Some(x) = self
             .hddlog
             .any_deserialize

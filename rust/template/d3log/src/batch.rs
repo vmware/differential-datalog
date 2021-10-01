@@ -1,8 +1,12 @@
 use crate::{Error, Evaluator, RecordSet, ValueSet};
 use core::fmt;
 use core::fmt::Display;
-use differential_datalog::ddval::Any;
-use differential_datalog::ddval::DDValue;
+use differential_datalog::{
+    ddval::Any,
+    ddval::DDValue,
+    program::{RelId, Weight},
+};
+
 use serde::{
     de::{DeserializeSeed, Error as DeError, MapAccess, SeqAccess, Visitor},
     ser::{Error as SeError, SerializeMap},
@@ -11,8 +15,6 @@ use serde::{
 //use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::string::String;
-
-type Weight = isize;
 
 #[derive(Clone)]
 pub struct Batch {
@@ -26,9 +28,7 @@ pub enum BatchBody {
     Record(RecordSet),
 }
 
-// use tabular::{Table, Row};
-// version="0.1.4"
-
+// it would be lovely if this were columnated - could use tabular::{Table, Row}
 impl Display for Batch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "Batch [").unwrap();
@@ -54,7 +54,7 @@ impl<'de, 'a> DeserializeSeed<'de> for ExtendValueWeight {
     {
         struct ExtendSeqVisitor {
             eval: Evaluator,
-            relid: usize,
+            relid: RelId,
         }
         impl<'de, 'a> Visitor<'de> for ExtendSeqVisitor {
             type Value = (Any, Weight);
@@ -91,7 +91,7 @@ impl<'de, 'a> DeserializeSeed<'de> for ExtendValueWeight {
 
 struct ExtendValues {
     eval: Evaluator,
-    relid: usize,
+    relid: RelId,
 }
 
 impl<'de, 'a> DeserializeSeed<'de> for ExtendValues {
@@ -103,7 +103,7 @@ impl<'de, 'a> DeserializeSeed<'de> for ExtendValues {
     {
         struct ExtendValuesVisitor {
             eval: Evaluator,
-            relid: usize,
+            relid: RelId,
         }
         impl<'de, 'a> Visitor<'de> for ExtendValuesVisitor {
             type Value = Vec<(Any, Weight)>;

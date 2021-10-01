@@ -5,7 +5,9 @@ input relation Fact(x:u64, k:u128)
 relation PrintMSResult(x:u64, me:D3logLocationId)
 relation MSResult(x:u64, me:D3logLocationId)
 relation LocalizedFact(x:u64)
-relation Anchor(x:u64)
+// We need anchor because we think this should be an output, but localized relations
+// cant currently be output. 
+output relation Anchor(x:u64)
 
 LocalizedFact(x)@(n as u128) :-
       Fact(x, n),

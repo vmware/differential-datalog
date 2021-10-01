@@ -10,10 +10,10 @@ pub mod value_set;
 
 use differential_datalog::{
     ddval::{AnyDeserializeSeed, DDValue},
+    program::RelId,
     record::*,
     D3logLocationId,
 };
-use std::borrow::Cow;
 use std::sync::Arc;
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
@@ -36,14 +36,14 @@ type EvalFactory = Arc<dyn Fn(Node, Port) -> Result<(Evaluator, Batch), Error> +
 pub trait EvaluatorTrait {
     fn ddvalue_from_record(&self, id: String, r: Record) -> Result<DDValue, Error>;
     fn eval(&self, input: Batch) -> Result<Batch, Error>;
-    fn id_from_relation_name(&self, s: String) -> Result<usize, Error>;
-    fn localize(&self, rel: usize, v: DDValue) -> Option<(Node, usize, DDValue)>;
+    fn id_from_relation_name(&self, s: String) -> Result<RelId, Error>;
+    fn localize(&self, rel: RelId, v: DDValue) -> Option<(Node, RelId, DDValue)>;
     fn now(&self) -> u64;
     fn myself(&self) -> Node;
     fn error(&self, text: Record, line: Record, filename: Record, functionname: Record);
     fn record_from_ddvalue(&self, d: DDValue) -> Result<Record, Error>;
-    fn relation_name_from_id(&self, id: usize) -> Result<String, Error>;
-    fn relation_deserializer(&self, id: usize) -> Result<AnyDeserializeSeed, Error>;
+    fn relation_name_from_id(&self, id: RelId) -> Result<String, Error>;
+    fn relation_deserializer(&self, id: RelId) -> Result<AnyDeserializeSeed, Error>;
 }
 
 pub type Evaluator = Arc<(dyn EvaluatorTrait + Send + Sync)>;

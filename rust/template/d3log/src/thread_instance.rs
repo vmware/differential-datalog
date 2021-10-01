@@ -4,7 +4,6 @@ use crate::{
 };
 use differential_datalog::record::FromRecord;
 use differential_datalog::record::{IntoRecord, Record};
-use std::borrow::Cow;
 use std::sync::{Arc, Mutex};
 
 pub struct ThreadInstance {

@@ -1,7 +1,11 @@
 // module to wrap the general encoding type DDValue for rust compiled ddlog
 
 use crate::{Batch, BatchBody, Error, Evaluator};
-use differential_datalog::{ddval::DDValue, program::RelId, DeltaMap};
+use differential_datalog::{
+    ddval::DDValue,
+    program::{RelId, Weight},
+    DeltaMap,
+};
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::fmt::Display;
@@ -32,17 +36,18 @@ impl Display for ValueSet {
 
 pub struct BatchIterator<'a> {
     relid: RelId,
+    // sadly, BTreeMap is defined over isize and not differential_datalog::program::Weight
     relations: Box<dyn Iterator<Item = (RelId, BTreeMap<DDValue, isize>)> + Send + 'a>,
     items: Option<Box<dyn Iterator<Item = (DDValue, isize)> + Send>>,
 }
 
 impl<'a> Iterator for BatchIterator<'a> {
-    type Item = (RelId, DDValue, isize);
+    type Item = (RelId, DDValue, Weight);
 
-    fn next(&mut self) -> Option<(RelId, DDValue, isize)> {
+    fn next(&mut self) -> Option<(RelId, DDValue, Weight)> {
         match &mut self.items {
             Some(x) => match x.next() {
-                Some((v, w)) => Some((self.relid, v, w)),
+                Some((v, w)) => Some((self.relid, v, w as Weight)),
                 None => {
                     self.items = None;
                     self.next()
@@ -60,7 +65,7 @@ impl<'a> Iterator for BatchIterator<'a> {
 }
 
 impl<'a> IntoIterator for &'a ValueSet {
-    type Item = (RelId, DDValue, isize);
+    type Item = (RelId, DDValue, Weight);
     type IntoIter = BatchIterator<'a>;
 
     fn into_iter(self) -> BatchIterator<'a> {
@@ -96,8 +101,11 @@ impl ValueSet {
         }
     }
 
-    pub fn insert(&mut self, r: RelId, v: differential_datalog::ddval::DDValue, weight: isize) {
-        self.deltas.lock().expect("lock").update(r, &v, weight);
+    pub fn insert(&mut self, r: RelId, v: differential_datalog::ddval::DDValue, weight: Weight) {
+        self.deltas
+            .lock()
+            .expect("lock")
+            .update(r, &v, weight as isize);
     }
 
     pub fn from(e: Evaluator, b: Batch) -> Result<ValueSet, Error> {

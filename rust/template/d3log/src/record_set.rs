@@ -2,6 +2,7 @@
 // Batch for interchange between different ddlog programs
 
 use crate::{Batch, BatchBody, Error};
+use differential_datalog::program::Weight;
 use differential_datalog::record::Record;
 use std::collections::HashMap;
 use std::fmt;
@@ -9,18 +10,16 @@ use std::fmt::Display;
 
 #[derive(Clone, Default)]
 pub struct RecordSet {
-    pub records: Vec<(Record, isize)>,
+    pub records: Vec<(Record, Weight)>,
 }
 
-// it turns out to be useful to use fully qualified names in macros
-// to avoid asking everyone else to set up their namespaces properly
 #[macro_export]
 macro_rules! fact {
     ( $rel:path,  $($n:ident => $v:expr),* ) => {
         Batch{body: BatchBody::Record(RecordSet::singleton(
             Record::NamedStruct(
-                Cow::from(stringify!($rel).to_string()),
-                vec![$((Cow::from(stringify!($n)), $v),)*]))),
+                std::borrow::Cow::from(stringify!($rel).to_string()),
+                vec![$((std::borrow::Cow::from(stringify!($n)), $v),)*]))),
               metadata: std::collections::HashMap::new(),
         }
     }
@@ -59,8 +58,7 @@ impl RecordSet {
         }
     }
 
-    // Record::NamedStruct((_r, _)) = v
-    pub fn insert(&mut self, _r: String, v: Record, weight: isize) {
+    pub fn insert(&mut self, v: Record, weight: Weight) {
         self.records.push((v, weight))
     }
 
@@ -68,8 +66,7 @@ impl RecordSet {
         match batch.body {
             BatchBody::Value(d) => {
                 let mut rb = RecordSet::new();
-                for (relid, val, weight) in &d {
-                    let rel_name = d.eval.clone().relation_name_from_id(relid).unwrap();
+                for (_relid, val, weight) in &d {
                     let record: Record = d.eval.clone().record_from_ddvalue(val).unwrap();
                     let val = match record {
                         // [ weight, actual_record ]
@@ -77,7 +74,7 @@ impl RecordSet {
                         Record::NamedStruct(name, rec) => Record::NamedStruct(name, rec),
                         _ => panic!("unknown type!"),
                     };
-                    rb.insert(rel_name, val, weight);
+                    rb.insert(val, weight);
                 }
                 Ok(rb)
             }
@@ -87,13 +84,13 @@ impl RecordSet {
 }
 
 pub struct RecordSetIterator<'a> {
-    items: Box<dyn Iterator<Item = (Record, isize)> + Send + 'a>,
+    items: Box<dyn Iterator<Item = (Record, Weight)> + Send + 'a>,
 }
 
 impl<'a> Iterator for RecordSetIterator<'a> {
-    type Item = (String, Record, isize);
+    type Item = (String, Record, Weight);
 
-    fn next(&mut self) -> Option<(String, Record, isize)> {
+    fn next(&mut self) -> Option<(String, Record, Weight)> {
         match self.items.next() {
             Some((Record::NamedStruct(name, val), w)) => {
                 Some(((*name).to_string(), Record::NamedStruct(name, val), w))
@@ -104,7 +101,7 @@ impl<'a> Iterator for RecordSetIterator<'a> {
 }
 
 impl<'a> IntoIterator for &'a RecordSet {
-    type Item = (String, Record, isize);
+    type Item = (String, Record, Weight);
     type IntoIter = RecordSetIterator<'a>;
 
     fn into_iter(self) -> RecordSetIterator<'a> {

@@ -50,7 +50,7 @@ pub struct Forwarder {
 
 impl Forwarder {
     pub fn new(eval: Evaluator, dispatch: Arc<Dispatch>, _management: Port) -> Arc<Forwarder> {
-        let f = Arc::new(Forwarder {
+        let forwarder = Arc::new(Forwarder {
             eval: eval.clone(),
             fib: Arc::new(Mutex::new(HashMap::new())),
         });
@@ -60,11 +60,11 @@ impl Forwarder {
                 "d3_application::Forward",
                 Arc::new(ForwardingEntryHandler {
                     eval: eval.clone(),
-                    forwarder: f.clone(),
+                    forwarder: forwarder.clone(),
                 }),
             )
             .expect("register");
-        f
+        forwarder
     }
 
     fn lookup(&self, n: Node) -> Arc<Mutex<Entry>> {
@@ -99,10 +99,12 @@ impl Forwarder {
 }
 
 impl Transport for Forwarder {
-    fn send(&self, b: Batch) {
+    fn send(&self, batch: Batch) {
         let mut output = HashMap::<Node, ValueSet>::new();
-        for (rel, v, weight) in &ValueSet::from(self.eval.clone(), b.clone()).expect("iterator") {
-            if let Some((loc_id, in_rel, inner_val)) = self.eval.localize(rel, v.clone()) {
+        for (rel, value, weight) in
+            &ValueSet::from(self.eval.clone(), batch.clone()).expect("iterator")
+        {
+            if let Some((loc_id, in_rel, inner_val)) = self.eval.localize(rel, value.clone()) {
                 output
                     .entry(loc_id)
                     .or_insert_with(|| ValueSet::new(self.eval.clone()))
@@ -111,13 +113,13 @@ impl Transport for Forwarder {
         }
 
         for (nid, localized_batch) in output.drain() {
-            let p = {
+            let port = {
                 match self.lookup(nid).lock() {
                     Ok(mut x) => match &x.port {
                         Some(x) => x.clone(),
                         None => {
                             x.batches.push_front(Batch {
-                                metadata: b.metadata.clone(),
+                                metadata: batch.metadata.clone(),
                                 body: BatchBody::Value(localized_batch),
                             });
                             break;
@@ -126,7 +128,7 @@ impl Transport for Forwarder {
                     Err(_) => panic!("lock"),
                 }
             };
-            p.send(Batch {
+            port.send(Batch {
                 metadata: HashMap::new(),
                 body: BatchBody::Value(localized_batch.clone()),
             })
