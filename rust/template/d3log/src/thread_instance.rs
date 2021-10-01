@@ -19,10 +19,10 @@ impl Transport for ThreadInstance {
     fn send(&self, b: Batch) {
         for (_, p, _weight) in &RecordSet::from(b).expect("batch") {
             let uuid_record = p.get_struct_field("id").unwrap();
-            let uuid = async_error!(self.parent.eval.clone(), u128::from_record(uuid_record));
+            let uuid = async_error!(self.parent.error.clone(), u128::from_record(uuid_record));
 
             let instance = async_error!(
-                self.parent.eval,
+                self.parent.error.clone(),
                 Instance::new(self.parent.rt.clone(), self.new_evaluator.clone(), uuid)
             );
 
@@ -45,14 +45,14 @@ impl Transport for ThreadInstance {
             }
 
             async_error!(
-                self.parent.eval.clone(),
+                self.parent.error.clone(),
                 Broadcast::couple(self.parent.broadcast.clone(), instance.broadcast.clone())
             );
 
             self.parent
                 .broadcast
                 .send(fact!(d3_application::InstanceStatus,
-                            time => self.parent.eval.clone().now().into_record(),
+                            time => self.parent.now().into_record(),
                             id => uuid.into_record(),
                             memory_bytes => bytes.into_record(),
                             threads => threads.into_record()));

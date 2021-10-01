@@ -1,15 +1,12 @@
 use crate::{relval_from_record, run_with_config, Relations};
 
 use d3log::{
-    batch,
     batch::{Batch, BatchBody, Properties},
     broadcast::PubSub,
     error::Error,
-    fact,
     json_framer::JsonFramer,
-    record_set::RecordSet,
     value_set::ValueSet,
-    Evaluator, EvaluatorTrait, Instance, Node, Port, Transport,
+    Evaluator, EvaluatorTrait, Instance, Node, Transport,
 };
 use differential_datalog::{
     api::*,
@@ -26,13 +23,10 @@ use rand::Rng;
 use std::convert::TryFrom;
 use std::fs;
 use std::sync::{Arc, Mutex};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use tokio::runtime::Runtime;
 
 pub struct D3 {
-    uuid: u128,
-    error: Port,
     hddlog: HDDlog,
     eval: Arc<Mutex<Option<Evaluator>>>, // a reference to myself to use with other apis
 }
@@ -52,15 +46,13 @@ pub fn read_json_file(
 }
 
 impl D3 {
-    pub fn new(uuid: u128, error: Port) -> Result<(Evaluator, Batch), Error> {
+    pub fn new() -> Result<(Evaluator, Batch), Error> {
         // xxx - looks like the 'run' variant is no longer really accessible because
         // of namespace collisions?
         let config = Config::new().with_timely_workers(1);
         let (hddlog, init_output) = run_with_config(config, false)?;
         let ad = Arc::new(D3 {
             hddlog,
-            uuid,
-            error,
             eval: Arc::new(Mutex::new(None)),
         });
         *ad.eval.lock().expect("lock") = Some(ad.clone());
@@ -71,45 +63,21 @@ impl D3 {
     }
 }
 
-// xxx - remove globals
 impl EvaluatorTrait for D3 {
     // FromRecord for DDValue not implemented. is there another official path here?
     fn ddvalue_from_record(&self, name: String, r: Record) -> Result<DDValue, Error> {
         let id = self.id_from_relation_name(name.clone())?;
         let t: RelIdentifier = RelIdentifier::RelId(id);
+        // xxx global reference Relations
         let rel = Relations::try_from(&t).expect("huh");
         relval_from_record(rel, &r)
             .map_err(|x| Error::new("bad record conversion: ".to_string() + &x.to_string()))
     }
 
-    fn myself(&self) -> Node {
-        self.uuid
-    }
-
-    fn error(&self, text: Record, line: Record, filename: Record, functionname: Record) {
-        let f = fact!(d3_application::Error,
-                      text => text,
-                      line => line,
-                      instance => self.uuid.clone().into_record(),
-                      filename => filename,
-                      functionname => functionname);
-        self.error.clone().send(f);
-    }
-
-    // input shouldn't be a value batch with a different evaluator?
     fn eval(&self, input: Batch) -> Result<Batch, Error> {
         let eval = (*self.eval.lock().expect("lock")).clone().unwrap().clone();
         let vb = ValueSet::from(eval.clone(), input)?;
         let mut upd = Vec::new();
-
-        let bv = Batch {
-            metadata: Properties::new(),
-            body: BatchBody::Value(vb.clone()),
-        }
-        .serialize()
-        .expect("serialize");
-
-        Batch::deserialize(bv, eval.clone()).expect("deser");
 
         for (relid, v, _) in &vb {
             upd.push(Update::Insert { relid, v });
@@ -123,6 +91,7 @@ impl EvaluatorTrait for D3 {
         ))
     }
 
+    // Relations is a global - ideally we should be going through hddlog, not clear how?
     fn id_from_relation_name(&self, s: String) -> Result<RelId, Error> {
         let s: &str = &s;
         match Relations::try_from(s) {
@@ -137,16 +106,6 @@ impl EvaluatorTrait for D3 {
             Ok((None, _, _)) => None,
             Err(_) => None,
         }
-    }
-
-    // doesn't belong here. but we'd like a monotonic wallclock
-    // to sequence system events. Also - it would be nice if ddlog
-    // had some basic time functions (format)
-    fn now(&self) -> u64 {
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backwards")
-            .as_millis() as u64
     }
 
     fn record_from_ddvalue(&self, d: DDValue) -> Result<Record, Error> {
@@ -167,17 +126,6 @@ impl EvaluatorTrait for D3 {
             Ok(x)
         } else {
             Err(Error::new("bad deserializing relation".to_string()))
-        }
-    }
-}
-
-pub struct DebugPort {}
-
-impl Transport for DebugPort {
-    fn send(&self, b: Batch) {
-        // print meta
-        for (_r, f, w) in &RecordSet::from(b.clone()).expect("batch translate") {
-            println!("{} {}", f, w);
         }
     }
 }
@@ -213,8 +161,7 @@ pub fn start_d3log(debug_broadcast: bool, inputfile: Option<String>) -> Result<(
         u128::from_be_bytes(rand::thread_rng().gen::<[u8; 16]>())
     };
 
-    let d =
-        move |id: u128, error: Port| -> Result<(Evaluator, Batch), Error> { D3::new(id, error) };
+    let d = move || -> Result<(Evaluator, Batch), Error> { D3::new() };
 
     let rt = Arc::new(Runtime::new()?);
     let instance = Instance::new(rt.clone(), Arc::new(d), uuid)?;

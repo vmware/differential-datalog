@@ -28,10 +28,11 @@ use crate::{
     thread_instance::ThreadInstance,
     value_set::ValueSet,
 };
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub type Node = D3logLocationId;
 
-type EvalFactory = Arc<dyn Fn(Node, Port) -> Result<(Evaluator, Batch), Error> + Send + Sync>;
+type EvalFactory = Arc<dyn Fn() -> Result<(Evaluator, Batch), Error> + Send + Sync>;
 
 pub trait EvaluatorTrait {
     fn ddvalue_from_record(&self, id: String, r: Record) -> Result<DDValue, Error>;
@@ -41,11 +42,6 @@ pub trait EvaluatorTrait {
     fn record_from_ddvalue(&self, d: DDValue) -> Result<Record, Error>;
     fn relation_name_from_id(&self, id: RelId) -> Result<String, Error>;
     fn relation_deserializer(&self, id: RelId) -> Result<AnyDeserializeSeed, Error>;
-
-    // these methods probably belong in instance?
-    fn now(&self) -> u64;
-    fn myself(&self) -> Node;
-    fn error(&self, text: Record, line: Record, filename: Record, functionname: Record);
 }
 
 pub type Evaluator = Arc<(dyn EvaluatorTrait + Send + Sync)>;
@@ -57,6 +53,7 @@ pub struct Instance {
     pub init_batch: Batch,
     pub eval_port: Port,
     pub eval: Evaluator,
+    pub error: Arc<ErrorSend>,
     pub dispatch: Arc<Dispatch>,
     pub forwarder: Arc<Forwarder>,
     pub rt: Arc<tokio::runtime::Runtime>,
@@ -69,17 +66,21 @@ impl Instance {
         uuid: u128,
     ) -> Result<Arc<Instance>, Error> {
         let broadcast = Broadcast::new(uuid);
-        let (eval, init_batch) = new_evaluator(uuid, broadcast.clone())?;
+        let (eval, init_batch) = new_evaluator()?;
         Broadcast::register_eval(broadcast.clone(), eval.clone());
         let dispatch = Arc::new(Dispatch::new(eval.clone()));
         let forwarder = Forwarder::new(eval.clone());
+        let error = Arc::new(ErrorSend {
+            port: broadcast.clone(),
+            uuid: uuid,
+        });
 
         let (esend, erecv) = channel(20);
         let eval_port = Arc::new(EvalPort {
             rt: rt.clone(),
-            eval: eval.clone(),
+            error: error.clone(),
             dispatch: dispatch.clone(),
-            s: esend,
+            send: esend,
         });
 
         let instance = Arc::new(Instance {
@@ -88,6 +89,7 @@ impl Instance {
             rt,
             eval_port: eval_port.clone(),
             broadcast: broadcast.clone(),
+            error: error.clone(),
             forwarder: forwarder.clone(),
             dispatch: dispatch.clone(),
             eval: eval.clone(),
@@ -106,9 +108,8 @@ impl Instance {
         i2.clone().rt.spawn(async move {
             loop {
                 if let Some(b) = erecv.recv().await {
-                    let e = i2.eval.clone();
                     i2.dispatch.send(b.clone());
-                    let out = async_error!(e.clone(), e.eval(b.clone()));
+                    let out = async_error!(i2.error.clone(), i2.eval.eval(b.clone()));
                     i2.dispatch.send(out.clone());
                     i2.forwarder.send(out.clone());
                 } else {
@@ -116,6 +117,16 @@ impl Instance {
                 }
             }
         });
+    }
+
+    // doesn't belong here. but we'd like a monotonic wallclock
+    // to sequence system events. Also - it would be nice if ddlog
+    // had some basic time functions (format)
+    fn now(&self) -> u64 {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards")
+            .as_millis() as u64
     }
 }
 
@@ -125,25 +136,43 @@ pub trait Transport {
     // of band.
 
     // should really be type parametric shouldn't it?
-    fn send(&self, b: Batch);
+    fn send(&self, batch: Batch);
 }
 
 pub type Port = Arc<(dyn Transport + Send + Sync)>;
 
+#[derive(Clone)]
 struct EvalPort {
     rt: Arc<tokio::runtime::Runtime>,
-    eval: Evaluator,
+    error: Arc<ErrorSend>,
     dispatch: Port,
-    s: Sender<Batch>,
+    send: Sender<Batch>,
 }
 
 impl Transport for EvalPort {
-    fn send(&self, b: Batch) {
-        self.dispatch.send(b.clone());
-        let eclone = self.eval.clone();
-        let sclone = self.s.clone();
+    fn send(&self, batch: Batch) {
+        self.dispatch.send(batch.clone());
+        let cl = self.clone();
         self.rt.spawn(async move {
-            async_error!(eclone, sclone.send(b.clone()).await);
+            async_error!(cl.error, cl.send.send(batch.clone()).await);
         });
+    }
+}
+
+#[derive(Clone)]
+pub struct ErrorSend {
+    uuid: Node,
+    port: Port,
+}
+
+impl ErrorSend {
+    fn error(&self, text: Record, line: Record, filename: Record, functionname: Record) {
+        let f = fact!(d3_application::Error,
+                      text => text,
+                      line => line,
+                      instance => self.uuid.clone().into_record(),
+                      filename => filename,
+                      functionname => functionname);
+        self.port.clone().send(f);
     }
 }
