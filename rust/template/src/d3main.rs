@@ -202,19 +202,15 @@ impl Transport for JsonDebugPort {
 }
 
 pub fn start_d3log(debug_broadcast: bool, inputfile: Option<String>) -> Result<(), Error> {
-    let (uuid, is_parent) = if let Some(uuid) = std::env::var_os("uuid") {
+    let uuid = if let Some(uuid) = std::env::var_os("uuid") {
         if let Some(uuid) = uuid.to_str() {
-            let my_uuid = uuid.parse::<u128>().unwrap();
-            (my_uuid, false)
+            uuid.parse::<u128>().unwrap()
         } else {
             panic!("bad uuid");
         }
     } else {
         // use uuid crate
-        (
-            u128::from_be_bytes(rand::thread_rng().gen::<[u8; 16]>()),
-            true,
-        )
+        u128::from_be_bytes(rand::thread_rng().gen::<[u8; 16]>())
     };
 
     let d =
@@ -232,18 +228,6 @@ pub fn start_d3log(debug_broadcast: bool, inputfile: Option<String>) -> Result<(
         );
     }
 
-    if is_parent {
-        let debug_uuid = u128::from_be_bytes(rand::thread_rng().gen::<[u8; 16]>());
-
-        instance
-            .broadcast
-            .clone()
-            .send(fact!(d3_application::Stdout, target=>debug_uuid.into_record()));
-        instance.broadcast.clone().send(
-            fact!(d3_application::Forward, target=>debug_uuid.into_record(), intermediate => uuid.into_record()),
-        );
-    }
-
     if let Some(f) = inputfile {
         if let Err(x) = read_json_file(instance.eval.clone(), f, &mut |b: Batch| {
             instance.eval_port.send(b.clone());
@@ -253,8 +237,9 @@ pub fn start_d3log(debug_broadcast: bool, inputfile: Option<String>) -> Result<(
         }
     }
 
-    // this function doesn't return, because the way its called in main.rs it would re-run the
-    // instance outside d3 and exit
+    // this function doesn't return, because the way its called in src/main.rs it would re-run the
+    // instance outside d3 and exit. we can change the plumbing there. in any case, we dont actually
+    // want to exit since we're running as a service.
     loop {
         std::thread::park();
     }

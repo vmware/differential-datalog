@@ -8,26 +8,9 @@ input relation Myself(me: D3logLocationId)
 
 // Stdout
 // defines a service locale to express output to the user
+// right now this is actually a kind of debug port that just dumps facts
+// it should have a relational api for input and output text streams
 input relation Stdout(target: D3logLocationId)
-
-// ConnectionStatus
-// a list of all of the open connections in the system, localized by downstream 
-// issues: should include the source address, port, and timestamp
-//         we dont actually know the remote nid!..no, of course we do - wire this up
-input relation ConnectionStatus(time: Time,
-                                me: D3logLocationId,
-                                them:D3logLocationId)
-
-// TcpAddress
-// creates a binding between a locale and a tcp (ip, port) address to connect to in
-// order to address that locale.
-// 
-// issues: we should have address types here
-//        this should just be in the supervisor view?
-input relation TcpAddress(location: D3logLocationId,
-                          destination: string)
-index TcpAddress_by_location(from: D3logLocationId) on TcpAddress(from, _)
-
 
 // Thread Instance
 // a list of all the 
@@ -40,25 +23,17 @@ output relation ThreadInstance(id: u128)
 // a runtime error has been reported by some locale. presence of an error record in the mangement view
 // is an almost certain indication that the computation is stuck or corrupted
 input relation Error(text: string,
-                           line:u64,
-                           filename:string,
-                           functionname:string,
-                           uuid:D3logLocationId)
+                     line:u64,
+                     filename:string,
+                     functionname:string,
+                     uuid:D3logLocationId)
 
 
 // InstanceStatus
 // reports the current running status of an instance, regardless of type
-// issues: this really shouldn't have exit code as its process instance specific
-//         there is no way to sample (force a new fact to be generated)
+// xxx there is no way to sample (force a new fact to be generated)
 input relation InstanceStatus(time: Time,
-      id: u128,
-      memory_bytes:u64,
-      threads:u64,
-      exit_code:Option<u32>)
+                              id: u128,
+                              memory_bytes:u64,
+                              threads:u64)
 
-
-// Forward 
-// the forward relation establishes state which establishes a network proxy for a locale
-// send batches 
-input relation Forward(target: D3logLocationId,
-                       intermediate: D3logLocationId)

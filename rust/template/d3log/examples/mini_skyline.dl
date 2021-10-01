@@ -11,7 +11,7 @@ output relation Anchor(x:u64)
 
 LocalizedFact(x)@(n as u128) :-
       Fact(x, n),
-      InstanceStatus(_, n, _, _, None).
+      InstanceStatus(_, n, _, _).
 
 MSResult(x, y) :- LocalizedFact(x),
                   Myself(y).

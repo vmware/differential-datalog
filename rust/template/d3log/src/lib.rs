@@ -72,7 +72,7 @@ impl Instance {
         let (eval, init_batch) = new_evaluator(uuid, broadcast.clone())?;
         Broadcast::register_eval(broadcast.clone(), eval.clone());
         let dispatch = Arc::new(Dispatch::new(eval.clone()));
-        let forwarder = Forwarder::new(eval.clone(), dispatch.clone(), broadcast.clone());
+        let forwarder = Forwarder::new(eval.clone());
 
         let (esend, erecv) = channel(20);
         let eval_port = Arc::new(EvalPort {
