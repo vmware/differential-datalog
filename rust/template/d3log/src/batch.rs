@@ -6,7 +6,6 @@ use differential_datalog::{
     ddval::DDValue,
     program::{RelId, Weight},
 };
-
 use serde::{
     de::{DeserializeSeed, Error as DeError, MapAccess, SeqAccess, Visitor},
     ser::{Error as SeError, SerializeMap},
@@ -80,13 +79,14 @@ impl<'de, 'a> DeserializeSeed<'de> for ExtendValueWeight {
             where
                 A: SeqAccess<'de>,
             {
+                let d = self
+                    .eval
+                    .clone()
+                    .relation_deserializer(self.relid)
+                    .map_err(A::Error::custom)?;
+
                 // xxx - need to translate this error
-                if let Some(v) = seq.next_element_seed(
-                    self.eval
-                        .clone()
-                        .relation_deserializer(self.relid)
-                        .expect("bad relation serializer"),
-                )? {
+                if let Some(v) = seq.next_element_seed(d)? {
                     if let Some(w) = seq.next_element()? {
                         return Ok((v, w));
                     }
@@ -175,11 +175,12 @@ impl<'de, 'a> DeserializeSeed<'de> for ExtendRelations {
                 let mut out = ValueSet::new(self.eval.clone());
                 while let Some(k) = map.next_key()? {
                     let z: String = k;
-                    // ok - we cant panic here , but translating this error is problematic (?)
+
                     let relid = self
                         .eval
                         .id_from_relation_name(z.clone())
-                        .expect("bad relname");
+                        .map_err(A::Error::custom)?;
+
                     let vwvec = map.next_value_seed(ExtendValues {
                         eval: self.eval.clone(),
                         relid: relid,
