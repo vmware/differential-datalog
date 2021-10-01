@@ -27,7 +27,7 @@ static ENDS: phf::Map<char, char> = phf_map! {
 };
 
 #[allow(dead_code)]
-static WHITESPACE: phf::Set<char> = phf_set! {' ', '\t', '\n'};
+static WHITESPACE: phf::Set<char> = phf_set! { ' ', '\t', '\n' };
 
 pub struct JsonFramer {
     w: Vec<char>,
