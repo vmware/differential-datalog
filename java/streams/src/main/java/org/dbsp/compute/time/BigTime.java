@@ -42,6 +42,8 @@ public class BigTime implements Time {
     }
 
     public BigTime(int value) {
+        if (value < 0)
+            throw new RuntimeException("Negative time " + value);
         this.value = BigInteger.valueOf(value);
     }
 

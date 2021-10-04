@@ -53,8 +53,17 @@ import org.dbsp.lib.ComparableObject;
 
 import java.util.Objects;
 
+/**
+ * Represents the compile-time type of a ZSet.
+ */
 public class ZSetType implements Type {
+    /**
+     * Type of each element in the ZSet.
+     */
     final Type elementType;
+    /**
+     * Group that knows how to compute with elements of the ZSet.
+     */
     final DynamicGroup zsetGroup;
 
     public ZSetType(Type elementType) {

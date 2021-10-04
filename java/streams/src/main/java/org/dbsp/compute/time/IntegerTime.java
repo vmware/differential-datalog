@@ -33,6 +33,8 @@ public class IntegerTime implements Time {
     final int value;
 
     public IntegerTime(int value) {
+        if (value < 0)
+            throw new RuntimeException("Negative time "+ value);
         this.value = value;
     }
 

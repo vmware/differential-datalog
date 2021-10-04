@@ -27,6 +27,7 @@ import org.dbsp.circuits.Circuit;
 import org.dbsp.circuits.Scheduler;
 import org.dbsp.circuits.Wire;
 import org.dbsp.algebraic.dynamicTyping.types.Type;
+import org.dbsp.lib.Pair;
 import org.dbsp.lib.Utilities;
 
 /**
@@ -107,8 +108,8 @@ public class CircuitOperator extends Operator implements Latch {
         this.circuit.checkConnected();
     }
 
-    protected Operator getActualConsumer(Operator to, int input) {
-        return this.circuit.getInputPort(input);
+    protected Pair<Operator, Integer> getActualConsumer(int input) {
+        return new Pair<Operator, Integer>(this.circuit.getInputPort(input), 0);
     }
 
     /**

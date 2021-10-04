@@ -28,6 +28,11 @@ import org.dbsp.circuits.Scheduler;
 import org.dbsp.circuits.Wire;
 import org.dbsp.lib.Utilities;
 
+/**
+ * This is not an operator, since it has no output.
+ * A sink is a computational element that receives a single value
+ * and allows it to be inspected.
+ */
 public class Sink extends ComputationalElement {
     final String name;
     final Wire wire;

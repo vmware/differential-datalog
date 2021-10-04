@@ -263,7 +263,7 @@ public class RelationalOperatorTest {
         top.seal();
 
         Sink sink = w.addSink();
-        //TestUtil.show(top, true);
+        show(top);
         Scheduler scheduler = new Scheduler();
         top.reset(scheduler);
         DynamicZSet<Integer> zs = new DynamicZSet<Integer>(IntegerRing.instance);

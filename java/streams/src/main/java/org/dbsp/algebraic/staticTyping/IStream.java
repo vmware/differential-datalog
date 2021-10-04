@@ -193,18 +193,6 @@ public abstract class IStream<V> {
         };
     }
 
-    public V sumToZero(Group<V> group) {
-        V zero = group.zero();
-        V result = zero;
-        for (Time index = this.timeFactory.zero(); ; index = index.next()) {
-            V value = this.get(index);
-            if (value == zero)
-                break;
-            result = group.add(result, value);
-        }
-        return result;
-    }
-
     public TimeFactory getTimeFactory() {
         return this.timeFactory;
     }

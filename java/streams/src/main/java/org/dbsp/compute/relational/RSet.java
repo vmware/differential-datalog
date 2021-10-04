@@ -29,6 +29,7 @@ import java.util.*;
 
 /**
  * Simple sets.  Inputs and outputs of computations are usually sets.
+ * Unlike a ZSet, in a RSet all elements have weight 1.
  * @param <T>  Type of elements in the sets.
  */
 public class RSet<T extends Comparable<T>> {

@@ -88,14 +88,18 @@ public abstract class ComputationalElement extends HasId {
     public List<Type> getInputTypes() {
         return this.inputTypes;
     }
-
     public List<Type> getOutputTypes() {
         return this.outputTypes;
     }
 
     public abstract void setInput(int index, Wire source);
 
+    /**
+     * Check if all inputs and outputs that should be connected to wires
+     * are indeed connected.
+     */
     public abstract void checkConnected();
+
     /**
      * Write the graphviz representation of the nodes in the circuit into the builder.
      * @param deep     If true recurse all the way to the lowermost nodes.
@@ -103,6 +107,7 @@ public abstract class ComputationalElement extends HasId {
      * @param builder  Write result here.
      */
     public abstract void toGraphvizNodes(boolean deep, int indent, StringBuilder builder);
+
     /**
      * Write the graphviz representation of the wires in the circuit into the stringBuilder.
      * @param deep     If true recurse all the way to the lowermost nodes.

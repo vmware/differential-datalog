@@ -27,6 +27,7 @@ import org.dbsp.circuits.ComputationalElement;
 import org.dbsp.circuits.Scheduler;
 import org.dbsp.circuits.Wire;
 import org.dbsp.algebraic.dynamicTyping.types.Type;
+import org.dbsp.lib.Pair;
 import org.dbsp.lib.Utilities;
 
 import java.util.ArrayList;
@@ -67,9 +68,9 @@ public abstract class Operator extends ComputationalElement {
     public void connectTo(Operator to, int input) {
         if (to.getInputWires().get(input) != null)
             throw new RuntimeException(to.getName() + ": input " + input + " already connected");
-        Operator actual = to.getActualConsumer(to, input);
-        this.output.addConsumer(actual, to);
-        actual.setInput(input, this.output);
+        Pair<Operator, Integer> actual = to.getActualConsumer(input);
+        this.output.addConsumer(actual.first, to);
+        actual.first.setInput(actual.second, this.output);
         if (!to.inputTypes.get(input).equals(this.output.getType()))
             throw new RuntimeException("Type mismatch: operator input " + input + " expects " +
                     to.inputTypes.get(input) + " but was provided with " + this.output.getType());
@@ -88,12 +89,11 @@ public abstract class Operator extends ComputationalElement {
 
     /**
      * The actual node that will receive the input for the specified input of the operator.
-     * @param to     Operator we connect to.
      * @param input  Input we connect to.
-     * @return       The actual operator that this connection is made to.
+     * @return       The actual operator that this connection is made to and its input.
      */
-    protected Operator getActualConsumer(Operator to, int input) {
-        return to;
+    protected Pair<Operator, Integer> getActualConsumer(int input) {
+        return new Pair<Operator, Integer>(this, input);
     }
 
     public void checkConnected() {

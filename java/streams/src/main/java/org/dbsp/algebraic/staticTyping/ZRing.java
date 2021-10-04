@@ -35,4 +35,13 @@ public interface ZRing<W> extends Ring<W> {
      * @param value  Value to compare with zero
      */
     boolean isPositive(W value);
+
+    default int compare(W left, W right) {
+        W sub = this.add(left, this.negate(right));
+        if (this.isZero(sub))
+            return 0;
+        if (this.isPositive(sub))
+            return 1;
+        return -1;
+    }
 }

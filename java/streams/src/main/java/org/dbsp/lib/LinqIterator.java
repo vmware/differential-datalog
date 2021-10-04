@@ -115,6 +115,15 @@ public abstract class LinqIterator<T> implements Iterator<T> {
         };
     }
 
+    /**
+     * Zip three iterators; returns an iterator of triples with elements from all 3 iterators.
+     * Stops when the first of the three iterators terminates.
+     * @param left   Second iterator to zip with.
+     * @param right  Third iterator to zip with.
+     * @param <S>    Type of elements in the second iterator.
+     * @param <U>    Type of elements in the third iterator.
+     * @return       An iterator with the length the shorter of this, left, and right.
+     */
     public <S, U> LinqIterator<Triple<T, S, U>> zip3(LinqIterator<S> left, LinqIterator<U> right) {
         return new LinqIterator<Triple<T, S, U>>() {
             @Override
@@ -131,10 +140,10 @@ public abstract class LinqIterator<T> implements Iterator<T> {
 
     /**
      * Zip two iterators; returns an iterator of pairs with elements from both iterators.
-     * Stops when the first iterator terminates.
-     * @param other  List to zip with.
-     * @param <S>    Type of elements in the other list.
-     * @return       A list with the length the shorter of this and other.
+     * Stops when the first of the two iterators terminates.
+     * @param other  Iterator to zip with.
+     * @param <S>    Type of elements in the other iterator.
+     * @return       An iterator with the length the shorter of this and other.
      */
     public <S> LinqIterator<Pair<T, S>> zip(List<S> other) {
         return this.zip(LinqIterator.create(other));

@@ -26,6 +26,7 @@ package org.dbsp.compute.relational;
 import org.dbsp.algebraic.staticTyping.FiniteFunction;
 import org.dbsp.algebraic.staticTyping.FiniteFunctionGroup;
 import org.dbsp.algebraic.staticTyping.ZRing;
+import org.dbsp.lib.Utilities;
 
 import java.util.*;
 import java.util.function.BiFunction;
@@ -145,7 +146,7 @@ public class ZSet<T extends Comparable<T>, W>
      * @param coefficient  Coefficient to multiply each weight with.
      */
     public void add(ZSet<T, W> other, W coefficient) {
-        if (weightRing.isZero(coefficient))
+        if (this.weightRing.isZero(coefficient))
             return;
         for (T key: other.data.keySet()) {
             W value = this.weightRing.times(coefficient, other.data.get(key));
@@ -160,6 +161,8 @@ public class ZSet<T extends Comparable<T>, W>
      * @param weight  Weight of the element.
      */
     public void add(T value, W weight) {
+        if (this.weightRing.isZero(weight))
+            return;
         if (this.data.containsKey(value)) {
             weight = this.weightRing.add(weight, this.data.get(value));
             if (this.weightRing.isZero(weight))
@@ -387,12 +390,12 @@ public class ZSet<T extends Comparable<T>, W>
         for (T t: this.support()) {
             K k = key.apply(t);
             W w = this.apply(t);
-            Grouping<K, T, W> set = perKey.get(k);
-            if (set == null) {
-                set = new Grouping<K, T, W>(k, this.weightRing);
-                perKey.put(k, set);
+            Grouping<K, T, W> group = perKey.get(k);
+            if (group == null) {
+                group = new Grouping<K, T, W>(k, this.weightRing);
+                perKey.put(k, group);
             }
-            set.add(t, w);
+            group.add(t, w);
         }
         ZSet<Grouping<K, T, W>, W> result = new ZSet<Grouping<K, T, W>, W>(this.weightRing);
         for (K k: perKey.keySet()) {
@@ -458,6 +461,22 @@ public class ZSet<T extends Comparable<T>, W>
 
     @Override
     public int compareTo(ZSet<T, W> o) {
-        return 0;
+        List<T> keys = Utilities.list(this.data.keySet());
+        keys.sort(Comparator.naturalOrder());
+        List<T> okeys = Utilities.list(o.data.keySet());
+        okeys.sort(Comparator.naturalOrder());
+        for (int i = 0; i < keys.size() && i < okeys.size(); i++) {
+            T ki = keys.get(i);
+            T oki = okeys.get(i);
+            int compare = ki.compareTo(oki);
+            if (compare != 0)
+                return compare;
+            W w = this.data.get(ki);
+            W ow = o.data.get(oki);
+            compare = weightRing.compare(w, ow);
+            if (compare != 0)
+                return compare;
+        }
+        return Integer.compare(keys.size(), okeys.size());
     }
 }

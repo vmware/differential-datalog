@@ -23,8 +23,10 @@
 
 package org.dbsp.lib;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 public class Utilities {
     public static void indent(int amount, StringBuilder builder) {
@@ -35,6 +37,10 @@ public class Utilities {
     @SafeVarargs
     public static <T> List<T> list(T... data) {
         return Arrays.asList(data);
+    }
+
+    public static <T> List<T> list(Set<T> data) {
+        return new ArrayList<T>(data);
     }
 
     public static String identifierFromString(String str) {

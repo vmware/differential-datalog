@@ -27,7 +27,7 @@ import org.dbsp.algebraic.dynamicTyping.types.Type;
 import org.dbsp.circuits.Scheduler;
 
 /**
- * An operator that works on streams.  It delays the input stream by 1 clock.
+ * An operator that implements the identity function.
  */
 public class IdOperator extends UnaryOperator {
     public IdOperator(Type elementType) {
