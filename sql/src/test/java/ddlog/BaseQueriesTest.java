@@ -178,6 +178,19 @@ public class BaseQueriesTest {
         this.compiledDDlog(s);
     }
 
+    protected void testIndexTranslation(String indexQuery, String program, boolean withNulls) {
+        Translator t = this.createInputTables(withNulls);
+        DDlogIRNode index = t.translateCreateIndexStatement(indexQuery);
+        Assert.assertNotNull(index);
+        String s = index.toString();
+        Assert.assertNotNull(s);
+        DDlogProgram ddprogram = t.getDDlogProgram();
+        Assert.assertNotNull(ddprogram);
+        s = ddprogram.toString();
+        Assert.assertEquals(program, s);
+        this.compiledDDlog(s);
+    }
+
     protected void testTranslation(List<String> queries, String program, boolean withNulls) {
         Translator t = this.createInputTables(withNulls);
         for (String query: queries) {

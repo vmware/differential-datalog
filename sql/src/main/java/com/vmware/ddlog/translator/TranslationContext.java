@@ -284,6 +284,10 @@ class TranslationContext {
         this.translationState.add(relation);
     }
 
+    void add(DDlogIndexDeclaration index) {
+        this.translationState.add(index);
+    }
+
     String freshRelationName(String prefix) {
         return this.freshGlobalName(DDlogRelationDeclaration.relationName(prefix));
     }
