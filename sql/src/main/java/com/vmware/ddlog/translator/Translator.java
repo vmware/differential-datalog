@@ -29,6 +29,8 @@ import com.facebook.presto.sql.parser.SqlParser;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.Statement;
 import com.vmware.ddlog.ir.*;
+import com.vmware.ddlog.util.sql.CreateIndexParser;
+import com.vmware.ddlog.util.sql.ParsedCreateIndex;
 import com.vmware.ddlog.util.sql.PrestoSqlStatement;
 import org.jooq.DSLContext;
 import org.jooq.Field;
@@ -94,28 +96,11 @@ public class Translator {
      * @param sql create index statement to translate
      */
     public DDlogIRNode translateCreateIndexStatement(final String sql) {
-        final Scanner s = new Scanner(sql);
-        if (!s.next().equals("create")) {
-            throw new RuntimeException("Cannot parse create index statement, expected 'CREATE'");
-        }
-        if (!s.next().equals("index")) {
-            throw new RuntimeException("Cannot parse create index statement, expected 'INDEX'");
-        }
-        final String indexName = s.next();
-        if (!s.next().equals("on")) {
-            throw new RuntimeException("Cannot parse create index statement, expected 'ON'");
-        }
-        final String tableName = s.next();
-        // The remainder of the scanner
-        final Pattern p = Pattern.compile("\\((.+)\\)");
-        final Matcher m = p.matcher(sql);
-        if (!m.find()) {
-            throw new RuntimeException("Cannot parse create index statement, cannot read index columns");
-        }
-        String[] columns = m.group(1).trim().split(",");
+        ParsedCreateIndex parsedIndex = CreateIndexParser.parse(sql);
 
         // Find the typedef of the base relation, so we can populate the typedef of the index
-        final DDlogRelationDeclaration baseRelation = this.translationContext.getRelation(DDlogRelationDeclaration.relationName(tableName));
+        final DDlogRelationDeclaration baseRelation =
+                this.translationContext.getRelation(DDlogRelationDeclaration.relationName(parsedIndex.getTableName()));
         if (baseRelation == null) {
             throw new RuntimeException("Cannot find base table that index refers to");
         }
@@ -139,7 +124,7 @@ public class Translator {
         List<String> baseTableMatchingTypeString =
                 Stream.generate(() -> "_").limit(baseRelationFields.size()).collect(Collectors.toList());
 
-        for (String col : columns) {
+        for (String col : parsedIndex.getColumns()) {
             col = col.trim();
             // Now find the column name in the typedef of the table
             for (int i = 0; i < baseRelationFields.size(); i++) {
@@ -151,7 +136,7 @@ public class Translator {
             }
         }
 
-        String dIndexName = DDlogIndexDeclaration.indexName(indexName);
+        String dIndexName = DDlogIndexDeclaration.indexName(parsedIndex.getIndexName());
         this.translationContext.reserveGlobalName(dIndexName);
 
         // Create the index and add to the current DDlog program
