@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## Unreleased
+## [0.49.0] - Oct 4, 2021
 
 ### New features
 
@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   DDlog, which will crash DDlog programs at runtime if they overflow the
   weights attached to data values.  This may be preferable to generating
   incorrect results.
+
+- Add queryIndex Java API (#1093)
 
 ### Bug fixes
 
@@ -21,7 +23,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - Upgrade to FlatBuffers v2.0.0.  The previous version of FlatBuffers used in
   DDlog is not compatible with recent OS X releases.
-  
+
+### SQL-to-DDlog compiler
+
+- Add support for identity views for input tables in DDlogJooqProvider (#1094)
+- Translate vector-type fields properly in DDlogJooqProvider (#1089)
+- Expose DDlogJooqProvider DSLContext (#1086)
+- Windows and Joins work when columns have alias (#1087)
 
 ## [0.48.2] - Sep 13, 2021
 
