@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class JooqProviderTestCalcite extends JooqProviderTestBase {
+public class JooqProviderCalciteTest extends JooqProviderTestBase {
 
     @BeforeClass
     public static void setup() throws IOException, DDlogException {
@@ -33,7 +33,7 @@ public class JooqProviderTestCalcite extends JooqProviderTestBase {
                 "from base_array_table";
 
         String identityViewName = DDlogJooqProvider.toIdentityViewName("hosts");
-        String hostidentityView = String.format("create view %s as select distinct * from hosts", identityViewName);
+        String hostIdentityView = String.format("create view %s as select distinct * from hosts", identityViewName);
 
         List<String> ddl = new ArrayList<>();
         ddl.add(s1);
@@ -43,7 +43,7 @@ public class JooqProviderTestCalcite extends JooqProviderTestBase {
         ddl.add(checkNotNullColumns);
         ddl.add(arrayTable);
         ddl.add(checkArrayType);
-        ddl.add(hostidentityView);
+        ddl.add(hostIdentityView);
 
         ddlogAPI = compileAndLoad(
                 ddl.stream().map(CalciteSqlStatement::new).collect(Collectors.toList()),

@@ -27,7 +27,7 @@ package ddlog;
 import com.vmware.ddlog.translator.TranslationException;
 import org.junit.Test;
 
-public class SetTests extends BaseQueriesTest {
+public class SetTest extends BaseQueriesTest {
     @Test
     public void unionTest() {
         String query = "create view v0 as SELECT DISTINCT column1 FROM t1 UNION SELECT DISTINCT column1 FROM t2";
