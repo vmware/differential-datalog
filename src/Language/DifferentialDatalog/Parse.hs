@@ -47,7 +47,6 @@ import Data.Char
 import Data.Word
 import Numeric
 import GHC.Float
---import Debug.Trace
 
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Statement
@@ -903,7 +902,14 @@ field = isfield *> dot *> varIdent
     where isfield = try $ lookAhead $ do
                         _ <- dot
                         _ <- notFollowedBy relIdent
-                        varIdent
+                        field_name <- varIdent
+                        -- We don't declare "index" as a reserved word, as we'd
+                        -- like to make it a legal identifier.  This creates
+                        -- parsing ambiguity when a rule is immediately followed
+                        -- by and index declaration:
+                        -- `R :- ... var v = x. index IndexName() on ...`.
+                        -- Handle this special case below.
+                        when (field_name == "index") $ notFollowedBy indexIdent
 tupField = isfield *> dot *> lexeme decimal
     where isfield = try $ lookAhead $ do
                         _ <- dot

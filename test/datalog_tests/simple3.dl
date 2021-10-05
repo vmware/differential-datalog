@@ -217,6 +217,13 @@ input relation Rhosts[Thosts] primary key (row) (row.id)
 output relation Rhostsv[Thosts]
 Rhostsv[v0] :- Rhosts[v],var v0 = v.
 
+// Make sure 'index' is not parsed as field name ('var v0 = v.index') in this context.
+index Rhosts_by_id(id: string) on Rhosts[Thosts{.id = Some{id}}]
+
+input relation RelWithIndexField(index: usize)
+output relation ORelWithIndexField(index: usize)
+
+ORelWithIndexField(i) :- RelWithIndexField[r], var i = r.index.
 
 /**********************************************************/
 
