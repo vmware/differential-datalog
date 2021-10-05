@@ -15,3 +15,5 @@ Thosts{.id = ddlog_std::Some{.x = "n1"}, .capacity = ddlog_std::Some{.x = 10}, .
 Rhostsv:
 Thosts{.id = ddlog_std::Some{.x = "n1"}, .capacity = ddlog_std::Some{.x = 10}, .up = ddlog_std::None{}}: +1
 Thosts{.id = ddlog_std::Some{.x = "n1"}, .capacity = ddlog_std::Some{.x = 10}, .up = ddlog_std::Some{.x = true}}: -1
+Thosts{.id = ddlog_std::Some{.x = "n1"}, .capacity = ddlog_std::Some{.x = 10}, .up = ddlog_std::None{}}
+Thosts{.id = ddlog_std::Some{.x = "n1"}, .capacity = ddlog_std::Some{.x = 10}, .up = ddlog_std::None{}}
