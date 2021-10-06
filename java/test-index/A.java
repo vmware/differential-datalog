@@ -55,8 +55,15 @@ public class A {
         DDlogRecord r1 = new DDlogRecord(1);
         DDlogRecord tuple = DDlogRecord.makeTuple(r0, r1);
         this.api.queryIndex("AIIII", tuple, i -> System.out.println("query (0,1): " + i));
+        // Reuse the key for one more query
+        DDlogRecord[] clone = new DDlogRecord[1];
+        // Save query result in 'clone'
+        this.api.queryIndex("AIIII", tuple, i -> { clone[0] = i.clone(); });
         // Deallocate the key
         tuple.dispose();
+        System.out.println(clone[0]);
+        // Release the clone
+        clone[0].dispose();
 
         this.api.stop();
     }

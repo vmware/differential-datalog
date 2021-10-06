@@ -121,7 +121,7 @@ typedef enum {
     ddlog_self_profiling    = 1,
     // Send profiling events to an external profiler.
     ddlog_timely_profiling  = 2
-} ddlog_profiling_mode; 
+} ddlog_profiling_mode;
 
 /* Timely/differential logging mode. */
 typedef enum {
@@ -493,7 +493,7 @@ extern int ddlog_apply_updates_from_flatbuf(ddlog_prog prog,
  * `idxid` - id of the index to dump.
  * `key` - query key.
  *     NOTE: the caller keeps ownership of `key` after the call and
- *     must deallocate it usin `ddlog_free()`.
+ *     must deallocate it using `ddlog_free()`.
  * `cb` - callback invoked for each returned record.
  * `cb_arg` - opaque handle passed to each `cb invocation`.
  *
@@ -987,6 +987,12 @@ extern ssize_t ddlog_get_int(
         const ddlog_record *rec,
         unsigned char *buf,
         size_t capacity);
+
+/**
+ * Create a copy of this DDlog record.  The user is responsible for deleting this record
+ * using ddlog_free.
+ */
+extern ddlog_record* ddlog_clone(const ddlog_record* rec);
 
 /*
  * Create an unsigned integer value.  Can be used to populate any ddlog field

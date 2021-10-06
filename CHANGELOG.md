@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+- ddlog_clone C and Java API to clone a ddlog_record.
+
 ## [0.49.0] - Oct 4, 2021
 
 ### New features

@@ -1326,6 +1326,16 @@ pub unsafe extern "C" fn ddlog_get_i64(rec: *const Record) -> i64 {
         .unwrap_or(0)
 }
 
+#[cfg(feature = "c_api")]
+#[no_mangle]
+#[allow(improper_ctypes_definitions)]
+pub unsafe extern "C" fn ddlog_clone(rec: *const Record) -> *mut Record {
+    match rec.as_ref() {
+        None => ptr::null_mut(),
+        Some(r) => Box::into_raw(Box::new(r.clone())),
+    }
+}
+
 // FIXME: 128 bit integers are not FFI-safe, so we need to find an alternate
 //        method to make this defined behavior
 #[cfg(feature = "c_api")]

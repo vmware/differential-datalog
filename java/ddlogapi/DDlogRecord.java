@@ -113,6 +113,14 @@ public class DDlogRecord {
         this.shared = false;
     }
 
+    /**
+     * Generate a deep copy of this record.  The user has ownership of
+     * the record and must destroy it by calling `dispose` when done.
+     */
+    public DDlogRecord clone() {
+        return fromHandle(DDlogAPI.ddlog_clone(this.checkHandle()));
+    }
+
     private static void getAllFields(Class<?> clazz, List<Field> result) {
         while (clazz != null) {
             Field[] fields = clazz.getDeclaredFields();

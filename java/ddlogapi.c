@@ -444,6 +444,11 @@ JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_00024DDlogCommandVector_ddlog_1bat
     ddlog_free_record_updates((ddlog_record*)handle, size);
 }
 
+JNIEXPORT jlong JNICALL Java_ddlogapi_DDlogAPI_ddlog_1clone(
+    JNIEnv * env, jclass cls, jlong handle) {
+    return (jlong)ddlog_clone((ddlog_record*)handle);
+}
+
 JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_ddlog_1free(
     JNIEnv * env, jclass cls, jlong handle) {
     ddlog_free((ddlog_record*)handle);

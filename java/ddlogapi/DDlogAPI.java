@@ -59,7 +59,7 @@ public class DDlogAPI {
     static native void ddlog_enable_change_profiling(long hprog, boolean enable) throws DDlogException;
     static native long ddlog_log_replace_callback(int module, long old_cbinfo, ObjIntConsumer<String> cb, int max_level);
     static native long ddlog_log_replace_default_callback(long old_cbinfo, ObjIntConsumer<String> cb, int max_level);
-
+    static native long ddlog_clone(long handle);
     static native void ddlog_free(long handle);
 
     /* All the following methods return in fact `ddlog_record` handles */
