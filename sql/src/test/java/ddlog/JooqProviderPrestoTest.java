@@ -53,6 +53,9 @@ public class JooqProviderPrestoTest extends JooqProviderTestBase {
 
         String identityViewName = DDlogJooqProvider.toIdentityViewName("hosts");
         String hostIdentityView = String.format("create view %s as select distinct * from hosts", identityViewName);
+        String notNullIdentityView =
+                String.format("create view %s as select distinct * from not_null",
+                        DDlogJooqProvider.toIdentityViewName("not_null"));
 
         String createIndexNotNull = "create index not_null_idx on not_null (test_col1)";
         String createIndexHosts = "create index hosts_id_up on hosts (id, up)";
@@ -66,6 +69,7 @@ public class JooqProviderPrestoTest extends JooqProviderTestBase {
         ddl.add(arrayTable);
         ddl.add(checkArrayType);
         ddl.add(hostIdentityView);
+        ddl.add(notNullIdentityView);
 
         List<String> indexStatements = new ArrayList<>();
         indexStatements.add(createIndexNotNull);
