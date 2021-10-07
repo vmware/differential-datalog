@@ -24,7 +24,10 @@
 
 package com.vmware.ddlog;
 
+import com.vmware.ddlog.ir.DDlogIndexDeclaration;
+import com.vmware.ddlog.util.sql.CreateIndexParser;
 import com.vmware.ddlog.util.sql.H2SqlStatement;
+import com.vmware.ddlog.util.sql.ParsedCreateIndex;
 import ddlogapi.*;
 import org.apache.calcite.sql.*;
 import org.apache.calcite.sql.parser.SqlParser;
@@ -40,6 +43,7 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import static org.jooq.impl.DSL.field;
 
@@ -93,6 +97,8 @@ public final class DDlogJooqProvider implements MockDataProvider {
     private final Map<String, List<? extends Field<?>>> tablesToPrimaryKeys = new HashMap<>();
     private final Map<String, Set<Record>> materializedViews = new ConcurrentHashMap<>();
     private final Set<String> inputTableNames = new HashSet<>();
+    private final Map<String, List<ParsedCreateIndex>> tablesToIndexesMap = new HashMap<>();
+    private final Map<String, List<Field<?>>> indexToFieldsMap = new HashMap<>();
     public static boolean trace = false;
 
     public DDlogJooqProvider(final DDlogAPI dDlogAPI, final List<H2SqlStatement> sqlStatements) {
@@ -103,6 +109,11 @@ public final class DDlogJooqProvider implements MockDataProvider {
         // We execute H2 statements in a temporary database so that JOOQ can extract useful metadata
         // that we will use later (for example, the record types for views).
         for (final H2SqlStatement sql : sqlStatements) {
+            if (sql.getStatement().startsWith("create index")) {
+                ParsedCreateIndex parsedIndex = CreateIndexParser.parse(sql.getStatement());
+                tablesToIndexesMap.computeIfAbsent(
+                        parsedIndex.getTableName().toUpperCase(Locale.ROOT), k -> new ArrayList<>()).add(parsedIndex);
+            }
             dslContext.execute(sql.getStatement());
         }
 
@@ -121,6 +132,19 @@ public final class DDlogJooqProvider implements MockDataProvider {
                     inputTableNames.add(table.getName());
                 }
             }
+        }
+        // Now construct list of fields for each index
+        for (ParsedCreateIndex parsedIndex : tablesToIndexesMap.values().stream().flatMap(List::stream).collect(Collectors.toList())) {
+            List<Field<?>> tableFields = tablesToFields.get(parsedIndex.getTableName().toUpperCase(Locale.ROOT));
+            List<Field<?>> indexFields = new ArrayList<>();
+            for (String indexColumn : parsedIndex.getColumns()) {
+                for (Field<?> f : tableFields) {
+                    if (f.getName().equalsIgnoreCase(indexColumn)) {
+                        indexFields.add(f);
+                    }
+                }
+            }
+            indexToFieldsMap.put(parsedIndex.getIndexName(), indexFields);
         }
     }
 
@@ -338,18 +362,83 @@ public final class DDlogJooqProvider implements MockDataProvider {
             if (delete.getCondition() == null || !(delete.getTargetTable() instanceof SqlIdentifier)) {
                 return exception("Delete queries without where clauses are not supported: " + context.sql());
             }
+
+            final DDlogRecCommand command;
+            final List<DDlogRecord> clonedResults = new ArrayList<>();
             try {
                 final String tableName = ((SqlIdentifier) delete.getTargetTable()).getSimple();
                 final SqlBasicCall where = (SqlBasicCall) delete.getCondition();
-                final List<? extends Field<?>> pkFields = tablesToPrimaryKeys.get(tableName.toUpperCase());
-                if (pkFields == null) {
+
+                if (tablesToFields.get(tableName) == null) {
                     return exception(String.format("Table %s does not exist: ", tableName) + context.sql());
                 }
-                final DDlogRecord record = matchExpressionFromWhere(where, pkFields, context);
-                final int tableId = dDlogAPI.getTableId(ddlogRelationName(tableName));
-                final DDlogRecCommand command = new DDlogRecCommand(DDlogCommand.Kind.DeleteKey, tableId, record);
+
+                // Get fields requested in the where condition
+                WhereClauseGetIdentifiers getIdentifiers = new WhereClauseGetIdentifiers();
+                String[] ids = where.accept(getIdentifiers).toArray(new String[0]);
+
+                final List<? extends Field<?>> pkFields = tablesToPrimaryKeys.get(tableName);
+                // If there are no PKs for this table, or if the PK given doesn't match the fields requested by this
+                // query, then we have to look in any indexes on the table.
+                if (pkFields == null ||
+                        ids.length != pkFields.size() ||
+                        !Arrays.equals(ids,
+                                pkFields.stream().map(x -> x.getUnqualifiedName().unquotedName().toString().toUpperCase(Locale.ROOT))
+                                        .collect(Collectors.toList()).toArray(new String[0]))) {
+                    List<ParsedCreateIndex> indexes = tablesToIndexesMap.get(tableName);
+                    if (indexes == null) {
+                        return exception(String.format("Cannot delete from table %s: no appropriate primary key" +
+                                "and no indexes", tableName));
+                    }
+                    // Look through the indexes to see if there's a matching index
+                    ParsedCreateIndex matchingIndex = null;
+                    for (ParsedCreateIndex id : indexes) {
+                        String[] tmp = id.getColumns();
+                        // Check for equality
+                        if (tmp.length != ids.length) {
+                            continue;
+                        }
+                        for (int i = 0; i < tmp.length; i++) {
+                            if (!tmp[i].equalsIgnoreCase(ids[i])) {
+                                continue;
+                            }
+                        }
+                        matchingIndex = id;
+                        break;
+                    }
+                    if (matchingIndex == null) {
+                        return exception(String.format("Cannot delete from table %s: no appropriate index",
+                                tableName));
+                    }
+                    // Use the matching index to fetch the row, and then delete it
+                    final DDlogRecord indexKey =
+                            matchExpressionFromWhere(where, indexToFieldsMap.get(matchingIndex.getIndexName()), context);
+
+                    dDlogAPI.queryIndex(DDlogIndexDeclaration.indexName(matchingIndex.getIndexName()), indexKey, x -> {
+                        clonedResults.add(x.clone());
+                    } );
+
+                    if (clonedResults.size() == 0) {
+                        // There was nothing to delete
+                        return new MockResult(0, null);
+                    }
+
+                    // Delete the first record returned
+                    command = new DDlogRecCommand(DDlogCommand.Kind.DeleteVal,
+                            dDlogAPI.getTableId(ddlogRelationName(tableName)), clonedResults.get(0));
+                } else {
+                    final DDlogRecord record = matchExpressionFromWhere(where, pkFields, context);
+                    final int tableId = dDlogAPI.getTableId(ddlogRelationName(tableName));
+                    command = new DDlogRecCommand(DDlogCommand.Kind.DeleteKey, tableId, record);
+                }
                 dDlogAPI.applyUpdates(new DDlogRecCommand[]{command});
+                // Now release cloned records, if any
+                for (DDlogRecord r : clonedResults) {
+                    r.release();
+                }
             } catch (final DDlogException e) {
+                if (e.getMessage().contains("key not found"))
+                    return new MockResult(0, null);
                 return exception(e);
             }
             final Result<Record1<Integer>> result = dslContext.newResult(updateCountField);
@@ -418,6 +507,44 @@ public final class DDlogJooqProvider implements MockDataProvider {
                                                               : matchExpression[0];
     }
 
+    /**
+     * A visitor for WHERE conditions. Returns a list of identifiers (column names) used (matched on) by the condition.
+     */
+    private static final class WhereClauseGetIdentifiers extends SqlBasicVisitor<List<String>> {
+        private List<String> identifiers;
+
+        public WhereClauseGetIdentifiers() {
+            this.identifiers = new ArrayList<>();
+        }
+
+        @Override
+        public List<String> visit(final SqlCall call) {
+            final SqlBasicCall expr = (SqlBasicCall) call;
+            switch (expr.getOperator().getKind()) {
+                case AND:
+                    for (SqlNode node : expr.getOperands()) {
+                        visit((SqlBasicCall) node);
+                    }
+                    return identifiers;
+                case EQUALS: {
+                    final SqlNode left = expr.getOperands()[0];
+                    final SqlNode right = expr.getOperands()[1];
+                    if (left instanceof SqlIdentifier) {
+                        // Add left to the columns
+                        identifiers.add(left.toString().toUpperCase(Locale.ROOT));
+                    } else if (right instanceof SqlIdentifier) {
+                        // add right to the identifiers
+                        identifiers.add(right.toString().toUpperCase(Locale.ROOT));
+                    }
+                    return identifiers;
+                }
+                default:
+                    throw new DDlogJooqProviderException(
+                            "WhereClauseGetIdentifiers: Unsupported expression in where clause " + call);
+            }
+        }
+    }
+
     private static final class WhereClauseToMatchExpression extends SqlBasicVisitor<DDlogRecord[]> {
         private final DDlogRecord[] matchExpressions;
         private final QueryContext context;
@@ -434,7 +561,8 @@ public final class DDlogJooqProvider implements MockDataProvider {
             final SqlBasicCall expr = (SqlBasicCall) call;
             switch (expr.getOperator().getKind()) {
                 case AND:
-                    return super.visit(call);
+                    super.visit(call);
+                    return matchExpressions;
                 case EQUALS: {
                     final SqlNode left = expr.getOperands()[0];
                     final SqlNode right = expr.getOperands()[1];

@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class JooqProviderCalciteTest extends JooqProviderTestBase {
 
@@ -34,6 +35,12 @@ public class JooqProviderCalciteTest extends JooqProviderTestBase {
 
         String identityViewName = DDlogJooqProvider.toIdentityViewName("hosts");
         String hostIdentityView = String.format("create view %s as select distinct * from hosts", identityViewName);
+        String notNullIdentityView =
+                String.format("create view %s as select distinct * from not_null",
+                        DDlogJooqProvider.toIdentityViewName("not_null"));
+
+        String createIndexNotNull = "create index not_null_idx on not_null (test_col1)";
+        String createIndexHosts = "create index hosts_id_up on hosts (id, up)";
 
         List<String> ddl = new ArrayList<>();
         ddl.add(s1);
@@ -44,15 +51,23 @@ public class JooqProviderCalciteTest extends JooqProviderTestBase {
         ddl.add(arrayTable);
         ddl.add(checkArrayType);
         ddl.add(hostIdentityView);
+        ddl.add(notNullIdentityView);
+
+        List<String> indexStatements = new ArrayList<>();
+        indexStatements.add(createIndexNotNull);
+        indexStatements.add(createIndexHosts);
 
         ddlogAPI = compileAndLoad(
                 ddl.stream().map(CalciteSqlStatement::new).collect(Collectors.toList()),
-                new CalciteToPrestoTranslator());
+                new CalciteToPrestoTranslator(),
+                indexStatements);
 
         ToH2Translator<CalciteSqlStatement> translator = new CalciteToH2Translator();
         // Initialise the data provider
         provider = new DDlogJooqProvider(ddlogAPI,
-                ddl.stream().map(x -> translator.toH2(new CalciteSqlStatement(x))).collect(Collectors.toList()));
+                Stream.concat(ddl.stream().map(x -> translator.toH2(new CalciteSqlStatement(x))),
+                                indexStatements.stream().map(H2SqlStatement::new))
+                        .collect(Collectors.toList()));
         MockConnection connection = new MockConnection(provider);
 
         // Pass the mock connection to a jOOQ DSLContext

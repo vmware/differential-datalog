@@ -588,9 +588,57 @@ public abstract class JooqProviderTestBase {
         assertTrue(readFromInput.contains(test3));
     }
 
-    public static <R extends SqlStatement> DDlogAPI compileAndLoad(final List<R> ddl, ToPrestoTranslator<R> translator) throws IOException, DDlogException {
+    @Test
+    public void testIndexDelete() {
+        create.execute("insert into hosts values ('n1', 10, true)");
+        create.batch("insert into hosts values ('n54', 18, false)",
+                "insert into hosts values ('n9', 2, true)").execute();
+
+        // Delete using an index
+        create.execute("delete from hosts where id='n1' and up=true");
+
+        // Deletes on keys that don't exist should return nothing
+        create.execute("delete from not_null where test_col1=5");
+
+        final Field<Integer> testCol1 = field("test_col1", Integer.class);
+        final Field<String> testCol2 = field("test_col2", String.class);
+        final Record notNull1 = create.newRecord(testCol1, testCol2);
+        final Record notNull2 = create.newRecord(testCol1, testCol2);
+
+        notNull1.setValue(testCol1, 5);
+        notNull1.setValue(testCol2, "hello");
+        notNull2.setValue(testCol1, -2);
+        notNull2.setValue(testCol2, "world");
+
+        // Populate not_null with some test data
+        create.execute("insert into not_null values (5, 'hello')");
+        create.execute("insert into not_null values (-2, 'world')");
+        Result<Record> readFromInput = create.fetch("select * from not_null");
+        assertTrue(readFromInput.contains(notNull1));
+        assertTrue(readFromInput.contains(notNull2));
+
+        // Delete one row with index
+        create.execute("delete from not_null where test_col1=-2");
+        readFromInput = create.fetch("select * from not_null");
+        assertTrue(readFromInput.contains(notNull1));
+        assertFalse(readFromInput.contains(notNull2));
+
+        // Verify that deletes with PKs still works normally
+        create.execute("delete from hosts where id='n54'");
+
+        readFromInput = create.fetch("select * from hosts");
+        assertFalse(readFromInput.contains(test1));
+        assertFalse(readFromInput.contains(test2));
+        assertTrue(readFromInput.contains(test3));
+    }
+
+    public static <R extends SqlStatement> DDlogAPI compileAndLoad(
+            final List<R> ddl, final ToPrestoTranslator<R> translator,
+            final List<String> createIndexStatements) throws IOException, DDlogException {
         final Translator t = new Translator(null);
         ddl.forEach(x -> t.translateSqlStatement(translator.toPresto(x)));
+        createIndexStatements.forEach(t::translateCreateIndexStatement);
+
         final DDlogProgram dDlogProgram = t.getDDlogProgram();
         final String fileName = "/tmp/program.dl";
         File tmp = new File(fileName);

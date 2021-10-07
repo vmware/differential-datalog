@@ -24,10 +24,7 @@
 package ddlog;
 
 import com.vmware.ddlog.DDlogJooqProvider;
-import com.vmware.ddlog.util.sql.PrestoSqlStatement;
-import com.vmware.ddlog.util.sql.PrestoToH2Translator;
-import com.vmware.ddlog.util.sql.ToH2Translator;
-import com.vmware.ddlog.util.sql.ToPrestoTranslator;
+import com.vmware.ddlog.util.sql.*;
 import ddlogapi.DDlogException;
 import org.jooq.impl.DSL;
 import org.jooq.tools.jdbc.MockConnection;
@@ -37,6 +34,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class JooqProviderPrestoTest extends JooqProviderTestBase {
 
@@ -56,6 +54,9 @@ public class JooqProviderPrestoTest extends JooqProviderTestBase {
         String identityViewName = DDlogJooqProvider.toIdentityViewName("hosts");
         String hostIdentityView = String.format("create view %s as select distinct * from hosts", identityViewName);
 
+        String createIndexNotNull = "create index not_null_idx on not_null (test_col1)";
+        String createIndexHosts = "create index hosts_id_up on hosts (id, up)";
+
         List<String> ddl = new ArrayList<>();
         ddl.add(s1);
         ddl.add(v2);
@@ -66,14 +67,21 @@ public class JooqProviderPrestoTest extends JooqProviderTestBase {
         ddl.add(checkArrayType);
         ddl.add(hostIdentityView);
 
+        List<String> indexStatements = new ArrayList<>();
+        indexStatements.add(createIndexNotNull);
+        indexStatements.add(createIndexHosts);
+
         ddlogAPI = compileAndLoad(
                 ddl.stream().map(PrestoSqlStatement::new).collect(Collectors.toList()),
-                sql -> sql);
+                sql -> sql,
+                indexStatements);
 
         ToH2Translator<PrestoSqlStatement> translator = new PrestoToH2Translator();
         // Initialise the data provider
         provider = new DDlogJooqProvider(ddlogAPI,
-                ddl.stream().map(x -> translator.toH2(new PrestoSqlStatement(x))).collect(Collectors.toList()));
+                Stream.concat(ddl.stream().map(x -> translator.toH2(new PrestoSqlStatement(x))),
+                                indexStatements.stream().map(H2SqlStatement::new))
+                        .collect(Collectors.toList()));
         MockConnection connection = new MockConnection(provider);
 
         // Pass the mock connection to a jOOQ DSLContext
