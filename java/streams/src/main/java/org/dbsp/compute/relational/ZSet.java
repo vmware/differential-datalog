@@ -208,7 +208,7 @@ public class ZSet<T extends Comparable<T>, W>
      * @param other  set to add to this.
      * @return       A fresh set.
      */
-    public ZSet<T, W> plus(ZSet<T, W> other) {
+    public ZSet<T, W> add(ZSet<T, W> other) {
         ZSet<T, W> result = new ZSet<T, W>(this.weightRing);
         result.add(this, this.weightRing.one());
         result.add(other, this.weightRing.one());
@@ -223,7 +223,7 @@ public class ZSet<T extends Comparable<T>, W>
      * Create a Z-set that has all elements of this with weights negated.
      * @return  A fresh set.
      */
-    public ZSet<T, W> minus() {
+    public ZSet<T, W> negate() {
         ZSet<T, W> result = new ZSet<T, W>(this.weightRing, this.size());
         for (T key: this.data.keySet()) {
             result.data.put(key, this.weightRing.negate(this.data.get(key)));

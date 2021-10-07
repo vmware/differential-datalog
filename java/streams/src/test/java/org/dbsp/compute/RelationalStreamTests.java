@@ -105,12 +105,12 @@ public class RelationalStreamTests {
 
         @Override
         public ZS negate(ZS data) {
-            return new ZS(data.zs.minus());
+            return new ZS(data.zs.negate());
         }
 
         @Override
         public ZS add(ZS left, ZS right) {
-            return new ZS(left.zs.plus(right.zs));
+            return new ZS(left.zs.add(right.zs));
         }
 
         @Override

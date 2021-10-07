@@ -66,9 +66,8 @@ public class RelationalOperatorTest {
         Operator id = c.addOperator(new IdOperator(ZT));
         Port input = c.getInputPort(0);
         input.connectTo(id);
-        Wire output = c.addOutputWireFromOperator(id);
+        Sink sink = c.addSinkFromOperator(id);
         c.seal();
-        Sink sink = output.addSink();
         show(c);
 
         Scheduler scheduler = new Scheduler();
@@ -93,8 +92,7 @@ public class RelationalOperatorTest {
         id.connectTo(d);
         Port input = c.getInputPort(0);
         input.connectTo(i);
-        Wire output = c.addOutputWireFromOperator(d);
-        Sink sink = output.addSink();
+        Sink sink = c.addSinkFromOperator(d);
         c.seal();
         show(c);
 
@@ -120,8 +118,7 @@ public class RelationalOperatorTest {
         id.connectTo(d);
         Port input = c.getInputPort(0);
         input.connectTo(i);
-        Wire output = c.addOutputWireFromOperator(d);
-        Sink sink = output.addSink();
+        Sink sink = c.addSinkFromOperator(d);
         c.seal();
         show(c);
 
@@ -149,8 +146,7 @@ public class RelationalOperatorTest {
         id.connectTo(d);
         Port input = c.getInputPort(0);
         input.connectTo(i);
-        Wire output = c.addOutputWireFromOperator(d);
-        Sink sink = output.addSink();
+        Sink sink = c.addSinkFromOperator(d);
         c.seal();
         show(c);
 
@@ -179,8 +175,7 @@ public class RelationalOperatorTest {
         map.connectTo(d);
         Port input = c.getInputPort(0);
         input.connectTo(i);
-        Wire output = c.addOutputWireFromOperator(d);
-        Sink sink = output.addSink();
+        Sink sink = c.addSinkFromOperator(d);
         c.seal();
         show(c);
 
@@ -206,8 +201,7 @@ public class RelationalOperatorTest {
         Port input = c.getInputPort(0);
         input.connectTo(join, 0);
         input.connectTo(join, 1);
-        Wire output = c.addOutputWireFromOperator(join);
-        Sink sink = output.addSink();
+        Sink sink = c.addSinkFromOperator(join);
         c.seal();
         show(c);
 
@@ -259,10 +253,9 @@ public class RelationalOperatorTest {
         Operator loop = top.addOperator(loopBody.bracket());
         Port input = top.getInputPort();
         input.connectTo(loop);
-        Wire w = top.addOutputWireFromOperator(loop);
+        Sink sink = top.addSinkFromOperator(loop);
         top.seal();
 
-        Sink sink = w.addSink();
         show(top);
         Scheduler scheduler = new Scheduler();
         top.reset(scheduler);
@@ -323,10 +316,9 @@ public class RelationalOperatorTest {
         input.connectTo(iTop);
         Operator dTop = top.addOperator(CircuitOperator.derivativeOperator(ZEdgeSetType));
         loop.connectTo(dTop);
-        Wire w = top.addOutputWireFromOperator(dTop);
+        Sink sink = top.addSinkFromOperator(dTop);
         top.seal();
 
-        Sink sink = w.addSink();
         show(top, false);
         Scheduler scheduler = new Scheduler();
         top.reset(scheduler);

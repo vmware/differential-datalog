@@ -21,39 +21,35 @@
  * SOFTWARE.
  */
 
-package org.dbsp.compute.relational;
+package org.dbsp.circuits.operators;
 
-import org.dbsp.algebraic.staticTyping.Group;
-import org.dbsp.algebraic.staticTyping.ZRing;
+import org.dbsp.algebraic.dynamicTyping.DynamicGroup;
+import org.dbsp.algebraic.dynamicTyping.types.Type;
+import org.dbsp.circuits.Scheduler;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 /**
- * The group structure that operates on Z-sets with elements of type T
- * and weights W
- * @param <T>  Type of elements in the Z-sets.
- * @param <W>  Type of weights.
+ * Base class for OuterD and OuterI operators.
+ * These are operators that compute on an outer stream that contains nested streams as values.
  */
-public class ZSetGroup<T extends Comparable<T>, W>
-        // extends FiniteFunctionGroup<T, W> //  -- unfortunately Java does not allow this.
-        implements Group<ZSet<T, W>>
-{
-    final ZRing<W> ring;
+public abstract class OuterOperator extends UnaryOperator {
+    public final List<Object> history;
+    protected int currentIndex;
+    protected final DynamicGroup group;
 
-    public ZSetGroup(ZRing<W> ring) {
-        this.ring = ring;
+    public OuterOperator(Type type) {
+        super(type, type);
+        this.group = Objects.requireNonNull(type.getGroup());
+        this.history = new ArrayList<>();
+        this.currentIndex = 0;
     }
 
     @Override
-    public ZSet<T, W> negate(ZSet<T, W> data) {
-        return data.negate();
-    }
-
-    @Override
-    public ZSet<T, W> add(ZSet<T, W> left, ZSet<T, W> right) {
-        return left.add(right);
-    }
-
-    @Override
-    public ZSet<T, W> zero() {
-        return new ZSet<T, W>(this.ring);
+    public void reset(Scheduler scheduler) {
+        this.currentIndex = 0;
+        super.reset(scheduler);
     }
 }

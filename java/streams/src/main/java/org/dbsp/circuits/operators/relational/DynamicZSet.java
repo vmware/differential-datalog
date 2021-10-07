@@ -69,7 +69,7 @@ public class DynamicZSet<W>  {
     }
 
     public DynamicZSet<W> plus(DynamicZSet<W> other) {
-        return new DynamicZSet<W>(this.weightRing, this.data.plus(other.data));
+        return new DynamicZSet<W>(this.weightRing, this.data.add(other.data));
     }
 
     public DynamicZSet<W> join(DynamicZSet<W> with,

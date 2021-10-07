@@ -21,39 +21,39 @@
  * SOFTWARE.
  */
 
-package org.dbsp.compute.relational;
+package org.dbsp.circuits.operators;
 
-import org.dbsp.algebraic.staticTyping.Group;
-import org.dbsp.algebraic.staticTyping.ZRing;
+import org.dbsp.algebraic.dynamicTyping.types.Type;
+import org.dbsp.circuits.Scheduler;
 
 /**
- * The group structure that operates on Z-sets with elements of type T
- * and weights W
- * @param <T>  Type of elements in the Z-sets.
- * @param <W>  Type of weights.
+ * The OuterD operator is in fact a differentiation operator that computes on
+ * the outer stream in a nested stream.  (We don't need an InnerD, that's
+ * just a lifted derivative).
  */
-public class ZSetGroup<T extends Comparable<T>, W>
-        // extends FiniteFunctionGroup<T, W> //  -- unfortunately Java does not allow this.
-        implements Group<ZSet<T, W>>
-{
-    final ZRing<W> ring;
-
-    public ZSetGroup(ZRing<W> ring) {
-        this.ring = ring;
+public class OuterDOperator extends OuterOperator {
+    public OuterDOperator(Type type) {
+        super(type);
     }
 
     @Override
-    public ZSet<T, W> negate(ZSet<T, W> data) {
-        return data.negate();
+    public String toString() {
+        return "DD";
     }
 
     @Override
-    public ZSet<T, W> add(ZSet<T, W> left, ZSet<T, W> right) {
-        return left.add(right);
-    }
-
-    @Override
-    public ZSet<T, W> zero() {
-        return new ZSet<T, W>(this.ring);
+    public Object evaluate(Object input, Scheduler scheduler) {
+        Object result;
+        if (this.history.size() > this.currentIndex) {
+            Object previous = this.history.get(this.currentIndex);
+            result = this.group.subtract(input, previous);
+            this.history.set(this.currentIndex, input);
+        } else {
+            assert this.history.size() == this.currentIndex;
+            this.history.add(input);
+            result = input;
+        }
+        this.currentIndex++;
+        return result;
     }
 }

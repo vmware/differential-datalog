@@ -38,7 +38,7 @@ public interface Group<T> extends Monoid<T> {
     T negate(T data);
 
     default boolean equal(T left, T right) {
-        return this.isZero(this.add(this.negate(left), right));
+        return this.isZero(this.subtract(left, right));
     }
 
     /**
@@ -68,5 +68,9 @@ public interface Group<T> extends Monoid<T> {
                 return this;
             }
         };
+    }
+
+    default T subtract(T left, T right) {
+        return this.add(left, this.negate(right));
     }
 }

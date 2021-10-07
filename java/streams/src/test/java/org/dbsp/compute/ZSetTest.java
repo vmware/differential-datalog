@@ -49,24 +49,24 @@ public class ZSetTest {
         Assert.assertEquals(1, zset.size());
         Assert.assertEquals("{<Me,10>->1}", zset.toString());
 
-        ZSet<TestTuple, Integer> d = zset.plus(zset);
+        ZSet<TestTuple, Integer> d = zset.add(zset);
         Assert.assertEquals(1, d.size());
         Assert.assertEquals("{<Me,10>->2}", d.toString());
 
         TestTuple t1 = new TestTuple("You", 5);
         ZSet<TestTuple, Integer> y = new ZSet<TestTuple, Integer>(IntegerRing.instance, t1);
-        d = d.plus(y);
+        d = d.add(y);
         Assert.assertEquals(2, d.size());
         Assert.assertEquals("{<Me,10>->2,<You,5>->1}", d.toString());
 
-        ZSet<TestTuple, Integer> neg = d.minus();
+        ZSet<TestTuple, Integer> neg = d.negate();
         Assert.assertEquals(2, neg.size());
         Assert.assertEquals("{<Me,10>->-2,<You,5>->-1}", neg.toString());
         ZSet<TestTuple, Integer> distinctNeg = neg.distinct();
         Assert.assertEquals(0, distinctNeg.size());
         Assert.assertEquals("{}", distinctNeg.toString());
 
-        d = d.plus(neg);
+        d = d.add(neg);
         Assert.assertEquals(0, d.size());
         Assert.assertEquals("{}", d.toString());
     }

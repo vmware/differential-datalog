@@ -23,10 +23,13 @@
 
 package org.dbsp.compute;
 
+import org.dbsp.algebraic.staticTyping.IStream;
 import org.dbsp.circuits.*;
 import org.dbsp.circuits.operators.*;
 import org.dbsp.algebraic.dynamicTyping.types.IntegerType;
 import org.dbsp.algebraic.dynamicTyping.types.Type;
+import org.dbsp.circuits.operators.OuterDOperator;
+import org.dbsp.circuits.operators.OuterIOperator;
 import org.dbsp.lib.Utilities;
 import org.junit.Assert;
 import org.junit.Test;
@@ -48,9 +51,8 @@ public class OperatorTest {
         circuit.addOperator(delay);
         Port port = circuit.getInputPort(0);
         port.connectTo(delay, 0);
-        Wire o = circuit.addOutputWireFromOperator(delay);
+        Sink sink = circuit.addSinkFromOperator(delay);
         circuit.seal();
-        Sink sink = o.addSink();
         // Let's run
         this.show(circuit);
         
@@ -75,8 +77,7 @@ public class OperatorTest {
         Port port = circuit.getInputPort(0);
         port.connectTo(delay0, 0);
         delay0.connectTo(delay1, 0);
-        Wire o = circuit.addOutputWireFromOperator(delay1);
-        Sink sink = o.addSink();
+        Sink sink = circuit.addSinkFromOperator(delay1);
         circuit.seal();
         this.show(circuit);
         // Let's run
@@ -139,11 +140,10 @@ public class OperatorTest {
         CircuitOperator d = CircuitOperator.derivativeOperator(IT);
         c.addOperator(d);
         i.connectTo(d, 0);
-        Wire output = c.addOutputWireFromOperator(d);
+        Sink sink = c.addSinkFromOperator(d);
         Port input = c.getInputPort(0);
         input.connectTo(i, 0);
         c.seal();
-        Sink sink = output.addSink();
 
         this.show(c);
         Scheduler scheduler = new Scheduler();
@@ -167,10 +167,9 @@ public class OperatorTest {
         Operator map = c.addOperator(new FunctionOperator("inc", IT, IT, i -> (Integer)i + 1));
         plus.connectTo(map, 0);
         map.connectTo(delay, 0);
-        Wire output = c.addOutputWireFromOperator(map);
+        Sink sink = c.addSinkFromOperator(map);
         c.seal();
 
-        Sink sink = output.addSink();
         this.show(c);
         Scheduler scheduler = new Scheduler();
         c.reset(scheduler);
@@ -199,9 +198,8 @@ public class OperatorTest {
         top.addOperator(body);
         Port input = top.getInputPort();
         input.connectTo(body);
-        Wire output = top.addOutputWireFromOperator(body);
+        Sink sink = top.addSinkFromOperator(body);
         top.seal();
-        Sink sink = output.addSink();
         this.show(top);
 
         Scheduler scheduler = new Scheduler();
@@ -212,5 +210,69 @@ public class OperatorTest {
             Object out = sink.getValue(scheduler);
             Assert.assertEquals(iv, out);
         }
+    }
+
+    @Test
+    public void innerITest() {
+        Circuit top = new Circuit("top", ITL, ITL);
+        Operator op = top.addOperator(new OuterIOperator(IT));
+        top.addOutputWireFromOperator(op);
+        Port input = top.getInputPort();
+        input.connectTo(op);
+        Sink sink = top.addSinkFromOperator(op);
+        top.seal();
+
+        int limit = 4;
+        int[][] result = new int[limit][limit];
+
+        Scheduler scheduler = new Scheduler();
+        for (int i = 0; i < limit; i++) {
+            top.reset(scheduler);
+            for (int j = 0; j < limit; j++) {
+                input.setValue(2 * i + j);
+                top.step(scheduler);
+                Object out = sink.getValue(scheduler);
+                result[i][j] = (int)out;
+            }
+        }
+
+        // Reference output computed differently:
+        IStream<IStream<Integer>> is = StreamTest.get2dStream();
+        IStream<IStream<Integer>> ii = is.integrate(StreamTest.sg);
+        for (int i = 0; i < limit; i++)
+            for (int j = 0; j < limit; j++)
+                Assert.assertEquals(result[i][j], (int)ii.get(i).get(j));
+    }
+
+    @Test
+    public void innerDTest() {
+        Circuit top = new Circuit("top", ITL, ITL);
+        Operator op = top.addOperator(new OuterDOperator(IT));
+        top.addOutputWireFromOperator(op);
+        Port input = top.getInputPort();
+        input.connectTo(op);
+        Sink sink = top.addSinkFromOperator(op);
+        top.seal();
+
+        int limit = 4;
+        int[][] result = new int[limit][limit];
+
+        Scheduler scheduler = new Scheduler();
+        for (int i = 0; i < limit; i++) {
+            top.reset(scheduler);
+            for (int j = 0; j < limit; j++) {
+                input.setValue(2 * i + j);
+                top.step(scheduler);
+                Object out = sink.getValue(scheduler);
+                result[i][j] = (int)out;
+            }
+        }
+
+        // Reference output computed differently:
+        IStream<IStream<Integer>> is = StreamTest.get2dStream();
+        IStream<IStream<Integer>> ii = is.differentiate(StreamTest.sg);
+        for (int i = 0; i < limit; i++)
+            for (int j = 0; j < limit; j++)
+                Assert.assertEquals(result[i][j], (int)ii.get(i).get(j));
     }
 }

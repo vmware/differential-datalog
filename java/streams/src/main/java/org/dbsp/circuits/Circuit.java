@@ -96,7 +96,7 @@ public class Circuit extends ComputationalElement implements Latch {
             op.checkConnected();
     }
 
-    public Operator addOperator(Operator op) {
+    public <T extends Operator> T addOperator(T op) {
         if (this.sealed)
             throw new RuntimeException("Circuit " + this + " is sealed");
         this.operators.add(op);
@@ -112,8 +112,15 @@ public class Circuit extends ComputationalElement implements Latch {
     public Wire addOutputWireFromOperator(Operator op) {
         if (this.sealed)
             throw new RuntimeException("Circuit " + this + " is sealed");
+        if (op.getParent() != this)
+            throw new RuntimeException("Operator is not a member of this circuit " + op);
         this.outputWires.add(op.outputWire());
         return op.outputWire();
+    }
+
+    public Sink addSinkFromOperator(Operator op) {
+        Wire w = this.addOutputWireFromOperator(op);
+        return w.addSink();
     }
 
     public void setInput(int index, Wire source) {

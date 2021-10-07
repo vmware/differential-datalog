@@ -142,13 +142,13 @@ public class CircuitOperator extends Operator implements Latch {
         circuit.addOperator(plus);
         DelayOperator delay = new DelayOperator(type);
         circuit.addOperator(delay);
-        NegateOperator minus = new NegateOperator(type);
-        circuit.addOperator(minus);
+        NegateOperator neg = new NegateOperator(type);
+        circuit.addOperator(neg);
         Operator port = circuit.getInputPort(0);
         port.connectTo(plus, 0);
         port.connectTo(delay, 0);
-        delay.connectTo(minus, 0);
-        minus.connectTo(plus, 1);
+        delay.connectTo(neg, 0);
+        neg.connectTo(plus, 1);
         circuit.addOutputWireFromOperator(plus);
         return new CircuitOperator(circuit.seal(), true);
     }

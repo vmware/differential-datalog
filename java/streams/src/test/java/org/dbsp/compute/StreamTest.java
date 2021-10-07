@@ -33,8 +33,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 public class StreamTest {
-    final IntegerTime.Factory factory = IntegerTime.Factory.instance;
-    public final StreamGroup<Integer> sg = new StreamGroup<Integer>(
+    static final IntegerTime.Factory factory = IntegerTime.Factory.instance;
+    static public final StreamGroup<Integer> sg = new StreamGroup<Integer>(
             IntegerRing.instance, factory);
 
     public static <T> void show(String prefix, IStream<T> value) {
@@ -42,7 +42,7 @@ public class StreamTest {
         TestUtil.show(prefix + " = " + s);
     }
 
-    <T> String toString(IStream<IStream<T>> ss, int limit0, int limit1) {
+    static <T> String toString(IStream<IStream<T>> ss, int limit0, int limit1) {
         StringBuilder builder = new StringBuilder();
         for (int i = 0; i < limit0; i++) {
             IStream<T> s = ss.get(i);
@@ -53,7 +53,7 @@ public class StreamTest {
         return builder.toString();
     }
 
-    private <T> void show2d(String prefix, IStream<IStream<T>> value) {
+    private static <T> void show2d(String prefix, IStream<IStream<T>> value) {
         TestUtil.show(prefix + " = " + toString(value, 4, 4));
     }
 
@@ -77,7 +77,7 @@ public class StreamTest {
         show("delta(5)", delta);
     }
 
-    public IStream<IStream<Integer>> get2dStream() {
+    public static IStream<IStream<Integer>> get2dStream() {
         return new IStream<IStream<Integer>>(factory) {
             @Override
             public IStream<Integer> get(Time index0) {
@@ -93,52 +93,52 @@ public class StreamTest {
 
     @Test
     public void testNested() {
-        IStream<IStream<Integer>> i = this.get2dStream();
-        this.show2d("i", i);
+        IStream<IStream<Integer>> i = get2dStream();
+        show2d("i", i);
         Assert.assertEquals((Integer)9, i.get(3).get(3));
 
         StreamFunction<Integer, Integer> mod = StreamFunction.lift(x -> x % 2);
         StreamFunction<IStream<Integer>, IStream<Integer>> liftMod = StreamFunction.lift(mod);
         IStream<IStream<Integer>> lm = liftMod.apply(i);
-        this.show2d("^^mod(i)", lm);
+        show2d("^^mod(i)", lm);
         Assert.assertEquals((Integer)1, lm.get(3).get(3));
 
         IStream<IStream<Integer>> ii = i.integrate(sg);
-        this.show2d("I(i)", ii);
+        show2d("I(i)", ii);
         Assert.assertEquals((Integer)24, ii.get(3).get(3));
 
         IStream<IStream<Integer>> di = i.differentiate(sg);
-        this.show2d("D(i)", di);
+        show2d("D(i)", di);
         Assert.assertEquals((Integer)2, di.get(3).get(3));
 
         StreamFunction<IStream<Integer>, IStream<Integer>> liftI =
            StreamFunction.lift(
                    s -> s.integrate(IntegerRing.instance));
         IStream<IStream<Integer>> ui = liftI.apply(i);
-        this.show2d("^I(i)", ui);
+        show2d("^I(i)", ui);
         Assert.assertEquals((Integer)30, ui.get(3).get(3));
 
         StreamFunction<IStream<Integer>, IStream<Integer>> liftD =
                 StreamFunction.lift(s -> s.differentiate(IntegerRing.instance));
         IStream<IStream<Integer>> ud = liftD.apply(i);
-        this.show2d("^D(i)", ud);
+        show2d("^D(i)", ud);
 
         IStream<IStream<Integer>> idd = liftD.apply(i.differentiate(sg));
-        this.show2d("^D(D(i))", idd);
+        show2d("^D(D(i))", idd);
         idd = liftD.apply(i).differentiate(sg);
-        this.show2d("D(^D(i))", idd);
+        show2d("D(^D(i))", idd);
 
         IStream<IStream<Integer>> iii = liftI.apply(i.integrate(sg));
-        this.show2d("^I(I(i))", iii);
+        show2d("^I(I(i))", iii);
         iii = liftI.apply(i).integrate(sg);
-        this.show2d("I(^I(i))", iii);
+        show2d("I(^I(i))", iii);
 
         IStream<IStream<Integer>> zi = i.delay(sg);
-        this.show2d("z(i)", zi);
+        show2d("z(i)", zi);
 
         StreamFunction<IStream<Integer>, IStream<Integer>> liftZ =
                 StreamFunction.lift(s -> s.delay(IntegerRing.instance));
         IStream<IStream<Integer>> lzi = i.apply(liftZ);
-        this.show2d("^z(i)", lzi);
+        show2d("^z(i)", lzi);
     }
 }
