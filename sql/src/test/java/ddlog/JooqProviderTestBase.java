@@ -541,6 +541,7 @@ public abstract class JooqProviderTestBase {
 
     @Test
     public void testArrayAggTypes() {
+        skipIfTestBase();
         assert(create != null);
         create.execute("insert into base_array_table values ('n1', 10, 10)");
         create.batch("insert into base_array_table values ('n54', 18, 18)",
@@ -576,6 +577,7 @@ public abstract class JooqProviderTestBase {
 
     @Test
     public void testIdentityViews() {
+        skipIfTestBase();
         create.execute("insert into hosts values ('n1', 10, true)");
         create.batch("insert into hosts values ('n54', 18, false)",
                 "insert into hosts values ('n9', 2, true)").execute();

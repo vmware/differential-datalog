@@ -38,7 +38,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class JooqProviderTestPresto extends JooqProviderTestBase {
+public class JooqProviderPrestoTest extends JooqProviderTestBase {
 
     @BeforeClass
     public static void setup() throws IOException, DDlogException {
@@ -53,6 +53,9 @@ public class JooqProviderTestPresto extends JooqProviderTestBase {
                 "ARRAY_AGG(capacity) over (partition by col3) as agg " +
                 "from base_array_table";
 
+        String identityViewName = DDlogJooqProvider.toIdentityViewName("hosts");
+        String hostIdentityView = String.format("create view %s as select distinct * from hosts", identityViewName);
+
         List<String> ddl = new ArrayList<>();
         ddl.add(s1);
         ddl.add(v2);
@@ -61,6 +64,7 @@ public class JooqProviderTestPresto extends JooqProviderTestBase {
         ddl.add(checkNotNullColumns);
         ddl.add(arrayTable);
         ddl.add(checkArrayType);
+        ddl.add(hostIdentityView);
 
         ddlogAPI = compileAndLoad(
                 ddl.stream().map(PrestoSqlStatement::new).collect(Collectors.toList()),
