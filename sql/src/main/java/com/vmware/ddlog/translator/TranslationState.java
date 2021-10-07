@@ -74,6 +74,10 @@ public class TranslationState {
         this.relations.put(relation.getName(), relation);
     }
 
+    void add(DDlogIndexDeclaration index) {
+        this.program.indexes.add(index);
+    }
+
     String freshGlobalName(String prefix) {
         return this.globalSymbols.freshName(prefix);
     }

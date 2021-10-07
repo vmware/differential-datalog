@@ -448,4 +448,32 @@ public class SimpleQueriesTest extends BaseQueriesTest {
             "Rv3[v1] :- Rtmp0[v0],unwrapBool(s_eq_NR(v0.column2, \"something\")),var v1 = v0.";
         this.testTranslation(query, program, true);
     }
+
+    @Test
+    public void testIndex1() {
+        String query = "create index idx_name on t1 (column1, column2)";
+        String program = this.header(true) +
+                this.relations(true) + "\n" +
+                "index Iidx_name(column1:Option<signed<64>>,column2:Option<string>) on Rt1[Tt1{column1,column2,_,_}]";
+        this.testIndexTranslation(query, program, true);
+    }
+
+    @Test
+    public void testIndex2() {
+        String query = "create index idx_name on t1 (column1)";
+        String program = this.header(true) +
+                this.relations(true) + "\n" +
+                "index Iidx_name(column1:Option<signed<64>>) on Rt1[Tt1{column1,_,_,_}]";
+        this.testIndexTranslation(query, program, true);
+    }
+
+    @Test
+    public void testIndexException() {
+        String query = "create index idx_name on non_existent_table (column1)";
+        try {
+            this.testIndexTranslation(query, "junk program", true);
+        } catch (Exception e) {
+            assert e.getMessage().equals("Cannot find base table that index refers to");
+        }
+    }
 }

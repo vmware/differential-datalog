@@ -36,32 +36,43 @@ public class DDlogProgram extends DDlogNode {
     public final List<DDlogTypeDef> typedefs;
     public final List<DDlogFunction> functions;
     public final List<DDlogRelationDeclaration> relations;
+    public final List<DDlogIndexDeclaration> indexes;
     public final List<DDlogRule> rules;
     public final List<DDlogImport> imports;
 
-    DDlogProgram(List<DDlogTypeDef> typedefs, List<DDlogFunction> functions, List<DDlogRelationDeclaration> relations, List<DDlogRule> rules, List<DDlogImport> imports) {
+    DDlogProgram(List<DDlogTypeDef> typedefs, List<DDlogFunction> functions, List<DDlogRelationDeclaration> relations,
+                 List<DDlogIndexDeclaration> indexes,
+                 List<DDlogRule> rules, List<DDlogImport> imports) {
         super(null);
         this.typedefs = typedefs;
         this.functions = functions;
         this.relations = relations;
+        this.indexes = indexes;
         this.rules = rules;
         this.imports = imports;
     }
 
     public DDlogProgram() {
         this(new ArrayList<DDlogTypeDef>(), new ArrayList<DDlogFunction>(),
-                new ArrayList<DDlogRelationDeclaration>(), new ArrayList<DDlogRule>(),
+                new ArrayList<DDlogRelationDeclaration>(),
+                new ArrayList<DDlogIndexDeclaration>(),
+                new ArrayList<DDlogRule>(),
                 new ArrayList<DDlogImport>());
     }
 
     @Override
     public String toString() {
-        String[] parts = new String[5];
-        parts[0] = String.join("\n", Linq.map(this.imports, DDlogImport::toString)) + "\n";
-        parts[1] = String.join("\n", Linq.map(this.typedefs, DDlogTypeDef::toString));
-        parts[2] = String.join("\n", Linq.map(this.functions, DDlogFunction::toString));
-        parts[3] = String.join("\n", Linq.map(this.relations, DDlogRelationDeclaration::toString));
-        parts[4] = String.join("\n", Linq.map(this.rules, DDlogRule::toString));
+        List<String> parts = new ArrayList<>();
+        parts.add(String.join("\n", Linq.map(this.imports, DDlogImport::toString)) + "\n");
+        parts.add(String.join("\n", Linq.map(this.typedefs, DDlogTypeDef::toString)));
+        parts.add(String.join("\n", Linq.map(this.functions, DDlogFunction::toString)));
+        parts.add(String.join("\n", Linq.map(this.relations, DDlogRelationDeclaration::toString)));
+        parts.add(String.join("\n", Linq.map(this.rules, DDlogRule::toString)));
+
+        // We do this to preserve the correctness of existing tests, which are sensitive to white-space
+        if (this.indexes.size() != 0) {
+            parts.add(String.join("\n", Linq.map(this.indexes, DDlogIndexDeclaration::toString)));
+        }
         return String.join("\n", parts);
     }
 
@@ -84,6 +95,9 @@ public class DDlogProgram extends DDlogNode {
                 return false;
         for (int i = 0; i < this.relations.size(); i++)
             if (!this.relations.get(i).compare(other.relations.get(i), policy))
+                return false;
+        for (int i = 0; i < this.indexes.size(); i++)
+            if (!this.indexes.get(i).compare(other.indexes.get(i), policy))
                 return false;
         for (int i = 0; i < this.rules.size(); i++)
             if (!this.rules.get(i).compare(other.rules.get(i), policy))

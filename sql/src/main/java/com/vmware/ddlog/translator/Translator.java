@@ -28,17 +28,19 @@ import com.facebook.presto.sql.parser.ParsingOptions;
 import com.facebook.presto.sql.parser.SqlParser;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.Statement;
-import com.vmware.ddlog.ir.DDlogIRNode;
-import com.vmware.ddlog.ir.DDlogProgram;
+import com.vmware.ddlog.ir.*;
+import com.vmware.ddlog.util.sql.CreateIndexParser;
+import com.vmware.ddlog.util.sql.ParsedCreateIndex;
 import com.vmware.ddlog.util.sql.PrestoSqlStatement;
 import org.jooq.DSLContext;
 import org.jooq.Field;
 
 import javax.annotation.Nullable;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 /**
@@ -78,6 +80,70 @@ public class Translator {
         DDlogIRNode result = this.visitor.process(statement, this.translationContext);
         this.translationContext.endTranslation();
         return result;
+    }
+
+    /**
+     * Translate a single `create index` statement; add the result to the DDlogProgram. If the relation over which
+     * the index is built does not exist, then this function will error.
+     *
+     * Because neither Calcite nor Presto SQL parsers support `create index` statements, we implement a
+     * poor-man's parser that expects statements in the following form:
+     *
+     * CREATE INDEX <idx_name> ON <tbl_name> COLUMNLIST
+     *
+     * COLUMNLIST: (<col1>, <col2>, ... <coln>)
+     *
+     * @param sql create index statement to translate
+     */
+    public DDlogIRNode translateCreateIndexStatement(final String sql) {
+        ParsedCreateIndex parsedIndex = CreateIndexParser.parse(sql);
+
+        // Find the typedef of the base relation, so we can populate the typedef of the index
+        final DDlogRelationDeclaration baseRelation =
+                this.translationContext.getRelation(DDlogRelationDeclaration.relationName(parsedIndex.getTableName()));
+        if (baseRelation == null) {
+            throw new RuntimeException("Cannot find base table that index refers to");
+        }
+        final DDlogType tableType = baseRelation.getType();
+        final List<DDlogTypeDef> typedefs = this.translationContext.getProgram().typedefs;
+        DDlogTypeDef baseTableTypeDef = null;
+        // Look for the type (columns) of the base table in the typedefs
+        for (DDlogTypeDef td : typedefs) {
+            if (td.getName().equals(tableType.toString())) {
+                baseTableTypeDef = td;
+            }
+        }
+        if (baseTableTypeDef == null) {
+            throw new RuntimeException("Cannot find base table that index refers to");
+        }
+        // We need the fields of the base relation both for the typedef of the index and to populate the index rule
+        List<DDlogField> baseRelationFields = ((DDlogTStruct) baseTableTypeDef.getType()).getFields();
+        // Holds the field typing information of the index
+        List<DDlogField> indexFields = new ArrayList<>();
+        // Used to populate the index rule, based on DDlog index creation syntax
+        List<String> baseTableMatchingTypeString =
+                Stream.generate(() -> "_").limit(baseRelationFields.size()).collect(Collectors.toList());
+
+        for (String col : parsedIndex.getColumns()) {
+            col = col.trim();
+            // Now find the column name in the typedef of the table
+            for (int i = 0; i < baseRelationFields.size(); i++) {
+                DDlogField f = baseRelationFields.get(i);
+                if (f.getName().equals(col)) {
+                    indexFields.add(f);
+                    baseTableMatchingTypeString.set(i, f.getName());
+                }
+            }
+        }
+
+        String dIndexName = DDlogIndexDeclaration.indexName(parsedIndex.getIndexName());
+        this.translationContext.reserveGlobalName(dIndexName);
+
+        // Create the index and add to the current DDlog program
+        DDlogIndexDeclaration ddlogIndex = new DDlogIndexDeclaration(null, dIndexName, indexFields, baseRelation,
+                String.join(",", baseTableMatchingTypeString));
+        this.translationContext.add(ddlogIndex);
+        return ddlogIndex;
     }
 
     public DDlogIRNode translateExpression(final String sql) {
