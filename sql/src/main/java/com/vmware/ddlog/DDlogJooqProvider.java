@@ -80,6 +80,18 @@ import static org.jooq.impl.DSL.field;
  *                                          "create table T..." DDL statement that is passed to the DDlogJooqProvider
  *                                          where P1, P2... etc are columns in T's primary key. C1, C2 etc can
  *                                          be any column in T.
+ *
+ * If the appropriate indexes have been created in the DDlog program during initialization, then the following queries
+ * are also supported:
+ *   I1. "select * from T where P1 = A and P2 = B..." where T is a base table and P1, P2... are columns in some index
+ *                                          on T. That is, there should be a corresponding "create index T_idx on T ..."
+ *                                          DDL statement that is passed to the DDlogJooqProvider
+ *                                          where P1, P2... etc are columns in T_idx.
+ *   I2. "delete from T where P1 = A and P2 = B..." where T is a base table and P1, P2... are columns in some index
+ *                                          on T. That is, there should be a corresponding "create index T_idx on T ..."
+ *                                          DDL statement that is passed to the DDlogJooqProvider
+ *                                          where P1, P2... etc are columns in T_idx.
+ *
  */
 public final class DDlogJooqProvider implements MockDataProvider {
     static final boolean debug = false;
@@ -302,11 +314,71 @@ public final class DDlogJooqProvider implements MockDataProvider {
                         return names.get(names.size() - 1);
                     }).toArray(String[]::new);
             return compareStringArrays(tableFields, queryFields);
+	}
+
+        private List<DDlogRecord> getEntriesByIndex(String tableName, String[] ids, SqlBasicCall where) throws DDlogException, SQLException {
+            final List<DDlogRecord> clonedResults = new ArrayList<>();
+
+            // If there are no PKs for this table, or if the PK given doesn't match the fields requested by this
+            // query, then we have to look in any indexes on the table.
+            List<ParsedCreateIndex> indexes = tablesToIndexesMap.get(tableName);
+            if (indexes == null) {
+                throw new SQLException(String.format("Cannot delete from table %s: no appropriate primary key" +
+                        "and no indexes", tableName));
+            }
+            // Look through the indexes to see if there's a matching index
+            ParsedCreateIndex matchingIndex = null;
+            for (ParsedCreateIndex id : indexes) {
+                // Check for equality
+                if (!compareStringArrays(id.getColumns(), ids)) {
+                    continue;
+                }
+                matchingIndex = id;
+                break;
+            }
+            if (matchingIndex == null) {
+                throw new SQLException(String.format("Cannot delete from table %s: no appropriate index",
+                        tableName));
+            }
+            // Use the matching index to fetch the row, and then delete it
+            final DDlogRecord indexKey =
+                    matchExpressionFromWhere(where, indexToFieldsMap.get(matchingIndex.getIndexName()), context);
+            dDlogAPI.queryIndex(DDlogIndexDeclaration.indexName(matchingIndex.getIndexName()), indexKey, x -> {
+                clonedResults.add(x.clone());
+            });
+
+            return clonedResults;
+        }
+
+        private MockResult selectByIndex(String tableName, String[] ids, SqlBasicCall where) throws DDlogException, SQLException {
+            final List<DDlogRecord> clonedResults = getEntriesByIndex(tableName, ids, where);
+
+            if (clonedResults.size() == 0) {
+                // There was nothing to delete
+                return emptyMockResult();
+            }
+
+            // We want to return everything in clonedResults
+            final List<Field<?>> fields = tablesToFields.get(tableName.toUpperCase());
+            if (fields == null) {
+                throw new SQLException(String.format("Table %s does not exist", tableName));
+            }
+            final Result<Record> result = dslContext.newResult(fields);
+            // Now add every record
+            for (DDlogRecord r : clonedResults) {
+                final Record jooqRecord = dslContext.newRecord(fields);
+                for (int i = 0; i < fields.size(); i++) {
+                    setValue(fields.get(i), r.getStructField(i), jooqRecord);
+                }
+                result.add(jooqRecord);
+                r.release();
+            }
+            return new MockResult(1, result);
         }
 
         private MockResult visitSelect(final SqlSelect select) {
             // The checks below encode assumption A1 (see javadoc for the DDlogJooqProvider class)
-            if (select.hasWhere() || select.hasOrderBy() || select.isDistinct() || select.getHaving() != null
+            if (select.hasOrderBy() || select.isDistinct() || select.getHaving() != null
                 || select.getGroup() != null) {
                 return exception("Statement not supported: " + context.sql());
             }
@@ -329,11 +401,32 @@ public final class DDlogJooqProvider implements MockDataProvider {
                 tableName = DDlogJooqProvider.toIdentityViewName(tableName);
             }
 
+            if (!select.hasWhere()) {
+                try {
+                    final Result<Record> result = fetchTable(tableName);
+                    return new MockResult(1, result);
+                } catch (final DDlogJooqProviderException e) {
+                    return exception(e.getMessage());
+                }
+            }
+            // If the select has a where clause, try to find an index to service the query.
             try {
-                final Result<Record> result = fetchTable(tableName);
-                return new MockResult(1, result);
-            } catch (final DDlogJooqProviderException e) {
-                return exception(e.getMessage());
+                String tableNameUsedByIndex = ((SqlIdentifier) select.getFrom()).getSimple();
+                final SqlBasicCall where = (SqlBasicCall) select.getWhere();
+
+                if (tablesToFields.get(tableName.toUpperCase(Locale.ROOT)) == null) {
+                    return exception(String.format("Table %s does not exist: ", tableName) + context.sql());
+                }
+
+                // Get fields requested in the where condition
+                WhereClauseGetIdentifiers getIdentifiers = new WhereClauseGetIdentifiers();
+                String[] ids = where.accept(getIdentifiers).toArray(new String[0]);
+
+                return selectByIndex(tableNameUsedByIndex, ids, where);
+            } catch (final Exception e) {
+                if (e.getMessage().contains("key not found"))
+                    return new MockResult(0, null);
+                return exception(e);
             }
         }
 
@@ -398,37 +491,8 @@ public final class DDlogJooqProvider implements MockDataProvider {
             return true;
         }
 
-        private MockResult deleteByIndex(String tableName, String[] ids, SqlBasicCall where) throws DDlogException {
-            final List<DDlogRecord> clonedResults = new ArrayList<>();
-
-            // If there are no PKs for this table, or if the PK given doesn't match the fields requested by this
-            // query, then we have to look in any indexes on the table.
-            List<ParsedCreateIndex> indexes = tablesToIndexesMap.get(tableName);
-            if (indexes == null) {
-                return exception(String.format("Cannot delete from table %s: no appropriate primary key" +
-                        "and no indexes", tableName));
-            }
-            // Look through the indexes to see if there's a matching index
-            ParsedCreateIndex matchingIndex = null;
-            for (ParsedCreateIndex id : indexes) {
-                // Check for equality
-                if (!compareStringArrays(id.getColumns(), ids)) {
-                    continue;
-                }
-                matchingIndex = id;
-                break;
-            }
-            if (matchingIndex == null) {
-                return exception(String.format("Cannot delete from table %s: no appropriate index",
-                        tableName));
-            }
-            // Use the matching index to fetch the row, and then delete it
-            final DDlogRecord indexKey =
-                    matchExpressionFromWhere(where, indexToFieldsMap.get(matchingIndex.getIndexName()), context);
-
-            dDlogAPI.queryIndex(DDlogIndexDeclaration.indexName(matchingIndex.getIndexName()), indexKey, x -> {
-                clonedResults.add(x.clone());
-            } );
+        private MockResult deleteByIndex(String tableName, String[] ids, SqlBasicCall where) throws DDlogException, SQLException {
+            final List<DDlogRecord> clonedResults = getEntriesByIndex(tableName, ids, where);
 
             if (clonedResults.size() == 0) {
                 // There was nothing to delete
@@ -480,7 +544,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
                     // query, then we have to look in any indexes on the table.
                     return deleteByIndex(tableName, ids, where);
                 }
-            } catch (final DDlogException e) {
+            } catch (final Exception e) {
                 if (e.getMessage().contains("key not found"))
                     return emptyMockResult();
                 return exception(e);

@@ -657,6 +657,35 @@ public abstract class JooqProviderTestBase {
         assertTrue(e.getMessage().contains("Statement not supported"));
     }
 
+    @Test
+    public void testIndexSelect() {
+        create.execute("insert into hosts values ('n1', 10, true)");
+        create.batch("insert into hosts values ('n54', 18, false)",
+                "insert into hosts values ('n9', 2, true)").execute();
+
+        final Field<Integer> testCol1 = field("test_col1", Integer.class);
+        final Field<String> testCol2 = field("test_col2", String.class);
+        final Record notNull1 = create.newRecord(testCol1, testCol2);
+        final Record notNull2 = create.newRecord(testCol1, testCol2);
+
+        notNull1.setValue(testCol1, 5);
+        notNull1.setValue(testCol2, "hello");
+        notNull2.setValue(testCol1, -2);
+        notNull2.setValue(testCol2, "world");
+
+        // Populate not_null with some test data
+        create.execute("insert into not_null values (5, 'hello')");
+        create.execute("insert into not_null values (-2, 'world')");
+        Result<Record> readFromInput = create.fetch("select * from not_null where test_col1=-2");
+        assertTrue(readFromInput.contains(notNull2));
+
+        readFromInput = create.fetch("select * from not_null where test_col1=5");
+        assertTrue(readFromInput.contains(notNull1));
+
+        readFromInput = create.fetch("select * from hosts where id='n9' AND up=true");
+        assertTrue(readFromInput.contains(test3));
+    }
+
     // Unfortunately, `create index` statements have to be passed separately, because neither Calcite nor Presto
     // supports them, so we must pass them as SQL strings.
     public static <R extends SqlStatement> DDlogAPI compileAndLoad(
