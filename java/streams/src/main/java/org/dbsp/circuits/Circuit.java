@@ -169,6 +169,7 @@ public class Circuit extends ComputationalElement implements Latch {
     public void notifyInputIsAvailable(Scheduler scheduler) {}
 
     public void reset(Scheduler scheduler) {
+        scheduler.log("Resetting " + this);
         if (!this.sealed)
             throw new RuntimeException("Circuit not sealed");
         this.time = 0;

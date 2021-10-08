@@ -124,11 +124,11 @@ public class Wire extends HasId {
 
     @Override
     public String toString() {
-        return "Wire " + this.id + " " + this.valueAsString();
+        return "Wire " + this.id + this.valueAsString();
     }
 
     public String valueAsString() {
-        return (this.value == null) ? "-" : ": " + this.value;
+        return (this.value == null) ? "" : " " + this.value;
     }
 
     /**
@@ -157,7 +157,7 @@ public class Wire extends HasId {
             }
             builder.append(src).append(" -> ").append(toShow.graphvizId())
                     .append(" [label=\"(").append(this.id)
-                    .append(") ").append(this.valueAsString())
+                    .append(")").append(this.valueAsString())
                     .append("\"]").append("\n");
         }
     }

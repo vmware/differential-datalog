@@ -23,45 +23,55 @@
 
 package org.dbsp.circuits.operators;
 
-import org.dbsp.algebraic.staticTyping.Group;
 import org.dbsp.algebraic.dynamicTyping.types.Type;
 import org.dbsp.circuits.Scheduler;
 
-import java.util.Objects;
-
 /**
- * An operator that works on streams.  It delays the input stream by 1 clock.
+ * The OuterDela operator is in fact a Z^-1 operator that computes on
+ * the outer stream in a nested stream.  (We don't need an InnerDelay, that's
+ * just a lifted Delay).
  */
-public class DelayOperator extends UnaryOperator implements Latch {
-    Object previous;
-    final Group<Object> group;
-
-    public DelayOperator(Type elementType) {
-        super(elementType, elementType);
-        this.group = Objects.requireNonNull(elementType.getGroup());
-        this.previous = this.group.zero();
+public class OuterDelayOperator extends OuterOperator implements Latch {
+    public OuterDelayOperator(Type type) {
+        super(type);
     }
 
     @Override
     public String toString() {
-        return "z";
+        return "ZZ";
+    }
+
+    private Object getPrevious() {
+        if (this.history.size() > this.currentIndex)
+            return this.history.get(this.currentIndex);
+        else
+            return this.group.zero();
     }
 
     @Override
-    public void reset(Scheduler scheduler) {
-        scheduler.log("Resetting" + this);
-        this.previous = this.group.zero();
+    public Object evaluate(Object input, Scheduler scheduler) {
+        Object result;
+        if (this.history.size() > this.currentIndex) {
+            result = this.history.get(this.currentIndex);
+            this.history.set(this.currentIndex, input);
+        } else {
+            assert this.history.size() == this.currentIndex;
+            this.history.add(input);
+            result = this.group.zero();
+        }
+        this.currentIndex++;
+        return result;
     }
 
     @Override
     public void latch(Scheduler scheduler) {
-        this.log(scheduler, "Latching output", this.previous);
-        this.output.setValue(this.previous, scheduler);
+        Object previous = this.getPrevious();
+        this.log(scheduler, "Latching output", previous);
+        this.output.setValue(previous, scheduler);
     }
 
     @Override
     public void push(Scheduler scheduler) {
-        this.log(scheduler, "Pushing output", this.previous);
         this.output.notifyConsumers(scheduler);
     }
 
@@ -69,14 +79,5 @@ public class DelayOperator extends UnaryOperator implements Latch {
     public void emitOutput(Object result, Scheduler scheduler) {
         // delays do not emit their output at the normal time,
         // they emit it when asked to latch it.
-    }
-
-    @Override
-    public Object evaluate(Object input, Scheduler scheduler) {
-        this.log(scheduler, "Saving input", input);
-        this.log(scheduler, "Result is", this.previous);
-        Object result = this.previous;
-        this.previous = input;
-        return result;
     }
 }

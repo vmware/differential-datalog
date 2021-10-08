@@ -34,6 +34,7 @@ import org.dbsp.lib.Utilities;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.List;
 
 public class OperatorTest {
@@ -213,7 +214,7 @@ public class OperatorTest {
     }
 
     @Test
-    public void innerITest() {
+    public void outerITest() {
         Circuit top = new Circuit("top", ITL, ITL);
         Operator op = top.addOperator(new OuterIOperator(IT));
         top.addOutputWireFromOperator(op);
@@ -236,6 +237,8 @@ public class OperatorTest {
             }
         }
 
+        System.out.println(Arrays.deepToString(result));
+
         // Reference output computed differently:
         IStream<IStream<Integer>> is = StreamTest.get2dStream();
         IStream<IStream<Integer>> ii = is.integrate(StreamTest.sg);
@@ -245,9 +248,43 @@ public class OperatorTest {
     }
 
     @Test
-    public void innerDTest() {
+    public void outerDTest() {
         Circuit top = new Circuit("top", ITL, ITL);
         Operator op = top.addOperator(new OuterDOperator(IT));
+        top.addOutputWireFromOperator(op);
+        Port input = top.getInputPort();
+        input.connectTo(op);
+        Sink sink = top.addSinkFromOperator(op);
+        top.seal();
+
+        int limit = 4;
+        int[][] result = new int[limit][limit];
+
+        Scheduler scheduler = new Scheduler();
+        for (int i = 0; i < limit; i++) {
+            top.reset(scheduler);
+            for (int j = 0; j < limit; j++) {
+                input.setValue(2 * i + j);
+                top.step(scheduler);
+                Object out = sink.getValue(scheduler);
+                result[i][j] = (int)out;
+            }
+        }
+
+        // System.out.println(Arrays.deepToString(result));
+
+        // Reference output computed differently:
+        IStream<IStream<Integer>> is = StreamTest.get2dStream();
+        IStream<IStream<Integer>> ii = is.differentiate(StreamTest.sg);
+        for (int i = 0; i < limit; i++)
+            for (int j = 0; j < limit; j++)
+                Assert.assertEquals(result[i][j], (int)ii.get(i).get(j));
+    }
+
+    @Test
+    public void outerDFromPrimitivesTest() {
+        Circuit top = new Circuit("top", ITL, ITL);
+        Operator op = top.addOperator(CircuitOperator.derivativeOperator(IT, true));
         top.addOutputWireFromOperator(op);
         Port input = top.getInputPort();
         input.connectTo(op);
@@ -271,6 +308,39 @@ public class OperatorTest {
         // Reference output computed differently:
         IStream<IStream<Integer>> is = StreamTest.get2dStream();
         IStream<IStream<Integer>> ii = is.differentiate(StreamTest.sg);
+        for (int i = 0; i < limit; i++)
+            for (int j = 0; j < limit; j++)
+                Assert.assertEquals(result[i][j], (int)ii.get(i).get(j));
+    }
+
+    @Test
+    public void outerIFromPrimitivesTest() {
+        Circuit top = new Circuit("top", ITL, ITL);
+        Operator op = top.addOperator(CircuitOperator.integrationOperator(IT, true));
+        top.addOutputWireFromOperator(op);
+        Port input = top.getInputPort();
+        input.connectTo(op);
+        Sink sink = top.addSinkFromOperator(op);
+        top.seal();
+        TestUtil.show(top.toGraphvizTop(true));
+
+        int limit = 4;
+        int[][] result = new int[limit][limit];
+
+        Scheduler scheduler = new Scheduler();
+        for (int i = 0; i < limit; i++) {
+            top.reset(scheduler);
+            for (int j = 0; j < limit; j++) {
+                input.setValue(2 * i + j);
+                top.step(scheduler);
+                Object out = sink.getValue(scheduler);
+                result[i][j] = (int)out;
+            }
+        }
+
+        // Reference output computed differently:
+        IStream<IStream<Integer>> is = StreamTest.get2dStream();
+        IStream<IStream<Integer>> ii = is.integrate(StreamTest.sg);
         for (int i = 0; i < limit; i++)
             for (int j = 0; j < limit; j++)
                 Assert.assertEquals(result[i][j], (int)ii.get(i).get(j));

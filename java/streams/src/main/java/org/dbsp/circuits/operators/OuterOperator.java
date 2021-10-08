@@ -49,6 +49,7 @@ public abstract class OuterOperator extends UnaryOperator {
 
     @Override
     public void reset(Scheduler scheduler) {
+        scheduler.log("Resetting " + this);
         this.currentIndex = 0;
         super.reset(scheduler);
     }

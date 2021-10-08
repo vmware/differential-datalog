@@ -112,16 +112,24 @@ public class CircuitOperator extends Operator implements Latch {
         return new Pair<Operator, Integer>(this.circuit.getInputPort(input), 0);
     }
 
+    private static Operator getDelay(Type type, boolean nested) {
+        if (nested)
+            return new OuterDelayOperator(type);
+        else
+            return new DelayOperator(type);
+    }
+
     /**
      * Return an operator that performs integration over a stream of values of type @{type}.
      * @param type  Type of values in the stream.
+     * @param nested If true we want the delay operator to be an OuterDelayOperator.
      */
-    public static CircuitOperator integrationOperator(Type type) {
+    public static CircuitOperator integrationOperator(Type type, boolean nested) {
         Circuit circuit = new Circuit("I",
                 Utilities.list(type), Utilities.list(type));
         PlusOperator plus = new PlusOperator(type);
         circuit.addOperator(plus);
-        DelayOperator delay = new DelayOperator(type);
+        Operator delay = getDelay(type, nested);
         circuit.addOperator(delay);
         plus.connectTo(delay, 0);
         delay.connectTo(plus, 1);
@@ -131,16 +139,21 @@ public class CircuitOperator extends Operator implements Latch {
         return new CircuitOperator(circuit.seal(), true);
     }
 
+    public static CircuitOperator integrationOperator(Type type) {
+        return CircuitOperator.integrationOperator(type, false);
+    }
+
     /**
      * Return an operator that performs differentiation over a stream of values of type @{type}.
      * @param type  Type of values in the stream.
+     * @param nested If true we want the delay operator to be an OuterDelayOperator.
      */
-    public static CircuitOperator derivativeOperator(Type type) {
+    public static CircuitOperator derivativeOperator(Type type, boolean nested) {
         Circuit circuit = new Circuit("D",
                 Utilities.list(type), Utilities.list(type));
         PlusOperator plus = new PlusOperator(type);
         circuit.addOperator(plus);
-        DelayOperator delay = new DelayOperator(type);
+        Operator delay = getDelay(type, nested);
         circuit.addOperator(delay);
         NegateOperator neg = new NegateOperator(type);
         circuit.addOperator(neg);
@@ -151,6 +164,10 @@ public class CircuitOperator extends Operator implements Latch {
         neg.connectTo(plus, 1);
         circuit.addOutputWireFromOperator(plus);
         return new CircuitOperator(circuit.seal(), true);
+    }
+
+    public static CircuitOperator derivativeOperator(Type type) {
+        return CircuitOperator.derivativeOperator(type, false);
     }
 
     @Override
