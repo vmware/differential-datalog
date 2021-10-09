@@ -1,25 +1,42 @@
+// A demo application that exhibits a relation Fact that is sharded based on a field
+// of the data.
+
 import d3_application
 
-ThreadInstance(loc,) :-  Fact(_, loc).
+ThreadInstance(loc) :-  Fact(_, loc).
 input relation Fact(x:u64, k:u128)
+
 relation PrintMSResult(x:u64, me:D3logLocationId)
 relation MSResult(x:u64, me:D3logLocationId)
+
+// `Localized` fact is a distributed relation; each partition
+// will contain some of the data in the `Fact` relation.  The union
+// of all partitions of `LocalizedFact` is the same as `Fact`.
 relation LocalizedFact(x:u64)
-// We need anchor because we think this should be an output, but localized relations
-// cant currently be output. 
+
+// The real output relation is PrintMSResult, but currently a localized
+// relation (where rows are tagged with a @location)
+// cannot be an output relation.  PrintMSResult is used to compute the results,
+// and Anchor just to make sure that the results are used.
 output relation Anchor(x:u64)
 
+// The `Fact` relation contains tuples `(x,n)`.  Each `x` value is
+// routed to the DDlog instance having the `n` name.
 LocalizedFact(x)@(n as u128) :-
       Fact(x, n),
+      // InstanceStatus is used to enumerate all the instances currently running.
       InstanceStatus(_, n, _, _).
 
+// This relation is a copy of LocalizedFact where each record is tagged
+// with the location of the current instance.
 MSResult(x, y) :- LocalizedFact(x),
                   Myself(y).
 
+// Any tuple sent to the (single) location in the Stdout relation
+// will be logged.  Since all tuples in PrintMSResult are sent to
+// n, which is the only member of Stdout, they will be logged.
 PrintMSResult(x, y)@n :-
                    Stdout(n),
                    MSResult(x, y).
 
-// we need an additoinal output to root the dependency tree, and localized relations
-// cannot currently be output
 Anchor(x) :- PrintMSResult(x, _).

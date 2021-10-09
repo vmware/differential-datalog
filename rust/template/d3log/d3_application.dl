@@ -23,6 +23,11 @@ input relation Myself(me: D3logLocationId)
 /// service.  Think of it as the equivalent of the
 /// stdout file descriptor.
 /// This relation contains a single value, which never changes.
+/// Any tuple of any relation that is localized at ths stdout service location
+/// will be logged.  Here is an example using Stdout to display
+/// all the tuples in relations R:
+/// relation R(x: u32)
+/// relation Shown(x: u32)@logger :- Stdout(logger), R(x).
 input relation Stdout(target: D3logLocationId)
 
 /// A relation that can be used to fork a new thread running the
