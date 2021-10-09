@@ -1,4 +1,6 @@
-// module to wrap the general encoding type DDValue for rust compiled ddlog
+// Represents a vector of ddval::Values: a value can be used to
+// represent a row in a multiset relation (with the associated weight).
+// A ValueSet can contain values from multiple different relations.
 
 use crate::{Batch, BatchBody, Error, Evaluator, Properties};
 use differential_datalog::{
@@ -13,7 +15,8 @@ use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct ValueSet {
-    pub eval: Evaluator, // used to translate to record
+    // The evaluator is a handle to the DDlog runtime that "understands" the values.
+    pub eval: Evaluator, // used when translating a Value to a Record object
     pub deltas: Arc<Mutex<DeltaMap<differential_datalog::ddval::DDValue>>>,
 }
 

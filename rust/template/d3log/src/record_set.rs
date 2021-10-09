@@ -1,5 +1,6 @@
-// functions to allow a set of Records, a dynamically typed alternative to DDValue, to act as
-// Batch for interchange between different ddlog programs
+//! record_set.rs: represent a set of rows in a multiset relation,
+//! with their associated weights.  A RecordSet can contains rows from
+//! many different relations.
 
 use crate::{Batch, BatchBody, Error};
 use differential_datalog::program::Weight;
@@ -8,11 +9,22 @@ use std::collections::HashMap;
 use std::fmt;
 use std::fmt::Display;
 
+/// A RecordSet is a vector of Record object with associated Weights.
+/// Each Record object describes a row from some relation.
 #[derive(Clone, Default)]
 pub struct RecordSet {
     pub records: Vec<(Record, Weight)>,
 }
 
+/// This macro creates a Batch object that contains a single record with weight 1.
+/// The arguments are: relation name, and key => value pairs for the 'columns' of
+/// the relation.  Here is an example using this macro to create a row in the
+/// relation Person(name: string, age: u32).
+/// ```
+/// let f = fact!("Person",
+///               name => "Bob",
+///               age => 23);
+/// ```
 #[macro_export]
 macro_rules! fact {
     ( $rel:path,  $($n:ident => $v:expr),* ) => {
@@ -46,24 +58,29 @@ impl Display for RecordSet {
 }
 
 impl RecordSet {
+    /// Create an empty RecordSet
     pub fn new() -> RecordSet {
         RecordSet {
             records: Vec::new(),
         }
     }
 
+    /// Create a RecordSet that contains a single Record, with weight 1.
     pub fn singleton(rec: Record) -> RecordSet {
         RecordSet {
             records: vec![(rec, 1)],
         }
     }
 
+    /// Add a new record with the specified weight to this RecordSet.
     pub fn insert(&mut self, v: Record, weight: Weight) {
         self.records.push((v, weight))
     }
 
+    /// Extract a RecordSet from a Batch.
     pub fn from(batch: Batch) -> Result<RecordSet, Error> {
         match batch.body {
+            // If the Batch contains a ValueSet, we have to convert each Value to a corresponding Record
             BatchBody::Value(d) => {
                 let mut rb = RecordSet::new();
                 for (_relid, val, weight) in &d {
@@ -100,6 +117,7 @@ impl<'a> Iterator for RecordSetIterator<'a> {
     }
 }
 
+/// This trait allows RecordSet objects to be iterated on
 impl<'a> IntoIterator for &'a RecordSet {
     type Item = (String, Record, Weight);
     type IntoIter = RecordSetIterator<'a>;
