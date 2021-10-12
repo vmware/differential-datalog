@@ -1,0 +1,1 @@
+This directory contains classes that are dynamically typed.
