@@ -36,10 +36,12 @@ public class StreamTest {
     static final IntegerTime.Factory factory = IntegerTime.Factory.instance;
     static public final StreamGroup<Integer> sg = new StreamGroup<Integer>(
             IntegerRing.instance, factory);
+    static final int showCount = 4;
 
-    public static <T> void show(String prefix, IStream<T> value) {
-        String s = value.toString(4);
+    public static <T> String show(String prefix, IStream<T> value) {
+        String s = value.toString(showCount);
         TestUtil.show(prefix + " = " + s);
+        return s;
     }
 
     static <T> String toString(IStream<IStream<T>> ss, int limit0, int limit1) {
@@ -53,28 +55,37 @@ public class StreamTest {
         return builder.toString();
     }
 
-    private static <T> void show2d(String prefix, IStream<IStream<T>> value) {
-        TestUtil.show(prefix + " = " + toString(value, 4, 4));
+    private static <T> String show2d(String prefix, IStream<IStream<T>> value) {
+        String s = toString(value, showCount, showCount);
+        TestUtil.show(prefix + " = " + s);
+        return s;
     }
 
     @Test
     public void testId() {
         IdStream id = new IdStream(factory);
-        show("id", id);
+        String s = show("id", id);
+        Assert.assertEquals("[0,1,2,3,...]", s);
         Assert.assertEquals((Integer)3, id.get(3));
         IStream<Integer> iid = id.integrate(IntegerRing.instance);
-        show("I(id)", iid);
+        s = show("I(id)", iid);
+        Assert.assertEquals("[0,1,3,6,...]", s);
         Assert.assertEquals((Integer)6, iid.get(3));
         IStream<Integer> did = id.differentiate(IntegerRing.instance);
-        show("D(id)", did);
+        s = show("D(id)", did);
+        Assert.assertEquals("[0,1,1,1,...]", s);
         IStream<Pair<Integer, Integer>> pid = id.pair(id);
-        show("<id,id>", pid);
+        s = show("<id,id>", pid);
+        Assert.assertEquals("[<0,0>,<1,1>,<2,2>,<3,3>,...]", s);
         IStream<Integer> delay = id.delay(IntegerRing.instance);
-        show("z(id)", delay);
+        s = show("z(id)", delay);
+        Assert.assertEquals("[0,0,1,2,...]", s);
         IStream<Integer> cut = id.cut(id.getTimeFactory().fromInteger(3), IntegerRing.instance);
-        show("cut3(id)", cut);
+        s = show("cut3(id)", cut);
+        Assert.assertEquals("[0,1,2,0,...]", s);
         IStream<Integer> delta = new Delta0<>(5, IntegerRing.instance, factory);
-        show("delta(5)", delta);
+        s = show("delta(5)", delta);
+        Assert.assertEquals("[5,0,0,0,...]", s);
     }
 
     public static IStream<IStream<Integer>> get2dStream() {
@@ -94,51 +105,96 @@ public class StreamTest {
     @Test
     public void testNested() {
         IStream<IStream<Integer>> i = get2dStream();
-        show2d("i", i);
+        String h = show2d("i", i);
+        Assert.assertEquals("[0,1,2,3,...]\n[2,3,4,5,...]\n[4,5,6,7,...]\n[6,7,8,9,...]\n", h);
         Assert.assertEquals((Integer)9, i.get(3).get(3));
 
         StreamFunction<Integer, Integer> mod = StreamFunction.lift(x -> x % 2);
         StreamFunction<IStream<Integer>, IStream<Integer>> liftMod = StreamFunction.lift(mod);
         IStream<IStream<Integer>> lm = liftMod.apply(i);
-        show2d("^^mod(i)", lm);
+        h = show2d("^^mod(i)", lm);
+        Assert.assertEquals("[0,1,0,1,...]\n" +
+                "[0,1,0,1,...]\n" +
+                "[0,1,0,1,...]\n" +
+                "[0,1,0,1,...]\n", h);
         Assert.assertEquals((Integer)1, lm.get(3).get(3));
 
         IStream<IStream<Integer>> ii = i.integrate(sg);
-        show2d("I(i)", ii);
+        h = show2d("I(i)", ii);
+        Assert.assertEquals("[0,1,2,3,...]\n" +
+                "[2,4,6,8,...]\n" +
+                "[6,9,12,15,...]\n" +
+                "[12,16,20,24,...]\n", h);
         Assert.assertEquals((Integer)24, ii.get(3).get(3));
 
         IStream<IStream<Integer>> di = i.differentiate(sg);
-        show2d("D(i)", di);
+        h = show2d("D(i)", di);
+        Assert.assertEquals("[0,1,2,3,...]\n" +
+                "[2,2,2,2,...]\n" +
+                "[2,2,2,2,...]\n" +
+                "[2,2,2,2,...]\n", h);
         Assert.assertEquals((Integer)2, di.get(3).get(3));
 
         StreamFunction<IStream<Integer>, IStream<Integer>> liftI =
            StreamFunction.lift(
                    s -> s.integrate(IntegerRing.instance));
         IStream<IStream<Integer>> ui = liftI.apply(i);
-        show2d("^I(i)", ui);
+        h = show2d("^I(i)", ui);
+        Assert.assertEquals("[0,1,3,6,...]\n" +
+                "[2,5,9,14,...]\n" +
+                "[4,9,15,22,...]\n" +
+                "[6,13,21,30,...]\n", h);
         Assert.assertEquals((Integer)30, ui.get(3).get(3));
 
         StreamFunction<IStream<Integer>, IStream<Integer>> liftD =
                 StreamFunction.lift(s -> s.differentiate(IntegerRing.instance));
         IStream<IStream<Integer>> ud = liftD.apply(i);
-        show2d("^D(i)", ud);
+        h = show2d("^D(i)", ud);
+        Assert.assertEquals("[0,1,1,1,...]\n" +
+                "[2,1,1,1,...]\n" +
+                "[4,1,1,1,...]\n" +
+                "[6,1,1,1,...]\n", h);
 
         IStream<IStream<Integer>> idd = liftD.apply(i.differentiate(sg));
-        show2d("^D(D(i))", idd);
+        h = show2d("^D(D(i))", idd);
+        Assert.assertEquals("[0,1,1,1,...]\n" +
+                "[2,0,0,0,...]\n" +
+                "[2,0,0,0,...]\n" +
+                "[2,0,0,0,...]\n", h);
         idd = liftD.apply(i).differentiate(sg);
-        show2d("D(^D(i))", idd);
+        h = show2d("D(^D(i))", idd);
+        Assert.assertEquals("[0,1,1,1,...]\n" +
+                "[2,0,0,0,...]\n" +
+                "[2,0,0,0,...]\n" +
+                "[2,0,0,0,...]\n", h);
 
         IStream<IStream<Integer>> iii = liftI.apply(i.integrate(sg));
-        show2d("^I(I(i))", iii);
+        h = show2d("^I(I(i))", iii);
+        Assert.assertEquals("[0,1,3,6,...]\n" +
+                "[2,6,12,20,...]\n" +
+                "[6,15,27,42,...]\n" +
+                "[12,28,48,72,...]\n", h);
         iii = liftI.apply(i).integrate(sg);
-        show2d("I(^I(i))", iii);
+        h = show2d("I(^I(i))", iii);
+        Assert.assertEquals("[0,1,3,6,...]\n" +
+                "[2,6,12,20,...]\n" +
+                "[6,15,27,42,...]\n" +
+                "[12,28,48,72,...]\n", h);
 
         IStream<IStream<Integer>> zi = i.delay(sg);
-        show2d("z(i)", zi);
+        h = show2d("z(i)", zi);
+        Assert.assertEquals("[0,0,0,0,...]\n" +
+                "[0,1,2,3,...]\n" +
+                "[2,3,4,5,...]\n" +
+                "[4,5,6,7,...]\n", h);
 
         StreamFunction<IStream<Integer>, IStream<Integer>> liftZ =
                 StreamFunction.lift(s -> s.delay(IntegerRing.instance));
         IStream<IStream<Integer>> lzi = i.apply(liftZ);
-        show2d("^z(i)", lzi);
+        h = show2d("^z(i)", lzi);
+        Assert.assertEquals("[0,0,1,2,...]\n" +
+                "[0,2,3,4,...]\n" +
+                "[0,4,5,6,...]\n" +
+                "[0,6,7,8,...]\n", h);
     }
 }

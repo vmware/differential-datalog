@@ -43,59 +43,6 @@ import static org.dbsp.compute.StreamTest.show;
  * Tests that compute streaming relational queries.
  */
 public class RelationalStreamTests {
-    // This class is just a wrapper for ZSet<TestTuple, Integer> so we write fewer templates.
-    // In C++ this would be a typedef.
-    static class ZS {
-        public final ZSet<TestTuple, Integer> zs;
-
-        public ZS() {
-            this.zs = new ZSet<TestTuple, Integer>(IntegerRing.instance);
-        }
-
-        public ZS(ZSet<TestTuple, Integer> zs) {
-            this.zs = zs;
-        }
-
-        public void add(TestTuple t, Integer w) {
-            this.zs.add(t, w);
-        }
-
-        public ZS filter(Predicate<TestTuple> p) {
-            return new ZS(this.zs.filter(p));
-        }
-
-        public int size() {
-            return this.zs.size();
-        }
-
-        @Override
-        public String toString() {
-            return this.zs.toString();
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            ZS zs1 = (ZS) o;
-            return zs.equals(zs1.zs);
-        }
-
-        @Override
-        public int hashCode() {
-            return this.zs.hashCode();
-        }
-
-        public ZS map(Function<TestTuple, TestTuple> map) {
-            return new ZS(this.zs.map(map));
-        }
-
-        public <K> ZS join(ZS zs2, Function<TestTuple, K> leftKey, Function<TestTuple, K> rightKey,
-                           BiFunction<TestTuple, TestTuple, TestTuple> combiner) {
-            return new ZS(this.zs.join(zs2.zs, leftKey, rightKey, combiner));
-        }
-    }
-
     static final TimeFactory tf = IntegerTime.Factory.instance;
 
     static final ZSetGroup<TestTuple, Integer> gr = new ZSetGroup<>(IntegerRing.instance);

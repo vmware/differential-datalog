@@ -34,10 +34,10 @@ public class ZSetTest {
 
     @Test
     public void emptyRelation() {
-        ZSet<TestTuple, Integer> zset = new ZSet<TestTuple, Integer>(IntegerRing.instance);
+        ZS zset = new ZS();
         Assert.assertEquals(0, zset.size());
         Assert.assertEquals("{}", zset.toString());
-        ZSet<TestTuple, Integer> distinct = zset.distinct();
+        ZS distinct = zset.distinct();
         Assert.assertEquals(0, distinct.size());
         Assert.assertEquals("{}", distinct.toString());
     }
@@ -45,24 +45,24 @@ public class ZSetTest {
     @Test
     public void addRelations() {
         TestTuple t = new TestTuple("Me", 10);
-        ZSet<TestTuple, Integer> zset = new ZSet<TestTuple, Integer>(IntegerRing.instance, t);
+        ZS zset = new ZS(t);
         Assert.assertEquals(1, zset.size());
         Assert.assertEquals("{<Me,10>->1}", zset.toString());
 
-        ZSet<TestTuple, Integer> d = zset.add(zset);
+        ZS d = zset.add(zset);
         Assert.assertEquals(1, d.size());
         Assert.assertEquals("{<Me,10>->2}", d.toString());
 
         TestTuple t1 = new TestTuple("You", 5);
-        ZSet<TestTuple, Integer> y = new ZSet<TestTuple, Integer>(IntegerRing.instance, t1);
+        ZS y = new ZS(t1);
         d = d.add(y);
         Assert.assertEquals(2, d.size());
         Assert.assertEquals("{<Me,10>->2,<You,5>->1}", d.toString());
 
-        ZSet<TestTuple, Integer> neg = d.negate();
+        ZS neg = d.negate();
         Assert.assertEquals(2, neg.size());
         Assert.assertEquals("{<Me,10>->-2,<You,5>->-1}", neg.toString());
-        ZSet<TestTuple, Integer> distinctNeg = neg.distinct();
+        ZS distinctNeg = neg.distinct();
         Assert.assertEquals(0, distinctNeg.size());
         Assert.assertEquals("{}", distinctNeg.toString());
 
@@ -74,17 +74,17 @@ public class ZSetTest {
     @Test
     public void filterTest() {
         TestTuple t = new TestTuple("Me", 10);
-        ZSet<TestTuple, Integer> rel = new ZSet<>(IntegerRing.instance, t, 2);
+        ZS rel = new ZS(t, 2);
         TestTuple t1 = new TestTuple("You", 8);
         rel.add(t1, 1);
-        ZSet<TestTuple, Integer> result = rel.filter(e -> e.v >= 10);
+        ZS result = rel.filter(e -> e.v >= 10);
         Assert.assertEquals(1, result.size());
-        Assert.assertEquals(2, (int)result.weight(t));
-        Assert.assertEquals(0, (int)result.weight(t1));
-        ZSet<TestTuple, Integer> distinct = result.distinct();
+        Assert.assertEquals(2, result.weight(t));
+        Assert.assertEquals(0, result.weight(t1));
+        ZS distinct = result.distinct();
         Assert.assertEquals(1, distinct.size());
-        Assert.assertEquals(0, (int)distinct.weight(t1));
-        Assert.assertEquals(1, (int)distinct.weight(t));
+        Assert.assertEquals(0, distinct.weight(t1));
+        Assert.assertEquals(1, distinct.weight(t));
     }
 
     @Test
@@ -104,10 +104,10 @@ public class ZSetTest {
     @Test
     public void mapTest() {
         TestTuple t0 = new TestTuple("Me", 10);
-        ZSet<TestTuple, Integer> rel = new ZSet<>(IntegerRing.instance, t0, 2);
+        ZS rel = new ZS(t0, 2);
         TestTuple t1 = new TestTuple("You", 8);
         rel.add(t1, 1);
-        ZSet<String, Integer> map = rel.map(t -> t.s + t.v.toString());
+        ZSet<String, Integer> map = rel.zs.map(t -> t.s + t.v.toString());
         Assert.assertEquals(2, map.size());
         Assert.assertEquals("{Me10->2,You8->1}", map.toString());
     }
@@ -116,10 +116,10 @@ public class ZSetTest {
     public void joinTest() {
         TestTuple t0 = new TestTuple("Me", 10);
         TestTuple t1 = new TestTuple("Me", 5);
-        ZSet<TestTuple, Integer> r0 = new ZSet<TestTuple, Integer>(IntegerRing.instance, t0, 2);
-        ZSet<TestTuple, Integer> r1 = new ZSet<TestTuple, Integer>(IntegerRing.instance, t1, 3);
+        ZS r0 = new ZS(t0, 2);
+        ZS r1 = new ZS(t1, 3);
         r1.add(new TestTuple("You", 5), 1);
-        ZSet<Integer, Integer> result = r0.join(r1, t -> t.s, t -> t.s, (tt0, tt1) -> tt0.v + tt1.v);
+        ZSet<Integer, Integer> result = r0.zs.join(r1.zs, t -> t.s, t -> t.s, (tt0, tt1) -> tt0.v + tt1.v);
         Assert.assertEquals(1, result.size());
         Assert.assertEquals(6, (int)result.weight(15)); // 10 + 5 has weight 2 * 3
         Assert.assertEquals("{15->6}", result.toString());
@@ -129,31 +129,31 @@ public class ZSetTest {
     public void productTest() {
         TestTuple t0 = new TestTuple("Me", 10);
         TestTuple t1 = new TestTuple("Me", 5);
-        ZSet<TestTuple, Integer> r0 = new ZSet<TestTuple, Integer>(IntegerRing.instance, t0, 2);
-        ZSet<TestTuple, Integer> r1 = new ZSet<TestTuple, Integer>(IntegerRing.instance, t1, 3);
+        ZS r0 = new ZS(t0, 2);
+        ZS r1 = new ZS(t1, 3);
         r1.add(new TestTuple("You", 2), 1);
-        ZSet<TestTuple, Integer> result = r0.product(r1, (v1, v2) -> new TestTuple(v1.s + v2.s, v1.v + v2.v));
+        ZSet<TestTuple, Integer> result = r0.zs.product(r1.zs, (v1, v2) -> new TestTuple(v1.s + v2.s, v1.v + v2.v));
         Assert.assertEquals("{<MeMe,15>->6,<MeYou,12>->2}", result.toString());
     }
 
     @Test
     public void groupByTest() {
-        ZSet<TestTuple, Integer> r0 = new ZSet<TestTuple, Integer>(IntegerRing.instance);
+        ZS r0 = new ZS();
         r0.add(new TestTuple("Me", 10), 2);
         r0.add(new TestTuple("Me", 5), 1);
         r0.add(new TestTuple("You", 2), 1);
-        ZSet<Grouping<String, TestTuple, Integer>, Integer> gr = r0.groupBy(t -> t.s);
+        ZSet<Grouping<String, TestTuple, Integer>, Integer> gr = r0.zs.groupBy(t -> t.s);
         String result = gr.toString();
         Assert.assertEquals("{Group<K=Me,values={<Me,5>->1,<Me,10>->2}>->1,Group<K=You,values={<You,2>->1}>->1}", result);
     }
 
     @Test
     public void groupByAggregate() {
-        ZSet<TestTuple, Integer> r0 = new ZSet<TestTuple, Integer>(IntegerRing.instance);
+        ZS r0 = new ZS();
         r0.add(new TestTuple("Me", 10), 2);
         r0.add(new TestTuple("Me", 5), 1);
         r0.add(new TestTuple("You", 2), 1);
-        ZSet<Grouping<String, TestTuple, Integer>, Integer> gr = r0.groupBy(t -> t.s);
+        ZSet<Grouping<String, TestTuple, Integer>, Integer> gr = r0.zs.groupBy(t -> t.s);
         ZSet<TestTuple, Integer> counts = gr.map(g -> new TestTuple(g.key, g.count()));
         Assert.assertEquals("{<Me,3>->1,<You,1>->1}", counts.toString());
         ZSet<TestTuple, Integer> dCounts = gr.map(g -> new TestTuple(g.key, g.distinctCount()));

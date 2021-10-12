@@ -31,8 +31,7 @@ import javax.annotation.Nullable;
 import java.util.Objects;
 
 public class IntOperator extends UnaryOperator {
-    @Nullable
-    private Object value = null;
+    private Object value;
     final Group<Object> group;
     private final CircuitOperator body;
     // Int operators are always associated with a Delta
@@ -43,21 +42,19 @@ public class IntOperator extends UnaryOperator {
         this.delta = delta;
         this.group = Objects.requireNonNull(type.getGroup());
         this.body = body;
+        this.value = this.group.zero();
     }
 
     @Override
     public Object evaluate(Object input, Scheduler scheduler) {
-        if (this.value == null)
-            this.value = input;
-        else
-            this.value = this.group.add(this.value, input);
+        this.value = this.group.add(this.value, input);
         return input;
     }
 
     @Override
     public void reset(Scheduler scheduler) {
         this.log(scheduler, "reset");
-        this.value = null;
+        this.value = this.group.zero();
         this.body.reset(scheduler);
         this.delta.reset(scheduler);
     }

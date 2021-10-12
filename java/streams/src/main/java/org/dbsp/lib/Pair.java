@@ -31,4 +31,8 @@ public class Pair<T, S> {
         this.first = first;
         this.second = second;
     }
+
+    public String toString() {
+        return "<" + this.first.toString() + "," + this.second.toString() + ">";
+    }
 }

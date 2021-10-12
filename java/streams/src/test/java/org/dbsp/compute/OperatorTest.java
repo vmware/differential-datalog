@@ -34,7 +34,6 @@ import org.dbsp.lib.Utilities;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.Arrays;
 import java.util.List;
 
 public class OperatorTest {
@@ -47,6 +46,7 @@ public class OperatorTest {
 
     @Test
     public void simpleOperatorTest() {
+        // Circuit with a single delay operator
         Circuit circuit = new Circuit("Simple", ITL, ITL);
         Operator delay = new DelayOperator(IT);
         circuit.addOperator(delay);
@@ -70,6 +70,7 @@ public class OperatorTest {
 
     @Test
     public void chainedDelayTest() {
+        // Circuit with two chained delay operators
         Circuit circuit = new Circuit("Simple", ITL, ITL);
         Operator delay0 = new DelayOperator(IT);
         Operator delay1 = new DelayOperator(IT);
@@ -95,6 +96,7 @@ public class OperatorTest {
 
     @Test
     public void integrateTest() {
+        // Circuit with one integration operator
         CircuitOperator op = CircuitOperator.integrationOperator(IT);
         Circuit circuit = op.circuit;
         Port port = circuit.getInputPort(0);
@@ -116,6 +118,7 @@ public class OperatorTest {
 
     @Test
     public void derivativeTest() {
+        // Circuit with one differentiation operator
         CircuitOperator op = CircuitOperator.derivativeOperator(IT);
         Circuit circuit = op.circuit;
         Sink sink = circuit.getOutputWires().get(0).addSink();
@@ -135,6 +138,7 @@ public class OperatorTest {
 
     @Test
     public void chainIDTest() {
+        // Circuit with an integration followed by a differentiation
         Circuit c = new Circuit("top", ITL, ITL);
         CircuitOperator i = CircuitOperator.integrationOperator(IT);
         c.addOperator(i);
@@ -159,6 +163,7 @@ public class OperatorTest {
 
     @Test
     public void feedbackTest() {
+        // Increment in a feedback loop
         Circuit c = new Circuit("top", ITL, ITL);
         Operator plus = c.addOperator(new PlusOperator(IT));
         Port input = c.getInputPort(0);
@@ -171,6 +176,7 @@ public class OperatorTest {
         Sink sink = c.addSinkFromOperator(map);
         c.seal();
 
+        TestUtil.setVerbose(true);
         this.show(c);
         Scheduler scheduler = new Scheduler();
         c.reset(scheduler);
@@ -187,6 +193,7 @@ public class OperatorTest {
 
     @Test
     public void bracketTest() {
+        // An identity bracketed.
         UnaryOperator id = new IdOperator(IT);
         Circuit c = new Circuit("wrapper", ITL, ITL);
         c.addOperator(id);
@@ -215,6 +222,7 @@ public class OperatorTest {
 
     @Test
     public void outerITest() {
+        // Integrate on streams of streams
         Circuit top = new Circuit("top", ITL, ITL);
         Operator op = top.addOperator(new OuterIOperator(IT));
         top.addOutputWireFromOperator(op);
@@ -237,7 +245,7 @@ public class OperatorTest {
             }
         }
 
-        System.out.println(Arrays.deepToString(result));
+        // System.out.println(Arrays.deepToString(result));
 
         // Reference output computed differently:
         IStream<IStream<Integer>> is = StreamTest.get2dStream();
@@ -249,6 +257,7 @@ public class OperatorTest {
 
     @Test
     public void outerDTest() {
+        // Differentiate on streams of streams
         Circuit top = new Circuit("top", ITL, ITL);
         Operator op = top.addOperator(new OuterDOperator(IT));
         top.addOutputWireFromOperator(op);
@@ -283,6 +292,7 @@ public class OperatorTest {
 
     @Test
     public void outerDFromPrimitivesTest() {
+        // Differentiate on outer streams built from parts
         Circuit top = new Circuit("top", ITL, ITL);
         Operator op = top.addOperator(CircuitOperator.derivativeOperator(IT, true));
         top.addOutputWireFromOperator(op);
@@ -315,6 +325,7 @@ public class OperatorTest {
 
     @Test
     public void outerIFromPrimitivesTest() {
+        // Integrate on outer streams built from parts
         Circuit top = new Circuit("top", ITL, ITL);
         Operator op = top.addOperator(CircuitOperator.integrationOperator(IT, true));
         top.addOutputWireFromOperator(op);
