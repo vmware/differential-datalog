@@ -109,12 +109,13 @@ public final class DDlogJooqProvider implements MockDataProvider {
         // We execute H2 statements in a temporary database so that JOOQ can extract useful metadata
         // that we will use later (for example, the record types for views).
         for (final H2SqlStatement sql : sqlStatements) {
-            if (sql.getStatement().startsWith("create index")) {
-                ParsedCreateIndex parsedIndex = CreateIndexParser.parse(sql.getStatement());
+            String sqlString = sql.getStatement();
+            if (CreateIndexParser.isCreateIndexStatement(sqlString)) {
+                ParsedCreateIndex parsedIndex = CreateIndexParser.parse(sqlString);
                 tablesToIndexesMap.computeIfAbsent(
                         parsedIndex.getTableName().toUpperCase(Locale.ROOT), k -> new ArrayList<>()).add(parsedIndex);
             }
-            dslContext.execute(sql.getStatement());
+            dslContext.execute(sqlString);
         }
 
         for (final Table<?> table: dslContext.meta().getTables()) {

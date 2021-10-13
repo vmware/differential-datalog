@@ -41,6 +41,7 @@ public class JooqProviderCalciteTest extends JooqProviderTestBase {
 
         String createIndexNotNull = "create index not_null_idx on not_null (test_col1)";
         String createIndexHosts = "create index hosts_id_up on hosts (id, up)";
+        String testIndexParsing = "creATe  index      hosts_id_up_junk on hosts   (id, up)           \t";
 
         List<String> ddl = new ArrayList<>();
         ddl.add(s1);
@@ -56,6 +57,7 @@ public class JooqProviderCalciteTest extends JooqProviderTestBase {
         List<String> indexStatements = new ArrayList<>();
         indexStatements.add(createIndexNotNull);
         indexStatements.add(createIndexHosts);
+        indexStatements.add(testIndexParsing);
 
         ddlogAPI = compileAndLoad(
                 ddl.stream().map(CalciteSqlStatement::new).collect(Collectors.toList()),
