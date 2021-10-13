@@ -632,6 +632,8 @@ public abstract class JooqProviderTestBase {
         assertTrue(readFromInput.contains(test3));
     }
 
+    // Unfortunately, `create index` statements have to be passed separately, because neither Calcite nor Presto
+    // supports them, so we must pass them as SQL strings.
     public static <R extends SqlStatement> DDlogAPI compileAndLoad(
             final List<R> ddl, final ToPrestoTranslator<R> translator,
             final List<String> createIndexStatements) throws IOException, DDlogException {
