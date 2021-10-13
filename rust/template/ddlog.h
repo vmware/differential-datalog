@@ -147,13 +147,19 @@ typedef struct {
 typedef struct {
     ddlog_profiling_mode mode;
 
+    /* The following fields are only used if (mode == ddlog_self_profiling) */
+
+    // Directory to store self-profiler output.  Set to NULL to use current
+    // working directory.
+    const char *self_profiler_dir;
+
     /* The following fields are only used if (mode == ddlog_timely_profiling) */
 
     // Destination for the timely log stream.
     ddlog_log_destination timely_destination;
     // Destination for timely progress logging.
     ddlog_log_destination timely_progress_destination;
-    // Differential for Differential Dataflow events.
+    // Destination for Differential Dataflow events.
     ddlog_log_destination differential_destination;
 } ddlog_profiling_config;
 
@@ -816,13 +822,6 @@ extern int ddlog_enable_cpu_profiling(ddlog_prog prog, bool enable);
 extern int ddlog_enable_change_profiling(ddlog_prog prog, bool enable);
 
 /*
- * Returns DDlog program runtime profile as a C string.
- *
- * The returned string must be deallocated using `ddlog_string_free()`.
- */
-extern char* ddlog_profile(ddlog_prog prog);
-
-/*
  * Controls recording of timely operator runtimes. When enabled,
  * DDlog receives timely dataflow events and writes them out to a CSV file
  * where they can be queried later for useful information about program
@@ -834,6 +833,65 @@ extern char* ddlog_profile(ddlog_prog prog);
  * therefore disabled by default.
  */
 extern int ddlog_enable_timely_profiling(ddlog_prog prog, bool enable);
+
+/*
+ * Dumps DDlog program runtime profile to a file.  `label` is an optional
+ * label used, along with the current time, to generate a file name to
+ * store the profile.  Set `label` to `NULL`
+ *
+ * Returns absolute path to the generated HTML profile file.  All profiles
+ * for a process (even if the process runs multiple DDlog instances) will
+ * be stored in the same directory.
+ *
+ * The returned string must be deallocated using `ddlog_string_free()`.
+ */
+extern char* ddlog_dump_profile(ddlog_prog prog, const char *label);
+
+/*
+ * Returns arrangement size profile as a JSON string.
+ *
+ * The returned string must be deallocated using `ddlog_string_free()`.
+ *
+ * Fails if the program runs with self-profiler disabled.
+ * Returns `NULL` on error.
+ */
+extern char* ddlog_arrangement_size_profile(ddlog_prog prog);
+
+/*
+ * Returns peak arrangement size profile as a JSON string.
+ *
+ * The returned string must be deallocated using `ddlog_string_free()`.
+ *
+ * Fails if the program runs with self-profiler disabled.
+ * Returns `NULL` on error.
+ */
+extern char* ddlog_peak_arrangement_size_profile(ddlog_prog prog);
+
+/*
+ * Returns arrangement change profile as a JSON string.  The
+ * change profile can be empty if change profiling was never
+ * enabled (using `ddlog_enable_change_profiling()`).  In this
+ * case, the function returns an empty JSON array (`[]`).
+ *
+ * The returned string must be deallocated using `ddlog_string_free()`.
+ *
+ * Fails if the program runs with self-profiler disabled.
+ * Returns `NULL` on error.
+ */
+extern char* ddlog_change_profile(ddlog_prog prog);
+
+/*
+ * Returns DDlog's CPU profile as a JSON string. The CPU
+ * profile can be empty if CPU profiling was never
+ * enabled (using `ddlog_enable_cpu_profiling()`).  In this
+ * case, the function returns an empty JSON array (`[]`).
+ *
+ * The returned string must be deallocated using `ddlog_string_free()`.
+ *
+ * Fails if the program runs with self-profiler disabled.
+ * On error, returns `NULL`.
+ */
+extern char* ddlog_cpu_profile(ddlog_prog prog);
 
 /***********************************************************************
  * Record API
@@ -918,7 +976,7 @@ extern void ddlog_free(ddlog_record *rec);
 
 /*
  * Deallocate a C string returned by DDlog
- * (currently only applicable to the string returned by `ddlog_profile()` and
+ * (currently only applicable to the string returned by `ddlog_dump_profile()` and
  * `ddlog_dump_record()`).
  */
 extern void ddlog_string_free(char *s);

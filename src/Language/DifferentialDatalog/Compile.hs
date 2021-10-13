@@ -50,13 +50,12 @@ import Data.Bits hiding (isSigned)
 import Data.List.Split
 import Data.FileEmbed
 import System.FilePath
-import qualified Data.ByteString.Char8 as BS
+import qualified Data.ByteString.UTF8 as BS
 import Numeric
 import qualified Data.Set as S
 import qualified Data.Map as M
 import qualified Data.Graph.Inductive as G
 import Data.WideWord
-import Text.Parsec (sourceName, sourceLine, sourceColumn)
 --import Debug.Trace
 
 import Language.DifferentialDatalog.Config
@@ -83,12 +82,13 @@ import Language.DifferentialDatalog.Attribute
 import Language.DifferentialDatalog.Var
 import Language.DifferentialDatalog.Rust
 import Language.DifferentialDatalog.D3log
+import Language.DifferentialDatalog.Profile
 
 -- Some OSs think that they run on a typewriter and insert '\r'
 -- at the end of each line.  We eliminate these characters as they confuse
 -- `cargo`.
 unpackFixNewline :: BS.ByteString -> String
-unpackFixNewline = filter (/= '\r') . BS.unpack
+unpackFixNewline = filter (/= '\r') . BS.toString
 
 -- Input argument name for Rust functions that take a datalog record.
 vALUE_VAR :: Doc
@@ -206,8 +206,6 @@ rustLibFiles =
         , ("differential_datalog/src/ddval/any.rs"                , $(embedFile "rust/template/differential_datalog/src/ddval/any.rs"))
         , ("differential_datalog/src/ddval/ddval_convert.rs"      , $(embedFile "rust/template/differential_datalog/src/ddval/ddval_convert.rs"))
         , ("differential_datalog/src/lib.rs"                      , $(embedFile "rust/template/differential_datalog/src/lib.rs"))
-        , ("differential_datalog/src/profile.rs"                  , $(embedFile "rust/template/differential_datalog/src/profile.rs"))
-        , ("differential_datalog/src/profile_statistics.rs"       , $(embedFile "rust/template/differential_datalog/src/profile_statistics.rs"))
         , ("differential_datalog/src/program/mod.rs"              , $(embedFile "rust/template/differential_datalog/src/program/mod.rs"))
         , ("differential_datalog/src/program/update.rs"           , $(embedFile "rust/template/differential_datalog/src/program/update.rs"))
         , ("differential_datalog/src/program/arrange.rs"          , $(embedFile "rust/template/differential_datalog/src/program/arrange.rs"))
@@ -236,6 +234,14 @@ rustLibFiles =
         , ("differential_datalog_test/Cargo.toml"                 , $(embedFile "rust/template/differential_datalog_test/Cargo.toml"))
         , ("differential_datalog_test/lib.rs"                     , $(embedFile "rust/template/differential_datalog_test/lib.rs"))
         , ("differential_datalog_test/test_value.rs"              , $(embedFile "rust/template/differential_datalog_test/test_value.rs"))
+        , ("ddlog_profiler/Cargo.toml"                            , $(embedFile "rust/template/ddlog_profiler/Cargo.toml"))
+        , ("ddlog_profiler/src/lib.rs"                            , $(embedFile "rust/template/ddlog_profiler/src/lib.rs"))
+        , ("ddlog_profiler/src/profile_statistics.rs"             , $(embedFile "rust/template/ddlog_profiler/src/profile_statistics.rs"))
+        , ("ddlog_profiler/src/debug_info.rs"                     , $(embedFile "rust/template/ddlog_profiler/src/debug_info.rs"))
+        , ("ddlog_profiler/src/source_code.rs"                    , $(embedFile "rust/template/ddlog_profiler/src/source_code.rs"))
+        , ("ddlog_profiler/profiler_ui/ui.css"                    , $(embedFile "rust/template/ddlog_profiler/profiler_ui/ui.css"))
+        , ("ddlog_profiler/profiler_ui/ui.js"                     , $(embedFile "rust/template/ddlog_profiler/profiler_ui/ui.js"))
+        , ("ddlog_profiler/profiler_ui/ui.html"                   , $(embedFile "rust/template/ddlog_profiler/profiler_ui/ui.html"))
         , ("ddlog_derive/Cargo.toml"                              , $(embedFile "rust/template/ddlog_derive/Cargo.toml"))
         , ("ddlog_derive/src/lib.rs"                              , $(embedFile "rust/template/ddlog_derive/src/lib.rs"))
         , ("ddlog_derive/src/from_record.rs"                      , $(embedFile "rust/template/ddlog_derive/src/from_record.rs"))
@@ -271,10 +277,13 @@ rustLibFiles =
 -- modulo variable names have the same normalized representation) and that only
 -- expand constructors that either contain a key variable or are non-unique.
 --
+-- 'used_at' - source code locations of all rule clauses and indexes that use
+-- this arrangement, used to generate profiling info for the arrangement.
+--
 -- The 'distinct' flag in 'ArrangementSet' indicates that this arrangement is used
 -- in an antijoin and therefore must contain distinct entries.
-data Arrangement = ArrangementMap { arngPattern :: Expr, arngIndexes :: [Index] }
-                 | ArrangementSet { arngPattern :: Expr, arngDistinct :: Bool}
+data Arrangement = ArrangementMap { arngPattern :: Expr, arngUsedAt :: [Pos], arngIndexes :: [Index] }
+                 | ArrangementSet { arngPattern :: Expr, arngUsedAt :: [Pos], arngDistinct :: Bool }
                  deriving (Eq, Show)
 
 arngUsedInIndexes :: Arrangement -> [Index]
@@ -284,6 +293,13 @@ arngUsedInIndexes ArrangementSet{} = []
 arngIsDistinct :: Arrangement -> Bool
 arngIsDistinct ArrangementMap{} = False
 arngIsDistinct ArrangementSet{arngDistinct} = arngDistinct
+
+arngIsSet :: Arrangement -> Bool
+arngIsSet ArrangementMap{} = False
+arngIsSet ArrangementSet{} = True
+
+arngAddUsedAt :: Pos -> Arrangement -> Arrangement
+arngAddUsedAt p arng = arng { arngUsedAt = nub $ p : arngUsedAt arng }
 
 -- Compiled relation.  This struct is generated during the first pass, and is
 -- used to populate Rust crates during the second pass of the compiler.
@@ -314,20 +330,20 @@ data RecProgRel = RecProgRel {
 
 -- Compiled program node: individual relation or a recursive fragment
 data ProgNode = SCCNode   [RecProgRel]
-              | ApplyNode ModuleName Int Doc
+              | ApplyNode ModuleName Int Doc Doc Doc
               | RelNode   ProgRel
 
 nodeRels :: ProgNode -> [ProgRel]
-nodeRels (SCCNode rels)     = map rprelRel rels
-nodeRels (RelNode rel)      = [rel]
-nodeRels (ApplyNode _ _ _)  = []
+nodeRels (SCCNode rels)         = map rprelRel rels
+nodeRels (RelNode rel)          = [rel]
+nodeRels (ApplyNode _ _ _ _ _)  = []
 
 {- State accumulated by the compiler as it traverses the program -}
 type CompilerMonad = State CompilerState
 
 data CompilerState = CompilerState {
     cArrangements :: M.Map String [Arrangement],
-    cDelayedRelIds :: M.Map (String, Delay) Int
+    cDelayedRelIds :: M.Map (String, Delay) (Int, [Pos])
 }
 
 emptyCompilerState :: CompilerState
@@ -383,7 +399,7 @@ relId d rel = pp $ M.findIndex rel $ progRelations d
 atomRelId :: DatalogProgram -> Atom -> CompilerMonad Doc
 atomRelId d a@Atom{..} | not (atomIsDelayed a) = return $ relId d atomRelation
                        | otherwise =
-    gets $ \c -> pp $ cDelayedRelIds c M.! (atomRelation, atomDelay)
+    gets $ \c -> pp $ fst $ cDelayedRelIds c M.! (atomRelation, atomDelay)
 
 -- Create a new arrangement for use in a join operator:
 -- * If the arrangement exists, do nothing
@@ -392,15 +408,16 @@ atomRelId d a@Atom{..} | not (atomIsDelayed a) = return $ relId d atomRelation
 -- * Otherwise, add the new arrangement
 --
 -- NOTE: We assume that we are arranging a non-delayed relation.
-addJoinArrangement :: DatalogProgram -> String -> Expr -> Maybe Index -> CompilerMonad ()
-addJoinArrangement d relname pat midx | -- We use streaming joins for streams, which do not require an
-                                            -- arrangement.
-                                            relIsStream (getRelation d relname) = return ()
-                                          | otherwise = do
+addJoinArrangement :: DatalogProgram -> String -> Expr -> Maybe Index -> Pos -> CompilerMonad ()
+addJoinArrangement d relname pat midx p | -- We use streaming joins for streams, which do not require an
+                                          -- arrangement.
+                                          relIsStream (getRelation d relname) = return ()
+                                        | otherwise = do
     arrs <- gets $ (M.! relname) . cArrangements
     let existing_idx = findIndex (\a -> (arngPattern a == pat) && (arngIsDistinct a == False)) arrs
     let idxs = nub $ maybeToList midx ++ maybe [] (arngUsedInIndexes . (arrs !!)) existing_idx
-    let join_arr = ArrangementMap pat idxs
+    let used_at = maybe [] (arngUsedAt . (arrs !!)) existing_idx
+    let join_arr = arngAddUsedAt p $ ArrangementMap pat used_at idxs
     let arrs' = maybe (arrs ++ [join_arr])
                       (\idx -> take idx arrs ++ [join_arr] ++ drop (idx+1) arrs)
                       existing_idx
@@ -409,13 +426,13 @@ addJoinArrangement d relname pat midx | -- We use streaming joins for streams, w
 -- Create a new arrangement for use in a semijoin operator:
 -- * If a semijoin, antijoin or join arrangement with the same pattern exists, do nothing
 -- * Otherwise, add the new arrangement
-addSemijoinArrangement :: DatalogProgram -> String -> Expr -> CompilerMonad ()
-addSemijoinArrangement d relname pat | relIsStream (getRelation d relname) = return ()
-                                         | otherwise = do
+addSemijoinArrangement :: DatalogProgram -> String -> Expr -> Pos -> CompilerMonad ()
+addSemijoinArrangement d relname pat p | relIsStream (getRelation d relname) = return ()
+                                       | otherwise = do
     arrs <- gets $ (M.! relname) . cArrangements
-    let arrs' = if isJust $ find ((== pat) . arngPattern) arrs
-                   then arrs
-                   else arrs ++ [ArrangementSet pat False]
+    let arrs' = case findIndex ((== pat) . arngPattern) arrs of
+                     Just idx -> take idx arrs ++ [arngAddUsedAt p $ arrs !! idx] ++ drop (idx+1) arrs
+                     Nothing  -> arrs ++ [ArrangementSet pat [p] False]
     modify $ \s -> s{cArrangements = M.insert relname arrs' $ cArrangements s}
 
 -- Create a new arrangement for use in a antijoin operator:
@@ -423,17 +440,13 @@ addSemijoinArrangement d relname pat | relIsStream (getRelation d relname) = ret
 -- * If a semijoin arrangement with the same pattern exists, promote it to
 --   an antijoin by setting 'distinct' to true
 -- * Otherwise, add the new arrangement
-addAntijoinArrangement :: DatalogProgram -> String -> Expr -> CompilerMonad ()
-addAntijoinArrangement d relname pat | relIsStream (getRelation d relname) = return ()
-                                         | otherwise = do
+addAntijoinArrangement :: DatalogProgram -> String -> Expr -> Pos -> CompilerMonad ()
+addAntijoinArrangement d relname pat p | relIsStream (getRelation d relname) = return ()
+                                       | otherwise = do
     arrs <- gets $ (M.! relname) . cArrangements
-    let antijoin_arr = ArrangementSet pat True
-    let semijoin_idx = elemIndex (ArrangementSet pat False) arrs
-    let arrs' = if elem antijoin_arr arrs
-                   then arrs
-                   else maybe (arrs ++ [antijoin_arr])
-                              (\idx -> take idx arrs ++ [antijoin_arr] ++ drop (idx+1) arrs)
-                              semijoin_idx
+    let arrs' = case findIndex (\arng -> arngIsSet arng && arngPattern arng == pat) arrs of
+                     Just idx -> take idx arrs ++ [(arngAddUsedAt p $ arrs !! idx){arngDistinct = True}] ++ drop (idx+1) arrs
+                     Nothing  -> arrs ++ [ArrangementSet pat [p] True]
     modify $ \s -> s{cArrangements = M.insert relname arrs' $ cArrangements s}
 
 -- Find an arrangement of the form 'ArrangementSet pattern _'
@@ -441,8 +454,8 @@ getSemijoinArrangement :: String -> Expr -> CompilerMonad (Maybe Int)
 getSemijoinArrangement relname pat = do
     arrs <- gets $ (M.! relname) . cArrangements
     return $ findIndex (\case
-                         ArrangementSet pattern' _ -> pattern' == pat
-                         _                         -> False)
+                         ArrangementSet pattern' _ _ -> pattern' == pat
+                         _                           -> False)
                        arrs
 
 -- Find an arrangement of the form 'ArrangementMap pattern _'
@@ -457,7 +470,9 @@ getJoinArrangement relname pat = do
 getAntijoinArrangement :: String -> Expr -> CompilerMonad (Maybe Int)
 getAntijoinArrangement relname pat = do
     arrs <- gets $ (M.! relname) . cArrangements
-    return $ elemIndex (ArrangementSet pat True) arrs
+    return $ findIndex (\case
+                         ArrangementSet{arngPattern, arngDistinct=True} -> arngPattern == pat
+                         _ -> False) arrs
 
 -- Rust does not like parenthesis around singleton tuples
 tuple :: [Doc] -> Doc
@@ -506,6 +521,7 @@ mkConstructorName local_module tname t c =
 compile :: (?cfg :: Config) => DatalogProgram -> String -> [DatalogModule] -> M.Map ModuleName (Doc, Doc, Doc) -> FilePath -> [String] -> IO ()
 compile d_unoptimized specname modules rs_code dir crate_types = do
     let ?modules = M.fromList $ map (\m -> (moduleName m, m)) modules
+    let ?module_paths = M.fromList $ map (\m -> (moduleFile m, m)) modules
     let ?specname = specname
     let -- Partition modules into crates.
         ?crate_graph = partitionIntoCrates ?modules
@@ -554,6 +570,7 @@ compile d_unoptimized specname modules rs_code dir crate_types = do
                         ++ "members = [\n"
                         ++ "    \"cmd_parser\",\n"
                         ++ "    \"differential_datalog\",\n"
+                        ++ "    \"ddlog_profiler\",\n"
                         ++ "    \"ovsdb\",\n"
                         ++ "]\n"
                 )
@@ -571,7 +588,7 @@ addProjections :: DatalogProgram -> DatalogProgram
 addProjections d = progRHSMap d addProjection
     where
     addProjection rl rhs_idx rhs@RHSGroupBy{..} =
-        [ RHSCondition $ E $ ESet (pos rhsProject) (eVarDecl pROJECTION_VAR $ (exprType d (CtxRuleRProject rl rhs_idx) rhsProject)) rhsProject
+        [ RHSCondition (pos rhsProject) $ E $ ESet (pos rhsProject) (eVarDecl pROJECTION_VAR $ (exprType d (CtxRuleRProject rl rhs_idx) rhsProject)) rhsProject
         , rhs{rhsProject = eVar pROJECTION_VAR}]
     addProjection _ _        rhs = [rhs]
 
@@ -582,10 +599,10 @@ addProjections d = progRHSMap d addProjection
 simplifyDelayedRels :: DatalogProgram -> DatalogProgram
 simplifyDelayedRels d =
     -- For each 'R-n', add a fresh relation called "__n_R".
-    foldl' (\d_ (rname, delay) ->
+    foldl' (\d_ ((rname, delay), p) ->
              let rel = getRelation d rname
                  delayed_rel = Relation {
-                     relPos          = nopos,
+                     relPos          = p,
                      relAttrs        = relAttrs rel,
                      relRole         = RelInternal,
                      relSemantics    = relSemantics rel,
@@ -594,10 +611,10 @@ simplifyDelayedRels d =
                      relPrimaryKey   = Nothing
                  }
                  delayed_rule = Rule {
-                    rulePos     = nopos,
+                    rulePos     = p,
                     ruleModule  = nameScope rel,
                     ruleLHS     = [RuleLHS {
-                        lhsPos = nopos,
+                        lhsPos = p,
                         lhsAtom = Atom {
                             atomPos        = nopos,
                             atomRelation   = name delayed_rel,
@@ -608,6 +625,7 @@ simplifyDelayedRels d =
                         lhsLocation = Nothing
                      }],
                      ruleRHS    = [RHSLiteral {
+                         rhsPos         = p,
                          rhsPolarity    = True,
                          rhsAtom        = Atom {
                              atomPos        = nopos,
@@ -619,7 +637,7 @@ simplifyDelayedRels d =
                      }]
                  }
              in progAddRules [delayed_rule] $ progAddRel delayed_rel d_)
-           delayed_rels d'
+           d' (M.toList delayed_rels)
     where
     mk_delayed_rel_name :: (String, Delay) -> String
     mk_delayed_rel_name (rel, del) = scoped rel_scope $ "__" ++ show (delayDelay del) ++ "_" ++ rel_name
@@ -629,15 +647,15 @@ simplifyDelayedRels d =
 
     -- Find all delayed rels in the program, replacing each occurrence
     -- of 'R-n' with '__n_R'.
-    (delayed_rels, d') = runState
+    (d', delayed_rels) = runState
         (progAtomMapM d
             $ \a@Atom{..} ->
                if atomIsDelayed a
-               then do modify $ S.insert (atomRelation, atomDelay)
+               then do modify $ M.insert (atomRelation, atomDelay) (pos a)
                        return a{ atomRelation = mk_delayed_rel_name (atomRelation, atomDelay)
                                , atomDelay = delayZero}
                else return a)
-        S.empty
+        M.empty
 
 -- For each differentiated relation 'R'' that occurs in the program,
 -- add a synonym relation '__diff_R' defined as '__diff_R :- R'' and replace
@@ -649,10 +667,10 @@ simplifyDelayedRels d =
 simplifyDifferentiation :: DatalogProgram -> DatalogProgram
 simplifyDifferentiation d =
     -- For each 'R'', add a fresh relation called "__diff_R".
-    foldl' (\d_ rname ->
+    foldl' (\d_ (rname, p) ->
              let rel = getRelation d rname
                  diff_rel = Relation {
-                     relPos          = nopos,
+                     relPos          = p,
                      relAttrs        = relAttrs rel,
                      relRole         = RelInternal,
                      relSemantics    = RelMultiset,
@@ -661,10 +679,10 @@ simplifyDifferentiation d =
                      relPrimaryKey   = Nothing
                  }
                  diff_rule = Rule {
-                    rulePos     = nopos,
+                    rulePos     = p,
                     ruleModule  = nameScope rel,
                     ruleLHS     = [RuleLHS {
-                        lhsPos = nopos,
+                        lhsPos = p,
                         lhsAtom = Atom {
                             atomPos        = nopos,
                             atomRelation   = name diff_rel,
@@ -675,6 +693,7 @@ simplifyDifferentiation d =
                         lhsLocation = Nothing
                      }],
                      ruleRHS    = [RHSLiteral {
+                         rhsPos = p,
                          rhsPolarity    = True,
                          rhsAtom        = Atom {
                              atomPos        = nopos,
@@ -686,7 +705,7 @@ simplifyDifferentiation d =
                      }]
                  }
              in progAddRules [diff_rule] $ progAddRel diff_rel d_)
-           diff_rels d'
+           d' (M.toList diff_rels)
     where
     mk_diff_rel_name :: String -> String
     mk_diff_rel_name rname = scoped rel_scope $ "__diff_" ++ rel_name
@@ -695,17 +714,17 @@ simplifyDifferentiation d =
         rel_name = nameLocalStr rname
     -- Find all differentiated rels in the program, replacing each occurrence
     -- of 'R'' with '__diff_R'.
-    (diff_rels, d') = runState
+    (d', diff_rels) = runState
         (progAtomMapM d
             $ \a@Atom{..} ->
                if atomDiff
-               then do modify $ S.insert atomRelation
+               then do modify $ M.insert atomRelation (pos a)
                        return a{ atomRelation = mk_diff_rel_name atomRelation
                                , atomDiff = False}
                else return a)
-        S.empty
+        M.empty
 
-compileLib :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?modules::M.Map ModuleName DatalogModule)
+compileLib :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?modules::M.Map ModuleName DatalogModule, ?module_paths::ModulePathMap)
     => DatalogProgram -> M.Map String String -> M.Map ModuleName (Doc, Doc, Doc) -> (M.Map FilePath Doc, Doc)
 compileLib d d3log_rel_map rs_code =
     (crates, main_lib)
@@ -718,7 +737,7 @@ compileLib d d3log_rel_map rs_code =
     -- Generate the main library file.
     main_lib = compileMainLib d d3log_rel_map nodes cstate
 
-compileRules :: (?cfg::Config, ?specname::String, ?modules::M.Map ModuleName DatalogModule, ?crate_graph::CrateGraph) => DatalogProgram -> Statics -> ([ProgNode], CompilerState)
+compileRules :: (?cfg::Config, ?specname::String, ?modules::M.Map ModuleName DatalogModule, ?crate_graph::CrateGraph, ?module_paths::ModulePathMap) => DatalogProgram -> Statics -> ([ProgNode], CompilerState)
 compileRules d statics =
     runState (do -- First pass: compute arrangements.
                  createArrangements d
@@ -763,7 +782,8 @@ mkCargoToml rs_code crate crate_id =
            ""                                                                              $$
            "[dependencies]"                                                                $$
            "differential_datalog = { path = \"" <> pp root <> "../differential_datalog\" }"$$
-           "ddlog_derive = { path = \"" <> pp root <> "../ddlog_derive\" }"$$
+           "ddlog_profiler = { path = \"" <> pp root <> "../ddlog_profiler\" }"            $$
+           "ddlog_derive = { path = \"" <> pp root <> "../ddlog_derive\" }"                $$
            "abomonation = \"0.7\""                                                         $$
            "ordered-float = { version = \"2.0.0\", features = [\"serde\"] }"               $$
            "fnv = \"1.0.2\""                                                               $$
@@ -921,7 +941,7 @@ compileModule d statics nodes rs_code crate mod_name =
     -- Transformers.
     transformers = vcat
                    $ mapMaybe (\case
-                       ApplyNode mname _ acode | mname == mod_name -> Just acode
+                       ApplyNode mname _ _ _ acode | mname == mod_name -> Just acode
                        _ -> Nothing)
                    $ nodes
     code = prelude          $+$
@@ -937,7 +957,7 @@ compileModule d statics nodes rs_code crate mod_name =
            transformers
 
 -- | Compile DDlog rules into Rust.
-compileMainLib :: (?cfg::Config, ?specname::String, ?modules::M.Map ModuleName DatalogModule, ?crate_graph::CrateGraph) => DatalogProgram -> M.Map String String -> [ProgNode] -> CompilerState -> Doc
+compileMainLib :: (?cfg::Config, ?specname::String, ?modules::M.Map ModuleName DatalogModule, ?crate_graph::CrateGraph, ?module_paths::ModulePathMap) => DatalogProgram -> M.Map String String -> [ProgNode] -> CompilerState -> Doc
 compileMainLib d d3log_rel_map nodes cstate =
     mainHeader                             $+$
     reexports                              $+$
@@ -947,7 +967,8 @@ compileMainLib d d3log_rel_map nodes cstate =
     mkRelEnum d                            $+$ -- 'enum Relations'
     mkIdxEnum d                            $+$ -- 'enum Indexes'
     mkD3logImpl d d3log_rel_map            $+$
-    mkProg d cstate nodes
+    mkProg d cstate nodes                  $+$
+    mkSources
     where
     mod_type_reexports = foldl' (mrAddTypedef d) emptyModuleReexports
                                 (M.elems $ progTypedefs d)
@@ -955,6 +976,20 @@ compileMainLib d d3log_rel_map nodes cstate =
                            (concat $ M.elems $ progFunctions d)
     reexports = "pub mod typedefs" $+$
                 (braces' $ ppModuleReexports d mod_reexports)
+
+-- The 'SOURCES' static variable contains complete DDlog source code embedded
+-- inside the compiled binary.
+mkSources :: (?specname::String, ?modules::M.Map ModuleName DatalogModule) => Doc
+mkSources =
+    "static SOURCES: &'static [ddlog_profiler::SourceFile] = &[" $$
+    (nest' $ vcommaSep sources)                                  $$
+    "];"
+    where
+    sources = map (\DatalogModule{..} ->
+                    let fpath = pp $ show moduleFile 
+                        rpath = pp $ show $ moduleNameToRelPath moduleName in
+                    "ddlog_profiler::SourceFile{filename: " <> rpath <> ", contents: std::include_str!(" <> fpath <> ")}")
+                  $ M.elems ?modules
 
 data ModuleReexports = ModuleReexports {
     mrLocalDefs     :: [TypeDef],
@@ -1758,10 +1793,12 @@ allocDelayedRelIds d = do
                         -- Allocate delayed relation indexes after the last
                         -- non-delayed relation index.
                         let fst_index = length (progRelations d) + 1
-                        relid <- gets $ (M.lookup rel_delay) . cDelayedRelIds
-                        case relid of
-                             Just _ -> return ()
-                             Nothing -> modify $ \c -> c{ cDelayedRelIds = M.insert rel_delay (fst_index + M.size (cDelayedRelIds c))
+                        relid_pos <- gets $ (M.lookup rel_delay) . cDelayedRelIds
+                        case relid_pos of
+                             Just (relid, src_pos) ->
+                                        modify $ \c -> c{ cDelayedRelIds = M.insert rel_delay (relid, src_pos ++ [rhsPos])
+                                                                                    $ cDelayedRelIds c }
+                             Nothing -> modify $ \c -> c{ cDelayedRelIds = M.insert rel_delay (fst_index + M.size (cDelayedRelIds c), [rhsPos])
                                                                                     $ cDelayedRelIds c }
                     _ -> return ()) ruleRHS)
           $ progRules d
@@ -1785,7 +1822,7 @@ createIndexArrangement d idx@Index{..} = do
                $ map (\f -> (eVar $ name f, error $ "createIndexArrangement " ++ show idx ++ ": " ++ name f ++ " context should not be used")) idxVars
     case marr of
          Nothing -> error $ "createIndexArrangement " ++ show idx ++ ": failed to compute index arrangement."
-         Just arr -> addJoinArrangement d (atomRelation idxAtom) arr (Just idx)
+         Just arr -> addJoinArrangement d (atomRelation idxAtom) arr (Just idx) (pos idx)
 
 createRelArrangements :: DatalogProgram -> Relation -> CompilerMonad ()
 createRelArrangements d rel = mapM_ (createRuleArrangements d) $ relRules d $ name rel
@@ -1795,7 +1832,7 @@ createRuleArrangements d rule = do
     -- Arrange the first atom in the rule if needed
     let arr = ruleArrangeFstLiteral d rule
     when (isJust arr)
-         $ addJoinArrangement d (atomRelation $ rhsAtom $ head $ ruleRHS rule) (fromJust arr) Nothing
+         $ addJoinArrangement d (atomRelation $ rhsAtom $ head $ ruleRHS rule) (fromJust arr) Nothing (pos $ head $ ruleRHS rule)
     mapM_ (createRuleArrangement d rule) [1..(length (ruleRHS rule) - 1)]
 
 createRuleArrangement :: DatalogProgram -> Rule -> Int -> CompilerMonad ()
@@ -1807,13 +1844,13 @@ createRuleArrangement d rule idx = do
     -- If the literal does not introduce new variables, it's a semijoin.
     let is_semi = null $ ruleRHSNewVars d rule idx
     case rhs of
-         RHSLiteral True _ | is_semi   -> addSemijoinArrangement d (name rel) arr
-                           | otherwise -> addJoinArrangement d (name rel) arr Nothing
-         RHSLiteral False _            -> addAntijoinArrangement d (name rel) arr
-         _                             -> return ()
+         RHSLiteral p True _ | is_semi   -> addSemijoinArrangement d (name rel) arr p
+                             | otherwise -> addJoinArrangement d (name rel) arr Nothing p
+         RHSLiteral p False _            -> addAntijoinArrangement d (name rel) arr p
+         _                               -> return ()
 
 -- Generate Rust struct for ProgNode.
-compileSCC :: (?cfg::Config, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> Statics -> DepGraph -> Int -> [G.Node] -> CompilerMonad ProgNode
+compileSCC :: (?cfg::Config, ?crate_graph::CrateGraph, ?specname::String, ?module_paths::ModulePathMap) => DatalogProgram -> Statics -> DepGraph -> Int -> [G.Node] -> CompilerMonad ProgNode
 compileSCC d statics dep i nodes | recursive = compileSCCNode d statics relnames
                                  | otherwise =
     case depnode of
@@ -1825,7 +1862,7 @@ compileSCC d statics dep i nodes | recursive = compileSCCNode d statics relnames
     relnames = map ((\(DepNodeRel rel) -> rel) . fromJust . G.lab dep) nodes
     depnode = fromJust $ G.lab dep $ head nodes
 
-compileRelNode :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph) => DatalogProgram -> Statics -> String -> CompilerMonad ProgNode
+compileRelNode :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?module_paths::ModulePathMap) => DatalogProgram -> Statics -> String -> CompilerMonad ProgNode
 compileRelNode d statics relname = do
     rel <- compileRelation d statics relname
     return $ RelNode rel
@@ -1863,9 +1900,9 @@ where
      EF: Fn(V) -> E + 'static,
      LF: Fn((N,N)) -> V + 'static
 -}
-compileApplyNode :: (?cfg :: Config, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> Apply -> Int -> ProgNode
+compileApplyNode :: (?cfg :: Config, ?crate_graph::CrateGraph, ?specname::String, ?module_paths::ModulePathMap) => DatalogProgram -> Apply -> Int -> ProgNode
 compileApplyNode d Apply{..} idx =
-    ApplyNode applyModule idx $
+    ApplyNode applyModule idx xformer_name (mkSourcePos transPos) $
                "pub fn __apply_" <> pp idx <+> "() -> Box<"
             $$ "    dyn for<'a> Fn("
             $$ "        &mut ::fnv::FnvHashMap<"
@@ -1879,11 +1916,12 @@ compileApplyNode d Apply{..} idx =
             $$ "    ),"
             $$ "> {"
             $$ "    Box::new(|collections| {"
-            $$ "        let (" <> commaSep outputs <> ") =" <+> rnameScoped (Just applyModule) applyTransformer <> (parens $ commaSep inputs) <> ";"
+            $$ "        let (" <> commaSep outputs <> ") =" <+> xformer_name <> (parens $ commaSep inputs) <> ";"
             $$ (nest' $ nest' $ vcat update_collections)
             $$ "    })"
             $$ "}"
     where
+    xformer_name = rnameScoped (Just applyModule) applyTransformer
     Transformer{..} = getTransformer d applyTransformer
     inputs =
         concatMap
@@ -1900,7 +1938,7 @@ compileApplyNode d Apply{..} idx =
     extractValue t = parens $
             "|" <> vALUE_VAR <> ": ::differential_datalog::ddval::DDValue| unsafe {<" <> mkType d (Just applyModule) t <> ">::from_ddvalue_unchecked(" <> vALUE_VAR <> ") }"
 
-compileSCCNode :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph) => DatalogProgram -> Statics -> [String] -> CompilerMonad ProgNode
+compileSCCNode :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?module_paths::ModulePathMap) => DatalogProgram -> Statics -> [String] -> CompilerMonad ProgNode
 compileSCCNode d statics relnames = do
     prels <- mapM (\rel -> do prel <- compileRelation d statics rel
                               -- Only `distinct` relation if its weights can grow
@@ -1943,7 +1981,7 @@ let ancestor = {
     }
 };
 -}
-compileRelation :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph) => DatalogProgram -> Statics -> String -> CompilerMonad ProgRel
+compileRelation :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?module_paths::ModulePathMap) => DatalogProgram -> Statics -> String -> CompilerMonad ProgRel
 compileRelation d statics rn = do
     let rel@Relation{..} = getRelation d rn
     let -- Each rule is stored in a static variable in the module where the rule is declared.
@@ -1984,11 +2022,10 @@ compileRelation d statics rn = do
                                          let arng' = mkArrangement d rel arng in
                                          "pub static" <+> arng_name i <+> ": ::once_cell::sync::Lazy<program::Arrangement> = ::once_cell::sync::Lazy::new(|| {" $$ nest' arng' $$ "});") arrangements
 
-    let (position, _) = relPos
-    let location = text (replace "\\" "\\\\" $ sourceName position) <> ":" <> int (sourceLine position) <> ":" <> int (sourceColumn position)
     let code =
             "let" <+> rnameFlat rn <+> "=" <+> "::differential_datalog::program::Relation {"
-            $$ "    name: ::std::borrow::Cow::from(\"" <> pp rn <+> "@" <+> location <> "\"),"
+            $$ "    name:" <+> cow_str rn <> ","
+            $$ "    source_pos:" <+> mkSourcePos relPos <> ","
             $$ "    input:" <+> (if relRole == RelInput then "true" else "false") <> ","
             $$ "    distinct:" <+> (if relRole == RelOutput && relSemantics == RelSet && not (relIsDistinctByConstruction d rel)
                                            then "true"
@@ -2074,7 +2111,8 @@ ruleArrangeFstLiteral d rl@Rule{..} | null ruleRHS = Nothing
 -- 'input_val' - true if the relation generated by the last operator is a Value, not
 -- tuple.  This is the case when we've only encountered antijoins so far (since antijoins
 -- do not rearrange the input relation).
-compileRule :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?statics::CrateStatics) => DatalogProgram -> Rule -> Int -> Bool -> CompilerMonad Doc
+compileRule :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?statics::CrateStatics, ?module_paths::ModulePathMap)
+    => DatalogProgram -> Rule -> Int -> Bool -> CompilerMonad Doc
 compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ show rl ++ " / " ++ show last_rhs_idx) $-} do
     -- First relation in the body of the rule
     let fstatom = rhsAtom $ head ruleRHS
@@ -2106,19 +2144,19 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
     -- Generate XFormCollection or XFormArrangement for the 'rhs' operator.
     let mkArrangedOperator conditions inpval =
             case rhs of
-                 RHSLiteral True a  -> mkJoin d conditions inpval a rl rhs_idx
-                 RHSLiteral False a -> mkAntijoin d conditions inpval a rl rhs_idx
-                 RHSGroupBy{}       -> mkGroupBy d conditions rl rhs_idx
-                 _                  -> error $ "compileRule: operator " ++ show rhs ++ " does not expect arranged input"
+                 RHSLiteral _ True a  -> mkJoin d conditions inpval a rl rhs_idx
+                 RHSLiteral _ False a -> mkAntijoin d conditions inpval a rl rhs_idx
+                 RHSGroupBy{}         -> mkGroupBy d conditions rl rhs_idx
+                 _                    -> error $ "compileRule: operator " ++ show rhs ++ " does not expect arranged input"
     let mkCollectionOperator | rhs_idx == length ruleRHS
                              = return $ mkHead d prefix rl
                              | otherwise =
             case rhs of
-                 RHSFlatMap vs e -> mkFlatMap d prefix rl rhs_idx vs e
-                 RHSInspect e | not (null filters) || input_val -> mkFilterMap d prefix rl rhs_idx -- filter inputs before inspecting them
-                              | otherwise -> mkInspect d prefix rl rhs_idx e input_val -- pass input_val to be future-proof
-                 RHSLiteral True a  -> -- Streaming join.
-                                       mkJoin d conds input_val a rl rhs_idx
+                 RHSFlatMap _ vs e -> mkFlatMap d prefix rl rhs_idx vs e
+                 RHSInspect _ e | not (null filters) || input_val -> mkFilterMap d prefix rl (last_rhs_idx + 1) rhs_idx -- filter inputs before inspecting them
+                                | otherwise -> mkInspect d prefix rl rhs_idx e input_val -- pass input_val to be future-proof
+                 RHSLiteral _ True a  -> -- Streaming join.
+                                         mkJoin d conds input_val a rl rhs_idx
                  _ -> error "compileRule: operator requires arranged input"
 
     let is_stream_xform = rulePrefixIsStream d rl rhs_idx
@@ -2135,7 +2173,7 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
             xform <- mkArrangedOperator conds input_val
             return $ "/*" <+> pp rl <+> "*/"
                 $$ "::differential_datalog::program::Rule::ArrangementRule {"
-                $$ "    description: ::std::borrow::Cow::Borrowed(" <> pp (show $ render $ rulePPStripped rl) <> "),"
+                $$ "    debug_info:" <+> dbgInfoRule rl <> ","
                 $$ "    arr: (" <> relid <> "," <+> pp arid <> "),"
                 $$ "    xform:" <+> xform <> ","
                 $$ "}"
@@ -2150,7 +2188,7 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                             xform' <- mkArrangedOperator [] False
                             let arranged_xform =
                                     "::differential_datalog::program::XFormCollection::Arrange {"
-                                    $$ "    description: ::std::borrow::Cow::Borrowed(" <> (pp $ show $ show $ "arrange" <+> rulePPPrefix rl (last_rhs_idx + 1) <+> "by" <+> key_str) <> "),"
+                                    $$ "    debug_info:" <+> dbgInfoArrange rl rhs_idx key_str <> ","
                                     $$ "    afun: {"
                                     $$ "        fn __ddlog_generated_arrangement_function(" <> vALUE_VAR <> ": ::differential_datalog::ddval::DDValue) ->"
                                     $$ "            ::core::option::Option<(::differential_datalog::ddval::DDValue, ::differential_datalog::ddval::DDValue)>"
@@ -2163,7 +2201,7 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                             then do let post_conds = takeWhile (rhsIsCondition . (ruleRHS !!)) [rhs_idx + 1 .. length ruleRHS - 1]
                                     next <- compileRule d rl (rhs_idx + length post_conds) False
                                     return $ "::differential_datalog::program::XFormCollection::StreamXForm {"
-                                        $$ "    description: ::std::borrow::Cow::Borrowed(" <> (pp $ show $ show $ "stream-transform" <+> rulePPPrefix rl (last_rhs_idx + 1)) <> "),"
+                                        $$ "    debug_info:" <+> dbgInfoStreamXForm rl rhs_idx <> ","
                                         $$ "    xform: ::std::boxed::Box::new(::core::option::Option::Some(" <> arranged_xform <> ")),"
                                         $$ "    next: ::std::boxed::Box::new(" <> next <> "),"
                                         $$ "}"
@@ -2179,10 +2217,10 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
                 -- to generate Inspect rust code does not need another CollectionRule.
                 if last_rhs_idx == 0 && input_val
                    then "/*" <+> pp rl <+> "*/"                                         $$
-                        "::differential_datalog::program::Rule::CollectionRule {"                               $$
-                        "    description: ::std::borrow::Cow::from(" <> pp (show $ render $ rulePPStripped rl) <> "),"    $$
+                        "::differential_datalog::program::Rule::CollectionRule {"       $$
+                        "    debug_info:" <+> dbgInfoRule rl <> ","                     $$
                         "    rel:" <+> relid <> ","                                     $$
-                        "    xform: ::core::option::Option::Some(" <> xform <> "),"                              $$
+                        "    xform: ::core::option::Option::Some(" <> xform <> "),"     $$
                         "}"
                    else "::core::option::Option::Some(" <> xform <> ")"
 
@@ -2195,13 +2233,13 @@ compileRule d rl@Rule{..} last_rhs_idx input_val = {-trace ("compileRule " ++ sh
 -- as the key to index the input collection.  The second component lists variables that
 -- will form the value of the arrangement.
 rhsInputArrangement :: DatalogProgram -> Rule -> Int -> RuleRHS -> Maybe ([(Expr, ECtx)], [Var])
-rhsInputArrangement d rl rhs_idx (RHSLiteral _ atom) =
+rhsInputArrangement d rl rhs_idx (RHSLiteral _ _ atom) =
     let ctx = CtxRuleRAtom rl rhs_idx
         (_, vmap) = normalizeArrangement d ctx $ atomVal atom
     in Just $ (map (\(_,e,c) -> (e,c)) vmap,
                -- variables visible before join that are still in use after it
                (rhsVarsAfter d rl (rhs_idx - 1)) `intersect` (rhsVarsAfter d rl rhs_idx))
-rhsInputArrangement d rl rhs_idx (RHSGroupBy _ projection grpby) =
+rhsInputArrangement d rl rhs_idx (RHSGroupBy _ _ projection grpby) =
     let grp_ctx = CtxRuleRGroupBy rl rhs_idx
         proj_ctx = CtxRuleRProject rl rhs_idx
     in Just $ (map (\(v, ctx') -> (eVar v, ctx')) $ exprVarOccurrences grp_ctx grpby,
@@ -2209,7 +2247,7 @@ rhsInputArrangement d rl rhs_idx (RHSGroupBy _ projection grpby) =
                exprFreeVars d proj_ctx projection)
 rhsInputArrangement _ _  _       _ = Nothing
 
-mkFlatMap :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?statics::CrateStatics) => DatalogProgram -> Doc -> Rule -> Int -> Expr -> Expr -> CompilerMonad Doc
+mkFlatMap :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?statics::CrateStatics, ?module_paths::ModulePathMap) => DatalogProgram -> Doc -> Rule -> Int -> Expr -> Expr -> CompilerMonad Doc
 mkFlatMap d prefix rl idx vs e = do
     let vars = mkVarsTupleValue rl $ map (, EVal) $ rhsVarsAfter d rl idx
     -- New variables introduced by this FlatMap.
@@ -2227,25 +2265,25 @@ mkFlatMap d prefix rl idx vs e = do
     next <- compileRule d rl idx False
     return $
         "XFormCollection::FlatMap{"                                                                                         $$
-        "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <> "),"                $$
+        "    debug_info:" <+> dbgInfoFlatmap rl idx <> ","                                                                  $$
         (nest' $ "fmfun: {fn __f(" <> vALUE_VAR <> ": ::differential_datalog::ddval::DDValue) -> ::std::option::Option<Box<dyn Iterator<Item=::differential_datalog::ddval::DDValue>>>" $$ fmfun $$ "__f},")$$
         "    next: Box::new(" <> next <> ")"                                                                                $$
         "}"
 
-mkFilterMap :: (?cfg::Config, ?statics::CrateStatics, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> Doc -> Rule -> Int -> CompilerMonad Doc
-mkFilterMap d prefix rl idx = do
+mkFilterMap :: (?cfg::Config, ?statics::CrateStatics, ?crate_graph::CrateGraph, ?specname::String, ?module_paths::ModulePathMap) => DatalogProgram -> Doc -> Rule -> Int -> Int -> CompilerMonad Doc
+mkFilterMap d prefix rl start_idx idx = do
     let v = mkVarsTupleValue rl $ map (, EReference) $ rhsVarsAfter d rl idx
     let fmfun = braces' $ prefix $$
                           "Some" <> parens v
     next <- compileRule d rl (idx - 1) False  -- Use the previous index to evaluate the rule again and call mkInspect
     return $
         "XFormCollection::FilterMap{"                                                                                       $$
-        "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <> "),"                $$
+        "    debug_info:" <+> dbgInfoFilterMap rl start_idx (idx - 1) <> ","                                               $$
         nest' ("fmfun: {fn __f(" <> vALUE_VAR <> ": ::differential_datalog::ddval::DDValue) -> ::std::option::Option<::differential_datalog::ddval::DDValue>" $$ fmfun $$ "__f},")        $$
         "    next: Box::new(" <> next <> ")"                                                                                $$
         "}"
 
-mkInspect :: (?cfg::Config, ?statics::CrateStatics, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> Doc -> Rule -> Int -> Expr -> Bool -> CompilerMonad Doc
+mkInspect :: (?cfg::Config, ?statics::CrateStatics, ?crate_graph::CrateGraph, ?specname::String, ?module_paths::ModulePathMap) => DatalogProgram -> Doc -> Rule -> Int -> Expr -> Bool -> CompilerMonad Doc
 mkInspect d prefix rl idx e input_val = do
     -- Inspected
     let weight = "let ddlog_weight = &(" <> wEIGHT_VAR <+> "as" <+> rnameScoped Nothing wEIGHT_TYPE <> ");"
@@ -2261,12 +2299,12 @@ mkInspect d prefix rl idx e input_val = do
     next <- compileRule d rl idx input_val
     return $
         "XFormCollection::Inspect{"                                                                                         $$
-        "    description: std::borrow::Cow::from(" <+> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <> "),"               $$
+        "    debug_info:" <+> dbgInfoInspect rl idx <> ","                                                                 $$
         (nest' $ "ifun: {fn __f(" <> vALUE_VAR <> ": &::differential_datalog::ddval::DDValue, " <> tIMESTAMP_VAR <> ": TupleTS, " <> wEIGHT_VAR <> ": ::differential_datalog::program::Weight) -> ()" $$ ifun $$ "__f},")$$
         "    next: Box::new(" <> next <> ")"                                                                                $$
         "}"
 
-mkGroupBy :: (?cfg::Config, ?statics::CrateStatics, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> [Int] -> Rule -> Int -> CompilerMonad Doc
+mkGroupBy :: (?cfg::Config, ?statics::CrateStatics, ?crate_graph::CrateGraph, ?specname::String, ?module_paths::ModulePathMap) => DatalogProgram -> [Int] -> Rule -> Int -> CompilerMonad Doc
 mkGroupBy d filters rl@Rule{..} idx = do
     let RHSGroupBy{..} = ruleRHS !! idx
     let ctx = CtxRuleRProject rl idx
@@ -2302,7 +2340,7 @@ mkGroupBy d filters rl@Rule{..} idx = do
             else compileRule d rl last_idx False
     return $
         "XFormArrangement::Aggregate{"                                                                                           $$
-        "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ rulePPPrefix rl $ idx + 1) <> "),"                     $$
+        "    debug_info:" <+> dbgInfoGroupBy rl idx <> ","                                                                       $$
         "    ffun:" <+> ffun <> ","                                                                                              $$
         "    aggfun: {fn __f(" <> kEY_VAR <> ": &::differential_datalog::ddval::DDValue," <+> gROUP_VAR <> ": &[(&::differential_datalog::ddval::DDValue, ::differential_datalog::program::Weight)]) -> ::std::option::Option<::differential_datalog::ddval::DDValue>" $$ agfun $$ "__f}," $$
         "    next: Box::new(" <> next <> ")"                                                                                    $$
@@ -2448,7 +2486,7 @@ data JoinKind = JoinArngStream -- Join arrangement with stream
 -- Compile XForm::Join or XForm::Semijoin
 -- Returns generated xform and index of the last RHS term consumed by
 -- the XForm
-mkJoin :: (?cfg::Config, ?specname::String, ?statics::CrateStatics, ?crate_graph::CrateGraph) => DatalogProgram -> [Int] -> Bool -> Atom -> Rule -> Int -> CompilerMonad Doc
+mkJoin :: (?cfg::Config, ?specname::String, ?statics::CrateStatics, ?crate_graph::CrateGraph, ?module_paths::ModulePathMap) => DatalogProgram -> [Int] -> Bool -> Atom -> Rule -> Int -> CompilerMonad Doc
 mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
     let rel = getRelation d $ atomRelation atom
     -- Are we constructing a streaming join or a regular arranged join?
@@ -2508,13 +2546,12 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
     let jfun = braces' $ open                     $$
                          vcat filters             $$
                          "::std::option::Option::Some" <> parens ret
-    let descr = "::std::borrow::Cow::Borrowed(" <> pp (show $ show $ rulePPPrefix rl $ join_idx + 1) <> "),"
     relid <- atomRelId d atom
     return $ case join_kind of
-        JoinArngStream -> renderArrangedStreamJoin d rel arr is_semi jfun ffun relid descr next
+        JoinArngStream -> renderArrangedStreamJoin d rl join_idx rel arr is_semi jfun ffun relid next
         JoinStreamArng | is_semi ->
             "XFormCollection::StreamSemijoin{"                                                                                 $$
-            "    description:" <+> descr                                                                                       $$
+            "    debug_info:" <+> dbgInfoStreamArrSemijoin rl join_idx akey (atomRelation atom) (pp arr) <> ","                $$
             "    arrangement: (" <> relid <> "," <> pp aid <> "),"                                                             $$
             "    afun: {fn __f(" <> vALUE_VAR <> ": ::differential_datalog::ddval::DDValue) -> ::std::option::Option<(::differential_datalog::ddval::DDValue, ::differential_datalog::ddval::DDValue)>"                     $$
             nest' afun                                                                                                         $$
@@ -2526,7 +2563,7 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
             "}"
                        | otherwise ->
             "XFormCollection::StreamJoin{"                                                                                     $$
-            "    description:" <+> descr                                                                                       $$
+            "    debug_info:" <+> dbgInfoStreamArrJoin rl join_idx akey (atomRelation atom) (pp arr) <> ","                    $$
             "    arrangement: (" <> relid <> "," <> pp aid <> "),"                                                             $$
             "    afun: {fn __f(" <> vALUE_VAR <> ": ::differential_datalog::ddval::DDValue) -> ::std::option::Option<(::differential_datalog::ddval::DDValue, ::differential_datalog::ddval::DDValue)>"                     $$
             nest' afun                                                                                                         $$
@@ -2544,8 +2581,8 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
                        (vcat $ map (\i -> mkFilter d (CtxRuleRCond rl i) $ rhsExpr $ ruleRHS !! i) input_filters)   $$
                        "Some((" <> akey <> "," <+> aval <> "))"
         JoinArngArng | is_semi ->
-            "XFormArrangement::Semijoin {"                                                                                   $$
-            "    description:" <+> descr                                                                                    $$
+            "XFormArrangement::Semijoin {"                                                                                  $$
+            "    debug_info:" <+> dbgInfoSemijoin rl join_idx (atomRelation atom) (pp arr) <> ","                           $$
             "    ffun:" <+> ffun <> ","                                                                                     $$
             "    arrangement: (" <> relid <> "," <> pp aid <> "),"                                                          $$
             "    jfun: {fn __f(_: &::differential_datalog::ddval::DDValue," <+> vALUE_VAR1 <> ": &::differential_datalog::ddval::DDValue, _" <> vALUE_VAR2 <> ": &()) -> ::std::option::Option<::differential_datalog::ddval::DDValue>" $$
@@ -2554,8 +2591,8 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
             "    next: Box::new(" <> next  <> ")"                                                                           $$
             "}"
                     | otherwise ->
-            "XFormArrangement::Join {"                                                                                       $$
-            "    description:" <+> descr                                                                                    $$
+            "XFormArrangement::Join {"                                                                                      $$
+            "    debug_info:" <+> dbgInfoJoin rl join_idx (atomRelation atom) (pp arr) <> ","                               $$
             "    ffun:" <+> ffun <> ","                                                                                     $$
             "    arrangement: (" <> relid <> "," <> pp aid <> "),"                                                          $$
             "    jfun: {fn __f(_: &::differential_datalog::ddval::DDValue," <+> vALUE_VAR1 <> ": &::differential_datalog::ddval::DDValue," <+> vALUE_VAR2 <> ": &::differential_datalog::ddval::DDValue) -> ::std::option::Option<::differential_datalog::ddval::DDValue>"  $$
@@ -2564,13 +2601,13 @@ mkJoin d input_filters input_val atom rl@Rule{..} join_idx = do
             "    next: Box::new(" <> next <> ")"                                                                            $$
             "}"
 
-renderArrangedStreamJoin :: (?cfg::Config, ?crate_graph::CrateGraph, ?specname::String, ?statics::CrateStatics) => DatalogProgram -> Relation -> Expr -> Bool -> Doc -> Doc -> Doc -> Doc -> Doc -> Doc
-renderArrangedStreamJoin program relation arrangement is_semi join_func filter_func relid description next =
+renderArrangedStreamJoin :: (?cfg::Config, ?crate_graph::CrateGraph, ?specname::String, ?statics::CrateStatics, ?module_paths::ModulePathMap) => DatalogProgram -> Rule -> Int -> Relation -> Expr -> Bool -> Doc -> Doc -> Doc -> Doc -> Doc
+renderArrangedStreamJoin program rl idx relation arrangement is_semi join_func filter_func relid next =
     let v2 = (if is_semi then "_" else empty) <> vALUE_VAR2
         key_func = braces' $ mkArrangementKey program relation arrangement True
             in
                 "::differential_datalog::program::XFormArrangement::StreamJoin {"
-                $$ "    description:" <+> description
+                $$ "    debug_info:" <+> dbgInfoArrStreamJoin rl idx (name relation) (pp arrangement) <> ","
                 $$ "    ffun:" <+> filter_func <> ","
                 $$ "    rel:" <+> relid <> ","
                 $$ "    kfun: {"
@@ -2589,7 +2626,7 @@ renderArrangedStreamJoin program relation arrangement is_semi join_func filter_f
                 $$ "}"
 
 -- Compile XForm::Antijoin
-mkAntijoin :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?statics::CrateStatics) => DatalogProgram -> [Int] -> Bool -> Atom -> Rule -> Int -> CompilerMonad Doc
+mkAntijoin :: (?cfg::Config, ?specname::String, ?crate_graph::CrateGraph, ?statics::CrateStatics, ?module_paths::ModulePathMap) => DatalogProgram -> [Int] -> Bool -> Atom -> Rule -> Int -> CompilerMonad Doc
 mkAntijoin d input_filters input_val atom@Atom{..} rl ajoin_idx = do
     -- create arrangement to anti-join with
     let ctx = CtxRuleRAtom rl ajoin_idx
@@ -2600,7 +2637,7 @@ mkAntijoin d input_filters input_val atom@Atom{..} rl ajoin_idx = do
     next <- compileRule d rl ajoin_idx input_val
     relid <- atomRelId d atom
     return $ "::differential_datalog::program::XFormArrangement::Antijoin {"
-        $$ "    description: ::std::borrow::Cow::Borrowed(" <> pp (show $ show $ rulePPPrefix rl $ ajoin_idx + 1) <> "),"
+        $$ "    debug_info:" <+> dbgInfoAntijoin rl ajoin_idx atomRelation (pp arr) <> ","
         $$ "    ffun:" <+> ffun <> ","
         $$ "    arrangement: (" <> relid <> "," <+> pp aid <> "),"
         $$ "    next: ::std::boxed::Box::new(" <> next <> ")"
@@ -2783,10 +2820,10 @@ arrangeInput d fstatom arrange_input_by = do
     normalize' _  e                                                = E e
 
 -- Compile XForm::FilterMap that generates the head of the rule
-mkHead :: (?cfg::Config, ?specname::String, ?statics::CrateStatics, ?crate_graph::CrateGraph) => DatalogProgram -> Doc -> Rule -> Doc
+mkHead :: (?cfg::Config, ?specname::String, ?statics::CrateStatics, ?crate_graph::CrateGraph, ?module_paths::ModulePathMap) => DatalogProgram -> Doc -> Rule -> Doc
 mkHead d prefix rl =
     "XFormCollection::FilterMap{"                                                                               $$
-    "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ "head of" <+> rulePPStripped rl) <> "),"  $$
+    "    debug_info:" <+> dbgInfoHead rl <> ","                                                                $$
     nest' ("fmfun: {fn __f(" <> vALUE_VAR <> ": ::differential_datalog::ddval::DDValue) -> ::std::option::Option<::differential_datalog::ddval::DDValue>" $$ fmfun $$ "__f},")$$
     "    next: Box::new(" <> next <> ")"                                                                        $$
     "}"
@@ -2797,10 +2834,10 @@ mkHead d prefix rl =
     -- 'simplifyDifferentiation' guarantees that differentiation can only occur
     -- in a rule of the form '__diff_R[x] :- R'[x]'.
     next = case last $ ruleRHS rl of
-                RHSLiteral{rhsAtom=Atom{atomDiff = True}} ->
-                    "Some(XFormCollection::Differentiate{"                                                                              $$
-                    "    description: std::borrow::Cow::from(" <> (pp $ show $ show $ "differentiate" <+> rulePPStripped rl) <> "),"    $$
-                    "    next: Box::new(None)"                                                                                          $$
+                RHSLiteral{rhsAtom=Atom{atomDiff = True,..}} ->
+                    "Some(XFormCollection::Differentiate{"                                                      $$
+                    "    debug_info:" <+> dbgInfoDifferentiate rl 0 atomRelation <> ","                         $$
+                    "    next: Box::new(None)"                                                                  $$
                     "})"
                 _ -> "None"
 
@@ -2810,13 +2847,13 @@ rhsVarsAfter :: DatalogProgram -> Rule -> Int -> [Var]
 rhsVarsAfter d rl i =
     case ruleRHS rl !! i of
          -- Inspect operators cannot change the collection it inspects. No variables are dropped.
-         RHSInspect _ -> rhsVarsAfter d rl (i-1)
-         _            -> filter (\f -> (elem f $ (ruleLHSVars d rl)) || (any (elem f) vars_after))
-                                $ ruleRHSVars d rl (i+1)
+         RHSInspect _ _ -> rhsVarsAfter d rl (i-1)
+         _              -> filter (\f -> (elem f $ (ruleLHSVars d rl)) || (any (elem f) vars_after))
+                                  $ ruleRHSVars d rl (i+1)
     where
     vars_after = map (ruleRHSTermVars d rl) [i+1..length (ruleRHS rl) - 1]
 
-mkProg :: (?crate_graph :: CrateGraph, ?specname :: String) => DatalogProgram -> CompilerState -> [ProgNode] -> Doc
+mkProg :: (?crate_graph :: CrateGraph, ?specname :: String, ?module_paths::ModulePathMap) => DatalogProgram -> CompilerState -> [ProgNode] -> Doc
 mkProg d cstate nodes =
     "pub fn prog(__update_cb: std::sync::Arc<dyn program::RelationCallback>) -> program::Program {"
         $$ (nest' relations)
@@ -2843,11 +2880,12 @@ mkProg d cstate nodes =
             concatMap ((map sel2) . prelFacts) $
                 concatMap nodeRels nodes
     delayed_rels = vcommaSep
-                   $ map (\((rel, delay), delayed_relid) ->
-                           "program::DelayedRelation {"                                 $$
-                           "    id:" <+> pp delayed_relid <> ","                        $$
-                           "    rel_id:" <+> pp (relId d rel) <> ","                    $$
-                           "    delay:" <+> pp (toInteger $ delayDelay delay) <> ","    $$
+                   $ map (\((rel, delay), (delayed_relid, src_pos)) ->
+                           "program::DelayedRelation {"                                       $$
+                           "    used_at: vec![" <> commaSep (map mkSourcePos src_pos) <> "]," $$
+                           "    id:" <+> pp delayed_relid <> ","                              $$
+                           "    rel_id:" <+> pp (relId d rel) <> ","                          $$
+                           "    delay:" <+> pp (toInteger $ delayDelay delay) <> ","          $$
                            "}")
                    $ M.toList $ cDelayedRelIds cstate
 
@@ -2859,17 +2897,21 @@ mkNode (SCCNode rels) =
     (commaSep $ map (\RecProgRel{..} ->
                       "program::RecursiveRelation{rel: " <> (rnameFlat $ prelName rprelRel) <>
                       ", distinct: " <> (if rprelDistinct then "true" else "false") <> "}") rels) <> "]}"
-mkNode (ApplyNode mname i _) =
-    "program::ProgNode::Apply{tfun:" <+> ridentScoped Nothing mname ("__apply_" ++ show i) <> "}"
+mkNode (ApplyNode mname i xformer_name source_pos _) =
+    "program::ProgNode::Apply{" $$
+    "    transformer:" <+> cow xformer_name <> "," $$
+    "    source_pos:" <+> source_pos <> ","  $$
+    "    tfun:" <+> ridentScoped Nothing mname ("__apply_" ++ show i)        $$
+    "}"
 
-mkArrangement :: (?cfg::Config, ?statics::CrateStatics, ?crate_graph::CrateGraph, ?specname::String) => DatalogProgram -> Relation -> Arrangement -> Doc
+mkArrangement :: (?cfg::Config, ?statics::CrateStatics, ?crate_graph::CrateGraph, ?specname::String, ?module_paths::ModulePathMap) => DatalogProgram -> Relation -> Arrangement -> Doc
 mkArrangement d rel ArrangementMap{..} =
     let filter_key = mkArrangementKey d rel arngPattern False
         afun = braces' $
-               "let __cloned =" <+> vALUE_VAR <> ".clone();"                                                $$
+               "let __cloned =" <+> vALUE_VAR <> ".clone();"                                                     $$
                filter_key <> ".map(|x|(x,__cloned))"
     in "program::Arrangement::Map{"                                                                              $$
-       "   name: std::borrow::Cow::from(r###\"" <> pp arngPattern <> " /*join*/\"###),"                          $$
+       "   debug_info:" <+> dbgInfoArrangement arngPattern arngUsedAt arngIndexes <> ","                         $$
        (nest' $ "afun: {fn __f(" <> vALUE_VAR <> ": ::differential_datalog::ddval::DDValue) -> ::std::option::Option<(::differential_datalog::ddval::DDValue,::differential_datalog::ddval::DDValue)>" $$ afun $$ "__f},")  $$
        "    queryable:" <+> (if null arngIndexes then "false" else "true")                                       $$
        "}"
@@ -2883,7 +2925,7 @@ mkArrangement d rel ArrangementSet{..} =
         -- the pattern expression does not contain placeholders).
         distinct_by_construction = relIsDistinct d rel && (not $ exprContainsPHolders arngPattern)
     in "program::Arrangement::Set{"                                                                                                 $$
-       "    name: std::borrow::Cow::from(r###\"" <> pp arngPattern <> " /*" <> (if arngDistinct then "antijoin" else "semijoin") <> "*/\"###)," $$
+       "    debug_info:" <+> dbgInfoArrangement arngPattern arngUsedAt [] <> ","                                                    $$
        (nest' $ "fmfun: {fn __f(" <> vALUE_VAR <> ": ::differential_datalog::ddval::DDValue) -> ::std::option::Option<::differential_datalog::ddval::DDValue>" $$ fmfun $$ "__f},")                             $$
        "    distinct:" <+> (if arngDistinct && not distinct_by_construction then "true" else "false")                               $$
        "}"

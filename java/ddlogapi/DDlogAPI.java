@@ -54,7 +54,11 @@ public class DDlogAPI {
     static native void ddlog_query_index_from_flatbuf(long hprog, byte[] bytes, int position, FlatBufDescr fb) throws DDlogException;
     static native void ddlog_dump_index_to_flatbuf(long hprog, long idxid, FlatBufDescr fb) throws DDlogException;
     static native int ddlog_clear_relation(long hprog, int relid);
-    static native String ddlog_profile(long hprog);
+    static native String ddlog_dump_profile(long hprog, String label);
+    static native String ddlog_arrangement_size_profile(long hprog);
+    static native String ddlog_peak_arrangement_size_profile(long hprog);
+    static native String ddlog_change_profile(long hprog);
+    static native String ddlog_cpu_profile(long hprog);
     static native void ddlog_enable_cpu_profiling(long hprog, boolean enable) throws DDlogException;
     static native void ddlog_enable_change_profiling(long hprog, boolean enable) throws DDlogException;
     static native long ddlog_log_replace_callback(int module, long old_cbinfo, ObjIntConsumer<String> cb, int max_level);
@@ -649,13 +653,65 @@ public class DDlogAPI {
     }
 
     /**
-     * Returns DDlog program runtime profile as a string.
+     * Dump DDlog program runtime profile to a file;
+     * returns the name of the file.
      *
-     * See <code>ddlog.h: ddlog_profile()</code>
+     * See <code>ddlog.h: ddlog_dump_profile()</code>
      */
-    public String profile() throws DDlogException {
+    public String dumpProfile() throws DDlogException {
         this.checkHandle();
-        return DDlogAPI.ddlog_profile(this.hprog);
+        return DDlogAPI.ddlog_dump_profile(this.hprog, null);
+    }
+
+    /**
+     * Dump DDlog program runtime profile to a file; include <code>label</code>
+     * in the filename; returns the name of the file.
+     *
+     * See <code>ddlog.h: ddlog_dump_profile()</code>
+     */
+    public String dumpProfile(String label) throws DDlogException {
+        this.checkHandle();
+        return DDlogAPI.ddlog_dump_profile(this.hprog, label);
+    }
+
+    /**
+     * Returns DDlog arrangement size profile as a JSON string.
+     *
+     * See <code>ddlog.h: ddlog_arrangement_size_profile()</code>
+     */
+    public String arrangementSizeProfile() throws DDlogException {
+        this.checkHandle();
+        return DDlogAPI.ddlog_arrangement_size_profile(this.hprog);
+    }
+
+    /**
+     * Returns DDlog peak arrangement size profile as a JSON string.
+     *
+     * See <code>ddlog.h: ddlog_arrangement_size_profile()</code>
+     */
+    public String peakArrangementSizeProfile() throws DDlogException {
+        this.checkHandle();
+        return DDlogAPI.ddlog_peak_arrangement_size_profile(this.hprog);
+    }
+
+    /**
+     * Returns DDlog arrangement change profile as a JSON string.
+     *
+     * See <code>ddlog.h: ddlog_change_profile()</code>
+     */
+    public String changeProfile() throws DDlogException {
+        this.checkHandle();
+        return DDlogAPI.ddlog_change_profile(this.hprog);
+    }
+
+    /**
+     * Returns DDlog CPU profile as a JSON string.
+     *
+     * See <code>ddlog.h: ddlog_cpu_profile()</code>
+     */
+    public String cpuProfile() throws DDlogException {
+        this.checkHandle();
+        return DDlogAPI.ddlog_cpu_profile(this.hprog);
     }
 
     /**

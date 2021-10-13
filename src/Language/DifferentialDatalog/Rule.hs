@@ -102,22 +102,22 @@ ruleRHSVars' :: DatalogProgram -> Rule -> Int -> [Var]
 ruleRHSVars' _ _  i | i < 0 = []
 ruleRHSVars' d rl i =
     case ruleRHS rl !! i of
-         RHSLiteral True  a            -> exprVarDecls d (CtxRuleRAtom rl i) (atomVal a) ++ vs
-         RHSLiteral False _            -> vs
+         RHSLiteral _ True  a            -> exprVarDecls d (CtxRuleRAtom rl i) (atomVal a) ++ vs
+         RHSLiteral _ False _            -> vs
          -- assignment introduces new variables
-         RHSCondition (E e@(ESet _ l _)) -> exprVarDecls d (CtxSetL e (CtxRuleRCond rl i)) l ++ vs
+         RHSCondition _ (E e@(ESet _ l _)) -> exprVarDecls d (CtxSetL e (CtxRuleRCond rl i)) l ++ vs
          -- condition does not introduce new variables
-         RHSCondition _                -> vs
+         RHSCondition _ _                -> vs
          -- FlatMap introduces variables
-         RHSFlatMap pat _              -> exprVarDecls d (CtxRuleRFlatMapVars rl i) pat ++ vs
+         RHSFlatMap _ pat _              -> exprVarDecls d (CtxRuleRFlatMapVars rl i) pat ++ vs
          -- Inspect does not introduce new variables
-         RHSInspect _                  -> vs
+         RHSInspect _ _                  -> vs
          -- group_by hides all variables except group-by vars
          -- and the group variable
-         RHSGroupBy _  _ grpby       -> let ctx = CtxRuleRGroupBy rl i
-                                            gvars' = exprVars d ctx grpby
-                                            avar' = GroupVar rl i
-                                        in nub $ avar':gvars'
+         RHSGroupBy _ _  _ grpby       -> let ctx = CtxRuleRGroupBy rl i
+                                              gvars' = exprVars d ctx grpby
+                                              avar' = GroupVar rl i
+                                          in nub $ avar':gvars'
     where
     vs = ruleRHSVars d rl i
 
@@ -166,11 +166,11 @@ ruleTypeMapM fun rule@Rule{..} = do
                     return $ lhs { lhsAtom = lhsAtom { atomVal = ea }
                                  , lhsLocation = el}) ruleLHS
     rhs <- mapM (\case
-                  RHSLiteral pol (Atom p r del diff v) -> RHSLiteral pol . Atom p r del diff <$> exprTypeMapM fun v
-                  RHSCondition c                       -> RHSCondition <$> exprTypeMapM fun c
-                  RHSGroupBy v p g                     -> RHSGroupBy v <$> exprTypeMapM fun p <*> exprTypeMapM fun g
-                  RHSFlatMap vs e                      -> RHSFlatMap <$> exprTypeMapM fun vs <*> exprTypeMapM fun e
-                  RHSInspect e                         -> RHSInspect <$> exprTypeMapM fun e)
+                  RHSLiteral rp pol (Atom p r del diff v) -> RHSLiteral rp pol . Atom p r del diff <$> exprTypeMapM fun v
+                  RHSCondition rp c                       -> RHSCondition rp <$> exprTypeMapM fun c
+                  RHSGroupBy rp v p g                     -> RHSGroupBy rp v <$> exprTypeMapM fun p <*> exprTypeMapM fun g
+                  RHSFlatMap rp vs e                      -> RHSFlatMap rp <$> exprTypeMapM fun vs <*> exprTypeMapM fun e
+                  RHSInspect rp e                         -> RHSInspect rp <$> exprTypeMapM fun e)
                 ruleRHS
     return rule { ruleLHS = lhs, ruleRHS = rhs }
 

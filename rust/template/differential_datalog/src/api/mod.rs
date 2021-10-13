@@ -17,6 +17,7 @@ use crate::{
     replay, AnyDeserialize, CommandRecorder, D3log, D3logLocationId, DDlog, DDlogDump,
     DDlogDynamic, DDlogInventory, DDlogProfiling, DeltaMap,
 };
+use ddlog_profiler::{CpuProfile, DDlogSourceCode, SizeProfileRecord};
 use std::{
     collections::{BTreeMap, BTreeSet},
     ffi::CString,
@@ -54,6 +55,7 @@ impl HDDlog {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         config: Config,
+        source_code: &'static DDlogSourceCode,
         do_store: bool,
         print_err: Option<extern "C" fn(msg: *const c_char)>,
         init_ddlog: fn(Arc<dyn RelationCallback>) -> Program,
@@ -92,7 +94,7 @@ impl HDDlog {
 
         // Notify handler about initial transaction
         handler.before_commit();
-        let prog = program.run(config)?;
+        let prog = program.run(config, source_code)?;
         handler.after_commit(true);
 
         // Extract state after initial transaction
@@ -280,16 +282,54 @@ impl DDlogProfiling for HDDlog {
         Ok(())
     }
 
-    fn profile(&self) -> Result<String, String> {
-        self.record_command(|r| r.profile());
+    fn arrangement_size_profile(&self) -> Result<Vec<SizeProfileRecord>, String> {
+        self.record_command(|r| r.arrangement_size_profile());
         let rprog = self.prog.lock().unwrap();
-        let profile = rprog
-            .profile
-            .as_ref()
-            .map(|profile| profile.lock().unwrap().to_string())
-            .unwrap_or_else(String::new);
+        if let Some(profile) = &rprog.profile {
+            Ok(profile.lock().unwrap().arrangement_size_profile())
+        } else {
+            Err("DDlog instance was created with self-profiler disabled".to_string())
+        }
+    }
 
-        Ok(profile)
+    fn peak_arrangement_size_profile(&self) -> Result<Vec<SizeProfileRecord>, String> {
+        self.record_command(|r| r.peak_arrangement_size_profile());
+        let rprog = self.prog.lock().unwrap();
+        if let Some(profile) = &rprog.profile {
+            Ok(profile.lock().unwrap().peak_arrangement_size_profile())
+        } else {
+            Err("DDlog instance was created with self-profiler disabled".to_string())
+        }
+    }
+
+    fn change_profile(&self) -> Result<Option<Vec<SizeProfileRecord>>, String> {
+        self.record_command(|r| r.change_profile());
+        let rprog = self.prog.lock().unwrap();
+        if let Some(profile) = &rprog.profile {
+            Ok(profile.lock().unwrap().change_profile())
+        } else {
+            Err("DDlog instance was created with self-profiler disabled".to_string())
+        }
+    }
+
+    fn cpu_profile(&self) -> Result<Option<CpuProfile>, String> {
+        self.record_command(|r| r.cpu_profile());
+        let rprog = self.prog.lock().unwrap();
+        if let Some(profile) = &rprog.profile {
+            Ok(profile.lock().unwrap().cpu_profile())
+        } else {
+            Err("DDlog instance was created with self-profiler disabled".to_string())
+        }
+    }
+
+    fn dump_profile(&self, label: Option<&str>) -> Result<String, String> {
+        self.record_command(|r| r.dump_profile(label));
+        let rprog = self.prog.lock().unwrap();
+        if let Some(profile) = &rprog.profile {
+            profile.lock().unwrap().dump(label)
+        } else {
+            Err("DDlog instance was created with self-profiler disabled".to_string())
+        }
     }
 }
 

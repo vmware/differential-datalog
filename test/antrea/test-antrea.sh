@@ -51,13 +51,13 @@ run_test() {
         dat=$2
     fi
 
-    /usr/bin/time ./networkpolicy_controller_ddlog/target/release/networkpolicy_controller_cli -w $1 --no-print --no-store < $dat > antrea.dump
+    /usr/bin/time ./networkpolicy_controller_ddlog/target/release/networkpolicy_controller_cli -w $1 --no-print --no-store --self-profiler < $dat > antrea.dump
 
     # Dump profile on the terminal.
     #sed -n '/^Profile:$/,$p' antrea.dump
 
     # Remove profiling data, which changes across runs.
-    sed -n '/Profile:/q;p' antrea.dump > antrea.dump.truncated
+    sed -n '/^Profile written/q;p' antrea.dump > antrea.dump.truncated
     if [[ $3 == *.gz ]]
     then
         gunzip -kf $3

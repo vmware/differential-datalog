@@ -96,6 +96,7 @@ impl ddlog_log_destination {
 #[repr(C)]
 pub struct ddlog_profiling_config {
     pub mode: ddlog_profiling_mode,
+    pub self_profiler_dir: *const raw::c_char,
     pub timely_destination: ddlog_log_destination,
     pub timely_progress_destination: ddlog_log_destination,
     pub differential_destination: ddlog_log_destination,
@@ -105,7 +106,20 @@ impl ddlog_profiling_config {
     pub unsafe fn to_rust_api(&self) -> Result<ProfilingConfig, String> {
         Ok(match self.mode {
             ddlog_profiling_mode::ddlog_disable_profiling => ProfilingConfig::None,
-            ddlog_profiling_mode::ddlog_self_profiling => ProfilingConfig::SelfProfiling,
+            ddlog_profiling_mode::ddlog_self_profiling => {
+                ProfilingConfig::SelfProfiling {
+                    profile_directory: {
+                        if self.self_profiler_dir.is_null() {
+                            None
+                        } else {
+                            Some(CStr::from_ptr(self.self_profiler_dir)
+                                .to_str()
+                                .map_err(|e| format!("invalid profile directory string: {}", e))?
+                                .to_string())
+                        }
+                    }
+                }
+            },
             ddlog_profiling_mode::ddlog_timely_profiling => {
                 ProfilingConfig::TimelyProfiling {
                     timely_destination: self.timely_destination.to_rust_api()?
@@ -122,6 +136,7 @@ impl Default for ddlog_profiling_config {
     fn default() -> Self {
         ddlog_profiling_config {
             mode: ddlog_profiling_mode::ddlog_disable_profiling,
+            self_profiler_dir: ptr::null(),
             timely_destination: ddlog_log_destination::default(),
             timely_progress_destination: ddlog_log_destination::default(),
             differential_destination: ddlog_log_destination::default(),
@@ -854,19 +869,168 @@ pub unsafe extern "C" fn ddlog_enable_timely_profiling(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ddlog_profile(prog: *const HDDlog) -> *const raw::c_char {
+pub unsafe extern "C" fn ddlog_dump_profile(
+    prog: *const HDDlog,
+    label: *const raw::c_char,
+) -> *const raw::c_char {
+    if prog.is_null() {
+        return ptr::null();
+    }
+    let prog = &*prog;
+    let label = if label.is_null() {
+        None
+    } else {
+        match CStr::from_ptr(label).to_str() {
+            Ok(s) => Some(s.to_string()),
+            Err(e) => {
+                prog.eprintln(&format!("invalid label string: {}", e));
+                return ptr::null_mut();
+            }
+        }
+    };
+
+    let prof_file = prog
+        .dump_profile(label.as_deref())
+        .unwrap_or_else(|e| format!("Failed to dump profile: {}", e));
+    CString::new(prof_file)
+        .map(CString::into_raw)
+        .unwrap_or_else(|e| {
+            prog.eprintln(&format!(
+                "Failed to convert profile filename to a C string: {}",
+                e
+            ));
+            ptr::null_mut()
+        })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_arrangement_size_profile(prog: *const HDDlog) -> *const raw::c_char {
     if prog.is_null() {
         return ptr::null();
     }
     let prog = &*prog;
 
-    let profile = prog
-        .profile()
-        .unwrap_or_else(|e| format!("Failed to retrieve profile: {}", e));
-    CString::new(profile)
+    let profile = match prog.arrangement_size_profile() {
+        Err(e) => {
+            prog.eprintln(&format!(
+                "Failed to retrieve arrangement size profile: {}",
+                e
+            ));
+            return ptr::null_mut();
+        }
+        Ok(profile) => profile,
+    };
+    let profile_json = match serde_json::to_string(&profile) {
+        Err(e) => {
+            prog.eprintln(&format!(
+                "Failed to convert arrangement size profile to JSON: {}",
+                e
+            ));
+            return ptr::null_mut();
+        }
+        Ok(json) => json,
+    };
+    CString::new(profile_json)
         .map(CString::into_raw)
         .unwrap_or_else(|e| {
-            prog.eprintln(&format!("Failed to convert profile string to C: {}", e));
+            prog.eprintln(&format!("Failed to convert profile to C string: {}", e));
+            ptr::null_mut()
+        })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_peak_arrangement_size_profile(
+    prog: *const HDDlog,
+) -> *const raw::c_char {
+    if prog.is_null() {
+        return ptr::null();
+    }
+    let prog = &*prog;
+
+    let profile = match prog.peak_arrangement_size_profile() {
+        Err(e) => {
+            prog.eprintln(&format!(
+                "Failed to retrieve peak arrangement size profile: {}",
+                e
+            ));
+            return ptr::null_mut();
+        }
+        Ok(profile) => profile,
+    };
+    let profile_json = match serde_json::to_string(&profile) {
+        Err(e) => {
+            prog.eprintln(&format!(
+                "Failed to convert peak arrangement size profile to JSON: {}",
+                e
+            ));
+            return ptr::null_mut();
+        }
+        Ok(json) => json,
+    };
+    CString::new(profile_json)
+        .map(CString::into_raw)
+        .unwrap_or_else(|e| {
+            prog.eprintln(&format!("Failed to convert profile to C string: {}", e));
+            ptr::null_mut()
+        })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_change_profile(prog: *const HDDlog) -> *const raw::c_char {
+    if prog.is_null() {
+        return ptr::null();
+    }
+    let prog = &*prog;
+
+    let profile = match prog.change_profile() {
+        Err(e) => {
+            prog.eprintln(&format!("Failed to retrieve change profile: {}", e));
+            return ptr::null_mut();
+        }
+        Ok(None) => vec![],
+        Ok(Some(records)) => records,
+    };
+    let profile_json = match serde_json::to_string(&profile) {
+        Err(e) => {
+            prog.eprintln(&format!("Failed to convert change profile to JSON: {}", e));
+            return ptr::null_mut();
+        }
+        Ok(json) => json,
+    };
+    CString::new(profile_json)
+        .map(CString::into_raw)
+        .unwrap_or_else(|e| {
+            prog.eprintln(&format!("Failed to convert profile to C string: {}", e));
+            ptr::null_mut()
+        })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ddlog_cpu_profile(prog: *const HDDlog) -> *const raw::c_char {
+    if prog.is_null() {
+        return ptr::null();
+    }
+    let prog = &*prog;
+
+    let profile = match prog.cpu_profile() {
+        Err(e) => {
+            prog.eprintln(&format!("Failed to retrieve CPU profile: {}", e));
+            return ptr::null_mut();
+        }
+        Ok(None) => vec![],
+        Ok(Some(profile)) => profile,
+    };
+    let profile_json = match serde_json::to_string(&profile) {
+        Err(e) => {
+            prog.eprintln(&format!("Failed to convert CPU profile to JSON: {}", e));
+            return ptr::null_mut();
+        }
+        Ok(json) => json,
+    };
+    CString::new(profile_json)
+        .map(CString::into_raw)
+        .unwrap_or_else(|e| {
+            prog.eprintln(&format!("Failed to convert profile to C string: {}", e));
             ptr::null_mut()
         })
 }

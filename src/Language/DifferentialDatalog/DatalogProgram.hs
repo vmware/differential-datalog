@@ -62,6 +62,7 @@ import qualified Data.GraphViz.Printing            as GV
 
 import {-# SOURCE #-} Language.DifferentialDatalog.Debug
 import Language.DifferentialDatalog.Util
+import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Name
 import Language.DifferentialDatalog.Syntax
 import {-# SOURCE #-} Language.DifferentialDatalog.Expr
@@ -275,7 +276,7 @@ progDependencyGraph DatalogProgram{..} = G.insEdges (edges ++ apply_edges) g1
     edges = concatMap (\Rule{..} ->
                         concatMap (\RuleLHS{..} ->
                                     mapMaybe (\case
-                                               RHSLiteral pol a' | not (atomIsDelayed a') -> Just (relidx $ atomRelation a', relidx $ atomRelation lhsAtom, pol)
+                                               RHSLiteral _ pol a' | not (atomIsDelayed a') -> Just (relidx $ atomRelation a', relidx $ atomRelation lhsAtom, pol)
                                                _ -> Nothing)
                                              ruleRHS)
                                   ruleLHS)
@@ -324,7 +325,8 @@ progMirrorInputRelations d prefix =
                                                                    },
                                                     lhsLocation = Nothing
                                                   }],
-                                       ruleRHS = [RHSLiteral { rhsPolarity = True,
+                                       ruleRHS = [RHSLiteral { rhsPos = nopos,
+                                                               rhsPolarity = True,
                                                                rhsAtom = Atom { atomPos = relPos relation,
                                                                                 atomRelation = relName,
                                                                                 atomDelay = delayZero,
