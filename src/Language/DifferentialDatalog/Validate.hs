@@ -310,12 +310,13 @@ ruleValidate d rl = do
     -- Make sure that all rules start with a positive literal by injecting a
     -- singleton literal in the RHS of rules that don't start with a positive
     -- literal.
-    let singleton_literal = RHSLiteral True
+    let rhs_start = fst $ pos $ head $ ruleRHS rl
+    let singleton_literal = RHSLiteral (rhs_start, rhs_start) True
                             $ Atom nopos sINGLETON_RELATION delayZero False (E $ EStruct nopos sINGLETON_RELATION [])
     let rl' = if (not $ null $ ruleRHS rl)
               then case head $ ruleRHS rl of
-                        RHSLiteral True _ -> rl
-                        _                 -> rl {ruleRHS = singleton_literal:(ruleRHS rl)}
+                        RHSLiteral _ True _ -> rl
+                        _                   -> rl {ruleRHS = singleton_literal:(ruleRHS rl)}
               else rl
     mapIdxM_ (ruleRHSValidate d rl') $ ruleRHS rl'
     mapM_ (ruleLHSValidate d rl') $ ruleLHS rl'
@@ -404,7 +405,7 @@ atomValidate d ctx atom = do
 -- Validate an RHS term of a rule.  Once all RHS and LHS terms have been
 -- validated, it is safe to call 'ruleValidateExpressions'.
 ruleRHSValidate :: (MonadError String me) => DatalogProgram -> Rule -> RuleRHS -> Int -> me ()
-ruleRHSValidate d rl (RHSLiteral polarity atom) idx = do
+ruleRHSValidate d rl (RHSLiteral _ polarity atom) idx = do
     atomValidate d (CtxRuleRAtom rl idx) atom
     let rel = getRelation d $ atomRelation atom
     when (rulePrefixIsStream d rl idx) $ check d (atomSemantics d atom /= RelStream) (pos atom)
@@ -426,7 +427,7 @@ ruleRHSValidate d rl RHSFlatMap{..} i = do
 ruleRHSValidate _ _ RHSInspect{} _ = return ()
 
 ruleRHSValidate d rl RHSGroupBy{} idx = do
-    let RHSGroupBy v e group_by = ruleRHS rl !! idx
+    let RHSGroupBy _ v e group_by = ruleRHS rl !! idx
     let gctx = CtxRuleRGroupBy rl idx
     check d (notElem v $ map name $ exprVars d gctx group_by) (pos e) $ "Group variable '" ++ v ++ "' already declared in this scope"
     case exprStripTypeAnnotationsRec group_by gctx of

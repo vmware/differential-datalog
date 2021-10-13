@@ -285,3 +285,8 @@ bench-twitter:
 test-overflow:
      stage: test
      script: ./test.sh overflow
+
+# Test self-profiler
+test-profiler:
+     stage: test
+     script: ./test.sh profiler

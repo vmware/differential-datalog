@@ -675,12 +675,17 @@ instance Show RuleLHS where
 -- The RHS of a rule consists of relational atoms with
 -- positive/negative polarity, Boolean conditions, aggregation,
 -- disaggregation (flatmap), inspect operations.
-data RuleRHS = RHSLiteral   {rhsPolarity :: Bool, rhsAtom :: Atom}
+data RuleRHS = RHSLiteral {
+                   rhsPos :: Pos,
+                   rhsPolarity :: Bool,
+                   rhsAtom :: Atom
+               }
                -- Expression that can filter or map input collation, or both:
                -- * Filtering: `x == y`
                -- * Mapping: `var x = f(y)`
                -- * Filter/map: `Some{x} = f(y)`
              | RHSCondition {
+                   rhsPos :: Pos,
                    rhsExpr :: Expr
                }
                -- Group input records:
@@ -692,6 +697,7 @@ data RuleRHS = RHSLiteral   {rhsPolarity :: Bool, rhsAtom :: Atom}
                -- `var __group = (x,y).group_by(q),
                --  (var minx, var miny) = __group.arg_min(|t|t.0)`.
              | RHSGroupBy {
+                   rhsPos :: Pos,
                    -- The resulting group of type 'Group<K,V>', where 'K' is the type of 'rhsGroupBy'
                    -- and 'V' is the type of 'rhsProject'.
                    rhsVar :: String,
@@ -702,17 +708,50 @@ data RuleRHS = RHSLiteral   {rhsPolarity :: Bool, rhsAtom :: Atom}
                    -- Group-by expression must be a tuple consisting of variable names, e.g., `group_by(q)`, `group_by(p,q,r)`.
                    rhsGroupBy :: Expr
                }
-             | RHSFlatMap   {rhsVars :: Expr, rhsMapExpr :: Expr}
-             | RHSInspect   {rhsInspectExpr :: Expr}
-             deriving (Eq, Ord)
+             | RHSFlatMap {
+                   rhsPos :: Pos,
+                   rhsVars :: Expr,
+                   rhsMapExpr :: Expr
+               }
+             | RHSInspect {
+                   rhsPos :: Pos,
+                   rhsInspectExpr :: Expr
+               }
+
+instance WithPos RuleRHS where
+    pos = rhsPos
+    atPos r p = r{rhsPos = p}
+
+instance Eq RuleRHS where
+    (==) (RHSLiteral _ p1 a1)     (RHSLiteral _ p2 a2)      = (p1, a1) == (p2, a2)
+    (==) (RHSCondition _ e1)      (RHSCondition _ e2)       = e1 == e2
+    (==) (RHSGroupBy _ v1 p1 g1)  (RHSGroupBy _ v2 p2 g2)   = (v1, p1, g1) == (v2, p2, g2)
+    (==) (RHSFlatMap _ v1 e1)     (RHSFlatMap _ v2 e2)      = (v1, e1) == (v2, e2)
+    (==) (RHSInspect _ e1)        (RHSInspect _ e2)         = e1 == e2
+    (==) _                        _                         = False
+
+rhsrank :: RuleRHS -> Int
+rhsrank RHSLiteral{}   = 0
+rhsrank RHSCondition{} = 1
+rhsrank RHSGroupBy{}   = 2
+rhsrank RHSFlatMap{}   = 3
+rhsrank RHSInspect{}   = 4
+
+instance Ord RuleRHS where
+    compare (RHSLiteral _ p1 a1)     (RHSLiteral _ p2 a2)      = compare (p1, a1) (p2, a2)
+    compare (RHSCondition _ e1)      (RHSCondition _ e2)       = compare e1 e2
+    compare (RHSGroupBy _ v1 p1 g1)  (RHSGroupBy _ v2 p2 g2)   = compare (v1, p1, g1) (v2, p2, g2)
+    compare (RHSFlatMap _ v1 e1)     (RHSFlatMap _ v2 e2)      = compare (v1, e1) (v2, e2)
+    compare (RHSInspect _ e1)        (RHSInspect _ e2)         = compare e1 e2
+    compare r1                       r2                        = compare (rhsrank r1) (rhsrank r2)
 
 instance PP RuleRHS where
-    pp (RHSLiteral True a)    = pp a
-    pp (RHSLiteral False a)   = "not" <+> pp a
-    pp (RHSCondition c)       = pp c
-    pp (RHSGroupBy v p gb)    = "var" <+> pp v <+> "=" <+> pp p <> ".group_by(" <> pp gb <> ")"
-    pp (RHSFlatMap v e)       = pp v <+> "=" <+> "FlatMap" <> (parens $ pp e)
-    pp (RHSInspect e)         = "Inspect" <+> pp e
+    pp (RHSLiteral _ True a)    = pp a
+    pp (RHSLiteral _ False a)   = "not" <+> pp a
+    pp (RHSCondition _ c)       = pp c
+    pp (RHSGroupBy _ v p gb)    = "var" <+> pp v <+> "=" <+> pp p <> ".group_by(" <> pp gb <> ")"
+    pp (RHSFlatMap _ v e)       = pp v <+> "=" <+> "FlatMap" <> (parens $ pp e)
+    pp (RHSInspect _ e)         = "Inspect" <+> pp e
 
 instance Show RuleRHS where
     show = render . pp
@@ -738,9 +777,9 @@ rhsIsCondition RHSCondition{} = True
 rhsIsCondition _              = False
 
 rhsIsFilterCondition :: RuleRHS -> Bool
-rhsIsFilterCondition (RHSCondition (E ESet{})) = False
-rhsIsFilterCondition (RHSCondition _)          = True
-rhsIsFilterCondition _                         = False
+rhsIsFilterCondition (RHSCondition _ (E ESet{})) = False
+rhsIsFilterCondition (RHSCondition _ _)          = True
+rhsIsFilterCondition _                           = False
 
 rhsIsAssignment :: RuleRHS -> Bool
 rhsIsAssignment rhs = rhsIsCondition rhs && not (rhsIsFilterCondition rhs)

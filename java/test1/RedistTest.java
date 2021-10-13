@@ -450,9 +450,8 @@ public class RedistTest {
                             this.api.enableCpuProfiling(false);
                             break;
                         case "":
-                            String profile = this.api.profile();
-                            System.out.println("Profile:");
-                            System.out.println(profile);
+                            String prof_file = this.api.dumpProfile();
+                            System.out.println(prof_file);
                             this.checkSemicolon();
                             break;
                         default:

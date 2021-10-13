@@ -1,14 +1,15 @@
 use differential_dataflow::lattice::Lattice;
 use differential_dataflow::{Collection, Data, ExchangeData, Hashable};
 use num::One;
+use std::borrow::Cow;
 use timely::dataflow::operators::feedback::Handle;
 use timely::dataflow::operators::*;
 use timely::dataflow::scopes::Child;
 use timely::dataflow::*;
 use timely::order::Product;
 
-use crate::profile::*;
 use crate::program::{arrange::diff_distinct, TSNested, Weight};
+use ddlog_profiler::{with_prof_context, OperatorDebugInfo, SourcePosition};
 
 /// A collection defined by multiple mutually recursive rules.
 ///
@@ -31,7 +32,8 @@ where
     >,
     current: Collection<Child<'a, G, Product<G::Timestamp, TSNested>>, D, Weight>,
     cycle: Collection<Child<'a, G, Product<G::Timestamp, TSNested>>, D, Weight>,
-    name: String,
+    source_pos: SourcePosition,
+    name: Cow<'static, str>,
     pub distinct: bool,
 }
 
@@ -47,22 +49,29 @@ where
         result.add(source);
         result
     }*/
-    pub fn from(
+    pub fn new(
         source: &Collection<Child<'a, G, Product<G::Timestamp, TSNested>>, D, Weight>,
         distinct: bool,
-        name: &str,
-    ) -> Variable<'a, G, D> {
-        let (feedback, cycle) = source.inner.scope().loop_variable(TSNested::one());
-        let cycle_col = Collection::new(cycle);
-        let mut result = Variable {
-            feedback: Some(feedback),
-            current: cycle_col.clone().filter(|_| false),
-            cycle: cycle_col,
-            name: name.to_string(),
-            distinct,
-        };
-        result.add(source);
-        result
+        name: Cow<'static, str>,
+        source_pos: SourcePosition,
+    ) -> Self {
+        with_prof_context(
+            OperatorDebugInfo::fixed_point(name.clone(), source_pos.clone()),
+            || {
+                let (feedback, cycle) = source.inner.scope().loop_variable(TSNested::one());
+                let cycle_col = Collection::new(cycle);
+                let mut result = Self {
+                    feedback: Some(feedback),
+                    current: cycle_col.clone().filter(|_| false),
+                    cycle: cycle_col,
+                    source_pos,
+                    name,
+                    distinct,
+                };
+                result.add(source);
+                result
+            },
+        )
     }
 
     /// Adds a new source of data to the `Variable`.
@@ -70,7 +79,10 @@ where
         &mut self,
         source: &Collection<Child<'a, G, Product<G::Timestamp, TSNested>>, D, Weight>,
     ) {
-        self.current = self.current.concat(source);
+        self.current = with_prof_context(
+            OperatorDebugInfo::fixed_point(self.name.clone(), self.source_pos.clone()),
+            || self.current.concat(source),
+        );
     }
 }
 
@@ -90,19 +102,26 @@ where
 {
     fn drop(&mut self) {
         if let Some(feedback) = self.feedback.take() {
-            with_prof_context(&format!("Variable: {}", self.name), || {
-                if self.distinct {
-                    diff_distinct(&self.current)
-                        .inner
-                        .map(|(x, t, d)| (x, Product::new(t.outer, t.inner + TSNested::one()), d))
-                        .connect_loop(feedback)
-                } else {
-                    self.current
-                        .inner
-                        .map(|(x, t, d)| (x, Product::new(t.outer, t.inner + TSNested::one()), d))
-                        .connect_loop(feedback)
-                }
-            });
+            with_prof_context(
+                OperatorDebugInfo::fixed_point(self.name.clone(), self.source_pos.clone()),
+                || {
+                    if self.distinct {
+                        diff_distinct(&self.current)
+                            .inner
+                            .map(|(x, t, d)| {
+                                (x, Product::new(t.outer, t.inner + TSNested::one()), d)
+                            })
+                            .connect_loop(feedback)
+                    } else {
+                        self.current
+                            .inner
+                            .map(|(x, t, d)| {
+                                (x, Product::new(t.outer, t.inner + TSNested::one()), d)
+                            })
+                            .connect_loop(feedback)
+                    }
+                },
+            );
         }
     }
 }

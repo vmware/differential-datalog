@@ -34,6 +34,7 @@ module Language.DifferentialDatalog.Module(
     DatalogModule(..),
     emptyModule,
     moduleNameToPath,
+    moduleNameToRelPath,
     moduleIsChildOf,
     mainModuleName,
     nameScope,
@@ -88,6 +89,14 @@ moduleNameToPath :: ModuleName -> FilePath
 moduleNameToPath (ModuleName []) = "lib.rs"
 moduleNameToPath (ModuleName [n]) = n <.> "rs"
 moduleNameToPath (ModuleName (n:ns)) = n </> moduleNameToPath (ModuleName ns)
+
+-- Compute path to the module relative to the root of the project tree
+-- containing copies of all DDlog modules embedded in the Rust program
+-- for profiling.
+moduleNameToRelPath :: (?specname::String) => ModuleName -> FilePath
+moduleNameToRelPath (ModuleName []) = ?specname <.> "dl"
+moduleNameToRelPath (ModuleName [n]) = n <.> "dl"
+moduleNameToRelPath (ModuleName (n:ns)) = n </> moduleNameToRelPath (ModuleName ns)
 
 nameScope :: (WithName a) => a -> ModuleName
 nameScope = ModuleName . init . splitOn "::" . name
@@ -146,21 +155,31 @@ builtinImports :: (?cfg::Config) => [Import]
 builtinImports = map builtinImport builtinLibs
 
 -- | Parse a datalog program along with all its imports; returns a "flat"
--- program without imports.  In addition, returns `.rs` and `.toml` code
+-- program without imports.  In addition, returns '.rs' and '.toml' code
 -- for each module.
 --
 -- 'roots' is the list of directories to search for imports
 --
+-- 'use_relative_path' - this function will normally convert 'fname' to
+-- absolute path, which is required for error reporting and profiling.  Set
+-- this flag to 'true' to change this behavior and use unmodified 'fname'.
+-- This is only useful when running negative tests to produce error
+-- messages with relative paths, so they can be compared with expected
+-- output.
+--
 -- if 'import_std' is true, imports the standard libraries
 -- to each module.
-parseDatalogProgram :: (?cfg::Config) => [FilePath] -> Bool -> String -> FilePath -> ExceptT String IO ([DatalogModule], DatalogProgram, M.Map ModuleName (Doc, Doc, Doc))
-parseDatalogProgram roots import_std fdata fname = do
+parseDatalogProgram :: (?cfg::Config) => [FilePath] -> Bool -> String -> FilePath -> Bool -> ExceptT String IO ([DatalogModule], DatalogProgram, M.Map ModuleName (Doc, Doc, Doc))
+parseDatalogProgram roots import_std fdata fname use_relative_path = do
+    abs_fname <- if use_relative_path
+                 then return fname
+                 else lift $ makeAbsolute fname
     roots' <- lift $ nub <$> mapM canonicalizePath roots
-    prog <- parseDatalogString fdata fname
+    prog <- parseDatalogString fdata abs_fname
     let prog' = if import_std
                    then prog { progImports = stdImports ++ builtinImports ++ progImports prog }
                    else prog
-    let main_mod = DatalogModule (ModuleName []) fname prog'
+    let main_mod = DatalogModule (ModuleName []) abs_fname prog'
     let ?specname = takeBaseName fname
     imports_res <- lift $ evalStateT (runExceptT $ (parseImports roots' main_mod)) []
     imports <- case imports_res of

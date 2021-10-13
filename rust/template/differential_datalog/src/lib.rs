@@ -9,8 +9,6 @@ mod callback;
 mod dataflow;
 mod ddlog;
 pub mod flatbuf;
-mod profile;
-mod profile_statistics;
 mod render;
 pub mod replay;
 mod valmap;

@@ -68,7 +68,8 @@ basic=("rust_api:Test Rust API to a DDlog program"
        "simple3:Unit tests for various DDlog constructs, part 3"
        "libs:Tests for libraries in the 'lib' directory"
        "output_internal:Test '--output-internal-relations' switch"
-       "stream:Test stream relations")
+       "stream:Test stream relations"
+       "profiler:Test DDlog self-profiler")
 
 perf=("dcm:Declarative Cluster Management benchmark"
       "redist_opt:'redist_opt' benchmark")
@@ -205,6 +206,10 @@ stream() {
 
 overflow() {
     (cd "${THIS_DIR}/test/datalog_tests" && ./test-overflow.sh)
+}
+
+profiler() {
+    ${THIS_DIR}/test/datalog_tests/profiler_test/test.sh
 }
 
 # 'perf' test group.

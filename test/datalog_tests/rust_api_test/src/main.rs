@@ -46,7 +46,10 @@ fn main() -> Result<(), String> {
     // enabled.
     let config = Config::new()
         .with_timely_workers(1)
-        .with_profiling_config(ProfilingConfig::SelfProfiling);
+        .with_profiling_config(ProfilingConfig::SelfProfiling {
+            // Directory to store profiles under or `None` for current directory.
+            profile_directory: None
+        });
     // Instantiate the DDlog program with this configuration.
     // The second argument of `run_with_config` is a Boolean flag that indicates
     // whether DDlog will track the complete snapshot of output relations.  It

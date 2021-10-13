@@ -412,12 +412,12 @@ rulelhs = withPos $ RuleLHS nopos <$> atom True <*> optionMaybe location
 
 rulerhs :: ParsecT String () Identity [RuleRHS]
 rulerhs =  (do _ <- try $ lookAhead $ (optional $ reserved "not") *> (optional $ try $ varIdent <* reserved "in") *> (optional $ reservedOp "&") *> relIdent *> delay *> (optional $ reservedOp "'") *> (symbol "(" <|> symbol "[")
-               (\x -> [x]) <$> (RHSLiteral <$> (option True (False <$ reserved "not")) <*> atom False))
+               (\x -> [x]) <$> (withPos $ RHSLiteral nopos <$> (option True (False <$ reserved "not")) <*> atom False))
           <|> aggregate
           <|> do _ <- try $ lookAhead $ flatmap_pattern *> reservedOp "=" *> reserved "FlatMap"
-                 (\x -> [x]) <$> (RHSFlatMap <$> flatmap_pattern <*>
-                                                 (reservedOp "=" *> reserved "FlatMap" *> parens expr))
-          <|> (((\x -> [x]) . RHSInspect) <$ reserved "Inspect" <*> expr)
+                 (\x -> [x]) <$> (withPos $ RHSFlatMap nopos <$> flatmap_pattern <*>
+                                            (reservedOp "=" *> reserved "FlatMap" *> parens expr))
+          <|> ((\x -> [x]) <$> (withPos $ RHSInspect nopos <$ reserved "Inspect" <*> expr))
           <|> rhsCondition
 
 -- If expression contains any group-by subexpressions, transform them into
@@ -434,7 +434,7 @@ rhsCondition = do
                case e' of
                     E (ESet _ (E (EVarDecl _ gvar1)) (E (EVar _ gvar2))) | gvar1 == "__group" && gvar1 == gvar2
                                                                          -> return $ maybeToList group_by
-                    _ -> return $ (maybeToList group_by) ++ [RHSCondition e']
+                    _ -> return $ (maybeToList group_by) ++ [RHSCondition (pos e') e']
 
 extractGroupBy (EApply p (E (EFunc _ [f])) args) | f == "group_by" = do
     checkNoProg (length args == 2) p
@@ -445,7 +445,7 @@ extractGroupBy (EApply p (E (EFunc _ [f])) args) | f == "group_by" = do
     checkNoProg (isNothing previous_groupby_clause) p
                 $ "'group_by' operator can occur at most once in an expression. Previous occurrence: " ++
                   show (pos $ rhsGroupBy $ fromJust previous_groupby_clause)
-    ST.put $ Just $ RHSGroupBy "__group" project group_by
+    ST.put $ Just $ RHSGroupBy p "__group" project group_by
     return $ E $ EVar p "__group"
 extractGroupBy e  = return $ E e
 
@@ -465,10 +465,11 @@ aggregate = do
     after_project <- getPosition
     _ <- symbol ")"
     end <- getPosition
-    return [ RHSGroupBy "__group" project grp_by
-           , RHSCondition $ E $ ESet (before_var, end)
-                                     (E $ EVarDecl (before_var, after_var) var)
-                                     (E $ EApply (before_func, end) (E $ EFunc (before_func, after_func) [f]) [E $ EVar (after_func, after_project) "__group"])]
+    let p = (before_var, end)
+    return [ RHSGroupBy p "__group" project grp_by
+           , RHSCondition p $ E $ ESet p
+                                  (E $ EVarDecl (before_var, after_var) var)
+                                  (E $ EApply (before_func, end) (E $ EFunc (before_func, after_func) [f]) [E $ EVar (after_func, after_project) "__group"])]
 
 {- group-by expression: variable or a tuple of variables -}
 group_by_expr = withPos

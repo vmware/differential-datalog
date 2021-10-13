@@ -13,9 +13,12 @@ import java.math.BigInteger;
 import java.util.Arrays;
 import java.io.PrintStream;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 /* Generic DDlog API shared by all programs. */
 import ddlogapi.DDlogAPI;
+import ddlogapi.DDlogConfig;
 import ddlogapi.DDlogCommand;
 import ddlogapi.DDlogRecCommand;
 import ddlogapi.DDlogRecord;
@@ -32,7 +35,9 @@ public class Test {
 
     Test() throws IOException, DDlogException {
         /* Create an instance of the DDlog program with one worker thread. */
-        this.api = new DDlogAPI(1, false);
+        this.api = new DDlogAPI(new DDlogConfig(1, false, 0, DDlogConfig.selfProfiling()), false);
+        api.enableCpuProfiling(true);
+        api.enableChangeProfiling(true);
         api.recordCommands("replay.dat", false);
 
         this.fb_file  = new PrintStream("fb.dump");
@@ -1824,6 +1829,22 @@ public class Test {
 
         this.fb_file.close();
         this.query_file.close();
+
+        String profile_fname = this.api.dumpProfile();
+        System.out.println("Profile written to '" + profile_fname + "'");
+        String size_profile = this.api.arrangementSizeProfile();
+        Files.write(Paths.get("arrangement_size_profile.json"), size_profile.getBytes());
+        System.out.println("Arrangement size profile written to 'arrangement_size_profile.json'");
+        String peak_profile = this.api.peakArrangementSizeProfile();
+        Files.write(Paths.get("peak_arrangement_size_profile.json"), peak_profile.getBytes());
+        System.out.println("Peak arrangement size profile written to 'peak_arrangement_size_profile.json'");
+        String change_profile = this.api.changeProfile();
+        Files.write(Paths.get("change_profile.json"), change_profile.getBytes());
+        System.out.println("Change profile written to 'change_profile.json'");
+        String cpu_profile = this.api.cpuProfile();
+        Files.write(Paths.get("cpu_profile.json"), cpu_profile.getBytes());
+        System.out.println("CPU profile written to 'cpu_profile.json'");
+
     }
 
     public static void main(String[] args) throws IOException, DDlogException {

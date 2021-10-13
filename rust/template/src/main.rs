@@ -96,9 +96,13 @@ fn handle_cmd(
             println!("Timestamp: {}", start_time.elapsed().as_nanos());
             Ok(())
         }
-        Command::Profile(None) => hddlog
-            .profile()
-            .map(|profile| println!("Profile:\n{}", profile)),
+        Command::Profile(None) => {
+            match hddlog.dump_profile(None) {
+                Ok(file_path) => println!("Profile written to '{}'", file_path),
+                Err(e) => println!("Failed to dump profile: {}", e),
+            };
+            Ok(())
+        }
         Command::Profile(Some(ProfileCmd::Cpu(enable))) => hddlog.enable_cpu_profiling(enable),
         Command::Profile(Some(ProfileCmd::Change(enable))) => {
             hddlog.enable_change_profiling(enable)
@@ -264,8 +268,9 @@ fn main() -> Result<(), String> {
         opt self_profiler:bool, desc:"Enable DDlog internal profiler. This option is mutually exclusive with '--profile-timely'.";
         opt timely_profiler_socket:Option<String>, desc:"Socket address to send Timely Dataflow profiling events. Default (if '--profile-timely' is specified) is '127.0.0.1:51317'. Implies '--profile-timely'.";
         opt timely_trace_dir:Option<String>, desc:"Path to a directory to store Timely Dataflow profiling events, e.g., './timely_trace'. Implies '--profile-timely'.";
-        opt differential_profiler_socket:Option<String>, desc:"Socket address to send Differential Dataflow profiling events. Default (if '--profile-differential' is specified is '127.0.0.1:51318'. Implies '--profile-differential'.";
+        opt differential_profiler_socket:Option<String>, desc:"Socket address to send Differential Dataflow profiling events. Default (if '--profile-differential' is specified) is '127.0.0.1:51318'. Implies '--profile-differential'.";
         opt differential_trace_dir:Option<String>, desc:"Path to a directory to store Differential Dataflow profiling events, e.g., './differential_trace'. Implies '--profile-differential'.";
+        opt self_profiler_dir:Option<String>, desc:"Path to a directory to store self-profiler output. DDlog will create a subdirectory with name derived from process PID and store program sources and individual profiles under it. Implies '--self_profiler'. Default (if '--self-profiler' is specified) is the current working directory.";
         opt ddshow:bool=false, desc:"Start 'ddshow' profiler on sockets specified by '--timely-profiler-socket' and (optionally) '--differential-profiler-socket' options. Implies '--timely-profiler'.";
     };
     let (mut args, rest) = parser.parse_or_exit();
@@ -314,6 +319,11 @@ fn main() -> Result<(), String> {
         && (args.differential_profiler_socket.is_none() && args.differential_trace_dir.is_none())
     {
         args.differential_profiler_socket = Some("127.0.0.1:51318".to_string());
+    }
+
+    // 'self-profiler-dir' implies 'self-profiler'.
+    if args.self_profiler_dir.is_some() {
+        args.self_profiler = true;
     }
 
     // Check for conflicts
@@ -382,7 +392,9 @@ fn main() -> Result<(), String> {
         &args.profile_differential,
     ) {
         (false, false, false) => ProfilingConfig::None,
-        (true, _, _) => ProfilingConfig::SelfProfiling,
+        (true, _, _) => ProfilingConfig::SelfProfiling {
+            profile_directory: args.self_profiler_dir,
+        },
         _ => ProfilingConfig::TimelyProfiling {
             timely_destination: {
                 if let Some(sockaddr) = timely_socket {

@@ -1,0 +1,33 @@
+profile cpu on;
+profile change on;
+
+start;
+
+insert InputString("foo"),
+insert InputString("bar"),
+
+commit;
+
+start;
+
+insert InputString("buzz"),
+insert Event("e1"),
+insert Event("e2"),
+insert Event("foo"),
+
+commit;
+
+start;
+
+delete InputString("foo"),
+insert Event("bar"),
+
+commit;
+
+start;
+
+insert Seed(200),
+
+commit;
+
+profile;

@@ -22,5 +22,5 @@ nameScope :: (WithName a) => a -> ModuleName
 nameLocal :: (WithName a) => a -> Doc
 nameLocalStr :: (WithName a) => a -> String
 scoped :: ModuleName -> String -> String
-parseDatalogProgram :: (?cfg::Config) => [FilePath] -> Bool -> String -> FilePath -> ExceptT String IO ([DatalogModule], DatalogProgram, M.Map ModuleName (Doc, Doc, Doc))
+parseDatalogProgram :: (?cfg::Config) => [FilePath] -> Bool -> String -> FilePath -> Bool -> ExceptT String IO ([DatalogModule], DatalogProgram, M.Map ModuleName (Doc, Doc, Doc))
 stdLibs :: [ModuleName]

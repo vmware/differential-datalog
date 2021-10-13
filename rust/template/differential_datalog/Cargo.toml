@@ -24,15 +24,15 @@ abomonation_derive = "0.5.0"
 ordered-float = { version = "2.0.0", features = ["serde"] }
 fnv = "1.0.2"
 libc = "0.2"
-csv = "1.1"
 num = { version = "0.3", features = ["serde"] }
-sequence_trie = "0.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.64"
 erased-serde = "0.3"
 crossbeam-channel = "0.5.0"
 triomphe = "0.1.3"
 dyn-clone = "1.0.4"
+once_cell = "1.8.0"
+ddlog_profiler = { path = "../ddlog_profiler" }
 
 [dev-dependencies]
 byteorder = "1.4.2"
