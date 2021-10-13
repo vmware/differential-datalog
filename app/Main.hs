@@ -191,7 +191,7 @@ parseValidate :: (?cfg::Config) => IO ([DatalogModule], DatalogProgram, M.Map Mo
 parseValidate = do
     let Config{..} = ?cfg
     fdata <- readFile confDatalogFile
-    parsed <- runExceptT $ parseDatalogProgram (takeDirectory confDatalogFile:confLibDirs) True fdata confDatalogFile
+    parsed <- runExceptT $ parseDatalogProgram (takeDirectory confDatalogFile:confLibDirs) True fdata confDatalogFile False
     (modules, d, rs_code) <- case parsed of
                                   Left e    -> compilerError e
                                   Right res -> return res 

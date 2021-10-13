@@ -17,6 +17,7 @@ use crate::record::Record;
 use crate::record::RelIdentifier;
 use crate::record::UpdCmd;
 use crate::DeltaMap;
+use ddlog_profiler::{CpuProfile, SizeProfileRecord};
 
 /// A custom iterator that indicates in each yielded element whether it
 /// is the last one or not.
@@ -383,11 +384,33 @@ where
         .map_err(|e| e.to_string())
     }
 
-    fn profile(&self) -> Result<String, String> {
+    fn dump_profile(&self, label: Option<&str>) -> Result<String, String> {
         let mut writer = self.writer.lock().unwrap();
-        writeln!(&mut writer, "profile;")
+        let label_string = match label {
+            None => "".to_string(),
+            Some(l) => format!(" {}", l),
+        };
+        writeln!(&mut writer, "profile{};", label_string)
             .map_err(|e| e.to_string())
             .map(|_| "".to_string())
+    }
+
+    // We don't currently support dumping partial profiles through CLI.
+
+    fn arrangement_size_profile(&self) -> Result<Vec<SizeProfileRecord>, String> {
+        Ok(vec![])
+    }
+
+    fn peak_arrangement_size_profile(&self) -> Result<Vec<SizeProfileRecord>, String> {
+        Ok(vec![])
+    }
+
+    fn change_profile(&self) -> Result<Option<Vec<SizeProfileRecord>>, String> {
+        Ok(None)
+    }
+
+    fn cpu_profile(&self) -> Result<Option<CpuProfile>, String> {
+        Ok(None)
     }
 }
 

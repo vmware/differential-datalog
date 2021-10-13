@@ -382,8 +382,7 @@ public class SpanTest {
                             this.api.enableCpuProfiling(false);
                             break;
                         case "":
-                            String profile = this.api.profile();
-                            System.out.println("Profile:");
+                            String profile = this.api.dumpProfile();
                             System.out.println(profile);
                             this.checkSemicolon();
                             break;

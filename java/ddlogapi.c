@@ -714,9 +714,73 @@ JNIEXPORT void JNICALL Java_ddlogapi_DDlogAPI_query_1index(
     free(cbinfo);
 }
 
-JNIEXPORT jstring JNICALL Java_ddlogapi_DDlogAPI_ddlog_1profile(
+JNIEXPORT jstring JNICALL Java_ddlogapi_DDlogAPI_ddlog_1dump_1profile(
+    JNIEnv *env, jobject obj, jlong progHandle, jstring label) {
+    const char* label_str = NULL;
+    if (label != NULL) {
+        label_str = (*env)->GetStringUTFChars(env, label, NULL);
+    }
+    char* filename = ddlog_dump_profile((ddlog_prog)progHandle, label_str);
+    if (label != NULL) {
+        (*env)->ReleaseStringUTFChars(env, label, label_str);
+    }
+
+    if (filename == NULL) {
+        throwDDlogException(env, NULL);
+        return NULL;
+    };
+    jstring result = (*env)->NewStringUTF(env, filename);
+    ddlog_string_free(filename);
+    return result;
+}
+
+JNIEXPORT jstring JNICALL Java_ddlogapi_DDlogAPI_ddlog_1arrangement_1size_1profile(
     JNIEnv *env, jobject obj, jlong progHandle) {
-    char* profile = ddlog_profile((ddlog_prog)progHandle);
+    char* profile = ddlog_arrangement_size_profile((ddlog_prog)progHandle);
+
+    if (profile == NULL) {
+        throwDDlogException(env, NULL);
+        return NULL;
+    };
+    jstring result = (*env)->NewStringUTF(env, profile);
+    ddlog_string_free(profile);
+    return result;
+}
+
+JNIEXPORT jstring JNICALL Java_ddlogapi_DDlogAPI_ddlog_1peak_1arrangement_1size_1profile(
+    JNIEnv *env, jobject obj, jlong progHandle) {
+    char* profile = ddlog_peak_arrangement_size_profile((ddlog_prog)progHandle);
+
+    if (profile == NULL) {
+        throwDDlogException(env, NULL);
+        return NULL;
+    };
+    jstring result = (*env)->NewStringUTF(env, profile);
+    ddlog_string_free(profile);
+    return result;
+}
+
+JNIEXPORT jstring JNICALL Java_ddlogapi_DDlogAPI_ddlog_1change_1profile(
+    JNIEnv *env, jobject obj, jlong progHandle) {
+    char* profile = ddlog_change_profile((ddlog_prog)progHandle);
+
+    if (profile == NULL) {
+        throwDDlogException(env, NULL);
+        return NULL;
+    };
+    jstring result = (*env)->NewStringUTF(env, profile);
+    ddlog_string_free(profile);
+    return result;
+}
+
+JNIEXPORT jstring JNICALL Java_ddlogapi_DDlogAPI_ddlog_1cpu_1profile(
+    JNIEnv *env, jobject obj, jlong progHandle) {
+    char* profile = ddlog_cpu_profile((ddlog_prog)progHandle);
+
+    if (profile == NULL) {
+        throwDDlogException(env, NULL);
+        return NULL;
+    };
     jstring result = (*env)->NewStringUTF(env, profile);
     ddlog_string_free(profile);
     return result;

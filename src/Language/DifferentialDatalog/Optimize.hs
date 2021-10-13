@@ -76,6 +76,7 @@ optExpandMultiheadRules' d@DatalogProgram{progRules=r:rs} i
 expandMultiheadRule :: DatalogProgram -> Rule -> Int -> (Maybe Relation, [Rule])
 expandMultiheadRule d rl ruleidx = (Just rel, rule1 : rules)
     where
+    lhs_pos = (fst $ pos $ head $ ruleLHS rl, snd $ pos $ last $ ruleLHS rl)
     -- variables used in the LHS of the rule
     lhsvars = ruleLHSVars d rl
     -- generate relation
@@ -91,14 +92,14 @@ expandMultiheadRule d rl ruleidx = (Just rel, rule1 : rules)
     -- rule to compute the new relation
     rule1 = Rule { rulePos = nopos
                  , ruleModule = ruleModule rl
-                 , ruleLHS = [RuleLHS nopos (Atom nopos relname delayZero False $ eTuple $ map (\v -> eTypedVar (name v) (varType d v)) lhsvars) Nothing]
+                 , ruleLHS = [RuleLHS lhs_pos (Atom nopos relname delayZero False $ eTuple $ map (\v -> eTypedVar (name v) (varType d v)) lhsvars) Nothing]
                  , ruleRHS = ruleRHS rl
                  }
     -- rule per head of the original rule
     rules = map (\lhs -> Rule { rulePos = pos rl
                               , ruleModule = ruleModule rl
                               , ruleLHS = [lhs]
-                              , ruleRHS = [RHSLiteral True
+                              , ruleRHS = [RHSLiteral nopos True
                                           $ Atom nopos relname delayZero False
                                           $ eTuple $ map (\v -> eTypedVar (name v) (varType d v)) lhsvars]})
                 $ ruleLHS rl
@@ -165,6 +166,7 @@ rulePrefixes Rule{..} =
 -- Replace prefix with a fresh relation
 replacePrefix :: (?crate_graph::CrateGraph) => DatalogProgram -> (RulePrefix, String) -> State Int DatalogProgram
 replacePrefix d (pref, crate_name) = {-trace ("replacePrefix " ++ show pref) $-} do
+    let pref_pos = (fst $ pos $ head pref, snd $ pos $ last pref)
     let crate = fromJust $ cgLookupCrate ?crate_graph crate_name
     -- Module to place the new relation in.
     let mname = crateMainModule crate
@@ -177,7 +179,7 @@ replacePrefix d (pref, crate_name) = {-trace ("replacePrefix " ++ show pref) $-}
     -- (manufacture a bogus rule consisting only of the prefix to call ruleRHSVars on it)
     let vars = ruleRHSVars d (Rule nopos mname [] pref) pref_len
     -- relation
-    let rel = Relation { relPos        = nopos
+    let rel = Relation { relPos        = pref_pos
                        , relAttrs      = []
                        , relRole       = RelInternal
                        , relSemantics  = RelSet
@@ -186,20 +188,20 @@ replacePrefix d (pref, crate_name) = {-trace ("replacePrefix " ++ show pref) $-}
                        , relPrimaryKey = Nothing
                        }
     -- rule
-    let atom = Atom { atomPos      = nopos
+    let atom = Atom { atomPos      = pref_pos
                     , atomRelation = relname
                     , atomDelay    = delayZero
                     , atomDiff     = False
                     , atomVal      = eTuple $ map (\v -> eTypedVar (name v) (varType d v)) vars
                     }
-    let rule = Rule { rulePos      = nopos
+    let rule = Rule { rulePos      = pref_pos
                     , ruleModule   = mname
-                    , ruleLHS      = [RuleLHS nopos atom Nothing]
+                    , ruleLHS      = [RuleLHS pref_pos atom Nothing]
                     , ruleRHS      = pref
                     }
     -- replace prefix in all rules
     let rules' = map (\rule' -> if isPrefixOf pref $ ruleRHS rule'
-                                  then rule' {ruleRHS = RHSLiteral True atom : (drop pref_len $ ruleRHS rule')}
+                                  then rule' {ruleRHS = RHSLiteral pref_pos True atom : (drop pref_len $ ruleRHS rule')}
                                   else rule')
                  $ progRules d
     return d{ progRules = rule:rules'

@@ -184,6 +184,9 @@ static RAW_INPUT_RELATION_ID_MAP: ::once_cell::sync::Lazy<
     map
 });
 
+pub static SOURCE_CODE: ddlog_profiler::DDlogSourceCode =
+    ddlog_profiler::DDlogSourceCode { code: SOURCES };
+
 /// Create an instance of the DDlog program.
 ///
 /// `config` - program configuration.
@@ -210,6 +213,7 @@ pub fn run_with_config(
 
     ::differential_datalog::api::HDDlog::new(
         config,
+        &SOURCE_CODE,
         do_store,
         None,
         crate::prog,
@@ -249,6 +253,7 @@ pub fn run(
 
     ::differential_datalog::api::HDDlog::new(
         config,
+        &SOURCE_CODE,
         do_store,
         None,
         crate::prog,
@@ -296,6 +301,7 @@ pub unsafe extern "C" fn ddlog_run_with_config(
 
     let result = HDDlog::new(
         config,
+        &SOURCE_CODE,
         do_store,
         print_err,
         crate::prog,
@@ -477,3 +483,5 @@ pub fn indexes2arrid(idx: Indexes) -> program::ArrId {
 pub static IDXIDMAP: Lazy<FnvHashMap<Indexes, &'static str>> = Lazy::new(FnvHashMap::default);
 
 impl_trait_d3log!();
+
+static SOURCES: &[ddlog_profiler::SourceFile] = &[];

@@ -597,7 +597,7 @@ contextConstraints (DDExpr CtxRuleRGroupBy{} _) = return ()
 -- the following type constraints are added:
 -- |v| = iterator_type(|e|)
 contextConstraints de@(DDExpr (CtxRuleRFlatMap rl i) _) = do
-    let RHSFlatMap pat _ = ruleRHS rl !! i
+    let RHSFlatMap _ pat _ = ruleRHS rl !! i
     addConstraint =<< deIsIterable de =<< (tvarTypeOfExpr $ DDExpr (CtxRuleRFlatMapVars rl i) pat)
 
 contextConstraints (DDExpr CtxRuleRFlatMapVars{} _) = return ()

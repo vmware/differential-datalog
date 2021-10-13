@@ -43,6 +43,7 @@ dependencies:
 - githash
 - process
 - aeson
+- utf8-string
 
 library:
   source-dirs: src

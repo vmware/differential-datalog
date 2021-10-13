@@ -37,6 +37,7 @@ import Data.Char
 import Text.PrettyPrint
 
 import {-# SOURCE #-} qualified Language.DifferentialDatalog.Compile as Compile
+import Language.DifferentialDatalog.Pos
 import Language.DifferentialDatalog.Syntax
 import Language.DifferentialDatalog.Module
 import Language.DifferentialDatalog.Var
@@ -45,7 +46,7 @@ import {-# SOURCE #-} Language.DifferentialDatalog.Type
 -- For RHSLiteral, a binding to the expression is inserted if it's not bound to a variable.
 -- For example, R(a, b, z, _) gets transformed into __r0 in R(a, b, z, _),
 addBindingToRHSLiteral :: (RuleRHS, Int) -> RuleRHS
-addBindingToRHSLiteral (r@(RHSLiteral True _), index) =
+addBindingToRHSLiteral (r@(RHSLiteral _ True _), index) =
   let
     bindingName = "__" ++ (show index) ++ (render $ Compile.rnameFlat $ map toLower $ atomRelation $ rhsAtom r)
     expr = atomVal $ rhsAtom r
@@ -71,12 +72,14 @@ updateRHSGroupBy d rule rhsidx =
      group_var = "__debug_" ++ rhsVar r
      input1 = head $ Compile.recordAfterPrefix d rule (rhsidx - 1)
      input = eTuple [ input1, rhsProject r ]
-     rAgg = RHSGroupBy { rhsVar     = group_var
+     rAgg = RHSGroupBy { rhsPos     = pos r
+                       , rhsVar     = group_var
                        , rhsProject = input
                        , rhsGroupBy = rhsGroupBy r
                        }
      tinputs = tOpaque (mOD_STD ++ "::Vec") [exprType d (CtxRuleRProject rule rhsidx) input1]
-     rCond = RHSCondition { rhsExpr = eSet (eTuple [eVarDecl "__inputs" tinputs, eVarDecl (rhsVar r) (varType d aggVar)])
+     rCond = RHSCondition { rhsPos = pos r
+                          , rhsExpr = eSet (eTuple [eVarDecl "__inputs" tinputs, eVarDecl (rhsVar r) (varType d aggVar)])
                                            (eApplyFunc "debug::debug_split_group" [eVar group_var]) }
   in case r of
      RHSGroupBy{} -> [(rAgg, rhsidx), (rCond, rhsidx)]
@@ -96,10 +99,12 @@ ddlogTimestampExpr = eVar "ddlog_timestamp"
 generateInspectDebugJoin :: DatalogProgram -> Int -> Rule -> Int -> Int -> [RuleRHS]
 generateInspectDebugJoin d ruleIdx rule preRhsIdx index =
   let
+    rhs = ruleRHS rule !! index
     input1 = head $ Compile.recordAfterPrefix d rule (index - 1)
-    input2 = eVar $ exprVar $ enode $ atomVal $ rhsAtom (ruleRHS rule !! index)
+    input2 = eVar $ exprVar $ enode $ atomVal $ rhsAtom rhs
     outputs = Compile.recordAfterPrefix d rule index
-  in map (\i -> RHSInspect {rhsInspectExpr = eApplyFunc "debug::debug_event_join"
+  in map (\i -> RHSInspect { rhsPos = pos rhs
+                           , rhsInspectExpr = eApplyFunc "debug::debug_event_join"
                                              [generateOperatorIdExpr ruleIdx preRhsIdx i,
                                               ddlogWeightExpr,
                                               ddlogTimestampExpr,
@@ -110,19 +115,21 @@ generateInspectDebugJoin d ruleIdx rule preRhsIdx index =
 generateInspectDebug :: DatalogProgram -> Int -> Rule -> Int -> Int -> [RuleRHS]
 generateInspectDebug d ruleIdx rule preRhsIdx index =
   let
+    rhs = (ruleRHS rule) !! index 
     input1 = if index == 0
                 then eVar $ exprVar $ enode $ atomVal $ rhsAtom $ head $ ruleRHS rule
                 else head $ Compile.recordAfterPrefix d rule (index - 1)
     opType = if index == 0
                 then "Map"
-                else case (ruleRHS rule) !! index of
+                else case rhs of
                      RHSLiteral{rhsPolarity=False} -> "Antijoin"
                      RHSInspect{} -> "Inspect"
                      RHSFlatMap{} -> "Flatmap"
                      RHSCondition{} -> "Condition"
-                     rhs -> error $ "generateInspectDebug " ++ show rhs
+                     _ -> error $ "generateInspectDebug " ++ show rhs
     outputs = Compile.recordAfterPrefix d rule index
-  in map (\i -> RHSInspect {rhsInspectExpr = eApplyFunc "debug::debug_event"
+  in map (\i -> RHSInspect { rhsPos = pos rhs
+                           , rhsInspectExpr = eApplyFunc "debug::debug_event"
                                              [generateOperatorIdExpr ruleIdx preRhsIdx i,
                                               ddlogWeightExpr,
                                               ddlogTimestampExpr,
@@ -134,7 +141,8 @@ generateInspectDebug d ruleIdx rule preRhsIdx index =
 generateInspectDebugGroupBy :: DatalogProgram -> Int -> Rule -> Int -> Int -> [RuleRHS]
 generateInspectDebugGroupBy d ruleIdx rule preRhsIdx index =
   let outputs = Compile.recordAfterPrefix d rule index
-  in map (\i -> RHSInspect {rhsInspectExpr = eApplyFunc "debug::debug_event"
+  in map (\i -> RHSInspect { rhsPos = pos $ ruleRHS rule !! index
+                           , rhsInspectExpr = eApplyFunc "debug::debug_event"
                                              [generateOperatorIdExpr ruleIdx preRhsIdx i,
                                               ddlogWeightExpr,
                                               ddlogTimestampExpr,

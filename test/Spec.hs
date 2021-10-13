@@ -134,9 +134,9 @@ unitTests dir = do
     testGroup "unit tests" $
           [ testCase (takeBaseName dir) $ unitTest dir ]
 
-parseValidate :: (?cfg::Config) => FilePath -> Bool -> String -> IO ([DatalogModule], DatalogProgram, M.Map ModuleName (Doc, Doc, Doc))
-parseValidate file java program = do
-    parsed <- runExceptT $ parseDatalogProgram [takeDirectory file, "lib"] True program file
+parseValidate :: (?cfg::Config) => FilePath -> Bool -> String -> Bool -> IO ([DatalogModule], DatalogProgram, M.Map ModuleName (Doc, Doc, Doc))
+parseValidate file java program is_negative_test = do
+    parsed <- runExceptT $ parseDatalogProgram [takeDirectory file, "lib"] True program file is_negative_test
     (modules, d, rs_code) <- case parsed of
                                   Left e    -> errorWithoutStackTrace $ "error: " ++ e
                                   Right res -> return res
@@ -152,7 +152,7 @@ parseValidate file java program = do
 -- compile a program that is supposed to fail compilation
 compileFailingProgram :: (?cfg::Config) => String -> String -> IO String
 compileFailingProgram file program = do
-   (do prog <- sel2 <$> parseValidate file False program
+   (do prog <- sel2 <$> parseValidate file False program True
        fail $ "Compilation should have failed, instead the following program was generated:\n" ++ show prog) `catch`
              (\e -> return $ show (e::SomeException))
 
@@ -191,7 +191,7 @@ parserTest fname = do
                                        "\nbut got:\n" ++ ast
       else do
         -- parse Datalog file and output its AST
-        (_, prog, _) <- parseValidate fname False body
+        (_, prog, _) <- parseValidate fname False body False
         writeFile astfile (show prog ++ "\n")
         -- parse reference output
         fdata <- readFile astfile
@@ -266,7 +266,7 @@ generateDDLogRust java file crate_types = do
     body <- readFile fname
     let specname = takeBaseName fname
     let ?cfg = defaultConfig { confDatalogFile = fname, confJava = java, confOmitWorkspace = True }
-    (modules, prog, rs_code) <- parseValidate fname java body
+    (modules, prog, rs_code) <- parseValidate fname java body False
     -- generate Rust project
     let dir = takeDirectory fname
     compile prog specname modules rs_code dir crate_types

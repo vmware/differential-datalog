@@ -1,19 +1,16 @@
 use crate::{
     ddval::DDValue,
-    profile::{get_prof_context, with_prof_context, ProfMsg},
     program::{
-        arrange::ArrangementFlavor, RecursiveRelation, RelId, Relation, TKeyAgent, TValAgent,
-        Weight,
-    },
-    program::{
-        arrange::{Arrangement, Arrangements},
+        arrange::{Arrangement, ArrangementFlavor, Arrangements},
         config::{Config, LoggingDestination, ProfilingConfig},
-        ArrId, Dep, Msg, ProgNode, Program, Reply, Update, TS,
+        ArrId, DelayedRelation, Dep, Msg, ProgNode, Program, RecursiveRelation, RelId, Relation,
+        Reply, TKeyAgent, TValAgent, Update, Weight, TS,
     },
     render::RenderContext,
     variable::Variable,
 };
 use crossbeam_channel::{Receiver, Sender};
+use ddlog_profiler::{get_prof_context, with_prof_context, OperatorDebugInfo, ProfMsg};
 use ddshow_sink::{
     enable_differential_logging, enable_timely_logging, save_differential_logs_to_disk,
     save_timely_logs_to_disk,
@@ -36,6 +33,7 @@ use dogsdogsdogs::operators::lookup_map;
 use fnv::{FnvBuildHasher, FnvHashMap};
 use num::{one, zero, One, Zero};
 use std::{
+    borrow::Cow,
     collections::{BTreeMap, BTreeSet, HashMap},
     mem,
     net::TcpStream,
@@ -81,7 +79,8 @@ struct SessionData {
 type DelayedVarMap<S> = FnvHashMap<
     RelId,
     (
-        RelId,
+        DelayedRelation,
+        TS,
         DDVariable<S, DDValue, Weight>,
         Collection<S, DDValue, Weight>,
     ),
@@ -445,31 +444,38 @@ impl<'a> DDlogWorker<'a> {
 
                     // Filter out events we don't care about to avoid the overhead of sending
                     // the event around just to drop it eventually.
-                    let filtered: Vec<((Duration, usize, TimelyEvent), Option<String>)> = data
-                        .drain(..)
-                        .filter(|event| {
-                            match event.2 {
-                                // Always send Operates events as they're used for always-on memory profiling.
-                                TimelyEvent::Operates(_) => true,
+                    let filtered: Vec<((Duration, usize, TimelyEvent), Option<OperatorDebugInfo>)> =
+                        data.drain(..)
+                            .filter(|event| {
+                                match event.2 {
+                                    // Always send Operates events as they're used for always-on memory profiling.
+                                    TimelyEvent::Operates(_) => true,
 
-                                // Send scheduling events if profiling is enabled
-                                TimelyEvent::Schedule(_) => profile_cpu || profile_timely,
+                                    // Send scheduling events if profiling is enabled
+                                    TimelyEvent::Schedule(_) => profile_cpu || profile_timely,
 
-                                // Send timely events if timely profiling is enabled
-                                TimelyEvent::GuardedMessage(_)
-                                | TimelyEvent::Messages(_)
-                                | TimelyEvent::Park(_)
-                                | TimelyEvent::PushProgress(_) => profile_timely,
+                                    // Send timely events if timely profiling is enabled
+                                    TimelyEvent::GuardedMessage(_)
+                                    | TimelyEvent::Messages(_)
+                                    | TimelyEvent::Park(_)
+                                    | TimelyEvent::PushProgress(_) => profile_timely,
 
-                                _ => false,
-                            }
-                        })
-                        .map(|(d, s, e)| match e {
-                            // Only Operate events care about the context string.
-                            TimelyEvent::Operates(_) => ((d, s, e), Some(get_prof_context())),
-                            _ => ((d, s, e), None),
-                        })
-                        .collect();
+                                    _ => false,
+                                }
+                            })
+                            .map(|(d, s, e)| match e {
+                                // Only Operate events care about the context string.
+                                TimelyEvent::Operates(ref op_event, ..) => {
+                                    let mut ctx = get_prof_context();
+                                    if ctx.is_none() && op_event.id == 0 {
+                                        ctx = Some(OperatorDebugInfo::dataflow());
+                                    }
+                                    assert!(ctx.is_some(), "timely event without context: {:?}", e);
+                                    ((d, s, e), ctx)
+                                }
+                                _ => ((d, s, e), None),
+                            })
+                            .collect();
 
                     // If there are any profiling events, record them
                     if !filtered.is_empty() {
@@ -598,8 +604,14 @@ impl<'a> DDlogWorker<'a> {
                 // quiescing the dataflow.
                 // Note: this trick won't be needed once DD supports proactive termination:
                 // https://github.com/TimelyDataflow/timely-dataflow/issues/306
-                let (enabled_session, enabled_collection) = outer.new_collection::<(), Weight>();
-                let enabled_arrangement = enabled_collection.arrange_by_self();
+                let (enabled_session, enabled_collection) = with_prof_context(
+                    OperatorDebugInfo::builtin(Cow::Borrowed("'Enabled' relation")),
+                    || outer.new_collection::<(), Weight>(),
+                );
+                let enabled_arrangement = with_prof_context(
+                    OperatorDebugInfo::builtin(Cow::Borrowed("'Enabled' arrangement")),
+                    || enabled_collection.arrange_by_self(),
+                );
 
                 // Create variables for delayed relations.  We will be able to refer to these variables
                 // inside rules and assign them once all rules have been evaluated.
@@ -609,8 +621,12 @@ impl<'a> DDlogWorker<'a> {
                     .map(|drel| {
                         let v = DDVariable::new(outer, drel.delay);
 
+                        let rel = program.get_relation(drel.rel_id);
                         let vcol = with_prof_context(
-                            &format!("join {} with 'Enabled' relation", drel.id),
+                            OperatorDebugInfo::join_with_enabled(
+                                rel.name.clone(),
+                                drel.used_at.as_slice(),
+                            ),
                             || {
                                 lookup_map(
                                     &v,
@@ -623,7 +639,7 @@ impl<'a> DDlogWorker<'a> {
                                 )
                             },
                         );
-                        (drel.id, (drel.rel_id, v, vcol))
+                        (drel.id, (drel.clone(), drel.delay, v, vcol))
                     })
                     .collect();
 
@@ -640,9 +656,19 @@ impl<'a> DDlogWorker<'a> {
                             &delayed_vars,
                         ),
 
-                        &ProgNode::Apply { tfun } => {
+                        &ProgNode::Apply {
+                            ref transformer,
+                            ref source_pos,
+                            tfun,
+                        } => {
                             // TODO: Add a description field for relation transformers
-                            tfun()(&mut collections);
+                            with_prof_context(
+                                OperatorDebugInfo::apply_transformer(
+                                    transformer.clone(),
+                                    source_pos.clone(),
+                                ),
+                                || tfun()(&mut collections),
+                            );
                         }
 
                         ProgNode::Scc { rels } => render_scc(
@@ -658,40 +684,59 @@ impl<'a> DDlogWorker<'a> {
                     }
                 }
 
-                for (id, (relid, variable, _)) in delayed_vars.into_iter() {
-                    variable.set(
-                        &collections
-                            .get(&relid)
-                            .ok_or_else(|| {
-                                format!(
-                                    "delayed variable {} refers to unknown base relation {}",
-                                    id, relid
-                                )
-                            })?
-                            .consolidate(),
+                for (id, (drel, delay, variable, _)) in delayed_vars.into_iter() {
+                    let rel = program.get_relation(drel.rel_id);
+                    let collection = &collections.get(&drel.rel_id).ok_or_else(|| {
+                        format!(
+                            "delayed variable {} refers to unknown base relation {}",
+                            id, drel.rel_id
+                        )
+                    })?;
+
+                    with_prof_context(
+                        OperatorDebugInfo::delayed_rel(
+                            rel.name.clone(),
+                            delay as usize,
+                            drel.used_at.as_slice(),
+                        ),
+                        || variable.set(&collection.consolidate()),
                     );
                 }
 
                 for (relid, collection) in collections {
+                    let rel = program.get_relation(relid);
                     // notify client about changes
-                    if let Some(relation_callback) = &program.get_relation(relid).change_cb {
+                    if let Some(relation_callback) = &rel.change_cb {
                         let relation_callback = relation_callback.clone();
 
-                        let consolidated =
-                            with_prof_context(&format!("consolidate {}", relid), || {
-                                collection.consolidate()
-                            });
+                        let consolidated = with_prof_context(
+                            OperatorDebugInfo::consolidate_output(
+                                rel.name.clone(),
+                                rel.source_pos.clone(),
+                            ),
+                            || collection.consolidate(),
+                        );
 
-                        let inspected = with_prof_context(&format!("inspect {}", relid), || {
-                            consolidated.inspect(move |x| {
-                                // assert!(x.2 == 1 || x.2 == -1, "x: {:?}", x);
-                                (relation_callback)(relid, &x.0, x.2)
-                            })
-                        });
+                        let inspected = with_prof_context(
+                            OperatorDebugInfo::inspect_output(
+                                rel.name.clone(),
+                                rel.source_pos.clone(),
+                            ),
+                            || {
+                                consolidated.inspect(move |x| {
+                                    // assert!(x.2 == 1 || x.2 == -1, "x: {:?}", x);
+                                    (relation_callback)(relid, &x.0, x.2)
+                                })
+                            },
+                        );
 
-                        with_prof_context(&format!("probe {}", relid), || {
-                            inspected.probe_with(&mut probe)
-                        });
+                        with_prof_context(
+                            OperatorDebugInfo::probe_output(
+                                rel.name.clone(),
+                                rel.source_pos.clone(),
+                            ),
+                            || inspected.probe_with(&mut probe),
+                        );
                     }
                 }
 
@@ -701,10 +746,22 @@ impl<'a> DDlogWorker<'a> {
                 let mut traces: BTreeMap<ArrId, _> = BTreeMap::new();
                 for ((relid, arrid), arr) in arrangements.into_iter() {
                     if let Arrangement::Map(arranged) = arr {
-                        if program.get_relation(relid).arrangements[arrid].queryable() {
-                            arranged
-                                .as_collection(|k, _| k.clone())
-                                .probe_with(&mut probe);
+                        let rel = &program.get_relation(relid);
+                        let arng = &rel.arrangements[arrid];
+                        if arng.queryable() {
+                            with_prof_context(
+                                OperatorDebugInfo::probe_index(
+                                    rel.name.clone(),
+                                    arng.arrange_by().clone(),
+                                    arng.used_in_indexes(),
+                                    arng.used_at(),
+                                ),
+                                || {
+                                    arranged
+                                        .as_collection(|k, _| k.clone())
+                                        .probe_with(&mut probe)
+                                },
+                            );
                             traces.insert((relid, arrid), arranged.trace.clone());
                         }
                     }
@@ -739,7 +796,10 @@ fn render_relation<S>(
     let mut collection = if let Some(collection) = collections.remove(&relation.id) {
         collection
     } else {
-        let (session, collection) = scope.new_collection::<DDValue, Weight>();
+        let (session, collection) = with_prof_context(
+            OperatorDebugInfo::input(relation.name.clone(), relation.source_pos.clone()),
+            || scope.new_collection::<DDValue, Weight>(),
+        );
         sessions.insert(relation.id, session);
 
         // TODO: Find a way to make the collection within the nested region
@@ -753,48 +813,69 @@ fn render_relation<S>(
 
     // apply rules
     // TODO: Regions for rules
-    let rule_collections = relation.rules.iter().map(|rule| {
-        let get_rule_collection = |relation_id| {
-            if let Some(collection) = collections.get(&relation_id) {
-                Some(collection.clone())
-            } else {
-                delayed_vars
-                    .get(&relation_id)
-                    .map(|(_, _, collection)| collection.clone())
-            }
-        };
+    let rule_collections: Vec<_> = relation
+        .rules
+        .iter()
+        .map(|rule| {
+            let get_rule_collection = |relation_id| {
+                if let Some(collection) = collections.get(&relation_id) {
+                    Some(collection.clone())
+                } else {
+                    delayed_vars
+                        .get(&relation_id)
+                        .map(|(_, _, _, collection)| collection.clone())
+                }
+            };
 
-        program.mk_rule(
-            rule,
-            get_rule_collection,
-            Arrangements {
-                arrangements: &entered_arrangements,
-            },
-        )
-    });
+            program.mk_rule(
+                rule,
+                get_rule_collection,
+                Arrangements {
+                    arrangements: &entered_arrangements,
+                },
+            )
+        })
+        // Evaluate the iterator eagerly; otherwise lazy evaluation will result in nested
+        // `with_prof_context` calls in the next statement.
+        .collect();
 
-    if rule_collections.len() > 0 {
-        collection = with_prof_context(&format!("concatenate rules for {}", relation.name), || {
-            collection.concatenate(rule_collections)
-        });
+    if !rule_collections.is_empty() {
+        collection = with_prof_context(
+            OperatorDebugInfo::concatenate_relation(
+                relation.name.clone(),
+                relation.source_pos.clone(),
+            ),
+            || collection.concatenate(rule_collections),
+        );
     }
 
     // don't distinct input collections, as this is already done by the set_update logic
     if !relation.input && relation.distinct {
-        collection = with_prof_context(&format!("{}.threshold_total", relation.name), || {
-            collection.threshold_total(|_, c| if (*c).is_zero() { zero() } else { one() })
-        });
+        collection = with_prof_context(
+            OperatorDebugInfo::distinct_relation(
+                relation.name.clone(),
+                relation.source_pos.clone(),
+            ),
+            || collection.threshold_total(|_, c| if (*c).is_zero() { zero() } else { one() }),
+        );
     }
 
     // create arrangements
     // TODO: Arrangements have their own shebang, region them off too
     for (arr_id, arrangement) in relation.arrangements.iter().enumerate() {
-        with_prof_context(arrangement.name(), || {
-            arrangements.insert(
-                (relation.id, arr_id),
-                arrangement.build_arrangement_root(render_context, &collection),
-            )
-        });
+        with_prof_context(
+            OperatorDebugInfo::arrange_relation_non_rec(
+                relation.name.clone(),
+                arrangement.arrange_by().clone(),
+                arrangement.used_at(),
+            ),
+            || {
+                arrangements.insert(
+                    (relation.id, arr_id),
+                    arrangement.build_arrangement_root(render_context, &collection),
+                )
+            },
+        );
     }
 
     collections.insert(relation.id, collection);
@@ -819,6 +900,8 @@ fn render_scc<'a>(
         Arrangement<Child<'a, Worker<Allocator>, TS>, Weight, TValAgent<TS>, TKeyAgent<TS>>,
     >,
 ) -> Result<(), String> {
+    let rel_names: Vec<_> = rels.iter().map(|r| r.rel.name.clone()).collect();
+
     // Preallocate the memory required to store the new relations
     sessions.reserve(rels.len());
     collections.reserve(rels.len());
@@ -826,7 +909,11 @@ fn render_scc<'a>(
     // create collections; add them to map; we will overwrite them with
     // updated collections returned from the inner scope.
     for r in rels.iter() {
-        let (session, collection) = scope.new_collection::<DDValue, Weight>();
+        let (session, collection) = with_prof_context(
+            OperatorDebugInfo::input(r.rel.name.clone(), r.rel.source_pos.clone()),
+            || scope.new_collection::<DDValue, Weight>(),
+        );
+
         //assert!(!r.rel.input, "input relation in nested scope: {}", r.rel.name);
         if r.rel.input {
             return Err(format!("input relation in nested scope: {}", r.rel.name));
@@ -837,133 +924,183 @@ fn render_scc<'a>(
     }
 
     // create a nested scope for mutually recursive relations
-    let new_collections = scope.scoped("recursive component", |inner| -> Result<_, String> {
-        // create variables for relations defined in the Scc.
-        let mut vars = HashMap::with_capacity_and_hasher(rels.len(), FnvBuildHasher::default());
-        // arrangements created inside the nested scope
-        let mut local_arrangements = FnvHashMap::default();
-        // arrangements entered from global scope
-        let mut inner_arrangements = FnvHashMap::default();
+    with_prof_context(
+        OperatorDebugInfo::recursive_component(rel_names.as_ref()),
+        || {
+            let new_collections =
+                scope.scoped("recursive component", |inner| -> Result<_, String> {
+                    // create variables for relations defined in the Scc.
+                    let mut vars =
+                        HashMap::with_capacity_and_hasher(rels.len(), FnvBuildHasher::default());
+                    // arrangements created inside the nested scope
+                    let mut local_arrangements = FnvHashMap::default();
+                    // arrangements entered from global scope
+                    let mut inner_arrangements = FnvHashMap::default();
 
-        for r in rels.iter() {
-            let var = Variable::from(
-                &collections
-                    .get(&r.rel.id)
-                    .ok_or_else(|| {
-                        format!("failed to find collection with relation ID {}", r.rel.id)
-                    })?
-                    .enter(inner),
-                r.distinct,
-                &r.rel.name,
-            );
+                    for r in rels.iter() {
+                        let rel = collections.get(&r.rel.id).ok_or_else(|| {
+                            format!("failed to find collection with relation ID {}", r.rel.id)
+                        })?;
+                        let var = Variable::new(
+                            &with_prof_context(
+                                OperatorDebugInfo::rel_enter_recursive_scope(r.rel.name.clone()),
+                                || rel.enter(inner),
+                            ),
+                            r.distinct,
+                            r.rel.name.clone(),
+                            r.rel.source_pos.clone(),
+                        );
 
-            vars.insert(r.rel.id, var);
-        }
+                        vars.insert(r.rel.id, var);
+                    }
 
-        // create arrangements
-        for rel in rels {
-            for (i, arr) in rel.rel.arrangements.iter().enumerate() {
-                // check if arrangement is actually used inside this node
-                if program
-                    .arrangement_used_by_nodes((rel.rel.id, i))
-                    .any(|n| n == node_id)
-                {
-                    with_prof_context(&format!("local {}", arr.name()), || {
-                        local_arrangements.insert(
-                            (rel.rel.id, i),
-                            arr.build_arrangement(render_context, &*vars.get(&rel.rel.id)?),
+                    // create arrangements
+                    for rel in rels {
+                        for (i, arr) in rel.rel.arrangements.iter().enumerate() {
+                            // check if arrangement is actually used inside this node
+                            if program
+                                .arrangement_used_by_nodes((rel.rel.id, i))
+                                .any(|n| n == node_id)
+                            {
+                                with_prof_context(
+                                    OperatorDebugInfo::arrange_relation_rec_inner(
+                                        rel.rel.name.clone(),
+                                        arr.arrange_by().clone(),
+                                        arr.used_at(),
+                                    ),
+                                    || {
+                                        local_arrangements.insert(
+                                            (rel.rel.id, i),
+                                            arr.build_arrangement(
+                                                render_context,
+                                                &*vars.get(&rel.rel.id)?,
+                                            ),
+                                        )
+                                    },
+                                );
+                            }
+                        }
+                    }
+
+                    let dependencies =
+                        Program::dependencies(rels.iter().map(|relation| &relation.rel));
+
+                    // collections entered from global scope
+                    let mut inner_collections = HashMap::with_capacity_and_hasher(
+                        dependencies.len(),
+                        FnvBuildHasher::default(),
+                    );
+
+                    for dep in dependencies {
+                        match dep {
+                            Dep::Rel(relid) => {
+                                assert!(!vars.contains_key(&relid));
+                                let rel = collections.get(&relid).ok_or_else(|| {
+                                    format!("failed to find collection with relation ID {}", relid)
+                                })?;
+                                let collection = with_prof_context(
+                                    OperatorDebugInfo::rel_enter_recursive_scope(
+                                        program.get_relation(relid).name.clone(),
+                                    ),
+                                    || rel.enter(inner),
+                                );
+
+                                inner_collections.insert(relid, collection);
+                            }
+                            Dep::Arr(arrid) => {
+                                let rel = program.get_relation(arrid.0);
+                                let arr = &rel.arrangements[arrid.1];
+                                let arng = arrangements.get(&arrid).ok_or_else(|| {
+                                    format!("Arr: unknown arrangement {:?}", arrid)
+                                })?;
+                                let arrangement = with_prof_context(
+                                    OperatorDebugInfo::arr_enter_recursive_scope(
+                                        rel.name.clone(),
+                                        arr.arrange_by().clone(),
+                                    ),
+                                    || arng.enter(inner),
+                                );
+
+                                inner_arrangements.insert(arrid, arrangement);
+                            }
+                        }
+                    }
+
+                    let arrangements = local_arrangements
+                        .into_iter()
+                        .map(|(id, arr)| (id, ArrangementFlavor::Local(arr)))
+                        .chain(
+                            inner_arrangements
+                                .into_iter()
+                                .map(|(id, arr)| (id, ArrangementFlavor::Foreign(arr))),
                         )
-                    });
-                }
-            }
-        }
+                        .collect();
 
-        let dependencies = Program::dependencies(rels.iter().map(|relation| &relation.rel));
+                    // apply rules to variables
+                    for rel in rels {
+                        for rule in &rel.rel.rules {
+                            let c = program.mk_rule(
+                                rule,
+                                |rid| {
+                                    vars.get(&rid)
+                                        .map(|v| v.deref())
+                                        .or_else(|| inner_collections.get(&rid))
+                                        .cloned()
+                                },
+                                Arrangements {
+                                    arrangements: &arrangements,
+                                },
+                            );
 
-        // collections entered from global scope
-        let mut inner_collections =
-            HashMap::with_capacity_and_hasher(dependencies.len(), FnvBuildHasher::default());
+                            vars.get_mut(&rel.rel.id)
+                                .ok_or_else(|| {
+                                    format!("no variable found for relation ID {}", rel.rel.id)
+                                })?
+                                .add(&c);
+                        }
+                    }
 
-        for dep in dependencies {
-            match dep {
-                Dep::Rel(relid) => {
-                    assert!(!vars.contains_key(&relid));
-                    let collection = collections
-                        .get(&relid)
-                        .ok_or_else(|| {
-                            format!("failed to find collection with relation ID {}", relid)
-                        })?
-                        .enter(inner);
+                    // bring new relations back to the outer scope
+                    let mut new_collections =
+                        HashMap::with_capacity_and_hasher(rels.len(), FnvBuildHasher::default());
+                    for rel in rels {
+                        let var = vars.get(&rel.rel.id).ok_or_else(|| {
+                            format!("no variable found for relation ID {}", rel.rel.id)
+                        })?;
 
-                    inner_collections.insert(relid, collection);
-                }
-                Dep::Arr(arrid) => {
-                    let arrangement = arrangements
-                        .get(&arrid)
-                        .ok_or_else(|| format!("Arr: unknown arrangement {:?}", arrid))?
-                        .enter(inner);
+                        let mut collection = with_prof_context(
+                            OperatorDebugInfo::rel_leave_recursive_scope(rel.rel.name.clone()),
+                            || var.leave(),
+                        );
+                        // var.distinct() will be called automatically by var.drop() if var has `distinct` flag set
+                        if rel.rel.distinct && !rel.distinct {
+                            collection = with_prof_context(
+                                OperatorDebugInfo::distinct_relation(
+                                    rel.rel.name.clone(),
+                                    rel.rel.source_pos.clone(),
+                                ),
+                                || {
+                                    collection.threshold_total(|_, c| {
+                                        if (*c).is_zero() {
+                                            zero()
+                                        } else {
+                                            one()
+                                        }
+                                    })
+                                },
+                            );
+                        }
 
-                    inner_arrangements.insert(arrid, arrangement);
-                }
-            }
-        }
+                        new_collections.insert(rel.rel.id, collection);
+                    }
 
-        let arrangements = local_arrangements
-            .into_iter()
-            .map(|(id, arr)| (id, ArrangementFlavor::Local(arr)))
-            .chain(
-                inner_arrangements
-                    .into_iter()
-                    .map(|(id, arr)| (id, ArrangementFlavor::Foreign(arr))),
-            )
-            .collect();
-
-        // apply rules to variables
-        for rel in rels {
-            for rule in &rel.rel.rules {
-                let c = program.mk_rule(
-                    rule,
-                    |rid| {
-                        vars.get(&rid)
-                            .map(|v| v.deref())
-                            .or_else(|| inner_collections.get(&rid))
-                            .cloned()
-                    },
-                    Arrangements {
-                        arrangements: &arrangements,
-                    },
-                );
-
-                vars.get_mut(&rel.rel.id)
-                    .ok_or_else(|| format!("no variable found for relation ID {}", rel.rel.id))?
-                    .add(&c);
-            }
-        }
-
-        // bring new relations back to the outer scope
-        let mut new_collections =
-            HashMap::with_capacity_and_hasher(rels.len(), FnvBuildHasher::default());
-        for rel in rels {
-            let var = vars
-                .get(&rel.rel.id)
-                .ok_or_else(|| format!("no variable found for relation ID {}", rel.rel.id))?;
-
-            let mut collection = var.leave();
-            // var.distinct() will be called automatically by var.drop() if var has `distinct` flag set
-            if rel.rel.distinct && !rel.distinct {
-                collection = with_prof_context(&format!("{}.distinct_total", rel.rel.name), || {
-                    collection.threshold_total(|_, c| if (*c).is_zero() { zero() } else { one() })
-                });
-            }
-
-            new_collections.insert(rel.rel.id, collection);
-        }
-
-        Ok(new_collections)
-    })?;
-
-    // add new collections to the map
-    collections.extend(new_collections);
+                    Ok(new_collections)
+                })?;
+            // add new collections to the map
+            collections.extend(new_collections);
+            <Result<(), String>>::Ok(())
+        },
+    )?;
 
     // create arrangements
     for rel in rels {
@@ -975,7 +1112,11 @@ fn render_scc<'a>(
                     .any(|n| n != node_id)
             {
                 with_prof_context(
-                    &format!("global {}", arr.name()),
+                    OperatorDebugInfo::arrange_relation_rec_outer(
+                        rel.rel.name.clone(),
+                        arr.arrange_by().clone(),
+                        arr.used_at(),
+                    ),
                     || -> Result<_, String> {
                         let collection = collections.get(&rel.rel.id).ok_or_else(|| {
                             format!("no collection found for relation ID {}", rel.rel.id)

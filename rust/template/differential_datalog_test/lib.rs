@@ -11,7 +11,10 @@ use std::collections::btree_map::{BTreeMap, Entry};
 use std::collections::btree_set::BTreeSet;
 use std::sync::{Arc, Mutex};
 
-use differential_datalog::program::config::Config;
+use ddlog_profiler::{
+    ArrangementDebugInfo, DDlogSourceCode, OperatorDebugInfo, RuleDebugInfo, SourcePosition,
+};
+use differential_datalog::{ddval::*, program::config::Config, program::*};
 use fnv::FnvHashMap;
 use num::One;
 use timely::communication::Allocator;
@@ -20,9 +23,6 @@ use timely::worker::Worker;
 
 use differential_dataflow::operators::Join;
 use differential_dataflow::Collection;
-
-use differential_datalog::ddval::*;
-use differential_datalog::program::*;
 
 pub mod test_value;
 use test_value::*;
@@ -63,6 +63,8 @@ const TEST_SIZE: u64 = 1000;
     }
 }*/
 
+pub static SOURCE_CODE: DDlogSourceCode = DDlogSourceCode { code: &[] };
+
 type Delta<T> = BTreeMap<T, Weight>;
 
 fn set_update<T>(_rel: &str, s: &Arc<Mutex<Delta<T>>>, x: &DDValue, w: Weight)
@@ -97,7 +99,16 @@ fn test_multiple_stops() {
         init_data: Vec::new(),
     };
 
-    let mut running = prog.run(Config::default().with_timely_workers(2)).unwrap();
+    let mut running = prog
+        .run(
+            Config::default()
+                .with_profiling_config(ProfilingConfig::SelfProfiling {
+                    profile_directory: None,
+                })
+                .with_timely_workers(2),
+            &SOURCE_CODE,
+        )
+        .unwrap();
     running.stop().unwrap();
     running.stop().unwrap();
 }
@@ -112,7 +123,16 @@ fn test_insert_non_existent_relation() {
         init_data: vec![],
     };
 
-    let mut running = prog.run(Config::default().with_timely_workers(3)).unwrap();
+    let mut running = prog
+        .run(
+            Config::default()
+                .with_profiling_config(ProfilingConfig::SelfProfiling {
+                    profile_directory: None,
+                })
+                .with_timely_workers(3),
+            &SOURCE_CODE,
+        )
+        .unwrap();
     running.transaction_start().unwrap();
     let result = running.insert(1, U64(42).into_ddvalue());
     assert_eq!(
@@ -128,6 +148,7 @@ fn test_input_relation_nested() {
     let parent = {
         Relation {
             name: Cow::from("parent"),
+            source_pos: SourcePosition::Unknown,
             input: true,
             distinct: true,
             caching_mode: CachingMode::Set,
@@ -141,6 +162,7 @@ fn test_input_relation_nested() {
     let ancestor = Relation {
         name: Cow::from("ancestor"),
         input: true,
+        source_pos: SourcePosition::Unknown,
         distinct: true,
         caching_mode: CachingMode::Set,
         key_func: None,
@@ -165,7 +187,14 @@ fn test_input_relation_nested() {
 
     // This call is expected to panic.
     let _err = prog
-        .run(Config::default().with_timely_workers(3))
+        .run(
+            Config::default()
+                .with_profiling_config(ProfilingConfig::SelfProfiling {
+                    profile_directory: None,
+                })
+                .with_timely_workers(3),
+            &SOURCE_CODE,
+        )
         .unwrap_err();
 }
 
@@ -177,6 +206,7 @@ fn test_one_relation(nthreads: usize) {
         let relset1 = relset.clone();
         Relation {
             name: Cow::from("T1"),
+            source_pos: SourcePosition::Unknown,
             input: true,
             distinct: true,
             caching_mode: CachingMode::Set,
@@ -195,7 +225,14 @@ fn test_one_relation(nthreads: usize) {
     };
 
     let mut running = prog
-        .run(Config::default().with_timely_workers(nthreads))
+        .run(
+            Config::default()
+                .with_profiling_config(ProfilingConfig::SelfProfiling {
+                    profile_directory: None,
+                })
+                .with_timely_workers(nthreads),
+            &SOURCE_CODE,
+        )
         .unwrap();
 
     /* 1. Insertion */
@@ -275,6 +312,7 @@ fn test_two_relations(nthreads: usize) {
         let relset1 = relset1.clone();
         Relation {
             name: Cow::from("T1"),
+            source_pos: SourcePosition::Unknown,
             input: true,
             distinct: true,
             caching_mode: CachingMode::Set,
@@ -290,16 +328,17 @@ fn test_two_relations(nthreads: usize) {
         let relset2 = relset2.clone();
         Relation {
             name: Cow::from("T2"),
+            source_pos: SourcePosition::Unknown,
             input: false,
             distinct: true,
             caching_mode: CachingMode::Set,
             key_func: None,
             id: 2,
             rules: vec![Rule::CollectionRule {
-                description: Cow::Borrowed("T2.R1"),
+                debug_info: RuleDebugInfo::default(),
                 rel: 1,
                 xform: Some(XFormCollection::Inspect {
-                    description: Cow::from("Inspect"),
+                    debug_info: OperatorDebugInfo::inspect(SourcePosition::Unknown),
                     ifun: ifun as InspectFunc,
                     next: Box::new(None),
                 }),
@@ -316,7 +355,14 @@ fn test_two_relations(nthreads: usize) {
     };
 
     let mut running = prog
-        .run(Config::default().with_timely_workers(nthreads))
+        .run(
+            Config::default()
+                .with_profiling_config(ProfilingConfig::SelfProfiling {
+                    profile_directory: None,
+                })
+                .with_timely_workers(nthreads),
+            &SOURCE_CODE,
+        )
         .unwrap();
 
     /* 1. Populate T1 */
@@ -378,6 +424,7 @@ fn test_semijoin(nthreads: usize) {
     let rel1 = {
         Relation {
             name: Cow::from("T1"),
+            source_pos: SourcePosition::Unknown,
             input: true,
             distinct: true,
             caching_mode: CachingMode::Set,
@@ -401,6 +448,7 @@ fn test_semijoin(nthreads: usize) {
     let rel2 = {
         Relation {
             name: Cow::from("T2"),
+            source_pos: SourcePosition::Unknown,
             input: true,
             distinct: true,
             caching_mode: CachingMode::Set,
@@ -408,7 +456,7 @@ fn test_semijoin(nthreads: usize) {
             id: 2,
             rules: Vec::new(),
             arrangements: vec![Arrangement::Set {
-                name: Cow::from("arrange2.0"),
+                debug_info: ArrangementDebugInfo::new(Cow::from("arrange2.0"), &[], &[]),
                 fmfun: fmfun1 as FilterMapFunc,
                 distinct: false,
             }],
@@ -430,19 +478,27 @@ fn test_semijoin(nthreads: usize) {
         let relset3 = relset3.clone();
         Relation {
             name: Cow::from("T3"),
+            source_pos: SourcePosition::Unknown,
             input: false,
             distinct: true,
             caching_mode: CachingMode::Set,
             key_func: None,
             id: 3,
             rules: vec![Rule::CollectionRule {
-                description: Cow::from("T3.R1"),
+                debug_info: RuleDebugInfo::default(),
                 rel: 1,
                 xform: Some(XFormCollection::Arrange {
-                    description: Cow::from("arrange by .0"),
+                    debug_info: OperatorDebugInfo::arrange(
+                        Cow::from(".0"),
+                        SourcePosition::Unknown,
+                    ),
                     afun: afun1 as ArrangeFunc,
                     next: Box::new(XFormArrangement::Semijoin {
-                        description: Cow::from("1.semijoin (2,0)"),
+                        debug_info: OperatorDebugInfo::semijoin(
+                            Cow::from("1"),
+                            Cow::from("0"),
+                            SourcePosition::Unknown,
+                        ),
                         ffun: None,
                         arrangement: (2, 0),
                         jfun: jfun as SemijoinFunc,
@@ -466,7 +522,14 @@ fn test_semijoin(nthreads: usize) {
     };
 
     let mut running = prog
-        .run(Config::default().with_timely_workers(nthreads))
+        .run(
+            Config::default()
+                .with_profiling_config(ProfilingConfig::SelfProfiling {
+                    profile_directory: None,
+                })
+                .with_timely_workers(nthreads),
+            &SOURCE_CODE,
+        )
         .unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
@@ -504,6 +567,7 @@ fn test_join(nthreads: usize) {
     let rel1 = {
         Relation {
             name: Cow::from("T1"),
+            source_pos: SourcePosition::Unknown,
             input: true,
             distinct: true,
             caching_mode: CachingMode::Set,
@@ -522,6 +586,7 @@ fn test_join(nthreads: usize) {
     let rel2 = {
         Relation {
             name: Cow::from("T2"),
+            source_pos: SourcePosition::Unknown,
             input: true,
             distinct: true,
             caching_mode: CachingMode::Set,
@@ -529,7 +594,7 @@ fn test_join(nthreads: usize) {
             id: 2,
             rules: Vec::new(),
             arrangements: vec![Arrangement::Map {
-                name: Cow::from("arrange2.0"),
+                debug_info: ArrangementDebugInfo::new(Cow::from("arrange2.0"), &[], &[]),
                 afun: afun1 as ArrangeFunc,
                 queryable: true,
             }],
@@ -551,19 +616,27 @@ fn test_join(nthreads: usize) {
         let relset3 = relset3.clone();
         Relation {
             name: Cow::from("T3"),
+            source_pos: SourcePosition::Unknown,
             input: false,
             distinct: true,
             caching_mode: CachingMode::Set,
             key_func: None,
             id: 3,
             rules: vec![Rule::CollectionRule {
-                description: Cow::from("T3.R1"),
+                debug_info: RuleDebugInfo::default(),
                 rel: 1,
                 xform: Some(XFormCollection::Arrange {
-                    description: Cow::from("arrange by .0"),
+                    debug_info: OperatorDebugInfo::arrange(
+                        Cow::from("arrange by .0"),
+                        SourcePosition::Unknown,
+                    ),
                     afun: afun1 as ArrangeFunc,
                     next: Box::new(XFormArrangement::Join {
-                        description: Cow::from("1.semijoin (2,0)"),
+                        debug_info: OperatorDebugInfo::semijoin(
+                            Cow::from("2"),
+                            Cow::from("(2,0)"),
+                            SourcePosition::Unknown,
+                        ),
                         ffun: None,
                         arrangement: (2, 0),
                         jfun: jfun as JoinFunc,
@@ -581,6 +654,7 @@ fn test_join(nthreads: usize) {
         let relset4 = relset4.clone();
         Relation {
             name: Cow::from("T4"),
+            source_pos: SourcePosition::Unknown,
             input: false,
             distinct: true,
             caching_mode: CachingMode::Set,
@@ -620,6 +694,8 @@ fn test_join(nthreads: usize) {
             ProgNode::Rel { rel: rel2 },
             ProgNode::Rel { rel: rel3 },
             ProgNode::Apply {
+                transformer: Cow::Borrowed("join_transformer"),
+                source_pos: SourcePosition::Unknown,
                 tfun: join_transformer,
             },
             ProgNode::Rel { rel: rel4 },
@@ -629,7 +705,14 @@ fn test_join(nthreads: usize) {
     };
 
     let mut running = prog
-        .run(Config::default().with_timely_workers(nthreads))
+        .run(
+            Config::default()
+                .with_profiling_config(ProfilingConfig::SelfProfiling {
+                    profile_directory: None,
+                })
+                .with_timely_workers(nthreads),
+            &SOURCE_CODE,
+        )
         .unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
@@ -683,6 +766,7 @@ fn test_streamjoin(nthreads: usize) {
     let rel1 = {
         Relation {
             name: Cow::from("T1"),
+            source_pos: SourcePosition::Unknown,
             input: true,
             distinct: true,
             caching_mode: CachingMode::Set,
@@ -691,12 +775,12 @@ fn test_streamjoin(nthreads: usize) {
             rules: Vec::new(),
             arrangements: vec![
                 Arrangement::Map {
-                    name: Cow::from("arrange1.0"),
+                    debug_info: ArrangementDebugInfo::new(Cow::from("arrange1.0"), &[], &[]),
                     afun: afun1 as ArrangeFunc,
                     queryable: false,
                 },
                 Arrangement::Set {
-                    name: Cow::from("arrange1.1"),
+                    debug_info: ArrangementDebugInfo::new(Cow::from("arrange1.1"), &[], &[]),
                     fmfun: safun1 as FilterMapFunc,
                     distinct: false,
                 },
@@ -719,6 +803,7 @@ fn test_streamjoin(nthreads: usize) {
     let rel2 = {
         Relation {
             name: Cow::from("T2"),
+            source_pos: SourcePosition::Unknown,
             input: true,
             distinct: true,
             caching_mode: CachingMode::Set,
@@ -779,19 +864,27 @@ fn test_streamjoin(nthreads: usize) {
         let relset3 = relset3.clone();
         Relation {
             name: Cow::from("T3"),
+            source_pos: SourcePosition::Unknown,
             input: false,
             distinct: false,
             caching_mode: CachingMode::Set,
             key_func: None,
             id: 3,
             rules: vec![Rule::CollectionRule {
-                description: Cow::from("T3.R1"),
+                debug_info: RuleDebugInfo::default(),
                 rel: 1,
                 xform: Some(XFormCollection::Arrange {
-                    description: Cow::from("arrange by .0"),
+                    debug_info: OperatorDebugInfo::arrange(
+                        Cow::from("by .0"),
+                        SourcePosition::Unknown,
+                    ),
                     afun: afun1 as ArrangeFunc,
                     next: Box::new(XFormArrangement::StreamJoin {
-                        description: Cow::from("1.streamjoin (2)"),
+                        debug_info: OperatorDebugInfo::arr_stream_join(
+                            Cow::from("2"),
+                            Cow::from(".0"),
+                            SourcePosition::Unknown,
+                        ),
                         ffun: None,
                         rel: 2,
                         kfun: kfun as KeyFunc,
@@ -810,16 +903,22 @@ fn test_streamjoin(nthreads: usize) {
         let relset4 = relset4.clone();
         Relation {
             name: Cow::from("T4"),
+            source_pos: SourcePosition::Unknown,
             input: false,
             distinct: false,
             caching_mode: CachingMode::Set,
             key_func: None,
             id: 4,
             rules: vec![Rule::CollectionRule {
-                description: Cow::from("T4.R1"),
+                debug_info: RuleDebugInfo::default(),
                 rel: 2,
                 xform: Some(XFormCollection::StreamJoin {
-                    description: Cow::from("2.streamjoin (1)"),
+                    debug_info: OperatorDebugInfo::stream_arr_join(
+                        Cow::from("(0, 1)"),
+                        Cow::from("1"),
+                        Cow::from("0"),
+                        SourcePosition::Unknown,
+                    ),
                     afun: afun1,
                     arrangement: (1, 0),
                     jfun: jfun2 as ValJoinFunc,
@@ -836,19 +935,27 @@ fn test_streamjoin(nthreads: usize) {
         let relset5 = relset5.clone();
         Relation {
             name: Cow::from("T5"),
+            source_pos: SourcePosition::Unknown,
             input: false,
             distinct: false,
             caching_mode: CachingMode::Set,
             key_func: None,
             id: 5,
             rules: vec![Rule::CollectionRule {
-                description: Cow::from("T5.R1"),
+                debug_info: RuleDebugInfo::default(),
                 rel: 1,
                 xform: Some(XFormCollection::Arrange {
-                    description: Cow::from("arrange by .0"),
+                    debug_info: OperatorDebugInfo::arrange(
+                        Cow::from("by .0"),
+                        SourcePosition::Unknown,
+                    ),
                     afun: afun1 as ArrangeFunc,
                     next: Box::new(XFormArrangement::StreamSemijoin {
-                        description: Cow::from("1.streamsemijoin (2)"),
+                        debug_info: OperatorDebugInfo::arr_stream_semijoin(
+                            Cow::from("2"),
+                            Cow::from(".0"),
+                            SourcePosition::Unknown,
+                        ),
                         ffun: None,
                         rel: 2,
                         kfun: kfun as KeyFunc,
@@ -867,16 +974,22 @@ fn test_streamjoin(nthreads: usize) {
         let relset6 = relset6.clone();
         Relation {
             name: Cow::from("T6"),
+            source_pos: SourcePosition::Unknown,
             input: false,
             distinct: false,
             caching_mode: CachingMode::Set,
             key_func: None,
             id: 6,
             rules: vec![Rule::CollectionRule {
-                description: Cow::from("T6.R1"),
+                debug_info: RuleDebugInfo::default(),
                 rel: 2,
                 xform: Some(XFormCollection::StreamSemijoin {
-                    description: Cow::from("2.streamsemijoin (1)"),
+                    debug_info: OperatorDebugInfo::stream_arr_semijoin(
+                        Cow::from("(0, 1)"),
+                        Cow::from("1"),
+                        Cow::from("1"),
+                        SourcePosition::Unknown,
+                    ),
                     afun: afun1,
                     arrangement: (1, 1),
                     jfun: sjfun2 as StreamSemijoinFunc,
@@ -902,7 +1015,14 @@ fn test_streamjoin(nthreads: usize) {
     };
 
     let mut running = prog
-        .run(Config::default().with_timely_workers(nthreads))
+        .run(
+            Config::default()
+                .with_profiling_config(ProfilingConfig::SelfProfiling {
+                    profile_directory: None,
+                })
+                .with_timely_workers(nthreads),
+            &SOURCE_CODE,
+        )
         .unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
@@ -942,6 +1062,7 @@ fn test_antijoin(nthreads: usize) {
     let rel1 = {
         Relation {
             name: Cow::from("T1"),
+            source_pos: SourcePosition::Unknown,
             input: true,
             distinct: true,
             caching_mode: CachingMode::Set,
@@ -961,6 +1082,7 @@ fn test_antijoin(nthreads: usize) {
     let rel2 = {
         Relation {
             name: Cow::from("T2"),
+            source_pos: SourcePosition::Unknown,
             input: true,
             distinct: true,
             caching_mode: CachingMode::Set,
@@ -985,22 +1107,23 @@ fn test_antijoin(nthreads: usize) {
     let rel21 = {
         Relation {
             name: Cow::from("T21"),
+            source_pos: SourcePosition::Unknown,
             input: false,
             distinct: true,
             caching_mode: CachingMode::Set,
             key_func: None,
             id: 21,
             rules: vec![Rule::CollectionRule {
-                description: Cow::from("T21.R1"),
+                debug_info: RuleDebugInfo::default(),
                 rel: 2,
                 xform: Some(XFormCollection::Map {
-                    description: Cow::from("map by .0"),
+                    debug_info: OperatorDebugInfo::map(SourcePosition::Unknown),
                     mfun: mfun as MapFunc,
                     next: Box::new(None),
                 }),
             }],
             arrangements: vec![Arrangement::Set {
-                name: Cow::from("arrange2.1"),
+                debug_info: ArrangementDebugInfo::new(Cow::from("arrange2.1"), &[], &[]),
                 fmfun: fmnull_fun as FilterMapFunc,
                 distinct: true,
             }],
@@ -1013,19 +1136,27 @@ fn test_antijoin(nthreads: usize) {
         let relset3 = relset3.clone();
         Relation {
             name: Cow::from("T3"),
+            source_pos: SourcePosition::Unknown,
             input: false,
             distinct: true,
             caching_mode: CachingMode::Set,
             key_func: None,
             id: 3,
             rules: vec![Rule::CollectionRule {
-                description: Cow::from("T3.R1"),
+                debug_info: RuleDebugInfo::default(),
                 rel: 1,
                 xform: Some(XFormCollection::Arrange {
-                    description: Cow::from("arrange by .0"),
+                    debug_info: OperatorDebugInfo::arrange(
+                        Cow::from("by .0"),
+                        SourcePosition::Unknown,
+                    ),
                     afun: afun1 as ArrangeFunc,
                     next: Box::new(XFormArrangement::Antijoin {
-                        description: Cow::from("1.antijoin (21,0)"),
+                        debug_info: OperatorDebugInfo::antijoin(
+                            Cow::from("21"),
+                            Cow::from("0"),
+                            SourcePosition::Unknown,
+                        ),
                         ffun: None,
                         arrangement: (21, 0),
                         next: Box::new(None),
@@ -1049,7 +1180,14 @@ fn test_antijoin(nthreads: usize) {
     };
 
     let mut running = prog
-        .run(Config::default().with_timely_workers(nthreads))
+        .run(
+            Config::default()
+                .with_profiling_config(ProfilingConfig::SelfProfiling {
+                    profile_directory: None,
+                })
+                .with_timely_workers(nthreads),
+            &SOURCE_CODE,
+        )
         .unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
@@ -1097,6 +1235,7 @@ fn test_map(nthreads: usize) {
         let relset1 = relset1.clone();
         Relation {
             name: Cow::from("T1"),
+            source_pos: SourcePosition::Unknown,
             input: true,
             distinct: true,
             caching_mode: CachingMode::Set,
@@ -1163,25 +1302,26 @@ fn test_map(nthreads: usize) {
         let relset2 = relset2.clone();
         Relation {
             name: Cow::from("T2"),
+            source_pos: SourcePosition::Unknown,
             input: false,
             distinct: true,
             caching_mode: CachingMode::Set,
             key_func: None,
             id: 2,
             rules: vec![Rule::CollectionRule {
-                description: Cow::from("T2.R1"),
+                debug_info: RuleDebugInfo::default(),
                 rel: 1,
                 xform: Some(XFormCollection::Map {
-                    description: Cow::from("map x2"),
+                    debug_info: OperatorDebugInfo::map(SourcePosition::Unknown),
                     mfun: mfun as MapFunc,
                     next: Box::new(Some(XFormCollection::Filter {
-                        description: Cow::from("filter >10"),
+                        debug_info: OperatorDebugInfo::filter(SourcePosition::Unknown),
                         ffun: ffun as FilterFunc,
                         next: Box::new(Some(XFormCollection::FilterMap {
-                            description: Cow::from("filter >12 map x2"),
+                            debug_info: OperatorDebugInfo::filter_map(SourcePosition::Unknown),
                             fmfun: fmfun as FilterMapFunc,
                             next: Box::new(Some(XFormCollection::FlatMap {
-                                description: Cow::from("flat-map >12 [-x,-2x]"),
+                                debug_info: OperatorDebugInfo::flatmap(SourcePosition::Unknown),
                                 fmfun: flatmapfun as FlatMapFunc,
                                 next: Box::new(None),
                             })),
@@ -1198,19 +1338,23 @@ fn test_map(nthreads: usize) {
         let relset3 = relset3.clone();
         Relation {
             name: Cow::from("T3"),
+            source_pos: SourcePosition::Unknown,
             input: false,
             distinct: true,
             caching_mode: CachingMode::Set,
             key_func: None,
             id: 3,
             rules: vec![Rule::CollectionRule {
-                description: Cow::from("T3.R1"),
+                debug_info: RuleDebugInfo::default(),
                 rel: 2,
                 xform: Some(XFormCollection::Arrange {
-                    description: Cow::from("arrange by ()"),
+                    debug_info: OperatorDebugInfo::arrange(
+                        Cow::from("()"),
+                        SourcePosition::Unknown,
+                    ),
                     afun: gfun3 as ArrangeFunc,
                     next: Box::new(XFormArrangement::Aggregate {
-                        description: Cow::from("2.aggregate"),
+                        debug_info: OperatorDebugInfo::group_by(SourcePosition::Unknown),
                         ffun: None,
                         aggfun: agfun3 as AggFunc,
                         next: Box::new(None),
@@ -1227,19 +1371,23 @@ fn test_map(nthreads: usize) {
         let relset4 = relset4.clone();
         Relation {
             name: Cow::from("T4"),
+            source_pos: SourcePosition::Unknown,
             input: false,
             distinct: true,
             caching_mode: CachingMode::Set,
             key_func: None,
             id: 4,
             rules: vec![Rule::CollectionRule {
-                description: Cow::from("T4.R1"),
+                debug_info: RuleDebugInfo::default(),
                 rel: 2,
                 xform: Some(XFormCollection::Arrange {
-                    description: Cow::from("arrange by self"),
+                    debug_info: OperatorDebugInfo::arrange(
+                        Cow::from("by self"),
+                        SourcePosition::Unknown,
+                    ),
                     afun: gfun4 as ArrangeFunc,
                     next: Box::new(XFormArrangement::Aggregate {
-                        description: Cow::from("2.aggregate"),
+                        debug_info: OperatorDebugInfo::group_by(SourcePosition::Unknown),
                         ffun: None,
                         aggfun: agfun4 as AggFunc,
                         next: Box::new(None),
@@ -1263,7 +1411,14 @@ fn test_map(nthreads: usize) {
     };
 
     let mut running = prog
-        .run(Config::default().with_timely_workers(nthreads))
+        .run(
+            Config::default()
+                .with_profiling_config(ProfilingConfig::SelfProfiling {
+                    profile_directory: None,
+                })
+                .with_timely_workers(nthreads),
+            &SOURCE_CODE,
+        )
         .unwrap();
 
     let vals: Vec<u64> = (0..TEST_SIZE).collect();
@@ -1313,6 +1468,7 @@ fn test_delayed(nthreads: usize) {
     let rel1 = {
         Relation {
             name: Cow::from("T1"),
+            source_pos: SourcePosition::Unknown,
             input: true,
             distinct: false,
             caching_mode: CachingMode::Stream,
@@ -1329,6 +1485,7 @@ fn test_delayed(nthreads: usize) {
         let relset2 = relset2.clone();
         Relation {
             name: Cow::from("T2"),
+            source_pos: SourcePosition::Unknown,
             input: false,
             distinct: false,
             caching_mode: CachingMode::Stream,
@@ -1336,12 +1493,12 @@ fn test_delayed(nthreads: usize) {
             id: 2,
             rules: vec![
                 Rule::CollectionRule {
-                    description: Cow::from("T2 :- T1|-1"),
+                    debug_info: RuleDebugInfo::default(),
                     rel: 11,
                     xform: None,
                 },
                 Rule::CollectionRule {
-                    description: Cow::from("T2 :- T3"),
+                    debug_info: RuleDebugInfo::default(),
                     rel: 3,
                     xform: None,
                 },
@@ -1356,6 +1513,7 @@ fn test_delayed(nthreads: usize) {
     let rel3 = {
         Relation {
             name: Cow::from("T3"),
+            source_pos: SourcePosition::Unknown,
             input: true,
             distinct: false,
             caching_mode: CachingMode::Stream,
@@ -1372,6 +1530,7 @@ fn test_delayed(nthreads: usize) {
         let relset4 = relset4.clone();
         Relation {
             name: Cow::from("T4"),
+            source_pos: SourcePosition::Unknown,
             input: false,
             distinct: false,
             caching_mode: CachingMode::Stream,
@@ -1379,12 +1538,12 @@ fn test_delayed(nthreads: usize) {
             id: 4,
             rules: vec![
                 Rule::CollectionRule {
-                    description: Cow::from("T4 :- T1"),
+                    debug_info: RuleDebugInfo::default(),
                     rel: 1,
                     xform: None,
                 },
                 Rule::CollectionRule {
-                    description: Cow::from("T4 :- T1|-1"),
+                    debug_info: RuleDebugInfo::default(),
                     rel: 11,
                     xform: None,
                 },
@@ -1399,21 +1558,25 @@ fn test_delayed(nthreads: usize) {
         let relset5 = relset5.clone();
         Relation {
             name: Cow::from("T5"),
+            source_pos: SourcePosition::Unknown,
             input: false,
             distinct: false,
             caching_mode: CachingMode::Stream,
             key_func: None,
             id: 5,
             rules: vec![Rule::CollectionRule {
-                description: Cow::from("T5 :- T1.stream_xform(arrange)."),
+                debug_info: RuleDebugInfo::default(),
                 rel: 1,
                 xform: Some(XFormCollection::StreamXForm {
-                    description: Cow::from("T1.stream_xform"),
+                    debug_info: OperatorDebugInfo::stream_xform(SourcePosition::Unknown),
                     xform: Box::new(Some(XFormCollection::Arrange {
-                        description: Cow::from("T1.stream_arrange"),
+                        debug_info: OperatorDebugInfo::stream_arrange(
+                            Cow::from("by self"),
+                            SourcePosition::Unknown,
+                        ),
                         afun: afun1,
                         next: Box::new(XFormArrangement::FilterMap {
-                            description: Cow::from("T5 :-"),
+                            debug_info: OperatorDebugInfo::filter_map(SourcePosition::Unknown),
                             fmfun: fmfun1,
                             next: Box::new(None),
                         }),
@@ -1443,6 +1606,7 @@ fn test_delayed(nthreads: usize) {
             ProgNode::Rel { rel: rel5 },
         ],
         delayed_rels: vec![DelayedRelation {
+            used_at: vec![],
             id: 11,
             rel_id: 1,
             delay: 1,
@@ -1451,7 +1615,14 @@ fn test_delayed(nthreads: usize) {
     };
 
     let mut running = prog
-        .run(Config::default().with_timely_workers(nthreads))
+        .run(
+            Config::default()
+                .with_profiling_config(ProfilingConfig::SelfProfiling {
+                    profile_directory: None,
+                })
+                .with_timely_workers(nthreads),
+            &SOURCE_CODE,
+        )
         .unwrap();
 
     for i in 0..TEST_SIZE {
@@ -1542,6 +1713,7 @@ fn test_recursion(nthreads: usize) {
         let parentset = parentset.clone();
         Relation {
             name: Cow::from("parent"),
+            source_pos: SourcePosition::Unknown,
             input: true,
             distinct: true,
             caching_mode: CachingMode::Set,
@@ -1549,7 +1721,7 @@ fn test_recursion(nthreads: usize) {
             id: 1,
             rules: Vec::new(),
             arrangements: vec![Arrangement::Map {
-                name: Cow::from("arrange_by_parent"),
+                debug_info: ArrangementDebugInfo::new(Cow::from("arrange_by_parent"), &[], &[]),
                 afun: arrange_by_fst as ArrangeFunc,
                 queryable: false,
             }],
@@ -1564,6 +1736,7 @@ fn test_recursion(nthreads: usize) {
         let ancestorset = ancestorset.clone();
         Relation {
             name: Cow::from("ancestor"),
+            source_pos: SourcePosition::Unknown,
             input: false,
             distinct: true,
             caching_mode: CachingMode::Set,
@@ -1571,15 +1744,19 @@ fn test_recursion(nthreads: usize) {
             id: 2,
             rules: vec![
                 Rule::CollectionRule {
-                    description: Cow::from("ancestor.R1"),
+                    debug_info: RuleDebugInfo::default(),
                     rel: 1,
                     xform: None,
                 },
                 Rule::ArrangementRule {
-                    description: Cow::from("ancestor.R2"),
+                    debug_info: RuleDebugInfo::default(),
                     arr: (2, 2),
                     xform: XFormArrangement::Join {
-                        description: Cow::from("(2,2).join (1,0)"),
+                        debug_info: OperatorDebugInfo::join(
+                            Cow::from("1"),
+                            Cow::from("0"),
+                            SourcePosition::Unknown,
+                        ),
                         ffun: None,
                         arrangement: (1, 0),
                         jfun: jfun as JoinFunc,
@@ -1589,17 +1766,21 @@ fn test_recursion(nthreads: usize) {
             ],
             arrangements: vec![
                 Arrangement::Map {
-                    name: Cow::from("arrange_by_ancestor"),
+                    debug_info: ArrangementDebugInfo::new(
+                        Cow::from("arrange_by_ancestor"),
+                        &[],
+                        &[],
+                    ),
                     afun: arrange_by_fst as ArrangeFunc,
                     queryable: false,
                 },
                 Arrangement::Set {
-                    name: Cow::from("arrange_by_self"),
+                    debug_info: ArrangementDebugInfo::new(Cow::from("arrange_by_self"), &[], &[]),
                     fmfun: fmnull_fun as FilterMapFunc,
                     distinct: true,
                 },
                 Arrangement::Map {
-                    name: Cow::from("arrange_by_snd"),
+                    debug_info: ArrangementDebugInfo::new(Cow::from("arrange_by_snd"), &[], &[]),
                     afun: arrange_by_snd as ArrangeFunc,
                     queryable: false,
                 },
@@ -1621,35 +1802,56 @@ fn test_recursion(nthreads: usize) {
         let common_ancestorset = common_ancestorset.clone();
         Relation {
             name: Cow::from("common_ancestor"),
+            source_pos: SourcePosition::Unknown,
             input: false,
             distinct: true,
             caching_mode: CachingMode::Set,
             key_func: None,
             id: 3,
             rules: vec![Rule::ArrangementRule {
-                description: Cow::from("common_ancestor.R1"),
+                debug_info: RuleDebugInfo::default(),
                 arr: (2, 0),
                 xform: XFormArrangement::Join {
-                    description: Cow::from("(2,0).join (2,0)"),
+                    debug_info: OperatorDebugInfo::join(
+                        Cow::from("2"),
+                        Cow::from("0"),
+                        SourcePosition::Unknown,
+                    ),
                     ffun: None,
                     arrangement: (2, 0),
                     jfun: jfun2 as JoinFunc,
                     next: Box::new(Some(XFormCollection::Arrange {
-                        description: Cow::from("arrange by self"),
+                        debug_info: OperatorDebugInfo::arrange(
+                            Cow::from("self"),
+                            SourcePosition::Unknown,
+                        ),
                         afun: anti_arrange1 as ArrangeFunc,
                         next: Box::new(XFormArrangement::Antijoin {
-                            description: Cow::from("(2,0).antijoin (2,1)"),
+                            debug_info: OperatorDebugInfo::antijoin(
+                                Cow::from("2"),
+                                Cow::from("1"),
+                                SourcePosition::Unknown,
+                            ),
                             ffun: None,
                             arrangement: (2, 1),
                             next: Box::new(Some(XFormCollection::Arrange {
-                                description: Cow::from("arrange by .1"),
+                                debug_info: OperatorDebugInfo::arrange(
+                                    Cow::from(".1"),
+                                    SourcePosition::Unknown,
+                                ),
                                 afun: anti_arrange2 as ArrangeFunc,
                                 next: Box::new(XFormArrangement::Antijoin {
-                                    description: Cow::from("...join (2,1)"),
+                                    debug_info: OperatorDebugInfo::antijoin(
+                                        Cow::from("2"),
+                                        Cow::from("1"),
+                                        SourcePosition::Unknown,
+                                    ),
                                     ffun: None,
                                     arrangement: (2, 1),
                                     next: Box::new(Some(XFormCollection::Filter {
-                                        description: Cow::from("filter .0 != .1"),
+                                        debug_info: OperatorDebugInfo::filter(
+                                            SourcePosition::Unknown,
+                                        ),
                                         ffun: ffun as FilterFunc,
                                         next: Box::new(None),
                                     })),
@@ -1684,7 +1886,14 @@ fn test_recursion(nthreads: usize) {
     };
 
     let mut running = prog
-        .run(Config::default().with_timely_workers(nthreads))
+        .run(
+            Config::default()
+                .with_profiling_config(ProfilingConfig::SelfProfiling {
+                    profile_directory: None,
+                })
+                .with_timely_workers(nthreads),
+            &SOURCE_CODE,
+        )
         .unwrap();
 
     /* 1. Populate parent relation */

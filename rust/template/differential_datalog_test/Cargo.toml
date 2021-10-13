@@ -18,5 +18,6 @@ ddlog_derive = { path = "../ddlog_derive" }
 num = { version = "0.3" }
 serde = { version = "1.0.125", features = ["derive"] }
 differential_datalog = { path = "../differential_datalog" }
+ddlog_profiler = { path = "../ddlog_profiler" }
 timely = { git = "https://github.com/ddlog-dev/timely-dataflow", branch = "ddlog-4", default-features = false }
 differential-dataflow = { git = "https://github.com/ddlog-dev/differential-dataflow", branch = "ddlog-4", default-features = false }

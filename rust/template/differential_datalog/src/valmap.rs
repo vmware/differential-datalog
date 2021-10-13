@@ -128,7 +128,7 @@ impl<V: Display + Ord + Clone> DeltaMap<V> {
     }
 
     pub fn clear_rel(&mut self, relid: RelId) -> BTreeMap<V, isize> {
-        self.map.remove(&relid).unwrap_or_else(BTreeMap::default)
+        self.map.remove(&relid).unwrap_or_default()
     }
 
     pub fn update(&mut self, relid: RelId, x: &V, diff: isize) {

@@ -1,0 +1,66 @@
+import lib::mod1
+
+input relation InputString(s: string)
+output relation OutputString(s: string)
+
+relation StaticString(s: string)
+
+StaticString("foo").
+StaticString("bar").
+
+OutputString("string: " ++ s) :- InputString(s).
+OutputString("join: " ++ s) :- InputString(s), StaticString(s).
+OutputString("antijoin: " ++ s) :- InputString(s), not StaticString(s).
+OutputString("Cartesian: ${s1}:${s2}") :- InputString(s1), StaticString(s2).
+OutputString("Filter by length: ${s1}:${s2}") :-
+    InputString(s1),
+    s1.len() > 2,
+    StaticString(s2),
+    s2.len() > 2.
+
+OutputString("group-flatten: " ++ s1) :-
+    InputString(s),
+    var strs = s.group_by(()).to_vec(),
+    var s1 = FlatMap(strs).
+
+output relation RecursiveStr(s: string)
+
+RecursiveStr(s) :- InputString(s).
+RecursiveStr("${s}:${s}") :- RecursiveStr(s), s.len() < 10.
+
+input stream Event(e: string)
+output stream OEvent(e: string)
+
+OEvent(oe) :- Event(e), var oe = "Event: ${e}".
+OEvent(all_events) :-
+    Event(e),
+    var all_events = e.group_by(()).to_vec().join(",").
+
+OEvent("Event/\\StaticString: ${e}") :-
+    Event(e),
+    StaticString(e).
+
+OutputString(event) :-
+    Event'(e),
+    var all_events = e.group_by(()).to_vec(),
+    var event = FlatMap(all_events).
+
+OutputString(s) :-
+    RecursiveStr-1(s).
+
+input relation Seed(n: usize)
+relation Numbers(n: usize)
+
+Numbers(n) :-
+    Seed(s),
+    var all_numbers = range_vec(0, s, 1),
+    var n = FlatMap(all_numbers).
+
+output relation Pairs(n1: usize, n2: usize)
+
+Pairs(n1, n2) :-
+    Numbers(n2),
+    n2 % 2 != 0,
+    Numbers(n1),
+    n1 % 5 != 0,
+    Numbers(n1*n2).

@@ -140,26 +140,26 @@ addRhsToRules toAdd rules =
 convertStatement :: Statement -> [Rule]
 convertStatement (ForStatement _ atom mc s) =
     let rules = convertStatement s
-        rhs0 = RHSLiteral True atom
-        rhs1 = map RHSCondition $ maybeToList mc in
+        rhs0 = RHSLiteral (pos atom) True atom
+        rhs1 = map (\e -> RHSCondition (pos e) e) $ maybeToList mc in
     map (\r -> r{ruleRHS=(rhs0 : rhs1 ++ ruleRHS r)}) rules
 convertStatement (IfStatement _ c s Nothing) =
     let rules = convertStatement s in
-    addRhsToRules (RHSCondition c) rules
+    addRhsToRules (RHSCondition (pos c) c) rules
 convertStatement (IfStatement _ c s (Just e)) =
     let rules0 = convertStatement s
         rules1 = convertStatement e
-        rules0' = addRhsToRules (RHSCondition c) rules0
-        rules1' = addRhsToRules (RHSCondition $ eNot c) rules1 in
+        rules0' = addRhsToRules (RHSCondition (pos c) c) rules0
+        rules1' = addRhsToRules (RHSCondition (pos c) $ eNot c) rules1 in
     rules0' ++ rules1'
-convertStatement (MatchStatement _ e c) =
+convertStatement (MatchStatement p e c) =
     let rulesList = map (convertStatement . snd) c
         matchList = explodeMatchCases $ map fst c
-        matchExpressions = map (\l -> RHSCondition $ eMatch e l) matchList
+        matchExpressions = map (\l -> RHSCondition p $ eMatch e l) matchList
     in concat $ zipWith addRhsToRules matchExpressions rulesList
-convertStatement (AssignStatement _ e s) =
+convertStatement (AssignStatement p e s) =
     let rules = convertStatement s in
-    map (\r -> r{ruleRHS = (RHSCondition e) : (ruleRHS r)}) rules
+    map (\r -> r{ruleRHS = (RHSCondition p e) : (ruleRHS r)}) rules
 convertStatement (BlockStatement _ l) =
     let rulesList = map convertStatement l in
     concat rulesList

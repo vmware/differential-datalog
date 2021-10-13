@@ -1,9 +1,7 @@
 //! Configuration for DDlog programs
 
-use crate::{
-    profile::Profile,
-    program::{worker::ProfilingData, Program, PROF_MSG_BUF_SIZE},
-};
+use crate::program::{worker::ProfilingData, Program, PROF_MSG_BUF_SIZE};
+use ddlog_profiler::{DDlogSourceCode, Profile};
 use differential_dataflow::Config as DDFlowConfig;
 use std::{
     env,
@@ -11,6 +9,7 @@ use std::{
     io::Write,
     net::SocketAddr,
     num::NonZeroUsize,
+    path::PathBuf,
     sync::{atomic::AtomicBool, Mutex},
     thread::{self, JoinHandle},
 };
@@ -140,7 +139,12 @@ pub enum ProfilingConfig {
     /// performance impact on the target program and also disables
     /// general-purpose Timely Dataflow and Differential Dataflow
     /// profiling.
-    SelfProfiling,
+    SelfProfiling {
+        /// Directory for profiling data.  DDlog will create a subdirectory with name derived from
+        /// process PID and store program sources and individual profiles under it.  When set to
+        /// `None`, the current working directory will be used.
+        profile_directory: Option<String>,
+    },
     /// Enable profiling for Timely Dataflow.
     TimelyProfiling {
         /// Destination for the timely log stream.
@@ -160,7 +164,7 @@ impl ProfilingConfig {
 
     /// Returns `true` if the profiling_config is [`SelfProfiling`]
     pub const fn is_self_profiling(&self) -> bool {
-        matches!(self, Self::SelfProfiling)
+        matches!(self, Self::SelfProfiling { .. })
     }
 
     /// Returns `true` if the profiling_config is [`TimelyProfiling`]
@@ -189,12 +193,16 @@ impl SelfProfilingRig {
     /// Create a new self profiling rig
     ///
     /// Note: Spawns a worker thread to process profiling messages
-    pub(super) fn new(config: &Config) -> Self {
-        if config.profiling_config.is_self_profiling() {
+    pub(super) fn new(config: &Config, source_code: &'static DDlogSourceCode) -> Self {
+        if let ProfilingConfig::SelfProfiling { profile_directory } = &config.profiling_config {
             let (profile_send, profile_recv) = crossbeam_channel::bounded(PROF_MSG_BUF_SIZE);
 
             // Profiling data structure
-            let profile = Arc::new(Mutex::new(Profile::new()));
+            let prof_dir_path = profile_directory
+                .as_ref()
+                .map(PathBuf::from)
+                .unwrap_or_else(PathBuf::new);
+            let profile = Arc::new(Mutex::new(Profile::new(source_code, prof_dir_path)));
 
             let (profile_cpu, profile_timely, profile_change) = (
                 Arc::new(AtomicBool::new(false)),
