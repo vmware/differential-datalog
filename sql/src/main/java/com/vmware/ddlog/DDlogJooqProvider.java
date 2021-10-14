@@ -24,6 +24,7 @@
 
 package com.vmware.ddlog;
 
+import com.google.common.collect.ImmutableList;
 import com.vmware.ddlog.ir.DDlogIndexDeclaration;
 import com.vmware.ddlog.util.sql.CreateIndexParser;
 import com.vmware.ddlog.util.sql.H2SqlStatement;
@@ -291,25 +292,43 @@ public final class DDlogJooqProvider implements MockDataProvider {
             }
         }
 
+        private boolean sameFields(SqlNodeList list, String tableName) {
+            String[] tableFields = tablesToFields.get(tableName).stream().map(Field::getName).toArray(String[]::new);
+            String[] queryFields =
+                    list.getList().stream().map(x -> {
+                        // Just in case the identifier is compound, we get the last name in the names list,
+                        // rather than using getSimple()
+                        ImmutableList<String> names = ((SqlIdentifier) x).names;
+                        return names.get(names.size() - 1);
+                    }).toArray(String[]::new);
+            return compareStringArrays(tableFields, queryFields);
+        }
+
         private MockResult visitSelect(final SqlSelect select) {
             // The checks below encode assumption A1 (see javadoc for the DDlogJooqProvider class)
             if (select.hasWhere() || select.hasOrderBy() || select.isDistinct() || select.getHaving() != null
                 || select.getGroup() != null) {
                 return exception("Statement not supported: " + context.sql());
             }
-            if (!(select.getSelectList().size() == 1
+
+            String tableName = ((SqlIdentifier) select.getFrom()).getSimple();
+
+            // Selects must be on all columns of the table, either denoted by * or by an enumeration of all columns
+            if (!((select.getSelectList().size() == 1
                     && select.getSelectList().get(0).toString().equals("*")
-                    && select.getFrom() instanceof SqlIdentifier)
+                    && select.getFrom() instanceof SqlIdentifier) ||
+                    sameFields(select.getSelectList(), tableName)
+            )
             ) {
                 return exception("Statement not supported: " + context.sql());
             }
 
             // If the select is on an input table, redirect it to the corresponding view / output relation, if it exists
             // The user of this JooqProvider is responsible for creating these identity views
-            String tableName = ((SqlIdentifier) select.getFrom()).getSimple();
             if (inputTableNames.contains(tableName)) {
                 tableName = DDlogJooqProvider.toIdentityViewName(tableName);
             }
+
             try {
                 final Result<Record> result = fetchTable(tableName);
                 return new MockResult(1, result);
