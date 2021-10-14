@@ -319,8 +319,6 @@ public final class DDlogJooqProvider implements MockDataProvider {
         private List<DDlogRecord> getEntriesByIndex(String tableName, String[] ids, SqlBasicCall where) throws DDlogException, SQLException {
             final List<DDlogRecord> clonedResults = new ArrayList<>();
 
-            // If there are no PKs for this table, or if the PK given doesn't match the fields requested by this
-            // query, then we have to look in any indexes on the table.
             List<ParsedCreateIndex> indexes = tablesToIndexesMap.get(tableName);
             if (indexes == null) {
                 throw new SQLException(String.format("Cannot delete from table %s: no appropriate primary key" +
@@ -343,9 +341,11 @@ public final class DDlogJooqProvider implements MockDataProvider {
             // Use the matching index to fetch the row, and then delete it
             final DDlogRecord indexKey =
                     matchExpressionFromWhere(where, indexToFieldsMap.get(matchingIndex.getIndexName()), context);
-            dDlogAPI.queryIndex(DDlogIndexDeclaration.indexName(matchingIndex.getIndexName()), indexKey, x -> {
-                clonedResults.add(x.clone());
-            });
+            dDlogAPI.queryIndex(
+                    DDlogIndexDeclaration.indexName(matchingIndex.getIndexName()),
+                    indexKey,
+                    x -> clonedResults.add(x.clone())
+            );
 
             return clonedResults;
         }
