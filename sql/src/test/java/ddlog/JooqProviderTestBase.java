@@ -51,6 +51,7 @@ import static junit.framework.TestCase.*;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.table;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 
 /*
  * This is the base class for all JooqProviderTest* test classes. Each new dialect of SQL that DDlog can accept can be
@@ -630,6 +631,30 @@ public abstract class JooqProviderTestBase {
         assertFalse(readFromInput.contains(test1));
         assertFalse(readFromInput.contains(test2));
         assertTrue(readFromInput.contains(test3));
+    }
+
+    @Test
+    public void testSelectAllFields() {
+        skipIfTestBase();
+        create.execute("insert into hosts values ('n1', 10, true)");
+        create.batch("insert into hosts values ('n54', 18, false)",
+                "insert into hosts values ('n9', 2, true)").execute();
+
+        Result<Record> readFromInput = create.fetch("select id, capacity, up from hosts");
+        assertTrue(readFromInput.contains(test1));
+        assertTrue(readFromInput.contains(test2));
+        assertTrue(readFromInput.contains(test3));
+
+        readFromInput = create.fetch("select hosts.id, hosts.capacity, hosts.up from hosts");
+        assertTrue(readFromInput.contains(test1));
+        assertTrue(readFromInput.contains(test2));
+        assertTrue(readFromInput.contains(test3));
+
+        // Make sure other select queries don't work
+        Exception e = assertThrows(Exception.class, () -> {
+            create.fetch("select hosts.capacity, hosts.up from hosts");
+        });
+        assertTrue(e.getMessage().contains("Statement not supported"));
     }
 
     // Unfortunately, `create index` statements have to be passed separately, because neither Calcite nor Presto
