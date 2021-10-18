@@ -8,7 +8,8 @@
 //! to D3 applications.
 
 /// Type used to represent time in D3log distributed system.
-/// TODO: are two times measured in different nodes comparable to each other?
+/// It is not currently defined whether two time values obtained
+/// from different D3log runtimes can be meaningfully compared to each other.
 typedef Time = u64
 
 /// This relation always contains a single element, the
@@ -35,7 +36,9 @@ input relation Stdout(target: D3logLocationId)
 /// a value X into this relation a new thread with id X will be created.
 /// The new thread will start with the input relations initially empty.
 /// If the id already exists in ThreadInstance an insertion will have no effect.
-/// TODO: will deleting from this relation cause the thread to be killed?
+/// The result of deleting from this relation will cause the thread
+/// instance to become unavailable.  in this case the old id should not be reused
+/// to create a new thread.
 output relation ThreadInstance(id: D3logLocationId)
 
 /// This relation is essentially a log of the runtime errors that have
@@ -47,7 +50,8 @@ output relation ThreadInstance(id: D3logLocationId)
 /// * `filename` - Rust source file in the runtime which triggered the error
 /// * `functionname` - Rust function in the runtime which triggered the error
 /// * `uuid` - DDlog instance which caused the error to be triggered
-/// TODO: do errors ever disappear?  when?
+/// Currently no errors are removed from this relation --- it may
+/// grow unbounded.
 input relation Error(text: string,
                      line:u64,
                      filename:string,
