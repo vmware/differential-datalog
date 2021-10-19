@@ -117,16 +117,14 @@ public final class DDlogJooqProvider implements MockDataProvider {
         this.dslContext = DSL.using("jdbc:h2:mem:");
         this.updateCountField = field("UPDATE_COUNT", Integer.class);
 
-        final Map<String, List<ParsedCreateIndex>> tablesToIndexesMap = new HashMap<>();
+        this.whereHelper = new DDlogJooqHelper(tablesToFields, dDlogAPI);
 
         // We execute H2 statements in a temporary database so that JOOQ can extract useful metadata
         // that we will use later (for example, the record types for views).
         for (final H2SqlStatement sql : sqlStatements) {
             String sqlString = sql.getStatement();
             if (CreateIndexParser.isCreateIndexStatement(sqlString)) {
-                ParsedCreateIndex parsedIndex = CreateIndexParser.parse(sqlString);
-                tablesToIndexesMap.computeIfAbsent(
-                        parsedIndex.getTableName().toUpperCase(Locale.ROOT), k -> new ArrayList<>()).add(parsedIndex);
+                this.whereHelper.addIndex(sqlString);
             }
             dslContext.execute(sqlString);
         }
@@ -147,8 +145,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
                 }
             }
         }
-
-        whereHelper = new DDlogJooqHelper(tablesToFields, tablesToIndexesMap, dDlogAPI);
+        this.whereHelper.seal();
     }
 
     public static String toIdentityViewName(String inputTableName) {
