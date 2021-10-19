@@ -1,5 +1,8 @@
 internment_test::OInternedString:
+internment_test::OInternedString{.x = " bar", .ix = " bar"}: +1
+internment_test::OInternedString{.x = " foo", .ix = " foo"}: +1
 internment_test::OInternedString{.x = "bar", .ix = "bar"}: +1
+internment_test::OInternedString{.x = "bar ", .ix = "bar "}: +1
 internment_test::OInternedString{.x = "bar bar", .ix = "bar bar"}: +1
 internment_test::OInternedString{.x = "bar foo", .ix = "bar foo"}: +1
 internment_test::OInternedString{.x = "bar ibar", .ix = "bar ibar"}: +1
@@ -9,6 +12,7 @@ internment_test::OInternedString{.x = "bar ifoo25", .ix = "bar ifoo25"}: +1
 internment_test::OInternedString{.x = "bar ifoo25!", .ix = "bar ifoo25!"}: +1
 internment_test::OInternedString{.x = "bar static foo", .ix = "bar static foo"}: +1
 internment_test::OInternedString{.x = "foo", .ix = "foo"}: +1
+internment_test::OInternedString{.x = "foo ", .ix = "foo "}: +1
 internment_test::OInternedString{.x = "foo bar", .ix = "foo bar"}: +1
 internment_test::OInternedString{.x = "foo foo", .ix = "foo foo"}: +1
 internment_test::OInternedString{.x = "foo ibar", .ix = "foo ibar"}: +1

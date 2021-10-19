@@ -1,6 +1,7 @@
 input relation IInternedString(ix: istring)
 relation StaticInternedString(ix: istring)
 
+StaticInternedString(default()).
 StaticInternedString(intern("static foo")).
 StaticInternedString(i"ifoo").
 StaticInternedString(i[|ibar|]).

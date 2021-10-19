@@ -26,21 +26,35 @@ use differential_datalog::record::{self, Record};
 use internment::ArcIntern;
 use serde::{de::Deserializer, ser::Serializer};
 use std::{
+    any::{Any, TypeId},
+    cell::RefCell,
     cmp::{self, Ordering},
+    collections::HashMap,
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
+    thread_local,
 };
 
 /// An atomically reference counted handle to an interned value.
 /// In addition to memory deduplication, this type is optimized for fast comparison.
 /// To this end, we store a 64-bit hash along with the interned value and use this hash for
 /// comparison, only falling back to by-value comparison in case of a hash collision.
-#[derive(Eq, PartialEq, Clone)]
+#[derive(Eq, PartialEq)]
 pub struct Intern<A>
 where
     A: Eq + Send + Sync + Hash + 'static,
 {
     interned: ArcIntern<(u64, A)>,
+}
+
+// Implement `Clone` by hand instead of auto-deriving to avoid
+// bogus `T: Clone` trait bound.
+impl<T: Eq + Send + Sync + Hash + 'static> Clone for Intern<T> {
+    fn clone(&self) -> Self {
+        Self {
+            interned: self.interned.clone(),
+        }
+    }
 }
 
 impl<T: Hash + Eq + Send + Sync + 'static> Hash for Intern<T> {
@@ -52,9 +66,37 @@ impl<T: Hash + Eq + Send + Sync + 'static> Hash for Intern<T> {
     }
 }
 
-impl<T: Default + Eq + Send + Sync + Hash + 'static> Default for Intern<T> {
+impl<T: Any + Default + Eq + Send + Sync + Hash + 'static> Default for Intern<T> {
+    // The straightforward implementation (`Self::new(T::default())`) causes performance
+    // issues in workloads that call this method often.
+    // First, `ArcIntern::new()` performs heap allocation even if the value already
+    // exists in the interner.  Second, `default()` always hits the same shard in the
+    // `dashmap` inside `internment` causing contention given a large enough number of
+    // threads (in my experiments it gets pretty severe with 16 threads running on 16
+    // CPU cores).
+    //
+    // Note that we cannot rely on the DDlog compiler optimization that statically
+    // evaluates function calls with constant arguments, as `Intern::default()` is
+    // typically called from Rust, not DDlog, e.g., when deserializing fields with
+    // `serde(default)` annotations.
+    //
+    // The following implementation uses thread-local cache to make sure that we will
+    // call `Self::new(T::default())` at most once per type per thread.
     fn default() -> Self {
-        Self::new(T::default())
+        thread_local! {
+            static INTERN_DEFAULT: RefCell<HashMap<TypeId, Box<dyn Any + Send + Sync + 'static>>> = RefCell::new(HashMap::new());
+        }
+
+        INTERN_DEFAULT.with(|m| {
+            if let Some(v) = m.borrow().get(&TypeId::of::<T>()) {
+                return v.as_ref().downcast_ref::<Self>().unwrap().clone();
+            };
+
+            let val = Self::new(T::default());
+            m.borrow_mut()
+                .insert(TypeId::of::<T>(), Box::new(val.clone()));
+            val
+        })
     }
 }
 

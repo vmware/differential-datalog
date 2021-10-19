@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Libraries
+
+- `internment.dl`: optimized the implementation of `Intern::default()` to avoid
+  excessive heap allocations and contention.
+
 ### API changes
 
 - `ddlog_clone()`: C and Java API to clone a `ddlog_record`.
