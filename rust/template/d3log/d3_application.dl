@@ -22,7 +22,8 @@ output relation ThreadInstance(id: u128)
 // Error
 // a runtime error has been reported by some locale. presence of an error record in the mangement view
 // is an almost certain indication that the computation is stuck or corrupted
-input relation Error(text: string,
+input relation Error(when: Time,
+                     text: string,
                      line:u64,
                      filename:string,
                      functionname:string,
