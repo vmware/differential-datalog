@@ -1,4 +1,6 @@
-// module to wrap the general encoding type DDValue for rust compiled ddlog
+// Represents a vector of ddval::Values: a value can be used to
+// represent a row in a multiset relation (with the associated weight).
+// A ValueSet can contain values from multiple different relations.
 
 use crate::{Batch, BatchBody, Error, Evaluator, Properties};
 use differential_datalog::{
@@ -13,7 +15,8 @@ use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct ValueSet {
-    pub eval: Evaluator, // used to translate to record
+    // The evaluator is a handle to the DDlog runtime that "understands" the values.
+    pub eval: Evaluator, // used when translating a Value to a Record object
     pub deltas: Arc<Mutex<DeltaMap<differential_datalog::ddval::DDValue>>>,
 }
 
@@ -34,14 +37,14 @@ impl Display for ValueSet {
     }
 }
 
-pub struct BatchIterator<'a> {
+pub struct ValueSetIterator<'a> {
     relid: RelId,
     // sadly, BTreeMap is defined over isize and not differential_datalog::program::Weight
     relations: Box<dyn Iterator<Item = (RelId, BTreeMap<DDValue, isize>)> + Send + 'a>,
     items: Option<Box<dyn Iterator<Item = (DDValue, isize)> + Send>>,
 }
 
-impl<'a> Iterator for BatchIterator<'a> {
+impl<'a> Iterator for ValueSetIterator<'a> {
     type Item = (RelId, DDValue, Weight);
 
     fn next(&mut self) -> Option<(RelId, DDValue, Weight)> {
@@ -66,10 +69,10 @@ impl<'a> Iterator for BatchIterator<'a> {
 
 impl<'a> IntoIterator for &'a ValueSet {
     type Item = (RelId, DDValue, Weight);
-    type IntoIter = BatchIterator<'a>;
+    type IntoIter = ValueSetIterator<'a>;
 
-    fn into_iter(self) -> BatchIterator<'a> {
-        BatchIterator {
+    fn into_iter(self) -> ValueSetIterator<'a> {
+        ValueSetIterator {
             relid: 0,
             relations: Box::new(self.clone().deltas.lock().expect("").clone().into_iter()),
             items: None,

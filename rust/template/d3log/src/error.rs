@@ -106,10 +106,10 @@ impl From<nix::Error> for Error {
 macro_rules! send_error {
     ($e:expr, $t:expr) => {
         $e.error(
-            $t.to_string().into_record(),
-            std::line!().into_record(),
-            std::file!().into_record(),
-            function!().into_record(),
+            $t,
+            std::line!(),
+            std::file!().to_string(),
+            function!().to_string(),
         );
     };
 }
@@ -121,7 +121,7 @@ macro_rules! async_error {
     ($e:expr, $r:expr) => {
         match $r {
             Err(x) => {
-                send_error!($e, x);
+                send_error!($e, x.to_string());
                 return;
             }
             Ok(x) => x,

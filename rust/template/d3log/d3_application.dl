@@ -1,40 +1,77 @@
-// Time
-// some to-be-defined notion of cluster-wide time
+//! d3_application.dl
+//! This file should be imported by any DDlog application that plans to use
+//! the services of D3log, the distributed DDlog runtime.
+//!
+//! Think of this file as a "header" file that describes the "system calls"
+//! provided by the D3 distributed runtime.  Think of the D3 distributed
+//! runtime as the "kernel" of a distributed OS that provides services
+//! to D3 applications.
+
+/// Type used to represent time in D3log distributed system.
+/// It is not currently defined whether two time values obtained
+/// from different D3log runtimes can be meaningfully compared to each other.
 typedef Time = u64
 
-// Myself
-// the uuid of the locale currently executing
+/// This relation always contains a single element, the
+/// identity of the D3 computation that is querying the
+/// relation.  This is the equivalent of the getpid()
+/// Unix system call for a D3log computation.
+/// The type D3logLocationId is defined in ddlog_std.dl.
 input relation Myself(me: D3logLocationId)
 
-// Stdout
-// defines a service locale to express output to the user
-// right now this is actually a kind of debug port that just dumps facts
-// it should have a relational api for input and output text streams
+/// The identity of a service that can be used to log
+/// data remotely.  The D3log runtime maintains this
+/// service.  Think of it as the equivalent of the
+/// stdout file descriptor.
+/// This relation contains a single value, which never changes.
+/// Any tuple of any relation that is localized at ths stdout service location
+/// will be logged.  Here is an example using Stdout to display
+/// all the tuples in relations R:
+/// relation R(x: u32)
+/// relation Shown(x: u32)@logger :- Stdout(logger), R(x).
 input relation Stdout(target: D3logLocationId)
 
-// Thread Instance
-// a list of all the 
-// issues: because of globals we cant run instances with different base programs as a separate thread instances
-//         so this is an implicit fork - look into the .so format
-output relation ThreadInstance(id: u128)
+/// A relation that can be used to fork a new thread running the
+/// same DDlog computation as the current instance.  By inserting
+/// a value X into this relation a new thread with id X will be created.
+/// The new thread will start with the input relations initially empty.
+///   - EAH initial batch, broadcast
+/// If the id already exists in ThreadInstance an insertion will have no effect.
+/// The result of deleting from this relation will cause the thread
+/// instance to become unavailable.  in this case the old id should not be reused
+/// to create a new thread.
+output relation ThreadInstance(id: D3logLocationId)
 
-
-// Error
-// a runtime error has been reported by some locale. presence of an error record in the mangement view
-// is an almost certain indication that the computation is stuck or corrupted
+/// This relation is EAH _essentially_ a log of the runtime errors that have
+/// appeared during the distributed execution.  Since this is an input
+/// relation, it cannot be used by DDlog programs to report errors;
+/// it is a one-way channel between the runtime and the application.
+/// EAH - is this actually true?
+/// * `text` - error message
+/// * `line` - source line in the Rust file which triggered the error
+/// * `filename` - Rust source file in the runtime which triggered the error
+/// * `functionname` - Rust function in the runtime which triggered the error
+/// * `uuid` - DDlog instance which caused the error to be triggered
+/// Currently no errors are removed from this relation --- it may
+/// grow unbounded.
 input relation Error(when: Time,
-                     text: string,
+		text: string,
                      line:u64,
                      filename:string,
                      functionname:string,
                      uuid:D3logLocationId)
 
-
-// InstanceStatus
-// reports the current running status of an instance, regardless of type
-// xxx there is no way to sample (force a new fact to be generated)
+/// A relation that can be used to discover information about a running
+/// DDlog instance.  This relation should have an identical contents
+/// in all processes that participate in a D3log distributed computation.
+/// * `time` - time when this status was valid
+/// * `id`   - identity of the DDlog instance that is being described
+/// * `memory_bytes` - total memory usage at the time of the status measurement
+/// * `threads` - number of threads running in the application at the time of the
+///               status measurements
+/// It is not specified how often the entried in this relation change and
+/// what triggers them to change.
 input relation InstanceStatus(time: Time,
-                              id: u128,
+                              id: D3logLocationId,
                               memory_bytes:u64,
                               threads:u64)
-

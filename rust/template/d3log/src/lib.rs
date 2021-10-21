@@ -59,21 +59,31 @@ pub struct Instance {
     pub rt: Arc<tokio::runtime::Runtime>,
 }
 
+// idk what we're going to do should we ever need to keep state here
+fn now_base() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_millis() as u64
+}
+
 impl Instance {
     pub fn new(
         rt: Arc<Runtime>,
         new_evaluator: EvalFactory,
         uuid: u128,
     ) -> Result<Arc<Instance>, Error> {
-        let broadcast = Broadcast::new(uuid);
+        let broadcast = Broadcast::new();
         let (eval, init_batch) = new_evaluator()?;
-        Broadcast::register_eval(broadcast.clone(), eval.clone());
-        let dispatch = Arc::new(Dispatch::new(eval.clone()));
-        let forwarder = Forwarder::new(eval.clone());
         let error = Arc::new(ErrorSend {
+            uuid,
             port: broadcast.clone(),
-            uuid: uuid,
+            now: now_base,
         });
+
+        Broadcast::register_eval(broadcast.clone(), eval.clone(), error.clone());
+        let dispatch = Arc::new(Dispatch::new());
+        let forwarder = Forwarder::new(eval.clone());
 
         let (esend, erecv) = channel(20);
         let eval_port = Arc::new(EvalPort {
@@ -87,16 +97,16 @@ impl Instance {
             init_batch,
             uuid,
             rt,
-            eval_port: eval_port.clone(),
-            broadcast: broadcast.clone(),
             error: error.clone(),
+            broadcast: broadcast.clone(),
+            eval: eval.clone(),
+            eval_port: eval_port.clone(),
             forwarder: forwarder.clone(),
             dispatch: dispatch.clone(),
-            eval: eval.clone(),
         });
 
         Instance::eval_loop(instance.clone(), erecv);
-        broadcast.clone().subscribe(eval_port.clone(), u128::MAX);
+        broadcast.clone().subscribe(eval_port.clone());
         ThreadInstance::new(instance.clone(), new_evaluator)?;
         eval_port.send(fact!(d3_application::Myself, me => uuid.into_record()));
         Ok(instance)
@@ -123,10 +133,7 @@ impl Instance {
     // to sequence system events. Also - it would be nice if ddlog
     // had some basic time functions (format)
     fn now(&self) -> u64 {
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backwards")
-            .as_millis() as u64
+        1
     }
 }
 
@@ -151,7 +158,6 @@ struct EvalPort {
 
 impl Transport for EvalPort {
     fn send(&self, batch: Batch) {
-        self.dispatch.send(batch.clone());
         let cl = self.clone();
         self.rt.spawn(async move {
             async_error!(cl.error, cl.send.send(batch.clone()).await);
@@ -161,18 +167,21 @@ impl Transport for EvalPort {
 
 #[derive(Clone)]
 pub struct ErrorSend {
+    now: fn() -> u64,
     uuid: Node,
     port: Port,
 }
 
 impl ErrorSend {
-    fn error(&self, text: Record, line: Record, filename: Record, functionname: Record) {
+    fn error(&self, text: String, line: u32, filename: String, functionname: String) {
         let f = fact!(d3_application::Error,
-                      text => text,
-                      line => line,
+                      now => (self.now)().into_record(),
+                      uuid => self.uuid.into_record(),
+                      text => text.into_record(),
+                      line => line.into_record(),
                       instance => self.uuid.clone().into_record(),
-                      filename => filename,
-                      functionname => functionname);
+                      filename => Record::String(filename),
+                      functionname => Record::String(functionname));
         self.port.clone().send(f);
     }
 }

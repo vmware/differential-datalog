@@ -79,8 +79,12 @@ impl EvaluatorTrait for D3 {
         let vb = ValueSet::from(eval.clone(), input)?;
         let mut upd = Vec::new();
 
-        for (relid, v, _) in &vb {
-            upd.push(Update::Insert { relid, v });
+        for (relid, v, w) in &vb {
+            match w {
+                1 => upd.push(Update::Insert { relid, v }),
+                -1 => upd.push(Update::DeleteValue { relid, v }),
+                _ => panic!("non-unit weights not supported"),
+            }
         }
 
         self.hddlog.transaction_start()?;
@@ -167,12 +171,12 @@ pub fn start_d3log(debug_broadcast: bool, inputfile: Option<String>) -> Result<(
     let instance = Instance::new(rt.clone(), Arc::new(d), uuid)?;
 
     if debug_broadcast {
-        instance.broadcast.clone().subscribe(
-            Arc::new(JsonDebugPort {
+        instance
+            .broadcast
+            .clone()
+            .subscribe(Arc::new(JsonDebugPort {
                 eval: instance.eval.clone(),
-            }),
-            u128::MAX,
-        );
+            }));
     }
 
     if let Some(f) = inputfile {

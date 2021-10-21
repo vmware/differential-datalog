@@ -2,7 +2,7 @@
 // relations, and like forwarder, groups up sub-batches based on relation id and routes them
 // out the correct port. Used to hang management relation update ports off the broadcast tree
 
-use crate::{Batch, BatchBody, Error, Evaluator, Port, Properties, RecordSet, Transport};
+use crate::{Batch, BatchBody, Error, Port, Properties, RecordSet, Transport};
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -12,7 +12,6 @@ type DispatchMap = HashMap<String, Vec<(u64, Port)>>;
 
 #[derive(Clone)]
 pub struct Dispatch {
-    eval: Evaluator, // to be removed
     count: Arc<AtomicUsize>,
     handlers: Arc<RwLock<DispatchMap>>,
 }
@@ -24,9 +23,6 @@ impl Transport for Dispatch {
         for (rel, v, weight) in &RecordSet::from(b.clone()).expect("batch") {
             if let Some(ports) = self.handlers.read().expect("lock").get(&rel) {
                 for (i, p) in ports {
-                    // we can probably do this databatch to recordbatch translation elsewhere and
-                    // not pull in evaluator. oh, we also have translation port!
-
                     output
                         .entry(*i)
                         .or_insert_with(|| (p.clone(), RecordSet::new()))
@@ -45,9 +41,8 @@ impl Transport for Dispatch {
 }
 
 impl Dispatch {
-    pub fn new(eval: Evaluator) -> Dispatch {
+    pub fn new() -> Dispatch {
         Dispatch {
-            eval,
             handlers: Arc::new(RwLock::new(HashMap::new())),
             count: Arc::new(AtomicUsize::new(0)),
         }

@@ -1,6 +1,8 @@
-import d3
-import matrix
+// Distributed sparse matrix multiplication example.
 
+import d3_application
+
+// A sparse matrix represented as row-column-value triples.
 input relation Matrix(i:u32, j:u32, v:u32)
 
 Matrix(0, 0, 1).
@@ -21,7 +23,7 @@ relation Columns(i:u32, j:u32, v:u32)
 relation Dist(w:Vec<D3logLocationId>)
 
 Dist(ws) :-
-  Workers(w),         
+  Workers(w),
   var ws:Vec<D3logLocationId> = w.group_by(()).to_vec().
 
 // merge mod with dist
@@ -30,11 +32,11 @@ Rows(i, j, v)@n :-
   Matrix(i, j, v),
   Dist(w),
   var n = w.nth(((i as u64) % w.len()) as u64).unwrap_or_default().
-  
+
 Columns(i, j, v)@n :-
   Matrix(i, j, v),
   Dist(w),
-  var n = w.nth(((j as u64) % w.len()) as u64).unwrap_or_default().  
+  var n = w.nth(((j as u64) % w.len()) as u64).unwrap_or_default().
 
 Prod(i:u32, j:u32, s:u32) :-
   Rows(k, j, r),
@@ -44,4 +46,3 @@ Prod(i:u32, j:u32, s:u32) :-
 Sum(i:u32, j:u32, v:u32) :-
    Prod(i, j, x),
    var v = group_sum(x.group_by((i,j))).
-

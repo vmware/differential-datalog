@@ -3,15 +3,16 @@
 // order to maintain a consistent spanning tree (and a strategy for avoiding storms for temporariliy
 // inconsistent topologies)
 
-use crate::{Batch, BatchBody, Error, Evaluator, Node, Port, Properties, Transport, ValueSet};
+use crate::{
+    async_error, function, send_error, Batch, BatchBody, Error, ErrorSend, Evaluator, Port,
+    Properties, Transport, ValueSet,
+};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, RwLock};
 
 type PortId = usize;
 #[derive(Clone, Default)]
 pub struct Broadcast {
-    // uuid is only used for debugging
-    uuid: Node,
     // accumulator is copy of the broadcast log for use in catching up new subscribers
     // the first arc/rwlock to allow Some() to be written in register_eval, and the next is over the batch itself
     accumulator: Arc<RwLock<Option<Arc<RwLock<ValueSet>>>>>,
@@ -30,21 +31,22 @@ pub struct Ingress {
 struct AccumulatePort {
     // eval is only used for ValueSet::from - we could define a narrower trait
     eval: Evaluator,
+    error: Arc<ErrorSend>,
     accumulator: Arc<RwLock<ValueSet>>,
 }
 
 impl Transport for AccumulatePort {
-    fn send(&self, b: Batch) {
-        for (r, f, w) in &ValueSet::from(self.eval.clone(), b).expect("iterator") {
+    fn send(&self, batch: Batch) {
+        let vbatch = async_error!(self.error.clone(), ValueSet::from(self.eval.clone(), batch));
+        for (r, f, w) in vbatch.into_iter() {
             self.accumulator.write().expect("lock").insert(r, f, w);
         }
     }
 }
 
 impl Broadcast {
-    pub fn new(uuid: Node) -> Arc<Broadcast> {
+    pub fn new() -> Arc<Broadcast> {
         Arc::new(Broadcast {
-            uuid,
             accumulator: Arc::new(RwLock::new(None)),
             count: Arc::new(AtomicUsize::new(0)),
             ports: Arc::new(RwLock::new(Vec::new())),
@@ -56,13 +58,14 @@ impl Broadcast {
     }
 
     // not pretty - this is an issue with initialization order
-    pub fn register_eval(a: Arc<Broadcast>, eval: Evaluator) {
+    pub fn register_eval(a: Arc<Broadcast>, eval: Evaluator, error: Arc<ErrorSend>) {
         let a2 = a.clone();
         let a4 = a.clone();
         let acc = Arc::new(RwLock::new(ValueSet::new(eval.clone())));
         *(a.accumulator.write().unwrap()) = Some(acc.clone());
         a2.clone().push(
             Arc::new(AccumulatePort {
+                error: error,
                 eval: eval,
                 accumulator: acc.clone(),
             }),
@@ -80,7 +83,7 @@ impl Broadcast {
         });
 
         // pab is the port that forwards from a to b
-        let pab = b.clone().subscribe(pba.clone(), b.clone().uuid);
+        let pab = b.clone().subscribe(pba.clone());
         a.push(pab.clone(), id);
 
         let batch = (*a.accumulator.clone().read().unwrap())
@@ -107,11 +110,11 @@ pub trait PubSub {
     // receive is the port which broadcast will send to, and
     // the returned port one the caller should use to inject
     // batches (which cant be named in rust?)
-    fn subscribe(self, receive: Port, uuid: Node) -> Port;
+    fn subscribe(self, receive: Port) -> Port;
 }
 
 impl PubSub for Arc<Broadcast> {
-    fn subscribe(self, receive: Port, _uuid: Node) -> Port {
+    fn subscribe(self, receive: Port) -> Port {
         let id = self.clone().count.fetch_add(1, Ordering::Acquire);
         self.clone().push(receive.clone(), id);
 

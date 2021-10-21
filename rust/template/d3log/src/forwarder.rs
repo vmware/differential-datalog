@@ -8,10 +8,11 @@ use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
+// an Entry is a record of a peer adjacency, for which there may or ay not be
+// an output port stablished
 struct Entry {
     port: Option<Port>,
     batches: VecDeque<Batch>,
-    registrations: VecDeque<Node>,
 }
 
 pub struct Forwarder {
@@ -38,7 +39,6 @@ impl Forwarder {
                 Arc::new(Mutex::new(Entry {
                     port: None,
                     batches: VecDeque::new(),
-                    registrations: VecDeque::new(),
                 }))
             })
             .clone()
@@ -53,9 +53,6 @@ impl Forwarder {
 
         while let Some(b) = entry.lock().expect("lock").batches.pop_front() {
             p.clone().send(b);
-        }
-        while let Some(r) = entry.lock().expect("lock").registrations.pop_front() {
-            self.register(r, p.clone());
         }
     }
 }

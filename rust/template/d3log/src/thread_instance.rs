@@ -13,13 +13,21 @@ pub struct ThreadInstance {
     instances: Mutex<Vec<Arc<Instance>>>, // to allow us to wire them up to each other
 }
 
-// xxx handle deletes - this turned out to be more difficult than one might hope - no memory or scheduling isolation
-//     so we'd need to account for all the instance resources explcitly. have to do something
+// xxx handle deletes - this turned out to be more difficult than one
+//     might hope - no memory or scheduling isolation so we'd need to
+//     account for all the instance resources explcitly.
 impl Transport for ThreadInstance {
     fn send(&self, b: Batch) {
-        for (_, p, _weight) in &RecordSet::from(b).expect("batch") {
+        for (_, p, weight) in &RecordSet::from(b).expect("batch") {
             let uuid_record = p.get_struct_field("id").unwrap();
             let uuid = async_error!(self.parent.error.clone(), u128::from_record(uuid_record));
+
+            if weight != 1 {
+                async_error!(
+                    self.parent.error.clone(),
+                    Err("thread instance retraction not supported".to_string())
+                );
+            }
 
             let instance = async_error!(
                 self.parent.error.clone(),

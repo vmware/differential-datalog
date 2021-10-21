@@ -1,3 +1,6 @@
+// Batch.rs
+// Support for moving facts (tuples that belong to relations) between different processes.
+
 use crate::{Error, Evaluator, RecordSet, ValueSet};
 use core::fmt;
 use core::fmt::Display;
@@ -14,7 +17,8 @@ use serde::{
 use std::collections::HashMap;
 use std::string::String;
 
-// string -> ?
+/// `Properties` describes metadata as key-value pairs.
+/// Is is used for debugging.
 #[derive(Clone)]
 pub struct Properties {
     properties: HashMap<String, String>,
@@ -28,25 +32,37 @@ impl Properties {
     }
 }
 
+/// A batch contains a set of facts (in the BatchBody) together with some
+/// metadata  describing the facts.
 #[derive(Clone)]
 pub struct Batch {
     pub metadata: Properties,
     pub body: BatchBody,
 }
 
+/// A set of facts --- rows from tables.
+// There are two possible representations of facts
+// that represent the same information in different ways.
 #[derive(Clone)]
 pub enum BatchBody {
+    /// A ValueSet is essentially a vector of ddval::DDvalue objects;
+    /// these are Rust objects that represent rows in a relation.  These
+    /// are quite efficient, but carry no run-time type information.
     Value(ValueSet),
+    /// In contrast, a RecordSet is a vector of (Record,Weight) objects.
+    /// Each Record carries run-time type information and the relation name
+    /// that is belongs to, allowing interchange of records between
+    /// DDlog programs that are not necessarily compiled from the same source.
     Record(RecordSet),
 }
 
-// it would be lovely if this were columnated - could use tabular::{Table, Row}
 impl Display for Batch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "Batch [").unwrap();
         match &self.body {
             BatchBody::Value(v) => Display::fmt(&v, f),
             BatchBody::Record(r) => Display::fmt(&r, f),
+            // TODO: it would be lovely if this were columnated - could use tabular::{Table, Row}
         }?;
         writeln!(f, "\n]\n")
     }
