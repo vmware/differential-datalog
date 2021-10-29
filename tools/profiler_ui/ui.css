@@ -1,0 +1,94 @@
+table {
+    border-collapse: collapse;
+}
+
+td {
+    border: 1px solid black;
+}
+
+td.noborder {}
+
+tr:hover {
+    background-color: beige;
+}
+
+thead {
+    background-color: lightgrey;
+    font-weight: bold;
+}
+
+tr:nth-child(even) {
+    background-color: lightgray;
+}
+
+tr:nth-child(even):hover {
+    background-color: beige;
+}
+
+td.cpu_us {
+    text-align: right;
+}
+
+svg.dataRange {
+    height: 10px;
+    display: inline-block;
+}
+
+svg.dataRange > g {
+    transform: scale(100, 10);
+}
+
+td.size {
+    text-align: right;
+}
+
+.clickable {
+    cursor: pointer;
+}
+
+td.invocations {
+    text-align:right;
+}
+
+.error {
+    color: red;
+}
+
+.filename {
+    background: pink;
+}
+
+.console {
+    font-family: monospace;
+    white-space: pre-wrap;
+    word-break: break-all;
+    background: #f0f0f0;
+}
+
+.code {
+    font-family: monospace;
+    white-space: pre-wrap;
+    word-break: break-all;
+    background: #f0f0f0;
+}
+
+.highlight {
+    background: lightyellow;
+}
+
+/* close, minimize, help page elements */
+.close {
+    font-weight: bold;
+    color: red;
+    cursor: pointer;
+    float: right;
+    clear: right;
+}
+
+.minimize {
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-left: 2px;
+    margin-right: 2px;
+}
