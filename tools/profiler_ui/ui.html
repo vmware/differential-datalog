@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Profile view</title>
+    <!-- Perhaps the following is not necessary, but I couldn't figure out how else to do it:
+    https://stackoverflow.com/questions/43042889/typescript-referenceerror-exports-is-not-defined -->
+    <link rel="stylesheet" href="ui.css">
+    <script>var exports = {"__esModule": true};</script>
+    <script src="ui.js"></script>
+    <script>
+        // Each javascript loaded dynamically should insert an entry into this map.
+        const globalMap = new Map();
+
+        // Return the value deposited in the globalMap, and remove it.
+        function getGlobalMapValue(k) {
+            var result = globalMap.get(k);
+            globalMap.delete(k);
+            return result;
+        }
+
+        function loaded() {
+            createUi();
+        }
+    </script>
+</head>
+
+<body onload="loaded()">
+    <div id="top">
+        <div id="dropbox" style="height:30px; background: grey; border-width: 1px; align-content: center">
+            Drop file to display here.
+        </div>
+    </div>
+</body>
+</html>
