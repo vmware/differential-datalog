@@ -58,6 +58,75 @@ export class SpecialChars {
 }
 
 /**
+ * Converts a number to a more readable representation.
+ */
+export function formatNumber(n: number): string {
+    return n.toLocaleString();
+}
+
+export function px(dim: number): string {
+    if (dim === 0)
+        return dim.toString();
+    return dim.toString() + "px";
+}
+
+function createSvgElement(tag: string): SVGElement {
+    return document.createElementNS("http://www.w3.org/2000/svg", tag);
+}
+
+/**
+ * A horizontal rectangle that displays a data range within an interval 0-max.
+ */
+export class DataRangeUI {
+    private readonly topLevel: Element;
+    public static readonly width = 80;  // pixels
+
+    /**
+     * @param position: Beginning of data range.
+     * @param count:    Size of data range.
+     * @param totalCount: Maximum value of interval.
+     */
+    constructor(position: number, count: number, totalCount: number) {
+        this.topLevel = createSvgElement("svg");
+        this.topLevel.classList.add("dataRange");
+        this.topLevel.setAttribute("width", px(DataRangeUI.width));
+        this.topLevel.setAttribute("height", px(10));
+        // If the range represents < 1 % of the total count, use 1% of the
+        // bar's width, s.t. it is still visible.
+        const w = Math.max(0.01, count / totalCount);
+        let x = position / totalCount;
+        if (x + w > 1)
+            x = 1 - w;
+        const label = w.toString();
+        const g = createSvgElement("g");
+        this.topLevel.appendChild(g);
+        const title = createSvgElement("title");
+        title.setAttribute("text", formatNumber(count));
+        g.appendChild(title);
+        /*
+        const rect = createSvgElement("rect");
+        g.appendChild(rect);
+        rect.setAttribute("x", "0");
+        rect.setAttribute("y", "0");
+        rect.setAttribute("fill", "lightgray");
+        rect.setAttribute("width", "1");
+        rect.setAttribute("height", "1");
+        */
+        const rect1 = createSvgElement("rect");
+        g.appendChild(rect1);
+        rect1.setAttribute("x", x.toString() + "%");
+        rect1.setAttribute("y", "0");
+        rect1.setAttribute("fill", "black");
+        rect1.setAttribute("width", label);
+        rect1.setAttribute("height", "1");
+    }
+
+    public getDOMRepresentation(): Element {
+        return this.topLevel;
+    }
+}
+
+/**
  * HTML strings are strings that represent an HTML fragment.
  * They are usually assigned to innerHTML of a DOM object.
  * These strings should  be "safe": i.e., the HTML they contain should
@@ -183,7 +252,7 @@ interface Location {
  */
 interface ProfileRow {
     opid: number,
-    cpu_us: number,
+    cpu_us?: number,
     invocations?: number;
     size?: number;
     locations: Location[],
@@ -192,6 +261,12 @@ interface ProfileRow {
     dd_op: string,
     doc: string,
     children?: ProfileRow[]
+}
+
+interface Profile {
+    type: string,
+    name: string,
+    records: ProfileRow[]
 }
 
 /**
@@ -310,18 +385,21 @@ export class ErrorDisplay implements ErrorReporter, IHtmlElement {
 class ProfileTable implements IHtmlElement {
     protected tbody: HTMLTableSectionElement;
     protected table: HTMLTableElement;
+    readonly showCpuHistogram = true;
+    readonly showMemHistogram = false;
 
     protected static readonly cpuColumns: string[] = [
-        "opid", SpecialChars.expand, "cpu_us", "invocations",
-        "short_descr", "dd_op" ];
+        "opid", SpecialChars.expand, "cpu_us", "histogram",
+        "invocations", "short_descr", "dd_op" ];
     protected static readonly memoryColumns: string[] = [
-        "opid", SpecialChars.expand, "size",
+        "opid", SpecialChars.expand, "size", "histogram",
         "short_descr", "dd_op" ];
     // how to rename column names in the table heading
     protected static readonly cellNames = new Map<string, string>([
         ["opid", ""],
         [SpecialChars.expand, SpecialChars.expand],
         ["cpu_us", "μs"],
+        ["histogram", "histogram"],
         ["invocations", "calls"],
         ["size", "size"],
         ["short_descr", "description"],
@@ -329,6 +407,7 @@ class ProfileTable implements IHtmlElement {
     ]);
     protected static readonly baseDocUrl = "https://github.com/vmware/differential-datalog/wiki/profiler_help#";
     protected displayedColumns: string[];
+    protected max: number = 0;
 
     constructor(protected errorReporter: ErrorReporter, protected isCpu: boolean) {
         this.table = document.createElement("table");
@@ -339,6 +418,12 @@ class ProfileTable implements IHtmlElement {
         else
             this.displayedColumns = ProfileTable.memoryColumns;
         for (let c of this.displayedColumns) {
+            if (c == "histogram") {
+                if (isCpu && !this.showCpuHistogram)
+                    continue;
+                if (!isCpu && !this.showMemHistogram)
+                    continue;
+            }
             const cell = header.insertCell();
             cell.textContent = ProfileTable.cellNames.get(c)!;
             cell.classList.add(c);
@@ -351,8 +436,8 @@ class ProfileTable implements IHtmlElement {
         for (let k of this.displayedColumns) {
             let key = k as keyof ProfileRow;
             let value = row[key];
-            if (k === SpecialChars.expand) {
-                // The second column is not really a property
+            if (k === SpecialChars.expand || k === "histogram") {
+                // These columns do not really exist in the data
                 continue;
             }
             if (value === undefined && k != "invocations" && k != "size") {
@@ -364,7 +449,8 @@ class ProfileTable implements IHtmlElement {
                     value = "";
                     htmlValue = new HtmlString("");
                 } else {
-                    htmlValue = significantDigitsHtml(value as number);
+                    htmlValue = new HtmlString(formatNumber(value as number));
+                    //htmlValue = significantDigitsHtml(value as number);
                 }
             } else {
                 if (value === undefined)
@@ -400,7 +486,6 @@ class ProfileTable implements IHtmlElement {
             if (k === "opid") {
                 // Add an adjacent cell for expanding the row children
                 const cell = trow.insertCell();
-                cell.classList.add("noborder");
                 const children = row.children != null ? row.children : [];
                 if (children.length > 0) {
                     cell.textContent = SpecialChars.expand;
@@ -408,6 +493,12 @@ class ProfileTable implements IHtmlElement {
                     cell.classList.add("clickable");
                     cell.onclick = () => this.expand(indent + 1, trow, cell, children);
                 }
+            }
+            if ((k === "size" && this.showMemHistogram) || (k == "cpu_us" && this.showCpuHistogram)) {
+                // Add an adjacent cell for the histogram
+                const cell = trow.insertCell();
+                const rangeUI = new DataRangeUI(0, value as number, this.max);
+                cell.appendChild(rangeUI.getDOMRepresentation());
             }
         }
     }
@@ -510,6 +601,13 @@ class ProfileTable implements IHtmlElement {
     public setData(rows: ProfileRow[]): void {
         this.table.removeChild(this.tbody);
         this.tbody = this.table.createTBody();
+        for (const row of rows) {
+            if (row.cpu_us && row.cpu_us > this.max)
+                this.max = row.cpu_us;
+            if (row.size && row.size > this.max)
+                this.max = row.size;
+        }
+
         for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
             const row = rows[rowIndex];
             this.addDataRow(0, -1, row, rowIndex == rows.length - 1);
@@ -650,65 +748,11 @@ class ScriptLoader {
 class ProfileUI implements IHtmlElement {
     protected topLevel: HTMLElement;
     protected errorReporter: ErrorDisplay;
-    protected profileTable: ProfileTable;
 
     constructor() {
-        const dropBox = document.getElementById("dropbox");
-        dropBox!.addEventListener("dragenter", (e) => ProfileUI.defaultEvent(e), false);
-        dropBox!.addEventListener("dragover", (e) => ProfileUI.defaultEvent(e), false );
-        dropBox!.addEventListener("drop", (e) => this.fileSelected(e), false);
         this.topLevel = document.createElement("div");
         this.errorReporter = new ErrorDisplay();
         this.topLevel.appendChild(this.errorReporter.getHTMLRepresentation());
-        this.profileTable = new ProfileTable(this.errorReporter, true);
-        this.topLevel.appendChild(this.profileTable.getHTMLRepresentation())
-    }
-
-    protected reportError(message: string): void {
-        this.errorReporter.reportError(message);
-    }
-
-    protected fileSelected(e: DragEvent): void {
-        ProfileUI.defaultEvent(e);
-        const dt = e.dataTransfer;
-        if (dt === null)
-            return;
-        this.loadFile(dt.files);
-    }
-
-    protected loadFile(f: FileList): void {
-        this.errorReporter.clear();
-        for (let i = 0; i < f.length; i++) {
-            const file = f[i];
-            this.errorReporter.reportError("Reading " + file.name);
-            const reader = new FileReader();
-            reader.onload = (ev: ProgressEvent<FileReader>) => {
-                if (ev.target == null)
-                    return;
-                const data = ev.target.result;
-                this.dataLoaded(data as string);
-            };
-            reader.readAsText(file);
-        }
-    }
-
-    protected dataLoaded(data: string | null): void {
-        if (data == null) {
-            this.reportError("Could not load data");
-            return;
-        }
-        try {
-            const rows = JSON.parse(data) as ProfileRow[];
-            this.errorReporter.clear();
-            this.profileTable.setData(rows);
-        } catch (e) {
-            this.errorReporter.reportError((e as Error).message);
-        }
-    }
-
-    protected static defaultEvent(e: Event): void {
-        e.stopPropagation();
-        e.preventDefault();
     }
 
     /**
@@ -717,12 +761,27 @@ class ProfileUI implements IHtmlElement {
     public getHTMLRepresentation(): HTMLElement {
         return this.topLevel;
     }
+
+    protected addProfile(profile: Profile): void {
+        const h1 = document.createElement("h1");
+        h1.textContent = profile.name;
+        this.topLevel.appendChild(h1);
+        const profileTable = new ProfileTable(this.errorReporter, profile.type.toLowerCase() === "cpu");
+        this.topLevel.appendChild(profileTable.getHTMLRepresentation())
+        profileTable.setData(profile.records);
+    }
+
+    public setData(profiles: Profile[]): void {
+        for (let profile of profiles) {
+            this.addProfile(profile);
+        }
+    }
 }
 
 /**
  * Main function exported by this module: instantiates the user interface.
  */
-export default function createUI(): void {
+export default function createUI(profiles: Profile[]): void {
     const top = document.getElementById("top");
     if (top == null) {
         console.log("Could not find 'top' element in document");
@@ -730,8 +789,5 @@ export default function createUI(): void {
     }
     const ui = new ProfileUI();
     top.appendChild(ui.getHTMLRepresentation());
+    ui.setData(profiles);
 }
-
-export {
-    createUI
-};

@@ -9,6 +9,8 @@
     https://stackoverflow.com/questions/43042889/typescript-referenceerror-exports-is-not-defined -->
     <link rel="stylesheet" href="ui.css">
     <script>var exports = {"__esModule": true};</script>
+    <!-- The following file should define a variable named 'profiles' -->
+    <script src="profile.js"></script>
     <script src="ui.js"></script>
     <script>
         // Each javascript loaded dynamically should insert an entry into this map.
@@ -22,16 +24,18 @@
         }
 
         function loaded() {
-            createUI();
+            createUI(profiles);
         }
     </script>
 </head>
 
 <body onload="loaded()">
     <div id="top">
+        <!--
         <div id="dropbox" style="height:30px; background: grey; border-width: 1px; align-content: center">
             Drop file to display here.
         </div>
+        -->
     </div>
 </body>
 </html>

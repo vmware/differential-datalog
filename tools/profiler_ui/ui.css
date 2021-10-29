@@ -29,6 +29,19 @@ td.cpu_us {
     text-align: right;
 }
 
+svg.dataRange {
+    height: 10px;
+    display: inline-block;
+}
+
+svg.dataRange > g {
+    transform: scale(100, 10);
+}
+
+td.size {
+    text-align: right;
+}
+
 .clickable {
     cursor: pointer;
 }
