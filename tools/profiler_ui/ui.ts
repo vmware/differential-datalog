@@ -392,8 +392,7 @@ class ProfileTable implements IHtmlElement {
         "opid", SpecialChars.expand, "cpu_us", "histogram",
         "invocations", "short_descr", "dd_op" ];
     protected static readonly memoryColumns: string[] = [
-        "opid", SpecialChars.expand, "size", "histogram",
-        "short_descr", "dd_op" ];
+        "size", "histogram", "short_descr", "dd_op" ];
     // how to rename column names in the table heading
     protected static readonly cellNames = new Map<string, string>([
         ["opid", ""],
