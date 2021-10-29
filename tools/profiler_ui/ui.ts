@@ -1,28 +1,25 @@
-/**
- * A location inside source code.
- * Used for parsing the JSON input.
- */
-interface Location {
-    file: string,
-    pos: [number, number, number, number]
-}
+/*
+Copyright (c) 2021 VMware, Inc.
+SPDX-License-Identifier: MIT
 
-/**
- * A row in a profile dataset.
- */
-interface ProfileRow {
-    opid: number,
-    cpu_us: number,
-    invocations?: number;
-    size?: number;
-    locations: Location[],
-    descr: string,
-    short_descr: string,
-    ddlog_op: string,
-    dd_op: string,
-    doc: string,
-    children?: ProfileRow[]
-}
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
 
 /**
  * Interface implemented by TypeScript objects that have an HTML rendering.
@@ -30,6 +27,14 @@ interface ProfileRow {
  */
 export interface IHtmlElement {
     getHTMLRepresentation(): HTMLElement;
+}
+
+export interface IAppendChild {
+    appendChild(elem: HTMLElement): void;
+}
+
+export interface ErrorReporter {
+    reportError(message: string): void;
 }
 
 export class SpecialChars {
@@ -52,12 +57,141 @@ export class SpecialChars {
     public static childPrefix = "\u2002"; // en space
 }
 
-interface ErrorReporter {
-    reportError(message: string): void;
+/**
+ * HTML strings are strings that represent an HTML fragment.
+ * They are usually assigned to innerHTML of a DOM object.
+ * These strings should  be "safe": i.e., the HTML they contain should
+ * be produced internally, and they should not come
+ * from external sources, because they can cause DOM injection attacks.
+ */
+export class HtmlString implements IHtmlElement {
+    private safeValue: string;
+
+    constructor(private arg: string) {
+        // Escape the argument string.
+        const div = document.createElement("div");
+        div.innerText = arg;
+        this.safeValue = div.innerHTML;
+    }
+
+    public appendSafeString(str: string): void {
+        this.safeValue += str;
+    }
+
+    public append(message: HtmlString): void {
+        this.safeValue += message.safeValue;
+    }
+
+    public prependSafeString(str: string): void {
+        this.safeValue = str + this.safeValue;
+    }
+
+    public setInnerHtml(elem: HTMLElement): void {
+        elem.innerHTML = this.safeValue;
+    }
+
+    public clear(): void {
+        this.safeValue = "";
+    }
+
+    public getHTMLRepresentation(): HTMLElement {
+        const div = document.createElement("div");
+        div.innerText = this.safeValue;
+        return div;
+    }
 }
 
-interface IAppendChild {
-    appendChild(elem: HTMLElement): void;
+/**
+ * Remove all children of an HTML DOM object..
+ */
+export function removeAllChildren(h: HTMLElement): void {
+    while (h.lastChild != null)
+        h.removeChild(h.lastChild);
+}
+
+/**
+ * Display only the significant digits of a number; returns an HtmlString.
+ * @param n  number to display for human consumption.
+ */
+export function significantDigitsHtml(n: number): HtmlString {
+    let suffix = "";
+    if (n === 0)
+        return new HtmlString("0");
+    const absn = Math.abs(n);
+    if (absn > 1e12) {
+        suffix = "T";
+        n = n / 1e12;
+    } else if (absn > 1e9) {
+        suffix = "B";
+        n = n / 1e9;
+    } else if (absn > 1e6) {
+        suffix = "M";
+        n = n / 1e6;
+    } else if (absn > 1e3) {
+        suffix = "K";
+        n = n / 1e3;
+    } else if (absn < .001) {
+        let expo = 0;
+        while (n < .1) {
+            n = n * 10;
+            expo++;
+        }
+        suffix = "&times;10<sup>-" + expo + "</sup>";
+    }
+    if (absn > 1)
+        n = Math.round(n * 100) / 100;
+    else
+        n = Math.round(n * 1000) / 1000;
+    const result = new HtmlString(String(n));
+    result.appendSafeString(suffix);
+    return result;
+}
+
+/**
+ * convert a number to a string and prepend zeros if necessary to
+ * bring the integer part to the specified number of digits
+ */
+export function zeroPad(num: number, length: number): string {
+    const n = Math.abs(num);
+    const zeros = Math.max(0, length - Math.floor(n).toString().length );
+    let zeroString = Math.pow(10, zeros).toString().substr(1);
+    if (num < 0) {
+        zeroString = "-" + zeroString;
+    }
+
+    return zeroString + n;
+}
+
+export function repeat(c: string, count: number): string {
+    let result = "";
+    for (let i = 0; i < count; i++)
+        result += c;
+    return result;
+}
+
+/**
+ * A location inside source code.
+ * Used for parsing the JSON input.
+ */
+interface Location {
+    file: string,
+    pos: [number, number, number, number]
+}
+
+/**
+ * A row in a profile dataset.
+ */
+interface ProfileRow {
+    opid: number,
+    cpu_us: number,
+    invocations?: number;
+    size?: number;
+    locations: Location[],
+    descr: string,
+    short_descr: string,
+    dd_op: string,
+    doc: string,
+    children?: ProfileRow[]
 }
 
 /**
@@ -110,20 +244,29 @@ export class ClosableCopyableContent implements IHtmlElement, IAppendChild {
         return this.topLevel;
     }
 
-    public setContent(message: string): void {
-        this.contents.innerText = message;
+    protected showButtons(): void {
         this.clearButton.style.display = "block";
         this.copyButton.style.display = "block";
     }
 
+    public setContent(message: string): void {
+        this.contents.innerText = message;
+        this.showButtons();
+    }
+
     public appendChild(elem: HTMLElement): void {
         this.contents.appendChild(elem);
+        this.showButtons();
+    }
+
+    protected hideButtons(): void {
+        this.clearButton.style.display = "none";
+        this.copyButton.style.display = "none";
     }
 
     public clear(): void {
         this.contents.textContent = "";
-        this.clearButton.style.display = "none";
-        this.copyButton.style.display = "none";
+        this.hideButtons();
         this.onclose();
     }
 
@@ -144,6 +287,7 @@ export class ErrorDisplay implements ErrorReporter, IHtmlElement {
     constructor() {
         this.content = new ClosableCopyableContent(() => {});
         this.content.addContentClass("console");
+        this.content.addContentClass("error");
     }
 
     public getHTMLRepresentation(): HTMLElement {
@@ -161,89 +305,18 @@ export class ErrorDisplay implements ErrorReporter, IHtmlElement {
 }
 
 /**
- * HTML strings are strings that represent an HTML fragment.
- * They are usually assigned to innerHTML of a DOM object.
- * These strings should  be "safe": i.e., the HTML they contain should
- * be produced internally, and they should not come
- * from external sources, because they can cause DOM injection attacks.
- */
-export class HtmlString {
-    private safeValue: string;
-
-    constructor(private arg: string) {
-        // Escape the argument string.
-        const div = document.createElement("div");
-        div.innerText = arg;
-        this.safeValue = div.innerHTML;
-    }
-
-    public appendSafeString(str: string): void {
-        this.safeValue += str;
-    }
-
-    public append(message: HtmlString): void {
-        this.safeValue += message.safeValue;
-    }
-
-    public prependSafeString(str: string): void {
-        this.safeValue = str + this.safeValue;
-    }
-
-    public setInnerHtml(elem: HTMLElement): void {
-        elem.innerHTML = this.safeValue;
-    }
-
-    public clear(): void {
-        this.safeValue = "";
-    }
-}
-
-/**
- * Display only the significant digits of a number; returns an HtmlString.
- * @param n  number to display for human consumption.
- */
-export function significantDigitsHtml(n: number): HtmlString {
-    let suffix = "";
-    if (n === 0)
-        return new HtmlString("0");
-    const absn = Math.abs(n);
-    if (absn > 1e12) {
-        suffix = "T";
-        n = n / 1e12;
-    } else if (absn > 1e9) {
-        suffix = "B";
-        n = n / 1e9;
-    } else if (absn > 1e6) {
-        suffix = "M";
-        n = n / 1e6;
-    } else if (absn > 1e3) {
-        suffix = "K";
-        n = n / 1e3;
-    } else if (absn < .001) {
-        let expo = 0;
-        while (n < .1) {
-            n = n * 10;
-            expo++;
-        }
-        suffix = "&times;10<sup>-" + expo + "</sup>";
-    }
-    if (absn > 1)
-        n = Math.round(n * 100) / 100;
-    else
-        n = Math.round(n * 1000) / 1000;
-    const result = new HtmlString(String(n));
-    result.appendSafeString(suffix);
-    return result;
-}
-
-/**
  * A class that knows how to display profile data.
  */
 class ProfileTable implements IHtmlElement {
     protected tbody: HTMLTableSectionElement;
     protected table: HTMLTableElement;
-    protected static readonly cells: string[] = [ "opid", SpecialChars.expand, "cpu_us", "invocations", "size",
-        "short_descr", "ddlog_op", "dd_op" ];
+
+    protected static readonly cpuColumns: string[] = [
+        "opid", SpecialChars.expand, "cpu_us", "invocations",
+        "short_descr", "dd_op" ];
+    protected static readonly memoryColumns: string[] = [
+        "opid", SpecialChars.expand, "size",
+        "short_descr", "dd_op" ];
     // how to rename column names in the table heading
     protected static readonly cellNames = new Map<string, string>([
         ["opid", ""],
@@ -252,16 +325,20 @@ class ProfileTable implements IHtmlElement {
         ["invocations", "calls"],
         ["size", "size"],
         ["short_descr", "description"],
-        ["ddlog_op", "operation"],
-        ["dd_op", "differential op"]
+        ["dd_op", "operation"]
     ]);
     protected static readonly baseDocUrl = "https://github.com/vmware/differential-datalog/wiki/profiler_help#";
+    protected displayedColumns: string[];
 
-    constructor(protected errorReporter: ErrorReporter) {
+    constructor(protected errorReporter: ErrorReporter, protected isCpu: boolean) {
         this.table = document.createElement("table");
         const thead = this.table.createTHead();
         const header = thead.insertRow();
-        for (let c of ProfileTable.cells) {
+        if (isCpu)
+            this.displayedColumns = ProfileTable.cpuColumns;
+        else
+            this.displayedColumns = ProfileTable.memoryColumns;
+        for (let c of this.displayedColumns) {
             const cell = header.insertCell();
             cell.textContent = ProfileTable.cellNames.get(c)!;
             cell.classList.add(c);
@@ -271,7 +348,7 @@ class ProfileTable implements IHtmlElement {
 
     protected addDataRow(indent: number, rowIndex: number, row: ProfileRow, lastInSequence: boolean): void {
         const trow = this.tbody.insertRow(rowIndex);
-        for (let k of ProfileTable.cells) {
+        for (let k of this.displayedColumns) {
             let key = k as keyof ProfileRow;
             let value = row[key];
             if (k === SpecialChars.expand) {
@@ -313,12 +390,11 @@ class ProfileTable implements IHtmlElement {
                 cell.appendChild(a);
                 continue;
             } else if (k === "short_descr") {
-                htmlValue.prependSafeString(SpecialChars.downArrow + " ");
+                const str = value.toString() ?? "";
+                ProfileTable.makeDescriptionContents(cell, str, true);
                 cell.classList.add("clickable");
-                let descr = row["descr"];
-                if (descr == null || descr == "")
-                    descr = "<no description provided>";
-                cell.onclick = () => this.showDescription(trow, cell, descr, row);
+                cell.onclick = () => this.showDescription(trow, cell, str, row);
+                continue;
             }
             htmlValue.setInnerHtml(cell);
             if (k === "opid") {
@@ -328,6 +404,7 @@ class ProfileTable implements IHtmlElement {
                 const children = row.children != null ? row.children : [];
                 if (children.length > 0) {
                     cell.textContent = SpecialChars.expand;
+                    cell.title = "Expand";
                     cell.classList.add("clickable");
                     cell.onclick = () => this.expand(indent + 1, trow, cell, children);
                 }
@@ -335,45 +412,58 @@ class ProfileTable implements IHtmlElement {
         }
     }
 
+    /**
+     * Add the description as a child to the expandCell
+     * @param expandCell    Cell to add the description to.
+     * @param htmlContents  HTML string containing the desired contents.
+     * @param down          If true add a down arrow, else an up arrow.
+     */
+    static makeDescriptionContents(expandCell: HTMLElement, htmlContents: string, down: boolean): void {
+        const arrow = makeSpan((down ? SpecialChars.downArrow : SpecialChars.upArrow) + " ");
+        arrow.title = down ? "Show source code" : "Hide source code";
+        const contents = document.createElement("span");
+        contents.innerHTML = htmlContents;
+        const span = document.createElement("span");
+        span.appendChild(arrow);
+        span.appendChild(contents);
+        removeAllChildren(expandCell);
+        expandCell.appendChild(span);
+    }
+
     protected showDescription(tRow: HTMLTableRowElement, expandCell: HTMLTableCellElement,
                               description: string, row: ProfileRow): void {
+        ProfileTable.makeDescriptionContents(expandCell, description, false);
         const newRow = this.tbody.insertRow(tRow.rowIndex); // no +1, since tbody has one fewer rows than the table
         newRow.insertCell();  // unused.
         const cell = newRow.insertCell();
-        cell.colSpan = ProfileTable.cells.length - 1;
+        cell.colSpan = this.displayedColumns.length - 1;
         const contents = new ClosableCopyableContent(
             () => this.hideDescription(tRow, expandCell, description, row));
         cell.appendChild(contents.getHTMLRepresentation());
-        contents.addContentClass("description");
-        contents.setContent(description);
+        contents.addContentClass("console");
         expandCell.onclick = () => this.hideDescription(tRow, expandCell, description, row);
         for (let loc of row.locations) {
             ScriptLoader.instance.loadScript(loc.file, (data: SourceFile) => {
-                this.appendLocationInformation(data, loc, contents);
+                this.appendSourceCode(data, loc, contents);
             }, this.errorReporter)
-        }
-        //cell.classList.add("clickable");
-        //cell.onclick = () => this.hideDescription(tRow, expandCell, description);
-    }
-
-    protected appendLocationInformation(contents: SourceFile, loc: Location, contentHolder: IAppendChild): void {
-        const snippet = contents.getSnippet(loc, this.errorReporter);
-        if (snippet != null) {
-            const contents = new ClosableCopyableContent(() => {});
-            contents.addContentClass("console");
-            contents.setContent(snippet);
-            contentHolder.appendChild(contents.getHTMLRepresentation());
         }
     }
 
     protected hideDescription(tRow: HTMLTableRowElement, expandCell: HTMLTableCellElement,
                               description: string, row: ProfileRow): void {
+        ProfileTable.makeDescriptionContents(expandCell, description, true);
         this.table.deleteRow(tRow.rowIndex + 1);
         expandCell.onclick = () => this.showDescription(tRow, expandCell, description, row);
     }
 
+    protected appendSourceCode(contents: SourceFile, loc: Location, contentHolder: IAppendChild): void {
+        const snippet = contents.getSnippet(loc, this.errorReporter);
+        contentHolder.appendChild(snippet);
+    }
+
     protected expand(indent: number, tRow: HTMLTableRowElement, expandCell: HTMLTableCellElement, rows: ProfileRow[]): void {
         expandCell.textContent = SpecialChars.shrink;
+        expandCell.title = "Shrink";
         expandCell.onclick = () => this.shrink(indent - 1, tRow, expandCell, rows);
         let index = tRow.rowIndex;
         for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
@@ -385,12 +475,13 @@ class ProfileTable implements IHtmlElement {
     protected shrink(indent: number, tRow: HTMLTableRowElement, expandCell: HTMLTableCellElement, rows: ProfileRow[]): void {
         let index = tRow.rowIndex;
         expandCell.textContent = SpecialChars.expand;
+        expandCell.title = "Expand";
         expandCell.onclick = () => this.expand(indent + 1, tRow, expandCell, rows);
         while (true) {
             const row = this.table.rows[index + 1];
             if (row == null)
                 break;
-            if (row.cells.length < ProfileTable.cells.length) {
+            if (row.cells.length < this.displayedColumns.length) {
                 // This is a description row.
                 this.table.deleteRow(index + 1);
                 continue;
@@ -426,12 +517,20 @@ class ProfileTable implements IHtmlElement {
     }
 }
 
-function repeat(c: string, count: number): string {
-    let result = "";
-    for (let i = 0; i < count; i++)
-        result += c;
-    return result;
+/**
+ * Returns a span element containing the specified text.
+ * @param text       Text to insert in span.
+ * @param highlight  If true the span has class highlight.
+ */
+export function makeSpan(text: string | null, highlight: boolean = false): HTMLElement {
+    const span = document.createElement("span");
+    if (text != null)
+        span.textContent = text;
+    if (highlight)
+        span.className = "highlight";
+    return span;
 }
+
 
 // This function is defined in JavaScript
 declare function getGlobalMapValue(key: string): string | null;
@@ -454,26 +553,47 @@ class SourceFile {
     /**
      * Return a snippet of the source file as indicated by the location.
      */
-    public getSnippet(loc: Location, reporter: ErrorReporter): string {
-        const startLine = loc.pos[0];
-        const endLine = loc.pos[2];
-        const startColumn = loc.pos[1] + 1;
-        const endColumn = loc.pos[3] + 1;
-        let result = "";
-        for (let line = startLine; line <= endLine; line++) {
-            if (line >= this.lines.length) {
-                reporter.reportError("File " + this.filename + " does not have " + line +
-                    " lines, but only " + this.lines.length);
-                return result;
-            }
+    public getSnippet(loc: Location, reporter: ErrorReporter): HTMLElement {
+        const result = makeSpan("");
+        // Line and column numbers are 1-based
+        const startLine = loc.pos[0] - 1;
+        const endLine = loc.pos[2] - 1;
+        const startColumn = loc.pos[1] - 1;
+        const endColumn = loc.pos[3] - 1;
+        const len = (endLine + 1).toString().length;
+        if (startLine >= this.lines.length) {
+            reporter.reportError("File " + this.filename + " does not have " + startLine +
+                " lines, but only " + this.lines.length);
+            return result;
+        }
+        result.appendChild(makeSpan(loc.file));
+        result.appendChild(document.createElement("br"));
+        let lastLineDisplayed = endLine + 2;
+        if (endColumn == 0)
+            // no data at all from last line, so show one fewer
+            lastLineDisplayed--;
+        for (let line = Math.max(startLine - 1, 0);
+            line < Math.min(lastLineDisplayed, this.lines.length); line++) {
             let l = this.lines[line];
+            const lineno = zeroPad(line + 1, len);
+            result.appendChild(makeSpan(lineno + "| "));
             if (line == startLine) {
-                l = repeat(" ", startColumn) + l.substr(startColumn);
+                result.appendChild(makeSpan(l.substr(0, startColumn)));
+                if (line == endLine) {
+                    result.appendChild(makeSpan(l.substr(startColumn, endColumn - startColumn), true));
+                    result.appendChild(makeSpan(l.substr(endColumn)));
+                } else {
+                    result.appendChild(makeSpan(l.substr(startColumn), true));
+                }
             }
-            if (line == endLine) {
-                l = l.substr(0, endColumn);
+            if (line != startLine && line != endLine) {
+                result.appendChild(makeSpan(l, line >= startLine && line <= endLine));
             }
-            result += l + "\n";
+            if (line == endLine && line != startLine) {
+                result.appendChild(makeSpan(l.substr(0, endColumn), true));
+                result.appendChild(makeSpan(l.substr(endColumn)));
+            }
+            result.appendChild( document.createElement("br"));
         }
         return result;
     }
@@ -504,12 +624,12 @@ class ScriptLoader {
     public loadScript(filename: string, onload: (source: SourceFile) => void, reporter: ErrorReporter): void {
         console.log("Attempting to load " + filename);
         const value = this.data.get(filename);
-        if (value != null) {
+        if (value !== undefined) {
             onload(value);
             return;
         }
         const script = document.createElement("script");
-        script.src = filename + ".js";
+        script.src = "./src/" + filename + ".js";
         script.onload = () => {
             const value = getGlobalMapValue(filename);
             const source = new SourceFile(filename, value);
@@ -540,7 +660,7 @@ class ProfileUI implements IHtmlElement {
         this.topLevel = document.createElement("div");
         this.errorReporter = new ErrorDisplay();
         this.topLevel.appendChild(this.errorReporter.getHTMLRepresentation());
-        this.profileTable = new ProfileTable(this.errorReporter);
+        this.profileTable = new ProfileTable(this.errorReporter, true);
         this.topLevel.appendChild(this.profileTable.getHTMLRepresentation())
     }
 
@@ -602,7 +722,7 @@ class ProfileUI implements IHtmlElement {
 /**
  * Main function exported by this module: instantiates the user interface.
  */
-export function createUi(): void {
+export default function createUI(): void {
     const top = document.getElementById("top");
     if (top == null) {
         console.log("Could not find 'top' element in document");
@@ -611,3 +731,7 @@ export function createUi(): void {
     const ui = new ProfileUI();
     top.appendChild(ui.getHTMLRepresentation());
 }
+
+export {
+    createUI
+};

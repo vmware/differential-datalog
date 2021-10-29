@@ -37,16 +37,26 @@ td.invocations {
     text-align:right;
 }
 
+.error {
+    color: red;
+}
+
 .console {
     font-family: monospace;
     white-space: pre-wrap;
     word-break: break-all;
     background: #f0f0f0;
-    color: red;
 }
 
-.description {
-    background: lightcyan;
+.code {
+    font-family: monospace;
+    white-space: pre-wrap;
+    word-break: break-all;
+    background: #f0f0f0;
+}
+
+.highlight {
+    background: lightyellow;
 }
 
 /* close, minimize, help page elements */
