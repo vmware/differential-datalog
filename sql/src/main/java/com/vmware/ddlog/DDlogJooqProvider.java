@@ -349,7 +349,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
                 return selectByIndex(tableName, ids, where);
             } catch (final Exception e) {
                 if (e.getMessage().contains("key not found"))
-                    return new MockResult(0, null);
+                    return emptyMockResult();
                 return exception(e);
             }
         }
