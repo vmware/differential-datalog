@@ -3797,11 +3797,18 @@ Weight overflow in turns leads to silent wrong results at runtime [bug
 878](https://github.com/vmware/differential-datalog/issues/878).
 
 To mitigate this problem, the generated Rust code can be compiled with
-the a feature named `checked_weights`.  This causes programs that
+a feature named `checked_weights`.  This causes programs that
 overflow the weights to crash with a Rust `panic` at runtime instead
 of producing incorrect results.  This can be done e.g., by compiling
 the result produced by the ddlog compiler with a command line like
 `cargo build --release --features=checked_weights`.
+
+Alternatively, the generated Rust code can be compiled with a feature
+named `unbounded_weights`.  This may cause the program to execute
+slower and use more memory, but the program will never produce
+incorrect results.  This can be done e.g., by compiling
+the result produced by the ddlog compiler with a command line like
+`cargo build --release --features=unbounded_weights`.
 
 ## Profiling
 

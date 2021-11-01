@@ -11,6 +11,8 @@ nested_ts_32 = []
 c_api = []
 # panic on weight overflow
 checked_weights = []
+# unbounded weights make the program slower but correct
+unbounded_weights = []
 
 [dependencies]
 #differential-dataflow = "0.11.0"

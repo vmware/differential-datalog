@@ -5,10 +5,9 @@ edition = "2018"
 license = "MIT"
 
 [features]
-# Use the following to run with checked_weights: 
-# panic on weight overflow.
-#default = ["benchmarks_ddlog/checked_weights"]
 default = []
+checked_weights = ["benchmarks_ddlog/checked_weights"]
+unbounded_weights = ["benchmarks_ddlog/unbounded_weights"]
 
 [dependencies]
 criterion = "0.3.3"
