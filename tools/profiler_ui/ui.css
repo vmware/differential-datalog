@@ -54,6 +54,10 @@ td.invocations {
     color: red;
 }
 
+.filename {
+    background: pink;
+}
+
 .console {
     font-family: monospace;
     white-space: pre-wrap;

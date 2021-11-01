@@ -37,6 +37,12 @@ export interface ErrorReporter {
     reportError(message: string): void;
 }
 
+enum Direction {
+    Up,
+    Down,
+    None
+}
+
 export class SpecialChars {
     public static approx = "\u2248";
     public static upArrow = "▲";
@@ -49,6 +55,7 @@ export class SpecialChars {
     public static epsilon = "\u03B5";
     public static enDash = "&ndash;";
     public static scissors = "\u2702";
+    public static clipboard = "\uD83D\uDCCB";
     public static expand = "+";
     public static shrink = "\u2501"; // heavy line
     public static childAndNext = "├";
@@ -290,7 +297,7 @@ export class ClosableCopyableContent implements IHtmlElement, IAppendChild {
         this.topLevel.appendChild(container);
 
         this.copyButton = document.createElement("span");
-        this.copyButton.innerHTML = SpecialChars.scissors;
+        this.copyButton.innerHTML = SpecialChars.clipboard;
         this.copyButton.title = "copy contents to clipboard";
         this.copyButton.style.display = "none";
         this.copyButton.classList.add("clickable");
@@ -392,7 +399,7 @@ class ProfileTable implements IHtmlElement {
         "opid", SpecialChars.expand, "cpu_us", "histogram",
         "invocations", "short_descr", "dd_op" ];
     protected static readonly memoryColumns: string[] = [
-        "size", "histogram", "short_descr", "dd_op" ];
+        "opid", SpecialChars.expand, "size", "histogram", "short_descr", "dd_op" ];
     // how to rename column names in the table heading
     protected static readonly cellNames = new Map<string, string>([
         ["opid", ""],
@@ -476,9 +483,12 @@ class ProfileTable implements IHtmlElement {
                 continue;
             } else if (k === "short_descr") {
                 const str = value.toString() ?? "";
-                ProfileTable.makeDescriptionContents(cell, str, true);
-                cell.classList.add("clickable");
-                cell.onclick = () => this.showDescription(trow, cell, str, row);
+                const direction = (row.descr != "" || row.locations.length > 0) ? Direction.Down : Direction.None;
+                ProfileTable.makeDescriptionContents(cell, str, direction);
+                if (direction != Direction.None) {
+                    cell.classList.add("clickable");
+                    cell.onclick = () => this.showDescription(trow, cell, str, row);
+                }
                 continue;
             }
             htmlValue.setInnerHtml(cell);
@@ -506,23 +516,29 @@ class ProfileTable implements IHtmlElement {
      * Add the description as a child to the expandCell
      * @param expandCell    Cell to add the description to.
      * @param htmlContents  HTML string containing the desired contents.
-     * @param down          If true add a down arrow, else an up arrow.
+     * @param direction          If true add a down arrow, else an up arrow.
      */
-    static makeDescriptionContents(expandCell: HTMLElement, htmlContents: string, down: boolean): void {
-        const arrow = makeSpan((down ? SpecialChars.downArrow : SpecialChars.upArrow) + " ");
-        arrow.title = down ? "Show source code" : "Hide source code";
+    static makeDescriptionContents(expandCell: HTMLElement, htmlContents: string, direction: Direction): void {
         const contents = document.createElement("span");
         contents.innerHTML = htmlContents;
-        const span = document.createElement("span");
-        span.appendChild(arrow);
-        span.appendChild(contents);
-        removeAllChildren(expandCell);
-        expandCell.appendChild(span);
+        if (direction == Direction.None) {
+            removeAllChildren(expandCell);
+            expandCell.appendChild(contents);
+        } else {
+            const down = direction == Direction.Down;
+            const arrow = makeSpan((down ? SpecialChars.downArrow : SpecialChars.upArrow) + " ");
+            arrow.title = down ? "Show source code" : "Hide source code";
+            const span = document.createElement("span");
+            span.appendChild(arrow);
+            span.appendChild(contents);
+            removeAllChildren(expandCell);
+            expandCell.appendChild(span);
+        }
     }
 
     protected showDescription(tRow: HTMLTableRowElement, expandCell: HTMLTableCellElement,
                               description: string, row: ProfileRow): void {
-        ProfileTable.makeDescriptionContents(expandCell, description, false);
+        ProfileTable.makeDescriptionContents(expandCell, description, Direction.Up);
         const newRow = this.tbody.insertRow(tRow.rowIndex); // no +1, since tbody has one fewer rows than the table
         newRow.insertCell();  // unused.
         const cell = newRow.insertCell();
@@ -530,7 +546,11 @@ class ProfileTable implements IHtmlElement {
         const contents = new ClosableCopyableContent(
             () => this.hideDescription(tRow, expandCell, description, row));
         cell.appendChild(contents.getHTMLRepresentation());
-        contents.addContentClass("console");
+        if (row.descr != "") {
+            const description = makeSpan("");
+            description.innerHTML = row.descr + "<br>";
+            contents.appendChild(description);
+        }
         expandCell.onclick = () => this.hideDescription(tRow, expandCell, description, row);
         for (let loc of row.locations) {
             ScriptLoader.instance.loadScript(loc.file, (data: SourceFile) => {
@@ -541,7 +561,7 @@ class ProfileTable implements IHtmlElement {
 
     protected hideDescription(tRow: HTMLTableRowElement, expandCell: HTMLTableCellElement,
                               description: string, row: ProfileRow): void {
-        ProfileTable.makeDescriptionContents(expandCell, description, true);
+        ProfileTable.makeDescriptionContents(expandCell, description, Direction.Down);
         this.table.deleteRow(tRow.rowIndex + 1);
         expandCell.onclick = () => this.showDescription(tRow, expandCell, description, row);
     }
@@ -651,7 +671,8 @@ class SourceFile {
      * Return a snippet of the source file as indicated by the location.
      */
     public getSnippet(loc: Location, reporter: ErrorReporter): HTMLElement {
-        const result = makeSpan("");
+        const result = document.createElement("div");
+        result.classList.add("console");
         // Line and column numbers are 1-based
         const startLine = loc.pos[0] - 1;
         const endLine = loc.pos[2] - 1;
@@ -663,7 +684,9 @@ class SourceFile {
                 " lines, but only " + this.lines.length);
             return result;
         }
-        result.appendChild(makeSpan(loc.file));
+        const fileRow = makeSpan(loc.file);
+        fileRow.classList.add("filename");
+        result.appendChild(fileRow);
         result.appendChild(document.createElement("br"));
         let lastLineDisplayed = endLine + 2;
         if (endColumn == 0)
