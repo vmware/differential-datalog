@@ -1,3 +1,8 @@
+//! Utilities for extracting Json objects out of a stream of characters.
+
+// TODO: this implementation is incorrect, since it does not properly escape characters
+// that may show up in strings inside Json values.
+
 // this module pre-frames json objects out of an arbitrarily chunked byte string.
 // it is a really terrible idea to temporarily work around some limtations
 // with serde. specifically that it can read chunked blocks and a sequence
@@ -29,12 +34,20 @@ static ENDS: phf::Map<char, char> = phf_map! {
 #[allow(dead_code)]
 static WHITESPACE: phf::Set<char> = phf_set! { ' ', '\t', '\n' };
 
+/// Used to discover the end of a JSON object in a stream of characters.
 pub struct JsonFramer {
+    // Stack of delimiters that have been opened but not yet closed, used to
+    // detect the end of object.
     w: Vec<char>,
+    // Part of stream received so far.
     reassembly: Vec<u8>,
 }
 
 impl JsonFramer {
+    /// Append more characters to the input stream.  Returns all the complete
+    /// JSON objects created by appending, and buffers the remaining characters
+    /// until a full object will be received.
+
     // certianly backslash - what else?
     //
     // we can avoid utf8 for the framing characters, but we currently dont handle

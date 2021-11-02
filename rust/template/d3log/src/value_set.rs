@@ -1,6 +1,6 @@
-// Represents a vector of ddval::Values: a value can be used to
-// represent a row in a multiset relation (with the associated weight).
-// A ValueSet can contain values from multiple different relations.
+//! Represents a vector of ddval::Values: a value can be used to
+//! represent a row in a multiset relation (with the associated weight).
+//! A ValueSet can contain values from multiple different relations.
 
 use crate::{Batch, BatchBody, Error, Evaluator, Properties};
 use differential_datalog::{
@@ -17,6 +17,7 @@ use std::sync::{Arc, Mutex};
 pub struct ValueSet {
     // The evaluator is a handle to the DDlog runtime that "understands" the values.
     pub eval: Evaluator, // used when translating a Value to a Record object
+    /// A DeltaMap is a DDlog structure representing a set of changes.
     pub deltas: Arc<Mutex<DeltaMap<differential_datalog::ddval::DDValue>>>,
 }
 
@@ -25,8 +26,9 @@ impl Display for ValueSet {
         f.write_str("<")?;
         let iter = self.clone();
         let mut m: usize = 0;
+        // TODO: this code is incomplete, it does not display the ValueSet.
         for (relid, _v, _w) in iter.into_iter() {
-            // I would really prefer a readable name..but we need an Evaluator and it doesn't seem right
+            // TODO: I would really prefer a readable name..but we need an Evaluator and it doesn't seem right
             // to add it to all the batches or globalize it
             f.write_str(&format!("({}", relid))?;
             m += 1;
@@ -37,6 +39,7 @@ impl Display for ValueSet {
     }
 }
 
+/// An iterator that returns all values in a ValueSet.
 pub struct ValueSetIterator<'a> {
     relid: RelId,
     // sadly, BTreeMap is defined over isize and not differential_datalog::program::Weight
@@ -46,7 +49,6 @@ pub struct ValueSetIterator<'a> {
 
 impl<'a> Iterator for ValueSetIterator<'a> {
     type Item = (RelId, DDValue, Weight);
-
     fn next(&mut self) -> Option<(RelId, DDValue, Weight)> {
         match &mut self.items {
             Some(x) => match x.next() {
@@ -81,6 +83,7 @@ impl<'a> IntoIterator for &'a ValueSet {
 }
 
 impl ValueSet {
+    /// Create a ValueSet from a DeltaMap.
     pub fn from_delta_map(
         eval: Evaluator,
         deltas: DeltaMap<differential_datalog::ddval::DDValue>,
@@ -95,6 +98,7 @@ impl ValueSet {
         }
     }
 
+    /// Create an empty ValueSet
     pub fn new(eval: Evaluator) -> ValueSet {
         ValueSet {
             eval,
@@ -104,6 +108,7 @@ impl ValueSet {
         }
     }
 
+    /// Add some elements to a ValueSet.
     pub fn insert(&mut self, r: RelId, v: differential_datalog::ddval::DDValue, weight: Weight) {
         self.deltas
             .lock()
@@ -111,6 +116,7 @@ impl ValueSet {
             .update(r, &v, weight as isize);
     }
 
+    /// Create a ValueSet from a batch.
     pub fn from(e: Evaluator, b: Batch) -> Result<ValueSet, Error> {
         match b.body {
             BatchBody::Value(x) => Ok(x),

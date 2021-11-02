@@ -1,3 +1,5 @@
+//! Error information structures and management of the Error relation.
+
 // this file follows the apparently established pattern of defining a local error type and defining From
 // so as to implicity coerce all the errors thrown by '?'
 //TODOs:
@@ -16,9 +18,13 @@ use tokio::task::JoinError;
 
 #[derive(Debug)]
 pub struct Error {
+    /// Error message
     contents: String,
+    /// Rust source line where error originates.
     line: Option<u64>,
+    /// Rust function name where error originates.
     functionname: Option<String>,
+    /// Rust filename where error originates.
     filename: Option<String>,
     parent: Box<Option<Error>>,
 }
@@ -36,6 +42,7 @@ macro_rules! function {
 }
 
 impl Error {
+    // An error containing just a message, no source position.
     pub fn new(s: String) -> Error {
         Error {
             contents: s,
@@ -102,11 +109,15 @@ impl From<nix::Error> for Error {
     }
 }
 
+// Send an error report to some destination
 #[macro_export]
 macro_rules! send_error {
+    // `e`: destination where error is reported
+    // `t`: message that is sent
     ($e:expr, $t:expr) => {
         $e.error(
             $t,
+            // Uses standard Rust tools to extract source code position.
             std::line!(),
             std::file!().to_string(),
             function!().to_string(),
@@ -114,11 +125,17 @@ macro_rules! send_error {
     };
 }
 
-// wanted to try to wrap this up in a lambda so that the enclosed expr
-// could just use ? syntax, but that turns out to be really hard here
+// WARNING: Notice that this macro calls 'return' inside.
+// Thus when the error path is taken, this will terminate the enclosing function.
+// This macro should only be called from the 'send' function of a 'Transport'
+// trait; the send functions have no return values.
 #[macro_export]
 macro_rules! async_error {
+    // `e`: error port
+    // `r`: a result object, which may be an error.
     ($e:expr, $r:expr) => {
+        // wanted to try to wrap this up in a lambda so that the enclosed expr
+        // could just use ? syntax, but that turns out to be really hard here
         match $r {
             Err(x) => {
                 send_error!($e, x.to_string());
@@ -129,11 +146,11 @@ macro_rules! async_error {
     };
 }
 
-// consider specialized error text
 #[macro_export]
 macro_rules! async_expect_some {
     ($e:expr, $r:expr) => {
         match $r {
+            // TODO: consider specialized error text
             None => {
                 send_error!($e, "expected value");
                 return;

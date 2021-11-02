@@ -8,16 +8,19 @@ use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
-// an Entry is a record of a peer adjacency, for which there may or ay not be
-// an output port stablished
+/// an Entry is a record of a peer adjacency, for which there may or may not be
+/// an output port established.
 struct Entry {
+    // Option to allow for delayed initialization.
     port: Option<Port>,
+    /// Queue holding batches that have no registrations yet.
     batches: VecDeque<Batch>,
 }
 
 pub struct Forwarder {
     eval: Evaluator,
-    // a map from node id to a port (thats been wrapped with some partial support for incremental updates)
+    /// Forwarding information base.
+    /// a map from node id to an entry
     fib: Arc<Mutex<HashMap<Node, Arc<Mutex<Entry>>>>>,
 }
 
@@ -30,6 +33,8 @@ impl Forwarder {
         forwarder
     }
 
+    /// Returns the entry associated with a node.  If no entry exists
+    /// a new one is created.
     fn lookup(&self, n: Node) -> Arc<Mutex<Entry>> {
         self.fib
             .lock()
@@ -44,6 +49,9 @@ impl Forwarder {
             .clone()
     }
 
+    /// Associate a port with a node.  If there are any queued
+    /// batches for node's entry, they are sent to the port at this time
+    /// and the queue is drained.
     pub fn register(&self, n: Node, p: Port) {
         // overwrite warning?
         let entry = self.lookup(n);
@@ -59,6 +67,7 @@ impl Forwarder {
 
 impl Transport for Forwarder {
     fn send(&self, batch: Batch) {
+        // Group records by the destination node.
         let mut output = HashMap::<Node, ValueSet>::new();
         for (rel, value, weight) in
             &ValueSet::from(self.eval.clone(), batch.clone()).expect("iterator")
@@ -76,6 +85,7 @@ impl Transport for Forwarder {
                 match self.lookup(nid).lock() {
                     Ok(mut x) => match &x.port {
                         Some(x) => x.clone(),
+                        // No associated port: queue the batch and send later.
                         None => {
                             x.batches.push_front(Batch {
                                 metadata: batch.metadata.clone(),

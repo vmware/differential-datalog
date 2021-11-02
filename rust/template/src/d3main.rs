@@ -1,3 +1,9 @@
+//! This code provides a bridge between a DDlog application and the D3Runtime that
+//! runs it.  To start a D3log application, you start a DDlog program with the -d3log
+//! command-line argument.  Doing this will start the first instance of a process
+//! in the D3Runtime; additional instances are created from the first one by 'forking'
+//! new processes (or threads).
+
 use crate::{relval_from_record, run_with_config, Relations};
 
 use d3log::{
@@ -26,14 +32,19 @@ use std::sync::{Arc, Mutex};
 
 use tokio::runtime::Runtime;
 
+// The equivalent of the Unix 'init' process: the first DDlog instance created.
 pub struct D3 {
     hddlog: HDDlog,
     eval: Arc<Mutex<Option<Evaluator>>>, // a reference to myself to use with other apis
 }
 
+/// Read the initial facts (facts that are inserted in relations prior to the execution
+/// of the program) from a Json file.
 pub fn read_json_file(
     eval: Evaluator,
+    /// File to read.
     filename: String,
+    /// Callback to invoke for every batch read from the file.
     cb: &mut dyn FnMut(Batch),
 ) -> Result<(), Error> {
     let body = fs::read_to_string(filename)?;
@@ -46,6 +57,8 @@ pub fn read_json_file(
 }
 
 impl D3 {
+    /// Start the execution of an new D3 distributed runtime.
+    /// Returns an evaluator and the batch of outputs produced by it's execution.
     pub fn new() -> Result<(Evaluator, Batch), Error> {
         // xxx - looks like the 'run' variant is no longer really accessible because
         // of namespace collisions?
@@ -63,8 +76,11 @@ impl D3 {
     }
 }
 
+// This is the only implementation of this trait.
 impl EvaluatorTrait for D3 {
     // FromRecord for DDValue not implemented. is there another official path here?
+
+    // Convert a Record to a DDValue
     fn ddvalue_from_record(&self, name: String, r: Record) -> Result<DDValue, Error> {
         let id = self.id_from_relation_name(name.clone())?;
         let t: RelIdentifier = RelIdentifier::RelId(id);
@@ -74,6 +90,8 @@ impl EvaluatorTrait for D3 {
             .map_err(|x| Error::new("bad record conversion: ".to_string() + &x.to_string()))
     }
 
+    /// Given a batch of data, feed it to the as an input transaction.
+    /// Returns the outputs produced by this transaction.
     fn eval(&self, input: Batch) -> Result<Batch, Error> {
         let eval = (*self.eval.lock().expect("lock")).clone().unwrap().clone();
         let vb = ValueSet::from(eval.clone(), input)?;
@@ -95,8 +113,9 @@ impl EvaluatorTrait for D3 {
         ))
     }
 
-    // Relations is a global - ideally we should be going through hddlog, not clear how?
+    /// Get the relation id from a string
     fn id_from_relation_name(&self, s: String) -> Result<RelId, Error> {
+        // Relations is a global - ideally we should be going through hddlog, not clear how?
         let s: &str = &s;
         match Relations::try_from(s) {
             Ok(r) => Ok(r as RelId),
@@ -104,6 +123,7 @@ impl EvaluatorTrait for D3 {
         }
     }
 
+    /// Convert a global DDValue into a DDValue for the local corresponding relation name.
     fn localize(&self, rel: usize, v: DDValue) -> Option<(Node, RelId, DDValue)> {
         match self.hddlog.d3log_localize_val(rel, v.clone()) {
             Ok((Some(n), r, v)) => Some((n, r, v)),
@@ -112,10 +132,12 @@ impl EvaluatorTrait for D3 {
         }
     }
 
+    /// Convert a DDvalue to a record.
     fn record_from_ddvalue(&self, d: DDValue) -> Result<Record, Error> {
         Ok(d.into_record())
     }
 
+    /// Get a relation name from a relation id.
     fn relation_name_from_id(&self, id: RelId) -> Result<String, Error> {
         Ok(self.hddlog.inventory.get_table_name(id)?.to_string())
     }
@@ -134,6 +156,7 @@ impl EvaluatorTrait for D3 {
     }
 }
 
+/// Used for debugging.  Batches sent to this port are printed on the screen as JSON.
 pub struct JsonDebugPort {
     eval: Evaluator,
 }
@@ -153,6 +176,9 @@ impl Transport for JsonDebugPort {
     }
 }
 
+/// Start the d3log distributed runtime.  If the environment variable uuid is set,
+/// use it as an id for the first instance, else generate a random id.
+/// `inputfile`: if supplied, contains the initial facts in JSON
 pub fn start_d3log(debug_broadcast: bool, inputfile: Option<String>) -> Result<(), Error> {
     let uuid = if let Some(uuid) = std::env::var_os("uuid") {
         if let Some(uuid) = uuid.to_str() {

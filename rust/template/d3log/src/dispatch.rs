@@ -8,6 +8,9 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, RwLock};
 
+// Maps a relation name to a handler reponsible for updates to that relation.
+// In the Vec u64 is the handler id, and Port is a receiver.
+// The handler id is only used for grouping below; it is an opaque identifier.
 type DispatchMap = HashMap<String, Vec<(u64, Port)>>;
 
 #[derive(Clone)]
@@ -30,12 +33,15 @@ impl Transport for Dispatch {
                         .insert(v.clone(), weight);
                 }
             }
+            // TODO: this seems to ignore records with no handler registered.
+            // Perhaps they should be queued somewhere?
         }
         for (_, (p, b)) in output {
             p.send(Batch {
                 metadata: Properties::new(),
                 body: BatchBody::Record(b),
             });
+            // any error occuring during sending should appear in the Error relation
         }
     }
 }
@@ -48,8 +54,10 @@ impl Dispatch {
         }
     }
 
-    // deregstration? return a handle?
-    // we should validate the relation_name? incl dynamic schema
+    // Register a port `p` that will receive all deltas for a `relation_name`
+    // Notice that multiple ports can register for the same relation.
+    // TODO: deregstration? return a handle?
+    // TODO: we should validate the relation_name? incl dynamic schema
     pub fn register(&self, relation_name: &str, p: Port) -> Result<(), Error> {
         let id = self.count.fetch_add(1, Ordering::SeqCst);
 

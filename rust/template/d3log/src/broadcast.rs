@@ -1,4 +1,9 @@
-// a replication component to support broadcast metadata facts. this includes 'split horizon' as a temporary
+//! This component allows multiple D3log instances to communicate with
+//! each other.  It essentially buffers the entire history of messages
+//! exchanged between instances and replays it every time a new instance
+//! joins the distributed system.  This code runs in all instances.
+
+// this includes 'split horizon' as a temporary
 // fix for simple pairwise loops. This will need an additional distributed coordination mechanism in
 // order to maintain a consistent spanning tree (and a strategy for avoiding storms for temporariliy
 // inconsistent topologies)
@@ -10,19 +15,27 @@ use crate::{
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, RwLock};
 
+/// A local connector for a broadcast bus.
 type PortId = usize;
 #[derive(Clone, Default)]
 pub struct Broadcast {
-    // accumulator is copy of the broadcast log for use in catching up new subscribers
-    // the first arc/rwlock to allow Some() to be written in register_eval, and the next is over the batch itself
+    // accumulator is a log of all sent messages.
+    // Its contents is replayed to new subscribers.
+    // the first arc/rwlock to allow Some() to be written in register_eval,
+    // and the next is over the batch itself.
+    // Collection names used in the ValueSet are global collection names
+    // (not the localized names).
     accumulator: Arc<RwLock<Option<Arc<RwLock<ValueSet>>>>>,
-    // count is effectively an allocator we use to label ports (rather than use the address of the underlying object)
+    // count is effectively an allocator use allocate unique ids to ports
+    // (rather than use the address of the underlying object)
     // so we can perform trivial forwarding cycle checks
     count: Arc<AtomicUsize>,
-    // the set of ports to distribute facts to
+    // the set of ports and their ids to distribute facts to
     pub ports: Arc<RwLock<Vec<(Port, PortId)>>>,
 }
 
+// Models a port used to send broadcast to other ports, but which filters
+// out the sent messages so that they are not received again.
 pub struct Ingress {
     id: PortId,
     broadcast: Arc<Broadcast>,
@@ -36,6 +49,8 @@ struct AccumulatePort {
 }
 
 impl Transport for AccumulatePort {
+    // Place the batch data on the broadcast bus.  The batch is
+    // received by everyone who has subscribed to the broadcast bus.
     fn send(&self, batch: Batch) {
         let vbatch = async_error!(self.error.clone(), ValueSet::from(self.eval.clone(), batch));
         for (r, f, w) in vbatch.into_iter() {
@@ -53,11 +68,13 @@ impl Broadcast {
         })
     }
 
+    // Register a new port to receive broadcast messages.
+    // TODO: There is no 'pop' to remove a port.
     fn push(&self, p: Port, id: PortId) {
         self.ports.write().expect("lock").push((p, id));
     }
 
-    // not pretty - this is an issue with initialization order
+    // used to register a new DDlog instance (eval) when it starts up.
     pub fn register_eval(a: Arc<Broadcast>, eval: Evaluator, error: Arc<ErrorSend>) {
         let a2 = a.clone();
         let a4 = a.clone();
@@ -73,6 +90,8 @@ impl Broadcast {
         );
     }
 
+    // 'couple' here stands for a verb: it performs the union of
+    // the state in two distinct broadcast groups, coupling them.
     // couple is a specialized version of subscribe to connect two in-process broadcast instances together
     pub fn couple(a: Arc<Broadcast>, b: Arc<Broadcast>) -> Result<(), Error> {
         let id = a.count.fetch_add(1, Ordering::Acquire);
