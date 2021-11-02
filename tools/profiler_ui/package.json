@@ -1,0 +1,17 @@
+{
+  "name": "profiler_ui",
+  "version": "1.0.0",
+  "description": "DDlog profiler UI",
+  "main": "index.html",
+  "dependencies": {
+    "source-map": "^0.7.3",
+    "source-map-support": "^0.5.20",
+    "typescript": "^4.4.4"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "mbudiu@vmware.com",
+  "license": "MIT"
+}
