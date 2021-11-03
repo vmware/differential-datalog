@@ -22,6 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.makeSpan = exports.ErrorDisplay = exports.ClosableCopyableContent = exports.repeat = exports.zeroPad = exports.significantDigitsHtml = exports.removeAllChildren = exports.HtmlString = exports.DataRangeUI = exports.percentString = exports.significantDigits = exports.px = exports.formatPositiveNumber = exports.SpecialChars = void 0;
 var Direction;
 (function (Direction) {
     Direction[Direction["Up"] = 0] = "Up";
@@ -31,34 +32,27 @@ var Direction;
 var SpecialChars = /** @class */ (function () {
     function SpecialChars() {
     }
-    SpecialChars.approx = "\u2248";
     SpecialChars.upArrow = "▲";
     SpecialChars.downArrow = "▼";
-    SpecialChars.ellipsis = "…";
-    SpecialChars.downArrowHtml = "&dArr;";
-    SpecialChars.upArrowHtml = "&uArr;";
-    SpecialChars.leftArrowHtml = "&lArr;";
-    SpecialChars.rightArrowHtml = "&rArr;";
-    SpecialChars.epsilon = "\u03B5";
-    SpecialChars.enDash = "&ndash;";
-    SpecialChars.scissors = "\u2702";
     SpecialChars.clipboard = "\uD83D\uDCCB";
     SpecialChars.expand = "+";
     SpecialChars.shrink = "\u2501"; // heavy line
     SpecialChars.childAndNext = "├";
     SpecialChars.vertical = "│";
     SpecialChars.child = "└";
-    SpecialChars.childPrefix = "\u2002"; // en space
     return SpecialChars;
 }());
 exports.SpecialChars = SpecialChars;
 /**
  * Converts a number to a more readable representation.
+ * Negative numbers are shown as empty strings.
  */
-function formatNumber(n) {
+function formatPositiveNumber(n) {
+    if (n < 0)
+        return "";
     return n.toLocaleString();
 }
-exports.formatNumber = formatNumber;
+exports.formatPositiveNumber = formatPositiveNumber;
 function px(dim) {
     if (dim === 0)
         return dim.toString();
@@ -68,6 +62,51 @@ exports.px = px;
 function createSvgElement(tag) {
     return document.createElementNS("http://www.w3.org/2000/svg", tag);
 }
+/**
+ * Convert a number to an string by keeping only the most significant digits
+ * and adding a suffix.  Similar to the previous function, but returns a pure string.
+ */
+function significantDigits(n) {
+    var suffix = "";
+    if (n === 0)
+        return "0";
+    var absn = Math.abs(n);
+    if (absn > 1e12) {
+        suffix = "T";
+        n = n / 1e12;
+    }
+    else if (absn > 1e9) {
+        suffix = "B";
+        n = n / 1e9;
+    }
+    else if (absn > 1e6) {
+        suffix = "M";
+        n = n / 1e6;
+    }
+    else if (absn > 1e3) {
+        suffix = "K";
+        n = n / 1e3;
+    }
+    else if (absn < .001) {
+        var expo = 0;
+        while (n < 1) {
+            n = n * 10;
+            expo++;
+        }
+        suffix = " * 10e-" + expo;
+    }
+    if (absn > 1)
+        n = Math.round(n * 100) / 100;
+    else
+        n = Math.round(n * 1000) / 1000;
+    return String(n) + suffix;
+}
+exports.significantDigits = significantDigits;
+function percentString(n) {
+    n = Math.round(n * 1000) / 10;
+    return significantDigits(n) + "%";
+}
+exports.percentString = percentString;
 /**
  * A horizontal rectangle that displays a data range within an interval 0-max.
  */
@@ -82,33 +121,25 @@ var DataRangeUI = /** @class */ (function () {
         this.topLevel.classList.add("dataRange");
         this.topLevel.setAttribute("width", px(DataRangeUI.width));
         this.topLevel.setAttribute("height", px(10));
-        // If the range represents < 1 % of the total count, use 1% of the
+        // If the range is no 0 but represents < 1 % of the total count, use 1% of the
         // bar's width, s.t. it is still visible.
-        var w = Math.max(0.01, count / totalCount);
+        var w = count > 0 ? Math.max(0.01, count / totalCount) : count;
         var x = position / totalCount;
         if (x + w > 1)
             x = 1 - w;
-        var label = w.toString();
         var g = createSvgElement("g");
         this.topLevel.appendChild(g);
         var title = createSvgElement("title");
-        title.setAttribute("text", formatNumber(count));
+        title.textContent = "(" + significantDigits(position) + " + " + significantDigits(count) + ") / " +
+            significantDigits(totalCount) + "\n" +
+            percentString(position / totalCount) + " + " + percentString(count / totalCount);
         g.appendChild(title);
-        /*
-        const rect = createSvgElement("rect");
-        g.appendChild(rect);
-        rect.setAttribute("x", "0");
-        rect.setAttribute("y", "0");
-        rect.setAttribute("fill", "lightgray");
-        rect.setAttribute("width", "1");
-        rect.setAttribute("height", "1");
-        */
         var rect1 = createSvgElement("rect");
         g.appendChild(rect1);
         rect1.setAttribute("x", x.toString() + "%");
         rect1.setAttribute("y", "0");
         rect1.setAttribute("fill", "black");
-        rect1.setAttribute("width", label);
+        rect1.setAttribute("width", w.toString() + "%");
         rect1.setAttribute("height", "1");
     }
     DataRangeUI.prototype.getDOMRepresentation = function () {
@@ -329,7 +360,7 @@ var ProfileTable = /** @class */ (function () {
         this.isCpu = isCpu;
         this.showCpuHistogram = true;
         this.showMemHistogram = false;
-        this.max = 0;
+        this.total = 0;
         this.table = document.createElement("table");
         var thead = this.table.createTHead();
         var header = thead.insertRow();
@@ -351,33 +382,33 @@ var ProfileTable = /** @class */ (function () {
         }
         this.tbody = this.table.createTBody();
     }
-    ProfileTable.prototype.addDataRow = function (indent, rowIndex, row, lastInSequence) {
+    ProfileTable.prototype.addDataRow = function (indent, rowIndex, row, lastInSequence, histogramStart) {
         var _this = this;
-        var _a;
         var trow = this.tbody.insertRow(rowIndex);
+        // Fix undefined values
+        var safeRow = {
+            locations: row.locations === undefined ? [] : row.locations,
+            descr: row.descr === undefined ? "" : row.descr,
+            size: row.size === undefined ? -1 : row.size,
+            cpu_us: row.cpu_us === undefined ? -1 : row.cpu_us,
+            children: row.children === undefined ? [] : row.children,
+            dd_op: row.dd_op === undefined ? "" : row.dd_op,
+            invocations: row.invocations === undefined ? -1 : row.invocations,
+            opid: row.opid === undefined ? -1 : row.opid,
+            short_descr: row.short_descr === undefined ? "" : row.short_descr
+        };
         var _loop_1 = function (k) {
             var key = k;
-            var value = row[key];
+            var value = safeRow[key];
             if (k === SpecialChars.expand || k === "histogram") {
                 return "continue";
             }
-            if (value === undefined && k != "invocations" && k != "size") {
-                this_1.errorReporter.reportError("Missing value for column " + k);
-            }
             var htmlValue = void 0;
-            if (k === "cpu_us") {
-                if (value === undefined) {
-                    value = "";
-                    htmlValue = new HtmlString("");
-                }
-                else {
-                    htmlValue = new HtmlString(formatNumber(value));
-                    //htmlValue = significantDigitsHtml(value as number);
-                }
+            if (k === "cpu_us" || k === "invocations" || k === "size") {
+                htmlValue = new HtmlString(formatPositiveNumber(value));
+                //htmlValue = significantDigitsHtml(value as number);
             }
             else {
-                if (value === undefined)
-                    value = "";
                 htmlValue = new HtmlString(value.toString());
             }
             var cell = trow.insertCell();
@@ -393,20 +424,18 @@ var ProfileTable = /** @class */ (function () {
                 }
             }
             else if (k === "ddlog_op") {
-                var section = row["doc"];
                 var a = document.createElement("a");
-                a.href = ProfileTable.baseDocUrl + section;
                 a.text = value.toString();
                 cell.appendChild(a);
                 return "continue";
             }
             else if (k === "short_descr") {
-                var str_1 = (_a = value.toString()) !== null && _a !== void 0 ? _a : "";
-                var direction = (row.descr != "" || row.locations.length > 0) ? Direction.Down : Direction.None;
+                var str_1 = value.toString();
+                var direction = (safeRow.descr != "" || safeRow.locations.length > 0) ? Direction.Down : Direction.None;
                 ProfileTable.makeDescriptionContents(cell, str_1, direction);
                 if (direction != Direction.None) {
                     cell.classList.add("clickable");
-                    cell.onclick = function () { return _this.showDescription(trow, cell, str_1, row); };
+                    cell.onclick = function () { return _this.showDescription(trow, cell, str_1, safeRow); };
                 }
                 return "continue";
             }
@@ -414,24 +443,25 @@ var ProfileTable = /** @class */ (function () {
             if (k === "opid") {
                 // Add an adjacent cell for expanding the row children
                 var cell_1 = trow.insertCell();
-                var children_1 = row.children != null ? row.children : [];
+                var children_1 = safeRow.children;
                 if (children_1.length > 0) {
                     cell_1.textContent = SpecialChars.expand;
                     cell_1.title = "Expand";
                     cell_1.classList.add("clickable");
-                    cell_1.onclick = function () { return _this.expand(indent + 1, trow, cell_1, children_1); };
+                    cell_1.onclick = function () { return _this.expand(indent + 1, trow, cell_1, children_1, histogramStart); };
                 }
             }
             if ((k === "size" && this_1.showMemHistogram) || (k == "cpu_us" && this_1.showCpuHistogram)) {
                 // Add an adjacent cell for the histogram
                 var cell_2 = trow.insertCell();
-                var rangeUI = new DataRangeUI(0, value, this_1.max);
+                var numberValue = value;
+                var rangeUI = new DataRangeUI(histogramStart, numberValue, this_1.total);
                 cell_2.appendChild(rangeUI.getDOMRepresentation());
             }
         };
         var this_1 = this;
-        for (var _i = 0, _b = this.displayedColumns; _i < _b.length; _i++) {
-            var k = _b[_i];
+        for (var _i = 0, _a = this.displayedColumns; _i < _a.length; _i++) {
+            var k = _a[_i];
             _loop_1(k);
         }
     };
@@ -461,19 +491,22 @@ var ProfileTable = /** @class */ (function () {
     };
     ProfileTable.prototype.showDescription = function (tRow, expandCell, description, row) {
         var _this = this;
-        ProfileTable.makeDescriptionContents(expandCell, description, Direction.Up);
+        var descr = description;
+        ProfileTable.makeDescriptionContents(expandCell, descr, Direction.Up);
         var newRow = this.tbody.insertRow(tRow.rowIndex); // no +1, since tbody has one fewer rows than the table
         newRow.insertCell(); // unused.
         var cell = newRow.insertCell();
         cell.colSpan = this.displayedColumns.length - 1;
-        var contents = new ClosableCopyableContent(function () { return _this.hideDescription(tRow, expandCell, description, row); });
+        var contents = new ClosableCopyableContent(function () { return _this.hideDescription(tRow, expandCell, descr, row); });
         cell.appendChild(contents.getHTMLRepresentation());
         if (row.descr != "") {
             var description_1 = makeSpan("");
             description_1.innerHTML = row.descr + "<br>";
             contents.appendChild(description_1);
+            if (row.locations.length > 0)
+                contents.appendChild(document.createElement("hr"));
         }
-        expandCell.onclick = function () { return _this.hideDescription(tRow, expandCell, description, row); };
+        expandCell.onclick = function () { return _this.hideDescription(tRow, expandCell, descr, row); };
         var _loop_2 = function (loc) {
             ScriptLoader.instance.loadScript(loc.file, function (data) {
                 _this.appendSourceCode(data, loc, contents);
@@ -492,26 +525,38 @@ var ProfileTable = /** @class */ (function () {
         expandCell.onclick = function () { return _this.showDescription(tRow, expandCell, description, row); };
     };
     ProfileTable.prototype.appendSourceCode = function (contents, loc, contentHolder) {
-        var snippet = contents.getSnippet(loc, this.errorReporter);
+        var snippet = document.createElement("div");
+        snippet.classList.add("console");
         contentHolder.appendChild(snippet);
+        contents.insertSnippet(snippet, loc, 1, 1, this.errorReporter);
     };
-    ProfileTable.prototype.expand = function (indent, tRow, expandCell, rows) {
+    ProfileTable.prototype.getDataSize = function (row) {
+        if (row.cpu_us)
+            return row.cpu_us;
+        if (row.size)
+            return row.size;
+        return 0;
+    };
+    ProfileTable.prototype.expand = function (indent, tRow, expandCell, rows, histogramStart) {
         var _this = this;
         expandCell.textContent = SpecialChars.shrink;
         expandCell.title = "Shrink";
-        expandCell.onclick = function () { return _this.shrink(indent - 1, tRow, expandCell, rows); };
+        var start = histogramStart;
+        expandCell.onclick = function () { return _this.shrink(indent - 1, tRow, expandCell, rows, start); };
         var index = tRow.rowIndex;
         for (var rowIndex = 0; rowIndex < rows.length; rowIndex++) {
             var row = rows[rowIndex];
-            this.addDataRow(indent, index++, row, rowIndex == rows.length - 1);
+            this.addDataRow(indent, index++, row, rowIndex == rows.length - 1, histogramStart);
+            histogramStart += this.getDataSize(row);
         }
     };
-    ProfileTable.prototype.shrink = function (indent, tRow, expandCell, rows) {
+    ProfileTable.prototype.shrink = function (indent, tRow, expandCell, rows, histogramStart) {
         var _this = this;
         var index = tRow.rowIndex;
         expandCell.textContent = SpecialChars.expand;
         expandCell.title = "Expand";
-        expandCell.onclick = function () { return _this.expand(indent + 1, tRow, expandCell, rows); };
+        var start = histogramStart;
+        expandCell.onclick = function () { return _this.expand(indent + 1, tRow, expandCell, rows, start); };
         while (true) {
             var row = this.table.rows[index + 1];
             if (row == null)
@@ -545,14 +590,13 @@ var ProfileTable = /** @class */ (function () {
         this.tbody = this.table.createTBody();
         for (var _i = 0, rows_1 = rows; _i < rows_1.length; _i++) {
             var row = rows_1[_i];
-            if (row.cpu_us && row.cpu_us > this.max)
-                this.max = row.cpu_us;
-            if (row.size && row.size > this.max)
-                this.max = row.size;
+            this.total += this.getDataSize(row);
         }
+        var histogramStart = 0;
         for (var rowIndex = 0; rowIndex < rows.length; rowIndex++) {
             var row = rows[rowIndex];
-            this.addDataRow(0, -1, row, rowIndex == rows.length - 1);
+            this.addDataRow(0, -1, row, rowIndex == rows.length - 1, histogramStart);
+            histogramStart += this.getDataSize(row);
         }
     };
     ProfileTable.cpuColumns = [
@@ -597,6 +641,8 @@ exports.makeSpan = makeSpan;
 var SourceFile = /** @class */ (function () {
     function SourceFile(filename, data) {
         this.filename = filename;
+        // number of lines to expand on each click
+        this.expandLines = 10;
         if (data == null) {
             // This can happen on error.
             this.lines = [];
@@ -606,10 +652,15 @@ var SourceFile = /** @class */ (function () {
     }
     /**
      * Return a snippet of the source file as indicated by the location.
+     * @param parent make the snippet the only child of this element
+     * @param loc source code location of snippet
+     * @param before lines to show before snippet
+     * @param after  lines to show after snippet
+     * @param reporter used to report errors
      */
-    SourceFile.prototype.getSnippet = function (loc, reporter) {
-        var result = document.createElement("div");
-        result.classList.add("console");
+    SourceFile.prototype.insertSnippet = function (parent, loc, before, after, reporter) {
+        var _this = this;
+        removeAllChildren(parent);
         // Line and column numbers are 1-based
         var startLine = loc.pos[0] - 1;
         var endLine = loc.pos[2] - 1;
@@ -619,40 +670,56 @@ var SourceFile = /** @class */ (function () {
         if (startLine >= this.lines.length) {
             reporter.reportError("File " + this.filename + " does not have " + startLine +
                 " lines, but only " + this.lines.length);
-            return result;
         }
         var fileRow = makeSpan(loc.file);
         fileRow.classList.add("filename");
-        result.appendChild(fileRow);
-        result.appendChild(document.createElement("br"));
-        var lastLineDisplayed = endLine + 2;
+        parent.appendChild(fileRow);
+        parent.appendChild(document.createElement("br"));
+        var lastLineDisplayed = endLine + 1 + after;
         if (endColumn == 0)
             // no data at all from last line, so show one fewer
             lastLineDisplayed--;
-        for (var line = Math.max(startLine - 1, 0); line < Math.min(lastLineDisplayed, this.lines.length); line++) {
+        var firstLineDisplayed = Math.max(startLine - before, 0);
+        lastLineDisplayed = Math.min(lastLineDisplayed, this.lines.length);
+        if (firstLineDisplayed > 0) {
+            var expandUp = makeSpan(SpecialChars.upArrow);
+            expandUp.title = "Show lines before";
+            expandUp.classList.add("clickable");
+            expandUp.onclick = function () { return _this.insertSnippet(parent, loc, before + _this.expandLines, after, reporter); };
+            parent.appendChild(expandUp);
+            parent.appendChild(document.createElement("br"));
+        }
+        for (var line = firstLineDisplayed; line < lastLineDisplayed; line++) {
             var l = this.lines[line];
             var lineno = zeroPad(line + 1, len);
-            result.appendChild(makeSpan(lineno + "| "));
+            parent.appendChild(makeSpan(lineno + "| "));
             if (line == startLine) {
-                result.appendChild(makeSpan(l.substr(0, startColumn)));
+                parent.appendChild(makeSpan(l.substr(0, startColumn)));
                 if (line == endLine) {
-                    result.appendChild(makeSpan(l.substr(startColumn, endColumn - startColumn), true));
-                    result.appendChild(makeSpan(l.substr(endColumn)));
+                    parent.appendChild(makeSpan(l.substr(startColumn, endColumn - startColumn), true));
+                    parent.appendChild(makeSpan(l.substr(endColumn)));
                 }
                 else {
-                    result.appendChild(makeSpan(l.substr(startColumn), true));
+                    parent.appendChild(makeSpan(l.substr(startColumn), true));
                 }
             }
             if (line != startLine && line != endLine) {
-                result.appendChild(makeSpan(l, line >= startLine && line <= endLine));
+                parent.appendChild(makeSpan(l, line >= startLine && line <= endLine));
             }
             if (line == endLine && line != startLine) {
-                result.appendChild(makeSpan(l.substr(0, endColumn), true));
-                result.appendChild(makeSpan(l.substr(endColumn)));
+                parent.appendChild(makeSpan(l.substr(0, endColumn), true));
+                parent.appendChild(makeSpan(l.substr(endColumn)));
             }
-            result.appendChild(document.createElement("br"));
+            parent.appendChild(document.createElement("br"));
         }
-        return result;
+        if (lastLineDisplayed < this.lines.length) {
+            var expandDown = makeSpan(SpecialChars.downArrow);
+            expandDown.classList.add("clickable");
+            expandDown.title = "Show lines after";
+            expandDown.onclick = function () { return _this.insertSnippet(parent, loc, before, after + _this.expandLines, reporter); };
+            parent.appendChild(expandDown);
+            parent.appendChild(document.createElement("br"));
+        }
     };
     return SourceFile;
 }());
