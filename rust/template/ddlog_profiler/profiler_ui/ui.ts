@@ -44,30 +44,23 @@ enum Direction {
 }
 
 export class SpecialChars {
-    public static approx = "\u2248";
     public static upArrow = "▲";
     public static downArrow = "▼";
-    public static ellipsis = "…";
-    public static downArrowHtml = "&dArr;";
-    public static upArrowHtml = "&uArr;";
-    public static leftArrowHtml = "&lArr;";
-    public static rightArrowHtml = "&rArr;";
-    public static epsilon = "\u03B5";
-    public static enDash = "&ndash;";
-    public static scissors = "\u2702";
     public static clipboard = "\uD83D\uDCCB";
     public static expand = "+";
     public static shrink = "\u2501"; // heavy line
     public static childAndNext = "├";
     public static vertical = "│";
     public static child = "└";
-    public static childPrefix = "\u2002"; // en space
 }
 
 /**
  * Converts a number to a more readable representation.
+ * Negative numbers are shown as empty strings.
  */
-export function formatNumber(n: number): string {
+export function formatPositiveNumber(n: number): string {
+    if (n < 0)
+        return "";
     return n.toLocaleString();
 }
 
@@ -79,6 +72,48 @@ export function px(dim: number): string {
 
 function createSvgElement(tag: string): SVGElement {
     return document.createElementNS("http://www.w3.org/2000/svg", tag);
+}
+
+/**
+ * Convert a number to an string by keeping only the most significant digits
+ * and adding a suffix.  Similar to the previous function, but returns a pure string.
+ */
+export function significantDigits(n: number): string {
+    let suffix = "";
+    if (n === 0)
+        return "0";
+    const absn = Math.abs(n);
+    if (absn > 1e12) {
+        suffix = "T";
+        n = n / 1e12;
+    } else if (absn > 1e9) {
+        suffix = "B";
+        n = n / 1e9;
+    } else if (absn > 1e6) {
+        suffix = "M";
+        n = n / 1e6;
+    } else if (absn > 1e3) {
+        suffix = "K";
+        n = n / 1e3;
+    } else if (absn < .001) {
+        let expo = 0;
+        while (n < 1) {
+            n = n * 10;
+            expo++;
+        }
+        suffix = " * 10e-" + expo;
+    }
+    if (absn > 1)
+        n = Math.round(n * 100) / 100;
+    else
+        n = Math.round(n * 1000) / 1000;
+    return String(n) + suffix;
+}
+
+
+export function percentString(n: number): string {
+    n = Math.round(n * 1000) / 10;
+    return significantDigits(n) + "%";
 }
 
 /**
@@ -98,33 +133,25 @@ export class DataRangeUI {
         this.topLevel.classList.add("dataRange");
         this.topLevel.setAttribute("width", px(DataRangeUI.width));
         this.topLevel.setAttribute("height", px(10));
-        // If the range represents < 1 % of the total count, use 1% of the
+        // If the range is no 0 but represents < 1 % of the total count, use 1% of the
         // bar's width, s.t. it is still visible.
-        const w = Math.max(0.01, count / totalCount);
+        const w = count > 0 ? Math.max(0.01, count / totalCount) : count;
         let x = position / totalCount;
         if (x + w > 1)
             x = 1 - w;
-        const label = w.toString();
         const g = createSvgElement("g");
         this.topLevel.appendChild(g);
         const title = createSvgElement("title");
-        title.setAttribute("text", formatNumber(count));
+        title.textContent = "(" + significantDigits(position) + " + " + significantDigits(count) + ") / " +
+            significantDigits(totalCount) + "\n" +
+            percentString(position / totalCount) + " + " + percentString(count / totalCount);
         g.appendChild(title);
-        /*
-        const rect = createSvgElement("rect");
-        g.appendChild(rect);
-        rect.setAttribute("x", "0");
-        rect.setAttribute("y", "0");
-        rect.setAttribute("fill", "lightgray");
-        rect.setAttribute("width", "1");
-        rect.setAttribute("height", "1");
-        */
         const rect1 = createSvgElement("rect");
         g.appendChild(rect1);
         rect1.setAttribute("x", x.toString() + "%");
         rect1.setAttribute("y", "0");
         rect1.setAttribute("fill", "black");
-        rect1.setAttribute("width", label);
+        rect1.setAttribute("width", w.toString() + "%");
         rect1.setAttribute("height", "1");
     }
 
@@ -259,21 +286,20 @@ interface Location {
  */
 interface ProfileRow {
     opid: number,
-    cpu_us?: number,
-    invocations?: number;
-    size?: number;
+    cpu_us: number,
+    invocations: number;
+    size: number;
     locations: Location[],
     descr: string,
     short_descr: string,
     dd_op: string,
-    doc: string,
-    children?: ProfileRow[]
+    children: Partial<ProfileRow>[]
 }
 
 interface Profile {
     type: string,
     name: string,
-    records: ProfileRow[]
+    records: Partial<ProfileRow>[]
 }
 
 /**
@@ -413,7 +439,7 @@ class ProfileTable implements IHtmlElement {
     ]);
     protected static readonly baseDocUrl = "https://github.com/vmware/differential-datalog/wiki/profiler_help#";
     protected displayedColumns: string[];
-    protected max: number = 0;
+    protected total: number = 0;
 
     constructor(protected errorReporter: ErrorReporter, protected isCpu: boolean) {
         this.table = document.createElement("table");
@@ -437,30 +463,35 @@ class ProfileTable implements IHtmlElement {
         this.tbody = this.table.createTBody();
     }
 
-    protected addDataRow(indent: number, rowIndex: number, row: ProfileRow, lastInSequence: boolean): void {
+    protected addDataRow(indent: number, rowIndex: number, row: Partial<ProfileRow>,
+                         lastInSequence: boolean, histogramStart: number): void {
         const trow = this.tbody.insertRow(rowIndex);
+        // Fix undefined values
+        let safeRow: ProfileRow = {
+            locations: row.locations === undefined ? [] : row.locations,
+            descr: row.descr === undefined ? "" : row.descr,
+            size: row.size === undefined ? -1 : row.size,
+            cpu_us: row.cpu_us === undefined ? -1 : row.cpu_us,
+            children: row.children === undefined ? [] : row.children,
+            dd_op: row.dd_op === undefined ? "" : row.dd_op,
+            invocations: row.invocations === undefined ? -1 : row.invocations,
+            opid: row.opid === undefined ? -1 : row.opid,
+            short_descr: row.short_descr === undefined ? "" : row.short_descr
+        };
+
+
         for (let k of this.displayedColumns) {
             let key = k as keyof ProfileRow;
-            let value = row[key];
+            let value = safeRow[key];
             if (k === SpecialChars.expand || k === "histogram") {
                 // These columns do not really exist in the data
                 continue;
             }
-            if (value === undefined && k != "invocations" && k != "size") {
-                this.errorReporter.reportError("Missing value for column " + k);
-            }
             let htmlValue: HtmlString;
-            if (k === "cpu_us") {
-                if (value === undefined) {
-                    value = "";
-                    htmlValue = new HtmlString("");
-                } else {
-                    htmlValue = new HtmlString(formatNumber(value as number));
-                    //htmlValue = significantDigitsHtml(value as number);
-                }
+            if (k === "cpu_us" || k === "invocations" || k === "size") {
+                htmlValue = new HtmlString(formatPositiveNumber(value as number));
+                //htmlValue = significantDigitsHtml(value as number);
             } else {
-                if (value === undefined)
-                    value = "";
                 htmlValue = new HtmlString(value.toString());
             }
             const cell = trow.insertCell();
@@ -475,19 +506,17 @@ class ProfileTable implements IHtmlElement {
                     htmlValue = new HtmlString(prefix + end);
                 }
             } else if (k === "ddlog_op") {
-                const section = row["doc"];
                 const a = document.createElement("a");
-                a.href = ProfileTable.baseDocUrl + section;
                 a.text = value.toString();
                 cell.appendChild(a);
                 continue;
             } else if (k === "short_descr") {
-                const str = value.toString() ?? "";
-                const direction = (row.descr != "" || row.locations.length > 0) ? Direction.Down : Direction.None;
+                const str = value.toString();
+                const direction = (safeRow.descr != "" || safeRow.locations.length > 0) ? Direction.Down : Direction.None;
                 ProfileTable.makeDescriptionContents(cell, str, direction);
                 if (direction != Direction.None) {
                     cell.classList.add("clickable");
-                    cell.onclick = () => this.showDescription(trow, cell, str, row);
+                    cell.onclick = () => this.showDescription(trow, cell, str, safeRow);
                 }
                 continue;
             }
@@ -495,18 +524,19 @@ class ProfileTable implements IHtmlElement {
             if (k === "opid") {
                 // Add an adjacent cell for expanding the row children
                 const cell = trow.insertCell();
-                const children = row.children != null ? row.children : [];
+                const children = safeRow.children;
                 if (children.length > 0) {
                     cell.textContent = SpecialChars.expand;
                     cell.title = "Expand";
                     cell.classList.add("clickable");
-                    cell.onclick = () => this.expand(indent + 1, trow, cell, children);
+                    cell.onclick = () => this.expand(indent + 1, trow, cell, children, histogramStart);
                 }
             }
             if ((k === "size" && this.showMemHistogram) || (k == "cpu_us" && this.showCpuHistogram)) {
                 // Add an adjacent cell for the histogram
                 const cell = trow.insertCell();
-                const rangeUI = new DataRangeUI(0, value as number, this.max);
+                const numberValue = value as number;
+                const rangeUI = new DataRangeUI(histogramStart, numberValue, this.total);
                 cell.appendChild(rangeUI.getDOMRepresentation());
             }
         }
@@ -537,22 +567,25 @@ class ProfileTable implements IHtmlElement {
     }
 
     protected showDescription(tRow: HTMLTableRowElement, expandCell: HTMLTableCellElement,
-                              description: string, row: ProfileRow): void {
-        ProfileTable.makeDescriptionContents(expandCell, description, Direction.Up);
+                              description: string, row: Partial<ProfileRow>): void {
+        const descr = description;
+        ProfileTable.makeDescriptionContents(expandCell, descr, Direction.Up);
         const newRow = this.tbody.insertRow(tRow.rowIndex); // no +1, since tbody has one fewer rows than the table
         newRow.insertCell();  // unused.
         const cell = newRow.insertCell();
         cell.colSpan = this.displayedColumns.length - 1;
         const contents = new ClosableCopyableContent(
-            () => this.hideDescription(tRow, expandCell, description, row));
+            () => this.hideDescription(tRow, expandCell, descr, row));
         cell.appendChild(contents.getHTMLRepresentation());
         if (row.descr != "") {
             const description = makeSpan("");
             description.innerHTML = row.descr + "<br>";
             contents.appendChild(description);
+            if (row.locations!.length > 0)
+                contents.appendChild(document.createElement("hr"));
         }
-        expandCell.onclick = () => this.hideDescription(tRow, expandCell, description, row);
-        for (let loc of row.locations) {
+        expandCell.onclick = () => this.hideDescription(tRow, expandCell, descr, row);
+        for (let loc of row.locations!) {
             ScriptLoader.instance.loadScript(loc.file, (data: SourceFile) => {
                 this.appendSourceCode(data, loc, contents);
             }, this.errorReporter)
@@ -560,33 +593,48 @@ class ProfileTable implements IHtmlElement {
     }
 
     protected hideDescription(tRow: HTMLTableRowElement, expandCell: HTMLTableCellElement,
-                              description: string, row: ProfileRow): void {
+                              description: string, row: Partial<ProfileRow>): void {
         ProfileTable.makeDescriptionContents(expandCell, description, Direction.Down);
         this.table.deleteRow(tRow.rowIndex + 1);
         expandCell.onclick = () => this.showDescription(tRow, expandCell, description, row);
     }
 
     protected appendSourceCode(contents: SourceFile, loc: Location, contentHolder: IAppendChild): void {
-        const snippet = contents.getSnippet(loc, this.errorReporter);
+        const snippet = document.createElement("div");
+        snippet.classList.add("console");
         contentHolder.appendChild(snippet);
+        contents.insertSnippet(snippet, loc, 1, 1, this.errorReporter);
     }
 
-    protected expand(indent: number, tRow: HTMLTableRowElement, expandCell: HTMLTableCellElement, rows: ProfileRow[]): void {
+    protected getDataSize(row: Partial<ProfileRow>): number {
+        if (row.cpu_us)
+            return row.cpu_us;
+        if (row.size)
+            return row.size;
+        return 0;
+    }
+
+    protected expand(indent: number, tRow: HTMLTableRowElement, expandCell: HTMLTableCellElement,
+                     rows: Partial<ProfileRow>[], histogramStart: number): void {
         expandCell.textContent = SpecialChars.shrink;
         expandCell.title = "Shrink";
-        expandCell.onclick = () => this.shrink(indent - 1, tRow, expandCell, rows);
+        const start = histogramStart;
+        expandCell.onclick = () => this.shrink(indent - 1, tRow, expandCell, rows, start);
         let index = tRow.rowIndex;
         for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
             const row = rows[rowIndex];
-            this.addDataRow(indent, index++, row, rowIndex == rows.length - 1);
+            this.addDataRow(indent, index++, row, rowIndex == rows.length - 1, histogramStart);
+            histogramStart += this.getDataSize(row);
         }
     }
 
-    protected shrink(indent: number, tRow: HTMLTableRowElement, expandCell: HTMLTableCellElement, rows: ProfileRow[]): void {
+    protected shrink(indent: number, tRow: HTMLTableRowElement, expandCell: HTMLTableCellElement,
+                     rows: Partial<ProfileRow>[], histogramStart: number): void {
         let index = tRow.rowIndex;
         expandCell.textContent = SpecialChars.expand;
         expandCell.title = "Expand";
-        expandCell.onclick = () => this.expand(indent + 1, tRow, expandCell, rows);
+        const start = histogramStart;
+        expandCell.onclick = () => this.expand(indent + 1, tRow, expandCell, rows, start);
         while (true) {
             const row = this.table.rows[index + 1];
             if (row == null)
@@ -617,19 +665,17 @@ class ProfileTable implements IHtmlElement {
      * Populate the view with the specified data.
      * Whatever used to be displayed is removed.
      */
-    public setData(rows: ProfileRow[]): void {
+    public setData(rows: Partial<ProfileRow>[]): void {
         this.table.removeChild(this.tbody);
         this.tbody = this.table.createTBody();
-        for (const row of rows) {
-            if (row.cpu_us && row.cpu_us > this.max)
-                this.max = row.cpu_us;
-            if (row.size && row.size > this.max)
-                this.max = row.size;
-        }
+        for (const row of rows)
+            this.total += this.getDataSize(row);
 
+        let histogramStart = 0;
         for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
             const row = rows[rowIndex];
-            this.addDataRow(0, -1, row, rowIndex == rows.length - 1);
+            this.addDataRow(0, -1, row, rowIndex == rows.length - 1, histogramStart);
+            histogramStart += this.getDataSize(row);
         }
     }
 }
@@ -657,6 +703,8 @@ declare function getGlobalMapValue(key: string): string | null;
  */
 class SourceFile {
     protected lines: string[];
+    // number of lines to expand on each click
+    readonly expandLines = 10;
 
     constructor(protected filename: string, data: string | null) {
         if (data == null) {
@@ -669,10 +717,14 @@ class SourceFile {
 
     /**
      * Return a snippet of the source file as indicated by the location.
+     * @param parent make the snippet the only child of this element
+     * @param loc source code location of snippet
+     * @param before lines to show before snippet
+     * @param after  lines to show after snippet
+     * @param reporter used to report errors
      */
-    public getSnippet(loc: Location, reporter: ErrorReporter): HTMLElement {
-        const result = document.createElement("div");
-        result.classList.add("console");
+    public insertSnippet(parent: HTMLElement, loc: Location, before: number, after: number, reporter: ErrorReporter): void {
+        removeAllChildren(parent);
         // Line and column numbers are 1-based
         const startLine = loc.pos[0] - 1;
         const endLine = loc.pos[2] - 1;
@@ -682,40 +734,55 @@ class SourceFile {
         if (startLine >= this.lines.length) {
             reporter.reportError("File " + this.filename + " does not have " + startLine +
                 " lines, but only " + this.lines.length);
-            return result;
         }
         const fileRow = makeSpan(loc.file);
         fileRow.classList.add("filename");
-        result.appendChild(fileRow);
-        result.appendChild(document.createElement("br"));
-        let lastLineDisplayed = endLine + 2;
+        parent.appendChild(fileRow);
+        parent.appendChild(document.createElement("br"));
+        let lastLineDisplayed = endLine + 1 + after;
         if (endColumn == 0)
             // no data at all from last line, so show one fewer
             lastLineDisplayed--;
-        for (let line = Math.max(startLine - 1, 0);
-            line < Math.min(lastLineDisplayed, this.lines.length); line++) {
+        const firstLineDisplayed = Math.max(startLine - before, 0);
+        lastLineDisplayed = Math.min(lastLineDisplayed, this.lines.length);
+        if (firstLineDisplayed > 0) {
+            const expandUp = makeSpan(SpecialChars.upArrow);
+            expandUp.title = "Show lines before";
+            expandUp.classList.add("clickable");
+            expandUp.onclick = () => this.insertSnippet(parent, loc, before + this.expandLines, after, reporter);
+            parent.appendChild(expandUp);
+            parent.appendChild(document.createElement("br"));
+        }
+        for (let line = firstLineDisplayed; line < lastLineDisplayed; line++) {
             let l = this.lines[line];
             const lineno = zeroPad(line + 1, len);
-            result.appendChild(makeSpan(lineno + "| "));
+            parent.appendChild(makeSpan(lineno + "| "));
             if (line == startLine) {
-                result.appendChild(makeSpan(l.substr(0, startColumn)));
+                parent.appendChild(makeSpan(l.substr(0, startColumn)));
                 if (line == endLine) {
-                    result.appendChild(makeSpan(l.substr(startColumn, endColumn - startColumn), true));
-                    result.appendChild(makeSpan(l.substr(endColumn)));
+                    parent.appendChild(makeSpan(l.substr(startColumn, endColumn - startColumn), true));
+                    parent.appendChild(makeSpan(l.substr(endColumn)));
                 } else {
-                    result.appendChild(makeSpan(l.substr(startColumn), true));
+                    parent.appendChild(makeSpan(l.substr(startColumn), true));
                 }
             }
             if (line != startLine && line != endLine) {
-                result.appendChild(makeSpan(l, line >= startLine && line <= endLine));
+                parent.appendChild(makeSpan(l, line >= startLine && line <= endLine));
             }
             if (line == endLine && line != startLine) {
-                result.appendChild(makeSpan(l.substr(0, endColumn), true));
-                result.appendChild(makeSpan(l.substr(endColumn)));
+                parent.appendChild(makeSpan(l.substr(0, endColumn), true));
+                parent.appendChild(makeSpan(l.substr(endColumn)));
             }
-            result.appendChild( document.createElement("br"));
+            parent.appendChild( document.createElement("br"));
         }
-        return result;
+        if (lastLineDisplayed < this.lines.length) {
+            const expandDown = makeSpan(SpecialChars.downArrow);
+            expandDown.classList.add("clickable");
+            expandDown.title = "Show lines after";
+            expandDown.onclick = () => this.insertSnippet(parent, loc, before, after + this.expandLines, reporter);
+            parent.appendChild(expandDown);
+            parent.appendChild(document.createElement("br"));
+        }
     }
 }
 
