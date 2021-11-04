@@ -270,9 +270,8 @@ fn main() -> Result<(), String> {
         opt differential_profiler_socket:Option<String>, desc:"Socket address to send Differential Dataflow profiling events. Default (if '--profile-differential' is specified is '127.0.0.1:51318'. Implies '--profile-differential'.";
         opt differential_trace_dir:Option<String>, desc:"Path to a directory to store Differential Dataflow profiling events, e.g., './differential_trace'. Implies '--profile-differential'.";
         opt ddshow:bool=false, desc:"Start 'ddshow' profiler on sockets specified by '--timely-profiler-socket' and (optionally) '--differential-profiler-socket' options. Implies '--timely-profiler'.";
-        opt input:Option<String>, short:'i', desc:"Feed the .json file specified in the argument into the Evaluator.";              // --input
-        // d3log only? can i conditionalize this at compile time?
-        opt debug_management:bool=false, short:'m', desc:"print the facts on the management bus.";                                  // --debug_management
+        opt input:Option<String>, short:'i', desc:"[d3log only] Feed the .json file specified in the argument into the Evaluator."; // --input
+        opt debug_management:bool=false, short:'m', desc:"[d3log only] Dump all facts exchanged on the management bus.";            // --debug_management
     };
     let (mut args, rest) = parser.parse_or_exit();
 
