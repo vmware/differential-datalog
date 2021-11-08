@@ -22,7 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.makeSpan = exports.ErrorDisplay = exports.ClosableCopyableContent = exports.repeat = exports.zeroPad = exports.significantDigitsHtml = exports.removeAllChildren = exports.HtmlString = exports.DataRangeUI = exports.percentString = exports.significantDigits = exports.px = exports.formatPositiveNumber = exports.SpecialChars = void 0;
 var Direction;
 (function (Direction) {
     Direction[Direction["Up"] = 0] = "Up";
@@ -609,13 +608,13 @@ var ProfileTable = /** @class */ (function () {
     // how to rename column names in the table heading
     ProfileTable.cellNames = new Map([
         ["opid", ""],
-        [SpecialChars.expand, SpecialChars.expand],
+        [SpecialChars.expand, ""],
         ["cpu_us", "μs"],
         ["histogram", "histogram"],
         ["invocations", "calls"],
         ["size", "size"],
         ["short_descr", "description"],
-        ["dd_op", "operation"]
+        ["dd_op", "DD operator"]
     ]);
     ProfileTable.baseDocUrl = "https://github.com/vmware/differential-datalog/wiki/profiler_help#";
     return ProfileTable;
