@@ -429,13 +429,13 @@ class ProfileTable implements IHtmlElement {
     // how to rename column names in the table heading
     protected static readonly cellNames = new Map<string, string>([
         ["opid", ""],
-        [SpecialChars.expand, SpecialChars.expand],
+        [SpecialChars.expand, ""],
         ["cpu_us", "μs"],
         ["histogram", "histogram"],
         ["invocations", "calls"],
         ["size", "size"],
         ["short_descr", "description"],
-        ["dd_op", "operation"]
+        ["dd_op", "DD operator"]
     ]);
     protected static readonly baseDocUrl = "https://github.com/vmware/differential-datalog/wiki/profiler_help#";
     protected displayedColumns: string[];
