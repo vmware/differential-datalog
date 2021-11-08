@@ -837,7 +837,7 @@ extern int ddlog_enable_timely_profiling(ddlog_prog prog, bool enable);
 /*
  * Dumps DDlog program runtime profile to a file.  `label` is an optional
  * label used, along with the current time, to generate a file name to
- * store the profile.  Set `label` to `NULL`
+ * store the profile.  Set `label` to `NULL` to omit the label.
  *
  * Returns absolute path to the generated HTML profile file.  All profiles
  * for a process (even if the process runs multiple DDlog instances) will
