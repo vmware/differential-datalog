@@ -25,7 +25,7 @@ The user can enable one of the two profilers when starting a DDlog program
 either from the CLI or via the Rust, C, or Java API.
 
 
-## Self-profiling
+## Self-profiler
 
 To enable self-profiling, pass the `--self-profiler` flag to the
 DDlog-generated CLI executable:
@@ -81,21 +81,21 @@ accumulated so far.  The profile attributes program's CPU and memory usage to
 individual DDlog operators, highlightling program hotspots and
 informing potential optimizations.
 
-  As an example, consider the following rule that computes all pairs of values
+As an example, consider the following rule that computes all pairs of values
 `(n1,n2)` such that `n1`, `n2`, and their product all belong to the `Numbers`
 relation and additionaly `n1` is not divisible by `5` and `n2` is not divisible
 by `2`
 
-  ``` 
-  Pairs(n1, n2) :-
-      Numbers(n1),
-      Numbers(n2),
-      Numbers(n1*n2),
-      n1 % 5 != 0,
-      n2 % 2 != 0.
-  ```
+```
+Pairs(n1, n2) :-
+    Numbers(n1),
+    Numbers(n2),
+    Numbers(n1*n2),
+    n1 % 5 != 0,
+    n2 % 2 != 0.
+```
 
-  We run the above program, initializing the `Numbers` relation to contain all
+We run the above program, initializing the `Numbers` relation to contain all
 numbers in the range `[0..200]` The following screenshot shows a fragment of the
 resulting CPU profile.  The top record in the profile, titled "Dataflow", shows
 the amount of CPU time used to execute the entire dataflow, in this case,
@@ -107,7 +107,7 @@ entire program CPU time.
 
 ![CPU profile fragment](cpu1.png)
 
-  In the expanded view we see the source code location of the operator in
+In the expanded view we see the source code location of the operator in
 question.  DDlog evaluates the rule by first computing all pairs `(n1, n2)` as a
 Cartesian product of the `Numbers` relation with itself.  Next it joins the
 resulting relation with `Numbers` in order to restrict it to only those pairs
@@ -124,46 +124,54 @@ As expected, the size of the intermediate relation is `200 x 200 = 40,000`.
 This suggests a simple optimization that prunes the sets of candidate values
 of `n1` and `n2` early on:
 
-  ``` 
-  Pairs(n1, n2) :-
-      Numbers(n1),
-      n1 % 5 != 0,
-      Numbers(n2),
-      n2 % 2 != 0,
-      Numbers(n1*n2).
-  ```
+```
+Pairs(n1, n2) :-
+    Numbers(n1),
+    n1 % 5 != 0,
+    Numbers(n2),
+    n2 % 2 != 0,
+    Numbers(n1*n2).
+```
 
-  This reduces arrangement size by a factor of `2.5`
+This reduces arrangement size by a factor of `2.5`
 
 ![Arrangement size profile fragment](size2.png)
 
 and the time to compute the arrangement by a factor of `3`:
 
-
 ![CPU profile fragment](cpu2.png)
 
-  Consider the next operator in the profile, which computes the Cartesian product
+Consider the next operator in the profile, which computes the Cartesian product
 of the set of `n1` such that `n1 % 5 != 0` with `Numbers(n2)`:
 
 ![CPU profile fragment](cpu3.png)
 
-  We can reduce this time by first computing the set of `n2`, since `n2 % 2 != 0`
+We can reduce this time by first computing the set of `n2`, since `n2 % 2 != 0`
 prunes more values than `n1 % 5 != 0`:
 
-  ```
-  Pairs(n1, n2) :-
-      Numbers(n2),
-      n2 % 2 != 0,
-      Numbers(n1),
-      n1 % 5 != 0,
-      Numbers(n1*n2).
-  ```
+```
+Pairs(n1, n2) :-
+    Numbers(n2),
+    n2 % 2 != 0,
+    Numbers(n1),
+    n1 % 5 != 0,
+    Numbers(n1*n2).
+```
 
-  Indeed, this shaves few more milliseconds of the program's CPU usage:
+Indeed, this shaves few more milliseconds of the program's CPU usage:
 
 ![CPU profile fragment](cpu4.png)
 
-  Let us take a closer look at the arrangement size profile.  Arrangements are
+Internally, DDlog uses the [Differential Dataflow library
+(DD)](https://github.com/timelydataflow/differential-dataflow/) for incremental
+computation.  Each DDlog operator can gets translated into one or more
+lower-level DD operators assembled in a dataflow graph.  In fact, each entry in
+a DDlog profile corresponds to one DD operator.  The name of this operator is
+shown in the last column of the profile table.  Since a DDlog operator can map
+into multiple DD operators, there can be multiple profile entries with the same
+description that only differ in the DD operator name.
+
+Next, we take a closer look at the arrangement size profile.  Arrangements are
 responsible for the majority of memory consumption of a DDlog program.  Several
 DDlog operators expect arranged inputs.  We already saw how a prefix of a rule
 must be arranged in order to join it with a relation.  This is the first
@@ -171,12 +179,11 @@ arrangement in the profile shown below.  In addition, the relation to join with,
 i.e., `Numbers`, must be arranged too.  This arrangement must be indexed by the
 value of field `n` of the relation.  Arranged relations in DDlog are described
 by **patterns**, e.g., `(Numbers{.n=_0}: Numbers)`, where numbered variables,
-e.g., `_0`, indicate one or more fields used to index the relation by.
-
+e.g., `_0`, indicate one or more fields used as the key to index the relation.
 
 ![Numbers relation arranged by n](size-numbers-1.png)
 
-  The same relation may be arranged multiple times using different keys required
+The same relation may be arranged multiple times using different keys required
 by different join operations.  For example, computing the Cartesian product of
 the `Numbers` relation with itself requires indexing the relation by an empty
 set of fields (a Cartesian product is a special case of the join operator with
@@ -186,21 +193,21 @@ fragments in the corresponding profile entry:
 
 ![Numbers relation arranged by ()](size-numbers-2.png)
 
-  There are several other kinds of arrangements in the profile, e.g., the
+There are several other kinds of arrangements in the profile, e.g., the
 `group_by` operator arranges its input using group-by variables as a key.  Each
-profile record contains a hyperlink to documentation that describes the meaning
+profile entry contains a hyperlink to documentation that describes the meaning
 of the associated operator.
 
-  Note that in general arrangement size can be larger than the number of
+Note that in general arrangement size can be larger than the number of
 elements in the underlying relation, since arrangements in Differential Dataflow
 are stored as temporally indexed data structures where the same record can occur
 multiple times with different weights.
 
-  In addition to the arrangement size profile, the profiler outputs the peak
+In addition to the arrangement size profile, the profiler outputs the peak
 arrangement size profile, which records the largest number of elements observed
-in each arrangement
+in each arrangement.
 
-  If change profiling was enabled for some parts of the execution, the profiler
+If change profiling was enabled for some parts of the execution, the profiler
 also outputs the "Counts of changes" profile.  Unlike the arrangement size
 profile, which tracks the number of records in each arrangment, this profile
 shows the amount of churn.  For example adding one record and deleting one
@@ -212,13 +219,46 @@ identifies expensive operators in the CPU profile and looks up the relations
 that are inputs to this operator in the change profile to identify the ones with
 high churn.
 
-  When change profiling is disabled, the recording stops, but the previously
+When change profiling is disabled, the recording stops, but the previously
 accumulated profile is preserved.  By selectively enabling change profiling for
 a subset of transactions, the user can focus their analysis on specific parts of
 the program, for example they may not be interested in the number of changes
 during initial population of input relations, but may want to make sure that
 subsequent small incremental input updates do not cause excessive churn in
 derived relations.
+
+### Self-profiler API
+
+The self-profiler API allows retrieving individual profiles (CPU profile,
+arrangement size and peak size profiles, and the change profile) in a format
+suitable for automatic processing.  For instance, the developer may want to
+aggregate profiles obtained across multiple program runs with different datasets
+to determine the most expensive operators across many workloads.  To this end
+they may dump individual profiles to JSON files and later process them with a
+separate tool.  This API is available in Rust, C, and Java.  The Rust version of
+the API, available via the `DDlogProfiling` trait, returns a strongly typed
+representation of the profiles, which can be converted to JSON using the
+`serde_json` crate (see `serde_json::to_string`).
+
+```
+pub trait DDlogProfiling {
+    ...
+    fn arrangement_size_profile(&self) -> Result<Vec<SizeProfileRecord>, String>;
+    fn peak_arrangement_size_profile(&self) -> Result<Vec<SizeProfileRecord>, String>;
+    fn change_profile(&self) -> Result<Option<Vec<SizeProfileRecord>>, String>;
+    fn cpu_profile(&self) -> Result<Option<CpuProfile>, String>;
+}
+```
+
+C and Java APIs perform the JSON conversion internally and return the resulting JSON
+profile as a string:
+
+```
+extern char* ddlog_arrangement_size_profile(ddlog_prog prog);
+extern char* ddlog_peak_arrangement_size_profile(ddlog_prog prog);
+extern char* ddlog_change_profile(ddlog_prog prog);
+extern char* ddlog_cpu_profile(ddlog_prog prog);
+```
 
 ## DDShow-based profiling
 
