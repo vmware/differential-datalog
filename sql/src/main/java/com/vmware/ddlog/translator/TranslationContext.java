@@ -24,10 +24,7 @@
 
 package com.vmware.ddlog.translator;
 
-import com.facebook.presto.sql.tree.Expression;
-import com.facebook.presto.sql.tree.Node;
-import com.facebook.presto.sql.tree.NodeLocation;
-import com.facebook.presto.sql.tree.SingleColumn;
+import com.facebook.presto.sql.tree.*;
 import com.vmware.ddlog.ir.*;
 import com.vmware.ddlog.translator.environment.EnvHandle;
 import com.vmware.ddlog.util.Linq;
@@ -51,23 +48,51 @@ class TranslationContext {
     public boolean viewIsOutput;
     public EnvHandle environment;
 
-    private TranslationContext(@Nullable CompilerState state) {
+    private TranslationContext(@Nullable TranslationVisitor visitor,
+                               @Nullable CompilerState state) {
         this.viewIsOutput = true;
         this.environment = new EnvHandle();
         this.substitutions = new HashMap<Node, DDlogExpression>();
         if (state != null)
             this.compilerState = state;
         else
-            this.compilerState = new CompilerState();
+            this.compilerState = new CompilerState(Objects.requireNonNull(visitor));
     }
 
-    public TranslationContext() {
-        this(null);
+    /**
+     * Creates a rule and a declaration for the associated relation; adds them to the program.
+     * @param node    SQL node that is being translated.
+     * @param tableName  Optional name of table that led to this rule being created.
+     * @param relName Name of the relation created.
+     * @param body     Right-hand side that defines the tuples of the current relation.
+     * @param role    Kind of relation created.
+     */
+    DDlogRule createRule(@Nullable Node node, @Nullable String tableName,
+                         RelationName relName, RuleBody body,
+                         DDlogRelationDeclaration.Role role) {
+        String outVarName = this.freshLocalName("v");
+        DDlogRelationDeclaration relDecl = new DDlogRelationDeclaration(node, role, relName, body.getType());
+        if (role == DDlogRelationDeclaration.Role.Output) {
+            this.getProgram().addTableRelation(Objects.requireNonNull(tableName), relDecl);
+        }
+        DDlogAtom lhs = new DDlogAtom(node, relName, new DDlogEVar(node, outVarName, relDecl.getType()));
+        List<RuleBodyTerm> definitions = body.getDefinitions();
+        DDlogExpression inRowVar = body.getRowVariable();
+        definitions.add(new RuleBodyVarDef(node, outVarName, inRowVar));
+        DDlogRule rule = new DDlogRule(node, lhs, definitions);
+        rule.addComment(new DDlogComment(node));
+        this.add(relDecl, null);
+        this.add(rule);
+        return rule;
+    }
+
+    public TranslationContext(TranslationVisitor visitor) {
+        this(visitor, null);
     }
 
     // Note: does not clone the environment.
     public TranslationContext cloneCtxt() {
-        TranslationContext result = new TranslationContext(this.compilerState);
+        TranslationContext result = new TranslationContext(null, this.compilerState);
         Utilities.copyMap(result.substitutions, this.substitutions);
         result.viewIsOutput = this.viewIsOutput;
         return result;
@@ -236,6 +261,10 @@ class TranslationContext {
 
     DDlogExpression translateExpression(Expression expr) {
         return this.compilerState.etv.process(expr, this);
+    }
+
+    DDlogIRNode translateQuery(Query node) {
+        return this.compilerState.translationVisitor.process(node, this);
     }
 
     void add(DDlogRelationDeclaration relation, @Nullable String originalTableName) {

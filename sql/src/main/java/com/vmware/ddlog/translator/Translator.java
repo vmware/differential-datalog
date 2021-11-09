@@ -55,8 +55,8 @@ public class Translator {
 
     public Translator() {
         this.parser = new SqlParser();
-        this.translationContext = new TranslationContext();
         this.visitor = new TranslationVisitor();
+        this.translationContext = new TranslationContext(this.visitor);
     }
 
     public final DDlogProgram getDDlogProgram() {

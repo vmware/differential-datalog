@@ -27,18 +27,34 @@ package com.vmware.ddlog.ir;
 import com.facebook.presto.sql.tree.Node;
 
 import javax.annotation.Nullable;
+import java.util.Objects;
 
 /**
- * A placeholder expression, i.e., the anonymous variable _.
+ * This is not a standard DDlog expression.  It stands for an expression
+ * of the form R[Type{e}].  This expression is returned by SubqueryExpression.
  */
-public class DDlogEPHolder extends DDlogExpression {
-    public DDlogEPHolder(@Nullable Node node) {
-        super(node, DDlogTAny.instance);
+public class DDlogEInRelation extends DDlogExpression {
+    @Nullable
+    public final DDlogExpression var;
+    public final String relationName;
+
+    /**
+     * Create an expression of the form R[v]
+     * @param node            Original source node.
+     * @param var             Expression used to index relation.  May be filled in later (then it's null).
+     * @param relationName    Relation name.
+     * @param type            Type of variable.
+     */
+    public DDlogEInRelation(@Nullable Node node, @Nullable DDlogExpression var, String relationName, DDlogType type) {
+        super(node, type);
+        this.var = var;
+        this.relationName = relationName;
     }
 
     @Override
     public String toString() {
-        return "_";
+        return this.relationName + "[" +
+                Objects.requireNonNull(this.type).toString() +
+                "{" + Objects.requireNonNull(this.var).toString() + "}]";
     }
-
 }
