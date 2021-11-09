@@ -35,10 +35,7 @@ import com.vmware.ddlog.util.sql.PrestoSqlStatement;
 import org.jooq.DSLContext;
 import org.jooq.Field;
 
-import javax.annotation.Nullable;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -52,15 +49,12 @@ public class Translator {
     /**
      * The DSL context can be used to lookup dynamically various SQL persistent objects.
      */
-    @Nullable
-    private final DSLContext dynamicContext;
     private final TranslationContext translationContext;
     private final TranslationVisitor visitor;
     private final ParsingOptions options = ParsingOptions.builder().build();
 
-    public Translator(@Nullable final DSLContext dynamicContext) {
+    public Translator() {
         this.parser = new SqlParser();
-        this.dynamicContext = dynamicContext;
         this.translationContext = new TranslationContext();
         this.visitor = new TranslationVisitor();
     }
@@ -117,7 +111,8 @@ public class Translator {
             throw new RuntimeException("Cannot find base table that index refers to");
         }
         // We need the fields of the base relation both for the typedef of the index and to populate the index rule
-        List<DDlogField> baseRelationFields = ((DDlogTStruct) baseTableTypeDef.getType()).getFields();
+        List<DDlogField> baseRelationFields = Objects.requireNonNull(baseTableTypeDef.getType()).
+                to(DDlogTStruct.class).getFields();
         // Holds the field typing information of the index
         List<DDlogField> indexFields = new ArrayList<>();
         // Used to populate the index rule, based on DDlog index creation syntax
@@ -151,6 +146,7 @@ public class Translator {
         return this.translationContext.translateExpression(expr);
     }
 
+    @SuppressWarnings("unused")
     public Map<org.jooq.Table<?>, List<Field<?>>> getTablesAndFields(final DSLContext conn) {
         final List<org.jooq.Table<?>> tables = conn.meta().getTables();
         final Map<org.jooq.Table<?>, List<Field<?>>> tablesToFields = new HashMap<>();

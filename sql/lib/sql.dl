@@ -334,3 +334,14 @@ function sql_concat_N(s0: Option<string>, s1: Option<string>): Option<string> {
         (Some{x}, Some{y}) -> Some{x ++ y}
     }
 }
+
+function limit(g: Group<'K, 'V>, limit: signed<64>): Set<'V> {
+    var result = set_empty();
+    var count = limit;
+    for (v in g) {
+        if (count == 0) break;
+        result.insert(v.0);
+        count = count - 1;
+    };
+    result
+}

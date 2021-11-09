@@ -32,7 +32,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 public class WeaveTest extends BaseQueriesTest {
-    private final Translator t = new Translator(null);
+    private final Translator t = new Translator();
 
     private DDlogIRNode translatePrestoSqlStatement(String sql) {
         return t.translateSqlStatement(new PrestoSqlStatement(sql));

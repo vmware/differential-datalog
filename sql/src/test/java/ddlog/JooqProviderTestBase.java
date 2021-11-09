@@ -46,6 +46,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 
 import static junit.framework.TestCase.*;
 import static org.jooq.impl.DSL.field;
@@ -98,13 +99,14 @@ public abstract class JooqProviderTestBase {
 
     @AfterClass
     public static void teardown() throws DDlogException{
-        ddlogAPI.stop();
+        Objects.requireNonNull(ddlogAPI).stop();
     }
 
     /**
      * Skip text execution in the Base class, as this Base class just serves as an aggregation of all test cases.
      */
     private void skipIfTestBase() {
+        //noinspection ConstantConditions
         Assume.assumeTrue(this.getClass() != JooqProviderTestBase.class);
     }
 
@@ -651,9 +653,7 @@ public abstract class JooqProviderTestBase {
         assertTrue(readFromInput.contains(test3));
 
         // Make sure other select queries don't work
-        Exception e = assertThrows(Exception.class, () -> {
-            create.fetch("select hosts.capacity, hosts.up from hosts");
-        });
+        Exception e = assertThrows(Exception.class, () -> create.fetch("select hosts.capacity, hosts.up from hosts"));
         assertTrue(e.getMessage().contains("Statement not supported"));
     }
 
@@ -691,7 +691,7 @@ public abstract class JooqProviderTestBase {
     public static <R extends SqlStatement> DDlogAPI compileAndLoad(
             final List<R> ddl, final ToPrestoTranslator<R> translator,
             final List<String> createIndexStatements) throws IOException, DDlogException {
-        final Translator t = new Translator(null);
+        final Translator t = new Translator();
         ddl.forEach(x -> t.translateSqlStatement(translator.toPresto(x)));
         createIndexStatements.forEach(t::translateCreateIndexStatement);
 
