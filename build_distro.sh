@@ -23,37 +23,40 @@ stack install --no-terminal --local-bin-path "$DIST_DIR/bin"
 cp -r lib "$DIST_DIR/"
 
 # Step 3: Include Rust dependencies for offline build.
-cd rust/template
+# We don't have space for this on the Windows runner.
+if ! grep -q Microsoft /proc/version; then 
+    cd rust/template
 
-# In addition to dependencies specified in `Cargo.toml`, add dependencies from
-# all `.toml` filesin the lib directory.
-cat Cargo.toml ../../lib/*.toml > Cargo.full.toml
+    # In addition to dependencies specified in `Cargo.toml`, add dependencies from
+    # all `.toml` filesin the lib directory.
+    cat Cargo.toml ../../lib/*.toml > Cargo.full.toml
 
-# Backup original `Cargo.toml`.
-mv Cargo.toml Cargo.toml.bak
+    # Backup original `Cargo.toml`.
+    mv Cargo.toml Cargo.toml.bak
 
-cp Cargo.full.toml Cargo.toml
+    cp Cargo.full.toml Cargo.toml
 
-# Set relative path to vendor directory in `.cargo/config`
-cargo vendor -s Cargo.toml > config.tmp
+    # Set relative path to vendor directory in `.cargo/config`
+    cargo vendor -s Cargo.toml > config.tmp
 
-# Restore `Cargo.toml`.
-mv Cargo.toml.bak Cargo.toml
+    # Restore `Cargo.toml`.
+    mv Cargo.toml.bak Cargo.toml
 
-# The last line of config.tmp contains absolute path to the `vendor` directory,
-# which we don't want, so chop it off.
-if [ `uname -s` = Darwin ]; then ghead -n -1 config.tmp > config; else head -n -1 config.tmp > config; fi
+    # The last line of config.tmp contains absolute path to the `vendor` directory,
+    # which we don't want, so chop it off.
+    if [ `uname -s` = Darwin ]; then ghead -n -1 config.tmp > config; else head -n -1 config.tmp > config; fi
 
-# Use relative path instead.
-echo "directory = \"vendor\"" >> config
-# Move instead of copying, as we are running out of space
-# in the Github actions container.
-mv vendor "../../$DIST_DIR/"
-mkdir "../../$DIST_DIR/.cargo"
-cp config "../../$DIST_DIR/.cargo/"
+    # Use relative path instead.
+    echo "directory = \"vendor\"" >> config
+    # Move instead of copying, as we are running out of space
+    # in the Github actions container.
+    mv vendor "../../$DIST_DIR/"
+    mkdir "../../$DIST_DIR/.cargo"
+    cp config "../../$DIST_DIR/.cargo/"
 
-cd ../../
-cp Cargo.lock "$DIST_DIR/"
+    cd ../../
+    cp Cargo.lock "$DIST_DIR/"
+fi
 
 # Step 4: Add DDlog Java libraries.
 
