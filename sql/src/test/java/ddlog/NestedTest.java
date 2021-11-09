@@ -57,4 +57,40 @@ public class NestedTest extends BaseQueriesTest {
                 "Rv0[v4] :- Rt1[v],Rsub[Tt2{v.column1}],var v3 = Tt2{.column1 = v.column1},var v4 = v3.";
         this.testTranslation(query, program);
     }
+
+    @Test
+    public void nestedWhere2Test() {
+        String query = "create view v0 as SELECT DISTINCT column1 FROM t1 WHERE " +
+        "column1 IN (SELECT DISTINCT column1 FROM t2) AND column1 IN (SELECT DISTINCT column1 FROM t1)";
+        String program = this.header(false) +
+                this.relations(false) +
+                "relation Rtmp[Tt2]\n" +
+                "relation Rsub[Tt2]\n" +
+                "relation Rtmp0[Tt2]\n" +
+                "relation Rsub1[Tt2]\n" +
+                "relation Rtmp2[Tt2]\n" +
+                "output relation Rv0[Tt2]\n" +
+                "Rsub[v2] :- Rt2[v0],var v1 = Tt2{.column1 = v0.column1},var v2 = v1.\n" +
+                "Rsub1[v5] :- Rt1[v3],var v4 = Tt2{.column1 = v3.column1},var v5 = v4.\n" +
+                "Rv0[v7] :- Rt1[v],Rsub[Tt2{v.column1}],Rsub1[Tt2{v.column1}],var v6 = Tt2{.column1 = v.column1},var v7 = v6.";
+        this.testTranslation(query, program);
+    }
+
+    /*
+    This will require more work.
+    @Test
+    public void nestedWhere3Test() {
+        String query = "create view v0 as SELECT DISTINCT column1 FROM t1 WHERE " +
+                "column1 IN (SELECT DISTINCT column1 FROM t2) OR column2 IN (SELECT DISTINCT column2 FROM t1)";
+        String program = this.header(false) +
+                this.relations(false) +
+                "relation Rtmp[Tt2]\n" +
+                "relation Rsub[Tt2]\n" +
+                "relation Rtmp0[Tt2]\n" +
+                "output relation Rv0[Tt2]\n" +
+                "Rsub[v2] :- Rt2[v0],var v1 = Tt2{.column1 = v0.column1},var v2 = v1.\n" +
+                "Rv0[v4] :- Rt1[v],Rsub[Tt2{v.column1}],var v3 = Tt2{.column1 = v.column1},var v4 = v3.";
+        this.testTranslation(query, program);
+    }
+     */
 }

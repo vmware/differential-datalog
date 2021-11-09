@@ -229,6 +229,4 @@ public class SqlSemantics {
         }
         throw new TranslationException("Could not find `" + op + "` for type " + ltype.toString(), node);
     }
-
-
 }

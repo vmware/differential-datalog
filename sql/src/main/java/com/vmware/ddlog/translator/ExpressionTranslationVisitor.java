@@ -456,6 +456,8 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
     protected DDlogExpression visitLogicalBinaryExpression(LogicalBinaryExpression node, TranslationContext context) {
         DDlogExpression left = this.process(node.getLeft(), context);
         DDlogExpression right = this.process(node.getRight(), context);
+        if (left.is(DDlogEInRelation.class))
+            return new DDlogEComma(node, left, right);
         DDlogEBinOp.BOp op;
         switch (node.getOperator()) {
             case AND:
