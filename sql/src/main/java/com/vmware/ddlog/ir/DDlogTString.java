@@ -42,9 +42,10 @@ public class DDlogTString extends DDlogType implements IDDlogBaseType {
             return this;
         return new DDlogTString(this.getNode(), mayBeNull);
     }
+
     @Override
-    public boolean compare(DDlogType type, IComparePolicy policy) {
-        if (!super.compare(type, policy))
+    public boolean same(DDlogType type) {
+        if (!super.same(type))
             return false;
         return type.is(DDlogTString.class);
     }

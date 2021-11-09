@@ -119,7 +119,7 @@ public abstract class DDlogType extends DDlogNode {
     }
 
     public boolean same(DDlogType other) {
-        return this.compare(other, new Identical());
+        return this.mayBeNull == other.mayBeNull;
     }
 
     public static String typeName(String name) {
@@ -143,10 +143,6 @@ public abstract class DDlogType extends DDlogNode {
      */
     public DDlogExpression getNone(@Nullable Node node) {
         return new DDlogENull(node, this.setMayBeNull(true));
-    }
-
-    public boolean compare(DDlogType type, IComparePolicy policy) {
-        return this.mayBeNull == type.mayBeNull;
     }
 
     public boolean isBaseType() {

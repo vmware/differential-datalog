@@ -44,8 +44,8 @@ public class DDlogTFloat extends DDlogType implements IsNumericType, IDDlogBaseT
     public static DDlogTFloat instance = new DDlogTFloat(null,false);
 
     @Override
-    public boolean compare(DDlogType type, IComparePolicy policy) {
-        if (!super.compare(type, policy))
+    public boolean same(DDlogType type) {
+        if (!super.same(type))
             return false;
         return type.is(DDlogTFloat.class);
     }

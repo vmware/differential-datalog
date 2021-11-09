@@ -82,8 +82,8 @@ public class DDlogTTuple extends DDlogType {
     }
 
     @Override
-    public boolean compare(DDlogType type, IComparePolicy policy) {
-        if (!super.compare(type, policy))
+    public boolean same(DDlogType type) {
+        if (!super.same(type))
             return false;
         if (!type.is(DDlogTTuple.class))
             return false;
@@ -91,7 +91,7 @@ public class DDlogTTuple extends DDlogType {
         if (this.tupArgs.length != other.tupArgs.length)
             return false;
         for (int i = 0; i < this.tupArgs.length; i++)
-            if (!this.tupArgs[i].compare(other.tupArgs[i], policy))
+            if (!this.tupArgs[i].same(other.tupArgs[i]))
                 return false;
         return true;
     }

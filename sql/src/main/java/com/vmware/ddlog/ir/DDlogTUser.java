@@ -75,18 +75,18 @@ public class DDlogTUser extends DDlogType {
     }
 
     @Override
-    public boolean compare(DDlogType type, IComparePolicy policy) {
-        if (!super.compare(type, policy))
+    public boolean same(DDlogType type) {
+        if (!super.same(type))
             return false;
         if (!type.is(DDlogTUser.class))
             return false;
         DDlogTUser other = type.to(DDlogTUser.class);
-        if (!policy.compareIdentifier(this.name, other.name))
+        if (!this.name.equals(other.name))
             return false;
         if (this.typeArgs.length != other.typeArgs.length)
             return false;
         for (int i = 0; i < this.typeArgs.length; i++)
-            if (!this.typeArgs[i].compare(other.typeArgs[i], policy))
+            if (!this.typeArgs[i].same(other.typeArgs[i]))
                 return false;
         return true;
     }

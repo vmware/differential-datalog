@@ -61,7 +61,6 @@ public class DDlogTVar extends DDlogType {
 
     @Override
     public int hashCode() {
-        int result = Objects.hash(name);
-        return result;
+        return Objects.hash(name);
     }
 }

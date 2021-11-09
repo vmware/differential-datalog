@@ -42,8 +42,8 @@ public class DDlogTBool extends DDlogType implements IDDlogBaseType {
     }
 
     @Override
-    public boolean compare(DDlogType type, IComparePolicy policy) {
-        if (!super.compare(type, policy))
+    public boolean same(DDlogType type) {
+        if (!super.same(type))
             return false;
         return type.is(DDlogTBool.class);
     }

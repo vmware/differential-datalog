@@ -46,7 +46,7 @@ public class DDlogTUnknown extends DDlogType implements IDDlogBaseType {
     }
 
     @Override
-    public boolean compare(DDlogType type, IComparePolicy policy) {
+    public boolean same(DDlogType type) {
         return true;
     }
 

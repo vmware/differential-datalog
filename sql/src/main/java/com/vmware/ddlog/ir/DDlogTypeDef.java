@@ -49,10 +49,14 @@ public class DDlogTypeDef extends DDlogNode {
         this(node, name, new ArrayList<String>(), type);
     }
 
-    public String getName() { return this.name; }
+    public String getName() {
+        return this.name;
+    }
 
     @Nullable
-    public DDlogType getType() { return this.type; }
+    public DDlogType getType() {
+        return this.type;
+    }
 
     @Override
     public String toString() {
@@ -72,8 +76,8 @@ public class DDlogTypeDef extends DDlogNode {
         return result;
     }
 
-    public boolean compare(DDlogTypeDef other, IComparePolicy policy) {
-        if (!policy.compareLocal(this.name, other.name))
+    public boolean same(DDlogTypeDef other) {
+        if (!this.name.equals(other.name))
             return false;
         if (this.args.size() != other.args.size())
             return false;
@@ -91,6 +95,6 @@ public class DDlogTypeDef extends DDlogNode {
         }
         assert other.type != null;
         assert this.type != null;
-        return this.type.compare(other.type, policy);
+        return this.type.same(other.type);
     }
 }
