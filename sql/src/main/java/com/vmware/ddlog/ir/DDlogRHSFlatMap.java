@@ -42,14 +42,4 @@ public class DDlogRHSFlatMap extends DDlogRuleRHS {
     public String toString() {
         return "var " + this.var + " = FlatMap(" + this.mapExpr + ")";
     }
-
-    @Override
-    public boolean compare(DDlogRuleRHS val, IComparePolicy policy) {
-        if (!val.is(DDlogRHSFlatMap.class))
-            return false;
-        DDlogRHSFlatMap other = val.to(DDlogRHSFlatMap.class);
-        if (!policy.compareLocal(this.var, other.var))
-            return false;
-        return this.mapExpr.compare(other.mapExpr, policy);
-    }
 }

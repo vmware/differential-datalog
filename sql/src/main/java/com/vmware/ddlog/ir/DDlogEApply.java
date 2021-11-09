@@ -35,8 +35,16 @@ public class DDlogEApply extends DDlogExpression {
     private final String func;
     private final List<DDlogExpression> args;
     // If true the suffix notation with dot is preferred.
-    private boolean suffix;
+    private final boolean suffix;
 
+    /**
+     * Create a node that describes a function application.
+     * @param node   Source object.
+     * @param func   Function me to apply.
+     * @param type   Type of result produced by the function.
+     * @param suffix If true use the .func() notation for the function.
+     * @param args   Function arguments.
+     */
     public DDlogEApply(@Nullable Node node, String func, DDlogType type, boolean suffix, DDlogExpression... args) {
         super(node, type);
         this.func = func;
@@ -44,6 +52,13 @@ public class DDlogEApply extends DDlogExpression {
         this.args = Arrays.asList(args);
     }
 
+    /**
+     * Create a node that describes a function application.
+     * @param node   Source object.
+     * @param func   Function me to apply.
+     * @param type   Type of result produced by the function.
+     * @param args   Function arguments.
+     */
     public DDlogEApply(@Nullable Node node, String func, DDlogType type, DDlogExpression... args) {
         this(node, func, type, false, args);
     }
@@ -59,23 +74,5 @@ public class DDlogEApply extends DDlogExpression {
                     String.join(", ",
                             Linq.map(this.args, DDlogExpression::toString)) + ")";
         }
-    }
-
-    @Override
-    public boolean compare(DDlogExpression val, IComparePolicy policy) {
-        if (!super.compare(val, policy))
-            return false;
-        if (!val.is(DDlogEApply.class))
-            return false;
-        DDlogEApply other = val.to(DDlogEApply.class);
-        if (!this.func.equals(other.func))
-            return false;
-        if (this.args.size() != other.args.size())
-            return false;
-        for (int i = 0; i < this.args.size(); i++) {
-            if (this.args.get(i).compare(other.args.get(i), policy))
-                return false;
-        }
-        return true;
     }
 }

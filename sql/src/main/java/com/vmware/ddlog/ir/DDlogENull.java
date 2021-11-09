@@ -36,13 +36,6 @@ public class DDlogENull extends DDlogExpression {
         super(node, DDlogTUnknown.instance);
     }
 
-    @Override
-    public boolean compare(DDlogExpression val, IComparePolicy policy) {
-        if (!super.compare(val, policy))
-            return false;
-        return val.is(DDlogENull.class);
-    }
-
     public DDlogENull(@Nullable Node node, DDlogType type) {
         super(node, type);
     }

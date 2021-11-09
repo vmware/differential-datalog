@@ -44,12 +44,4 @@ public class DDlogFuncArg extends DDlogNode {
     public String toString() {
         return this.name + ": " + (this.mut ? "mut " : "") + this.type.toString();
     }
-
-    public boolean compare(DDlogFuncArg other, IComparePolicy policy) {
-        if (!policy.compareLocal(this.name, other.name))
-            return false;
-        if (this.mut != other.mut)
-            return false;
-        return this.type.compare(other.type, policy);
-    }
 }

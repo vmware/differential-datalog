@@ -39,18 +39,6 @@ public class DDlogEField extends DDlogExpression {
     }
 
     @Override
-    public boolean compare(DDlogExpression val, IComparePolicy policy) {
-        if (!super.compare(val, policy))
-            return false;
-        if (!val.is(DDlogEField.class))
-            return false;
-        DDlogEField other = val.to(DDlogEField.class);
-        if (!this.struct.compare(other.struct, policy))
-            return false;
-        return this.field.equals(other.field);
-    }
-
-    @Override
     public String toString() {
         return this.struct.toString() + "." + this.field;
     }

@@ -59,25 +59,6 @@ public class DDlogIndexDeclaration extends DDlogNode {
         return "I" + name;
     }
 
-    public boolean compare(DDlogIndexDeclaration other, IComparePolicy policy) {
-        if (!policy.compareRelation(this.name, other.name))
-            return false;
-
-        if (this.fields.size() != other.fields.size())
-            return false;
-
-        for (int i = 0; i < this.fields.size(); i++) {
-            if (!this.fields.get(i).compare(other.fields.get(i), policy)) {
-                return false;
-            }
-        }
-
-        if (!this.baseRelation.compare(other.baseRelation, policy)) {
-            return false;
-        }
-        return this.baseRelationTypeString.equals(other.baseRelationTypeString);
-    }
-
     @Override
     public String toString() {
         return "index " + this.name

@@ -47,19 +47,18 @@ public class DDlogField extends DDlogNode {
         return type;
     }
 
-    public boolean same(DDlogField other) {
-        return this.compare(other, new Identical());
-    }
-
-    public boolean compare(DDlogField other, IComparePolicy policy) {
-        if (!this.name.equals(other.name))
-            return false;
-        return this.type.compare(other.type, policy);
-    }
-
     @Override
     public int hashCode() {
         return Objects.hash(name, type);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        DDlogField that = (DDlogField) o;
+        return name.equals(that.name) &&
+                type.same(that.type);
     }
 
     @Override

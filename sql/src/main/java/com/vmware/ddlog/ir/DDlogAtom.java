@@ -50,10 +50,4 @@ public class DDlogAtom extends DDlogNode {
         }
         return this.relation + "[" + this.val.toString() + "]";
     }
-
-    public boolean compare(DDlogAtom other, IComparePolicy policy) {
-        if (!policy.compareRelation(this.relation, other.relation))
-            return false;
-        return this.val.compare(other.val, policy);
-    }
 }
