@@ -24,7 +24,7 @@ cp -r lib "$DIST_DIR/"
 
 # Step 3: Include Rust dependencies for offline build.
 # We don't have space for this on the Windows runner.
-if ! grep -q Microsoft /proc/version; then 
+if [ "$RUNNER_OS" != "Windows" ] ; then
     cd rust/template
 
     # In addition to dependencies specified in `Cargo.toml`, add dependencies from

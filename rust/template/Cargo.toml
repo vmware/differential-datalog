@@ -70,3 +70,31 @@ name = "datalog_example_ddlog"
 # Compiler will append the crate-type attribute here as well as the
 # build profile and workspace definition
 # crate-type = ["rlib", "staticlib"]
+[dependencies.base64]
+version = "0.13"
+[dependencies.im]
+git = "https://github.com/ddlog-dev/im-rs"
+branch = "ddlog-1"
+features = ["serde"]
+[dependencies.internment]
+version="0.5.4"
+features=["arc"]
+[dependencies.lasso]
+version = "0.4.0"
+features = ["multi-threaded"]
+
+[dependencies.fxhash]
+version = "0.2.1"
+[dependencies.regex]
+version = "1.4.2"
+[dependencies.chrono]
+version = "0.4"
+features = ["serde"]
+[dependencies.tinyset]
+version = "0.2.2"
+[dependencies.url]
+version = "2.1"
+features = ["serde"]
+[dependencies.uuid]
+version = "0.8"
+features = ["v5"]
