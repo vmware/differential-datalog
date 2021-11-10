@@ -35,4 +35,15 @@ public class DDlogTGroup extends DDlogTUser {
     public DDlogTGroup(@Nullable Node node, DDlogType tkey, DDlogType tvalue) {
         super(node, "Group", false, tkey, tvalue);
     }
+
+    @Override
+    public boolean same(DDlogType type) {
+        if (!super.same(type))
+            return false;
+        DDlogTGroup og = type.as(DDlogTGroup.class);
+        if (og == null)
+            return false;
+        return this.getTypeArg(0).same(og.getTypeArg(0)) &&
+                this.getTypeArg(1).same(og.getTypeArg(1));
+    }
 }

@@ -88,14 +88,6 @@ public class DDlogRelationDeclaration extends DDlogNode {
         return "R" + name;
     }
 
-    public boolean compare(DDlogRelationDeclaration other, IComparePolicy policy) {
-        if (this.role != other.role)
-            return false;
-        if (!policy.compareRelation(this.name, other.name))
-            return false;
-        return type.compare(other.type, policy);
-    }
-
     @Override
     public String toString() {
         String result = this.role.toString();

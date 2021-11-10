@@ -37,16 +37,6 @@ public class DDlogEVarDecl extends DDlogExpression {
     }
 
     @Override
-    public boolean compare(DDlogExpression val, IComparePolicy policy) {
-        if (!super.compare(val, policy))
-            return false;
-        if (!val.is(DDlogEVarDecl.class))
-            return false;
-        DDlogEVarDecl other = val.to(DDlogEVarDecl.class);
-        return policy.compareLocal(vName, other.vName);
-    }
-
-    @Override
     public String toString() {
         return "var " + this.vName;
     }

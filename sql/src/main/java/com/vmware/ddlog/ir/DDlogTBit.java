@@ -69,8 +69,8 @@ public class DDlogTBit extends DDlogType
     }
 
     @Override
-    public boolean compare(DDlogType type, IComparePolicy policy) {
-        if (!super.compare(type, policy))
+    public boolean same(DDlogType type) {
+        if (!super.same(type))
             return false;
         if (!type.is(DDlogTBit.class))
             return false;

@@ -46,11 +46,4 @@ public class DDlogEString extends DDlogExpression {
         return "\"" + this.string + "\"";
     }
 
-    @Override
-    public boolean compare(DDlogExpression val, IComparePolicy policy) {
-        if (!val.is(DDlogEString.class))
-            return false;
-        DDlogEString other = val.to(DDlogEString.class);
-        return this.string.equals(other.string);
-    }
 }

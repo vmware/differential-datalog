@@ -40,12 +40,4 @@ public class DDlogRHSCondition extends DDlogRuleRHS {
     public String toString() {
         return this.expr.toString();
     }
-
-    @Override
-    public boolean compare(DDlogRuleRHS val, IComparePolicy policy) {
-        if (!val.is(DDlogRHSCondition.class))
-            return false;
-        DDlogRHSCondition other = val.to(DDlogRHSCondition.class);
-        return this.expr.compare(other.expr, policy);
-    }
 }

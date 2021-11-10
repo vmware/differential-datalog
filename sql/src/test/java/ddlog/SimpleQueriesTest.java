@@ -293,6 +293,18 @@ public class SimpleQueriesTest extends BaseQueriesTest {
     }
 
     @Test
+    public void testLimit() {
+        String query = "create view v0 as SELECT DISTINCT * FROM t1 LIMIT 10";
+        String program = this.header(false) +
+                this.relations(false) +
+                "relation Rlimit[Tt1]\n" +
+                "output relation Rv0[Tt1]\n" +
+                "Rlimit[v0] :- Rt1[v],var v0 = v.\n" +
+                "Rv0[v1] :- Rlimit[v0],var g = v0.group_by(()),var agg = limit(g, 10),var limited = FlatMap(agg),var v1 = limited.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
     public void testScopeWNulls() {
         String query = "create view v0 as SELECT DISTINCT t1.column1 FROM t1";
         String program = this.header(true) +

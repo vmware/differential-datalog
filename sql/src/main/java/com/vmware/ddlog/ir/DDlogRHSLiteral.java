@@ -39,16 +39,6 @@ public class DDlogRHSLiteral extends DDlogRuleRHS {
     }
 
     @Override
-    public boolean compare(DDlogRuleRHS val, IComparePolicy policy) {
-        if (!val.is(DDlogRHSLiteral.class))
-            return false;
-        DDlogRHSLiteral other = val.to(DDlogRHSLiteral.class);
-        if (this.polarity != other.polarity)
-            return false;
-        return this.atom.compare(other.atom, policy);
-    }
-
-    @Override
     public String toString() {
         String result = "";
         if (!this.polarity)

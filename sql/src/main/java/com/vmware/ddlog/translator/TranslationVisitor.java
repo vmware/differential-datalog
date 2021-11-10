@@ -168,8 +168,6 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
 
     @Override
     protected DDlogIRNode visitQuery(Query query, TranslationContext context) {
-        if (query.getLimit().isPresent())
-            throw new TranslationException("LIMIT clauses not supported", query);
         if (query.getOrderBy().isPresent())
             throw new TranslationException("ORDER BY clauses not supported", query);
         if (query.getWith().isPresent())
@@ -195,7 +193,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                 String ruleName = context.freshRelationName("union");
                 rule = this.createRule(union, ruleName, rhs, DDlogRelationDeclaration.Role.Internal, context);
             } else {
-                if (!rule.lhs.val.getType().same(rhs.getType()))
+                if (!rule.lhs.val.getType().equals(rhs.getType()))
                     throw new TranslationException("Union between sets with different types: ", union);
                 DDlogAtom lhs = new DDlogAtom(union, rule.lhs.relation, rule.lhs.val);
                 List<DDlogRuleRHS> definitions = rhs.getDefinitions();
@@ -873,8 +871,6 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
 
     @Override
     protected DDlogIRNode visitQuerySpecification(QuerySpecification spec, TranslationContext context) {
-        if (spec.getLimit().isPresent())
-            throw new TranslationException("LIMIT clauses not supported", spec);
         if (spec.getOrderBy().isPresent())
             throw new TranslationException("ORDER BY clauses not supported", spec);
         if (!spec.getFrom().isPresent())
@@ -969,6 +965,31 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                 if (groupBy.size() > 0)
                     throw new TranslationException("Select without aggregation with GROUP BY", select);
                 selectTranslation = this.processSimpleSelect(select, relation, items, context);
+            }
+
+            if (spec.getLimit().isPresent()) {
+                String limit = spec.getLimit().get();
+                int intLimit = Integer.parseInt(limit);
+                String relName = context.freshRelationName("limit");
+                RelationRHS rhs = selectTranslation.to(RelationRHS.class);
+                DDlogRule rule = this.createRule(spec, relName, rhs, DDlogRelationDeclaration.Role.Internal, context);
+
+                String resultVar = context.freshLocalName("limited");
+                RelationRHS limited = new RelationRHS(spec, resultVar, rhs.getType());
+                limited.addDefinition(new DDlogRHSLiteral(spec, true, new DDlogAtom(spec, relName, rule.lhs.val)));
+                // use a group-by with an empty key and the built-in limit aggregator
+                String groupVar = context.freshLocalName("g");
+                limited.addDefinition(new DDlogRHSGroupby(spec, groupVar, getRuleVar(rule)));
+                DDlogType setType = new DDlogTUser(null, "Set", false, rhs.getType());
+
+                String aggVar = context.freshLocalName("agg");
+                limited.addDefinition(
+                        new DDlogESet(spec, new DDlogEVarDecl(spec, aggVar, rhs.getType()),
+                            new DDlogEApply(spec, "limit", rhs.getType(),
+                                new DDlogEVar(spec, groupVar, setType),
+                                new DDlogEInt(spec, intLimit))));
+                limited.addDefinition(new DDlogRHSFlatMap(spec, resultVar, new DDlogEVar(spec, aggVar, rhs.getType())));
+                selectTranslation = limited;
             }
             return selectTranslation;
         }

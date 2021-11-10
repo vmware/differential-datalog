@@ -48,4 +48,14 @@ public class DDlogTArray extends DDlogType {
     public DDlogType setMayBeNull(boolean mayBeNull) {
         return new DDlogTArray(this.getNode(), this.elemType, mayBeNull);
     }
+
+    @Override
+    public boolean same(DDlogType other) {
+        if (!super.same(other))
+            return false;
+        DDlogTArray oa = other.as(DDlogTArray.class);
+        if (oa == null)
+            return false;
+        return this.elemType.same(oa.elemType);
+    }
 }

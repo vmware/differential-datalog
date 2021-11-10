@@ -52,14 +52,4 @@ public class DDlogESigned extends DDlogExpression {
         return result;
     }
 
-    @Override
-    public boolean compare(DDlogExpression val, IComparePolicy policy) {
-        if (!super.compare(val, policy))
-            return false;
-        if (!val.is(DDlogESigned.class))
-            return false;
-        DDlogESigned other = val.to(DDlogESigned.class);
-        return this.width == other.width &&
-                this.ival.equals(other.ival);
-    }
 }

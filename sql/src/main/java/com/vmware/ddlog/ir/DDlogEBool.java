@@ -48,13 +48,4 @@ public class DDlogEBool extends DDlogExpression {
         return Boolean.toString(this.bval);
     }
 
-    @Override
-    public boolean compare(DDlogExpression val, IComparePolicy policy) {
-        if (!super.compare(val, policy))
-            return false;
-        if (!val.is(DDlogEBool.class))
-            return false;
-        DDlogEBool other = val.to(DDlogEBool.class);
-        return this.bval == other.bval;
-    }
 }

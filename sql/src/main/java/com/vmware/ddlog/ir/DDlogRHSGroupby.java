@@ -45,21 +45,4 @@ public class DDlogRHSGroupby extends DDlogRuleRHS {
         return "var " + this.var + " = " + this.rhsProject.toString() +
                 ".group_by((" + String.join(", ", this.rhsGroupByVars) + "))";
     }
-
-    @Override
-    public boolean compare(DDlogRuleRHS val, IComparePolicy policy) {
-        if (!val.is(DDlogRHSGroupby.class))
-            return false;
-        DDlogRHSGroupby other = val.to(DDlogRHSGroupby.class);
-        if (!policy.compareLocal(this.var, other.var))
-            return false;
-        if (!this.rhsProject.compare(other.rhsProject, policy))
-            return false;
-        if (this.rhsGroupByVars.length != other.rhsGroupByVars.length)
-            return false;
-        for (int i = 0; i < this.rhsGroupByVars.length; i++)
-            if (!policy.compareIdentifier(this.rhsGroupByVars[i], other.rhsGroupByVars[i]))
-                return false;
-        return true;
-    }
 }

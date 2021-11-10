@@ -41,9 +41,4 @@ public class DDlogImport extends DDlogNode {
             result += " as " + this.alias;
         return result;
     }
-
-    public boolean compare(DDlogImport other, IComparePolicy policy) {
-        return this.module.equals(other.module) &&
-                this.alias.equals(other.alias);
-    }
 }

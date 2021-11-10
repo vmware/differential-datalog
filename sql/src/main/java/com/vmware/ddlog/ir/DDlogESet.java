@@ -45,18 +45,6 @@ public class DDlogESet extends DDlogExpression {
     }
 
     @Override
-    public boolean compare(DDlogExpression val, IComparePolicy policy) {
-        if (!super.compare(val, policy))
-            return false;
-        if (!val.is(DDlogESet.class))
-            return false;
-        DDlogESet other = val.to(DDlogESet.class);
-        if (!this.lval.compare(other.lval, policy))
-            return false;
-        return this.rval.compare(other.rval, policy);
-    }
-
-    @Override
     public String toString() {
         return this.lval.toString() + " = " + this.rval.toString();
     }

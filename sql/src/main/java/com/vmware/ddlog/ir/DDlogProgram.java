@@ -76,38 +76,6 @@ public class DDlogProgram extends DDlogNode {
         return String.join("\n", parts);
     }
 
-    public boolean compare(DDlogProgram other, IComparePolicy policy) {
-        if (this.typedefs.size() != other.typedefs.size())
-            return false;
-        if (this.functions.size() != other.functions.size())
-            return false;
-        if (this.relations.size() != other.relations.size())
-            return false;
-        if (this.rules.size() != other.rules.size())
-            return false;
-        if (this.imports.size() != other.imports.size())
-            return false;
-        for (int i = 0; i < this.typedefs.size(); i++)
-            if (!this.typedefs.get(i).compare(other.typedefs.get(i), policy))
-                return false;
-        for (int i = 0; i < this.functions.size(); i++)
-            if (!this.functions.get(i).compare(other.functions.get(i), policy))
-                return false;
-        for (int i = 0; i < this.relations.size(); i++)
-            if (!this.relations.get(i).compare(other.relations.get(i), policy))
-                return false;
-        for (int i = 0; i < this.indexes.size(); i++)
-            if (!this.indexes.get(i).compare(other.indexes.get(i), policy))
-                return false;
-        for (int i = 0; i < this.rules.size(); i++)
-            if (!this.rules.get(i).compare(other.rules.get(i), policy))
-                return false;
-        for (int i = 0; i < this.imports.size(); i++)
-            if (!this.imports.get(i).compare(other.imports.get(i), policy))
-                return false;
-        return true;
-    }
-
     public void toFile(String filename) throws FileNotFoundException {
         try (PrintWriter out = new PrintWriter(filename)) {
             out.println(this.toString());

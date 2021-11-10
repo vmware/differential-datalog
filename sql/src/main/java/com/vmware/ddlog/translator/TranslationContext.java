@@ -171,7 +171,7 @@ class TranslationContext {
                 DDlogType t0j = fields.get(j).getType();
                 DDlogType tij = striFields.get(j).getType();
                 DDlogType red = DDlogType.reduceType(t0j, tij);
-                if (!t0j.same(red)) {
+                if (!t0j.equals(red)) {
                     changed = true;
                     fields.set(j, new DDlogField(fj.getNode(), fj.getName(), red));
                 }
@@ -210,7 +210,7 @@ class TranslationContext {
                 for (int i = 0; i < strct.getFields().size(); i++) {
                     DDlogField f = strct.getFields().get(i);
                     DDlogField e = fields.get(i);
-                    if (!f.same(e)) {
+                    if (!f.equals(e)) {
                         different = true;
                         break;
                     }

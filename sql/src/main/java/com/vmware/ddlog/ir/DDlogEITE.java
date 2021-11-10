@@ -25,7 +25,6 @@
 package com.vmware.ddlog.ir;
 
 import com.facebook.presto.sql.tree.Node;
-import com.vmware.ddlog.util.Utilities;
 
 import javax.annotation.Nullable;
 
@@ -46,27 +45,6 @@ public class DDlogEITE extends DDlogExpression {
         this.eelse = eelse;
         if (!(this.cond.type instanceof DDlogTBool))
             this.error("Condition is not Boolean");
-    }
-
-    @Override
-    public boolean compare(DDlogExpression val, IComparePolicy policy) {
-        if (!super.compare(val, policy))
-            return false;
-        if (!val.is(DDlogEITE.class)) return false;
-        DDlogEITE other = val.to(DDlogEITE.class);
-        if (!this.cond.compare(other.cond, policy))
-            return false;
-        if (!this.then.compare(other.then, policy))
-            return false;
-        switch (Utilities.canBeSame(this.eelse, other.eelse)) {
-            case Yes:
-                return true;
-            case No:
-                return false;
-        }
-        assert other.eelse != null;
-        assert this.eelse != null;
-        return this.eelse.compare(other.eelse, policy);
     }
 
     @Override
