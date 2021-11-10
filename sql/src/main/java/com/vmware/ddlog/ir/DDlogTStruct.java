@@ -76,7 +76,7 @@ public class DDlogTStruct extends DDlogType {
         if (!type.is(DDlogTStruct.class))
             return false;
         DDlogTStruct other = type.to(DDlogTStruct.class);
-        if (this.name.equals(other.name))
+        if (!this.name.equals(other.name))
             return false;
         if (this.args.size() != other.args.size())
             return false;
