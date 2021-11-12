@@ -74,6 +74,7 @@ pub struct RelValDeserialize;
 #[macro_export]
 macro_rules! decl_any_deserialize {
     ( $(($rel:expr, $typ:ty)),* ) => {
+        #[cfg(feature = "deserialize_any")]
         static DDANY_DESERIALIZE_FUNC_MAP: phf::Map<u64, ::differential_datalog::AnyDeserializeFunc> = phf_map! {
             $(
                 $rel => {
@@ -85,6 +86,7 @@ macro_rules! decl_any_deserialize {
             )*
         };
 
+        #[cfg(feature = "deserialize_any")]
         impl ::differential_datalog::AnyDeserialize for RelValDeserialize {
             fn get_deserialize(&self, relid: ::differential_datalog::program::RelId) -> ::std::option::Option<::differential_datalog::AnyDeserializeFunc> {
                 DDANY_DESERIALIZE_FUNC_MAP.get(&(relid as u64)).cloned()
@@ -211,6 +213,12 @@ pub fn run_with_config(
     #[cfg(not(feature = "flatbuf"))]
     let flatbuf_converter = Box::new(differential_datalog::flatbuf::UnimplementedFlatbufConverter);
 
+    #[cfg(feature = "deserialize_any")]
+    let deserialize_any = Some(Box::new(RelValDeserialize)
+        as Box<dyn ::differential_datalog::AnyDeserialize + Send + Sync + 'static>);
+    #[cfg(not(feature = "deserialize_any"))]
+    let deserialize_any = None;
+
     ::differential_datalog::api::HDDlog::new(
         config,
         &SOURCE_CODE,
@@ -218,7 +226,7 @@ pub fn run_with_config(
         None,
         crate::prog,
         Box::new(crate::Inventory),
-        Box::new(RelValDeserialize),
+        deserialize_any,
         Box::new(crate::D3logInventory),
         flatbuf_converter,
     )
@@ -251,6 +259,12 @@ pub fn run(
     #[cfg(not(feature = "flatbuf"))]
     let flatbuf_converter = Box::new(differential_datalog::flatbuf::UnimplementedFlatbufConverter);
 
+    #[cfg(feature = "deserialize_any")]
+    let deserialize_any = Some(Box::new(RelValDeserialize)
+        as Box<dyn ::differential_datalog::AnyDeserialize + Send + Sync + 'static>);
+    #[cfg(not(feature = "deserialize_any"))]
+    let deserialize_any = None;
+
     ::differential_datalog::api::HDDlog::new(
         config,
         &SOURCE_CODE,
@@ -258,7 +272,7 @@ pub fn run(
         None,
         crate::prog,
         Box::new(crate::Inventory),
-        Box::new(RelValDeserialize),
+        deserialize_any,
         Box::new(crate::D3logInventory),
         flatbuf_converter,
     )
@@ -299,6 +313,12 @@ pub unsafe extern "C" fn ddlog_run_with_config(
     #[cfg(not(feature = "flatbuf"))]
     let flatbuf_converter = Box::new(differential_datalog::flatbuf::UnimplementedFlatbufConverter);
 
+    #[cfg(feature = "deserialize_any")]
+    let deserialize_any = Some(Box::new(RelValDeserialize)
+        as Box<dyn ::differential_datalog::AnyDeserialize + Send + Sync + 'static>);
+    #[cfg(not(feature = "deserialize_any"))]
+    let deserialize_any = None;
+
     let result = HDDlog::new(
         config,
         &SOURCE_CODE,
@@ -306,7 +326,7 @@ pub unsafe extern "C" fn ddlog_run_with_config(
         print_err,
         crate::prog,
         Box::new(crate::Inventory),
-        Box::new(RelValDeserialize),
+        deserialize_any,
         Box::new(crate::D3logInventory),
         flatbuf_converter,
     );

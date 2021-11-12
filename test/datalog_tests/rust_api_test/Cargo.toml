@@ -11,6 +11,6 @@ serde = "1.0"
 # The generated Rust project contains several crates that must be imported
 # by the client program.
 differential_datalog = { path = "../tutorial_ddlog/differential_datalog" }
-tutorial = { path = "../tutorial_ddlog" }
+tutorial = { path = "../tutorial_ddlog", features = ["deserialize_any"] }
 ddlog_rt = { path = "../tutorial_ddlog/types/ddlog_rt" }
 types = { path = "../tutorial_ddlog/types" }

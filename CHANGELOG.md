@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+- Feature-gate `AnyDeserialize` impl.  The DDlog compiler generates an
+  implementation of the `AnyDeserialize` trait, which allows clients to
+  deserialize instances of `ddlog_std::Any` provided they know relation id of
+  the value being deserialized.  This feature is not used by most applications,
+  but can cause significant code bloat and slow down compilation.   We
+  feature-gate this impl, so that only users who require this functionality
+  have to pay the price.
+
 ## [1.0.0] - Nov 9, 2021
 
 ### Self-profiler revamp.
