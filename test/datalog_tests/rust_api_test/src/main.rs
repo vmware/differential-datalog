@@ -200,7 +200,7 @@ fn ddval_deserialize_test(ddlog: &HDDlog) {
     let json_string = serde_json::to_string(&val).unwrap();
 
     // Deserialize using AnyDeserializeSeed.
-    let seed = AnyDeserializeSeed::from_relid(&*ddlog.any_deserialize, Relations::Word1 as RelId).unwrap();
+    let seed = AnyDeserializeSeed::from_relid(&**ddlog.any_deserialize.as_ref().unwrap(), Relations::Word1 as RelId).unwrap();
     let val_deserialized = seed.deserialize(&mut serde_json::Deserializer::from_str(json_string.as_str())).unwrap();
 
     assert_eq!(val, val_deserialized);

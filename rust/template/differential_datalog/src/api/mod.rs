@@ -43,7 +43,7 @@ pub struct HDDlog {
     pub print_err: Option<extern "C" fn(msg: *const c_char)>,
     pub inventory: BoxedInventory,
     pub d3log_localizer: BoxedLocalizer,
-    pub any_deserialize: BoxedDeserialize,
+    pub any_deserialize: Option<BoxedDeserialize>,
     pub flatbuf_converter: BoxedFlatbufConverter,
     /// When set, all commands sent to the program are recorded in
     /// the specified `.dat` file so that they can be replayed later.
@@ -60,7 +60,7 @@ impl HDDlog {
         print_err: Option<extern "C" fn(msg: *const c_char)>,
         init_ddlog: fn(Arc<dyn RelationCallback>) -> Program,
         inventory: BoxedInventory,
-        any_deserialize: BoxedDeserialize,
+        any_deserialize: Option<BoxedDeserialize>,
         d3log_localizer: BoxedLocalizer,
         flatbuf_converter: BoxedFlatbufConverter,
     ) -> Result<(Self, DeltaMap<DDValue>), String> {
