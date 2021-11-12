@@ -9,12 +9,12 @@ use differential_datalog::{
     ddval::DDValue,
     program::{ArrId, IdxId, RelId},
     record::{Record, RelIdentifier},
-    D3logLocalizer, D3logLocationId, DDlogInventory,
+    D3logLocalizer, D3logLocationId, DDlogInventory, RelationNameMap,
 };
-use fnv::FnvHashMap;
 #[cfg(feature = "c_api")]
 use std::ffi::CStr;
-use std::{any::TypeId, convert::TryFrom};
+use std::{any::TypeId, collections::HashMap, convert::TryFrom, hash::BuildHasherDefault};
+use xxhash_rust::xxh3::Xxh3;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Inventory;
@@ -61,7 +61,7 @@ impl DDlogInventory for Inventory {
         indexid2cname(index_id).ok_or_else(|| format!("unknown index {}", index_id))
     }
 
-    fn input_relation_ids(&self) -> &'static FnvHashMap<RelId, &'static str> {
+    fn input_relation_ids(&self) -> &'static RelationNameMap {
         &*RAW_INPUT_RELATION_ID_MAP
     }
 

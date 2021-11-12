@@ -8,7 +8,7 @@ use std::{
     fmt::{self, Debug, Display, Formatter},
     hash::{Hash, Hasher},
     hint::unreachable_unchecked,
-    mem::{self, align_of, size_of, ManuallyDrop},
+    mem::{self, align_of, needs_drop, size_of, ManuallyDrop},
 };
 use triomphe::Arc;
 
@@ -28,6 +28,7 @@ pub trait DDValConvert: Sized {
     /// Returns `None` if the type given is not the same as the type the `DDValue`
     /// was created with
     ///
+    #[inline]
     fn try_from_ddvalue_ref(value: &DDValue) -> Option<&Self>
     where
         Self: 'static,
@@ -49,6 +50,7 @@ pub trait DDValConvert: Sized {
     /// Panics if the type given is not the same as the type the `DDValue`
     /// was created with
     ///
+    #[inline]
     fn from_ddvalue_ref(value: &DDValue) -> &Self
     where
         Self: 'static,
@@ -65,6 +67,7 @@ pub trait DDValConvert: Sized {
     ///
     /// The type given must be the same as the [`DDValue`]'s internal type
     ///
+    #[inline]
     unsafe fn from_ddvalue_ref_unchecked(value: &DDValue) -> &Self
     where
         Self: 'static,
@@ -88,7 +91,8 @@ pub trait DDValConvert: Sized {
     /// Returns `None` if the type given is not the same as the type the `DDValue`
     /// was created with
     ///
-    fn try_from_ddvalue(value: DDValue) -> Option<Self>
+    #[inline]
+    fn try_from_ddvalue(value: DDValue) -> Result<Self, DDValue>
     where
         Self: 'static,
     {
@@ -96,9 +100,9 @@ pub trait DDValConvert: Sized {
         if value_type == TypeId::of::<Self>() {
             // Safety: The type we're turning the value into is the same as the one
             //         it was created with
-            Some(unsafe { Self::from_ddval(value.into_ddval()) })
+            Ok(unsafe { Self::from_ddval(value.into_ddval()) })
         } else {
-            None
+            Err(value)
         }
     }
 
@@ -109,6 +113,7 @@ pub trait DDValConvert: Sized {
     /// Panics if the type given is not the same as the type the `DDValue`
     /// was created with
     ///
+    #[inline]
     fn from_ddvalue(value: DDValue) -> Self
     where
         Self: 'static,
@@ -124,6 +129,7 @@ pub trait DDValConvert: Sized {
     ///
     /// The type given must be the same as the [`DDValue`]'s internal type
     ///
+    #[inline]
     unsafe fn from_ddvalue_unchecked(value: DDValue) -> Self
     where
         Self: 'static,
@@ -131,7 +137,7 @@ pub trait DDValConvert: Sized {
         let value_type = (value.vtable.type_id)(&value.val);
         debug_assert_eq!(value_type, TypeId::of::<Self>());
 
-        Self::try_from_ddvalue(value).unwrap_or_else(|| unreachable_unchecked())
+        Self::try_from_ddvalue(value).unwrap_or_else(|_| unreachable_unchecked())
     }
 
     /// Convert a value to a `DDVal`, erasing its original type.
@@ -147,6 +153,10 @@ pub trait DDValConvert: Sized {
 
     /// The vtable containing all `DDValue` methods for the current type
     const VTABLE: DDValMethods;
+
+    /// Will be `true` if the current type can fit within a [`usize`]
+    const FITS_IN_USIZE: bool =
+        size_of::<Self>() <= size_of::<usize>() && align_of::<Self>() <= align_of::<usize>();
 }
 
 /// Implement `DDValConvert` for all types that satisfy its type constraints
@@ -167,22 +177,18 @@ where
         + 'static,
     Record: Mutator<T>,
 {
+    #[inline]
     unsafe fn from_ddval_ref(value: &DDVal) -> &Self {
-        let fits_in_usize =
-            size_of::<Self>() <= size_of::<usize>() && align_of::<Self>() <= align_of::<usize>();
-
-        if fits_in_usize {
+        if Self::FITS_IN_USIZE {
             &*<*const usize>::cast::<Self>(&value.v)
         } else {
             &*(value.v as *const Self)
         }
     }
 
+    #[inline]
     unsafe fn from_ddval(value: DDVal) -> Self {
-        let fits_in_usize =
-            size_of::<Self>() <= size_of::<usize>() && align_of::<Self>() <= align_of::<usize>();
-
-        if fits_in_usize {
+        if Self::FITS_IN_USIZE {
             <*const usize>::cast::<Self>(&value.v).read()
         } else {
             let arc = Arc::from_raw(value.v as *const Self);
@@ -193,13 +199,11 @@ where
         }
     }
 
+    #[inline]
     fn into_ddval(self) -> DDVal {
-        let fits_in_usize =
-            size_of::<Self>() <= size_of::<usize>() && align_of::<Self>() <= align_of::<usize>();
-
         // The size and alignment of the `T` must be less than or equal to a
         // `usize`'s, otherwise we store it within an `Arc`
-        if fits_in_usize {
+        if Self::FITS_IN_USIZE {
             let mut v: usize = 0;
             unsafe { <*mut usize>::cast::<Self>(&mut v).write(self) };
 
@@ -211,22 +215,26 @@ where
         }
     }
 
+    #[inline]
     fn ddvalue(&self) -> DDValue {
         DDValConvert::into_ddvalue(self.clone())
     }
 
+    #[inline]
     fn into_ddvalue(self) -> DDValue {
         DDValue::new(self.into_ddval(), &Self::VTABLE)
     }
 
     const VTABLE: DDValMethods = {
         let clone = |this: &DDVal| -> DDVal {
-            let fits_in_usize = size_of::<Self>() <= size_of::<usize>()
-                && align_of::<Self>() <= align_of::<usize>();
+            if Self::FITS_IN_USIZE {
+                // Safety: The caller promises to ensure that Self
+                //         is the current type of the given value
+                let value = unsafe { Self::from_ddval_ref(this) };
 
-            if fits_in_usize {
-                unsafe { <Self>::from_ddval_ref(this) }.clone().into_ddval()
+                value.clone().into_ddval()
             } else {
+                // Safety: `this.v` is a pointer created by `Arc::into_raw()`
                 let arc = unsafe { ManuallyDrop::new(Arc::from_raw(this.v as *const Self)) };
 
                 DDVal {
@@ -236,25 +244,41 @@ where
         };
 
         let into_record =
-            |this: DDVal| -> Record { unsafe { <Self>::from_ddval(this) }.into_record() };
+            |this: DDVal| -> Record { unsafe { Self::from_ddval(this) }.into_record() };
 
-        let eq: unsafe fn(&DDVal, &DDVal) -> bool =
-            |this, other| unsafe { <Self>::from_ddval_ref(this).eq(<Self>::from_ddval_ref(other)) };
+        let eq: unsafe fn(&DDVal, &DDVal) -> bool = |this, other| unsafe {
+            // Safety: The caller promises to ensure that `this` and `other` have the same type
+            let (this, other) = (Self::from_ddval_ref(this), Self::from_ddval_ref(other));
+
+            this.eq(other)
+        };
 
         let partial_cmp: unsafe fn(&DDVal, &DDVal) -> Option<Ordering> = |this, other| unsafe {
-            <Self>::from_ddval_ref(this).partial_cmp(<Self>::from_ddval_ref(other))
+            // Safety: The caller promises to ensure that `this` and `other` have the same type
+            let (this, other) = (Self::from_ddval_ref(this), Self::from_ddval_ref(other));
+
+            this.partial_cmp(other)
         };
 
         let cmp: unsafe fn(&DDVal, &DDVal) -> Ordering = |this, other| unsafe {
-            <Self>::from_ddval_ref(this).cmp(<Self>::from_ddval_ref(other))
+            // Safety: The caller promises to ensure that `this` and `other` have the same type
+            let (this, other) = (Self::from_ddval_ref(this), Self::from_ddval_ref(other));
+
+            this.cmp(other)
         };
 
         let hash = |this: &DDVal, mut state: &mut dyn Hasher| {
-            Hash::hash(unsafe { <Self>::from_ddval_ref(this) }, &mut state);
+            // Safety: The caller promises to ensure that Self
+            //         is the current type of the given value
+            let value = unsafe { Self::from_ddval_ref(this) };
+
+            Hash::hash(value, &mut state);
         };
 
         let mutate = |this: &mut DDVal, record: &Record| -> Result<(), String> {
-            let mut clone = unsafe { <Self>::from_ddval_ref(this) }.clone();
+            // Safety: The caller promises to ensure that Self
+            //         is the current type of the given value
+            let mut clone = unsafe { Self::from_ddval_ref(this) }.clone();
             Mutator::mutate(record, &mut clone)?;
             *this = clone.into_ddval();
 
@@ -262,25 +286,28 @@ where
         };
 
         let fmt_debug = |this: &DDVal, f: &mut Formatter| -> Result<(), fmt::Error> {
-            Debug::fmt(unsafe { <Self>::from_ddval_ref(this) }, f)
+            // Safety: The caller promises to ensure that Self
+            //         is the current type of the given value
+            let value = unsafe { Self::from_ddval_ref(this) };
+
+            Debug::fmt(value, f)
         };
 
         let fmt_display = |this: &DDVal, f: &mut Formatter| -> Result<(), fmt::Error> {
-            Display::fmt(
-                &unsafe { <Self>::from_ddval_ref(this) }
-                    .clone()
-                    .into_record(),
-                f,
-            )
+            // Safety: The caller promises to ensure that Self
+            //         is the current type of the given value
+            let value = unsafe { Self::from_ddval_ref(this) };
+
+            Display::fmt(&value.clone().into_record(), f)
         };
 
         let drop = |this: &mut DDVal| {
-            let fits_in_usize = size_of::<Self>() <= size_of::<usize>()
-                && align_of::<Self>() <= align_of::<usize>();
-
-            if fits_in_usize {
-                // Allow the inner value's Drop impl to run automatically
-                let _val = unsafe { <*const usize>::cast::<Self>(&this.v).read() };
+            if Self::FITS_IN_USIZE {
+                // If the current type needs dropping, do it. Otherwise, we can statically elide it
+                if needs_drop::<Self>() {
+                    // Allow the inner value's Drop impl to run automatically
+                    let _val = unsafe { <*const usize>::cast::<Self>(&this.v).read() };
+                }
             } else {
                 let arc = unsafe { Arc::from_raw(this.v as *const Self) };
                 mem::drop(arc);
@@ -288,7 +315,7 @@ where
         };
 
         let ddval_serialize: fn(&DDVal) -> &dyn erased_serde::Serialize =
-            |this| unsafe { <Self>::from_ddval_ref(this) as &dyn erased_serde::Serialize };
+            |this| unsafe { Self::from_ddval_ref(this) as &dyn erased_serde::Serialize };
 
         let type_id = |_this: &DDVal| -> TypeId { TypeId::of::<Self>() };
 
@@ -310,6 +337,7 @@ where
 }
 
 impl Default for DDValue {
+    #[inline]
     fn default() -> Self {
         ().into_ddvalue()
     }

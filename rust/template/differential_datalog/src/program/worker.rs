@@ -7,6 +7,7 @@ use crate::{
         Reply, TKeyAgent, TValAgent, Update, Weight, TS,
     },
     render::RenderContext,
+    utils::XxHashMap,
     variable::Variable,
 };
 use crossbeam_channel::{Receiver, Sender};
@@ -30,7 +31,6 @@ use differential_dataflow::{
     Collection,
 };
 use dogsdogsdogs::operators::lookup_map;
-use fnv::{FnvBuildHasher, FnvHashMap};
 use num::{one, zero, One, Zero};
 use std::{
     borrow::Cow,
@@ -57,7 +57,7 @@ use triomphe::Arc as ThinArc;
 // Handles to objects involved in managing the progress of the dataflow.
 struct SessionData {
     // Input sessions for program relations.
-    sessions: FnvHashMap<RelId, InputSession<TS, DDValue, Weight>>,
+    sessions: XxHashMap<RelId, InputSession<TS, DDValue, Weight>>,
     // Input session for the special `Enabled` relation (see detailed comment in
     // `session_dataflow()`).
     enabled_session: InputSession<TS, (), Weight>,
@@ -76,7 +76,7 @@ struct SessionData {
     >,
 }
 
-type DelayedVarMap<S> = FnvHashMap<
+type DelayedVarMap<S> = XxHashMap<
     RelId,
     (
         DelayedRelation,
@@ -217,7 +217,7 @@ impl<'a> DDlogWorker<'a> {
     /// Applies updates to the current worker's input sessions
     fn batch_update(
         &self,
-        sessions: &mut FnvHashMap<RelId, InputSession<TS, DDValue, Weight>>,
+        sessions: &mut XxHashMap<RelId, InputSession<TS, DDValue, Weight>>,
         updates: Vec<Update<DDValue>>,
         timestamp: TS,
     ) -> Result<(), String> {
@@ -579,19 +579,16 @@ impl<'a> DDlogWorker<'a> {
 
         self.worker.dataflow::<TS, _, _>(
             |outer: &mut Child<Worker<Allocator>, TS>| -> Result<_, String> {
-                let mut sessions: FnvHashMap<RelId, InputSession<TS, DDValue, Weight>> =
-                    FnvHashMap::default();
-                let mut collections: FnvHashMap<
+                let mut sessions: XxHashMap<RelId, InputSession<TS, DDValue, Weight>> =
+                    XxHashMap::default();
+                let mut collections: XxHashMap<
                     RelId,
                     Collection<Child<Worker<Allocator>, TS>, DDValue, Weight>,
-                > = HashMap::with_capacity_and_hasher(
-                    program.nodes.len(),
-                    FnvBuildHasher::default(),
-                );
-                let mut arrangements: FnvHashMap<
+                > = HashMap::with_capacity_and_hasher(program.nodes.len(), Default::default());
+                let mut arrangements: XxHashMap<
                     ArrId,
                     Arrangement<_, Weight, TValAgent<TS>, TKeyAgent<TS>>,
-                > = FnvHashMap::default();
+                > = XxHashMap::default();
 
                 // Create an `Enabled` relation used to enforce the dataflow termination in the
                 // presence of delayed relations.  A delayed relation can potentially generate an
@@ -785,9 +782,9 @@ fn render_relation<S>(
     scope: &mut S,
     program: &Program,
     render_context: &RenderContext,
-    sessions: &mut FnvHashMap<RelId, InputSession<TS, DDValue, Weight>>,
-    collections: &mut FnvHashMap<RelId, Collection<S, DDValue, Weight>>,
-    arrangements: &mut FnvHashMap<ArrId, Arrangement<S, Weight, TValAgent<TS>, TKeyAgent<TS>>>,
+    sessions: &mut XxHashMap<RelId, InputSession<TS, DDValue, Weight>>,
+    collections: &mut XxHashMap<RelId, Collection<S, DDValue, Weight>>,
+    arrangements: &mut XxHashMap<ArrId, Arrangement<S, Weight, TValAgent<TS>, TKeyAgent<TS>>>,
     delayed_vars: &DelayedVarMap<S>,
 ) where
     S: Scope<Timestamp = TS>,
@@ -806,7 +803,7 @@ fn render_relation<S>(
         collection
     };
 
-    let entered_arrangements: FnvHashMap<_, ArrangementFlavor<_, TS>> = arrangements
+    let entered_arrangements: XxHashMap<_, ArrangementFlavor<_, TS>> = arrangements
         .iter()
         .map(|(&arr_id, arr)| (arr_id, ArrangementFlavor::Local(arr.clone())))
         .collect();
@@ -890,12 +887,12 @@ fn render_scc<'a>(
     scope: &mut Child<'a, Worker<Allocator>, TS>,
     program: &Program,
     render_context: &RenderContext,
-    sessions: &mut FnvHashMap<RelId, InputSession<TS, DDValue, Weight>>,
-    collections: &mut FnvHashMap<
+    sessions: &mut XxHashMap<RelId, InputSession<TS, DDValue, Weight>>,
+    collections: &mut XxHashMap<
         RelId,
         Collection<Child<'a, Worker<Allocator>, TS>, DDValue, Weight>,
     >,
-    arrangements: &mut FnvHashMap<
+    arrangements: &mut XxHashMap<
         ArrId,
         Arrangement<Child<'a, Worker<Allocator>, TS>, Weight, TValAgent<TS>, TKeyAgent<TS>>,
     >,
@@ -931,11 +928,11 @@ fn render_scc<'a>(
                 scope.scoped("recursive component", |inner| -> Result<_, String> {
                     // create variables for relations defined in the Scc.
                     let mut vars =
-                        HashMap::with_capacity_and_hasher(rels.len(), FnvBuildHasher::default());
+                        XxHashMap::with_capacity_and_hasher(rels.len(), Default::default());
                     // arrangements created inside the nested scope
-                    let mut local_arrangements = FnvHashMap::default();
+                    let mut local_arrangements = XxHashMap::default();
                     // arrangements entered from global scope
-                    let mut inner_arrangements = FnvHashMap::default();
+                    let mut inner_arrangements = XxHashMap::default();
 
                     for r in rels.iter() {
                         let rel = collections.get(&r.rel.id).ok_or_else(|| {
@@ -986,10 +983,8 @@ fn render_scc<'a>(
                         Program::dependencies(rels.iter().map(|relation| &relation.rel));
 
                     // collections entered from global scope
-                    let mut inner_collections = HashMap::with_capacity_and_hasher(
-                        dependencies.len(),
-                        FnvBuildHasher::default(),
-                    );
+                    let mut inner_collections =
+                        XxHashMap::with_capacity_and_hasher(dependencies.len(), Default::default());
 
                     for dep in dependencies {
                         match dep {
@@ -1062,7 +1057,7 @@ fn render_scc<'a>(
 
                     // bring new relations back to the outer scope
                     let mut new_collections =
-                        HashMap::with_capacity_and_hasher(rels.len(), FnvBuildHasher::default());
+                        XxHashMap::with_capacity_and_hasher(rels.len(), Default::default());
                     for rel in rels {
                         let var = vars.get(&rel.rel.id).ok_or_else(|| {
                             format!("no variable found for relation ID {}", rel.rel.id)

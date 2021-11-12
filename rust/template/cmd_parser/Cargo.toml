@@ -7,10 +7,10 @@ edition = "2018"
 path = "../differential_datalog"
 
 [dependencies]
-libc = "0.2.42"
-ordered-float = { version = "2.0.0", features = ["serde"] }
+libc = "0.2.107"
+ordered-float = { version = "2.8.0", features = ["serde"] }
 nom = "4.0"
-num = "0.3"
+num = "0.4.0"
 rustyline = "1.0.0"
 
 [lib]

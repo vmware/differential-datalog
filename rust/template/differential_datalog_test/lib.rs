@@ -6,23 +6,23 @@
 //! factored in a separate crate.
 #![cfg_attr(not(test), allow(dead_code))]
 
-use std::borrow::Cow;
-use std::collections::btree_map::{BTreeMap, Entry};
-use std::collections::btree_set::BTreeSet;
-use std::sync::{Arc, Mutex};
+use std::{
+    borrow::Cow,
+    collections::{
+        btree_map::{BTreeMap, Entry},
+        btree_set::BTreeSet,
+    },
+    sync::{Arc, Mutex},
+};
 
 use ddlog_profiler::{
     ArrangementDebugInfo, DDlogSourceCode, OperatorDebugInfo, RuleDebugInfo, SourcePosition,
 };
-use differential_datalog::{ddval::*, program::config::Config, program::*};
-use fnv::FnvHashMap;
+use differential_datalog::{ddval::*, program::config::Config, program::*, utils::XxHashMap};
 use num::One;
-use timely::communication::Allocator;
-use timely::dataflow::scopes::*;
-use timely::worker::Worker;
+use timely::{communication::Allocator, dataflow::scopes::*, worker::Worker};
 
-use differential_dataflow::operators::Join;
-use differential_dataflow::Collection;
+use differential_dataflow::{operators::Join, Collection};
 
 pub mod test_value;
 use test_value::*;
@@ -667,7 +667,7 @@ fn test_join(nthreads: usize) {
     };
 
     type CollectionMap<'a> =
-        FnvHashMap<RelId, Collection<Child<'a, Worker<Allocator>, TS>, DDValue, Weight>>;
+        XxHashMap<RelId, Collection<Child<'a, Worker<Allocator>, TS>, DDValue, Weight>>;
 
     fn join_transformer() -> Box<dyn for<'a> Fn(&mut CollectionMap<'a>)> {
         Box::new(|collections| {
@@ -1997,7 +1997,7 @@ fn conversion_lossless() {
     let val = boolean.clone().into_ddvalue();
 
     assert_eq!(Some(&boolean), Bool::try_from_ddvalue_ref(&val));
-    assert_eq!(Some(boolean.clone()), Bool::try_from_ddvalue(val.clone()));
+    assert_eq!(Ok(boolean.clone()), Bool::try_from_ddvalue(val.clone()));
     assert_eq!(&boolean, Bool::from_ddvalue_ref(&val));
     assert_eq!(boolean, Bool::from_ddvalue(val));
 }
@@ -2007,7 +2007,7 @@ fn checked_conversions() {
     let val = Bool(true).into_ddvalue();
 
     assert!(Empty::try_from_ddvalue_ref(&val).is_none());
-    assert!(Empty::try_from_ddvalue(val).is_none());
+    assert!(Empty::try_from_ddvalue(val).is_err());
 }
 
 #[test]

@@ -5,13 +5,12 @@ mod profile_statistics;
 mod source_code;
 
 pub use debug_info::{ArrangementDebugInfo, OperatorDebugInfo, RuleDebugInfo};
-use source_code::LinesIterator;
 pub use source_code::{DDlogSourceCode, SourceFile, SourcePosition};
 
 use profile_statistics::Statistics;
+use source_code::LinesIterator;
 
 use differential_dataflow::logging::DifferentialEvent;
-use fnv::FnvHashMap;
 use once_cell::sync::Lazy;
 use sequence_trie::SequenceTrie;
 use serde::Serialize;
@@ -20,7 +19,9 @@ use std::{
     cell::RefCell,
     cmp::max,
     collections::{HashMap, HashSet},
-    fs, include_str,
+    fs,
+    hash::BuildHasherDefault,
+    include_str,
     iter::FromIterator,
     path::PathBuf,
     sync::Mutex,
@@ -28,6 +29,7 @@ use std::{
     time::Instant,
 };
 use timely::logging::{OperatesEvent, ScheduleEvent, StartStop, TimelyEvent};
+use xxhash_rust::xxh3::Xxh3;
 
 const PROFILER_UI_HTML: &str = include_str!("../profiler_ui/ui.html");
 const PROFILER_UI_CSS: &str = include_str!("../profiler_ui/ui.css");
@@ -140,9 +142,11 @@ pub enum ProfileDump {
     },
 }
 
+type XxHasher = BuildHasherDefault<Xxh3>;
+
 // Indexed representation of `source_code` that
 // supports fast lookup by `SourcePosition`.
-type IndexedSourceCode = HashMap<&'static str, Vec<&'static str>>;
+type IndexedSourceCode = HashMap<&'static str, Vec<&'static str>, XxHasher>;
 
 #[derive(Debug)]
 pub struct Profile {
@@ -152,16 +156,16 @@ pub struct Profile {
     // Instant when the profiling session was started.
     start_time: Instant,
     addresses: SequenceTrie<usize, usize>,
-    op_address: FnvHashMap<usize, Vec<usize>>,
+    op_address: HashMap<usize, Vec<usize>, XxHasher>,
     /// Map operator id to its detailed debug info.
-    debug_info: FnvHashMap<usize, OperatorDebugInfo>,
+    debug_info: HashMap<usize, OperatorDebugInfo, XxHasher>,
     /// Short name of the op only.
-    short_names: FnvHashMap<usize, String>,
-    sizes: FnvHashMap<usize, isize>,
-    peak_sizes: FnvHashMap<usize, isize>,
-    changes: FnvHashMap<usize, isize>,
-    starts: FnvHashMap<(usize, usize), Duration>,
-    durations: FnvHashMap<usize, (Duration, usize)>,
+    short_names: HashMap<usize, String, XxHasher>,
+    sizes: HashMap<usize, isize, XxHasher>,
+    peak_sizes: HashMap<usize, isize, XxHasher>,
+    changes: HashMap<usize, isize, XxHasher>,
+    starts: HashMap<(usize, usize), Duration, XxHasher>,
+    durations: HashMap<usize, (Duration, usize), XxHasher>,
     // Initialization creates a file
     timely_stats: Option<Statistics>,
     // Keep track of whether we already tried initializing timely_stats, this avoids us
@@ -172,25 +176,26 @@ pub struct Profile {
 
 impl Profile {
     pub fn new(source_code: &'static DDlogSourceCode, profile_directory: PathBuf) -> Profile {
-        let indexed_source_code: HashMap<&'static str, Vec<&'static str>> = source_code
+        let indexed_source_code = source_code
             .code
             .iter()
             .map(|source_file| (source_file.filename, source_file.contents.lines().collect()))
             .collect();
+
         Profile {
             source_code,
             indexed_source_code,
             profile_directory,
             start_time: Instant::now(),
             addresses: SequenceTrie::new(),
-            op_address: FnvHashMap::default(),
-            debug_info: FnvHashMap::default(),
-            short_names: FnvHashMap::default(),
-            sizes: FnvHashMap::default(),
-            peak_sizes: FnvHashMap::default(),
-            changes: FnvHashMap::default(),
-            starts: FnvHashMap::default(),
-            durations: FnvHashMap::default(),
+            op_address: HashMap::default(),
+            debug_info: HashMap::default(),
+            short_names: HashMap::default(),
+            sizes: HashMap::default(),
+            peak_sizes: HashMap::default(),
+            changes: HashMap::default(),
+            starts: HashMap::default(),
+            durations: HashMap::default(),
             timely_stats: None,
             stats_init: false,
         }
@@ -260,7 +265,7 @@ impl Profile {
         Some(cpu_profile)
     }
 
-    fn size_profile(&self, sizes: &FnvHashMap<usize, isize>) -> Vec<SizeProfileRecord> {
+    fn size_profile(&self, sizes: &HashMap<usize, isize, XxHasher>) -> Vec<SizeProfileRecord> {
         let mut size_vec: Vec<(usize, isize)> = sizes.clone().into_iter().collect();
         size_vec.sort_by(|(_, sz1), (_, sz2)| sz1.cmp(sz2).reverse());
         let children = size_vec

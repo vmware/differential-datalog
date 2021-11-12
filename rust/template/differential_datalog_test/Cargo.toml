@@ -8,16 +8,16 @@ name = "differential_datalog_test"
 path = "lib.rs"
 
 [dependencies]
-fnv = "1.0.7"
+num = "0.4.0"
 abomonation = "0.7.3"
-serde_json = "1.0.60"
-erased-serde = "0.3.13"
+serde_json = "1.0.69"
+erased-serde = "0.3.16"
 abomonation_derive = "0.5.0"
-datalog_example = { path = "../", default-features = false }
 ddlog_derive = { path = "../ddlog_derive" }
-num = { version = "0.3" }
-serde = { version = "1.0.125", features = ["derive"] }
-differential_datalog = { path = "../differential_datalog" }
 ddlog_profiler = { path = "../ddlog_profiler" }
+serde = { version = "1.0.130", features = ["derive"] }
+xxhash-rust = { version = "0.8.2", features = ["xxh3"] }
+differential_datalog = { path = "../differential_datalog" }
+datalog_example = { path = "../", default-features = false }
 timely = { git = "https://github.com/ddlog-dev/timely-dataflow", branch = "ddlog-4", default-features = false }
 differential-dataflow = { git = "https://github.com/ddlog-dev/differential-dataflow", branch = "ddlog-4", default-features = false }

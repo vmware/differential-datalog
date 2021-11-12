@@ -1,27 +1,29 @@
 //! Traits that encapsulate a running DDlog program.
 
+use crate::{
+    ddval::{Any, DDValue},
+    program::{ArrId, IdxId, RelId, Update},
+    record::{Record, RelIdentifier, UpdCmd},
+    utils::XxHashMap,
+    valmap::DeltaMap,
+};
+use ddlog_profiler::{CpuProfile, SizeProfileRecord};
 use dyn_clone::DynClone;
-use fnv::FnvHashMap;
-use std::any::TypeId;
-use std::collections::btree_set::BTreeSet;
-use std::collections::BTreeMap;
-#[cfg(feature = "c_api")]
-use std::ffi::CStr;
-use std::io;
-use std::iter::Iterator;
-use std::ops::Deref;
-use std::sync::Arc as StdArc;
+use std::{
+    any::TypeId,
+    collections::{btree_set::BTreeSet, BTreeMap},
+    io,
+    iter::Iterator,
+    ops::Deref,
+    sync::Arc as StdArc,
+};
 use triomphe::Arc;
 
-use crate::ddval::{Any, DDValue};
-use crate::program::RelId;
-use crate::program::Update;
-use crate::program::{ArrId, IdxId};
-use crate::record::UpdCmd;
-use crate::record::{Record, RelIdentifier};
-use crate::valmap::DeltaMap;
+#[cfg(feature = "c_api")]
+use std::ffi::CStr;
 
-use ddlog_profiler::{CpuProfile, SizeProfileRecord};
+/// A map of relation ids to their relation's name
+pub type RelationNameMap = XxHashMap<RelId, &'static str>;
 
 /// Convert relation and index names to and from numeric id's.
 pub trait DDlogInventory: DynClone {
@@ -54,7 +56,7 @@ pub trait DDlogInventory: DynClone {
     #[cfg(feature = "c_api")]
     fn get_index_cname(&self, index_id: IdxId) -> Result<&'static CStr, String>;
 
-    fn input_relation_ids(&self) -> &'static FnvHashMap<RelId, &'static str>;
+    fn input_relation_ids(&self) -> &'static RelationNameMap;
 
     fn index_from_record(&self, index: IdxId, key: &Record) -> Result<DDValue, String>;
 
@@ -117,7 +119,7 @@ where
         self.deref().get_index_cname(index_id)
     }
 
-    fn input_relation_ids(&self) -> &'static FnvHashMap<RelId, &'static str> {
+    fn input_relation_ids(&self) -> &'static RelationNameMap {
         self.deref().input_relation_ids()
     }
 
@@ -190,7 +192,7 @@ where
         self.deref().get_index_cname(index_id)
     }
 
-    fn input_relation_ids(&self) -> &'static FnvHashMap<RelId, &'static str> {
+    fn input_relation_ids(&self) -> &'static RelationNameMap {
         self.deref().input_relation_ids()
     }
 
@@ -263,7 +265,7 @@ where
         self.deref().get_index_cname(index_id)
     }
 
-    fn input_relation_ids(&self) -> &'static FnvHashMap<RelId, &'static str> {
+    fn input_relation_ids(&self) -> &'static RelationNameMap {
         self.deref().input_relation_ids()
     }
 
@@ -349,7 +351,7 @@ pub trait DDlogProfiling {
 
     /// Controls recording of the number of insertions and deletions per
     /// arrangement.  Unlike the arrangement size profile, which tracks the
-    /// number of records in each arrangment, this feature tracks the amount
+    /// number of records in each arrangement, this feature tracks the amount
     /// of churn.  For example adding one record and deleting one record will
     /// show up as two changes in the change profile (but will cancel out in
     /// the size profile).
@@ -423,7 +425,10 @@ pub trait DDlogDynamic {
     fn transaction_rollback(&self) -> Result<(), String>;
 
     /// Apply a set of updates.
-    fn apply_updates_dynamic(&self, upds: &mut dyn Iterator<Item = UpdCmd>) -> Result<(), String>;
+    fn apply_updates_dynamic(
+        &self,
+        updates: &mut dyn Iterator<Item = UpdCmd>,
+    ) -> Result<(), String>;
 
     fn clear_relation(&self, table: RelId) -> Result<(), String>;
 
@@ -445,7 +450,10 @@ pub trait DDlog: DDlogDynamic {
     fn transaction_commit_dump_changes(&self) -> Result<DeltaMap<DDValue>, String>;
 
     /// Apply a set of updates.
-    fn apply_updates(&self, upds: &mut dyn Iterator<Item = Update<DDValue>>) -> Result<(), String>;
+    fn apply_updates(
+        &self,
+        updates: &mut dyn Iterator<Item = Update<DDValue>>,
+    ) -> Result<(), String>;
 
     /// Query index.  Returns all values associated with the given key in the index.
     fn query_index(&self, index: IdxId, key: DDValue) -> Result<BTreeSet<DDValue>, String>;
