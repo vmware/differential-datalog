@@ -24,10 +24,7 @@ SOFTWARE.
 /* Logging Configuration API, (detailed documentation in `ddlog_log.h`) */
 
 use once_cell::sync::Lazy;
-use std::collections;
-use std::ffi;
-use std::os::raw;
-use std::sync;
+use std::{collections, ffi, os::raw, sync};
 
 type log_callback_t = Box<dyn Fn(i32, &str) + Send + Sync>;
 
@@ -55,14 +52,14 @@ static LOG_CONFIG: Lazy<sync::RwLock<LogConfig>> =
 /// Logging API exposed to the DDlog program.
 /// (see detailed documentation in `log.dl`)
 #[allow(clippy::ptr_arg, clippy::trivially_copy_pass_by_ref)]
-pub fn log(module: &i32, level: &i32, msg: &String) {
+pub fn log(module: &i32, &level: &i32, msg: &String) {
     let cfg = LOG_CONFIG.read().unwrap();
-    if let Some((cb, current_level)) = cfg.mod_callbacks.get(module) {
-        if *level <= *current_level {
-            cb(*level, msg.as_str());
+    if let Some(&(ref cb, current_level)) = cfg.mod_callbacks.get(module) {
+        if level <= current_level {
+            cb(level, msg.as_str());
         }
-    } else if *level <= cfg.default_level && cfg.default_callback.is_some() {
-        cfg.default_callback.as_ref().unwrap()(*level, msg.as_str());
+    } else if level <= cfg.default_level && cfg.default_callback.is_some() {
+        cfg.default_callback.as_ref().unwrap()(level, msg.as_str());
     }
 }
 
@@ -98,7 +95,7 @@ pub unsafe extern "C" fn ddlog_log_set_callback(
     cb_arg: libc::uintptr_t,
     max_level: raw::c_int,
 ) {
-    match cb {
+    let _ = std::panic::catch_unwind(|| match cb {
         Some(cb) => log_set_callback(
             module as i32,
             Some(Box::new(move |level, msg| {
@@ -111,7 +108,7 @@ pub unsafe extern "C" fn ddlog_log_set_callback(
             max_level as i32,
         ),
         None => log_set_callback(module as i32, None, max_level as i32),
-    }
+    });
 }
 
 #[no_mangle]
@@ -121,7 +118,7 @@ pub unsafe extern "C" fn ddlog_log_set_default_callback(
     cb_arg: libc::uintptr_t,
     max_level: raw::c_int,
 ) {
-    match cb {
+    let _ = std::panic::catch_unwind(|| match cb {
         Some(cb) => log_set_default_callback(
             Some(Box::new(move |level, msg| {
                 cb(
@@ -133,5 +130,5 @@ pub unsafe extern "C" fn ddlog_log_set_default_callback(
             max_level as i32,
         ),
         None => log_set_default_callback(None, max_level as i32),
-    }
+    });
 }

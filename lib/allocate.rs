@@ -21,31 +21,30 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-use std::cmp;
-use std::collections::BTreeSet;
-use std::ops;
+use std::{cmp, collections::BTreeSet, ops};
 
-pub fn allocate<B: Ord, N: num::Num + ops::Add + cmp::Ord + Copy>(
+pub fn allocate<B: Ord, N: AllocatedId>(
     allocated: &ddlog_std::Set<N>,
     toallocate: ddlog_std::Vec<B>,
-    min_val: &N,
-    max_val: &N,
+    &min_val: &N,
+    &max_val: &N,
 ) -> ddlog_std::Vec<ddlog_std::tuple2<B, N>> {
-    assert!(*max_val >= *min_val);
-    let range = *max_val - *min_val;
+    assert!(max_val >= min_val);
+    let range = max_val - min_val;
 
     // Next index to consider
     let mut next = *allocated.x.range(..).next_back().unwrap_or(&max_val);
     // allocated may contain values outside of the [min_val..max_val] range.
-    if next < *min_val || next > *max_val {
-        next = *max_val;
-    };
+    if next < min_val || next > max_val {
+        next = max_val;
+    }
+
     let mut offset = N::zero();
     let mut res = ddlog_std::Vec::new();
     for b in toallocate.into_iter() {
         loop {
-            next = if next == *max_val {
-                *min_val
+            next = if next == max_val {
+                min_val
             } else {
                 next + N::one()
             };
@@ -53,38 +52,42 @@ pub fn allocate<B: Ord, N: num::Num + ops::Add + cmp::Ord + Copy>(
             if allocated.x.contains(&next) {
                 if offset == range {
                     return res;
-                };
+                }
                 offset = offset + N::one();
+
                 continue;
             } else {
                 res.push(ddlog_std::tuple2(b, next));
                 if offset == range {
                     return res;
-                };
+                }
                 offset = offset + N::one();
+
                 break;
             }
         }
     }
-    return res;
+
+    res
 }
 
-pub fn allocate_with_hint<B: Ord, N: num::Num + ops::Add + cmp::Ord + Copy>(
+pub fn allocate_with_hint<B: Ord, N: AllocatedId>(
     allocated: &ddlog_std::Set<N>,
     toallocate: ddlog_std::Vec<ddlog_std::tuple2<B, ddlog_std::Option<N>>>,
-    min_val: &N,
-    max_val: &N,
+    &min_val: &N,
+    &max_val: &N,
 ) -> ddlog_std::Vec<ddlog_std::tuple2<B, N>> {
-    assert!(*max_val >= *min_val);
-    let range = *max_val - *min_val;
+    assert!(max_val >= min_val);
+    let range = max_val - min_val;
     let mut new_allocations: BTreeSet<N> = BTreeSet::new();
 
     // Next index to consider
     let mut next = *allocated.x.range(..).next_back().unwrap_or(&min_val);
     // allocated may contain values outside of the [min_val..max_val] range.
-    if next < *min_val || next > *max_val {
-        next = *min_val;
-    };
+    if next < min_val || next > max_val {
+        next = min_val;
+    }
+
     let mut res = ddlog_std::Vec::new();
     for ddlog_std::tuple2(b, hint) in toallocate.into_iter() {
         let mut offset = N::zero();
@@ -92,53 +95,62 @@ pub fn allocate_with_hint<B: Ord, N: num::Num + ops::Add + cmp::Ord + Copy>(
             ddlog_std::Option::None => next,
             ddlog_std::Option::Some { x: h } => h,
         };
+
         loop {
             if allocated.x.contains(&next) || new_allocations.contains(&next) {
                 if offset == range {
                     return res;
-                };
+                }
+
                 offset = offset + N::one();
-                next = if next == *max_val {
-                    *min_val
+                next = if next == max_val {
+                    min_val
                 } else {
                     next + N::one()
                 };
+
                 continue;
             } else {
                 res.push(ddlog_std::tuple2(b, next));
                 new_allocations.insert(next);
+
                 if offset == range {
                     return res;
-                };
-                next = if next == *max_val {
-                    *min_val
+                }
+
+                next = if next == max_val {
+                    min_val
                 } else {
                     next + N::one()
                 };
+
                 break;
             }
         }
     }
-    return res;
+
+    res
 }
 
-pub fn allocate_opt<B: Ord, N: num::Num + ops::Add + cmp::Ord + Copy>(
+pub fn allocate_opt<B: Ord, N: AllocatedId>(
     allocated: &ddlog_std::Set<N>,
     toallocate: ddlog_std::Vec<B>,
-    min_val: &N,
-    max_val: &N,
+    &min_val: &N,
+    &max_val: &N,
 ) -> ddlog_std::Vec<ddlog_std::tuple2<B, ddlog_std::Option<N>>> {
-    assert!(*max_val >= *min_val);
-    let range = *max_val - *min_val;
+    assert!(max_val >= min_val);
+    let range = max_val - min_val;
 
     // Next index to consider
     let mut next = *allocated.x.range(..).next_back().unwrap_or(&max_val);
     // allocated may contain values outside of the [min_val..max_val] range.
-    if next < *min_val || next > *max_val {
-        next = *max_val;
-    };
+    if next < min_val || next > max_val {
+        next = max_val;
+    }
+
     let mut offset = N::zero();
     let mut res = ddlog_std::Vec::new();
+
     // Signal that address space has been exhausted, but iteration must continue to
     // assign `None` to all remaining items.
     let mut exhausted = false;
@@ -147,15 +159,18 @@ pub fn allocate_opt<B: Ord, N: num::Num + ops::Add + cmp::Ord + Copy>(
             if exhausted {
                 res.push(ddlog_std::tuple2(b, ddlog_std::Option::None));
                 break;
-            };
+            }
+
             if offset == range {
                 exhausted = true;
-            };
-            next = if next == *max_val {
-                *min_val
+            }
+
+            next = if next == max_val {
+                min_val
             } else {
                 next + N::one()
             };
+
             offset = offset + N::one();
 
             if allocated.x.contains(&next) {
@@ -166,43 +181,46 @@ pub fn allocate_opt<B: Ord, N: num::Num + ops::Add + cmp::Ord + Copy>(
             }
         }
     }
-    return res;
+
+    res
 }
 
-pub fn adjust_allocation<A: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Copy>(
+pub fn adjust_allocation<A: Ord + Clone, N: AllocatedId>(
     allocated: &ddlog_std::Map<A, N>,
     toallocate: &ddlog_std::Vec<A>,
-    min_val: &N,
-    max_val: &N,
+    &min_val: &N,
+    &max_val: &N,
 ) -> ddlog_std::Vec<ddlog_std::tuple2<A, N>> {
-    assert!(*max_val >= *min_val);
-    let range = *max_val - *min_val;
+    assert!(max_val >= min_val);
+    let range = max_val - min_val;
 
     let allocated_ids: BTreeSet<N> = allocated.x.values().cloned().collect();
     let mut next = *allocated_ids.range(..).next_back().unwrap_or(&max_val);
+
     // allocated may contain values outside of the [min_val..max_val] range.
-    if next < *min_val || next > *max_val {
-        next = *max_val;
-    };
+    if next < min_val || next > max_val {
+        next = max_val;
+    }
+
     let mut offset = N::zero();
     let mut res = ddlog_std::Vec::new();
+
     // Signal that address space has been exhausted, but iteration must continue to
     // preserve existing allocations.
     let mut exhausted = false;
     for b in toallocate.iter() {
         match allocated.x.get(b) {
-            Some(x) => {
-                res.push(ddlog_std::tuple2((*b).clone(), x.clone()));
-            }
+            Some(&x) => res.push(ddlog_std::tuple2((*b).clone(), x)),
             None => loop {
                 if exhausted {
                     break;
-                };
+                }
                 if offset == range {
                     exhausted = true;
-                };
-                next = if next == *max_val {
-                    *min_val
+                }
+
+                next = if next == max_val {
+                    min_val
                 } else {
                     next + N::one()
                 };
@@ -217,5 +235,47 @@ pub fn adjust_allocation<A: Ord + Clone, N: num::Num + ops::Add + cmp::Ord + Cop
             },
         }
     }
-    return res;
+
+    res
+}
+
+pub trait AllocatedId:
+    std::marker::Copy + std::cmp::Ord + std::ops::Add<Output = Self> + std::ops::Sub<Output = Self>
+{
+    fn zero() -> Self;
+
+    fn one() -> Self;
+}
+
+macro_rules! impl_id {
+    ($($ty:ident),* $(,)?) => {
+        $(
+            impl AllocatedId for $ty {
+                #[inline]
+                fn zero() -> Self {
+                    0
+                }
+
+                #[inline]
+                fn one() -> Self {
+                    1
+                }
+            }
+        )*
+    };
+}
+
+impl_id! {
+    u8,
+    i8,
+    u16,
+    i16,
+    u32,
+    i32,
+    u64,
+    i64,
+    usize,
+    isize,
+    u128,
+    i128,
 }

@@ -47,11 +47,12 @@ use std::{
     sync::Arc as StdArc,
     vec::{self, Vec as StdVec},
 };
-use twox_hash::{XxHash32, XxHash64};
+use xxhash_rust::{xxh3::Xxh3, xxh32::Xxh32};
 
 const XX_SEED1: u64 = 0x23b691a751d0e108;
 const XX_SEED2: u64 = 0x20b09801dce5ff84;
 
+#[inline]
 pub fn default<T: Default>() -> T {
     T::default()
 }
@@ -63,7 +64,7 @@ pub fn to_any<T: DDValConvert>(x: T) -> Any {
 }
 
 pub fn from_any<T: 'static + DDValConvert>(value: Any) -> Option<T> {
-    <Option<T>>::from(T::try_from_ddvalue(DDValue::from(value)))
+    T::try_from_ddvalue(DDValue::from(value)).ok().into()
 }
 
 // Result
@@ -96,11 +97,13 @@ pub fn result_unwrap_or<T, E>(res: Result<T, E>, def: T) -> T {
 
 /// An atomically reference counted reference
 #[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]
+#[repr(transparent)]
 pub struct Ref<T> {
     x: Arc<T>,
 }
 
 impl<T: Default> Default for Ref<T> {
+    #[inline]
     fn default() -> Self {
         Self {
             x: Arc::new(T::default()),
@@ -111,12 +114,14 @@ impl<T: Default> Default for Ref<T> {
 impl<T> Deref for Ref<T> {
     type Target = T;
 
+    #[inline]
     fn deref(&self) -> &T {
         &*self.x
     }
 }
 
 impl<T> From<T> for Ref<T> {
+    #[inline]
     fn from(x: T) -> Self {
         Self { x: Arc::new(x) }
     }
@@ -137,6 +142,7 @@ impl<T: Abomonation> Abomonation for Ref<T> {
 }
 
 impl<T> Ref<T> {
+    #[inline]
     pub fn get_mut(this: &mut Self) -> StdOption<&mut T> {
         Arc::get_mut(&mut this.x)
     }
@@ -198,45 +204,69 @@ where
     }
 }
 
+#[inline]
 pub fn ref_new<A: Clone>(x: A) -> Ref<A> {
     Ref::from(x)
 }
 
+#[inline]
 pub fn deref<A: Clone>(x: &Ref<A>) -> &A {
     x.deref()
 }
 
 // Arithmetic functions
+
+#[inline]
 pub fn u8_pow32(base: &u8, exp: &u32) -> u8 {
     base.wrapping_pow(*exp)
 }
+
+#[inline]
 pub fn u16_pow32(base: &u16, exp: &u32) -> u16 {
     base.wrapping_pow(*exp)
 }
+
+#[inline]
 pub fn u32_pow32(base: &u32, exp: &u32) -> u32 {
     base.wrapping_pow(*exp)
 }
+
+#[inline]
 pub fn u64_pow32(base: &u64, exp: &u32) -> u64 {
     base.wrapping_pow(*exp)
 }
+
+#[inline]
 pub fn u128_pow32(base: &u128, exp: &u32) -> u128 {
     base.wrapping_pow(*exp)
 }
+
+#[inline]
 pub fn s8_pow32(base: &i8, exp: &u32) -> i8 {
     base.wrapping_pow(*exp)
 }
+
+#[inline]
 pub fn s16_pow32(base: &i16, exp: &u32) -> i16 {
     base.wrapping_pow(*exp)
 }
+
+#[inline]
 pub fn s32_pow32(base: &i32, exp: &u32) -> i32 {
     base.wrapping_pow(*exp)
 }
+
+#[inline]
 pub fn s64_pow32(base: &i64, exp: &u32) -> i64 {
     base.wrapping_pow(*exp)
 }
+
+#[inline]
 pub fn s128_pow32(base: &i128, exp: &u32) -> i128 {
     base.wrapping_pow(*exp)
 }
+
+#[inline]
 pub fn bigint_pow32(base: &ddlog_bigint::Int, exp: &u32) -> ddlog_bigint::Int {
     num::pow::pow(base.clone(), *exp as usize)
 }
@@ -244,30 +274,34 @@ pub fn bigint_pow32(base: &ddlog_bigint::Int, exp: &u32) -> ddlog_bigint::Int {
 // Option
 impl<T: Copy> Copy for Option<T> {}
 
-pub fn option2std<T>(x: StdOption<T>) -> Option<T> {
-    match x {
-        StdOption::None => Option::None,
-        StdOption::Some(v) => Option::Some { x: v },
-    }
+#[deprecated = "Use `From<std::option::Option<T>> for ddlog_std::Option<T>`"]
+pub fn option2std<T>(option: StdOption<T>) -> Option<T> {
+    option.into()
 }
 
-pub fn std2option<T>(x: Option<T>) -> StdOption<T> {
-    match x {
-        Option::None => StdOption::None,
-        Option::Some { x } => StdOption::Some(x),
-    }
+#[deprecated = "Use `ddlog_std::Option<T> for From<std::option::Option<T>>`"]
+pub fn std2option<T>(option: Option<T>) -> StdOption<T> {
+    option.into()
 }
 
 impl<T> From<StdOption<T>> for Option<T> {
-    fn from(x: StdOption<T>) -> Self {
-        option2std(x)
+    #[inline]
+    fn from(option: StdOption<T>) -> Self {
+        match option {
+            StdOption::None => Option::None,
+            StdOption::Some(v) => Option::Some { x: v },
+        }
     }
 }
 
 // this requires Rust 1.41+
 impl<T> From<Option<T>> for StdOption<T> {
-    fn from(x: Option<T>) -> Self {
-        std2option(x)
+    #[inline]
+    fn from(option: Option<T>) -> Self {
+        match option {
+            Option::None => StdOption::None,
+            Option::Some { x } => StdOption::Some(x),
+        }
     }
 }
 
@@ -324,6 +358,7 @@ where
     }
 }
 
+#[inline]
 pub fn option_unwrap_or_default<T: Default + Clone>(opt: Option<T>) -> T {
     match opt {
         Option::Some { x } => x,
@@ -331,6 +366,7 @@ pub fn option_unwrap_or_default<T: Default + Clone>(opt: Option<T>) -> T {
     }
 }
 
+#[inline]
 pub fn option_unwrap_or<T>(opt: Option<T>, def: T) -> T {
     match opt {
         Option::Some { x } => x,
@@ -372,11 +408,13 @@ pub struct Vec<T> {
 
 impl<T> Vec<T> {
     /// Creates a new, empty vector
+    #[inline]
     pub const fn new() -> Self {
         Vec { vec: StdVec::new() }
     }
 
     /// Creates a new, empty `Vec<T>` with the specified capacity
+    #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
         Vec {
             vec: StdVec::with_capacity(capacity),
@@ -384,18 +422,21 @@ impl<T> Vec<T> {
     }
 
     /// Returns an iterator over the vector
+    #[inline]
     pub fn iter<'a>(&'a self) -> VecIter<'a, T> {
         VecIter::new(self)
     }
 }
 
 impl<T: Clone> Vec<T> {
+    #[inline]
     pub fn resize(&mut self, new_len: usize, value: &T) {
         self.vec.resize_with(new_len, || value.clone());
     }
 }
 
 impl<T: Clone> From<&[T]> for Vec<T> {
+    #[inline]
     fn from(slice: &[T]) -> Self {
         Vec {
             vec: slice.to_vec(),
@@ -404,6 +445,7 @@ impl<T: Clone> From<&[T]> for Vec<T> {
 }
 
 impl<T> FromIterator<T> for Vec<T> {
+    #[inline]
     fn from_iter<I>(iter: I) -> Self
     where
         I: IntoIterator<Item = T>,
@@ -415,6 +457,7 @@ impl<T> FromIterator<T> for Vec<T> {
 }
 
 impl<T> From<StdVec<T>> for Vec<T> {
+    #[inline]
     fn from(vec: StdVec<T>) -> Self {
         Vec { vec }
     }
@@ -423,36 +466,42 @@ impl<T> From<StdVec<T>> for Vec<T> {
 impl<T> Deref for Vec<T> {
     type Target = StdVec<T>;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.vec
     }
 }
 
 impl<T> DerefMut for Vec<T> {
+    #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.vec
     }
 }
 
 impl<T> AsRef<StdVec<T>> for Vec<T> {
+    #[inline]
     fn as_ref(&self) -> &StdVec<T> {
         &self.vec
     }
 }
 
 impl<T> AsMut<StdVec<T>> for Vec<T> {
+    #[inline]
     fn as_mut(&mut self) -> &mut StdVec<T> {
         &mut self.vec
     }
 }
 
 impl<T> AsRef<[T]> for Vec<T> {
+    #[inline]
     fn as_ref(&self) -> &[T] {
         self.as_slice()
     }
 }
 
 impl<T> AsMut<[T]> for Vec<T> {
+    #[inline]
     fn as_mut(&mut self) -> &mut [T] {
         self.as_mut_slice()
     }
@@ -515,6 +564,7 @@ pub struct VecIter<'a, X> {
 }
 
 impl<'a, X> VecIter<'a, X> {
+    #[inline]
     pub fn new(vec: &'a Vec<X>) -> VecIter<'a, X> {
         VecIter {
             iter: vec.vec.iter(),
@@ -525,21 +575,25 @@ impl<'a, X> VecIter<'a, X> {
 impl<'a, X> Iterator for VecIter<'a, X> {
     type Item = &'a X;
 
+    #[inline]
     fn next(&mut self) -> StdOption<Self::Item> {
         self.iter.next()
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, StdOption<usize>) {
         self.iter.size_hint()
     }
 }
 
 /// Get the length of a vec
+#[inline]
 pub fn vec_len<T>(vec: &Vec<T>) -> std_usize {
     vec.len() as std_usize
 }
 
 /// Create a new, empty vec
+#[inline]
 pub const fn vec_empty<T>() -> Vec<T> {
     Vec::new()
 }
@@ -579,8 +633,8 @@ pub fn vec_push_imm<T: Clone>(immutable_vec: &Vec<T>, x: T) -> Vec<T> {
     mutable_vec
 }
 
-pub fn vec_pop<X: Ord + Clone>(v: &mut Vec<X>) -> Option<X> {
-    option2std(v.pop())
+pub fn vec_pop<X: Ord + Clone>(vec: &mut Vec<X>) -> Option<X> {
+    vec.pop().into()
 }
 
 pub fn vec_contains<T: PartialEq>(vec: &Vec<T>, x: &T) -> bool {
@@ -838,7 +892,7 @@ pub fn set_is_empty<X: Ord>(s: &Set<X>) -> bool {
 }
 
 pub fn set_nth<X: Ord + Clone>(s: &Set<X>, n: &std_usize) -> Option<X> {
-    option2std(s.x.iter().nth(*n as usize).cloned())
+    s.x.iter().nth(*n as usize).cloned().into()
 }
 
 pub fn set_to_vec<X: Ord>(set: Set<X>) -> Vec<X> {
@@ -1035,7 +1089,7 @@ pub fn map_insert<K: Ord, V>(m: &mut Map<K, V>, k: K, v: V) {
 }
 
 pub fn map_remove<K: Ord + Clone, V: Clone>(m: &mut Map<K, V>, k: &K) -> Option<V> {
-    option2std(m.x.remove(k))
+    m.x.remove(k).into()
 }
 
 pub fn map_insert_imm<K: Ord, V>(mut m: Map<K, V>, k: K, v: V) -> Map<K, V> {
@@ -1044,7 +1098,7 @@ pub fn map_insert_imm<K: Ord, V>(mut m: Map<K, V>, k: K, v: V) -> Map<K, V> {
 }
 
 pub fn map_get<K: Ord, V: Clone>(m: &Map<K, V>, k: &K) -> Option<V> {
-    option2std(m.x.get(k).cloned())
+    m.x.get(k).cloned().into()
 }
 
 pub fn map_contains_key<K: Ord, V: Clone>(s: &Map<K, V>, k: &K) -> bool {
@@ -1073,11 +1127,11 @@ pub fn map_values<K: Ord, V: Clone>(map: &Map<K, V>) -> Vec<V> {
 }
 
 pub fn map_nth_value<K: Ord, V: Clone>(m: &Map<K, V>, n: &std_usize) -> Option<V> {
-    option2std(m.x.iter().nth(*n as usize).map(|(_, v)| v.clone()))
+    m.x.iter().nth(*n as usize).map(|(_, v)| v.clone()).into()
 }
 
 pub fn map_nth_key<K: Ord + Clone, V>(m: &Map<K, V>, n: &std_usize) -> Option<K> {
-    option2std(m.x.iter().nth(*n as usize).map(|(k, _)| k.clone()))
+    m.x.iter().nth(*n as usize).map(|(k, _)| k.clone()).into()
 }
 
 // strings
@@ -1095,11 +1149,11 @@ pub fn hex<T: fmt::LowerHex>(x: &T) -> String {
 }
 
 pub fn parse_dec_u64(s: &String) -> Option<u64> {
-    option2std(s.parse::<u64>().ok())
+    s.parse::<u64>().ok().into()
 }
 
 pub fn parse_dec_i64(s: &String) -> Option<i64> {
-    option2std(s.parse::<i64>().ok())
+    s.parse::<i64>().ok().into()
 }
 
 pub fn string_join(strings: &Vec<String>, sep: &String) -> String {
@@ -1178,23 +1232,39 @@ pub fn string_reverse(s: &String) -> String {
 // Hashing
 
 pub fn hash32<T: Hash>(x: &T) -> u32 {
-    let mut hasher = XxHash32::with_seed(XX_SEED1 as u32);
+    // This is a workaround because `Xxh32` doesn't implement `Hasher` directly
+    #[repr(transparent)]
+    struct Xxh32Hasher(Xxh32);
+
+    impl core::hash::Hasher for Xxh32Hasher {
+        #[inline]
+        fn finish(&self) -> u64 {
+            self.0.digest() as u64
+        }
+
+        #[inline]
+        fn write(&mut self, input: &[u8]) {
+            self.0.update(input);
+        }
+    }
+
+    let mut hasher = Xxh32Hasher(Xxh32::new(XX_SEED1 as u32));
     x.hash(&mut hasher);
     hasher.finish() as u32
 }
 
 pub fn hash64<T: Hash>(x: &T) -> u64 {
-    let mut hasher = XxHash64::with_seed(XX_SEED1);
+    let mut hasher = Xxh3::with_seed(XX_SEED1);
     x.hash(&mut hasher);
     hasher.finish()
 }
 
 pub fn hash128<T: Hash>(x: &T) -> u128 {
-    let mut hasher = XxHash64::with_seed(XX_SEED1);
+    let mut hasher = Xxh3::with_seed(XX_SEED1);
     x.hash(&mut hasher);
     let w1 = hasher.finish();
 
-    let mut hasher = XxHash64::with_seed(XX_SEED2);
+    let mut hasher = Xxh3::with_seed(XX_SEED2);
     x.hash(&mut hasher);
     let w2 = hasher.finish();
 

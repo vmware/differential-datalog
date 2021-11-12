@@ -44,6 +44,7 @@ use differential_datalog::record::IntoRecord as IntoRec;
 use differential_datalog::record::Record;
 
 #[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]
+#[repr(transparent)]
 pub struct Int {
     x: BigInt,
 }
@@ -67,44 +68,44 @@ impl From<Uint> for Int {
 // Generated code expects `from_<typename>()`, `to_<typename>()` functions for all
 // supported integer conversions.
 impl Int {
-    pub fn from_bigint(v: BigInt) -> Int {
-        Int { x: v }
+    pub fn from_bigint(v: BigInt) -> Self {
+        Self { x: v }
     }
-    pub fn from_u8(v: u8) -> Int {
-        Int { x: BigInt::from(v) }
+    pub fn from_u8(v: u8) -> Self {
+        Self { x: BigInt::from(v) }
     }
-    pub fn from_i8(v: i8) -> Int {
-        Int { x: BigInt::from(v) }
+    pub fn from_i8(v: i8) -> Self {
+        Self { x: BigInt::from(v) }
     }
-    pub fn from_u16(v: u16) -> Int {
-        Int { x: BigInt::from(v) }
+    pub fn from_u16(v: u16) -> Self {
+        Self { x: BigInt::from(v) }
     }
-    pub fn from_i16(v: i16) -> Int {
-        Int { x: BigInt::from(v) }
+    pub fn from_i16(v: i16) -> Self {
+        Self { x: BigInt::from(v) }
     }
-    pub fn from_u32(v: u32) -> Int {
-        Int { x: BigInt::from(v) }
+    pub fn from_u32(v: u32) -> Self {
+        Self { x: BigInt::from(v) }
     }
-    pub fn from_i32(v: i32) -> Int {
-        Int { x: BigInt::from(v) }
+    pub fn from_i32(v: i32) -> Self {
+        Self { x: BigInt::from(v) }
     }
-    pub fn from_u64(v: u64) -> Int {
-        Int { x: BigInt::from(v) }
+    pub fn from_u64(v: u64) -> Self {
+        Self { x: BigInt::from(v) }
     }
-    pub fn from_i64(v: i64) -> Int {
-        Int { x: BigInt::from(v) }
+    pub fn from_i64(v: i64) -> Self {
+        Self { x: BigInt::from(v) }
     }
-    pub fn from_u128(v: u128) -> Int {
-        Int { x: BigInt::from(v) }
+    pub fn from_u128(v: u128) -> Self {
+        Self { x: BigInt::from(v) }
     }
-    pub fn from_i128(v: i128) -> Int {
-        Int { x: BigInt::from(v) }
+    pub fn from_i128(v: i128) -> Self {
+        Self { x: BigInt::from(v) }
     }
-    pub fn from_Uint(v: Uint) -> Int {
+    pub fn from_Uint(v: Uint) -> Self {
         Self::from(v)
     }
-    pub fn from_bytes_be(sign: bool, bytes: &[u8]) -> Int {
-        Int {
+    pub fn from_bytes_be(sign: bool, bytes: &[u8]) -> Self {
+        Self {
             x: BigInt::from_bytes_be(if sign { Sign::Plus } else { Sign::Minus }, bytes),
         }
     }
@@ -183,6 +184,20 @@ impl Int {
     pub fn parse_bytes(buf: &[u8], radix: u32) -> Int {
         Int {
             x: BigInt::parse_bytes(buf, radix).unwrap(),
+        }
+    }
+
+    #[inline]
+    pub fn one() -> Self {
+        Self {
+            x: BigInt::new(Sign::Plus, vec![1]),
+        }
+    }
+
+    #[inline]
+    pub fn zero() -> Self {
+        Self {
+            x: BigInt::new(Sign::Plus, Vec::new()),
         }
     }
 }
@@ -328,6 +343,7 @@ impl num::Zero for Int {
 }
 
 #[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]
+#[repr(transparent)]
 pub struct Uint {
     x: BigUint,
 }
@@ -419,6 +435,20 @@ impl Uint {
     pub fn parse_bytes(buf: &[u8], radix: u32) -> Uint {
         Uint {
             x: BigUint::parse_bytes(buf, radix).unwrap(),
+        }
+    }
+
+    #[inline]
+    pub fn one() -> Self {
+        Self {
+            x: BigUint::new(vec![1]),
+        }
+    }
+
+    #[inline]
+    pub fn zero() -> Self {
+        Self {
+            x: BigUint::new(Vec::new()),
         }
     }
 }
@@ -566,12 +596,8 @@ impl num::Zero for Uint {
 
 #[cfg(feature = "c_api")]
 mod c_api {
-
-    use super::Int;
-    use super::Uint;
-
-    use std::ffi::CStr;
-    use std::os::raw::c_char;
+    use super::{Int, Uint};
+    use std::{ffi::CStr, os::raw::c_char};
 
     #[no_mangle]
     pub extern "C" fn int_from_i64(v: i64) -> *mut Int {
@@ -594,6 +620,7 @@ mod c_api {
         if x.is_null() {
             return;
         }
+
         Box::from_raw(x);
     }
 
@@ -613,6 +640,7 @@ mod c_api {
         if x.is_null() {
             return;
         }
+
         Box::from_raw(x);
     }
 }

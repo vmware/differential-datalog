@@ -22,15 +22,11 @@ SOFTWARE.
 */
 
 use differential_datalog::record::Record;
-use serde::de::Deserializer;
-use serde::ser::Serializer;
-use std::fmt;
-use std::hash::Hash;
-use std::str::FromStr;
-
-use ddlog_std::option2std;
+use serde::{de::Deserializer, ser::Serializer};
+use std::{fmt, hash::Hash, str::FromStr};
 
 #[derive(Eq, Ord, Clone, Hash, PartialEq, PartialOrd)]
+#[repr(transparent)]
 pub struct Ipv6Addr(::std::net::Ipv6Addr);
 
 impl Ipv6Addr {
@@ -114,9 +110,7 @@ pub fn ipv6_new(
     Ipv6Addr::new(::std::net::Ipv6Addr::new(*a, *b, *c, *d, *e, *f, *g, *h))
 }
 
-pub fn ipv6_from_segment_vec(
-    segments: &ddlog_std::Vec<u16>,
-) -> ddlog_std::Option<Ipv6Addr> {
+pub fn ipv6_from_segment_vec(segments: &ddlog_std::Vec<u16>) -> ddlog_std::Option<Ipv6Addr> {
     if segments.len() != 8 {
         return ddlog_std::Option::None;
     };
@@ -157,9 +151,7 @@ pub fn ipv6_from_octets(
     ]))
 }
 
-pub fn ipv6_from_octet_vec(
-    octets: &ddlog_std::Vec<u8>,
-) -> ddlog_std::Option<Ipv6Addr> {
+pub fn ipv6_from_octet_vec(octets: &ddlog_std::Vec<u8>) -> ddlog_std::Option<Ipv6Addr> {
     if octets.len() != 16 {
         return ddlog_std::Option::None;
     };
@@ -242,5 +234,5 @@ pub fn ipv6_is_multicast(addr: &Ipv6Addr) -> bool {
 }
 
 pub fn ipv6_to_ipv4(addr: &Ipv6Addr) -> ddlog_std::Option<super::ipv4::Ipv4Addr> {
-    option2std(addr.to_ipv4().map(super::ipv4::Ipv4Addr::new))
+    addr.to_ipv4().map(super::ipv4::Ipv4Addr::new).into()
 }

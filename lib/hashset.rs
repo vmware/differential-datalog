@@ -22,7 +22,7 @@ SOFTWARE.
 */
 
 use ddlog_rt::Closure;
-use ddlog_std::{option2std, tuple2, Group, Option as DDOption, Vec as DDVec};
+use ddlog_std::{tuple2, Group, Option as DDOption, Vec as DDVec};
 
 use differential_datalog::record::{CollectionKind, Record};
 use im::hashset::{ConsumingIter, HashSet as IMHashSet, OrderedConsumingIter, OrderedIter};
@@ -367,7 +367,7 @@ pub fn hashset_is_empty<T>(s: &HashSet<T>) -> bool {
 }
 
 pub fn hashset_nth<T: Hash + Clone + Ord>(s: &HashSet<T>, n: &std_usize) -> DDOption<T> {
-    option2std(s.iter().nth(*n as usize).cloned())
+    s.iter().nth(*n as usize).cloned().into()
 }
 
 pub fn hashset_to_vec<T: Hash + Clone + Ord>(s: &HashSet<T>) -> DDVec<T> {

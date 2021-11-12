@@ -95,29 +95,29 @@ pub fn username(url: &Url) -> String {
     url.url.username().to_string()
 }
 pub fn password(url: &Url) -> ddlog_std::Option<String> {
-    ddlog_std::option2std(url.url.password().map(|x| x.to_string()))
+    url.url.password().map(|x| x.to_string()).into()
 }
 pub fn has_host(url: &Url) -> bool {
     url.url.has_host()
 }
 pub fn host_str(url: &Url) -> ddlog_std::Option<String> {
-    ddlog_std::option2std(url.url.host_str().map(|x| x.to_string()))
+    url.url.host_str().map(|x| x.to_string()).into()
 }
 pub fn domain(url: &Url) -> ddlog_std::Option<String> {
-    ddlog_std::option2std(url.url.domain().map(|x| x.to_string()))
+    url.url.domain().map(|x| x.to_string()).into()
 }
 pub fn port(url: &Url) -> ddlog_std::Option<u16> {
-    ddlog_std::option2std(url.url.port())
+    url.url.port().into()
 }
 pub fn port_or_known_default(url: &Url) -> ddlog_std::Option<u16> {
-    ddlog_std::option2std(url.url.port_or_known_default())
+    url.url.port_or_known_default().into()
 }
 pub fn path(url: &Url) -> String {
     url.url.path().to_string()
 }
 pub fn query(url: &Url) -> ddlog_std::Option<String> {
-    ddlog_std::option2std(url.url.query().map(|x| x.to_string()))
+    url.url.query().map(|x| x.to_string()).into()
 }
 pub fn fragment(url: &Url) -> ddlog_std::Option<String> {
-    ddlog_std::option2std(url.url.fragment().map(|x| x.to_string()))
+    url.url.fragment().map(|x| x.to_string()).into()
 }
