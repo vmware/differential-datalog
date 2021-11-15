@@ -79,7 +79,7 @@ pub struct DDVal {
 pub struct DDValMethods {
     /// Clones the current value, creating a new [`DDVal`]
     pub clone: fn(this: &DDVal) -> DDVal,
-    /// Converts the current value into a [`Record]
+    /// Converts the current value into a [`Record`]
     pub into_record: fn(this: DDVal) -> Record,
 
     /// The [`Eq`] implementation for two values of the same concrete type
