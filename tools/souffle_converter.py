@@ -788,7 +788,7 @@ class SouffleConverter(object):
             if verbose:
                 print("Reading", rel + "_shadow")
             data = None
-            for directory in ["./", "./facts/"]:
+            for directory in ["./", "./database/", "./facts/"]:
                 for suffix in ["", ".gz"]:
                     for filename in filenames:
                         tryFile = directory + filename + suffix
@@ -815,6 +815,7 @@ class SouffleConverter(object):
             rel = self.get_relid(r)
             origrel = self.get_orig_relid(r)
             ri = Relation.get(rel, self.getCurrentComponentLegalName())
+            # print("process_output() Output relation", ri.name, "skip_files",self.conversion_options.skip_files, "preprocessing",self.preprocessing)
             print("Output relation", ri.name)
             ri.isoutput = True
             if self.conversion_options.skip_files or self.preprocessing:
@@ -1159,6 +1160,8 @@ class SouffleConverter(object):
         elif func == "to_string":
             func = "to_istring"
             self.setCurrentType("Tstring")
+        elif func == "ord":
+            self.setCurrentType("Tnumber")
         elif func == "range":
             if len(argStrings) == 2:
                 argStrings.append("1")
@@ -1271,7 +1274,7 @@ class SouffleConverter(object):
         - the second field is a boolean indicating whether the term evaluation should be postponed.
           This is because in Souffle the order is irrelevant, but in DDlog is not.
         """
-        # print(term.tree_str())
+        # print(term)
         lit = getOptField(term, "Literal")
         if lit is not None:
             return self.convert_literal(lit)
@@ -1663,6 +1666,15 @@ class SouffleConverter(object):
                 self.process_decl(decl)
         self.files.output(self.aggregates)
 
+    def preprocess(self, tree: parglare.NodeNonTerm) -> None:
+        decls = getListField(tree, "Declaration", "DeclarationList")
+        for decl in decls:
+            # if self.conversion_options.skip_logic:
+            #     self.process_only_facts(decl)
+            # else:
+            self.process_decl(decl)
+        self.files.output(self.aggregates)
+
 
 def convert(inputName: str, outputPrefix: str, options: ConversionOptions, debug=False) -> None:
     Type.clear()
@@ -1674,7 +1686,7 @@ def convert(inputName: str, outputPrefix: str, options: ConversionOptions, debug
     tree: parglare.NodeNonTerm = parser.parse_file(files.inputName)
     converter = SouffleConverter(files, options)
     converter.preprocessing = True
-    converter.process(tree)
+    converter.preprocess(tree)
 
     # print("=================== finished preprocessing")
     converter.preprocessing = False
