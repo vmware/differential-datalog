@@ -4,7 +4,6 @@ import com.google.common.collect.ImmutableList;
 import com.vmware.ddlog.ir.DDlogIndexDeclaration;
 import com.vmware.ddlog.util.sql.CreateIndexParser;
 import com.vmware.ddlog.util.sql.ParsedCreateIndex;
-import ddlogapi.DDlogAPI;
 import ddlogapi.DDlogException;
 import ddlogapi.DDlogRecord;
 import org.apache.calcite.sql.*;
@@ -28,13 +27,13 @@ public class DDlogJooqHelper {
     private final Map<String, List<Field<?>>> tablesToFields;
     private final Map<String, List<ParsedCreateIndex>> tablesToIndexesMap = new HashMap<>();
     private final Map<String, List<Field<?>>> indexToFieldsMap = new HashMap<>();
-    private final DDlogAPI dDlogAPI;
+    private final DDlogHandle handle;
     private boolean sealed = false;
 
     public DDlogJooqHelper(Map<String, List<Field<?>>> tablesToFields,
-                           DDlogAPI ddlogAPI) {
+                           DDlogHandle ddlogAPI) {
         this.tablesToFields = tablesToFields;
-        this.dDlogAPI = ddlogAPI;
+        this.handle = ddlogAPI;
     }
 
     public void addIndex(String sqlString) {
@@ -126,7 +125,7 @@ public class DDlogJooqHelper {
         final DDlogRecord indexKey =
                 matchExpressionFromWhere(where, indexToFieldsMap.get(matchingIndex.getIndexName()), context);
 
-        dDlogAPI.queryIndex(
+        handle.queryIndex(
                 DDlogIndexDeclaration.indexName(matchingIndex.getIndexName()).name,
                 indexKey,
                 x -> clonedResults.add(x.clone())

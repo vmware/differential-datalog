@@ -238,8 +238,10 @@ class TranslationContext {
         return this.compilerState.etv.process(expr, this);
     }
 
-    void add(DDlogRelationDeclaration relation) {
+    void add(DDlogRelationDeclaration relation, @Nullable String originalTableName) {
         this.compilerState.add(relation);
+        if (originalTableName != null)
+            this.compilerState.getProgram().tableToRelation.put(originalTableName, relation);
     }
 
     void add(DDlogIndexDeclaration index) {

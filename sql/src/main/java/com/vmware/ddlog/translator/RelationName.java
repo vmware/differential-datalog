@@ -56,7 +56,7 @@ public class RelationName {
     }
 
     public static String makeRelationName(String tableName) {
-        return "R" + tableName.toLowerCase();
+        return "R" + tableName;
     }
 
     public String toString() {

@@ -24,6 +24,7 @@
 package ddlog;
 
 import com.vmware.ddlog.DDlogJooqProvider;
+import com.vmware.ddlog.DDlogHandle;
 import com.vmware.ddlog.util.sql.*;
 import ddlogapi.DDlogException;
 import org.jooq.impl.DSL;
@@ -77,14 +78,14 @@ public class JooqProviderPrestoTest extends JooqProviderTestBase {
         indexStatements.add(createIndexNotNull);
         indexStatements.add(createIndexHosts);
 
-        ddlogAPI = compileAndLoad(
+        ddhandle = new DDlogHandle(
                 ddl.stream().map(PrestoSqlStatement::new).collect(Collectors.toList()),
                 sql -> sql,
                 indexStatements);
 
         ToH2Translator<PrestoSqlStatement> translator = new PrestoToH2Translator();
         // Initialise the data provider
-        provider = new DDlogJooqProvider(ddlogAPI,
+        provider = new DDlogJooqProvider(ddhandle,
                 Stream.concat(ddl.stream().map(x -> translator.toH2(new PrestoSqlStatement(x))),
                                 indexStatements.stream().map(H2SqlStatement::new))
                         .collect(Collectors.toList()));

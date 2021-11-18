@@ -108,30 +108,36 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             // This type name will not appear in the generated program
             rel = rel.setPrimaryKey(keyColumns, context.freshLocalName("TKey"));
         }
-        context.add(rel);
+        context.add(rel, name);
         return rel;
     }
 
     /**
      * Creates a rule and a declaration for the associated relation; adds them to the program.
      * @param node    SQL node that is being translated.
+     * @param tableName  Optional name of table that led to this rule being created.
      * @param relName Name of the relation created.
      * @param body     Right-hand side that defines the tuples of the current relation.
      * @param role    Kind of relation created.
      * @param context Translation context; the rule and relation are added there.
      */
-    protected static DDlogRule createRule(@Nullable Node node, RelationName relName, RuleBody body,
+    protected static DDlogRule createRule(@Nullable Node node,
+                                          @Nullable String tableName,
+                                          RelationName relName, RuleBody body,
                                           DDlogRelationDeclaration.Role role,
                                           TranslationContext context) {
         String outVarName = context.freshLocalName("v");
         DDlogRelationDeclaration relDecl = new DDlogRelationDeclaration(node, role, relName, body.getType());
+        if (role == DDlogRelationDeclaration.Role.Output) {
+            context.getProgram().tableToRelation.put(Objects.requireNonNull(tableName), relDecl);
+        }
         DDlogAtom lhs = new DDlogAtom(node, relName, new DDlogEVar(node, outVarName, relDecl.getType()));
         List<RuleBodyTerm> definitions = body.getDefinitions();
         DDlogExpression inRowVar = body.getRowVariable();
         definitions.add(new RuleBodyVarDef(node, outVarName, inRowVar));
         DDlogRule rule = new DDlogRule(node, lhs, definitions);
         rule.addComment(new DDlogComment(node));
-        context.add(relDecl);
+        context.add(relDecl, null);
         context.add(rule);
         return rule;
     }
@@ -153,7 +159,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         DDlogIRNode subquery = this.process(query.getQuery(), context);
         RuleBody body = subquery.to(RuleBody.class);
         RelationName relName = context.freshRelationName("tmp");
-        DDlogRule rule = createRule(query, relName, body, DDlogRelationDeclaration.Role.Internal, context);
+        DDlogRule rule = createRule(query, null, relName, body, DDlogRelationDeclaration.Role.Internal, context);
         String lhsVar = getRuleVar(rule).var;
         RuleBody result = new RuleBody(query, lhsVar, body.getType());
         result.addDefinition(new BodyTermLiteral(query, true, new DDlogAtom(query, relName, rule.head.val)));
@@ -193,7 +199,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             rhs = this.convertType(rhs, resultType, context);
             if (rule == null) {
                 RelationName ruleName = context.freshRelationName("union");
-                rule = createRule(union, ruleName, rhs, DDlogRelationDeclaration.Role.Internal, context);
+                rule = createRule(union, null, ruleName, rhs, DDlogRelationDeclaration.Role.Internal, context);
             } else {
                 if (!rule.head.val.getType().same(rhs.getType()))
                     throw new TranslationException("Union between sets with different types: ", union);
@@ -231,7 +237,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
 
         RelationName relName = context.freshRelationName("source");
         DDlogTStruct rhsStr = rhsType.to(DDlogTStruct.class);
-        DDlogRule rule = createRule(rhs.getNode(), relName, rhs, DDlogRelationDeclaration.Role.Internal, context);
+        DDlogRule rule = createRule(rhs.getNode(), null, relName, rhs, DDlogRelationDeclaration.Role.Internal, context);
         RuleBody result = new RuleBody(rhs.getNode(), rhs.getVarName(), type);
         result.addDefinition(new BodyTermLiteral(rhs.getNode(), true, rule.head));
         DDlogTStruct str = context.resolveType(type).to(DDlogTStruct.class);
@@ -261,7 +267,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
 
         RelationName relName = context.freshRelationName("except");
         DDlogRule rule = createRule(
-                except.getRight(), relName, right, DDlogRelationDeclaration.Role.Internal, context);
+                except.getRight(), null, relName, right, DDlogRelationDeclaration.Role.Internal, context);
         left.addDefinition(new RuleBodyVarDef(except, getRuleVar(rule).var, left.getRowVariable(false)));
         left.addDefinition(new BodyTermLiteral(except, false, rule.head));
         return left;
@@ -277,7 +283,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         for (RuleBody rhs: convert) {
             rhs = this.convertType(rhs, resultType, context);
             RelationName ruleName = context.freshRelationName("intersect");
-            DDlogRule rule = createRule(intersect, ruleName, rhs, DDlogRelationDeclaration.Role.Internal, context);
+            DDlogRule rule = createRule(intersect, null, ruleName, rhs, DDlogRelationDeclaration.Role.Internal, context);
             if (result == null)
                 result = new RuleBody(intersect, context.freshLocalName("v"), rule.head.val.getType());
             result.addDefinition(new BodyTermLiteral(
@@ -830,8 +836,9 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             context.getProgram().functions.add(func);
         }
 
-        DDlogRelationDeclaration outRel = new DDlogRelationDeclaration(select, DDlogRelationDeclaration.Role.Internal, outRelName, tUserResult);
-        context.add(outRel);
+        DDlogRelationDeclaration outRel = new DDlogRelationDeclaration(
+                select, DDlogRelationDeclaration.Role.Internal, outRelName, tUserResult);
+        context.add(outRel, null);
 
         DDlogExpression copy;
         if (groupBy.size() != 0) {
@@ -989,7 +996,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                 int intLimit = Integer.parseInt(limit);
                 RelationName relName = context.freshRelationName("limit");
                 RuleBody rhs = selectTranslation.to(RuleBody.class);
-                DDlogRule rule = createRule(spec, relName, rhs, DDlogRelationDeclaration.Role.Internal, context);
+                DDlogRule rule = createRule(spec, null, relName, rhs, DDlogRelationDeclaration.Role.Internal, context);
 
                 String resultVar = context.freshLocalName("limited");
                 RuleBody limited = new RuleBody(spec, resultVar, rhs.getType());
@@ -1151,7 +1158,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         if (query == null)
             throw new TranslationException("Not yet implemented", view);
         RuleBody rel = query.to(RuleBody.class);
-        return createRule(view, name, rel, role, context);
+        return createRule(view, Utilities.convertQualifiedName(view.getName()), name, rel, role, context);
     }
 
     /**
@@ -1172,7 +1179,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         }
 
         RelationName rel = context.freshRelationName("tmp");
-        createRule(body.getNode(), rel, body, DDlogRelationDeclaration.Role.Internal, context);
+        createRule(body.getNode(), null, rel, body, DDlogRelationDeclaration.Role.Internal, context);
         return rel;
     }
 

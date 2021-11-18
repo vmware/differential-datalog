@@ -26,9 +26,11 @@ package com.vmware.ddlog.ir;
 
 import com.vmware.ddlog.util.Linq;
 
+import javax.annotation.Nullable;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class DDlogProgram extends DDlogNode {
@@ -39,6 +41,7 @@ public class DDlogProgram extends DDlogNode {
     public final List<DDlogIndexDeclaration> indexes;
     public final List<DDlogRule> rules;
     public final List<DDlogImport> imports;
+    public final HashMap<String, DDlogRelationDeclaration> tableToRelation;
 
     DDlogProgram(List<DDlogTypeDef> typedefs, List<DDlogFunction> functions, List<DDlogRelationDeclaration> relations,
                  List<DDlogIndexDeclaration> indexes,
@@ -50,6 +53,7 @@ public class DDlogProgram extends DDlogNode {
         this.indexes = indexes;
         this.rules = rules;
         this.imports = imports;
+        this.tableToRelation = new HashMap<>();
     }
 
     public DDlogProgram() {
@@ -80,5 +84,10 @@ public class DDlogProgram extends DDlogNode {
         try (PrintWriter out = new PrintWriter(filename)) {
             out.println(this.toString());
         }
+    }
+
+    @Nullable
+    public DDlogRelationDeclaration getRelationFromTable(String tableName) {
+        return this.tableToRelation.get(tableName.toLowerCase());
     }
 }

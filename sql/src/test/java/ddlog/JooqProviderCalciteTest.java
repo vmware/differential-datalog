@@ -4,6 +4,7 @@
  */
 package ddlog;
 
+import com.vmware.ddlog.DDlogHandle;
 import com.vmware.ddlog.DDlogJooqProvider;
 import com.vmware.ddlog.util.sql.*;
 import ddlogapi.DDlogException;
@@ -62,14 +63,14 @@ public class JooqProviderCalciteTest extends JooqProviderTestBase {
         indexStatements.add(createIndexHosts);
         indexStatements.add(testIndexParsing);
 
-        ddlogAPI = compileAndLoad(
+        ddhandle = new DDlogHandle(
                 ddl.stream().map(CalciteSqlStatement::new).collect(Collectors.toList()),
                 new CalciteToPrestoTranslator(),
                 indexStatements);
 
         ToH2Translator<CalciteSqlStatement> translator = new CalciteToH2Translator();
         // Initialise the data provider
-        provider = new DDlogJooqProvider(ddlogAPI,
+        provider = new DDlogJooqProvider(ddhandle,
                 Stream.concat(ddl.stream().map(x -> translator.toH2(new CalciteSqlStatement(x))),
                                 indexStatements.stream().map(H2SqlStatement::new))
                         .collect(Collectors.toList()));
