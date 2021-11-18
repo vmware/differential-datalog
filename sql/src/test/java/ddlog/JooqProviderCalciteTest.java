@@ -21,6 +21,9 @@ public class JooqProviderCalciteTest extends JooqProviderTestBase {
 
     @BeforeClass
     public static void setup() throws IOException, DDlogException {
+        if (JooqProviderTestBase.skip)
+            throw new RuntimeException("Skipping");
+
         // SQL statements written in the Calcite dialect.
         String s1 = "create table hosts (id varchar(36), capacity integer, up boolean, primary key (id))";
         String v2 = "create view hostsv as select distinct * from hosts";

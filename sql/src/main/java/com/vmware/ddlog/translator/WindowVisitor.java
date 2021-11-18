@@ -27,7 +27,9 @@ package com.vmware.ddlog.translator;
 import com.facebook.presto.sql.tree.*;
 import com.vmware.ddlog.util.Linq;
 import com.vmware.ddlog.util.Ternary;
+import com.vmware.ddlog.util.Utilities;
 
+import javax.rmi.CORBA.Util;
 import java.util.*;
 
 /**
@@ -141,7 +143,7 @@ public class WindowVisitor
             String gb = context.freshLocalName("gb");
             wag.groupOn.add(new SingleColumn(e, new Identifier(gb)));
         }
-        String name = TranslationVisitor.convertQualifiedName(fc.getName());
+        String name = Utilities.convertQualifiedName(fc.getName());
         Ternary result = Ternary.Maybe;
         boolean isAggregate = SqlSemantics.semantics.isAggregateFunction(name);
         if (isAggregate) {

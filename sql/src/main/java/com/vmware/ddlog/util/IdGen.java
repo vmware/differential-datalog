@@ -22,28 +22,13 @@
  *
  */
 
-package com.vmware.ddlog.ir;
+package com.vmware.ddlog.util;
 
-import com.facebook.presto.sql.tree.Node;
+public class IdGen {
+    static int idGen = 0;
+    public final int id;
 
-import javax.annotation.Nullable;
-
-public class DDlogEField extends DDlogExpression {
-    private final DDlogExpression struct;
-    public final String field;
-
-    public DDlogEField(@Nullable Node node, DDlogExpression struct, String field, DDlogType type) {
-        super(node, type);
-        this.struct = struct;
-        this.field = field;
-    }
-
-    public DDlogExpression getStruct() {
-        return this.struct;
-    }
-
-    @Override
-    public String toString() {
-        return this.struct.toString() + "." + this.field;
+    public IdGen() {
+        this.id = idGen++;
     }
 }

@@ -22,49 +22,54 @@
  *
  */
 
-package com.vmware.ddlog.translator;
+package com.vmware.ddlog.translator.environment;
 
 import com.facebook.presto.sql.tree.Node;
 import com.vmware.ddlog.ir.*;
+import com.vmware.ddlog.util.IndentStringBuilder;
 
 import javax.annotation.Nullable;
 
-public class Scope {
-    static int idGen = 0;
-    public final int id;
+/**
+ * Represents a relation and its columns.
+ */
+public class RelationEnvironent extends IEnvironment {
     public final Node node;
     final String scopeName;
     public final String rowVariable;
-    public final DDlogType type;
+    public final DDlogTStruct type;
 
-    Scope(Node node, String scopeName, String rowVariable, DDlogType type) {
-        this.id = idGen++;
+    public RelationEnvironent(Node node, String scopeName, String rowVariable, DDlogTStruct type) {
         this.node = node;
         this.scopeName = scopeName;
         this.rowVariable = rowVariable;
         this.type = type;
     }
 
-    public String getName() { return this.scopeName; }
+    public RelationEnvironent cloneEnv() {
+        return new RelationEnvironent(this.node, this.scopeName, this.rowVariable, this.type);
+    }
 
-    /**
-     * Lookup the specified identifier as a column name.
-     * @param identifier  Identifier to look up.
-     * @return            null if the identifier is not a field name.
-     *                    A DDlogField expression of the row variable if the field is present.
-     */
     @Nullable
-    DDlogExpression lookupColumn(Node node, String identifier, TranslationContext context) {
-        DDlogType type = context.resolveType(this.type);
-        if (!(type instanceof DDlogTStruct))
-            return null;
-        DDlogTStruct ts = (DDlogTStruct)type;
-        for (DDlogField f: ts.getFields()) {
+    public DDlogExpression lookupIdentifier(String identifier) {
+        for (DDlogField f: this.type.getFields()) {
             if (identifier.equals(f.getName())) {
-                DDlogEVar var = new DDlogEVar(node, this.rowVariable, type);
-                return new DDlogEField(node, var, identifier, f.getType());
+                DDlogEVar var = new DDlogEVar(this.node, this.rowVariable, f.getType());
+                return new DDlogEField(this.node, var, identifier, f.getType());
             }
         }
         return null;
+    }
+
+    @Nullable
+    public IEnvironment lookupRelation(String identifier) {
+        if (identifier.equals(this.scopeName) ||
+            identifier.equals(this.rowVariable))
+            return this;
+        return null;
+    }
+
+    public IndentStringBuilder toString(IndentStringBuilder builder) {
+        return builder.append(this.scopeName + " - " + this.rowVariable + ": " + this.type);
     }
 }

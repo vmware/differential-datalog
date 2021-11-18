@@ -22,22 +22,16 @@
  *
  */
 
-package com.vmware.ddlog.ir;
+/**
+ * Package that doesn't allow null values as method parameters.
+ */
 
-import com.facebook.presto.sql.tree.Node;
+@ParametersAreNonnullByDefault
+@FieldsAreNonnullByDefault
+@MethodsAreNonnullByDefault
+package com.vmware.ddlog.translator.environment;
 
-import javax.annotation.Nullable;
+import com.vmware.ddlog.FieldsAreNonnullByDefault;
+import com.vmware.ddlog.MethodsAreNonnullByDefault;
 
-public class DDlogRHSCondition extends DDlogRuleRHS {
-    private final DDlogExpression expr;
-
-    public DDlogRHSCondition(@Nullable Node node, DDlogExpression expr) {
-        super(node);
-        this.expr = this.checkNull(expr);
-    }
-
-    @Override
-    public String toString() {
-        return this.expr.toString();
-    }
-}
+import javax.annotation.ParametersAreNonnullByDefault;

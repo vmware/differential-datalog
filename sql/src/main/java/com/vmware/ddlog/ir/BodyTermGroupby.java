@@ -28,22 +28,21 @@ import com.facebook.presto.sql.tree.Node;
 
 import javax.annotation.Nullable;
 
-public class DDlogEField extends DDlogExpression {
-    private final DDlogExpression struct;
-    public final String field;
+public class BodyTermGroupby extends RuleBodyTerm {
+    final String var;
+    final DDlogExpression rhsProject;
+    final String[] rhsGroupByVars;
 
-    public DDlogEField(@Nullable Node node, DDlogExpression struct, String field, DDlogType type) {
-        super(node, type);
-        this.struct = struct;
-        this.field = field;
-    }
-
-    public DDlogExpression getStruct() {
-        return this.struct;
+    public BodyTermGroupby(@Nullable Node node, String var, DDlogExpression rhsProject, String... rhsGroupByVars) {
+        super(node);
+        this.var = var;
+        this.rhsProject = rhsProject;
+        this.rhsGroupByVars = rhsGroupByVars;
     }
 
     @Override
     public String toString() {
-        return this.struct.toString() + "." + this.field;
+        return "var " + this.var + " = " + this.rhsProject.toString() +
+                ".group_by((" + String.join(", ", this.rhsGroupByVars) + "))";
     }
 }

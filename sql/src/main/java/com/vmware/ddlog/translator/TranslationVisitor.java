@@ -27,6 +27,7 @@ package com.vmware.ddlog.translator;
 import com.facebook.presto.sql.SqlFormatter;
 import com.facebook.presto.sql.tree.*;
 import com.vmware.ddlog.ir.*;
+import com.vmware.ddlog.translator.environment.RelationEnvironent;
 import com.vmware.ddlog.util.Linq;
 import com.vmware.ddlog.util.Ternary;
 import com.vmware.ddlog.util.Utilities;
@@ -37,7 +38,7 @@ import java.util.*;
 import static com.facebook.presto.sql.tree.Join.Type.LEFT;
 
 class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
-    static final boolean debug = false;
+    static boolean debug = false;
 
     static class GroupByInfo {
         /**
@@ -79,14 +80,14 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         return SqlFormatter.formatSql(node, Optional.empty()).replace("\n", " ");
     }
 
-    static String convertQualifiedName(QualifiedName name) {
-        return String.join(".", name.getParts());
+    public static void setDebug(boolean debug) {
+        TranslationVisitor.debug = debug;
     }
 
     @Override
     protected DDlogIRNode visitCreateTable(CreateTable node, TranslationContext context) {
-        String name = convertQualifiedName(node.getName());
-
+        String name = Utilities.convertQualifiedName(node.getName());
+        RelationName relName = context.freshRelationName(name);
         List<TableElement> elements = node.getElements();
         List<DDlogField> fields = new ArrayList<DDlogField>();
         List<DDlogField> keyColumns = new ArrayList<DDlogField>();
@@ -100,9 +101,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                     keyColumns.add(field);
             }
         }
-        DDlogTUser tuser = context.createStruct(node, fields, name);
-        String relName = DDlogRelationDeclaration.relationName(name);
-        context.reserveGlobalName(relName);
+        DDlogTUser tuser = context.createStruct(node, fields, relName.name);
         DDlogRelationDeclaration rel = new DDlogRelationDeclaration(
                 node, DDlogRelationDeclaration.Role.Input, relName, tuser);
         if (keyColumns.size() > 0) {
@@ -117,21 +116,19 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
      * Creates a rule and a declaration for the associated relation; adds them to the program.
      * @param node    SQL node that is being translated.
      * @param relName Name of the relation created.
-     * @param rhs     Right-hand side that defines the tuples of the current relation.
+     * @param body     Right-hand side that defines the tuples of the current relation.
      * @param role    Kind of relation created.
      * @param context Translation context; the rule and relation are added there.
      */
-    protected DDlogRule createRule(@Nullable Node node, String relName, RelationRHS rhs,
-                                   DDlogRelationDeclaration.Role role,
-                                   TranslationContext context) {
+    protected static DDlogRule createRule(@Nullable Node node, RelationName relName, RuleBody body,
+                                          DDlogRelationDeclaration.Role role,
+                                          TranslationContext context) {
         String outVarName = context.freshLocalName("v");
-        DDlogExpression outRowVarDecl = new DDlogEVarDecl(node, outVarName, rhs.getType());
-        DDlogRelationDeclaration relDecl = new DDlogRelationDeclaration(node, role, relName, rhs.getType());
+        DDlogRelationDeclaration relDecl = new DDlogRelationDeclaration(node, role, relName, body.getType());
         DDlogAtom lhs = new DDlogAtom(node, relName, new DDlogEVar(node, outVarName, relDecl.getType()));
-        List<DDlogRuleRHS> definitions = rhs.getDefinitions();
-        DDlogExpression inRowVar = rhs.getRowVariable();
-        DDlogESet set = new DDlogESet(node, outRowVarDecl, inRowVar);
-        definitions.add(new DDlogRHSCondition(node, set));
+        List<RuleBodyTerm> definitions = body.getDefinitions();
+        DDlogExpression inRowVar = body.getRowVariable();
+        definitions.add(new RuleBodyVarDef(node, outVarName, inRowVar));
         DDlogRule rule = new DDlogRule(node, lhs, definitions);
         rule.addComment(new DDlogComment(node));
         context.add(relDecl);
@@ -142,26 +139,31 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
     // The rules we synthesize have a relatively fixed syntax Rule[variable] :- ...
     // This function extracts the variable on the on the lhs of the rule.
     protected static DDlogEVar getRuleVar(DDlogRule rule) {
-        return rule.lhs.val.to(DDlogEVar.class);
+        return rule.head.val.to(DDlogEVar.class);
     }
 
     /**
      * Translate a query that produces a table.
      * @param query   Query to translate
      * @param context Translation context.
-     * @return        A RelationRHS whose row variable represents all rows in the table query.
+     * @return        A RuleBody whose row variable represents all rows in the table query.
      */
     @Override
     protected DDlogIRNode visitTableSubquery(TableSubquery query, TranslationContext context) {
         DDlogIRNode subquery = this.process(query.getQuery(), context);
-        RelationRHS rhs = subquery.to(RelationRHS.class);
-        String relName = context.freshRelationName("tmp");
-        DDlogRule rule = this.createRule(query, relName, rhs, DDlogRelationDeclaration.Role.Internal, context);
+        RuleBody body = subquery.to(RuleBody.class);
+        RelationName relName = context.freshRelationName("tmp");
+        DDlogRule rule = createRule(query, relName, body, DDlogRelationDeclaration.Role.Internal, context);
         String lhsVar = getRuleVar(rule).var;
-        RelationRHS result = new RelationRHS(query, lhsVar, rhs.getType());
-        result.addDefinition(new DDlogRHSLiteral(query, true, new DDlogAtom(query, relName, rule.lhs.val)));
-        Scope scope = new Scope(query, relName, lhsVar, rule.lhs.val.getType());
-        context.enterScope(scope);
+        RuleBody result = new RuleBody(query, lhsVar, body.getType());
+        result.addDefinition(new BodyTermLiteral(query, true, new DDlogAtom(query, relName, rule.head.val)));
+        DDlogTStruct type = context.resolveType(rule.head.val.getType()).to(DDlogTStruct.class);
+        RelationEnvironent scope = new RelationEnvironent(query, relName.name, lhsVar, type);
+        context.environment.stack(scope);
+        context.environment.renameDown(body.getVarName(), lhsVar);
+        String lastRel = context.lastRelationName();
+        if (lastRel != null)
+            context.environment.renameDown(lastRel, lhsVar);
         context.clearSubstitutions();
         return result;
     }
@@ -183,29 +185,28 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         if (!union.isDistinct())
             throw new TranslationException("UNION ALL not supported", union);
 
-        List<RelationRHS> convert = Linq.map(union.getRelations(), r -> this.process(r, context).to(RelationRHS.class));
-        List<DDlogType> types = Linq.map(convert, RelationRHS::getType);
+        List<RuleBody> convert = Linq.map(union.getRelations(), r -> this.process(r, context).to(RuleBody.class));
+        List<DDlogType> types = Linq.map(convert, RuleBody::getType);
         DDlogType resultType = context.meet(types);
         DDlogRule rule = null;
-        for (RelationRHS rhs: convert) {
+        for (RuleBody rhs: convert) {
             rhs = this.convertType(rhs, resultType, context);
             if (rule == null) {
-                String ruleName = context.freshRelationName("union");
-                rule = this.createRule(union, ruleName, rhs, DDlogRelationDeclaration.Role.Internal, context);
+                RelationName ruleName = context.freshRelationName("union");
+                rule = createRule(union, ruleName, rhs, DDlogRelationDeclaration.Role.Internal, context);
             } else {
-                if (!rule.lhs.val.getType().equals(rhs.getType()))
+                if (!rule.head.val.getType().same(rhs.getType()))
                     throw new TranslationException("Union between sets with different types: ", union);
-                DDlogAtom lhs = new DDlogAtom(union, rule.lhs.relation, rule.lhs.val);
-                List<DDlogRuleRHS> definitions = rhs.getDefinitions();
-                DDlogESet set = new DDlogESet(union, getRuleVar(rule).createDeclaration(), rhs.getRowVariable());
-                definitions.add(new DDlogRHSCondition(union, set));
+                DDlogAtom lhs = new DDlogAtom(union, rule.head.relation, rule.head.val);
+                List<RuleBodyTerm> definitions = rhs.getDefinitions();
+                definitions.add(new RuleBodyVarDef(union, getRuleVar(rule).var, rhs.getRowVariable()));
                 DDlogRule newRule = new DDlogRule(union, lhs, definitions);
                 context.add(newRule);
             }
         }
         assert rule != null;
-        RelationRHS result = new RelationRHS(union, getRuleVar(rule).var, rule.lhs.val.getType());
-        result.addDefinition(new DDlogRHSLiteral(union, true, rule.lhs));
+        RuleBody result = new RuleBody(union, getRuleVar(rule).var, rule.head.val.getType());
+        result.addDefinition(new BodyTermLiteral(union, true, rule.head));
         return result;
     }
 
@@ -223,16 +224,16 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
      * a new relation with type T1 and where we transform every value of type T
      * to a value of type T1.
      */
-    RelationRHS convertType(RelationRHS rhs, DDlogType type, TranslationContext context) {
+    RuleBody convertType(RuleBody rhs, DDlogType type, TranslationContext context) {
         DDlogType rhsType = context.resolveType(rhs.getType());
         if (rhsType.same(context.resolveType(type)))
             return rhs;
 
-        String relName = context.freshRelationName("source");
+        RelationName relName = context.freshRelationName("source");
         DDlogTStruct rhsStr = rhsType.to(DDlogTStruct.class);
-        DDlogRule rule = this.createRule(rhs.getNode(), relName, rhs, DDlogRelationDeclaration.Role.Internal, context);
-        RelationRHS result = new RelationRHS(rhs.getNode(), rhs.getVarName(), type);
-        result.addDefinition(new DDlogRHSLiteral(rhs.getNode(), true, rule.lhs));
+        DDlogRule rule = createRule(rhs.getNode(), relName, rhs, DDlogRelationDeclaration.Role.Internal, context);
+        RuleBody result = new RuleBody(rhs.getNode(), rhs.getVarName(), type);
+        result.addDefinition(new BodyTermLiteral(rhs.getNode(), true, rule.head));
         DDlogTStruct str = context.resolveType(type).to(DDlogTStruct.class);
         List<DDlogEStruct.FieldValue> fields = new ArrayList<DDlogEStruct.FieldValue>();
         for (DDlogField f: str.getFields()) {
@@ -252,36 +253,35 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
 
     @Override
     protected DDlogIRNode visitExcept(Except except, TranslationContext context) {
-        RelationRHS left = this.process(except.getLeft(), context).to(RelationRHS.class);
-        RelationRHS right = this.process(except.getRight(), context).to(RelationRHS.class);
+        RuleBody left = this.process(except.getLeft(), context).to(RuleBody.class);
+        RuleBody right = this.process(except.getRight(), context).to(RuleBody.class);
         DDlogType type = context.meet(left.getType(), right.getType());
         left = this.convertType(left, type, context);
         right = this.convertType(right, type, context);
 
-        String relName = context.freshRelationName("except");
-        DDlogRule rule = this.createRule(
+        RelationName relName = context.freshRelationName("except");
+        DDlogRule rule = createRule(
                 except.getRight(), relName, right, DDlogRelationDeclaration.Role.Internal, context);
-        left.addDefinition(new DDlogRHSCondition(
-                except, new DDlogESet(except, getRuleVar(rule).createDeclaration(), left.getRowVariable(false))));
-        left.addDefinition(new DDlogRHSLiteral(except, false, rule.lhs));
+        left.addDefinition(new RuleBodyVarDef(except, getRuleVar(rule).var, left.getRowVariable(false)));
+        left.addDefinition(new BodyTermLiteral(except, false, rule.head));
         return left;
     }
 
     @Override
     protected DDlogIRNode visitIntersect(Intersect intersect, TranslationContext context) {
-        List<RelationRHS> convert = Linq.map(intersect.getRelations(), r -> this.process(r, context).to(RelationRHS.class));
-        List<DDlogType> types = Linq.map(convert, RelationRHS::getType);
+        List<RuleBody> convert = Linq.map(intersect.getRelations(), r -> this.process(r, context).to(RuleBody.class));
+        List<DDlogType> types = Linq.map(convert, RuleBody::getType);
         DDlogType resultType = context.meet(types);
 
-        RelationRHS result = null;
-        for (RelationRHS rhs: convert) {
+        RuleBody result = null;
+        for (RuleBody rhs: convert) {
             rhs = this.convertType(rhs, resultType, context);
-            String ruleName = context.freshRelationName("intersect");
-            DDlogRule rule = this.createRule(intersect, ruleName, rhs, DDlogRelationDeclaration.Role.Internal, context);
+            RelationName ruleName = context.freshRelationName("intersect");
+            DDlogRule rule = createRule(intersect, ruleName, rhs, DDlogRelationDeclaration.Role.Internal, context);
             if (result == null)
-                result = new RelationRHS(intersect, context.freshLocalName("v"), rule.lhs.val.getType());
-            result.addDefinition(new DDlogRHSLiteral(
-                    intersect, true, new DDlogAtom(rhs.getNode(), rule.lhs.relation, result.getRowVariable())));
+                result = new RuleBody(intersect, context.freshLocalName("v"), rule.head.val.getType());
+            result.addDefinition(new BodyTermLiteral(
+                    intersect, true, new DDlogAtom(rhs.getNode(), rule.head.relation, result.getRowVariable())));
         }
         assert result != null;
         return result;
@@ -290,27 +290,34 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
     @Override
     protected DDlogIRNode visitAliasedRelation(
             AliasedRelation relation, TranslationContext context) {
-        DDlogIRNode rel = this.process(relation.getRelation(), context);
         String name = relation.getAlias().getValue();
-        RelationRHS rrhs = rel.to(RelationRHS.class);
-        context.exitScope();  // drop previous scope
-        Scope scope = new Scope(relation, name, rrhs.getVarName(), rrhs.getType());
-        context.enterScope(scope);
+        if (debug) System.out.println("Visting aliased relation " + relation);
+        context.pushAlias(name);
+        DDlogIRNode rel = this.process(relation.getRelation(), context);
+        RuleBody rrhs = rel.to(RuleBody.class);
+        context.environment.renameDown(name, rrhs.getVarName());
+        RelationNameVisitor rnv = new RelationNameVisitor();
+        String relationName = relation.getRelation().accept(rnv, null);
+        if (debug) System.out.println("Returning from aliased relation " + relation);
+        if (relationName != null)
+            context.environment.delete(relationName);
         return rrhs;
     }
 
     @Override
     protected DDlogIRNode visitTable(Table table, TranslationContext context) {
-        String name = convertQualifiedName(table.getName());
-        DDlogRelationDeclaration relation = context.getRelation(DDlogRelationDeclaration.relationName(name));
+        String qualifiedName = Utilities.convertQualifiedName(table.getName());
+        RelationName name = new RelationName(RelationName.makeRelationName(qualifiedName), qualifiedName, table);
+        DDlogRelationDeclaration relation = context.getRelation(name);
         if (relation == null)
-            throw new TranslationException("Could not find relation", table);
+            throw new TranslationException("Could not find relation `" + table.toString() + "'", table);
         String var = context.freshLocalName("v");
         DDlogType type = relation.getType();
-        Scope scope = new Scope(table, name, var, type);
-        context.enterScope(scope);
-        RelationRHS result = new RelationRHS(table, var, type);
-        result.addDefinition(new DDlogRHSLiteral(table,
+        DDlogTStruct stype = context.resolveType(type).to(DDlogTStruct.class);
+        RelationEnvironent scope = new RelationEnvironent(table, qualifiedName, var, stype);
+        context.environment.stack(scope);
+        RuleBody result = new RuleBody(table, var, type);
+        result.addDefinition(new BodyTermLiteral(table,
                 true, new DDlogAtom(table, relation.getName(), result.getRowVariable())));
         return result;
     }
@@ -318,10 +325,11 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
     /**
      * Convert a select without aggregation.
      */
-    private <T extends SelectItem> RelationRHS processSimpleSelect(
-            Node select, RelationRHS inputRelation, List<T> selectArguments,
+    private <T extends SelectItem> RuleBody processSimpleSelect(
+            Node select, RuleBody inputRelation, List<T> selectArguments,
             TranslationContext context) {
-        String outRelName = context.freshRelationName("tmp");
+        if (debug) System.out.println("Visiting simple select " + select);
+        RelationName outRelName = context.freshRelationName("tmp");
         if (selectArguments.size() == 1) {
             // Special case for SELECT *
             SelectItem single = selectArguments.get(0);
@@ -334,10 +342,15 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
 
         List<DDlogField> typeList = new ArrayList<DDlogField>();
         List<DDlogEStruct.FieldValue> exprList = new ArrayList<DDlogEStruct.FieldValue>();
+        HashMap<String, String> aliases = new HashMap<>();
         for (SelectItem s : selectArguments) {
             if (s instanceof SingleColumn) {
                 SingleColumn sc = (SingleColumn) s;
                 String name = context.columnName(sc);
+                String originalName = context.originalColumnName(sc);
+                if (!name.equals(originalName)) {
+                    aliases.put(name, originalName);
+                }
                 Expression expression = sc.getExpression();
                 DDlogExpression expr = context.translateExpression(expression);
                 typeList.add(new DDlogField(sc, name, expr.getType()));
@@ -359,10 +372,10 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             }
         }
 
-        DDlogTUser tuser = context.createStruct(select, typeList, outRelName);
+        DDlogTUser tuser = context.createStruct(select, typeList, outRelName.name);
         String var = context.freshLocalName("v");
-        RelationRHS result = new RelationRHS(select, var, tuser);
-        for (DDlogRuleRHS rhs: inputRelation.getDefinitions())
+        RuleBody result = new RuleBody(select, var, tuser);
+        for (RuleBodyTerm rhs: inputRelation.getDefinitions())
             result.addDefinition(rhs);
         DDlogExpression project = new DDlogEStruct(select, tuser.name, tuser, exprList);
         DDlogExpression assignProject = new DDlogESet(
@@ -370,8 +383,8 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                 result.getRowVariable(true),
                 project);
         result = result.addDefinition(assignProject);
-        DDlogRelationDeclaration outRel = new DDlogRelationDeclaration(select, DDlogRelationDeclaration.Role.Internal, outRelName, tuser);
-        context.add(outRel);
+        if (!aliases.isEmpty())
+            context.environment.renameDown(aliases);
         return result;
     }
 
@@ -392,6 +405,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             case "some":
             case "every":
             case "sum":
+            case "array_agg":
                 return aggregatedType;
             case "min":
             case "max":
@@ -405,8 +419,6 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                         aggregatedType,  // sum
                         aggregatedType   // count
                 ).setMayBeNull(aggregatedType.mayBeNull);
-            case "array_agg":
-                return aggregatedType;
             default:
                 throw new TranslationException("Unexpected aggregate", node);
         }
@@ -670,9 +682,9 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         state.resultFieldOrigin.put(name, expression);
     }
 
-    private <T extends SelectItem> RelationRHS processSelectAggregate(
+    private <T extends SelectItem> RuleBody processSelectAggregate(
             Select select,
-            RelationRHS inputRelation,
+            RuleBody inputRelation,
             List<T> selectArguments,
             @Nullable GroupBy gby,
             List<GroupByInfo> groupBy,
@@ -695,7 +707,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
              result = <complete aggregate>(gb1, gb2, v)
          */
         SelectTranslationState state = new SelectTranslationState(select, groupBy);
-        String outRelName = context.freshRelationName("tmp");
+        RelationName outRelName = context.freshRelationName("tmp");
         String paramName = context.freshLocalName("g");
 
         // We will generate a custom function to perform the aggregation.
@@ -717,13 +729,17 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         // This is a bit conservative: we pass to the aggregation function
         // all variables that are currently "live".  The aggregation may
         // not use all of them.
-        for (DDlogRuleRHS rhs: inputRelation.getDefinitions()) {
-            if (!rhs.is(DDlogRHSLiteral.class))
-                continue;
-            DDlogRHSLiteral lit = rhs.to(DDlogRHSLiteral.class);
-            if (lit.atom.val.is(DDlogEVar.class)) {
-                tupleFields.add(lit.atom.val.getType());
-                tupleVars.add(lit.atom.val.to(DDlogEVar.class));
+        for (RuleBodyTerm term: inputRelation.getDefinitions()) {
+            if (term.is(BodyTermLiteral.class)) {
+                BodyTermLiteral lit = term.to(BodyTermLiteral.class);
+                if (lit.polarity && lit.atom.val.is(DDlogEVar.class)) {
+                    tupleFields.add(lit.atom.val.getType());
+                    tupleVars.add(lit.atom.val.to(DDlogEVar.class));
+                }
+            } else if (term.is(RuleBodyVarDef.class)) {
+                RuleBodyVarDef def = term.to(RuleBodyVarDef.class);
+                tupleFields.add(def.getExprType());
+                tupleVars.add(new DDlogEVar(def.getNode(), def.getVar(), def.getExprType()));
             }
         }
         for (GroupByInfo g: groupBy)
@@ -757,7 +773,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                 if (sc.getAlias().isPresent())
                     name = sc.getAlias().get().getValue().toLowerCase();
                 else {
-                    ExpressionColumnName ecn = new ExpressionColumnName();
+                    ColumnNameVisitor ecn = new ColumnNameVisitor();
                     name = ecn.process(sc.getExpression());
                 }
                 Expression expression = sc.getExpression();
@@ -775,11 +791,11 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             this.processSelectExpression(having, true, null, state, context);
 
         context.clearSubstitutions();
-        DDlogTUser tUserResult = context.createStruct(select, state.resultTypeFields, outRelName);
+        DDlogTUser tUserResult = context.createStruct(select, state.resultTypeFields, outRelName.name);
         DDlogTUser tUserFunction = context.createStruct(select, state.functionResultTypeFields, agg);
         String var = context.freshLocalName("v");
-        RelationRHS result = new RelationRHS(select, var, tUserResult);
-        for (DDlogRuleRHS rhs: inputRelation.getDefinitions())
+        RuleBody result = new RuleBody(select, var, tUserResult);
+        for (RuleBodyTerm rhs: inputRelation.getDefinitions())
             result.addDefinition(rhs);
 
         // For each expression that we group by add a new temporary variable
@@ -799,7 +815,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         String[] vars = groupByVars.toArray(new String[0]);
         String aggregateVarName = context.freshLocalName("aggResult");
         String gbVarName = context.freshLocalName("groupResult");
-        DDlogRHSGroupby gb = new DDlogRHSGroupby(gby, gbVarName, callArg, vars);
+        BodyTermGroupby gb = new BodyTermGroupby(gby, gbVarName, callArg, vars);
         result.addDefinition(gb);
 
         DDlogType gtype = new DDlogTGroup(gby, forLoop.getType(), tUserFunction);
@@ -878,6 +894,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
 
         // We start by processing the from clause; the scope of the rest of the
         // query is influenced by the from clause.
+        if (debug) System.out.println("Visiting FROM clause of " + spec);
         DDlogIRNode source = this.process(spec.getFrom().get(), context);
         if (source == null)
             throw new TranslationException("Not yet handled", spec);
@@ -906,7 +923,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         for (SelectItem s : items) {
             if (s instanceof AllColumns) {
                 foundNonAggregate = true;
-                DDlogType type = source.to(RelationRHS.class).getType();
+                DDlogType type = source.to(RuleBody.class).getType();
                 DDlogTStruct struct = context.resolveType(type).to(DDlogTStruct.class);
                 for (DDlogField f: struct.getFields()) {
                     Identifier id = new Identifier(f.getName());
@@ -944,7 +961,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
 
         if (windowVisitor.windows.isEmpty()) {
             // No window computations: synthesize the query directly.
-            RelationRHS relation = source.to(RelationRHS.class);
+            RuleBody relation = source.to(RuleBody.class);
             if (spec.getWhere().isPresent()) {
                 Expression expr = spec.getWhere().get();
                 DDlogExpression ddexpr = context.translateExpression(expr);
@@ -957,7 +974,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                 having = spec.getHaving().get();
 
             // If we have no window functions we can do everything in one step.
-            RelationRHS selectTranslation;
+            RuleBody selectTranslation;
             if (foundAggregate) {
                 selectTranslation = this.processSelectAggregate(
                         select, relation, items, gb, groupBy, having, context);
@@ -970,16 +987,16 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             if (spec.getLimit().isPresent()) {
                 String limit = spec.getLimit().get();
                 int intLimit = Integer.parseInt(limit);
-                String relName = context.freshRelationName("limit");
-                RelationRHS rhs = selectTranslation.to(RelationRHS.class);
-                DDlogRule rule = this.createRule(spec, relName, rhs, DDlogRelationDeclaration.Role.Internal, context);
+                RelationName relName = context.freshRelationName("limit");
+                RuleBody rhs = selectTranslation.to(RuleBody.class);
+                DDlogRule rule = createRule(spec, relName, rhs, DDlogRelationDeclaration.Role.Internal, context);
 
                 String resultVar = context.freshLocalName("limited");
-                RelationRHS limited = new RelationRHS(spec, resultVar, rhs.getType());
-                limited.addDefinition(new DDlogRHSLiteral(spec, true, new DDlogAtom(spec, relName, rule.lhs.val)));
+                RuleBody limited = new RuleBody(spec, resultVar, rhs.getType());
+                limited.addDefinition(new BodyTermLiteral(spec, true, new DDlogAtom(spec, relName, rule.head.val)));
                 // use a group-by with an empty key and the built-in limit aggregator
                 String groupVar = context.freshLocalName("g");
-                limited.addDefinition(new DDlogRHSGroupby(spec, groupVar, getRuleVar(rule)));
+                limited.addDefinition(new BodyTermGroupby(spec, groupVar, getRuleVar(rule)));
                 DDlogType setType = new DDlogTUser(null, "Set", false, rhs.getType());
 
                 String aggVar = context.freshLocalName("agg");
@@ -988,7 +1005,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                             new DDlogEApply(spec, "limit", rhs.getType(),
                                 new DDlogEVar(spec, groupVar, setType),
                                 new DDlogEInt(spec, intLimit))));
-                limited.addDefinition(new DDlogRHSFlatMap(spec, resultVar, new DDlogEVar(spec, aggVar, rhs.getType())));
+                limited.addDefinition(new BodyTermFlatMap(spec, resultVar, new DDlogEVar(spec, aggVar, rhs.getType())));
                 selectTranslation = limited;
             }
             return selectTranslation;
@@ -1049,7 +1066,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             Query qi = new Query(Optional.empty(), window, Optional.empty(), Optional.empty());
             CreateView over = new CreateView(overQName, qi, false);
             if (debug) System.out.println(toString(over));
-            context.exitAllScopes();
+            context.environment.exitAllScopes();
             context.viewIsOutput = false;
             this.process(over, context);
             JoinCriteria criteria = new NaturalJoin();
@@ -1064,14 +1081,17 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         // Add columns to finalItems in the order that they appear in the original table.
         for (SelectItem originalColumn : query.getSelect().getSelectItems()) {
             if (originalColumn instanceof AllColumns) {
-                Table r = (Table) query.getFrom().get();
-                String rn = DDlogRelationDeclaration.relationName(r.getName().toString());
-                DDlogType tableType = context.resolveType(context.getRelation(rn)
-                        .getType());
-                DDlogTStruct struct = tableType.to(DDlogTStruct.class);
-                for (DDlogField f: struct.getFields()) {
-                    Identifier id = new Identifier(f.getName());
-                    finalItems.add(new SingleColumn(id, id));
+                if (query.getFrom().isPresent()) {
+                    Table r = (Table) query.getFrom().get();
+                    String tn = Utilities.convertQualifiedName(r.getName());
+                    String name = RelationName.makeRelationName(tn);
+                    RelationName rn = new RelationName(name, tn, r);
+                    DDlogType tableType = context.resolveType(Objects.requireNonNull(context.getRelation(rn)).getType());
+                    DDlogTStruct struct = tableType.to(DDlogTStruct.class);
+                    for (DDlogField f : struct.getFields()) {
+                        Identifier id = new Identifier(f.getName());
+                        finalItems.add(new SingleColumn(id, id));
+                    }
                 }
             } else if (originalColumn instanceof SingleColumn) {
                 SingleColumn scOrigCol = (SingleColumn) originalColumn;
@@ -1101,7 +1121,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
 
                 }
             } else {
-                throw new RuntimeException("Select items aren't of type SingleColumn or AllColumns");
+                throw new TranslationException("Select items aren't of type SingleColumn or AllColumns", query);
             }
         }
 
@@ -1115,69 +1135,88 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                 Optional.empty(),
                 Optional.empty());
         if (debug) System.out.println(toString(joins));
-        context.exitAllScopes();
+        context.environment.exitAllScopes();
         context.viewIsOutput = false;
         return this.process(joins, context);
     }
 
     @Override
     protected DDlogIRNode visitCreateView(CreateView view, TranslationContext context) {
-        String name = convertQualifiedName(view.getName());
+        if (debug) System.out.println("Executing " + view);
+        String qn = Utilities.convertQualifiedName(view.getName());
+        RelationName name = context.freshRelationName(qn);
         DDlogRelationDeclaration.Role role =
                 context.viewIsOutput ? DDlogRelationDeclaration.Role.Output : DDlogRelationDeclaration.Role.Internal;
         DDlogIRNode query = this.process(view.getQuery(), context);
         if (query == null)
             throw new TranslationException("Not yet implemented", view);
-        RelationRHS rel = query.to(RelationRHS.class);
-        String relName = DDlogRelationDeclaration.relationName(name);
-        return this.createRule(view, relName, rel, role, context);
+        RuleBody rel = query.to(RuleBody.class);
+        return createRule(view, name, rel, role, context);
     }
 
     /**
-     * Generate a fresh name that is not in the set.
-     * @param prefix  Prefix used to generate the name.
-     * @param used    Set of names that cannot be used.
-     * @return        The generated name.  The name is added to the used set.
+     * Given a rule body make sure that it is a relation definition.
+     * Either it contains just a positive relation atom, or, if not,
+     * define a new relation.
+     * @param body  Rule body.
      */
-    public static String freshName(String prefix, Set<String> used) {
-        if (!used.contains(prefix)) {
-            used.add(prefix);
-            return prefix;
-        }
-        for (int i = 0; ; i++) {
-            String candidate = prefix + i;
-            if (!used.contains(candidate)) {
-                used.add(candidate);
-                return candidate;
+    RelationName ensureRelation(RuleBody body, TranslationContext context) {
+        List<RuleBodyTerm> defs = body.getDefinitions();
+        if (defs.size() == 1) {
+            RuleBodyTerm term = defs.get(0);
+            if (term.is(BodyTermLiteral.class)) {
+                BodyTermLiteral lit = term.to(BodyTermLiteral.class);
+                if (lit.polarity)
+                    return lit.atom.relation;
             }
         }
+
+        RelationName rel = context.freshRelationName("tmp");
+        createRule(body.getNode(), rel, body, DDlogRelationDeclaration.Role.Internal, context);
+        return rel;
     }
 
+    /**
+     * Generate code for a join.
+     */
     @Override
     public DDlogIRNode visitJoin(Join join, TranslationContext context) {
-        TranslationContext rightContext = context.clone();
-        DDlogIRNode left = this.process(join.getLeft(), context);
-        // Process the right relation in its own context.
+        /*
+            Let us consider this example
+            SELECT DISTINCT t1.column2, X.column1 FROM t1
+            JOIN (SELECT DISTINCT column1 FROM t2) AS X
+            ON t1.column1 = X.column1
+         */
+        // Process each relation in its own context.
+        TranslationContext leftContext = context.cloneCtxt();
+        TranslationContext rightContext = context.cloneCtxt();
+        DDlogIRNode left = this.process(join.getLeft(), leftContext);
         DDlogIRNode right = this.process(join.getRight(), rightContext);
+        RuleBody leftBody = left.to(RuleBody.class);
+        RuleBody rightBody = right.to(RuleBody.class);
+        context.mergeWith(leftContext);
         context.mergeWith(rightContext);
-        RelationRHS lrel = left.to(RelationRHS.class);
-        RelationRHS rrel = right.to(RelationRHS.class);
-        String var = context.freshLocalName("v");
-        DDlogType ltype = context.resolveType(lrel.getType());
-        DDlogType rtype = context.resolveType(rrel.getType());
-        DDlogTStruct lst = ltype.to(DDlogTStruct.class);
-        DDlogTStruct rst = rtype.to(DDlogTStruct.class);
-        List<DDlogRuleRHS> rules = new ArrayList<DDlogRuleRHS>();
-        rules.addAll(lrel.getDefinitions());
-        rules.addAll(rrel.getDefinitions());
+        DDlogTStruct ltype = context.resolveType(leftBody.getType()).to(DDlogTStruct.class);
+        DDlogTStruct rtype = context.resolveType(rightBody.getType()).to(DDlogTStruct.class);
+        // Terms of the result.
+        List<RuleBodyTerm> terms = new ArrayList<RuleBodyTerm>();
+        // We expect that each of the lrel and rrel is just a single RuleBodyTerm
+        // For our example leftRelation should be T1.  
+        RelationName leftRelation = this.ensureRelation(leftBody, context);
+        // For our example rightRelation should be X.  
+        RelationName rightRelation = this.ensureRelation(rightBody, context);
 
+        // For a full join both of these are true
         boolean leftJoin = false;
         boolean rightJoin = false;
 
-        Set<String> joinColumns = new HashSet<String>();
+        // Detect which columns we perform the join on, and whether
+        // this is an equijoin.  In our example this will detect that we join on
+        // t1.column1 = X.column1, and this is an equijoin.
+        JoinColumns joinMap = new JoinColumns(leftContext, rightContext);
         switch (join.getType()) {
-            /*
             case FULL:
+                // both left and right
                 leftJoin = true;
                 // fall through
             case RIGHT:
@@ -1185,23 +1224,23 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                 // fall through
             case LEFT:
                 // fall through
-              */
             case INNER:
                 if (join.getType() == LEFT)
                     leftJoin = true;
                 if (join.getCriteria().isPresent()) {
                     JoinCriteria c = join.getCriteria().get();
                     if (c instanceof JoinOn) {
+                        // This is the only case which may not be an equijoin.
                         JoinOn on = (JoinOn)c;
-                        DDlogExpression onE = context.translateExpression(on.getExpression());
-                        rules.add(new DDlogRHSCondition(join, ExpressionTranslationVisitor.unwrapBool(onE)));
+                        joinMap.analyze(on.getExpression());
                     } else if (c instanceof JoinUsing) {
                         JoinUsing using = (JoinUsing)c;
-                        joinColumns = new HashSet<String>(Linq.map(using.getColumns(), Identifier::getValue));
+                        using.getColumns().forEach(col -> joinMap.addColumnPair(col.getValue(), col.getValue()));
                     } else if (c instanceof NaturalJoin) {
-                        joinColumns = new HashSet<String>(Linq.map(lst.getFields(), DDlogField::getName));
-                        HashSet<String> rightCols = new HashSet<String>(Linq.map(rst.getFields(), DDlogField::getName));
+                        HashSet<String> joinColumns = new HashSet<String>(Linq.map(ltype.getFields(), DDlogField::getName));
+                        HashSet<String> rightCols = new HashSet<String>(Linq.map(rtype.getFields(), DDlogField::getName));
                         joinColumns.retainAll(rightCols);
+                        joinColumns.forEach(col -> joinMap.addColumnPair(col, col));
                     } else {
                         throw new TranslationException("Unexpected join", join);
                     }
@@ -1215,48 +1254,170 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                 throw new TranslationException("Unexpected join type", join);
         }
 
-        DDlogExpression condition = new DDlogEBool(join, true);
-        for (String col: joinColumns) {
-            DDlogExpression e = context.operationCall(join, DDlogEBinOp.BOp.Eq,
-                    new DDlogEField(join, lrel.getRowVariable(), col, lst.getFieldType(col)),
-                    new DDlogEField(join, rrel.getRowVariable(), col, rst.getFieldType(col)));
-            condition = context.operationCall(join, DDlogEBinOp.BOp.And, condition, e);
-        }
-        rules.add(new DDlogRHSCondition(join, ExpressionTranslationVisitor.unwrapBool(condition)));
-
-        // For the result we take all fields from the left and right but we skip
-        // the joinColumn fields from the right.
-        List<DDlogField> tfields = new ArrayList<DDlogField>();
-        List<DDlogEStruct.FieldValue> fields = new ArrayList<DDlogEStruct.FieldValue>();
-
-        Set<String> names = new HashSet<String>();
-        for (DDlogField f: lst.getFields()) {
-            tfields.add(f);
-            names.add(f.getName());
-            fields.add(new DDlogEStruct.FieldValue(f.getName(),
-                    new DDlogEField(join, lrel.getRowVariable(), f.getName(), f.getType())));
-        }
-        for (DDlogField f: rst.getFields()) {
-            if (joinColumns.contains(f.getName()))
-                continue;
-            // We may need to rename this field if it is already present
-            String name = freshName(f.getName(), names);
-            DDlogField field = new DDlogField(f.getNode(), name, f.getType());
-            tfields.add(field);
-            fields.add(new DDlogEStruct.FieldValue(field.getName(),
-                    new DDlogEField(f.getNode(), rrel.getRowVariable(), f.getName(), f.getType())));
+        String var = context.freshLocalName("v");
+        if (!joinMap.isEquiJoin()) {
+            // In this case we generate a Cartesian product followed by a filter.
+            // The filter is generated directly from the join condition.
+            // We use the terms we have already obtained and we compile the predicate.
+            // This does not apply to our example, but the general shape is is:
+            // T1[v0], X[v1], predicate(v0, v1), ...
+            // left side of cartesian product
+            terms.addAll(leftBody.getDefinitions());
+            // right side of cartesian product
+            terms.addAll(rightBody.getDefinitions());
+            context.environment = leftContext.environment;
+            context.environment.stack(rightContext.environment);
+            // condition
+            DDlogExpression onE = context.translateExpression(joinMap.getCondition());
+            terms.add(new RuleBodyCondition(join, ExpressionTranslationVisitor.unwrapBool(onE)));
         }
 
-        DDlogTUser tuser = context.createStruct(join, tfields, "tmp");
-        DDlogExpression e = new DDlogESet(join,
-                new DDlogEVarDecl(join, var, tuser),
-                new DDlogEStruct(join, tuser.name, tuser, fields));
-        rules.add(new DDlogRHSCondition(join, e));
+        // Now we have to generate a new term that contains all the tuples produced by the join.
+        // We generate a flat struct, which has all fields from the left and the right relations that are joined.
+        // Unfortunately fields may have common names, and in that case we need to rename some of them.
+        List<DDlogField> resultFields = new ArrayList<DDlogField>();
+        List<DDlogEStruct.FieldValue> resultFieldValues = new ArrayList<DDlogEStruct.FieldValue>();
 
-        RelationRHS result = new RelationRHS(join, var, tuser);
-        for (DDlogRuleRHS r: rules)
+        // This will generate a DDlog struct value like this: TRt1{.column1 = column1, .column2 = column2, ... }
+        // with one fresh variable for each column of the left relation.
+        // However, for non-equi joins we use the variable generated above (v0) and we generate a struct like
+        // TRt1{.column1 = v0.column1, .column2 = v0.column2, ... }.   This does not introduce any variables.
+        SymbolTable usedFieldNames = new SymbolTable();
+        List<DDlogEStruct.FieldValue> leftValues = new ArrayList<>();
+        for (DDlogField f: ltype.getFields()) {
+            String fieldName = f.getName();
+            DDlogExpression value;
+
+            if (joinMap.isEquiJoin()) {
+                // For the left table all variables are fresh.
+                // Let us assume that they look like freshColumn1, freshColumn2, etc.
+                String varName = context.freshLocalName(f.getName());
+                joinMap.setColumnVariable(f.getName(), varName, f.getType());
+                // The wrapSome below is necessary to filter out null values.  Joins ignore nulls.
+                // If the column is nullable the struct generated will look like:
+                // TRt1{.column1 = Some{freshColumn1}, .column2 = Some{freshColumn2}, ... }
+                value = new DDlogEVar(f.getNode(), varName, f.getType());
+                if (joinMap.isLeftColumn(f.getName()))
+                    value = ExpressionTranslationVisitor.wrapSomeIfNeeded(value, f.getType());
+            } else { // non equi-join
+                value =new DDlogEField(f.getNode(), leftBody.getRowVariable(), f.getName(), f.getType());
+            }
+            usedFieldNames.addName(fieldName);
+            DDlogEStruct.FieldValue fieldValue = new DDlogEStruct.FieldValue(fieldName, value);
+            leftValues.add(fieldValue);  // only needed for equijoins
+            resultFieldValues.add(fieldValue);
+            resultFields.add(f);
+        }
+        if (joinMap.isEquiJoin()) {
+            // Generate the term that matches the relation:
+            // RT1[ struct_from_above ], i.e.,
+            // RT1[ TRt1{.column1 = freshColumn1, .column2 = freshColumn2, ... } ]
+            DDlogEStruct leftValue = new DDlogEStruct(ltype.getNode(), ltype.getName(), ltype, leftValues);
+            DDlogAtom atom = new DDlogAtom(join.getLeft(), leftRelation, leftValue);
+            terms.add(new BodyTermLiteral(join, true, atom));
+        }
+
+        // Same process for the right relation.
+        // The struct produced in our case will be TX{.column1 = freshColumn1}.  Note that this
+        // reuses variable freshColumn1, introduced in the left relation, denoting a join.
+        List<DDlogEStruct.FieldValue> rightValues = new ArrayList<>();
+        // For each right column name the variable associated
+        HashMap<String, String> rightColumnNameInResult = new HashMap<>();
+        for (DDlogField f: rtype.getFields()) {
+            // We may need to generate a fresh field name in the result structure that
+            // has all columns from both tables,  if the left table already has a field with this name.
+            String resultRightFieldName = usedFieldNames.freshName(f.getName());
+            // Generate a variable for columns that are not being joined on.
+            String rightVariable = context.freshLocalName(f.getName());
+            DDlogExpression value;
+            // True if the right column has a corresponding left column that it's equal to.
+            boolean joinedOn = false;
+            // True if the right column has the same type as the corresponding left column.
+            boolean sameType = true;
+            String rightColumnName = f.getName();
+
+            if (joinMap.isEquiJoin()) {
+                // Find the temporary variable that we generated that corresponds to this column in the
+                // left table if any.  This would find 'freshColumn1' for X.column1
+                String useVariable = joinMap.findLeftVariable(rightColumnName);
+                // If the variable is not null, this column is being joined on.
+                joinedOn = useVariable != null;
+                if (joinedOn) {
+                    DDlogType type = joinMap.findLeftType(f.getName());
+                    if (!f.getType().same(type))
+                        // This can happen because one type is nullable and the other is not.
+                        // The we should keep both columns
+                        sameType = false;
+                } else {
+                    // I we are not joining on this column use a fresh variable.
+                    useVariable = rightVariable;
+                }
+                value = new DDlogEVar(f.getNode(), useVariable, f.getType());
+                if (joinedOn) {
+                    value = ExpressionTranslationVisitor.wrapSomeIfNeeded(value, f.getType());
+                }
+            } else {
+                value = new DDlogEField(f.getNode(), rightBody.getRowVariable(), f.getName(), f.getType());
+            }
+
+            rightValues.add(new DDlogEStruct.FieldValue(f.getName(), value));  // only used for equijoins
+            if (!joinedOn || !sameType) {
+                rightColumnNameInResult.put(f.getName(), resultRightFieldName);
+                DDlogField rightField = new DDlogField(f.getNode(), resultRightFieldName, f.getType());
+                resultFields.add(rightField);
+                resultFieldValues.add(new DDlogEStruct.FieldValue(resultRightFieldName, value));
+            } else {
+                // This field is already present identically in the left table, we don't
+                // need to add it to the result at all.  But we need to rename accesses to this
+                // field to the left column name.
+                String leftColumn = joinMap.findLeftColumn(f.getName());
+                rightColumnNameInResult.put(f.getName(), Objects.requireNonNull(leftColumn));
+            }
+        }
+        if (joinMap.isEquiJoin()) {
+            DDlogEStruct rightValue = new DDlogEStruct(rtype.getNode(), rtype.getName(), rtype, rightValues);
+            DDlogAtom atom = new DDlogAtom(join.getLeft(), rightRelation, rightValue);
+            terms.add(new BodyTermLiteral(join, true, atom));
+        }
+
+        DDlogTUser tuser = context.createStruct(join, resultFields, "tmp");
+        // The term containing the result.
+        terms.add(new RuleBodyVarDef(join, var, new DDlogEStruct(join, tuser.name, tuser, resultFieldValues)));
+        RuleBody result = new RuleBody(join, var, tuser);
+        for (RuleBodyTerm r: terms)
             result.addDefinition(r);
+
+        leftContext.environment.renameUp(leftBody.getVarName(), var, new HashMap<>());
+        rightContext.environment.renameUp(rightBody.getVarName(), var, rightColumnNameInResult);
+        leftContext.environment.stack(rightContext.environment);
+        context.environment = leftContext.environment;
         return result;
+
+        /*
+        String commonName = context.freshRelationName("common");
+        DDlogRule common = createRule(join, commonName, commonRhs, DDlogRelationDeclaration.Role.Internal, context);
+
+        if (leftJoin) {
+            String leftName = context.freshRelationName("left");
+            RuleBody leftBody = new RuleBody(join, lRel.getVarName(), lRel.getType());
+            lRel.getDefinitions().forEach(leftBody::addDefinition);
+            DDlogEStruct struct = new DDlogEStruct(join, ltype.getName(), lRel.getType());
+            DDlogAtom atom = new DDlogAtom(join, commonName, struct);
+            for (DDlogField field: ltype.getFields()) {
+
+            }
+            BodyTermLiteral neg = new BodyTermLiteral(join, false, atom);
+            leftBody.addDefinition(neg);
+            DDlogRule leftOnly = createRule(join, leftName, leftBody, DDlogRelationDeclaration.Role.Internal, context);
+        }
+        if (rightJoin) {
+            // TODO
+        }
+
+        RuleBody result = new RuleBody(join, getRuleVar(common).var, common.head.val.getType());
+        result.addDefinition(new BodyTermLiteral(join, true, common.head));
+        return result;
+         */
     }
 
     @Override

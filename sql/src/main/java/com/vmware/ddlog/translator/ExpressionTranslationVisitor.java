@@ -28,6 +28,7 @@ import com.facebook.presto.sql.tree.*;
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Preconditions;
 import com.vmware.ddlog.ir.*;
+import com.vmware.ddlog.translator.environment.IEnvironment;
 import com.vmware.ddlog.util.Linq;
 import com.vmware.ddlog.util.Utilities;
 
@@ -74,6 +75,18 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
     public static DDlogExpression wrapSome(DDlogExpression expr, DDlogType type) {
         return new DDlogEStruct(expr.getNode(), "Some", type,
                 new DDlogEStruct.FieldValue("x", expr));
+    }
+
+    /**
+     * If type is nullable wrap the expression in Some{}, else leave it unchanged.
+     * @param expr  Expression to wrap.
+     * @param type  Type of expression.
+     * @return      A new expression that is never null.
+     */
+    public static DDlogExpression wrapSomeIfNeeded(DDlogExpression expr, DDlogType type) {
+        if (type.mayBeNull)
+            return wrapSome(expr, type);
+        return expr;
     }
 
     public static DDlogExpression operationCall(Node node, DDlogEBinOp.BOp op, DDlogExpression left, DDlogExpression right) {
@@ -245,12 +258,12 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
 
     @Override
     protected DDlogExpression visitInListExpression(InListExpression node, TranslationContext context) {
-        List<DDlogExpression> exprs = Linq.map(node.getValues(), n -> this.process(n, context));
-        if (exprs.size() == 0)
+        List<DDlogExpression> expressions = Linq.map(node.getValues(), n -> this.process(n, context));
+        if (expressions.size() == 0)
             throw new TranslationException("Zero-sized list?", node);
-        DDlogTArray type = new DDlogTArray(node, exprs.get(0).getType(), false);
+        DDlogTArray type = new DDlogTArray(node, expressions.get(0).getType(), false);
         DDlogExpression result = new DDlogEApply(node, "vec_empty", type);
-        for (DDlogExpression e: exprs)
+        for (DDlogExpression e: expressions)
             result = new DDlogEApply(node, "vec_push_imm", type, result, e);
         return result;
     }
@@ -343,10 +356,29 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
     }
 
     @Override
+    protected DDlogExpression visitDereferenceExpression(
+            DereferenceExpression node, TranslationContext context) {
+        Expression expression = node.getBase();
+        if (!(expression instanceof Identifier))
+            throw new TranslationException("Unexpected DereferenceExpression", node);
+        Identifier id = (Identifier)expression;
+        IEnvironment env = context.environment.lookupRelation(id.getValue());
+        if (env == null)
+            throw new TranslationException("Could not resolve relation " +
+                    Utilities.singleQuote(id.toString()), id);
+        context.environment.save();
+        context.environment.set(env);
+        DDlogExpression result = this.process(node.getField(), context);
+        context.environment.restore();
+        return result;
+    }
+
+    @Override
     protected DDlogExpression visitIdentifier(Identifier id, TranslationContext context) {
-        DDlogExpression expr = context.lookupIdentifier(id.getValue());
+        DDlogExpression expr = context.environment.lookupIdentifier(id.getValue());
         if (expr == null)
-            throw new TranslationException("Could not resolve identifier", id);
+            throw new TranslationException("Could not resolve identifier " +
+                    Utilities.singleQuote(id.toString()), id);
         return expr;
     }
 
@@ -438,19 +470,6 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
         }
     }
 
-    @Override
-    protected DDlogExpression visitDereferenceExpression(
-            DereferenceExpression node, TranslationContext context) {
-         context.searchScope(true);
-         DDlogExpression scope = this.process(node.getBase(), context);
-         context.searchScope(false);
-         DDlogScope ddscope = scope.to(DDlogScope.class);
-         context.enterScope(ddscope.getScope());  // we look up the next identifier in this scope.
-         DDlogExpression result = this.process(node.getField(), context);
-         context.exitScope();
-         return result;
-    }
-
     private static DDlogType functionResultType(Node node, String function, List<DDlogExpression> args) {
         switch (function) {
             case "any":
@@ -494,7 +513,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
      */
     private static final Set<String> sameAsDistinct = Utilities.makeSet("min", "max", "some", "any", "every");
     public static String functionName(FunctionCall fc) {
-        String name = TranslationVisitor.convertQualifiedName(fc.getName());
+        String name = Utilities.convertQualifiedName(fc.getName());
         if (fc.isDistinct() && !sameAsDistinct.contains(name))
             name += "_distinct";
         return name;
@@ -587,6 +606,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
         return current;
     }
 
+    @SuppressWarnings("DuplicatedCode")
     @Override
     protected DDlogExpression visitSearchedCaseExpression(SearchedCaseExpression expression, TranslationContext context) {
         DDlogExpression defaultValue = makeNull(expression);
@@ -600,6 +620,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
         return caseExpression(expression, labels, results, defaultValue);
     }
 
+    @SuppressWarnings("DuplicatedCode")
     @Override
     protected DDlogExpression visitSimpleCaseExpression(SimpleCaseExpression expression, TranslationContext context) {
         DDlogExpression op = this.process(expression.getOperand(), context);

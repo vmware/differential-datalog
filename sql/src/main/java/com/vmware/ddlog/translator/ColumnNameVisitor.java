@@ -22,28 +22,24 @@
  *
  */
 
-package com.vmware.ddlog.ir;
+package com.vmware.ddlog.translator;
 
-import com.facebook.presto.sql.tree.Node;
+import com.facebook.presto.sql.tree.AstVisitor;
+import com.facebook.presto.sql.tree.DereferenceExpression;
+import com.facebook.presto.sql.tree.Identifier;
 
-import javax.annotation.Nullable;
-
-public class DDlogEField extends DDlogExpression {
-    private final DDlogExpression struct;
-    public final String field;
-
-    public DDlogEField(@Nullable Node node, DDlogExpression struct, String field, DDlogType type) {
-        super(node, type);
-        this.struct = struct;
-        this.field = field;
-    }
-
-    public DDlogExpression getStruct() {
-        return this.struct;
+/**
+ * A simple visitor which extracts a column name from an expression.
+ * This returns null for most expressions.
+ */
+public class ColumnNameVisitor extends AstVisitor<String, Void> {
+    @Override
+    protected String visitIdentifier(Identifier id, Void context) {
+        return id.getValue().toLowerCase();
     }
 
     @Override
-    public String toString() {
-        return this.struct.toString() + "." + this.field;
+    protected String visitDereferenceExpression(DereferenceExpression expression, Void context) {
+        return expression.getField().getValue().toLowerCase();
     }
 }

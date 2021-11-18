@@ -25,6 +25,7 @@
 package com.vmware.ddlog.ir;
 
 import com.facebook.presto.sql.tree.Node;
+import com.vmware.ddlog.translator.RelationName;
 
 import javax.annotation.Nullable;
 import java.util.List;
@@ -34,13 +35,12 @@ import java.util.stream.Collectors;
  * The intermediate representation for a DDlog index during SQL -> DDlog translation.
  */
 public class DDlogIndexDeclaration extends DDlogNode {
-
-    private final String name;
+    private final RelationName name;
     private final List<DDlogField> fields;
     private final DDlogRelationDeclaration baseRelation;
     private final String baseRelationTypeString;
 
-    public DDlogIndexDeclaration(@Nullable Node node, String name,
+    public DDlogIndexDeclaration(@Nullable Node node, RelationName name,
                                  List<DDlogField> fields, DDlogRelationDeclaration baseRelation,
                                  String baseRelationTypeString) {
         super(node);
@@ -51,19 +51,18 @@ public class DDlogIndexDeclaration extends DDlogNode {
         this.baseRelationTypeString = baseRelationTypeString;
     }
 
-    public String getName() {
+    public RelationName getName() {
         return this.name;
     }
 
-    public static String indexName(String name) {
-        return "I" + name;
+    public static RelationName indexName(String name) {
+        return new RelationName("I" + name, name,null);
     }
 
     @Override
     public String toString() {
         return "index " + this.name
-                + "(" + String.join(",",
-                    this.fields.stream().map(DDlogField::toString).collect(Collectors.toList()))  + ") on " +
+                + "(" + this.fields.stream().map(DDlogField::toString).collect(Collectors.joining(",")) + ") on " +
                 this.baseRelation.getName() +
                 "[" + this.baseRelation.getType() +
                 "{" + this.baseRelationTypeString + "}" +

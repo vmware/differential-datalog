@@ -127,7 +127,7 @@ public class DDlogJooqHelper {
                 matchExpressionFromWhere(where, indexToFieldsMap.get(matchingIndex.getIndexName()), context);
 
         dDlogAPI.queryIndex(
-                DDlogIndexDeclaration.indexName(matchingIndex.getIndexName()),
+                DDlogIndexDeclaration.indexName(matchingIndex.getIndexName()).name,
                 indexKey,
                 x -> clonedResults.add(x.clone())
         );

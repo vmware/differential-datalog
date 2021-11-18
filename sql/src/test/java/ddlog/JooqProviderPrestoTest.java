@@ -37,9 +37,11 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class JooqProviderPrestoTest extends JooqProviderTestBase {
-
     @BeforeClass
     public static void setup() throws IOException, DDlogException {
+        if (JooqProviderTestBase.skip)
+            throw new RuntimeException("Skipping");
+
         String s1 = "create table hosts (id varchar(36) with (primary_key = true), capacity integer, up boolean)";
         String v2 = "create view hostsv as select distinct * from hosts";
         String v1 = "create view good_hosts as select distinct * from hosts where capacity < 10";

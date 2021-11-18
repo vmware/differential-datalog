@@ -37,7 +37,6 @@ public class CastTest extends BaseQueriesTest {
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{f:float}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.f = v.column1 as float},var v1 = v0.";
         this.testTranslation(query, program);
@@ -49,7 +48,6 @@ public class CastTest extends BaseQueriesTest {
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{s:string}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.s = [|${v.column1}|]},var v1 = v0.";
         this.testTranslation(query, program);
@@ -61,7 +59,6 @@ public class CastTest extends BaseQueriesTest {
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{i:signed<64>}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.i = option_unwrap_or_default(parse_dec_i64(v.column2))},var v1 = v0.";
         this.testTranslation(query, program);
@@ -73,7 +70,6 @@ public class CastTest extends BaseQueriesTest {
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{d:double}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.d = result_unwrap_or_default(parse_d(v.column2))},var v1 = v0.";
         this.testTranslation(query, program);
@@ -85,7 +81,6 @@ public class CastTest extends BaseQueriesTest {
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{d:Date}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.d = result_unwrap_or_default(string2date(v.column2))},var v1 = v0.";
         this.testTranslation(query, program);
@@ -97,7 +92,6 @@ public class CastTest extends BaseQueriesTest {
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{d:Date}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.d = result_unwrap_or_default(string2date([|${v.column1}|]))},var v1 = v0.";
         this.testTranslation(query, program);
@@ -109,7 +103,6 @@ public class CastTest extends BaseQueriesTest {
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{t:DateTime}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.t = result_unwrap_or_default(string2datetime(v.column2))},var v1 = v0.";
         this.testTranslation(query, program);
@@ -121,7 +114,6 @@ public class CastTest extends BaseQueriesTest {
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{i:signed<64>}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.i = option_unwrap_or_default(int_from_d(v.column4)) as signed<64>},var v1 = v0.";
         this.testTranslation(query, program);
@@ -133,7 +125,6 @@ public class CastTest extends BaseQueriesTest {
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{s:string}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt3[v],var v0 = TRtmp{.s = [|${v.d}|]},var v1 = v0.";
         this.testTranslation(query, program);
@@ -145,7 +136,6 @@ public class CastTest extends BaseQueriesTest {
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{i:signed<64>}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.i = if (v.column3) {\n64'sd1} else {\n64'sd0}},var v1 = v0.";
         this.testTranslation(query, program);
@@ -157,26 +147,17 @@ public class CastTest extends BaseQueriesTest {
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{b:bool}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.b = (v.column1 != 64'sd0)},var v1 = v0.";
         this.testTranslation(query, program);
     }
 
-    @Test(expected = TranslationException.class)
-    public void testCastDateToBool() {
-        String query = "create view v0 as SELECT DISTINCT CAST(t3.d AS BOOLEAN) AS b FROM t3";
-        String program = "";
-        this.testTranslation(query, program);
-    }
-    
     @Test
     public void testCastIntToFloatWithNull() {
         String query = "create view v0 as SELECT DISTINCT CAST(t1.column1 AS FLOAT) AS f FROM t1";
         String program = this.header(true) +
                 "typedef TRtmp = TRtmp{f:Option<float>}\n" +
                 this.relations(true) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.f = match(v.column1) {None{}: Option<signed<64>> -> None{}: Option<float>,\n" +
                 "Some{.x = var x} -> Some{.x = x as float}\n" +
@@ -190,7 +171,6 @@ public class CastTest extends BaseQueriesTest {
         String program = this.header(true) +
                 "typedef TRtmp = TRtmp{s:Option<string>}\n" +
                 this.relations(true) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.s = match(v.column1) {None{}: Option<signed<64>> -> None{}: Option<string>,\n" +
                 "Some{.x = var x} -> Some{.x = [|${x}|]}\n" +
@@ -204,7 +184,6 @@ public class CastTest extends BaseQueriesTest {
         String program = this.header(true) +
                 "typedef TRtmp = TRtmp{i:Option<signed<64>>}\n" +
                 this.relations(true) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.i = match(v.column2) {None{}: Option<string> -> None{}: Option<signed<64>>,\n" +
                 "Some{.x = var x} -> Some{.x = option_unwrap_or_default(parse_dec_i64(x))}\n" +
@@ -218,7 +197,6 @@ public class CastTest extends BaseQueriesTest {
         String program = this.header(true) +
                 "typedef TRtmp = TRtmp{d:Option<double>}\n" +
                 this.relations(true) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.d = match(v.column2) {None{}: Option<string> -> None{}: Option<double>,\n" +
                 "Some{.x = var x} -> Some{.x = result_unwrap_or_default(parse_d(x))}\n" +
@@ -232,7 +210,6 @@ public class CastTest extends BaseQueriesTest {
         String program = this.header(true) +
                 "typedef TRtmp = TRtmp{d:Option<Date>}\n" +
                 this.relations(true) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.d = match(v.column2) {None{}: Option<string> -> None{}: Option<Date>,\n" +
                 "Some{.x = var x} -> Some{.x = result_unwrap_or_default(string2date(x))}\n" +
@@ -246,7 +223,6 @@ public class CastTest extends BaseQueriesTest {
         String program = this.header(true) +
                 "typedef TRtmp = TRtmp{d:Option<Date>}\n" +
                 this.relations(true) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.d = match(v.column1) {None{}: Option<signed<64>> -> None{}: Option<Date>,\n" +
                 "Some{.x = var x} -> Some{.x = result_unwrap_or_default(string2date([|${v.column1}|]))}\n" +
@@ -260,7 +236,6 @@ public class CastTest extends BaseQueriesTest {
         String program = this.header(true) +
                 "typedef TRtmp = TRtmp{t:Option<DateTime>}\n" +
                 this.relations(true) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.t = match(v.column2) {None{}: Option<string> -> None{}: Option<DateTime>,\n" +
                 "Some{.x = var x} -> Some{.x = result_unwrap_or_default(string2datetime(x))}\n" +
@@ -274,7 +249,6 @@ public class CastTest extends BaseQueriesTest {
         String program = this.header(true) +
                 "typedef TRtmp = TRtmp{i:Option<signed<64>>}\n" +
                 this.relations(true) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.i = match(v.column4) {None{}: Option<double> -> None{}: Option<signed<64>>,\n" +
                 "Some{.x = var x} -> Some{.x = option_unwrap_or_default(int_from_d(x)) as signed<64>}\n" +
@@ -288,7 +262,6 @@ public class CastTest extends BaseQueriesTest {
         String program = this.header(true) +
                 "typedef TRtmp = TRtmp{s:Option<string>}\n" +
                 this.relations(true) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt3[v],var v0 = TRtmp{.s = match(v.d) {None{}: Option<Date> -> None{}: Option<string>,\n" +
                 "Some{.x = var x} -> Some{.x = [|${x}|]}\n" +
@@ -302,7 +275,6 @@ public class CastTest extends BaseQueriesTest {
         String program = this.header(true) +
                 "typedef TRtmp = TRtmp{i:Option<signed<64>>}\n" +
                 this.relations(true) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.i = match(v.column3) {None{}: Option<bool> -> None{}: Option<signed<64>>,\n" +
                 "Some{.x = var x} -> Some{.x = if (x) {\n" +
@@ -318,7 +290,6 @@ public class CastTest extends BaseQueriesTest {
         String program = this.header(true) +
                 "typedef TRtmp = TRtmp{b:Option<bool>}\n" +
                 this.relations(true) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.b = match(v.column1) {None{}: Option<signed<64>> -> None{}: Option<bool>,\n" +
                 "Some{.x = var x} -> Some{.x = (x != 64'sd0)}\n" +

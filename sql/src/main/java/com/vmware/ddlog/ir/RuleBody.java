@@ -35,44 +35,37 @@ import java.util.List;
  * A partially-constructed relation; contains part of the RHS of a relation,
  * and the type produced by the RHS.
  */
-public class RelationRHS extends DDlogNode {
+public class RuleBody extends DDlogNode {
     private final String rowVariable;
     private final DDlogType type;
-    private final List<DDlogRuleRHS> definitions;
+    private final List<RuleBodyTerm> definitions;
 
-    public RelationRHS(@Nullable Node node, String rowVariable, DDlogType type) {
+    public RuleBody(@Nullable Node node, String rowVariable, DDlogType type) {
         super(node);
         this.rowVariable = rowVariable;
         this.type = this.checkNull(type);
-        this.definitions = new ArrayList<DDlogRuleRHS>();
+        this.definitions = new ArrayList<RuleBodyTerm>();
     }
 
-    public RelationRHS addDefinition(DDlogExpression expression) {
-        this.definitions.add(new DDlogRHSCondition(expression.getNode(), expression));
+    public RuleBody addDefinition(DDlogExpression expression) {
+        this.definitions.add(new RuleBodyCondition(expression.getNode(), expression));
         return this;
     }
 
-    public void addAssignment(String from) {
-        DDlogExpression expr = new DDlogESet(this.node,
-                new DDlogEVarDecl(this.node, this.rowVariable, this.type),
-                new DDlogEVar(this.node, from, this.type));
-        this.addDefinition(expr);
-    }
-
     @SuppressWarnings("UnusedReturnValue")
-    public RelationRHS addDefinition(DDlogRuleRHS rhs) {
+    public RuleBody addDefinition(RuleBodyTerm rhs) {
         this.definitions.add(rhs);
         return this;
     }
 
     public DDlogType getType() { return this.type; }
 
-    public List<DDlogRuleRHS> getDefinitions() {
+    public List<RuleBodyTerm> getDefinitions() {
         return this.definitions; }
 
     @Override
     public String toString() {
-        return String.join(",", Linq.map(this.definitions, DDlogRuleRHS::toString));
+        return String.join(",", Linq.map(this.definitions, RuleBodyTerm::toString));
     }
 
     public DDlogExpression getRowVariable(boolean declare) {

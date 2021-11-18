@@ -61,7 +61,6 @@ import static org.junit.Assert.assertThrows;
  * an example.
  */
 public abstract class JooqProviderTestBase {
-
     @Nullable
     protected static DDlogAPI ddlogAPI;
     protected static DSLContext create;
@@ -72,6 +71,7 @@ public abstract class JooqProviderTestBase {
     private final Record test1 = create.newRecord(field1, field2, field3);
     private final Record test2 = create.newRecord(field1, field2, field3);
     private final Record test3 = create.newRecord(field1, field2, field3);
+    static final boolean skip = true;  // Set to true to skip these tests
 
     public JooqProviderTestBase() {
         test1.setValue(field1, "n1");

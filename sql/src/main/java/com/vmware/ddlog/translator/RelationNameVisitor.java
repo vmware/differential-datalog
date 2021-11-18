@@ -22,29 +22,30 @@
  *
  */
 
-package com.vmware.ddlog.ir;
+package com.vmware.ddlog.translator;
 
-import com.facebook.presto.sql.tree.Node;
-import com.vmware.ddlog.translator.Scope;
+import com.facebook.presto.sql.tree.*;
+import com.vmware.ddlog.util.Utilities;
 
 import javax.annotation.Nullable;
 
 /**
- * This is not a real DDlog expression; it stands for a SQL expression that
- * evaluates to a scope.
+ * A simple visitor which extracts a relation name from a Relation (if possible).
  */
-public class DDlogScope extends DDlogExpression {
-    private final Scope scope;
-
-    public DDlogScope(Scope scope) {
-        super(scope.node);
-        this.scope = scope;
+public class RelationNameVisitor extends AstVisitor<String, Void> {
+    @Override
+    protected String visitTable(Table node, Void context) {
+        return Utilities.convertQualifiedName(node.getName());
     }
 
-    public Scope getScope() { return this.scope; }
-
     @Override
-    public String toString() {
-        return "Scope: " + this.scope.getName();
+    protected String visitAliasedRelation(AliasedRelation node, Void context) {
+        return node.getAlias().getValue();
+    }
+
+    @Nullable
+    @Override
+    protected String visitRelation(Relation node, Void context) {
+        return null;
     }
 }

@@ -58,15 +58,15 @@ public class BaseQueriesTest {
             "import sql\n" +
             "import sqlop\n";
     protected final String tables =
-            "typedef Tt1 = Tt1{column1:signed<64>, column2:string, column3:bool, column4:double}\n" +
-            "typedef Tt2 = Tt2{column1:signed<64>}\n" +
-            "typedef Tt3 = Tt3{d:Date, t:Time, dt:DateTime}\n" +
-            "typedef Tt4 = Tt4{column1:Option<signed<64>>, column2:Option<string>}\n";
+            "typedef TRt1 = TRt1{column1:signed<64>, column2:string, column3:bool, column4:double}\n" +
+            "typedef TRt2 = TRt2{column1:signed<64>}\n" +
+            "typedef TRt3 = TRt3{d:Date, t:Time, dt:DateTime}\n" +
+            "typedef TRt4 = TRt4{column1:Option<signed<64>>, column2:Option<string>}\n";
     protected final String tablesWNull =
-            "typedef Tt1 = Tt1{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>, column4:Option<double>}\n" +
-            "typedef Tt2 = Tt2{column1:Option<signed<64>>}\n" +
-            "typedef Tt3 = Tt3{d:Option<Date>, t:Option<Time>, dt:Option<DateTime>}\n" +
-            "typedef Tt4 = Tt4{column1:Option<signed<64>>, column2:Option<string>}\n";
+            "typedef TRt1 = TRt1{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>, column4:Option<double>}\n" +
+            "typedef TRt2 = TRt2{column1:Option<signed<64>>}\n" +
+            "typedef TRt3 = TRt3{d:Option<Date>, t:Option<Time>, dt:Option<DateTime>}\n" +
+            "typedef TRt4 = TRt4{column1:Option<signed<64>>, column2:Option<string>}\n";
 
     /**
      * The expected string the generated program starts with.
@@ -84,10 +84,10 @@ public class BaseQueriesTest {
     @SuppressWarnings("unused")
     protected String relations(boolean withNull) {
         return "\n" +
-            "input relation Rt1[Tt1]\n" +
-            "input relation Rt2[Tt2]\n" +
-            "input relation Rt3[Tt3]\n" +
-            "input relation Rt4[Tt4]\n";
+            "input relation Rt1[TRt1]\n" +
+            "input relation Rt2[TRt2]\n" +
+            "input relation Rt3[TRt3]\n" +
+            "input relation Rt4[TRt4]\n";
     }
 
     protected Translator createInputTables(boolean withNulls) {
@@ -101,14 +101,14 @@ public class BaseQueriesTest {
         Assert.assertNotNull(create);
         String s = create.toString();
         Assert.assertNotNull(s);
-        Assert.assertEquals("input relation Rt1[Tt1]", s);
+        Assert.assertEquals("input relation Rt1[TRt1]", s);
 
         createStatement = "create table t2(column1 integer " + nulls + ")";
         create = t.translateSqlStatement(new PrestoSqlStatement(createStatement));
         Assert.assertNotNull(create);
         s = create.toString();
         Assert.assertNotNull(s);
-        Assert.assertEquals("input relation Rt2[Tt2]", s);
+        Assert.assertEquals("input relation Rt2[TRt2]", s);
 
         createStatement = "create table t3(d date " + nulls + ",\n" +
                 " t time " + nulls + ",\n" +
@@ -117,7 +117,7 @@ public class BaseQueriesTest {
         Assert.assertNotNull(create);
         s = create.toString();
         Assert.assertNotNull(s);
-        Assert.assertEquals("input relation Rt3[Tt3]", s);
+        Assert.assertEquals("input relation Rt3[TRt3]", s);
 
         // Table t4 always has nullable columns
         createStatement = "create table t4(column1 integer, column2 varchar(36))";
@@ -125,7 +125,7 @@ public class BaseQueriesTest {
         Assert.assertNotNull(create);
         s = create.toString();
         Assert.assertNotNull(s);
-        Assert.assertEquals("input relation Rt4[Tt4]", s);
+        Assert.assertEquals("input relation Rt4[TRt4]", s);
 
         return t;
     }

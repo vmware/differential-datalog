@@ -28,22 +28,18 @@ import com.facebook.presto.sql.tree.Node;
 
 import javax.annotation.Nullable;
 
-public class DDlogEField extends DDlogExpression {
-    private final DDlogExpression struct;
-    public final String field;
+public class BodyTermFlatMap extends RuleBodyTerm {
+    final String var;
+    final DDlogExpression mapExpr;
 
-    public DDlogEField(@Nullable Node node, DDlogExpression struct, String field, DDlogType type) {
-        super(node, type);
-        this.struct = struct;
-        this.field = field;
-    }
-
-    public DDlogExpression getStruct() {
-        return this.struct;
+    public BodyTermFlatMap(@Nullable Node node, String var, DDlogExpression mapExpr) {
+        super(node);
+        this.var = var;
+        this.mapExpr = mapExpr;
     }
 
     @Override
     public String toString() {
-        return this.struct.toString() + "." + this.field;
+        return "var " + this.var + " = FlatMap(" + this.mapExpr + ")";
     }
 }

@@ -24,11 +24,10 @@
 
 package com.vmware.ddlog;
 
-import com.vmware.ddlog.ir.DDlogRelationDeclaration;
 import com.vmware.ddlog.ir.DDlogType;
+import com.vmware.ddlog.translator.RelationName;
 import com.vmware.ddlog.util.sql.CreateIndexParser;
 import com.vmware.ddlog.util.sql.H2SqlStatement;
-import com.vmware.ddlog.util.sql.ParsedCreateIndex;
 import ddlogapi.*;
 import org.apache.calcite.sql.*;
 import org.apache.calcite.sql.parser.SqlParser;
@@ -605,7 +604,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
      * This corresponds to the naming convention followed by the SQL -> DDlog compiler
      */
     private static String ddlogRelationName(final String tableName) {
-        return DDlogRelationDeclaration.relationName(tableName.toLowerCase());
+        return RelationName.makeRelationName(tableName);
     }
 
     /*

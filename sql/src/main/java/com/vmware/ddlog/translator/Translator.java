@@ -93,8 +93,9 @@ public class Translator {
         ParsedCreateIndex parsedIndex = CreateIndexParser.parse(sql);
 
         // Find the typedef of the base relation, so we can populate the typedef of the index
+        RelationName rn = new RelationName(RelationName.makeRelationName(parsedIndex.getTableName()), null, null);
         final DDlogRelationDeclaration baseRelation =
-                this.translationContext.getRelation(DDlogRelationDeclaration.relationName(parsedIndex.getTableName()));
+                this.translationContext.getRelation(rn);
         if (baseRelation == null) {
             throw new RuntimeException("Cannot find base table that index refers to");
         }
@@ -111,8 +112,8 @@ public class Translator {
             throw new RuntimeException("Cannot find base table that index refers to");
         }
         // We need the fields of the base relation both for the typedef of the index and to populate the index rule
-        List<DDlogField> baseRelationFields = Objects.requireNonNull(baseTableTypeDef.getType()).
-                to(DDlogTStruct.class).getFields();
+        List<DDlogField> baseRelationFields = Objects.requireNonNull(baseTableTypeDef.getType())
+                .to(DDlogTStruct.class).getFields();
         // Holds the field typing information of the index
         List<DDlogField> indexFields = new ArrayList<>();
         // Used to populate the index rule, based on DDlog index creation syntax
@@ -131,8 +132,8 @@ public class Translator {
             }
         }
 
-        String dIndexName = DDlogIndexDeclaration.indexName(parsedIndex.getIndexName());
-        this.translationContext.reserveGlobalName(dIndexName);
+        RelationName dIndexName = DDlogIndexDeclaration.indexName(parsedIndex.getIndexName());
+        this.translationContext.reserveGlobalName(dIndexName.name);
 
         // Create the index and add to the current DDlog program
         DDlogIndexDeclaration ddlogIndex = new DDlogIndexDeclaration(null, dIndexName, indexFields, baseRelation,

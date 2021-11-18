@@ -36,18 +36,18 @@ import java.util.List;
  * but when translating SQL we never need more than 1.
  */
 public class DDlogRule extends DDlogNode {
-    public final DDlogAtom lhs;
-    public final List<DDlogRuleRHS> rhs;
+    public final DDlogAtom head;
+    public final List<RuleBodyTerm> body;
 
-    public DDlogRule(@Nullable Node node, DDlogAtom lhs, List<DDlogRuleRHS> rhs) {
+    public DDlogRule(@Nullable Node node, DDlogAtom head, List<RuleBodyTerm> body) {
         super(node);
-        this.lhs = this.checkNull(lhs);
-        this.rhs = this.checkNull(rhs);
+        this.head = this.checkNull(head);
+        this.body = this.checkNull(body);
     }
 
-    public DDlogRule(@Nullable Node node, DDlogAtom lhs, DDlogRuleRHS rhs) {
-        this(node, lhs, new ArrayList<DDlogRuleRHS>());
-        this.rhs.add(this.checkNull(rhs));
+    public DDlogRule(@Nullable Node node, DDlogAtom head, RuleBodyTerm body) {
+        this(node, head, new ArrayList<RuleBodyTerm>());
+        this.body.add(this.checkNull(body));
     }
 
     @Override
@@ -58,10 +58,10 @@ public class DDlogRule extends DDlogNode {
         if (!result.isEmpty())
             result += "\n";
          */
-        result += this.lhs.toString();
-        if (!this.rhs.isEmpty()) {
+        result += this.head.toString();
+        if (!this.body.isEmpty()) {
             result += " :- " + String.join(",",
-                Linq.map(this.rhs, DDlogRuleRHS::toString));
+                Linq.map(this.body, RuleBodyTerm::toString));
         }
         result += ".";
         return result;

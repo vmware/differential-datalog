@@ -29,6 +29,7 @@ import com.facebook.presto.sql.tree.Node;
 import com.facebook.presto.sql.tree.NodeLocation;
 import com.facebook.presto.sql.tree.SingleColumn;
 import com.vmware.ddlog.ir.*;
+import com.vmware.ddlog.translator.environment.EnvHandle;
 import com.vmware.ddlog.util.Linq;
 import com.vmware.ddlog.util.Utilities;
 
@@ -40,59 +41,44 @@ import java.util.*;
  */
 class TranslationContext {
     /**
-     * If true we resolve identifiers to scopes, not to values within a scope.
-     */
-    private boolean searchScopeName;
-    private final List<Scope> translationScope;
-    /**
      * If a Node (representing a SQL expression) is mapped to an expression
      * then the expression translation will return directly the expression
      * instead of performing the translation proper.
      */
     private final HashMap<Node, DDlogExpression> substitutions;
-    private final TranslationState translationState;
+    private final CompilerState compilerState;
     // True if the view that is being compiled should produce an output relation.
     public boolean viewIsOutput;
+    public EnvHandle environment;
 
-    private TranslationContext(@Nullable TranslationState state) {
+    private TranslationContext(@Nullable CompilerState state) {
         this.viewIsOutput = true;
+        this.environment = new EnvHandle();
         this.substitutions = new HashMap<Node, DDlogExpression>();
-        this.translationScope = new ArrayList<Scope>();
-        this.searchScopeName = false;
         if (state != null)
-            this.translationState = state;
+            this.compilerState = state;
         else
-            this.translationState = new TranslationState();
-    }
-
-    public boolean contains(Scope scope) {
-        for (Scope s: this.translationScope)
-            if (s.id == scope.id)
-                return true;
-        return false;
+            this.compilerState = new CompilerState();
     }
 
     public TranslationContext() {
         this(null);
     }
 
-    @SuppressWarnings("MethodDoesntCallSuperMethod")
-    public TranslationContext clone() {
-        TranslationContext result = new TranslationContext(this.translationState);
+    // Note: does not clone the environment.
+    public TranslationContext cloneCtxt() {
+        TranslationContext result = new TranslationContext(this.compilerState);
         Utilities.copyMap(result.substitutions, this.substitutions);
         result.viewIsOutput = this.viewIsOutput;
-        result.translationScope.addAll(this.translationScope);
         return result;
     }
 
     public void mergeWith(TranslationContext other) {
-        if (this.translationState != other.translationState)
+        if (this.compilerState != other.compilerState)
             throw new RuntimeException("Merging contexts with different state");
-        for (Scope s: other.translationScope)
-            if (!this.contains(s))
-                this.translationScope.add(s);
         for (Map.Entry<Node, DDlogExpression> e: other.substitutions.entrySet())
             this.addSubstitution(e.getKey(), e.getValue());
+        this.relationAlias.addAll(other.relationAlias);
     }
 
     public DDlogExpression operationCall(Node node, DDlogEBinOp.BOp op, DDlogExpression left, DDlogExpression right) {
@@ -131,13 +117,18 @@ class TranslationContext {
         System.err.println(message + ": " + node.toString() + " " + location(node));
     }
 
+    @Nullable
+    public String originalColumnName(SingleColumn sc) {
+        ColumnNameVisitor ecn = new ColumnNameVisitor();
+        return ecn.process(sc.getExpression());
+    }
+
     public String columnName(SingleColumn sc) {
         String name;
         if (sc.getAlias().isPresent()) {
             name = sc.getAlias().get().getValue().toLowerCase();
         } else {
-            ExpressionColumnName ecn = new ExpressionColumnName();
-            name = ecn.process(sc.getExpression());
+            name = this.originalColumnName(sc);
             if (name == null)
                 name = this.freshLocalName("col");
         }
@@ -228,7 +219,7 @@ class TranslationContext {
     DDlogType resolveType(DDlogType type) {
         if (type instanceof DDlogTUser) {
             DDlogTUser tu = (DDlogTUser)type;
-            DDlogType result = this.translationState.resolveTypeDef(tu);
+            DDlogType result = this.compilerState.resolveTypeDef(tu);
             if (result == null)
                 tu.error("Cannot resolve type " + tu.getName());
             assert result != null;
@@ -243,90 +234,98 @@ class TranslationContext {
         return new DDlogTUser(node, tdef.getName(), type.mayBeNull);
     }
 
-    @Nullable
-    DDlogExpression lookupIdentifier(String identifier) {
-        for (int i = this.translationScope.size() - 1; i >= 0; i--) {
-            // Look starting from the end.
-            Scope scope = this.translationScope.get(i);
-            if (this.searchScopeName) {
-                if (identifier.equals(scope.scopeName))
-                    return new DDlogScope(scope);
-            } else {
-                @Nullable
-                DDlogExpression expr = scope.lookupColumn(scope.node, identifier, this);
-                if (expr != null) return expr;
-            }
-        }
-        return null;
-    }
-
-    void enterScope(Scope scope) {
-        this.translationScope.add(scope);
-    }
-
-    void searchScope(boolean yes) {
-        this.searchScopeName = yes;
-    }
-
-    public void exitAllScopes() {
-        this.translationScope.clear();
-    }
-
-    void exitScope() {
-        this.translationScope.remove(this.translationScope.size() - 1);
-    }
-
     DDlogExpression translateExpression(Expression expr) {
-        return this.translationState.etv.process(expr, this);
+        return this.compilerState.etv.process(expr, this);
     }
 
     void add(DDlogRelationDeclaration relation) {
-        this.translationState.add(relation);
+        this.compilerState.add(relation);
     }
 
     void add(DDlogIndexDeclaration index) {
-        this.translationState.add(index);
+        this.compilerState.add(index);
     }
 
-    String freshRelationName(String prefix) {
-        return this.freshGlobalName(DDlogRelationDeclaration.relationName(prefix));
+    RelationName freshRelationName(String suggested) {
+        String name = this.popAlias(suggested);
+        String legalName = name;
+        if (!RelationName.isValid(name))
+            legalName = RelationName.makeRelationName(name);
+        return new RelationName(this.freshGlobalName(legalName), name, null);
     }
 
     String freshGlobalName(String prefix) {
-        return this.translationState.freshGlobalName(prefix);
+        return this.compilerState.freshGlobalName(prefix);
     }
 
     String freshLocalName(String prefix) {
-        return this.translationState.freshLocalName(prefix);
+        return this.compilerState.freshLocalName(prefix);
     }
 
     void beginTranslation() {
-        this.translationState.beginTranslation();
+        this.compilerState.beginTranslation();
         this.viewIsOutput = true;
     }
 
     void endTranslation() {
-        this.exitAllScopes();
+        this.environment.exitAllScopes();
     }
 
     void add(DDlogRule rule) {
-        this.translationState.add(rule);
+        this.compilerState.add(rule);
     }
 
     void add(DDlogTypeDef tdef) {
-        this.translationState.add(tdef);
+        this.compilerState.add(tdef);
     }
 
     @Nullable
-    DDlogRelationDeclaration getRelation(String name) {
-        return this.translationState.getRelation(name);
+    DDlogRelationDeclaration getRelation(RelationName name) {
+        return this.compilerState.getRelation(name);
     }
 
     DDlogProgram getProgram() {
-        return this.translationState.getProgram();
+        return this.compilerState.getProgram();
     }
 
     void reserveGlobalName(String name) {
-        this.translationState.globalSymbols.addName(name);
+        this.compilerState.globalSymbols.addName(name);
+    }
+
+    // Keep track of relations renamed explicitly by the user
+    /**
+     *     Stack aliases encountered while parsing the current query
+     */
+    List<String> relationAlias = new ArrayList<>();
+    @Nullable
+    String lastRelationName = null;
+
+    public void pushAlias(String name) {
+        this.relationAlias.add(name);
+    }
+
+    public String popAlias(String suggested) {
+        if (this.relationAlias.size() == 0)
+            return suggested;
+        this.lastRelationName = this.relationAlias.remove(this.relationAlias.size() - 1);
+        return this.lastRelationName;
+    }
+
+    @Nullable
+    public String lastRelationName() {
+        // Selecting from a relation creates an anonymous relation which can be referred to
+        // by the same name as the select source.
+        return this.lastRelationName;
+    }
+
+    @Override
+    public String toString() {
+        return this.environment.toString();
+    }
+
+    public void exitAllScopes() {
+        this.environment.exitAllScopes();
+        this.relationAlias.clear();
+        this.lastRelationName = null;
     }
 }
