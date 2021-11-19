@@ -132,6 +132,11 @@ public abstract class JooqProviderTestBase {
         assertFalse(goodHostsResults.contains(test2));
         assertTrue(goodHostsResults.contains(test3));
 
+        final Result<Record> goodHostsResultsDirect = provider.fetchTable("good_hosts");
+        assertFalse(goodHostsResultsDirect.contains(test1));
+        assertFalse(goodHostsResultsDirect.contains(test2));
+        assertTrue(goodHostsResultsDirect.contains(test3));
+
         // Make sure deletes work
         create.execute("delete from hosts where id = 'n9'");
 
@@ -580,6 +585,11 @@ public abstract class JooqProviderTestBase {
         assertTrue(readFromInput.contains(test1));
         assertTrue(readFromInput.contains(test2));
         assertTrue(readFromInput.contains(test3));
+
+        final Result<Record> readFromInputDirect = provider.fetchTable("hosts");
+        assertTrue(readFromInputDirect.contains(test1));
+        assertTrue(readFromInputDirect.contains(test2));
+        assertTrue(readFromInputDirect.contains(test3));
     }
 
     @Test
