@@ -37,7 +37,7 @@ public class AggregatesTest extends BaseQueriesTest {
         String query = "create view v0 as SELECT ANY(column3) AS a FROM t1";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{a:bool}\n" +
-                "function agg(g: Group<(), Tt1>):TRtmp {\n" +
+                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
                 "var any = false: bool;\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
@@ -57,7 +57,7 @@ public class AggregatesTest extends BaseQueriesTest {
         String query = "create view v0 as SELECT ANY(column3) AS a FROM t1";
         String program = this.header(true) +
                 "typedef TRtmp = TRtmp{a:Option<bool>}\n" +
-                "function agg(g: Group<(), Tt1>):TRtmp {\n" +
+                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
                 "var any = Some{false}: Option<bool>;\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
@@ -77,7 +77,7 @@ public class AggregatesTest extends BaseQueriesTest {
         String query = "create view v0 as SELECT NOT ANY(column3) AS a FROM t1";
         String program = this.header(true) +
                 "typedef TRtmp = TRtmp{a:Option<bool>}\n" +
-                "function agg(g: Group<(), Tt1>):TRtmp {\n" +
+                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
                 "var any = Some{false}: Option<bool>;\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
@@ -97,7 +97,7 @@ public class AggregatesTest extends BaseQueriesTest {
         String query = "create view v0 as SELECT EVERY(column3) AS e FROM t1";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{e:bool}\n" +
-                "function agg(g: Group<(), Tt1>):TRtmp {\n" +
+                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
                 "var every = true: bool;\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
@@ -117,7 +117,7 @@ public class AggregatesTest extends BaseQueriesTest {
         String query = "create view v0 as SELECT COUNT(DISTINCT column1) AS ct FROM t1";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{ct:signed<64>}\n" +
-                "function agg(g: Group<(), Tt1>):TRtmp {\n" +
+                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
                 "var count_distinct = set_empty(): Set<signed<64>>;\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
@@ -137,7 +137,7 @@ public class AggregatesTest extends BaseQueriesTest {
         String query = "create view v0 as SELECT COUNT(DISTINCT column1) AS ct FROM t1";
         String program = this.header(true) +
                 "typedef TRtmp = TRtmp{ct:signed<64>}\n" +
-                "function agg(g: Group<(), Tt1>):TRtmp {\n" +
+                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
                 "var count_distinct = set_empty(): Set<signed<64>>;\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
@@ -157,7 +157,7 @@ public class AggregatesTest extends BaseQueriesTest {
         String query = "create view v0 as SELECT SUM(DISTINCT column1) AS sum FROM t1";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{sum:signed<64>}\n" +
-                "function agg(g: Group<(), Tt1>):TRtmp {\n" +
+                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
                 "var sum_distinct = set_empty(): Set<signed<64>>;\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
@@ -177,7 +177,7 @@ public class AggregatesTest extends BaseQueriesTest {
         String query = "create view v0 as SELECT MIN(DISTINCT column1) AS min FROM t1";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{min:signed<64>}\n" +
-                "function agg(g: Group<(), Tt1>):TRtmp {\n" +
+                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
                 "var min = (true, 64'sd0): (bool, signed<64>);\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
@@ -197,7 +197,7 @@ public class AggregatesTest extends BaseQueriesTest {
         String query = "create view v0 as SELECT MIN(column1) + MAX(column1) AS total FROM t1";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{total:signed<64>}\n" +
-                "function agg(g: Group<(), Tt1>):TRtmp {\n" +
+                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
                 "var min = (true, 64'sd0): (bool, signed<64>);\n" +
                 "(var max = (true, 64'sd0): (bool, signed<64>));\n" +
                 "(for ((i, _) in g) {\n" +
@@ -211,7 +211,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v2] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v1 = aggResult,var v2 = v1.";
+                "Rv0[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program);
     }
 
@@ -220,7 +220,7 @@ public class AggregatesTest extends BaseQueriesTest {
         String query = "create view v0 as SELECT MIN(column2) AS min FROM t1";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{min:string}\n" +
-                "function agg(g: Group<(), Tt1>):TRtmp {\n" +
+                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
                 "var min = (true, \"\"): (bool, string);\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
@@ -240,7 +240,7 @@ public class AggregatesTest extends BaseQueriesTest {
         String query = "create view v0 as SELECT COUNT(column1) AS ct, SUM(column1) AS sum FROM t1";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{ct:signed<64>, sum:signed<64>}\n" +
-                "function agg(g: Group<(), Tt1>):TRtmp {\n" +
+                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
                 "var count = 64'sd0: signed<64>;\n" +
                 "(var sum = 64'sd0: signed<64>);\n" +
                 "(for ((i, _) in g) {\n" +
@@ -254,7 +254,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v2] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v1 = aggResult,var v2 = v1.";
+                "Rv0[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program);
     }
 
@@ -263,7 +263,7 @@ public class AggregatesTest extends BaseQueriesTest {
         String query = "create view v0 as SELECT COUNT(*) AS ct FROM t1";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{ct:signed<64>}\n" +
-                "function agg(g: Group<(), Tt1>):TRtmp {\n" +
+                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
                 "var count = 64'sd0: signed<64>;\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
@@ -283,14 +283,14 @@ public class AggregatesTest extends BaseQueriesTest {
         String query1 = "create view v1 as SELECT COUNT(*) as ct FROM t1";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{ct:signed<64>}\n" +
-                "function agg(g: Group<(), Tt1>):TRtmp {\n" +
+                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
                 "var count = 64'sd0: signed<64>;\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(count = agg_count_R(count, 64'sd1))}\n" +
                 ");\n" +
                 "(TRtmp{.ct = count})\n}\n\n" +
-                "function agg1(g: Group<(), Tt1>):TRtmp {\n" +
+                "function agg0(g: Group<(), TRt1>):TRtmp {\n" +
                 "var count = 64'sd0: signed<64>;\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
@@ -303,7 +303,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "relation Rtmp0[TRtmp]\n" +
                 "output relation Rv1[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.\n" +
-                "Rv1[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg1(groupResult),var v0 = aggResult,var v1 = v0.";
+                "Rv1[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg0(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(Arrays.asList(query0, query1), program, false);
     }
 
@@ -312,7 +312,7 @@ public class AggregatesTest extends BaseQueriesTest {
         String query = "create view v0 as SELECT COUNT(*) AS ct0, COUNT(*) AS ct1 FROM t1";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{ct0:signed<64>, ct1:signed<64>}\n" +
-                "function agg(g: Group<(), Tt1>):TRtmp {\n" +
+                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
                 "var count = 64'sd0: signed<64>;\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
@@ -331,7 +331,7 @@ public class AggregatesTest extends BaseQueriesTest {
         String query = "create view v0 as SELECT COUNT(column1) AS ct FROM t1";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{ct:signed<64>}\n" +
-                "function agg(g: Group<(), Tt1>):TRtmp {\n" +
+                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
                 "var count = 64'sd0: signed<64>;\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
@@ -351,7 +351,7 @@ public class AggregatesTest extends BaseQueriesTest {
         String query = "create view v0 as SELECT COUNT(column1) AS ct FROM t1";
         String program = this.header(true) +
                 "typedef TRtmp = TRtmp{ct:Option<signed<64>>}\n" +
-                "function agg(g: Group<(), Tt1>):TRtmp {\n" +
+                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
                 "var count = None{}: Option<signed<64>>;\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
@@ -371,7 +371,7 @@ public class AggregatesTest extends BaseQueriesTest {
         String query = "create view v0 as SELECT AVG(column1) AS avg FROM t1";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{avg:signed<64>}\n" +
-                "function agg(g: Group<(), Tt1>):TRtmp {\n" +
+                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
                 "var avg = (64'sd0, 64'sd0): (signed<64>, signed<64>);\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
@@ -391,7 +391,7 @@ public class AggregatesTest extends BaseQueriesTest {
         String query = "create view v0 as SELECT AVG(column4) AS avg FROM t1";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{avg:double}\n" +
-                "function agg(g: Group<(), Tt1>):TRtmp {\n" +
+                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
                 "var avg = (64'f0.0, 64'f0.0): (double, double);\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
@@ -411,7 +411,7 @@ public class AggregatesTest extends BaseQueriesTest {
         String query = "create view v0 as SELECT AVG(column1) AS avg FROM t1";
         String program = this.header(true) +
                 "typedef TRtmp = TRtmp{avg:Option<signed<64>>}\n" +
-                "function agg(g: Group<(), Tt1>):TRtmp {\n" +
+                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
                 "var avg = None{}: Option<(signed<64>, signed<64>)>;\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
@@ -431,7 +431,7 @@ public class AggregatesTest extends BaseQueriesTest {
         String query = "create view v0 as SELECT COUNT(*) AS ct FROM t1";
         String program = this.header(true) +
                 "typedef TRtmp = TRtmp{ct:signed<64>}\n" +
-                "function agg(g: Group<(), Tt1>):TRtmp {\n" +
+                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
                 "var count = 64'sd0: signed<64>;\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
@@ -450,7 +450,7 @@ public class AggregatesTest extends BaseQueriesTest {
         String query = "create view v0 as SELECT MAX(CASE WHEN column2 = 'foo' THEN column1 ELSE 0 END) AS m FROM t1";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{m:signed<64>}\n" +
-                "function agg(g: Group<(), Tt1>):TRtmp {\n" +
+                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
                 "var max = (true, 64'sd0): (bool, signed<64>);\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
@@ -472,7 +472,7 @@ public class AggregatesTest extends BaseQueriesTest {
         String query = "create view v0 as SELECT MAX(column1) AS m FROM t1";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{m:signed<64>}\n" +
-                "function agg(g: Group<(), Tt1>):TRtmp {\n" +
+                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
                 "var max = (true, 64'sd0): (bool, signed<64>);\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
@@ -492,7 +492,7 @@ public class AggregatesTest extends BaseQueriesTest {
         String query = "create view v1 as select array_agg(column2) from t1";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{col0:Vec<string>}\n" +
-                "function agg(g: Group<(), Tt1>):TRtmp {\n" +
+                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
                 "var array_agg = vec_empty(): Vec<string>;\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
@@ -504,7 +504,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv1[TRtmp]\n" +
-                "Rv1[v2] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v1 = aggResult,var v2 = v1.";
+                "Rv1[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program);
     }
 
@@ -513,7 +513,7 @@ public class AggregatesTest extends BaseQueriesTest {
         String query = "create view v1 as select array_length(array_agg(column2)) from t1";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{col0:signed<64>}\n" +
-                "function agg(g: Group<(), Tt1>):TRtmp {\n" +
+                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
                 "var array_agg = vec_empty(): Vec<string>;\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
@@ -522,16 +522,10 @@ public class AggregatesTest extends BaseQueriesTest {
                 ");\n" +
                 "(TRtmp{.col0 = sql_array_length(array_agg)})\n" +
                 "}\n" +
-                "\n" +
-                "input relation Rt1[Tt1]\n" +
-                "input relation Rt2[Tt2]\n" +
-                "input relation Rt3[Tt3]\n" +
-                "input relation Rt4[Tt4]\n" +
+                this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv1[TRtmp]\n" +
-                "Rv1[v2] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v1 = aggResult,var v2 = v1.";
-        
+                "Rv1[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program);
-
     }
 }

@@ -24,6 +24,7 @@
 package ddlog;
 
 import com.vmware.ddlog.DDlogJooqProvider;
+import com.vmware.ddlog.DDlogHandle;
 import com.vmware.ddlog.util.sql.*;
 import ddlogapi.DDlogException;
 import org.jooq.impl.DSL;
@@ -37,9 +38,11 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class JooqProviderPrestoTest extends JooqProviderTestBase {
-
     @BeforeClass
     public static void setup() throws IOException, DDlogException {
+        if (JooqProviderTestBase.skip)
+            throw new RuntimeException("Skipping");
+
         String s1 = "create table hosts (id varchar(36) with (primary_key = true), capacity integer, up boolean)";
         String v2 = "create view hostsv as select distinct * from hosts";
         String v1 = "create view good_hosts as select distinct * from hosts where capacity < 10";
@@ -75,14 +78,14 @@ public class JooqProviderPrestoTest extends JooqProviderTestBase {
         indexStatements.add(createIndexNotNull);
         indexStatements.add(createIndexHosts);
 
-        ddlogAPI = compileAndLoad(
+        ddhandle = new DDlogHandle(
                 ddl.stream().map(PrestoSqlStatement::new).collect(Collectors.toList()),
                 sql -> sql,
                 indexStatements);
 
         ToH2Translator<PrestoSqlStatement> translator = new PrestoToH2Translator();
         // Initialise the data provider
-        provider = new DDlogJooqProvider(ddlogAPI,
+        provider = new DDlogJooqProvider(ddhandle,
                 Stream.concat(ddl.stream().map(x -> translator.toH2(new PrestoSqlStatement(x))),
                                 indexStatements.stream().map(H2SqlStatement::new))
                         .collect(Collectors.toList()));

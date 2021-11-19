@@ -22,14 +22,8 @@
  *
  */
 
-package com.vmware.ddlog.ir;
+package com.vmware.ddlog.util;
 
-import com.facebook.presto.sql.tree.Node;
-
-import javax.annotation.Nullable;
-
-public abstract class DDlogRuleRHS extends DDlogNode {
-    protected DDlogRuleRHS(@Nullable Node node) {
-        super(node);
-    }
+public interface Printable {
+    IndentStringBuilder toString(IndentStringBuilder builder);
 }

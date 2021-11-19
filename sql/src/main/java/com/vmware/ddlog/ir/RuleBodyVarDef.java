@@ -27,23 +27,25 @@ package com.vmware.ddlog.ir;
 import com.facebook.presto.sql.tree.Node;
 
 import javax.annotation.Nullable;
+import java.util.Objects;
 
-public class DDlogEField extends DDlogExpression {
-    private final DDlogExpression struct;
-    public final String field;
+public class RuleBodyVarDef extends RuleBodyCondition {
+    private final String var;
+    private final DDlogType exprType;
 
-    public DDlogEField(@Nullable Node node, DDlogExpression struct, String field, DDlogType type) {
-        super(node, type);
-        this.struct = struct;
-        this.field = field;
+    public RuleBodyVarDef(@Nullable Node node, String var, DDlogExpression expr) {
+        super(node, new DDlogESet(node,
+                new DDlogEVarDecl(node, var, expr.getType()),
+                expr));
+        this.var = var;
+        this.exprType = Objects.requireNonNull(expr.type);
     }
 
-    public DDlogExpression getStruct() {
-        return this.struct;
+    public DDlogType getExprType() {
+        return this.exprType;
     }
 
-    @Override
-    public String toString() {
-        return this.struct.toString() + "." + this.field;
+    public String getVar() {
+        return this.var;
     }
 }

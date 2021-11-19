@@ -28,13 +28,14 @@ import com.vmware.ddlog.ir.*;
 
 import javax.annotation.Nullable;
 import java.util.HashMap;
+import java.util.Objects;
 
 /**
  * Part of the TranslationContext that is shared between multiple
  * translation contexts.  This contains the program and allocated
  * symbols, for example.
  */
-public class TranslationState {
+public class CompilerState {
     private final DDlogProgram program;
     private final HashMap<String, DDlogRelationDeclaration> relations;
     public final ExpressionTranslationVisitor etv;
@@ -48,7 +49,7 @@ public class TranslationState {
     @Nullable
     private SymbolTable localSymbols;
 
-    public TranslationState() {
+    public CompilerState() {
         this.program = new DDlogProgram();
         this.program.imports.add(new DDlogImport("fp", ""));
         this.program.imports.add(new DDlogImport("time", ""));
@@ -71,7 +72,7 @@ public class TranslationState {
 
     void add(DDlogRelationDeclaration relation) {
         this.program.relations.add(relation);
-        this.relations.put(relation.getName(), relation);
+        this.relations.put(relation.getName().name, relation);
     }
 
     void add(DDlogIndexDeclaration index) {
@@ -83,8 +84,7 @@ public class TranslationState {
     }
 
     String freshLocalName(String prefix) {
-        assert this.localSymbols != null;
-        return this.localSymbols.freshName(prefix);
+        return Objects.requireNonNull(this.localSymbols).freshName(prefix);
     }
 
     void beginTranslation() {
@@ -100,8 +100,8 @@ public class TranslationState {
     }
 
     @Nullable
-    DDlogRelationDeclaration getRelation(String name) {
-        return this.relations.get(name);
+    DDlogRelationDeclaration getRelation(RelationName name) {
+        return this.relations.get(name.name);
     }
 
     DDlogProgram getProgram() {

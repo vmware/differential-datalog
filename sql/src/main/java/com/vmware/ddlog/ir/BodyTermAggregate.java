@@ -28,22 +28,24 @@ import com.facebook.presto.sql.tree.Node;
 
 import javax.annotation.Nullable;
 
-public class DDlogRHSLiteral extends DDlogRuleRHS {
-    public final boolean polarity;
-    public final DDlogAtom atom;
+public class BodyTermAggregate extends RuleBodyTerm {
+    final String var;
+    final String[] groupBy;
+    final String aggFunc;
+    final DDlogExpression aggExpr;
 
-    public DDlogRHSLiteral(@Nullable Node node, boolean polarity, DDlogAtom atom) {
+    public BodyTermAggregate(@Nullable Node node, String var, String aggFunc, DDlogExpression aggExpr, String... groupBy) {
         super(node);
-        this.polarity = polarity;
-        this.atom = atom;
+        this.var = var;
+        this.groupBy = groupBy;
+        this.aggFunc = aggFunc;
+        this.aggExpr = aggExpr;
     }
 
     @Override
     public String toString() {
-        String result = "";
-        if (!this.polarity)
-            result = "not ";
-        result += this.atom.toString();
-        return result;
+        return "var " + this.var + " = Aggregate((" +
+                String.join(", ", this.groupBy) + "), " + this.aggFunc +
+                "(" + this.aggExpr.toString() + "))";
     }
 }

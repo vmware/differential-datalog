@@ -26,10 +26,13 @@ package com.vmware.ddlog.ir;
 
 import com.vmware.ddlog.util.Linq;
 
+import javax.annotation.Nullable;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class DDlogProgram extends DDlogNode {
     // We are missing some of the fields that can never be generated from SQL
@@ -39,6 +42,7 @@ public class DDlogProgram extends DDlogNode {
     public final List<DDlogIndexDeclaration> indexes;
     public final List<DDlogRule> rules;
     public final List<DDlogImport> imports;
+    private final HashMap<String, DDlogRelationDeclaration> tableToRelation;
 
     DDlogProgram(List<DDlogTypeDef> typedefs, List<DDlogFunction> functions, List<DDlogRelationDeclaration> relations,
                  List<DDlogIndexDeclaration> indexes,
@@ -50,6 +54,7 @@ public class DDlogProgram extends DDlogNode {
         this.indexes = indexes;
         this.rules = rules;
         this.imports = imports;
+        this.tableToRelation = new HashMap<>();
     }
 
     public DDlogProgram() {
@@ -80,5 +85,22 @@ public class DDlogProgram extends DDlogNode {
         try (PrintWriter out = new PrintWriter(filename)) {
             out.println(this.toString());
         }
+    }
+
+    @Nullable
+    public DDlogRelationDeclaration getRelationFromTable(String tableName) {
+        return this.tableToRelation.get(tableName.toLowerCase());
+    }
+
+    public void addTableRelation(String tableName, DDlogRelationDeclaration relation) {
+        this.tableToRelation.put(tableName, relation);
+    }
+
+    public String relationNameToTableName(final String relationName) {
+        for (Map.Entry<String, DDlogRelationDeclaration> me : this.tableToRelation.entrySet()) {
+            if (me.getValue().getName().name.equals(relationName))
+                return me.getKey();
+        }
+        throw new RuntimeException("Table not found for relation " + relationName);
     }
 }

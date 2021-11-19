@@ -24,6 +24,8 @@
 
 package com.vmware.ddlog.util;
 
+import com.facebook.presto.sql.tree.QualifiedName;
+
 import javax.annotation.Nullable;
 import java.util.*;
 
@@ -39,6 +41,10 @@ public class Utilities {
             result.addAll(l);
         return result;
      }
+
+    public static String convertQualifiedName(QualifiedName name) {
+        return String.join(".", name.getParts());
+    }
 
     /**
      * Given two references checks if they can be to equal objects.
@@ -58,5 +64,9 @@ public class Utilities {
      public static <K, V> void copyMap(Map<K, V> destination, Map<K, V> source) {
          for (Map.Entry<K, V> e: source.entrySet())
              destination.put(e.getKey(), e.getValue());
+     }
+
+     public static String singleQuote(String other) {
+         return "'" + other + "'";
      }
 }

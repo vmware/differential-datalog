@@ -26,6 +26,7 @@ package com.vmware.ddlog.translator;
 
 import com.facebook.presto.sql.tree.*;
 import com.vmware.ddlog.util.Ternary;
+import com.vmware.ddlog.util.Utilities;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -94,7 +95,7 @@ public class AggregateVisitor
             this.decomposition.addNode(fc);
             return Ternary.Yes;
         }
-        String name = TranslationVisitor.convertQualifiedName(fc.getName());
+        String name = Utilities.convertQualifiedName(fc.getName());
         Ternary result = Ternary.Maybe;
         boolean isAggregate = SqlSemantics.semantics.isAggregateFunction(name);
         if (isAggregate) {

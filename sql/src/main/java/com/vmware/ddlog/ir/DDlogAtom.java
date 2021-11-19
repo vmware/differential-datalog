@@ -24,30 +24,27 @@
 
 package com.vmware.ddlog.ir;
 
-import com.vmware.ddlog.util.Linq;
+import com.vmware.ddlog.translator.RelationName;
 import com.facebook.presto.sql.tree.Node;
 
 import javax.annotation.Nullable;
 
 public class DDlogAtom extends DDlogNode {
-    public final String relation;
+    public final RelationName relation;
     public final DDlogExpression val;
 
-    public DDlogAtom(@Nullable Node node, String relation, DDlogExpression val) {
+    public DDlogAtom(@Nullable Node node, RelationName relation, DDlogExpression val) {
         super(node);
         this.relation = relation;
         this.val = val;
     }
 
+    public DDlogType getType() {
+        return this.val.getType();
+    }
+
     @Override
     public String toString() {
-        if (this.val instanceof DDlogEStruct) {
-            DDlogEStruct struct = (DDlogEStruct)this.val;
-            return this.relation + "(" + String.join(",",
-                Linq.map(struct.fields, f ->
-                        (f.getName().isEmpty() ? "" : "." + f.getName()) + " = "
-                                + f.getValue().toString(), String.class)) + ")";
-        }
         return this.relation + "[" + this.val.toString() + "]";
     }
 }

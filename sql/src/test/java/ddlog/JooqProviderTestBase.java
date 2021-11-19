@@ -24,11 +24,7 @@
 package ddlog;
 
 import com.vmware.ddlog.DDlogJooqProvider;
-import com.vmware.ddlog.ir.DDlogProgram;
-import com.vmware.ddlog.translator.Translator;
-import com.vmware.ddlog.util.sql.SqlStatement;
-import com.vmware.ddlog.util.sql.ToPrestoTranslator;
-import ddlogapi.DDlogAPI;
+import com.vmware.ddlog.DDlogHandle;
 import ddlogapi.DDlogException;
 import org.jooq.DSLContext;
 import org.jooq.Field;
@@ -41,11 +37,6 @@ import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 
 import javax.annotation.Nullable;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.List;
 import java.util.Objects;
 
 import static junit.framework.TestCase.*;
@@ -61,9 +52,8 @@ import static org.junit.Assert.assertThrows;
  * an example.
  */
 public abstract class JooqProviderTestBase {
-
     @Nullable
-    protected static DDlogAPI ddlogAPI;
+    protected static DDlogHandle ddhandle;
     protected static DSLContext create;
     protected static DDlogJooqProvider provider;
     private final Field<String> field1 = field("id", String.class);
@@ -72,6 +62,7 @@ public abstract class JooqProviderTestBase {
     private final Record test1 = create.newRecord(field1, field2, field3);
     private final Record test2 = create.newRecord(field1, field2, field3);
     private final Record test3 = create.newRecord(field1, field2, field3);
+    static final boolean skip = false;  // Set to true to skip these tests
 
     public JooqProviderTestBase() {
         test1.setValue(field1, "n1");
@@ -99,7 +90,7 @@ public abstract class JooqProviderTestBase {
 
     @AfterClass
     public static void teardown() throws DDlogException{
-        Objects.requireNonNull(ddlogAPI).stop();
+        Objects.requireNonNull(ddhandle).stop();
     }
 
     /**
@@ -686,25 +677,4 @@ public abstract class JooqProviderTestBase {
         assertTrue(readFromInput.contains(test3));
     }
 
-    // Unfortunately, `create index` statements have to be passed separately, because neither Calcite nor Presto
-    // supports them, so we must pass them as SQL strings.
-    public static <R extends SqlStatement> DDlogAPI compileAndLoad(
-            final List<R> ddl, final ToPrestoTranslator<R> translator,
-            final List<String> createIndexStatements) throws IOException, DDlogException {
-        final Translator t = new Translator();
-        ddl.forEach(x -> t.translateSqlStatement(translator.toPresto(x)));
-        createIndexStatements.forEach(t::translateCreateIndexStatement);
-
-        final DDlogProgram dDlogProgram = t.getDDlogProgram();
-        final String fileName = "/tmp/program.dl";
-        File tmp = new File(fileName);
-        BufferedWriter bw = new BufferedWriter(new FileWriter(tmp));
-        bw.write(dDlogProgram.toString());
-        bw.close();
-        DDlogAPI.CompilationResult result = new DDlogAPI.CompilationResult(true);
-        DDlogAPI.compileDDlogProgram(fileName, result, "../lib", "./lib");
-        if (!result.isSuccess())
-            throw new RuntimeException("Failed to compile ddlog program");
-        return DDlogAPI.loadDDlog();
-    }
 }

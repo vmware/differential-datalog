@@ -24,11 +24,8 @@
 
 package com.vmware.ddlog;
 
-import com.vmware.ddlog.ir.DDlogRelationDeclaration;
-import com.vmware.ddlog.ir.DDlogType;
 import com.vmware.ddlog.util.sql.CreateIndexParser;
 import com.vmware.ddlog.util.sql.H2SqlStatement;
-import com.vmware.ddlog.util.sql.ParsedCreateIndex;
 import ddlogapi.*;
 import org.apache.calcite.sql.*;
 import org.apache.calcite.sql.parser.SqlParser;
@@ -100,24 +97,24 @@ public final class DDlogJooqProvider implements MockDataProvider {
     private static final String DDLOG_NONE = "ddlog_std::None";
     private static final Object[] DEFAULT_BINDING = new Object[0];
     private static final ParseLiterals PARSE_LITERALS = new ParseLiterals();
-    private final DDlogAPI dDlogAPI;
+    private final DDlogHandle ddlogHandle;
     private final DSLContext dslContext;
     private final Field<Integer> updateCountField;
     //private final Map<String, Table<?>> tablesToJooqTable = new HashMap<>();
-    private final Map<String, List<Field<?>>> tablesToFields = new HashMap<>();
-    private final Map<String, Map<String, Field<?>>> tablesToFieldMap = new HashMap<>();
-    private final Map<String, List<? extends Field<?>>> tablesToPrimaryKeys = new HashMap<>();
-    private final Map<String, Set<Record>> materializedViews = new ConcurrentHashMap<>();
-    private final Set<String> inputTableNames = new HashSet<>();
+    private final Map<DDlogJooqHelper.NormalizedTableName, List<Field<?>>> tablesToFields = new HashMap<>();
+    private final Map<DDlogJooqHelper.NormalizedTableName, Map<String, Field<?>>> tablesToFieldMap = new HashMap<>();
+    private final Map<DDlogJooqHelper.NormalizedTableName, List<? extends Field<?>>> tablesToPrimaryKeys = new HashMap<>();
+    private final Map<DDlogJooqHelper.NormalizedTableName, Set<Record>> materializedViews = new ConcurrentHashMap<>();
+    private final Set<DDlogJooqHelper.NormalizedTableName> inputTableNames = new HashSet<>();
     private final DDlogJooqHelper whereHelper;
     public static boolean trace = false;
 
-    public DDlogJooqProvider(final DDlogAPI dDlogAPI, final List<H2SqlStatement> sqlStatements) {
-        this.dDlogAPI = dDlogAPI;
+    public DDlogJooqProvider(final DDlogHandle handle, final List<H2SqlStatement> sqlStatements) {
+        this.ddlogHandle = handle;
         this.dslContext = DSL.using("jdbc:h2:mem:");
         this.updateCountField = field("UPDATE_COUNT", Integer.class);
 
-        this.whereHelper = new DDlogJooqHelper(tablesToFields, dDlogAPI);
+        this.whereHelper = new DDlogJooqHelper(tablesToFields, handle);
 
         // We execute H2 statements in a temporary database so that JOOQ can extract useful metadata
         // that we will use later (for example, the record types for views).
@@ -131,17 +128,19 @@ public final class DDlogJooqProvider implements MockDataProvider {
 
         for (final Table<?> table: dslContext.meta().getTables()) {
             if (table.getSchema().getName().equals("PUBLIC")) { // H2-specific assumption
+                DDlogJooqHelper.NormalizedTableName tn = new DDlogJooqHelper.NormalizedTableName(table.getName());
                 Arrays.stream(table.fields()).forEach(
-                        (field) -> tablesToFieldMap.computeIfAbsent(table.getName(), (k) -> new HashMap<>())
+                        (field) -> tablesToFieldMap.computeIfAbsent(tn,
+                                (k) -> new HashMap<>())
                                 .put(field.getUnqualifiedName().last().toUpperCase(), field)
                 );
-                tablesToFields.put(table.getName(), Arrays.asList(table.fields()));
+                tablesToFields.put(tn, Arrays.asList(table.fields()));
                 //tablesToJooqTable.put(table.getName(), table);
                 if (table.getPrimaryKey() != null) {
-                    tablesToPrimaryKeys.put(table.getName(), table.getPrimaryKey().getFields());
+                    tablesToPrimaryKeys.put(tn, table.getPrimaryKey().getFields());
                 }
                 if (table.getType().equals(TableOptions.TableType.TABLE)) {
-                    inputTableNames.add(table.getName());
+                    inputTableNames.add(tn);
                 }
             }
         }
@@ -167,7 +166,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
         try {
             if (trace)
                 System.out.println("Staring transaction: " + ctx.sql());
-            dDlogAPI.transactionStart();
+            ddlogHandle.transactionStart();
             if (trace)
                 System.out.println("Transaction started");
             final Object[][] bindings = ctx.batchBindings();
@@ -178,7 +177,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
                 final SqlNode sqlNode = parser.parseStmt();
                 mock[commandIndex] = sqlNode.accept(new QueryVisitor(context));
             }
-            dDlogAPI.transactionCommitDumpChanges(this::onChange);
+            ddlogHandle.transactionCommitDumpChanges(this::onChange);
             if (trace)
                 System.out.println("Transaction committed");
         } catch (final Exception e) {
@@ -195,13 +194,13 @@ public final class DDlogJooqProvider implements MockDataProvider {
         return mock;
     }
 
-    public Result<Record> fetchTable(final String tableName) {
-        final List<Field<?>> fields = tablesToFields.get(tableName.toUpperCase());
+    public Result<Record> fetchTable(final DDlogJooqHelper.NormalizedTableName tableName) {
+        final List<Field<?>> fields = tablesToFields.get(tableName);
         if (fields == null) {
             throw new DDlogJooqProviderException(String.format("Table %s does not exist", tableName));
         }
         final Result<Record> result = dslContext.newResult(fields);
-        result.addAll(materializedViews.computeIfAbsent(tableName.toUpperCase(), (k) -> new LinkedHashSet<>()));
+        result.addAll(materializedViews.computeIfAbsent(tableName, (k) -> new LinkedHashSet<>()));
         return result;
     }
 
@@ -209,7 +208,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
         try {
             if (trace)
                 System.out.println("Rolling back transaction");
-            dDlogAPI.transactionRollback();
+            ddlogHandle.transactionRollback();
             if (trace)
                 System.out.println("Transaction rolled back");
         } catch (final DDlogException e) {
@@ -224,8 +223,9 @@ public final class DDlogJooqProvider implements MockDataProvider {
             if (trace)
                 System.out.println("Result: " + command);
             final int relationId = command.relid();
-            final String relationName = dDlogAPI.getTableName(relationId);
-            final String tableName = relationNameToTableName(relationName);
+            final String relationName = ddlogHandle.getTableName(relationId);
+            final DDlogJooqHelper.NormalizedTableName tableName =
+                    new DDlogJooqHelper.NormalizedTableName(ddlogHandle.relationNameToTableName(relationName));
             final List<Field<?>> fields = tablesToFields.get(tableName);
             final DDlogRecord record = command.value();
             final Record jooqRecord = dslContext.newRecord(fields);
@@ -286,7 +286,8 @@ public final class DDlogJooqProvider implements MockDataProvider {
             }
 
             // We want to return everything in clonedResults
-            final List<Field<?>> fields = tablesToFields.get(tableName.toUpperCase());
+            DDlogJooqHelper.NormalizedTableName tn = new DDlogJooqHelper.NormalizedTableName(tableName);
+            final List<Field<?>> fields = tablesToFields.get(tn);
             if (fields == null) {
                 throw new SQLException(String.format("Table %s does not exist", tableName));
             }
@@ -311,6 +312,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
             }
 
             String tableName = ((SqlIdentifier) select.getFrom()).getSimple();
+            DDlogJooqHelper.NormalizedTableName tn = new DDlogJooqHelper.NormalizedTableName(tableName);
 
             // Selects must be on all columns of the table, either denoted by * or by an enumeration of all columns
             if (!((select.getSelectList().size() == 1
@@ -325,11 +327,12 @@ public final class DDlogJooqProvider implements MockDataProvider {
             if (!select.hasWhere()) {
                 // If the select is on an input table, redirect it to the corresponding view / output relation, if it exists
                 // The user of this JooqProvider is responsible for creating these identity views
-                if (inputTableNames.contains(tableName)) {
+                if (inputTableNames.contains(tn)) {
                     tableName = DDlogJooqProvider.toIdentityViewName(tableName);
+                    tn = new DDlogJooqHelper.NormalizedTableName(tableName);
                 }
                 try {
-                    final Result<Record> result = fetchTable(tableName);
+                    final Result<Record> result = fetchTable(tn);
                     return new MockResult(1, result);
                 } catch (final DDlogJooqProviderException e) {
                     return exception(e.getMessage());
@@ -339,8 +342,8 @@ public final class DDlogJooqProvider implements MockDataProvider {
             try {
                 final SqlBasicCall where = (SqlBasicCall) select.getWhere();
 
-                if (tablesToFields.get(tableName.toUpperCase(Locale.ROOT)) == null) {
-                    return exception(String.format("Table %s does not exist: ", tableName) + context.sql());
+                if (tablesToFields.get(tn) == null) {
+                    return exception(String.format("Table %s does not exist: ", tn) + context.sql());
                 }
 
                 // Get fields requested in the where condition
@@ -363,11 +366,12 @@ public final class DDlogJooqProvider implements MockDataProvider {
             final SqlNode[] values = ((SqlBasicCall) insert.getSource()).getOperands();
 
             final String tableName = ((SqlIdentifier) insert.getTargetTable()).getSimple();
-            final List<Field<?>> fields = tablesToFields.get(tableName.toUpperCase());
+            DDlogJooqHelper.NormalizedTableName tn = new DDlogJooqHelper.NormalizedTableName(tableName);
+            final List<Field<?>> fields = tablesToFields.get(tn);
             if (fields == null) {
-                return exception(String.format("Table %s does not exist: ", tableName) + context.sql());
+                return exception(String.format("Table %s does not exist: ", tn) + context.sql());
             }
-            final int tableId = dDlogAPI.getTableId(ddlogRelationName(tableName));
+            final int tableId = ddlogHandle.getTableId(ddlogHandle.ddlogRelationName(tn.name));
             for (final SqlNode value: values) {
                 if (value.getKind() != SqlKind.ROW) {
                     return exception(insert.toString());
@@ -392,9 +396,9 @@ public final class DDlogJooqProvider implements MockDataProvider {
                     }
                 }
                 try {
-                    final DDlogRecord record = DDlogRecord.makeStruct(ddlogTableTypeName(tableName), recordsArray);
+                    final DDlogRecord record = DDlogRecord.makeStruct(ddlogHandle.ddlogTableTypeName(tableName), recordsArray);
                     final DDlogRecCommand command = new DDlogRecCommand(DDlogCommand.Kind.Insert, tableId, record);
-                    dDlogAPI.applyUpdates(new DDlogRecCommand[]{command});
+                    ddlogHandle.applyUpdates(new DDlogRecCommand[]{command});
                 } catch (final DDlogException e) {
                     return exception(e);
                 }
@@ -413,8 +417,8 @@ public final class DDlogJooqProvider implements MockDataProvider {
             // Delete the records returned
             for (DDlogRecord r : clonedResults) {
                 DDlogRecCommand command = new DDlogRecCommand(DDlogCommand.Kind.DeleteVal,
-                        dDlogAPI.getTableId(ddlogRelationName(tableName)), r);
-                dDlogAPI.applyUpdates(new DDlogRecCommand[]{command});
+                        ddlogHandle.getTableId(ddlogHandle.ddlogRelationName(tableName)), r);
+                ddlogHandle.applyUpdates(new DDlogRecCommand[]{command});
                 // Now release the cloned command
                 r.release();
             }
@@ -429,15 +433,16 @@ public final class DDlogJooqProvider implements MockDataProvider {
             }
 
             final String tableName = ((SqlIdentifier) delete.getTargetTable()).getSimple();
+            DDlogJooqHelper.NormalizedTableName tn = new DDlogJooqHelper.NormalizedTableName(tableName);
             final SqlBasicCall where = (SqlBasicCall) delete.getCondition();
 
-            if (tablesToFields.get(tableName) == null) {
+            if (tablesToFields.get(tn) == null) {
                 return exception(String.format("Table %s does not exist: ", tableName) + context.sql());
             }
             // Get fields requested in the where condition
             String[] ids = whereHelper.getIdsFromWhere(where);
 
-            final List<? extends Field<?>> pkFields = tablesToPrimaryKeys.get(tableName);
+            final List<? extends Field<?>> pkFields = tablesToPrimaryKeys.get(tn);
 
             try {
                 // If a primary key for this table exists AND its columns match the columns request in the WHERE clause,
@@ -446,9 +451,9 @@ public final class DDlogJooqProvider implements MockDataProvider {
                         DDlogJooqHelper.compareStringArrays(ids,
                                 pkFields.stream().map(x -> x.getUnqualifiedName().unquotedName().toString()).toArray(String[]::new))) {
                     final DDlogRecord record = matchExpressionFromWhere(where, pkFields, context);
-                    final int tableId = dDlogAPI.getTableId(ddlogRelationName(tableName));
+                    final int tableId = ddlogHandle.getTableId(ddlogHandle.ddlogRelationName(tableName));
                     final DDlogRecCommand command = new DDlogRecCommand(DDlogCommand.Kind.DeleteKey, tableId, record);
-                    dDlogAPI.applyUpdates(new DDlogRecCommand[]{command});
+                    ddlogHandle.applyUpdates(new DDlogRecCommand[]{command});
                 } else {
                     // If there are no PKs for this table, or if the PK given doesn't match the fields requested by this
                     // query, then we have to look in any indexes on the table.
@@ -470,9 +475,10 @@ public final class DDlogJooqProvider implements MockDataProvider {
             }
             try {
                 final String tableName = ((SqlIdentifier) update.getTargetTable()).getSimple();
-                final Map<String, Field<?>> allFields = tablesToFieldMap.get(tableName.toUpperCase());
+                DDlogJooqHelper.NormalizedTableName tn = new DDlogJooqHelper.NormalizedTableName(tableName);
+                final Map<String, Field<?>> allFields = tablesToFieldMap.get(tn);
                 if (allFields == null) {
-                    return exception(String.format("Table %s does not exist: ", tableName) + context.sql());
+                    return exception(String.format("Table %s does not exist: ", tn) + context.sql());
                 }
                 final int numColumnsToUpdate = update.getTargetColumnList().size();
                 final SqlNodeList targetColumnList = update.getTargetColumnList();
@@ -494,13 +500,13 @@ public final class DDlogJooqProvider implements MockDataProvider {
                 }
 
                 final SqlBasicCall where = (SqlBasicCall) update.getCondition();
-                final List<? extends Field<?>> pkFields = tablesToPrimaryKeys.get(tableName.toUpperCase());
+                final List<? extends Field<?>> pkFields = tablesToPrimaryKeys.get(tn);
                 final DDlogRecord key = matchExpressionFromWhere(where, pkFields, context);
 
                 final DDlogRecord updateRecord = DDlogRecord.makeNamedStruct("", columnsToUpdate, updatedValues);
-                final int tableId = dDlogAPI.getTableId(ddlogRelationName(tableName));
+                final int tableId = ddlogHandle.getTableId(ddlogHandle.ddlogRelationName(tableName));
                 final DDlogRecCommand command = new DDlogRecCommand(DDlogCommand.Kind.Modify, tableId, key, updateRecord);
-                dDlogAPI.applyUpdates(new DDlogRecCommand[]{command});
+                ddlogHandle.applyUpdates(new DDlogRecCommand[]{command});
             } catch (final DDlogException e) {
                 return exception(e);
             }
@@ -592,27 +598,6 @@ public final class DDlogJooqProvider implements MockDataProvider {
             throw new DDlogJooqProviderException(String.format("Field %s being queried is not a primary key",
                                                  identifier));
         }
-    }
-
-    /*
-     * This corresponds to the naming convention followed by the SQL -> DDlog compiler
-     */
-    private static String ddlogTableTypeName(final String tableName) {
-        return DDlogType.typeName(tableName.toLowerCase());
-    }
-
-    /*
-     * This corresponds to the naming convention followed by the SQL -> DDlog compiler
-     */
-    private static String ddlogRelationName(final String tableName) {
-        return DDlogRelationDeclaration.relationName(tableName.toLowerCase());
-    }
-
-    /*
-     * This corresponds to the naming convention followed by the SQL -> DDlog compiler
-     */
-    private static String relationNameToTableName(final String relationName) {
-        return relationName.substring(1).toUpperCase();
     }
 
     /*
@@ -708,7 +693,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
             }
         } else if (in.isVector()) {
             int size = in.getVectorSize();
-            List<Object> tmp = new ArrayList(size);
+            List<Object> tmp = new ArrayList<>(size);
             for (int i = 0; i < size; i++) {
                 DDlogRecord r = in.getVectorField(i);
                 tmp.add(ddlogRecordToObject(field, r));

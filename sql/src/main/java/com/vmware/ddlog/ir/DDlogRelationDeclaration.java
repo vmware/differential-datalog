@@ -25,12 +25,14 @@
 package com.vmware.ddlog.ir;
 
 import com.facebook.presto.sql.tree.Node;
+import com.vmware.ddlog.translator.RelationName;
 import com.vmware.ddlog.util.Linq;
 
 import javax.annotation.Nullable;
 import java.util.List;
 
 public class DDlogRelationDeclaration extends DDlogNode {
+
     public enum Role {
         Input,
         Output,
@@ -51,14 +53,13 @@ public class DDlogRelationDeclaration extends DDlogNode {
     }
 
     private final Role role;
-    private final String name;
+    private final RelationName name;
     private final DDlogType type;
     private final String primaryKeyVariable = "row";
     @Nullable
     private DDlogExpression keyExpression = null;
 
-    public DDlogRelationDeclaration(@Nullable Node node, Role role, String name,
-                                    DDlogType type) {
+    public DDlogRelationDeclaration(@Nullable Node node, Role role, RelationName name, DDlogType type) {
         super(node);
         this.role = role;
         this.name = this.checkNull(name);
@@ -76,7 +77,7 @@ public class DDlogRelationDeclaration extends DDlogNode {
         return result;
     }
 
-    public String getName() {
+    public RelationName getName() {
         return this.name;
     }
 

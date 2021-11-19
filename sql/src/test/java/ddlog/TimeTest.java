@@ -36,7 +36,6 @@ public class TimeTest extends BaseQueriesTest {
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{y:signed<64>}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt3[v],var v0 = TRtmp{.y = sql_extract_year(v.d)},var v1 = v0.";
         this.testTranslation(query, program);
@@ -48,7 +47,6 @@ public class TimeTest extends BaseQueriesTest {
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{m:signed<64>}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt3[v],var v0 = TRtmp{.m = sql_extract_month(v.d)},var v1 = v0.";
         this.testTranslation(query, program);
@@ -60,7 +58,6 @@ public class TimeTest extends BaseQueriesTest {
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{h:signed<64>}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt3[v],var v0 = TRtmp{.h = sql_extract_hour(v.t)},var v1 = v0.";
         this.testTranslation(query, program);

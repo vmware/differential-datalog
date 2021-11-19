@@ -22,24 +22,22 @@
  *
  */
 
-package com.vmware.ddlog.translator;
+package com.vmware.ddlog.ir;
 
-import com.facebook.presto.sql.tree.AstVisitor;
-import com.facebook.presto.sql.tree.DereferenceExpression;
-import com.facebook.presto.sql.tree.Identifier;
+import com.facebook.presto.sql.tree.Node;
 
-/**
- * A simple visitor which extracts a column name from an expression.
- * This returns null for most expressions.
- */
-public class ExpressionColumnName extends AstVisitor<String, Void> {
-    @Override
-    protected String visitIdentifier(Identifier id, Void context) {
-        return id.getValue().toLowerCase();
+import javax.annotation.Nullable;
+
+public class RuleBodyCondition extends RuleBodyTerm {
+    private final DDlogExpression expr;
+
+    public RuleBodyCondition(@Nullable Node node, DDlogExpression expr) {
+        super(node);
+        this.expr = this.checkNull(expr);
     }
 
     @Override
-    protected String visitDereferenceExpression(DereferenceExpression expression, Void context) {
-        return expression.getField().getValue().toLowerCase();
+    public String toString() {
+        return this.expr.toString();
     }
 }

@@ -31,11 +31,6 @@ import java.util.HashSet;
  */
 public class SymbolTable {
     private final HashSet<String> names = new HashSet<String>();
-    private int counter;
-
-    public SymbolTable() {
-        this.counter = 0;
-    }
 
     public void addName(String name) {
         if (this.names.contains(name))
@@ -45,14 +40,20 @@ public class SymbolTable {
 
     public String freshName(String prefix) {
         String name = prefix;
+        int counter = 0;
         while (true) {
             if (this.names.contains(name)) {
-                name = prefix + this.counter;
-                this.counter++;
+                name = prefix + counter;
+                counter++;
             } else {
                 this.addName(name);
                 return name;
             }
         }
+    }
+
+    @Override
+    public String toString() {
+        return String.join(", ", names);
     }
 }

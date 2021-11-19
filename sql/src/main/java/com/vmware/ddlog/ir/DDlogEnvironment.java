@@ -24,26 +24,24 @@
 
 package com.vmware.ddlog.ir;
 
-import com.facebook.presto.sql.tree.Node;
+import com.vmware.ddlog.translator.environment.IEnvironment;
 
-import javax.annotation.Nullable;
+/**
+ * This is not a real DDlog expression; it stands for a SQL expression that
+ * evaluates to an environment.
+ */
+public class DDlogEnvironment extends DDlogExpression {
+    private final IEnvironment environment;
 
-public class DDlogEField extends DDlogExpression {
-    private final DDlogExpression struct;
-    public final String field;
-
-    public DDlogEField(@Nullable Node node, DDlogExpression struct, String field, DDlogType type) {
-        super(node, type);
-        this.struct = struct;
-        this.field = field;
+    public DDlogEnvironment(IEnvironment environment) {
+        super(null);
+        this.environment = environment;
     }
 
-    public DDlogExpression getStruct() {
-        return this.struct;
-    }
+    public IEnvironment getEnvironment() { return this.environment; }
 
     @Override
     public String toString() {
-        return this.struct.toString() + "." + this.field;
+        return this.environment.toString();
     }
 }

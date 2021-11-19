@@ -22,28 +22,34 @@
  *
  */
 
-package com.vmware.ddlog.ir;
+package com.vmware.ddlog.translator.environment;
 
-import com.facebook.presto.sql.tree.Node;
+import com.vmware.ddlog.ir.DDlogExpression;
+import com.vmware.ddlog.util.IndentStringBuilder;
 
 import javax.annotation.Nullable;
 
-public class DDlogEField extends DDlogExpression {
-    private final DDlogExpression struct;
-    public final String field;
-
-    public DDlogEField(@Nullable Node node, DDlogExpression struct, String field, DDlogType type) {
-        super(node, type);
-        this.struct = struct;
-        this.field = field;
+public class EmptyEnvironment extends IEnvironment {
+    @Override
+    public IEnvironment cloneEnv() {
+        return this;
     }
 
-    public DDlogExpression getStruct() {
-        return this.struct;
+    @Nullable
+    @Override
+    public DDlogExpression lookupIdentifier(String identifier) {
+        return null;
+    }
+
+    @Nullable
+    @Override
+    public IEnvironment lookupRelation(String identifier) {
+        return null;
     }
 
     @Override
-    public String toString() {
-        return this.struct.toString() + "." + this.field;
+    public IndentStringBuilder toString(IndentStringBuilder builder) {
+        return builder.append("Empty");
     }
+
 }

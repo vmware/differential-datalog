@@ -22,24 +22,51 @@
  *
  */
 
-package com.vmware.ddlog.ir;
+package com.vmware.ddlog.util;
 
-import com.facebook.presto.sql.tree.Node;
+public class IndentStringBuilder {
+    final StringBuilder builder;
+    int indent = 0;
+    static final int amount = 4;
 
-import javax.annotation.Nullable;
+    public IndentStringBuilder() {
+        this.builder = new StringBuilder();
+    }
 
-public class DDlogRHSFlatMap extends DDlogRuleRHS {
-    final String var;
-    final DDlogExpression mapExpr;
+    public IndentStringBuilder append(String string) {
+        for (int i = 0; i < string.length(); i++) {
+            char c = string.charAt(i);
+            this.builder.append(c);
+            if (c == '\n') {
+                for (int in = 0; in < this.indent; in++)
+                    this.builder.append(' ');
+            }
+        }
+        return this;
+    }
 
-    public DDlogRHSFlatMap(@Nullable Node node, String var, DDlogExpression mapExpr) {
-        super(node);
-        this.var = var;
-        this.mapExpr = mapExpr;
+    public IndentStringBuilder newline() {
+        return this.append("\n");
+    }
+
+    public IndentStringBuilder append(Printable object) {
+        return object.toString(this);
+    }
+
+    public IndentStringBuilder increase() {
+        this.indent += amount;
+        return this.newline();
+    }
+
+    public IndentStringBuilder decrease() {
+        this.indent -= amount;
+        if (this.indent < 0)
+            throw new RuntimeException("Negative indent");
+        return this;
     }
 
     @Override
     public String toString() {
-        return "var " + this.var + " = FlatMap(" + this.mapExpr + ")";
+        return this.builder.toString();
     }
 }
