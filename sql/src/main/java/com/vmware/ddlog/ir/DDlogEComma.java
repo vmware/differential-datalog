@@ -25,20 +25,29 @@
 package com.vmware.ddlog.ir;
 
 import com.facebook.presto.sql.tree.Node;
+import com.vmware.ddlog.translator.TranslationException;
 
 import javax.annotation.Nullable;
 
 /**
- * A placeholder expression, i.e., the anonymous variable _.
+ * This expression stands for left & right, but it is implemented
+ * as a conjunction in DDlog with multiple terms.  It does not
+ * correspond to a real DDlog construct.
  */
-public class DDlogEPHolder extends DDlogExpression {
-    public DDlogEPHolder(@Nullable Node node) {
-        super(node, DDlogTAny.instance);
+public class DDlogEComma extends DDlogExpression {
+    public final DDlogExpression left;
+    public final DDlogExpression right;
+
+    public DDlogEComma(@Nullable Node node, DDlogExpression left, DDlogExpression right) {
+        super(node, left.getType());
+        if (!left.getType().same(right.getType()))
+            throw new TranslationException("Type mismatch between " + left + " and " + right, node);
+        this.left = left;
+        this.right = right;
     }
 
     @Override
     public String toString() {
-        return "_";
+        return this.left.toString() + "," + this.right.toString();
     }
-
 }

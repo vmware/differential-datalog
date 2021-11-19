@@ -272,7 +272,12 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
     protected DDlogExpression visitInPredicate(InPredicate node, TranslationContext context) {
         DDlogExpression value = this.process(node.getValue(), context);
         DDlogExpression list = this.process(node.getValueList(), context);
-        return new DDlogEApply(node, "vec_contains", DDlogTBool.instance, list, value);
+        if (list.is(DDlogEInRelation.class)) {
+            DDlogEInRelation src = list.to(DDlogEInRelation.class);
+            return new DDlogEInRelation(src.getNode(), value, src.relationName, src.getType());
+        } else {
+            return new DDlogEApply(node, "vec_contains", DDlogTBool.instance, list, value);
+        }
     }
 
     @Override
@@ -283,6 +288,15 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
             return subst;
         DDlogExpression translated = super.process(node, context);
         return checkHandled(translated, node);
+    }
+
+    @Override
+    protected DDlogExpression visitSubqueryExpression(SubqueryExpression node, TranslationContext context) {
+        DDlogIRNode query = context.cloneCtxt().translateQuery(node.getQuery());
+        RuleBody rhs = query.to(RuleBody.class);
+        RelationName relName = context.freshRelationName("sub");
+        DDlogRule rule = context.createRule(node, null, relName, rhs, DDlogRelationDeclaration.Role.Internal);
+        return new DDlogEInRelation(node, null, rule.head.relation.name, rhs.getType());
     }
 
     @Override
@@ -442,6 +456,8 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
     protected DDlogExpression visitLogicalBinaryExpression(LogicalBinaryExpression node, TranslationContext context) {
         DDlogExpression left = this.process(node.getLeft(), context);
         DDlogExpression right = this.process(node.getRight(), context);
+        if (left.is(DDlogEInRelation.class))
+            return new DDlogEComma(node, left, right);
         DDlogEBinOp.BOp op;
         switch (node.getOperator()) {
             case AND:

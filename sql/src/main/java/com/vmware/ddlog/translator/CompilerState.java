@@ -39,6 +39,7 @@ public class CompilerState {
     private final DDlogProgram program;
     private final HashMap<String, DDlogRelationDeclaration> relations;
     public final ExpressionTranslationVisitor etv;
+    public final TranslationVisitor translationVisitor;
     /**
      * Global to the whole program.
      */
@@ -49,7 +50,7 @@ public class CompilerState {
     @Nullable
     private SymbolTable localSymbols;
 
-    public CompilerState() {
+    public CompilerState(TranslationVisitor translationVisitor) {
         this.program = new DDlogProgram();
         this.program.imports.add(new DDlogImport("fp", ""));
         this.program.imports.add(new DDlogImport("time", ""));
@@ -59,6 +60,7 @@ public class CompilerState {
         this.etv = new ExpressionTranslationVisitor();
         this.localSymbols = null;
         this.globalSymbols = new SymbolTable();
+        this.translationVisitor = translationVisitor;
     }
 
     @Nullable
