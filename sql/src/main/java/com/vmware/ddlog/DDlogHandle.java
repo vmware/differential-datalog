@@ -113,11 +113,7 @@ public class DDlogHandle {
      * This corresponds to the naming convention followed by the SQL -> DDlog compiler
      */
     public String relationNameToTableName(final String relationName) {
-        for (Map.Entry<String, DDlogRelationDeclaration> me : this.program.tableToRelation.entrySet()) {
-            if (me.getValue().getName().name.equals(relationName))
-                return me.getKey();
-        }
-        throw new RuntimeException("Table not found for relation " + relationName);
+        return this.program.relationNameToTableName(relationName);
     }
 
     public void queryIndex(String index, DDlogRecord key, Consumer<DDlogRecord> consumer) throws DDlogException {

@@ -24,16 +24,42 @@ import static com.vmware.ddlog.DDlogJooqProvider.matchExpressionFromWhere;
  * The class cannot be used until seal() is called.
  */
 public class DDlogJooqHelper {
-    private final Map<String, List<Field<?>>> tablesToFields;
-    private final Map<String, List<ParsedCreateIndex>> tablesToIndexesMap = new HashMap<>();
-    private final Map<String, List<Field<?>>> indexToFieldsMap = new HashMap<>();
+    static class NormalizedTableName {
+        public final String name;
+
+        public NormalizedTableName(String name) {
+            this.name = name.toUpperCase(Locale.ROOT);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            NormalizedTableName that = (NormalizedTableName) o;
+            return Objects.equals(name, that.name);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(name);
+        }
+
+        @Override
+        public String toString() {
+            return this.name;
+        }
+    }
+
+    private final Map<DDlogJooqHelper.NormalizedTableName, List<Field<?>>> tablesToFields;
+    private final Map<DDlogJooqHelper.NormalizedTableName, List<ParsedCreateIndex>> tablesToIndexesMap = new HashMap<>();
+    private final Map<DDlogJooqHelper.NormalizedTableName, List<Field<?>>> indexToFieldsMap = new HashMap<>();
     private final DDlogHandle handle;
     private boolean sealed = false;
 
-    public DDlogJooqHelper(Map<String, List<Field<?>>> tablesToFields,
-                           DDlogHandle ddlogAPI) {
+    public DDlogJooqHelper(Map<DDlogJooqHelper.NormalizedTableName, List<Field<?>>> tablesToFields,
+                           DDlogHandle handle) {
         this.tablesToFields = tablesToFields;
-        this.handle = ddlogAPI;
+        this.handle = handle;
     }
 
     public void addIndex(String sqlString) {
@@ -42,14 +68,14 @@ public class DDlogJooqHelper {
         }
         ParsedCreateIndex parsedIndex = CreateIndexParser.parse(sqlString);
         this.tablesToIndexesMap.computeIfAbsent(
-                parsedIndex.getTableName().toUpperCase(Locale.ROOT), k -> new ArrayList<>()).add(parsedIndex);
+                new NormalizedTableName(parsedIndex.getTableName()), k -> new ArrayList<>()).add(parsedIndex);
     }
 
     public void seal() {
         // Now construct list of fields for each index
         for (ParsedCreateIndex parsedIndex :
                 this.tablesToIndexesMap.values().stream().flatMap(List::stream).collect(Collectors.toList())) {
-            List<Field<?>> tableFields = this.tablesToFields.get(parsedIndex.getTableName().toUpperCase(Locale.ROOT));
+            List<Field<?>> tableFields = this.tablesToFields.get(new NormalizedTableName(parsedIndex.getTableName()));
             List<Field<?>> indexFields = new ArrayList<>();
             for (String indexColumn : parsedIndex.getColumns()) {
                 for (Field<?> f : tableFields) {
@@ -58,7 +84,7 @@ public class DDlogJooqHelper {
                     }
                 }
             }
-            indexToFieldsMap.put(parsedIndex.getIndexName(), indexFields);
+            indexToFieldsMap.put(new NormalizedTableName(parsedIndex.getIndexName()), indexFields);
         }
         sealed = true;
     }
@@ -81,7 +107,8 @@ public class DDlogJooqHelper {
             throw new DDlogJooqProvider.DDlogJooqProviderException("Tried to use unsealed JooqHelper");
         }
 
-        String[] tableFields = this.tablesToFields.get(tableName).stream().map(Field::getName).toArray(String[]::new);
+        String[] tableFields = this.tablesToFields.get(new NormalizedTableName(tableName))
+                .stream().map(Field::getName).toArray(String[]::new);
         String[] queryFields =
                 list.getList().stream().map(x -> {
                     // Just in case the identifier is compound, we get the last name in the names list,
@@ -102,7 +129,7 @@ public class DDlogJooqHelper {
 
         final List<DDlogRecord> clonedResults = new ArrayList<>();
 
-        List<ParsedCreateIndex> indexes = this.tablesToIndexesMap.get(tableName);
+        List<ParsedCreateIndex> indexes = this.tablesToIndexesMap.get(new NormalizedTableName(tableName));
         if (indexes == null) {
             throw new SQLException(String.format("Cannot delete from table %s: no appropriate primary key" +
                     "and no indexes", tableName));
@@ -123,7 +150,8 @@ public class DDlogJooqHelper {
         }
         // Use the matching index to fetch the row, and then delete it
         final DDlogRecord indexKey =
-                matchExpressionFromWhere(where, indexToFieldsMap.get(matchingIndex.getIndexName()), context);
+                matchExpressionFromWhere(where, indexToFieldsMap.get(
+                        new NormalizedTableName(matchingIndex.getIndexName())), context);
 
         handle.queryIndex(
                 DDlogIndexDeclaration.indexName(matchingIndex.getIndexName()).name,

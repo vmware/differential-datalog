@@ -129,7 +129,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         String outVarName = context.freshLocalName("v");
         DDlogRelationDeclaration relDecl = new DDlogRelationDeclaration(node, role, relName, body.getType());
         if (role == DDlogRelationDeclaration.Role.Output) {
-            context.getProgram().tableToRelation.put(Objects.requireNonNull(tableName), relDecl);
+            context.getProgram().addTableRelation(Objects.requireNonNull(tableName), relDecl);
         }
         DDlogAtom lhs = new DDlogAtom(node, relName, new DDlogEVar(node, outVarName, relDecl.getType()));
         List<RuleBodyTerm> definitions = body.getDefinitions();

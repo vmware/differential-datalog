@@ -241,7 +241,7 @@ class TranslationContext {
     void add(DDlogRelationDeclaration relation, @Nullable String originalTableName) {
         this.compilerState.add(relation);
         if (originalTableName != null)
-            this.compilerState.getProgram().tableToRelation.put(originalTableName, relation);
+            this.compilerState.getProgram().addTableRelation(originalTableName, relation);
     }
 
     void add(DDlogIndexDeclaration index) {
