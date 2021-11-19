@@ -34,12 +34,10 @@ public class NestedTest extends BaseQueriesTest {
         String program = this.header(false) +
                 "typedef TRtmp0 = TRtmp0{column2:string}\n" +
                 this.relations(false) +
-                "relation Rtmp[Tt2]\n" +
-                "relation Rsub[Tt2]\n" +
-                "relation Rtmp0[TRtmp0]\n" +
+                "relation Rsub[TRt2]\n" +
                 "output relation Rv0[TRtmp0]\n" +
-                "Rsub[v2] :- Rt2[v0],var v1 = Tt2{.column1 = v0.column1},var v2 = v1.\n" +
-                "Rv0[v4] :- Rt1[v],Rsub[Tt2{v.column1}],var v3 = TRtmp0{.column2 = v.column2},var v4 = v3.";
+                "Rsub[v2] :- Rt2[v0],var v1 = TRt2{.column1 = v0.column1},var v2 = v1.\n" +
+                "Rv0[v4] :- Rt1[v],Rsub[TRt2{v.column1}],var v3 = TRtmp0{.column2 = v.column2},var v4 = v3.";
         this.testTranslation(query, program);
     }
 
@@ -49,12 +47,10 @@ public class NestedTest extends BaseQueriesTest {
                 "(SELECT DISTINCT column1 FROM t2)";
         String program = this.header(false) +
                 this.relations(false) +
-                "relation Rtmp[Tt2]\n" +
-                "relation Rsub[Tt2]\n" +
-                "relation Rtmp0[Tt2]\n" +
-                "output relation Rv0[Tt2]\n" +
-                "Rsub[v2] :- Rt2[v0],var v1 = Tt2{.column1 = v0.column1},var v2 = v1.\n" +
-                "Rv0[v4] :- Rt1[v],Rsub[Tt2{v.column1}],var v3 = Tt2{.column1 = v.column1},var v4 = v3.";
+                "relation Rsub[TRt2]\n" +
+                "output relation Rv0[TRt2]\n" +
+                "Rsub[v2] :- Rt2[v0],var v1 = TRt2{.column1 = v0.column1},var v2 = v1.\n" +
+                "Rv0[v4] :- Rt1[v],Rsub[TRt2{v.column1}],var v3 = TRt2{.column1 = v.column1},var v4 = v3.";
         this.testTranslation(query, program);
     }
 
@@ -64,15 +60,27 @@ public class NestedTest extends BaseQueriesTest {
         "column1 IN (SELECT DISTINCT column1 FROM t2) AND column1 IN (SELECT DISTINCT column1 FROM t1)";
         String program = this.header(false) +
                 this.relations(false) +
-                "relation Rtmp[Tt2]\n" +
-                "relation Rsub[Tt2]\n" +
-                "relation Rtmp0[Tt2]\n" +
-                "relation Rsub1[Tt2]\n" +
-                "relation Rtmp2[Tt2]\n" +
-                "output relation Rv0[Tt2]\n" +
-                "Rsub[v2] :- Rt2[v0],var v1 = Tt2{.column1 = v0.column1},var v2 = v1.\n" +
-                "Rsub1[v5] :- Rt1[v3],var v4 = Tt2{.column1 = v3.column1},var v5 = v4.\n" +
-                "Rv0[v7] :- Rt1[v],Rsub[Tt2{v.column1}],Rsub1[Tt2{v.column1}],var v6 = Tt2{.column1 = v.column1},var v7 = v6.";
+                "relation Rsub[TRt2]\n" +
+                "relation Rsub0[TRt2]\n" +
+                "output relation Rv0[TRt2]\n" +
+                "Rsub[v2] :- Rt2[v0],var v1 = TRt2{.column1 = v0.column1},var v2 = v1.\n" +
+                "Rsub0[v5] :- Rt1[v3],var v4 = TRt2{.column1 = v3.column1},var v5 = v4.\n" +
+                "Rv0[v7] :- Rt1[v],Rsub[TRt2{v.column1}],Rsub0[TRt2{v.column1}],var v6 = TRt2{.column1 = v.column1},var v7 = v6.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
+    public void nestedWhere3Test() {
+        String query = "create view v0 as SELECT DISTINCT column1 FROM t1 WHERE " +
+                "column1 IN (SELECT DISTINCT column1 FROM t2) AND column1 IN (SELECT DISTINCT column1 FROM t1 WHERE column1 > 0)";
+        String program = this.header(false) +
+                this.relations(false) +
+                "relation Rsub[TRt2]\n" +
+                "relation Rsub0[TRt2]\n" +
+                "output relation Rv0[TRt2]\n" +
+                "Rsub[v2] :- Rt2[v0],var v1 = TRt2{.column1 = v0.column1},var v2 = v1.\n" +
+                "Rsub0[v5] :- Rt1[v3],(v3.column1 > 64'sd0),var v4 = TRt2{.column1 = v3.column1},var v5 = v4.\n" +
+                "Rv0[v7] :- Rt1[v],Rsub[TRt2{v.column1}],Rsub0[TRt2{v.column1}],var v6 = TRt2{.column1 = v.column1},var v7 = v6.";
         this.testTranslation(query, program);
     }
 
