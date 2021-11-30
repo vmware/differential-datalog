@@ -238,7 +238,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
             throw new DDlogJooqProviderException(String.format("Table %s does not exist", maybeIdentityView));
         }
         final Result<Record> result = dslContext.newResult(fields);
-        final Set<Record> records = materializedViews.computeIfAbsent(tableName, (k) -> new LinkedHashSet<>());
+        final Set<Record> records = materializedViews.computeIfAbsent(maybeIdentityView, (k) -> new LinkedHashSet<>());
         records.forEach(r -> result.add(r.into(r.fields())));
         return result;
     }
