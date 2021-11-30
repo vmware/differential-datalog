@@ -194,13 +194,24 @@ public final class DDlogJooqProvider implements MockDataProvider {
         return mock;
     }
 
-    public Result<Record> fetchTable(final DDlogJooqHelper.NormalizedTableName tableName) {
-        final List<Field<?>> fields = tablesToFields.get(tableName);
+    public Result<Record> fetchTable(final String tableName) {
+        final DDlogJooqHelper.NormalizedTableName normalized = new DDlogJooqHelper.NormalizedTableName(tableName);
+        return fetchTable(normalized);
+    }
+
+    private Result<Record> fetchTable(final DDlogJooqHelper.NormalizedTableName tableName) {
+        // If the select is on an input table, redirect it to the corresponding view / output relation, if it exists
+        // The user of this JooqProvider is responsible for creating these identity views
+        final DDlogJooqHelper.NormalizedTableName maybeIdentityView =
+                        inputTableNames.contains(tableName) ?
+                        new DDlogJooqHelper.NormalizedTableName(DDlogJooqProvider.toIdentityViewName(tableName.name)) :
+                        tableName;
+        final List<Field<?>> fields = tablesToFields.get(maybeIdentityView);
         if (fields == null) {
-            throw new DDlogJooqProviderException(String.format("Table %s does not exist", tableName));
+            throw new DDlogJooqProviderException(String.format("Table %s does not exist", maybeIdentityView));
         }
         final Result<Record> result = dslContext.newResult(fields);
-        result.addAll(materializedViews.computeIfAbsent(tableName, (k) -> new LinkedHashSet<>()));
+        result.addAll(materializedViews.computeIfAbsent(maybeIdentityView, (k) -> new LinkedHashSet<>()));
         return result;
     }
 
@@ -312,7 +323,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
             }
 
             String tableName = ((SqlIdentifier) select.getFrom()).getSimple();
-            DDlogJooqHelper.NormalizedTableName tn = new DDlogJooqHelper.NormalizedTableName(tableName);
+            final DDlogJooqHelper.NormalizedTableName tn = new DDlogJooqHelper.NormalizedTableName(tableName);
 
             // Selects must be on all columns of the table, either denoted by * or by an enumeration of all columns
             if (!((select.getSelectList().size() == 1
@@ -325,12 +336,6 @@ public final class DDlogJooqProvider implements MockDataProvider {
             }
 
             if (!select.hasWhere()) {
-                // If the select is on an input table, redirect it to the corresponding view / output relation, if it exists
-                // The user of this JooqProvider is responsible for creating these identity views
-                if (inputTableNames.contains(tn)) {
-                    tableName = DDlogJooqProvider.toIdentityViewName(tableName);
-                    tn = new DDlogJooqHelper.NormalizedTableName(tableName);
-                }
                 try {
                     final Result<Record> result = fetchTable(tn);
                     return new MockResult(1, result);
@@ -475,7 +480,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
             }
             try {
                 final String tableName = ((SqlIdentifier) update.getTargetTable()).getSimple();
-                DDlogJooqHelper.NormalizedTableName tn = new DDlogJooqHelper.NormalizedTableName(tableName);
+                final DDlogJooqHelper.NormalizedTableName tn = new DDlogJooqHelper.NormalizedTableName(tableName);
                 final Map<String, Field<?>> allFields = tablesToFieldMap.get(tn);
                 if (allFields == null) {
                     return exception(String.format("Table %s does not exist: ", tn) + context.sql());
