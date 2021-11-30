@@ -22,6 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.makeSpan = exports.ErrorDisplay = exports.ClosableCopyableContent = exports.zeroPad = exports.removeAllChildren = exports.HtmlString = exports.DataRangeUI = exports.percentString = exports.significantDigits = exports.px = exports.formatPositiveNumber = exports.SpecialChars = void 0;
 var Direction;
 (function (Direction) {
     Direction[Direction["Up"] = 0] = "Up";
@@ -195,48 +196,6 @@ function removeAllChildren(h) {
 }
 exports.removeAllChildren = removeAllChildren;
 /**
- * Display only the significant digits of a number; returns an HtmlString.
- * @param n  number to display for human consumption.
- */
-function significantDigitsHtml(n) {
-    var suffix = "";
-    if (n === 0)
-        return new HtmlString("0");
-    var absn = Math.abs(n);
-    if (absn > 1e12) {
-        suffix = "T";
-        n = n / 1e12;
-    }
-    else if (absn > 1e9) {
-        suffix = "B";
-        n = n / 1e9;
-    }
-    else if (absn > 1e6) {
-        suffix = "M";
-        n = n / 1e6;
-    }
-    else if (absn > 1e3) {
-        suffix = "K";
-        n = n / 1e3;
-    }
-    else if (absn < .001) {
-        var expo = 0;
-        while (n < .1) {
-            n = n * 10;
-            expo++;
-        }
-        suffix = "&times;10<sup>-" + expo + "</sup>";
-    }
-    if (absn > 1)
-        n = Math.round(n * 100) / 100;
-    else
-        n = Math.round(n * 1000) / 1000;
-    var result = new HtmlString(String(n));
-    result.appendSafeString(suffix);
-    return result;
-}
-exports.significantDigitsHtml = significantDigitsHtml;
-/**
  * convert a number to a string and prepend zeros if necessary to
  * bring the integer part to the specified number of digits
  */
@@ -250,13 +209,6 @@ function zeroPad(num, length) {
     return zeroString + n;
 }
 exports.zeroPad = zeroPad;
-function repeat(c, count) {
-    var result = "";
-    for (var i = 0; i < count; i++)
-        result += c;
-    return result;
-}
-exports.repeat = repeat;
 /**
  * A div with two buttons: to close it, and to copy its content to the
  * clipboard.
@@ -354,8 +306,9 @@ exports.ErrorDisplay = ErrorDisplay;
  * A class that knows how to display profile data.
  */
 var ProfileTable = /** @class */ (function () {
-    function ProfileTable(errorReporter, isCpu) {
+    function ProfileTable(errorReporter, name, isCpu) {
         this.errorReporter = errorReporter;
+        this.name = name;
         this.isCpu = isCpu;
         this.showCpuHistogram = true;
         this.showMemHistogram = false;
@@ -363,18 +316,21 @@ var ProfileTable = /** @class */ (function () {
         this.table = document.createElement("table");
         var thead = this.table.createTHead();
         var header = thead.insertRow();
+        var columns;
+        this.displayedColumns = [];
         if (isCpu)
-            this.displayedColumns = ProfileTable.cpuColumns;
+            columns = ProfileTable.cpuColumns;
         else
-            this.displayedColumns = ProfileTable.memoryColumns;
-        for (var _i = 0, _a = this.displayedColumns; _i < _a.length; _i++) {
-            var c = _a[_i];
+            columns = ProfileTable.memoryColumns;
+        for (var _i = 0, columns_1 = columns; _i < columns_1.length; _i++) {
+            var c = columns_1[_i];
             if (c == "histogram") {
                 if (isCpu && !this.showCpuHistogram)
                     continue;
                 if (!isCpu && !this.showMemHistogram)
                     continue;
             }
+            this.displayedColumns.push(c);
             var cell = header.insertCell();
             cell.textContent = ProfileTable.cellNames.get(c);
             cell.classList.add(c);
@@ -449,6 +405,7 @@ var ProfileTable = /** @class */ (function () {
                     cell_1.classList.add("clickable");
                     cell_1.onclick = function () { return _this.expand(indent + 1, trow, cell_1, children_1, histogramStart); };
                 }
+                cell_1.id = this_1.name.replace(/\s/g, "_").toLowerCase() + "_" + value.toString();
             }
             if ((k === "size" && this_1.showMemHistogram) || (k == "cpu_us" && this_1.showCpuHistogram)) {
                 // Add an adjacent cell for the histogram
@@ -616,7 +573,6 @@ var ProfileTable = /** @class */ (function () {
         ["short_descr", "description"],
         ["dd_op", "DD operator"]
     ]);
-    ProfileTable.baseDocUrl = "https://github.com/vmware/differential-datalog/wiki/profiler_help#";
     return ProfileTable;
 }());
 /**
@@ -785,7 +741,7 @@ var ProfileUI = /** @class */ (function () {
         var h1 = document.createElement("h1");
         h1.textContent = profile.name;
         this.topLevel.appendChild(h1);
-        var profileTable = new ProfileTable(this.errorReporter, profile.type.toLowerCase() === "cpu");
+        var profileTable = new ProfileTable(this.errorReporter, profile.name, profile.type.toLowerCase() === "cpu");
         this.topLevel.appendChild(profileTable.getHTMLRepresentation());
         profileTable.setData(profile.records);
     };

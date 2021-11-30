@@ -213,44 +213,6 @@ export function removeAllChildren(h: HTMLElement): void {
 }
 
 /**
- * Display only the significant digits of a number; returns an HtmlString.
- * @param n  number to display for human consumption.
- */
-export function significantDigitsHtml(n: number): HtmlString {
-    let suffix = "";
-    if (n === 0)
-        return new HtmlString("0");
-    const absn = Math.abs(n);
-    if (absn > 1e12) {
-        suffix = "T";
-        n = n / 1e12;
-    } else if (absn > 1e9) {
-        suffix = "B";
-        n = n / 1e9;
-    } else if (absn > 1e6) {
-        suffix = "M";
-        n = n / 1e6;
-    } else if (absn > 1e3) {
-        suffix = "K";
-        n = n / 1e3;
-    } else if (absn < .001) {
-        let expo = 0;
-        while (n < .1) {
-            n = n * 10;
-            expo++;
-        }
-        suffix = "&times;10<sup>-" + expo + "</sup>";
-    }
-    if (absn > 1)
-        n = Math.round(n * 100) / 100;
-    else
-        n = Math.round(n * 1000) / 1000;
-    const result = new HtmlString(String(n));
-    result.appendSafeString(suffix);
-    return result;
-}
-
-/**
  * convert a number to a string and prepend zeros if necessary to
  * bring the integer part to the specified number of digits
  */
@@ -263,13 +225,6 @@ export function zeroPad(num: number, length: number): string {
     }
 
     return zeroString + n;
-}
-
-export function repeat(c: string, count: number): string {
-    let result = "";
-    for (let i = 0; i < count; i++)
-        result += c;
-    return result;
 }
 
 /**
@@ -437,25 +392,27 @@ class ProfileTable implements IHtmlElement {
         ["short_descr", "description"],
         ["dd_op", "DD operator"]
     ]);
-    protected static readonly baseDocUrl = "https://github.com/vmware/differential-datalog/wiki/profiler_help#";
     protected displayedColumns: string[];
     protected total: number = 0;
 
-    constructor(protected errorReporter: ErrorReporter, protected isCpu: boolean) {
+    constructor(protected errorReporter: ErrorReporter, protected name: string, protected isCpu: boolean) {
         this.table = document.createElement("table");
         const thead = this.table.createTHead();
         const header = thead.insertRow();
+        let columns;
+        this.displayedColumns = [];
         if (isCpu)
-            this.displayedColumns = ProfileTable.cpuColumns;
+            columns = ProfileTable.cpuColumns;
         else
-            this.displayedColumns = ProfileTable.memoryColumns;
-        for (let c of this.displayedColumns) {
+            columns = ProfileTable.memoryColumns;
+        for (let c of columns) {
             if (c == "histogram") {
                 if (isCpu && !this.showCpuHistogram)
                     continue;
                 if (!isCpu && !this.showMemHistogram)
                     continue;
             }
+            this.displayedColumns.push(c);
             const cell = header.insertCell();
             cell.textContent = ProfileTable.cellNames.get(c)!;
             cell.classList.add(c);
@@ -531,6 +488,7 @@ class ProfileTable implements IHtmlElement {
                     cell.classList.add("clickable");
                     cell.onclick = () => this.expand(indent + 1, trow, cell, children, histogramStart);
                 }
+                cell.id = this.name.replace(/\s/g, "_").toLowerCase() + "_" + value.toString();
             }
             if ((k === "size" && this.showMemHistogram) || (k == "cpu_us" && this.showCpuHistogram)) {
                 // Add an adjacent cell for the histogram
@@ -855,7 +813,7 @@ class ProfileUI implements IHtmlElement {
         const h1 = document.createElement("h1");
         h1.textContent = profile.name;
         this.topLevel.appendChild(h1);
-        const profileTable = new ProfileTable(this.errorReporter, profile.type.toLowerCase() === "cpu");
+        const profileTable = new ProfileTable(this.errorReporter, profile.name,profile.type.toLowerCase() === "cpu");
         this.topLevel.appendChild(profileTable.getHTMLRepresentation())
         profileTable.setData(profile.records);
     }
