@@ -275,7 +275,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         RelationNameVisitor rnv = new RelationNameVisitor();
         String relationName = relation.getRelation().accept(rnv, null);
         if (debug) System.out.println("Returning from aliased relation " + relation);
-        if (relationName != null)
+        if (relationName != null && !name.equals(relationName))
             context.environment.delete(relationName);
         return rrhs;
     }
