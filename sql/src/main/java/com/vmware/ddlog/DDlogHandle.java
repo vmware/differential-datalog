@@ -51,7 +51,7 @@ public class DDlogHandle {
     // Unfortunately, `create index` statements have to be passed separately, because neither Calcite nor Presto
     // supports them, so we must pass them as SQL strings.
     public <R extends SqlStatement> DDlogHandle(final List<R> ddl, final ToPrestoTranslator<R> translator,
-                                         final List<String> createIndexStatements)
+                                         final List<String> createIndexStatements, boolean compile)
             throws IOException, DDlogException {
         final Translator t = new Translator();
         ddl.forEach(x -> t.translateSqlStatement(translator.toPresto(x)));
@@ -59,16 +59,24 @@ public class DDlogHandle {
 
         this.program = t.getDDlogProgram();
         // System.out.println(this.program.toString());
-        final String fileName = "/tmp/program.dl";
-        File tmp = new File(fileName);
-        BufferedWriter bw = new BufferedWriter(new FileWriter(tmp));
-        bw.write(this.program.toString());
-        bw.close();
-        DDlogAPI.CompilationResult result = new DDlogAPI.CompilationResult(true);
-        DDlogAPI.compileDDlogProgram(fileName, result, "../lib", "./lib");
-        if (!result.isSuccess())
-            throw new RuntimeException("Failed to compile ddlog program");
+        if (compile) {
+            final String fileName = "/tmp/program.dl";
+            File tmp = new File(fileName);
+            BufferedWriter bw = new BufferedWriter(new FileWriter(tmp));
+            bw.write(this.program.toString());
+            bw.close();
+            DDlogAPI.CompilationResult result = new DDlogAPI.CompilationResult(true);
+            DDlogAPI.compileDDlogProgram(fileName, result, "../lib", "./lib");
+            if (!result.isSuccess())
+                throw new RuntimeException("Failed to compile ddlog program");
+        }
         this.api = DDlogAPI.loadDDlog();
+    }
+
+    public <R extends SqlStatement> DDlogHandle(final List<R> ddl, final ToPrestoTranslator<R> translator,
+                                                final List<String> createIndexStatements)
+            throws IOException, DDlogException {
+        this(ddl, translator, createIndexStatements, true);
     }
 
     public void stop() throws DDlogException {
