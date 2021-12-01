@@ -1021,6 +1021,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         this.process(overInputView, context);
         Table overInputTable = new Table(overInput);
 
+        context.exitAllScopes();
         Relation join = overInputTable;
         for (WindowVisitor.WindowAggregation w: windowVisitor.windows) {
             List<SelectItem> items = new ArrayList<SelectItem>();

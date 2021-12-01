@@ -27,6 +27,7 @@ package com.vmware.ddlog.translator;
 import com.facebook.presto.sql.tree.*;
 import com.vmware.ddlog.ir.*;
 import com.vmware.ddlog.translator.environment.EnvHandle;
+import com.vmware.ddlog.util.IdGen;
 import com.vmware.ddlog.util.Linq;
 import com.vmware.ddlog.util.Utilities;
 
@@ -36,7 +37,7 @@ import java.util.*;
 /**
  * This class is used to maintain information during the translation from SQL to DDlog.
  */
-class TranslationContext {
+class TranslationContext extends IdGen {
     /**
      * If a Node (representing a SQL expression) is mapped to an expression
      * then the expression translation will return directly the expression
@@ -70,6 +71,8 @@ class TranslationContext {
     DDlogRule createRule(@Nullable Node node, @Nullable String tableName,
                          RelationName relName, RuleBody body,
                          DDlogRelationDeclaration.Role role) {
+        if (TranslationVisitor.debug)
+            System.out.println("Creating relation " + relName + " for " + tableName);
         String outVarName = this.freshLocalName("v");
         DDlogRelationDeclaration relDecl = new DDlogRelationDeclaration(node, role, relName, body.getType());
         if (role == DDlogRelationDeclaration.Role.Output) {
@@ -99,6 +102,8 @@ class TranslationContext {
     }
 
     public void mergeWith(TranslationContext other) {
+        if (TranslationVisitor.debug)
+            System.out.println(this.id + " merging with " + other.id);
         if (this.compilerState != other.compilerState)
             throw new RuntimeException("Merging contexts with different state");
         for (Map.Entry<Node, DDlogExpression> e: other.substitutions.entrySet())
@@ -332,6 +337,8 @@ class TranslationContext {
     String lastRelationName = null;
 
     public void pushAlias(String name) {
+        if (TranslationVisitor.debug)
+            System.out.println(this.id + " Adding alias " + name);
         this.relationAlias.add(name);
     }
 
@@ -339,6 +346,8 @@ class TranslationContext {
         if (this.relationAlias.size() == 0)
             return suggested;
         this.lastRelationName = this.relationAlias.remove(this.relationAlias.size() - 1);
+        if (TranslationVisitor.debug)
+            System.out.println(this.id + " using alias " + this.lastRelationName + " instead of " + suggested);
         return this.lastRelationName;
     }
 
@@ -351,12 +360,14 @@ class TranslationContext {
 
     @Override
     public String toString() {
-        return this.environment.toString();
+        return this.id + " " + this.relationAlias.toString() + "\n" + this.environment.toString();
     }
 
     public void exitAllScopes() {
         this.environment.exitAllScopes();
         this.relationAlias.clear();
+        if (TranslationVisitor.debug)
+            System.out.println(this.id + " Clearing aliases");
         this.lastRelationName = null;
     }
 }
