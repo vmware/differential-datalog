@@ -299,7 +299,7 @@ class TranslationContext {
     }
 
     void endTranslation() {
-        this.environment.exitAllScopes();
+        this.exitAllScopes();
     }
 
     void add(DDlogRule rule) {
