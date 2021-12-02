@@ -60,6 +60,40 @@ public class WindowTest extends BaseQueriesTest {
     }
 
     @Test
+    public void windowAliasTest() {
+        String query = "create view v0 as SELECT DISTINCT alias1.column1 as new_column, " +
+                "AVG(alias2.column1) OVER (PARTITION BY alias1.column1) as problem " +
+                "from t1 as alias1 " +
+                "JOIN t4 as alias2 ON alias1.column1 = alias2.column1";
+        String program = this.header(false) +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, column10:Option<signed<64>>, column20:Option<string>}\n" +
+                "typedef TRalias2 = TRalias2{tmp:Option<signed<64>>, gb:signed<64>, new_column:signed<64>}\n" +
+                "typedef TRtmp = TRtmp{gb:signed<64>, avg:Option<signed<64>>}\n" +
+                "typedef Tagg = Tagg{avg:Option<signed<64>>}\n" +
+                "typedef Ttmp0 = Ttmp0{tmp:Option<signed<64>>, gb:signed<64>, new_column:signed<64>, avg:Option<signed<64>>}\n" +
+                "typedef TRtmp0 = TRtmp0{new_column:signed<64>, problem:Option<signed<64>>}\n" +
+                "function agg(g: Group<signed<64>, TRalias2>):Tagg {\n" +
+                "(var gb0) = group_key(g);\n" +
+                "(var avg0 = None{}: Option<(signed<64>, signed<64>)>);\n" +
+                "(for ((i, _) in g) {\n" +
+                "var v7 = i;\n" +
+                "(var incr = v7.tmp);\n" +
+                "(avg0 = agg_avg_signed_N(avg0, incr))}\n" +
+                ");\n" +
+                "(Tagg{.avg = avg_signed_N(avg0)})\n" +
+                "}\n" +
+                this.relations(false) +
+                "relation Roverinput[TRalias2]\n" +
+                "relation Rtmp[TRtmp]\n" +
+                "relation Rover[TRtmp]\n" +
+                "output relation Rv0[TRtmp0]\n" +
+                "Roverinput[v6] :- Rt1[TRt1{.column1 = column11,.column2 = column21,.column3 = column30,.column4 = column40}],Rt4[TRt4{.column1 = Some{.x = column11},.column2 = column22}],var v4 = Ttmp{.column1 = column11,.column2 = column21,.column3 = column30,.column4 = column40,.column10 = Some{.x = column11},.column20 = column22},var v5 = TRalias2{.tmp = v4.column10,.gb = v4.column1,.new_column = v4.column1},var v6 = v5.\n" +
+                "Rover[v9] :- Roverinput[v7],var gb0 = v7.gb,var groupResult = (v7).group_by((gb0)),var aggResult = agg(groupResult),var v8 = TRtmp{.gb = gb0,.avg = aggResult.avg},var v9 = v8.\n" +
+                "Rv0[v14] :- Roverinput[TRalias2{.tmp = tmp0,.gb = gb1,.new_column = new_column}],Rover[TRtmp{.gb = gb1,.avg = avg1}],var v12 = Ttmp0{.tmp = tmp0,.gb = gb1,.new_column = new_column,.avg = avg1},var v13 = TRtmp0{.new_column = v12.new_column,.problem = v12.avg},var v14 = v13.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
     public void windowExpressionTest() {
         String query = "create view v1 as\n" +
                 "select DISTINCT *, 3 + count(column3) over (partition by column2) as c2 from t1";
