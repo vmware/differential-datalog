@@ -33,7 +33,7 @@ jobs:
 
     steps:
       - run: echo "Build triggered by GitHub event ${GITHUB_EVENT_NAME}"
-      - uses: actions/checkout@v2 
+      - uses: actions/checkout@v2
       - run: echo "${LOCALAPPDATA}"
         # Never managed to get this to work on Windows.
         # - name: Cache Haskell stack outputs
@@ -45,13 +45,14 @@ jobs:
         #       ~/.stack
         #      %LocalAppData%\Programs\stack
         #   key: ${{ runner.os }}-stack
-        #   
+        #
 
         # Workaround for `https://github.com/rust-lang/cargo/issues/8443`:
         # `cargo vendor` fails on the differential-dataflow crate when `~/.cargo`
         # is a symlink.
-      - if: ${{ runner.os == 'Linux' }}
-        run: (rm "${HOME}/.cargo" && mv /usr/share/rust/.cargo "${HOME}/")
+        # (This is no longer needed, as `~/.cargo` is not a symlink anymore)
+        #- if: ${{ runner.os == 'Linux' }}
+        # run: (rm "${HOME}/.cargo" && mv /usr/share/rust/.cargo "${HOME}/")
         # flatc gets installed to '${HOME}/.local/bin'.
       - run: echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
       - run: echo "${HOME}/.cargo/bin" >> "${GITHUB_PATH}"
