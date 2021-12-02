@@ -66,7 +66,8 @@ public class DDlogHandle {
             bw.write(this.program.toString());
             bw.close();
             DDlogAPI.CompilationResult result = new DDlogAPI.CompilationResult(true);
-            DDlogAPI.compileDDlogProgram(fileName, result, "../lib", "./lib");
+            String ddlogSqlHome = System.getenv("DDLOG_HOME") + "/sql/";
+            DDlogAPI.compileDDlogProgram(fileName, result, ddlogSqlHome + "../lib", ddlogSqlHome + "./lib");
             if (!result.isSuccess())
                 throw new RuntimeException("Failed to compile ddlog program");
         }
