@@ -361,7 +361,7 @@ impl DDlogDynamic for HDDlog {
     ) -> Result<BTreeMap<RelId, Vec<(Record, isize)>>, String> {
         self.record_command(|r| r.transaction_commit_dump_changes_dynamic());
         Ok(self
-            .transaction_commit_dump_changes()?
+            .do_transaction_commit_dump_changes(false)?
             .into_iter()
             .map(|(relid, delta_typed)| {
                 let delta_dynamic: Vec<(Record, isize)> = delta_typed
@@ -410,11 +410,15 @@ impl DDlogDynamic for HDDlog {
             let update_vec: Vec<_> = upds.collect();
             self.record_command(|r| r.apply_updates_dynamic(&mut update_vec.iter().cloned()));
 
-            self.apply_updates(&mut update_vec.into_iter().flat_map(convert)
-                as &mut dyn Iterator<Item = Update<DDValue>>)
+            self.do_apply_updates(
+                &mut update_vec.into_iter().flat_map(convert)
+                    as &mut dyn Iterator<Item = Update<DDValue>>,
+                false,
+            )
         } else {
-            self.apply_updates(
-                &mut upds.flat_map(convert) as &mut dyn Iterator<Item = Update<DDValue>>
+            self.do_apply_updates(
+                &mut upds.flat_map(convert) as &mut dyn Iterator<Item = Update<DDValue>>,
+                false,
             )
         };
 
@@ -429,7 +433,7 @@ impl DDlogDynamic for HDDlog {
 
         let key = self.inventory.index_from_record(index, key)?;
         let results = self
-            .query_index(index, key)?
+            .do_query_index(index, key, false)?
             .into_iter()
             .map(DDValue::into_record)
             .collect();
@@ -440,7 +444,7 @@ impl DDlogDynamic for HDDlog {
     fn dump_index_dynamic(&self, index: IdxId) -> Result<Vec<Record>, String> {
         self.record_command(|r| r.dump_index_dynamic(index));
         Ok(self
-            .dump_index(index)?
+            .do_dump_index(index, false)?
             .into_iter()
             .map(|v| v.into_record())
             .collect())
@@ -451,9 +455,17 @@ impl DDlogDynamic for HDDlog {
     }
 }
 
-impl DDlog for HDDlog {
-    fn transaction_commit_dump_changes(&self) -> Result<DeltaMap<DDValue>, String> {
-        self.record_command(|r| r.transaction_commit_dump_changes());
+// Implement methods from the `DDlog` trait with an extra flag to control command recording.  The
+// flag is set to `true` when invoked from `impl DDlog` and `false` when invoked from `impl
+// DDlogDynamic`, since the latter does its own recording.
+impl HDDlog {
+    fn do_transaction_commit_dump_changes(
+        &self,
+        record: bool,
+    ) -> Result<DeltaMap<DDValue>, String> {
+        if record {
+            self.record_command(|r| r.transaction_commit_dump_changes());
+        }
         *self.deltadb.lock().unwrap() = Some(DeltaMap::new());
 
         self.update_handler.before_commit();
@@ -471,7 +483,11 @@ impl DDlog for HDDlog {
         }
     }
 
-    fn apply_updates(&self, upds: &mut dyn Iterator<Item = Update<DDValue>>) -> Result<(), String> {
+    fn do_apply_updates(
+        &self,
+        upds: &mut dyn Iterator<Item = Update<DDValue>>,
+        record: bool,
+    ) -> Result<(), String> {
         // Make sure that the updates being inserted have the correct value types for their
         // relation
         let inspect_update = |update: &Update<DDValue>| {
@@ -489,7 +505,7 @@ impl DDlog for HDDlog {
             Ok(())
         };
 
-        if self.command_recorder.is_some() {
+        if record && self.command_recorder.is_some() {
             let update_vec: Vec<_> = upds.collect();
             self.record_command(|r| r.apply_updates(&mut update_vec.iter().cloned()));
 
@@ -505,8 +521,15 @@ impl DDlog for HDDlog {
         }
     }
 
-    fn query_index(&self, index: IdxId, key: DDValue) -> Result<BTreeSet<DDValue>, String> {
-        self.record_command(|r| r.query_index(index, key.clone()));
+    fn do_query_index(
+        &self,
+        index: IdxId,
+        key: DDValue,
+        record: bool,
+    ) -> Result<BTreeSet<DDValue>, String> {
+        if record {
+            self.record_command(|r| r.query_index(index, key.clone()));
+        }
         let arrangement_id = self
             .inventory
             .index_to_arrangement_id(index)
@@ -518,14 +541,34 @@ impl DDlog for HDDlog {
             .query_arrangement(arrangement_id, key)
     }
 
-    fn dump_index(&self, index: IdxId) -> Result<BTreeSet<DDValue>, String> {
-        self.record_command(|r| r.dump_index(index));
+    fn do_dump_index(&self, index: IdxId, record: bool) -> Result<BTreeSet<DDValue>, String> {
+        if record {
+            self.record_command(|r| r.dump_index(index));
+        }
         let arrangement_id = self
             .inventory
             .index_to_arrangement_id(index)
             .ok_or_else(|| format!("unknown index {}", index))?;
 
         self.prog.lock().unwrap().dump_arrangement(arrangement_id)
+    }
+}
+
+impl DDlog for HDDlog {
+    fn transaction_commit_dump_changes(&self) -> Result<DeltaMap<DDValue>, String> {
+        self.do_transaction_commit_dump_changes(true)
+    }
+
+    fn apply_updates(&self, upds: &mut dyn Iterator<Item = Update<DDValue>>) -> Result<(), String> {
+        self.do_apply_updates(upds, true)
+    }
+
+    fn query_index(&self, index: IdxId, key: DDValue) -> Result<BTreeSet<DDValue>, String> {
+        self.do_query_index(index, key, true)
+    }
+
+    fn dump_index(&self, index: IdxId) -> Result<BTreeSet<DDValue>, String> {
+        self.do_dump_index(index, true)
     }
 }
 

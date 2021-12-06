@@ -247,10 +247,11 @@ public class RedistTest {
         // currently committing.
         private DeltaSpan currentDelta;
 
-        SpanParser() throws DDlogException {
+        SpanParser() throws DDlogException, IOException {
             DDlogConfig config = new DDlogConfig(2);
             config.setProfilingConfig(DDlogConfig.selfProfiling());
             this.api = new DDlogAPI(config, true);
+            this.api.recordCommands("record.dat", false);
 
 
             this.spanTableId = this.api.getTableId("Span");

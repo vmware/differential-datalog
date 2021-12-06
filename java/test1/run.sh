@@ -14,6 +14,8 @@ echo classpath: $CLASSPATH
 java -Djava.library.path=. RedistTest ../../test/datalog_tests/redist.dat > redist.java.dump
 gzip -f redist.java.dump
 zdiff -q redist.java.dump.gz ../../test/datalog_tests/redist.dump.expected.gz
+gzip -f record.dat
+zdiff -q record.dat.gz record.dat.expected.gz
 cleanup
 rm -rf redist.java.dump.gz fastutil-8.3.0
 # Additional cleanup
