@@ -11,7 +11,7 @@ modify Rhosts ddlog_std::Some{"n1"} <- Thosts{.up = ddlog_std::Some{true}},
 commit dump_changes;
 
 start;
-modify Rhosts ddlog_std::Some{"n1"} <- Thosts{.up = ddlog_std::None},
+modify Rhosts ddlog_std::Some{"n1"} <- _{.up = ddlog_std::None},
 commit dump_changes;
 
 dump_index Rhosts_by_id;

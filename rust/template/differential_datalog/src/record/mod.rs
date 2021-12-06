@@ -255,7 +255,7 @@ impl fmt::Display for Record {
                 write!(f, "]")
             }
             Record::PosStruct(n, recs) => {
-                write!(f, "{}{{", n)?;
+                write!(f, "{}{{", if n == "" { "_" } else { n })?;
                 let len = recs.len();
                 for (i, r) in recs.iter().enumerate() {
                     if i == len - 1 {
@@ -267,7 +267,7 @@ impl fmt::Display for Record {
                 write!(f, "}}")
             }
             Record::NamedStruct(n, recs) => {
-                write!(f, "{}{{", n)?;
+                write!(f, "{}{{", if n == "" { "_" } else { n })?;
                 let len = recs.len();
                 for (i, (fname, v)) in recs.iter().enumerate() {
                     if i == len - 1 {
