@@ -425,7 +425,7 @@ class ProfileTable implements IHtmlElement {
     protected getId(row: Partial<ProfileRow>): string | null {
         if (row.opid == null)
             return null;
-        return this.name.replace(/\s/g, "_").toLowerCase() + "_" + row.opid.toString();
+        return this.name.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase() + "_" + row.opid.toString();
     }
 
     protected addDataRow(indent: number, rowIndex: number, row: Partial<ProfileRow>,
@@ -444,6 +444,7 @@ class ProfileTable implements IHtmlElement {
             short_descr: row.short_descr === undefined ? "" : row.short_descr
         };
 
+        let id = this.getId(safeRow);
         for (let k of this.displayedColumns) {
             let key = k as keyof ProfileRow;
             let value = safeRow[key];
@@ -495,7 +496,10 @@ class ProfileTable implements IHtmlElement {
                     cell.classList.add("clickable");
                     cell.onclick = () => this.expand(indent + 1, trow, cell, children, histogramStart);
                 }
-                cell.id = this.getId(safeRow)!;
+                if (id != null) {
+                    cell.id = id!;
+                    cell.title = id;
+                }
             }
             if ((k === "size" && this.showMemHistogram) || (k == "cpu_us" && this.showCpuHistogram)) {
                 // Add an adjacent cell for the histogram
@@ -677,11 +681,14 @@ class ProfileTable implements IHtmlElement {
     }
 
     protected expandPath(path: string[]): void {
-        for (let p of path.reverse()) {
+        path.reverse();
+        for (let p of path) {
             let elem = document.getElementById(p)!;
             elem.click();
             elem.parentElement!.classList.add("highlight");
         }
+        let last = document.getElementById(path[path.length - 1]);
+        last!.scrollIntoView();
     }
 
     /**
