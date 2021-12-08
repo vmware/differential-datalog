@@ -341,7 +341,7 @@ var ProfileTable = /** @class */ (function () {
     ProfileTable.prototype.getId = function (row) {
         if (row.opid == null)
             return null;
-        return this.name.replace(/\s/g, "_").toLowerCase() + "_" + row.opid.toString();
+        return this.name.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase() + "_" + row.opid.toString();
     };
     ProfileTable.prototype.addDataRow = function (indent, rowIndex, row, lastInSequence, histogramStart) {
         var _this = this;
@@ -358,6 +358,7 @@ var ProfileTable = /** @class */ (function () {
             opid: row.opid === undefined ? -1 : row.opid,
             short_descr: row.short_descr === undefined ? "" : row.short_descr
         };
+        var id = this.getId(safeRow);
         var _loop_1 = function (k) {
             var key = k;
             var value = safeRow[key];
@@ -411,7 +412,10 @@ var ProfileTable = /** @class */ (function () {
                     cell_1.classList.add("clickable");
                     cell_1.onclick = function () { return _this.expand(indent + 1, trow, cell_1, children_1, histogramStart); };
                 }
-                cell_1.id = this_1.getId(safeRow);
+                if (id != null) {
+                    cell_1.id = id;
+                    cell_1.title = id;
+                }
             }
             if ((k === "size" && this_1.showMemHistogram) || (k == "cpu_us" && this_1.showCpuHistogram)) {
                 // Add an adjacent cell for the histogram
@@ -594,12 +598,15 @@ var ProfileTable = /** @class */ (function () {
         return null;
     };
     ProfileTable.prototype.expandPath = function (path) {
-        for (var _i = 0, _a = path.reverse(); _i < _a.length; _i++) {
-            var p = _a[_i];
+        path.reverse();
+        for (var _i = 0, path_1 = path; _i < path_1.length; _i++) {
+            var p = path_1[_i];
             var elem = document.getElementById(p);
             elem.click();
             elem.parentElement.classList.add("highlight");
         }
+        var last = document.getElementById(path[path.length - 1]);
+        last.scrollIntoView();
     };
     /**
      * Find the node with the specified id and make sure it is visible.
