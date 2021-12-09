@@ -76,6 +76,10 @@ td.invocations {
     background: lightyellow;
 }
 
+tr.show {
+    background: pink;
+}
+
 /* close, minimize, help page elements */
 .close {
     font-weight: bold;
