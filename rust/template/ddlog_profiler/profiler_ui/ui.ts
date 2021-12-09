@@ -422,10 +422,14 @@ class ProfileTable implements IHtmlElement {
         this.tbody = this.table.createTBody();
     }
 
-    protected getId(row: Partial<ProfileRow>): string | null {
-        if (row.opid == null)
-            return null;
-        return this.name.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase() + "_" + row.opid.toString();
+    protected getId(row: Partial<ProfileRow>): string {
+        let id = row.opid;
+        let ids;
+        if (id == null)
+            ids = "0";
+        else
+            ids = id.toString();
+        return this.name.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase() + "_" + ids;
     }
 
     protected addDataRow(indent: number, rowIndex: number, row: Partial<ProfileRow>,
@@ -440,7 +444,7 @@ class ProfileTable implements IHtmlElement {
             children: row.children === undefined ? [] : row.children,
             dd_op: row.dd_op === undefined ? "" : row.dd_op,
             invocations: row.invocations === undefined ? -1 : row.invocations,
-            opid: row.opid === undefined ? -1 : row.opid,
+            opid: row.opid === undefined ? 0 : row.opid,
             short_descr: row.short_descr === undefined ? "" : row.short_descr
         };
 
@@ -651,8 +655,6 @@ class ProfileTable implements IHtmlElement {
 
     protected findPathFromRow(r: Partial<ProfileRow>, id: string): string[] | null {
         let thisId = this.getId(r);
-        if (thisId == null)
-            return null;
         if (thisId == id) {
             return [thisId];
         }

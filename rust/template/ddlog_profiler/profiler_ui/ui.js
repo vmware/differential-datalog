@@ -339,9 +339,13 @@ var ProfileTable = /** @class */ (function () {
         this.tbody = this.table.createTBody();
     }
     ProfileTable.prototype.getId = function (row) {
-        if (row.opid == null)
-            return null;
-        return this.name.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase() + "_" + row.opid.toString();
+        var id = row.opid;
+        var ids;
+        if (id == null)
+            ids = "0";
+        else
+            ids = id.toString();
+        return this.name.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase() + "_" + ids;
     };
     ProfileTable.prototype.addDataRow = function (indent, rowIndex, row, lastInSequence, histogramStart) {
         var _this = this;
@@ -355,7 +359,7 @@ var ProfileTable = /** @class */ (function () {
             children: row.children === undefined ? [] : row.children,
             dd_op: row.dd_op === undefined ? "" : row.dd_op,
             invocations: row.invocations === undefined ? -1 : row.invocations,
-            opid: row.opid === undefined ? -1 : row.opid,
+            opid: row.opid === undefined ? 0 : row.opid,
             short_descr: row.short_descr === undefined ? "" : row.short_descr
         };
         var id = this.getId(safeRow);
@@ -568,8 +572,6 @@ var ProfileTable = /** @class */ (function () {
     };
     ProfileTable.prototype.findPathFromRow = function (r, id) {
         var thisId = this.getId(r);
-        if (thisId == null)
-            return null;
         if (thisId == id) {
             return [thisId];
         }
