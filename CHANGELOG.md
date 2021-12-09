@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [1.2.2] - Dec 9, 2021
+
+### Bug fixes
+
+- Fix jump-to-record functionality in HTML profiles.
+
 ## [1.2.1] - Dec 8, 2021
 
 ### Bug fixes

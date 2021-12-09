@@ -33,7 +33,7 @@ import Data.List
 
 -- Keep this in sync with the binary release version on github
 dDLOG_VERSION :: String
-dDLOG_VERSION = "v1.2.1"
+dDLOG_VERSION = "v1.2.2"
 
 gitInfoCwdTry :: Either String GitInfo
 gitInfoCwdTry = $$tGitInfoCwdTry
