@@ -606,6 +606,7 @@ var ProfileTable = /** @class */ (function () {
             elem.parentElement.classList.add("highlight");
         }
         var last = document.getElementById(path[path.length - 1]);
+        last.parentElement.classList.add("show");
         last.scrollIntoView();
     };
     /**

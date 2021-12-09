@@ -688,6 +688,7 @@ class ProfileTable implements IHtmlElement {
             elem.parentElement!.classList.add("highlight");
         }
         let last = document.getElementById(path[path.length - 1]);
+        last!.parentElement!.classList.add("show");
         last!.scrollIntoView();
     }
 
