@@ -135,6 +135,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
     private final Set<DDlogJooqHelper.NormalizedTableName> inputTableNames = new HashSet<>();
     private final DDlogJooqHelper whereHelper;
     public static boolean trace = false;
+    private final Object oneTxnLock = new Object();
 
     public DDlogJooqProvider(final DDlogHandle handle, final List<H2SqlStatement> sqlStatements) {
         this.ddlogHandle = handle;
@@ -190,33 +191,35 @@ public final class DDlogJooqProvider implements MockDataProvider {
         final String[] batchSql = ctx.batchSQL();
         final MockResult[] mock = new MockResult[batchSql.length];
         int commandIndex = 0;
-        try {
-            if (trace)
-                System.out.println("Staring transaction: " + ctx.sql());
-            ddlogHandle.transactionStart();
-            if (trace)
-                System.out.println("Transaction started");
-            final Object[][] bindings = ctx.batchBindings();
-            for (commandIndex = 0; commandIndex < batchSql.length; commandIndex++) {
-                final Object[] binding = bindings != null && bindings.length > commandIndex ? bindings[commandIndex] : DEFAULT_BINDING;
-                final QueryContext context = new QueryContext(batchSql[commandIndex], binding);
-                final SqlParser parser = SqlParser.create(batchSql[commandIndex]);
-                final SqlNode sqlNode = parser.parseStmt();
-                mock[commandIndex] = sqlNode.accept(new QueryVisitor(context));
+        synchronized (oneTxnLock) {
+            try {
+                if (trace)
+                    System.out.println("Staring transaction: " + ctx.sql());
+                ddlogHandle.transactionStart();
+                if (trace)
+                    System.out.println("Transaction started");
+                final Object[][] bindings = ctx.batchBindings();
+                for (commandIndex = 0; commandIndex < batchSql.length; commandIndex++) {
+                    final Object[] binding = bindings != null && bindings.length > commandIndex ? bindings[commandIndex] : DEFAULT_BINDING;
+                    final QueryContext context = new QueryContext(batchSql[commandIndex], binding);
+                    final SqlParser parser = SqlParser.create(batchSql[commandIndex]);
+                    final SqlNode sqlNode = parser.parseStmt();
+                    mock[commandIndex] = sqlNode.accept(new QueryVisitor(context));
+                }
+                ddlogHandle.transactionCommitDumpChanges(this::onChange);
+                if (trace)
+                    System.out.println("Transaction committed");
+            } catch (final Exception e) {
+                // We really have to catch all exceptions here to rollback, otherwise
+                // we could be left with a started and unterminated transaction.
+                if (trace)
+                    System.out.println("Exception: " + e.getMessage());
+                rollback();
+                // Not clear that this is the result for all remaining commands,
+                // but we cannot leave these null either.
+                for (; commandIndex < batchSql.length; commandIndex++)
+                    mock[commandIndex] = exception(e);
             }
-            ddlogHandle.transactionCommitDumpChanges(this::onChange);
-            if (trace)
-                System.out.println("Transaction committed");
-        } catch (final Exception e) {
-            // We really have to catch all exceptions here to rollback, otherwise
-            // we could be left with a started and unterminated transaction.
-            if (trace)
-                System.out.println("Exception: " + e.getMessage());
-            rollback();
-            // Not clear that this is the result for all remaining commands,
-            // but we cannot leave these null either.
-            for (; commandIndex < batchSql.length; commandIndex++)
-                mock[commandIndex] = exception(e);
         }
         return mock;
     }
