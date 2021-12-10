@@ -39,7 +39,7 @@ class ParseLiterals extends SqlBasicVisitor<DDlogRecord> {
             case BOOLEAN:
                 return new DDlogRecord(sqlLiteral.booleanValue());
             case DECIMAL:
-                return new DDlogRecord(sqlLiteral.intValue(false));
+                return new DDlogRecord(sqlLiteral.longValue(false));
             case CHAR:
                 try {
                     return new DDlogRecord(sqlLiteral.toValue());
