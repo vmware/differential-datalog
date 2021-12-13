@@ -2017,11 +2017,12 @@ compileRelation d statics rn = do
                 then "change_cb: ::core::option::Option::Some(::std::sync::Arc::clone(&__update_cb)),"
                 else "change_cb: ::core::option::Option::None,"
     arrangements <- gets $ (M.! rn) . cArrangements
-    let compiled_arrangements = mapIdx (\arng i ->
-                                         let ?statics = moduleStatics statics (nameScope rel) in
-                                         let arng' = mkArrangement d rel arng in
-                                         "pub static" <+> arng_name i <+> ": ::once_cell::sync::Lazy<program::Arrangement> = ::once_cell::sync::Lazy::new(|| {" $$ nest' arng' $$ "});") arrangements
-
+    let (compiled_arrangements, arng_dbg_info) = unzip
+                                $ mapIdx (\arng i ->
+                                          let ?statics = moduleStatics statics (nameScope rel) in
+                                          let (arng', dbginfo) = mkArrangement d rel arng in
+                                          ("pub static" <+> arng_name i <+> ": ::once_cell::sync::Lazy<program::Arrangement> = ::once_cell::sync::Lazy::new(|| {" $$ nest' arng' $$ "});", dbginfo))
+                                         arrangements
     let code =
             "let" <+> rnameFlat rn <+> "=" <+> "::differential_datalog::program::Relation {"
             $$ "    name:" <+> cow_str rn <> ","
@@ -2040,7 +2041,7 @@ compileRelation d statics rn = do
             $$ (nest' $ nest' $ vcat $ mapIdx (\rule i -> ridentScoped Nothing (ruleModule rule) (render $ rule_name i) <> ".clone(),") rules)
             $$ "    ],"
             $$ "    arrangements: vec!["
-            $$ (nest' $ nest' $ vcat $ mapIdx (\_ i -> (pp $ ridentScoped Nothing (nameScope rel) (render $ arng_name i)) <> ".clone(),") arrangements)
+            $$ (nest' $ nest' $ vcat $ mapIdx (\dbg_info i -> (pp $ ridentScoped Nothing (nameScope rel) (render $ arng_name i)) <> ".clone().set_debug_info(" <> dbg_info <> "),") arng_dbg_info)
             $$ "    ],"
             $$ (nest' cb)
             $$ "};"
@@ -2904,17 +2905,24 @@ mkNode (ApplyNode mname i xformer_name source_pos _) =
     "    tfun:" <+> ridentScoped Nothing mname ("__apply_" ++ show i)        $$
     "}"
 
-mkArrangement :: (?cfg::Config, ?statics::CrateStatics, ?crate_graph::CrateGraph, ?specname::String, ?module_paths::ModulePathMap) => DatalogProgram -> Relation -> Arrangement -> Doc
+-- Returns 'program::Arrangement' instance with empty 'debug_info' field, and
+-- the actual 'debug_info' as a separate string.  The former is placed in the
+-- module that declares the relation; the latter is kept in the main module and
+-- added when instantiating the program.  This way the relation declaration (and
+-- the crate it belongs to) don't need to be recompiled every time 'debug_info'
+-- changes (since debug_info includes line numbers, it changes often).
+mkArrangement :: (?cfg::Config, ?statics::CrateStatics, ?crate_graph::CrateGraph, ?specname::String, ?module_paths::ModulePathMap) => DatalogProgram -> Relation -> Arrangement -> (Doc, Doc)
 mkArrangement d rel ArrangementMap{..} =
     let filter_key = mkArrangementKey d rel arngPattern False
         afun = braces' $
-               "let __cloned =" <+> vALUE_VAR <> ".clone();"                                                     $$
+               "let __cloned =" <+> vALUE_VAR <> ".clone();"                                                      $$
                filter_key <> ".map(|x|(x,__cloned))"
-    in "program::Arrangement::Map{"                                                                              $$
-       "   debug_info:" <+> dbgInfoArrangement arngPattern arngUsedAt arngIndexes <> ","                         $$
-       (nest' $ "afun: {fn __f(" <> vALUE_VAR <> ": ::differential_datalog::ddval::DDValue) -> ::std::option::Option<(::differential_datalog::ddval::DDValue,::differential_datalog::ddval::DDValue)>" $$ afun $$ "__f},")  $$
-       "    queryable:" <+> (if null arngIndexes then "false" else "true")                                       $$
-       "}"
+    in ("program::Arrangement::Map{"                                                                              $$
+        "   debug_info:  Default::default(),"                                                                     $$
+        (nest' $ "afun: {fn __f(" <> vALUE_VAR <> ": ::differential_datalog::ddval::DDValue) -> ::std::option::Option<(::differential_datalog::ddval::DDValue,::differential_datalog::ddval::DDValue)>" $$ afun $$ "__f},")  $$
+        "    queryable:" <+> (if null arngIndexes then "false" else "true")                                       $$
+        "}",
+        dbgInfoArrangement arngPattern arngUsedAt arngIndexes)
 
 mkArrangement d rel ArrangementSet{..} =
     let filter_key = mkArrangementKey d rel arngPattern False
@@ -2924,11 +2932,12 @@ mkArrangement d rel ArrangementSet{..} =
         -- it if it is defined over all fields of a distinct relation (i.e.,
         -- the pattern expression does not contain placeholders).
         distinct_by_construction = relIsDistinct d rel && (not $ exprContainsPHolders arngPattern)
-    in "program::Arrangement::Set{"                                                                                                 $$
-       "    debug_info:" <+> dbgInfoArrangement arngPattern arngUsedAt [] <> ","                                                    $$
-       (nest' $ "fmfun: {fn __f(" <> vALUE_VAR <> ": ::differential_datalog::ddval::DDValue) -> ::std::option::Option<::differential_datalog::ddval::DDValue>" $$ fmfun $$ "__f},")                             $$
-       "    distinct:" <+> (if arngDistinct && not distinct_by_construction then "true" else "false")                               $$
-       "}"
+    in ("program::Arrangement::Set{"                                                                                                 $$
+        "    debug_info: Default::default(),"                                                                                        $$
+        (nest' $ "fmfun: {fn __f(" <> vALUE_VAR <> ": ::differential_datalog::ddval::DDValue) -> ::std::option::Option<::differential_datalog::ddval::DDValue>" $$ fmfun $$ "__f},")                             $$
+        "    distinct:" <+> (if arngDistinct && not distinct_by_construction then "true" else "false")                               $$
+        "}",
+        dbgInfoArrangement arngPattern arngUsedAt [])
 
 -- Generate part of the arrangement computation that filters inputs and computes the key part of the
 -- arrangement.

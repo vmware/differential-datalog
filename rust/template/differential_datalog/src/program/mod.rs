@@ -866,6 +866,19 @@ impl Arrangement {
         }
     }
 
+    pub fn set_debug_info(mut self, dbg_info: ArrangementDebugInfo) -> Self {
+        match self {
+            Self::Map {
+                ref mut debug_info, ..
+            } => *debug_info = dbg_info,
+            Self::Set {
+                ref mut debug_info, ..
+            } => *debug_info = dbg_info,
+        };
+
+        self
+    }
+
     fn build_arrangement_root<S>(
         &self,
         render_context: &RenderContext,

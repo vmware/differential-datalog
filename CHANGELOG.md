@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Quality-of-life improvements
+
+- Avoid recompiling Rust crates when only arrangement debug info changes.
+
 ## [1.2.2] - Dec 9, 2021
 
 ### Bug fixes
