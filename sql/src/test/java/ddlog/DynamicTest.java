@@ -50,7 +50,7 @@ public class DynamicTest extends BaseQueriesTest {
         properties.setProperty("foreign_keys", "true");
         try {
             // Create a fresh database
-            final String connectionURL = "jdbc:h2:mem:;create=true";
+            final String connectionURL = "jdbc:h2:mem:";
             final Connection conn = DriverManager.getConnection(connectionURL, properties);
             conn.setSchema("PUBLIC");
             return DSL.using(conn, SQLDialect.H2);

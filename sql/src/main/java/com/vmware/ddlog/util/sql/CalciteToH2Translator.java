@@ -73,21 +73,13 @@ class CalciteToH2 extends CalciteDDLVisitorBase {
     @Override
     public String visit(SqlCall call) {
         if (call instanceof SqlColumnDeclaration) {
-
             SqlColumnDeclaration castColumn = (SqlColumnDeclaration) call;
             String type = castColumn.dataType.toString();
-
-            if (castColumn.dataType.getCollectionsTypeName() != null &&
-                    castColumn.dataType.getCollectionsTypeName().toString().equals("ARRAY")) {
-                type = "array";
-            }
-
             String nullOperand = (castColumn.strategy == ColumnStrategy.NULLABLE) ? "null" : "not null";
             if (castColumn.expression != null) {
                 throw new UnsupportedOperationException(
                         "Don't know how to translate Calcite column expressions yet");
             }
-
             String transcribed = String.format("%s %s %s",
                     castColumn.name.toString(),
                     type,
