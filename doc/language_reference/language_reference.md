@@ -10,7 +10,7 @@ A type name can start with either an upper-case or a lower-case letter
 or underscore.
 
 DDlog programs refer to types, functions, relations, and constructors using *scoped* names, consisting of
-identifier prefixed by path to the *module* that declares the identifier, which an be empty if the identifier
+identifier prefixed by path to the *module* that declares the identifier, which can be empty if the identifier
 is defined in the local scope).
 
 ```
