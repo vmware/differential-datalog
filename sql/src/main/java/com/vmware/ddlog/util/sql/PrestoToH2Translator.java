@@ -64,7 +64,9 @@ class PrestoToH2 extends AstVisitor<String, String> {
                 final Pattern arrayType = Pattern.compile("ARRAY\\((.+)\\)");
                 Matcher m = arrayType.matcher(h2Type);
                 if (m.find()) {
-                    h2Type = "array";
+                    final String match = m.group();
+                    final String arrayTypeStr = match.substring(6, match.length() - 1);
+                    h2Type = arrayTypeStr + " array";
                 }
 
                 if (cd.getProperties().size() == 1) {
