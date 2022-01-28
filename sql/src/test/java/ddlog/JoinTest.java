@@ -24,6 +24,11 @@
 
 package ddlog;
 
+import com.vmware.ddlog.ir.DDlogIRNode;
+import com.vmware.ddlog.ir.DDlogProgram;
+import com.vmware.ddlog.translator.Translator;
+import com.vmware.ddlog.util.sql.PrestoSqlStatement;
+import org.junit.Assert;
 import org.junit.Test;
 
 public class JoinTest extends BaseQueriesTest {
@@ -278,13 +283,131 @@ public class JoinTest extends BaseQueriesTest {
     }
 
     @Test
+    public void testExampleLeftJoin() {
+        // This example is used extensively to document the join translation.
+        // Keep in sync with the comments in the code.
+        String createStatement = "create table t0(c1 integer not null, c2 integer not null, c3 boolean not null)";
+        Translator t = new Translator();
+        DDlogIRNode create = t.translateSqlStatement(new PrestoSqlStatement(createStatement));
+        Assert.assertNotNull(create);
+        createStatement = "create table t1(c1 integer, c2 boolean not null, c4 boolean not null)";
+        create = t.translateSqlStatement(new PrestoSqlStatement(createStatement));
+        Assert.assertNotNull(create);
+        String query = "create view v0 as SELECT DISTINCT * FROM t0 LEFT JOIN t1 on t0.c1 = t1.c1 AND t0.c3 = t1.c2";
+        DDlogIRNode view = t.translateSqlStatement(new PrestoSqlStatement(query));
+        Assert.assertNotNull(view);
+        String s = view.toString();
+        Assert.assertNotNull(s);
+        DDlogProgram ddprogram = t.getDDlogProgram();
+        Assert.assertNotNull(ddprogram);
+        s = ddprogram.toString();
+        Assert.assertEquals("import fp\n" +
+                        "import time\n" +
+                        "import sql\n" +
+                        "import sqlop\n" +
+                        "\n" +
+                        "typedef TRt0 = TRt0{c1:signed<64>, c2:signed<64>, c3:bool}\n" +
+                        "typedef TRt1 = TRt1{c1:Option<signed<64>>, c2:bool, c4:bool}\n" +
+                        "typedef Ttmp = Ttmp{c1:signed<64>, c2:signed<64>, c3:bool, c10:Option<signed<64>>, c4:Option<bool>}\n" +
+                        "\n" +
+                        "input relation Rt0[TRt0]\n" +
+                        "input relation Rt1[TRt1]\n" +
+                        "relation Rcommon[Ttmp]\n" +
+                        "relation Rleft[Ttmp]\n" +
+                        "output relation Rv0[Ttmp]\n" +
+                        "Rcommon[v2] :- Rt0[TRt0{.c1 = c1,.c2 = c2,.c3 = c3}]," +
+                        "Rt1[TRt1{.c1 = Some{.x = c1},.c2 = c3,.c4 = c4}]," +
+                        "var v1 = Ttmp{.c1 = c1,.c2 = c2,.c3 = c3,.c10 = Some{.x = c1},.c4 = Some{.x = c4}}," +
+                        "var v2 = v1.\n" +
+                        "Rleft[v5] :- Rcommon[v4],var v5 = v4.\n" +
+                        "Rleft[v3] :- Rt0[TRt0{.c1 = c1,.c2 = c2,.c3 = c3}]," +
+                        "not Rcommon[Ttmp{.c1 = c1,.c2 = _,.c3 = c3,.c10 = _,.c4 = _}]," +
+                        "var v3 = Ttmp{.c1 = c1,.c2 = c2,.c3 = c3,.c10 = Some{.x = c1},.c4 = None{}: Option<bool>}.\n" +
+                        "Rv0[v6] :- Rleft[v5],var v6 = v5.",
+                s);
+    }
+
+    @Test
     public void testLeftJoin() {
-        // TODO: this is not complete.
         String query = "create view v0 as SELECT DISTINCT * FROM t1 LEFT JOIN t2 ON t1.column1 = t2.column1";
         String program = this.header(false) +
                 this.relations(false) +
+                "relation Rcommon[TRt1]\n" +
+                "relation Rleft[TRt1]\n" +
                 "output relation Rv0[TRt1]\n" +
-                "Rv0[v2] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt2[TRt2{.column1 = column1}],var v1 = TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4},var v2 = v1.";
+                "Rcommon[v2] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt2[TRt2{.column1 = column1}],var v1 = TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4},var v2 = v1.\n" +
+                "Rleft[v5] :- Rcommon[v4],var v5 = v4.\n" +
+                "Rleft[v3] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],not Rcommon[TRt1{.column1 = column1,.column2 = _,.column3 = _,.column4 = _}],var v3 = TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}.\n" +
+                "Rv0[v6] :- Rleft[v5],var v6 = v5.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
+    public void testLeftJoinMix() {
+        // mixing nulls and non-nulls
+        String query = "create view v0 as SELECT DISTINCT * FROM t1 LEFT JOIN t4 ON t1.column1 = t4.column1";
+        String program = this.header(false) +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, column10:Option<signed<64>>, column20:Option<string>}\n" +
+                this.relations(false) +
+                "relation Rcommon[Ttmp]\n" +
+                "relation Rleft[Ttmp]\n" +
+                "output relation Rv0[Ttmp]\n" +
+                "Rcommon[v2] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt4[TRt4{.column1 = Some{.x = column1},.column2 = column20}],var v1 = Ttmp{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4,.column10 = Some{.x = column1},.column20 = column20},var v2 = v1.\n" +
+                "Rleft[v5] :- Rcommon[v4],var v5 = v4.\n" +
+                "Rleft[v3] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}]," +
+                "not Rcommon[Ttmp{.column1 = column1,.column2 = _,.column3 = _,.column4 = _,.column10 = _,.column20 = _}]," +
+                "var v3 = Ttmp{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4,.column10 = Some{.x = column1},.column20 = None{}: Option<string>}.\n" +
+                "Rv0[v6] :- Rleft[v5],var v6 = v5.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
+    public void testRightJoinMix() {
+        // mixing nulls and non-nulls
+        String query = "create view v0 as SELECT DISTINCT * FROM t1 RIGHT JOIN t4 ON t1.column1 = t4.column1";
+        String program = this.header(false) +
+                "typedef Ttmp = Ttmp{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>, column4:Option<double>, column10:Option<signed<64>>, column20:Option<string>}\n" +
+                this.relations(false) +
+                "relation Rcommon[Ttmp]\n" +
+                "relation Rright[Ttmp]\n" +
+                "output relation Rv0[Ttmp]\n" +
+                "Rcommon[v2] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}]," +
+                "Rt4[TRt4{.column1 = Some{.x = column1},.column2 = column20}]," +
+                "var v1 = Ttmp{.column1 = Some{.x = column1},.column2 = Some{.x = column2},.column3 = Some{.x = column3},.column4 = Some{.x = column4},.column10 = Some{.x = column1},.column20 = column20},var v2 = v1.\n" +
+                "Rright[v5] :- Rcommon[v4],var v5 = v4.\n" +
+                "Rright[v3] :- Rt4[TRt4{.column1 = column1,.column2 = column20}]," +
+                "not Rcommon[Ttmp{.column1 = _,.column2 = _,.column3 = _,.column4 = _,.column10 = column1,.column20 = _}]," +
+                "var v3 = Ttmp{.column1 = column1,.column2 = None{}: Option<string>,.column3 = None{}: Option<bool>,.column4 = None{}: Option<double>,.column10 = column1,.column20 = column20}.\n" +
+                "Rv0[v6] :- Rright[v5],var v6 = v5.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
+    public void testFullOuterJoin() {
+        // mixing nulls and non-nulls
+        String query = "create view v0 as SELECT DISTINCT * FROM t1 FULL OUTER JOIN t4 ON t1.column1 = t4.column1";
+        String program = this.header(false) +
+                "typedef Ttmp = Ttmp{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>, column4:Option<double>, column10:Option<signed<64>>, column20:Option<string>}\n" +
+                this.relations(false) +
+                "relation Rcommon[Ttmp]\n" +
+                "relation Rleft[Ttmp]\n" +
+                "relation Rcommon0[Ttmp]\n" +
+                "relation Rright[Ttmp]\n" +
+                "output relation Rv0[Ttmp]\n" +
+                "Rcommon[v2] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}]," +
+                "Rt4[TRt4{.column1 = Some{.x = column1},.column2 = column20}]," +
+                "var v1 = Ttmp{.column1 = Some{.x = column1},.column2 = Some{.x = column2},.column3 = Some{.x = column3},.column4 = Some{.x = column4},.column10 = Some{.x = column1},.column20 = column20}," +
+                "var v2 = v1.\n" +
+                "Rleft[v5] :- Rcommon[v4],var v5 = v4.\n" +
+                "Rleft[v3] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}]," +
+                "not Rcommon[Ttmp{.column1 = Some{.x = column1},.column2 = _,.column3 = _,.column4 = _,.column10 = _,.column20 = _}]," +
+                "var v3 = Ttmp{.column1 = Some{.x = column1},.column2 = Some{.x = column2},.column3 = Some{.x = column3},.column4 = Some{.x = column4},.column10 = Some{.x = column1},.column20 = None{}: Option<string>}.\n" +
+                "Rcommon0[v6] :- Rleft[v5],var v6 = v5.\n" +
+                "Rright[v9] :- Rcommon0[v8],var v9 = v8.\n" +
+                "Rright[v7] :- Rt4[TRt4{.column1 = column1,.column2 = column20}]," +
+                "not Rcommon0[Ttmp{.column1 = _,.column2 = _,.column3 = _,.column4 = _,.column10 = column1,.column20 = _}]," +
+                "var v7 = Ttmp{.column1 = column1,.column2 = None{}: Option<string>,.column3 = None{}: Option<bool>,.column4 = None{}: Option<double>,.column10 = column1,.column20 = column20}.\n" +
+                "Rv0[v10] :- Rright[v9],var v10 = v9.";
         this.testTranslation(query, program);
     }
 }

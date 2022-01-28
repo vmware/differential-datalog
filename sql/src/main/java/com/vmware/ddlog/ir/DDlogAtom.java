@@ -45,6 +45,6 @@ public class DDlogAtom extends DDlogNode {
 
     @Override
     public String toString() {
-        return this.relation + "[" + this.val.toString() + "]";
+        return this.relation + "[" + this.val + "]";
     }
 }

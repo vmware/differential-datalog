@@ -25,8 +25,8 @@
 package com.vmware.ddlog.translator;
 
 import com.facebook.presto.sql.tree.*;
+import com.vmware.ddlog.ir.DDlogEVar;
 import com.vmware.ddlog.ir.DDlogExpression;
-import com.vmware.ddlog.ir.DDlogType;
 import com.vmware.ddlog.translator.environment.EnvHandle;
 import com.vmware.ddlog.translator.environment.IEnvironment;
 import com.vmware.ddlog.util.Utilities;
@@ -38,32 +38,68 @@ import java.util.Objects;
 
 /**
  * This visitor inspects the predicate of a join to detect whether it is an equijoin.
- * If it is, it maintains a list of pairs of columns checked for equivalence.
+ * If it is, it maintains information about the columns that participate in the join.
+ * The values below are for the example in TranslationVisitor.visitJoin.
  */
-public class JoinColumns extends AstVisitor<Void, Void> {
-    // Maps a column in the right table to the equal column in the left table.
+public class JoinInfo extends AstVisitor<Void, Void> {
+    /**
+     * Maps a column in the right table to the equal column in the left table.
+     * Contents: c1 -> c1, c2 -> c3.
+     * If this is null the join is not an equijoin.
+     */
     @Nullable
     protected HashMap<String, String> rightToLeftColumn;
-    protected final HashSet<String> leftColumns;
-    // Type of each column
-    protected HashMap<String, DDlogType> leftColumnType;
-    // For each column in the left table keep here the variable name used in the code to match it
-    protected HashMap<String, String> leftColumnVariable;
-    protected EnvHandle leftEnvironment;
-    protected EnvHandle rightEnvironment;
+    /**
+     * Maps a column name in the left table to the equal column in the right table.
+     * c1 -> c1, c3 -> c2.
+     */
+    protected final HashMap<String, String> leftToRightColumn;
+    /**
+     * The left table columns that participate in the join.
+     * Contents: c1, c3.
+     */
+    protected final HashSet<String> joinedLeftColumns;
+    /**
+     * For each column in the left table keep here the variable name used in the code to match it.
+     * c1 -> c1, c2 -> c2, c3 -> c3.
+     */
+    protected final HashMap<String, DDlogEVar> leftColumnVariable;
+    /**
+     * For each column in the right table keep here the variable used in the code to match it.
+     * c1 -> c1, c2 -> c3, c4 -> c4.
+     */
+    protected final HashMap<String, DDlogEVar> rightColumnVariable;
+    /**
+     * For each right column the name used in the result.
+     * c1 -> c10, c2 -> c3, c4 -> c4.
+     */
+    protected final HashMap<String, String> renamedRightColumn;
+    protected final EnvHandle leftEnvironment;
+    protected final EnvHandle rightEnvironment;
     @Nullable
     protected Expression condition;
+    /**
+     * Maps the renamed column name to the original name for the right table.
+     * c3 -> c2, c4 -> c4, c10 -> c1.
+     */
+    protected final HashMap<String, String> originalRightColumnName;
 
-    public JoinColumns(TranslationContext leftContext, TranslationContext rightContext) {
+    public JoinInfo(TranslationContext leftContext, TranslationContext rightContext) {
         this.rightToLeftColumn = new HashMap<>();
-        this.leftColumns = new HashSet<>();
+        this.leftToRightColumn = new HashMap<>();
+        this.joinedLeftColumns = new HashSet<>();
         this.leftColumnVariable = new HashMap<>();
+        this.rightColumnVariable = new HashMap<>();
+        this.renamedRightColumn = new HashMap<>();
+        this.originalRightColumnName = new HashMap<>();
         this.leftEnvironment = leftContext.environment;
         this.rightEnvironment = rightContext.environment;
-        this.leftColumnType = new HashMap<>();
         this.condition = null;
     }
 
+    /**
+     * True if the analyzed join is an equijoin.
+     */
     public boolean isEquiJoin() {
         return this.rightToLeftColumn != null;
     }
@@ -77,7 +113,9 @@ public class JoinColumns extends AstVisitor<Void, Void> {
         return Objects.requireNonNull(this.condition);
     }
 
-    // Called when the join expression is not equivalent to an equijoin.
+    /**
+     * Called when the join expression is not equivalent to an equijoin.
+     */
     protected Void setNotEquijoin() {
         this.rightToLeftColumn = null;
         return null;
@@ -89,8 +127,29 @@ public class JoinColumns extends AstVisitor<Void, Void> {
     }
 
     public void addColumnPair(String left, String right) {
-        Objects.requireNonNull(this.rightToLeftColumn).put(right, left);
-        this.leftColumns.add(left);
+        Utilities.putNew(this.rightToLeftColumn, right, left);
+        Utilities.putNew(this.leftToRightColumn, left, right);
+        this.joinedLeftColumns.add(left);
+    }
+
+    /**
+     * Set the new rightColumnName for a column from the right table.
+     * @param rightColumnName     Original right column name.
+     * @param resultName          Name used in the result structure.
+     */
+    public void setRightColumnNameInResult(String rightColumnName, String resultName) {
+        Objects.requireNonNull(rightColumnName);
+        Objects.requireNonNull(resultName);
+        Utilities.putNew(this.renamedRightColumn, rightColumnName, resultName);
+        Utilities.putNew(this.originalRightColumnName, resultName, rightColumnName);
+    }
+
+    public String getOriginalRightColumnName(String resultColumnName) {
+        return Objects.requireNonNull(this.originalRightColumnName.get(resultColumnName));
+    }
+
+    public HashMap<String, String> getRenameMap() {
+        return this.renamedRightColumn;
     }
 
     @Override
@@ -103,34 +162,96 @@ public class JoinColumns extends AstVisitor<Void, Void> {
         return null;
     }
 
+    /**
+     * Given the name of a column in the right table, find the corresponding
+     * variable in the left column if the column is being joined on.
+     * @param rightColumn  Right column name.
+     * @return  Null if the column is not being joined on.
+     */
     @Nullable
-    public String findLeftVariable(String rightColumn) {
+    public DDlogEVar findLeftVariableFromRightColumn(String rightColumn) {
         if (!this.isEquiJoin())
             throw new RuntimeException("Not an equijoin");
         Objects.requireNonNull(this.rightToLeftColumn);
         String leftColumn = this.rightToLeftColumn.get(rightColumn);
         if (leftColumn == null)
             return null;
+        return this.findLeftVariable(leftColumn);
+    }
+
+    /**
+     * Given a column in the left table find the variable associated in the code.
+     * @param leftColumn  Name of left column.
+     */
+    public DDlogEVar findLeftVariable(String leftColumn) {
         return Objects.requireNonNull(this.leftColumnVariable.get(leftColumn));
     }
 
+    /**
+     * Given a column in the right table find the variable used in the code
+     * corresponding to this column.
+     * @param rightColumn  Column name.
+     */
+    public DDlogEVar findRightVariable(String rightColumn) {
+        return Objects.requireNonNull(this.rightColumnVariable.get(rightColumn));
+    }
+
+    /**
+     * Return the left table column that is compared to this right table column
+     * (for equijoin - the two columns must be equal).
+     * @param rightColumn  Column to lookup.
+     * @return  Null if there is no corresponding left column.
+     */
     @Nullable
-    public String findLeftColumn(String rightColumn) {
+    public String joinedLeftColumn(String rightColumn) {
         return Objects.requireNonNull(this.rightToLeftColumn).get(rightColumn);
     }
 
-    public void setColumnVariable(String name, String varName, DDlogType type) {
-        this.leftColumnVariable.put(name, varName);
-        this.leftColumnType.put(name, type);
+    /**
+     * Return the right table column that is compared to this left column.
+     * @param leftColumn Left column name.
+     */
+    @Nullable
+    public String joinedRightColumn(String leftColumn) {
+        return this.leftToRightColumn.get(leftColumn);
     }
 
-    boolean isLeftColumn(String column) {
-        return this.leftColumns.contains(column);
+    /**
+     * Remember the variable used in the code for matching a left column.
+     * @param name    Let table column name.
+     * @param variable    Associated variable in the generated code.
+     */
+    public void setLeftColumnVariable(String name, DDlogEVar variable) {
+        Utilities.putNew(this.leftColumnVariable, name, variable);
     }
 
-    public DDlogType findLeftType(String rightColumn) {
-        String leftColumn = Objects.requireNonNull(this.rightToLeftColumn).get(rightColumn);
-        return Objects.requireNonNull(this.leftColumnType.get(leftColumn));
+    /**
+     * Remember the variable used in the code for matching a left column.
+     * @param name    Let table column name.
+     * @param variable Variable used the generatedd code.
+     */
+    public void setRightColumnVariable(String name, DDlogEVar variable) {
+        Utilities.putNew(this.rightColumnVariable, name, variable);
+    }
+
+    /**
+     * True if this column is one of the equijoin columns in the left table.
+     * @param column  Column name.
+     */
+    boolean isJoinedLeftColumn(String column) {
+        if (this.rightToLeftColumn == null)
+            return false; // not an equijoin
+        return this.joinedLeftColumns.contains(column);
+    }
+
+    /**
+     * True if this column is one of the equijoin columns from the right table.
+     * @param column  Column name.
+     */
+    boolean isJoinedRightColumn(String column) {
+        if (this.rightToLeftColumn == null)
+            return false; // not an equijoin
+        return this.rightToLeftColumn.containsKey(column);
     }
 
     static class ColumnReference {
