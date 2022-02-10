@@ -34,7 +34,7 @@ public class GroupByTest extends BaseQueriesTest {
         String query = "create view v0 as SELECT COUNT(*) AS c FROM t1 GROUP BY column2";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{c:signed<64>}\n" +
-                "function agg(g: Group<string, TRt1>):TRtmp {\n" +
+                "function agg(g: Group<istring, TRt1>):TRtmp {\n" +
                 "(var gb) = group_key(g);\n" +
                 "(var count = 64'sd0: signed<64>);\n" +
                 "(for ((i, _) in g) {\n" +
@@ -56,7 +56,7 @@ public class GroupByTest extends BaseQueriesTest {
         String query1 = "create view v1 as SELECT COUNT(*) AS c FROM t1 GROUP BY column2";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{c:signed<64>}\n" +
-                "function agg(g: Group<string, TRt1>):TRtmp {\n" +
+                "function agg(g: Group<istring, TRt1>):TRtmp {\n" +
                 "(var gb) = group_key(g);\n" +
                 "(var count = 64'sd0: signed<64>);\n" +
                 "(for ((i, _) in g) {\n" +
@@ -64,7 +64,7 @@ public class GroupByTest extends BaseQueriesTest {
                 "(count = agg_count_R(count, 64'sd1))}\n" +
                 ");\n" +
                 "(TRtmp{.c = count})\n}\n\n" +
-                "function agg0(g: Group<string, TRt1>):TRtmp {\n" +
+                "function agg0(g: Group<istring, TRt1>):TRtmp {\n" +
                 "(var gb) = group_key(g);\n" +
                 "(var count = 64'sd0: signed<64>);\n" +
                 "(for ((i, _) in g) {\n" +
@@ -88,9 +88,9 @@ public class GroupByTest extends BaseQueriesTest {
     public void testGroupBy1() {
         String query = "create view v0 as SELECT column2, COUNT(*) AS c FROM t1 GROUP BY column2";
         String program = this.header(false) +
-                "typedef TRtmp = TRtmp{column2:string, c:signed<64>}\n" +
+                "typedef TRtmp = TRtmp{column2:istring, c:signed<64>}\n" +
                 "typedef Tagg = Tagg{c:signed<64>}\n" +
-                "function agg(g: Group<string, TRt1>):Tagg {\n" +
+                "function agg(g: Group<istring, TRt1>):Tagg {\n" +
                 "(var gb) = group_key(g);\n" +
                 "(var count = 64'sd0: signed<64>);\n" +
                 "(for ((i, _) in g) {\n" +
@@ -110,9 +110,9 @@ public class GroupByTest extends BaseQueriesTest {
     public void testGroupBy2() {
         String query = "create view v0 as SELECT column2, column3, COUNT(*) AS c, SUM(column1) AS s FROM t1 GROUP BY column2, column3";
         String program = this.header(false) +
-                "typedef TRtmp = TRtmp{column2:string, column3:bool, c:signed<64>, s:signed<64>}\n" +
+                "typedef TRtmp = TRtmp{column2:istring, column3:bool, c:signed<64>, s:signed<64>}\n" +
                 "typedef Tagg = Tagg{c:signed<64>, s:signed<64>}\n" +
-                "function agg(g: Group<(string, bool), TRt1>):Tagg {\n" +
+                "function agg(g: Group<(istring, bool), TRt1>):Tagg {\n" +
                 "(var gb, var gb0) = group_key(g);\n" +
                 "(var count = 64'sd0: signed<64>);\n" +
                 "(var sum = 64'sd0: signed<64>);\n" +
@@ -136,9 +136,9 @@ public class GroupByTest extends BaseQueriesTest {
     public void testGroupByNull1() {
         String query = "create view v0 as SELECT column2, COUNT(*) AS c FROM t1 GROUP BY column2";
         String program = this.header(true) +
-                "typedef TRtmp = TRtmp{column2:Option<string>, c:signed<64>}\n" +
+                "typedef TRtmp = TRtmp{column2:Option<istring>, c:signed<64>}\n" +
                 "typedef Tagg = Tagg{c:signed<64>}\n" +
-                "function agg(g: Group<Option<string>, TRt1>):Tagg {\n" +
+                "function agg(g: Group<Option<istring>, TRt1>):Tagg {\n" +
                 "(var gb) = group_key(g);\n" +
                 "(var count = 64'sd0: signed<64>);\n" +
                 "(for ((i, _) in g) {\n" +
@@ -158,9 +158,9 @@ public class GroupByTest extends BaseQueriesTest {
     public void testMixAggregateGroupBy() {
         String query = "create view v0 as SELECT column2, SUM(column1) AS s FROM t1 GROUP BY column2";
         String program = this.header(false) +
-                "typedef TRtmp = TRtmp{column2:string, s:signed<64>}\n" +
+                "typedef TRtmp = TRtmp{column2:istring, s:signed<64>}\n" +
                 "typedef Tagg = Tagg{s:signed<64>}\n" +
-                "function agg(g: Group<string, TRt1>):Tagg {\n" +
+                "function agg(g: Group<istring, TRt1>):Tagg {\n" +
                 "(var gb) = group_key(g);\n" +
                 "(var sum = 64'sd0: signed<64>);\n" +
                 "(for ((i, _) in g) {\n" +
@@ -180,9 +180,9 @@ public class GroupByTest extends BaseQueriesTest {
     public void testMixAggregateGroupByNull() {
         String query = "create view v0 as SELECT column2, SUM(column1) AS s FROM t1 GROUP BY column2";
         String program = this.header(true) +
-                "typedef TRtmp = TRtmp{column2:Option<string>, s:Option<signed<64>>}\n" +
+                "typedef TRtmp = TRtmp{column2:Option<istring>, s:Option<signed<64>>}\n" +
                 "typedef Tagg = Tagg{s:Option<signed<64>>}\n" +
-                "function agg(g: Group<Option<string>, TRt1>):Tagg {\n" +
+                "function agg(g: Group<Option<istring>, TRt1>):Tagg {\n" +
                 "(var gb) = group_key(g);\n" +
                 "(var sum = None{}: Option<signed<64>>);\n" +
                 "(for ((i, _) in g) {\n" +
@@ -405,7 +405,7 @@ public class GroupByTest extends BaseQueriesTest {
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{s:signed<64>}\n" +
                 "typedef Tagg = Tagg{s:signed<64>, col:bool}\n" +
-                "function agg(g: Group<string, TRt1>):Tagg {\n" +
+                "function agg(g: Group<istring, TRt1>):Tagg {\n" +
                 "(var gb) = group_key(g);\n" +
                 "(var sum = 64'sd0: signed<64>);\n" +
                 "(var count = 64'sd0: signed<64>);\n" +
@@ -428,9 +428,9 @@ public class GroupByTest extends BaseQueriesTest {
     public void testHaving3() {
         String query = "create view v0 as SELECT column2, SUM(column1) AS s FROM t1 GROUP BY column2 HAVING COUNT(DISTINCT column3) > 1";
         String program = this.header(false) +
-                "typedef TRtmp = TRtmp{column2:string, s:signed<64>}\n" +
+                "typedef TRtmp = TRtmp{column2:istring, s:signed<64>}\n" +
                 "typedef Tagg = Tagg{s:signed<64>, col:bool}\n" +
-                "function agg(g: Group<string, TRt1>):Tagg {\n" +
+                "function agg(g: Group<istring, TRt1>):Tagg {\n" +
                 "(var gb) = group_key(g);\n" +
                 "(var sum = 64'sd0: signed<64>);\n" +
                 "(var count_distinct = set_empty(): Set<bool>);\n" +
@@ -454,9 +454,9 @@ public class GroupByTest extends BaseQueriesTest {
     public void testGroupByExpression() {
         String query = "create view v0 as SELECT substr(column2, 0, 1) AS s, COUNT(*) AS c FROM t1 GROUP BY substr(column2, 0, 1)";
         String program = this.header(false) +
-                "typedef TRtmp = TRtmp{s:string, c:signed<64>}\n" +
+                "typedef TRtmp = TRtmp{s:istring, c:signed<64>}\n" +
                 "typedef Tagg = Tagg{c:signed<64>}\n" +
-                "function agg(g: Group<string, TRt1>):Tagg {\n" +
+                "function agg(g: Group<istring, TRt1>):Tagg {\n" +
                 "(var gb) = group_key(g);\n" +
                 "(var count = 64'sd0: signed<64>);\n" +
                 "(for ((i, _) in g) {\n" +
@@ -476,8 +476,8 @@ public class GroupByTest extends BaseQueriesTest {
     public void testExpressionOfGroupBy() {
         String query = "create view v0 as SELECT substr(column2, 0, 1) AS s, COUNT(*) AS c FROM t1 GROUP BY column2";
         String program = this.header(false) +
-                "typedef TRtmp = TRtmp{s:string, c:signed<64>}\n" +
-                "function agg(g: Group<string, TRt1>):TRtmp {\n" +
+                "typedef TRtmp = TRtmp{s:istring, c:signed<64>}\n" +
+                "function agg(g: Group<istring, TRt1>):TRtmp {\n" +
                 "(var gb) = group_key(g);\n" +
                 "(var count = 64'sd0: signed<64>);\n" +
                 "(for ((i, _) in g) {\n" +
@@ -497,7 +497,7 @@ public class GroupByTest extends BaseQueriesTest {
     public void duplicatedGroupColumnTest() {
         String query = "CREATE VIEW v AS SELECT DISTINCT column3 tmp, column2 gb1, column2 column2 FROM t1 GROUP BY column2, column3";
         String translation = this.header(false) +
-                "typedef TRtmp = TRtmp{tmp:bool, gb1:string, column2:string}\n" +
+                "typedef TRtmp = TRtmp{tmp:bool, gb1:istring, column2:istring}\n" +
                 "typedef Tagg = Tagg{}\n" +
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +

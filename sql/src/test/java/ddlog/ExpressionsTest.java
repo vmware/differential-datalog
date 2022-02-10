@@ -67,7 +67,7 @@ public class ExpressionsTest {
 
         node = t.translateExpression("'some string'");
         s = node.toString();
-        Assert.assertEquals("\"some string\"", s);
+        Assert.assertEquals("i\"some string\"", s);
 
         node = t.translateExpression("((1 + 2) >= 0) or ((1 - 3) <= 0)");
         s = node.toString();
@@ -80,9 +80,9 @@ public class ExpressionsTest {
                 "END");
         s = node.toString();
         Assert.assertEquals("if ((64'sd0 == 64'sd1)) {\n" +
-                "\"One\"} else {\n" +
+                "i\"One\"} else {\n" +
                 "if ((64'sd0 == 64'sd2)) {\n" +
-                "\"Two\"} else {\n" +
-                "\"Other\"}}", s);
+                "i\"Two\"} else {\n" +
+                "i\"Other\"}}", s);
     }
 }

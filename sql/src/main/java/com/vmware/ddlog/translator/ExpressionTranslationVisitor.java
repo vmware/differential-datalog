@@ -137,9 +137,9 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
         DDlogExpression e = this.process(node.getExpression(), context);
         DDlogType eType = e.getType();
         DDlogType destType = SqlSemantics.createType(node, node.getType(), e.getType().mayBeNull);
-        if (destType.is(DDlogTString.class)) {
+        if (destType.is(DDlogTIString.class)) {
             // convert to string
-            if (eType.is(DDlogTString.class)) {
+            if (eType.is(DDlogTIString.class)) {
                 return e;
             } else if (eType.is(DDlogTSigned.class) ||
                     eType.is(DDlogTBool.class) ||
@@ -147,20 +147,20 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
                     eType.is(DDlogTDouble.class) ||
                     eType.is(DDlogTUser.class)) {
                 Function<DDlogExpression, DDlogExpression> wrapper =
-                        ex -> new DDlogEString(node, "${" + ex.toString() + "}");
+                        ex -> new DDlogEIString(node, "${" + ex.toString() + "}");
                 return wrapInMatch(e, destType, wrapper);
             } else {
                 throw new TranslationException("Unsupported cast to string", node);
             }
         } else if (destType.is(DDlogTFloat.class) || destType.is(DDlogTDouble.class)) {
             IsNumericType num = destType.toNumeric();
-            if (eType.is(DDlogTString.class)) {
+            if (eType.is(DDlogTIString.class)) {
                 String suffix = eType.is(DDlogTFloat.class) ? "f" : "d";
                 // I am lying here, the result is actually Result<>,
                 // but the unwrap below will remove it.
                 Function<DDlogExpression, DDlogExpression> wrapper = ex -> {
                     DDlogExpression parse = new DDlogEApply(node,
-                            "parse_" + suffix, destType.setMayBeNull(true), ex);
+                            "parse_" + suffix, destType.setMayBeNull(true), DDlogTIString.ival(ex));
                     return new DDlogEApply(node,
                             "result_unwrap_or_default", destType, parse);
                 };
@@ -192,6 +192,14 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
                             "option_unwrap_or_default", destType, parse);
                 };
                 return wrapInMatch(e, destType, wrapper);
+            } else if (eType.is(DDlogTIString.class)) {
+                Function<DDlogExpression, DDlogExpression> wrapper = ex -> {
+                    DDlogExpression parse = new DDlogEApply(node,
+                            "parse_dec_i64", DDlogTSigned.signed64.setMayBeNull(true), DDlogTIString.ival(ex));
+                    return new DDlogEApply(node,
+                            "option_unwrap_or_default", destType, parse);
+                };
+                return wrapInMatch(e, destType, wrapper);
             } else if (eType.is(DDlogTBool.class)) {
                 Function<DDlogExpression, DDlogExpression> wrapper = ex -> new DDlogEITE(node, ex, num.one(), num.zero());
                 return wrapInMatch(e, destType, wrapper);
@@ -215,10 +223,11 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
                 DDlogType exType = ex.getType();
                 // At least in MySQL integers are converted to dates as if they were strings...
                 if (exType.is(DDlogTInt.class) || exType.is(DDlogTSigned.class) || exType.is(DDlogTBit.class)) {
-                    ex = new DDlogEString(node, "${" + e.toString() + "}");
+                    ex = new DDlogEIString(node, "${" + e.toString() + "}");
                     exType = ex.getType();
                 }
-                if (exType.is(DDlogTString.class)) {
+                if (exType.is(DDlogTIString.class)) {
+                    ex = DDlogTIString.ival(ex);
                     String parseFunc;
                     switch (tu.getName()) {
                         case "Date":
@@ -510,7 +519,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
                 return DDlogTSigned.signed64.setMayBeNull(args.get(0).getType().mayBeNull);
             case "concat":
                 boolean mayBeNull = Linq.any(args, a -> a.getType().mayBeNull);
-                return DDlogTString.instance.setMayBeNull(mayBeNull);
+                return DDlogTIString.instance.setMayBeNull(mayBeNull);
             case "array_agg":
                 if (args.size() != 1)
                     throw new TranslationException("Expected exactly 1 argument for aggregate", node);
@@ -721,6 +730,6 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
     @Override
     protected DDlogExpression visitStringLiteral(StringLiteral node, TranslationContext context) {
         String s = formatStringLiteral(node.getValue());
-        return new DDlogEString(node, s);
+        return new DDlogEIString(node, s);
     }
 }

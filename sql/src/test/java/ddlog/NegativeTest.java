@@ -123,7 +123,7 @@ public class NegativeTest extends BaseQueriesTest {
     @Test
     public void duplicateColumnTest() {
         String query = "create view v0 as select DISTINCT column1, column2 as column1 from t1";
-        this.expectException(query, "Field name column1:string is duplicated");
+        this.expectException(query, "Field name column1:istring is duplicated");
     }
 
     @Test

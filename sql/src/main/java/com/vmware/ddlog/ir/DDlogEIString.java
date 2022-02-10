@@ -28,33 +28,24 @@ import com.facebook.presto.sql.tree.Node;
 
 import javax.annotation.Nullable;
 
-public class DDlogTString extends DDlogType implements IDDlogBaseType {
-    public static DDlogTString instance = new DDlogTString(null,false);
+/**
+ * An expression that is an interned string.
+ */
+public class DDlogEIString extends DDlogExpression {
+    private final String string;
 
-    private DDlogTString(@Nullable Node node, boolean mayBeNull) { super(node, mayBeNull); }
-
-    @Override
-    public String toString() { return this.wrapOption("string"); }
-
-    @Override
-    public DDlogType setMayBeNull(boolean mayBeNull) {
-        if (this.mayBeNull == mayBeNull)
-            return this;
-        return new DDlogTString(this.getNode(), mayBeNull);
+    public DDlogEIString(@Nullable Node node, String string) {
+        super(node, DDlogTIString.instance);
+        if (string.startsWith("'") && string.endsWith("'"))
+            string = string.substring(1, string.length() - 1);
+        this.string = string;
     }
 
     @Override
-    public boolean same(DDlogType type) {
-        if (!super.same(type))
-            return false;
-        return type.is(DDlogTString.class);
-    }
-
-    /**
-     * Given an expression with type string intern it
-     */
-    public static DDlogExpression intern(DDlogExpression expression) {
-        assert(expression.getType().is(DDlogTString.class));
-        return new DDlogEApply(expression.node, "intern", DDlogTIString.instance, true, expression);
+    public String toString() {
+        if (this.string.contains("${")) {
+            return "i[|" + this.string + "|]";
+        }
+        return "i\"" + this.string + "\"";
     }
 }

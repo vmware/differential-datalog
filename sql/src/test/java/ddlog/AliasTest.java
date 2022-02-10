@@ -57,7 +57,7 @@ public class AliasTest extends BaseQueriesTest {
     public void testAlias1() {
         String query = "create view v0 as SELECT DISTINCT t2.column1 AS x, t2.column2 as y FROM t1 AS t2";
         String program = this.header(false) +
-                "typedef TRt20 = TRt20{x:signed<64>, y:string}\n" +
+                "typedef TRt20 = TRt20{x:signed<64>, y:istring}\n" +
                 this.relations(false) +
                 "output relation Rv0[TRt20]\n" +
                 "Rv0[v1] :- Rt1[v],var v0 = TRt20{.x = v.column1,.y = v.column2},var v1 = v0.";
@@ -141,7 +141,7 @@ public class AliasTest extends BaseQueriesTest {
     public void testSelectStar() {
         String query = "create view v0 as select DISTINCT *, column1 as C1 from t1";
         String program = this.header(false) +
-                "typedef TRtmp = TRtmp{column1:signed<64>, column2:string, column3:bool, column4:double, c1:signed<64>}\n" +
+                "typedef TRtmp = TRtmp{column1:signed<64>, column2:istring, column3:bool, column4:double, c1:signed<64>}\n" +
                 this.relations(false) +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var v0 = TRtmp{" +
@@ -156,7 +156,7 @@ public class AliasTest extends BaseQueriesTest {
         String query1 = "create view v1 as select DISTINCT *, column1 as C1 from t1";
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{" +
-                "column1:signed<64>, column2:string, column3:bool, column4:double, c1:signed<64>}\n" +
+                "column1:signed<64>, column2:istring, column3:bool, column4:double, c1:signed<64>}\n" +
                 this.relations(false) +
                 "output relation Rv0[TRtmp]\n" +
                 "output relation Rv1[TRtmp]\n" +

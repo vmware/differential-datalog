@@ -113,8 +113,6 @@ public class DDlogEBinOp extends DDlogExpression {
     public DDlogEBinOp(@Nullable Node node, BOp bop, DDlogExpression left, DDlogExpression right) {
         super(node);
         this.bop = bop;
-        this.left = this.checkNull(left);
-        this.right = this.checkNull(right);
         boolean mayBeNull = left.getType().mayBeNull || right.getType().mayBeNull;
         switch (this.bop) {
             case Eq:
@@ -159,19 +157,25 @@ public class DDlogEBinOp extends DDlogExpression {
                 this.type = DDlogType.reduceType(left.getType(), right.getType());
                 break;
             case Concat:
-                if (!(left.getType() instanceof DDlogTString))
-                    this.error(this.bop + " is not applied to string type: " + left.getType());
-                if (!(right.getType() instanceof DDlogTString))
-                    this.error(this.bop + " is not applied to string type: " + right.getType());
+                if ((left.getType() instanceof DDlogTIString))
+                    left = DDlogTIString.ival(left);
+                else if ((left.getType() instanceof DDlogTString))
+                    this.error(this.bop + " is not applied to (i)string type: " + left.getType());
+                if ((right.getType() instanceof DDlogTIString))
+                    right = DDlogTIString.ival(right);
+                else if (!(right.getType() instanceof DDlogTString))
+                    this.error(this.bop + " is not applied to (i)string type: " + right.getType());
                 this.type = DDlogType.reduceType(left.getType(), right.getType());
                 break;
         }
+        this.left = this.checkNull(left);
+        this.right = this.checkNull(right);
     }
 
     @Override
     public String toString() {
-        return "(" + this.left.toString() + " " + this.bop.toString() +
-                " " + this.right.toString() + ")";
+        return "(" + this.left + " " + this.bop +
+                " " + this.right + ")";
     }
 
 }

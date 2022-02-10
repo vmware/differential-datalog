@@ -51,7 +51,7 @@ public class JoinTest extends BaseQueriesTest {
     public void testImplicitJoin() {
         String query = "create view v0 as SELECT DISTINCT * FROM t1, t2";
         String program = this.header(false) +
-                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, column10:signed<64>}\n" +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:istring, column3:bool, column4:double, column10:signed<64>}\n" +
                 this.relations(false) +
                 "output relation Rv0[Ttmp]\n" +
                 "Rv0[v2] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt2[TRt2{.column1 = column10}],var v1 = Ttmp{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4,.column10 = column10},var v2 = v1.";
@@ -73,7 +73,7 @@ public class JoinTest extends BaseQueriesTest {
         // mixing nulls and non-nulls
         String query = "create view v0 as SELECT DISTINCT * FROM t1 JOIN t4 ON t1.column1 = t4.column1";
         String program = this.header(false) +
-                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, column10:Option<signed<64>>, column20:Option<string>}\n" +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:istring, column3:bool, column4:double, column10:Option<signed<64>>, column20:Option<istring>}\n" +
                 this.relations(false) +
                 "output relation Rv0[Ttmp]\n" +
                 "Rv0[v2] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt4[TRt4{.column1 = Some{.x = column1},.column2 = column20}],var v1 = Ttmp{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4,.column10 = Some{.x = column1},.column20 = column20},var v2 = v1.";
@@ -94,8 +94,8 @@ public class JoinTest extends BaseQueriesTest {
     public void testSelfJoin() {
         String query = "create view v0 as SELECT DISTINCT t1.column2, x.column3 FROM t1 JOIN (t1 AS x) ON t1.column1 = x.column1";
         String program = this.header(false) +
-                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, column20:string, column30:bool, column40:double}\n" +
-                "typedef TRx = TRx{column2:string, column3:bool}\n" +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:istring, column3:bool, column4:double, column20:istring, column30:bool, column40:double}\n" +
+                "typedef TRx = TRx{column2:istring, column3:bool}\n" +
                 this.relations(false) +
                 "output relation Rv0[TRx]\n" +
                 "Rv0[v3] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt1[TRt1{.column1 = column1,.column2 = column20,.column3 = column30,.column4 = column40}],var v1 = Ttmp{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4,.column20 = column20,.column30 = column30,.column40 = column40},var v2 = TRx{.column2 = v1.column2,.column3 = v1.column30},var v3 = v2.";
@@ -126,7 +126,7 @@ public class JoinTest extends BaseQueriesTest {
     public void testJoin() {
         String query = "create view v0 as SELECT DISTINCT t0.column1, t1.column3 FROM t1 AS t0 JOIN t1 ON t1.column2 = t0.column2";
         String program = this.header(false) +
-                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, column10:signed<64>, column30:bool, column40:double}\n" +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:istring, column3:bool, column4:double, column10:signed<64>, column30:bool, column40:double}\n" +
                 "typedef TRt0 = TRt0{column1:signed<64>, column3:bool}\n" +
                 this.relations(false) +
                 "output relation Rv0[TRt0]\n" +
@@ -138,7 +138,7 @@ public class JoinTest extends BaseQueriesTest {
     public void testCrossJoin() {
         String query = "create view v0 as SELECT DISTINCT * FROM t1 CROSS JOIN t2";
         String program = this.header(false) +
-                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, column10:signed<64>}\n" +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:istring, column3:bool, column4:double, column10:signed<64>}\n" +
                 this.relations(false) +
                 "output relation Rv0[Ttmp]\n" +
                 "Rv0[v2] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt2[TRt2{.column1 = column10}],var v1 = Ttmp{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4,.column10 = column10},var v2 = v1.";
@@ -149,7 +149,7 @@ public class JoinTest extends BaseQueriesTest {
     public void testCrossJoinWNull() {
         String query = "create view v0 as SELECT DISTINCT * FROM t1 CROSS JOIN t2";
         String program = this.header(true) +
-                "typedef Ttmp = Ttmp{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>, column4:Option<double>, column10:Option<signed<64>>}\n" +
+                "typedef Ttmp = Ttmp{column1:Option<signed<64>>, column2:Option<istring>, column3:Option<bool>, column4:Option<double>, column10:Option<signed<64>>}\n" +
                 this.relations(true) +
                 "output relation Rv0[Ttmp]\n" +
                 "Rv0[v2] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt2[TRt2{.column1 = column10}],var v1 = Ttmp{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4,.column10 = column10},var v2 = v1.";
@@ -161,7 +161,7 @@ public class JoinTest extends BaseQueriesTest {
         String query = "create view v0 as SELECT DISTINCT t1.column1, X.c FROM t1 CROSS JOIN (SELECT DISTINCT column1 AS c FROM t2 AS X)";
         String program = this.header(false) +
                 "typedef TX = TX{c:signed<64>}\n" +
-                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, c:signed<64>}\n" +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:istring, column3:bool, column4:double, c:signed<64>}\n" +
                 "typedef TRtmp0 = TRtmp0{column1:signed<64>, c:signed<64>}\n" +
                 this.relations(true) +
                 "relation Rtmp[TX]\n" +
@@ -176,8 +176,8 @@ public class JoinTest extends BaseQueriesTest {
         String query = "create view v0 as SELECT DISTINCT t1.column2, t2.column1 FROM " +
                 "t1 JOIN t2 ON t1.column1 < t2.column1";
         String program = this.header(false) +
-                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, column10:signed<64>}\n" +
-                "typedef TRtmp = TRtmp{column2:string, column1:signed<64>}\n" +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:istring, column3:bool, column4:double, column10:signed<64>}\n" +
+                "typedef TRtmp = TRtmp{column2:istring, column1:signed<64>}\n" +
                 this.relations(true) +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v3] :- Rt1[v],Rt2[v0],(v.column1 < v0.column1)," +
@@ -191,9 +191,9 @@ public class JoinTest extends BaseQueriesTest {
         String query = "create view v0 as SELECT DISTINCT t1.column2, t4.column1 FROM " +
                 "t1 JOIN t4 ON t1.column1 < t4.column1";
         String program = this.header(false) +
-                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, " +
-                "column10:Option<signed<64>>, column20:Option<string>}\n" +
-                "typedef TRtmp = TRtmp{column2:string, column1:Option<signed<64>>}\n" +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:istring, column3:bool, column4:double, " +
+                "column10:Option<signed<64>>, column20:Option<istring>}\n" +
+                "typedef TRtmp = TRtmp{column2:istring, column1:Option<signed<64>>}\n" +
                 this.relations(true) +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v3] :- Rt1[v],Rt4[v0],unwrapBool(a_lt_RN(v.column1, v0.column1))," +
@@ -215,7 +215,7 @@ public class JoinTest extends BaseQueriesTest {
                 "relation Rtmp[TX]\n" +
                 "output relation Rv0[TRtmp0]\n" +
                 "Rtmp[v2] :- Rt2[v0],var v1 = TX{.c = v0.column1},var v2 = v1.\n" +
-                "Rv0[v5] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rtmp[TX{.c = column1}],var v3 = TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4},(v3.column2 == \"a\"),var v4 = TRtmp0{.column1 = v3.column1,.c = v3.column1},var v5 = v4.";
+                "Rv0[v5] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rtmp[TX{.c = column1}],var v3 = TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4},(v3.column2 == i\"a\"),var v4 = TRtmp0{.column1 = v3.column1,.c = v3.column1},var v5 = v4.";
         this.testTranslation(query, program, false);
     }
 
@@ -228,11 +228,11 @@ public class JoinTest extends BaseQueriesTest {
                 "         (SELECT DISTINCT column3 AS d FROM t1) d";
         String program = this.header(false) +
                 "typedef TRb = TRb{a:signed<64>}\n" +
-                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, a:signed<64>}\n" +
-                "typedef TRc = TRc{c:string}\n" +
-                "typedef Ttmp0 = Ttmp0{column1:signed<64>, column2:string, column3:bool, column4:double, a:signed<64>, c:string}\n" +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:istring, column3:bool, column4:double, a:signed<64>}\n" +
+                "typedef TRc = TRc{c:istring}\n" +
+                "typedef Ttmp0 = Ttmp0{column1:signed<64>, column2:istring, column3:bool, column4:double, a:signed<64>, c:istring}\n" +
                 "typedef TRd = TRd{d:bool}\n" +
-                "typedef Ttmp1 = Ttmp1{column1:signed<64>, column2:string, column3:bool, column4:double, a:signed<64>, c:string, d:bool}\n" +
+                "typedef Ttmp1 = Ttmp1{column1:signed<64>, column2:istring, column3:bool, column4:double, a:signed<64>, c:istring, d:bool}\n" +
                 this.relations(false) +
                 "relation Rtmp[TRb]\n" +
                 "relation Rtmp0[TRc]\n" +
@@ -253,7 +253,7 @@ public class JoinTest extends BaseQueriesTest {
     public void test2WayJoin() {
         String query = "create view v0 as SELECT DISTINCT t2.column1, t4.column1 AS x FROM (t2 JOIN t4 ON t2.column1 = t4.column1)";
         String program = this.header(false) +
-                "typedef Ttmp = Ttmp{column1:signed<64>, column10:Option<signed<64>>, column2:Option<string>}\n" +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column10:Option<signed<64>>, column2:Option<istring>}\n" +
                 "typedef TRtmp = TRtmp{column1:signed<64>, x:Option<signed<64>>}\n" +
                 this.relations(false) +
                 "output relation Rv0[TRtmp]\n" +
@@ -266,9 +266,9 @@ public class JoinTest extends BaseQueriesTest {
         String query = "create view v0 as SELECT DISTINCT t1.column2, t2.column1, t4.column1 AS x FROM t1 JOIN " +
                 "(t2 JOIN t4 ON t2.column1 = t4.column1) ON t1.column1 = t2.column1";
         String program = this.header(false) +
-                "typedef Ttmp = Ttmp{column1:signed<64>, column10:Option<signed<64>>, column2:Option<string>}\n" +
-                "typedef Ttmp0 = Ttmp0{column1:signed<64>, column2:string, column3:bool, column4:double, column100:Option<signed<64>>, column20:Option<string>}\n" +
-                "typedef TRtmp0 = TRtmp0{column2:string, column1:signed<64>, x:Option<signed<64>>}\n" +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column10:Option<signed<64>>, column2:Option<istring>}\n" +
+                "typedef Ttmp0 = Ttmp0{column1:signed<64>, column2:istring, column3:bool, column4:double, column100:Option<signed<64>>, column20:Option<istring>}\n" +
+                "typedef TRtmp0 = TRtmp0{column2:istring, column1:signed<64>, x:Option<signed<64>>}\n" +
                 this.relations(false) +
                 "relation Rtmp[Ttmp]\n" +
                 "output relation Rv0[TRtmp0]\n" +

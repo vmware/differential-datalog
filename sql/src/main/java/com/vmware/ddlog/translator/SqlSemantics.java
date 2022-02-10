@@ -94,7 +94,7 @@ public class SqlSemantics {
         } else if (sqltype.equals("integer") || sqltype.equals("int")) {
             type = DDlogTSigned.signed64;
         } else if (sqltype.startsWith("varchar")) {
-            type = DDlogTString.instance;
+            type = DDlogTIString.instance;
         } else if (sqltype.equals("bigint")) {
             type = DDlogTInt.instance;
         } else if (sqltype.equals("real")) {
@@ -140,7 +140,7 @@ public class SqlSemantics {
                     DDlogType raw;
                     DDlogType withNull;
                     if (h.equals(this.stringFunctions)) {
-                        raw = DDlogTString.instance;
+                        raw = DDlogTIString.instance;
                     } else if (op.isBoolean()) {
                         raw = DDlogTBool.instance;
                     } else {
@@ -182,7 +182,15 @@ public class SqlSemantics {
                     if (i == 0) {
                         def = new DDlogEBinOp(null, op,
                                 new DDlogEVar(null,"left", raw), new DDlogEVar(null,"right", raw));
+                        if (type.is(DDlogTIString.class)) {
+                            def = new DDlogEApply(def.getNode(), "intern", DDlogTIString.instance, true, def);
+                        }
                     } else {
+                        def = new DDlogEBinOp(null, op,
+                                new DDlogEVar(null, "l", raw), new DDlogEVar(null, "r", raw));
+                        if (type.is(DDlogTIString.class)) {
+                            def = new DDlogEApply(def.getNode(), "intern", DDlogTIString.instance, true, def);
+                        }
                         def = new DDlogEMatch(null,
                                 new DDlogETuple(null,
                                         new DDlogEVar(null,"left", leftType),
@@ -191,8 +199,7 @@ public class SqlSemantics {
                                         new DDlogEMatch.Case(null,
                                                 new DDlogETuple(null, leftMatch, rightMatch),
                                                 ExpressionTranslationVisitor.wrapSome(
-                                                    new DDlogEBinOp(null, op,
-                                                        new DDlogEVar(null, "l", raw), new DDlogEVar(null, "r", raw)), type)),
+                                                    def, type)),
                                         new DDlogEMatch.Case(null,
                                                 new DDlogETuple(null,
                                                         new DDlogEPHolder(null),
@@ -200,6 +207,7 @@ public class SqlSemantics {
                                                 new DDlogENull(null, type)))
                         );
                     }
+
                     DDlogFunction func = new DDlogFunction(null, function, type, def, left, right);
                     result.functions.add(func);
                 }

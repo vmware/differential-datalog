@@ -46,7 +46,7 @@ public class SimpleQueriesTest extends BaseQueriesTest {
         String program = this.header(false) +
                 this.relations(false) +
                 "output relation Rv0[TRt2]\n" +
-                "Rv0[v1] :- Rt1[v],vec_contains(vec_push_imm(vec_push_imm(vec_empty(), \"a\"), \"b\"), v.column2)," +
+                "Rv0[v1] :- Rt1[v],vec_contains(vec_push_imm(vec_push_imm(vec_empty(), i\"a\"), i\"b\"), v.column2)," +
                 "var v0 = TRt2{.column1 = v.column1},var v1 = v0.";
         this.testTranslation(query, program);
     }
@@ -61,10 +61,10 @@ public class SimpleQueriesTest extends BaseQueriesTest {
                 "import sql\n" +
                 "import sqlop\n" +
                 "\n" +
-                "typedef TRt1 = TRt1{column1:signed<64>, column2:string, column3:bool, column4:double}\n" +
+                "typedef TRt1 = TRt1{column1:signed<64>, column2:istring, column3:bool, column4:double}\n" +
                 "typedef TRt2 = TRt2{column1:signed<64>}\n" +
                 "typedef TRt3 = TRt3{d:Date, t:Time, dt:DateTime}\n" +
-                "typedef TRt4 = TRt4{column1:Option<signed<64>>, column2:Option<string>}\n" +
+                "typedef TRt4 = TRt4{column1:Option<signed<64>>, column2:Option<istring>}\n" +
                 "typedef TRa = TRa{column1:signed<64>, column2:signed<64>, column3:Vec<signed<64>>}\n" +
                 "\n" +
                 "input relation Rt1[TRt1]\n" +
@@ -93,7 +93,7 @@ public class SimpleQueriesTest extends BaseQueriesTest {
     public void testSelect() {
         String query = "create view v0 as select distinct column1, column2 from t1";
         String program = this.header(false) +
-            "typedef TRtmp = TRtmp{column1:signed<64>, column2:string}\n" +
+            "typedef TRtmp = TRtmp{column1:signed<64>, column2:istring}\n" +
             this.relations(false) +
             "output relation Rv0[TRtmp]\n" +
             "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.column1 = v.column1,.column2 = v.column2},var v1 = v0.";
@@ -156,7 +156,7 @@ public class SimpleQueriesTest extends BaseQueriesTest {
         String program = this.header(false) +
                 this.relations(false) +
                 "output relation Rv2[TRt1]\n" +
-                "Rv2[v0] :- Rt1[v],((v.column1 == 64'sd10) and (v.column2 == \"something\")),var v0 = v.";
+                "Rv2[v0] :- Rt1[v],((v.column1 == 64'sd10) and (v.column2 == i\"something\")),var v0 = v.";
         this.testTranslation(query, program);
     }
 
@@ -166,7 +166,7 @@ public class SimpleQueriesTest extends BaseQueriesTest {
         String program = this.header(true) +
             this.relations(true) +
             "output relation Rv2[TRt1]\n" +
-            "Rv2[v0] :- Rt1[v],unwrapBool(b_and_NN(a_eq_NR(v.column1, 64'sd10), s_eq_NR(v.column2, \"something\"))),var v0 = v.";
+            "Rv2[v0] :- Rt1[v],unwrapBool(b_and_NN(a_eq_NR(v.column1, 64'sd10), s_eq_NR(v.column2, i\"something\"))),var v0 = v.";
         this.testTranslation(query, program, true);
     }
 
@@ -254,7 +254,7 @@ public class SimpleQueriesTest extends BaseQueriesTest {
     public void duplicatedColumnTest() {
         String query = "CREATE VIEW v AS SELECT DISTINCT column3 tmp, column2 gb1, column2 column2 FROM t1";
         String translation = this.header(false) +
-                "typedef TRtmp = TRtmp{tmp:bool, gb1:string, column2:string}\n" +
+                "typedef TRtmp = TRtmp{tmp:bool, gb1:istring, column2:istring}\n" +
                 this.relations(false) +
                 "output relation Rv[TRtmp]\n" +
                 "Rv[v1] :- Rt1[v],var v0 = TRtmp{.tmp = v.column3,.gb1 = v.column2,.column2 = v.column2},var v1 = v0.";
@@ -265,7 +265,7 @@ public class SimpleQueriesTest extends BaseQueriesTest {
     public void testBetween() {
         String query = "create view v0 as SELECT DISTINCT column1, column2 FROM t1 WHERE column1 BETWEEN -1 and 10";
         String program = this.header(false) +
-                "typedef TRtmp = TRtmp{column1:signed<64>, column2:string}\n" +
+                "typedef TRtmp = TRtmp{column1:signed<64>, column2:istring}\n" +
                 this.relations(false) +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],(((- 64'sd1) <= v.column1) and (v.column1 <= 64'sd10)),var v0 = TRtmp{.column1 = v.column1,.column2 = v.column2},var v1 = v0.";
@@ -286,7 +286,7 @@ public class SimpleQueriesTest extends BaseQueriesTest {
     public void testSubstr() {
         String query = "create view v0 as SELECT DISTINCT SUBSTR(column2, 3, 5) AS s FROM t1";
         String program = this.header(false) +
-                "typedef TRtmp = TRtmp{s:string}\n" +
+                "typedef TRtmp = TRtmp{s:istring}\n" +
                 this.relations(false) +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.s = sql_substr(v.column2, 64'sd3, 64'sd5)},var v1 = v0.";
@@ -297,7 +297,7 @@ public class SimpleQueriesTest extends BaseQueriesTest {
     public void testSubstrWNull() {
         String query = "create view v0 as SELECT DISTINCT SUBSTR(column2, 3, 5) AS s FROM t1";
         String program = this.header(true) +
-            "typedef TRtmp = TRtmp{s:Option<string>}\n" +
+            "typedef TRtmp = TRtmp{s:Option<istring>}\n" +
             this.relations(true) +
             "output relation Rv0[TRtmp]\n" +
             "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.s = sql_substr_N(v.column2, 64'sd3, 64'sd5)},var v1 = v0.";
@@ -323,7 +323,7 @@ public class SimpleQueriesTest extends BaseQueriesTest {
                 "relation Rtmp0[TRt1]\n" +
                 "output relation Rv3[TRt1]\n" +
                 "Rtmp0[v0] :- Rt1[v],(v.column1 == 64'sd10),var v0 = v.\n" +
-                "Rv3[v1] :- Rtmp0[v0],(v0.column2 == \"something\"),var v1 = v0.";
+                "Rv3[v1] :- Rtmp0[v0],(v0.column2 == i\"something\"),var v1 = v0.";
         this.testTranslation(query, program);
     }
 
@@ -331,10 +331,10 @@ public class SimpleQueriesTest extends BaseQueriesTest {
     public void testConcat() {
         String query = "create view v3 as select distinct concat(t1.column1, t1.column2, t1.column3) as c from t1";
         String program = this.header(false) +
-                "typedef TRtmp = TRtmp{c:string}\n" +
+                "typedef TRtmp = TRtmp{c:istring}\n" +
                 this.relations(false) +
                 "output relation Rv3[TRtmp]\n" +
-                "Rv3[v1] :- Rt1[v],var v0 = TRtmp{.c = sql_concat(sql_concat([|${v.column1}|], v.column2), [|${v.column3}|])},var v1 = v0.";
+                "Rv3[v1] :- Rt1[v],var v0 = TRtmp{.c = sql_concat(sql_concat(i[|${v.column1}|], v.column2), i[|${v.column3}|])},var v1 = v0.";
         this.testTranslation(query, program);
     }
 
@@ -342,13 +342,13 @@ public class SimpleQueriesTest extends BaseQueriesTest {
     public void testConcatWNull() {
         String query = "create view v3 as select distinct concat(t1.column1, t1.column2, t1.column3) as c from t1";
         String program = this.header(true) +
-                "typedef TRtmp = TRtmp{c:Option<string>}\n" +
+                "typedef TRtmp = TRtmp{c:Option<istring>}\n" +
                 this.relations(true) +
                 "output relation Rv3[TRtmp]\n" +
-                "Rv3[v1] :- Rt1[v],var v0 = TRtmp{.c = sql_concat_N(sql_concat_N(match(v.column1) {None{}: Option<signed<64>> -> None{}: Option<string>,\n" +
-                "Some{.x = var x} -> Some{.x = [|${x}|]}\n" +
-                "}, v.column2), match(v.column3) {None{}: Option<bool> -> None{}: Option<string>,\n" +
-                "Some{.x = var x} -> Some{.x = [|${x}|]}\n" +
+                "Rv3[v1] :- Rt1[v],var v0 = TRtmp{.c = sql_concat_N(sql_concat_N(match(v.column1) {None{}: Option<signed<64>> -> None{}: Option<istring>,\n" +
+                "Some{.x = var x} -> Some{.x = i[|${x}|]}\n" +
+                "}, v.column2), match(v.column3) {None{}: Option<bool> -> None{}: Option<istring>,\n" +
+                "Some{.x = var x} -> Some{.x = i[|${x}|]}\n" +
                 "})},var v1 = v0.";
         this.testTranslation(query, program, true);
     }
@@ -361,7 +361,7 @@ public class SimpleQueriesTest extends BaseQueriesTest {
             "relation Rtmp0[TRt1]\n" +
             "output relation Rv3[TRt1]\n" +
             "Rtmp0[v0] :- Rt1[v],unwrapBool(a_eq_NR(v.column1, 64'sd10)),var v0 = v.\n" +
-            "Rv3[v1] :- Rtmp0[v0],unwrapBool(s_eq_NR(v0.column2, \"something\")),var v1 = v0.";
+            "Rv3[v1] :- Rtmp0[v0],unwrapBool(s_eq_NR(v0.column2, i\"something\")),var v1 = v0.";
         this.testTranslation(query, program, true);
     }
 
@@ -370,7 +370,7 @@ public class SimpleQueriesTest extends BaseQueriesTest {
         String query = "create index idx_name on t1 (column1, column2)";
         String program = this.header(true) +
                 this.relations(true) + "\n" +
-                "index Iidx_name(column1:Option<signed<64>>,column2:Option<string>) on Rt1[TRt1{column1,column2,_,_}]";
+                "index Iidx_name(column1:Option<signed<64>>,column2:Option<istring>) on Rt1[TRt1{column1,column2,_,_}]";
         this.testIndexTranslation(query, program, true);
     }
 

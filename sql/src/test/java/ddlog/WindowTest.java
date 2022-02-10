@@ -32,12 +32,12 @@ public class WindowTest extends BaseQueriesTest {
         String query = "create view v1 as\n" +
                 "select DISTINCT *, count(column3) over (partition by column2) as c2 from t1";
         String translation = this.header(false) +
-                "typedef TRtmp = TRtmp{tmp:bool, gb:string, column1:signed<64>, column2:string, column3:bool, column4:double}\n" +
-                "typedef TRtmp0 = TRtmp0{gb:string, count:signed<64>}\n" +
+                "typedef TRtmp = TRtmp{tmp:bool, gb:istring, column1:signed<64>, column2:istring, column3:bool, column4:double}\n" +
+                "typedef TRtmp0 = TRtmp0{gb:istring, count:signed<64>}\n" +
                 "typedef Tagg = Tagg{count:signed<64>}\n" +
-                "typedef Ttmp = Ttmp{tmp:bool, gb:string, column1:signed<64>, column2:string, column3:bool, column4:double, count:signed<64>}\n" +
-                "typedef TRtmp1 = TRtmp1{column1:signed<64>, column2:string, column3:bool, column4:double, c2:signed<64>}\n" +
-                "function agg(g: Group<string, TRtmp>):Tagg {\n" +
+                "typedef Ttmp = Ttmp{tmp:bool, gb:istring, column1:signed<64>, column2:istring, column3:bool, column4:double, count:signed<64>}\n" +
+                "typedef TRtmp1 = TRtmp1{column1:signed<64>, column2:istring, column3:bool, column4:double, c2:signed<64>}\n" +
+                "function agg(g: Group<istring, TRtmp>):Tagg {\n" +
                 "(var gb0) = group_key(g);\n" +
                 "(var count0 = 64'sd0: signed<64>);\n" +
                 "(for ((i, _) in g) {\n" +
@@ -66,7 +66,7 @@ public class WindowTest extends BaseQueriesTest {
                 "from t1 as alias1 " +
                 "JOIN t4 as alias2 ON alias1.column1 = alias2.column1";
         String program = this.header(false) +
-                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, column10:Option<signed<64>>, column20:Option<string>}\n" +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:istring, column3:bool, column4:double, column10:Option<signed<64>>, column20:Option<istring>}\n" +
                 "typedef TRalias2 = TRalias2{tmp:Option<signed<64>>, gb:signed<64>, new_column:signed<64>}\n" +
                 "typedef TRtmp = TRtmp{gb:signed<64>, avg:Option<signed<64>>}\n" +
                 "typedef Tagg = Tagg{avg:Option<signed<64>>}\n" +
@@ -98,12 +98,12 @@ public class WindowTest extends BaseQueriesTest {
         String query = "create view v1 as\n" +
                 "select DISTINCT *, 3 + count(column3) over (partition by column2) as c2 from t1";
         String translation = this.header(false) +
-                "typedef TRtmp = TRtmp{tmp:bool, gb:string, column1:signed<64>, column2:string, column3:bool, column4:double}\n" +
-                "typedef TRtmp0 = TRtmp0{gb:string, count:signed<64>}\n" +
+                "typedef TRtmp = TRtmp{tmp:bool, gb:istring, column1:signed<64>, column2:istring, column3:bool, column4:double}\n" +
+                "typedef TRtmp0 = TRtmp0{gb:istring, count:signed<64>}\n" +
                 "typedef Tagg = Tagg{count:signed<64>}\n" +
-                "typedef Ttmp = Ttmp{tmp:bool, gb:string, column1:signed<64>, column2:string, column3:bool, column4:double, count:signed<64>}\n" +
-                "typedef TRtmp1 = TRtmp1{column1:signed<64>, column2:string, column3:bool, column4:double, c2:signed<64>}\n" +
-                "function agg(g: Group<string, TRtmp>):Tagg {\n" +
+                "typedef Ttmp = Ttmp{tmp:bool, gb:istring, column1:signed<64>, column2:istring, column3:bool, column4:double, count:signed<64>}\n" +
+                "typedef TRtmp1 = TRtmp1{column1:signed<64>, column2:istring, column3:bool, column4:double, c2:signed<64>}\n" +
+                "function agg(g: Group<istring, TRtmp>):Tagg {\n" +
                 "(var gb0) = group_key(g);\n" +
                 "(var count0 = 64'sd0: signed<64>);\n" +
                 "(for ((i, _) in g) {\n" +
@@ -130,11 +130,11 @@ public class WindowTest extends BaseQueriesTest {
         String query = "create view v1 as\n" +
                 "select DISTINCT *, 3 + count(substr(column2, 3, 3)) over (partition by column3) as c2 from t1";
         String translation = this.header(false) +
-                "typedef TRtmp = TRtmp{tmp:string, gb:bool, column1:signed<64>, column2:string, column3:bool, column4:double}\n" +
+                "typedef TRtmp = TRtmp{tmp:istring, gb:bool, column1:signed<64>, column2:istring, column3:bool, column4:double}\n" +
                 "typedef TRtmp0 = TRtmp0{gb:bool, count:signed<64>}\n" +
                 "typedef Tagg = Tagg{count:signed<64>}\n" +
-                "typedef Ttmp = Ttmp{tmp:string, gb:bool, column1:signed<64>, column2:string, column3:bool, column4:double, count:signed<64>}\n" +
-                "typedef TRtmp1 = TRtmp1{column1:signed<64>, column2:string, column3:bool, column4:double, c2:signed<64>}\n" +
+                "typedef Ttmp = Ttmp{tmp:istring, gb:bool, column1:signed<64>, column2:istring, column3:bool, column4:double, count:signed<64>}\n" +
+                "typedef TRtmp1 = TRtmp1{column1:signed<64>, column2:istring, column3:bool, column4:double, c2:signed<64>}\n" +
                 "function agg(g: Group<bool, TRtmp>):Tagg {\n" +
                 "(var gb0) = group_key(g);\n" +
                 "(var count0 = 64'sd0: signed<64>);\n" +
@@ -162,15 +162,15 @@ public class WindowTest extends BaseQueriesTest {
         String query = "create view v1 as\n" +
                 "select DISTINCT count(column3) over (partition by column2) + COUNT(column2) over (partition by column3) as X from t1";
         String translation = this.header(false) +
-                "typedef TRtmp = TRtmp{tmp:bool, tmp0:string, gb:string, gb0:bool}\n" +
-                "typedef TRtmp0 = TRtmp0{gb:string, count:signed<64>}\n" +
+                "typedef TRtmp = TRtmp{tmp:bool, tmp0:istring, gb:istring, gb0:bool}\n" +
+                "typedef TRtmp0 = TRtmp0{gb:istring, count:signed<64>}\n" +
                 "typedef Tagg = Tagg{count:signed<64>}\n" +
                 "typedef TRtmp1 = TRtmp1{gb0:bool, count0:signed<64>}\n" +
                 "typedef Tagg0 = Tagg0{count0:signed<64>}\n" +
-                "typedef Ttmp = Ttmp{tmp:bool, tmp0:string, gb:string, gb0:bool, count:signed<64>}\n" +
-                "typedef Ttmp0 = Ttmp0{tmp:bool, tmp0:string, gb:string, gb0:bool, count:signed<64>, count0:signed<64>}\n" +
+                "typedef Ttmp = Ttmp{tmp:bool, tmp0:istring, gb:istring, gb0:bool, count:signed<64>}\n" +
+                "typedef Ttmp0 = Ttmp0{tmp:bool, tmp0:istring, gb:istring, gb0:bool, count:signed<64>, count0:signed<64>}\n" +
                 "typedef TRtmp3 = TRtmp3{x:signed<64>}\n" +
-                "function agg(g: Group<string, TRtmp>):Tagg {\n" +
+                "function agg(g: Group<istring, TRtmp>):Tagg {\n" +
                 "(var gb1) = group_key(g);\n" +
                 "(var count1 = 64'sd0: signed<64>);\n" +
                 "(for ((i, _) in g) {\n" +
@@ -212,13 +212,13 @@ public class WindowTest extends BaseQueriesTest {
         String query = "create view v1 as\n" +
                 "SELECT DISTINCT column2, SUM(column1) AS s, MIN(AVG(column1)) OVER (PARTITION by column3) AS min FROM t1 GROUP BY column2, column3";
         String translation = this.header(false) +
-                "typedef TRtmp = TRtmp{tmp:signed<64>, gb1:bool, column2:string, s:signed<64>}\n" +
+                "typedef TRtmp = TRtmp{tmp:signed<64>, gb1:bool, column2:istring, s:signed<64>}\n" +
                 "typedef Tagg = Tagg{tmp:signed<64>, s:signed<64>}\n" +
                 "typedef TRtmp0 = TRtmp0{gb1:bool, min:signed<64>}\n" +
                 "typedef Tagg0 = Tagg0{min:signed<64>}\n" +
-                "typedef Ttmp = Ttmp{tmp:signed<64>, gb1:bool, column2:string, s:signed<64>, min:signed<64>}\n" +
-                "typedef TRtmp1 = TRtmp1{column2:string, s:signed<64>, min:signed<64>}\n" +
-                "function agg(g: Group<(string, bool), TRt1>):Tagg {\n" +
+                "typedef Ttmp = Ttmp{tmp:signed<64>, gb1:bool, column2:istring, s:signed<64>, min:signed<64>}\n" +
+                "typedef TRtmp1 = TRtmp1{column2:istring, s:signed<64>, min:signed<64>}\n" +
+                "function agg(g: Group<(istring, bool), TRt1>):Tagg {\n" +
                 "(var gb2, var gb3) = group_key(g);\n" +
                 "(var avg = (64'sd0, 64'sd0): (signed<64>, signed<64>));\n" +
                 "(var sum = 64'sd0: signed<64>);\n" +
@@ -258,13 +258,13 @@ public class WindowTest extends BaseQueriesTest {
     public void windowGroupByTest2() {
         String query = "CREATE VIEW v0 as SELECT DISTINCT column2, COUNT(column3) OVER (PARTITION BY column2) from t1 GROUP BY column2,column3";
         String translation = this.header(false) +
-                "typedef TRtmp = TRtmp{tmp:bool, gb1:string, column2:string}\n" +
+                "typedef TRtmp = TRtmp{tmp:bool, gb1:istring, column2:istring}\n" +
                 "typedef Tagg = Tagg{}\n" +
-                "typedef TRtmp0 = TRtmp0{gb1:string, count:signed<64>}\n" +
+                "typedef TRtmp0 = TRtmp0{gb1:istring, count:signed<64>}\n" +
                 "typedef Tagg0 = Tagg0{count:signed<64>}\n" +
-                "typedef Ttmp = Ttmp{tmp:bool, gb1:string, column2:string, count:signed<64>}\n" +
-                "typedef TRtmp1 = TRtmp1{column2:string, count:signed<64>}\n" +
-                "function agg0(g0: Group<string, TRtmp>):Tagg0 {\n" +
+                "typedef Ttmp = Ttmp{tmp:bool, gb1:istring, column2:istring, count:signed<64>}\n" +
+                "typedef TRtmp1 = TRtmp1{column2:istring, count:signed<64>}\n" +
+                "function agg0(g0: Group<istring, TRtmp>):Tagg0 {\n" +
                 "(var gb4) = group_key(g0);\n" +
                 "(var count0 = 64'sd0: signed<64>);\n" +
                 "(for ((i0, _) in g0) {\n" +
@@ -290,13 +290,13 @@ public class WindowTest extends BaseQueriesTest {
     public void nestedAggTest() {
         String query = "CREATE VIEW v0 as SELECT column2, SUM(column1), SUM(SUM(column1)) OVER (PARTITION BY column3) FROM t1 GROUP BY column2, column3";
         String translation = this.header(false) +
-                "typedef TRtmp = TRtmp{tmp:signed<64>, gb1:bool, column2:string, col:signed<64>}\n" +
+                "typedef TRtmp = TRtmp{tmp:signed<64>, gb1:bool, column2:istring, col:signed<64>}\n" +
                 "typedef Tagg = Tagg{tmp:signed<64>, col:signed<64>}\n" +
                 "typedef TRtmp0 = TRtmp0{gb1:bool, sum:signed<64>}\n" +
                 "typedef Tagg0 = Tagg0{sum:signed<64>}\n" +
-                "typedef Ttmp = Ttmp{tmp:signed<64>, gb1:bool, column2:string, col:signed<64>, sum:signed<64>}\n" +
-                "typedef TRtmp1 = TRtmp1{column2:string, col:signed<64>, sum:signed<64>}\n" +
-                "function agg(g: Group<(string, bool), TRt1>):Tagg {\n" +
+                "typedef Ttmp = Ttmp{tmp:signed<64>, gb1:bool, column2:istring, col:signed<64>, sum:signed<64>}\n" +
+                "typedef TRtmp1 = TRtmp1{column2:istring, col:signed<64>, sum:signed<64>}\n" +
+                "function agg(g: Group<(istring, bool), TRt1>):Tagg {\n" +
                 "(var gb2, var gb3) = group_key(g);\n" +
                 "(var sum0 = 64'sd0: signed<64>);\n" +
                 "(for ((i, _) in g) {\n" +
@@ -334,11 +334,11 @@ public class WindowTest extends BaseQueriesTest {
         String query = "CREATE VIEW v0 as SELECT DISTINCT t1.column2, AVG(t2.column1) OVER (PARTITION by t1.column3) AS avg\n" +
                 "         FROM t1 JOIN t2 ON t1.column1 = t2.column1\n";
         String translation = this.header(false) +
-                "typedef TRtmp = TRtmp{tmp:signed<64>, gb:bool, column2:string}\n" +
+                "typedef TRtmp = TRtmp{tmp:signed<64>, gb:bool, column2:istring}\n" +
                 "typedef TRtmp0 = TRtmp0{gb:bool, avg:signed<64>}\n" +
                 "typedef Tagg = Tagg{avg:signed<64>}\n" +
-                "typedef Ttmp = Ttmp{tmp:signed<64>, gb:bool, column2:string, avg:signed<64>}\n" +
-                "typedef TRtmp1 = TRtmp1{column2:string, avg:signed<64>}\n" +
+                "typedef Ttmp = Ttmp{tmp:signed<64>, gb:bool, column2:istring, avg:signed<64>}\n" +
+                "typedef TRtmp1 = TRtmp1{column2:istring, avg:signed<64>}\n" +
                 "function agg(g: Group<bool, TRtmp>):Tagg {\n" +
                 "(var gb0) = group_key(g);\n" +
                 "(var avg0 = (64'sd0, 64'sd0): (signed<64>, signed<64>));\n" +
@@ -365,11 +365,11 @@ public class WindowTest extends BaseQueriesTest {
         String query = "CREATE VIEW v0 as SELECT DISTINCT t1.column2 as test_alias, AVG(t2.column1) OVER (PARTITION by t1.column3) AS avg\n" +
                 "         FROM t1 JOIN t2 ON t1.column1 = t2.column1\n";
         String translation = this.header(false) +
-                "typedef TRtmp = TRtmp{tmp:signed<64>, gb:bool, test_alias:string}\n" +
+                "typedef TRtmp = TRtmp{tmp:signed<64>, gb:bool, test_alias:istring}\n" +
                 "typedef TRtmp0 = TRtmp0{gb:bool, avg:signed<64>}\n" +
                 "typedef Tagg = Tagg{avg:signed<64>}\n" +
-                "typedef Ttmp = Ttmp{tmp:signed<64>, gb:bool, test_alias:string, avg:signed<64>}\n" +
-                "typedef TRtmp1 = TRtmp1{test_alias:string, avg:signed<64>}\n" +
+                "typedef Ttmp = Ttmp{tmp:signed<64>, gb:bool, test_alias:istring, avg:signed<64>}\n" +
+                "typedef TRtmp1 = TRtmp1{test_alias:istring, avg:signed<64>}\n" +
                 "function agg(g: Group<bool, TRtmp>):Tagg {\n" +
                 "(var gb0) = group_key(g);\n" +
                 "(var avg0 = (64'sd0, 64'sd0): (signed<64>, signed<64>));\n" +
@@ -396,11 +396,11 @@ public class WindowTest extends BaseQueriesTest {
         String query = "CREATE VIEW v0 as SELECT DISTINCT AVG(t2.column1) OVER (PARTITION by t1.column3) AS avg, t1.column2 as test_alias\n" +
                 "         FROM t1 JOIN t2 ON t1.column1 = t2.column1\n";
         String translation = this.header(false) +
-                "typedef TRtmp = TRtmp{tmp:signed<64>, gb:bool, test_alias:string}\n" +
+                "typedef TRtmp = TRtmp{tmp:signed<64>, gb:bool, test_alias:istring}\n" +
                 "typedef TRtmp0 = TRtmp0{gb:bool, avg:signed<64>}\n" +
                 "typedef Tagg = Tagg{avg:signed<64>}\n" +
-                "typedef Ttmp = Ttmp{tmp:signed<64>, gb:bool, test_alias:string, avg:signed<64>}\n" +
-                "typedef TRtmp1 = TRtmp1{avg:signed<64>, test_alias:string}\n" +
+                "typedef Ttmp = Ttmp{tmp:signed<64>, gb:bool, test_alias:istring, avg:signed<64>}\n" +
+                "typedef TRtmp1 = TRtmp1{avg:signed<64>, test_alias:istring}\n" +
                 "function agg(g: Group<bool, TRtmp>):Tagg {\n" +
                 "(var gb0) = group_key(g);\n" +
                 "(var avg0 = (64'sd0, 64'sd0): (signed<64>, signed<64>));\n" +
