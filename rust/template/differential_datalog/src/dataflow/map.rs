@@ -22,6 +22,7 @@ where
 {
     type Output = Stream<S, D2>;
 
+    #[allow(clippy::redundant_closure)]
     fn map_named<L>(&self, name: &str, mut logic: L) -> Self::Output
     where
         L: FnMut(D1) -> D2 + 'static,

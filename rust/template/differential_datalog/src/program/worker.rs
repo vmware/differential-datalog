@@ -547,7 +547,7 @@ impl<'a> DDlogWorker<'a> {
             if let Some(ddflow_destination) = differential_destination {
                 match ddflow_destination {
                     LoggingDestination::Disk { directory } => {
-                        save_differential_logs_to_disk(&mut self.worker, directory)
+                        save_differential_logs_to_disk(self.worker, directory)
                             .map_err(|e| format!("{}", e))?;
                     }
                     LoggingDestination::Socket { sockaddr } => {
@@ -557,10 +557,10 @@ impl<'a> DDlogWorker<'a> {
                                 sockaddr, e
                             )
                         })?;
-                        enable_differential_logging(&mut self.worker, stream);
+                        enable_differential_logging(self.worker, stream);
                     }
                     LoggingDestination::Writer { factory } => {
-                        enable_differential_logging(&mut self.worker, factory());
+                        enable_differential_logging(self.worker, factory());
                     }
                 };
             }

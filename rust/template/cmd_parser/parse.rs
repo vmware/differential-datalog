@@ -1,5 +1,7 @@
 //! nom-based parser for Datalog values.
 
+#![allow(clippy::redundant_closure)]
+
 use differential_datalog::record::*;
 use nom::*;
 use num::bigint::*;
