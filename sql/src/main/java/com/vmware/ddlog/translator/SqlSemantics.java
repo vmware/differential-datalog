@@ -113,6 +113,7 @@ public class SqlSemantics {
                 String subtype = m.group(1);
                 DDlogType stype = createType(node, subtype, mayBeNull);
                 type = new DDlogTArray(node, stype, false);
+                type = new DDlogTRef(node, type, false);
             }
         }
         if (type == null)

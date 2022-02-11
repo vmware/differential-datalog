@@ -491,7 +491,7 @@ public class AggregatesTest extends BaseQueriesTest {
     public void arrayAggTest() {
         String query = "create view v1 as select array_agg(column2) from t1";
         String program = this.header(false) +
-                "typedef TRtmp = TRtmp{col0:Vec<istring>}\n" +
+                "typedef TRtmp = TRtmp{col0:Ref<Vec<istring>>}\n" +
                 "function agg(g: Group<(), TRt1>):TRtmp {\n" +
                 "var array_agg = vec_empty(): Vec<istring>;\n" +
                 "(for ((i, _) in g) {\n" +
@@ -499,7 +499,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "(var incr = v.column2);\n" +
                 "(vec_push(array_agg, incr))}\n" +
                 ");\n" +
-                "(TRtmp{.col0 = array_agg})\n" +
+                "(TRtmp{.col0 = array_agg.ref_new()})\n" +
                 "}\n" +
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
@@ -520,7 +520,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "(var incr = v.column2);\n" +
                 "(vec_push(array_agg, incr))}\n" +
                 ");\n" +
-                "(TRtmp{.col0 = sql_array_length(array_agg)})\n" +
+                "(TRtmp{.col0 = sql_array_length(array_agg.ref_new())})\n" +
                 "}\n" +
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +

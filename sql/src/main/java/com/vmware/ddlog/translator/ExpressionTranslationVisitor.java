@@ -524,7 +524,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
                 if (args.size() != 1)
                     throw new TranslationException("Expected exactly 1 argument for aggregate", node);
                 DDlogExpression arg = args.get(0);
-                return new DDlogTArray(node, arg.getType(), false);
+                return new DDlogTRef(node, new DDlogTArray(node, arg.getType(), false), false);
             case "array_contains":
                 return DDlogTBool.instance;
             default:

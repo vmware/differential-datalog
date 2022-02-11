@@ -527,7 +527,7 @@ public class GroupByTest extends BaseQueriesTest {
                 "(var incr0 = gb);\n" +
                 "(vec_push(array_agg, incr0))}\n" +
                 ");\n" +
-                "(Tagg{.col0 = count,.col1 = (sql_array_length(array_agg) == count)})\n" +
+                "(Tagg{.col0 = count,.col1 = (sql_array_length(array_agg.ref_new()) == count)})\n" +
                 "}\n" +
                 "\n" +
                 "input relation Rt1[TRt1]\n" +
@@ -561,7 +561,7 @@ public class GroupByTest extends BaseQueriesTest {
                 "(var incr0 = gb);\n" +
                 "(vec_push(array_agg, incr0))}\n" +
                 ");\n" +
-                "(Tagg{.col0 = count,.col1 = (sql_array_length(array_agg) < 64'sd2)})\n" +
+                "(Tagg{.col0 = count,.col1 = (sql_array_length(array_agg.ref_new()) < 64'sd2)})\n" +
                 "}\n" +
                 "\n" +
                 "input relation Rt1[TRt1]\n" +

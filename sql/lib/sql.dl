@@ -10,12 +10,12 @@ function sql_extract_month(d: Date): signed<64> {
     month(d) as signed<8> as signed<64>
 }
 
-function sql_array_contains(a: Vec<'A>, e: 'A): bool {
-    vec_contains(a, e)
+function sql_array_contains(a: Ref<Vec<'A>>, e: 'A): bool {
+    vec_contains(a.deref(), e)
 }
 
-function sql_array_length(a: Vec<'A>): signed<64> {
-    vec_len(a) as signed<64>
+function sql_array_length(a: Ref<Vec<'A>>): signed<64> {
+    vec_len(a.deref()) as signed<64>
 }
 
 function sql_extract_week(d: Date): signed<64> {

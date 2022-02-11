@@ -101,8 +101,7 @@ class CalciteToH2 extends CalciteDDLVisitorBase {
             if (constraintOperands.get(1) instanceof SqlNodeList) {
                 SqlNodeList constraintColumns = (SqlNodeList) constraintOperands.get(1);
 
-                String constraintColumnsString = String.join(",",
-                        constraintColumns.getList().stream().map(SqlNode::toString).collect(Collectors.toList()));
+                String constraintColumnsString = constraintColumns.getList().stream().map(SqlNode::toString).collect(Collectors.joining(","));
 
                 String transcribed = String.format("%s (%s)", castColumn.getOperator(), constraintColumnsString);
                 translatedColumns.add(transcribed);
