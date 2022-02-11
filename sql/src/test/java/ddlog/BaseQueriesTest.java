@@ -58,15 +58,15 @@ public class BaseQueriesTest {
             "import sql\n" +
             "import sqlop\n";
     protected final String tables =
-            "typedef TRt1 = TRt1{column1:signed<64>, column2:string, column3:bool, column4:double}\n" +
+            "typedef TRt1 = TRt1{column1:signed<64>, column2:istring, column3:bool, column4:double}\n" +
             "typedef TRt2 = TRt2{column1:signed<64>}\n" +
             "typedef TRt3 = TRt3{d:Date, t:Time, dt:DateTime}\n" +
-            "typedef TRt4 = TRt4{column1:Option<signed<64>>, column2:Option<string>}\n";
+            "typedef TRt4 = TRt4{column1:Option<signed<64>>, column2:Option<istring>}\n";
     protected final String tablesWNull =
-            "typedef TRt1 = TRt1{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>, column4:Option<double>}\n" +
+            "typedef TRt1 = TRt1{column1:Option<signed<64>>, column2:Option<istring>, column3:Option<bool>, column4:Option<double>}\n" +
             "typedef TRt2 = TRt2{column1:Option<signed<64>>}\n" +
             "typedef TRt3 = TRt3{d:Option<Date>, t:Option<Time>, dt:Option<DateTime>}\n" +
-            "typedef TRt4 = TRt4{column1:Option<signed<64>>, column2:Option<string>}\n";
+            "typedef TRt4 = TRt4{column1:Option<signed<64>>, column2:Option<istring>}\n";
 
     /**
      * The expected string the generated program starts with.

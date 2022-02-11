@@ -28,33 +28,36 @@ import com.facebook.presto.sql.tree.Node;
 
 import javax.annotation.Nullable;
 
-public class DDlogTString extends DDlogType implements IDDlogBaseType {
-    public static DDlogTString instance = new DDlogTString(null,false);
+/**
+ * Interned string type.
+ */
+public class DDlogTIString extends DDlogType implements IDDlogBaseType {
+    public static DDlogTIString instance = new DDlogTIString(null,false);
 
-    private DDlogTString(@Nullable Node node, boolean mayBeNull) { super(node, mayBeNull); }
+    private DDlogTIString(@Nullable Node node, boolean mayBeNull) { super(node, mayBeNull); }
 
     @Override
-    public String toString() { return this.wrapOption("string"); }
+    public String toString() { return this.wrapOption("istring"); }
 
     @Override
     public DDlogType setMayBeNull(boolean mayBeNull) {
         if (this.mayBeNull == mayBeNull)
             return this;
-        return new DDlogTString(this.getNode(), mayBeNull);
+        return new DDlogTIString(this.getNode(), mayBeNull);
     }
 
     @Override
     public boolean same(DDlogType type) {
         if (!super.same(type))
             return false;
-        return type.is(DDlogTString.class);
+        return type.is(DDlogTIString.class);
     }
 
     /**
-     * Given an expression with type string intern it
+     * Given an expression with type istring unwrap the istring
      */
-    public static DDlogExpression intern(DDlogExpression expression) {
-        assert(expression.getType().is(DDlogTString.class));
-        return new DDlogEApply(expression.node, "intern", DDlogTIString.instance, true, expression);
+    public static DDlogExpression ival(DDlogExpression expression) {
+        assert(expression.getType().is(DDlogTIString.class));
+        return new DDlogEApply(expression.node, "ival", DDlogTString.instance, true, expression);
     }
 }

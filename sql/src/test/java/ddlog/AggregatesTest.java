@@ -219,9 +219,9 @@ public class AggregatesTest extends BaseQueriesTest {
     public void testStringAggregate() {
         String query = "create view v0 as SELECT MIN(column2) AS min FROM t1";
         String program = this.header(false) +
-                "typedef TRtmp = TRtmp{min:string}\n" +
+                "typedef TRtmp = TRtmp{min:istring}\n" +
                 "function agg(g: Group<(), TRt1>):TRtmp {\n" +
-                "var min = (true, \"\"): (bool, string);\n" +
+                "var min = (true, i\"\"): (bool, istring);\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column2);\n" +
@@ -454,7 +454,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "var max = (true, 64'sd0): (bool, signed<64>);\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
-                "(var incr = if ((v.column2 == \"foo\")) {\n" +
+                "(var incr = if ((v.column2 == i\"foo\")) {\n" +
                 "v.column1} else {\n" +
                 "64'sd0});\n" +
                 "(max = agg_max_R(max, incr))}\n" +
@@ -491,9 +491,9 @@ public class AggregatesTest extends BaseQueriesTest {
     public void arrayAggTest() {
         String query = "create view v1 as select array_agg(column2) from t1";
         String program = this.header(false) +
-                "typedef TRtmp = TRtmp{col0:Vec<string>}\n" +
+                "typedef TRtmp = TRtmp{col0:Vec<istring>}\n" +
                 "function agg(g: Group<(), TRt1>):TRtmp {\n" +
-                "var array_agg = vec_empty(): Vec<string>;\n" +
+                "var array_agg = vec_empty(): Vec<istring>;\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column2);\n" +
@@ -514,7 +514,7 @@ public class AggregatesTest extends BaseQueriesTest {
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{col0:signed<64>}\n" +
                 "function agg(g: Group<(), TRt1>):TRtmp {\n" +
-                "var array_agg = vec_empty(): Vec<string>;\n" +
+                "var array_agg = vec_empty(): Vec<istring>;\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column2);\n" +

@@ -138,7 +138,7 @@ public class SetTest extends BaseQueriesTest {
     public void exceptMixTest2() {
         String query = "create view v0 as SELECT DISTINCT column1, column2 FROM t1 EXCEPT SELECT DISTINCT column1, column2 FROM t4";
         String program = this.header(false) +
-                "typedef TRtmp = TRtmp{column1:signed<64>, column2:string}\n" +
+                "typedef TRtmp = TRtmp{column1:signed<64>, column2:istring}\n" +
                 this.relations(false) +
                 "relation Rsource[TRtmp]\n" +
                 "relation Rexcept[TRt4]\n" +

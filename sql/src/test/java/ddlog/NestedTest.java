@@ -32,7 +32,7 @@ public class NestedTest extends BaseQueriesTest {
         String query = "create view v0 as SELECT DISTINCT column2 FROM t1 WHERE column1 in " +
                 "(SELECT DISTINCT column1 FROM t2)";
         String program = this.header(false) +
-                "typedef TRtmp0 = TRtmp0{column2:string}\n" +
+                "typedef TRtmp0 = TRtmp0{column2:istring}\n" +
                 this.relations(false) +
                 "relation Rsub[TRt2]\n" +
                 "output relation Rv0[TRtmp0]\n" +

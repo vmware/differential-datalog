@@ -46,10 +46,10 @@ public class CastTest extends BaseQueriesTest {
     public void testCastIntToString() {
         String query = "create view v0 as SELECT DISTINCT CAST(t1.column1 AS VARCHAR) AS s FROM t1";
         String program = this.header(false) +
-                "typedef TRtmp = TRtmp{s:string}\n" +
+                "typedef TRtmp = TRtmp{s:istring}\n" +
                 this.relations(false) +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.s = [|${v.column1}|]},var v1 = v0.";
+                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.s = i[|${v.column1}|]},var v1 = v0.";
         this.testTranslation(query, program);
     }
 
@@ -60,7 +60,7 @@ public class CastTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{i:signed<64>}\n" +
                 this.relations(false) +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.i = option_unwrap_or_default(parse_dec_i64(v.column2))},var v1 = v0.";
+                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.i = option_unwrap_or_default(parse_dec_i64(v.column2.ival()))},var v1 = v0.";
         this.testTranslation(query, program);
     }
 
@@ -71,7 +71,7 @@ public class CastTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{d:double}\n" +
                 this.relations(false) +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.d = result_unwrap_or_default(parse_d(v.column2))},var v1 = v0.";
+                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.d = result_unwrap_or_default(parse_d(v.column2.ival()))},var v1 = v0.";
         this.testTranslation(query, program);
     }
 
@@ -82,7 +82,7 @@ public class CastTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{d:Date}\n" +
                 this.relations(false) +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.d = result_unwrap_or_default(string2date(v.column2))},var v1 = v0.";
+                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.d = result_unwrap_or_default(string2date(v.column2.ival()))},var v1 = v0.";
         this.testTranslation(query, program);
     }
 
@@ -93,7 +93,7 @@ public class CastTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{d:Date}\n" +
                 this.relations(false) +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.d = result_unwrap_or_default(string2date([|${v.column1}|]))},var v1 = v0.";
+                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.d = result_unwrap_or_default(string2date(i[|${v.column1}|].ival()))},var v1 = v0.";
         this.testTranslation(query, program);
     }
 
@@ -104,7 +104,7 @@ public class CastTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{t:DateTime}\n" +
                 this.relations(false) +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.t = result_unwrap_or_default(string2datetime(v.column2))},var v1 = v0.";
+                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.t = result_unwrap_or_default(string2datetime(v.column2.ival()))},var v1 = v0.";
         this.testTranslation(query, program);
     }
 
@@ -123,10 +123,10 @@ public class CastTest extends BaseQueriesTest {
     public void testCastDateToString() {
         String query = "create view v0 as SELECT DISTINCT CAST(t3.d AS VARCHAR) AS s FROM t3";
         String program = this.header(false) +
-                "typedef TRtmp = TRtmp{s:string}\n" +
+                "typedef TRtmp = TRtmp{s:istring}\n" +
                 this.relations(false) +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v1] :- Rt3[v],var v0 = TRtmp{.s = [|${v.d}|]},var v1 = v0.";
+                "Rv0[v1] :- Rt3[v],var v0 = TRtmp{.s = i[|${v.d}|]},var v1 = v0.";
         this.testTranslation(query, program);
     }
 
@@ -169,11 +169,11 @@ public class CastTest extends BaseQueriesTest {
     public void testCastIntToStringWithNull() {
         String query = "create view v0 as SELECT DISTINCT CAST(t1.column1 AS VARCHAR) AS s FROM t1";
         String program = this.header(true) +
-                "typedef TRtmp = TRtmp{s:Option<string>}\n" +
+                "typedef TRtmp = TRtmp{s:Option<istring>}\n" +
                 this.relations(true) +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.s = match(v.column1) {None{}: Option<signed<64>> -> None{}: Option<string>,\n" +
-                "Some{.x = var x} -> Some{.x = [|${x}|]}\n" +
+                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.s = match(v.column1) {None{}: Option<signed<64>> -> None{}: Option<istring>,\n" +
+                "Some{.x = var x} -> Some{.x = i[|${x}|]}\n" +
                 "}},var v1 = v0.";
         this.testTranslation(query, program, true);
     }
@@ -185,8 +185,8 @@ public class CastTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{i:Option<signed<64>>}\n" +
                 this.relations(true) +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.i = match(v.column2) {None{}: Option<string> -> None{}: Option<signed<64>>,\n" +
-                "Some{.x = var x} -> Some{.x = option_unwrap_or_default(parse_dec_i64(x))}\n" +
+                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.i = match(v.column2) {None{}: Option<istring> -> None{}: Option<signed<64>>,\n" +
+                "Some{.x = var x} -> Some{.x = option_unwrap_or_default(parse_dec_i64(x.ival()))}\n" +
                 "}},var v1 = v0.";
         this.testTranslation(query, program, true);
     }
@@ -198,8 +198,8 @@ public class CastTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{d:Option<double>}\n" +
                 this.relations(true) +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.d = match(v.column2) {None{}: Option<string> -> None{}: Option<double>,\n" +
-                "Some{.x = var x} -> Some{.x = result_unwrap_or_default(parse_d(x))}\n" +
+                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.d = match(v.column2) {None{}: Option<istring> -> None{}: Option<double>,\n" +
+                "Some{.x = var x} -> Some{.x = result_unwrap_or_default(parse_d(x.ival()))}\n" +
                 "}},var v1 = v0.";
         this.testTranslation(query, program, true);
     }
@@ -211,8 +211,8 @@ public class CastTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{d:Option<Date>}\n" +
                 this.relations(true) +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.d = match(v.column2) {None{}: Option<string> -> None{}: Option<Date>,\n" +
-                "Some{.x = var x} -> Some{.x = result_unwrap_or_default(string2date(x))}\n" +
+                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.d = match(v.column2) {None{}: Option<istring> -> None{}: Option<Date>,\n" +
+                "Some{.x = var x} -> Some{.x = result_unwrap_or_default(string2date(x.ival()))}\n" +
                 "}},var v1 = v0.";
         this.testTranslation(query, program, true);
     }
@@ -225,7 +225,7 @@ public class CastTest extends BaseQueriesTest {
                 this.relations(true) +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.d = match(v.column1) {None{}: Option<signed<64>> -> None{}: Option<Date>,\n" +
-                "Some{.x = var x} -> Some{.x = result_unwrap_or_default(string2date([|${v.column1}|]))}\n" +
+                "Some{.x = var x} -> Some{.x = result_unwrap_or_default(string2date(i[|${v.column1}|].ival()))}\n" +
                 "}},var v1 = v0.";
         this.testTranslation(query, program, true);
     }
@@ -237,8 +237,8 @@ public class CastTest extends BaseQueriesTest {
                 "typedef TRtmp = TRtmp{t:Option<DateTime>}\n" +
                 this.relations(true) +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.t = match(v.column2) {None{}: Option<string> -> None{}: Option<DateTime>,\n" +
-                "Some{.x = var x} -> Some{.x = result_unwrap_or_default(string2datetime(x))}\n" +
+                "Rv0[v1] :- Rt1[v],var v0 = TRtmp{.t = match(v.column2) {None{}: Option<istring> -> None{}: Option<DateTime>,\n" +
+                "Some{.x = var x} -> Some{.x = result_unwrap_or_default(string2datetime(x.ival()))}\n" +
                 "}},var v1 = v0.";
         this.testTranslation(query, program, true);
     }
@@ -260,11 +260,11 @@ public class CastTest extends BaseQueriesTest {
     public void testCastDateToStringWithNull() {
         String query = "create view v0 as SELECT DISTINCT CAST(t3.d AS VARCHAR) AS s FROM t3";
         String program = this.header(true) +
-                "typedef TRtmp = TRtmp{s:Option<string>}\n" +
+                "typedef TRtmp = TRtmp{s:Option<istring>}\n" +
                 this.relations(true) +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v1] :- Rt3[v],var v0 = TRtmp{.s = match(v.d) {None{}: Option<Date> -> None{}: Option<string>,\n" +
-                "Some{.x = var x} -> Some{.x = [|${x}|]}\n" +
+                "Rv0[v1] :- Rt3[v],var v0 = TRtmp{.s = match(v.d) {None{}: Option<Date> -> None{}: Option<istring>,\n" +
+                "Some{.x = var x} -> Some{.x = i[|${x}|]}\n" +
                 "}},var v1 = v0.";
         this.testTranslation(query, program, true);
     }
