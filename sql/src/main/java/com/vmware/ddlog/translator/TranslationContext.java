@@ -247,15 +247,7 @@ class TranslationContext extends IdGen {
     }
 
     DDlogType resolveType(DDlogType type) {
-        if (type instanceof DDlogTUser) {
-            DDlogTUser tu = (DDlogTUser)type;
-            DDlogType result = this.compilerState.resolveTypeDef(tu);
-            if (result == null)
-                tu.error("Cannot resolve type " + tu.getName());
-            assert result != null;
-            return result;
-        }
-        return type;
+        return this.compilerState.resolveType(type);
     }
 
     DDlogTUser createTypedef(@Nullable Node node, DDlogTStruct type) {

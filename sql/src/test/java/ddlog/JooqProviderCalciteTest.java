@@ -29,7 +29,7 @@ public class JooqProviderCalciteTest extends JooqProviderTestBase {
         String s1 = "create table hosts (id varchar(36), capacity integer, up boolean, primary key (id))";
         String v2 = "create view hostsv as select distinct * from hosts";
         String v1 = "create view good_hosts as select distinct * from hosts where capacity < 10";
-        String checkArrayParse = "create table junk (testCol integer array)";
+        String checkArrayParse = "create table junk (testcol integer array)";
         String checkNotNullColumns = "create table not_null (test_col1 integer not null, test_col2 varchar(36) not null)";
 
         String arrayTable = "create table base_array_table (id varchar(36), capacity integer, col3 integer)";
@@ -75,7 +75,7 @@ public class JooqProviderCalciteTest extends JooqProviderTestBase {
                 indexStatements);
 
         ToH2Translator<CalciteSqlStatement> translator = new CalciteToH2Translator();
-        // Initialise the data provider
+        // Initialize the data provider
         provider = new DDlogJooqProvider(ddhandle,
                 Stream.concat(ddl.stream().map(x -> translator.toH2(new CalciteSqlStatement(x))),
                                 indexStatements.stream().map(H2SqlStatement::new))

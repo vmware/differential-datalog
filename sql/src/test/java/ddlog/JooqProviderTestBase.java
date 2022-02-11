@@ -575,6 +575,13 @@ public abstract class JooqProviderTestBase {
     }
 
     @Test
+    public void testArrayColumnInsertion() {
+        skipIfTestBase();
+        assert(create != null);
+        create.execute("insert into junk values((1, 2, 3))");
+    }
+
+    @Test
     public void testIdentityViews() {
         skipIfTestBase();
         create.execute("insert into hosts values ('n1', 10, true)");

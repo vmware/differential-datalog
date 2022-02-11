@@ -24,6 +24,9 @@
 
 package com.vmware.ddlog;
 
+import com.vmware.ddlog.ir.DDlogRelationDeclaration;
+import com.vmware.ddlog.ir.DDlogTStruct;
+import com.vmware.ddlog.ir.DDlogType;
 import com.vmware.ddlog.util.sql.CreateIndexParser;
 import com.vmware.ddlog.util.sql.H2SqlStatement;
 import ddlogapi.DDlogCommand;
@@ -59,14 +62,7 @@ import org.jooq.tools.jdbc.MockResult;
 
 import java.sql.SQLException;
 import java.sql.Types;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.jooq.impl.DSL.field;
@@ -408,6 +404,10 @@ public final class DDlogJooqProvider implements MockDataProvider {
                 return exception(String.format("Table %s does not exist: ", tn) + context.sql());
             }
             final int tableId = ddlogHandle.getTableId(ddlogHandle.ddlogRelationName(tn.name));
+            DDlogRelationDeclaration decl = ddlogHandle.program.getRelationFromTable(tn.name);
+            DDlogType type = ddlogHandle.program.resolveType(Objects.requireNonNull(decl).getType());
+            DDlogTStruct struct = type.to(DDlogTStruct.class);
+
             for (final SqlNode value: values) {
                 if (value.getKind() != SqlKind.ROW) {
                     return exception(insert.toString());
@@ -418,7 +418,10 @@ public final class DDlogJooqProvider implements MockDataProvider {
                     // Is a statement with bound variables
                     for (int i = 0; i < rowElements.length; i++) {
                         Field<?> fi = fields.get(i);
-                        final boolean isNullableField = fi.getDataType().nullable();
+                        // final boolean isNullableField = fi.getDataType().nullable();
+                        // fi.getDataType() is wrong for array fields.
+                        String fieldName = fi.getName().toLowerCase();
+                        boolean isNullableField = struct.getFieldType(fieldName).mayBeNull;
                         final DDlogRecord record = toValue(fi, context.nextBinding());
                         recordsArray[i] = maybeOption(isNullableField, record, fi.getName());
                     }
@@ -426,7 +429,10 @@ public final class DDlogJooqProvider implements MockDataProvider {
                     // need to parse literals into DDLogRecords
                     for (int i = 0; i < rowElements.length; i++) {
                         Field<?> fi = fields.get(i);
-                        final boolean isNullableField = fi.getDataType().nullable();
+                        // final boolean isNullableField = fi.getDataType().nullable();
+                        // fi.getDataType() is wrong for array fields.
+                        String fieldName = fi.getName().toLowerCase();
+                        boolean isNullableField = struct.getFieldType(fieldName).mayBeNull;
                         final DDlogRecord result = rowElements[i].accept(PARSE_LITERALS);
                         recordsArray[i] = maybeOption(isNullableField, result, fi.getName());
                     }

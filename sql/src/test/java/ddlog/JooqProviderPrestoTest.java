@@ -46,7 +46,7 @@ public class JooqProviderPrestoTest extends JooqProviderTestBase {
         String s1 = "create table hosts (id varchar(36) with (primary_key = true), capacity integer, up boolean)";
         String v2 = "create view hostsv as select distinct * from hosts";
         String v1 = "create view good_hosts as select distinct * from hosts where capacity < 10";
-        String checkArrayParse = "create table junk (testCol integer array)";
+        String checkArrayParse = "create table junk (testcol integer array)";
         String checkNotNullColumns = "create table not_null (test_col1 integer not null, test_col2 varchar(36) not null)";
 
         String arrayTable = "create table base_array_table (id varchar(36), capacity integer, col3 integer)";
