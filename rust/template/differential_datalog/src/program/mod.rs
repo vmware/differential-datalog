@@ -25,6 +25,7 @@ use crate::{
         arrange_by::{ArrangeBy, ArrangementKind},
         RenderContext,
     },
+    utils::{XxHashMap, XxHashSet},
 };
 use abomonation_derive::Abomonation;
 pub use arrange::diff_distinct;
@@ -38,7 +39,6 @@ use ddlog_profiler::{
     with_prof_context, ArrangementDebugInfo, DDlogSourceCode, OperatorDebugInfo, ProfMsg, Profile,
     RuleDebugInfo, SourcePosition,
 };
-use fnv::{FnvHashMap, FnvHashSet};
 use num::{One, Zero};
 use std::{
     any::Any,
@@ -47,7 +47,7 @@ use std::{
     collections::{hash_map, BTreeSet},
     fmt::{self, Debug, Formatter},
     iter::{self, Cycle, Skip},
-    ops::{Add, AddAssign, Mul, Neg, Range},
+    ops::{Add, AddAssign, Deref, Mul, Neg, Range},
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
@@ -273,7 +273,7 @@ pub struct Program {
 }
 
 type TransformerMap<'a> =
-    FnvHashMap<RelId, Collection<Child<'a, Worker<Allocator>, TS>, DDValue, Weight>>;
+    XxHashMap<RelId, Collection<Child<'a, Worker<Allocator>, TS>, DDValue, Weight>>;
 
 /// Represents a dataflow fragment implemented outside of DDlog directly in differential-dataflow.
 ///
@@ -546,65 +546,39 @@ pub enum XFormArrangement {
 }
 
 impl XFormArrangement {
-    pub(super) fn dependencies(&self) -> FnvHashSet<Dep> {
+    pub(super) fn dependencies(&self) -> XxHashSet<Dep> {
         match self {
-            XFormArrangement::FlatMap { next, .. } => match **next {
-                None => FnvHashSet::default(),
-                Some(ref n) => n.dependencies(),
-            },
-            XFormArrangement::FilterMap { next, .. } => match **next {
-                None => FnvHashSet::default(),
-                Some(ref n) => n.dependencies(),
-            },
-            XFormArrangement::Aggregate { next, .. } => match **next {
-                None => FnvHashSet::default(),
-                Some(ref n) => n.dependencies(),
-            },
-            XFormArrangement::Join {
+            Self::FlatMap { next, .. }
+            | Self::FilterMap { next, .. }
+            | Self::Aggregate { next, .. } => next
+                .deref()
+                .as_ref()
+                .map_or_else(Default::default, XFormCollection::dependencies),
+
+            Self::Join {
+                arrangement, next, ..
+            }
+            | Self::Semijoin {
+                arrangement, next, ..
+            }
+            | Self::Antijoin {
                 arrangement, next, ..
             } => {
-                let mut deps = match **next {
-                    None => FnvHashSet::default(),
-                    Some(ref n) => n.dependencies(),
-                };
-                deps.insert(Dep::Arr(*arrangement));
-                deps
+                let mut dependencies = next
+                    .deref()
+                    .as_ref()
+                    .map_or_else(Default::default, XFormCollection::dependencies);
+                dependencies.insert(Dep::Arr(*arrangement));
+                dependencies
             }
-            XFormArrangement::Semijoin {
-                arrangement, next, ..
-            } => {
-                let mut deps = match **next {
-                    None => FnvHashSet::default(),
-                    Some(ref n) => n.dependencies(),
-                };
-                deps.insert(Dep::Arr(*arrangement));
-                deps
-            }
-            XFormArrangement::Antijoin {
-                arrangement, next, ..
-            } => {
-                let mut deps = match **next {
-                    None => FnvHashSet::default(),
-                    Some(ref n) => n.dependencies(),
-                };
-                deps.insert(Dep::Arr(*arrangement));
-                deps
-            }
-            XFormArrangement::StreamJoin { rel, next, .. } => {
-                let mut deps = match **next {
-                    None => FnvHashSet::default(),
-                    Some(ref n) => n.dependencies(),
-                };
-                deps.insert(Dep::Rel(*rel));
-                deps
-            }
-            XFormArrangement::StreamSemijoin { rel, next, .. } => {
-                let mut deps = match **next {
-                    None => FnvHashSet::default(),
-                    Some(ref n) => n.dependencies(),
-                };
-                deps.insert(Dep::Rel(*rel));
-                deps
+
+            Self::StreamJoin { rel, next, .. } | Self::StreamSemijoin { rel, next, .. } => {
+                let mut dependencies = next
+                    .deref()
+                    .as_ref()
+                    .map_or_else(Default::default, XFormCollection::dependencies);
+                dependencies.insert(Dep::Rel(*rel));
+                dependencies
             }
         }
     }
@@ -715,38 +689,38 @@ pub enum XFormCollection {
 }
 
 impl XFormCollection {
-    pub fn dependencies(&self) -> FnvHashSet<Dep> {
+    pub fn dependencies(&self) -> XxHashSet<Dep> {
         match self {
             XFormCollection::Arrange { next, .. } => next.dependencies(),
             XFormCollection::Differentiate { next, .. } => match **next {
-                None => FnvHashSet::default(),
+                None => XxHashSet::default(),
                 Some(ref n) => n.dependencies(),
             },
             XFormCollection::Map { next, .. } => match **next {
-                None => FnvHashSet::default(),
+                None => XxHashSet::default(),
                 Some(ref n) => n.dependencies(),
             },
             XFormCollection::FlatMap { next, .. } => match **next {
-                None => FnvHashSet::default(),
+                None => XxHashSet::default(),
                 Some(ref n) => n.dependencies(),
             },
             XFormCollection::Filter { next, .. } => match **next {
-                None => FnvHashSet::default(),
+                None => XxHashSet::default(),
                 Some(ref n) => n.dependencies(),
             },
             XFormCollection::FilterMap { next, .. } => match **next {
-                None => FnvHashSet::default(),
+                None => XxHashSet::default(),
                 Some(ref n) => n.dependencies(),
             },
             XFormCollection::Inspect { next, .. } => match **next {
-                None => FnvHashSet::default(),
+                None => XxHashSet::default(),
                 Some(ref n) => n.dependencies(),
             },
             XFormCollection::StreamJoin {
                 arrangement, next, ..
             } => {
                 let mut deps = match **next {
-                    None => FnvHashSet::default(),
+                    None => XxHashSet::default(),
                     Some(ref n) => n.dependencies(),
                 };
                 deps.insert(Dep::Arr(*arrangement));
@@ -756,7 +730,7 @@ impl XFormCollection {
                 arrangement, next, ..
             } => {
                 let mut deps = match **next {
-                    None => FnvHashSet::default(),
+                    None => XxHashSet::default(),
                     Some(ref n) => n.dependencies(),
                 };
                 deps.insert(Dep::Arr(*arrangement));
@@ -764,11 +738,11 @@ impl XFormCollection {
             }
             XFormCollection::StreamXForm { xform, next, .. } => {
                 let deps1 = match **xform {
-                    None => FnvHashSet::default(),
+                    None => XxHashSet::default(),
                     Some(ref x) => x.dependencies(),
                 };
                 let deps2 = match **next {
-                    None => FnvHashSet::default(),
+                    None => XxHashSet::default(),
                     Some(ref n) => n.dependencies(),
                 };
                 deps1.union(&deps2).cloned().collect()
@@ -794,11 +768,11 @@ pub enum Rule {
 }
 
 impl Rule {
-    fn dependencies(&self) -> FnvHashSet<Dep> {
+    fn dependencies(&self) -> XxHashSet<Dep> {
         match self {
             Rule::CollectionRule { rel, xform, .. } => {
                 let mut deps = match xform {
-                    None => FnvHashSet::default(),
+                    None => XxHashSet::default(),
                     Some(ref x) => x.dependencies(),
                 };
                 deps.insert(Dep::Rel(*rel));
@@ -948,16 +922,16 @@ impl Arrangement {
 }
 
 /// Set relation content.
-pub type ValSet = FnvHashSet<DDValue>;
+pub type ValSet = XxHashSet<DDValue>;
 
 /// Multiset relation content.
 pub type ValMSet = DeltaSet;
 
 /// Indexed relation content.
-pub type IndexedValSet = FnvHashMap<DDValue, DDValue>;
+pub type IndexedValSet = XxHashMap<DDValue, DDValue>;
 
 /// Relation delta
-pub type DeltaSet = FnvHashMap<DDValue, isize>;
+pub type DeltaSet = XxHashMap<DDValue, isize>;
 
 /// Runtime representation of a datalog program.
 ///
@@ -974,7 +948,7 @@ pub struct RunningProgram {
     /// deadlocks when one of the workers has died, but `recv` blocks instead
     /// of failing, since the channel is still considered alive.
     reply_recv: Vec<Receiver<Reply>>,
-    relations: FnvHashMap<RelId, RelationInstance>,
+    relations: XxHashMap<RelId, RelationInstance>,
     worker_guards: Option<WorkerGuards<Result<(), String>>>,
     transaction_in_progress: bool,
     need_to_flush: bool,
@@ -1002,7 +976,7 @@ impl Debug for RunningProgram {
             .field("reply_recv", &self.reply_recv)
             .field(
                 "relations",
-                &(&self.relations as *const FnvHashMap<RelId, RelationInstance>),
+                &(&self.relations as *const XxHashMap<RelId, RelationInstance>),
             )
             .field("transaction_in_progress", &self.transaction_in_progress)
             .field("need_to_flush", &self.need_to_flush)
@@ -1164,7 +1138,7 @@ impl Program {
         )
         .map_err(|err| format!("Failed to start timely computation: {:?}", err))?;
 
-        let mut rels = FnvHashMap::default();
+        let mut rels = XxHashMap::default();
         for relid in self.input_relations() {
             let rel = self.get_relation(relid);
             if rel.input {
@@ -1173,7 +1147,7 @@ impl Program {
                         rels.insert(
                             relid,
                             RelationInstance::Stream {
-                                delta: FnvHashMap::default(),
+                                delta: XxHashMap::default(),
                             },
                         );
                     }
@@ -1181,8 +1155,8 @@ impl Program {
                         rels.insert(
                             relid,
                             RelationInstance::Multiset {
-                                elements: FnvHashMap::default(),
-                                delta: FnvHashMap::default(),
+                                elements: XxHashMap::default(),
+                                delta: XxHashMap::default(),
                             },
                         );
                     }
@@ -1191,8 +1165,8 @@ impl Program {
                             rels.insert(
                                 relid,
                                 RelationInstance::Flat {
-                                    elements: FnvHashSet::default(),
-                                    delta: FnvHashMap::default(),
+                                    elements: XxHashSet::default(),
+                                    delta: XxHashMap::default(),
                                 },
                             );
                         }
@@ -1201,8 +1175,8 @@ impl Program {
                                 relid,
                                 RelationInstance::Indexed {
                                     key_func: f,
-                                    elements: FnvHashMap::default(),
-                                    delta: FnvHashMap::default(),
+                                    elements: XxHashMap::default(),
+                                    delta: XxHashMap::default(),
                                 },
                             );
                         }
@@ -1319,11 +1293,11 @@ impl Program {
     }
 
     /// Return all relations required to compute rels, excluding recursive dependencies on rels
-    fn dependencies<'a, R>(rels: R) -> FnvHashSet<Dep>
+    fn dependencies<'a, R>(rels: R) -> XxHashSet<Dep>
     where
         R: Iterator<Item = &'a Relation> + Clone + 'a,
     {
-        let mut result = FnvHashSet::default();
+        let mut result = XxHashSet::default();
         for rel in rels.clone() {
             for rule in &rel.rules {
                 result = result.union(&rule.dependencies()).cloned().collect();
@@ -1538,7 +1512,7 @@ impl Program {
                                 d_col,
                                 &*xform,
                                 &Arrangements {
-                                    arrangements: &FnvHashMap::default(),
+                                    arrangements: &XxHashMap::default(),
                                 },
                                 dummy_lookup_collection,
                             );

@@ -19,16 +19,19 @@ pub struct DDValue {
 }
 
 impl Drop for DDValue {
+    #[inline]
     fn drop(&mut self) {
-        (self.vtable.drop)(&mut self.val);
+        unsafe { (self.vtable.drop)(&mut self.val) }
     }
 }
 
 impl DDValue {
+    #[inline]
     pub fn new(val: DDVal, vtable: &'static DDValMethods) -> DDValue {
         DDValue { val, vtable }
     }
 
+    #[inline]
     pub fn into_ddval(self) -> DDVal {
         let res = DDVal { v: self.val.v };
         std::mem::forget(self);
@@ -36,10 +39,12 @@ impl DDValue {
         res
     }
 
+    #[inline]
     pub fn type_id(&self) -> TypeId {
         (self.vtable.type_id)(&self.val)
     }
 
+    #[inline]
     pub fn safe_cmp(&self, other: &DDValue) -> Ordering {
         match (self.vtable.type_id)(&self.val).cmp(&(other.vtable.type_id)(&other.val)) {
             Ordering::Equal => unsafe { (self.vtable.cmp)(&self.val, &other.val) },
@@ -47,6 +52,7 @@ impl DDValue {
         }
     }
 
+    #[inline]
     pub fn safe_eq(&self, other: &DDValue) -> bool {
         ((self.vtable.type_id)(&self.val) == (other.vtable.type_id)(&other.val))
             && (unsafe { (self.vtable.eq)(&self.val, &other.val) })
@@ -54,6 +60,7 @@ impl DDValue {
 }
 
 impl Mutator<DDValue> for Record {
+    #[inline]
     fn mutate(&self, x: &mut DDValue) -> Result<(), String> {
         (x.vtable.mutate)(&mut x.val, self)
     }

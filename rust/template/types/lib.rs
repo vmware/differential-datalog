@@ -32,29 +32,27 @@
     clippy::extra_unused_lifetimes
 )]
 
-use ::num::One;
-use ::std::ops::Deref;
+use std::ops::Deref;
 
-use ::differential_dataflow::collection;
-use ::timely::communication;
-use ::timely::dataflow::scopes;
-use ::timely::worker;
+use differential_dataflow::collection;
+use timely::communication;
+use timely::dataflow::scopes;
+use timely::worker;
 
-use ::ddlog_derive::{FromRecord, IntoRecord, Mutator};
-use ::differential_datalog::ddval::DDValConvert;
-use ::differential_datalog::program;
-use ::differential_datalog::program::TupleTS;
-use ::differential_datalog::program::XFormArrangement;
-use ::differential_datalog::program::XFormCollection;
-use ::differential_datalog::program::Weight;
-use ::differential_datalog::record::FromRecord;
-use ::differential_datalog::record::FromRecordInner;
-use ::differential_datalog::record::IntoRecord;
-use ::differential_datalog::record::Mutator;
-use ::differential_datalog::record::MutatorInner;
-use ::serde::Deserialize;
-use ::serde::Serialize;
-
+use ddlog_derive::{FromRecord, IntoRecord, Mutator};
+use differential_datalog::ddval::DDValConvert;
+use differential_datalog::program;
+use differential_datalog::program::TupleTS;
+use differential_datalog::program::Weight;
+use differential_datalog::program::XFormArrangement;
+use differential_datalog::program::XFormCollection;
+use differential_datalog::record::FromRecord;
+use differential_datalog::record::FromRecordInner;
+use differential_datalog::record::IntoRecord;
+use differential_datalog::record::Mutator;
+use differential_datalog::record::MutatorInner;
+use serde::Deserialize;
+use serde::Serialize;
 
 // `usize` and `isize` are builtin Rust types; we therefore declare an alias to DDlog's `usize` and
 // `isize`.

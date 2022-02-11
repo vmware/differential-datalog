@@ -51,14 +51,10 @@ use num_traits::cast::FromPrimitive;
 use num_traits::identities::One;
 use once_cell::sync::Lazy;
 
-use fnv::{FnvBuildHasher, FnvHashMap};
 use phf::phf_map;
+use xxhash_rust::xxh3::Xxh3;
 
-use serde::ser::SerializeTuple;
-use serde::Deserialize;
-use serde::Deserializer;
-use serde::Serialize;
-use serde::Serializer;
+use serde::{ser::SerializeTuple, Deserialize, Deserializer, Serialize, Serializer};
 
 // This import is only needed to convince the OS X compiler to export
 // `extern C` functions declared in ddlog_log.rs in the generated lib.
@@ -133,19 +129,41 @@ macro_rules! impl_trait_d3log {
     };
 
     ( $(($out_rel:expr, $in_rel:expr, $typ:ty)),+ ) => {
-        pub static D3LOG_CONVERTER_MAP: ::once_cell::sync::Lazy<::std::collections::HashMap<program::RelId, fn(DDValue)->Result<(Option<D3logLocationId>, program::RelId, DDValue), DDValue>>> = ::once_cell::sync::Lazy::new(|| {
-            let mut m = ::std::collections::HashMap::new();
-            $(
-                m.insert($out_rel, { fn __f(val: DDValue) -> Result<(Option<D3logLocationId>, program::RelId, DDValue), DDValue> {
-                    if let Some(::ddlog_std::tuple2(loc_id, inner_val)) = <::ddlog_std::tuple2<ddlog_std::Option<D3logLocationId>, $typ>>::try_from_ddvalue_ref(&val) {
-                        Ok((::ddlog_std::std2option(*loc_id), $in_rel, (*inner_val).clone().into_ddvalue()))
-                    } else {
-                        Err(val)
-                    }
-                } __f as fn(DDValue)->Result<(Option<D3logLocationId>, program::RelId, DDValue), DDValue>});
-            )*
-            m
+        pub static D3LOG_CONVERTER_MAP: ::once_cell::sync::Lazy<
+            ::std::collections::HashMap<
+                program::RelId,
+                fn(DDValue) -> ::std::result::Result<(Option<D3logLocationId>, program::RelId, DDValue), DDValue>
+                ::std::hash::BuildHasherDefault<::xxhash_rust::xxh3::Xxh3>,
+            >
+        > = ::once_cell::sync::Lazy::new(|| {
+            use ::differential_datalog::ddval::DDValConvert;
+
+            // Sums up all of the given relations so that we can pre-allocate the map
+            const TOTAL_RELATIONS: usize = [(::std::stringify!($out_rel),)+].len();
+
+            let mut conversions = ::std::collections::HashMap::with_capacity_and_hasher(
+                TOTAL_RELATIONS,
+                ::std::default::Default::default(),
+            );
+
+            $({
+                fn convert(value: DDValue) -> Result<(Option<D3logLocationId>, program::RelId, DDValue), DDValue> {
+                    let ::ddlog_std::tuple2(loc_id, inner_val) =
+                        <::ddlog_std::tuple2<::ddlog_std::Option<D3logLocationId>, $typ>>::try_from_ddvalue(value)?;
+
+                    Ok((
+                        ::ddlog_std::Option::from(*loc_id),
+                        $in_rel,
+                        (*inner_val).clone().into_ddvalue(),
+                    ))
+                }
+
+                conversions.insert($out_rel, convert as _);
+            })*
+
+            conversions
         });
+
         fn d3log_localize_val(relid: program::RelId, val: DDValue) -> Result<(Option<D3logLocationId>, program::RelId, DDValue), DDValue> {
             if let Some(f) = D3LOG_CONVERTER_MAP.get(&relid) {
                 f(val)
@@ -157,11 +175,15 @@ macro_rules! impl_trait_d3log {
 }
 
 static RAW_RELATION_ID_MAP: ::once_cell::sync::Lazy<
-    ::fnv::FnvHashMap<::differential_datalog::program::RelId, &'static ::core::primitive::str>,
+    ::std::collections::HashMap<
+        ::differential_datalog::program::RelId,
+        &'static ::core::primitive::str,
+        ::std::hash::BuildHasherDefault<Xxh3>,
+    >,
 > = ::once_cell::sync::Lazy::new(|| {
-    let mut map = ::fnv::FnvHashMap::with_capacity_and_hasher(
+    let mut map = ::std::collections::HashMap::with_capacity_and_hasher(
         crate::RELIDMAP.len(),
-        ::fnv::FnvBuildHasher::default(),
+        ::std::default::Default::default(),
     );
 
     for (&relation, &name) in crate::RELIDMAP.iter() {
@@ -172,11 +194,15 @@ static RAW_RELATION_ID_MAP: ::once_cell::sync::Lazy<
 });
 
 static RAW_INPUT_RELATION_ID_MAP: ::once_cell::sync::Lazy<
-    ::fnv::FnvHashMap<::differential_datalog::program::RelId, &'static ::core::primitive::str>,
+    ::std::collections::HashMap<
+        ::differential_datalog::program::RelId,
+        &'static ::core::primitive::str,
+        ::std::hash::BuildHasherDefault<Xxh3>,
+    >,
 > = ::once_cell::sync::Lazy::new(|| {
-    let mut map = ::fnv::FnvHashMap::with_capacity_and_hasher(
+    let mut map = ::std::collections::HashMap::with_capacity_and_hasher(
         crate::INPUT_RELIDMAP.len(),
-        ::fnv::FnvBuildHasher::default(),
+        ::std::default::Default::default(),
     );
 
     for (&relation, &name) in crate::INPUT_RELIDMAP.iter() {
@@ -339,6 +365,7 @@ pub unsafe extern "C" fn ddlog_run_with_config(
             // Note: This is `triomphe::Arc`, *not* `std::sync::Arc`
             Arc::into_raw(Arc::new(hddlog))
         }
+
         Err(err) => {
             HDDlog::print_err(print_err, &format!("HDDlog::new() failed: {}", err));
             ptr::null()
@@ -358,6 +385,7 @@ pub unsafe extern "C" fn ddlog_run(
         num_timely_workers: workers,
         ..Default::default()
     };
+
     ddlog_run_with_config(&config, do_store, print_err, init_state)
 }
 
@@ -482,11 +510,15 @@ pub fn rel_name2orig_cname(_tname: &str) -> Option<&'static ::std::ffi::CStr> {
     ::std::panic!("rel_name2orig_cname not implemented")
 }
 
-pub static RELIDMAP: Lazy<FnvHashMap<Relations, &'static str>> = Lazy::new(FnvHashMap::default);
-pub static INPUT_RELIDMAP: Lazy<FnvHashMap<Relations, &'static str>> =
-    Lazy::new(FnvHashMap::default);
-pub static OUTPUT_RELIDMAP: Lazy<FnvHashMap<Relations, &'static str>> =
-    Lazy::new(FnvHashMap::default);
+pub static RELIDMAP: Lazy<
+    ::std::collections::HashMap<Relations, &'static str, ::std::hash::BuildHasherDefault<Xxh3>>,
+> = Lazy::new(|| ::std::collections::HashMap::with_hasher(::std::default::Default::default()));
+pub static INPUT_RELIDMAP: Lazy<
+    ::std::collections::HashMap<Relations, &'static str, ::std::hash::BuildHasherDefault<Xxh3>>,
+> = Lazy::new(|| ::std::collections::HashMap::with_hasher(::std::default::Default::default()));
+pub static OUTPUT_RELIDMAP: Lazy<
+    ::std::collections::HashMap<Relations, &'static str, ::std::hash::BuildHasherDefault<Xxh3>>,
+> = Lazy::new(|| ::std::collections::HashMap::with_hasher(::std::default::Default::default()));
 
 pub fn indexid2name(_iid: program::IdxId) -> Option<&'static str> {
     ::std::panic!("indexid2name not implemented")
@@ -500,7 +532,9 @@ pub fn indexes2arrid(idx: Indexes) -> program::ArrId {
     ::std::panic!("indexes2arrid not implemented")
 }
 
-pub static IDXIDMAP: Lazy<FnvHashMap<Indexes, &'static str>> = Lazy::new(FnvHashMap::default);
+pub static IDXIDMAP: Lazy<
+    ::std::collections::HashMap<Indexes, &'static str, ::std::hash::BuildHasherDefault<Xxh3>>,
+> = Lazy::new(|| ::std::collections::HashMap::with_hasher(::std::default::Default::default()));
 
 impl_trait_d3log!();
 

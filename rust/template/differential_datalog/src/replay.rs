@@ -416,12 +416,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use fnv::FnvHashMap;
-
-    use crate::program::ArrId;
-
     use super::*;
-    use std::any::TypeId;
+    use crate::program::ArrId;
+    use std::{any::TypeId, collections::HashMap, hash::BuildHasherDefault};
+    use xxhash_rust::xxh3::Xxh3;
+
     #[cfg(feature = "c_api")]
     use std::ffi::CStr;
 
@@ -464,7 +463,9 @@ mod tests {
             unimplemented!()
         }
 
-        fn input_relation_ids(&self) -> &'static FnvHashMap<RelId, &'static str> {
+        fn input_relation_ids(
+            &self,
+        ) -> &'static HashMap<RelId, &'static str, BuildHasherDefault<Xxh3>> {
             unimplemented!()
         }
 

@@ -3,6 +3,7 @@
 use crate::{
     ddval::DDValue,
     program::{ArrId, TKeyAgent, TKeyEnter, TValAgent, TValEnter, Weight},
+    utils::XxHashMap,
 };
 use differential_dataflow::{
     difference::{Diff, Monoid},
@@ -15,7 +16,6 @@ use differential_dataflow::{
     trace::{wrappers::enter::TraceEnter, BatchReader, Cursor, TraceReader},
     Collection, Data, ExchangeData,
 };
-use fnv::FnvHashMap;
 use std::ops::{Add, Mul, Neg};
 use timely::{
     dataflow::scopes::{Child, Scope},
@@ -124,7 +124,7 @@ where
     S::Timestamp: Lattice + Refines<T>,
     T: Lattice + Timestamp,
 {
-    pub(super) arrangements: &'a FnvHashMap<ArrId, ArrangementFlavor<S, T>>,
+    pub(super) arrangements: &'a XxHashMap<ArrId, ArrangementFlavor<S, T>>,
 }
 
 impl<'a, S, T> Arrangements<'a, S, T>

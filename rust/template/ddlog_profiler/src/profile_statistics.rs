@@ -1,15 +1,15 @@
-use std::collections::HashMap;
-use std::hash::Hash;
-use std::time::Duration;
-
 use csv::Writer;
 use serde::{Deserialize, Serialize};
-
-use fnv::FnvHashMap;
-use std::fmt;
-use std::fmt::Debug;
-use std::fs::File;
+use std::time::Duration;
+use std::{
+    collections::HashMap,
+    fmt::{self, Debug},
+    fs::File,
+    hash::Hash,
+};
 use timely::logging::{ParkEvent, StartStop, TimelyEvent};
+
+use crate::XxHasher;
 
 /// Possible events fields for CSV event_type column.
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -238,8 +238,8 @@ impl Statistics {
         timestamp: Duration,
         worker_index: usize,
         data: &TimelyEvent,
-        addresses: &FnvHashMap<usize, Vec<usize>>,
-        names: &FnvHashMap<usize, String>,
+        addresses: &HashMap<usize, Vec<usize>, XxHasher>,
+        names: &HashMap<usize, String, XxHasher>,
     ) {
         match data {
             TimelyEvent::GuardedMessage(g) => {

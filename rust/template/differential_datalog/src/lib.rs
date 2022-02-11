@@ -11,6 +11,7 @@ mod ddlog;
 pub mod flatbuf;
 mod render;
 pub mod replay;
+pub mod utils;
 mod valmap;
 mod variable;
 
@@ -27,7 +28,7 @@ mod test_record;
 pub use callback::Callback;
 pub use ddlog::{
     AnyDeserialize, AnyDeserializeFunc, D3log, D3logLocalizer, D3logLocationId, DDlog, DDlogDump,
-    DDlogDynamic, DDlogInventory, DDlogProfiling,
+    DDlogDynamic, DDlogInventory, DDlogProfiling, RelationNameMap,
 };
 pub use replay::CommandRecorder;
 pub use triomphe;

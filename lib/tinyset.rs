@@ -23,16 +23,13 @@ SOFTWARE.
 
 use differential_datalog::record::*;
 use serde;
-use std::cmp;
-use std::collections;
-use std::fmt;
-use std::iter;
-use std::iter::FromIterator;
-use std::ops::BitOr;
-use std::vec;
+use std::{
+    cmp, collections, fmt,
+    iter::{self, FromIterator},
+    ops::BitOr,
+    vec,
+};
 pub use tinyset::u64set;
-
-use ddlog_std::option2std;
 
 #[derive(Eq, Clone, Hash, PartialEq)]
 pub struct Set64<T: u64set::Fits64> {
@@ -255,7 +252,7 @@ pub fn is_empty<X: u64set::Fits64>(s: &Set64<X>) -> bool {
 }
 
 pub fn nth<X: u64set::Fits64 + Ord + Clone>(s: &Set64<X>, n: &u64) -> ddlog_std::Option<X> {
-    option2std(s.iter().nth(*n as usize))
+    s.iter().nth(*n as usize).into()
 }
 
 pub fn set2vec<X: u64set::Fits64 + Ord + Clone>(s: &Set64<X>) -> ddlog_std::Vec<X> {

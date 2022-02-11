@@ -657,32 +657,39 @@ impl OperatorDebugInfo {
     /// More detailed description.
     pub fn description(&self) -> String {
         match self {
-            Self::Dataflow => "".to_string(),
-            Self::Builtin { .. } => "".to_string(),
-            Self::Input { .. } => "".to_string(),
-            Self::Filter { .. } => "".to_string(),
-            Self::Map { .. } => "".to_string(),
-            Self::FilterMap { .. } => "".to_string(),
-            Self::Head { .. } => "".to_string(),
-            Self::Flatmap { .. } => "".to_string(),
-            Self::FixedPoint { .. } => "".to_string(),
+            Self::Dataflow
+            | Self::Builtin { .. }
+            | Self::Input { .. }
+            | Self::Filter { .. }
+            | Self::Map { .. }
+            | Self::FilterMap { .. }
+            | Self::Head { .. }
+            | Self::Flatmap { .. }
+            | Self::FixedPoint { .. }
+            | Self::StreamXForm { .. }
+            | Self::JoinWithEnabled { .. }
+            | Self::ConsolidateOutput { .. }
+            | Self::DelayedRelation { .. }
+            | Self::InspectOutput { .. }
+            | Self::ProbeOutput { .. }
+            | Self::ConcatenateRelation { .. }
+            | Self::DistinctRelation { .. }
+            | Self::Inspect { .. }
+            | Self::Arrange { .. }
+            | Self::StreamArrange { .. }
+            | Self::GroupBy { .. }
+            | Self::Differentiate { .. }
+            | Self::ApplyTransformer { .. }
+            | Self::RelEnterRecursiveScope { .. }
+            | Self::ArrEnterRecursiveScope { .. }
+            | Self::RelLeaveRecursiveScope { .. } => String::new(),
+
             Self::RecursiveComponent { rels, .. } => format!("Recursive program fragment consisting of relations&nbsp;{}", Self::code(&rels.as_slice().join(", "))),
-            Self::StreamXForm { .. } => "".to_string(),
-            Self::JoinWithEnabled { .. } => "".to_string(),
-            Self::ConsolidateOutput { .. } => "".to_string(),
-            Self::DelayedRelation { .. } => "".to_string(),
-            Self::InspectOutput { .. } => "".to_string(),
-            Self::ProbeOutput { .. } => "".to_string(),
             Self::ProbeIndex { rel, arr, indexes, .. } if indexes.len() == 1 => format!("Probe arrangement of&nbsp;{}&nbsp;by&nbsp;{}&nbsp;used to construct index&nbsp;{}", Self::code(rel), Self::code(arr), Self::code(&indexes[0])),
             Self::ProbeIndex { rel, arr, indexes, .. } => format!("Probe arrangement of&nbsp;{}&nbsp;by&nbsp;{}&nbsp;used to construct indexes&nbsp;{}", Self::code(rel), Self::code(arr), Self::code(&indexes.as_slice().join(", "))),
-            Self::ConcatenateRelation { .. } => "".to_string(),
-            Self::DistinctRelation { .. } => "".to_string(),
             Self::ArrangeRelationNonRec { rel, arr, .. } => format!("Arrange relation&nbsp;{}&nbsp;using pattern&nbsp;{}", Self::code(rel), Self::code(arr)),
             Self::ArrangeRelationRecInner { rel, arr, .. } => format!("Arrange relation&nbsp;{}&nbsp;using pattern&nbsp;{}&nbsp;inside recursive scope", Self::code(rel), Self::code(arr)),
             Self::ArrangeRelationRecOuter { rel, arr, .. } => format!("Arrange relation&nbsp;{}&nbsp;using pattern&nbsp;{}", Self::code(rel), Self::code(arr)),
-            Self::Inspect { .. } => "".to_string(),
-            Self::Arrange { .. } => "".to_string(),
-            Self::StreamArrange { .. } => "".to_string(),
             Self::Join { rel, arr, .. } => format!("Join rule prefix with relation&nbsp;{}&nbsp;arranged using pattern&nbsp;{}", Self::code(rel), Self::code(arr)),
             Self::Semijoin { rel, arr, .. } => format!("Semijoin rule prefix with relation&nbsp;{}&nbsp;arranged using pattern&nbsp;{}", Self::code(rel), Self::code(arr)),
             Self::Antijoin { rel, arr, .. } => format!("Antijon rule prefix with relation&nbsp;{}&nbsp;arranged using pattern&nbsp;{}", Self::code(rel), Self::code(arr)),
@@ -690,55 +697,51 @@ impl OperatorDebugInfo {
             Self::ArrStreamSemijoin { stream, arr, .. } => format!("Semijoin rule prefix with stream&nbsp;{}&nbsp;arranged using pattern&nbsp;{}", Self::code(stream), Self::code(arr)),
             Self::StreamArrJoin { arr1, rel2, arr2, .. } => format!("Join streaming rule prefix arranged by&nbsp;{}&nbsp;with relation&nbsp;{}&nbsp;arranged using pattern&nbsp;{}", Self::code(arr1), Self::code(rel2), Self::code(arr2)),
             Self::StreamArrSemijoin { arr1, rel2, arr2, .. } => format!("Semijoin streaming rule prefix arranged by&nbsp;{}&nbsp;with relation&nbsp;{}&nbsp;arranged using pattern&nbsp;{}", Self::code(arr1), Self::code(rel2), Self::code(arr2)),
-            Self::GroupBy { .. } => "".to_string(),
-            Self::Differentiate { .. } => "".to_string(),
-            Self::ApplyTransformer { .. } => "".to_string(),
-            Self::RelEnterRecursiveScope { .. } => "".to_string(),
-            Self::ArrEnterRecursiveScope { .. } => "".to_string(),
-            Self::RelLeaveRecursiveScope { .. } => "".to_string(),
         }
     }
 
     pub fn source_pos(&self) -> &[SourcePosition] {
         match self {
-            Self::Dataflow => &[],
-            Self::Builtin { .. } => &[],
-            Self::Input { source_pos, .. } => slice::from_ref(source_pos),
-            Self::Filter { source_pos } => slice::from_ref(source_pos),
-            Self::FilterMap { source_pos } => slice::from_ref(source_pos),
-            Self::Head { source_pos } => slice::from_ref(source_pos),
-            Self::Flatmap { source_pos } => slice::from_ref(source_pos),
-            Self::Map { source_pos } => slice::from_ref(source_pos),
-            Self::FixedPoint { source_pos, .. } => slice::from_ref(source_pos),
-            Self::RecursiveComponent { .. } => &[],
-            Self::StreamXForm { source_pos } => slice::from_ref(source_pos),
-            Self::JoinWithEnabled { used_at, .. } => used_at,
-            Self::ConsolidateOutput { source_pos, .. } => slice::from_ref(source_pos),
-            Self::DelayedRelation { used_at, .. } => used_at,
-            Self::InspectOutput { source_pos, .. } => slice::from_ref(source_pos),
-            Self::ProbeIndex { used_at, .. } => used_at,
-            Self::ProbeOutput { source_pos, .. } => slice::from_ref(source_pos),
-            Self::ConcatenateRelation { source_pos, .. } => slice::from_ref(source_pos),
-            Self::DistinctRelation { source_pos, .. } => slice::from_ref(source_pos),
-            Self::ArrangeRelationNonRec { used_at, .. } => used_at,
-            Self::ArrangeRelationRecInner { used_at, .. } => used_at,
-            Self::ArrangeRelationRecOuter { used_at, .. } => used_at,
-            Self::Inspect { source_pos } => slice::from_ref(source_pos),
-            Self::Arrange { source_pos, .. } => slice::from_ref(source_pos),
-            Self::StreamArrange { source_pos, .. } => slice::from_ref(source_pos),
-            Self::Join { source_pos, .. } => slice::from_ref(source_pos),
-            Self::Semijoin { source_pos, .. } => slice::from_ref(source_pos),
-            Self::Antijoin { source_pos, .. } => slice::from_ref(source_pos),
-            Self::ArrStreamJoin { source_pos, .. } => slice::from_ref(source_pos),
-            Self::ArrStreamSemijoin { source_pos, .. } => slice::from_ref(source_pos),
-            Self::StreamArrJoin { source_pos, .. } => slice::from_ref(source_pos),
-            Self::StreamArrSemijoin { source_pos, .. } => slice::from_ref(source_pos),
-            Self::GroupBy { source_pos } => slice::from_ref(source_pos),
-            Self::Differentiate { source_pos, .. } => slice::from_ref(source_pos),
-            Self::ApplyTransformer { source_pos, .. } => slice::from_ref(source_pos),
-            Self::RelEnterRecursiveScope { .. } => &[],
-            Self::ArrEnterRecursiveScope { .. } => &[],
-            Self::RelLeaveRecursiveScope { .. } => &[],
+            Self::Dataflow
+            | Self::Builtin { .. }
+            | Self::RecursiveComponent { .. }
+            | Self::RelEnterRecursiveScope { .. }
+            | Self::ArrEnterRecursiveScope { .. }
+            | Self::RelLeaveRecursiveScope { .. } => &[],
+
+            Self::JoinWithEnabled { used_at, .. }
+            | Self::DelayedRelation { used_at, .. }
+            | Self::ProbeIndex { used_at, .. }
+            | Self::ArrangeRelationNonRec { used_at, .. }
+            | Self::ArrangeRelationRecInner { used_at, .. }
+            | Self::ArrangeRelationRecOuter { used_at, .. } => used_at,
+
+            Self::Input { source_pos, .. }
+            | Self::Filter { source_pos }
+            | Self::FilterMap { source_pos }
+            | Self::Head { source_pos }
+            | Self::Flatmap { source_pos }
+            | Self::Map { source_pos }
+            | Self::FixedPoint { source_pos, .. }
+            | Self::StreamXForm { source_pos }
+            | Self::ConsolidateOutput { source_pos, .. }
+            | Self::InspectOutput { source_pos, .. }
+            | Self::ProbeOutput { source_pos, .. }
+            | Self::ConcatenateRelation { source_pos, .. }
+            | Self::DistinctRelation { source_pos, .. }
+            | Self::Inspect { source_pos }
+            | Self::Arrange { source_pos, .. }
+            | Self::StreamArrange { source_pos, .. }
+            | Self::Join { source_pos, .. }
+            | Self::Semijoin { source_pos, .. }
+            | Self::Antijoin { source_pos, .. }
+            | Self::ArrStreamJoin { source_pos, .. }
+            | Self::ArrStreamSemijoin { source_pos, .. }
+            | Self::StreamArrJoin { source_pos, .. }
+            | Self::StreamArrSemijoin { source_pos, .. }
+            | Self::GroupBy { source_pos }
+            | Self::Differentiate { source_pos, .. }
+            | Self::ApplyTransformer { source_pos, .. } => slice::from_ref(source_pos),
         }
     }
 }

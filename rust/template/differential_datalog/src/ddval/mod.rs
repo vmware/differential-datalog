@@ -75,25 +75,64 @@ pub struct DDVal {
     pub v: usize,
 }
 
-/// vtable of methods to be implemented by every value stored in DD.
+/// VTable of methods to be implemented by every value stored in DD.
 pub struct DDValMethods {
+    /// Clones the current value, creating a new [`DDVal`]
     pub clone: fn(this: &DDVal) -> DDVal,
+    /// Converts the current value into a [`Record`]
     pub into_record: fn(this: DDVal) -> Record,
 
-    /// Safety: The types of the values contained in `this` and `other` must be the same
+    /// The [`Eq`] implementation for two values of the same concrete type
+    ///
+    /// # Safety
+    ///
+    /// The types of the values contained in `this` and `other` must be the same
+    ///
     pub eq: unsafe fn(this: &DDVal, other: &DDVal) -> bool,
 
-    /// Safety: The types of the values contained in `this` and `other` must be the same
+    /// The [`PartialOrd`] implementation for two values of the same concrete type
+    ///
+    /// # Safety
+    ///
+    /// The types of the values contained in `this` and `other` must be the same
+    ///
     pub partial_cmp: unsafe fn(this: &DDVal, other: &DDVal) -> Option<Ordering>,
 
-    /// Safety: The types of the values contained in `this` and `other` must be the same
+    /// The [`Ord`] implementation for two values of the same concrete type
+    ///
+    /// # Safety
+    ///
+    /// The types of the values contained in `this` and `other` must be the same
+    ///
     pub cmp: unsafe fn(this: &DDVal, other: &DDVal) -> Ordering,
 
+    /// Hashes a value to the given hasher using the concrete type's
+    /// [`Hash`] implementation
+    ///
+    /// Note: Hash implementations should be deterministic
+    ///
+    /// [`Hash`]: std::hash::Hash
     pub hash: fn(this: &DDVal, state: &mut dyn Hasher),
+
+    /// Mutates the current value with the given [`Record`]
     pub mutate: fn(this: &mut DDVal, record: &Record) -> Result<(), String>,
+
+    /// The concrete type's [`Debug`] implementation
+    ///
+    /// [`Debug`]: std::fmt::Debug
     pub fmt_debug: fn(this: &DDVal, f: &mut Formatter) -> Result<(), Error>,
+
+    /// Formats the current value using [`Record`]'s [`Display`] implementation
+    ///
+    /// [`Display`]: std::fmt::Display
     pub fmt_display: fn(this: &DDVal, f: &mut Formatter) -> Result<(), Error>,
-    pub drop: fn(this: &mut DDVal),
+
+    /// Drops the current value
+    pub drop: unsafe fn(this: &mut DDVal),
+
+    /// Serializes the current value
     pub ddval_serialize: fn(this: &DDVal) -> &dyn erased_serde::Serialize,
+
+    /// Gets the [`TypeId`] of the current value
     pub type_id: fn(this: &DDVal) -> TypeId,
 }

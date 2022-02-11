@@ -231,6 +231,7 @@ rustLibFiles =
         , ("differential_datalog/src/api/update_handler.rs"       , $(embedFile "rust/template/differential_datalog/src/api/update_handler.rs"))
         , ("differential_datalog/src/flatbuf/mod.rs"              , $(embedFile "rust/template/differential_datalog/src/flatbuf/mod.rs"))
         , ("differential_datalog/src/dataflow/map.rs"             , $(embedFile "rust/template/differential_datalog/src/dataflow/map.rs"))
+        , ("differential_datalog/src/utils.rs"                        , $(embedFile "rust/template/differential_datalog/src/utils.rs"))
         , ("differential_datalog_test/Cargo.toml"                 , $(embedFile "rust/template/differential_datalog_test/Cargo.toml"))
         , ("differential_datalog_test/lib.rs"                     , $(embedFile "rust/template/differential_datalog_test/lib.rs"))
         , ("differential_datalog_test/test_value.rs"              , $(embedFile "rust/template/differential_datalog_test/test_value.rs"))
@@ -785,18 +786,10 @@ mkCargoToml rs_code crate crate_id =
            "ddlog_profiler = { path = \"" <> pp root <> "../ddlog_profiler\" }"            $$
            "ddlog_derive = { path = \"" <> pp root <> "../ddlog_derive\" }"                $$
            "abomonation = \"0.7\""                                                         $$
-           "ordered-float = { version = \"2.0.0\", features = [\"serde\"] }"               $$
-           "fnv = \"1.0.2\""                                                               $$
-           "twox-hash = \"1.6.0\""                                                         $$
-           "once_cell = \"1.4.1\""                                                         $$
-           "libc = \"0.2\""                                                                $$
-           "time = { version = \"0.2\", features = [\"serde\"] }"                          $$
-           "serde_json = \"1.0\""                                                          $$
            "serde = { version = \"1.0\", features = [\"derive\"] }"                        $$
-           "num = \"0.3\""                                                                 $$
            "erased-serde = \"0.3\""                                                        $$
-           --"differential-dataflow = \"0.11.0\""                                            $$
-           --"timely = \"0.11\""                                                             $$
+           "ordered-float = \"2.8.0\""                                                     $$
+           "once_cell = \"1.8.0\""                                                         $$
            "differential-dataflow = { git = \"https://github.com/ddlog-dev/differential-dataflow\", branch = \"ddlog-4\" }" $$
            "timely = { git = \"https://github.com/ddlog-dev/timely-dataflow\", branch = \"ddlog-4\",  default-features = false }"  $$
            ""                                                                              $$
@@ -1725,15 +1718,15 @@ data LazyStatic = LazyStatic {
     c_api :: Bool
 }
 
--- Creates a static variable holding a `FnvHashMap` pre-allocated and pre-filled with the supplied values
+-- Creates a static variable holding an `XxHashMap` pre-allocated and pre-filled with the supplied values
 --
 -- The generated code will take roughly this form:
 -- ```rust
 -- /// {documentation}
 -- #[cfg(feature = "c_api")] // only if c_api is true
--- pub static {static name}: ::once_cell::sync::Lazy<::fnv::FnvHashMap<{key}, {value}>> =
+-- pub static {static name}: ::once_cell::sync::Lazy<::differential_datalog::utils::XxHashMap<{key}, {value}>> =
 --     ::once_cell::sync::Lazy::new(|| {
---         let mut map = ::fnv::FnvHashMap::with_capacity_and_hasher({length elements}, ::fnv::FnvBuildHasher::default());
+--         let mut map = ::differential_datalog::utils::XxHashMap::with_capacity_and_hasher({length elements}, ::std::default::Default::default());
 --         // For each element
 --         map.insert({key}, {value});
 --
@@ -1744,11 +1737,14 @@ createLazyStatic :: LazyStatic -> Doc
 createLazyStatic lazy_static =
     doc_comment
         $$ (if (c_api lazy_static) then "#[cfg(feature = \"c_api\")]\n" else "")
-        <> "pub static" <+> static_name <> ": ::once_cell::sync::Lazy<::fnv::FnvHashMap<" <> key_type <> "," <+> value_type <> ">> ="
+        <> "pub static" <+> static_name <> ": ::once_cell::sync::Lazy<::differential_datalog::utils::XxHashMap<" <> key_type <> "," <+> value_type <> ">> ="
         $$ "    ::once_cell::sync::Lazy::new(|| {"
         -- Pre-allocate the HashMap, maps using a hasher other than `RandomState` can't use `with_capacity()`, so we
-        -- use `with_capacity_and_hasher()`, giving it our pre-allocation capacity and a default hasher provided by fnv
-        $$ "        let mut map = ::fnv::FnvHashMap::with_capacity_and_hasher(" <> (int map_len) <> ", ::fnv::FnvBuildHasher::default());"
+        -- use `with_capacity_and_hasher()`, giving it our pre-allocation capacity and a default hasher provided by xxhash
+        $$ "        let mut map = ::differential_datalog::utils::XxHashMap::with_capacity_and_hasher("
+        $$              (nest' $ int map_len) <> ","
+        $$ "            ::std::default::Default::default(),"
+        $$ "        );"
         $$          (nest' . nest' $ vcat entries)
         $$ "        map"
         $$ "    });"
@@ -1905,7 +1901,7 @@ compileApplyNode d Apply{..} idx =
     ApplyNode applyModule idx xformer_name (mkSourcePos transPos) $
                "pub fn __apply_" <> pp idx <+> "() -> Box<"
             $$ "    dyn for<'a> Fn("
-            $$ "        &mut ::fnv::FnvHashMap<"
+            $$ "        &mut ::differential_datalog::utils::XxHashMap<"
             $$ "            program::RelId,"
             $$ "            collection::Collection<"
             $$ "            scopes::Child<'a, worker::Worker<communication::Allocator>, program::TS>,"
