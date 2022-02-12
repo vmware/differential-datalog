@@ -25,7 +25,7 @@ Fork the repository using the "fork" button on github, by following these instru
 https://help.github.com/articles/fork-a-repo/.  The main step is the following:
 
 ```shell
-git remote add upstream https://github.com/vmware/database-stream-processor.git
+git remote add upstream https://github.com/vmware/differential-datalog.git
 ```
 
 Here is a step-by-step guide to submitting contributions:
@@ -83,5 +83,12 @@ To run all tests invoke:
 
 > ./test.sh all
 
-To get a list of all the tests you can just invoke `./test.sh` without
-any arguments.  It will print a list of test names.
+Running all tests takes a long time.  To get a list of all the tests
+you can just invoke `./test.sh` without any arguments.  It will print
+a list of test names.  For a faster testing process we recommend:
+
+> ./test.sh simple
+
+Please note that our continuous integration pipeline uses some private
+runners to run some costly tests, and thus passing all tests in the
+repository may not be enough to validate a PR.
