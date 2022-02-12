@@ -887,7 +887,7 @@ pub unsafe extern "C" fn ddlog_dump_profile(
         ),
     };
     let prof_file = prog
-        .dump_profile(label.as_deref())
+        .dump_profile(label)
         .map_err(|err| prog.eprintln(&format!("failed to dump profile: {}", err)))
         .ok()?;
     match CString::new(prof_file).map(CString::into_raw) {
@@ -1040,7 +1040,7 @@ pub unsafe extern "C" fn ddlog_string_free(s: *mut raw::c_char) {
         return;
     }
 
-    CString::from_raw(s);
+    drop(CString::from_raw(s));
 }
 
 #[no_mangle]

@@ -43,17 +43,9 @@ use differential_datalog::record::FromRecord as FromRec;
 use differential_datalog::record::IntoRecord as IntoRec;
 use differential_datalog::record::Record;
 
-#[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]
+#[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash, Default)]
 pub struct Int {
     x: BigInt,
-}
-
-impl Default for Int {
-    fn default() -> Int {
-        Int {
-            x: BigInt::default(),
-        }
-    }
 }
 
 impl Abomonation for Int {}
@@ -327,17 +319,9 @@ impl num::Zero for Int {
     }
 }
 
-#[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash)]
+#[derive(Eq, PartialOrd, PartialEq, Ord, Clone, Hash, Default)]
 pub struct Uint {
     x: BigUint,
-}
-
-impl Default for Uint {
-    fn default() -> Uint {
-        Uint {
-            x: BigUint::default(),
-        }
-    }
 }
 
 impl Abomonation for Uint {}
