@@ -687,4 +687,14 @@ public abstract class JooqProviderTestBase {
         assertTrue(readFromInput.contains(test3));
     }
 
+    @Test
+    public void testBigInt() {
+        create.execute("insert into big_int_table values (10000000000)");
+        Result<Record> readFromInput = create.fetch("select * from big_int_table");
+
+        final Field<Long> testCol1 = field("id", Long.class);
+        final Record testLong = create.newRecord(testCol1);
+        testLong.setValue(testCol1, 10000000000L);
+        assertTrue(readFromInput.contains(testLong));
+    }
 }

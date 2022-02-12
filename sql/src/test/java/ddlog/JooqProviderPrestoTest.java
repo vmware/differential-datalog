@@ -53,6 +53,10 @@ public class JooqProviderPrestoTest extends JooqProviderTestBase {
         String checkArrayType = "create view check_array_type as select distinct col3, " +
                 "ARRAY_AGG(capacity) over (partition by col3) as agg " +
                 "from base_array_table";
+        String bigIntTable = "create table big_int_table (id bigint)";
+
+        String bigIntTableViewName = DDlogJooqProvider.toIdentityViewName("big_int_table");
+        String bigIntTableView = String.format("create view %s as select distinct * from big_int_table", bigIntTableViewName);
 
         String identityViewName = DDlogJooqProvider.toIdentityViewName("hosts");
         String hostIdentityView = String.format("create view %s as select distinct * from hosts", identityViewName);
@@ -73,6 +77,8 @@ public class JooqProviderPrestoTest extends JooqProviderTestBase {
         ddl.add(checkArrayType);
         ddl.add(hostIdentityView);
         ddl.add(notNullIdentityView);
+        ddl.add(bigIntTable);
+        ddl.add(bigIntTableView);
 
         List<String> indexStatements = new ArrayList<>();
         indexStatements.add(createIndexNotNull);
