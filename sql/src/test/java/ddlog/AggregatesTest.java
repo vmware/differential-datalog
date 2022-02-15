@@ -512,7 +512,7 @@ public class AggregatesTest extends BaseQueriesTest {
     public void arrayAggWNullTest() {
         String query = "create view v1 as select array_agg(column2) from t1";
         String program = this.header(true) +
-                "typedef TRtmp = TRtmp{col0:Vec<Option<istring>>}\n" +
+                "typedef TRtmp = TRtmp{col0:Ref<Vec<Option<istring>>>}\n" +
                 "function agg(g: Group<(), TRt1>):TRtmp {\n" +
                 "var array_agg = vec_empty(): Vec<Option<istring>>;\n" +
                 "(for ((i, _) in g) {\n" +
@@ -520,7 +520,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "(var incr = v.column2);\n" +
                 "(vec_push(array_agg, incr))}\n" +
                 ");\n" +
-                "(TRtmp{.col0 = array_agg})\n" +
+                "(TRtmp{.col0 = array_agg.ref_new()})\n" +
                 "}\n" +
                 this.relations(true) +
                 "relation Rtmp[TRtmp]\n" +
@@ -533,7 +533,7 @@ public class AggregatesTest extends BaseQueriesTest {
     public void arrayAggWNullContainsTest() {
         String query = "create view v1 as select distinct * from (select array_agg(column2) as ag from t1) where array_contains(ag, null)";
         String program = this.header(true) +
-                "typedef TRtmp = TRtmp{ag:Vec<Option<istring>>}\n" +
+                "typedef TRtmp = TRtmp{ag:Ref<Vec<Option<istring>>>}\n" +
                 "function agg(g: Group<(), TRt1>):TRtmp {\n" +
                 "var array_agg = vec_empty(): Vec<Option<istring>>;\n" +
                 "(for ((i, _) in g) {\n" +
@@ -541,7 +541,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "(var incr = v.column2);\n" +
                 "(vec_push(array_agg, incr))}\n" +
                 ");\n" +
-                "(TRtmp{.ag = array_agg})\n" +
+                "(TRtmp{.ag = array_agg.ref_new()})\n" +
                 "}\n" +
                 this.relations(true) +
                 "relation Rtmp[TRtmp]\n" +
