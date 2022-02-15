@@ -562,7 +562,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
         */
         String name = functionName(node);
         List<Expression> arguments = node.getArguments();
-        if (name.toLowerCase().equals("concat")) {
+        if (name.equalsIgnoreCase("concat")) {
             // Cast each argument to a string
             arguments = Linq.map(arguments, a -> new Cast(a, "varchar"));
         }
@@ -570,7 +570,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
         DDlogType type = functionResultType(node, name, args);
         boolean someNull = Linq.any(args, a -> a.getType().mayBeNull);
         String useName = "sql_" + name;
-        if (someNull)
+        if (someNull && !name.equalsIgnoreCase("array_contains"))
             useName += "_N";
         if (varargs.contains(name)) {
             if (arguments.size() == 0)
