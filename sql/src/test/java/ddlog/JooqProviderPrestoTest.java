@@ -59,7 +59,7 @@ public class JooqProviderPrestoTest extends JooqProviderTestBase {
         String checkArrayContainsStringForNonOptionValue =
                 "create view check_contains_non_option as select distinct col3 " +
                 "from check_array_type_string " +
-                "where array_contains(agg, 'n2')";
+                "where array_contains(agg, 'n10')";
         String bigIntTable = "create table big_int_table (id bigint)";
 
         String bigIntTableView = generateCreateViewStatement("big_int_table");
