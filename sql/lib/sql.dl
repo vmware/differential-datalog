@@ -14,6 +14,13 @@ function sql_array_contains(a: Ref<Vec<'A>>, e: 'A): bool {
     vec_contains(a.deref(), e)
 }
 
+function sql_array_contains_N(a: Ref<Vec<'A>>, e: Option<'A>): bool {
+    match (e) {
+        Some{v} -> vec_contains(a.deref(), v),
+        None -> false
+    }
+}
+
 function sql_array_length(a: Ref<Vec<'A>>): signed<64> {
     vec_len(a.deref()) as signed<64>
 }
