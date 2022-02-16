@@ -60,10 +60,11 @@ public class DDlogHandle {
         this.program = t.getDDlogProgram();
         // System.out.println(this.program.toString());
         if (compile) {
-            final String fileName = "/tmp/program.dl";
+            final String fileName = "/tmp/program0.dl";
             File tmp = new File(fileName);
             BufferedWriter bw = new BufferedWriter(new FileWriter(tmp));
             bw.write(this.program.toString());
+            // System.out.println(this.program.toString());
             bw.close();
             DDlogAPI.CompilationResult result = new DDlogAPI.CompilationResult(true);
             String ddlogSqlHome = System.getenv("DDLOG_HOME") + "/sql/";

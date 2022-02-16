@@ -31,6 +31,7 @@ import com.vmware.ddlog.ir.*;
 import com.vmware.ddlog.translator.environment.IEnvironment;
 import com.vmware.ddlog.util.Linq;
 import com.vmware.ddlog.util.Utilities;
+import ddlogapi.DDlogException;
 
 import javax.annotation.Nullable;
 import java.math.BigInteger;
@@ -524,7 +525,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
                 if (args.size() != 1)
                     throw new TranslationException("Expected exactly 1 argument for aggregate", node);
                 DDlogExpression arg = args.get(0);
-                return new DDlogTArray(node, arg.getType(), false);
+                return new DDlogTRef(node, new DDlogTArray(node, arg.getType(), false), false);
             case "array_contains":
                 return DDlogTBool.instance;
             default:
@@ -562,23 +563,41 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
         */
         String name = functionName(node);
         List<Expression> arguments = node.getArguments();
-        if (name.toLowerCase().equals("concat")) {
+        if (name.equalsIgnoreCase("concat")) {
             // Cast each argument to a string
             arguments = Linq.map(arguments, a -> new Cast(a, "varchar"));
         }
         List<DDlogExpression> args = Linq.map(arguments, a -> this.process(a, context));
         DDlogType type = functionResultType(node, name, args);
-        boolean someNull = Linq.any(args, a -> a.getType().mayBeNull);
         String useName = "sql_" + name;
-        if (someNull)
-            useName += "_N";
-        if (varargs.contains(name)) {
-            if (arguments.size() == 0)
-                throw new TranslationException("Function does not have arguments", node);
-            DDlogExpression result = args.get(0);
-            for (int i = 1; i < args.size(); i++)
-                result = new DDlogEApply(node, useName, type, result, args.get(i));
-            return result;
+        if (name.equalsIgnoreCase("array_contains")) {
+            if (args.size() != 2)
+                throw new TranslationException("Expected 2 arguments for 'array_contains', got " + args.size(), node);
+            DDlogExpression array = args.get(0);
+            DDlogExpression element = args.get(1);
+            DDlogType arrayElemType = array.getType().to(DDlogTRef.class).elemType.to(DDlogTArray.class).elemType;
+            DDlogType elemType = element.getType();
+            if (elemType.mayBeNull) {
+                if (!arrayElemType.mayBeNull)
+                    useName += "_N";
+            } else {
+                if (arrayElemType.mayBeNull) {
+                    element = wrapSomeIfNeeded(element, arrayElemType);
+                    args.set(1, element);
+                }
+            }
+        } else {
+            boolean someNull = Linq.any(args, a -> a.getType().mayBeNull);
+            if (someNull)
+                useName += "_N";
+            if (varargs.contains(name)) {
+                if (arguments.size() == 0)
+                    throw new TranslationException("Function does not have arguments", node);
+                DDlogExpression result = args.get(0);
+                for (int i = 1; i < args.size(); i++)
+                    result = new DDlogEApply(node, useName, type, result, args.get(i));
+                return result;
+            }
         }
         return new DDlogEApply(node, useName, type, args.toArray(new DDlogExpression[0]));
     }

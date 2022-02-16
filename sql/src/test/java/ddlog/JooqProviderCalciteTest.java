@@ -29,23 +29,26 @@ public class JooqProviderCalciteTest extends JooqProviderTestBase {
         String s1 = "create table hosts (id varchar(36), capacity integer, up boolean, primary key (id))";
         String v2 = "create view hostsv as select distinct * from hosts";
         String v1 = "create view good_hosts as select distinct * from hosts where capacity < 10";
-        String checkArrayParse = "create table junk (testCol integer array)";
+        String checkArrayParse = "create table junk (testcol integer array)";
         String checkNotNullColumns = "create table not_null (test_col1 integer not null, test_col2 varchar(36) not null)";
 
-        String arrayTable = "create table base_array_table (id varchar(36), capacity integer, col3 integer)";
-        String checkArrayType = "create view check_array_type as select distinct col3, " +
+        String arrayTable = "create table base_array_table (id varchar(36), capacity integer, col3 integer, primary key (id))";
+        String checkArrayTypeOverIntegerArrayAgg = "create view check_array_type_integer as select distinct col3, " +
                 "ARRAY_AGG(capacity) over (partition by col3) as agg " +
                 "from base_array_table";
+        String checkArrayTypeOverStringArrayAgg = "create view check_array_type_string as select distinct col3, " +
+                "ARRAY_AGG(id) over (partition by col3) as agg " +
+                "from base_array_table";
+        String checkArrayContainsStringForNonOptionValue =
+                "create view check_contains_non_option as select distinct col3 " +
+                "from check_array_type_string " +
+                "where array_contains(agg, 'n10')";
         String bigIntTable = "create table big_int_table (id bigint)";
 
-        String bigIntTableViewName = DDlogJooqProvider.toIdentityViewName("big_int_table");
-        String bigIntTableView = String.format("create view %s as select distinct * from big_int_table", bigIntTableViewName);
-
-        String identityViewName = DDlogJooqProvider.toIdentityViewName("hosts");
-        String hostIdentityView = String.format("create view %s as select distinct * from hosts", identityViewName);
-        String notNullIdentityView =
-                String.format("create view %s as select distinct * from not_null",
-                        DDlogJooqProvider.toIdentityViewName("not_null"));
+        String bigIntTableView = generateCreateViewStatement("big_int_table");
+        String hostIdentityView = generateCreateViewStatement("hosts");
+        String notNullIdentityView = generateCreateViewStatement("not_null");
+        String baseArrayTableView = generateCreateViewStatement("base_array_table");
 
         String createIndexNotNull = "create index not_null_idx on not_null (test_col1)";
         String createIndexHosts = "create index hosts_id_up on hosts (id, up)";
@@ -58,11 +61,14 @@ public class JooqProviderCalciteTest extends JooqProviderTestBase {
         ddl.add(checkArrayParse);
         ddl.add(checkNotNullColumns);
         ddl.add(arrayTable);
-        ddl.add(checkArrayType);
+        ddl.add(checkArrayTypeOverIntegerArrayAgg);
+        ddl.add(checkArrayTypeOverStringArrayAgg);
+        ddl.add(checkArrayContainsStringForNonOptionValue);
         ddl.add(hostIdentityView);
         ddl.add(notNullIdentityView);
         ddl.add(bigIntTable);
         ddl.add(bigIntTableView);
+        ddl.add(baseArrayTableView);
 
         List<String> indexStatements = new ArrayList<>();
         indexStatements.add(createIndexNotNull);
@@ -75,7 +81,7 @@ public class JooqProviderCalciteTest extends JooqProviderTestBase {
                 indexStatements);
 
         ToH2Translator<CalciteSqlStatement> translator = new CalciteToH2Translator();
-        // Initialise the data provider
+        // Initialize the data provider
         provider = new DDlogJooqProvider(ddhandle,
                 Stream.concat(ddl.stream().map(x -> translator.toH2(new CalciteSqlStatement(x))),
                                 indexStatements.stream().map(H2SqlStatement::new))

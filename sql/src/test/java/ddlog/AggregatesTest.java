@@ -491,7 +491,7 @@ public class AggregatesTest extends BaseQueriesTest {
     public void arrayAggTest() {
         String query = "create view v1 as select array_agg(column2) from t1";
         String program = this.header(false) +
-                "typedef TRtmp = TRtmp{col0:Vec<istring>}\n" +
+                "typedef TRtmp = TRtmp{col0:Ref<Vec<istring>>}\n" +
                 "function agg(g: Group<(), TRt1>):TRtmp {\n" +
                 "var array_agg = vec_empty(): Vec<istring>;\n" +
                 "(for ((i, _) in g) {\n" +
@@ -499,7 +499,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "(var incr = v.column2);\n" +
                 "(vec_push(array_agg, incr))}\n" +
                 ");\n" +
-                "(TRtmp{.col0 = array_agg})\n" +
+                "(TRtmp{.col0 = array_agg.ref_new()})\n" +
                 "}\n" +
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
@@ -507,6 +507,51 @@ public class AggregatesTest extends BaseQueriesTest {
                 "Rv1[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program);
     }
+
+    @Test
+    public void arrayAggWNullTest() {
+        String query = "create view v1 as select array_agg(column2) from t1";
+        String program = this.header(true) +
+                "typedef TRtmp = TRtmp{col0:Ref<Vec<Option<istring>>>}\n" +
+                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
+                "var array_agg = vec_empty(): Vec<Option<istring>>;\n" +
+                "(for ((i, _) in g) {\n" +
+                "var v = i;\n" +
+                "(var incr = v.column2);\n" +
+                "(vec_push(array_agg, incr))}\n" +
+                ");\n" +
+                "(TRtmp{.col0 = array_agg.ref_new()})\n" +
+                "}\n" +
+                this.relations(true) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv1[TRtmp]\n" +
+                "Rv1[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
+        this.testTranslation(query, program, true);
+    }
+
+    @Test
+    public void arrayAggWNullContainsTest() {
+        String query = "create view v1 as select distinct * from (select array_agg(column2) as ag from t1) where array_contains(ag, null)";
+        String program = this.header(true) +
+                "typedef TRtmp = TRtmp{ag:Ref<Vec<Option<istring>>>}\n" +
+                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
+                "var array_agg = vec_empty(): Vec<Option<istring>>;\n" +
+                "(for ((i, _) in g) {\n" +
+                "var v = i;\n" +
+                "(var incr = v.column2);\n" +
+                "(vec_push(array_agg, incr))}\n" +
+                ");\n" +
+                "(TRtmp{.ag = array_agg.ref_new()})\n" +
+                "}\n" +
+                this.relations(true) +
+                "relation Rtmp[TRtmp]\n" +
+                "relation Rtmp0[TRtmp]\n" +
+                "output relation Rv1[TRtmp]\n" +
+                "Rtmp0[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.\n" +
+                "Rv1[v2] :- Rtmp0[v1],sql_array_contains(v1.ag, None{}),var v2 = v1.";
+        this.testTranslation(query, program, true);
+    }
+
 
     @Test
     public void arrayLengthTest() {
@@ -520,7 +565,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 "(var incr = v.column2);\n" +
                 "(vec_push(array_agg, incr))}\n" +
                 ");\n" +
-                "(TRtmp{.col0 = sql_array_length(array_agg)})\n" +
+                "(TRtmp{.col0 = sql_array_length(array_agg.ref_new())})\n" +
                 "}\n" +
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +

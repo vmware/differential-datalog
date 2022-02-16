@@ -78,14 +78,31 @@ public abstract class JooqProviderTestBase {
         test3.setValue(field3, true);
     }
 
+    /**
+     * Clear a table.
+     * @param tableName  Table to remove entries from.
+     * @param keyColumn  Name of key column.
+     * @param keyColumnIndex  Number of key column (starting from 0).
+     */
+    public void clearTable(String tableName, String keyColumn, int keyColumnIndex) {
+        // TODO: this may be doable using the 'clear' DDlog command
+        assert(create != null);
+        final Result<Record> records = create.fetch("select * from " + tableName);
+        records.forEach(
+                r -> create.execute(String.format("delete from %s where %s = '%s'", tableName, keyColumn, r.get(keyColumnIndex)))
+        );
+        assertEquals(0, create.fetch("select * from " + tableName).size());
+    }
+
+    public static String generateCreateViewStatement(String tableName) {
+        String identityViewName = DDlogJooqProvider.toIdentityViewName(tableName);
+        return String.format("create view %s as select distinct * from %s", identityViewName, tableName);
+    }
+
     @Before
     public void cleanup() {
-        assert(create != null);
-        final Result<Record> records = create.fetch("select * from hostsv");
-        records.forEach(
-            r -> create.execute(String.format("delete from hosts where id = '%s'", r.get(0)))
-        );
-        assertEquals(0, create.fetch("select * from hostsv").size());
+        clearTable("hosts", "id", 0);
+        clearTable("base_array_table", "id", 0);
     }
 
     @AfterClass
@@ -568,10 +585,40 @@ public abstract class JooqProviderTestBase {
         arrayAgg3.setValue(field2, new Integer[] {1,2,3});
 
         // Make sure selects read out the same content inserted above
-        final Result<Record> aggResults = create.fetch("select * from check_array_type");
+        final Result<Record> aggResults = create.fetch("select * from check_array_type_integer");
         assertTrue(aggResults.contains(arrayAgg1));
         assertTrue(aggResults.contains(arrayAgg2));
         assertTrue(aggResults.contains(arrayAgg3));
+    }
+
+    @Test
+    public void testArrayAggAndContainsTypes() {
+        skipIfTestBase();
+        assert(create != null);
+        create.batch("insert into base_array_table values ('n54', 18, 18)",
+                        "insert into base_array_table values ('n9', 1, 3)",
+                        "insert into base_array_table values ('n10', 2, 3)",
+                        "insert into base_array_table values ('n11', 3, 3)"
+                        ).execute();
+        final Result<Record> aggResults = create.fetch("select * from check_array_type_string");
+        final Field<Integer> field1 = field("col3", Integer.class);
+        final Field<Object> field2 = field("agg", Object.class);
+        final Record arrayAgg1 = create.newRecord(field1, field2);
+        arrayAgg1.setValue(field1, 3);
+        arrayAgg1.setValue(field2, new String[] {"n10", "n9", "n11"});
+        assertEquals(2, aggResults.size());
+        assertTrue(aggResults.contains(arrayAgg1));
+
+        // the view does array_contains(array_col, 'n10')
+        final Result<Record> arrayContainsResult = create.fetch("select * from check_contains_non_option");
+        assertEquals(3, (int) arrayContainsResult.get(0).get(0, Integer.class));
+    }
+
+    @Test
+    public void testArrayColumnInsertion() {
+        skipIfTestBase();
+        assert(create != null);
+        create.execute("insert into junk values((1, 2, 3))");
     }
 
     @Test

@@ -81,6 +81,27 @@ public class DDlogProgram extends DDlogNode {
         return String.join("\n", parts);
     }
 
+    @Nullable
+    public DDlogType resolveTypeDef(DDlogTUser type) {
+        for (DDlogTypeDef t: this.typedefs) {
+            if (t.getName().equals(type.getName()))
+                return t.getType();
+        }
+        return null;
+    }
+
+    public DDlogType resolveType(DDlogType type) {
+        if (type instanceof DDlogTUser) {
+            DDlogTUser tu = (DDlogTUser)type;
+            DDlogType result = this.resolveTypeDef(tu);
+            if (result == null)
+                tu.error("Cannot resolve type " + tu.getName());
+            assert result != null;
+            return result;
+        }
+        return type;
+    }
+
     public void toFile(String filename) throws FileNotFoundException {
         try (PrintWriter out = new PrintWriter(filename)) {
             out.println(this.toString());

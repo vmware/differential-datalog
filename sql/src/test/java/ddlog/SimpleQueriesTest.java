@@ -34,7 +34,7 @@ public class SimpleQueriesTest extends BaseQueriesTest {
     public void arrayTest() {
         String query = "create table a(column1 integer not null, column2 integer not null, column3 integer array not null)";
         String program = this.header(false) +
-                "typedef TRa = TRa{column1:signed<64>, column2:signed<64>, column3:Vec<signed<64>>}\n" +
+                "typedef TRa = TRa{column1:signed<64>, column2:signed<64>, column3:Ref<Vec<signed<64>>>}\n" +
                 this.relations(false) +
                 "input relation Ra[TRa]\n";
         this.testTranslation(query, program);
@@ -65,7 +65,7 @@ public class SimpleQueriesTest extends BaseQueriesTest {
                 "typedef TRt2 = TRt2{column1:signed<64>}\n" +
                 "typedef TRt3 = TRt3{d:Date, t:Time, dt:DateTime}\n" +
                 "typedef TRt4 = TRt4{column1:Option<signed<64>>, column2:Option<istring>}\n" +
-                "typedef TRa = TRa{column1:signed<64>, column2:signed<64>, column3:Vec<signed<64>>}\n" +
+                "typedef TRa = TRa{column1:signed<64>, column2:signed<64>, column3:Ref<Vec<signed<64>>>}\n" +
                 "\n" +
                 "input relation Rt1[TRt1]\n" +
                 "input relation Rt2[TRt2]\n" +
@@ -81,7 +81,7 @@ public class SimpleQueriesTest extends BaseQueriesTest {
                 "create table a(column1 integer not null, column2 integer not null, column3 integer array not null)",
                 "create view v0 as select distinct column1 from a where array_contains(column3, column1)");
         String program = this.header(false) +
-                "typedef TRa = TRa{column1:signed<64>, column2:signed<64>, column3:Vec<signed<64>>}\n" +
+                "typedef TRa = TRa{column1:signed<64>, column2:signed<64>, column3:Ref<Vec<signed<64>>>}\n" +
                 this.relations(false) +
                 "input relation Ra[TRa]\n" +
                 "output relation Rv0[TRt2]\n" +

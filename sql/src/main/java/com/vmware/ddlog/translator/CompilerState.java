@@ -63,15 +63,6 @@ public class CompilerState {
         this.translationVisitor = translationVisitor;
     }
 
-    @Nullable
-    DDlogType resolveTypeDef(DDlogTUser type) {
-        for (DDlogTypeDef t: this.program.typedefs) {
-            if (t.getName().equals(type.getName()))
-                return t.getType();
-        }
-        return null;
-    }
-
     void add(DDlogRelationDeclaration relation) {
         this.program.relations.add(relation);
         this.relations.put(relation.getName().name, relation);
@@ -108,5 +99,9 @@ public class CompilerState {
 
     DDlogProgram getProgram() {
         return this.program;
+    }
+
+    public DDlogType resolveType(DDlogType type) {
+        return this.program.resolveType(type);
     }
 }

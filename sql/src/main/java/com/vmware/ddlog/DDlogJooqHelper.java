@@ -132,7 +132,7 @@ public class DDlogJooqHelper {
         List<ParsedCreateIndex> indexes = this.tablesToIndexesMap.get(new NormalizedTableName(tableName));
         if (indexes == null) {
             throw new SQLException(String.format("Cannot delete from table %s: no appropriate primary key" +
-                    "and no indexes", tableName));
+                    " and no indexes", tableName));
         }
         // Look through the indexes to see if there's a matching index
         ParsedCreateIndex matchingIndex = null;

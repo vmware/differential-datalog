@@ -381,8 +381,9 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             case "some":
             case "every":
             case "sum":
-            case "array_agg":
                 return aggregatedType;
+            case "array_agg":
+                return aggregatedType.to(DDlogTRef.class).elemType;
             case "min":
             case "max":
                 return new DDlogTTuple(node,
@@ -517,6 +518,8 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                 IsNumericType num = elemType.toNumeric();
                 return new DDlogEApply(node, "set_" + num.simpleName() + "_sum", elemType, value);
             }
+            case "array_agg":
+                return DDlogTRef.ref_new(value);
             default:
                 return value;
         }
