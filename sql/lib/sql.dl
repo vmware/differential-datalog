@@ -61,12 +61,12 @@ function sql_extract_hour(t: Time): signed<64> {
     hour(t) as signed<8> as signed<64>
 }
 
-function sql_extract_minute(t: Time): signed<32> {
-    minute(t) as signed<8> as signed<32>
+function sql_extract_minute(t: Time): signed<64> {
+    minute(t) as signed<8> as signed<64>
 }
 
-function sql_extract_second(t: Time): signed<32> {
-    second(t) as signed<8> as signed<32>
+function sql_extract_second(t: Time): signed<64> {
+    second(t) as signed<8> as signed<64>
 }
 
 /*
@@ -113,13 +113,6 @@ function b_not_N(b: Option<bool>): Option<bool> {
       _                -> None
    }
 }
-function set_signed_sum(s: Set<signed<32>>): signed<32> {
-   var result = 0: signed<32>;
-   for (v in s) {
-      result = result + v
-   };
-   result
-}
 function set_signed_sum(s: Set<signed<64>>): signed<64> {
    var result = 0: signed<64>;
    for (v in s) {
@@ -140,15 +133,6 @@ function sql_abs(value: signed<64>): signed<64> {
 function sql_abs_N(value: Option<signed<64>>): Option<signed<64>> {
    match (value) {
        Some{.x = var a} -> Some{if (a < 64'sd0) (64'sd0-a) else a},
-       _                -> None
-   }
-}
-function sql_abs(value: signed<32>): signed<32> {
-   if (value < 32'sd0) (32'sd0-value) else value
-}
-function sql_abs_N(value: Option<signed<32>>): Option<signed<32>> {
-   match (value) {
-       Some{.x = var a} -> Some{if (a < 32'sd0) (32'sd0-a) else a},
        _                -> None
    }
 }
@@ -177,9 +161,6 @@ function agg_max_R(aggregate: (bool, 'T), item: 'T): (bool, 'T) {
     }
 }
 function agg_sum_signed_R(aggregate: signed<64>, item: signed<64>): signed<64> {
-    aggregate + item
-}
-function agg_sum_signed_R(aggregate: signed<32>, item: signed<32>): signed<32> {
     aggregate + item
 }
 function agg_sum_int_R(aggregate: bigint, item: bigint): bigint {
