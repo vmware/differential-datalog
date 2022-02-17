@@ -25,6 +25,7 @@
 package com.vmware.ddlog.ir;
 
 import com.facebook.presto.sql.tree.Node;
+import com.vmware.ddlog.translator.TranslationException;
 
 import javax.annotation.Nullable;
 
@@ -38,8 +39,16 @@ public class DDlogEAs extends DDlogExpression {
 
     @Override
     public String toString() {
-        return this.expr.toString() + " as " +
-                "" + this.getType().toString();
+        if (this.expr.getType().mayBeNull)
+            throw new TranslationException("Casting nullable type " + this.expr.getType() + " to " + this.type, node);
+        if (this.expr.getType().mayBeNull)
+            throw new TranslationException("Casting to nullable type " + this.getType(), node);
+        return this.expr + " as " + this.getType();
     }
 
+    public static DDlogExpression cast(DDlogExpression from, DDlogType to) {
+        if (from.getType().same(to))
+            return from;
+        return new DDlogEAs(from.node, from, to);
+    }
 }

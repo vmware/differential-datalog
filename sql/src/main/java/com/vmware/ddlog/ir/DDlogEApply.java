@@ -41,12 +41,12 @@ public class DDlogEApply extends DDlogExpression {
      * Create a node that describes a function application.
      * @param node   Source object.
      * @param func   Function me to apply.
-     * @param type   Type of result produced by the function.
+     * @param functionResultType   Type of result produced by the function.
      * @param suffix If true use the .func() notation for the function.
      * @param args   Function arguments.
      */
-    public DDlogEApply(@Nullable Node node, String func, DDlogType type, boolean suffix, DDlogExpression... args) {
-        super(node, type);
+    public DDlogEApply(@Nullable Node node, String func, DDlogType functionResultType, boolean suffix, DDlogExpression... args) {
+        super(node, functionResultType);
         this.func = func;
         this.suffix = suffix;
         this.args = Arrays.asList(args);
@@ -56,11 +56,11 @@ public class DDlogEApply extends DDlogExpression {
      * Create a node that describes a function application.
      * @param node   Source object.
      * @param func   Function me to apply.
-     * @param type   Type of result produced by the function.
+     * @param functionResultType   Type of result produced by the function.
      * @param args   Function arguments.
      */
-    public DDlogEApply(@Nullable Node node, String func, DDlogType type, DDlogExpression... args) {
-        this(node, func, type, false, args);
+    public DDlogEApply(@Nullable Node node, String func, DDlogType functionResultType, DDlogExpression... args) {
+        this(node, func, functionResultType, false, args);
     }
 
     @Override

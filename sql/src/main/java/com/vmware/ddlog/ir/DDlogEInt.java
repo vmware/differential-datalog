@@ -29,7 +29,10 @@ import com.facebook.presto.sql.tree.Node;
 import javax.annotation.Nullable;
 import java.math.BigInteger;
 
-public class DDlogEInt extends DDlogExpression {
+/**
+ * An expression that has a DDlogTInt value.
+ */
+class DDlogEInt extends DDlogExpression {
     private final BigInteger ival;
 
     public DDlogEInt(@Nullable Node node, BigInteger ival) {

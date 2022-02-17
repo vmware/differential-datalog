@@ -350,9 +350,9 @@ public class AggregatesTest extends BaseQueriesTest {
     public void testCountColumnWNull() {
         String query = "create view v0 as SELECT COUNT(column1) AS ct FROM t1";
         String program = this.header(true) +
-                "typedef TRtmp = TRtmp{ct:Option<signed<64>>}\n" +
+                "typedef TRtmp = TRtmp{ct:signed<64>}\n" +
                 "function agg(g: Group<(), TRt1>):TRtmp {\n" +
-                "var count = None{}: Option<signed<64>>;\n" +
+                "var count = 64'sd0: signed<64>;\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column1);\n" +
@@ -392,7 +392,7 @@ public class AggregatesTest extends BaseQueriesTest {
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{avg:double}\n" +
                 "function agg(g: Group<(), TRt1>):TRtmp {\n" +
-                "var avg = (64'f0.0, 64'f0.0): (double, double);\n" +
+                "var avg = (64'f0.0, 64'sd0): (double, signed<64>);\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column4);\n" +
@@ -412,7 +412,7 @@ public class AggregatesTest extends BaseQueriesTest {
         String program = this.header(true) +
                 "typedef TRtmp = TRtmp{avg:Option<signed<64>>}\n" +
                 "function agg(g: Group<(), TRt1>):TRtmp {\n" +
-                "var avg = None{}: Option<(signed<64>, signed<64>)>;\n" +
+                "var avg = Some{.x = (64'sd0, 64'sd0)}: Option<(signed<64>, signed<64>)>;\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column1);\n" +

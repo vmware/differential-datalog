@@ -25,6 +25,7 @@
 package com.vmware.ddlog.ir;
 
 import com.facebook.presto.sql.tree.Node;
+import com.vmware.ddlog.translator.TranslationException;
 
 import javax.annotation.Nullable;
 import java.math.BigInteger;
@@ -37,6 +38,8 @@ public class DDlogESigned extends DDlogExpression {
         super(node, new DDlogTSigned(node, width, false));
         this.width = width;
         this.ival = ival;
+        if (ival.bitLength() > this.width)
+            throw new TranslationException("Value " + ival + " too wide to fix " + width + " bits", node);
     }
 
     public DDlogESigned(@Nullable Node node, long value) {

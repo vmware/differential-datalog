@@ -37,4 +37,8 @@ public interface IsNumericType {
      */
     DDlogExpression one();
     String simpleName();
+    /**
+     * Type to using when aggregating such values, e.g., in a sum.
+     */
+    DDlogType aggregateType();
 }

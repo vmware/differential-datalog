@@ -33,7 +33,7 @@ public class DDlogTBit extends DDlogType
         implements IsNumericType, IBoundedNumericType, IDDlogBaseType {
     private final int width;
 
-    DDlogTBit(@Nullable Node node, int width, boolean mayBeNull) {
+    public DDlogTBit(@Nullable Node node, int width, boolean mayBeNull) {
         super(node, mayBeNull);
         this.width = width;
     }
@@ -61,6 +61,15 @@ public class DDlogTBit extends DDlogType
     @Override
     public String simpleName() {
         return "bit";
+    }
+
+    @Override
+    public DDlogType aggregateType() {
+        if (this.width < 32)
+            return new DDlogTBit(node, 32, this.mayBeNull);
+        else if (this.width < 64)
+            return new DDlogTBit(node, 64, this.mayBeNull);
+        return new DDlogTBit(node, 128, this.mayBeNull);
     }
 
     @Override

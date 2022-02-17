@@ -354,11 +354,11 @@ public class GroupByTest extends BaseQueriesTest {
     public void testHavingNull() {
         String query = "create view v0 as SELECT COUNT(column2) AS c FROM t1 GROUP BY column1 HAVING ANY(column3)";
         String program = this.header(true) +
-                "typedef TRtmp = TRtmp{c:Option<signed<64>>}\n" +
-                "typedef Tagg = Tagg{c:Option<signed<64>>, col:Option<bool>}\n" +
+                "typedef TRtmp = TRtmp{c:signed<64>}\n" +
+                "typedef Tagg = Tagg{c:signed<64>, col:Option<bool>}\n" +
                 "function agg(g: Group<Option<signed<64>>, TRt1>):Tagg {\n" +
                 "(var gb) = group_key(g);\n" +
-                "(var count = None{}: Option<signed<64>>);\n" +
+                "(var count = 64'sd0: signed<64>);\n" +
                 "(var any = Some{false}: Option<bool>);\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +

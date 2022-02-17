@@ -110,12 +110,24 @@ public abstract class DDlogType extends DDlogNode {
     }
 
     public static void checkCompatible(DDlogType type0, DDlogType type1, boolean checkNullability) {
-        if (!type0.is(DDlogTUnknown.class) &&
-            !type1.is(DDlogTUnknown.class) &&
-            type0.getClass() != type1.getClass())
-            type0.error("Incompatible types " + type0 + " and " + type1);
         if (checkNullability && type0.mayBeNull != type1.mayBeNull)
             type0.error("Types have different nullabilities: " + type0 + " and " + type1);
+        if (!type0.is(DDlogTUnknown.class) && !type1.is(DDlogTUnknown.class)) {
+            if (type0.getClass() != type1.getClass())
+                type0.error("Incompatible types " + type0 + " and " + type1);
+            if (type0.is(DDlogTBit.class)) {
+                DDlogTBit tb0 = type0.to(DDlogTBit.class);
+                DDlogTBit tb1 = type1.to(DDlogTBit.class);
+                if (tb0.getWidth() != tb1.getWidth())
+                    type0.error("Types have different widths " + type0 + " and " + type1);
+            }
+            if (type0.is(DDlogTSigned.class)) {
+                DDlogTSigned tb0 = type0.to(DDlogTSigned.class);
+                DDlogTSigned tb1 = type1.to(DDlogTSigned.class);
+                if (tb0.getWidth() != tb1.getWidth())
+                    type0.error("Types have different widths " + type0 + " and " + type1);
+            }
+        }
     }
 
     public boolean same(DDlogType other) {

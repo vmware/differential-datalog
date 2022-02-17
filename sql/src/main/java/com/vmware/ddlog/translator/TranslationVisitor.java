@@ -329,7 +329,8 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                 }
                 Expression expression = sc.getExpression();
                 DDlogExpression expr = context.translateExpression(expression);
-                typeList.add(new DDlogField(sc, name, expr.getType()));
+                DDlogType type = expr.getType();
+                typeList.add(new DDlogField(sc, name, type));
                 exprList.add(new DDlogEStruct.FieldValue(name, expr));
             } else if (s instanceof AllColumns) {
                 // We can get all columns from the type of the
@@ -373,15 +374,16 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
     private DDlogType intermediateType(Node node, String aggregate, DDlogType aggregatedType) {
         switch (aggregate) {
             case "count":
-                return DDlogTSigned.signed64.setMayBeNull(aggregatedType.mayBeNull);
+                return DDlogTSigned.signed64;
             case "sum_distinct":
             case "count_distinct":
                 return new DDlogTUser(node,"Set", false, aggregatedType);
             case "any":
             case "some":
             case "every":
-            case "sum":
                 return aggregatedType;
+            case "sum":
+                return aggregatedType.toNumeric().aggregateType();
             case "array_agg":
                 return aggregatedType.to(DDlogTRef.class).elemType;
             case "min":
@@ -392,9 +394,10 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                 );
             case "avg":
             case "avg_distinct":
+                DDlogType interm = aggregatedType.toNumeric().aggregateType();
                 return new DDlogTTuple(node,
-                        aggregatedType,  // sum
-                        aggregatedType   // count
+                        interm,  // sum
+                        DDlogTSigned.signed64.setMayBeNull(aggregatedType.mayBeNull)   // count
                 ).setMayBeNull(aggregatedType.mayBeNull);
             default:
                 throw new TranslationException("Unexpected aggregate", node);
@@ -418,8 +421,8 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             case "sum_distinct":
                 String insertFunc = increment.getType().mayBeNull ? "insert_non_null" : "set_insert";
                 return new DDlogEApply(node, insertFunc, DDlogTTuple.emptyTupleType, variable, increment);
-            case "sum":
             case "avg":
+            case "sum":
                 IsNumericType num = incType.toNumeric();
                 aggregate += "_" + num.simpleName();
                 break;
@@ -455,8 +458,6 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                 return num.zero();
             }
             case "count":
-                if (dataType.mayBeNull)
-                    return new DDlogENull(f, DDlogTSigned.signed64.setMayBeNull(true));
                 return new DDlogESigned(f, 0);
             case "min":
             case "max": {
@@ -470,11 +471,10 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                 return new DDlogETuple(f, t, num.zero());
             }
             case "avg": {
-                IsNumericType num = dataType.toNumeric();
-                DDlogETuple zt = new DDlogETuple(f, num.zero(), num.zero());
-                if (dataType.mayBeNull)
-                    return zt.getType().getNone(f);
-                return zt;
+                IsNumericType num = dataType.toNumeric().aggregateType().toNumeric();
+                DDlogExpression result = new DDlogETuple(f, num.zero(), DDlogTSigned.signed64.zero());
+                DDlogType resultType = result.getType().setMayBeNull(dataType.mayBeNull);
+                return ExpressionTranslationVisitor.wrapSomeIfNeeded(result, resultType);
             }
             case "count_distinct":
             case "sum_distinct":
@@ -488,7 +488,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         }
     }
 
-    private DDlogExpression aggregateComplete(Node node, String aggregate, DDlogExpression value) {
+    private DDlogExpression aggregateComplete(Node node, String aggregate, DDlogExpression value, DDlogType resultType) {
         switch (aggregate) {
             case "avg": {
                 String suffix;
@@ -501,27 +501,29 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                     suffix = "R";
                 }
                 IsNumericType num = sumType.toNumeric();
-                return new DDlogEApply(node, "avg_" + num.simpleName() + "_" + suffix, sumType, value);
+                DDlogExpression compute = new DDlogEApply(node, "avg_" + num.simpleName() + "_" + suffix, sumType, value);
+                return DDlogEAs.cast(compute, resultType);
             }
             case "min":
             case "max":
                 return new DDlogETupField(node, value, 1);
             case "count_distinct": {
                 DDlogTUser set = value.getType().as(DDlogTUser.class, "expected a set");
-                return new DDlogEAs(node,
-                        new DDlogEApply(node, "set_size", set.getTypeArg(0), value),
-                        DDlogTSigned.signed64);
+                return DDlogEAs.cast(
+                        new DDlogEApply(node, "set_size", new DDlogTBit(node, 32, false), value),
+                        resultType);
             }
             case "sum_distinct": {
                 DDlogTUser set = value.getType().as(DDlogTUser.class, "expected a set");
                 DDlogType elemType = set.getTypeArg(0);
                 IsNumericType num = elemType.toNumeric();
-                return new DDlogEApply(node, "set_" + num.simpleName() + "_sum", elemType, value);
+                DDlogExpression compute = new DDlogEApply(node, "set_" + num.simpleName() + "_sum", elemType, value);
+                return DDlogEAs.cast(compute, resultType);
             }
             case "array_agg":
                 return DDlogTRef.ref_new(value);
             default:
-                return value;
+                return DDlogEAs.cast(value, resultType);
         }
     }
 
@@ -642,8 +644,9 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             String aggVarName = context.freshLocalName(aggregateFunction);
             DDlogExpression aggVarDef = new DDlogEVarDecl(f, aggVarName, intermediateType);
             // Replace all occurrences of f with varName when translating later.
-            context.addSubstitution(f, this.aggregateComplete(f,
-                    aggregateFunction, new DDlogEVar(f, aggVarName, intermediateType)));
+            DDlogExpression complete = this.aggregateComplete(f,
+                    aggregateFunction, new DDlogEVar(f, aggVarName, intermediateType), aggregatedType);
+            context.addSubstitution(f, complete);
             state.addFunctionStatement(new DDlogESet(f,
                     aggVarDef, this.aggregateInitializer(f, aggregateFunction, increment.getType()),
                     true));
@@ -985,7 +988,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                         new DDlogESet(spec, new DDlogEVarDecl(spec, aggVar, rhs.getType()),
                             new DDlogEApply(spec, "limit", rhs.getType(),
                                 new DDlogEVar(spec, groupVar, setType),
-                                new DDlogEInt(spec, intLimit))));
+                                new DDlogESigned(spec, intLimit))));
                 limited.addDefinition(new BodyTermFlatMap(spec, resultVar, new DDlogEVar(spec, aggVar, rhs.getType())));
                 selectTranslation = limited;
             }

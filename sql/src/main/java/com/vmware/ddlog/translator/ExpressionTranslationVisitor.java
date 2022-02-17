@@ -31,7 +31,6 @@ import com.vmware.ddlog.ir.*;
 import com.vmware.ddlog.translator.environment.IEnvironment;
 import com.vmware.ddlog.util.Linq;
 import com.vmware.ddlog.util.Utilities;
-import ddlogapi.DDlogException;
 
 import javax.annotation.Nullable;
 import java.math.BigInteger;
@@ -91,7 +90,9 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
     }
 
     public static DDlogExpression operationCall(Node node, DDlogEBinOp.BOp op, DDlogExpression left, DDlogExpression right) {
-        String function = SqlSemantics.semantics.getFunction(node, op, left.getType(), right.getType());
+        DDlogType ltype = left.getType();
+        DDlogType rtype = right.getType();
+        String function = SqlSemantics.semantics.getFunction(node, op, ltype, rtype);
         DDlogType type = DDlogType.reduceType(left.getType(), right.getType());
         DDlogType outputType = type;
         if (op.isComparison() || op.isBoolean()) {
@@ -170,10 +171,10 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
                 Function<DDlogExpression, DDlogExpression> wrapper = ex -> new DDlogEITE(node, ex, num.one(), num.zero());
                 return wrapInMatch(e, destType, wrapper);
             } else {
-                Function<DDlogExpression, DDlogExpression> wrapper = ex -> new DDlogEAs(node, ex, destType.setMayBeNull(false));
+                Function<DDlogExpression, DDlogExpression> wrapper = ex -> DDlogEAs.cast(ex, destType.setMayBeNull(false));
                 return wrapInMatch(e, destType, wrapper);
             }
-        } else if (destType.is(DDlogTSigned.class) || destType.is(DDlogTBit.class) || destType.is(DDlogTInt.class)) {
+        } else if (destType.is(DDlogTSigned.class) || destType.is(DDlogTBit.class) /* || destType.is(DDlogTInt.class) */) {
             IsNumericType num = destType.toNumeric();
             if (eType.is(DDlogTFloat.class) || eType.is(DDlogTDouble.class)) {
                 String suffix = eType.is(DDlogTFloat.class) ? "f" : "d";
@@ -182,15 +183,16 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
                             "int_from_" + suffix, DDlogTInt.instance.setMayBeNull(true), ex);
                     DDlogExpression unwrap = new DDlogEApply(node,
                             "option_unwrap_or_default", DDlogTInt.instance, convertToInt);
-                    return new DDlogEAs(node, unwrap, destType.setMayBeNull(false));
+                    return DDlogEAs.cast(unwrap, destType.setMayBeNull(false));
                 };
                 return wrapInMatch(e, destType, wrapper);
             } else if (eType.is(DDlogTString.class)) {
                 Function<DDlogExpression, DDlogExpression> wrapper = ex -> {
                     DDlogExpression parse = new DDlogEApply(node,
                             "parse_dec_i64", DDlogTSigned.signed64.setMayBeNull(true), ex);
-                    return new DDlogEApply(node,
-                            "option_unwrap_or_default", destType, parse);
+                    DDlogExpression unwrap = new DDlogEApply(node,
+                            "option_unwrap_or_default", parse.getType(), parse);
+                    return DDlogEAs.cast(unwrap, destType);
                 };
                 return wrapInMatch(e, destType, wrapper);
             } else if (eType.is(DDlogTIString.class)) {
@@ -211,11 +213,11 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
                     // Need to do two different casts
                     IBoundedNumericType intermediate = db.getWithWidth(eb.getWidth());
                     Function<DDlogExpression, DDlogExpression> wrapper = ex ->
-                        new DDlogEAs(node, new DDlogEAs(node,
-                            ex, intermediate.as(DDlogType.class, "Must be type")), destType.setMayBeNull(false));
+                        DDlogEAs.cast(DDlogEAs.cast(ex, intermediate.as(DDlogType.class, "Must be type")),
+                                destType.setMayBeNull(false));
                     return wrapInMatch(e, destType, wrapper);
                 }
-                Function<DDlogExpression, DDlogExpression> wrapper = ex -> new DDlogEAs(node, ex, destType);
+                Function<DDlogExpression, DDlogExpression> wrapper = ex -> DDlogEAs.cast(ex, destType);
                 return wrapInMatch(e, destType, wrapper);
             }
         } else if (destType.is(DDlogTUser.class)) {
@@ -223,8 +225,8 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
             Function<DDlogExpression, DDlogExpression> wrapper = ex -> {
                 DDlogType exType = ex.getType();
                 // At least in MySQL integers are converted to dates as if they were strings...
-                if (exType.is(DDlogTInt.class) || exType.is(DDlogTSigned.class) || exType.is(DDlogTBit.class)) {
-                    ex = new DDlogEIString(node, "${" + e.toString() + "}");
+                if (/* exType.is(DDlogTInt.class) || */exType.is(DDlogTSigned.class) || exType.is(DDlogTBit.class)) {
+                    ex = new DDlogEIString(node, "${" + e + "}");
                     exType = ex.getType();
                 }
                 if (exType.is(DDlogTIString.class)) {
@@ -514,7 +516,9 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
                 return args.get(0).getType();
             case "count":
             case "count_distinct":
+                return DDlogTSigned.signed64;
             case "array_length":
+                // To be kept in sync with sql.dl:sql_array_length
                 if (args.size() == 0)
                     return DDlogTSigned.signed64;
                 return DDlogTSigned.signed64.setMayBeNull(args.get(0).getType().mayBeNull);
@@ -694,7 +698,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
 
     @Override
     protected DDlogExpression visitDecimalLiteral(DecimalLiteral node, TranslationContext context) {
-        return new DDlogEInt(node, new BigInteger(node.getValue(), 10));
+        return new DDlogESigned(node, 64, new BigInteger(node.getValue(), 10));
     }
 
     @Override

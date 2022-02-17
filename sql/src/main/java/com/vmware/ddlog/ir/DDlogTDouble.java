@@ -65,4 +65,9 @@ public class DDlogTDouble extends DDlogType implements IsNumericType, IDDlogBase
     public String simpleName() {
         return "double";
     }
+
+    @Override
+    public DDlogType aggregateType() {
+        return this;
+    }
 }

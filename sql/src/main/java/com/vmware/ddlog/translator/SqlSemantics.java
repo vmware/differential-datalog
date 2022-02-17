@@ -91,12 +91,20 @@ public class SqlSemantics {
         DDlogType type = null;
         if (sqltype.equals("boolean")) {
             type = DDlogTBool.instance;
+        }
+        /* TODO: optimize integer types space usage
+        else if (sqltype.equals("smallint")) {
+            type = DDlogTSigned.signed16;
         } else if (sqltype.equals("integer") || sqltype.equals("int")) {
+            type = DDlogTSigned.signed32;
+        } else if (sqltype.equals("bigint")) {
+            type = DDlogTSigned.signed64;
+        }          */
+        else if (sqltype.equals("smallint") || sqltype.equals("integer") ||
+                sqltype.equals("int") || sqltype.equals("bigint")) {
             type = DDlogTSigned.signed64;
         } else if (sqltype.startsWith("varchar")) {
             type = DDlogTIString.instance;
-        } else if (sqltype.equals("bigint")) {
-            type = DDlogTInt.instance;
         } else if (sqltype.equals("real")) {
             type = DDlogTDouble.instance;
         } else if (sqltype.equals("float")) {
@@ -129,88 +137,99 @@ public class SqlSemantics {
      * Generates a library with many functions that operate on Option values.
      */
     public DDlogProgram generateLibrary() {
+        DDlogType[] numericTypes = new DDlogType[] {
+                DDlogTSigned.signed16, DDlogTSigned.signed32, DDlogTSigned.signed64
+        };
+        DDlogType[] boolTypes = new DDlogType[] {
+                DDlogTBool.instance
+        };
+        DDlogType[] stringTypes = new DDlogType[] {
+                DDlogTIString.instance
+        };
         DDlogProgram result = new DDlogProgram();
         for (HashMap<String, DDlogEBinOp.BOp> h: Arrays.asList(
                 this.arithmeticFunctions, this.booleanFunctions, this.stringFunctions)) {
             for (String f : h.keySet()) {
                 DDlogEBinOp.BOp op = h.get(f);
                 for (int i = 0; i < 4; i++) {
-                    String function = f + "_";
                     DDlogType leftType;
                     DDlogType rightType;
-                    DDlogType raw;
+                    DDlogType[] raw;
                     DDlogType withNull;
                     if (h.equals(this.stringFunctions)) {
-                        raw = DDlogTIString.instance;
+                        raw = stringTypes;
                     } else if (op.isBoolean()) {
-                        raw = DDlogTBool.instance;
+                        raw = boolTypes;
                     } else {
-                        raw = new DDlogTSigned(null,64, false);
+                        raw = numericTypes;
                     }
-                    withNull = raw.setMayBeNull(true);
-                    DDlogExpression leftMatch = new DDlogEVarDecl(null,"l", raw);
-                    DDlogExpression rightMatch = new DDlogEVarDecl(null,"r", raw);
-                    if ((i & 1) == 1) {
-                        function += "N";
-                        leftType = withNull;
-                        leftMatch = ExpressionTranslationVisitor.wrapSome(leftMatch, leftType);
-                    } else {
-                        function += "R";
-                        leftType = raw;
-                    }
-                    if ((i & 2) == 2) {
-                        function += "N";
-                        rightType = withNull;
-                        rightMatch = ExpressionTranslationVisitor.wrapSome(rightMatch, rightType);
-                    } else {
-                        function += "R";
-                        rightType = raw;
-                    }
-                    /*
-                    function add(left: Option<bigint>, right: Option<bigint>): Option<bigint> =
-                    match ((left, right)) {
-                        (Some{a}, Some{b}) -> Some{a + b},
-                        (_, _)             -> None
-                    }
-                    */
-                    DDlogFuncArg left = new DDlogFuncArg(null,"left", false, leftType);
-                    DDlogFuncArg right = new DDlogFuncArg(null,"right", false, rightType);
-                    DDlogType type = DDlogType.reduceType(leftType, rightType);
-                    if (op.isComparison()) {
-                        type = DDlogTBool.instance.setMayBeNull(type.mayBeNull);
-                    }
-                    DDlogExpression def;
-                    if (i == 0) {
-                        def = new DDlogEBinOp(null, op,
-                                new DDlogEVar(null,"left", raw), new DDlogEVar(null,"right", raw));
-                        if (type.is(DDlogTIString.class)) {
-                            def = new DDlogEApply(def.getNode(), "intern", DDlogTIString.instance, true, def);
+                    for (DDlogType r: raw) {
+                        String function = f + "_";
+                        withNull = r.setMayBeNull(true);
+                        DDlogExpression leftMatch = new DDlogEVarDecl(null, "l", r);
+                        DDlogExpression rightMatch = new DDlogEVarDecl(null, "r", r);
+                        if ((i & 1) == 1) {
+                            function += "N";
+                            leftType = withNull;
+                            leftMatch = ExpressionTranslationVisitor.wrapSome(leftMatch, leftType);
+                        } else {
+                            function += "R";
+                            leftType = r;
                         }
-                    } else {
-                        def = new DDlogEBinOp(null, op,
-                                new DDlogEVar(null, "l", raw), new DDlogEVar(null, "r", raw));
-                        if (type.is(DDlogTIString.class)) {
-                            def = new DDlogEApply(def.getNode(), "intern", DDlogTIString.instance, true, def);
+                        if ((i & 2) == 2) {
+                            function += "N";
+                            rightType = withNull;
+                            rightMatch = ExpressionTranslationVisitor.wrapSome(rightMatch, rightType);
+                        } else {
+                            function += "R";
+                            rightType = r;
                         }
-                        def = new DDlogEMatch(null,
-                                new DDlogETuple(null,
-                                        new DDlogEVar(null,"left", leftType),
-                                        new DDlogEVar(null,"right", rightType)),
-                                Arrays.asList(
-                                        new DDlogEMatch.Case(null,
-                                                new DDlogETuple(null, leftMatch, rightMatch),
-                                                ExpressionTranslationVisitor.wrapSome(
-                                                    def, type)),
-                                        new DDlogEMatch.Case(null,
-                                                new DDlogETuple(null,
-                                                        new DDlogEPHolder(null),
-                                                        new DDlogEPHolder(null)),
-                                                new DDlogENull(null, type)))
-                        );
-                    }
+                        /*
+                        function add(left: Option<bigint>, right: Option<bigint>): Option<bigint> =
+                        match ((left, right)) {
+                            (Some{a}, Some{b}) -> Some{a + b},
+                            (_, _)             -> None
+                        }
+                        */
 
-                    DDlogFunction func = new DDlogFunction(null, function, type, def, left, right);
-                    result.functions.add(func);
+                        DDlogFuncArg left = new DDlogFuncArg(null, "left", false, leftType);
+                        DDlogFuncArg right = new DDlogFuncArg(null, "right", false, rightType);
+                        DDlogType type = DDlogType.reduceType(leftType, rightType);
+                        if (op.isComparison()) {
+                            type = DDlogTBool.instance.setMayBeNull(type.mayBeNull);
+                        }
+                        DDlogExpression def;
+                        if (i == 0) {
+                            def = new DDlogEBinOp(null, op,
+                                    new DDlogEVar(null, "left", r), new DDlogEVar(null, "right", r));
+                            if (type.is(DDlogTIString.class)) {
+                                def = new DDlogEApply(def.getNode(), "intern", DDlogTIString.instance, true, def);
+                            }
+                        } else {
+                            def = new DDlogEBinOp(null, op,
+                                    new DDlogEVar(null, "l", r),
+                                    new DDlogEVar(null, "r", r));
+                            if (type.is(DDlogTIString.class)) {
+                                def = new DDlogEApply(def.getNode(), "intern", DDlogTIString.instance, true, def);
+                            }
+                            def = new DDlogEMatch(null,
+                                    new DDlogETuple(null,
+                                            new DDlogEVar(null, "left", leftType),
+                                            new DDlogEVar(null, "right", rightType)),
+                                    Arrays.asList(
+                                            new DDlogEMatch.Case(null,
+                                                    new DDlogETuple(null, leftMatch, rightMatch),
+                                                    ExpressionTranslationVisitor.wrapSome(def, type)),
+                                            new DDlogEMatch.Case(null,
+                                                    new DDlogETuple(null,
+                                                            new DDlogEPHolder(null),
+                                                            new DDlogEPHolder(null)),
+                                                    new DDlogENull(null, type)))
+                            );
+                        }
+                        DDlogFunction func = new DDlogFunction(null, function, type, def, left, right);
+                        result.functions.add(func);
+                    }
                 }
             }
         }
@@ -221,7 +240,7 @@ public class SqlSemantics {
         HashMap<String, DDlogEBinOp.BOp> map;
         if (ltype.as(DDlogTBool.class) != null) {
             map = this.booleanFunctions;
-        } else if (ltype.as(DDlogTInt.class) != null ||
+        } else if (// ltype.as(DDlogTInt.class) != null ||
                 ltype.as(DDlogTBit.class) != null ||
                 ltype.as(DDlogTSigned.class) != null) {
             map = this.arithmeticFunctions;
@@ -236,6 +255,6 @@ public class SqlSemantics {
                 return k + "_" + suffixl + suffixr;
             }
         }
-        throw new TranslationException("Could not find `" + op + "` for type " + ltype.toString(), node);
+        throw new TranslationException("Could not find `" + op + "` for type " + ltype, node);
     }
 }
