@@ -488,6 +488,27 @@ public class AggregatesTest extends BaseQueriesTest {
     }
 
     @Test
+    public void setAggTest() {
+        String query = "create view v1 as select set_agg(column2) from t1";
+        String program = this.header(false) +
+                "typedef TRtmp = TRtmp{col0:Ref<Set<istring>>}\n" +
+                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
+                "var set_agg = set_empty(): Set<istring>;\n" +
+                "(for ((i, _) in g) {\n" +
+                "var v = i;\n" +
+                "(var incr = v.column2);\n" +
+                "(insert(set_agg, incr))}\n" +
+                ");\n" +
+                "(TRtmp{.col0 = set_agg.ref_new()})\n" +
+                "}\n" +
+                this.relations(false) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv1[TRtmp]\n" +
+                "Rv1[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
     public void arrayAggTest() {
         String query = "create view v1 as select array_agg(column2) from t1";
         String program = this.header(false) +

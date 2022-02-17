@@ -54,6 +54,7 @@ public class SqlSemantics {
         this.aggregateFunctions.add("any");
         this.aggregateFunctions.add("every");
         this.aggregateFunctions.add("array_agg");
+        this.aggregateFunctions.add("set_agg");
 
         this.arithmeticFunctions.put("a_eq", DDlogEBinOp.BOp.Eq);
         this.arithmeticFunctions.put("a_neq", DDlogEBinOp.BOp.Neq);
