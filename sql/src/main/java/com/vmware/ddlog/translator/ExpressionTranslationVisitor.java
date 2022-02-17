@@ -537,6 +537,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
                 DDlogExpression arg = args.get(0);
                 return new DDlogTRef(node, new DDlogTSet(node, arg.getType(), false), false);
             }
+            case "set_contains":
             case "array_contains":
                 return DDlogTBool.instance;
             default:
@@ -581,12 +582,17 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
         List<DDlogExpression> args = Linq.map(arguments, a -> this.process(a, context));
         DDlogType type = functionResultType(node, name, args);
         String useName = "sql_" + name;
-        if (name.equalsIgnoreCase("array_contains")) {
+        if (name.equalsIgnoreCase("array_contains") ||
+                name.equalsIgnoreCase("set_contains")) {
             if (args.size() != 2)
-                throw new TranslationException("Expected 2 arguments for 'array_contains', got " + args.size(), node);
+                throw new TranslationException("Expected 2 arguments for '" + name + "', got " + args.size(), node);
             DDlogExpression array = args.get(0);
             DDlogExpression element = args.get(1);
-            DDlogType arrayElemType = array.getType().to(DDlogTRef.class).elemType.to(DDlogTArray.class).elemType;
+            DDlogType arrayElemType = array.getType()
+                    .to(DDlogTRef.class)
+                    .getElementType()
+                    .to(DDlogTContainer.class)
+                    .getElementType();
             DDlogType elemType = element.getType();
             if (elemType.mayBeNull) {
                 if (!arrayElemType.mayBeNull)

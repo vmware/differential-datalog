@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 VMware, Inc.
+ * Copyright (c) 2022 VMware, Inc.
  * SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,45 +24,9 @@
 
 package com.vmware.ddlog.ir;
 
-import com.facebook.presto.sql.tree.Node;
-
-import javax.annotation.Nullable;
-
 /**
- * Wrapper class for a DDlog vector type.
+ * Interface implemented by container types: e.g., DDlogTArray.
  */
-public class DDlogTArray extends DDlogType implements DDlogTContainer {
-    private final DDlogType elemType;
-
-    public DDlogTArray(@Nullable Node node, DDlogType elemType, boolean mayBeNull) {
-        super(node, mayBeNull);
-        this.elemType = elemType;
-    }
-
-    @Override
-    public String toString() {
-        return this.wrapOption("Vec<" + this.elemType + ">");
-    }
-
-    @Override
-    public DDlogType setMayBeNull(boolean mayBeNull) {
-        if (this.mayBeNull == mayBeNull)
-            return this;
-        return new DDlogTArray(this.getNode(), this.elemType, mayBeNull);
-    }
-
-    @Override
-    public boolean same(DDlogType other) {
-        if (!super.same(other))
-            return false;
-        DDlogTArray oa = other.as(DDlogTArray.class);
-        if (oa == null)
-            return false;
-        return this.elemType.same(oa.elemType);
-    }
-
-    @Override
-    public DDlogType getElementType() {
-        return this.elemType;
-    }
+public interface DDlogTContainer extends DDlogIRNode {
+    DDlogType getElementType();
 }

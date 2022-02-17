@@ -386,7 +386,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                 return aggregatedType.toNumeric().aggregateType();
             case "array_agg":
             case "set_agg":
-                return aggregatedType.to(DDlogTRef.class).elemType;
+                return aggregatedType.to(DDlogTRef.class).getElementType();
             case "min":
             case "max":
                 return new DDlogTTuple(node,
