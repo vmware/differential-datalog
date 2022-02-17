@@ -60,6 +60,14 @@ public class JooqProviderPrestoTest extends JooqProviderTestBase {
                 "create view check_contains_non_option as select distinct col3 " +
                 "from check_array_type_string " +
                 "where array_contains(agg, 'n10')";
+
+        String checkSetTypeOverStringSetAgg = "create view check_set_type_string as select distinct col3, " +
+                "SET_AGG(id) over (partition by col3) as agg " +
+                "from base_array_table";
+        String checkSetContainsStringForNonOptionValue =
+                "create view check_contains_non_option as select distinct col3 " +
+                        "from check_set_type_string " +
+                        "where set_contains(agg, 'n10')";
         String bigIntTable = "create table big_int_table (id bigint)";
 
         String bigIntTableView = generateCreateViewStatement("big_int_table");
@@ -80,6 +88,9 @@ public class JooqProviderPrestoTest extends JooqProviderTestBase {
         ddl.add(checkArrayTypeOverIntegerArrayAgg);
         ddl.add(checkArrayTypeOverStringArrayAgg);
         ddl.add(checkArrayContainsStringForNonOptionValue);
+        // TODO: Jooq does not support these statements
+        //ddl.add(checkSetTypeOverStringSetAgg);
+        //ddl.add(checkSetContainsStringForNonOptionValue);
         ddl.add(hostIdentityView);
         ddl.add(notNullIdentityView);
         ddl.add(bigIntTable);

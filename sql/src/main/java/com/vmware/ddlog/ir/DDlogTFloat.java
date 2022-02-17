@@ -64,4 +64,9 @@ public class DDlogTFloat extends DDlogType implements IsNumericType, IDDlogBaseT
     public String simpleName() {
         return "float";
     }
+
+    @Override
+    public DDlogType aggregateType() {
+        return this;
+    }
 }

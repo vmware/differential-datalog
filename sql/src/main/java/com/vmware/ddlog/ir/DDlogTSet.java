@@ -28,46 +28,41 @@ import com.facebook.presto.sql.tree.Node;
 
 import javax.annotation.Nullable;
 
-public class DDlogTDouble extends DDlogType implements IsNumericType, IDDlogBaseType {
-    private DDlogTDouble(@Nullable Node node, boolean mayBeNull) { super(node, mayBeNull); }
+/**
+ * Wrapper class for a DDlog set type.
+ */
+public class DDlogTSet extends DDlogType implements DDlogTContainer {
+    private final DDlogType elemType;
+
+    public DDlogTSet(@Nullable Node node, DDlogType elemType, boolean mayBeNull) {
+        super(node, mayBeNull);
+        this.elemType = elemType;
+    }
 
     @Override
-    public String toString() { return this.wrapOption("double"); }
+    public String toString() {
+        return this.wrapOption("Set<" + this.elemType + ">");
+    }
 
     @Override
     public DDlogType setMayBeNull(boolean mayBeNull) {
         if (this.mayBeNull == mayBeNull)
             return this;
-        return new DDlogTDouble(this.getNode(), mayBeNull);
+        return new DDlogTSet(this.getNode(), this.elemType, mayBeNull);
     }
 
-
-    public static DDlogTDouble instance = new DDlogTDouble(null,false);
-
     @Override
-    public boolean same(DDlogType type) {
-        if (!super.same(type))
+    public boolean same(DDlogType other) {
+        if (!super.same(other))
             return false;
-        return type.is(DDlogTDouble.class);
+        DDlogTSet oa = other.as(DDlogTSet.class);
+        if (oa == null)
+            return false;
+        return this.elemType.same(oa.elemType);
     }
 
     @Override
-    public DDlogExpression zero() {
-        return new DDlogEDouble(this.getNode(),0);
-    }
-
-    @Override
-    public DDlogExpression one() {
-        return new DDlogEDouble(this.getNode(), 1);
-    }
-
-    @Override
-    public String simpleName() {
-        return "double";
-    }
-
-    @Override
-    public DDlogType aggregateType() {
-        return this;
+    public DDlogType getElementType() {
+        return this.elemType;
     }
 }

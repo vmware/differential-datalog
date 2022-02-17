@@ -224,7 +224,7 @@ public class SimpleQueriesTest extends BaseQueriesTest {
                 "relation Rlimit[TRt1]\n" +
                 "output relation Rv0[TRt1]\n" +
                 "Rlimit[v0] :- Rt1[v],var v0 = v.\n" +
-                "Rv0[v1] :- Rlimit[v0],var g = v0.group_by(()),var agg = limit(g, 10),var limited = FlatMap(agg),var v1 = limited.";
+                "Rv0[v1] :- Rlimit[v0],var g = v0.group_by(()),var agg = limit(g, 64'sd10),var limited = FlatMap(agg),var v1 = limited.";
         this.testTranslation(query, program);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 VMware, Inc.
+ * Copyright (c) 2022 VMware, Inc.
  * SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,33 +24,9 @@
 
 package com.vmware.ddlog.ir;
 
-import com.facebook.presto.sql.tree.Node;
-
-import javax.annotation.Nullable;
-import java.math.BigInteger;
-
 /**
- * An expression that has a DDlogTInt value.
+ * Interface implemented by container types: e.g., DDlogTArray.
  */
-class DDlogEInt extends DDlogExpression {
-    private final BigInteger ival;
-
-    public DDlogEInt(@Nullable Node node, BigInteger ival) {
-        super(node, DDlogTInt.instance);
-        this.ival = ival;
-    }
-
-    public DDlogEInt(@Nullable Node node, int v) {
-        this(node, BigInteger.valueOf(v));
-    }
-
-    public DDlogEInt(@Nullable Node node, long v) {
-        this(node, BigInteger.valueOf(v));
-    }
-
-    @Override
-    public String toString() {
-        return this.ival.toString();
-    }
-
+public interface DDlogTContainer extends DDlogIRNode {
+    DDlogType getElementType();
 }

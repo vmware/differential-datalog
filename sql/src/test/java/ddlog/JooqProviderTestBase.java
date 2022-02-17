@@ -614,6 +614,31 @@ public abstract class JooqProviderTestBase {
         assertEquals(3, (int) arrayContainsResult.get(0).get(0, Integer.class));
     }
 
+    // @Test
+    // TODO: this test does not run since the Jooq compiler does
+    // not understand set_agg
+    public void testSetAggAndContainsTypes() {
+        skipIfTestBase();
+        assert(create != null);
+        create.batch("insert into base_array_table values ('n54', 18, 18)",
+                "insert into base_array_table values ('n9', 1, 3)",
+                "insert into base_array_table values ('n10', 2, 3)",
+                "insert into base_array_table values ('n11', 3, 3)"
+        ).execute();
+        final Result<Record> aggResults = create.fetch("select * from check_set_type_string");
+        final Field<Integer> field1 = field("col3", Integer.class);
+        final Field<Object> field2 = field("agg", Object.class);
+        final Record arrayAgg1 = create.newRecord(field1, field2);
+        arrayAgg1.setValue(field1, 3);
+        arrayAgg1.setValue(field2, new String[] {"n10", "n9", "n11"});
+        assertEquals(2, aggResults.size());
+        assertTrue(aggResults.contains(arrayAgg1));
+
+        // the view does array_contains(array_col, 'n10')
+        final Result<Record> arrayContainsResult = create.fetch("select * from check_contains_non_option");
+        assertEquals(3, (int) arrayContainsResult.get(0).get(0, Integer.class));
+    }
+
     @Test
     public void testArrayColumnInsertion() {
         skipIfTestBase();

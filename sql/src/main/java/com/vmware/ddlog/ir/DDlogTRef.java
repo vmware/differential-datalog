@@ -32,8 +32,8 @@ import javax.annotation.Nullable;
 /**
  * Reference type.
  */
-public class DDlogTRef extends DDlogType {
-    public final DDlogType elemType;
+public class DDlogTRef extends DDlogType implements DDlogTContainer {
+    private final DDlogType elemType;
 
     public DDlogTRef(@Nullable Node node, DDlogType elemType, boolean mayBeNull) {
         super(node, mayBeNull);
@@ -78,5 +78,10 @@ public class DDlogTRef extends DDlogType {
     public static DDlogExpression ref_new(DDlogExpression expression) {
         return new DDlogEApply(expression.node, "ref_new",
                 new DDlogTRef(expression.getNode(), expression.getType(), false), true, expression);
+    }
+
+    @Override
+    public DDlogType getElementType() {
+        return this.elemType;
     }
 }

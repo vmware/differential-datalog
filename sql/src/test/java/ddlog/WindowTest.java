@@ -74,7 +74,7 @@ public class WindowTest extends BaseQueriesTest {
                 "typedef TRtmp0 = TRtmp0{new_column:signed<64>, problem:Option<signed<64>>}\n" +
                 "function agg(g: Group<signed<64>, TRalias2>):Tagg {\n" +
                 "(var gb0) = group_key(g);\n" +
-                "(var avg0 = None{}: Option<(signed<64>, signed<64>)>);\n" +
+                "(var avg0 = Some{.x = (64'sd0, 64'sd0)}: Option<(signed<64>, signed<64>)>);\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v7 = i;\n" +
                 "(var incr = v7.tmp);\n" +

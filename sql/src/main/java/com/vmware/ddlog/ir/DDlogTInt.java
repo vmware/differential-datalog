@@ -28,6 +28,11 @@ import com.facebook.presto.sql.tree.Node;
 
 import javax.annotation.Nullable;
 
+/**
+ * Represents unbounded integers.
+ * We don't really want to use this class in the SQL compiler,
+ * but it is used when converting floating point values to integers.
+ */
 public class DDlogTInt extends DDlogType implements IsNumericType, IDDlogBaseType {
     private DDlogTInt(@Nullable Node node, boolean mayBeNull) { super(node, mayBeNull); }
 
@@ -63,5 +68,10 @@ public class DDlogTInt extends DDlogType implements IsNumericType, IDDlogBaseTyp
     @Override
     public String simpleName() {
         return "int";
+    }
+
+    @Override
+    public DDlogType aggregateType() {
+        return this;
     }
 }

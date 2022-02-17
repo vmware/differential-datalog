@@ -350,9 +350,9 @@ public class AggregatesTest extends BaseQueriesTest {
     public void testCountColumnWNull() {
         String query = "create view v0 as SELECT COUNT(column1) AS ct FROM t1";
         String program = this.header(true) +
-                "typedef TRtmp = TRtmp{ct:Option<signed<64>>}\n" +
+                "typedef TRtmp = TRtmp{ct:signed<64>}\n" +
                 "function agg(g: Group<(), TRt1>):TRtmp {\n" +
-                "var count = None{}: Option<signed<64>>;\n" +
+                "var count = 64'sd0: signed<64>;\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column1);\n" +
@@ -392,7 +392,7 @@ public class AggregatesTest extends BaseQueriesTest {
         String program = this.header(false) +
                 "typedef TRtmp = TRtmp{avg:double}\n" +
                 "function agg(g: Group<(), TRt1>):TRtmp {\n" +
-                "var avg = (64'f0.0, 64'f0.0): (double, double);\n" +
+                "var avg = (64'f0.0, 64'sd0): (double, signed<64>);\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column4);\n" +
@@ -412,7 +412,7 @@ public class AggregatesTest extends BaseQueriesTest {
         String program = this.header(true) +
                 "typedef TRtmp = TRtmp{avg:Option<signed<64>>}\n" +
                 "function agg(g: Group<(), TRt1>):TRtmp {\n" +
-                "var avg = None{}: Option<(signed<64>, signed<64>)>;\n" +
+                "var avg = Some{.x = (64'sd0, 64'sd0)}: Option<(signed<64>, signed<64>)>;\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v = i;\n" +
                 "(var incr = v.column1);\n" +
@@ -484,6 +484,27 @@ public class AggregatesTest extends BaseQueriesTest {
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
+        this.testTranslation(query, program);
+    }
+
+    @Test
+    public void setAggTest() {
+        String query = "create view v1 as select set_agg(column2) from t1";
+        String program = this.header(false) +
+                "typedef TRtmp = TRtmp{col0:Ref<Set<istring>>}\n" +
+                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
+                "var set_agg = set_empty(): Set<istring>;\n" +
+                "(for ((i, _) in g) {\n" +
+                "var v = i;\n" +
+                "(var incr = v.column2);\n" +
+                "(insert(set_agg, incr))}\n" +
+                ");\n" +
+                "(TRtmp{.col0 = set_agg.ref_new()})\n" +
+                "}\n" +
+                this.relations(false) +
+                "relation Rtmp[TRtmp]\n" +
+                "output relation Rv1[TRtmp]\n" +
+                "Rv1[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program);
     }
 

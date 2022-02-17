@@ -33,6 +33,7 @@ import java.util.Objects;
 public class DDlogTSigned extends DDlogType
         implements IsNumericType, IBoundedNumericType, IDDlogBaseType {
     private final int width;
+    public static final DDlogTSigned signed16 = new DDlogTSigned(null, 16, false);
     public static final DDlogTSigned signed32 = new DDlogTSigned(null, 32, false);
     public static final DDlogTSigned signed64 = new DDlogTSigned(null, 64, false);
 
@@ -67,6 +68,11 @@ public class DDlogTSigned extends DDlogType
     @Override
     public String simpleName() {
         return "signed";
+    }
+
+    @Override
+    public DDlogType aggregateType() {
+        return DDlogTSigned.signed64.setMayBeNull(this.mayBeNull);
     }
 
     @Override
