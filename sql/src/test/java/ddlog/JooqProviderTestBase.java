@@ -323,6 +323,25 @@ public abstract class JooqProviderTestBase {
         assertFalse(goodHostsResultsAfterDelete.contains(test3));
     }
 
+    @Test
+    public void testJoin() {
+        create.insertInto(table("hosts"))
+                .values("n1", 10, true)
+                .execute();
+        create.batch(create.insertInto(table("hosts")).values("n54", 18, false),
+                        create.insertInto(table("hosts")).values("n9", 2, true))
+                .execute();
+
+        // Make sure selects read out the same content inserted above
+        final Result<Record> joined = create.selectFrom(table("jv")).fetch();
+        assertEquals(3, joined.size());
+        final Record wNulls = create.newRecord(field1, field2, field3);
+        wNulls.setValue(field1, "n54");
+        wNulls.setValue(field2, 18);
+        wNulls.setValue(field3, null);
+        assertTrue(joined.contains(wNulls));
+    }
+
     /*
      * Test batches with a mix of plain insert and delete statements
      */

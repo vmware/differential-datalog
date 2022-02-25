@@ -36,8 +36,9 @@ public class JoinTest extends BaseQueriesTest {
     public void testCountJoin() {
         String query = "create view v0 as SELECT COUNT(t1.column2) as ct FROM t1 JOIN t2 ON t1.column1 = t2.column1";
         String program = this.header(false) +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:istring, column3:bool, column4:double, column10:signed<64>}\n" +
                 "typedef TRtmp = TRtmp{ct:signed<64>}\n" +
-                "function agg(g: Group<(), TRt1>):TRtmp {\n" +
+                "function agg(g: Group<(), Ttmp>):TRtmp {\n" +
                 "var count = 64'sd0: signed<64>;\n" +
                 "(for ((i, _) in g) {\n" +
                 "var v1 = i;\n" +
@@ -48,7 +49,7 @@ public class JoinTest extends BaseQueriesTest {
                 this.relations(false) +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v3] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt2[TRt2{.column1 = column1}],var v1 = TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4},var groupResult = (v1).group_by(()),var aggResult = agg(groupResult),var v2 = aggResult,var v3 = v2.";
+                "Rv0[v3] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt2[TRt2{.column1 = column1}],var v1 = Ttmp{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4,.column10 = column1},var groupResult = (v1).group_by(()),var aggResult = agg(groupResult),var v2 = aggResult,var v3 = v2.";
         this.testTranslation(query, program);
     }
 
@@ -67,9 +68,10 @@ public class JoinTest extends BaseQueriesTest {
     public void testJoinStar() {
         String query = "create view v0 as SELECT DISTINCT * FROM t1 JOIN t2 ON t1.column1 = t2.column1";
         String program = this.header(false) +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:istring, column3:bool, column4:double, column10:signed<64>}\n" +
                 this.relations(false) +
-                "output relation Rv0[TRt1]\n" +
-                "Rv0[v2] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt2[TRt2{.column1 = column1}],var v1 = TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4},var v2 = v1.";
+                "output relation Rv0[Ttmp]\n" +
+                "Rv0[v2] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt2[TRt2{.column1 = column1}],var v1 = Ttmp{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4,.column10 = column1},var v2 = v1.";
         this.testTranslation(query, program);
     }
 
@@ -89,9 +91,10 @@ public class JoinTest extends BaseQueriesTest {
     public void testJoinStarWNull() {
         String query = "create view v0 as SELECT DISTINCT * FROM t1 JOIN t2 ON t1.column1 = t2.column1";
         String program = this.header(true) +
+                "typedef Ttmp = Ttmp{column1:Option<signed<64>>, column2:Option<istring>, column3:Option<bool>, column4:Option<double>, column10:Option<signed<64>>}\n" +
                 this.relations(true) +
-                "output relation Rv0[TRt1]\n" +
-                "Rv0[v2] :- Rt1[TRt1{.column1 = Some{.x = column1},.column2 = column2,.column3 = column3,.column4 = column4}],Rt2[TRt2{.column1 = Some{.x = column1}}],var v1 = TRt1{.column1 = Some{.x = column1},.column2 = column2,.column3 = column3,.column4 = column4},var v2 = v1.";
+                "output relation Rv0[Ttmp]\n" +
+                "Rv0[v2] :- Rt1[TRt1{.column1 = Some{.x = column1},.column2 = column2,.column3 = column3,.column4 = column4}],Rt2[TRt2{.column1 = Some{.x = column1}}],var v1 = Ttmp{.column1 = Some{.x = column1},.column2 = column2,.column3 = column3,.column4 = column4,.column10 = Some{.x = column1}},var v2 = v1.";
         this.testTranslation(query, program, true);
     }
 
@@ -99,11 +102,11 @@ public class JoinTest extends BaseQueriesTest {
     public void testSelfJoin() {
         String query = "create view v0 as SELECT DISTINCT t1.column2, x.column3 FROM t1 JOIN (t1 AS x) ON t1.column1 = x.column1";
         String program = this.header(false) +
-                "typedef Ttmp = Ttmp{column1:signed<64>, column2:istring, column3:bool, column4:double, column20:istring, column30:bool, column40:double}\n" +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:istring, column3:bool, column4:double, column10:signed<64>, column20:istring, column30:bool, column40:double}\n" +
                 "typedef TRx = TRx{column2:istring, column3:bool}\n" +
                 this.relations(false) +
                 "output relation Rv0[TRx]\n" +
-                "Rv0[v3] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt1[TRt1{.column1 = column1,.column2 = column20,.column3 = column30,.column4 = column40}],var v1 = Ttmp{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4,.column20 = column20,.column30 = column30,.column40 = column40},var v2 = TRx{.column2 = v1.column2,.column3 = v1.column30},var v3 = v2.";
+                "Rv0[v3] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt1[TRt1{.column1 = column1,.column2 = column20,.column3 = column30,.column4 = column40}],var v1 = Ttmp{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4,.column10 = column1,.column20 = column20,.column30 = column30,.column40 = column40},var v2 = TRx{.column2 = v1.column2,.column3 = v1.column30},var v3 = v2.";
                 this.testTranslation(query, program, false);
     }
 
@@ -111,9 +114,10 @@ public class JoinTest extends BaseQueriesTest {
     public void testNaturalJoin() {
         String query = "create view v0 as SELECT DISTINCT * FROM t1 NATURAL JOIN t2";
         String program = this.header(false) +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:istring, column3:bool, column4:double, column10:signed<64>}\n" +
                 this.relations(false) +
-                "output relation Rv0[TRt1]\n" +
-                "Rv0[v2] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt2[TRt2{.column1 = column1}],var v1 = TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4},var v2 = v1.";
+                "output relation Rv0[Ttmp]\n" +
+                "Rv0[v2] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt2[TRt2{.column1 = column1}],var v1 = Ttmp{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4,.column10 = column1},var v2 = v1.";
         this.testTranslation(query, program);
     }
 
@@ -121,9 +125,10 @@ public class JoinTest extends BaseQueriesTest {
     public void testNaturalJoinWhere() {
         String query = "create view v0 as SELECT DISTINCT * FROM t1 NATURAL JOIN t2 WHERE column3";
         String program = this.header(false) +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:istring, column3:bool, column4:double, column10:signed<64>}\n" +
                 this.relations(false) +
-                "output relation Rv0[TRt1]\n" +
-                "Rv0[v2] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt2[TRt2{.column1 = column1}],var v1 = TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4},v1.column3,var v2 = v1.";
+                "output relation Rv0[Ttmp]\n" +
+                "Rv0[v2] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt2[TRt2{.column1 = column1}],var v1 = Ttmp{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4,.column10 = column1},v1.column3,var v2 = v1.";
         this.testTranslation(query, program);
     }
 
@@ -131,11 +136,11 @@ public class JoinTest extends BaseQueriesTest {
     public void testJoin() {
         String query = "create view v0 as SELECT DISTINCT t0.column1, t1.column3 FROM t1 AS t0 JOIN t1 ON t1.column2 = t0.column2";
         String program = this.header(false) +
-                "typedef Ttmp = Ttmp{column1:signed<64>, column2:istring, column3:bool, column4:double, column10:signed<64>, column30:bool, column40:double}\n" +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:istring, column3:bool, column4:double, column10:signed<64>, column20:istring, column30:bool, column40:double}\n" +
                 "typedef TRt0 = TRt0{column1:signed<64>, column3:bool}\n" +
                 this.relations(false) +
                 "output relation Rv0[TRt0]\n" +
-                "Rv0[v3] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt1[TRt1{.column1 = column10,.column2 = column2,.column3 = column30,.column4 = column40}],var v1 = Ttmp{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4,.column10 = column10,.column30 = column30,.column40 = column40},var v2 = TRt0{.column1 = v1.column1,.column3 = v1.column30},var v3 = v2.";
+                "Rv0[v3] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt1[TRt1{.column1 = column10,.column2 = column2,.column3 = column30,.column4 = column40}],var v1 = Ttmp{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4,.column10 = column10,.column20 = column2,.column30 = column30,.column40 = column40},var v2 = TRt0{.column1 = v1.column1,.column3 = v1.column30},var v3 = v2.";
         this.testTranslation(query, program);
     }
 
@@ -215,12 +220,13 @@ public class JoinTest extends BaseQueriesTest {
                 "ON t1.column1 = X.c WHERE column2 = 'a'";
         String program = this.header(false) +
                 "typedef TX = TX{c:signed<64>}\n" +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:istring, column3:bool, column4:double, c:signed<64>}\n" +
                 "typedef TRtmp0 = TRtmp0{column1:signed<64>, c:signed<64>}\n" +
                 this.relations(true) +
                 "relation Rtmp[TX]\n" +
                 "output relation Rv0[TRtmp0]\n" +
                 "Rtmp[v2] :- Rt2[v0],var v1 = TX{.c = v0.column1},var v2 = v1.\n" +
-                "Rv0[v5] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rtmp[TX{.c = column1}],var v3 = TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4},(v3.column2 == i\"a\"),var v4 = TRtmp0{.column1 = v3.column1,.c = v3.column1},var v5 = v4.";
+                "Rv0[v5] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rtmp[TX{.c = column1}],var v3 = Ttmp{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4,.c = column1},(v3.column2 == i\"a\"),var v4 = TRtmp0{.column1 = v3.column1,.c = v3.c},var v5 = v4.";
         this.testTranslation(query, program, false);
     }
 
@@ -272,13 +278,13 @@ public class JoinTest extends BaseQueriesTest {
                 "(t2 JOIN t4 ON t2.column1 = t4.column1) ON t1.column1 = t2.column1";
         String program = this.header(false) +
                 "typedef Ttmp = Ttmp{column1:signed<64>, column10:Option<signed<64>>, column2:Option<istring>}\n" +
-                "typedef Ttmp0 = Ttmp0{column1:signed<64>, column2:istring, column3:bool, column4:double, column100:Option<signed<64>>, column20:Option<istring>}\n" +
+                "typedef Ttmp0 = Ttmp0{column1:signed<64>, column2:istring, column3:bool, column4:double, column10:signed<64>, column100:Option<signed<64>>, column20:Option<istring>}\n" +
                 "typedef TRtmp0 = TRtmp0{column2:istring, column1:signed<64>, x:Option<signed<64>>}\n" +
                 this.relations(false) +
                 "relation Rtmp[Ttmp]\n" +
                 "output relation Rv0[TRtmp0]\n" +
                 "Rtmp[v3] :- Rt2[TRt2{.column1 = column1}],Rt4[TRt4{.column1 = Some{.x = column1},.column2 = column2}],var v2 = Ttmp{.column1 = column1,.column10 = Some{.x = column1},.column2 = column2},var v3 = v2.\n" +
-                "Rv0[v6] :- Rt1[TRt1{.column1 = column11,.column2 = column20,.column3 = column3,.column4 = column4}],Rtmp[Ttmp{.column1 = column11,.column10 = column100,.column2 = column21}],var v4 = Ttmp0{.column1 = column11,.column2 = column20,.column3 = column3,.column4 = column4,.column100 = column100,.column20 = column21},var v5 = TRtmp0{.column2 = v4.column2,.column1 = v4.column1,.x = v4.column100},var v6 = v5.";
+                "Rv0[v6] :- Rt1[TRt1{.column1 = column11,.column2 = column20,.column3 = column3,.column4 = column4}],Rtmp[Ttmp{.column1 = column11,.column10 = column100,.column2 = column21}],var v4 = Ttmp0{.column1 = column11,.column2 = column20,.column3 = column3,.column4 = column4,.column10 = column11,.column100 = column100,.column20 = column21},var v5 = TRtmp0{.column2 = v4.column2,.column1 = v4.column10,.x = v4.column100},var v6 = v5.";
         this.testTranslation(query, program);
     }
 
@@ -308,21 +314,16 @@ public class JoinTest extends BaseQueriesTest {
                         "\n" +
                         "typedef TRt0 = TRt0{c1:signed<64>, c2:signed<64>, c3:bool}\n" +
                         "typedef TRt1 = TRt1{c1:Option<signed<64>>, c2:bool, c4:bool}\n" +
-                        "typedef Ttmp = Ttmp{c1:signed<64>, c2:signed<64>, c3:bool, c10:Option<signed<64>>, c4:Option<bool>}\n" +
+                        "typedef Ttmp = Ttmp{c1:signed<64>, c2:signed<64>, c3:bool, c10:Option<signed<64>>, c20:Option<bool>, c4:Option<bool>}\n" +
                         "\n" +
                         "input relation Rt0[TRt0]\n" +
                         "input relation Rt1[TRt1]\n" +
                         "relation Rcommon[Ttmp]\n" +
                         "relation Rleft[Ttmp]\n" +
                         "output relation Rv0[Ttmp]\n" +
-                        "Rcommon[v2] :- Rt0[TRt0{.c1 = c1,.c2 = c2,.c3 = c3}]," +
-                        "Rt1[TRt1{.c1 = Some{.x = c1},.c2 = c3,.c4 = c4}]," +
-                        "var v1 = Ttmp{.c1 = c1,.c2 = c2,.c3 = c3,.c10 = Some{.x = c1},.c4 = Some{.x = c4}}," +
-                        "var v2 = v1.\n" +
+                        "Rcommon[v2] :- Rt0[TRt0{.c1 = c1,.c2 = c2,.c3 = c3}],Rt1[TRt1{.c1 = Some{.x = c1},.c2 = c3,.c4 = c4}],var v1 = Ttmp{.c1 = c1,.c2 = c2,.c3 = c3,.c10 = Some{.x = c1},.c20 = Some{.x = c3},.c4 = Some{.x = c4}},var v2 = v1.\n" +
                         "Rleft[v5] :- Rcommon[v4],var v5 = v4.\n" +
-                        "Rleft[v3] :- Rt0[TRt0{.c1 = c1,.c2 = c2,.c3 = c3}]," +
-                        "not Rcommon[Ttmp{.c1 = c1,.c2 = _,.c3 = c3,.c10 = _,.c4 = _}]," +
-                        "var v3 = Ttmp{.c1 = c1,.c2 = c2,.c3 = c3,.c10 = Some{.x = c1},.c4 = None{}: Option<bool>}.\n" +
+                        "Rleft[v3] :- Rt0[TRt0{.c1 = c1,.c2 = c2,.c3 = c3}],not Rcommon[Ttmp{.c1 = c1,.c2 = _,.c3 = c3,.c10 = _,.c20 = _,.c4 = _}],var v3 = Ttmp{.c1 = c1,.c2 = c2,.c3 = c3,.c10 = None{}: Option<signed<64>>,.c20 = None{}: Option<bool>,.c4 = None{}: Option<bool>}.\n" +
                         "Rv0[v6] :- Rleft[v5],var v6 = v5.",
                 s);
     }
@@ -331,13 +332,14 @@ public class JoinTest extends BaseQueriesTest {
     public void testLeftJoin() {
         String query = "create view v0 as SELECT DISTINCT * FROM t1 LEFT JOIN t2 ON t1.column1 = t2.column1";
         String program = this.header(false) +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:istring, column3:bool, column4:double, column10:Option<signed<64>>}\n" +
                 this.relations(false) +
-                "relation Rcommon[TRt1]\n" +
-                "relation Rleft[TRt1]\n" +
-                "output relation Rv0[TRt1]\n" +
-                "Rcommon[v2] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt2[TRt2{.column1 = column1}],var v1 = TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4},var v2 = v1.\n" +
+                "relation Rcommon[Ttmp]\n" +
+                "relation Rleft[Ttmp]\n" +
+                "output relation Rv0[Ttmp]\n" +
+                "Rcommon[v2] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt2[TRt2{.column1 = column1}],var v1 = Ttmp{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4,.column10 = Some{.x = column1}},var v2 = v1.\n" +
                 "Rleft[v5] :- Rcommon[v4],var v5 = v4.\n" +
-                "Rleft[v3] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],not Rcommon[TRt1{.column1 = column1,.column2 = _,.column3 = _,.column4 = _}],var v3 = TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}.\n" +
+                "Rleft[v3] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],not Rcommon[Ttmp{.column1 = column1,.column2 = _,.column3 = _,.column4 = _,.column10 = _}],var v3 = Ttmp{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4,.column10 = None{}: Option<signed<64>>}.\n" +
                 "Rv0[v6] :- Rleft[v5],var v6 = v5.";
         this.testTranslation(query, program);
     }
@@ -347,7 +349,7 @@ public class JoinTest extends BaseQueriesTest {
         // mixing nulls and non-nulls
         String query = "create view v0 as SELECT DISTINCT * FROM t1 LEFT JOIN t4 ON t1.column1 = t4.column1";
         String program = this.header(false) +
-                "typedef Ttmp = Ttmp{column1:signed<64>, column2:string, column3:bool, column4:double, column10:Option<signed<64>>, column20:Option<string>}\n" +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:istring, column3:bool, column4:double, column10:Option<signed<64>>, column20:Option<istring>}\n" +
                 this.relations(false) +
                 "relation Rcommon[Ttmp]\n" +
                 "relation Rleft[Ttmp]\n" +
@@ -356,7 +358,7 @@ public class JoinTest extends BaseQueriesTest {
                 "Rleft[v5] :- Rcommon[v4],var v5 = v4.\n" +
                 "Rleft[v3] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}]," +
                 "not Rcommon[Ttmp{.column1 = column1,.column2 = _,.column3 = _,.column4 = _,.column10 = _,.column20 = _}]," +
-                "var v3 = Ttmp{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4,.column10 = Some{.x = column1},.column20 = None{}: Option<string>}.\n" +
+                "var v3 = Ttmp{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4,.column10 = None{}: Option<signed<64>>,.column20 = None{}: Option<istring>}.\n" +
                 "Rv0[v6] :- Rleft[v5],var v6 = v5.";
         this.testTranslation(query, program);
     }
@@ -366,18 +368,14 @@ public class JoinTest extends BaseQueriesTest {
         // mixing nulls and non-nulls
         String query = "create view v0 as SELECT DISTINCT * FROM t1 RIGHT JOIN t4 ON t1.column1 = t4.column1";
         String program = this.header(false) +
-                "typedef Ttmp = Ttmp{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>, column4:Option<double>, column10:Option<signed<64>>, column20:Option<string>}\n" +
+                "typedef Ttmp = Ttmp{column1:Option<signed<64>>, column2:Option<istring>, column3:Option<bool>, column4:Option<double>, column10:Option<signed<64>>, column20:Option<istring>}\n" +
                 this.relations(false) +
                 "relation Rcommon[Ttmp]\n" +
                 "relation Rright[Ttmp]\n" +
                 "output relation Rv0[Ttmp]\n" +
-                "Rcommon[v2] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}]," +
-                "Rt4[TRt4{.column1 = Some{.x = column1},.column2 = column20}]," +
-                "var v1 = Ttmp{.column1 = Some{.x = column1},.column2 = Some{.x = column2},.column3 = Some{.x = column3},.column4 = Some{.x = column4},.column10 = Some{.x = column1},.column20 = column20},var v2 = v1.\n" +
+                "Rcommon[v2] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt4[TRt4{.column1 = Some{.x = column1},.column2 = column20}],var v1 = Ttmp{.column1 = Some{.x = column1},.column2 = Some{.x = column2},.column3 = Some{.x = column3},.column4 = Some{.x = column4},.column10 = Some{.x = column1},.column20 = column20},var v2 = v1.\n" +
                 "Rright[v5] :- Rcommon[v4],var v5 = v4.\n" +
-                "Rright[v3] :- Rt4[TRt4{.column1 = column1,.column2 = column20}]," +
-                "not Rcommon[Ttmp{.column1 = _,.column2 = _,.column3 = _,.column4 = _,.column10 = column1,.column20 = _}]," +
-                "var v3 = Ttmp{.column1 = column1,.column2 = None{}: Option<string>,.column3 = None{}: Option<bool>,.column4 = None{}: Option<double>,.column10 = column1,.column20 = column20}.\n" +
+                "Rright[v3] :- Rt4[TRt4{.column1 = column1,.column2 = column20}],not Rcommon[Ttmp{.column1 = _,.column2 = _,.column3 = _,.column4 = _,.column10 = column1,.column20 = _}],var v3 = Ttmp{.column1 = None{}: Option<signed<64>>,.column2 = None{}: Option<istring>,.column3 = None{}: Option<bool>,.column4 = None{}: Option<double>,.column10 = column1,.column20 = column20}.\n" +
                 "Rv0[v6] :- Rright[v5],var v6 = v5.";
         this.testTranslation(query, program);
     }
@@ -387,7 +385,7 @@ public class JoinTest extends BaseQueriesTest {
         // mixing nulls and non-nulls
         String query = "create view v0 as SELECT DISTINCT * FROM t1 FULL OUTER JOIN t4 ON t1.column1 = t4.column1";
         String program = this.header(false) +
-                "typedef Ttmp = Ttmp{column1:Option<signed<64>>, column2:Option<string>, column3:Option<bool>, column4:Option<double>, column10:Option<signed<64>>, column20:Option<string>}\n" +
+                "typedef Ttmp = Ttmp{column1:Option<signed<64>>, column2:Option<istring>, column3:Option<bool>, column4:Option<double>, column10:Option<signed<64>>, column20:Option<istring>}\n" +
                 this.relations(false) +
                 "relation Rcommon[Ttmp]\n" +
                 "relation Rleft[Ttmp]\n" +
@@ -399,14 +397,10 @@ public class JoinTest extends BaseQueriesTest {
                 "var v1 = Ttmp{.column1 = Some{.x = column1},.column2 = Some{.x = column2},.column3 = Some{.x = column3},.column4 = Some{.x = column4},.column10 = Some{.x = column1},.column20 = column20}," +
                 "var v2 = v1.\n" +
                 "Rleft[v5] :- Rcommon[v4],var v5 = v4.\n" +
-                "Rleft[v3] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}]," +
-                "not Rcommon[Ttmp{.column1 = Some{.x = column1},.column2 = _,.column3 = _,.column4 = _,.column10 = _,.column20 = _}]," +
-                "var v3 = Ttmp{.column1 = Some{.x = column1},.column2 = Some{.x = column2},.column3 = Some{.x = column3},.column4 = Some{.x = column4},.column10 = Some{.x = column1},.column20 = None{}: Option<string>}.\n" +
+                "Rleft[v3] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],not Rcommon[Ttmp{.column1 = Some{.x = column1},.column2 = _,.column3 = _,.column4 = _,.column10 = _,.column20 = _}],var v3 = Ttmp{.column1 = Some{.x = column1},.column2 = Some{.x = column2},.column3 = Some{.x = column3},.column4 = Some{.x = column4},.column10 = None{}: Option<signed<64>>,.column20 = None{}: Option<istring>}.\n" +
                 "Rcommon0[v6] :- Rleft[v5],var v6 = v5.\n" +
                 "Rright[v9] :- Rcommon0[v8],var v9 = v8.\n" +
-                "Rright[v7] :- Rt4[TRt4{.column1 = column1,.column2 = column20}]," +
-                "not Rcommon0[Ttmp{.column1 = _,.column2 = _,.column3 = _,.column4 = _,.column10 = column1,.column20 = _}]," +
-                "var v7 = Ttmp{.column1 = column1,.column2 = None{}: Option<string>,.column3 = None{}: Option<bool>,.column4 = None{}: Option<double>,.column10 = column1,.column20 = column20}.\n" +
+                "Rright[v7] :- Rt4[TRt4{.column1 = column1,.column2 = column20}],not Rcommon0[Ttmp{.column1 = _,.column2 = _,.column3 = _,.column4 = _,.column10 = column1,.column20 = _}],var v7 = Ttmp{.column1 = None{}: Option<signed<64>>,.column2 = None{}: Option<istring>,.column3 = None{}: Option<bool>,.column4 = None{}: Option<double>,.column10 = column1,.column20 = column20}.\n" +
                 "Rv0[v10] :- Rright[v9],var v10 = v9.";
         this.testTranslation(query, program);
     }

@@ -52,6 +52,8 @@ public class JooqProviderCalciteTest extends JooqProviderTestBase {
                         "from check_set_type_string " +
                         "where set_contains(agg, 'n10')";
         String bigIntTable = "create table big_int_table (id bigint)";
+        String checkJoin = "create view jv as select distinct hosts.id, hosts.capacity, good_hosts.up from " +
+                "hosts left join good_hosts on hosts.id = good_hosts.id";
 
         String bigIntTableView = generateCreateViewStatement("big_int_table");
         String hostIdentityView = generateCreateViewStatement("hosts");
@@ -67,6 +69,7 @@ public class JooqProviderCalciteTest extends JooqProviderTestBase {
         ddl.add(v2);
         ddl.add(v1);
         ddl.add(checkArrayParse);
+        ddl.add(checkJoin);
         ddl.add(checkNotNullColumns);
         ddl.add(arrayTable);
         ddl.add(checkArrayTypeOverIntegerArrayAgg);

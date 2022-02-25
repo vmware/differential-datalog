@@ -516,7 +516,6 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             case "max":
                 return new DDlogETupField(node, value, 1);
             case "count_distinct": {
-                DDlogTUser set = value.getType().as(DDlogTUser.class, "expected a set");
                 return DDlogEAs.cast(
                         new DDlogEApply(node, "set_size", new DDlogTBit(node, 32, false), value),
                         resultType);
@@ -1176,10 +1175,10 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
     @Override
     public DDlogIRNode visitJoin(Join join, TranslationContext context) {
         /*
-            Let us consider this example
+            Let us consider this example (JoinTest.testExampleLeftJoin())
             create table t0(c1 integer not null, c2 integer not null, c3 boolean not null)
             create table t1(c1 integer, c2 boolean not null, c4 boolean not null)
-            create view v0 as SELECT DISTINCT * FROM t0 JOIN t1 on t0.c1 = t1.c1 AND t0.c3 = t1.c2
+            create view v0 as SELECT DISTINCT * FROM t0 LEFT JOIN t1 on t0.c1 = t1.c1 AND t0.c3 = t1.c2
 
             This will process the join, but not the outer SELECT DISTINCT *.
             It will produce a relation that has all the columns the SELECT may need later.
@@ -1191,25 +1190,27 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             typedef TRt1 = TRt1{c1:Option<signed<64>>, c2:bool, c4:bool}
             input relation Rt1[TRt1]
 
-            // Relation for the result: c10 has the contents of t1.c1.  Note that t2.c2 is the same as t1.c2
-            // Also, note that c4 is nullable, because we are doing a left join
-            typedef Ttmp = Ttmp{c1:signed<64>, c2:signed<64>, c3:bool, c10:Option<signed<64>>, c4:Option<bool>}
+            // Relation for the join result:
+            // Also, note that all columns corresponding to t1 are nullable, because we are doing a left join
+            typedef Ttmp = Ttmp{c1:signed<64>, c2:signed<64>, c3:bool, // t0 columns
+                                c10:Option<signed<64>>, c20:Option<bool<>, c4:Option<bool>} // t1 columns
             output relation Rv0[Ttmp]
 
             relation Rcommon[Ttmp]
             relation Rleft[Ttmp]
 
-            // actual join
+            // actual (inner) join result
             Rcommon[v2] :- Rt0[TRt0{.c1 = c1,.c2 = c2,.c3 = c3}],
                        Rt1[TRt1{.c1 = Some{.x = c1},.c2 = c3,.c4 = c4}],
-                       var v1 = Ttmp{.c1 = c1,.c2 = c2,.c3 = c3,.c10 = Some{.x = c1},.c4 = Some{.x = c4}},
+                       var v1 = Ttmp{.c1 = c1,.c2 = c2,.c3 = c3,
+                                     .c10 = Some{.x = c1},.c20=Some{.x = c3}.c4 = Some{.x = c4}},
                        var v2 = v1.
              Rleft[v5] :- Rcommon[v4],var v5 = v4.
 
              // part induced by left join, containing the null values (None{})
              Rleft[v3] :- Rt0[TRt0{.c1 = c1,.c2 = c2,.c3 = c3}],
-                          not Rcommon[Ttmp{.c1 = c1,.c2 = _,.c3 = c3,.c10 = _,.c4 = _}],
-                          var v3 = Ttmp{.c1 = c1,.c2 = c2,.c3 = c3,.c10 = c1,.c4 = None{}}.
+                          not Rcommon[Ttmp{.c1 = c1,.c2 = _,.c3 = c3,.c20 = _,.c10 = _,.c4 = _}],
+                          var v3 = Ttmp{.c1 = c1,.c2 = c2,.c3 = c3,.c10 = None{},.c20 = None{},.c4 = None{}}.
              // Final result
              Rv0[v6] :- Rleft[v5],var v6 = v5.
          */
@@ -1232,7 +1233,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         // For our example rightRelation should be t1.
         RelationName rightRelation = this.ensureRelation(rightBody, context);
 
-        // For a full join both of these are true.
+        // For a full outer join both of these are true.
         boolean leftJoin = false;  // In our example this will be 'true'.
         boolean rightJoin = false;  // In our example this will be 'false'
 
@@ -1301,8 +1302,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         // Now we have to generate a new term that contains all the tuples produced by the join.
         // We generate a flat struct, which has all fields from the left and the right relations that are joined.
         // Unfortunately fields may have common names, and in that case we need to rename some of them.
-        // resultFields will contain in the end.
-        // This struct is: Ttmp{c1:signed<64>, c2:signed<64>, c3:bool, c10:Option<signed<64>>}
+        // This struct is: Ttmp{c1:signed<64>, c2:signed<64>, c3:bool, c10:Option<signed<64>>, c20:Option<bool>, c4:Option<bool>}
         List<DDlogField> resultFields = new ArrayList<DDlogField>();
         List<DDlogEStruct.FieldValue> resultFieldValues = new ArrayList<DDlogEStruct.FieldValue>();
 
@@ -1319,17 +1319,21 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             DDlogExpression value;
 
             if (joinInfo.isEquiJoin()) {
-                // For the left table all variables are fresh.
                 String varName = context.freshLocalName(f.getName());
-                DDlogEVar variable = new DDlogEVar(f.getNode(), varName, ftype);
+                DDlogType variableType;
+                // Joins ignore nulls, so the variable never has an Option type.
+                if (joinInfo.isJoinedLeftColumn(fieldName))
+                    variableType = ftype.setMayBeNull(false);
+                else
+                    variableType = ftype;
+                DDlogEVar variable = new DDlogEVar(f.getNode(), varName, variableType);
                 joinInfo.setLeftColumnVariable(f.getName(), variable);
-                value = variable;
-                // The wrapSome below is necessary to filter out null values.  Joins ignore nulls.
                 // If the column c1 is nullable the struct generated will look like:
                 // TRt0{.c1 = Some{c1}, ... }
-                if (joinInfo.isJoinedLeftColumn(fieldName)) {
-                    value = ExpressionTranslationVisitor.wrapSomeIfNeeded(value, ftype);
-                }
+                if (joinInfo.isJoinedLeftColumn(fieldName))
+                    value = ExpressionTranslationVisitor.wrapSomeIfNeeded(variable, ftype);
+                else
+                    value = variable;
             } else { // non equi-join
                 value = new DDlogEField(f.getNode(), leftBody.getRowVariable(), f.getName(), ftype);
             }
@@ -1337,11 +1341,12 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             DDlogEStruct.FieldValue fieldValue = new DDlogEStruct.FieldValue(fieldName, value);
             leftValues.add(fieldValue);  // only needed for equijoins
             if (rightJoin && !ftype.mayBeNull) {
-                // The type in the result may be null when doing right joins
+                // The type in the result may be null when doing right joins, even if the
+                // original column is not nullable
                 ftype = ftype.setMayBeNull(true);
-                value = ExpressionTranslationVisitor.wrapSomeIfNeeded(value, ftype);
-                fieldValue = new DDlogEStruct.FieldValue(fieldName, value);
             }
+            value = ExpressionTranslationVisitor.wrapSomeIfNeeded(value, ftype);
+            fieldValue = new DDlogEStruct.FieldValue(fieldName, value);
             resultFieldValues.add(fieldValue);
             resultFields.add(new DDlogField(f.getNode(), f.getName(), ftype));
         }
@@ -1358,20 +1363,16 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         // The term produced will be Rt1[TRt1{.c1 = Some{.x = c1},.c2 = c3,.c4 = c4}].
         // Note that this reuses variables c1 and c3, introduced in the left relation, denoting an equi-join.
         // It generates a fresh variable for c4.
-        // It also generates a fresh field name for the result .c10
+        // It also generates fresh field names for the result: .c10, .c20
         List<DDlogEStruct.FieldValue> rightValues = new ArrayList<>();
         for (DDlogField f: rtype.getFields()) {
             // We may need to generate a fresh field name in the result structure that
             // has all columns from both tables,  if the left table already has a field with this name.
             // This generates the c10 field name from the result type.
             String resultRightFieldName = usedFieldNames.freshName(f.getName());
-            // Generate a variable for columns that are not being joined on: e.g., c10, c4.
+            // Generate a variable for the value in the column, e.g., c10, c4.
             String rightVariable = context.freshLocalName(f.getName());
             DDlogExpression value;
-            // True if the right column has a corresponding left column that it's equal to.
-            boolean joinedOn = false;
-            // True if the right column has the same type as the corresponding left column.
-            boolean sameType = true;
             String rightColumnName = f.getName();
 
             if (joinInfo.isEquiJoin()) {
@@ -1379,16 +1380,13 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                 // left table if any.  This would find 'c1' for t1.c1, or null for t1.c2
                 DDlogEVar variable = joinInfo.findLeftVariableFromRightColumn(rightColumnName);
                 // If the variable is not null, this column is being joined on.
-                joinedOn = variable != null;
-                if (joinedOn) {
-                    DDlogType type = variable.getType();
-                    if (!f.getType().same(type))
-                        // This can happen because one type is nullable and the other is not.
-                        // Then we should keep both columns: t0.c1 and t1.c1
-                        sameType = false;
-                } else {
+                // True if the right column has a corresponding left column that it's equal to.
+                boolean joinedOn = variable != null;
+                DDlogType valueType;
+                if (!joinedOn) {
                     // If we are not joining on this column use a fresh variable.
-                    variable = new DDlogEVar(f.getNode(), rightVariable, f.getType());
+                    valueType = f.getType();
+                    variable = new DDlogEVar(f.getNode(), rightVariable, valueType);
                 }
                 joinInfo.setRightColumnVariable(rightColumnName, variable);
                 value = variable;
@@ -1400,24 +1398,15 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             }
 
             rightValues.add(new DDlogEStruct.FieldValue(f.getName(), value));  // only used for equijoins
-            if (!joinedOn || !sameType) {
-                joinInfo.setRightColumnNameInResult(f.getName(), resultRightFieldName);
-                DDlogType ftype = f.getType();
-                if (leftJoin && !ftype.mayBeNull) {
-                    // The type of these fields in the result becomes nullable
-                    ftype = ftype.setMayBeNull(true);
-                    value = ExpressionTranslationVisitor.wrapSomeIfNeeded(value, ftype);
-                }
-                DDlogField rightField = new DDlogField(f.getNode(), resultRightFieldName, ftype);
-                resultFields.add(rightField);
-                resultFieldValues.add(new DDlogEStruct.FieldValue(resultRightFieldName, value));
-            } else {
-                // This field is already present identically in the left table, we don't
-                // need to add it to the result at all.  But we need to rename accesses to this
-                // field to the left column name. c1 -> c1, c3 -> c2
-                String leftColumn = joinInfo.joinedLeftColumn(f.getName());
-                joinInfo.setRightColumnNameInResult(f.getName(), Objects.requireNonNull(leftColumn));
-            }
+            joinInfo.setRightColumnNameInResult(f.getName(), resultRightFieldName);
+            DDlogType resultFieldType = f.getType();
+            if (leftJoin && !resultFieldType.mayBeNull)
+                // The type of these fields in the result becomes nullable
+                resultFieldType = resultFieldType.setMayBeNull(true);
+            value = ExpressionTranslationVisitor.wrapSomeIfNeeded(value, resultFieldType);
+            DDlogField rightField = new DDlogField(f.getNode(), resultRightFieldName, resultFieldType);
+            resultFields.add(rightField);
+            resultFieldValues.add(new DDlogEStruct.FieldValue(resultRightFieldName, value));
         }
         if (joinInfo.isEquiJoin()) {
             DDlogEStruct rightValue = new DDlogEStruct(rtype.getNode(), rtype.getName(), rtype, rightValues);
@@ -1467,8 +1456,8 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
      *
      * Rleft[v5] :- Rcommon[v4],var v5 = v4.
      * Rleft[v3] :- Rt0[TRt0{.c1 = c1,.c2 = c2,.c3 = c3}],
-     *              not Rcommon[Ttmp{.c1 = c1,.c2 = _,.c3 = c3,.c10 = _,.c4 = _}],
-     *              var v3 = Ttmp{.c1 = c1,.c2 = c2,.c3 = c3,.c10 = Some{.x = c1},.c4 = None{}}.
+     *              not Rcommon[Ttmp{.c1 = c1,.c2 = _,.c3 = c3,.c10 = _,.c20 = _,.c4 = _}],
+     *              var v3 = Ttmp{.c1 = c1,.c2 = c2,.c3 = c3,.c10 = None{},.c20 = None{},.c4 = None{}}.
      *              Rv0[v6] :- Rleft[v5],var v6 = v5.
      */
     protected DDlogIRNode handleOuterJoin(
@@ -1492,14 +1481,14 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
         // Create a new rule that contains everything in the source relation that
         // is not in the join:
         // Rleft[v3] :- Rt0[TRt0{.c1 = c1,.c2 = c2,.c3 = c3}],
-        //              not Rcommon[Ttmp{.c1 = c1,.c2 = _,.c3 = c3,.c10 = _,.c4 = _}],
-        //              var v3 = Ttmp{.c1 = c1,.c2 = c2,.c3 = c3,.c10 = Some{.x = c1},.c4 = None{}}.
+        //              not Rcommon[Ttmp{.c1 = c1,.c2 = _,.c3 = c3,.c10 = _,.c20 = _,.c4 = _}],
+        //              var v3 = Ttmp{.c1 = c1,.c2 = c2,.c3 = c3,.c10 = None{},.c20 = None{},.c4 = None{}}.
         String var = context.freshLocalName("v");
         // Data in the source relation: will contain {.c1 = c1,.c2 = c2,.c3 = c3}
         List<DDlogEStruct.FieldValue> sourceColumnValues = new ArrayList<>();
-        // Data in the common relation: will contain {.c1 = c1,.c2 = _,.c3 = c3,.c10 = _,.c4 = _}
+        // Data in the common relation: will contain {.c1 = c1,.c2 = _,.c3 = c3,.c10 = _,.c20 = _,.c4 = _}
         List<DDlogEStruct.FieldValue> inJoinColumnValues = new ArrayList<>();
-        // Data in resulting relation: will contain {.c1 = c1,.c2 = c2,.c3 = c3,.c10 = c1,.c4 = None{}}
+        // Data in resulting relation: will contain {.c1 = c1,.c2 = c2,.c3 = c3,.c10 = None{},.c20 = None{},.c4 = None{}}
         List<DDlogEStruct.FieldValue> inResultColumnValues = new ArrayList<>();
         DDlogType commonType = common.getType(); // Ttmp
         DDlogTStruct structType = context.resolveType(commonType).to(DDlogTStruct.class);
@@ -1516,13 +1505,11 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             boolean isInRight = joinInfo.originalRightColumnName.containsKey(fieldName);
 
             // Variable name associated with column.  We can reuse the same variable
-            // names from the join, since they are in a different rule.  However,
-            // we cannot reuse the variable types, since they will be different this time.
+            // names from the join, since they are in a different rule.  
             String variableName; // .c1 -> c1, .c2 -> c2, .c3 -> c3, .c10 -> c1, .c4 -> c4
             // The name of the column in the original table.
             String originalColumnName; // .c1 -> c1, .c2 -> c2, .c3 -> c3, .c10 -> c1, .c4 -> c4
             DDlogType sourceColumnType;
-            DDlogType variableType;  // The type of the variable used for manipulating the current field
 
             if (isInLeft) {
                 originalColumnName = f.getName();
@@ -1552,9 +1539,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                 {
                     // 2
                     DDlogExpression inResultValue = new DDlogEVar(f.getNode(), variableName, sourceColumnType);
-                    if (!sourceColumnType.mayBeNull && f.getType().mayBeNull) {
-                        inResultValue = ExpressionTranslationVisitor.wrapSomeIfNeeded(inResultValue, f.getType());
-                    }
+                    inResultValue = ExpressionTranslationVisitor.wrapSomeIfNeeded(inResultValue, f.getType());
                     DDlogEStruct.FieldValue inResultFieldValue = new DDlogEStruct.FieldValue(f.getName(), inResultValue);
                     inResultColumnValues.add(inResultFieldValue);
                 }
@@ -1563,9 +1548,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                     DDlogExpression inJoinValue;
                     if (joinedOn) {
                         inJoinValue = new DDlogEVar(f.getNode(), variableName, sourceColumnType);
-                        if (!sourceColumnType.mayBeNull && f.getType().mayBeNull) {
-                            inJoinValue = ExpressionTranslationVisitor.wrapSomeIfNeeded(inJoinValue, f.getType());
-                        }
+                        inJoinValue = ExpressionTranslationVisitor.wrapSomeIfNeeded(inJoinValue, f.getType());
                     } else {
                         inJoinValue = new DDlogEVar(f.getNode(), "_", f.getType());
                     }
@@ -1582,27 +1565,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
                 }
                 {
                     // 2
-                    DDlogExpression inResultValue;
-                    if (joinedOn) {
-                        // We have to figure out the type of the variable.  The variable is
-                        // always matched on the source table and here we are in the other table.
-                        if (isLeftJoin) {
-                            // The variable is matched in the left table and f is in the right table.
-                            String leftColumn = joinInfo.joinedLeftColumn(originalColumnName);
-                            variableType = leftTableType.getFieldType(Objects.requireNonNull(leftColumn));
-                        } else {
-                            // The variable is matched in the right table and f is in the left table.
-                            String rightColumn = joinInfo.joinedRightColumn(originalColumnName);
-                            variableType = rightTableType.getFieldType(Objects.requireNonNull(rightColumn));
-                        }
-
-                        inResultValue = new DDlogEVar(f.getNode(), variableName, f.getType());
-                        if (!variableType.mayBeNull && f.getType().mayBeNull) {
-                            inResultValue = ExpressionTranslationVisitor.wrapSomeIfNeeded(inResultValue, f.getType());
-                        }
-                    } else {
-                        inResultValue = new DDlogENull(null, f.getType());
-                    }
+                    DDlogExpression inResultValue = new DDlogENull(null, f.getType());
                     inResultColumnValues.add(new DDlogEStruct.FieldValue(fieldName, inResultValue));
                 }
             }
@@ -1634,6 +1597,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
 
         RuleBody result = new RuleBody(joinSourceNode, getRuleVar(rule).var, rule.head.val.getType());
         result.addDefinition(new BodyTermLiteral(joinSourceNode, true, rule.head));
+        context.environment.renameUp(common.getVarName(), result.getVarName(), new HashMap<>());
         return result;
     }
 

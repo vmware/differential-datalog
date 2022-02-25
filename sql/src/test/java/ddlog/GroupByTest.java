@@ -207,9 +207,10 @@ public class GroupByTest extends BaseQueriesTest {
                 "GROUP BY t1.column1\n" +
                 "HAVING (t1.column1 IN (t1.column1))";
         String program = this.header(false) +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:istring, column3:bool, column4:double, column10:signed<64>}\n" +
                 "typedef TRtmp = TRtmp{c:signed<64>}\n" +
                 "typedef Tagg = Tagg{c:signed<64>, col:bool}\n" +
-                "function agg(g: Group<signed<64>, TRt1>):Tagg {\n" +
+                "function agg(g: Group<signed<64>, Ttmp>):Tagg {\n" +
                 "(var gb) = group_key(g);\n" +
                 "(var count = 64'sd0: signed<64>);\n" +
                 "(for ((i, _) in g) {\n" +
@@ -226,7 +227,7 @@ public class GroupByTest extends BaseQueriesTest {
                 "input relation Rt4[TRt4]\n" +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v3] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt2[TRt2{.column1 = column1}],var v1 = TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4},var gb = v1.column1,var groupResult = (v1).group_by((gb)),var aggResult = agg(groupResult),var v2 = TRtmp{.c = aggResult.c},aggResult.col,var v3 = v2.";
+                "Rv0[v3] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt2[TRt2{.column1 = column1}],var v1 = Ttmp{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4,.column10 = column1},var gb = v1.column1,var groupResult = (v1).group_by((gb)),var aggResult = agg(groupResult),var v2 = TRtmp{.c = aggResult.c},aggResult.col,var v3 = v2.";
         this.testTranslation(query, program);
     }
 
@@ -239,9 +240,10 @@ public class GroupByTest extends BaseQueriesTest {
                 "GROUP BY t1.column1\n" +
                 "HAVING (t1.column1 NOT IN (t1.column1))";
         String program = this.header(false) +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:istring, column3:bool, column4:double, column10:signed<64>}\n" +
                 "typedef TRtmp = TRtmp{c:signed<64>}\n" +
                 "typedef Tagg = Tagg{c:signed<64>, col:bool}\n" +
-                "function agg(g: Group<signed<64>, TRt1>):Tagg {\n" +
+                "function agg(g: Group<signed<64>, Ttmp>):Tagg {\n" +
                 "(var gb) = group_key(g);\n" +
                 "(var count = 64'sd0: signed<64>);\n" +
                 "(for ((i, _) in g) {\n" +
@@ -258,7 +260,7 @@ public class GroupByTest extends BaseQueriesTest {
                 "input relation Rt4[TRt4]\n" +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v3] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt2[TRt2{.column1 = column1}],var v1 = TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4},var gb = v1.column1,var groupResult = (v1).group_by((gb)),var aggResult = agg(groupResult),var v2 = TRtmp{.c = aggResult.c},aggResult.col,var v3 = v2.";
+                "Rv0[v3] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt2[TRt2{.column1 = column1}],var v1 = Ttmp{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4,.column10 = column1},var gb = v1.column1,var groupResult = (v1).group_by((gb)),var aggResult = agg(groupResult),var v2 = TRtmp{.c = aggResult.c},aggResult.col,var v3 = v2.";
 
         this.testTranslation(query, program);
     }
@@ -272,9 +274,10 @@ public class GroupByTest extends BaseQueriesTest {
                 "GROUP BY t1.column1\n" +
                 "HAVING ((t1.column1 NOT IN (t1.column1)) AND (COUNT(column2) > 3))";
         String program = this.header(false) +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:istring, column3:bool, column4:double, column10:signed<64>}\n" +
                 "typedef TRtmp = TRtmp{c:signed<64>}\n" +
                 "typedef Tagg = Tagg{c:signed<64>, col:bool}\n" +
-                "function agg(g: Group<signed<64>, TRt1>):Tagg {\n" +
+                "function agg(g: Group<signed<64>, Ttmp>):Tagg {\n" +
                 "(var gb) = group_key(g);\n" +
                 "(var count = 64'sd0: signed<64>);\n" +
                 "(for ((i, _) in g) {\n" +
@@ -291,7 +294,7 @@ public class GroupByTest extends BaseQueriesTest {
                 "input relation Rt4[TRt4]\n" +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v3] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt2[TRt2{.column1 = column1}],var v1 = TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4},var gb = v1.column1,var groupResult = (v1).group_by((gb)),var aggResult = agg(groupResult),var v2 = TRtmp{.c = aggResult.c},aggResult.col,var v3 = v2.";
+                "Rv0[v3] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt2[TRt2{.column1 = column1}],var v1 = Ttmp{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4,.column10 = column1},var gb = v1.column1,var groupResult = (v1).group_by((gb)),var aggResult = agg(groupResult),var v2 = TRtmp{.c = aggResult.c},aggResult.col,var v3 = v2.";
         this.testTranslation(query, program);
     }
 
@@ -304,9 +307,10 @@ public class GroupByTest extends BaseQueriesTest {
                 "GROUP BY t1.column1, t1.column3\n" +
                 "HAVING ((t1.column1 > 3) NOT IN (t1.column3))";
         String program = this.header(false) +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:istring, column3:bool, column4:double, column10:signed<64>}\n" +
                 "typedef TRtmp = TRtmp{c:signed<64>}\n" +
                 "typedef Tagg = Tagg{c:signed<64>, col:bool}\n" +
-                "function agg(g: Group<(signed<64>, bool), TRt1>):Tagg {\n" +
+                "function agg(g: Group<(signed<64>, bool), Ttmp>):Tagg {\n" +
                 "(var gb, var gb0) = group_key(g);\n" +
                 "(var count = 64'sd0: signed<64>);\n" +
                 "(for ((i, _) in g) {\n" +
@@ -323,7 +327,7 @@ public class GroupByTest extends BaseQueriesTest {
                 "input relation Rt4[TRt4]\n" +
                 "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
-                "Rv0[v3] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt2[TRt2{.column1 = column1}],var v1 = TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4},var gb = v1.column1,var gb0 = v1.column3,var groupResult = (v1).group_by((gb, gb0)),var aggResult = agg(groupResult),var v2 = TRtmp{.c = aggResult.c},aggResult.col,var v3 = v2.";
+                "Rv0[v3] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt2[TRt2{.column1 = column1}],var v1 = Ttmp{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4,.column10 = column1},var gb = v1.column1,var gb0 = v1.column3,var groupResult = (v1).group_by((gb, gb0)),var aggResult = agg(groupResult),var v2 = TRtmp{.c = aggResult.c},aggResult.col,var v3 = v2.";
         this.testTranslation(query, program);
     }
 
