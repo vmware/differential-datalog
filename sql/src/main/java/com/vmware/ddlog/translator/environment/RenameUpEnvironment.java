@@ -31,7 +31,7 @@ import com.vmware.ddlog.ir.DDlogEnvironment;
 import com.vmware.ddlog.util.IndentStringBuilder;
 
 import javax.annotation.Nullable;
-import java.util.HashMap;
+import java.util.Map;
 
 /**
  * This environment will look up things then, if found, rename them.
@@ -50,9 +50,9 @@ public class RenameUpEnvironment extends IEnvironment {
      * Map that shows how table columns have to be renamed.
      * Maps the name that appears in the SQL program to the name that should be used in the implementation.
      */
-    final HashMap<String, String> renameColumn;
+    final Map<String, String> renameColumn;
 
-    public RenameUpEnvironment(IEnvironment base, String sourceName, String implementationName, HashMap<String, String> renameColumn) {
+    public RenameUpEnvironment(IEnvironment base, String sourceName, String implementationName, Map<String, String> renameColumn) {
         this.base = base;
         this.originalName = sourceName;
         this.newName = implementationName;
@@ -98,7 +98,7 @@ public class RenameUpEnvironment extends IEnvironment {
             return this;
         IEnvironment result = this.base.lookupRelation(identifier);
         if (result == null)
-            return result;
+            return null;
         return new RenameUpEnvironment(result, this.originalName, this.newName, this.renameColumn);
     }
 

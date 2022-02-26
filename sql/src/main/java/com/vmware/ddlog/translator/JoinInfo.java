@@ -32,9 +32,7 @@ import com.vmware.ddlog.translator.environment.IEnvironment;
 import com.vmware.ddlog.util.Utilities;
 
 import javax.annotation.Nullable;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * This visitor inspects the predicate of a join to detect whether it is an equijoin.
@@ -48,32 +46,32 @@ public class JoinInfo extends AstVisitor<Void, Void> {
      * If this is null the join is not an equijoin.
      */
     @Nullable
-    protected HashMap<String, String> rightToLeftColumn;
+    protected Map<String, String> rightToLeftColumn;
     /**
      * Maps a column name in the left table to the equal column in the right table.
      * c1 -> c1, c3 -> c2.
      */
-    protected final HashMap<String, String> leftToRightColumn;
+    protected final Map<String, String> leftToRightColumn;
     /**
      * The left table columns that participate in the join.
      * Contents: c1, c3.
      */
-    protected final HashSet<String> joinedLeftColumns;
+    protected final Set<String> joinedLeftColumns;
     /**
      * For each column in the left table keep here the variable name used in the code to match it.
      * c1 -> c1, c2 -> c2, c3 -> c3.
      */
-    protected final HashMap<String, DDlogEVar> leftColumnVariable;
+    protected final Map<String, DDlogEVar> leftColumnVariable;
     /**
      * For each column in the right table keep here the variable used in the code to match it.
      * c1 -> c1, c2 -> c3, c4 -> c4.
      */
-    protected final HashMap<String, DDlogEVar> rightColumnVariable;
+    protected final Map<String, DDlogEVar> rightColumnVariable;
     /**
      * For each right column the name used in the result.
      * c1 -> c10, c2 -> c3, c4 -> c4.
      */
-    protected final HashMap<String, String> renamedRightColumn;
+    protected final Map<String, String> renamedRightColumn;
     protected final EnvHandle leftEnvironment;
     protected final EnvHandle rightEnvironment;
     @Nullable
@@ -148,7 +146,7 @@ public class JoinInfo extends AstVisitor<Void, Void> {
         return Objects.requireNonNull(this.originalRightColumnName.get(resultColumnName));
     }
 
-    public HashMap<String, String> getRenameMap() {
+    public Map<String, String> getRenameMap() {
         return this.renamedRightColumn;
     }
 
@@ -194,26 +192,6 @@ public class JoinInfo extends AstVisitor<Void, Void> {
      */
     public DDlogEVar findRightVariable(String rightColumn) {
         return Objects.requireNonNull(this.rightColumnVariable.get(rightColumn));
-    }
-
-    /**
-     * Return the left table column that is compared to this right table column
-     * (for equijoin - the two columns must be equal).
-     * @param rightColumn  Column to lookup.
-     * @return  Null if there is no corresponding left column.
-     */
-    @Nullable
-    public String joinedLeftColumn(String rightColumn) {
-        return Objects.requireNonNull(this.rightToLeftColumn).get(rightColumn);
-    }
-
-    /**
-     * Return the right table column that is compared to this left column.
-     * @param leftColumn Left column name.
-     */
-    @Nullable
-    public String joinedRightColumn(String leftColumn) {
-        return this.leftToRightColumn.get(leftColumn);
     }
 
     /**

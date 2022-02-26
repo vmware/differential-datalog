@@ -324,7 +324,7 @@ public abstract class JooqProviderTestBase {
     }
 
     @Test
-    public void testJoin() {
+    public void testLeftJoin() {
         create.insertInto(table("hosts"))
                 .values("n1", 10, true)
                 .execute();

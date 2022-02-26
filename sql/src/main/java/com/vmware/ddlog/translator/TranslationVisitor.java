@@ -1505,7 +1505,7 @@ class TranslationVisitor extends AstVisitor<DDlogIRNode, TranslationContext> {
             boolean isInRight = joinInfo.originalRightColumnName.containsKey(fieldName);
 
             // Variable name associated with column.  We can reuse the same variable
-            // names from the join, since they are in a different rule.  
+            // names from the join, since they are in a different rule.
             String variableName; // .c1 -> c1, .c2 -> c2, .c3 -> c3, .c10 -> c1, .c4 -> c4
             // The name of the column in the original table.
             String originalColumnName; // .c1 -> c1, .c2 -> c2, .c3 -> c3, .c10 -> c1, .c4 -> c4
