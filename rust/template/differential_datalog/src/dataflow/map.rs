@@ -14,6 +14,8 @@ pub trait MapExt<D1, D2> {
         L: FnMut(D1) -> D2 + 'static;
 }
 
+// clippy does not like the |x| logic(x) closure call
+#[allow(clippy::redundant_closure)]
 impl<S, D1, D2> MapExt<D1, D2> for Stream<S, D1>
 where
     S: Scope,

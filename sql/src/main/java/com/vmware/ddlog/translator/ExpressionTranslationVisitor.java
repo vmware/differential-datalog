@@ -78,15 +78,17 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
     }
 
     /**
-     * If type is nullable wrap the expression in Some{}, else leave it unchanged.
+     * If necessary wrap expression in Some{.x = expression}.
      * @param expr  Expression to wrap.
      * @param type  Type of expression.
      * @return      A new expression that is never null.
      */
     public static DDlogExpression wrapSomeIfNeeded(DDlogExpression expr, DDlogType type) {
-        if (type.mayBeNull)
-            return wrapSome(expr, type);
-        return expr;
+        if (expr.getType().same(type))
+            return expr;
+        assert(type.mayBeNull);
+        assert(expr.getType().same(type.setMayBeNull(false)));
+        return wrapSome(expr, type);
     }
 
     public static DDlogExpression operationCall(Node node, DDlogEBinOp.BOp op, DDlogExpression left, DDlogExpression right) {

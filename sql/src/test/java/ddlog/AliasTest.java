@@ -46,10 +46,11 @@ public class AliasTest extends BaseQueriesTest {
                 "from t1 as t1 " +
                 "JOIN t2 as alias2 ON t1.column1 = alias2.column1";
         String program = this.header(false) +
+                "typedef Ttmp = Ttmp{column1:signed<64>, column2:istring, column3:bool, column4:double, column10:signed<64>}\n" +
                 "typedef TRalias2 = TRalias2{new_column:signed<64>}\n" +
                 this.relations(false) +
                 "output relation Rv0[TRalias2]\n" +
-                "Rv0[v3] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt2[TRt2{.column1 = column1}],var v1 = TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4},var v2 = TRalias2{.new_column = v1.column1},var v3 = v2.";
+                "Rv0[v3] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt2[TRt2{.column1 = column1}],var v1 = Ttmp{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4,.column10 = column1},var v2 = TRalias2{.new_column = v1.column1},var v3 = v2.";
         this.testTranslation(query, program);
     }
 

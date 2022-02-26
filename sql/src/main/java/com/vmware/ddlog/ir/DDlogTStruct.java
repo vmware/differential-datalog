@@ -36,14 +36,14 @@ import java.util.*;
 public class DDlogTStruct extends DDlogType {
     private final String name;
     private final List<DDlogField> args;
+    private final HashSet<String> fields = new HashSet<String>();
 
     public DDlogTStruct(@Nullable Node node, String name, List<DDlogField> args) {
         super(node,false);
         this.name = name;
         this.args = args;
-        HashSet<String> fields = new HashSet<String>();
         for (DDlogField f: args) {
-            if (fields.contains(f.getName()))
+            if (this.hasField(f.getName()))
                 this.error("Field name " + f + " is duplicated");
             fields.add(f.getName());
         }
@@ -64,6 +64,9 @@ public class DDlogTStruct extends DDlogType {
         return this;
     }
 
+    public boolean hasField(String fieldName) {
+        return this.fields.contains(fieldName);
+    }
 
     public String getName() { return this.name; }
 

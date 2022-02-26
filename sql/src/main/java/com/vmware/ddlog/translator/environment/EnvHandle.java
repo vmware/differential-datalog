@@ -29,6 +29,7 @@ import com.vmware.ddlog.ir.DDlogExpression;
 import javax.annotation.Nullable;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 
 /**
  * Provides the basic environment operations.
@@ -108,7 +109,7 @@ public class EnvHandle {
         this.environment = new DeleteEnvironment(this.environment, del);
     }
 
-    public void renameUp(String originalName, String newName, HashMap<String, String> columnRename) {
+    public void renameUp(String originalName, String newName, Map<String, String> columnRename) {
         this.environment = new RenameUpEnvironment(this.environment, originalName, newName, columnRename);
     }
 

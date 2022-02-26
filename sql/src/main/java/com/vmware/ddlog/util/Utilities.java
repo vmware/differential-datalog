@@ -62,11 +62,21 @@ public class Utilities {
      }
 
      public static <K, V> void copyMap(Map<K, V> destination, Map<K, V> source) {
-         for (Map.Entry<K, V> e: source.entrySet())
-             destination.put(e.getKey(), e.getValue());
+         destination.putAll(source);
      }
 
      public static String singleQuote(String other) {
          return "'" + other + "'";
      }
+
+    /**
+     * put something in a hashmap that is supposed to be new.
+     * @param map    Map to insert in.
+     * @param key    Key to insert in map.
+     * @param value  Value to insert in map.
+     */
+    public static <K, V> void putNew(@Nullable Map<K, V> map, K key, V value) {
+        V previous = Objects.requireNonNull(map).put(Objects.requireNonNull(key), Objects.requireNonNull(value));
+        assert previous == null : "Key " + key + " already mapped to " + previous + " when adding " + value;
+    }
 }
