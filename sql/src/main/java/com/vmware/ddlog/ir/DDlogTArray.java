@@ -31,7 +31,7 @@ import javax.annotation.Nullable;
 /**
  * Wrapper class for a DDlog vector type.
  */
-public class DDlogTArray extends DDlogType implements DDlogTContainer {
+public class DDlogTArray extends DDlogType implements IDDlogTContainer {
     private final DDlogType elemType;
 
     public DDlogTArray(@Nullable Node node, DDlogType elemType, boolean mayBeNull) {
@@ -64,5 +64,12 @@ public class DDlogTArray extends DDlogType implements DDlogTContainer {
     @Override
     public DDlogType getElementType() {
         return this.elemType;
+    }
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        this.elemType.accept(visitor);
+        visitor.postorder(this);
     }
 }

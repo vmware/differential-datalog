@@ -37,6 +37,12 @@ public class DDlogEFloat extends DDlogExpression {
     }
 
     @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        visitor.postorder(this);
+    }
+
+    @Override
     public String toString() {
         return "32'f" + this.val;
     }

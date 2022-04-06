@@ -68,6 +68,13 @@ public class DDlogEUnOp extends DDlogExpression {
     private final DDlogExpression expr;
 
     @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        this.expr.accept(visitor);
+        visitor.postorder(this);
+    }
+
+    @Override
     public String toString() {
         return "(" + this.uop.toString() +
                 " " + this.expr.toString() + ")";

@@ -42,6 +42,12 @@ public class DDlogEBool extends DDlogExpression {
     }
 
     @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        visitor.postorder(this);
+    }
+
+    @Override
     public String toString() {
         if (this.getType().mayBeNull)
             return "Some{" + this.bval + "}";

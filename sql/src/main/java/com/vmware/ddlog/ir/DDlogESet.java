@@ -45,6 +45,14 @@ public class DDlogESet extends DDlogExpression {
     }
 
     @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        this.lval.accept(visitor);
+        this.rval.accept(visitor);
+        visitor.postorder(this);
+    }
+
+    @Override
     public String toString() {
         return this.lval.toString() + " = " + this.rval.toString();
     }

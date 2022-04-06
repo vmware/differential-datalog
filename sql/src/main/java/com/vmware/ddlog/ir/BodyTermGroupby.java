@@ -29,11 +29,12 @@ import com.facebook.presto.sql.tree.Node;
 import javax.annotation.Nullable;
 
 public class BodyTermGroupby extends RuleBodyTerm {
-    final String var;
-    final DDlogExpression rhsProject;
-    final String[] rhsGroupByVars;
+    public final DDlogEVar var;
+    public final DDlogExpression rhsProject;
+    public final String[] rhsGroupByVars;
 
-    public BodyTermGroupby(@Nullable Node node, String var, DDlogExpression rhsProject, String... rhsGroupByVars) {
+    public BodyTermGroupby(@Nullable Node node, DDlogEVar var, DDlogExpression rhsProject,
+                           String... rhsGroupByVars) {
         super(node);
         this.var = var;
         this.rhsProject = rhsProject;
@@ -41,8 +42,16 @@ public class BodyTermGroupby extends RuleBodyTerm {
     }
 
     @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        this.var.accept(visitor);
+        this.rhsProject.accept(visitor);
+        visitor.postorder(this);
+    }
+
+    @Override
     public String toString() {
-        return "var " + this.var + " = " + this.rhsProject.toString() +
+        return "var " + this.var.var + " = " + this.rhsProject +
                 ".group_by((" + String.join(", ", this.rhsGroupByVars) + "))";
     }
 }

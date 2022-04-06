@@ -94,4 +94,10 @@ public class DDlogTSigned extends DDlogType
     public IBoundedNumericType getWithWidth(int width) {
         return new DDlogTSigned(this.getNode(), width, this.mayBeNull);
     }
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        visitor.postorder(this);
+    }
 }

@@ -51,4 +51,10 @@ public class DDlogTUnknown extends DDlogType implements IDDlogBaseType {
     }
 
     public static DDlogTUnknown instance = new DDlogTUnknown(true);
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        visitor.postorder(this);
+    }
 }

@@ -46,4 +46,10 @@ public class DDlogTGroup extends DDlogTUser {
         return this.getTypeArg(0).same(og.getTypeArg(0)) &&
                 this.getTypeArg(1).same(og.getTypeArg(1));
     }
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        visitor.postorder(this);
+    }
 }

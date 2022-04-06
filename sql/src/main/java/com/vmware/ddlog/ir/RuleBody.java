@@ -35,8 +35,8 @@ import java.util.List;
  * A partially-constructed relation; contains part of the RHS of a relation,
  * and the type produced by the RHS.
  */
-public class RuleBody extends DDlogNode {
-    private final String rowVariable;
+public class RuleBody extends DDlogNode implements IDDlogHasType {
+    public final String rowVariable;
     private final DDlogType type;
     private final List<RuleBodyTerm> definitions;
 
@@ -47,14 +47,21 @@ public class RuleBody extends DDlogNode {
         this.definitions = new ArrayList<RuleBodyTerm>();
     }
 
-    public RuleBody addDefinition(DDlogExpression expression) {
-        this.definitions.add(new RuleBodyCondition(expression.getNode(), expression));
+    public RuleBody addCondition(DDlogExpression expression) {
+        assert expression.getType().is(DDlogTBool.class);
+        this.definitions.add(new BodyTermCondition(expression.getNode(), expression));
         return this;
     }
 
     @SuppressWarnings("UnusedReturnValue")
     public RuleBody addDefinition(RuleBodyTerm rhs) {
         this.definitions.add(rhs);
+        return this;
+    }
+
+    @SuppressWarnings("UnusedReturnValue")
+    public RuleBody addVarDef(@Nullable Node node, String varName, DDlogExpression rhs) {
+        this.addDefinition(new BodyTermVarDef(node, varName, rhs));
         return this;
     }
 
@@ -80,5 +87,14 @@ public class RuleBody extends DDlogNode {
 
     public String getVarName() {
         return this.rowVariable;
+    }
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        this.type.accept(visitor);
+        for (RuleBodyTerm t: this.definitions)
+            t.accept(visitor);
+        visitor.postorder(this);
     }
 }

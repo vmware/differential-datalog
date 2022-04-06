@@ -29,6 +29,7 @@ import com.facebook.presto.sql.parser.SqlParser;
 import com.facebook.presto.sql.tree.Expression;
 import com.facebook.presto.sql.tree.Statement;
 import com.vmware.ddlog.ir.*;
+import com.vmware.ddlog.optimizer.ProgramDataflow;
 import com.vmware.ddlog.util.sql.CreateIndexParser;
 import com.vmware.ddlog.util.sql.ParsedCreateIndex;
 import com.vmware.ddlog.util.sql.PrestoSqlStatement;
@@ -59,8 +60,17 @@ public class Translator {
         this.translationContext = new TranslationContext(this.visitor);
     }
 
-    public final DDlogProgram getDDlogProgram() {
-        return this.translationContext.getProgram();
+    public final DDlogProgram getDDlogProgram(boolean optimize) {
+        DDlogProgram program = this.translationContext.getProgram();
+        if (false &&
+                optimize) {
+            ProgramDataflow df = new ProgramDataflow();
+            program.accept(df);
+            df.computeReachability();
+            // TODO: transform program
+            System.out.println(df.toGraphViz());
+        }
+        return program;
     }
 
     /**

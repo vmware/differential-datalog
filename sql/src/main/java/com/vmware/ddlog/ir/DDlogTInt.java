@@ -74,4 +74,10 @@ public class DDlogTInt extends DDlogType implements IsNumericType, IDDlogBaseTyp
     public DDlogType aggregateType() {
         return this;
     }
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        visitor.postorder(this);
+    }
 }

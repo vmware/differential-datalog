@@ -57,7 +57,7 @@ public class DDlogHandle {
         ddl.forEach(x -> t.translateSqlStatement(translator.toPresto(x)));
         createIndexStatements.forEach(t::translateCreateIndexStatement);
 
-        this.program = t.getDDlogProgram();
+        this.program = t.getDDlogProgram(true);
         // System.out.println(this.program.toString());
         if (compile) {
             final String fileName = "/tmp/program0.dl";

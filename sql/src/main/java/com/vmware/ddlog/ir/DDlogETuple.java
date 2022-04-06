@@ -43,6 +43,14 @@ public class DDlogETuple extends DDlogExpression {
     }
 
     @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        for (DDlogExpression e: this.tupFields)
+            e.accept(visitor);
+        visitor.postorder(this);
+    }
+
+    @Override
     public String toString() {
         return "(" + String.join(", ",
                 Linq.map(this.tupFields, DDlogExpression::toString, String.class)) + ")";

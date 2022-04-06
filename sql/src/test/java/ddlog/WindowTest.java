@@ -49,7 +49,6 @@ public class WindowTest extends BaseQueriesTest {
                 "}\n" +
                 this.relations(false) +
                 "relation Roverinput[TRtmp]\n" +
-                "relation Rtmp0[TRtmp0]\n" +
                 "relation Rover[TRtmp0]\n" +
                 "output relation Rv1[TRtmp1]\n" +
                 "Roverinput[v2] :- Rt1[v0],var v1 = TRtmp{.tmp = v0.column3,.gb = v0.column2,.column1 = v0.column1," +
@@ -84,7 +83,6 @@ public class WindowTest extends BaseQueriesTest {
                 "}\n" +
                 this.relations(false) +
                 "relation Roverinput[TRalias2]\n" +
-                "relation Rtmp[TRtmp]\n" +
                 "relation Rover[TRtmp]\n" +
                 "output relation Rv0[TRtmp0]\n" +
                 "Roverinput[v6] :- Rt1[TRt1{.column1 = column11,.column2 = column21,.column3 = column30,.column4 = column40}],Rt4[TRt4{.column1 = Some{.x = column11},.column2 = column22}],var v4 = Ttmp{.column1 = column11,.column2 = column21,.column3 = column30,.column4 = column40,.column10 = Some{.x = column11},.column20 = column22},var v5 = TRalias2{.tmp = v4.column10,.gb = v4.column1,.new_column = v4.column1},var v6 = v5.\n" +
@@ -115,7 +113,6 @@ public class WindowTest extends BaseQueriesTest {
                 "}\n" +
                 this.relations(false) +
                 "relation Roverinput[TRtmp]\n" +
-                "relation Rtmp0[TRtmp0]\n" +
                 "relation Rover[TRtmp0]\n" +
                 "output relation Rv1[TRtmp1]\n" +
                 "Roverinput[v2] :- Rt1[v0],var v1 = TRtmp{.tmp = v0.column3,.gb = v0.column2,.column1 = v0.column1," +
@@ -147,7 +144,6 @@ public class WindowTest extends BaseQueriesTest {
                 "}\n" +
                 this.relations(false) +
                 "relation Roverinput[TRtmp]\n" +
-                "relation Rtmp0[TRtmp0]\n" +
                 "relation Rover[TRtmp0]\n" +
                 "output relation Rv1[TRtmp1]\n" +
                 "Roverinput[v2] :- Rt1[v0],var v1 = TRtmp{.tmp = sql_substr(v0.column2, 64'sd3, 64'sd3),.gb = v0.column3," +
@@ -193,9 +189,7 @@ public class WindowTest extends BaseQueriesTest {
                 "}\n" +
                 this.relations(false) +
                 "relation Roverinput[TRtmp]\n" +
-                "relation Rtmp0[TRtmp0]\n" +
                 "relation Rover[TRtmp0]\n" +
-                "relation Rtmp1[TRtmp1]\n" +
                 "relation Rover0[TRtmp1]\n" +
                 "relation Rtmp2[Ttmp]\n" +
                 "output relation Rv1[TRtmp3]\n" +
@@ -243,9 +237,7 @@ public class WindowTest extends BaseQueriesTest {
                 "(Tagg0{.min = min0.1})\n" +
                 "}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "relation Roverinput[TRtmp]\n" +
-                "relation Rtmp0[TRtmp0]\n" +
                 "relation Rover[TRtmp0]\n" +
                 "output relation Rv1[TRtmp1]\n" +
                 "Roverinput[v2] :- Rt1[v0],var gb2 = v0.column2,var gb3 = v0.column3,var groupResult = (v0).group_by((gb2, gb3)),var aggResult = agg(groupResult),var v1 = TRtmp{.column2 = gb2,.gb1 = gb3,.tmp = aggResult.tmp,.s = aggResult.s},var v2 = v1.\n" +
@@ -275,9 +267,7 @@ public class WindowTest extends BaseQueriesTest {
                 "(Tagg0{.count = count0})\n" +
                 "}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "relation Roverinput[TRtmp]\n" +
-                "relation Rtmp0[TRtmp0]\n" +
                 "relation Rover[TRtmp0]\n" +
                 "output relation Rv0[TRtmp1]\n" +
                 "Roverinput[v2] :- Rt1[v0],var gb2 = v0.column2,var gb3 = v0.column3,var groupResult = (v0).group_by((gb2, gb3)),var v1 = TRtmp{.gb1 = gb2,.column2 = gb2,.tmp = gb3},var v2 = v1.\n" +
@@ -318,9 +308,7 @@ public class WindowTest extends BaseQueriesTest {
                 "(Tagg0{.sum = sum1})\n" +
                 "}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "relation Roverinput[TRtmp]\n" +
-                "relation Rtmp0[TRtmp0]\n" +
                 "relation Rover[TRtmp0]\n" +
                 "output relation Rv0[TRtmp1]\n" +
                 "Roverinput[v2] :- Rt1[v0],var gb2 = v0.column2,var gb3 = v0.column3,var groupResult = (v0).group_by((gb2, gb3)),var aggResult = agg(groupResult),var v1 = TRtmp{.column2 = gb2,.gb1 = gb3,.tmp = aggResult.tmp,.col = aggResult.col},var v2 = v1.\n" +
@@ -352,7 +340,6 @@ public class WindowTest extends BaseQueriesTest {
                 "}\n" +
                 this.relations(false) +
                 "relation Roverinput[TRtmp]\n" +
-                "relation Rtmp0[TRtmp0]\n" +
                 "relation Rover[TRtmp0]\n" +
                 "output relation Rv0[TRtmp1]\n" +
                 "Roverinput[v6] :- Rt1[TRt1{.column1 = column11,.column2 = column20,.column3 = column30,.column4 = column40}],Rt2[TRt2{.column1 = column11}],var v4 = Ttmp{.column1 = column11,.column2 = column20,.column3 = column30,.column4 = column40,.column10 = column11},var v5 = TRtmp{.tmp = v4.column10,.gb = v4.column3,.column2 = v4.column2},var v6 = v5.\n" +
@@ -384,7 +371,6 @@ public class WindowTest extends BaseQueriesTest {
                 "}\n" +
                 this.relations(false) +
                 "relation Roverinput[TRtmp]\n" +
-                "relation Rtmp0[TRtmp0]\n" +
                 "relation Rover[TRtmp0]\n" +
                 "output relation Rv0[TRtmp1]\n" +
                 "Roverinput[v6] :- Rt1[TRt1{.column1 = column11,.column2 = column20,.column3 = column30,.column4 = column40}],Rt2[TRt2{.column1 = column11}],var v4 = Ttmp{.column1 = column11,.column2 = column20,.column3 = column30,.column4 = column40,.column10 = column11},var v5 = TRtmp{.tmp = v4.column10,.gb = v4.column3,.test_alias = v4.column2},var v6 = v5.\n" +
@@ -416,7 +402,6 @@ public class WindowTest extends BaseQueriesTest {
                 "}\n" +
                 this.relations(false) +
                 "relation Roverinput[TRtmp]\n" +
-                "relation Rtmp0[TRtmp0]\n" +
                 "relation Rover[TRtmp0]\n" +
                 "output relation Rv0[TRtmp1]\n" +
                 "Roverinput[v6] :- Rt1[TRt1{.column1 = column11,.column2 = column20,.column3 = column30,.column4 = column40}],Rt2[TRt2{.column1 = column11}],var v4 = Ttmp{.column1 = column11,.column2 = column20,.column3 = column30,.column4 = column40,.column10 = column11},var v5 = TRtmp{.tmp = v4.column10,.gb = v4.column3,.test_alias = v4.column2},var v6 = v5.\n" +

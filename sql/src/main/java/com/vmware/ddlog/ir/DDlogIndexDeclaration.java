@@ -60,6 +60,15 @@ public class DDlogIndexDeclaration extends DDlogNode {
     }
 
     @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        for (DDlogField f: this.fields)
+            f.accept(visitor);
+        this.baseRelation.accept(visitor);
+        visitor.postorder(this);
+    }
+
+    @Override
     public String toString() {
         return "index " + this.name
                 + "(" + this.fields.stream().map(DDlogField::toString).collect(Collectors.joining(",")) + ") on " +

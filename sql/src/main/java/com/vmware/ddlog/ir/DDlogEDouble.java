@@ -37,6 +37,12 @@ public class DDlogEDouble extends DDlogExpression {
     }
 
     @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        visitor.postorder(this);
+    }
+
+    @Override
     public String toString() {
         return "64'f" + this.val;
     }

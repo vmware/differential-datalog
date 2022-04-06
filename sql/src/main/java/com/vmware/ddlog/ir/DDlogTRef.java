@@ -25,14 +25,13 @@
 package com.vmware.ddlog.ir;
 
 import com.facebook.presto.sql.tree.Node;
-import ddlogapi.DDlogException;
 
 import javax.annotation.Nullable;
 
 /**
  * Reference type.
  */
-public class DDlogTRef extends DDlogType implements DDlogTContainer {
+public class DDlogTRef extends DDlogType implements IDDlogTContainer {
     private final DDlogType elemType;
 
     public DDlogTRef(@Nullable Node node, DDlogType elemType, boolean mayBeNull) {
@@ -83,5 +82,12 @@ public class DDlogTRef extends DDlogType implements DDlogTContainer {
     @Override
     public DDlogType getElementType() {
         return this.elemType;
+    }
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        this.elemType.accept(visitor);
+        visitor.postorder(this);
     }
 }

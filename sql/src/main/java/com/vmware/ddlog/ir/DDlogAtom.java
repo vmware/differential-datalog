@@ -29,7 +29,7 @@ import com.facebook.presto.sql.tree.Node;
 
 import javax.annotation.Nullable;
 
-public class DDlogAtom extends DDlogNode {
+public class DDlogAtom extends DDlogNode implements IDDlogHasType {
     public final RelationName relation;
     public final DDlogExpression val;
 
@@ -41,6 +41,13 @@ public class DDlogAtom extends DDlogNode {
 
     public DDlogType getType() {
         return this.val.getType();
+    }
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        this.val.accept(visitor);
+        visitor.postorder(this);
     }
 
     @Override

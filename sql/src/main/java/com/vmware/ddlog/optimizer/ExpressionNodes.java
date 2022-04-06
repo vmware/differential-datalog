@@ -22,11 +22,14 @@
  *
  */
 
-package com.vmware.ddlog.ir;
+package com.vmware.ddlog.optimizer;
 
-/**
- * Interface implemented by container types: e.g., DDlogTArray.
- */
-public interface DDlogTContainer extends DDlogIRNode {
-    DDlogType getElementType();
+import java.util.HashSet;
+import java.util.Set;
+
+class ExpressionNodes {
+    // Values read while evaluating an expression
+    public final Set<DFNode> sources = new HashSet<>();
+    // Variables defined while evaluating an expression
+    public final Set<DFNode> definitions = new HashSet<>();
 }

@@ -64,6 +64,14 @@ public class DDlogEApply extends DDlogExpression {
     }
 
     @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        for (DDlogExpression e: this.args)
+            e.accept(visitor);
+        visitor.postorder(this);
+    }
+
+    @Override
     public String toString() {
         if (this.suffix && this.args.size() > 0) {
             List<DDlogExpression> tail = this.args.subList(1, this.args.size());

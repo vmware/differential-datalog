@@ -43,6 +43,12 @@ public class DDlogEBit extends DDlogExpression {
     }
 
     @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        visitor.postorder(this);
+    }
+
+    @Override
     public String toString() {
         String result = "";
         if (this.width > 0)

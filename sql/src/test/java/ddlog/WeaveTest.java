@@ -473,7 +473,7 @@ public class WeaveTest extends BaseQueriesTest {
         create = translatePrestoSqlStatement(assigned_pods);
         Assert.assertNotNull(create);
 
-        DDlogProgram program = t.getDDlogProgram();
+        DDlogProgram program = t.getDDlogProgram(true);
         String p = program.toString();
         Assert.assertNotNull(p);
         String expected = "import fp\n" +
@@ -645,25 +645,19 @@ public class WeaveTest extends BaseQueriesTest {
                 "output relation Rpods_to_assign[TRtmp]\n" +
                 "output relation Rpods_with_port_requests[TRtmp1]\n" +
                 "relation Rtmp2[Ttmp0]\n" +
-                "relation Rtmp3[TRtmp3]\n" +
                 "output relation Rpod_node_selector_matches[TRtmp3]\n" +
                 "relation Rtmp4[Ttmp2]\n" +
                 "relation Rtmp5[Ttmp3]\n" +
-                "relation Rtmp6[TRtmp6]\n" +
                 "output relation Rinter_pod_affinity_matches_inner[TRtmp6]\n" +
                 "relation Roverinput[TRtmp7]\n" +
-                "relation Rtmp8[TRtmp8]\n" +
                 "relation Rover[TRtmp8]\n" +
                 "output relation Rinter_pod_affinity_matches[TRtmp9]\n" +
-                "relation Rtmp10[TRtmp10]\n" +
                 "output relation Rspare_capacity_per_node[TRtmp10]\n" +
                 "output relation Rnodes_that_have_tolerations[TRtmp11]\n" +
                 "relation Roverinput0[TRtmp12]\n" +
-                "relation Rtmp13[TRtmp8]\n" +
                 "relation Rover0[TRtmp8]\n" +
                 "relation Rtmp15[TRtmp14]\n" +
                 "relation Rtmp16[Ttmp7]\n" +
-                "relation Rtmp17[TRtmp3]\n" +
                 "output relation Rpods_that_tolerate_node_taints[TRtmp3]\n" +
                 "output relation Rassigned_pods[TRtmp18]\n" +
                 "Rpods_to_assign_no_limit[v1] :- Rpod_info[v],unwrapBool(b_and_RN(((v.status == i\"Pending\") and is_null(v.node_name)), s_eq_NR(v.schedulerName, i\"dcm-scheduler\"))),var v0 = TRtmp{.pod_name = v.pod_name,.status = v.status,.controllable__node_name = v.node_name,.namespace = v.namespace,.cpu_request = v.cpu_request,.memory_request = v.memory_request,.ephemeral_storage_request = v.ephemeral_storage_request,.pods_request = v.pods_request,.owner_name = v.owner_name,.creation_timestamp = v.creation_timestamp,.has_node_selector_labels = v.has_node_selector_labels,.has_pod_affinity_requirements = v.has_pod_affinity_requirements},var v1 = v0.\n" +

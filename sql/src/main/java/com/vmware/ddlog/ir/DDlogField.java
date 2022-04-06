@@ -29,7 +29,7 @@ import com.facebook.presto.sql.tree.Node;
 import javax.annotation.Nullable;
 import java.util.Objects;
 
-public class DDlogField extends DDlogNode {
+public class DDlogField extends DDlogNode implements IDDlogHasType {
     private final String name;
     private final DDlogType type;
 
@@ -59,6 +59,13 @@ public class DDlogField extends DDlogNode {
         DDlogField that = (DDlogField) o;
         return name.equals(that.name) &&
                 type.same(that.type);
+    }
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        this.type.accept(visitor);
+        visitor.postorder(this);
     }
 
     @Override

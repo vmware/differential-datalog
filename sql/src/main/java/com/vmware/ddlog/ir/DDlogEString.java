@@ -39,11 +39,16 @@ public class DDlogEString extends DDlogExpression {
     }
 
     @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        visitor.postorder(this);
+    }
+
+    @Override
     public String toString() {
         if (this.string.contains("${")) {
             return "[|" + this.string + "|]";
         }
         return "\"" + this.string + "\"";
     }
-
 }

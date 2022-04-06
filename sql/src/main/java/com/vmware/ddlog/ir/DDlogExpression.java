@@ -25,11 +25,10 @@
 package com.vmware.ddlog.ir;
 
 import com.facebook.presto.sql.tree.Node;
-import com.vmware.ddlog.util.Utilities;
 
 import javax.annotation.Nullable;
 
-public abstract class DDlogExpression extends DDlogNode {
+public abstract class DDlogExpression extends DDlogNode implements IDDlogHasType {
     /**
      * Inferred type of the expression.  We can't make it final
      * since sometimes it's not set in the constructor.  But it should be really final.

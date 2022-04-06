@@ -31,7 +31,7 @@ import javax.annotation.Nullable;
 /**
  * Wrapper class for a DDlog set type.
  */
-public class DDlogTSet extends DDlogType implements DDlogTContainer {
+public class DDlogTSet extends DDlogType implements IDDlogTContainer {
     private final DDlogType elemType;
 
     public DDlogTSet(@Nullable Node node, DDlogType elemType, boolean mayBeNull) {
@@ -64,5 +64,12 @@ public class DDlogTSet extends DDlogType implements DDlogTContainer {
     @Override
     public DDlogType getElementType() {
         return this.elemType;
+    }
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        this.elemType.accept(visitor);
+        visitor.postorder(this);
     }
 }

@@ -41,8 +41,15 @@ public class DDlogETupField extends DDlogExpression {
     private static DDlogType getFieldType(DDlogType type, int field) {
         if (!(type instanceof DDlogTTuple))
             type.error("Type is not a tuple: " + type);
-        DDlogTTuple tuple = (DDlogTTuple)type;
+        DDlogTTuple tuple = type.to(DDlogTTuple.class);
         return tuple.tupArgs[field];
+    }
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        this.struct.accept(visitor);
+        visitor.postorder(this);
     }
 
     @Override

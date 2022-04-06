@@ -48,4 +48,11 @@ public class BodyTermAggregate extends RuleBodyTerm {
                 String.join(", ", this.groupBy) + "), " + this.aggFunc +
                 "(" + this.aggExpr.toString() + "))";
     }
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        this.aggExpr.accept(visitor);
+        visitor.postorder(this);
+    }
 }

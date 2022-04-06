@@ -26,6 +26,7 @@ package com.vmware.ddlog.translator;
 
 import com.facebook.presto.sql.tree.*;
 import com.vmware.ddlog.ir.DDlogEVar;
+import com.vmware.ddlog.ir.DDlogEVarDecl;
 import com.vmware.ddlog.ir.DDlogExpression;
 import com.vmware.ddlog.translator.environment.EnvHandle;
 import com.vmware.ddlog.translator.environment.IEnvironment;

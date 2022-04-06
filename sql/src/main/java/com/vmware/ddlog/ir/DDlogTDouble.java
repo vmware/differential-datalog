@@ -70,4 +70,10 @@ public class DDlogTDouble extends DDlogType implements IsNumericType, IDDlogBase
     public DDlogType aggregateType() {
         return this;
     }
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        visitor.postorder(this);
+    }
 }

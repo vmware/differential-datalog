@@ -47,6 +47,14 @@ public class DDlogEComma extends DDlogExpression {
     }
 
     @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        this.left.accept(visitor);
+        this.right.accept(visitor);
+        visitor.postorder(this);
+    }
+
+    @Override
     public String toString() {
         return this.left.toString() + "," + this.right.toString();
     }
