@@ -81,7 +81,7 @@ class TranslationContext extends IdGen {
         DDlogAtom lhs = new DDlogAtom(node, relName, new DDlogEVar(node, outVarName, relDecl.getType()));
         List<RuleBodyTerm> definitions = body.getDefinitions();
         DDlogExpression inRowVar = body.getRowVariable();
-        definitions.add(new RuleBodyVarDef(node, outVarName, inRowVar));
+        definitions.add(new BodyTermVarDef(node, outVarName, inRowVar));
         DDlogRule rule = new DDlogRule(node, lhs, definitions);
         rule.addComment(new DDlogComment(node));
         this.add(relDecl, null);
@@ -109,10 +109,6 @@ class TranslationContext extends IdGen {
         for (Map.Entry<Node, DDlogExpression> e: other.substitutions.entrySet())
             this.addSubstitution(e.getKey(), e.getValue());
         this.relationAlias.addAll(other.relationAlias);
-    }
-
-    public DDlogExpression operationCall(Node node, DDlogEBinOp.BOp op, DDlogExpression left, DDlogExpression right) {
-        return ExpressionTranslationVisitor.operationCall(node, op, left, right);
     }
 
     static String location(Node node) {
@@ -144,7 +140,7 @@ class TranslationContext extends IdGen {
     }
 
     void warning(String message, Node node) {
-        System.err.println(message + ": " + node.toString() + " " + location(node));
+        System.err.println(message + ": " + node + " " + location(node));
     }
 
     @Nullable

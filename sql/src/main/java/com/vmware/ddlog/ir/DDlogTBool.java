@@ -49,4 +49,10 @@ public class DDlogTBool extends DDlogType implements IDDlogBaseType {
     }
 
     public static DDlogTBool instance = new DDlogTBool(null, false);
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        visitor.postorder(this);
+    }
 }

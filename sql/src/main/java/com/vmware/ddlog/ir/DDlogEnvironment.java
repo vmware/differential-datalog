@@ -44,4 +44,9 @@ public class DDlogEnvironment extends DDlogExpression {
     public String toString() {
         return this.environment.toString();
     }
+
+    @Override
+    public void accept(DDlogVisitor visitor) { if (!visitor.preorder(this)) return;
+        throw new RuntimeException("Should not appear in programs");
+    }
 }

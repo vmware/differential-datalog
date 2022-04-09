@@ -26,12 +26,11 @@ package com.vmware.ddlog.ir;
 
 import com.vmware.ddlog.translator.TranslationException;
 import com.facebook.presto.sql.tree.Node;
+import com.vmware.ddlog.util.ICastable;
 
 import javax.annotation.Nullable;
 
-public interface DDlogIRNode {
-    @Override String toString();
-
+public interface DDlogIRNode extends ICastable {
     default CodeFormatter format(CodeFormatter formatter) {
         formatter.append(this.toString());
         return formatter;
@@ -40,31 +39,8 @@ public interface DDlogIRNode {
     default <T> T checkNull(@Nullable T value) {
         if (value == null)
             this.error("Null pointer");
+        assert value != null;
         return value;
-    }
-
-    @Nullable
-    default <T> T as(Class<T> clazz) {
-        try {
-            return clazz.cast(this);
-        } catch (ClassCastException e) {
-            return null;
-        }
-    }
-
-    default <T> T as(Class<T> clazz, @Nullable String failureMessage) {
-        T result = this.as(clazz);
-        if (result == null) {
-            if (failureMessage == null)
-                failureMessage = this.getClass().getName() + " is not an instance of " + clazz.toString();
-            this.error(failureMessage);
-        }
-        assert result != null;
-        return result;
-    }
-
-    default <T> T to(Class<T> clazz) {
-        return this.as(clazz, null);
     }
 
     default void error(String message) {

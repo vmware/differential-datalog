@@ -31,17 +31,24 @@ import javax.annotation.Nullable;
 import java.util.List;
 
 public class DDlogEStruct extends DDlogExpression {
-    public static final class FieldValue {
+    public static final class FieldValue extends DDlogNode {
         private final String name;
         private final DDlogExpression value;
 
-        public FieldValue(String name, DDlogExpression value) {
+        public FieldValue(@Nullable Node node, String name, DDlogExpression value) {
+            super(node);
             this.name = name;
             this.value = value;
         }
 
         public String getName() { return this.name; }
         public DDlogExpression getValue() { return this.value; }
+
+        @Override
+        public void accept(DDlogVisitor visitor) { if (!visitor.preorder(this)) return;
+            this.value.accept(visitor);
+            visitor.postorder(this);
+        }
     }
 
     public final String constructor;
@@ -54,8 +61,24 @@ public class DDlogEStruct extends DDlogExpression {
         // We cannot check the type if it is just a typedef.
     }
 
+    public DDlogExpression getFieldValue(String field) {
+        for (FieldValue f: this.fields) {
+            if (f.name.equals(field))
+                return f.value;
+        }
+        throw new RuntimeException("No field named " + field + " in expression " + this);
+    }
+
     public DDlogEStruct(@Nullable Node node, String constructor, DDlogType type, List<FieldValue> fields) {
         this(node, constructor, type, fields.toArray(new FieldValue[0]));
+    }
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        for (FieldValue fv: this.fields)
+            fv.accept(visitor);
+        visitor.postorder(this);
     }
 
     @Override

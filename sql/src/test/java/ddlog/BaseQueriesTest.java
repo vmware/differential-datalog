@@ -169,7 +169,7 @@ public class BaseQueriesTest {
         Assert.assertNotNull(view);
         String s = view.toString();
         Assert.assertNotNull(s);
-        DDlogProgram ddprogram = t.getDDlogProgram();
+        DDlogProgram ddprogram = t.getDDlogProgram(true);
         Assert.assertNotNull(ddprogram);
         s = ddprogram.toString();
         //if (!program.equals(s))
@@ -185,7 +185,7 @@ public class BaseQueriesTest {
         Assert.assertNotNull(index);
         String s = index.toString();
         Assert.assertNotNull(s);
-        DDlogProgram ddprogram = t.getDDlogProgram();
+        DDlogProgram ddprogram = t.getDDlogProgram(true);
         Assert.assertNotNull(ddprogram);
         s = ddprogram.toString();
         Assert.assertEquals(program, s);
@@ -200,7 +200,7 @@ public class BaseQueriesTest {
             String s = view.toString();
             Assert.assertNotNull(s);
         }
-        DDlogProgram ddprogram = t.getDDlogProgram();
+        DDlogProgram ddprogram = t.getDDlogProgram(true);
         Assert.assertNotNull(ddprogram);
         String s = ddprogram.toString();
         if (!program.equals(s))
@@ -239,7 +239,7 @@ public class BaseQueriesTest {
                     .splitToList(schemaAsString);
             semiColonSeparated // remove SQL comments
                     .forEach(x -> t.translateSqlStatement(new PrestoSqlStatement(x)));
-            final DDlogProgram dDlogProgram = t.getDDlogProgram();
+            final DDlogProgram dDlogProgram = t.getDDlogProgram(true);
             final String ddlogProgramAsString = dDlogProgram.toString();
             File tmp = this.writeProgramToFile(ddlogProgramAsString);
             DDlogAPI.CompilationResult result = new DDlogAPI.CompilationResult(false);

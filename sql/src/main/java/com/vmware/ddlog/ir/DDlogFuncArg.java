@@ -41,6 +41,13 @@ public class DDlogFuncArg extends DDlogNode {
     }
 
     @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        this.type.accept(visitor);
+        visitor.postorder(this);
+    }
+
+    @Override
     public String toString() {
         return this.name + ": " + (this.mut ? "mut " : "") + this.type.toString();
     }

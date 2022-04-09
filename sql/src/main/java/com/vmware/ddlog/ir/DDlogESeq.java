@@ -53,7 +53,15 @@ public class DDlogESeq extends DDlogExpression {
     }
 
     @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        this.left.accept(visitor);
+        this.right.accept(visitor);
+        visitor.postorder(this);
+    }
+
+    @Override
     public String toString() {
-        return this.left.toString() + ";\n" + "(" + this.right.toString() + ")";
+        return this.left + ";\n" + "(" + this.right + ")";
     }
 }

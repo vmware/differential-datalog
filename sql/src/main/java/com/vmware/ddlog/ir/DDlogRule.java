@@ -51,6 +51,15 @@ public class DDlogRule extends DDlogNode {
     }
 
     @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        this.head.accept(visitor);
+        for (RuleBodyTerm t: body)
+            t.accept(visitor);
+        visitor.postorder(this);
+    }
+
+    @Override
     public String toString() {
         String result = "";
         /*

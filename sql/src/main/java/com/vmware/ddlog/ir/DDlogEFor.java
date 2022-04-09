@@ -41,6 +41,15 @@ public class DDlogEFor extends DDlogExpression {
     }
 
     @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        this.loopIter.accept(visitor);
+        this.iter.accept(visitor);
+        this.body.accept(visitor);
+        visitor.postorder(this);
+    }
+
+    @Override
     public String toString() {
         return "for (" + this.loopIter + " in " + this.iter.toString() + ") {\n" +
                 this.body.toString() + "}\n";

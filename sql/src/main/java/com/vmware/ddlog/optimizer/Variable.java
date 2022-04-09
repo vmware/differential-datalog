@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 VMware, Inc.
+ * Copyright (c) 2022 VMware, Inc.
  * SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -22,22 +22,38 @@
  *
  */
 
-package com.vmware.ddlog.ir;
+package com.vmware.ddlog.optimizer;
 
-import com.facebook.presto.sql.tree.Node;
+import com.vmware.ddlog.ir.DDlogRule;
+import com.vmware.ddlog.ir.DDlogType;
+import com.vmware.ddlog.util.ICastable;
 
-import javax.annotation.Nullable;
+import java.util.Collection;
 
-public class RuleBodyCondition extends RuleBodyTerm {
-    private final DDlogExpression expr;
+public abstract class Variable implements ICastable {
+    public final DDlogRule rule;
+    public final String name;
+    public final DDlogType type;
 
-    public RuleBodyCondition(@Nullable Node node, DDlogExpression expr) {
-        super(node);
-        this.expr = this.checkNull(expr);
+    protected Variable(DDlogRule rule, String name, DDlogType type) {
+        this.rule = rule;
+        this.name = name;
+        this.type = type;
+    }
+
+    @Override
+    public void error(String message) {
+        throw new RuntimeException(message);
     }
 
     @Override
     public String toString() {
-        return this.expr.toString();
+        return "Variable{" +
+                "rule=" + this.rule.head.relation.name +
+                ", name=" + name +
+                ", type=" + type +
+                '}';
     }
+
+    public abstract Collection<DFNode> getNodes();
 }

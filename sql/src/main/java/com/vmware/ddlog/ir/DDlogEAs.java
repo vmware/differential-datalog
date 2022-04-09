@@ -46,6 +46,13 @@ public class DDlogEAs extends DDlogExpression {
         return this.expr + " as " + this.getType();
     }
 
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        this.expr.accept(visitor);
+        visitor.postorder(this);
+    }
+
     public static DDlogExpression cast(DDlogExpression from, DDlogType to) {
         if (from.getType().same(to))
             return from;

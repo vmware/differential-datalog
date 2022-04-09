@@ -63,4 +63,10 @@ public class DDlogTVar extends DDlogType {
     public int hashCode() {
         return Objects.hash(name);
     }
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        visitor.postorder(this);
+    }
 }

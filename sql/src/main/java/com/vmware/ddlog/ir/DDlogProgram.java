@@ -117,6 +117,24 @@ public class DDlogProgram extends DDlogNode {
         this.tableToRelation.put(tableName, relation);
     }
 
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        for (DDlogImport i: imports)
+            i.accept(visitor);
+        for (DDlogTypeDef t: typedefs)
+            t.accept(visitor);
+        for (DDlogFunction f: functions)
+            f.accept(visitor);
+        for (DDlogRelationDeclaration r: relations)
+            r.accept(visitor);
+        for (DDlogIndexDeclaration i: indexes)
+            i.accept(visitor);
+        for (DDlogRule r: rules)
+            r.accept(visitor);
+        visitor.postorder(this);
+    }
+
     public String relationNameToTableName(final String relationName) {
         for (Map.Entry<String, DDlogRelationDeclaration> me : this.tableToRelation.entrySet()) {
             if (me.getValue().getName().name.equals(relationName))

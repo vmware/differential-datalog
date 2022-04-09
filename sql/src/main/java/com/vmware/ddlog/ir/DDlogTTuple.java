@@ -99,4 +99,12 @@ public class DDlogTTuple extends DDlogType {
     public DDlogType component(int index) {
         return this.tupArgs[index];
     }
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        for (DDlogType t: this.tupArgs)
+            t.accept(visitor);
+        visitor.postorder(this);
+    }
 }

@@ -27,17 +27,28 @@ package com.vmware.ddlog.ir;
 import com.facebook.presto.sql.tree.Node;
 
 import javax.annotation.Nullable;
+import java.util.Objects;
 
 public class DDlogEVarDecl extends DDlogExpression {
-    private final String vName;
+    public final String var;
 
-    public DDlogEVarDecl(@Nullable Node node, String vName, DDlogType type) {
+    public DDlogEVarDecl(@Nullable Node node, String var, DDlogType type) {
         super(node, type);
-        this.vName = vName;
+        this.var = var;
+    }
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        visitor.postorder(this);
+    }
+
+    public DDlogEVar getVar() {
+        return new DDlogEVar(this.node, this.var, Objects.requireNonNull(this.type));
     }
 
     @Override
     public String toString() {
-        return "var " + this.vName;
+        return "var " + this.var;
     }
 }

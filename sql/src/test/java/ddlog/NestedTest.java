@@ -37,7 +37,7 @@ public class NestedTest extends BaseQueriesTest {
                 "relation Rsub[TRt2]\n" +
                 "output relation Rv0[TRtmp0]\n" +
                 "Rsub[v2] :- Rt2[v0],var v1 = TRt2{.column1 = v0.column1},var v2 = v1.\n" +
-                "Rv0[v4] :- Rt1[v],Rsub[TRt2{v.column1}],var v3 = TRtmp0{.column2 = v.column2},var v4 = v3.";
+                "Rv0[v4] :- Rt1[v],Rsub[TRt2{.column1 = v.column1}],var v3 = TRtmp0{.column2 = v.column2},var v4 = v3.";
         this.testTranslation(query, program);
     }
 
@@ -50,7 +50,7 @@ public class NestedTest extends BaseQueriesTest {
                 "relation Rsub[TRt2]\n" +
                 "output relation Rv0[TRt2]\n" +
                 "Rsub[v2] :- Rt2[v0],var v1 = TRt2{.column1 = v0.column1},var v2 = v1.\n" +
-                "Rv0[v4] :- Rt1[v],Rsub[TRt2{v.column1}],var v3 = TRt2{.column1 = v.column1},var v4 = v3.";
+                "Rv0[v4] :- Rt1[v],Rsub[TRt2{.column1 = v.column1}],var v3 = TRt2{.column1 = v.column1},var v4 = v3.";
         this.testTranslation(query, program);
     }
 
@@ -65,7 +65,7 @@ public class NestedTest extends BaseQueriesTest {
                 "output relation Rv0[TRt2]\n" +
                 "Rsub[v2] :- Rt2[v0],var v1 = TRt2{.column1 = v0.column1},var v2 = v1.\n" +
                 "Rsub0[v5] :- Rt1[v3],var v4 = TRt2{.column1 = v3.column1},var v5 = v4.\n" +
-                "Rv0[v7] :- Rt1[v],Rsub[TRt2{v.column1}],Rsub0[TRt2{v.column1}],var v6 = TRt2{.column1 = v.column1},var v7 = v6.";
+                "Rv0[v7] :- Rt1[v],Rsub[TRt2{.column1 = v.column1}],Rsub0[TRt2{.column1 = v.column1}],var v6 = TRt2{.column1 = v.column1},var v7 = v6.";
         this.testTranslation(query, program);
     }
 
@@ -80,7 +80,7 @@ public class NestedTest extends BaseQueriesTest {
                 "output relation Rv0[TRt2]\n" +
                 "Rsub[v2] :- Rt2[v0],var v1 = TRt2{.column1 = v0.column1},var v2 = v1.\n" +
                 "Rsub0[v5] :- Rt1[v3],(v3.column1 > 64'sd0),var v4 = TRt2{.column1 = v3.column1},var v5 = v4.\n" +
-                "Rv0[v7] :- Rt1[v],Rsub[TRt2{v.column1}],Rsub0[TRt2{v.column1}],var v6 = TRt2{.column1 = v.column1},var v7 = v6.";
+                "Rv0[v7] :- Rt1[v],Rsub[TRt2{.column1 = v.column1}],Rsub0[TRt2{.column1 = v.column1}],var v6 = TRt2{.column1 = v.column1},var v7 = v6.";
         this.testTranslation(query, program);
     }
 

@@ -37,13 +37,18 @@ public class DDlogETyped extends DDlogExpression {
     }
 
     @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        this.expr.accept(visitor);
+        visitor.postorder(this);
+    }
+
+    @Override
     public String toString() {
         // Special handling for nulls
         if (this.expr.is(DDlogENull.class))
             // avoid writing the type twice
-            return "None{}: " + this.getType().toString();
-        return this.expr.toString() + ": " + this.getType().toString();
+            return "None{}: " + this.getType();
+        return this.expr + ": " + this.getType();
     }
-
-
 }

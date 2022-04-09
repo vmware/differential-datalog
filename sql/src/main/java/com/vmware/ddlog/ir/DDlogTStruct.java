@@ -97,4 +97,12 @@ public class DDlogTStruct extends DDlogType {
         this.error("Field " + col + " not present in struct " + this.name);
         throw new RuntimeException("unreachable");
     }
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        for (DDlogField f: this.args)
+            f.accept(visitor);
+        visitor.postorder(this);
+    }
 }

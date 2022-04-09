@@ -35,6 +35,12 @@ public class DDlogImport extends DDlogNode {
     }
 
     @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        visitor.postorder(this);
+    }
+
+    @Override
     public String toString() {
         String result = "import " + this.module;
         if (!this.alias.isEmpty())

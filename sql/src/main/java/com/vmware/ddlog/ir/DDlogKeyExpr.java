@@ -39,6 +39,13 @@ public class DDlogKeyExpr extends DDlogNode {
     }
 
     @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        this.expr.accept(visitor);
+        visitor.postorder(this);
+    }
+
+    @Override
     public String toString() {
         return "(" + this.var + ")" + this.expr.toString();
     }

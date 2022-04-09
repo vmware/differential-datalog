@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 VMware, Inc.
+ * Copyright (c) 2022 VMware, Inc.
  * SPDX-License-Identifier: MIT
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -22,30 +22,46 @@
  *
  */
 
-package com.vmware.ddlog.ir;
+package com.vmware.ddlog.optimizer;
 
-import com.facebook.presto.sql.tree.Node;
+import com.vmware.ddlog.ir.DDlogRule;
 
-import javax.annotation.Nullable;
 import java.util.Objects;
 
-public class RuleBodyVarDef extends RuleBodyCondition {
-    private final String var;
-    private final DDlogType exprType;
+/**
+ * A graph node representing a field of a variable in a rule.
+ * The variable has a struct-typed type.
+ */
+class RuleVarFieldNode implements DFNode {
+    final DDlogRule rule;
+    final String var;
+    final String field;
 
-    public RuleBodyVarDef(@Nullable Node node, String var, DDlogExpression expr) {
-        super(node, new DDlogESet(node,
-                new DDlogEVarDecl(node, var, expr.getType()),
-                expr));
+    public RuleVarFieldNode(DDlogRule rule, String var, String field) {
+        this.rule = rule;
         this.var = var;
-        this.exprType = Objects.requireNonNull(expr.type);
+        this.field = field;
     }
 
-    public DDlogType getExprType() {
-        return this.exprType;
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        RuleVarFieldNode that = (RuleVarFieldNode) o;
+        return Objects.equals(rule.id, that.rule.id) && Objects.equals(var, that.var) &&
+                Objects.equals(field, that.field);
     }
 
-    public String getVar() {
-        return this.var;
+    @Override
+    public int hashCode() {
+        return Objects.hash(rule.id, var, field);
     }
+
+    public String getName() {
+        return this.rule.head.relation.name + "." +
+                this.rule.id + "." + this.var + "." + this.field;
+    }
+
+    @Override
+    public String toString() { return this.getName(); }
 }

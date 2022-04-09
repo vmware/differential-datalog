@@ -47,6 +47,12 @@ public class DDlogESigned extends DDlogExpression {
     }
 
     @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        visitor.postorder(this);
+    }
+
+    @Override
     public String toString() {
         String result = "";
         if (this.width > 0)
@@ -54,5 +60,4 @@ public class DDlogESigned extends DDlogExpression {
         result += this.ival.toString();
         return result;
     }
-
 }

@@ -31,8 +31,7 @@ import com.vmware.ddlog.util.Linq;
 import javax.annotation.Nullable;
 import java.util.List;
 
-public class DDlogRelationDeclaration extends DDlogNode {
-
+public class DDlogRelationDeclaration extends DDlogNode implements IDDlogHasType {
     public enum Role {
         Input,
         Output,
@@ -52,7 +51,7 @@ public class DDlogRelationDeclaration extends DDlogNode {
         }
     }
 
-    private final Role role;
+    public final Role role;
     private final RelationName name;
     private final DDlogType type;
     private final String primaryKeyVariable = "row";
@@ -87,6 +86,15 @@ public class DDlogRelationDeclaration extends DDlogNode {
 
     public static String relationName(String name) {
         return "R" + name;
+    }
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        this.type.accept(visitor);
+        if (this.keyExpression != null)
+            this.keyExpression.accept(visitor);
+        visitor.postorder(this);
     }
 
     @Override

@@ -26,7 +26,6 @@ package com.vmware.ddlog.ir;
 
 import com.facebook.presto.sql.tree.Node;
 import com.vmware.ddlog.util.Linq;
-import com.vmware.ddlog.util.Utilities;
 
 import javax.annotation.Nullable;
 
@@ -43,6 +42,17 @@ public class DDlogFunction extends DDlogNode {
         this.args = args;
         this.type = type;
         this.def = def;
+    }
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        for (DDlogFuncArg arg: this.args)
+            arg.accept(visitor);
+        this.type.accept(visitor);
+        if (this.def != null)
+            this.def.accept(visitor);
+        visitor.postorder(this);
     }
 
     @Override

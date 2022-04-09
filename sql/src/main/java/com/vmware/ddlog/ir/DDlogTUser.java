@@ -97,4 +97,12 @@ public class DDlogTUser extends DDlogType {
         result = 31 * result + Arrays.hashCode(typeArgs);
         return result;
     }
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        for (DDlogType t: this.typeArgs)
+            t.accept(visitor);
+        visitor.postorder(this);
+    }
 }

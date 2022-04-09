@@ -74,7 +74,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
      */
     public static DDlogExpression wrapSome(DDlogExpression expr, DDlogType type) {
         return new DDlogEStruct(expr.getNode(), "Some", type,
-                new DDlogEStruct.FieldValue("x", expr));
+                new DDlogEStruct.FieldValue(expr.getNode(), "x", expr));
     }
 
     /**
@@ -287,8 +287,10 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
         DDlogExpression value = this.process(node.getValue(), context);
         DDlogExpression list = this.process(node.getValueList(), context);
         if (list.is(DDlogEInRelation.class)) {
+            // Fill in value field.
             DDlogEInRelation src = list.to(DDlogEInRelation.class);
-            return new DDlogEInRelation(src.getNode(), value, src.relationName, src.getType());
+            return new DDlogEInRelation(src.getNode(), value, src.relationName,
+                    src.getType(), src.actualType);
         } else {
             return new DDlogEApply(node, "vec_contains", DDlogTBool.instance, list, value);
         }
@@ -310,7 +312,8 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
         RuleBody rhs = query.to(RuleBody.class);
         RelationName relName = context.freshRelationName("sub");
         DDlogRule rule = context.createRule(node, null, relName, rhs, DDlogRelationDeclaration.Role.Internal);
-        return new DDlogEInRelation(node, null, rule.head.relation.name, rhs.getType());
+        DDlogTStruct actualType = context.resolveType(rhs.getType()).to(DDlogTStruct.class);
+        return new DDlogEInRelation(node, null, rule.head.relation, rhs.getType(), actualType);
     }
 
     @Override
@@ -593,7 +596,7 @@ public class ExpressionTranslationVisitor extends AstVisitor<DDlogExpression, Tr
             DDlogType arrayElemType = array.getType()
                     .to(DDlogTRef.class)
                     .getElementType()
-                    .to(DDlogTContainer.class)
+                    .to(IDDlogTContainer.class)
                     .getElementType();
             DDlogType elemType = element.getType();
             if (elemType.mayBeNull) {

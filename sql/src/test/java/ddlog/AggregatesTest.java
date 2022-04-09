@@ -46,7 +46,6 @@ public class AggregatesTest extends BaseQueriesTest {
                 ");\n" +
                 "(TRtmp{.a = any})\n}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program);
@@ -66,7 +65,6 @@ public class AggregatesTest extends BaseQueriesTest {
                 ");\n" +
                 "(TRtmp{.a = any})\n}\n" +
                 this.relations(true) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program, true);
@@ -86,7 +84,6 @@ public class AggregatesTest extends BaseQueriesTest {
                 ");\n" +
                 "(TRtmp{.a = b_not_N(any)})\n}\n" +
                 this.relations(true) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program, true);
@@ -106,7 +103,6 @@ public class AggregatesTest extends BaseQueriesTest {
                 ");\n" +
                 "(TRtmp{.e = every})\n}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program);
@@ -126,7 +122,6 @@ public class AggregatesTest extends BaseQueriesTest {
                 ");\n" +
                 "(TRtmp{.ct = set_size(count_distinct) as signed<64>})\n}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program);
@@ -146,7 +141,6 @@ public class AggregatesTest extends BaseQueriesTest {
                 ");\n" +
                 "(TRtmp{.ct = set_size(count_distinct) as signed<64>})\n}\n" +
                 this.relations(true) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program, true);
@@ -166,7 +160,6 @@ public class AggregatesTest extends BaseQueriesTest {
                 ");\n" +
                 "(TRtmp{.sum = set_signed_sum(sum_distinct)})\n}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program);
@@ -186,7 +179,6 @@ public class AggregatesTest extends BaseQueriesTest {
                 ");\n" +
                 "(TRtmp{.min = min.1})\n}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program);
@@ -209,7 +201,6 @@ public class AggregatesTest extends BaseQueriesTest {
                 ");\n" +
                 "(TRtmp{.total = (min.1 + max.1)})\n}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program);
@@ -229,7 +220,6 @@ public class AggregatesTest extends BaseQueriesTest {
                 ");\n" +
                 "(TRtmp{.min = min.1})\n}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program);
@@ -252,7 +242,6 @@ public class AggregatesTest extends BaseQueriesTest {
                 ");\n" +
                 "(TRtmp{.ct = count,.sum = sum})\n}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program);
@@ -271,7 +260,6 @@ public class AggregatesTest extends BaseQueriesTest {
                 ");\n" +
                 "(TRtmp{.ct = count})\n}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program);
@@ -298,9 +286,7 @@ public class AggregatesTest extends BaseQueriesTest {
                 ");\n" +
                 "(TRtmp{.ct = count})\n}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
-                "relation Rtmp0[TRtmp]\n" +
                 "output relation Rv1[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.\n" +
                 "Rv1[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg0(groupResult),var v0 = aggResult,var v1 = v0.";
@@ -320,7 +306,6 @@ public class AggregatesTest extends BaseQueriesTest {
                 ");\n" +
                 "(TRtmp{.ct0 = count,.ct1 = count})\n}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program);
@@ -340,7 +325,6 @@ public class AggregatesTest extends BaseQueriesTest {
                 ");\n" +
                 "(TRtmp{.ct = count})\n}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program);
@@ -360,7 +344,6 @@ public class AggregatesTest extends BaseQueriesTest {
                 ");\n" +
                 "(TRtmp{.ct = count})\n}\n" +
                 this.relations(true) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program, true);
@@ -380,7 +363,6 @@ public class AggregatesTest extends BaseQueriesTest {
                 ");\n" +
                 "(TRtmp{.avg = avg_signed_R(avg)})\n}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program);
@@ -400,7 +382,6 @@ public class AggregatesTest extends BaseQueriesTest {
                 ");\n" +
                 "(TRtmp{.avg = avg_double_R(avg)})\n}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program);
@@ -420,7 +401,6 @@ public class AggregatesTest extends BaseQueriesTest {
                 ");\n" +
                 "(TRtmp{.avg = avg_signed_N(avg)})\n}\n" +
                 this.relations(true) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program, true);
@@ -439,7 +419,6 @@ public class AggregatesTest extends BaseQueriesTest {
                 ");\n" +
                 "(TRtmp{.ct = count})\n}\n" +
                 this.relations(true) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program, true);
@@ -461,7 +440,6 @@ public class AggregatesTest extends BaseQueriesTest {
                 ");\n" +
                 "(TRtmp{.m = max.1})\n}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program);
@@ -481,7 +459,6 @@ public class AggregatesTest extends BaseQueriesTest {
                 ");\n" +
                 "(TRtmp{.m = max.1})\n}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program);
@@ -502,7 +479,6 @@ public class AggregatesTest extends BaseQueriesTest {
                 "(TRtmp{.col0 = set_agg.ref_new()})\n" +
                 "}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv1[TRtmp]\n" +
                 "Rv1[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program);
@@ -523,7 +499,6 @@ public class AggregatesTest extends BaseQueriesTest {
                 "(TRtmp{.col0 = array_agg.ref_new()})\n" +
                 "}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv1[TRtmp]\n" +
                 "Rv1[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program);
@@ -544,7 +519,6 @@ public class AggregatesTest extends BaseQueriesTest {
                 "(TRtmp{.col0 = array_agg.ref_new()})\n" +
                 "}\n" +
                 this.relations(true) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv1[TRtmp]\n" +
                 "Rv1[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program, true);
@@ -565,7 +539,6 @@ public class AggregatesTest extends BaseQueriesTest {
                 "(TRtmp{.ag = array_agg.ref_new()})\n" +
                 "}\n" +
                 this.relations(true) +
-                "relation Rtmp[TRtmp]\n" +
                 "relation Rtmp0[TRtmp]\n" +
                 "output relation Rv1[TRtmp]\n" +
                 "Rtmp0[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.\n" +
@@ -589,7 +562,6 @@ public class AggregatesTest extends BaseQueriesTest {
                 "(TRtmp{.col0 = sql_array_length(array_agg.ref_new())})\n" +
                 "}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv1[TRtmp]\n" +
                 "Rv1[v1] :- Rt1[v],var groupResult = (v).group_by(()),var aggResult = agg(groupResult),var v0 = aggResult,var v1 = v0.";
         this.testTranslation(query, program);

@@ -69,4 +69,10 @@ public class DDlogTFloat extends DDlogType implements IsNumericType, IDDlogBaseT
     public DDlogType aggregateType() {
         return this;
     }
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        visitor.postorder(this);
+    }
 }

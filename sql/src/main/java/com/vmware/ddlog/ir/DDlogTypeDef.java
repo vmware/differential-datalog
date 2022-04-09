@@ -32,7 +32,7 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DDlogTypeDef extends DDlogNode {
+public class DDlogTypeDef extends DDlogNode implements IDDlogHasType {
     private final String name;
     private final List<String> args;
     @Nullable
@@ -96,5 +96,12 @@ public class DDlogTypeDef extends DDlogNode {
         assert other.type != null;
         assert this.type != null;
         return this.type.same(other.type);
+    }
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        this.type.accept(visitor);
+        visitor.postorder(this);
     }
 }

@@ -29,8 +29,8 @@ import com.facebook.presto.sql.tree.Node;
 import javax.annotation.Nullable;
 
 public class BodyTermFlatMap extends RuleBodyTerm {
-    final String var;
-    final DDlogExpression mapExpr;
+    public final String var;
+    public final DDlogExpression mapExpr;
 
     public BodyTermFlatMap(@Nullable Node node, String var, DDlogExpression mapExpr) {
         super(node);
@@ -41,5 +41,12 @@ public class BodyTermFlatMap extends RuleBodyTerm {
     @Override
     public String toString() {
         return "var " + this.var + " = FlatMap(" + this.mapExpr + ")";
+    }
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        this.mapExpr.accept(visitor);
+        visitor.postorder(this);
     }
 }

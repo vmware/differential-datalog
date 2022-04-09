@@ -48,6 +48,16 @@ public class DDlogEITE extends DDlogExpression {
     }
 
     @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        this.cond.accept(visitor);
+        this.then.accept(visitor);
+        if (this.eelse != null)
+            this.eelse.accept(visitor);
+        visitor.postorder(this);
+    }
+
+    @Override
     public String toString() {
         String result =  "if (" + this.cond.toString() + ") {\n" +
                 this.then.toString() + "}";

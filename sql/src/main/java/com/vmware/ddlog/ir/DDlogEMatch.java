@@ -48,9 +48,26 @@ public class DDlogEMatch extends DDlogExpression {
         }
 
         @Override
+        public void accept(DDlogVisitor visitor) {
+            if (!visitor.preorder(this)) return;
+            this.first.accept(visitor);
+            this.second.accept(visitor);
+            visitor.postorder(this);
+        }
+
+        @Override
         public String toString() {
             return this.first + " -> " + this.second;
         }
+    }
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        visitor.preorder(this);
+        this.matchExpr.accept(visitor);
+        for (Case c: this.cases)
+            c.accept(visitor);
+        visitor.postorder(this);
     }
 
     private final DDlogExpression matchExpr;

@@ -60,4 +60,10 @@ public class DDlogTIString extends DDlogType implements IDDlogBaseType {
         assert(expression.getType().is(DDlogTIString.class));
         return new DDlogEApply(expression.node, "ival", DDlogTString.instance, true, expression);
     }
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        visitor.postorder(this);
+    }
 }

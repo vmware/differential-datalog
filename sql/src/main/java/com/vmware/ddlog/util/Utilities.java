@@ -79,4 +79,15 @@ public class Utilities {
         V previous = Objects.requireNonNull(map).put(Objects.requireNonNull(key), Objects.requireNonNull(value));
         assert previous == null : "Key " + key + " already mapped to " + previous + " when adding " + value;
     }
+
+    /**
+     * Get a value that must exist in a map.
+     * @param map  Map to look for.
+     * @param key  Key the value is indexed with.
+     */
+    public static <K, V> V getExists(Map<K, V> map, K key) {
+        V result = map.get(key);
+        assert result != null : "Key " + key + " does not exist in map";
+        return result;
+    }
 }

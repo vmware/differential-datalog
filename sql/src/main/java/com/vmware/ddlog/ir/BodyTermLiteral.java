@@ -39,6 +39,13 @@ public class BodyTermLiteral extends RuleBodyTerm {
     }
 
     @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        this.atom.accept(visitor);
+        visitor.postorder(this);
+    }
+
+    @Override
     public String toString() {
         String result = "";
         if (!this.polarity)

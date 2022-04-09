@@ -47,7 +47,6 @@ public class JoinTest extends BaseQueriesTest {
                 ");\n" +
                 "(TRtmp{.ct = count})\n}\n" +
                 this.relations(false) +
-                "relation Rtmp[TRtmp]\n" +
                 "output relation Rv0[TRtmp]\n" +
                 "Rv0[v3] :- Rt1[TRt1{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4}],Rt2[TRt2{.column1 = column1}],var v1 = Ttmp{.column1 = column1,.column2 = column2,.column3 = column3,.column4 = column4,.column10 = column1},var groupResult = (v1).group_by(()),var aggResult = agg(groupResult),var v2 = aggResult,var v3 = v2.";
         this.testTranslation(query, program);
@@ -304,7 +303,7 @@ public class JoinTest extends BaseQueriesTest {
         Assert.assertNotNull(view);
         String s = view.toString();
         Assert.assertNotNull(s);
-        DDlogProgram ddprogram = t.getDDlogProgram();
+        DDlogProgram ddprogram = t.getDDlogProgram(true);
         Assert.assertNotNull(ddprogram);
         s = ddprogram.toString();
         Assert.assertEquals("import fp\n" +

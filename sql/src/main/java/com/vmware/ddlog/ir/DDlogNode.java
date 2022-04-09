@@ -32,12 +32,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 public abstract class DDlogNode implements DDlogIRNode {
+    public final int id;
+    static int crtid;
     protected final List<DDlogComment> comments;
     @Nullable
     protected final Node node;
 
     protected DDlogNode(@Nullable Node node) {
         this.node = node;
+        this.id = DDlogNode.crtid++;
         this.comments = new ArrayList<DDlogComment>();
     }
 
@@ -51,4 +54,6 @@ public abstract class DDlogNode implements DDlogIRNode {
     public String comments() {
         return String.join("\n", Linq.map(this.comments, DDlogComment::toString));
     }
+
+    public abstract void accept(DDlogVisitor visitor);
 }

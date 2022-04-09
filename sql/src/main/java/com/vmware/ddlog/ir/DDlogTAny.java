@@ -53,4 +53,10 @@ public class DDlogTAny extends DDlogType {
             return false;
         return type.is(DDlogTAny.class);
     }
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        visitor.postorder(this);
+    }
 }

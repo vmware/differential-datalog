@@ -29,7 +29,7 @@ import com.facebook.presto.sql.tree.Node;
 import javax.annotation.Nullable;
 
 public class DDlogEField extends DDlogExpression {
-    private final DDlogExpression struct;
+    public final DDlogExpression struct;
     public final String field;
 
     public DDlogEField(@Nullable Node node, DDlogExpression struct, String field, DDlogType type) {
@@ -40,6 +40,13 @@ public class DDlogEField extends DDlogExpression {
 
     public DDlogExpression getStruct() {
         return this.struct;
+    }
+
+    @Override
+    public void accept(DDlogVisitor visitor) {
+        if (!visitor.preorder(this)) return;
+        this.struct.accept(visitor);
+        visitor.postorder(this);
     }
 
     @Override
