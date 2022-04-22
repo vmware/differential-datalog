@@ -60,11 +60,11 @@ class PrestoToH2 extends AstVisitor<String, String> {
                 final ColumnDefinition cd = (ColumnDefinition) element;
                 String h2Type = cd.getType();
 
-                // We need to strip the array subtype for H2
+                // We need to rewrite the array subtype for H2
                 final Pattern arrayType = Pattern.compile("ARRAY\\((.+)\\)");
                 Matcher m = arrayType.matcher(h2Type);
                 if (m.find()) {
-                    h2Type = "array";
+                    h2Type = m.group(1) + " array";
                 }
 
                 if (cd.getProperties().size() == 1) {

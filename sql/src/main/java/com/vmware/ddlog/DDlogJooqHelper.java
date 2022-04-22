@@ -187,13 +187,13 @@ public class DDlogJooqHelper {
             final SqlBasicCall expr = (SqlBasicCall) call;
             switch (expr.getOperator().getKind()) {
                 case AND:
-                    for (SqlNode node : expr.getOperands()) {
+                    for (SqlNode node : expr.getOperandList()) {
                         visit((SqlBasicCall) node);
                     }
                     return identifiers;
                 case EQUALS: {
-                    final SqlNode left = expr.getOperands()[0];
-                    final SqlNode right = expr.getOperands()[1];
+                    final SqlNode left = expr.getOperandList().get(0);
+                    final SqlNode right = expr.getOperandList().get(1);
                     if (left instanceof SqlIdentifier) {
                         // Add left to the columns
                         identifiers.add(left.toString().toUpperCase(Locale.ROOT));
