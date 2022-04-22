@@ -395,7 +395,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
             if (insert.getSource().getKind() != SqlKind.VALUES || !(insert.getTargetTable() instanceof SqlIdentifier)) {
                 return exception(insert.toString());
             }
-            final SqlNode[] values = ((SqlBasicCall) insert.getSource()).getOperands();
+            final List<SqlNode> values = ((SqlBasicCall) insert.getSource()).getOperandList();
 
             final String tableName = ((SqlIdentifier) insert.getTargetTable()).getSimple();
             DDlogJooqHelper.NormalizedTableName tn = new DDlogJooqHelper.NormalizedTableName(tableName);
@@ -412,11 +412,11 @@ public final class DDlogJooqProvider implements MockDataProvider {
                 if (value.getKind() != SqlKind.ROW) {
                     return exception(insert.toString());
                 }
-                final SqlNode[] rowElements = ((SqlBasicCall) value).operands;
-                final DDlogRecord[] recordsArray = new DDlogRecord[rowElements.length];
+                final List<SqlNode> rowElements = ((SqlBasicCall) value).getOperandList();
+                final DDlogRecord[] recordsArray = new DDlogRecord[rowElements.size()];
                 if (context.hasBinding()) {
                     // Is a statement with bound variables
-                    for (int i = 0; i < rowElements.length; i++) {
+                    for (int i = 0; i < rowElements.size(); i++) {
                         Field<?> fi = fields.get(i);
                         // final boolean isNullableField = fi.getDataType().nullable();
                         // fi.getDataType() is wrong for array fields.
@@ -427,13 +427,13 @@ public final class DDlogJooqProvider implements MockDataProvider {
                     }
                 } else {
                     // need to parse literals into DDLogRecords
-                    for (int i = 0; i < rowElements.length; i++) {
+                    for (int i = 0; i < rowElements.size(); i++) {
                         Field<?> fi = fields.get(i);
                         // final boolean isNullableField = fi.getDataType().nullable();
                         // fi.getDataType() is wrong for array fields.
                         String fieldName = fi.getName().toLowerCase();
                         boolean isNullableField = struct.getFieldType(fieldName).mayBeNull;
-                        final DDlogRecord result = rowElements[i].accept(PARSE_LITERALS);
+                        final DDlogRecord result = rowElements.get(i).accept(PARSE_LITERALS);
                         recordsArray[i] = maybeOption(isNullableField, result, fi.getName());
                     }
                 }
@@ -588,8 +588,8 @@ public final class DDlogJooqProvider implements MockDataProvider {
                     super.visit(call);
                     return matchExpressions;
                 case EQUALS: {
-                    final SqlNode left = expr.getOperands()[0];
-                    final SqlNode right = expr.getOperands()[1];
+                    final SqlNode left = expr.getOperandList().get(0);
+                    final SqlNode right = expr.getOperandList().get(1);
                     if (context.hasBinding()) {
                         if (left instanceof SqlIdentifier && right instanceof SqlDynamicParam) {
                             return setMatchExpression((SqlIdentifier) left, context.nextBinding());
@@ -672,13 +672,15 @@ public final class DDlogJooqProvider implements MockDataProvider {
         if (in == null)
             return null;
         final DataType<?> dataType = field.getDataType();
-        switch (dataType.getSQLType()) {
+        int sqlType = dataType.getSQLType();
+        switch (sqlType) {
             case Types.BOOLEAN:
                 return new DDlogRecord((boolean) in);
             case Types.INTEGER:
                 return new DDlogRecord((int) in);
             case Types.BIGINT:
                 return new DDlogRecord((long) in);
+            case Types.OTHER: // For some reason I don't get VARCHAR is converted to OTHER
             case Types.VARCHAR:
                 try {
                     return new DDlogRecord((String) in);
@@ -686,7 +688,7 @@ public final class DDlogJooqProvider implements MockDataProvider {
                     throw new DDlogJooqProviderException("Could not create String DDlogRecord for object: " + in);
                 }
             default:
-                throw new DDlogJooqProviderException("Unknown datatype " + field);
+                throw new DDlogJooqProviderException("Unknown datatype " + sqlType + " for " + field);
         }
     }
 

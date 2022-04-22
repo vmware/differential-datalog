@@ -27,8 +27,6 @@ package com.vmware.ddlog;
 import com.vmware.ddlog.ir.DDlogProgram;
 import com.vmware.ddlog.ir.DDlogRelationDeclaration;
 import com.vmware.ddlog.ir.DDlogTUser;
-import com.vmware.ddlog.ir.DDlogType;
-import com.vmware.ddlog.translator.RelationName;
 import com.vmware.ddlog.translator.Translator;
 import com.vmware.ddlog.util.sql.SqlStatement;
 import com.vmware.ddlog.util.sql.ToPrestoTranslator;
@@ -39,9 +37,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.Consumer;
 
 public class DDlogHandle {
