@@ -315,6 +315,13 @@ expr ::= term
        | expr "?"                                       (*try*)
 ```
 
+In shift expressions `lhs "<<" rhs` and `lhs ">>" rhs`, `lhs` may have
+any integer type.  The value of `rhs`, which must have type `bit<32>`,
+is taken modulo the bit-width of `lhs` rounded up to a power of 2, so
+that, for example, shifting a value of type `bit<10>` left or right by
+10 to 15 bits, inclusive, always yields a value of 0, and shifting by
+16 bits has no effect.
+
 The following table lists operators order by decreasing priority.
 
 |**priority** | **operators**                     |
