@@ -1,0 +1,7 @@
+relation X(x: bit<10>, y: bit<10>)
+output relation Y(x: bit<10>, y: bit<10>, z: bit<10>)
+Y(x, y, x << (y as u32)) :- X(x, y).
+
+X(x, y) :-
+    var x = FlatMap([0, 1, 2, 3]),
+    var y = FlatMap([0, 1, 9, 10, 11, 15, 16, 17]).
