@@ -378,7 +378,7 @@ tdefCheckIterableAttr d TypeDef{..} = do
     by_ref <- case find ((== "iterate_by_ref") . name) tdefAttrs of
                    Nothing   -> return Nothing
                    Just attr -> case attrVal attr of
-                                     E (ETyped _ (E EVar{..}) t) -> do
+                                     E (ETyped _ (E EVar{}) t) -> do
                                          typeValidate d tdefArgs t
                                          return $ Just t
                                      _ -> err d (pos $ attrVal attr)
@@ -387,7 +387,7 @@ tdefCheckIterableAttr d TypeDef{..} = do
     by_val <- case find ((== "iterate_by_val") . name) tdefAttrs of
                    Nothing   -> return Nothing
                    Just attr -> case attrVal attr of
-                                     E (ETyped _ (E EVar{..}) t) -> do
+                                     E (ETyped _ (E EVar{}) t) -> do
                                          check d (isNothing by_ref) (pos attr) $ "Conflicting attributes 'iterate_by_val' and 'iterate_by_ref' specified for type '" ++ tdefName ++ "'"
                                          typeValidate d tdefArgs t
                                          return $ Just t

@@ -150,7 +150,7 @@ flatBufferValidate :: (MonadError String me) => DatalogProgram -> me ()
 flatBufferValidate d = do
     let ?d = d
     mapM_ (\case
-            t@TOpaque{..} ->
+            t@TOpaque{} ->
                 check d (typeIsIterable d t || isSharedRef d t) (pos t) $
                     "Cannot generate FlatBuffer schema for extern type " ++ show t
             _ -> return ())
@@ -1495,7 +1495,7 @@ rustValueFromFlatbuf =
                      pp (relIdentifier ?d rel) <+> "=> Ok(" <>
                          "<" <> R.mkType ?d Nothing relType <> ">::from_flatbuf(fb::" <> typeTableName relType <> "::init_from_table(v))?.into_ddvalue()),")
                     progIORelations
-    relkey_enums = map (\rel@Relation{..} ->
+    relkey_enums = map (\rel@Relation{} ->
                      let t = fromJust $ relKeyType ?d rel in
                      pp (relIdentifier ?d rel) <+> "=> Ok(" <>
                          "<" <> R.mkType ?d Nothing t <> ">::from_flatbuf(fb::" <> typeTableName t <> "::init_from_table(v))?.into_ddvalue()),")

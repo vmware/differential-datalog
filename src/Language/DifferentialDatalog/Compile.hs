@@ -2054,7 +2054,7 @@ compileRelation d statics rn = do
                   }
 
 compileKey :: (?cfg::Config, ?specname::String, ?statics::CrateStatics, ?crate_graph::CrateGraph) => DatalogProgram -> Relation -> KeyExpr -> (Doc, Doc)
-compileKey d rel@Relation{..} KeyExpr{..} =
+compileKey d rel@Relation{} KeyExpr{..} =
     let v = mkDDValue d (CtxKey rel) keyExpr
         func_name = "__Key_" <> rnameFlat (name rel)
     in ( func_name
