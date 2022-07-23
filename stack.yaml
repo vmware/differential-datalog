@@ -17,7 +17,7 @@
 #  location: "./custom-snapshot.yaml"
 #
 
-resolver: lts-16.21
+resolver: lts-18.28
 #resolver: nightly-2020-11-11
 
 # User packages to be built.

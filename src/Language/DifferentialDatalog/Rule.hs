@@ -66,7 +66,7 @@ import Language.DifferentialDatalog.DatalogProgram
 -- resulting rule may no longer type check and should not be used for
 -- anything other then pretty-printing).
 ruleStripTypeAnnotations :: Rule -> Rule
-ruleStripTypeAnnotations rule@Rule{..} =
+ruleStripTypeAnnotations rule@Rule{} =
     runIdentity $ ruleExprMapCtxM (\ctx e -> return $ exprStripTypeAnnotationsRec (E e) ctx) rule
 
 -- | Pretty-print the first 'len' literals of a rule. 
