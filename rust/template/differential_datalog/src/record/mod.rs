@@ -165,6 +165,13 @@ impl Record {
         }
     }
 
+    pub fn as_string(&self) -> Option<&String> {
+        match self {
+            Self::String(ref string) => Some(string),
+            _ => None,
+        }
+    }
+
     pub fn get_struct_field(&self, field_name: &str) -> Option<&Self> {
         match self {
             Self::NamedStruct(_, fields) => fields
