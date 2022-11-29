@@ -12,7 +12,7 @@ the programmer does not need to worry about writing incremental algorithms.
 Instead they specify the desired input-output mapping in a declarative manner, using a dialect of Datalog.
 The DDlog compiler then synthesizes an efficient incremental implementation.
 DDlog is based on [Frank McSherry's](https://github.com/frankmcsherry/)
-excellent [differential dataflow](https://github.com/frankmcsherry/differential-dataflow) library.
+excellent [differential dataflow](https://github.com/TimelyDataflow/differential-dataflow) library.
 
 DDlog has the following key properties:
 
