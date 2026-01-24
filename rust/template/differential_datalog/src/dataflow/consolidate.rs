@@ -17,7 +17,7 @@ where
     S::Timestamp: Lattice,
     D: ExchangeData,
     R: Semigroup + ExchangeData,
-    O: OrdOffset,
+    O: OrdOffset + 'static,
     <O as TryFrom<usize>>::Error: Debug,
     <O as TryInto<usize>>::Error: Debug,
 {
@@ -39,7 +39,7 @@ where
     S::Timestamp: Lattice,
     D: ExchangeData + Hashable,
     R: Semigroup + ExchangeData,
-    O: OrdOffset,
+    O: OrdOffset + 'static,
     <O as TryFrom<usize>>::Error: Debug,
     <O as TryInto<usize>>::Error: Debug,
 {

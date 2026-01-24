@@ -60,6 +60,9 @@ fi
 if [ "x${build}" == "xrelease" ]; then
     CARGOFLAGS="--release ${CARGOFLAGS}"
 elif [ "x${build}" == "xdebug" ]; then
+    # Optimize debug builds for disk usage: reduce debuginfo, disable incremental
+    export CARGO_INCREMENTAL=0
+    export RUSTFLAGS="${RUSTFLAGS} -C debuginfo=1"
     CARGOFLAGS="${CARGOFLAGS}"
 else
     usage

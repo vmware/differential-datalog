@@ -34,7 +34,7 @@ where
     S::Timestamp: Lattice,
     D: ExchangeData + Hashable,
     R: Abelian + ExchangeData + Add<Output = R> + From<i8>,
-    O: OrdOffset,
+    O: OrdOffset + 'static,
     <O as TryFrom<usize>>::Error: Debug,
     <O as TryInto<usize>>::Error: Debug,
 {

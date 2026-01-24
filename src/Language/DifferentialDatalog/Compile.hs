@@ -773,7 +773,7 @@ mkCargoToml rs_code crate crate_id =
     code = "[package]"                                                                     $$
            "name = \"" <> pp crate_name <> "\""                                            $$
            "version = \"0.1.0\""                                                           $$
-           "edition = \"2018\""                                                            $$
+           "edition = \"2021\""                                                            $$
            ""                                                                              $$
            "[features]"                                                                    $$
            "default = []"                                                                  $$
