@@ -8,7 +8,7 @@ use std::{
 
 /// Location of a single character of a range of characters
 /// in the source of the program.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub enum SourcePosition {
     /// Contiguous code snippet:
     /// `sourcefile:line1.column1-line2.column2`.
@@ -35,6 +35,7 @@ pub enum SourcePosition {
         col: u32,
     },
     /// Unknown location.
+    #[default]
     Unknown,
 }
 
@@ -69,12 +70,6 @@ impl SourcePosition {
 
     pub fn is_unknown(&self) -> bool {
         matches!(self, Self::Unknown)
-    }
-}
-
-impl Default for SourcePosition {
-    fn default() -> Self {
-        Self::Unknown
     }
 }
 

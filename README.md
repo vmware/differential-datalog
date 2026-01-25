@@ -1,7 +1,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![CI workflow](https://github.com/vmware/differential-datalog/actions/workflows/main.yml/badge.svg)](https://github.com/vmware/differential-datalog/actions)
 [![pipeline status](https://gitlab.com/ddlog/differential-datalog/badges/master/pipeline.svg)](https://gitlab.com/ddlog/differential-datalog/commits/master)
-[![rustc](https://img.shields.io/badge/rustc-1.52.1+-blue.svg)](https://blog.rust-lang.org/2021/05/10/Rust-1.52.1.html)
+[![rustc](https://img.shields.io/badge/rustc-1.93.0+-blue.svg)](https://blog.rust-lang.org/2026/01/19/Rust-1.93.0.html)
 [![Gitter chat](https://badges.gitter.im/vmware/differential-datalog.png)](https://gitter.im/vmware/differential-datalog)
 
 # Differential Datalog (DDlog)
@@ -104,7 +104,7 @@ You are now ready to [start coding in DDlog](doc/tutorial/tutorial.md).
   ```
   wget -qO- https://get.haskellstack.org/ | sh
   ```
-- Rust toolchain v1.52.1 or later:
+- Rust toolchain v1.93.0 or later:
   ```
   curl https://sh.rustup.rs -sSf | sh
   . $HOME/.cargo/env
@@ -129,15 +129,15 @@ You are now ready to [start coding in DDlog](doc/tutorial/tutorial.md).
   export PATH=`pwd`:$PATH
   cd ..
   ```
-- Static versions of the following libraries: `libpthread.a`, `libc.a`, `libm.a`, `librt.a`, `libutil.a`,
-  `libdl.a`, `libgmp.a`, and `libstdc++.a` can be installed from distro-specific packages.  On Ubuntu:
-  ```
-  apt install libc6-dev libgmp-dev
-  ```
-  On Fedora:
-  ```
-  dnf install glibc-static gmp-static libstdc++-static
-  ```
+- Linux build prerequisites (for dynamic linking, which is the default):
+  - Ubuntu/Debian: `apt install build-essential libgmp-dev zlib1g-dev libtinfo-dev`
+  - Fedora: `dnf install gcc-c++ make gmp-devel zlib-devel ncurses-compat-libs`
+
+  **Static linking (optional, Linux only)**: DDlog uses dynamic linking by default.
+  To enable static linking, use `stack build --flag differential-datalog:static` and
+  install static libc/toolchain packages (e.g., `glibc-static`, `libstdc++-static`,
+  `gmp-static` on Fedora). Note: Static linking requires additional system packages
+  and may not work on all Linux distributions.
 
 #### Building
 

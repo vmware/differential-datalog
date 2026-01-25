@@ -34,7 +34,6 @@ use std::os::windows::io::{FromRawHandle, IntoRawHandle, RawHandle};
 // FIXME: Unwinding across the FFI boundary is UB, catch all panics and return errors
 
 /// IMPORTANT: The followint typedefs must be kept in sync with equivalent declarations in ddlog.h.
-
 #[repr(C)]
 pub enum ddlog_profiling_mode {
     ddlog_disable_profiling = 0,
@@ -189,7 +188,7 @@ pub unsafe extern "C" fn ddlog_get_table_id(
     tname: *const raw::c_char,
 ) -> libc::size_t {
     if prog.is_null() || tname.is_null() {
-        return libc::size_t::max_value();
+        return libc::size_t::MAX;
     }
 
     let prog = &*prog;
@@ -197,7 +196,7 @@ pub unsafe extern "C" fn ddlog_get_table_id(
     let table_str = CStr::from_ptr(tname).to_str().unwrap();
     match prog.inventory.get_table_id(table_str) {
         Ok(relid) => relid as libc::size_t,
-        Err(_) => libc::size_t::max_value(),
+        Err(_) => libc::size_t::MAX,
     }
 }
 
@@ -242,19 +241,19 @@ pub unsafe extern "C" fn ddlog_get_index_id(
     iname: *const raw::c_char,
 ) -> libc::size_t {
     if prog.is_null() {
-        return libc::size_t::max_value();
+        return libc::size_t::MAX;
     }
 
     let prog = &*prog;
 
     if iname.is_null() {
-        return libc::size_t::max_value();
+        return libc::size_t::MAX;
     }
 
     let index_str = CStr::from_ptr(iname).to_str().unwrap();
     match prog.inventory.get_index_id(index_str) {
         Ok(idxid) => idxid as libc::size_t,
-        Err(_) => libc::size_t::max_value(),
+        Err(_) => libc::size_t::MAX,
     }
 }
 
@@ -297,10 +296,9 @@ pub unsafe extern "C" fn ddlog_record_commands(prog: *const HDDlog, fd: RawFd) -
     match Arc::get_mut(&mut prog) {
         Some(prog) => {
             prog.record_commands(&mut file);
-            /* Convert the old file into FD to prevent it from closing.
-             * It is the caller's responsibility to close the file when
-             * they are done with it. */
-            file.map(|m| m.into_raw_fd());
+            // Convert back to raw FD to prevent Rust from closing it.
+            // The caller owns the file descriptor and is responsible for closing it.
+            let _ = file.map(|m| m.into_raw_fd());
             0
         }
         None => -1,
@@ -326,10 +324,9 @@ pub unsafe extern "C" fn ddlog_record_commands(prog: *const HDDlog, fd: raw::c_i
     match Arc::get_mut(&mut prog) {
         Some(prog) => {
             prog.record_commands(&mut file);
-            /* Convert the old file into FD to prevent it from closing.
-             * It is the caller's responsibility to close the file when
-             * they are done with it. */
-            file.map(|m| m.into_raw_handle());
+            // Convert back to raw handle to prevent Rust from closing it.
+            // The caller owns the file handle and is responsible for closing it.
+            let _ = file.map(|m| m.into_raw_handle());
             0
         }
         None => -1,
@@ -353,7 +350,9 @@ pub unsafe extern "C" fn ddlog_dump_input_snapshot(prog: *const HDDlog, fd: RawF
             -1
         });
 
-    file.into_raw_fd();
+    // Convert back to raw FD to prevent Rust from closing it.
+    // The caller owns the file descriptor and is responsible for closing it.
+    let _ = file.into_raw_fd();
     res
 }
 
@@ -379,7 +378,9 @@ pub unsafe extern "C" fn ddlog_dump_input_snapshot(
             -1
         });
 
-    file.into_raw_handle();
+    // Convert back to raw handle to prevent Rust from closing it.
+    // The caller owns the file handle and is responsible for closing it.
+    let _ = file.into_raw_handle();
     res
 }
 
@@ -514,7 +515,7 @@ pub unsafe extern "C" fn ddlog_free_record_updates(
 ) {
     // Assume that vector's capacity is equal to its length.
     let changes_vec: Vec<ddlog_record_update> =
-        Vec::from_raw_parts(changes, num_changes as usize, num_changes as usize);
+        Vec::from_raw_parts(changes, num_changes, num_changes);
     for upd in changes_vec.into_iter() {
         let _update = Box::from_raw(upd.rec);
     }
@@ -702,7 +703,7 @@ pub unsafe extern "C" fn ddlog_flatbuf_free(
     buf_size: libc::size_t,
     buf_capacity: libc::size_t,
 ) {
-    Vec::from_raw_parts(buf, buf_size as usize, buf_capacity as usize);
+    Vec::from_raw_parts(buf, buf_size, buf_capacity);
 }
 
 #[no_mangle]
@@ -1133,7 +1134,7 @@ pub unsafe extern "C" fn ddlog_delta_union(
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_free_delta(delta: *mut DeltaMap<DDValue>) {
     if !delta.is_null() {
-        // Deallocate the DeltaMap
-        Box::from_raw(delta);
+        // Convert back to Box to deallocate. The Box is dropped immediately.
+        let _ = Box::from_raw(delta);
     }
 }

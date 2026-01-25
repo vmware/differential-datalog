@@ -40,7 +40,7 @@ where
     T: 'static + Clone + Fn(RelId, &DDValue, isize),
 {
     fn clone_boxed(&self) -> Box<dyn SingleThreadedRelationCallback> {
-        Box::new((&*self).clone())
+        Box::new(self.clone())
     }
 }
 
@@ -261,6 +261,8 @@ impl ValMapUpdateHandler {
     pub fn new(db: Arc<Mutex<DeltaMap<DDValue>>>) -> Self {
         Self {
             db,
+            #[allow(clippy::arc_with_non_send_sync)]
+            // Intentionally single-threaded: uses Cell<*mut ()> (same as callbacks)
             locked: Arc::new(Cell::new(ptr::null_mut())),
         }
     }
@@ -269,6 +271,8 @@ impl ValMapUpdateHandler {
 impl UpdateHandler for ValMapUpdateHandler {
     fn update_cb(&self) -> Arc<dyn SingleThreadedRelationCallback> {
         let handler = self.clone();
+        #[allow(clippy::arc_with_non_send_sync)]
+        // Intentionally single-threaded: uses Cell<*mut ()>
         Arc::new(move |relid, v, w| {
             let guard_ptr = handler.locked.get();
             // `update_cb` can also be called during rollback and stop operations.
@@ -277,7 +281,9 @@ impl UpdateHandler for ValMapUpdateHandler {
                 let mut guard: Box<MutexGuard<'_, DeltaMap<DDValue>>> =
                     unsafe { Box::from_raw(guard_ptr as *mut MutexGuard<'_, DeltaMap<DDValue>>) };
                 guard.update(relid, v, w);
-                Box::into_raw(guard);
+                // Convert back to raw pointer to prevent guard from being dropped.
+                // The pointer is already stored in handler.locked, so we ignore the return value.
+                let _ = Box::into_raw(guard);
             }
         })
     }
@@ -320,6 +326,8 @@ impl DeltaUpdateHandler {
     pub fn new(db: Arc<Mutex<Option<DeltaMap<DDValue>>>>) -> Self {
         Self {
             db,
+            #[allow(clippy::arc_with_non_send_sync)]
+            // Intentionally single-threaded: uses Cell<*mut ()> (same as callbacks)
             locked: Arc::new(Cell::new(ptr::null_mut())),
         }
     }
@@ -328,6 +336,8 @@ impl DeltaUpdateHandler {
 impl UpdateHandler for DeltaUpdateHandler {
     fn update_cb(&self) -> Arc<dyn SingleThreadedRelationCallback> {
         let handler = self.clone();
+        #[allow(clippy::arc_with_non_send_sync)]
+        // Intentionally single-threaded: uses Cell<*mut ()>
         Arc::new(move |relid, v, w| {
             let guard_ptr = handler.locked.get();
             if !guard_ptr.is_null() {
@@ -339,8 +349,9 @@ impl UpdateHandler for DeltaUpdateHandler {
                     db.update(relid, v, w);
                 }
 
-                // make sure that guard does not get dropped
-                Box::into_raw(guard);
+                // Convert back to raw pointer to prevent guard from being dropped.
+                // The pointer is already stored in handler.locked, so we ignore the return value.
+                let _ = Box::into_raw(guard);
             }
         })
     }
@@ -378,6 +389,8 @@ impl UpdateHandler for ChainedUpdateHandler {
         let cbs: Vec<Arc<dyn SingleThreadedRelationCallback>> =
             self.handlers.iter().map(|h| h.update_cb()).collect();
 
+        #[allow(clippy::arc_with_non_send_sync)]
+        // Intentionally single-threaded: chained callbacks may contain Cell
         Arc::new(move |relid, v, w| {
             for cb in cbs.iter() {
                 cb(relid, v, w);
@@ -415,6 +428,8 @@ impl UpdateHandler for MTChainedUpdateHandler {
         let cbs: Vec<Arc<dyn SingleThreadedRelationCallback>> =
             self.handlers.iter().map(|h| h.update_cb()).collect();
 
+        #[allow(clippy::arc_with_non_send_sync)]
+        // Intentionally single-threaded: chained callbacks may contain Cell
         Arc::new(move |relid, v, w| {
             for cb in cbs.iter() {
                 cb(relid, v, w);

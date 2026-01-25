@@ -90,8 +90,12 @@ type TKeyAgent<S> = TraceAgent<KeyTrace<S>>;
 type TValEnter<P, T> = TraceEnter<TValAgent<P>, T>;
 type TKeyEnter<P, T> = TraceEnter<TKeyAgent<P>, T>;
 
+// Abomonation derive macro creates non-local impl
+// Note: #[allow(non_local_definitions)] doesn't work here because the lint originates
+// inside the derive macro expansion. This is a false positive from abomonation_derive.
 #[derive(Abomonation, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Clone)]
 #[repr(transparent)]
+#[allow(non_local_definitions)]
 pub struct CheckedWeight {
     pub value: i32,
 }
@@ -320,7 +324,7 @@ pub trait RelationCallback: Fn(RelId, &DDValue, Weight) + Send + Sync {
 
 impl<T> RelationCallback for T
 where
-    T: Fn(RelId, &DDValue, Weight) + Clone + Send + Sync + ?Sized + 'static,
+    T: Fn(RelId, &DDValue, Weight) + Clone + Send + Sync + 'static,
 {
     fn clone_boxed(&self) -> Box<dyn RelationCallback> {
         Box::new(self.clone())
@@ -385,7 +389,7 @@ pub struct Relation {
 
 impl Relation {
     pub fn name(&self) -> &str {
-        &*self.name
+        &self.name
     }
 }
 
@@ -1224,6 +1228,9 @@ impl Program {
             profile_change: profiling_rig.profile_change,
             prof_thread_handle: profiling_rig.profile_thread,
             profile: profiling_rig.profile,
+            #[allow(clippy::iter_skip_zero)]
+            // False positive: `.skip(0)` is required by type system (Skip<Cycle<Range<usize>>>)
+            // even though it does nothing at runtime. Assignment later uses `.skip(next)`.
             worker_round_robbin: (0..config.num_timely_workers).cycle().skip(0),
         };
         // Wait for the initial transaction to complete.
@@ -1379,7 +1386,7 @@ impl Program {
             } => {
                 let arr =
                     with_prof_context(debug_info.clone(), || col.flat_map(afun).arrange_by_key());
-                Self::xform_arrangement(&arr, &*next, arrangements, lookup_collection)
+                Self::xform_arrangement(&arr, next, arrangements, lookup_collection)
             }
             XFormCollection::Differentiate {
                 ref debug_info,
@@ -1395,7 +1402,7 @@ impl Program {
                         &col.delay(move |t| one.results_in(t).expect("Integer overflow in Differentiate: maximal number of transactions exceeded")).negate())
                 });
 
-                Self::xform_collection(diff, &*next, arrangements, lookup_collection)
+                Self::xform_collection(diff, next, arrangements, lookup_collection)
             }
             XFormCollection::Map {
                 ref debug_info,
@@ -1403,7 +1410,7 @@ impl Program {
                 ref next,
             } => {
                 let mapped = with_prof_context(debug_info.clone(), || col.map(mfun));
-                Self::xform_collection(mapped, &*next, arrangements, lookup_collection)
+                Self::xform_collection(mapped, next, arrangements, lookup_collection)
             }
             XFormCollection::FlatMap {
                 ref debug_info,
@@ -1413,7 +1420,7 @@ impl Program {
                 let flattened = with_prof_context(debug_info.clone(), || {
                     col.flat_map(move |x| fmfun(x).into_iter().flatten())
                 });
-                Self::xform_collection(flattened, &*next, arrangements, lookup_collection)
+                Self::xform_collection(flattened, next, arrangements, lookup_collection)
             }
             XFormCollection::Filter {
                 ref debug_info,
@@ -1421,7 +1428,7 @@ impl Program {
                 ref next,
             } => {
                 let filtered = with_prof_context(debug_info.clone(), || col.filter(ffun));
-                Self::xform_collection(filtered, &*next, arrangements, lookup_collection)
+                Self::xform_collection(filtered, next, arrangements, lookup_collection)
             }
             XFormCollection::FilterMap {
                 ref debug_info,
@@ -1429,7 +1436,7 @@ impl Program {
                 ref next,
             } => {
                 let flattened = with_prof_context(debug_info.clone(), || col.flat_map(fmfun));
-                Self::xform_collection(flattened, &*next, arrangements, lookup_collection)
+                Self::xform_collection(flattened, next, arrangements, lookup_collection)
             }
             XFormCollection::Inspect {
                 ref debug_info,
@@ -1439,7 +1446,7 @@ impl Program {
                 let inspect = with_prof_context(debug_info.clone(), || {
                     col.inspect(move |(v, ts, w)| ifun(v, ts.to_tuple_ts(), *w))
                 });
-                Self::xform_collection(inspect, &*next, arrangements, lookup_collection)
+                Self::xform_collection(inspect, next, arrangements, lookup_collection)
             }
             XFormCollection::StreamJoin {
                 ref debug_info,
@@ -1472,7 +1479,7 @@ impl Program {
                     // to return `Option`.
                     .flat_map(|v| v)
                 });
-                Self::xform_collection(join, &*next, arrangements, lookup_collection)
+                Self::xform_collection(join, next, arrangements, lookup_collection)
             }
             XFormCollection::StreamSemijoin {
                 ref debug_info,
@@ -1505,7 +1512,7 @@ impl Program {
                     // to return `Option`.
                     .flat_map(|v| v)
                 });
-                Self::xform_collection(join, &*next, arrangements, lookup_collection)
+                Self::xform_collection(join, next, arrangements, lookup_collection)
             }
 
             XFormCollection::StreamXForm {
@@ -1536,7 +1543,7 @@ impl Program {
                                 _,
                             >(
                                 d_col,
-                                &*xform,
+                                xform,
                                 &Arrangements {
                                     arrangements: &FnvHashMap::default(),
                                 },
@@ -1548,7 +1555,7 @@ impl Program {
                     )
                 });
 
-                Self::xform_collection(xformed, &*next, arrangements, lookup_collection)
+                Self::xform_collection(xformed, next, arrangements, lookup_collection)
             }
         }
     }
@@ -1593,7 +1600,7 @@ impl Program {
             } => {
                 let arr =
                     with_prof_context(debug_info.clone(), || col.flat_map(afun).arrange_by_key());
-                Self::xform_arrangement(&arr, &*next, arrangements, lookup_collection)
+                Self::xform_arrangement(&arr, next, arrangements, lookup_collection)
             }
             XFormCollection::Differentiate {
                 ref debug_info,
@@ -1609,7 +1616,7 @@ impl Program {
                         &col.delay(move |t| one.results_in(t).expect("Integer overflow in Differentiate: maximal number of transactions exceeded")).negate())
                 });
 
-                Self::streamless_xform_collection(diff, &*next, arrangements, lookup_collection)
+                Self::streamless_xform_collection(diff, next, arrangements, lookup_collection)
             }
             XFormCollection::Map {
                 ref debug_info,
@@ -1617,7 +1624,7 @@ impl Program {
                 ref next,
             } => {
                 let mapped = with_prof_context(debug_info.clone(), || col.map(mfun));
-                Self::streamless_xform_collection(mapped, &*next, arrangements, lookup_collection)
+                Self::streamless_xform_collection(mapped, next, arrangements, lookup_collection)
             }
             XFormCollection::FlatMap {
                 ref debug_info,
@@ -1627,12 +1634,7 @@ impl Program {
                 let flattened = with_prof_context(debug_info.clone(), || {
                     col.flat_map(move |x| fmfun(x).into_iter().flatten())
                 });
-                Self::streamless_xform_collection(
-                    flattened,
-                    &*next,
-                    arrangements,
-                    lookup_collection,
-                )
+                Self::streamless_xform_collection(flattened, next, arrangements, lookup_collection)
             }
             XFormCollection::Filter {
                 ref debug_info,
@@ -1640,7 +1642,7 @@ impl Program {
                 ref next,
             } => {
                 let filtered = with_prof_context(debug_info.clone(), || col.filter(ffun));
-                Self::streamless_xform_collection(filtered, &*next, arrangements, lookup_collection)
+                Self::streamless_xform_collection(filtered, next, arrangements, lookup_collection)
             }
             XFormCollection::FilterMap {
                 ref debug_info,
@@ -1648,12 +1650,7 @@ impl Program {
                 ref next,
             } => {
                 let flattened = with_prof_context(debug_info.clone(), || col.flat_map(fmfun));
-                Self::streamless_xform_collection(
-                    flattened,
-                    &*next,
-                    arrangements,
-                    lookup_collection,
-                )
+                Self::streamless_xform_collection(flattened, next, arrangements, lookup_collection)
             }
             XFormCollection::Inspect {
                 ref debug_info,
@@ -1663,7 +1660,7 @@ impl Program {
                 let inspect = with_prof_context(debug_info.clone(), || {
                     col.inspect(move |(v, ts, w)| ifun(v, ts.to_tuple_ts(), *w))
                 });
-                Self::streamless_xform_collection(inspect, &*next, arrangements, lookup_collection)
+                Self::streamless_xform_collection(inspect, next, arrangements, lookup_collection)
             }
             XFormCollection::StreamJoin {
                 ref debug_info,
@@ -1696,7 +1693,7 @@ impl Program {
                     // to return `Option`.
                     .flat_map(|v| v)
                 });
-                Self::streamless_xform_collection(join, &*next, arrangements, lookup_collection)
+                Self::streamless_xform_collection(join, next, arrangements, lookup_collection)
             }
             XFormCollection::StreamSemijoin {
                 ref debug_info,
@@ -1729,7 +1726,7 @@ impl Program {
                     // to return `Option`.
                     .flat_map(|v| v)
                 });
-                Self::streamless_xform_collection(join, &*next, arrangements, lookup_collection)
+                Self::streamless_xform_collection(join, next, arrangements, lookup_collection)
             }
 
             XFormCollection::StreamXForm { ref debug_info, .. } => {
@@ -1766,7 +1763,7 @@ impl Program {
                         Some(iter) => iter,
                         None => Box::new(None.into_iter()),
                     }),
-                    &*next,
+                    next,
                     arrangements,
                     lookup_collection,
                 )
@@ -1778,7 +1775,7 @@ impl Program {
             } => with_prof_context(debug_info.clone(), || {
                 Self::streamless_xform_collection(
                     arr.flat_map_ref(move |_, v| fmfun(v.clone())),
-                    &*next,
+                    next,
                     arrangements,
                     lookup_collection,
                 )
@@ -1810,7 +1807,7 @@ impl Program {
                         },
                     )
                 });
-                Self::streamless_xform_collection(col, &*next, arrangements, lookup_collection)
+                Self::streamless_xform_collection(col, next, arrangements, lookup_collection)
             }
             XFormArrangement::Join {
                 ref debug_info,
@@ -1826,7 +1823,7 @@ impl Program {
                             |f| arr.filter(move |_, v| f(v)).join_core(&arranged, jfun),
                         )
                     });
-                    Self::streamless_xform_collection(col, &*next, arrangements, lookup_collection)
+                    Self::streamless_xform_collection(col, next, arrangements, lookup_collection)
                 }
                 ArrangementFlavor::Foreign(DataflowArrangement::Map(arranged)) => {
                     let col = with_prof_context(debug_info.clone(), || {
@@ -1835,7 +1832,7 @@ impl Program {
                             |f| arr.filter(move |_, v| f(v)).join_core(&arranged, jfun),
                         )
                     });
-                    Self::streamless_xform_collection(col, &*next, arrangements, lookup_collection)
+                    Self::streamless_xform_collection(col, next, arrangements, lookup_collection)
                 }
 
                 _ => panic!("Join: not a map arrangement {:?}", arrangement),
@@ -1854,7 +1851,7 @@ impl Program {
                             |f| arr.filter(move |_, v| f(v)).join_core(&arranged, jfun),
                         )
                     });
-                    Self::streamless_xform_collection(col, &*next, arrangements, lookup_collection)
+                    Self::streamless_xform_collection(col, next, arrangements, lookup_collection)
                 }
                 ArrangementFlavor::Foreign(DataflowArrangement::Set(arranged)) => {
                     let col = with_prof_context(debug_info.clone(), || {
@@ -1863,7 +1860,7 @@ impl Program {
                             |f| arr.filter(move |_, v| f(v)).join_core(&arranged, jfun),
                         )
                     });
-                    Self::streamless_xform_collection(col, &*next, arrangements, lookup_collection)
+                    Self::streamless_xform_collection(col, next, arrangements, lookup_collection)
                 }
                 _ => panic!("Semijoin: not a set arrangement {:?}", arrangement),
             },
@@ -1883,7 +1880,7 @@ impl Program {
                             },
                         )
                     });
-                    Self::streamless_xform_collection(col, &*next, arrangements, lookup_collection)
+                    Self::streamless_xform_collection(col, next, arrangements, lookup_collection)
                 }
                 ArrangementFlavor::Foreign(DataflowArrangement::Set(arranged)) => {
                     let col = with_prof_context(debug_info.clone(), || {
@@ -1895,7 +1892,7 @@ impl Program {
                             },
                         )
                     });
-                    Self::streamless_xform_collection(col, &*next, arrangements, lookup_collection)
+                    Self::streamless_xform_collection(col, next, arrangements, lookup_collection)
                 }
                 _ => panic!("Antijoin: not a set arrangement {:?}", arrangement),
             },
@@ -1913,8 +1910,6 @@ impl Program {
                     // FIXME: The key will need to be cloned below.  To avoid
                     // this overhead, we need a version of `lookup_map` that
                     // allows key function to return `Option`.
-                    let kfun = kfun;
-                    let jfun = jfun;
                     let collection_with_keys = lookup_collection(rel)
                         .unwrap_or_else(|| panic!("xform_arrangement: unknown relation {:?}", rel))
                         .flat_map(move |v| kfun(&v).map(|k| (k, v)));
@@ -1949,7 +1944,7 @@ impl Program {
                     // to return `Option`.
                     join.flat_map(|v| v)
                 });
-                Self::streamless_xform_collection(col, &*next, arrangements, lookup_collection)
+                Self::streamless_xform_collection(col, next, arrangements, lookup_collection)
             }
             XFormArrangement::StreamSemijoin {
                 ref debug_info,
@@ -1964,8 +1959,6 @@ impl Program {
                     // FIXME: The key will need to be cloned below.  To avoid
                     // this overhead, we need a version of `lookup_map` that
                     // allows key function to return `Option`.
-                    let kfun = kfun;
-                    let jfun = jfun;
                     let collection_keys = lookup_collection(rel)
                         .unwrap_or_else(|| panic!("xform_arrangement: unknown relation {:?}", rel))
                         .flat_map(move |v| kfun(&v));
@@ -2000,7 +1993,7 @@ impl Program {
                     // to return `Option`.
                     join.flat_map(|v| v)
                 });
-                Self::streamless_xform_collection(col, &*next, arrangements, lookup_collection)
+                Self::streamless_xform_collection(col, next, arrangements, lookup_collection)
             }
         }
     }

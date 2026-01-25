@@ -129,9 +129,10 @@ impl Debug for LoggingDestination {
 }
 
 /// The kind of profiling to be enabled for DDlog
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub enum ProfilingConfig {
     /// Disable all profiling.
+    #[default]
     None,
     /// Enable self-profiling.
     ///
@@ -170,12 +171,6 @@ impl ProfilingConfig {
     /// Returns `true` if the profiling_config is [`TimelyProfiling`]
     pub const fn is_timely_profiling(&self) -> bool {
         matches!(self, Self::TimelyProfiling { .. })
-    }
-}
-
-impl Default for ProfilingConfig {
-    fn default() -> Self {
-        Self::None
     }
 }
 

@@ -62,7 +62,7 @@ impl DDlogInventory for Inventory {
     }
 
     fn input_relation_ids(&self) -> &'static FnvHashMap<RelId, &'static str> {
-        &*RAW_INPUT_RELATION_ID_MAP
+        &RAW_INPUT_RELATION_ID_MAP
     }
 
     fn index_from_record(&self, index_id: IdxId, key: &Record) -> Result<DDValue, String> {

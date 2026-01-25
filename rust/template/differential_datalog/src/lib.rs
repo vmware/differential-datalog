@@ -1,7 +1,8 @@
 #![allow(
     clippy::get_unwrap,
     clippy::missing_safety_doc,
-    clippy::type_complexity
+    clippy::type_complexity,
+    non_local_definitions // Abomonation derive macro creates non-local impl (false positive)
 )]
 
 pub mod api;

@@ -120,7 +120,7 @@ impl<V: Display + Ord + Clone> DeltaMap<V> {
     }
 
     pub fn get_rel(&mut self, relid: RelId) -> &BTreeMap<V, isize> {
-        self.map.entry(relid).or_insert_with(BTreeMap::default)
+        self.map.entry(relid).or_default()
     }
 
     pub fn try_get_rel(&self, relid: RelId) -> Option<&BTreeMap<V, isize>> {
@@ -133,11 +133,7 @@ impl<V: Display + Ord + Clone> DeltaMap<V> {
 
     pub fn update(&mut self, relid: RelId, x: &V, diff: isize) {
         //println!("set_update({}) {:?} {}", rel, *x, insert);
-        let entry = self
-            .map
-            .entry(relid)
-            .or_insert_with(BTreeMap::default)
-            .entry((*x).clone());
+        let entry = self.map.entry(relid).or_default().entry((*x).clone());
         match entry {
             Entry::Vacant(vacant) => {
                 vacant.insert(diff);

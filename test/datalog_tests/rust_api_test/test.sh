@@ -12,4 +12,8 @@ DATALOG_TEST_DIR="${THIS_DIR}/../"
 
 (cd "${DATALOG_TEST_DIR}" && ddlog -i tutorial.dl -L ../../lib)
 
-(cd "${THIS_DIR}" && cargo run)
+# Optimize for disk usage: disable incremental, reduce debuginfo, use release mode
+export CARGO_INCREMENTAL=0
+export RUSTFLAGS="${RUSTFLAGS} -C debuginfo=1"
+# Use release mode for tests to save disk space (tests don't need debug symbols)
+(cd "${THIS_DIR}" && cargo run --release)

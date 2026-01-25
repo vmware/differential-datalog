@@ -96,7 +96,7 @@ impl<'a> ArrangeBy<'a> {
                 if distinct {
                     // Our `diff_distinct()` impl returns an arrangement which is
                     // ready to be used as an arranged set
-                    Arrangement::Set(diff_distinct(&*self.target_relation, &keyed))
+                    Arrangement::Set(diff_distinct(&self.target_relation, &keyed))
                 } else {
                     // The name mapping the collection from `key` to `(key, ())` so we can arrange it
                     let mapped_name = format!("Map: Map to key for {}", self.target_relation);
@@ -215,6 +215,9 @@ impl<'a> ArrangeBy<'a> {
         Arrangement::Map(arranged)
     }
 
+    #[allow(clippy::result_large_err)]
+    // Arranged contains TraceAgent handles (pointers/metadata) to dataflow state, not bulk data.
+    // The 192+ bytes is expected for dataflow handles. Boxing would prevent error return on OOM.
     fn key_collection<S, R>(
         &self,
         collection: &Collection<S, DDValue, R>,

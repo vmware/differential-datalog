@@ -159,13 +159,13 @@ impl Int {
     }
     pub fn to_float(&self) -> OrderedFloat<f32> {
         match self.x.to_f32() {
-            None => OrderedFloat::<f32>(std::f32::NAN),
+            None => OrderedFloat::<f32>(f32::NAN),
             Some(x) => OrderedFloat::<f32>(x),
         }
     }
     pub fn to_double(&self) -> OrderedFloat<f64> {
         match self.x.to_f64() {
-            None => OrderedFloat::<f64>(std::f64::NAN),
+            None => OrderedFloat::<f64>(f64::NAN),
             Some(x) => OrderedFloat::<f64>(x),
         }
     }
@@ -390,13 +390,13 @@ impl Uint {
     }
     pub fn to_float(&self) -> OrderedFloat<f32> {
         match self.x.to_f32() {
-            None => OrderedFloat::<f32>(std::f32::NAN),
+            None => OrderedFloat::<f32>(f32::NAN),
             Some(x) => OrderedFloat::<f32>(x),
         }
     }
     pub fn to_double(&self) -> OrderedFloat<f64> {
         match self.x.to_f64() {
-            None => OrderedFloat::<f64>(std::f64::NAN),
+            None => OrderedFloat::<f64>(f64::NAN),
             Some(x) => OrderedFloat::<f64>(x),
         }
     }
@@ -578,7 +578,8 @@ mod c_api {
         if x.is_null() {
             return;
         }
-        Box::from_raw(x);
+        // Convert back to Box to deallocate. The Box is dropped immediately.
+        let _ = Box::from_raw(x);
     }
 
     #[no_mangle]
@@ -597,6 +598,7 @@ mod c_api {
         if x.is_null() {
             return;
         }
-        Box::from_raw(x);
+        // Convert back to Box to deallocate. The Box is dropped immediately.
+        let _ = Box::from_raw(x);
     }
 }

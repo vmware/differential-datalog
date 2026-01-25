@@ -7,6 +7,8 @@ use timely::{
 pub trait FilterMap<D, D2> {
     type Output;
 
+    #[allow(dead_code)]
+    // Kept for API consistency: default method provides convenience API
     fn filter_map<L>(&self, logic: L) -> Self::Output
     where
         L: FnMut(D) -> Option<D2> + 'static,

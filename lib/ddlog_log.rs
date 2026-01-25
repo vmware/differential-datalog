@@ -41,7 +41,7 @@ impl LogConfig {
     fn new() -> LogConfig {
         LogConfig {
             default_callback: None,
-            default_level: std::i32::MAX,
+            default_level: i32::MAX,
             mod_callbacks: collections::HashMap::new(),
         }
     }
@@ -61,8 +61,10 @@ pub fn log(module: &i32, level: &i32, msg: &String) {
         if *level <= *current_level {
             cb(*level, msg.as_str());
         }
-    } else if *level <= cfg.default_level && cfg.default_callback.is_some() {
-        cfg.default_callback.as_ref().unwrap()(*level, msg.as_str());
+    } else if *level <= cfg.default_level {
+        if let Some(cb) = cfg.default_callback.as_ref() {
+            cb(*level, msg.as_str());
+        }
     }
 }
 
@@ -100,7 +102,7 @@ pub unsafe extern "C" fn ddlog_log_set_callback(
 ) {
     match cb {
         Some(cb) => log_set_callback(
-            module as i32,
+            module,
             Some(Box::new(move |level, msg| {
                 cb(
                     cb_arg,
@@ -108,9 +110,9 @@ pub unsafe extern "C" fn ddlog_log_set_callback(
                     ffi::CString::new(msg).unwrap_or_default().as_ptr(),
                 )
             })),
-            max_level as i32,
+            max_level,
         ),
-        None => log_set_callback(module as i32, None, max_level as i32),
+        None => log_set_callback(module, None, max_level),
     }
 }
 
@@ -130,8 +132,8 @@ pub unsafe extern "C" fn ddlog_log_set_default_callback(
                     ffi::CString::new(msg).unwrap_or_default().as_ptr(),
                 )
             })),
-            max_level as i32,
+            max_level,
         ),
-        None => log_set_default_callback(None, max_level as i32),
+        None => log_set_default_callback(None, max_level),
     }
 }

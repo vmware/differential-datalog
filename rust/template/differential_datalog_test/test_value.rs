@@ -7,7 +7,6 @@ use std::fmt::{self, Debug, Display, Formatter};
 
 /// `Value` type that implements `trait DDValConvert` and is thus useful for testing Rust modules that
 /// interact with the DDlog API, but do not define their own value type.
-
 macro_rules! debug_display {
     ($($ty:ident),* $(,)?) => {
         $(
