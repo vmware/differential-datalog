@@ -43,7 +43,7 @@ static PROFILE_DIRECTORIES: Lazy<Mutex<HashSet<PathBuf>>> =
     Lazy::new(|| Mutex::new(HashSet::new()));
 
 thread_local! {
-    pub static PROF_CONTEXT: RefCell<Vec<OperatorDebugInfo>> = RefCell::new(vec![]);
+    pub static PROF_CONTEXT: RefCell<Vec<OperatorDebugInfo>> = const { RefCell::new(vec![]) };
 }
 
 pub fn push_prof_context(debug_info: OperatorDebugInfo) {

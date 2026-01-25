@@ -12,8 +12,9 @@ use std::fs::File;
 use timely::logging::{ParkEvent, StartStop, TimelyEvent};
 
 /// Possible events fields for CSV event_type column.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 enum CSVEventType {
+    #[default]
     Invalid,
     OperatorCreation,
     OperatorCall,
@@ -32,12 +33,6 @@ enum CSVEventType {
     Text,
     Activation,
     EventCounts,
-}
-
-impl Default for CSVEventType {
-    fn default() -> Self {
-        CSVEventType::Invalid
-    }
 }
 
 /// Map from (worker_id, op_id) to start time for timely events.
