@@ -1711,7 +1711,13 @@ pub unsafe extern "C" fn ddlog_get_map_key(rec: *const Record, idx: libc::size_t
         .and_then(Record::as_map)
         .and_then(|records| records.get(idx))
         .and_then(Record::as_tuple)
-        .and_then(|tuple| if tuple.len() == 2 { tuple.first() } else { None })
+        .and_then(|tuple| {
+            if tuple.len() == 2 {
+                tuple.first()
+            } else {
+                None
+            }
+        })
         .map(|record| record as *const Record)
         .unwrap_or(ptr::null_mut())
 }

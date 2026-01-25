@@ -39,7 +39,7 @@ pub enum Command {
 
 named!(spaces<&[u8], ()>,
     do_parse!(mspace: opt!(complete!(one_of!(b" \t\r\n"))) >>
-              cond!(mspace != None, spaces) >>
+              cond!(mspace.is_some(), spaces) >>
               ())
     //take_while!(is_space)
     //do_parse!(many0!(one_of!(b" \t\r\n")) >> (()))

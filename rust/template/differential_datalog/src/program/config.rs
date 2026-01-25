@@ -174,7 +174,6 @@ impl ProfilingConfig {
     }
 }
 
-
 #[derive(Debug)]
 pub(super) struct SelfProfilingRig {
     pub(super) profile: Option<Arc<Mutex<Profile>>>,

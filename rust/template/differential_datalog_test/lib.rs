@@ -5,6 +5,7 @@
 //! `DDValConvert` trait.  Since `types` itself depends on `differential_datalog`, tests had to be
 //! factored in a separate crate.
 #![cfg_attr(not(test), allow(dead_code))]
+#![allow(non_local_definitions)] // Abomonation derive macro creates non-local impl (false positive)
 
 use std::borrow::Cow;
 use std::collections::btree_map::{BTreeMap, Entry};
@@ -1903,7 +1904,7 @@ fn test_recursion(nthreads: usize) {
         |
         |-->E
     */
-    let vals = vec![
+    let vals = [
         Tuple2::new(String("A".to_string()), String("B".to_string())),
         Tuple2::new(String("B".to_string()), String("C".to_string())),
         Tuple2::new(String("B".to_string()), String("D".to_string())),
@@ -1911,7 +1912,7 @@ fn test_recursion(nthreads: usize) {
     ];
     let set: BTreeMap<_, _> = vals.iter().map(|x| (x.clone(), 1)).collect();
 
-    let expect_vals = vec![
+    let expect_vals = [
         Tuple2::new(String("A".to_string()), String("B".to_string())),
         Tuple2::new(String("B".to_string()), String("C".to_string())),
         Tuple2::new(String("B".to_string()), String("D".to_string())),
@@ -1922,7 +1923,7 @@ fn test_recursion(nthreads: usize) {
 
     let expect_set: BTreeMap<_, _> = expect_vals.iter().map(|x| (x.clone(), 1)).collect();
 
-    let expect_vals2 = vec![
+    let expect_vals2 = [
         Tuple2::new(String("C".to_string()), String("D".to_string())),
         Tuple2::new(String("D".to_string()), String("C".to_string())),
         Tuple2::new(String("C".to_string()), String("E".to_string())),
@@ -1952,7 +1953,7 @@ fn test_recursion(nthreads: usize) {
         .unwrap();
     running.transaction_commit().unwrap();
 
-    let expect_vals3 = vec![
+    let expect_vals3 = [
         Tuple2::new(String("B".to_string()), String("C".to_string())),
         Tuple2::new(String("B".to_string()), String("D".to_string())),
         Tuple2::new(String("A".to_string()), String("E".to_string())),
@@ -1961,7 +1962,7 @@ fn test_recursion(nthreads: usize) {
 
     assert_eq!(*ancestorset.lock().unwrap(), expect_set3);
 
-    let expect_vals4 = vec![
+    let expect_vals4 = [
         Tuple2::new(String("C".to_string()), String("D".to_string())),
         Tuple2::new(String("D".to_string()), String("C".to_string())),
     ];

@@ -467,7 +467,7 @@ fn start_ddshow(
     nworkers: usize,
 ) -> Result<process::Child, String> {
     let mut cmd = process::Command::new("ddshow");
-    cmd.args(&[
+    cmd.args([
         "--connections",
         &nworkers.to_string(),
         "--workers",
@@ -479,7 +479,7 @@ fn start_ddshow(
         "--disable-timeline",
     ]);
     if let Some(sockaddr) = differential_socket {
-        cmd.args(&[
+        cmd.args([
             "--differential",
             "--differential-address",
             &sockaddr.to_string(),

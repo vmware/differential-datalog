@@ -133,11 +133,7 @@ impl<V: Display + Ord + Clone> DeltaMap<V> {
 
     pub fn update(&mut self, relid: RelId, x: &V, diff: isize) {
         //println!("set_update({}) {:?} {}", rel, *x, insert);
-        let entry = self
-            .map
-            .entry(relid)
-            .or_default()
-            .entry((*x).clone());
+        let entry = self.map.entry(relid).or_default().entry((*x).clone());
         match entry {
             Entry::Vacant(vacant) => {
                 vacant.insert(diff);
