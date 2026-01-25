@@ -129,9 +129,10 @@ impl Debug for LoggingDestination {
 }
 
 /// The kind of profiling to be enabled for DDlog
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub enum ProfilingConfig {
     /// Disable all profiling.
+    #[default]
     None,
     /// Enable self-profiling.
     ///
@@ -173,11 +174,6 @@ impl ProfilingConfig {
     }
 }
 
-impl Default for ProfilingConfig {
-    fn default() -> Self {
-        Self::None
-    }
-}
 
 #[derive(Debug)]
 pub(super) struct SelfProfilingRig {

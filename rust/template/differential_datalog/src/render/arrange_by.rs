@@ -215,6 +215,9 @@ impl<'a> ArrangeBy<'a> {
         Arrangement::Map(arranged)
     }
 
+    #[allow(clippy::result_large_err)]
+    // Arranged contains TraceAgent handles (pointers/metadata) to dataflow state, not bulk data.
+    // The 192+ bytes is expected for dataflow handles. Boxing would prevent error return on OOM.
     fn key_collection<S, R>(
         &self,
         collection: &Collection<S, DDValue, R>,

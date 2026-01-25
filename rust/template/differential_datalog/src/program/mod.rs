@@ -90,9 +90,12 @@ type TKeyAgent<S> = TraceAgent<KeyTrace<S>>;
 type TValEnter<P, T> = TraceEnter<TValAgent<P>, T>;
 type TKeyEnter<P, T> = TraceEnter<TKeyAgent<P>, T>;
 
-#[allow(non_local_definitions)] // Abomonation derive macro creates non-local impl
+// Abomonation derive macro creates non-local impl
+// Note: #[allow(non_local_definitions)] doesn't work here because the lint originates
+// inside the derive macro expansion. This is a false positive from abomonation_derive.
 #[derive(Abomonation, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Clone)]
 #[repr(transparent)]
+#[allow(non_local_definitions)]
 pub struct CheckedWeight {
     pub value: i32,
 }
@@ -321,7 +324,7 @@ pub trait RelationCallback: Fn(RelId, &DDValue, Weight) + Send + Sync {
 
 impl<T> RelationCallback for T
 where
-    T: Fn(RelId, &DDValue, Weight) + Clone + Send + Sync + ?Sized + 'static,
+    T: Fn(RelId, &DDValue, Weight) + Clone + Send + Sync + 'static,
 {
     fn clone_boxed(&self) -> Box<dyn RelationCallback> {
         Box::new(self.clone())
@@ -1772,7 +1775,7 @@ impl Program {
             } => with_prof_context(debug_info.clone(), || {
                 Self::streamless_xform_collection(
                     arr.flat_map_ref(move |_, v| fmfun(v.clone())),
-                    &*next,
+                    next,
                     arrangements,
                     lookup_collection,
                 )
@@ -1907,8 +1910,6 @@ impl Program {
                     // FIXME: The key will need to be cloned below.  To avoid
                     // this overhead, we need a version of `lookup_map` that
                     // allows key function to return `Option`.
-                    let kfun = kfun;
-                    let jfun = jfun;
                     let collection_with_keys = lookup_collection(rel)
                         .unwrap_or_else(|| panic!("xform_arrangement: unknown relation {:?}", rel))
                         .flat_map(move |v| kfun(&v).map(|k| (k, v)));
@@ -1958,8 +1959,6 @@ impl Program {
                     // FIXME: The key will need to be cloned below.  To avoid
                     // this overhead, we need a version of `lookup_map` that
                     // allows key function to return `Option`.
-                    let kfun = kfun;
-                    let jfun = jfun;
                     let collection_keys = lookup_collection(rel)
                         .unwrap_or_else(|| panic!("xform_arrangement: unknown relation {:?}", rel))
                         .flat_map(move |v| kfun(&v));

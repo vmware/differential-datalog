@@ -513,7 +513,7 @@ impl<'a> DDlogWorker<'a> {
                         .map_err(|e| format!("{}", e))?;
                 }
                 LoggingDestination::Socket { sockaddr } => {
-                    let stream = TcpStream::connect(&sockaddr).map_err(|e| {
+                    let stream = TcpStream::connect(sockaddr).map_err(|e| {
                         format!(
                             "Failed to connect to timely profiler socket {}: {}",
                             sockaddr, e
@@ -534,7 +534,7 @@ impl<'a> DDlogWorker<'a> {
                         save_timely_progress_logs_to_disk(&mut self.worker, directory)?;
                     },
                     LoggingDestination::Socket{sockaddr} => {
-                        let stream = TcpStream::connect(&sockaddr)?;
+                        let stream = TcpStream::connect(sockaddr)?;
                         enable_timely_progress_logging(&mut self.worker, stream);
                     },
                     LoggingDestination::Writer{writer} => {
@@ -551,7 +551,7 @@ impl<'a> DDlogWorker<'a> {
                             .map_err(|e| format!("{}", e))?;
                     }
                     LoggingDestination::Socket { sockaddr } => {
-                        let stream = TcpStream::connect(&sockaddr).map_err(|e| {
+                        let stream = TcpStream::connect(sockaddr).map_err(|e| {
                             format!(
                                 "Failed to connect to differential profiler socket {}: {}",
                                 sockaddr, e

@@ -76,7 +76,7 @@ impl Abomonation for DDValue {
         panic!("'DDValue::entomb': not implemented")
     }
 
-    unsafe fn exhume<'a, 'b>(&'a mut self, _bytes: &'b mut [u8]) -> Option<&'b mut [u8]> {
+    unsafe fn exhume<'b>(&mut self, _bytes: &'b mut [u8]) -> Option<&'b mut [u8]> {
         panic!("'DDValue::exhume': not implemented")
     }
 
@@ -120,11 +120,11 @@ impl Debug for DDValue {
     }
 }
 
+#[allow(clippy::non_canonical_partial_ord_impl)]
+// Non-canonical: must use vtable.partial_cmp, not vtable.cmp, to preserve flexibility
+// for types that may have non-canonical PartialOrd implementations. The vtable delegates
+// to each type's own PartialOrd::partial_cmp, which may differ from Ord::cmp for some types.
 impl PartialOrd for DDValue {
-    #[allow(clippy::non_canonical_partial_ord_impl)]
-    // Non-canonical: must use vtable.partial_cmp, not vtable.cmp, to preserve flexibility
-    // for types that may have non-canonical PartialOrd implementations. The vtable delegates
-    // to each type's own PartialOrd::partial_cmp, which may differ from Ord::cmp for some types.
     fn partial_cmp(&self, other: &DDValue) -> Option<Ordering> {
         /* Safety: The types of both values are the same.
          * This should be enforced by the DDlog type checker. */

@@ -34,7 +34,6 @@ use std::os::windows::io::{FromRawHandle, IntoRawHandle, RawHandle};
 // FIXME: Unwinding across the FFI boundary is UB, catch all panics and return errors
 
 /// IMPORTANT: The followint typedefs must be kept in sync with equivalent declarations in ddlog.h.
-
 #[repr(C)]
 pub enum ddlog_profiling_mode {
     ddlog_disable_profiling = 0,

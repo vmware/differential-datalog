@@ -262,7 +262,7 @@ impl fmt::Display for Record {
                 write!(f, "]")
             }
             Record::PosStruct(n, recs) => {
-                write!(f, "{}{{", if n == "" { "_" } else { n })?;
+                write!(f, "{}{{", if n.is_empty() { "_" } else { n })?;
                 let len = recs.len();
                 for (i, r) in recs.iter().enumerate() {
                     if i == len - 1 {
@@ -274,7 +274,7 @@ impl fmt::Display for Record {
                 write!(f, "}}")
             }
             Record::NamedStruct(n, recs) => {
-                write!(f, "{}{{", if n == "" { "_" } else { n })?;
+                write!(f, "{}{{", if n.is_empty() { "_" } else { n })?;
                 let len = recs.len();
                 for (i, (fname, v)) in recs.iter().enumerate() {
                     if i == len - 1 {
@@ -860,7 +860,7 @@ impl IntoRecord for String {
     }
 }
 
-impl<'a> IntoRecord for &'a str {
+impl IntoRecord for &str {
     fn into_record(self) -> Record {
         Record::String(self.to_owned())
     }
@@ -1711,7 +1711,7 @@ pub unsafe extern "C" fn ddlog_get_map_key(rec: *const Record, idx: libc::size_t
         .and_then(Record::as_map)
         .and_then(|records| records.get(idx))
         .and_then(Record::as_tuple)
-        .and_then(|tuple| if tuple.len() == 2 { tuple.get(0) } else { None })
+        .and_then(|tuple| if tuple.len() == 2 { tuple.first() } else { None })
         .map(|record| record as *const Record)
         .unwrap_or(ptr::null_mut())
 }
