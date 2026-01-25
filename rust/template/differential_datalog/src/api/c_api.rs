@@ -189,7 +189,7 @@ pub unsafe extern "C" fn ddlog_get_table_id(
     tname: *const raw::c_char,
 ) -> libc::size_t {
     if prog.is_null() || tname.is_null() {
-        return libc::size_t::max_value();
+        return libc::size_t::MAX;
     }
 
     let prog = &*prog;
@@ -197,7 +197,7 @@ pub unsafe extern "C" fn ddlog_get_table_id(
     let table_str = CStr::from_ptr(tname).to_str().unwrap();
     match prog.inventory.get_table_id(table_str) {
         Ok(relid) => relid as libc::size_t,
-        Err(_) => libc::size_t::max_value(),
+        Err(_) => libc::size_t::MAX,
     }
 }
 
@@ -242,19 +242,19 @@ pub unsafe extern "C" fn ddlog_get_index_id(
     iname: *const raw::c_char,
 ) -> libc::size_t {
     if prog.is_null() {
-        return libc::size_t::max_value();
+        return libc::size_t::MAX;
     }
 
     let prog = &*prog;
 
     if iname.is_null() {
-        return libc::size_t::max_value();
+        return libc::size_t::MAX;
     }
 
     let index_str = CStr::from_ptr(iname).to_str().unwrap();
     match prog.inventory.get_index_id(index_str) {
         Ok(idxid) => idxid as libc::size_t,
-        Err(_) => libc::size_t::max_value(),
+        Err(_) => libc::size_t::MAX,
     }
 }
 

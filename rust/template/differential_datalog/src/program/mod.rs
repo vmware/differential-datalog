@@ -90,6 +90,7 @@ type TKeyAgent<S> = TraceAgent<KeyTrace<S>>;
 type TValEnter<P, T> = TraceEnter<TValAgent<P>, T>;
 type TKeyEnter<P, T> = TraceEnter<TKeyAgent<P>, T>;
 
+#[allow(non_local_definitions)] // Abomonation derive macro creates non-local impl
 #[derive(Abomonation, Copy, Ord, PartialOrd, Eq, PartialEq, Hash, Debug, Clone)]
 #[repr(transparent)]
 pub struct CheckedWeight {

@@ -43,7 +43,7 @@ where
 {
     /// Creates a new `Variable` from a supplied `source` stream.
     /*pub fn from(source: &Collection<Child<'a, G, u64>, D>) -> Variable<'a, G, D> {
-        let (feedback, cycle) = source.inner.scope().loop_variable(u64::max_value(), 1);
+        let (feedback, cycle) = source.inner.scope().loop_variable(u64::MAX, 1);
         let cycle = Collection::new(cycle);
         let mut result = Variable { feedback: Some(feedback), current: cycle.clone(), cycle: cycle };
         result.add(source);
