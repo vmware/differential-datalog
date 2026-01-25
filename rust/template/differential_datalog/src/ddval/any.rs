@@ -103,7 +103,7 @@ impl PartialEq for Any {
 
 impl PartialOrd for Any {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.safe_cmp(other))
+        Some(Ord::cmp(self, other))
     }
 }
 
