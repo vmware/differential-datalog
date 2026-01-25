@@ -129,15 +129,15 @@ You are now ready to [start coding in DDlog](doc/tutorial/tutorial.md).
   export PATH=`pwd`:$PATH
   cd ..
   ```
-- Static versions of the following libraries: `libpthread.a`, `libc.a`, `libm.a`, `librt.a`, `libutil.a`,
-  `libdl.a`, `libgmp.a`, and `libstdc++.a` can be installed from distro-specific packages.  On Ubuntu:
-  ```
-  apt install libc6-dev libgmp-dev
-  ```
-  On Fedora:
-  ```
-  dnf install glibc-static gmp-static libstdc++-static
-  ```
+- Linux build prerequisites (for dynamic linking, which is the default):
+  - Ubuntu/Debian: `apt install build-essential libgmp-dev zlib1g-dev libtinfo-dev`
+  - Fedora: `dnf install gcc-c++ make gmp-devel zlib-devel ncurses-compat-libs`
+
+  **Static linking (optional, Linux only)**: DDlog uses dynamic linking by default.
+  To enable static linking, use `stack build --flag differential-datalog:static` and
+  install static libc/toolchain packages (e.g., `glibc-static`, `libstdc++-static`,
+  `gmp-static` on Fedora). Note: Static linking requires additional system packages
+  and may not work on all Linux distributions.
 
 #### Building
 
