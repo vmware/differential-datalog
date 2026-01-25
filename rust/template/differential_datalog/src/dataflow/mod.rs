@@ -1,4 +1,3 @@
-mod arrange;
 mod consolidate;
 mod distinct;
 mod filter_map;

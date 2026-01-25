@@ -21,11 +21,6 @@ where
     <O as TryFrom<usize>>::Error: Debug,
     <O as TryInto<usize>>::Error: Debug,
 {
-    /// A `.consolidate()` that returns its internal arrangement
-    fn consolidate_arranged(&self) -> Arranged<S, TraceAgent<OrdKeySpine<D, S::Timestamp, R, O>>> {
-        self.consolidate_arranged_named("ConsolidateArranged")
-    }
-
     /// The same as `.consolidate_arranged()` but with the ability to name the operator.
     fn consolidate_arranged_named(
         &self,

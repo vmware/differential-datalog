@@ -261,6 +261,8 @@ impl ValMapUpdateHandler {
     pub fn new(db: Arc<Mutex<DeltaMap<DDValue>>>) -> Self {
         Self {
             db,
+            #[allow(clippy::arc_with_non_send_sync)]
+            // Intentionally single-threaded: uses Cell<*mut ()> (same as callbacks)
             locked: Arc::new(Cell::new(ptr::null_mut())),
         }
     }
@@ -322,6 +324,8 @@ impl DeltaUpdateHandler {
     pub fn new(db: Arc<Mutex<Option<DeltaMap<DDValue>>>>) -> Self {
         Self {
             db,
+            #[allow(clippy::arc_with_non_send_sync)]
+            // Intentionally single-threaded: uses Cell<*mut ()> (same as callbacks)
             locked: Arc::new(Cell::new(ptr::null_mut())),
         }
     }

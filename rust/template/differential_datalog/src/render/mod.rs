@@ -16,6 +16,7 @@ pub type TraceKey<S, R, O = Offset> = OrdKeySpine<DDValue, <S as ScopeParent>::T
 
 #[derive(Debug)]
 pub struct RenderContext {
+    #[allow(dead_code)]
     pub config: Config,
 }
 

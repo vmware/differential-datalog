@@ -222,7 +222,6 @@ rustLibFiles =
         , ("differential_datalog/src/render/mod.rs"               , $(embedFile "rust/template/differential_datalog/src/render/mod.rs"))
         , ("differential_datalog/src/render/arrange_by.rs"        , $(embedFile "rust/template/differential_datalog/src/render/arrange_by.rs"))
         , ("differential_datalog/src/dataflow/mod.rs"             , $(embedFile "rust/template/differential_datalog/src/dataflow/mod.rs"))
-        , ("differential_datalog/src/dataflow/arrange.rs"         , $(embedFile "rust/template/differential_datalog/src/dataflow/arrange.rs"))
         , ("differential_datalog/src/dataflow/consolidate.rs"     , $(embedFile "rust/template/differential_datalog/src/dataflow/consolidate.rs"))
         , ("differential_datalog/src/dataflow/distinct.rs"        , $(embedFile "rust/template/differential_datalog/src/dataflow/distinct.rs"))
         , ("differential_datalog/src/dataflow/filter_map.rs"      , $(embedFile "rust/template/differential_datalog/src/dataflow/filter_map.rs"))
