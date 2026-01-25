@@ -297,10 +297,9 @@ pub unsafe extern "C" fn ddlog_record_commands(prog: *const HDDlog, fd: RawFd) -
     match Arc::get_mut(&mut prog) {
         Some(prog) => {
             prog.record_commands(&mut file);
-            /* Convert the old file into FD to prevent it from closing.
-             * It is the caller's responsibility to close the file when
-             * they are done with it. */
-            file.map(|m| m.into_raw_fd());
+            // Convert back to raw FD to prevent Rust from closing it.
+            // The caller owns the file descriptor and is responsible for closing it.
+            let _ = file.map(|m| m.into_raw_fd());
             0
         }
         None => -1,
@@ -326,10 +325,9 @@ pub unsafe extern "C" fn ddlog_record_commands(prog: *const HDDlog, fd: raw::c_i
     match Arc::get_mut(&mut prog) {
         Some(prog) => {
             prog.record_commands(&mut file);
-            /* Convert the old file into FD to prevent it from closing.
-             * It is the caller's responsibility to close the file when
-             * they are done with it. */
-            file.map(|m| m.into_raw_handle());
+            // Convert back to raw handle to prevent Rust from closing it.
+            // The caller owns the file handle and is responsible for closing it.
+            let _ = file.map(|m| m.into_raw_handle());
             0
         }
         None => -1,
@@ -353,7 +351,9 @@ pub unsafe extern "C" fn ddlog_dump_input_snapshot(prog: *const HDDlog, fd: RawF
             -1
         });
 
-    file.into_raw_fd();
+    // Convert back to raw FD to prevent Rust from closing it.
+    // The caller owns the file descriptor and is responsible for closing it.
+    let _ = file.into_raw_fd();
     res
 }
 
@@ -379,7 +379,9 @@ pub unsafe extern "C" fn ddlog_dump_input_snapshot(
             -1
         });
 
-    file.into_raw_handle();
+    // Convert back to raw handle to prevent Rust from closing it.
+    // The caller owns the file handle and is responsible for closing it.
+    let _ = file.into_raw_handle();
     res
 }
 
@@ -1133,7 +1135,7 @@ pub unsafe extern "C" fn ddlog_delta_union(
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_free_delta(delta: *mut DeltaMap<DDValue>) {
     if !delta.is_null() {
-        // Deallocate the DeltaMap
-        Box::from_raw(delta);
+        // Convert back to Box to deallocate. The Box is dropped immediately.
+        let _ = Box::from_raw(delta);
     }
 }

@@ -281,7 +281,9 @@ impl UpdateHandler for ValMapUpdateHandler {
                 let mut guard: Box<MutexGuard<'_, DeltaMap<DDValue>>> =
                     unsafe { Box::from_raw(guard_ptr as *mut MutexGuard<'_, DeltaMap<DDValue>>) };
                 guard.update(relid, v, w);
-                Box::into_raw(guard);
+                // Convert back to raw pointer to prevent guard from being dropped.
+                // The pointer is already stored in handler.locked, so we ignore the return value.
+                let _ = Box::into_raw(guard);
             }
         })
     }
@@ -347,8 +349,9 @@ impl UpdateHandler for DeltaUpdateHandler {
                     db.update(relid, v, w);
                 }
 
-                // make sure that guard does not get dropped
-                Box::into_raw(guard);
+                // Convert back to raw pointer to prevent guard from being dropped.
+                // The pointer is already stored in handler.locked, so we ignore the return value.
+                let _ = Box::into_raw(guard);
             }
         })
     }

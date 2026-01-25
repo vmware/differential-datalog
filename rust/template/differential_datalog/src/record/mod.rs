@@ -1181,7 +1181,8 @@ pub unsafe extern "C" fn ddlog_dump_record(record: *const Record) -> *mut libc::
 #[cfg(feature = "c_api")]
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_free(rec: *mut Record) {
-    Box::from_raw(rec);
+    // Convert back to Box to deallocate. The Box is dropped immediately.
+    let _ = Box::from_raw(rec);
 }
 
 #[cfg(feature = "c_api")]
@@ -1573,7 +1574,9 @@ pub unsafe extern "C" fn ddlog_tuple_push(tup: *mut Record, rec: *mut Record) {
         recs.push(*rec)
     }
 
-    Box::into_raw(tup);
+    // Return ownership of tup to the caller. The return value is the same pointer
+    // the caller already has, so we ignore it.
+    let _ = Box::into_raw(tup);
 }
 
 #[cfg(feature = "c_api")]
@@ -1624,7 +1627,9 @@ pub unsafe extern "C" fn ddlog_vector_push(vec: *mut Record, rec: *mut Record) {
         recs.push(*rec)
     }
 
-    Box::into_raw(vec);
+    // Return ownership of vec to the caller. The return value is the same pointer
+    // the caller already has, so we ignore it.
+    let _ = Box::into_raw(vec);
 }
 
 #[cfg(feature = "c_api")]
@@ -1672,7 +1677,9 @@ pub unsafe extern "C" fn ddlog_set_push(set: *mut Record, rec: *mut Record) {
         recs.push(*rec)
     }
 
-    Box::into_raw(set);
+    // Return ownership of set to the caller. The return value is the same pointer
+    // the caller already has, so we ignore it.
+    let _ = Box::into_raw(set);
 }
 
 #[cfg(feature = "c_api")]
@@ -1731,7 +1738,9 @@ pub unsafe extern "C" fn ddlog_map_push(map: *mut Record, key: *mut Record, val:
         recs.push(tup)
     }
 
-    Box::into_raw(map);
+    // Return ownership of map to the caller. The return value is the same pointer
+    // the caller already has, so we ignore it.
+    let _ = Box::into_raw(map);
 }
 
 #[cfg(feature = "c_api")]
