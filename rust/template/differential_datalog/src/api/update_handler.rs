@@ -269,7 +269,8 @@ impl ValMapUpdateHandler {
 impl UpdateHandler for ValMapUpdateHandler {
     fn update_cb(&self) -> Arc<dyn SingleThreadedRelationCallback> {
         let handler = self.clone();
-        #[allow(clippy::arc_with_non_send_sync)] // Intentionally single-threaded: uses Cell<*mut ()>
+        #[allow(clippy::arc_with_non_send_sync)]
+        // Intentionally single-threaded: uses Cell<*mut ()>
         Arc::new(move |relid, v, w| {
             let guard_ptr = handler.locked.get();
             // `update_cb` can also be called during rollback and stop operations.
@@ -329,7 +330,8 @@ impl DeltaUpdateHandler {
 impl UpdateHandler for DeltaUpdateHandler {
     fn update_cb(&self) -> Arc<dyn SingleThreadedRelationCallback> {
         let handler = self.clone();
-        #[allow(clippy::arc_with_non_send_sync)] // Intentionally single-threaded: uses Cell<*mut ()>
+        #[allow(clippy::arc_with_non_send_sync)]
+        // Intentionally single-threaded: uses Cell<*mut ()>
         Arc::new(move |relid, v, w| {
             let guard_ptr = handler.locked.get();
             if !guard_ptr.is_null() {
@@ -380,7 +382,8 @@ impl UpdateHandler for ChainedUpdateHandler {
         let cbs: Vec<Arc<dyn SingleThreadedRelationCallback>> =
             self.handlers.iter().map(|h| h.update_cb()).collect();
 
-        #[allow(clippy::arc_with_non_send_sync)] // Intentionally single-threaded: chained callbacks may contain Cell
+        #[allow(clippy::arc_with_non_send_sync)]
+        // Intentionally single-threaded: chained callbacks may contain Cell
         Arc::new(move |relid, v, w| {
             for cb in cbs.iter() {
                 cb(relid, v, w);
@@ -418,7 +421,8 @@ impl UpdateHandler for MTChainedUpdateHandler {
         let cbs: Vec<Arc<dyn SingleThreadedRelationCallback>> =
             self.handlers.iter().map(|h| h.update_cb()).collect();
 
-        #[allow(clippy::arc_with_non_send_sync)] // Intentionally single-threaded: chained callbacks may contain Cell
+        #[allow(clippy::arc_with_non_send_sync)]
+        // Intentionally single-threaded: chained callbacks may contain Cell
         Arc::new(move |relid, v, w| {
             for cb in cbs.iter() {
                 cb(relid, v, w);
