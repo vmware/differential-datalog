@@ -1254,7 +1254,7 @@ pub unsafe extern "C" fn ddlog_get_double(rec: *const Record) -> f64 {
 #[no_mangle]
 pub unsafe extern "C" fn ddlog_int(int: *const libc::c_uchar, size: libc::size_t) -> *mut Record {
     Box::into_raw(Box::new(Record::Int(BigInt::from_signed_bytes_be(
-        slice::from_raw_parts(int as *const u8, size as usize),
+        slice::from_raw_parts(int, size),
     ))))
 }
 
@@ -1412,7 +1412,10 @@ pub unsafe extern "C" fn ddlog_string_with_length(
         return ptr::null_mut();
     }
 
-    if let Ok(string) = str::from_utf8(slice::from_raw_parts(s as *const u8, len as usize)) {
+    #[allow(clippy::unnecessary_cast)]
+    // False positive: libc::c_char is i8 (signed), but slice::from_raw_parts requires *const u8 (unsigned).
+    // This is a necessary type conversion, not a redundant cast.
+    if let Ok(string) = str::from_utf8(slice::from_raw_parts(s as *const u8, len)) {
         Box::into_raw(Box::new(Record::String(string.to_owned())))
     } else {
         ptr::null_mut()
@@ -1480,7 +1483,10 @@ pub unsafe extern "C" fn ddlog_serialized_with_length(
     s: *const libc::c_char,
     s_len: libc::size_t,
 ) -> *mut Record {
-    let t = match str::from_utf8(slice::from_raw_parts(t as *const u8, t_len as usize)) {
+    #[allow(clippy::unnecessary_cast)]
+    // False positive: libc::c_char is i8 (signed), but slice::from_raw_parts requires *const u8 (unsigned).
+    // This is a necessary type conversion, not a redundant cast.
+    let t = match str::from_utf8(slice::from_raw_parts(t as *const u8, t_len)) {
         Ok(str) => str,
         Err(_) => return ptr::null_mut(),
     };
@@ -1494,7 +1500,10 @@ pub unsafe extern "C" fn ddlog_serialized_with_length(
         return ptr::null_mut();
     }
 
-    if let Ok(string) = str::from_utf8(slice::from_raw_parts(s as *const u8, s_len as usize)) {
+    #[allow(clippy::unnecessary_cast)]
+    // False positive: libc::c_char is i8 (signed), but slice::from_raw_parts requires *const u8 (unsigned).
+    // This is a necessary type conversion, not a redundant cast.
+    if let Ok(string) = str::from_utf8(slice::from_raw_parts(s as *const u8, s_len)) {
         Box::into_raw(Box::new(Record::Serialized(
             Cow::from(t),
             string.to_owned(),
@@ -1758,7 +1767,7 @@ pub unsafe extern "C" fn ddlog_named_struct(
     };
 
     let names: &[*const libc::c_char] = slice::from_raw_parts(field_names, len);
-    let mut tuples: Vec<(Name, Record)> = Vec::with_capacity(len as usize);
+    let mut tuples: Vec<(Name, Record)> = Vec::with_capacity(len);
 
     for (index, n) in names.iter().enumerate() {
         let name = match CStr::from_ptr(*n).to_str() {
@@ -1791,9 +1800,12 @@ pub unsafe extern "C" fn ddlog_struct_with_length(
     }
 
     let fields = ffi_record_vec(fields, len);
+    #[allow(clippy::unnecessary_cast)]
+    // False positive: libc::c_char is i8 (signed), but slice::from_raw_parts requires *const u8 (unsigned).
+    // This is a necessary type conversion, not a redundant cast.
     let constructor = str::from_utf8(slice::from_raw_parts(
         constructor as *const u8,
-        constructor_len as usize,
+        constructor_len,
     ));
 
     if let Ok(constructor) = constructor {
@@ -1837,9 +1849,12 @@ pub unsafe extern "C" fn ddlog_struct_static_cons_with_length(
     }
 
     let fields = ffi_record_vec(fields, len);
+    #[allow(clippy::unnecessary_cast)]
+    // False positive: libc::c_char is i8 (signed), but slice::from_raw_parts requires *const u8 (unsigned).
+    // This is a necessary type conversion, not a redundant cast.
     let constructor = str::from_utf8(slice::from_raw_parts(
         constructor as *const u8,
-        constructor_len as usize,
+        constructor_len,
     ));
 
     if let Ok(constructor) = constructor {
@@ -1870,7 +1885,7 @@ pub unsafe extern "C" fn ddlog_get_struct_field(
     idx: libc::size_t,
 ) -> *const Record {
     rec.as_ref()
-        .and_then(|record| record.nth_struct_field(idx as usize))
+        .and_then(|record| record.nth_struct_field(idx))
         .map(|record| record as *const Record)
         .unwrap_or(ptr::null_mut())
 }
@@ -1938,7 +1953,7 @@ pub unsafe extern "C" fn ddlog_get_constructor_with_length(
 
 #[cfg(feature = "c_api")]
 unsafe fn ffi_record_vec(fields: *const *mut Record, len: libc::size_t) -> Vec<Record> {
-    let mut boxed_fields = Vec::with_capacity(len as usize);
+    let mut boxed_fields = Vec::with_capacity(len);
     for i in 0..len {
         boxed_fields.push(*Box::from_raw(*fields.add(i)));
     }

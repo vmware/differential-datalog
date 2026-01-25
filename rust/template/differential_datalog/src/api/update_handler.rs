@@ -40,7 +40,7 @@ where
     T: 'static + Clone + Fn(RelId, &DDValue, isize),
 {
     fn clone_boxed(&self) -> Box<dyn SingleThreadedRelationCallback> {
-        Box::new((&*self).clone())
+        Box::new(self.clone())
     }
 }
 

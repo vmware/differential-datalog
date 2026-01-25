@@ -96,7 +96,7 @@ impl<'a> ArrangeBy<'a> {
                 if distinct {
                     // Our `diff_distinct()` impl returns an arrangement which is
                     // ready to be used as an arranged set
-                    Arrangement::Set(diff_distinct(&*self.target_relation, &keyed))
+                    Arrangement::Set(diff_distinct(&self.target_relation, &keyed))
                 } else {
                     // The name mapping the collection from `key` to `(key, ())` so we can arrange it
                     let mapped_name = format!("Map: Map to key for {}", self.target_relation);

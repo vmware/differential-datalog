@@ -648,7 +648,7 @@ impl<'a> DDlogWorker<'a> {
                         ProgNode::Rel { rel } => render_relation(
                             rel,
                             outer,
-                            &*program,
+                            &program,
                             &render_context,
                             &mut sessions,
                             &mut collections,
@@ -675,7 +675,7 @@ impl<'a> DDlogWorker<'a> {
                             rels,
                             node_id,
                             outer,
-                            &*program,
+                            &program,
                             &render_context,
                             &mut sessions,
                             &mut collections,
@@ -973,7 +973,7 @@ fn render_scc<'a>(
                                             (rel.rel.id, i),
                                             arr.build_arrangement(
                                                 render_context,
-                                                &*vars.get(&rel.rel.id)?,
+                                                vars.get(&rel.rel.id)?,
                                             ),
                                         )
                                     },

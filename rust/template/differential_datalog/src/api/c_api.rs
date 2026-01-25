@@ -514,7 +514,7 @@ pub unsafe extern "C" fn ddlog_free_record_updates(
 ) {
     // Assume that vector's capacity is equal to its length.
     let changes_vec: Vec<ddlog_record_update> =
-        Vec::from_raw_parts(changes, num_changes as usize, num_changes as usize);
+        Vec::from_raw_parts(changes, num_changes, num_changes);
     for upd in changes_vec.into_iter() {
         let _update = Box::from_raw(upd.rec);
     }
@@ -702,7 +702,7 @@ pub unsafe extern "C" fn ddlog_flatbuf_free(
     buf_size: libc::size_t,
     buf_capacity: libc::size_t,
 ) {
-    Vec::from_raw_parts(buf, buf_size as usize, buf_capacity as usize);
+    Vec::from_raw_parts(buf, buf_size, buf_capacity);
 }
 
 #[no_mangle]
