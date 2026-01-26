@@ -109,7 +109,7 @@ rust/ddlog_benches/timely_trace/
 test/*/antrea-test-data/
 test/*/dcm-test-data/
 test/*/redist_opt-test-data/
-test/*/ovn-test-data/
+test/ovn-test-data/
 test/ovs/
 test/datalog_tests/bin/
 test/datalog_tests/*_mem
