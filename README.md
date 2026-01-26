@@ -114,6 +114,10 @@ You are now ready to [start coding in DDlog](doc/tutorial/tutorial.md).
   **Note:** The `rustup` script adds path to Rust toolchain binaries (typically, `$HOME/.cargo/bin`)
   to `~/.profile`, so that it becomes effective at the next login attempt.  To configure your current
   shell run `source $HOME/.cargo/env`.
+- `cargo-make` (for running benchmarks):
+  ```
+  cargo install --force cargo-make
+  ```
 - JDK, e.g.:
   ```
   apt install default-jdk
