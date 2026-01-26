@@ -136,6 +136,18 @@ You are now ready to [start coding in DDlog](doc/tutorial/tutorial.md).
   ```
   apt install subversion
   ```
+- `maven` (for SQL test suite):
+  ```
+  apt install maven
+  ```
+- `autoconf`, `automake`, `libtool` (for OVN test suite):
+  ```
+  apt install autoconf automake libtool
+  ```
+- `groff`, `man-db` (for OVN test suite manpage generation):
+  ```
+  apt install groff man-db
+  ```
 - Google FlatBuffers library.  Download and build FlatBuffers release 1.11.0 from
   [github](https://github.com/google/flatbuffers/releases/tag/v1.11.0).  Make sure
   that the `flatc` tool is in your `$PATH`.  Additionally, make sure that FlatBuffers
