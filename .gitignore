@@ -87,3 +87,51 @@ rust/ddlog_benches/generated/*_ddlog
 rust/ddlog_benches/data
 !rust/ddlog_benches/data/.gitkeep
 .ghc.*.*
+
+# C tutorial build artifacts
+doc/c_tutorial/a.out
+doc/c_tutorial/*_ddlog/
+
+# Java test artifacts
+java/test/*.log
+java/test/timely_trace/
+java/test*/record.dat
+java/test*/arrangement_size_profile.json
+java/test*/change_profile.json
+java/test*/cpu_profile.json
+java/test*/peak_arrangement_size_profile.json
+java/test*/ddlog_profile_*/
+
+# Rust benchmark artifacts
+rust/ddlog_benches/timely_trace/
+
+# Test data directories
+test/*/antrea-test-data/
+test/*/dcm-test-data/
+test/*/redist_opt-test-data/
+test/*/ovn-test-data/
+test/ovs/
+test/datalog_tests/bin/
+test/datalog_tests/*_mem
+test/datalog_tests/*_bench*.dat
+test/datalog_tests/unique_bench*.dat
+test/datalog_tests/stream_bench.dat
+
+# Generated DDlog projects in test directories
+test/antrea/networkpolicy_controller_ddlog/
+test/datalog_tests/profiler_test/test_ddlog/
+test/types_test/typesTest_ddlog/
+
+# Test dump files (truncated variants)
+test/*/*.dump.truncated
+test/*/*.dump.expected.truncated
+
+# Profile directories
+test/antrea/ddlog_profile_*/
+
+# Souffle AST files
+test/souffle0/*.ast
+tools/souffle-grammar.pgc
+
+# Temporary files
+tmp
