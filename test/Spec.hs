@@ -216,9 +216,15 @@ compilerTest progress file cli_args = do
     -- compile generated Java code
     classpath <- (maybe "" (searchPathSeparator:)) <$> lookupEnv "CLASSPATH"
     p <- (maybe "" id) <$> lookupEnv "PATH"
+    -- CLASSPATH needs to include: generated flatbuf/java, ddlogapi.jar, and flatbuffers/java
+    -- From test/datalog_tests: ../../flatbuffers/java and ../../java/ddlogapi.jar
+    let flatbuffers_java = dir </> "../../flatbuffers/java"
+    let ddlogapi_jar = dir </> "../../java/ddlogapi.jar"
+    let generated_java = dir </> rustProjectDir </> "flatbuf" </> "java"
+    let full_classpath = generated_java ++ searchPathSeparator:ddlogapi_jar ++ searchPathSeparator:flatbuffers_java ++ searchPathSeparator:"." ++ classpath
     let javac_proc = (shell $ "javac ddlog" </> ?specname </> "*.java") {
                           cwd = Just $ dir </> rustProjectDir </> "flatbuf" </> "java",
-                          env = Just [("CLASSPATH", (dir </> "../../java" ++ searchPathSeparator:".") ++ classpath),
+                          env = Just [("CLASSPATH", full_classpath),
                                       ("PATH", p)]
                      }
     (jcode, jstdo, jstde) <- readCreateProcessWithExitCode javac_proc ""

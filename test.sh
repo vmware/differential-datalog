@@ -180,7 +180,7 @@ libs() {
 }
 
 simple() {
-    (cd "${THIS_DIR}/test/datalog_tests" && DDLOGFLAGS="-g" CARGOFLAGS="--features nested_ts_32,profile,c_api" ./run-test.sh simple release)
+    (cd "${THIS_DIR}/test/datalog_tests" && DDLOGFLAGS="-g" CARGOFLAGS="--features nested_ts_32,profile,c_api" MEMORY_LIMIT_GB=50 ./run-test.sh simple release)
 }
 
 simple2() {
@@ -219,7 +219,7 @@ dcm() {
 }
 
 redist_opt() {
-    (cd "${THIS_DIR}/test/datalog_tests" && ./test-redist_opt.sh)
+    (cd "${THIS_DIR}/test/datalog_tests" && MEMORY_LIMIT_GB=50 ./test-redist_opt.sh)
 }
 
 
@@ -357,7 +357,7 @@ ovn_mockup() {
 }
 
 redist() {
-    (cd "${THIS_DIR}" && STACK_CARGO_FLAGS='--release' stack test --ta '-p "$(NF) == \"generate redist\" || ($(NF-1) == \"compiler tests\" && $(NF) == \"redist\")"')
+    (cd "${THIS_DIR}" && MEMORY_LIMIT_GB=50 ./test/datalog_tests/run-with-memory-limit.sh bash -c "STACK_CARGO_FLAGS='--release' stack test --ta '-p \"\$(NF) == \\\"generate redist\\\" || (\$(NF-1) == \\\"compiler tests\\\" && \$(NF) == \\\"redist\\\")\"'")
 }
 
 # 'misc' test group.
