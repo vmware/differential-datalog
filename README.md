@@ -122,6 +122,20 @@ You are now ready to [start coding in DDlog](doc/tutorial/tutorial.md).
   ```
   apt install default-jdk
   ```
+- Python dependencies (for Souffle test suite):
+  ```
+  pip install --break-system-packages parglare
+  ```
+  Or if using a virtual environment:
+  ```
+  python3 -m venv venv
+  source venv/bin/activate
+  pip install parglare
+  ```
+- `subversion` (for Souffle test suite):
+  ```
+  apt install subversion
+  ```
 - Google FlatBuffers library.  Download and build FlatBuffers release 1.11.0 from
   [github](https://github.com/google/flatbuffers/releases/tag/v1.11.0).  Make sure
   that the `flatc` tool is in your `$PATH`.  Additionally, make sure that FlatBuffers
