@@ -1,4 +1,4 @@
-error: `Mutator` cannot be automatically implemented on unions
+error: `FromRecord` cannot be automatically implemented on unions
  --> $DIR/reject_unions.rs:6:1
   |
 6 | union Foo {
@@ -10,7 +10,7 @@ error: `IntoRecord` cannot be automatically implemented on unions
 6 | union Foo {
   | ^^^^^
 
-error: `FromRecord` cannot be automatically implemented on unions
+error: `Mutator` cannot be automatically implemented on unions
  --> $DIR/reject_unions.rs:6:1
   |
 6 | union Foo {
