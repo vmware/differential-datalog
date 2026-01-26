@@ -243,7 +243,7 @@ java0() {
 }
 
 java1() {
-    (cd "${THIS_DIR}/java/test1" && ./run.sh)
+    (cd "${THIS_DIR}/java/test1" && MEMORY_LIMIT_GB=50 ./run.sh)
 }
 
 java2() {
@@ -275,7 +275,7 @@ java8() {
 }
 
 flatbuf0() {
-    (cd "${THIS_DIR}/java/test_flatbuf" && ./run.sh)
+    (cd "${THIS_DIR}/java/test_flatbuf" && MEMORY_LIMIT_GB=50 ./run.sh)
 }
 
 flatbuf1() {

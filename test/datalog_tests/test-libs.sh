@@ -4,12 +4,24 @@
 
 set -e
 
+# Capture script directory for use in functions
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source memory limit helper if available
+if [ -f "${SCRIPT_DIR}/run-with-memory-limit.sh" ]; then
+    source "${SCRIPT_DIR}/run-with-memory-limit.sh"
+fi
+
 DDLOGFLAGS="-g" ./run-test.sh lib_test.dl release
 
 # $1 - test name
 test_lib() {
     echo Running $1 test
+    if [ -n "${MEMORY_LIMIT_GB}" ] && [ -f "${SCRIPT_DIR}/run-with-memory-limit.sh" ]; then
+        RUST_BACKTRACE=full /usr/bin/time "${SCRIPT_DIR}/run-with-memory-limit.sh" ./lib_test_ddlog/target/release/lib_test_cli --no-init-snapshot < $1.dat > $1.dump
+    else
     RUST_BACKTRACE=full /usr/bin/time ./lib_test_ddlog/target/release/lib_test_cli --no-init-snapshot < $1.dat > $1.dump
+    fi
     diff $1.dump.expected $1.dump
 }
 
@@ -35,7 +47,11 @@ FLATBUF=0 ./run-test.sh lib_test_no_flatbuf.dl release
 # $1 - test name
 test_nofb_lib() {
     echo Running $1 test
+    if [ -n "${MEMORY_LIMIT_GB}" ] && [ -f "${SCRIPT_DIR}/run-with-memory-limit.sh" ]; then
+        RUST_BACKTRACE=full /usr/bin/time "${SCRIPT_DIR}/run-with-memory-limit.sh" ./lib_test_no_flatbuf_ddlog/target/release/lib_test_no_flatbuf_cli --no-init-snapshot < $1.dat > $1.dump
+    else
     RUST_BACKTRACE=full /usr/bin/time ./lib_test_no_flatbuf_ddlog/target/release/lib_test_no_flatbuf_cli --no-init-snapshot < $1.dat > $1.dump
+    fi
     diff $1.dump.expected $1.dump
 }
 

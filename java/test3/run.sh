@@ -7,7 +7,7 @@ set -ex
 source ../build_java.sh
 
 compile ../../test/datalog_tests/span_string.dl SpanTest.java debug
-java -Djava.library.path=. SpanTest > spantest.dump
+java -Djava.library.path=. -cp "${CLASSPATH}" SpanTest > spantest.dump
 diff spantest.dump spantest.dump.expected
 cleanup
 rm -f spantest.dump

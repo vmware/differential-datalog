@@ -2,6 +2,14 @@
 
 set -e
 
+# Capture script directory for use in functions
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source memory limit helper if available
+if [ -f "${SCRIPT_DIR}/run-with-memory-limit.sh" ]; then
+    source "${SCRIPT_DIR}/run-with-memory-limit.sh"
+fi
+
 ./run-test.sh streams release
 
 DIFFERENTIAL_EAGER_MERGE=100
@@ -15,7 +23,11 @@ run_test() {
         insert Chunk(\"{\\\"fild\\\": $i}\"),
         commit dump_changes;"
     done) |
+        if [ -n "${MEMORY_LIMIT_GB}" ] && [ -f "${SCRIPT_DIR}/run-with-memory-limit.sh" ]; then
+            /usr/bin/time -o stream_mem -f "%M" "${SCRIPT_DIR}/run-with-memory-limit.sh" ./streams_ddlog/target/release/streams_cli -w 4 --no-store > stream_mem.dump
+        else
         /usr/bin/time -o stream_mem -f "%M" ./streams_ddlog/target/release/streams_cli -w 4 --no-store > stream_mem.dump
+        fi
 }
 
 run_memleak_test() {
@@ -52,7 +64,11 @@ run_stream_query_test() {
         done
         echo "commit dump_changes;"
     done) > stream_bench.dat
+    if [ -n "${MEMORY_LIMIT_GB}" ] && [ -f "${SCRIPT_DIR}/run-with-memory-limit.sh" ]; then
+        /usr/bin/time "${SCRIPT_DIR}/run-with-memory-limit.sh" ./streams_ddlog/target/release/streams_cli -w $3 --no-store < stream_bench.dat > stream_stream_queries.dump
+    else
     /usr/bin/time ./streams_ddlog/target/release/streams_cli -w $3 --no-store < stream_bench.dat > stream_stream_queries.dump
+    fi
 
 }
 
@@ -84,7 +100,11 @@ run_rel_query_test() {
         echo "commit dump_changes;"
 
     done) > stream_bench.dat
+    if [ -n "${MEMORY_LIMIT_GB}" ] && [ -f "${SCRIPT_DIR}/run-with-memory-limit.sh" ]; then
+        /usr/bin/time "${SCRIPT_DIR}/run-with-memory-limit.sh" ./streams_ddlog/target/release/streams_cli -w $3 --no-store < stream_bench.dat > stream_rel_queries.dump
+    else
     /usr/bin/time ./streams_ddlog/target/release/streams_cli -w $3 --no-store < stream_bench.dat > stream_rel_queries.dump
+    fi
 
 }
 
@@ -104,7 +124,11 @@ run_count_unique_test() {
         echo "commit dump_changes;"
     done
     ) > unique_bench$1.dat
+    if [ -n "${MEMORY_LIMIT_GB}" ] && [ -f "${SCRIPT_DIR}/run-with-memory-limit.sh" ]; then
+        /usr/bin/time "${SCRIPT_DIR}/run-with-memory-limit.sh" ./streams_ddlog/target/release/streams_cli -w 1 --no-store < unique_bench$1.dat > unique_bench$1.dump
+    else
     /usr/bin/time ./streams_ddlog/target/release/streams_cli -w 1 --no-store < unique_bench$1.dat > unique_bench$1.dump
+    fi
     diff -q unique_bench$1.dump unique_bench$1.dump.expected
 }
 

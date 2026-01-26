@@ -2,6 +2,14 @@
 
 set -e
 
+# Capture script directory for use in functions
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source memory limit helper if available
+if [ -f "${SCRIPT_DIR}/run-with-memory-limit.sh" ]; then
+    source "${SCRIPT_DIR}/run-with-memory-limit.sh"
+fi
+
 # Clone or refresh the repo.
 DCM_DATA_REPO=https://github.com/ddlog-dev/dcm-test-data.git
 LOCAL_DCM_DATA_REPO=dcm-test-data
@@ -26,7 +34,11 @@ run_test() {
     else
         unset DIFFERENTIAL_EAGER_MERGE
     fi
+    if [ -n "${MEMORY_LIMIT_GB}" ] && [ -f "${SCRIPT_DIR}/run-with-memory-limit.sh" ]; then
+        /usr/bin/time "${SCRIPT_DIR}/run-with-memory-limit.sh" ./dcm1_ddlog/target/release/dcm1_cli -w $1 --no-print --no-store < $2 > dcm1.dump
+    else
     /usr/bin/time ./dcm1_ddlog/target/release/dcm1_cli -w $1 --no-print --no-store < $2 > dcm1.dump
+    fi
 
     diff -q $3 dcm1.dump
 }

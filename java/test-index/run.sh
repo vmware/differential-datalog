@@ -5,7 +5,7 @@ set -ex
 source ../build_java.sh
 LIBDDLOG="libmylib.so" # use a custom library name
 compile a.dl A.java debug
-java -Djava.library.path=. A > atest.dump
+java -Djava.library.path=. -cp "${CLASSPATH}" A > atest.dump
 diff atest.dump atest.dump.expected
 cleanup
 rm -f libmylib.so atest.dump

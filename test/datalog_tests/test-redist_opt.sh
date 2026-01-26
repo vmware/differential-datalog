@@ -2,6 +2,14 @@
 
 set -e
 
+# Capture script directory for use in functions
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source memory limit helper if available
+if [ -f "${SCRIPT_DIR}/run-with-memory-limit.sh" ]; then
+    source "${SCRIPT_DIR}/run-with-memory-limit.sh"
+fi
+
 # Clone or refresh the repo.
 DATA_REPO_NAME=redist_opt-test-data
 DATA_REPO=https://github.com/ddlog-dev/${DATA_REPO_NAME}.git
@@ -37,7 +45,11 @@ run_tiny_test() {
         delete DdlogNode[DdlogNode{1,EntityOther{}}],
         commit;"
     done) |
+        if [ -n "${MEMORY_LIMIT_GB}" ] && [ -f "${SCRIPT_DIR}/run-with-memory-limit.sh" ]; then
+            /usr/bin/time -o redist_mem -f "%M" "${SCRIPT_DIR}/run-with-memory-limit.sh" ./redist_opt_ddlog/target/release/redist_opt_cli -w $2 --no-print --no-store --no-delta
+        else
         /usr/bin/time -o redist_mem -f "%M" ./redist_opt_ddlog/target/release/redist_opt_cli -w $2 --no-print --no-store --no-delta
+        fi
 }
 
 # $1 - DIFFERENTIAL_EAGER_MERGE value
@@ -75,7 +87,11 @@ run_test() {
     do
         cat $3
     done) |
+        if [ -n "${MEMORY_LIMIT_GB}" ] && [ -f "${SCRIPT_DIR}/run-with-memory-limit.sh" ]; then
+            /usr/bin/time "${SCRIPT_DIR}/run-with-memory-limit.sh" ./redist_opt_ddlog/target/release/redist_opt_cli -w $2 --no-print --no-store > redist_opt.dump
+        else
         /usr/bin/time ./redist_opt_ddlog/target/release/redist_opt_cli -w $2 --no-print --no-store > redist_opt.dump
+        fi
 
     # The output should be $1 copies of redist_opt.dump.expected
     (for (( i=1; i<=$1; i++ ))

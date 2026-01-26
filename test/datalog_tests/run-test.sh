@@ -17,6 +17,7 @@ function usage {
     echo "- RUSTFLAGS controls the Rust compiler flags"
     echo "- RUSTFEATURES controls the Rust compilation features enabled"
     echo "- CARGOFLAGS controls the cargo (Rust package system) compilation flags"
+    echo "- MEMORY_LIMIT_GB sets memory limit in GB using systemd-run (cgroup v2)"
     exit 1
 }
 
@@ -119,7 +120,39 @@ fi
 
 if [ -f ${base}.dat ]; then
     # Run script with input data
+    # If MEMORY_LIMIT_GB is set, use systemd-run with memory limit (cgroup v2)
+    if [ -n "${MEMORY_LIMIT_GB}" ]; then
+        MEMORY_LIMIT_BYTES=$((MEMORY_LIMIT_GB * 1024 * 1024 * 1024))
+        echo "Memory limit enabled: ${MEMORY_LIMIT_GB}GB (${MEMORY_LIMIT_BYTES} bytes)"
+        echo "Using systemd-run with MemoryMax property"
+        
+        # Use systemd-run to create a transient scope with memory limit
+        # This is the standard Linux way to enforce memory limits
+        set +e
+        systemd-run --user --scope \
+            --property=MemoryMax=${MEMORY_LIMIT_BYTES} \
+            --property=MemoryHigh=${MEMORY_LIMIT_BYTES} \
+            --property=MemorySwapMax=0 \
+            --quiet \
+            -- sh -c "set -x; /usr/bin/time ${base}_ddlog/target/${build}/${base}_cli < ${base}.dat > ${base}.dump"
+        TEST_EXIT_CODE=$?
+        set -e
+        
+        # Check if test was killed due to memory limit (OOM killer)
+        if [ $TEST_EXIT_CODE -ne 0 ]; then
+            if [ $TEST_EXIT_CODE -eq 137 ] || [ $TEST_EXIT_CODE -eq 143 ]; then
+                echo "ERROR: Test process was killed due to memory limit (${MEMORY_LIMIT_GB}GB) exceeded"
+                exit 1
+            else
+                echo "ERROR: Test failed with exit code $TEST_EXIT_CODE"
+                exit $TEST_EXIT_CODE
+            fi
+        fi
+    else
+        # Normal execution without memory limit
     (set -x; /usr/bin/time ${base}_ddlog/target/${build}/${base}_cli < ${base}.dat > ${base}.dump)
+    fi
+    
     # Compare outputs
     if [ -f ${base}.dump.expected.gz ]; then
         zdiff -q ${base}.dump ${base}.dump.expected.gz
