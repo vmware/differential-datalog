@@ -122,6 +122,16 @@ You are now ready to [start coding in DDlog](doc/tutorial/tutorial.md).
   ```
   apt install default-jdk
   ```
+- Go (for Go API tests):
+  ```
+  wget https://go.dev/dl/go1.21.6.linux-amd64.tar.gz
+  sudo tar -C /usr/local -xzf go1.21.6.linux-amd64.tar.gz
+  export PATH=/usr/local/go/bin:$PATH
+  ```
+  Or install via package manager:
+  ```
+  apt install golang-go
+  ```
 - Python dependencies (for Souffle test suite):
   ```
   pip install --break-system-packages parglare
